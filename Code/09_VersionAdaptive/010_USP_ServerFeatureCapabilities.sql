@@ -1,0 +1,311 @@
+USE [DeineDatenbank];
+GO
+
+/*
+===============================================================================
+Objekt       : monitor.USP_ServerFeatureCapabilities
+Version      : 3.0.0
+Stand        : 2026-07-15
+Typ          : Stored Procedure
+Zweck        : Versionsadaptive Erkennung zusätzlicher Diagnosefunktionen für
+               eine explizite Datenbankliste oder alle zulässigen Datenbanken.
+SQL-Version  : SQL Server 2019 oder neuer.
+Parameter    : @DatabaseNames, @DatabaseNamePattern,
+               @SystemdatenbankenEinbeziehen, @MaxDatenbanken,
+               @MitSpezialindizes, @MitQueryStoreReplicas,
+               @MitPlattformdetails, @MaxZeilen, @ResultSetArt,
+               @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
+Semantik     : bracket-aware Pipe-Liste; NULL=alle; N''=ungültig. Pattern ist
+               separat und mit exakter Liste gegenseitig exklusiv.
+Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
+Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
+               versionsabhängige Objekterkennung.
+Änderungen   : 3.0.0 - @AlleDatenbanken entfernt; zentraler Datenbankvertrag,
+                         Ausgabevertrag und katalogbasierte Featureerkennung.
+               2.1.0 - Vorheriger Stand.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_ServerFeatureCapabilities]
+      @DatabaseNames                    nvarchar(max)  = N''
+    , @SystemdatenbankenEinbeziehen     bit            = 0
+    , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @MaxDatenbanken                   int            = 16
+    , @MitSpezialindizes                bit            = 1
+    , @MitQueryStoreReplicas            bit            = 1
+    , @MitPlattformdetails              bit            = 1
+    , @MaxZeilen                        int            = 5000
+    , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @JsonErzeugen                     bit            = 0
+    , @Json                             nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen                   bit            = 1
+    , @Hilfe                            bit            = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Json = NULL;
+    SET LOCK_TIMEOUT 0;
+
+    DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
+    DECLARE @MonitorPrintMessage nvarchar(2048);
+
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_ServerFeatureCapabilities';
+        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet aktuelle Datenbank.';
+        PRINT N'@DatabaseNamePattern unterstützt like:, regex:, regexi: und ist exklusiv zu @DatabaseNames.';
+        PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; @MaxZeilen begrenzt jedes fachliche Resultset global.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        RETURN;
+    END;
+
+    DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
+    DECLARE @Major int = TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
+    DECLARE @Version nvarchar(128) = CONVERT(nvarchar(128), SERVERPROPERTY(N'ProductVersion'));
+    DECLARE @Edition nvarchar(256) = CONVERT(nvarchar(256), SERVERPROPERTY(N'Edition'));
+    DECLARE @Platform nvarchar(60) = NULL;
+    DECLARE @StatusCode varchar(40) = 'AVAILABLE';
+    DECLARE @IsPartial bit = 0;
+    DECLARE @ErrorMessage nvarchar(2048) = NULL;
+    DECLARE @CrossDatabaseRequested bit = 0;
+    DECLARE @Db sysname;
+    DECLARE @Sql nvarchar(max);
+
+    BEGIN TRY
+        SELECT TOP (1) @Platform = [host_platform]
+        FROM [sys].[dm_os_host_info];
+    END TRY
+    BEGIN CATCH
+        SET @Platform = N'UNKNOWN';
+    END CATCH;
+
+    CREATE TABLE [#DatabaseCandidates]
+    (
+          [DatabaseId] int NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) NULL
+        , [UserAccessDesc] nvarchar(60) NULL
+        , [IsReadOnly] bit NULL
+        , [CompatibilityLevel] tinyint NULL
+        , [CollationName] sysname NULL
+        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [IsSystemDatabase] bit NULL
+        , [RequestedOrdinal] int NULL
+    );
+    CREATE TABLE [#DatabaseCandidateWarnings]([RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NOT NULL);
+    CREATE TABLE [#Capabilities]
+    (
+          [ScopeName] nvarchar(128) NOT NULL
+        , [FeatureName] nvarchar(128) NOT NULL
+        , [AvailabilityStatus] varchar(40) NOT NULL
+        , [LogicPath] nvarchar(256) NULL
+        , [MinimumKnownMajorVersion] int NULL
+        , [SourceObject] nvarchar(512) NULL
+        , [Detail] nvarchar(2000) NULL
+        , [RequiredPermission] nvarchar(512) NULL
+    );
+    CREATE TABLE [#DatabaseFeatures]
+    (
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CompatibilityLevel] tinyint NULL
+        , [StateDesc] nvarchar(60) NULL
+        , [FeatureName] nvarchar(128) NOT NULL
+        , [AvailabilityStatus] varchar(40) NOT NULL
+        , [FeatureValue] nvarchar(4000) NULL
+        , [LogicPath] nvarchar(256) NULL
+        , [Detail] nvarchar(2000) NULL
+    );
+    CREATE TABLE [#SpecialIndexes]
+    (
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname NULL
+        , [ObjectName] sysname NULL
+        , [IndexName] sysname NULL
+        , [IndexFamily] nvarchar(60) NULL
+        , [IndexDetails] nvarchar(2000) NULL
+        , [AvailabilityStatus] varchar(40) NOT NULL
+    );
+    CREATE TABLE [#Errors]
+    (
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ModuleName] sysname NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) NULL
+    );
+
+    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE')
+    BEGIN
+        SET @StatusCode = 'INVALID_PARAMETER';
+        SET @ErrorMessage = N'Ungültige Mengen- oder Ausgabeparameter.';
+    END;
+
+    IF @StatusCode = 'AVAILABLE'
+    BEGIN
+        EXEC [monitor].[USP_PrepareDatabaseCandidates]
+              @DatabaseNames = @DatabaseNames
+            , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
+            , @DatabaseNamePattern = @DatabaseNamePattern
+            , @MaxDatenbanken = @MaxDatenbanken
+            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @StatusCode = @StatusCode OUTPUT
+            , @ErrorMessage = @ErrorMessage OUTPUT
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+    END;
+
+    INSERT [#Capabilities]
+    VALUES
+      (N'SERVER',N'PERFORMANCE_STATE_PERMISSION','AVAILABLE',CASE WHEN @Major >= 16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END,15,NULL,N'Berechtigungsbezeichnung wird versionsabhängig ausgewiesen.',NULL),
+      (N'SERVER',N'ZSTD_BACKUP_COMPRESSION',CASE WHEN @Major >= 17 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,CASE WHEN @Major >= 17 THEN N'Algorithmus 3/ZSTD kann ausgewertet werden.' ELSE N'Vor SQL Server 2025 nicht verfügbar.' END,17,N'msdb backup metadata',CASE WHEN @Major >= 17 THEN N'ZSTD wird unterstützt.' ELSE N'ZSTD-spezifische Information ist auf dieser Version nicht möglich.' END,N'msdb read permissions'),
+      (N'SERVER',N'RESOURCE_GOVERNOR_STANDARD_EDITION',CASE WHEN @Major >= 17 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'Edition-/Versionsprüfung',17,N'sys.resource_governor_configuration',CASE WHEN @Major >= 17 THEN N'Resource Governor kann auch in Standard Edition verfügbar sein.' ELSE N'Ältere Editionsgrenzen gelten; die reale Katalogverfügbarkeit wird separat geprüft.' END,N'VIEW SERVER STATE/PERFORMANCE STATE');
+
+    IF @MitPlattformdetails = 1
+    BEGIN
+        INSERT [#Capabilities]
+        SELECT
+              N'SERVER'
+            , [v].[FeatureName]
+            , CASE WHEN @Platform <> N'Linux' THEN 'UNAVAILABLE_PLATFORM'
+                   WHEN EXISTS(SELECT 1 FROM [master].[sys].[all_objects] AS [o] WITH (NOLOCK) WHERE [o].[name] = [v].[ObjectName] AND [o].[schema_id] = SCHEMA_ID(N'sys')) THEN 'AVAILABLE'
+                   ELSE 'UNAVAILABLE_VERSION' END
+            , CASE WHEN @Platform <> N'Linux' THEN N'Fallback auf allgemeine OS-/SQL-Prozess-DMVs.'
+                   WHEN EXISTS(SELECT 1 FROM [master].[sys].[all_objects] AS [o] WITH (NOLOCK) WHERE [o].[name] = [v].[ObjectName] AND [o].[schema_id] = SCHEMA_ID(N'sys')) THEN N'Native Linux-Host-DMV.'
+                   ELSE N'Fallback auf allgemeine OS-/SQL-Prozess-DMVs.' END
+            , 17
+            , N'sys.' + [v].[ObjectName]
+            , CASE WHEN @Platform <> N'Linux' THEN N'Linux-spezifische Quelle ist auf dieser Plattform nicht anwendbar.'
+                   WHEN EXISTS(SELECT 1 FROM [master].[sys].[all_objects] AS [o] WITH (NOLOCK) WHERE [o].[name] = [v].[ObjectName] AND [o].[schema_id] = SCHEMA_ID(N'sys')) THEN N'Quelle verfügbar.'
+                   ELSE N'Diese Hostinformation ist auf Build/CU nicht verfügbar.' END
+            , N'VIEW SERVER STATE/PERFORMANCE STATE'
+        FROM (VALUES
+             (N'LINUX_CPU_HOST_STATS',N'dm_os_linux_cpu_stats'),
+             (N'LINUX_DISK_HOST_STATS',N'dm_os_linux_disk_stats'),
+             (N'LINUX_NETWORK_HOST_STATS',N'dm_os_linux_net_stats'),
+             (N'LINUX_VM_HOST_STATS',N'dm_os_linux_vm_stats')) AS [v]([FeatureName],[ObjectName]);
+    END;
+
+    IF @StatusCode = 'AVAILABLE'
+    BEGIN
+        DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
+        SELECT [DatabaseName]
+        FROM [#DatabaseCandidates]
+        ORDER BY COALESCE([RequestedOrdinal],[DatabaseId]),[DatabaseId];
+        OPEN [DatabaseCursor];
+        FETCH NEXT FROM [DatabaseCursor] INTO @Db;
+
+        WHILE @@FETCH_STATUS = 0
+        BEGIN
+            BEGIN TRY
+                SET @Sql = N'USE ' + QUOTENAME(@Db) + N';
+DECLARE @HasQueryStoreReplicas bit = CONVERT(bit,CASE WHEN EXISTS
+(
+    SELECT 1 FROM [sys].[views] AS [v] WITH (NOLOCK)
+    INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[v].[schema_id]
+    WHERE [s].[name]=N''sys'' AND [v].[name]=N''query_store_replicas''
+) THEN 1 ELSE 0 END);
+
+INSERT [#DatabaseFeatures]
+SELECT DB_NAME(),[d].[compatibility_level],[d].[state_desc],N''OPTIMIZED_LOCKING'',
+       CASE WHEN DATABASEPROPERTYEX(DB_NAME(),''IsOptimizedLockingOn'') IS NULL THEN ''UNAVAILABLE_VERSION'' ELSE ''AVAILABLE'' END,
+       CONVERT(nvarchar(100),DATABASEPROPERTYEX(DB_NAME(),''IsOptimizedLockingOn'')),
+       CASE WHEN DATABASEPROPERTYEX(DB_NAME(),''IsOptimizedLockingOn'') IS NULL THEN N''Fallback: allgemeine Locking-/Blocking-DMVs.'' ELSE N''DATABASEPROPERTYEX(IsOptimizedLockingOn)'' END,
+       CASE WHEN DATABASEPROPERTYEX(DB_NAME(),''IsOptimizedLockingOn'') IS NULL THEN N''Versionsspezifische Eigenschaft nicht verfügbar.'' ELSE N''Zusammen mit ADR und RCSI interpretieren.'' END
+FROM [sys].[databases] AS [d] WITH (NOLOCK) WHERE [d].[database_id]=DB_ID();
+
+INSERT [#DatabaseFeatures]
+SELECT DB_NAME(),[d].[compatibility_level],[d].[state_desc],N''QUERY_STORE_READABLE_SECONDARY'',
+       CASE WHEN @HasQueryStoreReplicas=1 THEN ''AVAILABLE'' ELSE ''UNAVAILABLE_VERSION'' END,
+       CASE WHEN @HasQueryStoreReplicas=1 THEN N''Systemview vorhanden'' END,
+       CASE WHEN @HasQueryStoreReplicas=1 THEN N''Replica-Gruppen berücksichtigen.'' ELSE N''Fallback ohne Replica-Dimension.'' END,
+       CASE WHEN @HasQueryStoreReplicas=1 THEN N''Quelle verfügbar.'' ELSE N''Replica-spezifische Query-Store-Information nicht verfügbar.'' END
+FROM [sys].[databases] AS [d] WITH (NOLOCK) WHERE [d].[database_id]=DB_ID();
+
+IF @IncludeSpecialIndexes=1
+BEGIN
+    IF EXISTS
+    (
+        SELECT 1 FROM [sys].[views] AS [v] WITH (NOLOCK)
+        INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[v].[schema_id]
+        WHERE [s].[name]=N''sys'' AND [v].[name]=N''vector_indexes''
+    )
+    BEGIN
+        EXEC(N''INSERT [#SpecialIndexes]
+        SELECT DB_NAME(),[s].[name],[o].[name],[v].[name],N''''VECTOR'''',
+               CONCAT(N''''type='''',CONVERT(nvarchar(60),[v].[vector_index_type]),N''''; metric='''',CONVERT(nvarchar(60),[v].[distance_metric]),N''''; disabled='''',CONVERT(nvarchar(10),[v].[is_disabled])),''''AVAILABLE''''
+        FROM [sys].[vector_indexes] AS [v]
+        INNER JOIN [sys].[objects] AS [o] WITH (NOLOCK) ON [o].[object_id]=[v].[object_id]
+        INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id];'');
+    END
+    ELSE
+        INSERT [#DatabaseFeatures]
+        SELECT DB_NAME(),[d].[compatibility_level],[d].[state_desc],N''VECTOR_INDEX_METADATA'',''UNAVAILABLE_VERSION'',NULL,N''Fallback: allgemeines Indexinventar.'',N''Vector-Index-Metadaten nicht verfügbar.''
+        FROM [sys].[databases] AS [d] WITH (NOLOCK) WHERE [d].[database_id]=DB_ID();
+END;
+
+IF @IncludeQueryStoreReplicas=1 AND @HasQueryStoreReplicas=1
+BEGIN
+    EXEC(N''INSERT [#DatabaseFeatures]
+    SELECT DB_NAME(),[d].[compatibility_level],[d].[state_desc],N''''QUERY_STORE_REPLICA_GROUP_COUNT'''',''''AVAILABLE'''',CONVERT(nvarchar(100),(SELECT COUNT_BIG(*) FROM [sys].[query_store_replicas])),N''''sys.query_store_replicas'''',N''''Replica-Gruppen bei Query-Store-Auswertungen berücksichtigen.''''
+    FROM [sys].[databases] AS [d] WITH (NOLOCK) WHERE [d].[database_id]=DB_ID();'');
+END;';
+
+                EXEC [sys].[sp_executesql]
+                      @Sql
+                    , N'@IncludeSpecialIndexes bit,@IncludeQueryStoreReplicas bit'
+                    , @IncludeSpecialIndexes = @MitSpezialindizes
+                    , @IncludeQueryStoreReplicas = @MitQueryStoreReplicas;
+            END TRY
+            BEGIN CATCH
+                INSERT [#Errors] VALUES(@Db,N'DatabaseCapabilities',ERROR_NUMBER(),ERROR_MESSAGE());
+                SET @IsPartial = 1;
+            END CATCH;
+
+            FETCH NEXT FROM [DatabaseCursor] INTO @Db;
+        END;
+        CLOSE [DatabaseCursor];
+        DEALLOCATE [DatabaseCursor];
+    END;
+
+    INSERT [#Errors]([DatabaseName],[ModuleName],[ErrorNumber],[ErrorMessage])
+    SELECT [RequestedName],N'DatabaseSelection',NULL,[ErrorMessage]
+    FROM [#DatabaseCandidateWarnings];
+
+    IF EXISTS(SELECT 1 FROM [#Errors])
+    BEGIN
+        SET @StatusCode = CASE WHEN EXISTS(SELECT 1 FROM [#DatabaseFeatures]) THEN 'PARTIAL_RESULT' ELSE 'ERROR_HANDLED' END;
+        SET @IsPartial = 1;
+    END;
+
+    IF @StatusCode <> 'AVAILABLE' AND @PrintMeldungen = 1
+    BEGIN
+        SET @MonitorPrintMessage=FORMATMESSAGE(N'WARNUNG USP_ServerFeatureCapabilities %s: %s',@StatusCode,COALESCE(@ErrorMessage,N'Teilergebnis.'));
+        RAISERROR(N'%s',10,1,@MonitorPrintMessage) WITH NOWAIT;
+    END;
+
+    IF @JsonErzeugen = 1
+    BEGIN
+        DECLARE @JsonMeta nvarchar(max)=(SELECT N'ServerFeatureCapabilities' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@Major [productMajorVersion],@Version [productVersion],@Edition [edition],@Platform [hostPlatform],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @JsonCapabilities nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Capabilities] ORDER BY [ScopeName],[FeatureName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonDatabaseFeatures nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#DatabaseFeatures] ORDER BY [DatabaseName],[FeatureName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonSpecialIndexes nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#SpecialIndexes] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonWarnings nvarchar(max)=(SELECT * FROM [#Errors] ORDER BY [DatabaseName],[ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"capabilities":',COALESCE(@JsonCapabilities,N'[]'),N',"databaseFeatures":',COALESCE(@JsonDatabaseFeatures,N'[]'),N',"specialIndexes":',COALESCE(@JsonSpecialIndexes,N'[]'),N',"warnings":',COALESCE(@JsonWarnings,N'[]'),N'}');
+    END;
+
+    IF @ResultSetArtNormalisiert='RAW'
+    BEGIN
+        SELECT N'monitor.USP_ServerFeatureCapabilities' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@Major [ProductMajorVersion],@Version [ProductVersion],@Edition [Edition],@Platform [HostPlatform],@ErrorMessage [ErrorMessage];
+        SELECT TOP(@EffectiveMaxZeilen) * FROM [#Capabilities] ORDER BY [ScopeName],[FeatureName];
+        SELECT TOP(@EffectiveMaxZeilen) * FROM [#DatabaseFeatures] ORDER BY [DatabaseName],[FeatureName];
+        IF @MitSpezialindizes=1 SELECT TOP(@EffectiveMaxZeilen) * FROM [#SpecialIndexes] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexName];
+        SELECT * FROM [#Errors] ORDER BY [DatabaseName],[ModuleName];
+    END
+    ELSE IF @ResultSetArtNormalisiert='CONSOLE'
+    BEGIN
+        SELECT N'Server-Feature-Capabilities' [Ergebnis],@CollectionTimeUtc [Stand_UTC],@StatusCode [Status],@Major [Major_Version],@Version [Produktversion],@Edition [Edition],@Platform [Plattform],@ErrorMessage [Hinweis];
+        SELECT TOP(@EffectiveMaxZeilen) N'Server-Capability' [Ergebnis],[ScopeName] [Scope],[FeatureName] [Feature],[AvailabilityStatus] [Verfügbarkeit],[LogicPath] [Logik/Fallback],[SourceObject] [Quelle],[Detail] [Hinweis],[RequiredPermission] [Erforderliche_Berechtigung] FROM [#Capabilities] ORDER BY [ScopeName],[FeatureName];
+        SELECT TOP(@EffectiveMaxZeilen) N'Datenbank-Capability' [Ergebnis],[DatabaseName] [Datenbank],[CompatibilityLevel] [Compatibility_Level],[FeatureName] [Feature],[AvailabilityStatus] [Verfügbarkeit],[FeatureValue] [Wert],[LogicPath] [Logik/Fallback],[Detail] [Hinweis] FROM [#DatabaseFeatures] ORDER BY [DatabaseName],[FeatureName];
+        IF @MitSpezialindizes=1 SELECT TOP(@EffectiveMaxZeilen) N'Spezialindex' [Ergebnis],[DatabaseName] [Datenbank],[SchemaName] [Schema],[ObjectName] [Objekt],[IndexName] [Index],[IndexFamily] [Indexfamilie],[IndexDetails] [Details],[AvailabilityStatus] [Verfügbarkeit] FROM [#SpecialIndexes] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexName];
+        SELECT N'Capability-Warnung' [Ergebnis],[DatabaseName] [Datenbank],[ModuleName] [Modul],[ErrorNumber] [Fehlernummer],[ErrorMessage] [Fehlermeldung] FROM [#Errors] ORDER BY [DatabaseName],[ModuleName];
+    END;
+END;
+GO

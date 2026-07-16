@@ -1,0 +1,19 @@
+# SQL Server Analyze – Projektübersicht
+
+Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server ab Version 2019.
+
+## Verzeichnisse
+
+- `Code/`: installierbarer T-SQL-Code, Installer, Tests und Beispielaufrufe
+- `Documentation/`: Anforderungen, Architektur, Betrieb, Referenz und Recherche
+- `Metadata/`: maschinenlesbare Inventare und Qualitätsergebnisse
+- `AI_Metadata/`: kompakter Kontext zur Fortsetzung der KI-gestützten Entwicklung
+
+## Installation
+
+1. In allen SQL-Skripten den Platzhalter `[DeineDatenbank]` durch die gewünschte Installationsdatenbank ersetzen.
+2. Sicherstellen, dass Server, `tempdb` und Installationsdatenbank die Collation `SQL_Latin1_General_CP1_CS_AS` verwenden.
+3. `Code/Install/Install_All.sql` im SQLCMD-Modus ausführen oder zuvor mit `Code/Install/Build-StandaloneInstaller.ps1` einen eigenständigen Installer erzeugen.
+4. `Code/Tests/Integration/110_Smoke_Test.sql` ausführen.
+
+Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.

@@ -1,0 +1,28 @@
+{
+  "status": "PASS",
+  "generatedAtUtc": "2026-07-16T11:15:07.561471+00:00",
+  "objectCount": 78,
+  "procedureParameterCount": 930,
+  "fileCountBeforeManifest": 132,
+  "forbiddenReferenceFindings": [],
+  "installerChecks": [
+    {
+      "installer": "Code/Install/Install_All.sql",
+      "mode": "SQLCMD includes",
+      "sources": 86,
+      "missingSources": [],
+      "synchronized": true
+    }
+  ],
+  "protectedRepositoryFiles": [
+    "LICENSE.md",
+    "README.md"
+  ],
+  "protectedFilesIncludedInMigrationPayload": false,
+  "protectedFilesChanged": false,
+  "notes": [
+    "Historische Rohquellen und umgebungsspezifische Abhängigkeiten wurden nicht migriert.",
+    "Ein realer SQL-Server-Compiletest ist weiterhin erforderlich.",
+    "Der Root-Lizenztext und der Lizenzhinweis in der Root-README bleiben unverändert."
+  ]
+}

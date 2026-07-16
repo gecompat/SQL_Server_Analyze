@@ -1,0 +1,422 @@
+# Aufrufkatalog aller öffentlichen Funktionalitäten
+
+Stand: 2026-07-15 — 63 Procedures
+
+Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
+
+## Querschnittsbeispiele
+
+```sql
+DECLARE @Json nvarchar(max);
+EXEC [monitor].[USP_CurrentMemoryGrants] @MaxZeilen=100,@ResultSetArt='console',@JsonErzeugen=1,@Json=@Json OUTPUT;
+SELECT @Json AS [Json];
+
+EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@SchemaNames=N'dbo|monitor',@ObjectNamePattern=N'regexi:^usp_',@MaxZeilen=200;
+
+EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=NULL,@QueryStoreDatabaseNamePattern=N'like:Database_%',@ReferencedDatabaseNames=N'[BeispielDatenbankB]|[ExampleDatabaseC]',@MaxDatenbanken=16,@MaxZeilen=100;
+```
+
+## `[monitor].[USP_CheckAnalyseAccess]`
+
+```sql
+EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CheckFrameworkCapabilities]`
+
+```sql
+EXEC [monitor].[USP_CheckFrameworkCapabilities] @Hilfe = 1;
+```
+
+## `[monitor].[USP_PrepareDatabaseCandidates]`
+
+```sql
+EXEC [monitor].[USP_PrepareDatabaseCandidates] @Hilfe = 1;
+```
+
+## `[monitor].[USP_PrepareNameFilters]`
+
+```sql
+EXEC [monitor].[USP_PrepareNameFilters] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentSessions]`
+
+```sql
+EXEC [monitor].[USP_CurrentSessions] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentRequests]`
+
+```sql
+EXEC [monitor].[USP_CurrentRequests] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentBlocking]`
+
+```sql
+EXEC [monitor].[USP_CurrentBlocking] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentWaits]`
+
+```sql
+EXEC [monitor].[USP_CurrentWaits] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentTransactions]`
+
+```sql
+EXEC [monitor].[USP_CurrentTransactions] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentMemoryGrants]`
+
+```sql
+EXEC [monitor].[USP_CurrentMemoryGrants] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentTempDB]`
+
+```sql
+EXEC [monitor].[USP_CurrentTempDB] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentIO]`
+
+```sql
+EXEC [monitor].[USP_CurrentIO] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentLog]`
+
+```sql
+EXEC [monitor].[USP_CurrentLog] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CurrentOverview]`
+
+```sql
+EXEC [monitor].[USP_CurrentOverview] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ObjectInventory]`
+
+```sql
+EXEC [monitor].[USP_ObjectInventory] @Hilfe = 1;
+```
+
+## `[monitor].[USP_IndexUsage]`
+
+```sql
+EXEC [monitor].[USP_IndexUsage] @Hilfe = 1;
+```
+
+## `[monitor].[USP_IndexOperationalStats]`
+
+```sql
+EXEC [monitor].[USP_IndexOperationalStats] @Hilfe = 1;
+```
+
+## `[monitor].[USP_MissingIndexes]`
+
+```sql
+EXEC [monitor].[USP_MissingIndexes] @Hilfe = 1;
+```
+
+## `[monitor].[USP_Statistics]`
+
+```sql
+EXEC [monitor].[USP_Statistics] @Hilfe = 1;
+```
+
+## `[monitor].[USP_Partitions]`
+
+```sql
+EXEC [monitor].[USP_Partitions] @Hilfe = 1;
+```
+
+## `[monitor].[USP_Columnstore]`
+
+```sql
+EXEC [monitor].[USP_Columnstore] @Hilfe = 1;
+```
+
+## `[monitor].[USP_IndexPhysicalStats]`
+
+```sql
+EXEC [monitor].[USP_IndexPhysicalStats] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ObjectAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ObjectAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStats]`
+
+```sql
+EXEC [monitor].[USP_QueryStats] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryHashAnalysis]`
+
+```sql
+EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_PlanCacheHealth]`
+
+```sql
+EXEC [monitor].[USP_PlanCacheHealth] @Hilfe = 1;
+```
+
+## `[monitor].[USP_PlanDetails]`
+
+```sql
+EXEC [monitor].[USP_PlanDetails] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ShowplanAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ShowplanAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_PlanCacheAnalysis]`
+
+```sql
+EXEC [monitor].[USP_PlanCacheAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStoreStatus]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreStatus] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStoreRuntimeStats]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreRuntimeStats] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStoreWaitStats]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreWaitStats] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStorePlanChanges]`
+
+```sql
+EXEC [monitor].[USP_QueryStorePlanChanges] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStoreRegressions]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreRegressions] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStoreForcedPlans]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreForcedPlans] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStoreHints]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreHints] @Hilfe = 1;
+```
+
+## `[monitor].[USP_QueryStoreAnalysis]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExtendedEventsSessions]`
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsSessions] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExtendedEventsReadEvents]`
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsReadEvents] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExtendedEventsDeadlocks]`
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsDeadlocks] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExtendedEventsBlockedProcesses]`
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsBlockedProcesses] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExtendedEventsTargetRuntime]`
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExtendedEventsAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ExtendedEventsAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_AgentStatus]`
+
+```sql
+EXEC [monitor].[USP_AgentStatus] @Hilfe = 1;
+```
+
+## `[monitor].[USP_AgentJobs]`
+
+```sql
+EXEC [monitor].[USP_AgentJobs] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ResourceGovernorAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ResourceGovernorAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_AvailabilityGroups]`
+
+```sql
+EXEC [monitor].[USP_AvailabilityGroups] @Hilfe = 1;
+```
+
+## `[monitor].[USP_BackupRecovery]`
+
+```sql
+EXEC [monitor].[USP_BackupRecovery] @Hilfe = 1;
+```
+
+## `[monitor].[USP_LogShippingStatus]`
+
+```sql
+EXEC [monitor].[USP_LogShippingStatus] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ReplicationStatus]`
+
+```sql
+EXEC [monitor].[USP_ReplicationStatus] @Hilfe = 1;
+```
+
+## `[monitor].[USP_DataCaptureStatus]`
+
+```sql
+EXEC [monitor].[USP_DataCaptureStatus] @Hilfe = 1;
+```
+
+## `[monitor].[USP_InfrastructureAnalysis]`
+
+```sql
+EXEC [monitor].[USP_InfrastructureAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ServerCpuTopology]`
+
+```sql
+EXEC [monitor].[USP_ServerCpuTopology] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ServerNuma]`
+
+```sql
+EXEC [monitor].[USP_ServerNuma] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ServerMemory]`
+
+```sql
+EXEC [monitor].[USP_ServerMemory] @Hilfe = 1;
+```
+
+## `[monitor].[USP_TempDBConfiguration]`
+
+```sql
+EXEC [monitor].[USP_TempDBConfiguration] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ServerConfiguration]`
+
+```sql
+EXEC [monitor].[USP_ServerConfiguration] @Hilfe = 1;
+```
+
+## `[monitor].[USP_TraceFlags]`
+
+```sql
+EXEC [monitor].[USP_TraceFlags] @Hilfe = 1;
+```
+
+## `[monitor].[USP_StartupParameters]`
+
+```sql
+EXEC [monitor].[USP_StartupParameters] @Hilfe = 1;
+```
+
+## `[monitor].[USP_OSInformation]`
+
+```sql
+EXEC [monitor].[USP_OSInformation] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ServerSecurityConfiguration]`
+
+```sql
+EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ServerHealthAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ServerFeatureCapabilities]`
+
+```sql
+EXEC [monitor].[USP_ServerFeatureCapabilities] @Hilfe = 1;
+```
+
+<!-- BEGIN CURRENT_REQUESTS_BEISPIELE -->
+## Erweiterte Aufrufe für `[monitor].[USP_CurrentRequests]`
+
+```sql
+-- Ad-hoc-Standard: CONSOLE, exaktes aktuelles Statement und Modulkontext
+EXEC [monitor].[USP_CurrentRequests];
+
+-- Volltext einschließlich vollständigem Batch-/Modultext und Input Buffer
+EXEC [monitor].[USP_CurrentRequests]
+      @GesamtenSqlTextEinbeziehen = 1
+    , @InputBufferEinbeziehen = 1
+    , @MaxSqlTextZeichen = 0;
+
+-- RAW für INSERT ... EXEC oder andere technische Verbraucher
+EXEC [monitor].[USP_CurrentRequests]
+      @ResultSetArt = 'RAW';
+
+-- JSON-only
+DECLARE @Json nvarchar(max);
+EXEC [monitor].[USP_CurrentRequests]
+      @ResultSetArt = 'NONE'
+    , @JsonErzeugen = 1
+    , @Json = @Json OUTPUT;
+SELECT @Json AS [Json];
+```
+<!-- END CURRENT_REQUESTS_BEISPIELE -->
