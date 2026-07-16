@@ -18,7 +18,7 @@ Full legal terms can be found in the [LICENSE.md](./LICENSE.md) file.
 
 SQL Server Analyze ist ein T-SQL-basiertes Diagnoseframework für SQL Server ab Version 2019. Es unterstützt Ad-hoc-Analysen laufender Prozesse ebenso wie tiefergehende Untersuchungen von Objekten, Indizes, Ausführungsplänen, Query Store, Extended Events, Serverkonfiguration und Infrastrukturkomponenten.
 
-Das Framework wird in einer frei wählbaren Datenbank im Schema `[monitor]` installiert. Konkrete Datenbank-, Server-, Benutzer-, Kunden- oder Unternehmensbezeichnungen sind nicht Bestandteil des Projektcodes.
+Das Framework wird in einer frei wählbaren Datenbank im Schema `[monitor]` installiert. 
 
 ## Schwerpunkte
 
