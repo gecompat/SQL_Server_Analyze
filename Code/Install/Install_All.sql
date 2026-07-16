@@ -1,0 +1,95 @@
+USE [DeineDatenbank];
+GO
+
+/*
+SQLCMD-Installer für den vollständigen Frameworkbestand.
+Vor Ausführung den Platzhalter [DeineDatenbank] in allen SQL-Dateien ersetzen
+und in SSMS/ADS den SQLCMD-Modus aktivieren.
+*/
+
+:r ../00_Setup/000_Preflight_und_Schema.sql
+:r ../01_Common/010_VW_ModuleStatusCatalog.sql
+:r ../01_Common/020_VW_AnalyseClassCatalog.sql
+:r ../01_Common/030_VW_AnalyseAccessPolicy.sql
+:r ../01_Common/040_VW_AnalyseAccessCurrent.sql
+:r ../01_Common/050_USP_CheckAnalyseAccess.sql
+:r ../01_Common/060_VW_FrameworkFeatureCatalog.sql
+:r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
+:r ../01_Common/074_WaitTypeCatalog.sql
+:r ../01_Common/074a_WaitTypeCatalog_Seed_01.sql
+:r ../01_Common/074b_WaitTypeCatalog_Seed_02.sql
+:r ../01_Common/074c_WaitTypeCatalog_Seed_03.sql
+:r ../01_Common/074d_WaitTypeCatalog_Seed_04.sql
+:r ../01_Common/075_TVF_WaitTypeInfo.sql
+:r ../01_Common/076_TVF_QueryStoreWaitCategoryInfo.sql
+:r ../01_Common/077_FrameworkVersion.sql
+:r ../01_Common/078_TVF_ParsePipeList.sql
+:r ../01_Common/079_TVF_ParsePattern.sql
+:r ../01_Common/080_TVF_ParseSqlNameList.sql
+:r ../01_Common/081_TVF_ParseFullObjectNameList.sql
+:r ../01_Common/082_TVF_DatabaseCandidates.sql
+:r ../01_Common/083_USP_PrepareDatabaseCandidates.sql
+:r ../01_Common/084_USP_PrepareNameFilters.sql
+:r ../01_Common/085_TVF_ParseBigintList.sql
+:r ../01_Common/086_TVF_ParseStringList.sql
+:r ../01_Common/087_TVF_StatementText.sql
+:r ../02_CurrentState/010_USP_CurrentSessions.sql
+:r ../02_CurrentState/020_USP_CurrentRequests.sql
+:r ../02_CurrentState/030_USP_CurrentBlocking.sql
+:r ../02_CurrentState/040_USP_CurrentWaits.sql
+:r ../02_CurrentState/050_USP_CurrentTransactions.sql
+:r ../02_CurrentState/060_USP_CurrentMemoryGrants.sql
+:r ../02_CurrentState/070_USP_CurrentTempDB.sql
+:r ../02_CurrentState/080_USP_CurrentIO.sql
+:r ../02_CurrentState/090_USP_CurrentLog.sql
+:r ../02_CurrentState/100_USP_CurrentOverview.sql
+:r ../03_ObjectIndex/010_USP_ObjectInventory.sql
+:r ../03_ObjectIndex/020_USP_IndexUsage.sql
+:r ../03_ObjectIndex/025_USP_IndexOperationalStats.sql
+:r ../03_ObjectIndex/030_USP_MissingIndexes.sql
+:r ../03_ObjectIndex/040_USP_Statistics.sql
+:r ../03_ObjectIndex/050_USP_Partitions.sql
+:r ../03_ObjectIndex/060_USP_Columnstore.sql
+:r ../03_ObjectIndex/070_USP_IndexPhysicalStats.sql
+:r ../03_ObjectIndex/080_USP_ObjectAnalysis.sql
+:r ../04_PlanCache/010_USP_QueryStats.sql
+:r ../04_PlanCache/020_USP_QueryHashAnalysis.sql
+:r ../04_PlanCache/030_USP_PlanCacheHealth.sql
+:r ../04_PlanCache/040_USP_PlanDetails.sql
+:r ../04_PlanCache/050_USP_ShowplanAnalysis.sql
+:r ../04_PlanCache/060_USP_PlanCacheAnalysis.sql
+:r ../05_QueryStore/010_USP_QueryStoreStatus.sql
+:r ../05_QueryStore/020_USP_QueryStoreRuntimeStats.sql
+:r ../05_QueryStore/030_USP_QueryStoreWaitStats.sql
+:r ../05_QueryStore/040_USP_QueryStorePlanChanges.sql
+:r ../05_QueryStore/050_USP_QueryStoreRegressions.sql
+:r ../05_QueryStore/060_USP_QueryStoreForcedPlans.sql
+:r ../05_QueryStore/070_USP_QueryStoreHints.sql
+:r ../05_QueryStore/080_USP_QueryStoreAnalysis.sql
+:r ../06_ExtendedEvents/010_USP_ExtendedEventsSessions.sql
+:r ../06_ExtendedEvents/020_USP_ExtendedEventsReadEvents.sql
+:r ../06_ExtendedEvents/030_USP_ExtendedEventsDeadlocks.sql
+:r ../06_ExtendedEvents/040_USP_ExtendedEventsBlockedProcesses.sql
+:r ../06_ExtendedEvents/050_USP_ExtendedEventsTargetRuntime.sql
+:r ../06_ExtendedEvents/060_USP_ExtendedEventsAnalysis.sql
+:r ../07_Infrastructure/010_USP_AgentStatus.sql
+:r ../07_Infrastructure/020_USP_AgentJobs.sql
+:r ../07_Infrastructure/030_USP_ResourceGovernorAnalysis.sql
+:r ../07_Infrastructure/040_USP_AvailabilityGroups.sql
+:r ../07_Infrastructure/050_USP_BackupRecovery.sql
+:r ../07_Infrastructure/060_USP_LogShippingStatus.sql
+:r ../07_Infrastructure/070_USP_ReplicationStatus.sql
+:r ../07_Infrastructure/080_USP_DataCaptureStatus.sql
+:r ../07_Infrastructure/090_USP_InfrastructureAnalysis.sql
+:r ../08_ServerHealth/010_USP_ServerCpuTopology.sql
+:r ../08_ServerHealth/020_USP_ServerNuma.sql
+:r ../08_ServerHealth/030_USP_ServerMemory.sql
+:r ../08_ServerHealth/040_USP_TempDBConfiguration.sql
+:r ../08_ServerHealth/050_USP_ServerConfiguration.sql
+:r ../08_ServerHealth/060_USP_TraceFlags.sql
+:r ../08_ServerHealth/070_USP_StartupParameters.sql
+:r ../08_ServerHealth/080_USP_OSInformation.sql
+:r ../08_ServerHealth/090_USP_ServerSecurityConfiguration.sql
+:r ../08_ServerHealth/100_USP_ServerHealthAnalysis.sql
+:r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
+:r ../09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql

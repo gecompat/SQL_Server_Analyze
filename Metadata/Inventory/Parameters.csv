@@ -1,0 +1,931 @@
+ProcedureName,ParameterName,DataType,DefaultExpression
+USP_CheckAnalyseAccess,AnalyseKlasse,varchar(64),NULL
+USP_CheckAnalyseAccess,NurGesperrte,bit,0
+USP_CheckAnalyseAccess,ResultSetArt,varchar(16),'CONSOLE'
+USP_CheckAnalyseAccess,JsonErzeugen,bit,0
+USP_CheckAnalyseAccess,Json,nvarchar(max),NULL OUTPUT
+USP_CheckAnalyseAccess,PrintMeldungen,bit,1
+USP_CheckAnalyseAccess,Hilfe,bit,0
+USP_CheckFrameworkCapabilities,DatabaseNames,nvarchar(max),N''
+USP_CheckFrameworkCapabilities,SystemdatenbankenEinbeziehen,bit,0
+USP_CheckFrameworkCapabilities,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CheckFrameworkCapabilities,MaxDatenbanken,int,16
+USP_CheckFrameworkCapabilities,AnalyseKlasse,varchar(64),NULL
+USP_CheckFrameworkCapabilities,NurNichtVerfuegbar,bit,0
+USP_CheckFrameworkCapabilities,MitGruppenpruefung,bit,1
+USP_CheckFrameworkCapabilities,ResultSetArt,varchar(16),'CONSOLE'
+USP_CheckFrameworkCapabilities,JsonErzeugen,bit,0
+USP_CheckFrameworkCapabilities,Json,nvarchar(max),NULL OUTPUT
+USP_CheckFrameworkCapabilities,PrintMeldungen,bit,1
+USP_CheckFrameworkCapabilities,Hilfe,bit,0
+USP_PrepareDatabaseCandidates,DatabaseNames,nvarchar(max),N''
+USP_PrepareDatabaseCandidates,SystemdatenbankenEinbeziehen,bit,0
+USP_PrepareDatabaseCandidates,DatabaseNamePattern,nvarchar(4000),NULL
+USP_PrepareDatabaseCandidates,MaxDatenbanken,int,16
+USP_PrepareDatabaseCandidates,AnalysisClass,varchar(64),'CROSS_DATABASE_DEEP'
+USP_PrepareDatabaseCandidates,StatusCode,varchar(40),
+USP_PrepareDatabaseCandidates,ErrorMessage,nvarchar(2048),
+USP_PrepareDatabaseCandidates,CrossDatabaseRequested,bit,
+USP_PrepareNameFilters,SchemaNames,nvarchar(max),NULL
+USP_PrepareNameFilters,ObjectNames,nvarchar(max),NULL
+USP_PrepareNameFilters,FullObjectNames,nvarchar(max),NULL
+USP_PrepareNameFilters,IndexNames,nvarchar(max),NULL
+USP_PrepareNameFilters,StatisticsNames,nvarchar(max),NULL
+USP_PrepareNameFilters,ColumnNames,nvarchar(max),NULL
+USP_PrepareNameFilters,StatusCode,varchar(40),
+USP_PrepareNameFilters,ErrorMessage,nvarchar(2048),
+USP_CurrentSessions,SessionIds,nvarchar(max),NULL
+USP_CurrentSessions,EigeneSessionsModus,varchar(16),'ALLE'
+USP_CurrentSessions,AktuelleSessionEinbeziehen,bit,0
+USP_CurrentSessions,SystemSessionsEinbeziehen,bit,0
+USP_CurrentSessions,InaktiveSessionsEinbeziehen,bit,1
+USP_CurrentSessions,LoginNames,nvarchar(max),NULL
+USP_CurrentSessions,LoginNamePattern,nvarchar(4000),NULL
+USP_CurrentSessions,HostNames,nvarchar(max),NULL
+USP_CurrentSessions,HostNamePattern,nvarchar(4000),NULL
+USP_CurrentSessions,ProgramNames,nvarchar(max),NULL
+USP_CurrentSessions,ProgramNamePattern,nvarchar(4000),NULL
+USP_CurrentSessions,DatabaseNames,nvarchar(max),NULL
+USP_CurrentSessions,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CurrentSessions,MitSqlText,bit,0
+USP_CurrentSessions,MaxSqlTextZeichen,int,2000
+USP_CurrentSessions,MaxZeilen,int,500
+USP_CurrentSessions,Sortierung,varchar(32),'CPU'
+USP_CurrentSessions,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentSessions,JsonErzeugen,bit,0
+USP_CurrentSessions,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentSessions,PrintMeldungen,bit,1
+USP_CurrentSessions,Hilfe,bit,0
+USP_CurrentRequests,SessionIds,nvarchar(max),NULL
+USP_CurrentRequests,EigeneSessionsModus,varchar(16),'ALLE'
+USP_CurrentRequests,AktuelleSessionEinbeziehen,bit,0
+USP_CurrentRequests,SystemSessionsEinbeziehen,bit,0
+USP_CurrentRequests,NurBlockierte,bit,0
+USP_CurrentRequests,NurMitWait,bit,0
+USP_CurrentRequests,MinLaufzeitSekunden,int,NULL
+USP_CurrentRequests,MinCpuMs,bigint,NULL
+USP_CurrentRequests,MinLogicalReads,bigint,NULL
+USP_CurrentRequests,LoginNames,nvarchar(max),NULL
+USP_CurrentRequests,LoginNamePattern,nvarchar(4000),NULL
+USP_CurrentRequests,HostNames,nvarchar(max),NULL
+USP_CurrentRequests,HostNamePattern,nvarchar(4000),NULL
+USP_CurrentRequests,ProgramNames,nvarchar(max),NULL
+USP_CurrentRequests,ProgramNamePattern,nvarchar(4000),NULL
+USP_CurrentRequests,DatabaseNames,nvarchar(max),NULL
+USP_CurrentRequests,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CurrentRequests,TextPattern,nvarchar(4000),NULL
+USP_CurrentRequests,MitSqlText,bit,1
+USP_CurrentRequests,GesamtenSqlTextEinbeziehen,bit,0
+USP_CurrentRequests,InputBufferEinbeziehen,bit,0
+USP_CurrentRequests,ModulInfoEinbeziehen,bit,1
+USP_CurrentRequests,MaxSqlTextZeichen,int,4000
+USP_CurrentRequests,MaxZeilen,int,500
+USP_CurrentRequests,Sortierung,varchar(32),'RELEVANZ'
+USP_CurrentRequests,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentRequests,JsonErzeugen,bit,0
+USP_CurrentRequests,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentRequests,PrintMeldungen,bit,1
+USP_CurrentRequests,Hilfe,bit,0
+USP_CurrentBlocking,SessionIds,nvarchar(max),NULL
+USP_CurrentBlocking,MinWaitMs,bigint,0
+USP_CurrentBlocking,SystemSessionsEinbeziehen,bit,0
+USP_CurrentBlocking,MitSqlText,bit,1
+USP_CurrentBlocking,MaxSqlTextZeichen,int,3000
+USP_CurrentBlocking,MitLockDetails,bit,0
+USP_CurrentBlocking,MaxZeilen,int,1000
+USP_CurrentBlocking,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentBlocking,JsonErzeugen,bit,0
+USP_CurrentBlocking,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentBlocking,PrintMeldungen,bit,1
+USP_CurrentBlocking,Hilfe,bit,0
+USP_CurrentWaits,SessionIds,nvarchar(max),NULL
+USP_CurrentWaits,MinWaitMs,bigint,0
+USP_CurrentWaits,WaitTypes,nvarchar(max),NULL
+USP_CurrentWaits,WaitTypePattern,nvarchar(4000),NULL
+USP_CurrentWaits,WaitGroups,nvarchar(max),NULL
+USP_CurrentWaits,WaitGroupPattern,nvarchar(4000),NULL
+USP_CurrentWaits,SystemSessionsEinbeziehen,bit,0
+USP_CurrentWaits,MitSqlText,bit,1
+USP_CurrentWaits,MaxSqlTextZeichen,int,2000
+USP_CurrentWaits,SampleSeconds,tinyint,0
+USP_CurrentWaits,UnkritischeWaitsEinbeziehen,bit,0
+USP_CurrentWaits,TopWaitPercentage,"decimal(5,2)",95.00
+USP_CurrentWaits,MaxZeilen,int,1000
+USP_CurrentWaits,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentWaits,JsonErzeugen,bit,0
+USP_CurrentWaits,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentWaits,PrintMeldungen,bit,1
+USP_CurrentWaits,Hilfe,bit,0
+USP_CurrentTransactions,SessionIds,nvarchar(max),NULL
+USP_CurrentTransactions,MinAlterSekunden,int,0
+USP_CurrentTransactions,NurSleeping,bit,0
+USP_CurrentTransactions,SystemSessionsEinbeziehen,bit,0
+USP_CurrentTransactions,MitSqlText,bit,1
+USP_CurrentTransactions,MaxSqlTextZeichen,int,3000
+USP_CurrentTransactions,MaxZeilen,int,1000
+USP_CurrentTransactions,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentTransactions,JsonErzeugen,bit,0
+USP_CurrentTransactions,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentTransactions,PrintMeldungen,bit,1
+USP_CurrentTransactions,Hilfe,bit,0
+USP_CurrentMemoryGrants,SessionIds,nvarchar(max),NULL
+USP_CurrentMemoryGrants,AktuelleSessionEinbeziehen,bit,0
+USP_CurrentMemoryGrants,NurWartende,bit,0
+USP_CurrentMemoryGrants,MinRequestedMb,"decimal(19,2)",NULL
+USP_CurrentMemoryGrants,MinGrantedMb,"decimal(19,2)",NULL
+USP_CurrentMemoryGrants,MitSqlText,bit,1
+USP_CurrentMemoryGrants,MaxSqlTextZeichen,int,3000
+USP_CurrentMemoryGrants,MaxZeilen,int,1000
+USP_CurrentMemoryGrants,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentMemoryGrants,JsonErzeugen,bit,0
+USP_CurrentMemoryGrants,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentMemoryGrants,PrintMeldungen,bit,1
+USP_CurrentMemoryGrants,Hilfe,bit,0
+USP_CurrentTempDB,SessionIds,nvarchar(max),NULL
+USP_CurrentTempDB,AktuelleSessionEinbeziehen,bit,0
+USP_CurrentTempDB,MinNettoMb,"decimal(19,2)",0
+USP_CurrentTempDB,SystemSessionsEinbeziehen,bit,0
+USP_CurrentTempDB,MitDateien,bit,1
+USP_CurrentTempDB,MaxZeilen,int,1000
+USP_CurrentTempDB,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentTempDB,JsonErzeugen,bit,0
+USP_CurrentTempDB,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentTempDB,PrintMeldungen,bit,1
+USP_CurrentTempDB,Hilfe,bit,0
+USP_CurrentIO,DatabaseNames,nvarchar(max),N''
+USP_CurrentIO,SystemdatenbankenEinbeziehen,bit,0
+USP_CurrentIO,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CurrentIO,MaxDatenbanken,int,16
+USP_CurrentIO,MinLatencyMs,"decimal(19,3)",0
+USP_CurrentIO,SampleSeconds,tinyint,0
+USP_CurrentIO,MaxZeilen,int,1000
+USP_CurrentIO,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentIO,JsonErzeugen,bit,0
+USP_CurrentIO,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentIO,PrintMeldungen,bit,1
+USP_CurrentIO,Hilfe,bit,0
+USP_CurrentLog,DatabaseNames,nvarchar(max),N''
+USP_CurrentLog,SystemdatenbankenEinbeziehen,bit,0
+USP_CurrentLog,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CurrentLog,MinUsedPercent,"decimal(5,2)",NULL
+USP_CurrentLog,MitVlfInformationen,bit,0
+USP_CurrentLog,MitPersistentVersionStore,bit,0
+USP_CurrentLog,MaxDatenbanken,int,16
+USP_CurrentLog,MaxZeilen,int,1000
+USP_CurrentLog,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentLog,JsonErzeugen,bit,0
+USP_CurrentLog,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentLog,PrintMeldungen,bit,1
+USP_CurrentLog,Hilfe,bit,0
+USP_CurrentOverview,SessionIds,nvarchar(max),NULL
+USP_CurrentOverview,DatabaseNames,nvarchar(max),N''
+USP_CurrentOverview,SystemdatenbankenEinbeziehen,bit,0
+USP_CurrentOverview,DatabaseNamePattern,nvarchar(4000),NULL
+USP_CurrentOverview,MaxDatenbanken,int,16
+USP_CurrentOverview,MitSessions,bit,1
+USP_CurrentOverview,MitRequests,bit,1
+USP_CurrentOverview,MitBlocking,bit,1
+USP_CurrentOverview,MitWaits,bit,1
+USP_CurrentOverview,MitTransactions,bit,1
+USP_CurrentOverview,MitMemoryGrants,bit,1
+USP_CurrentOverview,MitTempDB,bit,1
+USP_CurrentOverview,MitIO,bit,1
+USP_CurrentOverview,MitLog,bit,1
+USP_CurrentOverview,MitSqlText,bit,1
+USP_CurrentOverview,GesamtenSqlTextEinbeziehen,bit,0
+USP_CurrentOverview,InputBufferEinbeziehen,bit,0
+USP_CurrentOverview,ModulInfoEinbeziehen,bit,1
+USP_CurrentOverview,MaxSqlTextZeichen,int,4000
+USP_CurrentOverview,SampleSeconds,tinyint,0
+USP_CurrentOverview,MaxZeilen,int,500
+USP_CurrentOverview,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentOverview,JsonErzeugen,bit,0
+USP_CurrentOverview,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentOverview,PrintMeldungen,bit,1
+USP_CurrentOverview,Hilfe,bit,0
+USP_ObjectInventory,DatabaseNames,nvarchar(max),N''
+USP_ObjectInventory,SystemdatenbankenEinbeziehen,bit,0
+USP_ObjectInventory,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ObjectInventory,SchemaNames,nvarchar(max),NULL
+USP_ObjectInventory,SchemaNamePattern,nvarchar(4000),NULL
+USP_ObjectInventory,ObjectNames,nvarchar(max),NULL
+USP_ObjectInventory,ObjectNamePattern,nvarchar(4000),NULL
+USP_ObjectInventory,FullObjectNames,nvarchar(max),NULL
+USP_ObjectInventory,ObjectType,varchar(16),'TABLE'
+USP_ObjectInventory,AnalyseModus,varchar(16),'GEZIELT'
+USP_ObjectInventory,MitIndizes,bit,1
+USP_ObjectInventory,MitSpaltenlisten,bit,1
+USP_ObjectInventory,MaxDatenbanken,int,16
+USP_ObjectInventory,MaxZeilen,int,5000
+USP_ObjectInventory,LockTimeoutMs,int,0
+USP_ObjectInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_ObjectInventory,JsonErzeugen,bit,0
+USP_ObjectInventory,Json,nvarchar(max),NULL OUTPUT
+USP_ObjectInventory,PrintMeldungen,bit,1
+USP_ObjectInventory,Hilfe,bit,0
+USP_IndexUsage,DatabaseNames,nvarchar(max),N''
+USP_IndexUsage,SystemdatenbankenEinbeziehen,bit,0
+USP_IndexUsage,DatabaseNamePattern,nvarchar(4000),NULL
+USP_IndexUsage,SchemaNames,nvarchar(max),NULL
+USP_IndexUsage,SchemaNamePattern,nvarchar(4000),NULL
+USP_IndexUsage,ObjectNames,nvarchar(max),NULL
+USP_IndexUsage,ObjectNamePattern,nvarchar(4000),NULL
+USP_IndexUsage,FullObjectNames,nvarchar(max),NULL
+USP_IndexUsage,AnalyseModus,varchar(16),'GEZIELT'
+USP_IndexUsage,NurUngenutzt,bit,0
+USP_IndexUsage,MinUserUpdates,bigint,0
+USP_IndexUsage,PrimaryUndUniqueEinbeziehen,bit,1
+USP_IndexUsage,MitMemoryOptimized,bit,1
+USP_IndexUsage,MaxDatenbanken,int,16
+USP_IndexUsage,MaxZeilen,int,5000
+USP_IndexUsage,LockTimeoutMs,int,0
+USP_IndexUsage,ResultSetArt,varchar(16),'CONSOLE'
+USP_IndexUsage,JsonErzeugen,bit,0
+USP_IndexUsage,Json,nvarchar(max),NULL OUTPUT
+USP_IndexUsage,PrintMeldungen,bit,1
+USP_IndexUsage,Hilfe,bit,0
+USP_IndexOperationalStats,DatabaseNames,nvarchar(max),N''
+USP_IndexOperationalStats,SystemdatenbankenEinbeziehen,bit,0
+USP_IndexOperationalStats,DatabaseNamePattern,nvarchar(4000),NULL
+USP_IndexOperationalStats,SchemaNames,nvarchar(max),NULL
+USP_IndexOperationalStats,SchemaNamePattern,nvarchar(4000),NULL
+USP_IndexOperationalStats,ObjectNames,nvarchar(max),NULL
+USP_IndexOperationalStats,ObjectNamePattern,nvarchar(4000),NULL
+USP_IndexOperationalStats,FullObjectNames,nvarchar(max),NULL
+USP_IndexOperationalStats,IndexNames,nvarchar(max),NULL
+USP_IndexOperationalStats,IndexNamePattern,nvarchar(4000),NULL
+USP_IndexOperationalStats,AnalyseModus,varchar(16),'GEZIELT'
+USP_IndexOperationalStats,PartitionNumber,int,NULL
+USP_IndexOperationalStats,NurMitAktivitaet,bit,1
+USP_IndexOperationalStats,MinLeafPageAllocations,bigint,0
+USP_IndexOperationalStats,MinLockWaitMs,bigint,0
+USP_IndexOperationalStats,MaxDatenbanken,int,16
+USP_IndexOperationalStats,MaxZeilen,int,5000
+USP_IndexOperationalStats,LockTimeoutMs,int,0
+USP_IndexOperationalStats,ResultSetArt,varchar(16),'CONSOLE'
+USP_IndexOperationalStats,JsonErzeugen,bit,0
+USP_IndexOperationalStats,Json,nvarchar(max),NULL OUTPUT
+USP_IndexOperationalStats,PrintMeldungen,bit,1
+USP_IndexOperationalStats,Hilfe,bit,0
+USP_MissingIndexes,DatabaseNames,nvarchar(max),N''
+USP_MissingIndexes,SystemdatenbankenEinbeziehen,bit,0
+USP_MissingIndexes,DatabaseNamePattern,nvarchar(4000),NULL
+USP_MissingIndexes,SchemaNames,nvarchar(max),NULL
+USP_MissingIndexes,SchemaNamePattern,nvarchar(4000),NULL
+USP_MissingIndexes,ObjectNames,nvarchar(max),NULL
+USP_MissingIndexes,ObjectNamePattern,nvarchar(4000),NULL
+USP_MissingIndexes,FullObjectNames,nvarchar(max),NULL
+USP_MissingIndexes,MinUserReads,bigint,1
+USP_MissingIndexes,MinAvgUserImpact,"decimal(9,2)",0
+USP_MissingIndexes,MinImprovementMeasure,"decimal(28,2)",0
+USP_MissingIndexes,MaxDatenbanken,int,16
+USP_MissingIndexes,MaxZeilen,int,5000
+USP_MissingIndexes,LockTimeoutMs,int,0
+USP_MissingIndexes,ResultSetArt,varchar(16),'CONSOLE'
+USP_MissingIndexes,JsonErzeugen,bit,0
+USP_MissingIndexes,Json,nvarchar(max),NULL OUTPUT
+USP_MissingIndexes,PrintMeldungen,bit,1
+USP_MissingIndexes,Hilfe,bit,0
+USP_Statistics,DatabaseNames,nvarchar(max),N''
+USP_Statistics,SystemdatenbankenEinbeziehen,bit,0
+USP_Statistics,DatabaseNamePattern,nvarchar(4000),NULL
+USP_Statistics,SchemaNames,nvarchar(max),NULL
+USP_Statistics,SchemaNamePattern,nvarchar(4000),NULL
+USP_Statistics,ObjectNames,nvarchar(max),NULL
+USP_Statistics,ObjectNamePattern,nvarchar(4000),NULL
+USP_Statistics,FullObjectNames,nvarchar(max),NULL
+USP_Statistics,StatisticsNames,nvarchar(max),NULL
+USP_Statistics,StatisticsNamePattern,nvarchar(4000),NULL
+USP_Statistics,AnalyseModus,varchar(16),'GEZIELT'
+USP_Statistics,MinModificationPercent,"decimal(9,2)",0
+USP_Statistics,MinAlterTage,int,0
+USP_Statistics,MitIncrementellenDetails,bit,0
+USP_Statistics,MaxDatenbanken,int,16
+USP_Statistics,MaxZeilen,int,10000
+USP_Statistics,LockTimeoutMs,int,0
+USP_Statistics,ResultSetArt,varchar(16),'CONSOLE'
+USP_Statistics,JsonErzeugen,bit,0
+USP_Statistics,Json,nvarchar(max),NULL OUTPUT
+USP_Statistics,PrintMeldungen,bit,1
+USP_Statistics,Hilfe,bit,0
+USP_Partitions,DatabaseNames,nvarchar(max),N''
+USP_Partitions,SystemdatenbankenEinbeziehen,bit,0
+USP_Partitions,DatabaseNamePattern,nvarchar(4000),NULL
+USP_Partitions,SchemaNames,nvarchar(max),NULL
+USP_Partitions,SchemaNamePattern,nvarchar(4000),NULL
+USP_Partitions,ObjectNames,nvarchar(max),NULL
+USP_Partitions,ObjectNamePattern,nvarchar(4000),NULL
+USP_Partitions,FullObjectNames,nvarchar(max),NULL
+USP_Partitions,AnalyseModus,varchar(16),'GEZIELT'
+USP_Partitions,NurPartitionierte,bit,0
+USP_Partitions,NurGemischteKompression,bit,0
+USP_Partitions,MaxDatenbanken,int,16
+USP_Partitions,MaxZeilen,int,10000
+USP_Partitions,LockTimeoutMs,int,0
+USP_Partitions,ResultSetArt,varchar(16),'CONSOLE'
+USP_Partitions,JsonErzeugen,bit,0
+USP_Partitions,Json,nvarchar(max),NULL OUTPUT
+USP_Partitions,PrintMeldungen,bit,1
+USP_Partitions,Hilfe,bit,0
+USP_Columnstore,DatabaseNames,nvarchar(max),N''
+USP_Columnstore,SystemdatenbankenEinbeziehen,bit,0
+USP_Columnstore,DatabaseNamePattern,nvarchar(4000),NULL
+USP_Columnstore,SchemaNames,nvarchar(max),NULL
+USP_Columnstore,SchemaNamePattern,nvarchar(4000),NULL
+USP_Columnstore,ObjectNames,nvarchar(max),NULL
+USP_Columnstore,ObjectNamePattern,nvarchar(4000),NULL
+USP_Columnstore,FullObjectNames,nvarchar(max),NULL
+USP_Columnstore,AnalyseModus,varchar(16),'GEZIELT'
+USP_Columnstore,MitPhysicalStats,bit,0
+USP_Columnstore,MitSegmenten,bit,0
+USP_Columnstore,MitDictionaries,bit,0
+USP_Columnstore,MinDeletedPercent,"decimal(9,2)",0
+USP_Columnstore,NurProblematisch,bit,0
+USP_Columnstore,MaxDatenbanken,int,16
+USP_Columnstore,MaxZeilen,int,10000
+USP_Columnstore,LockTimeoutMs,int,0
+USP_Columnstore,ResultSetArt,varchar(16),'CONSOLE'
+USP_Columnstore,JsonErzeugen,bit,0
+USP_Columnstore,Json,nvarchar(max),NULL OUTPUT
+USP_Columnstore,PrintMeldungen,bit,1
+USP_Columnstore,Hilfe,bit,0
+USP_IndexPhysicalStats,DatabaseNames,nvarchar(max),N''
+USP_IndexPhysicalStats,SystemdatenbankenEinbeziehen,bit,0
+USP_IndexPhysicalStats,DatabaseNamePattern,nvarchar(4000),NULL
+USP_IndexPhysicalStats,SchemaNames,nvarchar(max),NULL
+USP_IndexPhysicalStats,SchemaNamePattern,nvarchar(4000),NULL
+USP_IndexPhysicalStats,ObjectNames,nvarchar(max),NULL
+USP_IndexPhysicalStats,ObjectNamePattern,nvarchar(4000),NULL
+USP_IndexPhysicalStats,FullObjectNames,nvarchar(max),NULL
+USP_IndexPhysicalStats,IndexNames,nvarchar(max),NULL
+USP_IndexPhysicalStats,IndexNamePattern,nvarchar(4000),NULL
+USP_IndexPhysicalStats,AnalyseModus,varchar(16),'GEZIELT'
+USP_IndexPhysicalStats,ScanMode,varchar(16),'LIMITED'
+USP_IndexPhysicalStats,IndexId,int,NULL
+USP_IndexPhysicalStats,PartitionNumber,int,NULL
+USP_IndexPhysicalStats,MinPageCount,bigint,1000
+USP_IndexPhysicalStats,MinFragmentationPercent,"decimal(9,2)",0
+USP_IndexPhysicalStats,MaxDatenbanken,int,16
+USP_IndexPhysicalStats,MaxZeilen,int,10000
+USP_IndexPhysicalStats,LockTimeoutMs,int,0
+USP_IndexPhysicalStats,ResultSetArt,varchar(16),'CONSOLE'
+USP_IndexPhysicalStats,JsonErzeugen,bit,0
+USP_IndexPhysicalStats,Json,nvarchar(max),NULL OUTPUT
+USP_IndexPhysicalStats,PrintMeldungen,bit,1
+USP_IndexPhysicalStats,Hilfe,bit,0
+USP_ObjectAnalysis,DatabaseNames,nvarchar(max),N''
+USP_ObjectAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_ObjectAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ObjectAnalysis,SchemaNames,nvarchar(max),NULL
+USP_ObjectAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_ObjectAnalysis,ObjectNames,nvarchar(max),NULL
+USP_ObjectAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_ObjectAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_ObjectAnalysis,IndexNames,nvarchar(max),NULL
+USP_ObjectAnalysis,IndexNamePattern,nvarchar(4000),NULL
+USP_ObjectAnalysis,StatisticsNames,nvarchar(max),NULL
+USP_ObjectAnalysis,StatisticsNamePattern,nvarchar(4000),NULL
+USP_ObjectAnalysis,Vollanalyse,bit,0
+USP_ObjectAnalysis,MitObjectInventory,bit,1
+USP_ObjectAnalysis,MitIndexUsage,bit,1
+USP_ObjectAnalysis,MitMissingIndexes,bit,1
+USP_ObjectAnalysis,MitOperationalStats,bit,0
+USP_ObjectAnalysis,MitStatistics,bit,0
+USP_ObjectAnalysis,MitPartitions,bit,0
+USP_ObjectAnalysis,MitColumnstore,bit,0
+USP_ObjectAnalysis,MitPhysicalStats,bit,0
+USP_ObjectAnalysis,MaxDatenbanken,int,16
+USP_ObjectAnalysis,MaxZeilen,int,2000
+USP_ObjectAnalysis,LockTimeoutMs,int,0
+USP_ObjectAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ObjectAnalysis,JsonErzeugen,bit,0
+USP_ObjectAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ObjectAnalysis,PrintMeldungen,bit,1
+USP_ObjectAnalysis,Hilfe,bit,0
+USP_QueryStats,DatabaseNames,nvarchar(max),N''
+USP_QueryStats,SystemdatenbankenEinbeziehen,bit,0
+USP_QueryStats,DatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStats,MaxDatenbanken,int,16
+USP_QueryStats,QueryHash,binary(8),NULL
+USP_QueryStats,QueryPlanHash,binary(8),NULL
+USP_QueryStats,SqlHandle,varbinary(64),NULL
+USP_QueryStats,PlanHandle,varbinary(64),NULL
+USP_QueryStats,TextPattern,nvarchar(4000),NULL
+USP_QueryStats,Sortierung,varchar(32),'CPU_TOTAL'
+USP_QueryStats,AnalyseModus,varchar(16),'TOP'
+USP_QueryStats,MinExecutionCount,bigint,1
+USP_QueryStats,VonUtc,datetime2(7),NULL
+USP_QueryStats,MaxZeilen,int,100
+USP_QueryStats,MaxSqlTextZeichen,int,4000
+USP_QueryStats,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStats,JsonErzeugen,bit,0
+USP_QueryStats,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStats,PrintMeldungen,bit,1
+USP_QueryStats,Hilfe,bit,0
+USP_QueryHashAnalysis,QueryHash,binary(8),NULL
+USP_QueryHashAnalysis,Sortierung,varchar(32),'CPU_TOTAL'
+USP_QueryHashAnalysis,AnalyseModus,varchar(16),'TOP'
+USP_QueryHashAnalysis,MinExecutionCount,bigint,1
+USP_QueryHashAnalysis,MinPlanVarianten,int,1
+USP_QueryHashAnalysis,MaxZeilen,int,100
+USP_QueryHashAnalysis,MaxSqlTextZeichen,int,4000
+USP_QueryHashAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryHashAnalysis,JsonErzeugen,bit,0
+USP_QueryHashAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_QueryHashAnalysis,PrintMeldungen,bit,1
+USP_QueryHashAnalysis,Hilfe,bit,0
+USP_PlanCacheHealth,AnalyseModus,varchar(16),'SUMMARY'
+USP_PlanCacheHealth,MitDatenbankVerteilung,bit,0
+USP_PlanCacheHealth,MitSingleUseDetails,bit,0
+USP_PlanCacheHealth,MaxZeilen,int,100
+USP_PlanCacheHealth,MaxSqlTextZeichen,int,4000
+USP_PlanCacheHealth,ResultSetArt,varchar(16),'CONSOLE'
+USP_PlanCacheHealth,JsonErzeugen,bit,0
+USP_PlanCacheHealth,Json,nvarchar(max),NULL OUTPUT
+USP_PlanCacheHealth,PrintMeldungen,bit,1
+USP_PlanCacheHealth,Hilfe,bit,0
+USP_PlanDetails,SessionIds,nvarchar(max),NULL
+USP_PlanDetails,PlanHandle,varbinary(64),NULL
+USP_PlanDetails,SqlHandle,varbinary(64),NULL
+USP_PlanDetails,QueryHash,binary(8),NULL
+USP_PlanDetails,MitPlanAttributes,bit,1
+USP_PlanDetails,MitCompilePlan,bit,1
+USP_PlanDetails,MitTextPlan,bit,0
+USP_PlanDetails,MitLastActualPlan,bit,0
+USP_PlanDetails,MitLivePlan,bit,0
+USP_PlanDetails,MaxAnalyseobjekte,int,20
+USP_PlanDetails,MaxSqlTextZeichen,int,8000
+USP_PlanDetails,ResultSetArt,varchar(16),'CONSOLE'
+USP_PlanDetails,JsonErzeugen,bit,0
+USP_PlanDetails,Json,nvarchar(max),NULL OUTPUT
+USP_PlanDetails,PrintMeldungen,bit,1
+USP_PlanDetails,Hilfe,bit,0
+USP_ShowplanAnalysis,PlanHandle,varbinary(64),NULL
+USP_ShowplanAnalysis,QueryHash,binary(8),NULL
+USP_ShowplanAnalysis,QueryPlanHash,binary(8),NULL
+USP_ShowplanAnalysis,DatabaseNames,nvarchar(max),N''
+USP_ShowplanAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_ShowplanAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ShowplanAnalysis,MaxDatenbanken,int,16
+USP_ShowplanAnalysis,TextPattern,nvarchar(4000),NULL
+USP_ShowplanAnalysis,AnalyseModus,varchar(16),'GEZIELT'
+USP_ShowplanAnalysis,PlanQuelle,varchar(16),'AUTO'
+USP_ShowplanAnalysis,Sortierung,varchar(32),'CPU_TOTAL'
+USP_ShowplanAnalysis,MinExecutionCount,bigint,1
+USP_ShowplanAnalysis,MaxAnalyseobjekte,int,20
+USP_ShowplanAnalysis,MaxDurationSeconds,int,30
+USP_ShowplanAnalysis,MaxZeilen,int,50000
+USP_ShowplanAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ShowplanAnalysis,JsonErzeugen,bit,0
+USP_ShowplanAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ShowplanAnalysis,PrintMeldungen,bit,1
+USP_ShowplanAnalysis,Hilfe,bit,0
+USP_PlanCacheAnalysis,MitQueryStats,bit,1
+USP_PlanCacheAnalysis,MitQueryHashAnalysis,bit,0
+USP_PlanCacheAnalysis,MitPlanCacheHealth,bit,0
+USP_PlanCacheAnalysis,MitShowplanAnalysis,bit,0
+USP_PlanCacheAnalysis,DatabaseNames,nvarchar(max),N''
+USP_PlanCacheAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_PlanCacheAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_PlanCacheAnalysis,MaxDatenbanken,int,16
+USP_PlanCacheAnalysis,QueryHash,binary(8),NULL
+USP_PlanCacheAnalysis,QueryPlanHash,binary(8),NULL
+USP_PlanCacheAnalysis,PlanHandle,varbinary(64),NULL
+USP_PlanCacheAnalysis,TextPattern,nvarchar(4000),NULL
+USP_PlanCacheAnalysis,Sortierung,varchar(32),'CPU_TOTAL'
+USP_PlanCacheAnalysis,AnalyseModus,varchar(16),'TOP'
+USP_PlanCacheAnalysis,MaxZeilen,int,100
+USP_PlanCacheAnalysis,MaxAnalyseobjekte,int,20
+USP_PlanCacheAnalysis,MaxDurationSeconds,int,30
+USP_PlanCacheAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_PlanCacheAnalysis,JsonErzeugen,bit,0
+USP_PlanCacheAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_PlanCacheAnalysis,PrintMeldungen,bit,1
+USP_PlanCacheAnalysis,Hilfe,bit,0
+USP_QueryStoreStatus,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStoreStatus,SystemdatenbankenEinbeziehen,bit,0
+USP_QueryStoreStatus,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreStatus,MaxDatenbanken,int,16
+USP_QueryStoreStatus,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreStatus,JsonErzeugen,bit,0
+USP_QueryStoreStatus,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreStatus,PrintMeldungen,bit,1
+USP_QueryStoreStatus,Hilfe,bit,0
+USP_QueryStoreRuntimeStats,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStoreRuntimeStats,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreRuntimeStats,ReferencedDatabaseNames,nvarchar(max),NULL
+USP_QueryStoreRuntimeStats,ReferencedDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreRuntimeStats,QueryId,bigint,NULL
+USP_QueryStoreRuntimeStats,QueryHash,binary(8),NULL
+USP_QueryStoreRuntimeStats,TextPattern,nvarchar(4000),NULL
+USP_QueryStoreRuntimeStats,VonUtc,datetime2(7),NULL
+USP_QueryStoreRuntimeStats,BisUtc,datetime2(7),NULL
+USP_QueryStoreRuntimeStats,Sortierung,varchar(32),'CPU_TOTAL'
+USP_QueryStoreRuntimeStats,AnalyseModus,varchar(16),'TOP'
+USP_QueryStoreRuntimeStats,MaxZeilen,int,100
+USP_QueryStoreRuntimeStats,MaxDatenbanken,int,16
+USP_QueryStoreRuntimeStats,MitPlanXml,bit,0
+USP_QueryStoreRuntimeStats,MaxSqlTextZeichen,int,4000
+USP_QueryStoreRuntimeStats,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreRuntimeStats,JsonErzeugen,bit,0
+USP_QueryStoreRuntimeStats,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreRuntimeStats,PrintMeldungen,bit,1
+USP_QueryStoreRuntimeStats,Hilfe,bit,0
+USP_QueryStoreWaitStats,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStoreWaitStats,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreWaitStats,ReferencedDatabaseNames,nvarchar(max),NULL
+USP_QueryStoreWaitStats,ReferencedDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreWaitStats,QueryId,bigint,NULL
+USP_QueryStoreWaitStats,QueryHash,binary(8),NULL
+USP_QueryStoreWaitStats,WaitCategory,nvarchar(128),NULL
+USP_QueryStoreWaitStats,VonUtc,datetime2(7),NULL
+USP_QueryStoreWaitStats,BisUtc,datetime2(7),NULL
+USP_QueryStoreWaitStats,AnalyseModus,varchar(16),'TOP'
+USP_QueryStoreWaitStats,MaxZeilen,int,100
+USP_QueryStoreWaitStats,MaxDatenbanken,int,16
+USP_QueryStoreWaitStats,MaxSqlTextZeichen,int,4000
+USP_QueryStoreWaitStats,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreWaitStats,JsonErzeugen,bit,0
+USP_QueryStoreWaitStats,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreWaitStats,PrintMeldungen,bit,1
+USP_QueryStoreWaitStats,Hilfe,bit,0
+USP_QueryStorePlanChanges,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStorePlanChanges,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStorePlanChanges,ReferencedDatabaseNames,nvarchar(max),NULL
+USP_QueryStorePlanChanges,ReferencedDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStorePlanChanges,QueryId,bigint,NULL
+USP_QueryStorePlanChanges,QueryHash,binary(8),NULL
+USP_QueryStorePlanChanges,VonUtc,datetime2(7),NULL
+USP_QueryStorePlanChanges,NurMehrerePlaene,bit,1
+USP_QueryStorePlanChanges,MitPlanXml,bit,0
+USP_QueryStorePlanChanges,AnalyseModus,varchar(16),'TOP'
+USP_QueryStorePlanChanges,MaxZeilen,int,100
+USP_QueryStorePlanChanges,MaxDatenbanken,int,16
+USP_QueryStorePlanChanges,MaxSqlTextZeichen,int,4000
+USP_QueryStorePlanChanges,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStorePlanChanges,JsonErzeugen,bit,0
+USP_QueryStorePlanChanges,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStorePlanChanges,PrintMeldungen,bit,1
+USP_QueryStorePlanChanges,Hilfe,bit,0
+USP_QueryStoreRegressions,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStoreRegressions,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreRegressions,ReferencedDatabaseNames,nvarchar(max),NULL
+USP_QueryStoreRegressions,ReferencedDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreRegressions,QueryId,bigint,NULL
+USP_QueryStoreRegressions,QueryHash,binary(8),NULL
+USP_QueryStoreRegressions,BaselineVonUtc,datetime2(7),NULL
+USP_QueryStoreRegressions,BaselineBisUtc,datetime2(7),NULL
+USP_QueryStoreRegressions,VergleichVonUtc,datetime2(7),NULL
+USP_QueryStoreRegressions,VergleichBisUtc,datetime2(7),NULL
+USP_QueryStoreRegressions,Metrik,varchar(32),'DURATION_AVG'
+USP_QueryStoreRegressions,MinAusfuehrungenJeFenster,bigint,1
+USP_QueryStoreRegressions,MinRegressionProzent,"decimal(9,2)",20.0
+USP_QueryStoreRegressions,AnalyseModus,varchar(16),'TOP'
+USP_QueryStoreRegressions,MaxZeilen,int,100
+USP_QueryStoreRegressions,MaxDatenbanken,int,16
+USP_QueryStoreRegressions,MaxSqlTextZeichen,int,4000
+USP_QueryStoreRegressions,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreRegressions,JsonErzeugen,bit,0
+USP_QueryStoreRegressions,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreRegressions,PrintMeldungen,bit,1
+USP_QueryStoreRegressions,Hilfe,bit,0
+USP_QueryStoreForcedPlans,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStoreForcedPlans,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreForcedPlans,ReferencedDatabaseNames,nvarchar(max),NULL
+USP_QueryStoreForcedPlans,ReferencedDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreForcedPlans,QueryId,bigint,NULL
+USP_QueryStoreForcedPlans,NurMitFehler,bit,0
+USP_QueryStoreForcedPlans,MitPlanXml,bit,0
+USP_QueryStoreForcedPlans,MaxZeilen,int,100
+USP_QueryStoreForcedPlans,MaxDatenbanken,int,16
+USP_QueryStoreForcedPlans,MaxSqlTextZeichen,int,4000
+USP_QueryStoreForcedPlans,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreForcedPlans,JsonErzeugen,bit,0
+USP_QueryStoreForcedPlans,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreForcedPlans,PrintMeldungen,bit,1
+USP_QueryStoreForcedPlans,Hilfe,bit,0
+USP_QueryStoreHints,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStoreHints,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreHints,QueryId,bigint,NULL
+USP_QueryStoreHints,NurMitFehler,bit,0
+USP_QueryStoreHints,MaxZeilen,int,100
+USP_QueryStoreHints,MaxDatenbanken,int,16
+USP_QueryStoreHints,MaxSqlTextZeichen,int,4000
+USP_QueryStoreHints,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreHints,JsonErzeugen,bit,0
+USP_QueryStoreHints,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreHints,PrintMeldungen,bit,1
+USP_QueryStoreHints,Hilfe,bit,0
+USP_QueryStoreAnalysis,QueryStoreDatabaseNames,nvarchar(max),N''
+USP_QueryStoreAnalysis,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreAnalysis,ReferencedDatabaseNames,nvarchar(max),NULL
+USP_QueryStoreAnalysis,ReferencedDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreAnalysis,VonUtc,datetime2(7),NULL
+USP_QueryStoreAnalysis,BisUtc,datetime2(7),NULL
+USP_QueryStoreAnalysis,MitStatus,bit,1
+USP_QueryStoreAnalysis,MitRuntimeStats,bit,1
+USP_QueryStoreAnalysis,MitWaitStats,bit,0
+USP_QueryStoreAnalysis,MitPlanChanges,bit,0
+USP_QueryStoreAnalysis,MitRegressionen,bit,0
+USP_QueryStoreAnalysis,MitForcedPlans,bit,0
+USP_QueryStoreAnalysis,MitHints,bit,0
+USP_QueryStoreAnalysis,MaxDatenbanken,int,16
+USP_QueryStoreAnalysis,MaxZeilen,int,100
+USP_QueryStoreAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreAnalysis,JsonErzeugen,bit,0
+USP_QueryStoreAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreAnalysis,PrintMeldungen,bit,1
+USP_QueryStoreAnalysis,Hilfe,bit,0
+USP_ExtendedEventsSessions,ExtendedEventSessionNames,nvarchar(max),NULL
+USP_ExtendedEventsSessions,ExtendedEventSessionNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsSessions,EventNames,nvarchar(max),NULL
+USP_ExtendedEventsSessions,EventNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsSessions,TargetNames,nvarchar(max),NULL
+USP_ExtendedEventsSessions,TargetNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsSessions,NurLaufend,bit,0
+USP_ExtendedEventsSessions,MitLaufzeitstatus,bit,1
+USP_ExtendedEventsSessions,MitEvents,bit,1
+USP_ExtendedEventsSessions,MitActions,bit,1
+USP_ExtendedEventsSessions,MitTargets,bit,1
+USP_ExtendedEventsSessions,MitFeldern,bit,0
+USP_ExtendedEventsSessions,MaxZeilen,int,5000
+USP_ExtendedEventsSessions,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExtendedEventsSessions,JsonErzeugen,bit,0
+USP_ExtendedEventsSessions,Json,nvarchar(max),NULL OUTPUT
+USP_ExtendedEventsSessions,PrintMeldungen,bit,1
+USP_ExtendedEventsSessions,Hilfe,bit,0
+USP_ExtendedEventsReadEvents,SourceExtendedEventSessionName,nvarchar(258),N'system_health'
+USP_ExtendedEventsReadEvents,Quelle,varchar(20),'EVENT_FILE'
+USP_ExtendedEventsReadEvents,FilePath,nvarchar(4000),NULL
+USP_ExtendedEventsReadEvents,EventNames,nvarchar(max),NULL
+USP_ExtendedEventsReadEvents,EventNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsReadEvents,VonUtc,datetime2(7),NULL
+USP_ExtendedEventsReadEvents,BisUtc,datetime2(7),NULL
+USP_ExtendedEventsReadEvents,MaxZeilen,int,1000
+USP_ExtendedEventsReadEvents,MitEventXml,bit,1
+USP_ExtendedEventsReadEvents,BestaetigeTargetFlush,bit,0
+USP_ExtendedEventsReadEvents,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExtendedEventsReadEvents,JsonErzeugen,bit,0
+USP_ExtendedEventsReadEvents,Json,nvarchar(max),NULL OUTPUT
+USP_ExtendedEventsReadEvents,PrintMeldungen,bit,1
+USP_ExtendedEventsReadEvents,Hilfe,bit,0
+USP_ExtendedEventsDeadlocks,SourceExtendedEventSessionName,nvarchar(258),N'system_health'
+USP_ExtendedEventsDeadlocks,Quelle,varchar(20),'AUTO'
+USP_ExtendedEventsDeadlocks,FilePath,nvarchar(4000),NULL
+USP_ExtendedEventsDeadlocks,VonUtc,datetime2(7),NULL
+USP_ExtendedEventsDeadlocks,BisUtc,datetime2(7),NULL
+USP_ExtendedEventsDeadlocks,MaxZeilen,int,100
+USP_ExtendedEventsDeadlocks,MitDeadlockXml,bit,1
+USP_ExtendedEventsDeadlocks,MitProcessDetails,bit,1
+USP_ExtendedEventsDeadlocks,MitResourceDetails,bit,1
+USP_ExtendedEventsDeadlocks,BestaetigeTargetFlush,bit,0
+USP_ExtendedEventsDeadlocks,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExtendedEventsDeadlocks,JsonErzeugen,bit,0
+USP_ExtendedEventsDeadlocks,Json,nvarchar(max),NULL OUTPUT
+USP_ExtendedEventsDeadlocks,PrintMeldungen,bit,1
+USP_ExtendedEventsDeadlocks,Hilfe,bit,0
+USP_ExtendedEventsBlockedProcesses,SourceExtendedEventSessionName,nvarchar(258),NULL
+USP_ExtendedEventsBlockedProcesses,Quelle,varchar(20),'AUTO'
+USP_ExtendedEventsBlockedProcesses,FilePath,nvarchar(4000),NULL
+USP_ExtendedEventsBlockedProcesses,VonUtc,datetime2(7),NULL
+USP_ExtendedEventsBlockedProcesses,BisUtc,datetime2(7),NULL
+USP_ExtendedEventsBlockedProcesses,MaxZeilen,int,200
+USP_ExtendedEventsBlockedProcesses,MitReportXml,bit,1
+USP_ExtendedEventsBlockedProcesses,MitProcessXml,bit,0
+USP_ExtendedEventsBlockedProcesses,BestaetigeTargetFlush,bit,0
+USP_ExtendedEventsBlockedProcesses,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExtendedEventsBlockedProcesses,JsonErzeugen,bit,0
+USP_ExtendedEventsBlockedProcesses,Json,nvarchar(max),NULL OUTPUT
+USP_ExtendedEventsBlockedProcesses,PrintMeldungen,bit,1
+USP_ExtendedEventsBlockedProcesses,Hilfe,bit,0
+USP_ExtendedEventsTargetRuntime,ExtendedEventSessionNames,nvarchar(max),NULL
+USP_ExtendedEventsTargetRuntime,ExtendedEventSessionNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsTargetRuntime,TargetNames,nvarchar(max),NULL
+USP_ExtendedEventsTargetRuntime,TargetNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsTargetRuntime,MitTargetData,bit,0
+USP_ExtendedEventsTargetRuntime,MaxTargetDataZeichen,int,4000
+USP_ExtendedEventsTargetRuntime,BestaetigeTargetFlush,bit,0
+USP_ExtendedEventsTargetRuntime,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExtendedEventsTargetRuntime,JsonErzeugen,bit,0
+USP_ExtendedEventsTargetRuntime,Json,nvarchar(max),NULL OUTPUT
+USP_ExtendedEventsTargetRuntime,PrintMeldungen,bit,1
+USP_ExtendedEventsTargetRuntime,Hilfe,bit,0
+USP_ExtendedEventsAnalysis,SourceExtendedEventSessionName,nvarchar(258),N'system_health'
+USP_ExtendedEventsAnalysis,ExtendedEventSessionNames,nvarchar(max),NULL
+USP_ExtendedEventsAnalysis,ExtendedEventSessionNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsAnalysis,EventNames,nvarchar(max),NULL
+USP_ExtendedEventsAnalysis,EventNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsAnalysis,TargetNames,nvarchar(max),NULL
+USP_ExtendedEventsAnalysis,TargetNamePattern,nvarchar(4000),NULL
+USP_ExtendedEventsAnalysis,Quelle,varchar(20),'AUTO'
+USP_ExtendedEventsAnalysis,FilePath,nvarchar(4000),NULL
+USP_ExtendedEventsAnalysis,VonUtc,datetime2(7),NULL
+USP_ExtendedEventsAnalysis,BisUtc,datetime2(7),NULL
+USP_ExtendedEventsAnalysis,MitSessionInventar,bit,1
+USP_ExtendedEventsAnalysis,MitTargetRuntime,bit,0
+USP_ExtendedEventsAnalysis,MitEvents,bit,0
+USP_ExtendedEventsAnalysis,MitDeadlocks,bit,0
+USP_ExtendedEventsAnalysis,MitBlockedProcesses,bit,0
+USP_ExtendedEventsAnalysis,MaxZeilen,int,100
+USP_ExtendedEventsAnalysis,BestaetigeTargetFlush,bit,0
+USP_ExtendedEventsAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExtendedEventsAnalysis,JsonErzeugen,bit,0
+USP_ExtendedEventsAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ExtendedEventsAnalysis,PrintMeldungen,bit,1
+USP_ExtendedEventsAnalysis,Hilfe,bit,0
+USP_AgentStatus,ResultSetArt,varchar(16),'CONSOLE'
+USP_AgentStatus,JsonErzeugen,bit,0
+USP_AgentStatus,Json,nvarchar(max),NULL OUTPUT
+USP_AgentStatus,PrintMeldungen,bit,1
+USP_AgentStatus,Hilfe,bit,0
+USP_AgentJobs,JobNames,nvarchar(max),NULL
+USP_AgentJobs,JobNamePattern,nvarchar(4000),NULL
+USP_AgentJobs,NurProblematisch,bit,0
+USP_AgentJobs,LongRunningMinutes,int,60
+USP_AgentJobs,MaxZeilen,int,2000
+USP_AgentJobs,ResultSetArt,varchar(16),'CONSOLE'
+USP_AgentJobs,JsonErzeugen,bit,0
+USP_AgentJobs,Json,nvarchar(max),NULL OUTPUT
+USP_AgentJobs,PrintMeldungen,bit,1
+USP_AgentJobs,Hilfe,bit,0
+USP_ResourceGovernorAnalysis,MitSessions,bit,1
+USP_ResourceGovernorAnalysis,MaxZeilen,int,5000
+USP_ResourceGovernorAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ResourceGovernorAnalysis,JsonErzeugen,bit,0
+USP_ResourceGovernorAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ResourceGovernorAnalysis,PrintMeldungen,bit,1
+USP_ResourceGovernorAnalysis,Hilfe,bit,0
+USP_AvailabilityGroups,MitRouting,bit,1
+USP_AvailabilityGroups,MaxZeilen,int,5000
+USP_AvailabilityGroups,ResultSetArt,varchar(16),'CONSOLE'
+USP_AvailabilityGroups,JsonErzeugen,bit,0
+USP_AvailabilityGroups,Json,nvarchar(max),NULL OUTPUT
+USP_AvailabilityGroups,PrintMeldungen,bit,1
+USP_AvailabilityGroups,Hilfe,bit,0
+USP_BackupRecovery,DatabaseNames,nvarchar(max),NULL
+USP_BackupRecovery,SystemdatenbankenEinbeziehen,bit,0
+USP_BackupRecovery,DatabaseNamePattern,nvarchar(4000),NULL
+USP_BackupRecovery,MaxDatenbanken,int,16
+USP_BackupRecovery,FullWarnHours,int,48
+USP_BackupRecovery,DiffWarnHours,int,24
+USP_BackupRecovery,LogWarnMinutes,int,30
+USP_BackupRecovery,MitRestoreHistory,bit,1
+USP_BackupRecovery,MaxZeilen,int,5000
+USP_BackupRecovery,ResultSetArt,varchar(16),'CONSOLE'
+USP_BackupRecovery,JsonErzeugen,bit,0
+USP_BackupRecovery,Json,nvarchar(max),NULL OUTPUT
+USP_BackupRecovery,PrintMeldungen,bit,1
+USP_BackupRecovery,Hilfe,bit,0
+USP_LogShippingStatus,MaxZeilen,int,5000
+USP_LogShippingStatus,ResultSetArt,varchar(16),'CONSOLE'
+USP_LogShippingStatus,JsonErzeugen,bit,0
+USP_LogShippingStatus,Json,nvarchar(max),NULL OUTPUT
+USP_LogShippingStatus,PrintMeldungen,bit,1
+USP_LogShippingStatus,Hilfe,bit,0
+USP_ReplicationStatus,MitDistributionDetails,bit,0
+USP_ReplicationStatus,MaxZeilen,int,5000
+USP_ReplicationStatus,ResultSetArt,varchar(16),'CONSOLE'
+USP_ReplicationStatus,JsonErzeugen,bit,0
+USP_ReplicationStatus,Json,nvarchar(max),NULL OUTPUT
+USP_ReplicationStatus,PrintMeldungen,bit,1
+USP_ReplicationStatus,Hilfe,bit,0
+USP_DataCaptureStatus,DatabaseNames,nvarchar(max),N''
+USP_DataCaptureStatus,SystemdatenbankenEinbeziehen,bit,0
+USP_DataCaptureStatus,DatabaseNamePattern,nvarchar(4000),NULL
+USP_DataCaptureStatus,MaxDatenbanken,int,16
+USP_DataCaptureStatus,MaxZeilen,int,10000
+USP_DataCaptureStatus,ResultSetArt,varchar(16),'CONSOLE'
+USP_DataCaptureStatus,JsonErzeugen,bit,0
+USP_DataCaptureStatus,Json,nvarchar(max),NULL OUTPUT
+USP_DataCaptureStatus,PrintMeldungen,bit,1
+USP_DataCaptureStatus,Hilfe,bit,0
+USP_InfrastructureAnalysis,MitAgent,bit,1
+USP_InfrastructureAnalysis,MitAgentJobs,bit,1
+USP_InfrastructureAnalysis,MitResourceGovernor,bit,1
+USP_InfrastructureAnalysis,MitAvailabilityGroups,bit,1
+USP_InfrastructureAnalysis,MitBackupRecovery,bit,1
+USP_InfrastructureAnalysis,MitLogShipping,bit,1
+USP_InfrastructureAnalysis,MitReplication,bit,1
+USP_InfrastructureAnalysis,MitDataCapture,bit,1
+USP_InfrastructureAnalysis,MitReplicationDetails,bit,0
+USP_InfrastructureAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_InfrastructureAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_InfrastructureAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_InfrastructureAnalysis,MaxDatenbanken,int,16
+USP_InfrastructureAnalysis,MaxZeilen,int,2000
+USP_InfrastructureAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_InfrastructureAnalysis,JsonErzeugen,bit,0
+USP_InfrastructureAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_InfrastructureAnalysis,PrintMeldungen,bit,1
+USP_InfrastructureAnalysis,Hilfe,bit,0
+USP_ServerCpuTopology,PrintMeldungen,bit,1
+USP_ServerCpuTopology,Hilfe,bit,0
+USP_ServerCpuTopology,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerCpuTopology,JsonErzeugen,bit,0
+USP_ServerCpuTopology,Json,nvarchar(max),NULL OUTPUT
+USP_ServerCpuTopology,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServerCpuTopology,IsPartialOut,bit,NULL OUTPUT
+USP_ServerCpuTopology,ErrorNumberOut,int,NULL OUTPUT
+USP_ServerCpuTopology,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ServerNuma,PrintMeldungen,bit,1
+USP_ServerNuma,Hilfe,bit,0
+USP_ServerNuma,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerNuma,JsonErzeugen,bit,0
+USP_ServerNuma,Json,nvarchar(max),NULL OUTPUT
+USP_ServerNuma,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServerNuma,IsPartialOut,bit,NULL OUTPUT
+USP_ServerNuma,ErrorNumberOut,int,NULL OUTPUT
+USP_ServerNuma,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ServerMemory,MaxZeilen,int,100
+USP_ServerMemory,PrintMeldungen,bit,1
+USP_ServerMemory,Hilfe,bit,0
+USP_ServerMemory,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerMemory,JsonErzeugen,bit,0
+USP_ServerMemory,Json,nvarchar(max),NULL OUTPUT
+USP_ServerMemory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServerMemory,IsPartialOut,bit,NULL OUTPUT
+USP_ServerMemory,ErrorNumberOut,int,NULL OUTPUT
+USP_ServerMemory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_TempDBConfiguration,PrintMeldungen,bit,1
+USP_TempDBConfiguration,Hilfe,bit,0
+USP_TempDBConfiguration,ResultSetArt,varchar(16),'CONSOLE'
+USP_TempDBConfiguration,JsonErzeugen,bit,0
+USP_TempDBConfiguration,Json,nvarchar(max),NULL OUTPUT
+USP_TempDBConfiguration,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_TempDBConfiguration,IsPartialOut,bit,NULL OUTPUT
+USP_TempDBConfiguration,ErrorNumberOut,int,NULL OUTPUT
+USP_TempDBConfiguration,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ServerConfiguration,NurKernparameter,bit,1
+USP_ServerConfiguration,PrintMeldungen,bit,1
+USP_ServerConfiguration,Hilfe,bit,0
+USP_ServerConfiguration,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerConfiguration,JsonErzeugen,bit,0
+USP_ServerConfiguration,Json,nvarchar(max),NULL OUTPUT
+USP_ServerConfiguration,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServerConfiguration,IsPartialOut,bit,NULL OUTPUT
+USP_ServerConfiguration,ErrorNumberOut,int,NULL OUTPUT
+USP_ServerConfiguration,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_TraceFlags,PrintMeldungen,bit,1
+USP_TraceFlags,Hilfe,bit,0
+USP_TraceFlags,ResultSetArt,varchar(16),'CONSOLE'
+USP_TraceFlags,JsonErzeugen,bit,0
+USP_TraceFlags,Json,nvarchar(max),NULL OUTPUT
+USP_TraceFlags,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_TraceFlags,IsPartialOut,bit,NULL OUTPUT
+USP_TraceFlags,ErrorNumberOut,int,NULL OUTPUT
+USP_TraceFlags,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_StartupParameters,PrintMeldungen,bit,1
+USP_StartupParameters,Hilfe,bit,0
+USP_StartupParameters,ResultSetArt,varchar(16),'CONSOLE'
+USP_StartupParameters,JsonErzeugen,bit,0
+USP_StartupParameters,Json,nvarchar(max),NULL OUTPUT
+USP_StartupParameters,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_StartupParameters,IsPartialOut,bit,NULL OUTPUT
+USP_StartupParameters,ErrorNumberOut,int,NULL OUTPUT
+USP_StartupParameters,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_OSInformation,PrintMeldungen,bit,1
+USP_OSInformation,Hilfe,bit,0
+USP_OSInformation,ResultSetArt,varchar(16),'CONSOLE'
+USP_OSInformation,JsonErzeugen,bit,0
+USP_OSInformation,Json,nvarchar(max),NULL OUTPUT
+USP_OSInformation,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_OSInformation,IsPartialOut,bit,NULL OUTPUT
+USP_OSInformation,ErrorNumberOut,int,NULL OUTPUT
+USP_OSInformation,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ServerSecurityConfiguration,PrintMeldungen,bit,1
+USP_ServerSecurityConfiguration,Hilfe,bit,0
+USP_ServerSecurityConfiguration,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerSecurityConfiguration,JsonErzeugen,bit,0
+USP_ServerSecurityConfiguration,Json,nvarchar(max),NULL OUTPUT
+USP_ServerSecurityConfiguration,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServerSecurityConfiguration,IsPartialOut,bit,NULL OUTPUT
+USP_ServerSecurityConfiguration,ErrorNumberOut,int,NULL OUTPUT
+USP_ServerSecurityConfiguration,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ServerHealthAnalysis,MitCpu,bit,1
+USP_ServerHealthAnalysis,MitNuma,bit,1
+USP_ServerHealthAnalysis,MitMemory,bit,1
+USP_ServerHealthAnalysis,MitTempDB,bit,1
+USP_ServerHealthAnalysis,MitConfiguration,bit,1
+USP_ServerHealthAnalysis,MitTraceFlags,bit,1
+USP_ServerHealthAnalysis,MitStartup,bit,1
+USP_ServerHealthAnalysis,MitOS,bit,1
+USP_ServerHealthAnalysis,MitSecurity,bit,1
+USP_ServerHealthAnalysis,MaxZeilen,int,100
+USP_ServerHealthAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerHealthAnalysis,JsonErzeugen,bit,0
+USP_ServerHealthAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ServerHealthAnalysis,PrintMeldungen,bit,1
+USP_ServerHealthAnalysis,Hilfe,bit,0
+USP_ServerFeatureCapabilities,DatabaseNames,nvarchar(max),N''
+USP_ServerFeatureCapabilities,SystemdatenbankenEinbeziehen,bit,0
+USP_ServerFeatureCapabilities,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ServerFeatureCapabilities,MaxDatenbanken,int,16
+USP_ServerFeatureCapabilities,MitSpezialindizes,bit,1
+USP_ServerFeatureCapabilities,MitQueryStoreReplicas,bit,1
+USP_ServerFeatureCapabilities,MitPlattformdetails,bit,1
+USP_ServerFeatureCapabilities,MaxZeilen,int,5000
+USP_ServerFeatureCapabilities,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerFeatureCapabilities,JsonErzeugen,bit,0
+USP_ServerFeatureCapabilities,Json,nvarchar(max),NULL OUTPUT
+USP_ServerFeatureCapabilities,PrintMeldungen,bit,1
+USP_ServerFeatureCapabilities,Hilfe,bit,0

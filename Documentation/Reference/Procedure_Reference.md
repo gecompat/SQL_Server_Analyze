@@ -1,0 +1,509 @@
+# Referenzhandbuch der öffentlichen Procedures
+
+Stand: 2026-07-16
+
+`@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` ausdrücklich; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`.
+
+## `[monitor].[USP_AgentJobs]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/020_USP_AgentJobs.sql`
+
+```sql
+@JobNames nvarchar(max) = NULL, @JobNamePattern nvarchar(4000) = NULL, @NurProblematisch bit = 0, @LongRunningMinutes int = 60, @MaxZeilen int = 2000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_AgentStatus]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/010_USP_AgentStatus.sql`
+
+```sql
+@ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_AvailabilityGroups]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/040_USP_AvailabilityGroups.sql`
+
+```sql
+@MitRouting bit = 1, @MaxZeilen int = 5000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_BackupRecovery]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/050_USP_BackupRecovery.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @FullWarnHours int = 48, @DiffWarnHours int = 24, @LogWarnMinutes int = 30, @MitRestoreHistory bit = 1, @MaxZeilen int = 5000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CheckAnalyseAccess]`
+
+Quelle: `07_Phase1A_Gemeinsame_Vertraege/050_USP_CheckAnalyseAccess.sql`
+
+```sql
+@AnalyseKlasse varchar(64) = NULL, @NurGesperrte bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CheckFrameworkCapabilities]`
+
+Quelle: `07_Phase1A_Gemeinsame_Vertraege/070_USP_CheckFrameworkCapabilities.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @AnalyseKlasse varchar(64) = NULL, @NurNichtVerfuegbar bit = 0, @MitGruppenpruefung bit = 1, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_Columnstore]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/060_USP_Columnstore.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @MitPhysicalStats bit = 0, @MitSegmenten bit = 0, @MitDictionaries bit = 0, @MinDeletedPercent decimal(9,2) = 0, @NurProblematisch bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 10000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentBlocking]`
+
+Quelle: `08_Phase1B_CurrentState_Core/030_USP_CurrentBlocking.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @MinWaitMs bigint = 0, @SystemSessionsEinbeziehen bit = 0, @MitSqlText bit = 1, @MaxSqlTextZeichen int = 3000, @MitLockDetails bit = 0, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentIO]`
+
+Quelle: `08_Phase1B_CurrentState_Core/080_USP_CurrentIO.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MinLatencyMs decimal(19,3) = 0, @SampleSeconds tinyint = 0, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentLog]`
+
+Quelle: `08_Phase1B_CurrentState_Core/090_USP_CurrentLog.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MinUsedPercent decimal(5,2) = NULL, @MitVlfInformationen bit = 0, @MitPersistentVersionStore bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentMemoryGrants]`
+
+Quelle: `08_Phase1B_CurrentState_Core/060_USP_CurrentMemoryGrants.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @AktuelleSessionEinbeziehen bit = 0, @NurWartende bit = 0, @MinRequestedMb decimal(19,2) = NULL, @MinGrantedMb decimal(19,2) = NULL, @MitSqlText bit = 1, @MaxSqlTextZeichen int = 3000, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentOverview]`
+
+Quelle: `08_Phase1B_CurrentState_Core/100_USP_CurrentOverview.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MitSessions bit = 1, @MitRequests bit = 1, @MitBlocking bit = 1, @MitWaits bit = 1, @MitTransactions bit = 1, @MitMemoryGrants bit = 1, @MitTempDB bit = 1, @MitIO bit = 1, @MitLog bit = 1, @MitSqlText bit = 1, @GesamtenSqlTextEinbeziehen bit = 0, @InputBufferEinbeziehen bit = 0, @ModulInfoEinbeziehen bit = 1, @MaxSqlTextZeichen int = 4000, @SampleSeconds tinyint = 0, @MaxZeilen int = 500, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentRequests]`
+
+Quelle: `08_Phase1B_CurrentState_Core/020_USP_CurrentRequests.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @EigeneSessionsModus varchar(16) = 'ALLE', @AktuelleSessionEinbeziehen bit = 0, @SystemSessionsEinbeziehen bit = 0, @NurBlockierte bit = 0, @NurMitWait bit = 0, @MinLaufzeitSekunden int = NULL, @MinCpuMs bigint = NULL, @MinLogicalReads bigint = NULL, @LoginNames nvarchar(max) = NULL, @LoginNamePattern nvarchar(4000) = NULL, @HostNames nvarchar(max) = NULL, @HostNamePattern nvarchar(4000) = NULL, @ProgramNames nvarchar(max) = NULL, @ProgramNamePattern nvarchar(4000) = NULL, @DatabaseNames nvarchar(max) = NULL, @DatabaseNamePattern nvarchar(4000) = NULL, @TextPattern nvarchar(4000) = NULL, @MitSqlText bit = 1, @GesamtenSqlTextEinbeziehen bit = 0, @InputBufferEinbeziehen bit = 0, @ModulInfoEinbeziehen bit = 1, @MaxSqlTextZeichen int = 4000, @MaxZeilen int = 500, @Sortierung varchar(32) = 'RELEVANZ', @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentSessions]`
+
+Quelle: `08_Phase1B_CurrentState_Core/010_USP_CurrentSessions.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @EigeneSessionsModus varchar(16) = 'ALLE', @AktuelleSessionEinbeziehen bit = 0, @SystemSessionsEinbeziehen bit = 0, @InaktiveSessionsEinbeziehen bit = 1, @LoginNames nvarchar(max) = NULL, @LoginNamePattern nvarchar(4000) = NULL, @HostNames nvarchar(max) = NULL, @HostNamePattern nvarchar(4000) = NULL, @ProgramNames nvarchar(max) = NULL, @ProgramNamePattern nvarchar(4000) = NULL, @DatabaseNames nvarchar(max) = NULL, @DatabaseNamePattern nvarchar(4000) = NULL, @MitSqlText bit = 0, @MaxSqlTextZeichen int = 2000, @MaxZeilen int = 500, @Sortierung varchar(32) = 'CPU', @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentTempDB]`
+
+Quelle: `08_Phase1B_CurrentState_Core/070_USP_CurrentTempDB.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @AktuelleSessionEinbeziehen bit = 0, @MinNettoMb decimal(19,2) = 0, @SystemSessionsEinbeziehen bit = 0, @MitDateien bit = 1, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentTransactions]`
+
+Quelle: `08_Phase1B_CurrentState_Core/050_USP_CurrentTransactions.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @MinAlterSekunden int = 0, @NurSleeping bit = 0, @SystemSessionsEinbeziehen bit = 0, @MitSqlText bit = 1, @MaxSqlTextZeichen int = 3000, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_CurrentWaits]`
+
+Quelle: `08_Phase1B_CurrentState_Core/040_USP_CurrentWaits.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @MinWaitMs bigint = 0, @WaitTypes nvarchar(max) = NULL, @WaitTypePattern nvarchar(4000) = NULL, @WaitGroups nvarchar(max) = NULL, @WaitGroupPattern nvarchar(4000) = NULL, @SystemSessionsEinbeziehen bit = 0, @MitSqlText bit = 1, @MaxSqlTextZeichen int = 2000, @SampleSeconds tinyint = 0, @UnkritischeWaitsEinbeziehen bit = 0, @TopWaitPercentage decimal(5,2) = 95.00, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_DataCaptureStatus]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/080_USP_DataCaptureStatus.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MaxZeilen int = 10000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ExtendedEventsAnalysis]`
+
+Quelle: `13_Phase5_ExtendedEvents/060_USP_ExtendedEventsAnalysis.sql`
+
+```sql
+@SourceExtendedEventSessionName nvarchar(258) = N'system_health', @ExtendedEventSessionNames nvarchar(max) = NULL, @ExtendedEventSessionNamePattern nvarchar(4000) = NULL, @EventNames nvarchar(max) = NULL, @EventNamePattern nvarchar(4000) = NULL, @TargetNames nvarchar(max) = NULL, @TargetNamePattern nvarchar(4000) = NULL, @Quelle varchar(20) = 'AUTO', @FilePath nvarchar(4000) = NULL, @VonUtc datetime2(7) = NULL, @BisUtc datetime2(7) = NULL, @MitSessionInventar bit = 1, @MitTargetRuntime bit = 0, @MitEvents bit = 0, @MitDeadlocks bit = 0, @MitBlockedProcesses bit = 0, @MaxZeilen int = 100, @BestaetigeTargetFlush bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ExtendedEventsBlockedProcesses]`
+
+Quelle: `13_Phase5_ExtendedEvents/040_USP_ExtendedEventsBlockedProcesses.sql`
+
+```sql
+@SourceExtendedEventSessionName nvarchar(258) = NULL, @Quelle varchar(20) = 'AUTO', @FilePath nvarchar(4000) = NULL, @VonUtc datetime2(7) = NULL, @BisUtc datetime2(7) = NULL, @MaxZeilen int = 200, @MitReportXml bit = 1, @MitProcessXml bit = 0, @BestaetigeTargetFlush bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ExtendedEventsDeadlocks]`
+
+Quelle: `13_Phase5_ExtendedEvents/030_USP_ExtendedEventsDeadlocks.sql`
+
+```sql
+@SourceExtendedEventSessionName nvarchar(258) = N'system_health', @Quelle varchar(20) = 'AUTO', @FilePath nvarchar(4000) = NULL, @VonUtc datetime2(7) = NULL, @BisUtc datetime2(7) = NULL, @MaxZeilen int = 100, @MitDeadlockXml bit = 1, @MitProcessDetails bit = 1, @MitResourceDetails bit = 1, @BestaetigeTargetFlush bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ExtendedEventsReadEvents]`
+
+Quelle: `13_Phase5_ExtendedEvents/020_USP_ExtendedEventsReadEvents.sql`
+
+```sql
+@SourceExtendedEventSessionName nvarchar(258) = N'system_health', @Quelle varchar(20) = 'EVENT_FILE', @FilePath nvarchar(4000) = NULL, @EventNames nvarchar(max) = NULL, @EventNamePattern nvarchar(4000) = NULL, @VonUtc datetime2(7) = NULL, @BisUtc datetime2(7) = NULL, @MaxZeilen int = 1000, @MitEventXml bit = 1, @BestaetigeTargetFlush bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ExtendedEventsSessions]`
+
+Quelle: `13_Phase5_ExtendedEvents/010_USP_ExtendedEventsSessions.sql`
+
+```sql
+@ExtendedEventSessionNames nvarchar(max) = NULL, @ExtendedEventSessionNamePattern nvarchar(4000) = NULL, @EventNames nvarchar(max) = NULL, @EventNamePattern nvarchar(4000) = NULL, @TargetNames nvarchar(max) = NULL, @TargetNamePattern nvarchar(4000) = NULL, @NurLaufend bit = 0, @MitLaufzeitstatus bit = 1, @MitEvents bit = 1, @MitActions bit = 1, @MitTargets bit = 1, @MitFeldern bit = 0, @MaxZeilen int = 5000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ExtendedEventsTargetRuntime]`
+
+Quelle: `13_Phase5_ExtendedEvents/050_USP_ExtendedEventsTargetRuntime.sql`
+
+```sql
+@ExtendedEventSessionNames nvarchar(max) = NULL, @ExtendedEventSessionNamePattern nvarchar(4000) = NULL, @TargetNames nvarchar(max) = NULL, @TargetNamePattern nvarchar(4000) = NULL, @MitTargetData bit = 0, @MaxTargetDataZeichen int = 4000, @BestaetigeTargetFlush bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_IndexOperationalStats]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/025_USP_IndexOperationalStats.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @IndexNamePattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @PartitionNumber int = NULL, @NurMitAktivitaet bit = 1, @MinLeafPageAllocations bigint = 0, @MinLockWaitMs bigint = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 5000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_IndexPhysicalStats]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/070_USP_IndexPhysicalStats.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @IndexNamePattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @ScanMode varchar(16) = 'LIMITED', @IndexId int = NULL, @PartitionNumber int = NULL, @MinPageCount bigint = 1000, @MinFragmentationPercent decimal(9,2) = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 10000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_IndexUsage]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/020_USP_IndexUsage.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @NurUngenutzt bit = 0, @MinUserUpdates bigint = 0, @PrimaryUndUniqueEinbeziehen bit = 1, @MitMemoryOptimized bit = 1, @MaxDatenbanken int = 16, @MaxZeilen int = 5000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_InfrastructureAnalysis]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/090_USP_InfrastructureAnalysis.sql`
+
+```sql
+@MitAgent bit = 1, @MitAgentJobs bit = 1, @MitResourceGovernor bit = 1, @MitAvailabilityGroups bit = 1, @MitBackupRecovery bit = 1, @MitLogShipping bit = 1, @MitReplication bit = 1, @MitDataCapture bit = 1, @MitReplicationDetails bit = 0, @DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_LogShippingStatus]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/060_USP_LogShippingStatus.sql`
+
+```sql
+@MaxZeilen int = 5000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_MissingIndexes]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/030_USP_MissingIndexes.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @MinUserReads bigint = 1, @MinAvgUserImpact decimal(9,2) = 0, @MinImprovementMeasure decimal(28,2) = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 5000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ObjectAnalysis]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/080_USP_ObjectAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @IndexNamePattern nvarchar(4000) = NULL, @StatisticsNames nvarchar(max) = NULL, @StatisticsNamePattern nvarchar(4000) = NULL, @Vollanalyse bit = 0, @MitObjectInventory bit = 1, @MitIndexUsage bit = 1, @MitMissingIndexes bit = 1, @MitOperationalStats bit = 0, @MitStatistics bit = 0, @MitPartitions bit = 0, @MitColumnstore bit = 0, @MitPhysicalStats bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ObjectInventory]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/010_USP_ObjectInventory.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @ObjectType varchar(16) = 'TABLE', @AnalyseModus varchar(16) = 'GEZIELT', @MitIndizes bit = 1, @MitSpaltenlisten bit = 1, @MaxDatenbanken int = 16, @MaxZeilen int = 5000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_OSInformation]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/080_USP_OSInformation.sql`
+
+```sql
+@PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_Partitions]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/050_USP_Partitions.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @NurPartitionierte bit = 0, @NurGemischteKompression bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 10000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_PlanCacheAnalysis]`
+
+Quelle: `11_Phase3_PlanCache_Showplan/060_USP_PlanCacheAnalysis.sql`
+
+```sql
+@MitQueryStats bit = 1, @MitQueryHashAnalysis bit = 0, @MitPlanCacheHealth bit = 0, @MitShowplanAnalysis bit = 0, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @PlanHandle varbinary(64) = NULL, @TextPattern nvarchar(4000) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MaxZeilen int = 100, @MaxAnalyseobjekte int = 20, @MaxDurationSeconds int = 30, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_PlanCacheHealth]`
+
+Quelle: `11_Phase3_PlanCache_Showplan/030_USP_PlanCacheHealth.sql`
+
+```sql
+@AnalyseModus varchar(16) = 'SUMMARY', @MitDatenbankVerteilung bit = 0, @MitSingleUseDetails bit = 0, @MaxZeilen int = 100, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_PlanDetails]`
+
+Quelle: `11_Phase3_PlanCache_Showplan/040_USP_PlanDetails.sql`
+
+```sql
+@SessionIds nvarchar(max) = NULL, @PlanHandle varbinary(64) = NULL, @SqlHandle varbinary(64) = NULL, @QueryHash binary(8) = NULL, @MitPlanAttributes bit = 1, @MitCompilePlan bit = 1, @MitTextPlan bit = 0, @MitLastActualPlan bit = 0, @MitLivePlan bit = 0, @MaxAnalyseobjekte int = 20, @MaxSqlTextZeichen int = 8000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_PrepareDatabaseCandidates]`
+
+Quelle: `07_Phase1A_Gemeinsame_Vertraege/083_USP_PrepareDatabaseCandidates.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @AnalysisClass varchar(64) = 'CROSS_DATABASE_DEEP', @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT, @CrossDatabaseRequested bit OUTPUT
+```
+
+## `[monitor].[USP_PrepareNameFilters]`
+
+Quelle: `07_Phase1A_Gemeinsame_Vertraege/084_USP_PrepareNameFilters.sql`
+
+```sql
+@SchemaNames nvarchar(max) = NULL, @ObjectNames nvarchar(max) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @StatisticsNames nvarchar(max) = NULL, @ColumnNames nvarchar(max) = NULL, @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT
+```
+
+## `[monitor].[USP_QueryHashAnalysis]`
+
+Quelle: `11_Phase3_PlanCache_Showplan/020_USP_QueryHashAnalysis.sql`
+
+```sql
+@QueryHash binary(8) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MinExecutionCount bigint = 1, @MinPlanVarianten int = 1, @MaxZeilen int = 100, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStats]`
+
+Quelle: `11_Phase3_PlanCache_Showplan/010_USP_QueryStats.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @SqlHandle varbinary(64) = NULL, @PlanHandle varbinary(64) = NULL, @TextPattern nvarchar(4000) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MinExecutionCount bigint = 1, @VonUtc datetime2(7) = NULL, @MaxZeilen int = 100, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStoreAnalysis]`
+
+Quelle: `12_Phase4_QueryStore/080_USP_QueryStoreAnalysis.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @ReferencedDatabaseNames nvarchar(max) = NULL, @ReferencedDatabaseNamePattern nvarchar(4000) = NULL, @VonUtc datetime2(7) = NULL, @BisUtc datetime2(7) = NULL, @MitStatus bit = 1, @MitRuntimeStats bit = 1, @MitWaitStats bit = 0, @MitPlanChanges bit = 0, @MitRegressionen bit = 0, @MitForcedPlans bit = 0, @MitHints bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 100, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStoreForcedPlans]`
+
+Quelle: `12_Phase4_QueryStore/060_USP_QueryStoreForcedPlans.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @ReferencedDatabaseNames nvarchar(max) = NULL, @ReferencedDatabaseNamePattern nvarchar(4000) = NULL, @QueryId bigint = NULL, @NurMitFehler bit = 0, @MitPlanXml bit = 0, @MaxZeilen int = 100, @MaxDatenbanken int = 16, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStoreHints]`
+
+Quelle: `12_Phase4_QueryStore/070_USP_QueryStoreHints.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @QueryId bigint = NULL, @NurMitFehler bit = 0, @MaxZeilen int = 100, @MaxDatenbanken int = 16, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStorePlanChanges]`
+
+Quelle: `12_Phase4_QueryStore/040_USP_QueryStorePlanChanges.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @ReferencedDatabaseNames nvarchar(max) = NULL, @ReferencedDatabaseNamePattern nvarchar(4000) = NULL, @QueryId bigint = NULL, @QueryHash binary(8) = NULL, @VonUtc datetime2(7) = NULL, @NurMehrerePlaene bit = 1, @MitPlanXml bit = 0, @AnalyseModus varchar(16) = 'TOP', @MaxZeilen int = 100, @MaxDatenbanken int = 16, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStoreRegressions]`
+
+Quelle: `12_Phase4_QueryStore/050_USP_QueryStoreRegressions.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @ReferencedDatabaseNames nvarchar(max) = NULL, @ReferencedDatabaseNamePattern nvarchar(4000) = NULL, @QueryId bigint = NULL, @QueryHash binary(8) = NULL, @BaselineVonUtc datetime2(7) = NULL, @BaselineBisUtc datetime2(7) = NULL, @VergleichVonUtc datetime2(7) = NULL, @VergleichBisUtc datetime2(7) = NULL, @Metrik varchar(32) = 'DURATION_AVG', @MinAusfuehrungenJeFenster bigint = 1, @MinRegressionProzent decimal(9,2) = 20.0, @AnalyseModus varchar(16) = 'TOP', @MaxZeilen int = 100, @MaxDatenbanken int = 16, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStoreRuntimeStats]`
+
+Quelle: `12_Phase4_QueryStore/020_USP_QueryStoreRuntimeStats.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @ReferencedDatabaseNames nvarchar(max) = NULL, @ReferencedDatabaseNamePattern nvarchar(4000) = NULL, @QueryId bigint = NULL, @QueryHash binary(8) = NULL, @TextPattern nvarchar(4000) = NULL, @VonUtc datetime2(7) = NULL, @BisUtc datetime2(7) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MaxZeilen int = 100, @MaxDatenbanken int = 16, @MitPlanXml bit = 0, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStoreStatus]`
+
+Quelle: `12_Phase4_QueryStore/010_USP_QueryStoreStatus.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_QueryStoreWaitStats]`
+
+Quelle: `12_Phase4_QueryStore/030_USP_QueryStoreWaitStats.sql`
+
+```sql
+@QueryStoreDatabaseNames nvarchar(max) = N'', @QueryStoreDatabaseNamePattern nvarchar(4000) = NULL, @ReferencedDatabaseNames nvarchar(max) = NULL, @ReferencedDatabaseNamePattern nvarchar(4000) = NULL, @QueryId bigint = NULL, @QueryHash binary(8) = NULL, @WaitCategory nvarchar(128) = NULL, @VonUtc datetime2(7) = NULL, @BisUtc datetime2(7) = NULL, @AnalyseModus varchar(16) = 'TOP', @MaxZeilen int = 100, @MaxDatenbanken int = 16, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ReplicationStatus]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/070_USP_ReplicationStatus.sql`
+
+```sql
+@MitDistributionDetails bit = 0, @MaxZeilen int = 5000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ResourceGovernorAnalysis]`
+
+Quelle: `14_Phase6_Infrastruktur_HA_Agent/030_USP_ResourceGovernorAnalysis.sql`
+
+```sql
+@MitSessions bit = 1, @MaxZeilen int = 5000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ServerConfiguration]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/050_USP_ServerConfiguration.sql`
+
+```sql
+@NurKernparameter bit = 1, @PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_ServerCpuTopology]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/010_USP_ServerCpuTopology.sql`
+
+```sql
+@PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_ServerFeatureCapabilities]`
+
+Quelle: `17_Versionsadaptive_Features_und_WaitStats/010_USP_ServerFeatureCapabilities.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MitSpezialindizes bit = 1, @MitQueryStoreReplicas bit = 1, @MitPlattformdetails bit = 1, @MaxZeilen int = 5000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ServerHealthAnalysis]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/100_USP_ServerHealthAnalysis.sql`
+
+```sql
+@MitCpu bit = 1, @MitNuma bit = 1, @MitMemory bit = 1, @MitTempDB bit = 1, @MitConfiguration bit = 1, @MitTraceFlags bit = 1, @MitStartup bit = 1, @MitOS bit = 1, @MitSecurity bit = 1, @MaxZeilen int = 100, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ServerMemory]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/030_USP_ServerMemory.sql`
+
+```sql
+@MaxZeilen int = 100, @PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_ServerNuma]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/020_USP_ServerNuma.sql`
+
+```sql
+@PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_ServerSecurityConfiguration]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/090_USP_ServerSecurityConfiguration.sql`
+
+```sql
+@PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_ShowplanAnalysis]`
+
+Quelle: `11_Phase3_PlanCache_Showplan/050_USP_ShowplanAnalysis.sql`
+
+```sql
+@PlanHandle varbinary(64) = NULL, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @TextPattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @PlanQuelle varchar(16) = 'AUTO', @Sortierung varchar(32) = 'CPU_TOTAL', @MinExecutionCount bigint = 1, @MaxAnalyseobjekte int = 20, @MaxDurationSeconds int = 30, @MaxZeilen int = 50000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_StartupParameters]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/070_USP_StartupParameters.sql`
+
+```sql
+@PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_Statistics]`
+
+Quelle: `09_Phase2_Object_Index_Analyse/040_USP_Statistics.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @StatisticsNames nvarchar(max) = NULL, @StatisticsNamePattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @MinModificationPercent decimal(9,2) = 0, @MinAlterTage int = 0, @MitIncrementellenDetails bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 10000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_TempDBConfiguration]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/040_USP_TempDBConfiguration.sql`
+
+```sql
+@PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_TraceFlags]`
+
+Quelle: `15_Phase7_ServerHealth_Configuration/060_USP_TraceFlags.sql`
+
+```sql
+@PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```

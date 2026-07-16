@@ -1,0 +1,176 @@
+USE [DeineDatenbank];
+GO
+
+/*
+===============================================================================
+Objekt       : monitor.USP_CurrentWaits
+Version      : 3.0.0
+Stand        : 2026-07-16
+Zweck        : Aktuelle Waiting Tasks sowie kumulativer oder gesampelter
+               instanzweite Wait-Kontext mit Listen-/Patternfiltern.
+Ausgabe      : RAW, CONSOLE, NONE und optionales JSON mit currentTasks,
+               instanceWaits und warnings.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentWaits]
+      @SessionIds                    nvarchar(max)  = NULL
+    , @MinWaitMs                    bigint         = 0
+    , @WaitTypes                    nvarchar(max)  = NULL
+    , @WaitTypePattern              nvarchar(4000) = NULL
+    , @WaitGroups                   nvarchar(max)  = NULL
+    , @WaitGroupPattern             nvarchar(4000) = NULL
+    , @SystemSessionsEinbeziehen    bit            = 0
+    , @MitSqlText                   bit            = 1
+    , @MaxSqlTextZeichen            int            = 2000
+    , @SampleSeconds                tinyint        = 0
+    , @UnkritischeWaitsEinbeziehen  bit            = 0
+    , @TopWaitPercentage            decimal(5,2)   = 95.00
+    , @MaxZeilen                    int            = 1000
+    , @ResultSetArt                 varchar(16)    = 'CONSOLE'
+    , @JsonErzeugen                 bit            = 0
+    , @Json                         nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen               bit            = 1
+    , @Hilfe                        bit            = 0
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Json=NULL;
+    DECLARE @ModuleName sysname=N'USP_CurrentWaits',@CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@MeasurementStartUtc datetime2(3)=NULL,@MeasurementEndUtc datetime2(3)=NULL;
+    DECLARE @StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@TaskRowCount bigint=0,@InstanceRowCount bigint=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,@DeltaStatus varchar(40)=CASE WHEN @SampleSeconds=0 THEN 'CUMULATIVE_CONTEXT' ELSE 'SKIPPED' END,@DeltaDetail nvarchar(2000)=NULL;
+    DECLARE @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
+    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
+    DECLARE @CandidateMaxZeilen bigint,@MonitorPrintMessage nvarchar(2048),@StartBefore datetime,@StartAfter datetime;
+
+    IF @Hilfe=1
+    BEGIN
+        PRINT N'monitor.USP_CurrentWaits';
+        PRINT N'@SessionIds, @WaitTypes und @WaitGroups akzeptieren bracket-aware Pipe-Listen.';
+        PRINT N'@WaitTypePattern/@WaitGroupPattern: LIKE (Default/like:), regex: oder regexi:; Liste und Pattern sind gegenseitig exklusiv.';
+        PRINT N'@SampleSeconds=0 liefert kumulative Instanzwerte; 1..60 liefert ein Delta.';
+        PRINT N'@MaxZeilen positiv begrenzt; NULL/0 unbegrenzt. @ResultSetArt CONSOLE (Default), RAW oder NONE; optional @Json OUTPUT.';
+        RETURN;
+    END;
+
+    CREATE TABLE [#SessionIdFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
+    CREATE TABLE [#WaitTypeFilter]([WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
+    CREATE TABLE [#WaitGroupFilter]([WaitGroup] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
+    DECLARE @WaitTypeMode varchar(8),@WaitTypeValue nvarchar(4000),@WaitTypeFlags varchar(8),@WaitTypeValid bit;
+    DECLARE @WaitGroupMode varchar(8),@WaitGroupValue nvarchar(4000),@WaitGroupFlags varchar(8),@WaitGroupValid bit;
+    SELECT @WaitTypeMode=[PatternMode],@WaitTypeValue=[PatternValue],@WaitTypeFlags=[RegexFlags],@WaitTypeValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@WaitTypePattern);
+    SELECT @WaitGroupMode=[PatternMode],@WaitGroupValue=[PatternValue],@WaitGroupFlags=[RegexFlags],@WaitGroupValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@WaitGroupPattern);
+
+    IF @SessionIds IS NOT NULL
+    BEGIN
+        IF EXISTS(SELECT 1 FROM [monitor].[TVF_ParseBigintList](@SessionIds) WHERE [IsValid]=0 OR [NumberValue] NOT BETWEEN 1 AND 32767) SET @StatusCode='INVALID_PARAMETER';
+        ELSE INSERT [#SessionIdFilter] SELECT CONVERT(smallint,[NumberValue]) FROM [monitor].[TVF_ParseBigintList](@SessionIds) GROUP BY [NumberValue];
+    END;
+    IF @StatusCode='AVAILABLE' AND ((@WaitTypes IS NOT NULL AND @WaitTypePattern IS NOT NULL) OR (@WaitGroups IS NOT NULL AND @WaitGroupPattern IS NOT NULL) OR @WaitTypeValid=0 OR @WaitGroupValid=0) SET @StatusCode='INVALID_PARAMETER';
+    IF @StatusCode='AVAILABLE' AND ((@WaitTypes IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseStringList](@WaitTypes) WHERE [IsValid]=0 OR LEN([StringValue])>120)) OR (@WaitGroups IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseStringList](@WaitGroups) WHERE [IsValid]=0 OR LEN([StringValue])>64))) SET @StatusCode='INVALID_PARAMETER';
+    IF @StatusCode='AVAILABLE'
+    BEGIN
+        INSERT [#WaitTypeFilter] SELECT CONVERT(nvarchar(120),[StringValue]) FROM [monitor].[TVF_ParseStringList](@WaitTypes) WHERE [IsValid]=1 GROUP BY [StringValue];
+        INSERT [#WaitGroupFilter] SELECT CONVERT(nvarchar(64),[StringValue]) FROM [monitor].[TVF_ParseStringList](@WaitGroups) WHERE [IsValid]=1 GROUP BY [StringValue];
+    END;
+    DECLARE @HasRegex bit=CASE WHEN @WaitTypeMode IN('REGEX','REGEXI') OR @WaitGroupMode IN('REGEX','REGEXI') THEN 1 ELSE 0 END;
+    IF @StatusCode='AVAILABLE' AND @HasRegex=1 AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR (SELECT [compatibility_level] FROM [master].[sys].[databases] WITH(NOLOCK) WHERE [name]=N'DeineDatenbank')<170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END;
+    IF @StatusCode='AVAILABLE' AND (@MinWaitMs<0 OR @SampleSeconds>60 OR @TopWaitPercentage<=0 OR @TopWaitPercentage>100 OR @MaxZeilen<0 OR @MaxSqlTextZeichen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE')) SET @StatusCode='INVALID_PARAMETER';
+    IF @StatusCode='INVALID_PARAMETER' SET @ErrorMessage=COALESCE(@ErrorMessage,N'Ungültige Liste, Kombination, Pattern- oder Steuerangabe.');
+
+    CREATE TABLE [#Tasks]
+    (
+        [SessionId] smallint NULL,[ExecContextId] int NULL,[WaitDurationMs] bigint NULL,[WaitType] nvarchar(120) NULL,[BlockingSessionId] smallint NULL,[ResourceDescription] nvarchar(3072) NULL,[SessionStatus] nvarchar(30) NULL,[RequestStatus] nvarchar(30) NULL,[LoginName] nvarchar(128) NULL,[HostName] nvarchar(128) NULL,[ProgramName] nvarchar(128) NULL,[DatabaseId] smallint NULL,[Command] nvarchar(32) NULL,[CurrentStatement] nvarchar(max) NULL,[WaitGroup] nvarchar(64) NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) NULL,[WaitTypicalOccurrence] nvarchar(1200) NULL,[HighWaitImpact] nvarchar(1200) NULL,[RecommendedChecks] nvarchar(1500) NULL,[WaitHelpUrl] nvarchar(500) NULL,[DescriptionSource] varchar(40) NULL,[DescriptionQuality] varchar(40) NULL,[CatalogMatchType] varchar(20) NULL
+    );
+    CREATE TABLE [#A]([WaitType] nvarchar(120) PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
+    CREATE TABLE [#B]([WaitType] nvarchar(120) PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
+    CREATE TABLE [#RawInstance]([WaitType] nvarchar(120) NOT NULL,[WaitingTasksCount] bigint NULL,[WaitTimeMs] bigint NULL,[SignalWaitTimeMs] bigint NULL,[ResourceWaitTimeMs] bigint NULL,[SampleSeconds] int NULL,[MeasurementType] varchar(30) NOT NULL);
+    CREATE TABLE [#Instance]
+    (
+        [WaitType] nvarchar(120) NOT NULL,[WaitingTasksCount] bigint NULL,[WaitTimeMs] bigint NULL,[SignalWaitTimeMs] bigint NULL,[ResourceWaitTimeMs] bigint NULL,[SampleSeconds] int NULL,[MeasurementType] varchar(30) NOT NULL,[WaitGroup] nvarchar(64) NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) NULL,[WaitTypicalOccurrence] nvarchar(1200) NULL,[HighWaitImpact] nvarchar(1200) NULL,[RecommendedChecks] nvarchar(1500) NULL,[WaitHelpUrl] nvarchar(500) NULL,[DescriptionSource] varchar(40) NULL,[DescriptionQuality] varchar(40) NULL,[CatalogMatchType] varchar(20) NULL,[WaitPercentage] decimal(9,4) NULL,[CumulativePercentage] decimal(9,4) NULL,[AverageWaitMs] decimal(19,4) NULL,[AverageResourceWaitMs] decimal(19,4) NULL,[AverageSignalWaitMs] decimal(19,4) NULL
+    );
+    CREATE TABLE [#Warnings]([WarningCode] varchar(40) NOT NULL,[WarningMessage] nvarchar(2048) NOT NULL);
+    SET @CandidateMaxZeilen=CASE WHEN @HasRegex=1 OR @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen)+1 END;
+
+    IF @StatusCode='AVAILABLE'
+    BEGIN
+        BEGIN TRY
+            INSERT [#Tasks]
+            SELECT TOP(@CandidateMaxZeilen) [w].[session_id],[w].[exec_context_id],[w].[wait_duration_ms],[w].[wait_type],NULLIF([w].[blocking_session_id],0),[w].[resource_description],[s].[status],[r].[status],[s].[login_name],[s].[host_name],[s].[program_name],[r].[database_id],[r].[command],CASE WHEN @MitSqlText=1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [st].[StatementText] ELSE LEFT([st].[StatementText],@MaxSqlTextZeichen) END END,[wi].[WaitGroup],[wi].[Severity],[wi].[IsGenerallyBenign],[wi].[Meaning],[wi].[TypicalOccurrence],[wi].[HighWaitImpact],[wi].[RecommendedChecks],[wi].[HelpUrl],[wi].[DescriptionSource],[wi].[DescriptionQuality],[wi].[CatalogMatchType]
+            FROM [sys].[dm_os_waiting_tasks] AS [w]
+            LEFT JOIN [sys].[dm_exec_sessions] AS [s] ON [s].[session_id]=[w].[session_id]
+            LEFT JOIN [sys].[dm_exec_requests] AS [r] ON [r].[session_id]=[w].[session_id]
+            OUTER APPLY [sys].[dm_exec_sql_text](CASE WHEN @MitSqlText=1 THEN [r].[sql_handle] END) AS [t]
+            OUTER APPLY [monitor].[TVF_StatementText]([t].[text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
+            CROSS APPLY [monitor].[TVF_WaitTypeInfo]([w].[wait_type]) AS [wi]
+            WHERE (NOT EXISTS(SELECT 1 FROM [#SessionIdFilter]) OR EXISTS(SELECT 1 FROM [#SessionIdFilter] AS [f] WHERE [f].[SessionId]=[w].[session_id]))
+              AND [w].[wait_duration_ms]>=@MinWaitMs AND (@SystemSessionsEinbeziehen=1 OR COALESCE([s].[is_user_process],1)=1)
+              AND (NOT EXISTS(SELECT 1 FROM [#WaitTypeFilter]) OR EXISTS(SELECT 1 FROM [#WaitTypeFilter] AS [f] WHERE [f].[WaitType]=[w].[wait_type] COLLATE SQL_Latin1_General_CP1_CS_AS))
+              AND (NOT EXISTS(SELECT 1 FROM [#WaitGroupFilter]) OR EXISTS(SELECT 1 FROM [#WaitGroupFilter] AS [f] WHERE [f].[WaitGroup]=[wi].[WaitGroup] COLLATE SQL_Latin1_General_CP1_CS_AS))
+              AND (@WaitTypeMode<>'LIKE' OR [w].[wait_type] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @WaitTypeValue COLLATE SQL_Latin1_General_CP1_CS_AS)
+              AND (@WaitGroupMode<>'LIKE' OR [wi].[WaitGroup] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @WaitGroupValue COLLATE SQL_Latin1_General_CP1_CS_AS)
+            ORDER BY [w].[wait_duration_ms] DESC,[w].[session_id];
+            SET @Detail=CASE WHEN @@ROWCOUNT=0 THEN N'Aktuell keine passende wartende Task sichtbar.' ELSE N'Aktuelle Waiting Tasks erfolgreich gelesen.' END;
+        END TRY
+        BEGIN CATCH
+            SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();SET @IsPartial=1;SET @StatusCode=CASE WHEN @ErrorNumber IN(229,262,297,300,916) THEN 'DENIED_PERMISSION' WHEN @ErrorNumber=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;INSERT [#Warnings] VALUES(@StatusCode,@ErrorMessage);
+        END CATCH;
+
+        IF @SampleSeconds=0
+        BEGIN TRY
+            SET @MeasurementStartUtc=SYSUTCDATETIME();
+            INSERT [#RawInstance] SELECT [wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms],[wait_time_ms]-[signal_wait_time_ms],NULL,'INSTANCE_CUMULATIVE' FROM [sys].[dm_os_wait_stats] WHERE [waiting_tasks_count]>0;
+            SET @MeasurementEndUtc=SYSUTCDATETIME();SET @DeltaStatus='CUMULATIVE_CONTEXT';SET @DeltaDetail=N'Kumulativ seit SQL-Server-Start oder letztem Reset.';
+        END TRY BEGIN CATCH SET @DeltaStatus='ERROR_HANDLED';SET @DeltaDetail=ERROR_MESSAGE();SET @IsPartial=1;INSERT [#Warnings] VALUES(@DeltaStatus,@DeltaDetail);END CATCH;
+        ELSE
+        BEGIN TRY
+            SET @MeasurementStartUtc=SYSUTCDATETIME();SELECT @StartBefore=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];INSERT [#A] SELECT [wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms] FROM [sys].[dm_os_wait_stats];DECLARE @Delay char(8)=CONVERT(char(8),DATEADD(SECOND,@SampleSeconds,CONVERT(datetime,'19000101',112)),108);WAITFOR DELAY @Delay;SELECT @StartAfter=[sqlserver_start_time] FROM [sys].[dm_os_sys_info];INSERT [#B] SELECT [wait_type],[waiting_tasks_count],[wait_time_ms],[signal_wait_time_ms] FROM [sys].[dm_os_wait_stats];SET @MeasurementEndUtc=SYSUTCDATETIME();
+            IF @StartBefore<>@StartAfter OR EXISTS(SELECT 1 FROM [#A] AS [a] JOIN [#B] AS [b] ON [b].[WaitType]=[a].[WaitType] WHERE [b].[WaitTimeMs]<[a].[WaitTimeMs] OR [b].[WaitingTasksCount]<[a].[WaitingTasksCount] OR [b].[SignalWaitTimeMs]<[a].[SignalWaitTimeMs]) BEGIN SET @DeltaStatus='MEASUREMENT_RESET';SET @DeltaDetail=N'Serverneustart oder Wait-Zählerreset während des Messfensters erkannt.';SET @IsPartial=1;INSERT [#Warnings] VALUES(@DeltaStatus,@DeltaDetail);END
+            ELSE BEGIN INSERT [#RawInstance] SELECT [b].[WaitType],[b].[WaitingTasksCount]-COALESCE([a].[WaitingTasksCount],0),[b].[WaitTimeMs]-COALESCE([a].[WaitTimeMs],0),[b].[SignalWaitTimeMs]-COALESCE([a].[SignalWaitTimeMs],0),([b].[WaitTimeMs]-COALESCE([a].[WaitTimeMs],0))-([b].[SignalWaitTimeMs]-COALESCE([a].[SignalWaitTimeMs],0)),@SampleSeconds,'INSTANCE_DELTA' FROM [#B] AS [b] LEFT JOIN [#A] AS [a] ON [a].[WaitType]=[b].[WaitType] WHERE [b].[WaitTimeMs]-COALESCE([a].[WaitTimeMs],0)>0;SET @DeltaStatus='AVAILABLE';SET @DeltaDetail=CONCAT(N'Gültiges Wait-Delta über ',@SampleSeconds,N' Sekunden.');END;
+        END TRY BEGIN CATCH SET @DeltaStatus='ERROR_HANDLED';SET @DeltaDetail=ERROR_MESSAGE();SET @IsPartial=1;INSERT [#Warnings] VALUES(@DeltaStatus,@DeltaDetail);END CATCH;
+
+        INSERT [#Instance]
+        SELECT [x].[WaitType],[x].[WaitingTasksCount],[x].[WaitTimeMs],[x].[SignalWaitTimeMs],[x].[ResourceWaitTimeMs],[x].[SampleSeconds],[x].[MeasurementType],[wi].[WaitGroup],[wi].[Severity],[wi].[IsGenerallyBenign],[wi].[Meaning],[wi].[TypicalOccurrence],[wi].[HighWaitImpact],[wi].[RecommendedChecks],[wi].[HelpUrl],[wi].[DescriptionSource],[wi].[DescriptionQuality],[wi].[CatalogMatchType],CONVERT(decimal(9,4),100.0*[x].[WaitTimeMs]/NULLIF(SUM([x].[WaitTimeMs]) OVER(),0)),NULL,CONVERT(decimal(19,4),1.0*[x].[WaitTimeMs]/NULLIF([x].[WaitingTasksCount],0)),CONVERT(decimal(19,4),1.0*[x].[ResourceWaitTimeMs]/NULLIF([x].[WaitingTasksCount],0)),CONVERT(decimal(19,4),1.0*[x].[SignalWaitTimeMs]/NULLIF([x].[WaitingTasksCount],0))
+        FROM [#RawInstance] AS [x] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([x].[WaitType]) AS [wi]
+        WHERE (@UnkritischeWaitsEinbeziehen=1 OR [wi].[IsGenerallyBenign]=0)
+          AND (NOT EXISTS(SELECT 1 FROM [#WaitTypeFilter]) OR EXISTS(SELECT 1 FROM [#WaitTypeFilter] AS [f] WHERE [f].[WaitType]=[x].[WaitType] COLLATE SQL_Latin1_General_CP1_CS_AS))
+          AND (NOT EXISTS(SELECT 1 FROM [#WaitGroupFilter]) OR EXISTS(SELECT 1 FROM [#WaitGroupFilter] AS [f] WHERE [f].[WaitGroup]=[wi].[WaitGroup] COLLATE SQL_Latin1_General_CP1_CS_AS))
+          AND (@WaitTypeMode<>'LIKE' OR [x].[WaitType] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @WaitTypeValue COLLATE SQL_Latin1_General_CP1_CS_AS)
+          AND (@WaitGroupMode<>'LIKE' OR [wi].[WaitGroup] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @WaitGroupValue COLLATE SQL_Latin1_General_CP1_CS_AS);
+
+        IF @HasRegex=1
+        BEGIN
+            DECLARE @Sql nvarchar(max)=N'';
+            IF @WaitTypeMode IN('REGEX','REGEXI') SET @Sql=N'DELETE FROM [#Tasks] WHERE [WaitType] IS NULL OR REGEXP_LIKE([WaitType],@WaitType,@WaitTypeFlags)=0;DELETE FROM [#Instance] WHERE REGEXP_LIKE([WaitType],@WaitType,@WaitTypeFlags)=0;';
+            IF @WaitGroupMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Tasks] WHERE [WaitGroup] IS NULL OR REGEXP_LIKE([WaitGroup],@WaitGroup,@WaitGroupFlags)=0;DELETE FROM [#Instance] WHERE [WaitGroup] IS NULL OR REGEXP_LIKE([WaitGroup],@WaitGroup,@WaitGroupFlags)=0;';
+            EXEC [sys].[sp_executesql] @Sql,N'@WaitType nvarchar(4000),@WaitTypeFlags varchar(8),@WaitGroup nvarchar(4000),@WaitGroupFlags varchar(8)',@WaitTypeValue,@WaitTypeFlags,@WaitGroupValue,@WaitGroupFlags;
+        END;
+
+        ;WITH [C] AS (SELECT [WaitType],CONVERT(decimal(9,4),SUM([WaitPercentage]) OVER(ORDER BY [WaitTimeMs] DESC,[WaitType] ROWS UNBOUNDED PRECEDING)) AS [Cum] FROM [#Instance]) UPDATE [i] SET [CumulativePercentage]=[c].[Cum] FROM [#Instance] AS [i] JOIN [C] AS [c] ON [c].[WaitType]=[i].[WaitType];
+        DELETE FROM [#Instance] WHERE [CumulativePercentage]-[WaitPercentage]>=@TopWaitPercentage;
+        IF @MaxZeilen IS NOT NULL AND @MaxZeilen>0
+        BEGIN
+            ;WITH [T] AS (SELECT ROW_NUMBER() OVER(ORDER BY [WaitDurationMs] DESC,[SessionId]) AS [rn],* FROM [#Tasks]) DELETE FROM [T] WHERE [rn]>@MaxZeilen;
+            ;WITH [I] AS (SELECT ROW_NUMBER() OVER(ORDER BY [WaitTimeMs] DESC,[WaitType]) AS [rn],* FROM [#Instance]) DELETE FROM [I] WHERE [rn]>@MaxZeilen;
+        END;
+        SELECT @TaskRowCount=COUNT_BIG(*) FROM [#Tasks];SELECT @InstanceRowCount=COUNT_BIG(*) FROM [#Instance];
+        IF @IsPartial=1 AND @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
+    END;
+
+    IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE') BEGIN SET @MonitorPrintMessage=FORMATMESSAGE(N'WARNUNG %s: %s',@StatusCode,COALESCE(@ErrorMessage,@DeltaDetail,@Detail,N'eingeschränkte Sicht'));RAISERROR(N'%s',10,1,@MonitorPrintMessage) WITH NOWAIT;END;
+    IF @JsonErzeugen=1
+    BEGIN
+        DECLARE @Meta nvarchar(max)=(SELECT @ModuleName AS [resultName],1 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@MeasurementStartUtc AS [measurementStartUtc],@MeasurementEndUtc AS [measurementEndUtc],@StatusCode AS [statusCode],@DeltaStatus AS [measurementStatusCode],@TaskRowCount AS [currentTaskRows],@InstanceRowCount AS [instanceWaitRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Tasks nvarchar(max)=(SELECT * FROM [#Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId] FOR JSON PATH,INCLUDE_NULL_VALUES),@Instance nvarchar(max)=(SELECT * FROM [#Instance] ORDER BY [WaitTimeMs] DESC,[WaitType] FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT [WarningCode] AS [code],[WarningMessage] AS [message] FROM [#Warnings] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"currentTasks":',COALESCE(@Tasks,N'[]'),N',"instanceWaits":',COALESCE(@Instance,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
+    END;
+    IF @ResultSetArtNormalisiert='RAW'
+    BEGIN
+        SELECT N'1.1' AS [ContractVersion],@ModuleName AS [ModuleName],@CollectionTimeUtc AS [CollectionTimeUtc],@MeasurementStartUtc AS [MeasurementStartUtc],@MeasurementEndUtc AS [MeasurementEndUtc],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@TaskRowCount AS [CurrentTaskRowCount],@InstanceRowCount AS [InstanceWaitRowCount],@RequiredPermission AS [RequiredPermission],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],@Detail AS [Detail],@DeltaStatus AS [DeltaStatusCode],@DeltaDetail AS [DeltaDetail],@StartBefore AS [ServerStartTimeBefore],@StartAfter AS [ServerStartTimeAfter];
+        SELECT * FROM [#Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId];SELECT * FROM [#Instance] ORDER BY [WaitTimeMs] DESC,[WaitType];SELECT * FROM [#Warnings] ORDER BY [WarningCode];
+    END
+    ELSE IF @ResultSetArtNormalisiert='CONSOLE'
+    BEGIN
+        SELECT N'Wait-Analyse' AS [Ergebnis],@StatusCode AS [Status],@DeltaStatus AS [Messstatus],@TaskRowCount AS [Aktuelle_Tasks],@InstanceRowCount AS [Instanz_Waits],@DeltaDetail AS [Messhinweis],@ErrorMessage AS [Fehler];
+        SELECT N'Aktuelle wartende Task' AS [Ergebnis],[SessionId] AS [Session],[ExecContextId] AS [Exec_Context],[LoginName] AS [Login],[HostName] AS [Host],[ProgramName] AS [Programm],[Command] AS [Befehl],[WaitType] AS [Wait],CONCAT(CONVERT(varchar(40),[WaitDurationMs]),N' ms') AS [Wartezeit],[BlockingSessionId] AS [Blockiert_durch],[WaitGroup] AS [Wait_Gruppe],[WaitMeaning] AS [Bedeutung],[CurrentStatement] AS [Aktuelles_Statement] FROM [#Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId];
+        SELECT N'Instanzweite Wait-Messung' AS [Ergebnis],[WaitType] AS [Wait],[WaitGroup] AS [Wait_Gruppe],[MeasurementType] AS [Messart],[WaitingTasksCount] AS [Tasks],CONCAT(CONVERT(varchar(40),[WaitTimeMs]),N' ms') AS [Wartezeit],CONCAT(CONVERT(varchar(40),[WaitPercentage]),N' %') AS [Anteil],CONCAT(CONVERT(varchar(40),[AverageWaitMs]),N' ms') AS [Durchschnitt],[WaitMeaning] AS [Bedeutung],[RecommendedChecks] AS [Empfohlene_Pruefung] FROM [#Instance] ORDER BY [WaitTimeMs] DESC,[WaitType];
+    END;
+END;
+GO
