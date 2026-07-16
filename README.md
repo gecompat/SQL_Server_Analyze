@@ -10,7 +10,7 @@
 
 Full legal terms can be found in the [LICENSE.md](./LICENSE.md) file.
 
-> Hinweis zur Dateibenennung: Die im Repository vorhandene Lizenzdatei ist [`LICENCE.md`](./LICENCE.md).
+> Hinweis zur Dateibenennung: Die im Repository vorhandene Lizenzdatei ist [`LICENSE.md`](./LICENSE.md).
 
 ---
 
