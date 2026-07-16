@@ -73,7 +73,7 @@ BEGIN
         INSERT [#WaitGroupFilter] SELECT CONVERT(nvarchar(64),[StringValue]) FROM [monitor].[TVF_ParseStringList](@WaitGroups) WHERE [IsValid]=1 GROUP BY [StringValue];
     END;
     DECLARE @HasRegex bit=CASE WHEN @WaitTypeMode IN('REGEX','REGEXI') OR @WaitGroupMode IN('REGEX','REGEXI') THEN 1 ELSE 0 END;
-    IF @StatusCode='AVAILABLE' AND @HasRegex=1 AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR (SELECT [compatibility_level] FROM [master].[sys].[databases] WITH(NOLOCK) WHERE [name]=N'DeineDatenbank')<170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END;
+    IF @StatusCode='AVAILABLE' AND @HasRegex=1 AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR (SELECT [compatibility_level] FROM [master].[sys].[databases] WITH(NOLOCK) WHERE [database_id]=DB_ID())<170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END;
     IF @StatusCode='AVAILABLE' AND (@MinWaitMs<0 OR @SampleSeconds>60 OR @TopWaitPercentage<=0 OR @TopWaitPercentage>100 OR @MaxZeilen<0 OR @MaxSqlTextZeichen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE')) SET @StatusCode='INVALID_PARAMETER';
     IF @StatusCode='INVALID_PARAMETER' SET @ErrorMessage=COALESCE(@ErrorMessage,N'Ungültige Liste, Kombination, Pattern- oder Steuerangabe.');
 

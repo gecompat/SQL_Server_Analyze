@@ -125,7 +125,7 @@ BEGIN
 
     IF @StatusCode='AVAILABLE' AND (@SessionMode IN('REGEX','REGEXI') OR @TargetMode IN('REGEX','REGEXI'))
     BEGIN
-      IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] [d] WITH(NOLOCK) WHERE [d].[name]=N'DeineDatenbank' AND [d].[compatibility_level]>=170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END
+      IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] [d] WITH(NOLOCK) WHERE [d].[database_id]=DB_ID() AND [d].[compatibility_level]>=170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END
       ELSE BEGIN DECLARE @FilterSql nvarchar(max)=N'';IF @SessionMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Result] WHERE REGEXP_LIKE([SessionName],@SP,@SF)=0;';IF @TargetMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Result] WHERE REGEXP_LIKE([TargetName],@TP,@TF)=0;';EXEC [sys].[sp_executesql] @FilterSql,N'@SP nvarchar(4000),@SF varchar(8),@TP nvarchar(4000),@TF varchar(8)',@SP=@SessionValue,@SF=@SessionFlags,@TP=@TargetValue,@TF=@TargetFlags;END
     END;
     IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE','AVAILABLE_LIMITED')

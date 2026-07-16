@@ -1,10 +1,17 @@
 {
   "status": "PASS",
-  "generatedAtUtc": "2026-07-16T11:15:07.561471+00:00",
+  "generatedAtUtc": "2026-07-16T19:38:03.432564+00:00",
+  "migrationSource": "sanitized comparison with supplied previous project ZIP",
+  "trackedFileCountAfterMigration": 140,
   "objectCount": 78,
+  "procedureCount": 63,
+  "functionCount": 10,
+  "viewCount": 5,
   "procedureParameterCount": 930,
-  "fileCountBeforeManifest": 132,
+  "systemSourceCount": 135,
   "forbiddenReferenceFindings": [],
+  "executableDatabasePlaceholderFindings": [],
+  "obsoleteRepositoryPathFindings": [],
   "installerChecks": [
     {
       "installer": "Code/Install/Install_All.sql",
@@ -14,15 +21,20 @@
       "synchronized": true
     }
   ],
-  "protectedRepositoryFiles": [
-    "LICENSE.md",
-    "README.md"
-  ],
-  "protectedFilesIncludedInMigrationPayload": false,
-  "protectedFilesChanged": false,
+  "manifestRequired": false,
+  "manifestRemoved": true,
+  "licenseFile": "LICENSE.md",
+  "licenseChangedByMigrationCompletion": false,
+  "rootReadmeLicenseNoticePreserved": true,
+  "researchMigration": {
+    "systemSources": "Metadata/Inventory/SystemSources.csv",
+    "nonSystemDependencies": "Metadata/Inventory/NonSystemDependencies.csv",
+    "permissionsAndFeatures": "Metadata/Inventory/PermissionsAndFeatures.csv",
+    "performanceAndRisk": "Documentation/Quality/Performance_and_Risk_Assessment.md",
+    "systemSourceCatalog": "Documentation/Research/System_Source_Catalog.md"
+  },
   "notes": [
-    "Historische Rohquellen und umgebungsspezifische Abhängigkeiten wurden nicht migriert.",
-    "Ein realer SQL-Server-Compiletest ist weiterhin erforderlich.",
-    "Der Root-Lizenztext und der Lizenzhinweis in der Root-README bleiben unverändert."
+    "Historical raw sources and environment-specific identifiers are not stored in the repository.",
+    "A real SQL Server compile/runtime test is still required."
   ]
 }

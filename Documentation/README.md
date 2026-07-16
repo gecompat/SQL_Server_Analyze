@@ -6,7 +6,7 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 
 - `Code/`: installierbarer T-SQL-Code, Installer, Tests und Beispielaufrufe
 - `Documentation/`: Anforderungen, Architektur, Betrieb, Referenz und Recherche
-- `Metadata/`: maschinenlesbare Inventare und Qualitätsergebnisse
+- `Metadata/`: maschinenlesbare Objekt-, Parameter-, Systemquellen-, Abhängigkeits- und Capability-Inventare sowie Qualitätsergebnisse
 - `AI_Metadata/`: kompakter Kontext zur Fortsetzung der KI-gestützten Entwicklung
 
 ## Installation
@@ -17,3 +17,11 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 4. `Code/Tests/Integration/110_Smoke_Test.sql` ausführen.
 
 Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.
+
+## Forschungs- und Inventareinstieg
+
+- `Documentation/Research/System_Source_Catalog.md`
+- `Documentation/Quality/Performance_and_Risk_Assessment.md`
+- `Metadata/Inventory/SystemSources.csv`
+- `Metadata/Inventory/NonSystemDependencies.csv`
+- `Metadata/Inventory/PermissionsAndFeatures.csv`

@@ -1,0 +1,57 @@
+# Systemquellenkatalog
+
+Stand: 2026-07-16
+
+## Zweck
+
+Dieses Dokument beschreibt, welche SQL-Server-Systemquellen das Framework nutzt und wie deren Aussagekraft einzuordnen ist. Der vollständige maschinenlesbare Katalog steht unter [`Metadata/Inventory/SystemSources.csv`](../../Metadata/Inventory/SystemSources.csv).
+
+Der Katalog wurde aus den kanonischen Dateien unter `Code/00_Setup` bis `Code/09_VersionAdaptive` erzeugt und mit abstrahierten Ergebnissen der früheren Quellenanalyse ergänzt. Historische Dateipfade, umgebungsspezifische Objektnamen und externe Hilfsobjekte wurden nicht übernommen.
+
+Aktuell inventarisiert: **135 Systemquellen**.
+
+## Quellklassen
+
+### Live- und Laufzeit-DMVs
+
+Beispiele sind Requests, Sessions, Tasks, Waits, Locks, Memory Grants, Scheduler, Betriebssystem- und I/O-Zähler. Diese Quellen zeigen aktuellen oder seit einem Reset kumulierten Zustand. Sie sind keine vollständige Historie.
+
+### Datenbankbezogene DMVs und DMFs
+
+Hierzu zählen Indexnutzung, Operational und Physical Stats, Statistikmetadaten, Log-, TempDB-, Columnstore- und Persistent-Version-Store-Informationen. Scope und Parameter müssen vor dem Aufruf eng begrenzt werden. Einige DMFs können bei NULL-Parametern eine breite Wildcard-Semantik besitzen.
+
+### Plan Cache und Showplan
+
+Plan-Cache- und XML-Quellen können CPU, Speicher und XML-Shredding verursachen. Das Framework begrenzt deshalb Analyseobjekte getrennt von Ergebniszeilen und prüft die zugehörigen Deep-Analyseklassen vor breiten Scans.
+
+### Query Store
+
+Query Store ist datenbankbezogen. Das Framework wechselt kontrolliert in jede ausgewählte Quelldatenbank, erzeugt lokale Kandidatenmengen und führt erst danach ein globales Ranking aus. Query Store darf nicht als verfügbar angenommen werden, nur weil die SQL-Server-Version ihn grundsätzlich unterstützt.
+
+### Extended Events
+
+Katalogviews beschreiben vorhandene Sessions; Runtime-DMVs beschreiben aktive Sessions und Targets. Eventfile- und Ringbuffer-Inhalte werden nur opt-in gelesen. Das Framework erstellt, startet, stoppt oder verändert keine Session.
+
+### Systemdatenbanken und Infrastruktur
+
+SQL Agent, Backup-/Restore-Historie, Log Shipping und Teile der Replikation liegen in systemverwalteten Datenbanken. Zugriff und Vollständigkeit hängen von Featureinstallation, Rolle und Berechtigungen ab. Das Framework vergibt keine Rechte.
+
+## Berechtigungsgrundsatz
+
+Für serverbezogene DMVs gilt auf SQL Server 2019 typischerweise `VIEW SERVER STATE`; ab SQL Server 2022 verwenden viele Performance-DMVs `VIEW SERVER PERFORMANCE STATE`. Datenbankbezogene Quellen verwenden entsprechend `VIEW DATABASE STATE` beziehungsweise ab SQL Server 2022 häufig `VIEW DATABASE PERFORMANCE STATE`. Sicherheitsbezogene Quellen können abweichende Security-State-Berechtigungen erfordern.
+
+Eine Vorabprüfung ist nur eine Indikation. Jeder optionale Zugriff bleibt fehlertolerant und muss Berechtigungs-, Versions-, Plattform- und Objektfehler separat behandeln.
+
+## Kosten- und Blockingmodell
+
+- `LOW_OR_SCOPE_DEPENDENT`: Katalog- oder kleine Statusquelle; Umfang trotzdem begrenzen.
+- `MEDIUM_OR_SCOPE_DEPENDENT`: Runtime-DMV, Cross-Database- oder größere Historienquelle.
+- `HIGH_OR_SCOPE_DEPENDENT`: Physical Stats, breite Plan-/Query-Store-Analyse, XML-Shredding oder Eventfile-Lesen.
+
+Breite Metadatenauflösung verwendet Systemkataloge mit kurzer Lock-Wartezeit beziehungsweise best-effort Fehlerisolation. Eine fehlende Namensauflösung ist einem blockierten Gesamtergebnis vorzuziehen; technische IDs bleiben erhalten.
+
+## Offizielle Ausgangspunkte
+
+- Dynamic Management Objects: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/system-dynamic-management-objects?view=sql-server-ver17
+- Extended-Events-Systemviews: https://learn.microsoft.com/en-us/sql/relational-databases/extended-events/selects-and-joins-from-system-views-for-extended-events-in-sql-server?view=sql-server-ver17
+- Weitere objektbezogene Primärquellen: [`Sources.md`](./Sources.md)
