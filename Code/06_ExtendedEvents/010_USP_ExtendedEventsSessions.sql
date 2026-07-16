@@ -103,7 +103,7 @@ BEGIN
     IF @ExtendedEventSessionNames IS NOT NULL INSERT [#SessionNameFilter] SELECT [NameValue] FROM [monitor].[TVF_ParseSqlNameList](@ExtendedEventSessionNames) WHERE [IsValid]=1 GROUP BY [NameValue];
     IF @EventNames IS NOT NULL INSERT [#EventNameFilter] SELECT [NameValue] FROM [monitor].[TVF_ParseSqlNameList](@EventNames) WHERE [IsValid]=1 GROUP BY [NameValue];
     IF @TargetNames IS NOT NULL INSERT [#TargetNameFilter] SELECT [NameValue] FROM [monitor].[TVF_ParseSqlNameList](@TargetNames) WHERE [IsValid]=1 GROUP BY [NameValue];
-    IF @StatusCode='AVAILABLE' AND (@SessionPatternMode IN('REGEX','REGEXI') OR @EventPatternMode IN('REGEX','REGEXI') OR @TargetPatternMode IN('REGEX','REGEXI')) AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] [d] WITH(NOLOCK) WHERE [d].[name]=N'DeineDatenbank' AND [d].[compatibility_level]>=170)) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END;
+    IF @StatusCode='AVAILABLE' AND (@SessionPatternMode IN('REGEX','REGEXI') OR @EventPatternMode IN('REGEX','REGEXI') OR @TargetPatternMode IN('REGEX','REGEXI')) AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] [d] WITH(NOLOCK) WHERE [d].[database_id]=DB_ID() AND [d].[compatibility_level]>=170)) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END;
 
     CREATE TABLE [#Sessions]
     (

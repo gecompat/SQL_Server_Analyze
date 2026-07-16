@@ -4,7 +4,7 @@ Stand: 2026-07-16
 
 1. Den korrigierten Gesamtinstaller auf einer isolierten SQL-Server-2019-Instanz vollständig neu ausführen; bereits teilweise angelegte Objekte dürfen durch `CREATE OR ALTER` beziehungsweise idempotente DDL erneut verarbeitet werden.
 2. Die vollständige Meldungsausgabe sichern. Treten weitere Compilefehler auf, sind sie vor funktionalen Smoke Tests zu korrigieren.
-3. Anschließend `18_Qualitaetssicherung/110_Smoke_Test.sql` und `18_Qualitaetssicherung/163_Parameter_API_Vertrag.sql` ausführen.
+3. Anschließend `Code/Tests/Integration/110_Smoke_Test.sql` und `Code/Tests/Integration/163_Parameter_API_Vertrag.sql` ausführen.
 4. Denselben Test auf SQL Server 2022 durchführen; insbesondere `VIEW SERVER PERFORMANCE STATE` und `VIEW DATABASE PERFORMANCE STATE` prüfen.
 5. SQL Server 2025 mit Compatibility Level 170 testen; Regex-Pfade gegen LIKE- und exakte Listenfilter vergleichen.
 6. Query-Store-Ranglisten mit mehreren großen Datenbanken auf globale Korrektheit und IO/CPU prüfen.

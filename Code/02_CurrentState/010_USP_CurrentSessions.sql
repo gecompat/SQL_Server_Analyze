@@ -133,7 +133,7 @@ BEGIN
 
     DECLARE @HasRegex bit = CASE WHEN @LoginMode IN('REGEX','REGEXI') OR @HostMode IN('REGEX','REGEXI') OR @ProgramMode IN('REGEX','REGEXI') OR @DatabaseMode IN('REGEX','REGEXI') THEN 1 ELSE 0 END;
     IF @StatusCode='AVAILABLE' AND @HasRegex=1
-       AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR DATABASEPROPERTYEX(N'DeineDatenbank',N'Collation') IS NULL OR (SELECT [compatibility_level] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [name]=N'DeineDatenbank')<170)
+       AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR COALESCE((SELECT [compatibility_level] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID()),0)<170)
     BEGIN
         SET @StatusCode='UNAVAILABLE_FEATURE';
         SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170 für die Installationsdatenbank.';

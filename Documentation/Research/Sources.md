@@ -108,4 +108,12 @@ Die genannten Community-Projekte werden in diesem Stand nur referenziert. Es wur
 
 ## Phase 5 – Extended Events
 
-Siehe `RECHERCHE_PHASE5_EXTENDED_EVENTS.md`. Verwendet wurden ausschließlich offizielle Microsoft-Learn-Primärquellen zu system_health, XE-Katalog-/Runtimeviews, Eventfile-Leser, Deadlockgraphen und blocked process threshold.
+Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließlich offizielle Microsoft-Learn-Primärquellen zu system_health, XE-Katalog-/Runtimeviews, Eventfile-Leser, Deadlockgraphen und blocked process threshold.
+
+
+## Ergänzung Migration – zentrale offizielle Quellen
+
+- Microsoft Learn: System Dynamic Management Views and Functions – Scope, Versionskompatibilität und Berechtigungswechsel ab SQL Server 2022: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/system-dynamic-management-objects?view=sql-server-ver17
+- Microsoft Learn: Extended-Events-Systemviews und Joinbeziehungen: https://learn.microsoft.com/en-us/sql/relational-databases/extended-events/selects-and-joins-from-system-views-for-extended-events-in-sql-server?view=sql-server-ver17
+- Microsoft Learn: Signieren von Stored Procedures mit Zertifikaten: https://learn.microsoft.com/en-us/sql/relational-databases/tutorial-signing-stored-procedures-with-a-certificate?view=sql-server-ver17
+- Microsoft Learn: ADD SIGNATURE: https://learn.microsoft.com/en-us/sql/t-sql/statements/add-signature-transact-sql?view=sql-server-ver17

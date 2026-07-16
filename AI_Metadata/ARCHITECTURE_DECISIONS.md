@@ -12,3 +12,6 @@
 10. Query Store ist datenbankbezogen; globale Top-N-Ausgaben verwenden lokale Kandidatenmengen und ein abschließendes globales Ranking.
 11. Memory Grants werden mit Workload Group, Resource Pool, Resource Semaphore und fachlich benannten Prozentkennzahlen korreliert.
 12. Historische, umgebungsspezifische Quellen werden nicht im Repository archiviert.
+13. Git ist die maßgebliche Versions- und Integritätsquelle; ein zusätzliches per-Datei-Hash-Manifest wird nicht gepflegt.
+14. Der Platzhalter `[DeineDatenbank]` darf nur als einleitender `USE`-Kontext oder in ausdrücklich gekennzeichneten Beispielen vorkommen, nie als ausführbares internes Stringliteral.
+15. Historische Quellenanalysen werden ausschließlich abstrahiert als Systemquellen-, Capability-, Abhängigkeits- und Risikokatalog migriert.

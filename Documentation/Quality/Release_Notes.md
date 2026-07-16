@@ -1,5 +1,16 @@
 # Release Notes
 
+## Stand 2026-07-16 – Abschluss der Repositorymigration
+
+- Datenbankplatzhalter aus ausführbarer interner Logik entfernt; aktuelle Installationsdatenbank wird über `DB_ID()` ermittelt.
+- Letzten umgebungsspezifischen Präfixhinweis aus den Beispielen entfernt.
+- Procedure-Referenz auf die kanonischen `Code/...`-Pfade umgestellt.
+- Veraltete Installations-, Test- und Recherchepfade korrigiert.
+- Das bisherige Dateihashmanifest entfernt; Git ist die maßgebliche Versions- und Integritätsquelle.
+- Systemquellen-, Capability-, Abhängigkeits- und Performance-/Risikokatalog als abstrahierte Migrationsergebnisse ergänzt.
+- Root-README und lokale Arbeitskopie mit dem aktuellen `LICENSE.md`-Stand synchronisiert.
+- Datenschutz- und Portabilitätsprüfung erneut ausgeführt.
+
 ## Stand 2026-07-16 – Compilekorrektur und Installer-Neubau
 
 - Beschädigtes Unicode-Stringliteral in `monitor.USP_CheckFrameworkCapabilities` korrigiert.

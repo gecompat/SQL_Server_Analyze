@@ -9,8 +9,10 @@
 
 ## Nach jeder Änderung
 
-- statischen API-Audit ausführen;
+- statischen API-, Portabilitäts-, Quellen- und Datenschutz-Audit ausführen;
 - Installer aus den kanonischen Einzeldateien neu erzeugen;
 - Beispielaufrufe und Referenz aktualisieren;
 - auf SQL Server 2019, 2022 und 2025 kompilieren und Smoke-Tests ausführen;
 - `Metadata/Quality/Migration_Audit.json` beziehungsweise einen neuen Release-Audit aktualisieren.
+
+- Kein SHA-/Dateimanifest regenerieren; Git und die maschinenlesbaren Fachinventare sind maßgeblich.

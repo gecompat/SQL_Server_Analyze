@@ -258,7 +258,7 @@ BEGIN
            (
                SELECT [compatibility_level]
                FROM [master].[sys].[databases] WITH (NOLOCK)
-               WHERE [name] = N'DeineDatenbank'
+               WHERE [database_id] = DB_ID()
            ) < 170
        )
     BEGIN

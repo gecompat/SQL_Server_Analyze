@@ -119,12 +119,14 @@ Vorzusehen sind unter anderem Filter für:
 
 ## 8. Lieferung
 
-- Jede Lieferung erfolgt als ZIP.
-- Im ZIP liegt ausschließlich der abgegrenzte Projektordner `20260714_StartNewChatProjektProject`.
-- Dieser Ordner muss eigenständig und vollständig sein und alle Informationen enthalten, die für eine spätere Fortsetzung erforderlich sind.
+- Der vollständige, geprüfte Repositorystand wird standardmäßig als ZIP geliefert.
+- Das ZIP enthält ausschließlich den Root-Ordner `SQL_Server_Analyze/`.
+- Der Root-Ordner ist eigenständig und enthält den vollständigen fachlichen Repositorybestand.
+- Nicht enthalten sind `.git`, generierte Installer, temporäre Migrations-, Payload-, Workflow- oder Transferdateien.
 - Gelöschte Dateien sind mit vollständigem relativem Pfad zu nennen.
-- Jede Lieferung enthält eine Commit Message.
+- Jede Lieferung enthält eine kopierbare Commit Message.
 - Die Commit Message ist exakt einzeilig und enthält keine Zeilenumbrüche.
+- Direkte GitHub-Schreibzugriffe erfolgen nur nach ausdrücklicher Anforderung; der Standardweg ist die manuelle Übernahme des ZIP-Inhalts.
 
 ## 9. Herkunft dieser Konsolidierung
 
@@ -229,3 +231,12 @@ Die Anforderungen basieren auf:
 - Jede öffentliche Analyse unterstützt RAW/CONSOLE/NONE und optional JSON.
 - Query Store unterscheidet Quelldatenbanken und referenzierte Datenbanken.
 - Memory Grants enthalten Resource-Governor- und Semaphore-Grenzen sowie Prozentkennzahlen.
+
+## Abschlussentscheidung zur Repositorymigration vom 2026-07-16
+
+- Die Repositorystruktur `Code`, `Documentation`, `Metadata` und `AI_Metadata` ist der einzige kanonische Projektstand.
+- Historische Phasenpfade und Rohquellpfade dürfen in der öffentlichen Referenz nicht mehr vorkommen.
+- Das Repository pflegt kein `MANIFEST.csv`; Git übernimmt Versionierung und Objektintegrität. Maschinenlesbare Inventare dokumentieren fachliche Verträge, nicht Datei-Hashes.
+- Der Datenbankplatzhalter `[DeineDatenbank]` steht am Anfang der SQL-Skripte. Ausführbare Frameworklogik ermittelt die Installationsdatenbank über den aktuellen Datenbankkontext und enthält keinen hart codierten Platzhalter als Stringliteral.
+- Verbotene Umgebungspräfixe, frühere Werkzeugnamen, konkrete externe Objektbezeichner und externe Hilfsfunktionen werden nicht übernommen.
+- Relevante Erkenntnisse aus früheren Analysen liegen abstrahiert als Systemquellenkatalog, Berechtigungs-/Featureinventar, Abhängigkeitsentscheidung und Performance-/Risikobewertung vor.
