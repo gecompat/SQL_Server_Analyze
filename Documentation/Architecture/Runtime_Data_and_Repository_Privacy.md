@@ -1,24 +1,32 @@
-# Datenschutzgrenze zwischen Laufzeitausgabe und Repository
+# Datenschutz- und Sicherheitsvertrag für Repositoryartefakte
 
-**Status:** verbindliche Architekturentscheidung  
+**Status:** verbindlich  
 **Stand:** 17. Juli 2026  
-**Geltungsbereich:** Quellcode, Dokumentation, Tests, Metadaten, Build- und Lieferartefakte sowie alle späteren Persistenz- oder Exportfunktionen
+**Geltungsbereich:** Repository, GitHub-Inhalte und downloadbare Artefakte  
+**Nicht betroffen:** diagnostische Runtime-Ausgaben  
+**Maßgebliche Fassung:** dieses Dokument
 
 ## 1. Entscheidung
 
-Das Diagnoseframework darf in einer unmittelbar angeforderten Laufzeitausgabe die zur Diagnose erforderlichen Identitäts- und Umgebungsinformationen anzeigen. Dazu gehören beispielsweise Session- und Request-IDs, Login- und Benutzernamen, Host- und Anwendungsnamen, Server-, Datenbank-, Schema- und Objektnamen sowie SQL-Text.
+Dieser Vertrag gilt ausschließlich für Inhalte, die in Repositorydateien oder GitHub-Inhalte geschrieben beziehungsweise für Commits, Pull Requests, Issues, Dokumentation, Tests, Metadaten, Screenshots, generierte Dateien, Archive oder andere Downloads vorbereitet werden.
 
-Solche realen Werte dürfen jedoch niemals Bestandteil eines herunterladbaren oder versionierten Artefakts werden. Verboten sind insbesondere reale Benutzer-IDs, Benutzernamen, Firmennamen sowie benutzerdefinierte oder sonstige personen- beziehungsweise umgebungsbezogene Informationen in:
+Er verändert keine diagnostische Runtime-Ausgabe. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE- und JSON-Ausgaben der Procedures dürfen die für die angeforderte Diagnose erforderlichen realen Werte unverändert liefern, soweit der Datenbank-Sicherheitskontext dies erlaubt. Dieser Vertrag ist insbesondere kein Auftrag, Runtime-Spalten zu entfernen, Werte zu maskieren, zu kürzen, zu hashen oder zu pseudonymisieren.
+
+Reale personen-, benutzer-, kunden-, firmen-, organisations-, betriebs- oder umgebungsbezogene Informationen dürfen niemals Bestandteil eines Repository- oder Downloadartefakts werden. Das gilt unabhängig davon, ob sie aus Screenshots, Hardcopys, Chats, Uploads, bestehenden Skripten, Logs, Abfrageergebnissen, Ausführungsplänen oder anderen Diagnoseausgaben stammen.
+
+Verboten sind solche realen Informationen insbesondere in:
 
 - Repositorydateien und Git-Commits,
-- Dokumentation, Screenshots und Beispielausgaben,
+- Pull Requests, Issues, Reviewkommentaren und sonstigen GitHub-Inhalten,
+- Quellcode, Kommentaren, Dokumentation, Screenshots und Beispielausgaben,
 - Testdaten, Fixtures und erwarteten Testergebnissen,
+- Metadaten, Inventaren und Auditresultaten,
 - CSV-, JSON-, XML-, Text-, Log- und Diagnoseexporten,
 - Build-, Installations- und Lieferpaketen einschließlich ZIP-Dateien,
 - Audit-, Forschungs- und Fehlerberichten,
 - späteren Snapshot-, Baseline-, Retention- oder DWH-Daten, sofern diese als Projektartefakt exportiert werden.
 
-Im Zweifel muss vor einer Aufnahme in ein Artefakt nachgefragt werden. Schweigen oder eine vermutete Harmlosigkeit gilt nicht als Freigabe.
+Eine Zustimmung hebt dieses Repositoryverbot nicht auf. Erfordert eine Aufgabe scheinbar reale interne oder personenbezogene Informationen in einem Repositoryartefakt, wird die Ausführung vor dem Schreiben oder Verpacken angehalten und nach einer nicht sensitiven fachlichen Alternative gefragt. Schweigen, vermutete Harmlosigkeit oder bereits vorhandener Zugriff gelten nicht als Freigabe.
 
 ## 2. Warum die frühere pauschale Formulierung falsch war
 
@@ -43,7 +51,7 @@ Ein pauschales Verbot in der ersten Ebene würde wesentliche Diagnosefunktionen 
 | Downloadbares ZIP oder generierter Installer | Nein | Vor Auslieferung auf eingebettete Daten und unerwartete Dateien prüfen |
 | Spätere interne Snapshotfunktion im Zielsystem | Nur nach eigenem Datenschutzkonzept | Zweck, Zugriff, Retention, Löschung und Exportgrenze müssen separat entschieden werden |
 
-Wichtig: Ein JSON-, CSV- oder Textwert ist nicht deshalb sicher, weil er technisch nur Ausgabe einer Procedure ist. Sobald er gespeichert oder weitergegeben wird, ist er ein Artefakt und unterliegt dem Verbot.
+Wichtig: Die Procedure-Ausgabe selbst bleibt unverändert. Erst ihre Übernahme in ein Repository-, GitHub- oder Downloadartefakt fällt unter diesen Vertrag. Eine außerhalb des Projektrepositorys betriebene Speicherung ist nicht Gegenstand dieses Liefergates und benötigt bei Bedarf eine eigene fachliche und datenschutzrechtliche Entscheidung.
 
 ## 4. Betroffene Informationsklassen
 
@@ -62,6 +70,7 @@ Die folgende Liste ist bewusst weiter als klassische personenbezogene Daten. Zie
 - Firmen-, Kunden-, Mandanten-, Abteilungs- und Projektnamen,
 - reale Server-, Instanz-, Cluster-, Availability-Group-, Listener- und Datenbanknamen,
 - reale Schema-, Tabellen-, Spalten-, Index-, Job-, Queue-, Publication- und Subscription-Namen,
+- proprietäre Datenbankstrukturen, Beziehungen, Namenskonventionen und internes Metadatenwissen,
 - Dateipfade, Laufwerksnamen, Freigaben, URLs und Cloud-Ressourcen aus realen Umgebungen.
 
 ### Benutzerdefinierte Inhalte
@@ -80,7 +89,7 @@ Die Regel darf nicht so ausgelegt werden, dass der Quellcode keine generischen S
 Zulässig sind:
 
 - technische SQL-Server-Spalten- und Parameternamen wie login_name, session_id oder database_id,
-- synthetische Platzhalter wie BeispielLogin, BeispielFirma, BeispielServer oder BeispielDatenbank,
+- eindeutig generische, synthetische Bezeichner, die keine reale interne Struktur nachbilden,
 - generische Schema- und Objektbezeichner wie monitor, dbo oder BeispielObjekt,
 - öffentliche Produkt-, Hersteller- und Projektnamen in fachlichen Quellenangaben,
 - bewusst veröffentlichte Lizenz-, Urheber- und Attributionstexte,
@@ -91,19 +100,19 @@ Zulässig sind:
 ## 6. Regeln für Quellcode und Laufzeit
 
 1. Die Procedures dürfen reale Werte selektieren, wenn diese für die angeforderte Diagnose relevant sind.
-2. Der Code darf solche Werte nicht hart codieren.
-3. Standardpfade bleiben zustandslos und speichern keine Resultsets.
-4. SQL-Text, Input Buffer, Query-Store-Text, Planparameter, Error-Log-Text und Ereignispayloads gelten als besonders sensibel. Ihre Anzeige muss fachlich begründet, berechtigungsgebunden und bei teuren Quellen opt-in sein.
-5. Ein späterer Exportmodus benötigt eine eigene Redaktions- oder Pseudonymisierungsentscheidung. Die bestehende Laufzeitausgabe ist keine Freigabe für einen Export.
-6. Service-Broker-Nachrichtenkörper, Secrets, Kennwörter, Tokens, Schlüsselmaterial und Verbindungszeichenfolgen dürfen weder standardmäßig ausgegeben noch in Projektartefakte übernommen werden.
-7. Fehlende Berechtigungen werden als Status ausgegeben; sie werden nicht durch zusätzliche Rechtevergabe umgangen.
+2. Resultsets und OUTPUT-Parameter werden wegen dieses Vertrags weder anonymisiert noch inhaltlich reduziert.
+3. Der Repositorycode darf keine realen Werte, internen Namen oder proprietären Strukturen aus einer konkreten Umgebung hart codieren oder kommentierend offenlegen.
+4. Standardpfade bleiben entsprechend der bestehenden Architektur zustandslos und speichern keine Resultsets.
+5. Secrets, Kennwörter, Tokens, Schlüsselmaterial und Verbindungszeichenfolgen dürfen niemals in ein Repository- oder Downloadartefakt übernommen werden.
+6. Fehlende Berechtigungen werden als Status ausgegeben; sie werden nicht durch zusätzliche Rechtevergabe umgangen.
 
 ## 7. Regeln für Dokumentation, Tests und Forschung
 
-- Alle Beispiele müssen synthetisch sein und erkennbar generische Bezeichner verwenden.
+- Alle Beispiele müssen eindeutig synthetisch sein, generische Bezeichner verwenden und dürfen keine reale interne Struktur imitieren.
 - Laufzeitausgaben dürfen nicht aus einer realen Umgebung kopiert und anschließend nur teilweise geschwärzt werden. Sicherer ist eine vollständig synthetische Rekonstruktion.
 - Screenshots realer Verwaltungstools sind ohne vorherige vollständige Prüfung ungeeignet.
 - Issues, Chatprotokolle und Reviewkommentare sind ebenfalls persistierbare Artefakte.
+- Informationen aus Screenshots, Hardcopys, Chats, Uploads und bestehenden Skripten dürfen nur abstrakt fachlich ausgewertet, nicht als interne Bezeichner oder Strukturen übernommen werden.
 - Externe Beispielcodes werden nicht zusammen mit deren realen Umgebungswerten übernommen.
 - Forschungsquellen werden verlinkt und zusammengefasst; fremder Code wird nicht ungeprüft kopiert.
 - Prüfergebnisse nennen Regeln, Anzahl und Status, aber keine gefundenen sensitiven Werte.
@@ -121,15 +130,17 @@ Vor jeder Lieferung sind mindestens folgende Prüfungen auszuführen:
 7. Treffer aus Lizenzen und Quellenangaben werden als beabsichtigte öffentliche Attribution klassifiziert; sie dürfen nicht stillschweigend entfernt werden.
 8. Bei einem nicht eindeutig klassifizierbaren Treffer wird die Auslieferung angehalten und nachgefragt.
 
-Automatische Musterprüfungen sind nur ein Filter. Sie können weder alle personenbezogenen Informationen erkennen noch entscheiden, ob ein Name real oder synthetisch ist. Deshalb bleibt eine kontextbezogene Review erforderlich.
+Automatische Musterprüfungen sind nur ein unterstützender Filter und niemals ein Beweis für einen sicheren Artefaktbestand. Sie können weder alle personenbezogenen Informationen noch proprietäre Strukturen erkennen und nicht zuverlässig entscheiden, ob ein Name real oder synthetisch ist. Deshalb bleibt eine kontextbezogene Review erforderlich.
 
 ## 9. Abnahmekriterien
 
 Die Entscheidung ist erfüllt, wenn:
 
 - interaktive Diagnoseausgaben weiterhin die für die Analyse notwendigen Identitäten und Umgebungsbezüge liefern können,
+- kein Resultset und kein OUTPUT-Parameter wegen dieses Vertrags maskiert oder reduziert wird,
 - keine reale Laufzeitausgabe als Repository-, Test-, Dokumentations- oder Lieferinhalt eingecheckt wird,
-- Beispiele ausschließlich synthetische Werte enthalten,
+- Code, Kommentare und Dokumentation keine aus Hardcopys, Screenshots, Chats, Uploads oder realen Umgebungen übernommenen internen Namen oder Strukturen enthalten,
+- Beispiele ausschließlich eindeutig synthetische, generische Werte ohne Nachbildung realer interner Strukturen enthalten,
 - zukünftige Persistenz- und Exportfunktionen vor ihrer Implementierung ein eigenes Datenschutz-, Berechtigungs-, Retention- und Löschkonzept erhalten,
 - ein uneindeutiger Datenfund die Fragepflicht auslöst,
 - die Prüfung keine sensitiven Werte selbst in Auditmeldungen vervielfältigt.
@@ -137,4 +148,3 @@ Die Entscheidung ist erfüllt, wenn:
 ## 10. Vorgehen bei einem Fund
 
 Vor einem Commit wird die betroffene Datei nicht übernommen und durch eine synthetische Fassung ersetzt. Ist ein Wert bereits in Git veröffentlicht, genügt das Löschen in einem neuen Commit nicht, weil er in der Historie verbleiben kann. Dann sind Repositoryverantwortliche einzubeziehen und Reichweite, Historienbereinigung, bereits erzeugte Downloads sowie gegebenenfalls weitere Datenschutz- oder Sicherheitsmaßnahmen separat zu bewerten.
-
