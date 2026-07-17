@@ -1,0 +1,57 @@
+name: Temporary fix permission matrix
+
+on:
+  push:
+    branches:
+      - agent/sqlserver-2022-permission-matrix
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out permission matrix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2022-permission-matrix
+
+      - name: Replace unsupported DROP LOGIN syntax
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
+          text = path.read_text(encoding='utf-8')
+          old = """DROP LOGIN IF EXISTS [ExampleRestrictedLogin];
+          DROP LOGIN IF EXISTS [ExampleViewServerStateLogin];
+          DROP LOGIN IF EXISTS [ExampleViewServerPerformanceLogin];
+          DROP LOGIN IF EXISTS [ExampleViewDatabaseStateLogin];
+          DROP LOGIN IF EXISTS [ExampleViewDatabasePerformanceLogin];
+          DROP LOGIN IF EXISTS [ExampleGroupMemberLogin];
+          """.replace('          ', '')
+          new = """IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleRestrictedLogin') DROP LOGIN [ExampleRestrictedLogin];
+          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerStateLogin') DROP LOGIN [ExampleViewServerStateLogin];
+          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerPerformanceLogin') DROP LOGIN [ExampleViewServerPerformanceLogin];
+          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabaseStateLogin') DROP LOGIN [ExampleViewDatabaseStateLogin];
+          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabasePerformanceLogin') DROP LOGIN [ExampleViewDatabasePerformanceLogin];
+          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleGroupMemberLogin') DROP LOGIN [ExampleGroupMemberLogin];
+          """.replace('          ', '')
+          if text.count(old) != 1:
+              raise RuntimeError(f'Expected unsupported DROP LOGIN block once, found {text.count(old)}.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+
+      - name: Commit syntax fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: use supported login cleanup syntax'
+          git push origin HEAD:agent/sqlserver-2022-permission-matrix
