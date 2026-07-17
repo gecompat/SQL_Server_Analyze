@@ -1208,3 +1208,28 @@ USP_InMemoryOltpAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_InMemoryOltpAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_InMemoryOltpAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_InMemoryOltpAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_TemporalAnalysis,DatabaseNames,nvarchar(max),N''
+USP_TemporalAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_TemporalAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_TemporalAnalysis,SchemaNames,nvarchar(max),NULL
+USP_TemporalAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_TemporalAnalysis,ObjectNames,nvarchar(max),NULL
+USP_TemporalAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_TemporalAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_TemporalAnalysis,NurProblematisch,bit,0
+USP_TemporalAnalysis,HistorySizeWarnMb,"decimal(19,2)",10240
+USP_TemporalAnalysis,HistoryRowsWarn,bigint,10000000
+USP_TemporalAnalysis,HistoryToCurrentRatioWarn,"decimal(19,4)",10
+USP_TemporalAnalysis,MinHistoryMbForRatioWarn,"decimal(19,2)",100
+USP_TemporalAnalysis,MaxDatenbanken,int,16
+USP_TemporalAnalysis,MaxZeilen,int,2000
+USP_TemporalAnalysis,LockTimeoutMs,int,0
+USP_TemporalAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_TemporalAnalysis,JsonErzeugen,bit,0
+USP_TemporalAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_TemporalAnalysis,PrintMeldungen,bit,1
+USP_TemporalAnalysis,Hilfe,bit,0
+USP_TemporalAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_TemporalAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_TemporalAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_TemporalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

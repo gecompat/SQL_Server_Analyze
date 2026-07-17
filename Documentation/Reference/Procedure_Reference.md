@@ -620,6 +620,14 @@ Quelle: `Code/08_ServerHealth/040_USP_TempDBConfiguration.sql`
 @PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
 
+## `[monitor].[USP_TemporalAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/040_USP_TemporalAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @NurProblematisch bit = 0, @HistorySizeWarnMb decimal(19,2) = 10240, @HistoryRowsWarn bigint = 10000000, @HistoryToCurrentRatioWarn decimal(19,4) = 10, @MinHistoryMbForRatioWarn decimal(19,2) = 100, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_TraceFlags]`
 
 Quelle: `Code/08_ServerHealth/060_USP_TraceFlags.sql`

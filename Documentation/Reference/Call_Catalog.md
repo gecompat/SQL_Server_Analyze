@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-17 — 78 Procedures
+Stand: 2026-07-17 — 79 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -25,6 +25,7 @@ EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds=5,@MaxZeilen=100;
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[DeineDatenbank]',@SchemaNames=N'dbo',@AnalyseModus='GEZIELT',@MaxVerteilungsStatistiken=25,@MaxZeilen=100;
 EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N'',@NurErkannteFeatures=1,@MaxZeilen=100;
 EXEC [monitor].[USP_InMemoryOltpAnalysis] @DatabaseNames=N'',@MitHashIndexStats=0,@MaxZeilen=100;
+EXEC [monitor].[USP_TemporalAnalysis] @DatabaseNames=N'',@HistorySizeWarnMb=10240,@MaxZeilen=100;
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@SchemaNames=N'dbo|monitor',@ObjectNamePattern=N'regexi:^usp_',@MaxZeilen=200;
 ```
 
@@ -488,6 +489,12 @@ EXEC [monitor].[USP_StatisticsDistributionAnalysis] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_TempDBConfiguration] @Hilfe = 1;
+```
+
+## `[monitor].[USP_TemporalAnalysis]`
+
+```sql
+EXEC [monitor].[USP_TemporalAnalysis] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_TraceFlags]`

@@ -27,6 +27,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 | P1.9 | `monitor.USP_DiagnosticFindings` | normalisierte Triage aus den JSON-Verträgen der vorherigen Module | Kernmodule an; Schema/Statistikverteilung/IQP/Contention opt-in | Priorität und Konfidenz sind Triage, keine automatische Ursache |
 | P2.1 | `monitor.USP_SpecialFeatureInventory` | aggregierte Nutzung oder reine Konfiguration von 18 Spezialfeatureklassen | LOW; reine sichtbare Systemkataloge | Inventar ist kein Gesundheitsurteil; Nullzählungen beweisen bei eingeschränkter Metadatensichtbarkeit keine Abwesenheit |
 | P2.2 | `monitor.USP_InMemoryOltpAnalysis` | Tabellen-/Indexspeicher, Consumer, Hashketten, Checkpointzustände, aktive Transaktionen und Poolkontext | Basis MEDIUM; Hashketten HIGH_OPT_IN mit `CATALOG_DEEP` | Momentaufnahmen und Heuristiken beweisen weder Speicherdruck noch falsche DDL; Defaultpool ist nicht datenbankgenau zurechenbar |
+| P2.3 | `monitor.USP_TemporalAnalysis` | Current-/History-Zuordnung, Periodenmetadaten, Retention-Schalter, approximative Kapazität und History-Indexbaseline | MEDIUM; Kataloge plus `sys.dm_db_partition_stats` | Keine Nutzdatenprüfung: weder Periodenüberlappungen noch Cleanup-Erfolg oder frühere Zuordnungen werden bewiesen |
 
 ## Messverträge
 
@@ -39,6 +40,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 - Featureabhängige Katalogsichten werden erst in dynamische Batches aufgenommen, wenn die Produktversion sie unterstützt.
 - Die Spezialfeature-Inventur liest keine externen Locations, Connection Options, Credentials, Service-Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzertabellen. `CONFIGURED_ONLY` beweist keine tatsächliche Nutzung.
 - Die In-Memory-OLTP-Analyse ruft jede DMV isoliert auf. `sys.dm_db_xtp_hash_index_stats` ist wegen möglicher vollständiger Tabellenscans standardmäßig aus; Checkpoint-Pfade, Container-GUIDs, SQL-Texte sowie Session-, Benutzer- und Transaktionskennungen werden nicht gelesen.
+- Die Temporal-Tables-Analyse liest keine Current- oder History-Zeilen. Die dokumentierte Indexbaseline Periodenende/Periodenstart ist ein Prüfhinweis, kein automatischer DDL-Vorschlag. `SYSTEM_VERSIONING=OFF` trennt die Tabellen; ohne erhaltene Metadatenzuordnung darf das Modul daraus kein ehemaliges Paar erraten.
 - `USP_DiagnosticFindings` benötigt Compatibility Level 130 oder höher, weil `OPENJSON` den Vertragsinhalt aggregiert.
 
 ## Befundvertrag
@@ -80,3 +82,6 @@ Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezi
 - [Hashindizes für speicheroptimierte Tabellen](https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/hash-indexes-for-memory-optimized-tables)
 - [sys.dm_db_xtp_checkpoint_files](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-xtp-checkpoint-files-transact-sql)
 - [Resource-Pool-Bindung für In-Memory OLTP](https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/bind-a-database-with-memory-optimized-tables-to-a-resource-pool)
+- [Temporal Tables](https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables)
+- [Temporal-Retention](https://learn.microsoft.com/en-us/sql/relational-databases/tables/manage-retention-of-historical-data-in-system-versioned-temporal-tables)
+- [Temporal-Einschränkungen und Indexbaseline](https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-table-considerations-and-limitations)
