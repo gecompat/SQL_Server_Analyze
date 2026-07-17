@@ -230,6 +230,7 @@ BEGIN
     DECLARE @QueryStoreRequiredRows int=0,@QueryStoreGrantedRows int=0;
     DECLARE @PlanAllowed bit=NULL,@PlanReason varchar(20)=NULL;
 
+    RAISERROR(N''PERMISSION_MATRIX step=current_sessions'',10,1) WITH NOWAIT;
     EXEC [monitor].[USP_CurrentSessions]
           @AktuelleSessionEinbeziehen=1
         , @MitSqlText=0
@@ -239,6 +240,7 @@ BEGIN
         , @Json=@SessionJson OUTPUT
         , @PrintMeldungen=0;
 
+    RAISERROR(N''PERMISSION_MATRIX step=standard_capabilities'',10,1) WITH NOWAIT;
     EXEC [monitor].[USP_CheckFrameworkCapabilities]
           @DatabaseNames=N''''
         , @MaxDatenbanken=1
@@ -249,6 +251,7 @@ BEGIN
         , @Json=@StandardJson OUTPUT
         , @PrintMeldungen=0;
 
+    RAISERROR(N''PERMISSION_MATRIX step=query_store_capabilities'',10,1) WITH NOWAIT;
     EXEC [monitor].[USP_CheckFrameworkCapabilities]
           @DatabaseNames=N''''
         , @MaxDatenbanken=1
@@ -259,6 +262,7 @@ BEGIN
         , @Json=@QueryStoreJson OUTPUT
         , @PrintMeldungen=0;
 
+    RAISERROR(N''PERMISSION_MATRIX step=parse_results'',10,1) WITH NOWAIT;
     SELECT
           @SessionStatus=JSON_VALUE(@SessionJson,''$.meta.statusCode'')
         , @SessionPartial=TRY_CONVERT(bit,JSON_VALUE(@SessionJson,''$.meta.isPartial''));
@@ -290,10 +294,12 @@ BEGIN
     WHERE [ScopeType]=''DATABASE''
       AND [RequiredPermission]=''VIEW DATABASE PERFORMANCE STATE'';
 
+    RAISERROR(N''PERMISSION_MATRIX step=policy_lookup'',10,1) WITH NOWAIT;
     SELECT @PlanAllowed=[IsAllowed],@PlanReason=[AccessReason]
     FROM [monitor].[VW_AnalyseAccessCurrent]
     WHERE [AnalysisClass]=''PLAN_CACHE_DEEP'';
 
+    RAISERROR(N''PERMISSION_MATRIX step=insert_result'',10,1) WITH NOWAIT;
     INSERT [#PermissionMatrix]
     (
           [ScenarioCode],[EffectiveContext]
@@ -319,6 +325,7 @@ BEGIN
         , CONVERT(bit,1)
     );
 
+    RAISERROR(N''PERMISSION_MATRIX step=revert'',10,1) WITH NOWAIT;
     REVERT;';
 
     RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
@@ -326,7 +333,9 @@ BEGIN
         EXEC [sys].[sp_executesql] @Sql,N'@ScenarioCode varchar(48)',@ScenarioCode=@ScenarioCode;
     END TRY
     BEGIN CATCH
+    DECLARE @ScenarioErrorNumber int=ERROR_NUMBER();
     DECLARE @ScenarioErrorLine int=ERROR_LINE();
+    DECLARE @ScenarioErrorProcedure sysname=ERROR_PROCEDURE();
     DECLARE @ScenarioErrorText nvarchar(2048)=ERROR_MESSAGE();
     BEGIN TRY
         REVERT;
@@ -334,7 +343,7 @@ BEGIN
     BEGIN CATCH
         SET @ScenarioErrorText=@ScenarioErrorText;
     END CATCH;
-    DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',@ScenarioErrorLine,N': ',@ScenarioErrorText);
+    DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed; number=',@ScenarioErrorNumber,N'; procedure=',COALESCE(@ScenarioErrorProcedure,N'<dynamic>'),N'; line=',@ScenarioErrorLine,N': ',@ScenarioErrorText);
     THROW 54209,@ScenarioError,1;
 END CATCH;
     SET @ScenarioOrdinal+=1;
