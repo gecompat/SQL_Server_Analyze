@@ -278,13 +278,13 @@ BEGIN
             END CATCH;
 
             BEGIN TRY
-                SET @Sql = REPLACE(@Probe, N'$(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME(DB_NAME())));
+                SET @Sql = REPLACE(@Probe, N'' + N'$' + N'(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME(DB_NAME())));
                 EXEC [sys].[sp_executesql] @Sql;
                 SET @Queryable = 1;
 
                 IF @Enable IS NOT NULL
                 BEGIN
-                    SET @Sql = REPLACE(REPLACE(@Enable, N'$(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME(DB_NAME()))), N'$(DATABASENAME)', COALESCE(@DatabaseLiteral, REPLACE(DB_NAME(), N'''', N'''''')));
+                    SET @Sql = REPLACE(REPLACE(@Enable, N'' + N'$' + N'(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME(DB_NAME()))), N'' + N'$' + N'(DATABASENAME)', COALESCE(@DatabaseLiteral, REPLACE(DB_NAME(), N'''', N'''''')));
                     EXEC [sys].[sp_executesql] @Sql, N'@IsEnabledOut bit OUTPUT', @IsEnabledOut = @Enabled OUTPUT;
                 END;
 
