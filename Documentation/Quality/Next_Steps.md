@@ -2,19 +2,24 @@
 
 Stand: 2026-07-17
 
-Der aktuelle Gesamtstand ist nach Angabe des Projektverantwortlichen vollumfänglich real getestet. Die im Test gefundenen Korrekturen sind enthalten. Der statische Repository-, API-, Named-Argument-, Block- und Installer-Audit ist ebenfalls `PASS`.
+Der vor der Spezialfallwelle liegende Basisstand wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.1` ist implementiert und statisch zu prüfen; reale Matrixläufe sind noch nicht dokumentiert. `NOT_EXECUTED` in der Testmatrix darf nicht als Testnachweis interpretiert werden.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.
 
-Nächste sinnvolle Schritte:
+Abgeschlossen:
 
-1. Den Datenschutz- und Sicherheitsvertrag als reines Repository-Liefergate operationalisieren: Resultsets und OUTPUT-Parameter bleiben unverändert; reale interne oder personenbezogene Informationen und proprietäre Strukturen werden in Code, GitHub-Inhalten, Dokumenten, Tests, Audits, Beispielen und ZIP-Inhalten blockiert; unklare Funde halten das Schreiben an und lösen die Suche nach einer nicht sensitiven Alternative aus.
-2. P0-Welle umsetzen: `USP_DatabaseIntegrityAnalysis`, `USP_DatabaseCapacityAnalysis`, `USP_CriticalEngineEvents` und `USP_PerformanceCounters`.
-3. P1-Ursachenauflösung umsetzen: Intelligent Query Processing, interne Contention, Buffer Pool, Backupketten und korrelierte Findings.
-4. Danach Schema-/Designkorrektheit, tiefe AG-Diagnose sowie Agent-/Alert-/Database-Mail-Auswertung ergänzen.
-5. Spezialmodule nur nach Featureinventur aktivieren: In-Memory OLTP, Temporal, Service Broker, Full-Text, CDC/Change Tracking/Replikation, Verschlüsselung und externe Features.
-6. Snapshot-, Baseline- und Anomaliefunktionen als eigenes Paket behandeln und erst nach Datenschutz-, Retention-, Berechtigungs-, Lösch- und Größenentscheidung implementieren.
-7. Die tatsächlich verwendete Testumgebung als Testprotokoll dokumentieren: SQL-Server-Version, Edition, Betriebssystem, Compatibility Level, Collation und Berechtigungen.
-8. Für jede unterstützte Zielmatrix `Code/Tests/Integration/110_Smoke_Test.sql`, `163_Parameter_API_Vertrag.sql` und `165_Filter_Output_Contract.sql` ausführen; neue Module erhalten zusätzlich Capability-, Leerzustands-, Positiv-, Last-, Reset- und Datenschutztests.
-9. Query-Store-Ranglisten, Memory-Grant-Prozentwerte, Statementkontext, Volltextkürzung, CONSOLE-Projektionen und JSON-Schema weiterhin mit kontrollierten Szenarien verifizieren.
-10. Erst nach dokumentierter Zielmatrix den Stand als Release-Kandidat kennzeichnen und die Frameworkversion entsprechend der gewählten Releasepolitik erhöhen.
+1. Repository-Datenschutzvertrag und Liefergate dokumentiert.
+2. Dokumentierbare Ziel-Testmatrix angelegt.
+3. P0: Integrität, Kapazität, Performance Counter und kritische Engine-Ereignisse implementiert.
+4. P1 in der festgelegten Reihenfolge: IQP, interne Contention, Buffer Pool, Backupketten, Schema-/Designkorrektheit, tiefe Availability-Evidenz, Agent-/Alert-Monitoring und zuletzt normalisierte Findings implementiert.
+5. Installer, Orchestratoren, Inventare, Hilfe, Beispiele, Referenz und statische Verträge erweitert.
+6. Statischen Release-Audit unter `Metadata/Quality/Special_Case_Release_Audit.json` dokumentiert; Laufzeitstatus bleibt `NOT_EXECUTED`.
+
+Nächste Freigabeschritte:
+
+1. Gesamtinstaller auf SQL Server 2019, 2022 und 2025 gemäß `Test_Matrix.csv` kompilieren und installieren.
+2. Pro Ziel `110_Smoke_Test.sql`, `163_Parameter_API_Vertrag.sql`, `165_Filter_Output_Contract.sql` und `167_Special_Case_API_Contract.sql` ausführen.
+3. Für jedes neue Modul Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle dokumentieren; reale Namen oder Strukturen nicht in die Nachweise übernehmen.
+4. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design und breite Cross-Database-Auswahl.
+5. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
+6. Weitere Spezialfeatures wie In-Memory OLTP, Temporal, Service Broker, Full-Text und Verschlüsselung erst danach als nächste Welle planen.

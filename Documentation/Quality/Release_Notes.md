@@ -1,5 +1,17 @@
 # Release Notes
 
+## Stand 2026-07-17 – Spezialfallwelle `1.1.0-special.1`
+
+- Dokumentierbare, datenschutzkonforme Testmatrix mit explizitem `NOT_EXECUTED`-Planungsstatus ergänzt.
+- P0-Module für Datenbankintegrität, Kapazität, korrekt typisierte Performance Counter und kritische Engine-Ereignisse implementiert.
+- P1 in der festgelegten Reihenfolge umgesetzt: IQP, interne Contention, Buffer Pool, Backupketten, Schema-/Designkorrektheit, tiefe Availability-Evidenz, Agent-/Alert-Monitoring und zuletzt normalisierte diagnostische Findings.
+- Kostenintensive oder detailreiche Pfade standardmäßig deaktiviert oder opt-in ausgeführt.
+- `USP_DiagnosticFindings` aggregiert ausschließlich definierte JSON-Vertragsfelder und übernimmt keine SQL-/Plantexte, Pfade, Mailinhalte oder freien Meldungstexte.
+- Gesamtinstaller, vier Orchestratoren, Objekt-/Parameter-/Systemquelleninventare, Referenzen, Hilfe, Beispiele, Smoke Test und Spezialfall-API-Vertrag erweitert.
+- Der Standalone-Installer übernimmt die kanonische, abhängigkeitssichere Include-Reihenfolge direkt aus `Install_All.sql`.
+- Performance-Counter-Quotienten verwenden Zähler- und Basisdeltas; Backup-, Quorum- und Orchestratorstatus wurden in der statischen Tiefenprüfung präzisiert.
+- Der frühere Basisstand war real getestet; für diese neue Implementierungswelle liegen noch keine dokumentierten Zielmatrixläufe vor.
+
 ## Stand 2026-07-17 – Verbindlicher Repository-Datenschutzvertrag
 
 - Datenschutz-Liefergate ausdrücklich auf Repository-, GitHub- und Downloadartefakte begrenzt.
@@ -62,7 +74,7 @@
 
 ## Teststatus
 
-Der vorliegende Gesamtstand wurde nach Angabe des Projektverantwortlichen vollumfänglich real getestet. Die genaue Versions-, Editions-, Plattform- und Berechtigungsmatrix soll für weitere Freigaben separat dokumentiert werden.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

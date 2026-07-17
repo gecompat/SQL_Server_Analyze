@@ -4,11 +4,12 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ServerHealthAnalysis
-Version      : 3.0.1
-Stand        : 2026-07-16
+Version      : 3.1.0
+Stand        : 2026-07-17
 Zweck        : Orchestriert alle Server-Health-Module. RAW/CONSOLE werden an
                Child-Module weitergereicht; JSON enthält benannte Modulobjekte.
-Änderungen   : 3.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert;
+Änderungen   : 3.1.0 - Spezialfallmodule und normalisierte Befunde als opt-in.
+               3.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert;
                          Child-Statusvariablen vor jedem Aufruf zurückgesetzt.
 ===============================================================================
 */
@@ -22,6 +23,17 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerHealthAnalysis]
     , @MitStartup       bit           = 1
     , @MitOS            bit           = 1
     , @MitSecurity      bit           = 1
+    , @MitIntegritaet   bit           = 0
+    , @MitKapazitaet    bit           = 0
+    , @MitPerformanceCounters bit      = 0
+    , @MitCriticalEvents bit           = 0
+    , @MitContention    bit           = 0
+    , @MitBufferPool    bit           = 0
+    , @MitFindings      bit           = 0
+    , @DatabaseNames    nvarchar(max) = N''
+    , @SystemdatenbankenEinbeziehen bit = 0
+    , @DatabaseNamePattern nvarchar(4000) = NULL
+    , @MaxDatenbanken   int           = 16
     , @MaxZeilen        int           = 100
     , @ResultSetArt     varchar(16)   = 'CONSOLE'
     , @JsonErzeugen     bit           = 0
@@ -49,6 +61,13 @@ BEGIN
     DECLARE @StartupJson nvarchar(max);
     DECLARE @OsJson nvarchar(max);
     DECLARE @SecurityJson nvarchar(max);
+    DECLARE @IntegrityJson nvarchar(max);
+    DECLARE @CapacityJson nvarchar(max);
+    DECLARE @CountersJson nvarchar(max);
+    DECLARE @CriticalEventsJson nvarchar(max);
+    DECLARE @ContentionJson nvarchar(max);
+    DECLARE @BufferPoolJson nvarchar(max);
+    DECLARE @FindingsJson nvarchar(max);
 
     CREATE TABLE [#ModuleStatus]
     (
@@ -67,11 +86,14 @@ BEGIN
         RETURN;
     END;
 
-    IF @MaxZeilen < 0
+    IF @MaxZeilen < 0 OR @MaxDatenbanken < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR (@MitCpu = 0 AND @MitNuma = 0 AND @MitMemory = 0 AND @MitTempDB = 0
            AND @MitConfiguration = 0 AND @MitTraceFlags = 0 AND @MitStartup = 0
-           AND @MitOS = 0 AND @MitSecurity = 0)
+           AND @MitOS = 0 AND @MitSecurity = 0 AND @MitIntegritaet = 0
+           AND @MitKapazitaet = 0 AND @MitPerformanceCounters = 0
+           AND @MitCriticalEvents = 0 AND @MitContention = 0
+           AND @MitBufferPool = 0 AND @MitFindings = 0)
     BEGIN
         SET @OverallStatus = 'INVALID_PARAMETER';
     END;
@@ -275,11 +297,134 @@ BEGIN
         (9, N'USP_ServerSecurityConfiguration', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
+    IF @OverallStatus = 'AVAILABLE' AND @MitIntegritaet = 1
+    BEGIN
+        SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+        BEGIN TRY
+            EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
+                  @DatabaseNames = @DatabaseNames
+                , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
+                , @DatabaseNamePattern = @DatabaseNamePattern
+                , @MaxDatenbanken = @MaxDatenbanken, @MitPageDetails = 0
+                , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
+                , @JsonErzeugen = @JsonErzeugen, @Json = @IntegrityJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
+                , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
+                , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+        END TRY BEGIN CATCH
+            SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
+        END CATCH;
+        INSERT [#ModuleStatus] VALUES (10,N'USP_DatabaseIntegrityAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+    END;
+
+    IF @OverallStatus = 'AVAILABLE' AND @MitKapazitaet = 1
+    BEGIN
+        SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+        BEGIN TRY
+            EXEC [monitor].[USP_DatabaseCapacityAnalysis]
+                  @DatabaseNames = @DatabaseNames
+                , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
+                , @DatabaseNamePattern = @DatabaseNamePattern
+                , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @OutputMode, @JsonErzeugen = @JsonErzeugen
+                , @Json = @CapacityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
+                , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+        END TRY BEGIN CATCH
+            SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
+        END CATCH;
+        INSERT [#ModuleStatus] VALUES (11,N'USP_DatabaseCapacityAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+    END;
+
+    IF @OverallStatus = 'AVAILABLE' AND @MitPerformanceCounters = 1
+    BEGIN
+        SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+        BEGIN TRY
+            EXEC [monitor].[USP_PerformanceCounters]
+                  @SampleSeconds = 0, @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
+                , @JsonErzeugen = @JsonErzeugen, @Json = @CountersJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
+                , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
+                , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+        END TRY BEGIN CATCH
+            SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
+        END CATCH;
+        INSERT [#ModuleStatus] VALUES (12,N'USP_PerformanceCounters',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+    END;
+
+    IF @OverallStatus = 'AVAILABLE' AND @MitCriticalEvents = 1
+    BEGIN
+        SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+        BEGIN TRY
+            EXEC [monitor].[USP_CriticalEngineEvents]
+                  @MitSystemHealth = 1, @MitServerDiagnostics = 0, @MitEventXml = 0
+                , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
+                , @JsonErzeugen = @JsonErzeugen, @Json = @CriticalEventsJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
+                , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
+                , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+        END TRY BEGIN CATCH
+            SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
+        END CATCH;
+        INSERT [#ModuleStatus] VALUES (13,N'USP_CriticalEngineEvents',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+    END;
+
+    IF @OverallStatus = 'AVAILABLE' AND @MitContention = 1
+    BEGIN
+        SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+        BEGIN TRY
+            EXEC [monitor].[USP_InternalContentionAnalysis]
+                  @SampleSeconds = 5, @MitPageDetails = 0, @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @OutputMode, @JsonErzeugen = @JsonErzeugen
+                , @Json = @ContentionJson OUTPUT, @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
+                , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+        END TRY BEGIN CATCH
+            SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
+        END CATCH;
+        INSERT [#ModuleStatus] VALUES (14,N'USP_InternalContentionAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+    END;
+
+    IF @OverallStatus = 'AVAILABLE' AND @MitBufferPool = 1
+    BEGIN
+        SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+        BEGIN TRY
+            EXEC [monitor].[USP_BufferPoolAnalysis]
+                  @MitBufferPoolVerteilung = 0, @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @OutputMode, @JsonErzeugen = @JsonErzeugen
+                , @Json = @BufferPoolJson OUTPUT, @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
+                , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+        END TRY BEGIN CATCH
+            SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
+        END CATCH;
+        INSERT [#ModuleStatus] VALUES (15,N'USP_BufferPoolAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+    END;
+
+    IF @OverallStatus = 'AVAILABLE' AND @MitFindings = 1
+    BEGIN
+        SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+        BEGIN TRY
+            EXEC [monitor].[USP_DiagnosticFindings]
+                  @DatabaseNames = @DatabaseNames
+                , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
+                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
+                , @JsonErzeugen = @JsonErzeugen, @Json = @FindingsJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
+                , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
+                , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+        END TRY BEGIN CATCH
+            SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
+        END CATCH;
+        INSERT [#ModuleStatus] VALUES (16,N'USP_DiagnosticFindings',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+    END;
+
     IF EXISTS
     (
         SELECT 1
         FROM [#ModuleStatus]
-        WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED')
+        WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED', 'AVAILABLE_WITH_FINDING', 'NOT_APPLICABLE')
     )
        AND @OverallStatus = 'AVAILABLE'
     BEGIN
@@ -295,7 +440,7 @@ BEGIN
             , CONVERT(bit, CASE WHEN @OverallStatus = 'AVAILABLE' THEN 0 ELSE 1 END) AS [IsPartial]
             , (SELECT COUNT_BIG(*) FROM [#ModuleStatus]) AS [ModuleCount]
             , (SELECT COUNT_BIG(*) FROM [#ModuleStatus]
-               WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED')) AS [ProblemModuleCount];
+               WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED', 'AVAILABLE_WITH_FINDING', 'NOT_APPLICABLE')) AS [ProblemModuleCount];
 
         IF @OutputMode = 'RAW'
         BEGIN
@@ -334,7 +479,7 @@ BEGIN
         (
             SELECT *
             FROM [#ModuleStatus]
-            WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED')
+            WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED', 'AVAILABLE_WITH_FINDING', 'NOT_APPLICABLE')
             ORDER BY [Ordinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -351,6 +496,13 @@ BEGIN
             , N',"startupParameters":', COALESCE(JSON_QUERY(@StartupJson), N'null')
             , N',"operatingSystem":', COALESCE(JSON_QUERY(@OsJson), N'null')
             , N',"security":', COALESCE(JSON_QUERY(@SecurityJson), N'null')
+            , N',"databaseIntegrity":', COALESCE(JSON_QUERY(@IntegrityJson), N'null')
+            , N',"databaseCapacity":', COALESCE(JSON_QUERY(@CapacityJson), N'null')
+            , N',"performanceCounters":', COALESCE(JSON_QUERY(@CountersJson), N'null')
+            , N',"criticalEngineEvents":', COALESCE(JSON_QUERY(@CriticalEventsJson), N'null')
+            , N',"internalContention":', COALESCE(JSON_QUERY(@ContentionJson), N'null')
+            , N',"bufferPool":', COALESCE(JSON_QUERY(@BufferPoolJson), N'null')
+            , N',"diagnosticFindings":', COALESCE(JSON_QUERY(@FindingsJson), N'null')
             , N',"warnings":', COALESCE(@Warnings, N'[]')
             , N'}'
         );

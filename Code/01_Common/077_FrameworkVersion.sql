@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.0.0-api.5
-Stand        : 2026-07-16
+Version      : 1.1.0-special.1
+Stand        : 2026-07-17
 Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
                Analysepaket. Keine Installationshistorie und kein Deployment-
                Framework.
@@ -28,12 +28,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.0.0-api.5',
-    [ReleaseDate]='20260716',
+SET [FrameworkVersion]='1.1.0-special.1',
+    [ReleaseDate]='20260717',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.5',
+    [ContractVersion]='1.6',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.5: CONSOLE ist Standardausgabe; Statement-Offsets, Modulkontext, vollständiger Batch-/Modultext und Input Buffer für laufende Requests ergänzt.'
+    [ReleaseNotes]=N'API 1.6: dokumentierbare Testmatrix sowie read-only Spezialfallmodule für Integrität, Kapazität, IQP, Contention, Speicher, Backupketten, Schema, Availability, Agent-Monitoring und normalisierte Befunde.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -45,9 +45,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.0.0-api.5','20260716',15,
-        '1.5',SYSUTCDATETIME(),
-        N'API 1.5: CONSOLE ist Standardausgabe; Statement-Offsets, Modulkontext, vollständiger Batch-/Modultext und Input Buffer für laufende Requests ergänzt.'
+        N'SQLServerMonitoringFramework','1.1.0-special.1','20260717',15,
+        '1.6',SYSUTCDATETIME(),
+        N'API 1.6: dokumentierbare Testmatrix sowie read-only Spezialfallmodule für Integrität, Kapazität, IQP, Contention, Speicher, Backupketten, Schema, Availability, Agent-Monitoring und normalisierte Befunde.'
     );
 END;
 GO
