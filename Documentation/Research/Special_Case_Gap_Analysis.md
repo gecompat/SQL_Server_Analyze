@@ -434,7 +434,7 @@ Beispiel: Hohe PAGEIOLATCH-Waits allein beweisen keinen langsamen Storage. Erst 
 
 ### SC-015: In-Memory OLTP
 
-Nur aktivieren, wenn memory-optimized Objekte oder ein XTP-Dateigroup vorhanden sind.
+Implementiert als `monitor.USP_InMemoryOltpAnalysis`; Quellen werden nur aktiviert, wenn sichtbare memory-optimized Objekte, Tabellentypen oder eine XTP-Dateigruppe vorhanden sind.
 
 Auswertungen:
 
@@ -444,6 +444,8 @@ Auswertungen:
 - Checkpoint File Pairs und Merge-/Storagezustand,
 - aktive XTP-Transaktionen und Garbage Collection,
 - Resource-Governor-Bindung und Out-of-Memory-Risiken.
+
+Umsetzungsgrenzen: Hashketten sind wegen möglicher vollständiger Tabellenscans opt-in und zusätzlich durch `CATALOG_DEEP` geschützt. Checkpointzustand, aktive Transaktionsmenge und Poolwerte sind Momentaufnahmen. Der Defaultpool erlaubt keine datenbankgenaue Attribution. Das Modul liest weder Nutzdaten noch Pfade, GUIDs, SQL-Texte oder Identitätskennungen und leitet keine automatische DDL ab.
 
 ### SC-016: Temporal Tables
 

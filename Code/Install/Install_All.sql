@@ -107,3 +107,4 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
 :r ../09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql
 :r ../09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql
+:r ../09_VersionAdaptive/030_USP_InMemoryOltpAnalysis.sql

@@ -8,7 +8,7 @@ Dieses Dokument beschreibt, welche SQL-Server-Systemquellen das Framework nutzt 
 
 Der Katalog wurde aus den kanonischen Dateien unter `Code/00_Setup` bis `Code/09_VersionAdaptive` erzeugt und mit abstrahierten Ergebnissen der früheren Quellenanalyse ergänzt. Historische Dateipfade, umgebungsspezifische Objektnamen und externe Hilfsobjekte wurden nicht übernommen.
 
-Aktuell inventarisiert: **175 Systemquellen**.
+Aktuell inventarisiert: **siehe `Metadata/Inventory/SystemSources.csv`; der Wert wird im statischen Release-Audit geführt**.
 
 ## Quellklassen
 
@@ -39,6 +39,10 @@ SQL Agent, Backup-/Restore-Historie, Log Shipping und Teile der Replikation lieg
 ### Spezialfeature-Nutzungsinventur
 
 `monitor.USP_SpecialFeatureInventory` aggregiert ausschließlich sichtbare Systemkatalogmetadaten für 18 Featureklassen. Es liest keine Nutzdaten, externen Speicherorte oder Verbindungsoptionen, Credentials, Service-Broker-Nachrichten, CLR-Binärinhalte, Moduldefinitionen oder Objektnamen. Eine Nullzählung ist bei eingeschränkter Metadatensichtbarkeit kein Abwesenheitsbeweis; die Inventur ist kein Gesundheitsurteil.
+
+### In-Memory OLTP
+
+`monitor.USP_InMemoryOltpAnalysis` trennt Feature-Gate, Tabellen-/Indexspeicher, Memory-Consumer, Hashkatalog, opt-in Hashketten, Checkpointzustände, aktive Transaktionsaggregate und Resource-Governor-Poolkontext. Jede DMV besitzt einen eigenen Quellenstatus. Die Hashindex-Laufzeitstatistik kann vollständige Tabellen scannen und ist deshalb `HIGH_OPT_IN`. Checkpoint-Pfade und GUIDs sowie Session-, Benutzer- und Transaktionskennungen werden nicht gelesen. Defaultpoolwerte werden nur als gemeinsamer Kontext, nicht als Datenbankattribution gewertet.
 
 ## Berechtigungsgrundsatz
 

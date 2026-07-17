@@ -292,6 +292,14 @@ Quelle: `Code/07_Infrastructure/090_USP_InfrastructureAnalysis.sql`
 @MitAgent bit = 1, @MitAgentJobs bit = 1, @MitResourceGovernor bit = 1, @MitAvailabilityGroups bit = 1, @MitBackupRecovery bit = 1, @MitLogShipping bit = 1, @MitReplication bit = 1, @MitDataCapture bit = 1, @MitReplicationDetails bit = 0, @MitBackupChain bit = 0, @MitAvailabilityDeep bit = 0, @MitAgentMonitoring bit = 0, @DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
 
+## `[monitor].[USP_InMemoryOltpAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/030_USP_InMemoryOltpAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @MitHashIndexStats bit = 0, @NurProblematisch bit = 0, @MinTableMemoryMb decimal(19,2) = 1024, @HashAvgChainWarn decimal(19,4) = 10, @HashMaxChainWarn bigint = 100, @HashMinEmptyBucketPercent decimal(9,4) = 10, @WaitingCheckpointWarnMb decimal(19,2) = 1024, @ActiveTransactionWarnCount int = 100, @PoolUsedWarnPercent decimal(9,4) = 80, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_IntelligentQueryProcessingAnalysis]`
 
 Quelle: `Code/05_QueryStore/090_USP_IntelligentQueryProcessingAnalysis.sql`

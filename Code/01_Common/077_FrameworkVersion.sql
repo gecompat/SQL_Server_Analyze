@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.3
+Version      : 1.1.0-special.4
 Stand        : 2026-07-17
 Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
                Analysepaket. Keine Installationshistorie und kein Deployment-
@@ -28,12 +28,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.3',
+SET [FrameworkVersion]='1.1.0-special.4',
     [ReleaseDate]='20260717',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.8',
+    [ContractVersion]='1.9',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.8: leichtgewichtige read-only Spezialfeature-Nutzungsinventur ohne Gesundheitsurteil oder sensible Quellinhalte; Spezialfallwellen bleiben laufzeitzutesten.'
+    [ReleaseNotes]=N'API 1.9: isolierte read-only In-Memory-OLTP-Tiefenanalyse mit opt-in Hashketten, Evidenzgrenzen und ohne automatische DDL; Spezialfallwellen bleiben laufzeitzutesten.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -45,9 +45,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.3','20260717',15,
-        '1.8',SYSUTCDATETIME(),
-        N'API 1.8: leichtgewichtige read-only Spezialfeature-Nutzungsinventur ohne Gesundheitsurteil oder sensible Quellinhalte; Spezialfallwellen bleiben laufzeitzutesten.'
+        N'SQLServerMonitoringFramework','1.1.0-special.4','20260717',15,
+        '1.9',SYSUTCDATETIME(),
+        N'API 1.9: isolierte read-only In-Memory-OLTP-Tiefenanalyse mit opt-in Hashketten, Evidenzgrenzen und ohne automatische DDL; Spezialfallwellen bleiben laufzeitzutesten.'
     );
 END;
 GO

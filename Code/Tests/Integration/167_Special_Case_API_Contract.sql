@@ -38,7 +38,10 @@ VALUES
 (N'USP_DiagnosticFindings',N'@MitStatistikverteilung'),
 (N'USP_DiagnosticFindings',N'@Json'),
 (N'USP_SpecialFeatureInventory',N'@NurErkannteFeatures'),
-(N'USP_SpecialFeatureInventory',N'@StatusCodeOut');
+(N'USP_SpecialFeatureInventory',N'@StatusCodeOut'),
+(N'USP_InMemoryOltpAnalysis',N'@MitHashIndexStats'),
+(N'USP_InMemoryOltpAnalysis',N'@HashAvgChainWarn'),
+(N'USP_InMemoryOltpAnalysis',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 
@@ -87,6 +90,18 @@ IF NOT EXISTS
       AND [d].[referenced_entity_name]=N'USP_StatisticsDistributionAnalysis'
 )
     THROW 54103,N'USP_DiagnosticFindings besitzt keine erkennbare Abhängigkeit zur Statistikverteilung.',1;
+
+DECLARE @InMemoryDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_InMemoryOltpAnalysis'));
+IF @InMemoryDefinition IS NULL
+    THROW 54104,N'Die Definition der In-Memory-OLTP-Analyse ist nicht sichtbar.',1;
+
+IF @InMemoryDefinition LIKE N'%[[]relative_file_path[]]%'
+ OR @InMemoryDefinition LIKE N'%[[]container_id[]]%'
+ OR @InMemoryDefinition LIKE N'%[[]xtp_transaction_id[]]%'
+ OR @InMemoryDefinition LIKE N'%[[]transaction_id[]]%'
+ OR @InMemoryDefinition LIKE N'%[[]session_id[]]%'
+ OR @InMemoryDefinition LIKE N'%[[]memory_address[]]%'
+    THROW 54105,N'Die In-Memory-OLTP-Analyse referenziert einen ausgeschlossenen Detailidentifikator.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

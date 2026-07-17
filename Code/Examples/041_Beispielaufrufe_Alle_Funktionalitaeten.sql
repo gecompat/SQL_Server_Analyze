@@ -159,6 +159,8 @@ GO
 
 -- EXEC [monitor].[USP_SpecialFeatureInventory] @Hilfe = 1;
 
+-- EXEC [monitor].[USP_InMemoryOltpAnalysis] @Hilfe = 1;
+
 
 -- BEGIN CURRENTREQUESTS-STATEMENT-KONTEXT
 -- EXEC [monitor].[USP_CurrentRequests];

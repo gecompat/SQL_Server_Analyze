@@ -32,6 +32,12 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
     , @NurErkannteFeatures=1
     , @MaxZeilen=100;
 
+-- In-Memory OLTP: Basisevidenz; teure Hashketten bleiben standardmäßig aus
+EXEC [monitor].[USP_InMemoryOltpAnalysis]
+      @DatabaseNames=N''
+    , @MitHashIndexStats=0
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]

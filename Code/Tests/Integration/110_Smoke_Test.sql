@@ -48,7 +48,8 @@ VALUES
 (N'monitor.USP_AgentMonitoringAnalysis','P'),
 (N'monitor.USP_DiagnosticFindings','P'),
 (N'monitor.USP_ServerFeatureCapabilities','P'),
-(N'monitor.USP_SpecialFeatureInventory','P');
+(N'monitor.USP_SpecialFeatureInventory','P'),
+(N'monitor.USP_InMemoryOltpAnalysis','P');
 
 SELECT @Missing = STRING_AGG([ObjectName],N', ')
 FROM @Expected
@@ -65,7 +66,7 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (READUNCOMMITTED)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.3'
+      AND [FrameworkVersion]='1.1.0-special.4'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
@@ -139,6 +140,7 @@ EXEC [monitor].[USP_AvailabilityDeepAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_DiagnosticFindings] @Hilfe=1;
 EXEC [monitor].[USP_SpecialFeatureInventory] @Hilfe=1;
+EXEC [monitor].[USP_InMemoryOltpAnalysis] @Hilfe=1;
 
 SELECT
     CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
