@@ -1,0 +1,47 @@
+name: Temporary scan RAISERROR expressions
+
+on:
+  push:
+    branches:
+      - agent/validate-sqlserver-2022-linux-gate
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+
+      - name: Find direct expression arguments
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          output = Path('/tmp/raiserror-expression-scan.txt')
+          findings = []
+          expression = re.compile(
+              r'RAISERROR\s*\([^;\n]*(?:COALESCE|ISNULL|CONCAT|CONVERT|CAST|UPPER|LOWER|LTRIM|RTRIM|ERROR_MESSAGE|ERROR_NUMBER)\s*\(',
+              re.IGNORECASE,
+          )
+
+          for path in sorted(Path('Code').rglob('*.sql')):
+              for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+                  if expression.search(line):
+                      findings.append(f'{path.as_posix()}:{number}:{line.strip()}')
+
+          output.write_text('\n'.join(findings) + ('\n' if findings else ''), encoding='utf-8')
+          print(f'Findings: {len(findings)}')
+
+      - name: Upload scan
+        uses: actions/upload-artifact@v7
+        with:
+          name: raiserror-expression-scan
+          path: /tmp/raiserror-expression-scan.txt
+          if-no-files-found: error
+          retention-days: 1
