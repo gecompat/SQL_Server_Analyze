@@ -65,14 +65,15 @@ jobs:
         run: |
           set -euo pipefail
           sqlcmd_path=''
-          for attempt in $(seq 1 90); do
+          readiness_query="SET NOCOUNT ON; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50000,N'COLLATION_NOT_READY',1; SELECT 1;"
+          for attempt in $(seq 1 120); do
             sqlcmd_path=$(docker exec sqlserver-analyze-test bash -lc \
               "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
               || true)
             if [ -n "$sqlcmd_path" ] && docker exec \
               --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
               sqlserver-analyze-test \
-              "$sqlcmd_path" -S localhost -U sa -C -Q 'SELECT 1' >/dev/null 2>&1; then
+              "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
               echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
               exit 0
             fi
@@ -127,7 +128,7 @@ jobs:
             echo 'Release gate failed.'
             {
               echo 'Final release-gate output:'
-              tail -n 180 "$release_log"
+              tail -n 220 "$release_log"
             } >"$error_summary"
             cat "$error_summary"
             exit 1
