@@ -1,0 +1,45 @@
+name: Temporary fix dynamic permission revert
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out permission matrix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2022-permission-matrix
+
+      - name: Simplify dynamic catch revert
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
+          text = path.read_text(encoding='utf-8')
+          start = text.index("    SET @Sql=N'")
+          end = text.index("END CATCH;';", start) + len("END CATCH;';")
+          dynamic = text[start:end]
+          old = "    IF SUSER_SNAME()<>ORIGINAL_LOGIN() REVERT;"
+          if dynamic.count(old) != 1:
+              raise RuntimeError(f'Expected one conditional REVERT in dynamic batch, found {dynamic.count(old)}.')
+          dynamic = dynamic.replace(old, "    REVERT;", 1)
+          path.write_text(text[:start] + dynamic + text[end:], encoding='utf-8', newline='\n')
+
+      - name: Commit dynamic revert fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: simplify dynamic permission revert'
+          git push origin HEAD:agent/sqlserver-2022-permission-matrix
