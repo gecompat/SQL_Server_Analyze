@@ -6,48 +6,44 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 
 - `Code/`: installierbarer T-SQL-Code, Installer, Tests und Beispielaufrufe
 - `Documentation/`: Anforderungen, Architektur, Betrieb, Referenz, Analysehandbuch und Recherche
-- `Metadata/`: maschinenlesbare Objekt-, Parameter-, Systemquellen-, Abhängigkeits- und Capability-Inventare sowie Qualitätsergebnisse
-- `AI_Metadata/`: kompakter Kontext zur Fortsetzung der KI-gestützten Entwicklung
+- `Metadata/`: maschinenlesbare Inventare und Qualitätsergebnisse
+- `AI_Metadata/`: kompakter Kontext zur Fortsetzung der Entwicklung
 
 ## Analysehandbuch
 
-Die umfassenden Beschreibungen aller 79 öffentlichen Procedures befinden sich nicht im Forschungs- und Strukturkonzept, sondern im eigentlichen Analysehandbuch:
+Für praktische Analysen nicht im Forschungsdokument beginnen:
 
-- [`Analysis_Guides/Beginner_Reading_Guide.md`](Analysis_Guides/Beginner_Reading_Guide.md): erklärt für jedes Objekt, wie die Daten gelesen werden, welche Werte kombiniert werden müssen und warum eine Konstellation problematisch oder unkritisch sein kann
-- [`Analysis_Guides/Object_Index.md`](Analysis_Guides/Object_Index.md): objektweiser Einstieg mit Direktlinks zu jeder Procedure
-- [`Analysis_Guides/README.md`](Analysis_Guides/README.md): Symptomnavigation, Evidenzarten, Kostenklassen und Familienguides
-- [`Analysis_Guides/Common_Contracts.md`](Analysis_Guides/Common_Contracts.md): gemeinsame Resultset-, Status-, Filter- und Evidenzverträge
+1. [`Analysis_Guides/Runbooks/README.md`](Analysis_Guides/Runbooks/README.md) – Einstieg nach Symptom
+2. [`Analysis_Guides/Procedures/README.md`](Analysis_Guides/Procedures/README.md) – eigenständige Seiten für alle 79 Procedures
+3. [`Analysis_Guides/Glossary.md`](Analysis_Guides/Glossary.md) – technische Begriffe
+4. [`Analysis_Guides/Parameter_Reading_Guide.md`](Analysis_Guides/Parameter_Reading_Guide.md) – Parameter und sichere Aufrufe
+5. [`Analysis_Guides/README.md`](Analysis_Guides/README.md) – Gesamtübersicht und Familienguides
 
-Jede Objektbeschreibung behandelt Zweck, Einsatzgrenzen, Aufrufe, Resultsets, Spalten, Interpretation, normale und problematische Beispiele, Folgeanalysen, Eigenlast und Aussagegrenzen.
-
-Der Einsteigerleitfaden ergänzt die technischen Tabellen um eine feste Leserichtung:
-
-1. Status und Vollständigkeit,
-2. Zeitbezug und Beobachtungsfenster,
-3. Nenner und Datenmenge,
-4. Kombination zusammengehöriger Werte,
-5. technische Problembegründung,
-6. Gegenbeispiel beziehungsweise mögliche Entwarnung,
-7. bestätigende Folgeanalyse.
+Jede Procedure-Seite erklärt Zeilengranularität, Leserichtung, Problembegründung, Gegenbeispiel, Folgeanalyse und Grenzen leerer/partieller Resultsets.
 
 ## Installation
 
-1. In allen SQL-Skripten den Platzhalter `[DeineDatenbank]` durch die gewünschte Installationsdatenbank ersetzen.
+1. In allen SQL-Skripten den Platzhalter `[DeineDatenbank]` durch die vorgesehene Installationsdatenbank ersetzen.
 2. Sicherstellen, dass Server, `tempdb` und Installationsdatenbank die Collation `SQL_Latin1_General_CP1_CS_AS` verwenden.
-3. `Code/Install/Install_All.sql` im SQLCMD-Modus ausführen oder zuvor mit `Code/Install/Build-StandaloneInstaller.ps1` einen eigenständigen Installer erzeugen.
-4. Nach `Documentation/Quality/Release_Gate_Runbook.md` aus `Code/Tests` den SQLCMD-Runner `Run_Release_Gate.sql` ausführen; er prüft vier Integrationsverträge und acht Bereichs-Smoke-Tests.
+3. `Code/Install/Install_All.sql` im SQLCMD-Modus ausführen oder mit `Code/Install/Build-StandaloneInstaller.ps1` einen eigenständigen Installer erzeugen.
+4. Danach das Release-Gate gemäß `Documentation/Quality/Release_Gate_Runbook.md` ausführen.
 
 Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.5` einschließlich Spezialfeature-Nutzungsinventur sowie In-Memory-OLTP- und Temporal-Tables-Tiefenanalyse besitzt statische Verträge; reale Zielmatrixläufe sind noch zu dokumentieren.
+## Dokumentationsprüfung
+
+```powershell
+pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+```
+
+Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
 ## Forschungs- und Inventareinstieg
 
 - `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`
 - `Documentation/Architecture/Special_Case_Modules.md`
 - `Documentation/Research/Special_Case_Gap_Analysis.md`
-- `Metadata/Quality/Special_Case_Gap_Backlog.csv`
-- `Metadata/Quality/Special_Case_Release_Audit.json`
+- `Documentation/Analysis_Guides/Authoring/Deep_Research_Analysis_Guides_Concept.md`
 - `Documentation/Research/System_Source_Catalog.md`
 - `Documentation/Quality/Performance_and_Risk_Assessment.md`
 - `Metadata/Inventory/SystemSources.csv`

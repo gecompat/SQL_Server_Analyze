@@ -1,169 +1,137 @@
-# Objektindex der umfassenden Analysebeschreibungen
+# Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 17. Juli 2026  
-**Abdeckung:** alle 79 öffentlichen Procedures des Frameworks  
-**Ziel:** direkter Einstieg pro Objekt statt Navigation über ein reines Konzeptdokument
+**Abdeckung:** alle 79 Procedures des Frameworks
 
-## Für Analyseanfänger: zuerst die Leserichtung verstehen
+Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
-Der [Einsteigerleitfaden zum Lesen der Resultsets](Beginner_Reading_Guide.md) erklärt für **jedes der 79 Objekte** zusätzlich:
-
-- welche Spalten zuerst gelesen werden,
-- welche Werte nur gemeinsam sinnvoll sind,
-- warum eine Kombination technisch problematisch sein kann,
-- warum dieselben Einzelwerte in einem anderen Kontext normal sein können,
-- wie aus dem Resultset eine überprüfbare Ursachehypothese entsteht,
-- welche Folgeanalyse die Vermutung bestätigt oder widerlegt.
-
-Die nachstehenden Links führen zur technischen Detailbeschreibung. Für Anfänger empfiehlt sich diese Reihenfolge:
-
-1. Procedure im [Einsteigerleitfaden](Beginner_Reading_Guide.md) lesen.
-2. Danach über diesen Index in die Resultset- und Spaltendetails wechseln.
-3. Status, Zeitbezug, Nenner und Aussagegrenze vor einer Bewertung prüfen.
-
-## Was hinter jedem Link beschrieben wird
-
-Jeder verlinkte Objektabschnitt ist die eigentliche fachliche Dokumentation und behandelt – soweit für das jeweilige Objekt anwendbar – mindestens:
-
-- Zweck und konkrete Einsatzfragen,
-- geeignete und ungeeignete Einsatzsituationen,
-- praxisnahe Aufrufvarianten,
-- Anzahl, Reihenfolge und Bedeutung der Resultsets,
-- Spalten beziehungsweise zusammengehörige Spaltengruppen,
-- Interpretation normaler, auffälliger, kritischer und irreführender Werte,
-- plakative sowie grenzwertige synthetische Beispiele,
-- sinnvolle Folgeanalysen innerhalb des Frameworks,
-- Eigenlast, Locking-, Blocking-, I/O- und CPU-Auswirkungen der Analyse,
-- Aussagegrenzen durch Momentaufnahme, Reset, Retention, Berechtigungen, Featurestatus oder Sampling,
-- weiterführende Microsoft- und Fachquellen.
-
-> `Deep_Research_Analysis_Guides_Concept.md` ist nur das Forschungs- und Strukturkonzept. Für die praktische Nutzung beginnen Sie im [Einsteigerleitfaden](Beginner_Reading_Guide.md), in diesem Objektindex oder im [Analysehandbuch](README.md).
+Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientierten Runbooks](Runbooks/README.md). Unbekannte Begriffe erklärt das [Glossar](Glossary.md).
 
 ## Common
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_CheckAnalyseAccess]` | [Zugriffspolicy, Resultsets, Grenzfälle und Folgeprüfung](01_Common.md#1-monitorusp_checkanalyseaccess) |
-| `[monitor].[USP_CheckFrameworkCapabilities]` | [Version, Berechtigungen, Featurestatus und technische Nutzbarkeit](01_Common.md#2-monitorusp_checkframeworkcapabilities) |
-| `[monitor].[USP_PrepareDatabaseCandidates]` | [Interner Datenbank-Auswahlvertrag, Temp-Tabellen und Fehlersemantik](01_Common.md#3-monitorusp_preparedatabasecandidates) |
-| `[monitor].[USP_PrepareNameFilters]` | [Interner Namensfiltervertrag, Case-Sensitivity und Grenzfälle](01_Common.md#4-monitorusp_preparenamefilters) |
+| `[monitor].[USP_CheckAnalyseAccess]` | [Policy, Gruppenmatch und technische Abgrenzung](Procedures/USP_CheckAnalyseAccess.md) |
+| `[monitor].[USP_CheckFrameworkCapabilities]` | [Version, Rechte, Abfragbarkeit und Featurestatus](Procedures/USP_CheckFrameworkCapabilities.md) |
+| `[monitor].[USP_PrepareDatabaseCandidates]` | [Interner Datenbank-Auswahlvertrag](Procedures/USP_PrepareDatabaseCandidates.md) |
+| `[monitor].[USP_PrepareNameFilters]` | [Interner Namensfiltervertrag](Procedures/USP_PrepareNameFilters.md) |
 
 ## Current State
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_CurrentSessions]` | [Sessions, Identität, Verbindung, Transaktionen und kumulative Last](02_Current_State.md#1-monitorusp_currentsessions) |
-| `[monitor].[USP_CurrentRequests]` | [Aktive Requests, CPU, I/O, Blocking, Waits, Grants und SQL-Kontext](02_Current_State.md#2-monitorusp_currentrequests) |
-| `[monitor].[USP_CurrentBlocking]` | [Blockingketten, Root Blocker, Lockdetails und Eingriffsgrenzen](02_Current_State.md#3-monitorusp_currentblocking) |
-| `[monitor].[USP_CurrentWaits]` | [Live-Waits, Stichproben, Waitgruppen und Fehlinterpretationen](02_Current_State.md#4-monitorusp_currentwaits) |
-| `[monitor].[USP_CurrentTransactions]` | [Offene Transaktionen, Alter, Sleeping Sessions und Logfolgen](02_Current_State.md#5-monitorusp_currenttransactions) |
-| `[monitor].[USP_CurrentMemoryGrants]` | [Grant-Anforderung, Gewährung, Nutzung, Warteschlangen und Semaphoren](02_Current_State.md#6-monitorusp_currentmemorygrants) |
-| `[monitor].[USP_CurrentTempDB]` | [Sessionverbrauch, Dateien, Version Store und TempDB-Kontext](02_Current_State.md#7-monitorusp_currenttempdb) |
-| `[monitor].[USP_CurrentIO]` | [Kumulative und gesampelte Datei-I/O-Latenz sowie Aussagegrenzen](02_Current_State.md#8-monitorusp_currentio) |
-| `[monitor].[USP_CurrentLog]` | [Logauslastung, Wiederverwendungswartegrund, VLF und PVS](02_Current_State.md#9-monitorusp_currentlog) |
-| `[monitor].[USP_CurrentOverview]` | [Orchestrierter Live-Überblick, Childresultsets und Anfängerworkflow](02_Current_State.md#10-monitorusp_currentoverview) |
+| `[monitor].[USP_CurrentSessions]` | [Sessions, Verbindung und offene Transaktionen](Procedures/USP_CurrentSessions.md) |
+| `[monitor].[USP_CurrentRequests]` | [Aktive Requests, CPU, I/O, Waits, Blocking und Grants](Procedures/USP_CurrentRequests.md) |
+| `[monitor].[USP_CurrentBlocking]` | [Blockingketten und Root Blocker](Procedures/USP_CurrentBlocking.md) |
+| `[monitor].[USP_CurrentWaits]` | [Live- und Sample-Waits](Procedures/USP_CurrentWaits.md) |
+| `[monitor].[USP_CurrentTransactions]` | [Offene und alte Transaktionen](Procedures/USP_CurrentTransactions.md) |
+| `[monitor].[USP_CurrentMemoryGrants]` | [Angeforderte, gewährte und genutzte Grants](Procedures/USP_CurrentMemoryGrants.md) |
+| `[monitor].[USP_CurrentTempDB]` | [TempDB-Verbrauch nach Ursache und Session](Procedures/USP_CurrentTempDB.md) |
+| `[monitor].[USP_CurrentIO]` | [Datei-I/O und Sample-Latenz](Procedures/USP_CurrentIO.md) |
+| `[monitor].[USP_CurrentLog]` | [Logauslastung und Wiederverwendungsgrund](Procedures/USP_CurrentLog.md) |
+| `[monitor].[USP_CurrentOverview]` | [Orchestrierter Live-Überblick](Procedures/USP_CurrentOverview.md) |
 
 ## Object und Index
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_ObjectInventory]` | [Objekt-, Index-, Größen-, Kompressions- und Definitionsinventar](03_Object_Index.md#1-monitorusp_objectinventory) |
-| `[monitor].[USP_IndexUsage]` | [Nutzungszähler, Resetgrenzen, XTP und Löschungsfehlschlüsse](03_Object_Index.md#2-monitorusp_indexusage) |
-| `[monitor].[USP_IndexOperationalStats]` | [DML, Page Allocations, Locks, Latches, Forwarded Fetches und Splits](03_Object_Index.md#3-monitorusp_indexoperationalstats) |
-| `[monitor].[USP_MissingIndexes]` | [Optimizer-Evidenz, Improvement Measure, Entwurfs-DDL und Grenzen](03_Object_Index.md#4-monitorusp_missingindexes) |
-| `[monitor].[USP_Statistics]` | [Statistikzustand, Sample, Modification Counter und inkrementelle Details](03_Object_Index.md#5-monitorusp_statistics) |
-| `[monitor].[USP_StatisticsDistributionAnalysis]` | [Histogramm, Skew, Tail, Partitionvariation und Findings](03_Object_Index.md#6-monitorusp_statisticsdistributionanalysis) |
-| `[monitor].[USP_Partitions]` | [Partitionsgrenzen, RowCounts, Filegroups und Kompressionsstrategie](03_Object_Index.md#7-monitorusp_partitions) |
-| `[monitor].[USP_Columnstore]` | [Rowgroups, Deleted Rows, Segmente, Dictionaries und Tuple-Mover-Kontext](03_Object_Index.md#8-monitorusp_columnstore) |
-| `[monitor].[USP_IndexPhysicalStats]` | [Fragmentierung, Seitendichte, Page Count, Ghosts und Scanmodi](03_Object_Index.md#9-monitorusp_indexphysicalstats) |
-| `[monitor].[USP_SchemaDesignAnalysis]` | [Constraints, Foreign Keys, Duplikatindizes, Identity und Designfindings](03_Object_Index.md#10-monitorusp_schemadesignanalysis) |
-| `[monitor].[USP_ObjectAnalysis]` | [Orchestrierung sämtlicher Objekt- und Indextiefenanalysen](03_Object_Index.md#11-monitorusp_objectanalysis) |
+| `[monitor].[USP_ObjectInventory]` | [Objekt-, Index- und Größeninventar](Procedures/USP_ObjectInventory.md) |
+| `[monitor].[USP_IndexUsage]` | [Nutzung, Resetgrenzen und Löschungsfehlschlüsse](Procedures/USP_IndexUsage.md) |
+| `[monitor].[USP_IndexOperationalStats]` | [DML, Allocations, Locks und Latches je Partition](Procedures/USP_IndexOperationalStats.md) |
+| `[monitor].[USP_MissingIndexes]` | [Optimizer-Evidenz und unverbindlicher Indexentwurf](Procedures/USP_MissingIndexes.md) |
+| `[monitor].[USP_Statistics]` | [Sample, Änderungen und Statistikzustand](Procedures/USP_Statistics.md) |
+| `[monitor].[USP_StatisticsDistributionAnalysis]` | [Histogramm, Skew, Tail und Partitionsvariation](Procedures/USP_StatisticsDistributionAnalysis.md) |
+| `[monitor].[USP_Partitions]` | [Partitionsgrenzen, Größe und Ablage](Procedures/USP_Partitions.md) |
+| `[monitor].[USP_Columnstore]` | [Rowgroups, Deleted Rows, Segmente und Dictionaries](Procedures/USP_Columnstore.md) |
+| `[monitor].[USP_IndexPhysicalStats]` | [Fragmentierung, Seitendichte und Page Count](Procedures/USP_IndexPhysicalStats.md) |
+| `[monitor].[USP_SchemaDesignAnalysis]` | [Constraints, FKs, Indizes und Identity-Risiken](Procedures/USP_SchemaDesignAnalysis.md) |
+| `[monitor].[USP_ObjectAnalysis]` | [Orchestrierte Objekt- und Indextiefenanalyse](Procedures/USP_ObjectAnalysis.md) |
 
 ## Plan Cache und Showplan
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_QueryStats]` | [Cachebasierte CPU-, Laufzeit-, I/O-, Grant-, Spill- und Ausführungsanalyse](04_Plan_Cache.md#1-monitorusp_querystats) |
-| `[monitor].[USP_QueryHashAnalysis]` | [Query-Hash-Aggregation, Planvarianten, Handles und Cachefenster](04_Plan_Cache.md#2-monitorusp_queryhashanalysis) |
-| `[monitor].[USP_PlanCacheHealth]` | [Cachegröße, Single-Use-Anteil, Ad-hoc-Bloat und Memory-Kontext](04_Plan_Cache.md#3-monitorusp_plancachehealth) |
-| `[monitor].[USP_PlanDetails]` | [Planattribute, Compile-, Last-Actual- und Live-Planquellen](04_Plan_Cache.md#4-monitorusp_plandetails) |
-| `[monitor].[USP_ShowplanAnalysis]` | [Statements, Operatoren, Warnungen, Kardinalität, Memory und Parameter](04_Plan_Cache.md#5-monitorusp_showplananalysis) |
-| `[monitor].[USP_PlanCacheAnalysis]` | [Orchestrierung, Childreihenfolge, Tiefenbudgets und Grenzen](04_Plan_Cache.md#6-monitorusp_plancacheanalysis) |
+| `[monitor].[USP_QueryStats]` | [Cachebasierte Ressourcen- und Ausführungsanalyse](Procedures/USP_QueryStats.md) |
+| `[monitor].[USP_QueryHashAnalysis]` | [Query-Hash-Gruppen und Planvarianten](Procedures/USP_QueryHashAnalysis.md) |
+| `[monitor].[USP_PlanCacheHealth]` | [Cachegröße und Single-Use-Anteil](Procedures/USP_PlanCacheHealth.md) |
+| `[monitor].[USP_PlanDetails]` | [Planattribute und Planquellen](Procedures/USP_PlanDetails.md) |
+| `[monitor].[USP_ShowplanAnalysis]` | [Operatoren, Schätzfehler, Grants und Parameter](Procedures/USP_ShowplanAnalysis.md) |
+| `[monitor].[USP_PlanCacheAnalysis]` | [Orchestrierte Plan-Cache-Analyse](Procedures/USP_PlanCacheAnalysis.md) |
 
 ## Query Store
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_QueryStoreStatus]` | [Zustand, Read-only-Gründe, Capture, Retention und Speicher](05_Query_Store.md#1-monitorusp_querystorestatus) |
-| `[monitor].[USP_QueryStoreRuntimeStats]` | [Historische CPU-, Dauer-, I/O-, Memory-, TempDB- und Logmetriken](05_Query_Store.md#2-monitorusp_querystoreruntimestats) |
-| `[monitor].[USP_QueryStoreWaitStats]` | [Historische Waitkategorien, Intervalle und Aggregationsgrenzen](05_Query_Store.md#3-monitorusp_querystorewaitstats) |
-| `[monitor].[USP_QueryStorePlanChanges]` | [Planwechsel, Compileumgebung, Planvielfalt und Relevanzprüfung](05_Query_Store.md#4-monitorusp_querystoreplanchanges) |
-| `[monitor].[USP_QueryStoreRegressions]` | [Baseline-/Vergleichsfenster, Metriken, Stichprobe und Regression](05_Query_Store.md#5-monitorusp_querystoreregressions) |
-| `[monitor].[USP_QueryStoreForcedPlans]` | [Forced Plans, Fehlergründe, Lebenszyklus und Änderungsrisiko](05_Query_Store.md#6-monitorusp_querystoreforcedplans) |
-| `[monitor].[USP_QueryStoreHints]` | [Query Store Hints, Fehler, Herkunft und betriebliche Governance](05_Query_Store.md#7-monitorusp_querystorehints) |
-| `[monitor].[USP_IntelligentQueryProcessingAnalysis]` | [IQP-Eignung, Konfiguration, Feedbacksignale und Aussagegrenzen](05_Query_Store.md#8-monitorusp_intelligentqueryprocessinganalysis) |
-| `[monitor].[USP_QueryStoreAnalysis]` | [Orchestrierung aller Query-Store-Module und Kosten](05_Query_Store.md#9-monitorusp_querystoreanalysis) |
+| `[monitor].[USP_QueryStoreStatus]` | [Zustand, Capture, Retention und Speicher](Procedures/USP_QueryStoreStatus.md) |
+| `[monitor].[USP_QueryStoreRuntimeStats]` | [Historische Query-/Plan-Aggregate](Procedures/USP_QueryStoreRuntimeStats.md) |
+| `[monitor].[USP_QueryStoreWaitStats]` | [Historische Waitkategorien](Procedures/USP_QueryStoreWaitStats.md) |
+| `[monitor].[USP_QueryStorePlanChanges]` | [Planwechsel und Compilekontext](Procedures/USP_QueryStorePlanChanges.md) |
+| `[monitor].[USP_QueryStoreRegressions]` | [Baseline-/Vergleichsfenster und Regression](Procedures/USP_QueryStoreRegressions.md) |
+| `[monitor].[USP_QueryStoreForcedPlans]` | [Forced Plans und Force-Fehler](Procedures/USP_QueryStoreForcedPlans.md) |
+| `[monitor].[USP_QueryStoreHints]` | [Hints, Fehler und Governance](Procedures/USP_QueryStoreHints.md) |
+| `[monitor].[USP_IntelligentQueryProcessingAnalysis]` | [IQP-Eignung, Konfiguration und Signale](Procedures/USP_IntelligentQueryProcessingAnalysis.md) |
+| `[monitor].[USP_QueryStoreAnalysis]` | [Orchestrierte Query-Store-Analyse](Procedures/USP_QueryStoreAnalysis.md) |
 
 ## Extended Events
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_ExtendedEventsSessions]` | [Sessioninventar, Events, Actions, Targets, Felder und Laufzeitstatus](06_Extended_Events.md#1-monitorusp_extendedeventssessions) |
-| `[monitor].[USP_ExtendedEventsReadEvents]` | [Eventdatei-/Ringbuffer-Lesen, Zeitfilter, XML und Retention](06_Extended_Events.md#2-monitorusp_extendedeventsreadevents) |
-| `[monitor].[USP_ExtendedEventsDeadlocks]` | [Deadlockgraph, Prozesse, Ressourcen, Opfer und Interpretationsgrenzen](06_Extended_Events.md#3-monitorusp_extendedeventsdeadlocks) |
-| `[monitor].[USP_ExtendedEventsBlockedProcesses]` | [Blocked-Process-Reports, Schwellen, XML und historische Blockinganalyse](06_Extended_Events.md#4-monitorusp_extendedeventsblockedprocesses) |
-| `[monitor].[USP_ExtendedEventsTargetRuntime]` | [Targetzustand, Dateipfade, Ringbuffer, Flush und Targetdaten](06_Extended_Events.md#5-monitorusp_extendedeventstargetruntime) |
-| `[monitor].[USP_ExtendedEventsAnalysis]` | [Orchestrierung von Inventar, Runtime, Events, Deadlocks und Blocking](06_Extended_Events.md#6-monitorusp_extendedeventsanalysis) |
+| `[monitor].[USP_ExtendedEventsSessions]` | [Sessions, Events, Actions und Targets](Procedures/USP_ExtendedEventsSessions.md) |
+| `[monitor].[USP_ExtendedEventsReadEvents]` | [Event Files, Ring Buffer und Retention](Procedures/USP_ExtendedEventsReadEvents.md) |
+| `[monitor].[USP_ExtendedEventsDeadlocks]` | [Deadlockgraph, Prozesse und Ressourcen](Procedures/USP_ExtendedEventsDeadlocks.md) |
+| `[monitor].[USP_ExtendedEventsBlockedProcesses]` | [Historische Blocked-Process-Reports](Procedures/USP_ExtendedEventsBlockedProcesses.md) |
+| `[monitor].[USP_ExtendedEventsTargetRuntime]` | [Targetzustand und Evidenzverlust](Procedures/USP_ExtendedEventsTargetRuntime.md) |
+| `[monitor].[USP_ExtendedEventsAnalysis]` | [Orchestrierte XE-Analyse](Procedures/USP_ExtendedEventsAnalysis.md) |
 
 ## Infrastruktur
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_AgentStatus]` | [SQL-Agent-Dienstzustand, Konfiguration und Plattformgrenzen](07_Infrastructure.md#1-monitorusp_agentstatus) |
-| `[monitor].[USP_AgentJobs]` | [Jobs, Schritte, Historie, Laufzeit, Fehler und Long-Running-Bewertung](07_Infrastructure.md#2-monitorusp_agentjobs) |
-| `[monitor].[USP_ResourceGovernorAnalysis]` | [Pools, Workload Groups, Sessions, Limits und Drosselung](07_Infrastructure.md#3-monitorusp_resourcegovernoranalysis) |
-| `[monitor].[USP_AvailabilityGroups]` | [AG-Konfiguration, Replica- und Datenbankstatus sowie Routing](07_Infrastructure.md#4-monitorusp_availabilitygroups) |
-| `[monitor].[USP_BackupRecovery]` | [Backupalter, Recovery Model, Logkette und Restorehistorie](07_Infrastructure.md#5-monitorusp_backuprecovery) |
-| `[monitor].[USP_LogShippingStatus]` | [Primär-/Sekundärstatus, Kopier-/Restoreverzug und Metadatenlücken](07_Infrastructure.md#6-monitorusp_logshippingstatus) |
-| `[monitor].[USP_ReplicationStatus]` | [Publikationen, Subscriptions, Agents, Latenz und Detailgrenzen](07_Infrastructure.md#7-monitorusp_replicationstatus) |
-| `[monitor].[USP_DataCaptureStatus]` | [CDC, Change Tracking und weitere Erfassungszustände](07_Infrastructure.md#8-monitorusp_datacapturestatus) |
-| `[monitor].[USP_InfrastructureAnalysis]` | [Orchestrierter Infrastrukturüberblick und Childmodule](07_Infrastructure.md#9-monitorusp_infrastructureanalysis) |
-| `[monitor].[USP_BackupChainAnalysis]` | [Backupketten, LSN-Zusammenhang, Restoreevidenz und Findings](07_Infrastructure.md#10-monitorusp_backupchainanalysis) |
-| `[monitor].[USP_AvailabilityDeepAnalysis]` | [Queues, Lag, Synchronisierung, Cluster und vertiefte AG-Evidenz](07_Infrastructure.md#11-monitorusp_availabilitydeepanalysis) |
-| `[monitor].[USP_AgentMonitoringAnalysis]` | [Agent-, Job-, Alert-, Operator- und Database-Mail-Evidenz](07_Infrastructure.md#12-monitorusp_agentmonitoringanalysis) |
+| `[monitor].[USP_AgentStatus]` | [Agentdienst und Plattformstatus](Procedures/USP_AgentStatus.md) |
+| `[monitor].[USP_AgentJobs]` | [Jobs, Schritte, Historie und Laufzeit](Procedures/USP_AgentJobs.md) |
+| `[monitor].[USP_ResourceGovernorAnalysis]` | [Pools, Gruppen, Limits und Sessions](Procedures/USP_ResourceGovernorAnalysis.md) |
+| `[monitor].[USP_AvailabilityGroups]` | [AG-, Replica-, Datenbank- und Routingstatus](Procedures/USP_AvailabilityGroups.md) |
+| `[monitor].[USP_BackupRecovery]` | [Backupalter, Recovery Model und Restoreevidenz](Procedures/USP_BackupRecovery.md) |
+| `[monitor].[USP_LogShippingStatus]` | [Backup-, Copy- und Restorepipeline](Procedures/USP_LogShippingStatus.md) |
+| `[monitor].[USP_ReplicationStatus]` | [Agents, Latenz und Backlog](Procedures/USP_ReplicationStatus.md) |
+| `[monitor].[USP_DataCaptureStatus]` | [CDC, Change Tracking und Jobs](Procedures/USP_DataCaptureStatus.md) |
+| `[monitor].[USP_InfrastructureAnalysis]` | [Orchestrierter Infrastrukturüberblick](Procedures/USP_InfrastructureAnalysis.md) |
+| `[monitor].[USP_BackupChainAnalysis]` | [LSN-Kette und Restorefähigkeit](Procedures/USP_BackupChainAnalysis.md) |
+| `[monitor].[USP_AvailabilityDeepAnalysis]` | [Send-/Redo-Queues und Lag](Procedures/USP_AvailabilityDeepAnalysis.md) |
+| `[monitor].[USP_AgentMonitoringAnalysis]` | [Jobs, Alerts, Operatoren und Mailpfad](Procedures/USP_AgentMonitoringAnalysis.md) |
 
 ## Server Health
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_ServerCpuTopology]` | [CPU-, Scheduler-, Socket-, Core- und Lizenzierungskontext](08_Server_Health.md#1-monitorusp_servercputopology) |
-| `[monitor].[USP_ServerNuma]` | [NUMA-Nodes, Schedulerverteilung, Memory Nodes und Soft-NUMA](08_Server_Health.md#2-monitorusp_servernuma) |
-| `[monitor].[USP_ServerMemory]` | [OS-/SQL-Memory, Clerks, Prozessdruck und Ziel-/Gesamtspeicher](08_Server_Health.md#3-monitorusp_servermemory) |
-| `[monitor].[USP_TempDBConfiguration]` | [Dateien, Größen, Wachstum, Gleichheit, Version Store und Konfiguration](08_Server_Health.md#4-monitorusp_tempdbconfiguration) |
-| `[monitor].[USP_ServerConfiguration]` | [Kernkonfiguration, konfigurierte/aktive Werte und Reviewregeln](08_Server_Health.md#5-monitorusp_serverconfiguration) |
-| `[monitor].[USP_TraceFlags]` | [Aktive Trace Flags, Scope und versionsabhängige Bewertung](08_Server_Health.md#6-monitorusp_traceflags) |
-| `[monitor].[USP_StartupParameters]` | [Startparameter, Pfade, Flags und Dienstkontext](08_Server_Health.md#7-monitorusp_startupparameters) |
-| `[monitor].[USP_OSInformation]` | [Betriebssystem, Virtualisierung, Speicher, Zeit und Plattform](08_Server_Health.md#8-monitorusp_osinformation) |
-| `[monitor].[USP_ServerSecurityConfiguration]` | [Sicherheitsrelevante Konfiguration und explizite Aussagegrenzen](08_Server_Health.md#9-monitorusp_serversecurityconfiguration) |
-| `[monitor].[USP_ServerHealthAnalysis]` | [Orchestrierung der Server-Health- und Spezialfallmodule](08_Server_Health.md#10-monitorusp_serverhealthanalysis) |
-| `[monitor].[USP_DatabaseIntegrityAnalysis]` | [CHECKDB-Evidenz, suspect pages, Backupchecksums und HADR-Reparatur](08_Server_Health.md#11-monitorusp_databaseintegrityanalysis) |
-| `[monitor].[USP_DatabaseCapacityAnalysis]` | [Dateien, Volumes, Wachstum, Autogrowth und Kapazitätsrisiko](08_Server_Health.md#12-monitorusp_databasecapacityanalysis) |
-| `[monitor].[USP_PerformanceCounters]` | [Typisierte Performance Counter, Samples, Delta und Normalisierung](08_Server_Health.md#13-monitorusp_performancecounters) |
-| `[monitor].[USP_CriticalEngineEvents]` | [Schwere Engine-Ereignisse aus system_health und Diagnostics](08_Server_Health.md#14-monitorusp_criticalengineevents) |
-| `[monitor].[USP_InternalContentionAnalysis]` | [Spinlocks, Hot Pages, Latches, Stichprobe und Page Details](08_Server_Health.md#15-monitorusp_internalcontentionanalysis) |
-| `[monitor].[USP_BufferPoolAnalysis]` | [Buffer Pool, Memory Clerks, Datenbankverteilung und Pressure](08_Server_Health.md#16-monitorusp_bufferpoolanalysis) |
-| `[monitor].[USP_DiagnosticFindings]` | [Normalisierte Findings, Severity, Confidence und Modulstatus](08_Server_Health.md#17-monitorusp_diagnosticfindings) |
+| `[monitor].[USP_ServerCpuTopology]` | [CPU-, Scheduler- und Topologiekontext](Procedures/USP_ServerCpuTopology.md) |
+| `[monitor].[USP_ServerNuma]` | [NUMA- und Memory-Node-Verteilung](Procedures/USP_ServerNuma.md) |
+| `[monitor].[USP_ServerMemory]` | [OS-/SQL-Memory und Pressure](Procedures/USP_ServerMemory.md) |
+| `[monitor].[USP_TempDBConfiguration]` | [TempDB-Dateien, Größen und Wachstum](Procedures/USP_TempDBConfiguration.md) |
+| `[monitor].[USP_ServerConfiguration]` | [Konfigurierte und aktive Serveroptionen](Procedures/USP_ServerConfiguration.md) |
+| `[monitor].[USP_TraceFlags]` | [Aktive Trace Flags und Scope](Procedures/USP_TraceFlags.md) |
+| `[monitor].[USP_StartupParameters]` | [Startparameter, Pfade und persistente Flags](Procedures/USP_StartupParameters.md) |
+| `[monitor].[USP_OSInformation]` | [OS, Virtualisierung, Speicher und Uptime](Procedures/USP_OSInformation.md) |
+| `[monitor].[USP_ServerSecurityConfiguration]` | [Sicherheitsrelevante Konfiguration](Procedures/USP_ServerSecurityConfiguration.md) |
+| `[monitor].[USP_ServerHealthAnalysis]` | [Orchestrierter Server-Health-Überblick](Procedures/USP_ServerHealthAnalysis.md) |
+| `[monitor].[USP_DatabaseIntegrityAnalysis]` | [Integritätsevidenz und Aussagegrenzen](Procedures/USP_DatabaseIntegrityAnalysis.md) |
+| `[monitor].[USP_DatabaseCapacityAnalysis]` | [Datei-, Volume- und Wachstumsrisiko](Procedures/USP_DatabaseCapacityAnalysis.md) |
+| `[monitor].[USP_PerformanceCounters]` | [Countertypen, Delta und Normalisierung](Procedures/USP_PerformanceCounters.md) |
+| `[monitor].[USP_CriticalEngineEvents]` | [Schwere Engine-Ereignisse](Procedures/USP_CriticalEngineEvents.md) |
+| `[monitor].[USP_InternalContentionAnalysis]` | [Spinlocks, Latches und Hot Pages](Procedures/USP_InternalContentionAnalysis.md) |
+| `[monitor].[USP_BufferPoolAnalysis]` | [Buffer Pool, Clerks und Pressure](Procedures/USP_BufferPoolAnalysis.md) |
+| `[monitor].[USP_DiagnosticFindings]` | [Severity, Confidence und SourceModule](Procedures/USP_DiagnosticFindings.md) |
 
 ## Versionsadaptive Spezialanalysen
 
-| Objekt | Umfassende Beschreibung |
+| Objekt | Eigenständige Beschreibung |
 |---|---|
-| `[monitor].[USP_ServerFeatureCapabilities]` | [Versions-, Plattform- und datenbankbezogene Featurefähigkeiten](09_Version_Adaptive.md#1-monitorusp_serverfeaturecapabilities) |
-| `[monitor].[USP_SpecialFeatureInventory]` | [Leichtgewichtige Inventur erkannter Spezialfeatures](09_Version_Adaptive.md#2-monitorusp_specialfeatureinventory) |
-| `[monitor].[USP_InMemoryOltpAnalysis]` | [XTP-Tabellen, Hashindizes, Checkpoints, Transaktionen und Pools](09_Version_Adaptive.md#3-monitorusp_inmemoryoltpanalysis) |
-| `[monitor].[USP_TemporalAnalysis]` | [Temporal Tables, Historie, Retention, Indizes und Kapazität](09_Version_Adaptive.md#4-monitorusp_temporalanalysis) |
+| `[monitor].[USP_ServerFeatureCapabilities]` | [Version, Plattform und Featurefähigkeit](Procedures/USP_ServerFeatureCapabilities.md) |
+| `[monitor].[USP_SpecialFeatureInventory]` | [Spezialfeature-Inventar und Deep-Dive-Auswahl](Procedures/USP_SpecialFeatureInventory.md) |
+| `[monitor].[USP_InMemoryOltpAnalysis]` | [XTP, Hashindizes, Checkpoints und Pools](Procedures/USP_InMemoryOltpAnalysis.md) |
+| `[monitor].[USP_TemporalAnalysis]` | [Temporal History, Retention und Wachstum](Procedures/USP_TemporalAnalysis.md) |
 
-## Vollständigkeitsprüfung
+## Vollständigkeit
 
 | Bereich | Anzahl |
 |---|---:|
@@ -180,9 +148,8 @@ Jeder verlinkte Objektabschnitt ist die eigentliche fachliche Dokumentation und 
 
 ## Weitere Einstiege
 
-- [Einsteigerleitfaden: Wie jedes Resultset gelesen wird](Beginner_Reading_Guide.md)
-- [Analysehandbuch und Symptomnavigation](README.md)
-- [Gemeinsame Resultset-, Status-, Filter-, Kosten- und Evidenzverträge](Common_Contracts.md)
-- [Technische Procedure-Signaturen](../Reference/Procedure_Reference.md)
-- [Aufrufkatalog](../Reference/Call_Catalog.md)
-- [Forschungs- und Strukturkonzept](Deep_Research_Analysis_Guides_Concept.md)
+- [Runbooks](Runbooks/README.md)
+- [Glossar](Glossary.md)
+- [Parameter-Lesehilfe](Parameter_Reading_Guide.md)
+- [Gemeinsame Verträge](Common_Contracts.md)
+- [Technische Signaturen](../Reference/Procedure_Reference.md)
