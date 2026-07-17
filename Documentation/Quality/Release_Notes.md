@@ -1,5 +1,13 @@
 # Release Notes
 
+## Stand 2026-07-17 – Verbindlicher Repository-Datenschutzvertrag
+
+- Datenschutz-Liefergate ausdrücklich auf Repository-, GitHub- und Downloadartefakte begrenzt.
+- Klargestellt, dass Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE- und JSON-Ausgaben weder anonymisiert noch fachlich reduziert werden.
+- Reale interne Datenbankstrukturen, Namenskonventionen und proprietäre Metadaten aus Screenshots, Hardcopys, Chats, Uploads, Skripten, Logs und Diagnoseausgaben ausdrücklich aus Repositoryartefakten ausgeschlossen.
+- Festgelegt, dass auch Zustimmung oder vorhandener Zugriff das Repositoryverbot nicht aufheben.
+- Automatische Musterprüfung als unterstützenden Filter statt als Sicherheitsbeweis eingeordnet; uneindeutige Funde halten den Schreib- und Lieferprozess an.
+
 ## Stand 2026-07-17 – Datenschutzpräzisierung und Spezialfallanalyse
 
 - Datenschutzgrenze korrigiert: Diagnostisch erforderliche Identitäts- und Umgebungswerte dürfen in interaktiven Runtime-Ausgaben erscheinen, aber niemals in Repository-, Dokumentations-, Test- oder Downloadartefakte übernommen werden.

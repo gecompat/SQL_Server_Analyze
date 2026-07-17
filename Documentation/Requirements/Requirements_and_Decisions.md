@@ -131,11 +131,14 @@ Vorzusehen sind unter anderem Filter für:
 ### 8.1 Datenschutzgrenze für Laufzeit und Lieferartefakte
 
 - Interaktive `SELECT`-Ausgaben dürfen die zur Diagnose erforderlichen Benutzer-IDs, Benutzer- und Login-Namen, Session- und Request-IDs, Firmen- und Organisationsbezüge, Host-, Programm-, Server-, Datenbank-, Schema- und Objektnamen sowie benutzerdefinierte Informationen anzeigen.
+- Das Liefergate gilt ausschließlich für Repository-, GitHub- und Downloadartefakte. Es ist kein Auftrag, Resultsets, OUTPUT-Parameter oder RAW-, CONSOLE- und JSON-Ausgaben zu maskieren, zu kürzen, zu hashen, zu pseudonymisieren oder um diagnostisch erforderliche Spalten zu reduzieren.
 - Dieselben realen Werte dürfen niemals Bestandteil eines downloadbaren oder versionierten Dokuments oder Projektartefakts werden. Das gilt insbesondere für Repositorydateien, Git-Commits, Dokumentation, Screenshots, Beispielausgaben, Tests, Fixtures, Auditberichte, CSV-/JSON-/XML-/Textdateien, Logs, Buildartefakte und ZIP-Lieferungen.
+- Das Verbot umfasst außerdem reale interne Datenbankstrukturen, Namenskonventionen, fachliche Metadaten und andere proprietäre Informationen, die aus Screenshots, Hardcopys, Chats, Uploads, bestehenden Skripten, Logs oder Diagnoseausgaben bekannt wurden.
 - SQL-Text, Input Buffer, Planparameter, Query-Store-Texte, Extended-Events-Payloads, Error-Log-Text und sonstiger Freitext sind als potentiell besonders sensibel zu behandeln.
-- Technische Systembezeichner und API-Namen wie `login_name`, `session_id` oder `database_id` dürfen im Quellcode stehen. Beispiele verwenden ausschließlich synthetische Platzhalter.
+- Technische Systembezeichner und API-Namen wie `login_name`, `session_id` oder `database_id` dürfen im Quellcode stehen. Beispiele verwenden ausschließlich eindeutig synthetische, generische Werte und bilden keine reale interne Struktur nach.
 - Öffentliche Hersteller-, Produkt- und Projektnamen in Quellenangaben sowie bewusst veröffentlichte Lizenz-, Urheber- und Attributionstexte bleiben zulässig und werden nicht mit versehentlich extrahierten Betriebs- oder Kundendaten gleichgesetzt.
-- Der zustandslose Runtime-Vertrag ist keine Exportfreigabe. Jede spätere Snapshot-, Persistenz-, Retention- oder Exportfunktion benötigt vor ihrer Implementierung ein eigenes Datenschutz-, Zugriffs-, Aufbewahrungs-, Lösch- und Redaktionskonzept.
+- Eine Zustimmung oder vorhandener Zugriff hebt das Repositoryverbot nicht auf. Erfordert eine Aufgabe scheinbar reale interne oder personenbezogene Informationen in einem Artefakt, wird vor dem Schreiben angehalten und nach einer nicht sensitiven Alternative gefragt.
+- Jede spätere Snapshot-, Persistenz-, Retention- oder Exportfunktion benötigt vor ihrer Implementierung ein eigenes Datenschutz-, Zugriffs-, Aufbewahrungs- und Löschkonzept; dies verändert den bestehenden Runtime-Ausgabevertrag nicht.
 - Ein zweifelhafter Fund darf nicht stillschweigend als harmlos klassifiziert werden. Vor Aufnahme in ein Repository- oder Lieferartefakt ist nachzufragen.
 - Maßgebliche Detailentscheidung: `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`.
 

@@ -8,7 +8,7 @@ Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehe
 
 Nächste sinnvolle Schritte:
 
-1. Den neuen Datenschutzvertrag als Liefer-Gate operationalisieren: Runtime-Ausgaben bleiben diagnostisch vollständig, reale Werte werden jedoch in Dokumenten, Tests, Audits, Beispielen und ZIP-Inhalten blockiert; unklare Funde lösen eine Nachfrage aus.
+1. Den Datenschutz- und Sicherheitsvertrag als reines Repository-Liefergate operationalisieren: Resultsets und OUTPUT-Parameter bleiben unverändert; reale interne oder personenbezogene Informationen und proprietäre Strukturen werden in Code, GitHub-Inhalten, Dokumenten, Tests, Audits, Beispielen und ZIP-Inhalten blockiert; unklare Funde halten das Schreiben an und lösen die Suche nach einer nicht sensitiven Alternative aus.
 2. P0-Welle umsetzen: `USP_DatabaseIntegrityAnalysis`, `USP_DatabaseCapacityAnalysis`, `USP_CriticalEngineEvents` und `USP_PerformanceCounters`.
 3. P1-Ursachenauflösung umsetzen: Intelligent Query Processing, interne Contention, Buffer Pool, Backupketten und korrelierte Findings.
 4. Danach Schema-/Designkorrektheit, tiefe AG-Diagnose sowie Agent-/Alert-/Database-Mail-Auswertung ergänzen.
