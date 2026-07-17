@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.1
+Version      : 1.1.0-special.2
 Stand        : 2026-07-17
 Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
                Analysepaket. Keine Installationshistorie und kein Deployment-
@@ -28,12 +28,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.1',
+SET [FrameworkVersion]='1.1.0-special.2',
     [ReleaseDate]='20260717',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.6',
+    [ContractVersion]='1.7',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.6: dokumentierbare Testmatrix sowie read-only Spezialfallmodule für Integrität, Kapazität, IQP, Contention, Speicher, Backupketten, Schema, Availability, Agent-Monitoring und normalisierte Befunde.'
+    [ReleaseNotes]=N'API 1.7: begrenzte read-only Statistikverteilungsanalyse mit Histogramm-, Tail- und inkrementeller Partitionsevidenz; vollständige P0/P1-Spezialfallwelle bleibt laufzeitzutesten.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -45,9 +45,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.1','20260717',15,
-        '1.6',SYSUTCDATETIME(),
-        N'API 1.6: dokumentierbare Testmatrix sowie read-only Spezialfallmodule für Integrität, Kapazität, IQP, Contention, Speicher, Backupketten, Schema, Availability, Agent-Monitoring und normalisierte Befunde.'
+        N'SQLServerMonitoringFramework','1.1.0-special.2','20260717',15,
+        '1.7',SYSUTCDATETIME(),
+        N'API 1.7: begrenzte read-only Statistikverteilungsanalyse mit Histogramm-, Tail- und inkrementeller Partitionsevidenz; vollständige P0/P1-Spezialfallwelle bleibt laufzeitzutesten.'
     );
 END;
 GO

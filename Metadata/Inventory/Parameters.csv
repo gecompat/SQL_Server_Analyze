@@ -308,6 +308,35 @@ USP_Statistics,JsonErzeugen,bit,0
 USP_Statistics,Json,nvarchar(max),NULL OUTPUT
 USP_Statistics,PrintMeldungen,bit,1
 USP_Statistics,Hilfe,bit,0
+USP_StatisticsDistributionAnalysis,DatabaseNames,nvarchar(max),N''
+USP_StatisticsDistributionAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_StatisticsDistributionAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_StatisticsDistributionAnalysis,SchemaNames,nvarchar(max),NULL
+USP_StatisticsDistributionAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_StatisticsDistributionAnalysis,ObjectNames,nvarchar(max),NULL
+USP_StatisticsDistributionAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_StatisticsDistributionAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_StatisticsDistributionAnalysis,StatisticsNames,nvarchar(max),NULL
+USP_StatisticsDistributionAnalysis,StatisticsNamePattern,nvarchar(4000),NULL
+USP_StatisticsDistributionAnalysis,AnalyseModus,varchar(16),'GEZIELT'
+USP_StatisticsDistributionAnalysis,MaxVerteilungsStatistiken,int,50
+USP_StatisticsDistributionAnalysis,MinVerteilungsZeilen,bigint,1000
+USP_StatisticsDistributionAnalysis,SkewWarnFaktor,"decimal(19,4)",10
+USP_StatisticsDistributionAnalysis,DominanterSchrittWarnPercent,"decimal(9,4)",50
+USP_StatisticsDistributionAnalysis,ModificationWarnPercent,"decimal(9,4)",20
+USP_StatisticsDistributionAnalysis,PartitionSpreadWarnPercent,"decimal(9,4)",20
+USP_StatisticsDistributionAnalysis,MaxDatenbanken,int,16
+USP_StatisticsDistributionAnalysis,MaxZeilen,int,1000
+USP_StatisticsDistributionAnalysis,LockTimeoutMs,int,0
+USP_StatisticsDistributionAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_StatisticsDistributionAnalysis,JsonErzeugen,bit,0
+USP_StatisticsDistributionAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_StatisticsDistributionAnalysis,PrintMeldungen,bit,1
+USP_StatisticsDistributionAnalysis,Hilfe,bit,0
+USP_StatisticsDistributionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_StatisticsDistributionAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_StatisticsDistributionAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_StatisticsDistributionAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_Partitions,DatabaseNames,nvarchar(max),N''
 USP_Partitions,SystemdatenbankenEinbeziehen,bit,0
 USP_Partitions,DatabaseNamePattern,nvarchar(4000),NULL
@@ -391,6 +420,7 @@ USP_ObjectAnalysis,MitIndexUsage,bit,1
 USP_ObjectAnalysis,MitMissingIndexes,bit,1
 USP_ObjectAnalysis,MitOperationalStats,bit,0
 USP_ObjectAnalysis,MitStatistics,bit,0
+USP_ObjectAnalysis,MitStatisticsDistribution,bit,0
 USP_ObjectAnalysis,MitPartitions,bit,0
 USP_ObjectAnalysis,MitColumnstore,bit,0
 USP_ObjectAnalysis,MitPhysicalStats,bit,0
@@ -1104,6 +1134,7 @@ USP_DiagnosticFindings,MitBackupketten,bit,1
 USP_DiagnosticFindings,MitAvailability,bit,1
 USP_DiagnosticFindings,MitAgentMonitoring,bit,1
 USP_DiagnosticFindings,MitSchemaDesign,bit,0
+USP_DiagnosticFindings,MitStatistikverteilung,bit,0
 USP_DiagnosticFindings,MitIQP,bit,0
 USP_DiagnosticFindings,MitContention,bit,0
 USP_DiagnosticFindings,ContentionSampleSeconds,tinyint,5

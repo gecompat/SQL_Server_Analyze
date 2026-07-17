@@ -40,7 +40,7 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
 5. `Code/Tests/Integration/165_Filter_Output_Contract.sql` ausführen.
 6. `Code/Tests/Integration/167_Special_Case_API_Contract.sql` ausführen.
 7. Bereichstests für Common, Current State, Object/Index, Plan Cache, Query Store, Extended Events, Infrastructure und Server Health ausführen.
-8. Neue Spezialfallmodule gegen Capability-, Leerzustands-, Positiv-, Berechtigungs-, Reset- und Lastfälle prüfen.
+8. Neue Spezialfallmodule gegen Capability-, Leerzustands-, Positiv-, Berechtigungs-, Reset- und Lastfälle prüfen; bei Statistikverteilung zusätzlich Uniform-, Dominanz-, Tail-, Modification-, Filter-, Incremental- und Kandidatengrenzfälle.
 9. RAW-, CONSOLE-, NONE- und JSON-Verträge verifizieren.
 10. Repository- und Liefergate ausführen.
 11. Ergebnis und Einschränkungen ohne reale Umgebungswerte in der CSV festhalten.

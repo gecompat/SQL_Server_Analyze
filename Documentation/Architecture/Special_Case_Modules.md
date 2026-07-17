@@ -21,9 +21,10 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 | P1.3 | `monitor.USP_BufferPoolAnalysis` | Prozess-/OS-Speicher, Resource Semaphores, Clerks, optional Buffer-Pool-Verteilung | Basis LOW; Buffer-Scan opt-in HIGH | Momentaufnahme ist kein Trend und keine Konfigurationsempfehlung |
 | P1.4 | `monitor.USP_BackupChainAnalysis` | Full-/Differentialbasis, Log-LSN, Recovery Forks, Checksums, Restorehistorie | `msdb`-Historie MEDIUM | Nur ein Test-Restore beweist Wiederherstellbarkeit |
 | P1.5 | `monitor.USP_SchemaDesignAnalysis` | Constraints, FK-Stützindizes, Indexduplikate, Identity/Sequence | Cross-DB MEDIUM/HIGH | Jeder Befund ist ein Prüfauftrag, keine DDL-Anweisung |
-| P1.6 | `monitor.USP_AvailabilityDeepAnalysis` | Replikas, Datenbewegung, Queues, Quorum, Seeding, Page Repair | Always-On-DMVs MEDIUM | Netzpfad, Clusterlog und Zeitverlauf fehlen |
-| P1.7 | `monitor.USP_AgentMonitoringAnalysis` | Dienst, Alertabdeckung, Routing, Jobs, Mailstatus | `msdb`-Metadaten LOW/MEDIUM | Externes Monitoring kann fehlende Agentobjekte kompensieren |
-| P1.8 | `monitor.USP_DiagnosticFindings` | normalisierte Triage aus den JSON-Verträgen der vorherigen Module | Kernmodule an; Schema/IQP/Contention opt-in | Priorität und Konfidenz sind Triage, keine automatische Ursache |
+| P1.6 | `monitor.USP_StatisticsDistributionAnalysis` | begrenzte Histogrammverteilung, Tail-Konzentration, Änderungen seit Statistikstand und inkrementelle Partitionsvariation | CATALOG_DEEP; maximal 1–250 Statistiken je Datenbank | Skew ist keine Planursache; Out-of-Range-Werte sind ohne Query-/Datenkontext nicht messbar |
+| P1.7 | `monitor.USP_AvailabilityDeepAnalysis` | Replikas, Datenbewegung, Queues, Quorum, Seeding, Page Repair | Always-On-DMVs MEDIUM | Netzpfad, Clusterlog und Zeitverlauf fehlen |
+| P1.8 | `monitor.USP_AgentMonitoringAnalysis` | Dienst, Alertabdeckung, Routing, Jobs, Mailstatus | `msdb`-Metadaten LOW/MEDIUM | Externes Monitoring kann fehlende Agentobjekte kompensieren |
+| P1.9 | `monitor.USP_DiagnosticFindings` | normalisierte Triage aus den JSON-Verträgen der vorherigen Module | Kernmodule an; Schema/Statistikverteilung/IQP/Contention opt-in | Priorität und Konfidenz sind Triage, keine automatische Ursache |
 
 ## Messverträge
 
@@ -32,6 +33,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 - Performance-Counter berechnen Raten, Prozentquotienten und Durchschnittsquotienten ausschließlich aus Intervall- und passenden Basisdeltas; ein Einzelwert wird dafür nicht als Rate ausgegeben.
 - Das Contention-Modul unterscheidet `SAMPLE_DELTA` ausdrücklich von kumulativen Werten seit Serverstart und verwendet für Raten die tatsächliche Messdauer.
 - Counter-Resets werden nicht in negative Raten umgerechnet, sondern als Reset ausgewiesen.
+- Die Statistikverteilungsanalyse begrenzt Kandidaten vor dem Histogrammzugriff. Dominanz-, Equal-/Range-Skew-, Tail-, Modification- und Partitionsindikatoren bleiben konfigurierbare Prüfhinweise.
 - Featureabhängige Katalogsichten werden erst in dynamische Batches aufgenommen, wenn die Produktversion sie unterstützt.
 - `USP_DiagnosticFindings` benötigt Compatibility Level 130 oder höher, weil `OPENJSON` den Vertragsinhalt aggregiert.
 
@@ -59,6 +61,8 @@ Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezi
 - [sys.dm_os_latch_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-latch-stats-transact-sql)
 - [sys.dm_os_spinlock_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-spinlock-stats-transact-sql)
 - [sys.dm_os_buffer_descriptors](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-buffer-descriptors-transact-sql)
+- [sys.dm_db_stats_histogram](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-stats-histogram-transact-sql)
+- [sys.dm_db_incremental_stats_properties](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-incremental-stats-properties-transact-sql)
 - [backupset](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql)
 - [Always-On-DMVs](https://learn.microsoft.com/en-us/sql/database-engine/availability-groups/windows/monitor-availability-groups-transact-sql)
 - [SQL Server Agent Alerts](https://learn.microsoft.com/en-us/sql/ssms/agent/alerts)

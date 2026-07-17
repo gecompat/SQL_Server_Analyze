@@ -8,7 +8,7 @@ Dieses Dokument beschreibt, welche SQL-Server-Systemquellen das Framework nutzt 
 
 Der Katalog wurde aus den kanonischen Dateien unter `Code/00_Setup` bis `Code/09_VersionAdaptive` erzeugt und mit abstrahierten Ergebnissen der früheren Quellenanalyse ergänzt. Historische Dateipfade, umgebungsspezifische Objektnamen und externe Hilfsobjekte wurden nicht übernommen.
 
-Aktuell inventarisiert: **160 Systemquellen**.
+Aktuell inventarisiert: **162 Systemquellen**.
 
 ## Quellklassen
 
@@ -47,6 +47,7 @@ Eine Vorabprüfung ist nur eine Indikation. Jeder optionale Zugriff bleibt fehle
 - `LOW_OR_SCOPE_DEPENDENT`: Katalog- oder kleine Statusquelle; Umfang trotzdem begrenzen.
 - `MEDIUM_OR_SCOPE_DEPENDENT`: Runtime-DMV, Cross-Database- oder größere Historienquelle.
 - `HIGH_OR_SCOPE_DEPENDENT`: Physical Stats, breite Plan-/Query-Store-Analyse, XML-Shredding oder Eventfile-Lesen.
+- `HIGH_OPT_IN`: explizit aktivierter, vorab hart begrenzter Deep-Pfad wie die Histogrammverteilungsanalyse.
 
 Breite Metadatenauflösung verwendet Systemkataloge mit kurzer Lock-Wartezeit beziehungsweise best-effort Fehlerisolation. Eine fehlende Namensauflösung ist einem blockierten Gesamtergebnis vorzuziehen; technische IDs bleiben erhalten.
 

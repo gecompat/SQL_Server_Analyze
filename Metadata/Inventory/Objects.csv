@@ -33,6 +33,7 @@ PROCEDURE,USP_IndexUsage,Code/03_ObjectIndex/020_USP_IndexUsage.sql
 PROCEDURE,USP_IndexOperationalStats,Code/03_ObjectIndex/025_USP_IndexOperationalStats.sql
 PROCEDURE,USP_MissingIndexes,Code/03_ObjectIndex/030_USP_MissingIndexes.sql
 PROCEDURE,USP_Statistics,Code/03_ObjectIndex/040_USP_Statistics.sql
+PROCEDURE,USP_StatisticsDistributionAnalysis,Code/03_ObjectIndex/045_USP_StatisticsDistributionAnalysis.sql
 PROCEDURE,USP_Partitions,Code/03_ObjectIndex/050_USP_Partitions.sql
 PROCEDURE,USP_Columnstore,Code/03_ObjectIndex/060_USP_Columnstore.sql
 PROCEDURE,USP_IndexPhysicalStats,Code/03_ObjectIndex/070_USP_IndexPhysicalStats.sql

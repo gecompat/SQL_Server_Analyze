@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ObjectAnalysis
-Version      : 2.1.0
+Version      : 2.2.0
 Stand        : 2026-07-17
 Typ          : Stored Procedure
 Zweck        : Orchestriert die Objekt-, Index-, Statistik-, Partition-,
@@ -23,7 +23,9 @@ Semantik     : Exakte Listen sind bracket-aware Pipe-Listen; Pattern sind
 Ausgabe      : Aktivierte Teilmodule liefern RAW oder CONSOLE. NONE unterdrückt
                fachliche Resultsets. JSON enthält die Teilmodul-Envelopes unter
                benannten Eigenschaften und einen Orchestratorstatus.
-Änderungen   : 2.1.0 - Schema-/Designkorrektheit als opt-in Teilmodul.
+Änderungen   : 2.2.0 - Begrenzte Statistikverteilungsanalyse als opt-in
+                         Teilmodul integriert.
+               2.1.0 - Schema-/Designkorrektheit als opt-in Teilmodul.
                2.0.0 - Mehrfachfilter, getrennte Pattern, Cross-Database-Scope,
                          RAW/CONSOLE/NONE und JSON-Orchestrierung.
                1.3.0 - Vorheriger Stand.
@@ -48,6 +50,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectAnalysis]
     , @MitMissingIndexes                bit            = 1
     , @MitOperationalStats              bit            = 0
     , @MitStatistics                    bit            = 0
+    , @MitStatisticsDistribution        bit            = 0
     , @MitPartitions                    bit            = 0
     , @MitColumnstore                   bit            = 0
     , @MitPhysicalStats                 bit            = 0
@@ -81,6 +84,7 @@ BEGIN
         PRINT N'@FullObjectNames unterstützt Objekt, Schema.Objekt oder Datenbank.Schema.Objekt.';
         PRINT N'Pattern unterstützen like:, regex:, regexi: und werden nicht an Pipe getrennt.';
         PRINT N'@Vollanalyse=0 nutzt GEZIELT; ressourcenintensive Teilmodule bleiben zusätzlich gruppengeschützt.';
+        PRINT N'@MitStatisticsDistribution=1 aktiviert die begrenzte, CATALOG_DEEP-geschützte Histogramm-/Partitionsverteilung.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt benannte Teilmodule in @Json.';
         RETURN;
     END;
@@ -123,10 +127,15 @@ BEGIN
     DECLARE @JsonMissingIndexes nvarchar(max) = NULL;
     DECLARE @JsonOperationalStats nvarchar(max) = NULL;
     DECLARE @JsonStatistics nvarchar(max) = NULL;
+    DECLARE @JsonStatisticsDistribution nvarchar(max) = NULL;
     DECLARE @JsonPartitions nvarchar(max) = NULL;
     DECLARE @JsonColumnstore nvarchar(max) = NULL;
     DECLARE @JsonPhysicalStats nvarchar(max) = NULL;
     DECLARE @JsonSchemaDesign nvarchar(max) = NULL;
+    DECLARE @StatisticsDistributionStatus varchar(40) = NULL;
+    DECLARE @StatisticsDistributionPartial bit = NULL;
+    DECLARE @StatisticsDistributionErrorNumber int = NULL;
+    DECLARE @StatisticsDistributionErrorMessage nvarchar(2048) = NULL;
     DECLARE @SchemaDesignStatus varchar(40) = NULL;
     DECLARE @SchemaDesignPartial bit = NULL;
     DECLARE @SchemaDesignErrorNumber int = NULL;
@@ -183,6 +192,19 @@ BEGIN
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonStatistics OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ModuleStatus] VALUES(N'USP_Statistics',COALESCE(JSON_VALUE(@JsonStatistics,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ModuleStatus] VALUES(N'USP_Statistics','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
+
+    IF @StatusCode = 'AVAILABLE' AND @MitStatisticsDistribution = 1
+    BEGIN TRY
+        EXEC [monitor].[USP_StatisticsDistributionAnalysis]
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+            , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
+            , @StatisticsNames=@StatisticsNames,@StatisticsNamePattern=@StatisticsNamePattern,@AnalyseModus=@AnalyseModus
+            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonStatisticsDistribution OUTPUT,@PrintMeldungen=@PrintMeldungen
+            , @StatusCodeOut=@StatisticsDistributionStatus OUTPUT,@IsPartialOut=@StatisticsDistributionPartial OUTPUT
+            , @ErrorNumberOut=@StatisticsDistributionErrorNumber OUTPUT,@ErrorMessageOut=@StatisticsDistributionErrorMessage OUTPUT;
+        INSERT [#ModuleStatus] VALUES(N'USP_StatisticsDistributionAnalysis',COALESCE(@StatisticsDistributionStatus,'ERROR_HANDLED'),@StatisticsDistributionErrorNumber,@StatisticsDistributionErrorMessage);
+    END TRY BEGIN CATCH INSERT [#ModuleStatus] VALUES(N'USP_StatisticsDistributionAnalysis','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
 
     IF @StatusCode = 'AVAILABLE' AND @MitPartitions = 1
     BEGIN TRY
@@ -254,6 +276,7 @@ BEGIN
             ,N',"missingIndexes":',COALESCE(@JsonMissingIndexes,N'null')
             ,N',"indexOperationalStats":',COALESCE(@JsonOperationalStats,N'null')
             ,N',"statistics":',COALESCE(@JsonStatistics,N'null')
+            ,N',"statisticsDistribution":',COALESCE(@JsonStatisticsDistribution,N'null')
             ,N',"partitions":',COALESCE(@JsonPartitions,N'null')
             ,N',"columnstore":',COALESCE(@JsonColumnstore,N'null')
             ,N',"indexPhysicalStats":',COALESCE(@JsonPhysicalStats,N'null')

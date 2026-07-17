@@ -2,11 +2,11 @@
 
 Stand: 2026-07-17
 
-Der vorliegende Gesamtstand wurde nach Angabe des Projektverantwortlichen vollumfänglich real installiert, kompiliert und funktional getestet. Die während dieses Tests gefundenen Fehler wurden im gelieferten Stand korrigiert.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen vollumfänglich real installiert, kompiliert und funktional getestet. Die danach ergänzte Version `1.1.0-special.2` ist statisch geprüft, aber noch nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 
-- Die genaue Testumgebung mit SQL-Server-Version, Edition, Betriebssystem, Compatibility Level und Berechtigungsumfang ist noch nicht als maschinenlesbare Testmatrix dokumentiert.
+- Die Zielumgebungen sind maschinenlesbar definiert; konkrete Produktversion, Edition, Berechtigungsprofil, Commit-SHA und Ausführungsevidenz fehlen noch und stehen auf `NOT_EXECUTED`.
 - Bei jeder weiteren Zielversion oder abweichenden Plattform sind Installer, Smoke Tests, Parametervertrag und `165_Filter_Output_Contract.sql` erneut auszuführen.
 - Importierte Wait-Beschreibungen mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` sollten sukzessive fachlich kuratiert werden.
 - Phase 7 liefert überwiegend Inventar- und Momentaufnahmen; zeitbasierte CPU-, NUMA- und Memory-Trends sind bewusst nicht Bestandteil dieses Ad-hoc-Pakets.

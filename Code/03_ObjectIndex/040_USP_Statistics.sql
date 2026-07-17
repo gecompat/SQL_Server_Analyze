@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_Statistics
-Version      : 1.0.0
-Stand        : 2026-07-14
+Version      : 1.1.0
+Stand        : 2026-07-17
 Typ          : Stored Procedure
 Zweck        : Analysiert Statistikdefinitionen, letzte Aktualisierung, Stichprobe und Modification Counter; vollständige ungezielte Scans sind gruppengeschützt.
 SQL-Version  : SQL Server 2019 oder neuer.
@@ -37,7 +37,9 @@ Beispiele    :
   EXEC monitor.USP_Statistics @DatabaseNames=N'SampleDatabase', @SchemaNamePattern=N'dbo', @ObjectNamePattern=N'FactSales';
   EXEC monitor.USP_Statistics @DatabaseNames=N'SampleDatabase', @AnalyseModus='VOLL', @MinModificationPercent=10;
   EXEC monitor.USP_Statistics @Hilfe=1;
-Änderungen   : 1.0.0 - Erstfassung Phase 2.
+Änderungen   : 1.1.0 - Inkrementelle Partitionsdetails werden bei aktiviertem
+                         Schalter auch als Resultset und JSON-Array veröffentlicht.
+               1.0.0 - Erstfassung Phase 2.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_Statistics]
@@ -291,13 +293,25 @@ END;
     IF @ResultSetArtNormalisiert<>'NONE' BEGIN
         SELECT @ModuleName [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@OverallStatus [StatusCode],@IsPartial [IsPartial],@TotalRows [RowCount],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
         SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Result] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName]; ELSE SELECT N'Statistik' [Ergebnis],[r].* FROM [#Result] [r] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
+        IF @ResultSetArtNormalisiert='RAW'
+            SELECT * FROM [#Result] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
+        ELSE
+            SELECT N'Statistik' [Ergebnis],[r].* FROM [#Result] [r] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
+
+        IF @MitIncrementellenDetails=1
+        BEGIN
+            IF @ResultSetArtNormalisiert='RAW'
+                SELECT * FROM [#Incremental] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[PartitionNumber];
+            ELSE
+                SELECT N'Inkrementelle Statistikpartition' [Ergebnis],[i].* FROM [#Incremental] [i] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[PartitionNumber];
+        END;
     END;
     IF @JsonErzeugen=1 BEGIN
         DECLARE @JsonMeta nvarchar(max)=(SELECT @ModuleName [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@OverallStatus [statusCode],@IsPartial [isPartial],@TotalRows [rowCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Result] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"statistics":',COALESCE(@JsonData1,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
+        DECLARE @JsonIncremental nvarchar(max)=(SELECT * FROM [#Incremental] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[PartitionNumber] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"statistics":',COALESCE(@JsonData1,N'[]'),N',"incrementalStatistics":',COALESCE(@JsonIncremental,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
     END;
 END;
 GO

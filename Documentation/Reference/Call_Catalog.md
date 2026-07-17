@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-17 — 75 Procedures
+Stand: 2026-07-17 — 76 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -11,6 +11,7 @@ DECLARE @Json nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]
       @DatabaseNames = N''
     , @MitSchemaDesign = 0
+    , @MitStatistikverteilung = 0
     , @MitIQP = 0
     , @MitContention = 0
     , @MaxZeilen = 100
@@ -21,6 +22,7 @@ SELECT @Json AS [Json];
 
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetails=0,@MaxZeilen=100;
 EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds=5,@MaxZeilen=100;
+EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[DeineDatenbank]',@SchemaNames=N'dbo',@AnalyseModus='GEZIELT',@MaxVerteilungsStatistiken=25,@MaxZeilen=100;
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@SchemaNames=N'dbo|monitor',@ObjectNamePattern=N'regexi:^usp_',@MaxZeilen=200;
 ```
 
@@ -462,6 +464,12 @@ EXEC [monitor].[USP_StartupParameters] @Hilfe = 1;
 EXEC [monitor].[USP_Statistics] @Hilfe = 1;
 ```
 
+## `[monitor].[USP_StatisticsDistributionAnalysis]`
+
+```sql
+EXEC [monitor].[USP_StatisticsDistributionAnalysis] @Hilfe = 1;
+```
+
 ## `[monitor].[USP_TempDBConfiguration]`
 
 ```sql
@@ -473,4 +481,3 @@ EXEC [monitor].[USP_TempDBConfiguration] @Hilfe = 1;
 ```sql
 EXEC [monitor].[USP_TraceFlags] @Hilfe = 1;
 ```
-

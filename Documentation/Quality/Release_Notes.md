@@ -1,10 +1,21 @@
 # Release Notes
 
+## Stand 2026-07-17 – Abschluss P1 `1.1.0-special.2`
+
+- `SC-011` durch `monitor.USP_StatisticsDistributionAnalysis` geschlossen.
+- Histogrammzugriff je Datenbank vorab auf 1–250 priorisierte Statistiken begrenzt und durch `CATALOG_DEEP` geschützt.
+- Numerische Evidenz für dominante Histogrammschritte, Gleichheits-/Range-Skew, Tail-Konzentration, Änderungen seit dem Statistikstand und inkrementelle Partitionsvariation ergänzt.
+- Konkrete Histogrammgrenzwerte werden für diese Kennzahlen nicht benötigt; das Modul liest keine Datenzeilen und führt kein `UPDATE STATISTICS` aus.
+- Skew-, Tail- und Modification-Signale ausdrücklich als Prüfhinweis statt als Planursache oder Out-of-Range-Beweis klassifiziert.
+- Objektorchestrator und normalisierte Findings um getrennte, standardmäßig deaktivierte Statistikverteilungs-Opt-ins erweitert.
+- Installer, Smoke Test, Spezialfall-API-Vertrag, Inventare, Beispiele, Referenz, Backlog und Testmatrix synchronisiert.
+- Widersprüchliche Aussage in `Known_Issues.md` korrigiert: real getestet ist der Basisstand; die Spezialfallwelle bleibt `NOT_EXECUTED`.
+
 ## Stand 2026-07-17 – Spezialfallwelle `1.1.0-special.1`
 
 - Dokumentierbare, datenschutzkonforme Testmatrix mit explizitem `NOT_EXECUTED`-Planungsstatus ergänzt.
 - P0-Module für Datenbankintegrität, Kapazität, korrekt typisierte Performance Counter und kritische Engine-Ereignisse implementiert.
-- P1 in der festgelegten Reihenfolge umgesetzt: IQP, interne Contention, Buffer Pool, Backupketten, Schema-/Designkorrektheit, tiefe Availability-Evidenz, Agent-/Alert-Monitoring und zuletzt normalisierte diagnostische Findings.
+- Die erste P1-Welle mit IQP, interner Contention, Buffer Pool, Backupketten, Schema-/Designkorrektheit, tiefer Availability-Evidenz, Agent-/Alert-Monitoring und normalisierten Findings umgesetzt; die noch offene Statistikverteilung wurde anschließend in `1.1.0-special.2` geschlossen.
 - Kostenintensive oder detailreiche Pfade standardmäßig deaktiviert oder opt-in ausgeführt.
 - `USP_DiagnosticFindings` aggregiert ausschließlich definierte JSON-Vertragsfelder und übernimmt keine SQL-/Plantexte, Pfade, Mailinhalte oder freien Meldungstexte.
 - Gesamtinstaller, vier Orchestratoren, Objekt-/Parameter-/Systemquelleninventare, Referenzen, Hilfe, Beispiele, Smoke Test und Spezialfall-API-Vertrag erweitert.
@@ -74,7 +85,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.2` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

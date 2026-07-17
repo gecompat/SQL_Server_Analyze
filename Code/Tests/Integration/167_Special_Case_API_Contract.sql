@@ -29,9 +29,13 @@ VALUES
 (N'USP_BufferPoolAnalysis',N'@MitBufferPoolVerteilung'),
 (N'USP_BackupChainAnalysis',N'@HistoryDays'),
 (N'USP_SchemaDesignAnalysis',N'@IdentityWarnPercent'),
+(N'USP_StatisticsDistributionAnalysis',N'@MaxVerteilungsStatistiken'),
+(N'USP_StatisticsDistributionAnalysis',N'@SkewWarnFaktor'),
+(N'USP_ObjectAnalysis',N'@MitStatisticsDistribution'),
 (N'USP_AvailabilityDeepAnalysis',N'@MitClusterNetzwerken'),
 (N'USP_AgentMonitoringAnalysis',N'@HistoryHours'),
 (N'USP_DiagnosticFindings',N'@NurAbPrioritaet'),
+(N'USP_DiagnosticFindings',N'@MitStatistikverteilung'),
 (N'USP_DiagnosticFindings',N'@Json');
 
 DECLARE @Missing nvarchar(max);
@@ -72,6 +76,15 @@ IF NOT EXISTS
       AND [name]=N'@MitFindings'
 )
     THROW 54102,N'Der Server-Health-Orchestrator veröffentlicht @MitFindings nicht.',1;
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [sys].[sql_expression_dependencies] AS [d]
+    WHERE [d].[referencing_id]=OBJECT_ID(N'monitor.USP_DiagnosticFindings')
+      AND [d].[referenced_entity_name]=N'USP_StatisticsDistributionAnalysis'
+)
+    THROW 54103,N'USP_DiagnosticFindings besitzt keine erkennbare Abhängigkeit zur Statistikverteilung.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

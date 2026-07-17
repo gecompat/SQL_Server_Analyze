@@ -18,7 +18,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Query Store wird im Kontext jeder ausgewählten Quelldatenbank gelesen.
 - Statementtext wird zentral anhand der Byte-Offsets extrahiert; Batch-, Modul- und Input-Buffer-Text sind getrennte Diagnoseinformationen.
 - Katalogzugriffe sollen Locking/Blocking minimieren; ressourcenintensive Pfade sind nicht der Default.
-- Frameworkversion `1.1.0-special.1`, Vertragsversion `1.6`: dokumentierbare Testmatrix und zwölf Spezialfallprocedures.
+- Frameworkversion `1.1.0-special.2`, Vertragsversion `1.7`: dokumentierbare Testmatrix und dreizehn Spezialfallprocedures einschließlich begrenzter Statistikverteilungsanalyse.
 - P0/P1-Reihenfolge und Aussagegrenzen stehen in `Documentation/Architecture/Special_Case_Modules.md`.
 - `monitor.USP_DiagnosticFindings` ist der letzte Aggregator und hängt über definierte JSON-Verträge von den vorherigen Spezialfallmodulen ab; Schema, IQP und Contention bleiben dort opt-in.
 

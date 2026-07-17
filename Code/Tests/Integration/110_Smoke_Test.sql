@@ -43,6 +43,7 @@ VALUES
 (N'monitor.USP_BufferPoolAnalysis','P'),
 (N'monitor.USP_BackupChainAnalysis','P'),
 (N'monitor.USP_SchemaDesignAnalysis','P'),
+(N'monitor.USP_StatisticsDistributionAnalysis','P'),
 (N'monitor.USP_AvailabilityDeepAnalysis','P'),
 (N'monitor.USP_AgentMonitoringAnalysis','P'),
 (N'monitor.USP_DiagnosticFindings','P'),
@@ -63,7 +64,7 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (READUNCOMMITTED)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.1'
+      AND [FrameworkVersion]='1.1.0-special.2'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
@@ -132,6 +133,7 @@ EXEC [monitor].[USP_InternalContentionAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_BufferPoolAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_BackupChainAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_SchemaDesignAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_StatisticsDistributionAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_AvailabilityDeepAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_DiagnosticFindings] @Hilfe=1;
