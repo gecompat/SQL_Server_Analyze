@@ -1,0 +1,57 @@
+name: Temporary documentation link fix
+
+on:
+  push:
+    branches:
+      - agent/automate-documentation-validation
+
+permissions:
+  contents: write
+
+jobs:
+  fix-links:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/automate-documentation-validation
+
+      - name: Correct known infrastructure anchors
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Documentation/Analysis_Guides/Beginner_Reading_Guide.md')
+          text = path.read_text(encoding='utf-8')
+          replacements = {
+              '07_Infrastructure.md#9-monitorusp_infrastructureanalysis':
+                  '07_Infrastructure.md#12-monitorusp_infrastructureanalysis',
+              '07_Infrastructure.md#10-monitorusp_backupchainanalysis':
+                  '07_Infrastructure.md#9-monitorusp_backupchainanalysis',
+              '07_Infrastructure.md#11-monitorusp_availabilitydeepanalysis':
+                  '07_Infrastructure.md#10-monitorusp_availabilitydeepanalysis',
+              '07_Infrastructure.md#12-monitorusp_agentmonitoringanalysis':
+                  '07_Infrastructure.md#11-monitorusp_agentmonitoringanalysis',
+          }
+
+          for old, new in replacements.items():
+              count = text.count(old)
+              if count != 1:
+                  raise RuntimeError(f'Expected exactly one occurrence of {old!r}, found {count}.')
+              text = text.replace(old, new)
+
+          path.write_text(text, encoding='utf-8', newline='\n')
+
+      - name: Commit corrected anchors
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Documentation/Analysis_Guides/Beginner_Reading_Guide.md
+          git diff --cached --quiet && exit 0
+          git commit -m 'docs: correct infrastructure anchors'
+          git push origin HEAD:agent/automate-documentation-validation
