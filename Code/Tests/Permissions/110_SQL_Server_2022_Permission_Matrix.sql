@@ -323,8 +323,10 @@ BEGIN TRY
     REVERT;
 END TRY
 BEGIN CATCH
+    DECLARE @InnerError nvarchar(2048)=ERROR_MESSAGE();
     REVERT;
-    THROW;
+    RAISERROR(N''%s'',16,1,@InnerError);
+    RETURN;
 END CATCH;';
 
     RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
