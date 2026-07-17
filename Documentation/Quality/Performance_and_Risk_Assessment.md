@@ -51,9 +51,9 @@ SQL-Text, Batch-, Modul-, Input-Buffer-, Plan- und Event-XML können groß sein.
 
 Wesentliche Statuswerte sind `AVAILABLE`, `AVAILABLE_LIMITED`, `PARTIAL`, `SKIPPED`, `NOT_APPLICABLE`, `UNAVAILABLE_VERSION`, `UNAVAILABLE_PLATFORM`, `UNAVAILABLE_FEATURE`, `UNAVAILABLE_OBJECT`, `DATABASE_UNAVAILABLE`, `DENIED_PERMISSION`, `DENIED_GROUP`, `TIMEOUT`, `ERROR_HANDLED` und `INVALID_PARAMETER`.
 
-## Noch erforderliche Verifikation
+## Weiterführende Verifikation
 
-- realer Compiletest auf SQL Server 2019, 2022 und 2025;
+- dokumentierte Wiederholung des realen Tests für jede zusätzlich freizugebende SQL-Server-Version und Edition;
 - Tests unter unterschiedlichen Performance-State-Berechtigungen;
 - Windows- und Linux-Plattformpfade;
 - große Plan-Cache-/Query-Store-Bestände;

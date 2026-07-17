@@ -209,6 +209,8 @@ Empfohlene Einstiegspunkte:
 
 Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Migrationsprüfungen. Der aktuelle Audit ist unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json) dokumentiert.
 
-Vor einem produktiven Einsatz sind weiterhin reale Compile- und Smoke-Tests auf den vorgesehenen SQL-Server-Versionen und Editionsvarianten erforderlich.
+Der vorliegende Gesamtstand wurde nach Angabe des Projektverantwortlichen vollumfänglich installiert, kompiliert und funktional getestet. Die dabei gefundenen Korrekturen sind im Repository enthalten.
+
+Bei Einsätzen auf weiteren SQL-Server-Versionen, Editions-, Plattform- oder Berechtigungskombinationen ist die jeweilige Zielumgebung ergänzend zu verifizieren und als Testmatrix zu dokumentieren.
 
 Die kanonischen Einzeldateien sind die maßgebliche Quelle. Generierte Installer dürfen nicht manuell gepflegt werden.

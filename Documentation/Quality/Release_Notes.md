@@ -1,5 +1,14 @@
 # Release Notes
 
+## Stand 2026-07-17 – Real getesteter Gesamtstand
+
+- Gesamtinstaller und Frameworkfunktionen wurden nach Angabe des Projektverantwortlichen vollumfänglich real getestet.
+- Falsche Sortierspalte in `monitor.USP_IndexOperationalStats` korrigiert.
+- Mehrdeutige Spaltenreferenzen im dynamischen SQL von `monitor.USP_QueryStoreRegressions` vollständig mit dem CTE-Alias qualifiziert.
+- `SET QUOTED_IDENTIFIER ON` für die Extended-Events-Procedures mit XML-Methoden sowie für die Index-Operational-Stats-Procedure ergänzt.
+- Integrationsprüfung `165_Filter_Output_Contract.sql` für Listen-, Pattern-, JSON- und öffentliche Procedure-Verträge ergänzt.
+- Der getestete Gesamtstand ist die neue kanonische Projektbasis.
+
 ## Stand 2026-07-16 – Abschluss der Repositorymigration
 
 - Datenbankplatzhalter aus ausführbarer interner Logik entfernt; aktuelle Installationsdatenbank wird über `DB_ID()` ermittelt.
@@ -33,9 +42,9 @@
 - Sämtliche Phaseninstaller und der Gesamtinstaller aus 81 kanonischen Objektdateien neu aufgebaut.
 - Referenzhandbuch, Beispielaufrufe, Parameterinventar und QA-Berichte aktualisiert.
 
-## Nicht durchgeführt
+## Teststatus
 
-Ein realer Compile- und Laufzeittest auf SQL Server 2019, 2022 und 2025 konnte in der Erstellungsumgebung nicht durchgeführt werden.
+Der vorliegende Gesamtstand wurde nach Angabe des Projektverantwortlichen vollumfänglich real getestet. Die genaue Versions-, Editions-, Plattform- und Berechtigungsmatrix soll für weitere Freigaben separat dokumentiert werden.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

@@ -16,3 +16,7 @@
 - `Metadata/Quality/Migration_Audit.json` beziehungsweise einen neuen Release-Audit aktualisieren.
 
 - Kein SHA-/Dateimanifest regenerieren; Git und die maschinenlesbaren Fachinventare sind maßgeblich.
+
+## Maßgeblicher Ausgangsstand
+
+Der real getestete Gesamtstand vom 17.07.2026 ist die kanonische Basis. Künftige Änderungen müssen die Tests `110_Smoke_Test.sql`, `163_Parameter_API_Vertrag.sql` und `165_Filter_Output_Contract.sql` berücksichtigen.
