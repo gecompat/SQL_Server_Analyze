@@ -18,11 +18,12 @@ jobs:
         with:
           ref: agent/validate-sqlserver-2022-linux-gate
 
-      - name: Locate message
+      - name: Locate Service Broker contract
         shell: bash
         run: |
           set -euo pipefail
-          grep -R -n -C 6 'Service-Broker-Analyse' Code > /tmp/service-broker-contract-location.txt
+          grep -R -n -i -C 6 -E 'broker|service_queues|transmission_queue|conversation_endpoints|sys\.services' Code \
+            > /tmp/service-broker-contract-location.txt
           cat /tmp/service-broker-contract-location.txt
 
       - name: Upload location
