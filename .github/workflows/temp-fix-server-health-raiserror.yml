@@ -1,0 +1,71 @@
+name: Temporary fix remaining RAISERROR expressions
+
+on:
+  push:
+    branches:
+      - agent/validate-sqlserver-2022-linux-gate
+
+permissions:
+  contents: write
+
+jobs:
+  fix-raiserror:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/validate-sqlserver-2022-linux-gate
+
+      - name: Materialize remaining RAISERROR messages
+        shell: python
+        run: |
+          from pathlib import Path
+
+          targets = [
+              ('Code/08_ServerHealth/130_USP_PerformanceCounters.sql', 'USP_PerformanceCounters'),
+              ('Code/08_ServerHealth/140_USP_CriticalEngineEvents.sql', 'USP_CriticalEngineEvents'),
+          ]
+
+          for file_name, procedure_name in targets:
+              path = Path(file_name)
+              text = path.read_text(encoding='utf-8')
+
+              declaration_anchor = "    DECLARE @ErrorMessage nvarchar(2048) = NULL;\n"
+              declaration_replacement = (
+                  "    DECLARE @ErrorMessage nvarchar(2048) = NULL;\n"
+                  "    DECLARE @MonitorPrintMessage nvarchar(2048) = NULL;\n"
+              )
+              if text.count(declaration_anchor) != 1:
+                  raise RuntimeError(f'Expected declaration anchor exactly once in {file_name}.')
+              text = text.replace(declaration_anchor, declaration_replacement, 1)
+
+              statement_old = (
+                  "    IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'\n"
+                  f"        RAISERROR(N'{procedure_name}: %s', 10, 1, COALESCE(@ErrorMessage, @StatusCode)) WITH NOWAIT;\n"
+              )
+              statement_new = (
+                  "    IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'\n"
+                  "    BEGIN\n"
+                  "        SET @MonitorPrintMessage = COALESCE(@ErrorMessage, CONVERT(nvarchar(2048), @StatusCode));\n"
+                  f"        RAISERROR(N'{procedure_name}: %s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;\n"
+                  "    END;\n"
+              )
+              if text.count(statement_old) != 1:
+                  raise RuntimeError(f'Expected RAISERROR statement exactly once in {file_name}.')
+              text = text.replace(statement_old, statement_new, 1)
+              path.write_text(text, encoding='utf-8', newline='\n')
+
+      - name: Commit remaining fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/08_ServerHealth/130_USP_PerformanceCounters.sql Code/08_ServerHealth/140_USP_CriticalEngineEvents.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: materialize server health RAISERROR messages'
+          git push origin HEAD:agent/validate-sqlserver-2022-linux-gate
