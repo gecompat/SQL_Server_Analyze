@@ -32,4 +32,4 @@ Keine AG-Zeilen auf einer Standalone-Instanz sind erwartbar.
 
 Backupchild partiell, AG-Child unavailable feature: Nur der Backupbereich benötigt Nacharbeit. Auffälliges Child gezielt erneut ausführen.
 
-[Technische Detailbeschreibung](../07_Infrastructure.md#9-monitorusp_infrastructureanalysis)
+[Technische Detailbeschreibung](../07_Infrastructure.md#12-monitorusp_infrastructureanalysis)
