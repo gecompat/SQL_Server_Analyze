@@ -1,0 +1,55 @@
+name: Temporary normalize permission probe nulls
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out permission matrix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2022-permission-matrix
+
+      - name: Normalize unknown permission probes
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = {
+              "CONVERT(bit,HAS_PERMS_BY_NAME(NULL,N''SERVER'',N''VIEW SERVER STATE''))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,N''SERVER'',N''VIEW SERVER STATE''),0))",
+              "CONVERT(bit,HAS_PERMS_BY_NAME(NULL,N''SERVER'',N''VIEW SERVER PERFORMANCE STATE''))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,N''SERVER'',N''VIEW SERVER PERFORMANCE STATE''),0))",
+              "CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE STATE''))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE STATE''),0))",
+              "CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE PERFORMANCE STATE''))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE PERFORMANCE STATE''),0))",
+              "CONVERT(bit,HAS_PERMS_BY_NAME(NULL,N'SERVER',N'VIEW SERVER STATE'))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,N'SERVER',N'VIEW SERVER STATE'),0))",
+              "CONVERT(bit,HAS_PERMS_BY_NAME(NULL,N'SERVER',N'VIEW SERVER PERFORMANCE STATE'))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,N'SERVER',N'VIEW SERVER PERFORMANCE STATE'),0))",
+              "CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'),0))",
+              "CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE PERFORMANCE STATE'))": "CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE PERFORMANCE STATE'),0))",
+          }
+
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise RuntimeError(f'Expected permission probe exactly once: {old}; found {text.count(old)}.')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8', newline='\n')
+
+      - name: Commit permission probe normalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: normalize unknown permission probes'
+          git push origin HEAD:agent/sqlserver-2022-permission-matrix
