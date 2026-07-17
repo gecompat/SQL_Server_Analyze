@@ -10,7 +10,6 @@
 
 Full legal terms can be found in the [LICENSE.md](./LICENSE.md) file.
 
-> Hinweis zur Dateibenennung: Die im Repository vorhandene Lizenzdatei ist [`LICENSE.md`](./LICENSE.md).
 
 ---
 
@@ -170,8 +169,7 @@ Documentation/
 
 Metadata/
 ├── Inventory/
-├── Quality/
-└── MANIFEST.csv
+└── Quality/
 
 AI_Metadata/
 ```
@@ -180,7 +178,7 @@ AI_Metadata/
 
 - `Code/` enthält die kanonischen, ausführbaren SQL-Objekte, Installer, Tests und Beispiele.
 - `Documentation/` beschreibt Zielbild, Architektur, Funktionsumfang, Verträge, Rechercheergebnisse und Betrieb.
-- `Metadata/` enthält maschinenlesbare Objekt- und Parameterinventare sowie Prüfergebnisse und Dateihashes.
+- `Metadata/` enthält maschinenlesbare Objekt-, Parameter-, Systemquellen-, Abhängigkeits- und Capability-Inventare sowie Prüfergebnisse.
 - `AI_Metadata/` enthält den kompakten Projektkontext für eine konsistente KI-gestützte Weiterentwicklung.
 
 ## Performance- und Sicherheitsprinzipien
@@ -204,11 +202,12 @@ Empfohlene Einstiegspunkte:
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
+- [Systemquellenkatalog](./Documentation/Research/System_Source_Catalog.md)
 - [Recherchequellen](./Documentation/Research/Sources.md)
 
 ## Qualität und Projektstatus
 
-Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Manifestprüfungen. Der aktuelle Audit ist unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json) dokumentiert.
+Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Migrationsprüfungen. Der aktuelle Audit ist unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json) dokumentiert.
 
 Vor einem produktiven Einsatz sind weiterhin reale Compile- und Smoke-Tests auf den vorgesehenen SQL-Server-Versionen und Editionsvarianten erforderlich.
 
