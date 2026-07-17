@@ -1,6 +1,9 @@
 USE [DeineDatenbank];
 GO
 
+SET QUOTED_IDENTIFIER ON;
+GO
+
 /*
 ===============================================================================
 Objekt       : monitor.USP_IndexOperationalStats
@@ -325,12 +328,12 @@ END;
     IF @ResultSetArtNormalisiert<>'NONE' BEGIN
         SELECT @ModuleName [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@OverallStatus [StatusCode],@IsPartial [IsPartial],@TotalRows [RowCount],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
         SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitInMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber]; ELSE SELECT N'Index Operational Stats' [Ergebnis],[r].* FROM [#Result] [r] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitInMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber];
+        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber]; ELSE SELECT N'Index Operational Stats' [Ergebnis],[r].* FROM [#Result] [r] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber];
     END;
     IF @JsonErzeugen=1 BEGIN
         DECLARE @JsonMeta nvarchar(max)=(SELECT @ModuleName [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@OverallStatus [statusCode],@IsPartial [isPartial],@TotalRows [rowCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitInMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"indexOperationalStats":',COALESCE(@JsonData1,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
     END;
 END;

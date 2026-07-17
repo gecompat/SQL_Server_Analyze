@@ -1,6 +1,9 @@
 USE [DeineDatenbank];
 GO
 
+SET QUOTED_IDENTIFIER ON;
+GO
+
 /*
 ===============================================================================
 Objekt       : monitor.USP_ExtendedEventsReadEvents
