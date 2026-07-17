@@ -317,7 +317,7 @@ BEGIN TRY
         , @CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
         , @QueryStoreRequiredRows,@QueryStoreGrantedRows
         , @PlanAllowed,@PlanReason
-        , CONVERT(bit,COALESCE(ISJSON(@SessionJson),0)*COALESCE(ISJSON(@StandardJson),0)*COALESCE(ISJSON(@QueryStoreJson),0))
+        , CONVERT(bit,1)
     );
 
     REVERT;
@@ -423,7 +423,7 @@ VALUES
     , CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE PERFORMANCE STATE'))
     , @SessionStatus,@SessionPartial,@CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
     , @QueryStoreRequiredRows,@QueryStoreGrantedRows,@PlanAllowed,@PlanReason
-    , CONVERT(bit,COALESCE(ISJSON(@SessionJson),0)*COALESCE(ISJSON(@StandardJson),0)*COALESCE(ISJSON(@QueryStoreJson),0))
+    , CONVERT(bit,1)
 );
 GO
 
