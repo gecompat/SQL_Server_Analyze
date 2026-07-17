@@ -189,7 +189,8 @@ AI_Metadata/
 - fehlende optionale Quellen führen nach Möglichkeit zu strukturierten Teil- oder Verfügbarkeitsstatus statt zum Gesamtabbruch
 - versionsabhängige Syntax wird erst nach Featureprüfung verwendet
 - dynamisches SQL verwendet validierte Identifier und `QUOTENAME`
-- konkrete umgebungs- oder personenbezogene Daten gehören weder in Code noch in Dokumentation oder Beispiele
+- interaktive SELECT-, RAW-, CONSOLE- und JSON-Ausgaben dürfen die für die Diagnose erforderlichen Benutzer-, Session-, Firmen- und Umgebungsinformationen enthalten
+- reale Laufzeitwerte dürfen niemals in Repositorydateien, Dokumentation, Tests, Beispielausgaben, Audits oder downloadbare Lieferartefakte übernommen werden; im Zweifel wird vor der Aufnahme nachgefragt
 
 ## Dokumentation
 
@@ -202,6 +203,8 @@ Empfohlene Einstiegspunkte:
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
+- [Datenschutzgrenze zwischen Laufzeitausgabe und Repository](./Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md)
+- [Tiefenanalyse fehlender Auswertungen und Spezialfälle](./Documentation/Research/Special_Case_Gap_Analysis.md)
 - [Systemquellenkatalog](./Documentation/Research/System_Source_Catalog.md)
 - [Recherchequellen](./Documentation/Research/Sources.md)
 
