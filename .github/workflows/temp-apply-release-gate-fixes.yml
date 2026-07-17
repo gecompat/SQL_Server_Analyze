@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - agent/sqlserver-2022-linux-release-gate-final
+  pull_request:
 
 permissions:
   contents: write
@@ -34,7 +35,6 @@ jobs:
                   raise RuntimeError(f'{path_name}: expected one anchor, found {count}: {old[:120]!r}')
               path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
 
-          # Preserve runtime placeholders while preventing SQLCMD preprocessing.
           for path_name in (
               'Code/01_Common/060_VW_FrameworkFeatureCatalog.sql',
               'Code/01_Common/070_USP_CheckFrameworkCapabilities.sql',
@@ -57,7 +57,6 @@ jobs:
           if remaining:
               raise RuntimeError(f'Unescaped SQLCMD-style runtime placeholders remain: {remaining!r}')
 
-          # Materialize RAISERROR arguments before passing them to RAISERROR.
           raiserror_targets = (
               ('Code/08_ServerHealth/110_USP_DatabaseIntegrityAnalysis.sql', 'USP_DatabaseIntegrityAnalysis'),
               ('Code/08_ServerHealth/120_USP_DatabaseCapacityAnalysis.sql', 'USP_DatabaseCapacityAnalysis'),
@@ -81,14 +80,12 @@ jobs:
                   "    END;\n"
               )
 
-          # Correct a missing UPDATE source alias in Temporal analysis.
           replace_once(
               'Code/09_VersionAdaptive/040_USP_TemporalAnalysis.sql',
               "           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END;\n\n    UPDATE [ds]",
               "           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END\n    FROM [#TemporalTable] AS [tt];\n\n    UPDATE [ds]"
           )
 
-          # Keep the parser fixture independent from the installation placeholder.
           replace_once(
               'Code/Tests/Integration/165_Filter_Output_Contract.sql',
               "FROM [monitor].[TVF_ParseFullObjectNameList](N'[DeineDatenbank].[dbo].[A|B]|[dbo].[C]')",
@@ -100,7 +97,6 @@ jobs:
               "WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'ExampleDatabase' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1"
           )
 
-          # Use literal source checks for identifiers containing brackets.
           replace_once(
               'Code/Tests/Integration/167_Special_Case_API_Contract.sql',
               """IF @TemporalDefinition NOT LIKE N'%[[]sys[]].[[]periods[]]%'
@@ -147,7 +143,6 @@ END;
 """
           )
 
-          # Flush suite progress immediately under sqlcmd -b.
           runner = Path('Code/Tests/Run_Release_Gate.sql')
           runner_text = runner.read_text(encoding='utf-8')
           runner_text, count = re.subn(
