@@ -1,0 +1,60 @@
+name: Temporary fix Temporal source contract
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-contract:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/validate-sqlserver-2022-linux-gate
+
+      - name: Use literal Temporal source checks
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Integration/167_Special_Case_API_Contract.sql')
+          text = path.read_text(encoding='utf-8')
+          old = """IF @TemporalDefinition NOT LIKE N'%[[]sys[]].[[]periods[]]%'
+ OR @TemporalDefinition NOT LIKE N'%[[]history_table_id[]]%'
+ OR @TemporalDefinition NOT LIKE N'%[[]dm_db_partition_stats[]]%'
+    THROW 54107,N'Die Temporal-Tables-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen.',1;
+"""
+          new = """DECLARE @MissingTemporalSources nvarchar(2048)=NULL;
+IF CHARINDEX(N'[sys].[periods]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=N'sys.periods';
+IF CHARINDEX(N'[history_table_id]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=CONCAT_WS(N', ',@MissingTemporalSources,N'history_table_id');
+IF CHARINDEX(N'[sys].[dm_db_partition_stats]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=CONCAT_WS(N', ',@MissingTemporalSources,N'sys.dm_db_partition_stats');
+IF @MissingTemporalSources IS NOT NULL
+BEGIN
+    DECLARE @TemporalSourceMessage nvarchar(2048)=CONCAT(N'Die Temporal-Tables-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen: ',@MissingTemporalSources,N'.');
+    THROW 54107,@TemporalSourceMessage,1;
+END;
+"""
+          if text.count(old) != 1:
+              raise RuntimeError('Expected combined Temporal source check exactly once.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+
+      - name: Commit contract fix
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Integration/167_Special_Case_API_Contract.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: use literal Temporal source checks'
+          git push origin HEAD:agent/validate-sqlserver-2022-linux-gate
