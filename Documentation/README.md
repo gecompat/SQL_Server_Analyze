@@ -18,6 +18,8 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 
 Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.
 
+Der Gesamtstand vom 17.07.2026 wurde nach Angabe des Projektverantwortlichen vollumfänglich real getestet; die dabei gefundenen Korrekturen sind Bestandteil der kanonischen SQL-Dateien.
+
 ## Forschungs- und Inventareinstieg
 
 - `Documentation/Research/System_Source_Catalog.md`
