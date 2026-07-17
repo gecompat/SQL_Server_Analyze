@@ -1,36 +1,36 @@
 {
-  "release": "1.1.0-special.1",
-  "generatedAtUtc": "2026-07-17T12:30:42Z",
+  "release": "1.1.0-special.2",
+  "generatedAtUtc": "2026-07-17T13:21:43Z",
   "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
-  "scope": "special-case module wave and repository integration",
+  "scope": "completed P0/P1 special-case module wave and repository integration",
   "inventory": {
-    "repositoryFiles": 162,
-    "canonicalSqlSources": 98,
-    "sqlFilesIncludingTestsAndExamples": 113,
-    "objects": 90,
-    "procedures": 75,
+    "repositoryFiles": 163,
+    "canonicalSqlSources": 99,
+    "sqlFilesIncludingTestsAndExamples": 114,
+    "objects": 91,
+    "procedures": 76,
     "functions": 10,
     "views": 5,
-    "procedureParameters": 1133,
-    "systemSources": 160
+    "procedureParameters": 1164,
+    "systemSources": 162
   },
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 113,
+      "filesChecked": 114,
       "issues": []
     },
     "namedProcedureCalls": {
       "status": "PASS",
-      "procedureCallsChecked": 173,
-      "namedArgumentsChecked": 1210,
+      "procedureCallsChecked": 178,
+      "namedArgumentsChecked": 1274,
       "unknownProcedures": [],
       "unknownNamedArguments": []
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 98,
-      "includes": 98,
+      "canonicalSources": 99,
+      "includes": 99,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -38,19 +38,19 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 90,
-      "inventoryObjects": 90,
+      "sourceObjects": 91,
+      "inventoryObjects": 91,
       "differences": []
     },
     "parameterInventory": {
       "status": "PASS",
-      "sourceProcedures": 75,
-      "inventoryRows": 1133,
+      "sourceProcedures": 76,
+      "inventoryRows": 1164,
       "nameOrOrderDifferences": []
     },
     "systemSourceInventory": {
       "status": "PASS",
-      "inventoryRows": 160,
+      "inventoryRows": 162,
       "missingSourceModuleMappings": []
     },
     "repositoryPrivacyGate": {
@@ -70,8 +70,8 @@
   "testDocumentation": {
     "targetRows": 4,
     "targetRowsNotExecuted": 4,
-    "specialCaseRows": 49,
-    "specialCaseRowsNotExecuted": 49,
+    "specialCaseRows": 57,
+    "specialCaseRowsNotExecuted": 57,
     "runtimeStatus": "NOT_EXECUTED",
     "claim": "No installation, compilation, smoke, functional, permission, load or cross-version runtime execution is claimed for this release wave."
   },

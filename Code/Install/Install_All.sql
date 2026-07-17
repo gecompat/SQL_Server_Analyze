@@ -48,6 +48,7 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../03_ObjectIndex/025_USP_IndexOperationalStats.sql
 :r ../03_ObjectIndex/030_USP_MissingIndexes.sql
 :r ../03_ObjectIndex/040_USP_Statistics.sql
+:r ../03_ObjectIndex/045_USP_StatisticsDistributionAnalysis.sql
 :r ../03_ObjectIndex/050_USP_Partitions.sql
 :r ../03_ObjectIndex/060_USP_Columnstore.sql
 :r ../03_ObjectIndex/070_USP_IndexPhysicalStats.sql

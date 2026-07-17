@@ -33,7 +33,7 @@ Das Framework wird in einer frei wählbaren Datenbank im Schema `[monitor]` inst
 - SQL Agent, Resource Governor, Hochverfügbarkeit, Backup, Log Shipping und Replikation
 - CPU-, NUMA-, Memory-, TempDB-, Betriebssystem-, Trace-Flag- und Sicherheitskonfiguration
 - Spezialfallmodule für Integrität, Datei-/Volumekapazität, typisierte Performance Counter und kritische Engine-Ereignisse
-- IQP-, Contention-, Buffer-Pool-, Backupketten-, Schema-, Availability- und Agent-/Alert-Evidenz
+- IQP-, Contention-, Buffer-Pool-, Backupketten-, Schema-, Statistikverteilungs-, Availability- und Agent-/Alert-Evidenz
 - normalisierte diagnostische Findings mit Priorität, Konfidenz und expliziter Aussagegrenze
 - versionsabhängige Featureerkennung mit strukturierten Fallback- und Statusinformationen
 
@@ -216,7 +216,7 @@ Empfohlene Einstiegspunkte:
 
 Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Migrationsprüfungen. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json).
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen installiert, kompiliert und funktional getestet. Die neue Version `1.1.0-special.1` besitzt statische API- und Installerverträge; reale Läufe der dokumentierten Zielmatrix stehen noch aus.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen installiert, kompiliert und funktional getestet. Die neue Version `1.1.0-special.2` einschließlich begrenzter Statistikverteilungsanalyse besitzt statische API- und Installerverträge; reale Läufe der dokumentierten Zielmatrix stehen noch aus.
 
 Die geplanten SQL-Server-, Editions-, Plattform- und Berechtigungskombinationen stehen in [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv). `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 

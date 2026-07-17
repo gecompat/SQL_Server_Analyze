@@ -43,6 +43,8 @@ GO
 
 -- EXEC [monitor].[USP_Statistics] @Hilfe = 1;
 
+-- EXEC [monitor].[USP_StatisticsDistributionAnalysis] @Hilfe = 1;
+
 -- EXEC [monitor].[USP_Partitions] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_Columnstore] @Hilfe = 1;

@@ -209,7 +209,7 @@ Quelle: `Code/07_Infrastructure/080_USP_DataCaptureStatus.sql`
 Quelle: `Code/08_ServerHealth/170_USP_DiagnosticFindings.sql`
 
 ```sql
-@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MitIntegritaet bit = 1, @MitKapazitaet bit = 1, @MitSpeicher bit = 1, @MitBackupketten bit = 1, @MitAvailability bit = 1, @MitAgentMonitoring bit = 1, @MitSchemaDesign bit = 0, @MitIQP bit = 0, @MitContention bit = 0, @ContentionSampleSeconds tinyint = 5, @ContentionMinWaitMs bigint = 1000, @NurAbPrioritaet varchar(16) = 'INFO', @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MitIntegritaet bit = 1, @MitKapazitaet bit = 1, @MitSpeicher bit = 1, @MitBackupketten bit = 1, @MitAvailability bit = 1, @MitAgentMonitoring bit = 1, @MitSchemaDesign bit = 0, @MitStatistikverteilung bit = 0, @MitIQP bit = 0, @MitContention bit = 0, @ContentionSampleSeconds tinyint = 5, @ContentionMinWaitMs bigint = 1000, @NurAbPrioritaet varchar(16) = 'INFO', @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
 
 ## `[monitor].[USP_ExtendedEventsAnalysis]`
@@ -329,7 +329,7 @@ Quelle: `Code/03_ObjectIndex/030_USP_MissingIndexes.sql`
 Quelle: `Code/03_ObjectIndex/080_USP_ObjectAnalysis.sql`
 
 ```sql
-@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @IndexNamePattern nvarchar(4000) = NULL, @StatisticsNames nvarchar(max) = NULL, @StatisticsNamePattern nvarchar(4000) = NULL, @Vollanalyse bit = 0, @MitObjectInventory bit = 1, @MitIndexUsage bit = 1, @MitMissingIndexes bit = 1, @MitOperationalStats bit = 0, @MitStatistics bit = 0, @MitPartitions bit = 0, @MitColumnstore bit = 0, @MitPhysicalStats bit = 0, @MitSchemaDesign bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @IndexNamePattern nvarchar(4000) = NULL, @StatisticsNames nvarchar(max) = NULL, @StatisticsNamePattern nvarchar(4000) = NULL, @Vollanalyse bit = 0, @MitObjectInventory bit = 1, @MitIndexUsage bit = 1, @MitMissingIndexes bit = 1, @MitOperationalStats bit = 0, @MitStatistics bit = 0, @MitStatisticsDistribution bit = 0, @MitPartitions bit = 0, @MitColumnstore bit = 0, @MitPhysicalStats bit = 0, @MitSchemaDesign bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
 
 ## `[monitor].[USP_ObjectInventory]`
@@ -586,6 +586,14 @@ Quelle: `Code/03_ObjectIndex/040_USP_Statistics.sql`
 
 ```sql
 @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @StatisticsNames nvarchar(max) = NULL, @StatisticsNamePattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @MinModificationPercent decimal(9,2) = 0, @MinAlterTage int = 0, @MitIncrementellenDetails bit = 0, @MaxDatenbanken int = 16, @MaxZeilen int = 10000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_StatisticsDistributionAnalysis]`
+
+Quelle: `Code/03_ObjectIndex/045_USP_StatisticsDistributionAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @StatisticsNames nvarchar(max) = NULL, @StatisticsNamePattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @MaxVerteilungsStatistiken int = 50, @MinVerteilungsZeilen bigint = 1000, @SkewWarnFaktor decimal(19,4) = 10, @DominanterSchrittWarnPercent decimal(9,4) = 50, @ModificationWarnPercent decimal(9,4) = 20, @PartitionSpreadWarnPercent decimal(9,4) = 20, @MaxDatenbanken int = 16, @MaxZeilen int = 1000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
 
 ## `[monitor].[USP_TempDBConfiguration]`

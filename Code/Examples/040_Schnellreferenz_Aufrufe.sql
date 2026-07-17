@@ -18,11 +18,20 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetail
 -- Performance Counter mit echtem Fünf-Sekunden-Intervall für unterstützte Raten
 EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds=5,@MaxZeilen=100;
 
+-- Begrenzte Statistikverteilung eines generischen Zielscopes; CATALOG_DEEP erforderlich
+EXEC [monitor].[USP_StatisticsDistributionAnalysis]
+      @DatabaseNames=N'[DeineDatenbank]'
+    , @SchemaNames=N'dbo'
+    , @AnalyseModus='GEZIELT'
+    , @MaxVerteilungsStatistiken=25
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]
       @DatabaseNames=N''
     , @MitSchemaDesign=0
+    , @MitStatistikverteilung=0
     , @MitIQP=0
     , @MitContention=0
     , @MaxZeilen=100

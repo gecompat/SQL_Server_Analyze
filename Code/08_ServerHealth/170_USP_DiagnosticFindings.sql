@@ -4,15 +4,15 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_DiagnosticFindings
-Version      : 1.0.0
+Version      : 1.1.0
 Stand        : 2026-07-17
 Zweck        : Aggregiert normalisierte Befunde aus den zuvor implementierten
                Spezialfallmodulen über deren JSON-Ausgabeverträge.
 Abhängigkeit : DatabaseIntegrityAnalysis, DatabaseCapacityAnalysis,
                BufferPoolAnalysis, BackupChainAnalysis,
                AvailabilityDeepAnalysis, AgentMonitoringAnalysis sowie opt-in
-               SchemaDesignAnalysis, IntelligentQueryProcessingAnalysis und
-               InternalContentionAnalysis.
+               SchemaDesignAnalysis, StatisticsDistributionAnalysis,
+               IntelligentQueryProcessingAnalysis und InternalContentionAnalysis.
 Methodik     : Kindmodule laufen mit @ResultSetArt=NONE. Der Aggregator liest
                nur definierte JSON-Felder und übernimmt keine freien SQL-,
                Mail-, Plan-, Pfad- oder Meldungstexte.
@@ -31,6 +31,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DiagnosticFindings]
     , @MitAvailability              bit            = 1
     , @MitAgentMonitoring           bit            = 1
     , @MitSchemaDesign              bit            = 0
+    , @MitStatistikverteilung       bit            = 0
     , @MitIQP                       bit            = 0
     , @MitContention                bit            = 0
     , @ContentionSampleSeconds      tinyint         = 5
@@ -61,7 +62,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_DiagnosticFindings';
         PRINT N'Aggregiert Befunde aus den Spezialfallmodulen; verändert keine Konfiguration und maskiert keine Resultsets.';
-        PRINT N'Kostenintensive Schema-, IQP- und Contention-Module sind standardmäßig deaktiviert.';
+        PRINT N'Kostenintensive Schema-, Statistikverteilungs-, IQP- und Contention-Module sind standardmäßig deaktiviert.';
         PRINT N'@NurAbPrioritaet=INFO|LOW|MEDIUM|HIGH; @MaxZeilen positiv, NULL/0 = unbegrenzt.';
         RETURN;
     END;
@@ -81,6 +82,7 @@ BEGIN
     DECLARE @AvailabilityJson nvarchar(max) = NULL;
     DECLARE @AgentJson nvarchar(max) = NULL;
     DECLARE @SchemaJson nvarchar(max) = NULL;
+    DECLARE @StatisticsDistributionJson nvarchar(max) = NULL;
     DECLARE @IqpJson nvarchar(max) = NULL;
     DECLARE @ContentionJson nvarchar(max) = NULL;
     DECLARE @ChildStatus varchar(40);
@@ -120,7 +122,8 @@ BEGIN
        OR @MinimumSeverity NOT IN ('INFO', 'LOW', 'MEDIUM', 'HIGH')
        OR (@MitIntegritaet = 0 AND @MitKapazitaet = 0 AND @MitSpeicher = 0
            AND @MitBackupketten = 0 AND @MitAvailability = 0 AND @MitAgentMonitoring = 0
-           AND @MitSchemaDesign = 0 AND @MitIQP = 0 AND @MitContention = 0)
+           AND @MitSchemaDesign = 0 AND @MitStatistikverteilung = 0
+           AND @MitIQP = 0 AND @MitContention = 0)
     BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER', @IsPartial = 1,
                @ErrorMessage = N'Ungültiger Modul-, Datenbank-, Sample-, Prioritäts-, Zeilen- oder Ausgabeparameter.';
@@ -252,6 +255,25 @@ BEGIN
         END CATCH;
     END;
 
+    IF @StatusCode = 'AVAILABLE' AND @MitStatistikverteilung = 1
+    BEGIN
+        BEGIN TRY
+            SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+            EXEC [monitor].[USP_StatisticsDistributionAnalysis]
+                  @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
+                , @DatabaseNamePattern = @DatabaseNamePattern, @AnalyseModus = 'VOLL'
+                , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @StatisticsDistributionJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
+                , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
+                , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+            INSERT @ModuleStatus VALUES (8, N'USP_StatisticsDistributionAnalysis', 'EXECUTED', @ChildStatus, @ChildPartial, @ChildErrorNumber, @ChildErrorMessage);
+        END TRY
+        BEGIN CATCH
+            INSERT @ModuleStatus VALUES (8, N'USP_StatisticsDistributionAnalysis', 'ERROR_HANDLED', NULL, 1, ERROR_NUMBER(), ERROR_MESSAGE());
+        END CATCH;
+    END;
+
     IF @StatusCode = 'AVAILABLE' AND @MitIQP = 1
     BEGIN
         BEGIN TRY
@@ -263,10 +285,10 @@ BEGIN
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
                 , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
-            INSERT @ModuleStatus VALUES (8, N'USP_IntelligentQueryProcessingAnalysis', 'EXECUTED', @ChildStatus, @ChildPartial, @ChildErrorNumber, @ChildErrorMessage);
+            INSERT @ModuleStatus VALUES (9, N'USP_IntelligentQueryProcessingAnalysis', 'EXECUTED', @ChildStatus, @ChildPartial, @ChildErrorNumber, @ChildErrorMessage);
         END TRY
         BEGIN CATCH
-            INSERT @ModuleStatus VALUES (8, N'USP_IntelligentQueryProcessingAnalysis', 'ERROR_HANDLED', NULL, 1, ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT @ModuleStatus VALUES (9, N'USP_IntelligentQueryProcessingAnalysis', 'ERROR_HANDLED', NULL, 1, ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -280,10 +302,10 @@ BEGIN
                 , @JsonErzeugen = 1, @Json = @ContentionJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
-            INSERT @ModuleStatus VALUES (9, N'USP_InternalContentionAnalysis', 'EXECUTED', @ChildStatus, @ChildPartial, @ChildErrorNumber, @ChildErrorMessage);
+            INSERT @ModuleStatus VALUES (10, N'USP_InternalContentionAnalysis', 'EXECUTED', @ChildStatus, @ChildPartial, @ChildErrorNumber, @ChildErrorMessage);
         END TRY
         BEGIN CATCH
-            INSERT @ModuleStatus VALUES (9, N'USP_InternalContentionAnalysis', 'ERROR_HANDLED', NULL, 1, ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT @ModuleStatus VALUES (10, N'USP_InternalContentionAnalysis', 'ERROR_HANDLED', NULL, 1, ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -433,6 +455,16 @@ FROM OPENJSON(COALESCE(@Schema, N''{}''), ''$.findings'') WITH
  [Evidence] nvarchar(1000), [EvidenceLimit] nvarchar(1000));
 
 INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+SELECT N''USP_StatisticsDistributionAnalysis'', ''STATISTICS_DISTRIBUTION'', [Severity], [Confidence], N''STATISTICS'',
+       CONCAT([DatabaseName],N''/'',[SchemaName],N''.'',[ObjectName],N''/'',[StatisticsName]),
+       [FindingCode],[MetricValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck]
+FROM OPENJSON(COALESCE(@StatisticsDistribution, N''{}''), ''$.findings'') WITH
+([DatabaseName] sysname, [SchemaName] sysname, [ObjectName] sysname, [StatisticsName] sysname,
+ [Severity] varchar(16), [Confidence] varchar(16), [FindingCode] varchar(120),
+ [MetricValue] decimal(38,4), [Evidence] nvarchar(1000), [EvidenceLimit] nvarchar(1000),
+ [RecommendedNextCheck] nvarchar(1000));
+
+INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_IntelligentQueryProcessingAnalysis'', ''IQP'', [FindingSeverity], ''HIGH'', N''DATABASE'',
        [DatabaseName], [FindingCode], CONVERT(decimal(38,4), [CompatibilityLevel]),
        CONCAT(N''compatibility level='', [CompatibilityLevel], N''; query store='', [QueryStoreActualStateDesc], N''.''),
@@ -457,15 +489,16 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
                   @ParseSql
                 , N'@Integrity nvarchar(max), @Capacity nvarchar(max), @Memory nvarchar(max),
                     @Backup nvarchar(max), @Availability nvarchar(max), @Agent nvarchar(max),
-                    @Schema nvarchar(max), @Iqp nvarchar(max), @Contention nvarchar(max),
+                    @Schema nvarchar(max), @StatisticsDistribution nvarchar(max), @Iqp nvarchar(max), @Contention nvarchar(max),
                     @ContentionMinWaitMs bigint'
                 , @Integrity = @IntegrityJson, @Capacity = @CapacityJson, @Memory = @MemoryJson
                 , @Backup = @BackupJson, @Availability = @AvailabilityJson, @Agent = @AgentJson
-                , @Schema = @SchemaJson, @Iqp = @IqpJson, @Contention = @ContentionJson
+                , @Schema = @SchemaJson, @StatisticsDistribution = @StatisticsDistributionJson
+                , @Iqp = @IqpJson, @Contention = @ContentionJson
                 , @ContentionMinWaitMs = @ContentionMinWaitMs;
         END TRY
         BEGIN CATCH
-            INSERT @ModuleStatus VALUES (10, N'JSON_EVIDENCE_AGGREGATION', 'ERROR_HANDLED', NULL, 1, ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT @ModuleStatus VALUES (11, N'JSON_EVIDENCE_AGGREGATION', 'ERROR_HANDLED', NULL, 1, ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF EXISTS
