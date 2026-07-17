@@ -1,58 +1,47 @@
 # Analysehandbuch für SQL_Server_Analyze
 
 **Stand:** 17. Juli 2026  
-**Geltungsbereich:** alle 79 im öffentlichen Procedure-Referenzhandbuch aufgeführten Procedures  
-**Zielgruppe:** Analyseanfänger, Datenbankentwickler und erfahrene SQL-Server-Administratoren
+**Geltungsbereich:** 79 Procedures  
+**Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
-## Wo befinden sich die eigentlichen Objektbeschreibungen?
+## Empfohlener Einstieg
 
-Die Datei `Deep_Research_Analysis_Guides_Concept.md` ist ausschließlich das Forschungs- und Strukturkonzept. Sie ist **nicht** das eigentliche Analysehandbuch.
+1. Bei einem konkreten Symptom im [Runbook-Verzeichnis](Runbooks/README.md) beginnen.
+2. Die betreffende [eigenständige Procedure-Seite](Procedures/README.md) lesen.
+3. Unbekannte Begriffe im [Glossar](Glossary.md) nachschlagen.
+4. Parameter anhand der [Parameter-Lesehilfe](Parameter_Reading_Guide.md) und `@Hilfe=1` prüfen.
+5. Für vollständige Resultsets und Spalten in den verlinkten Familienguide wechseln.
 
-Für die praktische Arbeit stehen drei Einstiege zur Verfügung:
+Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_Concept.md) ist kein Anwenderhandbuch.
 
-1. [Einsteigerleitfaden: Wie Resultsets gelesen und Kombinationen begründet werden](Beginner_Reading_Guide.md)
-2. [Objektindex mit Direktlinks zu allen 79 umfassenden Procedure-Beschreibungen](Object_Index.md)
-3. die nachstehenden Familienguides mit den vollständigen Resultset-, Spalten-, Interpretations-, Beispiel- und Folgeanalyseabschnitten
+## Feste Leserichtung
 
-## Empfohlener Lernweg
-
-Analyseanfänger sollten nicht direkt mit einer langen Spaltentabelle beginnen:
-
-1. Im [Einsteigerleitfaden](Beginner_Reading_Guide.md) die Procedure suchen.
-2. Dort die empfohlene **Lesereihenfolge**, Problembegründung und Gegenbeispiele nachvollziehen.
-3. Anschließend über den [Objektindex](Object_Index.md) in die technische Detailbeschreibung wechseln.
-4. Status, Zeitbezug und Aussagegrenzen vor den eigentlichen Messwerten prüfen.
-5. Erst nach einer zweiten Evidenzquelle eine Änderung planen.
-
-Der Einsteigerleitfaden erklärt für jedes Objekt ausdrücklich:
-
-- welche Spalten zuerst gelesen werden,
-- welche Werte miteinander kombiniert werden müssen,
-- warum eine bestimmte Kombination ein Problem darstellen kann,
-- warum dieselben Einzelwerte in einem anderen Kontext unkritisch sein können,
-- welche Folgeanalyse die Vermutung bestätigt oder widerlegt.
-
-## Zweck
-
-Dieser Bereich erklärt nicht nur, wie eine Procedure aufgerufen wird, sondern vor allem:
-
-- welche Frage sie beantwortet,
-- welche Datenquellen und Zeiträume hinter den Resultsets stehen,
-- wie jede Spalte beziehungsweise zusammengehörige Spaltengruppe zu lesen ist,
-- welche Werte normal, auffällig, kritisch oder irreführend sein können,
-- welche Aussagegrenzen durch Neustart, Cache-Eviction, Rechte, Featurestatus oder Sampling entstehen,
-- welche Folgeanalyse kontrolliert als Nächstes ausgeführt werden sollte,
-- welche Kosten die Analyse selbst verursachen kann.
-
-Alle Beispiele sind vollständig synthetisch und verwenden ausschließlich `Example*`-Bezeichnungen.
+1. Status und Vollständigkeit,
+2. Scope und Zeilengranularität,
+3. Zeitbezug, Reset oder Retention,
+4. Nenner und Datenmenge,
+5. Kombination zusammengehöriger Werte,
+6. technische Ursachehypothese,
+7. Auswirkung und Gegenbeispiel,
+8. zweite unabhängige Evidenzquelle,
+9. erst danach Änderung und Rollback planen.
 
 ## Dokumente
 
-| Bereich | Dokument | Enthaltene Procedures |
+| Zweck | Dokument |
+|---|---|
+| Direkte Seite je Procedure | [Procedures/README.md](Procedures/README.md) |
+| Symptomorientierte Abläufe | [Runbooks/README.md](Runbooks/README.md) |
+| Begriffserklärungen | [Glossary.md](Glossary.md) |
+| Parameter und sichere Aufrufe | [Parameter_Reading_Guide.md](Parameter_Reading_Guide.md) |
+| Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) |
+| Vollständiger Objektindex | [Object_Index.md](Object_Index.md) |
+| Redaktionsstandard | [Documentation_Quality_Contract.md](Documentation_Quality_Contract.md) |
+
+## Familienguides
+
+| Bereich | Dokument | Procedures |
 |---|---|---:|
-| Didaktische Leserichtung | [Beginner_Reading_Guide.md](Beginner_Reading_Guide.md) | Leselogik und Problembegründung für alle 79 Objekte |
-| Objektweiser Einstieg | [Object_Index.md](Object_Index.md) | Direktlinks zu allen 79 Objekten |
-| Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) | frameworkweite Status-, Ausgabe-, Filter-, Kosten- und Evidenzregeln |
 | Common | [01_Common.md](01_Common.md) | 4 |
 | Current State | [02_Current_State.md](02_Current_State.md) | 10 |
 | Object und Index | [03_Object_Index.md](03_Object_Index.md) | 11 |
@@ -62,99 +51,40 @@ Alle Beispiele sind vollständig synthetisch und verwenden ausschließlich `Exam
 | Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 12 |
 | Server Health | [08_Server_Health.md](08_Server_Health.md) | 17 |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 4 |
-| **Summe** | | **79** |
-
-Zusätzlich bleibt das Forschungs- und Strukturkonzept verfügbar:
-
-- [Deep_Research_Analysis_Guides_Concept.md](Deep_Research_Analysis_Guides_Concept.md)
+| **Gesamt** | | **79** |
 
 ## Schnellwahl nach Symptom
 
-| Symptom oder Frage | Erster Aufruf | Typische Folgeanalyse |
+| Symptom | Erster Aufruf | Runbook |
 |---|---|---|
-| Benutzer melden Hänger | `USP_CurrentOverview` | `USP_CurrentBlocking`, `USP_CurrentWaits`, `USP_CurrentRequests` |
-| einzelne laufende Abfrage langsam | `USP_CurrentRequests` | `USP_QueryStats`, `USP_ShowplanAnalysis`, Query Store |
-| Blockierung | `USP_CurrentBlocking` | `USP_CurrentTransactions`, `USP_CurrentRequests`, Extended Events |
-| Memory-Grant-Stau | `USP_CurrentMemoryGrants` | `USP_CurrentRequests`, `USP_ShowplanAnalysis`, `USP_ServerMemory` |
-| TempDB wächst oder ist voll | `USP_CurrentTempDB` | `USP_TempDBConfiguration`, `USP_CurrentRequests` |
-| I/O-Latenz | `USP_CurrentIO` mit Stichprobe | `USP_DatabaseCapacityAnalysis`, OS-/Storage-Monitoring |
-| Transaktionslog voll | `USP_CurrentLog` | `USP_CurrentTransactions`, `USP_BackupRecovery` |
-| Top-CPU oder Top-I/O historisch | `USP_QueryStoreRuntimeStats` | `USP_QueryStorePlanChanges`, `USP_QueryStoreRegressions` |
-| Top-CPU aus aktuellem Cache | `USP_QueryStats` | `USP_QueryHashAnalysis`, `USP_ShowplanAnalysis` |
-| Index wird nicht genutzt | `USP_IndexUsage` | `USP_IndexOperationalStats`, Query Store, Abhängigkeitsprüfung |
-| fehlender Index vermutet | `USP_MissingIndexes` | `USP_ObjectInventory`, `USP_IndexUsage`, Plananalyse |
-| Fragmentierung | `USP_IndexPhysicalStats` | `USP_IndexUsage`, Wartungsfenster- und Seitendichteprüfung |
-| Statistikproblem | `USP_Statistics` | `USP_StatisticsDistributionAnalysis`, Showplan |
-| Columnstore-Problem | `USP_Columnstore` | Rowgroup-, Segment- und Dictionary-Tiefenoptionen |
-| Backup-/Recovery-Risiko | `USP_BackupRecovery` | `USP_BackupChainAnalysis`, Restore-Test |
-| Integritätsverdacht | `USP_DatabaseIntegrityAnalysis` | Page Details, CHECKDB, Backupkette, HADR |
-| Availability-Group-Lag | `USP_AvailabilityDeepAnalysis` | Performance Counter, Netzwerk, Storage, Cluster |
-| Agent-Fehler | `USP_AgentMonitoringAnalysis` | `USP_AgentJobs`, Database Mail, Alert-Konfiguration |
-| kritische Engine-Ereignisse | `USP_CriticalEngineEvents` | `USP_ExtendedEventsReadEvents`, Error Log und Infrastruktur |
-| unbekannte Spezialfeatures | `USP_SpecialFeatureInventory` | empfohlenes Deep-Dive-Modul |
-| In-Memory OLTP | `USP_InMemoryOltpAnalysis` | Hashindex-, Checkpoint- und Resource-Pool-Prüfung |
-| Temporal Tables | `USP_TemporalAnalysis` | Retention-, History-Index- und Kapazitätsprüfung |
+| Hänger/Blocking | `USP_CurrentOverview` | [Blocking](Runbooks/01_User_Hangs_Blocking.md) |
+| CPU hoch | `USP_CurrentRequests`, `USP_QueryStats` | [High CPU](Runbooks/02_High_CPU.md) |
+| Query plötzlich langsamer | `USP_QueryStoreRegressions` | [Regression](Runbooks/03_Query_Regression.md) |
+| TempDB wächst | `USP_CurrentTempDB` | [TempDB](Runbooks/04_TempDB_Growth.md) |
+| Log läuft voll | `USP_CurrentLog` | [Transaction Log](Runbooks/05_Transaction_Log_Full.md) |
+| Grants warten | `USP_CurrentMemoryGrants` | [Memory Grants](Runbooks/06_Memory_Grant_Queue.md) |
+| I/O-Latenz | `USP_CurrentIO` | [I/O](Runbooks/07_IO_Latency.md) |
+| Index ungenutzt | `USP_IndexUsage` | [Unused Index](Runbooks/08_Unused_Index.md) |
+| Backup/Integrität | `USP_DatabaseIntegrityAnalysis` | [Backup/Integrity](Runbooks/09_Backup_Integrity_Risk.md) |
+| AG-Lag | `USP_AvailabilityDeepAnalysis` | [AG Lag](Runbooks/10_Availability_Group_Lag.md) |
 
 ## Evidenzarten
 
-| Evidenzart | Typische Quellen | Hauptgrenze |
-|---|---|---|
-| Live-Momentaufnahme | `dm_exec_requests`, Waiting Tasks, Locks | kann kurzlebige oder bereits beendete Zustände verpassen |
-| Stichprobe/Delta | I/O, Waits, Performance Counter, Contention | Ergebnis hängt stark vom gewählten Intervall ab |
-| kumulative DMV | Index Usage, Query Stats, einige OS-DMVs | Reset bei Neustart, Cache-Eviction, DDL oder Datenbankstatuswechsel |
-| historisch persistiert | Query Store, msdb-Backup-/Agent-Historie | Retention, Cleanup, Capture Mode und Historienlücken |
-| Ereignishistorie | Extended Events | nur erfasste, noch vorhandene Targetdaten |
-| Katalog-/Konfigurationssicht | `sys.*`-Kataloge | sichtbarer Berechtigungs- und Plattformscope |
-| normalisierte Findings | JSON-Verträge der Spezialmodule | Triage, keine automatische Ursachenfeststellung |
-
-## Kostenklassen
-
-| Klasse | Bedeutung |
-|---|---|
-| `LOW` | kleine DMV- oder Katalogabfragen, normalerweise ad hoc unkritisch |
-| `MEDIUM` | breitere Instanz-/Datenbankabfragen, XML-Auswertung oder approximative Größenstatistik |
-| `HIGH` | breite Cache-, Plan-, Histogramm-, Segment- oder Cross-Database-Analyse |
-| `HIGH_OPT_IN` | explizit aktivierte Tiefenpfade, Sampling, XML-/Targetdaten oder potentiell große Katalogscans |
-
-Die Kostenklasse ist keine Laufzeitgarantie. Servergröße, Cachegröße, Zahl der Datenbanken, Objektzahl, Berechtigungsfehler und Ausgabeumfang beeinflussen die tatsächliche Last.
-
-## Allgemeiner Anfänger-Workflow
-
-```mermaid
-flowchart TD
-    A[Problem beschreiben] --> B[Leichten Überblick aufrufen]
-    B --> C{Live oder historisch?}
-    C -->|Live| D[Current-State-Familie]
-    C -->|Historisch| E[Query Store, XE oder msdb-Historie]
-    D --> F{Blocking, Wait, CPU, I/O oder Memory?}
-    F --> G[gezielte Detailprocedure]
-    E --> H[Zeitraum und Retention prüfen]
-    G --> I[Status + Zeitbezug + Nenner lesen]
-    H --> I
-    I --> J[Werte zu einer Ursachehypothese kombinieren]
-    J --> K[zweite unabhängige Evidenzquelle]
-    K --> L[erst danach Änderung planen]
-```
+- Live-Momentaufnahme: flüchtiger aktueller Zustand.
+- Stichprobe/Delta: Veränderung innerhalb eines Intervalls.
+- kumulative DMV: seit Reset oder Cachelebensdauer.
+- persistierte Historie: abhängig von Capture und Retention.
+- Ereignishistorie: nur konfigurierte und noch vorhandene XE-Daten.
+- Katalog/Konfiguration: sichtbarer Berechtigungs- und Plattformscope.
 
 ## Grundsatz für Änderungen
 
-Keine Analyse-Procedure dieses Frameworks ersetzt:
+Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan Forcing, Konfigurationsänderung, Failover oder Repair. Zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg sind vorher zu bestimmen.
 
-- einen getesteten Restore,
-- einen vollständigen Integritätscheck,
-- eine belastbare Baseline,
-- eine Query- und Planprüfung,
-- eine Change-, Rollback- und Lastabschätzung.
+## Qualität prüfen
 
-Aus einem einzelnen Resultset darf daher keine automatische DDL-, Konfigurations-, Failover-, Kill-, Repair- oder Indexentscheidung abgeleitet werden.
+```powershell
+pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+```
 
-## Verwandte Repositorydokumente
-
-- [Beginner_Reading_Guide.md](Beginner_Reading_Guide.md)
-- [Object_Index.md](Object_Index.md)
-- [Procedure_Reference.md](../Reference/Procedure_Reference.md)
-- [Resultset_Conventions.md](../Reference/Resultset_Conventions.md)
-- [Call_Catalog.md](../Reference/Call_Catalog.md)
-- [Special_Case_Modules.md](../Architecture/Special_Case_Modules.md)
-- [Runtime_Data_and_Repository_Privacy.md](../Architecture/Runtime_Data_and_Repository_Privacy.md)
-- [Test_Matrix.md](../Quality/Test_Matrix.md)
+Siehe [Validierungsanleitung](../Quality/Analysis_Documentation_Validation.md).
