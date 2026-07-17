@@ -1,5 +1,18 @@
 # Release Notes
 
+## Stand 2026-07-18 – Full-Text-Deep-Dive `1.1.0-special.7`
+
+- `SC-018` durch `monitor.USP_FullTextAnalysis` als fünftes P2-Modul implementiert.
+- Sichtbares Feature-Gate aus Full-Text-Komponentenstatus, Katalogen, Indizes und semantischen Indexspalten; bei negativem sichtbarem Scope werden keine abhängigen Laufzeitquellen aufgerufen.
+- Kataloge und Indizes liefern Enablement, eindeutigen Schlüsselindex, Change Tracking, Crawl-Kontext, Spalten-/Semantikanzahl und aggregierte Fragmentevidenz ohne Tabelleninhalt oder Schlüsselwerte.
+- Aktuelle Populationen, ausstehende Batches und semantische Ähnlichkeitspopulation werden als getrennte best-effort Quellen behandelt. Leere DMVs sind weder Historie noch Abschlussnachweis.
+- Batches werden ohne Batch-IDs, Speicheradressen oder Inhalte nach Fehlercode und Retryzustand aggregiert; Dokumentfehler werden nur gezählt.
+- Querybare Fragmente mit Status 4 oder 6 werden gezählt und größenmäßig aggregiert. Fragment-, Batch-, Laufzeit- und Größenwerte bleiben konfigurierbare Heuristiken ohne universellen Grenzwert.
+- Full-Text-Memory-Pools und FDHosts liefern serverweiten Kontext; FDHosts werden ohne Hostnamen oder Prozess-IDs nach Typ aggregiert.
+- Kein Zugriff auf Keywords, Stopwords, Parser-Eingaben, Crawl-Logs oder Pfade; kein `ALTER FULLTEXT`, kein Populationstart und keine Reorganisation.
+- Installer, Frameworkvertrag, Smoke-/API-Test, Beispiele, Inventare, Referenzen, Analysehandbuch, Backlog und Spezialfalltestmatrix synchronisiert.
+- Laufzeitstatus bleibt vollständig `NOT_EXECUTED`; die statische Implementierung ist keine Zielsystemfreigabe.
+
 ## Stand 2026-07-18 – Service-Broker-Deep-Dive `1.1.0-special.6`
 
 - `SC-017` durch `monitor.USP_ServiceBrokerAnalysis` als viertes P2-Modul implementiert.
@@ -133,7 +146,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.6` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.7` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

@@ -2,11 +2,11 @@
 
 Stand: 2026-07-18
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen vollumfänglich real installiert, kompiliert und funktional getestet. Die danach ergänzte Version `1.1.0-special.6` ist statisch geprüft, aber noch nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen.
+Der direkte Vorgängerstand `1.1.0-special.6` enthält ein reproduzierbares SQL-Server-2022-Linux-Release-Gate und dokumentiert einen erfolgreichen Gesamtinstaller- und Zwölf-Suite-Lauf auf einer synthetischen Testdatenbank. Dieser Nachweis umfasst `SC-018` noch nicht. Die Version `1.1.0-special.7` ist deshalb statisch geprüft, aber weiterhin nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen; SQL Server 2019 und 2025 bleiben ebenfalls offen.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 
-- Die Zielumgebungen sind maschinenlesbar definiert; konkrete Produktversion, Edition, Berechtigungsprofil, Commit-SHA und Ausführungsevidenz fehlen noch und stehen auf `NOT_EXECUTED`.
+- Die Zielumgebungen sind maschinenlesbar definiert; die verbindlichen Matrixzeilen einschließlich `SC-018` besitzen noch keine vollständige Ausführungsevidenz und stehen auf `NOT_EXECUTED`.
 - Bei jeder weiteren Zielversion oder abweichenden Plattform sind Installer, Smoke Tests, Parametervertrag und `165_Filter_Output_Contract.sql` erneut auszuführen.
 - Importierte Wait-Beschreibungen mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` sollten sukzessive fachlich kuratiert werden.
 - Phase 7 liefert überwiegend Inventar- und Momentaufnahmen; zeitbasierte CPU-, NUMA- und Memory-Trends sind bewusst nicht Bestandteil dieses Ad-hoc-Pakets.
@@ -15,3 +15,4 @@ Verbleibende fachliche beziehungsweise betriebliche Punkte:
 - `USP_InMemoryOltpAnalysis` ist eine Momentaufnahme. Der Hashkettenpfad kann vollständige Tabellen scannen und bleibt opt-in; Defaultpool-Werte sind nicht datenbankgenau zurechenbar, Checkpointzustände und Transaktionsmengen benötigen Verlaufskorrelation.
 - `USP_TemporalAnalysis` prüft keine Current- oder History-Zeilen. Periodenüberlappungen, tatsächlicher Cleanup-Fortschritt und nach `SYSTEM_VERSIONING=OFF` getrennte Tabellenpaare bleiben ohne zusätzliche, bewusst nicht ausgeführte Daten- oder Historienevidenz unbewiesen.
 - `USP_ServiceBrokerAnalysis` liest keine Queue-Nutzdaten oder Nachrichtenkörper. Eine deaktivierte Queue, alte Transmission-Einträge, approximative Queue-Zeilen und Broker-DMV-Zustände beweisen weder eine Poison Message noch Routing-, Aktivierungs- oder Verarbeitungsursache; Laufzeitverlauf und kontrollierte externe Evidenz bleiben erforderlich.
+- `USP_FullTextAnalysis` liest keine indizierten Inhalte, Keywords, Stopwords, Schlüsselwerte, Crawl-Logs oder Pfade. Population-, Batch- und FDHost-DMVs sind Momentaufnahmen; Alter, Fragmentzahl und Poolgröße benötigen Zeitreihe, Workload- und Suchlatenzkontext. Geschützte Laufzeitlogs dürfen nicht in Repositoryartefakte übernommen werden.

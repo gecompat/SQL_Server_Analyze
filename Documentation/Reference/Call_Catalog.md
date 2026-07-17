@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-18 — 80 Procedures
+Stand: 2026-07-18 — 81 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -27,6 +27,7 @@ EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N'',@NurErkannteFeat
 EXEC [monitor].[USP_InMemoryOltpAnalysis] @DatabaseNames=N'',@MitHashIndexStats=0,@MaxZeilen=100;
 EXEC [monitor].[USP_TemporalAnalysis] @DatabaseNames=N'',@HistorySizeWarnMb=10240,@MaxZeilen=100;
 EXEC [monitor].[USP_ServiceBrokerAnalysis] @DatabaseNames=N'',@TransmissionAgeWarnMinutes=60,@MaxZeilen=100;
+EXEC [monitor].[USP_FullTextAnalysis] @DatabaseNames=N'',@PopulationAgeWarnMinutes=60,@QueryableFragmentWarn=30,@MaxZeilen=100;
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@SchemaNames=N'dbo|monitor',@ObjectNamePattern=N'regexi:^usp_',@MaxZeilen=200;
 ```
 
@@ -220,6 +221,12 @@ EXEC [monitor].[USP_ExtendedEventsSessions] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_ExtendedEventsTargetRuntime] @Hilfe = 1;
+```
+
+## `[monitor].[USP_FullTextAnalysis]`
+
+```sql
+EXEC [monitor].[USP_FullTextAnalysis] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_IndexOperationalStats]`

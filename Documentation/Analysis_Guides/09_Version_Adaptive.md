@@ -1,6 +1,6 @@
 # Versionsadaptive und spezialisierte Analysepfade
 
-**Procedures:** 5
+**Procedures:** 6
 **Evidenz:** Version, Plattform, sichtbare Kataloge, Spezialfeature-Metadaten und isolierte Runtime-DMVs  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -10,7 +10,7 @@
 - Katalogobjekterkennung ist belastbarer als hart codierte Versionsannahmen, bleibt aber berechtigungsabhängig.
 - `NOT_DETECTED_VISIBLE_SCOPE` bedeutet nur „im sichtbaren Metadatenscope nicht gefunden“.
 - Feature-Inventar ist kein Healthcheck.
-- In-Memory-, Temporal- und Service-Broker-Findings verwenden konfigurierbare Repository-Heuristiken und führen keine DDL aus.
+- In-Memory-, Temporal-, Service-Broker- und Full-Text-Findings verwenden konfigurierbare Repository-Heuristiken und führen keine DDL aus.
 
 ---
 
@@ -99,6 +99,7 @@ Die genaue Familie ist versionsabhängig. Das Resultset ist ein Inventar, kein P
 - In-Memory gefunden → `USP_InMemoryOltpAnalysis`
 - Temporal gefunden → `USP_TemporalAnalysis`
 - Service Broker gefunden → `USP_ServiceBrokerAnalysis`
+- Full-Text gefunden → `USP_FullTextAnalysis`
 - Query-Store-Replica verfügbar → Query-Store-Guides mit Replica Group beachten
 - Spezialindex → passende Objekt-/Plananalyse
 
@@ -444,6 +445,80 @@ Wichtige Reviewcodes sind deaktivierte Queue-Schalter, Aktivierungsstillstand be
 
 SQL-Fehlerlog beziehungsweise freigegebene Extended Events, Routing-/Endpunktkonfiguration, Zertifikate, Readerdurchsatz, Anwendungstransaktionen und wiederholte Messungen korrelieren. Laufzeitevidenz mit realen Namen oder Inhalten niemals in Repositoryartefakte übernehmen.
 
+---
+
+## 6. [monitor].[USP_FullTextAnalysis]
+
+### Zweck
+
+Analysiert sichtbare Full-Text-Kataloge und -Indizes sowie aktuelle Populationen, ausstehende Batches, querybare Fragmente, semantische Ähnlichkeitspopulationen und serverweiten Gatherer-/FDHost-Kontext. Tabelleninhalte, Keywords, Stopwords, Parser-Eingaben, Schlüsselwerte, Crawl-Logs und Pfade bleiben ausgeschlossen.
+
+### Repository-Schwellen
+
+| Parameter | Default | Bedeutung |
+|---|---:|---|
+| `@PopulationAgeWarnMinutes` | 60 | Alter einer aktuell sichtbaren normalen oder semantischen Population |
+| `@QueryableFragmentWarn` | 30 | Zahl querybarer Fragmente mit Status 4 oder 6 |
+| `@OutstandingBatchWarn` | 100 | aktuell ausstehende Batches pro Tabelle |
+| `@FailedDocumentWarn` | 1 | aggregierte aktuell gemeldete Dokumentfehler |
+| `@CatalogSizeWarnMb` | 10.240 MB | aggregierte logische Größe querybarer Fragmente |
+
+Alle fünf Werte sind Priorisierungs- oder Kapazitätsheuristiken. Microsoft dokumentiert keinen universellen Fragment-, Batch-, Laufzeit- oder Speichergrenzwert.
+
+### Statusresultsets
+
+#### DatabaseStatus
+
+`DatabaseName`, `StatusCode`, `IsPartial`, `IsFullTextInstalled`, `CatalogCount`, `FullTextIndexCount`, `ActivePopulationCount`, `OutstandingBatchCount`, `FindingCount`, `SourceFailureCount`, `RequiredPermission`, `ErrorNumber`, `ErrorMessage`, `Detail`.
+
+#### SourceStatus
+
+Feature-Gate, Katalog-/Indexmapping, Fragmente, normale Population, Batches und semantische Population werden je Datenbank isoliert. Memory Pools und FDHosts werden einmal serverweit gelesen. SQL Server 2019 benötigt für die Laufzeit-DMVs `VIEW SERVER STATE`, SQL Server 2022 oder neuer `VIEW SERVER PERFORMANCE STATE`.
+
+### Kataloge und FullTextIndexes
+
+Kataloge liefern Namen, Default-/Accent-Sensitivity-Kontext, sichtbare Indexanzahl sowie aggregierte Fragmentgröße. Indizes liefern Tabelle, Katalog, Enablement, Status des eindeutigen Schlüsselindex, Change-Tracking- und Crawl-Kontext, Spalten-/Semantikanzahl sowie zugeordnete Fragment-, Population- und Batchzahlen.
+
+Der Katalogname und Tabellen-Scope sind normale Runtime-Diagnosewerte. Sie werden nicht in gespeicherte Testevidenz übernommen. Katalogpfade und Schlüsselwerte werden weder gelesen noch ausgegeben.
+
+### Populationen, Batches und Semantik
+
+- `sys.dm_fts_index_population` enthält nur aktuell laufende Full-Text- und semantische Extraktionen. Nullzeilen sind keine Historie und kein Abschlussnachweis.
+- Status 7 kann während eines automatischen Merge auftreten; Status 11 meldet eine abgebrochene Population.
+- `sys.dm_fts_outstanding_batches` wird ohne Batch-ID, Speicheradressen oder Inhalte nach Tabelle, Fehlercode und Retryzustand aggregiert.
+- Dokumentfehler werden nur als Anzahl gelesen. Einzelne Fehler können Inhalte von der Suche ausschließen, ohne die gesamte Population zu stoppen.
+- Die semantische Ähnlichkeitspopulation ist die zweite Phase nach der Extraktion und wird nur bei sichtbaren `STATISTICAL_SEMANTICS`-Spalten abgefragt.
+
+### Fragmente, Memory Pools und FDHosts
+
+Nur querybare Fragmente mit Status 4 oder 6 fließen in Fragmentanzahl, logische Größe und Zeilenzahl ein. Viele Fragmente können Full-Text-Abfragen verlangsamen; ein `REORGANIZE` wird jedoch nie automatisch ausgeführt.
+
+Memory Pools sind serverweit gemeinsam genutzter Gatherer-Kontext. FDHosts werden ausschließlich nach Typ aggregiert; Prozess-IDs und Hostnamen bleiben ausgeschlossen. Eine nicht atomare Abweichung zwischen Population- und FDHost-Momentaufnahme besitzt nur geringe Konfidenz.
+
+### Interpretation
+
+| Konstellation | Bewertung |
+|---|---|
+| Change Tracking `MANUAL` oder `OFF` | zulässige Konfiguration; erwartete Populationsteuerung prüfen |
+| `has_crawl_completed=0`, keine aktive Population | kann durch `NO POPULATION` beabsichtigt sein; kein Fehlerbeweis |
+| lange Population, Fortschritt steigt | Kapazitäts-/Durchsatzkontext, nicht Stillstand |
+| Status 11 | belastbare aktuelle Abbruchmeldung; Ursache in geschützter Laufzeitumgebung prüfen |
+| Retry oder `hr_batch<>0` | aktueller Batchreview; Fehlercode und Zeitverlauf korrelieren |
+| viele querybare Fragmente | Suchlatenz und Trend prüfen, erst danach Wartung planen |
+| Memory Pool groß | gemeinsamer Ressourcenverbrauch, kein datenbankspezifischer Druckbefund |
+
+### Aussagegrenzen
+
+- Katalogmetadaten beweisen keine Vollständigkeit indizierter Inhalte.
+- Crawl-Logs liegen außerhalb des Repositorys und dürfen keine realen Namen, Inhalte oder interne Strukturen in Artefakte übertragen.
+- Eine leere Laufzeit-DMV ist keine Historie.
+- Alter, Batchzahl und Fragmentzahl sind ohne Zeitreihe und Workload kein Ursachenbeweis.
+- Das Modul führt kein `ALTER FULLTEXT`, keine Population und keine Reorganisation aus.
+
+### Folgeanalyse
+
+Folgemessung von Fortschritt und Batches, Suchlatenz, I/O-/Logkontext sowie geschützte Full-Text- und Crawl-Logs in der Laufzeitumgebung korrelieren. Nur abstrahierte, synthetische Testergebnisse dokumentieren.
+
 ## Anfänger-Entscheidungsbaum
 
 ```mermaid
@@ -455,10 +530,12 @@ flowchart TD
     E -->|In-Memory| F[InMemoryOltpAnalysis]
     E -->|Temporal| G[TemporalAnalysis]
     E -->|Service Broker| H[ServiceBrokerAnalysis]
+    E -->|Full-Text| N[FullTextAnalysis]
     E -->|nur Capability| L[ServerFeatureCapabilities]
     F --> I[SourceStatus und Findings gemeinsam lesen]
     G --> J[Retention, Größe und History-Index gemeinsam lesen]
     H --> K[Queue, Aktivierung, Transmission und Conversations]
+    N --> O[Population, Batches und Fragmente]
     L --> M[Version + Katalog + Plattform + DB-Kontext]
 ```
 
@@ -481,3 +558,10 @@ flowchart TD
 - [sys.dm_broker_queue_monitors](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-queue-monitors-transact-sql)
 - [sys.dm_broker_activated_tasks](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-activated-tasks-transact-sql)
 - [sys.conversation_endpoints](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-conversation-endpoints-transact-sql)
+- [sys.fulltext_indexes](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-fulltext-indexes-transact-sql)
+- [sys.fulltext_index_fragments](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-fulltext-index-fragments-transact-sql)
+- [sys.dm_fts_index_population](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-index-population-transact-sql)
+- [sys.dm_fts_outstanding_batches](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-outstanding-batches-transact-sql)
+- [sys.dm_fts_semantic_similarity_population](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-semantic-similarity-population-transact-sql)
+- [sys.dm_fts_memory_pools](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-memory-pools-transact-sql)
+- [sys.dm_fts_fdhosts](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-fdhosts-transact-sql)

@@ -1,23 +1,23 @@
 {
-  "release": "1.1.0-special.6",
-  "generatedAtUtc": "2026-07-17T22:14:16Z",
+  "release": "1.1.0-special.7",
+  "generatedAtUtc": "2026-07-17T23:08:55Z",
   "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
-  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP, Temporal Tables and Service Broker deep analyses",
+  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP, Temporal Tables, Service Broker and Full-Text deep analyses",
   "inventory": {
-    "repositoryFiles": 285,
-    "canonicalSqlSources": 103,
-    "sqlFilesIncludingTestsAndExamples": 119,
-    "objects": 95,
-    "procedures": 80,
+    "repositoryFiles": 287,
+    "canonicalSqlSources": 104,
+    "sqlFilesIncludingTestsAndExamples": 120,
+    "objects": 96,
+    "procedures": 81,
     "functions": 10,
     "views": 5,
-    "procedureParameters": 1260,
-    "systemSources": 186
+    "procedureParameters": 1286,
+    "systemSources": 193
   },
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 119,
+      "filesChecked": 120,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -58,17 +58,35 @@
       "receiveOrMutationOperations": 0,
       "note": "The module reads only visible configuration and aggregated operational metadata. Disabled RECEIVE is reported as review evidence and never as proof of a poison message."
     },
+    "fullTextTsqlParse": {
+      "status": "PASS",
+      "outerSyntaxIssues": 0,
+      "dynamicBatchesReconstructed": 6,
+      "dynamicSyntaxIssues": 0,
+      "note": "Static parser validation only; this is not SQL Server compilation or execution evidence."
+    },
+    "fullTextReadOnlyContract": {
+      "status": "PASS",
+      "featureGateBeforeDependentSources": true,
+      "isolatedDependentSources": 7,
+      "userTableRowReads": 0,
+      "keywordOrStopwordSources": 0,
+      "crawlLogOrPathReads": 0,
+      "keyValueReads": 0,
+      "fullTextMutationOperations": 0,
+      "note": "The module reads only visible catalogs and aggregated current Full-Text runtime metadata. Empty DMVs are not treated as history, and thresholds do not trigger DDL."
+    },
     "namedProcedureCalls": {
       "status": "PASS",
-      "procedureCallsChecked": 193,
-      "namedArgumentsChecked": 1346,
+      "procedureCallsChecked": 204,
+      "namedArgumentsChecked": 1381,
       "unknownProcedures": [],
       "unknownNamedArguments": []
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 103,
-      "includes": 103,
+      "canonicalSources": 104,
+      "includes": 104,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -76,19 +94,19 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 95,
-      "inventoryObjects": 95,
+      "sourceObjects": 96,
+      "inventoryObjects": 96,
       "differences": []
     },
     "parameterInventory": {
       "status": "PASS",
-      "sourceProcedures": 80,
-      "inventoryRows": 1260,
+      "sourceProcedures": 81,
+      "inventoryRows": 1286,
       "nameOrOrderDifferences": []
     },
     "systemSourceInventory": {
       "status": "PASS",
-      "inventoryRows": 186,
+      "inventoryRows": 193,
       "missingSourceModuleMappings": []
     },
     "repositoryPrivacyGate": {
@@ -111,14 +129,14 @@
     "targetRowsNotExecuted": 4,
     "releaseGateSuiteRows": 20,
     "releaseGateSuiteRowsNotExecuted": 20,
-    "specialCaseRows": 120,
-    "specialCaseRowsNotExecuted": 120,
+    "specialCaseRows": 136,
+    "specialCaseRowsNotExecuted": 136,
     "runtimeStatus": "NOT_EXECUTED",
     "claim": "No installation, compilation, smoke, functional, permission, load or cross-version runtime execution is claimed for this release wave."
   },
   "runtimeLimitations": [
     "No SQL Server endpoint or sqlcmd runtime was available in the implementation environment.",
     "PowerShell was unavailable, so the standalone installer build was inspected statically but not executed.",
-    "The earlier project-owner report applies only to the baseline before this special-case wave."
+    "The parent release documents a synthetic SQL Server 2022 Linux installer and twelve-suite run for the scope through 1.1.0-special.6; it does not include SC-018 and is not runtime evidence for this release."
   ]
 }

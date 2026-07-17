@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 18. Juli 2026
-**Abdeckung:** alle 80 Procedures des Frameworks
+**Abdeckung:** alle 81 Procedures des Frameworks
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -131,6 +131,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | `[monitor].[USP_InMemoryOltpAnalysis]` | [XTP, Hashindizes, Checkpoints und Pools](Procedures/USP_InMemoryOltpAnalysis.md) |
 | `[monitor].[USP_TemporalAnalysis]` | [Temporal History, Retention und Wachstum](Procedures/USP_TemporalAnalysis.md) |
 | `[monitor].[USP_ServiceBrokerAnalysis]` | [Queues, Aktivierung, Transmission und Conversations](Procedures/USP_ServiceBrokerAnalysis.md) |
+| `[monitor].[USP_FullTextAnalysis]` | [Kataloge, Populationen, Batches und Fragmente](Procedures/USP_FullTextAnalysis.md) |
 
 ## Vollständigkeit
 
@@ -144,8 +145,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | Extended Events | 6 |
 | Infrastruktur | 12 |
 | Server Health | 17 |
-| Versionsadaptive Spezialanalysen | 5 |
-| **Gesamt** | **80** |
+| Versionsadaptive Spezialanalysen | 6 |
+| **Gesamt** | **81** |
 
 ## Weitere Einstiege
 

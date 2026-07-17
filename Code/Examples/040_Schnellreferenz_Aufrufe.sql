@@ -50,6 +50,13 @@ EXEC [monitor].[USP_ServiceBrokerAnalysis]
     , @TransmissionAgeWarnMinutes=60
     , @MaxZeilen=100;
 
+-- Full-Text: Kataloge und aggregierte Laufzeitevidenz; keine Inhalte, Crawl-Logs oder DDL
+EXEC [monitor].[USP_FullTextAnalysis]
+      @DatabaseNames=N''
+    , @PopulationAgeWarnMinutes=60
+    , @QueryableFragmentWarn=30
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]

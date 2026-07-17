@@ -47,7 +47,10 @@ VALUES
 (N'USP_TemporalAnalysis',N'@StatusCodeOut'),
 (N'USP_ServiceBrokerAnalysis',N'@TransmissionAgeWarnMinutes'),
 (N'USP_ServiceBrokerAnalysis',N'@QueueRowsWarn'),
-(N'USP_ServiceBrokerAnalysis',N'@StatusCodeOut');
+(N'USP_ServiceBrokerAnalysis',N'@StatusCodeOut'),
+(N'USP_FullTextAnalysis',N'@PopulationAgeWarnMinutes'),
+(N'USP_FullTextAnalysis',N'@QueryableFragmentWarn'),
+(N'USP_FullTextAnalysis',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 
@@ -155,6 +158,32 @@ IF @BrokerDefinition LIKE N'%[[]message_body[]]%'
  OR @BrokerDefinition LIKE N'%ALTER QUEUE [[]%'
  OR @BrokerDefinition LIKE N'%END CONVERSATION [[]%'
     THROW 54111,N'Die Service-Broker-Analyse enthält einen ausgeschlossenen Payload- oder Änderungszugriff.',1;
+
+DECLARE @FullTextDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_FullTextAnalysis'));
+IF @FullTextDefinition IS NULL
+    THROW 54112,N'Die Definition der Full-Text-Analyse ist nicht sichtbar.',1;
+
+DECLARE @MissingFullTextSources nvarchar(2048)=NULL;
+IF CHARINDEX(N'[sys].[fulltext_indexes]',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingFullTextSources=N'sys.fulltext_indexes';
+IF CHARINDEX(N'[sys].[dm_fts_index_population]',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingFullTextSources=CONCAT_WS(N', ',@MissingFullTextSources,N'sys.dm_fts_index_population');
+IF CHARINDEX(N'[sys].[dm_fts_outstanding_batches]',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingFullTextSources=CONCAT_WS(N', ',@MissingFullTextSources,N'sys.dm_fts_outstanding_batches');
+IF CHARINDEX(N'[sys].[fulltext_index_fragments]',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingFullTextSources=CONCAT_WS(N', ',@MissingFullTextSources,N'sys.fulltext_index_fragments');
+IF @MissingFullTextSources IS NOT NULL
+BEGIN
+    DECLARE @FullTextSourceMessage nvarchar(2048)=CONCAT(N'Die Full-Text-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen: ',@MissingFullTextSources,N'.');
+    THROW 54113,@FullTextSourceMessage,1;
+END;
+
+IF CHARINDEX(N'[sys].[dm_fts_index_keywords',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[sys].[fulltext_stopwords]',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'FULLTEXTCATALOGPROPERTY',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR @FullTextDefinition LIKE N'%ALTER FULLTEXT CATALOG [[]%'
+ OR CHARINDEX(N'START FULL POPULATION;',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+    THROW 54114,N'Die Full-Text-Analyse enthält einen ausgeschlossenen Inhalts-, Pfad- oder Änderungszugriff.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

@@ -20,7 +20,7 @@ Die größten verbleibenden Lücken liegen nicht bei einem weiteren allgemeinen 
 5. **Moderne Optimizerfunktionen:** PSP, OPPO, Dispatcher-/Variant-Pläne, Plan Feedback, optimiertes Plan Forcing und Automatic Tuning werden nur teilweise oder indirekt erfasst.
 6. **Interne Contention und Speicher:** Latch-/Spinlock-Deltas, Hot-Page-Zuordnung, Buffer-Pool-Verteilung und Resource-Monitor-Signale fehlen.
 7. **Wiederherstellbarkeit:** Backups werden inventarisiert, aber LSN-Ketten, Forks, Checksum-/Damage-Indikatoren und Restore-Historie noch nicht als belastbare Recovery-Evidenz ausgewertet.
-8. **Spezial-Engines:** In-Memory OLTP, Temporal, Service Broker, Full-Text und weitere nur bei Nutzung relevante Features besitzen keine tiefen Fachmodule.
+8. **Spezial-Engines:** In-Memory OLTP, Temporal, Service Broker und Full-Text besitzen inzwischen bedingte Fachmodule; Change/Replication, Verschlüsselung und weitere nur bei Nutzung relevante Features bleiben offen.
 9. **Korrelation:** Einzelbefunde sind breit vorhanden, aber es fehlt eine zentrale Finding-Schicht mit Evidenz, Zeitbezug, Konfidenz und Gegenindizien.
 10. **Langzeitbezug:** Baselines, Snapshots, Deltas und Anomalien fehlen bewusst, weil der aktuelle Kern zustandslos ist. Das ist keine versehentliche Lücke, sondern ein späteres, gesondert zu entscheidendes Paket.
 
@@ -152,7 +152,7 @@ Priorität und Kosten sind unabhängig. Eine P0-Auswertung darf teuer sein und m
 | In-Memory OLTP | nur Inventar/Indexnutzung | Speicher, Hash-Indizes, Checkpointdateien, Transaktionen | P2 bedingt |
 | Temporal | Inventar plus implementierter Deep Dive | Zuordnung, Retention, approximative Kapazität und Indexbaseline; Zeilenkonsistenz bleibt außerhalb des read-only Metadatenmoduls | P2 bedingt |
 | Service Broker | Inventar plus implementierter Deep Dive | Queue-Schalter/-Kapazität, Aktivierung, gruppierte Transmission- und Conversation-Zustände ohne Payload | P2 bedingt |
-| Full-Text | fehlt | Population, Crawl, Speicher und Fehler | P2 bedingt |
+| Full-Text | Inventar plus implementierter Deep Dive | Kataloge/Indizes, aktuelle Populationen, aggregierte Batches, querybare Fragmente, Semantik, Memory Pools und FDHosts ohne Inhalte oder Crawl-Logs | P2 bedingt |
 | Historie/Baseline | absichtlich vertagt | Deltas, Trends, Anomalien und Retention | P3, separates Paket |
 
 ## 6. P0 – zuerst zu schließende Lücken
@@ -478,16 +478,19 @@ Umsetzungsgrenzen: Der Nachrichtenkörper wird weder referenziert noch ausgegebe
 
 ### SC-018: Full-Text
 
-Nur aktivieren, wenn Full-Text-Kataloge oder -Indizes vorhanden sind.
+Implementiert als `monitor.USP_FullTextAnalysis`; das unfiltrierte sichtbare Feature-Gate berücksichtigt Komponentenstatus, Kataloge, Indizes und semantische Indexspalten. Abhängige datenbankbezogene und serverweite Quellen werden isoliert behandelt.
 
 Auswertungen:
 
-- laufende und hängende Populations,
-- Crawl- und Populationstatus,
-- ausstehende Batches,
-- Full-Text-Memory-Pools,
-- Änderungsverfolgung und Fehlerindizien,
-- Katalog-/Indexalter und Fragmentierung im fachlich dokumentierten Rahmen.
+- Index-/Schlüsselindexschalter, Change Tracking und Crawl-Kontext,
+- ausschließlich aktuell laufende Full-Text- und semantische Populationen,
+- nach Tabelle, Fehlercode und Retryzustand aggregierte ausstehende Batches,
+- querybare Fragmente mit Status 4 oder 6 und deren logische Größe,
+- semantische Ähnlichkeitspopulation als zweite Phase,
+- serverweite Full-Text-Memory-Pools und nach Typ aggregierte FDHosts,
+- isolierte Quellen- und Berechtigungsfehler.
+
+Umsetzungsgrenzen: `MANUAL/OFF`, ein ausstehender initialer Crawl und Status 7 sind nicht automatisch Fehler. Eine leere Population-DMV ist weder Abschlussnachweis noch Historie. Laufzeit-, Batch-, Fragment- und Größenwerte sind konfigurierbare Prüfheuristiken ohne universellen Grenzwert. Das Modul liest keine Tabelleninhalte, Keywords, Stopwords, Parser-Eingaben, Schlüsselwerte, Crawl-Logs, Pfade, Batch-IDs, Speicheradressen, FDHost-Namen oder Prozess-IDs und führt kein Full-Text-DDL aus.
 
 ### SC-019: Change Tracking, CDC und Replikation vertiefen
 
@@ -595,8 +598,8 @@ Das Framework soll dafür Evidenzlücken und nächste Prüfschritte ausgeben, ab
 
 ### Welle D – bedingte Spezialmodule
 
-15. In-Memory OLTP, Temporal und Service Broker umgesetzt; Full-Text folgt.
-16. CDC/Change Tracking/Replikation, Verschlüsselung und externe Features.
+15. In-Memory OLTP, Temporal, Service Broker und Full-Text umgesetzt.
+16. CDC/Change Tracking/Replikation, Verschlüsselung und externe Features folgen.
 17. Wartungsoperationen.
 
 ### Welle E – separates Persistenzprojekt
@@ -683,6 +686,13 @@ Jedes neue Modul benötigt:
 - In-Memory OLTP Memory: https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/monitor-and-troubleshoot-memory-usage?view=sql-server-ver17
 - Temporal Tables: https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables?view=sql-server-ver17
 - Full-Text System Views: https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search-ddl-functions-stored-procedures-and-views?view=sql-server-ver17
+- Full-Text Indexes: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-fulltext-indexes-transact-sql?view=sql-server-ver17
+- Full-Text Fragments: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-fulltext-index-fragments-transact-sql?view=sql-server-ver17
+- Full-Text Population: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-index-population-transact-sql?view=sql-server-ver17
+- Full-Text Outstanding Batches: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-outstanding-batches-transact-sql?view=sql-server-ver17
+- Full-Text Semantic Similarity Population: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-semantic-similarity-population-transact-sql?view=sql-server-ver17
+- Full-Text Memory Pools: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-memory-pools-transact-sql?view=sql-server-ver17
+- Full-Text FDHosts: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-fdhosts-transact-sql?view=sql-server-ver17
 - Backupset: https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17
 - RESTORE VERIFYONLY: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-verifyonly-transact-sql?view=sql-server-ver17
 - Service Broker Transmission Queue: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql?view=sql-server-ver17
