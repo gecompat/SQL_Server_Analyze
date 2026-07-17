@@ -33,4 +33,4 @@ Copy-only Full verändert die Differential Base nicht und darf nicht als Kettenb
 
 Full und viele Logbackups vorhanden, aber ein LSN-Segment fehlt: Restore bis zum Ende nicht möglich. Medien und echten Restore testen.
 
-[Technische Detailbeschreibung](../07_Infrastructure.md#10-monitorusp_backupchainanalysis)
+[Technische Detailbeschreibung](../07_Infrastructure.md#9-monitorusp_backupchainanalysis)

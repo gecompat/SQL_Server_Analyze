@@ -753,7 +753,7 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Beispiel:** Backupchild meldet partiell, AG-Child unavailable feature. Nur der Backupbereich braucht Nacharbeit.
 
-**Danach:** auffälliges Child gezielt aufrufen. [Detailbeschreibung](07_Infrastructure.md#9-monitorusp_infrastructureanalysis)
+**Danach:** auffälliges Child gezielt aufrufen. [Detailbeschreibung](07_Infrastructure.md#12-monitorusp_infrastructureanalysis)
 
 ## [monitor].[USP_BackupChainAnalysis]
 
@@ -765,7 +765,7 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Beispiel:** Full vorhanden, viele Logbackups, aber ein fehlendes LSN-Segment: Restore bis zum Ende ist nicht möglich.
 
-**Danach:** Backupmedien und echten Restore testen. [Detailbeschreibung](07_Infrastructure.md#10-monitorusp_backupchainanalysis)
+**Danach:** Backupmedien und echten Restore testen. [Detailbeschreibung](07_Infrastructure.md#9-monitorusp_backupchainanalysis)
 
 ## [monitor].[USP_AvailabilityDeepAnalysis]
 
@@ -777,7 +777,7 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Beispiel:** Send Queue stabil klein, Redo Queue wächst über mehrere Messungen: Fokus auf Sekundär-I/O/CPU/Redo, nicht Netzwerk.
 
-**Danach:** Performance Counter, Storage, Netzwerk und Cluster prüfen. [Detailbeschreibung](07_Infrastructure.md#11-monitorusp_availabilitydeepanalysis)
+**Danach:** Performance Counter, Storage, Netzwerk und Cluster prüfen. [Detailbeschreibung](07_Infrastructure.md#10-monitorusp_availabilitydeepanalysis)
 
 ## [monitor].[USP_AgentMonitoringAnalysis]
 
@@ -789,7 +789,7 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Beispiel:** Kritischer Job schlägt wiederholt fehl, aber kein aktiver Operator ist erreichbar. Das Betriebsrisiko ist höher als der Jobfehler allein.
 
-**Danach:** Agent Jobs, Mailstatus und Monitoringprozess prüfen. [Detailbeschreibung](07_Infrastructure.md#12-monitorusp_agentmonitoringanalysis)
+**Danach:** Agent Jobs, Mailstatus und Monitoringprozess prüfen. [Detailbeschreibung](07_Infrastructure.md#11-monitorusp_agentmonitoringanalysis)
 
 # 10. Server Health
 

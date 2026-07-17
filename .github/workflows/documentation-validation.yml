@@ -1,0 +1,52 @@
+name: Documentation validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'Code/**/*.sql'
+      - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
+      - 'Documentation/**/*.md'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/documentation-validation.yml'
+      - 'Code/**/*.sql'
+      - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
+      - 'Documentation/**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: documentation-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate analysis documentation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate procedure documentation
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 *>&1 |
+              Tee-Object -FilePath $logPath
+          exit $LASTEXITCODE
+
+      - name: Upload failed validation log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: analysis-documentation-validation-log
+          path: ${{ runner.temp }}/analysis-documentation-validation.log
+          if-no-files-found: error
+          retention-days: 1

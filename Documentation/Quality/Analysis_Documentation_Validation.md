@@ -14,20 +14,38 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 -RepositoryRoot
 
 Der Beispielpfad ist synthetisch.
 
+## Automatische Ausführung
+
+Der Workflow `.github/workflows/documentation-validation.yml` führt dieselbe Prüfung aus bei:
+
+- relevanten Pull Requests,
+- relevanten Änderungen an `main`,
+- manueller Auslösung über `workflow_dispatch`.
+
+Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
+
 ## Geprüft wird
 
 - Referenzmenge gegen Procedure-Seiten,
-- erwartete Gesamtzahl 79,
+- erwartete Gesamtzahl von 79 Procedures in Referenz, kanonischen SQL-Quellen und Einzelseiten,
+- Existenz der in der Referenz genannten SQL-Quelldateien,
+- Procedure-Name der Quelldatei,
+- Parameterreihenfolge, Parameternamen, Datentypen, Defaults und `OUTPUT`-Kennzeichnung gegen die kanonische SQL-Signatur,
+- Parameternamen in dokumentierten `EXEC`-Beispielen,
 - Seitentitel,
 - Pflichtüberschriften,
 - technische Detaillinks,
-- interne relative Markdownlinks.
+- interne relative Markdownziele,
+- interne Markdown-Anker.
 
-## Nicht geprüft wird
+## Aussagegrenzen
+
+Nicht automatisiert bewiesen werden:
 
 - fachliche Richtigkeit jeder Aussage,
 - Aktualität externer Links,
 - tatsächliche Runtime-Resultsets,
+- korrekte Kostenklassifizierung jeder Analyse,
 - Datenschutz als beweisbarer Automatismus.
 
-Vor Merge bleibt eine manuelle fachliche und datenschutzbezogene Diffprüfung erforderlich.
+Vor Merge bleibt eine manuelle fachliche und datenschutzbezogene Diffprüfung erforderlich. Der statische Test ergänzt das SQL-Release-Gate, ersetzt es aber nicht.
