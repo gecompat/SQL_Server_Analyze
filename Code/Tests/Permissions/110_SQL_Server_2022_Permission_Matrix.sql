@@ -27,9 +27,6 @@ GO
 RAISERROR(N'PERMISSION_MATRIX phase=setup',10,1) WITH NOWAIT;
 GO
 
-RAISERROR(N'PERMISSION_MATRIX phase=setup',10,1) WITH NOWAIT;
-GO
-
 /* Wiederholbare Bereinigung vor dem Aufbau. */
 USE [DeineDatenbank];
 GO
@@ -143,9 +140,6 @@ GO
 RAISERROR(N'PERMISSION_MATRIX phase=open_policy',10,1) WITH NOWAIT;
 GO
 
-RAISERROR(N'PERMISSION_MATRIX phase=open_policy',10,1) WITH NOWAIT;
-GO
-
 /* Leere Standardpolicy muss geschützte Klassen offen lassen. */
 DECLARE @OpenPolicyAllowed bit=NULL,@OpenPolicyReason varchar(20)=NULL;
 BEGIN TRY
@@ -162,9 +156,6 @@ END CATCH;
 
 IF @OpenPolicyAllowed<>1 OR @OpenPolicyReason<>'OPEN_POLICY'
     THROW 54203,N'Die leere Standardpolicy öffnet eine geschützte Analyseklasse nicht wie vorgesehen.',1;
-GO
-
-RAISERROR(N'PERMISSION_MATRIX phase=protected_policy',10,1) WITH NOWAIT;
 GO
 
 RAISERROR(N'PERMISSION_MATRIX phase=protected_policy',10,1) WITH NOWAIT;
@@ -338,14 +329,7 @@ END CATCH;';
 
     RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
     BEGIN TRY
-        RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
-    BEGIN TRY
         EXEC [sys].[sp_executesql] @Sql,N'@ScenarioCode varchar(48)',@ScenarioCode=@ScenarioCode;
-    END TRY
-    BEGIN CATCH
-        DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());
-        THROW 54209,@ScenarioError,1;
-    END CATCH;
     END TRY
     BEGIN CATCH
         DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());
@@ -353,9 +337,6 @@ END CATCH;';
     END CATCH;
     SET @ScenarioOrdinal+=1;
 END;
-GO
-
-RAISERROR(N'PERMISSION_MATRIX phase=sysadmin',10,1) WITH NOWAIT;
 GO
 
 RAISERROR(N'PERMISSION_MATRIX phase=sysadmin',10,1) WITH NOWAIT;
@@ -444,9 +425,6 @@ VALUES
     , @QueryStoreRequiredRows,@QueryStoreGrantedRows,@PlanAllowed,@PlanReason
     , CONVERT(bit,CASE WHEN ISJSON(@SessionJson)=1 AND ISJSON(@StandardJson)=1 AND ISJSON(@QueryStoreJson)=1 THEN 1 ELSE 0 END)
 );
-GO
-
-RAISERROR(N'PERMISSION_MATRIX phase=assertions',10,1) WITH NOWAIT;
 GO
 
 RAISERROR(N'PERMISSION_MATRIX phase=assertions',10,1) WITH NOWAIT;
