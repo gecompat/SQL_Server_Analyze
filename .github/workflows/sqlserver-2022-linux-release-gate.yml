@@ -109,6 +109,18 @@ jobs:
             sqlserver-analyze-test \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql
 
+      - name: Record generic success summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '## SQL Server 2022 Linux release gate'
+            echo '- Target: synthetic SQL Server 2022 Developer on Linux'
+            echo '- Compatibility level: 160'
+            echo '- Installer: passed'
+            echo '- Release gate: passed'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Stop synthetic SQL Server
         if: always()
         shell: bash
