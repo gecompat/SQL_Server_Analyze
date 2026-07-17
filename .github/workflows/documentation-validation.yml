@@ -36,4 +36,17 @@ jobs:
 
       - name: Validate procedure documentation
         shell: pwsh
-        run: ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 *>&1 |
+              Tee-Object -FilePath $logPath
+          exit $LASTEXITCODE
+
+      - name: Upload failed validation log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: analysis-documentation-validation-log
+          path: ${{ runner.temp }}/analysis-documentation-validation.log
+          if-no-files-found: error
+          retention-days: 1
