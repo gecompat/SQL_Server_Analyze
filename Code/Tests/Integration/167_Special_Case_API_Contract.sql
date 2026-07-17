@@ -36,7 +36,9 @@ VALUES
 (N'USP_AgentMonitoringAnalysis',N'@HistoryHours'),
 (N'USP_DiagnosticFindings',N'@NurAbPrioritaet'),
 (N'USP_DiagnosticFindings',N'@MitStatistikverteilung'),
-(N'USP_DiagnosticFindings',N'@Json');
+(N'USP_DiagnosticFindings',N'@Json'),
+(N'USP_SpecialFeatureInventory',N'@NurErkannteFeatures'),
+(N'USP_SpecialFeatureInventory',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 

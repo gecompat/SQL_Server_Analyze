@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-17 — 76 Procedures
+Stand: 2026-07-17 — 77 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -23,6 +23,7 @@ SELECT @Json AS [Json];
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetails=0,@MaxZeilen=100;
 EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds=5,@MaxZeilen=100;
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[DeineDatenbank]',@SchemaNames=N'dbo',@AnalyseModus='GEZIELT',@MaxVerteilungsStatistiken=25,@MaxZeilen=100;
+EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N'',@NurErkannteFeatures=1,@MaxZeilen=100;
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@SchemaNames=N'dbo|monitor',@ObjectNamePattern=N'regexi:^usp_',@MaxZeilen=200;
 ```
 
@@ -450,6 +451,12 @@ EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_ShowplanAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_SpecialFeatureInventory]`
+
+```sql
+EXEC [monitor].[USP_SpecialFeatureInventory] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_StartupParameters]`

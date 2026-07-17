@@ -8,7 +8,7 @@ Dieses Dokument beschreibt, welche SQL-Server-Systemquellen das Framework nutzt 
 
 Der Katalog wurde aus den kanonischen Dateien unter `Code/00_Setup` bis `Code/09_VersionAdaptive` erzeugt und mit abstrahierten Ergebnissen der früheren Quellenanalyse ergänzt. Historische Dateipfade, umgebungsspezifische Objektnamen und externe Hilfsobjekte wurden nicht übernommen.
 
-Aktuell inventarisiert: **162 Systemquellen**.
+Aktuell inventarisiert: **175 Systemquellen**.
 
 ## Quellklassen
 
@@ -35,6 +35,10 @@ Katalogviews beschreiben vorhandene Sessions; Runtime-DMVs beschreiben aktive Se
 ### Systemdatenbanken und Infrastruktur
 
 SQL Agent, Backup-/Restore-Historie, Log Shipping und Teile der Replikation liegen in systemverwalteten Datenbanken. Zugriff und Vollständigkeit hängen von Featureinstallation, Rolle und Berechtigungen ab. Das Framework vergibt keine Rechte.
+
+### Spezialfeature-Nutzungsinventur
+
+`monitor.USP_SpecialFeatureInventory` aggregiert ausschließlich sichtbare Systemkatalogmetadaten für 18 Featureklassen. Es liest keine Nutzdaten, externen Speicherorte oder Verbindungsoptionen, Credentials, Service-Broker-Nachrichten, CLR-Binärinhalte, Moduldefinitionen oder Objektnamen. Eine Nullzählung ist bei eingeschränkter Metadatensichtbarkeit kein Abwesenheitsbeweis; die Inventur ist kein Gesundheitsurteil.
 
 ## Berechtigungsgrundsatz
 

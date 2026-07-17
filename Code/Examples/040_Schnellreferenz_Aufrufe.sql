@@ -26,6 +26,12 @@ EXEC [monitor].[USP_StatisticsDistributionAnalysis]
     , @MaxVerteilungsStatistiken=25
     , @MaxZeilen=100;
 
+-- Leichtgewichtige Nutzungsinventur; liest keine Locations, Credentials, Payloads oder Definitionen
+EXEC [monitor].[USP_SpecialFeatureInventory]
+      @DatabaseNames=N''
+    , @NurErkannteFeatures=1
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]

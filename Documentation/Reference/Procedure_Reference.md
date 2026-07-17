@@ -572,6 +572,14 @@ Quelle: `Code/04_PlanCache/050_USP_ShowplanAnalysis.sql`
 @PlanHandle varbinary(64) = NULL, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @TextPattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @PlanQuelle varchar(16) = 'AUTO', @Sortierung varchar(32) = 'CPU_TOTAL', @MinExecutionCount bigint = 1, @MaxAnalyseobjekte int = 20, @MaxDurationSeconds int = 30, @MaxZeilen int = 50000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
 
+## `[monitor].[USP_SpecialFeatureInventory]`
+
+Quelle: `Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @NurErkannteFeatures bit = 0, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_StartupParameters]`
 
 Quelle: `Code/08_ServerHealth/070_USP_StartupParameters.sql`

@@ -1,36 +1,36 @@
 {
-  "release": "1.1.0-special.2",
-  "generatedAtUtc": "2026-07-17T13:43:56Z",
+  "release": "1.1.0-special.3",
+  "generatedAtUtc": "2026-07-17T14:32:44Z",
   "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
-  "scope": "completed P0/P1 special-case module wave and repository integration",
+  "scope": "completed P0/P1 special-case module wave plus first P2 special-feature usage inventory",
   "inventory": {
-    "repositoryFiles": 166,
-    "canonicalSqlSources": 99,
-    "sqlFilesIncludingTestsAndExamples": 115,
-    "objects": 91,
-    "procedures": 76,
+    "repositoryFiles": 167,
+    "canonicalSqlSources": 100,
+    "sqlFilesIncludingTestsAndExamples": 116,
+    "objects": 92,
+    "procedures": 77,
     "functions": 10,
     "views": 5,
-    "procedureParameters": 1164,
-    "systemSources": 162
+    "procedureParameters": 1180,
+    "systemSources": 175
   },
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 115,
+      "filesChecked": 116,
       "issues": []
     },
     "namedProcedureCalls": {
       "status": "PASS",
-      "procedureCallsChecked": 178,
-      "namedArgumentsChecked": 1274,
+      "procedureCallsChecked": 179,
+      "namedArgumentsChecked": 1282,
       "unknownProcedures": [],
       "unknownNamedArguments": []
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 99,
-      "includes": 99,
+      "canonicalSources": 100,
+      "includes": 100,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -38,19 +38,19 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 91,
-      "inventoryObjects": 91,
+      "sourceObjects": 92,
+      "inventoryObjects": 92,
       "differences": []
     },
     "parameterInventory": {
       "status": "PASS",
-      "sourceProcedures": 76,
-      "inventoryRows": 1164,
+      "sourceProcedures": 77,
+      "inventoryRows": 1180,
       "nameOrOrderDifferences": []
     },
     "systemSourceInventory": {
       "status": "PASS",
-      "inventoryRows": 162,
+      "inventoryRows": 175,
       "missingSourceModuleMappings": []
     },
     "repositoryPrivacyGate": {
@@ -72,8 +72,8 @@
     "targetRowsNotExecuted": 4,
     "releaseGateSuiteRows": 20,
     "releaseGateSuiteRowsNotExecuted": 20,
-    "specialCaseRows": 57,
-    "specialCaseRowsNotExecuted": 57,
+    "specialCaseRows": 78,
+    "specialCaseRowsNotExecuted": 78,
     "runtimeStatus": "NOT_EXECUTED",
     "claim": "No installation, compilation, smoke, functional, permission, load or cross-version runtime execution is claimed for this release wave."
   },

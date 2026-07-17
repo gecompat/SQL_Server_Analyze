@@ -59,6 +59,8 @@ Erwartung bei vollständigem Erfolg:
 
 Danach die für das Target anwendbaren Fälle aus `Metadata/Quality/Special_Case_Test_Cases.csv` ausführen. Capability-, Leerzustands-, Positiv-, Grenzwert-, Berechtigungs-, Reset- und Lastfälle bleiben getrennte Nachweise. Nicht vorhandene Features dürfen nicht als erfolgreicher Positivtest gewertet werden.
 
+Für `USP_SpecialFeatureInventory` sind der vollständig sichtbare Leerzustand, eingeschränkte Metadatensichtbarkeit, die Ausgabegrenze und je ein positiver Fall für alle 18 Featurecodes getrennt vorgesehen. Eine Nullzählung gilt nicht als Abwesenheitsbeweis und `CONFIGURED_ONLY` nicht als Nutzungsnachweis.
+
 Kostenintensive Pfade nur kontrolliert und opt-in testen:
 
 - Page Details und Event-XML

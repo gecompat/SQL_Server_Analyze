@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.2
+Version      : 1.1.0-special.3
 Stand        : 2026-07-17
 Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
                Analysepaket. Keine Installationshistorie und kein Deployment-
@@ -28,12 +28,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.2',
+SET [FrameworkVersion]='1.1.0-special.3',
     [ReleaseDate]='20260717',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.7',
+    [ContractVersion]='1.8',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.7: begrenzte read-only Statistikverteilungsanalyse mit Histogramm-, Tail- und inkrementeller Partitionsevidenz; vollständige P0/P1-Spezialfallwelle bleibt laufzeitzutesten.'
+    [ReleaseNotes]=N'API 1.8: leichtgewichtige read-only Spezialfeature-Nutzungsinventur ohne Gesundheitsurteil oder sensible Quellinhalte; Spezialfallwellen bleiben laufzeitzutesten.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -45,9 +45,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.2','20260717',15,
-        '1.7',SYSUTCDATETIME(),
-        N'API 1.7: begrenzte read-only Statistikverteilungsanalyse mit Histogramm-, Tail- und inkrementeller Partitionsevidenz; vollständige P0/P1-Spezialfallwelle bleibt laufzeitzutesten.'
+        N'SQLServerMonitoringFramework','1.1.0-special.3','20260717',15,
+        '1.8',SYSUTCDATETIME(),
+        N'API 1.8: leichtgewichtige read-only Spezialfeature-Nutzungsinventur ohne Gesundheitsurteil oder sensible Quellinhalte; Spezialfallwellen bleiben laufzeitzutesten.'
     );
 END;
 GO

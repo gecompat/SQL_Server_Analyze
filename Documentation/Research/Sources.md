@@ -146,6 +146,15 @@ Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließl
 - Microsoft Learn: `backupset` – LSN-, Damage-, Checksum-, Fork-, Verschlüsselungs- und Kompressionsmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `RESTORE VERIFYONLY` – Prüfung der Sicherung und deren Grenzen: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-verifyonly-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `sys.transmission_queue` – Service-Broker-Backlog und Übertragungsstatus: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.tables` – unter anderem Temporal-, FILESTREAM/FileTable- und Graph-Metadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-tables-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.columns` – unter anderem Always-Encrypted-, FILESTREAM- und Graph-Spaltenmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-columns-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.types` – System- und benutzerdefinierte Typen: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-types-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.external_tables` und `sys.external_data_sources` – externe Tabellen und Datenquellen; sensible Standort- und Verbindungsfelder werden vom Framework nicht gelesen: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-tables-transact-sql?view=sql-server-ver17 und https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-data-sources-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.external_languages` und `sys.external_libraries` – externe Laufzeitmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-languages-transact-sql?view=sql-server-ver17 und https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-libraries-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.assemblies` – CLR-Assembly-Metadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-assemblies-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.fulltext_indexes` – Full-Text-Indexmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-fulltext-indexes-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.service_queues` – Service-Broker-Queue-Metadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-service-queues-transact-sql?view=sql-server-ver17
+- Microsoft Learn: nativer `vector`-Datentyp ab SQL Server 2025: https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type?view=sql-server-ver17
 
 ### Öffentliche Prüfkataloge als Funktionsbenchmark
 
