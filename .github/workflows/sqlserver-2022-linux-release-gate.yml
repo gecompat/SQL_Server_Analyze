@@ -5,7 +5,6 @@ on:
     paths:
       - '.github/workflows/sqlserver-2022-linux-release-gate.yml'
       - 'Code/**/*.sql'
-      - '.github/temp_apply_release_gate_fixes.py'
   push:
     branches:
       - main
@@ -15,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: sqlserver-2022-linux-release-gate-${{ github.workflow }}-${{ github.ref }}
@@ -30,21 +29,6 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-        with:
-          ref: agent/sqlserver-2022-linux-release-gate-final
-
-      - name: Apply and commit validated T-SQL fixes
-        shell: bash
-        run: |
-          set -euo pipefail
-          python .github/temp_apply_release_gate_fixes.py
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code
-          if ! git diff --cached --quiet; then
-            git commit -m 'fix: pass SQL Server 2022 Linux release gate'
-            git push origin HEAD:agent/sqlserver-2022-linux-release-gate-final
-          fi
 
       - name: Prepare isolated SQL files
         shell: bash
