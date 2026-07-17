@@ -1,0 +1,97 @@
+name: Temporary add permission scenario step diagnostics
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out permission matrix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2022-permission-matrix
+
+      - name: Add scenario step diagnostics
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  "    EXEC [monitor].[USP_CurrentSessions]\n",
+                  "    RAISERROR(N''PERMISSION_MATRIX step=current_sessions'',10,1) WITH NOWAIT;\n    EXEC [monitor].[USP_CurrentSessions]\n",
+              ),
+              (
+                  "    EXEC [monitor].[USP_CheckFrameworkCapabilities]\n          @DatabaseNames=N''''\n        , @MaxDatenbanken=1\n        , @AnalyseKlasse=''STANDARD_CURRENT''",
+                  "    RAISERROR(N''PERMISSION_MATRIX step=standard_capabilities'',10,1) WITH NOWAIT;\n    EXEC [monitor].[USP_CheckFrameworkCapabilities]\n          @DatabaseNames=N''''\n        , @MaxDatenbanken=1\n        , @AnalyseKlasse=''STANDARD_CURRENT''",
+              ),
+              (
+                  "    EXEC [monitor].[USP_CheckFrameworkCapabilities]\n          @DatabaseNames=N''''\n        , @MaxDatenbanken=1\n        , @AnalyseKlasse=''QUERY_STORE_CURRENT''",
+                  "    RAISERROR(N''PERMISSION_MATRIX step=query_store_capabilities'',10,1) WITH NOWAIT;\n    EXEC [monitor].[USP_CheckFrameworkCapabilities]\n          @DatabaseNames=N''''\n        , @MaxDatenbanken=1\n        , @AnalyseKlasse=''QUERY_STORE_CURRENT''",
+              ),
+              (
+                  "    SELECT\n          @SessionStatus=JSON_VALUE(@SessionJson,''$.meta.statusCode'')",
+                  "    RAISERROR(N''PERMISSION_MATRIX step=parse_results'',10,1) WITH NOWAIT;\n    SELECT\n          @SessionStatus=JSON_VALUE(@SessionJson,''$.meta.statusCode'')",
+              ),
+              (
+                  "    SELECT @PlanAllowed=[IsAllowed],@PlanReason=[AccessReason]\n",
+                  "    RAISERROR(N''PERMISSION_MATRIX step=policy_lookup'',10,1) WITH NOWAIT;\n    SELECT @PlanAllowed=[IsAllowed],@PlanReason=[AccessReason]\n",
+              ),
+              (
+                  "    INSERT [#PermissionMatrix]\n",
+                  "    RAISERROR(N''PERMISSION_MATRIX step=insert_result'',10,1) WITH NOWAIT;\n    INSERT [#PermissionMatrix]\n",
+              ),
+              (
+                  "    REVERT;'",
+                  "    RAISERROR(N''PERMISSION_MATRIX step=revert'',10,1) WITH NOWAIT;\n    REVERT;'",
+              ),
+          ]
+
+          dynamic_start = text.index("    SET @Sql=N'\n")
+          dynamic_end = text.index("    REVERT;'", dynamic_start) + len("    REVERT;'")
+          dynamic = text[dynamic_start:dynamic_end]
+          for old, new in replacements:
+              if dynamic.count(old) != 1:
+                  raise RuntimeError(f'Expected dynamic anchor once: {old[:100]!r}; found {dynamic.count(old)}.')
+              dynamic = dynamic.replace(old, new, 1)
+          text = text[:dynamic_start] + dynamic + text[dynamic_end:]
+
+          old_catch = """    DECLARE @ScenarioErrorLine int=ERROR_LINE();
+          DECLARE @ScenarioErrorText nvarchar(2048)=ERROR_MESSAGE();
+          """.replace('          ', '')
+          new_catch = """    DECLARE @ScenarioErrorNumber int=ERROR_NUMBER();
+          DECLARE @ScenarioErrorLine int=ERROR_LINE();
+          DECLARE @ScenarioErrorProcedure sysname=ERROR_PROCEDURE();
+          DECLARE @ScenarioErrorText nvarchar(2048)=ERROR_MESSAGE();
+          """.replace('          ', '')
+          if text.count(old_catch) != 1:
+              raise RuntimeError(f'Expected outer error capture once, found {text.count(old_catch)}.')
+          text = text.replace(old_catch, new_catch, 1)
+
+          old_message = "DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',@ScenarioErrorLine,N': ',@ScenarioErrorText);"
+          new_message = "DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed; number=',@ScenarioErrorNumber,N'; procedure=',COALESCE(@ScenarioErrorProcedure,N'<dynamic>'),N'; line=',@ScenarioErrorLine,N': ',@ScenarioErrorText);"
+          if text.count(old_message) != 1:
+              raise RuntimeError(f'Expected scenario message once, found {text.count(old_message)}.')
+          text = text.replace(old_message, new_message, 1)
+
+          path.write_text(text, encoding='utf-8', newline='\n')
+
+      - name: Commit scenario diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'test: add permission scenario step diagnostics'
+          git push origin HEAD:agent/sqlserver-2022-permission-matrix
