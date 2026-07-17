@@ -25,6 +25,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 | P1.7 | `monitor.USP_AvailabilityDeepAnalysis` | Replikas, Datenbewegung, Queues, Quorum, Seeding, Page Repair | Always-On-DMVs MEDIUM | Netzpfad, Clusterlog und Zeitverlauf fehlen |
 | P1.8 | `monitor.USP_AgentMonitoringAnalysis` | Dienst, Alertabdeckung, Routing, Jobs, Mailstatus | `msdb`-Metadaten LOW/MEDIUM | Externes Monitoring kann fehlende Agentobjekte kompensieren |
 | P1.9 | `monitor.USP_DiagnosticFindings` | normalisierte Triage aus den JSON-Verträgen der vorherigen Module | Kernmodule an; Schema/Statistikverteilung/IQP/Contention opt-in | Priorität und Konfidenz sind Triage, keine automatische Ursache |
+| P2.1 | `monitor.USP_SpecialFeatureInventory` | aggregierte Nutzung oder reine Konfiguration von 18 Spezialfeatureklassen | LOW; reine sichtbare Systemkataloge | Inventar ist kein Gesundheitsurteil; Nullzählungen beweisen bei eingeschränkter Metadatensichtbarkeit keine Abwesenheit |
 
 ## Messverträge
 
@@ -35,6 +36,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 - Counter-Resets werden nicht in negative Raten umgerechnet, sondern als Reset ausgewiesen.
 - Die Statistikverteilungsanalyse begrenzt Kandidaten vor dem Histogrammzugriff. Dominanz-, Equal-/Range-Skew-, Tail-, Modification- und Partitionsindikatoren bleiben konfigurierbare Prüfhinweise.
 - Featureabhängige Katalogsichten werden erst in dynamische Batches aufgenommen, wenn die Produktversion sie unterstützt.
+- Die Spezialfeature-Inventur liest keine externen Locations, Connection Options, Credentials, Service-Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzertabellen. `CONFIGURED_ONLY` beweist keine tatsächliche Nutzung.
 - `USP_DiagnosticFindings` benötigt Compatibility Level 130 oder höher, weil `OPENJSON` den Vertragsinhalt aggregiert.
 
 ## Befundvertrag
@@ -66,3 +68,8 @@ Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezi
 - [backupset](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql)
 - [Always-On-DMVs](https://learn.microsoft.com/en-us/sql/database-engine/availability-groups/windows/monitor-availability-groups-transact-sql)
 - [SQL Server Agent Alerts](https://learn.microsoft.com/en-us/sql/ssms/agent/alerts)
+- [sys.tables](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-tables-transact-sql)
+- [sys.columns](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-columns-transact-sql)
+- [sys.external_tables](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-tables-transact-sql)
+- [sys.external_languages](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-languages-transact-sql)
+- [sys.assemblies](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-assemblies-transact-sql)

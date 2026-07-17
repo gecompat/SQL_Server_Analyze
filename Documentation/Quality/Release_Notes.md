@@ -1,5 +1,15 @@
 # Release Notes
 
+## Stand 2026-07-17 – Beginn P2 `1.1.0-special.3`
+
+- `SC-021` durch `monitor.USP_SpecialFeatureInventory` als erstes P2-Modul implementiert.
+- 18 Featureklassen werden je ausgewählter Datenbank ausschließlich aus aggregierten, sichtbaren Systemkatalogen als `DETECTED`, `CONFIGURED_ONLY`, `NOT_DETECTED_VISIBLE_SCOPE`, `UNAVAILABLE_VERSION` oder `SOURCE_UNAVAILABLE` klassifiziert.
+- Capability und Nutzung getrennt: Das vorhandene `USP_ServerFeatureCapabilities` bleibt für Plattformverfügbarkeit zuständig; die neue Procedure inventarisiert sichtbare Verwendung und empfiehlt passende, teils noch geplante Deep-Dive-Module.
+- Externe Locations, Connection Options, Credentials, Service-Broker-Payloads, CLR-Binaries, Moduldefinitionen und Benutzertabellen werden nicht gelesen.
+- Native JSON-/Vector-Nutzung wird nur über den jeweiligen Systemtyp erkannt; JSON in Zeichenketten oder Moduldefinitionen wird bewusst nicht behauptet.
+- Installer, Frameworkvertrag, Smoke-/API-Test, Beispiele, Inventare, Referenz, Backlog und Spezialfalltestmatrix synchronisiert.
+- Laufzeitstatus bleibt vollständig `NOT_EXECUTED`; die P2-Implementierung erweitert keine Laufzeitfreigabe.
+
 ## Stand 2026-07-17 – Abschluss P1 `1.1.0-special.2`
 
 - SQLCMD-Runner `Code/Tests/Run_Release_Gate.sql` für vier verbindliche Integrationsverträge und acht Bereichs-Smoke-Tests, synthetische Suite-Evidenzvorlage und datenschutzkonformes Runbook ergänzt; alle Zielzeilen bleiben bis zur realen Ausführung `NOT_EXECUTED`.
@@ -86,7 +96,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.2` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.3` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

@@ -1163,3 +1163,19 @@ USP_ServerFeatureCapabilities,JsonErzeugen,bit,0
 USP_ServerFeatureCapabilities,Json,nvarchar(max),NULL OUTPUT
 USP_ServerFeatureCapabilities,PrintMeldungen,bit,1
 USP_ServerFeatureCapabilities,Hilfe,bit,0
+USP_SpecialFeatureInventory,DatabaseNames,nvarchar(max),N''
+USP_SpecialFeatureInventory,SystemdatenbankenEinbeziehen,bit,0
+USP_SpecialFeatureInventory,DatabaseNamePattern,nvarchar(4000),NULL
+USP_SpecialFeatureInventory,MaxDatenbanken,int,16
+USP_SpecialFeatureInventory,NurErkannteFeatures,bit,0
+USP_SpecialFeatureInventory,MaxZeilen,int,2000
+USP_SpecialFeatureInventory,LockTimeoutMs,int,0
+USP_SpecialFeatureInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_SpecialFeatureInventory,JsonErzeugen,bit,0
+USP_SpecialFeatureInventory,Json,nvarchar(max),NULL OUTPUT
+USP_SpecialFeatureInventory,PrintMeldungen,bit,1
+USP_SpecialFeatureInventory,Hilfe,bit,0
+USP_SpecialFeatureInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SpecialFeatureInventory,IsPartialOut,bit,NULL OUTPUT
+USP_SpecialFeatureInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_SpecialFeatureInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

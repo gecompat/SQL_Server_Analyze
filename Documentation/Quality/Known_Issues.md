@@ -2,7 +2,7 @@
 
 Stand: 2026-07-17
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen vollumfänglich real installiert, kompiliert und funktional getestet. Die danach ergänzte Version `1.1.0-special.2` ist statisch geprüft, aber noch nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen vollumfänglich real installiert, kompiliert und funktional getestet. Die danach ergänzte Version `1.1.0-special.3` ist statisch geprüft, aber noch nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 

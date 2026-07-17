@@ -2,7 +2,7 @@
 
 Stand: 2026-07-17
 
-Der vor der Spezialfallwelle liegende Basisstand wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.2` ist implementiert und statisch geprüft; reale Matrixläufe sind noch nicht dokumentiert. `NOT_EXECUTED` in der Testmatrix darf nicht als Testnachweis interpretiert werden.
+Der vor der Spezialfallwelle liegende Basisstand wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.3` mit begonnener P2-Welle ist implementiert und statisch zu prüfen; reale Matrixläufe sind noch nicht dokumentiert. `NOT_EXECUTED` in der Testmatrix darf nicht als Testnachweis interpretiert werden.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.
 
@@ -15,6 +15,7 @@ Abgeschlossen:
 5. Installer, Orchestratoren, Inventare, Hilfe, Beispiele, Referenz und statische Verträge erweitert.
 6. Statischen Release-Audit unter `Metadata/Quality/Special_Case_Release_Audit.json` dokumentiert; Laufzeitstatus bleibt `NOT_EXECUTED`.
 7. Reproduzierbaren SQLCMD-Runner für vier verbindliche Integrationsverträge und acht Bereichs-Smoke-Tests, eine rein synthetische Suite-Evidenzvorlage sowie ein Test-Runbook ergänzt.
+8. P2 mit `USP_SpecialFeatureInventory` begonnen: sichtbare Nutzung beziehungsweise reine Konfiguration wird aggregiert, ohne daraus einen Gesundheitsbefund abzuleiten.
 
 Nächste Freigabeschritte:
 
@@ -23,4 +24,4 @@ Nächste Freigabeschritte:
 3. Für jedes neue Modul Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle dokumentieren; reale Namen oder Strukturen nicht in die Nachweise übernehmen.
 4. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung und breite Cross-Database-Auswahl.
 5. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
-6. Weitere Spezialfeatures wie In-Memory OLTP, Temporal, Service Broker, Full-Text und Verschlüsselung erst danach als nächste Welle planen.
+6. Die bereits begonnene P2-Welle darf statisch weiterentwickelt werden; Laufzeitfreigabe bleibt dennoch blockiert. Als nächste Deep-Dive-Module kommen In-Memory OLTP, Temporal, Service Broker, Full-Text und Verschlüsselung ausschließlich bei erkannter Nutzung in Betracht.
