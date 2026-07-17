@@ -1,6 +1,11 @@
 name: Temporary fix filter and temporal contract
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/temp-fix-filter-temporal-contract.yml'
+      - 'Code/Tests/Integration/165_Filter_Output_Contract.sql'
+      - 'Code/09_VersionAdaptive/040_USP_TemporalAnalysis.sql'
   push:
     branches:
       - agent/validate-sqlserver-2022-linux-gate
