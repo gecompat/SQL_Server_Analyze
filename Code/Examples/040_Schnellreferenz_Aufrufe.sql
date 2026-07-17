@@ -38,6 +38,12 @@ EXEC [monitor].[USP_InMemoryOltpAnalysis]
     , @MitHashIndexStats=0
     , @MaxZeilen=100;
 
+-- Temporal Tables: nur Katalog-, Retention-, Kapazitäts- und Indexmetadaten; keine History-Zeilen
+EXEC [monitor].[USP_TemporalAnalysis]
+      @DatabaseNames=N''
+    , @HistorySizeWarnMb=10240
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]

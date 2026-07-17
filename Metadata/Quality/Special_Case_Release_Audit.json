@@ -1,23 +1,23 @@
 {
-  "release": "1.1.0-special.4",
-  "generatedAtUtc": "2026-07-17T15:17:19Z",
+  "release": "1.1.0-special.5",
+  "generatedAtUtc": "2026-07-17T16:21:47Z",
   "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
-  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP deep analysis",
+  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP and Temporal Tables deep analyses",
   "inventory": {
-    "repositoryFiles": 168,
-    "canonicalSqlSources": 101,
-    "sqlFilesIncludingTestsAndExamples": 117,
-    "objects": 93,
-    "procedures": 78,
+    "repositoryFiles": 170,
+    "canonicalSqlSources": 102,
+    "sqlFilesIncludingTestsAndExamples": 118,
+    "objects": 94,
+    "procedures": 79,
     "functions": 10,
     "views": 5,
-    "procedureParameters": 1209,
-    "systemSources": 181
+    "procedureParameters": 1234,
+    "systemSources": 182
   },
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 117,
+      "filesChecked": 118,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -27,17 +27,32 @@
       "dynamicSyntaxIssues": 0,
       "note": "Static parser validation only; this is not SQL Server compilation or execution evidence."
     },
+    "temporalTsqlParse": {
+      "status": "PASS",
+      "outerSyntaxIssues": 0,
+      "dynamicBatchesReconstructed": 4,
+      "dynamicSyntaxIssues": 0,
+      "note": "Static parser validation only; this is not SQL Server compilation or execution evidence."
+    },
+    "temporalReadOnlyContract": {
+      "status": "PASS",
+      "featureGateBeforeDependentSources": true,
+      "isolatedSources": 3,
+      "userTableRowReads": 0,
+      "dbccOrDdlOperations": 0,
+      "note": "The module reads visible catalogs and approximate partition statistics only; it does not claim overlap freedom, cleanup success or recognition of disconnected former pairs."
+    },
     "namedProcedureCalls": {
       "status": "PASS",
-      "procedureCallsChecked": 181,
-      "namedArgumentsChecked": 1298,
+      "procedureCallsChecked": 189,
+      "namedArgumentsChecked": 1326,
       "unknownProcedures": [],
       "unknownNamedArguments": []
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 101,
-      "includes": 101,
+      "canonicalSources": 102,
+      "includes": 102,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -45,19 +60,19 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 93,
-      "inventoryObjects": 93,
+      "sourceObjects": 94,
+      "inventoryObjects": 94,
       "differences": []
     },
     "parameterInventory": {
       "status": "PASS",
-      "sourceProcedures": 78,
-      "inventoryRows": 1209,
+      "sourceProcedures": 79,
+      "inventoryRows": 1234,
       "nameOrOrderDifferences": []
     },
     "systemSourceInventory": {
       "status": "PASS",
-      "inventoryRows": 181,
+      "inventoryRows": 182,
       "missingSourceModuleMappings": []
     },
     "repositoryPrivacyGate": {
@@ -79,8 +94,8 @@
     "targetRowsNotExecuted": 4,
     "releaseGateSuiteRows": 20,
     "releaseGateSuiteRowsNotExecuted": 20,
-    "specialCaseRows": 92,
-    "specialCaseRowsNotExecuted": 92,
+    "specialCaseRows": 105,
+    "specialCaseRowsNotExecuted": 105,
     "runtimeStatus": "NOT_EXECUTED",
     "claim": "No installation, compilation, smoke, functional, permission, load or cross-version runtime execution is claimed for this release wave."
   },

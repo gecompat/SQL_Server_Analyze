@@ -41,7 +41,10 @@ VALUES
 (N'USP_SpecialFeatureInventory',N'@StatusCodeOut'),
 (N'USP_InMemoryOltpAnalysis',N'@MitHashIndexStats'),
 (N'USP_InMemoryOltpAnalysis',N'@HashAvgChainWarn'),
-(N'USP_InMemoryOltpAnalysis',N'@StatusCodeOut');
+(N'USP_InMemoryOltpAnalysis',N'@StatusCodeOut'),
+(N'USP_TemporalAnalysis',N'@HistorySizeWarnMb'),
+(N'USP_TemporalAnalysis',N'@MinHistoryMbForRatioWarn'),
+(N'USP_TemporalAnalysis',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 
@@ -102,6 +105,20 @@ IF @InMemoryDefinition LIKE N'%[[]relative_file_path[]]%'
  OR @InMemoryDefinition LIKE N'%[[]session_id[]]%'
  OR @InMemoryDefinition LIKE N'%[[]memory_address[]]%'
     THROW 54105,N'Die In-Memory-OLTP-Analyse referenziert einen ausgeschlossenen Detailidentifikator.',1;
+
+DECLARE @TemporalDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_TemporalAnalysis'));
+IF @TemporalDefinition IS NULL
+    THROW 54106,N'Die Definition der Temporal-Tables-Analyse ist nicht sichtbar.',1;
+
+IF @TemporalDefinition NOT LIKE N'%[[]sys[]].[[]periods[]]%'
+ OR @TemporalDefinition NOT LIKE N'%[[]history_table_id[]]%'
+ OR @TemporalDefinition NOT LIKE N'%[[]dm_db_partition_stats[]]%'
+    THROW 54107,N'Die Temporal-Tables-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen.',1;
+
+IF @TemporalDefinition LIKE N'%FOR SYSTEM_TIME AS OF%'
+ OR @TemporalDefinition LIKE N'%FOR SYSTEM_TIME ALL%'
+ OR @TemporalDefinition LIKE N'%SYSTEM_VERSIONING = OFF%'
+    THROW 54108,N'Die Temporal-Tables-Analyse enthält einen ausgeschlossenen Nutzdaten- oder Änderungszugriff.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

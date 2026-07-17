@@ -44,6 +44,10 @@ SQL Agent, Backup-/Restore-Historie, Log Shipping und Teile der Replikation lieg
 
 `monitor.USP_InMemoryOltpAnalysis` trennt Feature-Gate, Tabellen-/Indexspeicher, Memory-Consumer, Hashkatalog, opt-in Hashketten, Checkpointzustände, aktive Transaktionsaggregate und Resource-Governor-Poolkontext. Jede DMV besitzt einen eigenen Quellenstatus. Die Hashindex-Laufzeitstatistik kann vollständige Tabellen scannen und ist deshalb `HIGH_OPT_IN`. Checkpoint-Pfade und GUIDs sowie Session-, Benutzer- und Transaktionskennungen werden nicht gelesen. Defaultpoolwerte werden nur als gemeinsamer Kontext, nicht als Datenbankattribution gewertet.
 
+### Temporal Tables
+
+`monitor.USP_TemporalAnalysis` trennt Feature-Gate, Current-/History-Katalogzuordnung, Retention-Konfiguration, approximative Partitionskapazität und History-Indexmetadaten. `sys.dm_db_partition_stats` liefert ungefähre Zeilen- und Seitenwerte, keine Nutzdaten. Eine endliche Retention bei deaktiviertem Datenbankschalter und eine fehlende sichtbare Perioden-Indexbaseline werden als Prüfhinweise ausgewiesen. Ohne Current-/History-Zeilenscan, `DBCC CHECKCONSTRAINTS` oder persistierte Historie werden weder Periodenüberlappungen noch Cleanup-Erfolg oder nach `SYSTEM_VERSIONING=OFF` getrennte frühere Paare behauptet.
+
 ## Berechtigungsgrundsatz
 
 Für serverbezogene DMVs gilt auf SQL Server 2019 typischerweise `VIEW SERVER STATE`; ab SQL Server 2022 verwenden viele Performance-DMVs `VIEW SERVER PERFORMANCE STATE`. Datenbankbezogene Quellen verwenden entsprechend `VIEW DATABASE STATE` beziehungsweise ab SQL Server 2022 häufig `VIEW DATABASE PERFORMANCE STATE`. Sicherheitsbezogene Quellen können abweichende Security-State-Berechtigungen erfordern.

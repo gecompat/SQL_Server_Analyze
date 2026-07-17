@@ -63,6 +63,8 @@ Für `USP_SpecialFeatureInventory` sind der vollständig sichtbare Leerzustand, 
 
 Für `USP_InMemoryOltpAnalysis` müssen negativer Feature-Gate, schema-only Objekt, Tabellen-/Consumer-Speicher, Hashkatalog, kontrollierter Hashketten-Opt-in, Checkpointzustände, Transaktionsaggregate, benannter und Defaultpool, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Hashketten nur gegen synthetische Testobjekte und unter kontrolliertem Lastbudget ausführen.
 
+Für `USP_TemporalAnalysis` müssen negativer Feature-Gate, Current-/History-Zuordnung, sichtbare Periodenspalten, endliche und unendliche Retention, deaktivierter datenbankweiter Cleanup, approximative History-Größe/-Zeilen, Ratio-Grenze, vorhandene und fehlende Perioden-Indexbaseline, speicheroptimierte Current-Tabelle, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Ein nach `SYSTEM_VERSIONING=OFF` getrenntes synthetisches Paar muss als bewusst nicht zuverlässig erkennbar bestätigt werden; keine echten Current- oder History-Zeilen als Evidenz speichern.
+
 Kostenintensive Pfade nur kontrolliert und opt-in testen:
 
 - Page Details und Event-XML

@@ -150,7 +150,7 @@ Priorität und Kosten sind unabhängig. Eine P0-Auswertung darf teuer sein und m
 | Availability Groups | Grundabdeckung | Auto Page Repair, Seeding, Cluster/Quorum/Lease, verteilte AG | P1 |
 | SQL Agent | Grundabdeckung | Alertabdeckung, Operatorzustand, Schedule-Kollision, Mailgesundheit | P1 |
 | In-Memory OLTP | nur Inventar/Indexnutzung | Speicher, Hash-Indizes, Checkpointdateien, Transaktionen | P2 bedingt |
-| Temporal | Inventarhinweis | History-Wachstum, Konsistenz, Retention | P2 bedingt |
+| Temporal | Inventar plus implementierter Deep Dive | Zuordnung, Retention, approximative Kapazität und Indexbaseline; Zeilenkonsistenz bleibt außerhalb des read-only Metadatenmoduls | P2 bedingt |
 | Service Broker | fehlt | Queue-/Transmission-Backlog ohne Payload | P2 bedingt |
 | Full-Text | fehlt | Population, Crawl, Speicher und Fehler | P2 bedingt |
 | Historie/Baseline | absichtlich vertagt | Deltas, Trends, Anomalien und Retention | P3, separates Paket |
@@ -449,16 +449,18 @@ Umsetzungsgrenzen: Hashketten sind wegen möglicher vollständiger Tabellenscans
 
 ### SC-016: Temporal Tables
 
-Nur aktivieren, wenn Temporalobjekte vorhanden sind.
+Implementiert als `monitor.USP_TemporalAnalysis`; abhängige Quellen werden nur aktiviert, wenn sichtbare aktive systemversionierte Temporal Tables vorhanden sind.
 
 Auswertungen:
 
 - Zuordnung Current-/History-Tabelle,
-- History-Wachstum und Indexierung,
-- Retention-Konfiguration und tatsächliche Bereinigung,
-- Konsistenz-/Überlappungsindizien,
-- deaktivierte Systemversionierung und verwaiste History-Strukturen,
-- Auswirkungen großer History-Tabellen auf Wartung und Statistik.
+- SYSTEM_TIME-Periodenspalten und Sichtbarkeit,
+- approximative History-Größe, Zeilenmenge und Verhältnis zu Current,
+- endliche/unendliche Retention und datenbankweiter Cleanup-Schalter,
+- sichtbare B-Tree-Indexbaseline mit Periodenende/Periodenstart als führenden Schlüsseln,
+- isolierte Quellen- und Berechtigungsfehler.
+
+Umsetzungsgrenzen: Das Modul liest keine Current- oder History-Zeilen und führt weder `DBCC CHECKCONSTRAINTS` noch DDL oder Cleanup aus. Es beweist deshalb keine Periodenüberlappungsfreiheit, keine tatsächliche Hintergrundbereinigung und keine fachlich richtige Retentionsdauer. Nach `SYSTEM_VERSIONING=OFF` liegen zwei unabhängige Tabellen vor; ohne erhaltene Metadatenzuordnung wird kein ehemaliges Paar anhand von Namen oder Strukturen erraten. Größen- und Ratio-Grenzen sind Kontext, keine Defektklassifikation.
 
 ### SC-017: Service Broker
 
@@ -593,7 +595,7 @@ Das Framework soll dafür Evidenzlücken und nächste Prüfschritte ausgeben, ab
 
 ### Welle D – bedingte Spezialmodule
 
-15. In-Memory OLTP, Temporal, Service Broker und Full-Text.
+15. In-Memory OLTP und Temporal umgesetzt; Service Broker und Full-Text folgen.
 16. CDC/Change Tracking/Replikation, Verschlüsselung und externe Features.
 17. Wartungsoperationen.
 

@@ -1,5 +1,17 @@
 # Release Notes
 
+## Stand 2026-07-17 – Temporal-Tables-Deep-Dive `1.1.0-special.5`
+
+- `SC-016` durch `monitor.USP_TemporalAnalysis` als drittes P2-Modul implementiert.
+- Negatives Feature-Gate ruft keine abhängigen Quellen auf und bleibt auf den sichtbaren Metadatenscope begrenzt.
+- Current-/History-Zuordnung, SYSTEM_TIME-Periodenspalten und datenbank-/tabellenweite Retention-Konfiguration werden aus `sys.tables`, `sys.periods`, `sys.columns` und `sys.databases` ermittelt.
+- Approximative Zeilen- und Größenwerte stammen ausschließlich aus `sys.dm_db_partition_stats`; Current- und History-Zeilen werden nicht gelesen.
+- Ein aktiver sichtbarer B-Tree-History-Index mit führendem Periodenende und Periodenstart wird als dokumentierte Baseline geprüft. Das Ergebnis ist kein automatischer DDL-Vorschlag und kein universelles Workload-Optimum.
+- Endliche Retention bei deaktiviertem datenbankweitem Cleanup erzeugt einen Konfigurationshinweis. Der Schalter beweist weder Cleanup-Ausführung noch -Fortschritt.
+- Periodenüberlappungen und sonstige Datenkonsistenz werden ohne Zeilenscan oder `DBCC CHECKCONSTRAINTS` nicht behauptet. Nach `SYSTEM_VERSIONING=OFF` getrennte Tabellen werden ohne erhaltene Zuordnung nicht erraten.
+- Installer, Frameworkvertrag, Smoke-/API-Test, Beispiele, Inventare, Referenzen, Backlog und Spezialfalltestmatrix synchronisiert.
+- Laufzeitstatus bleibt vollständig `NOT_EXECUTED`; die statische Implementierung ist keine Zielsystemfreigabe.
+
 ## Stand 2026-07-17 – In-Memory-OLTP-Deep-Dive `1.1.0-special.4`
 
 - `SC-015` durch `monitor.USP_InMemoryOltpAnalysis` als zweites P2-Modul implementiert.
@@ -108,7 +120,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.4` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.5` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext
