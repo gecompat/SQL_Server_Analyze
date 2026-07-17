@@ -110,10 +110,18 @@ DECLARE @TemporalDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.
 IF @TemporalDefinition IS NULL
     THROW 54106,N'Die Definition der Temporal-Tables-Analyse ist nicht sichtbar.',1;
 
-IF @TemporalDefinition NOT LIKE N'%[[]sys[]].[[]periods[]]%'
- OR @TemporalDefinition NOT LIKE N'%[[]history_table_id[]]%'
- OR @TemporalDefinition NOT LIKE N'%[[]dm_db_partition_stats[]]%'
-    THROW 54107,N'Die Temporal-Tables-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen.',1;
+DECLARE @MissingTemporalSources nvarchar(2048)=NULL;
+IF CHARINDEX(N'[sys].[periods]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=N'sys.periods';
+IF CHARINDEX(N'[history_table_id]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=CONCAT_WS(N', ',@MissingTemporalSources,N'history_table_id');
+IF CHARINDEX(N'[sys].[dm_db_partition_stats]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=CONCAT_WS(N', ',@MissingTemporalSources,N'sys.dm_db_partition_stats');
+IF @MissingTemporalSources IS NOT NULL
+BEGIN
+    DECLARE @TemporalSourceMessage nvarchar(2048)=CONCAT(N'Die Temporal-Tables-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen: ',@MissingTemporalSources,N'.');
+    THROW 54107,@TemporalSourceMessage,1;
+END;
 
 IF @TemporalDefinition LIKE N'%FOR SYSTEM_TIME AS OF%'
  OR @TemporalDefinition LIKE N'%FOR SYSTEM_TIME ALL%'
