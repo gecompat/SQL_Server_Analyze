@@ -18,7 +18,7 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 
 Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.3` einschließlich Spezialfeature-Nutzungsinventur besitzt statische Verträge; reale Zielmatrixläufe sind noch zu dokumentieren.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.4` einschließlich Spezialfeature-Nutzungsinventur und In-Memory-OLTP-Tiefenanalyse besitzt statische Verträge; reale Zielmatrixläufe sind noch zu dokumentieren.
 
 ## Forschungs- und Inventareinstieg
 

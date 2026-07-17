@@ -1179,3 +1179,32 @@ USP_SpecialFeatureInventory,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_SpecialFeatureInventory,IsPartialOut,bit,NULL OUTPUT
 USP_SpecialFeatureInventory,ErrorNumberOut,int,NULL OUTPUT
 USP_SpecialFeatureInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_InMemoryOltpAnalysis,DatabaseNames,nvarchar(max),N''
+USP_InMemoryOltpAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_InMemoryOltpAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_InMemoryOltpAnalysis,SchemaNames,nvarchar(max),NULL
+USP_InMemoryOltpAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_InMemoryOltpAnalysis,ObjectNames,nvarchar(max),NULL
+USP_InMemoryOltpAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_InMemoryOltpAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_InMemoryOltpAnalysis,MitHashIndexStats,bit,0
+USP_InMemoryOltpAnalysis,NurProblematisch,bit,0
+USP_InMemoryOltpAnalysis,MinTableMemoryMb,"decimal(19,2)",1024
+USP_InMemoryOltpAnalysis,HashAvgChainWarn,"decimal(19,4)",10
+USP_InMemoryOltpAnalysis,HashMaxChainWarn,bigint,100
+USP_InMemoryOltpAnalysis,HashMinEmptyBucketPercent,"decimal(9,4)",10
+USP_InMemoryOltpAnalysis,WaitingCheckpointWarnMb,"decimal(19,2)",1024
+USP_InMemoryOltpAnalysis,ActiveTransactionWarnCount,int,100
+USP_InMemoryOltpAnalysis,PoolUsedWarnPercent,"decimal(9,4)",80
+USP_InMemoryOltpAnalysis,MaxDatenbanken,int,16
+USP_InMemoryOltpAnalysis,MaxZeilen,int,2000
+USP_InMemoryOltpAnalysis,LockTimeoutMs,int,0
+USP_InMemoryOltpAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_InMemoryOltpAnalysis,JsonErzeugen,bit,0
+USP_InMemoryOltpAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_InMemoryOltpAnalysis,PrintMeldungen,bit,1
+USP_InMemoryOltpAnalysis,Hilfe,bit,0
+USP_InMemoryOltpAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_InMemoryOltpAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_InMemoryOltpAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_InMemoryOltpAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

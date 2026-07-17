@@ -61,6 +61,8 @@ Danach die für das Target anwendbaren Fälle aus `Metadata/Quality/Special_Case
 
 Für `USP_SpecialFeatureInventory` sind der vollständig sichtbare Leerzustand, eingeschränkte Metadatensichtbarkeit, die Ausgabegrenze und je ein positiver Fall für alle 18 Featurecodes getrennt vorgesehen. Eine Nullzählung gilt nicht als Abwesenheitsbeweis und `CONFIGURED_ONLY` nicht als Nutzungsnachweis.
 
+Für `USP_InMemoryOltpAnalysis` müssen negativer Feature-Gate, schema-only Objekt, Tabellen-/Consumer-Speicher, Hashkatalog, kontrollierter Hashketten-Opt-in, Checkpointzustände, Transaktionsaggregate, benannter und Defaultpool, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Hashketten nur gegen synthetische Testobjekte und unter kontrolliertem Lastbudget ausführen.
+
 Kostenintensive Pfade nur kontrolliert und opt-in testen:
 
 - Page Details und Event-XML
@@ -68,6 +70,7 @@ Kostenintensive Pfade nur kontrolliert und opt-in testen:
 - Buffer-Pool-Verteilung
 - Schema-Design
 - Statistikverteilung
+- In-Memory-OLTP-Hashketten
 - breite Cross-Database-Auswahl
 
 ## 5. Ergebnis zurückmelden

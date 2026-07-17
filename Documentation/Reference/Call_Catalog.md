@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-17 — 77 Procedures
+Stand: 2026-07-17 — 78 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -24,6 +24,7 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetail
 EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds=5,@MaxZeilen=100;
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @DatabaseNames=N'[DeineDatenbank]',@SchemaNames=N'dbo',@AnalyseModus='GEZIELT',@MaxVerteilungsStatistiken=25,@MaxZeilen=100;
 EXEC [monitor].[USP_SpecialFeatureInventory] @DatabaseNames=N'',@NurErkannteFeatures=1,@MaxZeilen=100;
+EXEC [monitor].[USP_InMemoryOltpAnalysis] @DatabaseNames=N'',@MitHashIndexStats=0,@MaxZeilen=100;
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@SchemaNames=N'dbo|monitor',@ObjectNamePattern=N'regexi:^usp_',@MaxZeilen=200;
 ```
 
@@ -241,6 +242,12 @@ EXEC [monitor].[USP_IndexUsage] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_InfrastructureAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_InMemoryOltpAnalysis]`
+
+```sql
+EXEC [monitor].[USP_InMemoryOltpAnalysis] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_IntelligentQueryProcessingAnalysis]`
