@@ -31,4 +31,4 @@ Ein kurzer Peak nach großer Transaktion kann sich normal abbauen.
 
 Send Queue stabil klein, Redo Queue wächst über mehrere Messungen: Fokus auf Secondary-I/O/CPU/Redo statt Netzwerk. Counter, Storage und Cluster prüfen.
 
-[Technische Detailbeschreibung](../07_Infrastructure.md#11-monitorusp_availabilitydeepanalysis)
+[Technische Detailbeschreibung](../07_Infrastructure.md#10-monitorusp_availabilitydeepanalysis)

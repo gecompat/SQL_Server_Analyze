@@ -33,4 +33,4 @@ Database Mail ist nicht zwingend, wenn ein dokumentierter alternativer Alarmweg 
 
 Kritischer Job schlägt wiederholt fehl, aber kein aktiver Operator ist erreichbar: höheres Betriebsrisiko als der Jobfehler allein. Jobdetails und Monitoringprozess prüfen.
 
-[Technische Detailbeschreibung](../07_Infrastructure.md#12-monitorusp_agentmonitoringanalysis)
+[Technische Detailbeschreibung](../07_Infrastructure.md#11-monitorusp_agentmonitoringanalysis)

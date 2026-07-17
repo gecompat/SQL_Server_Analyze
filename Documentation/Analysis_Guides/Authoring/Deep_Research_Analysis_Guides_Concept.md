@@ -888,15 +888,15 @@ Falsch. Repository-Schwellen sind Defaults und Heuristiken. Sie müssen an SLA, 
 ## 13.1 Repository
 
 - [Projekt-README](../../README.md)
-- [Procedure-Referenz](../Reference/Procedure_Reference.md)
-- [Resultset-Konventionen](../Reference/Resultset_Conventions.md)
-- [Spezialfallmodule: Evidenz, Kosten und Grenzen](../Architecture/Special_Case_Modules.md)
-- [Datenschutz- und Sicherheitsvertrag](../Architecture/Runtime_Data_and_Repository_Privacy.md)
-- [Spezialfall-Gap-Analyse](../Research/Special_Case_Gap_Analysis.md)
-- [Testmatrix](../Quality/Test_Matrix.md)
-- [USP_CurrentRequests – kanonischer Code](../../Code/02_CurrentState/020_USP_CurrentRequests.sql)
-- [USP_DatabaseIntegrityAnalysis – kanonischer Code](../../Code/08_ServerHealth/110_USP_DatabaseIntegrityAnalysis.sql)
-- [USP_DiagnosticFindings – kanonischer Code](../../Code/08_ServerHealth/170_USP_DiagnosticFindings.sql)
+- [Procedure-Referenz](../../Reference/Procedure_Reference.md)
+- [Resultset-Konventionen](../../Reference/Resultset_Conventions.md)
+- [Spezialfallmodule: Evidenz, Kosten und Grenzen](../../Architecture/Special_Case_Modules.md)
+- [Datenschutz- und Sicherheitsvertrag](../../Architecture/Runtime_Data_and_Repository_Privacy.md)
+- [Spezialfall-Gap-Analyse](../../Research/Special_Case_Gap_Analysis.md)
+- [Testmatrix](../../Quality/Test_Matrix.md)
+- [USP_CurrentRequests – kanonischer Code](../../../Code/02_CurrentState/020_USP_CurrentRequests.sql)
+- [USP_DatabaseIntegrityAnalysis – kanonischer Code](../../../Code/08_ServerHealth/110_USP_DatabaseIntegrityAnalysis.sql)
+- [USP_DiagnosticFindings – kanonischer Code](../../../Code/08_ServerHealth/170_USP_DiagnosticFindings.sql)
 
 ## 13.2 Microsoft Learn
 
