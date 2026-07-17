@@ -4,6 +4,23 @@
 **Runner:** `Code/Tests/Run_Release_Gate.sql`  
 **Zielstatus vor Ausführung:** `NOT_EXECUTED`
 
+## 0. Statische Repositoryprüfung
+
+Vor Installation oder Runtime-Tests aus dem Repositoryroot ausführen:
+
+```powershell
+pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+```
+
+Erwartung:
+
+- Prozess-Exitcode `0`.
+- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `79`.
+- Letzte Meldung: `Analysis documentation validation succeeded.`
+- Bei einem Fehler keine Installation und kein SQL-Release-Gate starten, sondern zuerst Referenz, SQL-Signatur, Procedure-Seite, Beispielparameter oder Markdownlink korrigieren.
+
+Der gleiche Test läuft in GitHub Actions für relevante Pull Requests und Änderungen an `main`. Ein grüner statischer Test ersetzt weder die Runtime-Tests noch die manuelle fachliche und datenschutzbezogene Prüfung.
+
 ## 1. Lokale Testkopie vorbereiten
 
 1. Exakt den zu testenden Commit in eine lokale, nicht zur Veröffentlichung vorgesehene Arbeitskopie übernehmen.
@@ -81,6 +98,7 @@ Für die Rückmeldung genügen je Target:
 
 - synthetische `TargetId`
 - getesteter Commit-SHA
+- Exitcode der statischen Repositoryprüfung
 - Exitcode des Installers
 - Exitcode des Release-Gates
 - letzte erfolgreich gestartete Suite oder generischer Fehlercode
