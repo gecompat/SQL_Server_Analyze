@@ -44,6 +44,12 @@ EXEC [monitor].[USP_TemporalAnalysis]
     , @HistorySizeWarnMb=10240
     , @MaxZeilen=100;
 
+-- Service Broker: nur Kataloge und aggregierte Laufzeitmetadaten; keine Queue-Nutzdaten
+EXEC [monitor].[USP_ServiceBrokerAnalysis]
+      @DatabaseNames=N''
+    , @TransmissionAgeWarnMinutes=60
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]

@@ -1,5 +1,18 @@
 # Release Notes
 
+## Stand 2026-07-18 – Service-Broker-Deep-Dive `1.1.0-special.6`
+
+- `SC-017` durch `monitor.USP_ServiceBrokerAnalysis` als viertes P2-Modul implementiert.
+- Sichtbares Feature-Gate aus Datenbankschalter, benutzerdefinierten Queues und Services; negativer Scope ruft keine abhängigen Broker-Quellen auf und bleibt ausdrücklich kein vollständiger Abwesenheitsbeweis.
+- Queue-Schalter, Aktivierungskonfiguration, Service-Zuordnungsanzahl und approximative Nachrichten-/Speicherwerte werden ohne Zugriff auf Queue-Nutzdaten ermittelt.
+- Queue-Monitor und aktivierte Tasks sind getrennte, isolierte Server-DMV-Quellen; fehlende Rechte reduzieren nicht die zugängliche Katalog-, Transmission- oder Conversation-Evidenz.
+- `sys.transmission_queue` wird ausschließlich nach nicht-payloadhaltigen Metadaten, Alter und Status gruppiert. Nachrichtenkörper und Conversation-Handles werden nicht referenziert.
+- Conversation Endpoints werden nur nach Zustand, Initiator-/Systemflag und Lifetime aggregiert; Gruppen-IDs, Schlüsselkennungen und Nachrichteninhalt bleiben ausgeschlossen.
+- RECEIVE-OFF kann Folge automatischer Poison-Message-Erkennung nach wiederholten Rollbacks oder manueller Konfiguration sein. Das Modul meldet deshalb einen Prüfhinweis und keine bewiesene Poison Message.
+- Kein `RECEIVE`, keine Queue-Änderung, kein `END CONVERSATION` und keine automatische Routing-, Aktivierungs- oder Kapazitätsmaßnahme.
+- Installer, Frameworkvertrag, Smoke-/API-Test, Beispiele, Inventare, Referenzen, Backlog und Spezialfalltestmatrix synchronisiert.
+- Laufzeitstatus bleibt vollständig `NOT_EXECUTED`; die statische Implementierung ist keine Zielsystemfreigabe.
+
 ## Stand 2026-07-17 – Temporal-Tables-Deep-Dive `1.1.0-special.5`
 
 - `SC-016` durch `monitor.USP_TemporalAnalysis` als drittes P2-Modul implementiert.
@@ -120,7 +133,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.5` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.6` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

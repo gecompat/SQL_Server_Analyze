@@ -1,8 +1,8 @@
 # Nächste Arbeitsschritte
 
-Stand: 2026-07-17
+Stand: 2026-07-18
 
-Der vor der Spezialfallwelle liegende Basisstand wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.5` mit fortgesetzter P2-Welle ist implementiert und statisch zu prüfen; reale Matrixläufe sind noch nicht dokumentiert. `NOT_EXECUTED` in der Testmatrix darf nicht als Testnachweis interpretiert werden.
+Der vor der Spezialfallwelle liegende Basisstand wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.6` mit fortgesetzter P2-Welle ist implementiert und statisch zu prüfen; reale Matrixläufe sind noch nicht dokumentiert. `NOT_EXECUTED` in der Testmatrix darf nicht als Testnachweis interpretiert werden.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.
 
@@ -18,6 +18,7 @@ Abgeschlossen:
 8. P2 mit `USP_SpecialFeatureInventory` begonnen: sichtbare Nutzung beziehungsweise reine Konfiguration wird aggregiert, ohne daraus einen Gesundheitsbefund abzuleiten.
 9. SC-015 mit `USP_InMemoryOltpAnalysis` umgesetzt: isolierte XTP-Quellen, opt-in Hashketten und explizite Evidenzgrenzen ohne automatische DDL.
 10. SC-016 mit `USP_TemporalAnalysis` umgesetzt: sichtbare Current-/History-Zuordnung, Retention-Konfiguration, approximative Kapazität und Perioden-Indexbaseline ohne Zugriff auf Current-/History-Zeilen.
+11. SC-017 mit `USP_ServiceBrokerAnalysis` umgesetzt: Queue-Schalter und approximative Kapazität, Aktivierungs-DMVs, gruppierte Transmission- und Conversation-Evidenz ohne Queue-Nutzdaten oder Nachrichtenkörper.
 
 Nächste Freigabeschritte:
 
@@ -26,4 +27,4 @@ Nächste Freigabeschritte:
 3. Für jedes neue Modul Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle dokumentieren; reale Namen oder Strukturen nicht in die Nachweise übernehmen.
 4. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 5. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
-6. Die P2-Welle darf statisch weiterentwickelt werden; Laufzeitfreigabe bleibt dennoch blockiert. Als nächste Deep-Dive-Module kommen Service Broker, Full-Text und Verschlüsselung ausschließlich bei erkannter Nutzung in Betracht.
+6. Die P2-Welle darf statisch weiterentwickelt werden; Laufzeitfreigabe bleibt dennoch blockiert. Als nächste Deep-Dive-Module kommen Full-Text, Change/Replication und Verschlüsselung ausschließlich bei erkannter Nutzung in Betracht.

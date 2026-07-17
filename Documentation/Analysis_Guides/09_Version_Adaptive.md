@@ -1,6 +1,6 @@
 # Versionsadaptive und spezialisierte Analysepfade
 
-**Procedures:** 4  
+**Procedures:** 5
 **Evidenz:** Version, Plattform, sichtbare Kataloge, Spezialfeature-Metadaten und isolierte Runtime-DMVs  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -10,7 +10,7 @@
 - Katalogobjekterkennung ist belastbarer als hart codierte Versionsannahmen, bleibt aber berechtigungsabhängig.
 - `NOT_DETECTED_VISIBLE_SCOPE` bedeutet nur „im sichtbaren Metadatenscope nicht gefunden“.
 - Feature-Inventar ist kein Healthcheck.
-- In-Memory- und Temporal-Findings verwenden konfigurierbare Repository-Heuristiken und führen keine DDL aus.
+- In-Memory-, Temporal- und Service-Broker-Findings verwenden konfigurierbare Repository-Heuristiken und führen keine DDL aus.
 
 ---
 
@@ -98,6 +98,7 @@ Die genaue Familie ist versionsabhängig. Das Resultset ist ein Inventar, kein P
 
 - In-Memory gefunden → `USP_InMemoryOltpAnalysis`
 - Temporal gefunden → `USP_TemporalAnalysis`
+- Service Broker gefunden → `USP_ServiceBrokerAnalysis`
 - Query-Store-Replica verfügbar → Query-Store-Guides mit Replica Group beachten
 - Spezialindex → passende Objekt-/Plananalyse
 
@@ -369,6 +370,80 @@ Ein Period-leading History-Index wird anhand der erwarteten Reihenfolge **Period
 
 Kapazität, Index Usage/Physical Stats, Query Store für Temporal Queries, Partitionierungs-/Retentionstrategie und Cleanupmonitoring.
 
+---
+
+## 5. [monitor].[USP_ServiceBrokerAnalysis]
+
+### Zweck
+
+Analysiert sichtbare Service-Broker-Konfiguration und gruppierte Betriebsevidenz zu Queues, interner Aktivierung, Transmission Queue und Conversation Endpoints. Queue-Nutzdaten, Nachrichtenkörper und Conversation-Handles werden nicht gelesen.
+
+### Repository-Schwellen
+
+| Parameter | Default | Bedeutung |
+|---|---:|---|
+| `@TransmissionAgeWarnMinutes` | 60 | Alter des ältesten gruppierten Transmission-Eintrags |
+| `@TransmissionRowsWarn` | 1.000 | gruppierte Nachrichtenanzahl als Reviewkontext |
+| `@QueueRowsWarn` | 10.000 | approximative Queue-Zeilen als Kapazitätskontext |
+| `@ActivationSilenceWarnMinutes` | 60 | Zeit seit letzter Aktivierung bei sichtbarem Rückstand |
+| `@ConversationRowsWarn` | 100.000 | sichtbare Conversation Endpoints als Wachstumskontext |
+
+Die Schwellen priorisieren eine manuelle Prüfung. Sie beweisen weder Zustellfehler noch fehlerhafte Kapazität oder eine Poison Message.
+
+### Statusresultsets
+
+#### DatabaseStatus
+
+`DatabaseName`, `StatusCode`, `IsPartial`, `IsBrokerEnabled`, `UserQueueCount`, `UserServiceCount`, `TransmissionMessageCount`, `ConversationEndpointCount`, `SourceFailureCount`, `FindingCount`, `RequiredPermission`, `ErrorNumber`, `ErrorMessage`, `Detail`.
+
+#### SourceStatus
+
+`DatabaseName`, `SourceCode`, `StatusCode`, `IsPartial`, `RowCount`, `RequiredPermission`, `ErrorNumber`, `ErrorMessage`, `Detail`.
+
+Feature-Gate, Queue-Katalog, Kapazität, Queue-Monitor, aktivierte Tasks, Transmission und Conversations werden isoliert bewertet. Eine fehlende DMV-Berechtigung entwertet zugängliche Kataloge nicht.
+
+### Queues
+
+`DatabaseName`, Queue-Scope, Serviceanzahl, Broker-/Queue-Schalter, Aktivierungsprozedur, Ausführungskontext, approximative Zeilen-/Seitenevidenz, Monitorzustand, Aktivierungszeitpunkte, wartende Receiver, aktive Tasks, `AssessmentStatus`, `EvidenceLimit`.
+
+`QueueRowsApprox` stammt aus Partitionsstatistiken. Der Wert enthält keine Aussage zu Alter, Durchsatz, Priorität oder fachlich zulässigem Rückstand.
+
+### TransmissionGroups
+
+Gruppiert werden nicht-payloadhaltige Service-, Ziel-, Contract-, Message-Type-, Status-, Mengen- und Zeiteigenschaften. Eine Zeile in `sys.transmission_queue` ist nicht automatisch ein Fehler: Zustellung, Bestätigung und Retention können Einträge vorübergehend erhalten.
+
+### ConversationStates
+
+Conversation Endpoints werden nach Zustand, Initiator-/Systemflag und Lifetime aggregiert. Handles, Gruppen-IDs, Schlüsselkennungen und Nachrichteninhalt bleiben ausgeschlossen.
+
+### Findings
+
+Wichtige Reviewcodes sind deaktivierte Queue-Schalter, Aktivierungsstillstand bei sichtbarem Rückstand, Transmission-Status oder -Alter, Conversation-Errorzustand, abgelaufene Lifetime und isolierte Evidenzlücken.
+
+### Interpretation
+
+| Konstellation | Bewertung |
+|---|---|
+| `is_receive_enabled=0` | kann nach wiederholten Rollbacks automatisch oder manuell entstehen; Ursache separat belegen |
+| Queue-Zeilen hoch, Monitor `RECEIVES_OCCURRING` | Rückstand vorhanden, aber Verarbeitung sichtbar; Trend und Durchsatz prüfen |
+| Queue-Zeilen hoch, keine aktiven Tasks | nur bei vollständiger Monitor-/Taskevidenz ein belastbarer Aktivierungs-Reviewfall |
+| Transmission-Status gefüllt | konkrete Transport-/Routingevidenz; Ziel, Route, Endpunkt, Zertifikate und Fehlerlog korrelieren |
+| Transmission ohne Status | nicht automatisch gesund oder fehlerhaft; Alter und Verlauf ergänzen |
+| viele Endpoints | kann legitime langlebige Dialoge oder unvollständigen Dialogabschluss bedeuten |
+| Retention aktiviert | erklärt erhaltene Queue-Zeilen und ist kein Fehlerbefund |
+
+### Aussagegrenzen
+
+- Queue-Monitor und aktivierte Tasks sind Momentaufnahmen.
+- Eingeschränkte Metadatensichtbarkeit kann einen scheinbaren Leerzustand erzeugen.
+- Ein deaktiviertes RECEIVE beweist keine Poison Message.
+- Das Modul liest keine Queue-Nutzdaten und führt kein `RECEIVE`, `ALTER QUEUE` oder `END CONVERSATION` aus.
+- Kapazitäts-, Routing- und Bereinigungsmaßnahmen benötigen Zeitverlauf, Anwendungs- und Betriebskontext.
+
+### Folgeanalyse
+
+SQL-Fehlerlog beziehungsweise freigegebene Extended Events, Routing-/Endpunktkonfiguration, Zertifikate, Readerdurchsatz, Anwendungstransaktionen und wiederholte Messungen korrelieren. Laufzeitevidenz mit realen Namen oder Inhalten niemals in Repositoryartefakte übernehmen.
+
 ## Anfänger-Entscheidungsbaum
 
 ```mermaid
@@ -379,10 +454,12 @@ flowchart TD
     C -->|Ja| E{Deep-Dive vorhanden?}
     E -->|In-Memory| F[InMemoryOltpAnalysis]
     E -->|Temporal| G[TemporalAnalysis]
-    E -->|nur Capability| H[ServerFeatureCapabilities]
+    E -->|Service Broker| H[ServiceBrokerAnalysis]
+    E -->|nur Capability| L[ServerFeatureCapabilities]
     F --> I[SourceStatus und Findings gemeinsam lesen]
     G --> J[Retention, Größe und History-Index gemeinsam lesen]
-    H --> K[Version + Katalog + Plattform + DB-Kontext]
+    H --> K[Queue, Aktivierung, Transmission und Conversations]
+    L --> M[Version + Katalog + Plattform + DB-Kontext]
 ```
 
 ## Quellen
@@ -399,3 +476,8 @@ flowchart TD
 - [Temporal tables](https://learn.microsoft.com/sql/relational-databases/tables/temporal-tables)
 - [Manage temporal history retention](https://learn.microsoft.com/sql/relational-databases/tables/manage-retention-of-historical-data-in-system-versioned-temporal-tables)
 - [Temporal table considerations and limitations](https://learn.microsoft.com/sql/relational-databases/tables/temporal-table-considerations-and-limitations)
+- [sys.service_queues](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-service-queues-transact-sql)
+- [sys.transmission_queue](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql)
+- [sys.dm_broker_queue_monitors](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-queue-monitors-transact-sql)
+- [sys.dm_broker_activated_tasks](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-activated-tasks-transact-sql)
+- [sys.conversation_endpoints](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-conversation-endpoints-transact-sql)

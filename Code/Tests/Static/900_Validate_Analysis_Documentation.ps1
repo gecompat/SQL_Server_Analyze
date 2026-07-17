@@ -319,14 +319,14 @@ Write-Host "Canonical source procedures: $($sourceProcedureNames.Count)"
 Write-Host "Procedure pages:             $($pageNames.Count)"
 Write-Host "Referenced source files:     $($declaredSourcePaths.Count)"
 
-if ($referenceNames.Count -ne 79) {
-    $errors.Add("Expected 79 reference procedures, found $($referenceNames.Count).")
+if ($referenceNames.Count -ne 80) {
+    $errors.Add("Expected 80 reference procedures, found $($referenceNames.Count).")
 }
-if ($sourceProcedureNames.Count -ne 79) {
-    $errors.Add("Expected 79 canonical SQL procedures, found $($sourceProcedureNames.Count).")
+if ($sourceProcedureNames.Count -ne 80) {
+    $errors.Add("Expected 80 canonical SQL procedures, found $($sourceProcedureNames.Count).")
 }
-if ($pageNames.Count -ne 79) {
-    $errors.Add("Expected 79 procedure pages, found $($pageNames.Count).")
+if ($pageNames.Count -ne 80) {
+    $errors.Add("Expected 80 procedure pages, found $($pageNames.Count).")
 }
 
 if ($errors.Count -gt 0) {

@@ -109,3 +109,4 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql
 :r ../09_VersionAdaptive/030_USP_InMemoryOltpAnalysis.sql
 :r ../09_VersionAdaptive/040_USP_TemporalAnalysis.sql
+:r ../09_VersionAdaptive/050_USP_ServiceBrokerAnalysis.sql

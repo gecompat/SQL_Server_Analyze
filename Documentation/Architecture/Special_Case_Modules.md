@@ -1,6 +1,6 @@
 # Spezialfallmodule: Evidenz, Kosten und Grenzen
 
-Stand: 2026-07-17
+Stand: 2026-07-18
 
 ## Ziel und Datenschutzgrenze
 
@@ -28,6 +28,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 | P2.1 | `monitor.USP_SpecialFeatureInventory` | aggregierte Nutzung oder reine Konfiguration von 18 Spezialfeatureklassen | LOW; reine sichtbare Systemkataloge | Inventar ist kein Gesundheitsurteil; Nullzählungen beweisen bei eingeschränkter Metadatensichtbarkeit keine Abwesenheit |
 | P2.2 | `monitor.USP_InMemoryOltpAnalysis` | Tabellen-/Indexspeicher, Consumer, Hashketten, Checkpointzustände, aktive Transaktionen und Poolkontext | Basis MEDIUM; Hashketten HIGH_OPT_IN mit `CATALOG_DEEP` | Momentaufnahmen und Heuristiken beweisen weder Speicherdruck noch falsche DDL; Defaultpool ist nicht datenbankgenau zurechenbar |
 | P2.3 | `monitor.USP_TemporalAnalysis` | Current-/History-Zuordnung, Periodenmetadaten, Retention-Schalter, approximative Kapazität und History-Indexbaseline | MEDIUM; Kataloge plus `sys.dm_db_partition_stats` | Keine Nutzdatenprüfung: weder Periodenüberlappungen noch Cleanup-Erfolg oder frühere Zuordnungen werden bewiesen |
+| P2.4 | `monitor.USP_ServiceBrokerAnalysis` | Queue-Schalter und approximative Kapazität, interne Aktivierung, gruppierte Transmission- und Conversation-Zustände | MEDIUM; Kataloge, Broker-DMVs und `sys.dm_db_partition_stats` | Keine Queue-Nutzdaten oder Nachrichtenkörper; deaktivierte Queue und alte Metadaten beweisen weder Poison Message noch Ursache |
 
 ## Messverträge
 
@@ -41,6 +42,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 - Die Spezialfeature-Inventur liest keine externen Locations, Connection Options, Credentials, Service-Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzertabellen. `CONFIGURED_ONLY` beweist keine tatsächliche Nutzung.
 - Die In-Memory-OLTP-Analyse ruft jede DMV isoliert auf. `sys.dm_db_xtp_hash_index_stats` ist wegen möglicher vollständiger Tabellenscans standardmäßig aus; Checkpoint-Pfade, Container-GUIDs, SQL-Texte sowie Session-, Benutzer- und Transaktionskennungen werden nicht gelesen.
 - Die Temporal-Tables-Analyse liest keine Current- oder History-Zeilen. Die dokumentierte Indexbaseline Periodenende/Periodenstart ist ein Prüfhinweis, kein automatischer DDL-Vorschlag. `SYSTEM_VERSIONING=OFF` trennt die Tabellen; ohne erhaltene Metadatenzuordnung darf das Modul daraus kein ehemaliges Paar erraten.
+- Die Service-Broker-Analyse liest keine Queue-Nutzdaten und referenziert die Nachrichtenkörperspalte nicht. `sys.transmission_queue` wird nur nach nicht-payloadhaltigen Metadaten gruppiert; Conversation-Handles, Gruppen-IDs und Schlüsselkennungen werden nicht ausgegeben. Ein deaktiviertes RECEIVE kann Folge der automatischen Poison-Message-Erkennung oder einer manuellen Konfiguration sein und wird deshalb nie als Ursachenbeweis bezeichnet.
 - `USP_DiagnosticFindings` benötigt Compatibility Level 130 oder höher, weil `OPENJSON` den Vertragsinhalt aggregiert.
 
 ## Befundvertrag
@@ -85,3 +87,9 @@ Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezi
 - [Temporal Tables](https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables)
 - [Temporal-Retention](https://learn.microsoft.com/en-us/sql/relational-databases/tables/manage-retention-of-historical-data-in-system-versioned-temporal-tables)
 - [Temporal-Einschränkungen und Indexbaseline](https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-table-considerations-and-limitations)
+- [sys.transmission_queue](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql)
+- [sys.service_queues](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-service-queues-transact-sql)
+- [sys.dm_broker_queue_monitors](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-queue-monitors-transact-sql)
+- [sys.dm_broker_activated_tasks](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-activated-tasks-transact-sql)
+- [sys.conversation_endpoints](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-conversation-endpoints-transact-sql)
+- [Poison Messages entfernen](https://learn.microsoft.com/en-us/sql/database-engine/service-broker/removing-poison-messages)

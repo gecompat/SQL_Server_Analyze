@@ -1,6 +1,6 @@
 # Systemquellenkatalog
 
-Stand: 2026-07-17
+Stand: 2026-07-18
 
 ## Zweck
 
@@ -47,6 +47,10 @@ SQL Agent, Backup-/Restore-Historie, Log Shipping und Teile der Replikation lieg
 ### Temporal Tables
 
 `monitor.USP_TemporalAnalysis` trennt Feature-Gate, Current-/History-Katalogzuordnung, Retention-Konfiguration, approximative Partitionskapazität und History-Indexmetadaten. `sys.dm_db_partition_stats` liefert ungefähre Zeilen- und Seitenwerte, keine Nutzdaten. Eine endliche Retention bei deaktiviertem Datenbankschalter und eine fehlende sichtbare Perioden-Indexbaseline werden als Prüfhinweise ausgewiesen. Ohne Current-/History-Zeilenscan, `DBCC CHECKCONSTRAINTS` oder persistierte Historie werden weder Periodenüberlappungen noch Cleanup-Erfolg oder nach `SYSTEM_VERSIONING=OFF` getrennte frühere Paare behauptet.
+
+### Service Broker
+
+`monitor.USP_ServiceBrokerAnalysis` trennt Feature-Gate, Queue-Katalog, approximative Partitionskapazität, Queue-Monitor, aktivierte Tasks, Transmission und Conversation Endpoints. Die Transmission Queue wird ausschließlich nach nicht-payloadhaltigen Metadaten gruppiert; Queue-Nutzdaten, Nachrichtenkörper, Handles, Gruppen-IDs und Schlüsselkennungen werden nicht gelesen. Ein deaktiviertes RECEIVE kann automatisch nach wiederholten Rollbacks oder manuell entstanden sein und bleibt ohne Ereignis- und Anwendungsevidenz ein Prüfhinweis. Broker-DMVs sind Momentaufnahmen und werden einzeln fehlertolerant behandelt.
 
 ## Berechtigungsgrundsatz
 

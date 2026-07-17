@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SpecialFeatureInventory
-Version      : 1.0.2
-Stand        : 2026-07-17
+Version      : 1.0.3
+Stand        : 2026-07-18
 Typ          : Stored Procedure
 Zweck        : Inventarisiert leichtgewichtig die im sichtbaren Metadatenscope
                genutzten oder lediglich konfigurierten SQL-Server-
@@ -292,7 +292,7 @@ INSERT [#FeatureInventory]
 VALUES
 (DB_NAME(),''IN_MEMORY_OLTP'',N''In-Memory OLTP'',CASE WHEN @MemoryOptimized>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@MemoryOptimized,NULL,N''sys.tables|sys.filegroups'',N''USP_InMemoryOltpAnalysis'',''IMPLEMENTED'',N''Gezählt werden sichtbare memory-optimized Tabellen und XTP-Dateigruppen; Zustand und Speicherverbrauch sind erst im getrennten Deep-Dive-Modul bewertet.''),
 (DB_NAME(),''TEMPORAL'',N''Temporal Tables'',CASE WHEN @Temporal>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Temporal,NULL,N''sys.tables'',N''USP_TemporalAnalysis'',''IMPLEMENTED'',N''Gezählt werden sichtbare systemversionierte Current-Tabellen; Zuordnung, Retention, approximative Kapazität und Indexbaseline liegen im getrennten Deep-Dive-Modul, nicht jedoch ein Nachweis der Zeilenkonsistenz.''),
-(DB_NAME(),''SERVICE_BROKER'',N''Service Broker'',CASE WHEN @Broker>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Broker,CASE WHEN @BrokerEnabled=1 THEN N''ENABLED'' ELSE N''DISABLED'' END,N''sys.databases|sys.service_queues|sys.services'',N''USP_ServiceBrokerAnalysis'',''PLANNED'',N''Broker-Aktivierung und sichtbare Objekte werden gezählt; Nachrichtenkörper, Queueinhalt und Backlog werden nicht gelesen.''),
+(DB_NAME(),''SERVICE_BROKER'',N''Service Broker'',CASE WHEN @Broker>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Broker,CASE WHEN @BrokerEnabled=1 THEN N''ENABLED'' ELSE N''DISABLED'' END,N''sys.databases|sys.service_queues|sys.services'',N''USP_ServiceBrokerAnalysis'',''IMPLEMENTED'',N''Broker-Aktivierung und sichtbare Objekte werden gezählt; Queue-Schalter, approximative Kapazität, Aktivierungs-DMVs, Transmission und Conversation-Zustände liegen im getrennten Deep-Dive-Modul, Nachrichtenkörper bleiben ausgeschlossen.''),
 (DB_NAME(),''FULL_TEXT'',N''Full-Text'',CASE WHEN @FullText>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@FullText,NULL,N''sys.fulltext_catalogs|sys.fulltext_indexes'',N''USP_FullTextAnalysis'',''PLANNED'',N''Kataloge und Indizes werden gezählt; Population, Crawl, Fragmentierung und Fehler sind nicht bewertet.''),
 (DB_NAME(),''CHANGE_TRACKING'',N''Change Tracking'',CASE WHEN @ChangeTracking>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@ChangeTracking,NULL,N''sys.change_tracking_databases|sys.change_tracking_tables'',N''USP_DataCaptureDeepAnalysis'',''PLANNED'',N''Datenbank- und Tabellenmetadaten werden gezählt; Retention und Synchronisationsgültigkeit sind nicht bewertet.''),
 (DB_NAME(),''CDC'',N''Change Data Capture'',CASE WHEN @Cdc>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Cdc,CASE WHEN @CdcEnabled=1 THEN N''ENABLED'' ELSE N''DISABLED'' END,N''sys.databases|sys.tables'',N''USP_DataCaptureDeepAnalysis'',''PLANNED'',N''CDC-Aktivierung und sichtbare erfasste Tabellen werden gezählt; Capture- und Cleanup-Lag sind nicht bewertet.''),

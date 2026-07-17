@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-07-17
+Stand: 2026-07-18
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` ausdrücklich; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -578,6 +578,14 @@ Quelle: `Code/04_PlanCache/050_USP_ShowplanAnalysis.sql`
 
 ```sql
 @PlanHandle varbinary(64) = NULL, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @TextPattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @PlanQuelle varchar(16) = 'AUTO', @Sortierung varchar(32) = 'CPU_TOTAL', @MinExecutionCount bigint = 1, @MaxAnalyseobjekte int = 20, @MaxDurationSeconds int = 30, @MaxZeilen int = 50000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
+```
+
+## `[monitor].[USP_ServiceBrokerAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/050_USP_ServiceBrokerAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @NurProblematisch bit = 0, @TransmissionAgeWarnMinutes bigint = 60, @TransmissionRowsWarn bigint = 1000, @QueueRowsWarn bigint = 10000, @ActivationSilenceWarnMinutes bigint = 60, @ConversationRowsWarn bigint = 100000, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
 
 ## `[monitor].[USP_SpecialFeatureInventory]`

@@ -1,6 +1,6 @@
 # Testablauf für das Release-Gate
 
-**Stand:** 17. Juli 2026  
+**Stand:** 18. Juli 2026
 **Runner:** `Code/Tests/Run_Release_Gate.sql`  
 **Zielstatus vor Ausführung:** `NOT_EXECUTED`
 
@@ -15,7 +15,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 Erwartung:
 
 - Prozess-Exitcode `0`.
-- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `79`.
+- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `80`.
 - Letzte Meldung: `Analysis documentation validation succeeded.`
 - Bei einem Fehler keine Installation und kein SQL-Release-Gate starten, sondern zuerst Referenz, SQL-Signatur, Procedure-Seite, Beispielparameter oder Markdownlink korrigieren.
 
@@ -97,6 +97,8 @@ Für `USP_SpecialFeatureInventory` sind der vollständig sichtbare Leerzustand, 
 Für `USP_InMemoryOltpAnalysis` müssen negativer Feature-Gate, schema-only Objekt, Tabellen-/Consumer-Speicher, Hashkatalog, kontrollierter Hashketten-Opt-in, Checkpointzustände, Transaktionsaggregate, benannter und Defaultpool, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Hashketten nur gegen synthetische Testobjekte und unter kontrolliertem Lastbudget ausführen.
 
 Für `USP_TemporalAnalysis` müssen negativer Feature-Gate, Current-/History-Zuordnung, sichtbare Periodenspalten, endliche und unendliche Retention, deaktivierter datenbankweiter Cleanup, approximative History-Größe/-Zeilen, Ratio-Grenze, vorhandene und fehlende Perioden-Indexbaseline, speicheroptimierte Current-Tabelle, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Ein nach `SYSTEM_VERSIONING=OFF` getrenntes synthetisches Paar muss als bewusst nicht zuverlässig erkennbar bestätigt werden; keine echten Current- oder History-Zeilen als Evidenz speichern.
+
+Für `USP_ServiceBrokerAnalysis` müssen negativer Feature-Gate, aktivierte Konfiguration ohne Objekte, deaktivierter Broker mit sichtbaren Objekten, Queue-Schalter, approximative Queue-Kapazität, Retention, interne Aktivierung, Transmission-Alter und gemeldeter Status, Conversation-Zustände und Lifetimes, isolierte Quellenberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Der Contract-Test muss bestätigen, dass die Nachrichtenkörperspalte nicht referenziert und keine Queue- oder Conversation-Änderung ausgeführt wird. Testnachweise enthalten ausschließlich synthetische Zustände und niemals Queue-Nutzdaten.
 
 Kostenintensive Pfade nur kontrolliert und opt-in testen:
 

@@ -151,7 +151,7 @@ Priorität und Kosten sind unabhängig. Eine P0-Auswertung darf teuer sein und m
 | SQL Agent | Grundabdeckung | Alertabdeckung, Operatorzustand, Schedule-Kollision, Mailgesundheit | P1 |
 | In-Memory OLTP | nur Inventar/Indexnutzung | Speicher, Hash-Indizes, Checkpointdateien, Transaktionen | P2 bedingt |
 | Temporal | Inventar plus implementierter Deep Dive | Zuordnung, Retention, approximative Kapazität und Indexbaseline; Zeilenkonsistenz bleibt außerhalb des read-only Metadatenmoduls | P2 bedingt |
-| Service Broker | fehlt | Queue-/Transmission-Backlog ohne Payload | P2 bedingt |
+| Service Broker | Inventar plus implementierter Deep Dive | Queue-Schalter/-Kapazität, Aktivierung, gruppierte Transmission- und Conversation-Zustände ohne Payload | P2 bedingt |
 | Full-Text | fehlt | Population, Crawl, Speicher und Fehler | P2 bedingt |
 | Historie/Baseline | absichtlich vertagt | Deltas, Trends, Anomalien und Retention | P3, separates Paket |
 
@@ -464,17 +464,17 @@ Umsetzungsgrenzen: Das Modul liest keine Current- oder History-Zeilen und führt
 
 ### SC-017: Service Broker
 
-Nur aktivieren, wenn Brokerobjekte oder Queueaktivität vorhanden sind.
+Implementiert als `monitor.USP_ServiceBrokerAnalysis`; das unfiltrierte sichtbare Feature-Gate berücksichtigt den Datenbankschalter sowie benutzerdefinierte Queues und Services. Abhängige Quellen werden getrennt behandelt, damit fehlende Server-DMV-Rechte Queue-Katalog, Transmission oder Conversation-Evidenz nicht verwerfen.
 
 Auswertungen:
 
-- Transmission-Queue-Backlog, Alter und transmission_status,
-- deaktivierte Queues und Poison-Message-Folgen,
-- Queue-Monitor- und Aktivierungszustand,
-- Conversation-Endpoint-Wachstum,
-- Routen, Remote Service Bindings und Dialogtimer.
+- gruppierte Transmission-Queue-Metadaten, Alter und `transmission_status`,
+- Queue-Schalter, approximative Nachrichtenanzahl und Speicherbelegung,
+- Queue-Monitor- und interne Aktivierungszustände,
+- aggregierte Conversation-Endpoint-Zustände und abgelaufene Lifetimes,
+- isolierte Quellen- und Berechtigungsfehler.
 
-Der Nachrichtenkörper wird nicht ausgegeben. Er kann Geschäfts- oder Personendaten, Secrets und frei definierte Payloads enthalten und ist für eine Backlogdiagnose nicht erforderlich.
+Umsetzungsgrenzen: Der Nachrichtenkörper wird weder referenziert noch ausgegeben. Queue-Nutzdaten, Conversation-Handles, Gruppen-IDs und Schlüsselkennungen bleiben ausgeschlossen; das Modul führt kein `RECEIVE`, `ALTER QUEUE` oder `END CONVERSATION` aus. Ein RECEIVE-OFF-Zustand kann nach fünf Rollbacks durch automatische Poison-Message-Erkennung oder manuell entstehen und beweist deshalb keine konkrete Poison Message. Transmission-Einträge können während normaler Zustellung oder Retention bestehen; Alter, Zeilenzahl und DMV-Zustände bleiben konfigurierbare Prüfhinweise. Routen-, Zertifikats-, Endpunkt- und Fehlerloganalyse werden als kontrollierte nächste Prüfungen genannt, nicht aus sichtbaren Lücken erraten.
 
 ### SC-018: Full-Text
 
@@ -595,7 +595,7 @@ Das Framework soll dafür Evidenzlücken und nächste Prüfschritte ausgeben, ab
 
 ### Welle D – bedingte Spezialmodule
 
-15. In-Memory OLTP und Temporal umgesetzt; Service Broker und Full-Text folgen.
+15. In-Memory OLTP, Temporal und Service Broker umgesetzt; Full-Text folgt.
 16. CDC/Change Tracking/Replikation, Verschlüsselung und externe Features.
 17. Wartungsoperationen.
 
@@ -686,6 +686,12 @@ Jedes neue Modul benötigt:
 - Backupset: https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17
 - RESTORE VERIFYONLY: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-verifyonly-transact-sql?view=sql-server-ver17
 - Service Broker Transmission Queue: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql?view=sql-server-ver17
+- Service Broker Queues: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-service-queues-transact-sql?view=sql-server-ver17
+- Service Broker Queue Monitors: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-queue-monitors-transact-sql?view=sql-server-ver17
+- Service Broker Activated Tasks: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-activated-tasks-transact-sql?view=sql-server-ver17
+- Service Broker Conversation Endpoints: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-conversation-endpoints-transact-sql?view=sql-server-ver17
+- Service Broker Poison Messages: https://learn.microsoft.com/en-us/sql/database-engine/service-broker/removing-poison-messages?view=sql-server-ver17
+- Service Broker Activation Troubleshooting: https://learn.microsoft.com/en-us/sql/database-engine/service-broker/troubleshooting-activation-stored-procedures?view=sql-server-ver17
 
 ### Öffentliche Referenzkataloge
 
