@@ -47,12 +47,12 @@ GO
 
 USE [master];
 GO
-DROP LOGIN IF EXISTS [ExampleRestrictedLogin];
-DROP LOGIN IF EXISTS [ExampleViewServerStateLogin];
-DROP LOGIN IF EXISTS [ExampleViewServerPerformanceLogin];
-DROP LOGIN IF EXISTS [ExampleViewDatabaseStateLogin];
-DROP LOGIN IF EXISTS [ExampleViewDatabasePerformanceLogin];
-DROP LOGIN IF EXISTS [ExampleGroupMemberLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleRestrictedLogin') DROP LOGIN [ExampleRestrictedLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerStateLogin') DROP LOGIN [ExampleViewServerStateLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerPerformanceLogin') DROP LOGIN [ExampleViewServerPerformanceLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabaseStateLogin') DROP LOGIN [ExampleViewDatabaseStateLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabasePerformanceLogin') DROP LOGIN [ExampleViewDatabasePerformanceLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleGroupMemberLogin') DROP LOGIN [ExampleGroupMemberLogin];
 GO
 
 DECLARE @Password nvarchar(128)=N'$(PermissionMatrixPassword)';
