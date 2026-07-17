@@ -222,7 +222,6 @@ BEGIN
     WHERE [ScenarioOrdinal]=@ScenarioOrdinal;
 
     SET @Sql=N'
-BEGIN TRY
     EXECUTE AS LOGIN=N''' + REPLACE(@LoginName,N'''',N'''''') + N''';
 
     DECLARE @SessionJson nvarchar(max)=NULL,@StandardJson nvarchar(max)=NULL,@QueryStoreJson nvarchar(max)=NULL;
@@ -320,23 +319,24 @@ BEGIN TRY
         , CONVERT(bit,1)
     );
 
-    REVERT;
-END TRY
-BEGIN CATCH
-    DECLARE @InnerError nvarchar(2048)=ERROR_MESSAGE();
-    REVERT;
-    RAISERROR(N''%s'',16,1,@InnerError);
-    RETURN;
-END CATCH;';
+    REVERT;';
 
     RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
     BEGIN TRY
         EXEC [sys].[sp_executesql] @Sql,N'@ScenarioCode varchar(48)',@ScenarioCode=@ScenarioCode;
     END TRY
     BEGIN CATCH
-        DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());
-        THROW 54209,@ScenarioError,1;
+    DECLARE @ScenarioErrorLine int=ERROR_LINE();
+    DECLARE @ScenarioErrorText nvarchar(2048)=ERROR_MESSAGE();
+    BEGIN TRY
+        REVERT;
+    END TRY
+    BEGIN CATCH
+        SET @ScenarioErrorText=@ScenarioErrorText;
     END CATCH;
+    DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',@ScenarioErrorLine,N': ',@ScenarioErrorText);
+    THROW 54209,@ScenarioError,1;
+END CATCH;
     SET @ScenarioOrdinal+=1;
 END;
 GO
