@@ -103,9 +103,11 @@ jobs:
             sqlserver-analyze-test \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql >"$install_log" 2>&1; then
             echo 'Framework installation failed.'
-            if ! grep -A 2 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 80 >"$error_summary"; then
-              tail -n 40 "$install_log" >"$error_summary"
-            fi
+            {
+              grep -A 2 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 80 || true
+              echo 'Unresolved SQLCMD variable references:'
+              grep -R -n -E '\$\([A-Za-z_][A-Za-z0-9_]*\)' "$RUNNER_TEMP/Code" || true
+            } >"$error_summary"
             cat "$error_summary"
             exit 1
           fi
