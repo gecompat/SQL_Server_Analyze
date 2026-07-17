@@ -1,6 +1,10 @@
 name: Temporary scan RAISERROR expressions
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/temp-scan-raiserror-expressions.yml'
+      - 'Code/**/*.sql'
   push:
     branches:
       - agent/validate-sqlserver-2022-linux-gate
