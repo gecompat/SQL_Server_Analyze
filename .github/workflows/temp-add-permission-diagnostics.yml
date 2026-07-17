@@ -1,0 +1,74 @@
+name: Temporary add permission matrix diagnostics
+
+on:
+  push:
+    branches:
+      - agent/sqlserver-2022-permission-matrix
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out permission matrix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2022-permission-matrix
+
+      - name: Add phase and scenario diagnostics
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  "/* Wiederholbare Bereinigung vor dem Aufbau. */",
+                  "RAISERROR(N'PERMISSION_MATRIX phase=setup',10,1) WITH NOWAIT;\nGO\n\n/* Wiederholbare Bereinigung vor dem Aufbau. */",
+              ),
+              (
+                  "/* Leere Standardpolicy muss geschützte Klassen offen lassen. */",
+                  "RAISERROR(N'PERMISSION_MATRIX phase=open_policy',10,1) WITH NOWAIT;\nGO\n\n/* Leere Standardpolicy muss geschützte Klassen offen lassen. */",
+              ),
+              (
+                  "/* Aktive synthetische Policy: Zugriff nur über die Testrolle oder sysadmin. */",
+                  "RAISERROR(N'PERMISSION_MATRIX phase=protected_policy',10,1) WITH NOWAIT;\nGO\n\n/* Aktive synthetische Policy: Zugriff nur über die Testrolle oder sysadmin. */",
+              ),
+              (
+                  "    EXEC [sys].[sp_executesql] @Sql,N'@ScenarioCode varchar(48)',@ScenarioCode=@ScenarioCode;",
+                  "    RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;\n    BEGIN TRY\n        EXEC [sys].[sp_executesql] @Sql,N'@ScenarioCode varchar(48)',@ScenarioCode=@ScenarioCode;\n    END TRY\n    BEGIN CATCH\n        DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());\n        THROW 54209,@ScenarioError,1;\n    END CATCH;",
+              ),
+              (
+                  "/* Sysadmin-Bypass im ursprünglichen Testkontext. */",
+                  "RAISERROR(N'PERMISSION_MATRIX phase=sysadmin',10,1) WITH NOWAIT;\nGO\n\n/* Sysadmin-Bypass im ursprünglichen Testkontext. */",
+              ),
+              (
+                  "/* Verbindliche Erwartungsmatrix. */",
+                  "RAISERROR(N'PERMISSION_MATRIX phase=assertions',10,1) WITH NOWAIT;\nGO\n\n/* Verbindliche Erwartungsmatrix. */",
+              ),
+          ]
+
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise RuntimeError(f'Expected anchor exactly once: {old!r}; found {text.count(old)}.')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8', newline='\n')
+
+      - name: Commit diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'test: add permission matrix diagnostics'
+          git push origin HEAD:agent/sqlserver-2022-permission-matrix
