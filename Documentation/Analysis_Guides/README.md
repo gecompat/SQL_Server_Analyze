@@ -8,10 +8,29 @@
 
 Die Datei `Deep_Research_Analysis_Guides_Concept.md` ist ausschließlich das Forschungs- und Strukturkonzept. Sie ist **nicht** das eigentliche Analysehandbuch.
 
-Für die praktische Arbeit stehen zwei Einstiege zur Verfügung:
+Für die praktische Arbeit stehen drei Einstiege zur Verfügung:
 
-1. [Objektindex mit Direktlinks zu allen 79 umfassenden Procedure-Beschreibungen](Object_Index.md)
-2. die nachstehenden Familienguides mit den vollständigen Resultset-, Spalten-, Interpretations-, Beispiel- und Folgeanalyseabschnitten
+1. [Einsteigerleitfaden: Wie Resultsets gelesen und Kombinationen begründet werden](Beginner_Reading_Guide.md)
+2. [Objektindex mit Direktlinks zu allen 79 umfassenden Procedure-Beschreibungen](Object_Index.md)
+3. die nachstehenden Familienguides mit den vollständigen Resultset-, Spalten-, Interpretations-, Beispiel- und Folgeanalyseabschnitten
+
+## Empfohlener Lernweg
+
+Analyseanfänger sollten nicht direkt mit einer langen Spaltentabelle beginnen:
+
+1. Im [Einsteigerleitfaden](Beginner_Reading_Guide.md) die Procedure suchen.
+2. Dort die empfohlene **Lesereihenfolge**, Problembegründung und Gegenbeispiele nachvollziehen.
+3. Anschließend über den [Objektindex](Object_Index.md) in die technische Detailbeschreibung wechseln.
+4. Status, Zeitbezug und Aussagegrenzen vor den eigentlichen Messwerten prüfen.
+5. Erst nach einer zweiten Evidenzquelle eine Änderung planen.
+
+Der Einsteigerleitfaden erklärt für jedes Objekt ausdrücklich:
+
+- welche Spalten zuerst gelesen werden,
+- welche Werte miteinander kombiniert werden müssen,
+- warum eine bestimmte Kombination ein Problem darstellen kann,
+- warum dieselben Einzelwerte in einem anderen Kontext unkritisch sein können,
+- welche Folgeanalyse die Vermutung bestätigt oder widerlegt.
 
 ## Zweck
 
@@ -31,6 +50,7 @@ Alle Beispiele sind vollständig synthetisch und verwenden ausschließlich `Exam
 
 | Bereich | Dokument | Enthaltene Procedures |
 |---|---|---:|
+| Didaktische Leserichtung | [Beginner_Reading_Guide.md](Beginner_Reading_Guide.md) | Leselogik und Problembegründung für alle 79 Objekte |
 | Objektweiser Einstieg | [Object_Index.md](Object_Index.md) | Direktlinks zu allen 79 Objekten |
 | Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) | frameworkweite Status-, Ausgabe-, Filter-, Kosten- und Evidenzregeln |
 | Common | [01_Common.md](01_Common.md) | 4 |
@@ -44,7 +64,7 @@ Alle Beispiele sind vollständig synthetisch und verwenden ausschließlich `Exam
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 4 |
 | **Summe** | | **79** |
 
-Das Forschungs- und Strukturkonzept bleibt als Hintergrunddokument verfügbar:
+Zusätzlich bleibt das Forschungs- und Strukturkonzept verfügbar:
 
 - [Deep_Research_Analysis_Guides_Concept.md](Deep_Research_Analysis_Guides_Concept.md)
 
@@ -109,10 +129,11 @@ flowchart TD
     D --> F{Blocking, Wait, CPU, I/O oder Memory?}
     F --> G[gezielte Detailprocedure]
     E --> H[Zeitraum und Retention prüfen]
-    G --> I[Resultset + EvidenceLimit lesen]
+    G --> I[Status + Zeitbezug + Nenner lesen]
     H --> I
-    I --> J[zweite unabhängige Evidenzquelle]
-    J --> K[erst danach Änderung planen]
+    I --> J[Werte zu einer Ursachehypothese kombinieren]
+    J --> K[zweite unabhängige Evidenzquelle]
+    K --> L[erst danach Änderung planen]
 ```
 
 ## Grundsatz für Änderungen
@@ -129,6 +150,8 @@ Aus einem einzelnen Resultset darf daher keine automatische DDL-, Konfigurations
 
 ## Verwandte Repositorydokumente
 
+- [Beginner_Reading_Guide.md](Beginner_Reading_Guide.md)
+- [Object_Index.md](Object_Index.md)
 - [Procedure_Reference.md](../Reference/Procedure_Reference.md)
 - [Resultset_Conventions.md](../Reference/Resultset_Conventions.md)
 - [Call_Catalog.md](../Reference/Call_Catalog.md)
