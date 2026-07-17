@@ -4,6 +4,23 @@
 **Abdeckung:** alle 79 öffentlichen Procedures des Frameworks  
 **Ziel:** direkter Einstieg pro Objekt statt Navigation über ein reines Konzeptdokument
 
+## Für Analyseanfänger: zuerst die Leserichtung verstehen
+
+Der [Einsteigerleitfaden zum Lesen der Resultsets](Beginner_Reading_Guide.md) erklärt für **jedes der 79 Objekte** zusätzlich:
+
+- welche Spalten zuerst gelesen werden,
+- welche Werte nur gemeinsam sinnvoll sind,
+- warum eine Kombination technisch problematisch sein kann,
+- warum dieselben Einzelwerte in einem anderen Kontext normal sein können,
+- wie aus dem Resultset eine überprüfbare Ursachehypothese entsteht,
+- welche Folgeanalyse die Vermutung bestätigt oder widerlegt.
+
+Die nachstehenden Links führen zur technischen Detailbeschreibung. Für Anfänger empfiehlt sich diese Reihenfolge:
+
+1. Procedure im [Einsteigerleitfaden](Beginner_Reading_Guide.md) lesen.
+2. Danach über diesen Index in die Resultset- und Spaltendetails wechseln.
+3. Status, Zeitbezug, Nenner und Aussagegrenze vor einer Bewertung prüfen.
+
 ## Was hinter jedem Link beschrieben wird
 
 Jeder verlinkte Objektabschnitt ist die eigentliche fachliche Dokumentation und behandelt – soweit für das jeweilige Objekt anwendbar – mindestens:
@@ -20,7 +37,7 @@ Jeder verlinkte Objektabschnitt ist die eigentliche fachliche Dokumentation und 
 - Aussagegrenzen durch Momentaufnahme, Reset, Retention, Berechtigungen, Featurestatus oder Sampling,
 - weiterführende Microsoft- und Fachquellen.
 
-> `Deep_Research_Analysis_Guides_Concept.md` ist nur das Forschungs- und Strukturkonzept. Für die praktische Nutzung beginnen Sie in diesem Objektindex oder im [Analysehandbuch](README.md).
+> `Deep_Research_Analysis_Guides_Concept.md` ist nur das Forschungs- und Strukturkonzept. Für die praktische Nutzung beginnen Sie im [Einsteigerleitfaden](Beginner_Reading_Guide.md), in diesem Objektindex oder im [Analysehandbuch](README.md).
 
 ## Common
 
@@ -163,6 +180,7 @@ Jeder verlinkte Objektabschnitt ist die eigentliche fachliche Dokumentation und 
 
 ## Weitere Einstiege
 
+- [Einsteigerleitfaden: Wie jedes Resultset gelesen wird](Beginner_Reading_Guide.md)
 - [Analysehandbuch und Symptomnavigation](README.md)
 - [Gemeinsame Resultset-, Status-, Filter-, Kosten- und Evidenzverträge](Common_Contracts.md)
 - [Technische Procedure-Signaturen](../Reference/Procedure_Reference.md)
