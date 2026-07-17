@@ -70,7 +70,7 @@ function ConvertTo-MarkdownAnchor {
     $value = [regex]::Replace($value, '[`*_~]', '')
     $value = $value.ToLowerInvariant()
     $value = [regex]::Replace($value, '[^\p{L}\p{Nd}\- _]', '')
-    $value = [regex]::Replace($value, '[ _]+', '-')
+    $value = [regex]::Replace($value, ' +', '-')
     $value = [regex]::Replace($value, '-{2,}', '-')
     return $value.Trim('-')
 }
