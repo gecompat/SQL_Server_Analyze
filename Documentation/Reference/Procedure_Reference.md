@@ -260,6 +260,14 @@ Quelle: `Code/06_ExtendedEvents/050_USP_ExtendedEventsTargetRuntime.sql`
 @ExtendedEventSessionNames nvarchar(max) = NULL, @ExtendedEventSessionNamePattern nvarchar(4000) = NULL, @TargetNames nvarchar(max) = NULL, @TargetNamePattern nvarchar(4000) = NULL, @MitTargetData bit = 0, @MaxTargetDataZeichen int = 4000, @BestaetigeTargetFlush bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
 
+## `[monitor].[USP_FullTextAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/060_USP_FullTextAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @NurProblematisch bit = 0, @PopulationAgeWarnMinutes bigint = 60, @QueryableFragmentWarn bigint = 30, @OutstandingBatchWarn bigint = 100, @FailedDocumentWarn bigint = 1, @CatalogSizeWarnMb decimal(19,2) = 10240, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_IndexOperationalStats]`
 
 Quelle: `Code/03_ObjectIndex/025_USP_IndexOperationalStats.sql`

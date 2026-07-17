@@ -1,7 +1,7 @@
 # Analyse-Resultsets richtig lesen – Einsteigerleitfaden für alle Procedures
 
 **Stand:** 17. Juli 2026  
-**Abdeckung:** alle 80 öffentlichen Procedures
+**Abdeckung:** alle 81 öffentlichen Procedures
 **Zweck:** erklären, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können
 
 > Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Familienguides nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
@@ -1058,6 +1058,18 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 **Beispiel:** Eine nichtleere Queue ohne sichtbaren Task ist erst dann ein Aktivierungsbefund, wenn Queue-Monitor und Taskquelle vollständig auswertbar sind. RECEIVE OFF allein beweist keine Poison Message.
 
 **Danach:** Zeitverlauf, Fehlerlog beziehungsweise freigegebene Events, Routing, Endpunkt und Anwendungstransaktionen prüfen. [Detailbeschreibung](09_Version_Adaptive.md#5-monitorusp_servicebrokeranalysis)
+
+## [monitor].[USP_FullTextAnalysis]
+
+**So lesen:** Zuerst Datenbank- und Quellenstatus, danach Indexschalter, Crawl-Kontext, aktuelle Populationen, Batches, Fragmente und semantische Population gemeinsam lesen.
+
+**Warum problematisch:** Deaktivierte Indizes, abgebrochene Populationen, Batchfehler oder fehlgeschlagene Dokumente können Suchaktualität und Auffindbarkeit beeinträchtigen; viele Fragmente können Suchabfragen verteuern.
+
+**Wann nicht problematisch:** `MANUAL/OFF`, ein absichtlich verzögerter initialer Crawl und ein langer, aber fortschreitender Lauf können korrekt sein. Die DMVs sind Momentaufnahmen und keine Historie.
+
+**Beispiel:** Eine Population läuft seit zwei Stunden, ihre abgeschlossenen Ranges steigen jedoch zwischen Messungen. Das ist kein Stillstandsbeweis. Erst Verlauf, Batches, I/O und geschützte Logs gemeinsam bewerten.
+
+**Danach:** Folgeaufnahme, Full-Text-/Crawl-Logs ausschließlich in der Laufzeitumgebung, I/O-/Logkontext und Suchlatenz prüfen. [Detailbeschreibung](09_Version_Adaptive.md#6-monitorusp_fulltextanalysis)
 
 # 12. Praktisches Vorgehen für Anfänger
 

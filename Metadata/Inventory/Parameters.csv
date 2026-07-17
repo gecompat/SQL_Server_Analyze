@@ -1259,3 +1259,29 @@ USP_ServiceBrokerAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ServiceBrokerAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_ServiceBrokerAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_ServiceBrokerAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_FullTextAnalysis,DatabaseNames,nvarchar(max),N''
+USP_FullTextAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_FullTextAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_FullTextAnalysis,SchemaNames,nvarchar(max),NULL
+USP_FullTextAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_FullTextAnalysis,ObjectNames,nvarchar(max),NULL
+USP_FullTextAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_FullTextAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_FullTextAnalysis,NurProblematisch,bit,0
+USP_FullTextAnalysis,PopulationAgeWarnMinutes,bigint,60
+USP_FullTextAnalysis,QueryableFragmentWarn,bigint,30
+USP_FullTextAnalysis,OutstandingBatchWarn,bigint,100
+USP_FullTextAnalysis,FailedDocumentWarn,bigint,1
+USP_FullTextAnalysis,CatalogSizeWarnMb,"decimal(19,2)",10240
+USP_FullTextAnalysis,MaxDatenbanken,int,16
+USP_FullTextAnalysis,MaxZeilen,int,2000
+USP_FullTextAnalysis,LockTimeoutMs,int,0
+USP_FullTextAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_FullTextAnalysis,JsonErzeugen,bit,0
+USP_FullTextAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_FullTextAnalysis,PrintMeldungen,bit,1
+USP_FullTextAnalysis,Hilfe,bit,0
+USP_FullTextAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_FullTextAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_FullTextAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_FullTextAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

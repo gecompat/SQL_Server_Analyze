@@ -29,6 +29,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 | P2.2 | `monitor.USP_InMemoryOltpAnalysis` | Tabellen-/Indexspeicher, Consumer, Hashketten, Checkpointzustände, aktive Transaktionen und Poolkontext | Basis MEDIUM; Hashketten HIGH_OPT_IN mit `CATALOG_DEEP` | Momentaufnahmen und Heuristiken beweisen weder Speicherdruck noch falsche DDL; Defaultpool ist nicht datenbankgenau zurechenbar |
 | P2.3 | `monitor.USP_TemporalAnalysis` | Current-/History-Zuordnung, Periodenmetadaten, Retention-Schalter, approximative Kapazität und History-Indexbaseline | MEDIUM; Kataloge plus `sys.dm_db_partition_stats` | Keine Nutzdatenprüfung: weder Periodenüberlappungen noch Cleanup-Erfolg oder frühere Zuordnungen werden bewiesen |
 | P2.4 | `monitor.USP_ServiceBrokerAnalysis` | Queue-Schalter und approximative Kapazität, interne Aktivierung, gruppierte Transmission- und Conversation-Zustände | MEDIUM; Kataloge, Broker-DMVs und `sys.dm_db_partition_stats` | Keine Queue-Nutzdaten oder Nachrichtenkörper; deaktivierte Queue und alte Metadaten beweisen weder Poison Message noch Ursache |
+| P2.5 | `monitor.USP_FullTextAnalysis` | Kataloge, Indizes, aktuelle Populationen, aggregierte Batches, Fragmente, Semantik, Memory Pools und FDHosts | MEDIUM; Kataloge und Full-Text-DMVs | Keine Inhalte, Keywords, Stopwords, Schlüsselwerte, Crawl-Logs, Pfade oder DDL; DMVs sind keine Historie und Grenzwerte bleiben Heuristiken |
 
 ## Messverträge
 

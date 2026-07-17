@@ -165,6 +165,8 @@ GO
 
 -- EXEC [monitor].[USP_ServiceBrokerAnalysis] @Hilfe = 1;
 
+-- EXEC [monitor].[USP_FullTextAnalysis] @Hilfe = 1;
+
 
 -- BEGIN CURRENTREQUESTS-STATEMENT-KONTEXT
 -- EXEC [monitor].[USP_CurrentRequests];
