@@ -13,11 +13,22 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 
 Die umfassenden Beschreibungen aller 79 öffentlichen Procedures befinden sich nicht im Forschungs- und Strukturkonzept, sondern im eigentlichen Analysehandbuch:
 
+- [`Analysis_Guides/Beginner_Reading_Guide.md`](Analysis_Guides/Beginner_Reading_Guide.md): erklärt für jedes Objekt, wie die Daten gelesen werden, welche Werte kombiniert werden müssen und warum eine Konstellation problematisch oder unkritisch sein kann
 - [`Analysis_Guides/Object_Index.md`](Analysis_Guides/Object_Index.md): objektweiser Einstieg mit Direktlinks zu jeder Procedure
 - [`Analysis_Guides/README.md`](Analysis_Guides/README.md): Symptomnavigation, Evidenzarten, Kostenklassen und Familienguides
 - [`Analysis_Guides/Common_Contracts.md`](Analysis_Guides/Common_Contracts.md): gemeinsame Resultset-, Status-, Filter- und Evidenzverträge
 
 Jede Objektbeschreibung behandelt Zweck, Einsatzgrenzen, Aufrufe, Resultsets, Spalten, Interpretation, normale und problematische Beispiele, Folgeanalysen, Eigenlast und Aussagegrenzen.
+
+Der Einsteigerleitfaden ergänzt die technischen Tabellen um eine feste Leserichtung:
+
+1. Status und Vollständigkeit,
+2. Zeitbezug und Beobachtungsfenster,
+3. Nenner und Datenmenge,
+4. Kombination zusammengehöriger Werte,
+5. technische Problembegründung,
+6. Gegenbeispiel beziehungsweise mögliche Entwarnung,
+7. bestätigende Folgeanalyse.
 
 ## Installation
 
