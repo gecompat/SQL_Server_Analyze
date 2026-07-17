@@ -330,7 +330,9 @@ if ($pageNames.Count -ne 79) {
 }
 
 if ($errors.Count -gt 0) {
-    $errors | Sort-Object -Unique | ForEach-Object { Write-Error $_ }
+    foreach ($validationError in ($errors | Sort-Object -Unique)) {
+        [Console]::Error.WriteLine($validationError)
+    }
     exit 1
 }
 
