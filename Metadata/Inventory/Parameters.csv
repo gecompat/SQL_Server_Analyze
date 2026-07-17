@@ -1233,3 +1233,29 @@ USP_TemporalAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_TemporalAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_TemporalAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_TemporalAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ServiceBrokerAnalysis,DatabaseNames,nvarchar(max),N''
+USP_ServiceBrokerAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_ServiceBrokerAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ServiceBrokerAnalysis,SchemaNames,nvarchar(max),NULL
+USP_ServiceBrokerAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_ServiceBrokerAnalysis,ObjectNames,nvarchar(max),NULL
+USP_ServiceBrokerAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_ServiceBrokerAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_ServiceBrokerAnalysis,NurProblematisch,bit,0
+USP_ServiceBrokerAnalysis,TransmissionAgeWarnMinutes,bigint,60
+USP_ServiceBrokerAnalysis,TransmissionRowsWarn,bigint,1000
+USP_ServiceBrokerAnalysis,QueueRowsWarn,bigint,10000
+USP_ServiceBrokerAnalysis,ActivationSilenceWarnMinutes,bigint,60
+USP_ServiceBrokerAnalysis,ConversationRowsWarn,bigint,100000
+USP_ServiceBrokerAnalysis,MaxDatenbanken,int,16
+USP_ServiceBrokerAnalysis,MaxZeilen,int,2000
+USP_ServiceBrokerAnalysis,LockTimeoutMs,int,0
+USP_ServiceBrokerAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServiceBrokerAnalysis,JsonErzeugen,bit,0
+USP_ServiceBrokerAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ServiceBrokerAnalysis,PrintMeldungen,bit,1
+USP_ServiceBrokerAnalysis,Hilfe,bit,0
+USP_ServiceBrokerAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServiceBrokerAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_ServiceBrokerAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_ServiceBrokerAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

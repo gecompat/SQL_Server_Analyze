@@ -1,6 +1,6 @@
 # Recherchequellen und Referenzlösungen
 
-**Recherche-/Prüfstand:** 17. Juli 2026
+**Recherche-/Prüfstand:** 18. Juli 2026
 **Verwendung:** fachliche Referenz, Abgleich von Semantik, Berechtigungen, Versionsunterschieden, Overhead und bekannten Risiken. Community-Code wird nicht ungeprüft übernommen.
 
 ## 1. Primärquellen – Microsoft SQL Server
@@ -159,6 +159,13 @@ Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließl
 - Microsoft Learn: `backupset` – LSN-, Damage-, Checksum-, Fork-, Verschlüsselungs- und Kompressionsmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `RESTORE VERIFYONLY` – Prüfung der Sicherung und deren Grenzen: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-verifyonly-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `sys.transmission_queue` – Service-Broker-Backlog und Übertragungsstatus: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.service_queues` – Queue-Schalter, interne Aktivierung, Retention und Poison-Message-Handling: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-service-queues-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_broker_queue_monitors` – Queue-Monitorzustände, Aktivierungszeitpunkte und wartende Receiver: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-queue-monitors-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_broker_activated_tasks` – aktuell durch Service Broker aktivierte Prozeduren: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-activated-tasks-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.conversation_endpoints` – Zustände und Lifetime sichtbarer Conversation Endpoints: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-conversation-endpoints-transact-sql?view=sql-server-ver17
+- Microsoft Learn: automatische Poison-Message-Erkennung und Queue-Deaktivierung nach fünf Rollbacks: https://learn.microsoft.com/en-us/sql/database-engine/service-broker/removing-poison-messages?view=sql-server-ver17
+- Microsoft Learn: Aktivierungsprobleme über Queue-Katalog, Queue-Monitor, aktivierte Tasks und Fehlerlog eingrenzen: https://learn.microsoft.com/en-us/sql/database-engine/service-broker/troubleshooting-activation-stored-procedures?view=sql-server-ver17
+- Microsoft Learn: Transmission-Einträge sind nicht ausnahmslos Fehler und können während Zustellung oder Retention bestehen: https://learn.microsoft.com/en-us/sql/database-engine/service-broker/troubleshooting-tools?view=sql-server-ver17
 - Microsoft Learn: `sys.tables` – unter anderem Temporal-, FILESTREAM/FileTable- und Graph-Metadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-tables-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `sys.columns` – unter anderem Always-Encrypted-, FILESTREAM- und Graph-Spaltenmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-columns-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `sys.types` – System- und benutzerdefinierte Typen: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-types-transact-sql?view=sql-server-ver17
@@ -166,7 +173,6 @@ Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließl
 - Microsoft Learn: `sys.external_languages` und `sys.external_libraries` – externe Laufzeitmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-languages-transact-sql?view=sql-server-ver17 und https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-libraries-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `sys.assemblies` – CLR-Assembly-Metadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-assemblies-transact-sql?view=sql-server-ver17
 - Microsoft Learn: `sys.fulltext_indexes` – Full-Text-Indexmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-fulltext-indexes-transact-sql?view=sql-server-ver17
-- Microsoft Learn: `sys.service_queues` – Service-Broker-Queue-Metadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-service-queues-transact-sql?view=sql-server-ver17
 - Microsoft Learn: nativer `vector`-Datentyp ab SQL Server 2025: https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type?view=sql-server-ver17
 
 ### Öffentliche Prüfkataloge als Funktionsbenchmark

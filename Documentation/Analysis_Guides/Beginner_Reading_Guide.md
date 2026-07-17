@@ -1,7 +1,7 @@
 # Analyse-Resultsets richtig lesen – Einsteigerleitfaden für alle Procedures
 
 **Stand:** 17. Juli 2026  
-**Abdeckung:** alle 79 öffentlichen Procedures  
+**Abdeckung:** alle 80 öffentlichen Procedures
 **Zweck:** erklären, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können
 
 > Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Familienguides nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
@@ -1046,6 +1046,18 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 **Beispiel:** History wächst monatlich stark, Retention ist konfiguriert, aber Cleanupstatus zeigt keine Wirkung. Das ist ein konkreter Betriebsbefund, nicht nur „große Tabelle“.
 
 **Danach:** Kapazität, Partitionierung, Retentionjob und Abfragepläne prüfen. [Detailbeschreibung](09_Version_Adaptive.md#4-monitorusp_temporalanalysis)
+
+## [monitor].[USP_ServiceBrokerAnalysis]
+
+**So lesen:** Zuerst Datenbank- und Quellenstatus, danach Queue-Schalter und Rückstand, Aktivierungszustand, Transmission-Gruppen und Conversation-Zustände gemeinsam lesen.
+
+**Warum problematisch:** Deaktiviertes RECEIVE, ausbleibende Aktivierung, alte Transmission-Einträge oder Conversation-Errorzustände können Verarbeitung und Zustellung blockieren.
+
+**Wann nicht problematisch:** Queue- und DMV-Werte sind Momentaufnahmen. Retention, kurz laufende Reader oder bewusst langlebige Dialoge können auffällige Einzelwerte erklären.
+
+**Beispiel:** Eine nichtleere Queue ohne sichtbaren Task ist erst dann ein Aktivierungsbefund, wenn Queue-Monitor und Taskquelle vollständig auswertbar sind. RECEIVE OFF allein beweist keine Poison Message.
+
+**Danach:** Zeitverlauf, Fehlerlog beziehungsweise freigegebene Events, Routing, Endpunkt und Anwendungstransaktionen prüfen. [Detailbeschreibung](09_Version_Adaptive.md#5-monitorusp_servicebrokeranalysis)
 
 # 12. Praktisches Vorgehen für Anfänger
 

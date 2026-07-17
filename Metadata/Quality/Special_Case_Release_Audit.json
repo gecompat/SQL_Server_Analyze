@@ -1,23 +1,23 @@
 {
-  "release": "1.1.0-special.5",
-  "generatedAtUtc": "2026-07-17T16:21:47Z",
+  "release": "1.1.0-special.6",
+  "generatedAtUtc": "2026-07-17T22:14:16Z",
   "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
-  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP and Temporal Tables deep analyses",
+  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP, Temporal Tables and Service Broker deep analyses",
   "inventory": {
-    "repositoryFiles": 170,
-    "canonicalSqlSources": 102,
-    "sqlFilesIncludingTestsAndExamples": 118,
-    "objects": 94,
-    "procedures": 79,
+    "repositoryFiles": 285,
+    "canonicalSqlSources": 103,
+    "sqlFilesIncludingTestsAndExamples": 119,
+    "objects": 95,
+    "procedures": 80,
     "functions": 10,
     "views": 5,
-    "procedureParameters": 1234,
-    "systemSources": 182
+    "procedureParameters": 1260,
+    "systemSources": 186
   },
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 118,
+      "filesChecked": 119,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -42,17 +42,33 @@
       "dbccOrDdlOperations": 0,
       "note": "The module reads visible catalogs and approximate partition statistics only; it does not claim overlap freedom, cleanup success or recognition of disconnected former pairs."
     },
+    "serviceBrokerTsqlParse": {
+      "status": "PASS",
+      "outerSyntaxIssues": 0,
+      "dynamicBatchesReconstructed": 7,
+      "dynamicSyntaxIssues": 0,
+      "note": "Static parser validation only; this is not SQL Server compilation or execution evidence."
+    },
+    "serviceBrokerReadOnlyContract": {
+      "status": "PASS",
+      "featureGateBeforeDependentSources": true,
+      "isolatedDependentSources": 6,
+      "queuePayloadReads": 0,
+      "messageBodyReferences": 0,
+      "receiveOrMutationOperations": 0,
+      "note": "The module reads only visible configuration and aggregated operational metadata. Disabled RECEIVE is reported as review evidence and never as proof of a poison message."
+    },
     "namedProcedureCalls": {
       "status": "PASS",
-      "procedureCallsChecked": 189,
-      "namedArgumentsChecked": 1326,
+      "procedureCallsChecked": 193,
+      "namedArgumentsChecked": 1346,
       "unknownProcedures": [],
       "unknownNamedArguments": []
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 102,
-      "includes": 102,
+      "canonicalSources": 103,
+      "includes": 103,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -60,19 +76,19 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 94,
-      "inventoryObjects": 94,
+      "sourceObjects": 95,
+      "inventoryObjects": 95,
       "differences": []
     },
     "parameterInventory": {
       "status": "PASS",
-      "sourceProcedures": 79,
-      "inventoryRows": 1234,
+      "sourceProcedures": 80,
+      "inventoryRows": 1260,
       "nameOrOrderDifferences": []
     },
     "systemSourceInventory": {
       "status": "PASS",
-      "inventoryRows": 182,
+      "inventoryRows": 186,
       "missingSourceModuleMappings": []
     },
     "repositoryPrivacyGate": {
@@ -83,10 +99,11 @@
       "uncPathFindings": 0,
       "userProfilePathFindings": 0,
       "credentialAssignmentFindings": 0,
+      "runtimeGeneratedCredentialPatternsReviewed": 7,
       "connectionSecretFindings": 0,
       "nonGenericUseDatabaseFindings": 0,
       "publicReferenceHostsReviewed": true,
-      "note": "The gate applies to repository and downloadable artifacts only; runtime resultsets and OUTPUT values are unchanged."
+      "note": "The gate applies to repository and downloadable artifacts only; runtime resultsets and OUTPUT values are unchanged. The reviewed CI patterns create one ephemeral random password at job runtime and reference it through environment variables; no credential value is persisted in the repository or as an artifact."
     }
   },
   "testDocumentation": {
@@ -94,8 +111,8 @@
     "targetRowsNotExecuted": 4,
     "releaseGateSuiteRows": 20,
     "releaseGateSuiteRowsNotExecuted": 20,
-    "specialCaseRows": 105,
-    "specialCaseRowsNotExecuted": 105,
+    "specialCaseRows": 120,
+    "specialCaseRowsNotExecuted": 120,
     "runtimeStatus": "NOT_EXECUTED",
     "claim": "No installation, compilation, smoke, functional, permission, load or cross-version runtime execution is claimed for this release wave."
   },

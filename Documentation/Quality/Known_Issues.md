@@ -1,8 +1,8 @@
 # Bekannte Restpunkte
 
-Stand: 2026-07-17
+Stand: 2026-07-18
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen vollumfänglich real installiert, kompiliert und funktional getestet. Die danach ergänzte Version `1.1.0-special.5` ist statisch geprüft, aber noch nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen vollumfänglich real installiert, kompiliert und funktional getestet. Die danach ergänzte Version `1.1.0-special.6` ist statisch geprüft, aber noch nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 
@@ -14,3 +14,4 @@ Verbleibende fachliche beziehungsweise betriebliche Punkte:
 - Die optionale Ausgabe des tatsächlichen Ausführungsplans bleibt bewusst außerhalb des Defaultpfads; Plan-XML kann groß und die Abfrage des Plans ressourcenintensiv sein.
 - `USP_InMemoryOltpAnalysis` ist eine Momentaufnahme. Der Hashkettenpfad kann vollständige Tabellen scannen und bleibt opt-in; Defaultpool-Werte sind nicht datenbankgenau zurechenbar, Checkpointzustände und Transaktionsmengen benötigen Verlaufskorrelation.
 - `USP_TemporalAnalysis` prüft keine Current- oder History-Zeilen. Periodenüberlappungen, tatsächlicher Cleanup-Fortschritt und nach `SYSTEM_VERSIONING=OFF` getrennte Tabellenpaare bleiben ohne zusätzliche, bewusst nicht ausgeführte Daten- oder Historienevidenz unbewiesen.
+- `USP_ServiceBrokerAnalysis` liest keine Queue-Nutzdaten oder Nachrichtenkörper. Eine deaktivierte Queue, alte Transmission-Einträge, approximative Queue-Zeilen und Broker-DMV-Zustände beweisen weder eine Poison Message noch Routing-, Aktivierungs- oder Verarbeitungsursache; Laufzeitverlauf und kontrollierte externe Evidenz bleiben erforderlich.

@@ -44,7 +44,10 @@ VALUES
 (N'USP_InMemoryOltpAnalysis',N'@StatusCodeOut'),
 (N'USP_TemporalAnalysis',N'@HistorySizeWarnMb'),
 (N'USP_TemporalAnalysis',N'@MinHistoryMbForRatioWarn'),
-(N'USP_TemporalAnalysis',N'@StatusCodeOut');
+(N'USP_TemporalAnalysis',N'@StatusCodeOut'),
+(N'USP_ServiceBrokerAnalysis',N'@TransmissionAgeWarnMinutes'),
+(N'USP_ServiceBrokerAnalysis',N'@QueueRowsWarn'),
+(N'USP_ServiceBrokerAnalysis',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 
@@ -119,6 +122,22 @@ IF @TemporalDefinition LIKE N'%FOR SYSTEM_TIME AS OF%'
  OR @TemporalDefinition LIKE N'%FOR SYSTEM_TIME ALL%'
  OR @TemporalDefinition LIKE N'%SYSTEM_VERSIONING = OFF%'
     THROW 54108,N'Die Temporal-Tables-Analyse enthält einen ausgeschlossenen Nutzdaten- oder Änderungszugriff.',1;
+
+DECLARE @BrokerDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_ServiceBrokerAnalysis'));
+IF @BrokerDefinition IS NULL
+    THROW 54109,N'Die Definition der Service-Broker-Analyse ist nicht sichtbar.',1;
+
+IF @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]service_queues[]]%'
+ OR @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]transmission_queue[]]%'
+ OR @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]conversation_endpoints[]]%'
+ OR @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]dm_broker_queue_monitors[]]%'
+    THROW 54110,N'Die Service-Broker-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen.',1;
+
+IF @BrokerDefinition LIKE N'%[[]message_body[]]%'
+ OR @BrokerDefinition LIKE N'%RECEIVE TOP%'
+ OR @BrokerDefinition LIKE N'%ALTER QUEUE [[]%'
+ OR @BrokerDefinition LIKE N'%END CONVERSATION [[]%'
+    THROW 54111,N'Die Service-Broker-Analyse enthält einen ausgeschlossenen Payload- oder Änderungszugriff.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],
