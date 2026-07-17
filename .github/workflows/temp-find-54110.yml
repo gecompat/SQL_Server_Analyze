@@ -1,0 +1,34 @@
+name: Temporary locate release gate error
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  locate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/validate-sqlserver-2022-linux-gate
+
+      - name: Locate error code
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -R -n -C 4 '54110' Code > /tmp/error-54110-location.txt
+          cat /tmp/error-54110-location.txt
+
+      - name: Upload location
+        uses: actions/upload-artifact@v7
+        with:
+          name: error-54110-location
+          path: /tmp/error-54110-location.txt
+          if-no-files-found: error
+          retention-days: 1
