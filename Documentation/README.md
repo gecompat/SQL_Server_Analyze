@@ -22,6 +22,9 @@ Der Gesamtstand vom 17.07.2026 wurde nach Angabe des Projektverantwortlichen vol
 
 ## Forschungs- und Inventareinstieg
 
+- `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`
+- `Documentation/Research/Special_Case_Gap_Analysis.md`
+- `Metadata/Quality/Special_Case_Gap_Backlog.csv`
 - `Documentation/Research/System_Source_Catalog.md`
 - `Documentation/Quality/Performance_and_Risk_Assessment.md`
 - `Metadata/Inventory/SystemSources.csv`

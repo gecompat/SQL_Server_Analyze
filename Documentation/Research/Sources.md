@@ -1,6 +1,6 @@
 # Recherchequellen und Referenzlösungen
 
-**Recherche-/Prüfstand:** 14. Juli 2026  
+**Recherche-/Prüfstand:** 17. Juli 2026
 **Verwendung:** fachliche Referenz, Abgleich von Semantik, Berechtigungen, Versionsunterschieden, Overhead und bekannten Risiken. Community-Code wird nicht ungeprüft übernommen.
 
 ## 1. Primärquellen – Microsoft SQL Server
@@ -117,3 +117,39 @@ Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließl
 - Microsoft Learn: Extended-Events-Systemviews und Joinbeziehungen: https://learn.microsoft.com/en-us/sql/relational-databases/extended-events/selects-and-joins-from-system-views-for-extended-events-in-sql-server?view=sql-server-ver17
 - Microsoft Learn: Signieren von Stored Procedures mit Zertifikaten: https://learn.microsoft.com/en-us/sql/relational-databases/tutorial-signing-stored-procedures-with-a-certificate?view=sql-server-ver17
 - Microsoft Learn: ADD SIGNATURE: https://learn.microsoft.com/en-us/sql/t-sql/statements/add-signature-transact-sql?view=sql-server-ver17
+
+## Ergänzung Spezialfallanalyse – 17. Juli 2026
+
+### Offizielle Primärquellen
+
+- Microsoft Learn: `suspect_pages` – persistierte Hinweise auf verdächtige Seiten, begrenzte Historie und Ereignistypen: https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/suspect-pages-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `DBCC CHECKDB` – logische und physische Integritätsprüfungen, enthaltene DBCC-Prüfungen und dokumentierte Grenzen: https://learn.microsoft.com/en-us/sql/t-sql/database-console-commands/dbcc-checkdb-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_os_performance_counters` – Countertypen, Basiszähler und erforderliche Berechnungssemantik: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-performance-counters-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sp_server_diagnostics` – Health-Komponenten, XML-Resultsets, Wiederholungsmodus und Zeitverhalten: https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-server-diagnostics-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `system_health` – standardmäßig erfasste kritische Engine-, Wait-, Deadlock- und Speicherereignisse: https://learn.microsoft.com/en-us/sql/relational-databases/extended-events/use-the-system-health-session?view=sql-server-ver17
+- Microsoft Learn: Intelligent Query Processing: https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing?view=sql-server-ver17
+- Microsoft Learn: Intelligent Query Processing Details: https://learn.microsoft.com/en-us/sql/relational-databases/performance/intelligent-query-processing-details?view=sql-server-ver17
+- Microsoft Learn: Parameter Sensitive Plan Optimization: https://learn.microsoft.com/en-us/sql/relational-databases/performance/parameter-sensitive-plan-optimization?view=sql-server-ver17
+- Microsoft Learn: Optimized Plan Forcing mit Query Store: https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-plan-forcing-query-store?view=sql-server-ver17
+- Microsoft Learn: Query Store Hints: https://learn.microsoft.com/en-us/sql/relational-databases/performance/query-store-hints?view=sql-server-ver17
+- Microsoft Learn: Neuerungen in SQL Server 2025: https://learn.microsoft.com/en-us/sql/sql-server/what-s-new-in-sql-server-2025?view=sql-server-ver17
+- Microsoft Learn: TempDB Space Resource Governance: https://learn.microsoft.com/en-us/sql/relational-databases/resource-governor/tempdb-space-resource-governance?view=sql-server-ver17
+- Microsoft Learn: Optimized Locking: https://learn.microsoft.com/en-us/sql/relational-databases/performance/optimized-locking?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_os_latch_stats`: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-latch-stats-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_os_spinlock_stats`: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-spinlock-stats-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_db_page_info` – gezielte Seitenmetadaten ab SQL Server 2019: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-page-info-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_os_volume_stats` – Volume-, Mountpoint- und Kapazitätsmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-volume-stats-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.dm_os_buffer_descriptors`: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-buffer-descriptors-transact-sql?view=sql-server-ver17
+- Microsoft Learn: In-Memory-OLTP-Speicher überwachen und behandeln: https://learn.microsoft.com/en-us/sql/relational-databases/in-memory-oltp/monitor-and-troubleshoot-memory-usage?view=sql-server-ver17
+- Microsoft Learn: Temporal Tables: https://learn.microsoft.com/en-us/sql/relational-databases/tables/temporal-tables?view=sql-server-ver17
+- Microsoft Learn: Full-Text-DDL, -Funktionen, -Procedures und -Views: https://learn.microsoft.com/en-us/sql/relational-databases/search/full-text-search-ddl-functions-stored-procedures-and-views?view=sql-server-ver17
+- Microsoft Learn: `backupset` – LSN-, Damage-, Checksum-, Fork-, Verschlüsselungs- und Kompressionsmetadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `RESTORE VERIFYONLY` – Prüfung der Sicherung und deren Grenzen: https://learn.microsoft.com/en-us/sql/t-sql/statements/restore-statements-verifyonly-transact-sql?view=sql-server-ver17
+- Microsoft Learn: `sys.transmission_queue` – Service-Broker-Backlog und Übertragungsstatus: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-transmission-queue-transact-sql?view=sql-server-ver17
+
+### Öffentliche Prüfkataloge als Funktionsbenchmark
+
+- Microsoft SQL Tiger Toolbox, BPCheck: https://github.com/microsoft/tigertoolbox/blob/master/BPCheck/README.md
+- SQL Server First Responder Kit, Checks by Priority: https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit/blob/dev/Documentation/sp_Blitz_Checks_by_Priority.md
+
+Diese Prüfkataloge wurden ausschließlich zum Abgleich von Vorfallklassen verwendet. Semantik, Berechtigungen, Versionen und Ausführungskosten wurden über Microsoft-Primärquellen bewertet; fremder Quellcode wurde nicht übernommen.

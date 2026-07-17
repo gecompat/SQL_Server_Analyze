@@ -128,6 +128,17 @@ Vorzusehen sind unter anderem Filter für:
 - Die Commit Message ist exakt einzeilig und enthält keine Zeilenumbrüche.
 - Direkte GitHub-Schreibzugriffe erfolgen nur nach ausdrücklicher Anforderung; der Standardweg ist die manuelle Übernahme des ZIP-Inhalts.
 
+### 8.1 Datenschutzgrenze für Laufzeit und Lieferartefakte
+
+- Interaktive `SELECT`-Ausgaben dürfen die zur Diagnose erforderlichen Benutzer-IDs, Benutzer- und Login-Namen, Session- und Request-IDs, Firmen- und Organisationsbezüge, Host-, Programm-, Server-, Datenbank-, Schema- und Objektnamen sowie benutzerdefinierte Informationen anzeigen.
+- Dieselben realen Werte dürfen niemals Bestandteil eines downloadbaren oder versionierten Dokuments oder Projektartefakts werden. Das gilt insbesondere für Repositorydateien, Git-Commits, Dokumentation, Screenshots, Beispielausgaben, Tests, Fixtures, Auditberichte, CSV-/JSON-/XML-/Textdateien, Logs, Buildartefakte und ZIP-Lieferungen.
+- SQL-Text, Input Buffer, Planparameter, Query-Store-Texte, Extended-Events-Payloads, Error-Log-Text und sonstiger Freitext sind als potentiell besonders sensibel zu behandeln.
+- Technische Systembezeichner und API-Namen wie `login_name`, `session_id` oder `database_id` dürfen im Quellcode stehen. Beispiele verwenden ausschließlich synthetische Platzhalter.
+- Öffentliche Hersteller-, Produkt- und Projektnamen in Quellenangaben sowie bewusst veröffentlichte Lizenz-, Urheber- und Attributionstexte bleiben zulässig und werden nicht mit versehentlich extrahierten Betriebs- oder Kundendaten gleichgesetzt.
+- Der zustandslose Runtime-Vertrag ist keine Exportfreigabe. Jede spätere Snapshot-, Persistenz-, Retention- oder Exportfunktion benötigt vor ihrer Implementierung ein eigenes Datenschutz-, Zugriffs-, Aufbewahrungs-, Lösch- und Redaktionskonzept.
+- Ein zweifelhafter Fund darf nicht stillschweigend als harmlos klassifiziert werden. Vor Aufnahme in ein Repository- oder Lieferartefakt ist nachzufragen.
+- Maßgebliche Detailentscheidung: `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`.
+
 ## 9. Herkunft dieser Konsolidierung
 
 Die Anforderungen basieren auf:

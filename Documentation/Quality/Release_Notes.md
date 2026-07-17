@@ -1,5 +1,15 @@
 # Release Notes
 
+## Stand 2026-07-17 – Datenschutzpräzisierung und Spezialfallanalyse
+
+- Datenschutzgrenze korrigiert: Diagnostisch erforderliche Identitäts- und Umgebungswerte dürfen in interaktiven Runtime-Ausgaben erscheinen, aber niemals in Repository-, Dokumentations-, Test- oder Downloadartefakte übernommen werden.
+- Verbindlichen Prüf- und Fragevertrag für persistierbare Artefakte ergänzt.
+- Vorhandene Analyseabdeckung erneut auf Objekt-, Systemquellen- und Capability-Ebene geprüft.
+- Frühere pauschale Abdeckungsprozentwerte verworfen und durch eine evidenzbasierte Prioritäts-, Kosten- und Bedingtheitsmatrix ersetzt.
+- 25 fehlende oder zu vertiefende Spezialfallklassen als maschinenlesbaren Backlog dokumentiert.
+- Integrität, Kapazität, kritische Engine-Ereignisse und korrekt typisierte Performance-Counter als erste technische Ausbaustufe priorisiert.
+- Aktuelle Microsoft-Primärquellen sowie öffentliche Prüfkataloge des SQL Tiger Toolbox und des SQL Server First Responder Kit abgeglichen; kein fremder Code übernommen.
+
 ## Stand 2026-07-17 – Real getesteter Gesamtstand
 
 - Gesamtinstaller und Frameworkfunktionen wurden nach Angabe des Projektverantwortlichen vollumfänglich real getestet.
