@@ -24,26 +24,23 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
           text = path.read_text(encoding='utf-8')
-          old = """DROP LOGIN IF EXISTS [ExampleRestrictedLogin];
-          DROP LOGIN IF EXISTS [ExampleViewServerStateLogin];
-          DROP LOGIN IF EXISTS [ExampleViewServerPerformanceLogin];
-          DROP LOGIN IF EXISTS [ExampleViewDatabaseStateLogin];
-          DROP LOGIN IF EXISTS [ExampleViewDatabasePerformanceLogin];
-          DROP LOGIN IF EXISTS [ExampleGroupMemberLogin];
-          """.replace('          ', '')
-          new = """IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleRestrictedLogin') DROP LOGIN [ExampleRestrictedLogin];
-          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerStateLogin') DROP LOGIN [ExampleViewServerStateLogin];
-          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerPerformanceLogin') DROP LOGIN [ExampleViewServerPerformanceLogin];
-          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabaseStateLogin') DROP LOGIN [ExampleViewDatabaseStateLogin];
-          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabasePerformanceLogin') DROP LOGIN [ExampleViewDatabasePerformanceLogin];
-          IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleGroupMemberLogin') DROP LOGIN [ExampleGroupMemberLogin];
-          """.replace('          ', '')
-          if text.count(old) != 1:
-              raise RuntimeError(f'Expected unsupported DROP LOGIN block once, found {text.count(old)}.')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+          pattern = re.compile(r'^DROP LOGIN IF EXISTS \[(Example[A-Za-z]+Login)\];$', re.MULTILINE)
+
+          def replacement(match: re.Match[str]) -> str:
+              name = match.group(1)
+              return (
+                  f"IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'{name}') "
+                  f"DROP LOGIN [{name}];"
+              )
+
+          updated, count = pattern.subn(replacement, text)
+          if count != 6:
+              raise RuntimeError(f'Expected six unsupported DROP LOGIN statements, found {count}.')
+          path.write_text(updated, encoding='utf-8', newline='\n')
 
       - name: Commit syntax fix
         shell: bash
