@@ -25,29 +25,24 @@ jobs:
           path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
           text = path.read_text(encoding='utf-8')
 
-          old_start = "    SET @Sql=N'\nBEGIN TRY\n    EXECUTE AS LOGIN="
-          new_start = "    SET @Sql=N'\n    EXECUTE AS LOGIN="
-          if text.count(old_start) != 1:
-              raise RuntimeError(f'Expected dynamic TRY start once, found {text.count(old_start)}.')
-          text = text.replace(old_start, new_start, 1)
+          sql_start = text.index("    SET @Sql=N'\n")
+          body_start = sql_start + len("    SET @Sql=N'\n")
+          execute_anchor = "    EXECUTE AS LOGIN="
+          execute_pos = text.index(execute_anchor, body_start)
+          prefix = text[body_start:execute_pos]
+          if prefix.strip() != 'BEGIN TRY':
+              raise RuntimeError(f'Unexpected dynamic prefix: {prefix!r}')
+          text = text[:body_start] + text[execute_pos:]
 
-          old_end = """    REVERT;
-          END TRY
-          BEGIN CATCH
-              DECLARE @InnerError nvarchar(2048)=ERROR_MESSAGE();
-              REVERT;
-              RAISERROR(N''%s'',16,1,@InnerError);
-              RETURN;
-          END CATCH;'""".replace('          ', '')
-          new_end = "    REVERT;'"
-          if text.count(old_end) != 1:
-              raise RuntimeError(f'Expected dynamic TRY/CATCH end once, found {text.count(old_end)}.')
-          text = text.replace(old_end, new_end, 1)
+          sql_start = text.index("    SET @Sql=N'\n")
+          success_revert = text.index("\n    REVERT;\nEND TRY\nBEGIN CATCH\n", sql_start)
+          dynamic_end = text.index("END CATCH;'", success_revert) + len("END CATCH;'")
+          text = text[:success_revert] + "\n    REVERT;'" + text[dynamic_end:]
 
-          old_outer = """    BEGIN CATCH
-              DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());
-              THROW 54209,@ScenarioError,1;
-          END CATCH;""".replace('          ', '')
+          wrapper_marker = "    RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;"
+          wrapper_pos = text.index(wrapper_marker, sql_start)
+          outer_catch_start = text.index("    BEGIN CATCH\n", wrapper_pos)
+          outer_catch_end = text.index("    END CATCH;", outer_catch_start) + len("    END CATCH;")
           new_outer = """    BEGIN CATCH
               DECLARE @ScenarioErrorLine int=ERROR_LINE();
               DECLARE @ScenarioErrorText nvarchar(2048)=ERROR_MESSAGE();
@@ -60,9 +55,7 @@ jobs:
               DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',@ScenarioErrorLine,N': ',@ScenarioErrorText);
               THROW 54209,@ScenarioError,1;
           END CATCH;""".replace('          ', '')
-          if text.count(old_outer) != 1:
-              raise RuntimeError(f'Expected outer scenario catch once, found {text.count(old_outer)}.')
-          text = text.replace(old_outer, new_outer, 1)
+          text = text[:outer_catch_start] + new_outer + text[outer_catch_end:]
 
           path.write_text(text, encoding='utf-8', newline='\n')
 
