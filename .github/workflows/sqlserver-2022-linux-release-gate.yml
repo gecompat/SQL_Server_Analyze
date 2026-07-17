@@ -125,9 +125,10 @@ jobs:
             sqlserver-analyze-test \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql >"$release_log" 2>&1; then
             echo 'Release gate failed.'
-            if ! grep -A 2 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$release_log" | tail -n 80 >"$error_summary"; then
-              tail -n 40 "$release_log" >"$error_summary"
-            fi
+            {
+              echo 'Final release-gate output:'
+              tail -n 180 "$release_log"
+            } >"$error_summary"
             cat "$error_summary"
             exit 1
           fi
