@@ -76,6 +76,7 @@ BEGIN
     DECLARE @IsPartial bit = 0;
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
+    DECLARE @MonitorPrintMessage nvarchar(2048) = NULL;
     DECLARE @ConfiguredFilePath nvarchar(4000) = NULL;
     DECLARE @ResolvedFilePath nvarchar(4000) = NULL;
 
@@ -282,7 +283,10 @@ BEGIN
            @ErrorMessageOut = @ErrorMessage;
 
     IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'
-        RAISERROR(N'USP_CriticalEngineEvents: %s', 10, 1, COALESCE(@ErrorMessage, @StatusCode)) WITH NOWAIT;
+    BEGIN
+        SET @MonitorPrintMessage = COALESCE(@ErrorMessage, CONVERT(nvarchar(2048), @StatusCode));
+        RAISERROR(N'USP_CriticalEngineEvents: %s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
+    END;
 
     IF @OutputMode <> 'NONE'
     BEGIN
