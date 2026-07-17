@@ -1,9 +1,7 @@
 name: Temporary normalize permission matrix diagnostics
 
 on:
-  push:
-    branches:
-      - agent/sqlserver-2022-permission-matrix
+  pull_request:
 
 permissions:
   contents: write
