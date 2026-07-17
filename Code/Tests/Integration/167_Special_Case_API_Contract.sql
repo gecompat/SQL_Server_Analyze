@@ -44,7 +44,10 @@ VALUES
 (N'USP_InMemoryOltpAnalysis',N'@StatusCodeOut'),
 (N'USP_TemporalAnalysis',N'@HistorySizeWarnMb'),
 (N'USP_TemporalAnalysis',N'@MinHistoryMbForRatioWarn'),
-(N'USP_TemporalAnalysis',N'@StatusCodeOut');
+(N'USP_TemporalAnalysis',N'@StatusCodeOut'),
+(N'USP_ServiceBrokerAnalysis',N'@TransmissionAgeWarnMinutes'),
+(N'USP_ServiceBrokerAnalysis',N'@QueueRowsWarn'),
+(N'USP_ServiceBrokerAnalysis',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 
@@ -127,6 +130,31 @@ IF @TemporalDefinition LIKE N'%FOR SYSTEM_TIME AS OF%'
  OR @TemporalDefinition LIKE N'%FOR SYSTEM_TIME ALL%'
  OR @TemporalDefinition LIKE N'%SYSTEM_VERSIONING = OFF%'
     THROW 54108,N'Die Temporal-Tables-Analyse enthält einen ausgeschlossenen Nutzdaten- oder Änderungszugriff.',1;
+
+DECLARE @BrokerDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_ServiceBrokerAnalysis'));
+IF @BrokerDefinition IS NULL
+    THROW 54109,N'Die Definition der Service-Broker-Analyse ist nicht sichtbar.',1;
+
+DECLARE @MissingBrokerSources nvarchar(2048)=NULL;
+IF CHARINDEX(N'[sys].[service_queues]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=N'sys.service_queues';
+IF CHARINDEX(N'[sys].[transmission_queue]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=CONCAT_WS(N', ',@MissingBrokerSources,N'sys.transmission_queue');
+IF CHARINDEX(N'[sys].[conversation_endpoints]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=CONCAT_WS(N', ',@MissingBrokerSources,N'sys.conversation_endpoints');
+IF CHARINDEX(N'[sys].[dm_broker_queue_monitors]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=CONCAT_WS(N', ',@MissingBrokerSources,N'sys.dm_broker_queue_monitors');
+IF @MissingBrokerSources IS NOT NULL
+BEGIN
+    DECLARE @BrokerSourceMessage nvarchar(2048)=CONCAT(N'Die Service-Broker-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen: ',@MissingBrokerSources,N'.');
+    THROW 54110,@BrokerSourceMessage,1;
+END;
+
+IF @BrokerDefinition LIKE N'%[[]message_body[]]%'
+ OR @BrokerDefinition LIKE N'%RECEIVE TOP%'
+ OR @BrokerDefinition LIKE N'%ALTER QUEUE [[]%'
+ OR @BrokerDefinition LIKE N'%END CONVERSATION [[]%'
+    THROW 54111,N'Die Service-Broker-Analyse enthält einen ausgeschlossenen Payload- oder Änderungszugriff.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],
