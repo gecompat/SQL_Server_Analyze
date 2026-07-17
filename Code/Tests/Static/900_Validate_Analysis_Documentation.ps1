@@ -67,7 +67,7 @@ function ConvertTo-MarkdownAnchor {
     param([string]$Heading)
 
     $value = [regex]::Replace($Heading.Trim(), '<[^>]+>', '')
-    $value = [regex]::Replace($value, '[`*_~]', '')
+    $value = [regex]::Replace($value, '[`*~]', '')
     $value = $value.ToLowerInvariant()
     $value = [regex]::Replace($value, '[^\p{L}\p{Nd}\- _]', '')
     $value = [regex]::Replace($value, ' +', '-')
