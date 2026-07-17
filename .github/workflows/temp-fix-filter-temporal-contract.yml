@@ -1,14 +1,8 @@
 name: Temporary fix filter and temporal contract
 
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/temp-fix-filter-temporal-contract.yml'
-      - 'Code/Tests/Integration/165_Filter_Output_Contract.sql'
-      - 'Code/09_VersionAdaptive/040_USP_TemporalAnalysis.sql'
   push:
-    branches:
-      - agent/validate-sqlserver-2022-linux-gate
+  pull_request:
 
 permissions:
   contents: write
@@ -32,37 +26,25 @@ jobs:
 
           test_path = Path('Code/Tests/Integration/165_Filter_Output_Contract.sql')
           test_text = test_path.read_text(encoding='utf-8')
-          old_input = "FROM [monitor].[TVF_ParseFullObjectNameList](N'[DeineDatenbank].[dbo].[A|B]|[dbo].[C]')"
-          new_input = "FROM [monitor].[TVF_ParseFullObjectNameList](N'[ExampleDatabase].[dbo].[A|B]|[dbo].[C]')"
-          old_expected = "WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'DeineDatenbank' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1"
-          new_expected = "WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'ExampleDatabase' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1"
-          if test_text.count(old_input) != 1 or test_text.count(old_expected) != 1:
-              raise RuntimeError('Expected parser fixture anchors exactly once.')
-          test_text = test_text.replace(old_input, new_input, 1).replace(old_expected, new_expected, 1)
+          replacements = {
+              "FROM [monitor].[TVF_ParseFullObjectNameList](N'[DeineDatenbank].[dbo].[A|B]|[dbo].[C]')":
+                  "FROM [monitor].[TVF_ParseFullObjectNameList](N'[ExampleDatabase].[dbo].[A|B]|[dbo].[C]')",
+              "WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'DeineDatenbank' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1":
+                  "WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'ExampleDatabase' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1",
+          }
+          for old, new in replacements.items():
+              if test_text.count(old) != 1:
+                  raise RuntimeError(f'Expected parser fixture anchor exactly once: {old}')
+              test_text = test_text.replace(old, new, 1)
           test_path.write_text(test_text, encoding='utf-8', newline='\n')
 
           temporal_path = Path('Code/09_VersionAdaptive/040_USP_TemporalAnalysis.sql')
           temporal_text = temporal_path.read_text(encoding='utf-8')
-          old_update = """    UPDATE [tt]
-    SET [AssessmentStatus]=CASE WHEN EXISTS
-        (SELECT 1 FROM [#Findings] [f]
-         WHERE [f].[DatabaseName]=[tt].[DatabaseName]
-           AND [f].[SchemaName]=[tt].[CurrentSchemaName]
-           AND [f].[ObjectName]=[tt].[CurrentTableName]
-           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END;
-"""
-          new_update = """    UPDATE [tt]
-    SET [AssessmentStatus]=CASE WHEN EXISTS
-        (SELECT 1 FROM [#Findings] [f]
-         WHERE [f].[DatabaseName]=[tt].[DatabaseName]
-           AND [f].[SchemaName]=[tt].[CurrentSchemaName]
-           AND [f].[ObjectName]=[tt].[CurrentTableName]
-           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END
-    FROM [#TemporalTable] AS [tt];
-"""
-          if temporal_text.count(old_update) != 1:
-              raise RuntimeError('Expected Temporal update block exactly once.')
-          temporal_text = temporal_text.replace(old_update, new_update, 1)
+          old = "           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END;\n\n    UPDATE [ds]"
+          new = "           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END\n    FROM [#TemporalTable] AS [tt];\n\n    UPDATE [ds]"
+          if temporal_text.count(old) != 1:
+              raise RuntimeError('Expected Temporal update suffix exactly once.')
+          temporal_text = temporal_text.replace(old, new, 1)
           temporal_path.write_text(temporal_text, encoding='utf-8', newline='\n')
 
       - name: Commit contract fixes
