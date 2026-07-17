@@ -2,6 +2,7 @@
 
 ## Stand 2026-07-17 – Abschluss P1 `1.1.0-special.2`
 
+- SQLCMD-Runner `Code/Tests/Run_Release_Gate.sql` für vier verbindliche Integrationsverträge und acht Bereichs-Smoke-Tests, synthetische Suite-Evidenzvorlage und datenschutzkonformes Runbook ergänzt; alle Zielzeilen bleiben bis zur realen Ausführung `NOT_EXECUTED`.
 - `SC-011` durch `monitor.USP_StatisticsDistributionAnalysis` geschlossen.
 - Histogrammzugriff je Datenbank vorab auf 1–250 priorisierte Statistiken begrenzt und durch `CATALOG_DEEP` geschützt.
 - Numerische Evidenz für dominante Histogrammschritte, Gleichheits-/Range-Skew, Tail-Konzentration, Änderungen seit dem Statistikstand und inkrementelle Partitionsvariation ergänzt.

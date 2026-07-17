@@ -14,7 +14,7 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 1. In allen SQL-Skripten den Platzhalter `[DeineDatenbank]` durch die gewünschte Installationsdatenbank ersetzen.
 2. Sicherstellen, dass Server, `tempdb` und Installationsdatenbank die Collation `SQL_Latin1_General_CP1_CS_AS` verwenden.
 3. `Code/Install/Install_All.sql` im SQLCMD-Modus ausführen oder zuvor mit `Code/Install/Build-StandaloneInstaller.ps1` einen eigenständigen Installer erzeugen.
-4. `Code/Tests/Integration/110_Smoke_Test.sql` ausführen.
+4. Nach `Documentation/Quality/Release_Gate_Runbook.md` aus `Code/Tests` den SQLCMD-Runner `Run_Release_Gate.sql` ausführen; er prüft vier Integrationsverträge und acht Bereichs-Smoke-Tests.
 
 Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.
 

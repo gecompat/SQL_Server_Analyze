@@ -1,12 +1,12 @@
 {
   "release": "1.1.0-special.2",
-  "generatedAtUtc": "2026-07-17T13:21:43Z",
+  "generatedAtUtc": "2026-07-17T13:43:56Z",
   "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
   "scope": "completed P0/P1 special-case module wave and repository integration",
   "inventory": {
-    "repositoryFiles": 163,
+    "repositoryFiles": 166,
     "canonicalSqlSources": 99,
-    "sqlFilesIncludingTestsAndExamples": 114,
+    "sqlFilesIncludingTestsAndExamples": 115,
     "objects": 91,
     "procedures": 76,
     "functions": 10,
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 114,
+      "filesChecked": 115,
       "issues": []
     },
     "namedProcedureCalls": {
@@ -70,6 +70,8 @@
   "testDocumentation": {
     "targetRows": 4,
     "targetRowsNotExecuted": 4,
+    "releaseGateSuiteRows": 20,
+    "releaseGateSuiteRowsNotExecuted": 20,
     "specialCaseRows": 57,
     "specialCaseRowsNotExecuted": 57,
     "runtimeStatus": "NOT_EXECUTED",
