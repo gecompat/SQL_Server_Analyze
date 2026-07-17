@@ -4,13 +4,22 @@
 **Geltungsbereich:** alle 79 im öffentlichen Procedure-Referenzhandbuch aufgeführten Procedures  
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und erfahrene SQL-Server-Administratoren
 
+## Wo befinden sich die eigentlichen Objektbeschreibungen?
+
+Die Datei `Deep_Research_Analysis_Guides_Concept.md` ist ausschließlich das Forschungs- und Strukturkonzept. Sie ist **nicht** das eigentliche Analysehandbuch.
+
+Für die praktische Arbeit stehen zwei Einstiege zur Verfügung:
+
+1. [Objektindex mit Direktlinks zu allen 79 umfassenden Procedure-Beschreibungen](Object_Index.md)
+2. die nachstehenden Familienguides mit den vollständigen Resultset-, Spalten-, Interpretations-, Beispiel- und Folgeanalyseabschnitten
+
 ## Zweck
 
 Dieser Bereich erklärt nicht nur, wie eine Procedure aufgerufen wird, sondern vor allem:
 
 - welche Frage sie beantwortet,
 - welche Datenquellen und Zeiträume hinter den Resultsets stehen,
-- wie jede Spaltengruppe zu lesen ist,
+- wie jede Spalte beziehungsweise zusammengehörige Spaltengruppe zu lesen ist,
 - welche Werte normal, auffällig, kritisch oder irreführend sein können,
 - welche Aussagegrenzen durch Neustart, Cache-Eviction, Rechte, Featurestatus oder Sampling entstehen,
 - welche Folgeanalyse kontrolliert als Nächstes ausgeführt werden sollte,
@@ -22,6 +31,7 @@ Alle Beispiele sind vollständig synthetisch und verwenden ausschließlich `Exam
 
 | Bereich | Dokument | Enthaltene Procedures |
 |---|---|---:|
+| Objektweiser Einstieg | [Object_Index.md](Object_Index.md) | Direktlinks zu allen 79 Objekten |
 | Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) | frameworkweite Status-, Ausgabe-, Filter-, Kosten- und Evidenzregeln |
 | Common | [01_Common.md](01_Common.md) | 4 |
 | Current State | [02_Current_State.md](02_Current_State.md) | 10 |
@@ -34,7 +44,7 @@ Alle Beispiele sind vollständig synthetisch und verwenden ausschließlich `Exam
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 4 |
 | **Summe** | | **79** |
 
-Zusätzlich bleibt das Forschungs- und Strukturkonzept verfügbar:
+Das Forschungs- und Strukturkonzept bleibt als Hintergrunddokument verfügbar:
 
 - [Deep_Research_Analysis_Guides_Concept.md](Deep_Research_Analysis_Guides_Concept.md)
 
