@@ -95,14 +95,17 @@ jobs:
         run: |
           set -euo pipefail
           install_log="$RUNNER_TEMP/sqlserver-analyze-install.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-error.txt"
           if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --workdir /work/Code/Install \
             sqlserver-analyze-test \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql >"$install_log" 2>&1; then
             echo 'Framework installation failed.'
-            grep -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 40 \
-              || tail -n 40 "$install_log"
+            if ! grep -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 40 >"$error_summary"; then
+              tail -n 40 "$install_log" >"$error_summary"
+            fi
+            cat "$error_summary"
             exit 1
           fi
           echo 'Framework installation succeeded.'
@@ -112,14 +115,17 @@ jobs:
         run: |
           set -euo pipefail
           release_log="$RUNNER_TEMP/sqlserver-analyze-release-gate.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-error.txt"
           if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --workdir /work/Code/Tests \
             sqlserver-analyze-test \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql >"$release_log" 2>&1; then
             echo 'Release gate failed.'
-            grep -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$release_log" | tail -n 40 \
-              || tail -n 40 "$release_log"
+            if ! grep -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$release_log" | tail -n 40 >"$error_summary"; then
+              tail -n 40 "$release_log" >"$error_summary"
+            fi
+            cat "$error_summary"
             exit 1
           fi
           echo 'Release gate succeeded.'
@@ -135,6 +141,15 @@ jobs:
             echo '- Installer: passed'
             echo '- Release gate: passed'
           } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized failure summary
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sqlserver-2022-linux-release-gate-error
+          path: ${{ runner.temp }}/sqlserver-analyze-error.txt
+          if-no-files-found: ignore
+          retention-days: 1
 
       - name: Stop synthetic SQL Server
         if: always()
