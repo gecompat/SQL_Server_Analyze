@@ -21,6 +21,22 @@ Erwartung:
 
 Der gleiche Test läuft in GitHub Actions für relevante Pull Requests und Änderungen an `main`. Ein grüner statischer Test ersetzt weder die Runtime-Tests noch die manuelle fachliche und datenschutzbezogene Prüfung.
 
+## 0.1 Automatisiertes synthetisches Linux-Target
+
+Der Workflow `.github/workflows/sqlserver-2022-linux-release-gate.yml` führt für relevante T-SQL-Änderungen ein isoliertes Runtime-Gate gegen `mcr.microsoft.com/mssql/server:2022-latest` aus.
+
+Dabei gilt:
+
+- SQL Server 2022 Developer läuft nur für die Dauer des GitHub-Actions-Jobs in einem Container.
+- Die Installationsdatenbank, das Kennwort und alle Laufzeitwerte werden erst im Job synthetisch erzeugt.
+- Der Repositorybestand wird in ein temporäres Runnerverzeichnis kopiert; nur dort wird `[DeineDatenbank]` ersetzt.
+- Der Container erhält die temporäre Codekopie schreibgeschützt.
+- Installer und `Run_Release_Gate.sql` laufen mit `sqlcmd -b` und brechen beim ersten SQL-Fehler ab.
+- Es werden keine SQLCMD-Ausgaben oder Resultsets als Artefakt gespeichert.
+- Nach dem Lauf wird der Container auch bei Fehlern entfernt.
+
+Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. Es ersetzt keine Tests für Windows, SQL Server 2019, SQL Server 2025, optionale Features, reduzierte Berechtigungen oder produktionsnahe Lastzustände.
+
 ## 1. Lokale Testkopie vorbereiten
 
 1. Exakt den zu testenden Commit in eine lokale, nicht zur Veröffentlichung vorgesehene Arbeitskopie übernehmen.
