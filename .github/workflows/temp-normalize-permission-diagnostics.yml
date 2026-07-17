@@ -1,0 +1,78 @@
+name: Temporary normalize permission matrix diagnostics
+
+on:
+  push:
+    branches:
+      - agent/sqlserver-2022-permission-matrix
+
+permissions:
+  contents: write
+
+jobs:
+  normalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out permission matrix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2022-permission-matrix
+
+      - name: Remove duplicated diagnostics
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
+          text = path.read_text(encoding='utf-8')
+
+          for phase in ('setup', 'open_policy', 'protected_policy', 'sysadmin', 'assertions'):
+              marker = f"RAISERROR(N'PERMISSION_MATRIX phase={phase}',10,1) WITH NOWAIT;\nGO\n\n"
+              doubled = marker + marker
+              if text.count(doubled) != 1:
+                  raise RuntimeError(f'Expected duplicated marker once for {phase}; found {text.count(doubled)}.')
+              text = text.replace(doubled, marker, 1)
+
+          doubled_wrapper = """    RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
+          BEGIN TRY
+              RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
+          BEGIN TRY
+              EXEC [sys].[sp_executesql] @Sql,N'@ScenarioCode varchar(48)',@ScenarioCode=@ScenarioCode;
+          END TRY
+          BEGIN CATCH
+              DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());
+              THROW 54209,@ScenarioError,1;
+          END CATCH;
+          END TRY
+          BEGIN CATCH
+              DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());
+              THROW 54209,@ScenarioError,1;
+          END CATCH;
+          """.replace('          ', '')
+
+          single_wrapper = """    RAISERROR(N'PERMISSION_MATRIX scenario=%s',10,1,@ScenarioCode) WITH NOWAIT;
+          BEGIN TRY
+              EXEC [sys].[sp_executesql] @Sql,N'@ScenarioCode varchar(48)',@ScenarioCode=@ScenarioCode;
+          END TRY
+          BEGIN CATCH
+              DECLARE @ScenarioError nvarchar(2048)=CONCAT(N'Permission scenario ',@ScenarioCode,N' failed at line ',ERROR_LINE(),N': ',ERROR_MESSAGE());
+              THROW 54209,@ScenarioError,1;
+          END CATCH;
+          """.replace('          ', '')
+
+          if text.count(doubled_wrapper) != 1:
+              raise RuntimeError(f'Expected duplicated scenario wrapper once; found {text.count(doubled_wrapper)}.')
+          text = text.replace(doubled_wrapper, single_wrapper, 1)
+          path.write_text(text, encoding='utf-8', newline='\n')
+
+      - name: Commit normalized diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: normalize permission matrix diagnostics'
+          git push origin HEAD:agent/sqlserver-2022-permission-matrix
