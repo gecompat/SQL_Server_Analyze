@@ -5,9 +5,19 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 ## Verzeichnisse
 
 - `Code/`: installierbarer T-SQL-Code, Installer, Tests und Beispielaufrufe
-- `Documentation/`: Anforderungen, Architektur, Betrieb, Referenz und Recherche
+- `Documentation/`: Anforderungen, Architektur, Betrieb, Referenz, Analysehandbuch und Recherche
 - `Metadata/`: maschinenlesbare Objekt-, Parameter-, Systemquellen-, Abhängigkeits- und Capability-Inventare sowie Qualitätsergebnisse
 - `AI_Metadata/`: kompakter Kontext zur Fortsetzung der KI-gestützten Entwicklung
+
+## Analysehandbuch
+
+Die umfassenden Beschreibungen aller 79 öffentlichen Procedures befinden sich nicht im Forschungs- und Strukturkonzept, sondern im eigentlichen Analysehandbuch:
+
+- [`Analysis_Guides/Object_Index.md`](Analysis_Guides/Object_Index.md): objektweiser Einstieg mit Direktlinks zu jeder Procedure
+- [`Analysis_Guides/README.md`](Analysis_Guides/README.md): Symptomnavigation, Evidenzarten, Kostenklassen und Familienguides
+- [`Analysis_Guides/Common_Contracts.md`](Analysis_Guides/Common_Contracts.md): gemeinsame Resultset-, Status-, Filter- und Evidenzverträge
+
+Jede Objektbeschreibung behandelt Zweck, Einsatzgrenzen, Aufrufe, Resultsets, Spalten, Interpretation, normale und problematische Beispiele, Folgeanalysen, Eigenlast und Aussagegrenzen.
 
 ## Installation
 
