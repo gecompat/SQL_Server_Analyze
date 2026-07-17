@@ -50,13 +50,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          docker pull --quiet mcr.microsoft.com/mssql/server:2022-latest >/dev/null
           docker run --name sqlserver-analyze-test \
             --detach \
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
             --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
-            mcr.microsoft.com/mssql/server:2022-latest
+            mcr.microsoft.com/mssql/server:2022-latest >/dev/null
 
       - name: Wait for SQL Server readiness
         shell: bash
@@ -76,7 +77,7 @@ jobs:
             fi
             sleep 2
           done
-          docker logs --tail 100 sqlserver-analyze-test
+          docker logs --tail 40 sqlserver-analyze-test
           exit 1
 
       - name: Create synthetic test database
@@ -87,27 +88,41 @@ jobs:
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             sqlserver-analyze-test \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
-            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 160;"
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 160;" >/dev/null
 
       - name: Install framework
         shell: bash
         run: |
           set -euo pipefail
-          docker exec \
+          install_log="$RUNNER_TEMP/sqlserver-analyze-install.log"
+          if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --workdir /work/Code/Install \
             sqlserver-analyze-test \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql >"$install_log" 2>&1; then
+            echo 'Framework installation failed.'
+            grep -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 40 \
+              || tail -n 40 "$install_log"
+            exit 1
+          fi
+          echo 'Framework installation succeeded.'
 
       - name: Run release gate
         shell: bash
         run: |
           set -euo pipefail
-          docker exec \
+          release_log="$RUNNER_TEMP/sqlserver-analyze-release-gate.log"
+          if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --workdir /work/Code/Tests \
             sqlserver-analyze-test \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql >"$release_log" 2>&1; then
+            echo 'Release gate failed.'
+            grep -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$release_log" | tail -n 40 \
+              || tail -n 40 "$release_log"
+            exit 1
+          fi
+          echo 'Release gate succeeded.'
 
       - name: Record generic success summary
         if: success()
