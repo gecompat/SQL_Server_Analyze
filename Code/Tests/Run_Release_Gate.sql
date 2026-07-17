@@ -16,40 +16,40 @@ Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
 ===============================================================================
 */
 
-PRINT N'RELEASE_GATE 1/12: Smoke Test';
+RAISERROR(N'RELEASE_GATE 1/12: Smoke Test',10,1) WITH NOWAIT;
 :r Integration/110_Smoke_Test.sql
 
-PRINT N'RELEASE_GATE 2/12: Parameter-API-Vertrag';
+RAISERROR(N'RELEASE_GATE 2/12: Parameter-API-Vertrag',10,1) WITH NOWAIT;
 :r Integration/163_Parameter_API_Vertrag.sql
 
-PRINT N'RELEASE_GATE 3/12: Filter- und Ausgabe-Vertrag';
+RAISERROR(N'RELEASE_GATE 3/12: Filter- und Ausgabe-Vertrag',10,1) WITH NOWAIT;
 :r Integration/165_Filter_Output_Contract.sql
 
-PRINT N'RELEASE_GATE 4/12: Spezialfall-API-Vertrag';
+RAISERROR(N'RELEASE_GATE 4/12: Spezialfall-API-Vertrag',10,1) WITH NOWAIT;
 :r Integration/167_Special_Case_API_Contract.sql
 
-PRINT N'RELEASE_GATE 5/12: Common';
+RAISERROR(N'RELEASE_GATE 5/12: Common',10,1) WITH NOWAIT;
 :r Common/090_Test_und_Abnahme_Phase1A.sql
 
-PRINT N'RELEASE_GATE 6/12: Current State';
+RAISERROR(N'RELEASE_GATE 6/12: Current State',10,1) WITH NOWAIT;
 :r CurrentState/110_Test_und_Abnahme_Phase1B.sql
 
-PRINT N'RELEASE_GATE 7/12: Object und Index';
+RAISERROR(N'RELEASE_GATE 7/12: Object und Index',10,1) WITH NOWAIT;
 :r ObjectIndex/110_Test_und_Abnahme_Phase2.sql
 
-PRINT N'RELEASE_GATE 8/12: Plan Cache';
+RAISERROR(N'RELEASE_GATE 8/12: Plan Cache',10,1) WITH NOWAIT;
 :r PlanCache/110_Test_und_Abnahme_Phase3.sql
 
-PRINT N'RELEASE_GATE 9/12: Query Store';
+RAISERROR(N'RELEASE_GATE 9/12: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql
 
-PRINT N'RELEASE_GATE 10/12: Extended Events';
+RAISERROR(N'RELEASE_GATE 10/12: Extended Events',10,1) WITH NOWAIT;
 :r ExtendedEvents/110_Test_und_Abnahme_Phase5.sql
 
-PRINT N'RELEASE_GATE 11/12: Infrastructure';
+RAISERROR(N'RELEASE_GATE 11/12: Infrastructure',10,1) WITH NOWAIT;
 :r Infrastructure/110_Test_und_Abnahme_Phase6.sql
 
-PRINT N'RELEASE_GATE 12/12: Server Health';
+RAISERROR(N'RELEASE_GATE 12/12: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/110_Test_und_Abnahme_Phase7.sql
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
