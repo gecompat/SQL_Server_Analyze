@@ -683,7 +683,8 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
          WHERE [f].[DatabaseName]=[tt].[DatabaseName]
            AND [f].[SchemaName]=[tt].[CurrentSchemaName]
            AND [f].[ObjectName]=[tt].[CurrentTableName]
-           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END;
+           AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END
+    FROM [#TemporalTable] AS [tt];
 
     UPDATE [ds]
     SET [SourceFailureCount]=[x].[FailureCount],

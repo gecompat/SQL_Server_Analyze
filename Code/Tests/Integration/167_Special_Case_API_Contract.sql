@@ -113,10 +113,18 @@ DECLARE @TemporalDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.
 IF @TemporalDefinition IS NULL
     THROW 54106,N'Die Definition der Temporal-Tables-Analyse ist nicht sichtbar.',1;
 
-IF @TemporalDefinition NOT LIKE N'%[[]sys[]].[[]periods[]]%'
- OR @TemporalDefinition NOT LIKE N'%[[]history_table_id[]]%'
- OR @TemporalDefinition NOT LIKE N'%[[]dm_db_partition_stats[]]%'
-    THROW 54107,N'Die Temporal-Tables-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen.',1;
+DECLARE @MissingTemporalSources nvarchar(2048)=NULL;
+IF CHARINDEX(N'[sys].[periods]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=N'sys.periods';
+IF CHARINDEX(N'[history_table_id]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=CONCAT_WS(N', ',@MissingTemporalSources,N'history_table_id');
+IF CHARINDEX(N'[sys].[dm_db_partition_stats]',@TemporalDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingTemporalSources=CONCAT_WS(N', ',@MissingTemporalSources,N'sys.dm_db_partition_stats');
+IF @MissingTemporalSources IS NOT NULL
+BEGIN
+    DECLARE @TemporalSourceMessage nvarchar(2048)=CONCAT(N'Die Temporal-Tables-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen: ',@MissingTemporalSources,N'.');
+    THROW 54107,@TemporalSourceMessage,1;
+END;
 
 IF @TemporalDefinition LIKE N'%FOR SYSTEM_TIME AS OF%'
  OR @TemporalDefinition LIKE N'%FOR SYSTEM_TIME ALL%'
@@ -127,11 +135,20 @@ DECLARE @BrokerDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.US
 IF @BrokerDefinition IS NULL
     THROW 54109,N'Die Definition der Service-Broker-Analyse ist nicht sichtbar.',1;
 
-IF @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]service_queues[]]%'
- OR @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]transmission_queue[]]%'
- OR @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]conversation_endpoints[]]%'
- OR @BrokerDefinition NOT LIKE N'%[[]sys[]].[[]dm_broker_queue_monitors[]]%'
-    THROW 54110,N'Die Service-Broker-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen.',1;
+DECLARE @MissingBrokerSources nvarchar(2048)=NULL;
+IF CHARINDEX(N'[sys].[service_queues]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=N'sys.service_queues';
+IF CHARINDEX(N'[sys].[transmission_queue]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=CONCAT_WS(N', ',@MissingBrokerSources,N'sys.transmission_queue');
+IF CHARINDEX(N'[sys].[conversation_endpoints]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=CONCAT_WS(N', ',@MissingBrokerSources,N'sys.conversation_endpoints');
+IF CHARINDEX(N'[sys].[dm_broker_queue_monitors]',@BrokerDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingBrokerSources=CONCAT_WS(N', ',@MissingBrokerSources,N'sys.dm_broker_queue_monitors');
+IF @MissingBrokerSources IS NOT NULL
+BEGIN
+    DECLARE @BrokerSourceMessage nvarchar(2048)=CONCAT(N'Die Service-Broker-Analyse besitzt nicht alle erwarteten read-only Metadatenquellen: ',@MissingBrokerSources,N'.');
+    THROW 54110,@BrokerSourceMessage,1;
+END;
 
 IF @BrokerDefinition LIKE N'%[[]message_body[]]%'
  OR @BrokerDefinition LIKE N'%RECEIVE TOP%'

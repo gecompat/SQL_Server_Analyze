@@ -72,8 +72,8 @@ IF NOT EXISTS
 IF NOT EXISTS
 (
     SELECT 1
-    FROM [monitor].[TVF_ParseFullObjectNameList](N'[DeineDatenbank].[dbo].[A|B]|[dbo].[C]')
-    WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'DeineDatenbank' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1
+    FROM [monitor].[TVF_ParseFullObjectNameList](N'[ExampleDatabase].[dbo].[A|B]|[dbo].[C]')
+    WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'ExampleDatabase' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1
 )
     INSERT [#Failure] VALUES(N'TVF_ParseFullObjectNameList',N'Dreiteiliger bracket-aware Objektname wurde nicht korrekt verarbeitet.');
 
