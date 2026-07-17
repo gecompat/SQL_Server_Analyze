@@ -47,7 +47,7 @@ Set-Location ./Code/Install
 ./Build-StandaloneInstaller.ps1
 ```
 
-Das Skript erzeugt `Code/Install/Install_All.generated.sql` aus den kanonischen Einzeldateien. Im generierten Installer steht der Datenbankplatzhalter nur am Anfang. Das Build-Artefakt wird nicht versioniert.
+Das Skript erzeugt `Code/Install/Install_All.generated.sql` aus den kanonischen Einzeldateien und übernimmt deren abhängigkeitssichere Reihenfolge direkt aus `Install_All.sql`. Im generierten Installer steht der Datenbankplatzhalter nur am Anfang. Das Build-Artefakt wird nicht versioniert.
 
 ## Upgrade
 

@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ObjectAnalysis
-Version      : 2.0.0
-Stand        : 2026-07-15
+Version      : 2.1.0
+Stand        : 2026-07-17
 Typ          : Stored Procedure
 Zweck        : Orchestriert die Objekt-, Index-, Statistik-, Partition-,
                Columnstore- und Physical-Stats-Analysen mit einem einheitlichen
@@ -23,7 +23,8 @@ Semantik     : Exakte Listen sind bracket-aware Pipe-Listen; Pattern sind
 Ausgabe      : Aktivierte Teilmodule liefern RAW oder CONSOLE. NONE unterdrückt
                fachliche Resultsets. JSON enthält die Teilmodul-Envelopes unter
                benannten Eigenschaften und einen Orchestratorstatus.
-Änderungen   : 2.0.0 - Mehrfachfilter, getrennte Pattern, Cross-Database-Scope,
+Änderungen   : 2.1.0 - Schema-/Designkorrektheit als opt-in Teilmodul.
+               2.0.0 - Mehrfachfilter, getrennte Pattern, Cross-Database-Scope,
                          RAW/CONSOLE/NONE und JSON-Orchestrierung.
                1.3.0 - Vorheriger Stand.
 ===============================================================================
@@ -50,6 +51,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectAnalysis]
     , @MitPartitions                    bit            = 0
     , @MitColumnstore                   bit            = 0
     , @MitPhysicalStats                 bit            = 0
+    , @MitSchemaDesign                  bit            = 0
     , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
@@ -124,6 +126,11 @@ BEGIN
     DECLARE @JsonPartitions nvarchar(max) = NULL;
     DECLARE @JsonColumnstore nvarchar(max) = NULL;
     DECLARE @JsonPhysicalStats nvarchar(max) = NULL;
+    DECLARE @JsonSchemaDesign nvarchar(max) = NULL;
+    DECLARE @SchemaDesignStatus varchar(40) = NULL;
+    DECLARE @SchemaDesignPartial bit = NULL;
+    DECLARE @SchemaDesignErrorNumber int = NULL;
+    DECLARE @SchemaDesignErrorMessage nvarchar(2048) = NULL;
 
     IF @StatusCode = 'AVAILABLE' AND @MitObjectInventory = 1
     BEGIN TRY
@@ -208,11 +215,25 @@ BEGIN
         INSERT [#ModuleStatus] VALUES(N'USP_IndexPhysicalStats',COALESCE(JSON_VALUE(@JsonPhysicalStats,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ModuleStatus] VALUES(N'USP_IndexPhysicalStats','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
 
-    IF EXISTS(SELECT 1 FROM [#ModuleStatus] WHERE [StatusCode] IN ('ERROR_HANDLED','DENIED_GROUP','INVALID_PARAMETER','UNAVAILABLE_FEATURE','PARTIAL','PARTIAL_RESULT'))
+    IF @StatusCode = 'AVAILABLE' AND @MitSchemaDesign = 1
+    BEGIN TRY
+        EXEC [monitor].[USP_SchemaDesignAnalysis]
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen
+            , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonSchemaDesign OUTPUT,@PrintMeldungen=@PrintMeldungen
+            , @StatusCodeOut=@SchemaDesignStatus OUTPUT,@IsPartialOut=@SchemaDesignPartial OUTPUT
+            , @ErrorNumberOut=@SchemaDesignErrorNumber OUTPUT,@ErrorMessageOut=@SchemaDesignErrorMessage OUTPUT;
+        INSERT [#ModuleStatus] VALUES(N'USP_SchemaDesignAnalysis',COALESCE(@SchemaDesignStatus,'ERROR_HANDLED'),@SchemaDesignErrorNumber,@SchemaDesignErrorMessage);
+    END TRY BEGIN CATCH INSERT [#ModuleStatus] VALUES(N'USP_SchemaDesignAnalysis','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
+
+    IF EXISTS(SELECT 1 FROM [#ModuleStatus]
+              WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
     BEGIN
         SET @StatusCode = 'PARTIAL_RESULT';
         SET @IsPartial = 1;
-    END;
+    END
+    ELSE IF EXISTS(SELECT 1 FROM [#ModuleStatus] WHERE [StatusCode] = 'AVAILABLE_WITH_FINDING')
+        SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
     IF @StatusCode <> 'AVAILABLE' AND @PrintMeldungen = 1
     BEGIN
@@ -236,6 +257,7 @@ BEGIN
             ,N',"partitions":',COALESCE(@JsonPartitions,N'null')
             ,N',"columnstore":',COALESCE(@JsonColumnstore,N'null')
             ,N',"indexPhysicalStats":',COALESCE(@JsonPhysicalStats,N'null')
+            ,N',"schemaDesign":',COALESCE(@JsonSchemaDesign,N'null')
             ,N'}'
         );
     END;

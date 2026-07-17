@@ -34,6 +34,18 @@ VALUES
 (N'monitor.USP_ExtendedEventsAnalysis','P'),
 (N'monitor.USP_InfrastructureAnalysis','P'),
 (N'monitor.USP_ServerHealthAnalysis','P'),
+(N'monitor.USP_DatabaseIntegrityAnalysis','P'),
+(N'monitor.USP_DatabaseCapacityAnalysis','P'),
+(N'monitor.USP_PerformanceCounters','P'),
+(N'monitor.USP_CriticalEngineEvents','P'),
+(N'monitor.USP_IntelligentQueryProcessingAnalysis','P'),
+(N'monitor.USP_InternalContentionAnalysis','P'),
+(N'monitor.USP_BufferPoolAnalysis','P'),
+(N'monitor.USP_BackupChainAnalysis','P'),
+(N'monitor.USP_SchemaDesignAnalysis','P'),
+(N'monitor.USP_AvailabilityDeepAnalysis','P'),
+(N'monitor.USP_AgentMonitoringAnalysis','P'),
+(N'monitor.USP_DiagnosticFindings','P'),
 (N'monitor.USP_ServerFeatureCapabilities','P');
 
 SELECT @Missing = STRING_AGG([ObjectName],N', ')
@@ -51,9 +63,9 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (READUNCOMMITTED)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.0.0-api.5'
+      AND [FrameworkVersion]='1.1.0-special.1'
 )
-    THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Statement Context Release.',1;
+    THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
 IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED) WHERE [IsFrameworkDefault]=1) < 350
     THROW 54002,N'Der Framework-Wait-Katalog ist unvollständig.',1;
@@ -111,6 +123,18 @@ EXEC [monitor].[USP_CurrentOverview] @Hilfe=1;
 EXEC [monitor].[USP_CurrentWaits] @Hilfe=1;
 EXEC [monitor].[USP_ServerFeatureCapabilities] @Hilfe=1;
 EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_DatabaseCapacityAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_PerformanceCounters] @Hilfe=1;
+EXEC [monitor].[USP_CriticalEngineEvents] @Hilfe=1;
+EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_InternalContentionAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_BufferPoolAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_BackupChainAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_SchemaDesignAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_AvailabilityDeepAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_DiagnosticFindings] @Hilfe=1;
 
 SELECT
     CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],

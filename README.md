@@ -32,6 +32,9 @@ Das Framework wird in einer frei wählbaren Datenbank im Schema `[monitor]` inst
 - Extended Events: Sessions, Targets, Deadlocks und Blocked-Process-Ereignisse
 - SQL Agent, Resource Governor, Hochverfügbarkeit, Backup, Log Shipping und Replikation
 - CPU-, NUMA-, Memory-, TempDB-, Betriebssystem-, Trace-Flag- und Sicherheitskonfiguration
+- Spezialfallmodule für Integrität, Datei-/Volumekapazität, typisierte Performance Counter und kritische Engine-Ereignisse
+- IQP-, Contention-, Buffer-Pool-, Backupketten-, Schema-, Availability- und Agent-/Alert-Evidenz
+- normalisierte diagnostische Findings mit Priorität, Konfidenz und expliziter Aussagegrenze
 - versionsabhängige Featureerkennung mit strukturierten Fallback- und Statusinformationen
 
 ## Voraussetzungen
@@ -200,6 +203,7 @@ Empfohlene Einstiegspunkte:
 - [Anforderungen und Entscheidungen](./Documentation/Requirements/Requirements_and_Decisions.md)
 - [Installation](./Documentation/Reference/Installation.md)
 - [Procedure-Referenz](./Documentation/Reference/Procedure_Reference.md)
+- [Spezialfallmodule: Evidenz, Kosten und Grenzen](./Documentation/Architecture/Special_Case_Modules.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
@@ -210,10 +214,10 @@ Empfohlene Einstiegspunkte:
 
 ## Qualität und Projektstatus
 
-Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Migrationsprüfungen. Der aktuelle Audit ist unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json) dokumentiert.
+Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Migrationsprüfungen. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json).
 
-Der vorliegende Gesamtstand wurde nach Angabe des Projektverantwortlichen vollumfänglich installiert, kompiliert und funktional getestet. Die dabei gefundenen Korrekturen sind im Repository enthalten.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen installiert, kompiliert und funktional getestet. Die neue Version `1.1.0-special.1` besitzt statische API- und Installerverträge; reale Läufe der dokumentierten Zielmatrix stehen noch aus.
 
-Bei Einsätzen auf weiteren SQL-Server-Versionen, Editions-, Plattform- oder Berechtigungskombinationen ist die jeweilige Zielumgebung ergänzend zu verifizieren und als Testmatrix zu dokumentieren.
+Die geplanten SQL-Server-, Editions-, Plattform- und Berechtigungskombinationen stehen in [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv). `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 
 Die kanonischen Einzeldateien sind die maßgebliche Quelle. Generierte Installer dürfen nicht manuell gepflegt werden.

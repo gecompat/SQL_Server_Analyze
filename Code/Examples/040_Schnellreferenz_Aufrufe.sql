@@ -12,6 +12,25 @@ EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=NULL,@Query
 -- Memory Grants einschließlich Resource Governor
 EXEC [monitor].[USP_CurrentMemoryGrants] @NurWartende=0,@MaxZeilen=100,@ResultSetArt='CONSOLE';
 
+-- Integritätsevidenz der aktuellen Datenbank; führt kein DBCC und keine Reparatur aus
+EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetails=0,@MaxZeilen=100;
+
+-- Performance Counter mit echtem Fünf-Sekunden-Intervall für unterstützte Raten
+EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds=5,@MaxZeilen=100;
+
+-- Normalisierte Triage; kostenintensive optionale Module bleiben aus
+DECLARE @DiagnosticFindingsJson nvarchar(max);
+EXEC [monitor].[USP_DiagnosticFindings]
+      @DatabaseNames=N''
+    , @MitSchemaDesign=0
+    , @MitIQP=0
+    , @MitContention=0
+    , @MaxZeilen=100
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@DiagnosticFindingsJson OUTPUT;
+SELECT @DiagnosticFindingsJson AS [Json];
+
 
 -- BEGIN STATEMENT-KONTEXT-BEISPIELE
 -- Default: lesbare CONSOLE-Ausgabe mit exaktem Statement, Modul und Offset-/Zeileninformation

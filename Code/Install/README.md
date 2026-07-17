@@ -8,4 +8,6 @@ Für einen eigenständigen, vollständig eingebetteten Installer:
 ./Build-StandaloneInstaller.ps1
 ```
 
-Die erzeugte Datei `Install_All.generated.sql` ist ein Build-Artefakt und wird nicht versioniert.
+Die Quellen werden in exakt derselben, abhängigkeitssicheren Reihenfolge wie in
+`Install_All.sql` eingebettet. Die erzeugte Datei `Install_All.generated.sql` ist
+ein Build-Artefakt und wird nicht versioniert.

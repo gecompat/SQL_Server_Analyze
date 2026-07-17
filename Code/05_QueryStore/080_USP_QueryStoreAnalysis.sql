@@ -4,11 +4,12 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_QueryStoreAnalysis
-Version      : 2.0.1
-Stand        : 2026-07-16
+Version      : 2.1.0
+Stand        : 2026-07-17
 Zweck        : Orchestriert Query-Store-Module mit einheitlichem Quell- und
                Referenzdatenbankvertrag. JSON enthält benannte Modulobjekte.
-Änderungen   : 2.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert.
+Änderungen   : 2.1.0 - IQP-Evidenz als kostenbewusstes opt-in Teilmodul.
+               2.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
@@ -25,6 +26,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
     , @MitRegressionen                  bit            = 0
     , @MitForcedPlans                   bit            = 0
     , @MitHints                         bit            = 0
+    , @MitIQP                           bit            = 0
     , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 100
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
@@ -47,6 +49,11 @@ BEGIN
     DECLARE @RegressionJson nvarchar(max);
     DECLARE @ForcedJson nvarchar(max);
     DECLARE @HintsJson nvarchar(max);
+    DECLARE @IqpJson nvarchar(max);
+    DECLARE @IqpStatus varchar(40) = NULL;
+    DECLARE @IqpPartial bit = NULL;
+    DECLARE @IqpErrorNumber int = NULL;
+    DECLARE @IqpErrorMessage nvarchar(2048) = NULL;
 
     DECLARE @ModuleStatus TABLE
     (
@@ -72,7 +79,7 @@ BEGIN
        OR (@VonUtc IS NOT NULL AND @BisUtc IS NOT NULL AND @VonUtc > @BisUtc)
        OR (@MitStatus = 0 AND @MitRuntimeStats = 0 AND @MitWaitStats = 0
            AND @MitPlanChanges = 0 AND @MitRegressionen = 0
-           AND @MitForcedPlans = 0 AND @MitHints = 0)
+           AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitIQP = 0)
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
     END;
@@ -233,11 +240,40 @@ BEGIN
         END CATCH;
     END;
 
-    IF EXISTS (SELECT 1 FROM @ModuleStatus WHERE [InvocationStatus] <> 'EXECUTED')
+    IF @StatusCode = 'AVAILABLE' AND @MitIQP = 1
+    BEGIN
+        BEGIN TRY
+            EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
+                  @DatabaseNames = @QueryStoreDatabaseNames
+                , @DatabaseNamePattern = @QueryStoreDatabaseNamePattern
+                , @MaxDatenbanken = @MaxDatenbanken
+                , @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @OutputMode
+                , @JsonErzeugen = @JsonErzeugen
+                , @Json = @IqpJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @IqpStatus OUTPUT
+                , @IsPartialOut = @IqpPartial OUTPUT
+                , @ErrorNumberOut = @IqpErrorNumber OUTPUT
+                , @ErrorMessageOut = @IqpErrorMessage OUTPUT;
+
+            INSERT @ModuleStatus VALUES
+            (8, N'USP_IntelligentQueryProcessingAnalysis', COALESCE(@IqpStatus, 'ERROR_HANDLED'), @IqpErrorNumber, @IqpErrorMessage);
+        END TRY
+        BEGIN CATCH
+            INSERT @ModuleStatus VALUES (8, N'USP_IntelligentQueryProcessingAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+        END CATCH;
+    END;
+
+    IF EXISTS (SELECT 1 FROM @ModuleStatus
+               WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
        AND @StatusCode = 'AVAILABLE'
     BEGIN
         SET @StatusCode = 'AVAILABLE_LIMITED';
-    END;
+    END
+    ELSE IF EXISTS (SELECT 1 FROM @ModuleStatus WHERE [InvocationStatus] = 'AVAILABLE_WITH_FINDING')
+         AND @StatusCode = 'AVAILABLE'
+        SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
     IF @OutputMode <> 'NONE'
     BEGIN
@@ -245,8 +281,9 @@ BEGIN
               N'USP_QueryStoreAnalysis' AS [ModuleName]
             , @Now                     AS [CollectionTimeUtc]
             , @StatusCode              AS [StatusCode]
-            , CONVERT(bit, CASE WHEN @StatusCode = 'AVAILABLE' THEN 0 ELSE 1 END) AS [IsPartial]
-            , (SELECT COUNT_BIG(*) FROM @ModuleStatus WHERE [InvocationStatus] <> 'EXECUTED') AS [ErrorCount]
+            , CONVERT(bit, CASE WHEN @StatusCode IN ('AVAILABLE','AVAILABLE_WITH_FINDING') THEN 0 ELSE 1 END) AS [IsPartial]
+            , (SELECT COUNT_BIG(*) FROM @ModuleStatus
+               WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE')) AS [ErrorCount]
             , N'Orchestrator; Teilmodule liefern eigene benannte Resultsets.' AS [Detail];
 
         IF @OutputMode = 'RAW'
@@ -275,7 +312,7 @@ BEGIN
         (
             SELECT *
             FROM @ModuleStatus
-            WHERE [InvocationStatus] <> 'EXECUTED'
+            WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE')
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -300,6 +337,7 @@ BEGIN
             , N',"regressions":', COALESCE(JSON_QUERY(@RegressionJson), N'null')
             , N',"forcedPlans":', COALESCE(JSON_QUERY(@ForcedJson), N'null')
             , N',"queryHints":', COALESCE(JSON_QUERY(@HintsJson), N'null')
+            , N',"intelligentQueryProcessing":', COALESCE(JSON_QUERY(@IqpJson), N'null')
             , N',"warnings":', COALESCE(@Warnings, N'[]')
             , N'}'
         );

@@ -1,6 +1,6 @@
 # Systemquellenkatalog
 
-Stand: 2026-07-16
+Stand: 2026-07-17
 
 ## Zweck
 
@@ -8,7 +8,7 @@ Dieses Dokument beschreibt, welche SQL-Server-Systemquellen das Framework nutzt 
 
 Der Katalog wurde aus den kanonischen Dateien unter `Code/00_Setup` bis `Code/09_VersionAdaptive` erzeugt und mit abstrahierten Ergebnissen der früheren Quellenanalyse ergänzt. Historische Dateipfade, umgebungsspezifische Objektnamen und externe Hilfsobjekte wurden nicht übernommen.
 
-Aktuell inventarisiert: **135 Systemquellen**.
+Aktuell inventarisiert: **160 Systemquellen**.
 
 ## Quellklassen
 

@@ -1,0 +1,5 @@
+TargetId,ProductMajorVersion,ProductVersion,EditionClass,Platform,CompatibilityLevel,Collation,PermissionProfile,OptionalFeatures,CommitSha,TestStatus,EvidenceStatus,TestedAtUtc,Limitations
+SQL2019-WINDOWS,15,,UNSPECIFIED,WINDOWS,150,SQL_Latin1_General_CP1_CS_AS,UNSPECIFIED,,,NOT_EXECUTED,REPORTED,,"Target definition only; no execution evidence recorded"
+SQL2022-WINDOWS,16,,UNSPECIFIED,WINDOWS,160,SQL_Latin1_General_CP1_CS_AS,UNSPECIFIED,,,NOT_EXECUTED,REPORTED,,"Target definition only; no execution evidence recorded"
+SQL2025-WINDOWS,17,,UNSPECIFIED,WINDOWS,170,SQL_Latin1_General_CP1_CS_AS,UNSPECIFIED,,,NOT_EXECUTED,REPORTED,,"Target definition only; no execution evidence recorded"
+SQL2022-LINUX,16,,UNSPECIFIED,LINUX,160,SQL_Latin1_General_CP1_CS_AS,UNSPECIFIED,,,NOT_EXECUTED,REPORTED,,"Target definition only; no execution evidence recorded"

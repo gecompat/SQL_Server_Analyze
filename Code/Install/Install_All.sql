@@ -14,7 +14,6 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../01_Common/040_VW_AnalyseAccessCurrent.sql
 :r ../01_Common/050_USP_CheckAnalyseAccess.sql
 :r ../01_Common/060_VW_FrameworkFeatureCatalog.sql
-:r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
 :r ../01_Common/074_WaitTypeCatalog.sql
 :r ../01_Common/074a_WaitTypeCatalog_Seed_01.sql
 :r ../01_Common/074b_WaitTypeCatalog_Seed_02.sql
@@ -33,6 +32,7 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../01_Common/085_TVF_ParseBigintList.sql
 :r ../01_Common/086_TVF_ParseStringList.sql
 :r ../01_Common/087_TVF_StatementText.sql
+:r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
 :r ../02_CurrentState/010_USP_CurrentSessions.sql
 :r ../02_CurrentState/020_USP_CurrentRequests.sql
 :r ../02_CurrentState/030_USP_CurrentBlocking.sql
@@ -51,6 +51,7 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../03_ObjectIndex/050_USP_Partitions.sql
 :r ../03_ObjectIndex/060_USP_Columnstore.sql
 :r ../03_ObjectIndex/070_USP_IndexPhysicalStats.sql
+:r ../03_ObjectIndex/090_USP_SchemaDesignAnalysis.sql
 :r ../03_ObjectIndex/080_USP_ObjectAnalysis.sql
 :r ../04_PlanCache/010_USP_QueryStats.sql
 :r ../04_PlanCache/020_USP_QueryHashAnalysis.sql
@@ -65,6 +66,7 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../05_QueryStore/050_USP_QueryStoreRegressions.sql
 :r ../05_QueryStore/060_USP_QueryStoreForcedPlans.sql
 :r ../05_QueryStore/070_USP_QueryStoreHints.sql
+:r ../05_QueryStore/090_USP_IntelligentQueryProcessingAnalysis.sql
 :r ../05_QueryStore/080_USP_QueryStoreAnalysis.sql
 :r ../06_ExtendedEvents/010_USP_ExtendedEventsSessions.sql
 :r ../06_ExtendedEvents/020_USP_ExtendedEventsReadEvents.sql
@@ -80,6 +82,9 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../07_Infrastructure/060_USP_LogShippingStatus.sql
 :r ../07_Infrastructure/070_USP_ReplicationStatus.sql
 :r ../07_Infrastructure/080_USP_DataCaptureStatus.sql
+:r ../07_Infrastructure/100_USP_BackupChainAnalysis.sql
+:r ../07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql
+:r ../07_Infrastructure/120_USP_AgentMonitoringAnalysis.sql
 :r ../07_Infrastructure/090_USP_InfrastructureAnalysis.sql
 :r ../08_ServerHealth/010_USP_ServerCpuTopology.sql
 :r ../08_ServerHealth/020_USP_ServerNuma.sql
@@ -90,6 +95,13 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../08_ServerHealth/070_USP_StartupParameters.sql
 :r ../08_ServerHealth/080_USP_OSInformation.sql
 :r ../08_ServerHealth/090_USP_ServerSecurityConfiguration.sql
+:r ../08_ServerHealth/110_USP_DatabaseIntegrityAnalysis.sql
+:r ../08_ServerHealth/120_USP_DatabaseCapacityAnalysis.sql
+:r ../08_ServerHealth/130_USP_PerformanceCounters.sql
+:r ../08_ServerHealth/140_USP_CriticalEngineEvents.sql
+:r ../08_ServerHealth/150_USP_InternalContentionAnalysis.sql
+:r ../08_ServerHealth/160_USP_BufferPoolAnalysis.sql
+:r ../08_ServerHealth/170_USP_DiagnosticFindings.sql
 :r ../08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 :r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
 :r ../09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql

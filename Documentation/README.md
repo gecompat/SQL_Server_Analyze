@@ -18,13 +18,15 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 
 Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.
 
-Der Gesamtstand vom 17.07.2026 wurde nach Angabe des Projektverantwortlichen vollumfänglich real getestet; die dabei gefundenen Korrekturen sind Bestandteil der kanonischen SQL-Dateien.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.1` besitzt statische Verträge; reale Zielmatrixläufe sind noch zu dokumentieren.
 
 ## Forschungs- und Inventareinstieg
 
 - `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`
+- `Documentation/Architecture/Special_Case_Modules.md`
 - `Documentation/Research/Special_Case_Gap_Analysis.md`
 - `Metadata/Quality/Special_Case_Gap_Backlog.csv`
+- `Metadata/Quality/Special_Case_Release_Audit.json`
 - `Documentation/Research/System_Source_Catalog.md`
 - `Documentation/Quality/Performance_and_Risk_Assessment.md`
 - `Metadata/Inventory/SystemSources.csv`

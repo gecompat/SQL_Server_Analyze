@@ -1,0 +1,344 @@
+USE [DeineDatenbank];
+GO
+
+/*
+===============================================================================
+Objekt       : monitor.USP_PerformanceCounters
+Version      : 1.0.0
+Stand        : 2026-07-17
+Zweck        : Typisiert SQL-Server-Performance-Counter als Snapshot, Rate,
+               Fraction oder nicht automatisch interpretierbaren Rohwert.
+Datenquellen : sys.dm_os_performance_counters, sys.dm_os_sys_info.
+Grenzen      : Universelle Alarmgrenzen werden nicht behauptet. Rate-Counter
+               benötigen ein Sample; Counterreset wird als solcher markiert.
+Nebenwirkung : Optionales WAITFOR für 1 bis 60 Sekunden; keine Persistenz.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_PerformanceCounters]
+      @ObjectNames       nvarchar(max)  = NULL
+    , @CounterNames      nvarchar(max)  = NULL
+    , @SampleSeconds     tinyint         = 0
+    , @MaxZeilen         int             = 1000
+    , @ResultSetArt      varchar(16)     = 'CONSOLE'
+    , @JsonErzeugen      bit             = 0
+    , @Json              nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen    bit             = 1
+    , @Hilfe             bit             = 0
+    , @StatusCodeOut     varchar(40)     = NULL OUTPUT
+    , @IsPartialOut      bit             = NULL OUTPUT
+    , @ErrorNumberOut    int             = NULL OUTPUT
+    , @ErrorMessageOut   nvarchar(2048)  = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Json = NULL;
+
+    DECLARE @OutputMode varchar(16) =
+        UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @Limit bigint =
+        CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
+             THEN CONVERT(bigint, 9223372036854775807)
+             ELSE CONVERT(bigint, @MaxZeilen) END;
+
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_PerformanceCounters';
+        PRINT N'@ObjectNames und @CounterNames: optionale bracket-aware Pipe-Listen mit exakten Namen.';
+        PRINT N'@SampleSeconds=0 liefert Roh-Snapshots; 1..60 berechnet unterstützte Raten und Quotienten aus Deltas.';
+        PRINT N'Countertyp, Basiswert, Samplezeit und SQL-Startzeit werden immer mitgeführt.';
+        PRINT N'Nicht unterstützte cntr_type-Werte werden als RAW_UNINTERPRETED gekennzeichnet.';
+        RETURN;
+    END;
+
+    DECLARE @Now datetime2(3) = SYSUTCDATETIME();
+    DECLARE @SampleStartUtc datetime2(7) = SYSUTCDATETIME();
+    DECLARE @SampleEndUtc datetime2(7);
+    DECLARE @SqlServerStartTime datetime2(3);
+    DECLARE @StatusCode varchar(40) = 'AVAILABLE';
+    DECLARE @IsPartial bit = 0;
+    DECLARE @ErrorNumber int = NULL;
+    DECLARE @ErrorMessage nvarchar(2048) = NULL;
+    DECLARE @Delay char(8);
+
+    CREATE TABLE [#Before]
+    (
+          [ObjectName] nvarchar(128) NOT NULL
+        , [CounterName] nvarchar(128) NOT NULL
+        , [InstanceName] nvarchar(128) NOT NULL
+        , [CounterValue] bigint NOT NULL
+        , [CounterType] int NOT NULL
+        , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName])
+    );
+
+    CREATE TABLE [#After]
+    (
+          [ObjectName] nvarchar(128) NOT NULL
+        , [CounterName] nvarchar(128) NOT NULL
+        , [InstanceName] nvarchar(128) NOT NULL
+        , [CounterValue] bigint NOT NULL
+        , [CounterType] int NOT NULL
+        , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName])
+    );
+
+    CREATE TABLE [#Result]
+    (
+          [ObjectName] nvarchar(128) NOT NULL
+        , [CounterName] nvarchar(128) NOT NULL
+        , [InstanceName] nvarchar(128) NOT NULL
+        , [CounterType] int NOT NULL
+        , [Interpretation] varchar(40) NOT NULL
+        , [MetricValue] decimal(38,6) NULL
+        , [MetricUnit] varchar(40) NOT NULL
+        , [BeforeValue] bigint NULL
+        , [AfterValue] bigint NOT NULL
+        , [BaseBeforeValue] bigint NULL
+        , [BaseAfterValue] bigint NULL
+        , [DeltaValue] bigint NULL
+        , [BaseDeltaValue] bigint NULL
+        , [SampleSeconds] decimal(19,6) NULL
+        , [SqlServerStartTime] datetime2(3) NULL
+        , [FindingCode] varchar(80) NOT NULL
+    );
+
+    IF @MaxZeilen < 0
+       OR @SampleSeconds > 60
+       OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
+       OR (@ObjectNames IS NOT NULL AND EXISTS
+          (SELECT 1 FROM [monitor].[TVF_ParseStringList](@ObjectNames) WHERE [IsValid] = 0))
+       OR (@CounterNames IS NOT NULL AND EXISTS
+          (SELECT 1 FROM [monitor].[TVF_ParseStringList](@CounterNames) WHERE [IsValid] = 0))
+    BEGIN
+        SELECT @StatusCode = 'INVALID_PARAMETER',
+               @IsPartial = 1,
+               @ErrorMessage = N'Ungültige Listen-, Sample-, Zeilen- oder Ausgabeparameter.';
+    END;
+
+    SET LOCK_TIMEOUT 0;
+
+    IF @StatusCode = 'AVAILABLE'
+    BEGIN TRY
+        SELECT @SqlServerStartTime = TRY_CONVERT(datetime2(3), [sqlserver_start_time])
+        FROM [sys].[dm_os_sys_info];
+
+        INSERT [#Before]
+        SELECT RTRIM([object_name]), RTRIM([counter_name]), RTRIM([instance_name]), [cntr_value], [cntr_type]
+        FROM [sys].[dm_os_performance_counters]
+        WHERE
+            (@ObjectNames IS NULL OR EXISTS
+             (
+                 SELECT 1
+                 FROM [monitor].[TVF_ParseStringList](@ObjectNames) AS [o]
+                 WHERE [o].[IsValid] = 1
+                   AND [o].[StringValue] COLLATE SQL_Latin1_General_CP1_CS_AS
+                     = [object_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+             ))
+        AND (@CounterNames IS NULL OR EXISTS
+             (
+                 SELECT 1
+                 FROM [monitor].[TVF_ParseStringList](@CounterNames) AS [n]
+                 WHERE [n].[IsValid] = 1
+                   AND [n].[StringValue] COLLATE SQL_Latin1_General_CP1_CS_AS
+                     = [counter_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+             )
+             OR EXISTS
+             (
+                 SELECT 1
+                 FROM [monitor].[TVF_ParseStringList](@CounterNames) AS [n]
+                 WHERE [n].[IsValid] = 1
+                   AND CONCAT([n].[StringValue], N' base') COLLATE SQL_Latin1_General_CP1_CI_AS
+                     = RTRIM([counter_name]) COLLATE SQL_Latin1_General_CP1_CI_AS
+             ));
+
+        IF @SampleSeconds > 0
+        BEGIN
+            SET @Delay = CONVERT(char(8),
+                DATEADD(SECOND, @SampleSeconds, CONVERT(time(0), '00:00:00')), 108);
+            WAITFOR DELAY @Delay;
+        END;
+
+        SET @SampleEndUtc = SYSUTCDATETIME();
+
+        INSERT [#After]
+        SELECT RTRIM([p].[object_name]), RTRIM([p].[counter_name]), RTRIM([p].[instance_name]),
+               [p].[cntr_value], [p].[cntr_type]
+        FROM [sys].[dm_os_performance_counters] AS [p]
+        JOIN [#Before] AS [b]
+          ON [b].[ObjectName] = [p].[object_name]
+         AND [b].[CounterName] = [p].[counter_name]
+         AND [b].[InstanceName] = [p].[instance_name];
+
+        INSERT [#Result]
+        SELECT
+              [a].[ObjectName]
+            , [a].[CounterName]
+            , [a].[InstanceName]
+            , [a].[CounterType]
+            , CASE
+                  WHEN [a].[CounterType] = 65792 THEN 'RAW_SNAPSHOT'
+                  WHEN [a].[CounterType] IN (272696320, 272696576) THEN 'RATE_PER_SECOND'
+                  WHEN [a].[CounterType] = 537003264 THEN 'FRACTION_DELTA_PERCENT'
+                  WHEN [a].[CounterType] = 1073874176 THEN 'AVERAGE_DELTA_RATIO'
+                  ELSE 'RAW_UNINTERPRETED'
+              END
+            , CASE
+                  WHEN [a].[CounterType] = 65792
+                      THEN CONVERT(decimal(38,6), [a].[CounterValue])
+                  WHEN [a].[CounterType] IN (272696320, 272696576)
+                   AND @SampleSeconds > 0
+                   AND [a].[CounterValue] >= [b].[CounterValue]
+                      THEN CONVERT(decimal(38,6),
+                           ([a].[CounterValue] - [b].[CounterValue])
+                           / NULLIF(DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0, 0))
+                  WHEN [a].[CounterType] IN (272696320, 272696576)
+                      THEN NULL
+                  WHEN [a].[CounterType] = 537003264
+                   AND @SampleSeconds > 0
+                   AND [a].[CounterValue] >= [b].[CounterValue]
+                   AND [baseAfter].[CounterValue] > [baseBefore].[CounterValue]
+                      THEN CONVERT(decimal(38,6),
+                           100.0 * ([a].[CounterValue] - [b].[CounterValue])
+                           / ([baseAfter].[CounterValue] - [baseBefore].[CounterValue]))
+                  WHEN [a].[CounterType] = 1073874176
+                   AND @SampleSeconds > 0
+                   AND [a].[CounterValue] >= [b].[CounterValue]
+                   AND [baseAfter].[CounterValue] > [baseBefore].[CounterValue]
+                      THEN CONVERT(decimal(38,6),
+                           1.0 * ([a].[CounterValue] - [b].[CounterValue])
+                           / ([baseAfter].[CounterValue] - [baseBefore].[CounterValue]))
+                  WHEN [a].[CounterType] IN (537003264, 1073874176)
+                      THEN NULL
+                  ELSE CONVERT(decimal(38,6), [a].[CounterValue])
+              END
+            , CASE
+                  WHEN [a].[CounterType] IN (272696320, 272696576) THEN 'PER_SECOND'
+                  WHEN [a].[CounterType] = 537003264 THEN 'PERCENT'
+                  WHEN [a].[CounterType] = 1073874176 THEN 'AVERAGE'
+                  WHEN [a].[CounterType] = 65792 THEN 'RAW_VALUE'
+                  ELSE 'RAW_UNINTERPRETED'
+              END
+            , [b].[CounterValue]
+            , [a].[CounterValue]
+            , [baseBefore].[CounterValue]
+            , [baseAfter].[CounterValue]
+            , [a].[CounterValue] - [b].[CounterValue]
+            , [baseAfter].[CounterValue] - [baseBefore].[CounterValue]
+            , CONVERT(decimal(19,6),
+                DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0)
+            , @SqlServerStartTime
+            , CASE
+                  WHEN [a].[CounterType] IN (272696320, 272696576, 537003264, 1073874176)
+                   AND @SampleSeconds = 0 THEN 'SAMPLE_REQUIRED_FOR_DELTA_METRIC'
+                  WHEN [a].[CounterType] IN (272696320, 272696576, 537003264, 1073874176)
+                   AND [a].[CounterValue] < [b].[CounterValue] THEN 'COUNTER_RESET_DURING_SAMPLE'
+                  WHEN [a].[CounterType] IN (537003264, 1073874176)
+                   AND ([baseBefore].[CounterValue] IS NULL OR [baseAfter].[CounterValue] IS NULL)
+                      THEN 'BASE_COUNTER_MISSING'
+                  WHEN [a].[CounterType] IN (537003264, 1073874176)
+                   AND [baseAfter].[CounterValue] < [baseBefore].[CounterValue]
+                      THEN 'BASE_COUNTER_RESET_DURING_SAMPLE'
+                  WHEN [a].[CounterType] IN (537003264, 1073874176)
+                   AND [baseAfter].[CounterValue] = [baseBefore].[CounterValue]
+                      THEN 'BASE_COUNTER_DELTA_ZERO'
+                  WHEN [a].[CounterType] NOT IN
+                       (65792, 272696320, 272696576, 537003264, 1073874176)
+                      THEN 'COUNTER_TYPE_NOT_AUTOMATICALLY_INTERPRETED'
+                  ELSE 'VALUE_AVAILABLE'
+              END
+        FROM [#After] AS [a]
+        JOIN [#Before] AS [b]
+          ON [b].[ObjectName] = [a].[ObjectName]
+         AND [b].[CounterName] = [a].[CounterName]
+         AND [b].[InstanceName] = [a].[InstanceName]
+        LEFT JOIN [#Before] AS [baseBefore]
+          ON [baseBefore].[ObjectName] = [a].[ObjectName]
+         AND [baseBefore].[InstanceName] = [a].[InstanceName]
+         AND [baseBefore].[CounterName] COLLATE SQL_Latin1_General_CP1_CI_AS =
+             CONVERT(nvarchar(128), CONCAT(RTRIM([a].[CounterName]), N' base'))
+             COLLATE SQL_Latin1_General_CP1_CI_AS
+         AND [baseBefore].[CounterType] IN (1073939458, 1073939712)
+        LEFT JOIN [#After] AS [baseAfter]
+          ON [baseAfter].[ObjectName] = [a].[ObjectName]
+         AND [baseAfter].[InstanceName] = [a].[InstanceName]
+         AND [baseAfter].[CounterName] COLLATE SQL_Latin1_General_CP1_CI_AS =
+             CONVERT(nvarchar(128), CONCAT(RTRIM([a].[CounterName]), N' base'))
+             COLLATE SQL_Latin1_General_CP1_CI_AS
+         AND [baseAfter].[CounterType] IN (1073939458, 1073939712)
+        WHERE [a].[CounterType] NOT IN (1073939458, 1073939712);
+    END TRY
+    BEGIN CATCH
+        SELECT @StatusCode =
+                   CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300)
+                        THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+               @IsPartial = 1,
+               @ErrorNumber = ERROR_NUMBER(),
+               @ErrorMessage = ERROR_MESSAGE();
+    END CATCH;
+
+    SELECT @StatusCodeOut = @StatusCode,
+           @IsPartialOut = @IsPartial,
+           @ErrorNumberOut = @ErrorNumber,
+           @ErrorMessageOut = @ErrorMessage;
+
+    IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'
+        RAISERROR(N'USP_PerformanceCounters: %s', 10, 1, COALESCE(@ErrorMessage, @StatusCode)) WITH NOWAIT;
+
+    IF @OutputMode <> 'NONE'
+    BEGIN
+        SELECT CAST('1.0' AS varchar(16)) AS [ContractVersion], @Now AS [CollectionTimeUtc],
+               N'monitor.USP_PerformanceCounters' AS [ModuleName],
+               @StatusCode AS [StatusCode], @IsPartial AS [IsPartial],
+               @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
+               @SampleStartUtc AS [SampleStartUtc], @SampleEndUtc AS [SampleEndUtc],
+               @SqlServerStartTime AS [SqlServerStartTime];
+
+        IF @OutputMode = 'RAW'
+        BEGIN
+            SELECT TOP (@Limit) *
+            FROM [#Result]
+            ORDER BY [ObjectName], [CounterName], [InstanceName];
+        END
+        ELSE
+        BEGIN
+            SELECT TOP (@Limit)
+                  N'Performance Counter' AS [Ergebnis]
+                , [ObjectName] AS [Objekt]
+                , [CounterName] AS [Counter]
+                , [InstanceName] AS [Instanz]
+                , [MetricValue] AS [Wert]
+                , [MetricUnit] AS [Einheit]
+                , [Interpretation] AS [Interpretation]
+                , [CounterType] AS [Countertyp]
+                , [FindingCode] AS [Bewertung]
+                , [SampleSeconds] AS [Sample Sekunden]
+            FROM [#Result]
+            ORDER BY [ObjectName], [CounterName], [InstanceName];
+        END;
+    END;
+
+    IF @JsonErzeugen = 1
+    BEGIN
+        DECLARE @MetaJson nvarchar(max) =
+        (
+            SELECT N'PerformanceCounters' AS [resultName], 1 AS [schemaVersion],
+                   @Now AS [generatedAtUtc], @StatusCode AS [statusCode],
+                   @IsPartial AS [isPartial], @SampleStartUtc AS [sampleStartUtc],
+                   @SampleEndUtc AS [sampleEndUtc], @SqlServerStartTime AS [sqlServerStartTime],
+                   @ErrorNumber AS [errorNumber], @ErrorMessage AS [errorMessage]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+        );
+        DECLARE @CountersJson nvarchar(max) =
+        (
+            SELECT TOP (@Limit) *
+            FROM [#Result]
+            ORDER BY [ObjectName], [CounterName], [InstanceName]
+            FOR JSON PATH, INCLUDE_NULL_VALUES
+        );
+        SET @Json = CONCAT
+        (
+              N'{"meta":', COALESCE(@MetaJson, N'{}')
+            , N',"counters":', COALESCE(@CountersJson, N'[]')
+            , N',"warnings":[]}'
+        );
+    END;
+END;
+GO

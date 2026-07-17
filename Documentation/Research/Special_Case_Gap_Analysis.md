@@ -5,6 +5,8 @@
 **Zielplattform:** SQL Server 2019 und höher  
 **Bewertungsziel:** fehlende oder nur teilweise vorhandene Diagnoseauswertungen identifizieren, nach Nutzen, Risiko, Kosten und Bedingtheit priorisieren und als umsetzbaren Backlog beschreiben
 
+> Diese Datei ist die historische Entscheidungs- und Priorisierungsbasis des angegebenen Commits. Die danach umgesetzten P0-/P1-Punkte und ihr aktueller Status stehen in `Documentation/Architecture/Special_Case_Modules.md`, `Metadata/Quality/Special_Case_Gap_Backlog.csv` und `Metadata/Quality/Special_Case_Release_Audit.json`; die nachfolgenden Bestandszahlen und Formulierungen werden als damalige Evidenz nicht rückwirkend umgeschrieben.
+
 ## 1. Ergebnis in Kurzform
 
 Das Framework besitzt bereits eine ungewöhnlich breite Basis für zustandslose T-SQL-Diagnose: Live-Requests, Blocking, Waits, Transaktionen, Memory Grants, TempDB, I/O, Log, Objekt- und Indexdiagnose, Showplan, Query Store, Extended Events, Infrastruktur, Serverzustand und versionsadaptive Capability-Erkennung sind vorhanden.
@@ -687,4 +689,3 @@ Jedes neue Modul benötigt:
 - SQL Server First Responder Kit, Checks by Priority: https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit/blob/dev/Documentation/sp_Blitz_Checks_by_Priority.md
 
 Die Referenzkataloge wurden nur zum Funktionsvergleich herangezogen. Es wurde kein fremder Quellcode übernommen.
-

@@ -51,6 +51,8 @@ GO
 
 -- EXEC [monitor].[USP_ObjectAnalysis] @Hilfe = 1;
 
+-- EXEC [monitor].[USP_SchemaDesignAnalysis] @Hilfe = 1;
+
 -- EXEC [monitor].[USP_QueryStats] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_QueryHashAnalysis] @Hilfe = 1;
@@ -78,6 +80,8 @@ GO
 -- EXEC [monitor].[USP_QueryStoreHints] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_QueryStoreAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_ExtendedEventsSessions] @Hilfe = 1;
 
@@ -109,6 +113,12 @@ GO
 
 -- EXEC [monitor].[USP_InfrastructureAnalysis] @Hilfe = 1;
 
+-- EXEC [monitor].[USP_BackupChainAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_AvailabilityDeepAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe = 1;
+
 -- EXEC [monitor].[USP_ServerCpuTopology] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_ServerNuma] @Hilfe = 1;
@@ -128,6 +138,20 @@ GO
 -- EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_ServerHealthAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_DatabaseCapacityAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_PerformanceCounters] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_CriticalEngineEvents] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_InternalContentionAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_BufferPoolAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_DiagnosticFindings] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_ServerFeatureCapabilities] @Hilfe = 1;
 

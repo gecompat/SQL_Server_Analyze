@@ -1,0 +1,408 @@
+USE [DeineDatenbank];
+GO
+
+/*
+===============================================================================
+Objekt       : monitor.USP_DatabaseIntegrityAnalysis
+Version      : 1.0.0
+Stand        : 2026-07-17
+Zweck        : Korrelierte, rein lesende Integritätsevidenz je Datenbank.
+Datenquellen : master.sys.databases, DATABASEPROPERTYEX,
+               msdb.dbo.suspect_pages, msdb.dbo.backupset,
+               sys.dm_hadr_auto_page_repair und optional sys.dm_db_page_info.
+Grenzen      : Leere Indikatoren beweisen keine Integrität. Die Procedure führt
+               weder DBCC CHECKDB noch Restore, Reparatur oder Konfiguration aus.
+Kosten       : Metadaten LOW; gezielte Seitenauflösung MEDIUM und opt-in.
+===============================================================================
+*/
+CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseIntegrityAnalysis]
+      @DatabaseNames                nvarchar(max)  = N''
+    , @SystemdatenbankenEinbeziehen bit            = 0
+    , @DatabaseNamePattern          nvarchar(4000) = NULL
+    , @MaxDatenbanken               int            = 16
+    , @CheckdbWarnHours             int            = 168
+    , @BackupHistoryDays            int            = 35
+    , @MitPageDetails               bit            = 0
+    , @MaxZeilen                    int            = 1000
+    , @ResultSetArt                 varchar(16)    = 'CONSOLE'
+    , @JsonErzeugen                 bit            = 0
+    , @Json                         nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen               bit            = 1
+    , @Hilfe                        bit            = 0
+    , @StatusCodeOut                varchar(40)    = NULL OUTPUT
+    , @IsPartialOut                 bit            = NULL OUTPUT
+    , @ErrorNumberOut               int            = NULL OUTPUT
+    , @ErrorMessageOut              nvarchar(2048) = NULL OUTPUT
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET @Json = NULL;
+
+    DECLARE @OutputMode varchar(16) =
+        UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @Limit bigint =
+        CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
+             THEN CONVERT(bigint, 9223372036854775807)
+             ELSE CONVERT(bigint, @MaxZeilen) END;
+
+    IF @Hilfe = 1
+    BEGIN
+        PRINT N'monitor.USP_DatabaseIntegrityAnalysis';
+        PRINT N'Rein lesende Evidenz; führt niemals DBCC CHECKDB, Restore oder Reparatur aus.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N'''' = aktuelle DB; NULL = alle zulässigen DBs.';
+        PRINT N'@CheckdbWarnHours=168; @MitPageDetails=0 löst verdächtige Seiten nicht auf.';
+        PRINT N'@BackupHistoryDays=35 begrenzt die Backupmetadaten-Evidenz.';
+        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        RETURN;
+    END;
+
+    DECLARE @Now datetime2(3) = SYSUTCDATETIME();
+    DECLARE @StatusCode varchar(40) = 'AVAILABLE';
+    DECLARE @IsPartial bit = 0;
+    DECLARE @ErrorNumber int = NULL;
+    DECLARE @ErrorMessage nvarchar(2048) = NULL;
+    DECLARE @CrossDatabaseRequested bit = 0;
+
+    CREATE TABLE [#DatabaseCandidates]
+    (
+          [DatabaseId] int NOT NULL PRIMARY KEY
+        , [DatabaseName] sysname NOT NULL
+        , [StateDesc] nvarchar(60) NULL
+        , [UserAccessDesc] nvarchar(60) NULL
+        , [IsReadOnly] bit NULL
+        , [CompatibilityLevel] tinyint NULL
+        , [CollationName] sysname NULL
+        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [IsSystemDatabase] bit NULL
+        , [RequestedOrdinal] int NULL
+    );
+
+    CREATE TABLE [#DatabaseCandidateWarnings]
+    (
+          [RequestedName] sysname NULL
+        , [StatusCode] varchar(40) NOT NULL
+        , [ErrorMessage] nvarchar(2048) NULL
+    );
+
+    CREATE TABLE [#Suspect]
+    (
+          [DatabaseId] int NOT NULL
+        , [FileId] int NOT NULL
+        , [PageId] bigint NOT NULL
+        , [EventType] int NOT NULL
+        , [ErrorCount] int NULL
+        , [LastUpdateDate] datetime NULL
+    );
+
+    CREATE TABLE [#HadrRepair]
+    (
+          [DatabaseId] int NOT NULL
+        , [FileId] int NOT NULL
+        , [PageId] bigint NOT NULL
+        , [ErrorType] int NULL
+        , [PageStatus] int NULL
+        , [ModificationTime] datetime NULL
+    );
+
+    CREATE TABLE [#Integrity]
+    (
+          [DatabaseId] int NOT NULL
+        , [DatabaseName] sysname NOT NULL
+        , [StateDesc] nvarchar(60) NULL
+        , [PageVerifyOptionDesc] nvarchar(60) NULL
+        , [LastGoodCheckDbTime] datetime2(3) NULL
+        , [CheckdbAgeHours] bigint NULL
+        , [SuspectPageCount] bigint NOT NULL
+        , [LatestSuspectPageUtc] datetime NULL
+        , [DamagedBackupCount] bigint NOT NULL
+        , [BackupWithoutChecksumCount] bigint NOT NULL
+        , [HadrPageRepairCount] bigint NOT NULL
+        , [HadrPageRepairPendingCount] bigint NOT NULL
+        , [FindingCode] varchar(80) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) NOT NULL
+    );
+
+    CREATE TABLE [#PageDetails]
+    (
+          [DatabaseName] sysname NULL
+        , [FileId] int NULL
+        , [PageId] bigint NULL
+        , [EventType] int NULL
+        , [LastUpdateDate] datetime NULL
+        , [ObjectId] int NULL
+        , [IndexId] int NULL
+        , [PartitionId] bigint NULL
+        , [PageTypeDesc] nvarchar(64) NULL
+        , [AllocUnitTypeDesc] nvarchar(64) NULL
+    );
+
+    IF @MaxDatenbanken < 0
+       OR @CheckdbWarnHours < 1
+       OR @BackupHistoryDays < 1
+       OR @BackupHistoryDays > 3650
+       OR @MaxZeilen < 0
+       OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
+    BEGIN
+        SELECT @StatusCode = 'INVALID_PARAMETER',
+               @IsPartial = 1,
+               @ErrorMessage = N'Ungültige Datenbank-, Zeit-, Zeilen- oder Ausgabeparameter.';
+    END;
+
+    IF @StatusCode = 'AVAILABLE'
+    BEGIN
+        EXEC [monitor].[USP_PrepareDatabaseCandidates]
+              @DatabaseNames = @DatabaseNames
+            , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
+            , @DatabaseNamePattern = @DatabaseNamePattern
+            , @MaxDatenbanken = @MaxDatenbanken
+            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @StatusCode = @StatusCode OUTPUT
+            , @ErrorMessage = @ErrorMessage OUTPUT
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+    END;
+
+    SET LOCK_TIMEOUT 0;
+
+    IF @StatusCode = 'AVAILABLE'
+    BEGIN
+        BEGIN TRY
+            INSERT [#Suspect]
+            (
+                  [DatabaseId], [FileId], [PageId], [EventType]
+                , [ErrorCount], [LastUpdateDate]
+            )
+            SELECT
+                  [sp].[database_id], [sp].[file_id], [sp].[page_id]
+                , [sp].[event_type], [sp].[error_count], [sp].[last_update_date]
+            FROM [msdb].[dbo].[suspect_pages] AS [sp] WITH (NOLOCK)
+            JOIN [#DatabaseCandidates] AS [c]
+              ON [c].[DatabaseId] = [sp].[database_id];
+        END TRY
+        BEGIN CATCH
+            SELECT @IsPartial = 1,
+                   @ErrorNumber = ERROR_NUMBER(),
+                   @ErrorMessage = CONCAT(N'suspect_pages nicht lesbar: ', ERROR_MESSAGE());
+        END CATCH;
+
+        BEGIN TRY
+            INSERT [#HadrRepair]
+            (
+                  [DatabaseId], [FileId], [PageId], [ErrorType]
+                , [PageStatus], [ModificationTime]
+            )
+            SELECT
+                  [r].[database_id], [r].[file_id], [r].[page_id]
+                , [r].[error_type], [r].[page_status], [r].[modification_time]
+            FROM [sys].[dm_hadr_auto_page_repair] AS [r]
+            JOIN [#DatabaseCandidates] AS [c]
+              ON [c].[DatabaseId] = [r].[database_id];
+        END TRY
+        BEGIN CATCH
+            SET @IsPartial = 1;
+            IF @ErrorNumber IS NULL
+            BEGIN
+                SELECT @ErrorNumber = ERROR_NUMBER(),
+                       @ErrorMessage = CONCAT(N'HADR-Seitenreparaturstatus nicht lesbar: ', ERROR_MESSAGE());
+            END;
+        END CATCH;
+
+        BEGIN TRY
+            ;WITH [BackupEvidence] AS
+            (
+                SELECT
+                      [bs].[database_name]
+                    , SUM(CONVERT(bigint, CASE WHEN [bs].[is_damaged] = 1 THEN 1 ELSE 0 END)) AS [DamagedCount]
+                    , SUM(CONVERT(bigint, CASE WHEN COALESCE([bs].[has_backup_checksums], 0) = 0 THEN 1 ELSE 0 END)) AS [NoChecksumCount]
+                FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
+                JOIN [#DatabaseCandidates] AS [c]
+                  ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
+                   = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                WHERE [bs].[backup_finish_date] >= DATEADD(DAY, -@BackupHistoryDays, GETDATE())
+                GROUP BY [bs].[database_name]
+            ),
+            [SuspectEvidence] AS
+            (
+                SELECT [DatabaseId], COUNT_BIG(*) AS [PageCount],
+                       MAX([LastUpdateDate]) AS [LatestDate]
+                FROM [#Suspect]
+                GROUP BY [DatabaseId]
+            ),
+            [RepairEvidence] AS
+            (
+                SELECT [DatabaseId], COUNT_BIG(*) AS [RepairCount],
+                       SUM(CONVERT(bigint, CASE WHEN [PageStatus] <> 5 THEN 1 ELSE 0 END)) AS [PendingCount]
+                FROM [#HadrRepair]
+                GROUP BY [DatabaseId]
+            )
+            INSERT [#Integrity]
+            SELECT
+                  [c].[DatabaseId]
+                , [c].[DatabaseName]
+                , [c].[StateDesc]
+                , [d].[page_verify_option_desc]
+                , TRY_CONVERT(datetime2(3), DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime'))
+                , DATEDIFF(HOUR,
+                    TRY_CONVERT(datetime2(3), DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime')),
+                    @Now)
+                , COALESCE([s].[PageCount], 0)
+                , [s].[LatestDate]
+                , COALESCE([b].[DamagedCount], 0)
+                , COALESCE([b].[NoChecksumCount], 0)
+                , COALESCE([r].[RepairCount], 0)
+                , COALESCE([r].[PendingCount], 0)
+                , CASE
+                      WHEN COALESCE([s].[PageCount], 0) > 0 THEN 'SUSPECT_PAGES_PRESENT'
+                      WHEN COALESCE([b].[DamagedCount], 0) > 0 THEN 'DAMAGED_BACKUP_METADATA'
+                      WHEN COALESCE([r].[PendingCount], 0) > 0 THEN 'HADR_PAGE_REPAIR_PENDING'
+                      WHEN [d].[page_verify_option_desc] <> N'CHECKSUM' THEN 'PAGE_VERIFY_NOT_CHECKSUM'
+                      WHEN DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime') IS NULL THEN 'CHECKDB_EVIDENCE_MISSING'
+                      WHEN DATEDIFF(HOUR,
+                           TRY_CONVERT(datetime2(3), DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime')),
+                           @Now) > @CheckdbWarnHours THEN 'CHECKDB_EVIDENCE_OLD'
+                      WHEN COALESCE([b].[NoChecksumCount], 0) > 0 THEN 'BACKUP_WITHOUT_CHECKSUM_IN_VISIBLE_HISTORY'
+                      ELSE 'NO_INDICATOR_FOUND'
+                  END
+                , CONCAT(N'Diese Metadaten sind Indizien; Backupmetadaten-Sichtfenster ', @BackupHistoryDays,
+                         N' Tage. Auch NO_INDICATOR_FOUND beweist weder logische noch physische Integrität.')
+            FROM [#DatabaseCandidates] AS [c]
+            JOIN [master].[sys].[databases] AS [d]
+              ON [d].[database_id] = [c].[DatabaseId]
+            LEFT JOIN [BackupEvidence] AS [b]
+              ON [b].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+               = [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
+            LEFT JOIN [SuspectEvidence] AS [s]
+              ON [s].[DatabaseId] = [c].[DatabaseId]
+            LEFT JOIN [RepairEvidence] AS [r]
+              ON [r].[DatabaseId] = [c].[DatabaseId];
+        END TRY
+        BEGIN CATCH
+            SELECT @StatusCode =
+                       CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300)
+                            THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+                   @IsPartial = 1,
+                   @ErrorNumber = ERROR_NUMBER(),
+                   @ErrorMessage = ERROR_MESSAGE();
+        END CATCH;
+    END;
+
+    IF @StatusCode = 'AVAILABLE' AND @MitPageDetails = 1
+    BEGIN
+        BEGIN TRY
+            INSERT [#PageDetails]
+            SELECT TOP (@Limit)
+                  [c].[DatabaseName]
+                , [s].[FileId]
+                , [s].[PageId]
+                , [s].[EventType]
+                , [s].[LastUpdateDate]
+                , [p].[object_id]
+                , [p].[index_id]
+                , [p].[partition_id]
+                , [p].[page_type_desc]
+                , [p].[alloc_unit_type_desc]
+            FROM [#Suspect] AS [s]
+            JOIN [#DatabaseCandidates] AS [c]
+              ON [c].[DatabaseId] = [s].[DatabaseId]
+            OUTER APPLY [sys].[dm_db_page_info]
+            (
+                  [s].[DatabaseId], [s].[FileId], [s].[PageId], 'LIMITED'
+            ) AS [p]
+            ORDER BY [s].[LastUpdateDate] DESC, [s].[DatabaseId], [s].[FileId], [s].[PageId];
+        END TRY
+        BEGIN CATCH
+            SET @IsPartial = 1;
+            IF @ErrorNumber IS NULL
+            BEGIN
+                SELECT @ErrorNumber = ERROR_NUMBER(),
+                       @ErrorMessage = CONCAT(N'Seitenmetadaten nicht lesbar: ', ERROR_MESSAGE());
+            END;
+        END CATCH;
+    END;
+
+    IF @StatusCode = 'AVAILABLE'
+       AND (@IsPartial = 1 OR EXISTS (SELECT 1 FROM [#DatabaseCandidateWarnings]))
+        SET @StatusCode = 'AVAILABLE_LIMITED';
+    ELSE IF @StatusCode = 'AVAILABLE'
+        AND EXISTS (SELECT 1 FROM [#Integrity] WHERE [FindingCode] <> 'NO_INDICATOR_FOUND')
+        SET @StatusCode = 'AVAILABLE_WITH_FINDING';
+
+    SELECT @StatusCodeOut = @StatusCode,
+           @IsPartialOut = @IsPartial,
+           @ErrorNumberOut = @ErrorNumber,
+           @ErrorMessageOut = @ErrorMessage;
+
+    IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'
+        RAISERROR(N'USP_DatabaseIntegrityAnalysis: %s', 10, 1, COALESCE(@ErrorMessage, @StatusCode)) WITH NOWAIT;
+
+    IF @OutputMode <> 'NONE'
+    BEGIN
+        SELECT
+              CAST('1.0' AS varchar(16)) AS [ContractVersion]
+            , @Now AS [CollectionTimeUtc]
+            , N'monitor.USP_DatabaseIntegrityAnalysis' AS [ModuleName]
+            , @StatusCode AS [StatusCode]
+            , @IsPartial AS [IsPartial]
+            , @ErrorNumber AS [ErrorNumber]
+            , @ErrorMessage AS [ErrorMessage];
+
+        IF @OutputMode = 'RAW'
+        BEGIN
+            SELECT * FROM [#Integrity]
+            ORDER BY CASE WHEN [FindingCode] = 'NO_INDICATOR_FOUND' THEN 1 ELSE 0 END,
+                     [DatabaseName];
+            SELECT * FROM [#PageDetails]
+            ORDER BY [LastUpdateDate] DESC, [DatabaseName], [FileId], [PageId];
+            SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+        END
+        ELSE
+        BEGIN
+            SELECT
+                  N'Integritätsevidenz' AS [Ergebnis]
+                , [DatabaseName] AS [Datenbank]
+                , [FindingCode] AS [Bewertung]
+                , [PageVerifyOptionDesc] AS [Page Verify]
+                , [LastGoodCheckDbTime] AS [Letzter erfolgreicher CHECKDB-Nachweis]
+                , [CheckdbAgeHours] AS [Nachweisalter Stunden]
+                , [SuspectPageCount] AS [Verdächtige Seiten]
+                , [DamagedBackupCount] AS [Beschädigte Backupmetadaten]
+                , [BackupWithoutChecksumCount] AS [Backups ohne Checksum]
+                , [HadrPageRepairPendingCount] AS [Offene HADR-Seitenreparaturen]
+                , [EvidenceLimit] AS [Aussagegrenze]
+            FROM [#Integrity]
+            ORDER BY CASE WHEN [FindingCode] = 'NO_INDICATOR_FOUND' THEN 1 ELSE 0 END,
+                     [DatabaseName];
+
+            SELECT N'Seitenmetadaten' AS [Ergebnis], [p].*
+            FROM [#PageDetails] AS [p]
+            ORDER BY [LastUpdateDate] DESC, [DatabaseName], [FileId], [PageId];
+        END;
+    END;
+
+    IF @JsonErzeugen = 1
+    BEGIN
+        DECLARE @MetaJson nvarchar(max) =
+        (
+            SELECT N'DatabaseIntegrityAnalysis' AS [resultName], 1 AS [schemaVersion],
+                   @Now AS [generatedAtUtc], @StatusCode AS [statusCode],
+                   @IsPartial AS [isPartial], @ErrorNumber AS [errorNumber],
+                   @ErrorMessage AS [errorMessage]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
+        );
+        DECLARE @IntegrityJson nvarchar(max) =
+            (SELECT * FROM [#Integrity] ORDER BY [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @PagesJson nvarchar(max) =
+            (SELECT * FROM [#PageDetails] ORDER BY [LastUpdateDate] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @WarningsJson nvarchar(max) =
+            (SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+
+        SET @Json = CONCAT
+        (
+              N'{"meta":', COALESCE(@MetaJson, N'{}')
+            , N',"integrity":', COALESCE(@IntegrityJson, N'[]')
+            , N',"pageDetails":', COALESCE(@PagesJson, N'[]')
+            , N',"warnings":', COALESCE(@WarningsJson, N'[]')
+            , N'}'
+        );
+    END;
+END;
+GO

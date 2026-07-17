@@ -4,14 +4,25 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$sourceDirectories = @(
-    "Code/00_Setup", "Code/01_Common", "Code/02_CurrentState", "Code/03_ObjectIndex",
-    "Code/04_PlanCache", "Code/05_QueryStore", "Code/06_ExtendedEvents",
-    "Code/07_Infrastructure", "Code/08_ServerHealth", "Code/09_VersionAdaptive"
+$sqlCmdInstaller = Join-Path $PSScriptRoot "Install_All.sql"
+$includePattern = '(?m)^\s*:r\s+(.+?)\s*$'
+$includeMatches = [Text.RegularExpressions.Regex]::Matches(
+    [IO.File]::ReadAllText($sqlCmdInstaller, [Text.Encoding]::UTF8),
+    $includePattern
 )
 
-$files = foreach ($directory in $sourceDirectories) {
-    Get-ChildItem -Path (Join-Path $RepositoryRoot $directory) -Filter "*.sql" -File | Sort-Object Name
+if ($includeMatches.Count -eq 0) {
+    throw "Install_All.sql enthält keine SQLCMD-Includes."
+}
+
+$files = foreach ($includeMatch in $includeMatches) {
+    $includePath = $includeMatch.Groups[1].Value.Trim().Trim('"')
+    Get-Item -LiteralPath (Join-Path $PSScriptRoot $includePath)
+}
+
+$duplicateFiles = $files | Group-Object FullName | Where-Object Count -gt 1
+if ($duplicateFiles) {
+    throw "Install_All.sql enthält doppelte SQLCMD-Includes."
 }
 
 $builder = [System.Text.StringBuilder]::new()

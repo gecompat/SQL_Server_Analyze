@@ -1,0 +1,83 @@
+{
+  "release": "1.1.0-special.1",
+  "generatedAtUtc": "2026-07-17T12:30:42Z",
+  "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
+  "scope": "special-case module wave and repository integration",
+  "inventory": {
+    "repositoryFiles": 162,
+    "canonicalSqlSources": 98,
+    "sqlFilesIncludingTestsAndExamples": 113,
+    "objects": 90,
+    "procedures": 75,
+    "functions": 10,
+    "views": 5,
+    "procedureParameters": 1133,
+    "systemSources": 160
+  },
+  "staticChecks": {
+    "sqlLexicalBalance": {
+      "status": "PASS",
+      "filesChecked": 113,
+      "issues": []
+    },
+    "namedProcedureCalls": {
+      "status": "PASS",
+      "procedureCallsChecked": 173,
+      "namedArgumentsChecked": 1210,
+      "unknownProcedures": [],
+      "unknownNamedArguments": []
+    },
+    "installer": {
+      "status": "PASS",
+      "canonicalSources": 98,
+      "includes": 98,
+      "missing": [],
+      "extra": [],
+      "duplicates": [],
+      "forwardObjectReferences": []
+    },
+    "objectInventory": {
+      "status": "PASS",
+      "sourceObjects": 90,
+      "inventoryObjects": 90,
+      "differences": []
+    },
+    "parameterInventory": {
+      "status": "PASS",
+      "sourceProcedures": 75,
+      "inventoryRows": 1133,
+      "nameOrOrderDifferences": []
+    },
+    "systemSourceInventory": {
+      "status": "PASS",
+      "inventoryRows": 160,
+      "missingSourceModuleMappings": []
+    },
+    "repositoryPrivacyGate": {
+      "status": "PASS",
+      "realEmailFindings": 0,
+      "ipAddressFindings": 0,
+      "nonSyntheticGuidFindings": 0,
+      "uncPathFindings": 0,
+      "userProfilePathFindings": 0,
+      "credentialAssignmentFindings": 0,
+      "connectionSecretFindings": 0,
+      "nonGenericUseDatabaseFindings": 0,
+      "publicReferenceHostsReviewed": true,
+      "note": "The gate applies to repository and downloadable artifacts only; runtime resultsets and OUTPUT values are unchanged."
+    }
+  },
+  "testDocumentation": {
+    "targetRows": 4,
+    "targetRowsNotExecuted": 4,
+    "specialCaseRows": 49,
+    "specialCaseRowsNotExecuted": 49,
+    "runtimeStatus": "NOT_EXECUTED",
+    "claim": "No installation, compilation, smoke, functional, permission, load or cross-version runtime execution is claimed for this release wave."
+  },
+  "runtimeLimitations": [
+    "No SQL Server endpoint or sqlcmd runtime was available in the implementation environment.",
+    "PowerShell was unavailable, so the standalone installer build was inspected statically but not executed.",
+    "The earlier project-owner report applies only to the baseline before this special-case wave."
+  ]
+}

@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_InfrastructureAnalysis
-Version      : 2.0.0
-Stand        : 2026-07-15
+Version      : 2.1.0
+Stand        : 2026-07-17
 Typ          : Stored Procedure
 Zweck        : Orchestriert die Phase-6-Module fehlertolerant.
 SQL-Version  : SQL Server 2019 oder neuer.
@@ -17,7 +17,9 @@ JSON         : meta und benannte Modulobjekte agent, agentJobs,
                resourceGovernor, availabilityGroups, backupRecovery,
                logShipping, replication, dataCapture sowie warnings.
 Berechtigung : Das Framework vergibt keine Rechte und ändert keine Konfiguration.
-Änderungen   : 2.0.0 - @AlleDatenbanken entfernt; einheitlicher Datenbankscope,
+Änderungen   : 2.1.0 - Backupketten, tiefe AG- und Agent-Monitoring-Evidenz
+                         als opt-in Teilmodule ergänzt.
+               2.0.0 - @AlleDatenbanken entfernt; einheitlicher Datenbankscope,
                          Ausgabeadapter und JSON-Orchestrierung.
                1.2.0 - @MaxDatenbanken für Data-Capture-Scope ergänzt.
 ===============================================================================
@@ -32,6 +34,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InfrastructureAnalysis]
     , @MitReplication                 bit            = 1
     , @MitDataCapture                 bit            = 1
     , @MitReplicationDetails          bit            = 0
+    , @MitBackupChain                 bit            = 0
+    , @MitAvailabilityDeep            bit            = 0
+    , @MitAgentMonitoring             bit            = 0
     , @DatabaseNames                  nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen   bit            = 0
     , @DatabaseNamePattern            nvarchar(4000) = NULL
@@ -54,7 +59,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_InfrastructureAnalysis';
-        PRINT N'Modulschalter: @MitAgent, @MitAgentJobs, @MitResourceGovernor, @MitAvailabilityGroups, @MitBackupRecovery, @MitLogShipping, @MitReplication und @MitDataCapture.';
+        PRINT N'Modulschalter: bestehende Module sowie opt-in @MitBackupChain, @MitAvailabilityDeep und @MitAgentMonitoring.';
         PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
         PRINT N'@DatabaseNamePattern: alternatives LIKE-/Regex-Pattern; exakte Liste und Pattern sind gegenseitig exklusiv.';
         PRINT N'@MaxDatenbanken und @MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig.';
@@ -78,6 +83,13 @@ BEGIN
     DECLARE @LogShippingJson nvarchar(max) = NULL;
     DECLARE @ReplicationJson nvarchar(max) = NULL;
     DECLARE @DataCaptureJson nvarchar(max) = NULL;
+    DECLARE @BackupChainJson nvarchar(max) = NULL;
+    DECLARE @AvailabilityDeepJson nvarchar(max) = NULL;
+    DECLARE @AgentMonitoringJson nvarchar(max) = NULL;
+    DECLARE @ChildStatus varchar(40) = NULL;
+    DECLARE @ChildPartial bit = NULL;
+    DECLARE @ChildErrorNumber int = NULL;
+    DECLARE @ChildErrorMessage nvarchar(2048) = NULL;
 
     IF @MaxDatenbanken < 0
        OR @MaxZeilen < 0
@@ -214,13 +226,79 @@ BEGIN
         BEGIN CATCH
             INSERT [#ModuleStatus] VALUES (N'USP_DataCaptureStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
+
+        IF @MitBackupChain = 1
+        BEGIN TRY
+            SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+            EXEC [monitor].[USP_BackupChainAnalysis]
+                  @DatabaseNames = @DatabaseNames
+                , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
+                , @DatabaseNamePattern = @DatabaseNamePattern
+                , @MaxDatenbanken = @MaxDatenbanken
+                , @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @ResultSetArtNormalisiert
+                , @JsonErzeugen = @JsonErzeugen
+                , @Json = @BackupChainJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
+                , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+            INSERT [#ModuleStatus] VALUES
+            (N'USP_BackupChainAnalysis', COALESCE(@ChildStatus, 'ERROR_HANDLED'), @ChildErrorNumber, @ChildErrorMessage);
+        END TRY
+        BEGIN CATCH
+            INSERT [#ModuleStatus] VALUES (N'USP_BackupChainAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+        END CATCH;
+
+        IF @MitAvailabilityDeep = 1
+        BEGIN TRY
+            SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+            EXEC [monitor].[USP_AvailabilityDeepAnalysis]
+                  @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @ResultSetArtNormalisiert
+                , @JsonErzeugen = @JsonErzeugen
+                , @Json = @AvailabilityDeepJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
+                , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+            INSERT [#ModuleStatus] VALUES
+            (N'USP_AvailabilityDeepAnalysis', COALESCE(@ChildStatus, 'ERROR_HANDLED'), @ChildErrorNumber, @ChildErrorMessage);
+        END TRY
+        BEGIN CATCH
+            INSERT [#ModuleStatus] VALUES (N'USP_AvailabilityDeepAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+        END CATCH;
+
+        IF @MitAgentMonitoring = 1
+        BEGIN TRY
+            SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
+            EXEC [monitor].[USP_AgentMonitoringAnalysis]
+                  @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @ResultSetArtNormalisiert
+                , @JsonErzeugen = @JsonErzeugen
+                , @Json = @AgentMonitoringJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
+                , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
+            INSERT [#ModuleStatus] VALUES
+            (N'USP_AgentMonitoringAnalysis', COALESCE(@ChildStatus, 'ERROR_HANDLED'), @ChildErrorNumber, @ChildErrorMessage);
+        END TRY
+        BEGIN CATCH
+            INSERT [#ModuleStatus] VALUES (N'USP_AgentMonitoringAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+        END CATCH;
     END;
 
     DECLARE @OverallStatus varchar(40) =
-        CASE WHEN EXISTS (SELECT 1 FROM [#ModuleStatus] WHERE [StatusCode] IN ('INVALID_PARAMETER', 'ERROR_HANDLED'))
-             THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END;
+        CASE WHEN EXISTS
+                  (SELECT 1 FROM [#ModuleStatus]
+                   WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
+             THEN 'AVAILABLE_LIMITED'
+             WHEN EXISTS (SELECT 1 FROM [#ModuleStatus] WHERE [StatusCode] = 'AVAILABLE_WITH_FINDING')
+             THEN 'AVAILABLE_WITH_FINDING'
+             ELSE 'AVAILABLE' END;
     DECLARE @IsPartial bit = CONVERT(bit,
-        CASE WHEN EXISTS (SELECT 1 FROM [#ModuleStatus] WHERE [StatusCode] <> 'EXECUTED') THEN 1 ELSE 0 END);
+        CASE WHEN EXISTS
+             (SELECT 1 FROM [#ModuleStatus]
+              WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
+             THEN 1 ELSE 0 END);
 
     IF @ResultSetArtNormalisiert <> 'NONE'
     BEGIN
@@ -230,7 +308,8 @@ BEGIN
             , @OverallStatus AS [StatusCode]
             , @IsPartial AS [IsPartial]
             , CONVERT(bigint, (SELECT COUNT_BIG(*) FROM [#ModuleStatus])) AS [ModuleCount]
-            , CONVERT(bigint, (SELECT COUNT_BIG(*) FROM [#ModuleStatus] WHERE [StatusCode] <> 'EXECUTED')) AS [ProblemModuleCount];
+            , CONVERT(bigint, (SELECT COUNT_BIG(*) FROM [#ModuleStatus]
+                               WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))) AS [ProblemModuleCount];
 
         IF @ResultSetArtNormalisiert = 'RAW'
         BEGIN
@@ -266,7 +345,9 @@ BEGIN
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @WarningsJson nvarchar(max) =
-            (SELECT * FROM [#ModuleStatus] WHERE [StatusCode] <> 'EXECUTED' ORDER BY [ModuleName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#ModuleStatus]
+             WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE')
+             ORDER BY [ModuleName] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
         (
@@ -279,6 +360,9 @@ BEGIN
             , N',"logShipping":', COALESCE(JSON_QUERY(@LogShippingJson), N'null')
             , N',"replication":', COALESCE(JSON_QUERY(@ReplicationJson), N'null')
             , N',"dataCapture":', COALESCE(JSON_QUERY(@DataCaptureJson), N'null')
+            , N',"backupChain":', COALESCE(JSON_QUERY(@BackupChainJson), N'null')
+            , N',"availabilityDeep":', COALESCE(JSON_QUERY(@AvailabilityDeepJson), N'null')
+            , N',"agentMonitoring":', COALESCE(JSON_QUERY(@AgentMonitoringJson), N'null')
             , N',"warnings":', COALESCE(@WarningsJson, N'[]')
             , N'}'
         );
