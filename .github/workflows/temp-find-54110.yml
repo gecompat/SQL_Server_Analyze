@@ -18,17 +18,17 @@ jobs:
         with:
           ref: agent/validate-sqlserver-2022-linux-gate
 
-      - name: Locate error code
+      - name: Locate message
         shell: bash
         run: |
           set -euo pipefail
-          grep -R -n -C 4 '54110' Code > /tmp/error-54110-location.txt
-          cat /tmp/error-54110-location.txt
+          grep -R -n -C 6 'Service-Broker-Analyse' Code > /tmp/service-broker-contract-location.txt
+          cat /tmp/service-broker-contract-location.txt
 
       - name: Upload location
         uses: actions/upload-artifact@v7
         with:
-          name: error-54110-location
-          path: /tmp/error-54110-location.txt
+          name: service-broker-contract-location
+          path: /tmp/service-broker-contract-location.txt
           if-no-files-found: error
           retention-days: 1
