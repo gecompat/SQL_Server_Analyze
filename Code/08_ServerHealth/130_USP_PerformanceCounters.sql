@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PerformanceCounters
-Version      : 1.0.1
+Version      : 1.0.2
 Stand        : 2026-07-18
 Zweck        : Typisiert SQL-Server-Performance-Counter als Snapshot, Rate,
                Fraction oder nicht automatisch interpretierbaren Rohwert.
@@ -272,6 +272,13 @@ BEGIN
              COLLATE SQL_Latin1_General_CP1_CI_AS
          AND [baseAfter].[CounterType] IN (1073939458, 1073939712)
         WHERE [a].[CounterType] NOT IN (1073939458, 1073939712);
+
+        IF NOT EXISTS (SELECT 1 FROM [#Result])
+        BEGIN
+            SELECT @StatusCode = 'UNAVAILABLE_OBJECT',
+                   @IsPartial = 1,
+                   @ErrorMessage = N'Es stehen keine auswertbaren Performance-Counter-Zeilen bereit.';
+        END;
     END TRY
     BEGIN CATCH
         SELECT @StatusCode =
