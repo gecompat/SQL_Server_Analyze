@@ -14,6 +14,7 @@ Nebenwirkung : Die eingebundenen Tests verwenden ausschließlich synthetische,
                SQL-Fehler endet der Runner.
 Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
                Übernahme in Repositoryartefakte ist separat zu prüfen.
+Evidenz      : Versionsworkflows veröffentlichen commitbezogene Statuskontexte.
 ===============================================================================
 */
 
