@@ -20,6 +20,7 @@ DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@E
 DECLARE @OriginalCompatibilityLevel int=
     (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=DB_ID());
 DECLARE @DatabaseName sysname=DB_NAME();
+DECLARE @AlterCompatibilitySql nvarchar(max);
 DECLARE @Impersonating bit=0;
 
 /* FIND-CORE und FIND-OPTOUT: ein Kernmodul, optionale teure Module bleiben per Default aus. */
@@ -33,7 +34,7 @@ EXEC [monitor].[USP_DiagnosticFindings]
      @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
 
 IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE_WITH_FINDING','AVAILABLE_LIMITED')
-   OR TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.totalFindingCount'))<1
+   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.totalFindingCount')),0)<1
    OR NOT EXISTS
       (
           SELECT 1
@@ -128,7 +129,8 @@ INSERT @ExecutedCases VALUES('FIND-PARTIAL');
 
 /* FIND-COMPAT: niedrige Compatibility verhindert OPENJSON-Aggregation ohne Child-Aufrufe. */
 BEGIN TRY
-    EXEC(N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = 120;');
+    SET @AlterCompatibilitySql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = 120;';
+    EXEC [sys].[sp_executesql] @AlterCompatibilitySql;
 
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
     EXEC [monitor].[USP_DiagnosticFindings]
@@ -140,7 +142,9 @@ BEGIN TRY
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
          @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
 
-    EXEC(N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = '+CONVERT(nvarchar(10),@OriginalCompatibilityLevel)+N';');
+    SET @AlterCompatibilitySql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = '
+                               +CONVERT(nvarchar(10),@OriginalCompatibilityLevel)+N';';
+    EXEC [sys].[sp_executesql] @AlterCompatibilitySql;
 
     IF ISJSON(@Json)<>1 OR @Status<>'UNAVAILABLE_FEATURE' OR @Partial<>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.modules'))<>0
@@ -150,7 +154,11 @@ END TRY
 BEGIN CATCH
     BEGIN TRY
         IF (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=DB_ID())<>@OriginalCompatibilityLevel
-            EXEC(N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = '+CONVERT(nvarchar(10),@OriginalCompatibilityLevel)+N';');
+        BEGIN
+            SET @AlterCompatibilitySql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = '
+                                       +CONVERT(nvarchar(10),@OriginalCompatibilityLevel)+N';';
+            EXEC [sys].[sp_executesql] @AlterCompatibilitySql;
+        END;
     END TRY
     BEGIN CATCH
     END CATCH;
