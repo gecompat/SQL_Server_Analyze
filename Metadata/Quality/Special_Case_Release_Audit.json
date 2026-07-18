@@ -1,8 +1,8 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T08:20:00Z",
-  "status": "ACTIONS_PENDING",
-  "scope": "green commit-specific 15-suite evidence for all P0 and first-four P1 IQP cases plus a sixteenth P1 contention suite pending SQL Server 2019, 2022 and 2025 Actions",
+  "generatedAtUtc": "2026-07-18T09:00:00Z",
+  "status": "ACTIONS_PASS",
+  "scope": "green commit-specific 16-suite SQL Server 2019, 2022 and 2025 evidence for all P0, first-four P1 IQP and four P1 contention cases",
   "inventory": {
     "repositoryFiles": 328,
     "canonicalSqlSources": 109,
@@ -173,10 +173,10 @@
       "remainingControlledRestartCase": null,
       "pendingActionsCase": null,
       "runtimeDataPersisted": false,
-      "validatedCommit": "0efeb1877ffa6b31fc8deb714ac7659b40db7cd6",
-      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716",
-      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052706",
-      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726",
+      "validatedCommit": "e26f246e7b9e21b2d882ac69feaa32fb3f5f36c9",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311795",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311799",
       "note": "Fifteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. All seventeen cases passed on SQL Server 2019, 2022 and 2025; PC-RESET uses the same pure interpretation function as the procedure."
     },
     "p1IqpRuntimeContract": {
@@ -191,14 +191,14 @@
       ],
       "databaseOptionsRestored": true,
       "runtimeDataPersisted": false,
-      "validatedCommit": "0efeb1877ffa6b31fc8deb714ac7659b40db7cd6",
-      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716",
-      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052706",
-      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726",
+      "validatedCommit": "e26f246e7b9e21b2d882ac69feaa32fb3f5f36c9",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311795",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311799",
       "note": "The version-adaptive suite passed on SQL Server 2019, 2022 and 2025. It validates eligibility and explicit unavailable/off states without claiming observed feature benefit or defect."
     },
     "p1ContentionRuntimeContract": {
-      "status": "IMPLEMENTED_PENDING_ACTIONS",
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
       "suite": "Code/Tests/Integration/171_P1_Contention_Runtime_Contract.sql",
       "syntheticCases": 4,
       "caseIds": [
@@ -211,7 +211,11 @@
       "globalCounterResetExecuted": false,
       "forcedPageLatchWaitCreated": false,
       "runtimeDataPersisted": false,
-      "note": "The bounded page-detail path is executed but no artificial current PAGELATCH wait is forced. All four case rows remain NOT_EXECUTED until the commit-specific SQL Server 2019, 2022 and 2025 Actions gates pass."
+      "validatedCommit": "e26f246e7b9e21b2d882ac69feaa32fb3f5f36c9",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311795",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311799",
+      "note": "The delta, cumulative, reset and bounded page-detail contracts passed on SQL Server 2019, 2022 and 2025. No artificial current PAGELATCH wait was forced, so the page case remains explicitly limited."
     },
     "procedureDocumentationContract": {
       "status": "PASS",
@@ -271,46 +275,46 @@
     "targetRows": 6,
     "targetRowsNotExecuted": 3,
     "targetRowsPassWithLimitations": 3,
-    "releaseGateSuiteRows": 32,
+    "releaseGateSuiteRows": 35,
     "releaseGateSuiteRowsNotExecuted": 15,
     "releaseGateSuiteRowsPass": 8,
-    "releaseGateSuiteRowsPassWithLimitations": 9,
+    "releaseGateSuiteRowsPassWithLimitations": 12,
     "specialCaseRows": 181,
-    "specialCaseRowsNotExecuted": 151,
-    "specialCaseRowsPassWithLimitations": 30,
-    "specialCaseRowsAutomatedPending": 4,
-    "runtimeStatus": "ACTIONS_PENDING",
-    "claim": "Commit 0efeb1877ffa6b31fc8deb714ac7659b40db7cd6 passed the synthetic Linux installer, 15-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 cases, the first four P1 IQP cases and the separate SQL Server 2025 regex matrix. Exact public product builds and immutable container image digests were captured. Further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
+    "specialCaseRowsNotExecuted": 147,
+    "specialCaseRowsPassWithLimitations": 34,
+    "specialCaseRowsAutomatedPending": 0,
+    "runtimeStatus": "ACTIONS_PASS",
+    "claim": "Commit e26f246e7b9e21b2d882ac69feaa32fb3f5f36c9 passed the synthetic Linux installer, 16-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 cases, the first four P1 IQP cases, four P1 contention cases and the separate SQL Server 2025 regex matrix. The page-detail contract did not force a current PAGELATCH wait. Exact public product builds and immutable container image digests were captured. Further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
       "sqlServer2019": {
         "productVersion": "15.0.4480.2",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2019-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:46f719fd3457d4e7e8e5845fe00c35c20e7bae7ff1e8b9fe595f2a81029f5ba8",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804"
       },
       "sqlServer2022": {
         "productVersion": "16.0.4265.3",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2022-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052706"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311795"
       },
       "sqlServer2025": {
         "productVersion": "17.0.4065.4",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2025-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311799"
       }
     },
     "actionEvidence": {
-      "commitSha": "0efeb1877ffa6b31fc8deb714ac7659b40db7cd6",
-      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052736",
-      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052730",
-      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052740",
-      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716",
-      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052706",
-      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726",
-      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726"
+      "commitSha": "e26f246e7b9e21b2d882ac69feaa32fb3f5f36c9",
+      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311830",
+      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311806",
+      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311837",
+      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804",
+      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311795",
+      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311799",
+      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311799"
     }
   },
   "runtimeLimitations": [

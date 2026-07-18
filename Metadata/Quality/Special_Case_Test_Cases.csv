@@ -20,10 +20,10 @@ IQP-2019,USP_IntelligentQueryProcessingAnalysis,15,NONE,DATABASE_DIAGNOSTIC,SQL 
 IQP-PSP,USP_IntelligentQueryProcessingAnalysis,16,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 160,PSP eligibility and aggregate variant count only,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052706
 IQP-OPPO,USP_IntelligentQueryProcessingAnalysis,17,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 170,OPPO eligibility without defect inference,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726
 IQP-QSOFF,USP_IntelligentQueryProcessingAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Query Store off,QUERY_STORE_OFF with explicit limitation,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716
-CONT-DELTA,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Positive sample interval,Only interval deltas and rates returned,MEDIUM,NOT_EXECUTED,
-CONT-CUM,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,SampleSeconds zero,Cumulative-since-start label is present,LOW,NOT_EXECUTED,
-CONT-RESET,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Counter reset during sample,Reset flag and null invalid delta,MEDIUM,NOT_EXECUTED,
-CONT-PAGE,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Current page latch wait,Page detail remains opt-in and bounded,MEDIUM,NOT_EXECUTED,
+CONT-DELTA,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Positive sample interval,Only interval deltas and rates returned,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804
+CONT-CUM,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,SampleSeconds zero,Cumulative-since-start label is present,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804
+CONT-RESET,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Counter reset during sample,Reset flag and null invalid delta,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804
+CONT-PAGE,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Current page latch wait,Page detail remains opt-in and bounded,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804
 MEM-BASE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Lightweight default,Buffer descriptor scan is not executed,LOW,NOT_EXECUTED,
 MEM-PRESSURE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Process low-memory flag,High finding uses current evidence only,LOW,NOT_EXECUTED,
 MEM-GRANT,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Resource semaphore waiters,Waiter count is preserved without causal claim,LOW,NOT_EXECUTED,
