@@ -136,7 +136,7 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende achtzehn Suit
 7. Versionsadaptiver P1-IQP-Laufzeitvertrag
 8. P1-Contention-Laufzeitvertrag mit einer realen Ein-Sekunden-Messung und deterministischem Reset-Rechenvertrag
 9. Read-only P1-Speicher-Laufzeitvertrag einschließlich ausdrücklich aktiviertem, begrenztem Buffer-Descriptor-Scan
-10. Synthetischer P1-Backupketten-Laufzeitvertrag auf dem plattformspezifischen Nullgerät ohne Restore
+10. Synthetischer P1-Backupketten-Laufzeitvertrag mit generischer Datei im Default-Backupverzeichnis des disposable Targets und ohne Restore
 11. Common
 12. Current State
 13. Object und Index
