@@ -2,11 +2,10 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `35cedea80cde7161569900d4aaeda6884a4cdd56` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `8ec618231709d86540d605995fed329ad06c9808` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
-- `RQ-002`: Die Evidence-Matrizen nennen noch Commit `35cedea80cde7161569900d4aaeda6884a4cdd56`. Der neuere funktional getestete Code-Commit `8ec618231709d86540d605995fed329ad06c9808` besitzt ebenfalls grüne Dokumentations- und SQL-Server-2019-/2022-/2025-Läufe einschließlich der neuen Regex-Matrix, ist aber noch nicht in allen Evidence-Dateien nachgeführt. Der Release-Audit nennt außerdem noch 300 Repository- und 126 SQL-Dateien statt des aktuellen Bestands von 309 versionierten und 127 SQL-Dateien.
 - `RQ-003`: Die SQL-Server-2025-Regex-Matrix gibt `ExecutedContracts=7` aus, während die zugehörige Qualitätsdokumentation zehn Laufzeitverträge aufführt. Die statische Regex-Prädikatprüfung arbeitet außerdem zeilenweise und deckt mehrzeilige Fehlformen nicht zuverlässig ab.
 - `RQ-004`: Die Linux-Gates verwenden bewegliche `2019-latest`-, `2022-latest`- und `2025-latest`-Images. Die technischen `ProductVersion`-Felder und Image-Digests fehlen in der maschinenlesbaren Evidence.
 - `RQ-005`: Die verbindliche einzeilige Commit Message wird nicht automatisch geprüft; mehrere jüngere Commit-Nachrichten enthalten zusätzliche Textzeilen. Künftig ist dies per Liefergate zu verhindern, ohne die Historie umzuschreiben.

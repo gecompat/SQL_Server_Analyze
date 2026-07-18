@@ -15,15 +15,15 @@ Diese Matrix dokumentiert nachprüfbar, auf welchen SQL-Server-Ausprägungen ein
 
 ## Automatisierte Evidence
 
-Commit `35cedea80cde7161569900d4aaeda6884a4cdd56` hat Installer, den 13-Suite-Release-Gate-Vertrag und die synthetische Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen:
+Commit `8ec618231709d86540d605995fed329ad06c9808` hat Installer, den 13-Suite-Release-Gate-Vertrag und die synthetische Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---:|---|---|
-| SQL Server 2019 | 150 | [Run 29626610647](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610647) | `PASS_WITH_LIMITATIONS` |
-| SQL Server 2022 | 160 | [Run 29626610688](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610688) | `PASS_WITH_LIMITATIONS` |
-| SQL Server 2025 | 170 | [Run 29626610649](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610649) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2019 | 150 | [Run 29627116999](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627116999) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2022 | 160 | [Run 29627116978](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627116978) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2025 | 170 | [Run 29627117000](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627117000) | `PASS_WITH_LIMITATIONS`; `REGEX_MATRIX=PASS` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610650) ist für denselben Commit ebenfalls grün. Diese Evidence gilt für den synthetischen Linux-Leerdatenbank-Scope. Sie ist kein Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627117003) ist für denselben Commit ebenfalls grün. Die Regex-Matrix ist als eigene Suitezeile in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für den synthetischen Linux-Leerdatenbank-Scope. Sie ist kein Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
 
 ## Datenschutz
 
