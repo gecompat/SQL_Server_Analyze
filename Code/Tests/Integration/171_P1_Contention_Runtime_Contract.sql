@@ -14,7 +14,8 @@ Nebenwirkung : Eine reale Ein-Sekunden-Messung; keine Zähler werden gelöscht.
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit;
+DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int;
+DECLARE @FailureMessage nvarchar(2048);
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 
 /* CONT-DELTA: Produktionsrechenpfad und reale Sample-Metadaten. */
@@ -29,11 +30,16 @@ IF NOT EXISTS
 EXEC [monitor].[USP_InternalContentionAnalysis]
      @SampleSeconds=1,@MitSpinlocks=1,@MitHotPages=0,@MitPageDetails=0,
      @MaxZeilen=100,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-     @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT;
 IF ISJSON(@Json)<>1
     THROW 54501,N'P1-Laufzeitvertrag CONT-DELTA lieferte keinen gültigen JSON-Vertrag.',1;
 IF @Status NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING')
-    THROW 54506,N'P1-Laufzeitvertrag CONT-DELTA lieferte keinen verfügbaren Status.',1;
+BEGIN
+    SET @FailureMessage=CONCAT(N'P1-Laufzeitvertrag CONT-DELTA: technischer Status; ErrorNumber=',
+                               COALESCE(CONVERT(varchar(20),@ErrorNumber),'NULL'),N'.');
+    THROW 54506,@FailureMessage,1;
+END;
 IF NOT EXISTS
       (SELECT 1 FROM OPENJSON(@Json,N'$.meta')
        WITH ([Requested] int N'$.requestedSampleSeconds',[Actual] decimal(19,6) N'$.actualSampleSeconds')
