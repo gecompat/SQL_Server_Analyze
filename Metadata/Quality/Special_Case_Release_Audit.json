@@ -248,12 +248,12 @@
         "BKP-LOG",
         "BKP-RESTORE"
       ],
-      "nullDeviceUsed": true,
+      "genericDisposableBackupFileUsed": true,
       "syntheticMsdbHistoryCleaned": true,
       "recoveryModelRestored": true,
       "restoreExecuted": false,
       "runtimeDataPersisted": false,
-      "note": "The suite uses only the disposable synthetic database, platform-specific null device and temporary msdb history. The four rows remain NOT_EXECUTED until all three version-specific Actions gates pass."
+      "note": "The suite uses only the disposable synthetic database, a generic file in the target default backup directory and temporary msdb history. The four rows remain NOT_EXECUTED until all three version-specific Actions gates pass."
     },
     "procedureDocumentationContract": {
       "status": "PASS",

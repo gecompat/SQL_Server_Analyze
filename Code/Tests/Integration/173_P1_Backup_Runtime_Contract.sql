@@ -7,8 +7,9 @@ Datei        : 173_P1_Backup_Runtime_Contract.sql
 Zweck        : Laufzeitverträge für vier P1-Backupkettenfälle.
 Datenschutz  : Ausschließlich die synthetische Testdatenbank wird verwendet.
                Laufzeitwerte werden nicht in Repositoryartefakte übernommen.
-Nebenwirkung : Erzeugt kurzlebige msdb-Backuphistorie auf dem Nullgerät, stellt
-               das Recovery Model wieder her und löscht die Testhistorie.
+Nebenwirkung : Erzeugt kurzlebige msdb-Backuphistorie und eine generische Datei
+               im Default-Backupverzeichnis des disposable Targets, stellt das
+               Recovery Model wieder her und löscht die Testhistorie.
 Grenze       : Es wird bewusst kein Restore ausgeführt.
 ===============================================================================
 */
@@ -20,8 +21,7 @@ DECLARE @DatabaseName sysname=DB_NAME();
 DECLARE @OriginalRecovery nvarchar(60) =
        (SELECT [recovery_model_desc] FROM [sys].[databases] WHERE [name]=@DatabaseName);
 DECLARE @DatabaseQuoted nvarchar(258)=QUOTENAME(@DatabaseName);
-DECLARE @HostPlatform nvarchar(32)=CONVERT(nvarchar(32),SERVERPROPERTY('HostPlatform'));
-DECLARE @NullDevice nvarchar(64)=CASE WHEN @HostPlatform=N'Windows' THEN N'NUL' ELSE N'/dev/null' END;
+DECLARE @BackupDevice nvarchar(128)=N'SQL_Server_Analyze_P1_Backup_Runtime.bak';
 DECLARE @BackupSql nvarchar(max);
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 
@@ -46,7 +46,7 @@ BEGIN TRY
 
     /* Ein checksummiertes Full liefert die Baseline für Restore- und Diff-Fälle. */
     SET @BackupSql=N'BACKUP DATABASE '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@NullDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
     EXEC [sys].[sp_executesql] @BackupSql;
 
     /* BKP-RESTORE: fehlende Restorehistorie ist Evidenzlücke, kein Restorebeweis. */
@@ -67,10 +67,10 @@ BEGIN TRY
 
     /* BKP-DIFF: ein Diff der älteren Fullbasis passt nicht zum neuesten Full. */
     SET @BackupSql=N'BACKUP DATABASE '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@NullDevice,N'''',N'''''')+N''' WITH DIFFERENTIAL,INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH DIFFERENTIAL,INIT,CHECKSUM;';
     EXEC [sys].[sp_executesql] @BackupSql;
     SET @BackupSql=N'BACKUP DATABASE '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@NullDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
     EXEC [sys].[sp_executesql] @BackupSql;
 
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
@@ -102,19 +102,19 @@ BEGIN TRY
     /* BKP-LOG: ein kontrollierter Recovery-Model-Reset erzeugt eine sichtbare Lücke. */
     EXEC(N'ALTER DATABASE '+@DatabaseQuoted+N' SET RECOVERY FULL WITH NO_WAIT;');
     SET @BackupSql=N'BACKUP DATABASE '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@NullDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
     EXEC [sys].[sp_executesql] @BackupSql;
     SET @BackupSql=N'BACKUP LOG '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@NullDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
     EXEC [sys].[sp_executesql] @BackupSql;
     EXEC(N'ALTER DATABASE '+@DatabaseQuoted+N' SET RECOVERY SIMPLE WITH NO_WAIT;');
     CHECKPOINT;
     EXEC(N'ALTER DATABASE '+@DatabaseQuoted+N' SET RECOVERY FULL WITH NO_WAIT;');
     SET @BackupSql=N'BACKUP DATABASE '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@NullDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
     EXEC [sys].[sp_executesql] @BackupSql;
     SET @BackupSql=N'BACKUP LOG '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@NullDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
     EXEC [sys].[sp_executesql] @BackupSql;
 
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
