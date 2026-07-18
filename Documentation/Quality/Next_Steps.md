@@ -29,12 +29,12 @@ Abgeschlossen:
 19. `RQ-001` / SC-001 operationalisiert: reproduzierbarer Repository- und ZIP-Scanner, generische Positiv- und Blockier-Selbsttests, pfad- und hashgebundene Ausnahmeprüfung sowie ein GitHub-Actions-Gate ergänzt. Trefferberichte geben ausschließlich Scope, Regelcode, Pfad und Anzahl aus; uneindeutige Funde bleiben eine manuelle Rückfrage- und Abbruchentscheidung.
 20. `RQ-002` abgeschlossen: Ziel-, Suite-, Spezialfall- und Release-Audit-Evidenz auf den funktional getesteten Commit `8ec618231709d86540d605995fed329ad06c9808` und dessen grüne 2019-/2022-/2025-/Dokumentationsläufe synchronisiert, die Regex-Matrix als eigene Suite aufgenommen und den damaligen Bestand von 309 versionierten beziehungsweise 127 SQL-Dateien festgehalten.
 21. `RQ-003` abgeschlossen: die SQL-Server-2025-Regex-Matrix meldet die zehn dokumentierten Laufzeitverträge; ein eigenständiger, selbstgetesteter Validator erkennt direkte, verschachtelte und mehrzeilige numerische Prädikatvergleiche und berichtet ohne Quellzeileninhalt.
+22. `RQ-004` abgeschlossen: alle drei Linux-Gates lösen den beweglichen Pull-Tag in einen validierten `repo@sha256`-Digest auf, starten exakt diesen Digest und erfassen die technische `ProductVersion`; die grünen Läufe und vollständigen generischen Werte stehen in der maschinenlesbaren Zielmatrix.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
-1. `RQ-004` – reproduzierbare Zielversionen dokumentieren: für die drei Linux-Gates die tatsächliche technische SQL-Server-Buildnummer und den verwendeten Container-Image-Digest als generische Evidence erfassen, statt nur die beweglichen `*-latest`-Tags und leere `ProductVersion`-Felder zu dokumentieren.
-2. `RQ-005` – einzeilige Commit Messages erzwingen: die verbindliche Vorgabe aus `Requirements_and_Decisions.md` in einer automatischen Pull-Request- beziehungsweise Lieferprüfung abbilden. Historische Commit-Nachrichten werden dafür nicht umgeschrieben.
-3. `RQ-006` – Wait-Katalog kuratieren: die 332 Einträge mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` schrittweise fachlich prüfen und ausschließlich nach belegter Review auf `FRAMEWORK_CURATED` umstellen.
+1. `RQ-005` – einzeilige Commit Messages erzwingen: die verbindliche Vorgabe aus `Requirements_and_Decisions.md` in einer automatischen Pull-Request- beziehungsweise Lieferprüfung abbilden. Historische Commit-Nachrichten werden dafür nicht umgeschrieben.
+2. `RQ-006` – Wait-Katalog kuratieren: die 332 Einträge mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` schrittweise fachlich prüfen und ausschließlich nach belegter Review auf `FRAMEWORK_CURATED` umstellen.
 
 Nächste Freigabeschritte:
 

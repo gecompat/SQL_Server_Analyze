@@ -2,11 +2,10 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `8ec618231709d86540d605995fed329ad06c9808` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `08b2d9d8c7adbadbf0996058d6bbb35b08c96ad8` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
-- `RQ-004`: Die Linux-Gates verwenden bewegliche `2019-latest`-, `2022-latest`- und `2025-latest`-Images. Die technischen `ProductVersion`-Felder und Image-Digests fehlen in der maschinenlesbaren Evidence.
 - `RQ-005`: Die verbindliche einzeilige Commit Message wird nicht automatisch geprüft; mehrere jüngere Commit-Nachrichten enthalten zusätzliche Textzeilen. Künftig ist dies per Liefergate zu verhindern, ohne die Historie umzuschreiben.
 - `RQ-006`: 332 importierte Wait-Beschreibungen tragen weiterhin `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` und benötigen schrittweise fachliche Kuratierung.
 
