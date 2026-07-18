@@ -109,4 +109,4 @@ jobs:
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             --data "$payload" >/dev/null
 
-# Retry after correcting the Special Case execution-status field.
+# Retry after aligning the complete gate-evidence line.
