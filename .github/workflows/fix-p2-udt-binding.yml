@@ -18,37 +18,35 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - shell: bash
+      - name: Defer alias-type table compilation
+        shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           path=Path('Code/Tests/Integration/179_P2_Special_Feature_Inventory_Runtime_Contract.sql')
           text=path.read_text(encoding='utf-8')
-          old="""    CREATE TYPE [dbo].[ExampleFeatureType] FROM int NOT NULL;
-    CREATE TABLE [dbo].[ExampleFeatureTypes]
-    (
-        [Id] int NOT NULL,
-        [SpatialGeometry] geometry NULL,
-        [SpatialGeography] geography NULL,
-        [XmlValue] xml NULL,
-        [TypedValue] [dbo].[ExampleFeatureType] NULL
-    );"""
-          new="""    CREATE TYPE [dbo].[ExampleFeatureType] FROM int NOT NULL;
-    SET @Sql=N'CREATE TABLE [dbo].[ExampleFeatureTypes]
-    (
-        [Id] int NOT NULL,
-        [SpatialGeometry] geometry NULL,
-        [SpatialGeography] geography NULL,
-        [XmlValue] xml NULL,
-        [TypedValue] [dbo].[ExampleFeatureType] NOT NULL
-    );';
-    EXEC [sys].[sp_executesql] @Sql;"""
-          if text.count(old)!=1:
-              raise SystemExit('unexpected UDT fixture anchor')
-          path.write_text(text.replace(old,new,1),encoding='utf-8',newline='\n')
+          start_marker='    CREATE TYPE [dbo].[ExampleFeatureType] FROM int NOT NULL;'
+          end_marker='    CREATE QUEUE [dbo].[ExampleFeatureQueue] WITH STATUS=ON,RETENTION=OFF;'
+          start=text.index(start_marker)
+          end=text.index(end_marker,start)
+          replacement='\n'.join([
+              '    CREATE TYPE [dbo].[ExampleFeatureType] FROM int NOT NULL;',
+              "    SET @Sql=N'CREATE TABLE [dbo].[ExampleFeatureTypes]",
+              '    (',
+              '        [Id] int NOT NULL,',
+              '        [SpatialGeometry] geometry NULL,',
+              '        [SpatialGeography] geography NULL,',
+              '        [XmlValue] xml NULL,',
+              '        [TypedValue] [dbo].[ExampleFeatureType] NOT NULL',
+              "    );';",
+              '    EXEC [sys].[sp_executesql] @Sql;',
+              '',
+          ])
+          path.write_text(text[:start]+replacement+text[end:],encoding='utf-8',newline='\n')
           PY
-      - shell: bash
+      - name: Commit fix and remove helper
+        shell: bash
         run: |
           set -euo pipefail
           rm .github/workflows/fix-p2-udt-binding.yml
