@@ -33,7 +33,7 @@ Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diese
 | SQL Server 2022 | `mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89` |
 | SQL Server 2025 | `mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112427) und das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112443) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Werte und eigenständigen Suitezeilen stehen in den CSV-Dateien. Diese Evidence gilt für disposable synthetische Linux-Ziele; Schemafindings bleiben Prüfaufträge und lösen keine automatische DDL aus. Weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externe Restore-Nachweise bleiben separat.
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565454), das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464) und das [Commit-Message-Gate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565467) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Werte und eigenständigen Suitezeilen stehen in den CSV-Dateien. Diese Evidence gilt für disposable synthetische Linux-Ziele; Statistik- und Schemafindings bleiben Prüfaufträge und lösen keine automatischen Statistik- oder Schemaänderungen aus. Weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externe Restore-Nachweise bleiben separat.
 
 ## Datenschutz
 
