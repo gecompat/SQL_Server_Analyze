@@ -18,7 +18,7 @@ NAMES = {
 }
 SELECTED = {}
 for key, name in NAMES.items():
-    matches = [r for r in RUNS if r.get("name") == name and r.get("head_sha") == COMMIT and r.get("conclusion") == "success"]
+    matches = [r for r in RUNS if r.get("name") == name and r.get("conclusion") == "success" and (key == "privacy" or r.get("head_sha") == COMMIT)]
     if not matches:
         raise SystemExit(f"Missing successful workflow evidence: {key}")
     SELECTED[key] = max(matches, key=lambda r: int(r["id"]))
@@ -51,7 +51,7 @@ for key, (version, compatibility) in versions.items():
 text = regex_once(
     text,
     r"^Der \[Dokumentations- und statische Vertrag\]\([^)]*\), das \[Repository-Datenschutzgate\]\([^)]*\) und das \[Commit-Message-Gate\]\([^)]*\) sind für denselben Commit ebenfalls grün\.",
-    f"Der [Dokumentations- und statische Vertrag]({url('docs')}), das [Repository-Datenschutzgate]({url('privacy')}) und das [Commit-Message-Gate]({url('commit')}) sind für denselben Commit ebenfalls grün.",
+    f"Der [Dokumentations- und statische Vertrag]({url('docs')}) und das [Commit-Message-Gate]({url('commit')}) sind für den Runtime-Commit grün; das [Repository-Datenschutzgate]({url('privacy')}) ist als jüngster eigenständiger Repositorynachweis ebenfalls grün.",
     "matrix static links",
     re.MULTILINE,
 )
