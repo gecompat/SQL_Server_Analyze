@@ -58,7 +58,7 @@ BEGIN
     DECLARE @IsPartial bit = 0;
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
-    DECLARE @Delay time(0);
+    DECLARE @Delay varchar(8);
 
     CREATE TABLE [#LatchStart]
     (
@@ -157,7 +157,8 @@ BEGIN
             SET @SampleStartUtc = SYSUTCDATETIME();
             IF @SampleSeconds > 0
             BEGIN
-                SET @Delay = CONVERT(time(0), DATEADD(SECOND, @SampleSeconds, CONVERT(datetime2(0), '19000101')));
+                SET @Delay = CONVERT(varchar(8),
+                    DATEADD(SECOND,@SampleSeconds,CONVERT(datetime,'19000101')),108);
                 WAITFOR DELAY @Delay;
             END;
             SET @SampleEndUtc = SYSUTCDATETIME();
