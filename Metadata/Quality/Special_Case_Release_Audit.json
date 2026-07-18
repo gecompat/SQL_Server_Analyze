@@ -1,8 +1,8 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T01:26:17Z",
-  "status": "LOCAL_STATIC_PASS_ACTIONS_PENDING",
-  "scope": "completed local P0/P1/P2 wave including isolated encryption-lifecycle and maintenance-operation analyses plus defined SQL Server 2019, 2022 and 2025 Actions gates",
+  "generatedAtUtc": "2026-07-18T02:12:48Z",
+  "status": "ACTIONS_PASS",
+  "scope": "completed P0/P1/P2 wave including isolated encryption-lifecycle and maintenance-operation analyses plus green commit-specific SQL Server 2019, 2022 and 2025 Actions gates",
   "inventory": {
     "repositoryFiles": 300,
     "canonicalSqlSources": 107,
@@ -117,6 +117,13 @@
       "negativeForm": "NOT REGEXP_LIKE(...) predicate",
       "note": "SQL Server 2025 exposes REGEXP_LIKE as a predicate; comparisons to numeric 0 or 1 are rejected by the static documentation gate."
     },
+    "sqlServer2025PermissionErrorContract": {
+      "status": "PASS",
+      "filesWithMappedError371": 60,
+      "mappedCatchExpressions": 92,
+      "unmappedPermissionErrorExpressions": 0,
+      "note": "SQL Server 2025 error 371 for missing VIEW SERVER PERFORMANCE STATE is classified as DENIED_PERMISSION; the static documentation gate rejects permission mappings that retain error 229 without 371."
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,
@@ -167,17 +174,28 @@
   },
   "testDocumentation": {
     "targetRows": 6,
-    "targetRowsNotExecuted": 6,
+    "targetRowsNotExecuted": 3,
+    "targetRowsPassWithLimitations": 3,
     "releaseGateSuiteRows": 25,
-    "releaseGateSuiteRowsNotExecuted": 25,
+    "releaseGateSuiteRowsNotExecuted": 15,
+    "releaseGateSuiteRowsPass": 7,
+    "releaseGateSuiteRowsPassWithLimitations": 3,
     "specialCaseRows": 181,
     "specialCaseRowsNotExecuted": 172,
-    "specialCaseRowsAutomatedPending": 9,
-    "runtimeStatus": "ACTIONS_PENDING",
-    "claim": "No cross-version runtime PASS is claimed until the commit-specific SQL Server 2019, 2022 and 2025 Actions jobs complete successfully."
+    "specialCaseRowsPassWithLimitations": 9,
+    "specialCaseRowsAutomatedPending": 0,
+    "runtimeStatus": "ACTIONS_PASS",
+    "claim": "Commit 35cedea80cde7161569900d4aaeda6884a4cdd56 passed the synthetic Linux installer, 13-suite release gate and permission contract on SQL Server 2019, 2022 and 2025. This is not feature-positive, boundary, load, Windows, Azure MI or external restore evidence.",
+    "actionEvidence": {
+      "commitSha": "35cedea80cde7161569900d4aaeda6884a4cdd56",
+      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610650",
+      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610647",
+      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610688",
+      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610649"
+    }
   },
   "runtimeLimitations": [
-    "Docker, sqlcmd and PowerShell were unavailable locally; runtime compilation and execution are delegated to the three commit-specific Actions gates.",
+    "Local Docker, sqlcmd and PowerShell were unavailable; the primary runtime evidence is the three green commit-specific GitHub Actions gates.",
     "Feature-positive, boundary, load, Windows, Azure MI and external restore cases remain separate from the synthetic empty-database Actions contract."
   ]
 }

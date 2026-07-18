@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt reproduzierbare Actions-Gates für SQL Server 2019, 2022 und 2025. Erst der grüne commitbezogene Workflowlauf ist Laufzeitevidenz; die im Repository verbleibenden `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `35cedea80cde7161569900d4aaeda6884a4cdd56` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 

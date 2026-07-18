@@ -170,7 +170,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Der Stand `1.1.0-special.9` ist erst nach grünen commitbezogenen Actions-Läufen für SQL Server 2019, 2022 und 2025 als versionsübergreifend laufzeitgetestet zu kennzeichnen; manuelle Feature-Positiv-, Last- und externe Fälle bleiben gesondert.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Commit `35cedea80cde7161569900d4aaeda6884a4cdd56` des Stands `1.1.0-special.9` hat die commitbezogenen Actions-Läufe für SQL Server 2019, 2022 und 2025 erfolgreich abgeschlossen. Die Freigabe gilt mit Einschränkungen für den synthetischen Linux-Leerdatenbank-Scope; manuelle Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- und externe Fälle bleiben gesondert.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

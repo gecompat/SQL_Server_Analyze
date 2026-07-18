@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 18. Juli 2026
-**Status:** ausfüllbare, datenschutzkonforme Vorlage  
+**Status:** commitbezogene Actions-Evidenz für SQL Server 2019, 2022 und 2025 vorhanden; manuelle Ziel- und Spezialfälle bleiben offen
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -12,6 +12,18 @@ Die zielunabhängigen Modulfälle stehen zusätzlich in `Metadata/Quality/Specia
 ## Zweck
 
 Diese Matrix dokumentiert nachprüfbar, auf welchen SQL-Server-Ausprägungen ein Repositorystand installiert, kompiliert und getestet wurde. Ein allgemeiner Hinweis wie „vollständig getestet“ ersetzt keine konkrete Zielmatrix.
+
+## Automatisierte Evidence
+
+Commit `35cedea80cde7161569900d4aaeda6884a4cdd56` hat Installer, den 13-Suite-Release-Gate-Vertrag und die synthetische Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen:
+
+| Target | Compatibility Level | Actions-Nachweis | Ergebnis |
+|---|---:|---|---|
+| SQL Server 2019 | 150 | [Run 29626610647](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610647) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2022 | 160 | [Run 29626610688](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610688) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2025 | 170 | [Run 29626610649](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610649) | `PASS_WITH_LIMITATIONS` |
+
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610650) ist für denselben Commit ebenfalls grün. Diese Evidence gilt für den synthetischen Linux-Leerdatenbank-Scope. Sie ist kein Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
 
 ## Datenschutz
 
@@ -57,4 +69,4 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
 
 Ein Target gilt nur dann als freigegeben, wenn `TestStatus` mindestens `PASS_WITH_LIMITATIONS` ist, der getestete Commit exakt angegeben wurde und jede Einschränkung als generische Capability- oder Berechtigungsaussage dokumentiert ist. Nicht ausgeführte Zeilen bleiben ausdrücklich `NOT_EXECUTED`.
 
-Die initialen Zeilen der CSV sind Planungseinträge und keine behaupteten Testergebnisse.
+Die drei Windows-Zeilen der CSV bleiben Planungseinträge und keine behaupteten Testergebnisse.
