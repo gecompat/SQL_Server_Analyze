@@ -11,6 +11,7 @@
 - Die drei Linux-Gates lösen den öffentlichen `*-latest`-Pull-Tag in einen validierten unveränderlichen Image-Digest auf, starten exakt diesen Digest und erfassen `SERVERPROPERTY('ProductVersion')`; Build und Digest werden als rein technische Evidence dokumentiert.
 - Das SQL-Server-2025-Gate hat den Regex-Prädikatvertrag gehärtet: `REGEXP_LIKE(...)` und `NOT REGEXP_LIKE(...)` ersetzen repositoryweit unzulässige Vergleiche mit `0` oder `1`; ein statischer Check schützt vor Regression.
 - Die Regex-Matrix meldet konsistent zehn Verträge. Der statische Check ist nun ein eigenständiger Validator mit acht generischen Selbsttests, erkennt mehrzeilige Fehlformen und gibt bei einem Fund keinen Quellzeileninhalt aus.
+- Ein eigenes Actions-Gate erzwingt für neue Pull-Request- und Main-Commits exakt einzeilige Commit Messages, ohne historische Nachrichten umzuschreiben oder den Message-Inhalt in Fehlmeldungen auszugeben.
 - SQL Server 2025 meldet fehlendes `VIEW SERVER PERFORMANCE STATE` zusätzlich mit Fehler 371. Alle isolierten Berechtigungsfehler-Zuordnungen behandeln ihn kontrolliert als `DENIED_PERMISSION`; ein statischer Check schützt die vollständige Zuordnung.
 - SC-023 bis SC-025 besitzen sichere Repositoryverträge beziehungsweise ein externes Runbook; Persistenz, Fleet-Infrastruktur und echter Restore bleiben bis zu ausdrücklicher externer Autorisierung unimplementiert.
 
