@@ -58,6 +58,8 @@ BEGIN TRY
         THROW 55301,N'P2-Vertrag FEATURE-ABSENT fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('FEATURE-ABSENT');
 
+    IF EXISTS(SELECT 1 FROM [sys].[tables] WITH (NOLOCK) WHERE [name]=N'ExampleFeatureTemporal' AND [temporal_type]=2)
+        ALTER TABLE [dbo].[ExampleFeatureTemporal] SET (SYSTEM_VERSIONING=OFF);
     DROP TABLE IF EXISTS [dbo].[ExampleFeatureTemporal];
     DROP TABLE IF EXISTS [dbo].[ExampleFeatureTemporalHistory];
     DROP TABLE IF EXISTS [dbo].[ExampleFeatureCt];

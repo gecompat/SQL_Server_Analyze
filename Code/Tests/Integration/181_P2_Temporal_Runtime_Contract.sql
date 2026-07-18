@@ -188,7 +188,7 @@ BEGIN TRY
     INSERT @ExecutedCases VALUES('TEMPORAL-BOUNDED');
 
     /* Statische/synthetische Grenzen für nicht portabel erzwingbare Zustände. */
-    IF CHARINDEX(N'''LARGE_HISTORY_INFINITE_RETENTION_CONTEXT''',@Definition)=0
+    IF CHARINDEX(N'''LARGE_HISTORY_SIZE_CONTEXT''',@Definition)=0
        OR CHARINDEX(N'''HISTORY_TO_CURRENT_RATIO_CONTEXT''',@Definition)=0
        OR CHARINDEX(N'[CurrentIsMemoryOptimized]',@Definition)=0
        OR CHARINDEX(N'''AVAILABLE_LIMITED''',@Definition)=0
