@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  statuses: write
 
 jobs:
   finalize:
@@ -25,7 +26,17 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json
+          import re
           from pathlib import Path
+
+          def replace_state(text: str, old: str, new: str, label: str) -> str:
+              old_count = text.count(old)
+              new_count = text.count(new)
+              if old_count == 1 and new_count == 0:
+                  return text.replace(old, new, 1)
+              if old_count == 0 and new_count == 1:
+                  return text
+              raise SystemExit(f'Unexpected {label} state: old={old_count}, new={new_count}')
 
           # Release-gate runbook.
           path = Path('Documentation/Quality/Release_Gate_Runbook.md')
@@ -34,12 +45,14 @@ jobs:
               (
                   'dieselbe Installation und dieselben dreizehn Release-Gate-Suiten',
                   'dieselbe Installation und dieselben zwanzig Release-Gate-Suiten',
+                  'SQL Server 2019 suite count',
               ),
               (
                   'Installer, 19-Suite-Release-Gate einschließlich P0-, P1-IQP-, P1-Contention-, P1-Speicher-, P1-Backupketten- und P1-Schemavertrag',
                   'Installer, 20-Suite-Release-Gate einschließlich P0-, P1-IQP-, P1-Contention-, P1-Speicher-, P1-Backupketten-, P1-Schema- und P1-Statistikverteilungsvertrag',
+                  'SQL Server 2025 suite scope',
               ),
-              ('folgende neunzehn Suiten aus:', 'folgende zwanzig Suiten aus:'),
+              ('folgende neunzehn Suiten aus:', 'folgende zwanzig Suiten aus:', 'runner suite count'),
               (
                   '''11. P1-Schema-/Design-Laufzeitvertrag mit garantierter Bereinigung generischer DDL-Fixtures
 12. Common
@@ -60,30 +73,33 @@ jobs:
 18. Extended Events
 19. Infrastructure
 20. Server Health''',
+                  'runner suite list',
               ),
-              ('`ExecutedSuites=19`', '`ExecutedSuites=20`'),
+              ('`ExecutedSuites=19`', '`ExecutedSuites=20`', 'runner result count'),
           ]
-          for old, new in replacements:
-              if text.count(old) != 1:
-                  raise SystemExit(f'Unexpected runbook anchor count for: {old[:80]}')
-              text = text.replace(old, new, 1)
+          for old, new, label in replacements:
+              text = replace_state(text, old, new, label)
           path.write_text(text, encoding='utf-8')
 
           # Architecture status paragraph.
           path = Path('Documentation/Architecture/Special_Case_Modules.md')
           text = path.read_text(encoding='utf-8')
-          old = ('Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. '
-                 'Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. '
-                 'Ein Eintrag `NOT_EXECUTED` ist Planungsstand und niemals Ausführungsevidenz. Dieser Implementierungsstand '
-                 'darf erst nach dokumentierten Läufen je Zielsystem als Laufzeit-Release freigegeben werden.')
-          new = ('Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. '
-                 'Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. '
-                 'P0 und die ersten achtundzwanzig P1-Fälle bis einschließlich Statistikverteilung besitzen commitbezogene '
-                 'Drei-Versionen-Evidenz. Ein Eintrag `NOT_EXECUTED` ist weiterhin Planungsstand und niemals Ausführungsevidenz; '
-                 'die vollständige Laufzeitfreigabe bleibt bis zur vorgesehenen Zielmatrix ausständig.')
-          if text.count(old) != 1:
-              raise SystemExit('Architecture status paragraph not found exactly once.')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          new_paragraph = ('Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. '
+                           'Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. '
+                           'P0 und die ersten achtundzwanzig P1-Fälle bis einschließlich Statistikverteilung besitzen commitbezogene '
+                           'Drei-Versionen-Evidenz. Ein Eintrag `NOT_EXECUTED` ist weiterhin Planungsstand und niemals Ausführungsevidenz; '
+                           'die vollständige Laufzeitfreigabe bleibt bis zur vorgesehenen Zielmatrix ausständig.')
+          if new_paragraph not in text:
+              text, count = re.subn(
+                  r'Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge\..*?Laufzeit-Release freigegeben werden\.',
+                  new_paragraph,
+                  text,
+                  count=1,
+                  flags=re.DOTALL,
+              )
+              if count != 1:
+                  raise SystemExit('Architecture status paragraph could not be replaced.')
+          path.write_text(text, encoding='utf-8')
 
           # Machine-readable release audit.
           path = Path('Metadata/Quality/Special_Case_Release_Audit.json')
@@ -126,3 +142,38 @@ jobs:
           git diff --cached --check
           git commit -m 'docs: finalize statistics evidence consistency'
           git push origin HEAD:main
+
+      - name: Publish maintenance status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          case "$JOB_STATUS" in
+            success) state='success' ;;
+            cancelled) state='error' ;;
+            *) state='failure' ;;
+          esac
+          export STATUS_STATE="$state"
+          payload=$(python3 - <<'PY'
+          import json
+          import os
+
+          print(json.dumps({
+              'state': os.environ['STATUS_STATE'],
+              'target_url': os.environ['RUN_URL'],
+              'description': f"Statistics evidence consistency: {os.environ['JOB_STATUS']}",
+              'context': 'statistics-evidence-consistency',
+          }))
+          PY
+          )
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --data "$payload" >/dev/null
