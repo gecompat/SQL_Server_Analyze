@@ -22,6 +22,16 @@ IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>$(ExpectedMajorVersi
 
 IF IS_SRVROLEMEMBER(N'sysadmin')<>1
     THROW 54201,N'Die Berechtigungsmatrix muss aus einem sysadmin-Testkontext gestartet werden.',1;
+
+IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))=17
+BEGIN
+    SELECT [message_id] AS [DiagnosticErrorNumber]
+         , [severity] AS [DiagnosticSeverity]
+         , [text] AS [DiagnosticErrorText]
+    FROM [sys].[messages]
+    WHERE [message_id]=371
+      AND [language_id]=1033;
+END;
 GO
 
 RAISERROR(N'PERMISSION_MATRIX phase=setup',10,1) WITH NOWAIT;
