@@ -162,7 +162,7 @@ GO
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],
-       CAST(7 AS int) AS [ExecutedContracts],
+       CAST(10 AS int) AS [ExecutedContracts],
        CAST(170 AS int) AS [CompatibilityLevel],
        N'SQL Server 2025 regex matrix completed with synthetic values only.' AS [Detail];
 GO

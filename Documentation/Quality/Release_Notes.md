@@ -9,6 +9,7 @@
 - `168_Special_Case_Runtime_Contract.sql` führt alle P2-Module gegen die synthetische Testdatenbank aus und validiert Status und JSON.
 - Drei Actions-Gates erzwingen SQL Server 2019/2022/2025, Compatibility Level 150/160/170, case-sensitive Collation, Installer, 13 Suiten und synthetische Berechtigungsfälle.
 - Das SQL-Server-2025-Gate hat den Regex-Prädikatvertrag gehärtet: `REGEXP_LIKE(...)` und `NOT REGEXP_LIKE(...)` ersetzen repositoryweit unzulässige Vergleiche mit `0` oder `1`; ein statischer Check schützt vor Regression.
+- Die Regex-Matrix meldet konsistent zehn Verträge. Der statische Check ist nun ein eigenständiger Validator mit acht generischen Selbsttests, erkennt mehrzeilige Fehlformen und gibt bei einem Fund keinen Quellzeileninhalt aus.
 - SQL Server 2025 meldet fehlendes `VIEW SERVER PERFORMANCE STATE` zusätzlich mit Fehler 371. Alle isolierten Berechtigungsfehler-Zuordnungen behandeln ihn kontrolliert als `DENIED_PERMISSION`; ein statischer Check schützt die vollständige Zuordnung.
 - SC-023 bis SC-025 besitzen sichere Repositoryverträge beziehungsweise ein externes Runbook; Persistenz, Fleet-Infrastruktur und echter Restore bleiben bis zu ausdrücklicher externer Autorisierung unimplementiert.
 
