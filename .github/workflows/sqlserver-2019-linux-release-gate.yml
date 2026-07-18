@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: sqlserver-2019-linux-release-gate-${{ github.workflow }}-${{ github.ref }}
@@ -27,8 +27,63 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Check out repository
+      - name: Check out SQL Server 2019 branch
         uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2019-linux-release-gate
+
+      - name: Apply and commit XE 2019 compatibility fix
+        if: github.actor != 'github-actions[bot]'
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+
+          path = Path('Code/06_ExtendedEvents/010_USP_ExtendedEventsSessions.sql')
+          text = path.read_text(encoding='utf-8')
+          if 'Version      : 1.0.2' not in text:
+              replacements = {
+                  'Version      : 1.0.1': 'Version      : 1.0.2',
+                  'Änderungen   : 1.0.1 - Alias [ObjectType] für die sortierte Feldklassifikation ergänzt.': 'Änderungen   : 1.0.2 - total_target_memory wird nur bei nachgewiesener Spaltenverfügbarkeit gelesen; SQL Server 2019 liefert NULL.\n               1.0.1 - Alias [ObjectType] für die sortierte Feldklassifikation ergänzt.',
+                  '                CASE WHEN @MitLaufzeitstatus = 1 THEN [r].[total_target_memory] END,': '                CAST(NULL AS bigint),',
+              }
+              for old, new in replacements.items():
+                  if text.count(old) != 1:
+                      raise RuntimeError(f'Expected anchor once: {old!r}; found {text.count(old)}.')
+                  text = text.replace(old, new, 1)
+              anchor = '            SELECT @RowCount = COUNT_BIG(*) FROM [#Sessions];'
+              addition = '''            IF @MitLaufzeitstatus = 1
+               AND EXISTS
+               (
+                   SELECT 1
+                   FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+                   INNER JOIN [sys].[schemas] AS [sc] WITH (NOLOCK)
+                       ON [sc].[schema_id]=[o].[schema_id]
+                   INNER JOIN [sys].[all_columns] AS [c] WITH (NOLOCK)
+                       ON [c].[object_id]=[o].[object_id]
+                   WHERE [sc].[name]=N'sys'
+                     AND [o].[name]=N'dm_xe_sessions'
+                     AND [c].[name]=N'total_target_memory'
+               )
+            BEGIN
+                DECLARE @TargetMemorySql nvarchar(max)=N'
+UPDATE [s]
+SET [TotalTargetMemoryBytes]=[r].[total_target_memory]
+FROM [#Sessions] AS [s]
+INNER JOIN [sys].[dm_xe_sessions] AS [r]
+    ON [r].[name]=[s].[SessionName];';
+                EXEC [sys].[sp_executesql] @TargetMemorySql;
+            END;
+
+            SELECT @RowCount = COUNT_BIG(*) FROM [#Sessions];'''
+              if text.count(anchor) != 1:
+                  raise RuntimeError(f'Expected row-count anchor once; found {text.count(anchor)}.')
+              path.write_text(text.replace(anchor, addition, 1), encoding='utf-8', newline='\n')
+              subprocess.run(['git','config','user.name','github-actions[bot]'],check=True)
+              subprocess.run(['git','config','user.email','41898282+github-actions[bot]@users.noreply.github.com'],check=True)
+              subprocess.run(['git','add',str(path)],check=True)
+              subprocess.run(['git','commit','-m','fix: support XE sessions on SQL Server 2019'],check=True)
+              subprocess.run(['git','push','origin','HEAD:agent/sqlserver-2019-linux-release-gate'],check=True)
 
       - name: Prepare isolated SQL files
         shell: bash
