@@ -30,20 +30,25 @@ EXEC [monitor].[USP_InternalContentionAnalysis]
      @SampleSeconds=1,@MitSpinlocks=1,@MitHotPages=0,@MitPageDetails=0,
      @MaxZeilen=100,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
      @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
-IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING')
-   OR NOT EXISTS
+IF ISJSON(@Json)<>1
+    THROW 54501,N'P1-Laufzeitvertrag CONT-DELTA lieferte keinen gültigen JSON-Vertrag.',1;
+IF @Status NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING')
+    THROW 54506,N'P1-Laufzeitvertrag CONT-DELTA lieferte keinen verfügbaren Status.',1;
+IF NOT EXISTS
       (SELECT 1 FROM OPENJSON(@Json,N'$.meta')
        WITH ([Requested] int N'$.requestedSampleSeconds',[Actual] decimal(19,6) N'$.actualSampleSeconds')
        WHERE [Requested]=1 AND [Actual]>0)
-   OR EXISTS
+    THROW 54507,N'P1-Laufzeitvertrag CONT-DELTA verletzte den Sample-Metavertrag.',1;
+IF EXISTS
       (SELECT 1 FROM OPENJSON(@Json,N'$.latches')
        WITH ([MeasurementKind] varchar(30) N'$.MeasurementKind')
        WHERE [MeasurementKind]<>'SAMPLE_DELTA')
-   OR EXISTS
+    THROW 54508,N'P1-Laufzeitvertrag CONT-DELTA verletzte den Latch-Messartvertrag.',1;
+IF EXISTS
       (SELECT 1 FROM OPENJSON(@Json,N'$.spinlocks')
        WITH ([MeasurementKind] varchar(30) N'$.MeasurementKind')
        WHERE [MeasurementKind]<>'SAMPLE_DELTA')
-    THROW 54501,N'P1-Laufzeitvertrag CONT-DELTA fehlgeschlagen.',1;
+    THROW 54509,N'P1-Laufzeitvertrag CONT-DELTA verletzte den Spinlock-Messartvertrag.',1;
 INSERT @ExecutedCases VALUES('CONT-DELTA');
 
 /* CONT-CUM: Sample 0 liefert nur eindeutig kumulative Werte ohne Rate. */
