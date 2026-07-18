@@ -91,7 +91,7 @@ Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. 
 
 ## 0.4 Automatisiertes synthetisches Linux-Target für SQL Server 2025
 
-Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 23-Suite-Release-Gate einschließlich aller P0- und P1-Verträge und die SQL-Server-2022+-Berechtigungsmatrix
+Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 31-Suite-Release-Gate einschließlich aller P0- und P1-Verträge und die SQL-Server-2022+-Berechtigungsmatrix
 
 Wie bei den anderen Targets werden Kennwort und Datenbank erst im Job erzeugt, vollständige Ausgaben nicht als Artefakt persistiert, Fehlerartefakte auf eine generische Kurzfassung und einen Tag Retention begrenzt und der Container immer entfernt.
 
@@ -125,7 +125,7 @@ Aus dem Verzeichnis `Code/Tests` ausführen:
 sqlcmd -S "<ZIEL>" -d "<INSTALLATIONSDATENBANK>" -E -b -i "Run_Release_Gate.sql"
 ```
 
-Der Runner beendet sich beim ersten SQL-Fehler und führt folgende dreiundzwanzig Suiten aus:
+Der Runner beendet sich beim ersten SQL-Fehler und führt folgende einunddreißig Suiten aus:
 
 1. Smoke Test
 2. Parameter-API-Vertrag
@@ -142,19 +142,27 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende dreiundzwanzi
 13. P1-Availability-Laufzeitvertrag
 14. P1-Agent-/Alert-Laufzeitvertrag
 15. P1-Findings-Laufzeitvertrag
-16. Common
-17. Current State
-18. Object und Index
-19. Plan Cache
-20. Query Store
-21. Extended Events
-22. Infrastructure
-23. Server Health
+16. P2-Spezialfeature-Inventur
+17. P2-In-Memory-OLTP-Laufzeitvertrag
+18. P2-Temporal-Laufzeitvertrag
+19. P2-Service-Broker-Laufzeitvertrag
+20. P2-Full-Text-Laufzeitvertrag
+21. P2-Data-Capture-Laufzeitvertrag
+22. P2-Encryption-Laufzeitvertrag
+23. P2-Maintenance-Laufzeitvertrag
+24. Common
+25. Current State
+26. Object und Index
+27. Plan Cache
+28. Query Store
+29. Extended Events
+30. Infrastructure
+31. Server Health
 
 Erwartung bei vollständigem Erfolg:
 
 - Prozess-Exitcode `0`.
-- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=23`.
+- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=31`.
 - Kein `THROW`, kein unbehandelter Fehler und kein vorzeitiges Ende.
 
 ## 4. Spezialfallmatrix ausführen

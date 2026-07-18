@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 18. Juli 2026
-**Status:** commitbezogene 23-Suite-Evidenz für alle 17 P0- und alle 40 P1-Fälle vorhanden
+**Status:** commitbezogene 31-Suite-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle vorhanden
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `bdb8f66e20f015e7c563e6d3747144400897b281` hat Installer, den 23-Suite-Release-Gate-Vertrag einschließlich aller 17 P0- und aller 40 P1-Fälle sowie die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` hat Installer, den 31-Suite-Release-Gate-Vertrag einschließlich aller 181 Spezialfälle sowie die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29647983342](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342) | `PASS_WITH_LIMITATIONS`; alle 17 P0- und alle 40 P1-Fälle |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29647983333](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983333) | `PASS_WITH_LIMITATIONS`; alle 17 P0- und alle 40 P1-Fälle |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29647983330](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983330) | `PASS_WITH_LIMITATIONS`; alle 17 P0- und alle 40 P1-Fälle; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29656121684](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, 40 P1- und 124 P2-Fälle |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29656121674](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, 40 P1- und 124 P2-Fälle |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29656121672](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, 40 P1- und 124 P2-Fälle; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 
@@ -33,7 +33,7 @@ Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diese
 | SQL Server 2022 | `mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89` |
 | SQL Server 2025 | `mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983337) und das [Commit-Message-Gate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983332) sind für den Runtime-Commit grün; das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464) ist als letzter unabhängig bestätigter Repositorynachweis grün. Die vollständigen maschinenlesbaren Werte und eigenständigen Suitezeilen stehen in den CSV-Dateien. Diese Evidence gilt für disposable synthetische Linux-Ziele; Statistik- und Schemafindings bleiben Prüfaufträge und lösen keine automatischen Statistik- oder Schemaänderungen aus. Weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externe Restore-Nachweise bleiben separat.
+Der Runtime-Nachweis ist commitbezogen; Dokumentations-, Commit-Message- und Datenschutzgates werden als getrennte Evidence-Klassen geführt. Die Linux-Evidence bleibt synthetisch und read-only. Feature-positive Windows-/Azure-MI-Zustände, Lasttests, externe Restorebeweise und operative Mutationen bleiben separate Nachweise.
 
 ## Datenschutz
 
@@ -63,7 +63,7 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
 1. Bei Containerzielen den öffentlichen Image-Tag pullen, den aufgelösten `repo@sha256`-Digest validieren und exakt diesen Digest starten; nach Bereitschaft `SERVERPROPERTY('ProductVersion')` erfassen.
 2. Installer im vorgesehenen Datenbankkontext ausführen.
 3. Compile- und Objektbestand prüfen.
-4. Im SQLCMD-Modus aus `Code/Tests` den Runner `Run_Release_Gate.sql` ausführen. Er startet die fünfzehn folgenden Verträge und danach acht Bereichs-Smoke-Tests in fester Reihenfolge; beim ersten SQL-Fehler wird beendet:
+4. Im SQLCMD-Modus aus `Code/Tests` den Runner `Run_Release_Gate.sql` ausführen. Er startet die dreiundzwanzig folgenden Verträge und danach acht Bereichs-Smoke-Tests in fester Reihenfolge; beim ersten SQL-Fehler wird beendet:
    - `Integration/110_Smoke_Test.sql`
    - `Integration/163_Parameter_API_Vertrag.sql`
    - `Integration/165_Filter_Output_Contract.sql`
@@ -79,6 +79,14 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
    - `Integration/176_P1_Availability_Runtime_Contract.sql`
    - `Integration/177_P1_Agent_Runtime_Contract.sql`
    - `Integration/178_P1_Diagnostic_Findings_Runtime_Contract.sql`
+   - `Integration/179_P2_Special_Feature_Inventory_Runtime_Contract.sql`
+   - `Integration/180_P2_InMemory_Oltp_Runtime_Contract.sql`
+   - `Integration/181_P2_Temporal_Runtime_Contract.sql`
+   - `Integration/182_P2_Service_Broker_Runtime_Contract.sql`
+   - `Integration/183_P2_FullText_Runtime_Contract.sql`
+   - `Integration/184_P2_Data_Capture_Runtime_Contract.sql`
+   - `Integration/185_P2_Encryption_Runtime_Contract.sql`
+   - `Integration/186_P2_Maintenance_Runtime_Contract.sql`
    - Common, Current State, Object/Index, Plan Cache, Query Store, Extended Events, Infrastructure und Server Health
 5. Bereichstests für Common, Current State, Object/Index, Plan Cache, Query Store, Extended Events, Infrastructure und Server Health ausführen.
 6. Neue Spezialfallmodule gegen Capability-, Leerzustands-, Positiv-, Berechtigungs-, Reset- und Lastfälle prüfen; bei Statistikverteilung zusätzlich Uniform-, Dominanz-, Tail-, Modification-, Filter-, Incremental- und Kandidatengrenzfälle. Für `USP_SpecialFeatureInventory` sind Feature-absent, eingeschränkte Metadatensichtbarkeit, Begrenzung sowie je ein positiver Fall für alle 18 Featurecodes vorgesehen. Für `USP_InMemoryOltpAnalysis` sind No-XTP, Schema-only, Speicher-, Hashketten-, Checkpoint-, Transaktions-, Pool-, Berechtigungs-, Filter-, Begrenzungs- und Kostenfälle definiert. Für `USP_TemporalAnalysis` sind No-Temporal, Zuordnung/Period, Retention, Kapazität/Ratio, Indexbaseline, Memory-Optimized, Berechtigung, Filter, Begrenzung und die ausdrückliche Nichterkennbarkeit getrennter Paare vorgesehen. Für `USP_ServiceBrokerAnalysis` sind No-Broker, Konfiguration ohne Objekte, deaktivierter Broker mit Objekten, Queue-Schalter, approximative Kapazität, interne Aktivierung, Transmission-Alter/-Status, Conversation-Zustände, Retention, Berechtigungen, Filter, Begrenzung und ein statischer Payload-Ausschluss vorgesehen. Für `USP_FullTextAnalysis` sind Feature-/Katalogzustand, Indexschalter, Populationen, Batches, Fragmente, Semantik, Memory/FDHost, Berechtigungen, Filter, Begrenzung und Inhalts-/DDL-Ausschluss vorgesehen. Für `USP_DataCaptureDeepAnalysis` sind CT-Consumer-Versionen, CDC-Scan/Fehler/Jobs/Cleanup, lokale Replikationsagenten/Rückstand/Fehler, Remote-Topologielücke, Berechtigungen, Filter, Begrenzung und Nutzdaten-/Credential-/Command-/DDL-Ausschluss vorgesehen. `USP_EncryptionAnalysis` trennt TDE, Zertifikatslebenszyklus, explizite Backupverschlüsselung und aggregierte Always-Encrypted-/Ledger-Fälle. `USP_MaintenanceOperations` trennt pausierte/aktive Requests, PVS-Versionen, ungefilterte und explizit gefilterte Jobfälle sowie den statischen Änderungs- und Inhaltsausschluss. Alle Fälle stehen in `Special_Case_Test_Cases.csv`.
