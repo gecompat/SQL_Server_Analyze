@@ -1,12 +1,12 @@
 {
   "release": "1.1.0-special.9",
   "generatedAtUtc": "2026-07-18T06:53:00Z",
-  "status": "ACTIONS_PASS",
+  "status": "ACTIONS_PENDING",
   "scope": "completed P0/P1/P2 implementation wave, evidence-backed Wait Type catalog curation, and green commit-specific SQL Server 2019, 2022 and 2025 Actions gates including the SQL Server 2025 regex matrix",
   "inventory": {
-    "repositoryFiles": 323,
+    "repositoryFiles": 324,
     "canonicalSqlSources": 107,
-    "sqlFilesIncludingTestsAndExamples": 128,
+    "sqlFilesIncludingTestsAndExamples": 129,
     "objects": 99,
     "procedures": 84,
     "functions": 10,
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 128,
+      "filesChecked": 129,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -160,6 +160,18 @@
       "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602395",
       "note": "Every final framework Wait Type name is an exact member of the immutable Microsoft source table; unverified legacy aliases and a malformed duplicate were removed instead of being relabeled."
     },
+    "p0RuntimeContract": {
+      "status": "IMPLEMENTED_PENDING_ACTIONS",
+      "suite": "Code/Tests/Integration/169_P0_Runtime_Contract.sql",
+      "syntheticCases": 16,
+      "integrityCases": 4,
+      "capacityCases": 4,
+      "performanceCounterCases": 4,
+      "criticalEventCases": 4,
+      "remainingControlledRestartCase": "PC-RESET",
+      "runtimeDataPersisted": false,
+      "note": "Case statuses remain NOT_EXECUTED until the commit-specific SQL Server 2019, 2022 and 2025 Actions runs succeed."
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,
@@ -196,8 +208,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 323,
-      "zipFilesScanned": 323,
+      "repositoryFilesScanned": 324,
+      "zipFilesScanned": 324,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,

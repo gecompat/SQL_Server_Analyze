@@ -1,0 +1,377 @@
+USE [DeineDatenbank];
+GO
+
+/*
+===============================================================================
+Datei        : 169_P0_Runtime_Contract.sql
+Zweck        : Reproduzierbare P0-Positiv-, Leer-, Grenz- und Berechtigungsfälle
+               gegen die ausschließlich synthetische Actions-Datenbank.
+Datenschutz  : Persistiert keine Laufzeitausgabe. Namen, Ereignisse und
+               Konfigurationswerte sind generische Testwerte; produktive
+               Resultsets und OUTPUT-Parameter bleiben unverändert.
+Nebenwirkung : DBCC, Dateioptionen, msdb-Testmetadaten, Testbenutzer und eine
+               XE-Session betreffen nur das disposable Actions-Ziel und werden
+               soweit möglich im selben Lauf zurückgesetzt.
+===============================================================================
+*/
+SET NOCOUNT ON;
+SET XACT_ABORT ON;
+
+DECLARE @DatabaseNames nvarchar(max)=QUOTENAME(DB_NAME());
+DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048);
+DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
+
+/* INT-CHECKDB: fehlender oder alter Nachweis bleibt eine Evidenzgrenze. */
+EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
+     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MitPageDetails=0,@MaxZeilen=20,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@Json,N'$.integrity')
+    WITH ([FindingCode] varchar(80) N'$.FindingCode')
+    WHERE [FindingCode] IN ('CHECKDB_EVIDENCE_MISSING','CHECKDB_EVIDENCE_OLD')
+)
+    THROW 54140,N'P0-Vertrag INT-CHECKDB fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('INT-CHECKDB');
+
+/* INT-EMPTY: ein realer CHECKDB-Lauf im synthetischen Ziel erlaubt nur NO_INDICATOR_FOUND, niemals einen Integritätsbeweis. */
+DBCC CHECKDB WITH NO_INFOMSGS;
+
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
+EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
+     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MitPageDetails=0,@MaxZeilen=20,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@Json,N'$.integrity')
+    WITH ([FindingCode] varchar(80) N'$.FindingCode',[EvidenceLimit] nvarchar(1000) N'$.EvidenceLimit')
+    WHERE [FindingCode]='NO_INDICATOR_FOUND'
+      AND [EvidenceLimit] LIKE N'%beweist%weder%Integrität%'
+)
+    THROW 54141,N'P0-Vertrag INT-EMPTY fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('INT-EMPTY');
+
+/* INT-SUSPECT: synthetische suspect_pages-Zeile bleibt transaktional und die Detailausgabe ist begrenzt. */
+BEGIN TRANSACTION;
+INSERT [msdb].[dbo].[suspect_pages]
+       ([database_id],[file_id],[page_id],[event_type],[error_count],[last_update_date])
+VALUES (DB_ID(),1,1,1,1,GETDATE());
+
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
+EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
+     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MitPageDetails=1,@MaxZeilen=1,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@Json,N'$.integrity')
+    WITH ([FindingCode] varchar(80) N'$.FindingCode',[SuspectPageCount] bigint N'$.SuspectPageCount')
+    WHERE [FindingCode]='SUSPECT_PAGES_PRESENT' AND [SuspectPageCount]>=1
+)
+OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.pageDetails'))>1
+BEGIN
+    ROLLBACK TRANSACTION;
+    THROW 54142,N'P0-Vertrag INT-SUSPECT fehlgeschlagen.',1;
+END;
+ROLLBACK TRANSACTION;
+INSERT @ExecutedCases VALUES('INT-SUSPECT');
+
+/* INT-DENIED: fehlende Quellrechte werden strukturiert zurückgegeben. */
+IF USER_ID(N'ExampleP0RestrictedUser') IS NOT NULL DROP USER [ExampleP0RestrictedUser];
+CREATE USER [ExampleP0RestrictedUser] WITHOUT LOGIN;
+GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseIntegrityAnalysis] TO [ExampleP0RestrictedUser];
+
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
+EXECUTE AS USER=N'ExampleP0RestrictedUser';
+EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
+     @DatabaseNames=N'',@MaxDatenbanken=1,@MitPageDetails=0,@MaxZeilen=20,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+REVERT;
+DROP USER [ExampleP0RestrictedUser];
+
+IF ISJSON(@Json)<>1 OR @Status NOT IN ('DENIED_PERMISSION','AVAILABLE_LIMITED','DENIED_GROUP') OR COALESCE(@Partial,1)<>1
+    THROW 54143,N'P0-Vertrag INT-DENIED fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('INT-DENIED');
+
+/* Kapazitätsfälle verändern nur die Optionen der synthetischen primären Datendatei und stellen sie wieder her. */
+DECLARE @LogicalFileName sysname,@OriginalGrowth int,@OriginalPercent bit,@OriginalMaxSize int,@CurrentSizePages int;
+DECLARE @Sql nvarchar(max),@RestoreSql nvarchar(max),@CurrentSizeMb bigint;
+SELECT TOP(1)
+       @LogicalFileName=[name],@OriginalGrowth=[growth],@OriginalPercent=[is_percent_growth],
+       @OriginalMaxSize=[max_size],@CurrentSizePages=[size]
+FROM [sys].[database_files]
+WHERE [type]=0
+ORDER BY [file_id];
+
+SET @CurrentSizeMb=CEILING(@CurrentSizePages*8.0/1024.0);
+SET @RestoreSql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+    +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH='
+    +CASE WHEN @OriginalPercent=1 THEN CONVERT(nvarchar(20),@OriginalGrowth)+N'%'
+          ELSE CONVERT(nvarchar(30),CONVERT(bigint,@OriginalGrowth)*8)+N'KB' END
+    +N', MAXSIZE='+CASE WHEN @OriginalMaxSize=-1 THEN N'UNLIMITED'
+                        ELSE CONVERT(nvarchar(30),CEILING(@OriginalMaxSize*8.0/1024.0))+N'MB' END+N');';
+
+/* CAP-PERCENT */
+SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+    +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=10%, MAXSIZE=UNLIMITED);';
+EXEC [sys].[sp_executesql] @Sql;
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_DatabaseCapacityAnalysis]
+     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.capacity')
+    WITH ([FindingCode] varchar(80) N'$.FindingCode') WHERE [FindingCode]='PERCENT_GROWTH_REVIEW'
+)
+    THROW 54144,N'P0-Vertrag CAP-PERCENT fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('CAP-PERCENT');
+
+/* CAP-MAX */
+SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+    +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=64MB, MAXSIZE='
+    +CONVERT(nvarchar(30),@CurrentSizeMb)+N'MB);';
+EXEC [sys].[sp_executesql] @Sql;
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_DatabaseCapacityAnalysis]
+     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.capacity')
+    WITH ([FindingCode] varchar(80) N'$.FindingCode') WHERE [FindingCode]='FILE_MAX_SIZE_REACHED'
+)
+    THROW 54145,N'P0-Vertrag CAP-MAX fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('CAP-MAX');
+
+/* CAP-GROWTH */
+SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+    +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=1048576MB, MAXSIZE=UNLIMITED);';
+EXEC [sys].[sp_executesql] @Sql;
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_DatabaseCapacityAnalysis]
+     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.capacity')
+    WITH ([FindingCode] varchar(80) N'$.FindingCode') WHERE [FindingCode]='NEXT_GROWTH_EXCEEDS_VOLUME_FREE'
+)
+    THROW 54146,N'P0-Vertrag CAP-GROWTH fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('CAP-GROWTH');
+
+EXEC [sys].[sp_executesql] @RestoreSql;
+
+/* CAP-DENIED */
+IF USER_ID(N'ExampleP0CapacityRestrictedUser') IS NOT NULL DROP USER [ExampleP0CapacityRestrictedUser];
+CREATE USER [ExampleP0CapacityRestrictedUser] WITHOUT LOGIN;
+GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseCapacityAnalysis] TO [ExampleP0CapacityRestrictedUser];
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXECUTE AS USER=N'ExampleP0CapacityRestrictedUser';
+EXEC [monitor].[USP_DatabaseCapacityAnalysis]
+     @DatabaseNames=N'',@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+REVERT;
+DROP USER [ExampleP0CapacityRestrictedUser];
+IF ISJSON(@Json)<>1 OR @Status NOT IN ('DENIED_PERMISSION','AVAILABLE_LIMITED','DENIED_GROUP') OR COALESCE(@Partial,1)<>1
+    THROW 54147,N'P0-Vertrag CAP-DENIED fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('CAP-DENIED');
+
+/* PC-SNAPSHOT: Delta-Counter erhalten ohne Sample niemals eine erfundene Rate. */
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_PerformanceCounters]
+     @SampleSeconds=0,@MaxZeilen=10000,@ResultSetArt='NONE',@JsonErzeugen=1,
+     @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF ISJSON(@Json)<>1
+ OR NOT EXISTS
+    (SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+     WITH ([Interpretation] varchar(40) N'$.Interpretation') WHERE [Interpretation]='RAW_SNAPSHOT')
+ OR EXISTS
+    (SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+     WITH ([Interpretation] varchar(40) N'$.Interpretation',[MetricValue] decimal(38,6) N'$.MetricValue',[FindingCode] varchar(80) N'$.FindingCode')
+     WHERE [Interpretation] IN ('RATE_PER_SECOND','FRACTION_DELTA_PERCENT','AVERAGE_DELTA_RATIO')
+       AND ([MetricValue] IS NOT NULL OR [FindingCode]<>'SAMPLE_REQUIRED_FOR_DELTA_METRIC'))
+    THROW 54148,N'P0-Vertrag PC-SNAPSHOT fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('PC-SNAPSHOT');
+
+/* PC-RATE, PC-FRACTION und PC-AVERAGE: echte DMV-Samples, explizite Basen und Formelkontrolle. */
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_PerformanceCounters]
+     @SampleSeconds=1,@MaxZeilen=10000,@ResultSetArt='NONE',@JsonErzeugen=1,
+     @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH ([Interpretation] varchar(40) N'$.Interpretation',[SampleSeconds] decimal(19,6) N'$.SampleSeconds')
+    WHERE [Interpretation]='RATE_PER_SECOND' AND [SampleSeconds]>=1
+)
+OR EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH
+    (
+        [Interpretation] varchar(40) N'$.Interpretation',[MetricValue] decimal(38,6) N'$.MetricValue',
+        [DeltaValue] bigint N'$.DeltaValue',[SampleSeconds] decimal(19,6) N'$.SampleSeconds'
+    )
+    WHERE [Interpretation]='RATE_PER_SECOND' AND [MetricValue] IS NOT NULL
+      AND ABS([MetricValue]-CONVERT(decimal(38,6),[DeltaValue]/NULLIF([SampleSeconds],0)))>0.000001
+)
+    THROW 54149,N'P0-Vertrag PC-RATE fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('PC-RATE');
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH
+    (
+        [Interpretation] varchar(40) N'$.Interpretation',[BaseBeforeValue] bigint N'$.BaseBeforeValue',
+        [BaseAfterValue] bigint N'$.BaseAfterValue'
+    )
+    WHERE [Interpretation]='FRACTION_DELTA_PERCENT'
+      AND [BaseBeforeValue] IS NOT NULL AND [BaseAfterValue] IS NOT NULL
+)
+OR EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH
+    (
+        [Interpretation] varchar(40) N'$.Interpretation',[MetricValue] decimal(38,6) N'$.MetricValue',
+        [DeltaValue] bigint N'$.DeltaValue',[BaseDeltaValue] bigint N'$.BaseDeltaValue'
+    )
+    WHERE [Interpretation]='FRACTION_DELTA_PERCENT' AND [MetricValue] IS NOT NULL
+      AND ABS([MetricValue]-CONVERT(decimal(38,6),100.0*[DeltaValue]/NULLIF([BaseDeltaValue],0)))>0.000001
+)
+    THROW 54150,N'P0-Vertrag PC-FRACTION fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('PC-FRACTION');
+
+IF NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH
+    (
+        [Interpretation] varchar(40) N'$.Interpretation',[BaseBeforeValue] bigint N'$.BaseBeforeValue',
+        [BaseAfterValue] bigint N'$.BaseAfterValue'
+    )
+    WHERE [Interpretation]='AVERAGE_DELTA_RATIO'
+      AND [BaseBeforeValue] IS NOT NULL AND [BaseAfterValue] IS NOT NULL
+)
+OR EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH
+    (
+        [Interpretation] varchar(40) N'$.Interpretation',[MetricValue] decimal(38,6) N'$.MetricValue',
+        [DeltaValue] bigint N'$.DeltaValue',[BaseDeltaValue] bigint N'$.BaseDeltaValue'
+    )
+    WHERE [Interpretation]='AVERAGE_DELTA_RATIO' AND [MetricValue] IS NOT NULL
+      AND ABS([MetricValue]-CONVERT(decimal(38,6),1.0*[DeltaValue]/NULLIF([BaseDeltaValue],0)))>0.000001
+)
+    THROW 54151,N'P0-Vertrag PC-AVERAGE fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('PC-AVERAGE');
+
+/* EV-NOTARGET */
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_CriticalEngineEvents]
+     @SourceExtendedEventSessionName=N'ExampleP0MissingEventSession',@MitSystemHealth=1,
+     @MitServerDiagnostics=0,@MitEventXml=0,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.sources')
+    WITH ([StatusCode] varchar(40) N'$.StatusCode') WHERE [StatusCode]='UNAVAILABLE_OBJECT'
+)
+    THROW 54152,N'P0-Vertrag EV-NOTARGET fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('EV-NOTARGET');
+
+/* EV-SEVERE: kontrolliertes generisches Event in einer kurzlebigen XE-Datei. */
+IF EXISTS(SELECT 1 FROM [sys].[server_event_sessions] WHERE [name]=N'ExampleP0CriticalEvents')
+    DROP EVENT SESSION [ExampleP0CriticalEvents] ON SERVER;
+CREATE EVENT SESSION [ExampleP0CriticalEvents] ON SERVER
+ADD EVENT [sqlserver].[error_reported]
+ADD TARGET [package0].[event_file]
+(
+    SET [filename]=N'/tmp/example_p0_critical_events.xel',[max_file_size]=(5),[max_rollover_files]=(1)
+)
+WITH (STARTUP_STATE=OFF);
+ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=START;
+DECLARE @EventStartUtc datetime2(7)=SYSUTCDATETIME();
+BEGIN TRY
+    THROW 51000,N'Example synthetic critical event.',1;
+END TRY
+BEGIN CATCH
+END CATCH;
+ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=STOP;
+
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_CriticalEngineEvents]
+     @SourceExtendedEventSessionName=N'ExampleP0CriticalEvents',@VonUtc=@EventStartUtc,
+     @BisUtc=DATEADD(MINUTE,5,@EventStartUtc),@MinErrorSeverity=16,@MitSystemHealth=1,
+     @MitServerDiagnostics=0,@MitEventXml=0,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+DROP EVENT SESSION [ExampleP0CriticalEvents] ON SERVER;
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.events')
+    WITH
+    (
+        [TimestampUtc] datetime2(7) N'$.TimestampUtc',[ErrorNumber] int N'$.ErrorNumber',
+        [Severity] int N'$.Severity',[FindingCode] varchar(100) N'$.FindingCode'
+    )
+    WHERE [ErrorNumber]=51000 AND [Severity]=16 AND [FindingCode]='SEVERE_ERROR_REPORTED'
+      AND [TimestampUtc]>=@EventStartUtc AND [TimestampUtc]<DATEADD(MINUTE,5,@EventStartUtc)
+)
+    THROW 54153,N'P0-Vertrag EV-SEVERE fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('EV-SEVERE');
+
+/* EV-DIAG und EV-XML: One-Shot ohne Repeat, keine XML-Nutzlast im Ergebnis. */
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+EXEC [monitor].[USP_CriticalEngineEvents]
+     @SourceExtendedEventSessionName=N'system_health',@MitSystemHealth=0,
+     @MitServerDiagnostics=1,@MitEventXml=0,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+IF ISJSON(@Json)<>1 OR NOT EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.sources')
+    WITH ([SourceName] nvarchar(128) N'$.SourceName',[StatusCode] varchar(40) N'$.StatusCode',[Detail] nvarchar(1000) N'$.Detail')
+    WHERE [SourceName]=N'sp_server_diagnostics' AND [StatusCode]='AVAILABLE' AND [Detail] LIKE N'%One-Shot%'
+)
+OR NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.serverDiagnostics'))
+    THROW 54154,N'P0-Vertrag EV-DIAG fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('EV-DIAG');
+
+IF EXISTS
+(
+    SELECT 1 FROM OPENJSON(@Json,N'$.serverDiagnostics')
+    WITH ([Data] nvarchar(max) N'$.Data') WHERE [Data] IS NOT NULL
+)
+    THROW 54155,N'P0-Vertrag EV-XML fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('EV-XML');
+
+IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>16
+    THROW 54156,N'Der P0-Laufzeitvertrag hat nicht alle vorgesehenen Fälle ausgeführt.',1;
+
+SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
+       COUNT_BIG(*) AS [ExecutedCases],
+       N'16 synthetische P0-Fälle wurden ausgeführt; PC-RESET bleibt ein separater kontrollierter Neustartfall.' AS [Detail]
+FROM @ExecutedCases;
+GO

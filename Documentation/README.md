@@ -52,7 +52,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
 Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
-Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. GitHub Actions installiert und testet denselben 13-Suite-Vertrag auf SQL Server 2019, 2022 und 2025; manuelle Feature-Positiv-, Grenzwert- und Lastfälle bleiben separat zu dokumentieren.
+Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. GitHub Actions installiert und testet denselben 14-Suite-Vertrag einschließlich des synthetischen P0-Laufzeitvertrags auf SQL Server 2019, 2022 und 2025; manuelle Feature-Positiv-, Grenzwert- und Lastfälle bleiben separat zu dokumentieren.
 
 ## Forschungs- und Inventareinstieg
 
