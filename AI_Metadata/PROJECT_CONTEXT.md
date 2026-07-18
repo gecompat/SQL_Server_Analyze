@@ -29,7 +29,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - `monitor.USP_DataCaptureDeepAnalysis` bewertet CT-Verlust nur mit Consumer-Wasserstand, isoliert CDC- und lokale Replikationsquellen und behandelt Remote-Topologie als Evidenzlücke; Change-Zeilen, Commands, Fehlertexte, Credentials und DDL bleiben ausgeschlossen.
 - `monitor.USP_EncryptionAnalysis` trennt TDE von expliziter Backupverschlüsselung und liest keine Schlüssel-, Medien-, Konto- oder geschützten Inhaltsdaten; externe Schlüsselkopie und Restore bleiben außerhalb des Beweisumfangs.
 - `monitor.USP_MaintenanceOperations` liest Jobaktivität nur bei explizitem Filter und führt keine Resume-, Abort-, Kill-, Cleanup- oder Jobaktion aus; SQL-/Jobinhalte und Identitäts-/Clientdaten bleiben ausgeschlossen.
-- Actions führen Installer, 13-Suite-Gate und synthetische Berechtigungsmatrix versionshart auf SQL Server 2019, 2022 und 2025 aus.
+- Actions führen Installer, 20-Suite-Gate einschließlich der ersten achtundzwanzig P1-Fälle bis Statistikverteilung und synthetische Berechtigungsmatrix versionshart auf SQL Server 2019, 2022 und 2025 aus.
 
 ## Datenschutz und Portabilität
 
