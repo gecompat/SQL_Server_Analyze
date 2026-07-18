@@ -32,26 +32,29 @@ jobs:
           path = Path('Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql')
           text = path.read_text(encoding='utf-8')
 
+          old_uniform = (
+              "    INSERT [dbo].[ExampleStatisticsUniform]([DistributionValue])\n"
+              "    SELECT (([NumberValue]-1)%100)+1\n"
+              "    FROM [#Numbers]\n"
+              "    WHERE [NumberValue]<=1000;\n"
+          )
+          new_uniform = (
+              "    INSERT [dbo].[ExampleStatisticsUniform]([DistributionValue])\n"
+              "    SELECT [NumberValue]\n"
+              "    FROM [#Numbers]\n"
+              "    WHERE [NumberValue]<=1000;\n"
+          )
           replacements = [
-              (
-                  """    INSERT [dbo].[ExampleStatisticsUniform]([DistributionValue])
-              SELECT (([NumberValue]-1)%100)+1
-              FROM [#Numbers]
-              WHERE [NumberValue]<=1000;
-          """,
-                  """    INSERT [dbo].[ExampleStatisticsUniform]([DistributionValue])
-              SELECT [NumberValue]
-              FROM [#Numbers]
-              WHERE [NumberValue]<=1000;
-          """,
-              ),
+              (old_uniform, new_uniform),
               (
                   "AND [HistogramSteps]>=50 AND [DominantStepPercent]<=5",
                   "AND [HistogramSteps]>0 AND [DominantStepPercent]<=5",
               ),
               (
-                  "WHERE [DatabaseName]=N'[DeineDatenbank]'\n              AND ([CandidateCount]<>2 OR [HistogramVisibleCount]>2))",
-                  "WHERE [DatabaseName]=DB_NAME()\n              AND ([CandidateCount]<>2 OR [HistogramVisibleCount]>2))",
+                  "WHERE [DatabaseName]=N'[DeineDatenbank]'\n"
+                  "              AND ([CandidateCount]<>2 OR [HistogramVisibleCount]>2))",
+                  "WHERE [DatabaseName]=DB_NAME()\n"
+                  "              AND ([CandidateCount]<>2 OR [HistogramVisibleCount]>2))",
               ),
           ]
 
