@@ -121,6 +121,8 @@ GO
 
 -- EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe = 1;
 
+-- EXEC [monitor].[USP_MaintenanceOperations] @Hilfe = 1;
+
 -- EXEC [monitor].[USP_ServerCpuTopology] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_ServerNuma] @Hilfe = 1;
@@ -168,6 +170,8 @@ GO
 -- EXEC [monitor].[USP_FullTextAnalysis] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_DataCaptureDeepAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_EncryptionAnalysis] @Hilfe = 1;
 
 
 -- BEGIN CURRENTREQUESTS-STATEMENT-KONTEXT

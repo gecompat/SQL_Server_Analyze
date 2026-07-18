@@ -1313,3 +1313,45 @@ USP_DataCaptureDeepAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_DataCaptureDeepAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_DataCaptureDeepAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_DataCaptureDeepAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_EncryptionAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_EncryptionAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_EncryptionAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_EncryptionAnalysis,NurProblematisch,bit,0
+USP_EncryptionAnalysis,TdeTransitionWarnMinutes,int,60
+USP_EncryptionAnalysis,CertificateExpiryWarnDays,int,90
+USP_EncryptionAnalysis,ExpliziteBackupverschluesselungErwartet,bit,0
+USP_EncryptionAnalysis,BackupLookbackDays,int,35
+USP_EncryptionAnalysis,MaxDatenbanken,int,16
+USP_EncryptionAnalysis,MaxZeilen,int,1000
+USP_EncryptionAnalysis,LockTimeoutMs,int,0
+USP_EncryptionAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_EncryptionAnalysis,JsonErzeugen,bit,0
+USP_EncryptionAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_EncryptionAnalysis,PrintMeldungen,bit,1
+USP_EncryptionAnalysis,Hilfe,bit,0
+USP_EncryptionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_EncryptionAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_EncryptionAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_EncryptionAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_MaintenanceOperations,DatabaseNames,nvarchar(max),NULL
+USP_MaintenanceOperations,SystemdatenbankenEinbeziehen,bit,0
+USP_MaintenanceOperations,DatabaseNamePattern,nvarchar(4000),NULL
+USP_MaintenanceOperations,JobNames,nvarchar(max),NULL
+USP_MaintenanceOperations,JobNamePattern,nvarchar(4000),NULL
+USP_MaintenanceOperations,NurProblematisch,bit,0
+USP_MaintenanceOperations,ResumablePausedWarnMinutes,int,60
+USP_MaintenanceOperations,BlockedWarnMs,bigint,5000
+USP_MaintenanceOperations,PvsWarnMb,"decimal(19,2)",1024
+USP_MaintenanceOperations,AbortedTransactionsWarnCount,bigint,1
+USP_MaintenanceOperations,MaxDatenbanken,int,16
+USP_MaintenanceOperations,MaxZeilen,int,1000
+USP_MaintenanceOperations,LockTimeoutMs,int,0
+USP_MaintenanceOperations,ResultSetArt,varchar(16),'CONSOLE'
+USP_MaintenanceOperations,JsonErzeugen,bit,0
+USP_MaintenanceOperations,Json,nvarchar(max),NULL OUTPUT
+USP_MaintenanceOperations,PrintMeldungen,bit,1
+USP_MaintenanceOperations,Hilfe,bit,0
+USP_MaintenanceOperations,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_MaintenanceOperations,IsPartialOut,bit,NULL OUTPUT
+USP_MaintenanceOperations,ErrorNumberOut,int,NULL OUTPUT
+USP_MaintenanceOperations,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

@@ -54,7 +54,13 @@ VALUES
 (N'USP_DataCaptureDeepAnalysis',N'@ChangeTrackingClientVersion'),
 (N'USP_DataCaptureDeepAnalysis',N'@CdcLatencyWarnSeconds'),
 (N'USP_DataCaptureDeepAnalysis',N'@ReplicationPendingCommandWarn'),
-(N'USP_DataCaptureDeepAnalysis',N'@StatusCodeOut');
+(N'USP_DataCaptureDeepAnalysis',N'@StatusCodeOut'),
+(N'USP_EncryptionAnalysis',N'@TdeTransitionWarnMinutes'),
+(N'USP_EncryptionAnalysis',N'@ExpliziteBackupverschluesselungErwartet'),
+(N'USP_EncryptionAnalysis',N'@StatusCodeOut'),
+(N'USP_MaintenanceOperations',N'@ResumablePausedWarnMinutes'),
+(N'USP_MaintenanceOperations',N'@JobNames'),
+(N'USP_MaintenanceOperations',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 
@@ -226,6 +232,41 @@ IF CHARINDEX(N'CHANGETABLE(',@DataCaptureDefinition COLLATE SQL_Latin1_General_C
  OR CHARINDEX(N'sp_replmonitorsubscriptionpendingcmds',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
  OR CHARINDEX(N'ALTER DATABASE ',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
     THROW 54117,N'Die Data-Capture-Tiefenanalyse enthält einen ausgeschlossenen Nutzdaten-, Credential-, Command- oder Änderungszugriff.',1;
+
+DECLARE @EncryptionDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_EncryptionAnalysis'));
+IF @EncryptionDefinition IS NULL
+    THROW 54118,N'Die Verschluesselungsanalyse ist nicht sichtbar.',1;
+
+IF CHARINDEX(N'[sys].[dm_database_encryption_keys]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+ OR CHARINDEX(N'[sys].[certificates]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+ OR CHARINDEX(N'[dbo].[backupset]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+ OR CHARINDEX(N'[sys].[column_master_keys]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    THROW 54119,N'Der Verschluesselungsanalyse fehlt mindestens eine erwartete read-only Metadatenquelle.',1;
+
+IF CHARINDEX(N'[key_path]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[signature]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[encrypted_value]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[user_name]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[physical_device_name]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+    THROW 54120,N'Die Verschluesselungsanalyse referenziert ausgeschlossene Schluessel-, Konto- oder Medieninformationen.',1;
+
+DECLARE @MaintenanceDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_MaintenanceOperations'));
+IF @MaintenanceDefinition IS NULL
+    THROW 54121,N'Die Wartungsoperationsanalyse ist nicht sichtbar.',1;
+
+IF CHARINDEX(N'[sys].[index_resumable_operations]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+ OR CHARINDEX(N'[sys].[dm_exec_requests]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+ OR CHARINDEX(N'[sys].[dm_tran_persistent_version_store_stats]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+ OR CHARINDEX(N'[dbo].[sysjobactivity]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    THROW 54122,N'Der Wartungsoperationsanalyse fehlt mindestens eine erwartete read-only Quelle.',1;
+
+IF CHARINDEX(N'[sql_text]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[wait_resource]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[owner_sid]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[step_name]',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'sp_start_job',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'sp_stop_job',@MaintenanceDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+    THROW 54123,N'Die Wartungsoperationsanalyse referenziert ausgeschlossene Inhalts-, Identitaets- oder Aenderungsdaten.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

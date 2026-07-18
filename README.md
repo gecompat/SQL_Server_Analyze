@@ -208,6 +208,9 @@ Empfohlene Einstiegspunkte:
 - [RAW-, CONSOLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
 - [Datenschutz- und Sicherheitsvertrag für Repositoryartefakte](./Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md)
+- [Vertrag für ein späteres Snapshot-/Baseline-Paket](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
+- [Schnittstellenvertrag für eine spätere Fleet-Korrelation](./Documentation/Architecture/Fleet_Correlation_Contract.md)
+- [Externer Restore- und Hostnachweis](./Documentation/Quality/External_Restore_Host_Proof_Runbook.md)
 - [Tiefenanalyse fehlender Auswertungen und Spezialfälle](./Documentation/Research/Special_Case_Gap_Analysis.md)
 - [Systemquellenkatalog](./Documentation/Research/System_Source_Catalog.md)
 - [Recherchequellen](./Documentation/Research/Sources.md)
@@ -216,7 +219,7 @@ Empfohlene Einstiegspunkte:
 
 Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Migrationsprüfungen. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json).
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen installiert, kompiliert und funktional getestet. Die neue Version `1.1.0-special.8` einschließlich begrenzter Statistikverteilung, Spezialfeature-Inventur sowie In-Memory-OLTP-, Temporal-Tables-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Tiefenanalyse besitzt statische API- und Installerverträge; reale Läufe der dokumentierten Zielmatrix stehen noch aus.
+Die Version `1.1.0-special.9` ergänzt die P2-Module für Verschlüsselungslebenszyklus und Wartungsoperationen. Getrennte GitHub-Actions-Gates installieren und testen denselben 13-Suite-Vertrag auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170. Manuelle Feature-Positiv-, Grenzwert-, Last- und externe Restorefälle bleiben separate Nachweise.
 
 Die geplanten SQL-Server-, Editions-, Plattform- und Berechtigungskombinationen stehen in [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv). `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 

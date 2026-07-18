@@ -31,6 +31,8 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 | P2.4 | `monitor.USP_ServiceBrokerAnalysis` | Queue-Schalter und approximative Kapazität, interne Aktivierung, gruppierte Transmission- und Conversation-Zustände | MEDIUM; Kataloge, Broker-DMVs und `sys.dm_db_partition_stats` | Keine Queue-Nutzdaten oder Nachrichtenkörper; deaktivierte Queue und alte Metadaten beweisen weder Poison Message noch Ursache |
 | P2.5 | `monitor.USP_FullTextAnalysis` | Kataloge, Indizes, aktuelle Populationen, aggregierte Batches, Fragmente, Semantik, Memory Pools und FDHosts | MEDIUM; Kataloge und Full-Text-DMVs | Keine Inhalte, Keywords, Stopwords, Schlüsselwerte, Crawl-Logs, Pfade oder DDL; DMVs sind keine Historie und Grenzwerte bleiben Heuristiken |
 | P2.6 | `monitor.USP_DataCaptureDeepAnalysis` | CT-MinValidVersion gegen optionalen Consumer-Wasserstand, CDC-Capture/Cleanup und aggregierte lokale Replikationsagenten/-fehler | MEDIUM; Kataloge, CDC-DMVs, msdb und lokale Distribution | Keine Change-Zeilen, Replikationsbefehle, Fehlertexte, Credentials oder DDL; Remote Distributor bleibt explizite Evidenzlücke |
+| P2.7 | `monitor.USP_EncryptionAnalysis` | TDE-Zustand, Scanfortschritt, sichtbarer Zertifikatlebenszyklus, explizite Backupverschlüsselung und aggregierte Always-Encrypted-/Ledger-Anzahlen | LOW/MEDIUM; Kataloge, DMV und begrenzte msdb-Sicht | Kein Schlüsselmaterial, keine Pfade, Signaturen, verschlüsselten Werte, Medien oder Konten; Restore bleibt externer Beweis |
+| P2.8 | `monitor.USP_MaintenanceOperations` | resumierbare Indexoperationen, technische Wartungsrequests, ADR/PVS und explizit gefilterte Jobaktivität | MEDIUM; PVS-Detail ab SQL Server 2022 | Keine SQL-/Jobinhalte oder Identitätsdaten; keine Resume-, Abort-, Kill-, Cleanup- oder Jobaktion |
 
 ## Messverträge
 
@@ -46,6 +48,8 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 - Die Temporal-Tables-Analyse liest keine Current- oder History-Zeilen. Die dokumentierte Indexbaseline Periodenende/Periodenstart ist ein Prüfhinweis, kein automatischer DDL-Vorschlag. `SYSTEM_VERSIONING=OFF` trennt die Tabellen; ohne erhaltene Metadatenzuordnung darf das Modul daraus kein ehemaliges Paar erraten.
 - Die Service-Broker-Analyse liest keine Queue-Nutzdaten und referenziert die Nachrichtenkörperspalte nicht. `sys.transmission_queue` wird nur nach nicht-payloadhaltigen Metadaten gruppiert; Conversation-Handles, Gruppen-IDs und Schlüsselkennungen werden nicht ausgegeben. Ein deaktiviertes RECEIVE kann Folge der automatischen Poison-Message-Erkennung oder einer manuellen Konfiguration sein und wird deshalb nie als Ursachenbeweis bezeichnet.
 - Die Data-Capture-Tiefenanalyse behauptet CT-Synchronisationsverlust nur mit einem expliziten Consumer-Wasserstand. CDC-Scan-DMVs und Agenthistorien sind begrenzte Momentaufnahmen. Eine Remote- oder unzugängliche Distribution wird nie als gesund bewertet. Change-Zeilen, Replikationscommands, Fehlertexte, Credentials und Agentjob-Commands bleiben ausgeschlossen.
+- Die Verschlüsselungsanalyse trennt TDE von expliziter Backupverschlüsselung. Zertifikatablauf und lokaler Exportzeitpunkt sind Lebenszyklusevidenz, kein Beweis über extern vorhandene Schlüsselkopien. Always-Encrypted- und Ledger-Kataloge werden nur aggregiert.
+- Die Wartungsanalyse liest die Agentquelle nur bei explizitem Namensfilter. Pausen, Laufdauer und PVS-Größe bleiben Kontext; das Modul verändert keine Operation und liest keine SQL-, Job-, Identitäts- oder Clientinhalte.
 - `USP_DiagnosticFindings` benötigt Compatibility Level 130 oder höher, weil `OPENJSON` den Vertragsinhalt aggregiert.
 
 ## Befundvertrag
@@ -99,3 +103,8 @@ Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezi
 - [sys.dm_broker_activated_tasks](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-activated-tasks-transact-sql)
 - [sys.conversation_endpoints](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-conversation-endpoints-transact-sql)
 - [Poison Messages entfernen](https://learn.microsoft.com/en-us/sql/database-engine/service-broker/removing-poison-messages)
+- [sys.dm_database_encryption_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-database-encryption-keys-transact-sql)
+- [Transparent Data Encryption](https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption)
+- [sys.index_resumable_operations](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-index-resumable-operations)
+- [sys.dm_exec_requests](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql)
+- [sys.dm_tran_persistent_version_store_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-tran-persistent-version-store-stats-transact-sql)

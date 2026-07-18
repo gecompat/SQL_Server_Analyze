@@ -525,4 +525,31 @@ flowchart TD
 - [Replication monitoring](https://learn.microsoft.com/sql/relational-databases/replication/monitor/monitoring-replication)
 - [Change Data Capture](https://learn.microsoft.com/sql/relational-databases/track-changes/about-change-data-capture-sql-server)
 - [Change Tracking](https://learn.microsoft.com/sql/relational-databases/track-changes/about-change-tracking-sql-server)
+
+---
+
+## 13. [monitor].[USP_MaintenanceOperations]
+
+### Zweck
+
+Korrelierte read-only Sicht auf vier getrennte Evidenzbereiche: resumierbare Indexoperationen je gewählter Datenbank, laufende technische Wartungsrequests, ADR/PVS-Momentaufnahmen sowie ausschließlich explizit nach Namen oder Pattern ausgewählte Agent-Jobs.
+
+### Leserichtung
+
+1. `SourceStatus` prüfen. Auf SQL Server 2019 ist der ausführliche PVS-Vertrag bewusst `UNAVAILABLE_VERSION`; der ADR-Konfigurationskontext bleibt erhalten.
+2. Pausierte resumierbare Operationen nach Pausenzeit und Fortschritt priorisieren. Eine Pause kann geplant sein.
+3. Requests nur bei sichtbarer Blockierung zusammen mit Waitdauer und Fortschritt bewerten. Engine-Restzeitschätzungen sind unverbindlich.
+4. PVS-Größe und Anzahl abgebrochener Transaktionen sind Schwellwertbeobachtungen, keine Bereinigungsdiagnose aus einem Einzelwert.
+5. Jobdaten erscheinen nur, wenn `@JobNames` oder `@JobNamePattern` gesetzt wurde. Ohne Filter wird die Quelle nicht gelesen.
+
+### Sicherheits- und Datenschutzgrenze
+
+Das Modul liest keine SQL-Texte oder Handles, Jobschritte, Jobbefehle, Meldungen, Owner, Logins, Clients oder Wait-Ressourcen. Es führt weder `RESUME`, `ABORT`, `KILL`, Cleanup, Jobstart noch Jobstop aus. Laufzeitnamen dürfen im interaktiven Resultset erscheinen; sie werden nicht in Repositorynachweise übernommen.
+
+### Primärquellen
+
+- [sys.index_resumable_operations](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-index-resumable-operations)
+- [sys.dm_exec_requests](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql)
+- [ADR verwalten](https://learn.microsoft.com/en-us/sql/relational-databases/accelerated-database-recovery-management)
+- [sys.dm_tran_persistent_version_store_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-tran-persistent-version-store-stats-transact-sql)
 - [Automatic page repair](https://learn.microsoft.com/sql/database-engine/availability-groups/windows/automatic-page-repair-availability-groups-database-mirroring)

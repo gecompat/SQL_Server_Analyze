@@ -23,6 +23,6 @@
 
 ## Maßgeblicher Ausgangsstand
 
-Der real getestete Basisstand vom 17.07.2026 bleibt die Ausgangsbasis. Die danach ergänzte Spezialfallwelle bis `1.1.0-special.8` benötigt zusätzlich `167_Special_Case_API_Contract.sql` und dokumentierte Zielmatrixläufe, bevor sie als laufzeitgetestet gelten darf. P2 umfasst die Nutzungsinventur sowie die implementierten In-Memory-OLTP-, Temporal-Tables-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Tiefenmodule; weitere geplante Deep-Dive-Module dürfen nicht als bereits verfügbar beschrieben werden.
+Der Stand `1.1.0-special.9` schließt die lokalen P2-Module einschließlich Verschlüsselungslebenszyklus und Wartungsoperationen. `167_Special_Case_API_Contract.sql` prüft die statische Grenze; `168_Special_Case_Runtime_Contract.sql` wird in den versionsharten Actions-Gates auf SQL Server 2019, 2022 und 2025 ausgeführt. P3 bleibt getrennt: SC-023 benötigt ausdrückliche Persistenzentscheidungen, SC-024 eine externe Komponente und SC-025 eine autorisierte isolierte Restore-/Hostausführung.
 
 Die priorisierte Ausbauplanung steht in `Documentation/Research/Special_Case_Gap_Analysis.md`; der maschinenlesbare Backlog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.

@@ -64,6 +64,20 @@ EXEC [monitor].[USP_DataCaptureDeepAnalysis]
     , @ReplicationPendingCommandWarn=10000
     , @MaxZeilen=100;
 
+-- Verschluesselungslebenszyklus; keine Schluessel-, Medien- oder Kontoinhalte
+EXEC [monitor].[USP_EncryptionAnalysis]
+      @DatabaseNames=N'[DeineDatenbank]'
+    , @ExpliziteBackupverschluesselungErwartet=0
+    , @NurProblematisch=1
+    , @MaxZeilen=100;
+
+-- Wartungsoperationen read-only; ohne Jobfilter werden Jobkataloge nicht gelesen
+EXEC [monitor].[USP_MaintenanceOperations]
+      @DatabaseNames=N'[DeineDatenbank]'
+    , @JobNames=NULL
+    , @NurProblematisch=1
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]

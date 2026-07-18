@@ -7,7 +7,7 @@ GO
 ===============================================================================
 Datei        : 110_SQL_Server_2022_Permission_Matrix.sql
 Zweck        : Validiert das kontrollierte Verhalten des Frameworks unter
-               abgestuften SQL-Server-2022-Berechtigungen und Gruppenregeln.
+               abgestuften SQL-Server-2022+-Berechtigungen und Gruppenregeln.
 Voraussetzung: Framework ist installiert. Ausführung als sysadmin im SQLCMD-
                Modus mit der Laufzeitvariable PermissionMatrixPassword.
 Datenschutz  : Ausschließlich synthetische Login-, Benutzer- und Rollennamen.
@@ -17,8 +17,8 @@ Nebenwirkung : Erzeugt temporär synthetische Logins, Benutzer und eine Rolle;
 */
 SET NOCOUNT ON;
 
-IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>16
-    THROW 54200,N'Die Berechtigungsmatrix ist für SQL Server 2022 vorgesehen.',1;
+IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>$(ExpectedMajorVersion)
+    THROW 54200,N'Die Berechtigungsmatrix laeuft nicht auf der erwarteten SQL-Server-Hauptversion.',1;
 
 IF IS_SRVROLEMEMBER(N'sysadmin')<>1
     THROW 54201,N'Die Berechtigungsmatrix muss aus einem sysadmin-Testkontext gestartet werden.',1;
@@ -637,7 +637,7 @@ SELECT
     , SUM(CASE WHEN [CurrentSessionsStatus]='AVAILABLE' THEN 1 ELSE 0 END) AS [FullCurrentSessionScenarios]
     , SUM(CASE WHEN [CurrentSessionsStatus]='AVAILABLE_LIMITED' THEN 1 ELSE 0 END) AS [LimitedCurrentSessionScenarios]
     , SUM(CASE WHEN [PlanCacheDeepAllowed]=1 THEN 1 ELSE 0 END) AS [AllowedProtectedClassScenarios]
-    , N'SQL Server 2022 permission matrix completed with synthetic principals only.' AS [Detail]
+    , N'SQL Server 2022+ permission matrix completed with synthetic principals only.' AS [Detail]
 FROM [#PermissionMatrix];
 GO
 

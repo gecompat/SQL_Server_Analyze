@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 18. Juli 2026
-**Abdeckung:** alle 82 Procedures des Frameworks
+**Abdeckung:** alle 84 Procedures des Frameworks
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -99,6 +99,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | `[monitor].[USP_BackupChainAnalysis]` | [LSN-Kette und Restorefähigkeit](Procedures/USP_BackupChainAnalysis.md) |
 | `[monitor].[USP_AvailabilityDeepAnalysis]` | [Send-/Redo-Queues und Lag](Procedures/USP_AvailabilityDeepAnalysis.md) |
 | `[monitor].[USP_AgentMonitoringAnalysis]` | [Jobs, Alerts, Operatoren und Mailpfad](Procedures/USP_AgentMonitoringAnalysis.md) |
+| `[monitor].[USP_MaintenanceOperations]` | [Laufende, pausierte und versionsadaptive Wartungsoperationen](Procedures/USP_MaintenanceOperations.md) |
 
 ## Server Health
 
@@ -133,6 +134,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | `[monitor].[USP_ServiceBrokerAnalysis]` | [Queues, Aktivierung, Transmission und Conversations](Procedures/USP_ServiceBrokerAnalysis.md) |
 | `[monitor].[USP_FullTextAnalysis]` | [Kataloge, Populationen, Batches und Fragmente](Procedures/USP_FullTextAnalysis.md) |
 | `[monitor].[USP_DataCaptureDeepAnalysis]` | [Change Tracking, CDC und lokale Replikation](Procedures/USP_DataCaptureDeepAnalysis.md) |
+| `[monitor].[USP_EncryptionAnalysis]` | [TDE, Schutzobjekte, Backupverschlüsselung, Always Encrypted und Ledger](Procedures/USP_EncryptionAnalysis.md) |
 
 ## Vollständigkeit
 
@@ -144,10 +146,10 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | Plan Cache und Showplan | 6 |
 | Query Store | 9 |
 | Extended Events | 6 |
-| Infrastruktur | 12 |
+| Infrastruktur | 13 |
 | Server Health | 17 |
-| Versionsadaptive Spezialanalysen | 7 |
-| **Gesamt** | **82** |
+| Versionsadaptive Spezialanalysen | 8 |
+| **Gesamt** | **84** |
 
 ## Weitere Einstiege
 

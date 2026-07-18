@@ -659,3 +659,19 @@ Quelle: `Code/08_ServerHealth/060_USP_TraceFlags.sql`
 ```sql
 @PrintMeldungen bit = 1, @Hilfe bit = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
+
+## `[monitor].[USP_EncryptionAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/080_USP_EncryptionAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @NurProblematisch bit = 0, @TdeTransitionWarnMinutes int = 60, @CertificateExpiryWarnDays int = 90, @ExpliziteBackupverschluesselungErwartet bit = 0, @BackupLookbackDays int = 35, @MaxDatenbanken int = 16, @MaxZeilen int = 1000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_MaintenanceOperations]`
+
+Quelle: `Code/07_Infrastructure/130_USP_MaintenanceOperations.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @JobNames nvarchar(max) = NULL, @JobNamePattern nvarchar(4000) = NULL, @NurProblematisch bit = 0, @ResumablePausedWarnMinutes int = 60, @BlockedWarnMs bigint = 5000, @PvsWarnMb decimal(19,2) = 1024, @AbortedTransactionsWarnCount bigint = 1, @MaxDatenbanken int = 16, @MaxZeilen int = 1000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
