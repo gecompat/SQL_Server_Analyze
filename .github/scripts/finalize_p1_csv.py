@@ -58,7 +58,7 @@ fields, rows = read_csv("Metadata/Quality/Special_Case_Test_Cases.csv")
 seen = set()
 for row in rows:
     if row["CaseId"] in case_ids:
-        row["TestStatus"] = "PASS_WITH_LIMITATIONS"
+        row["ExecutionStatus"] = "PASS_WITH_LIMITATIONS"
         row["EvidenceReference"] = url("2019")
         seen.add(row["CaseId"])
 if seen != case_ids:
