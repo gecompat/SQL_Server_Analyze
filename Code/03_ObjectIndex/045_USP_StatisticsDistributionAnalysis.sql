@@ -145,7 +145,7 @@ BEGIN
         , [ModificationCounter] bigint NULL
         , [ModificationPercent] decimal(19,4) NULL
     );
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#DistributionDatabaseStatus]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -278,7 +278,7 @@ BEGIN
             , [ModificationPercent] decimal(19,4)
         );
 
-        INSERT [#DatabaseStatus]
+        INSERT [#DistributionDatabaseStatus]
         (
               [DatabaseName],[StatusCode],[IsPartial],[CandidateCount],[HistogramVisibleCount]
             , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
@@ -331,7 +331,7 @@ BEGIN
 
         UPDATE [d]
         SET [CandidateCount]=(SELECT COUNT_BIG(*) FROM [#Candidates] [c] WHERE [c].[DatabaseName]=[d].[DatabaseName])
-        FROM [#DatabaseStatus] [d];
+        FROM [#DistributionDatabaseStatus] [d];
 
         DECLARE @DbName sysname,@Sql nvarchar(max);
         DECLARE dbcur CURSOR LOCAL FAST_FORWARD FOR
@@ -404,7 +404,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
                      @pDbName=@DbName,@pMinRows=@MinVerteilungsZeilen;
             END TRY
             BEGIN CATCH
-                UPDATE [#DatabaseStatus]
+                UPDATE [#DistributionDatabaseStatus]
                 SET [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                       WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
                                       WHEN ERROR_NUMBER() IN (207,208,4121) THEN 'UNAVAILABLE_OBJECT'
@@ -421,13 +421,13 @@ OPTION (MAXDOP 1,RECOMPILE);';
         SET [HistogramVisibleCount]=
             (SELECT COUNT_BIG(*) FROM [#Distribution] [x]
              WHERE [x].[DatabaseName]=[d].[DatabaseName] AND [x].[HistogramSteps]>0)
-        FROM [#DatabaseStatus] [d];
+        FROM [#DistributionDatabaseStatus] [d];
 
-        UPDATE [#DatabaseStatus]
+        UPDATE [#DistributionDatabaseStatus]
         SET [StatusCode]='NOT_APPLICABLE',[Detail]=N'Keine sichtbare Statistik im begrenzten Kandidatenpool.'
         WHERE [CandidateCount]=0 AND [StatusCode]='AVAILABLE';
 
-        UPDATE [#DatabaseStatus]
+        UPDATE [#DistributionDatabaseStatus]
         SET [StatusCode]='AVAILABLE_LIMITED',[IsPartial]=1,
             [Detail]=N'Kandidaten waren sichtbar, aber kein Histogramm war sichtbar; Metadatenberechtigung und Materialisierung prüfen.'
         WHERE [CandidateCount]>0 AND [HistogramVisibleCount]=0 AND [StatusCode]='AVAILABLE';
@@ -490,13 +490,13 @@ OPTION (MAXDOP 1,RECOMPILE);';
         FROM [#PartitionVariation]
         WHERE [TotalRows]>=@MinVerteilungsZeilen AND [ModificationSpreadPercentPoints]>=@PartitionSpreadWarnPercent;
 
-        IF EXISTS(SELECT 1 FROM [#DatabaseStatus]
+        IF EXISTS(SELECT 1 FROM [#DistributionDatabaseStatus]
                   WHERE [StatusCode] NOT IN ('AVAILABLE','NOT_APPLICABLE'))
         BEGIN
             SET @IsPartial=1;
             IF EXISTS(SELECT 1 FROM [#Distribution]) SET @StatusCode='AVAILABLE_LIMITED';
             ELSE SELECT TOP (1) @StatusCode=[StatusCode],@ErrorNumber=[ErrorNumber],@ErrorMessage=[ErrorMessage]
-                 FROM [#DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','NOT_APPLICABLE') ORDER BY [DatabaseName];
+                 FROM [#DistributionDatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','NOT_APPLICABLE') ORDER BY [DatabaseName];
         END
         ELSE IF EXISTS(SELECT 1 FROM [#Findings])
             SET @StatusCode='AVAILABLE_WITH_FINDING';
@@ -506,9 +506,9 @@ OPTION (MAXDOP 1,RECOMPILE);';
             SET @StatusCode='AVAILABLE';
     END;
 
-    IF NOT EXISTS(SELECT 1 FROM [#DatabaseStatus])
+    IF NOT EXISTS(SELECT 1 FROM [#DistributionDatabaseStatus])
        AND @StatusCode<>'AVAILABLE'
-        INSERT [#DatabaseStatus]
+        INSERT [#DistributionDatabaseStatus]
         VALUES(NULL,@StatusCode,1,0,0,N'CATALOG_DEEP und Statistik-Metadatensichtbarkeit',@ErrorNumber,@ErrorMessage,N'Keine Verteilungsanalyse ausgeführt.');
 
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
@@ -529,7 +529,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
                     (SELECT COUNT_BIG(*) FROM [#Distribution]) [distributionCount],
                     (SELECT COUNT_BIG(*) FROM [#Findings]) [findingCount]
              FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-        DECLARE @DatabaseJson nvarchar(max)=(SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @DatabaseJson nvarchar(max)=(SELECT * FROM [#DistributionDatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @DistributionJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#Distribution] ORDER BY [DatabaseName],[CandidateOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @PartitionJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#PartitionVariation] ORDER BY [ModificationSpreadPercentPoints] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @FindingsJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
@@ -544,7 +544,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
                (SELECT COUNT_BIG(*) FROM [#Distribution]) [DistributionCount],(SELECT COUNT_BIG(*) FROM [#Findings]) [FindingCount],
                @ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],
                N'Begrenzte Histogramm- und Partitionsverteilung; Indikatoren sind keine Planursache.' [Detail];
-        SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName];
+        SELECT * FROM [#DistributionDatabaseStatus] ORDER BY [DatabaseName];
         SELECT TOP (@Limit) * FROM [#Distribution] ORDER BY [DatabaseName],[CandidateOrdinal];
         SELECT TOP (@Limit) * FROM [#PartitionVariation] ORDER BY [ModificationSpreadPercentPoints] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
         SELECT TOP (@Limit) * FROM [#Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal];
@@ -555,7 +555,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
                (SELECT COUNT_BIG(*) FROM [#Distribution]) [Analysierte_Statistiken],(SELECT COUNT_BIG(*) FROM [#Findings]) [Befunde],@ErrorMessage [Hinweis];
         SELECT N'Datenbankstatus Statistikverteilung' [Ergebnis],[DatabaseName] [Datenbank],[StatusCode] [Status],[CandidateCount] [Kandidaten],
                [HistogramVisibleCount] [Histogramme_sichtbar],[IsPartial] [Teilweise],[Detail] [Hinweis]
-        FROM [#DatabaseStatus] ORDER BY [DatabaseName];
+        FROM [#DistributionDatabaseStatus] ORDER BY [DatabaseName];
         SELECT TOP (@Limit) N'Histogrammverteilung' [Ergebnis],[d].* FROM [#Distribution] [d] ORDER BY [DatabaseName],[CandidateOrdinal];
         SELECT TOP (@Limit) N'Inkrementelle Partitionsvariation' [Ergebnis],[p].* FROM [#PartitionVariation] [p]
         ORDER BY [ModificationSpreadPercentPoints] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
