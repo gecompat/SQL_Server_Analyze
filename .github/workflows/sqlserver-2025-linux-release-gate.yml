@@ -60,7 +60,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker pull --quiet mcr.microsoft.com/mssql/server:2025-latest >/dev/null
+          image_reference='mcr.microsoft.com/mssql/server:2025-latest'
+          docker pull --quiet "$image_reference" >/dev/null
+          image_digest=$(docker image inspect --format='{{index .RepoDigests 0}}' "$image_reference")
+          if [[ ! "$image_digest" =~ ^mcr\.microsoft\.com/mssql/server@sha256:[0-9a-f]{64}$ ]]; then
+            echo 'SQL Server container image digest validation failed.'
+            exit 1
+          fi
+          echo "SQLSERVER_IMAGE_REFERENCE=$image_reference" >> "$GITHUB_ENV"
+          echo "SQLSERVER_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+          echo "Captured container image digest: $image_digest"
           docker run --name sqlserver-analyze-test-2025 \
             --detach \
             --env ACCEPT_EULA=Y \
@@ -68,13 +77,14 @@ jobs:
             --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
             --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
-            mcr.microsoft.com/mssql/server:2025-latest >/dev/null
+            "$image_digest" >/dev/null
 
       - name: Wait for SQL Server readiness
         shell: bash
         run: |
           set -euo pipefail
           sqlcmd_path=''
+          ready=0
           readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17 THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;"
           for attempt in $(seq 1 120); do
             sqlcmd_path=$(docker exec sqlserver-analyze-test-2025 bash -lc \
@@ -84,13 +94,28 @@ jobs:
               --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
               sqlserver-analyze-test-2025 \
               "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
-              echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
-              exit 0
+              ready=1
+              break
             fi
             sleep 2
           done
-          docker logs --tail 40 sqlserver-analyze-test-2025
-          exit 1
+          if [ "$ready" -ne 1 ]; then
+            docker logs --tail 40 sqlserver-analyze-test-2025
+            exit 1
+          fi
+          product_version=$(docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            sqlserver-analyze-test-2025 \
+            "$sqlcmd_path" -S localhost -U sa -C -b -h -1 -W -Q \
+            "SET NOCOUNT ON; SELECT CONVERT(varchar(128),SERVERPROPERTY(N'ProductVersion'));" \
+            | tr -d '\r' | awk 'NF { print $1; exit }')
+          if [[ ! "$product_version" =~ ^17\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo 'SQL Server product version validation failed.'
+            exit 1
+          fi
+          echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+          echo "SQLSERVER_PRODUCT_VERSION=$product_version" >> "$GITHUB_ENV"
+          echo "Captured SQL Server product version: $product_version"
 
       - name: Create synthetic test database
         shell: bash
@@ -202,6 +227,9 @@ jobs:
             echo '## SQL Server 2025 Linux release gate'
             echo '- Target: synthetic SQL Server 2025 Developer on Linux'
             echo '- Compatibility level: 170'
+            echo "- Product version: $SQLSERVER_PRODUCT_VERSION"
+            echo "- Container image reference: $SQLSERVER_IMAGE_REFERENCE"
+            echo "- Container image digest: $SQLSERVER_IMAGE_DIGEST"
             echo '- Installer: passed'
             echo '- Release gate: passed'
             echo '- Permission matrix: passed'
