@@ -32,10 +32,10 @@ BKP-FULL,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,No visible non-copy-onl
 BKP-DIFF,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Differential base mismatch,Only matching differential is selected,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935
 BKP-LOG,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Visible log LSN gap,Gap limited to visible history window,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935
 BKP-RESTORE,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Restore history absent,Missing evidence never equals failed recoverability,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935
-SCH-CONSTRAINT,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Untrusted constraint,Read-only finding without DDL,HIGH,NOT_EXECUTED,
-SCH-FK,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,FK without leading support index,Finding remains workload-dependent,MEDIUM,NOT_EXECUTED,
-SCH-DUP,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Exact index definition duplicate,No automatic drop recommendation,MEDIUM,NOT_EXECUTED,
-SCH-RANGE,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Identity or sequence near type limit,Numeric type range and threshold preserved,MEDIUM,NOT_EXECUTED,
+SCH-CONSTRAINT,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Untrusted constraint,Read-only finding without DDL,HIGH,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112460
+SCH-FK,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,FK without leading support index,Finding remains workload-dependent,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112460
+SCH-DUP,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Exact index definition duplicate,No automatic drop recommendation,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112460
+SCH-RANGE,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Identity or sequence near type limit,Numeric type range and threshold preserved,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112460
 STAT-UNIFORM,USP_StatisticsDistributionAnalysis,15,NONE,CATALOG_DEEP,Bounded near-uniform histogram,No skew finding is required and absence is limited to the analyzed candidate pool,HIGH,NOT_EXECUTED,
 STAT-DOMINANT,USP_StatisticsDistributionAnalysis,15,NONE,CATALOG_DEEP,One histogram step dominates visible rows,Dominant-step metric and configurable threshold are preserved,HIGH,NOT_EXECUTED,
 STAT-TAIL,USP_StatisticsDistributionAnalysis,15,NONE,CATALOG_DEEP,Last histogram step is concentrated,Tail indicator never claims ascending-key causality,HIGH,NOT_EXECUTED,
