@@ -15,9 +15,8 @@ Nebenwirkung : Die eingebundenen Tests verwenden ausschließlich synthetische,
 Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
                Übernahme in Repositoryartefakte ist separat zu prüfen.
 Evidenz      : Versionsworkflows veröffentlichen commitbezogene Statuskontexte.
-Statistik    : Suite 175 isoliert Child-Status und führt den begrenzten
-               Histogrammzugriff ohne unnötigen Query-Hint aus.
-Diagnose     : Der synthetische Denied-Status prüft zusätzlich IsPartial.
+Statistik    : Suite 175 isoliert Child-Status, begrenzt Histogrammzugriffe und
+               prüft positive, begrenzte sowie verweigerte Ausführungspfade.
 ===============================================================================
 */
 
