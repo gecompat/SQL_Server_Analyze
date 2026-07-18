@@ -1,0 +1,52 @@
+name: Fix P2 Broker privacy gate
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-p2-broker-privacy-gate.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Restrict mutation matching to executable forms
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('Code/Tests/Integration/182_P2_Service_Broker_Runtime_Contract.sql')
+          text=path.read_text(encoding='utf-8')
+          old="""    IF CHARINDEX(N'[message_body]',LOWER(@Definition))>0
+       OR CHARINDEX(N'receive top',LOWER(@Definition))>0
+       OR CHARINDEX(N'alter queue',LOWER(@Definition))>0
+       OR CHARINDEX(N'end conversation',LOWER(@Definition))>0"""
+          new="""    IF CHARINDEX(N'[message_body]',LOWER(@Definition))>0
+       OR CHARINDEX(N'receive top (',LOWER(@Definition))>0
+       OR CHARINDEX(N'alter queue [',LOWER(@Definition))>0
+       OR CHARINDEX(N'end conversation [',LOWER(@Definition))>0
+       OR CHARINDEX(N'end conversation @',LOWER(@Definition))>0"""
+          if text.count(old)!=1:
+              raise SystemExit('unexpected Broker privacy anchor')
+          path.write_text(text.replace(old,new,1),encoding='utf-8',newline='\n')
+          PY
+      - name: Commit fix and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-p2-broker-privacy-gate.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Integration/182_P2_Service_Broker_Runtime_Contract.sql .github/workflows/fix-p2-broker-privacy-gate.yml
+          git diff --cached --check
+          git commit -m 'test: refine P2 Broker privacy gate'
+          git push origin HEAD:main
