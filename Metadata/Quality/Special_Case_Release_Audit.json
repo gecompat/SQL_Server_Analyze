@@ -1,8 +1,8 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T06:53:00Z",
-  "status": "ACTIONS_PENDING",
-  "scope": "completed P0/P1/P2 implementation wave, evidence-backed Wait Type catalog curation, and green commit-specific SQL Server 2019, 2022 and 2025 Actions gates including the SQL Server 2025 regex matrix",
+  "generatedAtUtc": "2026-07-18T07:43:00Z",
+  "status": "ACTIONS_PASS",
+  "scope": "completed P0/P1/P2 implementation wave, evidence-backed Wait Type catalog curation, and green commit-specific 14-suite SQL Server 2019, 2022 and 2025 Actions gates including 16 automated P0 cases and the SQL Server 2025 regex matrix",
   "inventory": {
     "repositoryFiles": 324,
     "canonicalSqlSources": 107,
@@ -161,7 +161,7 @@
       "note": "Every final framework Wait Type name is an exact member of the immutable Microsoft source table; unverified legacy aliases and a malformed duplicate were removed instead of being relabeled."
     },
     "p0RuntimeContract": {
-      "status": "IMPLEMENTED_PENDING_ACTIONS",
+      "status": "ACTIONS_PASS",
       "suite": "Code/Tests/Integration/169_P0_Runtime_Contract.sql",
       "syntheticCases": 16,
       "runtimeContractCases": 14,
@@ -172,7 +172,11 @@
       "criticalEventCases": 4,
       "remainingControlledRestartCase": "PC-RESET",
       "runtimeDataPersisted": false,
-      "note": "Fourteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. Case statuses remain NOT_EXECUTED until the commit-specific SQL Server 2019, 2022 and 2025 Actions runs succeed."
+      "validatedCommit": "ffb95bd57c8e08300410ad268a92cc5379ee45f7",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177330",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177353",
+      "note": "Fourteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. All three version gates passed; PC-RESET remains NOT_EXECUTED because it requires a controlled restart between samples."
     },
     "procedureDocumentationContract": {
       "status": "PASS",
@@ -232,50 +236,51 @@
     "targetRows": 6,
     "targetRowsNotExecuted": 3,
     "targetRowsPassWithLimitations": 3,
-    "releaseGateSuiteRows": 26,
+    "releaseGateSuiteRows": 29,
     "releaseGateSuiteRowsNotExecuted": 15,
     "releaseGateSuiteRowsPass": 8,
-    "releaseGateSuiteRowsPassWithLimitations": 3,
+    "releaseGateSuiteRowsPassWithLimitations": 6,
     "specialCaseRows": 181,
-    "specialCaseRowsNotExecuted": 172,
-    "specialCaseRowsPassWithLimitations": 9,
+    "specialCaseRowsNotExecuted": 156,
+    "specialCaseRowsPassWithLimitations": 25,
     "specialCaseRowsAutomatedPending": 0,
     "runtimeStatus": "ACTIONS_PASS",
-    "claim": "Commit ee244f05b4e299a9274f94b68f326a1b23ba981f passed the synthetic Linux installer, 13-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including the separate SQL Server 2025 regex matrix. Exact public product builds and immutable container image digests were captured. This is not feature-positive, boundary, load, Windows, Azure MI or external restore evidence.",
+    "claim": "Commit ffb95bd57c8e08300410ad268a92cc5379ee45f7 passed the synthetic Linux installer, 14-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including 16 automated P0 cases and the separate SQL Server 2025 regex matrix. Exact public product builds and immutable container image digests were captured. PC-RESET and further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
       "sqlServer2019": {
         "productVersion": "15.0.4480.2",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2019-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:46f719fd3457d4e7e8e5845fe00c35c20e7bae7ff1e8b9fe595f2a81029f5ba8",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602383"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362"
       },
       "sqlServer2022": {
         "productVersion": "16.0.4265.3",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2022-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602384"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177330"
       },
       "sqlServer2025": {
         "productVersion": "17.0.4065.4",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2025-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602395"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177353"
       }
     },
     "actionEvidence": {
-      "commitSha": "ee244f05b4e299a9274f94b68f326a1b23ba981f",
-      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602394",
-      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602382",
-      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602420",
-      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602383",
-      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602384",
-      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602395",
-      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602395"
+      "commitSha": "ffb95bd57c8e08300410ad268a92cc5379ee45f7",
+      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177349",
+      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177344",
+      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177337",
+      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362",
+      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177330",
+      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177353",
+      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177353"
     }
   },
   "runtimeLimitations": [
     "Local Docker, sqlcmd and PowerShell were unavailable; the primary runtime evidence is the three green commit-specific GitHub Actions gates.",
-    "Feature-positive, boundary, load, Windows, Azure MI and external restore cases remain separate from the synthetic empty-database Actions contract."
+    "PC-RESET requires a controlled restart between samples and remains NOT_EXECUTED.",
+    "Further feature-positive, boundary, load, Windows, Azure MI and external restore cases remain separate from the synthetic Actions contract."
   ]
 }

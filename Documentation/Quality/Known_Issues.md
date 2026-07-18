@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `ee244f05b4e299a9274f94b68f326a1b23ba981f` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `ffb95bd57c8e08300410ad268a92cc5379ee45f7` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 14 Suiten, die versionsspezifischen Berechtigungsmatrizen und 16 automatisierte P0-Fälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
@@ -11,7 +11,8 @@ Verbleibende Repository- und Evidenzpunkte:
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 
-- Die automatisierten Linux-Leerzustands-/Vertragspfade ersetzen keine Feature-Positiv-, Grenzwert-, Last-, Windows- oder Azure-MI-Tests.
+- `PC-RESET` bleibt als einziger P0-Fall offen und benötigt einen kontrollierten SQL-Server-Neustart zwischen zwei Samples.
+- Die automatisierten synthetischen Linux-Vertragspfade ersetzen keine weiteren Feature-Positiv-, Grenzwert-, Last-, Windows- oder Azure-MI-Tests.
 - Bei jeder weiteren Zielversion oder abweichenden Plattform sind Installer, Smoke Tests, Parametervertrag und `165_Filter_Output_Contract.sql` erneut auszuführen.
 - Phase 7 liefert überwiegend Inventar- und Momentaufnahmen; zeitbasierte CPU-, NUMA- und Memory-Trends sind bewusst nicht Bestandteil dieses Ad-hoc-Pakets.
 - DWH-/ETL-spezifische Adapter bleiben zurückgestellt.
