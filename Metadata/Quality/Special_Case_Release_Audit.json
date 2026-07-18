@@ -1,12 +1,12 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T12:34:20Z",
+  "generatedAtUtc": "2026-07-18T12:35:49Z",
   "status": "ACTIONS_PASS",
   "scope": "green commit-specific 20-suite SQL Server 2019, 2022 and 2025 evidence through eight P1 statistics-distribution cases",
   "inventory": {
-    "repositoryFiles": 331,
+    "repositoryFiles": 333,
     "canonicalSqlSources": 109,
-    "sqlFilesIncludingTestsAndExamples": 136,
+    "sqlFilesIncludingTestsAndExamples": 137,
     "objects": 101,
     "procedures": 84,
     "functions": 12,
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 136,
+      "filesChecked": 137,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -313,8 +313,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 331,
-      "zipFilesScanned": 331,
+      "repositoryFilesScanned": 333,
+      "zipFilesScanned": 333,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,
@@ -393,9 +393,9 @@
     },
     "actionEvidence": {
       "commitSha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364",
-      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112427",
-      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112443",
-      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112500",
+      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565454",
+      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464",
+      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565467",
       "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510",
       "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565475",
       "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565446",
