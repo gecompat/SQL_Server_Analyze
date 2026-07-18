@@ -216,10 +216,10 @@ BEGIN
         IF @HasRegex=1
         BEGIN
             DECLARE @Sql nvarchar(max)=N'';
-            IF @LoginMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [LoginName] IS NULL OR REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags)=0;';
-            IF @HostMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [HostName] IS NULL OR REGEXP_LIKE([HostName],@HostPattern,@HostFlags)=0;';
-            IF @ProgramMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [ProgramName] IS NULL OR REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags)=0;';
-            IF @DatabaseMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [DatabaseName] IS NULL OR REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags)=0;';
+            IF @LoginMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [LoginName] IS NULL OR NOT REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags);';
+            IF @HostMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [HostName] IS NULL OR NOT REGEXP_LIKE([HostName],@HostPattern,@HostFlags);';
+            IF @ProgramMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [ProgramName] IS NULL OR NOT REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags);';
+            IF @DatabaseMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [DatabaseName] IS NULL OR NOT REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags);';
             EXEC [sys].[sp_executesql] @Sql,N'@LoginPattern nvarchar(4000),@LoginFlags varchar(8),@HostPattern nvarchar(4000),@HostFlags varchar(8),@ProgramPattern nvarchar(4000),@ProgramFlags varchar(8),@DatabasePattern nvarchar(4000),@DatabaseFlags varchar(8)',@LoginPattern,@LoginFlags,@HostPattern,@HostFlags,@ProgramPattern,@ProgramFlags,@DatabasePattern,@DatabaseFlags;
         END;
 

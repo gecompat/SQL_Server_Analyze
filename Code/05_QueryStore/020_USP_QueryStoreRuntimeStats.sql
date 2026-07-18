@@ -257,7 +257,7 @@ BEGIN
     IF @TextPatternMode = 'LIKE'
         SET @TextPredicate = N' AND [qt].[query_sql_text] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @TextPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS';
     ELSE IF @TextPatternMode IN ('REGEX', 'REGEXI')
-        SET @TextPredicate = N' AND REGEXP_LIKE([qt].[query_sql_text], @TextPatternValue, @TextRegexFlags) = 1';
+        SET @TextPredicate = N' AND REGEXP_LIKE([qt].[query_sql_text], @TextPatternValue, @TextRegexFlags)';
 
     IF @ReferencedDatabaseNames IS NOT NULL
         SET @ReferencedPredicate = N'
@@ -288,7 +288,7 @@ BEGIN
      SELECT 1
      FROM (SELECT TRY_CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
      CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') AS [n]([ObjectNode])
-     WHERE REGEXP_LIKE(PARSENAME([n].[ObjectNode].value(''@Database'', ''nvarchar(776)''), 1), @ReferencedPatternValue, @ReferencedRegexFlags) = 1
+     WHERE REGEXP_LIKE(PARSENAME([n].[ObjectNode].value(''@Database'', ''nvarchar(776)''), 1), @ReferencedPatternValue, @ReferencedRegexFlags)
  )';
 
     SET LOCK_TIMEOUT 0;

@@ -306,7 +306,7 @@ BEGIN
     IF @StatusCode='AVAILABLE' AND @EventPatternMode IN('REGEX','REGEXI')
     BEGIN
         IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] [d] WITH(NOLOCK) WHERE [d].[database_id]=DB_ID() AND [d].[compatibility_level]>=170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END
-        ELSE EXEC [sys].[sp_executesql] N'DELETE FROM [#Raw] WHERE REGEXP_LIKE([EventName],@P,@F)=0;',N'@P nvarchar(4000),@F varchar(8)',@P=@EventPatternValue,@F=@EventPatternFlags;
+        ELSE EXEC [sys].[sp_executesql] N'DELETE FROM [#Raw] WHERE NOT REGEXP_LIKE([EventName],@P,@F);',N'@P nvarchar(4000),@F varchar(8)',@P=@EventPatternValue,@F=@EventPatternFlags;
     END;
 
     SELECT @RowCount = COUNT_BIG(*) FROM [#Raw];

@@ -460,9 +460,9 @@ END;
         IF @SessionPatternMode IN('REGEX','REGEXI') OR @EventPatternMode IN('REGEX','REGEXI') OR @TargetPatternMode IN('REGEX','REGEXI')
         BEGIN
             DECLARE @FilterSql nvarchar(max)=N'';
-            IF @SessionPatternMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Fields] WHERE REGEXP_LIKE([SessionName],@SP,@SF)=0;DELETE FROM [#Targets] WHERE REGEXP_LIKE([SessionName],@SP,@SF)=0;DELETE FROM [#Actions] WHERE REGEXP_LIKE([SessionName],@SP,@SF)=0;DELETE FROM [#Events] WHERE REGEXP_LIKE([SessionName],@SP,@SF)=0;DELETE FROM [#Sessions] WHERE REGEXP_LIKE([SessionName],@SP,@SF)=0;';
-            IF @EventPatternMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Events] WHERE REGEXP_LIKE([EventName],@EP,@EF)=0;DELETE FROM [#Actions] WHERE REGEXP_LIKE([EventName],@EP,@EF)=0;';
-            IF @TargetPatternMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Targets] WHERE REGEXP_LIKE([TargetName],@TP,@TF)=0;';
+            IF @SessionPatternMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Fields] WHERE NOT REGEXP_LIKE([SessionName],@SP,@SF);DELETE FROM [#Targets] WHERE NOT REGEXP_LIKE([SessionName],@SP,@SF);DELETE FROM [#Actions] WHERE NOT REGEXP_LIKE([SessionName],@SP,@SF);DELETE FROM [#Events] WHERE NOT REGEXP_LIKE([SessionName],@SP,@SF);DELETE FROM [#Sessions] WHERE NOT REGEXP_LIKE([SessionName],@SP,@SF);';
+            IF @EventPatternMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Events] WHERE NOT REGEXP_LIKE([EventName],@EP,@EF);DELETE FROM [#Actions] WHERE NOT REGEXP_LIKE([EventName],@EP,@EF);';
+            IF @TargetPatternMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Targets] WHERE NOT REGEXP_LIKE([TargetName],@TP,@TF);';
             EXEC [sys].[sp_executesql] @FilterSql,N'@SP nvarchar(4000),@SF varchar(8),@EP nvarchar(4000),@EF varchar(8),@TP nvarchar(4000),@TF varchar(8)',@SP=@SessionPatternValue,@SF=@SessionPatternFlags,@EP=@EventPatternValue,@EF=@EventPatternFlags,@TP=@TargetPatternValue,@TF=@TargetPatternFlags;
         END;
         SELECT @RowCount=COUNT_BIG(*) FROM [#Sessions];

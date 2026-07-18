@@ -146,7 +146,7 @@ BEGIN
             SET @Sql+=N'WHERE [qs].[execution_count] >= @MinExec AND (@QH IS NULL OR [qs].[query_hash] = @QH) AND (@QPH IS NULL OR [qs].[query_plan_hash] = @QPH) ';
             SET @Sql+=N'AND EXISTS(SELECT 1 FROM [#DatabaseCandidates] AS [dc] WHERE [dc].[DatabaseId]=[pa].[dbid]) ';
             IF @TextMode='LIKE' SET @Sql+=N'AND [st].[text] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @TextValue COLLATE SQL_Latin1_General_CP1_CS_AS ';
-            IF @TextMode IN('REGEX','REGEXI') SET @Sql+=N'AND REGEXP_LIKE([st].[text],@TextValue,@TextFlags)=1 ';
+            IF @TextMode IN('REGEX','REGEXI') SET @Sql+=N'AND REGEXP_LIKE([st].[text],@TextValue,@TextFlags) ';
             SET @Sql+=N'ORDER BY '+@OrderExpression+N' DESC, [qs].[last_execution_time] DESC OPTION (RECOMPILE, MAXDOP 1);';
             EXEC [sys].[sp_executesql] @Sql,N'@TopRows bigint,@MinExec bigint,@QH binary(8),@QPH binary(8),@TextValue nvarchar(4000),@TextFlags varchar(8)',@TopRows=@EffectiveMaxAnalyseobjekte,@MinExec=@MinExecutionCount,@QH=@QueryHash,@QPH=@QueryPlanHash,@TextValue=@TextValue,@TextFlags=@TextRegexFlags;
         END;

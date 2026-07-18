@@ -110,6 +110,13 @@
       "resumeAbortKillCleanupOrJobMutations": 0,
       "note": "Job catalogs are not read without an explicit filter; duration, pause and PVS size remain contextual observations."
     },
+    "sqlServer2025RegexPredicateContract": {
+      "status": "PASS",
+      "regexpLikeComparisonsToZeroOrOne": 0,
+      "positiveForm": "REGEXP_LIKE(...) predicate",
+      "negativeForm": "NOT REGEXP_LIKE(...) predicate",
+      "note": "SQL Server 2025 exposes REGEXP_LIKE as a predicate; comparisons to numeric 0 or 1 are rejected by the static documentation gate."
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,

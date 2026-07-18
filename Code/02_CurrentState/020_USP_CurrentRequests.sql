@@ -637,15 +637,15 @@ BEGIN
             DECLARE @Sql nvarchar(max) = N'';
 
             IF @LoginMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [LoginName] IS NULL OR REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags)=0;';
+                SET @Sql += N'DELETE FROM [#Result] WHERE [LoginName] IS NULL OR NOT REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags);';
             IF @HostMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [HostName] IS NULL OR REGEXP_LIKE([HostName],@HostPattern,@HostFlags)=0;';
+                SET @Sql += N'DELETE FROM [#Result] WHERE [HostName] IS NULL OR NOT REGEXP_LIKE([HostName],@HostPattern,@HostFlags);';
             IF @ProgramMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [ProgramName] IS NULL OR REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags)=0;';
+                SET @Sql += N'DELETE FROM [#Result] WHERE [ProgramName] IS NULL OR NOT REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags);';
             IF @DatabaseMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [DatabaseName] IS NULL OR REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags)=0;';
+                SET @Sql += N'DELETE FROM [#Result] WHERE [DatabaseName] IS NULL OR NOT REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags);';
             IF @TextMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE COALESCE([CurrentStatement],[BatchText]) IS NULL OR (REGEXP_LIKE(COALESCE([CurrentStatement],N''''),@TextPattern,@TextFlags)=0 AND REGEXP_LIKE(COALESCE([BatchText],N''''),@TextPattern,@TextFlags)=0);';
+                SET @Sql += N'DELETE FROM [#Result] WHERE COALESCE([CurrentStatement],[BatchText]) IS NULL OR (NOT REGEXP_LIKE(COALESCE([CurrentStatement],N''''),@TextPattern,@TextFlags) AND NOT REGEXP_LIKE(COALESCE([BatchText],N''''),@TextPattern,@TextFlags));';
 
             EXEC [sys].[sp_executesql]
                   @Sql

@@ -218,6 +218,9 @@ $sqlFiles = @(
 )
 foreach ($sqlFile in $sqlFiles) {
     $sqlText = Get-Content -LiteralPath $sqlFile.FullName -Raw -Encoding UTF8
+    if ([regex]::IsMatch($sqlText, '(?im)REGEXP_LIKE[^\r\n;]*\)\s*=\s*[01]')) {
+        $errors.Add("REGEXP_LIKE must be used as a predicate without comparison to 0 or 1: $($sqlFile.FullName)")
+    }
     $procedureMatches = [regex]::Matches(
         $sqlText,
         '(?im)^\s*CREATE\s+OR\s+ALTER\s+PROCEDURE\s+\[monitor\]\.\[(USP_[A-Za-z0-9_]+)\]'
