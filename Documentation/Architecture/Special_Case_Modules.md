@@ -60,7 +60,7 @@ Jeder normalisierte Befund enthält Quelle, Kategorie, Priorität, Konfidenz, te
 
 ## Test- und Freigabestatus
 
-Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. P0 und die ersten achtundzwanzig P1-Fälle bis einschließlich Statistikverteilung besitzen commitbezogene Drei-Versionen-Evidenz. Ein Eintrag `NOT_EXECUTED` ist weiterhin Planungsstand und niemals Ausführungsevidenz; die vollständige Laufzeitfreigabe bleibt bis zur vorgesehenen Zielmatrix ausständig.
+Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. Commit `bdb8f66e20f015e7c563e6d3747144400897b281` weist alle 17 P0- und alle 40 P1-Fälle in 23 Suiten auf SQL Server 2019, 2022 und 2025 nach. Die verbleibenden 115 P2-Zeilen sind Planungsstand und keine Ausführungsevidenz.
 
 ## Primärquellen
 

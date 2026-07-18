@@ -44,18 +44,18 @@ STAT-FILTERED,USP_StatisticsDistributionAnalysis,15,NONE,CATALOG_DEEP,Filtered s
 STAT-INCREMENTAL,USP_StatisticsDistributionAnalysis,15,NONE,CATALOG_DEEP,Incremental partitions have different modification percentages,Partition spread and weighted modification remain separate,HIGH,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510
 STAT-BOUNDED,USP_StatisticsDistributionAnalysis,15,NONE,CATALOG_DEEP,More statistics exist than the configured candidate limit,Histogram access never exceeds the per-database limit,HIGH,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510
 STAT-DENIED,USP_StatisticsDistributionAnalysis,15,NONE,RESTRICTED,CATALOG_DEEP or histogram visibility denied,Structured denied or limited status without failure of other databases,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510
-AG-NONE,USP_AvailabilityDeepAnalysis,15,NONE,SERVER_DIAGNOSTIC,HADR disabled,NOT_APPLICABLE without error,HIGH,NOT_EXECUTED,
-AG-SUSPEND,USP_AvailabilityDeepAnalysis,15,AVAILABILITY_GROUPS,SERVER_DIAGNOSTIC,Data movement suspended,High finding and suspend evidence,HIGH,NOT_EXECUTED,
-AG-QUEUE,USP_AvailabilityDeepAnalysis,15,AVAILABILITY_GROUPS,SERVER_DIAGNOSTIC,Queue threshold reached,Snapshot limitation is retained,MEDIUM,NOT_EXECUTED,
-AG-SEED,USP_AvailabilityDeepAnalysis,15,AVAILABILITY_GROUPS,SERVER_DIAGNOSTIC,Physical seeding state visible,Progress metadata bounded and read-only,MEDIUM,NOT_EXECUTED,
-AGENT-MISSING,USP_AgentMonitoringAnalysis,15,SQL_AGENT,MSDB_DIAGNOSTIC,Critical Agent alert missing,External monitoring caveat retained,LOW,NOT_EXECUTED,
-AGENT-ROUTE,USP_AgentMonitoringAnalysis,15,SQL_AGENT,MSDB_DIAGNOSTIC,Enabled alert has no action,No recipient data is read,LOW,NOT_EXECUTED,
-AGENT-JOB,USP_AgentMonitoringAnalysis,15,SQL_AGENT,MSDB_DIAGNOSTIC,Latest job run failed,No command or message text is read,LOW,NOT_EXECUTED,
-AGENT-MAIL,USP_AgentMonitoringAnalysis,15,DATABASE_MAIL,MSDB_DIAGNOSTIC,Failed mail status,Only aggregate status is read,LOW,NOT_EXECUTED,
-FIND-CORE,USP_DiagnosticFindings,15,NONE,COMBINED_DIAGNOSTIC,Core modules available,Only declared JSON fields are normalized,MEDIUM,NOT_EXECUTED,
-FIND-PARTIAL,USP_DiagnosticFindings,15,NONE,RESTRICTED,One child source denied,Other findings and child status remain available,MEDIUM,NOT_EXECUTED,
-FIND-OPTOUT,USP_DiagnosticFindings,15,NONE,COMBINED_DIAGNOSTIC,Default invocation,Schema IQP and contention remain disabled,MEDIUM,NOT_EXECUTED,
-FIND-COMPAT,USP_DiagnosticFindings,15,NONE,COMBINED_DIAGNOSTIC,Install database compatibility below 130,UNAVAILABLE_FEATURE without partial aggregation,LOW,NOT_EXECUTED,
+AG-NONE,USP_AvailabilityDeepAnalysis,15,NONE,SERVER_DIAGNOSTIC,HADR disabled,NOT_APPLICABLE without error,HIGH,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+AG-SUSPEND,USP_AvailabilityDeepAnalysis,15,AVAILABILITY_GROUPS,SERVER_DIAGNOSTIC,Data movement suspended,High finding and suspend evidence,HIGH,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+AG-QUEUE,USP_AvailabilityDeepAnalysis,15,AVAILABILITY_GROUPS,SERVER_DIAGNOSTIC,Queue threshold reached,Snapshot limitation is retained,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+AG-SEED,USP_AvailabilityDeepAnalysis,15,AVAILABILITY_GROUPS,SERVER_DIAGNOSTIC,Physical seeding state visible,Progress metadata bounded and read-only,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+AGENT-MISSING,USP_AgentMonitoringAnalysis,15,SQL_AGENT,MSDB_DIAGNOSTIC,Critical Agent alert missing,External monitoring caveat retained,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+AGENT-ROUTE,USP_AgentMonitoringAnalysis,15,SQL_AGENT,MSDB_DIAGNOSTIC,Enabled alert has no action,No recipient data is read,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+AGENT-JOB,USP_AgentMonitoringAnalysis,15,SQL_AGENT,MSDB_DIAGNOSTIC,Latest job run failed,No command or message text is read,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+AGENT-MAIL,USP_AgentMonitoringAnalysis,15,DATABASE_MAIL,MSDB_DIAGNOSTIC,Failed mail status,Only aggregate status is read,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+FIND-CORE,USP_DiagnosticFindings,15,NONE,COMBINED_DIAGNOSTIC,Core modules available,Only declared JSON fields are normalized,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+FIND-PARTIAL,USP_DiagnosticFindings,15,NONE,RESTRICTED,One child source denied,Other findings and child status remain available,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+FIND-OPTOUT,USP_DiagnosticFindings,15,NONE,COMBINED_DIAGNOSTIC,Default invocation,Schema IQP and contention remain disabled,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
+FIND-COMPAT,USP_DiagnosticFindings,15,NONE,COMBINED_DIAGNOSTIC,Install database compatibility below 130,UNAVAILABLE_FEATURE without partial aggregation,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342
 FEATURE-ABSENT,USP_SpecialFeatureInventory,15,NONE,DATABASE_CATALOG,No special feature metadata visible,All 18 feature rows remain non-health statuses and zero counts do not prove absence,LOW,NOT_EXECUTED,
 FEATURE-XTP,USP_SpecialFeatureInventory,15,IN_MEMORY_OLTP,DATABASE_CATALOG,Memory-optimized table or XTP filegroup visible,IN_MEMORY_OLTP is DETECTED and deep module is IMPLEMENTED,LOW,NOT_EXECUTED,
 FEATURE-TEMPORAL,USP_SpecialFeatureInventory,15,TEMPORAL,DATABASE_CATALOG,System-versioned table visible,TEMPORAL is DETECTED without history health claim,LOW,NOT_EXECUTED,

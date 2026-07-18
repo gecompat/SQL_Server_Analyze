@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `f4bf1d4333e7f4a38814dea72a0799ca1d949364` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 20 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 17 P0- und die ersten achtundzwanzig P1-Fälle bis einschließlich Statistikverteilung auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `bdb8f66e20f015e7c563e6d3747144400897b281` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 23 Suiten, die versionsspezifischen Berechtigungsmatrizen sowie alle 17 P0- und alle 40 P1-Fälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen betreffen 115 P2-Fälle und sind kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
@@ -12,7 +12,10 @@ Verbleibende Repository- und Evidenzpunkte:
 - Die vier P1-Speicherfälle sind als siebzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Speicherdruck und Resource-Semaphore-Waiter wurden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz und bleibt deshalb `PASS_WITH_LIMITATIONS`.
 - Die vier P1-Backupkettenfälle sind als achtzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Die Suite verwendet ausschließlich die synthetische Testdatenbank, eine generisch benannte Datei im Default-Backupverzeichnis des disposable Targets und kurzlebige `msdb`-Historie; weil sie bewusst keinen Restore ausführt, bleibt sie `PASS_WITH_LIMITATIONS`.
 - Die vier P1-Schema-/Designfälle sind als neunzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Alle generischen Constraint-, FK-, Index- und Identity-Fixtures werden im Erfolgs- und Fehlerpfad ausdrücklich entfernt; Befunde bleiben Prüfaufträge ohne automatische DDL.
-- Die acht P1-Statistikverteilungsfälle sind als zwanzigste Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Die Suite verwendet begrenzte synthetische FULLSCAN-Histogramme, prüft gefilterte und inkrementelle Statistiken sowie einen tatsächlich verweigerten `CATALOG_DEEP`-Pfad. Sie beweist keine universelle Histogrammqualität und ersetzt keine großen Produktionsverteilungen oder Lasttests. Als nächste Gruppe folgt die tiefe Availability-Evidenz.
+- Die acht P1-Statistikverteilungsfälle sind als zwanzigste Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Die Suite verwendet begrenzte synthetische FULLSCAN-Histogramme, prüft gefilterte und inkrementelle Statistiken sowie einen tatsächlich verweigerten `CATALOG_DEEP`-Pfad. Sie beweist keine universelle Histogrammqualität und ersetzt keine großen Produktionsverteilungen oder Lasttests.
+- Die vier P1-Availability-Fälle sind als einundzwanzigste Suite nachgewiesen. Suspend-, Queue- und Seeding-Positivpfade werden über produktiv verwendete reine Klassifikationsfunktionen geprüft; kein Failover, Suspend, Resume oder physisches Seeding wird ausgeführt.
+- Die vier P1-Agent-/Alert-Fälle sind als zweiundzwanzigste Suite nachgewiesen. Der echte Leerzustand und gemeinsame Statusklassifikationen werden geprüft; Alerts, Operatoren, Jobs, Mail und `msdb` werden nicht verändert.
+- Die vier P1-Findings-Fälle sind als dreiundzwanzigste Suite nachgewiesen. Synthetischer Benutzer und Compatibility Level werden garantiert zurückgesetzt; die Feld-Whitelist beweist keinen vollständigen fachlichen Positivzustand aller Child-Module.
 - Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
