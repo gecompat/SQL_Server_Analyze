@@ -91,7 +91,7 @@ Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. 
 
 ## 0.4 Automatisiertes synthetisches Linux-Target für SQL Server 2025
 
-Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 16-Suite-Release-Gate einschließlich P0-, P1-IQP- und P1-Contention-Laufzeitvertrag und die SQL-Server-2022+-Berechtigungsmatrix laufen gegen ausschließlich synthetische Job- und Principalnamen.
+Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 17-Suite-Release-Gate einschließlich P0-, P1-IQP-, P1-Contention- und P1-Speichervertrag und die SQL-Server-2022+-Berechtigungsmatrix laufen gegen ausschließlich synthetische Job- und Principalnamen.
 
 Wie bei den anderen Targets werden Kennwort und Datenbank erst im Job erzeugt, vollständige Ausgaben nicht als Artefakt persistiert, Fehlerartefakte auf eine generische Kurzfassung und einen Tag Retention begrenzt und der Container immer entfernt.
 
@@ -125,7 +125,7 @@ Aus dem Verzeichnis `Code/Tests` ausführen:
 sqlcmd -S "<ZIEL>" -d "<INSTALLATIONSDATENBANK>" -E -b -i "Run_Release_Gate.sql"
 ```
 
-Der Runner beendet sich beim ersten SQL-Fehler und führt folgende sechzehn Suiten aus:
+Der Runner beendet sich beim ersten SQL-Fehler und führt folgende siebzehn Suiten aus:
 
 1. Smoke Test
 2. Parameter-API-Vertrag
@@ -135,19 +135,20 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende sechzehn Suit
 6. Synthetischer P0-Laufzeitvertrag mit 15 Positiv-, Leer-, Grenz- und Resetfällen; `INT-DENIED` und `CAP-DENIED` folgen anschließend in der versionsspezifischen Berechtigungsmatrix unter einem eingeschränkten Serverlogin
 7. Versionsadaptiver P1-IQP-Laufzeitvertrag
 8. P1-Contention-Laufzeitvertrag mit einer realen Ein-Sekunden-Messung und deterministischem Reset-Rechenvertrag
-9. Common
-10. Current State
-11. Object und Index
-12. Plan Cache
-13. Query Store
-14. Extended Events
-15. Infrastructure
-16. Server Health
+9. Read-only P1-Speicher-Laufzeitvertrag einschließlich ausdrücklich aktiviertem, begrenztem Buffer-Descriptor-Scan
+10. Common
+11. Current State
+12. Object und Index
+13. Plan Cache
+14. Query Store
+15. Extended Events
+16. Infrastructure
+17. Server Health
 
 Erwartung bei vollständigem Erfolg:
 
 - Prozess-Exitcode `0`.
-- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=16`.
+- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=17`.
 - Kein `THROW`, kein unbehandelter Fehler und kein vorzeitiges Ende.
 
 ## 4. Spezialfallmatrix ausführen
