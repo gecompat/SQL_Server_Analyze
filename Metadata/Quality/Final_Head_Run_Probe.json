@@ -1,0 +1,92 @@
+[
+  {
+    "name": "Commit message validation",
+    "id": 29644565467,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565467",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:34:15Z",
+    "updated_at": "2026-07-18T12:34:22Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "Documentation validation",
+    "id": 29644565454,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565454",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:34:15Z",
+    "updated_at": "2026-07-18T12:34:30Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "Repository privacy validation",
+    "id": 29644565464,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:34:15Z",
+    "updated_at": "2026-07-18T12:34:23Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "SQL Server 2019 Linux release gate",
+    "id": 29644565510,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:34:15Z",
+    "updated_at": "2026-07-18T12:35:28Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "SQL Server 2022 Linux release gate",
+    "id": 29644565475,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565475",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:34:15Z",
+    "updated_at": "2026-07-18T12:35:34Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "SQL Server 2025 Linux release gate",
+    "id": 29644565446,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565446",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:34:15Z",
+    "updated_at": "2026-07-18T12:35:49Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "SQL release gate status bridge",
+    "id": 29644617069,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644617069",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:35:51Z",
+    "updated_at": "2026-07-18T12:35:56Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "SQL release gate status bridge",
+    "id": 29644609111,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644609111",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:35:36Z",
+    "updated_at": "2026-07-18T12:35:42Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  },
+  {
+    "name": "SQL release gate status bridge",
+    "id": 29644605665,
+    "html_url": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644605665",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-07-18T12:35:30Z",
+    "updated_at": "2026-07-18T12:35:38Z",
+    "head_sha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364"
+  }
+]
