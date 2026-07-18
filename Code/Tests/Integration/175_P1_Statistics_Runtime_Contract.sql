@@ -414,6 +414,18 @@ FROM
              @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
         REVERT;
         SET @Impersonating=0;
+        SELECT N'STAT_DENIED_DIAGNOSTIC' AS [DiagnosticCode],
+               @Status AS [StatusCode],@Partial AS [IsPartial],
+               TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.distributionCount')) AS [DistributionCount],
+               TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.findingCount')) AS [FindingCount];
+        SELECT N'STAT_DENIED_DATABASE_STATUS' AS [DiagnosticCode],[StatusCode],
+               [IsPartial],[CandidateCount],[HistogramVisibleCount],[ErrorNumber],[ErrorMessage],[Detail]
+        FROM OPENJSON(@Json,N'$.databaseStatus') WITH
+        ([StatusCode] varchar(40) N'$.StatusCode',[IsPartial] bit N'$.IsPartial',
+         [CandidateCount] bigint N'$.CandidateCount',
+         [HistogramVisibleCount] bigint N'$.HistogramVisibleCount',
+         [ErrorNumber] int N'$.ErrorNumber',[ErrorMessage] nvarchar(2048) N'$.ErrorMessage',
+         [Detail] nvarchar(2000) N'$.Detail');
 
         IF ISJSON(@Json)<>1 OR @Status<>'DENIED_GROUP' OR @Partial<>1
            OR NOT EXISTS
