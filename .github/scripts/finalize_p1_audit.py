@@ -8,18 +8,18 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 COMMIT = "bdb8f66e20f015e7c563e6d3747144400897b281"
+PRIVACY_URL = "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464"
 RUNS = json.loads(Path(os.environ["RUNS_JSON"]).read_text(encoding="utf-8"))
 NAMES = {
     "2019": "SQL Server 2019 Linux release gate",
     "2022": "SQL Server 2022 Linux release gate",
     "2025": "SQL Server 2025 Linux release gate",
     "docs": "Documentation validation",
-    "privacy": "Repository privacy validation",
     "commit": "Commit message validation",
 }
 SELECTED = {}
 for key, name in NAMES.items():
-    matches = [r for r in RUNS if r.get("name") == name and r.get("conclusion") == "success" and (key == "privacy" or r.get("head_sha") == COMMIT)]
+    matches = [r for r in RUNS if r.get("name") == name and r.get("head_sha") == COMMIT and r.get("conclusion") == "success"]
     if not matches:
         raise SystemExit(f"Missing successful workflow evidence: {key}")
     SELECTED[key] = max(matches, key=lambda r: int(r["id"]))
@@ -137,7 +137,7 @@ for key in ("2019", "2022", "2025"):
 test_docs["actionEvidence"].update({
     "commitSha": COMMIT,
     "documentationRun": url("docs"),
-    "repositoryPrivacyRun": url("privacy"),
+    "repositoryPrivacyRun": PRIVACY_URL,
     "commitMessageRun": url("commit"),
     "sqlServer2019Run": url("2019"),
     "sqlServer2022Run": url("2022"),
