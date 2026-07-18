@@ -17,6 +17,8 @@ Die Kuratierung verändert keine Laufzeit-Resultsets und filtert keine Benutzer-
 
 Der festgehaltene Dokumentstand enthält 967 Wait-Type-Zeilen. Die sortierte Namensmenge und der finale Katalog sind jeweils über SHA-256 gebunden. Dadurch ist später erkennbar, ob die Quelle oder die kuratierte Namensmenge stillschweigend ausgetauscht wurde.
 
+Commit [`ee244f0`](https://github.com/gecompat/SQL_Server_Analyze/commit/ee244f05b4e299a9274f94b68f326a1b23ba981f) hat den Installer und vollständigen Release-Gate-Vertrag auf [SQL Server 2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602383), [SQL Server 2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602384) und [SQL Server 2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602395) erfolgreich ausgeführt. Auch [Dokumentation und statischer Katalogvertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602394), [Repository-/ZIP-Datenschutz](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602382) und [Commit-Message-Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602420) sind für diesen Commit grün.
+
 ## Entscheidungen
 
 | Entscheidung | Anzahl | Bedeutung |

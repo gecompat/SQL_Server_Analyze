@@ -48,6 +48,15 @@
     "descriptionSource": "FRAMEWORK_CURATED",
     "descriptionQuality": "FRAMEWORK_CURATED",
     "catalogNameSetSha256": "13c380f7baf6298475eb11afde3c47ffc8b009fbc6c9002a90c7fccff44e0011",
-    "unresolvedRows": 0
+    "unresolvedRows": 0,
+    "validatedCommit": "ee244f05b4e299a9274f94b68f326a1b23ba981f",
+    "actionsEvidence": {
+      "commitMessage": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602420",
+      "documentation": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602394",
+      "repositoryPrivacy": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602382",
+      "sqlServer2019": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602383",
+      "sqlServer2022": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602384",
+      "sqlServer2025": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602395"
+    }
   }
 }
