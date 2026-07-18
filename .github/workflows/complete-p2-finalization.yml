@@ -113,15 +113,36 @@ jobs:
 
       - name: Commit final evidence without temporary files
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           rm -f .github/workflows/complete-p2-finalization.yml
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -A
-          git diff --cached --check
-          git commit -m 'docs: finalize complete P2 evidence'
-          git push origin HEAD:main
+          if ! git diff --cached --check; then
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state='failure' -f target_url="$RUN_URL" \
+              -f description='P2 final evidence diff check failed' \
+              -f context='p2-publish-error/diff-check' >/dev/null
+            exit 1
+          fi
+          if ! git commit -m 'docs: finalize complete P2 evidence'; then
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state='failure' -f target_url="$RUN_URL" \
+              -f description='P2 final evidence commit failed' \
+              -f context='p2-publish-error/commit' >/dev/null
+            exit 1
+          fi
+          if ! git push origin HEAD:main; then
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state='failure' -f target_url="$RUN_URL" \
+              -f description='P2 final evidence push failed' \
+              -f context='p2-publish-error/push' >/dev/null
+            exit 1
+          fi
 
       - name: Publish completion status
         if: always()
