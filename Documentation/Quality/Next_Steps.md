@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Der Stand `1.1.0-special.9` besitzt vollständige grüne P0- und P1-Evidenz für die ersten zwanzig Fälle bis Schema-/Designkorrektheit. Die neunzehnte Suite ist commitbezogen auf SQL Server 2019, 2022 und 2025 nachgewiesen; als nächste P1-Gruppe folgt die Statistikverteilung.
+Der Stand `1.1.0-special.9` besitzt vollständige grüne P0- und P1-Evidenz für die ersten achtundzwanzig Fälle bis einschließlich Statistikverteilung. Die zwanzigste Suite ist für Commit `f4bf1d4333e7f4a38814dea72a0799ca1d949364` auf SQL Server 2019, 2022 und 2025 nachgewiesen; als nächste P1-Gruppe folgt die tiefe Availability-Evidenz.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
@@ -39,6 +39,7 @@ Abgeschlossen:
 29. Dritte P1-Gruppe abgeschlossen: `172_P1_Memory_Runtime_Contract.sql` prüft den leichten Defaultpfad, bedingte Low-Memory-Findings, einen vollständig strukturierten Resource-Semaphore-Snapshot und den ausdrücklich aktivierten, auf eine Ausgabezeile begrenzten Buffer-Descriptor-Scan. Commit `d9d7c5bb4ffb5b9b408c1781718364d5c7ac89a8` ist auf allen drei SQL-Server-Versionen grün; künstlicher Speicherdruck und künstliche Grant-Waiter wurden nicht erzeugt.
 30. Vierte P1-Gruppe abgeschlossen: `173_P1_Backup_Runtime_Contract.sql` prüft fehlende Full-Evidenz, eine nicht mehr zur neuesten Fullbasis passende Differentialzeile, eine kontrolliert sichtbare Logkettenlücke und fehlende Restorehistorie. Die Suite verwendet eine generisch benannte Datei im Default-Backupverzeichnis des disposable Targets, bereinigt ihre synthetische `msdb`-Historie, stellt das Recovery Model wieder her und führt keinen Restore aus. Commit `f3d9c014adb3227ab39e21e16052dca7285a6a87` ist auf allen drei SQL-Server-Versionen grün.
 31. Fünfte P1-Gruppe abgeschlossen: `174_P1_Schema_Runtime_Contract.sql` prüft nicht vertrauenswürdige Constraints, fehlende FK-Stützindizes, exakt gleiche Indexdefinitionen und einen Identity-Typwertebereich oberhalb der Schwelle. Alle generischen DDL-Fixtures werden im Erfolgs- und Fehlerpfad ausdrücklich entfernt. Commit `c405946d7806472f42cfc38430d5ada33620780c` ist auf allen drei SQL-Server-Versionen grün.
+32. Sechste P1-Gruppe abgeschlossen: `175_P1_Statistics_Runtime_Contract.sql` prüft gleichmäßige, dominante und Tail-konzentrierte Histogramme, hohe Modification Counter, gefilterte und inkrementelle Statistiken, die Kandidatengrenze sowie einen tatsächlich verweigerten `CATALOG_DEEP`-Pfad. Die Umsetzung hat dabei eine Temp-Tabellen-Kollision, einen unzulässigen Histogramm-Query-Hint und eine fehlende Partial-Markierung im Restricted-Pfad offengelegt und korrigiert. Commit `f4bf1d4333e7f4a38814dea72a0799ca1d949364` ist auf SQL Server 2019, 2022 und 2025 grün.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
@@ -46,8 +47,8 @@ Unmittelbar offene Repository-Qualitätsaufgaben:
 
 Nächste Freigabeschritte:
 
-1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167`, `168`, `169`, `170`, `171`, `172`, `173` und `174` sowie acht Bereichssuiten in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
-2. Die 135 noch offenen Spezialfälle in der festgelegten Reihenfolge abarbeiten: zuerst die 20 übrigen P1-Fälle beginnend mit den acht Statistikverteilungsfällen, anschließend 115 P2-Fälle. Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle bleiben getrennte Nachweise; reale Namen oder Strukturen werden nicht übernommen.
+1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167`, `168`, `169`, `170`, `171`, `172`, `173`, `174` und `175` sowie acht Bereichssuiten in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
+2. Die 127 noch offenen Spezialfälle in der festgelegten Reihenfolge abarbeiten: zuerst die zwölf übrigen P1-Fälle für Availability Groups, Agent/Alerts und normalisierte Findings, anschließend 115 P2-Fälle. Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle bleiben getrennte Nachweise; reale Namen oder Strukturen werden nicht übernommen.
 3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 4. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
 5. Vor SC-023 die in `Snapshot_Baseline_Package_Contract.md` markierten Persistenzentscheidungen ausdrücklich freigeben; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
