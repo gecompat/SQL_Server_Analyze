@@ -15,6 +15,7 @@ Nebenwirkung : Die eingebundenen Tests verwenden ausschließlich synthetische,
 Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
                Übernahme in Repositoryartefakte ist separat zu prüfen.
 Evidenz      : Versionsworkflows veröffentlichen commitbezogene Statuskontexte.
+Statistik    : Suite 175 verwendet engineunabhängige Histogramminvarianten.
 ===============================================================================
 */
 
