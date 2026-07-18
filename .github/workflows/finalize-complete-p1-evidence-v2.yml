@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Read final workflow evidence
+      - name: Read workflow evidence
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -31,14 +31,18 @@ jobs:
           set -euo pipefail
           gh api --paginate \
             "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${EVIDENCE_COMMIT}&per_page=100" \
-            --jq '.workflow_runs' > "$RUNNER_TEMP/p1-runs-pages.jsonl"
+            --jq '.workflow_runs' > "$RUNNER_TEMP/p1-runs-evidence.jsonl"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs?per_page=100" \
+            --jq '.workflow_runs' > "$RUNNER_TEMP/p1-runs-recent.json"
           python3 - <<'PY'
           from pathlib import Path
           import json, os
           runs=[]
-          for line in Path(os.environ['RUNNER_TEMP']+'/p1-runs-pages.jsonl').read_text().splitlines():
+          for line in Path(os.environ['RUNNER_TEMP']+'/p1-runs-evidence.jsonl').read_text().splitlines():
               runs.extend(json.loads(line))
-          Path(os.environ['RUNNER_TEMP']+'/p1-runs.json').write_text(json.dumps(runs),encoding='utf-8')
+          runs.extend(json.loads(Path(os.environ['RUNNER_TEMP']+'/p1-runs-recent.json').read_text()))
+          unique={int(run['id']):run for run in runs}
+          Path(os.environ['RUNNER_TEMP']+'/p1-runs.json').write_text(json.dumps(list(unique.values())),encoding='utf-8')
           PY
 
       - name: Finalize CSV evidence
