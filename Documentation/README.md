@@ -52,7 +52,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
 Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
-Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. Der Release-Gate-Vertrag umfasst 15 Suiten einschließlich vollständigem P0- und versionsadaptivem P1-IQP-Laufzeitvertrag für SQL Server 2019, 2022 und 2025; alle vier IQP-Matrixfälle besitzen commitbezogene Actions-Evidenz.
+Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. Der Release-Gate-Vertrag umfasst nun 16 Suiten; P0 und P1-IQP besitzen Drei-Versionen-Evidenz, der neue P1-Contention-Vertrag wartet noch auf commitbezogene Actions-Läufe.
 
 ## Forschungs- und Inventareinstieg
 

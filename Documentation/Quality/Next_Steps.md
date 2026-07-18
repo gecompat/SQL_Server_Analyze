@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Der Stand `1.1.0-special.9` besitzt vollständige grüne P0-Evidenz. Die fünfzehnte, versionsadaptive P1-IQP-Suite und ihre vier Matrixfälle sind mit Commit `0efeb1877ffa6b31fc8deb714ac7659b40db7cd6` auf SQL Server 2019, 2022 und 2025 nachgewiesen.
+Der Stand `1.1.0-special.9` besitzt vollständige grüne P0- und P1-IQP-Evidenz. Eine sechzehnte Suite automatisiert die vier nachfolgenden P1-Contention-Fälle; ihre Matrixzeilen bleiben bis zu grünen commitbezogenen SQL-Server-2019-/2022-/2025-Läufen `NOT_EXECUTED`.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
@@ -35,6 +35,7 @@ Abgeschlossen:
 25. P0-Automatisierung für 16 Fälle abgeschlossen und nachgewiesen: `169_P0_Runtime_Contract.sql` bildet im Evidenzcommit 14 Positiv-, Leer- und Grenzfälle mit rücksetzbaren synthetischen Fixtures ab. `INT-DENIED` und `CAP-DENIED` laufen zusätzlich unter einem tatsächlich eingeschränkten synthetischen Serverlogin in den versionsspezifischen Berechtigungsmatrizen. Commit `ffb95bd57c8e08300410ad268a92cc5379ee45f7` ist dafür auf SQL Server 2019, 2022 und 2025 grün; `PC-RESET` war in diesem Evidenzstand noch offen.
 26. `PC-RESET` ohne unfortsetzbaren Serverneustart automatisiert und nachgewiesen: `monitor.TVF_InterpretPerformanceCounter` ist der gemeinsame reine Rechenpfad der Procedure und des Resettests. Ein fallender synthetischer Counter unterdrückt die Rate und meldet `COUNTER_RESET_DURING_SAMPLE`; Commit `7e3ba1a4e2fa79761c2daf24bee23dd73feed297` ist auf SQL Server 2019, 2022 und 2025 grün.
 27. Erste P1-Gruppe abgeschlossen: `170_P1_IQP_Runtime_Contract.sql` prüft SQL-Server-2019-Abgrenzung, PSP auf Compatibility Level 160, OPPO auf Level 170 und Query Store OFF mit rücksetzbaren Datenbankoptionen. Commit `0efeb1877ffa6b31fc8deb714ac7659b40db7cd6` ist auf allen drei SQL-Server-Versionen grün.
+28. Zweite P1-Gruppe in Reihenfolge begonnen: `171_P1_Contention_Runtime_Contract.sql` prüft Delta, kumulativen Modus, deterministischen Counterreset über denselben reinen Rechenpfad wie die Procedure und den begrenzten opt-in-Page-Detail-Pfad. Eine Statusänderung erfolgt erst nach grünen Drei-Versionen-Gates.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
@@ -42,7 +43,7 @@ Unmittelbar offene Repository-Qualitätsaufgaben:
 
 Nächste Freigabeschritte:
 
-1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167`, `168`, `169` und `170` sowie acht Bereichssuiten in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
+1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167`, `168`, `169`, `170` und `171` sowie acht Bereichssuiten in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
 2. Die 151 noch offenen Spezialfälle in der festgelegten Reihenfolge abarbeiten: zuerst die 36 übrigen P1-Fälle beginnend mit interner Contention, anschließend 115 P2-Fälle. Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle bleiben getrennte Nachweise; reale Namen oder Strukturen werden nicht übernommen.
 3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 4. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.

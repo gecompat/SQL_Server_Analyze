@@ -25,6 +25,7 @@ VALUES
 (N'monitor.TVF_WaitTypeInfo','IF'),
 (N'monitor.TVF_StatementText','IF'),
 (N'monitor.TVF_InterpretPerformanceCounter','IF'),
+(N'monitor.TVF_InterpretContentionCounter','IF'),
 (N'monitor.USP_CheckAnalyseAccess','P'),
 (N'monitor.USP_CheckFrameworkCapabilities','P'),
 (N'monitor.USP_CurrentOverview','P'),
