@@ -308,11 +308,12 @@ CREATE EVENT SESSION [ExampleP0CriticalEvents] ON SERVER
 ADD EVENT [sqlserver].[error_reported]
 ADD TARGET [package0].[event_file]
 (
-    SET [filename]=N'/tmp/example_p0_critical_events.xel',[max_file_size]=(5),[max_rollover_files]=(1)
+    SET filename=N'/tmp/example_p0_critical_events.xel',max_file_size=(5),max_rollover_files=(1)
 )
 WITH (STARTUP_STATE=OFF);
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=START;
 DECLARE @EventStartUtc datetime2(7)=SYSUTCDATETIME();
+DECLARE @EventEndUtc datetime2(7)=DATEADD(MINUTE,5,@EventStartUtc);
 BEGIN TRY
     THROW 51000,N'Example synthetic critical event.',1;
 END TRY
@@ -323,7 +324,7 @@ ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=STOP;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_CriticalEngineEvents]
      @SourceExtendedEventSessionName=N'ExampleP0CriticalEvents',@VonUtc=@EventStartUtc,
-     @BisUtc=DATEADD(MINUTE,5,@EventStartUtc),@MinErrorSeverity=16,@MitSystemHealth=1,
+     @BisUtc=@EventEndUtc,@MinErrorSeverity=16,@MitSystemHealth=1,
      @MitServerDiagnostics=0,@MitEventXml=0,@MaxZeilen=20,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
@@ -337,7 +338,7 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
         [Severity] int N'$.Severity',[FindingCode] varchar(100) N'$.FindingCode'
     )
     WHERE [ErrorNumber]=51000 AND [Severity]=16 AND [FindingCode]='SEVERE_ERROR_REPORTED'
-      AND [TimestampUtc]>=@EventStartUtc AND [TimestampUtc]<DATEADD(MINUTE,5,@EventStartUtc)
+      AND [TimestampUtc]>=@EventStartUtc AND [TimestampUtc]<@EventEndUtc
 )
     THROW 54153,N'P0-Vertrag EV-SEVERE fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('EV-SEVERE');
