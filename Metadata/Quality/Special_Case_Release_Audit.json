@@ -1,12 +1,12 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T14:26:25Z",
+  "generatedAtUtc": "2026-07-18T18:36:02Z",
   "status": "ACTIONS_PASS",
-  "scope": "green commit-specific 23-suite SQL Server 2019, 2022 and 2025 evidence for all 17 P0 and all 40 P1 cases",
+  "scope": "green commit-specific 31-suite SQL Server 2019, 2022 and 2025 evidence for all 181 P0 P1 and P2 cases",
   "inventory": {
-    "repositoryFiles": 352,
+    "repositoryFiles": 362,
     "canonicalSqlSources": 117,
-    "sqlFilesIncludingTestsAndExamples": 145,
+    "sqlFilesIncludingTestsAndExamples": 153,
     "objects": 106,
     "procedures": 84,
     "functions": 17,
@@ -412,52 +412,138 @@
       "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983333",
       "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983330",
       "note": "The field whitelist partial child evidence default opt-outs and compatibility gate passed; synthetic contexts are restored on success and failure."
+    },
+    "p2FeatureInventoryRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/179_P2_Special_Feature_Inventory_Runtime_Contract.sql",
+      "syntheticCases": 21,
+      "portableCatalogFixturesUsed": true,
+      "externalConnectionsCreated": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+    },
+    "p2XtpRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/180_P2_InMemory_Oltp_Runtime_Contract.sql",
+      "syntheticCases": 14,
+      "forcedFullHashDmvScan": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+    },
+    "p2TemporalRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/181_P2_Temporal_Runtime_Contract.sql",
+      "syntheticCases": 13,
+      "currentOrHistoryDataRead": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+    },
+    "p2BrokerRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/182_P2_Service_Broker_Runtime_Contract.sql",
+      "syntheticCases": 15,
+      "queuePayloadRead": false,
+      "conversationMutationExecuted": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+    },
+    "p2FullTextRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/183_P2_FullText_Runtime_Contract.sql",
+      "syntheticCases": 16,
+      "linuxFullTextDdlExecuted": false,
+      "indexedContentRead": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+    },
+    "p2DataCaptureRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/184_P2_Data_Capture_Runtime_Contract.sql",
+      "syntheticCases": 25,
+      "changeRowsOrReplicationCommandsRead": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+    },
+    "p2EncryptionRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/185_P2_Encryption_Runtime_Contract.sql",
+      "newlyAutomatedCases": 7,
+      "totalModuleCases": 10,
+      "secretOrMediaContentRead": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+    },
+    "p2MaintenanceRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/186_P2_Maintenance_Runtime_Contract.sql",
+      "newlyAutomatedCases": 4,
+      "totalModuleCases": 10,
+      "maintenanceMutationExecuted": false,
+      "validatedCommit": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
     }
   },
   "testDocumentation": {
     "targetRows": 6,
     "targetRowsNotExecuted": 3,
     "targetRowsPassWithLimitations": 3,
-    "releaseGateSuiteRows": 56,
+    "releaseGateSuiteRows": 80,
     "releaseGateSuiteRowsNotExecuted": 15,
     "releaseGateSuiteRowsPass": 8,
-    "releaseGateSuiteRowsPassWithLimitations": 33,
+    "releaseGateSuiteRowsPassWithLimitations": 57,
     "specialCaseRows": 181,
-    "specialCaseRowsNotExecuted": 115,
-    "specialCaseRowsPassWithLimitations": 66,
+    "specialCaseRowsNotExecuted": 0,
+    "specialCaseRowsPassWithLimitations": 181,
     "specialCaseRowsAutomatedPending": 0,
     "runtimeStatus": "ACTIONS_PASS",
-    "claim": "Commit bdb8f66e20f015e7c563e6d3747144400897b281 passed the synthetic Linux installer, 23-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 and all 40 P1 cases plus the SQL Server 2025 regex matrix. No failover, Agent or msdb mutation, automatic statistics or schema change, or restore was executed. Further P2, Windows, Azure MI, load and external restore evidence remain separate.",
+    "claim": "Commit 40d54fdc195b5cfa0015e2cbe281da595e427ab0 passed the synthetic Linux installer, 31-suite release gate and permission contract on SQL Server 2019, 2022 and 2025 for all 181 special cases. Feature-positive Windows or Azure MI states, load tests, external restore and operational mutations remain separate evidence classes.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
       "sqlServer2019": {
         "productVersion": "15.0.4480.2",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2019-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:46f719fd3457d4e7e8e5845fe00c35c20e7bae7ff1e8b9fe595f2a81029f5ba8",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684"
       },
       "sqlServer2022": {
         "productVersion": "16.0.4265.3",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2022-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983333"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674"
       },
       "sqlServer2025": {
         "productVersion": "17.0.4065.4",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2025-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983330"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
       }
     },
     "actionEvidence": {
-      "commitSha": "bdb8f66e20f015e7c563e6d3747144400897b281",
+      "commitSha": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
       "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983337",
       "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464",
       "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983332",
-      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983342",
-      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983333",
-      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983330",
-      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983330"
+      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
+      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
+      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672",
+      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672",
+      "runtimeEvidenceScope": "COMMIT_SPECIFIC_SQL_RUNTIME"
     }
   },
   "runtimeLimitations": [

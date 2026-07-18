@@ -60,7 +60,7 @@ Jeder normalisierte Befund enthält Quelle, Kategorie, Priorität, Konfidenz, te
 
 ## Test- und Freigabestatus
 
-Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. Commit `bdb8f66e20f015e7c563e6d3747144400897b281` weist alle 17 P0- und alle 40 P1-Fälle in 23 Suiten auf SQL Server 2019, 2022 und 2025 nach. Die verbleibenden 115 P2-Zeilen sind Planungsstand und keine Ausführungsevidenz.
+Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` weist alle 181 P0-/P1-/P2-Fälle in 31 Suiten auf SQL Server 2019, 2022 und 2025 nach. Zusätzliche Plattform-, Last- und externe Evidence bleibt getrennt.
 
 ## Primärquellen
 

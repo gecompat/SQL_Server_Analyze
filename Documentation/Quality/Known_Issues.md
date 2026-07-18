@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `bdb8f66e20f015e7c563e6d3747144400897b281` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 23 Suiten, die versionsspezifischen Berechtigungsmatrizen sowie alle 17 P0- und alle 40 P1-Fälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen betreffen 115 P2-Fälle und sind kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 31 Suiten, die versionsspezifischen Berechtigungsmatrizen sowie alle 181 P0-/P1-/P2-Fälle auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile.
 
 Verbleibende Repository- und Evidenzpunkte:
 
@@ -16,6 +16,13 @@ Verbleibende Repository- und Evidenzpunkte:
 - Die vier P1-Availability-Fälle sind als einundzwanzigste Suite nachgewiesen. Suspend-, Queue- und Seeding-Positivpfade werden über produktiv verwendete reine Klassifikationsfunktionen geprüft; kein Failover, Suspend, Resume oder physisches Seeding wird ausgeführt.
 - Die vier P1-Agent-/Alert-Fälle sind als zweiundzwanzigste Suite nachgewiesen. Der echte Leerzustand und gemeinsame Statusklassifikationen werden geprüft; Alerts, Operatoren, Jobs, Mail und `msdb` werden nicht verändert.
 - Die vier P1-Findings-Fälle sind als dreiundzwanzigste Suite nachgewiesen. Synthetischer Benutzer und Compatibility Level werden garantiert zurückgesetzt; die Feld-Whitelist beweist keinen vollständigen fachlichen Positivzustand aller Child-Module.
+- Die 21 P2-Feature-Inventurfälle sind als vierundzwanzigste Vertragsgruppe nachgewiesen; nicht portable Komponenten bleiben capability-adaptive Vertragsnachweise.
+- Die 14 P2-XTP-Fälle sind nachgewiesen; ein vollständiger Hashketten-DMV-Scan und echter Speicherdruck werden nicht erzwungen.
+- Die 13 P2-Temporal-Fälle sind nachgewiesen; History-Nutzdaten, Periodenüberlappungen und realer Cleanup-Fortschritt werden nicht gelesen.
+- Die 15 P2-Broker-Fälle sind nachgewiesen; Nachrichtenkörper, Queue-Payloads und Conversation-Mutationen bleiben ausgeschlossen.
+- Die 16 P2-Full-Text-Fälle sind nachgewiesen; positive Full-Text-DDL auf Linux bleibt wegen der MCR-Komponentengrenze ein separater Plattformnachweis.
+- Die 25 P2-Data-Capture-Fälle sind nachgewiesen; Change-Zeilen, Replikationscommands, Credentials und Remote-Topologien bleiben außerhalb der Repository-Evidence.
+- Die zehn Encryption- und zehn Maintenance-Fälle sind vollständig nachgewiesen; Schlüssel-/Medieninhalte und operative Wartungsänderungen bleiben ausgeschlossen.
 - Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:

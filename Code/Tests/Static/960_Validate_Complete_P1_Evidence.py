@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate the complete P0/P1 evidence contract without reading runtime output."""
+"""Validate the completed P1 evidence contract without constraining later phases."""
 
 from __future__ import annotations
 
@@ -10,23 +10,14 @@ import re
 import sys
 from pathlib import Path
 
-EVIDENCE_COMMIT = "bdb8f66e20f015e7c563e6d3747144400897b281"
+P1_EVIDENCE_COMMIT = "bdb8f66e20f015e7c563e6d3747144400897b281"
 FINAL_CASE_IDS = {
     "AG-NONE", "AG-SUSPEND", "AG-QUEUE", "AG-SEED",
     "AGENT-MISSING", "AGENT-ROUTE", "AGENT-JOB", "AGENT-MAIL",
     "FIND-CORE", "FIND-PARTIAL", "FIND-OPTOUT", "FIND-COMPAT",
 }
-FINAL_SUITE_IDS = {
-    "P1_AVAILABILITY_RUNTIME",
-    "P1_AGENT_RUNTIME",
-    "P1_FINDINGS_RUNTIME",
-}
+FINAL_SUITE_IDS = {"P1_AVAILABILITY_RUNTIME", "P1_AGENT_RUNTIME", "P1_FINDINGS_RUNTIME"}
 TARGET_IDS = {"SQL2019-LINUX", "SQL2022-LINUX", "SQL2025-LINUX"}
-TEMPORARY_PATH_PATTERNS = (
-    ".github/workflows/finalize-complete-p1-evidence-",
-    ".github/scripts/finalize_p1_",
-    "Metadata/Quality/P1_Evidence_Finalizer_Run.json",
-)
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -36,12 +27,11 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
-
     cases = read_csv(root / "Metadata/Quality/Special_Case_Test_Cases.csv")
-    case_rows = {row["CaseId"]: row for row in cases if row.get("CaseId") in FINAL_CASE_IDS}
-    if set(case_rows) != FINAL_CASE_IDS:
+    rows = {row["CaseId"]: row for row in cases if row.get("CaseId") in FINAL_CASE_IDS}
+    if set(rows) != FINAL_CASE_IDS:
         errors.append("Final P1 case rows are incomplete.")
-    for case_id, row in case_rows.items():
+    for case_id, row in rows.items():
         if row.get("ExecutionStatus") != "PASS_WITH_LIMITATIONS":
             errors.append(f"Final P1 case is not evidenced: {case_id}")
         if not row.get("EvidenceReference", "").startswith("https://github.com/gecompat/SQL_Server_Analyze/actions/runs/"):
@@ -49,31 +39,12 @@ def validate(root: Path) -> list[str]:
 
     evidence = read_csv(root / "Metadata/Quality/Release_Gate_Evidence.csv")
     for target_id in TARGET_IDS:
-        release_rows = [
-            row for row in evidence
-            if row.get("TargetId") == target_id and row.get("SuiteId") == "RELEASE_GATE_ALL"
-        ]
-        if len(release_rows) != 1:
-            errors.append(f"Complete release-gate row count differs: {target_id}")
-        elif release_rows[0].get("CommitSha") != EVIDENCE_COMMIT or release_rows[0].get("TestStatus") != "PASS":
-            errors.append(f"Complete release-gate evidence differs: {target_id}")
         for suite_id in FINAL_SUITE_IDS:
-            suite_rows = [
-                row for row in evidence
-                if row.get("TargetId") == target_id and row.get("SuiteId") == suite_id
-            ]
+            suite_rows = [row for row in evidence if row.get("TargetId") == target_id and row.get("SuiteId") == suite_id]
             if len(suite_rows) != 1:
                 errors.append(f"Final P1 suite row count differs: {target_id}/{suite_id}")
-            elif suite_rows[0].get("CommitSha") != EVIDENCE_COMMIT or suite_rows[0].get("TestStatus") != "PASS_WITH_LIMITATIONS":
+            elif suite_rows[0].get("CommitSha") != P1_EVIDENCE_COMMIT or suite_rows[0].get("TestStatus") != "PASS_WITH_LIMITATIONS":
                 errors.append(f"Final P1 suite evidence differs: {target_id}/{suite_id}")
-
-    matrix = read_csv(root / "Metadata/Quality/Test_Matrix.csv")
-    for row in matrix:
-        if row.get("TargetId") in TARGET_IDS:
-            if row.get("CommitSha") != EVIDENCE_COMMIT:
-                errors.append(f"Target matrix commit differs: {row.get('TargetId')}")
-            if row.get("TestStatus") != "PASS_WITH_LIMITATIONS":
-                errors.append(f"Target matrix status differs: {row.get('TargetId')}")
 
     backlog = read_csv(root / "Metadata/Quality/Special_Case_Gap_Backlog.csv")
     for gap_id in ("SC-012", "SC-013", "SC-014"):
@@ -82,8 +53,9 @@ def validate(root: Path) -> list[str]:
             errors.append(f"Final P1 backlog status differs: {gap_id}")
 
     runner = (root / "Code/Tests/Run_Release_Gate.sql").read_text(encoding="utf-8")
-    if "CAST(23 AS int) AS [ExecutedSuites]" not in runner:
-        errors.append("Release gate does not report 23 suites.")
+    match = re.search(r"CAST\((\d+) AS int\) AS \[ExecutedSuites\]", runner)
+    if match is None or int(match.group(1)) < 23:
+        errors.append("Release gate no longer contains the complete P1 scope.")
     for suite_file in (
         "176_P1_Availability_Runtime_Contract.sql",
         "177_P1_Agent_Runtime_Contract.sql",
@@ -93,35 +65,14 @@ def validate(root: Path) -> list[str]:
             errors.append(f"Release gate is missing final P1 suite: {suite_file}")
 
     audit = json.loads((root / "Metadata/Quality/Special_Case_Release_Audit.json").read_text(encoding="utf-8"))
-    test_documentation = audit.get("testDocumentation", {})
-    if test_documentation.get("specialCaseRowsNotExecuted") != 115:
-        errors.append("Release audit pending P2 count differs.")
-    if test_documentation.get("specialCaseRowsPassWithLimitations") != 66:
-        errors.append("Release audit evidenced case count differs.")
-    if test_documentation.get("actionEvidence", {}).get("commitSha") != EVIDENCE_COMMIT:
-        errors.append("Release audit action-evidence commit differs.")
     static_checks = audit.get("staticChecks", {})
-    for key in (
-        "p1AvailabilityRuntimeContract",
-        "p1AgentRuntimeContract",
-        "p1FindingsRuntimeContract",
-    ):
-        if static_checks.get(key, {}).get("validatedCommit") != EVIDENCE_COMMIT:
+    for key in ("p1AvailabilityRuntimeContract", "p1AgentRuntimeContract", "p1FindingsRuntimeContract"):
+        if static_checks.get(key, {}).get("validatedCommit") != P1_EVIDENCE_COMMIT:
             errors.append(f"Release audit final P1 contract differs: {key}")
 
     next_steps = (root / "Documentation/Quality/Next_Steps.md").read_text(encoding="utf-8")
-    if "alle 17 P0- und alle 40 P1-Fälle" not in next_steps:
-        errors.append("Next-steps summary does not state complete P1 evidence.")
-    if not re.search(r"\b115\b.*P2", next_steps):
-        errors.append("Next-steps summary does not retain 115 P2 cases.")
-
-    for path in root.rglob("*"):
-        if not path.is_file() or ".git" in path.parts:
-            continue
-        relative = path.relative_to(root).as_posix()
-        if any(relative.startswith(pattern) or relative == pattern for pattern in TEMPORARY_PATH_PATTERNS):
-            errors.append(f"Temporary P1 finalizer artifact remains: {relative}")
-
+    if "alle 17 P0-" not in next_steps or "40 P1-" not in next_steps:
+        errors.append("Next-steps summary does not retain complete P1 evidence.")
     return sorted(set(errors))
 
 

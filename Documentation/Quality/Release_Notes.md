@@ -1,5 +1,13 @@
 # Release Notes
 
+## Stand 2026-07-18 – vollständige P2-Evidenz und 31-Suite-Gate
+
+- Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` hat den vollständigen 31-Suite-Vertrag auf SQL Server 2019, 2022 und 2025 bestanden.
+- Die 115 zuvor offenen P2-Zeilen sind als `PASS_WITH_LIMITATIONS` dokumentiert; damit besitzen alle 181 Spezialfallzeilen Evidence.
+- Feature Inventory, XTP, Temporal, Service Broker, Full-Text, Data Capture, Encryption und Maintenance besitzen jeweils eine eigene Laufzeitsuite.
+- Reale Nutzdaten, Payloads, Secrets, Credentials, SQL-/Jobtexte und Umgebungsbezeichner werden nicht in Repositoryartefakte übernommen.
+- Full-Text-DDL auf Linux, feature-positive Windows-/Azure-MI-Zustände, Lasttests, echter Failover und externe Restorebeweise bleiben separate Evidence-Klassen.
+
 ## Stand 2026-07-18 – Verschlüsselung, Wartung und Drei-Versionen-Gate `1.1.0-special.9`
 
 - `SC-020` durch `monitor.USP_EncryptionAnalysis` implementiert: TDE-Zustand/Scan, sichtbarer Zertifikatlebenszyklus, getrennte explizite Backupverschlüsselung sowie aggregierte Always-Encrypted-/Ledger-Anzahlen.

@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Der Stand `1.1.0-special.9` besitzt vollständige grüne Evidenz für alle 17 P0- und alle 40 P1-Fälle. Die 23. Suite ist für Commit `bdb8f66e20f015e7c563e6d3747144400897b281` auf SQL Server 2019, 2022 und 2025 nachgewiesen; als nächste Testgruppe folgt die P2-Spezialfeature-Inventur.
+Der Stand `1.1.0-special.9` besitzt vollständige grüne Linux-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle. Die 31. Suite ist für Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` auf SQL Server 2019, 2022 und 2025 nachgewiesen; die 115 zuvor offenen P2-Zeilen sind abgeschlossen.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
@@ -45,14 +45,23 @@ Abgeschlossen:
 34. Achte P1-Gruppe abgeschlossen: `177_P1_Agent_Runtime_Contract.sql` prüft fehlende kritische Alerts sowie Routing-, Job- und Database-Mail-Klassifikation ohne Änderung von `msdb`- oder Agentobjekten.
 35. Neunte P1-Gruppe abgeschlossen: `178_P1_Diagnostic_Findings_Runtime_Contract.sql` prüft die Feld-Whitelist, partielle Child-Evidenz, deaktivierte teure Defaults und das vollständig rückgesetzte Compatibility-Gate.
 
+36. Erste P2-Gruppe abgeschlossen: Suite `179` prüft 21 Feature-Inventurfälle mit echten portablen Katalogfixtures und version-adaptiven Verträgen.
+37. Zweite P2-Gruppe abgeschlossen: Suite `180` prüft 14 XTP-Fälle ohne erzwungenen vollständigen Hash-DMV-Scan.
+38. Dritte P2-Gruppe abgeschlossen: Suite `181` prüft 13 Temporal-Fälle ohne Current-/History-Nutzdaten.
+39. Vierte P2-Gruppe abgeschlossen: Suite `182` prüft 15 Service-Broker-Fälle ohne Nachrichtenkörper oder Conversation-Mutation.
+40. Fünfte P2-Gruppe abgeschlossen: Suite `183` prüft 16 Full-Text-Verträge ohne nichtportable Full-Text-DDL auf Linux.
+41. Sechste P2-Gruppe abgeschlossen: Suite `184` prüft 25 Change-Tracking-, CDC- und Replikationsverträge ohne Change-Zeilen oder Commands.
+42. Siebte P2-Gruppe abgeschlossen: Suite `185` prüft sieben zuvor offene Encryption-Verträge ohne Schlüssel-, Medien- oder Kontoinhalte.
+43. Achte P2-Gruppe abgeschlossen: Suite `186` prüft vier zuvor offene Maintenance-Verträge ohne RESUME, ABORT, KILL oder Jobmutation.
+
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
 - Keine. `RQ-001` bis `RQ-006` sind im Repository umgesetzt; noch ausstehende Laufzeitnachweise stehen ausschließlich in der nachfolgenden Testreihenfolge.
 
 Nächste Freigabeschritte:
 
-1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner umfasst 15 Integrationsverträge und acht Bereichssuiten und bricht beim ersten SQL-Fehler ab.
-2. Die 115 noch offenen P2-Spezialfälle in der festgelegten Reihenfolge abarbeiten, beginnend mit `USP_SpecialFeatureInventory`. Capability-, Leerzustands-, Positiv-, Grenzwert-, Last- und Berechtigungsfälle bleiben getrennte Nachweise.
+1. Pro weiterem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner umfasst 23 Integrationsverträge und acht Bereichssuiten und bricht beim ersten SQL-Fehler ab.
+2. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen feature-positive Windows-/Azure-MI-Targets, kontrollierte Lastfälle und externe Restore-/Host-Nachweise.
 3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 4. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
 5. Vor SC-023 die in `Snapshot_Baseline_Package_Contract.md` markierten Persistenzentscheidungen ausdrücklich freigeben; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
