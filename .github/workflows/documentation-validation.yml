@@ -9,6 +9,7 @@ on:
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
       - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
       - 'Code/Tests/Static/960_Validate_Complete_P1_Evidence.py'
+      - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Documentation/**/*.md'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
@@ -26,6 +27,7 @@ on:
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
       - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
       - 'Code/Tests/Static/960_Validate_Complete_P1_Evidence.py'
+      - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Documentation/**/*.md'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
@@ -77,6 +79,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 ./Code/Tests/Static/960_Validate_Complete_P1_Evidence.py \
+            --repository-root .
+
+      - name: Validate complete P2 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/970_Validate_Complete_P2_Evidence.py \
             --repository-root .
 
       - name: Validate procedure documentation
