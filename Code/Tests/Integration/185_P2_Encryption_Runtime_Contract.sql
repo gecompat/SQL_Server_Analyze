@@ -119,7 +119,7 @@ IF ISJSON(@Json)<>1 OR @Partial<>1 OR @Status NOT IN('AVAILABLE_LIMITED','DENIED
 DROP USER [ExampleEncryptionRestrictedUser];
 INSERT @ExecutedCases VALUES('ENC-DENIED');
 
-IF CHARINDEX(N'[thumbprint]',LOWER(@Definition))>0
+IF CHARINDEX(N'[protectorthumbprint]',LOWER(@Definition))>0
    OR CHARINDEX(N'[private_key]',LOWER(@Definition))>0
    OR CHARINDEX(N'[physical_device_name]',LOWER(@Definition))>0
    OR CHARINDEX(N'[user_name]',LOWER(@Definition))>0
