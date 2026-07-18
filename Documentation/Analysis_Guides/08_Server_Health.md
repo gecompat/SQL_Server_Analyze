@@ -551,6 +551,7 @@ Typisiert SQL-Server-Performance-Counter als Snapshot, Rate, Fraction oder unint
 - Liefert `sys.dm_os_performance_counters` keine Zeilen oder nach Ausschluss alleinstehender Basiscounter keine auswertbaren Counter, meldet die Procedure `UNAVAILABLE_OBJECT` und `IsPartial=1`, statt einen Snapshot oder eine Rate zu erfinden.
 - Perfmon-Counter können Instanzstart-/Resetkontext besitzen.
 - Countername allein bestimmt nicht die Einheit; `cntr_type` und Basecounter lesen.
+- Die technische Counteridentität umfasst Objekt, Counter, Instanz und `cntr_type`; gleich benannte Zeilen verschiedener Typen werden nicht miteinander verrechnet.
 - Ein 5-Sekunden-Sample kann Burstlast zeigen, aber keine Tagesbaseline ersetzen.
 - Universelle Alarmgrenzen werden absichtlich nicht erzeugt.
 

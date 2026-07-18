@@ -19,6 +19,8 @@ Eine Zeile entspricht einem Counter beziehungsweise einer normalisierten Counter
 
 `UNAVAILABLE_OBJECT` mit `IsPartial=1` bedeutet, dass die Instanz keine aktivierten oder nach Ausschluss alleinstehender Basiscounter keine auswertbaren Zeilen aus `sys.dm_os_performance_counters` bereitstellt. In diesem Zustand werden weder Snapshotwerte noch Raten synthetisiert.
 
+Objektname, Countername und Instanzname allein sind nicht die vollständige technische Identität: `cntr_type` gehört zum Schlüssel. Gleich benannte Zeilen unterschiedlicher Typen werden deshalb getrennt gesampelt und nicht miteinander verrechnet.
+
 Countertyp, Raw Value, Base, Delta, Samplezeit und normalisierten Wert unterscheiden.
 
 ## Warum kann das problematisch sein?
