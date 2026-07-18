@@ -144,8 +144,10 @@ BEGIN
             FROM [sys].[dm_os_sys_info];
 
             INSERT [#LatchStart]
-            SELECT [latch_class], [waiting_requests_count], [wait_time_ms], [max_wait_time_ms]
-            FROM [sys].[dm_os_latch_stats];
+            SELECT [latch_class], SUM([waiting_requests_count]), SUM([wait_time_ms]),
+                   MAX([max_wait_time_ms])
+            FROM [sys].[dm_os_latch_stats]
+            GROUP BY [latch_class];
 
             IF @MitSpinlocks = 1
             BEGIN
@@ -169,8 +171,10 @@ BEGIN
             );
 
             INSERT [#LatchEnd]
-            SELECT [latch_class], [waiting_requests_count], [wait_time_ms], [max_wait_time_ms]
-            FROM [sys].[dm_os_latch_stats];
+            SELECT [latch_class], SUM([waiting_requests_count]), SUM([wait_time_ms]),
+                   MAX([max_wait_time_ms])
+            FROM [sys].[dm_os_latch_stats]
+            GROUP BY [latch_class];
 
             IF @MitSpinlocks = 1
             BEGIN
