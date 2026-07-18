@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PerformanceCounters
-Version      : 1.0.0
-Stand        : 2026-07-17
+Version      : 1.0.1
+Stand        : 2026-07-18
 Zweck        : Typisiert SQL-Server-Performance-Counter als Snapshot, Rate,
                Fraction oder nicht automatisch interpretierbaren Rohwert.
 Datenquellen : sys.dm_os_performance_counters, sys.dm_os_sys_info.
@@ -149,6 +149,13 @@ BEGIN
                    AND CONCAT([n].[StringValue], N' base') COLLATE SQL_Latin1_General_CP1_CI_AS
                      = RTRIM([counter_name]) COLLATE SQL_Latin1_General_CP1_CI_AS
              ));
+
+        IF NOT EXISTS (SELECT 1 FROM [#Before])
+        BEGIN
+            SELECT @StatusCode = 'UNAVAILABLE_OBJECT',
+                   @IsPartial = 1,
+                   @ErrorMessage = N'sys.dm_os_performance_counters liefert keine aktivierten Counter.';
+        END;
 
         IF @SampleSeconds > 0
         BEGIN

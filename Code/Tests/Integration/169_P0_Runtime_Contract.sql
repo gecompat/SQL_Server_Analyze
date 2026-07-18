@@ -164,15 +164,14 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_PerformanceCounters]
      @SampleSeconds=0,@MaxZeilen=10000,@ResultSetArt='NONE',@JsonErzeugen=1,
      @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+DECLARE @PerformanceCounterRows bigint=(SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.counters'));
 IF ISJSON(@Json)<>1
- OR NOT EXISTS
-    (SELECT 1 FROM OPENJSON(@Json,N'$.counters')
-     WITH ([Interpretation] varchar(40) N'$.Interpretation') WHERE [Interpretation]='RAW_SNAPSHOT')
- OR EXISTS
+ OR (@PerformanceCounterRows=0 AND (@Status<>'UNAVAILABLE_OBJECT' OR COALESCE(@Partial,0)<>1))
+ OR (@PerformanceCounterRows>0 AND EXISTS
     (SELECT 1 FROM OPENJSON(@Json,N'$.counters')
      WITH ([Interpretation] varchar(40) N'$.Interpretation',[MetricValue] decimal(38,6) N'$.MetricValue',[FindingCode] varchar(80) N'$.FindingCode')
      WHERE [Interpretation] IN ('RATE_PER_SECOND','FRACTION_DELTA_PERCENT','AVERAGE_DELTA_RATIO')
-       AND ([MetricValue] IS NOT NULL OR [FindingCode]<>'SAMPLE_REQUIRED_FOR_DELTA_METRIC'))
+       AND ([MetricValue] IS NOT NULL OR [FindingCode]<>'SAMPLE_REQUIRED_FOR_DELTA_METRIC')))
     THROW 54148,N'P0-Vertrag PC-SNAPSHOT fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('PC-SNAPSHOT');
 
@@ -181,13 +180,16 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_PerformanceCounters]
      @SampleSeconds=1,@MaxZeilen=10000,@ResultSetArt='NONE',@JsonErzeugen=1,
      @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
-IF ISJSON(@Json)<>1 OR NOT EXISTS
+SET @PerformanceCounterRows=(SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.counters'));
+IF ISJSON(@Json)<>1
+ OR (@PerformanceCounterRows=0 AND (@Status<>'UNAVAILABLE_OBJECT' OR COALESCE(@Partial,0)<>1))
+ OR (@PerformanceCounterRows>0 AND NOT EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.counters')
     WITH ([Interpretation] varchar(40) N'$.Interpretation',[SampleSeconds] decimal(19,6) N'$.SampleSeconds')
     WHERE [Interpretation]='RATE_PER_SECOND' AND [SampleSeconds]>=1
-)
-OR EXISTS
+))
+OR (@PerformanceCounterRows>0 AND EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.counters')
     WITH
@@ -197,11 +199,11 @@ OR EXISTS
     )
     WHERE [Interpretation]='RATE_PER_SECOND' AND [MetricValue] IS NOT NULL
       AND ABS([MetricValue]-CONVERT(decimal(38,6),[DeltaValue]/NULLIF([SampleSeconds],0)))>0.000001
-)
+))
     THROW 54149,N'P0-Vertrag PC-RATE fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('PC-RATE');
 
-IF NOT EXISTS
+IF @PerformanceCounterRows>0 AND NOT EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.counters')
     WITH
@@ -212,7 +214,7 @@ IF NOT EXISTS
     WHERE [Interpretation]='FRACTION_DELTA_PERCENT'
       AND [BaseBeforeValue] IS NOT NULL AND [BaseAfterValue] IS NOT NULL
 )
-OR EXISTS
+OR (@PerformanceCounterRows>0 AND EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.counters')
     WITH
@@ -222,11 +224,11 @@ OR EXISTS
     )
     WHERE [Interpretation]='FRACTION_DELTA_PERCENT' AND [MetricValue] IS NOT NULL
       AND ABS([MetricValue]-CONVERT(decimal(38,6),100.0*[DeltaValue]/NULLIF([BaseDeltaValue],0)))>0.000001
-)
+))
     THROW 54150,N'P0-Vertrag PC-FRACTION fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('PC-FRACTION');
 
-IF NOT EXISTS
+IF @PerformanceCounterRows>0 AND NOT EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.counters')
     WITH
@@ -237,7 +239,7 @@ IF NOT EXISTS
     WHERE [Interpretation]='AVERAGE_DELTA_RATIO'
       AND [BaseBeforeValue] IS NOT NULL AND [BaseAfterValue] IS NOT NULL
 )
-OR EXISTS
+OR (@PerformanceCounterRows>0 AND EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.counters')
     WITH
@@ -247,7 +249,7 @@ OR EXISTS
     )
     WHERE [Interpretation]='AVERAGE_DELTA_RATIO' AND [MetricValue] IS NOT NULL
       AND ABS([MetricValue]-CONVERT(decimal(38,6),1.0*[DeltaValue]/NULLIF([BaseDeltaValue],0)))>0.000001
-)
+))
     THROW 54151,N'P0-Vertrag PC-AVERAGE fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('PC-AVERAGE');
 
