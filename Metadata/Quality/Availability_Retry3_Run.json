@@ -1,0 +1,9 @@
+{
+  "conclusion": "failure",
+  "databaseId": 29646939766,
+  "headSha": "dbbaf2c34ca6fa770d5bb994c55411cda4531206",
+  "status": "completed",
+  "errors": [
+    "apply\tNormalize verified CASE anchor and execute patch\t2026-07-18T13:52:02.3488977Z Unexpected procedure replacement anchor:             JOIN [sys].[availability_replicas] AS [ar]"
+  ]
+}
