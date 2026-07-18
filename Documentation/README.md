@@ -21,6 +21,20 @@ Für praktische Analysen nicht im Forschungsdokument beginnen:
 
 Jede Procedure-Seite erklärt Zeilengranularität, Leserichtung, Problembegründung, Gegenbeispiel, Folgeanalyse und Grenzen leerer/partieller Resultsets.
 
+## Ressourcenschutz und interne Berechtigungsschiene
+
+Die interne Policy dient primär dazu, Benutzergruppen von ressourcenintensiven Analysepfaden ein- oder auszuschließen. Sie vergibt keine SQL-Server-Berechtigungen.
+
+Empfohlene Leserichtung:
+
+1. [`Architecture/Authorization_Architecture.md`](Architecture/Authorization_Architecture.md) – Zweck, Whitelistmodell, Kostenklassen und Entscheidungsfluss
+2. [`Operations/Authorization_Administration.md`](Operations/Authorization_Administration.md) – Policy aktivieren, pflegen, prüfen und zurücksetzen
+3. [`Reference/Authorization_Policy_Examples.md`](Reference/Authorization_Policy_Examples.md) – synthetische Policyvarianten
+4. [`Reference/Authorization_Status_and_Access_Reasons.md`](Reference/Authorization_Status_and_Access_Reasons.md) – `DENIED_GROUP`, `DENIED_PERMISSION` und `AccessReason`
+5. [`Operations/Authorization_Troubleshooting.md`](Operations/Authorization_Troubleshooting.md) – Fehlersuche
+6. [`Development/Integrating_New_Module_Authorization.md`](Development/Integrating_New_Module_Authorization.md) – neue ressourcenintensive Pfade integrieren
+7. [`../Code/Examples/050_Authorization_Examples.sql`](../Code/Examples/050_Authorization_Examples.sql) – ausführbare Diagnose- und Policybeispiele
+
 ## Installation
 
 1. In allen SQL-Skripten den Platzhalter `[DeineDatenbank]` durch die vorgesehene Installationsdatenbank ersetzen.
