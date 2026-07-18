@@ -91,7 +91,7 @@ Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. 
 
 ## 0.4 Automatisiertes synthetisches Linux-Target für SQL Server 2025
 
-Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 13-Suite-Release-Gate und die SQL-Server-2022+-Berechtigungsmatrix laufen gegen ausschließlich synthetische Job- und Principalnamen.
+Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 14-Suite-Release-Gate einschließlich P0-Laufzeitvertrag und die SQL-Server-2022+-Berechtigungsmatrix laufen gegen ausschließlich synthetische Job- und Principalnamen.
 
 Wie bei den anderen Targets werden Kennwort und Datenbank erst im Job erzeugt, vollständige Ausgaben nicht als Artefakt persistiert, Fehlerartefakte auf eine generische Kurzfassung und einen Tag Retention begrenzt und der Container immer entfernt.
 
@@ -125,26 +125,27 @@ Aus dem Verzeichnis `Code/Tests` ausführen:
 sqlcmd -S "<ZIEL>" -d "<INSTALLATIONSDATENBANK>" -E -b -i "Run_Release_Gate.sql"
 ```
 
-Der Runner beendet sich beim ersten SQL-Fehler und führt folgende dreizehn Suiten aus:
+Der Runner beendet sich beim ersten SQL-Fehler und führt folgende vierzehn Suiten aus:
 
 1. Smoke Test
 2. Parameter-API-Vertrag
 3. Filter- und Ausgabe-Vertrag
 4. Spezialfall-API-Vertrag
 5. Spezialfall-Laufzeitvertrag
-6. Common
-7. Current State
-8. Object und Index
-9. Plan Cache
-10. Query Store
-11. Extended Events
-12. Infrastructure
-13. Server Health
+6. Synthetischer P0-Laufzeitvertrag
+7. Common
+8. Current State
+9. Object und Index
+10. Plan Cache
+11. Query Store
+12. Extended Events
+13. Infrastructure
+14. Server Health
 
 Erwartung bei vollständigem Erfolg:
 
 - Prozess-Exitcode `0`.
-- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=13`.
+- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=14`.
 - Kein `THROW`, kein unbehandelter Fehler und kein vorzeitiges Ende.
 
 ## 4. Spezialfallmatrix ausführen

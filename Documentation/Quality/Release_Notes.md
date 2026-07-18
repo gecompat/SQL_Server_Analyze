@@ -7,7 +7,8 @@
 - `SC-022` durch `monitor.USP_MaintenanceOperations` implementiert: resumierbare Indexoperationen, technische Wartungsrequests, SQL-Server-2022+-PVS-Details und nur explizit gefilterte Agentaktivität.
 - Keine SQL-Texte, Jobschritte/-befehle, Meldungen, Konten, Clientdaten oder Wait-Ressourcen; keine Resume-, Abort-, Kill-, Cleanup-, Jobstart- oder Jobstop-Aktion.
 - `168_Special_Case_Runtime_Contract.sql` führt alle P2-Module gegen die synthetische Testdatenbank aus und validiert Status und JSON.
-- Drei Actions-Gates erzwingen SQL Server 2019/2022/2025, Compatibility Level 150/160/170, case-sensitive Collation, Installer, 13 Suiten und synthetische Berechtigungsfälle.
+- `169_P0_Runtime_Contract.sql` führt 16 der 17 P0-Fälle mit generischen DBCC-, Dateioptions-, Berechtigungs-, Performance-Counter- und XE-Fixtures aus; `PC-RESET` bleibt ein separater kontrollierter Neustartfall.
+- Drei Actions-Gates erzwingen SQL Server 2019/2022/2025, Compatibility Level 150/160/170, case-sensitive Collation, Installer, 14 Suiten und synthetische Berechtigungsfälle.
 - Die drei Linux-Gates lösen den öffentlichen `*-latest`-Pull-Tag in einen validierten unveränderlichen Image-Digest auf, starten exakt diesen Digest und erfassen `SERVERPROPERTY('ProductVersion')`; Build und Digest werden als rein technische Evidence dokumentiert.
 - Das SQL-Server-2025-Gate hat den Regex-Prädikatvertrag gehärtet: `REGEXP_LIKE(...)` und `NOT REGEXP_LIKE(...)` ersetzen repositoryweit unzulässige Vergleiche mit `0` oder `1`; ein statischer Check schützt vor Regression.
 - Die Regex-Matrix meldet konsistent zehn Verträge. Der statische Check ist nun ein eigenständiger Validator mit acht generischen Selbsttests, erkennt mehrzeilige Fehlformen und gibt bei einem Fund keinen Quellzeileninhalt aus.

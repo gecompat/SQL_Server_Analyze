@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Der Stand `1.1.0-special.9` schließt die lokalen P2-Module mit Verschlüsselungslebenszyklus und Wartungsoperationen. Drei GitHub-Actions-Gates installieren und führen denselben 13-Suite-Vertrag auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170 aus. `NOT_EXECUTED` in manuellen Positiv-, Grenzwert- oder Lastfällen bleibt weiterhin kein Testnachweis.
+Der Stand `1.1.0-special.9` schließt die lokalen P2-Module mit Verschlüsselungslebenszyklus und Wartungsoperationen. Der Release-Gate-Vertrag ist um eine vierzehnte, ausschließlich synthetische P0-Suite erweitert; sie wird auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170 ausgeführt. `NOT_EXECUTED` bleibt bis zum grünen commitbezogenen Lauf weiterhin kein Testnachweis.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
@@ -32,6 +32,7 @@ Abgeschlossen:
 22. `RQ-004` abgeschlossen: alle drei Linux-Gates lösen den beweglichen Pull-Tag in einen validierten `repo@sha256`-Digest auf, starten exakt diesen Digest und erfassen die technische `ProductVersion`; die grünen Läufe und vollständigen generischen Werte stehen in der maschinenlesbaren Zielmatrix.
 23. `RQ-005` abgeschlossen: ein selbstgetestetes Pull-Request-, Main-Push- und manuelles Gate erzwingt exakt einzeilige, nicht leere UTF-8-Commit-Messages ausschließlich für neu eingebrachte Commits; der erste echte Push-Lauf ist grün und historische Nachrichten bleiben unverändert.
 24. `RQ-006` abgeschlossen: alle 332 offenen Wait-Katalogzeilen wurden gegen den unveränderlich referenzierten Microsoft-Dokumentstand geprüft; 318 Namen blieben bestehen, vier wurden korrigiert und zehn unbelegte Alt-/Fehleinträge entfernt. Ein selbstgetesteter Offline-Vertrag bindet die 347 finalen eindeutigen Namen, Quellenstatus und Entscheidungsevidenz; Commit `ee244f05b4e299a9274f94b68f326a1b23ba981f` ist auf SQL Server 2019, 2022 und 2025 sowie in Dokumentations-, Datenschutz- und Commit-Gate grün.
+25. P0-Automatisierung vorbereitet: `169_P0_Runtime_Contract.sql` bildet 16 Fälle mit rücksetzbaren synthetischen Fixtures ab; nur `PC-RESET` benötigt weiterhin einen kontrollierten SQL-Server-Neustart zwischen den beiden Samples. Eine Statusänderung in der Testmatrix erfolgt erst nach grünen Actions-Läufen.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
