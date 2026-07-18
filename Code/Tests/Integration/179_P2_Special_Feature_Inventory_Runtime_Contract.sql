@@ -16,7 +16,7 @@ SET XACT_ABORT ON;
 
 DECLARE @ExecutedCases TABLE([CaseId] varchar(64) NOT NULL PRIMARY KEY);
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048);
-DECLARE @Definition nvarchar(max);
+DECLARE @Definition nvarchar(max),@Sql nvarchar(max);
 DECLARE @DatabaseName sysname=DB_NAME();
 DECLARE @DeniedDatabase sysname=N'ExampleFeatureDeniedDatabase';
 DECLARE @Impersonating bit=0;
@@ -73,7 +73,10 @@ BEGIN TRY
         DROP TYPE [dbo].[ExampleFeatureType];
 
     IF @ChangeTrackingWasEnabled=0
-        EXEC(N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);');
+    BEGIN
+        SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);';
+        EXEC [sys].[sp_executesql] @Sql;
+    END;
 
     CREATE TABLE [dbo].[ExampleFeatureCt]
     (
@@ -193,9 +196,14 @@ BEGIN TRY
 
     /* FEATURE-DENIED: zweite Datenbank bleibt für den synthetischen User unzugänglich. */
     IF DB_ID(@DeniedDatabase) IS NOT NULL
-        EXEC(N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';');
-    EXEC(N'CREATE DATABASE '+QUOTENAME(@DeniedDatabase)+N';');
-    EXEC(N'USE '+QUOTENAME(@DeniedDatabase)+N'; CREATE USER [ExampleFeatureRestrictedUser] WITHOUT LOGIN; DENY CONNECT TO [ExampleFeatureRestrictedUser];');
+    BEGIN
+        SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';';
+        EXEC [sys].[sp_executesql] @Sql;
+    END;
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@DeniedDatabase)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'USE '+QUOTENAME(@DeniedDatabase)+N'; CREATE USER [ExampleFeatureRestrictedUser] WITHOUT LOGIN; DENY CONNECT TO [ExampleFeatureRestrictedUser];';
+    EXEC [sys].[sp_executesql] @Sql;
 
     IF USER_ID(N'ExampleFeatureRestrictedUser') IS NOT NULL
         DROP USER [ExampleFeatureRestrictedUser];
@@ -234,9 +242,13 @@ BEGIN TRY
     DROP SERVICE [ExampleFeatureService];
     DROP QUEUE [dbo].[ExampleFeatureQueue];
     DROP USER [ExampleFeatureRestrictedUser];
-    EXEC(N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';');
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
     IF @ChangeTrackingWasEnabled=0
-        EXEC(N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET CHANGE_TRACKING = OFF;');
+    BEGIN
+        SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET CHANGE_TRACKING = OFF;';
+        EXEC [sys].[sp_executesql] @Sql;
+    END;
 END TRY
 BEGIN CATCH
     IF @Impersonating=1
@@ -261,9 +273,16 @@ BEGIN CATCH
         IF EXISTS(SELECT 1 FROM [sys].[service_queues] WITH (NOLOCK) WHERE [name]=N'ExampleFeatureQueue') DROP QUEUE [dbo].[ExampleFeatureQueue];
         IF EXISTS(SELECT 1 FROM [sys].[types] WITH (NOLOCK) WHERE [is_user_defined]=1 AND [name]=N'ExampleFeatureType') DROP TYPE [dbo].[ExampleFeatureType];
         IF USER_ID(N'ExampleFeatureRestrictedUser') IS NOT NULL DROP USER [ExampleFeatureRestrictedUser];
-        IF DB_ID(@DeniedDatabase) IS NOT NULL EXEC(N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';');
+        IF DB_ID(@DeniedDatabase) IS NOT NULL
+        BEGIN
+            SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';';
+            EXEC [sys].[sp_executesql] @Sql;
+        END;
         IF @ChangeTrackingWasEnabled=0 AND EXISTS(SELECT 1 FROM [sys].[change_tracking_databases] WITH (NOLOCK) WHERE [database_id]=DB_ID())
-            EXEC(N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET CHANGE_TRACKING = OFF;');
+        BEGIN
+            SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET CHANGE_TRACKING = OFF;';
+            EXEC [sys].[sp_executesql] @Sql;
+        END;
     END TRY
     BEGIN CATCH
     END CATCH;

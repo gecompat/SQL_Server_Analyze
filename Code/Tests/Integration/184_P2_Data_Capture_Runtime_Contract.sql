@@ -40,11 +40,11 @@ BEGIN TRY
     END;
     CLOSE [DropCursor]; DEALLOCATE [DropCursor];
 
-    EXEC(N'CREATE DATABASE '+QUOTENAME(@NoneDb)+N';');
-    EXEC(N'CREATE DATABASE '+QUOTENAME(@CtDb)+N';');
-    EXEC(N'CREATE DATABASE '+QUOTENAME(@CtDb2)+N';');
-    EXEC(N'ALTER DATABASE '+QUOTENAME(@CtDb)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);');
-    EXEC(N'ALTER DATABASE '+QUOTENAME(@CtDb2)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);');
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@NoneDb)+N';'; EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@CtDb)+N';'; EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@CtDb2)+N';'; EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@CtDb)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);'; EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@CtDb2)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = ON);'; EXEC [sys].[sp_executesql] @Sql;
 
     SET @Sql=N'USE '+QUOTENAME(@CtDb)+N';
 CREATE TABLE [dbo].[ExampleCtA]([Id] int NOT NULL CONSTRAINT [PK_ExampleCtA] PRIMARY KEY,[Value] int NULL);
@@ -135,7 +135,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     INSERT @ExecutedCases VALUES('CT-WATERMARK-FUTURE');
 
     /* CT-AUTO-CLEANUP-OFF */
-    EXEC(N'ALTER DATABASE '+QUOTENAME(@CtDb)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = OFF);');
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@CtDb)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = OFF);';
+    EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@MaxDatenbanken=1,@MaxZeilen=0,
