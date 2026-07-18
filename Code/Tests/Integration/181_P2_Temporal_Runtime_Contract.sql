@@ -72,6 +72,12 @@ BEGIN TRY
     CREATE INDEX [IX_ExampleTemporalIndexedHistory_Period]
         ON [dbo].[ExampleTemporalIndexedHistory]([ValidTo],[ValidFrom]);
 
+    CREATE TABLE [dbo].[ExampleTemporalMissingIndexHistory]
+    (
+        [Id] int NOT NULL,
+        [PeriodStart] datetime2 NOT NULL,
+        [PeriodEnd] datetime2 NOT NULL
+    );
     CREATE TABLE [dbo].[ExampleTemporalMissingIndex]
     (
         [Id] int NOT NULL CONSTRAINT [PK_ExampleTemporalMissingIndex] PRIMARY KEY,
