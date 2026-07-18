@@ -172,7 +172,7 @@ BEGIN
         BEGIN CATCH
             SET @IsPartial=1;
             INSERT [#SourceStatus] VALUES('CATALOG',@ResolvedSourceExtendedEventSessionName,NULL,
-              CASE WHEN ERROR_NUMBER() IN(229,262,297,300) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+              CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
               ERROR_NUMBER(),ERROR_MESSAGE(),N'Pfadermittlung fehlgeschlagen; ein expliziter @FilePath kann weiterhin verwendet werden.');
         END CATCH;
 
@@ -212,7 +212,7 @@ BEGIN
                 INSERT [#SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,@ResolvedFilePath,'AVAILABLE',NULL,NULL,N'xml_deadlock_report aus XEL gelesen.');
             END TRY
             BEGIN CATCH
-                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER(); SET @ErrorMessage=ERROR_MESSAGE();
                 INSERT [#SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,@ResolvedFilePath,@StatusCode,@ErrorNumber,@ErrorMessage,N'XEL-Datei konnte nicht gelesen werden.');
             END CATCH;
@@ -252,7 +252,7 @@ BEGIN
                 END;
             END TRY
             BEGIN CATCH
-                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER(); SET @ErrorMessage=ERROR_MESSAGE();
                 INSERT [#SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,@ErrorNumber,@ErrorMessage,N'Ringbuffer konnte nicht gelesen werden.');
             END CATCH;

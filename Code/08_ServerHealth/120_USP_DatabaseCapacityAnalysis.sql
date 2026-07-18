@@ -205,7 +205,7 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
                 VALUES
                 (
                       @DatabaseName
-                    , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300)
+                    , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371)
                            THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
                     , ERROR_MESSAGE()
                 );

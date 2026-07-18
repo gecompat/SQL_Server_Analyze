@@ -303,7 +303,7 @@ BEGIN
                 SET @StatusCode = 'AVAILABLE_WITH_FINDING';
         END TRY
         BEGIN CATCH
-            SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 916)
+            SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 371, 916)
                                       THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                    @IsPartial = 1, @ErrorNumber = ERROR_NUMBER(), @ErrorMessage = ERROR_MESSAGE();
         END CATCH;

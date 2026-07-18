@@ -294,7 +294,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
             BEGIN CATCH
                 INSERT [#DatabaseStatus] VALUES(@DbName,
                     CASE WHEN ERROR_NUMBER()=50001 THEN 'UNAVAILABLE_OBJECT'
-                         WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                         WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
                          WHEN ERROR_NUMBER() IN (207,208,4121) THEN 'UNAVAILABLE_OBJECT'
                          ELSE 'ERROR_HANDLED' END,

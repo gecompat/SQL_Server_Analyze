@@ -57,6 +57,7 @@ Zusätzlich wird vor Aktivierung der synthetischen Policy bestätigt, dass die a
 Verbindliche Erwartungen:
 
 - eingeschränkte Current-Sessions-Sicht liefert kontrolliert `DENIED_PERMISSION` oder `AVAILABLE_LIMITED` und gültiges JSON statt eines unkontrollierten Abbruchs;
+- die SQL-Server-2025-Fehlernummer 371 für fehlendes `VIEW SERVER PERFORMANCE STATE` wird kontrolliert als `DENIED_PERMISSION` klassifiziert;
 - `VIEW SERVER STATE` umfasst auf SQL Server 2022 die neue Berechtigung `VIEW SERVER PERFORMANCE STATE`; umgekehrt entsteht kein `VIEW SERVER STATE`;
 - `CURRENT_SESSIONS` ist capability-seitig mit `VIEW SERVER PERFORMANCE STATE` verfügbar, kann wegen weiterer geschützter Teilquellen aber weiterhin kontrolliert `AVAILABLE_LIMITED` liefern;
 - `VIEW DATABASE STATE` umfasst `VIEW DATABASE PERFORMANCE STATE`; umgekehrt entsteht kein `VIEW DATABASE STATE`;

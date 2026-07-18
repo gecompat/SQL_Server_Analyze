@@ -243,7 +243,7 @@ FROM [sys].[database_query_store_options];';
                 VALUES
                 (
                       @Db
-                    , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                    , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                            WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
                            ELSE 'ERROR_HANDLED' END
                     , ERROR_NUMBER()

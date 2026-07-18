@@ -251,7 +251,7 @@ BEGIN
  END TRY
  BEGIN CATCH
   INSERT #DatabaseStatus VALUES(@pDbName,
-   CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN ''DENIED_PERMISSION'' WHEN ERROR_NUMBER()=1222 THEN ''TIMEOUT'' WHEN ERROR_NUMBER() IN (207,208,4121) THEN ''UNAVAILABLE_OBJECT'' ELSE ''ERROR_HANDLED'' END,
+   CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN ''DENIED_PERMISSION'' WHEN ERROR_NUMBER()=1222 THEN ''TIMEOUT'' WHEN ERROR_NUMBER() IN (207,208,4121) THEN ''UNAVAILABLE_OBJECT'' ELSE ''ERROR_HANDLED'' END,
    1,0,N''SELECT auf Statistikspalten oder geeignete Rolle/Eigentum'',ERROR_NUMBER(),ERROR_MESSAGE(),N''Quelle STATS_INCREMENTAL fehlgeschlagen; Basisstatistiken bleiben erhalten.'');
  END CATCH;
 END;';
@@ -259,7 +259,7 @@ END;';
     SET @Rows=(SELECT COUNT_BIG(*) FROM [#Result] WHERE [DatabaseName]=@DbName); INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'SELECT [auf] [Statistikspalten] oder [Eigentum]/[db_owner]/[db_ddladmin]/[sysadmin]',NULL,NULL,N'NULL-Werte können fehlende Sichtbarkeit oder noch nicht materialisierte Statistiken bedeuten.');
    END TRY
    BEGIN CATCH
-    INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,1,0,N'SELECT [auf] [Statistikspalten] oder [geeignete] [Rolle]/[Eigentum]',ERROR_NUMBER(),ERROR_MESSAGE(),N'Statistikfehler isoliert.');
+    INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,1,0,N'SELECT [auf] [Statistikspalten] oder [geeignete] [Rolle]/[Eigentum]',ERROR_NUMBER(),ERROR_MESSAGE(),N'Statistikfehler isoliert.');
    END CATCH;
    FETCH NEXT FROM dbcur INTO @DbId,@DbName;
   END; CLOSE dbcur; DEALLOCATE dbcur;

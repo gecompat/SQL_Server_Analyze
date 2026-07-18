@@ -234,7 +234,7 @@ BEGIN
             VALUES
             (
                   N'system_health event_file'
-                , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300)
+                , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371)
                        THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
                 , ERROR_NUMBER(), ERROR_MESSAGE()
                 , N'Das Eventfile konnte nicht ausgewertet werden; andere Quellen bleiben verfügbar.'
@@ -261,7 +261,7 @@ BEGIN
             VALUES
             (
                   N'sp_server_diagnostics'
-                , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300)
+                , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371)
                        THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
                 , ERROR_NUMBER(), ERROR_MESSAGE()
                 , N'One-Shot-Diagnose nicht verfügbar; kein Wiederholungsmodus gestartet.'

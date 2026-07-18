@@ -89,7 +89,7 @@ WHERE (@QueryId IS NULL OR [q].[query_id]=@QueryId) AND (@QueryHash IS NULL OR [
 ORDER BY [W].[TotalWait] DESC,[W].[LastEnd] DESC;
 END;';
           EXEC [sys].[sp_executesql] @Sql,N'@FromUtc datetime2(7),@ToUtc datetime2(7),@WaitCategory nvarchar(128),@QueryId bigint,@QueryHash binary(8),@TopRows bigint,@TextChars int,@ReferencedNames nvarchar(max),@RefValue nvarchar(4000),@RefFlags varchar(8)',@VonUtc,@BisUtc,@WaitCategory,@QueryId,@QueryHash,@LocalRows,@MaxSqlTextZeichen,@ReferencedDatabaseNames,@RefValue,@RefFlags;
-        END TRY BEGIN CATCH INSERT [#Errors] VALUES(@Db,CASE WHEN ERROR_NUMBER() IN(229,262,297,300,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,ERROR_NUMBER(),ERROR_MESSAGE());SET @IsPartial=1;IF @PrintMeldungen=1 BEGIN SET @Message=FORMATMESSAGE(N'WARNUNG USP_QueryStoreWaitStats [%s]: %s',@Db,ERROR_MESSAGE());RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;END;END CATCH;
+        END TRY BEGIN CATCH INSERT [#Errors] VALUES(@Db,CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,ERROR_NUMBER(),ERROR_MESSAGE());SET @IsPartial=1;IF @PrintMeldungen=1 BEGIN SET @Message=FORMATMESSAGE(N'WARNUNG USP_QueryStoreWaitStats [%s]: %s',@Db,ERROR_MESSAGE());RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;END;END CATCH;
         FETCH NEXT FROM [c] INTO @Db,@DbCompat;
       END;CLOSE [c];DEALLOCATE [c];
     END;

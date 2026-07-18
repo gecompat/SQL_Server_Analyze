@@ -284,11 +284,11 @@ ORDER BY [s].[name], [t].[name];';
             END TRY
             BEGIN CATCH
                 INSERT [#Db] VALUES(@Db, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_MESSAGE());
                 INSERT [#Warnings] VALUES(@Db, 'DATABASE_CAPTURE',
-                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
                 SET @IsPartial = 1;

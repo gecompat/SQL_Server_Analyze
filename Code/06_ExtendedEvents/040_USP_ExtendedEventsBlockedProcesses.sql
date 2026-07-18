@@ -170,7 +170,7 @@ BEGIN
         BEGIN CATCH
             SET @IsPartial=1;
             INSERT [#SourceStatus] VALUES('CATALOG',@ResolvedSessionName,NULL,
-                CASE WHEN ERROR_NUMBER() IN(229,262,297,300) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+                CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                 ERROR_NUMBER(),ERROR_MESSAGE(),N'Session- oder Pfadermittlung fehlgeschlagen.');
         END CATCH;
 
@@ -214,7 +214,7 @@ BEGIN
                 INSERT [#SourceStatus] VALUES('EVENT_FILE',@ResolvedSessionName,@ResolvedFilePath,'AVAILABLE',NULL,NULL,N'blocked_process_report aus XEL gelesen.');
             END TRY
             BEGIN CATCH
-                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();
                 INSERT [#SourceStatus] VALUES('EVENT_FILE',@ResolvedSessionName,@ResolvedFilePath,@StatusCode,@ErrorNumber,@ErrorMessage,N'XEL-Datei konnte nicht gelesen werden.');
             END CATCH;
@@ -252,7 +252,7 @@ BEGIN
                 END;
             END TRY
             BEGIN CATCH
-                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();
                 INSERT [#SourceStatus] VALUES('RING_BUFFER',@ResolvedSessionName,NULL,@StatusCode,@ErrorNumber,@ErrorMessage,N'Ringbuffer konnte nicht gelesen werden.');
             END CATCH;

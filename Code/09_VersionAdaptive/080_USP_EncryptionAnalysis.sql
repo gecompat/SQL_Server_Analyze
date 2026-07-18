@@ -184,7 +184,7 @@ BEGIN
         BEGIN CATCH
             INSERT [#SourceStatus] VALUES
             (N'sys.dm_database_encryption_keys + master.sys.certificates',
-             CASE WHEN ERROR_NUMBER() IN (229,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
+             CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'TDE- oder Zertifikatmetadaten waren nicht vollstaendig lesbar; die uebrigen Quellen werden weiter ausgewertet.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
         END CATCH;
@@ -219,7 +219,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             INSERT [#SourceStatus] VALUES
-            (N'msdb.dbo.backupset',CASE WHEN ERROR_NUMBER() IN (229,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
+            (N'msdb.dbo.backupset',CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'Backupverschluesselungsmetadaten waren nicht lesbar; andere Quellen bleiben auswertbar.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
         END CATCH;
@@ -248,7 +248,7 @@ BEGIN
                     SET @IsPartial=1;
                     IF NOT EXISTS(SELECT 1 FROM [#DatabaseCandidateWarnings] WHERE [RequestedName]=@DatabaseName)
                         INSERT [#DatabaseCandidateWarnings] VALUES
-                        (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+                        (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                          N'Aggregierte Always-Encrypted- oder Ledger-Metadaten waren fuer diese Datenbank nicht lesbar.');
                 END CATCH;
                 FETCH NEXT FROM [database_cursor] INTO @DatabaseId,@DatabaseName;

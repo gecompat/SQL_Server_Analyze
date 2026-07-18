@@ -283,7 +283,7 @@ INSERT [#Signals] VALUES
                 VALUES
                 (
                       @Db
-                    , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 916)
+                    , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371, 916)
                            THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
                     , ERROR_NUMBER()
                     , ERROR_MESSAGE()

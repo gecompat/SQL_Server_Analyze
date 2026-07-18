@@ -280,7 +280,7 @@ OPTION (MAXDOP 1, RECOMPILE);';
     SELECT @Rows=COUNT_BIG(*) FROM [#Result] WHERE [DatabaseName]=@DbName; INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'Metadata Visibility',NULL,NULL,N'Partitionen und Allocation Units erfolgreich gelesen.');
    END TRY
    BEGIN CATCH
-    INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,1,0,N'Metadata Visibility',ERROR_NUMBER(),ERROR_MESSAGE(),N'Partitionsfehler isoliert.');
+    INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,1,0,N'Metadata Visibility',ERROR_NUMBER(),ERROR_MESSAGE(),N'Partitionsfehler isoliert.');
    END CATCH;
    FETCH NEXT FROM dbcur INTO @DbId,@DbName;
   END; CLOSE dbcur; DEALLOCATE dbcur;

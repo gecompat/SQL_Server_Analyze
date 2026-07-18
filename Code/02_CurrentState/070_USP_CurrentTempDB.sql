@@ -210,7 +210,7 @@ ORDER BY [df].[file_id];';
     BEGIN CATCH
         SET @ErrorNumber = ERROR_NUMBER();
         SET @ErrorMessage = ERROR_MESSAGE();
-        SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 916) THEN 'DENIED_PERMISSION'
+        SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
                                WHEN @ErrorNumber = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
         INSERT [#Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
     END CATCH;
