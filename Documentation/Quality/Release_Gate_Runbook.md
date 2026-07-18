@@ -21,7 +21,7 @@ Erwartung:
 
 Der gleiche Test läuft in GitHub Actions für relevante Pull Requests und Änderungen an `main`. Ein grüner statischer Test ersetzt weder die Runtime-Tests noch die manuelle fachliche und datenschutzbezogene Prüfung.
 
-## 0.1 Automatisiertes synthetisches Linux-Target
+## 0.1 Automatisiertes synthetisches Linux-Target für SQL Server 2022
 
 Der Workflow `.github/workflows/sqlserver-2022-linux-release-gate.yml` führt für relevante T-SQL-Änderungen ein isoliertes Runtime-Gate gegen `mcr.microsoft.com/mssql/server:2022-latest` aus.
 
@@ -36,7 +36,7 @@ Dabei gilt:
 - Es werden keine vollständigen SQLCMD-Ausgaben oder Resultsets als dauerhaftes Artefakt gespeichert.
 - Nach dem Lauf wird der Container auch bei Fehlern entfernt.
 
-Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. Es ersetzt keine Tests für Windows, SQL Server 2019, SQL Server 2025, optionale Feature-Positivfälle oder produktionsnahe Lastzustände.
+Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. SQL Server 2019 wird durch das separate Target in Abschnitt 0.3 geprüft. Nicht abgedeckt bleiben Windows, SQL Server 2025, optionale Feature-Positivfälle und produktionsnahe Lastzustände.
 
 ## 0.2 Automatisierte SQL-Server-2022-Berechtigungsmatrix
 
@@ -63,6 +63,30 @@ Verbindliche Erwartungen:
 - beide Database-State-Szenarien erfüllen die geprüften Query-Store-Performance-Capabilities;
 - nicht berechtigte geschützte Klassen liefern `NO_MATCH`, Rollenmitglieder `IS_MEMBER` und sysadmin `SYSADMIN`;
 - sieben Szenarien werden vollständig ausgeführt und der Test endet mit `StatusCode=AVAILABLE`.
+
+## 0.3 Automatisiertes synthetisches Linux-Target für SQL Server 2019
+
+Der Workflow `.github/workflows/sqlserver-2019-linux-release-gate.yml` führt dieselbe Installation und dieselben zwölf Release-Gate-Suiten gegen `mcr.microsoft.com/mssql/server:2019-latest` aus. Die synthetische Installationsdatenbank verwendet Compatibility Level 150 und dieselbe case-sensitive Collation wie die anderen Testtargets.
+
+Anschließend wird `Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql` ausgeführt. Die Matrix prüft fünf vollständig synthetische Kontexte:
+
+1. vollständig eingeschränkter Login;
+2. Login mit `VIEW SERVER STATE`;
+3. Benutzer mit `VIEW DATABASE STATE`;
+4. Rollenmitglied über den `IS_MEMBER`-Fallback;
+5. sysadmin-Bypass.
+
+Verbindliche Erwartungen:
+
+- der Feature- und Capability-Katalog verwendet vor SQL Server 2022 ausschließlich `VIEW SERVER STATE` und `VIEW DATABASE STATE`;
+- kein SQL-Server-2022-Performance-State-Recht wird für die geprüften 2019-Capabilities vorausgesetzt;
+- ein eingeschränkter Kontext liefert kontrollierte Limited-/Denied-Statuswerte und gültiges JSON;
+- `VIEW SERVER STATE` macht die Current-Sessions-Capability verfügbar;
+- `VIEW DATABASE STATE` erfüllt die geprüften Query-Store-Capabilities;
+- offene Policy, `NO_MATCH`, `IS_MEMBER` und `SYSADMIN` werden getrennt bestätigt;
+- fünf Szenarien werden vollständig ausgeführt und der Test endet mit `StatusCode=AVAILABLE`.
+
+Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. Fehlerzusammenfassungen bleiben generisch, werden höchstens einen Tag aufbewahrt und der Container wird auch bei Fehlern entfernt.
 
 ## 1. Lokale Testkopie vorbereiten
 
