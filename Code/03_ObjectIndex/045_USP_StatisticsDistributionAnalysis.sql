@@ -397,8 +397,7 @@ OUTER APPLY
     FROM [sys].[dm_db_stats_histogram]([c].[ObjectId],[c].[StatisticsId]) [x]
     ORDER BY [x].[step_number] DESC
 ) [tail]
-WHERE [c].[DatabaseName]=@pDbName
-OPTION (MAXDOP 1,RECOMPILE);';
+WHERE [c].[DatabaseName]=@pDbName;';
 
                 EXEC [sys].[sp_executesql] @Sql,N'@pDbName sysname,@pMinRows bigint',
                      @pDbName=@DbName,@pMinRows=@MinVerteilungsZeilen;
