@@ -35,7 +35,9 @@ BEGIN TRY
         CONSTRAINT [FK_ExampleSchemaChild_Parent] FOREIGN KEY([ParentId])
             REFERENCES [dbo].[ExampleSchemaParent]([ParentId])
     );
-    ALTER TABLE [dbo].[ExampleSchemaChild] WITH NOCHECK
+    ALTER TABLE [dbo].[ExampleSchemaChild]
+        NOCHECK CONSTRAINT [CK_ExampleSchemaChild_Value];
+    ALTER TABLE [dbo].[ExampleSchemaChild]
         CHECK CONSTRAINT [CK_ExampleSchemaChild_Value];
 
     CREATE TABLE [dbo].[ExampleDuplicateIndex]
