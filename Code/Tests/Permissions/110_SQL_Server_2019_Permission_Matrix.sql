@@ -408,6 +408,56 @@ IF EXISTS
     THROW 54316,N'Der SQL-Server-2019-sysadmin-Bypass ist fehlgeschlagen.',1;
 GO
 
+/* P0 INT-DENIED und CAP-DENIED: serverweite Quellen unter einem wirklich eingeschränkten Login. */
+DECLARE @P0IntegrityJson nvarchar(max)=NULL,@P0CapacityJson nvarchar(max)=NULL;
+DECLARE @P0IntegrityStatus varchar(40)=NULL,@P0CapacityStatus varchar(40)=NULL;
+DECLARE @P0IntegrityPartial bit=NULL,@P0CapacityPartial bit=NULL;
+
+BEGIN TRY
+    EXECUTE AS LOGIN=N'Example2019RestrictedLogin';
+
+    EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
+          @DatabaseNames=N''
+        , @MaxDatenbanken=1
+        , @MitPageDetails=0
+        , @MaxZeilen=20
+        , @ResultSetArt='NONE'
+        , @JsonErzeugen=1
+        , @Json=@P0IntegrityJson OUTPUT
+        , @PrintMeldungen=0
+        , @StatusCodeOut=@P0IntegrityStatus OUTPUT
+        , @IsPartialOut=@P0IntegrityPartial OUTPUT;
+
+    EXEC [monitor].[USP_DatabaseCapacityAnalysis]
+          @DatabaseNames=N''
+        , @MaxDatenbanken=1
+        , @MinVolumeFreePercent=0
+        , @MaxZeilen=20
+        , @ResultSetArt='NONE'
+        , @JsonErzeugen=1
+        , @Json=@P0CapacityJson OUTPUT
+        , @PrintMeldungen=0
+        , @StatusCodeOut=@P0CapacityStatus OUTPUT
+        , @IsPartialOut=@P0CapacityPartial OUTPUT;
+
+    REVERT;
+END TRY
+BEGIN CATCH
+    IF SUSER_SNAME()<>ORIGINAL_LOGIN() REVERT;
+    THROW;
+END CATCH;
+
+IF ISJSON(@P0IntegrityJson)<>1
+   OR @P0IntegrityStatus NOT IN('DENIED_PERMISSION','AVAILABLE_LIMITED','DENIED_GROUP')
+   OR COALESCE(@P0IntegrityPartial,0)<>1
+    THROW 54317,N'Der P0-Fall INT-DENIED verletzt den kontrollierten Limited-/Denied-Vertrag.',1;
+
+IF ISJSON(@P0CapacityJson)<>1
+   OR @P0CapacityStatus NOT IN('DENIED_PERMISSION','AVAILABLE_LIMITED','DENIED_GROUP')
+   OR COALESCE(@P0CapacityPartial,0)<>1
+    THROW 54318,N'Der P0-Fall CAP-DENIED verletzt den kontrollierten Limited-/Denied-Vertrag.',1;
+GO
+
 SELECT
       CAST('AVAILABLE' AS varchar(40)) AS [StatusCode]
     , CAST(0 AS bit) AS [IsPartial]
