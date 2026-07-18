@@ -24,11 +24,28 @@ jobs:
   release-gate:
     name: SQL Server 2025 Linux release gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 35
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+
+      - name: Validate regex predicate syntax
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          invalid = []
+          comparison = re.compile(r"REGEXP_LIKE\s*\(.*\)\s*(?:=|<>|!=)\s*[01]", re.IGNORECASE)
+          for path in sorted(Path("Code").rglob("*.sql")):
+              for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                  if comparison.search(line):
+                      invalid.append(f"{path}:{line_number}: {line.strip()}")
+          if invalid:
+              print("REGEXP_LIKE is a predicate and must not be compared with 0 or 1:")
+              print("\n".join(invalid))
+              raise SystemExit(1)
 
       - name: Prepare isolated SQL files
         shell: bash
@@ -162,6 +179,28 @@ jobs:
           fi
           echo 'Permission matrix succeeded.'
 
+      - name: Run SQL Server 2025 regex matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          regex_log="$RUNNER_TEMP/sqlserver-analyze-regex-matrix.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-error.txt"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql >"$regex_log" 2>&1; then
+            echo 'Regex matrix failed.'
+            {
+              echo 'Final regex-matrix output:'
+              tail -n 220 "$regex_log"
+            } >"$error_summary"
+            cat "$error_summary"
+            exit 1
+          fi
+          echo 'Regex matrix succeeded.'
+
       - name: Record generic success summary
         if: success()
         shell: bash
@@ -173,6 +212,7 @@ jobs:
             echo '- Installer: passed'
             echo '- Release gate: passed'
             echo '- Permission matrix: passed'
+            echo '- Regex matrix: passed'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload sanitized failure summary
