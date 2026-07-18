@@ -14,6 +14,7 @@ NAMES = {
     "2025": "SQL Server 2025 Linux release gate",
     "docs": "Documentation validation",
     "privacy": "Repository privacy validation",
+    "commit": "Commit message validation",
 }
 SELECTED = {}
 for key, name in NAMES.items():
@@ -47,7 +48,13 @@ for key, (version, compatibility) in versions.items():
     suffix = "; `REGEX_MATRIX=PASS`" if key == "2025" else ""
     row = f"| SQL Server {key} | `{version}` | {compatibility} | [Run {SELECTED[key]['id']}]({url(key)}) | `PASS_WITH_LIMITATIONS`; alle 17 P0- und alle 40 P1-Fälle{suffix} |"
     text = regex_once(text, rf"^\| SQL Server {key} \|.*$", row, f"matrix row {key}", re.MULTILINE)
-text = regex_once(text, r"Der \[Dokumentations- und statische Vertrag\]\([^)]*\) und das \[Repository-Datenschutzgate\]\([^)]*\) sind für denselben Commit ebenfalls grün\.", f"Der [Dokumentations- und statische Vertrag]({url('docs')}) und das [Repository-Datenschutzgate]({url('privacy')}) sind für denselben Commit ebenfalls grün.", "matrix static links")
+text = regex_once(
+    text,
+    r"^Der \[Dokumentations- und statische Vertrag\]\([^)]*\), das \[Repository-Datenschutzgate\]\([^)]*\) und das \[Commit-Message-Gate\]\([^)]*\) sind für denselben Commit ebenfalls grün\.",
+    f"Der [Dokumentations- und statische Vertrag]({url('docs')}), das [Repository-Datenschutzgate]({url('privacy')}) und das [Commit-Message-Gate]({url('commit')}) sind für denselben Commit ebenfalls grün.",
+    "matrix static links",
+    re.MULTILINE,
+)
 text = text.replace("Er startet die zwölf folgenden Verträge", "Er startet die fünfzehn folgenden Verträge")
 if "Integration/176_P1_Availability_Runtime_Contract.sql" not in text:
     anchor = "   - `Integration/175_P1_Statistics_Runtime_Contract.sql`\n"
