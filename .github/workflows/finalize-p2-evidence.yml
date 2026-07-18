@@ -31,6 +31,47 @@ jobs:
             gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}"
           done | jq -s '.' > "$RUNNER_TEMP/p2-runs.json"
 
+      - name: Normalize README finalizer rules
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('.github/scripts/finalize_p2_evidence.py')
+          text=path.read_text(encoding='utf-8')
+          start_marker='for relative in ("README.md", "Documentation/README.md"):'
+          end_marker='relative = "Documentation/Architecture/Special_Case_Modules.md"'
+          start=text.index(start_marker)
+          end=text.index(end_marker,start)
+          replacement='\n'.join([
+              'relative = "README.md"',
+              'path = ROOT / relative',
+              'text = path.read_text(encoding="utf-8")',
+              'text, count = re.subn(',
+              '    r"Der Release-Gate-Vertrag umfasst nun \\d+ Suiten;.*?Weitere Feature-Positiv-, Grenzwert-, Last- und externe Restorefälle bleiben separate Nachweise\\.",',
+              '    "Der Release-Gate-Vertrag umfasst nun 31 Suiten; alle 17 P0-, 40 P1- und 124 P2-Fälle besitzen commitbezogene Drei-Versionen-Evidenz. Die 115 zuvor offenen P2-Zeilen sind abgeschlossen. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.",',
+              '    text,',
+              '    count=1,',
+              ')',
+              'if count != 1:',
+              '    raise SystemExit("Missing README release-gate status: README.md")',
+              'write_text(relative, text)',
+              '',
+              'relative = "Documentation/README.md"',
+              'text = (ROOT / relative).read_text(encoding="utf-8")',
+              'text = regex_once(',
+              '    text,',
+              '    r"^Die Version `1\\.1\\.0-special\\.9`.*$",',
+              '    "Die Version `1.1.0-special.9` besitzt einen 31-Suite-Vertrag mit commitbezogener Drei-Versionen-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorebeweise bleiben getrennte Evidence-Klassen.",',
+              '    "documentation README status",',
+              '    re.MULTILINE,',
+              ')',
+              'write_text(relative, text)',
+              '',
+          ])
+          path.write_text(text[:start]+replacement+text[end:],encoding='utf-8',newline='\n')
+          PY
+
       - name: Compile and finalize P2 evidence
         shell: bash
         env:
