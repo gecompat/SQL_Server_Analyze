@@ -60,7 +60,7 @@ Jeder normalisierte Befund enthält Quelle, Kategorie, Priorität, Konfidenz, te
 
 ## Test- und Freigabestatus
 
-Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. Ein Eintrag `NOT_EXECUTED` ist Planungsstand und niemals Ausführungsevidenz. Dieser Implementierungsstand darf erst nach dokumentierten Läufen je Zielsystem als Laufzeit-Release freigegeben werden.
+Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. P0 und die ersten achtundzwanzig P1-Fälle bis einschließlich Statistikverteilung besitzen commitbezogene Drei-Versionen-Evidenz. Ein Eintrag `NOT_EXECUTED` ist weiterhin Planungsstand und niemals Ausführungsevidenz; die vollständige Laufzeitfreigabe bleibt bis zur vorgesehenen Zielmatrix ausständig.
 
 ## Primärquellen
 
