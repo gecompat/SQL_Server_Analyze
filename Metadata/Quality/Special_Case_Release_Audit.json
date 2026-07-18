@@ -269,9 +269,9 @@
         "SCH-DUP",
         "SCH-RANGE"
       ],
-      "ddlFixturesRolledBack": true,
+      "ddlFixturesCleanedOnSuccessAndFailure": true,
       "runtimeDataPersisted": false,
-      "note": "The suite uses only generic constraint, foreign-key, index and identity fixtures inside a rollback transaction. The four rows remain NOT_EXECUTED until all three version-specific Actions gates pass."
+      "note": "The suite uses only explicitly named generic constraint, foreign-key, index and identity fixtures and removes them on success and failure. The four rows remain NOT_EXECUTED until all three version-specific Actions gates pass."
     },
     "procedureDocumentationContract": {
       "status": "PASS",

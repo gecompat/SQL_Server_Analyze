@@ -7,7 +7,8 @@ Datei        : 174_P1_Schema_Runtime_Contract.sql
 Zweck        : Laufzeitverträge für vier P1-Schema-/Designfälle.
 Datenschutz  : Nur generische synthetische Objekte; Resultate werden nicht
                in Repository- oder Downloadartefakte übernommen.
-Nebenwirkung : Sämtliche DDL-Fixtures liegen in einer Rollback-Transaktion.
+Nebenwirkung : Sämtliche generisch benannten DDL-Fixtures werden im Erfolgs-
+               und Fehlerpfad ausdrücklich entfernt.
 ===============================================================================
 */
 SET NOCOUNT ON;
@@ -16,8 +17,12 @@ SET XACT_ABORT ON;
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit;
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 
-BEGIN TRANSACTION;
 BEGIN TRY
+    DROP TABLE IF EXISTS [dbo].[ExampleSchemaChild];
+    DROP TABLE IF EXISTS [dbo].[ExampleSchemaParent];
+    DROP TABLE IF EXISTS [dbo].[ExampleDuplicateIndex];
+    DROP TABLE IF EXISTS [dbo].[ExampleIdentityRange];
+
     CREATE TABLE [dbo].[ExampleSchemaParent]
     (
         [ParentId] int NOT NULL CONSTRAINT [PK_ExampleSchemaParent] PRIMARY KEY
@@ -90,10 +95,20 @@ BEGIN TRY
         THROW 54804,N'P1-Vertrag SCH-RANGE fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('SCH-RANGE');
 
-    ROLLBACK TRANSACTION;
+    DROP TABLE [dbo].[ExampleSchemaChild];
+    DROP TABLE [dbo].[ExampleSchemaParent];
+    DROP TABLE [dbo].[ExampleDuplicateIndex];
+    DROP TABLE [dbo].[ExampleIdentityRange];
 END TRY
 BEGIN CATCH
-    IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+    BEGIN TRY
+        DROP TABLE IF EXISTS [dbo].[ExampleSchemaChild];
+        DROP TABLE IF EXISTS [dbo].[ExampleSchemaParent];
+        DROP TABLE IF EXISTS [dbo].[ExampleDuplicateIndex];
+        DROP TABLE IF EXISTS [dbo].[ExampleIdentityRange];
+    END TRY
+    BEGIN CATCH
+    END CATCH;
     THROW;
 END CATCH;
 
@@ -102,6 +117,6 @@ IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>4
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
        COUNT_BIG(*) AS [ExecutedCases],
-       N'Vier synthetische P1-Schemafälle wurden vollständig zurückgerollt.' AS [Detail]
+       N'Vier synthetische P1-Schemafälle wurden vollständig bereinigt.' AS [Detail]
 FROM @ExecutedCases;
 GO
