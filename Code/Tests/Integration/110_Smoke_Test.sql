@@ -76,7 +76,7 @@ IF NOT EXISTS
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED) WHERE [IsFrameworkDefault]=1) < 350
+IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED) WHERE [IsFrameworkDefault]=1) < 347
     THROW 54002,N'Der Framework-Wait-Katalog ist unvollständig.',1;
 
 IF EXISTS
@@ -85,9 +85,23 @@ IF EXISTS
     FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED)
     WHERE [IsFrameworkDefault]=1
       AND ([Meaning] IS NULL OR [TypicalOccurrence] IS NULL OR [HighWaitImpact] IS NULL
-           OR [RecommendedChecks] IS NULL OR [HelpUrl] IS NULL)
+           OR [RecommendedChecks] IS NULL OR [HelpUrl] IS NULL OR [SourceReference] IS NULL
+           OR [DescriptionSource]<>'FRAMEWORK_CURATED' OR [DescriptionQuality]<>'FRAMEWORK_CURATED')
 )
     THROW 54003,N'Der Framework-Wait-Katalog enthält unvollständige Pflichtinformationen.',1;
+
+IF EXISTS
+(
+    SELECT 1
+    FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED)
+    WHERE [IsFrameworkDefault]=1
+      AND [WaitType] IN
+      (
+          N'CURSOR',N'DBTABLE',N'IDES',N'LCK_MSCH_M',N'LCK_M_RI_NL',N'LCK_M_RI_S',N'LCK_M_RI_U',N'LCK_M_RI_X',
+          N'NETWORKIO',N'PAGESUPP',N'PARALLEL_PAGE_SUPPLIER',N'PSS_CHILD',N'SLEEP',N'UMSTHREAD'
+      )
+)
+    THROW 54020,N'Der Framework-Wait-Katalog enthält abgelöste Alt- oder Fehlnamen.',1;
 
 IF OBJECT_ID(N'monitor.FrameworkInstallationHistory',N'U') IS NOT NULL
  OR OBJECT_ID(N'monitor.FrameworkExpectedObject',N'U') IS NOT NULL

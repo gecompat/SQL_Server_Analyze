@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "reviewedAt": "2026-07-18",
+  "targetScope": [
+    "SQL Server 2019",
+    "SQL Server 2022",
+    "SQL Server 2025"
+  ],
+  "primarySource": {
+    "title": "sys.dm_os_wait_stats (Transact-SQL)",
+    "learnUrl": "https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-wait-stats-transact-sql?view=sql-server-ver17",
+    "sourceCommit": "75807aa4df3dc96ddaa7facd12916a6fb2f6ad1e",
+    "sourceUrl": "https://github.com/MicrosoftDocs/sql-docs/blob/75807aa4df3dc96ddaa7facd12916a6fb2f6ad1e/docs/relational-databases/system-dynamic-management-objects/sys-dm-os-wait-stats-transact-sql.md",
+    "documentDate": "2025-05-28",
+    "officialWaitTypeRows": 967,
+    "officialNameSetSha256": "d1c27efdfac57f10270e3feecfabb01c976d69f9c3be9df4d67d36e2b6d22a06"
+  },
+  "decisions": {
+    "preexistingCuratedRows": 25,
+    "reviewRequiredRows": 332,
+    "curatedWithoutRename": 318,
+    "renamed": 4,
+    "removed": 10,
+    "renames": {
+      "LCK_M_RI_NL": "LCK_M_RIn_NL",
+      "LCK_M_RI_S": "LCK_M_RIn_S",
+      "LCK_M_RI_U": "LCK_M_RIn_U",
+      "LCK_M_RI_X": "LCK_M_RIn_X"
+    },
+    "removedNames": [
+      "CURSOR",
+      "DBTABLE",
+      "IDES",
+      "LCK_MSCH_M",
+      "NETWORKIO",
+      "PAGESUPP",
+      "PARALLEL_PAGE_SUPPLIER",
+      "PSS_CHILD",
+      "SLEEP",
+      "UMSTHREAD"
+    ],
+    "removalRule": "No exact entry in the reviewed Microsoft wait-type table for the target scope; an unverified alias or duplicate is not retained as curated evidence."
+  },
+  "result": {
+    "catalogRows": 347,
+    "uniqueWaitTypes": 347,
+    "officialNameMatches": 347,
+    "descriptionSource": "FRAMEWORK_CURATED",
+    "descriptionQuality": "FRAMEWORK_CURATED",
+    "catalogNameSetSha256": "13c380f7baf6298475eb11afde3c47ffc8b009fbc6c9002a90c7fccff44e0011",
+    "unresolvedRows": 0
+  }
+}

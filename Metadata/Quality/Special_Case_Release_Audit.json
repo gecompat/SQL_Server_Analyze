@@ -4,7 +4,7 @@
   "status": "ACTIONS_PASS",
   "scope": "completed P0/P1/P2 wave including isolated encryption-lifecycle and maintenance-operation analyses plus green commit-specific SQL Server 2019, 2022 and 2025 Actions gates including the SQL Server 2025 regex matrix",
   "inventory": {
-    "repositoryFiles": 313,
+    "repositoryFiles": 316,
     "canonicalSqlSources": 107,
     "sqlFilesIncludingTestsAndExamples": 127,
     "objects": 99,
@@ -138,6 +138,23 @@
       "messageContentInFindings": false,
       "firstActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634126487"
     },
+    "waitTypeCatalogCuration": {
+      "status": "PASS",
+      "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
+      "validator": "Code/Tests/Static/940_Validate_Wait_Type_Catalog.py",
+      "validatorSelfTests": 3,
+      "primarySourceRows": 967,
+      "reviewRequiredRowsResolved": 332,
+      "curatedWithoutRename": 318,
+      "renamed": 4,
+      "removed": 10,
+      "finalCatalogRows": 347,
+      "uniqueFinalWaitTypes": 347,
+      "unresolvedRows": 0,
+      "sourceLineContentInFindings": false,
+      "evidence": "Metadata/Quality/Wait_Type_Curation_Evidence.json",
+      "note": "Every final framework Wait Type name is an exact member of the immutable Microsoft source table; unverified legacy aliases and a malformed duplicate were removed instead of being relabeled."
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,
@@ -174,8 +191,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 313,
-      "zipFilesScanned": 313,
+      "repositoryFilesScanned": 316,
+      "zipFilesScanned": 316,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,

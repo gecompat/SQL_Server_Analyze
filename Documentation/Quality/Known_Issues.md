@@ -6,7 +6,7 @@ Die Version `1.1.0-special.9` besitzt für Commit `08b2d9d8c7adbadbf0996058d6bbb
 
 Verbleibende Repository- und Evidenzpunkte:
 
-- `RQ-006`: 332 importierte Wait-Beschreibungen tragen weiterhin `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` und benötigen schrittweise fachliche Kuratierung.
+- Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 

@@ -7,7 +7,9 @@ on:
       - 'Code/**/*.sql'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
+      - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
       - 'Documentation/**/*.md'
+      - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
   push:
     branches:
       - main
@@ -16,7 +18,9 @@ on:
       - 'Code/**/*.sql'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
+      - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
       - 'Documentation/**/*.md'
+      - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
   workflow_dispatch:
 
 permissions:
@@ -44,6 +48,16 @@ jobs:
             --repository-root . \
             --self-test
           python3 ./Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py \
+            --repository-root .
+
+      - name: Validate Wait Type catalog curation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/940_Validate_Wait_Type_Catalog.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/940_Validate_Wait_Type_Catalog.py \
             --repository-root .
 
       - name: Validate procedure documentation
