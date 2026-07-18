@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ExtendedEventsSessions
-Version      : 1.0.1
+Version      : 1.0.2
 Stand        : 2026-07-15
 Typ          : Stored Procedure
 Zweck        : Inventarisiert vorhandene serverweite Extended-Events-Sessions,
@@ -30,7 +30,8 @@ Partial      : Fehlende Berechtigungen liefern strukturierte Status- und leere
 Beispiele    : EXEC monitor.USP_ExtendedEventsSessions;
                EXEC monitor.USP_ExtendedEventsSessions @SessionNameLike=N'system_health';
                EXEC monitor.USP_ExtendedEventsSessions @Hilfe=1;
-Änderungen   : 1.0.1 - Alias [ObjectType] für die sortierte Feldklassifikation ergänzt.
+Änderungen   : 1.0.2 - total_target_memory wird nur bei nachgewiesener Spaltenverfügbarkeit gelesen; SQL Server 2019 liefert NULL.
+               1.0.1 - Alias [ObjectType] für die sortierte Feldklassifikation ergänzt.
                1.0.0 - Erstfassung Phase 5.
 ===============================================================================
 */
@@ -235,7 +236,7 @@ BEGIN
                 CASE WHEN @MitLaufzeitstatus = 1 THEN [r].[buffer_processed_count] END,
                 CASE WHEN @MitLaufzeitstatus = 1 THEN [r].[buffer_full_count] END,
                 CASE WHEN @MitLaufzeitstatus = 1 THEN [r].[total_bytes_generated] END,
-                CASE WHEN @MitLaufzeitstatus = 1 THEN [r].[total_target_memory] END,
+                CAST(NULL AS bigint),
                 [x].[EventCount],
                 [x].[TargetCount],
                 [x].[ActionCount],
@@ -269,6 +270,29 @@ BEGIN
             WHERE ((@ExtendedEventSessionNames IS NULL OR EXISTS(SELECT 1 FROM [#SessionNameFilter] [f] WHERE [f].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@SessionPatternMode IN('NONE','REGEX','REGEXI') OR [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @SessionPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS))
               AND (@NurLaufend = 0 OR [r].[name] IS NOT NULL)
             ORDER BY [s].[name];
+
+            IF @MitLaufzeitstatus = 1
+               AND EXISTS
+               (
+                   SELECT 1
+                   FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+                   INNER JOIN [sys].[schemas] AS [sc] WITH (NOLOCK)
+                       ON [sc].[schema_id]=[o].[schema_id]
+                   INNER JOIN [sys].[all_columns] AS [c] WITH (NOLOCK)
+                       ON [c].[object_id]=[o].[object_id]
+                   WHERE [sc].[name]=N'sys'
+                     AND [o].[name]=N'dm_xe_sessions'
+                     AND [c].[name]=N'total_target_memory'
+               )
+            BEGIN
+                DECLARE @TargetMemorySql nvarchar(max)=N'
+UPDATE [s]
+SET [TotalTargetMemoryBytes]=[r].[total_target_memory]
+FROM [#Sessions] AS [s]
+INNER JOIN [sys].[dm_xe_sessions] AS [r]
+    ON [r].[name]=[s].[SessionName];';
+                EXEC [sys].[sp_executesql] @TargetMemorySql;
+            END;
 
             SELECT @RowCount = COUNT_BIG(*) FROM [#Sessions];
         END TRY
