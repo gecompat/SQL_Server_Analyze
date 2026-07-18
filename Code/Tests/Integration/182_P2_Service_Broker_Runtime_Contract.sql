@@ -47,15 +47,24 @@ BEGIN TRY
     END;
     CLOSE [DropCursor]; DEALLOCATE [DropCursor];
 
-    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@NoneDb)+N'; ALTER DATABASE '+QUOTENAME(@NoneDb)+N' SET DISABLE_BROKER WITH ROLLBACK IMMEDIATE;';
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@NoneDb)+N';';
     EXEC [sys].[sp_executesql] @Sql;
-    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@ConfigDb)+N'; ALTER DATABASE '+QUOTENAME(@ConfigDb)+N' SET ENABLE_BROKER WITH ROLLBACK IMMEDIATE;';
-    EXEC [sys].[sp_executesql] @Sql;
-    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@DisabledDb)+N'; ALTER DATABASE '+QUOTENAME(@DisabledDb)+N' SET ENABLE_BROKER WITH ROLLBACK IMMEDIATE;
-USE '+QUOTENAME(@DisabledDb)+N'; CREATE QUEUE [dbo].[ExampleDisabledQueue]; CREATE SERVICE [ExampleDisabledService] ON QUEUE [dbo].[ExampleDisabledQueue] ([DEFAULT]);
-USE [master]; ALTER DATABASE '+QUOTENAME(@DisabledDb)+N' SET DISABLE_BROKER WITH ROLLBACK IMMEDIATE;';
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@NoneDb)+N' SET DISABLE_BROKER WITH ROLLBACK IMMEDIATE;';
     EXEC [sys].[sp_executesql] @Sql;
 
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@ConfigDb)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@ConfigDb)+N' SET ENABLE_BROKER WITH ROLLBACK IMMEDIATE;';
+    EXEC [sys].[sp_executesql] @Sql;
+
+    SET @Sql=N'CREATE DATABASE '+QUOTENAME(@DisabledDb)+N';';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DisabledDb)+N' SET ENABLE_BROKER WITH ROLLBACK IMMEDIATE;';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'USE '+QUOTENAME(@DisabledDb)+N'; CREATE QUEUE [dbo].[ExampleDisabledQueue]; CREATE SERVICE [ExampleDisabledService] ON QUEUE [dbo].[ExampleDisabledQueue] ([DEFAULT]);';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DisabledDb)+N' SET DISABLE_BROKER WITH ROLLBACK IMMEDIATE;';
+    EXEC [sys].[sp_executesql] @Sql;
     /* BROKER-NONE */
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
          @DatabaseNames=N'[ExampleBrokerNoneDatabase]',@MaxDatenbanken=1,@MaxZeilen=10,
