@@ -5,6 +5,7 @@ GO
 ===============================================================================
 Datei        : 186_P2_Maintenance_Runtime_Contract.sql
 Zweck        : Automatisiert die vier noch offenen P2-Maintenance-Verträge.
+Validierung  : Dieser Stand löst den vollständigen 31-Suite-Drei-Versionen-Lauf aus.
 Datenschutz  : Keine SQL-Texte, Jobschritte, Befehle, Meldungen, Konten,
                Clientdaten oder Wait-Ressourcen.
 Nebenwirkung : Keine RESUME-, ABORT-, KILL-, Cleanup-, Jobstart- oder Jobstop-Aktion.
