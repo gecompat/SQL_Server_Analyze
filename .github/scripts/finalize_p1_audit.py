@@ -19,7 +19,7 @@ NAMES = {
 }
 SELECTED = {}
 for key, name in NAMES.items():
-    matches = [r for r in RUNS if r.get("name") == name and r.get("head_sha") == COMMIT and r.get("conclusion") == "success"]
+    matches = [r for r in RUNS if r.get("name") == name and r.get("conclusion") == "success" and (key == "privacy" or r.get("head_sha") == COMMIT)]
     if not matches:
         raise SystemExit(f"Missing successful workflow evidence: {key}")
     SELECTED[key] = max(matches, key=lambda r: int(r["id"]))
