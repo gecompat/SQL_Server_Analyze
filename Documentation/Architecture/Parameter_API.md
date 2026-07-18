@@ -15,7 +15,7 @@ Textuelle **Steuerwerte** werden dagegen mit `UPPER(LTRIM(RTRIM(...)))` normalis
 - `@MaxDatenbanken int`: begrenzt nur automatisch ermittelte Datenbanken; eine explizite Liste wird nie still gekürzt.
 - `@DatabaseNames nvarchar(max)`: bracket-aware Pipe-Liste; `NULL` = alle zulässigen Datenbanken, `N''` = aktuelle Datenbank.
 - `@DatabaseNamePattern nvarchar(4000)`: ein einzelnes `like:`, `regex:` oder `regexi:` Pattern; exklusiv zu `@DatabaseNames`.
-- `@SessionIds nvarchar(max)`: Pipe-Liste numerischer Session-IDs.
+- `@SessionIds nvarchar(max)`: Liste numerischer Session-IDs; Pipe, Beistrich und Strichpunkt sind gleichwertige Trennzeichen und dürfen gemischt werden.
 - `@ResultSetArt varchar(16)='CONSOLE'`, `@JsonErzeugen bit=0`, `@Json nvarchar(max)=NULL OUTPUT`.
 - `@PrintMeldungen bit=1`, `@Hilfe bit=0`.
 
