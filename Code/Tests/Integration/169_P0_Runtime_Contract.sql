@@ -351,11 +351,24 @@ IF EXISTS
     THROW 54155,N'P0-Vertrag EV-XML fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('EV-XML');
 
-IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>14
+/* PC-RESET: deterministische Resetwerte durchlaufen dieselbe reine Funktion wie die DMV-Auswertung. */
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [monitor].[TVF_InterpretPerformanceCounter]
+         (272696320,100,50,NULL,NULL,CONVERT(decimal(19,6),1.0))
+    WHERE [Interpretation]='RATE_PER_SECOND'
+      AND [MetricValue] IS NULL
+      AND [FindingCode]='COUNTER_RESET_DURING_SAMPLE'
+)
+    THROW 54161,N'P0-Vertrag PC-RESET unterdrückte eine negative Rate nicht eindeutig.',1;
+INSERT @ExecutedCases VALUES('PC-RESET');
+
+IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>15
     THROW 54156,N'Der P0-Laufzeitvertrag hat nicht alle vorgesehenen Fälle ausgeführt.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
        COUNT_BIG(*) AS [ExecutedCases],
-       N'14 synthetische P0-Laufzeitfälle wurden ausgeführt; zwei Berechtigungsfälle laufen in der versionsspezifischen Berechtigungsmatrix und PC-RESET bleibt ein separater kontrollierter Neustartfall.' AS [Detail]
+       N'15 synthetische P0-Laufzeitfälle wurden ausgeführt; zwei Berechtigungsfälle laufen in der versionsspezifischen Berechtigungsmatrix.' AS [Detail]
 FROM @ExecutedCases;
 GO

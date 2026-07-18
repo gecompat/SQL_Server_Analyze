@@ -1,15 +1,15 @@
 {
   "release": "1.1.0-special.9",
   "generatedAtUtc": "2026-07-18T07:43:00Z",
-  "status": "ACTIONS_PASS",
-  "scope": "completed P0/P1/P2 implementation wave, evidence-backed Wait Type catalog curation, and green commit-specific 14-suite SQL Server 2019, 2022 and 2025 Actions gates including 16 automated P0 cases and the SQL Server 2025 regex matrix",
+  "status": "ACTIONS_PENDING",
+  "scope": "completed P0/P1/P2 implementation wave, evidence-backed Wait Type catalog curation, green commit-specific 14-suite SQL Server 2019, 2022 and 2025 evidence for 16 P0 cases, and a seventeenth deterministic P0 reset case pending Actions",
   "inventory": {
-    "repositoryFiles": 324,
-    "canonicalSqlSources": 107,
-    "sqlFilesIncludingTestsAndExamples": 129,
-    "objects": 99,
+    "repositoryFiles": 325,
+    "canonicalSqlSources": 108,
+    "sqlFilesIncludingTestsAndExamples": 130,
+    "objects": 100,
     "procedures": 84,
-    "functions": 10,
+    "functions": 11,
     "views": 5,
     "procedureParameters": 1356,
     "systemSources": 214
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 129,
+      "filesChecked": 130,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -161,22 +161,23 @@
       "note": "Every final framework Wait Type name is an exact member of the immutable Microsoft source table; unverified legacy aliases and a malformed duplicate were removed instead of being relabeled."
     },
     "p0RuntimeContract": {
-      "status": "ACTIONS_PASS",
+      "status": "IMPLEMENTED_PENDING_ACTIONS",
       "suite": "Code/Tests/Integration/169_P0_Runtime_Contract.sql",
-      "syntheticCases": 16,
-      "runtimeContractCases": 14,
+      "syntheticCases": 17,
+      "runtimeContractCases": 15,
       "permissionMatrixCases": 2,
       "integrityCases": 4,
       "capacityCases": 4,
-      "performanceCounterCases": 4,
+      "performanceCounterCases": 5,
       "criticalEventCases": 4,
-      "remainingControlledRestartCase": "PC-RESET",
+      "remainingControlledRestartCase": null,
+      "pendingActionsCase": "PC-RESET",
       "runtimeDataPersisted": false,
       "validatedCommit": "ffb95bd57c8e08300410ad268a92cc5379ee45f7",
       "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362",
       "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177330",
       "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177353",
-      "note": "Fourteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. All three version gates passed; PC-RESET remains NOT_EXECUTED because it requires a controlled restart between samples."
+      "note": "Fifteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. The first sixteen cases retain green three-version evidence; PC-RESET uses the same pure interpretation function as the procedure and remains NOT_EXECUTED until the new commit-specific gates pass."
     },
     "procedureDocumentationContract": {
       "status": "PASS",
@@ -187,8 +188,8 @@
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 107,
-      "includes": 107,
+      "canonicalSources": 108,
+      "includes": 108,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -196,8 +197,8 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 99,
-      "inventoryObjects": 99,
+      "sourceObjects": 100,
+      "inventoryObjects": 100,
       "differences": []
     },
     "parameterInventory": {
@@ -214,8 +215,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 324,
-      "zipFilesScanned": 324,
+      "repositoryFilesScanned": 325,
+      "zipFilesScanned": 325,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,
@@ -243,7 +244,7 @@
     "specialCaseRows": 181,
     "specialCaseRowsNotExecuted": 156,
     "specialCaseRowsPassWithLimitations": 25,
-    "specialCaseRowsAutomatedPending": 0,
+    "specialCaseRowsAutomatedPending": 1,
     "runtimeStatus": "ACTIONS_PASS",
     "claim": "Commit ffb95bd57c8e08300410ad268a92cc5379ee45f7 passed the synthetic Linux installer, 14-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including 16 automated P0 cases and the separate SQL Server 2025 regex matrix. Exact public product builds and immutable container image digests were captured. PC-RESET and further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
     "targetRuntimeEvidence": {
@@ -280,7 +281,7 @@
   },
   "runtimeLimitations": [
     "Local Docker, sqlcmd and PowerShell were unavailable; the primary runtime evidence is the three green commit-specific GitHub Actions gates.",
-    "PC-RESET requires a controlled restart between samples and remains NOT_EXECUTED.",
+    "PC-RESET has a deterministic shared-code test and remains NOT_EXECUTED until the new commit-specific Actions gates pass.",
     "Further feature-positive, boundary, load, Windows, Azure MI and external restore cases remain separate from the synthetic Actions contract."
   ]
 }

@@ -11,7 +11,7 @@ Verbleibende Repository- und Evidenzpunkte:
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 
-- `PC-RESET` bleibt als einziger P0-Fall offen und benötigt einen kontrollierten SQL-Server-Neustart zwischen zwei Samples.
+- `PC-RESET` ist über den gemeinsam genutzten reinen Rechenpfad deterministisch automatisiert; die commitbezogenen SQL-Server-2019-/2022-/2025-Nachweise stehen noch aus.
 - Die automatisierten synthetischen Linux-Vertragspfade ersetzen keine weiteren Feature-Positiv-, Grenzwert-, Last-, Windows- oder Azure-MI-Tests.
 - Bei jeder weiteren Zielversion oder abweichenden Plattform sind Installer, Smoke Tests, Parametervertrag und `165_Filter_Output_Contract.sql` erneut auszuführen.
 - Phase 7 liefert überwiegend Inventar- und Momentaufnahmen; zeitbasierte CPU-, NUMA- und Memory-Trends sind bewusst nicht Bestandteil dieses Ad-hoc-Pakets.

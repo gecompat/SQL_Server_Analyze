@@ -552,6 +552,7 @@ Typisiert SQL-Server-Performance-Counter als Snapshot, Rate, Fraction oder unint
 - Perfmon-Counter können Instanzstart-/Resetkontext besitzen.
 - Countername allein bestimmt nicht die Einheit; `cntr_type` und Basecounter lesen.
 - Die technische Counteridentität umfasst Objekt, Counter, Instanz und `cntr_type`; gleich benannte Zeilen verschiedener Typen werden nicht miteinander verrechnet.
+- Reset-, Rate- und Quotientenlogik liegt in `monitor.TVF_InterpretPerformanceCounter`; dadurch nutzt der deterministische Resetvertrag exakt denselben Rechenpfad wie die DMV-Auswertung.
 - Ein 5-Sekunden-Sample kann Burstlast zeigen, aber keine Tagesbaseline ersetzen.
 - Universelle Alarmgrenzen werden absichtlich nicht erzeugt.
 
