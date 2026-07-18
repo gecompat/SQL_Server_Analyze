@@ -91,7 +91,7 @@ Der SQL-Server-2025-Workflow ist nur erfolgreich, wenn alle folgenden Schritte b
 - statische Regex-Prädikatprüfung;
 - Versions- und Collation-Readiness;
 - vollständiger Installer;
-- allgemeines 17-Suite-Release-Gate einschließlich synthetischem P0-, P1-IQP-, P1-Contention- und P1-Speicher-Laufzeitvertrag;
+- allgemeines 18-Suite-Release-Gate einschließlich synthetischem P0-, P1-IQP-, P1-Contention-, P1-Speicher- und P1-Backupketten-Laufzeitvertrag;
 - SQL-Server-2025-Berechtigungsmatrix;
 - SQL-Server-2025-Regex-Matrix;
 - generische Erfolgszusammenfassung;
