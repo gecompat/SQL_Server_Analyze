@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - name: Gate positive Full-Text DDL by host platform
+      - name: Gate positive Full-Text DDL by platform
         shell: bash
         run: |
           set -euo pipefail
@@ -27,15 +27,17 @@ jobs:
           from pathlib import Path
           path=Path('Code/Tests/Integration/183_P2_FullText_Runtime_Contract.sql')
           text=path.read_text(encoding='utf-8')
-          old="DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);"
-          new="""DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);
-DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE
-    WHEN @IsInstalled=1
-     AND COALESCE(CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N'')<>N'Linux'
-    THEN 1 ELSE 0 END);"""
-          if text.count(old)!=1:
-              raise SystemExit('unexpected Full-Text capability declaration')
-          text=text.replace(old,new,1)
+          marker="DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);"
+          replacement='\n'.join([
+              marker,
+              'DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE',
+              '    WHEN @IsInstalled=1',
+              "     AND COALESCE(CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N'')<>N'Linux'",
+              '    THEN 1 ELSE 0 END);',
+          ])
+          if text.count(marker)!=1:
+              raise SystemExit('unexpected Full-Text capability marker')
+          text=text.replace(marker,replacement,1)
           if text.count('    IF @IsInstalled=1')!=2:
               raise SystemExit('unexpected Full-Text fixture gates')
           text=text.replace('    IF @IsInstalled=1','    IF @CanCreateFixtures=1')
