@@ -305,7 +305,7 @@ DECLARE @SyntheticEventOrdinal tinyint=0;
 WHILE @SyntheticEventOrdinal<5
 BEGIN
     BEGIN TRY
-        THROW 51000,N'Example synthetic critical event.',1;
+        RAISERROR(N'Example synthetic critical event.',16,1);
     END TRY
     BEGIN CATCH
     END CATCH;
@@ -331,7 +331,7 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
         [TimestampUtc] datetime2(7) N'$.TimestampUtc',[ErrorNumber] int N'$.ErrorNumber',
         [Severity] int N'$.Severity',[FindingCode] varchar(100) N'$.FindingCode'
     )
-    WHERE [ErrorNumber]=51000 AND [Severity]=16 AND [FindingCode]='SEVERE_ERROR_REPORTED'
+    WHERE [ErrorNumber]=50000 AND [Severity]=16 AND [FindingCode]='SEVERE_ERROR_REPORTED'
       AND [TimestampUtc]>=@EventStartUtc AND [TimestampUtc]<@EventEndUtc
 )
     THROW 54153,N'P0-Vertrag EV-SEVERE fehlgeschlagen.',1;
