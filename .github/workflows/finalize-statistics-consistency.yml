@@ -1,0 +1,128 @@
+name: Finalize statistics consistency
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/finalize-statistics-consistency.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Update remaining canonical status sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          # Release-gate runbook.
+          path = Path('Documentation/Quality/Release_Gate_Runbook.md')
+          text = path.read_text(encoding='utf-8')
+          replacements = [
+              (
+                  'dieselbe Installation und dieselben dreizehn Release-Gate-Suiten',
+                  'dieselbe Installation und dieselben zwanzig Release-Gate-Suiten',
+              ),
+              (
+                  'Installer, 19-Suite-Release-Gate einschließlich P0-, P1-IQP-, P1-Contention-, P1-Speicher-, P1-Backupketten- und P1-Schemavertrag',
+                  'Installer, 20-Suite-Release-Gate einschließlich P0-, P1-IQP-, P1-Contention-, P1-Speicher-, P1-Backupketten-, P1-Schema- und P1-Statistikverteilungsvertrag',
+              ),
+              ('folgende neunzehn Suiten aus:', 'folgende zwanzig Suiten aus:'),
+              (
+                  '''11. P1-Schema-/Design-Laufzeitvertrag mit garantierter Bereinigung generischer DDL-Fixtures
+12. Common
+13. Current State
+14. Object und Index
+15. Plan Cache
+16. Query Store
+17. Extended Events
+18. Infrastructure
+19. Server Health''',
+                  '''11. P1-Schema-/Design-Laufzeitvertrag mit garantierter Bereinigung generischer DDL-Fixtures
+12. P1-Statistikverteilungs-Laufzeitvertrag mit begrenzten synthetischen FULLSCAN-Histogrammen, Kandidatengrenze und Restricted-Group-Pfad
+13. Common
+14. Current State
+15. Object und Index
+16. Plan Cache
+17. Query Store
+18. Extended Events
+19. Infrastructure
+20. Server Health''',
+              ),
+              ('`ExecutedSuites=19`', '`ExecutedSuites=20`'),
+          ]
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'Unexpected runbook anchor count for: {old[:80]}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+
+          # Architecture status paragraph.
+          path = Path('Documentation/Architecture/Special_Case_Modules.md')
+          text = path.read_text(encoding='utf-8')
+          old = ('Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. '
+                 'Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. '
+                 'Ein Eintrag `NOT_EXECUTED` ist Planungsstand und niemals Ausführungsevidenz. Dieser Implementierungsstand '
+                 'darf erst nach dokumentierten Läufen je Zielsystem als Laufzeit-Release freigegeben werden.')
+          new = ('Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezialfall-API-Verträge. '
+                 'Die Zielmatrix steht in `Documentation/Quality/Test_Matrix.md` und `Metadata/Quality/Test_Matrix.csv`. '
+                 'P0 und die ersten achtundzwanzig P1-Fälle bis einschließlich Statistikverteilung besitzen commitbezogene '
+                 'Drei-Versionen-Evidenz. Ein Eintrag `NOT_EXECUTED` ist weiterhin Planungsstand und niemals Ausführungsevidenz; '
+                 'die vollständige Laufzeitfreigabe bleibt bis zur vorgesehenen Zielmatrix ausständig.')
+          if text.count(old) != 1:
+              raise SystemExit('Architecture status paragraph not found exactly once.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          # Machine-readable release audit.
+          path = Path('Metadata/Quality/Special_Case_Release_Audit.json')
+          audit = json.loads(path.read_text(encoding='utf-8'))
+          audit['generatedAtUtc'] = '2026-07-18T12:35:49Z'
+          audit['inventory']['repositoryFiles'] = 333
+          audit['inventory']['sqlFilesIncludingTestsAndExamples'] = 137
+          audit['staticChecks']['sqlLexicalBalance']['filesChecked'] = 137
+          privacy = audit['staticChecks']['repositoryPrivacyGate']
+          privacy['repositoryFilesScanned'] = 333
+          privacy['zipFilesScanned'] = 333
+          evidence = audit['testDocumentation']['actionEvidence']
+          evidence['documentationRun'] = 'https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565454'
+          evidence['repositoryPrivacyRun'] = 'https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464'
+          evidence['commitMessageRun'] = 'https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565467'
+          path.write_text(json.dumps(audit, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+          PY
+
+      - name: Validate consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m json.tool Metadata/Quality/Special_Case_Release_Audit.json >/dev/null
+          grep -q 'folgende zwanzig Suiten aus' Documentation/Quality/Release_Gate_Runbook.md
+          grep -q 'ExecutedSuites=20' Documentation/Quality/Release_Gate_Runbook.md
+          grep -q 'achtundzwanzig P1-Fälle' Documentation/Architecture/Special_Case_Modules.md
+          grep -q '29644565454' Metadata/Quality/Special_Case_Release_Audit.json
+
+      - name: Commit updates and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/finalize-statistics-consistency.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Documentation/Quality/Release_Gate_Runbook.md \
+                  Documentation/Architecture/Special_Case_Modules.md \
+                  Metadata/Quality/Special_Case_Release_Audit.json \
+                  .github/workflows/finalize-statistics-consistency.yml
+          git diff --cached --check
+          git commit -m 'docs: finalize statistics evidence consistency'
+          git push origin HEAD:main
