@@ -27,4 +27,6 @@ Patternparameter sind keine Pipe-Listen. Unterstützt werden:
 
 Regex wird ausschließlich versionsadaptiv und dynamisch auf SQL Server 2025 mit Compatibility Level 170 ausgeführt. Auf älteren Versionen wird `UNAVAILABLE_FEATURE` geliefert; es erfolgt keine unvollständige LIKE-Übersetzung.
 
+`REGEXP_LIKE(...)` ist dabei ein Prädikat. Positive Filter verwenden es direkt, negative Filter verwenden `NOT REGEXP_LIKE(...)`; ein Vergleich mit `= 1` oder `= 0` ist nicht zulässig. Der statische Dokumentationscheck verhindert die erneute Aufnahme dieser inkompatiblen Form.
+
 Exakte Liste und Pattern derselben Eigenschaft sind gegenseitig exklusiv.

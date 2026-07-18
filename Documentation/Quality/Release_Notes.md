@@ -8,6 +8,7 @@
 - Keine SQL-Texte, Jobschritte/-befehle, Meldungen, Konten, Clientdaten oder Wait-Ressourcen; keine Resume-, Abort-, Kill-, Cleanup-, Jobstart- oder Jobstop-Aktion.
 - `168_Special_Case_Runtime_Contract.sql` führt alle P2-Module gegen die synthetische Testdatenbank aus und validiert Status und JSON.
 - Drei Actions-Gates erzwingen SQL Server 2019/2022/2025, Compatibility Level 150/160/170, case-sensitive Collation, Installer, 13 Suiten und synthetische Berechtigungsfälle.
+- Das SQL-Server-2025-Gate hat den Regex-Prädikatvertrag gehärtet: `REGEXP_LIKE(...)` und `NOT REGEXP_LIKE(...)` ersetzen repositoryweit unzulässige Vergleiche mit `0` oder `1`; ein statischer Check schützt vor Regression.
 - SC-023 bis SC-025 besitzen sichere Repositoryverträge beziehungsweise ein externes Runbook; Persistenz, Fleet-Infrastruktur und echter Restore bleiben bis zu ausdrücklicher externer Autorisierung unimplementiert.
 
 ## Stand 2026-07-18 – Data-Capture-/Replikations-Deep-Dive `1.1.0-special.8`

@@ -140,8 +140,8 @@ BEGIN
         IF @HasRegex=1
         BEGIN
             DECLARE @Sql nvarchar(max)=N'';
-            IF @WaitTypeMode IN('REGEX','REGEXI') SET @Sql=N'DELETE FROM [#Tasks] WHERE [WaitType] IS NULL OR REGEXP_LIKE([WaitType],@WaitType,@WaitTypeFlags)=0;DELETE FROM [#Instance] WHERE REGEXP_LIKE([WaitType],@WaitType,@WaitTypeFlags)=0;';
-            IF @WaitGroupMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Tasks] WHERE [WaitGroup] IS NULL OR REGEXP_LIKE([WaitGroup],@WaitGroup,@WaitGroupFlags)=0;DELETE FROM [#Instance] WHERE [WaitGroup] IS NULL OR REGEXP_LIKE([WaitGroup],@WaitGroup,@WaitGroupFlags)=0;';
+            IF @WaitTypeMode IN('REGEX','REGEXI') SET @Sql=N'DELETE FROM [#Tasks] WHERE [WaitType] IS NULL OR NOT REGEXP_LIKE([WaitType],@WaitType,@WaitTypeFlags);DELETE FROM [#Instance] WHERE NOT REGEXP_LIKE([WaitType],@WaitType,@WaitTypeFlags);';
+            IF @WaitGroupMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Tasks] WHERE [WaitGroup] IS NULL OR NOT REGEXP_LIKE([WaitGroup],@WaitGroup,@WaitGroupFlags);DELETE FROM [#Instance] WHERE [WaitGroup] IS NULL OR NOT REGEXP_LIKE([WaitGroup],@WaitGroup,@WaitGroupFlags);';
             EXEC [sys].[sp_executesql] @Sql,N'@WaitType nvarchar(4000),@WaitTypeFlags varchar(8),@WaitGroup nvarchar(4000),@WaitGroupFlags varchar(8)',@WaitTypeValue,@WaitTypeFlags,@WaitGroupValue,@WaitGroupFlags;
         END;
 

@@ -362,7 +362,7 @@ WHERE [qs].[execution_count] >= @MinExecutions
   AND (@TextMode IN (''NONE'', ''REGEX'', ''REGEXI'') OR [st].[text] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @TextValue COLLATE SQL_Latin1_General_CP1_CS_AS)'
   + CASE WHEN @TextMode IN ('REGEX', 'REGEXI')
          THEN N'
-  AND REGEXP_LIKE([st].[text], @TextValue, @TextFlags) = 1'
+  AND REGEXP_LIKE([st].[text], @TextValue, @TextFlags)'
          ELSE N'' END
   + N'
 ORDER BY ' + @OrderExpression + N' DESC, [qs].[last_execution_time] DESC
