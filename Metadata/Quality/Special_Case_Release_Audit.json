@@ -1,8 +1,8 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T10:02:00Z",
+  "generatedAtUtc": "2026-07-18T12:34:20Z",
   "status": "ACTIONS_PASS",
-  "scope": "green commit-specific 19-suite SQL Server 2019, 2022 and 2025 evidence through four P1 schema-design cases",
+  "scope": "green commit-specific 20-suite SQL Server 2019, 2022 and 2025 evidence through eight P1 statistics-distribution cases",
   "inventory": {
     "repositoryFiles": 331,
     "canonicalSqlSources": 109,
@@ -329,52 +329,77 @@
       "nonGenericUseDatabaseFindings": 0,
       "publicReferenceHostsReviewed": true,
       "note": "The automated repository and ZIP gate applies only to repository and downloadable artifacts; runtime resultsets and OUTPUT values are unchanged. Findings report rule, path and count without echoing matched content, while ambiguous cases still require manual review and a stop-before-write decision."
+    },
+    "p1StatisticsRuntimeContract": {
+      "status": "ACTIONS_PASS_WITH_LIMITATIONS",
+      "suite": "Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql",
+      "syntheticCases": 8,
+      "caseIds": [
+        "STAT-BOUNDED",
+        "STAT-DENIED",
+        "STAT-DOMINANT",
+        "STAT-FILTERED",
+        "STAT-INCREMENTAL",
+        "STAT-MODIFIED",
+        "STAT-TAIL",
+        "STAT-UNIFORM"
+      ],
+      "boundedFullscanFixtures": true,
+      "candidateLimitValidated": true,
+      "restrictedCatalogDeepPathValidated": true,
+      "userTableDataPersisted": false,
+      "runtimeDataPersisted": false,
+      "validatedCommit": "f4bf1d4333e7f4a38814dea72a0799ca1d949364",
+      "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510",
+      "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565475",
+      "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565446",
+      "note": "The suite passed on SQL Server 2019, 2022 and 2025 using bounded synthetic histograms and a transactional restricted group path. Distribution indicators do not prove plan quality and no statistics update or user-data scan is executed by the analysis module."
     }
   },
   "testDocumentation": {
     "targetRows": 6,
     "targetRowsNotExecuted": 3,
     "targetRowsPassWithLimitations": 3,
-    "releaseGateSuiteRows": 44,
+    "releaseGateSuiteRows": 47,
     "releaseGateSuiteRowsNotExecuted": 15,
     "releaseGateSuiteRowsPass": 8,
-    "releaseGateSuiteRowsPassWithLimitations": 21,
+    "releaseGateSuiteRowsPassWithLimitations": 24,
     "specialCaseRows": 181,
-    "specialCaseRowsNotExecuted": 135,
-    "specialCaseRowsPassWithLimitations": 46,
+    "specialCaseRowsNotExecuted": 127,
+    "specialCaseRowsPassWithLimitations": 54,
     "specialCaseRowsAutomatedPending": 0,
     "runtimeStatus": "ACTIONS_PASS",
-    "claim": "Commit c405946d7806472f42cfc38430d5ada33620780c passed the synthetic Linux installer, 19-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 cases and the first twenty P1 cases through schema design plus the separate SQL Server 2025 regex matrix. Schema findings remain review tasks; no automatic schema change or restore was executed. Exact public product builds and immutable container image digests were captured. Further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
+    "claim": "Commit f4bf1d4333e7f4a38814dea72a0799ca1d949364 passed the synthetic Linux installer, 20-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 cases and the first twenty-eight P1 cases through statistics distribution plus the separate SQL Server 2025 regex matrix. Statistics and schema findings remain review tasks; no automatic statistics or schema change or restore was executed. Exact public product builds and immutable container image digests were retained. Further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
       "sqlServer2019": {
         "productVersion": "15.0.4480.2",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2019-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:46f719fd3457d4e7e8e5845fe00c35c20e7bae7ff1e8b9fe595f2a81029f5ba8",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112460"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510"
       },
       "sqlServer2022": {
         "productVersion": "16.0.4265.3",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2022-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112513"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565475"
       },
       "sqlServer2025": {
         "productVersion": "17.0.4065.4",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2025-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112494"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565446"
       }
     },
     "actionEvidence": {
-      "commitSha": "c405946d7806472f42cfc38430d5ada33620780c",
+      "commitSha": "f4bf1d4333e7f4a38814dea72a0799ca1d949364",
       "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112427",
       "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112443",
       "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112500",
-      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112460",
-      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112513",
-      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112494",
-      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29640112494"
+      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565510",
+      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565475",
+      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565446",
+      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565446"
     }
   },
   "runtimeLimitations": [
