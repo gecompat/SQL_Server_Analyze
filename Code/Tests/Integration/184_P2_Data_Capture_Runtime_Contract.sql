@@ -135,7 +135,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     INSERT @ExecutedCases VALUES('CT-WATERMARK-FUTURE');
 
     /* CT-AUTO-CLEANUP-OFF */
-    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@CtDb)+N' SET CHANGE_TRACKING = ON (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = OFF);';
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME(@CtDb)+N' SET CHANGE_TRACKING (CHANGE_RETENTION = 2 DAYS, AUTO_CLEANUP = OFF);';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
