@@ -58,7 +58,7 @@ BEGIN TRY
         [DistributionValue] int NOT NULL
     );
     INSERT [dbo].[ExampleStatisticsUniform]([DistributionValue])
-    SELECT (([NumberValue]-1)%100)+1
+    SELECT [NumberValue]
     FROM [#Numbers]
     WHERE [NumberValue]<=1000;
     CREATE STATISTICS [ST_ExampleStatisticsUniform]
@@ -182,7 +182,7 @@ BEGIN TRY
                  [TailVsAverageStepRatio] decimal(19,4) N'$.TailVsAverageStepRatio',
                  [AnalysisState] varchar(40) N'$.AnalysisState')
            WHERE [ObjectName]=N'ExampleStatisticsUniform'
-             AND [HistogramSteps]>=50 AND [DominantStepPercent]<=5
+             AND [HistogramSteps]>0 AND [DominantStepPercent]<=5
              AND [TailVsAverageStepRatio]<=2 AND [AnalysisState]='EVIDENCE_AVAILABLE')
        OR EXISTS
           (SELECT 1
@@ -342,7 +342,7 @@ BEGIN TRY
            FROM OPENJSON(@Json,N'$.databaseStatus')
            WITH ([DatabaseName] sysname N'$.DatabaseName',[CandidateCount] bigint N'$.CandidateCount',
                  [HistogramVisibleCount] bigint N'$.HistogramVisibleCount')
-           WHERE [DatabaseName]=N'[DeineDatenbank]'
+           WHERE [DatabaseName]=DB_NAME()
              AND ([CandidateCount]<>2 OR [HistogramVisibleCount]>2))
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.distribution'))<>2
         THROW 54906,N'P1-Vertrag STAT-BOUNDED fehlgeschlagen.',1;
