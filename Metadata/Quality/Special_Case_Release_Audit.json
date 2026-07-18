@@ -1,10 +1,10 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T06:10:35Z",
+  "generatedAtUtc": "2026-07-18T06:15:51Z",
   "status": "ACTIONS_PASS",
   "scope": "completed P0/P1/P2 wave including isolated encryption-lifecycle and maintenance-operation analyses plus green commit-specific SQL Server 2019, 2022 and 2025 Actions gates including the SQL Server 2025 regex matrix",
   "inventory": {
-    "repositoryFiles": 309,
+    "repositoryFiles": 310,
     "canonicalSqlSources": 107,
     "sqlFilesIncludingTestsAndExamples": 127,
     "objects": 99,
@@ -113,6 +113,10 @@
     "sqlServer2025RegexPredicateContract": {
       "status": "PASS",
       "regexpLikeComparisonsToZeroOrOne": 0,
+      "validator": "Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py",
+      "validatorSelfTests": 8,
+      "multilineDetection": true,
+      "sourceLineContentInFindings": false,
       "positiveForm": "REGEXP_LIKE(...) predicate",
       "negativeForm": "NOT REGEXP_LIKE(...) predicate",
       "note": "SQL Server 2025 exposes REGEXP_LIKE as a predicate; comparisons to numeric 0 or 1 are rejected by the static documentation gate."
@@ -160,8 +164,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 309,
-      "zipFilesScanned": 309,
+      "repositoryFilesScanned": 310,
+      "zipFilesScanned": 310,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,

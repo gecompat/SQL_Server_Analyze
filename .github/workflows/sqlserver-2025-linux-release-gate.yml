@@ -31,21 +31,14 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Validate regex predicate syntax
-        shell: python
+        shell: bash
         run: |
-          import re
-          from pathlib import Path
-
-          invalid = []
-          comparison = re.compile(r"REGEXP_LIKE\s*\(.*\)\s*(?:=|<>|!=)\s*[01]", re.IGNORECASE)
-          for path in sorted(Path("Code").rglob("*.sql")):
-              for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
-                  if comparison.search(line):
-                      invalid.append(f"{path}:{line_number}: {line.strip()}")
-          if invalid:
-              print("REGEXP_LIKE is a predicate and must not be compared with 0 or 1:")
-              print("\n".join(invalid))
-              raise SystemExit(1)
+          set -euo pipefail
+          python3 ./Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py \
+            --repository-root .
 
       - name: Prepare isolated SQL files
         shell: bash

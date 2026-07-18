@@ -3,6 +3,7 @@
 **Stand:** 18. Juli 2026  
 **Workflow:** `.github/workflows/sqlserver-2025-linux-release-gate.yml`  
 **Test:** `Code/Tests/VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql`
+**Statischer Validator:** `Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py`
 
 ## Zweck
 
@@ -12,7 +13,7 @@ Der Test läuft ausschließlich gegen eine synthetische SQL-Server-2025-Develope
 
 ## Statische Schutzprüfung
 
-Vor dem Containerlauf durchsucht der Workflow alle T-SQL-Dateien unter `Code/` nach ungültigen Skalarvergleichen mit `REGEXP_LIKE`.
+Vor dem Containerlauf durchsucht der Workflow alle T-SQL-Dateien unter `Code/` nach ungültigen Skalarvergleichen mit `REGEXP_LIKE`. Der Validator arbeitet über Dateigrenzen hinweg jeweils auf dem vollständigen Dateiinhalt und erkennt deshalb auch mehrzeilige Aufrufe und verschachtelte Argumentausdrücke. SQL-Zeilen- und Blockkommentare werden ausgeblendet.
 
 Nicht zulässig sind insbesondere:
 
@@ -37,7 +38,7 @@ und für die Negation:
 WHERE NOT REGEXP_LIKE([Spalte], @Pattern, @Flags)
 ```
 
-Die Prüfung verhindert, dass erneut syntaktisch ungültige Regex-Pfade in das Repository aufgenommen werden.
+Die Prüfung verhindert, dass erneut syntaktisch ungültige Regex-Pfade in das Repository aufgenommen werden. Ihre acht generischen Selbsttests decken gültige positive und negierte Prädikate, auskommentierte Beispiele sowie direkte, mehrzeilige, verschachtelte und dynamische Fehlformen ab. Ein Trefferbericht enthält nur Regelcode, Repositorypfad, Zeilennummer und Anzahl, niemals die betroffene Quellzeile.
 
 ## Laufzeitverträge
 
@@ -53,6 +54,8 @@ Die Matrix prüft getrennt:
 8. das kontrollierte Feature-Gate bei Compatibility Level 160;
 9. die Wiederherstellung von Compatibility Level 170;
 10. die erneute Regex-Verfügbarkeit nach der Wiederherstellung.
+
+Die abschließende generische Statuszeile meldet deshalb `ExecutedContracts=10`.
 
 ## Feature-Gate
 

@@ -6,7 +6,6 @@ Die Version `1.1.0-special.9` besitzt für Commit `8ec618231709d86540d605995fed3
 
 Verbleibende Repository- und Evidenzpunkte:
 
-- `RQ-003`: Die SQL-Server-2025-Regex-Matrix gibt `ExecutedContracts=7` aus, während die zugehörige Qualitätsdokumentation zehn Laufzeitverträge aufführt. Die statische Regex-Prädikatprüfung arbeitet außerdem zeilenweise und deckt mehrzeilige Fehlformen nicht zuverlässig ab.
 - `RQ-004`: Die Linux-Gates verwenden bewegliche `2019-latest`-, `2022-latest`- und `2025-latest`-Images. Die technischen `ProductVersion`-Felder und Image-Digests fehlen in der maschinenlesbaren Evidence.
 - `RQ-005`: Die verbindliche einzeilige Commit Message wird nicht automatisch geprüft; mehrere jüngere Commit-Nachrichten enthalten zusätzliche Textzeilen. Künftig ist dies per Liefergate zu verhindern, ohne die Historie umzuschreiben.
 - `RQ-006`: 332 importierte Wait-Beschreibungen tragen weiterhin `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` und benötigen schrittweise fachliche Kuratierung.
