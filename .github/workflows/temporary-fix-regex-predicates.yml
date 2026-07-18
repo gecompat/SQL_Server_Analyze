@@ -1,0 +1,115 @@
+name: Temporary fix SQL Server 2025 regex predicates
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out SQL Server 2025 branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2025-linux-release-gate
+
+      - name: Rewrite scalar comparisons as predicates
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          function_pattern = re.compile(r"REGEXP_LIKE\s*\(", re.IGNORECASE)
+          comparator_pattern = re.compile(r"\s*(=|<>|!=)\s*([01])")
+
+          def rewrite_line(line: str) -> tuple[str, int]:
+              position = 0
+              change_count = 0
+              while True:
+                  match = function_pattern.search(line, position)
+                  if match is None:
+                      break
+                  opening = line.find("(", match.start())
+                  depth = 0
+                  closing = None
+                  for index in range(opening, len(line)):
+                      if line[index] == "(":
+                          depth += 1
+                      elif line[index] == ")":
+                          depth -= 1
+                          if depth == 0:
+                              closing = index
+                              break
+                  if closing is None:
+                      position = match.end()
+                      continue
+                  comparator = comparator_pattern.match(line[closing + 1 :])
+                  if comparator is None:
+                      position = closing + 1
+                      continue
+                  operator, value = comparator.groups()
+                  replacement_end = closing + 1 + comparator.end()
+                  call = line[match.start() : closing + 1]
+                  negate = (operator == "=" and value == "0") or (operator in ("<>", "!=") and value == "1")
+                  replacement = ("NOT " if negate else "") + call
+                  line = line[: match.start()] + replacement + line[replacement_end:]
+                  change_count += 1
+                  position = match.start() + len(replacement)
+              return line, change_count
+
+          total_changes = 0
+          changed_paths = []
+          for path in sorted(Path("Code").rglob("*.sql")):
+              original = path.read_text(encoding="utf-8")
+              rewritten_lines = []
+              file_changes = 0
+              for line in original.splitlines(keepends=True):
+                  rewritten, changes = rewrite_line(line)
+                  rewritten_lines.append(rewritten)
+                  file_changes += changes
+              if file_changes:
+                  path.write_text("".join(rewritten_lines), encoding="utf-8", newline="\n")
+                  total_changes += file_changes
+                  changed_paths.append(path)
+
+          remaining = []
+          invalid = re.compile(r"REGEXP_LIKE\s*\(.*\)\s*(?:=|<>|!=)\s*[01]", re.IGNORECASE)
+          for path in sorted(Path("Code").rglob("*.sql")):
+              for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                  if invalid.search(line):
+                      remaining.append(f"{path}:{line_number}")
+
+          if total_changes < 89:
+              raise RuntimeError(f"Expected at least 89 predicate rewrites; found {total_changes}.")
+          if remaining:
+              raise RuntimeError("Unresolved REGEXP_LIKE scalar comparisons: " + ", ".join(remaining))
+          print(f"Rewritten REGEXP_LIKE comparisons: {total_changes}")
+          print(f"Changed SQL files: {len(changed_paths)}")
+
+      - name: Extend permanent predicate validation
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('.github/workflows/sqlserver-2025-linux-release-gate.yml')
+          text = path.read_text(encoding='utf-8')
+          old = 'comparison = re.compile(r"REGEXP_LIKE\\s*\\(.*\\)\\s*=\\s*[01]", re.IGNORECASE)'
+          new = 'comparison = re.compile(r"REGEXP_LIKE\\s*\\(.*\\)\\s*(?:=|<>|!=)\\s*[01]", re.IGNORECASE)'
+          if text.count(old) != 1:
+              raise RuntimeError(f'Expected validation expression once; found {text.count(old)}.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+
+      - name: Commit predicate fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code .github/workflows/sqlserver-2025-linux-release-gate.yml
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: use SQL Server 2025 regex predicates'
+          git push origin HEAD:agent/sqlserver-2025-linux-release-gate
