@@ -1,0 +1,338 @@
+name: Apply P1 availability contract
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/apply-p1-availability-contract.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Apply availability runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          db_state = r'''USE [DeineDatenbank];
+          GO
+
+          /*
+          ===============================================================================
+          Objekt       : monitor.TVF_InterpretAvailabilityDatabaseState
+          Zweck        : Reiner Klassifikationsvertrag für den Zustand einer AG-Datenbank.
+          Datenschutz  : Verarbeitet ausschließlich übergebene technische Status- und
+                         Zählerwerte; keine Namen, Texte oder Umgebungswerte.
+          Grenzen      : Momentaufnahme. Queue- und Lag-Grenzen sind Sichtungswerte und
+                         beweisen weder Ursache noch zukünftige Catch-up-Zeit.
+          ===============================================================================
+          */
+          CREATE OR ALTER FUNCTION [monitor].[TVF_InterpretAvailabilityDatabaseState]
+          (
+                @IsSuspended                  bit
+              , @SynchronizationHealthDesc    nvarchar(60)
+              , @SynchronizationStateDesc     nvarchar(60)
+              , @LogSendQueueSizeKb           bigint
+              , @RedoQueueSizeKb              bigint
+              , @SecondaryLagSeconds          bigint
+              , @QueueWarnMb                  bigint
+              , @SecondaryLagWarnSeconds      int
+          )
+          RETURNS TABLE
+          WITH SCHEMABINDING
+          AS
+          RETURN
+          (
+              SELECT
+                    [FindingCode] = CONVERT(varchar(100),
+                        CASE WHEN @IsSuspended = 1 THEN 'DATA_MOVEMENT_SUSPENDED'
+                             WHEN @SynchronizationHealthDesc = N'NOT_HEALTHY' THEN 'DATABASE_NOT_HEALTHY'
+                             WHEN @SynchronizationStateDesc = N'NOT_SYNCHRONIZING' THEN 'DATABASE_NOT_SYNCHRONIZING'
+                             WHEN CONVERT(decimal(38,0),COALESCE(@LogSendQueueSizeKb,0)) >= CONVERT(decimal(38,0),@QueueWarnMb)*1024 THEN 'LOG_SEND_QUEUE_THRESHOLD'
+                             WHEN CONVERT(decimal(38,0),COALESCE(@RedoQueueSizeKb,0)) >= CONVERT(decimal(38,0),@QueueWarnMb)*1024 THEN 'REDO_QUEUE_THRESHOLD'
+                             WHEN COALESCE(@SecondaryLagSeconds,0) >= @SecondaryLagWarnSeconds THEN 'SECONDARY_LAG_THRESHOLD'
+                             ELSE 'DATABASE_STATE_ACCEPTABLE' END)
+                  , [FindingSeverity] = CONVERT(varchar(16),
+                        CASE WHEN @IsSuspended = 1
+                                   OR @SynchronizationHealthDesc = N'NOT_HEALTHY'
+                                   OR @SynchronizationStateDesc = N'NOT_SYNCHRONIZING' THEN 'HIGH'
+                             WHEN CONVERT(decimal(38,0),COALESCE(@LogSendQueueSizeKb,0)) >= CONVERT(decimal(38,0),@QueueWarnMb)*1024
+                                   OR CONVERT(decimal(38,0),COALESCE(@RedoQueueSizeKb,0)) >= CONVERT(decimal(38,0),@QueueWarnMb)*1024
+                                   OR COALESCE(@SecondaryLagSeconds,0) >= @SecondaryLagWarnSeconds THEN 'MEDIUM'
+                             ELSE 'INFO' END)
+          );
+          GO
+          '''
+
+          seeding = r'''USE [DeineDatenbank];
+          GO
+
+          /*
+          ===============================================================================
+          Objekt       : monitor.TVF_InterpretAvailabilitySeedingState
+          Zweck        : Reiner Rechen- und Klassifikationsvertrag für physisches Seeding.
+          Datenschutz  : Verarbeitet ausschließlich übergebene technische Zahlen- und
+                         Zeitwerte; freie Fehlermeldungen werden nicht benötigt.
+          Grenzen      : Fortschritt basiert auf den sichtbaren Bytezählern. Kompression,
+                         Momentaufnahme und aktuelle Transferrate begrenzen die Aussage.
+          ===============================================================================
+          */
+          CREATE OR ALTER FUNCTION [monitor].[TVF_InterpretAvailabilitySeedingState]
+          (
+                @FailureCode                   int
+              , @TransferredSizeBytes           bigint
+              , @DatabaseSizeBytes              bigint
+              , @TransferRateBytesPerSecond     bigint
+              , @EndTimeUtc                     datetime
+          )
+          RETURNS TABLE
+          WITH SCHEMABINDING
+          AS
+          RETURN
+          (
+              SELECT
+                    [ProgressPercent] = CONVERT(decimal(9,4),
+                        CASE WHEN COALESCE(@DatabaseSizeBytes,0) <= 0 THEN NULL
+                             WHEN COALESCE(@TransferredSizeBytes,0) <= 0 THEN 0
+                             WHEN @TransferredSizeBytes >= @DatabaseSizeBytes THEN 100
+                             ELSE CONVERT(decimal(38,6),@TransferredSizeBytes)*100.0/NULLIF(CONVERT(decimal(38,6),@DatabaseSizeBytes),0) END)
+                  , [RemainingBytes] = CONVERT(bigint,
+                        CASE WHEN COALESCE(@DatabaseSizeBytes,0) <= COALESCE(@TransferredSizeBytes,0) THEN 0
+                             ELSE @DatabaseSizeBytes-COALESCE(@TransferredSizeBytes,0) END)
+                  , [FindingCode] = CONVERT(varchar(100),
+                        CASE WHEN COALESCE(@FailureCode,0) <> 0 THEN 'SEEDING_FAILED'
+                             WHEN @EndTimeUtc IS NOT NULL AND COALESCE(@TransferredSizeBytes,0) >= COALESCE(@DatabaseSizeBytes,0) THEN 'SEEDING_COMPLETED'
+                             WHEN @EndTimeUtc IS NULL
+                                  AND COALESCE(@DatabaseSizeBytes,0) > COALESCE(@TransferredSizeBytes,0)
+                                  AND COALESCE(@TransferRateBytesPerSecond,0) = 0 THEN 'SEEDING_NO_CURRENT_THROUGHPUT'
+                             WHEN @EndTimeUtc IS NULL THEN 'SEEDING_IN_PROGRESS'
+                             ELSE 'SEEDING_STATE_REVIEW' END)
+                  , [FindingSeverity] = CONVERT(varchar(16),
+                        CASE WHEN COALESCE(@FailureCode,0) <> 0 THEN 'HIGH'
+                             WHEN @EndTimeUtc IS NULL
+                                  AND COALESCE(@DatabaseSizeBytes,0) > COALESCE(@TransferredSizeBytes,0)
+                                  AND COALESCE(@TransferRateBytesPerSecond,0) = 0 THEN 'MEDIUM'
+                             WHEN @EndTimeUtc IS NOT NULL AND COALESCE(@TransferredSizeBytes,0) < COALESCE(@DatabaseSizeBytes,0) THEN 'MEDIUM'
+                             ELSE 'INFO' END)
+          );
+          GO
+          '''
+
+          test = r'''USE [DeineDatenbank];
+          GO
+
+          /*
+          ===============================================================================
+          Datei        : 176_P1_Availability_Runtime_Contract.sql
+          Zweck        : Laufzeitverträge für vier P1-Availability-Fälle.
+          Datenschutz  : Ausschließlich technische SERVERPROPERTY-Werte und vollständig
+                         synthetische Status-/Zählerwerte; keine Clusterobjekte werden erzeugt.
+          Nebenwirkung : Keine. Es erfolgt kein Failover, Suspend, Resume oder Seeding.
+          ===============================================================================
+          */
+          SET NOCOUNT ON;
+          SET XACT_ABORT ON;
+
+          DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
+          DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048);
+
+          /* AG-NONE: disposable Linux-Ziele besitzen kein aktiviertes HADR. */
+          IF COALESCE(TRY_CONVERT(int,SERVERPROPERTY(N'IsHadrEnabled')),0)=1
+              THROW 55000,N'P1-Vertrag AG-NONE benötigt ein Target ohne aktiviertes HADR.',1;
+
+          EXEC [monitor].[USP_AvailabilityDeepAnalysis]
+               @MaxZeilen=10,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+               @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+               @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+          IF ISJSON(@Json)<>1 OR @Status<>'NOT_APPLICABLE' OR @Partial<>0 OR @ErrorNumber IS NOT NULL
+             OR JSON_VALUE(@Json,N'$.meta.statusCode')<>N'NOT_APPLICABLE'
+             OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.replicas'))<>0
+             OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databases'))<>0
+             OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.seeding'))<>0
+              THROW 55001,N'P1-Vertrag AG-NONE fehlgeschlagen.',1;
+          INSERT @ExecutedCases VALUES('AG-NONE');
+
+          /* AG-SUSPEND: Suspendierung besitzt Priorität und hohe Severity. */
+          IF NOT EXISTS
+          (
+              SELECT 1
+              FROM [monitor].[TVF_InterpretAvailabilityDatabaseState]
+                   (1,N'HEALTHY',N'SYNCHRONIZED',0,0,0,1024,60)
+              WHERE [FindingCode]='DATA_MOVEMENT_SUSPENDED' AND [FindingSeverity]='HIGH'
+          )
+              THROW 55002,N'P1-Vertrag AG-SUSPEND fehlgeschlagen.',1;
+          INSERT @ExecutedCases VALUES('AG-SUSPEND');
+
+          /* AG-QUEUE: Schwellwert wird in MB konfiguriert und gegen KB-DMV-Werte geprüft. */
+          IF NOT EXISTS
+          (
+              SELECT 1
+              FROM [monitor].[TVF_InterpretAvailabilityDatabaseState]
+                   (0,N'HEALTHY',N'SYNCHRONIZING',1048576,0,0,1024,60)
+              WHERE [FindingCode]='LOG_SEND_QUEUE_THRESHOLD' AND [FindingSeverity]='MEDIUM'
+          )
+              THROW 55003,N'P1-Vertrag AG-QUEUE fehlgeschlagen.',1;
+          INSERT @ExecutedCases VALUES('AG-QUEUE');
+
+          /* AG-SEED: sichtbare Bytezähler liefern begrenzten Fortschritt ohne freie Meldungstexte. */
+          IF NOT EXISTS
+          (
+              SELECT 1
+              FROM [monitor].[TVF_InterpretAvailabilitySeedingState](NULL,400,1000,100,NULL)
+              WHERE [ProgressPercent]=40.0000 AND [RemainingBytes]=600
+                AND [FindingCode]='SEEDING_IN_PROGRESS' AND [FindingSeverity]='INFO'
+          )
+              THROW 55004,N'P1-Vertrag AG-SEED fehlgeschlagen.',1;
+          INSERT @ExecutedCases VALUES('AG-SEED');
+
+          IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>4
+              THROW 55005,N'Der P1-Availability-Vertrag hat nicht alle vorgesehenen Fälle ausgeführt.',1;
+
+          SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
+                 COUNT_BIG(*) AS [ExecutedCases],
+                 N'Vier P1-Availability-Fälle wurden ohne Cluster- oder Konfigurationsänderung geprüft.' AS [Detail]
+          FROM @ExecutedCases;
+          GO
+          '''
+
+          Path('Code/01_Common/090_TVF_InterpretAvailabilityDatabaseState.sql').write_text(db_state.replace('          ',''),encoding='utf-8',newline='\n')
+          Path('Code/01_Common/091_TVF_InterpretAvailabilitySeedingState.sql').write_text(seeding.replace('          ',''),encoding='utf-8',newline='\n')
+          Path('Code/Tests/Integration/176_P1_Availability_Runtime_Contract.sql').write_text(test.replace('          ',''),encoding='utf-8',newline='\n')
+
+          installer = Path('Code/Install/Install_All.sql')
+          text = installer.read_text(encoding='utf-8')
+          anchor = ':r ../01_Common/089_TVF_InterpretContentionCounter.sql\n'
+          addition = anchor + ':r ../01_Common/090_TVF_InterpretAvailabilityDatabaseState.sql\n:r ../01_Common/091_TVF_InterpretAvailabilitySeedingState.sql\n'
+          if text.count(anchor)!=1 or '090_TVF_InterpretAvailabilityDatabaseState.sql' in text:
+              raise SystemExit('Unexpected installer anchor state.')
+          installer.write_text(text.replace(anchor,addition,1),encoding='utf-8',newline='\n')
+
+          objects = Path('Metadata/Inventory/Objects.csv')
+          text = objects.read_text(encoding='utf-8')
+          anchor = 'FUNCTION,TVF_InterpretContentionCounter,Code/01_Common/089_TVF_InterpretContentionCounter.sql\n'
+          addition = anchor + 'FUNCTION,TVF_InterpretAvailabilityDatabaseState,Code/01_Common/090_TVF_InterpretAvailabilityDatabaseState.sql\nFUNCTION,TVF_InterpretAvailabilitySeedingState,Code/01_Common/091_TVF_InterpretAvailabilitySeedingState.sql\n'
+          if text.count(anchor)!=1 or 'TVF_InterpretAvailabilityDatabaseState' in text:
+              raise SystemExit('Unexpected object inventory anchor state.')
+          objects.write_text(text.replace(anchor,addition,1),encoding='utf-8',newline='\n')
+
+          proc = Path('Code/07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql')
+          text = proc.read_text(encoding='utf-8')
+          replacements = [
+              ('Version      : 1.0.0\nStand        : 2026-07-17', 'Version      : 1.1.0\nStand        : 2026-07-18'),
+              ('    IF @QueueWarnMb < 0 OR @SecondaryLagWarnSeconds < 0 OR @MaxZeilen < 0', '    IF @QueueWarnMb IS NULL OR @SecondaryLagWarnSeconds IS NULL\n       OR @QueueWarnMb < 0 OR @SecondaryLagWarnSeconds < 0 OR @MaxZeilen < 0'),
+              ('''        , [EndTimeUtc] datetime NULL
+    );''', '''        , [EndTimeUtc] datetime NULL
+        , [EstimateTimeCompleteUtc] datetime NULL
+        , [ProgressPercent] decimal(9,4) NULL
+        , [RemainingBytes] bigint NULL
+        , [FindingCode] varchar(100) NOT NULL
+        , [FindingSeverity] varchar(16) NOT NULL
+    );'''),
+              ('''                , CASE WHEN [drs].[is_suspended] = 1 THEN 'DATA_MOVEMENT_SUSPENDED'
+                       WHEN [drs].[synchronization_health_desc] = N'NOT_HEALTHY' THEN 'DATABASE_NOT_HEALTHY'
+                       WHEN [drs].[synchronization_state_desc] = N'NOT_SYNCHRONIZING' THEN 'DATABASE_NOT_SYNCHRONIZING'
+                       WHEN COALESCE([drs].[log_send_queue_size], 0) >= @QueueWarnMb * 1024 THEN 'LOG_SEND_QUEUE_THRESHOLD'
+                       WHEN COALESCE([drs].[redo_queue_size], 0) >= @QueueWarnMb * 1024 THEN 'REDO_QUEUE_THRESHOLD'
+                       WHEN COALESCE([drs].[secondary_lag_seconds], 0) >= @SecondaryLagWarnSeconds THEN 'SECONDARY_LAG_THRESHOLD'
+                       ELSE 'DATABASE_STATE_ACCEPTABLE' END
+                , CASE WHEN [drs].[is_suspended] = 1 OR [drs].[synchronization_health_desc] = N'NOT_HEALTHY'
+                            OR [drs].[synchronization_state_desc] = N'NOT_SYNCHRONIZING' THEN 'HIGH'
+                       WHEN COALESCE([drs].[log_send_queue_size], 0) >= @QueueWarnMb * 1024
+                         OR COALESCE([drs].[redo_queue_size], 0) >= @QueueWarnMb * 1024
+                         OR COALESCE([drs].[secondary_lag_seconds], 0) >= @SecondaryLagWarnSeconds THEN 'MEDIUM'
+                       ELSE 'INFO' END''', '''                , [state].[FindingCode], [state].[FindingSeverity]'''),
+              ('''            JOIN [sys].[availability_replicas] AS [ar]
+              ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id];''', '''            JOIN [sys].[availability_replicas] AS [ar]
+              ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id]
+            CROSS APPLY [monitor].[TVF_InterpretAvailabilityDatabaseState]
+            (
+                  [drs].[is_suspended], [drs].[synchronization_health_desc]
+                , [drs].[synchronization_state_desc], [drs].[log_send_queue_size]
+                , [drs].[redo_queue_size], [drs].[secondary_lag_seconds]
+                , @QueueWarnMb, @SecondaryLagWarnSeconds
+            ) AS [state];'''),
+              ('''            INSERT [#Seeding]
+            SELECT [remote_machine_name], [role_desc], [local_database_name], [internal_state_desc]
+                 , [failure_code], [transferred_size_bytes], [database_size_bytes]
+                 , [transfer_rate_bytes_per_second], [start_time_utc], [end_time_utc]
+            FROM [sys].[dm_hadr_physical_seeding_stats];''', '''            INSERT [#Seeding]
+            SELECT [ps].[remote_machine_name], [ps].[role_desc], [ps].[local_database_name], [ps].[internal_state_desc]
+                 , [ps].[failure_code], [ps].[transferred_size_bytes], [ps].[database_size_bytes]
+                 , [ps].[transfer_rate_bytes_per_second], [ps].[start_time_utc], [ps].[end_time_utc]
+                 , [ps].[estimate_time_complete_utc], [state].[ProgressPercent], [state].[RemainingBytes]
+                 , [state].[FindingCode], [state].[FindingSeverity]
+            FROM [sys].[dm_hadr_physical_seeding_stats] AS [ps]
+            CROSS APPLY [monitor].[TVF_InterpretAvailabilitySeedingState]
+            (
+                  [ps].[failure_code], [ps].[transferred_size_bytes], [ps].[database_size_bytes]
+                , [ps].[transfer_rate_bytes_per_second], [ps].[end_time_utc]
+            ) AS [state];'''),
+              ('''                   SELECT 1 FROM [#Databases] WHERE [FindingCode] <> 'DATABASE_STATE_ACCEPTABLE'
+                   UNION ALL
+                   SELECT 1 FROM [#PageRepair]''', '''                   SELECT 1 FROM [#Databases] WHERE [FindingCode] <> 'DATABASE_STATE_ACCEPTABLE'
+                   UNION ALL
+                   SELECT 1 FROM [#Seeding] WHERE [FindingSeverity] <> 'INFO'
+                   UNION ALL
+                   SELECT 1 FROM [#PageRepair]'''),
+              ('''        SELECT TOP (@Limit) N'AG-Seeding' AS [Ergebnis], [RemoteMachineName] AS [Remote_Knoten],
+               [DatabaseName] AS [Datenbank], [CurrentStateDesc] AS [Status],
+               [FailureCode] AS [Fehlercode], [TransferRateBytesPerSecond] AS [Bytes_pro_Sekunde],
+               [StartTimeUtc] AS [Start_UTC], [EndTimeUtc] AS [Ende_UTC]
+        FROM [#Seeding] ORDER BY [StartTimeUtc] DESC;''', '''        SELECT TOP (@Limit) N'AG-Seeding' AS [Ergebnis], [RemoteMachineName] AS [Remote_Knoten],
+               [DatabaseName] AS [Datenbank], [CurrentStateDesc] AS [Status],
+               [FailureCode] AS [Fehlercode], [TransferRateBytesPerSecond] AS [Bytes_pro_Sekunde],
+               [ProgressPercent] AS [Fortschritt_Prozent], [RemainingBytes] AS [Verbleibende_Bytes],
+               [EstimateTimeCompleteUtc] AS [Geschaetztes_Ende_UTC], [FindingCode] AS [Befund],
+               [FindingSeverity] AS [Prioritaet], [StartTimeUtc] AS [Start_UTC], [EndTimeUtc] AS [Ende_UTC]
+        FROM [#Seeding] ORDER BY [StartTimeUtc] DESC;''')
+          ]
+          for old,new in replacements:
+              if text.count(old)!=1:
+                  raise SystemExit('Unexpected procedure replacement anchor: '+old[:80])
+              text=text.replace(old,new,1)
+          proc.write_text(text,encoding='utf-8',newline='\n')
+
+          runner = Path('Code/Tests/Run_Release_Gate.sql')
+          text = runner.read_text(encoding='utf-8')
+          for number in range(20,12,-1):
+              old=f'RELEASE_GATE {number}/20:'
+              new=f'RELEASE_GATE {number+1}/21:'
+              if text.count(old)!=1:
+                  raise SystemExit(f'Unexpected release-gate marker {old}')
+              text=text.replace(old,new,1)
+          text=text.replace('RELEASE_GATE 1/20:','RELEASE_GATE 1/21:',1)
+          for number in range(2,13):
+              text=text.replace(f'RELEASE_GATE {number}/20:',f'RELEASE_GATE {number}/21:',1)
+          anchor="RAISERROR(N'RELEASE_GATE 12/21: P1-Statistikverteilungs-Laufzeitvertrag',10,1) WITH NOWAIT;\n:r Integration/175_P1_Statistics_Runtime_Contract.sql\n"
+          addition=anchor+"\nRAISERROR(N'RELEASE_GATE 13/21: P1-Availability-Laufzeitvertrag',10,1) WITH NOWAIT;\n:r Integration/176_P1_Availability_Runtime_Contract.sql\n"
+          if text.count(anchor)!=1:
+              raise SystemExit('Availability runner insertion anchor missing.')
+          text=text.replace(anchor,addition,1)
+          text=text.replace('CAST(20 AS int) AS [ExecutedSuites]','CAST(21 AS int) AS [ExecutedSuites]',1)
+          runner.write_text(text,encoding='utf-8',newline='\n')
+          PY
+
+      - name: Commit implementation and remove maintenance workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/apply-p1-availability-contract.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code Metadata/Inventory/Objects.csv .github/workflows/apply-p1-availability-contract.yml
+          git diff --cached --check
+          git commit -m 'test: automate P1 availability cases'
+          git push origin HEAD:main
