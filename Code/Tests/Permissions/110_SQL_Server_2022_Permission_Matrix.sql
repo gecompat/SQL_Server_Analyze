@@ -462,6 +462,33 @@ VALUES
 );
 GO
 
+SELECT
+      [ScenarioCode]
+    , [HasViewServerState]
+    , [HasViewServerPerformanceState]
+    , [HasViewDatabaseState]
+    , [HasViewDatabasePerformanceState]
+    , [CurrentSessionsStatus]
+    , [CurrentSessionsIsPartial]
+    , [CurrentSessionsCapabilityPermission]
+    , [CurrentSessionsCapabilityHasPermission]
+    , [CurrentSessionsCapabilityStatus]
+    , [QueryStorePerformanceRequiredRows]
+    , [QueryStorePerformanceGrantedRows]
+    , [PlanCacheDeepAllowed]
+    , [PlanCacheDeepAccessReason]
+FROM [#PermissionMatrix]
+ORDER BY CASE [ScenarioCode]
+    WHEN 'RESTRICTED' THEN 1
+    WHEN 'VIEW_SERVER_STATE' THEN 2
+    WHEN 'VIEW_SERVER_PERFORMANCE_STATE' THEN 3
+    WHEN 'VIEW_DATABASE_STATE' THEN 4
+    WHEN 'VIEW_DATABASE_PERFORMANCE_STATE' THEN 5
+    WHEN 'GROUP_MEMBER' THEN 6
+    WHEN 'SYSADMIN' THEN 7
+    ELSE 99 END;
+GO
+
 RAISERROR(N'PERMISSION_MATRIX phase=assertions',10,1) WITH NOWAIT;
 GO
 
