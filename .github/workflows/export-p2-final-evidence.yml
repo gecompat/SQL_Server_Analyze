@@ -10,6 +10,7 @@ on:
 permissions:
   contents: read
   actions: read
+  statuses: write
 
 jobs:
   export:
@@ -105,3 +106,19 @@ jobs:
           path: ${{ runner.temp }}/p2-final
           if-no-files-found: error
           retention-days: 1
+
+      - name: Publish export status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state='success'; if [ "$JOB_STATUS" != 'success' ]; then state='failure'; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description='Validated P2 evidence tree export' \
+            -f context='p2-final-evidence-export' >/dev/null
