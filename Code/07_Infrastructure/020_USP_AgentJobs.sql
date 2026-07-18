@@ -247,7 +247,7 @@ BEGIN
         BEGIN
             DECLARE @RegexSql nvarchar(max) = N'DELETE [j]
 FROM [#Jobs] AS [j]
-WHERE REGEXP_LIKE([j].[JobName], @Pattern, @Flags) = 0;';
+WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
 
             EXEC [sys].[sp_executesql]
                   @RegexSql
