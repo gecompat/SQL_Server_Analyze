@@ -25,16 +25,16 @@ Abgeschlossen:
 15. SC-022 mit `USP_MaintenanceOperations` umgesetzt: pausierte/aktive Wartung, ADR/PVS und explizit gefilterte Jobaktivität ohne SQL-/Jobinhalte und ohne operative Änderung.
 16. Versionsharte Actions-Gates für SQL Server 2019, 2022 und 2025 sowie ein echter P2-Laufzeitvertrag ergänzt.
 17. SC-023 bis SC-025 bis zur sicheren Repositorygrenze konkretisiert: Entscheidungs- und Schnittstellenverträge sowie externer Restore-/Host-Runbook, aber keine ungeklärte Persistenz oder Infrastruktur.
-18. Commit `35cedea80cde7161569900d4aaeda6884a4cdd56` mit grünen Dokumentations- und SQL-Server-2019-/2022-/2025-Actions-Gates verifiziert und in der Ziel-, Suite- und Spezialfallmatrix nachgewiesen.
+18. Commit `8ec618231709d86540d605995fed329ad06c9808` mit grünen Dokumentations- und SQL-Server-2019-/2022-/2025-Actions-Gates verifiziert und in der Ziel-, Suite- und Spezialfallmatrix nachgewiesen.
 19. `RQ-001` / SC-001 operationalisiert: reproduzierbarer Repository- und ZIP-Scanner, generische Positiv- und Blockier-Selbsttests, pfad- und hashgebundene Ausnahmeprüfung sowie ein GitHub-Actions-Gate ergänzt. Trefferberichte geben ausschließlich Scope, Regelcode, Pfad und Anzahl aus; uneindeutige Funde bleiben eine manuelle Rückfrage- und Abbruchentscheidung.
+20. `RQ-002` abgeschlossen: Ziel-, Suite-, Spezialfall- und Release-Audit-Evidenz auf den funktional getesteten Commit `8ec618231709d86540d605995fed329ad06c9808` und dessen grüne 2019-/2022-/2025-/Dokumentationsläufe synchronisiert, die Regex-Matrix als eigene Suite aufgenommen und den aktuellen Bestand von 309 versionierten beziehungsweise 127 SQL-Dateien festgehalten.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
-1. `RQ-002` – Release-Evidenz synchronisieren: die Ziel-, Suite-, Spezialfall- und Release-Audit-Dokumentation auf den neuesten funktional getesteten Code-Commit `8ec618231709d86540d605995fed329ad06c9808` und dessen grüne 2019-/2022-/2025-/Dokumentationsläufe aktualisieren. Dabei den SQL-Server-2025-Regex-Lauf als eigene Evidence aufnehmen und die veralteten Inventarzahlen von 300 Repository- beziehungsweise 126 SQL-Dateien gegen den aktuellen Bestand von 309 versionierten beziehungsweise 127 SQL-Dateien korrigieren.
-2. `RQ-003` – Regex-Vertrag konsistent machen: `ExecutedContracts=7` in `120_SQL_Server_2025_Regex_Matrix.sql` gegen die zehn dokumentierten Verträge prüfen und angleichen. Die statische Prädikatprüfung muss auch mehrzeilige Ausdrücke erkennen und datenschutzkonform ohne Wiedergabe der betroffenen Quellzeile melden.
-3. `RQ-004` – reproduzierbare Zielversionen dokumentieren: für die drei Linux-Gates die tatsächliche technische SQL-Server-Buildnummer und den verwendeten Container-Image-Digest als generische Evidence erfassen, statt nur die beweglichen `*-latest`-Tags und leere `ProductVersion`-Felder zu dokumentieren.
-4. `RQ-005` – einzeilige Commit Messages erzwingen: die verbindliche Vorgabe aus `Requirements_and_Decisions.md` in einer automatischen Pull-Request- beziehungsweise Lieferprüfung abbilden. Historische Commit-Nachrichten werden dafür nicht umgeschrieben.
-5. `RQ-006` – Wait-Katalog kuratieren: die 332 Einträge mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` schrittweise fachlich prüfen und ausschließlich nach belegter Review auf `FRAMEWORK_CURATED` umstellen.
+1. `RQ-003` – Regex-Vertrag konsistent machen: `ExecutedContracts=7` in `120_SQL_Server_2025_Regex_Matrix.sql` gegen die zehn dokumentierten Verträge prüfen und angleichen. Die statische Prädikatprüfung muss auch mehrzeilige Ausdrücke erkennen und datenschutzkonform ohne Wiedergabe der betroffenen Quellzeile melden.
+2. `RQ-004` – reproduzierbare Zielversionen dokumentieren: für die drei Linux-Gates die tatsächliche technische SQL-Server-Buildnummer und den verwendeten Container-Image-Digest als generische Evidence erfassen, statt nur die beweglichen `*-latest`-Tags und leere `ProductVersion`-Felder zu dokumentieren.
+3. `RQ-005` – einzeilige Commit Messages erzwingen: die verbindliche Vorgabe aus `Requirements_and_Decisions.md` in einer automatischen Pull-Request- beziehungsweise Lieferprüfung abbilden. Historische Commit-Nachrichten werden dafür nicht umgeschrieben.
+4. `RQ-006` – Wait-Katalog kuratieren: die 332 Einträge mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` schrittweise fachlich prüfen und ausschließlich nach belegter Review auf `FRAMEWORK_CURATED` umstellen.
 
 Nächste Freigabeschritte:
 

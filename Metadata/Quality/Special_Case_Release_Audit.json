@@ -1,12 +1,12 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T02:12:48Z",
+  "generatedAtUtc": "2026-07-18T06:10:35Z",
   "status": "ACTIONS_PASS",
-  "scope": "completed P0/P1/P2 wave including isolated encryption-lifecycle and maintenance-operation analyses plus green commit-specific SQL Server 2019, 2022 and 2025 Actions gates",
+  "scope": "completed P0/P1/P2 wave including isolated encryption-lifecycle and maintenance-operation analyses plus green commit-specific SQL Server 2019, 2022 and 2025 Actions gates including the SQL Server 2025 regex matrix",
   "inventory": {
-    "repositoryFiles": 300,
+    "repositoryFiles": 309,
     "canonicalSqlSources": 107,
-    "sqlFilesIncludingTestsAndExamples": 126,
+    "sqlFilesIncludingTestsAndExamples": 127,
     "objects": 99,
     "procedures": 84,
     "functions": 10,
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 126,
+      "filesChecked": 127,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -159,39 +159,46 @@
     },
     "repositoryPrivacyGate": {
       "status": "PASS",
+      "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
+      "repositoryFilesScanned": 309,
+      "zipFilesScanned": 309,
+      "selfTestContracts": 5,
+      "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,
       "ipAddressFindings": 0,
       "nonSyntheticGuidFindings": 0,
       "uncPathFindings": 0,
       "userProfilePathFindings": 0,
       "credentialAssignmentFindings": 0,
-      "runtimeGeneratedCredentialPatternsReviewed": 9,
+      "runtimeGeneratedCredentialPatternsReviewed": 3,
+      "syntheticSqlcmdVariablePatternsReviewed": 4,
       "connectionSecretFindings": 0,
       "nonGenericUseDatabaseFindings": 0,
       "publicReferenceHostsReviewed": true,
-      "note": "The gate applies to repository and downloadable artifacts only; runtime resultsets and OUTPUT values are unchanged. The reviewed CI patterns create one ephemeral random password at job runtime and reference it through environment variables; no credential value is persisted in the repository or as an artifact."
+      "note": "The automated repository and ZIP gate applies only to repository and downloadable artifacts; runtime resultsets and OUTPUT values are unchanged. Findings report rule, path and count without echoing matched content, while ambiguous cases still require manual review and a stop-before-write decision."
     }
   },
   "testDocumentation": {
     "targetRows": 6,
     "targetRowsNotExecuted": 3,
     "targetRowsPassWithLimitations": 3,
-    "releaseGateSuiteRows": 25,
+    "releaseGateSuiteRows": 26,
     "releaseGateSuiteRowsNotExecuted": 15,
-    "releaseGateSuiteRowsPass": 7,
+    "releaseGateSuiteRowsPass": 8,
     "releaseGateSuiteRowsPassWithLimitations": 3,
     "specialCaseRows": 181,
     "specialCaseRowsNotExecuted": 172,
     "specialCaseRowsPassWithLimitations": 9,
     "specialCaseRowsAutomatedPending": 0,
     "runtimeStatus": "ACTIONS_PASS",
-    "claim": "Commit 35cedea80cde7161569900d4aaeda6884a4cdd56 passed the synthetic Linux installer, 13-suite release gate and permission contract on SQL Server 2019, 2022 and 2025. This is not feature-positive, boundary, load, Windows, Azure MI or external restore evidence.",
+    "claim": "Commit 8ec618231709d86540d605995fed329ad06c9808 passed the synthetic Linux installer, 13-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including the separate SQL Server 2025 regex matrix. This is not feature-positive, boundary, load, Windows, Azure MI or external restore evidence.",
     "actionEvidence": {
-      "commitSha": "35cedea80cde7161569900d4aaeda6884a4cdd56",
-      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610650",
-      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610647",
-      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610688",
-      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29626610649"
+      "commitSha": "8ec618231709d86540d605995fed329ad06c9808",
+      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627117003",
+      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627116999",
+      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627116978",
+      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627117000",
+      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627117000"
     }
   },
   "runtimeLimitations": [
