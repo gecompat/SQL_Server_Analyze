@@ -67,7 +67,7 @@ Verbindliche Erwartungen:
 
 ## 0.3 Automatisiertes synthetisches Linux-Target für SQL Server 2019
 
-Der Workflow `.github/workflows/sqlserver-2019-linux-release-gate.yml` führt dieselbe Installation und dieselben dreizehn Release-Gate-Suiten gegen `mcr.microsoft.com/mssql/server:2019-latest` aus. Die synthetische Installationsdatenbank verwendet Compatibility Level 150 und dieselbe case-sensitive Collation wie die anderen Testtargets.
+Der Workflow `.github/workflows/sqlserver-2019-linux-release-gate.yml` führt dieselbe Installation und dieselben zwanzig Release-Gate-Suiten gegen `mcr.microsoft.com/mssql/server:2019-latest` aus. Die synthetische Installationsdatenbank verwendet Compatibility Level 150 und dieselbe case-sensitive Collation wie die anderen Testtargets.
 
 Anschließend wird `Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql` ausgeführt. Die Matrix prüft fünf vollständig synthetische Kontexte:
 
@@ -91,7 +91,7 @@ Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. 
 
 ## 0.4 Automatisiertes synthetisches Linux-Target für SQL Server 2025
 
-Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 19-Suite-Release-Gate einschließlich P0-, P1-IQP-, P1-Contention-, P1-Speicher-, P1-Backupketten- und P1-Schemavertrag und die SQL-Server-2022+-Berechtigungsmatrix laufen gegen ausschließlich synthetische Job- und Principalnamen.
+Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 20-Suite-Release-Gate einschließlich P0-, P1-IQP-, P1-Contention-, P1-Speicher-, P1-Backupketten-, P1-Schema- und P1-Statistikverteilungsvertrag und die SQL-Server-2022+-Berechtigungsmatrix laufen gegen ausschließlich synthetische Job- und Principalnamen.
 
 Wie bei den anderen Targets werden Kennwort und Datenbank erst im Job erzeugt, vollständige Ausgaben nicht als Artefakt persistiert, Fehlerartefakte auf eine generische Kurzfassung und einen Tag Retention begrenzt und der Container immer entfernt.
 
@@ -125,7 +125,7 @@ Aus dem Verzeichnis `Code/Tests` ausführen:
 sqlcmd -S "<ZIEL>" -d "<INSTALLATIONSDATENBANK>" -E -b -i "Run_Release_Gate.sql"
 ```
 
-Der Runner beendet sich beim ersten SQL-Fehler und führt folgende neunzehn Suiten aus:
+Der Runner beendet sich beim ersten SQL-Fehler und führt folgende zwanzig Suiten aus:
 
 1. Smoke Test
 2. Parameter-API-Vertrag
@@ -138,19 +138,20 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende neunzehn Suit
 9. Read-only P1-Speicher-Laufzeitvertrag einschließlich ausdrücklich aktiviertem, begrenztem Buffer-Descriptor-Scan
 10. Synthetischer P1-Backupketten-Laufzeitvertrag mit generischer Datei im Default-Backupverzeichnis des disposable Targets und ohne Restore
 11. P1-Schema-/Design-Laufzeitvertrag mit garantierter Bereinigung generischer DDL-Fixtures
-12. Common
-13. Current State
-14. Object und Index
-15. Plan Cache
-16. Query Store
-17. Extended Events
-18. Infrastructure
-19. Server Health
+12. P1-Statistikverteilungs-Laufzeitvertrag mit begrenzten synthetischen FULLSCAN-Histogrammen, Kandidatengrenze und Restricted-Group-Pfad
+13. Common
+14. Current State
+15. Object und Index
+16. Plan Cache
+17. Query Store
+18. Extended Events
+19. Infrastructure
+20. Server Health
 
 Erwartung bei vollständigem Erfolg:
 
 - Prozess-Exitcode `0`.
-- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=19`.
+- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=20`.
 - Kein `THROW`, kein unbehandelter Fehler und kein vorzeitiges Ende.
 
 ## 4. Spezialfallmatrix ausführen
