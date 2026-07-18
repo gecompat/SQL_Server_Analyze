@@ -56,25 +56,31 @@ IF NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.memory'))
     THROW 54601,N'P1-Vertrag MEM-PRESSURE fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('MEM-PRESSURE');
 
-/* MEM-GRANT: sichtbare WaiterCount-Werte werden unverändert übernommen. */
-IF EXISTS
+/* MEM-GRANT: der in einem Zeitpunkt erfasste Semaphore-Snapshot ist vollständig
+   strukturiert. Ein zweiter DMV-Read wäre wegen legitimer Zähleränderungen kein
+   stabiler Gleichheitsbeweis. */
+DECLARE @Semaphores TABLE
 (
-    SELECT 1
-    FROM [sys].[dm_exec_query_resource_semaphores] AS [s]
-    WHERE NOT EXISTS
-    (
-        SELECT 1 FROM OPENJSON(@Json,N'$.resourceSemaphores')
-        WITH
-        (
-            [PoolId] int N'$.PoolId',[ResourceSemaphoreId] smallint N'$.ResourceSemaphoreId',
-            [WaiterCount] int N'$.WaiterCount',[GranteeCount] int N'$.GranteeCount'
-        ) AS [j]
-        WHERE [j].[PoolId]=[s].[pool_id]
-          AND [j].[ResourceSemaphoreId]=[s].[resource_semaphore_id]
-          AND [j].[WaiterCount]=[s].[waiter_count]
-          AND [j].[GranteeCount]=[s].[grantee_count]
-    )
-)
+    [PoolId] int NULL,[ResourceSemaphoreId] smallint NULL,
+    [WaiterCount] int NULL,[GranteeCount] int NULL
+);
+INSERT @Semaphores
+SELECT [PoolId],[ResourceSemaphoreId],[WaiterCount],[GranteeCount]
+FROM OPENJSON(@Json,N'$.resourceSemaphores')
+WITH
+(
+    [PoolId] int N'$.PoolId',[ResourceSemaphoreId] smallint N'$.ResourceSemaphoreId',
+    [WaiterCount] int N'$.WaiterCount',[GranteeCount] int N'$.GranteeCount'
+);
+IF NOT EXISTS(SELECT 1 FROM @Semaphores)
+   OR EXISTS
+      (SELECT 1 FROM @Semaphores
+       WHERE [PoolId] IS NULL OR [ResourceSemaphoreId] IS NULL
+          OR [WaiterCount] IS NULL OR [WaiterCount]<0
+          OR [GranteeCount] IS NULL OR [GranteeCount]<0)
+   OR EXISTS
+      (SELECT 1 FROM @Semaphores
+       GROUP BY [PoolId],[ResourceSemaphoreId] HAVING COUNT_BIG(*)>1)
     THROW 54602,N'P1-Vertrag MEM-GRANT fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('MEM-GRANT');
 
