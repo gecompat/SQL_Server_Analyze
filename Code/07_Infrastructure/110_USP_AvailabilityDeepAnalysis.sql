@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_AvailabilityDeepAnalysis
-Version      : 1.0.0
-Stand        : 2026-07-17
+Version      : 1.1.0
+Stand        : 2026-07-18
 Zweck        : Vertieft Always-On-Evidenz um Replikazustand, Warteschlangen,
                Clusterquorum, Seeding und automatische Seitenreparatur.
 Datenquellen : sys.availability_groups, sys.availability_replicas,
@@ -13,24 +13,27 @@ Datenquellen : sys.availability_groups, sys.availability_replicas,
                sys.dm_hadr_database_replica_states, sys.dm_hadr_cluster,
                sys.dm_hadr_cluster_members, optional sys.dm_hadr_cluster_networks,
                sys.dm_hadr_physical_seeding_stats und sys.dm_hadr_auto_page_repair.
+Methodik     : Datenbank- und Seedingzustände werden über dieselben reinen
+               Interpretationsfunktionen klassifiziert, die auch der
+               deterministische Laufzeitvertrag verwendet.
 Grenzen      : Momentaufnahme; Netzpfad, Clusterlog und Betriebssystemereignisse
                sind nicht enthalten. Keine Failover- oder Konfigurationsaktion.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_AvailabilityDeepAnalysis]
-      @QueueWarnMb             bigint          = 1024
-    , @SecondaryLagWarnSeconds int             = 60
-    , @MitClusterNetzwerken    bit             = 0
-    , @MaxZeilen               int             = 1000
-    , @ResultSetArt            varchar(16)     = 'CONSOLE'
-    , @JsonErzeugen            bit             = 0
-    , @Json                    nvarchar(max)   = NULL OUTPUT
-    , @PrintMeldungen          bit             = 1
-    , @Hilfe                   bit             = 0
-    , @StatusCodeOut           varchar(40)     = NULL OUTPUT
-    , @IsPartialOut            bit             = NULL OUTPUT
-    , @ErrorNumberOut          int             = NULL OUTPUT
-    , @ErrorMessageOut         nvarchar(2048)  = NULL OUTPUT
+      @QueueWarnMb              bigint          = 1024
+    , @SecondaryLagWarnSeconds  int             = 60
+    , @MitClusterNetzwerken     bit             = 0
+    , @MaxZeilen                int             = 1000
+    , @ResultSetArt             varchar(16)     = 'CONSOLE'
+    , @JsonErzeugen             bit             = 0
+    , @Json                     nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen           bit             = 1
+    , @Hilfe                    bit             = 0
+    , @StatusCodeOut            varchar(40)     = NULL OUTPUT
+    , @IsPartialOut             bit             = NULL OUTPUT
+    , @ErrorNumberOut           int             = NULL OUTPUT
+    , @ErrorMessageOut          nvarchar(2048)  = NULL OUTPUT
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -124,6 +127,11 @@ BEGIN
         , [TransferRateBytesPerSecond] bigint NULL
         , [StartTimeUtc] datetime NULL
         , [EndTimeUtc] datetime NULL
+        , [EstimateTimeCompleteUtc] datetime NULL
+        , [ProgressPercent] decimal(9,4) NULL
+        , [RemainingBytes] bigint NULL
+        , [FindingCode] varchar(100) NOT NULL
+        , [FindingSeverity] varchar(16) NOT NULL
     );
     CREATE TABLE [#PageRepair]
     (
@@ -137,7 +145,8 @@ BEGIN
         , [FindingCode] varchar(80) NOT NULL
     );
 
-    IF @QueueWarnMb < 0 OR @SecondaryLagWarnSeconds < 0 OR @MaxZeilen < 0
+    IF @QueueWarnMb IS NULL OR @SecondaryLagWarnSeconds IS NULL
+       OR @QueueWarnMb < 0 OR @SecondaryLagWarnSeconds < 0 OR @MaxZeilen < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER', @IsPartial = 1,
@@ -197,29 +206,33 @@ BEGIN
                 , [drs].[is_suspended], [drs].[suspend_reason_desc]
                 , [drs].[log_send_queue_size], [drs].[redo_queue_size]
                 , [drs].[secondary_lag_seconds], [drs].[last_commit_time]
-                , CASE WHEN [drs].[is_suspended] = 1 THEN 'DATA_MOVEMENT_SUSPENDED'
-                       WHEN [drs].[synchronization_health_desc] = N'NOT_HEALTHY' THEN 'DATABASE_NOT_HEALTHY'
-                       WHEN [drs].[synchronization_state_desc] = N'NOT_SYNCHRONIZING' THEN 'DATABASE_NOT_SYNCHRONIZING'
-                       WHEN COALESCE([drs].[log_send_queue_size], 0) >= @QueueWarnMb * 1024 THEN 'LOG_SEND_QUEUE_THRESHOLD'
-                       WHEN COALESCE([drs].[redo_queue_size], 0) >= @QueueWarnMb * 1024 THEN 'REDO_QUEUE_THRESHOLD'
-                       WHEN COALESCE([drs].[secondary_lag_seconds], 0) >= @SecondaryLagWarnSeconds THEN 'SECONDARY_LAG_THRESHOLD'
-                       ELSE 'DATABASE_STATE_ACCEPTABLE' END
-                , CASE WHEN [drs].[is_suspended] = 1 OR [drs].[synchronization_health_desc] = N'NOT_HEALTHY'
-                            OR [drs].[synchronization_state_desc] = N'NOT_SYNCHRONIZING' THEN 'HIGH'
-                       WHEN COALESCE([drs].[log_send_queue_size], 0) >= @QueueWarnMb * 1024
-                         OR COALESCE([drs].[redo_queue_size], 0) >= @QueueWarnMb * 1024
-                         OR COALESCE([drs].[secondary_lag_seconds], 0) >= @SecondaryLagWarnSeconds THEN 'MEDIUM'
-                       ELSE 'INFO' END
+                , [state].[FindingCode], [state].[FindingSeverity]
             FROM [sys].[dm_hadr_database_replica_states] AS [drs]
             JOIN [sys].[availability_groups] AS [ag] ON [ag].[group_id] = [drs].[group_id]
             JOIN [sys].[availability_replicas] AS [ar]
-              ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id];
+              ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id]
+            CROSS APPLY [monitor].[TVF_InterpretAvailabilityDatabaseState]
+            (
+                  [drs].[is_suspended], [drs].[synchronization_health_desc]
+                , [drs].[synchronization_state_desc], [drs].[log_send_queue_size]
+                , [drs].[redo_queue_size], [drs].[secondary_lag_seconds]
+                , @QueueWarnMb, @SecondaryLagWarnSeconds
+            ) AS [state];
 
             INSERT [#Seeding]
-            SELECT [remote_machine_name], [role_desc], [local_database_name], [internal_state_desc]
-                 , [failure_code], [transferred_size_bytes], [database_size_bytes]
-                 , [transfer_rate_bytes_per_second], [start_time_utc], [end_time_utc]
-            FROM [sys].[dm_hadr_physical_seeding_stats];
+            SELECT
+                  [ps].[remote_machine_name], [ps].[role_desc], [ps].[local_database_name], [ps].[internal_state_desc]
+                , [ps].[failure_code], [ps].[transferred_size_bytes], [ps].[database_size_bytes]
+                , [ps].[transfer_rate_bytes_per_second], CONVERT(datetime,[ps].[start_time_utc])
+                , CONVERT(datetime,[ps].[end_time_utc]), CONVERT(datetime,[ps].[estimate_time_complete_utc])
+                , [state].[ProgressPercent], [state].[RemainingBytes]
+                , [state].[FindingCode], [state].[FindingSeverity]
+            FROM [sys].[dm_hadr_physical_seeding_stats] AS [ps]
+            CROSS APPLY [monitor].[TVF_InterpretAvailabilitySeedingState]
+            (
+                  [ps].[failure_code], [ps].[transferred_size_bytes], [ps].[database_size_bytes]
+                , [ps].[transfer_rate_bytes_per_second], CONVERT(datetime,[ps].[end_time_utc])
+            ) AS [state];
 
             INSERT [#PageRepair]
             SELECT [database_id], DB_NAME([database_id]), [file_id], [page_id], [error_type]
@@ -235,6 +248,8 @@ BEGIN
                    SELECT 1 FROM [#Replicas] WHERE [FindingCode] <> 'REPLICA_STATE_ACCEPTABLE'
                    UNION ALL
                    SELECT 1 FROM [#Databases] WHERE [FindingCode] <> 'DATABASE_STATE_ACCEPTABLE'
+                   UNION ALL
+                   SELECT 1 FROM [#Seeding] WHERE [FindingSeverity] <> 'INFO'
                    UNION ALL
                    SELECT 1 FROM [#PageRepair] WHERE [FindingCode] <> 'PAGE_REPAIR_SUCCEEDED'
                )
@@ -272,7 +287,10 @@ BEGIN
                       [AvailabilityGroupName], [DatabaseName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SeedingJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Seeding] ORDER BY [StartTimeUtc] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT TOP (@Limit) * FROM [#Seeding]
+             ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
+                      [StartTimeUtc] DESC
+             FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @RepairJson nvarchar(max) =
             (SELECT TOP (@Limit) * FROM [#PageRepair] ORDER BY [ModificationTime] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
@@ -298,7 +316,9 @@ BEGIN
         SELECT TOP (@Limit) * FROM [#Databases]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [AvailabilityGroupName], [DatabaseName];
-        SELECT TOP (@Limit) * FROM [#Seeding] ORDER BY [StartTimeUtc] DESC;
+        SELECT TOP (@Limit) * FROM [#Seeding]
+        ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
+                 [StartTimeUtc] DESC;
         SELECT TOP (@Limit) * FROM [#PageRepair] ORDER BY [ModificationTime] DESC;
     END
     ELSE IF @OutputMode = 'CONSOLE'
@@ -321,8 +341,12 @@ BEGIN
         SELECT TOP (@Limit) N'AG-Seeding' AS [Ergebnis], [RemoteMachineName] AS [Remote_Knoten],
                [DatabaseName] AS [Datenbank], [CurrentStateDesc] AS [Status],
                [FailureCode] AS [Fehlercode], [TransferRateBytesPerSecond] AS [Bytes_pro_Sekunde],
-               [StartTimeUtc] AS [Start_UTC], [EndTimeUtc] AS [Ende_UTC]
-        FROM [#Seeding] ORDER BY [StartTimeUtc] DESC;
+               [ProgressPercent] AS [Fortschritt_Prozent], [RemainingBytes] AS [Verbleibende_Bytes],
+               [EstimateTimeCompleteUtc] AS [Geschaetztes_Ende_UTC], [FindingCode] AS [Befund],
+               [FindingSeverity] AS [Prioritaet], [StartTimeUtc] AS [Start_UTC], [EndTimeUtc] AS [Ende_UTC]
+        FROM [#Seeding]
+        ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
+                 [StartTimeUtc] DESC;
     END;
 END;
 GO
