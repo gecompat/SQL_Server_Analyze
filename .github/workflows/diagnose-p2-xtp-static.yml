@@ -1,0 +1,74 @@
+name: Diagnose P2 XTP static contract
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/diagnose-p2-xtp-static.yml'
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Compare generic contract tokens
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          text=Path('Code/09_VersionAdaptive/030_USP_InMemoryOltpAnalysis.sql').read_text(encoding='utf-8')
+          cases={
+              'XTP-SCHEMA-ONLY':('[is_memory_optimized]','[durability_desc]'),
+              'XTP-TABLE-MEMORY':("'LARGE_MEMORY_CONSUMER_CONTEXT'",'@MinTableMemoryMb'),
+              'XTP-CONSUMERS':("'XTP_MEMORY_CONSUMERS'",'[memory_consumer_type]'),
+              'XTP-HASH-CATALOG':("'NOT_REQUESTED'",'[bucket_count]'),
+              'XTP-HASH-DENIED':("'DENIED_GROUP'","'CATALOG_DEEP'"),
+              'XTP-HASH-CHAIN':("'HASH_DUPLICATE_OR_SKEW_REVIEW'","'HASH_BUCKET_COUNT_REVIEW'"),
+              'XTP-CHECKPOINT':("'WAITING_FOR_LOG_TRUNCATION_REVIEW'",'@WaitingCheckpointWarnMb'),
+              'XTP-TRANSACTIONS':("'ACTIVE_TRANSACTION_VOLUME_REVIEW'",'@ActiveTransactionWarnCount'),
+              'XTP-POOL-DEFAULT':("'SHARED_DEFAULT_POOL_CONTEXT'",'[resource_pool_id]'),
+              'XTP-POOL-NAMED':("'POOL_MEMORY_PRESSURE_REVIEW'","'POOL_OUT_OF_MEMORY_RECORDED'"),
+              'XTP-DENIED':("'AVAILABLE_LIMITED'","'XTP_EVIDENCE_GAP'"),
+              'XTP-FILTER':('@FullObjectNames','@ObjectNamePattern'),
+              'XTP-BOUNDED':('TOP(@Limit)','@MaxZeilen'),
+          }
+          missing=[case for case,tokens in cases.items() if any(token not in text for token in tokens)]
+          print('missing='+(','.join(missing) if missing else 'NONE'))
+          PY
+      - name: Publish generic diagnostic
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MISSING: ${{ steps.compare.outputs.missing }}
+        run: |
+          set -euo pipefail
+          slug=$(printf '%s' "$MISSING" | tr ',' '-' | tr '[:upper:]' '[:lower:]')
+          state='success'
+          if [ "$MISSING" != 'NONE' ]; then state='failure'; fi
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer $GH_TOKEN" \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            --data "{\"state\":\"${state}\",\"description\":\"P2 XTP static token comparison\",\"context\":\"p2-xtp-static/${slug}\"}" >/dev/null
+      - name: Remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/diagnose-p2-xtp-static.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/diagnose-p2-xtp-static.yml
+          git commit -m 'chore: remove P2 XTP diagnostic helper'
+          git push origin HEAD:main
