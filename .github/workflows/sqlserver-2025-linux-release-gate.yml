@@ -1,0 +1,227 @@
+name: SQL Server 2025 Linux release gate
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/sqlserver-2025-linux-release-gate.yml'
+      - 'Code/**/*.sql'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/sqlserver-2025-linux-release-gate.yml'
+      - 'Code/**/*.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sqlserver-2025-linux-release-gate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  release-gate:
+    name: SQL Server 2025 Linux release gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Prepare isolated SQL files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R Code "$RUNNER_TEMP/Code"
+          find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
+            | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
+          python - <<'PY'
+          from pathlib import Path
+
+          source = Path("${RUNNER_TEMP}/Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql")
+          target = Path("${RUNNER_TEMP}/Code/Tests/Permissions/110_SQL_Server_2025_Permission_Matrix.sql")
+          text = source.read_text(encoding="utf-8")
+          replacements = (
+              ("ProductMajorVersion'))<>16", "ProductMajorVersion'))<>17"),
+              ("SQL Server 2022 vorgesehen", "SQL Server 2025 vorgesehen"),
+              ("SQL-Server-2022-Berechtigungen", "SQL-Server-2025-Berechtigungen"),
+              ("SQL Server 2022 permission matrix completed", "SQL Server 2025 permission matrix completed"),
+          )
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise RuntimeError(f"Expected permission-matrix anchor once: {old!r}; found {text.count(old)}")
+              text = text.replace(old, new, 1)
+          target.write_text(text, encoding="utf-8", newline="\n")
+          PY
+
+      - name: Generate ephemeral SQL credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$password"
+          echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Start SQL Server 2025 Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull --quiet mcr.microsoft.com/mssql/server:2025-latest >/dev/null
+          docker run --name sqlserver-analyze-test-2025 \
+            --detach \
+            --env ACCEPT_EULA=Y \
+            --env MSSQL_PID=Developer \
+            --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
+            mcr.microsoft.com/mssql/server:2025-latest >/dev/null
+
+      - name: Wait for SQL Server readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          sqlcmd_path=''
+          readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17 THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;"
+          for attempt in $(seq 1 120); do
+            sqlcmd_path=$(docker exec sqlserver-analyze-test-2025 bash -lc \
+              "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
+              || true)
+            if [ -n "$sqlcmd_path" ] && docker exec \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              sqlserver-analyze-test-2025 \
+              "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
+              echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs --tail 40 sqlserver-analyze-test-2025
+          exit 1
+
+      - name: Create synthetic test database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170;" >/dev/null
+
+      - name: Install framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_log="$RUNNER_TEMP/sqlserver-analyze-2025-install.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-2025-error.txt"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Install \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql >"$install_log" 2>&1; then
+            echo 'Framework installation failed.'
+            {
+              grep -A 2 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 120 || true
+              echo 'Unresolved SQLCMD variable references:'
+              grep -R -n -E '\$\([A-Za-z_][A-Za-z0-9_]*\)' "$RUNNER_TEMP/Code" || true
+            } >"$error_summary"
+            cat "$error_summary"
+            exit 1
+          fi
+          echo 'Framework installation succeeded.'
+
+      - name: Run release gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_log="$RUNNER_TEMP/sqlserver-analyze-2025-release-gate.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-2025-error.txt"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql >"$release_log" 2>&1; then
+            echo 'Release gate failed.'
+            {
+              echo 'Final release-gate output:'
+              tail -n 260 "$release_log"
+            } >"$error_summary"
+            cat "$error_summary"
+            exit 1
+          fi
+          echo 'Release gate succeeded.'
+
+      - name: Run SQL Server 2025 permission matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          permission_log="$RUNNER_TEMP/sqlserver-analyze-2025-permission-matrix.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-2025-error.txt"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_PASSWORD" \
+            -i Permissions/110_SQL_Server_2025_Permission_Matrix.sql >"$permission_log" 2>&1; then
+            echo 'Permission matrix failed.'
+            {
+              echo 'Final permission-matrix output:'
+              tail -n 260 "$permission_log"
+            } >"$error_summary"
+            cat "$error_summary"
+            exit 1
+          fi
+          echo 'Permission matrix succeeded.'
+
+      - name: Run SQL Server 2025 regex matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          regex_log="$RUNNER_TEMP/sqlserver-analyze-2025-regex-matrix.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-2025-error.txt"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql >"$regex_log" 2>&1; then
+            echo 'Regex matrix failed.'
+            {
+              echo 'Final regex-matrix output:'
+              tail -n 260 "$regex_log"
+            } >"$error_summary"
+            cat "$error_summary"
+            exit 1
+          fi
+          echo 'Regex matrix succeeded.'
+
+      - name: Record generic success summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '## SQL Server 2025 Linux release gate'
+            echo '- Target: synthetic SQL Server 2025 Developer on Linux'
+            echo '- Compatibility level: 170'
+            echo '- Installer: passed'
+            echo '- Release gate: passed'
+            echo '- Permission matrix: passed'
+            echo '- Regex matrix: passed'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload sanitized failure summary
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: sqlserver-2025-linux-release-gate-error
+          path: ${{ runner.temp }}/sqlserver-analyze-2025-error.txt
+          if-no-files-found: ignore
+          retention-days: 1
+
+      - name: Stop synthetic SQL Server
+        if: always()
+        shell: bash
+        run: docker rm --force sqlserver-analyze-test-2025 >/dev/null 2>&1 || true
