@@ -602,7 +602,7 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
 | `IndexId` | aufgelöster Index |
 | `PartitionId` | aufgelöste Partition |
 | `PageTypeDesc` | Seitentyp |
-| `AllocUnitTypeDesc` | Allocation-Unit-Typ |
+| `AllocUnitId` | Technische Allocation-Unit-ID aus `sys.dm_db_page_info`; kein abgeleiteter Typ |
 
 Die Seitenauflösung ist eine Vertiefung. Fehlende Objektauflösung bedeutet nicht automatisch, dass der Eintrag irrelevant ist.
 

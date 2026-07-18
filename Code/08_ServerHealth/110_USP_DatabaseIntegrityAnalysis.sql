@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_DatabaseIntegrityAnalysis
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-07-17
 Zweck        : Korrelierte, rein lesende Integritätsevidenz je Datenbank.
 Datenquellen : master.sys.databases, DATABASEPROPERTYEX,
@@ -134,7 +134,7 @@ BEGIN
         , [IndexId] int NULL
         , [PartitionId] bigint NULL
         , [PageTypeDesc] nvarchar(64) NULL
-        , [AllocUnitTypeDesc] nvarchar(64) NULL
+        , [AllocUnitId] bigint NULL
     );
 
     IF @MaxDatenbanken < 0
@@ -300,7 +300,7 @@ BEGIN
                 , [p].[index_id]
                 , [p].[partition_id]
                 , [p].[page_type_desc]
-                , [p].[alloc_unit_type_desc]
+                , [p].[alloc_unit_id]
             FROM [#Suspect] AS [s]
             JOIN [#DatabaseCandidates] AS [c]
               ON [c].[DatabaseId] = [s].[DatabaseId]
