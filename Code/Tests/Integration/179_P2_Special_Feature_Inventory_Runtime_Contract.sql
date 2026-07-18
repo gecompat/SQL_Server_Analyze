@@ -101,7 +101,10 @@ BEGIN TRY
         )
     );
 
-    CREATE TABLE [dbo].[ExampleFeatureGraphNode] AS NODE;
+    CREATE TABLE [dbo].[ExampleFeatureGraphNode]
+    (
+        [Id] int NOT NULL CONSTRAINT [PK_ExampleFeatureGraphNode] PRIMARY KEY
+    ) AS NODE;
     CREATE TYPE [dbo].[ExampleFeatureType] FROM int NOT NULL;
     CREATE TABLE [dbo].[ExampleFeatureTypes]
     (
