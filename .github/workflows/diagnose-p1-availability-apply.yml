@@ -1,0 +1,49 @@
+name: Diagnose P1 availability apply
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/diagnose-p1-availability-apply.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          checks={}
+          checks['installer']=Path('Code/Install/Install_All.sql').read_text().count(':r ../01_Common/089_TVF_InterpretContentionCounter.sql\n')
+          checks['objects']=Path('Metadata/Inventory/Objects.csv').read_text().count('FUNCTION,TVF_InterpretContentionCounter,Code/01_Common/089_TVF_InterpretContentionCounter.sql\n')
+          p=Path('Code/07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql').read_text()
+          checks['version']=p.count('Version      : 1.0.0\nStand        : 2026-07-17')
+          checks['parameters']=p.count('    IF @QueueWarnMb < 0 OR @SecondaryLagWarnSeconds < 0 OR @MaxZeilen < 0')
+          checks['seeding_table']=p.count('        , [EndTimeUtc] datetime NULL\n    );')
+          checks['database_case']=p.count("                , CASE WHEN [drs].[is_suspended] = 1 THEN 'DATA_MOVEMENT_SUSPENDED'")
+          checks['database_join']=p.count('            JOIN [sys].[availability_replicas] AS [ar]\n              ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id];')
+          checks['seeding_insert']=p.count('            INSERT [#Seeding]\n            SELECT [remote_machine_name], [role_desc], [local_database_name], [internal_state_desc]')
+          checks['finding_union']=p.count("                   SELECT 1 FROM [#Databases] WHERE [FindingCode] <> 'DATABASE_STATE_ACCEPTABLE'\n                   UNION ALL\n                   SELECT 1 FROM [#PageRepair]")
+          checks['console']=p.count("        SELECT TOP (@Limit) N'AG-Seeding' AS [Ergebnis], [RemoteMachineName] AS [Remote_Knoten],")
+          r=Path('Code/Tests/Run_Release_Gate.sql').read_text()
+          checks['runner_12']=r.count("RELEASE_GATE 12/20: P1-Statistikverteilungs-Laufzeitvertrag")
+          Path('Metadata/Quality/Availability_Apply_Diagnostic.json').write_text(json.dumps(checks,sort_keys=True,indent=2)+'\n')
+          PY
+      - shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/diagnose-p1-availability-apply.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Metadata/Quality/Availability_Apply_Diagnostic.json .github/workflows/diagnose-p1-availability-apply.yml
+          git commit -m 'chore: record availability apply diagnostics'
+          git push origin HEAD:main
