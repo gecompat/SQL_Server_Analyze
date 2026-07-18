@@ -36,7 +36,7 @@ Dabei gilt:
 - Es werden keine vollständigen SQLCMD-Ausgaben oder Resultsets als dauerhaftes Artefakt gespeichert.
 - Nach dem Lauf wird der Container auch bei Fehlern entfernt.
 
-Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. SQL Server 2019 wird durch das separate Target in Abschnitt 0.3 geprüft. Nicht abgedeckt bleiben Windows, SQL Server 2025, optionale Feature-Positivfälle und produktionsnahe Lastzustände.
+Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. SQL Server 2019 und SQL Server 2025 werden durch die separaten Targets in den Abschnitten 0.3 und 0.4 geprüft. Nicht abgedeckt bleiben Windows, optionale Feature-Positivfälle und produktionsnahe Lastzustände.
 
 ## 0.2 Automatisierte SQL-Server-2022-Berechtigungsmatrix
 
@@ -87,6 +87,42 @@ Verbindliche Erwartungen:
 - fünf Szenarien werden vollständig ausgeführt und der Test endet mit `StatusCode=AVAILABLE`.
 
 Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. Fehlerzusammenfassungen bleiben generisch, werden höchstens einen Tag aufbewahrt und der Container wird auch bei Fehlern entfernt.
+
+## 0.4 Automatisiertes synthetisches Linux-Target für SQL Server 2025
+
+Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet `mcr.microsoft.com/mssql/server:2025-latest`. Er prüft SQL Server 2025 Developer unter Linux mit Compatibility Level 170 und derselben case-sensitiven Server-, `tempdb`- und Datenbank-Collation wie die älteren Targets.
+
+Der Ablauf umfasst:
+
+1. Versions- und Collation-Readiness für Major Version 17;
+2. vollständige Installation des Frameworks;
+3. alle zwölf allgemeinen Release-Gate-Suiten;
+4. eine zur Laufzeit aus der SQL-Server-2022-Matrix abgeleitete 2025-Berechtigungsmatrix für die weiterhin gültigen Performance-State- und Gruppenpolicy-Verträge;
+5. `Code/Tests/VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql`.
+
+Die Berechtigungsmatrix wird nur in der temporären Runnerkopie erzeugt. Sie verändert keine Repositorydatei und verwendet dieselben eindeutig synthetischen Principals wie das 2022-Target.
+
+Die Regex-Matrix prüft getrennt:
+
+- direkten Treffer und Nichttreffer von `REGEXP_LIKE`;
+- case-insensitive Auswertung mit dem `i`-Flag;
+- Parsing der Präfixe `regex:` und `regexi:` durch `[monitor].[TVF_ParsePattern]`;
+- erfolgreiche Regex-Filter in `[monitor].[USP_CurrentSessions]` und `[monitor].[USP_ExtendedEventsSessions]` bei Compatibility Level 170;
+- kontrolliertes `UNAVAILABLE_FEATURE` derselben Frameworkpfade nach temporärer Absenkung auf Compatibility Level 160;
+- zwingende Wiederherstellung von Compatibility Level 170 auch nach einem Testfehler;
+- erneute Verfügbarkeit von `REGEXP_LIKE` nach der Wiederherstellung.
+
+Verbindliche Erwartungen:
+
+- Installer, zwölf Suiten, Berechtigungsmatrix und Regex-Matrix enden jeweils mit Prozess-Exitcode `0`;
+- das 2025-Target endet mit Compatibility Level 170;
+- kein Regex-Pfad wird bei Compatibility Level 160 dynamisch ausgeführt;
+- alle Testwerte, Login-, Benutzer-, Rollen- und Datenbankbezeichnungen bleiben synthetisch;
+- vollständige SQLCMD-Ausgaben werden nicht dauerhaft gespeichert;
+- gefilterte Fehlerzusammenfassungen werden höchstens einen Tag aufbewahrt;
+- der Container wird auch bei Fehlern entfernt.
+
+Das 2025-Target ergänzt die 2019-/2022-Abdeckung, ersetzt aber keine Windows-, AD-Gruppen-, optionale Feature-Positiv- oder Lasttests.
 
 ## 1. Lokale Testkopie vorbereiten
 
