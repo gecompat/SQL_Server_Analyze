@@ -1,0 +1,71 @@
+name: Temporary add permission result summary
+
+on:
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out permission matrix branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/sqlserver-2022-permission-matrix
+
+      - name: Add compact result summary
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql')
+          text = path.read_text(encoding='utf-8')
+          anchor = "RAISERROR(N'PERMISSION_MATRIX phase=assertions',10,1) WITH NOWAIT;\nGO\n"
+          summary = """SELECT
+                [ScenarioCode]
+              , [HasViewServerState]
+              , [HasViewServerPerformanceState]
+              , [HasViewDatabaseState]
+              , [HasViewDatabasePerformanceState]
+              , [CurrentSessionsStatus]
+              , [CurrentSessionsIsPartial]
+              , [CurrentSessionsCapabilityPermission]
+              , [CurrentSessionsCapabilityHasPermission]
+              , [CurrentSessionsCapabilityStatus]
+              , [QueryStorePerformanceRequiredRows]
+              , [QueryStorePerformanceGrantedRows]
+              , [PlanCacheDeepAllowed]
+              , [PlanCacheDeepAccessReason]
+          FROM [#PermissionMatrix]
+          ORDER BY CASE [ScenarioCode]
+              WHEN 'RESTRICTED' THEN 1
+              WHEN 'VIEW_SERVER_STATE' THEN 2
+              WHEN 'VIEW_SERVER_PERFORMANCE_STATE' THEN 3
+              WHEN 'VIEW_DATABASE_STATE' THEN 4
+              WHEN 'VIEW_DATABASE_PERFORMANCE_STATE' THEN 5
+              WHEN 'GROUP_MEMBER' THEN 6
+              WHEN 'SYSADMIN' THEN 7
+              ELSE 99 END;
+          GO
+
+          RAISERROR(N'PERMISSION_MATRIX phase=assertions',10,1) WITH NOWAIT;
+          GO
+          """.replace('          ', '')
+          if text.count(anchor) != 1:
+              raise RuntimeError(f'Expected assertions marker once, found {text.count(anchor)}.')
+          path.write_text(text.replace(anchor, summary, 1), encoding='utf-8', newline='\n')
+
+      - name: Commit result summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          git diff --cached --quiet && exit 0
+          git commit -m 'test: expose permission matrix summary'
+          git push origin HEAD:agent/sqlserver-2022-permission-matrix
