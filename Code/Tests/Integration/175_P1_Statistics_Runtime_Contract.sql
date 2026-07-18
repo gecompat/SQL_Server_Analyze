@@ -178,12 +178,12 @@ BEGIN TRY
            TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.distributionCount')) AS [DistributionCount],
            TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.findingCount')) AS [FindingCount];
     SELECT N'STAT_UNIFORM_DATABASE_STATUS' AS [DiagnosticCode],[StatusCode],
-           [IsPartial],[CandidateCount],[HistogramVisibleCount],[ErrorNumber],[Detail]
+           [IsPartial],[CandidateCount],[HistogramVisibleCount],[ErrorNumber],[ErrorMessage],[Detail]
     FROM OPENJSON(@Json,N'$.databaseStatus') WITH
     ([StatusCode] varchar(40) N'$.StatusCode',[IsPartial] bit N'$.IsPartial',
      [CandidateCount] bigint N'$.CandidateCount',
      [HistogramVisibleCount] bigint N'$.HistogramVisibleCount',
-     [ErrorNumber] int N'$.ErrorNumber',[Detail] nvarchar(2000) N'$.Detail');
+     [ErrorNumber] int N'$.ErrorNumber',[ErrorMessage] nvarchar(2048) N'$.ErrorMessage',[Detail] nvarchar(2000) N'$.Detail');
     SELECT N'STAT_UNIFORM_DISTRIBUTION' AS [DiagnosticCode],[HistogramSteps],
            [DominantStepPercent],[EqualRowsSkewRatio],[AverageRangeRowsSkewRatio],
            [TailVsAverageStepRatio],[AnalysisState]
