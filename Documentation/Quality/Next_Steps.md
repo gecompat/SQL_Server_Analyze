@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Der frühere Stand `1.1.0-special.6` dokumentiert einen erfolgreichen Gesamtinstaller- und Zwölf-Suite-Lauf auf einer synthetischen SQL-Server-2022-Linux-Datenbank. `SC-018` und `SC-019` waren dort noch nicht enthalten. Die neue Version `1.1.0-special.8` ist implementiert und statisch geprüft; ihre verbindlichen Matrixläufe sind noch nicht dokumentiert. `NOT_EXECUTED` in der Testmatrix darf nicht als Testnachweis interpretiert werden.
+Der Stand `1.1.0-special.9` schließt die lokalen P2-Module mit Verschlüsselungslebenszyklus und Wartungsoperationen. Drei GitHub-Actions-Gates installieren und führen denselben 13-Suite-Vertrag auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170 aus. `NOT_EXECUTED` in manuellen Positiv-, Grenzwert- oder Lastfällen bleibt weiterhin kein Testnachweis.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.
 
@@ -21,12 +21,16 @@ Abgeschlossen:
 11. SC-017 mit `USP_ServiceBrokerAnalysis` umgesetzt: Queue-Schalter und approximative Kapazität, Aktivierungs-DMVs, gruppierte Transmission- und Conversation-Evidenz ohne Queue-Nutzdaten oder Nachrichtenkörper.
 12. SC-018 mit `USP_FullTextAnalysis` umgesetzt: sichtbare Kataloge und Indizes, isolierte Population-, Batch-, Fragment-, Semantik-, Memory-Pool- und FDHost-Evidenz ohne Inhalte, Schlüsselwerte, Crawl-Logs, Pfade oder DDL.
 13. SC-019 mit `USP_DataCaptureDeepAnalysis` umgesetzt: Consumer-spezifische CT-Version, isolierte CDC-Scan-/Fehler-/Job-/Cleanup-Evidenz und aggregierte lokale Replikationsagenten ohne Change-Zeilen, Commands, Credentials oder DDL.
+14. SC-020 mit `USP_EncryptionAnalysis` umgesetzt: TDE, sichtbarer Schutzobjekt-Lebenszyklus, getrennte explizite Backupverschlüsselung und aggregierte Always-Encrypted-/Ledger-Evidenz ohne Schlüssel- oder Medieninhalte.
+15. SC-022 mit `USP_MaintenanceOperations` umgesetzt: pausierte/aktive Wartung, ADR/PVS und explizit gefilterte Jobaktivität ohne SQL-/Jobinhalte und ohne operative Änderung.
+16. Versionsharte Actions-Gates für SQL Server 2019, 2022 und 2025 sowie ein echter P2-Laufzeitvertrag ergänzt.
+17. SC-023 bis SC-025 bis zur sicheren Repositorygrenze konkretisiert: Entscheidungs- und Schnittstellenverträge sowie externer Restore-/Host-Runbook, aber keine ungeklärte Persistenz oder Infrastruktur.
 
 Nächste Freigabeschritte:
 
-1. Gesamtinstaller auf SQL Server 2019, 2022 und 2025 gemäß `Test_Matrix.csv` kompilieren und installieren.
-2. Pro Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165` und `167` in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
+1. Die drei Actions-Gates grün abschließen und die exakten Commitläufe als primäre Laufzeitevidenz verwenden.
+2. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167` und `168` in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
 3. Für jedes neue Modul Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle dokumentieren; reale Namen oder Strukturen nicht in die Nachweise übernehmen.
 4. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 5. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
-6. Die P2-Welle darf statisch weiterentwickelt werden; Laufzeitfreigabe bleibt dennoch blockiert. Als nächstes Deep-Dive-Modul kommt Verschlüsselung ausschließlich bei erkannter Nutzung in Betracht.
+6. Vor SC-023 die in `Snapshot_Baseline_Package_Contract.md` markierten Persistenzentscheidungen ausdrücklich freigeben; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.

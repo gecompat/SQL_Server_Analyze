@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 18. Juli 2026
-**Abdeckung:** 82 Procedures
+**Abdeckung:** 84 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -92,6 +92,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 - [USP_BackupChainAnalysis](USP_BackupChainAnalysis.md)
 - [USP_AvailabilityDeepAnalysis](USP_AvailabilityDeepAnalysis.md)
 - [USP_AgentMonitoringAnalysis](USP_AgentMonitoringAnalysis.md)
+- [USP_MaintenanceOperations](USP_MaintenanceOperations.md)
 
 ## Server Health
 
@@ -122,3 +123,4 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 - [USP_ServiceBrokerAnalysis](USP_ServiceBrokerAnalysis.md)
 - [USP_FullTextAnalysis](USP_FullTextAnalysis.md)
 - [USP_DataCaptureDeepAnalysis](USP_DataCaptureDeepAnalysis.md)
+- [USP_EncryptionAnalysis](USP_EncryptionAnalysis.md)

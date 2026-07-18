@@ -632,3 +632,32 @@ flowchart TD
 - [sys.dm_fts_semantic_similarity_population](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-semantic-similarity-population-transact-sql)
 - [sys.dm_fts_memory_pools](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-memory-pools-transact-sql)
 - [sys.dm_fts_fdhosts](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-fdhosts-transact-sql)
+
+---
+
+## 8. [monitor].[USP_EncryptionAnalysis]
+
+### Zweck
+
+Das Modul verbindet TDE-Zustand und Scanfortschritt, sichtbaren Zertifikatlebenszyklus, den Verschlüsselungsstatus des letzten sichtbaren nicht-copy-only Full-Backups und aggregierte Always-Encrypted-/Ledger-Metadaten. Jede Quelle besitzt eine eigene Fehlergrenze.
+
+### Wichtige Trennungen
+
+- TDE schützt Datenbankdateien; explizite Backupverschlüsselung ist ein eigener Mechanismus. Sie wird nur bei `@ExpliziteBackupverschluesselungErwartet=1` als Soll geprüft.
+- Ein suspendierter oder abgebrochener TDE-Scan ist direkte Engine-Evidenz. Eine lange Transition ist dagegen ein konfigurierbarer Zeitgrenzwert.
+- Zertifikatablauf ist ein Lebenszykluswarnsignal. Er beweist nicht, dass bestehende TDE-Verschlüsselung stoppt.
+- Ein leerer lokaler Private-Key-Backupzeitpunkt beweist nicht, dass keine externe autorisierte Kopie existiert.
+- Always Encrypted und Ledger werden ausschließlich als aggregierte Anzahlen erfasst; daraus entsteht kein Gesundheitsurteil.
+
+### Ausgeschlossene Daten
+
+Das Modul liest keine Schlüsselpfade, Signaturen, verschlüsselten Werte, Backupmedien, Konten oder privaten Schlüssel und gibt keine Thumbprints aus. Der Besitz nutzbaren Schlüsselmaterials und die Wiederherstellbarkeit können nur durch einen autorisierten externen Restore-Prozess nachgewiesen werden.
+
+### Primärquellen
+
+- [Transparent Data Encryption](https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption)
+- [sys.dm_database_encryption_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-database-encryption-keys-transact-sql)
+- [sys.certificates](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-certificates-transact-sql)
+- [backupset](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql)
+- [sys.column_master_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-master-keys-transact-sql)
+- [sys.column_encryption_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-encryption-keys-transact-sql)

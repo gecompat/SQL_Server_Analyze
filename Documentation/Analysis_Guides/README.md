@@ -1,7 +1,7 @@
 # Analysehandbuch für SQL_Server_Analyze
 
 **Stand:** 18. Juli 2026
-**Geltungsbereich:** 82 Procedures
+**Geltungsbereich:** 84 Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
 ## Empfohlener Einstieg
@@ -48,10 +48,10 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Plan Cache | [04_Plan_Cache.md](04_Plan_Cache.md) | 6 |
 | Query Store | [05_Query_Store.md](05_Query_Store.md) | 9 |
 | Extended Events | [06_Extended_Events.md](06_Extended_Events.md) | 6 |
-| Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 12 |
+| Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 13 |
 | Server Health | [08_Server_Health.md](08_Server_Health.md) | 17 |
-| Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 6 |
-| **Gesamt** | | **81** |
+| Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 8 |
+| **Gesamt** | | **84** |
 
 ## Schnellwahl nach Symptom
 

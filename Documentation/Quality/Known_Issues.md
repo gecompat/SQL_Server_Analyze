@@ -2,11 +2,11 @@
 
 Stand: 2026-07-18
 
-Der frühere Stand `1.1.0-special.6` enthält ein reproduzierbares SQL-Server-2022-Linux-Release-Gate und dokumentiert einen erfolgreichen Gesamtinstaller- und Zwölf-Suite-Lauf auf einer synthetischen Testdatenbank. Dieser Nachweis umfasst `SC-018` und `SC-019` noch nicht. Die Version `1.1.0-special.8` ist deshalb weiterhin nicht durch dokumentierte Zielmatrixläufe als Laufzeit-Release nachgewiesen; SQL Server 2019 und 2025 bleiben ebenfalls offen.
+Die Version `1.1.0-special.9` besitzt reproduzierbare Actions-Gates für SQL Server 2019, 2022 und 2025. Erst der grüne commitbezogene Workflowlauf ist Laufzeitevidenz; die im Repository verbleibenden `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 
-- Die Zielumgebungen sind maschinenlesbar definiert; die verbindlichen Matrixzeilen einschließlich `SC-018` und `SC-019` besitzen noch keine vollständige Ausführungsevidenz und stehen auf `NOT_EXECUTED`.
+- Die automatisierten Linux-Leerzustands-/Vertragspfade ersetzen keine Feature-Positiv-, Grenzwert-, Last-, Windows- oder Azure-MI-Tests.
 - Bei jeder weiteren Zielversion oder abweichenden Plattform sind Installer, Smoke Tests, Parametervertrag und `165_Filter_Output_Contract.sql` erneut auszuführen.
 - Importierte Wait-Beschreibungen mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` sollten sukzessive fachlich kuratiert werden.
 - Phase 7 liefert überwiegend Inventar- und Momentaufnahmen; zeitbasierte CPU-, NUMA- und Memory-Trends sind bewusst nicht Bestandteil dieses Ad-hoc-Pakets.
@@ -17,3 +17,6 @@ Verbleibende fachliche beziehungsweise betriebliche Punkte:
 - `USP_ServiceBrokerAnalysis` liest keine Queue-Nutzdaten oder Nachrichtenkörper. Eine deaktivierte Queue, alte Transmission-Einträge, approximative Queue-Zeilen und Broker-DMV-Zustände beweisen weder eine Poison Message noch Routing-, Aktivierungs- oder Verarbeitungsursache; Laufzeitverlauf und kontrollierte externe Evidenz bleiben erforderlich.
 - `USP_FullTextAnalysis` liest keine indizierten Inhalte, Keywords, Stopwords, Schlüsselwerte, Crawl-Logs oder Pfade. Population-, Batch- und FDHost-DMVs sind Momentaufnahmen; Alter, Fragmentzahl und Poolgröße benötigen Zeitreihe, Workload- und Suchlatenzkontext. Geschützte Laufzeitlogs dürfen nicht in Repositoryartefakte übernommen werden.
 - `USP_DataCaptureDeepAnalysis` kann CT-Synchronisationsverlust nur für einen explizit gelieferten Consumer-Wasserstand bewerten. CDC-DMVs und Agenthistorien sind begrenzt und reset-/cleanup-abhängig. Remote Distributor, Pull-/Peer-to-Peer-Topologien und Subscriber-Netzpfade können außerhalb der lokalen Sicht liegen; eine Evidenzlücke ist kein gesunder Befund.
+- `USP_EncryptionAnalysis` beweist weder den Besitz externer Schlüsselkopien noch Restorefähigkeit. TDE und explizite Backupverschlüsselung bleiben getrennt; Zertifikatablauf und lokaler Exportzeitpunkt sind Lebenszykluskontext.
+- `USP_MaintenanceOperations` ist eine Momentaufnahme. Pause, Laufdauer, PVS-Größe und Jobüberlappung benötigen Betriebs- und Verlaufskontext; das Modul nimmt niemals selbst eine Wartungsänderung vor.
+- SC-023 benötigt vor Persistenz ausdrückliche Retention-, Feld-, Größen-, Lösch-, Speicher- und Rechteentscheidungen. SC-024 und SC-025 benötigen externe autorisierte Komponenten beziehungsweise Ziele.

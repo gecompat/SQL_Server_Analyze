@@ -1,15 +1,15 @@
-name: SQL Server 2022 Linux release gate
+name: SQL Server 2025 Linux release gate
 
 on:
   pull_request:
     paths:
-      - '.github/workflows/sqlserver-2022-linux-release-gate.yml'
+      - '.github/workflows/sqlserver-2025-linux-release-gate.yml'
       - 'Code/**/*.sql'
   push:
     branches:
       - main
     paths:
-      - '.github/workflows/sqlserver-2022-linux-release-gate.yml'
+      - '.github/workflows/sqlserver-2025-linux-release-gate.yml'
       - 'Code/**/*.sql'
   workflow_dispatch:
 
@@ -17,12 +17,12 @@ permissions:
   contents: read
 
 concurrency:
-  group: sqlserver-2022-linux-release-gate-${{ github.workflow }}-${{ github.ref }}
+  group: sqlserver-2025-linux-release-gate-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   release-gate:
-    name: SQL Server 2022 Linux release gate
+    name: SQL Server 2025 Linux release gate
     runs-on: ubuntu-24.04
     timeout-minutes: 30
 
@@ -46,40 +46,40 @@ jobs:
           echo "::add-mask::$password"
           echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
 
-      - name: Start SQL Server 2022 Linux
+      - name: Start SQL Server 2025 Linux
         shell: bash
         run: |
           set -euo pipefail
-          docker pull --quiet mcr.microsoft.com/mssql/server:2022-latest >/dev/null
-          docker run --name sqlserver-analyze-test \
+          docker pull --quiet mcr.microsoft.com/mssql/server:2025-latest >/dev/null
+          docker run --name sqlserver-analyze-test-2025 \
             --detach \
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
             --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
             --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
-            mcr.microsoft.com/mssql/server:2022-latest >/dev/null
+            mcr.microsoft.com/mssql/server:2025-latest >/dev/null
 
       - name: Wait for SQL Server readiness
         shell: bash
         run: |
           set -euo pipefail
           sqlcmd_path=''
-          readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>16 THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;"
+          readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17 THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;"
           for attempt in $(seq 1 120); do
-            sqlcmd_path=$(docker exec sqlserver-analyze-test bash -lc \
+            sqlcmd_path=$(docker exec sqlserver-analyze-test-2025 bash -lc \
               "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
               || true)
             if [ -n "$sqlcmd_path" ] && docker exec \
               --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
-              sqlserver-analyze-test \
+              sqlserver-analyze-test-2025 \
               "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
               echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
               exit 0
             fi
             sleep 2
           done
-          docker logs --tail 40 sqlserver-analyze-test
+          docker logs --tail 40 sqlserver-analyze-test-2025
           exit 1
 
       - name: Create synthetic test database
@@ -88,9 +88,9 @@ jobs:
           set -euo pipefail
           docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
-            sqlserver-analyze-test \
+            sqlserver-analyze-test-2025 \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
-            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 160;" >/dev/null
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170;" >/dev/null
 
       - name: Install framework
         shell: bash
@@ -101,7 +101,7 @@ jobs:
           if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --workdir /work/Code/Install \
-            sqlserver-analyze-test \
+            sqlserver-analyze-test-2025 \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql >"$install_log" 2>&1; then
             echo 'Framework installation failed.'
             {
@@ -123,7 +123,7 @@ jobs:
           if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --workdir /work/Code/Tests \
-            sqlserver-analyze-test \
+            sqlserver-analyze-test-2025 \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql >"$release_log" 2>&1; then
             echo 'Release gate failed.'
             {
@@ -135,7 +135,7 @@ jobs:
           fi
           echo 'Release gate succeeded.'
 
-      - name: Run SQL Server 2022 permission matrix
+      - name: Run SQL Server 2025 permission matrix
         shell: bash
         run: |
           set -euo pipefail
@@ -144,9 +144,9 @@ jobs:
           if ! docker exec \
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             --workdir /work/Code/Tests \
-            sqlserver-analyze-test \
+            sqlserver-analyze-test-2025 \
             "$SQLCMD_PATH" -S localhost -U sa -C -b \
-            -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_PASSWORD" ExpectedMajorVersion=16 \
+            -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_PASSWORD" ExpectedMajorVersion=17 \
             -i Permissions/110_SQL_Server_2022_Permission_Matrix.sql >"$permission_log" 2>&1; then
             echo 'Permission matrix failed.'
             {
@@ -163,9 +163,9 @@ jobs:
         shell: bash
         run: |
           {
-            echo '## SQL Server 2022 Linux release gate'
-            echo '- Target: synthetic SQL Server 2022 Developer on Linux'
-            echo '- Compatibility level: 160'
+            echo '## SQL Server 2025 Linux release gate'
+            echo '- Target: synthetic SQL Server 2025 Developer on Linux'
+            echo '- Compatibility level: 170'
             echo '- Installer: passed'
             echo '- Release gate: passed'
             echo '- Permission matrix: passed'
@@ -175,7 +175,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: sqlserver-2022-linux-release-gate-error
+          name: sqlserver-2025-linux-release-gate-error
           path: ${{ runner.temp }}/sqlserver-analyze-error.txt
           if-no-files-found: ignore
           retention-days: 1
@@ -183,4 +183,5 @@ jobs:
       - name: Stop synthetic SQL Server
         if: always()
         shell: bash
-        run: docker rm --force sqlserver-analyze-test >/dev/null 2>&1 || true
+        run: docker rm --force sqlserver-analyze-test-2025 >/dev/null 2>&1 || true
+

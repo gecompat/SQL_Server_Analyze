@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-18 — 82 Procedures
+Stand: 2026-07-18 — 84 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -522,4 +522,16 @@ EXEC [monitor].[USP_TemporalAnalysis] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_TraceFlags] @Hilfe = 1;
+```
+
+## `[monitor].[USP_EncryptionAnalysis]`
+
+```sql
+EXEC [monitor].[USP_EncryptionAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_MaintenanceOperations]`
+
+```sql
+EXEC [monitor].[USP_MaintenanceOperations] @Hilfe = 1;
 ```

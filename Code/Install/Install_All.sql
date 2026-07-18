@@ -86,6 +86,7 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../07_Infrastructure/100_USP_BackupChainAnalysis.sql
 :r ../07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql
 :r ../07_Infrastructure/120_USP_AgentMonitoringAnalysis.sql
+:r ../07_Infrastructure/130_USP_MaintenanceOperations.sql
 :r ../07_Infrastructure/090_USP_InfrastructureAnalysis.sql
 :r ../08_ServerHealth/010_USP_ServerCpuTopology.sql
 :r ../08_ServerHealth/020_USP_ServerNuma.sql
@@ -112,3 +113,4 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../09_VersionAdaptive/050_USP_ServiceBrokerAnalysis.sql
 :r ../09_VersionAdaptive/060_USP_FullTextAnalysis.sql
 :r ../09_VersionAdaptive/070_USP_DataCaptureDeepAnalysis.sql
+:r ../09_VersionAdaptive/080_USP_EncryptionAnalysis.sql

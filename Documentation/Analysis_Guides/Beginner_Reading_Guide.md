@@ -1,7 +1,7 @@
 # Analyse-Resultsets richtig lesen – Einsteigerleitfaden für alle Procedures
 
 **Stand:** 17. Juli 2026  
-**Abdeckung:** alle 82 öffentlichen Procedures
+**Abdeckung:** alle 84 öffentlichen Procedures
 **Zweck:** erklären, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können
 
 > Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Familienguides nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.

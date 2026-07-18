@@ -1,5 +1,15 @@
 # Release Notes
 
+## Stand 2026-07-18 – Verschlüsselung, Wartung und Drei-Versionen-Gate `1.1.0-special.9`
+
+- `SC-020` durch `monitor.USP_EncryptionAnalysis` implementiert: TDE-Zustand/Scan, sichtbarer Zertifikatlebenszyklus, getrennte explizite Backupverschlüsselung sowie aggregierte Always-Encrypted-/Ledger-Anzahlen.
+- Keine Schlüsselpfade, Signaturen, verschlüsselten Werte, Backupmedien, Konten oder privaten Schlüssel; Thumbprints werden nicht ausgegeben. Lokaler Exportzeitpunkt und Zertifikatablauf bleiben begrenzte Lebenszyklusevidenz.
+- `SC-022` durch `monitor.USP_MaintenanceOperations` implementiert: resumierbare Indexoperationen, technische Wartungsrequests, SQL-Server-2022+-PVS-Details und nur explizit gefilterte Agentaktivität.
+- Keine SQL-Texte, Jobschritte/-befehle, Meldungen, Konten, Clientdaten oder Wait-Ressourcen; keine Resume-, Abort-, Kill-, Cleanup-, Jobstart- oder Jobstop-Aktion.
+- `168_Special_Case_Runtime_Contract.sql` führt alle P2-Module gegen die synthetische Testdatenbank aus und validiert Status und JSON.
+- Drei Actions-Gates erzwingen SQL Server 2019/2022/2025, Compatibility Level 150/160/170, case-sensitive Collation, Installer, 13 Suiten und synthetische Berechtigungsfälle.
+- SC-023 bis SC-025 besitzen sichere Repositoryverträge beziehungsweise ein externes Runbook; Persistenz, Fleet-Infrastruktur und echter Restore bleiben bis zu ausdrücklicher externer Autorisierung unimplementiert.
+
 ## Stand 2026-07-18 – Data-Capture-/Replikations-Deep-Dive `1.1.0-special.8`
 
 - `SC-019` durch `monitor.USP_DataCaptureDeepAnalysis` als sechstes P2-Modul implementiert.
@@ -158,7 +168,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.8` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Der Stand `1.1.0-special.9` ist erst nach grünen commitbezogenen Actions-Läufen für SQL Server 2019, 2022 und 2025 als versionsübergreifend laufzeitgetestet zu kennzeichnen; manuelle Feature-Positiv-, Last- und externe Fälle bleiben gesondert.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

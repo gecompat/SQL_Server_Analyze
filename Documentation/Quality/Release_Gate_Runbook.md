@@ -15,7 +15,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 Erwartung:
 
 - Prozess-Exitcode `0`.
-- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `82`.
+- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `84`.
 - Letzte Meldung: `Analysis documentation validation succeeded.`
 - Bei einem Fehler keine Installation und kein SQL-Release-Gate starten, sondern zuerst Referenz, SQL-Signatur, Procedure-Seite, Beispielparameter oder Markdownlink korrigieren.
 
@@ -36,7 +36,7 @@ Dabei gilt:
 - Es werden keine vollständigen SQLCMD-Ausgaben oder Resultsets als dauerhaftes Artefakt gespeichert.
 - Nach dem Lauf wird der Container auch bei Fehlern entfernt.
 
-Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. SQL Server 2019 wird durch das separate Target in Abschnitt 0.3 geprüft. Nicht abgedeckt bleiben Windows, SQL Server 2025, optionale Feature-Positivfälle und produktionsnahe Lastzustände.
+Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. SQL Server 2019 und 2025 werden durch die separaten Targets in Abschnitt 0.3 und 0.4 geprüft. Nicht abgedeckt bleiben Windows, optionale Feature-Positivfälle und produktionsnahe Lastzustände.
 
 ## 0.2 Automatisierte SQL-Server-2022-Berechtigungsmatrix
 
@@ -66,7 +66,7 @@ Verbindliche Erwartungen:
 
 ## 0.3 Automatisiertes synthetisches Linux-Target für SQL Server 2019
 
-Der Workflow `.github/workflows/sqlserver-2019-linux-release-gate.yml` führt dieselbe Installation und dieselben zwölf Release-Gate-Suiten gegen `mcr.microsoft.com/mssql/server:2019-latest` aus. Die synthetische Installationsdatenbank verwendet Compatibility Level 150 und dieselbe case-sensitive Collation wie die anderen Testtargets.
+Der Workflow `.github/workflows/sqlserver-2019-linux-release-gate.yml` führt dieselbe Installation und dieselben dreizehn Release-Gate-Suiten gegen `mcr.microsoft.com/mssql/server:2019-latest` aus. Die synthetische Installationsdatenbank verwendet Compatibility Level 150 und dieselbe case-sensitive Collation wie die anderen Testtargets.
 
 Anschließend wird `Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql` ausgeführt. Die Matrix prüft fünf vollständig synthetische Kontexte:
 
@@ -87,6 +87,12 @@ Verbindliche Erwartungen:
 - fünf Szenarien werden vollständig ausgeführt und der Test endet mit `StatusCode=AVAILABLE`.
 
 Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. Fehlerzusammenfassungen bleiben generisch, werden höchstens einen Tag aufbewahrt und der Container wird auch bei Fehlern entfernt.
+
+## 0.4 Automatisiertes synthetisches Linux-Target für SQL Server 2025
+
+Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 13-Suite-Release-Gate und die SQL-Server-2022+-Berechtigungsmatrix laufen gegen ausschließlich synthetische Job- und Principalnamen.
+
+Wie bei den anderen Targets werden Kennwort und Datenbank erst im Job erzeugt, vollständige Ausgaben nicht als Artefakt persistiert, Fehlerartefakte auf eine generische Kurzfassung und einen Tag Retention begrenzt und der Container immer entfernt.
 
 ## 1. Lokale Testkopie vorbereiten
 
@@ -118,25 +124,26 @@ Aus dem Verzeichnis `Code/Tests` ausführen:
 sqlcmd -S "<ZIEL>" -d "<INSTALLATIONSDATENBANK>" -E -b -i "Run_Release_Gate.sql"
 ```
 
-Der Runner beendet sich beim ersten SQL-Fehler und führt folgende zwölf Suiten aus:
+Der Runner beendet sich beim ersten SQL-Fehler und führt folgende dreizehn Suiten aus:
 
 1. Smoke Test
 2. Parameter-API-Vertrag
 3. Filter- und Ausgabe-Vertrag
 4. Spezialfall-API-Vertrag
-5. Common
-6. Current State
-7. Object und Index
-8. Plan Cache
-9. Query Store
-10. Extended Events
-11. Infrastructure
-12. Server Health
+5. Spezialfall-Laufzeitvertrag
+6. Common
+7. Current State
+8. Object und Index
+9. Plan Cache
+10. Query Store
+11. Extended Events
+12. Infrastructure
+13. Server Health
 
 Erwartung bei vollständigem Erfolg:
 
 - Prozess-Exitcode `0`.
-- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=12`.
+- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=13`.
 - Kein `THROW`, kein unbehandelter Fehler und kein vorzeitiges Ende.
 
 ## 4. Spezialfallmatrix ausführen
@@ -154,6 +161,10 @@ Für `USP_ServiceBrokerAnalysis` müssen negativer Feature-Gate, aktivierte Konf
 Für `USP_FullTextAnalysis` müssen negativer Feature-Gate, Komponenten-/Katalogzustand, Indexschalter, aktuelle und lange/abgebrochene Populationen, Retry-/Fehlerbatches, Dokumentfehleraggregate, Fragmente, semantische Population, Memory-/FDHost-Kontext, isolierte Quellenberechtigungen, Filter, Ergebnisgrenzen und der statische Inhalts-/DDL-Ausschluss getrennt dokumentiert werden.
 
 Für `USP_DataCaptureDeepAnalysis` müssen negativer Feature-Gate, CT ohne/mit gültigem/ungültigem/zukünftigem Consumer-Wasserstand, Auto-Cleanup, CDC-Capture-Instanzen, fehlende/disabled Jobs, kontinuierliche und zeitgesteuerte Latenz, Scanfehler, Cleanup-Alter und Drop-Pending sowie lokale Replikationsrückstände, Agentstatus, inaktive Subscription, Merge-Konflikt/Retry, mehrere lokale Distributionsdatenbanken, Remote-Distributor-Lücke, isolierte Berechtigungen, Filter, Ergebnisgrenzen und der statische Nutzdaten-/Credential-/Command-/DDL-Ausschluss getrennt dokumentiert werden. Es werden nur synthetische Zustände persistiert.
+
+Für `USP_EncryptionAnalysis` sind No-TDE, Transition, suspendierter/abgebrochener Scan, Zertifikatsfenster, lokaler Exportnachweis, erwartete explizite Backupverschlüsselung, aggregierte Always-Encrypted-/Ledger-Metadaten, Version und Berechtigung getrennt zu prüfen. Schlüssel-, Medien- oder Kontoinhalte werden nicht in Testnachweise übernommen.
+
+Für `USP_MaintenanceOperations` sind Leerzustand, aktive/pausierte resumierbare Operation, blockierter Request, Rollbackkontext, PVS-Verhalten auf 2019/2022/2025, `NOT_REQUESTED` ohne Jobfilter, ausdrücklich gewählte synthetische Jobüberlappung, Berechtigung und read-only Vertrag getrennt zu prüfen.
 
 Kostenintensive Pfade nur kontrolliert und opt-in testen:
 
