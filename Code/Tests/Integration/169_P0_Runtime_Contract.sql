@@ -294,7 +294,7 @@ ADD TARGET [package0].[event_file]
 )
 WITH
 (
-    EVENT_RETENTION_MODE=ALLOW_SINGLE_EVENT_LOSS,
+    EVENT_RETENTION_MODE=NO_EVENT_LOSS,
     MAX_DISPATCH_LATENCY=1 SECONDS,
     STARTUP_STATE=OFF
 );
@@ -302,7 +302,7 @@ ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=START;
 DECLARE @EventStartUtc datetime2(7)=SYSUTCDATETIME();
 DECLARE @EventEndUtc datetime2(7)=DATEADD(MINUTE,5,@EventStartUtc);
 DECLARE @SyntheticEventOrdinal tinyint=0;
-WHILE @SyntheticEventOrdinal<5
+WHILE @SyntheticEventOrdinal<20
 BEGIN
     BEGIN TRY
         RAISERROR(N'Example synthetic critical event.',16,1);
@@ -311,9 +311,9 @@ BEGIN
     END CATCH;
     SET @SyntheticEventOrdinal+=1;
 END;
-WAITFOR DELAY '00:00:02';
+WAITFOR DELAY '00:00:05';
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=STOP;
-WAITFOR DELAY '00:00:01';
+WAITFOR DELAY '00:00:03';
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_CriticalEngineEvents]
