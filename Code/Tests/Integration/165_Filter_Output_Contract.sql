@@ -61,6 +61,27 @@ IF NOT EXISTS
 )
     INSERT [#Failure] VALUES(N'TVF_ParsePipeList_bracket_syntax',N'Nicht geschlossene Klammer wurde nicht als ungültig erkannt.');
 
+
+/* Numerische Listen: Pipe, Beistrich und Strichpunkt sind gleichwertig. */
+IF (SELECT COUNT(*) FROM [monitor].[TVF_ParseBigintList](N'11, 22;33|44') WHERE [IsValid]=1) <> 4
+    INSERT [#Failure] VALUES(N'TVF_ParseBigintList_delimiters',N'Gemischte numerische Trennzeichen wurden nicht in vier gültige Elemente zerlegt.');
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [monitor].[TVF_ParseBigintList](N'11, 22;33|44')
+    WHERE [ItemOrdinal]=2 AND [ItemText]=N'22' AND [NumberValue]=22 AND [IsValid]=1
+)
+    INSERT [#Failure] VALUES(N'TVF_ParseBigintList_ordinal',N'Beistrich-getrenntes numerisches Listenelement wurde nicht korrekt normalisiert.');
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [monitor].[TVF_ParseBigintList](N'11,;22')
+    WHERE [ItemOrdinal]=2 AND [IsValid]=0 AND [ErrorCode]='EMPTY_ITEM'
+)
+    INSERT [#Failure] VALUES(N'TVF_ParseBigintList_empty_item',N'Leeres numerisches Listenelement zwischen gemischten Trennzeichen wurde nicht erkannt.');
+
 IF NOT EXISTS
 (
     SELECT 1
