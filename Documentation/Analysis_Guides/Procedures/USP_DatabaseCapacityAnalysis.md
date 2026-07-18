@@ -11,6 +11,8 @@ EXEC [monitor].[USP_DatabaseCapacityAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
+Für vollständige Volumenevidenz ist auf SQL Server 2019 `VIEW SERVER STATE`, ab SQL Server 2022 `VIEW SERVER PERFORMANCE STATE` erforderlich. Fehlt dieses Recht, bleibt zulässige Dateievidenz sichtbar, der Status lautet jedoch ausdrücklich `AVAILABLE_LIMITED` mit `IsPartial=1`.
+
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einer Datenbankdatei, einem Volume, einer Datenbankaggregation oder einem Finding.

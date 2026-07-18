@@ -12,6 +12,8 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
+Für vollständige serverweite Evidenz ist auf SQL Server 2019 `VIEW SERVER STATE`, ab SQL Server 2022 `VIEW SERVER PERFORMANCE STATE` erforderlich. Fehlt dieses Recht, bleibt zulässige Teilevidenz sichtbar, der Status lautet jedoch ausdrücklich `AVAILABLE_LIMITED` mit `IsPartial=1`.
+
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einer Datenbank, einer suspect page, Backup-/CHECKDB-Evidenz, HADR-Reparatur oder einem Finding.

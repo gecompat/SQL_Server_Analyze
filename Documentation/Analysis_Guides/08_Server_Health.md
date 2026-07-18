@@ -423,6 +423,8 @@ Korrelierte rein lesende Integritätsevidenz aus Datenbankstatus, PAGE_VERIFY, l
 
 Die Procedure führt **kein** DBCC CHECKDB, Restore oder Repair aus.
 
+Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFORMANCE STATE` ab SQL Server 2022, bleibt lesbare Teilevidenz erhalten, der Status wird jedoch ausdrücklich `AVAILABLE_LIMITED` mit `IsPartial=1`; ein sicherheitsgefiltertes leeres Ergebnis wird nicht als vollständige Evidenz behandelt.
+
 ### Repository-Schwellen
 
 - `@CheckdbWarnHours=168`
@@ -474,6 +476,8 @@ CHECKDB nach Betriebsplan, Error Log, Storagepfad, BackupChain, AvailabilityDeep
 ### Zweck
 
 Trennt freien Platz **innerhalb der Datei** von freiem Platz **auf dem Volume** und bewertet das nächste Autogrowth.
+
+Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFORMANCE STATE` ab SQL Server 2022, wird insbesondere die Volumensicht als unvollständig markiert: `AVAILABLE_LIMITED`, `IsPartial=1`. Das Resultset selbst wird nicht maskiert oder umgeschrieben.
 
 ### Repository-Schwelle
 
