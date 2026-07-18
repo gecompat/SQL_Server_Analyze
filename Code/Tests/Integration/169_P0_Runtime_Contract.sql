@@ -294,18 +294,23 @@ ADD TARGET [package0].[event_file]
 )
 WITH
 (
-    EVENT_RETENTION_MODE=NO_EVENT_LOSS,
+    EVENT_RETENTION_MODE=ALLOW_SINGLE_EVENT_LOSS,
     MAX_DISPATCH_LATENCY=1 SECONDS,
     STARTUP_STATE=OFF
 );
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=START;
 DECLARE @EventStartUtc datetime2(7)=SYSUTCDATETIME();
 DECLARE @EventEndUtc datetime2(7)=DATEADD(MINUTE,5,@EventStartUtc);
-BEGIN TRY
-    THROW 51000,N'Example synthetic critical event.',1;
-END TRY
-BEGIN CATCH
-END CATCH;
+DECLARE @SyntheticEventOrdinal tinyint=0;
+WHILE @SyntheticEventOrdinal<5
+BEGIN
+    BEGIN TRY
+        THROW 51000,N'Example synthetic critical event.',1;
+    END TRY
+    BEGIN CATCH
+    END CATCH;
+    SET @SyntheticEventOrdinal+=1;
+END;
 WAITFOR DELAY '00:00:02';
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=STOP;
 WAITFOR DELAY '00:00:01';
