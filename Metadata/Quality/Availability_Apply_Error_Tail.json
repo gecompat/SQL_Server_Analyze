@@ -1,0 +1,24 @@
+{
+  "runId": 29646770164,
+  "tail": [
+    "##[group]Run set -euo pipefail",
+    "^[[36;1mset -euo pipefail^[[0m",
+    "^[[36;1mpython3 - <<'PY'^[[0m",
+    "^[[36;1mfrom pathlib import Path^[[0m",
+    "^[[36;1mimport textwrap^[[0m",
+    "^[[36;1msource=Path('.github/workflows/apply-p1-availability-contract.yml').read_text(encoding='utf-8').splitlines()^[[0m",
+    "^[[36;1mbegin=next(i for i,line in enumerate(source) if \"python3 - <<'PY'\" in line)+1^[[0m",
+    "^[[36;1mend=next(i for i in range(begin,len(source)) if source[i].strip()=='PY')^[[0m",
+    "^[[36;1mscript=textwrap.dedent('\\n'.join(source[begin:end]))^[[0m",
+    "^[[36;1mexec(compile(script,'availability_apply.py','exec'),{})^[[0m",
+    "^[[36;1mPY^[[0m",
+    "shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}",
+    "##[endgroup]",
+    "Traceback (most recent call last):",
+    "File \"<stdin>\", line 7, in <module>",
+    "File \"availability_apply.py\", line 1",
+    "from pathlib import Path",
+    "IndentationError: unexpected indent",
+    "##[error]Process completed with exit code 1."
+  ]
+}
