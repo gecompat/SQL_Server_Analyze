@@ -1,0 +1,49 @@
+name: Query availability apply tail
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/query-availability-apply-tail.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  query:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh run view 29646770164 --log-failed > "$RUNNER_TEMP/availability-failed.log"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,os,re
+          lines=Path(os.environ['RUNNER_TEMP']+'/availability-failed.log').read_text(errors='replace').splitlines()[-25:]
+          cleaned=[]
+          for line in lines:
+              line=re.sub(r'/home/runner/[^\s]+','<path>',line)
+              line=re.sub(r'\b[0-9a-f]{40}\b','<sha>',line)
+              line=re.sub(r'^.*?Z\s+','',line)
+              cleaned.append(line[-500:])
+          Path('Metadata/Quality/Availability_Apply_Error_Tail.json').write_text(json.dumps({'runId':29646770164,'tail':cleaned},indent=2)+'\n')
+          PY
+      - shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/query-availability-apply-tail.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Metadata/Quality/Availability_Apply_Error_Tail.json .github/workflows/query-availability-apply-tail.yml
+          git commit -m 'chore: record availability apply error tail'
+          git pull --rebase origin main
+          git push origin HEAD:main
