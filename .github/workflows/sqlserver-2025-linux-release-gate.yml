@@ -127,8 +127,12 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql >"$release_log" 2>&1; then
             echo 'Release gate failed.'
             {
+              echo 'Release-gate markers:'
+              grep -E 'RELEASE_GATE [0-9]+/[0-9]+' "$release_log" | tail -n 40 || true
+              echo 'Detected SQL errors:'
+              grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$release_log" | tail -n 120 || true
               echo 'Final release-gate output:'
-              tail -n 220 "$release_log"
+              tail -n 120 "$release_log"
             } >"$error_summary"
             cat "$error_summary"
             exit 1
@@ -184,4 +188,3 @@ jobs:
         if: always()
         shell: bash
         run: docker rm --force sqlserver-analyze-test-2025 >/dev/null 2>&1 || true
-
