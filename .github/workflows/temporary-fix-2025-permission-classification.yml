@@ -1,6 +1,9 @@
 name: Temporary fix SQL Server 2025 permission classification
 
 on:
+  push:
+    branches:
+      - agent/sqlserver-2025-permission-classification-fix
   pull_request:
 
 permissions:
