@@ -1,0 +1,76 @@
+name: Finalize complete P1 evidence v2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/finalize-complete-p1-evidence-v2.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Read final workflow evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVIDENCE_COMMIT: bdb8f66e20f015e7c563e6d3747144400897b281
+        run: |
+          set -euo pipefail
+          gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${EVIDENCE_COMMIT}&per_page=100" \
+            --jq '.workflow_runs' > "$RUNNER_TEMP/p1-runs-pages.jsonl"
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os
+          runs=[]
+          for line in Path(os.environ['RUNNER_TEMP']+'/p1-runs-pages.jsonl').read_text().splitlines():
+              runs.extend(json.loads(line))
+          Path(os.environ['RUNNER_TEMP']+'/p1-runs.json').write_text(json.dumps(runs),encoding='utf-8')
+          PY
+
+      - name: Finalize CSV evidence
+        shell: bash
+        env:
+          RUNS_JSON: ${{ runner.temp }}/p1-runs.json
+        run: python3 .github/scripts/finalize_p1_csv.py
+
+      - name: Finalize documentation
+        shell: bash
+        env:
+          RUNS_JSON: ${{ runner.temp }}/p1-runs.json
+        run: python3 .github/scripts/finalize_p1_docs.py
+
+      - name: Finalize release audit
+        shell: bash
+        env:
+          RUNS_JSON: ${{ runner.temp }}/p1-runs.json
+        run: python3 .github/scripts/finalize_p1_audit.py
+
+      - name: Commit evidence and remove temporary helpers
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/finalize-complete-p1-evidence-v2.yml
+          rm .github/scripts/finalize_p1_csv.py
+          rm .github/scripts/finalize_p1_docs.py
+          rm .github/scripts/finalize_p1_audit.py
+          rm -f Metadata/Quality/P1_Evidence_Finalizer_Run.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'docs: finalize complete P1 evidence'
+          git pull --rebase origin main
+          git push origin HEAD:main
