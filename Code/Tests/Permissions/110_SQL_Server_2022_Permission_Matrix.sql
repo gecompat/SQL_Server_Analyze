@@ -229,6 +229,8 @@ BEGIN
     DECLARE @CapabilityPermission sysname=NULL,@CapabilityHasPermission bit=NULL,@CapabilityStatus varchar(40)=NULL;
     DECLARE @QueryStoreRequiredRows int=0,@QueryStoreGrantedRows int=0;
     DECLARE @PlanAllowed bit=NULL,@PlanReason varchar(20)=NULL;
+    DECLARE @HasViewServerState bit=NULL,@HasViewServerPerformanceState bit=NULL;
+    DECLARE @HasViewDatabaseState bit=NULL,@HasViewDatabasePerformanceState bit=NULL;
 
     RAISERROR(N''PERMISSION_MATRIX step=current_sessions'',10,1) WITH NOWAIT;
     EXEC [monitor].[USP_CurrentSessions]
@@ -299,6 +301,16 @@ BEGIN
     FROM [monitor].[VW_AnalyseAccessCurrent]
     WHERE [AnalysisClass]=''PLAN_CACHE_DEEP'';
 
+    SET @HasViewServerState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N''VIEW SERVER STATE''));
+    SET @HasViewServerPerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N''VIEW SERVER PERFORMANCE STATE''));
+    SET @HasViewDatabaseState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE STATE''));
+    SET @HasViewDatabasePerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE PERFORMANCE STATE''));
+    SELECT
+          @HasViewServerState=COALESCE(@HasViewServerState,0)
+        , @HasViewServerPerformanceState=COALESCE(@HasViewServerPerformanceState,0)
+        , @HasViewDatabaseState=COALESCE(@HasViewDatabaseState,0)
+        , @HasViewDatabasePerformanceState=COALESCE(@HasViewDatabasePerformanceState,0);
+
     RAISERROR(N''PERMISSION_MATRIX step=insert_result'',10,1) WITH NOWAIT;
     INSERT [#PermissionMatrix]
     (
@@ -314,10 +326,10 @@ BEGIN
     VALUES
     (
           @ScenarioCode,N''' + REPLACE(@LoginName,N'''',N'''''') + N'''
-        , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N''VIEW SERVER STATE''),0))
-        , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N''VIEW SERVER PERFORMANCE STATE''),0))
-        , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE STATE''),0))
-        , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE PERFORMANCE STATE''),0))
+        , @HasViewServerState
+        , @HasViewServerPerformanceState
+        , @HasViewDatabaseState
+        , @HasViewDatabasePerformanceState
         , @SessionStatus,@SessionPartial
         , @CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
         , @QueryStoreRequiredRows,@QueryStoreGrantedRows
@@ -359,6 +371,8 @@ DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL;
 DECLARE @CapabilityPermission sysname=NULL,@CapabilityHasPermission bit=NULL,@CapabilityStatus varchar(40)=NULL;
 DECLARE @QueryStoreRequiredRows int=0,@QueryStoreGrantedRows int=0;
 DECLARE @PlanAllowed bit=NULL,@PlanReason varchar(20)=NULL;
+DECLARE @HasViewServerState bit=NULL,@HasViewServerPerformanceState bit=NULL;
+DECLARE @HasViewDatabaseState bit=NULL,@HasViewDatabasePerformanceState bit=NULL;
 
 EXEC [monitor].[USP_CurrentSessions]
       @AktuelleSessionEinbeziehen=1
@@ -424,14 +438,24 @@ SELECT @PlanAllowed=[IsAllowed],@PlanReason=[AccessReason]
 FROM [monitor].[VW_AnalyseAccessCurrent]
 WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
+SET @HasViewServerState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'));
+SET @HasViewServerPerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER PERFORMANCE STATE'));
+SET @HasViewDatabaseState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'));
+SET @HasViewDatabasePerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE PERFORMANCE STATE'));
+SELECT
+      @HasViewServerState=COALESCE(@HasViewServerState,0)
+    , @HasViewServerPerformanceState=COALESCE(@HasViewServerPerformanceState,0)
+    , @HasViewDatabaseState=COALESCE(@HasViewDatabaseState,0)
+    , @HasViewDatabasePerformanceState=COALESCE(@HasViewDatabasePerformanceState,0);
+
 INSERT [#PermissionMatrix]
 VALUES
 (
       'SYSADMIN','ExampleSysadminContext'
-    , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'),0))
-    , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER PERFORMANCE STATE'),0))
-    , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'),0))
-    , CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE PERFORMANCE STATE'),0))
+    , @HasViewServerState
+    , @HasViewServerPerformanceState
+    , @HasViewDatabaseState
+    , @HasViewDatabasePerformanceState
     , @SessionStatus,@SessionPartial,@CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
     , @QueryStoreRequiredRows,@QueryStoreGrantedRows,@PlanAllowed,@PlanReason
     , CONVERT(bit,1)
