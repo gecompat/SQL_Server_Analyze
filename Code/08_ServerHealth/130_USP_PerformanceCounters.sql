@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PerformanceCounters
-Version      : 1.0.2
+Version      : 1.0.3
 Stand        : 2026-07-18
 Zweck        : Typisiert SQL-Server-Performance-Counter als Snapshot, Rate,
                Fraction oder nicht automatisch interpretierbaren Rohwert.
@@ -68,7 +68,7 @@ BEGIN
         , [InstanceName] nvarchar(128) NOT NULL
         , [CounterValue] bigint NOT NULL
         , [CounterType] int NOT NULL
-        , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName])
+        , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName], [CounterType])
     );
 
     CREATE TABLE [#After]
@@ -78,7 +78,7 @@ BEGIN
         , [InstanceName] nvarchar(128) NOT NULL
         , [CounterValue] bigint NOT NULL
         , [CounterType] int NOT NULL
-        , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName])
+        , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName], [CounterType])
     );
 
     CREATE TABLE [#Result]
@@ -122,7 +122,7 @@ BEGIN
         FROM [sys].[dm_os_sys_info];
 
         INSERT [#Before]
-        SELECT RTRIM([object_name]), RTRIM([counter_name]), RTRIM([instance_name]), [cntr_value], [cntr_type]
+        SELECT DISTINCT RTRIM([object_name]), RTRIM([counter_name]), RTRIM([instance_name]), [cntr_value], [cntr_type]
         FROM [sys].[dm_os_performance_counters]
         WHERE
             (@ObjectNames IS NULL OR EXISTS
@@ -167,13 +167,14 @@ BEGIN
         SET @SampleEndUtc = SYSUTCDATETIME();
 
         INSERT [#After]
-        SELECT RTRIM([p].[object_name]), RTRIM([p].[counter_name]), RTRIM([p].[instance_name]),
+        SELECT DISTINCT RTRIM([p].[object_name]), RTRIM([p].[counter_name]), RTRIM([p].[instance_name]),
                [p].[cntr_value], [p].[cntr_type]
         FROM [sys].[dm_os_performance_counters] AS [p]
         JOIN [#Before] AS [b]
-          ON [b].[ObjectName] = [p].[object_name]
+         ON [b].[ObjectName] = [p].[object_name]
          AND [b].[CounterName] = [p].[counter_name]
-         AND [b].[InstanceName] = [p].[instance_name];
+         AND [b].[InstanceName] = [p].[instance_name]
+         AND [b].[CounterType] = [p].[cntr_type];
 
         INSERT [#Result]
         SELECT
@@ -254,9 +255,10 @@ BEGIN
               END
         FROM [#After] AS [a]
         JOIN [#Before] AS [b]
-          ON [b].[ObjectName] = [a].[ObjectName]
+         ON [b].[ObjectName] = [a].[ObjectName]
          AND [b].[CounterName] = [a].[CounterName]
          AND [b].[InstanceName] = [a].[InstanceName]
+         AND [b].[CounterType] = [a].[CounterType]
         LEFT JOIN [#Before] AS [baseBefore]
           ON [baseBefore].[ObjectName] = [a].[ObjectName]
          AND [baseBefore].[InstanceName] = [a].[InstanceName]
