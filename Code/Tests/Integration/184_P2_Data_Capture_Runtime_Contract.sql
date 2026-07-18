@@ -185,7 +185,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
         , ('CDC-SCAN-FAILURES',N'''CDC_SCAN_FAILURES_VISIBLE''',N'[sys].[dm_cdc_log_scan_sessions]')
         , ('CDC-ERRORS',N'''CDC_ERRORS_IN_LOOKBACK''',N'[sys].[dm_cdc_errors]')
         , ('CDC-CLEANUP-AGE',N'''CDC_OLDEST_AVAILABLE_EXCEEDS_RETENTION''',N'@CdcCleanupGraceMinutes')
-        , ('CDC-DROP-PENDING',N'[drop_pending]',N'[CaptureInstance]')
+        , ('CDC-DROP-PENDING',N'[has_drop_pending]',N'[CaptureInstance]')
         , ('REPL-LOCAL-PENDING',N'''REPLICATION_PENDING_COMMANDS_HIGH''',N'@ReplicationPendingCommandWarn')
         , ('REPL-AGENT-FAIL',N'''REPLICATION_AGENT_FAILED_OR_RETRYING''',N'[RunStatus] IN(5,6)')
         , ('REPL-INACTIVE-SUB',N'''REPLICATION_INACTIVE_SUBSCRIPTION_REVIEW''',N'[InactiveSubscriptionCount]')
