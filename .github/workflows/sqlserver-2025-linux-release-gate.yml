@@ -38,10 +38,12 @@ jobs:
           find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
             | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
           python - <<'PY'
+          import os
           from pathlib import Path
 
-          source = Path("${RUNNER_TEMP}/Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql")
-          target = Path("${RUNNER_TEMP}/Code/Tests/Permissions/110_SQL_Server_2025_Permission_Matrix.sql")
+          temp_root = Path(os.environ["RUNNER_TEMP"])
+          source = temp_root / "Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql"
+          target = temp_root / "Code/Tests/Permissions/110_SQL_Server_2025_Permission_Matrix.sql"
           text = source.read_text(encoding="utf-8")
           replacements = (
               ("ProductMajorVersion'))<>16", "ProductMajorVersion'))<>17"),
