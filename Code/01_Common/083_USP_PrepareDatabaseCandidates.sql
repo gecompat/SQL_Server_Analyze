@@ -184,7 +184,7 @@ BEGIN
 
         SET @Sql = N'DELETE [c]
 FROM [#DatabaseCandidates] AS [c]
-WHERE REGEXP_LIKE([c].[DatabaseName], @Pattern, @Flags) = 0;';
+WHERE NOT REGEXP_LIKE([c].[DatabaseName], @Pattern, @Flags);';
 
         EXEC [sys].[sp_executesql]
               @Sql

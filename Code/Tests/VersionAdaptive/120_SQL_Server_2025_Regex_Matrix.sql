@@ -27,13 +27,13 @@ GO
 RAISERROR(N'REGEX_MATRIX_2025 phase=engine',10,1) WITH NOWAIT;
 GO
 
-IF REGEXP_LIKE(N'Example42',N'^Example[0-9]+$')<>1
+IF NOT REGEXP_LIKE(N'Example42',N'^Example[0-9]+$')
     THROW 54402,N'REGEXP_LIKE erkannte den synthetischen Basistreffer nicht.',1;
 
-IF REGEXP_LIKE(N'example42',N'^Example[0-9]+$')<>0
+IF REGEXP_LIKE(N'example42',N'^Example[0-9]+$')
     THROW 54403,N'REGEXP_LIKE verletzte die erwartete Groß-/Kleinschreibung.',1;
 
-IF REGEXP_LIKE(N'example42',N'^Example[0-9]+$',N'i')<>1
+IF NOT REGEXP_LIKE(N'example42',N'^Example[0-9]+$',N'i')
     THROW 54404,N'REGEXP_LIKE mit i-Flag erkannte den synthetischen Treffer nicht.',1;
 GO
 
@@ -168,7 +168,7 @@ GO
 IF COALESCE((SELECT [compatibility_level] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID()),0)<>170
     THROW 54412,N'Der Compatibility Level wurde nach der negativen Gate-Prüfung nicht auf 170 zurückgestellt.',1;
 
-IF REGEXP_LIKE(N'Example2025',N'^Example[0-9]+$')<>1
+IF NOT REGEXP_LIKE(N'Example2025',N'^Example[0-9]+$')
     THROW 54413,N'REGEXP_LIKE war nach Wiederherstellung von Compatibility Level 170 nicht verfügbar.',1;
 GO
 
