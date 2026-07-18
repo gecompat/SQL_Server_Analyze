@@ -1,9 +1,0 @@
-{
-  "conclusion": "failure",
-  "databaseId": 29647102808,
-  "headSha": "e771c58d656eee0fa7ddbc4d8c446126cbf39e42",
-  "status": "completed",
-  "errors": [
-    "apply\tNormalize all verified anchors and execute patch\t2026-07-18T13:57:17.3375742Z Unexpected procedure replacement anchor:                 , CASE WHEN [drs].[is_suspended] = 1 THEN 'DATA_MOVEMENT_SUSPEND"
-  ]
-}

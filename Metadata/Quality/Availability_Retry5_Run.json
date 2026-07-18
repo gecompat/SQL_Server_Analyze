@@ -1,9 +1,0 @@
-{
-  "conclusion": "failure",
-  "databaseId": 29647058250,
-  "headSha": "e6e0b9d2e351ec4d702834b33e710f3a39f985e8",
-  "status": "completed",
-  "errors": [
-    "apply\tNormalize verified anchors and execute patch\t2026-07-18T13:55:49.2186550Z Unexpected procedure replacement anchor:             INSERT [#Seeding]"
-  ]
-}
