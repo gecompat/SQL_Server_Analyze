@@ -147,8 +147,10 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql >"$release_log" 2>&1; then
             echo 'Release gate failed.'
             {
+              echo 'Suite and error summary:'
+              grep -E 'RELEASE_GATE|Msg [0-9]+|Sqlcmd: Error|Error:|FAIL|THROW' "$release_log" | tail -n 220 || true
               echo 'Final release-gate output:'
-              tail -n 260 "$release_log"
+              tail -n 100 "$release_log"
             } >"$error_summary"
             cat "$error_summary"
             exit 1
