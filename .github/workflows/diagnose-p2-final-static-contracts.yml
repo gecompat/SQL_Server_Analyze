@@ -1,0 +1,115 @@
+name: Diagnose final P2 static contracts
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/diagnose-p2-final-static-contracts.yml'
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Compare generic contract tokens
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          from pathlib import Path
+          modules={
+            'fulltext':(
+              Path('Code/09_VersionAdaptive/060_USP_FullTextAnalysis.sql').read_text(encoding='utf-8'),
+              {
+                'FULLTEXT-COMPONENT-MISSING':("'FULLTEXT_COMPONENT_UNAVAILABLE_WITH_OBJECTS'",'IsFullTextInstalled'),
+                'FULLTEXT-POPULATION-ACTIVE':('[sys].[dm_fts_index_population]','[StatusDescription]'),
+                'FULLTEXT-POPULATION-LONG':("'FULLTEXT_LONG_RUNNING_POPULATION'",'@PopulationAgeWarnMinutes'),
+                'FULLTEXT-POPULATION-ABORTED':("'FULLTEXT_POPULATION_ABORTED'",'[Status]=11'),
+                'FULLTEXT-BATCH-RETRY':("'FULLTEXT_RETRY_BATCH_CONTEXT'",'[sys].[dm_fts_outstanding_batches]'),
+                'FULLTEXT-DOCUMENT-FAILURES':("'FULLTEXT_DOCUMENT_FAILURES_REPORTED'",'[FailedDocumentCount]'),
+                'FULLTEXT-FRAGMENTS':("'FULLTEXT_FRAGMENTATION_HEURISTIC'",'[sys].[fulltext_index_fragments]'),
+                'FULLTEXT-SEMANTIC':('[sys].[dm_fts_semantic_similarity_population]','[semanticPopulations]'),
+                'FULLTEXT-MEMORY-FDHOST':('[sys].[dm_fts_memory_pools]','[sys].[dm_fts_fdhosts]'),
+                'FULLTEXT-DENIED':("'FULLTEXT_EVIDENCE_GAP'","'AVAILABLE_LIMITED'"),
+              }
+            ),
+            'datacapture':(
+              Path('Code/09_VersionAdaptive/070_USP_DataCaptureDeepAnalysis.sql').read_text(encoding='utf-8'),
+              {
+                'CT-WATERMARK-LOST':("'CT_CLIENT_REINITIALIZATION_REQUIRED'",'CHANGE_TRACKING_MIN_VALID_VERSION'),
+                'CDC-CATALOG-ONLY':('[cdc].[change_tables]','[IsCdcEnabled]'),
+                'CDC-JOB-MISSING':("'CDC_CAPTURE_JOB_MISSING_OR_DISABLED'","'CDC_CLEANUP_JOB_MISSING_OR_DISABLED'"),
+                'CDC-SCHEDULED-LATENCY':("'CDC_SCHEDULED_CAPTURE_LATENCY_CONTEXT'",'[IsContinuous]'),
+                'CDC-CONTINUOUS-LATENCY':("'CDC_CAPTURE_LATENCY_HIGH'",'@CdcLatencyWarnSeconds'),
+                'CDC-SCAN-FAILURES':("'CDC_SCAN_FAILURES_VISIBLE'",'[sys].[dm_cdc_log_scan_sessions]'),
+                'CDC-ERRORS':("'CDC_ERRORS_IN_LOOKBACK'",'[sys].[dm_cdc_errors]'),
+                'CDC-CLEANUP-AGE':("'CDC_OLDEST_AVAILABLE_EXCEEDS_RETENTION'",'@CdcCleanupGraceMinutes'),
+                'CDC-DROP-PENDING':('[drop_pending]','[CaptureInstance]'),
+                'REPL-LOCAL-PENDING':("'REPLICATION_PENDING_COMMANDS_HIGH'",'@ReplicationPendingCommandWarn'),
+                'REPL-AGENT-FAIL':("'REPLICATION_AGENT_FAILED_OR_RETRYING'",'[RunStatus] IN(5,6)'),
+                'REPL-INACTIVE-SUB':("'REPLICATION_INACTIVE_SUBSCRIPTION_REVIEW'",'[InactiveSubscriptionCount]'),
+                'REPL-MERGE-CONFLICT':("'MERGE_CONFLICT_OR_RETRY_VISIBLE'",'[ConflictCount]'),
+                'REPL-MULTI-DISTRIBUTION-DB':('[DistributionDatabase]','[MSdistribution_agents]'),
+                'REPL-REMOTE-GAP':("'REPLICATION_TOPOLOGY_NOT_LOCALLY_OBSERVABLE'","'REPLICATION_EVIDENCE_GAP'"),
+                'DATACAPTURE-DENIED':("'DATA_CAPTURE_EVIDENCE_GAP'","'AVAILABLE_LIMITED'"),
+              }
+            ),
+            'encryption':(
+              Path('Code/09_VersionAdaptive/080_USP_EncryptionAnalysis.sql').read_text(encoding='utf-8'),
+              {
+                'ENC-TRANSITION':("'TDE_TRANSITION_LONG_RUNNING'",'[encryption_state]'),
+                'ENC-SUSPENDED':("'TDE_SCAN_SUSPENDED'",'[encryption_scan_state]'),
+                'ENC-CERT-WINDOW':("'TDE_CERTIFICATE_EXPIRY_WINDOW'",'@CertificateExpiryWarnDays'),
+                'ENC-EXPORT-EVIDENCE':("'LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING'",'@CertificateExportEvidenceDate'),
+                'ENC-AE-AGGREGATE':('[ColumnMasterKeyCount]','[ColumnEncryptionKeyCount]'),
+                'ENC-DENIED':("'ENCRYPTION_EVIDENCE_GAP'","'AVAILABLE_LIMITED'"),
+              }
+            ),
+            'maintenance':(
+              Path('Code/07_Infrastructure/130_USP_MaintenanceOperations.sql').read_text(encoding='utf-8'),
+              {
+                'MAINT-PAUSED':("'RESUMABLE_OPERATION_PAUSED_LONG'",'[sys].[index_resumable_operations]'),
+                'MAINT-BLOCKED':("'MAINTENANCE_REQUEST_BLOCKED'",'[sys].[dm_exec_requests]'),
+                'MAINT-JOB-OVERLAP':("'SELECTED_JOBS_OVERLAP'",'[msdb].[dbo].[sysjobactivity]'),
+                'MAINT-DENIED':("'MAINTENANCE_EVIDENCE_GAP'","'AVAILABLE_LIMITED'"),
+              }
+            ),
+          }
+          missing=[]
+          for _,(text,cases) in modules.items():
+              for case,tokens in cases.items():
+                  if any(token not in text for token in tokens):
+                      missing.append(case)
+          print('missing='+(','.join(missing) if missing else 'NONE'))
+          PY
+      - name: Publish generic diagnostic
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MISSING: ${{ steps.compare.outputs.missing }}
+        run: |
+          set -euo pipefail
+          slug=$(printf '%s' "$MISSING" | tr ',' '-' | tr '[:upper:]' '[:lower:]' | cut -c1-180)
+          state='success'; if [ "$MISSING" != 'NONE' ]; then state='failure'; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" -f description='Final P2 static token comparison' \
+            -f context="p2-final-static/${slug}" >/dev/null
+      - name: Remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/diagnose-p2-final-static-contracts.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows/diagnose-p2-final-static-contracts.yml
+          git commit -m 'chore: remove final P2 static diagnostic helper'
+          git push origin HEAD:main
