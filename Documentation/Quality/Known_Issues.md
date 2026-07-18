@@ -2,11 +2,12 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `08b2d9d8c7adbadbf0996058d6bbb35b08c96ad8` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `ee244f05b4e299a9274f94b68f326a1b23ba981f` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt den synthetischen Linux-Leerdatenbank-, Installer-, 13-Suite- und Berechtigungsscope ab; verbleibende `NOT_EXECUTED`-Zeilen sind Planungs- oder manuelle Positivfälle und kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
 - Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
+- Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 

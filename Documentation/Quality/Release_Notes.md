@@ -173,7 +173,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Commit `08b2d9d8c7adbadbf0996058d6bbb35b08c96ad8` des Stands `1.1.0-special.9` hat die commitbezogenen Actions-Läufe für SQL Server 2019, 2022 und 2025 einschließlich der eigenständigen SQL-Server-2025-Regex-Matrix erfolgreich abgeschlossen. Die Freigabe gilt mit Einschränkungen für den synthetischen Linux-Leerdatenbank-Scope; manuelle Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- und externe Fälle bleiben gesondert.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Commit `ee244f05b4e299a9274f94b68f326a1b23ba981f` des Stands `1.1.0-special.9` hat die commitbezogenen Actions-Läufe für SQL Server 2019, 2022 und 2025 einschließlich der eigenständigen SQL-Server-2025-Regex-Matrix erfolgreich abgeschlossen. Die Freigabe gilt mit Einschränkungen für den synthetischen Linux-Leerdatenbank-Scope; manuelle Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- und externe Fälle bleiben gesondert.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

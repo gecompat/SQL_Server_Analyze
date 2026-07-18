@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `08b2d9d8c7adbadbf0996058d6bbb35b08c96ad8` hat Installer, den 13-Suite-Release-Gate-Vertrag und die synthetische Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `ee244f05b4e299a9274f94b68f326a1b23ba981f` hat Installer, den 13-Suite-Release-Gate-Vertrag und die synthetische Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29633874702](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874702) | `PASS_WITH_LIMITATIONS` |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29633874699](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874699) | `PASS_WITH_LIMITATIONS` |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29633874737](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874737) | `PASS_WITH_LIMITATIONS`; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29634602383](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602383) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29634602384](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602384) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29634602395](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602395) | `PASS_WITH_LIMITATIONS`; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 
@@ -33,7 +33,7 @@ Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diese
 | SQL Server 2022 | `mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89` |
 | SQL Server 2025 | `mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874696) ist für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; die Regex-Matrix ist als eigene Suitezeile in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für den synthetischen Linux-Leerdatenbank-Scope. Sie ist kein Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634602394) ist für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; die Regex-Matrix ist als eigene Suitezeile in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für den synthetischen Linux-Leerdatenbank-Scope. Sie ist kein Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
 
 ## Datenschutz
 
