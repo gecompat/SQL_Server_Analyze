@@ -30,6 +30,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - `monitor.USP_EncryptionAnalysis` trennt TDE von expliziter Backupverschlüsselung und liest keine Schlüssel-, Medien-, Konto- oder geschützten Inhaltsdaten; externe Schlüsselkopie und Restore bleiben außerhalb des Beweisumfangs.
 - `monitor.USP_MaintenanceOperations` liest Jobaktivität nur bei explizitem Filter und führt keine Resume-, Abort-, Kill-, Cleanup- oder Jobaktion aus; SQL-/Jobinhalte und Identitäts-/Clientdaten bleiben ausgeschlossen.
 - Actions führen Installer, 20-Suite-Gate einschließlich der ersten achtundzwanzig P1-Fälle bis Statistikverteilung und synthetische Berechtigungsmatrix versionshart auf SQL Server 2019, 2022 und 2025 aus.
+- Maßgeblicher sauberer Runtime-Evidenzcommit für die Statistikverteilung ist `f4bf1d4333e7f4a38814dea72a0799ca1d949364`; die drei Versionsläufe sind in der Testmatrix commitbezogen verknüpft.
 
 ## Datenschutz und Portabilität
 
