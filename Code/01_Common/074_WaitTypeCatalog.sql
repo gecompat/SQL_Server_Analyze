@@ -4,13 +4,13 @@ GO
 /*
 ===============================================================================
 Objekt       : [monitor].[WaitTypeCatalog]
-Version      : 2.0.0
-Stand        : 2026-07-14
-Zweck        : Persistenter, erweiterbarer Wait-Katalog. Wait Types aus einem normalisierten Referenzkatalog werden als fachliche Analyseergebnisse übernommen;
-               kuratierte Frameworktexte überschreiben importierte Texte.
-Hinweis      : IMPORTED_REVIEW_REQUIRED kennzeichnet noch fachlich zu prüfende
-               Beschreibungen. SQLskills-Inhalte werden nicht kopiert, sondern
-               ausschließlich als HelpUrl verlinkt.
+Version      : 2.1.0
+Stand        : 2026-07-18
+Zweck        : Persistenter, erweiterbarer Wait-Katalog mit gegen die Microsoft-Primärreferenz
+               geprüftem Framework-Seed.
+Hinweis      : FRAMEWORK_CURATED kennzeichnet die belegte Namens- und Textprüfung.
+               SQLskills-Inhalte werden nicht kopiert, sondern ausschließlich als
+               optionale HelpUrl verlinkt.
 ===============================================================================
 */
 IF OBJECT_ID(N'[monitor].[WaitTypeCatalog]',N'U') IS NULL

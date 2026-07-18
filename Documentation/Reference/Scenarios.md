@@ -16,7 +16,7 @@ Waits immer als Wegweiser interpretieren. `LOCKING` führt zur Blocking-/Transak
 - `INSTANCE_CUMULATIVE` ist nur Langzeitkontext.
 - `MEASUREMENT_RESET`: Sample verwerfen und erneut messen.
 - `IsGenerallyBenign=1`: standardmäßig nicht als Problem priorisieren.
-- `DescriptionQuality=IMPORTED_REVIEW_REQUIRED`: Beschreibung als Arbeitsbasis verstehen und Detailreferenz prüfen.
+- `DescriptionQuality=FRAMEWORK_CURATED`: Name und Frameworkbeschreibung wurden gegen die dokumentierte Primärquelle geprüft; konkrete hohe Deltas bleiben dennoch im Versions- und Workload-Kontext zu bewerten.
 
 ## TempDB
 
