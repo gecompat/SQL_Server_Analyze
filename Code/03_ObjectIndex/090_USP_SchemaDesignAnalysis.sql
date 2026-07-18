@@ -209,7 +209,7 @@ WHERE [i].[index_id] > 0 AND ([i].[is_hypothetical] = 1 OR [i].[is_disabled] = 1
 
 INSERT [#Findings]
 SELECT @DatabaseId, @DatabaseName, ''EXACT_INDEX_DEFINITION_DUPLICATE'', ''MEDIUM'',
-       N''INDEX'', [s].[name], [t].[name], [i1].[name], [i2].[name], NULL,
+       N''INDEX'', [s].[name], [t].[name], CONCAT([i1].[name], N'' | '', [i2].[name]), NULL,
        N''Schlüssel-/Include-Spalten, Sortierung, Eindeutigkeit und Filterdefinition sind katalogseitig gleich.'',
        N''Nutzung, Abhängigkeiten, Constraints, Kompression und betriebliche Anforderungen vor einer Änderung prüfen.''
 FROM [sys].[indexes] AS [i1]
