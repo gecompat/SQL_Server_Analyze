@@ -15,6 +15,10 @@ SET XACT_ABORT ON;
 DECLARE @ExecutedCases TABLE([CaseId] varchar(64) NOT NULL PRIMARY KEY);
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@Definition nvarchar(max);
 DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);
+DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE
+    WHEN @IsInstalled=1
+     AND COALESCE(CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N'')<>N'Linux'
+    THEN 1 ELSE 0 END);
 
 SELECT @Definition=[sm].[definition]
 FROM [sys].[sql_modules] [sm] WITH (NOLOCK)
@@ -43,7 +47,7 @@ BEGIN TRY
         THROW 55701,N'P2-Vertrag FULLTEXT-NONE fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('FULLTEXT-NONE');
 
-    IF @IsInstalled=1
+    IF @CanCreateFixtures=1
     BEGIN
         CREATE TABLE [dbo].[ExampleFullTextA]
         (
@@ -154,7 +158,7 @@ BEGIN TRY
         THROW 55706,N'P2-Vertrag FULLTEXT-PRIVACY-READONLY fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('FULLTEXT-PRIVACY-READONLY');
 
-    IF @IsInstalled=1
+    IF @CanCreateFixtures=1
     BEGIN
         IF EXISTS(SELECT 1 FROM [sys].[fulltext_indexes] WITH (NOLOCK) WHERE [object_id]=(SELECT TOP(1) [object_id] FROM [sys].[tables] WITH (NOLOCK) WHERE [name]=N'ExampleFullTextA'))
             DROP FULLTEXT INDEX ON [dbo].[ExampleFullTextA];
