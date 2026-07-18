@@ -1,6 +1,9 @@
 name: Temporary fix XE 2019 compatibility
 
 on:
+  push:
+    branches:
+      - agent/sqlserver-2019-linux-release-gate
   pull_request:
 
 permissions:
