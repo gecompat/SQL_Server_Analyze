@@ -2,14 +2,14 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `e26f246e7b9e21b2d882ac69feaa32fb3f5f36c9` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 16 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 17 P0-, die ersten vier P1-IQP- und vier P1-Contention-Fälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `d9d7c5bb4ffb5b9b408c1781718364d5c7ac89a8` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 17 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 17 P0-, die ersten vier P1-IQP-, vier P1-Contention- und vier P1-Speicherfälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
 - Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
-- Die vier ersten P1-IQP-Fälle sind automatisiert und commitbezogen nachgewiesen; die weitere P1-Reihenfolge beginnt mit interner Contention.
+- Die vier ersten P1-IQP-Fälle sind automatisiert und commitbezogen nachgewiesen.
 - Die vier P1-Contention-Fälle sind als sechzehnte Suite nachgewiesen. Der Page-Detail-Fall erzwingt keinen künstlichen realen PAGELATCH-Wait, sondern prüft den opt-in- und Zeilengrenzenvertrag; diese Einschränkung bleibt ausdrücklich erhalten.
-- Die vier P1-Speicherfälle sind als siebzehnte Suite automatisiert, bleiben aber bis zu grünen commitbezogenen SQL-Server-2019-/2022-/2025-Gates `NOT_EXECUTED`. Speicherdruck und Resource-Semaphore-Waiter werden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz.
+- Die vier P1-Speicherfälle sind als siebzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Speicherdruck und Resource-Semaphore-Waiter wurden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz und bleibt deshalb `PASS_WITH_LIMITATIONS`. Als nächste Gruppe folgen die vier Backupkettenfälle.
 - Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:

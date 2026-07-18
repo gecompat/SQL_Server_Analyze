@@ -24,10 +24,10 @@ CONT-DELTA,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Positive sam
 CONT-CUM,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,SampleSeconds zero,Cumulative-since-start label is present,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804
 CONT-RESET,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Counter reset during sample,Reset flag and null invalid delta,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804
 CONT-PAGE,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Current page latch wait,Page detail remains opt-in and bounded,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804
-MEM-BASE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Lightweight default,Buffer descriptor scan is not executed,LOW,NOT_EXECUTED,
-MEM-PRESSURE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Process low-memory flag,High finding uses current evidence only,LOW,NOT_EXECUTED,
-MEM-GRANT,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Resource semaphore waiters,Waiter count is preserved without causal claim,LOW,NOT_EXECUTED,
-MEM-BUFFER,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Buffer distribution explicitly enabled,Aggregation is database-bounded and marked opt-in,HIGH,NOT_EXECUTED,
+MEM-BASE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Lightweight default,Buffer descriptor scan is not executed,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765
+MEM-PRESSURE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Process low-memory flag,High finding uses current evidence only,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765
+MEM-GRANT,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Resource semaphore waiters,Captured counters are complete and nonnegative without causal claim,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765
+MEM-BUFFER,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Buffer distribution explicitly enabled,Aggregation is database-bounded and marked opt-in,HIGH,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765
 BKP-FULL,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,No visible non-copy-only full,Missing full evidence does not claim media absence,MEDIUM,NOT_EXECUTED,
 BKP-DIFF,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Differential base mismatch,Only matching differential is selected,MEDIUM,NOT_EXECUTED,
 BKP-LOG,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Visible log LSN gap,Gap limited to visible history window,MEDIUM,NOT_EXECUTED,
