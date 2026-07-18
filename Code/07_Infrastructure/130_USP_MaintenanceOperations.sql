@@ -149,7 +149,7 @@ BEGIN
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
     END;
 
-    EXEC(N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N';');
+    SET LOCK_TIMEOUT 0;
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -163,7 +163,7 @@ BEGIN
             WHILE @@FETCH_STATUS=0
             BEGIN
                 BEGIN TRY
-                    SET @Sql=N'INSERT [#Resumable] '
+                    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; INSERT [#Resumable] '
                         +N'([DatabaseId],[DatabaseName],[SchemaName],[ObjectName],[IndexName],[PartitionNumber],[StateDesc],'
                         +N'[StartTime],[LastPauseTime],[TotalExecutionTimeMinutes],[PercentComplete],[PageCount],'
                         +N'[FindingCode],[FindingSeverity],[EvidenceLimit]) '
@@ -251,7 +251,7 @@ BEGIN
         IF @Major>=16
         BEGIN
           BEGIN TRY
-            SET @Sql=N'UPDATE [p] SET '
+            SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; UPDATE [p] SET '
                 +N'[PvsSizeMb]=CONVERT(decimal(19,2),[s].[persistent_version_store_size_kb]/1024.0),'
                 +N'[OnlineIndexPvsSizeMb]=CONVERT(decimal(19,2),[s].[online_index_version_store_size_kb]/1024.0),'
                 +N'[CurrentAbortedTransactionCount]=[s].[current_aborted_transaction_count] '
