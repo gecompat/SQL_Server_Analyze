@@ -89,6 +89,8 @@ jobs:
           mkdir -p "$RUNNER_TEMP/p2-final/files"
           git rev-parse HEAD > "$RUNNER_TEMP/p2-final/base-commit.txt"
           git diff --name-only --diff-filter=ACMRT HEAD > "$RUNNER_TEMP/p2-final/changed-files.txt"
+          git ls-files --others --exclude-standard >> "$RUNNER_TEMP/p2-final/changed-files.txt"
+          sort -u -o "$RUNNER_TEMP/p2-final/changed-files.txt" "$RUNNER_TEMP/p2-final/changed-files.txt"
           git diff --name-only --diff-filter=D HEAD > "$RUNNER_TEMP/p2-final/deleted-files.txt"
           while IFS= read -r path; do
             [ -z "$path" ] && continue
