@@ -52,7 +52,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
 Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
-Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. Der Release-Gate-Vertrag umfasst nun 19 Suiten; P0, P1-IQP, P1-Contention, P1-Speicher und P1-Backupketten besitzen commitbezogene Drei-Versionen-Evidenz. Der neue P1-Schemavertrag mit garantierter Fixture-Bereinigung wartet auf commitbezogene Actions.
+Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. Der Release-Gate-Vertrag umfasst nun 19 Suiten; P0 und die ersten zwanzig P1-Fälle bis Schema-/Designkorrektheit besitzen commitbezogene Drei-Versionen-Evidenz. Als nächste P1-Gruppe folgt die begrenzte Statistikverteilung.
 
 ## Forschungs- und Inventareinstieg
 

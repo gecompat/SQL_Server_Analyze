@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `f3d9c014adb3227ab39e21e16052dca7285a6a87` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 18 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 17 P0-, die ersten vier P1-IQP-, vier P1-Contention-, vier P1-Speicher- und vier P1-Backupkettenfälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `c405946d7806472f42cfc38430d5ada33620780c` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 19 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 17 P0- und die ersten zwanzig P1-Fälle bis Schema-/Designkorrektheit auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
@@ -11,7 +11,7 @@ Verbleibende Repository- und Evidenzpunkte:
 - Die vier P1-Contention-Fälle sind als sechzehnte Suite nachgewiesen. Der Page-Detail-Fall erzwingt keinen künstlichen realen PAGELATCH-Wait, sondern prüft den opt-in- und Zeilengrenzenvertrag; diese Einschränkung bleibt ausdrücklich erhalten.
 - Die vier P1-Speicherfälle sind als siebzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Speicherdruck und Resource-Semaphore-Waiter wurden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz und bleibt deshalb `PASS_WITH_LIMITATIONS`.
 - Die vier P1-Backupkettenfälle sind als achtzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Die Suite verwendet ausschließlich die synthetische Testdatenbank, eine generisch benannte Datei im Default-Backupverzeichnis des disposable Targets und kurzlebige `msdb`-Historie; weil sie bewusst keinen Restore ausführt, bleibt sie `PASS_WITH_LIMITATIONS`. Als nächste Gruppe folgen die vier Schema-/Designfälle.
-- Die vier P1-Schema-/Designfälle sind als neunzehnte Suite automatisiert, bleiben aber bis zu grünen commitbezogenen SQL-Server-2019-/2022-/2025-Gates `NOT_EXECUTED`. Alle generischen Constraint-, FK-, Index- und Identity-Fixtures werden im Erfolgs- und Fehlerpfad ausdrücklich entfernt.
+- Die vier P1-Schema-/Designfälle sind als neunzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Alle generischen Constraint-, FK-, Index- und Identity-Fixtures werden im Erfolgs- und Fehlerpfad ausdrücklich entfernt; Befunde bleiben Prüfaufträge ohne automatische DDL. Als nächste Gruppe folgt die Statistikverteilung.
 - Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
