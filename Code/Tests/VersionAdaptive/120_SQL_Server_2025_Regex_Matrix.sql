@@ -33,7 +33,7 @@ IF NOT REGEXP_LIKE(N'Example42',N'^Example[0-9]+$')
 IF REGEXP_LIKE(N'example42',N'^Example[0-9]+$')
     THROW 54403,N'REGEXP_LIKE verletzte die erwartete Groß-/Kleinschreibung.',1;
 
-IF NOT REGEXP_LIKE(N'example42',N'^Example[0-9]+$',N'i')
+IF NOT REGEXP_LIKE(N'example42',N'^Example[0-9]+$','i')
     THROW 54404,N'REGEXP_LIKE mit i-Flag erkannte den synthetischen Treffer nicht.',1;
 GO
 
