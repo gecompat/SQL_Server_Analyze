@@ -57,6 +57,20 @@ jobs:
                   raise SystemExit('unexpected P2 finalizer cleanup anchor')
               text = text.replace(old, new, 1)
           workflow.write_text(text, encoding='utf-8', newline='\n')
+
+          documentation_readme = Path('Documentation/README.md')
+          text = documentation_readme.read_text(encoding='utf-8')
+          old = ('Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. '
+                 'Der Release-Gate-Vertrag umfasst nun 19 Suiten; P0 und die ersten zwanzig P1-Fälle bis '
+                 'Schema-/Designkorrektheit besitzen commitbezogene Drei-Versionen-Evidenz. Als nächste '
+                 'P1-Gruppe folgt die begrenzte Statistikverteilung.')
+          normalized = ('Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. '
+                        'Der Release-Gate-Vertrag umfasst nun 19 Suiten; P0 und die ersten zwanzig P1-Fälle besitzen '
+                        'commitbezogene Drei-Versionen-Evidenz. Weitere Feature-Positiv-, Grenzwert-, Last- und '
+                        'externe Restorefälle bleiben separate Nachweise.')
+          if text.count(old) != 1:
+              raise SystemExit('unexpected Documentation README status paragraph')
+          documentation_readme.write_text(text.replace(old, normalized, 1), encoding='utf-8', newline='\n')
           PY
 
       - name: Read clean SQL runtime evidence
