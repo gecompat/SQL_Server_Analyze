@@ -124,7 +124,7 @@ INSERT @ExecutedCases VALUES('CAP-PERCENT');
 
 /* CAP-MAX */
 SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
-    +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=64MB, MAXSIZE='
+    +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=1MB, MAXSIZE='
     +CONVERT(nvarchar(30),@CurrentSizeMb)+N'MB);';
 EXEC [sys].[sp_executesql] @Sql;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;

@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_DatabaseIntegrityAnalysis
-Version      : 1.0.1
-Stand        : 2026-07-17
+Version      : 1.0.2
+Stand        : 2026-07-18
 Zweck        : Korrelierte, rein lesende Integritätsevidenz je Datenbank.
 Datenquellen : master.sys.databases, DATABASEPROPERTYEX,
                msdb.dbo.suspect_pages, msdb.dbo.backupset,
@@ -63,6 +63,12 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @MonitorPrintMessage nvarchar(2048) = NULL;
     DECLARE @CrossDatabaseRequested bit = 0;
+    DECLARE @RequiredServerPermission sysname =
+        CASE WHEN TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) >= 16
+             THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
+    DECLARE @HasRequiredServerPermission bit =
+        CASE WHEN IS_SRVROLEMEMBER(N'sysadmin') = 1 THEN 1
+             ELSE COALESCE(HAS_PERMS_BY_NAME(NULL, N'SERVER', @RequiredServerPermission), 0) END;
 
     CREATE TABLE [#DatabaseCandidates]
     (
@@ -147,6 +153,14 @@ BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER',
                @IsPartial = 1,
                @ErrorMessage = N'Ungültige Datenbank-, Zeit-, Zeilen- oder Ausgabeparameter.';
+    END;
+
+    IF @StatusCode = 'AVAILABLE'
+       AND @HasRequiredServerPermission = 0
+    BEGIN
+        SELECT @IsPartial = 1,
+               @ErrorMessage = CONCAT(N'Für vollständige serverweite Integritätsevidenz fehlt ',
+                                      @RequiredServerPermission, N'.');
     END;
 
     IF @StatusCode = 'AVAILABLE'
