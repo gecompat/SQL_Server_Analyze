@@ -16,10 +16,10 @@ EV-NOTARGET,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,system_health eve
 EV-SEVERE,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,Critical event in bounded window,Event code and UTC time returned within limit,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
 EV-DIAG,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,One-shot server diagnostics enabled,No repeat loop and no server change,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
 EV-XML,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,Event XML disabled,No XML payload transferred,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
-IQP-2019,USP_IntelligentQueryProcessingAnalysis,15,NONE,DATABASE_DIAGNOSTIC,SQL Server 2019,SQL 2022 catalog names never enter compiled batch,LOW,NOT_EXECUTED,
-IQP-PSP,USP_IntelligentQueryProcessingAnalysis,16,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 160,PSP eligibility and aggregate variant count only,MEDIUM,NOT_EXECUTED,
-IQP-OPPO,USP_IntelligentQueryProcessingAnalysis,17,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 170,OPPO eligibility without defect inference,MEDIUM,NOT_EXECUTED,
-IQP-QSOFF,USP_IntelligentQueryProcessingAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Query Store off,QUERY_STORE_OFF with explicit limitation,LOW,NOT_EXECUTED,
+IQP-2019,USP_IntelligentQueryProcessingAnalysis,15,NONE,DATABASE_DIAGNOSTIC,SQL Server 2019,SQL 2022 catalog names never enter compiled batch,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716
+IQP-PSP,USP_IntelligentQueryProcessingAnalysis,16,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 160,PSP eligibility and aggregate variant count only,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052706
+IQP-OPPO,USP_IntelligentQueryProcessingAnalysis,17,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 170,OPPO eligibility without defect inference,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726
+IQP-QSOFF,USP_IntelligentQueryProcessingAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Query Store off,QUERY_STORE_OFF with explicit limitation,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716
 CONT-DELTA,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Positive sample interval,Only interval deltas and rates returned,MEDIUM,NOT_EXECUTED,
 CONT-CUM,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,SampleSeconds zero,Cumulative-since-start label is present,LOW,NOT_EXECUTED,
 CONT-RESET,USP_InternalContentionAnalysis,15,NONE,SERVER_DIAGNOSTIC,Counter reset during sample,Reset flag and null invalid delta,MEDIUM,NOT_EXECUTED,

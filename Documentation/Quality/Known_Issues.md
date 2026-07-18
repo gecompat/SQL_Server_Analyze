@@ -2,12 +2,12 @@
 
 Stand: 2026-07-18
 
-Die Version `1.1.0-special.9` besitzt für Commit `7e3ba1a4e2fa79761c2daf24bee23dd73feed297` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 14 Suiten, die versionsspezifischen Berechtigungsmatrizen und alle 17 P0-Fälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
+Die Version `1.1.0-special.9` besitzt für Commit `0efeb1877ffa6b31fc8deb714ac7659b40db7cd6` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 15 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 17 P0- und die ersten vier P1-IQP-Fälle auf disposable synthetischen Linux-Zielen ab; verbleibende `NOT_EXECUTED`-Zeilen sind kein Testergebnis.
 
 Verbleibende Repository- und Evidenzpunkte:
 
 - Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
-- Die vier ersten P1-IQP-Fälle sind automatisiert, aber bis zu grünen commitbezogenen SQL-Server-2019-/2022-/2025-Gates noch nicht als ausgeführt dokumentiert.
+- Die vier ersten P1-IQP-Fälle sind automatisiert und commitbezogen nachgewiesen; die weitere P1-Reihenfolge beginnt mit interner Contention.
 - Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
