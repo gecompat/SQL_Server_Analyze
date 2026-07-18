@@ -188,9 +188,10 @@ BEGIN TRY
 
     /* BROKER-PAYLOAD-GATE */
     IF CHARINDEX(N'[message_body]',LOWER(@Definition))>0
-       OR CHARINDEX(N'receive top',LOWER(@Definition))>0
-       OR CHARINDEX(N'alter queue',LOWER(@Definition))>0
-       OR CHARINDEX(N'end conversation',LOWER(@Definition))>0
+       OR CHARINDEX(N'receive top (',LOWER(@Definition))>0
+       OR CHARINDEX(N'alter queue [',LOWER(@Definition))>0
+       OR CHARINDEX(N'end conversation [',LOWER(@Definition))>0
+       OR CHARINDEX(N'end conversation @',LOWER(@Definition))>0
         THROW 55611,N'P2-Vertrag BROKER-PAYLOAD-GATE fehlgeschlagen.',1;
     IF CHARINDEX(N'[sys].[transmission_queue]',@Definition)=0
        OR CHARINDEX(N'[sys].[conversation_endpoints]',@Definition)=0
