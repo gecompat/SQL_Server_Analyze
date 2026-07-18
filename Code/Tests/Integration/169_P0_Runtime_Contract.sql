@@ -160,13 +160,19 @@ INSERT @ExecutedCases VALUES('CAP-GROWTH');
 EXEC [sys].[sp_executesql] @RestoreSql;
 
 /* PC-SNAPSHOT: Delta-Counter erhalten ohne Sample niemals eine erfundene Rate. */
-SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL;
 EXEC [monitor].[USP_PerformanceCounters]
      @SampleSeconds=0,@MaxZeilen=10000,@ResultSetArt='NONE',@JsonErzeugen=1,
-     @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT;
 DECLARE @PerformanceCounterRows bigint=(SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.counters'));
 IF ISJSON(@Json)<>1
     THROW 54148,N'P0-Vertrag PC-SNAPSHOT lieferte kein gültiges JSON.',1;
+IF @PerformanceCounterRows=0 AND @Status='ERROR_HANDLED'
+BEGIN
+    RAISERROR(N'P0 PC-SNAPSHOT technischer Fehlercode=%d; Meldungsinhalt wird nicht ausgegeben.',10,1,@ErrorNumber) WITH NOWAIT;
+    THROW 54160,N'P0-Vertrag PC-SNAPSHOT endete intern behandelt statt mit einem expliziten Verfügbarkeitsstatus.',1;
+END;
 IF @PerformanceCounterRows=0 AND (@Status<>'UNAVAILABLE_OBJECT' OR COALESCE(@Partial,0)<>1)
     THROW 54157,N'P0-Vertrag PC-SNAPSHOT kennzeichnete ein leeres Ergebnis nicht als nicht verfügbar.',1;
 IF @PerformanceCounterRows>0 AND EXISTS
@@ -184,10 +190,11 @@ IF @PerformanceCounterRows>0 AND EXISTS
 INSERT @ExecutedCases VALUES('PC-SNAPSHOT');
 
 /* PC-RATE, PC-FRACTION und PC-AVERAGE: echte DMV-Samples, explizite Basen und Formelkontrolle. */
-SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL;
 EXEC [monitor].[USP_PerformanceCounters]
      @SampleSeconds=1,@MaxZeilen=10000,@ResultSetArt='NONE',@JsonErzeugen=1,
-     @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT;
 SET @PerformanceCounterRows=(SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.counters'));
 IF ISJSON(@Json)<>1
  OR (@PerformanceCounterRows=0 AND (@Status<>'UNAVAILABLE_OBJECT' OR COALESCE(@Partial,0)<>1))
@@ -295,6 +302,7 @@ END TRY
 BEGIN CATCH
 END CATCH;
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=STOP;
+WAITFOR DELAY '00:00:01';
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_CriticalEngineEvents]
