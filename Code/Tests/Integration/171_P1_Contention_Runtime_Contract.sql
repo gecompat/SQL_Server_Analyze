@@ -15,6 +15,7 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int;
+DECLARE @ErrorMessage nvarchar(2048);
 DECLARE @FailureMessage nvarchar(2048);
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 
@@ -31,11 +32,19 @@ EXEC [monitor].[USP_InternalContentionAnalysis]
      @SampleSeconds=1,@MitSpinlocks=1,@MitHotPages=0,@MitPageDetails=0,
      @MaxZeilen=100,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
      @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-     @ErrorNumberOut=@ErrorNumber OUTPUT;
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
 IF ISJSON(@Json)<>1
     THROW 54501,N'P1-Laufzeitvertrag CONT-DELTA lieferte keinen gültigen JSON-Vertrag.',1;
 IF @Status NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING')
 BEGIN
+    IF CHARINDEX(N'#LatchStart',COALESCE(@ErrorMessage,N''))>0
+        THROW 54510,N'P1-Laufzeitvertrag CONT-DELTA: SNAPSHOT_KEY_LATCH_START.',1;
+    IF CHARINDEX(N'#LatchEnd',COALESCE(@ErrorMessage,N''))>0
+        THROW 54511,N'P1-Laufzeitvertrag CONT-DELTA: SNAPSHOT_KEY_LATCH_END.',1;
+    IF CHARINDEX(N'#SpinStart',COALESCE(@ErrorMessage,N''))>0
+        THROW 54512,N'P1-Laufzeitvertrag CONT-DELTA: SNAPSHOT_KEY_SPIN_START.',1;
+    IF CHARINDEX(N'#SpinEnd',COALESCE(@ErrorMessage,N''))>0
+        THROW 54513,N'P1-Laufzeitvertrag CONT-DELTA: SNAPSHOT_KEY_SPIN_END.',1;
     SET @FailureMessage=CONCAT(N'P1-Laufzeitvertrag CONT-DELTA: technischer Status; ErrorNumber=',
                                COALESCE(CONVERT(varchar(20),@ErrorNumber),'NULL'),N'.');
     THROW 54506,@FailureMessage,1;
