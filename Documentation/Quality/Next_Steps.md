@@ -2,7 +2,7 @@
 
 Stand: 2026-07-18
 
-Der Stand `1.1.0-special.9` schließt die lokalen P2-Module mit Verschlüsselungslebenszyklus und Wartungsoperationen. Der Release-Gate-Vertrag ist um eine vierzehnte, ausschließlich synthetische P0-Suite erweitert; sie wird auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170 ausgeführt. `NOT_EXECUTED` bleibt bis zum grünen commitbezogenen Lauf weiterhin kein Testnachweis.
+Der Stand `1.1.0-special.9` schließt die lokalen P2-Module mit Verschlüsselungslebenszyklus und Wartungsoperationen. Der vierzehnteilige Release-Gate-Vertrag einschließlich 16 automatisierter P0-Fälle ist auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170 grün. `PC-RESET` bleibt als kontrollierter Neustartfall offen; `NOT_EXECUTED` ist weiterhin kein Testnachweis.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
@@ -32,7 +32,7 @@ Abgeschlossen:
 22. `RQ-004` abgeschlossen: alle drei Linux-Gates lösen den beweglichen Pull-Tag in einen validierten `repo@sha256`-Digest auf, starten exakt diesen Digest und erfassen die technische `ProductVersion`; die grünen Läufe und vollständigen generischen Werte stehen in der maschinenlesbaren Zielmatrix.
 23. `RQ-005` abgeschlossen: ein selbstgetestetes Pull-Request-, Main-Push- und manuelles Gate erzwingt exakt einzeilige, nicht leere UTF-8-Commit-Messages ausschließlich für neu eingebrachte Commits; der erste echte Push-Lauf ist grün und historische Nachrichten bleiben unverändert.
 24. `RQ-006` abgeschlossen: alle 332 offenen Wait-Katalogzeilen wurden gegen den unveränderlich referenzierten Microsoft-Dokumentstand geprüft; 318 Namen blieben bestehen, vier wurden korrigiert und zehn unbelegte Alt-/Fehleinträge entfernt. Ein selbstgetesteter Offline-Vertrag bindet die 347 finalen eindeutigen Namen, Quellenstatus und Entscheidungsevidenz; Commit `ee244f05b4e299a9274f94b68f326a1b23ba981f` ist auf SQL Server 2019, 2022 und 2025 sowie in Dokumentations-, Datenschutz- und Commit-Gate grün.
-25. P0-Automatisierung vorbereitet: `169_P0_Runtime_Contract.sql` bildet 14 Positiv-, Leer- und Grenzfälle mit rücksetzbaren synthetischen Fixtures ab. `INT-DENIED` und `CAP-DENIED` laufen zusätzlich unter einem tatsächlich eingeschränkten synthetischen Serverlogin in den versionsspezifischen Berechtigungsmatrizen; damit sind 16 Fälle automatisiert. Nur `PC-RESET` benötigt weiterhin einen kontrollierten SQL-Server-Neustart zwischen den beiden Samples. Eine Statusänderung in der Testmatrix erfolgt erst nach grünen Actions-Läufen.
+25. P0-Automatisierung abgeschlossen und nachgewiesen: `169_P0_Runtime_Contract.sql` bildet 14 Positiv-, Leer- und Grenzfälle mit rücksetzbaren synthetischen Fixtures ab. `INT-DENIED` und `CAP-DENIED` laufen zusätzlich unter einem tatsächlich eingeschränkten synthetischen Serverlogin in den versionsspezifischen Berechtigungsmatrizen. Commit `ffb95bd57c8e08300410ad268a92cc5379ee45f7` ist dafür auf SQL Server 2019, 2022 und 2025 grün; nur `PC-RESET` benötigt weiterhin einen kontrollierten SQL-Server-Neustart zwischen zwei Samples.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
@@ -40,8 +40,8 @@ Unmittelbar offene Repository-Qualitätsaufgaben:
 
 Nächste Freigabeschritte:
 
-1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167` und `168` in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
-2. Die 172 noch auf `NOT_EXECUTED` stehenden Spezialfälle in der Reihenfolge P0 mit 17 Fällen, P1 mit 40 Fällen und P2 mit 115 Fällen abarbeiten. Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle bleiben getrennte Nachweise; reale Namen oder Strukturen werden nicht übernommen.
+1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167`, `168` und `169` sowie acht Bereichssuiten in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
+2. Die 156 noch auf `NOT_EXECUTED` stehenden Spezialfälle in der festgelegten Reihenfolge abarbeiten: zuerst der eine verbleibende P0-Fall `PC-RESET`, danach 40 P1- und anschließend 115 P2-Fälle. Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle bleiben getrennte Nachweise; reale Namen oder Strukturen werden nicht übernommen.
 3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 4. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
 5. Vor SC-023 die in `Snapshot_Baseline_Package_Contract.md` markierten Persistenzentscheidungen ausdrücklich freigeben; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.

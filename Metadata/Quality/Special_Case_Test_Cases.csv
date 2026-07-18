@@ -1,21 +1,21 @@
 CaseId,Module,MinimumVersion,RequiredFeature,PermissionProfile,Scenario,ExpectedInvariant,CostClass,ExecutionStatus,EvidenceReference
-INT-EMPTY,USP_DatabaseIntegrityAnalysis,15,NONE,SERVER_DIAGNOSTIC,No visible corruption indicator,NO_INDICATOR_FOUND does not claim integrity,LOW,NOT_EXECUTED,
-INT-SUSPECT,USP_DatabaseIntegrityAnalysis,15,NONE,SERVER_DIAGNOSTIC,Suspect-page metadata present,SUSPECT_PAGES_PRESENT and bounded detail,LOW,NOT_EXECUTED,
-INT-CHECKDB,USP_DatabaseIntegrityAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Missing or old CHECKDB evidence,Age finding preserves evidence limitation,LOW,NOT_EXECUTED,
-INT-DENIED,USP_DatabaseIntegrityAnalysis,15,NONE,RESTRICTED,Source permission denied,Structured partial or denied status,LOW,NOT_EXECUTED,
-CAP-GROWTH,USP_DatabaseCapacityAnalysis,15,NONE,SERVER_DIAGNOSTIC,Next growth exceeds visible volume free,File and volume free remain separate,MEDIUM,NOT_EXECUTED,
-CAP-MAX,USP_DatabaseCapacityAnalysis,15,NONE,DATABASE_DIAGNOSTIC,File reaches configured maximum,FILE_MAX_SIZE_REACHED without time forecast,MEDIUM,NOT_EXECUTED,
-CAP-PERCENT,USP_DatabaseCapacityAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Percent growth configured,PERCENT_GROWTH_REVIEW is contextual,MEDIUM,NOT_EXECUTED,
-CAP-DENIED,USP_DatabaseCapacityAnalysis,15,NONE,RESTRICTED,Volume source denied,Accessible databases remain with warning,MEDIUM,NOT_EXECUTED,
-PC-SNAPSHOT,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,SampleSeconds zero,Measurement is snapshot and no fabricated rate,LOW,NOT_EXECUTED,
-PC-RATE,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,Supported rate counter sampled,Delta divided by actual interval,LOW,NOT_EXECUTED,
-PC-FRACTION,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,Fraction and base counter present,Typed fraction uses matching base,LOW,NOT_EXECUTED,
-PC-AVERAGE,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,Average and base counter sampled,Average uses numerator and matching base deltas,LOW,NOT_EXECUTED,
+INT-EMPTY,USP_DatabaseIntegrityAnalysis,15,NONE,SERVER_DIAGNOSTIC,No visible corruption indicator,NO_INDICATOR_FOUND does not claim integrity,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+INT-SUSPECT,USP_DatabaseIntegrityAnalysis,15,NONE,SERVER_DIAGNOSTIC,Suspect-page metadata present,SUSPECT_PAGES_PRESENT and bounded detail,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+INT-CHECKDB,USP_DatabaseIntegrityAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Missing or old CHECKDB evidence,Age finding preserves evidence limitation,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+INT-DENIED,USP_DatabaseIntegrityAnalysis,15,NONE,RESTRICTED,Source permission denied,Structured partial or denied status,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+CAP-GROWTH,USP_DatabaseCapacityAnalysis,15,NONE,SERVER_DIAGNOSTIC,Next growth exceeds visible volume free,File and volume free remain separate,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+CAP-MAX,USP_DatabaseCapacityAnalysis,15,NONE,DATABASE_DIAGNOSTIC,File reaches configured maximum,FILE_MAX_SIZE_REACHED without time forecast,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+CAP-PERCENT,USP_DatabaseCapacityAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Percent growth configured,PERCENT_GROWTH_REVIEW is contextual,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+CAP-DENIED,USP_DatabaseCapacityAnalysis,15,NONE,RESTRICTED,Volume source denied,Accessible databases remain with warning,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+PC-SNAPSHOT,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,SampleSeconds zero,Measurement is snapshot and no fabricated rate,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+PC-RATE,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,Supported rate counter sampled,Delta divided by actual interval,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+PC-FRACTION,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,Fraction and base counter present,Typed fraction uses matching base,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+PC-AVERAGE,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,Average and base counter sampled,Average uses numerator and matching base deltas,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
 PC-RESET,USP_PerformanceCounters,15,NONE,SERVER_DIAGNOSTIC,Counter decreases,Reset flagged and negative rate suppressed,LOW,NOT_EXECUTED,
-EV-NOTARGET,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,system_health event file unavailable,Unavailable source is explicit and no event is synthesized,MEDIUM,NOT_EXECUTED,
-EV-SEVERE,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,Critical event in bounded window,Event code and UTC time returned within limit,MEDIUM,NOT_EXECUTED,
-EV-DIAG,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,One-shot server diagnostics enabled,No repeat loop and no server change,MEDIUM,NOT_EXECUTED,
-EV-XML,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,Event XML disabled,No XML payload transferred,MEDIUM,NOT_EXECUTED,
+EV-NOTARGET,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,system_health event file unavailable,Unavailable source is explicit and no event is synthesized,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+EV-SEVERE,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,Critical event in bounded window,Event code and UTC time returned within limit,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+EV-DIAG,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,One-shot server diagnostics enabled,No repeat loop and no server change,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
+EV-XML,USP_CriticalEngineEvents,15,NONE,SERVER_DIAGNOSTIC,Event XML disabled,No XML payload transferred,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362
 IQP-2019,USP_IntelligentQueryProcessingAnalysis,15,NONE,DATABASE_DIAGNOSTIC,SQL Server 2019,SQL 2022 catalog names never enter compiled batch,LOW,NOT_EXECUTED,
 IQP-PSP,USP_IntelligentQueryProcessingAnalysis,16,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 160,PSP eligibility and aggregate variant count only,MEDIUM,NOT_EXECUTED,
 IQP-OPPO,USP_IntelligentQueryProcessingAnalysis,17,QUERY_STORE,DATABASE_DIAGNOSTIC,Compatibility level 170,OPPO eligibility without defect inference,MEDIUM,NOT_EXECUTED,
