@@ -268,6 +268,8 @@ END;';
 
     
 
+    IF @OverallStatus<>'AVAILABLE' SET @IsPartial=1;
+
     SELECT @TotalRows=(SELECT COUNT_BIG(*) FROM [#Result])+(SELECT COUNT_BIG(*) FROM [#Incremental]);
 
     IF @OverallStatus = 'AVAILABLE'
