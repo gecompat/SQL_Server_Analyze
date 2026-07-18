@@ -90,26 +90,13 @@ jobs:
           print(f"Rewritten REGEXP_LIKE comparisons: {total_changes}")
           print(f"Changed SQL files: {len(changed_paths)}")
 
-      - name: Extend permanent predicate validation
-        shell: python
-        run: |
-          from pathlib import Path
-
-          path = Path('.github/workflows/sqlserver-2025-linux-release-gate.yml')
-          text = path.read_text(encoding='utf-8')
-          old = 'comparison = re.compile(r"REGEXP_LIKE\\s*\\(.*\\)\\s*=\\s*[01]", re.IGNORECASE)'
-          new = 'comparison = re.compile(r"REGEXP_LIKE\\s*\\(.*\\)\\s*(?:=|<>|!=)\\s*[01]", re.IGNORECASE)'
-          if text.count(old) != 1:
-              raise RuntimeError(f'Expected validation expression once; found {text.count(old)}.')
-          path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
-
       - name: Commit predicate fixes
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code .github/workflows/sqlserver-2025-linux-release-gate.yml
+          git add Code
           git diff --cached --quiet && exit 0
           git commit -m 'fix: use SQL Server 2025 regex predicates'
           git push origin HEAD:agent/sqlserver-2025-linux-release-gate
