@@ -19,7 +19,7 @@ DECLARE @HostPlatform nvarchar(32)=
     (SELECT TOP (1) [host_platform] FROM [sys].[dm_os_host_info]);
 DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE
     WHEN @IsInstalled=1
-     AND LOWER(COALESCE(@HostPlatform,CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N''))<>N'linux'
+     AND UPPER(LTRIM(RTRIM(COALESCE(@HostPlatform,N''))))=N'WINDOWS'
     THEN 1 ELSE 0 END);
 
 SELECT @Definition=[sm].[definition]
