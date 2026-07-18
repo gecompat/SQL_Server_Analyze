@@ -15,8 +15,8 @@ Nebenwirkung : Die eingebundenen Tests verwenden ausschließlich synthetische,
 Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
                Übernahme in Repositoryartefakte ist separat zu prüfen.
 Evidenz      : Versionsworkflows veröffentlichen commitbezogene Statuskontexte.
-Statistik    : Suite 175 prüft sichtbare Histogramme und Finding-Verträge; der
-               äußere Verteilungsstatus ist vom Status der Child-Procedure isoliert.
+Statistik    : Suite 175 isoliert Child-Status und führt den begrenzten
+               Histogrammzugriff ohne unnötigen Query-Hint aus.
 Diagnose     : Temporäre synthetische Quellstatus bleiben bis zum grünen Lauf aktiv.
 ===============================================================================
 */
