@@ -72,7 +72,6 @@ INSERT @ExecutedCases VALUES('FIND-OPTOUT');
 IF USER_ID(N'ExampleDiagnosticFindingsRestrictedUser') IS NOT NULL
     THROW 55202,N'Der synthetische Principal für FIND-PARTIAL ist bereits vorhanden.',1;
 
-BEGIN TRANSACTION;
 BEGIN TRY
     CREATE USER [ExampleDiagnosticFindingsRestrictedUser] WITHOUT LOGIN;
     GRANT EXECUTE ON OBJECT::[monitor].[USP_DiagnosticFindings]
@@ -110,7 +109,7 @@ BEGIN TRY
           )
         THROW 55203,N'P1-Vertrag FIND-PARTIAL fehlgeschlagen.',1;
 
-    ROLLBACK TRANSACTION;
+    DROP USER [ExampleDiagnosticFindingsRestrictedUser];
 END TRY
 BEGIN CATCH
     IF @Impersonating=1
@@ -122,7 +121,11 @@ BEGIN CATCH
         BEGIN CATCH
         END CATCH;
     END;
-    IF XACT_STATE()<>0 ROLLBACK TRANSACTION;
+    BEGIN TRY
+        DROP USER IF EXISTS [ExampleDiagnosticFindingsRestrictedUser];
+    END TRY
+    BEGIN CATCH
+    END CATCH;
     THROW;
 END CATCH;
 INSERT @ExecutedCases VALUES('FIND-PARTIAL');
