@@ -1,1 +1,0 @@
-https://r.jina.ai/https://api.github.com/repos/gecompat/SQL_Server_Analyze/actions/runs?head_sha=17627dd54fdd4adc3a136c7927731e6a81f50d3e%26per_page=100
