@@ -505,16 +505,19 @@ IF EXISTS
     WHERE [ScenarioCode]='RESTRICTED'
       AND NOT
       (
-          [HasViewServerState]=0 AND [HasViewServerPerformanceState]=0
-          AND [HasViewDatabaseState]=0 AND [HasViewDatabasePerformanceState]=0
-          AND [CurrentSessionsStatus]='AVAILABLE_LIMITED' AND [CurrentSessionsIsPartial]=1
-          AND [CurrentSessionsCapabilityPermission]='VIEW SERVER PERFORMANCE STATE'
-          AND [CurrentSessionsCapabilityHasPermission]=0
-          AND [CurrentSessionsCapabilityStatus]='AVAILABLE_LIMITED'
-          AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
+[HasViewServerState]=0 AND [HasViewServerPerformanceState]=0
+AND [HasViewDatabaseState]=0 AND [HasViewDatabasePerformanceState]=0
+AND [CurrentSessionsStatus] IN('DENIED_PERMISSION','AVAILABLE_LIMITED')
+AND [CurrentSessionsIsPartial]=1
+AND [CurrentSessionsCapabilityPermission]='VIEW SERVER PERFORMANCE STATE'
+AND [CurrentSessionsCapabilityHasPermission]=0
+AND [CurrentSessionsCapabilityStatus]='AVAILABLE_LIMITED'
+AND [QueryStorePerformanceRequiredRows]>0
+AND [QueryStorePerformanceGrantedRows]=0
+AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
       )
 )
-    THROW 54212,N'Das vollständig eingeschränkte Szenario verletzt den erwarteten Limited-/Denied-Vertrag.',1;
+    THROW 54212,N'Das vollständig eingeschränkte Szenario verletzt den erwarteten kontrollierten Denied-/Limited-Vertrag.',1;
 
 IF EXISTS
 (
@@ -522,12 +525,19 @@ IF EXISTS
     WHERE [ScenarioCode]='VIEW_SERVER_STATE'
       AND NOT
       (
-          [HasViewServerState]=1 AND [HasViewServerPerformanceState]=0
-          AND [CurrentSessionsStatus]='AVAILABLE_LIMITED' AND [CurrentSessionsIsPartial]=1
-          AND [CurrentSessionsCapabilityHasPermission]=0
+[HasViewServerState]=1 AND [HasViewServerPerformanceState]=1
+AND [HasViewDatabaseState]=1 AND [HasViewDatabasePerformanceState]=1
+AND (([CurrentSessionsStatus]='AVAILABLE' AND [CurrentSessionsIsPartial]=0)
+  OR ([CurrentSessionsStatus]='AVAILABLE_LIMITED' AND [CurrentSessionsIsPartial]=1))
+AND [CurrentSessionsCapabilityPermission]='VIEW SERVER PERFORMANCE STATE'
+AND [CurrentSessionsCapabilityHasPermission]=1
+AND [CurrentSessionsCapabilityStatus]='AVAILABLE'
+AND [QueryStorePerformanceRequiredRows]>0
+AND [QueryStorePerformanceGrantedRows]=[QueryStorePerformanceRequiredRows]
+AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
       )
 )
-    THROW 54213,N'Das SQL-Server-2022-Szenario mit ausschließlich VIEW SERVER STATE wurde nicht korrekt abgegrenzt.',1;
+    THROW 54213,N'Die SQL-Server-2022-Implikation von VIEW SERVER STATE wurde nicht korrekt erkannt.',1;
 
 IF EXISTS
 (
@@ -535,13 +545,19 @@ IF EXISTS
     WHERE [ScenarioCode]='VIEW_SERVER_PERFORMANCE_STATE'
       AND NOT
       (
-          [HasViewServerPerformanceState]=1
-          AND [CurrentSessionsStatus]='AVAILABLE' AND [CurrentSessionsIsPartial]=0
-          AND [CurrentSessionsCapabilityHasPermission]=1
-          AND [CurrentSessionsCapabilityStatus]='AVAILABLE'
+[HasViewServerState]=0 AND [HasViewServerPerformanceState]=1
+AND [HasViewDatabaseState]=0 AND [HasViewDatabasePerformanceState]=1
+AND (([CurrentSessionsStatus]='AVAILABLE' AND [CurrentSessionsIsPartial]=0)
+  OR ([CurrentSessionsStatus]='AVAILABLE_LIMITED' AND [CurrentSessionsIsPartial]=1))
+AND [CurrentSessionsCapabilityPermission]='VIEW SERVER PERFORMANCE STATE'
+AND [CurrentSessionsCapabilityHasPermission]=1
+AND [CurrentSessionsCapabilityStatus]='AVAILABLE'
+AND [QueryStorePerformanceRequiredRows]>0
+AND [QueryStorePerformanceGrantedRows]=[QueryStorePerformanceRequiredRows]
+AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
       )
 )
-    THROW 54214,N'Das Szenario VIEW SERVER PERFORMANCE STATE erfüllt den Vollsichtvertrag nicht.',1;
+    THROW 54214,N'Das eigenständige Recht VIEW SERVER PERFORMANCE STATE wurde nicht korrekt abgegrenzt.',1;
 
 IF EXISTS
 (
@@ -549,12 +565,16 @@ IF EXISTS
     WHERE [ScenarioCode]='VIEW_DATABASE_STATE'
       AND NOT
       (
-          [HasViewDatabaseState]=1 AND [HasViewDatabasePerformanceState]=0
-          AND [QueryStorePerformanceRequiredRows]>0
-          AND [QueryStorePerformanceGrantedRows]=0
+[HasViewServerState]=0 AND [HasViewServerPerformanceState]=0
+AND [HasViewDatabaseState]=1 AND [HasViewDatabasePerformanceState]=1
+AND [CurrentSessionsStatus] IN('DENIED_PERMISSION','AVAILABLE_LIMITED')
+AND [CurrentSessionsIsPartial]=1
+AND [QueryStorePerformanceRequiredRows]>0
+AND [QueryStorePerformanceGrantedRows]=[QueryStorePerformanceRequiredRows]
+AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
       )
 )
-    THROW 54215,N'Das Legacy-Datenbankrecht wurde gegenüber VIEW DATABASE PERFORMANCE STATE nicht korrekt abgegrenzt.',1;
+    THROW 54215,N'Die SQL-Server-2022-Implikation von VIEW DATABASE STATE wurde nicht korrekt erkannt.',1;
 
 IF EXISTS
 (
@@ -562,18 +582,32 @@ IF EXISTS
     WHERE [ScenarioCode]='VIEW_DATABASE_PERFORMANCE_STATE'
       AND NOT
       (
-          [HasViewDatabasePerformanceState]=1
-          AND [QueryStorePerformanceRequiredRows]>0
-          AND [QueryStorePerformanceGrantedRows]=[QueryStorePerformanceRequiredRows]
+[HasViewServerState]=0 AND [HasViewServerPerformanceState]=0
+AND [HasViewDatabaseState]=0 AND [HasViewDatabasePerformanceState]=1
+AND [CurrentSessionsStatus] IN('DENIED_PERMISSION','AVAILABLE_LIMITED')
+AND [CurrentSessionsIsPartial]=1
+AND [QueryStorePerformanceRequiredRows]>0
+AND [QueryStorePerformanceGrantedRows]=[QueryStorePerformanceRequiredRows]
+AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
       )
 )
-    THROW 54216,N'Das Szenario VIEW DATABASE PERFORMANCE STATE erfüllt den Query-Store-Berechtigungsvertrag nicht.',1;
+    THROW 54216,N'Das eigenständige Recht VIEW DATABASE PERFORMANCE STATE wurde nicht korrekt abgegrenzt.',1;
 
 IF EXISTS
 (
     SELECT 1 FROM [#PermissionMatrix]
     WHERE [ScenarioCode]='GROUP_MEMBER'
-      AND NOT([PlanCacheDeepAllowed]=1 AND [PlanCacheDeepAccessReason]='IS_MEMBER')
+      AND NOT
+      (
+[HasViewServerState]=0 AND [HasViewServerPerformanceState]=0
+AND [HasViewDatabaseState]=0 AND [HasViewDatabasePerformanceState]=0
+AND [CurrentSessionsStatus] IN('DENIED_PERMISSION','AVAILABLE_LIMITED')
+AND [CurrentSessionsIsPartial]=1
+AND [CurrentSessionsCapabilityHasPermission]=0
+AND [CurrentSessionsCapabilityStatus]='AVAILABLE_LIMITED'
+AND [QueryStorePerformanceGrantedRows]=0
+AND [PlanCacheDeepAllowed]=1 AND [PlanCacheDeepAccessReason]='IS_MEMBER'
+      )
 )
     THROW 54217,N'Die IS_MEMBER-Fallbackprüfung für die synthetische Datenbankrolle ist fehlgeschlagen.',1;
 
@@ -581,7 +615,17 @@ IF EXISTS
 (
     SELECT 1 FROM [#PermissionMatrix]
     WHERE [ScenarioCode]='SYSADMIN'
-      AND NOT([PlanCacheDeepAllowed]=1 AND [PlanCacheDeepAccessReason]='SYSADMIN')
+      AND NOT
+      (
+[HasViewServerState]=1 AND [HasViewServerPerformanceState]=1
+AND [HasViewDatabaseState]=1 AND [HasViewDatabasePerformanceState]=1
+AND [CurrentSessionsStatus]='AVAILABLE' AND [CurrentSessionsIsPartial]=0
+AND [CurrentSessionsCapabilityHasPermission]=1
+AND [CurrentSessionsCapabilityStatus]='AVAILABLE'
+AND [QueryStorePerformanceRequiredRows]>0
+AND [QueryStorePerformanceGrantedRows]=[QueryStorePerformanceRequiredRows]
+AND [PlanCacheDeepAllowed]=1 AND [PlanCacheDeepAccessReason]='SYSADMIN'
+      )
 )
     THROW 54218,N'Der sysadmin-Bypass der Gruppenpolicy ist fehlgeschlagen.',1;
 GO

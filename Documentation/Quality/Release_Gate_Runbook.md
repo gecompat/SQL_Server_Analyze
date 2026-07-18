@@ -56,10 +56,11 @@ Zusätzlich wird vor Aktivierung der synthetischen Policy bestätigt, dass die a
 
 Verbindliche Erwartungen:
 
-- eingeschränkte Current-Sessions-Sicht liefert `AVAILABLE_LIMITED` und gültiges JSON statt eines unkontrollierten Abbruchs;
-- `VIEW SERVER STATE` erfüllt auf SQL Server 2022 nicht den Vertrag von `VIEW SERVER PERFORMANCE STATE`;
-- `VIEW SERVER PERFORMANCE STATE` liefert für `CURRENT_SESSIONS` den Vollsichtvertrag;
-- `VIEW DATABASE STATE` wird gegenüber `VIEW DATABASE PERFORMANCE STATE` getrennt bewertet;
+- eingeschränkte Current-Sessions-Sicht liefert kontrolliert `DENIED_PERMISSION` oder `AVAILABLE_LIMITED` und gültiges JSON statt eines unkontrollierten Abbruchs;
+- `VIEW SERVER STATE` umfasst auf SQL Server 2022 die neue Berechtigung `VIEW SERVER PERFORMANCE STATE`; umgekehrt entsteht kein `VIEW SERVER STATE`;
+- `CURRENT_SESSIONS` ist capability-seitig mit `VIEW SERVER PERFORMANCE STATE` verfügbar, kann wegen weiterer geschützter Teilquellen aber weiterhin kontrolliert `AVAILABLE_LIMITED` liefern;
+- `VIEW DATABASE STATE` umfasst `VIEW DATABASE PERFORMANCE STATE`; umgekehrt entsteht kein `VIEW DATABASE STATE`;
+- beide Database-State-Szenarien erfüllen die geprüften Query-Store-Performance-Capabilities;
 - nicht berechtigte geschützte Klassen liefern `NO_MATCH`, Rollenmitglieder `IS_MEMBER` und sysadmin `SYSADMIN`;
 - sieben Szenarien werden vollständig ausgeführt und der Test endet mit `StatusCode=AVAILABLE`.
 
