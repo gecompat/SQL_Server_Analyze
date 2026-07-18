@@ -27,21 +27,20 @@ jobs:
           from pathlib import Path
           path=Path('Code/Tests/Integration/183_P2_FullText_Runtime_Contract.sql')
           text=path.read_text(encoding='utf-8')
-          old="""DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);
-DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE
-    WHEN @IsInstalled=1
-     AND COALESCE(CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N'')<>N'Linux'
-    THEN 1 ELSE 0 END);"""
-          new="""DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);
-DECLARE @HostPlatform nvarchar(32)=
-    (SELECT TOP (1) [host_platform] FROM [sys].[dm_os_host_info]);
-DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE
-    WHEN @IsInstalled=1
-     AND LOWER(COALESCE(@HostPlatform,CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N''))<>N'linux'
-    THEN 1 ELSE 0 END);"""
-          if text.count(old)!=1:
-              raise SystemExit('unexpected Full-Text host detection block')
-          path.write_text(text.replace(old,new,1),encoding='utf-8',newline='\n')
+          start_marker="DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);"
+          end_marker='    THEN 1 ELSE 0 END);'
+          start=text.index(start_marker)
+          end=text.index(end_marker,start)+len(end_marker)
+          replacement='\n'.join([
+              start_marker,
+              'DECLARE @HostPlatform nvarchar(32)=',
+              '    (SELECT TOP (1) [host_platform] FROM [sys].[dm_os_host_info]);',
+              'DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE',
+              '    WHEN @IsInstalled=1',
+              "     AND LOWER(COALESCE(@HostPlatform,CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N''))<>N'linux'",
+              '    THEN 1 ELSE 0 END);',
+          ])
+          path.write_text(text[:start]+replacement+text[end:],encoding='utf-8',newline='\n')
           PY
       - name: Commit fix and remove helper
         shell: bash
