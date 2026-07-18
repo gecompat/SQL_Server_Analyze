@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 18. Juli 2026
-**Status:** commitbezogene 15-Suite-Actions-Evidenz für vollständiges P0 und die ersten vier P1-IQP-Fälle vorhanden; die sechzehnte P1-Contention-Suite wartet auf Actions
+**Status:** commitbezogene 16-Suite-Actions-Evidenz für vollständiges P0, vier P1-IQP- und vier P1-Contention-Fälle auf SQL Server 2019, 2022 und 2025 vorhanden
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `0efeb1877ffa6b31fc8deb714ac7659b40db7cd6` hat Installer, den 15-Suite-Release-Gate-Vertrag einschließlich 15 P0-Laufzeitfällen und vier P1-IQP-Fällen sowie die Berechtigungsmatrix einschließlich zwei P0-Restricted-Login-Fällen auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `e26f246e7b9e21b2d882ac69feaa32fb3f5f36c9` hat Installer, den 16-Suite-Release-Gate-Vertrag einschließlich 15 P0-Laufzeitfällen, vier P1-IQP- und vier P1-Contention-Fällen sowie die Berechtigungsmatrix einschließlich zwei P0-Restricted-Login-Fällen auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29637052716](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052716) | `PASS_WITH_LIMITATIONS`; alle 17 P0- und vier P1-IQP-Fälle |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29637052706](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052706) | `PASS_WITH_LIMITATIONS`; alle 17 P0- und vier P1-IQP-Fälle |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29637052726](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726) | `PASS_WITH_LIMITATIONS`; alle 17 P0- und vier P1-IQP-Fälle; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29638311804](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311804) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP- und vier P1-Contention-Fälle |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29638311795](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311795) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP- und vier P1-Contention-Fälle |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29638311799](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311799) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP- und vier P1-Contention-Fälle; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 
@@ -33,7 +33,7 @@ Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diese
 | SQL Server 2022 | `mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89` |
 | SQL Server 2025 | `mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052736) und das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052730) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; P0-, P1-IQP- und Regex-Matrix sind als eigene Suitezeilen in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für disposable synthetische Linux-Ziele. Sie ist kein weiterer Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311830) und das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638311806) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; P0-, P1-IQP-, P1-Contention- und Regex-Matrix sind als eigene Suitezeilen in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für disposable synthetische Linux-Ziele. Der Page-Detail-Vertrag erzwang keinen aktuellen PAGELATCH-Wait; weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externe Restore-Nachweise bleiben separat.
 
 ## Datenschutz
 
