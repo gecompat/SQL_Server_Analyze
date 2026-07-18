@@ -4,13 +4,13 @@ GO
 /*
 ===============================================================================
 Datei        : 169_P0_Runtime_Contract.sql
-Zweck        : Reproduzierbare P0-Positiv-, Leer-, Grenz- und Berechtigungsfälle
+Zweck        : Reproduzierbare P0-Positiv-, Leer- und Grenzfälle
                gegen die ausschließlich synthetische Actions-Datenbank.
 Datenschutz  : Persistiert keine Laufzeitausgabe. Namen, Ereignisse und
                Konfigurationswerte sind generische Testwerte; produktive
                Resultsets und OUTPUT-Parameter bleiben unverändert.
-Nebenwirkung : DBCC, Dateioptionen, msdb-Testmetadaten, Testbenutzer und eine
-               XE-Session betreffen nur das disposable Actions-Ziel und werden
+Nebenwirkung : DBCC, Dateioptionen, msdb-Testmetadaten und eine XE-Session
+               betreffen nur das disposable Actions-Ziel und werden
                soweit möglich im selben Lauf zurückgesetzt.
 ===============================================================================
 */
@@ -87,25 +87,6 @@ END;
 ROLLBACK TRANSACTION;
 INSERT @ExecutedCases VALUES('INT-SUSPECT');
 
-/* INT-DENIED: fehlende Quellrechte werden strukturiert zurückgegeben. */
-IF USER_ID(N'ExampleP0RestrictedUser') IS NOT NULL DROP USER [ExampleP0RestrictedUser];
-CREATE USER [ExampleP0RestrictedUser] WITHOUT LOGIN;
-GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseIntegrityAnalysis] TO [ExampleP0RestrictedUser];
-
-SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
-EXECUTE AS USER=N'ExampleP0RestrictedUser';
-EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
-     @DatabaseNames=N'',@MaxDatenbanken=1,@MitPageDetails=0,@MaxZeilen=20,
-     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
-REVERT;
-DROP USER [ExampleP0RestrictedUser];
-
-IF ISJSON(@Json)<>1 OR @Status NOT IN ('DENIED_PERMISSION','AVAILABLE_LIMITED','DENIED_GROUP') OR COALESCE(@Partial,1)<>1
-    THROW 54143,N'P0-Vertrag INT-DENIED fehlgeschlagen.',1;
-INSERT @ExecutedCases VALUES('INT-DENIED');
-
 /* Kapazitätsfälle verändern nur die Optionen der synthetischen primären Datendatei und stellen sie wieder her. */
 DECLARE @LogicalFileName sysname,@OriginalGrowth int,@OriginalPercent bit,@OriginalMaxSize int,@CurrentSizePages int;
 DECLARE @Sql nvarchar(max),@RestoreSql nvarchar(max),@CurrentSizeMb bigint;
@@ -177,22 +158,6 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
 INSERT @ExecutedCases VALUES('CAP-GROWTH');
 
 EXEC [sys].[sp_executesql] @RestoreSql;
-
-/* CAP-DENIED */
-IF USER_ID(N'ExampleP0CapacityRestrictedUser') IS NOT NULL DROP USER [ExampleP0CapacityRestrictedUser];
-CREATE USER [ExampleP0CapacityRestrictedUser] WITHOUT LOGIN;
-GRANT EXECUTE ON OBJECT::[monitor].[USP_DatabaseCapacityAnalysis] TO [ExampleP0CapacityRestrictedUser];
-SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
-EXECUTE AS USER=N'ExampleP0CapacityRestrictedUser';
-EXEC [monitor].[USP_DatabaseCapacityAnalysis]
-     @DatabaseNames=N'',@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
-     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
-REVERT;
-DROP USER [ExampleP0CapacityRestrictedUser];
-IF ISJSON(@Json)<>1 OR @Status NOT IN ('DENIED_PERMISSION','AVAILABLE_LIMITED','DENIED_GROUP') OR COALESCE(@Partial,1)<>1
-    THROW 54147,N'P0-Vertrag CAP-DENIED fehlgeschlagen.',1;
-INSERT @ExecutedCases VALUES('CAP-DENIED');
 
 /* PC-SNAPSHOT: Delta-Counter erhalten ohne Sample niemals eine erfundene Rate. */
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
@@ -368,11 +333,11 @@ IF EXISTS
     THROW 54155,N'P0-Vertrag EV-XML fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('EV-XML');
 
-IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>16
+IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>14
     THROW 54156,N'Der P0-Laufzeitvertrag hat nicht alle vorgesehenen Fälle ausgeführt.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
        COUNT_BIG(*) AS [ExecutedCases],
-       N'16 synthetische P0-Fälle wurden ausgeführt; PC-RESET bleibt ein separater kontrollierter Neustartfall.' AS [Detail]
+       N'14 synthetische P0-Laufzeitfälle wurden ausgeführt; zwei Berechtigungsfälle laufen in der versionsspezifischen Berechtigungsmatrix und PC-RESET bleibt ein separater kontrollierter Neustartfall.' AS [Detail]
 FROM @ExecutedCases;
 GO

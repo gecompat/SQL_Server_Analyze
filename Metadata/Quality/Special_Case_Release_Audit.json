@@ -164,13 +164,15 @@
       "status": "IMPLEMENTED_PENDING_ACTIONS",
       "suite": "Code/Tests/Integration/169_P0_Runtime_Contract.sql",
       "syntheticCases": 16,
+      "runtimeContractCases": 14,
+      "permissionMatrixCases": 2,
       "integrityCases": 4,
       "capacityCases": 4,
       "performanceCounterCases": 4,
       "criticalEventCases": 4,
       "remainingControlledRestartCase": "PC-RESET",
       "runtimeDataPersisted": false,
-      "note": "Case statuses remain NOT_EXECUTED until the commit-specific SQL Server 2019, 2022 and 2025 Actions runs succeed."
+      "note": "Fourteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. Case statuses remain NOT_EXECUTED until the commit-specific SQL Server 2019, 2022 and 2025 Actions runs succeed."
     },
     "procedureDocumentationContract": {
       "status": "PASS",
