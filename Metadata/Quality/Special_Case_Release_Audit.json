@@ -177,7 +177,7 @@
       "sqlServer2019ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765",
       "sqlServer2022ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780805",
       "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780802",
-      "note": "Fifteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. All seventeen cases passed on SQL Server 2019, 2022 and 2025; PC-RESET uses the same pure interpretation function as the procedure."
+      "note": "Fifteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. All seventeen cases passed on SQL Server 2019, 2022 and 2025; PC-RESET uses the same pure interpretation function as the procedure. The pending backup commit also hardens the synthetic EV-SEVERE flush contract after an intermittent event-file loss."
     },
     "p1IqpRuntimeContract": {
       "status": "ACTIONS_PASS_WITH_LIMITATIONS",
