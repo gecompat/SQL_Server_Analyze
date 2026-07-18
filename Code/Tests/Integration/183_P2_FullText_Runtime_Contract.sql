@@ -15,9 +15,11 @@ SET XACT_ABORT ON;
 DECLARE @ExecutedCases TABLE([CaseId] varchar(64) NOT NULL PRIMARY KEY);
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@Definition nvarchar(max);
 DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);
+DECLARE @HostPlatform nvarchar(32)=
+    (SELECT TOP (1) [host_platform] FROM [sys].[dm_os_host_info]);
 DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE
     WHEN @IsInstalled=1
-     AND COALESCE(CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N'')<>N'Linux'
+     AND LOWER(COALESCE(@HostPlatform,CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N''))<>N'linux'
     THEN 1 ELSE 0 END);
 
 SELECT @Definition=[sm].[definition]
