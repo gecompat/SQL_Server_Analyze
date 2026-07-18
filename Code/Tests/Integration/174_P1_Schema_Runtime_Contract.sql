@@ -59,6 +59,16 @@ BEGIN TRY
          @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 
+    IF @Status='AVAILABLE_LIMITED'
+    BEGIN
+        DECLARE @TechnicalErrorNumber int=
+           (SELECT TOP (1) [ErrorNumber]
+            FROM OPENJSON(@Json,N'$.warnings')
+            WITH ([ErrorNumber] int N'$.ErrorNumber')
+            WHERE [ErrorNumber] IS NOT NULL ORDER BY [ErrorNumber]);
+        RAISERROR(N'P1-Schemavertrag technischer Fehlercode=%d; Meldungsinhalt wird nicht ausgegeben.',16,1,@TechnicalErrorNumber);
+    END;
+
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE_WITH_FINDING'
         THROW 54800,N'P1-Schemavertrag lieferte keinen gültigen Befundstatus.',1;
 
