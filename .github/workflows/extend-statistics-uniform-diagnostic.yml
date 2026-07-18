@@ -1,0 +1,57 @@
+name: Extend statistics uniform diagnostic
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/extend-statistics-uniform-diagnostic.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  instrument:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Insert database-status diagnostic
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql')
+          lines = path.read_text(encoding='utf-8').splitlines()
+          marker = "           TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.findingCount')) AS [FindingCount];"
+          insert_at = lines.index(marker) + 1
+          diagnostic = [
+              "    SELECT N'STAT_UNIFORM_DATABASE_STATUS' AS [DiagnosticCode],[StatusCode],",
+              "           [IsPartial],[CandidateCount],[HistogramVisibleCount],[ErrorNumber],[Detail]",
+              "    FROM OPENJSON(@Json,N'$.databaseStatus') WITH",
+              "    ([StatusCode] varchar(40) N'$.StatusCode',[IsPartial] bit N'$.IsPartial',",
+              "     [CandidateCount] bigint N'$.CandidateCount',",
+              "     [HistogramVisibleCount] bigint N'$.HistogramVisibleCount',",
+              "     [ErrorNumber] int N'$.ErrorNumber',[Detail] nvarchar(2000) N'$.Detail');",
+          ]
+          lines[insert_at:insert_at] = diagnostic
+          path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+          PY
+
+      - name: Commit diagnostic and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/extend-statistics-uniform-diagnostic.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql \
+                  .github/workflows/extend-statistics-uniform-diagnostic.yml
+          git diff --cached --check
+          git commit -m 'test: expose statistics source error number'
+          git push origin HEAD:main
