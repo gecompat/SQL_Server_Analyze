@@ -224,8 +224,9 @@ BEGIN
             , [a].[CounterValue]
             , [baseBefore].[CounterValue]
             , [baseAfter].[CounterValue]
-            , CONVERT(decimal(19,6),
-                DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0)
+            , CASE WHEN @SampleSeconds = 0 THEN CONVERT(decimal(19,6), 0)
+                   ELSE CONVERT(decimal(19,6),
+                        DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0) END
         ) AS [i]
         WHERE [a].[CounterType] NOT IN (1073939458, 1073939712);
 
