@@ -149,7 +149,7 @@ BEGIN
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
     END;
 
-    SET LOCK_TIMEOUT @LockTimeoutMs;
+    EXEC(N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N';');
 
     IF @StatusCode='AVAILABLE'
     BEGIN

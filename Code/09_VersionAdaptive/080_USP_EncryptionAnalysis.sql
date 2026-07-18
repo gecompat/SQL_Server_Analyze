@@ -141,7 +141,7 @@ BEGIN
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
     END;
 
-    SET LOCK_TIMEOUT @LockTimeoutMs;
+    EXEC(N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N';');
 
     INSERT [#Encryption]([DatabaseId],[DatabaseName],[IsEncrypted],[FindingCode],[FindingSeverity],[EvidenceLimit])
     SELECT [DatabaseId],[DatabaseName],NULL,'SOURCE_PENDING','INFO',
