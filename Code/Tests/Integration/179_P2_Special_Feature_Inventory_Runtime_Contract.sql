@@ -106,15 +106,15 @@ BEGIN TRY
         [Id] int NOT NULL CONSTRAINT [PK_ExampleFeatureGraphNode] PRIMARY KEY
     ) AS NODE;
     CREATE TYPE [dbo].[ExampleFeatureType] FROM int NOT NULL;
-    CREATE TABLE [dbo].[ExampleFeatureTypes]
+    SET @Sql=N'CREATE TABLE [dbo].[ExampleFeatureTypes]
     (
         [Id] int NOT NULL,
         [SpatialGeometry] geometry NULL,
         [SpatialGeography] geography NULL,
         [XmlValue] xml NULL,
-        [TypedValue] [dbo].[ExampleFeatureType] NULL
-    );
-
+        [TypedValue] [dbo].[ExampleFeatureType] NOT NULL
+    );';
+    EXEC [sys].[sp_executesql] @Sql;
     CREATE QUEUE [dbo].[ExampleFeatureQueue] WITH STATUS=ON,RETENTION=OFF;
     CREATE SERVICE [ExampleFeatureService]
         ON QUEUE [dbo].[ExampleFeatureQueue] ([DEFAULT]);
