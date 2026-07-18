@@ -17,7 +17,7 @@ Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
 Evidenz      : Versionsworkflows veröffentlichen commitbezogene Statuskontexte.
 Statistik    : Suite 175 isoliert Child-Status und führt den begrenzten
                Histogrammzugriff ohne unnötigen Query-Hint aus.
-Diagnose     : Temporär wird zusätzlich der synthetische Denied-Status ausgegeben.
+Diagnose     : Der synthetische Denied-Status prüft zusätzlich IsPartial.
 ===============================================================================
 */
 
