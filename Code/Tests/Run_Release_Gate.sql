@@ -17,7 +17,7 @@ Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
 Evidenz      : Versionsworkflows veröffentlichen commitbezogene Statuskontexte.
 Statistik    : Suite 175 prüft sichtbare Histogramme und Finding-Verträge ohne
                redundante Annahmen über Engine-intern gewählte Schrittmetriken.
-Diagnose     : Temporäre synthetische Uniform-Metriken werden vor Fehlern ausgegeben.
+Diagnose     : Temporär werden synthetische Quellstatus und Fehlernummern ausgegeben.
 ===============================================================================
 */
 
