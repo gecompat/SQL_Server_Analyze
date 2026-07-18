@@ -126,6 +126,7 @@ CREATE TABLE [#PermissionMatrix]
     , [HasViewDatabasePerformanceState] bit NOT NULL
     , [CurrentSessionsStatus] varchar(40) NULL
     , [CurrentSessionsIsPartial] bit NULL
+    , [CurrentSessionsErrorNumber] int NULL
     , [CurrentSessionsCapabilityPermission] sysname NULL
     , [CurrentSessionsCapabilityHasPermission] bit NULL
     , [CurrentSessionsCapabilityStatus] varchar(40) NULL
@@ -225,7 +226,7 @@ BEGIN
     EXECUTE AS LOGIN=N''' + REPLACE(@LoginName,N'''',N'''''') + N''';
 
     DECLARE @SessionJson nvarchar(max)=NULL,@StandardJson nvarchar(max)=NULL,@QueryStoreJson nvarchar(max)=NULL;
-    DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL;
+    DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL,@SessionErrorNumber int=NULL;
     DECLARE @CapabilityPermission sysname=NULL,@CapabilityHasPermission bit=NULL,@CapabilityStatus varchar(40)=NULL;
     DECLARE @QueryStoreRequiredRows int=0,@QueryStoreGrantedRows int=0;
     DECLARE @PlanAllowed bit=NULL,@PlanReason varchar(20)=NULL;
@@ -267,7 +268,8 @@ BEGIN
     RAISERROR(N''PERMISSION_MATRIX step=parse_results'',10,1) WITH NOWAIT;
     SELECT
           @SessionStatus=JSON_VALUE(@SessionJson,''$.meta.statusCode'')
-        , @SessionPartial=TRY_CONVERT(bit,JSON_VALUE(@SessionJson,''$.meta.isPartial''));
+        , @SessionPartial=TRY_CONVERT(bit,JSON_VALUE(@SessionJson,''$.meta.isPartial''))
+        , @SessionErrorNumber=TRY_CONVERT(int,JSON_VALUE(@SessionJson,''$.meta.errorNumber''));
 
     SELECT TOP(1)
           @CapabilityPermission=[RequiredPermission]
@@ -317,7 +319,7 @@ BEGIN
           [ScenarioCode],[EffectiveContext]
         , [HasViewServerState],[HasViewServerPerformanceState]
         , [HasViewDatabaseState],[HasViewDatabasePerformanceState]
-        , [CurrentSessionsStatus],[CurrentSessionsIsPartial]
+        , [CurrentSessionsStatus],[CurrentSessionsIsPartial],[CurrentSessionsErrorNumber]
         , [CurrentSessionsCapabilityPermission],[CurrentSessionsCapabilityHasPermission]
         , [CurrentSessionsCapabilityStatus]
         , [QueryStorePerformanceRequiredRows],[QueryStorePerformanceGrantedRows]
@@ -330,7 +332,7 @@ BEGIN
         , @HasViewServerPerformanceState
         , @HasViewDatabaseState
         , @HasViewDatabasePerformanceState
-        , @SessionStatus,@SessionPartial
+        , @SessionStatus,@SessionPartial,@SessionErrorNumber
         , @CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
         , @QueryStoreRequiredRows,@QueryStoreGrantedRows
         , @PlanAllowed,@PlanReason
@@ -367,7 +369,7 @@ GO
 
 /* Sysadmin-Bypass im ursprünglichen Testkontext. */
 DECLARE @SessionJson nvarchar(max)=NULL,@StandardJson nvarchar(max)=NULL,@QueryStoreJson nvarchar(max)=NULL;
-DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL;
+DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL,@SessionErrorNumber int=NULL;
 DECLARE @CapabilityPermission sysname=NULL,@CapabilityHasPermission bit=NULL,@CapabilityStatus varchar(40)=NULL;
 DECLARE @QueryStoreRequiredRows int=0,@QueryStoreGrantedRows int=0;
 DECLARE @PlanAllowed bit=NULL,@PlanReason varchar(20)=NULL;
@@ -405,7 +407,8 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 
 SELECT
       @SessionStatus=JSON_VALUE(@SessionJson,'$.meta.statusCode')
-    , @SessionPartial=TRY_CONVERT(bit,JSON_VALUE(@SessionJson,'$.meta.isPartial'));
+    , @SessionPartial=TRY_CONVERT(bit,JSON_VALUE(@SessionJson,'$.meta.isPartial'))
+    , @SessionErrorNumber=TRY_CONVERT(int,JSON_VALUE(@SessionJson,'$.meta.errorNumber'));
 
 SELECT TOP(1)
       @CapabilityPermission=[RequiredPermission]
@@ -456,7 +459,7 @@ VALUES
     , @HasViewServerPerformanceState
     , @HasViewDatabaseState
     , @HasViewDatabasePerformanceState
-    , @SessionStatus,@SessionPartial,@CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
+    , @SessionStatus,@SessionPartial,@SessionErrorNumber,@CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
     , @QueryStoreRequiredRows,@QueryStoreGrantedRows,@PlanAllowed,@PlanReason
     , CONVERT(bit,1)
 );
@@ -470,6 +473,7 @@ SELECT
     , [HasViewDatabasePerformanceState]
     , [CurrentSessionsStatus]
     , [CurrentSessionsIsPartial]
+    , [CurrentSessionsErrorNumber]
     , [CurrentSessionsCapabilityPermission]
     , [CurrentSessionsCapabilityHasPermission]
     , [CurrentSessionsCapabilityStatus]
