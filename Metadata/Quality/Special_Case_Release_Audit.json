@@ -1,12 +1,12 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T09:40:00Z",
-  "status": "ACTIONS_PASS",
-  "scope": "green commit-specific 18-suite SQL Server 2019, 2022 and 2025 evidence for all P0, first-four P1 IQP, four P1 contention, four P1 memory and four P1 backup-chain cases",
+  "generatedAtUtc": "2026-07-18T09:45:00Z",
+  "status": "ACTIONS_PENDING",
+  "scope": "green commit-specific 18-suite SQL Server 2019, 2022 and 2025 evidence through four P1 backup-chain cases; the 19th P1 schema-design suite is implemented and awaits commit-specific Actions evidence",
   "inventory": {
-    "repositoryFiles": 330,
+    "repositoryFiles": 331,
     "canonicalSqlSources": 109,
-    "sqlFilesIncludingTestsAndExamples": 135,
+    "sqlFilesIncludingTestsAndExamples": 136,
     "objects": 101,
     "procedures": 84,
     "functions": 12,
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 135,
+      "filesChecked": 136,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -259,6 +259,20 @@
       "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444942",
       "note": "The suite passed on SQL Server 2019, 2022 and 2025 using only the disposable synthetic database, a generic file in the target default backup directory and temporary msdb history. No restore was executed, so the cases remain explicitly limited."
     },
+    "p1SchemaRuntimeContract": {
+      "status": "IMPLEMENTED_PENDING_ACTIONS",
+      "suite": "Code/Tests/Integration/174_P1_Schema_Runtime_Contract.sql",
+      "syntheticCases": 4,
+      "caseIds": [
+        "SCH-CONSTRAINT",
+        "SCH-FK",
+        "SCH-DUP",
+        "SCH-RANGE"
+      ],
+      "ddlFixturesRolledBack": true,
+      "runtimeDataPersisted": false,
+      "note": "The suite uses only generic constraint, foreign-key, index and identity fixtures inside a rollback transaction. The four rows remain NOT_EXECUTED until all three version-specific Actions gates pass."
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,
@@ -295,8 +309,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 330,
-      "zipFilesScanned": 330,
+      "repositoryFilesScanned": 331,
+      "zipFilesScanned": 331,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,
@@ -324,8 +338,8 @@
     "specialCaseRows": 181,
     "specialCaseRowsNotExecuted": 139,
     "specialCaseRowsPassWithLimitations": 42,
-    "specialCaseRowsAutomatedPending": 0,
-    "runtimeStatus": "ACTIONS_PASS",
+    "specialCaseRowsAutomatedPending": 4,
+    "runtimeStatus": "ACTIONS_PENDING",
     "claim": "Commit f3d9c014adb3227ab39e21e16052dca7285a6a87 passed the synthetic Linux installer, 18-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 cases, the first four P1 IQP cases, four P1 contention cases, four P1 memory cases, four P1 backup-chain cases and the separate SQL Server 2025 regex matrix. The contracts did not execute a restore or force current PAGELATCH waits, memory pressure or grant waiters. Exact public product builds and immutable container image digests were captured. Further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
