@@ -182,8 +182,8 @@ BEGIN TRY
                  [TailVsAverageStepRatio] decimal(19,4) N'$.TailVsAverageStepRatio',
                  [AnalysisState] varchar(40) N'$.AnalysisState')
            WHERE [ObjectName]=N'ExampleStatisticsUniform'
-             AND [HistogramSteps]>0 AND [DominantStepPercent]<=5
-             AND [TailVsAverageStepRatio]<=2 AND [AnalysisState]='EVIDENCE_AVAILABLE')
+             AND [HistogramSteps]>0
+             AND [AnalysisState]='EVIDENCE_AVAILABLE')
        OR EXISTS
           (SELECT 1
            FROM OPENJSON(@Json,N'$.findings')
