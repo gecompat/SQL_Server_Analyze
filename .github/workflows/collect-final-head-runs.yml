@@ -1,0 +1,48 @@
+name: Collect final head runs
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/collect-final-head-runs.yml'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Collect workflow metadata for tested commit
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            'https://api.github.com/repos/gecompat/SQL_Server_Analyze/actions/runs?head_sha=f4bf1d4333e7f4a38814dea72a0799ca1d949364&per_page=100' \
+            | python3 -c "import json,sys; data=json.load(sys.stdin); keep=[]; [keep.append({'name':r['name'],'id':r['id'],'html_url':r['html_url'],'status':r['status'],'conclusion':r['conclusion'],'created_at':r['created_at'],'updated_at':r['updated_at'],'head_sha':r['head_sha']}) for r in data['workflow_runs']]; print(json.dumps(sorted(keep,key=lambda x:x['name']),indent=2))" \
+            > Metadata/Quality/Final_Head_Run_Probe.json
+
+      - name: Commit probe and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/collect-final-head-runs.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Metadata/Quality/Final_Head_Run_Probe.json \
+                  .github/workflows/collect-final-head-runs.yml
+          git diff --cached --check
+          git commit -m 'test: collect final head workflow evidence'
+          git push origin HEAD:main
