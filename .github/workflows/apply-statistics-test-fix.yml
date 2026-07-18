@@ -32,10 +32,11 @@ jobs:
           perl -pi -e 's/\[HistogramSteps\]>=50 AND \[DominantStepPercent\]<=5/[HistogramSteps]>0 AND [DominantStepPercent]<=5/' "$file"
           perl -pi -e "s/WHERE \[DatabaseName\]=N'\[DeineDatenbank\]'/WHERE [DatabaseName]=DB_NAME()/" "$file"
 
-          test "$(grep -Fxc '    SELECT [NumberValue]' "$file")" -ge 1
-          test "$(grep -Fxc '              AND [HistogramSteps]>0 AND [DominantStepPercent]<=5' "$file")" -eq 1
-          test "$(grep -Fxc '            WHERE [DatabaseName]=DB_NAME()' "$file")" -eq 1
+          grep -Fq 'SELECT [NumberValue]' "$file"
+          grep -Fq 'AND [HistogramSteps]>0 AND [DominantStepPercent]<=5' "$file"
+          grep -Fq 'WHERE [DatabaseName]=DB_NAME()' "$file"
           ! grep -Fq 'AND [HistogramSteps]>=50 AND [DominantStepPercent]<=5' "$file"
+          git diff --quiet -- "$file" && exit 1 || true
 
       - name: Commit correction and remove one-time workflow
         shell: bash
