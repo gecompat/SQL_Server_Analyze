@@ -188,7 +188,7 @@ BEGIN
                 BEGIN CATCH
                     SET @IsPartial=1;
                     INSERT [#DatabaseCandidateWarnings] VALUES
-                    (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+                    (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                      N'Resumierbare Indexoperationen waren fuer diese Datenbank nicht lesbar.');
                 END CATCH;
                 FETCH NEXT FROM [database_cursor] INTO @DatabaseId,@DatabaseName;
@@ -233,7 +233,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             INSERT [#SourceStatus] VALUES
-            (N'sys.dm_exec_requests',CASE WHEN ERROR_NUMBER()=229 THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
+            (N'sys.dm_exec_requests',CASE WHEN ERROR_NUMBER() IN (229,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'Laufende Wartungsrequests waren nicht lesbar; die uebrigen Quellen werden weiter ausgewertet.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
         END CATCH;
@@ -276,7 +276,7 @@ BEGIN
           END TRY
           BEGIN CATCH
             INSERT [#SourceStatus] VALUES
-            (N'sys.dm_tran_persistent_version_store_stats',CASE WHEN ERROR_NUMBER()=229 THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
+            (N'sys.dm_tran_persistent_version_store_stats',CASE WHEN ERROR_NUMBER() IN (229,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'ADR/PVS-Detailzaehler waren nicht lesbar; ADR-Konfiguration bleibt sichtbar.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
           END CATCH;
@@ -319,7 +319,7 @@ BEGIN
           END TRY
           BEGIN CATCH
             INSERT [#SourceStatus] VALUES
-            (N'msdb.dbo.sysjobs + msdb.dbo.sysjobactivity',CASE WHEN ERROR_NUMBER() IN (229,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
+            (N'msdb.dbo.sysjobs + msdb.dbo.sysjobactivity',CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'Explizit angeforderte Jobaktivitaet war nicht lesbar; keine Jobdetails wurden ersatzweise gelesen.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
           END CATCH;

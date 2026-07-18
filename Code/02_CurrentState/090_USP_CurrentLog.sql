@@ -260,11 +260,11 @@ FROM [sys].[dm_db_log_space_usage];';
             END TRY
             BEGIN CATCH
                 UPDATE [#Result]
-                SET [SpaceStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                SET [SpaceStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END
                 WHERE [DatabaseId] = @DbId;
                 INSERT [#Errors] VALUES(@DbName, 'LOG_SPACE',
-                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
                 SET @IsPartial = 1;
@@ -292,11 +292,11 @@ FROM [sys].[dm_db_log_stats](DB_ID());';
             END TRY
             BEGIN CATCH
                 UPDATE [#Result]
-                SET [StatsStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                SET [StatsStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END
                 WHERE [DatabaseId] = @DbId;
                 INSERT [#Errors] VALUES(@DbName, 'LOG_STATS',
-                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
                 SET @IsPartial = 1;
@@ -315,11 +315,11 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
                 END TRY
                 BEGIN CATCH
                     UPDATE [#Result]
-                    SET [VlfStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                    SET [VlfStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                            WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END
                     WHERE [DatabaseId] = @DbId;
                     INSERT [#Errors] VALUES(@DbName, 'LOG_INFO',
-                        CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                        CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                              WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                         ERROR_NUMBER(), ERROR_MESSAGE());
                     SET @IsPartial = 1;
@@ -354,10 +354,10 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
             END TRY
             BEGIN CATCH
                 INSERT [#Errors] VALUES(NULL, 'ADR_PVS',
-                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+                    CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
                 UPDATE [#Result]
-                SET [PvsStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
+                SET [PvsStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
                 WHERE [PvsStatus] = 'PENDING';
                 SET @IsPartial = 1;
             END CATCH;

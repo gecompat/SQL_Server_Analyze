@@ -29,7 +29,7 @@ BEGIN
    CONVERT(decimal(19,4),1.0*[x].[RunnableTasks]/NULLIF([x].[VisibleOnline],0)),CASE WHEN [n].[node_state_desc] NOT LIKE 'ONLINE%' THEN 'NODE_NOT_ONLINE' WHEN [x].[RunnableTasks]>0 THEN 'RUNNABLE_TASKS_PRESENT' ELSE 'OK_SNAPSHOT' END
   FROM [sys].[dm_os_nodes] n LEFT JOIN [X] x ON [x].[parent_node_id]=[n].[node_id] WHERE [n].[node_state_desc]<>'ONLINE DAC';
   INSERT [#MN] SELECT [memory_node_id],[virtual_address_space_reserved_kb],[virtual_address_space_committed_kb],[locked_page_allocations_kb],[pages_kb],[shared_memory_reserved_kb],[shared_memory_committed_kb] FROM [sys].[dm_os_memory_nodes] WHERE [memory_node_id]<64;
- END TRY BEGIN CATCH SELECT @S=CASE WHEN ERROR_NUMBER() IN(229,297,300) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,@P=1,@E=ERROR_NUMBER(),@M=ERROR_MESSAGE(); END CATCH;
+ END TRY BEGIN CATCH SELECT @S=CASE WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,@P=1,@E=ERROR_NUMBER(),@M=ERROR_MESSAGE(); END CATCH;
  SELECT @StatusCodeOut=@S,@IsPartialOut=@P,@ErrorNumberOut=@E,@ErrorMessageOut=@M;
  IF @PrintMeldungen=1 AND @S<>'AVAILABLE' RAISERROR(N'USP_ServerNuma: %s',10,1,@M) WITH NOWAIT;
  IF @ResultSetArtNormalisiert<>'NONE' BEGIN SELECT CAST('2.0' AS varchar(16)) [ContractVersion],@T [CollectionTimeUtc],N'monitor.USP_ServerNuma' [ModuleName],@S [StatusCode],@P [IsPartial],@E [ErrorNumber],@M [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#N] ORDER BY [node_id];SELECT * FROM [#MN] ORDER BY [memory_node_id]; END ELSE BEGIN SELECT N'numaNodes' [Ergebnis],[x].* FROM [#N] [x] ORDER BY [node_id];SELECT N'memoryNodes' [Ergebnis],[x].* FROM [#MN] [x] ORDER BY [memory_node_id]; END;END;

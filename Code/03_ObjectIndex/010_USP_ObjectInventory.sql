@@ -352,7 +352,7 @@ OPTION (MAXDOP 1, RECOMPILE);';
                 INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'Metadata Visibility / VIEW DEFINITION für vollständige Metadaten',NULL,NULL,N'Systemkatalog erfolgreich gelesen; unsichtbare Objekte werden nicht als Fehler gewertet.');
             END TRY
             BEGIN CATCH
-                INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208,4121) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'Metadata Visibility / VIEW DEFINITION',ERROR_NUMBER(),ERROR_MESSAGE(),N'Datenbankfehler isoliert.');
+                INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208,4121) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'Metadata Visibility / VIEW DEFINITION',ERROR_NUMBER(),ERROR_MESSAGE(),N'Datenbankfehler isoliert.');
             END CATCH;
             FETCH NEXT FROM dbcur INTO @DbId,@DbName;
         END;

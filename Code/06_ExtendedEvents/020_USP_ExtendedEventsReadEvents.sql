@@ -177,7 +177,7 @@ BEGIN
             SET @IsPartial = 1;
             INSERT [#SourceStatus] VALUES
             ('CATALOG', @ResolvedSourceExtendedEventSessionName, 'event_file', NULL,
-             CASE WHEN ERROR_NUMBER() IN (229,262,297,300) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+             CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
              ERROR_NUMBER(), ERROR_MESSAGE(), N'Der konfigurierte event_file-Pfad konnte nicht gelesen werden. Ein expliziter @FilePath kann weiterhin funktionieren.');
         END CATCH;
 
@@ -233,7 +233,7 @@ BEGIN
             END TRY
             BEGIN CATCH
                 SET @StatusCode = CASE
-                                    WHEN ERROR_NUMBER() IN (229,262,297,300) THEN 'DENIED_PERMISSION'
+                                    WHEN ERROR_NUMBER() IN (229,262,297,300,371) THEN 'DENIED_PERMISSION'
                                     WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
                                     ELSE 'ERROR_HANDLED'
                                   END;
@@ -291,7 +291,7 @@ BEGIN
             END TRY
             BEGIN CATCH
                 SET @StatusCode = CASE
-                                    WHEN ERROR_NUMBER() IN (229,262,297,300) THEN 'DENIED_PERMISSION'
+                                    WHEN ERROR_NUMBER() IN (229,262,297,300,371) THEN 'DENIED_PERMISSION'
                                     WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
                                     ELSE 'ERROR_HANDLED'
                                   END;

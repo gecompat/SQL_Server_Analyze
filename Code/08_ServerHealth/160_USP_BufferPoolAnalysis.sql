@@ -152,7 +152,7 @@ BEGIN
             FROM [sys].[dm_exec_query_resource_semaphores];
         END TRY
         BEGIN CATCH
-            SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 297, 300)
+            SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 297, 300, 371)
                                       THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                    @IsPartial = 1, @ErrorNumber = ERROR_NUMBER(), @ErrorMessage = ERROR_MESSAGE();
         END CATCH;

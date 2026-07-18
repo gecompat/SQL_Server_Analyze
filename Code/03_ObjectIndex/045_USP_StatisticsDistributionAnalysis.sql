@@ -292,7 +292,7 @@ BEGIN
         );
     END TRY
     BEGIN CATCH
-        SELECT @StatusCode=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+        SELECT @StatusCode=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                 WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
     END CATCH;
@@ -405,7 +405,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
             END TRY
             BEGIN CATCH
                 UPDATE [#DatabaseStatus]
-                SET [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION'
+                SET [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                       WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
                                       WHEN ERROR_NUMBER() IN (207,208,4121) THEN 'UNAVAILABLE_OBJECT'
                                       ELSE 'ERROR_HANDLED' END,

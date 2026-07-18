@@ -315,7 +315,7 @@ BEGIN
         END;
     END TRY
     BEGIN CATCH
-        SET @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300)
+        SET @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371)
                                THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END;
         SET @IsPartial = 1;
         SET @ErrorNumber = ERROR_NUMBER();

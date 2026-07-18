@@ -30,7 +30,7 @@ BEGIN
    CASE WHEN SUM([runnable_tasks_count])>0 THEN 'RUNNABLE_TASKS_PRESENT' WHEN SUM(CASE WHEN [status]='VISIBLE ONLINE' THEN 1 ELSE 0 END)=0 THEN 'NO_VISIBLE_SCHEDULER' ELSE 'OK_SNAPSHOT' END
   FROM [sys].[dm_os_schedulers] WHERE [scheduler_id]<1048576 GROUP BY [parent_node_id],[status];
   INSERT [#N] SELECT [node_id],[node_state_desc],[memory_node_id],[online_scheduler_count],[idle_scheduler_count],[active_worker_count],[avg_load_balance] FROM [sys].[dm_os_nodes] WHERE [node_state_desc]<>'ONLINE DAC';
- END TRY BEGIN CATCH SELECT @S=CASE WHEN ERROR_NUMBER() IN(229,297,300) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,@P=1,@E=ERROR_NUMBER(),@M=ERROR_MESSAGE(); END CATCH;
+ END TRY BEGIN CATCH SELECT @S=CASE WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,@P=1,@E=ERROR_NUMBER(),@M=ERROR_MESSAGE(); END CATCH;
   SELECT @StatusCodeOut=@S,@IsPartialOut=@P,@ErrorNumberOut=@E,@ErrorMessageOut=@M;
  IF @PrintMeldungen=1 AND @S<>'AVAILABLE' RAISERROR(N'USP_ServerCpuTopology: %s',10,1,@M) WITH NOWAIT;
  IF @ResultSetArtNormalisiert<>'NONE' BEGIN SELECT CAST('2.0' AS varchar(16)) [ContractVersion],@T [CollectionTimeUtc],N'monitor.USP_ServerCpuTopology' [ModuleName],@S [StatusCode],@P [IsPartial],@E [ErrorNumber],@M [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#I] ;SELECT * FROM [#Sch] ORDER BY [parent_node_id],[status];SELECT * FROM [#N] ORDER BY [node_id]; END ELSE BEGIN SELECT N'cpuTopology' [Ergebnis],[x].* FROM [#I] [x] ;SELECT N'schedulers' [Ergebnis],[x].* FROM [#Sch] [x] ORDER BY [parent_node_id],[status];SELECT N'numaNodes' [Ergebnis],[x].* FROM [#N] [x] ORDER BY [node_id]; END;END;

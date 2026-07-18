@@ -768,7 +768,7 @@ BEGIN
                     (
                           @LookupDatabaseName
                         , CASE
-                              WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 916) THEN 'MODULE_LOOKUP_DENIED'
+                              WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371, 916) THEN 'MODULE_LOOKUP_DENIED'
                               WHEN ERROR_NUMBER() = 1222 THEN 'MODULE_LOOKUP_TIMEOUT'
                               ELSE 'MODULE_LOOKUP_FAILED'
                           END
@@ -898,7 +898,7 @@ BEGIN
         SET @IsPartial = 1;
         SET @StatusCode =
             CASE
-                WHEN @ErrorNumber IN (229, 262, 297, 300, 916) THEN 'DENIED_PERMISSION'
+                WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
                 WHEN @ErrorNumber = 1222 THEN 'TIMEOUT'
                 WHEN @ErrorNumber IN (207, 208, 4121) THEN 'UNAVAILABLE_OBJECT'
                 ELSE 'ERROR_HANDLED'

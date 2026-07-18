@@ -298,7 +298,7 @@ INNER JOIN [sys].[dm_xe_sessions] AS [r]
         END TRY
         BEGIN CATCH
             SET @StatusCode = CASE
-                                WHEN ERROR_NUMBER() IN (229, 262, 297, 300) THEN 'DENIED_PERMISSION'
+                                WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371) THEN 'DENIED_PERMISSION'
                                 WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
                                 ELSE 'ERROR_HANDLED'
                               END;

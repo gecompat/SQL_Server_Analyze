@@ -22,16 +22,6 @@ IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>$(ExpectedMajorVersi
 
 IF IS_SRVROLEMEMBER(N'sysadmin')<>1
     THROW 54201,N'Die Berechtigungsmatrix muss aus einem sysadmin-Testkontext gestartet werden.',1;
-
-IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))=17
-BEGIN
-    SELECT [message_id] AS [DiagnosticErrorNumber]
-         , [severity] AS [DiagnosticSeverity]
-         , [text] AS [DiagnosticErrorText]
-    FROM [sys].[messages]
-    WHERE [message_id]=371
-      AND [language_id]=1033;
-END;
 GO
 
 RAISERROR(N'PERMISSION_MATRIX phase=setup',10,1) WITH NOWAIT;
@@ -137,7 +127,6 @@ CREATE TABLE [#PermissionMatrix]
     , [CurrentSessionsStatus] varchar(40) NULL
     , [CurrentSessionsIsPartial] bit NULL
     , [CurrentSessionsErrorNumber] int NULL
-    , [CurrentSessionsErrorMessage] nvarchar(2048) NULL
     , [CurrentSessionsCapabilityPermission] sysname NULL
     , [CurrentSessionsCapabilityHasPermission] bit NULL
     , [CurrentSessionsCapabilityStatus] varchar(40) NULL
@@ -237,7 +226,7 @@ BEGIN
     EXECUTE AS LOGIN=N''' + REPLACE(@LoginName,N'''',N'''''') + N''';
 
     DECLARE @SessionJson nvarchar(max)=NULL,@StandardJson nvarchar(max)=NULL,@QueryStoreJson nvarchar(max)=NULL;
-    DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL,@SessionErrorNumber int=NULL,@SessionErrorMessage nvarchar(2048)=NULL;
+    DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL,@SessionErrorNumber int=NULL;
     DECLARE @CapabilityPermission sysname=NULL,@CapabilityHasPermission bit=NULL,@CapabilityStatus varchar(40)=NULL;
     DECLARE @QueryStoreRequiredRows int=0,@QueryStoreGrantedRows int=0;
     DECLARE @PlanAllowed bit=NULL,@PlanReason varchar(20)=NULL;
@@ -280,8 +269,7 @@ BEGIN
     SELECT
           @SessionStatus=JSON_VALUE(@SessionJson,''$.meta.statusCode'')
         , @SessionPartial=TRY_CONVERT(bit,JSON_VALUE(@SessionJson,''$.meta.isPartial''))
-        , @SessionErrorNumber=TRY_CONVERT(int,JSON_VALUE(@SessionJson,''$.meta.errorNumber''))
-        , @SessionErrorMessage=JSON_VALUE(@SessionJson,''$.warnings[0].message'');
+        , @SessionErrorNumber=TRY_CONVERT(int,JSON_VALUE(@SessionJson,''$.meta.errorNumber''));
 
     SELECT TOP(1)
           @CapabilityPermission=[RequiredPermission]
@@ -331,7 +319,7 @@ BEGIN
           [ScenarioCode],[EffectiveContext]
         , [HasViewServerState],[HasViewServerPerformanceState]
         , [HasViewDatabaseState],[HasViewDatabasePerformanceState]
-        , [CurrentSessionsStatus],[CurrentSessionsIsPartial],[CurrentSessionsErrorNumber],[CurrentSessionsErrorMessage]
+        , [CurrentSessionsStatus],[CurrentSessionsIsPartial],[CurrentSessionsErrorNumber]
         , [CurrentSessionsCapabilityPermission],[CurrentSessionsCapabilityHasPermission]
         , [CurrentSessionsCapabilityStatus]
         , [QueryStorePerformanceRequiredRows],[QueryStorePerformanceGrantedRows]
@@ -344,7 +332,7 @@ BEGIN
         , @HasViewServerPerformanceState
         , @HasViewDatabaseState
         , @HasViewDatabasePerformanceState
-        , @SessionStatus,@SessionPartial,@SessionErrorNumber,@SessionErrorMessage
+        , @SessionStatus,@SessionPartial,@SessionErrorNumber
         , @CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
         , @QueryStoreRequiredRows,@QueryStoreGrantedRows
         , @PlanAllowed,@PlanReason
@@ -381,7 +369,7 @@ GO
 
 /* Sysadmin-Bypass im ursprünglichen Testkontext. */
 DECLARE @SessionJson nvarchar(max)=NULL,@StandardJson nvarchar(max)=NULL,@QueryStoreJson nvarchar(max)=NULL;
-DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL,@SessionErrorNumber int=NULL,@SessionErrorMessage nvarchar(2048)=NULL;
+DECLARE @SessionStatus varchar(40)=NULL,@SessionPartial bit=NULL,@SessionErrorNumber int=NULL;
 DECLARE @CapabilityPermission sysname=NULL,@CapabilityHasPermission bit=NULL,@CapabilityStatus varchar(40)=NULL;
 DECLARE @QueryStoreRequiredRows int=0,@QueryStoreGrantedRows int=0;
 DECLARE @PlanAllowed bit=NULL,@PlanReason varchar(20)=NULL;
@@ -420,8 +408,7 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 SELECT
       @SessionStatus=JSON_VALUE(@SessionJson,'$.meta.statusCode')
     , @SessionPartial=TRY_CONVERT(bit,JSON_VALUE(@SessionJson,'$.meta.isPartial'))
-    , @SessionErrorNumber=TRY_CONVERT(int,JSON_VALUE(@SessionJson,'$.meta.errorNumber'))
-    , @SessionErrorMessage=JSON_VALUE(@SessionJson,'$.warnings[0].message');
+    , @SessionErrorNumber=TRY_CONVERT(int,JSON_VALUE(@SessionJson,'$.meta.errorNumber'));
 
 SELECT TOP(1)
       @CapabilityPermission=[RequiredPermission]
@@ -472,7 +459,7 @@ VALUES
     , @HasViewServerPerformanceState
     , @HasViewDatabaseState
     , @HasViewDatabasePerformanceState
-    , @SessionStatus,@SessionPartial,@SessionErrorNumber,@SessionErrorMessage,@CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
+    , @SessionStatus,@SessionPartial,@SessionErrorNumber,@CapabilityPermission,@CapabilityHasPermission,@CapabilityStatus
     , @QueryStoreRequiredRows,@QueryStoreGrantedRows,@PlanAllowed,@PlanReason
     , CONVERT(bit,1)
 );
@@ -487,7 +474,6 @@ SELECT
     , [CurrentSessionsStatus]
     , [CurrentSessionsIsPartial]
     , [CurrentSessionsErrorNumber]
-    , [CurrentSessionsErrorMessage]
     , [CurrentSessionsCapabilityPermission]
     , [CurrentSessionsCapabilityHasPermission]
     , [CurrentSessionsCapabilityStatus]

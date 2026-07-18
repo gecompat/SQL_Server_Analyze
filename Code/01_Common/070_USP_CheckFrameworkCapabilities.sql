@@ -302,7 +302,7 @@ BEGIN
                       @Queryable = 0, @Usable = 0
                     , @ErrorNumber = ERROR_NUMBER(), @ErrorMessage = ERROR_MESSAGE()
                     , @Status = CASE
-                        WHEN ERROR_NUMBER() IN (229,230,297,300,916,15151) THEN 'DENIED_PERMISSION'
+                        WHEN ERROR_NUMBER() IN (229,230,297,300,371,916,15151) THEN 'DENIED_PERMISSION'
                         WHEN ERROR_NUMBER() IN (911,924,927,942,976,978) THEN 'DATABASE_UNAVAILABLE'
                         WHEN ERROR_NUMBER() IN (207,208,195,2812,4121) THEN 'UNAVAILABLE_OBJECT'
                         WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'

@@ -127,7 +127,7 @@ BEGIN
         (
             N'sys.configurations',
             CASE
-                WHEN ERROR_NUMBER() IN (229, 297, 300) THEN 'DENIED_PERMISSION'
+                WHEN ERROR_NUMBER() IN (229, 297, 300, 371) THEN 'DENIED_PERMISSION'
                 WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
                 ELSE 'ERROR_HANDLED'
             END,
@@ -167,7 +167,7 @@ BEGIN
         (
             N'sys.dm_server_services',
             CASE
-                WHEN ERROR_NUMBER() IN (229, 297, 300) THEN 'DENIED_PERMISSION'
+                WHEN ERROR_NUMBER() IN (229, 297, 300, 371) THEN 'DENIED_PERMISSION'
                 WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
                 ELSE 'ERROR_HANDLED'
             END,
