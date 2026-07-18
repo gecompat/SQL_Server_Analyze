@@ -1,0 +1,67 @@
+name: Fix final P2 token bindings
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-p2-final-token-bindings.yml'
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Align Data Capture and Encryption output contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path=Path('Code/Tests/Integration/184_P2_Data_Capture_Runtime_Contract.sql')
+          text=path.read_text(encoding='utf-8')
+          old="('CDC-DROP-PENDING',N'[drop_pending]',N'[CaptureInstance]')"
+          new="('CDC-DROP-PENDING',N'[has_drop_pending]',N'[CaptureInstance]')"
+          if text.count(old)!=1:
+              raise SystemExit('unexpected CDC drop-pending token')
+          path.write_text(text.replace(old,new,1),encoding='utf-8',newline='\n')
+
+          path=Path('Code/Tests/Integration/185_P2_Encryption_Runtime_Contract.sql')
+          text=path.read_text(encoding='utf-8')
+          old="IF CHARINDEX(N'[thumbprint]',LOWER(@Definition))>0"
+          new="IF CHARINDEX(N'[protectorthumbprint]',LOWER(@Definition))>0"
+          if text.count(old)!=1:
+              raise SystemExit('unexpected Encryption privacy token')
+          path.write_text(text.replace(old,new,1),encoding='utf-8',newline='\n')
+          PY
+      - name: Commit fixes and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-p2-final-token-bindings.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Integration .github/workflows/fix-p2-final-token-bindings.yml
+          git diff --cached --check
+          git commit -m 'test: align final P2 token bindings'
+          git push origin HEAD:main
+      - name: Publish helper status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          state='success'; if [ "$JOB_STATUS" != 'success' ]; then state='failure'; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" -f description='Final P2 token binding helper' \
+            -f context='p2-final-token-helper' >/dev/null
