@@ -1,0 +1,107 @@
+name: Complete P2 finalization
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/complete-p2-finalization.yml'
+
+permissions:
+  contents: write
+  actions: read
+  statuses: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Make finalizer self-clean before validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          script = Path('.github/scripts/finalize_p2_evidence.py')
+          text = script.read_text(encoding='utf-8')
+          anchor = '# Validate generated evidence before committing.\n'
+          insertion = '\n'.join([
+              '# Remove temporary finalizer artifacts before generated evidence validation.',
+              'for relative in (',
+              '    ".github/workflows/finalize-p2-evidence.yml",',
+              '    ".github/scripts/finalize_p2_evidence.py",',
+              '):',
+              '    path = ROOT / relative',
+              '    if path.exists():',
+              '        path.unlink()',
+              '',
+          ]) + '\n'
+          if text.count(anchor) != 1:
+              raise SystemExit('unexpected P2 finalizer validation anchor')
+          script.write_text(text.replace(anchor, insertion + anchor, 1), encoding='utf-8', newline='\n')
+
+          workflow = Path('.github/workflows/finalize-p2-evidence.yml')
+          text = workflow.read_text(encoding='utf-8')
+          replacements = {
+              '          rm .github/workflows/finalize-p2-evidence.yml\n': '          rm -f .github/workflows/finalize-p2-evidence.yml\n',
+              '          rm .github/scripts/finalize_p2_evidence.py\n': '          rm -f .github/scripts/finalize_p2_evidence.py\n',
+          }
+          for old, new in replacements.items():
+              if text.count(old) != 1:
+                  raise SystemExit('unexpected P2 finalizer cleanup anchor')
+              text = text.replace(old, new, 1)
+          workflow.write_text(text, encoding='utf-8', newline='\n')
+          PY
+
+      - name: Read clean SQL runtime evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for run_id in 29656121684 29656121674 29656121672; do
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}"
+          done | jq -s '.' > "$RUNNER_TEMP/p2-runs.json"
+
+      - name: Generate and validate complete P2 evidence
+        shell: bash
+        env:
+          RUNS_JSON: ${{ runner.temp }}/p2-runs.json
+        run: |
+          set -euo pipefail
+          python3 -m py_compile .github/scripts/finalize_p2_evidence.py
+          python3 .github/scripts/finalize_p2_evidence.py
+
+      - name: Commit final evidence without temporary files
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/complete-p2-finalization.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --check
+          git commit -m 'docs: finalize complete P2 evidence'
+          git push origin HEAD:main
+
+      - name: Publish completion status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state='success'; if [ "$JOB_STATUS" != 'success' ]; then state='failure'; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description='Complete P2 evidence synchronization' \
+            -f context='complete-p2-finalization' >/dev/null
