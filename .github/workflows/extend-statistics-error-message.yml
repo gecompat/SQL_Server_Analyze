@@ -23,11 +23,27 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          file='Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql'
-          perl -pi -e 's/\[HistogramVisibleCount\],\[ErrorNumber\],\[Detail\]/[HistogramVisibleCount],[ErrorNumber],[ErrorMessage],[Detail]/' "$file"
-          perl -pi -e "s/\[ErrorNumber\] int N'\$\.ErrorNumber',\[Detail\]/[ErrorNumber] int N'\$.ErrorNumber',[ErrorMessage] nvarchar(2048) N'\$.ErrorMessage',[Detail]/" "$file"
-          grep -Fq '[ErrorNumber],[ErrorMessage],[Detail]' "$file"
-          grep -Fq "[ErrorMessage] nvarchar(2048) N'$.ErrorMessage'" "$file"
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql')
+          text = path.read_text(encoding='utf-8')
+          replacements = [
+              (
+                  '[HistogramVisibleCount],[ErrorNumber],[Detail]',
+                  '[HistogramVisibleCount],[ErrorNumber],[ErrorMessage],[Detail]',
+              ),
+              (
+                  "[ErrorNumber] int N'$.ErrorNumber',[Detail] nvarchar(2000) N'$.Detail'",
+                  "[ErrorNumber] int N'$.ErrorNumber',[ErrorMessage] nvarchar(2048) N'$.ErrorMessage',[Detail] nvarchar(2000) N'$.Detail'",
+              ),
+          ]
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'Expected one diagnostic target for: {old}')
+              text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
 
       - name: Commit diagnostic and remove one-time workflow
         shell: bash
