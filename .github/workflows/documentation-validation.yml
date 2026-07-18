@@ -8,8 +8,14 @@ on:
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
       - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
+      - 'Code/Tests/Static/960_Validate_Complete_P1_Evidence.py'
       - 'Documentation/**/*.md'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
+      - 'Metadata/Quality/Special_Case_Test_Cases.csv'
+      - 'Metadata/Quality/Release_Gate_Evidence.csv'
+      - 'Metadata/Quality/Test_Matrix.csv'
+      - 'Metadata/Quality/Special_Case_Gap_Backlog.csv'
+      - 'Metadata/Quality/Special_Case_Release_Audit.json'
   push:
     branches:
       - main
@@ -19,8 +25,14 @@ on:
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
       - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
+      - 'Code/Tests/Static/960_Validate_Complete_P1_Evidence.py'
       - 'Documentation/**/*.md'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
+      - 'Metadata/Quality/Special_Case_Test_Cases.csv'
+      - 'Metadata/Quality/Release_Gate_Evidence.csv'
+      - 'Metadata/Quality/Test_Matrix.csv'
+      - 'Metadata/Quality/Special_Case_Gap_Backlog.csv'
+      - 'Metadata/Quality/Special_Case_Release_Audit.json'
   workflow_dispatch:
 
 permissions:
@@ -60,6 +72,13 @@ jobs:
           python3 ./Code/Tests/Static/940_Validate_Wait_Type_Catalog.py \
             --repository-root .
 
+      - name: Validate complete P1 evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/960_Validate_Complete_P1_Evidence.py \
+            --repository-root .
+
       - name: Validate procedure documentation
         shell: pwsh
         run: |
@@ -74,5 +93,5 @@ jobs:
         with:
           name: analysis-documentation-validation-log
           path: ${{ runner.temp }}/analysis-documentation-validation.log
-          if-no-files-found: error
+          if-no-files-found: ignore
           retention-days: 1
