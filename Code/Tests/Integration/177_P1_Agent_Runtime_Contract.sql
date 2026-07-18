@@ -48,7 +48,8 @@ IF NOT EXISTS
 (
     SELECT 1
     FROM [monitor].[TVF_InterpretAgentJobState]
-         (1,0,CONVERT(datetime,'20260718 12:00:00',112),CONVERT(datetime,'20260718 11:00:00',112),1,1)
+         (1,0,CONVERT(datetime,'2026-07-18T12:00:00',126),
+              CONVERT(datetime,'2026-07-18T11:00:00',126),1,1)
     WHERE [FindingCode]='LATEST_JOB_RUN_FAILED_IN_WINDOW' AND [FindingSeverity]='HIGH'
 )
     THROW 55102,N'P1-Vertrag AGENT-JOB fehlgeschlagen.',1;
