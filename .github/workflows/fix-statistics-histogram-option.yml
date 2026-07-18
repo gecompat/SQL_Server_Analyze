@@ -1,0 +1,50 @@
+name: Fix statistics histogram option
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-statistics-histogram-option.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply-fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Remove unnecessary histogram query hint
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('Code/03_ObjectIndex/045_USP_StatisticsDistributionAnalysis.sql')
+          text = path.read_text(encoding='utf-8')
+          old = "WHERE [c].[DatabaseName]=@pDbName\nOPTION (MAXDOP 1,RECOMPILE);';"
+          new = "WHERE [c].[DatabaseName]=@pDbName;';"
+          if text.count(old) != 1:
+              raise SystemExit('Expected one histogram OPTION clause.')
+          text = text.replace(old, new, 1)
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit correction and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-statistics-histogram-option.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/03_ObjectIndex/045_USP_StatisticsDistributionAnalysis.sql \
+                  .github/workflows/fix-statistics-histogram-option.yml
+          git diff --cached --check
+          git commit -m 'fix: remove invalid statistics histogram hint'
+          git push origin HEAD:main
