@@ -1,5 +1,17 @@
 # Release Notes
 
+## Stand 2026-07-18 – Data-Capture-/Replikations-Deep-Dive `1.1.0-special.8`
+
+- `SC-019` durch `monitor.USP_DataCaptureDeepAnalysis` als sechstes P2-Modul implementiert.
+- Change Tracking bewertet `MinValidVersion` nur gegen einen explizit gelieferten Consumer-Wasserstand. Ohne Wasserstand wird kein Synchronisationsverlust behauptet; ein Wasserstand unter dem Minimum erzeugt einen hochkonfidenten Reinitialisierungsbefund.
+- CDC-Capture-Instanzen, Drop-Pending, älteste verfügbare Zeitgrenze, Scan-Aggregat/neueste Sitzung, gruppierte Fehler und Capture-/Cleanup-Jobs sind isolierte read-only Quellen.
+- Kontinuierliches und zeitgesteuertes CDC erhalten unterschiedliche Latenzeinordnung. Retention plus Cleanup-Toleranz bleibt eine Heuristik mit Workload- und Timinggrenze.
+- Lokale Distribution-, Log-Reader- und Merge-Agenten werden mit aggregiertem Rückstand, neuester History, Subscription-Status, Konflikten und Retries ausgewertet.
+- Remote oder unzugängliche Distributor-Topologien werden als Evidenzlücke und niemals als gesunder Zustand behandelt. Inaktive Subscription oder Fail/Retry beweisen für sich keine notwendige Reinitialisierung.
+- Keine Change-Zeilen, Replikationsbefehle, Kommentare, Fehlertexte, LSNs, Credentials, Agentjob-Commands, Konfliktzeilen oder DDL.
+- Installer, Frameworkvertrag, Smoke-/API-Test, Beispiele, Inventare, Referenzen, Analysehandbuch, Backlog und 25 neue Spezialfalltestfälle synchronisiert.
+- Laufzeitstatus bleibt vollständig `NOT_EXECUTED`; der dokumentierte synthetische Vorgängerlauf umfasst `SC-019` nicht.
+
 ## Stand 2026-07-18 – Full-Text-Deep-Dive `1.1.0-special.7`
 
 - `SC-018` durch `monitor.USP_FullTextAnalysis` als fünftes P2-Modul implementiert.
@@ -146,7 +158,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.7` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Die Spezialfallwelle bis einschließlich `1.1.0-special.8` ist erst nach Ausführung und Dokumentation der Zielmatrix als laufzeitgetestet zu kennzeichnen.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

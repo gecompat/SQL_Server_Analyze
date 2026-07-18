@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 18. Juli 2026
-**Abdeckung:** 81 Procedures
+**Abdeckung:** 82 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -121,3 +121,4 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 - [USP_TemporalAnalysis](USP_TemporalAnalysis.md)
 - [USP_ServiceBrokerAnalysis](USP_ServiceBrokerAnalysis.md)
 - [USP_FullTextAnalysis](USP_FullTextAnalysis.md)
+- [USP_DataCaptureDeepAnalysis](USP_DataCaptureDeepAnalysis.md)

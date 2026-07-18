@@ -57,6 +57,13 @@ EXEC [monitor].[USP_FullTextAnalysis]
     , @QueryableFragmentWarn=30
     , @MaxZeilen=100;
 
+-- Change Tracking, CDC und lokale Replikation; ohne echten Consumer-Wasserstand kein CT-Verlusturteil
+EXEC [monitor].[USP_DataCaptureDeepAnalysis]
+      @DatabaseNames=N''
+    , @CdcLatencyWarnSeconds=300
+    , @ReplicationPendingCommandWarn=10000
+    , @MaxZeilen=100;
+
 -- Normalisierte Triage; kostenintensive optionale Module bleiben aus
 DECLARE @DiagnosticFindingsJson nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]

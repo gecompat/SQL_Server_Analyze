@@ -1,7 +1,7 @@
 # Analyse-Resultsets richtig lesen – Einsteigerleitfaden für alle Procedures
 
 **Stand:** 17. Juli 2026  
-**Abdeckung:** alle 81 öffentlichen Procedures
+**Abdeckung:** alle 82 öffentlichen Procedures
 **Zweck:** erklären, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können
 
 > Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Familienguides nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
@@ -1070,6 +1070,18 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 **Beispiel:** Eine Population läuft seit zwei Stunden, ihre abgeschlossenen Ranges steigen jedoch zwischen Messungen. Das ist kein Stillstandsbeweis. Erst Verlauf, Batches, I/O und geschützte Logs gemeinsam bewerten.
 
 **Danach:** Folgeaufnahme, Full-Text-/Crawl-Logs ausschließlich in der Laufzeitumgebung, I/O-/Logkontext und Suchlatenz prüfen. [Detailbeschreibung](09_Version_Adaptive.md#6-monitorusp_fulltextanalysis)
+
+## [monitor].[USP_DataCaptureDeepAnalysis]
+
+**So lesen:** CT, CDC und Replikation getrennt behandeln. Zuerst Quellenstatus, dann CT-Versionen, CDC-Scan/Jobs und lokale Replikationsagenten mit Rückstand gemeinsam lesen.
+
+**Warum problematisch:** Ein echter CT-Consumer-Wasserstand unter `MinValidVersion` erfordert Reinitialisierung. CDC-Fehler oder fehlende Jobs können Capture/Cleanup verhindern. Hoher lokaler Replikationsrückstand zusammen mit Fail/Retry weist auf eine Zustellstörung hin.
+
+**Wann nicht problematisch:** Ohne CT-Wasserstand ist kein Verlust beweisbar. Zeitgesteuertes CDC kann zwischen Läufen Latenz zeigen. Idle-Replikationsagenten ohne Rückstand sind normal.
+
+**Beispiel:** 20.000 undistributed commands und ein Distribution Agent im Retry-Zustand sind gemeinsam wesentlich stärker als eine alte Idle-History ohne Rückstand.
+
+**Danach:** Verlauf wiederholen, Consumer-Wasserstand, Jobausgang, Distributor-/Subscriber-Erreichbarkeit und geschützte Logs in der Laufzeitumgebung prüfen. [Detailbeschreibung](09_Version_Adaptive.md#7-monitorusp_datacapturedeepanalysis)
 
 # 12. Praktisches Vorgehen für Anfänger
 

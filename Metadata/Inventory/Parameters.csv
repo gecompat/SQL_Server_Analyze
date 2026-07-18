@@ -1285,3 +1285,31 @@ USP_FullTextAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_FullTextAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_FullTextAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_FullTextAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DataCaptureDeepAnalysis,DatabaseNames,nvarchar(max),N''
+USP_DataCaptureDeepAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_DataCaptureDeepAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_DataCaptureDeepAnalysis,SchemaNames,nvarchar(max),NULL
+USP_DataCaptureDeepAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_DataCaptureDeepAnalysis,ObjectNames,nvarchar(max),NULL
+USP_DataCaptureDeepAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_DataCaptureDeepAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_DataCaptureDeepAnalysis,NurProblematisch,bit,0
+USP_DataCaptureDeepAnalysis,ChangeTrackingClientVersion,bigint,NULL
+USP_DataCaptureDeepAnalysis,CdcLatencyWarnSeconds,bigint,300
+USP_DataCaptureDeepAnalysis,CdcCleanupGraceMinutes,bigint,60
+USP_DataCaptureDeepAnalysis,ErrorLookbackHours,int,24
+USP_DataCaptureDeepAnalysis,ReplicationLatencyWarnSeconds,bigint,300
+USP_DataCaptureDeepAnalysis,ReplicationPendingCommandWarn,bigint,10000
+USP_DataCaptureDeepAnalysis,ReplicationAgentStaleWarnMinutes,bigint,15
+USP_DataCaptureDeepAnalysis,MaxDatenbanken,int,16
+USP_DataCaptureDeepAnalysis,MaxZeilen,int,2000
+USP_DataCaptureDeepAnalysis,LockTimeoutMs,int,0
+USP_DataCaptureDeepAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_DataCaptureDeepAnalysis,JsonErzeugen,bit,0
+USP_DataCaptureDeepAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_DataCaptureDeepAnalysis,PrintMeldungen,bit,1
+USP_DataCaptureDeepAnalysis,Hilfe,bit,0
+USP_DataCaptureDeepAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DataCaptureDeepAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_DataCaptureDeepAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_DataCaptureDeepAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

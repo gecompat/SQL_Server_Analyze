@@ -18,7 +18,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Query Store wird im Kontext jeder ausgewählten Quelldatenbank gelesen.
 - Statementtext wird zentral anhand der Byte-Offsets extrahiert; Batch-, Modul- und Input-Buffer-Text sind getrennte Diagnoseinformationen.
 - Katalogzugriffe sollen Locking/Blocking minimieren; ressourcenintensive Pfade sind nicht der Default.
-- Frameworkversion `1.1.0-special.7`, Vertragsversion `1.12`: dokumentierbare Testmatrix und achtzehn Spezialfallprocedures einschließlich begrenzter Statistikverteilung, Spezialfeature-Nutzungsinventur sowie In-Memory-OLTP-, Temporal-Tables-, Service-Broker- und Full-Text-Tiefenanalyse.
+- Frameworkversion `1.1.0-special.8`, Vertragsversion `1.13`: dokumentierbare Testmatrix und neunzehn Spezialfallprocedures einschließlich begrenzter Statistikverteilung, Spezialfeature-Nutzungsinventur sowie In-Memory-OLTP-, Temporal-Tables-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Tiefenanalyse.
 - P0/P1-Reihenfolge und Aussagegrenzen stehen in `Documentation/Architecture/Special_Case_Modules.md`.
 - `monitor.USP_DiagnosticFindings` ist der letzte Aggregator und hängt über definierte JSON-Verträge von den vorherigen Spezialfallmodulen ab; Schema, IQP und Contention bleiben dort opt-in.
 - `monitor.USP_SpecialFeatureInventory` trennt sichtbare Nutzung beziehungsweise reine Konfiguration von Plattform-Capability und gibt ausdrücklich kein Gesundheitsurteil ab.
@@ -26,6 +26,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - `monitor.USP_TemporalAnalysis` liest nur sichtbare Temporal-Kataloge, Retention-Schalter, approximative Partitionsstatistik und History-Indexmetadaten; Zeilenkonsistenz, Cleanup-Erfolg und früher getrennte Tabellenpaare werden nicht behauptet.
 - `monitor.USP_ServiceBrokerAnalysis` isoliert Queue-, Kapazitäts-, Aktivierungs-, Transmission- und Conversation-Quellen; Queue-Nutzdaten und Nachrichtenkörper bleiben ausgeschlossen und ein deaktiviertes RECEIVE wird nicht automatisch als Poison Message klassifiziert.
 - `monitor.USP_FullTextAnalysis` isoliert Katalog-, Fragment-, Population-, Batch-, Semantik-, Memory-Pool- und FDHost-Quellen; Inhalte, Keywords, Stopwords, Schlüsselwerte, Crawl-Logs, Pfade und Full-Text-DDL bleiben ausgeschlossen.
+- `monitor.USP_DataCaptureDeepAnalysis` bewertet CT-Verlust nur mit Consumer-Wasserstand, isoliert CDC- und lokale Replikationsquellen und behandelt Remote-Topologie als Evidenzlücke; Change-Zeilen, Commands, Fehlertexte, Credentials und DDL bleiben ausgeschlossen.
 
 ## Datenschutz und Portabilität
 
