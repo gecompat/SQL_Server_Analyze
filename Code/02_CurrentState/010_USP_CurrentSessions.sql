@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentSessions
-Version      : 2.0.1
-Stand        : 2026-07-16
+Version      : 2.0.2
+Stand        : 2026-07-18
 Typ          : Stored Procedure
 Zweck        : Liefert aktuelle Sessions mit exakten Mehrfachfiltern, Pattern-
                Filtern und RAW-, CONSOLE- oder JSON-Ausgabe.
@@ -240,7 +240,7 @@ BEGIN
     END TRY
     BEGIN CATCH
         SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();SET @IsPartial=1;
-        SET @StatusCode=CASE WHEN @ErrorNumber IN(229,262,297,300,916) THEN 'DENIED_PERMISSION' WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(207,208,4121) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END;
+        SET @StatusCode=CASE WHEN @ErrorNumber IN(229,262,297,300,368,371,373,916) THEN 'DENIED_PERMISSION' WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(207,208,4121) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END;
     END CATCH;
 
     IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE')
