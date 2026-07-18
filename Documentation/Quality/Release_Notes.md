@@ -13,7 +13,7 @@
 - Eine Instanz ohne aktivierte oder ohne auswertbare Nicht-Basis-Zeilen in `sys.dm_os_performance_counters` wird nun ausdrücklich als `UNAVAILABLE_OBJECT` und partiell behandelt; der P0-Vertrag akzeptiert diesen dokumentierten Umgebungszustand nur dann, wenn keine Snapshot- oder Ratenwerte erfunden werden.
 - SQL Server 2025 hat gleich benannte Counteridentitäten mit unterschiedlichen `cntr_type`-Werten offengelegt. Der Sampling-Schlüssel umfasst nun den Typ, exakt identische DMV-Zeilen werden dedupliziert und Vorher/Nachher werden nie über verschiedene Typen korreliert.
 - Commit `ffb95bd57c8e08300410ad268a92cc5379ee45f7` hat den 14-Suite-Vertrag einschließlich 16 automatisierter P0-Fälle auf SQL Server 2019, 2022 und 2025 bestanden. `PC-RESET` bleibt als einziger P0-Fall für einen kontrollierten Neustart zwischen zwei Samples offen.
-- `PC-RESET` verwendet nun mit `monitor.TVF_InterpretPerformanceCounter` denselben extrahierten Rechenpfad wie die DMV-Auswertung. Ein synthetisch fallender Counter muss `COUNTER_RESET_DURING_SAMPLE` und `MetricValue=NULL` liefern; der Nachweis wartet auf die commitbezogenen Drei-Versionen-Gates.
+- `PC-RESET` verwendet mit `monitor.TVF_InterpretPerformanceCounter` denselben extrahierten Rechenpfad wie die DMV-Auswertung. Ein synthetisch fallender Counter liefert `COUNTER_RESET_DURING_SAMPLE` und `MetricValue=NULL`; Commit `7e3ba1a4e2fa79761c2daf24bee23dd73feed297` hat diesen Vertrag auf SQL Server 2019, 2022 und 2025 bestätigt.
 - Drei Actions-Gates erzwingen SQL Server 2019/2022/2025, Compatibility Level 150/160/170, case-sensitive Collation, Installer, 14 Suiten und synthetische Berechtigungsfälle.
 - Die drei Linux-Gates lösen den öffentlichen `*-latest`-Pull-Tag in einen validierten unveränderlichen Image-Digest auf, starten exakt diesen Digest und erfassen `SERVERPROPERTY('ProductVersion')`; Build und Digest werden als rein technische Evidence dokumentiert.
 - Das SQL-Server-2025-Gate hat den Regex-Prädikatvertrag gehärtet: `REGEXP_LIKE(...)` und `NOT REGEXP_LIKE(...)` ersetzen repositoryweit unzulässige Vergleiche mit `0` oder `1`; ein statischer Check schützt vor Regression.
@@ -180,7 +180,7 @@
 
 ## Teststatus
 
-Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Commit `ffb95bd57c8e08300410ad268a92cc5379ee45f7` des Stands `1.1.0-special.9` hat die commitbezogenen Actions-Läufe für SQL Server 2019, 2022 und 2025 einschließlich 14 Suiten, 16 automatisierter P0-Fälle, Berechtigungsmatrizen und der eigenständigen SQL-Server-2025-Regex-Matrix erfolgreich abgeschlossen. Die Freigabe gilt mit Einschränkungen für disposable synthetische Linux-Ziele; `PC-RESET` sowie weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- und externe Fälle bleiben gesondert.
+Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlichen real getestet. Commit `7e3ba1a4e2fa79761c2daf24bee23dd73feed297` des Stands `1.1.0-special.9` hat die commitbezogenen Actions-Läufe für SQL Server 2019, 2022 und 2025 einschließlich 14 Suiten, aller 17 P0-Fälle, Berechtigungsmatrizen und der eigenständigen SQL-Server-2025-Regex-Matrix erfolgreich abgeschlossen. Die Freigabe gilt mit Einschränkungen für disposable synthetische Linux-Ziele; weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- und externe Fälle bleiben gesondert.
 
 <!-- BEGIN API_15_STATEMENT_CONTEXT -->
 ## Stand 2026-07-16 – CONSOLE-Default und Statementkontext

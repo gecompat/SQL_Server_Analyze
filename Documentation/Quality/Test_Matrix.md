@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 18. Juli 2026
-**Status:** commitbezogene 14-Suite- und P0-Actions-Evidenz für SQL Server 2019, 2022 und 2025 vorhanden; kontrollierter Neustart sowie manuelle Ziel- und weitere Spezialfälle bleiben offen
+**Status:** commitbezogene 14-Suite- und vollständige P0-Actions-Evidenz für SQL Server 2019, 2022 und 2025 vorhanden; manuelle Ziel- und weitere Spezialfälle bleiben offen
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `ffb95bd57c8e08300410ad268a92cc5379ee45f7` hat Installer, den 14-Suite-Release-Gate-Vertrag einschließlich 14 P0-Laufzeitfällen und die Berechtigungsmatrix einschließlich zwei P0-Restricted-Login-Fällen auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `7e3ba1a4e2fa79761c2daf24bee23dd73feed297` hat Installer, den 14-Suite-Release-Gate-Vertrag einschließlich 15 P0-Laufzeitfällen und die Berechtigungsmatrix einschließlich zwei P0-Restricted-Login-Fällen auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29636177362](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177362) | `PASS_WITH_LIMITATIONS`; `P0_RUNTIME=PASS_WITH_LIMITATIONS` |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29636177330](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177330) | `PASS_WITH_LIMITATIONS`; `P0_RUNTIME=PASS_WITH_LIMITATIONS` |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29636177353](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177353) | `PASS_WITH_LIMITATIONS`; `P0_RUNTIME=PASS_WITH_LIMITATIONS`; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29636655031](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636655031) | `PASS_WITH_LIMITATIONS`; alle 17 P0-Fälle |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29636655029](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636655029) | `PASS_WITH_LIMITATIONS`; alle 17 P0-Fälle |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29636655044](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636655044) | `PASS_WITH_LIMITATIONS`; alle 17 P0-Fälle; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 
@@ -33,7 +33,7 @@ Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diese
 | SQL Server 2022 | `mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89` |
 | SQL Server 2025 | `mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177349) und das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636177344) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; P0- und Regex-Matrix sind als eigene Suitezeilen in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für disposable synthetische Linux-Ziele. Sie ist kein `PC-RESET`-, weiterer Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636655043) und das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636655026) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; P0- und Regex-Matrix sind als eigene Suitezeilen in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für disposable synthetische Linux-Ziele. Sie ist kein weiterer Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
 
 ## Datenschutz
 
