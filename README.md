@@ -211,13 +211,15 @@ Empfohlene Einstiegspunkte:
 - [Vertrag für ein späteres Snapshot-/Baseline-Paket](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
 - [Schnittstellenvertrag für eine spätere Fleet-Korrelation](./Documentation/Architecture/Fleet_Correlation_Contract.md)
 - [Externer Restore- und Hostnachweis](./Documentation/Quality/External_Restore_Host_Proof_Runbook.md)
+- [Nächste Arbeitsschritte](./Documentation/Quality/Next_Steps.md)
+- [Bekannte Restpunkte](./Documentation/Quality/Known_Issues.md)
 - [Tiefenanalyse fehlender Auswertungen und Spezialfälle](./Documentation/Research/Special_Case_Gap_Analysis.md)
 - [Systemquellenkatalog](./Documentation/Research/System_Source_Catalog.md)
 - [Recherchequellen](./Documentation/Research/Sources.md)
 
 ## Qualität und Projektstatus
 
-Der Repositorybestand enthält statische API-, Installer-, Datenschutz- und Migrationsprüfungen. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json).
+Der Repositorybestand enthält reproduzierbare statische API-, Installer- und Dokumentationsprüfungen sowie dokumentierte Datenschutz- und Migrationsaudits. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json). Die noch ausstehende Operationalisierung des Repository- und ZIP-Datenschutzgates ist als `RQ-001` in den nächsten Arbeitsschritten festgehalten.
 
 Die Version `1.1.0-special.9` ergänzt die P2-Module für Verschlüsselungslebenszyklus und Wartungsoperationen. Getrennte GitHub-Actions-Gates installieren und testen denselben 13-Suite-Vertrag auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170. Manuelle Feature-Positiv-, Grenzwert-, Last- und externe Restorefälle bleiben separate Nachweise.
 
