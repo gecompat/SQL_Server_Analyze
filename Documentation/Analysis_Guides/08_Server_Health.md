@@ -548,6 +548,7 @@ Typisiert SQL-Server-Performance-Counter als Snapshot, Rate, Fraction oder unint
 ### Interpretation
 
 - Ratecounter ohne Sample sind nicht als Rate interpretierbar.
+- Liefert `sys.dm_os_performance_counters` keine Zeilen, meldet die Procedure `UNAVAILABLE_OBJECT` und `IsPartial=1`, statt einen Snapshot oder eine Rate zu erfinden.
 - Perfmon-Counter können Instanzstart-/Resetkontext besitzen.
 - Countername allein bestimmt nicht die Einheit; `cntr_type` und Basecounter lesen.
 - Ein 5-Sekunden-Sample kann Burstlast zeigen, aber keine Tagesbaseline ersetzen.
