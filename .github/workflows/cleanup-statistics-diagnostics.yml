@@ -1,0 +1,63 @@
+name: Cleanup statistics diagnostics
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/cleanup-statistics-diagnostics.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Remove temporary synthetic diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path('Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql')
+          lines = path.read_text(encoding='utf-8').splitlines()
+
+          def remove_block(start_text: str, end_text: str) -> None:
+              start = next(i for i, line in enumerate(lines) if start_text in line)
+              end = next(i for i in range(start, len(lines)) if end_text in lines[i])
+              del lines[start:end]
+
+          remove_block(
+              "SELECT N'STAT_UNIFORM_DIAGNOSTIC'",
+              "IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE'",
+          )
+          remove_block(
+              "SELECT N'STAT_DENIED_DIAGNOSTIC'",
+              "IF ISJSON(@Json)<>1 OR @Status<>'DENIED_GROUP'",
+          )
+
+          text = '\n'.join(lines) + '\n'
+          if 'STAT_UNIFORM_DIAGNOSTIC' in text or 'STAT_DENIED_DIAGNOSTIC' in text:
+              raise SystemExit('Temporary diagnostic marker remains.')
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit cleanup and remove one-time workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/cleanup-statistics-diagnostics.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql \
+                  .github/workflows/cleanup-statistics-diagnostics.yml
+          git diff --cached --check
+          git commit -m 'test: remove temporary statistics diagnostics'
+          git push origin HEAD:main
