@@ -1,0 +1,107 @@
+name: Export validated P2 evidence tree
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/export-p2-final-evidence.yml'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  export:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Prepare self-cleaning finalizer
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          script = Path('.github/scripts/finalize_p2_evidence.py')
+          text = script.read_text(encoding='utf-8')
+          anchor = '# Validate generated evidence before committing.\n'
+          insertion = '\n'.join([
+              '# Remove temporary finalizer artifacts before generated evidence validation.',
+              'for relative in (',
+              '    ".github/workflows/finalize-p2-evidence.yml",',
+              '    ".github/scripts/finalize_p2_evidence.py",',
+              '):',
+              '    path = ROOT / relative',
+              '    if path.exists():',
+              '        path.unlink()',
+              '',
+          ]) + '\n'
+          if text.count(anchor) != 1:
+              raise SystemExit('unexpected P2 finalizer validation anchor')
+          script.write_text(text.replace(anchor, insertion + anchor, 1), encoding='utf-8', newline='\n')
+
+          documentation_readme = Path('Documentation/README.md')
+          text = documentation_readme.read_text(encoding='utf-8')
+          old = ('Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. '
+                 'Der Release-Gate-Vertrag umfasst nun 19 Suiten; P0 und die ersten zwanzig P1-Fälle bis '
+                 'Schema-/Designkorrektheit besitzen commitbezogene Drei-Versionen-Evidenz. Als nächste '
+                 'P1-Gruppe folgt die begrenzte Statistikverteilung.')
+          normalized = ('Die Version `1.1.0-special.9` ergänzt Verschlüsselungslebenszyklus und Wartungsoperationen. '
+                        'Der Release-Gate-Vertrag umfasst nun 19 Suiten; P0 und die ersten zwanzig P1-Fälle besitzen '
+                        'commitbezogene Drei-Versionen-Evidenz. Weitere Feature-Positiv-, Grenzwert-, Last- und '
+                        'externe Restorefälle bleiben separate Nachweise.')
+          if text.count(old) != 1:
+              raise SystemExit('unexpected Documentation README status paragraph')
+          documentation_readme.write_text(text.replace(old, normalized, 1), encoding='utf-8', newline='\n')
+          PY
+
+      - name: Read clean SQL runtime evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for run_id in 29656121684 29656121674 29656121672; do
+            gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}"
+          done | jq -s '.' > "$RUNNER_TEMP/p2-runs.json"
+
+      - name: Generate and validate complete P2 evidence
+        shell: bash
+        env:
+          RUNS_JSON: ${{ runner.temp }}/p2-runs.json
+        run: |
+          set -euo pipefail
+          python3 -m py_compile .github/scripts/finalize_p2_evidence.py
+          python3 .github/scripts/finalize_p2_evidence.py
+
+      - name: Package validated repository changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/complete-p2-finalization.yml
+          rm -f .github/workflows/export-p2-final-evidence.yml
+          mkdir -p "$RUNNER_TEMP/p2-final/files"
+          git rev-parse HEAD > "$RUNNER_TEMP/p2-final/base-commit.txt"
+          git diff --name-only --diff-filter=ACMRT HEAD > "$RUNNER_TEMP/p2-final/changed-files.txt"
+          git diff --name-only --diff-filter=D HEAD > "$RUNNER_TEMP/p2-final/deleted-files.txt"
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            mkdir -p "$RUNNER_TEMP/p2-final/files/$(dirname "$path")"
+            cp "$path" "$RUNNER_TEMP/p2-final/files/$path"
+          done < "$RUNNER_TEMP/p2-final/changed-files.txt"
+          tar -czf "$RUNNER_TEMP/p2-final/changed-files.tar.gz" -C "$RUNNER_TEMP/p2-final/files" .
+          printf '%s\n' 'Complete P1 evidence validation succeeded.' 'Complete P2 evidence validation succeeded.' > "$RUNNER_TEMP/p2-final/validation.txt"
+          sha256sum "$RUNNER_TEMP/p2-final/changed-files.tar.gz" > "$RUNNER_TEMP/p2-final/changed-files.sha256"
+
+      - name: Upload validated change tree
+        uses: actions/upload-artifact@v7
+        with:
+          name: p2-final-evidence-tree
+          path: ${{ runner.temp }}/p2-final
+          if-no-files-found: error
+          retention-days: 1
