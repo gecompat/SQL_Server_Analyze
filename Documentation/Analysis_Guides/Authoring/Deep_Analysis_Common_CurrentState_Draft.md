@@ -22,7 +22,7 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Datenkette:** `sys.login_token`.
 
-**Zeit- und Scope-Modell:** Momentaufnahme des aktuellen Login- und Execution-Kontexts. Gruppenauflösung kann sich durch Token, Impersonation oder Verzeichniszustand vom erwarteten Benutzerbild unterscheiden.
+**Zeit-/Scope-Modell:** Momentaufnahme des aktuellen Login- und Execution-Kontexts. Gruppenauflösung kann sich durch Token, Impersonation oder Verzeichniszustand vom erwarteten Benutzerbild unterscheiden.
 
 **Bewertung und Gegenprobe:** `IsAllowed`, Policyanzahl, gematchte Gruppen und AccessReason gemeinsam lesen. Ein Deny bei vorhandener Policy und ohne Match ist erwartetes Policyverhalten; SQL-Quellrechte zu erweitern würde die Frameworksperre nicht fachlich lösen.
 
@@ -38,7 +38,7 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Datenkette:** `sys.sp_executesql`.
 
-**Zeit- und Scope-Modell:** Aktueller Umgebungszustand; Ergebnisse können sich nach Konfigurationsänderung, Failover, Datenbankstatuswechsel oder Berechtigungsänderung ändern.
+**Zeit-/Scope-Modell:** Aktueller Umgebungszustand; Ergebnisse können sich nach Konfigurationsänderung, Failover, Datenbankstatuswechsel oder Berechtigungsänderung ändern.
 
 **Bewertung und Gegenprobe:** Die Prüfkette in der dokumentierten Reihenfolge lesen. `HasRequiredPermission=1` bei `IsQueryable=0` weist auf eine zusätzliche Laufzeitgrenze hin. `IsFeatureEnabled=0` kann bei bewusst ungenutztem Feature normal sein.
 
@@ -54,7 +54,7 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Datenkette:** `master.sys.databases`, `sys.sp_executesql`.
 
-**Zeit- und Scope-Modell:** Momentaufnahme der Datenbankliste. Zwischen Kandidatenermittlung und späterer dynamischer Abfrage kann eine Datenbank offline gehen, failovern oder gelöscht werden.
+**Zeit-/Scope-Modell:** Momentaufnahme der Datenbankliste. Zwischen Kandidatenermittlung und späterer dynamischer Abfrage kann eine Datenbank offline gehen, failovern oder gelöscht werden.
 
 **Bewertung und Gegenprobe:** Explizit angeforderte, aber ausgeschlossene Datenbanken müssen als fehlende Evidenz dokumentiert werden. Eine Analyse über neun von zehn angeforderten Datenbanken ist nicht automatisch eine vollständige Entwarnung.
 
@@ -70,7 +70,7 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Datenkette:** Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
 
-**Zeit- und Scope-Modell:** Nur für den aktuellen Aufruf; keine Persistenz.
+**Zeit-/Scope-Modell:** Nur für den aktuellen Aufruf; keine Persistenz.
 
 **Bewertung und Gegenprobe:** Case-Sensitivität, Duplikate, leere Elemente und ungültige Quote-/Bracketstruktur explizit behandeln. Ein absichtlich leerer Filter und ein aufgrund von Fehler geleerter Filter müssen unterscheidbar bleiben.
 
@@ -92,7 +92,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
 
-**Zeit- und Scope-Modell:** Sessionmomentaufnahme mit kumulativen Zählern seit Sessionbeginn. Session-IDs können nach Ende wiederverwendet werden; Uhrzeit und Login-/Connectionkontext gehören zur Identität.
+**Zeit-/Scope-Modell:** Sessionmomentaufnahme mit kumulativen Zählern seit Sessionbeginn. Session-IDs können nach Ende wiederverwendet werden; Uhrzeit und Login-/Connectionkontext gehören zur Identität.
 
 **Bewertung und Gegenprobe:** `sleeping` ohne offene Transaktion ist häufig normal. `sleeping` mit offener Transaktion, Locks oder wachsendem Logverbrauch ist wesentlich kritischer. Hohe kumulative CPU einer alten Poolsession beweist keine aktuelle Last.
 
@@ -108,7 +108,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_input_buffer`, `sys.dm_exec_query_memory_grants`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`, `sys.objects`, `sys.schemas`, `sys.sp_executesql`.
 
-**Zeit- und Scope-Modell:** Flüchtiger Snapshot; Requestzähler gelten seit Requeststart. Ein Request kann zwischen den einzelnen DMV-Lesungen Status oder Taskbild ändern.
+**Zeit-/Scope-Modell:** Flüchtiger Snapshot; Requestzähler gelten seit Requeststart. Ein Request kann zwischen den einzelnen DMV-Lesungen Status oder Taskbild ändern.
 
 **Bewertung und Gegenprobe:** Elapsed, CPU, Reads, Writes, Row Count, Waits, Blocking und Grant zusammen lesen. Hohe Elapsed bei niedriger CPU legt Warten nahe; hohe CPU plus hohe Reads legt datenintensive Arbeit nahe. Bei mehreren Tasks ist der Request-Hauptwait nicht das vollständige Waitbild.
 
@@ -124,7 +124,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, `sys.dm_tran_locks`.
 
-**Zeit- und Scope-Modell:** Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
+**Zeit-/Scope-Modell:** Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
 
 **Bewertung und Gegenprobe:** Anzahl Opfer, längste Wartezeit, Lock-/Ressourcentyp, offene Transaktion und Zustand des Root Blockers gemeinsam bewerten. Ein aktiv arbeitender Root Blocker kann Fortschritt machen; ein sleeping Root Blocker mit alter Transaktion ist verdächtiger.
 
@@ -140,7 +140,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_sys_info`, `sys.dm_os_wait_stats`, `sys.dm_os_waiting_tasks`, `sys.sp_executesql`.
 
-**Zeit- und Scope-Modell:** Tasksnapshot plus kumulativer Kontext oder gültiges Sampledelta. Current Tasks werden vor der optionalen Samplingpause erfasst.
+**Zeit-/Scope-Modell:** Tasksnapshot plus kumulativer Kontext oder gültiges Sampledelta. Current Tasks werden vor der optionalen Samplingpause erfasst.
 
 **Bewertung und Gegenprobe:** Waittyp, Dauer, Anzahl, Resource/Signalanteil, Workloadwirkung und zweite Evidenzquelle kombinieren.
 
@@ -156,7 +156,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_tran_active_transactions`, `sys.dm_tran_database_transactions`, `sys.dm_tran_session_transactions`.
 
-**Zeit- und Scope-Modell:** Aktueller offener Zustand; Alter seit Transaktionsbeginn. Logbytes und Locks können während der Abfrage weiter wachsen.
+**Zeit-/Scope-Modell:** Aktueller offener Zustand; Alter seit Transaktionsbeginn. Logbytes und Locks können während der Abfrage weiter wachsen.
 
 **Bewertung und Gegenprobe:** Alter, Sessionstatus, Requestfortschritt, Logverbrauch, Blockingopfer und `log_reuse_wait_desc` korrelieren. Lange Batchloads können legitim sein, benötigen aber Kapazitäts- und Fortschrittskontrolle.
 
@@ -172,7 +172,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `sys.databases`, `sys.dm_exec_query_memory_grants`, `sys.dm_exec_query_resource_semaphores`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`.
 
-**Zeit- und Scope-Modell:** Flüchtiger Zustand. Wartende Grants verschwinden bei Zuteilung/Abbruch; Nutzung verändert sich während der Ausführung.
+**Zeit-/Scope-Modell:** Flüchtiger Zustand. Wartende Grants verschwinden bei Zuteilung/Abbruch; Nutzung verändert sich während der Ausführung.
 
 **Bewertung und Gegenprobe:** Wartedauer, Requested/Granted/Used/Ideal, DOP, Konkurrenz und Planoperatoren zusammen lesen. Große tatsächlich genutzte Grants können korrekt sein; großer ungenutzter Anteil spricht eher für Übergrant oder Schätzfehler.
 
@@ -188,7 +188,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `sys.database_files`, `sys.dm_db_session_space_usage`, `sys.dm_exec_sessions`, `sys.sp_executesql`.
 
-**Zeit- und Scope-Modell:** Aktueller Datei-/Datenbankzustand; Session-/Taskzähler seit Request/Sessionaktivität. Version Store kann nach Transaktionsende verzögert bereinigt werden.
+**Zeit-/Scope-Modell:** Aktueller Datei-/Datenbankzustand; Session-/Taskzähler seit Request/Sessionaktivität. Version Store kann nach Transaktionsende verzögert bereinigt werden.
 
 **Bewertung und Gegenprobe:** Zuerst Belegungsart trennen, dann Verbraucher und Wachstum prüfen. Internal Objects plus Spillwarnung führt zum Plan; Version Store plus alte Snapshottransaktion zur Transaktionsanalyse; User Objects zu Tempobjekten.
 
@@ -204,7 +204,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `master.sys.master_files`, `sys.dm_io_virtual_file_stats`.
 
-**Zeit- und Scope-Modell:** Kumulativ seit Start/Dateizustand oder Sampledelta. Reset, Restart, Dateiwechsel und sehr kleine Nenner begrenzen Vergleichbarkeit.
+**Zeit-/Scope-Modell:** Kumulativ seit Start/Dateizustand oder Sampledelta. Reset, Restart, Dateiwechsel und sehr kleine Nenner begrenzen Vergleichbarkeit.
 
 **Bewertung und Gegenprobe:** Reads und Writes getrennt bewerten; Latenz immer mit Operationszahl, Bytes und Sampledauer lesen. Datenfiles und Logfiles besitzen unterschiedliche I/O-Muster. Parallel sichtbare PAGEIOLATCH/WRITELOG- und Requestwerte erhöhen die Evidenz.
 
@@ -220,7 +220,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** `master.sys.databases`, `sys.dm_db_log_info`, `sys.dm_db_log_space_usage`, `sys.dm_db_log_stats`, `sys.dm_tran_persistent_version_store_stats`, `sys.sp_executesql`.
 
-**Zeit- und Scope-Modell:** Aktueller Space-/Reusezustand; Filegröße und VLFs Metadaten, einzelne Zähler kumulativ. Reuse-Wait kann sich nach Backup/Commit rasch ändern.
+**Zeit-/Scope-Modell:** Aktueller Space-/Reusezustand; Filegröße und VLFs Metadaten, einzelne Zähler kumulativ. Reuse-Wait kann sich nach Backup/Commit rasch ändern.
 
 **Bewertung und Gegenprobe:** Used Percent, absolute freie MB, Wachstumsoption, Volumeplatz und Reuse-Wait zusammen lesen. `ACTIVE_TRANSACTION`, `LOG_BACKUP`, `AVAILABILITY_REPLICA` oder `REPLICATION` führen zu unterschiedlichen Maßnahmen.
 
@@ -236,7 +236,7 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Datenkette:** Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
 
-**Zeit- und Scope-Modell:** Nahe beieinanderliegende, aber nicht atomare Momentaufnahmen; Samplingchildren können den Aufruf verlängern.
+**Zeit-/Scope-Modell:** Nahe beieinanderliegende, aber nicht atomare Momentaufnahmen; Samplingchildren können den Aufruf verlängern.
 
 **Bewertung und Gegenprobe:** Zuerst Modulstatus und Partialflags, dann nur auffällige Children vertiefen. Korrelation ist möglich, wenn dieselbe Session/DB/Datei in mehreren Children erscheint.
 
