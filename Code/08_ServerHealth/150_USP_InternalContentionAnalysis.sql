@@ -62,21 +62,21 @@ BEGIN
 
     CREATE TABLE [#LatchStart]
     (
-          [LatchClass] nvarchar(120) NOT NULL PRIMARY KEY
+          [LatchClass] nvarchar(120) NOT NULL
         , [WaitingRequestsCount] bigint NOT NULL
         , [WaitTimeMs] bigint NOT NULL
         , [MaxWaitTimeMs] bigint NOT NULL
     );
     CREATE TABLE [#LatchEnd]
     (
-          [LatchClass] nvarchar(120) NOT NULL PRIMARY KEY
+          [LatchClass] nvarchar(120) NOT NULL
         , [WaitingRequestsCount] bigint NOT NULL
         , [WaitTimeMs] bigint NOT NULL
         , [MaxWaitTimeMs] bigint NOT NULL
     );
     CREATE TABLE [#SpinStart]
     (
-          [SpinlockName] nvarchar(256) NOT NULL PRIMARY KEY
+          [SpinlockName] nvarchar(256) NOT NULL
         , [Collisions] bigint NOT NULL
         , [Spins] bigint NOT NULL
         , [SleepTime] bigint NOT NULL
@@ -84,7 +84,7 @@ BEGIN
     );
     CREATE TABLE [#SpinEnd]
     (
-          [SpinlockName] nvarchar(256) NOT NULL PRIMARY KEY
+          [SpinlockName] nvarchar(256) NOT NULL
         , [Collisions] bigint NOT NULL
         , [Spins] bigint NOT NULL
         , [SleepTime] bigint NOT NULL
@@ -144,17 +144,14 @@ BEGIN
             FROM [sys].[dm_os_sys_info];
 
             INSERT [#LatchStart]
-            SELECT [latch_class], SUM([waiting_requests_count]), SUM([wait_time_ms]),
-                   MAX([max_wait_time_ms])
-            FROM [sys].[dm_os_latch_stats]
-            GROUP BY [latch_class];
+            SELECT [latch_class], [waiting_requests_count], [wait_time_ms], [max_wait_time_ms]
+            FROM [sys].[dm_os_latch_stats];
 
             IF @MitSpinlocks = 1
             BEGIN
                 INSERT [#SpinStart]
-                SELECT [name], SUM([collisions]), SUM([spins]), SUM([sleep_time]), SUM([backoffs])
-                FROM [sys].[dm_os_spinlock_stats]
-                GROUP BY [name];
+                SELECT [name], [collisions], [spins], [sleep_time], [backoffs]
+                FROM [sys].[dm_os_spinlock_stats];
             END;
 
             SET @SampleStartUtc = SYSUTCDATETIME();
@@ -171,19 +168,28 @@ BEGIN
             );
 
             INSERT [#LatchEnd]
-            SELECT [latch_class], SUM([waiting_requests_count]), SUM([wait_time_ms]),
-                   MAX([max_wait_time_ms])
-            FROM [sys].[dm_os_latch_stats]
-            GROUP BY [latch_class];
+            SELECT [latch_class], [waiting_requests_count], [wait_time_ms], [max_wait_time_ms]
+            FROM [sys].[dm_os_latch_stats];
 
             IF @MitSpinlocks = 1
             BEGIN
                 INSERT [#SpinEnd]
-                SELECT [name], SUM([collisions]), SUM([spins]), SUM([sleep_time]), SUM([backoffs])
-                FROM [sys].[dm_os_spinlock_stats]
-                GROUP BY [name];
+                SELECT [name], [collisions], [spins], [sleep_time], [backoffs]
+                FROM [sys].[dm_os_spinlock_stats];
             END;
 
+            ;WITH [LatchStart] AS
+            (
+                SELECT [LatchClass],SUM([WaitingRequestsCount]) AS [WaitingRequestsCount],
+                       SUM([WaitTimeMs]) AS [WaitTimeMs],MAX([MaxWaitTimeMs]) AS [MaxWaitTimeMs]
+                FROM [#LatchStart] GROUP BY [LatchClass]
+            ),
+            [LatchEnd] AS
+            (
+                SELECT [LatchClass],SUM([WaitingRequestsCount]) AS [WaitingRequestsCount],
+                       SUM([WaitTimeMs]) AS [WaitTimeMs],MAX([MaxWaitTimeMs]) AS [MaxWaitTimeMs]
+                FROM [#LatchEnd] GROUP BY [LatchClass]
+            )
             INSERT [#LatchResult]
             SELECT
                   [e].[LatchClass]
@@ -195,8 +201,8 @@ BEGIN
                 , [WaitTime].[RatePerSecond]
                 , CONVERT(bit,CASE WHEN [Waiting].[CounterResetDetected]=1
                                       OR [WaitTime].[CounterResetDetected]=1 THEN 1 ELSE 0 END)
-            FROM [#LatchEnd] AS [e]
-            JOIN [#LatchStart] AS [s] ON [s].[LatchClass] = [e].[LatchClass]
+            FROM [LatchEnd] AS [e]
+            JOIN [LatchStart] AS [s] ON [s].[LatchClass] = [e].[LatchClass]
             CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
             ([s].[WaitingRequestsCount],[e].[WaitingRequestsCount],@SampleSeconds,@ActualSampleSeconds) AS [Waiting]
             CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
@@ -207,6 +213,18 @@ BEGIN
 
             IF @MitSpinlocks = 1
             BEGIN
+                ;WITH [SpinStart] AS
+                (
+                    SELECT [SpinlockName],SUM([Collisions]) AS [Collisions],SUM([Spins]) AS [Spins],
+                           SUM([SleepTime]) AS [SleepTime],SUM([Backoffs]) AS [Backoffs]
+                    FROM [#SpinStart] GROUP BY [SpinlockName]
+                ),
+                [SpinEnd] AS
+                (
+                    SELECT [SpinlockName],SUM([Collisions]) AS [Collisions],SUM([Spins]) AS [Spins],
+                           SUM([SleepTime]) AS [SleepTime],SUM([Backoffs]) AS [Backoffs]
+                    FROM [#SpinEnd] GROUP BY [SpinlockName]
+                )
                 INSERT [#SpinResult]
                 SELECT
                       [e].[SpinlockName]
@@ -221,8 +239,8 @@ BEGIN
                                            OR [Spin].[CounterResetDetected]=1
                                            OR [Sleep].[CounterResetDetected]=1
                                            OR [Backoff].[CounterResetDetected]=1 THEN 1 ELSE 0 END)
-                FROM [#SpinEnd] AS [e]
-                JOIN [#SpinStart] AS [s] ON [s].[SpinlockName] = [e].[SpinlockName]
+                FROM [SpinEnd] AS [e]
+                JOIN [SpinStart] AS [s] ON [s].[SpinlockName] = [e].[SpinlockName]
                 CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
                 ([s].[Collisions],[e].[Collisions],@SampleSeconds,@ActualSampleSeconds) AS [Collision]
                 CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
