@@ -141,7 +141,7 @@ BEGIN
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
     END;
 
-    EXEC(N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N';');
+    SET LOCK_TIMEOUT 0;
 
     INSERT [#Encryption]([DatabaseId],[DatabaseName],[IsEncrypted],[FindingCode],[FindingSeverity],[EvidenceLimit])
     SELECT [DatabaseId],[DatabaseName],NULL,'SOURCE_PENDING','INFO',
@@ -234,7 +234,7 @@ BEGIN
             WHILE @@FETCH_STATUS=0
             BEGIN
                 BEGIN TRY
-                    SET @Sql=N'UPDATE [e] SET '
+                    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; UPDATE [e] SET '
                         +N'[ColumnMasterKeyCount]=(SELECT COUNT_BIG(*) FROM '+QUOTENAME(@DatabaseName)+N'.[sys].[column_master_keys] WITH (NOLOCK)),'
                         +N'[ColumnEncryptionKeyCount]=(SELECT COUNT_BIG(*) FROM '+QUOTENAME(@DatabaseName)+N'.[sys].[column_encryption_keys] WITH (NOLOCK)),'
                         +N'[EncryptedColumnCount]=(SELECT COUNT_BIG(*) FROM '+QUOTENAME(@DatabaseName)+N'.[sys].[columns] WITH (NOLOCK) WHERE [encryption_type] IS NOT NULL)'
