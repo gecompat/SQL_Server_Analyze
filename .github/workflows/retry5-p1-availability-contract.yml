@@ -1,0 +1,85 @@
+name: Retry P1 availability contract with CASE and JOIN anchors
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/retry5-p1-availability-contract.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Normalize verified anchors and execute patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          proc=Path('Code/07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql')
+          text=proc.read_text(encoding='utf-8')
+          start_marker="                , CASE WHEN [drs].[is_suspended] = 1 THEN 'DATA_MOVEMENT_SUSPENDED'"
+          end_marker="                       ELSE 'INFO' END"
+          start=text.index(start_marker)
+          end=text.index(end_marker,start)+len(end_marker)
+          expected="""                , CASE WHEN [drs].[is_suspended] = 1 THEN 'DATA_MOVEMENT_SUSPENDED'
+                       WHEN [drs].[synchronization_health_desc] = N'NOT_HEALTHY' THEN 'DATABASE_NOT_HEALTHY'
+                       WHEN [drs].[synchronization_state_desc] = N'NOT_SYNCHRONIZING' THEN 'DATABASE_NOT_SYNCHRONIZING'
+                       WHEN COALESCE([drs].[log_send_queue_size], 0) >= @QueueWarnMb * 1024 THEN 'LOG_SEND_QUEUE_THRESHOLD'
+                       WHEN COALESCE([drs].[redo_queue_size], 0) >= @QueueWarnMb * 1024 THEN 'REDO_QUEUE_THRESHOLD'
+                       WHEN COALESCE([drs].[secondary_lag_seconds], 0) >= @SecondaryLagWarnSeconds THEN 'SECONDARY_LAG_THRESHOLD'
+                       ELSE 'DATABASE_STATE_ACCEPTABLE' END
+                , CASE WHEN [drs].[is_suspended] = 1 OR [drs].[synchronization_health_desc] = N'NOT_HEALTHY'
+                            OR [drs].[synchronization_state_desc] = N'NOT_SYNCHRONIZING' THEN 'HIGH'
+                       WHEN COALESCE([drs].[log_send_queue_size], 0) >= @QueueWarnMb * 1024
+                         OR COALESCE([drs].[redo_queue_size], 0) >= @QueueWarnMb * 1024
+                         OR COALESCE([drs].[secondary_lag_seconds], 0) >= @SecondaryLagWarnSeconds THEN 'MEDIUM'
+                       ELSE 'INFO' END"""
+          text=text[:start]+expected+text[end:]
+          join_start="            JOIN [sys].[availability_replicas] AS [ar]\n"
+          join_end="              ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id];"
+          start=text.index(join_start,text.index('INSERT [#Databases]'))
+          end=text.index(join_end,start)+len(join_end)
+          expected_join="""            JOIN [sys].[availability_replicas] AS [ar]
+              ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id];"""
+          proc.write_text(text[:start]+expected_join+text[end:],encoding='utf-8',newline='\n')
+
+          source=Path('.github/workflows/apply-p1-availability-contract.yml').read_text(encoding='utf-8').splitlines()
+          begin=next(i for i,line in enumerate(source) if "python3 - <<'PY'" in line)+1
+          finish=next(i for i in range(begin,len(source)) if source[i].strip()=='PY')
+          script='\n'.join(line[10:] if line.startswith('          ') else line for line in source[begin:finish])
+          exec(compile(script,'availability_apply.py','exec'),{})
+          PY
+      - name: Commit verified implementation and clean diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/apply-p1-availability-contract.yml
+          rm -f .github/workflows/retry-p1-availability-contract.yml
+          rm -f .github/workflows/retry2-p1-availability-contract.yml
+          rm -f .github/workflows/retry3-p1-availability-contract.yml
+          rm -f .github/workflows/retry4-p1-availability-contract.yml
+          rm -f .github/workflows/retry5-p1-availability-contract.yml
+          rm -f Metadata/Quality/Availability_Apply_Diagnostic.json
+          rm -f Metadata/Quality/Availability_Apply_Run.json
+          rm -f Metadata/Quality/Availability_Apply_Error.json
+          rm -f Metadata/Quality/Availability_Apply_Error_Tail.json
+          rm -f Metadata/Quality/Availability_Retry2_Run.json
+          rm -f Metadata/Quality/Availability_Retry2_Error.json
+          rm -f Metadata/Quality/Availability_Retry3_Run.json
+          rm -f Metadata/Quality/Availability_Retry4_Run.json
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code Metadata/Inventory/Objects.csv .github/workflows Metadata/Quality
+          git diff --cached --check
+          git commit -m 'test: automate P1 availability cases'
+          git pull --rebase origin main
+          git push origin HEAD:main
