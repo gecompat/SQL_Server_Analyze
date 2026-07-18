@@ -166,13 +166,21 @@ EXEC [monitor].[USP_PerformanceCounters]
      @Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 DECLARE @PerformanceCounterRows bigint=(SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.counters'));
 IF ISJSON(@Json)<>1
- OR (@PerformanceCounterRows=0 AND (@Status<>'UNAVAILABLE_OBJECT' OR COALESCE(@Partial,0)<>1))
- OR (@PerformanceCounterRows>0 AND EXISTS
-    (SELECT 1 FROM OPENJSON(@Json,N'$.counters')
-     WITH ([Interpretation] varchar(40) N'$.Interpretation',[MetricValue] decimal(38,6) N'$.MetricValue',[FindingCode] varchar(80) N'$.FindingCode')
-     WHERE [Interpretation] IN ('RATE_PER_SECOND','FRACTION_DELTA_PERCENT','AVERAGE_DELTA_RATIO')
-       AND ([MetricValue] IS NOT NULL OR [FindingCode]<>'SAMPLE_REQUIRED_FOR_DELTA_METRIC')))
-    THROW 54148,N'P0-Vertrag PC-SNAPSHOT fehlgeschlagen.',1;
+    THROW 54148,N'P0-Vertrag PC-SNAPSHOT lieferte kein gültiges JSON.',1;
+IF @PerformanceCounterRows=0 AND (@Status<>'UNAVAILABLE_OBJECT' OR COALESCE(@Partial,0)<>1)
+    THROW 54157,N'P0-Vertrag PC-SNAPSHOT kennzeichnete ein leeres Ergebnis nicht als nicht verfügbar.',1;
+IF @PerformanceCounterRows>0 AND EXISTS
+   (SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH ([Interpretation] varchar(40) N'$.Interpretation',[MetricValue] decimal(38,6) N'$.MetricValue')
+    WHERE [Interpretation] IN ('RATE_PER_SECOND','FRACTION_DELTA_PERCENT','AVERAGE_DELTA_RATIO')
+      AND [MetricValue] IS NOT NULL)
+    THROW 54158,N'P0-Vertrag PC-SNAPSHOT erfand ohne Sample einen Delta-Messwert.',1;
+IF @PerformanceCounterRows>0 AND EXISTS
+   (SELECT 1 FROM OPENJSON(@Json,N'$.counters')
+    WITH ([Interpretation] varchar(40) N'$.Interpretation',[FindingCode] varchar(80) N'$.FindingCode')
+    WHERE [Interpretation] IN ('RATE_PER_SECOND','FRACTION_DELTA_PERCENT','AVERAGE_DELTA_RATIO')
+      AND [FindingCode]<>'SAMPLE_REQUIRED_FOR_DELTA_METRIC')
+    THROW 54159,N'P0-Vertrag PC-SNAPSHOT kennzeichnete einen Delta-Counter ohne Sample nicht eindeutig.',1;
 INSERT @ExecutedCases VALUES('PC-SNAPSHOT');
 
 /* PC-RATE, PC-FRACTION und PC-AVERAGE: echte DMV-Samples, explizite Basen und Formelkontrolle. */
