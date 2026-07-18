@@ -130,6 +130,8 @@ Vor jeder Lieferung sind mindestens folgende Prüfungen auszuführen:
 7. Treffer aus Lizenzen und Quellenangaben werden als beabsichtigte öffentliche Attribution klassifiziert; sie dürfen nicht stillschweigend entfernt werden.
 8. Bei einem nicht eindeutig klassifizierbaren Treffer wird die Auslieferung angehalten und nachgefragt.
 
+Das ausführbare Gate ist in `Code/Tests/Static/910_Validate_Repository_Privacy.py` implementiert und unter `Documentation/Quality/Repository_Privacy_Validation.md` beschrieben. Vor einem Commit wird es gegen die versionierten Dateien ausgeführt; vor einer ZIP-Lieferung zusätzlich mit `--archive-path` gegen den vollständigen Lieferumfang. Der Workflow `.github/workflows/repository-privacy-validation.yml` erzwingt denselben Vertrag in GitHub Actions.
+
 Automatische Musterprüfungen sind nur ein unterstützender Filter und niemals ein Beweis für einen sicheren Artefaktbestand. Sie können weder alle personenbezogenen Informationen noch proprietäre Strukturen erkennen und nicht zuverlässig entscheiden, ob ein Name real oder synthetisch ist. Deshalb bleibt eine kontextbezogene Review erforderlich.
 
 ## 9. Abnahmekriterien

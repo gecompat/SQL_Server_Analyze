@@ -12,8 +12,9 @@
 
 ## Nach jeder Änderung
 
-- statischen API-, Portabilitäts-, Quellen- und Datenschutz-Audit ausführen;
-- Datenschutzprüfung auf Repositoryänderungen, GitHub-Inhalte und den vollständigen Lieferumfang anwenden, ohne gefundene sensitive Werte in der Prüfausgabe zu vervielfältigen;
+- statischen API-, Portabilitäts- und Quellen-Audit ausführen;
+- `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root . --self-test` und anschließend `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root .` ausführen;
+- vor einer ZIP-Auslieferung zusätzlich `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root . --archive-path <ZIP>` gegen den vollständigen Lieferumfang ausführen; gefundene Inhalte werden niemals in der Prüfausgabe wiedergegeben;
 - Installer aus den kanonischen Einzeldateien neu erzeugen;
 - Beispielaufrufe und Referenz aktualisieren;
 - auf SQL Server 2019, 2022 und 2025 kompilieren und Smoke-Tests ausführen;
