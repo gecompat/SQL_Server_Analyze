@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PerformanceCounters
-Version      : 1.0.3
+Version      : 1.1.0
 Stand        : 2026-07-18
 Zweck        : Typisiert SQL-Server-Performance-Counter als Snapshot, Rate,
                Fraction oder nicht automatisch interpretierbaren Rohwert.
@@ -182,77 +182,21 @@ BEGIN
             , [a].[CounterName]
             , [a].[InstanceName]
             , [a].[CounterType]
-            , CASE
-                  WHEN [a].[CounterType] = 65792 THEN 'RAW_SNAPSHOT'
-                  WHEN [a].[CounterType] IN (272696320, 272696576) THEN 'RATE_PER_SECOND'
-                  WHEN [a].[CounterType] = 537003264 THEN 'FRACTION_DELTA_PERCENT'
-                  WHEN [a].[CounterType] = 1073874176 THEN 'AVERAGE_DELTA_RATIO'
-                  ELSE 'RAW_UNINTERPRETED'
-              END
-            , CASE
-                  WHEN [a].[CounterType] = 65792
-                      THEN CONVERT(decimal(38,6), [a].[CounterValue])
-                  WHEN [a].[CounterType] IN (272696320, 272696576)
-                   AND @SampleSeconds > 0
-                   AND [a].[CounterValue] >= [b].[CounterValue]
-                      THEN CONVERT(decimal(38,6),
-                           ([a].[CounterValue] - [b].[CounterValue])
-                           / NULLIF(DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0, 0))
-                  WHEN [a].[CounterType] IN (272696320, 272696576)
-                      THEN NULL
-                  WHEN [a].[CounterType] = 537003264
-                   AND @SampleSeconds > 0
-                   AND [a].[CounterValue] >= [b].[CounterValue]
-                   AND [baseAfter].[CounterValue] > [baseBefore].[CounterValue]
-                      THEN CONVERT(decimal(38,6),
-                           100.0 * ([a].[CounterValue] - [b].[CounterValue])
-                           / ([baseAfter].[CounterValue] - [baseBefore].[CounterValue]))
-                  WHEN [a].[CounterType] = 1073874176
-                   AND @SampleSeconds > 0
-                   AND [a].[CounterValue] >= [b].[CounterValue]
-                   AND [baseAfter].[CounterValue] > [baseBefore].[CounterValue]
-                      THEN CONVERT(decimal(38,6),
-                           1.0 * ([a].[CounterValue] - [b].[CounterValue])
-                           / ([baseAfter].[CounterValue] - [baseBefore].[CounterValue]))
-                  WHEN [a].[CounterType] IN (537003264, 1073874176)
-                      THEN NULL
-                  ELSE CONVERT(decimal(38,6), [a].[CounterValue])
-              END
-            , CASE
-                  WHEN [a].[CounterType] IN (272696320, 272696576) THEN 'PER_SECOND'
-                  WHEN [a].[CounterType] = 537003264 THEN 'PERCENT'
-                  WHEN [a].[CounterType] = 1073874176 THEN 'AVERAGE'
-                  WHEN [a].[CounterType] = 65792 THEN 'RAW_VALUE'
-                  ELSE 'RAW_UNINTERPRETED'
-              END
+            , [i].[Interpretation]
+            , [i].[MetricValue]
+            , [i].[MetricUnit]
             , [b].[CounterValue]
             , [a].[CounterValue]
             , [baseBefore].[CounterValue]
             , [baseAfter].[CounterValue]
-            , [a].[CounterValue] - [b].[CounterValue]
-            , [baseAfter].[CounterValue] - [baseBefore].[CounterValue]
+            , TRY_CONVERT(bigint, CONVERT(decimal(38,0), [a].[CounterValue])
+                                 - CONVERT(decimal(38,0), [b].[CounterValue]))
+            , TRY_CONVERT(bigint, CONVERT(decimal(38,0), [baseAfter].[CounterValue])
+                                 - CONVERT(decimal(38,0), [baseBefore].[CounterValue]))
             , CONVERT(decimal(19,6),
                 DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0)
             , @SqlServerStartTime
-            , CASE
-                  WHEN [a].[CounterType] IN (272696320, 272696576, 537003264, 1073874176)
-                   AND @SampleSeconds = 0 THEN 'SAMPLE_REQUIRED_FOR_DELTA_METRIC'
-                  WHEN [a].[CounterType] IN (272696320, 272696576, 537003264, 1073874176)
-                   AND [a].[CounterValue] < [b].[CounterValue] THEN 'COUNTER_RESET_DURING_SAMPLE'
-                  WHEN [a].[CounterType] IN (537003264, 1073874176)
-                   AND ([baseBefore].[CounterValue] IS NULL OR [baseAfter].[CounterValue] IS NULL)
-                      THEN 'BASE_COUNTER_MISSING'
-                  WHEN [a].[CounterType] IN (537003264, 1073874176)
-                   AND [baseAfter].[CounterValue] < [baseBefore].[CounterValue]
-                      THEN 'BASE_COUNTER_RESET_DURING_SAMPLE'
-                  WHEN [a].[CounterType] IN (537003264, 1073874176)
-                   AND [baseAfter].[CounterValue] = [baseBefore].[CounterValue]
-                      THEN 'BASE_COUNTER_DELTA_ZERO'
-                  WHEN [a].[CounterType] NOT IN
-                       (65792, 272696320, 272696576, 537003264, 1073874176)
-                      THEN 'COUNTER_TYPE_NOT_AUTOMATICALLY_INTERPRETED'
-                  ELSE 'VALUE_AVAILABLE'
-              END
+            , [i].[FindingCode]
         FROM [#After] AS [a]
         JOIN [#Before] AS [b]
          ON [b].[ObjectName] = [a].[ObjectName]
@@ -273,6 +217,16 @@ BEGIN
              CONVERT(nvarchar(128), CONCAT(RTRIM([a].[CounterName]), N' base'))
              COLLATE SQL_Latin1_General_CP1_CI_AS
          AND [baseAfter].[CounterType] IN (1073939458, 1073939712)
+        CROSS APPLY [monitor].[TVF_InterpretPerformanceCounter]
+        (
+              [a].[CounterType]
+            , [b].[CounterValue]
+            , [a].[CounterValue]
+            , [baseBefore].[CounterValue]
+            , [baseAfter].[CounterValue]
+            , CONVERT(decimal(19,6),
+                DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0)
+        ) AS [i]
         WHERE [a].[CounterType] NOT IN (1073939458, 1073939712);
 
         IF NOT EXISTS (SELECT 1 FROM [#Result])

@@ -32,6 +32,7 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../01_Common/085_TVF_ParseBigintList.sql
 :r ../01_Common/086_TVF_ParseStringList.sql
 :r ../01_Common/087_TVF_StatementText.sql
+:r ../01_Common/088_TVF_InterpretPerformanceCounter.sql
 :r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
 :r ../02_CurrentState/010_USP_CurrentSessions.sql
 :r ../02_CurrentState/020_USP_CurrentRequests.sql

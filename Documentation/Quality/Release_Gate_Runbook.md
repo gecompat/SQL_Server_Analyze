@@ -132,7 +132,7 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende vierzehn Suit
 3. Filter- und Ausgabe-Vertrag
 4. Spezialfall-API-Vertrag
 5. Spezialfall-Laufzeitvertrag
-6. Synthetischer P0-Laufzeitvertrag mit 14 Positiv-, Leer- und Grenzfällen; `INT-DENIED` und `CAP-DENIED` folgen anschließend in der versionsspezifischen Berechtigungsmatrix unter einem eingeschränkten Serverlogin
+6. Synthetischer P0-Laufzeitvertrag mit 15 Positiv-, Leer-, Grenz- und Resetfällen; `INT-DENIED` und `CAP-DENIED` folgen anschließend in der versionsspezifischen Berechtigungsmatrix unter einem eingeschränkten Serverlogin
 7. Common
 8. Current State
 9. Object und Index

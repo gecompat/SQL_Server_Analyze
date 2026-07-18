@@ -18,6 +18,7 @@ PROCEDURE,USP_PrepareNameFilters,Code/01_Common/084_USP_PrepareNameFilters.sql
 FUNCTION,TVF_ParseBigintList,Code/01_Common/085_TVF_ParseBigintList.sql
 FUNCTION,TVF_ParseStringList,Code/01_Common/086_TVF_ParseStringList.sql
 FUNCTION,TVF_StatementText,Code/01_Common/087_TVF_StatementText.sql
+FUNCTION,TVF_InterpretPerformanceCounter,Code/01_Common/088_TVF_InterpretPerformanceCounter.sql
 PROCEDURE,USP_CurrentSessions,Code/02_CurrentState/010_USP_CurrentSessions.sql
 PROCEDURE,USP_CurrentRequests,Code/02_CurrentState/020_USP_CurrentRequests.sql
 PROCEDURE,USP_CurrentBlocking,Code/02_CurrentState/030_USP_CurrentBlocking.sql

@@ -21,6 +21,8 @@ Eine Zeile entspricht einem Counter beziehungsweise einer normalisierten Counter
 
 Objektname, Countername und Instanzname allein sind nicht die vollständige technische Identität: `cntr_type` gehört zum Schlüssel. Gleich benannte Zeilen unterschiedlicher Typen werden deshalb getrennt gesampelt und nicht miteinander verrechnet.
 
+Die reine Funktion `monitor.TVF_InterpretPerformanceCounter` kapselt denselben Rechenpfad. Sie ermöglicht einen deterministischen Resetnachweis mit fallendem Vorher-/Nachher-Wert, ohne einen Serverneustart während einer laufenden Procedure zu simulieren.
+
 Countertyp, Raw Value, Base, Delta, Samplezeit und normalisierten Wert unterscheiden.
 
 ## Warum kann das problematisch sein?
