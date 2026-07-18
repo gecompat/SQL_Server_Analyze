@@ -173,6 +173,25 @@ BEGIN TRY
          @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+    SELECT N'STAT_UNIFORM_DIAGNOSTIC' AS [DiagnosticCode],
+           @Status AS [StatusCode],@Partial AS [IsPartial],
+           TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.distributionCount')) AS [DistributionCount],
+           TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.findingCount')) AS [FindingCount];
+    SELECT N'STAT_UNIFORM_DISTRIBUTION' AS [DiagnosticCode],[HistogramSteps],
+           [DominantStepPercent],[EqualRowsSkewRatio],[AverageRangeRowsSkewRatio],
+           [TailVsAverageStepRatio],[AnalysisState]
+    FROM OPENJSON(@Json,N'$.distribution') WITH
+    ([ObjectName] sysname N'$.ObjectName',[HistogramSteps] int N'$.HistogramSteps',
+     [DominantStepPercent] decimal(19,4) N'$.DominantStepPercent',
+     [EqualRowsSkewRatio] decimal(19,4) N'$.EqualRowsSkewRatio',
+     [AverageRangeRowsSkewRatio] decimal(19,4) N'$.AverageRangeRowsSkewRatio',
+     [TailVsAverageStepRatio] decimal(19,4) N'$.TailVsAverageStepRatio',
+     [AnalysisState] varchar(40) N'$.AnalysisState')
+    WHERE [ObjectName]=N'ExampleStatisticsUniform';
+    SELECT N'STAT_UNIFORM_FINDING' AS [DiagnosticCode],[FindingCode]
+    FROM OPENJSON(@Json,N'$.findings') WITH
+    ([ObjectName] sysname N'$.ObjectName',[FindingCode] varchar(120) N'$.FindingCode')
+    WHERE [ObjectName]=N'ExampleStatisticsUniform' ORDER BY [FindingCode];
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE'
        OR NOT EXISTS
           (SELECT 1
