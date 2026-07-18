@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 18. Juli 2026
-**Status:** commitbezogene 17-Suite-Evidenz für P0, P1-IQP, P1-Contention und P1-Speicher vorhanden; die achtzehnte P1-Backupkettensuite wartet auf Actions
+**Status:** commitbezogene 18-Suite-Evidenz für P0, P1-IQP, P1-Contention, P1-Speicher und P1-Backupketten vorhanden
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `d9d7c5bb4ffb5b9b408c1781718364d5c7ac89a8` hat Installer, den 17-Suite-Release-Gate-Vertrag einschließlich 15 P0-Laufzeitfällen, vier P1-IQP-, vier P1-Contention- und vier P1-Speicherfällen sowie die Berechtigungsmatrix einschließlich zwei P0-Restricted-Login-Fällen auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `f3d9c014adb3227ab39e21e16052dca7285a6a87` hat Installer, den 18-Suite-Release-Gate-Vertrag einschließlich 15 P0-Laufzeitfällen, vier P1-IQP-, vier P1-Contention-, vier P1-Speicher- und vier P1-Backupkettenfällen sowie die Berechtigungsmatrix einschließlich zwei P0-Restricted-Login-Fällen auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29638780765](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP-, vier P1-Contention- und vier P1-Speicherfälle |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29638780805](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780805) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP-, vier P1-Contention- und vier P1-Speicherfälle |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29638780802](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780802) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP-, vier P1-Contention- und vier P1-Speicherfälle; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29639444935](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP-, vier P1-Contention-, vier P1-Speicher- und vier P1-Backupkettenfälle |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29639444931](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444931) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP-, vier P1-Contention-, vier P1-Speicher- und vier P1-Backupkettenfälle |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29639444942](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444942) | `PASS_WITH_LIMITATIONS`; alle 17 P0-, vier P1-IQP-, vier P1-Contention-, vier P1-Speicher- und vier P1-Backupkettenfälle; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 
@@ -33,7 +33,7 @@ Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diese
 | SQL Server 2022 | `mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89` |
 | SQL Server 2025 | `mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780787) und das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780803) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; P0-, P1-IQP-, P1-Contention-, P1-Speicher- und Regex-Matrix sind als eigene Suitezeilen in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für disposable synthetische Linux-Ziele. Die Verträge erzwangen weder aktuellen PAGELATCH-Wait noch Speicherdruck oder Grant-Waiter; weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externe Restore-Nachweise bleiben separat.
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444953) und das [Repository-Datenschutzgate](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444941) sind für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; P0-, P1-IQP-, P1-Contention-, P1-Speicher-, P1-Backupketten- und Regex-Matrix sind als eigene Suitezeilen in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für disposable synthetische Linux-Ziele. Die Verträge führten keinen Restore aus und erzwangen weder aktuellen PAGELATCH-Wait noch Speicherdruck oder Grant-Waiter; weitere Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externe Restore-Nachweise bleiben separat.
 
 ## Datenschutz
 

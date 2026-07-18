@@ -28,10 +28,10 @@ MEM-BASE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Lightweight default,Bu
 MEM-PRESSURE,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Process low-memory flag,High finding uses current evidence only,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765
 MEM-GRANT,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Resource semaphore waiters,Captured counters are complete and nonnegative without causal claim,LOW,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765
 MEM-BUFFER,USP_BufferPoolAnalysis,15,NONE,SERVER_DIAGNOSTIC,Buffer distribution explicitly enabled,Aggregation is database-bounded and marked opt-in,HIGH,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29638780765
-BKP-FULL,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,No visible non-copy-only full,Missing full evidence does not claim media absence,MEDIUM,NOT_EXECUTED,
-BKP-DIFF,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Differential base mismatch,Only matching differential is selected,MEDIUM,NOT_EXECUTED,
-BKP-LOG,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Visible log LSN gap,Gap limited to visible history window,MEDIUM,NOT_EXECUTED,
-BKP-RESTORE,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Restore history absent,Missing evidence never equals failed recoverability,MEDIUM,NOT_EXECUTED,
+BKP-FULL,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,No visible non-copy-only full,Missing full evidence does not claim media absence,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935
+BKP-DIFF,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Differential base mismatch,Only matching differential is selected,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935
+BKP-LOG,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Visible log LSN gap,Gap limited to visible history window,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935
+BKP-RESTORE,USP_BackupChainAnalysis,15,NONE,MSDB_DIAGNOSTIC,Restore history absent,Missing evidence never equals failed recoverability,MEDIUM,PASS_WITH_LIMITATIONS,https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29639444935
 SCH-CONSTRAINT,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Untrusted constraint,Read-only finding without DDL,HIGH,NOT_EXECUTED,
 SCH-FK,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,FK without leading support index,Finding remains workload-dependent,MEDIUM,NOT_EXECUTED,
 SCH-DUP,USP_SchemaDesignAnalysis,15,NONE,DATABASE_DIAGNOSTIC,Exact index definition duplicate,No automatic drop recommendation,MEDIUM,NOT_EXECUTED,
