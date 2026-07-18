@@ -17,59 +17,62 @@ Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
 ===============================================================================
 */
 
-RAISERROR(N'RELEASE_GATE 1/17: Smoke Test',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 1/18: Smoke Test',10,1) WITH NOWAIT;
 :r Integration/110_Smoke_Test.sql
 
-RAISERROR(N'RELEASE_GATE 2/17: Parameter-API-Vertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 2/18: Parameter-API-Vertrag',10,1) WITH NOWAIT;
 :r Integration/163_Parameter_API_Vertrag.sql
 
-RAISERROR(N'RELEASE_GATE 3/17: Filter- und Ausgabe-Vertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 3/18: Filter- und Ausgabe-Vertrag',10,1) WITH NOWAIT;
 :r Integration/165_Filter_Output_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 4/17: Spezialfall-API-Vertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 4/18: Spezialfall-API-Vertrag',10,1) WITH NOWAIT;
 :r Integration/167_Special_Case_API_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 5/17: Spezialfall-Laufzeitvertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 5/18: Spezialfall-Laufzeitvertrag',10,1) WITH NOWAIT;
 :r Integration/168_Special_Case_Runtime_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 6/17: P0-Laufzeitvertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 6/18: P0-Laufzeitvertrag',10,1) WITH NOWAIT;
 :r Integration/169_P0_Runtime_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 7/17: P1-IQP-Laufzeitvertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 7/18: P1-IQP-Laufzeitvertrag',10,1) WITH NOWAIT;
 :r Integration/170_P1_IQP_Runtime_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 8/17: P1-Contention-Laufzeitvertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 8/18: P1-Contention-Laufzeitvertrag',10,1) WITH NOWAIT;
 :r Integration/171_P1_Contention_Runtime_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 9/17: P1-Speicher-Laufzeitvertrag',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 9/18: P1-Speicher-Laufzeitvertrag',10,1) WITH NOWAIT;
 :r Integration/172_P1_Memory_Runtime_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 10/17: Common',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 10/18: P1-Backupketten-Laufzeitvertrag',10,1) WITH NOWAIT;
+:r Integration/173_P1_Backup_Runtime_Contract.sql
+
+RAISERROR(N'RELEASE_GATE 11/18: Common',10,1) WITH NOWAIT;
 :r Common/090_Test_und_Abnahme_Phase1A.sql
 
-RAISERROR(N'RELEASE_GATE 11/17: Current State',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 12/18: Current State',10,1) WITH NOWAIT;
 :r CurrentState/110_Test_und_Abnahme_Phase1B.sql
 
-RAISERROR(N'RELEASE_GATE 12/17: Object und Index',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 13/18: Object und Index',10,1) WITH NOWAIT;
 :r ObjectIndex/110_Test_und_Abnahme_Phase2.sql
 
-RAISERROR(N'RELEASE_GATE 13/17: Plan Cache',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 14/18: Plan Cache',10,1) WITH NOWAIT;
 :r PlanCache/110_Test_und_Abnahme_Phase3.sql
 
-RAISERROR(N'RELEASE_GATE 14/17: Query Store',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 15/18: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql
 
-RAISERROR(N'RELEASE_GATE 15/17: Extended Events',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 16/18: Extended Events',10,1) WITH NOWAIT;
 :r ExtendedEvents/110_Test_und_Abnahme_Phase5.sql
 
-RAISERROR(N'RELEASE_GATE 16/17: Infrastructure',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 17/18: Infrastructure',10,1) WITH NOWAIT;
 :r Infrastructure/110_Test_und_Abnahme_Phase6.sql
 
-RAISERROR(N'RELEASE_GATE 17/17: Server Health',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 18/18: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/110_Test_und_Abnahme_Phase7.sql
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],
-       CAST(17 AS int) AS [ExecutedSuites],
+       CAST(18 AS int) AS [ExecutedSuites],
        N'Alle Integrationsverträge und Bereichs-Smoke-Tests wurden ohne SQL-Fehler beendet.' AS [Detail];
 GO

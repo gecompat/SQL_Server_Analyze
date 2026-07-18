@@ -10,6 +10,7 @@ Verbleibende Repository- und Evidenzpunkte:
 - Die vier ersten P1-IQP-Fälle sind automatisiert und commitbezogen nachgewiesen.
 - Die vier P1-Contention-Fälle sind als sechzehnte Suite nachgewiesen. Der Page-Detail-Fall erzwingt keinen künstlichen realen PAGELATCH-Wait, sondern prüft den opt-in- und Zeilengrenzenvertrag; diese Einschränkung bleibt ausdrücklich erhalten.
 - Die vier P1-Speicherfälle sind als siebzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Speicherdruck und Resource-Semaphore-Waiter wurden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz und bleibt deshalb `PASS_WITH_LIMITATIONS`. Als nächste Gruppe folgen die vier Backupkettenfälle.
+- Die vier P1-Backupkettenfälle sind als achtzehnte Suite automatisiert, bleiben aber bis zu grünen commitbezogenen SQL-Server-2019-/2022-/2025-Gates `NOT_EXECUTED`. Die Suite verwendet ausschließlich die synthetische Testdatenbank, ein plattformspezifisches Nullgerät und kurzlebige `msdb`-Historie; sie führt bewusst keinen Restore aus.
 - Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
