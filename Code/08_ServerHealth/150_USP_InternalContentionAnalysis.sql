@@ -150,8 +150,9 @@ BEGIN
             IF @MitSpinlocks = 1
             BEGIN
                 INSERT [#SpinStart]
-                SELECT [name], [collisions], [spins], [sleep_time], [backoffs]
-                FROM [sys].[dm_os_spinlock_stats];
+                SELECT [name], SUM([collisions]), SUM([spins]), SUM([sleep_time]), SUM([backoffs])
+                FROM [sys].[dm_os_spinlock_stats]
+                GROUP BY [name];
             END;
 
             SET @SampleStartUtc = SYSUTCDATETIME();
@@ -174,8 +175,9 @@ BEGIN
             IF @MitSpinlocks = 1
             BEGIN
                 INSERT [#SpinEnd]
-                SELECT [name], [collisions], [spins], [sleep_time], [backoffs]
-                FROM [sys].[dm_os_spinlock_stats];
+                SELECT [name], SUM([collisions]), SUM([spins]), SUM([sleep_time]), SUM([backoffs])
+                FROM [sys].[dm_os_spinlock_stats]
+                GROUP BY [name];
             END;
 
             INSERT [#LatchResult]

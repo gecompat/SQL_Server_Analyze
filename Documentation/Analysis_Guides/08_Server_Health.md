@@ -629,6 +629,7 @@ Misst Latch- und optional Spinlock-Deltas und korreliert aktuelle PAGELATCH-/PAG
 - Delta-, Rate- und Resetlogik liegt in `monitor.TVF_InterpretContentionCounter`; der deterministische Resettest verwendet damit exakt denselben Rechenpfad wie die DMV-Auswertung.
 - Latchklassen sind interne Synchronisationssymptome; Name allein liefert selten Root Cause.
 - Spinlockzahlen sind hardware- und lastabhängig; Backoffrate und CPU-Kontext sind wichtiger als absolute Kollisionen.
+- Mehrfach gelieferte technische Spinlocknamen werden vor dem Start-/Endvergleich pro Name aggregiert; dadurch entstehen weder doppelte Identitäten noch willkürliche Einzelzeilenvergleiche.
 - PAGELATCH ist In-Memory-Latch, PAGEIOLATCH beinhaltet Seiten-I/O; nicht verwechseln.
 - HotPage-Parsing aus WaitResource kann bei abweichenden Formaten fehlschlagen.
 - PageDetails zeigt nur aktuell wartende Seiten und ist keine Historie.
