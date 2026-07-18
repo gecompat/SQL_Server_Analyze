@@ -39,6 +39,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: documentation-validation-${{ github.workflow }}-${{ github.ref }}
@@ -104,3 +105,19 @@ jobs:
           path: ${{ runner.temp }}/analysis-documentation-validation.log
           if-no-files-found: ignore
           retention-days: 1
+
+      - name: Publish documentation validation status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          state='success'; if [ "$JOB_STATUS" != 'success' ]; then state='failure'; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" \
+            -f target_url="$RUN_URL" \
+            -f description='Analysis documentation and evidence validation' \
+            -f context='documentation-validation' >/dev/null
