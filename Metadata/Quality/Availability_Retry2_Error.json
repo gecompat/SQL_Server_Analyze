@@ -1,0 +1,19 @@
+{
+  "runId": 29646867394,
+  "tail": [
+    "##[group]Run set -euo pipefail",
+    "^[[36;1mset -euo pipefail^[[0m",
+    "^[[36;1mpython3 - <<'PY'^[[0m",
+    "^[[36;1mfrom pathlib import Path^[[0m",
+    "^[[36;1msource=Path('.github/workflows/apply-p1-availability-contract.yml').read_text(encoding='utf-8').splitlines()^[[0m",
+    "^[[36;1mbegin=next(i for i,line in enumerate(source) if \"python3 - <<'PY'\" in line)+1^[[0m",
+    "^[[36;1mend=next(i for i in range(begin,len(source)) if source[i].strip()=='PY')^[[0m",
+    "^[[36;1mscript='\\n'.join(line[10:] if line.startswith('          ') else line for line in source[begin:end])^[[0m",
+    "^[[36;1mexec(compile(script,'availability_apply.py','exec'),{})^[[0m",
+    "^[[36;1mPY^[[0m",
+    "shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}",
+    "##[endgroup]",
+    "Unexpected procedure replacement anchor:                 , CASE WHEN [drs].[is_suspended] = 1 THEN 'DATA_MOVEMENT_SUSPEND",
+    "##[error]Process completed with exit code 1."
+  ]
+}
