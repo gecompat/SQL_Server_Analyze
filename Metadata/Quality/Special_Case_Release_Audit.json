@@ -1,15 +1,15 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T08:15:00Z",
-  "status": "ACTIONS_PASS",
-  "scope": "green commit-specific 15-suite SQL Server 2019, 2022 and 2025 evidence for all 17 P0 cases and the first four P1 IQP cases",
+  "generatedAtUtc": "2026-07-18T08:20:00Z",
+  "status": "ACTIONS_PENDING",
+  "scope": "green commit-specific 15-suite evidence for all P0 and first-four P1 IQP cases plus a sixteenth P1 contention suite pending SQL Server 2019, 2022 and 2025 Actions",
   "inventory": {
-    "repositoryFiles": 326,
-    "canonicalSqlSources": 108,
-    "sqlFilesIncludingTestsAndExamples": 131,
-    "objects": 100,
+    "repositoryFiles": 328,
+    "canonicalSqlSources": 109,
+    "sqlFilesIncludingTestsAndExamples": 133,
+    "objects": 101,
     "procedures": 84,
-    "functions": 11,
+    "functions": 12,
     "views": 5,
     "procedureParameters": 1356,
     "systemSources": 214
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 131,
+      "filesChecked": 133,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -197,6 +197,22 @@
       "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29637052726",
       "note": "The version-adaptive suite passed on SQL Server 2019, 2022 and 2025. It validates eligibility and explicit unavailable/off states without claiming observed feature benefit or defect."
     },
+    "p1ContentionRuntimeContract": {
+      "status": "IMPLEMENTED_PENDING_ACTIONS",
+      "suite": "Code/Tests/Integration/171_P1_Contention_Runtime_Contract.sql",
+      "syntheticCases": 4,
+      "caseIds": [
+        "CONT-DELTA",
+        "CONT-CUM",
+        "CONT-RESET",
+        "CONT-PAGE"
+      ],
+      "sharedInterpretationFunction": "monitor.TVF_InterpretContentionCounter",
+      "globalCounterResetExecuted": false,
+      "forcedPageLatchWaitCreated": false,
+      "runtimeDataPersisted": false,
+      "note": "The bounded page-detail path is executed but no artificial current PAGELATCH wait is forced. All four case rows remain NOT_EXECUTED until the commit-specific SQL Server 2019, 2022 and 2025 Actions gates pass."
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,
@@ -206,8 +222,8 @@
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 108,
-      "includes": 108,
+      "canonicalSources": 109,
+      "includes": 109,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -215,8 +231,8 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 100,
-      "inventoryObjects": 100,
+      "sourceObjects": 101,
+      "inventoryObjects": 101,
       "differences": []
     },
     "parameterInventory": {
@@ -233,8 +249,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 326,
-      "zipFilesScanned": 326,
+      "repositoryFilesScanned": 328,
+      "zipFilesScanned": 328,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,
@@ -262,8 +278,8 @@
     "specialCaseRows": 181,
     "specialCaseRowsNotExecuted": 151,
     "specialCaseRowsPassWithLimitations": 30,
-    "specialCaseRowsAutomatedPending": 0,
-    "runtimeStatus": "ACTIONS_PASS",
+    "specialCaseRowsAutomatedPending": 4,
+    "runtimeStatus": "ACTIONS_PENDING",
     "claim": "Commit 0efeb1877ffa6b31fc8deb714ac7659b40db7cd6 passed the synthetic Linux installer, 15-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 cases, the first four P1 IQP cases and the separate SQL Server 2025 regex matrix. Exact public product builds and immutable container image digests were captured. Further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",

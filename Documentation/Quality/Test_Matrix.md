@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 18. Juli 2026
-**Status:** commitbezogene 15-Suite-Actions-Evidenz für vollständiges P0 und die ersten vier P1-IQP-Fälle auf SQL Server 2019, 2022 und 2025 vorhanden; manuelle Ziel- und weitere Spezialfälle bleiben offen
+**Status:** commitbezogene 15-Suite-Actions-Evidenz für vollständiges P0 und die ersten vier P1-IQP-Fälle vorhanden; die sechzehnte P1-Contention-Suite wartet auf Actions
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -63,7 +63,7 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
 1. Bei Containerzielen den öffentlichen Image-Tag pullen, den aufgelösten `repo@sha256`-Digest validieren und exakt diesen Digest starten; nach Bereitschaft `SERVERPROPERTY('ProductVersion')` erfassen.
 2. Installer im vorgesehenen Datenbankkontext ausführen.
 3. Compile- und Objektbestand prüfen.
-4. Im SQLCMD-Modus aus `Code/Tests` den Runner `Run_Release_Gate.sql` ausführen. Er startet die sieben folgenden Verträge und danach acht Bereichs-Smoke-Tests in fester Reihenfolge; beim ersten SQL-Fehler wird beendet:
+4. Im SQLCMD-Modus aus `Code/Tests` den Runner `Run_Release_Gate.sql` ausführen. Er startet die acht folgenden Verträge und danach acht Bereichs-Smoke-Tests in fester Reihenfolge; beim ersten SQL-Fehler wird beendet:
    - `Integration/110_Smoke_Test.sql`
    - `Integration/163_Parameter_API_Vertrag.sql`
    - `Integration/165_Filter_Output_Contract.sql`
@@ -71,6 +71,7 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
    - `Integration/168_Special_Case_Runtime_Contract.sql`
    - `Integration/169_P0_Runtime_Contract.sql`
    - `Integration/170_P1_IQP_Runtime_Contract.sql`
+   - `Integration/171_P1_Contention_Runtime_Contract.sql`
    - Common, Current State, Object/Index, Plan Cache, Query Store, Extended Events, Infrastructure und Server Health
 5. Bereichstests für Common, Current State, Object/Index, Plan Cache, Query Store, Extended Events, Infrastructure und Server Health ausführen.
 6. Neue Spezialfallmodule gegen Capability-, Leerzustands-, Positiv-, Berechtigungs-, Reset- und Lastfälle prüfen; bei Statistikverteilung zusätzlich Uniform-, Dominanz-, Tail-, Modification-, Filter-, Incremental- und Kandidatengrenzfälle. Für `USP_SpecialFeatureInventory` sind Feature-absent, eingeschränkte Metadatensichtbarkeit, Begrenzung sowie je ein positiver Fall für alle 18 Featurecodes vorgesehen. Für `USP_InMemoryOltpAnalysis` sind No-XTP, Schema-only, Speicher-, Hashketten-, Checkpoint-, Transaktions-, Pool-, Berechtigungs-, Filter-, Begrenzungs- und Kostenfälle definiert. Für `USP_TemporalAnalysis` sind No-Temporal, Zuordnung/Period, Retention, Kapazität/Ratio, Indexbaseline, Memory-Optimized, Berechtigung, Filter, Begrenzung und die ausdrückliche Nichterkennbarkeit getrennter Paare vorgesehen. Für `USP_ServiceBrokerAnalysis` sind No-Broker, Konfiguration ohne Objekte, deaktivierter Broker mit Objekten, Queue-Schalter, approximative Kapazität, interne Aktivierung, Transmission-Alter/-Status, Conversation-Zustände, Retention, Berechtigungen, Filter, Begrenzung und ein statischer Payload-Ausschluss vorgesehen. Für `USP_FullTextAnalysis` sind Feature-/Katalogzustand, Indexschalter, Populationen, Batches, Fragmente, Semantik, Memory/FDHost, Berechtigungen, Filter, Begrenzung und Inhalts-/DDL-Ausschluss vorgesehen. Für `USP_DataCaptureDeepAnalysis` sind CT-Consumer-Versionen, CDC-Scan/Fehler/Jobs/Cleanup, lokale Replikationsagenten/Rückstand/Fehler, Remote-Topologielücke, Berechtigungen, Filter, Begrenzung und Nutzdaten-/Credential-/Command-/DDL-Ausschluss vorgesehen. `USP_EncryptionAnalysis` trennt TDE, Zertifikatslebenszyklus, explizite Backupverschlüsselung und aggregierte Always-Encrypted-/Ledger-Fälle. `USP_MaintenanceOperations` trennt pausierte/aktive Requests, PVS-Versionen, ungefilterte und explizit gefilterte Jobfälle sowie den statischen Änderungs- und Inhaltsausschluss. Alle Fälle stehen in `Special_Case_Test_Cases.csv`.

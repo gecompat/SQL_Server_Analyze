@@ -626,11 +626,15 @@ Misst Latch- und optional Spinlock-Deltas und korreliert aktuelle PAGELATCH-/PAG
 ### Interpretation
 
 - `@SampleSeconds=0` zeigt kumulativ seit Start; Default 5 Sekunden liefert Delta.
+- Delta-, Rate- und Resetlogik liegt in `monitor.TVF_InterpretContentionCounter`; der deterministische Resettest verwendet damit exakt denselben Rechenpfad wie die DMV-Auswertung.
 - Latchklassen sind interne Synchronisationssymptome; Name allein liefert selten Root Cause.
 - Spinlockzahlen sind hardware- und lastabhängig; Backoffrate und CPU-Kontext sind wichtiger als absolute Kollisionen.
 - PAGELATCH ist In-Memory-Latch, PAGEIOLATCH beinhaltet Seiten-I/O; nicht verwechseln.
 - HotPage-Parsing aus WaitResource kann bei abweichenden Formaten fehlschlagen.
 - PageDetails zeigt nur aktuell wartende Seiten und ist keine Historie.
+- Der automatisierte Page-Detail-Vertrag prüft Opt-in und Ergebnisbegrenzung, erzwingt jedoch keinen künstlichen aktuellen PAGELATCH-Wait. Ein leerer Lauf ist deshalb kein positiver Hot-Page-Nachweis.
+
+Die kumulative Resetgrenze und `DBCC SQLPERF ('sys.dm_os_latch_stats', CLEAR)` sind in der [Microsoft-Referenz zu `sys.dm_os_latch_stats`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-latch-stats-transact-sql?view=sql-server-ver17) dokumentiert. Das Framework führt diesen globalen Reset nicht aus.
 
 ### Beispiele
 

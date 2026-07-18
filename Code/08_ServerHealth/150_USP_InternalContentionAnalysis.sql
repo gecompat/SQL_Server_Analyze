@@ -182,24 +182,19 @@ BEGIN
             SELECT
                   [e].[LatchClass]
                 , CASE WHEN @SampleSeconds = 0 THEN 'CUMULATIVE_SINCE_START' ELSE 'SAMPLE_DELTA' END
-                , CASE WHEN @SampleSeconds = 0 THEN [e].[WaitingRequestsCount]
-                       WHEN [e].[WaitingRequestsCount] >= [s].[WaitingRequestsCount]
-                       THEN [e].[WaitingRequestsCount] - [s].[WaitingRequestsCount] END
-                , CASE WHEN @SampleSeconds = 0 THEN [e].[WaitTimeMs]
-                       WHEN [e].[WaitTimeMs] >= [s].[WaitTimeMs]
-                       THEN [e].[WaitTimeMs] - [s].[WaitTimeMs] END
+                , [Waiting].[CounterValue]
+                , [WaitTime].[CounterValue]
                 , [e].[MaxWaitTimeMs]
-                , CASE WHEN @SampleSeconds > 0 AND [e].[WaitingRequestsCount] >= [s].[WaitingRequestsCount]
-                       THEN CONVERT(decimal(19,4),
-                            1.0 * ([e].[WaitingRequestsCount] - [s].[WaitingRequestsCount])
-                            / NULLIF(@ActualSampleSeconds, 0)) END
-                , CASE WHEN @SampleSeconds > 0 AND [e].[WaitTimeMs] >= [s].[WaitTimeMs]
-                       THEN CONVERT(decimal(19,4), 1.0 * ([e].[WaitTimeMs] - [s].[WaitTimeMs])
-                            / NULLIF(@ActualSampleSeconds, 0)) END
-                , CONVERT(bit, CASE WHEN [e].[WaitingRequestsCount] < [s].[WaitingRequestsCount]
-                                      OR [e].[WaitTimeMs] < [s].[WaitTimeMs] THEN 1 ELSE 0 END)
+                , [Waiting].[RatePerSecond]
+                , [WaitTime].[RatePerSecond]
+                , CONVERT(bit,CASE WHEN [Waiting].[CounterResetDetected]=1
+                                      OR [WaitTime].[CounterResetDetected]=1 THEN 1 ELSE 0 END)
             FROM [#LatchEnd] AS [e]
             JOIN [#LatchStart] AS [s] ON [s].[LatchClass] = [e].[LatchClass]
+            CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
+            ([s].[WaitingRequestsCount],[e].[WaitingRequestsCount],@SampleSeconds,@ActualSampleSeconds) AS [Waiting]
+            CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
+            ([s].[WaitTimeMs],[e].[WaitTimeMs],@SampleSeconds,@ActualSampleSeconds) AS [WaitTime]
             WHERE (@SampleSeconds = 0 AND [e].[WaitTimeMs] > 0)
                OR (@SampleSeconds > 0 AND ([e].[WaitTimeMs] <> [s].[WaitTimeMs]
                                            OR [e].[WaitingRequestsCount] <> [s].[WaitingRequestsCount]));
@@ -210,26 +205,30 @@ BEGIN
                 SELECT
                       [e].[SpinlockName]
                     , CASE WHEN @SampleSeconds = 0 THEN 'CUMULATIVE_SINCE_START' ELSE 'SAMPLE_DELTA' END
-                    , CASE WHEN @SampleSeconds = 0 THEN [e].[Collisions]
-                           WHEN [e].[Collisions] >= [s].[Collisions] THEN [e].[Collisions] - [s].[Collisions] END
-                    , CASE WHEN @SampleSeconds = 0 THEN [e].[Spins]
-                           WHEN [e].[Spins] >= [s].[Spins] THEN [e].[Spins] - [s].[Spins] END
-                    , CASE WHEN @SampleSeconds = 0 THEN [e].[SleepTime]
-                           WHEN [e].[SleepTime] >= [s].[SleepTime] THEN [e].[SleepTime] - [s].[SleepTime] END
-                    , CASE WHEN @SampleSeconds = 0 THEN [e].[Backoffs]
-                           WHEN [e].[Backoffs] >= [s].[Backoffs] THEN [e].[Backoffs] - [s].[Backoffs] END
-                    , CASE WHEN @SampleSeconds > 0 AND [e].[Collisions] >= [s].[Collisions]
-                           THEN CONVERT(decimal(19,4), 1.0 * ([e].[Collisions] - [s].[Collisions])
-                                / NULLIF(@ActualSampleSeconds, 0)) END
-                    , CASE WHEN @SampleSeconds > 0 AND [e].[Backoffs] >= [s].[Backoffs]
-                           THEN CONVERT(decimal(19,4), 1.0 * ([e].[Backoffs] - [s].[Backoffs])
-                                / NULLIF(@ActualSampleSeconds, 0)) END
-                    , CONVERT(bit, CASE WHEN [e].[Collisions] < [s].[Collisions]
-                                          OR [e].[Backoffs] < [s].[Backoffs] THEN 1 ELSE 0 END)
+                    , [Collision].[CounterValue]
+                    , [Spin].[CounterValue]
+                    , [Sleep].[CounterValue]
+                    , [Backoff].[CounterValue]
+                    , [Collision].[RatePerSecond]
+                    , [Backoff].[RatePerSecond]
+                    , CONVERT(bit,CASE WHEN [Collision].[CounterResetDetected]=1
+                                           OR [Spin].[CounterResetDetected]=1
+                                           OR [Sleep].[CounterResetDetected]=1
+                                           OR [Backoff].[CounterResetDetected]=1 THEN 1 ELSE 0 END)
                 FROM [#SpinEnd] AS [e]
                 JOIN [#SpinStart] AS [s] ON [s].[SpinlockName] = [e].[SpinlockName]
+                CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
+                ([s].[Collisions],[e].[Collisions],@SampleSeconds,@ActualSampleSeconds) AS [Collision]
+                CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
+                ([s].[Spins],[e].[Spins],@SampleSeconds,@ActualSampleSeconds) AS [Spin]
+                CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
+                ([s].[SleepTime],[e].[SleepTime],@SampleSeconds,@ActualSampleSeconds) AS [Sleep]
+                CROSS APPLY [monitor].[TVF_InterpretContentionCounter]
+                ([s].[Backoffs],[e].[Backoffs],@SampleSeconds,@ActualSampleSeconds) AS [Backoff]
                 WHERE (@SampleSeconds = 0 AND [e].[Collisions] > 0)
                    OR (@SampleSeconds > 0 AND ([e].[Collisions] <> [s].[Collisions]
+                                               OR [e].[Spins] <> [s].[Spins]
+                                               OR [e].[SleepTime] <> [s].[SleepTime]
                                                OR [e].[Backoffs] <> [s].[Backoffs]));
             END;
 

@@ -20,6 +20,8 @@ Je Resultset entspricht eine Zeile einer Spinlockklasse, einem Latch-/Hot-Page-K
 
 Delta über Sample, Klasse, Waitdauer, Hot Page, Session-/Objektkontext und Wiederholung betrachten.
 
+Delta-, Rate- und Resetlogik verwendet die reine Funktion `monitor.TVF_InterpretContentionCounter`. Fallende Zähler liefern weder eine Differenz noch eine Rate; die Procedure setzt stattdessen `CounterResetDetected=1`.
+
 ## Warum kann das problematisch sein?
 
 Interne Synchronisationswartezeiten können CPU-Durchsatz begrenzen, obwohl einzelne Queries unauffällig wirken.
