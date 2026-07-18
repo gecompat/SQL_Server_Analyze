@@ -30,6 +30,23 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Validate regex predicate syntax
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          invalid = []
+          comparison = re.compile(r"REGEXP_LIKE\s*\(.*\)\s*=\s*[01]", re.IGNORECASE)
+          for path in sorted(Path("Code").rglob("*.sql")):
+              for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                  if comparison.search(line):
+                      invalid.append(f"{path}:{line_number}: {line.strip()}")
+          if invalid:
+              print("REGEXP_LIKE is a predicate and must not be compared with 0 or 1:")
+              print("\n".join(invalid))
+              raise SystemExit(1)
+
       - name: Prepare isolated SQL files
         shell: bash
         run: |
@@ -148,7 +165,7 @@ jobs:
             echo 'Release gate failed.'
             {
               echo 'Suite and error summary:'
-              grep -E 'RELEASE_GATE|Msg [0-9]+|Sqlcmd: Error|Error:|FAIL|THROW' "$release_log" | tail -n 220 || true
+              grep -A 2 -E 'RELEASE_GATE|Msg [0-9]+|Sqlcmd: Error|Error:|FAIL|THROW' "$release_log" | tail -n 260 || true
               echo 'Final release-gate output:'
               tail -n 100 "$release_log"
             } >"$error_summary"
