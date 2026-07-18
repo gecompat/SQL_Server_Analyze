@@ -1,10 +1,10 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T06:24:53Z",
+  "generatedAtUtc": "2026-07-18T06:31:36Z",
   "status": "ACTIONS_PASS",
   "scope": "completed P0/P1/P2 wave including isolated encryption-lifecycle and maintenance-operation analyses plus green commit-specific SQL Server 2019, 2022 and 2025 Actions gates including the SQL Server 2025 regex matrix",
   "inventory": {
-    "repositoryFiles": 310,
+    "repositoryFiles": 313,
     "canonicalSqlSources": 107,
     "sqlFilesIncludingTestsAndExamples": 127,
     "objects": 99,
@@ -128,6 +128,16 @@
       "unmappedPermissionErrorExpressions": 0,
       "note": "SQL Server 2025 error 371 for missing VIEW SERVER PERFORMANCE STATE is classified as DENIED_PERMISSION; the static documentation gate rejects permission mappings that retain error 229 without 371."
     },
+    "commitMessageGate": {
+      "status": "PASS",
+      "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
+      "validator": "Code/Tests/Static/930_Validate_Commit_Message.py",
+      "validatorSelfTests": 8,
+      "newCommitRangeOnly": true,
+      "historicalMessagesRewritten": false,
+      "messageContentInFindings": false,
+      "firstActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634126487"
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,
@@ -164,8 +174,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 310,
-      "zipFilesScanned": 310,
+      "repositoryFilesScanned": 313,
+      "zipFilesScanned": 313,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,

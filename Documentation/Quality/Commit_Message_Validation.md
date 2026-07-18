@@ -4,7 +4,8 @@
 **Anforderung:** `Documentation/Requirements/Requirements_and_Decisions.md`, Abschnitt 8
 **Prüfskript:** `Code/Tests/Static/930_Validate_Commit_Message.py`
 **Workflow:** `.github/workflows/commit-message-validation.yml`
-**Status:** IMPLEMENTED_PENDING_FIRST_ACTIONS_RUN
+**Status:** IMPLEMENTED_AUTOMATED_GATE
+**Erster grüner Lauf:** [Run 29634126487](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634126487)
 
 ## Vertrag
 

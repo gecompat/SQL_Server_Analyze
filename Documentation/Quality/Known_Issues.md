@@ -6,7 +6,6 @@ Die Version `1.1.0-special.9` besitzt für Commit `08b2d9d8c7adbadbf0996058d6bbb
 
 Verbleibende Repository- und Evidenzpunkte:
 
-- `RQ-005`: Die verbindliche einzeilige Commit Message wird nicht automatisch geprüft; mehrere jüngere Commit-Nachrichten enthalten zusätzliche Textzeilen. Künftig ist dies per Liefergate zu verhindern, ohne die Historie umzuschreiben.
 - `RQ-006`: 332 importierte Wait-Beschreibungen tragen weiterhin `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` und benötigen schrittweise fachliche Kuratierung.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
