@@ -4,7 +4,7 @@ Stand: 2026-07-18
 
 Der Stand `1.1.0-special.9` schließt die lokalen P2-Module mit Verschlüsselungslebenszyklus und Wartungsoperationen. Drei GitHub-Actions-Gates installieren und führen denselben 13-Suite-Vertrag auf SQL Server 2019, 2022 und 2025 mit Compatibility Level 150, 160 und 170 aus. `NOT_EXECUTED` in manuellen Positiv-, Grenzwert- oder Lastfällen bleibt weiterhin kein Testnachweis.
 
-Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.
+Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
 Abgeschlossen:
 
@@ -27,10 +27,19 @@ Abgeschlossen:
 17. SC-023 bis SC-025 bis zur sicheren Repositorygrenze konkretisiert: Entscheidungs- und Schnittstellenverträge sowie externer Restore-/Host-Runbook, aber keine ungeklärte Persistenz oder Infrastruktur.
 18. Commit `35cedea80cde7161569900d4aaeda6884a4cdd56` mit grünen Dokumentations- und SQL-Server-2019-/2022-/2025-Actions-Gates verifiziert und in der Ziel-, Suite- und Spezialfallmatrix nachgewiesen.
 
+Unmittelbar offene Repository-Qualitätsaufgaben:
+
+1. `RQ-001` – SC-001 operationalisieren: den verbindlichen Datenschutzvertrag und den dokumentierten Einzel-Audit durch einen reproduzierbaren Repository- und ZIP-Liefergate ergänzen. Das Gate benötigt synthetische Positiv- und Blockier-Fixtures, muss in CI laufen und darf bei einem Treffer nur Regel, Pfad und Anzahl, niemals den gefundenen Wert ausgeben. Uneindeutige Treffer bleiben eine manuelle Rückfrage- und Abbruchentscheidung.
+2. `RQ-002` – Release-Evidenz synchronisieren: die Ziel-, Suite-, Spezialfall- und Release-Audit-Dokumentation auf den neuesten funktional getesteten Code-Commit `8ec618231709d86540d605995fed329ad06c9808` und dessen grüne 2019-/2022-/2025-/Dokumentationsläufe aktualisieren. Dabei den SQL-Server-2025-Regex-Lauf als eigene Evidence aufnehmen und die veralteten Inventarzahlen von 300 Repository- beziehungsweise 126 SQL-Dateien gegen den aktuellen Bestand von 304 versionierten beziehungsweise 127 SQL-Dateien korrigieren.
+3. `RQ-003` – Regex-Vertrag konsistent machen: `ExecutedContracts=7` in `120_SQL_Server_2025_Regex_Matrix.sql` gegen die zehn dokumentierten Verträge prüfen und angleichen. Die statische Prädikatprüfung muss auch mehrzeilige Ausdrücke erkennen und datenschutzkonform ohne Wiedergabe der betroffenen Quellzeile melden.
+4. `RQ-004` – reproduzierbare Zielversionen dokumentieren: für die drei Linux-Gates die tatsächliche technische SQL-Server-Buildnummer und den verwendeten Container-Image-Digest als generische Evidence erfassen, statt nur die beweglichen `*-latest`-Tags und leere `ProductVersion`-Felder zu dokumentieren.
+5. `RQ-005` – einzeilige Commit Messages erzwingen: die verbindliche Vorgabe aus `Requirements_and_Decisions.md` in einer automatischen Pull-Request- beziehungsweise Lieferprüfung abbilden. Historische Commit-Nachrichten werden dafür nicht umgeschrieben.
+6. `RQ-006` – Wait-Katalog kuratieren: die 332 Einträge mit `DescriptionQuality = IMPORTED_REVIEW_REQUIRED` schrittweise fachlich prüfen und ausschließlich nach belegter Review auf `FRAMEWORK_CURATED` umstellen.
+
 Nächste Freigabeschritte:
 
 1. Pro manuellem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner startet `110`, `163`, `165`, `167` und `168` in fester Reihenfolge und bricht beim ersten SQL-Fehler ab.
-2. Für jedes neue Modul Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle dokumentieren; reale Namen oder Strukturen nicht in die Nachweise übernehmen.
+2. Die 172 noch auf `NOT_EXECUTED` stehenden Spezialfälle in der Reihenfolge P0 mit 17 Fällen, P1 mit 40 Fällen und P2 mit 115 Fällen abarbeiten. Capability-, Leerzustands-, Positiv-, Grenzwert-, Last-, Reset- und Berechtigungsfälle bleiben getrennte Nachweise; reale Namen oder Strukturen werden nicht übernommen.
 3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 4. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
 5. Vor SC-023 die in `Snapshot_Baseline_Package_Contract.md` markierten Persistenzentscheidungen ausdrücklich freigeben; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
