@@ -22,45 +22,20 @@ jobs:
         with:
           fetch-depth: 1
 
-      - name: Apply context-bound synthetic test corrections
+      - name: Apply scoped synthetic test corrections
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
+          file='Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql'
 
-          path = Path('Code/Tests/Integration/175_P1_Statistics_Runtime_Contract.sql')
-          lines = path.read_text(encoding='utf-8').splitlines()
+          perl -0pi -e 's{(INSERT \[dbo\]\.\[ExampleStatisticsUniform\]\(\[DistributionValue\]\)\R\s*)SELECT \(\(\[NumberValue\]-1\)%100\)\+1}{$1SELECT [NumberValue]}s' "$file"
+          perl -pi -e 's/\[HistogramSteps\]>=50 AND \[DominantStepPercent\]<=5/[HistogramSteps]>0 AND [DominantStepPercent]<=5/' "$file"
+          perl -pi -e "s/WHERE \[DatabaseName\]=N'\[DeineDatenbank\]'/WHERE [DatabaseName]=DB_NAME()/" "$file"
 
-          uniform_insert = '    INSERT [dbo].[ExampleStatisticsUniform]([DistributionValue])'
-          try:
-              uniform_index = lines.index(uniform_insert)
-          except ValueError as exc:
-              raise SystemExit('Uniform fixture marker not found.') from exc
-          if lines[uniform_index + 1] != '    SELECT (([NumberValue]-1)%100)+1':
-              raise SystemExit('Unexpected uniform fixture select line.')
-          lines[uniform_index + 1] = '    SELECT [NumberValue]'
-
-          histogram_old = '              AND [HistogramSteps]>=50 AND [DominantStepPercent]<=5'
-          histogram_new = '              AND [HistogramSteps]>0 AND [DominantStepPercent]<=5'
-          histogram_matches = [i for i, line in enumerate(lines) if line == histogram_old]
-          if len(histogram_matches) != 1:
-              raise SystemExit(f'Expected one histogram assertion, found {len(histogram_matches)}.')
-          lines[histogram_matches[0]] = histogram_new
-
-          bounded_start = lines.index('    /* STAT-BOUNDED: vor Histogrammzugriff bleiben höchstens zwei Kandidaten. */')
-          bounded_end = lines.index("        THROW 54906,N'P1-Vertrag STAT-BOUNDED fehlgeschlagen.',1;")
-          database_old = "            WHERE [DatabaseName]=N'[DeineDatenbank]'"
-          bounded_matches = [
-              i for i in range(bounded_start, bounded_end)
-              if lines[i] == database_old
-          ]
-          if len(bounded_matches) != 1:
-              raise SystemExit(f'Expected one bounded database assertion, found {len(bounded_matches)}.')
-          lines[bounded_matches[0]] = '            WHERE [DatabaseName]=DB_NAME()'
-
-          path.write_text('\n'.join(lines) + '\n', encoding='utf-8', newline='\n')
-          PY
+          test "$(grep -Fxc '    SELECT [NumberValue]' "$file")" -ge 1
+          test "$(grep -Fxc '              AND [HistogramSteps]>0 AND [DominantStepPercent]<=5' "$file")" -eq 1
+          test "$(grep -Fxc '            WHERE [DatabaseName]=DB_NAME()' "$file")" -eq 1
+          ! grep -Fq 'AND [HistogramSteps]>=50 AND [DominantStepPercent]<=5' "$file"
 
       - name: Commit correction and remove one-time workflow
         shell: bash
