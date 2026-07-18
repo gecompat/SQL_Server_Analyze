@@ -1,0 +1,53 @@
+name: Query retry5 availability run
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/query-retry5-availability-run.yml'
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  query:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          run_id=$(gh run list --workflow retry5-p1-availability-contract.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+          gh run view "$run_id" --json databaseId,status,conclusion,headSha > Metadata/Quality/Availability_Retry5_Run.json
+          gh run view "$run_id" --log-failed > "$RUNNER_TEMP/retry5.log" || true
+          python3 - <<'PY'
+          from pathlib import Path
+          import json,os,re
+          result=json.loads(Path('Metadata/Quality/Availability_Retry5_Run.json').read_text())
+          lines=Path(os.environ['RUNNER_TEMP']+'/retry5.log').read_text(errors='replace').splitlines()
+          matches=[]
+          for line in lines:
+              if 'Unexpected ' in line or 'Error:' in line or 'Exception' in line:
+                  line=re.sub(r'/home/runner/[^\s]+','<path>',line)
+                  line=re.sub(r'\b[0-9a-f]{40}\b','<sha>',line)
+                  matches.append(line[-400:])
+          result['errors']=matches[-3:]
+          Path('Metadata/Quality/Availability_Retry5_Run.json').write_text(json.dumps(result,indent=2)+'\n')
+          PY
+      - shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/query-retry5-availability-run.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+users.noreply.github.com'
+          git add Metadata/Quality/Availability_Retry5_Run.json .github/workflows/query-retry5-availability-run.yml
+          git commit -m 'chore: record availability retry5 status'
+          git pull --rebase origin main
+          git push origin HEAD:main
