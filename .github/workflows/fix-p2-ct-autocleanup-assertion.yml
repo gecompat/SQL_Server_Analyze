@@ -27,25 +27,21 @@ jobs:
           from pathlib import Path
           path=Path('Code/Tests/Integration/184_P2_Data_Capture_Runtime_Contract.sql')
           text=path.read_text(encoding='utf-8')
-          old="""    IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED_CONTEXT''',@Definition)=0
-       OR NOT EXISTS
-          (
-              SELECT 1 FROM OPENJSON(@Json,N'$.databaseStatus')
-              WITH ([IsChangeTrackingEnabled] bit N'$.IsChangeTrackingEnabled')
-              WHERE [IsChangeTrackingEnabled]=1
-          )
-        THROW 55806,N'P2-Vertrag CT-AUTO-CLEANUP-OFF fehlgeschlagen.',1;"""
-          new="""    IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED''',@Definition)=0
-       OR NOT EXISTS
-          (
-              SELECT 1 FROM OPENJSON(@Json,N'$.findings')
-              WITH ([FindingCode] varchar(120) N'$.FindingCode',[MetricValue] decimal(38,4) N'$.MetricValue')
-              WHERE [FindingCode]='CT_AUTO_CLEANUP_DISABLED' AND [MetricValue]=0
-          )
-        THROW 55806,N'P2-Vertrag CT-AUTO-CLEANUP-OFF fehlgeschlagen.',1;"""
-          if text.count(old)!=1:
-              raise SystemExit('unexpected CT auto-cleanup assertion')
-          path.write_text(text.replace(old,new,1),encoding='utf-8',newline='\n')
+          start_marker="    IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED_CONTEXT''',@Definition)=0"
+          end_marker="        THROW 55806,N'P2-Vertrag CT-AUTO-CLEANUP-OFF fehlgeschlagen.',1;"
+          start=text.index(start_marker)
+          end=text.index(end_marker,start)+len(end_marker)
+          replacement='\n'.join([
+              "    IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED''',@Definition)=0",
+              '       OR NOT EXISTS',
+              '          (',
+              "              SELECT 1 FROM OPENJSON(@Json,N'$.findings')",
+              "              WITH ([FindingCode] varchar(120) N'$.FindingCode',[MetricValue] decimal(38,4) N'$.MetricValue')",
+              "              WHERE [FindingCode]='CT_AUTO_CLEANUP_DISABLED' AND [MetricValue]=0",
+              '          )',
+              "        THROW 55806,N'P2-Vertrag CT-AUTO-CLEANUP-OFF fehlgeschlagen.',1;",
+          ])
+          path.write_text(text[:start]+replacement+text[end:],encoding='utf-8',newline='\n')
           PY
       - name: Commit fix and remove helper
         shell: bash
