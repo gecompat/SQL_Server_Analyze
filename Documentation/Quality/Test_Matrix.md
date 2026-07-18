@@ -17,15 +17,23 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `8ec618231709d86540d605995fed329ad06c9808` hat Installer, den 13-Suite-Release-Gate-Vertrag und die synthetische Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `08b2d9d8c7adbadbf0996058d6bbb35b08c96ad8` hat Installer, den 13-Suite-Release-Gate-Vertrag und die synthetische Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
-| Target | Compatibility Level | Actions-Nachweis | Ergebnis |
-|---|---:|---|---|
-| SQL Server 2019 | 150 | [Run 29627116999](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627116999) | `PASS_WITH_LIMITATIONS` |
-| SQL Server 2022 | 160 | [Run 29627116978](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627116978) | `PASS_WITH_LIMITATIONS` |
-| SQL Server 2025 | 170 | [Run 29627117000](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627117000) | `PASS_WITH_LIMITATIONS`; `REGEX_MATRIX=PASS` |
+| Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
+|---|---|---:|---|---|
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29633874702](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874702) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29633874699](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874699) | `PASS_WITH_LIMITATIONS` |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29633874737](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874737) | `PASS_WITH_LIMITATIONS`; `REGEX_MATRIX=PASS` |
 
-Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29627117003) ist für denselben Commit ebenfalls grün. Die Regex-Matrix ist als eigene Suitezeile in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für den synthetischen Linux-Leerdatenbank-Scope. Sie ist kein Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
+Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
+
+| Target | Container-Image-Digest |
+|---|---|
+| SQL Server 2019 | `mcr.microsoft.com/mssql/server@sha256:46f719fd3457d4e7e8e5845fe00c35c20e7bae7ff1e8b9fe595f2a81029f5ba8` |
+| SQL Server 2022 | `mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89` |
+| SQL Server 2025 | `mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a` |
+
+Der [Dokumentations- und statische Vertrag](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29633874696) ist für denselben Commit ebenfalls grün. Die vollständigen maschinenlesbaren Build- und Digestwerte stehen in `Test_Matrix.csv`; die Regex-Matrix ist als eigene Suitezeile in `Release_Gate_Evidence.csv` vermerkt. Diese Evidence gilt für den synthetischen Linux-Leerdatenbank-Scope. Sie ist kein Feature-Positiv-, Grenzwert-, Last-, Windows-, Azure-MI- oder externer Restore-Nachweis.
 
 ## Datenschutz
 
