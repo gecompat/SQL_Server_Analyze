@@ -72,11 +72,30 @@ jobs:
       - name: Generate and validate complete P2 evidence
         shell: bash
         env:
+          GH_TOKEN: ${{ github.token }}
           RUNS_JSON: ${{ runner.temp }}/p2-runs.json
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
-          python3 -m py_compile .github/scripts/finalize_p2_evidence.py
-          python3 .github/scripts/finalize_p2_evidence.py
+          if ! output=$(python3 -m py_compile .github/scripts/finalize_p2_evidence.py 2>&1 && python3 .github/scripts/finalize_p2_evidence.py 2>&1); then
+            printf '%s\n' "$output"
+            export FINALIZATION_OUTPUT="$output"
+            slug=$(python3 - <<'PY'
+          import os,re
+          lines=[line.strip() for line in os.environ.get('FINALIZATION_OUTPUT','').splitlines() if line.strip()]
+          value=lines[-1] if lines else 'unknown-p2-finalization-error'
+          value=re.sub(r'[^a-z0-9]+','-',value.lower()).strip('-')[:140] or 'unknown-p2-finalization-error'
+          print(value)
+          PY
+            )
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+              -f state='failure' \
+              -f target_url="$RUN_URL" \
+              -f description='P2 generated evidence validation failed' \
+              -f context="p2-completion-error/${slug}" >/dev/null
+            exit 1
+          fi
+          printf '%s\n' "$output"
 
       - name: Commit final evidence without temporary files
         shell: bash
