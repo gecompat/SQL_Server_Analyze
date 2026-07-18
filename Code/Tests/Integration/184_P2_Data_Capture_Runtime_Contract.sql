@@ -142,12 +142,12 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@MaxDatenbanken=1,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
-    IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED_CONTEXT''',@Definition)=0
+    IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED''',@Definition)=0
        OR NOT EXISTS
           (
-              SELECT 1 FROM OPENJSON(@Json,N'$.databaseStatus')
-              WITH ([IsChangeTrackingEnabled] bit N'$.IsChangeTrackingEnabled')
-              WHERE [IsChangeTrackingEnabled]=1
+              SELECT 1 FROM OPENJSON(@Json,N'$.findings')
+              WITH ([FindingCode] varchar(120) N'$.FindingCode',[MetricValue] decimal(38,4) N'$.MetricValue')
+              WHERE [FindingCode]='CT_AUTO_CLEANUP_DISABLED' AND [MetricValue]=0
           )
         THROW 55806,N'P2-Vertrag CT-AUTO-CLEANUP-OFF fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('CT-AUTO-CLEANUP-OFF');
