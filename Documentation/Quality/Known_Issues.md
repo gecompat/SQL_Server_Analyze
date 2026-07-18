@@ -7,6 +7,7 @@ Die Version `1.1.0-special.9` besitzt für Commit `7e3ba1a4e2fa79761c2daf24bee23
 Verbleibende Repository- und Evidenzpunkte:
 
 - Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
+- Die vier ersten P1-IQP-Fälle sind automatisiert, aber bis zu grünen commitbezogenen SQL-Server-2019-/2022-/2025-Gates noch nicht als ausgeführt dokumentiert.
 - Evidenzhinweis: Der nachfolgende direkte Dokumentationscommit `71f70830f4d9b8c6a0531c5eaf4116bd3806ac9d` enthielt zusätzlich zum Betreff einen Nachrichtentext und wurde vom Commit-Message-Gate erwartungsgemäß abgelehnt. Gemäß `RQ-005` wird bestehende Historie nicht umgeschrieben; er ist nicht der funktional ausgewiesene Release-Evidenzcommit.
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:

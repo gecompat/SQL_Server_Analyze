@@ -1,12 +1,12 @@
 {
   "release": "1.1.0-special.9",
   "generatedAtUtc": "2026-07-18T08:00:00Z",
-  "status": "ACTIONS_PASS",
-  "scope": "completed P0/P1/P2 implementation wave, evidence-backed Wait Type catalog curation, and green commit-specific 14-suite SQL Server 2019, 2022 and 2025 evidence for all 17 P0 cases",
+  "status": "ACTIONS_PENDING",
+  "scope": "green commit-specific SQL Server 2019, 2022 and 2025 evidence for all 17 P0 cases plus a fifteenth release-gate suite covering the first four P1 IQP cases pending Actions",
   "inventory": {
-    "repositoryFiles": 325,
+    "repositoryFiles": 326,
     "canonicalSqlSources": 108,
-    "sqlFilesIncludingTestsAndExamples": 130,
+    "sqlFilesIncludingTestsAndExamples": 131,
     "objects": 100,
     "procedures": 84,
     "functions": 11,
@@ -17,7 +17,7 @@
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 130,
+      "filesChecked": 131,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -179,6 +179,20 @@
       "sqlServer2025ActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29636655044",
       "note": "Fifteen cases run in the P0 runtime contract and INT-DENIED plus CAP-DENIED run under a restricted server login in each version-specific permission matrix. All seventeen cases passed on SQL Server 2019, 2022 and 2025; PC-RESET uses the same pure interpretation function as the procedure."
     },
+    "p1IqpRuntimeContract": {
+      "status": "IMPLEMENTED_PENDING_ACTIONS",
+      "suite": "Code/Tests/Integration/170_P1_IQP_Runtime_Contract.sql",
+      "syntheticCases": 4,
+      "caseIds": [
+        "IQP-2019",
+        "IQP-PSP",
+        "IQP-OPPO",
+        "IQP-QSOFF"
+      ],
+      "databaseOptionsRestored": true,
+      "runtimeDataPersisted": false,
+      "note": "The case rows remain NOT_EXECUTED until the commit-specific SQL Server 2019, 2022 and 2025 Actions gates pass."
+    },
     "procedureDocumentationContract": {
       "status": "PASS",
       "referenceProcedures": 84,
@@ -215,8 +229,8 @@
     "repositoryPrivacyGate": {
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
-      "repositoryFilesScanned": 325,
-      "zipFilesScanned": 325,
+      "repositoryFilesScanned": 326,
+      "zipFilesScanned": 326,
       "selfTestContracts": 5,
       "pathHashBoundAllowlistEntriesReviewed": 8,
       "realEmailFindings": 0,
@@ -244,8 +258,8 @@
     "specialCaseRows": 181,
     "specialCaseRowsNotExecuted": 155,
     "specialCaseRowsPassWithLimitations": 26,
-    "specialCaseRowsAutomatedPending": 0,
-    "runtimeStatus": "ACTIONS_PASS",
+    "specialCaseRowsAutomatedPending": 4,
+    "runtimeStatus": "ACTIONS_PENDING",
     "claim": "Commit 7e3ba1a4e2fa79761c2daf24bee23dd73feed297 passed the synthetic Linux installer, 14-suite release gate and permission contract on SQL Server 2019, 2022 and 2025, including all 17 P0 cases and the separate SQL Server 2025 regex matrix. Exact public product builds and immutable container image digests were captured. Further feature-positive, boundary, load, Windows, Azure MI and external restore evidence remain separate.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
