@@ -292,7 +292,12 @@ ADD TARGET [package0].[event_file]
 (
     SET filename=N'/tmp/example_p0_critical_events.xel',max_file_size=(5),max_rollover_files=(1)
 )
-WITH (STARTUP_STATE=OFF);
+WITH
+(
+    EVENT_RETENTION_MODE=NO_EVENT_LOSS,
+    MAX_DISPATCH_LATENCY=1 SECONDS,
+    STARTUP_STATE=OFF
+);
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=START;
 DECLARE @EventStartUtc datetime2(7)=SYSUTCDATETIME();
 DECLARE @EventEndUtc datetime2(7)=DATEADD(MINUTE,5,@EventStartUtc);
@@ -301,6 +306,7 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
 END CATCH;
+WAITFOR DELAY '00:00:02';
 ALTER EVENT SESSION [ExampleP0CriticalEvents] ON SERVER STATE=STOP;
 WAITFOR DELAY '00:00:01';
 
