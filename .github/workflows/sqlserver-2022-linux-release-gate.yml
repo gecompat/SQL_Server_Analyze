@@ -135,6 +135,29 @@ jobs:
           fi
           echo 'Release gate succeeded.'
 
+      - name: Run SQL Server 2022 permission matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          permission_log="$RUNNER_TEMP/sqlserver-analyze-permission-matrix.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-error.txt"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            sqlserver-analyze-test \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_PASSWORD" \
+            -i Permissions/110_SQL_Server_2022_Permission_Matrix.sql >"$permission_log" 2>&1; then
+            echo 'Permission matrix failed.'
+            {
+              echo 'Final permission-matrix output:'
+              tail -n 220 "$permission_log"
+            } >"$error_summary"
+            cat "$error_summary"
+            exit 1
+          fi
+          echo 'Permission matrix succeeded.'
+
       - name: Record generic success summary
         if: success()
         shell: bash
@@ -145,6 +168,7 @@ jobs:
             echo '- Compatibility level: 160'
             echo '- Installer: passed'
             echo '- Release gate: passed'
+            echo '- Permission matrix: passed'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload sanitized failure summary
