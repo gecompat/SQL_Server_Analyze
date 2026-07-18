@@ -1,6 +1,6 @@
 # Testablauf für das Release-Gate
 
-**Stand:** 18. Juli 2026
+**Stand:** 18. Juli 2026  
 **Runner:** `Code/Tests/Run_Release_Gate.sql`  
 **Zielstatus vor Ausführung:** `NOT_EXECUTED`
 
@@ -32,10 +32,37 @@ Dabei gilt:
 - Der Repositorybestand wird in ein temporäres Runnerverzeichnis kopiert; nur dort wird `[DeineDatenbank]` ersetzt.
 - Der Container erhält die temporäre Codekopie schreibgeschützt.
 - Installer und `Run_Release_Gate.sql` laufen mit `sqlcmd -b` und brechen beim ersten SQL-Fehler ab.
-- Es werden keine SQLCMD-Ausgaben oder Resultsets als Artefakt gespeichert.
+- Anschließend läuft die SQL-Server-2022-Berechtigungsmatrix im selben isolierten Container.
+- Es werden keine vollständigen SQLCMD-Ausgaben oder Resultsets als dauerhaftes Artefakt gespeichert.
 - Nach dem Lauf wird der Container auch bei Fehlern entfernt.
 
-Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. Es ersetzt keine Tests für Windows, SQL Server 2019, SQL Server 2025, optionale Features, reduzierte Berechtigungen oder produktionsnahe Lastzustände.
+Dieses Target deckt SQL Server 2022 unter Linux mit Compatibility Level 160 und der case-sensitiven Collation `SQL_Latin1_General_CP1_CS_AS` ab. Es ersetzt keine Tests für Windows, SQL Server 2019, SQL Server 2025, optionale Feature-Positivfälle oder produktionsnahe Lastzustände.
+
+## 0.2 Automatisierte SQL-Server-2022-Berechtigungsmatrix
+
+Der Workflow führt nach dem allgemeinen Release-Gate `Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql` aus. Die Matrix erzeugt ausschließlich temporäre synthetische SQL-Logins, Datenbankbenutzer und eine Datenbankrolle. Das Kennwort entsteht erst im Job, wird maskiert und nicht im Repository gespeichert.
+
+Geprüfte Szenarien:
+
+1. vollständig eingeschränkter Login ohne Server- oder Database-State-Recht;
+2. ausschließlich `VIEW SERVER STATE` als Legacy-Abgrenzung auf SQL Server 2022;
+3. `VIEW SERVER PERFORMANCE STATE` mit vollständiger Current-Sessions-Sicht;
+4. ausschließlich `VIEW DATABASE STATE` als Legacy-Abgrenzung;
+5. `VIEW DATABASE PERFORMANCE STATE` für Query-Store-Capabilities;
+6. synthetische Rollenmitgliedschaft über den `IS_MEMBER`-Fallback;
+7. sysadmin-Bypass für eine aktive Gruppenpolicy.
+
+Zusätzlich wird vor Aktivierung der synthetischen Policy bestätigt, dass die ausgelieferte leere Policy geschützte Analyseklassen mit `OPEN_POLICY` freigibt. Nach erfolgreichem Lauf wird die leere Standardpolicy wiederhergestellt und jeder synthetische Principal entfernt.
+
+Verbindliche Erwartungen:
+
+- eingeschränkte Current-Sessions-Sicht liefert kontrolliert `DENIED_PERMISSION` oder `AVAILABLE_LIMITED` und gültiges JSON statt eines unkontrollierten Abbruchs;
+- `VIEW SERVER STATE` umfasst auf SQL Server 2022 die neue Berechtigung `VIEW SERVER PERFORMANCE STATE`; umgekehrt entsteht kein `VIEW SERVER STATE`;
+- `CURRENT_SESSIONS` ist capability-seitig mit `VIEW SERVER PERFORMANCE STATE` verfügbar, kann wegen weiterer geschützter Teilquellen aber weiterhin kontrolliert `AVAILABLE_LIMITED` liefern;
+- `VIEW DATABASE STATE` umfasst `VIEW DATABASE PERFORMANCE STATE`; umgekehrt entsteht kein `VIEW DATABASE STATE`;
+- beide Database-State-Szenarien erfüllen die geprüften Query-Store-Performance-Capabilities;
+- nicht berechtigte geschützte Klassen liefern `NO_MATCH`, Rollenmitglieder `IS_MEMBER` und sysadmin `SYSADMIN`;
+- sieben Szenarien werden vollständig ausgeführt und der Test endet mit `StatusCode=AVAILABLE`.
 
 ## 1. Lokale Testkopie vorbereiten
 
@@ -119,6 +146,7 @@ Für die Rückmeldung genügen je Target:
 - Exitcode der statischen Repositoryprüfung
 - Exitcode des Installers
 - Exitcode des Release-Gates
+- Ergebnis der Berechtigungsmatrix
 - letzte erfolgreich gestartete Suite oder generischer Fehlercode
 - `PASS`, `PASS_WITH_LIMITATIONS` oder `FAIL`
 - generische Einschränkungen, beispielsweise `FEATURE_NOT_AVAILABLE` oder `DENIED_PERMISSION`
