@@ -50,7 +50,11 @@ VALUES
 (N'USP_ServiceBrokerAnalysis',N'@StatusCodeOut'),
 (N'USP_FullTextAnalysis',N'@PopulationAgeWarnMinutes'),
 (N'USP_FullTextAnalysis',N'@QueryableFragmentWarn'),
-(N'USP_FullTextAnalysis',N'@StatusCodeOut');
+(N'USP_FullTextAnalysis',N'@StatusCodeOut'),
+(N'USP_DataCaptureDeepAnalysis',N'@ChangeTrackingClientVersion'),
+(N'USP_DataCaptureDeepAnalysis',N'@CdcLatencyWarnSeconds'),
+(N'USP_DataCaptureDeepAnalysis',N'@ReplicationPendingCommandWarn'),
+(N'USP_DataCaptureDeepAnalysis',N'@StatusCodeOut');
 
 DECLARE @Missing nvarchar(max);
 
@@ -184,6 +188,44 @@ IF CHARINDEX(N'[sys].[dm_fts_index_keywords',@FullTextDefinition COLLATE SQL_Lat
  OR @FullTextDefinition LIKE N'%ALTER FULLTEXT CATALOG [[]%'
  OR CHARINDEX(N'START FULL POPULATION;',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
     THROW 54114,N'Die Full-Text-Analyse enthält einen ausgeschlossenen Inhalts-, Pfad- oder Änderungszugriff.',1;
+
+DECLARE @DataCaptureDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_DataCaptureDeepAnalysis'));
+IF @DataCaptureDefinition IS NULL
+    THROW 54115,N'Die Data-Capture-Tiefenanalyse ist nicht sichtbar.',1;
+
+DECLARE @MissingDataCaptureSources nvarchar(2048)=NULL;
+IF CHARINDEX(N'[sys].[change_tracking_tables]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingDataCaptureSources=N'sys.change_tracking_tables';
+IF CHARINDEX(N'[cdc].[change_tables]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingDataCaptureSources=CONCAT_WS(N', ',@MissingDataCaptureSources,N'cdc.change_tables');
+IF CHARINDEX(N'[sys].[dm_cdc_log_scan_sessions]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingDataCaptureSources=CONCAT_WS(N', ',@MissingDataCaptureSources,N'sys.dm_cdc_log_scan_sessions');
+IF CHARINDEX(N'[sys].[dm_cdc_errors]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingDataCaptureSources=CONCAT_WS(N', ',@MissingDataCaptureSources,N'sys.dm_cdc_errors');
+IF CHARINDEX(N'[dbo].[MSdistribution_status]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingDataCaptureSources=CONCAT_WS(N', ',@MissingDataCaptureSources,N'MSdistribution_status');
+IF CHARINDEX(N'[dbo].[MSlogreader_history]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingDataCaptureSources=CONCAT_WS(N', ',@MissingDataCaptureSources,N'MSlogreader_history');
+IF CHARINDEX(N'[dbo].[MSmerge_sessions]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)=0
+    SET @MissingDataCaptureSources=CONCAT_WS(N', ',@MissingDataCaptureSources,N'MSmerge_sessions');
+IF @MissingDataCaptureSources IS NOT NULL
+BEGIN
+    DECLARE @DataCaptureSourceMessage nvarchar(2048)=CONCAT(N'Die Data-Capture-Tiefenanalyse besitzt nicht alle erwarteten read-only Metadatenquellen: ',@MissingDataCaptureSources,N'.');
+    THROW 54116,@DataCaptureSourceMessage,1;
+END;
+
+IF CHARINDEX(N'CHANGETABLE(',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[error_message]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[comments]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[publisher_login]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[subscriber_login]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[publisher_password]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[subscriber_password]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[xact_seqno]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'[command_id]',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'sp_replmonitorsubscriptionpendingcmds',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+ OR CHARINDEX(N'ALTER DATABASE ',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
+    THROW 54117,N'Die Data-Capture-Tiefenanalyse enthält einen ausgeschlossenen Nutzdaten-, Credential-, Command- oder Änderungszugriff.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

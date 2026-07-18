@@ -14,7 +14,7 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 Für praktische Analysen nicht im Forschungsdokument beginnen:
 
 1. [`Analysis_Guides/Runbooks/README.md`](Analysis_Guides/Runbooks/README.md) – Einstieg nach Symptom
-2. [`Analysis_Guides/Procedures/README.md`](Analysis_Guides/Procedures/README.md) – eigenständige Seiten für alle 81 Procedures
+2. [`Analysis_Guides/Procedures/README.md`](Analysis_Guides/Procedures/README.md) – eigenständige Seiten für alle 82 Procedures
 3. [`Analysis_Guides/Glossary.md`](Analysis_Guides/Glossary.md) – technische Begriffe
 4. [`Analysis_Guides/Parameter_Reading_Guide.md`](Analysis_Guides/Parameter_Reading_Guide.md) – Parameter und sichere Aufrufe
 5. [`Analysis_Guides/README.md`](Analysis_Guides/README.md) – Gesamtübersicht und Familienguides
@@ -38,7 +38,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
 Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
-Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.7` einschließlich Spezialfeature-Nutzungsinventur sowie In-Memory-OLTP-, Temporal-Tables-, Service-Broker- und Full-Text-Tiefenanalyse besitzt statische Verträge; reale Zielmatrixläufe sind noch zu dokumentieren.
+Der Basisstand vor der Spezialfallwelle wurde nach Angabe des Projektverantwortlichen real getestet. Die neue Version `1.1.0-special.8` einschließlich Spezialfeature-Nutzungsinventur sowie In-Memory-OLTP-, Temporal-Tables-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Tiefenanalyse besitzt statische Verträge; reale Zielmatrixläufe sind noch zu dokumentieren.
 
 ## Forschungs- und Inventareinstieg
 

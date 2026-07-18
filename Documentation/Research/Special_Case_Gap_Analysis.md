@@ -20,7 +20,7 @@ Die größten verbleibenden Lücken liegen nicht bei einem weiteren allgemeinen 
 5. **Moderne Optimizerfunktionen:** PSP, OPPO, Dispatcher-/Variant-Pläne, Plan Feedback, optimiertes Plan Forcing und Automatic Tuning werden nur teilweise oder indirekt erfasst.
 6. **Interne Contention und Speicher:** Latch-/Spinlock-Deltas, Hot-Page-Zuordnung, Buffer-Pool-Verteilung und Resource-Monitor-Signale fehlen.
 7. **Wiederherstellbarkeit:** Backups werden inventarisiert, aber LSN-Ketten, Forks, Checksum-/Damage-Indikatoren und Restore-Historie noch nicht als belastbare Recovery-Evidenz ausgewertet.
-8. **Spezial-Engines:** In-Memory OLTP, Temporal, Service Broker und Full-Text besitzen inzwischen bedingte Fachmodule; Change/Replication, Verschlüsselung und weitere nur bei Nutzung relevante Features bleiben offen.
+8. **Spezial-Engines:** In-Memory OLTP, Temporal, Service Broker, Full-Text sowie Change Tracking/CDC/lokale Replikation besitzen inzwischen bedingte Fachmodule; Verschlüsselung und weitere nur bei Nutzung relevante Features bleiben offen.
 9. **Korrelation:** Einzelbefunde sind breit vorhanden, aber es fehlt eine zentrale Finding-Schicht mit Evidenz, Zeitbezug, Konfidenz und Gegenindizien.
 10. **Langzeitbezug:** Baselines, Snapshots, Deltas und Anomalien fehlen bewusst, weil der aktuelle Kern zustandslos ist. Das ist keine versehentliche Lücke, sondern ein späteres, gesondert zu entscheidendes Paket.
 
@@ -494,14 +494,18 @@ Umsetzungsgrenzen: `MANUAL/OFF`, ein ausstehender initialer Crawl und Status 7 s
 
 ### SC-019: Change Tracking, CDC und Replikation vertiefen
 
-Die Infrastrukturgrundlage ist vorhanden; Spezialfälle bleiben:
+Implementiert als `monitor.USP_DataCaptureDeepAnalysis`. Das unfiltrierte sichtbare Feature-Gate trennt Change Tracking, CDC und Replikationsrollen. Schema-/Objektfilter wirken nur auf CT-/CDC-Quelltabellen. Jede abhängige DMV-, msdb- und lokale Distributionsquelle wird isoliert behandelt.
 
-- Cleanup-Rückstand und Retentionüberschreitung,
-- Min Valid Version und Synchronisationsverlust bei Change Tracking,
-- CDC-Logscan-/Capture-Latenz und Cleanup,
-- Log-Reader-/Distribution-Latenz,
-- undistributed commands, Reinitialisierung und Agentfehler,
-- Topologie- und Berechtigungsgrenzen bei Remote-Distributoren.
+Auswertungen:
+
+- Change-Tracking-MinValidVersion ausschließlich gegen einen optional gelieferten echten Consumer-Wasserstand,
+- inkonsistente zukünftige Consumer-Version sowie Auto-Cleanup-Kontext,
+- CDC-Capture-Instanzen, Drop-Pending, älteste verfügbare Zeitgrenze und Cleanup-Retention,
+- CDC-Logscan-Aggregat und neueste Sitzung, gruppierte Fehler sowie Capture-/Cleanup-Jobs,
+- alle sichtbaren lokalen Distributionsdatenbanken mit Distribution-/Log-Reader-/Merge-Agenten, Agenthistorie, undistributed commands, inaktiven Subscriptions, Konflikten und Retries,
+- gruppierte lokale Replikationsfehler und explizite Topologie-/Berechtigungsgrenzen.
+
+Umsetzungsgrenzen: Ohne Consumer-Wasserstand wird kein CT-Synchronisationsverlust behauptet. Zeitgesteuertes CDC erhält eine andere Latenzeinordnung als kontinuierliches Capture. Idle-Agenten ohne Rückstand sind kein Fehler. Inaktive Subscription oder Fail/Retry sind Reinitialisierungskandidaten und kein alleiniger Beweis. Ein Remote oder unzugänglicher Distributor wird als Evidenzlücke und niemals als gesunder Zustand behandelt. Das Modul liest keine Change-Zeilen, Replikationsbefehle, Kommentare, Fehlertexte, LSNs, Credentials, Agentjob-Commands oder Konfliktzeilen und führt keine Änderung aus.
 
 ### SC-020: Verschlüsselung und Schlüssel-Lifecycle
 

@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-18 — 81 Procedures
+Stand: 2026-07-18 — 82 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -28,6 +28,7 @@ EXEC [monitor].[USP_InMemoryOltpAnalysis] @DatabaseNames=N'',@MitHashIndexStats=
 EXEC [monitor].[USP_TemporalAnalysis] @DatabaseNames=N'',@HistorySizeWarnMb=10240,@MaxZeilen=100;
 EXEC [monitor].[USP_ServiceBrokerAnalysis] @DatabaseNames=N'',@TransmissionAgeWarnMinutes=60,@MaxZeilen=100;
 EXEC [monitor].[USP_FullTextAnalysis] @DatabaseNames=N'',@PopulationAgeWarnMinutes=60,@QueryableFragmentWarn=30,@MaxZeilen=100;
+EXEC [monitor].[USP_DataCaptureDeepAnalysis] @DatabaseNames=N'',@CdcLatencyWarnSeconds=300,@ReplicationPendingCommandWarn=10000,@MaxZeilen=100;
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@SchemaNames=N'dbo|monitor',@ObjectNamePattern=N'regexi:^usp_',@MaxZeilen=200;
 ```
 
@@ -179,6 +180,12 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_DataCaptureStatus] @Hilfe = 1;
+```
+
+## `[monitor].[USP_DataCaptureDeepAnalysis]`
+
+```sql
+EXEC [monitor].[USP_DataCaptureDeepAnalysis] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_DiagnosticFindings]`

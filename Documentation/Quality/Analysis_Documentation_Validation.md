@@ -27,7 +27,7 @@ Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
 ## Geprüft wird
 
 - Referenzmenge gegen Procedure-Seiten,
-- erwartete Gesamtzahl von 81 Procedures in Referenz, kanonischen SQL-Quellen und Einzelseiten,
+- erwartete Gesamtzahl von 82 Procedures in Referenz, kanonischen SQL-Quellen und Einzelseiten,
 - Existenz der in der Referenz genannten SQL-Quelldateien,
 - Procedure-Name der Quelldatei,
 - Parameterreihenfolge, Parameternamen, Datentypen, Defaults und `OUTPUT`-Kennzeichnung gegen die kanonische SQL-Signatur,

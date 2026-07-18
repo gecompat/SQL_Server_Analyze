@@ -1,6 +1,6 @@
 # Versionsadaptive und spezialisierte Analysepfade
 
-**Procedures:** 6
+**Procedures:** 7
 **Evidenz:** Version, Plattform, sichtbare Kataloge, Spezialfeature-Metadaten und isolierte Runtime-DMVs  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -10,7 +10,7 @@
 - Katalogobjekterkennung ist belastbarer als hart codierte Versionsannahmen, bleibt aber berechtigungsabhängig.
 - `NOT_DETECTED_VISIBLE_SCOPE` bedeutet nur „im sichtbaren Metadatenscope nicht gefunden“.
 - Feature-Inventar ist kein Healthcheck.
-- In-Memory-, Temporal-, Service-Broker- und Full-Text-Findings verwenden konfigurierbare Repository-Heuristiken und führen keine DDL aus.
+- In-Memory-, Temporal-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Findings verwenden konfigurierbare Repository-Heuristiken und führen keine DDL aus.
 
 ---
 
@@ -100,6 +100,7 @@ Die genaue Familie ist versionsabhängig. Das Resultset ist ein Inventar, kein P
 - Temporal gefunden → `USP_TemporalAnalysis`
 - Service Broker gefunden → `USP_ServiceBrokerAnalysis`
 - Full-Text gefunden → `USP_FullTextAnalysis`
+- Change Tracking oder CDC gefunden → `USP_DataCaptureDeepAnalysis`
 - Query-Store-Replica verfügbar → Query-Store-Guides mit Replica Group beachten
 - Spezialindex → passende Objekt-/Plananalyse
 
@@ -519,6 +520,63 @@ Memory Pools sind serverweit gemeinsam genutzter Gatherer-Kontext. FDHosts werde
 
 Folgemessung von Fortschritt und Batches, Suchlatenz, I/O-/Logkontext sowie geschützte Full-Text- und Crawl-Logs in der Laufzeitumgebung korrelieren. Nur abstrahierte, synthetische Testergebnisse dokumentieren.
 
+---
+
+## 7. [monitor].[USP_DataCaptureDeepAnalysis]
+
+### Zweck
+
+Vertieft Change Tracking, CDC und lokal erreichbare Replikation. Das Modul liest ausschließlich Katalog-, DMV-, Job- und aggregierte Distributionsevidenz. Es liest keine Change-Zeilen, Replikationsbefehle, Kommentare, Fehlertexte, LSNs, Credentials oder Agentjob-Commands und verändert keine Konfiguration.
+
+### Repository-Schwellen
+
+| Parameter | Default | Bedeutung |
+|---|---:|---|
+| `@ChangeTrackingClientVersion` | `NULL` | echter zuletzt bestätigter Consumer-Wasserstand für genau eine ausgewählte Datenbank; ohne ihn kein Verlusturteil |
+| `@CdcLatencyWarnSeconds` | 300 | aggregierte CDC-Scan-Latenz |
+| `@CdcCleanupGraceMinutes` | 60 | Toleranz zusätzlich zur Cleanup-Retention |
+| `@ErrorLookbackHours` | 24 | CDC- und lokale Replikationsfehler |
+| `@ReplicationLatencyWarnSeconds` | 300 | Delivery-Latenz aus lokaler Agenthistorie |
+| `@ReplicationPendingCommandWarn` | 10.000 | undistributed commands am lokalen Distributor |
+| `@ReplicationAgentStaleWarnMinutes` | 15 | alte Distribution-History nur zusammen mit sichtbarem Rückstand |
+
+Alle Zeit-, Latenz- und Mengenwerte außer dem CT-Minimumvergleich sind Priorisierungsheuristiken. Ein Wasserstand unter `CHANGE_TRACKING_MIN_VALID_VERSION` bedeutet für diesen Consumer und diese Tabelle, dass eine gültige inkrementelle Enumeration nicht mehr möglich ist.
+
+### Resultsets
+
+`DatabaseStatus` und `SourceStatus` zeigen zuerst Anwendbarkeit und Evidenzlücken. Danach folgen `Findings`, Change-Tracking-Tabellen, CDC-Capture-Instanzen, CDC-Scan-Sitzungen, aggregierte CDC-Fehler, CDC-Jobs, lokal sichtbare Replikationsagenten und aggregierte Replikationsfehler.
+
+Schema- und Objektfilter gelten nur für CT-/CDC-Quelltabellen. Das Feature-Gate bleibt unfiltriert. Replikationsrollen und Agenten besitzen keinen zuverlässigen gemeinsamen Schema-/Tabellenschlüssel und werden deshalb nur über den Datenbankscope begrenzt.
+
+### Change Tracking
+
+- `MinValidVersion` ist tabellenspezifisch.
+- `@ChangeTrackingClientVersion < MinValidVersion` erzeugt den hochkonfidenten Reinitialisierungsbefund.
+- Ein Wasserstand über `CHANGE_TRACKING_CURRENT_VERSION()` ist inkonsistent.
+- Ohne Consumer-Wasserstand wird ausdrücklich nur `CT_CLIENT_WATERMARK_NOT_SUPPLIED` ausgegeben.
+- Deaktiviertes Auto-Cleanup ist Konfigurationskontext und nicht automatisch ein Fehler.
+
+### CDC
+
+Capture-Instanzen liefern Konfiguration, Drop-Pending und die Zeitgrenze der ältesten verfügbaren LSN. Die Scan-DMV liefert Aggregat und neueste Sitzung; sie wird bei Neustart oder Failover zurückgesetzt und ist auf einer AG-Sekundärreplik leer. CDC-Fehler werden ohne Meldungstext oder LSN nach Nummer, Schweregrad und Phase gruppiert.
+
+Bei kontinuierlichem Capture ist hohe Latenz ein Warnhinweis. Bei zeitgesteuertem Capture wird derselbe Wert als Kontext mit niedrigerer Konfidenz ausgegeben. Das Überschreiten von Retention plus Toleranz ist wegen ruhiger Workloads und Cleanup-Timing nur eine Heuristik.
+
+### Replikation
+
+Lokale Distribution Agents werden mit `MSdistribution_status`, neuester History und Subscription-Status aggregiert. Log Reader und Merge Agent werden getrennt behandelt. `Idle` ohne Rückstand ist kein Fehler. Inaktive Subscriptions oder Fail/Retry sind Reinitialisierungskandidaten, aber kein alleiniger Reinitialisierungsbeweis.
+
+Wenn eine Datenbank eine Replikationsrolle besitzt, aber keine lokale Distribution erreichbar ist, wird `REPLICATION_TOPOLOGY_NOT_LOCALLY_OBSERVABLE` ausgegeben. Remote-Distributor-, Netzwerk- und Subscriber-Zustände werden nicht erraten.
+
+### Aussagegrenzen und Folgeanalyse
+
+- CDC- und Replikationshistorien sind begrenzt und bereinigbar.
+- Die Quellen werden nicht atomar gelesen; Zustände können sich zwischen Abfragen ändern.
+- Peer-to-Peer-, Pull- und Remote-Topologien können außerhalb der lokalen Sicht liegen.
+- Konkrete Fehlertexte, Commands, Zeilenkonflikte und Laufzeitnamen bleiben ausschließlich in der kontrollierten Laufzeitdiagnose.
+
+Wiederholte Messung, Consumer-spezifischen CT-Wasserstand, Agentjobausgang, Netz-/Subscriber-Erreichbarkeit und geschützte Laufzeitlogs korrelieren. Nur synthetische Testzustände persistieren.
+
 ## Anfänger-Entscheidungsbaum
 
 ```mermaid
@@ -531,11 +589,13 @@ flowchart TD
     E -->|Temporal| G[TemporalAnalysis]
     E -->|Service Broker| H[ServiceBrokerAnalysis]
     E -->|Full-Text| N[FullTextAnalysis]
+    E -->|CT oder CDC| P[DataCaptureDeepAnalysis]
     E -->|nur Capability| L[ServerFeatureCapabilities]
     F --> I[SourceStatus und Findings gemeinsam lesen]
     G --> J[Retention, Größe und History-Index gemeinsam lesen]
     H --> K[Queue, Aktivierung, Transmission und Conversations]
     N --> O[Population, Batches und Fragmente]
+    P --> Q[Versionen, Capture und Distribution]
     L --> M[Version + Katalog + Plattform + DB-Kontext]
 ```
 
@@ -558,6 +618,13 @@ flowchart TD
 - [sys.dm_broker_queue_monitors](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-queue-monitors-transact-sql)
 - [sys.dm_broker_activated_tasks](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-broker-activated-tasks-transact-sql)
 - [sys.conversation_endpoints](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-conversation-endpoints-transact-sql)
+- [Work with Change Tracking](https://learn.microsoft.com/sql/relational-databases/track-changes/work-with-change-tracking-sql-server)
+- [sys.change_tracking_tables](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/change-tracking-catalog-views-sys-change-tracking-tables)
+- [sys.dm_cdc_log_scan_sessions](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/change-data-capture-sys-dm-cdc-log-scan-sessions)
+- [sys.dm_cdc_errors](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/change-data-capture-sys-dm-cdc-errors)
+- [MSdistribution_status](https://learn.microsoft.com/sql/relational-databases/system-views/msdistribution-status-transact-sql)
+- [MSdistribution_history](https://learn.microsoft.com/sql/relational-databases/system-tables/msdistribution-history-transact-sql)
+- [MSmerge_sessions](https://learn.microsoft.com/sql/relational-databases/system-tables/msmerge-sessions-transact-sql)
 - [sys.fulltext_indexes](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-fulltext-indexes-transact-sql)
 - [sys.fulltext_index_fragments](https://learn.microsoft.com/sql/relational-databases/system-catalog-views/sys-fulltext-index-fragments-transact-sql)
 - [sys.dm_fts_index_population](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-fts-index-population-transact-sql)

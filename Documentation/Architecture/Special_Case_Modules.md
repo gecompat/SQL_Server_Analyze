@@ -30,6 +30,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 | P2.3 | `monitor.USP_TemporalAnalysis` | Current-/History-Zuordnung, Periodenmetadaten, Retention-Schalter, approximative Kapazität und History-Indexbaseline | MEDIUM; Kataloge plus `sys.dm_db_partition_stats` | Keine Nutzdatenprüfung: weder Periodenüberlappungen noch Cleanup-Erfolg oder frühere Zuordnungen werden bewiesen |
 | P2.4 | `monitor.USP_ServiceBrokerAnalysis` | Queue-Schalter und approximative Kapazität, interne Aktivierung, gruppierte Transmission- und Conversation-Zustände | MEDIUM; Kataloge, Broker-DMVs und `sys.dm_db_partition_stats` | Keine Queue-Nutzdaten oder Nachrichtenkörper; deaktivierte Queue und alte Metadaten beweisen weder Poison Message noch Ursache |
 | P2.5 | `monitor.USP_FullTextAnalysis` | Kataloge, Indizes, aktuelle Populationen, aggregierte Batches, Fragmente, Semantik, Memory Pools und FDHosts | MEDIUM; Kataloge und Full-Text-DMVs | Keine Inhalte, Keywords, Stopwords, Schlüsselwerte, Crawl-Logs, Pfade oder DDL; DMVs sind keine Historie und Grenzwerte bleiben Heuristiken |
+| P2.6 | `monitor.USP_DataCaptureDeepAnalysis` | CT-MinValidVersion gegen optionalen Consumer-Wasserstand, CDC-Capture/Cleanup und aggregierte lokale Replikationsagenten/-fehler | MEDIUM; Kataloge, CDC-DMVs, msdb und lokale Distribution | Keine Change-Zeilen, Replikationsbefehle, Fehlertexte, Credentials oder DDL; Remote Distributor bleibt explizite Evidenzlücke |
 
 ## Messverträge
 
@@ -44,6 +45,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 - Die In-Memory-OLTP-Analyse ruft jede DMV isoliert auf. `sys.dm_db_xtp_hash_index_stats` ist wegen möglicher vollständiger Tabellenscans standardmäßig aus; Checkpoint-Pfade, Container-GUIDs, SQL-Texte sowie Session-, Benutzer- und Transaktionskennungen werden nicht gelesen.
 - Die Temporal-Tables-Analyse liest keine Current- oder History-Zeilen. Die dokumentierte Indexbaseline Periodenende/Periodenstart ist ein Prüfhinweis, kein automatischer DDL-Vorschlag. `SYSTEM_VERSIONING=OFF` trennt die Tabellen; ohne erhaltene Metadatenzuordnung darf das Modul daraus kein ehemaliges Paar erraten.
 - Die Service-Broker-Analyse liest keine Queue-Nutzdaten und referenziert die Nachrichtenkörperspalte nicht. `sys.transmission_queue` wird nur nach nicht-payloadhaltigen Metadaten gruppiert; Conversation-Handles, Gruppen-IDs und Schlüsselkennungen werden nicht ausgegeben. Ein deaktiviertes RECEIVE kann Folge der automatischen Poison-Message-Erkennung oder einer manuellen Konfiguration sein und wird deshalb nie als Ursachenbeweis bezeichnet.
+- Die Data-Capture-Tiefenanalyse behauptet CT-Synchronisationsverlust nur mit einem expliziten Consumer-Wasserstand. CDC-Scan-DMVs und Agenthistorien sind begrenzte Momentaufnahmen. Eine Remote- oder unzugängliche Distribution wird nie als gesund bewertet. Change-Zeilen, Replikationscommands, Fehlertexte, Credentials und Agentjob-Commands bleiben ausgeschlossen.
 - `USP_DiagnosticFindings` benötigt Compatibility Level 130 oder höher, weil `OPENJSON` den Vertragsinhalt aggregiert.
 
 ## Befundvertrag
@@ -78,6 +80,9 @@ Der Codebestand besitzt Help-, Installer-, Objekt-, Parameter-, Smoke- und Spezi
 - [sys.tables](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-tables-transact-sql)
 - [sys.columns](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-columns-transact-sql)
 - [sys.external_tables](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-tables-transact-sql)
+- [Work with Change Tracking](https://learn.microsoft.com/en-us/sql/relational-databases/track-changes/work-with-change-tracking-sql-server)
+- [sys.dm_cdc_log_scan_sessions](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/change-data-capture-sys-dm-cdc-log-scan-sessions)
+- [MSdistribution_status](https://learn.microsoft.com/en-us/sql/relational-databases/system-views/msdistribution-status-transact-sql)
 - [sys.external_languages](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-external-languages-transact-sql)
 - [sys.assemblies](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-assemblies-transact-sql)
 - [sys.dm_db_xtp_table_memory_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-xtp-table-memory-stats-transact-sql)

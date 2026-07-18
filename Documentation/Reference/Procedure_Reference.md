@@ -204,6 +204,14 @@ Quelle: `Code/07_Infrastructure/080_USP_DataCaptureStatus.sql`
 @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MaxZeilen int = 10000, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
 
+## `[monitor].[USP_DataCaptureDeepAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/070_USP_DataCaptureDeepAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @SchemaNames nvarchar(max) = NULL, @SchemaNamePattern nvarchar(4000) = NULL, @ObjectNames nvarchar(max) = NULL, @ObjectNamePattern nvarchar(4000) = NULL, @FullObjectNames nvarchar(max) = NULL, @NurProblematisch bit = 0, @ChangeTrackingClientVersion bigint = NULL, @CdcLatencyWarnSeconds bigint = 300, @CdcCleanupGraceMinutes bigint = 60, @ErrorLookbackHours int = 24, @ReplicationLatencyWarnSeconds bigint = 300, @ReplicationPendingCommandWarn bigint = 10000, @ReplicationAgentStaleWarnMinutes bigint = 15, @MaxDatenbanken int = 16, @MaxZeilen int = 2000, @LockTimeoutMs int = 0, @ResultSetArt varchar(16) = 'CONSOLE', @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_DiagnosticFindings]`
 
 Quelle: `Code/08_ServerHealth/170_USP_DiagnosticFindings.sql`

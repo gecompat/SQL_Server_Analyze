@@ -56,6 +56,10 @@ SQL Agent, Backup-/Restore-Historie, Log Shipping und Teile der Replikation lieg
 
 `monitor.USP_FullTextAnalysis` trennt Feature-Gate, Katalog-/Indexmapping, Fragmente, laufende Populationen, ausstehende Batches, semantische Ähnlichkeitspopulationen sowie serverweite Memory Pools und FDHosts. Population- und Batch-DMVs sind Momentaufnahmen, keine Historie. Batch-IDs, Speicheradressen, FDHost-Namen und Prozess-IDs werden nicht ausgegeben; Tabelleninhalt, Keywords, Stopwords, Parser-Eingaben, Schlüsselwerte, Crawl-Logs und Pfade werden nicht gelesen. Fragment-, Laufzeit-, Batch- und Größenwerte bleiben konfigurierbare Prüfheuristiken ohne automatische DDL.
 
+### Change Tracking, CDC und Replikation
+
+`monitor.USP_DataCaptureDeepAnalysis` trennt das sichtbare Feature-Gate von CT-Katalog, CDC-Capture-Instanzen, Scan-DMV, Fehler-DMV, msdb-Jobs sowie lokalen Distribution-, Log-Reader-, Merge- und Fehlerquellen. Ein CT-Synchronisationsverlust wird nur gegen einen explizit gelieferten Consumer-Wasserstand bewertet. CDC-DMVs werden durch Neustart, Failover und Retention begrenzt; zeitgesteuertes Capture wird nicht wie kontinuierliches Capture bewertet. Lokale Replikationstabellen beweisen keinen Remote-Distributor- oder Subscriber-Zustand. Change-Zeilen, Commands, Kommentare, Fehlertexte, LSNs, Credentials, Agentjob-Commands und Konfliktzeilen werden nicht gelesen.
+
 ## Berechtigungsgrundsatz
 
 Für serverbezogene DMVs gilt auf SQL Server 2019 typischerweise `VIEW SERVER STATE`; ab SQL Server 2022 verwenden viele Performance-DMVs `VIEW SERVER PERFORMANCE STATE`. Datenbankbezogene Quellen verwenden entsprechend `VIEW DATABASE STATE` beziehungsweise ab SQL Server 2022 häufig `VIEW DATABASE PERFORMANCE STATE`. Sicherheitsbezogene Quellen können abweichende Security-State-Berechtigungen erfordern.

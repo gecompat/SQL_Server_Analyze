@@ -15,7 +15,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 Erwartung:
 
 - Prozess-Exitcode `0`.
-- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `81`.
+- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `82`.
 - Letzte Meldung: `Analysis documentation validation succeeded.`
 - Bei einem Fehler keine Installation und kein SQL-Release-Gate starten, sondern zuerst Referenz, SQL-Signatur, Procedure-Seite, Beispielparameter oder Markdownlink korrigieren.
 
@@ -126,6 +126,10 @@ Für `USP_InMemoryOltpAnalysis` müssen negativer Feature-Gate, schema-only Obje
 Für `USP_TemporalAnalysis` müssen negativer Feature-Gate, Current-/History-Zuordnung, sichtbare Periodenspalten, endliche und unendliche Retention, deaktivierter datenbankweiter Cleanup, approximative History-Größe/-Zeilen, Ratio-Grenze, vorhandene und fehlende Perioden-Indexbaseline, speicheroptimierte Current-Tabelle, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Ein nach `SYSTEM_VERSIONING=OFF` getrenntes synthetisches Paar muss als bewusst nicht zuverlässig erkennbar bestätigt werden; keine echten Current- oder History-Zeilen als Evidenz speichern.
 
 Für `USP_ServiceBrokerAnalysis` müssen negativer Feature-Gate, aktivierte Konfiguration ohne Objekte, deaktivierter Broker mit sichtbaren Objekten, Queue-Schalter, approximative Queue-Kapazität, Retention, interne Aktivierung, Transmission-Alter und gemeldeter Status, Conversation-Zustände und Lifetimes, isolierte Quellenberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Der Contract-Test muss bestätigen, dass die Nachrichtenkörperspalte nicht referenziert und keine Queue- oder Conversation-Änderung ausgeführt wird. Testnachweise enthalten ausschließlich synthetische Zustände und niemals Queue-Nutzdaten.
+
+Für `USP_FullTextAnalysis` müssen negativer Feature-Gate, Komponenten-/Katalogzustand, Indexschalter, aktuelle und lange/abgebrochene Populationen, Retry-/Fehlerbatches, Dokumentfehleraggregate, Fragmente, semantische Population, Memory-/FDHost-Kontext, isolierte Quellenberechtigungen, Filter, Ergebnisgrenzen und der statische Inhalts-/DDL-Ausschluss getrennt dokumentiert werden.
+
+Für `USP_DataCaptureDeepAnalysis` müssen negativer Feature-Gate, CT ohne/mit gültigem/ungültigem/zukünftigem Consumer-Wasserstand, Auto-Cleanup, CDC-Capture-Instanzen, fehlende/disabled Jobs, kontinuierliche und zeitgesteuerte Latenz, Scanfehler, Cleanup-Alter und Drop-Pending sowie lokale Replikationsrückstände, Agentstatus, inaktive Subscription, Merge-Konflikt/Retry, mehrere lokale Distributionsdatenbanken, Remote-Distributor-Lücke, isolierte Berechtigungen, Filter, Ergebnisgrenzen und der statische Nutzdaten-/Credential-/Command-/DDL-Ausschluss getrennt dokumentiert werden. Es werden nur synthetische Zustände persistiert.
 
 Kostenintensive Pfade nur kontrolliert und opt-in testen:
 

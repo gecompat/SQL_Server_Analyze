@@ -1,23 +1,23 @@
 {
-  "release": "1.1.0-special.7",
-  "generatedAtUtc": "2026-07-17T23:08:55Z",
+  "release": "1.1.0-special.8",
+  "generatedAtUtc": "2026-07-18T00:45:01Z",
   "status": "STATIC_PASS_RUNTIME_NOT_EXECUTED",
-  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP, Temporal Tables, Service Broker and Full-Text deep analyses",
+  "scope": "completed P0/P1 wave plus P2 special-feature inventory and isolated In-Memory OLTP, Temporal Tables, Service Broker, Full-Text and Data Capture/Replication deep analyses",
   "inventory": {
-    "repositoryFiles": 287,
-    "canonicalSqlSources": 104,
-    "sqlFilesIncludingTestsAndExamples": 120,
-    "objects": 96,
-    "procedures": 81,
+    "repositoryFiles": 290,
+    "canonicalSqlSources": 105,
+    "sqlFilesIncludingTestsAndExamples": 122,
+    "objects": 97,
+    "procedures": 82,
     "functions": 10,
     "views": 5,
-    "procedureParameters": 1286,
-    "systemSources": 193
+    "procedureParameters": 1314,
+    "systemSources": 211
   },
   "staticChecks": {
     "sqlLexicalBalance": {
       "status": "PASS",
-      "filesChecked": 120,
+      "filesChecked": 122,
       "issues": []
     },
     "inMemoryOltpTsqlParse": {
@@ -76,17 +76,34 @@
       "fullTextMutationOperations": 0,
       "note": "The module reads only visible catalogs and aggregated current Full-Text runtime metadata. Empty DMVs are not treated as history, and thresholds do not trigger DDL."
     },
+    "dataCaptureTsqlParse": {
+      "status": "PASS",
+      "outerSyntaxIssues": 0,
+      "dynamicBatchesReconstructed": 10,
+      "dynamicSyntaxIssues": 0,
+      "note": "Static parser validation only; this is not SQL Server compilation or execution evidence."
+    },
+    "dataCaptureReadOnlyContract": {
+      "status": "PASS",
+      "featureGateBeforeDependentSources": true,
+      "isolatedDynamicSources": 10,
+      "changeTableRowReads": 0,
+      "replicationCommandOrCommentReads": 0,
+      "credentialOrAgentCommandReads": 0,
+      "cdcOrReplicationMutationOperations": 0,
+      "note": "CT loss requires an explicit consumer watermark; scheduled CDC and remote Distributor limitations are preserved, and accessible source subsets remain valid."
+    },
     "namedProcedureCalls": {
       "status": "PASS",
-      "procedureCallsChecked": 204,
-      "namedArgumentsChecked": 1381,
+      "procedureCallsChecked": 206,
+      "namedArgumentsChecked": 1430,
       "unknownProcedures": [],
       "unknownNamedArguments": []
     },
     "installer": {
       "status": "PASS",
-      "canonicalSources": 104,
-      "includes": 104,
+      "canonicalSources": 105,
+      "includes": 105,
       "missing": [],
       "extra": [],
       "duplicates": [],
@@ -94,19 +111,19 @@
     },
     "objectInventory": {
       "status": "PASS",
-      "sourceObjects": 96,
-      "inventoryObjects": 96,
+      "sourceObjects": 97,
+      "inventoryObjects": 97,
       "differences": []
     },
     "parameterInventory": {
       "status": "PASS",
-      "sourceProcedures": 81,
-      "inventoryRows": 1286,
+      "sourceProcedures": 82,
+      "inventoryRows": 1314,
       "nameOrOrderDifferences": []
     },
     "systemSourceInventory": {
       "status": "PASS",
-      "inventoryRows": 193,
+      "inventoryRows": 211,
       "missingSourceModuleMappings": []
     },
     "repositoryPrivacyGate": {
@@ -117,7 +134,7 @@
       "uncPathFindings": 0,
       "userProfilePathFindings": 0,
       "credentialAssignmentFindings": 0,
-      "runtimeGeneratedCredentialPatternsReviewed": 7,
+      "runtimeGeneratedCredentialPatternsReviewed": 9,
       "connectionSecretFindings": 0,
       "nonGenericUseDatabaseFindings": 0,
       "publicReferenceHostsReviewed": true,
@@ -129,14 +146,14 @@
     "targetRowsNotExecuted": 4,
     "releaseGateSuiteRows": 20,
     "releaseGateSuiteRowsNotExecuted": 20,
-    "specialCaseRows": 136,
-    "specialCaseRowsNotExecuted": 136,
+    "specialCaseRows": 161,
+    "specialCaseRowsNotExecuted": 161,
     "runtimeStatus": "NOT_EXECUTED",
     "claim": "No installation, compilation, smoke, functional, permission, load or cross-version runtime execution is claimed for this release wave."
   },
   "runtimeLimitations": [
     "No SQL Server endpoint or sqlcmd runtime was available in the implementation environment.",
     "PowerShell was unavailable, so the standalone installer build was inspected statically but not executed.",
-    "The parent release documents a synthetic SQL Server 2022 Linux installer and twelve-suite run for the scope through 1.1.0-special.6; it does not include SC-018 and is not runtime evidence for this release."
+    "The parent release documents a synthetic SQL Server 2022 Linux installer and twelve-suite run for the scope through 1.1.0-special.6; it does not include SC-018 or SC-019 and is not runtime evidence for this release."
   ]
 }

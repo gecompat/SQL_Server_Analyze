@@ -23,6 +23,6 @@
 
 ## Maßgeblicher Ausgangsstand
 
-Der real getestete Basisstand vom 17.07.2026 bleibt die Ausgangsbasis. Die danach ergänzte Spezialfallwelle bis `1.1.0-special.7` benötigt zusätzlich `167_Special_Case_API_Contract.sql` und dokumentierte Zielmatrixläufe, bevor sie als laufzeitgetestet gelten darf. P2 umfasst die Nutzungsinventur sowie die implementierten In-Memory-OLTP-, Temporal-Tables-, Service-Broker- und Full-Text-Tiefenmodule; weitere geplante Deep-Dive-Module dürfen nicht als bereits verfügbar beschrieben werden.
+Der real getestete Basisstand vom 17.07.2026 bleibt die Ausgangsbasis. Die danach ergänzte Spezialfallwelle bis `1.1.0-special.8` benötigt zusätzlich `167_Special_Case_API_Contract.sql` und dokumentierte Zielmatrixläufe, bevor sie als laufzeitgetestet gelten darf. P2 umfasst die Nutzungsinventur sowie die implementierten In-Memory-OLTP-, Temporal-Tables-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Tiefenmodule; weitere geplante Deep-Dive-Module dürfen nicht als bereits verfügbar beschrieben werden.
 
 Die priorisierte Ausbauplanung steht in `Documentation/Research/Special_Case_Gap_Analysis.md`; der maschinenlesbare Backlog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.
