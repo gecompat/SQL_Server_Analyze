@@ -4,14 +4,17 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_AgentMonitoringAnalysis
-Version      : 1.0.0
-Stand        : 2026-07-17
+Version      : 1.1.0
+Stand        : 2026-07-18
 Zweck        : Prüft SQL-Agent-/Alert-/Operator-/Job- und Database-Mail-Evidenz.
 Datenquellen : sys.dm_server_services, msdb.dbo.sysalerts,
                msdb.dbo.sysoperators, msdb.dbo.sysnotifications,
                msdb.dbo.sysjobs, msdb.dbo.sysjobschedules,
                msdb.dbo.sysschedules, msdb.dbo.sysjobhistory und
                msdb.dbo.sysmail_allitems.
+Methodik     : Alert-Routing, Jobzustand und aggregierter Mailstatus werden über
+               dieselben reinen Interpretationsfunktionen klassifiziert, die
+               der deterministische Laufzeitvertrag verwendet.
 Datenschutz  : Liest keine Mailadressen, Empfänger, Betreffzeilen,
                Jobschrittbefehle oder Fehlermeldungstexte.
 Grenzen      : Fehlende Standardalarme sind ein Prüfauftrag; externe
@@ -52,7 +55,7 @@ BEGIN
     END;
 
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
-    DECLARE @CutoffLocal datetime = DATEADD(HOUR, -@HistoryHours, GETDATE());
+    DECLARE @CutoffLocal datetime = CASE WHEN @HistoryHours IS NULL THEN NULL ELSE DATEADD(HOUR, -@HistoryHours, GETDATE()) END;
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
     DECLARE @IsPartial bit = 0;
     DECLARE @ErrorNumber int = NULL;
@@ -88,6 +91,7 @@ BEGIN
         , [ScheduleCount] bigint NOT NULL
         , [EnabledScheduleCount] bigint NOT NULL
         , [FindingCode] varchar(100) NOT NULL
+        , [FindingSeverity] varchar(16) NOT NULL
     );
     CREATE TABLE [#Mail]
     (
@@ -97,7 +101,7 @@ BEGIN
         , [NewestRequestDate] datetime NULL
     );
 
-    IF @HistoryHours < 1 OR @HistoryHours > 8760 OR @MaxZeilen < 0
+    IF @HistoryHours IS NULL OR @HistoryHours < 1 OR @HistoryHours > 8760 OR @MaxZeilen < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER', @IsPartial = 1,
@@ -146,16 +150,24 @@ BEGIN
 
             INSERT [#Findings]
             SELECT
-                  'ALERT_ROUTING', 'ENABLED_ALERT_WITHOUT_ACTION', 'HIGH', N'ALERT', [a].[name]
+                  'ALERT_ROUTING', [route].[FindingCode], [route].[FindingSeverity], N'ALERT', [a].[name]
                 , CONVERT(bigint, [a].[occurrence_count])
                 , N'Aktivierter Alert besitzt weder Operatorbenachrichtigung noch Jobaktion.'
                 , N'Externe Weiterleitung und absichtlich rein protokollierende Alerts separat prüfen.'
             FROM [msdb].[dbo].[sysalerts] AS [a] WITH (NOLOCK)
-            WHERE [a].[enabled] = 1
-              AND [a].[job_id] = CONVERT(uniqueidentifier, '00000000-0000-0000-0000-000000000000')
-              AND NOT EXISTS
-                  (SELECT 1 FROM [msdb].[dbo].[sysnotifications] AS [n] WITH (NOLOCK)
-                   WHERE [n].[alert_id] = [a].[id]);
+            OUTER APPLY
+            (
+                SELECT [NotificationCount]=COUNT_BIG(*)
+                FROM [msdb].[dbo].[sysnotifications] AS [n] WITH (NOLOCK)
+                WHERE [n].[alert_id]=[a].[id]
+            ) AS [notifications]
+            CROSS APPLY [monitor].[TVF_InterpretAgentAlertRoute]
+            (
+                  CONVERT(bit,[a].[enabled])
+                , CONVERT(bit,CASE WHEN [a].[job_id]<>CONVERT(uniqueidentifier,'00000000-0000-0000-0000-000000000000') THEN 1 ELSE 0 END)
+                , [notifications].[NotificationCount]
+            ) AS [route]
+            WHERE [route].[FindingCode]='ENABLED_ALERT_WITHOUT_ACTION';
 
             INSERT [#Findings]
             SELECT
@@ -209,17 +221,18 @@ BEGIN
                     GROUP BY [js].[job_id]
                 )
                 INSERT [#Jobs]
-                SELECT [j].[job_id], [j].[name], [j].[enabled], [o].[RunDateTime], [o].[run_status],
-                       [o].[run_duration], COALESCE([s].[ScheduleCount], 0), COALESCE([s].[EnabledCount], 0),
-                       CASE WHEN [j].[enabled] = 1 AND [o].[run_status] = 0
-                                  AND [o].[RunDateTime] >= @CutoffLocal THEN 'LATEST_JOB_RUN_FAILED_IN_WINDOW'
-                            WHEN [j].[enabled] = 1 AND COALESCE([s].[ScheduleCount], 0) > 0
-                                  AND COALESCE([s].[EnabledCount], 0) = 0 THEN 'ALL_ATTACHED_SCHEDULES_DISABLED'
-                            WHEN [j].[enabled] = 1 AND COALESCE([s].[ScheduleCount], 0) = 0 THEN 'ENABLED_JOB_WITHOUT_SCHEDULE'
-                            ELSE 'JOB_STATE_INFORMATIONAL' END
+                SELECT
+                      [j].[job_id], [j].[name], [j].[enabled], [o].[RunDateTime], [o].[run_status]
+                    , [o].[run_duration], COALESCE([s].[ScheduleCount], 0), COALESCE([s].[EnabledCount], 0)
+                    , [state].[FindingCode], [state].[FindingSeverity]
                 FROM [msdb].[dbo].[sysjobs] AS [j] WITH (NOLOCK)
                 LEFT JOIN [LatestOutcome] AS [o] ON [o].[job_id] = [j].[job_id] AND [o].[rn] = 1
-                LEFT JOIN [Schedules] AS [s] ON [s].[job_id] = [j].[job_id];
+                LEFT JOIN [Schedules] AS [s] ON [s].[job_id] = [j].[job_id]
+                CROSS APPLY [monitor].[TVF_InterpretAgentJobState]
+                (
+                      [j].[enabled], [o].[run_status], [o].[RunDateTime], @CutoffLocal
+                    , COALESCE([s].[ScheduleCount],0), COALESCE([s].[EnabledCount],0)
+                ) AS [state];
             END TRY
             BEGIN CATCH
                 SELECT @IsPartial = 1;
@@ -247,9 +260,7 @@ BEGIN
         END;
 
         INSERT [#Findings]
-        SELECT 'JOB_ACTIVITY', [FindingCode],
-               CASE WHEN [FindingCode] = 'LATEST_JOB_RUN_FAILED_IN_WINDOW' THEN 'HIGH'
-                    WHEN [FindingCode] = 'ALL_ATTACHED_SCHEDULES_DISABLED' THEN 'MEDIUM' ELSE 'INFO' END,
+        SELECT 'JOB_ACTIVITY', [FindingCode], [FindingSeverity],
                N'JOB', [JobName], NULL,
                CONCAT(N'Letzter Status=', COALESCE(CONVERT(nvarchar(20), [LatestRunStatus]), N'NULL'),
                       N'; Schedules=', [ScheduleCount], N'; aktive Schedules=', [EnabledScheduleCount], N'.'),
@@ -258,13 +269,13 @@ BEGIN
         WHERE [FindingCode] <> 'JOB_STATE_INFORMATIONAL';
 
         INSERT [#Findings]
-        SELECT 'DATABASE_MAIL', 'DATABASE_MAIL_NOT_SENT_IN_WINDOW',
-               CASE WHEN [SentStatus] = 'failed' THEN 'HIGH' ELSE 'MEDIUM' END,
-               N'MAIL_STATUS', [SentStatus], [ItemCount],
-               CONCAT(N'Database-Mail-Elemente mit Status ', [SentStatus], N' im Sichtfenster.'),
+        SELECT 'DATABASE_MAIL', [state].[FindingCode], [state].[FindingSeverity],
+               N'MAIL_STATUS', [m].[SentStatus], [m].[ItemCount],
+               CONCAT(N'Database-Mail-Elemente mit Status ', [m].[SentStatus], N' im Sichtfenster.'),
                N'Empfänger, Betreff und Nachrichtentext werden bewusst nicht gelesen; Mailserver separat prüfen.'
-        FROM [#Mail]
-        WHERE [SentStatus] IN ('failed', 'unsent', 'retrying');
+        FROM [#Mail] AS [m]
+        CROSS APPLY [monitor].[TVF_InterpretDatabaseMailStatus]([m].[SentStatus]) AS [state]
+        WHERE [state].[FindingSeverity] IN ('HIGH','MEDIUM');
 
         IF @IsPartial = 1
             SET @StatusCode = 'AVAILABLE_LIMITED';
