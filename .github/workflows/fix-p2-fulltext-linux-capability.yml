@@ -1,0 +1,66 @@
+name: Fix P2 Full-Text Linux capability
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-p2-fulltext-linux-capability.yml'
+
+permissions:
+  contents: write
+  statuses: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Gate positive Full-Text DDL by host platform
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path=Path('Code/Tests/Integration/183_P2_FullText_Runtime_Contract.sql')
+          text=path.read_text(encoding='utf-8')
+          old="DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);"
+          new="""DECLARE @IsInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);
+DECLARE @CanCreateFixtures bit=CONVERT(bit,CASE
+    WHEN @IsInstalled=1
+     AND COALESCE(CONVERT(nvarchar(32),SERVERPROPERTY(N'HostPlatform')),N'')<>N'Linux'
+    THEN 1 ELSE 0 END);"""
+          if text.count(old)!=1:
+              raise SystemExit('unexpected Full-Text capability declaration')
+          text=text.replace(old,new,1)
+          if text.count('    IF @IsInstalled=1')!=2:
+              raise SystemExit('unexpected Full-Text fixture gates')
+          text=text.replace('    IF @IsInstalled=1','    IF @CanCreateFixtures=1')
+          path.write_text(text,encoding='utf-8',newline='\n')
+          PY
+      - name: Commit fix and remove helper
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/fix-p2-fulltext-linux-capability.yml
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/Tests/Integration/183_P2_FullText_Runtime_Contract.sql .github/workflows/fix-p2-fulltext-linux-capability.yml
+          git diff --cached --check
+          git commit -m 'test: gate P2 Full-Text fixtures by platform'
+          git push origin HEAD:main
+      - name: Publish helper status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          state='success'; if [ "$JOB_STATUS" != 'success' ]; then state='failure'; fi
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state="$state" -f description='P2 Full-Text capability helper' \
+            -f context='p2-fulltext-capability-helper' >/dev/null
