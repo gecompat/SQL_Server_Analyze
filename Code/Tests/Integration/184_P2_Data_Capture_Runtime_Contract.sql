@@ -18,7 +18,7 @@ DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@Definition nvarcha
 DECLARE @NoneDb sysname=N'ExampleDataCaptureNoneDatabase';
 DECLARE @CtDb sysname=N'ExampleDataCaptureCtDatabase';
 DECLARE @CtDb2 sysname=N'ExampleDataCaptureCtDatabase2';
-DECLARE @CurrentVersion bigint;
+DECLARE @CurrentVersion bigint,@FutureVersion bigint;
 
 SELECT @Definition=[sm].[definition]
 FROM [sys].[sql_modules] [sm] WITH (NOLOCK)
@@ -118,10 +118,11 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     INSERT @ExecutedCases VALUES('CT-WATERMARK-VALID');
 
     /* CT-WATERMARK-FUTURE */
+    SET @FutureVersion=@CurrentVersion+100;
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNames=N'ExampleCtA',
-         @ChangeTrackingClientVersion=@CurrentVersion+100,@MaxDatenbanken=1,@MaxZeilen=0,
+         @ChangeTrackingClientVersion=@FutureVersion,@MaxDatenbanken=1,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF NOT EXISTS

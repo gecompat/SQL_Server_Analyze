@@ -163,7 +163,7 @@ USE [master]; ALTER DATABASE '+QUOTENAME(@DisabledDb)+N' SET DISABLE_BROKER WITH
     DECLARE @StaticCases TABLE([CaseId] varchar(64) NOT NULL PRIMARY KEY,[Token1] nvarchar(200) NOT NULL,[Token2] nvarchar(200) NULL);
     INSERT @StaticCases VALUES
           ('BROKER-QUEUE-CAPACITY',N'''QUEUE_BACKLOG_CONTEXT''',N'[sys].[dm_db_partition_stats]')
-        , ('BROKER-ACTIVATION',N'''ACTIVATION_NO_ACTIVE_READER_REVIEW''',N'[sys].[dm_broker_activated_tasks]')
+        , ('BROKER-ACTIVATION',N'''INTERNAL_ACTIVATION_PROGRESS_REVIEW''',N'[sys].[dm_broker_activated_tasks]')
         , ('BROKER-TRANSMISSION-AGE',N'''AGED_TRANSMISSION_REVIEW''',N'@TransmissionAgeWarnMinutes')
         , ('BROKER-TRANSMISSION-STATUS',N'''TRANSMISSION_STATUS_REPORTED''',N'[transmission_status]')
         , ('BROKER-CONVERSATION',N'''CONVERSATION_ERROR_STATE''',N'''EXPIRED_CONVERSATION_LIFETIME_REVIEW''')

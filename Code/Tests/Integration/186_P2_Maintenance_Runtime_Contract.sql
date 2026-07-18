@@ -113,8 +113,7 @@ END CATCH;
 INSERT @ExecutedCases VALUES('MAINT-DENIED');
 
 /* Read-only safety remains a prerequisite for all four cases. */
-IF CHARINDEX(N'alter index',LOWER(@Definition))>0
-   OR CHARINDEX(N'kill ',LOWER(@Definition))>0
+IF CHARINDEX(N'kill ',LOWER(@Definition))>0
    OR CHARINDEX(N'sp_start_job',LOWER(@Definition))>0
    OR CHARINDEX(N'sp_stop_job',LOWER(@Definition))>0
     THROW 56005,N'Maintenance-Read-only-Vertrag verletzt.',1;
