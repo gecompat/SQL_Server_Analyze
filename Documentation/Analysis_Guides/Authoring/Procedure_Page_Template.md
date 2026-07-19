@@ -44,7 +44,7 @@ Jede neue öffentliche Analyse-Procedure benötigt eine Datei unter `Procedures/
 
 ### Folgeanalyse
 
-[Technische Detailbeschreibung](../Familienguide.md#anker)
+Technische Detailbeschreibung: ../Familienguide.md#anker
 ```
 
 Nicht jede Seite benötigt einen langen Abschnitt zu jedem Punkt. Nicht anwendbare Punkte müssen jedoch ausdrücklich als nicht anwendbar erklärt werden.
