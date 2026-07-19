@@ -76,36 +76,49 @@ IF NOT EXISTS
 )
     INSERT [#TableOutputFailure] VALUES(N'DATETIME_SHAPE',N'Scale oder Nullability der datetime2-Spalte wurden nicht erhalten.');
 
-DECLARE @TypedRowCount bigint,@TypedValueFound bit;
-EXEC [sys].[sp_executesql]
-      N'SELECT
-              @RowCount=COUNT_BIG(*)
-            , @ValueFound=CONVERT(bit,CASE WHEN EXISTS
-              (
-                  SELECT 1
-                  FROM [#TableContractTarget]
-                  WHERE [Id]=1
-                    AND [Name]=N''Example A''
-                    AND [Amount]=CONVERT(decimal(19,4),12.3456)
-              ) THEN 1 ELSE 0 END)
-        FROM [#TableContractTarget];'
-    , N'@RowCount bigint OUTPUT,@ValueFound bit OUTPUT'
-    , @RowCount=@TypedRowCount OUTPUT
-    , @ValueFound=@TypedValueFound OUTPUT;
+IF (SELECT COUNT_BIG(*) FROM [#TableContractTarget])<>2
+    INSERT [#TableOutputFailure] VALUES(N'PLACEHOLDER_ROWS',N'Die Struktur wurde angepasst, aber die erwarteten zwei synthetischen Zeilen wurden nicht geschrieben.');
 
-IF @TypedRowCount<>2 OR @TypedValueFound<>1
-    INSERT [#TableOutputFailure] VALUES(N'TYPED_INSERT',N'Die synthetischen typisierten Zeilen wurden nicht unverändert kopiert.');
+CREATE TABLE [#TableContractExactTarget]
+(
+      [Id] int NOT NULL
+    , [Name] nvarchar(40) COLLATE Latin1_General_100_CI_AS NULL
+    , [Amount] decimal(19,4) NULL
+    , [CapturedUtc] datetime2(3) NOT NULL
+);
 
 SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
 EXEC [monitor].[InternalWriteResultTable]
       @SourceTable=N'#TableContractSource'
-    , @ResultTable=N'#TableContractTarget'
+    , @ResultTable=N'#TableContractExactTarget'
     , @InsertedRows=@Rows OUTPUT
     , @StatusCode=@Status OUTPUT
     , @ErrorNumber=@ErrorNumber OUTPUT
     , @ErrorMessage=@ErrorMessage OUTPUT;
 
-IF @Status<>'AVAILABLE' OR @Rows<>2 OR (SELECT COUNT_BIG(*) FROM [#TableContractTarget])<>4
+IF @Status<>'AVAILABLE'
+   OR @Rows<>2
+   OR (SELECT COUNT_BIG(*) FROM [#TableContractExactTarget])<>2
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM [#TableContractExactTarget]
+          WHERE [Id]=1
+            AND [Name]=N'Example A'
+            AND [Amount]=CONVERT(decimal(19,4),12.3456)
+      )
+    INSERT [#TableOutputFailure] VALUES(N'TYPED_INSERT',N'Die synthetischen typisierten Zeilen wurden nicht unverändert in eine exakt passende Zieltabelle kopiert.');
+
+SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
+EXEC [monitor].[InternalWriteResultTable]
+      @SourceTable=N'#TableContractSource'
+    , @ResultTable=N'#TableContractExactTarget'
+    , @InsertedRows=@Rows OUTPUT
+    , @StatusCode=@Status OUTPUT
+    , @ErrorNumber=@ErrorNumber OUTPUT
+    , @ErrorMessage=@ErrorMessage OUTPUT;
+
+IF @Status<>'AVAILABLE' OR @Rows<>2 OR (SELECT COUNT_BIG(*) FROM [#TableContractExactTarget])<>4
     INSERT [#TableOutputFailure] VALUES(N'EXACT_SCHEMA_APPEND',N'Eine bereits exakt passende Zieltabelle wurde nicht korrekt ergänzt.');
 
 CREATE TABLE [#TableContractMismatch] ([Id] bigint NOT NULL);
