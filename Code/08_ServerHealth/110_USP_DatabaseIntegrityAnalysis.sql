@@ -275,8 +275,8 @@ BEGIN
                       ELSE 'CHECKDB_EVIDENCE_UNAVAILABLE'
                   END
                 , CONCAT(N'Diese Metadaten sind Indizien; Backupmetadaten-Sichtfenster ', @BackupHistoryDays,
-                         N' Tage. LastGoodCheckDbTime wird bewusst nicht über DATABASEPROPERTYEX gelesen, '
-                         N'da diese Metadatenfunktion blockieren kann. Auch CHECKDB_EVIDENCE_UNAVAILABLE '
+                         N' Tage. LastGoodCheckDbTime wird bewusst nicht über DATABASEPROPERTYEX gelesen, ',
+                         N'da diese Metadatenfunktion blockieren kann. Auch CHECKDB_EVIDENCE_UNAVAILABLE ',
                          N'beweist weder logische noch physische Integrität.')
             FROM [#DatabaseIntegrityAnalysis_DatabaseCandidates] AS [c]
             JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
