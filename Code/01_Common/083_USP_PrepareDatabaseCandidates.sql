@@ -80,6 +80,30 @@ BEGIN
           @CandidateTableQuoted = QUOTENAME(@CandidateTable)
         , @WarningTableQuoted = QUOTENAME(@WarningTable);
 
+    CREATE TABLE [#PrepareDatabaseCandidates_Work]
+    (
+          [DatabaseId] int NOT NULL
+        , [DatabaseName] sysname NOT NULL
+        , [StateDesc] nvarchar(60) NULL
+        , [UserAccessDesc] nvarchar(60) NULL
+        , [IsReadOnly] bit NULL
+        , [CompatibilityLevel] tinyint NULL
+        , [CollationName] sysname NULL
+        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [IsSystemDatabase] bit NULL
+        , [RequestedOrdinal] int NULL
+    );
+    CREATE TABLE [#PrepareDatabaseCandidates_RequestedNames]
+    (
+          [NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IsValid] bit NOT NULL
+    );
+
+    IF @EffectiveDatabaseNames IS NOT NULL
+        INSERT [#PrepareDatabaseCandidates_RequestedNames]([NameValue],[IsValid])
+        SELECT [NameValue],[IsValid]
+        FROM [monitor].[TVF_ParseSqlNameList](@EffectiveDatabaseNames);
+
     BEGIN TRY
         SET @Sql = N'SELECT TOP (0) [DatabaseId],[DatabaseName] FROM ' + @CandidateTableQuoted + N';';
         EXEC [sys].[sp_executesql] @Sql;
@@ -100,7 +124,7 @@ BEGIN
     IF @EffectiveDatabaseNames IS NOT NULL
     BEGIN
         SELECT @DatabaseListCount = COUNT(*)
-        FROM [monitor].[TVF_ParseSqlNameList](@EffectiveDatabaseNames)
+        FROM [#PrepareDatabaseCandidates_RequestedNames]
         WHERE [IsValid] = 1;
     END;
 
@@ -116,14 +140,14 @@ BEGIN
        OR (@EffectiveDatabaseNames IS NOT NULL AND EXISTS
           (
               SELECT 1
-              FROM [monitor].[TVF_ParseSqlNameList](@EffectiveDatabaseNames)
+              FROM [#PrepareDatabaseCandidates_RequestedNames]
               WHERE [IsValid] = 0
           ))
        OR (@EffectiveDatabaseNames IS NOT NULL AND @DatabaseNamePattern IS NOT NULL)
        OR (@EffectiveDatabaseNames IS NOT NULL AND EXISTS
           (
               SELECT [NameValue]
-              FROM [monitor].[TVF_ParseSqlNameList](@EffectiveDatabaseNames)
+              FROM [#PrepareDatabaseCandidates_RequestedNames]
               WHERE [IsValid] = 1
               GROUP BY [NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
               HAVING COUNT(*) > 1
@@ -149,6 +173,22 @@ BEGIN
         END;
     END;
 
+    INSERT [#PrepareDatabaseCandidates_Work]
+    (
+          [DatabaseId],[DatabaseName],[StateDesc],[UserAccessDesc],[IsReadOnly]
+        , [CompatibilityLevel],[CollationName],[RecoveryModelDesc]
+        , [IsSystemDatabase],[RequestedOrdinal]
+    )
+    SELECT
+          [DatabaseId],[DatabaseName],[StateDesc],[UserAccessDesc],[IsReadOnly]
+        , [CompatibilityLevel],[CollationName],[RecoveryModelDesc]
+        , [IsSystemDatabase],[RequestedOrdinal]
+    FROM [monitor].[TVF_DatabaseCandidates]
+    (
+          @EffectiveDatabaseNames,@SystemdatenbankenEinbeziehen
+        , @DatabaseNamePattern,@MaxDatenbanken
+    );
+
     SET @Sql = N'INSERT ' + @CandidateTableQuoted + N'
 (
       [DatabaseId],[DatabaseName],[StateDesc],[UserAccessDesc],[IsReadOnly]
@@ -159,18 +199,9 @@ SELECT
       [DatabaseId],[DatabaseName],[StateDesc],[UserAccessDesc],[IsReadOnly]
     , [CompatibilityLevel],[CollationName],[RecoveryModelDesc]
     , [IsSystemDatabase],[RequestedOrdinal]
-FROM [monitor].[TVF_DatabaseCandidates]
-(
-      @pDatabaseNames,@pSystemDatabases,@pDatabasePattern,@pMaxDatabases
-);';
+FROM [#PrepareDatabaseCandidates_Work];';
 
-    EXEC [sys].[sp_executesql]
-          @Sql
-        , N'@pDatabaseNames nvarchar(max),@pSystemDatabases bit,@pDatabasePattern nvarchar(4000),@pMaxDatabases int'
-        , @pDatabaseNames=@EffectiveDatabaseNames
-        , @pSystemDatabases=@SystemdatenbankenEinbeziehen
-        , @pDatabasePattern=@DatabaseNamePattern
-        , @pMaxDatabases=@MaxDatenbanken;
+    EXEC [sys].[sp_executesql] @Sql;
 
     DECLARE @WarningTableAvailable bit = 0;
     IF @WarningTable IS NOT NULL
@@ -190,7 +221,7 @@ FROM [monitor].[TVF_DatabaseCandidates]
         SET @Sql = N'INSERT ' + @WarningTableQuoted + N' ([RequestedName],[StatusCode],[ErrorMessage])
 SELECT [n].[NameValue],''DATABASE_UNAVAILABLE'',
        N''Die explizit angeforderte Datenbank ist nicht vorhanden, nicht online oder für den aktuellen Login nicht zugreifbar.''
-FROM [monitor].[TVF_ParseSqlNameList](@pDatabaseNames) AS [n]
+FROM [#PrepareDatabaseCandidates_RequestedNames] AS [n]
 WHERE [n].[IsValid]=1
   AND NOT EXISTS
       (
@@ -199,10 +230,7 @@ WHERE [n].[IsValid]=1
               = [n].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
       );';
 
-        EXEC [sys].[sp_executesql]
-              @Sql
-            , N'@pDatabaseNames nvarchar(max)'
-            , @pDatabaseNames=@EffectiveDatabaseNames;
+        EXEC [sys].[sp_executesql] @Sql;
     END;
 
     IF @PatternMode IN ('REGEX', 'REGEXI')
