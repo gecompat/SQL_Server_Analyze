@@ -107,8 +107,22 @@ BEGIN
                @ErrorMessage=N'Ungültiger Modus, Grenzwert-, Mengen-, Lock-Timeout- oder Ausgabeparameter.';
     END;
 
-    DECLARE @CurrentCompatibilityLevel int=
-        (SELECT [compatibility_level] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID());
+    DECLARE @CatalogAllowed bit=1;
+    IF @StatusCode='AVAILABLE'
+        SELECT @CatalogAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0)
+        FROM [monitor].[VW_AnalyseAccessCurrent]
+        WHERE [AnalysisClass]='CATALOG_DEEP';
+    IF @StatusCode='AVAILABLE' AND @CatalogAllowed=0
+    BEGIN
+        SELECT @StatusCode='DENIED_GROUP',@IsPartial=1,
+               @ErrorMessage=N'CATALOG_DEEP ist für die Statistikverteilungsanalyse nicht freigegeben.';
+    END;
+
+    DECLARE @CurrentCompatibilityLevel int=NULL;
+    IF @StatusCode='AVAILABLE'
+        SELECT @CurrentCompatibilityLevel=[compatibility_level]
+        FROM [sys].[databases] WITH (NOLOCK)
+        WHERE [database_id]=DB_ID();
     IF @StatusCode='AVAILABLE' AND @CurrentCompatibilityLevel<130
     BEGIN
         SELECT @StatusCode='UNAVAILABLE_FEATURE',@IsPartial=1,
