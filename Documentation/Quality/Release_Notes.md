@@ -1,5 +1,13 @@
 # Release Notes
 
+## Stand 2026-07-20 – SC-023 Snapshot- und Baseline-Design freigegeben
+
+- Der Architekturentscheid für eine separate, konfigurierbar benannte Snapshot-Datenbank je SQL-Server-Instanz ist freigegeben; die Implementierung bleibt bis zu einem eigenen Auftrag zurückgestellt.
+- Typisierte Konfiguration, Sammler- und Retentionrichtlinien ersetzen ein verpflichtendes allgemeines Key-Value-Modell. Normalisierte Metriken werden mit vollständigen versionierten Payloads kombiniert.
+- Granularität, Schedulervertrag, laufinterne Quellenwiederverwendung, Reset-Epochen, Partialität, Retention, Größenbudget, Purge, Löschung und Exportdefaults sind verbindlich dokumentiert.
+- Die betriebliche Snapshot-Datenbank darf vollständige reale Frameworkausgaben speichern. Ausschließlich Repository-, GitHub-, Test-, Dokumentations- und Downloadartefakte bleiben auf synthetische Daten begrenzt.
+- SQL Server Agent ist der erste Scheduler; externe Scheduler verwenden später denselben fachlich neutralen Procedure-Einstieg. Ein anonymisierter Export bleibt ein separates Folgevorhaben.
+
 ## Stand 2026-07-19 – laufinterne Wiederverwendung von Analyseergebnissen
 
 - `USP_ServerHealthAnalysis` erhebt Integritäts-, Kapazitäts- und Buffer-Pool-Evidenz nur einmal und reicht die Resultate im selben Lauf an `USP_DiagnosticFindings` weiter.

@@ -1,16 +1,16 @@
 # Datenschutz- und Sicherheitsvertrag für Repositoryartefakte
 
-**Status:** verbindlich  
-**Stand:** 17. Juli 2026  
-**Geltungsbereich:** Repository, GitHub-Inhalte und downloadbare Artefakte  
-**Nicht betroffen:** diagnostische Runtime-Ausgaben  
+**Status:** verbindlich
+**Stand:** 20. Juli 2026
+**Geltungsbereich:** Repository, GitHub-Inhalte und downloadbare Artefakte
+**Nicht betroffen:** diagnostische Runtime-Ausgaben
 **Maßgebliche Fassung:** dieses Dokument
 
 ## 1. Entscheidung
 
 Dieser Vertrag gilt ausschließlich für Inhalte, die in Repositorydateien oder GitHub-Inhalte geschrieben beziehungsweise für Commits, Pull Requests, Issues, Dokumentation, Tests, Metadaten, Screenshots, generierte Dateien, Archive oder andere Downloads vorbereitet werden.
 
-Er verändert keine diagnostische Runtime-Ausgabe. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE-, TABLE- und JSON-Ausgaben der Procedures dürfen die für die angeforderte Diagnose erforderlichen realen Werte unverändert liefern, soweit der Datenbank-Sicherheitskontext dies erlaubt. Dieser Vertrag ist insbesondere kein Auftrag, Runtime-Spalten zu entfernen, Werte zu maskieren, zu kürzen, zu hashen oder zu pseudonymisieren. TABLE bleibt auf lokale `#Temp`-Tabellen derselben Sitzung begrenzt und führt keine Repository- oder dauerhafte Frameworkpersistenz ein.
+Er verändert keine diagnostische Runtime-Ausgabe. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE-, TABLE- und JSON-Ausgaben der Procedures dürfen die für die angeforderte Diagnose erforderlichen realen Werte unverändert liefern, soweit der Datenbank-Sicherheitskontext dies erlaubt. Dieser Vertrag ist insbesondere kein Auftrag, Runtime-Spalten zu entfernen, Werte zu maskieren, zu kürzen, zu hashen oder zu pseudonymisieren. TABLE bleibt auf lokale `#Temp`-Tabellen derselben Sitzung begrenzt. Ein ausdrücklich installiertes Persistenzpaket wie SC-023 darf dieselben realen Laufzeitwerte in seiner betrieblichen Zieldatenbank dauerhaft speichern; dadurch entsteht kein Repositoryartefakt.
 
 Reale personen-, benutzer-, kunden-, firmen-, organisations-, betriebs- oder umgebungsbezogene Informationen dürfen niemals Bestandteil eines Repository- oder Downloadartefakts werden. Das gilt unabhängig davon, ob sie aus Screenshots, Hardcopys, Chats, Uploads, bestehenden Skripten, Logs, Abfrageergebnissen, Ausführungsplänen oder anderen Diagnoseausgaben stammen.
 
@@ -33,7 +33,7 @@ Eine Zustimmung hebt dieses Repositoryverbot nicht auf. Erfordert eine Aufgabe s
 Die frühere Aussage, solche Informationen dürften grundsätzlich nie ausgegeben werden, vermischte zwei verschiedene Datenflüsse:
 
 1. **Interaktive Diagnose:** Ein berechtigter Operator fragt den aktuellen Zustand des eigenen SQL Servers ab. Identitäts- und Umgebungswerte sind hier häufig fachlich notwendig, etwa um eine blockierende Session einem Login, Host oder Programm zuzuordnen.
-2. **Persistierbares Projektartefakt:** Informationen werden gespeichert, weitergegeben, heruntergeladen oder versioniert. Hier besteht das Risiko, dass Betriebs-, Kunden- oder Personendaten dauerhaft im Repository oder in dessen Historie landen.
+2. **Persistierbares Projektartefakt:** Informationen werden in das Repository, nach GitHub oder in ein Projekt-/Downloadartefakt übernommen. Hier besteht das Risiko, dass Betriebs-, Kunden- oder Personendaten dauerhaft im Repository oder in dessen Historie landen. Eine autorisierte betriebliche Zieldatenbank außerhalb dieses Datenflusses ist kein Projektartefakt.
 
 Ein pauschales Verbot in der ersten Ebene würde wesentliche Diagnosefunktionen unbrauchbar machen. Die verbindliche Grenze liegt deshalb beim Übergang von flüchtiger Laufzeitausgabe zu einem persistierbaren Artefakt.
 
@@ -49,9 +49,9 @@ Ein pauschales Verbot in der ersten Ebene würde wesentliche Diagnosefunktionen 
 | Testfixture, Snapshot oder Golden File | Nein | Ausschließlich synthetische, nicht rückführbare Daten verwenden |
 | Repository, Commit, Pull Request oder Release | Nein | Keine realen Identitäts-, Unternehmens-, Kunden- oder Umgebungswerte |
 | Downloadbares ZIP oder generierter Installer | Nein | Vor Auslieferung auf eingebettete Daten und unerwartete Dateien prüfen |
-| Spätere interne Snapshotfunktion im Zielsystem | Nur nach eigenem Datenschutzkonzept | Zweck, Zugriff, Retention, Löschung und Exportgrenze müssen separat entschieden werden |
+| SC-023-Snapshotdatenbank im Zielsystem | Ja | Darf vollständige reale Frameworkausgaben nach dem dokumentierten Zugriffs-, Retention-, Lösch- und Exportvertrag speichern |
 
-Wichtig: Die Procedure-Ausgabe selbst bleibt unverändert. Erst ihre Übernahme in ein Repository-, GitHub- oder Downloadartefakt fällt unter diesen Vertrag. Eine außerhalb des Projektrepositorys betriebene Speicherung ist nicht Gegenstand dieses Liefergates und benötigt bei Bedarf eine eigene fachliche und datenschutzrechtliche Entscheidung.
+Wichtig: Die Procedure-Ausgabe selbst bleibt unverändert. Erst ihre Übernahme in ein Repository-, GitHub- oder Downloadartefakt fällt unter diesen Vertrag. Eine außerhalb des Projektrepositorys betriebene Speicherung ist nicht Gegenstand dieses Liefergates. Der fachliche SC-023-Vertrag steht in `Documentation/Architecture/Snapshot_Baseline_Package_Contract.md`; zusätzliche betriebliche oder rechtliche Pflichten der Zielumgebung bleiben davon unberührt.
 
 ## 4. Betroffene Informationsklassen
 
@@ -102,7 +102,7 @@ Zulässig sind:
 1. Die Procedures dürfen reale Werte selektieren, wenn diese für die angeforderte Diagnose relevant sind.
 2. Resultsets und OUTPUT-Parameter werden wegen dieses Vertrags weder anonymisiert noch inhaltlich reduziert.
 3. Der Repositorycode darf keine realen Werte, internen Namen oder proprietären Strukturen aus einer konkreten Umgebung hart codieren oder kommentierend offenlegen.
-4. Standardpfade bleiben entsprechend der bestehenden Architektur zustandslos und speichern keine Resultsets.
+4. Standardpfade bleiben entsprechend der bestehenden Architektur zustandslos. Ein separat installiertes und ausdrücklich aktiviertes Persistenzpaket darf Resultsets samt realer Werte in seiner Zieldatenbank speichern.
 5. Secrets, Kennwörter, Tokens, Schlüsselmaterial und Verbindungszeichenfolgen dürfen niemals in ein Repository- oder Downloadartefakt übernommen werden.
 6. Fehlende Berechtigungen werden als Status ausgegeben; sie werden nicht durch zusätzliche Rechtevergabe umgangen.
 
@@ -143,7 +143,7 @@ Die Entscheidung ist erfüllt, wenn:
 - keine reale Laufzeitausgabe als Repository-, Test-, Dokumentations- oder Lieferinhalt eingecheckt wird,
 - Code, Kommentare und Dokumentation keine aus Hardcopys, Screenshots, Chats, Uploads oder realen Umgebungen übernommenen internen Namen oder Strukturen enthalten,
 - Beispiele ausschließlich eindeutig synthetische, generische Werte ohne Nachbildung realer interner Strukturen enthalten,
-- zukünftige Persistenz- und Exportfunktionen vor ihrer Implementierung ein eigenes Datenschutz-, Berechtigungs-, Retention- und Löschkonzept erhalten,
+- Persistenz- und Exportfunktionen einen dokumentierten Datenschutz-, Berechtigungs-, Retention- und Löschvertrag besitzen; SC-023 erfüllt den Architekturentscheid, bleibt aber noch unimplementiert,
 - ein uneindeutiger Datenfund die Fragepflicht auslöst,
 - die Prüfung keine sensitiven Werte selbst in Auditmeldungen vervielfältigt.
 
