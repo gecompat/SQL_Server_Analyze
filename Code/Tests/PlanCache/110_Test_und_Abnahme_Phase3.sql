@@ -28,6 +28,7 @@ IF ISJSON(@PlanCacheJson)<>1
    OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.resultName')<>N'QueryHashAnalysis'
    OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode')<>'AVAILABLE'
    OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode')<>'AVAILABLE'
+   OR EXISTS (SELECT 1 FROM OPENJSON(@PlanCacheJson,N'$.warnings'))
    OR
    (
        SELECT COUNT_BIG(*)
