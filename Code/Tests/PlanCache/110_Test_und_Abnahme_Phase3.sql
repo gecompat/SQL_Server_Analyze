@@ -24,23 +24,45 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
     , @PrintMeldungen=0;
 
 IF ISJSON(@PlanCacheJson)<>1
-   OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName')<>N'QueryStats'
+    THROW 53300,N'Der Plan-Cache-Orchestrator hat kein gültiges JSON geliefert.',1;
+
+IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName')<>N'QueryStats'
    OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.resultName')<>N'QueryHashAnalysis'
-   OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode')<>'AVAILABLE'
-   OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode')<>'AVAILABLE'
-   OR
-   (
-       SELECT COUNT_BIG(*)
-       FROM OPENJSON(@PlanCacheJson,N'$.modules')
-       WITH
-       (
-           [ModuleName] sysname N'$.ModuleName',
-           [InvocationStatus] varchar(40) N'$.InvocationStatus'
-       )
-       WHERE [ModuleName] IN(N'USP_QueryStats',N'USP_QueryHashAnalysis')
-         AND [InvocationStatus]='REUSED_PARENT_SNAPSHOT'
-   )<>2
-    THROW 53300,N'Der laufinterne Plan-Cache-Snapshotvertrag ist verletzt.',1;
+    THROW 53301,N'Die erwarteten Child-Payloads fehlen im Plan-Cache-JSON.',1;
+
+IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode')<>'AVAILABLE'
+BEGIN
+    DECLARE @QueryStatsContractError nvarchar(2048)=CONCAT
+    (
+          N'Der Query-Stats-Snapshot-Consumer war nicht erfolgreich: '
+        , COALESCE(JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode'),N'<NULL>')
+        , N' / '
+        , COALESCE(JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.errorNumber'),N'<NULL>')
+        , N' / '
+        , COALESCE(JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.errorMessage'),N'<NULL>')
+    );
+    THROW 53302,@QueryStatsContractError,1;
+END;
+
+IF JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode')<>'AVAILABLE'
+    THROW 53303,N'Der Query-Hash-Snapshot-Consumer war nicht erfolgreich.',1;
+
+IF EXISTS (SELECT 1 FROM OPENJSON(@PlanCacheJson,N'$.warnings'))
+    THROW 53304,N'Erfolgreiche Snapshot-Wiederverwendung darf keine Warnung erzeugen.',1;
+
+IF
+(
+    SELECT COUNT_BIG(*)
+    FROM OPENJSON(@PlanCacheJson,N'$.modules')
+    WITH
+    (
+        [ModuleName] sysname N'$.ModuleName',
+        [InvocationStatus] varchar(40) N'$.InvocationStatus'
+    )
+    WHERE [ModuleName] IN(N'USP_QueryStats',N'USP_QueryHashAnalysis')
+      AND [InvocationStatus]='REUSED_PARENT_SNAPSHOT'
+)<>2
+    THROW 53305,N'Der laufinterne Plan-Cache-Snapshot wurde nicht von beiden Consumern wiederverwendet.',1;
 GO
 
 /* Ein einzelner Consumer liest frisch und baut keinen Parent-Snapshot auf. */
@@ -62,5 +84,5 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
 IF ISJSON(@SingleConsumerJson)<>1
    OR JSON_VALUE(@SingleConsumerJson,N'$.modules[0].ModuleName')<>N'USP_QueryStats'
    OR JSON_VALUE(@SingleConsumerJson,N'$.modules[0].InvocationStatus')<>'EXECUTED'
-    THROW 53301,N'Der Frischlesevertrag für einen einzelnen Plan-Cache-Consumer ist verletzt.',1;
+    THROW 53306,N'Der Frischlesevertrag für einen einzelnen Plan-Cache-Consumer ist verletzt.',1;
 GO

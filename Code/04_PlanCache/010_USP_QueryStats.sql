@@ -246,7 +246,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        SET @Sql = N'
+        SET @Sql = CONVERT(nvarchar(max),N'') + N'
 INSERT [#QueryStats_Result]
 (
       [QueryHash], [QueryPlanHash], [PlanHandle], [SqlHandle]
@@ -477,7 +477,8 @@ OPTION (RECOMPILE, MAXDOP 1);';
             SELECT N'QueryStats' AS [resultName], 1 AS [schemaVersion], @Now AS [generatedAtUtc],
                    @StatusCode AS [statusCode], @MaxZeilen AS [requestedMaxRows],
                    CASE WHEN @RowCount > @Limit THEN @Limit ELSE @RowCount END AS [returnedRows],
-                   @HasMoreRows AS [hasMoreRows], @Order AS [sortBy]
+                   @HasMoreRows AS [hasMoreRows], @Order AS [sortBy],
+                   @ErrorNumber AS [errorNumber], @ErrorMessage AS [errorMessage]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @Data nvarchar(max) =
