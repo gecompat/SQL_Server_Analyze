@@ -1,10 +1,10 @@
 # Draft: technische Vertiefung – Common und Current State
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft für PR #18; nicht kanonisch  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Abdeckung:** 14 Procedures aus `01_Common` und `02_CurrentState`
 
-> Diese Datei ergänzt die vorhandenen Familien- und Procedure-Guides um Enginehintergrund, Datenkette und Bewertungslogik. Parameter- und RAW-Spaltenverträge bleiben bis zur späteren Integration in den kanonischen Referenzen.
+> Die Inhalte sind in die 14 kanonischen Procedure-Seiten integriert. Für Parameter- und RAW-Spaltenverträge gelten die kanonischen Einzel- und Familienseiten.
 
 ## 1. Gemeinsames Modell
 

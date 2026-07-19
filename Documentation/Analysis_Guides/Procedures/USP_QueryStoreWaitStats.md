@@ -33,4 +33,36 @@ Viele Recorded Rows bedeuten viele gespeicherte Messpunkte, nicht automatisch vi
 
 Lock-Wait dominiert nur ein Intervall: möglicher Burst. Täglich stundenlang dominant: systematisches Problem. Runtime, Planwechsel und bei Reproduktion Live-Blocking prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche groben Waitkategorien dominierten historisch je Query-Store-Plan?
+
+### Technischer Hintergrund
+
+Query Store ordnet konkrete Waittypen Kategorien zu und speichert Total/Avg/Min/Max je Plan, Intervall und Execution Type. Es erfasst Waits während Queryausführung, nicht Compile-Waits. Der Frameworkcode mittelt gespeicherte Intervallmittelwerte ungewichtet und summiert vollständig einbezogene Überlappungsintervalle.
+
+### Datenkette
+
+`sys.database_query_store_options`, `sys.query_store_plan`, `sys.query_store_query`, `sys.query_store_query_text`, `sys.query_store_runtime_stats_interval`, `sys.query_store_wait_stats`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Persistierte Waitkategorien innerhalb Retention und aktivem Wait Capture; datenbank-/planbezogen.
+
+### Bewertung und Gegenprobe
+
+Total, Max, Recorded Rows, Execution Type und Runtime-Ausführungen korrelieren. Kategorien priorisieren den Troubleshootingpfad, liefern aber keinen konkreten Blocker oder Wait Resource.
+
+### Typische Fehlinterpretation
+
+`RecordedRows` sind Messzeilen, keine Waitanzahl. Die Average-Spalte ist kein execution-weighted Gesamtdurchschnitt.
+
+### Folgeanalyse
+
+Vollständige Vertiefung in `Deep_Analysis_Documentation_Draft.md`; live mit Current Waits/Requests validieren.
+
 [Technische Detailbeschreibung](../05_Query_Store.md#3-monitorusp_querystorewaitstats)

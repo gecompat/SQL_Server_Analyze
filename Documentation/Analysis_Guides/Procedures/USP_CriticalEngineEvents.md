@@ -32,4 +32,36 @@ Ein einzelnes altes Ereignis kann bereits behoben sein; aktuelle Wiederholung en
 
 Mehrere Severity-20+-Fehler in kurzer Zeit plus suspect pages sind deutlich kritischer als ein einzelnes altes Ereignis. Error Log, Integrität und Infrastruktur prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche kritischen Engineereignisse sind in system_health, Ring Buffers oder Diagnostikquellen erhalten?
+
+### Technischer Hintergrund
+
+`system_health` erfasst ausgewählte Errors, Scheduler-/Memory-/Connectivity-/Deadlock- und Diagnoseereignisse. Ring Buffers/`sp_server_diagnostics` liefern Component States und begrenzte Historie. Event XML/Datafelder sind versionsabhängig.
+
+### Datenkette
+
+`sys.fn_xe_file_target_read_file`, `sys.server_event_session_fields`, `sys.server_event_session_targets`, `sys.server_event_sessions`, `sys.sp_server_diagnostics`.
+
+### Zeit- und Scope-Modell
+
+Nur erhaltene Ereignisse seit Session-/Engine-/Rollovergrenze; aktueller Diagnostikstatus.
+
+### Bewertung und Gegenprobe
+
+Eventtyp, Severity/State, Timestamp, Component, Wiederholung und gleichzeitige Errorlog/OS/Clusterereignisse korrelieren. Scheduler non-yielding, Memory Error oder I/O Stall unterschiedlich behandeln.
+
+### Typische Fehlinterpretation
+
+Keine Zeile ist keine Entwarnung. system_health ist bewusst begrenzt und kann Rollover/Targets verlieren.
+
+### Folgeanalyse
+
+XE Target Runtime/Read Events, Errorlog, OS/Cluster/Storagediagnostik.
+
 [Technische Detailbeschreibung](../08_Server_Health.md#14-monitorusp_criticalengineevents)

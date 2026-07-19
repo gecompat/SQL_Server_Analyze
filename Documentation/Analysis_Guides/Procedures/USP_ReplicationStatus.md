@@ -31,4 +31,36 @@ Kurzzeitiger Backlog während Lastspitzen ist akzeptabel, wenn er anschließend 
 
 Pending Commands steigen in drei Messungen kontinuierlich und Latenz wächst: systematischer Rückstand. Agentjob, Distributor, Blocking und Netzwerk prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Replikationstopologie und Agentzustände sind lokal sichtbar, und gibt es Fehler oder Rückstand?
+
+### Technischer Hintergrund
+
+Transactional Replication nutzt Log Reader und Distribution Agents; Merge Replication eigene Agents/Sessions. Publisher-, Distributor- und Subscriber-Metadaten liegen auf verschiedenen Servern/Datenbanken. History und Commands bilden begrenzte Zustände/Latenz.
+
+### Datenkette
+
+`sys.databases`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Verteilte Momentaufnahme plus Distributor-/Agenthistory innerhalb Retention.
+
+### Bewertung und Gegenprobe
+
+Topologierolle, Agentstatus, letzte Aktion/Fehler, undistributed commands, geschätzte Latenz und Zeitmarken zusammen lesen. Remote-/Distributorzugriff als Partialstatus ausgeben.
+
+### Typische Fehlinterpretation
+
+`Running` bedeutet nur aktiver Agent, nicht geringe Latenz. Lokale Leere kann fehlende Rolle oder fehlenden Remotezugriff bedeuten.
+
+### Folgeanalyse
+
+`USP_DataCaptureDeepAnalysis`, Agent Jobs, Log/Distributor-DB-Kapazität und Replication Monitor.
+
 [Technische Detailbeschreibung](../07_Infrastructure.md#7-monitorusp_replicationstatus)

@@ -32,4 +32,36 @@ Eine unverschlüsselte Datenbank ist ohne entsprechende Schutzvorgabe kein Fehle
 
 Die Procedure liest keine Schlüsselpfade, Signaturen, verschlüsselten Werte, Backupmedien, Konten oder privaten Schlüssel und gibt keine Thumbprints aus. Ein erfolgreicher isolierter Restore mit autorisiertem Schlüsselmaterial bleibt externer Nachweis.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche TDE-/Verschlüsselungszustände und Key-/Certificate-Abhängigkeiten sind sichtbar, ohne Schlüsselmaterial offenzulegen?
+
+### Technischer Hintergrund
+
+TDE verschlüsselt Daten-/Logseiten at rest über Database Encryption Key, geschützt durch Server Certificate/Asymmetric Key in `master` oder EKM. `sys.dm_database_encryption_keys` zeigt State/Percent/Algorithm/Protector. Restore auf anderer Instanz benötigt passenden Protector/Private Key. Backups können zusätzlich separat verschlüsselt sein.
+
+### Datenkette
+
+`msdb.dbo.backupset`, `sys.column_encryption_keys`, `sys.column_master_keys`, `sys.columns`, `sys.databases`, `sys.tables`, `master.sys.certificates`, `sys.dm_database_encryption_keys`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Encryption-/Keymetadatenzustand; Rotation/Scan kann Fortschrittszustände zeigen.
+
+### Bewertung und Gegenprobe
+
+Encryption State, Percent Complete, Algorithm/Key Length, Encryptor Type, Certificateablauf/-backupstatus, TempDB-/Systemkontext und Restoregovernance prüfen. Nur öffentliche Metadaten ausgeben, keine Thumbprints/Keybytes in Artefakten.
+
+### Typische Fehlinterpretation
+
+`ENCRYPTED` beweist nicht, dass Zertifikat/Private Key sicher gesichert und Restore getestet wurde. TDE schützt nicht vor berechtigten SQL-Abfragen oder Datenexfiltration im laufenden System.
+
+### Folgeanalyse
+
+Certificate-/Key-Backupinventar außerhalb Repository, echter Restoretest und Securitypolicy.
+
 [Technische Detailbeschreibung](../09_Version_Adaptive.md)

@@ -30,4 +30,36 @@ Ein Feature kann betrieblich erforderlich und durch Berechtigungen, Audit oder a
 
 `xp_cmdshell` aktiviert ist ein Reviewbefund, aber die reale Gefährdung hängt von Berechtigungen, Nutzung und Kompensationskontrollen ab. Sicherheitskonzept und Audit prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche sicherheitsrelevanten Servereinstellungen und Prinzipal-/Endpointmuster verdienen ein Securityreview?
+
+### Technischer Hintergrund
+
+Server Principals/Roles/Permissions, Authentication, Endpoints, Service Accounts und Konfigurationsoptionen bilden mehrere Sicherheitsebenen. Metadata Visibility begrenzt die Sicht. Frameworkbefunde sollen Konfiguration inventarisieren, keine Credentials/Secrets ausgeben.
+
+### Datenkette
+
+`sys.configurations`, `sys.dm_server_services`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Metadaten-/Konfigurationsstand.
+
+### Bewertung und Gegenprobe
+
+Finding, Scope, Severity/Confidence, betroffene Option/Rolle und dokumentierte Policy verbinden. Besonders sysadmin, CONTROL SERVER, unsichere Optionen und exponierte Endpoints mit Owner/Notwendigkeit prüfen.
+
+### Typische Fehlinterpretation
+
+Technischer Befund ist kein vollständiges Berechtigungsaudit und keine Aussage über organisatorische Genehmigung. Fehlende Sicht darf nicht als fehlende Berechtigung interpretiert werden.
+
+### Folgeanalyse
+
+Formales Security-/Identityreview, Audit und Change Governance.
+
 [Technische Detailbeschreibung](../08_Server_Health.md#9-monitorusp_serversecurityconfiguration)

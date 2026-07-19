@@ -13,12 +13,21 @@ if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
 $referencePath = Join-Path $RepositoryRoot 'Documentation/Reference/Procedure_Reference.md'
 $pagesRoot = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Procedures'
 $objectIndexPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Object_Index.md'
+$technicalFoundationsPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Technical_Foundations.md'
 $codeRoot = Join-Path $RepositoryRoot 'Code'
 $requiredHeadings = @(
     '## Eine Zeile bedeutet',
     '## So lesen',
     '## Warum kann das problematisch sein?',
-    '## Wann ist es kein Problem?'
+    '## Wann ist es kein Problem?',
+    '## Technische Vertiefung',
+    '### Leitfrage',
+    '### Technischer Hintergrund',
+    '### Datenkette',
+    '### Zeit- und Scope-Modell',
+    '### Bewertung und Gegenprobe',
+    '### Typische Fehlinterpretation',
+    '### Folgeanalyse'
 )
 
 $errors = [System.Collections.Generic.List[string]]::new()
@@ -109,7 +118,7 @@ function Get-MarkdownAnchors {
     return @($anchors)
 }
 
-foreach ($requiredPath in @($referencePath, $objectIndexPath)) {
+foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required documentation file not found: $requiredPath"
     }
@@ -254,6 +263,10 @@ foreach ($file in $pageFiles) {
 
     if ($text -notmatch '\[Technische Detailbeschreibung\]\(') {
         $errors.Add("Missing technical detail link: $($file.FullName)")
+    }
+
+    if ($text -notmatch '\[Gemeinsames Execution-, Zeit- und Evidenzmodell\]\(\.\./Technical_Foundations\.md\)') {
+        $errors.Add("Missing technical foundations link: $($file.FullName)")
     }
 
     if ($parameterNamesByProcedure.ContainsKey($file.BaseName)) {

@@ -26,7 +26,25 @@ Jede neue öffentliche Analyse-Procedure benötigt eine Datei unter `Procedures/
 
 ## Eigenlast
 
-Technische Detailbeschreibung: ../Familienguide.md#anker
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+### Technischer Hintergrund
+
+### Datenkette
+
+### Zeit- und Scope-Modell
+
+### Bewertung und Gegenprobe
+
+### Typische Fehlinterpretation
+
+### Folgeanalyse
+
+[Technische Detailbeschreibung](../Familienguide.md#anker)
 ```
 
 Nicht jede Seite benötigt einen langen Abschnitt zu jedem Punkt. Nicht anwendbare Punkte müssen jedoch ausdrücklich als nicht anwendbar erklärt werden.

@@ -34,4 +34,36 @@ Acht Stunden verbunden, letzte Aktivität vor zehn Sekunden, keine offene Transa
 
 Ein eingeschränkter Berechtigungsscope kann fremde Sessions ausblenden. Vor einer Entwarnung Status, eigene Sessionfilter und Systemsessionfilter prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Sessions sind verbunden, welchen Kontext besitzen sie und gibt es inaktive Sessions mit fortwirkendem Zustand?
+
+### Technischer Hintergrund
+
+`sys.dm_exec_sessions` hält den Sitzungskontext, während `sys.dm_exec_connections` Transport-/Verbindungsdaten und `sys.dm_exec_requests` aktuelle Arbeit ergänzt. Sessionzähler wie CPU oder Reads akkumulieren über die Session; Connection Pools können Sessions lange offen und `sleeping` halten.
+
+### Datenkette
+
+`master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Sessionmomentaufnahme mit kumulativen Zählern seit Sessionbeginn. Session-IDs können nach Ende wiederverwendet werden; Uhrzeit und Login-/Connectionkontext gehören zur Identität.
+
+### Bewertung und Gegenprobe
+
+`sleeping` ohne offene Transaktion ist häufig normal. `sleeping` mit offener Transaktion, Locks oder wachsendem Logverbrauch ist wesentlich kritischer. Hohe kumulative CPU einer alten Poolsession beweist keine aktuelle Last.
+
+### Typische Fehlinterpretation
+
+`LastRequestEndTime` ist nicht automatisch Transaktionsende. Clientangaben wie Host/Program sind nicht manipulationssicher.
+
+### Folgeanalyse
+
+`USP_CurrentTransactions`; bei aktiver Arbeit `USP_CurrentRequests`; bei Auswirkungen `USP_CurrentBlocking`.
+
 [Technische Detailbeschreibung](../02_Current_State.md#1-monitorusp_currentsessions)

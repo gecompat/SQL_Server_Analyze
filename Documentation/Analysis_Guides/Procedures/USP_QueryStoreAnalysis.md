@@ -33,4 +33,36 @@ Deaktivierte Children fehlen absichtlich.
 
 Letzte Stunde als Eingabefenster bedeutet: Vergleich letzte Stunde, Baseline die Stunde davor. Auffälliges Child mit QueryId/Hash und engem Zeitraum wiederholen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Query-Store-Perspektiven sollen kontrolliert in einem Lauf ausgeführt werden?
+
+### Technischer Hintergrund
+
+Der Wrapper orchestriert Status, Runtime, Waits, PlanChanges, Regressions, Forced Plans, Hints und IQP. Er übergibt gemeinsame Datenbankscope-/Zeitparameter, aber einzelne Children interpretieren Fenster unterschiedlich.
+
+### Datenkette
+
+Frameworkinterne Orchestrierung; Quellen liegen in Childmodulen.
+
+### Zeit- und Scope-Modell
+
+Nicht atomare Folge persistierter Queries; Childstatus je Datenbank.
+
+### Bewertung und Gegenprobe
+
+Status zuerst; dann Runtime priorisieren und nur bei Bedarf Wait/Plan/Regression/Intervention vertiefen. Deep-Optionen, Plan XML und viele Datenbanken erhöhen Kosten.
+
+### Typische Fehlinterpretation
+
+Ein Wrapperfenster kann für Regression als Comparison Window verwendet werden, während Baseline davor abgeleitet wird. Resultsets nicht ohne Childnamen/-status zusammenführen.
+
+### Folgeanalyse
+
+Betroffenes Child gezielt erneut ausführen.
+
 [Technische Detailbeschreibung](../05_Query_Store.md#9-monitorusp_querystoreanalysis)

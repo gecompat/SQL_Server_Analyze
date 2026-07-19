@@ -33,4 +33,36 @@ Niedriger Prozentwert bei sehr großem Volume kann absolut ausreichend sein; hoh
 
 5 % von 20 TB = 1 TB; 20 % von 10 GB = 2 GB. Prozent und absolute Menge gemeinsam lesen. Wachstumstrend, Log-/Backupstatus und Storage prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Wie viel Datei-/Volumeplatz bleibt, wie sind Growth/MaxSize konfiguriert und welche Kapazitätsrisiken sind sichtbar?
+
+### Technischer Hintergrund
+
+Database Files wachsen innerhalb Volume-/MaxSizegrenzen. Percent Growth erzeugt mit wachsender Datei zunehmend große Schritte; kleine Growthsteps erzeugen häufige Growth Events. Loggrowth/Zero Initialization und Datafile IFI unterscheiden sich.
+
+### Datenkette
+
+`sys.database_files`, `sys.dm_os_volume_stats`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Snapshot. Ohne historische Messpunkte keine Wachstumsrate/Forecast.
+
+### Bewertung und Gegenprobe
+
+Absolute freie MB und Prozent, Filegröße, Growthtyp/-schritt, MaxSize, Volume Free, Dateityp und geplante Workloadspitzen kombinieren. Autogrowth als Sicherheitsnetz, proaktives Sizing als Betrieb.
+
+### Typische Fehlinterpretation
+
+Viel freier Platz im File bedeutet nicht freien Volumeplatz; viel Volumeplatz bedeutet nicht passende MaxSize/Growth. Forecast aus einem Snapshot ist Heuristik.
+
+### Folgeanalyse
+
+Current Log/IO, Backup-/Loadplanung und externes Capacitytrendmonitoring.
+
 [Technische Detailbeschreibung](../08_Server_Health.md#12-monitorusp_databasecapacityanalysis)

@@ -30,4 +30,36 @@ Eine bewusst nur bei Bedarf gestartete Session darf gestoppt sein.
 
 Deadlockevent vorhanden, aber nur kleiner Ringbuffer: historische Tiefe kann fehlen. Danach Target Runtime und Events prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche XE-Sessions existieren, laufen sie, welche Events/Actions/Predicates und Targets besitzen sie?
+
+### Technischer Hintergrund
+
+Katalogsichten für Sessions, Events, Actions, Fields und Targets bilden Definitionen; Runtime-DMVs liefern gestartete Sessions und Targetdaten. Eventname allein reicht nicht, wenn für Analyse notwendige Actions wie SQL Text, DatabaseId oder SessionId fehlen.
+
+### Datenkette
+
+`master.sys.databases`, `sys.dm_xe_sessions`, `sys.server_event_session_actions`, `sys.server_event_session_events`, `sys.server_event_session_fields`, `sys.server_event_session_targets`, `sys.server_event_sessions`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Aktuelle Konfiguration plus Runtimezustand; Serverstart und Sessionstart beeinflussen Targetinhalt.
+
+### Bewertung und Gegenprobe
+
+Definition und Runtime verbinden: Session vorhanden/läuft, Event enthalten, Predicate nicht zu eng, Actions ausreichend, Target erreichbar. Startup State ist nur Startverhalten.
+
+### Typische Fehlinterpretation
+
+Eine laufende Session beweist keine vollständige Erfassung. Eine konfigurierte, aber gestoppte Session besitzt möglicherweise alte Targetdaten.
+
+### Folgeanalyse
+
+`USP_ExtendedEventsTargetRuntime` und anschließend Eventreader.
+
 [Technische Detailbeschreibung](../06_Extended_Events.md#1-monitorusp_extendedeventssessions)

@@ -32,4 +32,36 @@ Ein Full Backup oder eine große Wartung darf lange laufen, wenn dies dem histor
 
 90 Minuten aktuelle Dauer bei 20 Minuten Normalwert und blockierten Folgeschritten: echte Abweichung. Schrittoutput, Blocking, I/O und Historie prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Jobs sind aktiviert, geplant, aktuell laufend oder zuletzt fehlgeschlagen beziehungsweise ungewöhnlich langsam?
+
+### Technischer Hintergrund
+
+`msdb.dbo.sysjobs`, Steps, Schedules, Job Activity und History bilden Definition, aktuelle Instanzaktivität und vergangene Outcomes. `sysjobhistory` speichert Job-/Stepzeilen mit integercodierten Datum-/Zeit-/Dauerwerten; laufende Aktivität liegt in `sysjobactivity`.
+
+### Datenkette
+
+`master.sys.databases`, `msdb.dbo.agent_datetime`, `msdb.dbo.syscategories`, `msdb.dbo.sysjobactivity`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `msdb.dbo.sysjobschedules`, `msdb.dbo.sysjobsteps`, `msdb.dbo.sysschedules`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Konfigurationssnapshot plus aufbewahrte History. Agentrestart erzeugt neue Sessionkontexte; Cleanup begrenzt Historie.
+
+### Bewertung und Gegenprobe
+
+Jobstatus, aktueller Step, Run Requested/Start/Stop, Retry, letzte Outcomes, Schedule und typische Laufzeit zusammen lesen. Jobgesamtzeile und Stepfehler unterscheiden.
+
+### Typische Fehlinterpretation
+
+`LastRunOutcome=Succeeded` kann einen später aktuell laufenden/steckenden Lauf überdecken. History kann abgeschnitten sein; lange Dauer muss mit Workloadfenster verglichen werden.
+
+### Folgeanalyse
+
+`USP_AgentMonitoringAnalysis`, Current Requests/Blocking und Jobstep-/Logoutput.
+
 [Technische Detailbeschreibung](../07_Infrastructure.md#2-monitorusp_agentjobs)

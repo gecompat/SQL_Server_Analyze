@@ -1,7 +1,7 @@
 # Draft: technische Vertiefung – Object/Index/Statistics und Plan Cache
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft für PR #18; nicht kanonisch  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Abdeckung:** 17 Procedures aus `03_ObjectIndex` und `04_PlanCache`
 
 > Der Draft beschreibt Engine- und Datenstrukturhintergrund. Er formuliert keine automatische DDL-Empfehlung. Index-, Statistik-, Missing-Index- und Showplanbefunde sind zunächst Evidenz und benötigen Workload-, Größen-, Risiko- und Abhängigkeitskontext.

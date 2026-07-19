@@ -31,4 +31,36 @@ Capture Mode AUTO lässt billige oder seltene Queries absichtlich aus.
 
 Leeres Waitresultset plus Wait Capture OFF ist erwartbar. Erst bei geeignetem Status Runtime-, Wait- oder Plananalyse starten.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Ist Query Store aktiviert, schreibfähig, ausreichend dimensioniert und für den gewünschten Evidenztyp konfiguriert?
+
+### Technischer Hintergrund
+
+`sys.database_query_store_options` trennt gewünschten und tatsächlichen Zustand, Operation Mode, Capture Mode, Interval Length, Retention, Current/Max Size, Cleanup und Wait Stats Capture. READ_ONLY kann aus administrativer Konfiguration oder internen Gründen wie Größenlimit entstehen.
+
+### Datenkette
+
+`sys.database_query_store_options`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Zustand je ausgewählter Datenbank. Status sagt nichts über bereits gelöschte oder nie erfasste Historie.
+
+### Bewertung und Gegenprobe
+
+Actual vs Desired State, Readonly Reason, Current/Max Size, Stale Query Threshold, Cleanup und Capture Mode zusammen lesen. Waitanalyse benötigt aktiviertes Wait Capture.
+
+### Typische Fehlinterpretation
+
+`READ_WRITE` beweist weder Vollständigkeit noch repräsentative Capture-Auswahl. `OFF` zum Analysezeitpunkt erklärt nicht immer, ob frühere Daten noch vorhanden sind.
+
+### Folgeanalyse
+
+Vor allen Query-Store-Fachanalysen; bei Problemen Konfiguration/Storage und Capturepolicy prüfen.
+
 [Technische Detailbeschreibung](../05_Query_Store.md#1-monitorusp_querystorestatus)

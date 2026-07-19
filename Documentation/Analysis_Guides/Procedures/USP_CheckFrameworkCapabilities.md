@@ -35,4 +35,36 @@ Query Store kann versionsseitig unterstützt und lesbar, aber deaktiviert sein. 
 
 Fehlende Capability-Zeilen können durch Datenbankauswahl, Rechte oder `@MaxDatenbanken` entstehen. Status- und Warnresultsets gehören zwingend zur Bewertung.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Ist ein Analysepfad auf dieser konkreten Instanz nicht nur theoretisch unterstützt, sondern tatsächlich nutzbar?
+
+### Technischer Hintergrund
+
+Version, Edition, Featurekonfiguration und formale Permission sind verschiedene Ebenen. Die Procedure führt capability-orientierte Prüfungen aus und kann geschützte Testabfragen dynamisch ausführen. Dadurch wird zwischen `supported`, `enabled`, `permitted`, `queryable` und `usable` unterschieden.
+
+### Datenkette
+
+`sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Umgebungszustand; Ergebnisse können sich nach Konfigurationsänderung, Failover, Datenbankstatuswechsel oder Berechtigungsänderung ändern.
+
+### Bewertung und Gegenprobe
+
+Die Prüfkette in der dokumentierten Reihenfolge lesen. `HasRequiredPermission=1` bei `IsQueryable=0` weist auf eine zusätzliche Laufzeitgrenze hin. `IsFeatureEnabled=0` kann bei bewusst ungenutztem Feature normal sein.
+
+### Typische Fehlinterpretation
+
+Capability ist kein Nachweis, dass relevante Daten vorhanden sind. Query Store kann nutzbar, aber leer sein; XE kann abfragbar, aber ohne passende Session sein.
+
+### Folgeanalyse
+
+Nur Fachmodule starten, deren benötigte Quelle nutzbar ist; bei Partialstatus die jeweilige Datenbank/Quelle gezielt prüfen.
+
 [Technische Detailbeschreibung](../01_Common.md#2-monitorusp_checkframeworkcapabilities)

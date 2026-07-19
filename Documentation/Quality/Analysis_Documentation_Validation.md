@@ -33,8 +33,8 @@ Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
 - Parameterreihenfolge, Parameternamen, Datentypen, Defaults und `OUTPUT`-Kennzeichnung gegen die kanonische SQL-Signatur,
 - Parameternamen in dokumentierten `EXEC`-Beispielen,
 - Seitentitel,
-- Pflichtüberschriften,
-- technische Detaillinks,
+- Pflichtüberschriften einschließlich der sieben technischen Vertiefungsfelder,
+- Links auf das gemeinsame Zeit-/Evidenzmodell und die technischen Familienbeschreibungen,
 - interne relative Markdownziele,
 - interne Markdown-Anker.
 

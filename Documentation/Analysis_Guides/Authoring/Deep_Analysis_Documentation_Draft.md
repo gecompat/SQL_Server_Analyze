@@ -1,11 +1,11 @@
 # Draft: technische Tiefendokumentation für SQL_Server_Analyze
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft; nicht kanonisch und nicht zur direkten Nutzung als Procedure-Referenz bestimmt  
-**Integrationsziel:** nach Abschluss paralleler Repository-Arbeiten abschnittsweise in die dann aktuellen Analysis Guides übernehmen  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch und nicht zur direkten Nutzung als Procedure-Referenz bestimmt
+**Integration:** gemeinsames Modell in `../Technical_Foundations.md`, procedurespezifische Inhalte in `../Procedures`
 **Zielgruppe:** Analyseanfänger:innen, Datenbankentwickler:innen und erfahrene SQL-Server-Administrator:innen
 
-> Dieser Draft verändert keinen bestehenden Dokumentationsvertrag. Er sammelt technische Modelle, Bewertungslogik, Quellen und konkrete Textbausteine. Vor der Integration müssen alle Aussagen erneut gegen den dann aktuellen T-SQL-Code, die RAW-Resultsets und die offizielle Microsoft-Dokumentation geprüft werden.
+> Dieser Draft dokumentiert die Redaktionsherkunft. Für die Anwendung und zukünftige Pflege gelten ausschließlich die kanonischen Analysis Guides.
 
 ## 1. Datenschutz- und Quellenrahmen
 
