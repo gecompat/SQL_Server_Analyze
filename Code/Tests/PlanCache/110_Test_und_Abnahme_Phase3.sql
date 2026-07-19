@@ -24,6 +24,8 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
     , @PrintMeldungen=0;
 
 IF ISJSON(@PlanCacheJson)<>1
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName')<>N'QueryStats'
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.resultName')<>N'QueryHashAnalysis'
    OR
    (
        SELECT COUNT_BIG(*)
