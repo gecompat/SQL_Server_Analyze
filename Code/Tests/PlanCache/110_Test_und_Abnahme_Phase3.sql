@@ -26,6 +26,8 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
 IF ISJSON(@PlanCacheJson)<>1
    OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName')<>N'QueryStats'
    OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.resultName')<>N'QueryHashAnalysis'
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode')<>'AVAILABLE'
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode')<>'AVAILABLE'
    OR
    (
        SELECT COUNT_BIG(*)
