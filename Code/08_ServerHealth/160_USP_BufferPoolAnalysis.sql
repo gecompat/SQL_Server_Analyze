@@ -188,15 +188,17 @@ BEGIN
             BEGIN TRY
                 INSERT [#BufferPoolAnalysis_BufferPool]
                 SELECT
-                      [database_id], (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [database_id]), COUNT_BIG(*)
+                      [b].[database_id], [d].[name], COUNT_BIG(*)
                     , CONVERT(decimal(19,2), COUNT_BIG(*) * 8.0 / 1024.0)
                     , SUM(CONVERT(bigint, CASE WHEN [is_modified] = 1 THEN 1 ELSE 0 END))
                     , CONVERT(decimal(19,2),
                       SUM(CONVERT(bigint, CASE WHEN [is_modified] = 1 THEN 1 ELSE 0 END)) * 8.0 / 1024.0)
                     , CONVERT(decimal(19,2), SUM(CONVERT(bigint, [free_space_in_bytes])) / 1048576.0)
                     , COUNT_BIG(DISTINCT [numa_node])
-                FROM [sys].[dm_os_buffer_descriptors] WITH (NOLOCK)
-                GROUP BY [database_id];
+                FROM [sys].[dm_os_buffer_descriptors] AS [b] WITH (NOLOCK)
+                LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+                  ON [d].[database_id]=[b].[database_id]
+                GROUP BY [b].[database_id],[d].[name];
             END TRY
             BEGIN CATCH
                 SELECT @IsPartial = 1, @StatusCode = 'AVAILABLE_LIMITED';
