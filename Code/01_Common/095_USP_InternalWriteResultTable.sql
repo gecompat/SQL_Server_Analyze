@@ -247,7 +247,7 @@ BEGIN
                               THEN QUOTENAME([s].[TypeName]) + N'(' + CONVERT(nvarchar(10), [s].[Precision]) + N')'
                           ELSE QUOTENAME([s].[TypeName])
                       END
-                    + CASE WHEN [s].[CollationName] IS NULL THEN N'' ELSE N' COLLATE ' + QUOTENAME([s].[CollationName]) END
+                    + CASE WHEN [s].[CollationName] IS NULL THEN N'' ELSE N' COLLATE ' + [s].[CollationName] END
                     + CASE WHEN [s].[IsNullable] = 1 THEN N' NULL' ELSE N' NOT NULL' END
                 FROM [#MonitorSourceSchema] AS [s]
                 ORDER BY [s].[ColumnId]
