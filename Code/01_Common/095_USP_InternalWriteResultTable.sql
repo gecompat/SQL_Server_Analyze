@@ -16,6 +16,11 @@ Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
                und permanente Tabellen sind bewusst nicht zugelassen.
 ===============================================================================
 */
+SET ANSI_NULLS ON;
+GO
+SET QUOTED_IDENTIFIER ON;
+GO
+
 CREATE OR ALTER PROCEDURE [monitor].[InternalWriteResultTable]
       @SourceTable  sysname
     , @ResultTable  sysname
