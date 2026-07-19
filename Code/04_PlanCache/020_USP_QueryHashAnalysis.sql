@@ -46,6 +46,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryHashAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
@@ -71,7 +72,7 @@ BEGIN
             @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,@Allowed bit=1,
             @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
 
-    CREATE TABLE [#Hash]
+    CREATE TABLE [#QueryHashAnalysis_Hash]
     (
         [QueryHash] binary(8) NOT NULL,[PlanVariantCount] int NOT NULL,[PlanHandleCount] int NOT NULL,[CompilationCount] bigint NOT NULL,
         [ExecutionCount] bigint NOT NULL,[TotalCpuUs] bigint NOT NULL,[TotalElapsedUs] bigint NOT NULL,[TotalReads] bigint NOT NULL,
@@ -98,7 +99,7 @@ BEGIN
                    SUM([qs].[total_elapsed_time]) AS [TotalElapsedUs],SUM([qs].[total_logical_reads]) AS [TotalReads],SUM([qs].[total_logical_writes]) AS [TotalWrites],
                    SUM([qs].[total_spills]) AS [TotalSpills],MAX([qs].[max_grant_kb]) AS [MaxGrantKb],MIN([qs].[creation_time]) AS [FirstCreationTime],
                    MAX([qs].[last_execution_time]) AS [LastExecutionTime]
-            FROM [sys].[dm_exec_query_stats] AS qs
+            FROM [sys].[dm_exec_query_stats] AS qs WITH (NOLOCK)
             WHERE [qs].[query_hash] IS NOT NULL AND (@QueryHash IS NULL OR [qs].[query_hash]=@QueryHash)
             GROUP BY [qs].[query_hash]
             HAVING SUM([qs].[execution_count])>=@MinExecutionCount AND COUNT(DISTINCT [qs].[query_plan_hash])>=@MinPlanVarianten
@@ -111,14 +112,14 @@ BEGIN
             FROM [G]
             WHERE @Sortierung IN('CPU_TOTAL','ELAPSED_TOTAL','READS_TOTAL','WRITES_TOTAL','EXECUTIONS','PLAN_VARIANTS','SPILLS_TOTAL')
         )
-        INSERT [#Hash]
+        INSERT [#QueryHashAnalysis_Hash]
         SELECT [r].[query_hash],[r].[PlanVariantCount],[r].[PlanHandleCount],[r].[CompilationCount],[r].[ExecutionCount],[r].[TotalCpuUs],[r].[TotalElapsedUs],
                [r].[TotalReads],[r].[TotalWrites],[r].[TotalSpills],[r].[MaxGrantKb],[r].[FirstCreationTime],[r].[LastExecutionTime],[s].[sql_handle],[s].[statement_start_offset],[s].[statement_end_offset]
         FROM [R] AS r
         OUTER APPLY
         (
             SELECT TOP(1) [qs].[sql_handle],[qs].[statement_start_offset],[qs].[statement_end_offset]
-            FROM [sys].[dm_exec_query_stats] AS qs WHERE [qs].[query_hash]=[r].[query_hash] ORDER BY [qs].[total_worker_time] DESC
+            FROM [sys].[dm_exec_query_stats] AS qs WITH (NOLOCK) WHERE [qs].[query_hash]=[r].[query_hash] ORDER BY [qs].[total_worker_time] DESC
         ) AS s
         OPTION(RECOMPILE,MAXDOP 1);
         SET @RowCount=@@ROWCOUNT;SET @Detail=N'Query-Hash-Aggregation erfolgreich.';
@@ -132,7 +133,7 @@ BEGIN
     SET @MonitorPrintMessage = FORMATMESSAGE(N'WARNUNG USP_QueryHashAnalysis: %s - %s', @StatusCode, COALESCE(@ErrorMessage,N''));
     RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
 END;
-    CREATE TABLE [#Output]
+    CREATE TABLE [#QueryHashAnalysis_Output]
     (
           [QueryHash] binary(8) NOT NULL
         , [PlanVariantCount] int NOT NULL
@@ -153,7 +154,7 @@ END;
         , [SampleStatementText] nvarchar(max) NULL
     );
 
-    INSERT [#Output]
+    INSERT [#QueryHashAnalysis_Output]
     SELECT [h].[QueryHash],[h].[PlanVariantCount],[h].[PlanHandleCount],[h].[CompilationCount],[h].[ExecutionCount],
            CONVERT(decimal(38,3),[h].[TotalCpuUs]/1000.0),CONVERT(decimal(38,3),[h].[TotalCpuUs]/NULLIF([h].[ExecutionCount],0)/1000.0),
            CONVERT(decimal(38,3),[h].[TotalElapsedUs]/1000.0),CONVERT(decimal(38,3),[h].[TotalElapsedUs]/NULLIF([h].[ExecutionCount],0)/1000.0),
@@ -163,7 +164,7 @@ END;
                 THEN [statementText].[StatementText]
                 ELSE LEFT([statementText].[StatementText], @MaxSqlTextZeichen)
            END
-    FROM [#Hash] AS [h]
+    FROM [#QueryHashAnalysis_Hash] AS [h]
     OUTER APPLY [sys].[dm_exec_sql_text]([h].[SampleSqlHandle]) AS [st]
     OUTER APPLY [monitor].[TVF_StatementText]
     (
@@ -177,7 +178,7 @@ END;
         SELECT N'USP_QueryHashAnalysis' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@RowCount [RowCount],
                @RequiredPermission [RequiredPermission],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
         IF @ResultSetArtNormalisiert='RAW'
-            SELECT * FROM [#Output]
+            SELECT * FROM [#QueryHashAnalysis_Output]
             ORDER BY CASE @Sortierung WHEN 'CPU_TOTAL' THEN [TotalCpuMs] WHEN 'ELAPSED_TOTAL' THEN [TotalElapsedMs] WHEN 'READS_TOTAL' THEN [TotalReads]
                 WHEN 'WRITES_TOTAL' THEN [TotalWrites] WHEN 'EXECUTIONS' THEN [ExecutionCount] WHEN 'PLAN_VARIANTS' THEN [PlanVariantCount]
                 WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC;
@@ -186,7 +187,7 @@ END;
                    CONCAT(CONVERT(varchar(40),CONVERT(decimal(19,2),[TotalCpuMs])),N' ms') AS [CPU gesamt],
                    CONCAT(CONVERT(varchar(40),CONVERT(decimal(19,2),[AvgCpuMs])),N' ms') AS [CPU Ø],
                    [TotalReads] AS [Logical Reads],[TotalSpills] AS [Spills],[LastExecutionTime] AS [letzte Ausführung],[QueryHash] AS [Query Hash SQL],[SampleStatementText] AS [Beispielstatement]
-            FROM [#Output]
+            FROM [#QueryHashAnalysis_Output]
             ORDER BY CASE @Sortierung WHEN 'CPU_TOTAL' THEN [TotalCpuMs] WHEN 'ELAPSED_TOTAL' THEN [TotalElapsedMs] WHEN 'READS_TOTAL' THEN [TotalReads]
                 WHEN 'WRITES_TOTAL' THEN [TotalWrites] WHEN 'EXECUTIONS' THEN [ExecutionCount] WHEN 'PLAN_VARIANTS' THEN [PlanVariantCount]
                 WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC;
@@ -194,13 +195,13 @@ END;
     IF @JsonErzeugen=1
     BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT N'QueryHashAnalysis' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@Sortierung [sortOrder],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-        DECLARE @DataJson nvarchar(max)=(SELECT * FROM [#Output] ORDER BY CASE @Sortierung WHEN 'CPU_TOTAL' THEN [TotalCpuMs] WHEN 'ELAPSED_TOTAL' THEN [TotalElapsedMs] WHEN 'READS_TOTAL' THEN [TotalReads] WHEN 'WRITES_TOTAL' THEN [TotalWrites] WHEN 'EXECUTIONS' THEN [ExecutionCount] WHEN 'PLAN_VARIANTS' THEN [PlanVariantCount] WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @DataJson nvarchar(max)=(SELECT * FROM [#QueryHashAnalysis_Output] ORDER BY CASE @Sortierung WHEN 'CPU_TOTAL' THEN [TotalCpuMs] WHEN 'ELAPSED_TOTAL' THEN [TotalElapsedMs] WHEN 'READS_TOTAL' THEN [TotalReads] WHEN 'WRITES_TOTAL' THEN [TotalWrites] WHEN 'EXECUTIONS' THEN [ExecutionCount] WHEN 'PLAN_VARIANTS' THEN [PlanVariantCount] WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"queryHashes":',COALESCE(@DataJson,N'[]'),N',"warnings":[]}');
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Output'
+              @SourceTable = N'#QueryHashAnalysis_Output'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

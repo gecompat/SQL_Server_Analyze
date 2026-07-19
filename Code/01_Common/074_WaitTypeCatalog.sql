@@ -13,7 +13,13 @@ Hinweis      : FRAMEWORK_CURATED kennzeichnet die belegte Namens- und Textprüfu
                optionale HelpUrl verlinkt.
 ===============================================================================
 */
-IF OBJECT_ID(N'[monitor].[WaitTypeCatalog]',N'U') IS NULL
+IF NOT EXISTS
+(
+ SELECT 1
+ FROM [sys].[tables] AS [t] WITH (NOLOCK)
+ JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id]
+ WHERE [s].[name]=N'monitor' AND [t].[name]=N'WaitTypeCatalog'
+)
 BEGIN
  CREATE TABLE [monitor].[WaitTypeCatalog]
  (
@@ -29,8 +35,8 @@ BEGIN
  );
 END;
 GO
-IF COL_LENGTH(N'[monitor].[WaitTypeCatalog]',N'DescriptionSource') IS NULL ALTER TABLE [monitor].[WaitTypeCatalog] ADD [DescriptionSource] varchar(40) NULL;
-IF COL_LENGTH(N'[monitor].[WaitTypeCatalog]',N'DescriptionQuality') IS NULL ALTER TABLE [monitor].[WaitTypeCatalog] ADD [DescriptionQuality] varchar(40) NULL;
-IF COL_LENGTH(N'[monitor].[WaitTypeCatalog]',N'SourceReference') IS NULL ALTER TABLE [monitor].[WaitTypeCatalog] ADD [SourceReference] nvarchar(500) NULL;
+IF NOT EXISTS(SELECT 1 FROM [sys].[columns] AS [c] WITH (NOLOCK) JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id]=[c].[object_id] JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'monitor' AND [t].[name]=N'WaitTypeCatalog' AND [c].[name]=N'DescriptionSource') ALTER TABLE [monitor].[WaitTypeCatalog] ADD [DescriptionSource] varchar(40) NULL;
+IF NOT EXISTS(SELECT 1 FROM [sys].[columns] AS [c] WITH (NOLOCK) JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id]=[c].[object_id] JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'monitor' AND [t].[name]=N'WaitTypeCatalog' AND [c].[name]=N'DescriptionQuality') ALTER TABLE [monitor].[WaitTypeCatalog] ADD [DescriptionQuality] varchar(40) NULL;
+IF NOT EXISTS(SELECT 1 FROM [sys].[columns] AS [c] WITH (NOLOCK) JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id]=[c].[object_id] JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'monitor' AND [t].[name]=N'WaitTypeCatalog' AND [c].[name]=N'SourceReference') ALTER TABLE [monitor].[WaitTypeCatalog] ADD [SourceReference] nvarchar(500) NULL;
 GO
 GO

@@ -89,18 +89,18 @@ BEGIN
         SELECT @DatabaseListCount=COUNT(*),@DatabaseName=MIN([NameValue]) FROM [monitor].[TVF_ParseSqlNameList](@DatabaseNames) WHERE [IsValid]=1;
     SET @CrossDatabaseRequestedInternal=CONVERT(bit,CASE WHEN @DatabaseNames IS NULL OR @DatabaseNamePattern IS NOT NULL OR @DatabaseListCount>1 THEN 1 ELSE 0 END);
     SELECT @DatenbankNameLike=CASE WHEN [PatternMode]='LIKE' THEN [PatternValue] END FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
-    CREATE TABLE [#NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
-    CREATE TABLE [#DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
+    CREATE TABLE [#Columnstore_NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+    CREATE TABLE [#Columnstore_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
-    EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=NULL,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT;
-    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+    EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=NULL,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#Columnstore_NameFilters';
+    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#Columnstore_DatabaseCandidates';
     DECLARE @SchemaPredicateS nvarchar(max),@SchemaPredicateSch nvarchar(max),@ObjectPredicateO nvarchar(max),@FullObjectPredicateSO nvarchar(max),@IndexPredicateI nvarchar(max),@StatisticsPredicateSt nvarchar(max);
-    SET @SchemaPredicateS=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @SchemaPredicateS=N' AND (NOT EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     SET @SchemaPredicateSch=REPLACE(@SchemaPredicateS,N'[s].[name]',N'[sch].[name]');
-    SET @ObjectPredicateO=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
-    SET @FullObjectPredicateSO=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDbName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
-    SET @IndexPredicateI=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''INDEX'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''INDEX'' AND [f].[NameValue]=[i].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
-    SET @StatisticsPredicateSt=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''STATISTICS'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''STATISTICS'' AND [f].[NameValue]=[st].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @ObjectPredicateO=N' AND (NOT EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @FullObjectPredicateSO=N' AND (NOT EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDbName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @IndexPredicateI=N' AND (NOT EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] WHERE [FilterType]=''INDEX'') OR EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] [f] WHERE [f].[FilterType]=''INDEX'' AND [f].[NameValue]=[i].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @StatisticsPredicateSt=N' AND (NOT EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] WHERE [FilterType]=''STATISTICS'') OR EXISTS(SELECT 1 FROM [#Columnstore_NameFilters] [f] WHERE [f].[FilterType]=''STATISTICS'' AND [f].[NameValue]=[st].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     IF @SchemaPatternMode='LIKE' BEGIN SET @SchemaPredicateS+=N' AND [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';SET @SchemaPredicateSch+=N' AND [sch].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';END;
     IF @SchemaPatternMode IN('REGEX','REGEXI') BEGIN SET @SchemaPredicateS+=N' AND REGEXP_LIKE([s].[name],N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''','''+@SchemaRegexFlags+N''')';SET @SchemaPredicateSch+=N' AND REGEXP_LIKE([sch].[name],N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''','''+@SchemaRegexFlags+N''')';END;
     IF @ObjectPatternMode='LIKE' SET @ObjectPredicateO+=N' AND [o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@ObjectPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
@@ -137,7 +137,7 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @Detail nvarchar(2000) = NULL;
 
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#Columnstore_DatabaseStatus]
     (
           [DatabaseName]       sysname        NULL
         , [StatusCode]         varchar(40)    NOT NULL
@@ -161,7 +161,7 @@ IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
 
     IF @OverallStatus <> 'AVAILABLE'
     BEGIN
-        INSERT [#DatabaseStatus]([DatabaseName], [StatusCode], [IsPartial], [RowCount], [RequiredPermission], [ErrorNumber], [ErrorMessage], [Detail])
+        INSERT [#Columnstore_DatabaseStatus]([DatabaseName], [StatusCode], [IsPartial], [RowCount], [RequiredPermission], [ErrorNumber], [ErrorMessage], [Detail])
         VALUES(@DatabaseName, @OverallStatus, 1, 0, NULL, NULL, @ErrorMessage, N'Keine Datenbankanalyse ausgeführt.');
         SET @IsPartial = 1;
     END
@@ -174,7 +174,7 @@ IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
  IF @AnalyseModus='VOLL' SELECT @CatalogAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='CATALOG_DEEP';
  DECLARE @ColumnstoreDeepAllowed bit=1;
  IF @MitPhysicalStats=1 OR @MitSegmenten=1 OR @MitDictionaries=1 SELECT @ColumnstoreDeepAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='COLUMNSTORE_DEEP';
- CREATE TABLE [#Result]
+ CREATE TABLE [#Columnstore_Result]
  (
   [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname NULL,[IndexTypeDesc] nvarchar(60) NULL,
   [PartitionNumber] int NOT NULL,[RowGroupId] int NOT NULL,[StateDesc] nvarchar(60) NULL,[TotalRows] bigint NULL,[DeletedRows] bigint NULL,[ActiveRows] bigint NULL,
@@ -182,45 +182,45 @@ IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
   [TrimReasonDesc] nvarchar(60) NULL,[TransitionToCompressedStateDesc] nvarchar(60) NULL,[HasVertipaqOptimization] bit NULL,[Generation] bigint NULL,[CreatedTime] datetime2 NULL,[ClosedTime] datetime2 NULL,
   [Assessment] varchar(60) NOT NULL
  );
- CREATE TABLE [#Physical]
+ CREATE TABLE [#Columnstore_Physical]
  (
   [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname NULL,[IndexTypeDesc] nvarchar(60) NULL,
   [PartitionNumber] int NOT NULL,[RowGroupId] int NOT NULL,[StateDesc] nvarchar(60) NULL,[TotalRows] bigint NULL,[DeletedRows] bigint NULL,[ActiveRows] bigint NULL,
   [DeletedPercent] decimal(9,4) NULL,[SizeMb] decimal(19,2) NULL,[DeltaStoreHobtId] bigint NULL,[TrimReasonDesc] nvarchar(60) NULL,
   [TransitionToCompressedStateDesc] nvarchar(60) NULL,[HasVertipaqOptimization] bit NULL,[Generation] bigint NULL,[CreatedTime] datetime2 NULL,[ClosedTime] datetime2 NULL,[Assessment] varchar(60) NOT NULL
  );
- CREATE TABLE [#Segments]
+ CREATE TABLE [#Columnstore_Segments]
  (
   [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[IndexId] int NOT NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,[ColumnName] sysname NULL,
   [RowGroupId] int NOT NULL,[EncodingType] int NULL,[EncodingTypeDesc] varchar(40) NULL,[RowCount] int NULL,[HasNulls] int NULL,[PrimaryDictionaryId] int NULL,[SecondaryDictionaryId] int NULL,[OnDiskSizeMb] decimal(19,4) NULL
  );
- CREATE TABLE [#Dictionaries]
+ CREATE TABLE [#Columnstore_Dictionaries]
  (
   [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[IndexId] int NOT NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,[ColumnName] sysname NULL,
   [DictionaryId] int NOT NULL,[DictionaryType] int NULL,[DictionaryTypeDesc] varchar(40) NULL,[EntryCount] bigint NULL,[OnDiskSizeMb] decimal(19,4) NULL
  );
  IF @OverallStatus='AVAILABLE' AND (@MinDeletedPercent<0 OR @MinDeletedPercent>100)
- BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'@MinDeletedPercent muss zwischen 0 und 100 liegen.'; INSERT [#DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
+ BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'@MinDeletedPercent muss zwischen 0 und 100 liegen.'; INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
  ELSE IF @OverallStatus='AVAILABLE' AND @AnalyseModus NOT IN ('GEZIELT','VOLL')
- BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'@AnalyseModus muss GEZIELT oder VOLL sein.'; INSERT [#DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
- ELSE IF @OverallStatus='AVAILABLE' AND @AnalyseModus='GEZIELT' AND NOT EXISTS(SELECT 1 FROM [#NameFilters]) AND @SchemaNamePattern IS NULL AND @ObjectNamePattern IS NULL
- BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'GEZIELT erfordert eine exakte Namensliste, @FullObjectNames oder ein Schema-/Objekt-Pattern. Für den vollständigen Lauf @AnalyseModus=''VOLL'' verwenden.'; INSERT [#DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
+ BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'@AnalyseModus muss GEZIELT oder VOLL sein.'; INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
+ ELSE IF @OverallStatus='AVAILABLE' AND @AnalyseModus='GEZIELT' AND NOT EXISTS(SELECT 1 FROM [#Columnstore_NameFilters]) AND @SchemaNamePattern IS NULL AND @ObjectNamePattern IS NULL
+ BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'GEZIELT erfordert eine exakte Namensliste, @FullObjectNames oder ein Schema-/Objekt-Pattern. Für den vollständigen Lauf @AnalyseModus=''VOLL'' verwenden.'; INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
  ELSE IF @OverallStatus='AVAILABLE' AND @AnalyseModus='VOLL' AND @CatalogAllowed=0
- BEGIN SET @OverallStatus='DENIED_GROUP'; SET @ErrorMessage=N'CATALOG_DEEP ist für die vollständige Columnstore-Basisanalyse nicht freigegeben.'; INSERT [#DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
+ BEGIN SET @OverallStatus='DENIED_GROUP'; SET @ErrorMessage=N'CATALOG_DEEP ist für die vollständige Columnstore-Basisanalyse nicht freigegeben.'; INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
  ELSE IF @OverallStatus='AVAILABLE' AND (@MitPhysicalStats=1 OR @MitSegmenten=1 OR @MitDictionaries=1) AND @ColumnstoreDeepAllowed=0
- BEGIN SET @OverallStatus='DENIED_GROUP'; SET @ErrorMessage=N'COLUMNSTORE_DEEP ist für die angeforderte Vertiefung nicht freigegeben.'; INSERT [#DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
+ BEGIN SET @OverallStatus='DENIED_GROUP'; SET @ErrorMessage=N'COLUMNSTORE_DEEP ist für die angeforderte Vertiefung nicht freigegeben.'; INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
  ELSE IF @OverallStatus='AVAILABLE'
  BEGIN
   DECLARE @DbId int,@DbName sysname,@Sql nvarchar(max),@Rows bigint;
   DECLARE dbcur CURSOR LOCAL FAST_FORWARD FOR
    SELECT [DatabaseId],[DatabaseName]
-   FROM [#DatabaseCandidates];
+   FROM [#Columnstore_DatabaseCandidates];
   OPEN dbcur; FETCH NEXT FROM dbcur INTO @DbId,@DbName;
   WHILE @@FETCH_STATUS=0
   BEGIN
    BEGIN TRY
     SET @Sql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs) + N'; USE ' + QUOTENAME(@DbName) + N';
-INSERT #Result
+INSERT #Columnstore_Result
 SELECT TOP (@pMaxRows) @pDbName,[s].[name],[o].[name],[o].[object_id],[i].[index_id],[i].[name],[i].[type_desc],[rg].[partition_number],[rg].[row_group_id],[rg].[state_description],
  [rg].[total_rows],[rg].[deleted_rows],[rg].[total_rows]-COALESCE([rg].[deleted_rows],0),CONVERT(decimal(9,4),[rg].[deleted_rows]*100.0/NULLIF([rg].[total_rows],0)),
  CONVERT(decimal(9,4),([rg].[total_rows]-COALESCE([rg].[deleted_rows],0))*100.0/1048576.0),CONVERT(decimal(19,2),[rg].[size_in_bytes]/1048576.0),[rg].[delta_store_hobt_id],
@@ -238,25 +238,25 @@ ORDER BY COALESCE([rg].[deleted_rows]*100.0/NULLIF([rg].[total_rows],0),0) DESC,
 OPTION (MAXDOP 1,RECOMPILE);';
     EXEC [sys].[sp_executesql] @Sql,N'@pDbName sysname,@pMaxRows bigint,@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256),@pMinDeleted decimal(9,2),@pOnlyProblems bit',
       @pDbName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike,@pMinDeleted=@MinDeletedPercent,@pOnlyProblems=@NurProblematisch;
-    SELECT @Rows=COUNT_BIG(*) FROM [#Result] WHERE [DatabaseName]=@DbName;
-    INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'VIEW DEFINITION / Metadata Visibility',NULL,NULL,N'Quelle COLUMNSTORE_CATALOG erfolgreich gelesen.');
+    SELECT @Rows=COUNT_BIG(*) FROM [#Columnstore_Result] WHERE [DatabaseName]=@DbName;
+    INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'VIEW DEFINITION / Metadata Visibility',NULL,NULL,N'Quelle COLUMNSTORE_CATALOG erfolgreich gelesen.');
    END TRY
    BEGIN CATCH
-    INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'VIEW DEFINITION / Metadata Visibility',ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_CATALOG fehlgeschlagen; optionale Teilquellen werden dennoch versucht.');
+    INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'VIEW DEFINITION / Metadata Visibility',ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_CATALOG fehlgeschlagen; optionale Teilquellen werden dennoch versucht.');
    END CATCH;
 
    IF @MitPhysicalStats=1
    BEGIN
     BEGIN TRY
      SET @Sql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs) + N'; USE ' + QUOTENAME(@DbName) + N';
-INSERT #Physical
+INSERT #Columnstore_Physical
 SELECT TOP (@pMaxRows) @pDbName,[s].[name],[o].[name],[o].[object_id],[i].[index_id],[i].[name],[i].[type_desc],[rg].[partition_number],[rg].[row_group_id],[rg].[state_desc],
  [rg].[total_rows],[rg].[deleted_rows],[rg].[total_rows]-COALESCE([rg].[deleted_rows],0),CONVERT(decimal(9,4),[rg].[deleted_rows]*100.0/NULLIF([rg].[total_rows],0)),
  CONVERT(decimal(19,2),[rg].[size_in_bytes]/1048576.0),[rg].[delta_store_hobt_id],[rg].[trim_reason_desc],[rg].[transition_to_compressed_state_desc],
  [rg].[has_vertipaq_optimization],[rg].[generation],[rg].[created_time],[rg].[closed_time],
  CASE WHEN [rg].[state_desc]=''TOMBSTONE'' THEN ''TOMBSTONE'' WHEN [rg].[state_desc]=''CLOSED'' THEN ''CLOSED_WAITING_FOR_TUPLE_MOVER'' WHEN [rg].[state_desc]=''OPEN'' THEN ''OPEN_DELTA_STORE''
       WHEN [rg].[deleted_rows]*100.0/NULLIF([rg].[total_rows],0)>=20 THEN ''HIGH_DELETED_ROWS'' WHEN [rg].[total_rows]<102400 AND [rg].[state_desc]=''COMPRESSED'' THEN ''SMALL_COMPRESSED_ROWGROUP'' ELSE ''NORMAL'' END
-FROM sys.dm_db_column_store_row_group_physical_stats AS [rg]
+FROM sys.dm_db_column_store_row_group_physical_stats AS [rg] WITH (NOLOCK)
 JOIN sys.objects AS [o] WITH (NOLOCK) ON [o].[object_id]=[rg].[object_id]
 JOIN sys.schemas AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
 JOIN sys.indexes AS [i] WITH (NOLOCK) ON [i].[object_id]=[rg].[object_id] AND [i].[index_id]=[rg].[index_id]
@@ -267,11 +267,11 @@ ORDER BY COALESCE([rg].[deleted_rows]*100.0/NULLIF([rg].[total_rows],0),0) DESC,
 OPTION (MAXDOP 1,RECOMPILE);';
      EXEC [sys].[sp_executesql] @Sql,N'@pDbName sysname,@pMaxRows bigint,@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256),@pMinDeleted decimal(9,2),@pOnlyProblems bit',
       @pDbName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike,@pMinDeleted=@MinDeletedPercent,@pOnlyProblems=@NurProblematisch;
-     SELECT @Rows=COUNT_BIG(*) FROM [#Physical] WHERE [DatabaseName]=@DbName;
-     INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW DATABASE PERFORMANCE STATE' ELSE N'VIEW DATABASE STATE plus CONTROL/geeignete Objektrechte' END,NULL,NULL,N'Quelle COLUMNSTORE_PHYSICAL erfolgreich gelesen.');
+     SELECT @Rows=COUNT_BIG(*) FROM [#Columnstore_Physical] WHERE [DatabaseName]=@DbName;
+     INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW DATABASE PERFORMANCE STATE' ELSE N'VIEW DATABASE STATE plus CONTROL/geeignete Objektrechte' END,NULL,NULL,N'Quelle COLUMNSTORE_PHYSICAL erfolgreich gelesen.');
     END TRY
     BEGIN CATCH
-     INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW DATABASE PERFORMANCE STATE' ELSE N'VIEW DATABASE STATE plus CONTROL/geeignete Objektrechte' END,ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_PHYSICAL fehlgeschlagen; Katalogergebnis bleibt erhalten.');
+     INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW DATABASE PERFORMANCE STATE' ELSE N'VIEW DATABASE STATE plus CONTROL/geeignete Objektrechte' END,ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_PHYSICAL fehlgeschlagen; Katalogergebnis bleibt erhalten.');
     END CATCH;
    END;
 
@@ -279,7 +279,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
    BEGIN
     BEGIN TRY
      SET @Sql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs) + N'; USE ' + QUOTENAME(@DbName) + N';
-INSERT #Segments
+INSERT #Columnstore_Segments
 SELECT TOP (@pMaxRows) @pDbName,[sch].[name],[o].[name],[i].[index_id],[p].[partition_number],[sg].[column_id],[c].[name],[sg].[segment_id],[sg].[encoding_type],
  CASE [sg].[encoding_type] WHEN 1 THEN ''VALUE_BASED'' WHEN 2 THEN ''VALUE_HASH_BASED'' WHEN 3 THEN ''STRING_HASH_BASED'' WHEN 4 THEN ''STORE_BY_VALUE_BASED'' WHEN 5 THEN ''STRING_STORE_BY_VALUE_BASED'' ELSE ''UNKNOWN'' END,
  [sg].[row_count],[sg].[has_nulls],[sg].[primary_dictionary_id],[sg].[secondary_dictionary_id],CONVERT(decimal(19,4),[sg].[on_disk_size]/1048576.0)
@@ -292,11 +292,11 @@ LEFT JOIN sys.columns AS [c] WITH (NOLOCK) ON [c].[object_id]=[p].[object_id] AN
 WHERE 1=1'+@SchemaPredicateSch+@ObjectPredicateO+REPLACE(@FullObjectPredicateSO,N'[s].[name]',N'[sch].[name]')+N'
 ORDER BY [sg].[on_disk_size] DESC OPTION (MAXDOP 1,RECOMPILE);';
      EXEC [sys].[sp_executesql] @Sql,N'@pDbName sysname,@pMaxRows bigint,@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256)',@pDbName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike;
-     SELECT @Rows=COUNT_BIG(*) FROM [#Segments] WHERE [DatabaseName]=@DbName;
-     INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'VIEW DEFINITION; Detailspalten teilweise SELECT-abhängig',NULL,NULL,N'Quelle COLUMNSTORE_SEGMENTS erfolgreich gelesen.');
+     SELECT @Rows=COUNT_BIG(*) FROM [#Columnstore_Segments] WHERE [DatabaseName]=@DbName;
+     INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'VIEW DEFINITION; Detailspalten teilweise SELECT-abhängig',NULL,NULL,N'Quelle COLUMNSTORE_SEGMENTS erfolgreich gelesen.');
     END TRY
     BEGIN CATCH
-     INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'VIEW DEFINITION',ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_SEGMENTS fehlgeschlagen; andere Teilquellen bleiben verwendbar.');
+     INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'VIEW DEFINITION',ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_SEGMENTS fehlgeschlagen; andere Teilquellen bleiben verwendbar.');
     END CATCH;
    END;
 
@@ -304,7 +304,7 @@ ORDER BY [sg].[on_disk_size] DESC OPTION (MAXDOP 1,RECOMPILE);';
    BEGIN
     BEGIN TRY
      SET @Sql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs) + N'; USE ' + QUOTENAME(@DbName) + N';
-INSERT #Dictionaries
+INSERT #Columnstore_Dictionaries
 SELECT TOP (@pMaxRows) @pDbName,[sch].[name],[o].[name],[i].[index_id],[p].[partition_number],[d].[column_id],[c].[name],[d].[dictionary_id],[d].[type],
  CASE [d].[type] WHEN 1 THEN ''INT_HASH'' WHEN 3 THEN ''STRING_HASH'' WHEN 4 THEN ''FLOAT_HASH'' ELSE ''UNKNOWN'' END,
  [d].[entry_count],CONVERT(decimal(19,4),[d].[on_disk_size]/1048576.0)
@@ -317,33 +317,33 @@ LEFT JOIN sys.columns AS [c] WITH (NOLOCK) ON [c].[object_id]=[p].[object_id] AN
 WHERE 1=1'+@SchemaPredicateSch+@ObjectPredicateO+REPLACE(@FullObjectPredicateSO,N'[s].[name]',N'[sch].[name]')+N'
 ORDER BY [d].[on_disk_size] DESC OPTION (MAXDOP 1,RECOMPILE);';
      EXEC [sys].[sp_executesql] @Sql,N'@pDbName sysname,@pMaxRows bigint,@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256)',@pDbName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike;
-     SELECT @Rows=COUNT_BIG(*) FROM [#Dictionaries] WHERE [DatabaseName]=@DbName;
-     INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'VIEW DEFINITION; EntryCount zusätzlich SELECT-abhängig',NULL,NULL,N'Quelle COLUMNSTORE_DICTIONARIES erfolgreich gelesen.');
+     SELECT @Rows=COUNT_BIG(*) FROM [#Columnstore_Dictionaries] WHERE [DatabaseName]=@DbName;
+     INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'VIEW DEFINITION; EntryCount zusätzlich SELECT-abhängig',NULL,NULL,N'Quelle COLUMNSTORE_DICTIONARIES erfolgreich gelesen.');
     END TRY
     BEGIN CATCH
-     INSERT [#DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'VIEW DEFINITION',ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_DICTIONARIES fehlgeschlagen; andere Teilquellen bleiben verwendbar.');
+     INSERT [#Columnstore_DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'VIEW DEFINITION',ERROR_NUMBER(),ERROR_MESSAGE(),N'Quelle COLUMNSTORE_DICTIONARIES fehlgeschlagen; andere Teilquellen bleiben verwendbar.');
     END CATCH;
    END;
 
    FETCH NEXT FROM dbcur INTO @DbId,@DbName;
   END;
   CLOSE dbcur; DEALLOCATE dbcur;
-  IF NOT EXISTS(SELECT 1 FROM [#DatabaseStatus])
-   INSERT [#DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
+  IF NOT EXISTS(SELECT 1 FROM [#Columnstore_DatabaseStatus])
+   INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
  END;
 
     
 
-    SELECT @TotalRows=(SELECT COUNT_BIG(*) FROM [#Result])+(SELECT COUNT_BIG(*) FROM [#Physical])+(SELECT COUNT_BIG(*) FROM [#Segments])+(SELECT COUNT_BIG(*) FROM [#Dictionaries]);
+    SELECT @TotalRows=(SELECT COUNT_BIG(*) FROM [#Columnstore_Result])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Physical])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Segments])+(SELECT COUNT_BIG(*) FROM [#Columnstore_Dictionaries]);
 
     IF @OverallStatus = 'AVAILABLE'
     BEGIN
-        IF EXISTS (SELECT 1 FROM [#DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
+        IF EXISTS (SELECT 1 FROM [#Columnstore_DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
         BEGIN
-            SET @OverallStatus = CASE WHEN @TotalRows > 0 THEN 'PARTIAL' ELSE (SELECT TOP (1) [StatusCode] FROM [#DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE') ORDER BY [DatabaseName]) END;
+            SET @OverallStatus = CASE WHEN @TotalRows > 0 THEN 'PARTIAL' ELSE (SELECT TOP (1) [StatusCode] FROM [#Columnstore_DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE') ORDER BY [DatabaseName]) END;
             SET @IsPartial = 1;
         END
-        ELSE IF EXISTS (SELECT 1 FROM [#DatabaseStatus] WHERE [StatusCode] IN ('AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
+        ELSE IF EXISTS (SELECT 1 FROM [#Columnstore_DatabaseStatus] WHERE [StatusCode] IN ('AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
         BEGIN
             SET @OverallStatus = CASE WHEN @TotalRows > 0 THEN 'AVAILABLE_LIMITED' ELSE 'SKIPPED' END;
             SET @IsPartial = 1;
@@ -358,25 +358,25 @@ END;
 
     IF @ResultSetArtNormalisiert<>'NONE' BEGIN
         SELECT @ModuleName [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@OverallStatus [StatusCode],@IsPartial [IsPartial],@TotalRows [RowCount],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
-        SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Result] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Result] [r] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId];
-        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Physical] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Physical] [r] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId];
-        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Segments] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Segments] [r] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId];
-        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Dictionaries] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Dictionaries] [r] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId];
+        SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#Columnstore_DatabaseStatus] ORDER BY [DatabaseName];
+        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Result] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Result] [r] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId];
+        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Physical] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Physical] [r] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId];
+        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Segments] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Segments] [r] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId];
+        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Columnstore_Dictionaries] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId]; ELSE SELECT N'Columnstore Rowgroup' [Ergebnis],[r].* FROM [#Columnstore_Dictionaries] [r] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId];
     END;
     IF @JsonErzeugen=1 BEGIN
         DECLARE @JsonMeta nvarchar(max)=(SELECT @ModuleName [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@OverallStatus [statusCode],@IsPartial [isPartial],@TotalRows [rowCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-        DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Result] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JsonData2 nvarchar(max)=(SELECT * FROM [#Physical] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JsonData3 nvarchar(max)=(SELECT * FROM [#Segments] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JsonData4 nvarchar(max)=(SELECT * FROM [#Dictionaries] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#Columnstore_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Columnstore_Result] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonData2 nvarchar(max)=(SELECT * FROM [#Columnstore_Physical] ORDER BY [DeletedPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonData3 nvarchar(max)=(SELECT * FROM [#Columnstore_Segments] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[RowGroupId],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonData4 nvarchar(max)=(SELECT * FROM [#Columnstore_Dictionaries] ORDER BY [OnDiskSizeMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber],[ColumnId],[DictionaryId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"rowgroups":',COALESCE(@JsonData1,N'[]'),N',"physicalStats":',COALESCE(@JsonData2,N'[]'),N',"segments":',COALESCE(@JsonData3,N'[]'),N',"dictionaries":',COALESCE(@JsonData4,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#Columnstore_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

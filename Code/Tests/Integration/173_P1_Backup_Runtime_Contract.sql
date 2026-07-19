@@ -17,9 +17,9 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit;
-DECLARE @DatabaseName sysname=DB_NAME();
+DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @OriginalRecovery nvarchar(60) =
-       (SELECT [recovery_model_desc] FROM [sys].[databases] WHERE [name]=@DatabaseName);
+       (SELECT [recovery_model_desc] FROM [sys].[databases] WITH (NOLOCK) WHERE [name]=@DatabaseName);
 DECLARE @DatabaseQuoted nvarchar(258)=QUOTENAME(@DatabaseName);
 DECLARE @BackupDevice nvarchar(128)=N'SQL_Server_Analyze_P1_Backup_Runtime.bak';
 DECLARE @BackupSql nvarchar(max);

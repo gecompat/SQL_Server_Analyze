@@ -55,6 +55,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentRequests]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @ModuleName sysname = N'USP_CurrentRequests';
@@ -117,19 +118,19 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#SessionIdFilter]
+    CREATE TABLE [#CurrentRequests_SessionIdFilter]
     (
         [SessionId] smallint NOT NULL PRIMARY KEY
     );
 
-    CREATE TABLE [#StringFilter]
+    CREATE TABLE [#CurrentRequests_StringFilter]
     (
           [FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StringValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([FilterType], [StringValue])
     );
 
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#CurrentRequests_Warnings]
     (
           [WarningId] int IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [SessionId] smallint NULL
@@ -174,7 +175,7 @@ BEGIN
         END;
         ELSE
         BEGIN
-            INSERT [#SessionIdFilter] ([SessionId])
+            INSERT [#CurrentRequests_SessionIdFilter] ([SessionId])
             SELECT CONVERT(smallint, [NumberValue])
             FROM [monitor].[TVF_ParseBigintList](@SessionIds)
             GROUP BY [NumberValue];
@@ -216,25 +217,25 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN
-        INSERT [#StringFilter] ([FilterType], [StringValue])
+        INSERT [#CurrentRequests_StringFilter] ([FilterType], [StringValue])
         SELECT 'LOGIN', [StringValue]
         FROM [monitor].[TVF_ParseStringList](@LoginNames)
         WHERE [IsValid] = 1
         GROUP BY [StringValue];
 
-        INSERT [#StringFilter] ([FilterType], [StringValue])
+        INSERT [#CurrentRequests_StringFilter] ([FilterType], [StringValue])
         SELECT 'HOST', [StringValue]
         FROM [monitor].[TVF_ParseStringList](@HostNames)
         WHERE [IsValid] = 1
         GROUP BY [StringValue];
 
-        INSERT [#StringFilter] ([FilterType], [StringValue])
+        INSERT [#CurrentRequests_StringFilter] ([FilterType], [StringValue])
         SELECT 'PROGRAM', [StringValue]
         FROM [monitor].[TVF_ParseStringList](@ProgramNames)
         WHERE [IsValid] = 1
         GROUP BY [StringValue];
 
-        INSERT [#StringFilter] ([FilterType], [StringValue])
+        INSERT [#CurrentRequests_StringFilter] ([FilterType], [StringValue])
         SELECT 'DATABASE', [NameValue]
         FROM [monitor].[TVF_ParseSqlNameList](@DatabaseNames)
         WHERE [IsValid] = 1
@@ -295,7 +296,7 @@ BEGIN
         SET @ErrorMessage = COALESCE(@ErrorMessage, N'Ungültige Liste, Kombination, Pattern- oder Steuerangabe.');
     END;
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#CurrentRequests_Result]
     (
           [SessionId] smallint NOT NULL
         , [RequestId] int NOT NULL
@@ -394,7 +395,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#Result]
+        INSERT [#CurrentRequests_Result]
         (
               [SessionId], [RequestId], [RequestStatus], [Command]
             , [DatabaseId], [DatabaseName], [LoginName], [OriginalLoginName]
@@ -515,12 +516,12 @@ BEGIN
             , NULL
             , CONVERT(bit, 0)
             , NULL
-        FROM [sys].[dm_exec_requests] AS [r]
-        JOIN [sys].[dm_exec_sessions] AS [s]
+        FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+        JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [r].[session_id]
-        LEFT JOIN [sys].[dm_exec_connections] AS [c]
+        LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK)
           ON [c].[session_id] = [r].[session_id]
-        LEFT JOIN [sys].[databases] AS [d] WITH (READUNCOMMITTED)
+        LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
           ON [d].[database_id] = [r].[database_id]
         OUTER APPLY
         (
@@ -529,15 +530,15 @@ BEGIN
                 , [MaxTaskWaitMs] = MAX(CONVERT(bigint, [w].[wait_duration_ms]))
                 , [TaskWaitTypes] = STRING_AGG(CONVERT(nvarchar(max), [w].[wait_type]), N',')
                     WITHIN GROUP (ORDER BY [w].[wait_type])
-            FROM [sys].[dm_os_waiting_tasks] AS [w]
+            FROM [sys].[dm_os_waiting_tasks] AS [w] WITH (NOLOCK)
             WHERE [w].[session_id] = [r].[session_id]
         ) AS [wt]
-        LEFT JOIN [sys].[dm_exec_query_memory_grants] AS [mg]
+        LEFT JOIN [sys].[dm_exec_query_memory_grants] AS [mg] WITH (NOLOCK)
           ON [mg].[session_id] = [r].[session_id]
          AND [mg].[request_id] = [r].[request_id]
-        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [wg]
+        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [wg] WITH (NOLOCK)
           ON [wg].[group_id] = [r].[group_id]
-        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp]
+        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp] WITH (NOLOCK)
           ON [rp].[pool_id] = [wg].[pool_id]
         OUTER APPLY [sys].[dm_exec_sql_text]
         (
@@ -550,9 +551,9 @@ BEGIN
             , [r].[statement_end_offset]
         ) AS [st]
         WHERE
-              (NOT EXISTS (SELECT 1 FROM [#SessionIdFilter])
+              (NOT EXISTS (SELECT 1 FROM [#CurrentRequests_SessionIdFilter])
                OR EXISTS
-                  (SELECT 1 FROM [#SessionIdFilter] AS [f] WHERE [f].[SessionId] = [r].[session_id]))
+                  (SELECT 1 FROM [#CurrentRequests_SessionIdFilter] AS [f] WHERE [f].[SessionId] = [r].[session_id]))
           AND (@AktuelleSessionEinbeziehen = 1 OR [r].[session_id] <> @@SPID)
           AND (@SystemSessionsEinbeziehen = 1 OR [s].[is_user_process] = 1)
           AND
@@ -568,44 +569,44 @@ BEGIN
           AND (@MinLogicalReads IS NULL OR [r].[logical_reads] >= @MinLogicalReads)
           AND
           (
-              NOT EXISTS (SELECT 1 FROM [#StringFilter] WHERE [FilterType] = 'LOGIN')
+              NOT EXISTS (SELECT 1 FROM [#CurrentRequests_StringFilter] WHERE [FilterType] = 'LOGIN')
               OR EXISTS
                  (
                      SELECT 1
-                     FROM [#StringFilter] AS [f]
+                     FROM [#CurrentRequests_StringFilter] AS [f]
                      WHERE [f].[FilterType] = 'LOGIN'
                        AND [f].[StringValue] = [s].[login_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                  )
           )
           AND
           (
-              NOT EXISTS (SELECT 1 FROM [#StringFilter] WHERE [FilterType] = 'HOST')
+              NOT EXISTS (SELECT 1 FROM [#CurrentRequests_StringFilter] WHERE [FilterType] = 'HOST')
               OR EXISTS
                  (
                      SELECT 1
-                     FROM [#StringFilter] AS [f]
+                     FROM [#CurrentRequests_StringFilter] AS [f]
                      WHERE [f].[FilterType] = 'HOST'
                        AND [f].[StringValue] = [s].[host_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                  )
           )
           AND
           (
-              NOT EXISTS (SELECT 1 FROM [#StringFilter] WHERE [FilterType] = 'PROGRAM')
+              NOT EXISTS (SELECT 1 FROM [#CurrentRequests_StringFilter] WHERE [FilterType] = 'PROGRAM')
               OR EXISTS
                  (
                      SELECT 1
-                     FROM [#StringFilter] AS [f]
+                     FROM [#CurrentRequests_StringFilter] AS [f]
                      WHERE [f].[FilterType] = 'PROGRAM'
                        AND [f].[StringValue] = [s].[program_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                  )
           )
           AND
           (
-              NOT EXISTS (SELECT 1 FROM [#StringFilter] WHERE [FilterType] = 'DATABASE')
+              NOT EXISTS (SELECT 1 FROM [#CurrentRequests_StringFilter] WHERE [FilterType] = 'DATABASE')
               OR EXISTS
                  (
                      SELECT 1
-                     FROM [#StringFilter] AS [f]
+                     FROM [#CurrentRequests_StringFilter] AS [f]
                      WHERE [f].[FilterType] = 'DATABASE'
                        AND [f].[StringValue] = [d].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
                  )
@@ -640,15 +641,15 @@ BEGIN
             DECLARE @Sql nvarchar(max) = N'';
 
             IF @LoginMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [LoginName] IS NULL OR NOT REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags);';
+                SET @Sql += N'DELETE FROM [#CurrentRequests_Result] WHERE [LoginName] IS NULL OR NOT REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags);';
             IF @HostMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [HostName] IS NULL OR NOT REGEXP_LIKE([HostName],@HostPattern,@HostFlags);';
+                SET @Sql += N'DELETE FROM [#CurrentRequests_Result] WHERE [HostName] IS NULL OR NOT REGEXP_LIKE([HostName],@HostPattern,@HostFlags);';
             IF @ProgramMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [ProgramName] IS NULL OR NOT REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags);';
+                SET @Sql += N'DELETE FROM [#CurrentRequests_Result] WHERE [ProgramName] IS NULL OR NOT REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags);';
             IF @DatabaseMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE [DatabaseName] IS NULL OR NOT REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags);';
+                SET @Sql += N'DELETE FROM [#CurrentRequests_Result] WHERE [DatabaseName] IS NULL OR NOT REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags);';
             IF @TextMode IN ('REGEX', 'REGEXI')
-                SET @Sql += N'DELETE FROM [#Result] WHERE COALESCE([CurrentStatement],[BatchText]) IS NULL OR (NOT REGEXP_LIKE(COALESCE([CurrentStatement],N''''),@TextPattern,@TextFlags) AND NOT REGEXP_LIKE(COALESCE([BatchText],N''''),@TextPattern,@TextFlags));';
+                SET @Sql += N'DELETE FROM [#CurrentRequests_Result] WHERE COALESCE([CurrentStatement],[BatchText]) IS NULL OR (NOT REGEXP_LIKE(COALESCE([CurrentStatement],N''''),@TextPattern,@TextFlags) AND NOT REGEXP_LIKE(COALESCE([BatchText],N''''),@TextPattern,@TextFlags));';
 
             EXEC [sys].[sp_executesql]
                   @Sql
@@ -667,7 +668,7 @@ BEGIN
 
         IF @MaxZeilen IS NOT NULL AND @MaxZeilen > 0
         BEGIN
-            IF (SELECT COUNT_BIG(*) FROM [#Result]) > @MaxZeilen
+            IF (SELECT COUNT_BIG(*) FROM [#CurrentRequests_Result]) > @MaxZeilen
             BEGIN
                 SET @HasMoreRows = 1;
             END;
@@ -693,7 +694,7 @@ BEGIN
                                 , [RequestId]
                         )
                     , *
-                FROM [#Result]
+                FROM [#CurrentRequests_Result]
             )
             DELETE FROM [Ranked]
             WHERE [RowNumber] > @MaxZeilen;
@@ -702,7 +703,7 @@ BEGIN
 
         IF @ModulInfoEinbeziehen = 1
         BEGIN
-            CREATE TABLE [#ModuleLookup]
+            CREATE TABLE [#CurrentRequests_ModuleLookup]
             (
                   [SqlTextDatabaseId] int NOT NULL
                 , [SqlTextObjectId] int NOT NULL
@@ -715,9 +716,9 @@ BEGIN
                 , PRIMARY KEY ([SqlTextDatabaseId], [SqlTextObjectId])
             );
 
-            INSERT [#ModuleLookup] ([SqlTextDatabaseId], [SqlTextObjectId])
+            INSERT [#CurrentRequests_ModuleLookup] ([SqlTextDatabaseId], [SqlTextObjectId])
             SELECT DISTINCT [SqlTextDatabaseId], [SqlTextObjectId]
-            FROM [#Result]
+            FROM [#CurrentRequests_Result]
             WHERE [SqlTextDatabaseId] IS NOT NULL
               AND [SqlTextObjectId] IS NOT NULL
               AND [SqlTextObjectId] > 0;
@@ -728,7 +729,7 @@ BEGIN
 
             DECLARE [ModuleDatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
                 SELECT DISTINCT [d].[database_id], [d].[name]
-                FROM [#ModuleLookup] AS [m]
+                FROM [#CurrentRequests_ModuleLookup] AS [m]
                 JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
                   ON [d].[database_id] = [m].[SqlTextDatabaseId]
                 WHERE [d].[state] = 0
@@ -749,7 +750,7 @@ BEGIN
                               [ModuleType] = [o].[type],
                               [ModuleTypeDescription] = [o].[type_desc],
                               [ModuleFullName] = QUOTENAME(@DatabaseName) + N''.'' + QUOTENAME([s].[name]) + N''.'' + QUOTENAME([o].[name])
-                          FROM [#ModuleLookup] AS [m]
+                          FROM [#CurrentRequests_ModuleLookup] AS [m]
                           JOIN [sys].[objects] AS [o] WITH (NOLOCK)
                             ON [o].[object_id] = [m].[SqlTextObjectId]
                           JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
@@ -763,7 +764,7 @@ BEGIN
                         , @DatabaseName = @LookupDatabaseName;
                 END TRY
                 BEGIN CATCH
-                    INSERT [#Warnings]
+                    INSERT [#CurrentRequests_Warnings]
                     (
                           [DatabaseName], [Code], [Message]
                     )
@@ -795,8 +796,8 @@ BEGIN
                 , [ModuleType] = [m].[ModuleType]
                 , [ModuleTypeDescription] = [m].[ModuleTypeDescription]
                 , [ModuleFullName] = [m].[ModuleFullName]
-            FROM [#Result] AS [r]
-            JOIN [#ModuleLookup] AS [m]
+            FROM [#CurrentRequests_Result] AS [r]
+            JOIN [#CurrentRequests_ModuleLookup] AS [m]
               ON [m].[SqlTextDatabaseId] = [r].[SqlTextDatabaseId]
              AND [m].[SqlTextObjectId] = [r].[SqlTextObjectId];
         END;
@@ -810,7 +811,7 @@ BEGIN
                 , [InputBufferParameterCount] = [ib].[parameters]
                 , [InputBufferCharacterCount] = DATALENGTH([ib].[event_info]) / 2
                 , [InputBufferText] = [ib].[event_info]
-            FROM [#Result] AS [r]
+            FROM [#CurrentRequests_Result] AS [r]
             OUTER APPLY [sys].[dm_exec_input_buffer]
             (
                   [r].[SessionId]
@@ -874,10 +875,10 @@ BEGIN
                     WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [r].[InputBufferText]
                     ELSE LEFT([r].[InputBufferText], @MaxSqlTextZeichen)
                 END
-        FROM [#Result] AS [r];
+        FROM [#CurrentRequests_Result] AS [r];
 
         SELECT @RowCount = COUNT_BIG(*)
-        FROM [#Result];
+        FROM [#CurrentRequests_Result];
 
         IF @HasFullView = 0
         BEGIN
@@ -990,7 +991,7 @@ BEGIN
                 , [r].[QueryPlanHash] AS [queryPlanHash]
                 , [r].[SqlHandle] AS [sqlHandle]
                 , [r].[PlanHandle] AS [planHandle]
-            FROM [#Result] AS [r]
+            FROM [#CurrentRequests_Result] AS [r]
             CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi]
             ORDER BY [r].[SessionId], [r].[RequestId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -1013,7 +1014,7 @@ BEGIN
                 , [r].[CurrentStatementCharacterCount] AS [characterCount]
                 , [r].[CurrentStatementIsTruncated] AS [isTruncated]
                 , [r].[CurrentStatement] AS [text]
-            FROM [#Result] AS [r]
+            FROM [#CurrentRequests_Result] AS [r]
             WHERE [r].[CurrentStatement] IS NOT NULL
             ORDER BY [r].[SessionId], [r].[RequestId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -1032,7 +1033,7 @@ BEGIN
                 , [r].[BatchTextCharacterCount] AS [characterCount]
                 , [r].[BatchTextIsTruncated] AS [isTruncated]
                 , [r].[BatchText] AS [text]
-            FROM [#Result] AS [r]
+            FROM [#CurrentRequests_Result] AS [r]
             WHERE [r].[BatchText] IS NOT NULL
             ORDER BY [r].[SessionId], [r].[RequestId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -1048,7 +1049,7 @@ BEGIN
                 , [r].[InputBufferCharacterCount] AS [characterCount]
                 , [r].[InputBufferIsTruncated] AS [isTruncated]
                 , [r].[InputBufferText] AS [text]
-            FROM [#Result] AS [r]
+            FROM [#CurrentRequests_Result] AS [r]
             WHERE [r].[InputBufferText] IS NOT NULL
             ORDER BY [r].[SessionId], [r].[RequestId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -1062,7 +1063,7 @@ BEGIN
                 , [w].[DatabaseName] AS [databaseName]
                 , [w].[Code] AS [code]
                 , [w].[Message] AS [message]
-            FROM [#Warnings] AS [w]
+            FROM [#CurrentRequests_Warnings] AS [w]
             ORDER BY [w].[WarningId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -1108,7 +1109,7 @@ BEGIN
             , [wi].[CatalogMatchType]
             , [lwi].[WaitGroup] AS [LastWaitGroup]
             , [lwi].[Meaning] AS [LastWaitMeaning]
-        FROM [#Result] AS [r]
+        FROM [#CurrentRequests_Result] AS [r]
         CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi]
         CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[LastWaitType]) AS [lwi]
         ORDER BY
@@ -1133,7 +1134,7 @@ BEGIN
             , [w].[DatabaseName]
             , [w].[Code]
             , [w].[Message]
-        FROM [#Warnings] AS [w]
+        FROM [#CurrentRequests_Warnings] AS [w]
         ORDER BY [w].[WarningId];
     END
     ELSE IF @ResultSetArtNormalisiert = 'CONSOLE'
@@ -1186,7 +1187,7 @@ BEGIN
               ) AS [Statement_Offset_Bytes]
             , [r].[CurrentStatementIsTruncated] AS [Statement_gekuerzt]
             , [r].[CurrentStatement] AS [Aktuelles_Statement]
-        FROM [#Result] AS [r]
+        FROM [#CurrentRequests_Result] AS [r]
         ORDER BY
               CASE
                   WHEN @Sortierung = 'RELEVANZ'
@@ -1241,7 +1242,7 @@ BEGIN
             , [r].[QueryPlanHash] AS [QueryPlanHash]
             , [r].[SqlHandle] AS [SqlHandle]
             , [r].[PlanHandle] AS [PlanHandle]
-        FROM [#Result] AS [r]
+        FROM [#CurrentRequests_Result] AS [r]
         ORDER BY [r].[SessionId], [r].[RequestId];
 
         IF @GesamtenSqlTextEinbeziehen = 1
@@ -1254,7 +1255,7 @@ BEGIN
                 , [r].[BatchTextCharacterCount] AS [Zeichen_gesamt]
                 , [r].[BatchTextIsTruncated] AS [Text_gekuerzt]
                 , [r].[BatchText] AS [Gesamter_SQL_Text]
-            FROM [#Result] AS [r]
+            FROM [#CurrentRequests_Result] AS [r]
             WHERE [r].[BatchText] IS NOT NULL
             ORDER BY [r].[SessionId], [r].[RequestId];
         END;
@@ -1270,12 +1271,12 @@ BEGIN
                 , [r].[InputBufferCharacterCount] AS [Zeichen_gesamt]
                 , [r].[InputBufferIsTruncated] AS [Text_gekuerzt]
                 , [r].[InputBufferText] AS [Uebergebener_Befehl]
-            FROM [#Result] AS [r]
+            FROM [#CurrentRequests_Result] AS [r]
             WHERE [r].[InputBufferText] IS NOT NULL
             ORDER BY [r].[SessionId], [r].[RequestId];
         END;
 
-        IF EXISTS (SELECT 1 FROM [#Warnings])
+        IF EXISTS (SELECT 1 FROM [#CurrentRequests_Warnings])
         BEGIN
             SELECT
                   N'Warnung' AS [Ergebnis]
@@ -1284,14 +1285,14 @@ BEGIN
                 , [w].[DatabaseName] AS [Datenbank]
                 , [w].[Code] AS [Code]
                 , [w].[Message] AS [Hinweis]
-            FROM [#Warnings] AS [w]
+            FROM [#CurrentRequests_Warnings] AS [w]
             ORDER BY [w].[WarningId];
         END;
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#CurrentRequests_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

@@ -30,10 +30,11 @@ Das Framework soll sowohl eine ressourcenschonende Standarddiagnose als auch vol
 - Filter und Top-N-Begrenzungen werden vor teuren XML-, Plan-, Katalog- oder Physical-Stats-Auswertungen angewandt.
 - Breite Plan-Cache-, Query-Store-, Objekt- und Katalogscans sind ausdrücklich vorgesehen, aber nicht Bestandteil der gewöhnlichen Standardauswertung.
 - Teure Analysen erhalten explizite Aktivierungsparameter, Grenzwerte, Laufzeitbudgets und Abbruchmöglichkeiten.
-- Metadatenauflösung darf die Diagnose nicht blockieren. Direkte Aufrufe wie `OBJECT_NAME`, `OBJECT_ID`, `SCHEMA_NAME` oder vergleichbare Hilfsfunktionen werden nicht unkritisch in breiten oder hochfrequenten Pfaden verwendet, weil Metadatenzugriffe blockieren können.
-- Wo fachlich vertretbar, werden Systemtabellen gezielt und mit geringer Blockierungswahrscheinlichkeit gelesen. Eine teilweise fehlende Objektauflösung ist besser als der Ausfall der gesamten Diagnose.
+- Metadatenauflösung darf die Diagnose nicht blockieren. Direkte Aufrufe wie `OBJECT_NAME`, `OBJECT_ID`, `OBJECT_SCHEMA_NAME`, `SCHEMA_NAME`, `DB_NAME`, `COL_LENGTH`, `OBJECT_DEFINITION`, `SCHEMA_ID`, `DATABASEPROPERTYEX` oder vergleichbare Hilfsfunktionen sind im ausführbaren Projektcode nicht zulässig, weil Metadatenzugriffe blockieren können.
+- Systemkataloge werden direkt über dokumentierte `sys.*`-Views mit `WITH (NOLOCK)` und in Procedures unter `SET LOCK_TIMEOUT 0` gelesen. Eine teilweise fehlende Objektauflösung ist besser als der Ausfall der gesamten Diagnose.
 - Fehler einzelner optionaler Module, fehlende Rechte oder nicht verfügbare Features dürfen den restlichen Analyseablauf nicht abbrechen.
-- `NOLOCK` beziehungsweise `READ UNCOMMITTED` ist kein pauschaler Standard für alle Datenquellen, sondern eine bewusst dokumentierte Ausnahme für geeignete Metadaten-/Diagnosepfade. Inkonsistente oder fehlende Ergebnisse müssen als solche erkennbar bleiben.
+- `NOLOCK` ist der verbindliche Projektstandard für Systemkatalog- und geeignete Diagnosequellen, nicht für beliebige Nutzdatentabellen. Inkonsistente oder fehlende Ergebnisse müssen als solche erkennbar bleiben.
+- Lokale Temp-Tabellen tragen einen eindeutigen Bezug zur erzeugenden Procedure beziehungsweise zum Skript und dürfen nicht denselben logischen Namen in mehreren Dateien verwenden. Gemeinsame Helper erhalten die konkreten Temp-Namen als Parameter.
 
 ## 4. Analyseebenen
 

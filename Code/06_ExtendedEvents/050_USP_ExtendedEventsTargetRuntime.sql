@@ -72,7 +72,7 @@ BEGIN
     SELECT @SessionMode=[PatternMode],@SessionValue=[PatternValue],@SessionFlags=[RegexFlags],@SessionValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ExtendedEventSessionNamePattern);
     SELECT @TargetMode=[PatternMode],@TargetValue=[PatternValue],@TargetFlags=[RegexFlags],@TargetValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@TargetNamePattern);
     IF @SessionValid=0 OR @TargetValid=0 OR (@ExtendedEventSessionNames IS NOT NULL AND @ExtendedEventSessionNamePattern IS NOT NULL) OR (@TargetNames IS NOT NULL AND @TargetNamePattern IS NOT NULL) OR (@ExtendedEventSessionNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ExtendedEventSessionNames) WHERE [IsValid]=0)) OR (@TargetNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@TargetNames) WHERE [IsValid]=0)) SET @StatusCode='INVALID_PARAMETER';
-    CREATE TABLE [#Result]
+    CREATE TABLE [#ExtendedEventsTargetRuntime_Result]
     (
         [SessionName] nvarchar(256) NOT NULL,
         [TargetName] nvarchar(60) NOT NULL,
@@ -104,18 +104,18 @@ BEGIN
     IF @StatusCode='AVAILABLE'
     BEGIN
         BEGIN TRY
-            INSERT [#Result]
+            INSERT [#ExtendedEventsTargetRuntime_Result]
             SELECT
                 [s].[name],[t].[target_name],[s].[create_time],[t].[execution_count],[t].[execution_duration_ms],[t].[bytes_written],
                 LEN([t].[target_data]),
                 CASE WHEN @MitTargetData=1 AND @MaxTargetDataZeichen>0
                      THEN CONVERT(nvarchar(max),LEFT([t].[target_data],@MaxTargetDataZeichen)) END
-            FROM [sys].[dm_xe_session_targets] AS t
-            JOIN [sys].[dm_xe_sessions] AS s ON [s].[address]=[t].[event_session_address]
+            FROM [sys].[dm_xe_session_targets] AS t WITH (NOLOCK)
+            JOIN [sys].[dm_xe_sessions] AS s WITH (NOLOCK) ON [s].[address]=[t].[event_session_address]
             WHERE ((@ExtendedEventSessionNames IS NULL OR EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ExtendedEventSessionNames) [sf] WHERE [sf].[IsValid]=1 AND [sf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@SessionMode IN('NONE','REGEX','REGEXI') OR [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @SessionValue COLLATE SQL_Latin1_General_CP1_CS_AS))
               AND ((@TargetNames IS NULL OR EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@TargetNames) [tf] WHERE [tf].[IsValid]=1 AND [tf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[t].[target_name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@TargetMode IN('NONE','REGEX','REGEXI') OR [t].[target_name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @TargetValue COLLATE SQL_Latin1_General_CP1_CS_AS))
             ORDER BY [s].[name],[t].[target_name];
-            SELECT @RowCount=COUNT_BIG(*) FROM [#Result];
+            SELECT @RowCount=COUNT_BIG(*) FROM [#ExtendedEventsTargetRuntime_Result];
             IF @RowCount=0
             BEGIN SET @StatusCode='AVAILABLE_LIMITED';SET @IsPartial=1;SET @ErrorMessage=N'Keine passenden laufenden Targets gefunden.';END;
         END TRY
@@ -129,7 +129,7 @@ BEGIN
     IF @StatusCode='AVAILABLE' AND (@SessionMode IN('REGEX','REGEXI') OR @TargetMode IN('REGEX','REGEXI'))
     BEGIN
       IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] [d] WITH(NOLOCK) WHERE [d].[database_id]=DB_ID() AND [d].[compatibility_level]>=170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END
-      ELSE BEGIN DECLARE @FilterSql nvarchar(max)=N'';IF @SessionMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Result] WHERE NOT REGEXP_LIKE([SessionName],@SP,@SF);';IF @TargetMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#Result] WHERE NOT REGEXP_LIKE([TargetName],@TP,@TF);';EXEC [sys].[sp_executesql] @FilterSql,N'@SP nvarchar(4000),@SF varchar(8),@TP nvarchar(4000),@TF varchar(8)',@SP=@SessionValue,@SF=@SessionFlags,@TP=@TargetValue,@TF=@TargetFlags;END
+      ELSE BEGIN DECLARE @FilterSql nvarchar(max)=N'';IF @SessionMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#ExtendedEventsTargetRuntime_Result] WHERE NOT REGEXP_LIKE([SessionName],@SP,@SF);';IF @TargetMode IN('REGEX','REGEXI') SET @FilterSql+=N'DELETE FROM [#ExtendedEventsTargetRuntime_Result] WHERE NOT REGEXP_LIKE([TargetName],@TP,@TF);';EXEC [sys].[sp_executesql] @FilterSql,N'@SP nvarchar(4000),@SF varchar(8),@TP nvarchar(4000),@TF varchar(8)',@SP=@SessionValue,@SF=@SessionFlags,@TP=@TargetValue,@TF=@TargetFlags;END
     END;
     IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE','AVAILABLE_LIMITED')
         BEGIN
@@ -137,12 +137,12 @@ BEGIN
     RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
 END;
 
-    IF @ResultSetArtNormalisiert<>'NONE' BEGIN SELECT N'USP_ExtendedEventsTargetRuntime' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Result] ORDER BY [SessionName],[TargetName];ELSE SELECT N'Extended-Events Target Runtime' [Ergebnis],[SessionName] [Session],[TargetName] [Target],[ExecutionCount] [Ausführungen],[ExecutionDurationMs] [Dauer ms],[TargetData] [Targetdaten] FROM [#Result] ORDER BY [SessionName],[TargetName];END;
-    IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsTargetRuntime' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT * FROM [#Result] ORDER BY [SessionName],[TargetName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"targets":',COALESCE(@Data,N'[]'),N',"warnings":[]}');END;
+    IF @ResultSetArtNormalisiert<>'NONE' BEGIN SELECT N'USP_ExtendedEventsTargetRuntime' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#ExtendedEventsTargetRuntime_Result] ORDER BY [SessionName],[TargetName];ELSE SELECT N'Extended-Events Target Runtime' [Ergebnis],[SessionName] [Session],[TargetName] [Target],[ExecutionCount] [Ausführungen],[ExecutionDurationMs] [Dauer ms],[TargetData] [Targetdaten] FROM [#ExtendedEventsTargetRuntime_Result] ORDER BY [SessionName],[TargetName];END;
+    IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsTargetRuntime' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT * FROM [#ExtendedEventsTargetRuntime_Result] ORDER BY [SessionName],[TargetName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"targets":',COALESCE(@Data,N'[]'),N',"warnings":[]}');END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#ExtendedEventsTargetRuntime_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

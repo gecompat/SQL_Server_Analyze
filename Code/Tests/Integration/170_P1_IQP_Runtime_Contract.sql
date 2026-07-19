@@ -16,10 +16,10 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
 DECLARE @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
-DECLARE @DatabaseNames nvarchar(max)=QUOTENAME(DB_NAME());
-DECLARE @OriginalCompatibility tinyint=(SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=DB_ID());
+DECLARE @DatabaseNames nvarchar(max)=QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()));
+DECLARE @OriginalCompatibility tinyint=(SELECT [compatibility_level] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID());
 DECLARE @OriginalQueryStoreDesired nvarchar(60)=
-    (SELECT TOP(1) [desired_state_desc] FROM [sys].[database_query_store_options]);
+    (SELECT TOP(1) [desired_state_desc] FROM [sys].[database_query_store_options] WITH (NOLOCK));
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit;
 DECLARE @Sql nvarchar(max);
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
@@ -47,7 +47,7 @@ INSERT @ExecutedCases VALUES('IQP-2019');
 /* IQP-PSP: Product Major 16+ und Compatibility Level 160. */
 IF @Major>=16
 BEGIN
-    SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' SET COMPATIBILITY_LEVEL = 160;';
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' SET COMPATIBILITY_LEVEL = 160;';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
@@ -65,7 +65,7 @@ INSERT @ExecutedCases VALUES('IQP-PSP');
 /* IQP-OPPO: Product Major 17+ und Compatibility Level 170. */
 IF @Major>=17
 BEGIN
-    SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' SET COMPATIBILITY_LEVEL = 170;';
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' SET COMPATIBILITY_LEVEL = 170;';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
@@ -81,14 +81,14 @@ END;
 INSERT @ExecutedCases VALUES('IQP-OPPO');
 
 /* Compatibility vor dem Query-Store-Fall wiederherstellen. */
-SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' SET COMPATIBILITY_LEVEL = '
+SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' SET COMPATIBILITY_LEVEL = '
         +CONVERT(nvarchar(3),@OriginalCompatibility)+N';';
 EXEC [sys].[sp_executesql] @Sql;
 
 /* IQP-QSOFF: Query Store OFF ist ein ausdrücklicher Befund, keine leere Erfolgsevidenz. */
 IF COALESCE(@OriginalQueryStoreDesired,N'OFF')<>N'OFF'
 BEGIN
-    SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' SET QUERY_STORE = OFF;';
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' SET QUERY_STORE = OFF;';
     EXEC [sys].[sp_executesql] @Sql;
 END;
 
@@ -106,12 +106,12 @@ INSERT @ExecutedCases VALUES('IQP-QSOFF');
 
 IF @OriginalQueryStoreDesired=N'READ_WRITE'
 BEGIN
-    SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' SET QUERY_STORE = ON (OPERATION_MODE = READ_WRITE);';
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' SET QUERY_STORE = ON (OPERATION_MODE = READ_WRITE);';
     EXEC [sys].[sp_executesql] @Sql;
 END
 ELSE IF @OriginalQueryStoreDesired=N'READ_ONLY'
 BEGIN
-    SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' SET QUERY_STORE = ON (OPERATION_MODE = READ_ONLY);';
+    SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' SET QUERY_STORE = ON (OPERATION_MODE = READ_ONLY);';
     EXEC [sys].[sp_executesql] @Sql;
 END;
 

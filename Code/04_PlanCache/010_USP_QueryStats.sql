@@ -39,6 +39,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStats]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -81,7 +82,7 @@ BEGIN
     DECLARE @TextRegexFlags varchar(8);
     DECLARE @TextPatternValid bit;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#QueryStats_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -94,13 +95,13 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#QueryStats_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#Result]
+    CREATE TABLE [#QueryStats_Result]
     (
           [QueryHash] binary(8) NULL
         , [QueryPlanHash] binary(8) NULL
@@ -205,7 +206,7 @@ BEGIN
             , @AnalysisClass = 'PLAN_CACHE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#QueryStats_DatabaseCandidates',@WarningTable=N'#QueryStats_DatabaseCandidateWarnings';
     END;
 
     IF @StatusCode = 'AVAILABLE'
@@ -243,7 +244,7 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
         SET @Sql = N'
-INSERT [#Result]
+INSERT [#QueryStats_Result]
 (
       [QueryHash], [QueryPlanHash], [PlanHandle], [SqlHandle]
     , [StatementStartOffset], [StatementEndOffset], [PlanGenerationNumber]
@@ -322,7 +323,7 @@ SELECT TOP (@CandidateRows)
     , TRY_CONVERT(int, [setOptions].[value])
     , TRY_CONVERT(int, [compileUser].[value])
     , CONVERT(decimal(38,4), ' + @OrderExpression + N')
-FROM [sys].[dm_exec_query_stats] AS [qs]
+FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
 OUTER APPLY [sys].[dm_exec_sql_text]([qs].[sql_handle]) AS [st]
 OUTER APPLY [monitor].[TVF_StatementText]
 (
@@ -340,9 +341,9 @@ CROSS APPLY
 (
     SELECT COALESCE([st].[dbid], [planDb].[DatabaseId]) AS [DatabaseId]
 ) AS [resolved]
-INNER JOIN [#DatabaseCandidates] AS [dbc]
+INNER JOIN [#QueryStats_DatabaseCandidates] AS [dbc]
   ON [dbc].[DatabaseId] = [resolved].[DatabaseId]
-LEFT JOIN [sys].[dm_exec_cached_plans] AS [cp]
+LEFT JOIN [sys].[dm_exec_cached_plans] AS [cp] WITH (NOLOCK)
   ON [cp].[plan_handle] = [qs].[plan_handle]
 OUTER APPLY
 (
@@ -386,7 +387,7 @@ OPTION (RECOMPILE, MAXDOP 1);';
             , @TextValue = @TextValue
             , @TextFlags = @TextRegexFlags;
 
-        SELECT @RowCount = COUNT_BIG(*) FROM [#Result];
+        SELECT @RowCount = COUNT_BIG(*) FROM [#QueryStats_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
     END TRY
     BEGIN CATCH
@@ -434,7 +435,7 @@ OPTION (RECOMPILE, MAXDOP 1);';
                 , [TotalSpilledPages], [LastSpilledPages]
                 , [CacheObjectType], [ObjectType], [PlanUseCounts], [PlanSizeBytes]
                 , [ResourcePoolId], [SetOptions], [CompileUserId]
-            FROM [#Result]
+            FROM [#QueryStats_Result]
             ORDER BY [SortValue] DESC, [LastExecutionTime] DESC;
         END
         ELSE
@@ -455,12 +456,12 @@ OPTION (RECOMPILE, MAXDOP 1);';
                 , [DatabaseName] AS [Datenbank_SQL]
                 , [StatementText] AS [Statement]
                 , [BatchText] AS [Batch]
-            FROM [#Result]
+            FROM [#QueryStats_Result]
             ORDER BY [SortValue] DESC, [LastExecutionTime] DESC;
         END;
 
         SELECT [RequestedName], [StatusCode], [ErrorMessage]
-        FROM [#DatabaseCandidateWarnings]
+        FROM [#QueryStats_DatabaseCandidateWarnings]
         ORDER BY [RequestedName];
     END;
 
@@ -492,14 +493,14 @@ OPTION (RECOMPILE, MAXDOP 1);';
                 , [TotalSpilledPages], [LastSpilledPages]
                 , [CacheObjectType], [ObjectType], [PlanUseCounts], [PlanSizeBytes]
                 , [ResourcePoolId], [SetOptions], [CompileUserId]
-            FROM [#Result]
+            FROM [#QueryStats_Result]
             ORDER BY [SortValue] DESC, [LastExecutionTime] DESC
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @Warnings nvarchar(max) =
         (
             SELECT [RequestedName], [StatusCode], [ErrorMessage]
-            FROM [#DatabaseCandidateWarnings]
+            FROM [#QueryStats_DatabaseCandidateWarnings]
             ORDER BY [RequestedName]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -508,7 +509,7 @@ OPTION (RECOMPILE, MAXDOP 1);';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#QueryStats_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

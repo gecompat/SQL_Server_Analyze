@@ -60,8 +60,17 @@ VALUES
 (N'monitor.USP_MaintenanceOperations','P');
 
 SELECT @Missing = STRING_AGG([ObjectName],N', ')
-FROM @Expected
-WHERE OBJECT_ID([ObjectName],[ObjectType]) IS NULL;
+FROM @Expected AS [e]
+WHERE NOT EXISTS
+(
+    SELECT 1
+    FROM [sys].[objects] AS [o] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[schema_id]=[o].[schema_id]
+    WHERE [s].[name]=PARSENAME([e].[ObjectName],2)
+      AND [o].[name]=PARSENAME([e].[ObjectName],1)
+      AND [o].[type]=[e].[ObjectType]
+);
 
 IF @Missing IS NOT NULL
 BEGIN
@@ -72,19 +81,19 @@ END;
 IF NOT EXISTS
 (
     SELECT 1
-    FROM [monitor].[FrameworkVersion] WITH (READUNCOMMITTED)
+    FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.10'
+      AND [FrameworkVersion]='1.1.0-special.11'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED) WHERE [IsFrameworkDefault]=1) < 347
+IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK) WHERE [IsFrameworkDefault]=1) < 347
     THROW 54002,N'Der Framework-Wait-Katalog ist unvollständig.',1;
 
 IF EXISTS
 (
     SELECT 1
-    FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED)
+    FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK)
     WHERE [IsFrameworkDefault]=1
       AND ([Meaning] IS NULL OR [TypicalOccurrence] IS NULL OR [HighWaitImpact] IS NULL
            OR [RecommendedChecks] IS NULL OR [HelpUrl] IS NULL OR [SourceReference] IS NULL
@@ -95,7 +104,7 @@ IF EXISTS
 IF EXISTS
 (
     SELECT 1
-    FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED)
+    FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK)
     WHERE [IsFrameworkDefault]=1
       AND [WaitType] IN
       (
@@ -105,10 +114,20 @@ IF EXISTS
 )
     THROW 54020,N'Der Framework-Wait-Katalog enthält abgelöste Alt- oder Fehlnamen.',1;
 
-IF OBJECT_ID(N'monitor.FrameworkInstallationHistory',N'U') IS NOT NULL
- OR OBJECT_ID(N'monitor.FrameworkExpectedObject',N'U') IS NOT NULL
- OR OBJECT_ID(N'monitor.FrameworkProcedureContract',N'U') IS NOT NULL
- OR OBJECT_ID(N'monitor.USP_FrameworkSelfTest',N'P') IS NOT NULL
+IF EXISTS
+(
+    SELECT 1
+    FROM [sys].[objects] AS [o] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[schema_id]=[o].[schema_id]
+    WHERE [s].[name]=N'monitor'
+      AND
+      (
+           ([o].[type]=N'U' AND [o].[name] IN
+              (N'FrameworkInstallationHistory',N'FrameworkExpectedObject',N'FrameworkProcedureContract'))
+        OR ([o].[type]=N'P' AND [o].[name]=N'USP_FrameworkSelfTest')
+      )
+)
     THROW 54004,N'Veraltete Production-Hardening-Objekte sind noch vorhanden.',1;
 
 -- Zentrale Offsetlogik mit einem deterministischen Batch prüfen.
@@ -173,12 +192,12 @@ EXEC [monitor].[USP_MaintenanceOperations] @Hilfe=1;
 SELECT
     CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
     CAST(0 AS bit) AS [IsPartial],
-    (SELECT [FrameworkVersion] FROM [monitor].[FrameworkVersion] WITH (READUNCOMMITTED)
+    (SELECT [FrameworkVersion] FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
      WHERE [FrameworkName]=N'SQLServerMonitoringFramework') AS [FrameworkVersion],
-    (SELECT COUNT_BIG(*) FROM [sys].[procedures] p WITH (READUNCOMMITTED)
-     JOIN [sys].[schemas] s WITH (READUNCOMMITTED) ON [s].[schema_id]=[p].[schema_id]
+    (SELECT COUNT_BIG(*) FROM [sys].[procedures] p WITH (NOLOCK)
+     JOIN [sys].[schemas] s WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id]
      WHERE [s].[name]=N'monitor') AS [ProcedureCount],
-    (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED)
+    (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK)
      WHERE [IsFrameworkDefault]=1) AS [FrameworkWaitTypeCount],
     N'Kompakter Smoke Test erfolgreich.' AS [Detail];
 GO

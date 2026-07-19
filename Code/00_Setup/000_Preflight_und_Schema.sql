@@ -22,8 +22,8 @@ IF @ProductMajorVersion IS NULL OR @ProductMajorVersion < 15
 
 DECLARE @ExpectedCollation sysname = N'SQL_Latin1_General_CP1_CS_AS';
 DECLARE @ServerCollation sysname = CONVERT(sysname, SERVERPROPERTY(N'Collation'));
-DECLARE @TempDbCollation sysname = CONVERT(sysname, DATABASEPROPERTYEX(N'tempdb', N'Collation'));
-DECLARE @TargetDatabaseCollation sysname = CONVERT(sysname, DATABASEPROPERTYEX(DB_NAME(), N'Collation'));
+DECLARE @TempDbCollation sysname = (SELECT [collation_name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [name]=N'tempdb');
+DECLARE @TargetDatabaseCollation sysname = (SELECT [collation_name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID());
 
 IF @ServerCollation COLLATE Latin1_General_100_BIN2 <> @ExpectedCollation COLLATE Latin1_General_100_BIN2
 BEGIN
@@ -37,12 +37,12 @@ BEGIN
 END;
 IF @TargetDatabaseCollation COLLATE Latin1_General_100_BIN2 <> @ExpectedCollation COLLATE Latin1_General_100_BIN2
 BEGIN
-    DECLARE @TargetCollationError nvarchar(2048) = CONCAT(N'Nicht unterstützte Collation der Installationsdatenbank ', QUOTENAME(DB_NAME()), N': ', COALESCE(@TargetDatabaseCollation,N'<NULL>'), N'. Erwartet wird SQL_Latin1_General_CP1_CS_AS.');
+    DECLARE @TargetCollationError nvarchar(2048) = CONCAT(N'Nicht unterstützte Collation der Installationsdatenbank ', QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())), N': ', COALESCE(@TargetDatabaseCollation,N'<NULL>'), N'. Erwartet wird SQL_Latin1_General_CP1_CS_AS.');
     THROW 50005, @TargetCollationError, 1;
 END;
 GO
 
-IF NOT EXISTS (SELECT 1 FROM [sys].[schemas] AS [s] WITH (READUNCOMMITTED) WHERE [s].[name] = N'monitor')
+IF NOT EXISTS (SELECT 1 FROM [sys].[schemas] AS [s] WITH (NOLOCK) WHERE [s].[name] = N'monitor')
 BEGIN
     EXEC [sys].[sp_executesql] N'CREATE SCHEMA [monitor] AUTHORIZATION [dbo];';
 END;

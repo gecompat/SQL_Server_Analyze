@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentBlocking]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -77,12 +78,12 @@ BEGIN
     DECLARE @HasMoreRows bit = 0;
     DECLARE @Message nvarchar(2048);
 
-    CREATE TABLE [#SessionFilter]
+    CREATE TABLE [#CurrentBlocking_SessionFilter]
     (
         [SessionId] smallint NOT NULL PRIMARY KEY
     );
 
-    CREATE TABLE [#Edges]
+    CREATE TABLE [#CurrentBlocking_Edges]
     (
           [BlockedSessionId]  smallint      NOT NULL
         , [BlockingSessionId] smallint      NOT NULL
@@ -93,7 +94,7 @@ BEGIN
         , PRIMARY KEY ([BlockedSessionId], [BlockingSessionId])
     );
 
-    CREATE TABLE [#BlockingChains]
+    CREATE TABLE [#CurrentBlocking_BlockingChains]
     (
           [LeafSessionId]         smallint       NOT NULL
         , [BlockedSessionId]      smallint       NOT NULL
@@ -114,7 +115,7 @@ BEGIN
         , [BlockerStatement]      nvarchar(max)  NULL
     );
 
-    CREATE TABLE [#Locks]
+    CREATE TABLE [#CurrentBlocking_Locks]
     (
           [SessionId]             smallint       NULL
         , [ResourceType]          nvarchar(60)   NULL
@@ -128,7 +129,7 @@ BEGIN
         , [LockOwnerAddress]      varbinary(8)   NULL
     );
 
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#CurrentBlocking_Warnings]
     (
           [ScopeName]    nvarchar(128)  NULL
         , [StatusCode]   varchar(40)    NOT NULL
@@ -158,7 +159,7 @@ BEGIN
         END;
         ELSE
         BEGIN
-            INSERT [#SessionFilter]([SessionId])
+            INSERT [#CurrentBlocking_SessionFilter]([SessionId])
             SELECT CONVERT(smallint, [NumberValue])
             FROM [monitor].[TVF_ParseBigintList](@SessionIds)
             WHERE [IsValid] = 1;
@@ -181,7 +182,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#Edges]
+        INSERT [#CurrentBlocking_Edges]
         (
               [BlockedSessionId], [BlockingSessionId], [WaitType]
             , [WaitTimeMs], [WaitResource], [SourceCode]
@@ -193,8 +194,8 @@ BEGIN
             , MAX(CONVERT(bigint, [r].[wait_time]))
             , MAX(CONVERT(nvarchar(3072), [r].[wait_resource]))
             , 'REQUEST'
-        FROM [sys].[dm_exec_requests] AS [r]
-        INNER JOIN [sys].[dm_exec_sessions] AS [s]
+        FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+        INNER JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [r].[session_id]
         WHERE [r].[blocking_session_id] > 0
           AND [r].[blocking_session_id] <> [r].[session_id]
@@ -206,13 +207,13 @@ BEGIN
               OR EXISTS
                  (
                      SELECT 1
-                     FROM [#SessionFilter] AS [f]
+                     FROM [#CurrentBlocking_SessionFilter] AS [f]
                      WHERE [f].[SessionId] IN ([r].[session_id], [r].[blocking_session_id])
                  )
           )
         GROUP BY [r].[session_id], [r].[blocking_session_id];
 
-        INSERT [#Edges]
+        INSERT [#CurrentBlocking_Edges]
         (
               [BlockedSessionId], [BlockingSessionId], [WaitType]
             , [WaitTimeMs], [WaitResource], [SourceCode]
@@ -224,8 +225,8 @@ BEGIN
             , MAX(CONVERT(bigint, [w].[wait_duration_ms]))
             , MAX(CONVERT(nvarchar(3072), [w].[resource_description]))
             , 'WAITING_TASK'
-        FROM [sys].[dm_os_waiting_tasks] AS [w]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [s]
+        FROM [sys].[dm_os_waiting_tasks] AS [w] WITH (NOLOCK)
+        LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [w].[session_id]
         WHERE [w].[blocking_session_id] > 0
           AND [w].[blocking_session_id] <> [w].[session_id]
@@ -237,14 +238,14 @@ BEGIN
               OR EXISTS
                  (
                      SELECT 1
-                     FROM [#SessionFilter] AS [f]
+                     FROM [#CurrentBlocking_SessionFilter] AS [f]
                      WHERE [f].[SessionId] IN ([w].[session_id], [w].[blocking_session_id])
                  )
           )
           AND NOT EXISTS
               (
                   SELECT 1
-                  FROM [#Edges] AS [e]
+                  FROM [#CurrentBlocking_Edges] AS [e]
                   WHERE [e].[BlockedSessionId] = [w].[session_id]
                     AND [e].[BlockingSessionId] = [w].[blocking_session_id]
               )
@@ -259,7 +260,7 @@ BEGIN
                 , 1 AS [ChainDepth]
                 , CONVERT(varchar(4000), CONCAT('|', [e].[BlockedSessionId], '|', [e].[BlockingSessionId], '|')) AS [Path]
                 , CONVERT(bit, 0) AS [IsCycle]
-            FROM [#Edges] AS [e]
+            FROM [#CurrentBlocking_Edges] AS [e]
 
             UNION ALL
 
@@ -276,7 +277,7 @@ BEGIN
                            THEN 1 ELSE 0 END
                   )
             FROM [Chain] AS [c]
-            INNER JOIN [#Edges] AS [e]
+            INNER JOIN [#CurrentBlocking_Edges] AS [e]
               ON [e].[BlockedSessionId] = [c].[BlockingSessionId]
             WHERE [c].[ChainDepth] < 32
               AND [c].[IsCycle] = 0
@@ -292,7 +293,7 @@ BEGIN
                   ) AS [RowNumber]
             FROM [Chain] AS [c]
         )
-        INSERT [#BlockingChains]
+        INSERT [#CurrentBlocking_BlockingChains]
         (
               [LeafSessionId], [BlockedSessionId], [BlockingSessionId]
             , [RootBlockingSessionId], [ChainDepth], [IsCycle]
@@ -320,15 +321,15 @@ BEGIN
             , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [blockedStatement].[StatementText] ELSE LEFT([blockedStatement].[StatementText], @MaxSqlTextZeichen) END END
             , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [blockerStatement].[StatementText] ELSE LEFT([blockerStatement].[StatementText], @MaxSqlTextZeichen) END END
         FROM [Root] AS [r]
-        INNER JOIN [#Edges] AS [e]
+        INNER JOIN [#CurrentBlocking_Edges] AS [e]
           ON [e].[BlockedSessionId] = [r].[LeafSessionId]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [blockedSession]
+        LEFT JOIN [sys].[dm_exec_sessions] AS [blockedSession] WITH (NOLOCK)
           ON [blockedSession].[session_id] = [e].[BlockedSessionId]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [blockerSession]
+        LEFT JOIN [sys].[dm_exec_sessions] AS [blockerSession] WITH (NOLOCK)
           ON [blockerSession].[session_id] = [e].[BlockingSessionId]
-        LEFT JOIN [sys].[dm_exec_requests] AS [blockedRequest]
+        LEFT JOIN [sys].[dm_exec_requests] AS [blockedRequest] WITH (NOLOCK)
           ON [blockedRequest].[session_id] = [e].[BlockedSessionId]
-        LEFT JOIN [sys].[dm_exec_requests] AS [blockerRequest]
+        LEFT JOIN [sys].[dm_exec_requests] AS [blockerRequest] WITH (NOLOCK)
           ON [blockerRequest].[session_id] = [e].[BlockingSessionId]
         OUTER APPLY [sys].[dm_exec_sql_text]
         (
@@ -354,7 +355,7 @@ BEGIN
         ORDER BY [e].[WaitTimeMs] DESC, [e].[BlockedSessionId]
         OPTION (MAXRECURSION 32);
 
-        SELECT @MainCandidateCount = COUNT_BIG(*) FROM [#BlockingChains];
+        SELECT @MainCandidateCount = COUNT_BIG(*) FROM [#CurrentBlocking_BlockingChains];
         SET @HasMoreRows = CONVERT
         (
             bit,
@@ -374,12 +375,12 @@ BEGIN
             BEGIN
                 SET @LockStatusCode = 'DENIED_GROUP';
                 SET @IsPartial = 1;
-                INSERT [#Warnings]([ScopeName], [StatusCode], [ErrorMessage])
+                INSERT [#CurrentBlocking_Warnings]([ScopeName], [StatusCode], [ErrorMessage])
                 VALUES (N'Locks', 'DENIED_GROUP', N'Die Analyseklasse LOCKS_DEEP ist nicht freigegeben.');
             END;
             ELSE
             BEGIN TRY
-                INSERT [#Locks]
+                INSERT [#CurrentBlocking_Locks]
                 (
                       [SessionId], [ResourceType], [ResourceDatabaseId]
                     , [ResourceDatabaseName], [ResourceDescription]
@@ -397,13 +398,13 @@ BEGIN
                     , [l].[request_owner_type]
                     , [l].[request_reference_count]
                     , [l].[lock_owner_address]
-                FROM [sys].[dm_tran_locks] AS [l]
+                FROM [sys].[dm_tran_locks] AS [l] WITH (NOLOCK)
                 LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
                   ON [d].[database_id] = [l].[resource_database_id]
                 WHERE EXISTS
                       (
                           SELECT 1
-                          FROM [#Edges] AS [e]
+                          FROM [#CurrentBlocking_Edges] AS [e]
                           WHERE [e].[BlockedSessionId] = [l].[request_session_id]
                              OR [e].[BlockingSessionId] = [l].[request_session_id]
                       )
@@ -413,7 +414,7 @@ BEGIN
                     , [l].[resource_type]
                     , [l].[request_mode];
 
-                SELECT @LockCandidateCount = COUNT_BIG(*) FROM [#Locks];
+                SELECT @LockCandidateCount = COUNT_BIG(*) FROM [#CurrentBlocking_Locks];
                 SET @LockStatusCode = 'AVAILABLE';
             END TRY
             BEGIN CATCH
@@ -422,7 +423,7 @@ BEGIN
                                            WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
                                            ELSE 'ERROR_HANDLED' END;
                 SET @IsPartial = 1;
-                INSERT [#Warnings]([ScopeName], [StatusCode], [ErrorNumber], [ErrorMessage])
+                INSERT [#CurrentBlocking_Warnings]([ScopeName], [StatusCode], [ErrorNumber], [ErrorMessage])
                 VALUES (N'Locks', @LockStatusCode, ERROR_NUMBER(), ERROR_MESSAGE());
             END CATCH;
         END;
@@ -470,7 +471,7 @@ BEGIN
                 , [BlockedLoginName], [BlockedHostName], [BlockedProgramName]
                 , [BlockerLoginName], [BlockerHostName], [BlockerProgramName]
                 , [BlockedStatement], [BlockerStatement]
-            FROM [#BlockingChains]
+            FROM [#CurrentBlocking_BlockingChains]
             ORDER BY [WaitTimeMs] DESC, [BlockedSessionId];
 
             IF @MitLockDetails = 1
@@ -480,7 +481,7 @@ BEGIN
                     , [ResourceDatabaseName], [ResourceDescription]
                     , [RequestMode], [RequestStatus], [RequestOwnerType]
                     , [RequestReferenceCount], [LockOwnerAddress]
-                FROM [#Locks]
+                FROM [#CurrentBlocking_Locks]
                 ORDER BY [SessionId], [ResourceDatabaseId], [ResourceType], [RequestMode];
             END;
         END
@@ -505,7 +506,7 @@ BEGIN
                 , [BlockedSessionId] AS [Session_SQL]
                 , [BlockedStatement] AS [Blockiertes Statement]
                 , [BlockerStatement] AS [Blocker Statement]
-            FROM [#BlockingChains]
+            FROM [#CurrentBlocking_BlockingChains]
             ORDER BY [WaitTimeMs] DESC, [BlockedSessionId];
 
             IF @MitLockDetails = 1
@@ -520,13 +521,13 @@ BEGIN
                     , [RequestStatus] AS [Status]
                     , [RequestOwnerType] AS [Owner]
                     , [RequestReferenceCount] AS [Referenzen]
-                FROM [#Locks]
+                FROM [#CurrentBlocking_Locks]
                 ORDER BY [SessionId], [ResourceDatabaseId], [ResourceType], [RequestMode];
             END;
         END;
 
         SELECT [ScopeName], [StatusCode], [ErrorNumber], [ErrorMessage]
-        FROM [#Warnings]
+        FROM [#CurrentBlocking_Warnings]
         ORDER BY [ScopeName], [StatusCode];
     END;
 
@@ -549,21 +550,21 @@ BEGIN
         DECLARE @ChainsJson nvarchar(max) =
         (
             SELECT TOP (@EffectiveMaxZeilen) *
-            FROM [#BlockingChains]
+            FROM [#CurrentBlocking_BlockingChains]
             ORDER BY [WaitTimeMs] DESC, [BlockedSessionId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @LocksJson nvarchar(max) =
         (
             SELECT TOP (@EffectiveMaxZeilen) *
-            FROM [#Locks]
+            FROM [#CurrentBlocking_Locks]
             ORDER BY [SessionId], [ResourceDatabaseId], [ResourceType], [RequestMode]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @WarningsJson nvarchar(max) =
         (
             SELECT *
-            FROM [#Warnings]
+            FROM [#CurrentBlocking_Warnings]
             ORDER BY [ScopeName], [StatusCode]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -580,7 +581,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#BlockingChains'
+              @SourceTable = N'#CurrentBlocking_BlockingChains'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

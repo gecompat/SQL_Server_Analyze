@@ -72,23 +72,23 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#MaintenanceOperations_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60) NULL
         , [UserAccessDesc] nvarchar(60) NULL,[IsReadOnly] bit NULL,[CompatibilityLevel] tinyint NULL
         , [CollationName] sysname NULL,[RecoveryModelDesc] nvarchar(60) NULL,[IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#MaintenanceOperations_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#MaintenanceOperations_SourceStatus]
     (
           [SourceName] nvarchar(128) NOT NULL PRIMARY KEY,[StatusCode] varchar(40) NOT NULL
         , [IsPartial] bit NOT NULL,[Detail] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Resumable]
+    CREATE TABLE [#MaintenanceOperations_Resumable]
     (
           [DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[SchemaName] sysname NULL
         , [ObjectName] sysname NULL,[IndexName] sysname NULL,[PartitionNumber] int NULL
@@ -97,7 +97,7 @@ BEGIN
         , [FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Requests]
+    CREATE TABLE [#MaintenanceOperations_Requests]
     (
           [SessionId] smallint NOT NULL,[RequestId] int NOT NULL,[DatabaseId] int NULL,[DatabaseName] sysname NULL
         , [Command] nvarchar(60) NULL,[Status] nvarchar(30) NULL,[StartTime] datetime NULL
@@ -107,7 +107,7 @@ BEGIN
         , [FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Pvs]
+    CREATE TABLE [#MaintenanceOperations_Pvs]
     (
           [DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[AdrEnabled] bit NOT NULL
         , [PvsSizeMb] decimal(19,2) NULL,[OnlineIndexPvsSizeMb] decimal(19,2) NULL
@@ -115,7 +115,7 @@ BEGIN
         , [FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Jobs]
+    CREATE TABLE [#MaintenanceOperations_Jobs]
     (
           [JobName] sysname NOT NULL,[StartExecutionDate] datetime NULL,[StopExecutionDate] datetime NULL
         , [IsRunning] bit NOT NULL,[FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
@@ -149,7 +149,7 @@ BEGIN
               @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
             , @DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass=NULL
             , @StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT
-            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#MaintenanceOperations_DatabaseCandidates',@WarningTable=N'#MaintenanceOperations_DatabaseCandidateWarnings';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -159,14 +159,14 @@ BEGIN
         BEGIN TRY
             DECLARE @DatabaseId int,@DatabaseName sysname,@Sql nvarchar(max);
             DECLARE [database_cursor] CURSOR LOCAL FAST_FORWARD FOR
-                SELECT [DatabaseId],[DatabaseName] FROM [#DatabaseCandidates]
+                SELECT [DatabaseId],[DatabaseName] FROM [#MaintenanceOperations_DatabaseCandidates]
                 WHERE [StateDesc]=N'ONLINE' AND [DatabaseId]<>2 ORDER BY [DatabaseId];
             OPEN [database_cursor];
             FETCH NEXT FROM [database_cursor] INTO @DatabaseId,@DatabaseName;
             WHILE @@FETCH_STATUS=0
             BEGIN
                 BEGIN TRY
-                    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; INSERT [#Resumable] '
+                    SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; INSERT [#MaintenanceOperations_Resumable] '
                         +N'([DatabaseId],[DatabaseName],[SchemaName],[ObjectName],[IndexName],[PartitionNumber],[StateDesc],'
                         +N'[StartTime],[LastPauseTime],[TotalExecutionTimeMinutes],[PercentComplete],[PageCount],'
                         +N'[FindingCode],[FindingSeverity],[EvidenceLimit]) '
@@ -190,7 +190,7 @@ BEGIN
                 END TRY
                 BEGIN CATCH
                     SET @IsPartial=1;
-                    INSERT [#DatabaseCandidateWarnings] VALUES
+                    INSERT [#MaintenanceOperations_DatabaseCandidateWarnings] VALUES
                     (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                      N'Resumierbare Indexoperationen waren fuer diese Datenbank nicht lesbar.');
                 END CATCH;
@@ -198,20 +198,20 @@ BEGIN
             END;
             CLOSE [database_cursor];
             DEALLOCATE [database_cursor];
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'sys.index_resumable_operations','AVAILABLE',@IsPartial,
              N'Resumierbare Indexoperationen ohne SQL-Text; pausierte Operationen werden niemals automatisch veraendert.');
         END TRY
         BEGIN CATCH
             IF CURSOR_STATUS('local','database_cursor')>=0 CLOSE [database_cursor];
             IF CURSOR_STATUS('local','database_cursor')>-3 DEALLOCATE [database_cursor];
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'sys.index_resumable_operations','ERROR_HANDLED',1,N'Die datenbanklokale Abfrage wurde abgefangen.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
         END CATCH;
 
         BEGIN TRY
-            INSERT [#Requests]
+            INSERT [#MaintenanceOperations_Requests]
             SELECT [r].[session_id],[r].[request_id],[r].[database_id],[d].[DatabaseName],
                    [r].[command],[r].[status],[r].[start_time],[r].[total_elapsed_time],[r].[percent_complete],
                    [r].[estimated_completion_time],[r].[blocking_session_id],[r].[wait_type],[r].[wait_time],
@@ -221,34 +221,34 @@ BEGIN
                         THEN 'ROLLBACK_IN_PROGRESS' ELSE 'MAINTENANCE_REQUEST_ACTIVE' END,
                    CASE WHEN [r].[blocking_session_id]>0 AND [r].[wait_time]>=@BlockedWarnMs THEN 'MEDIUM' ELSE 'INFO' END,
                    N'Fortschritt und Restzeit sind Engine-Schaetzwerte; SQL-Text, Handles, Konten, Clients und Wait-Ressourcen bleiben ausgeschlossen.'
-            FROM [sys].[dm_exec_requests] AS [r]
-            LEFT JOIN [#DatabaseCandidates] AS [d] ON [d].[DatabaseId]=[r].[database_id]
+            FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+            LEFT JOIN [#MaintenanceOperations_DatabaseCandidates] AS [d] ON [d].[DatabaseId]=[r].[database_id]
             WHERE [r].[session_id]<>@@SPID
-              AND ([r].[database_id] IN (SELECT [DatabaseId] FROM [#DatabaseCandidates]) OR [r].[database_id] IS NULL)
+              AND ([r].[database_id] IN (SELECT [DatabaseId] FROM [#MaintenanceOperations_DatabaseCandidates]) OR [r].[database_id] IS NULL)
               AND ([r].[command] LIKE N'ALTER INDEX%'
                 OR [r].[command] LIKE N'DBCC%'
                 OR [r].[command] LIKE N'BACKUP%'
                 OR [r].[command] LIKE N'RESTORE%'
                 OR [r].[command] LIKE N'ROLLBACK%');
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'sys.dm_exec_requests','AVAILABLE',0,
              N'Nur technische Request-, Fortschritts-, Blockierungs- und IO-Zaehler; keine Identitaets-, Client- oder SQL-Daten.');
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'sys.dm_exec_requests',CASE WHEN ERROR_NUMBER() IN (229,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'Laufende Wartungsrequests waren nicht lesbar; die uebrigen Quellen werden weiter ausgewertet.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
         END CATCH;
 
-        INSERT [#Pvs]
+        INSERT [#MaintenanceOperations_Pvs]
         ([DatabaseId],[DatabaseName],[AdrEnabled],[PvsSizeMb],[OnlineIndexPvsSizeMb],
          [CurrentAbortedTransactionCount],
          [FindingCode],[FindingSeverity],[EvidenceLimit])
         SELECT [c].[DatabaseId],[c].[DatabaseName],[d].[is_accelerated_database_recovery_on],NULL,NULL,NULL,
                CASE WHEN [d].[is_accelerated_database_recovery_on]=1 THEN 'ADR_ENABLED_PVS_DETAIL_PENDING' ELSE 'ADR_NOT_ENABLED' END,
                'INFO',N'ADR/PVS-Zaehler sind Zeitpunktwerte und beweisen allein keine Bereinigungsstoerung.'
-        FROM [#DatabaseCandidates] AS [c]
+        FROM [#MaintenanceOperations_DatabaseCandidates] AS [c]
         JOIN [sys].[databases] AS [d] WITH (NOLOCK) ON [d].[database_id]=[c].[DatabaseId];
 
         IF @Major>=16
@@ -258,7 +258,7 @@ BEGIN
                 +N'[PvsSizeMb]=CONVERT(decimal(19,2),[s].[persistent_version_store_size_kb]/1024.0),'
                 +N'[OnlineIndexPvsSizeMb]=CONVERT(decimal(19,2),[s].[online_index_version_store_size_kb]/1024.0),'
                 +N'[CurrentAbortedTransactionCount]=[s].[current_aborted_transaction_count] '
-                +N'FROM [#Pvs] AS [p] JOIN [sys].[dm_tran_persistent_version_store_stats] AS [s] '
+                +N'FROM [#MaintenanceOperations_Pvs] AS [p] JOIN [sys].[dm_tran_persistent_version_store_stats] AS [s] WITH (NOLOCK) '
                 +N'ON [s].[database_id]=[p].[DatabaseId];';
             EXEC [sys].[sp_executesql] @Sql;
 
@@ -272,13 +272,13 @@ BEGIN
                 [FindingSeverity]=CASE WHEN [PvsSizeMb]>=@PvsWarnMb
                                         OR [CurrentAbortedTransactionCount]>=@AbortedTransactionsWarnCount
                                        THEN 'MEDIUM' ELSE 'INFO' END
-            FROM [#Pvs] AS [p] WHERE [AdrEnabled]=1;
-            INSERT [#SourceStatus] VALUES
+            FROM [#MaintenanceOperations_Pvs] AS [p] WHERE [AdrEnabled]=1;
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'sys.dm_tran_persistent_version_store_stats','AVAILABLE',0,
              N'Aggregierte ADR/PVS-Zaehler; Verfuegbarkeit wird fuer SQL Server 2022 oder neuer geprueft.');
           END TRY
           BEGIN CATCH
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'sys.dm_tran_persistent_version_store_stats',CASE WHEN ERROR_NUMBER() IN (229,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'ADR/PVS-Detailzaehler waren nicht lesbar; ADR-Konfiguration bleibt sichtbar.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
@@ -286,7 +286,7 @@ BEGIN
         END
         ELSE
         BEGIN
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'sys.dm_tran_persistent_version_store_stats','UNAVAILABLE_VERSION',1,
              N'Der stabile Detailvertrag dieses Moduls beginnt mit SQL Server 2022; SQL Server 2019 liefert nur den ADR-Kontext.');
         END;
@@ -298,7 +298,7 @@ BEGIN
             (
                 SELECT MAX([session_id]) AS [session_id] FROM [msdb].[dbo].[syssessions] WITH (NOLOCK)
             )
-            INSERT [#Jobs]
+            INSERT [#MaintenanceOperations_Jobs]
             SELECT [j].[name],[a].[start_execution_date],[a].[stop_execution_date],
                    CONVERT(bit,CASE WHEN [a].[start_execution_date] IS NOT NULL AND [a].[stop_execution_date] IS NULL THEN 1 ELSE 0 END),
                    'SELECTED_JOB_STATE','INFO',
@@ -312,16 +312,16 @@ BEGIN
                    WHERE [f].[IsValid]=1 AND [f].[StringValue]=[j].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
               AND (@JobPatternMode='NONE' OR [j].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @JobPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS);
 
-            IF (SELECT COUNT_BIG(*) FROM [#Jobs] WHERE [IsRunning]=1)>1
-                UPDATE [#Jobs] SET [FindingCode]='SELECTED_JOBS_OVERLAP',[FindingSeverity]='MEDIUM'
+            IF (SELECT COUNT_BIG(*) FROM [#MaintenanceOperations_Jobs] WHERE [IsRunning]=1)>1
+                UPDATE [#MaintenanceOperations_Jobs] SET [FindingCode]='SELECTED_JOBS_OVERLAP',[FindingSeverity]='MEDIUM'
                 WHERE [IsRunning]=1;
 
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'msdb.dbo.sysjobs + msdb.dbo.sysjobactivity','AVAILABLE',0,
              N'Jobquelle wurde nur wegen eines expliziten Namens- oder Patternfilters gelesen.');
           END TRY
           BEGIN CATCH
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'msdb.dbo.sysjobs + msdb.dbo.sysjobactivity',CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'Explizit angeforderte Jobaktivitaet war nicht lesbar; keine Jobdetails wurden ersatzweise gelesen.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
@@ -329,17 +329,17 @@ BEGIN
         END
         ELSE
         BEGIN
-            INSERT [#SourceStatus] VALUES
+            INSERT [#MaintenanceOperations_SourceStatus] VALUES
             (N'msdb.dbo.sysjobs + msdb.dbo.sysjobactivity','NOT_REQUESTED',0,
              N'Ohne expliziten Jobfilter werden Jobnamen und Jobaktivitaet nicht gelesen.');
         END;
 
-        IF EXISTS(SELECT 1 FROM [#SourceStatus] WHERE [IsPartial]=1)
+        IF EXISTS(SELECT 1 FROM [#MaintenanceOperations_SourceStatus] WHERE [IsPartial]=1)
             SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-        ELSE IF EXISTS(SELECT 1 FROM [#Resumable] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
-             OR EXISTS(SELECT 1 FROM [#Requests] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
-             OR EXISTS(SELECT 1 FROM [#Pvs] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
-             OR EXISTS(SELECT 1 FROM [#Jobs] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
+        ELSE IF EXISTS(SELECT 1 FROM [#MaintenanceOperations_Resumable] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
+             OR EXISTS(SELECT 1 FROM [#MaintenanceOperations_Requests] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
+             OR EXISTS(SELECT 1 FROM [#MaintenanceOperations_Pvs] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
+             OR EXISTS(SELECT 1 FROM [#MaintenanceOperations_Jobs] WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
             SET @StatusCode='AVAILABLE_WITH_FINDING';
     END;
 
@@ -351,21 +351,21 @@ BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT N'MaintenanceOperations' AS [resultName],1 AS [schemaVersion],
             @Now AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@Major AS [productMajorVersion]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-        DECLARE @ResumableJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#Resumable]
+        DECLARE @ResumableJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Resumable]
             WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
             ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId],[StartTime]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @RequestJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#Requests]
+        DECLARE @RequestJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Requests]
             WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
             ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[ElapsedMs] DESC
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @PvsJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#Pvs]
+        DECLARE @PvsJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Pvs]
             WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM') ORDER BY [DatabaseId]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JobJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#Jobs]
+        DECLARE @JobJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Jobs]
             WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM') ORDER BY [JobName]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @SourceJson nvarchar(max)=(SELECT * FROM [#SourceStatus] ORDER BY [SourceName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @SourceJson nvarchar(max)=(SELECT * FROM [#MaintenanceOperations_SourceStatus] ORDER BY [SourceName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"resumableOperations":',COALESCE(@ResumableJson,N'[]'),
             N',"requests":',COALESCE(@RequestJson,N'[]'),N',"pvs":',COALESCE(@PvsJson,N'[]'),
             N',"jobs":',COALESCE(@JobJson,N'[]'),N',"sources":',COALESCE(@SourceJson,N'[]'),N'}');
@@ -375,12 +375,12 @@ BEGIN
     BEGIN
         SELECT N'USP_MaintenanceOperations' AS [ModuleName],@Now AS [CollectionTimeUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@Major AS [ProductMajorVersion],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];
-        SELECT TOP (@Limit) * FROM [#Resumable] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) * FROM [#Requests] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) * FROM [#Pvs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) * FROM [#Jobs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT * FROM [#SourceStatus] ORDER BY [SourceName];
-        SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Resumable] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Requests] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Pvs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Jobs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        SELECT * FROM [#MaintenanceOperations_SourceStatus] ORDER BY [SourceName];
+        SELECT * FROM [#MaintenanceOperations_DatabaseCandidateWarnings] ORDER BY [RequestedName];
     END
     ELSE IF @OutputMode='CONSOLE'
     BEGIN
@@ -390,28 +390,28 @@ BEGIN
                [SchemaName] AS [Schema],[ObjectName] AS [Objekt],[IndexName] AS [Index],[StateDesc] AS [Status],
                [PercentComplete] AS [Fortschritt_Prozent],[LastPauseTime] AS [Letzte_Pause],
                [FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#Resumable] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        FROM [#MaintenanceOperations_Resumable] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
         SELECT TOP (@Limit) N'Laufender Wartungsrequest' AS [Ergebnis],[SessionId] AS [Session_ID],
                [DatabaseName] AS [Datenbank],[Command] AS [Operation],[Status],[ElapsedMs] AS [Dauer_ms],
                [PercentComplete] AS [Fortschritt_Prozent],[BlockingSessionId] AS [Blockiert_durch],
                [WaitType] AS [Wait_Typ],[FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet]
-        FROM [#Requests] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        FROM [#MaintenanceOperations_Requests] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
         SELECT TOP (@Limit) N'ADR und PVS' AS [Ergebnis],[DatabaseName] AS [Datenbank],[AdrEnabled] AS [ADR_Aktiv],
                [PvsSizeMb] AS [PVS_MB],[OnlineIndexPvsSizeMb] AS [Online_Index_PVS_MB],
                [CurrentAbortedTransactionCount] AS [Abgebrochene_Transaktionen],
                [FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#Pvs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        FROM [#MaintenanceOperations_Pvs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
         SELECT TOP (@Limit) N'Explizit gewaehlter Job' AS [Ergebnis],[JobName] AS [Job],
                [StartExecutionDate] AS [Start],[IsRunning] AS [Laeuft],[FindingCode] AS [Befund],
                [FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#Jobs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        FROM [#MaintenanceOperations_Jobs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
         SELECT N'Quellenstatus' AS [Ergebnis],[SourceName] AS [Quelle],[StatusCode] AS [Status],[Detail] AS [Hinweis]
-        FROM [#SourceStatus] ORDER BY [SourceName];
+        FROM [#MaintenanceOperations_SourceStatus] ORDER BY [SourceName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Resumable'
+              @SourceTable = N'#MaintenanceOperations_Resumable'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

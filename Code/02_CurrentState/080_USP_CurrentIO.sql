@@ -28,6 +28,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentIO]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -60,7 +61,7 @@ BEGIN
     DECLARE @Message nvarchar(2048);
     DECLARE @Delay char(8);
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#CurrentIO_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -74,13 +75,13 @@ BEGIN
         , [RequestedOrdinal] int NULL
         , PRIMARY KEY ([DatabaseId])
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#CurrentIO_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#Before]
+    CREATE TABLE [#CurrentIO_Before]
     (
           [DatabaseId] int NOT NULL
         , [FileId] int NOT NULL
@@ -94,7 +95,7 @@ BEGIN
         , [SizeOnDiskBytes] bigint NOT NULL
         , PRIMARY KEY ([DatabaseId], [FileId])
     );
-    CREATE TABLE [#After]
+    CREATE TABLE [#CurrentIO_After]
     (
           [DatabaseId] int NOT NULL
         , [FileId] int NOT NULL
@@ -108,7 +109,7 @@ BEGIN
         , [SizeOnDiskBytes] bigint NOT NULL
         , PRIMARY KEY ([DatabaseId], [FileId])
     );
-    CREATE TABLE [#Result]
+    CREATE TABLE [#CurrentIO_Result]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -152,7 +153,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#CurrentIO_DatabaseCandidates',@WarningTable=N'#CurrentIO_DatabaseCandidateWarnings';
     END;
 
     IF @StatusCode = 'AVAILABLE'
@@ -160,14 +161,14 @@ BEGIN
         DECLARE @DatabaseId int;
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseId]
-            FROM [#DatabaseCandidates]
+            FROM [#CurrentIO_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
         OPEN [DatabaseCursor];
         FETCH NEXT FROM [DatabaseCursor] INTO @DatabaseId;
         WHILE @@FETCH_STATUS = 0
         BEGIN
-            INSERT [#Before]
+            INSERT [#CurrentIO_Before]
             (
                   [DatabaseId], [FileId], [SampleMs], [Reads], [ReadStallMs]
                 , [ReadBytes], [Writes], [WriteStallMs], [WriteBytes], [SizeOnDiskBytes]
@@ -192,14 +193,14 @@ BEGIN
 
         DECLARE [DatabaseCursorAfter] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseId]
-            FROM [#DatabaseCandidates]
+            FROM [#CurrentIO_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
         OPEN [DatabaseCursorAfter];
         FETCH NEXT FROM [DatabaseCursorAfter] INTO @DatabaseId;
         WHILE @@FETCH_STATUS = 0
         BEGIN
-            INSERT [#After]
+            INSERT [#CurrentIO_After]
             (
                   [DatabaseId], [FileId], [SampleMs], [Reads], [ReadStallMs]
                 , [ReadBytes], [Writes], [WriteStallMs], [WriteBytes], [SizeOnDiskBytes]
@@ -216,7 +217,7 @@ BEGIN
         CLOSE [DatabaseCursorAfter];
         DEALLOCATE [DatabaseCursorAfter];
 
-        INSERT [#Result]
+        INSERT [#CurrentIO_Result]
         (
               [DatabaseId], [DatabaseName], [FileId], [LogicalName]
             , [PhysicalName], [FileTypeDesc], [SampleSeconds]
@@ -262,11 +263,11 @@ BEGIN
             , CONVERT(decimal(19,3), CASE WHEN @SampleSeconds > 0 THEN ([a].[ReadBytes] - [b].[ReadBytes]) / 1048576.0 / NULLIF(@SampleSeconds, 0) END)
             , CONVERT(decimal(19,3), CASE WHEN @SampleSeconds > 0 THEN ([a].[WriteBytes] - [b].[WriteBytes]) / 1048576.0 / NULLIF(@SampleSeconds, 0) END)
             , CONVERT(decimal(19,2), [a].[SizeOnDiskBytes] / 1048576.0)
-        FROM [#Before] AS [b]
-        INNER JOIN [#After] AS [a]
+        FROM [#CurrentIO_Before] AS [b]
+        INNER JOIN [#CurrentIO_After] AS [a]
           ON [a].[DatabaseId] = [b].[DatabaseId]
          AND [a].[FileId] = [b].[FileId]
-        INNER JOIN [#DatabaseCandidates] AS [c]
+        INNER JOIN [#CurrentIO_DatabaseCandidates] AS [c]
           ON [c].[DatabaseId] = [b].[DatabaseId]
         LEFT JOIN [master].[sys].[master_files] AS [mf] WITH (NOLOCK)
           ON [mf].[database_id] = [b].[DatabaseId]
@@ -301,7 +302,7 @@ BEGIN
               [c].[DatabaseName],
               [b].[FileId];
 
-        SELECT @RowCount = COUNT_BIG(*) FROM [#Result];
+        SELECT @RowCount = COUNT_BIG(*) FROM [#CurrentIO_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
     END TRY
     BEGIN CATCH
@@ -334,7 +335,7 @@ BEGIN
         IF @OutputMode = 'RAW'
         BEGIN
             SELECT TOP (@Limit) *
-            FROM [#Result]
+            FROM [#CurrentIO_Result]
             ORDER BY [OverallLatencyMs] DESC, [DatabaseName], [FileId];
         END
         ELSE
@@ -354,12 +355,12 @@ BEGIN
                 , CONCAT(CONVERT(varchar(30), [ReadThroughputMbPerSecond]), N' MB/s') AS [Lesedurchsatz]
                 , CONCAT(CONVERT(varchar(30), [WriteThroughputMbPerSecond]), N' MB/s') AS [Schreibdurchsatz]
                 , CONCAT(CONVERT(varchar(30), [SizeOnDiskMb]), N' MB') AS [Dateigröße]
-            FROM [#Result]
+            FROM [#CurrentIO_Result]
             ORDER BY [OverallLatencyMs] DESC, [DatabaseName], [FileId];
         END;
 
         SELECT [RequestedName], [StatusCode], [ErrorMessage]
-        FROM [#DatabaseCandidateWarnings]
+        FROM [#CurrentIO_DatabaseCandidateWarnings]
         ORDER BY [RequestedName];
     END;
 
@@ -375,14 +376,14 @@ BEGIN
         );
         DECLARE @Data nvarchar(max) =
         (
-            SELECT TOP (@Limit) * FROM [#Result]
+            SELECT TOP (@Limit) * FROM [#CurrentIO_Result]
             ORDER BY [OverallLatencyMs] DESC, [DatabaseName], [FileId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @Warnings nvarchar(max) =
         (
             SELECT [RequestedName], [StatusCode], [ErrorMessage]
-            FROM [#DatabaseCandidateWarnings]
+            FROM [#CurrentIO_DatabaseCandidateWarnings]
             ORDER BY [RequestedName]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -391,7 +392,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#CurrentIO_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

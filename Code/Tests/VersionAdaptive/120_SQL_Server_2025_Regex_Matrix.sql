@@ -96,7 +96,7 @@ GO
 RAISERROR(N'REGEX_MATRIX_2025 phase=feature_gate_160',10,1) WITH NOWAIT;
 GO
 
-DECLARE @DatabaseName sysname=DB_NAME();
+DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @AlterSql nvarchar(max)=N'ALTER DATABASE ' + QUOTENAME(@DatabaseName) + N' SET COMPATIBILITY_LEVEL = 160;';
 EXEC [sys].[sp_executesql] @AlterSql;
 GO
@@ -138,14 +138,14 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     DECLARE @ErrorMessage nvarchar(2048)=ERROR_MESSAGE();
-    DECLARE @DatabaseName sysname=DB_NAME();
+    DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
     DECLARE @RestoreSql nvarchar(max)=N'ALTER DATABASE ' + QUOTENAME(@DatabaseName) + N' SET COMPATIBILITY_LEVEL = 170;';
     EXEC [sys].[sp_executesql] @RestoreSql;
     THROW 54411,@ErrorMessage,1;
 END CATCH;
 GO
 
-DECLARE @DatabaseName sysname=DB_NAME();
+DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @RestoreSql nvarchar(max)=N'ALTER DATABASE ' + QUOTENAME(@DatabaseName) + N' SET COMPATIBILITY_LEVEL = 170;';
 EXEC [sys].[sp_executesql] @RestoreSql;
 GO

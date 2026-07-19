@@ -57,7 +57,7 @@ RETURN
             nvarchar(max),
             CASE WHEN @DatabaseNames IS NOT NULL
                        AND NULLIF(LTRIM(RTRIM(@DatabaseNames)), N'') IS NULL
-                 THEN QUOTENAME(DB_NAME())
+                 THEN QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))
                  ELSE @DatabaseNames
             END
         )
@@ -101,7 +101,7 @@ RETURN
         , [d].[recovery_model_desc]                AS [RecoveryModelDesc]
         , CONVERT(bit, CASE WHEN [d].[database_id] <= 4 THEN 1 ELSE 0 END) AS [IsSystemDatabase]
         , [e].[ItemOrdinal]                        AS [RequestedOrdinal]
-    FROM [master].[sys].[databases] AS [d] WITH (READUNCOMMITTED)
+    FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)
     CROSS JOIN [Parameters] AS [pa]
     CROSS JOIN [Pattern] AS [p]
     LEFT JOIN [ExactNames] AS [e]

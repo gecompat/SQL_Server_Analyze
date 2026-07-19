@@ -4,16 +4,18 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.InternalWriteResultTable
-Version      : 1.0.0
+Version      : 1.1.0
 Stand        : 2026-07-19
 Typ          : Interne Stored Procedure
 Zweck        : Kopiert genau ein bereits materialisiertes Analyseergebnis in
                eine lokale Temp-Tabelle des Aufrufers. Eine leere Tabelle mit
-               der Spalte [__MonitorPlaceholder] wird sicher an die native
+               genau einer beliebigen Dummy-Spalte wird sicher an die native
                Quellstruktur angepasst; eine bereits passende Struktur wird
                zum Anhängen verwendet.
 Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
                und permanente Tabellen sind bewusst nicht zugelassen.
+Locking      : Katalogauflösung ausschließlich über tempdb.sys.* WITH (NOLOCK)
+               und LOCK_TIMEOUT 0; keine blockierenden Metadatenfunktionen.
 ===============================================================================
 */
 SET ANSI_NULLS ON;
@@ -32,6 +34,7 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalWriteResultTable]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @TableThrowMessage nvarchar(2048);
 
@@ -55,6 +58,8 @@ BEGIN
        OR @ResultTable IS NULL
        OR LEFT(@ResultTable, 1) <> N'#'
        OR LEFT(@ResultTable, 2) = N'##'
+       OR LEN(@SourceTable) > 116
+       OR LEN(@ResultTable) > 116
        OR @ResultTable LIKE N'#Monitor%' COLLATE Latin1_General_100_CI_AS
     BEGIN
         SELECT
@@ -63,26 +68,7 @@ BEGIN
         GOTO TableWriteFailed;
     END;
 
-    DECLARE @SourceObjectId int = OBJECT_ID(N'tempdb..' + @SourceTable, N'U');
-    DECLARE @TargetObjectId int = OBJECT_ID(N'tempdb..' + @ResultTable, N'U');
-
-    IF @SourceObjectId IS NULL
-    BEGIN
-        SELECT
-              @StatusCode = 'SOURCE_NOT_FOUND'
-            , @ErrorMessage = N'Die interne Quelltabelle des ausgewählten Resultsets wurde nicht gefunden.';
-        GOTO TableWriteFailed;
-    END;
-
-    IF @TargetObjectId IS NULL
-    BEGIN
-        SELECT
-              @StatusCode = 'TARGET_NOT_FOUND'
-            , @ErrorMessage = N'@ResultTable muss vor dem EXEC als lokale #Temp-Tabelle in derselben Sitzung angelegt werden.';
-        GOTO TableWriteFailed;
-    END;
-
-    IF @SourceObjectId = @TargetObjectId
+    IF @SourceTable = @ResultTable COLLATE Latin1_General_100_CI_AS
     BEGIN
         SELECT
               @StatusCode = 'INVALID_PARAMETER'
@@ -90,7 +76,93 @@ BEGIN
         GOTO TableWriteFailed;
     END;
 
-    CREATE TABLE [#MonitorSourceSchema]
+    DECLARE @SourceObjectId int = NULL;
+    DECLARE @TargetObjectId int = NULL;
+    DECLARE @SourceMarker sysname = N'__MonitorResolveSource_' + REPLACE(CONVERT(nvarchar(36), NEWID()), N'-', N'');
+    DECLARE @TargetMarker sysname = N'__MonitorResolveTarget_' + REPLACE(CONVERT(nvarchar(36), NEWID()), N'-', N'');
+    DECLARE @ResolveSql nvarchar(max);
+
+    BEGIN TRY
+        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@SourceTable)
+                        + N' ADD ' + QUOTENAME(@SourceMarker) + N' bit NULL;';
+        EXEC [sys].[sp_executesql] @ResolveSql;
+    END TRY
+    BEGIN CATCH
+        SELECT
+              @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'SOURCE_NOT_FOUND' END
+            , @ErrorNumber = ERROR_NUMBER()
+            , @ErrorMessage = N'Die interne Quelltabelle des ausgewählten Resultsets konnte nicht aufgelöst werden: ' + ERROR_MESSAGE();
+        GOTO TableWriteFailed;
+    END CATCH;
+
+    SELECT @SourceObjectId = [c].[object_id]
+    FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+    JOIN [tempdb].[sys].[tables] AS [t] WITH (NOLOCK)
+      ON [t].[object_id] = [c].[object_id]
+    WHERE [c].[name] = @SourceMarker;
+
+    BEGIN TRY
+        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@SourceTable)
+                        + N' DROP COLUMN ' + QUOTENAME(@SourceMarker) + N';';
+        EXEC [sys].[sp_executesql] @ResolveSql;
+    END TRY
+    BEGIN CATCH
+        SELECT
+              @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
+            , @ErrorNumber = ERROR_NUMBER()
+            , @ErrorMessage = N'Die temporäre Quellmarkierung konnte nicht entfernt werden: ' + ERROR_MESSAGE();
+        GOTO TableWriteFailed;
+    END CATCH;
+
+    IF @SourceObjectId IS NULL
+    BEGIN
+        SELECT
+              @StatusCode = 'METADATA_NOT_VISIBLE'
+            , @ErrorMessage = N'Die interne Quelltabelle ist vorhanden, ihre Katalogzeile war jedoch ohne Warten nicht sichtbar.';
+        GOTO TableWriteFailed;
+    END;
+
+    BEGIN TRY
+        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@ResultTable)
+                        + N' ADD ' + QUOTENAME(@TargetMarker) + N' bit NULL;';
+        EXEC [sys].[sp_executesql] @ResolveSql;
+    END TRY
+    BEGIN CATCH
+        SELECT
+              @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TARGET_NOT_FOUND' END
+            , @ErrorNumber = ERROR_NUMBER()
+            , @ErrorMessage = N'@ResultTable konnte nicht aufgelöst werden: ' + ERROR_MESSAGE();
+        GOTO TableWriteFailed;
+    END CATCH;
+
+    SELECT @TargetObjectId = [c].[object_id]
+    FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+    JOIN [tempdb].[sys].[tables] AS [t] WITH (NOLOCK)
+      ON [t].[object_id] = [c].[object_id]
+    WHERE [c].[name] = @TargetMarker;
+
+    BEGIN TRY
+        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@ResultTable)
+                        + N' DROP COLUMN ' + QUOTENAME(@TargetMarker) + N';';
+        EXEC [sys].[sp_executesql] @ResolveSql;
+    END TRY
+    BEGIN CATCH
+        SELECT
+              @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
+            , @ErrorNumber = ERROR_NUMBER()
+            , @ErrorMessage = N'Die temporäre Zielmarkierung konnte nicht entfernt werden: ' + ERROR_MESSAGE();
+        GOTO TableWriteFailed;
+    END CATCH;
+
+    IF @TargetObjectId IS NULL
+    BEGIN
+        SELECT
+              @StatusCode = 'METADATA_NOT_VISIBLE'
+            , @ErrorMessage = N'@ResultTable ist vorhanden, ihre Katalogzeile war jedoch ohne Warten nicht sichtbar.';
+        GOTO TableWriteFailed;
+    END;
+
+    CREATE TABLE [#InternalWriteResultTable_SourceSchema]
     (
           [ColumnId] int NOT NULL
         , [ColumnName] sysname NOT NULL
@@ -108,7 +180,7 @@ BEGIN
         , [XmlCollectionId] int NOT NULL
     );
 
-    CREATE TABLE [#MonitorTargetSchema]
+    CREATE TABLE [#InternalWriteResultTable_TargetSchema]
     (
           [ColumnId] int NOT NULL
         , [ColumnName] sysname NOT NULL
@@ -126,7 +198,7 @@ BEGIN
         , [XmlCollectionId] int NOT NULL
     );
 
-    INSERT [#MonitorSourceSchema]
+    INSERT [#InternalWriteResultTable_SourceSchema]
     (
           [ColumnId], [ColumnName], [TypeName], [SystemTypeId], [MaxLength]
         , [Precision], [Scale], [CollationName], [IsNullable], [IsIdentity]
@@ -147,12 +219,12 @@ BEGIN
         , [t].[is_user_defined]
         , [t].[is_assembly_type]
         , [c].[xml_collection_id]
-    FROM [tempdb].[sys].[columns] AS [c]
-    JOIN [tempdb].[sys].[types] AS [t]
+    FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+    JOIN [tempdb].[sys].[types] AS [t] WITH (NOLOCK)
       ON [t].[user_type_id] = [c].[user_type_id]
     WHERE [c].[object_id] = @SourceObjectId;
 
-    IF NOT EXISTS (SELECT 1 FROM [#MonitorSourceSchema])
+    IF NOT EXISTS (SELECT 1 FROM [#InternalWriteResultTable_SourceSchema])
     BEGIN
         SELECT
               @StatusCode = 'UNSUPPORTED_SOURCE_SCHEMA'
@@ -163,65 +235,126 @@ BEGIN
     IF EXISTS
     (
         SELECT 1
-        FROM [#MonitorSourceSchema]
+        FROM [#InternalWriteResultTable_SourceSchema]
         WHERE [IsComputed] = 1
            OR [IsUserDefined] = 1
            OR [IsAssemblyType] = 1
            OR [XmlCollectionId] <> 0
            OR [TypeName] IN (N'timestamp', N'rowversion')
-           OR [ColumnName] = N'__MonitorPlaceholder'
     )
     BEGIN
         SELECT
               @StatusCode = 'UNSUPPORTED_SOURCE_SCHEMA'
-            , @ErrorMessage = N'Das ausgewählte Resultset enthält einen nicht sicher reproduzierbaren Datentyp, eine berechnete Spalte oder den reservierten Platzhalternamen.';
+            , @ErrorMessage = N'Das ausgewählte Resultset enthält einen nicht sicher reproduzierbaren Datentyp oder eine berechnete Spalte.';
         GOTO TableWriteFailed;
     END;
 
+    INSERT [#InternalWriteResultTable_TargetSchema]
+    (
+          [ColumnId], [ColumnName], [TypeName], [SystemTypeId], [MaxLength]
+        , [Precision], [Scale], [CollationName], [IsNullable], [IsIdentity]
+        , [IsComputed], [IsUserDefined], [IsAssemblyType], [XmlCollectionId]
+    )
+    SELECT
+          CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id]))
+        , [c].[name]
+        , [t].[name]
+        , [c].[system_type_id]
+        , [c].[max_length]
+        , [c].[precision]
+        , [c].[scale]
+        , [c].[collation_name]
+        , [c].[is_nullable]
+        , [c].[is_identity]
+        , [c].[is_computed]
+        , [t].[is_user_defined]
+        , [t].[is_assembly_type]
+        , [c].[xml_collection_id]
+    FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+    JOIN [tempdb].[sys].[types] AS [t] WITH (NOLOCK)
+      ON [t].[user_type_id] = [c].[user_type_id]
+    WHERE [c].[object_id] = @TargetObjectId;
+
     DECLARE @TargetColumnCount int;
-    DECLARE @IsPlaceholderTarget bit = 0;
     DECLARE @TargetHasRows bit = 0;
+    DECLARE @DummyColumnName sysname;
+    DECLARE @TargetNeedsAdaptation bit = 0;
 
     SELECT
           @TargetColumnCount = COUNT(*)
-        , @IsPlaceholderTarget = CONVERT
-          (
-              bit,
-              CASE
-                  WHEN COUNT(*) = 1
-                   AND MAX(CASE
-                               WHEN [c].[name] = N'__MonitorPlaceholder'
-                                AND [c].[system_type_id] = 104
-                                AND [c].[is_nullable] = 1
-                                AND [c].[is_identity] = 0
-                                AND [c].[is_computed] = 0
-                                   THEN 1
-                               ELSE 0
-                           END) = 1
-                      THEN 1
-                  ELSE 0
-              END
-          )
-    FROM [tempdb].[sys].[columns] AS [c]
-    WHERE [c].[object_id] = @TargetObjectId;
+        , @DummyColumnName = MAX([ColumnName])
+    FROM [#InternalWriteResultTable_TargetSchema];
 
-    IF @IsPlaceholderTarget = 1
+    IF EXISTS
+    (
+        SELECT
+              [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
+            , [Scale], [CollationName], [IsNullable]
+        FROM [#InternalWriteResultTable_SourceSchema]
+        EXCEPT
+        SELECT
+              [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
+            , [Scale], [CollationName], [IsNullable]
+        FROM [#InternalWriteResultTable_TargetSchema]
+    )
+    OR EXISTS
+    (
+        SELECT
+              [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
+            , [Scale], [CollationName], [IsNullable]
+        FROM [#InternalWriteResultTable_TargetSchema]
+        EXCEPT
+        SELECT
+              [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
+            , [Scale], [CollationName], [IsNullable]
+        FROM [#InternalWriteResultTable_SourceSchema]
+    )
+    OR EXISTS
+    (
+        SELECT 1
+        FROM [#InternalWriteResultTable_TargetSchema]
+        WHERE [IsIdentity] = 1
+           OR [IsComputed] = 1
+           OR [IsUserDefined] = 1
+           OR [IsAssemblyType] = 1
+           OR [XmlCollectionId] <> 0
+    )
+        SET @TargetNeedsAdaptation = 1;
+
+    IF @TargetNeedsAdaptation = 1
     BEGIN
+        IF @TargetColumnCount <> 1
+        BEGIN
+            SELECT
+                  @StatusCode = 'TARGET_SCHEMA_MISMATCH'
+                , @ErrorMessage = N'Eine abweichende Zieltabelle wird nur dann automatisch angepasst, wenn sie leer ist und genau eine beliebige Dummy-Spalte besitzt.';
+            GOTO TableWriteFailed;
+        END;
+
         DECLARE @HasRowsSql nvarchar(max) =
             N'SELECT @HasRows = CONVERT(bit, CASE WHEN EXISTS (SELECT 1 FROM '
             + QUOTENAME(@ResultTable)
             + N') THEN 1 ELSE 0 END);';
 
-        EXEC [sys].[sp_executesql]
-              @HasRowsSql
-            , N'@HasRows bit OUTPUT'
-            , @HasRows = @TargetHasRows OUTPUT;
+        BEGIN TRY
+            EXEC [sys].[sp_executesql]
+                  @HasRowsSql
+                , N'@HasRows bit OUTPUT'
+                , @HasRows = @TargetHasRows OUTPUT;
+        END TRY
+        BEGIN CATCH
+            SELECT
+                  @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
+                , @ErrorNumber = ERROR_NUMBER()
+                , @ErrorMessage = ERROR_MESSAGE();
+            GOTO TableWriteFailed;
+        END CATCH;
 
         IF @TargetHasRows = 1
         BEGIN
             SELECT
                   @StatusCode = 'TARGET_SCHEMA_MISMATCH'
-                , @ErrorMessage = N'Die Platzhalter-Zieltabelle muss leer sein, bevor ihre Struktur angepasst werden kann.';
+                , @ErrorMessage = N'Die Zieltabelle muss leer sein, bevor ihre einzelne Dummy-Spalte ersetzt werden kann.';
             GOTO TableWriteFailed;
         END;
 
@@ -249,7 +382,7 @@ BEGIN
                       END
                     + CASE WHEN [s].[CollationName] IS NULL THEN N'' ELSE N' COLLATE ' + [s].[CollationName] END
                     + CASE WHEN [s].[IsNullable] = 1 THEN N' NULL' ELSE N' NOT NULL' END
-                FROM [#MonitorSourceSchema] AS [s]
+                FROM [#InternalWriteResultTable_SourceSchema] AS [s]
                 ORDER BY [s].[ColumnId]
                 FOR XML PATH(N''), TYPE
             ).value(N'.', N'nvarchar(max)')
@@ -258,92 +391,85 @@ BEGIN
             , N''
         );
 
+        DECLARE @BridgeColumnName sysname = N'__MonitorBridge_' + REPLACE(CONVERT(nvarchar(36), NEWID()), N'-', N'');
+        WHILE EXISTS (SELECT 1 FROM [#InternalWriteResultTable_SourceSchema] WHERE [ColumnName] = @BridgeColumnName)
+           OR EXISTS (SELECT 1 FROM [#InternalWriteResultTable_TargetSchema] WHERE [ColumnName] = @BridgeColumnName)
+            SET @BridgeColumnName = N'__MonitorBridge_' + REPLACE(CONVERT(nvarchar(36), NEWID()), N'-', N'');
+
         BEGIN TRY
             DECLARE @AlterSql nvarchar(max) =
-                  N'ALTER TABLE ' + QUOTENAME(@ResultTable) + N' ADD ' + @ColumnDefinitions + N';'
-                + N' ALTER TABLE ' + QUOTENAME(@ResultTable) + N' DROP COLUMN [__MonitorPlaceholder];';
+                  N'ALTER TABLE ' + QUOTENAME(@ResultTable) + N' ADD ' + QUOTENAME(@BridgeColumnName) + N' bit NULL;'
+                + N' ALTER TABLE ' + QUOTENAME(@ResultTable) + N' DROP COLUMN ' + QUOTENAME(@DummyColumnName) + N';'
+                + N' ALTER TABLE ' + QUOTENAME(@ResultTable) + N' ADD ' + @ColumnDefinitions + N';'
+                + N' ALTER TABLE ' + QUOTENAME(@ResultTable) + N' DROP COLUMN ' + QUOTENAME(@BridgeColumnName) + N';';
 
             EXEC [sys].[sp_executesql] @AlterSql;
         END TRY
         BEGIN CATCH
             SELECT
-                  @StatusCode = 'TABLE_WRITE_ERROR'
+                  @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TABLE_WRITE_ERROR' END
                 , @ErrorNumber = ERROR_NUMBER()
                 , @ErrorMessage = ERROR_MESSAGE();
             GOTO TableWriteFailed;
         END CATCH;
 
-        SET @TargetObjectId = OBJECT_ID(N'tempdb..' + @ResultTable, N'U');
-    END
-    ELSE IF @TargetColumnCount = 1
-            AND EXISTS
-            (
-                SELECT 1
-                FROM [tempdb].[sys].[columns]
-                WHERE [object_id] = @TargetObjectId
-                  AND [name] = N'__MonitorPlaceholder'
-            )
-    BEGIN
-        SELECT
-              @StatusCode = 'TARGET_SCHEMA_MISMATCH'
-            , @ErrorMessage = N'Der Platzhalter muss exakt als [__MonitorPlaceholder] bit NULL definiert sein.';
-        GOTO TableWriteFailed;
-    END;
+        DELETE FROM [#InternalWriteResultTable_TargetSchema];
 
-    INSERT [#MonitorTargetSchema]
-    (
-          [ColumnId], [ColumnName], [TypeName], [SystemTypeId], [MaxLength]
-        , [Precision], [Scale], [CollationName], [IsNullable], [IsIdentity]
-        , [IsComputed], [IsUserDefined], [IsAssemblyType], [XmlCollectionId]
-    )
-    SELECT
-          CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id]))
-        , [c].[name]
-        , [t].[name]
-        , [c].[system_type_id]
-        , [c].[max_length]
-        , [c].[precision]
-        , [c].[scale]
-        , [c].[collation_name]
-        , [c].[is_nullable]
-        , [c].[is_identity]
-        , [c].[is_computed]
-        , [t].[is_user_defined]
-        , [t].[is_assembly_type]
-        , [c].[xml_collection_id]
-    FROM [tempdb].[sys].[columns] AS [c]
-    JOIN [tempdb].[sys].[types] AS [t]
-      ON [t].[user_type_id] = [c].[user_type_id]
-    WHERE [c].[object_id] = @TargetObjectId;
+        INSERT [#InternalWriteResultTable_TargetSchema]
+        (
+              [ColumnId], [ColumnName], [TypeName], [SystemTypeId], [MaxLength]
+            , [Precision], [Scale], [CollationName], [IsNullable], [IsIdentity]
+            , [IsComputed], [IsUserDefined], [IsAssemblyType], [XmlCollectionId]
+        )
+        SELECT
+              CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id]))
+            , [c].[name]
+            , [t].[name]
+            , [c].[system_type_id]
+            , [c].[max_length]
+            , [c].[precision]
+            , [c].[scale]
+            , [c].[collation_name]
+            , [c].[is_nullable]
+            , [c].[is_identity]
+            , [c].[is_computed]
+            , [t].[is_user_defined]
+            , [t].[is_assembly_type]
+            , [c].[xml_collection_id]
+        FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+        JOIN [tempdb].[sys].[types] AS [t] WITH (NOLOCK)
+          ON [t].[user_type_id] = [c].[user_type_id]
+        WHERE [c].[object_id] = @TargetObjectId;
+    END;
 
     IF EXISTS
     (
         SELECT
               [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
             , [Scale], [CollationName], [IsNullable]
-        FROM [#MonitorSourceSchema]
+        FROM [#InternalWriteResultTable_SourceSchema]
         EXCEPT
         SELECT
               [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
             , [Scale], [CollationName], [IsNullable]
-        FROM [#MonitorTargetSchema]
+        FROM [#InternalWriteResultTable_TargetSchema]
     )
     OR EXISTS
     (
         SELECT
               [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
             , [Scale], [CollationName], [IsNullable]
-        FROM [#MonitorTargetSchema]
+        FROM [#InternalWriteResultTable_TargetSchema]
         EXCEPT
         SELECT
               [ColumnId], [ColumnName], [SystemTypeId], [MaxLength], [Precision]
             , [Scale], [CollationName], [IsNullable]
-        FROM [#MonitorSourceSchema]
+        FROM [#InternalWriteResultTable_SourceSchema]
     )
     OR EXISTS
     (
         SELECT 1
-        FROM [#MonitorTargetSchema]
+        FROM [#InternalWriteResultTable_TargetSchema]
         WHERE [IsIdentity] = 1
            OR [IsComputed] = 1
            OR [IsUserDefined] = 1
@@ -363,7 +489,7 @@ BEGIN
     (
         (
             SELECT N', ' + QUOTENAME([s].[ColumnName])
-            FROM [#MonitorSourceSchema] AS [s]
+            FROM [#InternalWriteResultTable_SourceSchema] AS [s]
             ORDER BY [s].[ColumnId]
             FOR XML PATH(N''), TYPE
         ).value(N'.', N'nvarchar(max)')

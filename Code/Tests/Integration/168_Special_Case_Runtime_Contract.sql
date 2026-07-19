@@ -11,7 +11,7 @@ Datenschutz  : Persistiert keine Laufzeitausgabe; keine fachlichen Testdaten.
 */
 SET NOCOUNT ON;
 
-DECLARE @DatabaseNames nvarchar(max)=QUOTENAME(DB_NAME());
+DECLARE @DatabaseNames nvarchar(max)=QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()));
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048);
 DECLARE @Results TABLE
 (

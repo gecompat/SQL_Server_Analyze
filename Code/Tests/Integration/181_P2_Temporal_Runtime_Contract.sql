@@ -15,7 +15,7 @@ SET XACT_ABORT ON;
 DECLARE @ExecutedCases TABLE([CaseId] varchar(64) NOT NULL PRIMARY KEY);
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit;
 DECLARE @Definition nvarchar(max),@Sql nvarchar(max);
-DECLARE @DatabaseName sysname=DB_NAME();
+DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @RetentionWasEnabled bit=
 (
     SELECT [is_temporal_history_retention_enabled]

@@ -52,7 +52,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
 Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
-Die Version `1.1.0-special.10` ergänzt den einheitlichen, typisierten `TABLE`-/`@ResultTable`-Vertrag für alle 82 Analyse-Procedures. Der Release-Gate-Vertrag umfasst nun 32 Suiten; die vorhandene Drei-Versionen-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle bleibt erhalten und wird um den synthetischen TABLE-Laufzeitvertrag ergänzt. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.
+Die Version `1.1.0-special.11` erweitert den typisierten `TABLE`-/`@ResultTable`-Vertrag auf beliebige leere Ein-Spalten-Dummys, erzwingt blockierungsarme Katalogzugriffe und verwendet objektbezogene lokale Temp-Namen. Der Release-Gate-Vertrag umfasst 32 Suiten; die vorhandene Drei-Versionen-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle bleibt erhalten und wird durch den synthetischen TABLE- sowie den statischen Metadaten-/Temp-Namensvertrag ergänzt. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.
 
 ## Forschungs- und Inventareinstieg
 

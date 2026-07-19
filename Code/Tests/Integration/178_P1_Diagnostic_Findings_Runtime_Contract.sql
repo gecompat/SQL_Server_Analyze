@@ -18,8 +18,8 @@ SET XACT_ABORT ON;
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048);
 DECLARE @OriginalCompatibilityLevel int=
-    (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=DB_ID());
-DECLARE @DatabaseName sysname=DB_NAME();
+    (SELECT [compatibility_level] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID());
+DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @AlterCompatibilitySql nvarchar(max);
 DECLARE @Impersonating bit=0;
 
@@ -156,7 +156,7 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     BEGIN TRY
-        IF (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id]=DB_ID())<>@OriginalCompatibilityLevel
+        IF (SELECT [compatibility_level] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID())<>@OriginalCompatibilityLevel
         BEGIN
             SET @AlterCompatibilitySql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = '
                                        +CONVERT(nvarchar(10),@OriginalCompatibilityLevel)+N';';

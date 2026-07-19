@@ -73,7 +73,7 @@ BEGIN
         CASE WHEN IS_SRVROLEMEMBER(N'sysadmin') = 1 THEN 1
              ELSE COALESCE(HAS_PERMS_BY_NAME(NULL, N'SERVER', @RequiredServerPermission), 0) END;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#DatabaseIntegrityAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -87,14 +87,14 @@ BEGIN
         , [RequestedOrdinal] int NULL
     );
 
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#DatabaseIntegrityAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    CREATE TABLE [#Suspect]
+    CREATE TABLE [#DatabaseIntegrityAnalysis_Suspect]
     (
           [DatabaseId] int NOT NULL
         , [FileId] int NOT NULL
@@ -104,7 +104,7 @@ BEGIN
         , [LastUpdateDate] datetime NULL
     );
 
-    CREATE TABLE [#HadrRepair]
+    CREATE TABLE [#DatabaseIntegrityAnalysis_HadrRepair]
     (
           [DatabaseId] int NOT NULL
         , [FileId] int NOT NULL
@@ -114,7 +114,7 @@ BEGIN
         , [ModificationTime] datetime NULL
     );
 
-    CREATE TABLE [#Integrity]
+    CREATE TABLE [#DatabaseIntegrityAnalysis_Integrity]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -132,7 +132,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
 
-    CREATE TABLE [#PageDetails]
+    CREATE TABLE [#DatabaseIntegrityAnalysis_PageDetails]
     (
           [DatabaseName] sysname NULL
         , [FileId] int NULL
@@ -176,7 +176,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DatabaseIntegrityAnalysis_DatabaseCandidates',@WarningTable=N'#DatabaseIntegrityAnalysis_DatabaseCandidateWarnings';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -184,7 +184,7 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN
         BEGIN TRY
-            INSERT [#Suspect]
+            INSERT [#DatabaseIntegrityAnalysis_Suspect]
             (
                   [DatabaseId], [FileId], [PageId], [EventType]
                 , [ErrorCount], [LastUpdateDate]
@@ -193,7 +193,7 @@ BEGIN
                   [sp].[database_id], [sp].[file_id], [sp].[page_id]
                 , [sp].[event_type], [sp].[error_count], [sp].[last_update_date]
             FROM [msdb].[dbo].[suspect_pages] AS [sp] WITH (NOLOCK)
-            JOIN [#DatabaseCandidates] AS [c]
+            JOIN [#DatabaseIntegrityAnalysis_DatabaseCandidates] AS [c]
               ON [c].[DatabaseId] = [sp].[database_id];
         END TRY
         BEGIN CATCH
@@ -203,7 +203,7 @@ BEGIN
         END CATCH;
 
         BEGIN TRY
-            INSERT [#HadrRepair]
+            INSERT [#DatabaseIntegrityAnalysis_HadrRepair]
             (
                   [DatabaseId], [FileId], [PageId], [ErrorType]
                 , [PageStatus], [ModificationTime]
@@ -211,8 +211,8 @@ BEGIN
             SELECT
                   [r].[database_id], [r].[file_id], [r].[page_id]
                 , [r].[error_type], [r].[page_status], [r].[modification_time]
-            FROM [sys].[dm_hadr_auto_page_repair] AS [r]
-            JOIN [#DatabaseCandidates] AS [c]
+            FROM [sys].[dm_hadr_auto_page_repair] AS [r] WITH (NOLOCK)
+            JOIN [#DatabaseIntegrityAnalysis_DatabaseCandidates] AS [c]
               ON [c].[DatabaseId] = [r].[database_id];
         END TRY
         BEGIN CATCH
@@ -232,7 +232,7 @@ BEGIN
                     , SUM(CONVERT(bigint, CASE WHEN [bs].[is_damaged] = 1 THEN 1 ELSE 0 END)) AS [DamagedCount]
                     , SUM(CONVERT(bigint, CASE WHEN COALESCE([bs].[has_backup_checksums], 0) = 0 THEN 1 ELSE 0 END)) AS [NoChecksumCount]
                 FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
-                JOIN [#DatabaseCandidates] AS [c]
+                JOIN [#DatabaseIntegrityAnalysis_DatabaseCandidates] AS [c]
                   ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                    = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                 WHERE [bs].[backup_finish_date] >= DATEADD(DAY, -@BackupHistoryDays, GETDATE())
@@ -242,26 +242,24 @@ BEGIN
             (
                 SELECT [DatabaseId], COUNT_BIG(*) AS [PageCount],
                        MAX([LastUpdateDate]) AS [LatestDate]
-                FROM [#Suspect]
+                FROM [#DatabaseIntegrityAnalysis_Suspect]
                 GROUP BY [DatabaseId]
             ),
             [RepairEvidence] AS
             (
                 SELECT [DatabaseId], COUNT_BIG(*) AS [RepairCount],
                        SUM(CONVERT(bigint, CASE WHEN [PageStatus] <> 5 THEN 1 ELSE 0 END)) AS [PendingCount]
-                FROM [#HadrRepair]
+                FROM [#DatabaseIntegrityAnalysis_HadrRepair]
                 GROUP BY [DatabaseId]
             )
-            INSERT [#Integrity]
+            INSERT [#DatabaseIntegrityAnalysis_Integrity]
             SELECT
                   [c].[DatabaseId]
                 , [c].[DatabaseName]
                 , [c].[StateDesc]
                 , [d].[page_verify_option_desc]
-                , TRY_CONVERT(datetime2(3), DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime'))
-                , DATEDIFF(HOUR,
-                    TRY_CONVERT(datetime2(3), DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime')),
-                    @Now)
+                , CONVERT(datetime2(3), NULL)
+                , CONVERT(int, NULL)
                 , COALESCE([s].[PageCount], 0)
                 , [s].[LatestDate]
                 , COALESCE([b].[DamagedCount], 0)
@@ -273,17 +271,15 @@ BEGIN
                       WHEN COALESCE([b].[DamagedCount], 0) > 0 THEN 'DAMAGED_BACKUP_METADATA'
                       WHEN COALESCE([r].[PendingCount], 0) > 0 THEN 'HADR_PAGE_REPAIR_PENDING'
                       WHEN [d].[page_verify_option_desc] <> N'CHECKSUM' THEN 'PAGE_VERIFY_NOT_CHECKSUM'
-                      WHEN DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime') IS NULL THEN 'CHECKDB_EVIDENCE_MISSING'
-                      WHEN DATEDIFF(HOUR,
-                           TRY_CONVERT(datetime2(3), DATABASEPROPERTYEX([c].[DatabaseName], 'LastGoodCheckDbTime')),
-                           @Now) > @CheckdbWarnHours THEN 'CHECKDB_EVIDENCE_OLD'
                       WHEN COALESCE([b].[NoChecksumCount], 0) > 0 THEN 'BACKUP_WITHOUT_CHECKSUM_IN_VISIBLE_HISTORY'
-                      ELSE 'NO_INDICATOR_FOUND'
+                      ELSE 'CHECKDB_EVIDENCE_UNAVAILABLE'
                   END
                 , CONCAT(N'Diese Metadaten sind Indizien; Backupmetadaten-Sichtfenster ', @BackupHistoryDays,
-                         N' Tage. Auch NO_INDICATOR_FOUND beweist weder logische noch physische Integrität.')
-            FROM [#DatabaseCandidates] AS [c]
-            JOIN [master].[sys].[databases] AS [d]
+                         N' Tage. LastGoodCheckDbTime wird bewusst nicht über DATABASEPROPERTYEX gelesen, '
+                         N'da diese Metadatenfunktion blockieren kann. Auch CHECKDB_EVIDENCE_UNAVAILABLE '
+                         N'beweist weder logische noch physische Integrität.')
+            FROM [#DatabaseIntegrityAnalysis_DatabaseCandidates] AS [c]
+            JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
               ON [d].[database_id] = [c].[DatabaseId]
             LEFT JOIN [BackupEvidence] AS [b]
               ON [b].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -306,7 +302,7 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitPageDetails = 1
     BEGIN
         BEGIN TRY
-            INSERT [#PageDetails]
+            INSERT [#DatabaseIntegrityAnalysis_PageDetails]
             SELECT TOP (@Limit)
                   [c].[DatabaseName]
                 , [s].[FileId]
@@ -318,8 +314,8 @@ BEGIN
                 , [p].[partition_id]
                 , [p].[page_type_desc]
                 , [p].[alloc_unit_id]
-            FROM [#Suspect] AS [s]
-            JOIN [#DatabaseCandidates] AS [c]
+            FROM [#DatabaseIntegrityAnalysis_Suspect] AS [s]
+            JOIN [#DatabaseIntegrityAnalysis_DatabaseCandidates] AS [c]
               ON [c].[DatabaseId] = [s].[DatabaseId]
             OUTER APPLY [sys].[dm_db_page_info]
             (
@@ -338,10 +334,10 @@ BEGIN
     END;
 
     IF @StatusCode = 'AVAILABLE'
-       AND (@IsPartial = 1 OR EXISTS (SELECT 1 FROM [#DatabaseCandidateWarnings]))
+       AND (@IsPartial = 1 OR EXISTS (SELECT 1 FROM [#DatabaseIntegrityAnalysis_DatabaseCandidateWarnings]))
         SET @StatusCode = 'AVAILABLE_LIMITED';
     ELSE IF @StatusCode = 'AVAILABLE'
-        AND EXISTS (SELECT 1 FROM [#Integrity] WHERE [FindingCode] <> 'NO_INDICATOR_FOUND')
+        AND EXISTS (SELECT 1 FROM [#DatabaseIntegrityAnalysis_Integrity] WHERE [FindingCode] <> 'NO_INDICATOR_FOUND')
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
     SELECT @StatusCodeOut = @StatusCode,
@@ -368,12 +364,12 @@ BEGIN
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM [#Integrity]
+            SELECT * FROM [#DatabaseIntegrityAnalysis_Integrity]
             ORDER BY CASE WHEN [FindingCode] = 'NO_INDICATOR_FOUND' THEN 1 ELSE 0 END,
                      [DatabaseName];
-            SELECT * FROM [#PageDetails]
+            SELECT * FROM [#DatabaseIntegrityAnalysis_PageDetails]
             ORDER BY [LastUpdateDate] DESC, [DatabaseName], [FileId], [PageId];
-            SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+            SELECT * FROM [#DatabaseIntegrityAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
         END
         ELSE
         BEGIN
@@ -389,12 +385,12 @@ BEGIN
                 , [BackupWithoutChecksumCount] AS [Backups ohne Checksum]
                 , [HadrPageRepairPendingCount] AS [Offene HADR-Seitenreparaturen]
                 , [EvidenceLimit] AS [Aussagegrenze]
-            FROM [#Integrity]
+            FROM [#DatabaseIntegrityAnalysis_Integrity]
             ORDER BY CASE WHEN [FindingCode] = 'NO_INDICATOR_FOUND' THEN 1 ELSE 0 END,
                      [DatabaseName];
 
             SELECT N'Seitenmetadaten' AS [Ergebnis], [p].*
-            FROM [#PageDetails] AS [p]
+            FROM [#DatabaseIntegrityAnalysis_PageDetails] AS [p]
             ORDER BY [LastUpdateDate] DESC, [DatabaseName], [FileId], [PageId];
         END;
     END;
@@ -410,11 +406,11 @@ BEGIN
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @IntegrityJson nvarchar(max) =
-            (SELECT * FROM [#Integrity] ORDER BY [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#DatabaseIntegrityAnalysis_Integrity] ORDER BY [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @PagesJson nvarchar(max) =
-            (SELECT * FROM [#PageDetails] ORDER BY [LastUpdateDate] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#DatabaseIntegrityAnalysis_PageDetails] ORDER BY [LastUpdateDate] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
-            (SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#DatabaseIntegrityAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
         (
@@ -428,7 +424,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Integrity'
+              @SourceTable = N'#DatabaseIntegrityAnalysis_Integrity'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

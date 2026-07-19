@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CheckFrameworkCapabilities]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -51,7 +52,7 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#CheckFrameworkCapabilities_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -64,13 +65,13 @@ BEGIN
         , [IsSystemDatabase] bit NOT NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#CheckFrameworkCapabilities_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
-    CREATE TABLE [#Capabilities]
+    CREATE TABLE [#CheckFrameworkCapabilities_Capabilities]
     (
           [FeatureOrdinal] smallint NOT NULL
         , [FeatureCode] varchar(64) NOT NULL
@@ -128,7 +129,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @OverallStatus OUTPUT
             , @ErrorMessage = @OverallError OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#CheckFrameworkCapabilities_DatabaseCandidates',@WarningTable=N'#CheckFrameworkCapabilities_DatabaseCandidateWarnings';
     END;
 
     DECLARE @Features TABLE
@@ -189,7 +190,7 @@ BEGIN
             , [f].[ExpectedWithoutPermission], [f].[ProbeSqlTemplate]
             , [f].[EnablementSqlTemplate], [f].[Description], [d].[DatabaseName]
         FROM [monitor].[VW_FrameworkFeatureCatalog] AS [f]
-        CROSS JOIN [#DatabaseCandidates] AS [d]
+        CROSS JOIN [#CheckFrameworkCapabilities_DatabaseCandidates] AS [d]
         WHERE [f].[ScopeType] = 'DATABASE'
           AND (@AnalyseKlasse IS NULL OR [f].[AnalysisClass] = @AnalyseKlasse);
     END;
@@ -272,7 +273,7 @@ BEGIN
                     SELECT @HasPermission = CONVERT(bit, HAS_PERMS_BY_NAME(NULL, NULL, @Permission));
                 ELSE IF @PermissionScope = 'DATABASE'
                 BEGIN
-                    SET @Sql = N'USE ' + @QuotedDatabaseName + N'; SELECT @x=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',@p));';
+                    SET @Sql = N'USE ' + @QuotedDatabaseName + N'; SELECT @x=CONVERT(bit,HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N''DATABASE'',@p));';
                     EXEC [sys].[sp_executesql] @Sql, N'@p sysname,@x bit OUTPUT', @p = @Permission, @x = @HasPermission OUTPUT;
                 END;
             END TRY
@@ -281,13 +282,13 @@ BEGIN
             END CATCH;
 
             BEGIN TRY
-                SET @Sql = REPLACE(@Probe, N'' + N'$' + N'(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME(DB_NAME())));
+                SET @Sql = REPLACE(@Probe, N'' + N'$' + N'(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))));
                 EXEC [sys].[sp_executesql] @Sql;
                 SET @Queryable = 1;
 
                 IF @Enable IS NOT NULL
                 BEGIN
-                    SET @Sql = REPLACE(REPLACE(@Enable, N'' + N'$' + N'(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME(DB_NAME()))), N'' + N'$' + N'(DATABASENAME)', COALESCE(@DatabaseLiteral, REPLACE(DB_NAME(), N'''', N'''''')));
+                    SET @Sql = REPLACE(REPLACE(@Enable, N'' + N'$' + N'(DATABASE)', COALESCE(@QuotedDatabaseName, QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())))), N'' + N'$' + N'(DATABASENAME)', COALESCE(@DatabaseLiteral, REPLACE((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()), N'''', N'''''')));
                     EXEC [sys].[sp_executesql] @Sql, N'@IsEnabledOut bit OUTPUT', @IsEnabledOut = @Enabled OUTPUT;
                 END;
 
@@ -313,7 +314,7 @@ BEGIN
             END CATCH;
         END;
 
-        INSERT [#Capabilities]
+        INSERT [#CheckFrameworkCapabilities_Capabilities]
         (
               [FeatureOrdinal], [FeatureCode], [FeatureName], [ScopeType]
             , [AnalysisClass], [AnalysisLevel], [IsResourceIntensive]
@@ -339,10 +340,10 @@ BEGIN
     END;
 
     IF @OverallStatus = 'AVAILABLE'
-       AND EXISTS (SELECT 1 FROM [#Capabilities] WHERE [IsUsable] = 0)
+       AND EXISTS (SELECT 1 FROM [#CheckFrameworkCapabilities_Capabilities] WHERE [IsUsable] = 0)
         SET @OverallStatus = 'AVAILABLE_LIMITED';
 
-    IF @PrintMeldungen = 1 AND (@OverallError IS NOT NULL OR EXISTS (SELECT 1 FROM [#Capabilities] WHERE [IsUsable] = 0))
+    IF @PrintMeldungen = 1 AND (@OverallError IS NOT NULL OR EXISTS (SELECT 1 FROM [#CheckFrameworkCapabilities_Capabilities] WHERE [IsUsable] = 0))
     BEGIN
         DECLARE @PrintMessage nvarchar(2048) = COALESCE(@OverallError, N'Mindestens eine Capability ist nicht vollständig nutzbar.');
         RAISERROR(N'%s', 10, 1, @PrintMessage) WITH NOWAIT;
@@ -360,12 +361,12 @@ BEGIN
 
         IF @ResultSetArtNormalisiert = 'RAW'
         BEGIN
-            SELECT * FROM [#Capabilities]
+            SELECT * FROM [#CheckFrameworkCapabilities_Capabilities]
             WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0
             ORDER BY [FeatureOrdinal], [DatabaseName];
             SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount]
-            FROM [#Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode];
-            SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+            FROM [#CheckFrameworkCapabilities_Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode];
+            SELECT * FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName];
         END;
         ELSE
         BEGIN
@@ -377,30 +378,30 @@ BEGIN
                 , [IsUsable] AS [nutzbar]
                 , [PermissionDisplayText] AS [Berechtigung]
                 , [ErrorMessage] AS [Hinweis]
-            FROM [#Capabilities]
+            FROM [#CheckFrameworkCapabilities_Capabilities]
             WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0
             ORDER BY [FeatureOrdinal], [DatabaseName];
 
             SELECT N'Capability-Status' AS [Ergebnis], [StatusCode] AS [Status], COUNT_BIG(*) AS [Anzahl]
-            FROM [#Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode];
+            FROM [#CheckFrameworkCapabilities_Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode];
 
             SELECT N'Datenbankwarnung' AS [Ergebnis], [RequestedName] AS [Datenbank], [StatusCode] AS [Status], [ErrorMessage] AS [Meldung]
-            FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+            FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName];
         END;
     END;
 
     IF @JsonErzeugen = 1
     BEGIN
         DECLARE @MetaJson nvarchar(max) = (SELECT N'CheckFrameworkCapabilities' AS [resultName], 1 AS [schemaVersion], @CollectionTimeUtc AS [generatedAtUtc], @OverallStatus AS [statusCode], @OverallError AS [errorMessage] FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-        DECLARE @CapabilitiesJson nvarchar(max) = (SELECT * FROM [#Capabilities] WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0 ORDER BY [FeatureOrdinal], [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @SummaryJson nvarchar(max) = (SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount] FROM [#Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @CapabilitiesJson nvarchar(max) = (SELECT * FROM [#CheckFrameworkCapabilities_Capabilities] WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0 ORDER BY [FeatureOrdinal], [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @SummaryJson nvarchar(max) = (SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount] FROM [#CheckFrameworkCapabilities_Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson,N'{}'), N',"capabilities":', COALESCE(@CapabilitiesJson,N'[]'), N',"summary":', COALESCE(@SummaryJson,N'[]'), N',"warnings":', COALESCE(@WarningsJson,N'[]'), N'}');
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Capabilities'
+              @SourceTable = N'#CheckFrameworkCapabilities_Capabilities'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

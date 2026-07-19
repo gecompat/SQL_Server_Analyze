@@ -83,7 +83,7 @@ BEGIN
     DECLARE @ConfiguredFilePath nvarchar(4000) = NULL;
     DECLARE @ResolvedFilePath nvarchar(4000) = NULL;
 
-    CREATE TABLE [#Events]
+    CREATE TABLE [#CriticalEngineEvents_Events]
     (
           [TimestampUtc] datetime2(7) NULL
         , [EventName] sysname NULL
@@ -96,7 +96,7 @@ BEGIN
         , [EventXml] xml NULL
     );
 
-    CREATE TABLE [#Diagnostics]
+    CREATE TABLE [#CriticalEngineEvents_Diagnostics]
     (
           [CreateTime] datetime NULL
         , [ComponentType] sysname NULL
@@ -106,7 +106,7 @@ BEGIN
         , [Data] xml NULL
     );
 
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#CriticalEngineEvents_SourceStatus]
     (
           [SourceName] nvarchar(128) NOT NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -133,11 +133,11 @@ BEGIN
     BEGIN
         BEGIN TRY
             SELECT @ConfiguredFilePath = MAX(CONVERT(nvarchar(4000), [f].[value]))
-            FROM [sys].[server_event_sessions] AS [s]
-            JOIN [sys].[server_event_session_targets] AS [t]
+            FROM [sys].[server_event_sessions] AS [s] WITH (NOLOCK)
+            JOIN [sys].[server_event_session_targets] AS [t] WITH (NOLOCK)
               ON [t].[event_session_id] = [s].[event_session_id]
              AND [t].[name] = N'event_file'
-            LEFT JOIN [sys].[server_event_session_fields] AS [f]
+            LEFT JOIN [sys].[server_event_session_fields] AS [f] WITH (NOLOCK)
               ON [f].[event_session_id] = [t].[event_session_id]
              AND [f].[object_id] = [t].[target_id]
              AND [f].[name] = N'filename'
@@ -148,7 +148,7 @@ BEGIN
             IF @ResolvedFilePath IS NULL
             BEGIN
                 SET @IsPartial = 1;
-                INSERT [#SourceStatus]
+                INSERT [#CriticalEngineEvents_SourceStatus]
                 VALUES
                 (
                       N'system_health event_file', 'UNAVAILABLE_OBJECT', NULL, NULL
@@ -199,7 +199,7 @@ BEGIN
                     FROM [RawEvents]
                     WHERE [EventXml] IS NOT NULL
                 )
-                INSERT [#Events]
+                INSERT [#CriticalEngineEvents_Events]
                 SELECT
                       [TimestampUtc], [EventName], [ErrorNumber], [Severity]
                     , [ComponentName], [StateDesc], [MessageText]
@@ -223,7 +223,7 @@ BEGIN
                    OR COALESCE([Severity], 0) >= @MinErrorSeverity
                    OR [ErrorNumber] IN (701, 802, 823, 824, 825, 832, 833, 8645, 8651, 17803);
 
-                INSERT [#SourceStatus]
+                INSERT [#CriticalEngineEvents_SourceStatus]
                 VALUES
                 (
                       N'system_health event_file', 'AVAILABLE', NULL, NULL
@@ -233,7 +233,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             SET @IsPartial = 1;
-            INSERT [#SourceStatus]
+            INSERT [#CriticalEngineEvents_SourceStatus]
             VALUES
             (
                   N'system_health event_file'
@@ -248,10 +248,10 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitServerDiagnostics = 1
     BEGIN
         BEGIN TRY
-            INSERT [#Diagnostics]
+            INSERT [#CriticalEngineEvents_Diagnostics]
             EXEC [sys].[sp_server_diagnostics] 0;
 
-            INSERT [#SourceStatus]
+            INSERT [#CriticalEngineEvents_SourceStatus]
             VALUES
             (
                   N'sp_server_diagnostics', 'AVAILABLE', NULL, NULL
@@ -260,7 +260,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             SET @IsPartial = 1;
-            INSERT [#SourceStatus]
+            INSERT [#CriticalEngineEvents_SourceStatus]
             VALUES
             (
                   N'sp_server_diagnostics'
@@ -274,10 +274,10 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
        AND (@IsPartial = 1 OR EXISTS
-           (SELECT 1 FROM [#SourceStatus] WHERE [StatusCode] <> 'AVAILABLE'))
+           (SELECT 1 FROM [#CriticalEngineEvents_SourceStatus] WHERE [StatusCode] <> 'AVAILABLE'))
         SET @StatusCode = 'AVAILABLE_LIMITED';
     ELSE IF @StatusCode = 'AVAILABLE'
-        AND EXISTS (SELECT 1 FROM [#Events])
+        AND EXISTS (SELECT 1 FROM [#CriticalEngineEvents_Events])
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
     SELECT @StatusCodeOut = @StatusCode,
@@ -300,9 +300,9 @@ BEGIN
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM [#Events] ORDER BY [TimestampUtc] DESC, [EventName];
-            SELECT * FROM [#Diagnostics] ORDER BY [CreateTime], [ComponentName];
-            SELECT * FROM [#SourceStatus] ORDER BY [SourceName];
+            SELECT * FROM [#CriticalEngineEvents_Events] ORDER BY [TimestampUtc] DESC, [EventName];
+            SELECT * FROM [#CriticalEngineEvents_Diagnostics] ORDER BY [CreateTime], [ComponentName];
+            SELECT * FROM [#CriticalEngineEvents_SourceStatus] ORDER BY [SourceName];
         END
         ELSE
         BEGIN
@@ -317,7 +317,7 @@ BEGIN
                 , [StateDesc] AS [Zustand]
                 , [MessageText] AS [Meldung]
                 , [EventXml] AS [Event XML]
-            FROM [#Events]
+            FROM [#CriticalEngineEvents_Events]
             ORDER BY [TimestampUtc] DESC, [EventName];
 
             SELECT
@@ -327,7 +327,7 @@ BEGIN
                 , [ComponentName] AS [Komponente]
                 , [StateDesc] AS [Zustand]
                 , CASE WHEN @MitEventXml = 1 THEN [Data] END AS [Daten XML]
-            FROM [#Diagnostics]
+            FROM [#CriticalEngineEvents_Diagnostics]
             ORDER BY [CreateTime], [ComponentName];
         END;
     END;
@@ -343,14 +343,14 @@ BEGIN
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @EventsJson nvarchar(max) =
-            (SELECT * FROM [#Events] ORDER BY [TimestampUtc] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#CriticalEngineEvents_Events] ORDER BY [TimestampUtc] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @DiagnosticsJson nvarchar(max) =
             (SELECT [CreateTime], [ComponentType], [ComponentName], [State], [StateDesc],
                     CASE WHEN @MitEventXml = 1 THEN [Data] END AS [Data]
-             FROM [#Diagnostics] ORDER BY [CreateTime], [ComponentName]
+             FROM [#CriticalEngineEvents_Diagnostics] ORDER BY [CreateTime], [ComponentName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SourcesJson nvarchar(max) =
-            (SELECT * FROM [#SourceStatus] ORDER BY [SourceName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#CriticalEngineEvents_SourceStatus] ORDER BY [SourceName] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
         (
@@ -364,7 +364,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Events'
+              @SourceTable = N'#CriticalEngineEvents_Events'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

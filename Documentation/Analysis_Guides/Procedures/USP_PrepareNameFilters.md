@@ -5,11 +5,11 @@
 
 ## Kein normaler Direktaufruf
 
-Die Procedure erwartet eine lokale Temp-Tabelle mit festem Schema. Benutzer rufen die jeweilige Analyse-Procedure mit deren Filterparametern auf.
+Die Procedure erwartet eine über `@FilterTable` eindeutig benannte lokale Temp-Tabelle mit festem Schema. Benutzer rufen die jeweilige Analyse-Procedure mit deren Filterparametern auf.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in `#NameFilters` entspricht einem normalisierten Filterelement, beispielsweise Schema, Objekt, Index, Statistik oder vollständig qualifiziertes Objekt.
+Eine Zeile in der über `@FilterTable` benannten Tabelle entspricht einem normalisierten Filterelement, beispielsweise Schema, Objekt, Index, Statistik oder vollständig qualifiziertes Objekt.
 
 ## So lesen
 

@@ -103,7 +103,7 @@ BEGIN
 
     IF @VonUtc IS NULL SET @VonUtc = DATEADD(HOUR, -24, SYSUTCDATETIME());
 
-    CREATE TABLE [#Raw]
+    CREATE TABLE [#ExtendedEventsDeadlocks_Raw]
     (
         [SourceType] varchar(20) NOT NULL,
         [TimestampUtc] datetime2(7) NULL,
@@ -112,7 +112,7 @@ BEGIN
         [EventXml] xml NULL
     );
 
-    CREATE TABLE [#Deadlocks]
+    CREATE TABLE [#ExtendedEventsDeadlocks_Deadlocks]
     (
         [DeadlockId] int IDENTITY(1,1) NOT NULL PRIMARY KEY,
         [SourceType] varchar(20) NOT NULL,
@@ -122,7 +122,7 @@ BEGIN
         [DeadlockXml] xml NULL
     );
 
-    CREATE TABLE [#Victims]
+    CREATE TABLE [#ExtendedEventsDeadlocks_Victims]
     (
         [DeadlockId] int NOT NULL,
         [DeadlockTimeUtc] datetime2(7) NULL,
@@ -130,7 +130,7 @@ BEGIN
         PRIMARY KEY(DeadlockId, VictimProcessId)
     );
 
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#ExtendedEventsDeadlocks_SourceStatus]
     (
         [SourceType] varchar(20) NULL,
         [SessionName] sysname NULL,
@@ -165,16 +165,16 @@ BEGIN
     BEGIN
         BEGIN TRY
             SELECT @ConfiguredFilePath=MAX(CONVERT(nvarchar(4000),[f].[value]))
-            FROM [sys].[server_event_sessions] AS s
-            JOIN [sys].[server_event_session_targets] AS t
+            FROM [sys].[server_event_sessions] AS s WITH (NOLOCK)
+            JOIN [sys].[server_event_session_targets] AS t WITH (NOLOCK)
               ON [t].[event_session_id]=[s].[event_session_id] AND [t].[name]=N'event_file'
-            LEFT JOIN [sys].[server_event_session_fields] AS f
+            LEFT JOIN [sys].[server_event_session_fields] AS f WITH (NOLOCK)
               ON [f].[event_session_id]=[t].[event_session_id] AND [f].[object_id]=[t].[target_id] AND [f].[name]=N'filename'
             WHERE [s].[name]=@ResolvedSourceExtendedEventSessionName;
         END TRY
         BEGIN CATCH
             SET @IsPartial=1;
-            INSERT [#SourceStatus] VALUES('CATALOG',@ResolvedSourceExtendedEventSessionName,NULL,
+            INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('CATALOG',@ResolvedSourceExtendedEventSessionName,NULL,
               CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
               ERROR_NUMBER(),ERROR_MESSAGE(),N'Pfadermittlung fehlgeschlagen; ein expliziter @FilePath kann weiterhin verwendet werden.');
         END CATCH;
@@ -194,7 +194,7 @@ BEGIN
         IF @ResolvedFilePath IS NULL
         BEGIN
             SET @StatusCode='UNAVAILABLE_OBJECT'; SET @ErrorMessage=N'Kein event_file-Pfad verfügbar.';
-            INSERT [#SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,NULL,@ErrorMessage,N'Keine XEL-Datei gelesen.');
+            INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,NULL,@ErrorMessage,N'Keine XEL-Datei gelesen.');
         END
         ELSE
         BEGIN
@@ -204,7 +204,7 @@ BEGIN
                 SET @ResolvedFilePath=@ResolvedFilePath+N'*.xel';
 
             BEGIN TRY
-                INSERT [#Raw]([SourceType],[TimestampUtc],[FileName],[FileOffset],[EventXml])
+                INSERT [#ExtendedEventsDeadlocks_Raw]([SourceType],[TimestampUtc],[FileName],[FileOffset],[EventXml])
                 SELECT TOP (@EffectiveMaxZeilen)
                     'EVENT_FILE',[r].[timestamp_utc],[r].[file_name],[r].[file_offset],TRY_CONVERT([xml],[r].[event_data])
                 FROM sys.fn_xe_file_target_read_file(@ResolvedFilePath,NULL,NULL,NULL) AS r
@@ -212,12 +212,12 @@ BEGIN
                   AND (@VonUtc IS NULL OR [r].[timestamp_utc]>=@VonUtc)
                   AND (@BisUtc IS NULL OR [r].[timestamp_utc]<@BisUtc)
                 ORDER BY [r].[timestamp_utc] DESC,[r].[file_name] DESC,[r].[file_offset] DESC;
-                INSERT [#SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,@ResolvedFilePath,'AVAILABLE',NULL,NULL,N'xml_deadlock_report aus XEL gelesen.');
+                INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,@ResolvedFilePath,'AVAILABLE',NULL,NULL,N'xml_deadlock_report aus XEL gelesen.');
             END TRY
             BEGIN CATCH
                 SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER(); SET @ErrorMessage=ERROR_MESSAGE();
-                INSERT [#SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,@ResolvedFilePath,@StatusCode,@ErrorNumber,@ErrorMessage,N'XEL-Datei konnte nicht gelesen werden.');
+                INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('EVENT_FILE',@ResolvedSourceExtendedEventSessionName,@ResolvedFilePath,@StatusCode,@ErrorNumber,@ErrorMessage,N'XEL-Datei konnte nicht gelesen werden.');
             END CATCH;
         END;
     END;
@@ -227,55 +227,55 @@ BEGIN
         IF @BestaetigeTargetFlush=0
         BEGIN
             SET @StatusCode='AVAILABLE_DISABLED'; SET @ErrorMessage=N'RING_BUFFER erfordert @BestaetigeTargetFlush=1.';
-            INSERT [#SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,NULL,@ErrorMessage,N'Targetdaten wurden nicht gelesen.');
+            INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,NULL,@ErrorMessage,N'Targetdaten wurden nicht gelesen.');
         END
         ELSE
         BEGIN
             BEGIN TRY
                 SELECT @TargetData=TRY_CONVERT([xml],[t].[target_data])
-                FROM [sys].[dm_xe_session_targets] AS t
-                JOIN [sys].[dm_xe_sessions] AS s ON [s].[address]=[t].[event_session_address]
+                FROM [sys].[dm_xe_session_targets] AS t WITH (NOLOCK)
+                JOIN [sys].[dm_xe_sessions] AS s WITH (NOLOCK) ON [s].[address]=[t].[event_session_address]
                 WHERE [s].[name]=@ResolvedSourceExtendedEventSessionName AND [t].[target_name]=N'ring_buffer';
 
                 IF @TargetData IS NULL
                 BEGIN
                     SET @StatusCode='UNAVAILABLE_OBJECT'; SET @ErrorMessage=N'Kein lesbares laufendes ring_buffer-Target gefunden.';
-                    INSERT [#SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,NULL,@ErrorMessage,N'Session gestoppt oder Ringbuffer nicht vorhanden.');
+                    INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,NULL,@ErrorMessage,N'Session gestoppt oder Ringbuffer nicht vorhanden.');
                 END
                 ELSE
                 BEGIN
-                    INSERT [#Raw]([SourceType],[TimestampUtc],[FileName],[FileOffset],[EventXml])
+                    INSERT [#ExtendedEventsDeadlocks_Raw]([SourceType],[TimestampUtc],[FileName],[FileOffset],[EventXml])
                     SELECT TOP (@EffectiveMaxZeilen)
                         'RING_BUFFER',x.e.value('(@timestamp)[1]','datetime2(7)'),NULL,NULL,x.e.query('.')
                     FROM @TargetData.nodes('/RingBufferTarget/event[@name="xml_deadlock_report"]') AS [x]([e])
                     WHERE (@VonUtc IS NULL OR x.e.value('(@timestamp)[1]','datetime2(7)')>=@VonUtc)
                       AND (@BisUtc IS NULL OR x.e.value('(@timestamp)[1]','datetime2(7)')<@BisUtc)
                     ORDER BY x.e.value('(@timestamp)[1]','datetime2(7)') DESC;
-                    INSERT [#SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,'AVAILABLE',NULL,NULL,N'Ringbuffer bewusst gelesen; Target-Flush ist möglich.');
+                    INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,'AVAILABLE',NULL,NULL,N'Ringbuffer bewusst gelesen; Target-Flush ist möglich.');
                 END;
             END TRY
             BEGIN CATCH
                 SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER(); SET @ErrorMessage=ERROR_MESSAGE();
-                INSERT [#SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,@ErrorNumber,@ErrorMessage,N'Ringbuffer konnte nicht gelesen werden.');
+                INSERT [#ExtendedEventsDeadlocks_SourceStatus] VALUES('RING_BUFFER',@ResolvedSourceExtendedEventSessionName,NULL,@StatusCode,@ErrorNumber,@ErrorMessage,N'Ringbuffer konnte nicht gelesen werden.');
             END CATCH;
         END;
     END;
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        INSERT [#Deadlocks]([SourceType],[DeadlockTimeUtc],[FileName],[FileOffset],[DeadlockXml])
+        INSERT [#ExtendedEventsDeadlocks_Deadlocks]([SourceType],[DeadlockTimeUtc],[FileName],[FileOffset],[DeadlockXml])
         SELECT [SourceType],[TimestampUtc],[FileName],[FileOffset],
                EventXml.query('(/event/data[@name="xml_report"]/value/deadlock)[1]')
-        FROM [#Raw]
+        FROM [#ExtendedEventsDeadlocks_Raw]
         WHERE EventXml.exist('/event/data[@name="xml_report"]/value/deadlock')=1;
 
-        INSERT [#Victims]([DeadlockId],[DeadlockTimeUtc],[VictimProcessId])
+        INSERT [#ExtendedEventsDeadlocks_Victims]([DeadlockId],[DeadlockTimeUtc],[VictimProcessId])
         SELECT [d].[DeadlockId],[d].[DeadlockTimeUtc],v.p.value('(@id)[1]','nvarchar(256)')
-        FROM [#Deadlocks] AS d
+        FROM [#ExtendedEventsDeadlocks_Deadlocks] AS d
         CROSS APPLY d.DeadlockXml.nodes('/deadlock/victim-list/victimProcess') AS [v]([p]);
 
-        SELECT @RowCount=COUNT_BIG(*) FROM [#Deadlocks];
+        SELECT @RowCount=COUNT_BIG(*) FROM [#ExtendedEventsDeadlocks_Deadlocks];
         IF @RowCount=0
         BEGIN
             SET @StatusCode='AVAILABLE_LIMITED'; SET @IsPartial=1;
@@ -292,24 +292,24 @@ BEGIN
     RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
 END;
 
-    CREATE TABLE [#DeadlockSummary]([DeadlockId] int,[SourceType] varchar(20),[DeadlockTimeUtc] datetime2(7),[FileName] nvarchar(260),[FileOffset] bigint,[VictimCount] int,[ProcessCount] int,[ResourceCount] int,[FirstDatabaseId] int NULL,[DeadlockXml] xml NULL);
-    CREATE TABLE [#DeadlockProcesses]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ProcessId] nvarchar(256),[IsVictim] bit,[SessionId] int NULL,[ExecutionContextId] int NULL,[ProcessStatus] nvarchar(128),[WaitResource] nvarchar(1024),[WaitTimeMs] bigint NULL,[LockMode] nvarchar(64),[TransactionName] nvarchar(256),[IsolationLevel] nvarchar(256),[DatabaseId] int NULL,[ClientApplication] nvarchar(512),[HostName] nvarchar(512),[LoginName] nvarchar(512),[HostProcessId] int NULL,[TransactionCount] int NULL,[LogUsed] bigint NULL,[InputBuffer] nvarchar(4000),[ProcessXml] xml NULL);
-    CREATE TABLE [#DeadlockResources]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ResourceType] sysname,[DatabaseId] int NULL,[ObjectId] bigint NULL,[IndexId] bigint NULL,[AssociatedObjectId] bigint NULL,[ResourceId] nvarchar(512),[ResourceMode] nvarchar(64),[OwnerListXml] xml NULL,[WaiterListXml] xml NULL,[ResourceXml] xml NULL);
-    INSERT [#DeadlockSummary] SELECT [d].[DeadlockId],[d].[SourceType],[d].[DeadlockTimeUtc],[d].[FileName],[d].[FileOffset],[d].[DeadlockXml].value('count(/deadlock/victim-list/victimProcess)','int'),[d].[DeadlockXml].value('count(/deadlock/process-list/process)','int'),[d].[DeadlockXml].value('count(/deadlock/resource-list/*)','int'),TRY_CONVERT(int,[d].[DeadlockXml].value('(/deadlock/process-list/process[1]/@currentdb)[1]','nvarchar(32)')),CASE WHEN @MitDeadlockXml=1 THEN [d].[DeadlockXml] END FROM [#Deadlocks] [d];
-    IF @MitProcessDetails=1 INSERT [#DeadlockProcesses] SELECT [d].[DeadlockId],[d].[DeadlockTimeUtc],[p].[n].value('(@id)[1]','nvarchar(256)'),CONVERT(bit,CASE WHEN [v].[VictimProcessId] IS NOT NULL THEN 1 ELSE 0 END),TRY_CONVERT(int,[p].[n].value('(@spid)[1]','nvarchar(32)')),TRY_CONVERT(int,[p].[n].value('(@ecid)[1]','nvarchar(32)')),[p].[n].value('(@status)[1]','nvarchar(128)'),[p].[n].value('(@waitresource)[1]','nvarchar(1024)'),TRY_CONVERT(bigint,[p].[n].value('(@waittime)[1]','nvarchar(64)')),[p].[n].value('(@lockMode)[1]','nvarchar(64)'),[p].[n].value('(@transactionname)[1]','nvarchar(256)'),[p].[n].value('(@isolationlevel)[1]','nvarchar(256)'),TRY_CONVERT(int,[p].[n].value('(@currentdb)[1]','nvarchar(32)')),[p].[n].value('(@clientapp)[1]','nvarchar(512)'),[p].[n].value('(@hostname)[1]','nvarchar(512)'),[p].[n].value('(@loginname)[1]','nvarchar(512)'),TRY_CONVERT(int,[p].[n].value('(@hostpid)[1]','nvarchar(32)')),TRY_CONVERT(int,[p].[n].value('(@trancount)[1]','nvarchar(32)')),TRY_CONVERT(bigint,[p].[n].value('(@logused)[1]','nvarchar(64)')),[p].[n].value('(inputbuf/text())[1]','nvarchar(4000)'),[p].[n].query('.') FROM [#Deadlocks] [d] CROSS APPLY [d].[DeadlockXml].nodes('/deadlock/process-list/process') [p]([n]) LEFT JOIN [#Victims] [v] ON [v].[DeadlockId]=[d].[DeadlockId] AND [v].[VictimProcessId]=[p].[n].value('(@id)[1]','nvarchar(256)');
-    IF @MitResourceDetails=1 INSERT [#DeadlockResources] SELECT [d].[DeadlockId],[d].[DeadlockTimeUtc],[r].[n].value('local-name(.)','sysname'),TRY_CONVERT(int,[r].[n].value('(@dbid)[1]','nvarchar(32)')),TRY_CONVERT(bigint,[r].[n].value('(@objectid)[1]','nvarchar(64)')),TRY_CONVERT(bigint,[r].[n].value('(@indexid)[1]','nvarchar(64)')),TRY_CONVERT(bigint,[r].[n].value('(@associatedObjectId)[1]','nvarchar(64)')),[r].[n].value('(@id)[1]','nvarchar(512)'),[r].[n].value('(@mode)[1]','nvarchar(64)'),[r].[n].query('(owner-list)[1]'),[r].[n].query('(waiter-list)[1]'),[r].[n].query('.') FROM [#Deadlocks] [d] CROSS APPLY [d].[DeadlockXml].nodes('/deadlock/resource-list/*') [r]([n]);
+    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockSummary]([DeadlockId] int,[SourceType] varchar(20),[DeadlockTimeUtc] datetime2(7),[FileName] nvarchar(260),[FileOffset] bigint,[VictimCount] int,[ProcessCount] int,[ResourceCount] int,[FirstDatabaseId] int NULL,[DeadlockXml] xml NULL);
+    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockProcesses]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ProcessId] nvarchar(256),[IsVictim] bit,[SessionId] int NULL,[ExecutionContextId] int NULL,[ProcessStatus] nvarchar(128),[WaitResource] nvarchar(1024),[WaitTimeMs] bigint NULL,[LockMode] nvarchar(64),[TransactionName] nvarchar(256),[IsolationLevel] nvarchar(256),[DatabaseId] int NULL,[ClientApplication] nvarchar(512),[HostName] nvarchar(512),[LoginName] nvarchar(512),[HostProcessId] int NULL,[TransactionCount] int NULL,[LogUsed] bigint NULL,[InputBuffer] nvarchar(4000),[ProcessXml] xml NULL);
+    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockResources]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ResourceType] sysname,[DatabaseId] int NULL,[ObjectId] bigint NULL,[IndexId] bigint NULL,[AssociatedObjectId] bigint NULL,[ResourceId] nvarchar(512),[ResourceMode] nvarchar(64),[OwnerListXml] xml NULL,[WaiterListXml] xml NULL,[ResourceXml] xml NULL);
+    INSERT [#ExtendedEventsDeadlocks_DeadlockSummary] SELECT [d].[DeadlockId],[d].[SourceType],[d].[DeadlockTimeUtc],[d].[FileName],[d].[FileOffset],[d].[DeadlockXml].value('count(/deadlock/victim-list/victimProcess)','int'),[d].[DeadlockXml].value('count(/deadlock/process-list/process)','int'),[d].[DeadlockXml].value('count(/deadlock/resource-list/*)','int'),TRY_CONVERT(int,[d].[DeadlockXml].value('(/deadlock/process-list/process[1]/@currentdb)[1]','nvarchar(32)')),CASE WHEN @MitDeadlockXml=1 THEN [d].[DeadlockXml] END FROM [#ExtendedEventsDeadlocks_Deadlocks] [d];
+    IF @MitProcessDetails=1 INSERT [#ExtendedEventsDeadlocks_DeadlockProcesses] SELECT [d].[DeadlockId],[d].[DeadlockTimeUtc],[p].[n].value('(@id)[1]','nvarchar(256)'),CONVERT(bit,CASE WHEN [v].[VictimProcessId] IS NOT NULL THEN 1 ELSE 0 END),TRY_CONVERT(int,[p].[n].value('(@spid)[1]','nvarchar(32)')),TRY_CONVERT(int,[p].[n].value('(@ecid)[1]','nvarchar(32)')),[p].[n].value('(@status)[1]','nvarchar(128)'),[p].[n].value('(@waitresource)[1]','nvarchar(1024)'),TRY_CONVERT(bigint,[p].[n].value('(@waittime)[1]','nvarchar(64)')),[p].[n].value('(@lockMode)[1]','nvarchar(64)'),[p].[n].value('(@transactionname)[1]','nvarchar(256)'),[p].[n].value('(@isolationlevel)[1]','nvarchar(256)'),TRY_CONVERT(int,[p].[n].value('(@currentdb)[1]','nvarchar(32)')),[p].[n].value('(@clientapp)[1]','nvarchar(512)'),[p].[n].value('(@hostname)[1]','nvarchar(512)'),[p].[n].value('(@loginname)[1]','nvarchar(512)'),TRY_CONVERT(int,[p].[n].value('(@hostpid)[1]','nvarchar(32)')),TRY_CONVERT(int,[p].[n].value('(@trancount)[1]','nvarchar(32)')),TRY_CONVERT(bigint,[p].[n].value('(@logused)[1]','nvarchar(64)')),[p].[n].value('(inputbuf/text())[1]','nvarchar(4000)'),[p].[n].query('.') FROM [#ExtendedEventsDeadlocks_Deadlocks] [d] CROSS APPLY [d].[DeadlockXml].nodes('/deadlock/process-list/process') [p]([n]) LEFT JOIN [#ExtendedEventsDeadlocks_Victims] [v] ON [v].[DeadlockId]=[d].[DeadlockId] AND [v].[VictimProcessId]=[p].[n].value('(@id)[1]','nvarchar(256)');
+    IF @MitResourceDetails=1 INSERT [#ExtendedEventsDeadlocks_DeadlockResources] SELECT [d].[DeadlockId],[d].[DeadlockTimeUtc],[r].[n].value('local-name(.)','sysname'),TRY_CONVERT(int,[r].[n].value('(@dbid)[1]','nvarchar(32)')),TRY_CONVERT(bigint,[r].[n].value('(@objectid)[1]','nvarchar(64)')),TRY_CONVERT(bigint,[r].[n].value('(@indexid)[1]','nvarchar(64)')),TRY_CONVERT(bigint,[r].[n].value('(@associatedObjectId)[1]','nvarchar(64)')),[r].[n].value('(@id)[1]','nvarchar(512)'),[r].[n].value('(@mode)[1]','nvarchar(64)'),[r].[n].query('(owner-list)[1]'),[r].[n].query('(waiter-list)[1]'),[r].[n].query('.') FROM [#ExtendedEventsDeadlocks_Deadlocks] [d] CROSS APPLY [d].[DeadlockXml].nodes('/deadlock/resource-list/*') [r]([n]);
 
     IF @ResultSetArtNormalisiert<>'NONE'
     BEGIN
       SELECT N'USP_ExtendedEventsDeadlocks' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@RowCount [RowCount],@ResolvedSource [ResolvedSource],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage];
-      IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#DeadlockSummary] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId];SELECT * FROM [#Victims] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId];SELECT * FROM [#DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId];SELECT * FROM [#DeadlockResources] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType];SELECT * FROM [#SourceStatus] ORDER BY [SourceType];END
-      ELSE BEGIN SELECT N'Deadlock' [Ergebnis],[x].* FROM [#DeadlockSummary] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId];SELECT N'Deadlock Victim' [Ergebnis],[x].* FROM [#Victims] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId];SELECT N'Deadlock Prozess' [Ergebnis],[DeadlockId] [Deadlock],[SessionId] [Session],[ExecutionContextId] [ECID],[IsVictim] [Victim],[WaitTimeMs] [Wait ms],[WaitResource] [Wait-Ressource],[LoginName] [Login],[HostName] [Host],[SessionId] [Session SQL],[InputBuffer] [SQL] FROM [#DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId];SELECT N'Deadlock Ressource' [Ergebnis],[x].* FROM [#DeadlockResources] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType];SELECT N'Extended-Events Quelle' [Ergebnis],[x].* FROM [#SourceStatus] [x] ORDER BY [SourceType];END;
+      IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#ExtendedEventsDeadlocks_DeadlockSummary] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId];SELECT * FROM [#ExtendedEventsDeadlocks_Victims] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId];SELECT * FROM [#ExtendedEventsDeadlocks_DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId];SELECT * FROM [#ExtendedEventsDeadlocks_DeadlockResources] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType];SELECT * FROM [#ExtendedEventsDeadlocks_SourceStatus] ORDER BY [SourceType];END
+      ELSE BEGIN SELECT N'Deadlock' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_DeadlockSummary] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId];SELECT N'Deadlock Victim' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_Victims] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId];SELECT N'Deadlock Prozess' [Ergebnis],[DeadlockId] [Deadlock],[SessionId] [Session],[ExecutionContextId] [ECID],[IsVictim] [Victim],[WaitTimeMs] [Wait ms],[WaitResource] [Wait-Ressource],[LoginName] [Login],[HostName] [Host],[SessionId] [Session SQL],[InputBuffer] [SQL] FROM [#ExtendedEventsDeadlocks_DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId];SELECT N'Deadlock Ressource' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_DeadlockResources] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType];SELECT N'Extended-Events Quelle' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_SourceStatus] [x] ORDER BY [SourceType];END;
     END;
-    IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsDeadlocks' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@ResolvedSource [source],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@D nvarchar(max)=(SELECT [DeadlockId],[SourceType],[DeadlockTimeUtc],[FileName],[FileOffset],[VictimCount],[ProcessCount],[ResourceCount],[FirstDatabaseId],CONVERT(nvarchar(max),[DeadlockXml]) [DeadlockXml] FROM [#DeadlockSummary] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId] FOR JSON PATH,INCLUDE_NULL_VALUES),@V nvarchar(max)=(SELECT * FROM [#Victims] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId] FOR JSON PATH,INCLUDE_NULL_VALUES),@P nvarchar(max)=(SELECT [DeadlockId],[DeadlockTimeUtc],[ProcessId],[IsVictim],[SessionId],[ExecutionContextId],[ProcessStatus],[WaitResource],[WaitTimeMs],[LockMode],[TransactionName],[IsolationLevel],[DatabaseId],[ClientApplication],[HostName],[LoginName],[HostProcessId],[TransactionCount],[LogUsed],[InputBuffer],CONVERT(nvarchar(max),[ProcessXml]) [ProcessXml] FROM [#DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId] FOR JSON PATH,INCLUDE_NULL_VALUES),@R nvarchar(max)=(SELECT [DeadlockId],[DeadlockTimeUtc],[ResourceType],[DatabaseId],[ObjectId],[IndexId],[AssociatedObjectId],[ResourceId],[ResourceMode],CONVERT(nvarchar(max),[OwnerListXml]) [OwnerListXml],CONVERT(nvarchar(max),[WaiterListXml]) [WaiterListXml],CONVERT(nvarchar(max),[ResourceXml]) [ResourceXml] FROM [#DeadlockResources] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType] FOR JSON PATH,INCLUDE_NULL_VALUES),@S nvarchar(max)=(SELECT * FROM [#SourceStatus] ORDER BY [SourceType] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"deadlocks":',COALESCE(@D,N'[]'),N',"victims":',COALESCE(@V,N'[]'),N',"processes":',COALESCE(@P,N'[]'),N',"resources":',COALESCE(@R,N'[]'),N',"sources":',COALESCE(@S,N'[]'),N',"warnings":[]}');END;
+    IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsDeadlocks' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@ResolvedSource [source],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@D nvarchar(max)=(SELECT [DeadlockId],[SourceType],[DeadlockTimeUtc],[FileName],[FileOffset],[VictimCount],[ProcessCount],[ResourceCount],[FirstDatabaseId],CONVERT(nvarchar(max),[DeadlockXml]) [DeadlockXml] FROM [#ExtendedEventsDeadlocks_DeadlockSummary] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId] FOR JSON PATH,INCLUDE_NULL_VALUES),@V nvarchar(max)=(SELECT * FROM [#ExtendedEventsDeadlocks_Victims] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId] FOR JSON PATH,INCLUDE_NULL_VALUES),@P nvarchar(max)=(SELECT [DeadlockId],[DeadlockTimeUtc],[ProcessId],[IsVictim],[SessionId],[ExecutionContextId],[ProcessStatus],[WaitResource],[WaitTimeMs],[LockMode],[TransactionName],[IsolationLevel],[DatabaseId],[ClientApplication],[HostName],[LoginName],[HostProcessId],[TransactionCount],[LogUsed],[InputBuffer],CONVERT(nvarchar(max),[ProcessXml]) [ProcessXml] FROM [#ExtendedEventsDeadlocks_DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId] FOR JSON PATH,INCLUDE_NULL_VALUES),@R nvarchar(max)=(SELECT [DeadlockId],[DeadlockTimeUtc],[ResourceType],[DatabaseId],[ObjectId],[IndexId],[AssociatedObjectId],[ResourceId],[ResourceMode],CONVERT(nvarchar(max),[OwnerListXml]) [OwnerListXml],CONVERT(nvarchar(max),[WaiterListXml]) [WaiterListXml],CONVERT(nvarchar(max),[ResourceXml]) [ResourceXml] FROM [#ExtendedEventsDeadlocks_DeadlockResources] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType] FOR JSON PATH,INCLUDE_NULL_VALUES),@S nvarchar(max)=(SELECT * FROM [#ExtendedEventsDeadlocks_SourceStatus] ORDER BY [SourceType] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"deadlocks":',COALESCE(@D,N'[]'),N',"victims":',COALESCE(@V,N'[]'),N',"processes":',COALESCE(@P,N'[]'),N',"resources":',COALESCE(@R,N'[]'),N',"sources":',COALESCE(@S,N'[]'),N',"warnings":[]}');END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#DeadlockSummary'
+              @SourceTable = N'#ExtendedEventsDeadlocks_DeadlockSummary'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

@@ -28,6 +28,8 @@ USP_PrepareDatabaseCandidates,AnalysisClass,varchar(64),'CROSS_DATABASE_DEEP'
 USP_PrepareDatabaseCandidates,StatusCode,varchar(40),
 USP_PrepareDatabaseCandidates,ErrorMessage,nvarchar(2048),
 USP_PrepareDatabaseCandidates,CrossDatabaseRequested,bit,
+USP_PrepareDatabaseCandidates,CandidateTable,sysname,N'#PrepareDatabaseCandidates_Result'
+USP_PrepareDatabaseCandidates,WarningTable,sysname,NULL
 USP_PrepareNameFilters,SchemaNames,nvarchar(max),NULL
 USP_PrepareNameFilters,ObjectNames,nvarchar(max),NULL
 USP_PrepareNameFilters,FullObjectNames,nvarchar(max),NULL
@@ -36,6 +38,7 @@ USP_PrepareNameFilters,StatisticsNames,nvarchar(max),NULL
 USP_PrepareNameFilters,ColumnNames,nvarchar(max),NULL
 USP_PrepareNameFilters,StatusCode,varchar(40),
 USP_PrepareNameFilters,ErrorMessage,nvarchar(2048),
+USP_PrepareNameFilters,FilterTable,sysname,N'#PrepareNameFilters_Result'
 USP_CurrentSessions,SessionIds,nvarchar(max),NULL
 USP_CurrentSessions,EigeneSessionsModus,varchar(16),'ALLE'
 USP_CurrentSessions,AktuelleSessionEinbeziehen,bit,0

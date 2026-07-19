@@ -34,6 +34,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_BufferPoolAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -58,7 +59,7 @@ BEGIN
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
 
-    CREATE TABLE [#MemorySnapshot]
+    CREATE TABLE [#BufferPoolAnalysis_MemorySnapshot]
     (
           [PhysicalMemoryInUseKb] bigint NULL
         , [LockedPageAllocationsKb] bigint NULL
@@ -75,7 +76,7 @@ BEGIN
         , [FindingSeverity] varchar(16) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#ResourceSemaphores]
+    CREATE TABLE [#BufferPoolAnalysis_ResourceSemaphores]
     (
           [PoolId] int NULL
         , [ResourceSemaphoreId] smallint NULL
@@ -88,7 +89,7 @@ BEGIN
         , [TimeoutErrorCount] bigint NULL
         , [ForcedGrantCount] bigint NULL
     );
-    CREATE TABLE [#MemoryClerks]
+    CREATE TABLE [#BufferPoolAnalysis_MemoryClerks]
     (
           [ClerkType] nvarchar(60) NOT NULL
         , [PagesKb] bigint NULL
@@ -97,7 +98,7 @@ BEGIN
         , [LockedOrAweKb] bigint NULL
         , [ClerkCount] bigint NOT NULL
     );
-    CREATE TABLE [#BufferPool]
+    CREATE TABLE [#BufferPoolAnalysis_BufferPool]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NULL
@@ -118,7 +119,7 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN
         BEGIN TRY
-            INSERT [#MemorySnapshot]
+            INSERT [#BufferPoolAnalysis_MemorySnapshot]
             SELECT
                   [p].[physical_memory_in_use_kb]
                 , [p].[locked_page_allocations_kb]
@@ -143,16 +144,16 @@ BEGIN
                             / NULLIF([s].[total_physical_memory_kb], 0) < 5 THEN 'MEDIUM'
                        ELSE 'INFO' END
                 , N'Momentaufnahme; Verlauf, andere Prozesse und Betriebssystemgrenzen separat prüfen.'
-            FROM [sys].[dm_os_process_memory] AS [p]
-            CROSS JOIN [sys].[dm_os_sys_memory] AS [s];
+            FROM [sys].[dm_os_process_memory] AS [p] WITH (NOLOCK)
+            CROSS JOIN [sys].[dm_os_sys_memory] AS [s] WITH (NOLOCK);
 
-            INSERT [#ResourceSemaphores]
+            INSERT [#BufferPoolAnalysis_ResourceSemaphores]
             SELECT
                   [pool_id], [resource_semaphore_id], [total_memory_kb]
                 , [available_memory_kb], [granted_memory_kb], [used_memory_kb]
                 , [grantee_count], [waiter_count], [timeout_error_count]
                 , [forced_grant_count]
-            FROM [sys].[dm_exec_query_resource_semaphores];
+            FROM [sys].[dm_exec_query_resource_semaphores] WITH (NOLOCK);
         END TRY
         BEGIN CATCH
             SELECT @StatusCode = CASE WHEN ERROR_NUMBER() IN (229, 297, 300, 371)
@@ -163,7 +164,7 @@ BEGIN
         IF @StatusCode IN ('AVAILABLE', 'AVAILABLE_LIMITED') AND @MitMemoryClerks = 1
         BEGIN
             BEGIN TRY
-                INSERT [#MemoryClerks]
+                INSERT [#BufferPoolAnalysis_MemoryClerks]
                 SELECT
                       [type], SUM(CONVERT(bigint, [pages_kb]))
                     , SUM(CONVERT(bigint, [virtual_memory_reserved_kb]))
@@ -171,7 +172,7 @@ BEGIN
                     , SUM(CONVERT(bigint, [awe_allocated_kb]))
                       + SUM(CONVERT(bigint, [shared_memory_committed_kb]))
                     , COUNT_BIG(*)
-                FROM [sys].[dm_os_memory_clerks]
+                FROM [sys].[dm_os_memory_clerks] WITH (NOLOCK)
                 GROUP BY [type];
             END TRY
             BEGIN CATCH
@@ -185,16 +186,16 @@ BEGIN
         IF @StatusCode IN ('AVAILABLE', 'AVAILABLE_LIMITED') AND @MitBufferPoolVerteilung = 1
         BEGIN
             BEGIN TRY
-                INSERT [#BufferPool]
+                INSERT [#BufferPoolAnalysis_BufferPool]
                 SELECT
-                      [database_id], DB_NAME([database_id]), COUNT_BIG(*)
+                      [database_id], (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [database_id]), COUNT_BIG(*)
                     , CONVERT(decimal(19,2), COUNT_BIG(*) * 8.0 / 1024.0)
                     , SUM(CONVERT(bigint, CASE WHEN [is_modified] = 1 THEN 1 ELSE 0 END))
                     , CONVERT(decimal(19,2),
                       SUM(CONVERT(bigint, CASE WHEN [is_modified] = 1 THEN 1 ELSE 0 END)) * 8.0 / 1024.0)
                     , CONVERT(decimal(19,2), SUM(CONVERT(bigint, [free_space_in_bytes])) / 1048576.0)
                     , COUNT_BIG(DISTINCT [numa_node])
-                FROM [sys].[dm_os_buffer_descriptors]
+                FROM [sys].[dm_os_buffer_descriptors] WITH (NOLOCK)
                 GROUP BY [database_id];
             END TRY
             BEGIN CATCH
@@ -205,8 +206,8 @@ BEGIN
             END CATCH;
         END;
 
-        IF (EXISTS (SELECT 1 FROM [#ResourceSemaphores] WHERE [WaiterCount] > 0)
-            OR EXISTS (SELECT 1 FROM [#MemorySnapshot] WHERE [FindingCode] <> 'NO_MEMORY_PRESSURE_FLAG'))
+        IF (EXISTS (SELECT 1 FROM [#BufferPoolAnalysis_ResourceSemaphores] WHERE [WaiterCount] > 0)
+            OR EXISTS (SELECT 1 FROM [#BufferPoolAnalysis_MemorySnapshot] WHERE [FindingCode] <> 'NO_MEMORY_PRESSURE_FLAG'))
            AND @StatusCode = 'AVAILABLE'
             SET @StatusCode = 'AVAILABLE_WITH_FINDING';
     END;
@@ -222,16 +223,16 @@ BEGIN
                     @MitBufferPoolVerteilung AS [bufferPoolDistributionCollected]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
         DECLARE @SnapshotJson nvarchar(max) =
-            (SELECT * FROM [#MemorySnapshot] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#BufferPoolAnalysis_MemorySnapshot] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SemaphoreJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#ResourceSemaphores]
+            (SELECT TOP (@Limit) * FROM [#BufferPoolAnalysis_ResourceSemaphores]
              ORDER BY [WaiterCount] DESC, [PoolId], [ResourceSemaphoreId]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @ClerkJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#MemoryClerks]
+            (SELECT TOP (@Limit) * FROM [#BufferPoolAnalysis_MemoryClerks]
              ORDER BY [PagesKb] DESC, [ClerkType] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @BufferJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#BufferPool]
+            (SELECT TOP (@Limit) * FROM [#BufferPoolAnalysis_BufferPool]
              ORDER BY [CachedPages] DESC, [DatabaseId] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
                            N',"memory":', COALESCE(@SnapshotJson, N'[]'),
@@ -247,11 +248,11 @@ BEGIN
                @MitBufferPoolVerteilung AS [BufferPoolDistributionCollected],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Momentaufnahme; Buffer-Pool-Scan ist opt-in.' AS [Detail];
-        SELECT * FROM [#MemorySnapshot];
-        SELECT TOP (@Limit) * FROM [#ResourceSemaphores]
+        SELECT * FROM [#BufferPoolAnalysis_MemorySnapshot];
+        SELECT TOP (@Limit) * FROM [#BufferPoolAnalysis_ResourceSemaphores]
         ORDER BY [WaiterCount] DESC, [PoolId], [ResourceSemaphoreId];
-        SELECT TOP (@Limit) * FROM [#MemoryClerks] ORDER BY [PagesKb] DESC, [ClerkType];
-        SELECT TOP (@Limit) * FROM [#BufferPool] ORDER BY [CachedPages] DESC, [DatabaseId];
+        SELECT TOP (@Limit) * FROM [#BufferPoolAnalysis_MemoryClerks] ORDER BY [PagesKb] DESC, [ClerkType];
+        SELECT TOP (@Limit) * FROM [#BufferPoolAnalysis_BufferPool] ORDER BY [CachedPages] DESC, [DatabaseId];
     END
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
@@ -263,26 +264,26 @@ BEGIN
                [ProcessPhysicalMemoryLow] AS [SQL_Physisch_Niedrig],
                [ProcessVirtualMemoryLow] AS [SQL_Virtuell_Niedrig],
                [FindingCode] AS [Befund], [FindingSeverity] AS [Prioritaet], [EvidenceLimit] AS [Grenze]
-        FROM [#MemorySnapshot];
+        FROM [#BufferPoolAnalysis_MemorySnapshot];
         SELECT TOP (@Limit) N'Resource Semaphore' AS [Ergebnis], [PoolId] AS [Pool_ID],
                [ResourceSemaphoreId] AS [Semaphore_ID], [AvailableMemoryKb] AS [Verfuegbar_KB],
                [GrantedMemoryKb] AS [Zugewiesen_KB], [GranteeCount] AS [Zuteilungen],
                [WaiterCount] AS [Wartende], [TimeoutErrorCount] AS [Timeouts]
-        FROM [#ResourceSemaphores]
+        FROM [#BufferPoolAnalysis_ResourceSemaphores]
         ORDER BY [WaiterCount] DESC, [PoolId], [ResourceSemaphoreId];
         SELECT TOP (@Limit) N'Memory Clerk' AS [Ergebnis], [ClerkType] AS [Typ],
                [PagesKb] AS [Pages_KB], [VirtualMemoryCommittedKb] AS [Virtuell_Committed_KB],
                [LockedOrAweKb] AS [Locked_oder_AWE_KB], [ClerkCount] AS [Instanzen]
-        FROM [#MemoryClerks] ORDER BY [PagesKb] DESC, [ClerkType];
+        FROM [#BufferPoolAnalysis_MemoryClerks] ORDER BY [PagesKb] DESC, [ClerkType];
         SELECT TOP (@Limit) N'Buffer-Pool-Verteilung' AS [Ergebnis], [DatabaseName] AS [Datenbank],
                [CachedSizeMb] AS [Cache_MB], [DirtySizeMb] AS [Dirty_MB],
                [FreeSpaceMb] AS [Freiraum_in_Seiten_MB], [NumaNodeCount] AS [NUMA_Nodes]
-        FROM [#BufferPool] ORDER BY [CachedPages] DESC, [DatabaseId];
+        FROM [#BufferPoolAnalysis_BufferPool] ORDER BY [CachedPages] DESC, [DatabaseId];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#MemorySnapshot'
+              @SourceTable = N'#BufferPoolAnalysis_MemorySnapshot'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

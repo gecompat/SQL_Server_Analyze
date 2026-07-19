@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -347,9 +348,9 @@ BEGIN
     END;
     IF @TableResultRequested = 1
     BEGIN
-        SELECT * INTO [#MonitorTableResult] FROM @ModuleStatus;
+        SELECT * INTO [#QueryStoreAnalysis_MonitorTableResult] FROM @ModuleStatus;
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#MonitorTableResult'
+              @SourceTable = N'#QueryStoreAnalysis_MonitorTableResult'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

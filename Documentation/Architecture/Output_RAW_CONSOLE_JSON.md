@@ -41,27 +41,28 @@ EXEC [monitor].[USP_CurrentRequests]
 Der kanonische Aufruf ist:
 
 ```sql
-CREATE TABLE #Result ([__MonitorPlaceholder] bit NULL);
+CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL);
 
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen = 100
     , @ResultSetArt = 'TABLE'
-    , @ResultTable = N'#Result';
+    , @ResultTable = N'#CurrentRequests_Result';
 
-SELECT * FROM #Result;
+SELECT * FROM #CurrentRequests_Result;
 ```
 
 Der Writer kennt zwei zulässige Zielzustände:
 
-1. Eine leere Tabelle mit exakt einer nullable Spalte `[__MonitorPlaceholder] bit NULL`. Der Writer ergänzt die nativen Quellspalten und entfernt danach den Platzhalter.
+1. Eine leere Tabelle mit exakt einer beliebigen Dummy-Spalte. Der Writer ersetzt diese Spalte unabhängig von Name, Datentyp und Nullability durch die nativen Quellspalten.
 2. Eine bereits exakt passende Spaltenstruktur. Der Writer hängt weitere Zeilen an.
 
-Spaltenname und -reihenfolge, Systemdatentyp, Länge beziehungsweise `MAX`, Precision, Scale, Collation und Nullability müssen übereinstimmen. Eine abweichende Struktur führt kontrolliert zu `TARGET_SCHEMA_MISMATCH`; eine gefüllte Platzhaltertabelle wird niemals umgebaut. Die öffentliche Procedure meldet Writerfehler als Fehler `51010`.
+Spaltenname und -reihenfolge, Systemdatentyp, Länge beziehungsweise `MAX`, Precision, Scale, Collation und Nullability müssen übereinstimmen. Eine abweichende Struktur führt kontrolliert zu `TARGET_SCHEMA_MISMATCH`; nur eine leere Ein-Spalten-Tabelle wird automatisch umgebaut. Die öffentliche Procedure meldet Writerfehler als Fehler `51010`.
 
 Bewusste Grenzen:
 
 - Nur lokale `#Temp`-Tabellen sind erlaubt. Globale `##Temp`-Tabellen und permanente Tabellen werden abgelehnt.
 - Das Präfix `#Monitor` ist für interne Tabellen reserviert.
+- Frameworkinterne Temp-Tabellen tragen einen Bezug zur erzeugenden Procedure oder zum Skript; wiederverwendete Helper erhalten den konkreten lokalen Tabellennamen als Parameter.
 - Tabellen besitzen keine garantierte Zeilenreihenfolge; Consumer müssen beim Lesen selbst `ORDER BY` setzen.
 - Identity-, Computed-, CLR-/benutzerdefinierte, schema-gebundene XML- und `rowversion`-Spalten werden nicht automatisch reproduziert.
 - Bei Procedures mit mehreren fachlichen Datenmengen wird das in `Metadata/Inventory/TableOutput.csv` ausgewiesene Primärergebnis geschrieben. Aggregatoren liefern ihren Modulstatus beziehungsweise ihre Modul-Envelopes; typisierte Details werden direkt über die jeweilige Kindprocedure angefordert.

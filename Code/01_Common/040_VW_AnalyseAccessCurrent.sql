@@ -50,7 +50,7 @@ AS
             [p].[AnalysisClass],
             [p].[ADGroupName]
         FROM [ActivePolicy] AS [p]
-        INNER JOIN [sys].[login_token] AS [lt]
+        INNER JOIN [sys].[login_token] AS [lt] WITH (NOLOCK)
             ON UPPER(CONVERT(nvarchar(256), [lt].[name])) COLLATE Latin1_General_100_CI_AS
              = UPPER([p].[ADGroupName]) COLLATE Latin1_General_100_CI_AS
         WHERE [lt].[type] = N'WINDOWS GROUP'

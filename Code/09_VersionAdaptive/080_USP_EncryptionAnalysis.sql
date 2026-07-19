@@ -65,7 +65,7 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#EncryptionAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -78,20 +78,20 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#EncryptionAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#EncryptionAnalysis_SourceStatus]
     (
           [SourceName] nvarchar(128) NOT NULL PRIMARY KEY
         , [StatusCode] varchar(40) NOT NULL
         , [IsPartial] bit NOT NULL
         , [Detail] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Encryption]
+    CREATE TABLE [#EncryptionAnalysis_Encryption]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -141,15 +141,15 @@ BEGIN
             , @AnalysisClass=NULL
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
-            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#EncryptionAnalysis_DatabaseCandidates',@WarningTable=N'#EncryptionAnalysis_DatabaseCandidateWarnings';
     END;
 
     SET LOCK_TIMEOUT 0;
 
-    INSERT [#Encryption]([DatabaseId],[DatabaseName],[IsEncrypted],[FindingCode],[FindingSeverity],[EvidenceLimit])
+    INSERT [#EncryptionAnalysis_Encryption]([DatabaseId],[DatabaseName],[IsEncrypted],[FindingCode],[FindingSeverity],[EvidenceLimit])
     SELECT [DatabaseId],[DatabaseName],NULL,'SOURCE_PENDING','INFO',
            N'Read-only Metadaten; Schluesselbesitz und Wiederherstellbarkeit werden nicht bewiesen.'
-    FROM [#DatabaseCandidates];
+    FROM [#EncryptionAnalysis_DatabaseCandidates];
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -174,18 +174,18 @@ BEGIN
                 [ProtectorName]=[c].[name],
                 [ProtectorExpiryDate]=[c].[expiry_date],
                 [ProtectorPrivateKeyLastBackupDate]=[c].[pvt_key_last_backup_date]
-            FROM [#Encryption] AS [e]
+            FROM [#EncryptionAnalysis_Encryption] AS [e]
             JOIN [sys].[databases] AS [d] WITH (NOLOCK) ON [d].[database_id]=[e].[DatabaseId]
-            LEFT JOIN [sys].[dm_database_encryption_keys] AS [k] ON [k].[database_id]=[e].[DatabaseId]
+            LEFT JOIN [sys].[dm_database_encryption_keys] AS [k] WITH (NOLOCK) ON [k].[database_id]=[e].[DatabaseId]
             LEFT JOIN [master].[sys].[certificates] AS [c] WITH (NOLOCK)
               ON [k].[encryptor_type]=N'CERTIFICATE' AND [c].[thumbprint]=[k].[encryptor_thumbprint];
 
-            INSERT [#SourceStatus] VALUES
+            INSERT [#EncryptionAnalysis_SourceStatus] VALUES
             (N'sys.dm_database_encryption_keys + master.sys.certificates','AVAILABLE',0,
              N'TDE-Zustand und sichtbare Zertifikatmetadaten gelesen; Thumbprints und Schluesselmaterial werden nicht ausgegeben.');
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus] VALUES
+            INSERT [#EncryptionAnalysis_SourceStatus] VALUES
             (N'sys.dm_database_encryption_keys + master.sys.certificates',
              CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'TDE- oder Zertifikatmetadaten waren nicht vollstaendig lesbar; die uebrigen Quellen werden weiter ausgewertet.');
@@ -199,7 +199,7 @@ BEGIN
                        ROW_NUMBER() OVER(PARTITION BY [bs].[database_name]
                                          ORDER BY [bs].[backup_finish_date] DESC,[bs].[backup_set_id] DESC) AS [rn]
                 FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
-                JOIN [#DatabaseCandidates] AS [d]
+                JOIN [#EncryptionAnalysis_DatabaseCandidates] AS [d]
                   ON [d].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                    = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                 WHERE [bs].[type]='D' AND [bs].[is_copy_only]=0
@@ -210,18 +210,18 @@ BEGIN
                 [LatestFullBackupExplicitlyEncrypted]=CONVERT(bit,CASE WHEN [b].[key_algorithm] IS NULL THEN 0 ELSE 1 END),
                 [LatestFullBackupAlgorithm]=[b].[key_algorithm],
                 [LatestFullBackupEncryptorType]=[b].[encryptor_type]
-            FROM [#Encryption] AS [e]
+            FROM [#EncryptionAnalysis_Encryption] AS [e]
             JOIN [LatestFull] AS [b]
               ON [b].[rn]=1
              AND [b].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                = [e].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS;
 
-            INSERT [#SourceStatus] VALUES
+            INSERT [#EncryptionAnalysis_SourceStatus] VALUES
             (N'msdb.dbo.backupset','AVAILABLE',0,
              N'Nur Zeitpunkt und Verschluesselungsart des letzten Full-Backups im Sichtfenster; keine Medien-, Konto- oder Serverdaten.');
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus] VALUES
+            INSERT [#EncryptionAnalysis_SourceStatus] VALUES
             (N'msdb.dbo.backupset',CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,
              N'Backupverschluesselungsmetadaten waren nicht lesbar; andere Quellen bleiben auswertbar.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
@@ -230,7 +230,7 @@ BEGIN
         BEGIN TRY
             DECLARE @DatabaseId int,@DatabaseName sysname,@Sql nvarchar(max);
             DECLARE [database_cursor] CURSOR LOCAL FAST_FORWARD FOR
-                SELECT [DatabaseId],[DatabaseName] FROM [#DatabaseCandidates]
+                SELECT [DatabaseId],[DatabaseName] FROM [#EncryptionAnalysis_DatabaseCandidates]
                 WHERE [StateDesc]=N'ONLINE' AND [DatabaseId]<>2 ORDER BY [DatabaseId];
             OPEN [database_cursor];
             FETCH NEXT FROM [database_cursor] INTO @DatabaseId,@DatabaseName;
@@ -244,13 +244,13 @@ BEGIN
                         +CASE WHEN @Major>=16 THEN
                           N',[LedgerTableCount]=(SELECT COUNT_BIG(*) FROM '+QUOTENAME(@DatabaseName)+N'.[sys].[tables] WITH (NOLOCK) WHERE [ledger_type]<>0)'
                           ELSE N',[LedgerTableCount]=NULL' END
-                        +N' FROM [#Encryption] AS [e] WHERE [e].[DatabaseId]=@pDatabaseId;';
+                        +N' FROM [#EncryptionAnalysis_Encryption] AS [e] WHERE [e].[DatabaseId]=@pDatabaseId;';
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseId int',@pDatabaseId=@DatabaseId;
                 END TRY
                 BEGIN CATCH
                     SET @IsPartial=1;
-                    IF NOT EXISTS(SELECT 1 FROM [#DatabaseCandidateWarnings] WHERE [RequestedName]=@DatabaseName)
-                        INSERT [#DatabaseCandidateWarnings] VALUES
+                    IF NOT EXISTS(SELECT 1 FROM [#EncryptionAnalysis_DatabaseCandidateWarnings] WHERE [RequestedName]=@DatabaseName)
+                        INSERT [#EncryptionAnalysis_DatabaseCandidateWarnings] VALUES
                         (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                          N'Aggregierte Always-Encrypted- oder Ledger-Metadaten waren fuer diese Datenbank nicht lesbar.');
                 END CATCH;
@@ -259,7 +259,7 @@ BEGIN
             CLOSE [database_cursor];
             DEALLOCATE [database_cursor];
 
-            INSERT [#SourceStatus] VALUES
+            INSERT [#EncryptionAnalysis_SourceStatus] VALUES
             (N'sys.column_master_keys + sys.column_encryption_keys + sys.columns + sys.tables','AVAILABLE',@IsPartial,
              CASE WHEN @Major>=16 THEN N'Nur aggregierte Objektanzahlen; keine Schluesselpfade, Signaturen, Werte oder Objektnamen.'
                   ELSE N'Nur aggregierte Always-Encrypted-Anzahlen; Ledger ist vor SQL Server 2022 nicht verfuegbar.' END);
@@ -267,7 +267,7 @@ BEGIN
         BEGIN CATCH
             IF CURSOR_STATUS('local','database_cursor')>=0 CLOSE [database_cursor];
             IF CURSOR_STATUS('local','database_cursor')>-3 DEALLOCATE [database_cursor];
-            INSERT [#SourceStatus] VALUES
+            INSERT [#EncryptionAnalysis_SourceStatus] VALUES
             (N'sys.column_master_keys + sys.column_encryption_keys + sys.columns + sys.tables','ERROR_HANDLED',1,
              N'Die datenbanklokale Aggregation wurde abgefangen; TDE- und Backupquellen bleiben auswertbar.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
@@ -307,11 +307,11 @@ BEGIN
                 WHEN @ExpliziteBackupverschluesselungErwartet=1
                     THEN N'TDE und explizite Backupverschluesselung sind getrennte Schutzmechanismen; ein Test-Restore bleibt erforderlich.'
                 ELSE N'Read-only Metadaten; Schluesselbesitz und Wiederherstellbarkeit werden nicht bewiesen.' END
-        FROM [#Encryption] AS [e];
+        FROM [#EncryptionAnalysis_Encryption] AS [e];
 
-        IF EXISTS(SELECT 1 FROM [#SourceStatus] WHERE [IsPartial]=1)
+        IF EXISTS(SELECT 1 FROM [#EncryptionAnalysis_SourceStatus] WHERE [IsPartial]=1)
             SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-        ELSE IF EXISTS(SELECT 1 FROM [#Encryption]
+        ELSE IF EXISTS(SELECT 1 FROM [#EncryptionAnalysis_Encryption]
                        WHERE [FindingSeverity] IN ('HIGH','MEDIUM'))
             SET @StatusCode='AVAILABLE_WITH_FINDING';
     END;
@@ -324,13 +324,13 @@ BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT N'EncryptionAnalysis' AS [resultName],1 AS [schemaVersion],
             @Now AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@Major AS [productMajorVersion]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-        DECLARE @DataJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#Encryption]
+        DECLARE @DataJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#EncryptionAnalysis_Encryption]
             WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
             ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @SourceJson nvarchar(max)=(SELECT * FROM [#SourceStatus] ORDER BY [SourceName]
+        DECLARE @SourceJson nvarchar(max)=(SELECT * FROM [#EncryptionAnalysis_SourceStatus] ORDER BY [SourceName]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @WarningJson nvarchar(max)=(SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName]
+        DECLARE @WarningJson nvarchar(max)=(SELECT * FROM [#EncryptionAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"databases":',COALESCE(@DataJson,N'[]'),
                          N',"sources":',COALESCE(@SourceJson,N'[]'),N',"warnings":',COALESCE(@WarningJson,N'[]'),N'}');
@@ -340,11 +340,11 @@ BEGIN
     BEGIN
         SELECT N'USP_EncryptionAnalysis' AS [ModuleName],@Now AS [CollectionTimeUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@Major AS [ProductMajorVersion],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];
-        SELECT TOP (@Limit) * FROM [#Encryption]
+        SELECT TOP (@Limit) * FROM [#EncryptionAnalysis_Encryption]
         WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId];
-        SELECT * FROM [#SourceStatus] ORDER BY [SourceName];
-        SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+        SELECT * FROM [#EncryptionAnalysis_SourceStatus] ORDER BY [SourceName];
+        SELECT * FROM [#EncryptionAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
     END
     ELSE IF @OutputMode='CONSOLE'
     BEGIN
@@ -359,18 +359,18 @@ BEGIN
                [ColumnMasterKeyCount] AS [Column_Master_Keys],[ColumnEncryptionKeyCount] AS [Column_Encryption_Keys],
                [EncryptedColumnCount] AS [Verschluesselte_Spalten],[LedgerTableCount] AS [Ledger_Tabellen],
                [FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#Encryption]
+        FROM [#EncryptionAnalysis_Encryption]
         WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId];
         SELECT N'Quellenstatus' AS [Ergebnis],[SourceName] AS [Quelle],[StatusCode] AS [Status],[Detail] AS [Hinweis]
-        FROM [#SourceStatus] ORDER BY [SourceName];
+        FROM [#EncryptionAnalysis_SourceStatus] ORDER BY [SourceName];
         SELECT N'Datenbankwarnung' AS [Ergebnis],[RequestedName] AS [Datenbank],[StatusCode] AS [Status],[ErrorMessage] AS [Meldung]
-        FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+        FROM [#EncryptionAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Encryption'
+              @SourceTable = N'#EncryptionAnalysis_Encryption'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

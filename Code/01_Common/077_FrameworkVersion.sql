@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.10
+Version      : 1.1.0-special.11
 Stand        : 2026-07-19
 Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
                Analysepaket. Keine Installationshistorie und kein Deployment-
@@ -12,7 +12,13 @@ Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
 Seiteneffekte: Eine Zeile wird bei Installation oder Upgrade aktualisiert.
 ===============================================================================
 */
-IF OBJECT_ID(N'monitor.FrameworkVersion',N'U') IS NULL
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [sys].[tables] AS [t] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id]
+    WHERE [s].[name]=N'monitor' AND [t].[name]=N'FrameworkVersion'
+)
 BEGIN
     CREATE TABLE [monitor].[FrameworkVersion]
     (
@@ -28,12 +34,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.10',
+SET [FrameworkVersion]='1.1.0-special.11',
     [ReleaseDate]='20260719',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.15',
+    [ContractVersion]='1.16',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.15: typisierte TABLE-Ausgabe in lokale #Temp-Tabellen mit sicherer Strukturadaption und einheitlichem @ResultTable-Vertrag.'
+    [ReleaseNotes]=N'API 1.16: beliebige Ein-Spalten-Dummys für TABLE, nonblocking Systemkatalogzugriffe und objektbezogene Temp-Namen.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -45,9 +51,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.10','20260719',15,
-        '1.15',SYSUTCDATETIME(),
-        N'API 1.15: typisierte TABLE-Ausgabe in lokale #Temp-Tabellen mit sicherer Strukturadaption und einheitlichem @ResultTable-Vertrag.'
+        N'SQLServerMonitoringFramework','1.1.0-special.11','20260719',15,
+        '1.16',SYSUTCDATETIME(),
+        N'API 1.16: beliebige Ein-Spalten-Dummys für TABLE, nonblocking Systemkatalogzugriffe und objektbezogene Temp-Namen.'
     );
 END;
 GO

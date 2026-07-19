@@ -51,6 +51,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InfrastructureAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
 
     SET @Json = NULL;
 
@@ -70,7 +71,7 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#ModuleStatus]
+    CREATE TABLE [#InfrastructureAnalysis_ModuleStatus]
     (
           [ModuleName] sysname NOT NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -99,7 +100,7 @@ BEGIN
        OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR (@DatabaseNames IS NOT NULL AND @DatabaseNamePattern IS NOT NULL)
     BEGIN
-        INSERT [#ModuleStatus]
+        INSERT [#InfrastructureAnalysis_ModuleStatus]
         VALUES
         (
               N'USP_InfrastructureAnalysis'
@@ -117,10 +118,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @AgentJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_AgentStatus', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AgentStatus', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_AgentStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AgentStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitAgentJobs = 1
@@ -131,10 +132,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @AgentJobsJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_AgentJobs', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AgentJobs', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_AgentJobs', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AgentJobs', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitResourceGovernor = 1
@@ -145,10 +146,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ResourceGovernorJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_ResourceGovernorAnalysis', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_ResourceGovernorAnalysis', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_ResourceGovernorAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_ResourceGovernorAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitAvailabilityGroups = 1
@@ -159,10 +160,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @AvailabilityGroupsJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_AvailabilityGroups', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AvailabilityGroups', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_AvailabilityGroups', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AvailabilityGroups', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitBackupRecovery = 1
@@ -177,10 +178,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @BackupRecoveryJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_BackupRecovery', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_BackupRecovery', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_BackupRecovery', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_BackupRecovery', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitLogShipping = 1
@@ -191,10 +192,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @LogShippingJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_LogShippingStatus', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_LogShippingStatus', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_LogShippingStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_LogShippingStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitReplication = 1
@@ -206,10 +207,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ReplicationJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_ReplicationStatus', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_ReplicationStatus', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_ReplicationStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_ReplicationStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitDataCapture = 1
@@ -224,10 +225,10 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @DataCaptureJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleStatus] VALUES (N'USP_DataCaptureStatus', 'EXECUTED', NULL, NULL);
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_DataCaptureStatus', 'EXECUTED', NULL, NULL);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_DataCaptureStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_DataCaptureStatus', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitBackupChain = 1
@@ -245,11 +246,11 @@ BEGIN
                 , @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
-            INSERT [#ModuleStatus] VALUES
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES
             (N'USP_BackupChainAnalysis', COALESCE(@ChildStatus, 'ERROR_HANDLED'), @ChildErrorNumber, @ChildErrorMessage);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_BackupChainAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_BackupChainAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitAvailabilityDeep = 1
@@ -263,11 +264,11 @@ BEGIN
                 , @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
-            INSERT [#ModuleStatus] VALUES
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES
             (N'USP_AvailabilityDeepAnalysis', COALESCE(@ChildStatus, 'ERROR_HANDLED'), @ChildErrorNumber, @ChildErrorMessage);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_AvailabilityDeepAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AvailabilityDeepAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         IF @MitAgentMonitoring = 1
@@ -281,25 +282,25 @@ BEGIN
                 , @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
-            INSERT [#ModuleStatus] VALUES
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES
             (N'USP_AgentMonitoringAnalysis', COALESCE(@ChildStatus, 'ERROR_HANDLED'), @ChildErrorNumber, @ChildErrorMessage);
         END TRY
         BEGIN CATCH
-            INSERT [#ModuleStatus] VALUES (N'USP_AgentMonitoringAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#InfrastructureAnalysis_ModuleStatus] VALUES (N'USP_AgentMonitoringAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
     END;
 
     DECLARE @OverallStatus varchar(40) =
         CASE WHEN EXISTS
-                  (SELECT 1 FROM [#ModuleStatus]
+                  (SELECT 1 FROM [#InfrastructureAnalysis_ModuleStatus]
                    WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
              THEN 'AVAILABLE_LIMITED'
-             WHEN EXISTS (SELECT 1 FROM [#ModuleStatus] WHERE [StatusCode] = 'AVAILABLE_WITH_FINDING')
+             WHEN EXISTS (SELECT 1 FROM [#InfrastructureAnalysis_ModuleStatus] WHERE [StatusCode] = 'AVAILABLE_WITH_FINDING')
              THEN 'AVAILABLE_WITH_FINDING'
              ELSE 'AVAILABLE' END;
     DECLARE @IsPartial bit = CONVERT(bit,
         CASE WHEN EXISTS
-             (SELECT 1 FROM [#ModuleStatus]
+             (SELECT 1 FROM [#InfrastructureAnalysis_ModuleStatus]
               WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
              THEN 1 ELSE 0 END);
 
@@ -310,14 +311,14 @@ BEGIN
             , CAST(N'monitor.USP_InfrastructureAnalysis' AS nvarchar(256)) AS [ModuleName]
             , @OverallStatus AS [StatusCode]
             , @IsPartial AS [IsPartial]
-            , CONVERT(bigint, (SELECT COUNT_BIG(*) FROM [#ModuleStatus])) AS [ModuleCount]
-            , CONVERT(bigint, (SELECT COUNT_BIG(*) FROM [#ModuleStatus]
+            , CONVERT(bigint, (SELECT COUNT_BIG(*) FROM [#InfrastructureAnalysis_ModuleStatus])) AS [ModuleCount]
+            , CONVERT(bigint, (SELECT COUNT_BIG(*) FROM [#InfrastructureAnalysis_ModuleStatus]
                                WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))) AS [ProblemModuleCount];
 
         IF @ResultSetArtNormalisiert = 'RAW'
         BEGIN
             SELECT [ModuleName], [StatusCode], [ErrorNumber], [ErrorMessage]
-            FROM [#ModuleStatus]
+            FROM [#InfrastructureAnalysis_ModuleStatus]
             ORDER BY [ModuleName];
         END;
         ELSE
@@ -328,7 +329,7 @@ BEGIN
                 , [StatusCode] AS [Status]
                 , [ErrorNumber] AS [Fehlernummer]
                 , [ErrorMessage] AS [Fehlermeldung]
-            FROM [#ModuleStatus]
+            FROM [#InfrastructureAnalysis_ModuleStatus]
             ORDER BY [ModuleName];
         END;
     END;
@@ -348,7 +349,7 @@ BEGIN
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @WarningsJson nvarchar(max) =
-            (SELECT * FROM [#ModuleStatus]
+            (SELECT * FROM [#InfrastructureAnalysis_ModuleStatus]
              WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE')
              ORDER BY [ModuleName] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
@@ -373,7 +374,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#ModuleStatus'
+              @SourceTable = N'#InfrastructureAnalysis_ModuleStatus'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

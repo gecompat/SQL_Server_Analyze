@@ -13,13 +13,13 @@ EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=NULL,@Query
 EXEC [monitor].[USP_CurrentMemoryGrants] @NurWartende=0,@MaxZeilen=100,@ResultSetArt='CONSOLE';
 
 -- Primäres typisiertes Ergebnis in einer lokalen Temp-Tabelle weiterverarbeiten
-CREATE TABLE [#RequestResult] ([__MonitorPlaceholder] bit NULL);
+CREATE TABLE [#Schnellreferenz_Aufrufe_RequestResult] ([Dummy] int NULL);
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen=100
     , @ResultSetArt='TABLE'
-    , @ResultTable=N'#RequestResult';
-SELECT * FROM [#RequestResult] ORDER BY [SessionId],[RequestId];
-DROP TABLE [#RequestResult];
+    , @ResultTable=N'#Schnellreferenz_Aufrufe_RequestResult';
+SELECT * FROM [#Schnellreferenz_Aufrufe_RequestResult] ORDER BY [SessionId],[RequestId];
+DROP TABLE [#Schnellreferenz_Aufrufe_RequestResult];
 
 -- Integritätsevidenz der aktuellen Datenbank; führt kein DBCC und keine Reparatur aus
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetails=0,@MaxZeilen=100;

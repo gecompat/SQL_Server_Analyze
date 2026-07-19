@@ -26,6 +26,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentTempDB]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -54,8 +55,8 @@ BEGIN
     DECLARE @HasMoreRows bit = 0;
     DECLARE @Message nvarchar(2048);
 
-    CREATE TABLE [#SessionFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
-    CREATE TABLE [#Sessions]
+    CREATE TABLE [#CurrentTempDB_SessionFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
+    CREATE TABLE [#CurrentTempDB_Sessions]
     (
           [SessionId]                 smallint       NOT NULL
         , [LoginName]                 nvarchar(128)  NULL
@@ -70,7 +71,7 @@ BEGIN
         , [InternalObjectsNetMb]      decimal(19,2)  NOT NULL
         , [TotalNetMb]                decimal(19,2)  NOT NULL
     );
-    CREATE TABLE [#Files]
+    CREATE TABLE [#CurrentTempDB_Files]
     (
           [FileId]                 int            NOT NULL
         , [LogicalName]            sysname        NOT NULL
@@ -83,7 +84,7 @@ BEGIN
         , [GrowthMb]               decimal(19,2)  NULL
         , [IsPercentGrowth]        bit            NOT NULL
     );
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#CurrentTempDB_Warnings]
     (
           [StatusCode] varchar(40) NOT NULL
         , [ErrorNumber] int NULL
@@ -111,7 +112,7 @@ BEGIN
         END
         ELSE
         BEGIN
-            INSERT [#SessionFilter]([SessionId])
+            INSERT [#CurrentTempDB_SessionFilter]([SessionId])
             SELECT CONVERT(smallint, [NumberValue])
             FROM [monitor].[TVF_ParseBigintList](@SessionIds)
             WHERE [IsValid] = 1;
@@ -133,7 +134,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#Sessions]
+        INSERT [#CurrentTempDB_Sessions]
         (
               [SessionId], [LoginName], [HostName], [ProgramName], [SessionStatus]
             , [UserObjectsAllocatedMb], [UserObjectsDeallocatedMb], [UserObjectsNetMb]
@@ -157,8 +158,8 @@ BEGIN
                     [su].[user_objects_alloc_page_count] - [su].[user_objects_dealloc_page_count]
                     + [su].[internal_objects_alloc_page_count] - [su].[internal_objects_dealloc_page_count]
                 ) * 8.0 / 1024.0)
-        FROM [sys].[dm_db_session_space_usage] AS [su]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [s]
+        FROM [sys].[dm_db_session_space_usage] AS [su] WITH (NOLOCK)
+        LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [su].[session_id]
         WHERE (@AktuelleSessionEinbeziehen = 1 OR [su].[session_id] <> @@SPID)
           AND (@SystemSessionsEinbeziehen = 1 OR COALESCE([s].[is_user_process], 1) = 1)
@@ -167,7 +168,7 @@ BEGIN
               @SessionIds IS NULL
               OR EXISTS
                  (
-                     SELECT 1 FROM [#SessionFilter] AS [f]
+                     SELECT 1 FROM [#CurrentTempDB_SessionFilter] AS [f]
                      WHERE [f].[SessionId] = [su].[session_id]
                  )
           )
@@ -186,7 +187,7 @@ BEGIN
         IF @MitDateien = 1
         BEGIN
             DECLARE @FileSql nvarchar(max) = N'USE [tempdb];
-INSERT [#Files]
+INSERT [#CurrentTempDB_Files]
 (
       [FileId], [LogicalName], [PhysicalName], [FileTypeDesc]
     , [SizeMb], [UsedMb], [FreeMb], [UsedPercent], [GrowthMb], [IsPercentGrowth]
@@ -207,7 +208,7 @@ ORDER BY [df].[file_id];';
             EXEC [sys].[sp_executesql] @FileSql;
         END;
 
-        SELECT @RowCount = COUNT_BIG(*) FROM [#Sessions];
+        SELECT @RowCount = COUNT_BIG(*) FROM [#CurrentTempDB_Sessions];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
     END TRY
     BEGIN CATCH
@@ -215,7 +216,7 @@ ORDER BY [df].[file_id];';
         SET @ErrorMessage = ERROR_MESSAGE();
         SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
                                WHEN @ErrorNumber = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
-        INSERT [#Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
+        INSERT [#CurrentTempDB_Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
     END CATCH;
 
     IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'
@@ -239,10 +240,10 @@ ORDER BY [df].[file_id];';
         IF @OutputMode = 'RAW'
         BEGIN
             SELECT TOP (@Limit) *
-            FROM [#Sessions]
+            FROM [#CurrentTempDB_Sessions]
             ORDER BY [TotalNetMb] DESC, [SessionId];
             IF @MitDateien = 1
-                SELECT * FROM [#Files] ORDER BY [FileId];
+                SELECT * FROM [#CurrentTempDB_Files] ORDER BY [FileId];
         END
         ELSE
         BEGIN
@@ -256,7 +257,7 @@ ORDER BY [df].[file_id];';
                 , CONCAT(CONVERT(varchar(30), [TotalNetMb]), N' MB') AS [Gesamt netto]
                 , CONCAT(CONVERT(varchar(30), [UserObjectsNetMb]), N' MB') AS [User Objects netto]
                 , CONCAT(CONVERT(varchar(30), [InternalObjectsNetMb]), N' MB') AS [Internal Objects netto]
-            FROM [#Sessions]
+            FROM [#CurrentTempDB_Sessions]
             ORDER BY [TotalNetMb] DESC, [SessionId];
 
             IF @MitDateien = 1
@@ -269,11 +270,11 @@ ORDER BY [df].[file_id];';
                     , CONCAT(CONVERT(varchar(30), [UsedMb]), N' MB') AS [Verwendet]
                     , CONCAT(CONVERT(varchar(30), [FreeMb]), N' MB') AS [Frei]
                     , CONCAT(CONVERT(varchar(30), [UsedPercent]), N' %') AS [Auslastung]
-                FROM [#Files]
+                FROM [#CurrentTempDB_Files]
                 ORDER BY [FileId];
         END;
 
-        SELECT * FROM [#Warnings] ORDER BY [StatusCode];
+        SELECT * FROM [#CurrentTempDB_Warnings] ORDER BY [StatusCode];
     END;
 
     IF @JsonErzeugen = 1
@@ -288,18 +289,18 @@ ORDER BY [df].[file_id];';
         );
         DECLARE @SessionsJson nvarchar(max) =
         (
-            SELECT TOP (@Limit) * FROM [#Sessions]
+            SELECT TOP (@Limit) * FROM [#CurrentTempDB_Sessions]
             ORDER BY [TotalNetMb] DESC, [SessionId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @FilesJson nvarchar(max) =
         (
-            SELECT * FROM [#Files] ORDER BY [FileId]
+            SELECT * FROM [#CurrentTempDB_Files] ORDER BY [FileId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @WarningsJson nvarchar(max) =
         (
-            SELECT * FROM [#Warnings] ORDER BY [StatusCode]
+            SELECT * FROM [#CurrentTempDB_Warnings] ORDER BY [StatusCode]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         SET @Json = CONCAT(N'{"meta":', COALESCE(@Meta,N'{}'), N',"sessions":', COALESCE(@SessionsJson,N'[]'), N',"tempdbFiles":', COALESCE(@FilesJson,N'[]'), N',"warnings":', COALESCE(@WarningsJson,N'[]'), N'}');
@@ -307,7 +308,7 @@ ORDER BY [df].[file_id];';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Sessions'
+              @SourceTable = N'#CurrentTempDB_Sessions'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;
