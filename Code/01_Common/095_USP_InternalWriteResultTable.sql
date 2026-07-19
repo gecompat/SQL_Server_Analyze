@@ -133,7 +133,7 @@ BEGIN
         , [IsComputed], [IsUserDefined], [IsAssemblyType], [XmlCollectionId]
     )
     SELECT
-          [c].[column_id]
+          CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id]))
         , [c].[name]
         , [t].[name]
         , [c].[system_type_id]
@@ -297,7 +297,7 @@ BEGIN
         , [IsComputed], [IsUserDefined], [IsAssemblyType], [XmlCollectionId]
     )
     SELECT
-          [c].[column_id]
+          CONVERT(int, ROW_NUMBER() OVER (ORDER BY [c].[column_id]))
         , [c].[name]
         , [t].[name]
         , [c].[system_type_id]
