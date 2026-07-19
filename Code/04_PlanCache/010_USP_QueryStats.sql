@@ -246,7 +246,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        SET @Sql = N'
+        SET @Sql = CONVERT(nvarchar(max),N'') + N'
 INSERT [#QueryStats_Result]
 (
       [QueryHash], [QueryPlanHash], [PlanHandle], [SqlHandle]
