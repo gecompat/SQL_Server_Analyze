@@ -19,6 +19,7 @@ Methodik     : Kindmodule laufen mit @ResultSetArt=NONE. Innerhalb eines
                Der Aggregator liest nur definierte JSON-Felder und übernimmt
                keine freien SQL-, Mail-, Plan-, Pfad- oder Meldungstexte.
 Grenzen      : Priorität ist Triage, keine automatische Ursachenfeststellung.
+               Kein READPAST; unvollständige Child-Evidenz bleibt sichtbar.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DiagnosticFindings]
