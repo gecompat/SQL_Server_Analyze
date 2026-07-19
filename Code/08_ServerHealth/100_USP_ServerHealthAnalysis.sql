@@ -52,6 +52,7 @@ BEGIN
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
     IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ChildJsonRequested bit = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @OverallStatus varchar(40) = 'AVAILABLE';
     DECLARE @ChildStatus varchar(40);
@@ -313,7 +314,7 @@ BEGIN
                 , @DatabaseNamePattern = @DatabaseNamePattern
                 , @MaxDatenbanken = @MaxDatenbanken, @MitPageDetails = 0
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
-                , @JsonErzeugen = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END, @Json = @IntegrityJson OUTPUT
+                , @JsonErzeugen = @ChildJsonRequested, @Json = @IntegrityJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
                 , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
@@ -332,7 +333,7 @@ BEGIN
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
                 , @DatabaseNamePattern = @DatabaseNamePattern
                 , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
-                , @ResultSetArt = @OutputMode, @JsonErzeugen = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END
+                , @ResultSetArt = @OutputMode, @JsonErzeugen = @ChildJsonRequested
                 , @Json = @CapacityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
@@ -397,7 +398,7 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_BufferPoolAnalysis]
                   @MitBufferPoolVerteilung = 0, @MaxZeilen = @MaxZeilen
-                , @ResultSetArt = @OutputMode, @JsonErzeugen = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END
+                , @ResultSetArt = @OutputMode, @JsonErzeugen = @ChildJsonRequested
                 , @Json = @BufferPoolJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
