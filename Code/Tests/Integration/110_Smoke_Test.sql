@@ -67,9 +67,12 @@ WHERE NOT EXISTS
     FROM [sys].[objects] AS [o] WITH (NOLOCK)
     JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
       ON [s].[schema_id]=[o].[schema_id]
-    WHERE [s].[name]=PARSENAME([e].[ObjectName],2)
-      AND [o].[name]=PARSENAME([e].[ObjectName],1)
-      AND [o].[type]=[e].[ObjectType]
+    WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            =PARSENAME([e].[ObjectName],2) COLLATE SQL_Latin1_General_CP1_CS_AS
+      AND [o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+            =PARSENAME([e].[ObjectName],1) COLLATE SQL_Latin1_General_CP1_CS_AS
+      AND [o].[type] COLLATE SQL_Latin1_General_CP1_CS_AS
+            =[e].[ObjectType] COLLATE SQL_Latin1_General_CP1_CS_AS
 );
 
 IF @Missing IS NOT NULL
