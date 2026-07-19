@@ -239,11 +239,13 @@ BEGIN
             ) AS [state];
 
             INSERT [#AvailabilityDeepAnalysis_PageRepair]
-            SELECT [database_id], (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [database_id]), [file_id], [page_id], [error_type]
-                 , [page_status], [modification_time]
-                 , CASE WHEN [page_status] = 5 THEN 'PAGE_REPAIR_SUCCEEDED'
+            SELECT [pr].[database_id], [d].[name], [pr].[file_id], [pr].[page_id], [pr].[error_type]
+                 , [pr].[page_status], [pr].[modification_time]
+                 , CASE WHEN [pr].[page_status] = 5 THEN 'PAGE_REPAIR_SUCCEEDED'
                         ELSE 'PAGE_REPAIR_PENDING_OR_FAILED' END
-            FROM [sys].[dm_hadr_auto_page_repair] WITH (NOLOCK);
+            FROM [sys].[dm_hadr_auto_page_repair] AS [pr] WITH (NOLOCK)
+            LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+              ON [d].[database_id]=[pr].[database_id];
 
             IF EXISTS
                (
