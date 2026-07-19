@@ -43,7 +43,7 @@ Welche Plan-Cache-Perspektiven sollen gemeinsam für Triage oder Deep Analysis a
 
 ### Technischer Hintergrund
 
-Der Wrapper orchestriert Query Stats, Hashgruppen, Cache Health, Details und Showplanpfade. Plan-XML und breite Cache-Scans erhöhen CPU, Memorytransfer und Resultsetgröße.
+Der Wrapper orchestriert Query Stats, Hashgruppen, Cache Health, Details und Showplanpfade. Wenn mindestens zwei der Consumer Query Stats, Query Hash und Showplan-Kandidatenauswahl aktiv sind, materialisiert er `sys.dm_exec_query_stats` einmal laufgebunden; die Children melden `REUSED_PARENT_SNAPSHOT`. Ein breiter gemeinsamer Read wird erst nach `PLAN_CACHE_DEEP`-Freigabe ausgeführt. Plan-XML und breite Cache-Scans erhöhen CPU, Memorytransfer und Resultsetgröße.
 
 ### Datenkette
 
@@ -51,7 +51,7 @@ Frameworkinterne Orchestrierung; Quellen liegen in den aufgerufenen Childmodulen
 
 ### Zeit- und Scope-Modell
 
-Nicht atomarer Snapshot des flüchtigen Cache; Children können unterschiedliche Kandidatenmengen sehen.
+Query Stats, Query Hash und Showplan-Kandidatenauswahl verwenden im gemeinsamen Lauf denselben `dm_exec_query_stats`-Stand. Cache Health besitzt mit `dm_exec_cached_plans` eine eigene Quelle; Plan-XML wird später planweise geladen und kann nach Eviction fehlen. Einzelaufrufe lesen immer frisch.
 
 ### Bewertung und Gegenprobe
 
@@ -59,7 +59,7 @@ Status/Partial zuerst, dann von Gesamtkosten zu Hash/Plan und erst danach XML-De
 
 ### Typische Fehlinterpretation
 
-Ein leerer Detailpfad kann durch Eviction zwischen Childaufrufen entstehen, nicht durch fehlende frühere Ausführung.
+Ein leerer Detailpfad kann durch Eviction nach dem gemeinsamen Kandidatensnapshot entstehen, nicht durch fehlende frühere Ausführung. Snapshot-Fallback und partielle Planstatus nicht als vollständige Cache-Evidenz lesen.
 
 ### Folgeanalyse
 

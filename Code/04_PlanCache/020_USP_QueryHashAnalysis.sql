@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_QueryHashAnalysis
-Version      : 2.0.0
-Stand        : 2026-07-15
+Version      : 2.1.0
+Stand        : 2026-07-19
 Typ          : Stored Procedure
 Zweck        : Aggregiert gecachte Statement-Statistiken je query_hash und zeigt
                Planvielfalt, Recompiles und kumulative Ressourcenanteile.
@@ -13,6 +13,7 @@ SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : sys.dm_exec_query_stats, sys.dm_exec_sql_text.
 Parameter    : @QueryHash, @Sortierung, @AnalyseModus, @MinExecutionCount,
                @MinPlanVarianten, @MaxZeilen, @MaxSqlTextZeichen,
+               @ParentQueryStatsSnapshot,
                @PrintMeldungen, @Hilfe.
 Resultsets   : 1. Modulstatus. 2. Query-Hash-Aggregate mit Beispielstatement.
 Berechtigung : VIEW SERVER STATE beziehungsweise SQL Server 2022+
@@ -25,7 +26,9 @@ Partial      : Cache-Eviction kann Beispieltexte zwischen Auswahl und Ausgabe en
 Beispiele    : EXEC monitor.USP_QueryHashAnalysis @MinPlanVarianten=2;
                EXEC monitor.USP_QueryHashAnalysis @Sortierung='READS_TOTAL';
                EXEC monitor.USP_QueryHashAnalysis @Hilfe=1;
-Änderungen   : 1.1.0 - Breite Aggregation ohne @QueryHash gruppengeschützt.
+Änderungen   : 2.1.0 - Query-Stats je Aufruf einmal gelesen oder vom laufgebundenen
+                         Parent-Snapshot übernommen.
+               1.1.0 - Breite Aggregation ohne @QueryHash gruppengeschützt.
                1.0.0 - Erstfassung Phase 3.
 ===============================================================================
 */
@@ -37,6 +40,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryHashAnalysis]
     , @MinPlanVarianten    int         = 1
     , @MaxZeilen           int         = 100
     , @MaxSqlTextZeichen   int         = 4000
+    , @ParentQueryStatsSnapshot bit    = 0
     , @ResultSetArt        varchar(16) = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
     , @JsonErzeugen        bit         = 0
@@ -63,6 +67,7 @@ BEGIN
         PRINT N'@AnalyseModus TOP oder VOLL; VOLL sowie ein Lauf ohne konkreten @QueryHash prüfen PLAN_CACHE_DEEP.';
         PRINT N'@MinExecutionCount bigint=1; @MinPlanVarianten int=1; @MaxZeilen int=100.';
         PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Beispielstatementtext.';
+        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
         PRINT N'@ResultSetArt RAW|CONSOLE|TABLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT; Steuerwerte sind case-insensitiv.';
         PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0. Die Auswertung ist cachegebunden und keine Historie.';
         RETURN;
@@ -79,16 +84,64 @@ BEGIN
         [TotalWrites] bigint NOT NULL,[TotalSpills] bigint NOT NULL,[MaxGrantKb] bigint NOT NULL,[FirstCreationTime] datetime NULL,
         [LastExecutionTime] datetime NULL,[SampleSqlHandle] varbinary(64) NULL,[SampleStartOffset] int NULL,[SampleEndOffset] int NULL
     );
+    CREATE TABLE [#QueryHashAnalysis_QueryStatsSource]
+    (
+          [query_hash] binary(8) NULL
+        , [query_plan_hash] binary(8) NULL
+        , [plan_handle] varbinary(64) NULL
+        , [sql_handle] varbinary(64) NULL
+        , [statement_start_offset] int NULL
+        , [statement_end_offset] int NULL
+        , [execution_count] bigint NULL
+        , [total_worker_time] bigint NULL
+        , [total_elapsed_time] bigint NULL
+        , [total_logical_reads] bigint NULL
+        , [total_logical_writes] bigint NULL
+        , [total_spills] bigint NULL
+        , [max_grant_kb] bigint NULL
+        , [creation_time] datetime NULL
+        , [last_execution_time] datetime NULL
+    );
 
     IF @Sortierung NOT IN('CPU_TOTAL','ELAPSED_TOTAL','READS_TOTAL','WRITES_TOTAL','EXECUTIONS','PLAN_VARIANTS','SPILLS_TOTAL')
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Unbekannter Wert für @Sortierung.';END;
-    IF @StatusCode='AVAILABLE' AND (@AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0 OR @MinPlanVarianten<1 OR @MinExecutionCount<0)
+    IF @StatusCode='AVAILABLE' AND (@AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0 OR @MinPlanVarianten<1 OR @MinExecutionCount<0 OR @ParentQueryStatsSnapshot IS NULL)
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameterwert.';END;
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @QueryHash IS NULL OR @EffectiveMaxZeilen>1000)
     BEGIN
         SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
         IF @Allowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'PLAN_CACHE_DEEP ist für die breite Query-Hash-Aggregation nicht freigegeben.';END;
     END;
+
+    IF @StatusCode='AVAILABLE'
+    BEGIN TRY
+        IF @ParentQueryStatsSnapshot=1
+        BEGIN
+            EXEC [sys].[sp_executesql] N'
+INSERT [#QueryHashAnalysis_QueryStatsSource]
+SELECT [query_hash],[query_plan_hash],[plan_handle],[sql_handle],[statement_start_offset],[statement_end_offset],
+       [execution_count],[total_worker_time],[total_elapsed_time],[total_logical_reads],[total_logical_writes],
+       [total_spills],[max_grant_kb],[creation_time],[last_execution_time]
+FROM [#PlanCacheAnalysis_QueryStatsSnapshot]
+WHERE @QueryHash IS NULL OR [query_hash]=@QueryHash;',
+                N'@QueryHash binary(8)',
+                @QueryHash=@QueryHash;
+        END
+        ELSE
+        BEGIN
+            INSERT [#QueryHashAnalysis_QueryStatsSource]
+            SELECT [query_hash],[query_plan_hash],[plan_handle],[sql_handle],[statement_start_offset],[statement_end_offset],
+                   [execution_count],[total_worker_time],[total_elapsed_time],[total_logical_reads],[total_logical_writes],
+                   [total_spills],[max_grant_kb],[creation_time],[last_execution_time]
+            FROM [sys].[dm_exec_query_stats] WITH (NOLOCK)
+            WHERE @QueryHash IS NULL OR [query_hash]=@QueryHash;
+        END;
+    END TRY
+    BEGIN CATCH
+        SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();SET @IsPartial=1;
+        SET @StatusCode=CASE WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                             WHEN @ErrorNumber=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+    END CATCH;
 
     IF @StatusCode='AVAILABLE'
     BEGIN TRY
@@ -99,7 +152,7 @@ BEGIN
                    SUM([qs].[total_elapsed_time]) AS [TotalElapsedUs],SUM([qs].[total_logical_reads]) AS [TotalReads],SUM([qs].[total_logical_writes]) AS [TotalWrites],
                    SUM([qs].[total_spills]) AS [TotalSpills],MAX([qs].[max_grant_kb]) AS [MaxGrantKb],MIN([qs].[creation_time]) AS [FirstCreationTime],
                    MAX([qs].[last_execution_time]) AS [LastExecutionTime]
-            FROM [sys].[dm_exec_query_stats] AS qs WITH (NOLOCK)
+            FROM [#QueryHashAnalysis_QueryStatsSource] AS qs
             WHERE [qs].[query_hash] IS NOT NULL AND (@QueryHash IS NULL OR [qs].[query_hash]=@QueryHash)
             GROUP BY [qs].[query_hash]
             HAVING SUM([qs].[execution_count])>=@MinExecutionCount AND COUNT(DISTINCT [qs].[query_plan_hash])>=@MinPlanVarianten
@@ -119,7 +172,7 @@ BEGIN
         OUTER APPLY
         (
             SELECT TOP(1) [qs].[sql_handle],[qs].[statement_start_offset],[qs].[statement_end_offset]
-            FROM [sys].[dm_exec_query_stats] AS qs WITH (NOLOCK) WHERE [qs].[query_hash]=[r].[query_hash] ORDER BY [qs].[total_worker_time] DESC
+            FROM [#QueryHashAnalysis_QueryStatsSource] AS qs WHERE [qs].[query_hash]=[r].[query_hash] ORDER BY [qs].[total_worker_time] DESC
         ) AS s
         OPTION(RECOMPILE,MAXDOP 1);
         SET @RowCount=@@ROWCOUNT;SET @Detail=N'Query-Hash-Aggregation erfolgreich.';

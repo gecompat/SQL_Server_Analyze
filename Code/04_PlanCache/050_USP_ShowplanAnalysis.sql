@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ShowplanAnalysis
-Version      : 1.1.0
-Stand        : 2026-07-15
+Version      : 1.2.0
+Stand        : 2026-07-19
 Typ          : Stored Procedure
 Zweck        : Analysiert gezielt oder explizit breit Showplan-XML auf Statements,
                Warnings, Missing Indexes, Objekte, Statistiken, Operatoren,
@@ -17,7 +17,7 @@ Datenquellen : sys.dm_exec_query_stats, sys.dm_exec_sql_text,
 Parameter    : @PlanHandle, @QueryHash, @QueryPlanHash, @DatabaseNames,
                @TextPattern, @AnalyseModus, @PlanQuelle, @Sortierung,
                @MinExecutionCount, @MaxAnalyseobjekte, @MaxDurationSeconds,
-               @MaxZeilen, @PrintMeldungen, @Hilfe.
+               @MaxZeilen, @ParentQueryStatsSnapshot, @PrintMeldungen, @Hilfe.
 Resultsets   : 1. Modulstatus. 2. Status je Plan. 3. Statements. 4. Findings.
                5. Missing-Index-Spalten. 6. verwendete Objekte.
                7. verwendete Statistiken. 8. Operatoren.
@@ -35,7 +35,9 @@ Beispiele    : EXEC monitor.USP_ShowplanAnalysis @PlanHandle=0x...;
                EXEC monitor.USP_ShowplanAnalysis @QueryHash=0x...,@PlanQuelle='AUTO';
                EXEC monitor.USP_ShowplanAnalysis @AnalyseModus='VOLL',@MaxAnalyseobjekte=500,@MaxDurationSeconds=60;
                EXEC monitor.USP_ShowplanAnalysis @Hilfe=1;
-Änderungen   : 1.1.0 - Deep-Gate ab mehr als 20 Plänen und sichere
+Änderungen   : 1.2.0 - Kandidatenauswahl kann den laufgebundenen Query-Stats-
+                         Snapshot des Orchestrators wiederverwenden.
+               1.1.0 - Deep-Gate ab mehr als 20 Plänen und sichere
                Vorberechnung der Runtime-Counter vor Aggregation.
                1.0.0 - Erstfassung Phase 3.
 ===============================================================================
@@ -56,6 +58,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ShowplanAnalysis]
     , @MaxAnalyseobjekte  int            = 20
     , @MaxDurationSeconds  int            = 30
     , @MaxZeilen          int            = 50000
+    , @ParentQueryStatsSnapshot bit       = 0
     , @ResultSetArt        varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
     , @JsonErzeugen        bit            = 0
@@ -84,6 +87,7 @@ BEGIN
         PRINT N'@PlanQuelle AUTO, COMPILE oder LAST_ACTUAL. AUTO versucht Last Actual und fällt je Plan auf Compile zurück.';
         PRINT N'@Sortierung CPU_TOTAL, ELAPSED_TOTAL, READS_TOTAL, EXECUTIONS, SPILLS_TOTAL, GRANT_MAX, LAST_EXECUTION.';
         PRINT N'@MinExecutionCount bigint=1; @MaxAnalyseobjekte int=20 und @MaxZeilen int=50000: positive Werte begrenzen, NULL/0 = unbegrenzt; @MaxDurationSeconds int=30 (1..3600).';
+        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
         PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0. Das Framework aktiviert LAST_QUERY_PLAN_STATS niemals.';
         PRINT N'Findings sind Diagnosehinweise und keine automatischen Tuning- oder Indexbefehle.';
         RETURN;
@@ -112,7 +116,7 @@ BEGIN
     CREATE TABLE [#ShowplanAnalysis_Memory]([CandidateId] int,[SerialRequiredMemoryKb] bigint NULL,[SerialDesiredMemoryKb] bigint NULL,[RequiredMemoryKb] bigint NULL,[DesiredMemoryKb] bigint NULL,[RequestedMemoryKb] bigint NULL,[GrantWaitTimeMs] bigint NULL,[GrantedMemoryKb] bigint NULL,[MaxUsedMemoryKb] bigint NULL,[MaxQueryMemoryKb] bigint NULL,[LastRequestedMemoryKb] bigint NULL,[IsMemoryGrantFeedbackAdjusted] nvarchar(128));
     CREATE TABLE [#ShowplanAnalysis_Parameters]([CandidateId] int,[ParameterName] nvarchar(256),[ParameterDataType] nvarchar(256),[CompiledValue] nvarchar(4000),[RuntimeValue] nvarchar(4000));
 
-    IF @AnalyseModus NOT IN('GEZIELT','VOLL') OR @PlanQuelle NOT IN('AUTO','COMPILE','LAST_ACTUAL') OR @MaxAnalyseobjekte<0 OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @MaxZeilen<0 OR @MinExecutionCount<0 OR @MaxDatenbanken<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE')
+    IF @AnalyseModus NOT IN('GEZIELT','VOLL') OR @PlanQuelle NOT IN('AUTO','COMPILE','LAST_ACTUAL') OR @MaxAnalyseobjekte<0 OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @MaxZeilen<0 OR @MinExecutionCount<0 OR @MaxDatenbanken<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @ParentQueryStatsSnapshot IS NULL
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Modus oder Grenzwert.';END;
     IF @StatusCode='AVAILABLE' AND @AnalyseModus='GEZIELT' AND @PlanHandle IS NULL AND @QueryHash IS NULL AND @QueryPlanHash IS NULL AND @DatabaseNames=N'' AND @DatabaseNamePattern IS NULL AND @TextPattern IS NULL
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'GEZIELT benötigt mindestens einen Selektor.';END;
@@ -144,7 +148,9 @@ BEGIN
         BEGIN
             SET @Sql=N'INSERT [#ShowplanAnalysis_Candidate]([PlanHandle],[SqlHandle],[StatementStartOffset],[StatementEndOffset],[QueryHash],[QueryPlanHash],[ExecutionCount],[TotalWorkerTime],[TotalElapsedTime],[TotalLogicalReads],[TotalSpills],[MaxGrantKb],[LastExecutionTime])
             SELECT TOP(@TopRows) [qs].[plan_handle],[qs].[sql_handle],[qs].[statement_start_offset],[qs].[statement_end_offset],[qs].[query_hash],[qs].[query_plan_hash],[qs].[execution_count],[qs].[total_worker_time],[qs].[total_elapsed_time],[qs].[total_logical_reads],[qs].[total_spills],[qs].[max_grant_kb],[qs].[last_execution_time]
-            FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK) ';
+            FROM '+CASE WHEN @ParentQueryStatsSnapshot=1
+                        THEN N'[#PlanCacheAnalysis_QueryStatsSnapshot] AS [qs] '
+                        ELSE N'[sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK) ' END;
             SET @Sql+=N'OUTER APPLY (SELECT TOP (1) TRY_CONVERT(int, [value]) AS [dbid] FROM [sys].[dm_exec_plan_attributes]([qs].[plan_handle]) WHERE [attribute] = ''dbid'') AS [pa] ';
             IF @TextMode IS NOT NULL SET @Sql+=N'OUTER APPLY [sys].[dm_exec_sql_text]([qs].[sql_handle]) AS [st] ';
             SET @Sql+=N'WHERE [qs].[execution_count] >= @MinExec AND (@QH IS NULL OR [qs].[query_hash] = @QH) AND (@QPH IS NULL OR [qs].[query_plan_hash] = @QPH) ';
