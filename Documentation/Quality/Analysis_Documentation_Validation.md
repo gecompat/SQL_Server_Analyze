@@ -6,6 +6,12 @@
 pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 ```
 
+Externe Links werden separat geprüft:
+
+```bash
+python3 ./Code/Tests/Static/980_Validate_External_Documentation_Links.py --repository-root . --self-test --check-network
+```
+
 Optional kann der Repositoryroot übergeben werden:
 
 ```powershell
@@ -37,15 +43,19 @@ Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
 - Links auf das gemeinsame Zeit-/Evidenzmodell und die technischen Familienbeschreibungen,
 - interne relative Markdownziele,
 - interne Markdown-Anker.
+- syntaktisch gültige externe HTTP-/HTTPS-Links in der gesamten Dokumentation,
+- dauerhaft nicht vorhandene externe Ziele mit HTTP `404` oder `410` in den Analysis Guides und der zentralen Quellenliste.
 
 ## Aussagegrenzen
 
 Nicht automatisiert bewiesen werden:
 
 - fachliche Richtigkeit jeder Aussage,
-- Aktualität externer Links,
+- fachliche Aktualität des Inhalts hinter einem erreichbaren externen Link,
 - tatsächliche Runtime-Resultsets,
 - korrekte Kostenklassifizierung jeder Analyse,
 - Datenschutz als beweisbarer Automatismus.
 
 Vor Merge bleibt eine manuelle fachliche und datenschutzbezogene Diffprüfung erforderlich. Der statische Test ergänzt das SQL-Release-Gate, ersetzt es aber nicht.
+
+Transiente DNS-, Timeout-, Rate-Limit- und HTTP-5xx-Zustände externer Anbieter werden gezählt, blockieren das Gate aber nicht. Damit bleibt ein dauerhafter Linkverlust sichtbar, ohne die Repositorylieferung an einen kurzfristigen Fremdsystemausfall zu koppeln.

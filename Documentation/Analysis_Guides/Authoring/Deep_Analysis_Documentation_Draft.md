@@ -412,9 +412,9 @@ Ein historischer Query-Store-Befund sollte bei Reproduzierbarkeit mit `USP_Curre
 | Extended-Events-Pipeline und Targets | XE, Deadlocks, Blockinghistorie, Engine Events |
 | Hochverfügbarkeit und Datenbewegung | AG, Log Shipping, Replication |
 
-## 10. Konfliktfreie spätere Integration
+## 10. Historischer Integrationsplan
 
-Dieser Draft soll nicht als Ganzes nach `main` übernommen werden. Nach Abschluss paralleler Arbeiten gilt:
+Dieser Draft wurde nicht als zweite kanonische Gesamtreferenz übernommen. Die folgende, inzwischen abgeschlossene Vorgehensweise verhinderte Konflikte und Textduplikate:
 
 1. aktuellen `main`-Stand und alle offenen PRs neu lesen,
 2. kanonische Procedurezahl, Dateipfade, Parameter und RAW-Resultsets neu bestimmen,
@@ -459,23 +459,22 @@ Manuell erforderlich:
 - Aktualität und Eignung weiterführender Quellen,
 - Datenschutzreview des vollständigen Diffs.
 
-## 12. Offene Arbeitspakete
+## 12. Abschlussstand der früheren Arbeitspakete
 
-- vollständigen RAW-Spaltenkatalog von `USP_CurrentWaits` gegen alle Ausgabezweige prüfen,
-- Metadatenzeitpunkte der Current-Task-Erfassung expliziter im Code oder Vertrag abbilden,
-- Query-Store-Kategorien mit offiziellen Microsoft-Beschreibungen und Folgeanalysen ergänzen,
-- alle Waitkatalogeinträge aus `TVF_WaitTypeInfo` nach Quellenqualität klassifizieren,
-- Grundlagenkapitel zu Locking, I/O, Memory Grants und Parallelität ausarbeiten,
-- anschließend die übrigen 82 öffentlichen Procedure-Seiten familienweise vertiefen,
-- externen Linkcheck in die Dokumentationsvalidierung aufnehmen,
-- bei allen Durchschnittswerten dokumentieren, ob sie gewichtet oder ungewichtet sind,
-- bei allen Prozentwerten den exakten Nenner dokumentieren.
+- Current-Waits- und Query-Store-Wait-Verträge sind in den kanonischen Familien- und Procedure-Seiten integriert.
+- Zeitpunkte, Resetgrenzen, Durchschnittsgewichtung und Prozentnenner sind Teil des Dokumentationsvertrags.
+- Der Waitkatalog besitzt einen eigenen primärquellengebundenen statischen Vertrag.
+- Locking, I/O, Memory Grants, Parallelität und das gemeinsame Execution Model stehen in den technischen Grundlagen und Familienguides.
+- Alle 84 öffentlichen Procedure-Seiten besitzen die sieben technischen Vertiefungsfelder.
+- Interne Links/Anker und externe Ziele besitzen getrennte automatische Prüfungen.
+
+Neue Arbeit entsteht nur über die im [Authoring-Konzept](Deep_Research_Analysis_Guides_Concept.md#12-abschluss-und-erneute-rechercheauslöser) dokumentierten Rechercheauslöser.
 
 ## 13. Offizielle weiterführende Quellen
 
 ### Execution Model und aktuelle Tasks
 
-- [SQL Server thread and task architecture guide](https://learn.microsoft.com/sql/relational-databases/sql-server-thread-and-task-architecture-guide)
+- [SQL Server thread and task architecture guide](https://learn.microsoft.com/en-us/sql/relational-databases/thread-and-task-architecture-guide?view=sql-server-ver17)
 - [sys.dm_os_waiting_tasks](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-waiting-tasks-transact-sql)
 - [sys.dm_exec_requests](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql)
 - [sys.dm_exec_sessions](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-sessions-transact-sql)
@@ -497,7 +496,7 @@ Manuell erforderlich:
 - [Transaction locking and row versioning guide](https://learn.microsoft.com/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide)
 - [Query processing architecture guide](https://learn.microsoft.com/sql/relational-databases/query-processing-architecture-guide)
 - [sys.dm_exec_query_memory_grants](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-query-memory-grants-transact-sql)
-- [sys.dm_io_virtual_file_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-io-virtual-file-stats-transact-sql)
+- [sys.dm_io_virtual_file_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17)
 
 ## 14. Zwischenfazit
 

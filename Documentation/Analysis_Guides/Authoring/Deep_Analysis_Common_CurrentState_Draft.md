@@ -246,16 +246,16 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 ## 4. Offizielle Primärquellen
 
-- [SQL Server thread and task architecture guide](https://learn.microsoft.com/sql/relational-databases/sql-server-thread-and-task-architecture-guide)
+- [SQL Server thread and task architecture guide](https://learn.microsoft.com/en-us/sql/relational-databases/thread-and-task-architecture-guide?view=sql-server-ver17)
 - [sys.dm_exec_sessions](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-sessions-transact-sql)
 - [sys.dm_exec_requests](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql)
 - [sys.dm_os_waiting_tasks](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-waiting-tasks-transact-sql)
 - [sys.dm_tran_active_transactions](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-tran-active-transactions-transact-sql)
 - [sys.dm_exec_query_memory_grants](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-query-memory-grants-transact-sql)
 - [TempDB space use](https://learn.microsoft.com/sql/relational-databases/databases/tempdb-database)
-- [sys.dm_io_virtual_file_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-io-virtual-file-stats-transact-sql)
+- [sys.dm_io_virtual_file_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17)
 - [Transaction log architecture and management guide](https://learn.microsoft.com/sql/relational-databases/sql-server-transaction-log-architecture-and-management-guide)
 
 ## 5. Integrationshinweis
 
-Bei der späteren Integration werden gemeinsame Engineerklärungen zentral verlinkt. Die Einzelpages erhalten nur die procedurespezifische Datenkette, Formeln, RAW-Spalten, Beispiele und Folgeentscheidungen. Dadurch bleibt die Dokumentation ausführlich, ohne denselben technischen Hintergrund widersprüchlich zu duplizieren.
+Bei der abgeschlossenen Integration wurden gemeinsame Engineerklärungen zentral verlinkt. Die Einzelpages enthalten die procedurespezifische Datenkette, Formeln, RAW-Spalten, Beispiele und Folgeentscheidungen. Dadurch bleibt die Dokumentation ausführlich, ohne denselben technischen Hintergrund widersprüchlich zu duplizieren.

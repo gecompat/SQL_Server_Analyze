@@ -377,8 +377,8 @@ flowchart TD
 
 - [sys.dm_exec_query_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-query-stats-transact-sql)
 - [sys.dm_exec_cached_plans](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-cached-plans-transact-sql)
-- [sys.dm_exec_plan_attributes](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-exec-plan-attributes-transact-sql)
-- [sys.dm_exec_query_plan](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-exec-query-plan-transact-sql)
-- [sys.dm_exec_query_plan_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-exec-query-plan-stats-transact-sql)
-- [sys.dm_exec_query_statistics_xml](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-exec-query-statistics-xml-transact-sql)
+- [sys.dm_exec_plan_attributes](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-plan-attributes-transact-sql?view=sql-server-ver17)
+- [sys.dm_exec_query_plan](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-plan-transact-sql?view=sql-server-ver17)
+- [sys.dm_exec_query_plan_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-plan-stats-transact-sql?view=sql-server-ver17)
+- [sys.dm_exec_query_statistics_xml](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-statistics-xml-transact-sql?view=sql-server-ver17)
 - [Showplan XML schema](https://learn.microsoft.com/sql/relational-databases/showplan-logical-and-physical-operators-reference)

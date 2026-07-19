@@ -1,7 +1,7 @@
 # Tiefenrecherche und Dokumentationskonzept für SQL_Server_Analyze
 
-**Stand:** 17. Juli 2026  
-**Status:** redaktionelle und fachliche Grundlage für die spätere Detaildokumentation aller öffentlichen Analyse-Procedures  
+**Stand:** 20. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und erfahrene SQL-Server-Administratoren
 
 ## 1. Zweck und Aussagegrenze dieses Dokuments
@@ -19,7 +19,7 @@ Es ist bewusst **keine vollständige Einzelreferenz aller Procedures**. Es enth�
   - `[monitor].[USP_DatabaseIntegrityAnalysis]`,
   - `[monitor].[USP_DiagnosticFindings]`.
 
-Die Musterguides zeigen die fachliche Tiefe, die später für jede öffentliche Analyse-Procedure erreicht werden soll.
+Die Musterguides dokumentieren die fachliche Tiefe, die inzwischen in allen 84 kanonischen Procedure-Seiten erreicht wurde.
 
 ## 2. Untersuchungsrahmen und belastbare Ausgangsbasis
 
@@ -873,15 +873,19 @@ DMVs liefern überwiegend Zustände und Symptome. Die Ursache entsteht erst durc
 
 Falsch. Repository-Schwellen sind Defaults und Heuristiken. Sie müssen an SLA, Workload, Datenvolumen und Betriebsmodell angepasst werden.
 
-# 12. Empfohlene nächste Dokumentationsschritte
+# 12. Abschluss und erneute Rechercheauslöser
 
-1. `Documentation/Analysis_Guides/README.md` mit Einstiegsmatrix und Kosten-/Evidenzlegende anlegen.
-2. Die drei Musterguides dieses Dokuments in eigene Dateien aufteilen und gegen den aktuellen Code vollständig validieren.
-3. Danach `USP_DatabaseCapacityAnalysis`, `USP_PerformanceCounters` und `USP_CriticalEngineEvents` dokumentieren.
-4. Für jede Procedure automatisiert Spaltennamen und Datentypen aus dem kanonischen SQL-Code extrahieren.
-5. Fachliche Interpretation und Schwellen weiterhin manuell und quellenbasiert prüfen.
-6. Querverweise zwischen Current State, Plan Cache, Query Store und Extended Events systematisch ergänzen.
-7. Alle Beispielresultsets synthetisch rekonstruieren und über das Repository-Datenschutzgate prüfen.
+Die frühere Roadmap ist abgeschlossen: Einstieg, Familienguides, 84 Procedure-Seiten, technische Grundlagen, Querverweise, synthetische Beispiele sowie Struktur- und Datenschutzgates sind integriert. Dieses Dokument bleibt ausschließlich als Entstehungsnachweis bestehen.
+
+Eine neue fachliche Recherchewelle wird nur ausgelöst durch:
+
+1. eine neue oder geänderte öffentliche Procedure,
+2. eine Änderung an RAW-Spalten, Formeln, Filtern, Zeit-/Resetmodell oder Quellobjekten,
+3. eine neue unterstützte SQL-Server-Version, Plattform oder Compatibility-Stufe,
+4. geänderte Microsoft-Produktsemantik oder Berechtigungsanforderung,
+5. eine neue feature-positive Laufzeitevidenz, die eine bisherige Aussagegrenze korrigiert.
+
+Versionsabhängige Nachweise werden in der [Versions- und Primärquellenmatrix](../Version_Primary_Source_Matrix.md) gepflegt. Externe Links werden durch das Dokumentationsgate auf dauerhaft verlorene Ziele geprüft.
 
 # 13. Fortführende Quellen
 
@@ -905,8 +909,8 @@ Falsch. Repository-Schwellen sind Defaults und Heuristiken. Sie müssen an SLA, 
 - [sys.dm_exec_connections](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-connections-transact-sql)
 - [sys.dm_os_waiting_tasks](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-os-waiting-tasks-transact-sql)
 - [sys.dm_exec_query_memory_grants](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-query-memory-grants-transact-sql)
-- [sys.dm_exec_sql_text](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-exec-sql-text-transact-sql)
-- [sys.dm_exec_input_buffer](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-exec-input-buffer-transact-sql)
+- [sys.dm_exec_sql_text](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-sql-text-transact-sql?view=sql-server-ver17)
+- [sys.dm_exec_input_buffer](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-input-buffer-transact-sql?view=sql-server-ver17)
 - [suspect_pages](https://learn.microsoft.com/sql/relational-databases/system-tables/suspect-pages-transact-sql)
 - [sys.dm_hadr_auto_page_repair](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-hadr-auto-page-repair-transact-sql)
 - [RESTORE VERIFYONLY](https://learn.microsoft.com/sql/t-sql/statements/restore-statements-verifyonly-transact-sql)
@@ -917,8 +921,8 @@ Falsch. Repository-Schwellen sind Defaults und Heuristiken. Sie müssen an SLA, 
 - [SQL Server Deadlocks Guide](https://learn.microsoft.com/sql/relational-databases/sql-server-deadlocks-guide)
 - [Missing Index Suggestions](https://learn.microsoft.com/sql/relational-databases/indexes/tune-nonclustered-missing-index-suggestions)
 - [sys.dm_db_index_physical_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-db-index-physical-stats-transact-sql)
-- [sys.dm_db_stats_properties](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-db-stats-properties-transact-sql)
-- [sys.dm_db_stats_histogram](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-functions/sys-dm-db-stats-histogram-transact-sql)
+- [sys.dm_db_stats_properties](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-stats-properties-transact-sql?view=sql-server-ver17)
+- [sys.dm_db_stats_histogram](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-stats-histogram-transact-sql?view=sql-server-ver17)
 
 ## 13.3 Ergänzende Fachquellen
 

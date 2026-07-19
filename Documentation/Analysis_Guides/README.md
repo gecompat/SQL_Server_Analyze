@@ -38,6 +38,7 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Parameter und sichere Aufrufe | [Parameter_Reading_Guide.md](Parameter_Reading_Guide.md) |
 | Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) |
 | Technische Grundlagen | [Technical_Foundations.md](Technical_Foundations.md) |
+| Versions- und Primärquellennachweis | [Version_Primary_Source_Matrix.md](Version_Primary_Source_Matrix.md) |
 | Vollständiger Objektindex | [Object_Index.md](Object_Index.md) |
 | Redaktionsstandard | [Documentation_Quality_Contract.md](Documentation_Quality_Contract.md) |
 

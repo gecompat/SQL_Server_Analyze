@@ -63,6 +63,6 @@ Total, Max, Recorded Rows, Execution Type und Runtime-Ausführungen korrelieren.
 
 ### Folgeanalyse
 
-Vollständige Vertiefung in `Deep_Analysis_Documentation_Draft.md`; live mit Current Waits/Requests validieren.
+Die kanonischen [Query-Store-Wait-Details](../05_Query_Store.md#3-monitorusp_querystorewaitstats) und das [Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) verwenden; historische Kategorien bei Bedarf mit Current Waits und Requests validieren.
 
 [Technische Detailbeschreibung](../05_Query_Store.md#3-monitorusp_querystorewaitstats)
