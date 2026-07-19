@@ -76,7 +76,13 @@ IF NOT EXISTS
 )
     INSERT [#TableOutputFailure] VALUES(N'DATETIME_SHAPE',N'Scale oder Nullability der datetime2-Spalte wurden nicht erhalten.');
 
-IF (SELECT COUNT_BIG(*) FROM [#TableContractTarget])<>2
+DECLARE @PlaceholderRowCount bigint;
+EXEC [sys].[sp_executesql]
+      N'SELECT @RowCount=COUNT_BIG(*) FROM [#TableContractTarget];'
+    , N'@RowCount bigint OUTPUT'
+    , @RowCount=@PlaceholderRowCount OUTPUT;
+
+IF @PlaceholderRowCount<>2
     INSERT [#TableOutputFailure] VALUES(N'PLACEHOLDER_ROWS',N'Die Struktur wurde angepasst, aber die erwarteten zwei synthetischen Zeilen wurden nicht geschrieben.');
 
 CREATE TABLE [#TableContractExactTarget]
