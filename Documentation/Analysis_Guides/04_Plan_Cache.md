@@ -326,6 +326,7 @@ Default ist nur Query Stats. Andere Module sind opt-in.
 - Meta: `ModuleName`, `CollectionTimeUtc`, `StatusCode`, `IsPartial`, `Detail`.
 - Modulstatus: `ExecutionOrdinal`, `ModuleName`, `InvocationStatus`, `ErrorNumber`, `ErrorMessage`.
 - davor bzw. dazwischen die Childresultsets in Aufrufreihenfolge.
+- JSON `modules`: derselbe Modulstatus; `REUSED_PARENT_SNAPSHOT` kennzeichnet die laufinterne Wiederverwendung von `dm_exec_query_stats`.
 
 ### Aufrufe
 
@@ -351,6 +352,9 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
 - `VOLL` aktiviert breitere Health-/Showplanpfade, aber nicht automatisch alle Modulschalter.
 - `MaxZeilen` gilt je Child; Gesamtumfang ist größer.
 - Ein `EXECUTED`-Modul kann intern `PARTIAL` melden; Child-Meta lesen.
+- Sind mindestens zwei der Consumer Query Stats, Query Hash und Showplan-Kandidatenauswahl aktiv, liest der Orchestrator `sys.dm_exec_query_stats` einmal in `#PlanCacheAnalysis_QueryStatsSnapshot`. Breite Snapshots respektieren vor dem Read `PLAN_CACHE_DEEP`; ohne Freigabe prüfen die Children ihren jeweils zulässigen Scope und lesen frisch. Ein einzelner Consumer liest ohne Temp-Materialisierung frisch.
+- `USP_PlanCacheHealth` verwendet `sys.dm_exec_cached_plans` und teilt diesen Snapshot nicht. Plan-XML wird weiterhin planweise geladen; Eviction bleibt als `UNAVAILABLE_OBJECT` sichtbar.
+- `READPAST` wird nicht eingesetzt: lautlos übersprungene Pläne würden die Evidenz verfälschen. Scheitert der gemeinsame Read, fallen die Children auf ihre frische, isoliert fehlerbehandelte Erhebung zurück.
 
 ## Anfänger-Entscheidungsbaum
 

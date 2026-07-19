@@ -489,6 +489,7 @@ USP_QueryStats,MinExecutionCount,bigint,1
 USP_QueryStats,VonUtc,datetime2(7),NULL
 USP_QueryStats,MaxZeilen,int,100
 USP_QueryStats,MaxSqlTextZeichen,int,4000
+USP_QueryStats,ParentQueryStatsSnapshot,bit,0
 USP_QueryStats,ResultSetArt,varchar(16),'CONSOLE'
 USP_QueryStats,ResultTable,sysname,NULL
 USP_QueryStats,JsonErzeugen,bit,0
@@ -502,6 +503,7 @@ USP_QueryHashAnalysis,MinExecutionCount,bigint,1
 USP_QueryHashAnalysis,MinPlanVarianten,int,1
 USP_QueryHashAnalysis,MaxZeilen,int,100
 USP_QueryHashAnalysis,MaxSqlTextZeichen,int,4000
+USP_QueryHashAnalysis,ParentQueryStatsSnapshot,bit,0
 USP_QueryHashAnalysis,ResultSetArt,varchar(16),'CONSOLE'
 USP_QueryHashAnalysis,ResultTable,sysname,NULL
 USP_QueryHashAnalysis,JsonErzeugen,bit,0
@@ -551,6 +553,7 @@ USP_ShowplanAnalysis,MinExecutionCount,bigint,1
 USP_ShowplanAnalysis,MaxAnalyseobjekte,int,20
 USP_ShowplanAnalysis,MaxDurationSeconds,int,30
 USP_ShowplanAnalysis,MaxZeilen,int,50000
+USP_ShowplanAnalysis,ParentQueryStatsSnapshot,bit,0
 USP_ShowplanAnalysis,ResultSetArt,varchar(16),'CONSOLE'
 USP_ShowplanAnalysis,ResultTable,sysname,NULL
 USP_ShowplanAnalysis,JsonErzeugen,bit,0

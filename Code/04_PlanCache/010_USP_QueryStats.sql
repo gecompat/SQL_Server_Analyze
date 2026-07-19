@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_QueryStats
-Version      : 2.0.1
-Stand        : 2026-07-16
+Version      : 2.1.0
+Stand        : 2026-07-19
 Zweck        : Liefert kumulative Statement-Statistiken des aktuellen Plan
                Cache. Datenbanknamen unterstützen bracket-aware Pipe-Listen
                und LIKE-/Regex-Patterns. RAW, CONSOLE und JSON verwenden
@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStats]
     , @VonUtc                         datetime2(7)    = NULL
     , @MaxZeilen                      int            = 100
     , @MaxSqlTextZeichen              int            = 4000
+    , @ParentQueryStatsSnapshot       bit            = 0
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
@@ -61,6 +62,7 @@ BEGIN
         PRINT N'@Sortierung: CPU_TOTAL, CPU_AVG, ELAPSED_TOTAL, ELAPSED_AVG, READS_TOTAL, READS_AVG, WRITES_TOTAL, WRITES_AVG, EXECUTIONS, GRANT_MAX, SPILLS_TOTAL, ROWS_TOTAL, LAST_EXECUTION.';
         PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt; VOLL oder mehr als 1000 Zeilen benötigt PLAN_CACHE_DEEP.';
         PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Statement- und Batchtext.';
+        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
         PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwerte sind case-insensitiv.';
         RETURN;
     END;
@@ -191,6 +193,7 @@ BEGIN
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR @TextPatternValid = 0
        OR @JsonErzeugen IS NULL
+       OR @ParentQueryStatsSnapshot IS NULL
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Mindestens ein Parameter besitzt einen ungültigen Wert.';
@@ -323,7 +326,9 @@ SELECT TOP (@CandidateRows)
     , TRY_CONVERT(int, [setOptions].[value])
     , TRY_CONVERT(int, [compileUser].[value])
     , CONVERT(decimal(38,4), ' + @OrderExpression + N')
-FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
+FROM ' + CASE WHEN @ParentQueryStatsSnapshot=1
+              THEN N'[#PlanCacheAnalysis_QueryStatsSnapshot] AS [qs]'
+              ELSE N'[sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)' END + N'
 OUTER APPLY [sys].[dm_exec_sql_text]([qs].[sql_handle]) AS [st]
 OUTER APPLY [monitor].[TVF_StatementText]
 (

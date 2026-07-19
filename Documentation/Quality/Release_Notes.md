@@ -6,6 +6,8 @@
 - `InvocationStatus=REUSED_PARENT_RESULT` macht die Wiederverwendung sichtbar; partielle Parent-Evidenz bleibt partiell.
 - Ein eigenständiger `USP_DiagnosticFindings`-Aufruf liest weiterhin frisch. Es entsteht kein sitzungs- oder aufrufübergreifender Cache.
 - Der Laufzeitvertrag prüft nun sechs Findings-Fälle, darunter Parent-Reuse und Standalone-Frischlesung.
+- `USP_PlanCacheAnalysis` materialisiert `sys.dm_exec_query_stats` bei mindestens zwei aktiven Consumern einmalig; Query Stats, Query Hash und die Showplan-Kandidatenauswahl verwenden denselben laufgebundenen Stand.
+- Ein einzelner Plan-Cache-Consumer und jeder direkte Child-Aufruf lesen weiterhin frisch. `READPAST` wird nicht verwendet; ein gescheiterter gemeinsamer Read führt zum isolierten Frischlese-Fallback.
 
 ## Stand 2026-07-19 – typisierte TABLE-Ausgabe `1.1.0-special.11`
 

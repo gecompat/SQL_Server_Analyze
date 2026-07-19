@@ -535,7 +535,7 @@ Quelle: `Code/01_Common/084_USP_PrepareNameFilters.sql`
 Quelle: `Code/04_PlanCache/020_USP_QueryHashAnalysis.sql`
 
 ```sql
-@QueryHash binary(8) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MinExecutionCount bigint = 1, @MinPlanVarianten int = 1, @MaxZeilen int = 100, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE',
+@QueryHash binary(8) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MinExecutionCount bigint = 1, @MinPlanVarianten int = 1, @MaxZeilen int = 100, @MaxSqlTextZeichen int = 4000, @ParentQueryStatsSnapshot bit = 0, @ResultSetArt varchar(16) = 'CONSOLE',
 @ResultTable sysname = NULL,
 @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
@@ -545,7 +545,7 @@ Quelle: `Code/04_PlanCache/020_USP_QueryHashAnalysis.sql`
 Quelle: `Code/04_PlanCache/010_USP_QueryStats.sql`
 
 ```sql
-@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @SqlHandle varbinary(64) = NULL, @PlanHandle varbinary(64) = NULL, @TextPattern nvarchar(4000) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MinExecutionCount bigint = 1, @VonUtc datetime2(7) = NULL, @MaxZeilen int = 100, @MaxSqlTextZeichen int = 4000, @ResultSetArt varchar(16) = 'CONSOLE',
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @SqlHandle varbinary(64) = NULL, @PlanHandle varbinary(64) = NULL, @TextPattern nvarchar(4000) = NULL, @Sortierung varchar(32) = 'CPU_TOTAL', @AnalyseModus varchar(16) = 'TOP', @MinExecutionCount bigint = 1, @VonUtc datetime2(7) = NULL, @MaxZeilen int = 100, @MaxSqlTextZeichen int = 4000, @ParentQueryStatsSnapshot bit = 0, @ResultSetArt varchar(16) = 'CONSOLE',
 @ResultTable sysname = NULL,
 @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
@@ -735,7 +735,7 @@ Quelle: `Code/08_ServerHealth/090_USP_ServerSecurityConfiguration.sql`
 Quelle: `Code/04_PlanCache/050_USP_ShowplanAnalysis.sql`
 
 ```sql
-@PlanHandle varbinary(64) = NULL, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @TextPattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @PlanQuelle varchar(16) = 'AUTO', @Sortierung varchar(32) = 'CPU_TOTAL', @MinExecutionCount bigint = 1, @MaxAnalyseobjekte int = 20, @MaxDurationSeconds int = 30, @MaxZeilen int = 50000, @ResultSetArt varchar(16) = 'CONSOLE',
+@PlanHandle varbinary(64) = NULL, @QueryHash binary(8) = NULL, @QueryPlanHash binary(8) = NULL, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @TextPattern nvarchar(4000) = NULL, @AnalyseModus varchar(16) = 'GEZIELT', @PlanQuelle varchar(16) = 'AUTO', @Sortierung varchar(32) = 'CPU_TOTAL', @MinExecutionCount bigint = 1, @MaxAnalyseobjekte int = 20, @MaxDurationSeconds int = 30, @MaxZeilen int = 50000, @ParentQueryStatsSnapshot bit = 0, @ResultSetArt varchar(16) = 'CONSOLE',
 @ResultTable sysname = NULL,
 @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
