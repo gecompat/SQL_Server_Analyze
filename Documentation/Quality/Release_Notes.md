@@ -1,5 +1,12 @@
 # Release Notes
 
+## Stand 2026-07-19 – laufinterne Wiederverwendung von Analyseergebnissen
+
+- `USP_ServerHealthAnalysis` erhebt Integritäts-, Kapazitäts- und Buffer-Pool-Evidenz nur einmal und reicht die Resultate im selben Lauf an `USP_DiagnosticFindings` weiter.
+- `InvocationStatus=REUSED_PARENT_RESULT` macht die Wiederverwendung sichtbar; partielle Parent-Evidenz bleibt partiell.
+- Ein eigenständiger `USP_DiagnosticFindings`-Aufruf liest weiterhin frisch. Es entsteht kein sitzungs- oder aufrufübergreifender Cache.
+- Der Laufzeitvertrag prüft nun sechs Findings-Fälle, darunter Parent-Reuse und Standalone-Frischlesung.
+
 ## Stand 2026-07-19 – typisierte TABLE-Ausgabe `1.1.0-special.11`
 
 - Alle 82 öffentlichen Analyse-Procedures akzeptieren `@ResultSetArt='TABLE'` und `@ResultTable`.
@@ -55,7 +62,7 @@
 - Die zwanzigste Suite automatisiert acht Statistikverteilungsfälle mit begrenzten synthetischen FULLSCAN-Histogrammen: gleichmäßig, dominant, Tail-konzentriert, geändert, gefiltert, inkrementell, kandidatenseitig begrenzt und `CATALOG_DEEP`-verweigert. Commit `f4bf1d4333e7f4a38814dea72a0799ca1d949364` hat die Suite auf SQL Server 2019, 2022 und 2025 bestätigt. Die Auswertung bleibt Indikator und führt weder Statistikupdates noch Benutzerdaten-Scans aus.
 - Die einundzwanzigste Suite automatisiert vier Availability-Fälle. HADR-Abwesenheit wird real geprüft; Suspend-, Queue- und Seedingzustände verwenden dieselben reinen Klassifikationsfunktionen wie die Procedure. Commit `bdb8f66e20f015e7c563e6d3747144400897b281` ist auf SQL Server 2019, 2022 und 2025 grün.
 - Die zweiundzwanzigste Suite automatisiert vier Agent-/Alert-Fälle, ohne Agent- oder `msdb`-Objekte anzulegen oder zu verändern. Keine Adress-, Mail-, Jobschritt- oder Meldungsinhalte werden gelesen.
-- Die dreiundzwanzigste Suite automatisiert vier normalisierte Findings-Fälle: Feld-Whitelist, partielle Child-Evidenz, opt-in Defaults und Compatibility-Gate. Synthetischer Benutzer und Compatibility Level werden in Erfolgs- und Fehlerpfad bereinigt.
+- Die dreiundzwanzigste Suite automatisiert sechs normalisierte Findings-Fälle: Feld-Whitelist, partielle Child-Evidenz, opt-in Defaults, Parent-Reuse, Standalone-Frischlesung und Compatibility-Gate. Synthetischer Benutzer und Compatibility Level werden in Erfolgs- und Fehlerpfad bereinigt.
 - Der erste materialisierte Duplicate-Index-Fall hat eine Spaltenzahlabweichung im produktiven Befund-INSERT offengelegt. Tabellenobjekt und beide Indexbezüge werden nun den elf vorgesehenen Feldern eindeutig zugeordnet; technische Testdiagnosen geben weiterhin nur die Fehlernummer und keinen Meldungsinhalt aus.
 - Die drei Linux-Gates lösen den öffentlichen `*-latest`-Pull-Tag in einen validierten unveränderlichen Image-Digest auf, starten exakt diesen Digest und erfassen `SERVERPROPERTY('ProductVersion')`; Build und Digest werden als rein technische Evidence dokumentiert.
 - Das SQL-Server-2025-Gate hat den Regex-Prädikatvertrag gehärtet: `REGEXP_LIKE(...)` und `NOT REGEXP_LIKE(...)` ersetzen repositoryweit unzulässige Vergleiche mit `0` oder `1`; ein statischer Check schützt vor Regression.

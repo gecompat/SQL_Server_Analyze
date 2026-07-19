@@ -43,7 +43,7 @@ Abgeschlossen:
 
 33. Siebte P1-Gruppe abgeschlossen: `176_P1_Availability_Runtime_Contract.sql` prüft HADR-Abwesenheit sowie Suspend-, Queue- und Seedingklassifikation über die produktiv verwendeten reinen Interpretationsfunktionen, ohne Failover oder Konfigurationsänderung.
 34. Achte P1-Gruppe abgeschlossen: `177_P1_Agent_Runtime_Contract.sql` prüft fehlende kritische Alerts sowie Routing-, Job- und Database-Mail-Klassifikation ohne Änderung von `msdb`- oder Agentobjekten.
-35. Neunte P1-Gruppe abgeschlossen: `178_P1_Diagnostic_Findings_Runtime_Contract.sql` prüft die Feld-Whitelist, partielle Child-Evidenz, deaktivierte teure Defaults und das vollständig rückgesetzte Compatibility-Gate.
+35. Neunte P1-Gruppe abgeschlossen: `178_P1_Diagnostic_Findings_Runtime_Contract.sql` prüft die Feld-Whitelist, partielle Child-Evidenz, deaktivierte teure Defaults, Parent-Reuse, Standalone-Frischlesung und das vollständig rückgesetzte Compatibility-Gate.
 
 36. Erste P2-Gruppe abgeschlossen: Suite `179` prüft 21 Feature-Inventurfälle mit echten portablen Katalogfixtures und version-adaptiven Verträgen.
 37. Zweite P2-Gruppe abgeschlossen: Suite `180` prüft 14 XTP-Fälle ohne erzwungenen vollständigen Hash-DMV-Scan.

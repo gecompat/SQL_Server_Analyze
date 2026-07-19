@@ -4,11 +4,13 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ServerHealthAnalysis
-Version      : 3.1.0
-Stand        : 2026-07-17
+Version      : 3.2.0
+Stand        : 2026-07-19
 Zweck        : Orchestriert alle Server-Health-Module. RAW/CONSOLE werden an
                Child-Module weitergereicht; JSON enthält benannte Modulobjekte.
-Änderungen   : 3.1.0 - Spezialfallmodule und normalisierte Befunde als opt-in.
+Änderungen   : 3.2.0 - Bereits erhobene Integritäts-, Kapazitäts- und
+                         Buffer-Pool-Ergebnisse im Findings-Child wiederverwendet.
+               3.1.0 - Spezialfallmodule und normalisierte Befunde als opt-in.
                3.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert;
                          Child-Statusvariablen vor jedem Aufruf zurückgesetzt.
 ===============================================================================
@@ -311,7 +313,7 @@ BEGIN
                 , @DatabaseNamePattern = @DatabaseNamePattern
                 , @MaxDatenbanken = @MaxDatenbanken, @MitPageDetails = 0
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
-                , @JsonErzeugen = @JsonErzeugen, @Json = @IntegrityJson OUTPUT
+                , @JsonErzeugen = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END, @Json = @IntegrityJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
                 , @ErrorMessageOut = @ChildErrorMessage OUTPUT;
@@ -330,7 +332,7 @@ BEGIN
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
                 , @DatabaseNamePattern = @DatabaseNamePattern
                 , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
-                , @ResultSetArt = @OutputMode, @JsonErzeugen = @JsonErzeugen
+                , @ResultSetArt = @OutputMode, @JsonErzeugen = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END
                 , @Json = @CapacityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
@@ -395,7 +397,7 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_BufferPoolAnalysis]
                   @MitBufferPoolVerteilung = 0, @MaxZeilen = @MaxZeilen
-                , @ResultSetArt = @OutputMode, @JsonErzeugen = @JsonErzeugen
+                , @ResultSetArt = @OutputMode, @JsonErzeugen = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END
                 , @Json = @BufferPoolJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
                 , @ErrorNumberOut = @ChildErrorNumber OUTPUT, @ErrorMessageOut = @ChildErrorMessage OUTPUT;
@@ -413,6 +415,9 @@ BEGIN
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
                 , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @ParentIntegrityJson = @IntegrityJson
+                , @ParentCapacityJson = @CapacityJson
+                , @ParentBufferPoolJson = @BufferPoolJson
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen, @Json = @FindingsJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT

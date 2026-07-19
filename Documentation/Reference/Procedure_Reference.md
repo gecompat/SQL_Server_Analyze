@@ -269,7 +269,7 @@ Quelle: `Code/09_VersionAdaptive/070_USP_DataCaptureDeepAnalysis.sql`
 Quelle: `Code/08_ServerHealth/170_USP_DiagnosticFindings.sql`
 
 ```sql
-@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MitIntegritaet bit = 1, @MitKapazitaet bit = 1, @MitSpeicher bit = 1, @MitBackupketten bit = 1, @MitAvailability bit = 1, @MitAgentMonitoring bit = 1, @MitSchemaDesign bit = 0, @MitStatistikverteilung bit = 0, @MitIQP bit = 0, @MitContention bit = 0, @ContentionSampleSeconds tinyint = 5, @ContentionMinWaitMs bigint = 1000, @NurAbPrioritaet varchar(16) = 'INFO', @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE',
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MitIntegritaet bit = 1, @MitKapazitaet bit = 1, @MitSpeicher bit = 1, @MitBackupketten bit = 1, @MitAvailability bit = 1, @MitAgentMonitoring bit = 1, @MitSchemaDesign bit = 0, @MitStatistikverteilung bit = 0, @MitIQP bit = 0, @MitContention bit = 0, @ContentionSampleSeconds tinyint = 5, @ContentionMinWaitMs bigint = 1000, @ParentIntegrityJson nvarchar(max) = NULL, @ParentCapacityJson nvarchar(max) = NULL, @ParentBufferPoolJson nvarchar(max) = NULL, @NurAbPrioritaet varchar(16) = 'INFO', @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE',
 @ResultTable sysname = NULL,
 @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0, @StatusCodeOut varchar(40) = NULL OUTPUT, @IsPartialOut bit = NULL OUTPUT, @ErrorNumberOut int = NULL OUTPUT, @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
