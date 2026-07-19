@@ -146,7 +146,7 @@ BEGIN
            OR @MaxZeilen > 1000
        )
     BEGIN TRY
-        SELECT @QueryStatsSnapshotAllowed = COALESCE(MAX(CONVERT(bit,[IsAllowed])),0)
+        SELECT @QueryStatsSnapshotAllowed = COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0)
         FROM [monitor].[VW_AnalyseAccessCurrent]
         WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
