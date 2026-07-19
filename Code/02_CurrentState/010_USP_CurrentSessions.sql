@@ -97,12 +97,20 @@ BEGIN
     DECLARE @ProgramMode varchar(8), @ProgramPattern nvarchar(4000), @ProgramFlags varchar(8), @ProgramValid bit;
     DECLARE @DatabaseMode varchar(8), @DatabasePattern nvarchar(4000), @DatabaseFlags varchar(8), @DatabaseValid bit;
 
-    SELECT @LoginMode=[PatternMode],@LoginPattern=[PatternValue],@LoginFlags=[RegexFlags],@LoginValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@LoginNamePattern);
-    SELECT @HostMode=[PatternMode],@HostPattern=[PatternValue],@HostFlags=[RegexFlags],@HostValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@HostNamePattern);
-    SELECT @ProgramMode=[PatternMode],@ProgramPattern=[PatternValue],@ProgramFlags=[RegexFlags],@ProgramValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ProgramNamePattern);
-    SELECT @DatabaseMode=[PatternMode],@DatabasePattern=[PatternValue],@DatabaseFlags=[RegexFlags],@DatabaseValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
+    BEGIN TRY
+        SELECT @LoginMode=[PatternMode],@LoginPattern=[PatternValue],@LoginFlags=[RegexFlags],@LoginValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@LoginNamePattern);
+        SELECT @HostMode=[PatternMode],@HostPattern=[PatternValue],@HostFlags=[RegexFlags],@HostValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@HostNamePattern);
+        SELECT @ProgramMode=[PatternMode],@ProgramPattern=[PatternValue],@ProgramFlags=[RegexFlags],@ProgramValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ProgramNamePattern);
+        SELECT @DatabaseMode=[PatternMode],@DatabasePattern=[PatternValue],@DatabaseFlags=[RegexFlags],@DatabaseValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
+    END TRY
+    BEGIN CATCH
+        SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@IsPartial=1,
+               @StatusCode=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                                ELSE 'ERROR_HANDLED' END;
+    END CATCH;
 
-    IF @SessionIds IS NOT NULL
+    IF @StatusCode='AVAILABLE' AND @SessionIds IS NOT NULL
     BEGIN
         IF EXISTS (SELECT 1 FROM [monitor].[TVF_ParseBigintList](@SessionIds) WHERE [IsValid]=0 OR [NumberValue] NOT BETWEEN 1 AND 32767)
             SET @StatusCode='INVALID_PARAMETER';
