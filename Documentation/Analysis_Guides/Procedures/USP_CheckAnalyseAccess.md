@@ -36,4 +36,36 @@ Zuerst `IsAllowed`, danach `AccessReason`, `RelevantPolicyCount` und `MatchedGro
 
 Leere Accessdaten sind nur nach Prüfung von Status, Filter und Policyumfang interpretierbar. `PERMISSION_DENIED` oder `IsPartial=1` ist keine Entwarnung.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Erlaubt die Frameworkpolicy dem aktuellen Sicherheitskontext die angeforderte Analyseklasse?
+
+### Technischer Hintergrund
+
+Das Framework besitzt eine zusätzliche Berechtigungsschiene oberhalb der SQL-Server-Quellberechtigungen. Es prüft Original- und Effektivlogin, sysadmin-Bypass sowie sichtbare Login-/Gruppentokens. Existiert für eine Analyseklasse keine Policy, bleibt sie gemäß Frameworkvertrag offen; existieren Policies, muss eine passende erlaubende Mitgliedschaft sichtbar sein.
+
+### Datenkette
+
+`sys.login_token`.
+
+### Zeit- und Scope-Modell
+
+Momentaufnahme des aktuellen Login- und Execution-Kontexts. Gruppenauflösung kann sich durch Token, Impersonation oder Verzeichniszustand vom erwarteten Benutzerbild unterscheiden.
+
+### Bewertung und Gegenprobe
+
+`IsAllowed`, Policyanzahl, gematchte Gruppen und AccessReason gemeinsam lesen. Ein Deny bei vorhandener Policy und ohne Match ist erwartetes Policyverhalten; SQL-Quellrechte zu erweitern würde die Frameworksperre nicht fachlich lösen.
+
+### Typische Fehlinterpretation
+
+`IsAllowed=1` beweist nicht, dass die benötigten DMVs tatsächlich lesbar sind. Umgekehrt ist ein leeres Fachresultset kein Beweis für Policy-Deny.
+
+### Folgeanalyse
+
+`USP_CheckFrameworkCapabilities` trennt anschließend Feature-, Rechte- und Queryabilityprobleme.
+
 [Technische Detailbeschreibung](../01_Common.md#1-monitorusp_checkanalyseaccess)

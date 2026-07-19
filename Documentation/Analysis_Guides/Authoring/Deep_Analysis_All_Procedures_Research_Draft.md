@@ -1,11 +1,11 @@
 # Draft: technische Research-Matrix für alle öffentlichen Procedures
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft; nicht kanonisch  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Inventarbasis:** `Metadata/Inventory/Objects.csv` auf `main` mit 84 öffentlichen Procedures  
-**Zweck:** vollständige 84/84-Arbeitsgrundlage für die spätere Vertiefung der bestehenden Einzelpages
+**Zweck:** vollständige 84/84-Arbeitsgrundlage und Nachvollziehbarkeit der integrierten Vertiefung
 
-> Die Matrix ist bewusst dichter als die späteren didaktischen Guides. Sie verhindert, dass bei der Tiefendokumentation nur gut bekannte Themen wie Wait Statistics ausführlich behandelt werden. Vor der Integration wird jede Zeile erneut gegen den dann aktuellen T-SQL-Code, die RAW-Resultsets, Versionen und offizielle Quellen geprüft.
+> Die Matrix ist bewusst dichter als die kanonischen didaktischen Guides. Sie dokumentiert die ursprüngliche Research-Abdeckung; für die Anwendung gelten ausschließlich die Seiten unter `../Procedures` und `../Technical_Foundations.md`.
 
 ## 1. Abdeckungsdefinition
 

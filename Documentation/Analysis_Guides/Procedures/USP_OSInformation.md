@@ -30,4 +30,36 @@ Virtualisierung ist nicht automatisch langsam.
 
 Index Usage zeigt 0 Reads, OS Uptime zwei Stunden: Beobachtungsfenster zu kurz für eine Löschung. CPU, Memory, I/O und Hypervisor-Monitoring korrelieren.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Betriebssystem-, Host-, Virtualisierungs- und Ressourceninformationen sieht SQL Server?
+
+### Technischer Hintergrund
+
+Host-/Windows-/Linux-DMVs liefern OS-Version, Hostplattform, Memory/Pagefile, Startzeit und Virtualization/Containerhinweise soweit verfügbar. SQL Server sieht im Gast nicht zwingend Hypervisor-Steal, SAN- oder Hostcontention vollständig.
+
+### Datenkette
+
+`sys.dm_os_host_info`, `sys.dm_os_process_memory`, `sys.dm_os_sys_memory`, `sys.dm_server_services`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Gast-/Instanzkontext; OS-/Engine-Startzeiten können verschieden sein.
+
+### Bewertung und Gegenprobe
+
+OS/Build Support, VM/Physical, Memory/Commit, Pagefile, Uptime und Instanzbuild korrelieren. Für Performance CPU-, Storage- und Memorytelemetrie außerhalb SQL ergänzen.
+
+### Typische Fehlinterpretation
+
+Unauffällige Gastwerte schließen Hostengpass nicht aus. Pagefile vorhanden/benutzt ist allein keine SQL-Memorydiagnose.
+
+### Folgeanalyse
+
+Server CPU/Memory/IO und OS-/Hypervisormonitoring.
+
 [Technische Detailbeschreibung](../08_Server_Health.md#8-monitorusp_osinformation)

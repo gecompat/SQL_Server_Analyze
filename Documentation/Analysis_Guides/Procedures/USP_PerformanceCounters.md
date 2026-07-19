@@ -37,4 +37,36 @@ Ein einzelner hoher kumulativer Wert oder eine alte Faustregel ohne Baseline ist
 
 Page Life Expectancy besitzt keine universelle feste Grenze. Ein abrupter Einbruch plus Memory Pressure und I/O ist relevanter als ein einzelner Wert. Memory, I/O und Workload prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Wie werden SQL-Server-Performance-Counter korrekt als Raw, Ratio, Rate oder Delta interpretiert?
+
+### Technischer Hintergrund
+
+`sys.dm_os_performance_counters` enthält Counter mit `cntr_type`. Manche sind Momentwerte, manche kumulative Zähler, manche benötigen Basecounter und manche Differenz/Zeit. Instanznamen trennen Total, DB, Buffer Node oder Objektinstanzen.
+
+### Datenkette
+
+`sys.dm_os_performance_counters`, `sys.dm_os_sys_info`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Rawstand oder Frameworksample; Reset typischerweise Engine-Start.
+
+### Bewertung und Gegenprobe
+
+Countertyp zuerst; Ratio mit passender Base, Rate als Delta pro Zeit, kumulative Counter mit Uptime. Instance Name und Units dokumentieren. Mehrere Counter als Kausalkette verwenden.
+
+### Typische Fehlinterpretation
+
+Raw `cntr_value` ist nicht allgemein Prozent oder pro Sekunde. Basecounter aus anderer Instanz/Probe erzeugt falsche Ratio.
+
+### Folgeanalyse
+
+Server Memory/CPU/IO, Current State und OS-Counter.
+
 [Technische Detailbeschreibung](../08_Server_Health.md#13-monitorusp_performancecounters)

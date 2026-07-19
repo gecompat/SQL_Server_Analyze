@@ -31,4 +31,36 @@ Hoher Single-Use-Anteil ohne Speicherdruck ist technische Schuld, aber mögliche
 
 70 % Single-Use bei reichlich freiem Speicher ist weniger dringend als 20 % bei starkem Memory Pressure. Textvarianz, Parametrisierung, Optimize for Ad Hoc und Servermemory prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Wie viel Memory bindet der Plan Cache und welche Planarten/Use-Count-Muster dominieren?
+
+### Technischer Hintergrund
+
+Cache Stores und Cached Plans zeigen Planarten, Objekt-/Ad-hoc-Pläne, Größen und Use Counts. Viele Single-Use-Ad-hoc-Pläne können Kompilierungs-/Memorydruck erzeugen; Clock Hands und Memory Pressure steuern Eviction.
+
+### Datenkette
+
+`sys.configurations`, `sys.dm_exec_cached_plans`, `sys.dm_exec_plan_attributes`, `sys.dm_exec_sql_text`.
+
+### Zeit- und Scope-Modell
+
+Aktueller Cachebestand; flüchtig und durch Workload/Memorydruck verändert.
+
+### Bewertung und Gegenprobe
+
+Cachegröße relativ zu Servermemory, Single-Use-Anteil in Bytes und Count, Ad-hoc-Workload, Compile/sec und Parameterisierungsstrategie bewerten.
+
+### Typische Fehlinterpretation
+
+Viele Single-Use-Pläne sind nicht automatisch Hauptproblem. `optimize for ad hoc workloads` reduziert zunächst Stubgröße, behebt aber keine Querygenerierung oder Compileursache.
+
+### Folgeanalyse
+
+`USP_ServerMemory`, Performance Counters, Query Hash und Anwendung/Parameterisierung.
+
 [Technische Detailbeschreibung](../04_Plan_Cache.md#3-monitorusp_plancachehealth)

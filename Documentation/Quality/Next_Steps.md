@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-Stand: 2026-07-18
+Stand: 2026-07-19
 
 Der Stand `1.1.0-special.9` besitzt vollständige grüne Linux-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle. Die 31. Suite ist für Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` auf SQL Server 2019, 2022 und 2025 nachgewiesen; die 115 zuvor offenen P2-Zeilen sind abgeschlossen.
 
@@ -53,6 +53,9 @@ Abgeschlossen:
 41. Sechste P2-Gruppe abgeschlossen: Suite `184` prüft 25 Change-Tracking-, CDC- und Replikationsverträge ohne Change-Zeilen oder Commands.
 42. Siebte P2-Gruppe abgeschlossen: Suite `185` prüft sieben zuvor offene Encryption-Verträge ohne Schlüssel-, Medien- oder Kontoinhalte.
 43. Achte P2-Gruppe abgeschlossen: Suite `186` prüft vier zuvor offene Maintenance-Verträge ohne RESUME, ABORT, KILL oder Jobmutation.
+44. Die technische Deep-Analysis-Dokumentation ist 84/84 integriert: jede öffentliche Procedure-Seite besitzt Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse; das gemeinsame Execution-/Evidenzmodell ist kanonisch zentralisiert.
+45. Die neun durch das vollständige Actions-Gate erledigten Backlogzeilen SC-002 bis SC-010 sind auf `IMPLEMENTED_ACTIONS_GATE` abgeglichen. Ein versehentlich versioniertes Python-Cacheartefakt wurde entfernt und durch Repository-Ignore-Regeln gegen Wiederholung abgesichert.
+46. Die Datenschutz-Allowlist enthält nun auch den bereits vorhandenen, zur Laufzeit synthetisch erzeugten Credential-Pfad des Statistics-Evidence-Workflows. Die Ausnahme ist wie alle übrigen Einträge an Regel, Pfad und Match-Hash gebunden.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 

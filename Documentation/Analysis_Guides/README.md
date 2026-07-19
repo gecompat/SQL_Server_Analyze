@@ -1,6 +1,6 @@
 # Analysehandbuch für SQL_Server_Analyze
 
-**Stand:** 18. Juli 2026
+**Stand:** 19. Juli 2026
 **Geltungsbereich:** 84 Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
@@ -11,6 +11,8 @@
 3. Unbekannte Begriffe im [Glossar](Glossary.md) nachschlagen.
 4. Parameter anhand der [Parameter-Lesehilfe](Parameter_Reading_Guide.md) und `@Hilfe=1` prüfen.
 5. Für vollständige Resultsets und Spalten in den verlinkten Familienguide wechseln.
+
+Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
 Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_Concept.md) ist kein Anwenderhandbuch.
 
@@ -35,6 +37,7 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Begriffserklärungen | [Glossary.md](Glossary.md) |
 | Parameter und sichere Aufrufe | [Parameter_Reading_Guide.md](Parameter_Reading_Guide.md) |
 | Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) |
+| Technische Grundlagen | [Technical_Foundations.md](Technical_Foundations.md) |
 | Vollständiger Objektindex | [Object_Index.md](Object_Index.md) |
 | Redaktionsstandard | [Documentation_Quality_Contract.md](Documentation_Quality_Contract.md) |
 

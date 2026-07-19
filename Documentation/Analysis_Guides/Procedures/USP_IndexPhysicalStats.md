@@ -37,4 +37,36 @@ Fünf Millionen Seiten, 45 % Fragmentierung und 55 % Dichte: viele zusätzliche 
 
 `DETAILED` auf großen Datenbanken kann erhebliche I/O-Last verursachen. Standardmäßig `LIMITED` und engen Scope verwenden.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Wie sehen Page Count, Fragmentierung, Seitendichte und Strukturebenen eines Rowstore-Indexes beim Aufruf aus?
+
+### Technischer Hintergrund
+
+`sys.dm_db_index_physical_stats` traversiert je Modus Allocation/Pages unterschiedlich tief. LIMITED liest weniger, SAMPLED schätzt bei größeren Strukturen, DETAILED untersucht alle Ebenen/Pages und ist teurer. Fragmentierung beschreibt logische Seitenreihenfolge; Page Space Used die Dichte.
+
+### Datenkette
+
+`sys.dm_db_index_physical_stats`, `sys.indexes`, `sys.objects`, `sys.schemas`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Aufrufbezogene Messung. Währenddessen können DML und Wartung den Zustand verändern; Modus bestimmt Genauigkeit/Kosten.
+
+### Bewertung und Gegenprobe
+
+Page Count zuerst, dann Dichte, Fragmentierung, Scanlast, Storageart und Wartungsfolgen bewerten. Niedrige Dichte kann mehr I/O/Memory verursachen; Fragmentierung ist bei kleinen Indizes oft bedeutungslos.
+
+### Typische Fehlinterpretation
+
+Pauschale 5/30-Prozent-Regeln sind keine universelle Produktgrenze. Rebuild erzeugt Log, Locks, TempDB-/I/O-Last und kann Statistiken beeinflussen.
+
+### Folgeanalyse
+
+`USP_IndexUsage`, Operational Stats, Querypläne und geplantes Wartungsfenster.
+
 [Technische Detailbeschreibung](../03_Object_Index.md#9-monitorusp_indexphysicalstats)

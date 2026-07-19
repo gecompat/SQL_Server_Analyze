@@ -21,7 +21,9 @@ Jede eigenständige Seite erklärt:
 - mindestens ein synthetisches Beispiel,
 - Folgeanalyse,
 - mögliche partielle/leere Ausgabe,
-- Eigenlast, wenn der Pfad über LOW hinausgeht.
+- Eigenlast, wenn der Pfad über LOW hinausgeht,
+- eine technische Vertiefung mit Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse,
+- einen Link auf das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md).
 
 ## Fachlicher Mindestvertrag
 

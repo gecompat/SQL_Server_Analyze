@@ -36,4 +36,36 @@ Eine Million Ausführungen zu je 2 ms verursachen mehr Gesamtlast als eine einma
 
 Der Plan Cache ist flüchtig. Recompile, Eviction oder Restart können relevante Queries entfernen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche aktuell gecachten Statements verursachten kumulativ oder durchschnittlich CPU, Dauer, Reads und Writes?
+
+### Technischer Hintergrund
+
+`sys.dm_exec_query_stats` liefert pro gecachtem Statement Ausführungszahl und Total-/Last-/Min-/Maxwerte. SQL Text und Statementoffsets identifizieren den Ausschnitt; Planhandle/Plan XML beschreiben die gecachte Planform.
+
+### Datenkette
+
+`master.sys.databases`, `sys.dm_exec_cached_plans`, `sys.dm_exec_plan_attributes`, `sys.dm_exec_query_stats`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Kumulativ seit Cacheeintrag. Erstellung/letzte Ausführung und Engine-Start begrenzen das Fenster.
+
+### Bewertung und Gegenprobe
+
+Totalwerte finden Gesamtkosten, Durchschnittswerte teure Einzelausführungen. Execution Count, Cachealter, Rowcount und Last Execution immer mitlesen.
+
+### Typische Fehlinterpretation
+
+Ein kleiner Totalwert kann nur kurzen Cachelebenszyklus bedeuten. Durchschnitt verdeckt Ausreißer und Parameter Sensitivity.
+
+### Folgeanalyse
+
+Query Hash, Showplan und Query Store für persistierte Historie.
+
 [Technische Detailbeschreibung](../04_Plan_Cache.md#1-monitorusp_querystats)

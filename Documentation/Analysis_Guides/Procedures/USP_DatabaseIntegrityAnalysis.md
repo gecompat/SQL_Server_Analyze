@@ -34,4 +34,36 @@ Keine negativen Indikatoren beweisen keine Integrität; die Procedure führt kei
 
 `SuspectPageCount=0` heißt nur „Quelle meldet nichts“. `SuspectPageCount=3` ist konkrete negative Evidenz und verlangt Eskalation, CHECKDB-Strategie, Backupkette und Restore-Test.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Metadaten weisen auf Integritätsrisiko, veralteten CHECKDB-Nachweis, suspect pages, beschädigte Backups oder offene HADR-Seitenreparatur hin?
+
+### Technischer Hintergrund
+
+Page Verify CHECKSUM erkennt bestimmte Pageänderungen bei Read; `suspect_pages` speichert erkannte Pageereignisse; DBINFO/Property kann Last Good CHECKDB liefern; Backupsets enthalten checksum/damage flags; HADR Auto Page Repair dokumentiert Reparaturversuche.
+
+### Datenkette
+
+`master.sys.databases`, `msdb.dbo.backupset`, `msdb.dbo.suspect_pages`, `sys.dm_db_page_info`, `sys.dm_hadr_auto_page_repair`.
+
+### Zeit- und Scope-Modell
+
+Historische/aktuelle Metadaten mit unterschiedlicher Retention; kein Live-CHECKDB.
+
+### Bewertung und Gegenprobe
+
+Jede Suspect Page, damaged backup oder pending page repair hoch priorisieren. Last Good CHECKDB gegen Policy, Datenbankgröße und Backup/Restorestrategie prüfen. EvidenceLimit immer mitlesen.
+
+### Typische Fehlinterpretation
+
+`0` negative Einträge beweist keine Integrität. `RESTORE VERIFYONLY` prüft nicht alle Daten und ersetzt weder CHECKDB noch echten Restore.
+
+### Folgeanalyse
+
+Geplanter CHECKDB, Backup Chain, echter Restoretest und Storage-/Errorlog/XE-Korrelation.
+
 [Technische Detailbeschreibung](../08_Server_Health.md#11-monitorusp_databaseintegrityanalysis)

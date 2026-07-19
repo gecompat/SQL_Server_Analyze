@@ -33,4 +33,36 @@ Ein einmaliges Ereignis nach seltenem Deployment kann geringere Priorität besit
 
 Zwei Sessions sperren Objekte in umgekehrter Reihenfolge: konsistente Zugriffsreihenfolge, Isolation, Indizes und Transaktionsumfang prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Sessions/Prozesse bildeten einen Deadlockzyklus, welches Opfer wurde gewählt und welche Ressourcen/Kanten waren beteiligt?
+
+### Technischer Hintergrund
+
+Der Lock Monitor erkennt einen Zyklus, wählt anhand Deadlock Priority und Rollbackkosten ein Opfer und erzeugt einen Deadlockgraph. XML enthält Victim List, Process List und Resource List mit Owner-/Waiter-Kanten.
+
+### Datenkette
+
+`sys.dm_xe_session_targets`, `sys.dm_xe_sessions`, `sys.fn_xe_file_target_read_file`, `sys.server_event_session_fields`, `sys.server_event_session_targets`, `sys.server_event_sessions`.
+
+### Zeit- und Scope-Modell
+
+Einzelne historische Deadlockereignisse soweit im Target erhalten.
+
+### Bewertung und Gegenprobe
+
+Zyklus vollständig lesen: Opfer ist nicht automatisch Verursacher. Zugriffsreihenfolge, Lockmodi, Isolation, Indexzugriff, Transaktionsscope und wiederkehrende Query-/Objektmuster bewerten.
+
+### Typische Fehlinterpretation
+
+Nur SQL-Text des Opfers zu optimieren kann den Zyklus unverändert lassen. Blocking ohne Zyklus erscheint nicht als Deadlock.
+
+### Folgeanalyse
+
+Showplan/Indexanalyse, Anwendungstransaktionsreihenfolge, wiederholte Graphen gruppieren.
+
 [Technische Detailbeschreibung](../06_Extended_Events.md#3-monitorusp_extendedeventsdeadlocks)

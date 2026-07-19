@@ -1,5 +1,15 @@
 # Release Notes
 
+## Stand 2026-07-19 – integrierte technische Analyse-Guides
+
+- Die sieben technischen Vertiefungsfelder aus den Familien-Drafts sind in alle 84 kanonischen Procedure-Seiten übernommen.
+- Ein gemeinsames Execution-, Zeit- und Evidenzmodell zentralisiert Beobachtungsarten, Session-/Request-/Taskbezug, Workerzustände, Waitformel, Gegenproben und Änderungsgrenzen.
+- Der statische Dokumentationsvertrag erzwingt die 84/84-Abdeckung, alle Vertiefungsfelder und den Link auf das gemeinsame Grundlagenmodell.
+- Die Authoring-Drafts bleiben als nicht kanonischer Redaktionsnachweis erhalten und sind eindeutig als integriert markiert.
+- SC-002 bis SC-010 sind mit der vorhandenen Drei-Versionen-Actions-Evidenz auf `IMPLEMENTED_ACTIONS_GATE` abgeglichen.
+- Das versehentlich versionierte Python-Cacheartefakt wurde entfernt; `.gitignore` verhindert neue `__pycache__`-/`*.pyc`-Artefakte.
+- Die bestehende synthetische Credential-Erzeugung des Statistics-Evidence-Workflows ist nun präzise regel-, pfad- und hashgebunden in der Datenschutz-Allowlist erfasst.
+
 ## Stand 2026-07-18 – vollständige P2-Evidenz und 31-Suite-Gate
 
 - Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` hat den vollständigen 31-Suite-Vertrag auf SQL Server 2019, 2022 und 2025 bestanden.

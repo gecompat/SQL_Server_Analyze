@@ -1,12 +1,12 @@
 # Index der technischen Deep-Analysis-Drafts
 
-**Stand:** 18. Juli 2026  
-**Status:** Authoring-Index für Draft-PR #18; nicht kanonisch  
-**Aktuelle Abdeckung:** 84 von 84 öffentlichen Procedures
+**Stand:** 19. Juli 2026
+**Status:** Index des integrierten Authoring-Archivs; nicht kanonisch
+**Integrierte Abdeckung:** 84 von 84 öffentlichen Procedures
 
 ## Zweck
 
-Dieser Index verbindet die konfliktfrei vorbereiteten Research-Drafts. Die Dateien sammeln Enginehintergrund, Datenquellen, Zeit-/Resetmodelle, Bewertungslogik, Gegenproben, Fehlinterpretationen und Primärquellen. Sie werden nach Abschluss paralleler Arbeiten gegen den dann aktuellen `main`-Stand geprüft und abschnittsweise in die kanonischen Analysis Guides integriert.
+Dieser Index dokumentiert die Research-Drafts, aus denen Enginehintergrund, Datenquellen, Zeit-/Resetmodelle, Bewertungslogik, Gegenproben und Fehlinterpretationen in die kanonischen Analysis Guides übernommen wurden. Für Nutzung und Pflege gelten [Technical_Foundations.md](../Technical_Foundations.md) und die [Procedure-Seiten](../Procedures/README.md).
 
 ## Dateien und Abdeckung
 
@@ -34,7 +34,7 @@ Jede der 84 Procedure-Sections besitzt:
 6. typische Fehlinterpretation,
 7. Folgeanalyse.
 
-Die spätere kanonische Einzelpage ergänzt:
+Die kanonische Einzelpage verbindet diese Felder mit:
 
 - Parameter und sichere Aufrufmuster,
 - Resultset-Reihenfolge und Zeilenbedeutung,
@@ -54,19 +54,11 @@ Die spätere kanonische Einzelpage ergänzt:
 - Section-Vertragsfehler: 0,
 - Primärquellen-Domain: ausschließlich `learn.microsoft.com`,
 - keine realen Laufzeit-, Benutzer-, Firmen- oder Umgebungswerte,
-- keine Änderung bestehender T-SQL-, Test-, Metadaten- oder Dokumentationsdateien.
+- keine Änderung des T-SQL-Runtimeverhaltens durch die Dokumentationsintegration.
 
-## Integrationsregel
+## Integrationsstand
 
-Die Draft-Dateien werden nicht unverändert nach `main` übernommen. Nach Ende der parallelen Verarbeitung wird jede Familie ausgehend vom aktuellen `main` in kleinen, reviewbaren Änderungen integriert. Gemeinsame Engineerklärungen werden zentral abgelegt und von Procedure-Seiten verlinkt; procedurespezifische Formeln, Resultsets und Beispiele verbleiben bei der jeweiligen Procedure.
-
-## Empfohlene Integrationsreihenfolge
-
-1. gemeinsames Execution-, Zeit- und Evidenzmodell,
-2. Common und Current State,
-3. Object/Index/Statistics und Plan Cache,
-4. Query Store und Extended Events,
-5. Infrastructure,
-6. Server Health,
-7. Version Adaptive,
-8. Vollständigkeits-, Link-, Datenschutz- und SQL-Release-Gates.
+1. Das gemeinsame Execution-, Zeit- und Evidenzmodell ist in [Technical_Foundations.md](../Technical_Foundations.md) kanonisch.
+2. Alle 84 Procedure-Seiten besitzen die sieben procedurespezifischen Vertiefungsfelder.
+3. Bestehende sichere Aufrufe, Zeilenbedeutungen, Beispiele, Leer-/Partialgrenzen und Familienlinks blieben erhalten.
+4. Die Dateien in diesem Verzeichnis bleiben als Redaktionsnachweis bestehen, sind aber keine zweite kanonische Referenz.

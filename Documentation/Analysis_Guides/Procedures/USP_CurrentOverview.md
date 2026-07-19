@@ -32,4 +32,36 @@ Nicht aktivierte Children fehlen absichtlich. Ein leeres Child ist nur bei erfol
 
 Blocking und hohe Logauslastung können dieselbe alte Transaktion als Ursache haben. Mit Blocking- und Transaktionsprocedure fokussiert nachprüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche Current-State-Symptome verdienen als Erstes eine spezialisierte Analyse?
+
+### Technischer Hintergrund
+
+Der Orchestrator ruft Childmodule mit definierten Schaltern auf und sammelt Resultsets, JSON-/Statusverträge und Fehlergrenzen. Er erzeugt keine neue einheitliche Messmethode; jedes Child behält sein eigenes Zeitmodell.
+
+### Datenkette
+
+Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
+
+### Zeit- und Scope-Modell
+
+Nahe beieinanderliegende, aber nicht atomare Momentaufnahmen; Samplingchildren können den Aufruf verlängern.
+
+### Bewertung und Gegenprobe
+
+Zuerst Modulstatus und Partialflags, dann nur auffällige Children vertiefen. Korrelation ist möglich, wenn dieselbe Session/DB/Datei in mehreren Children erscheint.
+
+### Typische Fehlinterpretation
+
+Ein unauffälliger Overview beweist nicht, dass zwischen Childaufrufen kein kurzer Vorfall auftrat. Resultsets dürfen nicht so behandelt werden, als stammten sie aus einer gemeinsamen Transaktion.
+
+### Folgeanalyse
+
+Betroffenes Childmodul mit engeren Filtern erneut ausführen.
+
 [Technische Detailbeschreibung](../02_Current_State.md#10-monitorusp_currentoverview)

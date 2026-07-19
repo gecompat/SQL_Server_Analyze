@@ -1,7 +1,7 @@
 # Draft: technische Vertiefung – Query Store und Extended Events
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft für PR #18; nicht kanonisch  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Abdeckung:** 15 Procedures aus `05_QueryStore` und `06_ExtendedEvents`
 
 > Query Store und Extended Events sind historische Quellen mit grundverschiedener Semantik. Query Store aggregiert Query-/Planruntime in Intervallen. Extended Events speichert einzelne konfigurierte Ereignisse in Targets. Retention, Capture, Cleanup, Rollover und partielle Intervalle müssen in jeder Bewertung sichtbar bleiben.

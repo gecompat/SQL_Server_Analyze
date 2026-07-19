@@ -31,4 +31,36 @@ In SIMPLE Recovery sind Logbackups nicht vorgesehen. Eine fehlende Differential-
 
 FULL Recovery, letztes Logbackup vor sechs Stunden, RPO 30 Minuten: kritisch. SIMPLE plus kein Logbackup: erwartbar. Backupkette und echten Restore-Test prüfen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Existieren im sichtbaren Fenster die erwarteten Full-, Differential- und Logbackups für das Recoverymodell?
+
+### Technischer Hintergrund
+
+`msdb` speichert Backup Sets, Medien-/Dateiinformation, Type, LSNs, Start/Finish, Size/Compression/Checksum und Damageindikatoren. Recovery Model bestimmt, ob eine kontinuierliche Logkette erwartet wird.
+
+### Datenkette
+
+`msdb.dbo.backupmediafamily`, `msdb.dbo.backupset`, `msdb.dbo.restorehistory`.
+
+### Zeit- und Scope-Modell
+
+Historie innerhalb `msdb`-Retention; Datenträger/Dateien werden nicht geöffnet.
+
+### Bewertung und Gegenprobe
+
+Letzte Backupzeiten gegen RPO/Policy, Recovery Model, CopyOnly, Checksum, Damage, Größe/Dauer und Logbackupkontinuität prüfen. SIMPLE benötigt keine Logbackups, FULL ohne regelmäßige Logbackups verhindert Logtruncation.
+
+### Typische Fehlinterpretation
+
+Eine erfolgreiche Backup-Historyzeile beweist weder Dateiexistenz noch erfolgreichen Restore. `RESTORE VERIFYONLY` ist ebenfalls kein vollständiger Restoretest.
+
+### Folgeanalyse
+
+`USP_BackupChainAnalysis`, Database Integrity und regelmäßiger echter Restoretest.
+
 [Technische Detailbeschreibung](../07_Infrastructure.md#5-monitorusp_backuprecovery)

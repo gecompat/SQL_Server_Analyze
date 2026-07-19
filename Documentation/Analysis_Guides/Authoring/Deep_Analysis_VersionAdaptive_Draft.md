@@ -1,7 +1,7 @@
 # Draft: technische Vertiefung – Version Adaptive und Special Features
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft für PR #18; nicht kanonisch  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Abdeckung:** 8 Procedures aus `09_VersionAdaptive`
 
 > Capability Detection muss Version, Edition, Engine Edition, Compatibility Level, Objekt-/Spaltenexistenz, Featurekonfiguration, Datenbankzustand und Berechtigung trennen. Optional nicht verfügbar ist ein erwarteter Status, kein Grund für einen Gesamtabbruch.

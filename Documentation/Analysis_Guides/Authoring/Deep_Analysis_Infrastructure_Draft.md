@@ -1,7 +1,7 @@
 # Draft: technische Vertiefung – Infrastructure
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft für PR #18; nicht kanonisch  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Abdeckung:** 13 Procedures aus `07_Infrastructure`
 
 > Infrastrukturdiagnose verbindet lokale Runtime-DMVs, `msdb`-Historie und verteilte Komponenten. Die lokale Instanz kann bei AG, Log Shipping und Replication nur einen Teil der Topologie sehen. History Cleanup, Monitorlatenz und fehlender Remotezugriff müssen als Evidenzgrenzen dokumentiert werden.

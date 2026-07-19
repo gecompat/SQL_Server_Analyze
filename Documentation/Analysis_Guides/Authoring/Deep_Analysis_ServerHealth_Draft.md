@@ -1,7 +1,7 @@
 # Draft: technische Vertiefung – Server Health
 
-**Stand:** 18. Juli 2026  
-**Status:** isolierter Authoring-Draft für PR #18; nicht kanonisch  
+**Stand:** 19. Juli 2026
+**Status:** integriertes Authoring-Archiv; nicht kanonisch
 **Abdeckung:** 17 Procedures aus `08_ServerHealth`
 
 > Server Health verbindet Hardware-/SQLOS-Topologie, Memory, TempDB, Konfiguration, Betriebssystem, Security, Integrität, Kapazität, Performance Counter und Engineereignisse. Konfigurationsabweichungen sind Risiken oder Reviewaufträge; sie sind nicht automatisch die Ursache eines aktuellen Vorfalls.

@@ -32,4 +32,36 @@ Nicht aktivierte Deep-Module fehlen absichtlich. Sie bedeuten keine partielle Au
 
 Inventar zeigt ähnlichen Index, Missing Index schlägt einen neuen vor, Usage zeigt geringe Nutzung: eher Konsolidierung prüfen als blind erstellen. Relevantes Child mit engem Scope wiederholen.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche objektbezogenen Evidenzpfade sollen für einen Scope gemeinsam ausgeführt werden?
+
+### Technischer Hintergrund
+
+Der Orchestrator kombiniert Definition, Usage, Operations, Missing Indexes, Statistics, Partitions, Columnstore und optional Physical Stats. Jedes Child behält eigene Quelle, Kosten und Resetsemantik.
+
+### Datenkette
+
+Frameworkinterne Orchestrierung; Quellen liegen in den aufgerufenen Childmodulen.
+
+### Zeit- und Scope-Modell
+
+Nicht atomarer Mix aus Metadaten, kumulativen Zählern und aufrufbezogenen physischen Scans.
+
+### Bewertung und Gegenprobe
+
+Zuerst Childstatus und Kostenoptionen, danach Befunde nach Objekt/Index korrelieren. Widersprüche sind möglich, etwa Missing-Index-Evidenz neben einem ähnlichen ungenutzten Index.
+
+### Typische Fehlinterpretation
+
+Die Zusammenfassung ist keine DDL-Liste. Ein Childfehler darf nicht als unauffälliges Objekt gelten.
+
+### Folgeanalyse
+
+Je Befund das spezialisierte Child mit engem Scope erneut ausführen.
+
 [Technische Detailbeschreibung](../03_Object_Index.md#11-monitorusp_objectanalysis)

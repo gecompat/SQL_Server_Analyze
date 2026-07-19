@@ -32,4 +32,36 @@ Keine Findings sind nur beruhigend, wenn alle relevanten SourceModules vollstän
 
 Leeres Findingsresultset plus Integritätsmodul `PERMISSION_DENIED` ist keine Entwarnung. Ein HIGH/HIGH-Suspect-Page-Finding verlangt sofortige Detailprüfung im SourceModule.
 
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welche normalisierten Befunde aus mehreren Spezialmodulen verdienen Priorität und wie stark ist die Evidenz?
+
+### Technischer Hintergrund
+
+Aggregator ruft Children über definierte JSON-/RAW-Verträge auf und normalisiert Category, Severity, Confidence, Scope, Evidence, EvidenceLimit und Next Check. Er reduziert Detail für Triage und muss Childstatus separat erhalten.
+
+### Datenkette
+
+`sys.databases`, `sys.sp_executesql`.
+
+### Zeit- und Scope-Modell
+
+Mix aus Child-Snapshots, Samples und Historien im selben Lauf.
+
+### Bewertung und Gegenprobe
+
+Severity und Confidence gemeinsam lesen, SourceModule/Scope zum Detail zurückverfolgen, EvidenceLimit nicht ausblenden. HIGH+LOW verlangt schnelle Validierung, nicht automatische Aktion.
+
+### Typische Fehlinterpretation
+
+Keine Findings bedeutet nur dann wenig Auffälliges, wenn alle relevanten Children vollständig erfolgreich waren. Normalisierung kann Details bewusst weglassen.
+
+### Folgeanalyse
+
+SourceModule direkt mit engem Scope aufrufen.
+
 [Technische Detailbeschreibung](../08_Server_Health.md#17-monitorusp_diagnosticfindings)
