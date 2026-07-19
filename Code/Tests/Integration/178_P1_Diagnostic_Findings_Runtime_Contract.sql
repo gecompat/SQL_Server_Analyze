@@ -73,6 +73,19 @@ INSERT @ExecutedCases VALUES('FIND-OPTOUT');
 /* FIND-PARENT-REUSE: Der Parent erhebt drei kontextgleiche Ergebnisse einmal;
    der Findings-Child verwendet sie ohne erneuten Aufruf dieser Module. */
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
+EXEC [monitor].[USP_DiagnosticFindings]
+     @MitIntegritaet=1,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
+     @MitAvailability=0,@MitAgentMonitoring=0,
+     @ParentIntegrityJson=N'{"meta":{"resultName":"OtherResult","schemaVersion":1}}',
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+
+IF ISJSON(@Json)<>1 OR @Status<>'INVALID_PARAMETER' OR @Partial<>1
+   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.modules'))<>0
+    THROW 55207,N'P1-Vertrag FIND-PARENT-REUSE akzeptiert einen falschen Parent-Vertrag.',1;
+
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
 EXEC [monitor].[USP_ServerHealthAnalysis]
      @MitCpu=0,@MitNuma=0,@MitMemory=0,@MitTempDB=0,
      @MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,
