@@ -36,6 +36,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentSessions]
     , @MaxZeilen                    int            = 500
     , @Sortierung                   varchar(32)    = 'CPU'
     , @ResultSetArt                 varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                 bit            = 0
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
@@ -57,6 +58,8 @@ BEGIN
     DECLARE @RequiredPermission nvarchar(256) = CASE WHEN TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) >= 16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
     DECLARE @HasFullView bit = CASE WHEN IS_SRVROLEMEMBER(N'sysadmin') = 1 THEN 1 WHEN TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) >= 16 THEN COALESCE(HAS_PERMS_BY_NAME(NULL,N'SERVER',N'VIEW SERVER PERFORMANCE STATE'),0) ELSE COALESCE(HAS_PERMS_BY_NAME(NULL,N'SERVER',N'VIEW SERVER STATE'),0) END;
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @CandidateMaxZeilen bigint;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -72,7 +75,7 @@ BEGIN
         PRINT N'Die jeweiligen ...Pattern-Parameter akzeptieren LIKE, like:, regex: oder regexi: und sind mit der exakten Liste gegenseitig exklusiv.';
         PRINT N'@MaxZeilen: positiv begrenzt; NULL/0 = unbegrenzt; negativ = INVALID_PARAMETER.';
         PRINT N'@MaxSqlTextZeichen: positiv begrenzt die Darstellung; NULL/0 liefert vollständige Texte.';
-        PRINT N'@ResultSetArt: CONSOLE (Default), RAW oder NONE; Groß-/Kleinschreibung ist egal.';
+        PRINT N'@ResultSetArt: CONSOLE (Default), RAW, TABLE oder NONE; Groß-/Kleinschreibung ist egal.';
         PRINT N'@JsonErzeugen=1 erzeugt ein JSON-Envelope in @Json OUTPUT.';
         RETURN;
     END;
@@ -269,6 +272,13 @@ BEGIN
         SELECT N'Aktuelle Session' AS [Ergebnis],[SessionId] AS [Session],[RequestId] AS [Request],[LoginName] AS [Login],[HostName] AS [Host],[ProgramName] AS [Programm],[DatabaseName] AS [Datenbank],[SessionStatus] AS [Sessionstatus],[RequestStatus] AS [Requeststatus],CONCAT(CONVERT(decimal(19,2),COALESCE([RequestElapsedMs],0)/1000.0),N' s') AS [Laufzeit],COALESCE([RequestCpuMs],[SessionCpuMs]) AS [CPU_ms],COALESCE([RequestLogicalReads],[SessionLogicalReads]) AS [Logical_Reads],COALESCE([RequestWrites],[SessionWrites]) AS [Writes],[SessionId] AS [Session_Wait],[WaitType] AS [Wait],[WaitTimeMs] AS [Wait_ms],[BlockingSessionId] AS [Blockiert_durch],[CurrentStatement] AS [Aktuelles_Statement]
         FROM [#Result]
         ORDER BY CASE WHEN @Sortierung='CPU' THEN COALESCE([RequestCpuMs],[SessionCpuMs]) END DESC,CASE WHEN @Sortierung='READS' THEN COALESCE([RequestLogicalReads],[SessionLogicalReads]) END DESC,CASE WHEN @Sortierung='WRITES' THEN COALESCE([RequestWrites],[SessionWrites]) END DESC,[SessionId];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

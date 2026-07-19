@@ -8,13 +8,14 @@ Version      : 2.0.0
 Stand        : 2026-07-15
 Typ          : Stored Procedure
 Zweck        : Prüft die effektive Analyseklassen- und AD-Gruppenpolicy.
-Ausgabe      : RAW, CONSOLE oder NONE; optional JSON mit access und policies.
+Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit access und policies.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CheckAnalyseAccess]
       @AnalyseKlasse   varchar(64)    = NULL
     , @NurGesperrte    bit            = 0
     , @ResultSetArt    varchar(16)     = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen    bit             = 0
     , @Json             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen  bit             = 1
@@ -25,6 +26,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
@@ -34,7 +37,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_CheckAnalyseAccess';
         PRINT N'@AnalyseKlasse=NULL liefert alle Analyseklassen; sonst exakter case-sensitiver Code.';
-        PRINT N'@ResultSetArt=RAW, CONSOLE oder NONE; Wert wird case-insensitiv verarbeitet.';
+        PRINT N'@ResultSetArt=RAW, CONSOLE, TABLE oder NONE; Wert wird case-insensitiv verarbeitet.';
         PRINT N'@JsonErzeugen=1 liefert @Json mit meta, access, policies und warnings.';
         RETURN;
     END;
@@ -76,7 +79,7 @@ BEGIN
     IF @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
-        SET @ErrorMessage = N'@ResultSetArt muss CONSOLE, RAW oder NONE enthalten.';
+        SET @ErrorMessage = N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
     END;
     ELSE IF @AnalyseKlasse IS NOT NULL
         AND NOT EXISTS
@@ -223,6 +226,13 @@ BEGIN
         DECLARE @PoliciesJson nvarchar(max) = (SELECT * FROM [#Policies] ORDER BY [Priority], [AnalysisClass], [ADGroupName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#Warnings] ORDER BY [WarningCode], [WarningMessage] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'), N',"access":', COALESCE(@AccessJson, N'[]'), N',"policies":', COALESCE(@PoliciesJson, N'[]'), N',"warnings":', COALESCE(@WarningsJson, N'[]'), N'}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Access'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

@@ -22,6 +22,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InternalContentionAnalysis]
     , @MitPageDetails    bit            = 0
     , @MaxZeilen         int            = 100
     , @ResultSetArt      varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen      bit            = 0
     , @Json              nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen    bit            = 1
@@ -36,6 +37,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
                                  THEN CONVERT(bigint, 9223372036854775807)
                                  ELSE CONVERT(bigint, @MaxZeilen) END;
@@ -367,6 +370,13 @@ BEGIN
                [FileId] AS [Datei_ID], [PageId] AS [Seiten_ID], [PageTypeDesc] AS [Seitentyp],
                [ObjectId] AS [Objekt_ID], [IndexId] AS [Index_ID]
         FROM [#HotPages] ORDER BY [WaitTimeMs] DESC, [SessionId];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#LatchResult'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

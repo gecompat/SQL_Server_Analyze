@@ -49,6 +49,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentMemoryGrants]
     , @MaxSqlTextZeichen            int            = 3000
     , @MaxZeilen                    int            = 1000
     , @ResultSetArt                 varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                 bit            = 0
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
@@ -61,6 +62,8 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) =
         UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
              THEN CONVERT(bigint, 9223372036854775807)
@@ -81,7 +84,7 @@ BEGIN
         PRINT N'Zweck: aktuelle wartende und gewährte Query Memory Grants einschließlich Resource-Governor-Grenzen.';
         PRINT N'@SessionIds=NULL (Pipe-Liste); @AktuelleSessionEinbeziehen=0; @NurWartende=0; @MinRequestedMb/@MinGrantedMb=NULL.';
         PRINT N'@MitSqlText=1; @MaxSqlTextZeichen positiv begrenzt, NULL/0 liefert vollständigen Text; @MaxZeilen positiv begrenzt, NULL/0 unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE; Steuerwert wird case-insensitiv verarbeitet.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert wird case-insensitiv verarbeitet.';
         PRINT N'@JsonErzeugen=1 setzt @Json OUTPUT auf ein Envelope mit meta, memoryGrants und warnings.';
         PRINT N'RequestMaxMemoryGrantPercent ist decimal(9,4); der Datentyp ist nicht Bestandteil des Spaltennamens.';
         RETURN;
@@ -203,7 +206,7 @@ BEGIN
        OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE'))
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
-        SET @ErrorMessage = N'Ungültiger Parameterwert. @ResultSetArt erlaubt CONSOLE (Default), RAW oder NONE; die Schreibweise ist case-insensitiv.';
+        SET @ErrorMessage = N'Ungültiger Parameterwert. @ResultSetArt erlaubt CONSOLE (Default), RAW, TABLE oder NONE; die Schreibweise ist case-insensitiv.';
     END;
 
     IF @StatusCode = 'AVAILABLE'
@@ -521,6 +524,13 @@ BEGIN
         FROM [#Result] AS [r]
         ORDER BY [r].[IsWaiting] DESC, [r].[RequestedMemoryMb] DESC,
                  [r].[WaitTimeMs] DESC, [r].[SessionId], [r].[RequestId];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

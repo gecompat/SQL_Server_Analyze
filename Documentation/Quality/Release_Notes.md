@@ -1,5 +1,13 @@
 # Release Notes
 
+## Stand 2026-07-19 – typisierte TABLE-Ausgabe `1.1.0-special.10`
+
+- Alle 82 öffentlichen Analyse-Procedures akzeptieren `@ResultSetArt='TABLE'` und `@ResultTable`.
+- Der interne Writer passt ausschließlich leere lokale Platzhaltertabelle mit `[__MonitorPlaceholder] bit NULL` an die native Primärstruktur an oder ergänzt eine bereits exakt passende Tabelle.
+- Globale Temp- und permanente Tabellen, gefüllte Platzhalter, Schemaabweichungen sowie nicht sicher reproduzierbare Typen werden kontrolliert abgelehnt.
+- `Metadata/Inventory/TableOutput.csv` weist das Primärergebnis jeder Procedure aus; Aggregatoren liefern Modulstatus oder Modul-Envelopes.
+- Suite 187 erweitert den Release-Gate-Vertrag auf 32 Suiten und prüft Struktur, Typen, Append sowie fehlerseitige Unverändertheit mit synthetischen Daten.
+
 ## Stand 2026-07-19 – integrierte technische Analyse-Guides
 
 - Die sieben technischen Vertiefungsfelder aus den Familien-Drafts sind in alle 84 kanonischen Procedure-Seiten übernommen.

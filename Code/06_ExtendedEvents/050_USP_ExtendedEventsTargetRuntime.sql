@@ -40,13 +40,16 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsTargetRuntime]
     , @MaxTargetDataZeichen    int           = 4000
     , @BestaetigeTargetFlush   bit           = 0
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
     , @Json                            nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen          bit           = 1
     , @Hilfe                   bit           = 0
 AS
 BEGIN
-    SET NOCOUNT ON;SET @Json=NULL;DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));DECLARE @SessionMode varchar(8),@SessionValue nvarchar(4000),@SessionFlags varchar(8),@SessionValid bit,@TargetMode varchar(8),@TargetValue nvarchar(4000),@TargetFlags varchar(8),@TargetValid bit;
+    SET NOCOUNT ON;SET @Json=NULL;DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';DECLARE @SessionMode varchar(8),@SessionValue nvarchar(4000),@SessionFlags varchar(8),@SessionValid bit,@TargetMode varchar(8),@TargetValue nvarchar(4000),@TargetFlags varchar(8),@TargetValid bit;
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe=1
@@ -136,5 +139,12 @@ END;
 
     IF @ResultSetArtNormalisiert<>'NONE' BEGIN SELECT N'USP_ExtendedEventsTargetRuntime' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Result] ORDER BY [SessionName],[TargetName];ELSE SELECT N'Extended-Events Target Runtime' [Ergebnis],[SessionName] [Session],[TargetName] [Target],[ExecutionCount] [Ausführungen],[ExecutionDurationMs] [Dauer ms],[TargetData] [Targetdaten] FROM [#Result] ORDER BY [SessionName],[TargetName];END;
     IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsTargetRuntime' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT * FROM [#Result] ORDER BY [SessionName],[TargetName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"targets":',COALESCE(@Data,N'[]'),N',"warnings":[]}');END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

@@ -43,6 +43,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InfrastructureAnalysis]
     , @MaxDatenbanken                 int            = 16
     , @MaxZeilen                      int            = 2000
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
     , @Json                           nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                 bit            = 1
@@ -54,6 +55,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
 
     IF @Hilfe = 1
@@ -63,7 +66,7 @@ BEGIN
         PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
         PRINT N'@DatabaseNamePattern: alternatives LIKE-/Regex-Pattern; exakte Liste und Pattern sind gegenseitig exklusiv.';
         PRINT N'@MaxDatenbanken und @MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -366,6 +369,13 @@ BEGIN
             , N',"warnings":', COALESCE(@WarningsJson, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#ModuleStatus'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

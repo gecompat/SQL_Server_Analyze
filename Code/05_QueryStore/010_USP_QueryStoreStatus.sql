@@ -19,7 +19,7 @@ Parameter    : @QueryStoreDatabaseNames, @SystemdatenbankenEinbeziehen,
 Semantik     : @QueryStoreDatabaseNames ist eine bracket-aware Pipe-Liste.
                NULL bedeutet alle zulässigen Datenbanken; N'' beziehungsweise nur Leerzeichen bedeutet aktuelle Datenbank.
                Eine explizite Liste wird nicht durch @MaxDatenbanken gekürzt.
-Ausgabe      : RAW, CONSOLE oder NONE; optionales JSON mit meta,
+Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optionales JSON mit meta,
                queryStoreStatus und warnings.
 Berechtigung : SQL 2019 VIEW DATABASE STATE; SQL 2022+
                VIEW DATABASE PERFORMANCE STATE oder höher.
@@ -36,6 +36,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreStatus]
     , @QueryStoreDatabaseNamePattern   nvarchar(4000) = NULL
     , @MaxDatenbanken                  int            = 16
     , @ResultSetArt                    varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                    bit            = 0
     , @Json                            nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                  bit            = 1
@@ -47,6 +48,8 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) =
         UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @PatternMode varchar(8);
     DECLARE @PatternValue nvarchar(4000);
     DECLARE @RegexFlags varchar(8);
@@ -66,7 +69,7 @@ BEGIN
         PRINT N'Beispiel: @QueryStoreDatabaseNames=N''[DeineDatenbank]|[BeispielDatenbankB]''.';
         PRINT N'@QueryStoreDatabaseNamePattern akzeptiert LIKE (Default/like:), regex: oder regexi:; Pattern und exakte Liste sind gegenseitig exklusiv.';
         PRINT N'@MaxDatenbanken begrenzt nur die automatische Auswahl bei @QueryStoreDatabaseNames=NULL; NULL/0 = alle.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE wird case-insensitiv verarbeitet; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE wird case-insensitiv verarbeitet; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -380,6 +383,13 @@ FROM [sys].[database_query_store_options];';
             , [ErrorMessage] AS [Meldung]
         FROM [#Errors]
         ORDER BY [DatabaseName];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

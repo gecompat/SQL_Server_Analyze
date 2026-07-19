@@ -2,10 +2,11 @@
 
 Exakte Signaturen und Defaultwerte stehen im [Procedure-Referenzhandbuch](../Reference/Procedure_Reference.md) und werden durch `EXEC [monitor].[Procedure] @Hilfe=1` ausgegeben.
 
-## 1. Erst CONSOLE, dann RAW
+## 1. Erst CONSOLE, dann RAW oder TABLE
 
 - `CONSOLE`: sichere interaktive Orientierung.
 - `RAW`: vollständige technische Spalten und stabiler Consumer-Vertrag.
+- `TABLE`: primäres typisiertes Ergebnis zur SQL-internen Weiterverarbeitung in einer lokalen `#Temp`-Tabelle.
 - `NONE`: keine fachlichen Resultsets, beispielsweise JSON-only.
 
 ## 2. Umfangsparameter

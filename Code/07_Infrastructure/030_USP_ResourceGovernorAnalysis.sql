@@ -37,6 +37,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ResourceGovernorAnalysis]
       @MitSessions       bit            = 1
     , @MaxZeilen         int            = 5000
     , @ResultSetArt      varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen      bit            = 0
     , @Json              nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen    bit            = 1
@@ -48,6 +49,8 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) =
         UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
              THEN CONVERT(bigint, 9223372036854775807)
@@ -59,7 +62,7 @@ BEGIN
         PRINT N'monitor.USP_ResourceGovernorAnalysis';
         PRINT N'@MitSessions bit=1: aktuelle Benutzersessions je Workload Group.';
         PRINT N'@MaxZeilen int=5000: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE; der Steuerwert ist case-insensitiv.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; der Steuerwert ist case-insensitiv.';
         PRINT N'@JsonErzeugen=1 erzeugt @Json OUTPUT mit benannten Arrays.';
         PRINT N'RequestMaxMemoryGrantPercent wird als decimal(9,4) ausgegeben; der Datentyp ist kein Bestandteil des Spaltennamens.';
         PRINT N'Keine ALTER RESOURCE GOVERNOR- oder RECONFIGURE-Anweisung.';
@@ -158,7 +161,7 @@ BEGIN
        OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
-        SET @ErrorMessage = N'Ungültiger Parameter. @MaxZeilen darf nicht negativ sein; @ResultSetArt erlaubt CONSOLE (Default), RAW oder NONE.';
+        SET @ErrorMessage = N'Ungültiger Parameter. @MaxZeilen darf nicht negativ sein; @ResultSetArt erlaubt CONSOLE (Default), RAW, TABLE oder NONE.';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -452,6 +455,13 @@ BEGIN
             FROM [#Sessions]
             ORDER BY [CpuTimeMs] DESC, [SessionId];
         END;
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Cfg'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

@@ -39,6 +39,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DiagnosticFindings]
     , @NurAbPrioritaet              varchar(16)     = 'INFO'
     , @MaxZeilen                    int             = 1000
     , @ResultSetArt                 varchar(16)     = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                 bit             = 0
     , @Json                         nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen               bit             = 1
@@ -53,6 +54,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @MinimumSeverity varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@NurAbPrioritaet, ''))));
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
                                  THEN CONVERT(bigint, 9223372036854775807)
@@ -578,6 +581,13 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
                [ModuleName] AS [Modul], [InvocationStatus] AS [Aufrufstatus],
                [EvidenceStatus] AS [Evidenzstatus], [IsPartial] AS [Teilweise], [ErrorMessage] AS [Fehler]
         FROM @ModuleStatus ORDER BY [ExecutionOrdinal];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Findings'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

@@ -31,6 +31,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStats]
     , @MaxZeilen                      int            = 100
     , @MaxSqlTextZeichen              int            = 4000
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
     , @Json                           nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                 bit            = 1
@@ -41,6 +42,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Mode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus, 'TOP'))));
     DECLARE @Order varchar(32) = UPPER(LTRIM(RTRIM(COALESCE(@Sortierung, 'CPU_TOTAL'))));
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
@@ -57,7 +60,7 @@ BEGIN
         PRINT N'@Sortierung: CPU_TOTAL, CPU_AVG, ELAPSED_TOTAL, ELAPSED_AVG, READS_TOTAL, READS_AVG, WRITES_TOTAL, WRITES_AVG, EXECUTIONS, GRANT_MAX, SPILLS_TOTAL, ROWS_TOTAL, LAST_EXECUTION.';
         PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt; VOLL oder mehr als 1000 Zeilen benötigt PLAN_CACHE_DEEP.';
         PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Statement- und Batchtext.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|NONE; Steuerwerte sind case-insensitiv.';
+        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwerte sind case-insensitiv.';
         RETURN;
     END;
 
@@ -501,6 +504,13 @@ OPTION (RECOMPILE, MAXDOP 1);';
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         SET @Json = CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"queries":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

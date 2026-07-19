@@ -16,8 +16,9 @@ Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrück
 CREATE OR ALTER PROCEDURE [monitor].[USP_ServerSecurityConfiguration]
     @PrintMeldungen  bit = 1,
     @Hilfe           bit = 0,
-    @ResultSetArt    varchar(16) = 'CONSOLE',
-    @JsonErzeugen    bit = 0,
+    @ResultSetArt    varchar(16) = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
+    , @JsonErzeugen    bit = 0,
     @Json             nvarchar(max) = NULL OUTPUT,
     @StatusCodeOut   varchar(40) = NULL OUTPUT,
     @IsPartialOut    bit = NULL OUTPUT,
@@ -26,6 +27,8 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerSecurityConfiguration]
 AS
 BEGIN
     SET NOCOUNT ON;SET @Json=NULL;DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe = 1
@@ -41,7 +44,7 @@ BEGIN
         @ErrorNumber       int = NULL,
         @ErrorMessage      nvarchar(2048) = NULL;
 
-    IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') BEGIN SET @StatusCode='INVALID_PARAMETER';SET @IsPartial=1;SET @ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW oder NONE enthalten.';END;
+    IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') BEGIN SET @StatusCode='INVALID_PARAMETER';SET @IsPartial=1;SET @ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';END;
 
     CREATE TABLE [#SourceStatus]
     (
@@ -270,5 +273,12 @@ END;
       ELSE BEGIN SELECT N'Sicherheitsquelle' [Ergebnis],[x].* FROM [#SourceStatus] [x] ORDER BY [SourceName];SELECT N'Sicherheitskonfiguration' [Ergebnis],[ConfigurationName] [Einstellung],CONVERT(nvarchar(4000),[ConfiguredValue]) [konfiguriert],CONVERT(nvarchar(4000),[RunningValue]) [aktiv],[Finding] [Bewertung] FROM [#Configuration] ORDER BY [ConfigurationName];SELECT N'SQL-Dienst' [Ergebnis],[x].* FROM [#Services] [x] ORDER BY [ServiceName];SELECT N'Server-Eigenschaft' [Ergebnis],[x].* FROM [#Properties] [x];END;
     END;
     IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ServerSecurityConfiguration' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Sources nvarchar(max)=(SELECT * FROM [#SourceStatus] ORDER BY [SourceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Cfg nvarchar(max)=(SELECT [ConfigurationName],CONVERT(nvarchar(4000),[ConfiguredValue]) [ConfiguredValue],CONVERT(nvarchar(4000),[RunningValue]) [RunningValue],[Finding] FROM [#Configuration] ORDER BY [ConfigurationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Services nvarchar(max)=(SELECT * FROM [#Services] ORDER BY [ServiceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Props nvarchar(max)=(SELECT * FROM [#Properties] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"sources":',COALESCE(@Sources,N'[]'),N',"configuration":',COALESCE(@Cfg,N'[]'),N',"services":',COALESCE(@Services,N'[]'),N',"properties":',COALESCE(@Props,N'[]'),N',"warnings":[]}');END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Configuration'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

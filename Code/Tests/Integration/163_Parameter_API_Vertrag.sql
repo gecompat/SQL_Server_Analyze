@@ -28,10 +28,10 @@ INSERT @Fehler ([ObjectName],[Finding],[Detail])
 SELECT [o].[name], 'MISSING_OUTPUT_CONTRACT', [v].[ParameterName]
 FROM [sys].[objects] AS [o] WITH (NOLOCK)
 JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
-CROSS APPLY (VALUES(N'@ResultSetArt'),(N'@JsonErzeugen'),(N'@Json')) AS [v]([ParameterName])
+CROSS APPLY (VALUES(N'@ResultSetArt'),(N'@ResultTable'),(N'@JsonErzeugen'),(N'@Json')) AS [v]([ParameterName])
 WHERE [s].[name]=N'monitor'
   AND [o].[type]=N'P'
-  AND [o].[name] NOT IN (N'USP_PrepareDatabaseCandidates',N'USP_PrepareNameFilters')
+  AND [o].[name] NOT IN (N'USP_PrepareDatabaseCandidates',N'USP_PrepareNameFilters',N'InternalWriteResultTable')
   AND NOT EXISTS
       (
           SELECT 1

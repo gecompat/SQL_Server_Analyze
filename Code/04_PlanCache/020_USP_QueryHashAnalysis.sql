@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryHashAnalysis]
     , @MaxZeilen           int         = 100
     , @MaxSqlTextZeichen   int         = 4000
     , @ResultSetArt        varchar(16) = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen        bit         = 0
     , @Json                 nvarchar(max) = NULL OUTPUT
     , @PrintMeldungen      bit         = 1
@@ -47,6 +48,8 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @Sortierung=UPPER(LTRIM(RTRIM(COALESCE(@Sortierung,'CPU_TOTAL'))));
@@ -59,7 +62,7 @@ BEGIN
         PRINT N'@AnalyseModus TOP oder VOLL; VOLL sowie ein Lauf ohne konkreten @QueryHash prüfen PLAN_CACHE_DEEP.';
         PRINT N'@MinExecutionCount bigint=1; @MinPlanVarianten int=1; @MaxZeilen int=100.';
         PRINT N'@MaxSqlTextZeichen positiv = gekürzt; NULL/0 = vollständiger Beispielstatementtext.';
-        PRINT N'@ResultSetArt RAW|CONSOLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT; Steuerwerte sind case-insensitiv.';
+        PRINT N'@ResultSetArt RAW|CONSOLE|TABLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT; Steuerwerte sind case-insensitiv.';
         PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0. Die Auswertung ist cachegebunden und keine Historie.';
         RETURN;
     END;
@@ -193,6 +196,13 @@ END;
         DECLARE @MetaJson nvarchar(max)=(SELECT N'QueryHashAnalysis' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@Sortierung [sortOrder],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @DataJson nvarchar(max)=(SELECT * FROM [#Output] ORDER BY CASE @Sortierung WHEN 'CPU_TOTAL' THEN [TotalCpuMs] WHEN 'ELAPSED_TOTAL' THEN [TotalElapsedMs] WHEN 'READS_TOTAL' THEN [TotalReads] WHEN 'WRITES_TOTAL' THEN [TotalWrites] WHEN 'EXECUTIONS' THEN [ExecutionCount] WHEN 'PLAN_VARIANTS' THEN [PlanVariantCount] WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"queryHashes":',COALESCE(@DataJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Output'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

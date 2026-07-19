@@ -25,6 +25,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_AvailabilityGroups]
       @MitRouting bit=1
     , @MaxZeilen int=5000
     , @ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen bit=0
     , @Json nvarchar(max)=NULL OUTPUT
     , @PrintMeldungen bit=1
@@ -34,6 +35,8 @@ BEGIN
  SET NOCOUNT ON;
  SET @Json=NULL;
  DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_AvailabilityGroups'; PRINT N'@MitRouting bit=1; @MaxZeilen int=5000; @PrintMeldungen bit=1; @Hilfe bit=0.'; PRINT N'Keine Failover-, Resume-, Suspend- oder Routingänderung.'; RETURN; END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
@@ -42,7 +45,7 @@ BEGIN
  CREATE TABLE [#L]([AgName] sysname,[ListenerDnsName] nvarchar(256),[Port] int,[IsConformant] bit,[IpAddress] nvarchar(48),[IpSubnetMask] nvarchar(48),[NetworkSubnetIp] nvarchar(48),[NetworkSubnetPrefixLength] int,[StateDesc] nvarchar(60));
  CREATE TABLE [#Route]([AgName] sysname,[ReplicaServerName] nvarchar(256),[RoutingPriority] int,[ReadOnlyReplicaServerName] nvarchar(256));
  IF @MaxZeilen<0 SELECT @StatusCode='INVALID_PARAMETER',@ErrorMessage=N'@MaxZeilen darf nicht negativ sein; NULL/0 bedeutet unbegrenzt.';
- IF @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE') SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW oder NONE enthalten.';
+ IF @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE') SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  SET LOCK_TIMEOUT 0;
  IF @StatusCode='AVAILABLE' BEGIN TRY
   IF SERVERPROPERTY('IsHadrEnabled')<>1 BEGIN SET @StatusCode='UNAVAILABLE_FEATURE'; SET @ErrorMessage=N'Always On Availability Groups ist nicht aktiviert.'; END
@@ -81,5 +84,12 @@ BEGIN
   DECLARE @RoutingJson nvarchar(max)=(SELECT * FROM [#Route] ORDER BY [AgName],[ReplicaServerName],[RoutingPriority] FOR JSON PATH,INCLUDE_NULL_VALUES);
   SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"replicas":',COALESCE(@ReplicasJson,N'[]'),N',"databases":',COALESCE(@DatabasesJson,N'[]'),N',"listeners":',COALESCE(@ListenersJson,N'[]'),N',"routing":',COALESCE(@RoutingJson,N'[]'),N'}');
  END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#R'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

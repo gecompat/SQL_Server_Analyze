@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
     , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 100
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -40,6 +41,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
     DECLARE @StatusJson nvarchar(max);
@@ -69,7 +72,7 @@ BEGIN
         PRINT N'monitor.USP_QueryStoreAnalysis';
         PRINT N'@QueryStoreDatabaseNames/Pattern bestimmen Query-Store-Quellen.';
         PRINT N'@ReferencedDatabaseNames/Pattern filtern in Showplans verwendete Datenbanken.';
-        PRINT N'@ResultSetArt = RAW, CONSOLE oder NONE; optional JSON über @Json OUTPUT.';
+        PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON über @Json OUTPUT.';
         RETURN;
     END;
 
@@ -341,6 +344,14 @@ BEGIN
             , N',"warnings":', COALESCE(@Warnings, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        SELECT * INTO [#MonitorTableResult] FROM @ModuleStatus;
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#MonitorTableResult'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

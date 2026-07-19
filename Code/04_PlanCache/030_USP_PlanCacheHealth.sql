@@ -35,6 +35,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanCacheHealth]
     , @MaxZeilen                  int         = 100
     , @MaxSqlTextZeichen          int         = 4000
     , @ResultSetArt               varchar(16) = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen               bit         = 0
     , @Json                        nvarchar(max) = NULL OUTPUT
     , @PrintMeldungen             bit         = 1
@@ -44,6 +45,8 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'SUMMARY'))));
@@ -53,7 +56,7 @@ BEGIN
         PRINT N'@AnalyseModus SUMMARY oder VOLL. VOLL prüft PLAN_CACHE_DEEP.';
         PRINT N'@MitDatenbankVerteilung bit=0: wertet dbid-Planattribute aus; benötigt VOLL.';
         PRINT N'@MitSingleUseDetails bit=0: liefert begrenzte Texte großer Single-use-Pläne; benötigt VOLL.';
-        PRINT N'@MaxZeilen int=100; @MaxSqlTextZeichen positiv = gekürzt, NULL/0 = vollständig; @ResultSetArt CONSOLE (Default)|RAW|NONE; optional @Json OUTPUT.';
+        PRINT N'@MaxZeilen int=100; @MaxSqlTextZeichen positiv = gekürzt, NULL/0 = vollständig; @ResultSetArt CONSOLE (Default)|RAW|TABLE|NONE; optional @Json OUTPUT.';
         PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0.';
         PRINT N'usecounts kann durch Showplan-Nutzung beeinflusst werden; Resultate sind eine Momentaufnahme.';
         RETURN;
@@ -142,6 +145,13 @@ END;
         DECLARE @OverviewJson nvarchar(max)=(SELECT COALESCE(SUM([PlanCount]),0) [planCount],COALESCE(SUM([TotalSizeBytes]),0) [totalSizeBytes],CONVERT(decimal(19,2),COALESCE(SUM([TotalSizeBytes]),0)/1048576.0) [totalSizeMb],COALESCE(SUM([SingleUsePlanCount]),0) [singleUsePlanCount],COALESCE(SUM([SingleUseSizeBytes]),0) [singleUseSizeBytes],CONVERT(decimal(9,2),100.0*SUM([SingleUseSizeBytes])/NULLIF(SUM([TotalSizeBytes]),0)) [singleUseMemoryPercent] FROM [#Summary] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @CategoriesJson nvarchar(max)=(SELECT * FROM [#Summary] ORDER BY [TotalSizeBytes] DESC,[PlanCount] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@DatabasesJson nvarchar(max)=(SELECT * FROM [#Db] ORDER BY [TotalSizeBytes] DESC,[PlanCount] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@SingleJson nvarchar(max)=(SELECT * FROM [#Single] ORDER BY [SizeBytes] DESC,[PlanHandle] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"overview":',COALESCE(@OverviewJson,N'{}'),N',"categories":',COALESCE(@CategoriesJson,N'[]'),N',"databases":',COALESCE(@DatabasesJson,N'[]'),N',"singleUsePlans":',COALESCE(@SingleJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Summary'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO
