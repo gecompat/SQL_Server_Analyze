@@ -68,7 +68,7 @@ BEGIN
     DECLARE @Sql nvarchar(max);
     DECLARE @ProductMajorVersion int = TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -82,14 +82,14 @@ BEGIN
         , [RequestedOrdinal] int NULL
     );
 
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    CREATE TABLE [#DatabaseState]
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_DatabaseState]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -104,7 +104,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
 
-    CREATE TABLE [#Configuration]
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_Configuration]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -113,7 +113,7 @@ BEGIN
         , [IsValueDefault] bit NULL
     );
 
-    CREATE TABLE [#AutomaticTuning]
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_AutomaticTuning]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -123,7 +123,7 @@ BEGIN
         , [ReasonDesc] nvarchar(120) NULL
     );
 
-    CREATE TABLE [#Signals]
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_Signals]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -133,7 +133,7 @@ BEGIN
         , [Interpretation] nvarchar(1000) NOT NULL
     );
 
-    CREATE TABLE [#Errors]
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_Errors]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -160,7 +160,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IntelligentQueryProcessingAnalysis_DatabaseCandidates',@WarningTable=N'#IntelligentQueryProcessingAnalysis_DatabaseCandidateWarnings';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -169,7 +169,7 @@ BEGIN
     BEGIN
         DECLARE [database_cursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName]
-            FROM [#DatabaseCandidates]
+            FROM [#IntelligentQueryProcessingAnalysis_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
         OPEN [database_cursor];
@@ -180,9 +180,9 @@ BEGIN
             BEGIN TRY
                 SET @Sql = N'USE ' + QUOTENAME(@Db) + N';
 DECLARE @DatabaseId int = DB_ID();
-DECLARE @DatabaseName sysname = DB_NAME();
+DECLARE @DatabaseName sysname = (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @CompatibilityLevel tinyint =
-    (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id] = DB_ID());
+    (SELECT [compatibility_level] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @ActualStateDesc nvarchar(60) = NULL;
 DECLARE @DesiredStateDesc nvarchar(60) = NULL;
 DECLARE @ReadonlyReason bigint = NULL;
@@ -191,9 +191,9 @@ SELECT TOP (1)
       @ActualStateDesc = [actual_state_desc]
     , @DesiredStateDesc = [desired_state_desc]
     , @ReadonlyReason = [readonly_reason]
-FROM [sys].[database_query_store_options];
+FROM [sys].[database_query_store_options] WITH (NOLOCK);
 
-INSERT [#DatabaseState]
+INSERT [#IntelligentQueryProcessingAnalysis_DatabaseState]
 (
       [DatabaseId], [DatabaseName], [CompatibilityLevel]
     , [QueryStoreActualStateDesc], [QueryStoreDesiredStateDesc]
@@ -214,7 +214,7 @@ SELECT
            ELSE ''INFO'' END
     , N''Feature-Eignung folgt Version und Compatibility Level; Evidenzmengen allein bewerten keine Wirksamkeit.'';
 
-INSERT [#Configuration]
+INSERT [#IntelligentQueryProcessingAnalysis_Configuration]
 (
       [DatabaseId], [DatabaseName], [ConfigurationName]
     , [ConfigurationValue], [IsValueDefault]
@@ -222,7 +222,7 @@ INSERT [#Configuration]
 SELECT
       @DatabaseId, @DatabaseName, [name]
     , CONVERT(nvarchar(4000), [value]), [is_value_default]
-FROM [sys].[database_scoped_configurations]
+FROM [sys].[database_scoped_configurations] WITH (NOLOCK)
 WHERE [name] IN
 (
       N''PARAMETER_SENSITIVE_PLAN_OPTIMIZATION''
@@ -241,20 +241,20 @@ WHERE [name] IN
                 IF @ProductMajorVersion >= 16
                 BEGIN
                     SET @Sql += N'
-    INSERT [#Signals]
+    INSERT [#IntelligentQueryProcessingAnalysis_Signals]
     SELECT @DatabaseId, @DatabaseName, ''QUERY_VARIANTS'', 1, COUNT_BIG(*),
            N''Aggregierte PSP-/OPPO-Varianten; null Zeilen sind kein Fehlerbeweis.''
-    FROM [sys].[query_store_query_variant];
+    FROM [sys].[query_store_query_variant] WITH (NOLOCK);
 
-    INSERT [#Signals]
+    INSERT [#IntelligentQueryProcessingAnalysis_Signals]
     SELECT @DatabaseId, @DatabaseName, ''PLAN_FEEDBACK'', 1, COUNT_BIG(*),
            N''Aggregierte CE-, Memory-Grant-, DOP- oder LAQ-Feedbackevidenz; keine Query-Texte.''
-    FROM [sys].[query_store_plan_feedback];';
+    FROM [sys].[query_store_plan_feedback] WITH (NOLOCK);';
                 END
                 ELSE
                 BEGIN
                     SET @Sql += N'
-INSERT [#Signals] VALUES
+INSERT [#IntelligentQueryProcessingAnalysis_Signals] VALUES
 (@DatabaseId, @DatabaseName, ''QUERY_VARIANTS'', 0, NULL,
  N''Katalogsicht ist vor SQL Server 2022 nicht verfügbar.''),
 (@DatabaseId, @DatabaseName, ''PLAN_FEEDBACK'', 0, NULL,
@@ -262,19 +262,19 @@ INSERT [#Signals] VALUES
                 END;
 
                 SET @Sql += N'
-    INSERT [#AutomaticTuning]
+    INSERT [#IntelligentQueryProcessingAnalysis_AutomaticTuning]
     (
           [DatabaseId], [DatabaseName], [OptionName]
         , [DesiredStateDesc], [ActualStateDesc], [ReasonDesc]
     )
     SELECT @DatabaseId, @DatabaseName, [name], [desired_state_desc],
            [actual_state_desc], [reason_desc]
-    FROM [sys].[database_automatic_tuning_options];
+    FROM [sys].[database_automatic_tuning_options] WITH (NOLOCK);
 
-    INSERT [#Signals]
+    INSERT [#IntelligentQueryProcessingAnalysis_Signals]
     SELECT @DatabaseId, @DatabaseName, ''TUNING_RECOMMENDATIONS'', 1, COUNT_BIG(*),
            N''Anzahl aktueller Automatic-Tuning-Empfehlungen; Details und SQL-Texte werden nicht gelesen.''
-    FROM [sys].[dm_db_tuning_recommendations];';
+    FROM [sys].[dm_db_tuning_recommendations] WITH (NOLOCK);';
 
                 EXEC [sys].[sp_executesql]
                       @Sql
@@ -282,7 +282,7 @@ INSERT [#Signals] VALUES
                     , @ProductMajorVersion = @ProductMajorVersion;
             END TRY
             BEGIN CATCH
-                INSERT [#Errors]
+                INSERT [#IntelligentQueryProcessingAnalysis_Errors]
                 VALUES
                 (
                       @Db
@@ -300,24 +300,24 @@ INSERT [#Signals] VALUES
         CLOSE [database_cursor];
         DEALLOCATE [database_cursor];
 
-        INSERT [#Errors]
+        INSERT [#IntelligentQueryProcessingAnalysis_Errors]
         SELECT [RequestedName], [StatusCode], NULL, [ErrorMessage]
-        FROM [#DatabaseCandidateWarnings];
+        FROM [#IntelligentQueryProcessingAnalysis_DatabaseCandidateWarnings];
 
-        IF EXISTS (SELECT 1 FROM [#Errors])
+        IF EXISTS (SELECT 1 FROM [#IntelligentQueryProcessingAnalysis_Errors])
             SET @IsPartial = 1;
 
-        IF NOT EXISTS (SELECT 1 FROM [#DatabaseState])
+        IF NOT EXISTS (SELECT 1 FROM [#IntelligentQueryProcessingAnalysis_DatabaseState])
         BEGIN
             SELECT @StatusCode = CASE WHEN EXISTS
-                   (SELECT 1 FROM [#Errors] WHERE [StatusCode] = 'DENIED_PERMISSION')
+                   (SELECT 1 FROM [#IntelligentQueryProcessingAnalysis_Errors] WHERE [StatusCode] = 'DENIED_PERMISSION')
                    THEN 'DENIED_PERMISSION' ELSE 'DATABASE_UNAVAILABLE' END,
                    @IsPartial = 1;
         END
         ELSE IF @IsPartial = 1
             SET @StatusCode = 'AVAILABLE_LIMITED';
         ELSE IF EXISTS
-                (SELECT 1 FROM [#DatabaseState] WHERE [FindingCode] <> 'IQP_EVIDENCE_AVAILABLE')
+                (SELECT 1 FROM [#IntelligentQueryProcessingAnalysis_DatabaseState] WHERE [FindingCode] <> 'IQP_EVIDENCE_AVAILABLE')
             SET @StatusCode = 'AVAILABLE_WITH_FINDING';
     END;
 
@@ -336,22 +336,22 @@ INSERT [#Signals] VALUES
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER
         );
         DECLARE @StateJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#DatabaseState]
+            (SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_DatabaseState]
              ORDER BY [DatabaseId] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @ConfigurationJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Configuration]
+            (SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_Configuration]
              ORDER BY [DatabaseId], [ConfigurationName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @AutomaticTuningJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#AutomaticTuning]
+            (SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_AutomaticTuning]
              ORDER BY [DatabaseId], [OptionName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SignalsJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Signals]
+            (SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_Signals]
              ORDER BY [DatabaseId], [SignalCode]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
-            (SELECT * FROM [#Errors] ORDER BY [DatabaseName]
+            (SELECT * FROM [#IntelligentQueryProcessingAnalysis_Errors] ORDER BY [DatabaseName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
@@ -372,17 +372,17 @@ INSERT [#Signals] VALUES
                @IsPartial AS [IsPartial], @ProductMajorVersion AS [ProductMajorVersion],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Read-only; keine Query-Texte oder Showplans.' AS [Detail];
-        SELECT TOP (@Limit) * FROM [#DatabaseState] ORDER BY [DatabaseId];
-        SELECT TOP (@Limit) * FROM [#Configuration] ORDER BY [DatabaseId], [ConfigurationName];
-        SELECT TOP (@Limit) * FROM [#AutomaticTuning] ORDER BY [DatabaseId], [OptionName];
-        SELECT TOP (@Limit) * FROM [#Signals] ORDER BY [DatabaseId], [SignalCode];
-        SELECT * FROM [#Errors] ORDER BY [DatabaseName];
+        SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_DatabaseState] ORDER BY [DatabaseId];
+        SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_Configuration] ORDER BY [DatabaseId], [ConfigurationName];
+        SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_AutomaticTuning] ORDER BY [DatabaseId], [OptionName];
+        SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_Signals] ORDER BY [DatabaseId], [SignalCode];
+        SELECT * FROM [#IntelligentQueryProcessingAnalysis_Errors] ORDER BY [DatabaseName];
     END
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
         SELECT N'Intelligent Query Processing' AS [Ergebnis], @Now AS [Stand_UTC],
                @StatusCode AS [Status], @IsPartial AS [Teilweise],
-               (SELECT COUNT_BIG(*) FROM [#DatabaseState]) AS [Datenbanken],
+               (SELECT COUNT_BIG(*) FROM [#IntelligentQueryProcessingAnalysis_DatabaseState]) AS [Datenbanken],
                N'Aggregierte Evidenz ohne Query-Text oder Showplan.' AS [Hinweis];
 
         SELECT TOP (@Limit)
@@ -392,26 +392,26 @@ INSERT [#Signals] VALUES
                [PspEligible] AS [PSP_geeignet], [OppoEligible] AS [OPPO_geeignet],
                [FindingCode] AS [Befund], [FindingSeverity] AS [Prioritaet],
                [EvidenceLimit] AS [Grenze]
-        FROM [#DatabaseState]
+        FROM [#IntelligentQueryProcessingAnalysis_DatabaseState]
         ORDER BY [DatabaseId];
 
         SELECT TOP (@Limit)
                N'IQP-Signal' AS [Ergebnis], [DatabaseName] AS [Datenbank],
                [SignalCode] AS [Signal], [IsSourceAvailable] AS [Quelle_verfuegbar],
                [EvidenceCount] AS [Anzahl], [Interpretation]
-        FROM [#Signals]
+        FROM [#IntelligentQueryProcessingAnalysis_Signals]
         ORDER BY [DatabaseId], [SignalCode];
 
         SELECT N'IQP-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank],
                [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer],
                [ErrorMessage] AS [Meldung]
-        FROM [#Errors]
+        FROM [#IntelligentQueryProcessingAnalysis_Errors]
         ORDER BY [DatabaseName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Signals'
+              @SourceTable = N'#IntelligentQueryProcessingAnalysis_Signals'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

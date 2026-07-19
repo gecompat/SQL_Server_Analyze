@@ -5,11 +5,11 @@
 
 ## Kein normaler Direktaufruf
 
-Diese interne Procedure setzt exakt definierte lokale Temp-Tabellen voraus und liefert keine normalen Analyse-Resultsets. Die aufrufende Procedure ist der öffentliche Einstieg.
+Diese interne Procedure setzt exakt definierte lokale Temp-Tabellen voraus. Deren procedurebezogene Namen werden mit `@CandidateTable` und optional `@WarningTable` übergeben. Sie liefert keine normalen Analyse-Resultsets; die aufrufende Procedure ist der öffentliche Einstieg.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in `#DatabaseCandidates` entspricht einer für den aktuellen Lauf akzeptierten Datenbank. Warnzeilen dokumentieren angeforderte, aber nicht nutzbare Scopes.
+Eine Zeile in der über `@CandidateTable` benannten Tabelle entspricht einer für den aktuellen Lauf akzeptierten Datenbank. Warnzeilen in `@WarningTable` dokumentieren angeforderte, aber nicht nutzbare Scopes.
 
 ## So lesen
 

@@ -1,10 +1,12 @@
 # Release Notes
 
-## Stand 2026-07-19 – typisierte TABLE-Ausgabe `1.1.0-special.10`
+## Stand 2026-07-19 – typisierte TABLE-Ausgabe `1.1.0-special.11`
 
 - Alle 82 öffentlichen Analyse-Procedures akzeptieren `@ResultSetArt='TABLE'` und `@ResultTable`.
-- Der interne Writer passt ausschließlich leere lokale Platzhaltertabelle mit `[__MonitorPlaceholder] bit NULL` an die native Primärstruktur an oder ergänzt eine bereits exakt passende Tabelle.
-- Globale Temp- und permanente Tabellen, gefüllte Platzhalter, Schemaabweichungen sowie nicht sicher reproduzierbare Typen werden kontrolliert abgelehnt.
+- Der interne Writer passt jede leere lokale Ein-Spalten-Tabelle unabhängig von Dummy-Spaltenname und -typ an die native Primärstruktur an oder ergänzt eine bereits exakt passende Tabelle.
+- Globale Temp- und permanente Tabellen, gefüllte Ein-Spalten-Tabellen, sonstige Schemaabweichungen sowie nicht sicher reproduzierbare Typen werden kontrolliert abgelehnt.
+- Alle in Procedures und Tests erzeugten lokalen Temp-Tabellen tragen einen objektbezogenen Namen; die gemeinsamen Auswahl-Helper erhalten die konkreten Namen als Parameter.
+- Katalogzugriffe verwenden projektweit `WITH (NOLOCK)` und `LOCK_TIMEOUT 0`; potenziell blockierende Metadatenfunktionen sind durch direkte `sys.*`-Abfragen oder einen expliziten Nicht-verfügbar-Status ersetzt. Ein statischer Gate schützt den Vertrag.
 - `Metadata/Inventory/TableOutput.csv` weist das Primärergebnis jeder Procedure aus; Aggregatoren liefern Modulstatus oder Modul-Envelopes.
 - Suite 187 erweitert den Release-Gate-Vertrag auf 32 Suiten und prüft Struktur, Typen, Append sowie fehlerseitige Unverändertheit mit synthetischen Daten.
 

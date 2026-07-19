@@ -51,6 +51,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DiagnosticFindings]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -76,7 +77,7 @@ BEGIN
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @CurrentCompatibilityLevel int =
-        (SELECT [compatibility_level] FROM [sys].[databases] WHERE [database_id] = DB_ID());
+        (SELECT [compatibility_level] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 
     DECLARE @IntegrityJson nvarchar(max) = NULL;
     DECLARE @CapacityJson nvarchar(max) = NULL;
@@ -103,7 +104,7 @@ BEGIN
         , [ErrorNumber] int NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#Findings]
+    CREATE TABLE [#DiagnosticFindings_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
         , [SourceModule] sysname NOT NULL
@@ -315,7 +316,7 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN
         DECLARE @ParseSql nvarchar(max) = N'
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_DatabaseIntegrityAnalysis'', ''INTEGRITY'',
        CASE WHEN [FindingCode] IN (''SUSPECT_PAGES_PRESENT'',''DAMAGED_BACKUP_METADATA'',''HADR_PAGE_REPAIR_PENDING'') THEN ''HIGH''
             WHEN [FindingCode] IN (''CHECKDB_EVIDENCE_MISSING'',''CHECKDB_EVIDENCE_OLD'') THEN ''MEDIUM'' ELSE ''LOW'' END,
@@ -331,7 +332,7 @@ FROM OPENJSON(COALESCE(@Integrity, N''{}''), ''$.integrity'') WITH
  [DamagedBackupCount] bigint, [CheckdbAgeHours] bigint, [EvidenceLimit] nvarchar(1000))
 WHERE [FindingCode] <> ''NO_INDICATOR_FOUND'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_DatabaseCapacityAnalysis'', ''CAPACITY'',
        CASE WHEN [FindingCode] IN (''FILE_MAX_SIZE_REACHED'',''NEXT_GROWTH_EXCEEDS_VOLUME_FREE'') THEN ''HIGH'' ELSE ''MEDIUM'' END,
        ''HIGH'', N''DATABASE_FILE'', CONCAT([DatabaseName], N''/'', [LogicalFileName]), [FindingCode],
@@ -345,7 +346,7 @@ FROM OPENJSON(COALESCE(@Capacity, N''{}''), ''$.capacity'') WITH
  [FindingCode] varchar(80), [EvidenceLimit] nvarchar(1000))
 WHERE [FindingCode] <> ''NO_CAPACITY_INDICATOR'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_BufferPoolAnalysis'', ''MEMORY'', [FindingSeverity], ''HIGH'', N''INSTANCE'', NULL,
        [FindingCode], CONVERT(decimal(38,4), [AvailablePhysicalMemoryPercent]),
        CONCAT(N''OS available percent='', [AvailablePhysicalMemoryPercent],
@@ -357,7 +358,7 @@ FROM OPENJSON(COALESCE(@Memory, N''{}''), ''$.memory'') WITH
  [ProcessPhysicalMemoryLow] bit, [ProcessVirtualMemoryLow] bit, [EvidenceLimit] nvarchar(1000))
 WHERE [FindingCode] <> ''NO_MEMORY_PRESSURE_FLAG'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_BufferPoolAnalysis'', ''MEMORY_GRANTS'', ''HIGH'', ''HIGH'', N''RESOURCE_SEMAPHORE'',
        CONCAT(N''pool='', [PoolId], N''; semaphore='', [ResourceSemaphoreId]), ''MEMORY_GRANT_WAITERS_PRESENT'',
        CONVERT(decimal(38,4), [WaiterCount]),
@@ -368,7 +369,7 @@ FROM OPENJSON(COALESCE(@Memory, N''{}''), ''$.resourceSemaphores'') WITH
 ([PoolId] int, [ResourceSemaphoreId] int, [AvailableMemoryKb] bigint, [GrantedMemoryKb] bigint, [WaiterCount] int)
 WHERE [WaiterCount] > 0;
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_BackupChainAnalysis'', ''RECOVERABILITY'', [FindingSeverity], ''MEDIUM'', N''DATABASE'', [DatabaseName],
        [FindingCode], CONVERT(decimal(38,4), [LogGapCountInWindow]),
        CONCAT(N''log gaps='', [LogGapCountInWindow], N''; damaged='', [DamagedBackupCount],
@@ -380,7 +381,7 @@ FROM OPENJSON(COALESCE(@Backup, N''{}''), ''$.summary'') WITH
  [EvidenceLimit] nvarchar(1000))
 WHERE [FindingCode] NOT IN (''CHAIN_METADATA_CONSISTENT'',''TEMPDB_NOT_APPLICABLE'');
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_AvailabilityDeepAnalysis'', ''AVAILABILITY'', [FindingSeverity], ''HIGH'', N''AG_DATABASE'',
        CONCAT([AvailabilityGroupName], N''/'', [DatabaseName]), [FindingCode],
        CONVERT(decimal(38,4), COALESCE([SecondaryLagSeconds], [LogSendQueueSizeKb], [RedoQueueSizeKb])),
@@ -394,7 +395,7 @@ FROM OPENJSON(COALESCE(@Availability, N''{}''), ''$.databases'') WITH
  [RedoQueueSizeKb] bigint, [IsSuspended] bit)
 WHERE [FindingCode] <> ''DATABASE_STATE_ACCEPTABLE'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_AvailabilityDeepAnalysis'', ''AVAILABILITY'',
        CASE WHEN [FindingCode] = ''QUORUM_STATE_NOT_VISIBLE'' THEN ''HIGH'' ELSE ''MEDIUM'' END,
        ''MEDIUM'', N''CLUSTER'', NULL, [FindingCode], NULL,
@@ -405,7 +406,7 @@ FROM OPENJSON(COALESCE(@Availability, N''{}''), ''$.cluster'') WITH
 ([QuorumStateDesc] nvarchar(60), [FindingCode] varchar(80))
 WHERE [FindingCode] <> ''QUORUM_STATE_NORMAL'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_AvailabilityDeepAnalysis'', ''AVAILABILITY'', ''HIGH'', ''HIGH'', N''AG_REPLICA'',
        CONCAT([AvailabilityGroupName], N''/'', [ReplicaServerName]), [FindingCode], NULL,
        CONCAT(N''role='', COALESCE([RoleDesc], N''NULL''), N''; connection='', COALESCE([ConnectedStateDesc], N''NULL''),
@@ -417,7 +418,7 @@ FROM OPENJSON(COALESCE(@Availability, N''{}''), ''$.replicas'') WITH
  [ConnectedStateDesc] nvarchar(60), [SynchronizationHealthDesc] nvarchar(60), [FindingCode] varchar(80))
 WHERE [FindingCode] <> ''REPLICA_STATE_ACCEPTABLE'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_AvailabilityDeepAnalysis'', ''AVAILABILITY'', ''HIGH'', ''HIGH'', N''DATABASE'',
        [DatabaseName], [FindingCode], CONVERT(decimal(38,4), [PageStatus]),
        CONCAT(N''page repair status='', COALESCE(CONVERT(nvarchar(20), [PageStatus]), N''NULL''),
@@ -428,7 +429,7 @@ FROM OPENJSON(COALESCE(@Availability, N''{}''), ''$.pageRepair'') WITH
 ([DatabaseName] sysname, [ErrorType] int, [PageStatus] int, [FindingCode] varchar(80))
 WHERE [FindingCode] <> ''PAGE_REPAIR_SUCCEEDED'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_AvailabilityDeepAnalysis'', ''AVAILABILITY'', ''HIGH'', ''MEDIUM'', N''DATABASE'',
        [DatabaseName], ''PHYSICAL_SEEDING_FAILURE'', CONVERT(decimal(38,4), [FailureCode]),
        CONCAT(N''seeding state='', COALESCE([CurrentStateDesc], N''NULL''),
@@ -439,7 +440,7 @@ FROM OPENJSON(COALESCE(@Availability, N''{}''), ''$.seeding'') WITH
 ([DatabaseName] sysname, [CurrentStateDesc] nvarchar(60), [FailureCode] int)
 WHERE COALESCE([FailureCode], 0) <> 0;
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_AgentMonitoringAnalysis'', ''MONITORING'', [Severity], ''MEDIUM'', [ScopeType], [ScopeName],
        [FindingCode], CONVERT(decimal(38,4), [MetricValue]), [Evidence], [EvidenceLimit],
        N''SQL-Agent-Konfiguration mit externem Monitoring und Betriebsprozess abgleichen.''
@@ -447,7 +448,7 @@ FROM OPENJSON(COALESCE(@Agent, N''{}''), ''$.findings'') WITH
 ([Severity] varchar(16), [ScopeType] nvarchar(60), [ScopeName] nvarchar(256), [FindingCode] varchar(100),
  [MetricValue] bigint, [Evidence] nvarchar(1000), [EvidenceLimit] nvarchar(1000));
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_SchemaDesignAnalysis'', ''SCHEMA_DESIGN'', [Severity], ''HIGH'', [ObjectType],
        CONCAT([DatabaseName], N''/'', COALESCE([SchemaName] + N''.'', N''''), [ObjectName]),
        [FindingCode], [MetricValue], [Evidence], [EvidenceLimit],
@@ -457,7 +458,7 @@ FROM OPENJSON(COALESCE(@Schema, N''{}''), ''$.findings'') WITH
  [ObjectName] sysname, [FindingCode] varchar(100), [MetricValue] decimal(38,4),
  [Evidence] nvarchar(1000), [EvidenceLimit] nvarchar(1000));
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_StatisticsDistributionAnalysis'', ''STATISTICS_DISTRIBUTION'', [Severity], [Confidence], N''STATISTICS'',
        CONCAT([DatabaseName],N''/'',[SchemaName],N''.'',[ObjectName],N''/'',[StatisticsName]),
        [FindingCode],[MetricValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck]
@@ -467,7 +468,7 @@ FROM OPENJSON(COALESCE(@StatisticsDistribution, N''{}''), ''$.findings'') WITH
  [MetricValue] decimal(38,4), [Evidence] nvarchar(1000), [EvidenceLimit] nvarchar(1000),
  [RecommendedNextCheck] nvarchar(1000));
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_IntelligentQueryProcessingAnalysis'', ''IQP'', [FindingSeverity], ''HIGH'', N''DATABASE'',
        [DatabaseName], [FindingCode], CONVERT(decimal(38,4), [CompatibilityLevel]),
        CONCAT(N''compatibility level='', [CompatibilityLevel], N''; query store='', [QueryStoreActualStateDesc], N''.''),
@@ -477,7 +478,7 @@ FROM OPENJSON(COALESCE(@Iqp, N''{}''), ''$.databaseState'') WITH
  [FindingCode] varchar(80), [FindingSeverity] varchar(16), [EvidenceLimit] nvarchar(1000))
 WHERE [FindingCode] <> ''IQP_EVIDENCE_AVAILABLE'';
 
-INSERT [#Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+INSERT [#DiagnosticFindings_Findings] ([SourceModule],[Category],[Severity],[Confidence],[ScopeType],[ScopeName],[FindingCode],[EvidenceMetric],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
 SELECT N''USP_InternalContentionAnalysis'', ''INTERNAL_CONTENTION'', ''MEDIUM'', ''MEDIUM'', N''LATCH'',
        [LatchClass], ''LATCH_WAIT_DELTA_REVIEW'', CONVERT(decimal(38,4), [WaitTimeMs]),
        CONCAT(N''wait time ms='', [WaitTimeMs], N''; waiting requests='', [WaitingRequests], N''; measurement='', [MeasurementKind], N''.''),
@@ -518,7 +519,7 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
             WHERE [InvocationStatus] <> 'EXECUTED' OR COALESCE([IsPartial], 0) = 1
             ORDER BY [ExecutionOrdinal];
         END
-        ELSE IF EXISTS (SELECT 1 FROM [#Findings])
+        ELSE IF EXISTS (SELECT 1 FROM [#DiagnosticFindings_Findings])
             SET @StatusCode = 'AVAILABLE_WITH_FINDING';
     END;
 
@@ -530,14 +531,14 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
         DECLARE @MetaJson nvarchar(max) =
             (SELECT N'DiagnosticFindings' AS [resultName], 1 AS [schemaVersion], @Now AS [generatedAtUtc],
                     @StatusCode AS [statusCode], @IsPartial AS [isPartial], @MinimumSeverity AS [minimumSeverity],
-                    (SELECT COUNT_BIG(*) FROM [#Findings]) AS [totalFindingCount],
-                    (SELECT COUNT_BIG(*) FROM [#Findings]
+                    (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]) AS [totalFindingCount],
+                    (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]
                      WHERE CASE [Severity] WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
                            >= CASE @MinimumSeverity WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END)
                     AS [returnedFindingCount]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
         DECLARE @FindingsJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Findings]
+            (SELECT TOP (@Limit) * FROM [#DiagnosticFindings_Findings]
              WHERE CASE [Severity] WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
                    >= CASE @MinimumSeverity WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
              ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,
@@ -553,10 +554,10 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
     BEGIN
         SELECT N'USP_DiagnosticFindings' AS [ModuleName], @Now AS [CollectionTimeUtc],
                @StatusCode AS [StatusCode], @IsPartial AS [IsPartial],
-               (SELECT COUNT_BIG(*) FROM [#Findings]) AS [FindingCount],
+               (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]) AS [FindingCount],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Normalisierte Triage über Kindmodul-Evidenz; keine automatische Ursachenfeststellung.' AS [Detail];
-        SELECT TOP (@Limit) * FROM [#Findings]
+        SELECT TOP (@Limit) * FROM [#DiagnosticFindings_Findings]
         WHERE CASE [Severity] WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
               >= CASE @MinimumSeverity WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,
@@ -566,13 +567,13 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
         SELECT N'Diagnostische Befunde' AS [Ergebnis], @Now AS [Stand_UTC], @StatusCode AS [Status],
-               @MinimumSeverity AS [Mindestprioritaet], (SELECT COUNT_BIG(*) FROM [#Findings]) AS [Befunde_gesamt],
+               @MinimumSeverity AS [Mindestprioritaet], (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]) AS [Befunde_gesamt],
                @ErrorMessage AS [Hinweis];
         SELECT TOP (@Limit) N'Diagnostischer Befund' AS [Ergebnis], [Severity] AS [Prioritaet],
                [Confidence] AS [Konfidenz], [Category] AS [Kategorie], [ScopeType] AS [Bereichstyp],
                [ScopeName] AS [Bereich], [FindingCode] AS [Befund], [EvidenceMetric] AS [Messwert],
                [Evidence] AS [Evidenz], [EvidenceLimit] AS [Grenze], [RecommendedNextCheck] AS [Naechste_Pruefung]
-        FROM [#Findings]
+        FROM [#DiagnosticFindings_Findings]
         WHERE CASE [Severity] WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
               >= CASE @MinimumSeverity WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,
@@ -585,7 +586,7 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Findings'
+              @SourceTable = N'#DiagnosticFindings_Findings'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

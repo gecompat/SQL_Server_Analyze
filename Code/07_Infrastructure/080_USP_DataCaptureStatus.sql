@@ -75,7 +75,7 @@ BEGIN
     DECLARE @Db sysname;
     DECLARE @Sql nvarchar(max);
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#DataCaptureStatus_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -89,14 +89,14 @@ BEGIN
         , [RequestedOrdinal] int NULL
     );
 
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#DataCaptureStatus_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
 
-    CREATE TABLE [#Db]
+    CREATE TABLE [#DataCaptureStatus_Db]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StateDesc] nvarchar(60) NULL
@@ -110,7 +110,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    CREATE TABLE [#Cdc]
+    CREATE TABLE [#DataCaptureStatus_Cdc]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CaptureInstance] sysname NULL
@@ -125,7 +125,7 @@ BEGIN
         , [PartitionSwitch] bit NULL
     );
 
-    CREATE TABLE [#Ct]
+    CREATE TABLE [#DataCaptureStatus_Ct]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SchemaName] sysname NULL
@@ -137,7 +137,7 @@ BEGIN
         , [MinValidVersion] bigint NULL
     );
 
-    CREATE TABLE [#Jobs]
+    CREATE TABLE [#DataCaptureStatus_Jobs]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [JobType] nvarchar(20) NULL
@@ -148,7 +148,7 @@ BEGIN
         , [LastMessage] nvarchar(4000) NULL
     );
 
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#DataCaptureStatus_Warnings]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SourceName] varchar(40) NOT NULL
@@ -173,14 +173,14 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DataCaptureStatus_DatabaseCandidates',@WarningTable=N'#DataCaptureStatus_DatabaseCandidateWarnings';
     END;
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
         SELECT [DatabaseName]
-        FROM [#DatabaseCandidates]
+        FROM [#DataCaptureStatus_DatabaseCandidates]
         WHERE [DatabaseName] <> N'tempdb'
         ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
@@ -191,7 +191,7 @@ BEGIN
         BEGIN
             BEGIN TRY
                 SET @Sql = N'USE ' + QUOTENAME(@Db) + N';
-INSERT [#Db]
+INSERT [#DataCaptureStatus_Db]
 (
       [DatabaseName], [StateDesc], [IsCdcEnabled], [IsChangeTrackingEnabled]
     , [RetentionPeriod], [RetentionPeriodUnitsDesc], [IsAutoCleanupOn]
@@ -222,9 +222,9 @@ IF EXISTS
     WHERE [s].[name] = N''cdc'' AND [t].[name] = N''change_tables''
 )
 BEGIN
-    EXEC(N''INSERT [#Cdc]
+    EXEC(N''INSERT [#DataCaptureStatus_Cdc]
     SELECT TOP('' + CONVERT(nvarchar(30), @LocalRows) + N'')
-          DB_NAME()
+          (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())
         , [ct].[capture_instance]
         , [s].[name]
         , [t].[name]
@@ -243,9 +243,9 @@ BEGIN
     ORDER BY [ct].[capture_instance];'');
 END;
 
-INSERT [#Ct]
+INSERT [#DataCaptureStatus_Ct]
 SELECT TOP (@LocalRows)
-      DB_NAME()
+      (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())
     , [s].[name]
     , [t].[name]
     , [ct].[object_id]
@@ -265,7 +265,7 @@ ORDER BY [s].[name], [t].[name];';
                     , N'@LocalRows bigint'
                     , @LocalRows = @LocalCandidateRows;
 
-                INSERT [#Jobs]
+                INSERT [#DataCaptureStatus_Jobs]
                 SELECT TOP (@LocalCandidateRows)
                       @Db
                     , CASE WHEN [j].[name] LIKE N'cdc.' + @Db + N'_capture%' THEN N'CAPTURE' ELSE N'CLEANUP' END
@@ -286,11 +286,11 @@ ORDER BY [s].[name], [t].[name];';
                 ORDER BY [j].[name];
             END TRY
             BEGIN CATCH
-                INSERT [#Db] VALUES(@Db, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+                INSERT [#DataCaptureStatus_Db] VALUES(@Db, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
                     CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_MESSAGE());
-                INSERT [#Warnings] VALUES(@Db, 'DATABASE_CAPTURE',
+                INSERT [#DataCaptureStatus_Warnings] VALUES(@Db, 'DATABASE_CAPTURE',
                     CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
@@ -303,13 +303,13 @@ ORDER BY [s].[name], [t].[name];';
         CLOSE [DatabaseCursor];
         DEALLOCATE [DatabaseCursor];
 
-        INSERT [#Warnings]([DatabaseName],[SourceName],[StatusCode],[ErrorNumber],[ErrorMessage])
+        INSERT [#DataCaptureStatus_Warnings]([DatabaseName],[SourceName],[StatusCode],[ErrorNumber],[ErrorMessage])
         SELECT [RequestedName], 'DATABASE_SELECTION', [StatusCode], NULL, [ErrorMessage]
-        FROM [#DatabaseCandidateWarnings];
+        FROM [#DataCaptureStatus_DatabaseCandidateWarnings];
 
-        IF EXISTS(SELECT 1 FROM [#Warnings])
+        IF EXISTS(SELECT 1 FROM [#DataCaptureStatus_Warnings])
         BEGIN
-            SET @StatusCode = CASE WHEN EXISTS(SELECT 1 FROM [#Db] WHERE [StatusCode] = 'AVAILABLE') THEN 'PARTIAL_RESULT' ELSE 'ERROR_HANDLED' END;
+            SET @StatusCode = CASE WHEN EXISTS(SELECT 1 FROM [#DataCaptureStatus_Db] WHERE [StatusCode] = 'AVAILABLE') THEN 'PARTIAL_RESULT' ELSE 'ERROR_HANDLED' END;
             SET @IsPartial = 1;
         END;
     END;
@@ -330,36 +330,36 @@ ORDER BY [s].[name], [t].[name];';
                    @ErrorNumber AS [errorNumber], @ErrorMessage AS [errorMessage]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
-        DECLARE @JsonDb nvarchar(max) = (SELECT * FROM [#Db] ORDER BY [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @JsonCdc nvarchar(max) = (SELECT TOP (@EffectiveMaxZeilen) * FROM [#Cdc] ORDER BY [DatabaseName], [CaptureInstance] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @JsonCt nvarchar(max) = (SELECT TOP (@EffectiveMaxZeilen) * FROM [#Ct] ORDER BY [DatabaseName], [SchemaName], [TableName] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @JsonJobs nvarchar(max) = (SELECT TOP (@EffectiveMaxZeilen) * FROM [#Jobs] ORDER BY [DatabaseName], [JobType], [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @JsonWarnings nvarchar(max) = (SELECT * FROM [#Warnings] ORDER BY [DatabaseName], [SourceName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @JsonDb nvarchar(max) = (SELECT * FROM [#DataCaptureStatus_Db] ORDER BY [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @JsonCdc nvarchar(max) = (SELECT TOP (@EffectiveMaxZeilen) * FROM [#DataCaptureStatus_Cdc] ORDER BY [DatabaseName], [CaptureInstance] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @JsonCt nvarchar(max) = (SELECT TOP (@EffectiveMaxZeilen) * FROM [#DataCaptureStatus_Ct] ORDER BY [DatabaseName], [SchemaName], [TableName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @JsonJobs nvarchar(max) = (SELECT TOP (@EffectiveMaxZeilen) * FROM [#DataCaptureStatus_Jobs] ORDER BY [DatabaseName], [JobType], [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @JsonWarnings nvarchar(max) = (SELECT * FROM [#DataCaptureStatus_Warnings] ORDER BY [DatabaseName], [SourceName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@JsonMeta,N'{}'), N',"databases":', COALESCE(@JsonDb,N'[]'), N',"cdcTables":', COALESCE(@JsonCdc,N'[]'), N',"changeTrackingTables":', COALESCE(@JsonCt,N'[]'), N',"cdcJobs":', COALESCE(@JsonJobs,N'[]'), N',"warnings":', COALESCE(@JsonWarnings,N'[]'), N'}');
     END;
 
     IF @ResultSetArtNormalisiert = 'RAW'
     BEGIN
         SELECT @CollectionTimeUtc AS [CollectionTimeUtc], N'monitor.USP_DataCaptureStatus' AS [ModuleName], @StatusCode AS [StatusCode], @IsPartial AS [IsPartial], @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage];
-        SELECT * FROM [#Db] ORDER BY [DatabaseName];
-        SELECT TOP (@EffectiveMaxZeilen) * FROM [#Cdc] ORDER BY [DatabaseName], [CaptureInstance];
-        SELECT TOP (@EffectiveMaxZeilen) * FROM [#Ct] ORDER BY [DatabaseName], [SchemaName], [TableName];
-        SELECT TOP (@EffectiveMaxZeilen) * FROM [#Jobs] ORDER BY [DatabaseName], [JobType], [JobName];
-        SELECT * FROM [#Warnings] ORDER BY [DatabaseName], [SourceName];
+        SELECT * FROM [#DataCaptureStatus_Db] ORDER BY [DatabaseName];
+        SELECT TOP (@EffectiveMaxZeilen) * FROM [#DataCaptureStatus_Cdc] ORDER BY [DatabaseName], [CaptureInstance];
+        SELECT TOP (@EffectiveMaxZeilen) * FROM [#DataCaptureStatus_Ct] ORDER BY [DatabaseName], [SchemaName], [TableName];
+        SELECT TOP (@EffectiveMaxZeilen) * FROM [#DataCaptureStatus_Jobs] ORDER BY [DatabaseName], [JobType], [JobName];
+        SELECT * FROM [#DataCaptureStatus_Warnings] ORDER BY [DatabaseName], [SourceName];
     END
     ELSE IF @ResultSetArtNormalisiert = 'CONSOLE'
     BEGIN
         SELECT N'Data-Capture-Analyse' AS [Ergebnis], @CollectionTimeUtc AS [Stand_UTC], @StatusCode AS [Status], @IsPartial AS [Teilergebnis], @ErrorMessage AS [Hinweis];
-        SELECT N'Datenbankstatus CDC/Change Tracking' AS [Ergebnis], [DatabaseName] AS [Datenbank], [IsCdcEnabled] AS [CDC_aktiv], [IsChangeTrackingEnabled] AS [Change_Tracking_aktiv], [RetentionPeriod] AS [Retention], [RetentionPeriodUnitsDesc] AS [Retention_Einheit], [IsAutoCleanupOn] AS [Auto_Cleanup], [CurrentCtVersion] AS [CT_Version], [StatusCode] AS [Status], [ErrorMessage] AS [Fehler] FROM [#Db] ORDER BY [DatabaseName];
-        SELECT TOP (@EffectiveMaxZeilen) N'CDC-Tabelle' AS [Ergebnis], [DatabaseName] AS [Datenbank], [CaptureInstance] AS [Capture_Instance], [SourceSchema] AS [Schema], [SourceTable] AS [Tabelle], [SupportsNetChanges] AS [Net_Changes], [RoleName] AS [Rolle], [IndexName] AS [Index], [CreateDate] AS [Erstellt] FROM [#Cdc] ORDER BY [DatabaseName], [CaptureInstance];
-        SELECT TOP (@EffectiveMaxZeilen) N'Change-Tracking-Tabelle' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SchemaName] AS [Schema], [TableName] AS [Tabelle], [IsTrackColumnsUpdatedOn] AS [Spaltenänderungen_aufzeichnen], [BeginVersion] AS [Beginn_Version], [CleanupVersion] AS [Cleanup_Version], [MinValidVersion] AS [Min_gültige_Version] FROM [#Ct] ORDER BY [DatabaseName], [SchemaName], [TableName];
-        SELECT TOP (@EffectiveMaxZeilen) N'CDC-Agentjob' AS [Ergebnis], [DatabaseName] AS [Datenbank], [JobType] AS [Job_Typ], [JobName] AS [Job], [Enabled] AS [Aktiv], [LastRunOutcome] AS [Letzter_Status], [LastRunDateTime] AS [Letzter_Lauf], [LastMessage] AS [Meldung] FROM [#Jobs] ORDER BY [DatabaseName], [JobType], [JobName];
-        SELECT N'Data-Capture-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SourceName] AS [Quelle], [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer], [ErrorMessage] AS [Fehlermeldung] FROM [#Warnings] ORDER BY [DatabaseName], [SourceName];
+        SELECT N'Datenbankstatus CDC/Change Tracking' AS [Ergebnis], [DatabaseName] AS [Datenbank], [IsCdcEnabled] AS [CDC_aktiv], [IsChangeTrackingEnabled] AS [Change_Tracking_aktiv], [RetentionPeriod] AS [Retention], [RetentionPeriodUnitsDesc] AS [Retention_Einheit], [IsAutoCleanupOn] AS [Auto_Cleanup], [CurrentCtVersion] AS [CT_Version], [StatusCode] AS [Status], [ErrorMessage] AS [Fehler] FROM [#DataCaptureStatus_Db] ORDER BY [DatabaseName];
+        SELECT TOP (@EffectiveMaxZeilen) N'CDC-Tabelle' AS [Ergebnis], [DatabaseName] AS [Datenbank], [CaptureInstance] AS [Capture_Instance], [SourceSchema] AS [Schema], [SourceTable] AS [Tabelle], [SupportsNetChanges] AS [Net_Changes], [RoleName] AS [Rolle], [IndexName] AS [Index], [CreateDate] AS [Erstellt] FROM [#DataCaptureStatus_Cdc] ORDER BY [DatabaseName], [CaptureInstance];
+        SELECT TOP (@EffectiveMaxZeilen) N'Change-Tracking-Tabelle' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SchemaName] AS [Schema], [TableName] AS [Tabelle], [IsTrackColumnsUpdatedOn] AS [Spaltenänderungen_aufzeichnen], [BeginVersion] AS [Beginn_Version], [CleanupVersion] AS [Cleanup_Version], [MinValidVersion] AS [Min_gültige_Version] FROM [#DataCaptureStatus_Ct] ORDER BY [DatabaseName], [SchemaName], [TableName];
+        SELECT TOP (@EffectiveMaxZeilen) N'CDC-Agentjob' AS [Ergebnis], [DatabaseName] AS [Datenbank], [JobType] AS [Job_Typ], [JobName] AS [Job], [Enabled] AS [Aktiv], [LastRunOutcome] AS [Letzter_Status], [LastRunDateTime] AS [Letzter_Lauf], [LastMessage] AS [Meldung] FROM [#DataCaptureStatus_Jobs] ORDER BY [DatabaseName], [JobType], [JobName];
+        SELECT N'Data-Capture-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SourceName] AS [Quelle], [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer], [ErrorMessage] AS [Fehlermeldung] FROM [#DataCaptureStatus_Warnings] ORDER BY [DatabaseName], [SourceName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Db'
+              @SourceTable = N'#DataCaptureStatus_Db'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

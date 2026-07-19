@@ -44,6 +44,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerHealthAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -72,7 +73,7 @@ BEGIN
     DECLARE @BufferPoolJson nvarchar(max);
     DECLARE @FindingsJson nvarchar(max);
 
-    CREATE TABLE [#ModuleStatus]
+    CREATE TABLE [#ServerHealthAnalysis_ModuleStatus]
     (
           [Ordinal]      tinyint        NOT NULL
         , [ModuleName]   sysname        NOT NULL
@@ -119,7 +120,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (1, N'USP_ServerCpuTopology', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -141,7 +142,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (2, N'USP_ServerNuma', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -164,7 +165,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (3, N'USP_ServerMemory', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -186,7 +187,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (4, N'USP_TempDBConfiguration', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -208,7 +209,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (5, N'USP_ServerConfiguration', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -230,7 +231,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (6, N'USP_TraceFlags', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -252,7 +253,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (7, N'USP_StartupParameters', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -274,7 +275,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (8, N'USP_OSInformation', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -296,7 +297,7 @@ BEGIN
             SELECT @ChildStatus = 'ERROR_HANDLED', @ChildPartial = 1,
                    @ChildErrorNumber = ERROR_NUMBER(), @ChildErrorMessage = ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES
         (9, N'USP_ServerSecurityConfiguration', COALESCE(@ChildStatus, 'ERROR_HANDLED'), COALESCE(@ChildPartial, 1), @ChildErrorNumber, @ChildErrorMessage);
     END;
 
@@ -317,7 +318,7 @@ BEGIN
         END TRY BEGIN CATCH
             SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES (10,N'USP_DatabaseIntegrityAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES (10,N'USP_DatabaseIntegrityAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
     END;
 
     IF @OverallStatus = 'AVAILABLE' AND @MitKapazitaet = 1
@@ -336,7 +337,7 @@ BEGIN
         END TRY BEGIN CATCH
             SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES (11,N'USP_DatabaseCapacityAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES (11,N'USP_DatabaseCapacityAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
     END;
 
     IF @OverallStatus = 'AVAILABLE' AND @MitPerformanceCounters = 1
@@ -352,7 +353,7 @@ BEGIN
         END TRY BEGIN CATCH
             SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES (12,N'USP_PerformanceCounters',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES (12,N'USP_PerformanceCounters',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
     END;
 
     IF @OverallStatus = 'AVAILABLE' AND @MitCriticalEvents = 1
@@ -369,7 +370,7 @@ BEGIN
         END TRY BEGIN CATCH
             SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES (13,N'USP_CriticalEngineEvents',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES (13,N'USP_CriticalEngineEvents',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
     END;
 
     IF @OverallStatus = 'AVAILABLE' AND @MitContention = 1
@@ -385,7 +386,7 @@ BEGIN
         END TRY BEGIN CATCH
             SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES (14,N'USP_InternalContentionAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES (14,N'USP_InternalContentionAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
     END;
 
     IF @OverallStatus = 'AVAILABLE' AND @MitBufferPool = 1
@@ -401,7 +402,7 @@ BEGIN
         END TRY BEGIN CATCH
             SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES (15,N'USP_BufferPoolAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES (15,N'USP_BufferPoolAnalysis',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
     END;
 
     IF @OverallStatus = 'AVAILABLE' AND @MitFindings = 1
@@ -420,13 +421,13 @@ BEGIN
         END TRY BEGIN CATCH
             SELECT @ChildStatus='ERROR_HANDLED',@ChildPartial=1,@ChildErrorNumber=ERROR_NUMBER(),@ChildErrorMessage=ERROR_MESSAGE();
         END CATCH;
-        INSERT [#ModuleStatus] VALUES (16,N'USP_DiagnosticFindings',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
+        INSERT [#ServerHealthAnalysis_ModuleStatus] VALUES (16,N'USP_DiagnosticFindings',COALESCE(@ChildStatus,'ERROR_HANDLED'),COALESCE(@ChildPartial,1),@ChildErrorNumber,@ChildErrorMessage);
     END;
 
     IF EXISTS
     (
         SELECT 1
-        FROM [#ModuleStatus]
+        FROM [#ServerHealthAnalysis_ModuleStatus]
         WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED', 'AVAILABLE_WITH_FINDING', 'NOT_APPLICABLE')
     )
        AND @OverallStatus = 'AVAILABLE'
@@ -441,13 +442,13 @@ BEGIN
             , @Now                       AS [CollectionTimeUtc]
             , @OverallStatus             AS [StatusCode]
             , CONVERT(bit, CASE WHEN @OverallStatus = 'AVAILABLE' THEN 0 ELSE 1 END) AS [IsPartial]
-            , (SELECT COUNT_BIG(*) FROM [#ModuleStatus]) AS [ModuleCount]
-            , (SELECT COUNT_BIG(*) FROM [#ModuleStatus]
+            , (SELECT COUNT_BIG(*) FROM [#ServerHealthAnalysis_ModuleStatus]) AS [ModuleCount]
+            , (SELECT COUNT_BIG(*) FROM [#ServerHealthAnalysis_ModuleStatus]
                WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED', 'AVAILABLE_WITH_FINDING', 'NOT_APPLICABLE')) AS [ProblemModuleCount];
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM [#ModuleStatus] ORDER BY [Ordinal];
+            SELECT * FROM [#ServerHealthAnalysis_ModuleStatus] ORDER BY [Ordinal];
         END
         ELSE
         BEGIN
@@ -458,7 +459,7 @@ BEGIN
                 , [StatusCode]               AS [Status]
                 , [IsPartial]                AS [Partiell]
                 , [ErrorMessage]             AS [Fehler]
-            FROM [#ModuleStatus]
+            FROM [#ServerHealthAnalysis_ModuleStatus]
             ORDER BY [Ordinal];
         END;
     END;
@@ -481,7 +482,7 @@ BEGIN
         SELECT @Warnings =
         (
             SELECT *
-            FROM [#ModuleStatus]
+            FROM [#ServerHealthAnalysis_ModuleStatus]
             WHERE [StatusCode] NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED', 'AVAILABLE_WITH_FINDING', 'NOT_APPLICABLE')
             ORDER BY [Ordinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -513,7 +514,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#ModuleStatus'
+              @SourceTable = N'#ServerHealthAnalysis_ModuleStatus'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

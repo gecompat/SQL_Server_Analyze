@@ -17,11 +17,11 @@ Nebenwirkung : DBCC, Dateioptionen, msdb-Testmetadaten und eine XE-Session
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-DECLARE @DatabaseNames nvarchar(max)=QUOTENAME(DB_NAME());
+DECLARE @DatabaseNames nvarchar(max)=QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()));
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048);
 DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 
-/* INT-CHECKDB: fehlender oder alter Nachweis bleibt eine Evidenzgrenze. */
+/* INT-CHECKDB: blockierungsfrei nicht verfügbare CHECKDB-Zeit bleibt eine Evidenzgrenze. */
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
      @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MitPageDetails=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
@@ -33,12 +33,12 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
     SELECT 1
     FROM OPENJSON(@Json,N'$.integrity')
     WITH ([FindingCode] varchar(80) N'$.FindingCode')
-    WHERE [FindingCode] IN ('CHECKDB_EVIDENCE_MISSING','CHECKDB_EVIDENCE_OLD')
+    WHERE [FindingCode]='CHECKDB_EVIDENCE_UNAVAILABLE'
 )
     THROW 54140,N'P0-Vertrag INT-CHECKDB fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('INT-CHECKDB');
 
-/* INT-EMPTY: ein realer CHECKDB-Lauf im synthetischen Ziel erlaubt nur NO_INDICATOR_FOUND, niemals einen Integritätsbeweis. */
+/* INT-EMPTY: auch ein realer CHECKDB-Lauf wird nicht über blockierende Metadatenfunktionen zurückgelesen. */
 DBCC CHECKDB WITH NO_INFOMSGS;
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
@@ -53,7 +53,7 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
     SELECT 1
     FROM OPENJSON(@Json,N'$.integrity')
     WITH ([FindingCode] varchar(80) N'$.FindingCode',[EvidenceLimit] nvarchar(1000) N'$.EvidenceLimit')
-    WHERE [FindingCode]='NO_INDICATOR_FOUND'
+    WHERE [FindingCode]='CHECKDB_EVIDENCE_UNAVAILABLE'
       AND [EvidenceLimit] LIKE N'%beweist%weder%Integrität%'
 )
     THROW 54141,N'P0-Vertrag INT-EMPTY fehlgeschlagen.',1;
@@ -93,12 +93,12 @@ DECLARE @Sql nvarchar(max),@RestoreSql nvarchar(max),@CurrentSizeMb bigint;
 SELECT TOP(1)
        @LogicalFileName=[name],@OriginalGrowth=[growth],@OriginalPercent=[is_percent_growth],
        @OriginalMaxSize=[max_size],@CurrentSizePages=[size]
-FROM [sys].[database_files]
+FROM [sys].[database_files] WITH (NOLOCK)
 WHERE [type]=0
 ORDER BY [file_id];
 
 SET @CurrentSizeMb=CEILING(@CurrentSizePages*8.0/1024.0);
-SET @RestoreSql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+SET @RestoreSql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' MODIFY FILE (NAME=N'''
     +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH='
     +CASE WHEN @OriginalPercent=1 THEN CONVERT(nvarchar(20),@OriginalGrowth)+N'%'
           ELSE CONVERT(nvarchar(30),CONVERT(bigint,@OriginalGrowth)*8)+N'KB' END
@@ -106,7 +106,7 @@ SET @RestoreSql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N''
                         ELSE CONVERT(nvarchar(30),CEILING(@OriginalMaxSize*8.0/1024.0))+N'MB' END+N');';
 
 /* CAP-PERCENT */
-SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' MODIFY FILE (NAME=N'''
     +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=10%, MAXSIZE=UNLIMITED);';
 EXEC [sys].[sp_executesql] @Sql;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
@@ -123,7 +123,7 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
 INSERT @ExecutedCases VALUES('CAP-PERCENT');
 
 /* CAP-MAX */
-SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' MODIFY FILE (NAME=N'''
     +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=1MB, MAXSIZE='
     +CONVERT(nvarchar(30),@CurrentSizeMb)+N'MB);';
 EXEC [sys].[sp_executesql] @Sql;
@@ -141,7 +141,7 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
 INSERT @ExecutedCases VALUES('CAP-MAX');
 
 /* CAP-GROWTH */
-SET @Sql=N'ALTER DATABASE '+QUOTENAME(DB_NAME())+N' MODIFY FILE (NAME=N'''
+SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()))+N' MODIFY FILE (NAME=N'''
     +REPLACE(@LogicalFileName,N'''',N'''''')+N''', FILEGROWTH=1048576MB, MAXSIZE=UNLIMITED);';
 EXEC [sys].[sp_executesql] @Sql;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
@@ -284,7 +284,7 @@ IF ISJSON(@Json)<>1 OR NOT EXISTS
 INSERT @ExecutedCases VALUES('EV-NOTARGET');
 
 /* EV-SEVERE: kontrolliertes generisches Event in einer kurzlebigen XE-Datei. */
-IF EXISTS(SELECT 1 FROM [sys].[server_event_sessions] WHERE [name]=N'ExampleP0CriticalEvents')
+IF EXISTS(SELECT 1 FROM [sys].[server_event_sessions] WITH (NOLOCK) WHERE [name]=N'ExampleP0CriticalEvents')
     DROP EVENT SESSION [ExampleP0CriticalEvents] ON SERVER;
 CREATE EVENT SESSION [ExampleP0CriticalEvents] ON SERVER
 ADD EVENT [sqlserver].[error_reported]

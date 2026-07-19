@@ -68,7 +68,7 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @CrossDatabaseRequested bit = 0;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#BackupRecovery_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -82,14 +82,14 @@ BEGIN
         , [RequestedOrdinal] int NULL
     );
 
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#BackupRecovery_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    CREATE TABLE [#Fresh]
+    CREATE TABLE [#BackupRecovery_Fresh]
     (
           [DatabaseName] sysname
         , [StateDesc] nvarchar(60)
@@ -104,7 +104,7 @@ BEGIN
         , [BackupStatus] varchar(100)
     );
 
-    CREATE TABLE [#Backups]
+    CREATE TABLE [#BackupRecovery_Backups]
     (
           [DatabaseName] sysname
         , [BackupType] char(1)
@@ -121,7 +121,7 @@ BEGIN
         , [MediaPath] nvarchar(4000)
     );
 
-    CREATE TABLE [#Restores]
+    CREATE TABLE [#BackupRecovery_Restores]
     (
           [DestinationDatabaseName] sysname
         , [RestoreDate] datetime
@@ -156,7 +156,7 @@ BEGIN
             , @AnalysisClass = NULL
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#BackupRecovery_DatabaseCandidates',@WarningTable=N'#BackupRecovery_DatabaseCandidateWarnings';
     END;
 
     IF @StatusCode <> 'AVAILABLE'
@@ -175,12 +175,12 @@ BEGIN
                 , MAX(CASE WHEN [bs].[type] = 'L' THEN [bs].[backup_finish_date] END) AS [LogFinish]
                 , MAX(CASE WHEN [bs].[type] = 'D' AND [bs].[is_copy_only] = 1 THEN [bs].[backup_finish_date] END) AS [CopyOnlyFinish]
             FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
-            JOIN [#DatabaseCandidates] AS [c]
+            JOIN [#BackupRecovery_DatabaseCandidates] AS [c]
               ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             GROUP BY [bs].[database_name]
         )
-        INSERT [#Fresh]
+        INSERT [#BackupRecovery_Fresh]
         SELECT
               [c].[DatabaseName]
             , [c].[StateDesc]
@@ -203,12 +203,12 @@ BEGIN
                    AND DATEDIFF(HOUR, [x].[DiffFinish], GETDATE()) > @DiffWarnHours THEN 'DIFF_OLD_INFORMATIONAL'
                   ELSE 'OK'
               END
-        FROM [#DatabaseCandidates] AS [c]
+        FROM [#BackupRecovery_DatabaseCandidates] AS [c]
         LEFT JOIN [LastBackups] AS [x]
           ON [x].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
            = [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS;
 
-        INSERT [#Backups]
+        INSERT [#BackupRecovery_Backups]
         SELECT TOP (@EffectiveMaxZeilen)
               [bs].[database_name]
             , [bs].[type]
@@ -227,7 +227,7 @@ BEGIN
             , [bs].[is_damaged]
             , [bmf].[physical_device_name]
         FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
-        JOIN [#DatabaseCandidates] AS [c]
+        JOIN [#BackupRecovery_DatabaseCandidates] AS [c]
           ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
            = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
         LEFT JOIN [msdb].[dbo].[backupmediafamily] AS [bmf] WITH (NOLOCK)
@@ -236,7 +236,7 @@ BEGIN
 
         IF @MitRestoreHistory = 1
         BEGIN
-            INSERT [#Restores]
+            INSERT [#BackupRecovery_Restores]
             SELECT TOP (@EffectiveMaxZeilen)
                   [rh].[destination_database_name]
                 , [rh].[restore_date]
@@ -248,7 +248,7 @@ BEGIN
                 , [bs].[database_name]
                 , [bs].[backup_finish_date]
             FROM [msdb].[dbo].[restorehistory] AS [rh] WITH (NOLOCK)
-            JOIN [#DatabaseCandidates] AS [c]
+            JOIN [#BackupRecovery_DatabaseCandidates] AS [c]
               ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                = [rh].[destination_database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
             LEFT JOIN [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
@@ -256,7 +256,7 @@ BEGIN
             ORDER BY [rh].[restore_date] DESC, [rh].[restore_history_id] DESC;
         END;
 
-        IF EXISTS (SELECT 1 FROM [#DatabaseCandidateWarnings])
+        IF EXISTS (SELECT 1 FROM [#BackupRecovery_DatabaseCandidateWarnings])
         BEGIN
             SET @StatusCode = 'AVAILABLE_LIMITED';
             SET @IsPartial = 1;
@@ -285,14 +285,14 @@ BEGIN
 
         SELECT
               [RequestedName], [StatusCode], [ErrorMessage]
-        FROM [#DatabaseCandidateWarnings]
+        FROM [#BackupRecovery_DatabaseCandidateWarnings]
         ORDER BY [RequestedName];
 
         IF @ResultSetArtNormalisiert = 'RAW'
         BEGIN
-            SELECT * FROM [#Fresh] ORDER BY CASE WHEN [BackupStatus] = 'OK' THEN 1 ELSE 0 END, [DatabaseName];
-            SELECT * FROM [#Backups] ORDER BY [BackupFinishDate] DESC, [DatabaseName];
-            SELECT * FROM [#Restores] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName];
+            SELECT * FROM [#BackupRecovery_Fresh] ORDER BY CASE WHEN [BackupStatus] = 'OK' THEN 1 ELSE 0 END, [DatabaseName];
+            SELECT * FROM [#BackupRecovery_Backups] ORDER BY [BackupFinishDate] DESC, [DatabaseName];
+            SELECT * FROM [#BackupRecovery_Restores] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName];
         END;
         ELSE
         BEGIN
@@ -307,11 +307,11 @@ BEGIN
                 , CASE WHEN [DiffAgeMinutes] IS NULL THEN NULL ELSE CONCAT([DiffAgeMinutes], N' min') END AS [Diff-Alter]
                 , [LastLogFinish] AS [Letztes Log]
                 , CASE WHEN [LogAgeMinutes] IS NULL THEN NULL ELSE CONCAT([LogAgeMinutes], N' min') END AS [Log-Alter]
-            FROM [#Fresh]
+            FROM [#BackupRecovery_Fresh]
             ORDER BY CASE WHEN [BackupStatus] = 'OK' THEN 1 ELSE 0 END, [DatabaseName];
 
-            SELECT N'Backup-Historie' AS [Ergebnis], [x].* FROM [#Backups] AS [x] ORDER BY [BackupFinishDate] DESC, [DatabaseName];
-            SELECT N'Restore-Historie' AS [Ergebnis], [x].* FROM [#Restores] AS [x] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName];
+            SELECT N'Backup-Historie' AS [Ergebnis], [x].* FROM [#BackupRecovery_Backups] AS [x] ORDER BY [BackupFinishDate] DESC, [DatabaseName];
+            SELECT N'Restore-Historie' AS [Ergebnis], [x].* FROM [#BackupRecovery_Restores] AS [x] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName];
         END;
     END;
 
@@ -332,13 +332,13 @@ BEGIN
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @FreshJson nvarchar(max) =
-            (SELECT * FROM [#Fresh] ORDER BY CASE WHEN [BackupStatus] = 'OK' THEN 1 ELSE 0 END, [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#BackupRecovery_Fresh] ORDER BY CASE WHEN [BackupStatus] = 'OK' THEN 1 ELSE 0 END, [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @BackupsJson nvarchar(max) =
-            (SELECT * FROM [#Backups] ORDER BY [BackupFinishDate] DESC, [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#BackupRecovery_Backups] ORDER BY [BackupFinishDate] DESC, [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @RestoresJson nvarchar(max) =
-            (SELECT * FROM [#Restores] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#BackupRecovery_Restores] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
-            (SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#BackupRecovery_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
         (
@@ -353,7 +353,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Fresh'
+              @SourceTable = N'#BackupRecovery_Fresh'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

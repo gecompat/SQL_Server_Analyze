@@ -30,12 +30,12 @@ BEGIN TRY
     DROP TABLE IF EXISTS [dbo].[ExampleStatisticsDominant];
     DROP TABLE IF EXISTS [dbo].[ExampleStatisticsUniform];
 
-    IF EXISTS(SELECT 1 FROM [sys].[partition_schemes] WHERE [name]=N'PS_ExampleStatisticsIncremental')
+    IF EXISTS(SELECT 1 FROM [sys].[partition_schemes] WITH (NOLOCK) WHERE [name]=N'PS_ExampleStatisticsIncremental')
         DROP PARTITION SCHEME [PS_ExampleStatisticsIncremental];
-    IF EXISTS(SELECT 1 FROM [sys].[partition_functions] WHERE [name]=N'PF_ExampleStatisticsIncremental')
+    IF EXISTS(SELECT 1 FROM [sys].[partition_functions] WITH (NOLOCK) WHERE [name]=N'PF_ExampleStatisticsIncremental')
         DROP PARTITION FUNCTION [PF_ExampleStatisticsIncremental];
 
-    CREATE TABLE [#Numbers]
+    CREATE TABLE [#P1_Statistics_Runtime_Contract_Numbers]
     (
         [NumberValue] int NOT NULL PRIMARY KEY
     );
@@ -48,7 +48,7 @@ BEGIN TRY
         FROM [numbers]
         WHERE [NumberValue]<2000
     )
-    INSERT [#Numbers]([NumberValue])
+    INSERT [#P1_Statistics_Runtime_Contract_Numbers]([NumberValue])
     SELECT [NumberValue]
     FROM [numbers]
     OPTION (MAXRECURSION 0);
@@ -59,7 +59,7 @@ BEGIN TRY
     );
     INSERT [dbo].[ExampleStatisticsUniform]([DistributionValue])
     SELECT [NumberValue]
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=1000;
     CREATE STATISTICS [ST_ExampleStatisticsUniform]
         ON [dbo].[ExampleStatisticsUniform]([DistributionValue]) WITH FULLSCAN;
@@ -69,9 +69,9 @@ BEGIN TRY
         [DistributionValue] int NOT NULL
     );
     INSERT [dbo].[ExampleStatisticsDominant]([DistributionValue])
-    SELECT 1 FROM [#Numbers] WHERE [NumberValue]<=1000
+    SELECT 1 FROM [#P1_Statistics_Runtime_Contract_Numbers] WHERE [NumberValue]<=1000
     UNION ALL
-    SELECT [NumberValue]+1 FROM [#Numbers] WHERE [NumberValue]<=100;
+    SELECT [NumberValue]+1 FROM [#P1_Statistics_Runtime_Contract_Numbers] WHERE [NumberValue]<=100;
     CREATE STATISTICS [ST_ExampleStatisticsDominant]
         ON [dbo].[ExampleStatisticsDominant]([DistributionValue]) WITH FULLSCAN;
 
@@ -80,9 +80,9 @@ BEGIN TRY
         [DistributionValue] int NOT NULL
     );
     INSERT [dbo].[ExampleStatisticsTail]([DistributionValue])
-    SELECT [NumberValue] FROM [#Numbers] WHERE [NumberValue]<=100
+    SELECT [NumberValue] FROM [#P1_Statistics_Runtime_Contract_Numbers] WHERE [NumberValue]<=100
     UNION ALL
-    SELECT 101 FROM [#Numbers] WHERE [NumberValue]<=1000;
+    SELECT 101 FROM [#P1_Statistics_Runtime_Contract_Numbers] WHERE [NumberValue]<=1000;
     CREATE STATISTICS [ST_ExampleStatisticsTail]
         ON [dbo].[ExampleStatisticsTail]([DistributionValue]) WITH FULLSCAN;
 
@@ -92,13 +92,13 @@ BEGIN TRY
     );
     INSERT [dbo].[ExampleStatisticsModified]([DistributionValue])
     SELECT (([NumberValue]-1)%100)+1
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=1000;
     CREATE STATISTICS [ST_ExampleStatisticsModified]
         ON [dbo].[ExampleStatisticsModified]([DistributionValue]) WITH FULLSCAN;
     INSERT [dbo].[ExampleStatisticsModified]([DistributionValue])
     SELECT 1000+[NumberValue]
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=500;
 
     CREATE TABLE [dbo].[ExampleStatisticsFiltered]
@@ -108,11 +108,11 @@ BEGIN TRY
     );
     INSERT [dbo].[ExampleStatisticsFiltered]([DistributionValue],[IsIncluded])
     SELECT (([NumberValue]-1)%100)+1,CONVERT(bit,1)
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=1000
     UNION ALL
     SELECT (([NumberValue]-1)%100)+1,CONVERT(bit,0)
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=1000;
     CREATE STATISTICS [ST_ExampleStatisticsFiltered]
         ON [dbo].[ExampleStatisticsFiltered]([DistributionValue])
@@ -130,7 +130,7 @@ BEGIN TRY
     INSERT [dbo].[ExampleStatisticsBounded]([C1],[C2],[C3],[C4],[C5],[C6])
     SELECT ([NumberValue]-1)%10,([NumberValue]-1)%20,([NumberValue]-1)%25,
            ([NumberValue]-1)%40,([NumberValue]-1)%50,([NumberValue]-1)%100
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=1000;
     CREATE STATISTICS [ST_ExampleStatisticsBounded_1] ON [dbo].[ExampleStatisticsBounded]([C1]) WITH FULLSCAN;
     CREATE STATISTICS [ST_ExampleStatisticsBounded_2] ON [dbo].[ExampleStatisticsBounded]([C2]) WITH FULLSCAN;
@@ -152,14 +152,14 @@ BEGIN TRY
     SELECT CASE WHEN [NumberValue]<=100 THEN 1
                 WHEN [NumberValue]<=200 THEN 150 ELSE 250 END,
            [NumberValue]
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=300;
     CREATE STATISTICS [ST_ExampleStatisticsIncremental]
         ON [dbo].[ExampleStatisticsIncremental]([DistributionValue])
         WITH FULLSCAN,INCREMENTAL=ON;
     INSERT [dbo].[ExampleStatisticsIncremental]([PartitionValue],[DistributionValue])
     SELECT 250,1000+[NumberValue]
-    FROM [#Numbers]
+    FROM [#P1_Statistics_Runtime_Contract_Numbers]
     WHERE [NumberValue]<=100;
 
     /* STAT-UNIFORM: sichtbares, begrenztes und annähernd gleichmäßiges Histogramm. */
@@ -342,7 +342,7 @@ BEGIN TRY
            FROM OPENJSON(@Json,N'$.databaseStatus')
            WITH ([DatabaseName] sysname N'$.DatabaseName',[CandidateCount] bigint N'$.CandidateCount',
                  [HistogramVisibleCount] bigint N'$.HistogramVisibleCount')
-           WHERE [DatabaseName]=DB_NAME()
+           WHERE [DatabaseName]=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())
              AND ([CandidateCount]<>2 OR [HistogramVisibleCount]>2))
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.distribution'))<>2
         THROW 54906,N'P1-Vertrag STAT-BOUNDED fehlgeschlagen.',1;
@@ -442,9 +442,9 @@ BEGIN CATCH
         DROP TABLE IF EXISTS [dbo].[ExampleStatisticsTail];
         DROP TABLE IF EXISTS [dbo].[ExampleStatisticsDominant];
         DROP TABLE IF EXISTS [dbo].[ExampleStatisticsUniform];
-        IF EXISTS(SELECT 1 FROM [sys].[partition_schemes] WHERE [name]=N'PS_ExampleStatisticsIncremental')
+        IF EXISTS(SELECT 1 FROM [sys].[partition_schemes] WITH (NOLOCK) WHERE [name]=N'PS_ExampleStatisticsIncremental')
             DROP PARTITION SCHEME [PS_ExampleStatisticsIncremental];
-        IF EXISTS(SELECT 1 FROM [sys].[partition_functions] WHERE [name]=N'PF_ExampleStatisticsIncremental')
+        IF EXISTS(SELECT 1 FROM [sys].[partition_functions] WITH (NOLOCK) WHERE [name]=N'PF_ExampleStatisticsIncremental')
             DROP PARTITION FUNCTION [PF_ExampleStatisticsIncremental];
     END TRY
     BEGIN CATCH

@@ -57,6 +57,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentMemoryGrants]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
 
     SET @Json = NULL;
 
@@ -104,7 +105,7 @@ BEGIN
              THEN N'VIEW SERVER PERFORMANCE STATE'
              ELSE N'VIEW SERVER STATE' END;
 
-    CREATE TABLE [#SessionIdFilter]
+    CREATE TABLE [#CurrentMemoryGrants_SessionIdFilter]
     (
         [SessionId] smallint NOT NULL PRIMARY KEY
     );
@@ -122,13 +123,13 @@ BEGIN
             SET @ErrorMessage = N'@SessionIds enthält einen ungültigen Session-Identifier.';
         END
         ELSE
-            INSERT [#SessionIdFilter]([SessionId])
+            INSERT [#CurrentMemoryGrants_SessionIdFilter]([SessionId])
             SELECT CONVERT(smallint,[NumberValue])
             FROM [monitor].[TVF_ParseBigintList](@SessionIds)
             GROUP BY [NumberValue];
     END;
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#CurrentMemoryGrants_Result]
     (
           [SessionId]                              smallint       NULL
         , [RequestId]                              int            NULL
@@ -192,7 +193,7 @@ BEGIN
         , [CurrentStatement]                       nvarchar(max)  NULL
     );
 
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#CurrentMemoryGrants_Warnings]
     (
           [WarningCode]    varchar(40)     NOT NULL
         , [WarningMessage] nvarchar(2048)  NOT NULL
@@ -211,7 +212,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#Result]
+        INSERT [#CurrentMemoryGrants_Result]
         (
               [SessionId], [RequestId], [SchedulerId], [Dop], [RequestTime], [GrantTime]
             , [WaitTimeMs], [IsWaiting], [IsSmall], [RequestedMemoryMb], [RequiredMemoryMb]
@@ -310,19 +311,19 @@ BEGIN
                             ELSE LEFT([statementText].[StatementText], @MaxSqlTextZeichen)
                         END
               END
-        FROM [sys].[dm_exec_query_memory_grants] AS [g]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [s]
+        FROM [sys].[dm_exec_query_memory_grants] AS [g] WITH (NOLOCK)
+        LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [g].[session_id]
-        LEFT JOIN [sys].[dm_exec_requests] AS [r]
+        LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
           ON [r].[session_id] = [g].[session_id]
          AND [r].[request_id] = [g].[request_id]
-        LEFT JOIN [sys].[databases] AS [d] WITH (READUNCOMMITTED)
+        LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
           ON [d].[database_id] = [r].[database_id]
-        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [wg]
+        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [wg] WITH (NOLOCK)
           ON [wg].[group_id] = [g].[group_id]
-        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp]
+        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp] WITH (NOLOCK)
           ON [rp].[pool_id] = [g].[pool_id]
-        LEFT JOIN [sys].[dm_exec_query_resource_semaphores] AS [sem]
+        LEFT JOIN [sys].[dm_exec_query_resource_semaphores] AS [sem] WITH (NOLOCK)
           ON [sem].[pool_id] = [g].[pool_id]
          AND [sem].[resource_semaphore_id] = [g].[resource_semaphore_id]
         OUTER APPLY [sys].[dm_exec_sql_text]
@@ -361,7 +362,7 @@ BEGIN
                       * CONVERT(decimal(38,4), [wg].[request_max_memory_grant_percent_numeric]) / 100.0 / 1024.0
                   )
         ) AS [calc]
-        WHERE (NOT EXISTS (SELECT 1 FROM [#SessionIdFilter]) OR EXISTS (SELECT 1 FROM [#SessionIdFilter] AS [sf] WHERE [sf].[SessionId] = [g].[session_id]))
+        WHERE (NOT EXISTS (SELECT 1 FROM [#CurrentMemoryGrants_SessionIdFilter]) OR EXISTS (SELECT 1 FROM [#CurrentMemoryGrants_SessionIdFilter] AS [sf] WHERE [sf].[SessionId] = [g].[session_id]))
           AND (@AktuelleSessionEinbeziehen = 1 OR [g].[session_id] <> @@SPID)
           AND (@NurWartende = 0 OR [g].[grant_time] IS NULL)
           AND (@MinRequestedMb IS NULL OR [g].[requested_memory_kb] >= @MinRequestedMb * 1024.0)
@@ -373,7 +374,7 @@ BEGIN
             , [g].[session_id]
             , [g].[request_id];
 
-        SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#Result];
+        SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#CurrentMemoryGrants_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen THEN 1 ELSE 0 END);
         SET @RowCount = CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen
                              THEN @EffectiveMaxZeilen ELSE @CandidateRowCount END;
@@ -389,7 +390,7 @@ BEGIN
                                WHEN @ErrorNumber = 1222 THEN 'TIMEOUT'
                                ELSE 'ERROR_HANDLED' END;
         SET @Detail = N'Memory-Grant-Abfrage fehlgeschlagen.';
-        INSERT [#Warnings] VALUES(@StatusCode, COALESCE(@ErrorMessage, @Detail));
+        INSERT [#CurrentMemoryGrants_Warnings] VALUES(@StatusCode, COALESCE(@ErrorMessage, @Detail));
     END CATCH;
 
     IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'
@@ -431,7 +432,7 @@ BEGIN
         SET @DataJson =
         (
             SELECT TOP (@EffectiveMaxZeilen) [r].*
-            FROM [#Result] AS [r]
+            FROM [#CurrentMemoryGrants_Result] AS [r]
             ORDER BY [r].[IsWaiting] DESC, [r].[RequestedMemoryMb] DESC,
                      [r].[WaitTimeMs] DESC, [r].[SessionId], [r].[RequestId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -440,7 +441,7 @@ BEGIN
         SET @WarningsJson =
         (
             SELECT [WarningCode] AS [code], [WarningMessage] AS [message]
-            FROM [#Warnings]
+            FROM [#CurrentMemoryGrants_Warnings]
             ORDER BY [WarningCode]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -469,7 +470,7 @@ BEGIN
             , @Detail AS [Detail];
 
         SELECT TOP (@EffectiveMaxZeilen) [r].*
-        FROM [#Result] AS [r]
+        FROM [#CurrentMemoryGrants_Result] AS [r]
         ORDER BY [r].[IsWaiting] DESC, [r].[RequestedMemoryMb] DESC,
                  [r].[WaitTimeMs] DESC, [r].[SessionId], [r].[RequestId];
     END
@@ -521,14 +522,14 @@ BEGIN
             , CONCAT(CONVERT(varchar(40), [r].[SemaphoreAvailableMemoryMb]), N' MB') AS [Semaphore_aktuell_verfügbar]
             , [r].[SemaphoreWaiterCount] AS [Semaphore_Wartende]
             , [r].[CurrentStatement] AS [Aktuelles_Statement]
-        FROM [#Result] AS [r]
+        FROM [#CurrentMemoryGrants_Result] AS [r]
         ORDER BY [r].[IsWaiting] DESC, [r].[RequestedMemoryMb] DESC,
                  [r].[WaitTimeMs] DESC, [r].[SessionId], [r].[RequestId];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#CurrentMemoryGrants_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

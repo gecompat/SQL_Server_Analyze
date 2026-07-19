@@ -54,7 +54,7 @@ BEGIN
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
 
-    CREATE TABLE [#AgentStatus]
+    CREATE TABLE [#AgentStatus_AgentStatus]
     (
           [ServiceName]        nvarchar(256) NULL
         , [StartupTypeDesc]    nvarchar(60)  NULL
@@ -77,7 +77,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#AgentStatus]
+        INSERT [#AgentStatus_AgentStatus]
         (
               [ServiceName], [StartupTypeDesc], [StatusDesc], [ProcessId]
             , [LastStartupTime], [AgentSessionId], [JobCount], [EnabledJobCount]
@@ -91,11 +91,11 @@ BEGIN
             , (SELECT MAX([session_id]) FROM [msdb].[dbo].[syssessions] WITH (NOLOCK))
             , (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobs] WITH (NOLOCK))
             , (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobs] WITH (NOLOCK) WHERE [enabled] = 1)
-        FROM [sys].[dm_server_services] AS [s]
+        FROM [sys].[dm_server_services] AS [s] WITH (NOLOCK)
         WHERE [s].[servicename] LIKE N'SQL Server Agent%'
         ORDER BY [s].[servicename];
 
-        IF NOT EXISTS (SELECT 1 FROM [#AgentStatus])
+        IF NOT EXISTS (SELECT 1 FROM [#AgentStatus_AgentStatus])
         BEGIN
             SET @StatusCode = 'UNAVAILABLE_FEATURE';
             SET @IsPartial = 1;
@@ -128,7 +128,7 @@ BEGIN
             SELECT
                   [ServiceName], [StartupTypeDesc], [StatusDesc], [ProcessId]
                 , [LastStartupTime], [AgentSessionId], [JobCount], [EnabledJobCount]
-            FROM [#AgentStatus];
+            FROM [#AgentStatus_AgentStatus];
         END;
         ELSE
         BEGIN
@@ -142,7 +142,7 @@ BEGIN
                 , [AgentSessionId] AS [Agent-Session]
                 , [JobCount] AS [Jobs gesamt]
                 , [EnabledJobCount] AS [Aktive Jobs]
-            FROM [#AgentStatus];
+            FROM [#AgentStatus_AgentStatus];
         END;
     END;
 
@@ -166,7 +166,7 @@ BEGIN
             SELECT
                   [ServiceName], [StartupTypeDesc], [StatusDesc], [ProcessId]
                 , [LastStartupTime], [AgentSessionId], [JobCount], [EnabledJobCount]
-            FROM [#AgentStatus]
+            FROM [#AgentStatus_AgentStatus]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
 
@@ -180,7 +180,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#AgentStatus'
+              @SourceTable = N'#AgentStatus_AgentStatus'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

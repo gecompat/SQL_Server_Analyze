@@ -64,7 +64,7 @@ BEGIN
     DECLARE @Db sysname;
     DECLARE @Sql nvarchar(max);
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#SchemaDesignAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -77,13 +77,13 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#SchemaDesignAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#Findings]
+    CREATE TABLE [#SchemaDesignAnalysis_Findings]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -97,7 +97,7 @@ BEGIN
         , [Evidence] nvarchar(1000) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Errors]
+    CREATE TABLE [#SchemaDesignAnalysis_Errors]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -123,7 +123,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#SchemaDesignAnalysis_DatabaseCandidates',@WarningTable=N'#SchemaDesignAnalysis_DatabaseCandidateWarnings';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -131,7 +131,7 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN
         DECLARE [database_cursor] CURSOR LOCAL FAST_FORWARD FOR
-            SELECT [DatabaseName] FROM [#DatabaseCandidates]
+            SELECT [DatabaseName] FROM [#SchemaDesignAnalysis_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
         OPEN [database_cursor];
         FETCH NEXT FROM [database_cursor] INTO @Db;
@@ -141,55 +141,55 @@ BEGIN
             BEGIN TRY
                 SET @Sql = N'USE ' + QUOTENAME(@Db) + N';
 DECLARE @DatabaseId int = DB_ID();
-DECLARE @DatabaseName sysname = DB_NAME();
+DECLARE @DatabaseName sysname = (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 
-INSERT [#Findings]
+INSERT [#SchemaDesignAnalysis_Findings]
 SELECT @DatabaseId, @DatabaseName,
        CASE WHEN [fk].[is_disabled] = 1 THEN ''FOREIGN_KEY_DISABLED'' ELSE ''FOREIGN_KEY_NOT_TRUSTED'' END,
        CASE WHEN [fk].[is_disabled] = 1 THEN ''HIGH'' ELSE ''MEDIUM'' END,
        N''FOREIGN_KEY'', [s].[name], [t].[name], [fk].[name], NULL,
        CONCAT(N''is_disabled='', [fk].[is_disabled], N''; is_not_trusted='', [fk].[is_not_trusted]),
        N''Aktivierung beziehungsweise WITH CHECK erfordert fachliche Prüfung und ist nicht Bestandteil dieser Analyse.''
-FROM [sys].[foreign_keys] AS [fk]
-JOIN [sys].[tables] AS [t] ON [t].[object_id] = [fk].[parent_object_id]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [t].[schema_id]
+FROM [sys].[foreign_keys] AS [fk] WITH (NOLOCK)
+JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id] = [fk].[parent_object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id] = [t].[schema_id]
 WHERE [fk].[is_disabled] = 1 OR [fk].[is_not_trusted] = 1;
 
-INSERT [#Findings]
+INSERT [#SchemaDesignAnalysis_Findings]
 SELECT @DatabaseId, @DatabaseName,
        CASE WHEN [cc].[is_disabled] = 1 THEN ''CHECK_CONSTRAINT_DISABLED'' ELSE ''CHECK_CONSTRAINT_NOT_TRUSTED'' END,
        CASE WHEN [cc].[is_disabled] = 1 THEN ''HIGH'' ELSE ''MEDIUM'' END,
        N''CHECK_CONSTRAINT'', [s].[name], [t].[name], [cc].[name], NULL,
        CONCAT(N''is_disabled='', [cc].[is_disabled], N''; is_not_trusted='', [cc].[is_not_trusted]),
        N''Constraintdefinition und Datenqualität vor einer Änderung separat validieren.''
-FROM [sys].[check_constraints] AS [cc]
-JOIN [sys].[tables] AS [t] ON [t].[object_id] = [cc].[parent_object_id]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [t].[schema_id]
+FROM [sys].[check_constraints] AS [cc] WITH (NOLOCK)
+JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id] = [cc].[parent_object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id] = [t].[schema_id]
 WHERE [cc].[is_disabled] = 1 OR [cc].[is_not_trusted] = 1;
 
-INSERT [#Findings]
+INSERT [#SchemaDesignAnalysis_Findings]
 SELECT @DatabaseId, @DatabaseName, ''FOREIGN_KEY_WITHOUT_SUPPORTING_INDEX'', ''MEDIUM'',
        N''FOREIGN_KEY'', [s].[name], [t].[name], [fk].[name],
        CONVERT(decimal(38,4), COUNT_BIG([fkc].[constraint_column_id])),
        N''Kein aktiver Index beginnt in gleicher Reihenfolge mit allen referenzierenden FK-Spalten.'',
        N''Workload, Selektivität, Schreibkosten und ein eventuell breiterer geeigneter Index müssen separat geprüft werden.''
-FROM [sys].[foreign_keys] AS [fk]
-JOIN [sys].[tables] AS [t] ON [t].[object_id] = [fk].[parent_object_id]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [t].[schema_id]
-JOIN [sys].[foreign_key_columns] AS [fkc] ON [fkc].[constraint_object_id] = [fk].[object_id]
+FROM [sys].[foreign_keys] AS [fk] WITH (NOLOCK)
+JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id] = [fk].[parent_object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id] = [t].[schema_id]
+JOIN [sys].[foreign_key_columns] AS [fkc] WITH (NOLOCK) ON [fkc].[constraint_object_id] = [fk].[object_id]
 WHERE [fk].[is_disabled] = 0
   AND NOT EXISTS
   (
       SELECT 1
-      FROM [sys].[indexes] AS [i]
+      FROM [sys].[indexes] AS [i] WITH (NOLOCK)
       WHERE [i].[object_id] = [fk].[parent_object_id]
         AND [i].[index_id] > 0 AND [i].[is_disabled] = 0 AND [i].[is_hypothetical] = 0
         AND [i].[has_filter] = 0
         AND NOT EXISTS
         (
             SELECT 1
-            FROM [sys].[foreign_key_columns] AS [fc]
-            LEFT JOIN [sys].[index_columns] AS [ic]
+            FROM [sys].[foreign_key_columns] AS [fc] WITH (NOLOCK)
+            LEFT JOIN [sys].[index_columns] AS [ic] WITH (NOLOCK)
               ON [ic].[object_id] = [i].[object_id] AND [ic].[index_id] = [i].[index_id]
              AND [ic].[key_ordinal] = [fc].[constraint_column_id]
             WHERE [fc].[constraint_object_id] = [fk].[object_id]
@@ -198,28 +198,28 @@ WHERE [fk].[is_disabled] = 0
   )
 GROUP BY [s].[name], [t].[name], [fk].[name];
 
-INSERT [#Findings]
+INSERT [#SchemaDesignAnalysis_Findings]
 SELECT @DatabaseId, @DatabaseName,
        CASE WHEN [i].[is_hypothetical] = 1 THEN ''HYPOTHETICAL_INDEX'' ELSE ''INDEX_DISABLED'' END,
        CASE WHEN [i].[is_hypothetical] = 1 THEN ''INFO'' ELSE ''MEDIUM'' END,
        N''INDEX'', [s].[name], [t].[name], [i].[name], NULL,
        CONCAT(N''index_id='', [i].[index_id]),
        N''Nicht automatisch löschen oder aktivieren; Ursprung, Abhängigkeiten und Wartungsabsicht prüfen.''
-FROM [sys].[indexes] AS [i]
-JOIN [sys].[tables] AS [t] ON [t].[object_id] = [i].[object_id]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [t].[schema_id]
+FROM [sys].[indexes] AS [i] WITH (NOLOCK)
+JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id] = [i].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id] = [t].[schema_id]
 WHERE [i].[index_id] > 0 AND ([i].[is_hypothetical] = 1 OR [i].[is_disabled] = 1);
 
-INSERT [#Findings]
+INSERT [#SchemaDesignAnalysis_Findings]
 SELECT @DatabaseId, @DatabaseName, ''EXACT_INDEX_DEFINITION_DUPLICATE'', ''MEDIUM'',
        N''INDEX'', [s].[name], [t].[name], CONCAT([i1].[name], N'' | '', [i2].[name]), NULL,
        N''Schlüssel-/Include-Spalten, Sortierung, Eindeutigkeit und Filterdefinition sind katalogseitig gleich.'',
        N''Nutzung, Abhängigkeiten, Constraints, Kompression und betriebliche Anforderungen vor einer Änderung prüfen.''
-FROM [sys].[indexes] AS [i1]
-JOIN [sys].[indexes] AS [i2]
+FROM [sys].[indexes] AS [i1] WITH (NOLOCK)
+JOIN [sys].[indexes] AS [i2] WITH (NOLOCK)
   ON [i2].[object_id] = [i1].[object_id] AND [i2].[index_id] > [i1].[index_id]
-JOIN [sys].[tables] AS [t] ON [t].[object_id] = [i1].[object_id]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [t].[schema_id]
+JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id] = [i1].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id] = [t].[schema_id]
 WHERE [i1].[index_id] > 0
   AND [i1].[type] IN (1, 2) AND [i2].[type] = [i1].[type]
   AND [i1].[is_hypothetical] = 0 AND [i2].[is_hypothetical] = 0
@@ -229,18 +229,18 @@ WHERE [i1].[index_id] > 0
   AND NOT EXISTS
   (
       SELECT [column_id], [key_ordinal], [is_descending_key], [is_included_column]
-      FROM [sys].[index_columns] WHERE [object_id] = [i1].[object_id] AND [index_id] = [i1].[index_id]
+      FROM [sys].[index_columns] WITH (NOLOCK) WHERE [object_id] = [i1].[object_id] AND [index_id] = [i1].[index_id]
       EXCEPT
       SELECT [column_id], [key_ordinal], [is_descending_key], [is_included_column]
-      FROM [sys].[index_columns] WHERE [object_id] = [i2].[object_id] AND [index_id] = [i2].[index_id]
+      FROM [sys].[index_columns] WITH (NOLOCK) WHERE [object_id] = [i2].[object_id] AND [index_id] = [i2].[index_id]
   )
   AND NOT EXISTS
   (
       SELECT [column_id], [key_ordinal], [is_descending_key], [is_included_column]
-      FROM [sys].[index_columns] WHERE [object_id] = [i2].[object_id] AND [index_id] = [i2].[index_id]
+      FROM [sys].[index_columns] WITH (NOLOCK) WHERE [object_id] = [i2].[object_id] AND [index_id] = [i2].[index_id]
       EXCEPT
       SELECT [column_id], [key_ordinal], [is_descending_key], [is_included_column]
-      FROM [sys].[index_columns] WHERE [object_id] = [i1].[object_id] AND [index_id] = [i1].[index_id]
+      FROM [sys].[index_columns] WITH (NOLOCK) WHERE [object_id] = [i1].[object_id] AND [index_id] = [i1].[index_id]
   );
 
 ;WITH [IdentityRange] AS
@@ -254,7 +254,7 @@ WHERE [i1].[index_id] > 0
            CONVERT(decimal(38,0), CASE [ic].[system_type_id]
                     WHEN 48 THEN 255 WHEN 52 THEN 32767 WHEN 56 THEN 2147483647
                     WHEN 127 THEN 9223372036854775807 END) AS [TypeMax]
-    FROM [sys].[identity_columns] AS [ic]
+    FROM [sys].[identity_columns] AS [ic] WITH (NOLOCK)
     WHERE [ic].[system_type_id] IN (48, 52, 56, 127) AND [ic].[last_value] IS NOT NULL
 ),
 [IdentityUsage] AS
@@ -265,26 +265,26 @@ WHERE [i1].[index_id] > 0
                 ELSE 100.0 * ([r].[TypeMax] - [r].[CurrentValue]) / NULLIF([r].[TypeMax] - [r].[TypeMin], 0) END) AS [UsedPercent]
     FROM [IdentityRange] AS [r]
 )
-INSERT [#Findings]
+INSERT [#SchemaDesignAnalysis_Findings]
 SELECT @DatabaseId, @DatabaseName, ''IDENTITY_TYPE_RANGE_USAGE'',
        CASE WHEN [u].[UsedPercent] >= 95 THEN ''HIGH'' ELSE ''MEDIUM'' END,
        N''IDENTITY_COLUMN'', [s].[name], [t].[name], [u].[name], [u].[UsedPercent],
        CONCAT(N''Typwertebereich genutzt: '', CONVERT(nvarchar(60), [u].[UsedPercent]), N'' Prozent.''),
        N''Berechnung nutzt den vollständigen numerischen Typwertebereich; Seed, Reseed, Zyklen und Fachsemantik separat prüfen.''
 FROM [IdentityUsage] AS [u]
-JOIN [sys].[tables] AS [t] ON [t].[object_id] = [u].[object_id]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [t].[schema_id]
+JOIN [sys].[tables] AS [t] WITH (NOLOCK) ON [t].[object_id] = [u].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id] = [t].[schema_id]
 WHERE [u].[UsedPercent] >= @IdentityWarnPercent;
 
-INSERT [#Findings]
+INSERT [#SchemaDesignAnalysis_Findings]
 SELECT @DatabaseId, @DatabaseName, ''SEQUENCE_RANGE_USAGE'',
        CASE WHEN [q].[is_exhausted] = 1 OR [x].[UsedPercent] >= 95 THEN ''HIGH'' ELSE ''MEDIUM'' END,
        N''SEQUENCE'', [s].[name], [q].[name], NULL, [x].[UsedPercent],
        CONCAT(N''is_exhausted='', [q].[is_exhausted], N''; Typwertebereich genutzt: '',
               CONVERT(nvarchar(60), [x].[UsedPercent]), N'' Prozent.''),
        N''Cache, CYCLE, Sprünge und fachlich erlaubte Wertebereiche separat prüfen.''
-FROM [sys].[sequences] AS [q]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id] = [q].[schema_id]
+FROM [sys].[sequences] AS [q] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id] = [q].[schema_id]
 CROSS APPLY
 (
     SELECT CONVERT(decimal(38,4),
@@ -302,7 +302,7 @@ WHERE [q].[is_exhausted] = 1 OR [x].[UsedPercent] >= @IdentityWarnPercent;';
                     , @IdentityWarnPercent = @IdentityWarnPercent;
             END TRY
             BEGIN CATCH
-                INSERT [#Errors]
+                INSERT [#SchemaDesignAnalysis_Errors]
                 VALUES (@Db,
                         CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371, 916)
                              THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -315,16 +315,16 @@ WHERE [q].[is_exhausted] = 1 OR [x].[UsedPercent] >= @IdentityWarnPercent;';
         CLOSE [database_cursor];
         DEALLOCATE [database_cursor];
 
-        INSERT [#Errors]
+        INSERT [#SchemaDesignAnalysis_Errors]
         SELECT [RequestedName], [StatusCode], NULL, [ErrorMessage]
-        FROM [#DatabaseCandidateWarnings];
-        IF EXISTS (SELECT 1 FROM [#Errors]) SET @IsPartial = 1;
+        FROM [#SchemaDesignAnalysis_DatabaseCandidateWarnings];
+        IF EXISTS (SELECT 1 FROM [#SchemaDesignAnalysis_Errors]) SET @IsPartial = 1;
 
-        IF NOT EXISTS (SELECT 1 FROM [#DatabaseCandidates])
+        IF NOT EXISTS (SELECT 1 FROM [#SchemaDesignAnalysis_DatabaseCandidates])
             SELECT @StatusCode = 'DATABASE_UNAVAILABLE', @IsPartial = 1;
         ELSE IF @IsPartial = 1
             SET @StatusCode = 'AVAILABLE_LIMITED';
-        ELSE IF EXISTS (SELECT 1 FROM [#Findings])
+        ELSE IF EXISTS (SELECT 1 FROM [#SchemaDesignAnalysis_Findings])
             SET @StatusCode = 'AVAILABLE_WITH_FINDING';
     END;
 
@@ -339,12 +339,12 @@ WHERE [q].[is_exhausted] = 1 OR [x].[UsedPercent] >= @IdentityWarnPercent;';
                     @IdentityWarnPercent AS [identityWarnPercent]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
         DECLARE @FindingsJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Findings]
+            (SELECT TOP (@Limit) * FROM [#SchemaDesignAnalysis_Findings]
              ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                       [DatabaseId], [SchemaName], [ObjectName], [FindingCode]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
-            (SELECT * FROM [#Errors] ORDER BY [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#SchemaDesignAnalysis_Errors] ORDER BY [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
                            N',"findings":', COALESCE(@FindingsJson, N'[]'),
                            N',"warnings":', COALESCE(@WarningsJson, N'[]'), N'}');
@@ -356,32 +356,32 @@ WHERE [q].[is_exhausted] = 1 OR [x].[UsedPercent] >= @IdentityWarnPercent;';
                @StatusCode AS [StatusCode], @IsPartial AS [IsPartial],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Read-only; Befunde sind Prüfaufträge, keine DDL-Anweisungen.' AS [Detail];
-        SELECT TOP (@Limit) * FROM [#Findings]
+        SELECT TOP (@Limit) * FROM [#SchemaDesignAnalysis_Findings]
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [DatabaseId], [SchemaName], [ObjectName], [FindingCode];
-        SELECT * FROM [#Errors] ORDER BY [DatabaseName];
+        SELECT * FROM [#SchemaDesignAnalysis_Errors] ORDER BY [DatabaseName];
     END
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
         SELECT N'Schema- und Designkorrektheit' AS [Ergebnis], @Now AS [Stand_UTC],
-               @StatusCode AS [Status], (SELECT COUNT_BIG(*) FROM [#Findings]) AS [Befunde],
+               @StatusCode AS [Status], (SELECT COUNT_BIG(*) FROM [#SchemaDesignAnalysis_Findings]) AS [Befunde],
                @ErrorMessage AS [Hinweis];
         SELECT TOP (@Limit) N'Schema-Befund' AS [Ergebnis], [DatabaseName] AS [Datenbank],
                [SchemaName] AS [Schema], [ObjectName] AS [Objekt],
                [RelatedObjectName] AS [Bezug], [FindingCode] AS [Befund],
                [Severity] AS [Prioritaet], [MetricValue] AS [Messwert],
                [Evidence] AS [Evidenz], [EvidenceLimit] AS [Grenze]
-        FROM [#Findings]
+        FROM [#SchemaDesignAnalysis_Findings]
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [DatabaseId], [SchemaName], [ObjectName], [FindingCode];
         SELECT N'Schema-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank],
                [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer], [ErrorMessage] AS [Meldung]
-        FROM [#Errors] ORDER BY [DatabaseName];
+        FROM [#SchemaDesignAnalysis_Errors] ORDER BY [DatabaseName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Findings'
+              @SourceTable = N'#SchemaDesignAnalysis_Findings'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

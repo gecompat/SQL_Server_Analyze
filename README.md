@@ -117,20 +117,20 @@ Für die vollständige Aufrufsammlung siehe:
 | `TABLE` | primäres typisiertes Ergebnis in eine lokale `#Temp`-Tabelle des Aufrufers |
 | `NONE` | keine fachlichen Resultsets, beispielsweise bei reiner JSON-Nutzung |
 
-Für `TABLE` legt der Aufrufer eine leere Platzhaltertabelle an; das Framework ersetzt den Platzhalter durch die native Struktur des primären Ergebnisses:
+Für `TABLE` legt der Aufrufer eine leere Tabelle mit genau einer beliebigen Dummy-Spalte an; das Framework ersetzt diese Spalte durch die native Struktur des primären Ergebnisses:
 
 ```sql
-CREATE TABLE #RequestResult ([__MonitorPlaceholder] bit NULL);
+CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL);
 
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen = 100
     , @ResultSetArt = 'TABLE'
-    , @ResultTable = N'#RequestResult';
+    , @ResultTable = N'#CurrentRequests_Result';
 
-SELECT * FROM #RequestResult;
+SELECT * FROM #CurrentRequests_Result;
 ```
 
-Unterstützt werden bewusst nur lokale `#Temp`-Tabellen. Eine bereits exakt passende Tabelle wird ergänzt; eine abweichende oder gefüllte Platzhaltertabelle wird ohne Strukturänderung abgelehnt. Viele Procedures können zusätzlich JSON über `@Json nvarchar(max) OUTPUT` zurückgeben. Alle Ausgabearten werden aus derselben kanonischen Datenbasis erzeugt.
+Unterstützt werden bewusst nur lokale `#Temp`-Tabellen. Eine bereits exakt passende Tabelle wird ergänzt; eine leere Ein-Spalten-Tabelle wird unabhängig von Spaltenname und -typ angepasst. Andere abweichende oder gefüllte Tabellen werden ohne Strukturänderung abgelehnt. Viele Procedures können zusätzlich JSON über `@Json nvarchar(max) OUTPUT` zurückgeben. Alle Ausgabearten werden aus derselben kanonischen Datenbasis erzeugt.
 
 ## Filter- und Limitvertrag
 
@@ -236,7 +236,7 @@ Empfohlene Einstiegspunkte:
 
 Der Repositorybestand enthält reproduzierbare statische API-, Installer- und Dokumentationsprüfungen sowie dokumentierte Datenschutz- und Migrationsaudits. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json). Das unter [`Documentation/Quality/Repository_Privacy_Validation.md`](./Documentation/Quality/Repository_Privacy_Validation.md) beschriebene Repository- und ZIP-Datenschutzgate prüft versionierte Dateien und den vollständigen ZIP-Lieferumfang automatisiert, ohne Laufzeit-Resultsets zu verändern.
 
-Die Version `1.1.0-special.10` ergänzt den einheitlichen, typisierten `TABLE`-/`@ResultTable`-Vertrag für alle 82 Analyse-Procedures. Der Release-Gate-Vertrag umfasst nun 32 Suiten; die vorhandene Drei-Versionen-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle bleibt erhalten und wird um den synthetischen TABLE-Laufzeitvertrag ergänzt. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.
+Die Version `1.1.0-special.11` erweitert den typisierten `TABLE`-/`@ResultTable`-Vertrag auf beliebige leere Ein-Spalten-Dummys, erzwingt blockierungsarme Katalogzugriffe und verwendet 373 objektbezogene lokale Temp-Namen. Der Release-Gate-Vertrag umfasst 32 Suiten; die vorhandene Drei-Versionen-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle bleibt erhalten und wird durch den synthetischen TABLE- sowie den statischen Metadaten-/Temp-Namensvertrag ergänzt. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.
 
 Die geplanten SQL-Server-, Editions-, Plattform- und Berechtigungskombinationen stehen in [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv). `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 

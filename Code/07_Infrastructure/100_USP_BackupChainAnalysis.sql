@@ -62,7 +62,7 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @CrossDatabaseRequested bit = 0;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#BackupChainAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -75,13 +75,13 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#BackupChainAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#Backups]
+    CREATE TABLE [#BackupChainAnalysis_Backups]
     (
           [DatabaseName] sysname NOT NULL
         , [BackupSetId] int NOT NULL
@@ -103,7 +103,7 @@ BEGIN
         , [PreviousLogLastLsn] numeric(25,0) NULL
         , [LogGapDetected] bit NOT NULL DEFAULT (0)
     );
-    CREATE TABLE [#Summary]
+    CREATE TABLE [#BackupChainAnalysis_Summary]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -139,7 +139,7 @@ BEGIN
             , @AnalysisClass = NULL
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#BackupChainAnalysis_DatabaseCandidates',@WarningTable=N'#BackupChainAnalysis_DatabaseCandidateWarnings';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -156,7 +156,7 @@ BEGIN
                            ORDER BY [bs].[backup_finish_date] DESC, [bs].[backup_set_id] DESC
                        ) AS [rn]
                 FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
-                JOIN [#DatabaseCandidates] AS [c]
+                JOIN [#BackupChainAnalysis_DatabaseCandidates] AS [c]
                   ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                    = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                 WHERE [bs].[type] = 'D' AND [bs].[is_copy_only] = 0
@@ -165,7 +165,7 @@ BEGIN
             (
                 SELECT [bs].*
                 FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
-                JOIN [#DatabaseCandidates] AS [c]
+                JOIN [#BackupChainAnalysis_DatabaseCandidates] AS [c]
                   ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                    = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                 LEFT JOIN [LatestFull] AS [f]
@@ -185,7 +185,7 @@ BEGIN
                                        ORDER BY [s].[backup_start_date], [s].[backup_set_id]) END AS [PreviousLogLastLsn]
                 FROM [Selected] AS [s]
             )
-            INSERT [#Backups]
+            INSERT [#BackupChainAnalysis_Backups]
             (
                   [DatabaseName], [BackupSetId], [BackupType], [BackupTypeDesc]
                 , [BackupStartDate], [BackupFinishDate], [FirstLsn], [LastLsn]
@@ -211,13 +211,13 @@ BEGIN
             (
                 SELECT [b].*, ROW_NUMBER() OVER
                        (PARTITION BY [DatabaseName] ORDER BY [BackupFinishDate] DESC, [BackupSetId] DESC) AS [rn]
-                FROM [#Backups] AS [b]
+                FROM [#BackupChainAnalysis_Backups] AS [b]
                 WHERE [BackupType] = 'D' AND [IsCopyOnly] = 0
             ),
             [LatestMatchingDiff] AS
             (
                 SELECT [d].[DatabaseName], MAX([d].[BackupFinishDate]) AS [FinishDate]
-                FROM [#Backups] AS [d]
+                FROM [#BackupChainAnalysis_Backups] AS [d]
                 JOIN [LatestFull] AS [f]
                   ON [f].[DatabaseName] = [d].[DatabaseName] AND [f].[rn] = 1
                  AND [d].[DifferentialBaseLsn] = [f].[CheckpointLsn]
@@ -237,7 +237,7 @@ BEGIN
                            LAG([b].[LastRecoveryForkGuid]) OVER
                            (PARTITION BY [b].[DatabaseName]
                             ORDER BY [b].[BackupStartDate], [b].[BackupSetId]) AS [PreviousFork]
-                    FROM [#Backups] AS [b]
+                    FROM [#BackupChainAnalysis_Backups] AS [b]
                 ) AS [x]
                 GROUP BY [x].[DatabaseName]
             ),
@@ -246,7 +246,7 @@ BEGIN
                 SELECT [rh].[destination_database_name] AS [DatabaseName],
                        MAX([rh].[restore_date]) AS [LatestRestoreDate]
                 FROM [msdb].[dbo].[restorehistory] AS [rh] WITH (NOLOCK)
-                JOIN [#DatabaseCandidates] AS [c]
+                JOIN [#BackupChainAnalysis_DatabaseCandidates] AS [c]
                   ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                    = [rh].[destination_database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
                 WHERE @MitRestoreEvidence = 1
@@ -266,8 +266,8 @@ BEGIN
                                                 AND COALESCE([b].[HasBackupChecksums], 0) = 0
                                                THEN 1 ELSE 0 END)) AS [NoChecksumCount],
                        MAX([r].[LatestRestoreDate]) AS [LatestRestoreDate]
-                FROM [#DatabaseCandidates] AS [c]
-                LEFT JOIN [#Backups] AS [b] ON [b].[DatabaseName] = [c].[DatabaseName]
+                FROM [#BackupChainAnalysis_DatabaseCandidates] AS [c]
+                LEFT JOIN [#BackupChainAnalysis_Backups] AS [b] ON [b].[DatabaseName] = [c].[DatabaseName]
                 LEFT JOIN [LatestFull] AS [f] ON [f].[DatabaseName] = [c].[DatabaseName] AND [f].[rn] = 1
                 LEFT JOIN [LatestMatchingDiff] AS [d] ON [d].[DatabaseName] = [c].[DatabaseName]
                 LEFT JOIN [Forks] AS [k] ON [k].[DatabaseName] = [c].[DatabaseName]
@@ -275,7 +275,7 @@ BEGIN
                                                    = [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                 GROUP BY [c].[DatabaseId], [c].[DatabaseName], [c].[RecoveryModelDesc]
             )
-            INSERT [#Summary]
+            INSERT [#BackupChainAnalysis_Summary]
             SELECT
                   [DatabaseId], [DatabaseName], [RecoveryModelDesc]
                 , [LatestFullFinish], [LatestDiffFinish], [LatestLogFinish]
@@ -298,10 +298,10 @@ BEGIN
                          N' Tage; bereinigte Historie kann scheinbare Lücken erzeugen. Test-Restore bleibt erforderlich.')
             FROM [Aggregated];
 
-            IF EXISTS (SELECT 1 FROM [#DatabaseCandidateWarnings])
+            IF EXISTS (SELECT 1 FROM [#BackupChainAnalysis_DatabaseCandidateWarnings])
                 SELECT @StatusCode = 'AVAILABLE_LIMITED', @IsPartial = 1;
             ELSE IF EXISTS
-                    (SELECT 1 FROM [#Summary]
+                    (SELECT 1 FROM [#BackupChainAnalysis_Summary]
                      WHERE [FindingCode] NOT IN ('CHAIN_METADATA_CONSISTENT', 'TEMPDB_NOT_APPLICABLE'))
                 SET @StatusCode = 'AVAILABLE_WITH_FINDING';
         END TRY
@@ -323,14 +323,14 @@ BEGIN
                     @HistoryDays AS [historyDays]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
         DECLARE @SummaryJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Summary] ORDER BY [DatabaseId]
+            (SELECT TOP (@Limit) * FROM [#BackupChainAnalysis_Summary] ORDER BY [DatabaseId]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @BackupJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Backups]
+            (SELECT TOP (@Limit) * FROM [#BackupChainAnalysis_Backups]
              ORDER BY [BackupFinishDate] DESC, [BackupSetId] DESC
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningJson nvarchar(max) =
-            (SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName]
+            (SELECT * FROM [#BackupChainAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
                            N',"summary":', COALESCE(@SummaryJson, N'[]'),
@@ -344,10 +344,10 @@ BEGIN
                @StatusCode AS [StatusCode], @IsPartial AS [IsPartial], @HistoryDays AS [HistoryDays],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'msdb-Metadaten; Test-Restore erforderlich.' AS [Detail];
-        SELECT TOP (@Limit) * FROM [#Summary] ORDER BY [DatabaseId];
-        SELECT TOP (@Limit) * FROM [#Backups]
+        SELECT TOP (@Limit) * FROM [#BackupChainAnalysis_Summary] ORDER BY [DatabaseId];
+        SELECT TOP (@Limit) * FROM [#BackupChainAnalysis_Backups]
         ORDER BY [BackupFinishDate] DESC, [BackupSetId] DESC;
-        SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+        SELECT * FROM [#BackupChainAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
     END
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
@@ -363,16 +363,16 @@ BEGIN
                [BackupWithoutChecksumCount] AS [Ohne_Checksum],
                [LatestRestoreDate] AS [Letzter_Restorebeleg],
                [FindingCode] AS [Befund], [FindingSeverity] AS [Prioritaet], [EvidenceLimit] AS [Grenze]
-        FROM [#Summary]
+        FROM [#BackupChainAnalysis_Summary]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END, [DatabaseId];
         SELECT N'Backupketten-Warnung' AS [Ergebnis], [RequestedName] AS [Datenbank],
                [StatusCode] AS [Status], [ErrorMessage] AS [Meldung]
-        FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+        FROM [#BackupChainAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Summary'
+              @SourceTable = N'#BackupChainAnalysis_Summary'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

@@ -57,6 +57,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServiceBrokerAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -125,7 +126,7 @@ BEGIN
                @ErrorMessage=N'Regex-Pattern benötigen SQL Server 2025 oder neuer und Compatibility Level 170.';
     END;
 
-    CREATE TABLE [#NameFilters]
+    CREATE TABLE [#ServiceBrokerAnalysis_NameFilters]
     (
           [FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ItemOrdinal] int NOT NULL
@@ -134,7 +135,7 @@ BEGIN
         , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#ServiceBrokerAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -147,20 +148,20 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#ServiceBrokerAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
-    CREATE TABLE [#FeatureScope]
+    CREATE TABLE [#ServiceBrokerAnalysis_FeatureScope]
     (
           [DatabaseName] sysname NOT NULL PRIMARY KEY
         , [IsBrokerEnabled] bit NOT NULL
         , [UserQueueCount] bigint NOT NULL
         , [UserServiceCount] bigint NOT NULL
     );
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#ServiceBrokerAnalysis_DatabaseStatus]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -177,7 +178,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#ServiceBrokerAnalysis_SourceStatus]
     (
           [DatabaseName] sysname NULL
         , [SourceCode] varchar(64) NOT NULL
@@ -189,7 +190,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#Queue]
+    CREATE TABLE [#ServiceBrokerAnalysis_Queue]
     (
           [DatabaseName] sysname NOT NULL
         , [SchemaName] sysname NOT NULL
@@ -217,7 +218,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
         , PRIMARY KEY ([DatabaseName],[QueueObjectId])
     );
-    CREATE TABLE [#TransmissionGroup]
+    CREATE TABLE [#ServiceBrokerAnalysis_TransmissionGroup]
     (
           [DatabaseName] sysname NOT NULL
         , [FromServiceName] nvarchar(256) NULL
@@ -234,7 +235,7 @@ BEGIN
         , [OldestAgeMinutes] bigint NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#ConversationState]
+    CREATE TABLE [#ServiceBrokerAnalysis_ConversationState]
     (
           [DatabaseName] sysname NOT NULL
         , [StateCode] char(2) NOT NULL
@@ -247,7 +248,7 @@ BEGIN
         , [EarliestSecurityTimestampUtc] datetime NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Findings]
+    CREATE TABLE [#ServiceBrokerAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
         , [DatabaseName] sysname NULL
@@ -274,7 +275,7 @@ BEGIN
             , @StatisticsNames=NULL
             , @ColumnNames=NULL
             , @StatusCode=@StatusCode OUTPUT
-            , @ErrorMessage=@ErrorMessage OUTPUT;
+            , @ErrorMessage=@ErrorMessage OUTPUT,@FilterTable=N'#ServiceBrokerAnalysis_NameFilters';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
@@ -289,34 +290,34 @@ BEGIN
             , @AnalysisClass='CROSS_DATABASE_DEEP'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
-            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ServiceBrokerAnalysis_DatabaseCandidates',@WarningTable=N'#ServiceBrokerAnalysis_DatabaseCandidateWarnings';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
-    INSERT [#DatabaseStatus]
+    INSERT [#ServiceBrokerAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[IsBrokerEnabled],[UserQueueCount],[UserServiceCount],
      [TransmissionMessageCount],[ConversationEndpointCount],[SourceFailureCount],[FindingCount],[Detail])
     SELECT [DatabaseName],'PENDING',0,NULL,0,0,0,0,0,0,
            N'Feature-Gate und Service-Broker-Quellen werden datenbankweise best effort ausgewertet.'
-    FROM [#DatabaseCandidates];
+    FROM [#ServiceBrokerAnalysis_DatabaseCandidates];
 
-    INSERT [#DatabaseStatus]
+    INSERT [#ServiceBrokerAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[IsBrokerEnabled],[UserQueueCount],[UserServiceCount],
      [TransmissionMessageCount],[ConversationEndpointCount],[SourceFailureCount],[FindingCount],[ErrorMessage],[Detail])
     SELECT [RequestedName],[StatusCode],1,NULL,0,0,0,0,1,0,[ErrorMessage],N'Explizit angeforderte Datenbank nicht auswertbar.'
-    FROM [#DatabaseCandidateWarnings];
+    FROM [#ServiceBrokerAnalysis_DatabaseCandidateWarnings];
 
-    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#DatabaseCandidates])
+    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_DatabaseCandidates])
     BEGIN
         SELECT @StatusCode='NOT_APPLICABLE',@ErrorMessage=N'Keine auswertbare Datenbank im gewählten Scope.';
     END;
 
     DECLARE @SchemaPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @ObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @FullObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     IF @SchemaPatternMode='LIKE'
         SET @SchemaPredicate+=N' AND [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
     IF @SchemaPatternMode IN('REGEX','REGEXI')
@@ -331,7 +332,7 @@ BEGIN
         DECLARE @DbName sysname,@CompatibilityLevel int,@Sql nvarchar(max),@Rows bigint;
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName],[CompatibilityLevel]
-            FROM [#DatabaseCandidates]
+            FROM [#ServiceBrokerAnalysis_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal],[DatabaseId]),[DatabaseId];
         OPEN [DatabaseCursor];
         FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -341,12 +342,12 @@ BEGIN
             IF (@SchemaPatternMode IN('REGEX','REGEXI') OR @ObjectPatternMode IN('REGEX','REGEXI'))
                AND COALESCE(@CompatibilityLevel,0)<170
             BEGIN
-                UPDATE [#DatabaseStatus]
+                UPDATE [#ServiceBrokerAnalysis_DatabaseStatus]
                 SET [StatusCode]='UNAVAILABLE_FEATURE',[IsPartial]=1,[SourceFailureCount]=1,
                     [ErrorMessage]=N'Regex-Pattern benötigen Compatibility Level 170.',
                     [Detail]=N'Für diese Datenbank wurde wegen inkompatiblem Patternvertrag keine Analyse ausgeführt.'
                 WHERE [DatabaseName]=@DbName;
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'FILTER_CONTRACT','UNAVAILABLE_FEATURE',1,0,NULL,NULL,
                        N'Regex-Pattern benötigen Compatibility Level 170.',N'Keine Quellenabfrage ausgeführt.');
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -355,7 +356,7 @@ BEGIN
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#FeatureScope]([DatabaseName],[IsBrokerEnabled],[UserQueueCount],[UserServiceCount])
+INSERT [#ServiceBrokerAnalysis_FeatureScope]([DatabaseName],[IsBrokerEnabled],[UserQueueCount],[UserServiceCount])
 SELECT @pDatabaseName,CONVERT(bit,[d].[is_broker_enabled]),[q].[QueueCount],[svc].[ServiceCount]
 FROM [sys].[databases] [d] WITH (NOLOCK)
 CROSS APPLY
@@ -376,7 +377,7 @@ SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_FEATURE_GATE','AVAILABLE',0,@Rows,
                        N'Katalogsicht auf sichtbare Datenbank- und Broker-Metadaten',NULL,NULL,
                        N'Prüft Datenbankschalter und sichtbare nicht ausgelieferte Queues/Services; Nullzählungen beweisen bei eingeschränkter Metadatensichtbarkeit keine Abwesenheit.');
@@ -384,23 +385,23 @@ SET @pRows=@@ROWCOUNT;';
                 SET [IsBrokerEnabled]=[fs].[IsBrokerEnabled],
                     [UserQueueCount]=[fs].[UserQueueCount],
                     [UserServiceCount]=[fs].[UserServiceCount]
-                FROM [#DatabaseStatus] [ds]
-                JOIN [#FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName]
+                FROM [#ServiceBrokerAnalysis_DatabaseStatus] [ds]
+                JOIN [#ServiceBrokerAnalysis_FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName]
                 WHERE [ds].[DatabaseName]=@DbName;
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_FEATURE_GATE','ERROR_HANDLED',1,0,
                        N'Katalogsicht auf sichtbare Datenbank- und Broker-Metadaten',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Feature-Sichtbarkeit konnte nicht bestimmt werden.');
-                UPDATE [#DatabaseStatus]
+                UPDATE [#ServiceBrokerAnalysis_DatabaseStatus]
                 SET [StatusCode]='ERROR_HANDLED',[IsPartial]=1,[SourceFailureCount]=[SourceFailureCount]+1,
                     [ErrorNumber]=ERROR_NUMBER(),[ErrorMessage]=ERROR_MESSAGE(),
                     [Detail]=N'Feature-Gate fehlgeschlagen; keine belastbare Anwendbarkeitsaussage.'
                 WHERE [DatabaseName]=@DbName;
             END CATCH;
 
-            IF NOT EXISTS(SELECT 1 FROM [#FeatureScope] WHERE [DatabaseName]=@DbName)
+            IF NOT EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_FeatureScope] WHERE [DatabaseName]=@DbName)
             BEGIN
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
                 CONTINUE;
@@ -408,16 +409,16 @@ SET @pRows=@@ROWCOUNT;';
 
             IF EXISTS
             (
-                SELECT 1 FROM [#FeatureScope]
+                SELECT 1 FROM [#ServiceBrokerAnalysis_FeatureScope]
                 WHERE [DatabaseName]=@DbName AND [IsBrokerEnabled]=0
                   AND [UserQueueCount]=0 AND [UserServiceCount]=0
             )
             BEGIN
-                UPDATE [#DatabaseStatus]
+                UPDATE [#ServiceBrokerAnalysis_DatabaseStatus]
                 SET [StatusCode]='NOT_APPLICABLE_VISIBLE_SCOPE',[IsPartial]=0,
                     [Detail]=N'Service Broker ist deaktiviert und im sichtbaren Katalogscope wurden keine benutzerdefinierten Queues oder Services erkannt; dies beweist bei eingeschränkter Metadatensichtbarkeit keine vollständige Abwesenheit.'
                 WHERE [DatabaseName]=@DbName;
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 SELECT @DbName,[SourceCode],'NOT_APPLICABLE',0,0,[RequiredPermission],NULL,NULL,
                        N'Quelle wegen negativem sichtbaren Feature-Gate nicht aufgerufen.'
                 FROM (VALUES
@@ -434,7 +435,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#Queue]
+INSERT [#ServiceBrokerAnalysis_Queue]
 ([DatabaseName],[SchemaName],[QueueName],[QueueObjectId],[ServiceCount],[IsBrokerEnabled],
  [IsActivationEnabled],[IsReceiveEnabled],[IsEnqueueEnabled],[IsRetentionEnabled],
  [IsPoisonMessageHandlingEnabled],[MaxReaders],[ActivationProcedure],[ExecuteAsPrincipalId],
@@ -463,13 +464,13 @@ SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_QUEUE_CATALOG','AVAILABLE',0,@Rows,
                        N'Katalogsicht auf sichtbare Broker-Queues und Services',NULL,NULL,
                        N'Queue-Schalter, Aktivierungskonfiguration und Service-Zuordnungsanzahl; Nullzeilen können aus Filtern oder Metadatensichtbarkeit folgen.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_QUEUE_CATALOG','ERROR_HANDLED',1,0,
                        N'Katalogsicht auf sichtbare Broker-Queues und Services',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Queue-abhängige Kapazitäts- und Aktivierungsquellen werden ausgelassen; Transmission und Conversations bleiben unabhängig.');
@@ -477,11 +478,11 @@ SET @pRows=@@ROWCOUNT;';
 
             IF EXISTS
             (
-                SELECT 1 FROM [#SourceStatus]
+                SELECT 1 FROM [#ServiceBrokerAnalysis_SourceStatus]
                 WHERE [DatabaseName]=@DbName AND [SourceCode]='BROKER_QUEUE_CATALOG' AND [IsPartial]=1
             )
             BEGIN
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES
                 (@DbName,'BROKER_QUEUE_CAPACITY','UNAVAILABLE_DEPENDENCY',1,0,
                  N'VIEW DATABASE STATE und VIEW DEFINITION; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE und VIEW SECURITY DEFINITION',
@@ -501,13 +502,13 @@ UPDATE [q]
 SET [QueueRowsApprox]=[p].[RowCountApprox],
     [QueueReservedMb]=[p].[ReservedMb],
     [QueueUsedMb]=[p].[UsedMb]
-FROM [#Queue] [q]
+FROM [#ServiceBrokerAnalysis_Queue] [q]
 OUTER APPLY
 (
     SELECT SUM(CASE WHEN [index_id] IN(0,1) THEN CONVERT(bigint,[row_count]) END) AS [RowCountApprox],
            CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[reserved_page_count]))*8.0/1024.0) AS [ReservedMb],
            CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[used_page_count]))*8.0/1024.0) AS [UsedMb]
-    FROM [sys].[dm_db_partition_stats]
+    FROM [sys].[dm_db_partition_stats] WITH (NOLOCK)
     WHERE [object_id]=[q].[QueueObjectId]
 ) [p]
 WHERE [q].[DatabaseName]=@pDatabaseName;
@@ -515,13 +516,13 @@ SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                          @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                    INSERT [#SourceStatus]
+                    INSERT [#ServiceBrokerAnalysis_SourceStatus]
                     VALUES(@DbName,'BROKER_QUEUE_CAPACITY','AVAILABLE',0,@Rows,
                            N'VIEW DATABASE STATE und VIEW DEFINITION; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE und VIEW SECURITY DEFINITION',NULL,NULL,
                            N'Approximative Queue-Zeilen und Seiten ohne Queue-Nutzdaten; row_count ist kein Durchsatz- oder Altersnachweis.');
                 END TRY
                 BEGIN CATCH
-                    INSERT [#SourceStatus]
+                    INSERT [#ServiceBrokerAnalysis_SourceStatus]
                     VALUES(@DbName,'BROKER_QUEUE_CAPACITY','ERROR_HANDLED',1,0,
                            N'VIEW DATABASE STATE und VIEW DEFINITION; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE und VIEW SECURITY DEFINITION',
                            ERROR_NUMBER(),ERROR_MESSAGE(),N'Queue-Katalog und andere Broker-Quellen bleiben verfügbar.');
@@ -534,12 +535,12 @@ SET [QueueMonitorState]=[m].[MonitorState],
     [LastEmptyRowsetTime]=[m].[LastEmptyRowsetTime],
     [LastActivatedTime]=[m].[LastActivatedTime],
     [TasksWaiting]=[m].[TasksWaiting]
-FROM [#Queue] [q]
+FROM [#ServiceBrokerAnalysis_Queue] [q]
 OUTER APPLY
 (
     SELECT MAX([state]) AS [MonitorState],MAX([last_empty_rowset_time]) AS [LastEmptyRowsetTime],
            MAX([last_activated_time]) AS [LastActivatedTime],MAX([tasks_waiting]) AS [TasksWaiting]
-    FROM [sys].[dm_broker_queue_monitors]
+    FROM [sys].[dm_broker_queue_monitors] WITH (NOLOCK)
     WHERE [database_id]=DB_ID() AND [queue_id]=[q].[QueueObjectId]
 ) [m]
 WHERE [q].[DatabaseName]=@pDatabaseName;
@@ -547,13 +548,13 @@ SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                          @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                    INSERT [#SourceStatus]
+                    INSERT [#ServiceBrokerAnalysis_SourceStatus]
                     VALUES(@DbName,'BROKER_QUEUE_MONITOR','AVAILABLE',0,@Rows,
                            N'SQL Server 2019: VIEW SERVER STATE; SQL Server 2022+: VIEW SERVER PERFORMANCE STATE',NULL,NULL,
                            N'Monitorstatus und Zeitstempel sind Momentaufnahmen; wartende Tasks sind wartende Receiver und kein Backlogmaß.');
                 END TRY
                 BEGIN CATCH
-                    INSERT [#SourceStatus]
+                    INSERT [#ServiceBrokerAnalysis_SourceStatus]
                     VALUES(@DbName,'BROKER_QUEUE_MONITOR','ERROR_HANDLED',1,0,
                            N'SQL Server 2019: VIEW SERVER STATE; SQL Server 2022+: VIEW SERVER PERFORMANCE STATE',
                            ERROR_NUMBER(),ERROR_MESSAGE(),N'Queue-Katalog, Kapazität und andere Broker-Quellen bleiben verfügbar.');
@@ -563,11 +564,11 @@ SET @pRows=@@ROWCOUNT;';
                     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
 UPDATE [q]
 SET [ActivatedTaskCount]=[a].[ActivatedTaskCount]
-FROM [#Queue] [q]
+FROM [#ServiceBrokerAnalysis_Queue] [q]
 OUTER APPLY
 (
     SELECT CONVERT(int,COUNT_BIG(*)) AS [ActivatedTaskCount]
-    FROM [sys].[dm_broker_activated_tasks]
+    FROM [sys].[dm_broker_activated_tasks] WITH (NOLOCK)
     WHERE [database_id]=DB_ID() AND [queue_id]=[q].[QueueObjectId]
 ) [a]
 WHERE [q].[DatabaseName]=@pDatabaseName;
@@ -575,13 +576,13 @@ SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                          @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                    INSERT [#SourceStatus]
+                    INSERT [#ServiceBrokerAnalysis_SourceStatus]
                     VALUES(@DbName,'BROKER_ACTIVATED_TASKS','AVAILABLE',0,@Rows,
                            N'SQL Server 2019: VIEW SERVER STATE; SQL Server 2022+: VIEW SERVER PERFORMANCE STATE',NULL,NULL,
                            N'Zählt aktuell von Service Broker aktivierte Prozeduren pro Queue; externe oder manuelle Reader sind nicht vollständig abgebildet.');
                 END TRY
                 BEGIN CATCH
-                    INSERT [#SourceStatus]
+                    INSERT [#ServiceBrokerAnalysis_SourceStatus]
                     VALUES(@DbName,'BROKER_ACTIVATED_TASKS','ERROR_HANDLED',1,0,
                            N'SQL Server 2019: VIEW SERVER STATE; SQL Server 2022+: VIEW SERVER PERFORMANCE STATE',
                            ERROR_NUMBER(),ERROR_MESSAGE(),N'Queue-Katalog, Kapazität und andere Broker-Quellen bleiben verfügbar.');
@@ -590,7 +591,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#TransmissionGroup]
+INSERT [#ServiceBrokerAnalysis_TransmissionGroup]
 ([DatabaseName],[FromServiceName],[ToServiceName],[ToBrokerInstance],[ServiceContractName],
  [MessageTypeName],[TransmissionStatus],[MessageCount],[ConversationErrorMessageCount],
  [EndDialogMessageCount],[OldestEnqueueTimeUtc],[NewestEnqueueTimeUtc],[OldestAgeMinutes],[EvidenceLimit])
@@ -611,13 +612,13 @@ SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_TRANSMISSION','AVAILABLE',0,@Rows,
                        N'Katalogsicht auf sys.transmission_queue',NULL,NULL,
                        N'Nur nicht-payloadhaltige Metadaten werden gruppiert; Nachrichtenkörper und Conversation-Handles werden nicht gelesen.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_TRANSMISSION','ERROR_HANDLED',1,0,
                        N'Katalogsicht auf sys.transmission_queue',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Queue- und Conversation-Evidenz bleiben verfügbar.');
@@ -625,7 +626,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#ConversationState]
+INSERT [#ServiceBrokerAnalysis_ConversationState]
 ([DatabaseName],[StateCode],[StateDescription],[IsInitiator],[IsSystem],[EndpointCount],
  [ExpiredLifetimeCount],[EarliestLifetimeUtc],[EarliestSecurityTimestampUtc],[EvidenceLimit])
 SELECT @pDatabaseName,[x].[state],[x].[state_desc],CONVERT(bit,[x].[is_initiator]),[x].[is_system],
@@ -642,13 +643,13 @@ SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_CONVERSATION','AVAILABLE',0,@Rows,
                        N'Katalogsicht auf sys.conversation_endpoints',NULL,NULL,
                        N'Zustände werden ohne Handles, Gruppen-IDs, Schlüsselkennungen oder Nachrichteninhalt aggregiert.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#ServiceBrokerAnalysis_SourceStatus]
                 VALUES(@DbName,'BROKER_CONVERSATION','ERROR_HANDLED',1,0,
                        N'Katalogsicht auf sys.conversation_endpoints',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Queue- und Transmission-Evidenz bleiben verfügbar.');
@@ -663,61 +664,61 @@ SET @pRows=@@ROWCOUNT;';
     UPDATE [ds]
     SET [TransmissionMessageCount]=COALESCE([tx].[MessageCount],0),
         [ConversationEndpointCount]=COALESCE([ce].[EndpointCount],0)
-    FROM [#DatabaseStatus] [ds]
+    FROM [#ServiceBrokerAnalysis_DatabaseStatus] [ds]
     OUTER APPLY
     (
         SELECT SUM([MessageCount]) AS [MessageCount]
-        FROM [#TransmissionGroup] [x]
+        FROM [#ServiceBrokerAnalysis_TransmissionGroup] [x]
         WHERE [x].[DatabaseName]=[ds].[DatabaseName]
     ) [tx]
     OUTER APPLY
     (
         SELECT SUM([EndpointCount]) AS [EndpointCount]
-        FROM [#ConversationState] [x]
+        FROM [#ServiceBrokerAnalysis_ConversationState] [x]
         WHERE [x].[DatabaseName]=[ds].[DatabaseName]
     ) [ce];
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','BROKER_DISABLED_WITH_VISIBLE_OBJECTS','IS_BROKER_ENABLED',0,1,
            N'Service Broker ist für die Datenbank deaktiviert, obwohl sichtbare benutzerdefinierte Queues oder Services vorhanden sind.',
            N'Der Datenbankschalter und sichtbare Objekte beweisen nicht, ob die Deaktivierung geplant, temporär oder fehlerbedingt ist.',
            N'Betriebsabsicht, Restore-/Failover-Historie und abhängige Anwendungen prüfen; keine automatische Aktivierung ableiten.'
-    FROM [#FeatureScope]
+    FROM [#ServiceBrokerAnalysis_FeatureScope]
     WHERE [IsBrokerEnabled]=0 AND ([UserQueueCount]>0 OR [UserServiceCount]>0);
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[QueueName],'WARN','HIGH','QUEUE_RECEIVE_DISABLED','IS_RECEIVE_ENABLED',0,1,
            N'RECEIVE ist für die sichtbare Queue deaktiviert.',
            N'Der OFF-Zustand kann nach wiederholten Rollbacks durch Poison-Message-Erkennung oder manuell entstehen; ohne Ereignis- und Anwendungsevidenz ist die Ursache nicht bewiesen.',
            N'SQL-Fehlerlog, Broker:Queue Disabled beziehungsweise Extended Events, Anwendungstransaktionen und freigegebene Queue-Diagnose prüfen.'
-    FROM [#Queue]
+    FROM [#ServiceBrokerAnalysis_Queue]
     WHERE [IsReceiveEnabled]=0;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[QueueName],'WARN','HIGH','QUEUE_ENQUEUE_DISABLED','IS_ENQUEUE_ENABLED',0,1,
            N'Enqueue ist für die sichtbare Queue deaktiviert.',
            N'Der Katalogzustand zeigt keine Ursache und keine fachliche Betriebsabsicht.',
            N'Bereitstellungszustand, Betriebsabsicht und abhängige Sender prüfen; keine automatische Änderung ableiten.'
-    FROM [#Queue]
+    FROM [#ServiceBrokerAnalysis_Queue]
     WHERE [IsEnqueueEnabled]=0;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[QueueName],'WARN','HIGH','INTERNAL_ACTIVATION_DISABLED','IS_ACTIVATION_ENABLED',0,1,
            N'Eine interne Aktivierungsprozedur ist konfiguriert, die Aktivierung ist jedoch deaktiviert.',
            N'Externe oder geplante Reader können beabsichtigt sein; der Katalogzustand allein beweist keinen Verarbeitungsfehler.',
            N'Startstrategie, Deployment-Zustand und verantwortlichen Readerpfad prüfen.'
-    FROM [#Queue]
+    FROM [#ServiceBrokerAnalysis_Queue]
     WHERE [ActivationProcedure] IS NOT NULL AND [IsActivationEnabled]=0;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[QueueName],'WARN','MEDIUM','QUEUE_BACKLOG_CONTEXT','QUEUE_ROWS_APPROX',
@@ -725,10 +726,10 @@ SET @pRows=@@ROWCOUNT;';
            N'Die approximative Queue-Zeilenzahl überschreitet den konfigurierten Kontextgrenzwert.',
            N'row_count ist approximativ und enthält keine Aussage zu Nachrichtenalter, Durchsatz, Priorität oder fachlich zulässigem Rückstand.',
            N'Zeitreihe, Ankunfts-/Verarbeitungsrate, Conversation-Gruppen und Readerkapazität mit freigegebener Laufzeitevidenz korrelieren.'
-    FROM [#Queue]
+    FROM [#ServiceBrokerAnalysis_Queue]
     WHERE [QueueRowsApprox]>=@QueueRowsWarn;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[QueueName],'WARN','MEDIUM','INTERNAL_ACTIVATION_PROGRESS_REVIEW','MINUTES_SINCE_LAST_ACTIVATION',
@@ -737,7 +738,7 @@ SET @pRows=@@ROWCOUNT;';
            N'Für eine nichtleere Queue mit aktivierter interner Prozedur ist aktuell kein aktivierter Task sichtbar und der Monitor meldet keine laufenden Receives.',
            N'DMV-Werte sind Momentaufnahmen; Conversation-Group-Locks, externe Reader, kurze Aktivierungen und fehlende DMV-Rechte können die Interpretation verändern.',
            N'Queue-Monitor, aktivierte Tasks, Fehlerlog und Ausführungskontext wiederholt messen; Prozedur nur kontrolliert und mit passendem EXECUTE-AS-Kontext testen.'
-    FROM [#Queue]
+    FROM [#ServiceBrokerAnalysis_Queue]
     WHERE [QueueRowsApprox]>0
       AND [ActivationProcedure] IS NOT NULL
       AND [IsActivationEnabled]=1
@@ -745,33 +746,33 @@ SET @pRows=@@ROWCOUNT;';
       AND COALESCE([QueueMonitorState],N'')<>N'RECEIVES_OCCURRING'
       AND ([LastActivatedTime] IS NULL OR DATEDIFF_BIG(MINUTE,[LastActivatedTime],@Now)>=@ActivationSilenceWarnMinutes)
       AND EXISTS
-          (SELECT 1 FROM [#SourceStatus] [ss]
-           WHERE [ss].[DatabaseName]=[#Queue].[DatabaseName]
+          (SELECT 1 FROM [#ServiceBrokerAnalysis_SourceStatus] [ss]
+           WHERE [ss].[DatabaseName]=[#ServiceBrokerAnalysis_Queue].[DatabaseName]
              AND [ss].[SourceCode] IN('BROKER_QUEUE_CAPACITY','BROKER_QUEUE_MONITOR','BROKER_ACTIVATED_TASKS')
            GROUP BY [ss].[DatabaseName]
            HAVING SUM(CONVERT(int,[ss].[IsPartial]))=0 AND COUNT(*)=3);
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[QueueName],'INFO','MEDIUM','QUEUE_RETENTION_ENABLED_CONTEXT','IS_RETENTION_ENABLED',1,0,
            N'Die Queue behält Nachrichten bis zum Ende des Dialogs.',
            N'Retention kann sichtbare Zeilen trotz erfolgreicher Übertragung erhalten; dies ist Konfiguration und kein Fehler.',
            N'Bei Kapazitätsfragen Dialog-Lebenszyklus und erwartete Retention gemeinsam prüfen.'
-    FROM [#Queue]
+    FROM [#ServiceBrokerAnalysis_Queue]
     WHERE [IsRetentionEnabled]=1;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[QueueName],'INFO','MEDIUM','POISON_HANDLING_DISABLED_CONTEXT','IS_POISON_HANDLING_ENABLED',0,1,
            N'Die automatische Poison-Message-Behandlung ist für die Queue deaktiviert.',
            N'Dies kann eine bewusste Anwendungsstrategie sein und beweist keine vorhandene Poison Message.',
            N'Anwendungsseitige Fehler- und Wiederholungsstrategie gegen die Betriebsanforderungen prüfen.'
-    FROM [#Queue]
+    FROM [#ServiceBrokerAnalysis_Queue]
     WHERE [IsPoisonMessageHandlingEnabled]=0;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','MEDIUM','TRANSMISSION_BACKLOG_CONTEXT','TRANSMISSION_MESSAGE_COUNT',
@@ -779,11 +780,11 @@ SET @pRows=@@ROWCOUNT;';
            N'Die aggregierte Transmission Queue überschreitet den konfigurierten Zeilengrenzwert.',
            N'Nicht alle Transmission-Einträge sind Fehler; Zustellung, Bestätigung und Retention können Einträge vorübergehend erhalten.',
            N'Statusgruppen, Alter, Routing, Endpunktverfügbarkeit und Zeitverlauf gemeinsam prüfen.'
-    FROM [#TransmissionGroup]
+    FROM [#ServiceBrokerAnalysis_TransmissionGroup]
     GROUP BY [DatabaseName]
     HAVING SUM([MessageCount])>=@TransmissionRowsWarn;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','TRANSMISSION_STATUS_REPORTED','TRANSMISSION_MESSAGE_COUNT',
@@ -791,10 +792,10 @@ SET @pRows=@@ROWCOUNT;';
            LEFT(CONCAT(N'Für eine Transmission-Gruppe ist ein Übertragungsstatus gemeldet: ',[TransmissionStatus]),1000),
            [EvidenceLimit],
            N'Routing, Broker-Endpunkt, Zertifikate, Zielverfügbarkeit und Fehlerlog anhand der Laufzeitumgebung prüfen.'
-    FROM [#TransmissionGroup]
+    FROM [#ServiceBrokerAnalysis_TransmissionGroup]
     WHERE [TransmissionStatus] IS NOT NULL;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','MEDIUM','AGED_TRANSMISSION_REVIEW','OLDEST_AGE_MINUTES',
@@ -802,10 +803,10 @@ SET @pRows=@@ROWCOUNT;';
            N'Der älteste Eintrag einer Transmission-Gruppe überschreitet den konfigurierten Altersgrenzwert.',
            [EvidenceLimit],
            N'Wiederholte Messung, Status, Netzwerk-/Zielverfügbarkeit und beabsichtigte Retention korrelieren.'
-    FROM [#TransmissionGroup]
+    FROM [#ServiceBrokerAnalysis_TransmissionGroup]
     WHERE [OldestAgeMinutes]>=@TransmissionAgeWarnMinutes;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','CONVERSATION_ERROR_STATE','ERROR_ENDPOINT_COUNT',
@@ -813,11 +814,11 @@ SET @pRows=@@ROWCOUNT;';
            N'Mindestens ein sichtbarer Conversation Endpoint befindet sich im Zustand ERROR.',
            N'Der Endpoint-Zustand enthält keine fachliche Ursache; die zugehörige Fehlermeldung kann bereits konsumiert worden sein.',
            N'Fehlerlog, Transmission-Status und Anwendungskorrelation prüfen, ohne Nachrichteninhalt zu persistieren.'
-    FROM [#ConversationState]
+    FROM [#ServiceBrokerAnalysis_ConversationState]
     WHERE [StateCode]='ER'
     GROUP BY [DatabaseName];
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','MEDIUM','CONVERSATION_ENDPOINT_GROWTH_CONTEXT','ENDPOINT_COUNT',
@@ -825,11 +826,11 @@ SET @pRows=@@ROWCOUNT;';
            N'Die sichtbare Zahl der Conversation Endpoints überschreitet den konfigurierten Kontextgrenzwert.',
            N'Die Anzahl allein beweist weder ein End-Dialog-Leck noch einen Fehler; langlebige aktive Dialoge können fachlich erforderlich sein.',
            N'Zustandsverteilung, Dialoglebenszyklus, Ankunftsrate und Verlauf getrennt untersuchen.'
-    FROM [#ConversationState]
+    FROM [#ServiceBrokerAnalysis_ConversationState]
     GROUP BY [DatabaseName]
     HAVING SUM([EndpointCount])>=@ConversationRowsWarn;
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','MEDIUM','EXPIRED_CONVERSATION_LIFETIME_REVIEW','EXPIRED_LIFETIME_COUNT',
@@ -837,26 +838,26 @@ SET @pRows=@@ROWCOUNT;';
            N'Sichtbare Conversation Endpoints besitzen eine abgelaufene Lifetime.',
            N'Lifetime und Zustandsaufnahme sind Momentaufnahmen; verzögerte Systemverarbeitung und normale Übergangszustände bleiben möglich.',
            N'Zustand, Zeitverlauf, Broker-Aktivität und Fehlerlog korrelieren; keine automatische Conversation-Bereinigung ausführen.'
-    FROM [#ConversationState]
+    FROM [#ServiceBrokerAnalysis_ConversationState]
     WHERE [ExpiredLifetimeCount]>0
     GROUP BY [DatabaseName];
 
-    INSERT [#Findings]
+    INSERT [#ServiceBrokerAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','SERVICE_BROKER_EVIDENCE_GAP',[SourceCode],
            COALESCE([ErrorMessage],N'Die angeforderte Quelle ist nicht verfügbar.'),
            [Detail],N'Berechtigung, Featureverfügbarkeit und Abhängigkeiten prüfen; andere Resultsets bleiben gültig.'
-    FROM [#SourceStatus]
+    FROM [#ServiceBrokerAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
     UPDATE [q]
     SET [AssessmentStatus]=CASE WHEN EXISTS
-        (SELECT 1 FROM [#Findings] [f]
+        (SELECT 1 FROM [#ServiceBrokerAnalysis_Findings] [f]
          WHERE [f].[DatabaseName]=[q].[DatabaseName]
            AND [f].[SchemaName]=[q].[SchemaName]
            AND [f].[ObjectName]=[q].[QueueName]
            AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END
-    FROM [#Queue] [q];
+    FROM [#ServiceBrokerAnalysis_Queue] [q];
 
     UPDATE [ds]
     SET [SourceFailureCount]=[x].[FailureCount],
@@ -870,36 +871,36 @@ SET @pRows=@@ROWCOUNT;';
                       WHEN [ds].[StatusCode]='PENDING' AND [f].[WarnCount]>0 THEN N'Mindestens ein konfigurierter Prüfhinweis liegt vor; kein automatisches Gesundheitsurteil.'
                       WHEN [ds].[StatusCode]='PENDING' THEN N'Kein konfigurierter Warnindikator in der zugänglichen Momentaufnahme; dies beweist weder vollständige Zustellung noch fehlerfreie Verarbeitung.'
                       ELSE [ds].[Detail] END
-    FROM [#DatabaseStatus] [ds]
+    FROM [#ServiceBrokerAnalysis_DatabaseStatus] [ds]
     OUTER APPLY
     (
         SELECT COUNT_BIG(*) AS [FailureCount]
-        FROM [#SourceStatus] [ss]
+        FROM [#ServiceBrokerAnalysis_SourceStatus] [ss]
         WHERE [ss].[DatabaseName]=[ds].[DatabaseName] AND [ss].[IsPartial]=1
     ) [x]
     OUTER APPLY
     (
         SELECT COUNT_BIG(*) AS [FindingCount],
                COALESCE(SUM(CASE WHEN [ff].[Severity]='WARN' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0) AS [WarnCount]
-        FROM [#Findings] [ff]
+        FROM [#ServiceBrokerAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
     ) [f];
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        IF EXISTS(SELECT 1 FROM [#DatabaseStatus] WHERE [IsPartial]=1)
+        IF EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_DatabaseStatus] WHERE [IsPartial]=1)
             SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-        ELSE IF EXISTS(SELECT 1 FROM [#Findings] WHERE [Severity]='WARN')
+        ELSE IF EXISTS(SELECT 1 FROM [#ServiceBrokerAnalysis_Findings] WHERE [Severity]='WARN')
             SET @StatusCode='AVAILABLE_WITH_FINDING';
         ELSE IF NOT EXISTS
-            (SELECT 1 FROM [#FeatureScope]
+            (SELECT 1 FROM [#ServiceBrokerAnalysis_FeatureScope]
              WHERE [IsBrokerEnabled]=1 OR [UserQueueCount]>0 OR [UserServiceCount]>0)
             SET @StatusCode='NOT_APPLICABLE';
     END;
 
     SELECT @ErrorNumber=COALESCE(@ErrorNumber,MIN([ErrorNumber])),
            @ErrorMessage=COALESCE(@ErrorMessage,MIN([ErrorMessage]))
-    FROM [#SourceStatus]
+    FROM [#ServiceBrokerAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
     IF @JsonErzeugen=1
@@ -907,12 +908,12 @@ SET @pRows=@@ROWCOUNT;';
         SELECT @Json=(
             SELECT
                 JSON_QUERY((SELECT N'USP_ServiceBrokerAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
-                JSON_QUERY(COALESCE((SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
-                JSON_QUERY(COALESCE((SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#Queue] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[QueueRowsApprox] DESC,[DatabaseName],[SchemaName],[QueueName] FOR JSON PATH),N'[]')) AS [queues],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#TransmissionGroup] WHERE @NurProblematisch=0 OR [TransmissionStatus] IS NOT NULL OR [OldestAgeMinutes]>=@TransmissionAgeWarnMinutes ORDER BY [OldestAgeMinutes] DESC,[MessageCount] DESC,[DatabaseName] FOR JSON PATH),N'[]')) AS [transmissionGroups],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ConversationState] WHERE @NurProblematisch=0 OR [StateCode]='ER' OR [ExpiredLifetimeCount]>0 OR [EndpointCount]>=@ConversationRowsWarn ORDER BY [EndpointCount] DESC,[DatabaseName],[StateCode] FOR JSON PATH),N'[]')) AS [conversationStates]
+                JSON_QUERY(COALESCE((SELECT * FROM [#ServiceBrokerAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
+                JSON_QUERY(COALESCE((SELECT * FROM [#ServiceBrokerAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Queue] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[QueueRowsApprox] DESC,[DatabaseName],[SchemaName],[QueueName] FOR JSON PATH),N'[]')) AS [queues],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_TransmissionGroup] WHERE @NurProblematisch=0 OR [TransmissionStatus] IS NOT NULL OR [OldestAgeMinutes]>=@TransmissionAgeWarnMinutes ORDER BY [OldestAgeMinutes] DESC,[MessageCount] DESC,[DatabaseName] FOR JSON PATH),N'[]')) AS [transmissionGroups],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_ConversationState] WHERE @NurProblematisch=0 OR [StateCode]='ER' OR [ExpiredLifetimeCount]>0 OR [EndpointCount]>=@ConversationRowsWarn ORDER BY [EndpointCount] DESC,[DatabaseName],[StateCode] FOR JSON PATH),N'[]')) AS [conversationStates]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
     END;
 
@@ -921,19 +922,19 @@ SET @pRows=@@ROWCOUNT;';
         SELECT N'USP_ServiceBrokerAnalysis' AS [Module],@Now AS [CollectedAtUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],
                N'Read-only Broker-Metadatenaufnahme; keine Queue-Nutzdaten, Nachrichtenkörper, RECEIVE-, DDL- oder Conversation-Änderung.' AS [Detail];
-        SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#Findings]
+        SELECT * FROM [#ServiceBrokerAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
+        SELECT * FROM [#ServiceBrokerAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
+        SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Findings]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
-        SELECT TOP(@Limit) * FROM [#Queue]
+        SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Queue]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
         ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,
                  [QueueRowsApprox] DESC,[DatabaseName],[SchemaName],[QueueName];
-        SELECT TOP(@Limit) * FROM [#TransmissionGroup]
+        SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_TransmissionGroup]
         WHERE @NurProblematisch=0 OR [TransmissionStatus] IS NOT NULL OR [OldestAgeMinutes]>=@TransmissionAgeWarnMinutes
         ORDER BY [OldestAgeMinutes] DESC,[MessageCount] DESC,[DatabaseName];
-        SELECT TOP(@Limit) * FROM [#ConversationState]
+        SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_ConversationState]
         WHERE @NurProblematisch=0 OR [StateCode]='ER' OR [ExpiredLifetimeCount]>0 OR [EndpointCount]>=@ConversationRowsWarn
         ORDER BY [EndpointCount] DESC,[DatabaseName],[StateCode];
     END;
@@ -949,7 +950,7 @@ SET @pRows=@@ROWCOUNT;';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Findings'
+              @SourceTable = N'#ServiceBrokerAnalysis_Findings'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

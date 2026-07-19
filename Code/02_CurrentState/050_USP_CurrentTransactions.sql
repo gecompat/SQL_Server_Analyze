@@ -28,6 +28,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentTransactions]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -56,8 +57,8 @@ BEGIN
     DECLARE @HasMoreRows bit = 0;
     DECLARE @Message nvarchar(2048);
 
-    CREATE TABLE [#SessionFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
-    CREATE TABLE [#Result]
+    CREATE TABLE [#CurrentTransactions_SessionFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
+    CREATE TABLE [#CurrentTransactions_Result]
     (
           [SessionId]                smallint       NOT NULL
         , [TransactionId]            bigint         NOT NULL
@@ -77,7 +78,7 @@ BEGIN
         , [LogBytesReserved]         bigint         NULL
         , [StatementText]            nvarchar(max)  NULL
     );
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#CurrentTransactions_Warnings]
     (
           [StatusCode] varchar(40) NOT NULL
         , [ErrorNumber] int NULL
@@ -105,7 +106,7 @@ BEGIN
         END
         ELSE
         BEGIN
-            INSERT [#SessionFilter]([SessionId])
+            INSERT [#CurrentTransactions_SessionFilter]([SessionId])
             SELECT CONVERT(smallint, [NumberValue])
             FROM [monitor].[TVF_ParseBigintList](@SessionIds)
             WHERE [IsValid] = 1;
@@ -128,7 +129,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#Result]
+        INSERT [#CurrentTransactions_Result]
         (
               [SessionId], [TransactionId], [TransactionBeginTimeUtc]
             , [TransactionAgeSeconds], [TransactionType], [TransactionState]
@@ -154,14 +155,14 @@ BEGIN
             , [dt].[database_transaction_log_bytes_used]
             , [dt].[database_transaction_log_bytes_reserved]
             , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [statementText].[StatementText] ELSE LEFT([statementText].[StatementText], @MaxSqlTextZeichen) END END
-        FROM [sys].[dm_tran_session_transactions] AS [st]
-        INNER JOIN [sys].[dm_tran_active_transactions] AS [at]
+        FROM [sys].[dm_tran_session_transactions] AS [st] WITH (NOLOCK)
+        INNER JOIN [sys].[dm_tran_active_transactions] AS [at] WITH (NOLOCK)
           ON [at].[transaction_id] = [st].[transaction_id]
-        INNER JOIN [sys].[dm_exec_sessions] AS [s]
+        INNER JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [st].[session_id]
-        LEFT JOIN [sys].[dm_exec_requests] AS [r]
+        LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
           ON [r].[session_id] = [st].[session_id]
-        LEFT JOIN [sys].[dm_tran_database_transactions] AS [dt]
+        LEFT JOIN [sys].[dm_tran_database_transactions] AS [dt] WITH (NOLOCK)
           ON [dt].[transaction_id] = [st].[transaction_id]
         LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
           ON [d].[database_id] = COALESCE([r].[database_id], [dt].[database_id])
@@ -180,7 +181,7 @@ BEGIN
               @SessionIds IS NULL
               OR EXISTS
                  (
-                     SELECT 1 FROM [#SessionFilter] AS [f]
+                     SELECT 1 FROM [#CurrentTransactions_SessionFilter] AS [f]
                      WHERE [f].[SessionId] = [st].[session_id]
                  )
           )
@@ -189,7 +190,7 @@ BEGIN
             , [st].[session_id]
             , [at].[transaction_id];
 
-        SELECT @RowCount = COUNT_BIG(*) FROM [#Result];
+        SELECT @RowCount = COUNT_BIG(*) FROM [#CurrentTransactions_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
     END TRY
     BEGIN CATCH
@@ -197,7 +198,7 @@ BEGIN
         SET @ErrorMessage = ERROR_MESSAGE();
         SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
                                WHEN @ErrorNumber = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
-        INSERT [#Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
+        INSERT [#CurrentTransactions_Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
     END CATCH;
 
     IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'
@@ -221,7 +222,7 @@ BEGIN
         IF @OutputMode = 'RAW'
         BEGIN
             SELECT TOP (@Limit) *
-            FROM [#Result]
+            FROM [#CurrentTransactions_Result]
             ORDER BY [TransactionAgeSeconds] DESC, [SessionId], [TransactionId];
         END
         ELSE
@@ -241,11 +242,11 @@ BEGIN
                 , CONVERT(decimal(19, 2), [LogBytesReserved] / 1048576.0) AS [Log reserviert MB]
                 , [SessionId] AS [Session_SQL]
                 , [StatementText] AS [SQL-Text]
-            FROM [#Result]
+            FROM [#CurrentTransactions_Result]
             ORDER BY [TransactionAgeSeconds] DESC, [SessionId], [TransactionId];
         END;
 
-        SELECT * FROM [#Warnings] ORDER BY [StatusCode];
+        SELECT * FROM [#CurrentTransactions_Warnings] ORDER BY [StatusCode];
     END;
 
     IF @JsonErzeugen = 1
@@ -265,13 +266,13 @@ BEGIN
         DECLARE @Data nvarchar(max) =
         (
             SELECT TOP (@Limit) *
-            FROM [#Result]
+            FROM [#CurrentTransactions_Result]
             ORDER BY [TransactionAgeSeconds] DESC, [SessionId], [TransactionId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @Warnings nvarchar(max) =
         (
-            SELECT * FROM [#Warnings] ORDER BY [StatusCode]
+            SELECT * FROM [#CurrentTransactions_Warnings] ORDER BY [StatusCode]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         SET @Json = CONCAT(N'{"meta":', COALESCE(@Meta, N'{}'), N',"transactions":', COALESCE(@Data, N'[]'), N',"warnings":', COALESCE(@Warnings, N'[]'), N'}');
@@ -279,7 +280,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#CurrentTransactions_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

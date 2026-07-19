@@ -46,7 +46,7 @@ BEGIN
 
     IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') BEGIN SET @StatusCode='INVALID_PARAMETER';SET @IsPartial=1;SET @ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';END;
 
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#ServerSecurityConfiguration_SourceStatus]
     (
         [SourceName]   sysname        NOT NULL,
         [StatusCode]   varchar(40)    NOT NULL,
@@ -54,7 +54,7 @@ BEGIN
         [ErrorMessage] nvarchar(2048) NULL
     );
 
-    CREATE TABLE [#Configuration]
+    CREATE TABLE [#ServerSecurityConfiguration_Configuration]
     (
         [ConfigurationName] nvarchar(128) NOT NULL,
         [ConfiguredValue]   sql_variant   NULL,
@@ -62,7 +62,7 @@ BEGIN
         [Finding]           varchar(60)   NOT NULL
     );
 
-    CREATE TABLE [#Services]
+    CREATE TABLE [#ServerSecurityConfiguration_Services]
     (
         [ServiceName]                      nvarchar(256) NULL,
         [ServiceAccount]                   nvarchar(256) NULL,
@@ -72,7 +72,7 @@ BEGIN
         [InstantFileInitializationFinding] varchar(40)   NOT NULL
     );
 
-    CREATE TABLE [#Properties]
+    CREATE TABLE [#ServerSecurityConfiguration_Properties]
     (
         [MachineName]                 sysname       NULL,
         [ServerName]                  sysname       NULL,
@@ -84,7 +84,7 @@ BEGIN
     SET LOCK_TIMEOUT 0;
 
     BEGIN TRY
-        INSERT [#Configuration]
+        INSERT [#ServerSecurityConfiguration_Configuration]
         (
             [ConfigurationName],
             [ConfiguredValue],
@@ -110,7 +110,7 @@ BEGIN
                     THEN 'EXTERNAL_SCRIPTS_ENABLED'
                 ELSE 'OK_OR_CONTEXT_DEPENDENT'
             END
-        FROM [sys].[configurations] AS c
+        FROM [sys].[configurations] AS c WITH (NOLOCK)
         WHERE [c].[name] IN
         (
             N'xp_cmdshell',
@@ -122,11 +122,11 @@ BEGIN
             N'contained database authentication'
         );
 
-        INSERT [#SourceStatus] VALUES
+        INSERT [#ServerSecurityConfiguration_SourceStatus] VALUES
             (N'sys.configurations', 'AVAILABLE', NULL, NULL);
     END TRY
     BEGIN CATCH
-        INSERT [#SourceStatus] VALUES
+        INSERT [#ServerSecurityConfiguration_SourceStatus] VALUES
         (
             N'sys.configurations',
             CASE
@@ -140,7 +140,7 @@ BEGIN
     END CATCH;
 
     BEGIN TRY
-        INSERT [#Services]
+        INSERT [#ServerSecurityConfiguration_Services]
         (
             [ServiceName],
             [ServiceAccount],
@@ -160,13 +160,13 @@ BEGIN
                     THEN 'IFI_ENABLED'
                 ELSE 'IFI_NOT_CONFIRMED'
             END
-        FROM [sys].[dm_server_services] AS s;
+        FROM [sys].[dm_server_services] AS s WITH (NOLOCK);
 
-        INSERT [#SourceStatus] VALUES
+        INSERT [#ServerSecurityConfiguration_SourceStatus] VALUES
             (N'sys.dm_server_services', 'AVAILABLE', NULL, NULL);
     END TRY
     BEGIN CATCH
-        INSERT [#SourceStatus] VALUES
+        INSERT [#ServerSecurityConfiguration_SourceStatus] VALUES
         (
             N'sys.dm_server_services',
             CASE
@@ -180,7 +180,7 @@ BEGIN
     END CATCH;
 
     BEGIN TRY
-        INSERT [#Properties]
+        INSERT [#ServerSecurityConfiguration_Properties]
         (
             [MachineName],
             [ServerName],
@@ -195,11 +195,11 @@ BEGIN
             CONVERT(int, SERVERPROPERTY(N'IsIntegratedSecurityOnly')),
             CONVERT(int, IS_SRVROLEMEMBER(N'sysadmin'));
 
-        INSERT [#SourceStatus] VALUES
+        INSERT [#ServerSecurityConfiguration_SourceStatus] VALUES
             (N'SERVERPROPERTY', 'AVAILABLE', NULL, NULL);
     END TRY
     BEGIN CATCH
-        INSERT [#SourceStatus] VALUES
+        INSERT [#ServerSecurityConfiguration_SourceStatus] VALUES
         (
             N'SERVERPROPERTY',
             'ERROR_HANDLED',
@@ -213,7 +213,7 @@ BEGIN
     IF EXISTS
     (
         SELECT 1
-        FROM [#SourceStatus] AS s
+        FROM [#ServerSecurityConfiguration_SourceStatus] AS s
         WHERE [s].[StatusCode] <> 'AVAILABLE'
     )
     BEGIN
@@ -223,14 +223,14 @@ BEGIN
                 WHEN EXISTS
                 (
                     SELECT 1
-                    FROM [#SourceStatus] AS s
+                    FROM [#ServerSecurityConfiguration_SourceStatus] AS s
                     WHERE [s].[StatusCode] = 'AVAILABLE'
                 )
                     THEN 'PARTIAL'
                 ELSE
                 (
                     SELECT TOP (1) [s].[StatusCode]
-                    FROM [#SourceStatus] AS s
+                    FROM [#ServerSecurityConfiguration_SourceStatus] AS s
                     WHERE [s].[StatusCode] <> 'AVAILABLE'
                     ORDER BY [s].[SourceName]
                 )
@@ -238,14 +238,14 @@ BEGIN
             @ErrorNumber =
             (
                 SELECT TOP (1) [s].[ErrorNumber]
-                FROM [#SourceStatus] AS s
+                FROM [#ServerSecurityConfiguration_SourceStatus] AS s
                 WHERE [s].[StatusCode] <> 'AVAILABLE'
                 ORDER BY [s].[SourceName]
             ),
             @ErrorMessage =
             (
                 SELECT TOP (1) [s].[ErrorMessage]
-                FROM [#SourceStatus] AS s
+                FROM [#ServerSecurityConfiguration_SourceStatus] AS s
                 WHERE [s].[StatusCode] <> 'AVAILABLE'
                 ORDER BY [s].[SourceName]
             );
@@ -269,14 +269,14 @@ END;
     IF @ResultSetArtNormalisiert<>'NONE'
     BEGIN
       SELECT CAST('2.0' AS varchar(16)) [ContractVersion],@CollectionTimeUtc [CollectionTimeUtc],N'monitor.USP_ServerSecurityConfiguration' [ModuleName],@StatusCode [StatusCode],@IsPartial [IsPartial],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage];
-      IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#SourceStatus] ORDER BY [SourceName];SELECT * FROM [#Configuration] ORDER BY [ConfigurationName];SELECT * FROM [#Services] ORDER BY [ServiceName];SELECT * FROM [#Properties];END
-      ELSE BEGIN SELECT N'Sicherheitsquelle' [Ergebnis],[x].* FROM [#SourceStatus] [x] ORDER BY [SourceName];SELECT N'Sicherheitskonfiguration' [Ergebnis],[ConfigurationName] [Einstellung],CONVERT(nvarchar(4000),[ConfiguredValue]) [konfiguriert],CONVERT(nvarchar(4000),[RunningValue]) [aktiv],[Finding] [Bewertung] FROM [#Configuration] ORDER BY [ConfigurationName];SELECT N'SQL-Dienst' [Ergebnis],[x].* FROM [#Services] [x] ORDER BY [ServiceName];SELECT N'Server-Eigenschaft' [Ergebnis],[x].* FROM [#Properties] [x];END;
+      IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#ServerSecurityConfiguration_SourceStatus] ORDER BY [SourceName];SELECT * FROM [#ServerSecurityConfiguration_Configuration] ORDER BY [ConfigurationName];SELECT * FROM [#ServerSecurityConfiguration_Services] ORDER BY [ServiceName];SELECT * FROM [#ServerSecurityConfiguration_Properties];END
+      ELSE BEGIN SELECT N'Sicherheitsquelle' [Ergebnis],[x].* FROM [#ServerSecurityConfiguration_SourceStatus] [x] ORDER BY [SourceName];SELECT N'Sicherheitskonfiguration' [Ergebnis],[ConfigurationName] [Einstellung],CONVERT(nvarchar(4000),[ConfiguredValue]) [konfiguriert],CONVERT(nvarchar(4000),[RunningValue]) [aktiv],[Finding] [Bewertung] FROM [#ServerSecurityConfiguration_Configuration] ORDER BY [ConfigurationName];SELECT N'SQL-Dienst' [Ergebnis],[x].* FROM [#ServerSecurityConfiguration_Services] [x] ORDER BY [ServiceName];SELECT N'Server-Eigenschaft' [Ergebnis],[x].* FROM [#ServerSecurityConfiguration_Properties] [x];END;
     END;
-    IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ServerSecurityConfiguration' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Sources nvarchar(max)=(SELECT * FROM [#SourceStatus] ORDER BY [SourceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Cfg nvarchar(max)=(SELECT [ConfigurationName],CONVERT(nvarchar(4000),[ConfiguredValue]) [ConfiguredValue],CONVERT(nvarchar(4000),[RunningValue]) [RunningValue],[Finding] FROM [#Configuration] ORDER BY [ConfigurationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Services nvarchar(max)=(SELECT * FROM [#Services] ORDER BY [ServiceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Props nvarchar(max)=(SELECT * FROM [#Properties] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"sources":',COALESCE(@Sources,N'[]'),N',"configuration":',COALESCE(@Cfg,N'[]'),N',"services":',COALESCE(@Services,N'[]'),N',"properties":',COALESCE(@Props,N'[]'),N',"warnings":[]}');END;
+    IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ServerSecurityConfiguration' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Sources nvarchar(max)=(SELECT * FROM [#ServerSecurityConfiguration_SourceStatus] ORDER BY [SourceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Cfg nvarchar(max)=(SELECT [ConfigurationName],CONVERT(nvarchar(4000),[ConfiguredValue]) [ConfiguredValue],CONVERT(nvarchar(4000),[RunningValue]) [RunningValue],[Finding] FROM [#ServerSecurityConfiguration_Configuration] ORDER BY [ConfigurationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Services nvarchar(max)=(SELECT * FROM [#ServerSecurityConfiguration_Services] ORDER BY [ServiceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Props nvarchar(max)=(SELECT * FROM [#ServerSecurityConfiguration_Properties] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"sources":',COALESCE(@Sources,N'[]'),N',"configuration":',COALESCE(@Cfg,N'[]'),N',"services":',COALESCE(@Services,N'[]'),N',"properties":',COALESCE(@Props,N'[]'),N',"warnings":[]}');END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Configuration'
+              @SourceTable = N'#ServerSecurityConfiguration_Configuration'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

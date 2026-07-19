@@ -86,7 +86,7 @@ BEGIN
     DECLARE @CrossDatabaseRequested bit = 0;
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#QueryStoreStatus_DatabaseCandidates]
     (
           [DatabaseId]         int            NOT NULL
         , [DatabaseName]       sysname        NOT NULL
@@ -100,7 +100,7 @@ BEGIN
         , [RequestedOrdinal]   int            NULL
     );
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#QueryStoreStatus_Result]
     (
           [DatabaseId] int NULL
         , [DatabaseName] sysname NOT NULL
@@ -131,7 +131,7 @@ BEGIN
         , [StatusHint] nvarchar(1000) NULL
     );
 
-    CREATE TABLE [#Errors]
+    CREATE TABLE [#QueryStoreStatus_Errors]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -157,12 +157,12 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#QueryStoreStatus_DatabaseCandidates';
     END;
 
     IF @StatusCode = 'AVAILABLE' AND @QueryStoreDatabaseNames IS NOT NULL
     BEGIN
-        INSERT [#Errors]
+        INSERT [#QueryStoreStatus_Errors]
         (
               [DatabaseName], [StatusCode], [ErrorNumber], [ErrorMessage]
         )
@@ -176,12 +176,12 @@ BEGIN
           AND NOT EXISTS
           (
               SELECT 1
-              FROM [#DatabaseCandidates] AS [c]
+              FROM [#QueryStoreStatus_DatabaseCandidates] AS [c]
               WHERE [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
                   = [n].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
           );
 
-        IF EXISTS (SELECT 1 FROM [#Errors])
+        IF EXISTS (SELECT 1 FROM [#QueryStoreStatus_Errors])
             SET @IsPartial = 1;
     END;
 
@@ -191,7 +191,7 @@ BEGIN
     BEGIN
         DECLARE [c] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName]
-            FROM [#DatabaseCandidates]
+            FROM [#QueryStoreStatus_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
         OPEN [c];
@@ -201,10 +201,10 @@ BEGIN
         BEGIN
             BEGIN TRY
                 SET @Sql = N'USE ' + QUOTENAME(@Db) + N';
-INSERT [#Result]
+INSERT [#QueryStoreStatus_Result]
 SELECT
       DB_ID()
-    , DB_NAME()
+    , (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())
     , [desired_state]
     , [desired_state_desc]
     , [actual_state]
@@ -237,12 +237,12 @@ SELECT
             AND [current_storage_size_mb] * 100.0 / [max_storage_size_mb] >= 90
                 THEN N''Speichernutzung liegt bei mindestens 90 Prozent.''
            ELSE N''Query Store ist lesbar.'' END
-FROM [sys].[database_query_store_options];';
+FROM [sys].[database_query_store_options] WITH (NOLOCK);';
 
                 EXEC [sys].[sp_executesql] @Sql;
             END TRY
             BEGIN CATCH
-                INSERT [#Errors]
+                INSERT [#QueryStoreStatus_Errors]
                 VALUES
                 (
                       @Db
@@ -272,17 +272,17 @@ FROM [sys].[database_query_store_options];';
         CLOSE [c];
         DEALLOCATE [c];
 
-        SELECT @RowCount = COUNT_BIG(*) FROM [#Result];
+        SELECT @RowCount = COUNT_BIG(*) FROM [#QueryStoreStatus_Result];
 
         IF @RowCount = 0
         BEGIN
             SET @StatusCode = CASE WHEN EXISTS
-                 (SELECT 1 FROM [#Errors] WHERE [StatusCode] = 'DENIED_PERMISSION')
+                 (SELECT 1 FROM [#QueryStoreStatus_Errors] WHERE [StatusCode] = 'DENIED_PERMISSION')
                  THEN 'DENIED_PERMISSION' ELSE 'DATABASE_UNAVAILABLE' END;
             SELECT TOP (1)
                   @ErrorNumber = [ErrorNumber]
                 , @ErrorMessage = [ErrorMessage]
-            FROM [#Errors]
+            FROM [#QueryStoreStatus_Errors]
             ORDER BY [DatabaseName];
         END
         ELSE IF @IsPartial = 1
@@ -318,12 +318,12 @@ FROM [sys].[database_query_store_options];';
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @DataJson nvarchar(max) =
-            (SELECT * FROM [#Result] ORDER BY [DatabaseId]
+            (SELECT * FROM [#QueryStoreStatus_Result] ORDER BY [DatabaseId]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
             (SELECT [DatabaseName] AS [databaseName], [StatusCode] AS [code],
                     [ErrorNumber] AS [errorNumber], [ErrorMessage] AS [message]
-             FROM [#Errors] ORDER BY [DatabaseName]
+             FROM [#QueryStoreStatus_Errors] ORDER BY [DatabaseName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
@@ -349,8 +349,8 @@ FROM [sys].[database_query_store_options];';
             , @ErrorNumber AS [ErrorNumber]
             , @ErrorMessage AS [ErrorMessage]
             , N'Read-only Query-Store-Statusprüfung.' AS [Detail];
-        SELECT * FROM [#Result] ORDER BY [DatabaseId];
-        SELECT * FROM [#Errors] ORDER BY [DatabaseName];
+        SELECT * FROM [#QueryStoreStatus_Result] ORDER BY [DatabaseId];
+        SELECT * FROM [#QueryStoreStatus_Errors] ORDER BY [DatabaseName];
     END
     ELSE IF @ResultSetArtNormalisiert = 'CONSOLE'
     BEGIN
@@ -372,7 +372,7 @@ FROM [sys].[database_query_store_options];';
             , [QueryCaptureModeDesc] AS [Capture_Mode]
             , [WaitStatsCaptureModeDesc] AS [Wait_Stats]
             , [StatusHint] AS [Hinweis]
-        FROM [#Result]
+        FROM [#QueryStoreStatus_Result]
         ORDER BY [DatabaseId];
 
         SELECT
@@ -381,13 +381,13 @@ FROM [sys].[database_query_store_options];';
             , [StatusCode] AS [Status]
             , [ErrorNumber] AS [Fehlernummer]
             , [ErrorMessage] AS [Meldung]
-        FROM [#Errors]
+        FROM [#QueryStoreStatus_Errors]
         ORDER BY [DatabaseName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#QueryStoreStatus_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

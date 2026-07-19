@@ -44,6 +44,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentSessions]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @ModuleName sysname = N'USP_CurrentSessions';
@@ -80,11 +81,11 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#SessionIdFilter]
+    CREATE TABLE [#CurrentSessions_SessionIdFilter]
     (
         [SessionId] smallint NOT NULL PRIMARY KEY
     );
-    CREATE TABLE [#StringFilter]
+    CREATE TABLE [#CurrentSessions_StringFilter]
     (
           [FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StringValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -106,7 +107,7 @@ BEGIN
         IF EXISTS (SELECT 1 FROM [monitor].[TVF_ParseBigintList](@SessionIds) WHERE [IsValid]=0 OR [NumberValue] NOT BETWEEN 1 AND 32767)
             SET @StatusCode='INVALID_PARAMETER';
         ELSE
-            INSERT [#SessionIdFilter]([SessionId])
+            INSERT [#CurrentSessions_SessionIdFilter]([SessionId])
             SELECT CONVERT(smallint,[NumberValue]) FROM [monitor].[TVF_ParseBigintList](@SessionIds)
             GROUP BY [NumberValue];
     END;
@@ -128,10 +129,10 @@ BEGIN
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        INSERT [#StringFilter]([FilterType],[StringValue]) SELECT 'LOGIN',[StringValue] FROM [monitor].[TVF_ParseStringList](@LoginNames) WHERE [IsValid]=1 GROUP BY [StringValue];
-        INSERT [#StringFilter]([FilterType],[StringValue]) SELECT 'HOST',[StringValue] FROM [monitor].[TVF_ParseStringList](@HostNames) WHERE [IsValid]=1 GROUP BY [StringValue];
-        INSERT [#StringFilter]([FilterType],[StringValue]) SELECT 'PROGRAM',[StringValue] FROM [monitor].[TVF_ParseStringList](@ProgramNames) WHERE [IsValid]=1 GROUP BY [StringValue];
-        INSERT [#StringFilter]([FilterType],[StringValue]) SELECT 'DATABASE',[NameValue] FROM [monitor].[TVF_ParseSqlNameList](@DatabaseNames) WHERE [IsValid]=1 GROUP BY [NameValue];
+        INSERT [#CurrentSessions_StringFilter]([FilterType],[StringValue]) SELECT 'LOGIN',[StringValue] FROM [monitor].[TVF_ParseStringList](@LoginNames) WHERE [IsValid]=1 GROUP BY [StringValue];
+        INSERT [#CurrentSessions_StringFilter]([FilterType],[StringValue]) SELECT 'HOST',[StringValue] FROM [monitor].[TVF_ParseStringList](@HostNames) WHERE [IsValid]=1 GROUP BY [StringValue];
+        INSERT [#CurrentSessions_StringFilter]([FilterType],[StringValue]) SELECT 'PROGRAM',[StringValue] FROM [monitor].[TVF_ParseStringList](@ProgramNames) WHERE [IsValid]=1 GROUP BY [StringValue];
+        INSERT [#CurrentSessions_StringFilter]([FilterType],[StringValue]) SELECT 'DATABASE',[NameValue] FROM [monitor].[TVF_ParseSqlNameList](@DatabaseNames) WHERE [IsValid]=1 GROUP BY [NameValue];
     END;
 
     DECLARE @HasRegex bit = CASE WHEN @LoginMode IN('REGEX','REGEXI') OR @HostMode IN('REGEX','REGEXI') OR @ProgramMode IN('REGEX','REGEXI') OR @DatabaseMode IN('REGEX','REGEXI') THEN 1 ELSE 0 END;
@@ -152,7 +153,7 @@ BEGIN
     IF @StatusCode='INVALID_PARAMETER' AND @ErrorMessage IS NULL
         SET @ErrorMessage=N'Ungültige Liste, Kombination oder Patternangabe.';
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#CurrentSessions_Result]
     (
           [SessionId] smallint NOT NULL, [RequestId] int NULL, [IsUserProcess] bit NOT NULL
         , [SessionStatus] nvarchar(30) NULL, [RequestStatus] nvarchar(30) NULL
@@ -178,7 +179,7 @@ BEGIN
 
     IF @StatusCode='AVAILABLE'
     BEGIN TRY
-        INSERT [#Result]
+        INSERT [#CurrentSessions_Result]
         SELECT TOP (@CandidateMaxZeilen)
               [s].[session_id],[r].[request_id],[s].[is_user_process],[s].[status],[r].[status]
             , [s].[login_name],[s].[original_login_name],[s].[host_name],[s].[program_name],[s].[client_interface_name]
@@ -191,21 +192,21 @@ BEGIN
             , [c].[client_net_address],[c].[net_transport],[c].[protocol_type],[c].[encrypt_option],[c].[auth_scheme]
             , CASE WHEN @MitSqlText=1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [st].[StatementText] ELSE LEFT([st].[StatementText],@MaxSqlTextZeichen) END END
             , CASE WHEN @MitSqlText=1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [t].[text] ELSE LEFT([t].[text],@MaxSqlTextZeichen) END END
-        FROM [sys].[dm_exec_sessions] AS [s]
-        LEFT JOIN [sys].[dm_exec_connections] AS [c] ON [c].[session_id]=[s].[session_id]
-        OUTER APPLY (SELECT TOP (1) [rr].* FROM [sys].[dm_exec_requests] AS [rr] WHERE [rr].[session_id]=[s].[session_id] ORDER BY [rr].[request_id]) AS [r]
-        LEFT JOIN [sys].[databases] AS [d] WITH (READUNCOMMITTED) ON [d].[database_id]=[r].[database_id]
+        FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+        LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK) ON [c].[session_id]=[s].[session_id]
+        OUTER APPLY (SELECT TOP (1) [rr].* FROM [sys].[dm_exec_requests] AS [rr] WITH (NOLOCK) WHERE [rr].[session_id]=[s].[session_id] ORDER BY [rr].[request_id]) AS [r]
+        LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK) ON [d].[database_id]=[r].[database_id]
         OUTER APPLY [sys].[dm_exec_sql_text](CASE WHEN @MitSqlText=1 THEN COALESCE([r].[sql_handle],[c].[most_recent_sql_handle]) END) AS [t]
         OUTER APPLY [monitor].[TVF_StatementText]([t].[text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
-        WHERE (NOT EXISTS(SELECT 1 FROM [#SessionIdFilter]) OR EXISTS(SELECT 1 FROM [#SessionIdFilter] AS [f] WHERE [f].[SessionId]=[s].[session_id]))
+        WHERE (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_SessionIdFilter]) OR EXISTS(SELECT 1 FROM [#CurrentSessions_SessionIdFilter] AS [f] WHERE [f].[SessionId]=[s].[session_id]))
           AND (@AktuelleSessionEinbeziehen=1 OR [s].[session_id]<>@@SPID)
           AND (@SystemSessionsEinbeziehen=1 OR [s].[is_user_process]=1)
           AND (@InaktiveSessionsEinbeziehen=1 OR [r].[session_id] IS NOT NULL OR [s].[open_transaction_count]>0)
           AND (@EigeneSessionsModus='ALLE' OR (@EigeneSessionsModus='NUR' AND [s].[original_login_name]=ORIGINAL_LOGIN()) OR (@EigeneSessionsModus='AUSSCHLIESSEN' AND ISNULL([s].[original_login_name],N'')<>ORIGINAL_LOGIN()))
-          AND (NOT EXISTS(SELECT 1 FROM [#StringFilter] WHERE [FilterType]='LOGIN') OR EXISTS(SELECT 1 FROM [#StringFilter] AS [f] WHERE [f].[FilterType]='LOGIN' AND [f].[StringValue]=[s].[login_name] COLLATE SQL_Latin1_General_CP1_CS_AS))
-          AND (NOT EXISTS(SELECT 1 FROM [#StringFilter] WHERE [FilterType]='HOST') OR EXISTS(SELECT 1 FROM [#StringFilter] AS [f] WHERE [f].[FilterType]='HOST' AND [f].[StringValue]=[s].[host_name] COLLATE SQL_Latin1_General_CP1_CS_AS))
-          AND (NOT EXISTS(SELECT 1 FROM [#StringFilter] WHERE [FilterType]='PROGRAM') OR EXISTS(SELECT 1 FROM [#StringFilter] AS [f] WHERE [f].[FilterType]='PROGRAM' AND [f].[StringValue]=[s].[program_name] COLLATE SQL_Latin1_General_CP1_CS_AS))
-          AND (NOT EXISTS(SELECT 1 FROM [#StringFilter] WHERE [FilterType]='DATABASE') OR EXISTS(SELECT 1 FROM [#StringFilter] AS [f] WHERE [f].[FilterType]='DATABASE' AND [f].[StringValue]=[d].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
+          AND (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] WHERE [FilterType]='LOGIN') OR EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] AS [f] WHERE [f].[FilterType]='LOGIN' AND [f].[StringValue]=[s].[login_name] COLLATE SQL_Latin1_General_CP1_CS_AS))
+          AND (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] WHERE [FilterType]='HOST') OR EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] AS [f] WHERE [f].[FilterType]='HOST' AND [f].[StringValue]=[s].[host_name] COLLATE SQL_Latin1_General_CP1_CS_AS))
+          AND (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] WHERE [FilterType]='PROGRAM') OR EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] AS [f] WHERE [f].[FilterType]='PROGRAM' AND [f].[StringValue]=[s].[program_name] COLLATE SQL_Latin1_General_CP1_CS_AS))
+          AND (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] WHERE [FilterType]='DATABASE') OR EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] AS [f] WHERE [f].[FilterType]='DATABASE' AND [f].[StringValue]=[d].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
           AND (@LoginMode<>'LIKE' OR [s].[login_name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @LoginPattern COLLATE SQL_Latin1_General_CP1_CS_AS)
           AND (@HostMode<>'LIKE' OR [s].[host_name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @HostPattern COLLATE SQL_Latin1_General_CP1_CS_AS)
           AND (@ProgramMode<>'LIKE' OR [s].[program_name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @ProgramPattern COLLATE SQL_Latin1_General_CP1_CS_AS)
@@ -219,25 +220,25 @@ BEGIN
         IF @HasRegex=1
         BEGIN
             DECLARE @Sql nvarchar(max)=N'';
-            IF @LoginMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [LoginName] IS NULL OR NOT REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags);';
-            IF @HostMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [HostName] IS NULL OR NOT REGEXP_LIKE([HostName],@HostPattern,@HostFlags);';
-            IF @ProgramMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [ProgramName] IS NULL OR NOT REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags);';
-            IF @DatabaseMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#Result] WHERE [DatabaseName] IS NULL OR NOT REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags);';
+            IF @LoginMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#CurrentSessions_Result] WHERE [LoginName] IS NULL OR NOT REGEXP_LIKE([LoginName],@LoginPattern,@LoginFlags);';
+            IF @HostMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#CurrentSessions_Result] WHERE [HostName] IS NULL OR NOT REGEXP_LIKE([HostName],@HostPattern,@HostFlags);';
+            IF @ProgramMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#CurrentSessions_Result] WHERE [ProgramName] IS NULL OR NOT REGEXP_LIKE([ProgramName],@ProgramPattern,@ProgramFlags);';
+            IF @DatabaseMode IN('REGEX','REGEXI') SET @Sql+=N'DELETE FROM [#CurrentSessions_Result] WHERE [DatabaseName] IS NULL OR NOT REGEXP_LIKE([DatabaseName],@DatabasePattern,@DatabaseFlags);';
             EXEC [sys].[sp_executesql] @Sql,N'@LoginPattern nvarchar(4000),@LoginFlags varchar(8),@HostPattern nvarchar(4000),@HostFlags varchar(8),@ProgramPattern nvarchar(4000),@ProgramFlags varchar(8),@DatabasePattern nvarchar(4000),@DatabaseFlags varchar(8)',@LoginPattern,@LoginFlags,@HostPattern,@HostFlags,@ProgramPattern,@ProgramFlags,@DatabasePattern,@DatabaseFlags;
         END;
 
         IF @MaxZeilen IS NOT NULL AND @MaxZeilen>0
         BEGIN
-            IF (SELECT COUNT_BIG(*) FROM [#Result])>@MaxZeilen SET @HasMoreRows=1;
+            IF (SELECT COUNT_BIG(*) FROM [#CurrentSessions_Result])>@MaxZeilen SET @HasMoreRows=1;
             ;WITH [R] AS
             (
                 SELECT [rn]=ROW_NUMBER() OVER(ORDER BY CASE WHEN @Sortierung='CPU' THEN COALESCE([RequestCpuMs],[SessionCpuMs]) END DESC,CASE WHEN @Sortierung='READS' THEN COALESCE([RequestLogicalReads],[SessionLogicalReads]) END DESC,CASE WHEN @Sortierung='WRITES' THEN COALESCE([RequestWrites],[SessionWrites]) END DESC,CASE WHEN @Sortierung='LOGIN' THEN DATEDIFF_BIG(SECOND,'20000101',[LoginTime]) END DESC,[SessionId]),*
-                FROM [#Result]
+                FROM [#CurrentSessions_Result]
             )
             DELETE FROM [R] WHERE [rn]>@MaxZeilen;
         END;
 
-        SELECT @RowCount=COUNT_BIG(*) FROM [#Result];
+        SELECT @RowCount=COUNT_BIG(*) FROM [#CurrentSessions_Result];
         IF @HasFullView=0 BEGIN SET @StatusCode='AVAILABLE_LIMITED';SET @IsPartial=1;SET @Detail=N'Ohne vollständige Server-State-Berechtigung kann die Sicht auf eigene Sessions begrenzt sein.';END
         ELSE SET @Detail=N'Current-State-Sessions erfolgreich gelesen.';
     END TRY
@@ -255,7 +256,7 @@ BEGIN
     IF @JsonErzeugen=1
     BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT @ModuleName AS [resultName],1 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@MaxZeilen AS [requestedMaxRows],@RowCount AS [returnedRows],@HasMoreRows AS [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-        DECLARE @SessionsJson nvarchar(max)=(SELECT [r].*,[wi].[WaitGroup] AS [waitGroup],[wi].[Severity] AS [waitSeverity],[wi].[Meaning] AS [waitMeaning] FROM [#Result] AS [r] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi] ORDER BY [SessionId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @SessionsJson nvarchar(max)=(SELECT [r].*,[wi].[WaitGroup] AS [waitGroup],[wi].[Severity] AS [waitSeverity],[wi].[Meaning] AS [waitMeaning] FROM [#CurrentSessions_Result] AS [r] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi] ORDER BY [SessionId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"sessions":',COALESCE(@SessionsJson,N'[]'),N',"warnings":',CASE WHEN @ErrorMessage IS NULL AND @Detail IS NULL THEN N'[]' ELSE (SELECT @StatusCode AS [code],COALESCE(@ErrorMessage,@Detail) AS [message] FOR JSON PATH,INCLUDE_NULL_VALUES) END,N'}');
     END;
 
@@ -263,20 +264,20 @@ BEGIN
     BEGIN
         SELECT @ModuleName AS [ModuleName],@CollectionTimeUtc AS [CollectionTimeUtc],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@RowCount AS [RowCount],@MaxZeilen AS [RequestedMaxRows],@HasMoreRows AS [HasMoreRows],@RequiredPermission AS [RequiredPermission],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],@Detail AS [Detail];
         SELECT [r].*,[wi].[WaitGroup],[wi].[Severity] AS [WaitSeverity],[wi].[IsGenerallyBenign],[wi].[Meaning] AS [WaitMeaning],[wi].[TypicalOccurrence] AS [WaitTypicalOccurrence],[wi].[HighWaitImpact],[wi].[RecommendedChecks],[wi].[HelpUrl] AS [WaitHelpUrl],[wi].[InterpretationScope],[wi].[CatalogMatchType]
-        FROM [#Result] AS [r] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi]
+        FROM [#CurrentSessions_Result] AS [r] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi]
         ORDER BY CASE WHEN @Sortierung='CPU' THEN COALESCE([RequestCpuMs],[SessionCpuMs]) END DESC,CASE WHEN @Sortierung='READS' THEN COALESCE([RequestLogicalReads],[SessionLogicalReads]) END DESC,CASE WHEN @Sortierung='WRITES' THEN COALESCE([RequestWrites],[SessionWrites]) END DESC,CASE WHEN @Sortierung='LOGIN' THEN DATEDIFF_BIG(SECOND,'20000101',[LoginTime]) END DESC,[SessionId];
     END
     ELSE IF @ResultSetArtNormalisiert='CONSOLE'
     BEGIN
         SELECT N'Modulstatus' AS [Ergebnis],@ModuleName AS [Modul],@StatusCode AS [Status],CASE WHEN @IsPartial=1 THEN N'Ja' ELSE N'Nein' END AS [Teilergebnis],@RowCount AS [Zeilen],@Detail AS [Hinweis],@ErrorMessage AS [Fehler];
         SELECT N'Aktuelle Session' AS [Ergebnis],[SessionId] AS [Session],[RequestId] AS [Request],[LoginName] AS [Login],[HostName] AS [Host],[ProgramName] AS [Programm],[DatabaseName] AS [Datenbank],[SessionStatus] AS [Sessionstatus],[RequestStatus] AS [Requeststatus],CONCAT(CONVERT(decimal(19,2),COALESCE([RequestElapsedMs],0)/1000.0),N' s') AS [Laufzeit],COALESCE([RequestCpuMs],[SessionCpuMs]) AS [CPU_ms],COALESCE([RequestLogicalReads],[SessionLogicalReads]) AS [Logical_Reads],COALESCE([RequestWrites],[SessionWrites]) AS [Writes],[SessionId] AS [Session_Wait],[WaitType] AS [Wait],[WaitTimeMs] AS [Wait_ms],[BlockingSessionId] AS [Blockiert_durch],[CurrentStatement] AS [Aktuelles_Statement]
-        FROM [#Result]
+        FROM [#CurrentSessions_Result]
         ORDER BY CASE WHEN @Sortierung='CPU' THEN COALESCE([RequestCpuMs],[SessionCpuMs]) END DESC,CASE WHEN @Sortierung='READS' THEN COALESCE([RequestLogicalReads],[SessionLogicalReads]) END DESC,CASE WHEN @Sortierung='WRITES' THEN COALESCE([RequestWrites],[SessionWrites]) END DESC,[SessionId];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#CurrentSessions_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

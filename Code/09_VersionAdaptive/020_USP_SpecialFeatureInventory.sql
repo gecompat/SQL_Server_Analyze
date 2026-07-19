@@ -44,6 +44,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SpecialFeatureInventory]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
@@ -95,7 +96,7 @@ BEGIN
         SET @ExternalScriptsConfigurationAvailable=0;
     END CATCH;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#SpecialFeatureInventory_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -108,13 +109,13 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#SpecialFeatureInventory_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#SpecialFeatureInventory_DatabaseStatus]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -125,7 +126,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(1000) NULL
     );
-    CREATE TABLE [#FeatureInventory]
+    CREATE TABLE [#SpecialFeatureInventory_FeatureInventory]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [FeatureCode] varchar(64) NOT NULL
@@ -150,21 +151,21 @@ BEGIN
             , @AnalysisClass=NULL
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
-            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#SpecialFeatureInventory_DatabaseCandidates',@WarningTable=N'#SpecialFeatureInventory_DatabaseCandidateWarnings';
     END;
 
-    INSERT [#DatabaseStatus]
+    INSERT [#SpecialFeatureInventory_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[FeatureRows],[DetectedFeatureRows],[ErrorNumber],[ErrorMessage],[Detail])
     SELECT [DatabaseName],'AVAILABLE',0,0,0,NULL,NULL,
            N'Aggregierte, sichtbare Katalogmetadaten; eine Nullzählung beweist keine Feature-Abwesenheit.'
-    FROM [#DatabaseCandidates];
+    FROM [#SpecialFeatureInventory_DatabaseCandidates];
 
-    INSERT [#DatabaseStatus]
+    INSERT [#SpecialFeatureInventory_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[FeatureRows],[DetectedFeatureRows],[ErrorNumber],[ErrorMessage],[Detail])
     SELECT [RequestedName],[StatusCode],1,0,0,NULL,[ErrorMessage],N'Explizit angeforderte Datenbank nicht auswertbar.'
-    FROM [#DatabaseCandidateWarnings];
+    FROM [#SpecialFeatureInventory_DatabaseCandidateWarnings];
 
-    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#DatabaseCandidates])
+    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#SpecialFeatureInventory_DatabaseCandidates])
     BEGIN
         SET @StatusCode='NOT_APPLICABLE';
         SET @ErrorMessage=N'Keine auswertbare Datenbank im gewählten Scope.';
@@ -175,7 +176,7 @@ BEGIN
         DECLARE @DbName sysname,@Sql nvarchar(max);
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName]
-            FROM [#DatabaseCandidates]
+            FROM [#SpecialFeatureInventory_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal],[DatabaseId]),[DatabaseId];
         OPEN [DatabaseCursor];
         FETCH NEXT FROM [DatabaseCursor] INTO @DbName;
@@ -290,27 +291,27 @@ SELECT @UserTypes=COUNT_BIG(*)
 FROM [sys].[types] WITH (NOLOCK)
 WHERE [is_user_defined]=1;
 
-INSERT [#FeatureInventory]
+INSERT [#SpecialFeatureInventory_FeatureInventory]
 ([DatabaseName],[FeatureCode],[FeatureFamily],[DetectionStatus],[DetectedItemCount],[ConfigurationState],[SourceObjects],[RecommendedModule],[RecommendedModuleStatus],[EvidenceLimit])
 VALUES
-(DB_NAME(),''IN_MEMORY_OLTP'',N''In-Memory OLTP'',CASE WHEN @MemoryOptimized>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@MemoryOptimized,NULL,N''sys.tables|sys.filegroups'',N''USP_InMemoryOltpAnalysis'',''IMPLEMENTED'',N''Gezählt werden sichtbare memory-optimized Tabellen und XTP-Dateigruppen; Zustand und Speicherverbrauch sind erst im getrennten Deep-Dive-Modul bewertet.''),
-(DB_NAME(),''TEMPORAL'',N''Temporal Tables'',CASE WHEN @Temporal>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Temporal,NULL,N''sys.tables'',N''USP_TemporalAnalysis'',''IMPLEMENTED'',N''Gezählt werden sichtbare systemversionierte Current-Tabellen; Zuordnung, Retention, approximative Kapazität und Indexbaseline liegen im getrennten Deep-Dive-Modul, nicht jedoch ein Nachweis der Zeilenkonsistenz.''),
-(DB_NAME(),''SERVICE_BROKER'',N''Service Broker'',CASE WHEN @Broker>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Broker,CASE WHEN @BrokerEnabled=1 THEN N''ENABLED'' ELSE N''DISABLED'' END,N''sys.databases|sys.service_queues|sys.services'',N''USP_ServiceBrokerAnalysis'',''IMPLEMENTED'',N''Broker-Aktivierung und sichtbare Objekte werden gezählt; Queue-Schalter, approximative Kapazität, Aktivierungs-DMVs, Transmission und Conversation-Zustände liegen im getrennten Deep-Dive-Modul, Nachrichtenkörper bleiben ausgeschlossen.''),
-(DB_NAME(),''FULL_TEXT'',N''Full-Text'',CASE WHEN @FullText>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@FullText,NULL,N''sys.fulltext_catalogs|sys.fulltext_indexes'',N''USP_FullTextAnalysis'',''IMPLEMENTED'',N''Kataloge und Indizes werden gezählt; isolierte Population-, Batch-, Fragment-, Semantik- und serverweite Laufzeitevidenz liegt im getrennten Deep-Dive-Modul, Inhalte und Crawl-Logs bleiben ausgeschlossen.''),
-(DB_NAME(),''CHANGE_TRACKING'',N''Change Tracking'',CASE WHEN @ChangeTracking>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@ChangeTracking,NULL,N''sys.change_tracking_databases|sys.change_tracking_tables'',N''USP_DataCaptureDeepAnalysis'',''IMPLEMENTED'',N''Datenbank- und Tabellenmetadaten werden gezählt; das Deep-Dive-Modul bewertet MinValidVersion nur gegen einen explizit gelieferten Consumer-Wasserstand.''),
-(DB_NAME(),''CDC'',N''Change Data Capture'',CASE WHEN @Cdc>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Cdc,CASE WHEN @CdcEnabled=1 THEN N''ENABLED'' ELSE N''DISABLED'' END,N''sys.databases|sys.tables'',N''USP_DataCaptureDeepAnalysis'',''IMPLEMENTED'',N''CDC-Aktivierung und sichtbare erfasste Tabellen werden gezählt; isolierte Scan-, Fehler-, Job- und Cleanup-Evidenz liegt im Deep-Dive-Modul.''),
-(DB_NAME(),''ENCRYPTION'',N''Encryption'',CASE WHEN @Encryption>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Encryption,CASE WHEN @Encrypted=1 THEN N''DATABASE_ENCRYPTED'' ELSE N''DATABASE_NOT_ENCRYPTED'' END,N''sys.databases|sys.columns|sys.column_master_keys|sys.column_encryption_keys'',N''USP_EncryptionAnalysis'',''PLANNED'',N''TDE-Flag, verschlüsselte Spalten und Schlüsselmetadaten werden gezählt; Secrets, Schlüsselmaterial und geschützte Werte werden nicht gelesen.''),
-(DB_NAME(),''CLR'',N''CLR'',CASE WHEN @Clr>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Clr,NULL,N''sys.assemblies'',NULL,''NOT_PLANNED'',N''Nur benutzerdefinierte Assemblyzeilen werden gezählt; Assemblyname, CLR-Identität, Binary und Moduldefinitionen werden nicht ausgegeben.''),
-(DB_NAME(),''EXTERNAL_TABLES'',N''External Tables und Data Sources'',CASE WHEN @ExternalTables>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@ExternalTables,NULL,N''sys.external_tables|sys.external_data_sources'',NULL,''NOT_PLANNED'',N''Objektzahlen werden aggregiert; Locations, Connection Options, Credentials und Remote-Namen werden nicht gelesen.''),
-(DB_NAME(),''EXTERNAL_RUNTIME'',N''External Languages und Libraries'',CASE WHEN @ExternalRuntime>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@ExternalRuntime,NULL,N''sys.external_languages|sys.external_libraries'',NULL,''NOT_PLANNED'',N''Nur aggregierte Katalogzeilen; Namen, Dateien, Pfade, Besitzer und Libraryinhalte werden nicht gelesen.''),
-(DB_NAME(),''EXTERNAL_SCRIPTS'',N''External Scripts Configuration'',CASE WHEN @pExternalScriptsConfigured=1 THEN ''CONFIGURED_ONLY'' WHEN @pExternalScriptsConfigured=0 THEN ''NOT_DETECTED_VISIBLE_SCOPE'' ELSE ''SOURCE_UNAVAILABLE'' END,NULL,CASE WHEN @pExternalScriptsConfigured=1 THEN N''ENABLED'' WHEN @pExternalScriptsConfigured=0 THEN N''DISABLED'' ELSE N''UNKNOWN'' END,N''sys.configurations'',NULL,''NOT_PLANNED'',N''Die Serverkonfiguration beweist keine tatsächliche Skriptausführung; Moduldefinitionen und Laufzeithistorie werden nicht durchsucht.''),
-(DB_NAME(),''FILESTREAM_FILETABLE'',N''FILESTREAM und FileTable'',CASE WHEN @FileStream>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@FileStream,NULL,N''sys.columns|sys.tables'',NULL,''NOT_PLANNED'',N''Sichtbare FILESTREAM-Spalten und FileTables werden gezählt; Dateipfade und Inhalte werden nicht gelesen.''),
-(DB_NAME(),''GRAPH'',N''Graph'',CASE WHEN @Graph>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Graph,NULL,N''sys.tables'',NULL,''NOT_PLANNED'',N''Sichtbare Node- und Edge-Tabellen werden gezählt; Daten und Graphqualität sind nicht bewertet.''),
-(DB_NAME(),''SPATIAL'',N''Spatial'',CASE WHEN @Spatial>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Spatial,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Sichtbare geometry-/geography-Spalten werden gezählt; räumliche Daten und Indizes sind nicht bewertet.''),
-(DB_NAME(),''XML'',N''XML'',CASE WHEN @Xml>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Xml,NULL,N''sys.columns|sys.types|sys.xml_indexes'',NULL,''NOT_PLANNED'',N''Sichtbare XML-Spalten und XML-Indizes werden gezählt; XML-Inhalte und Schema-Definitionen werden nicht gelesen.''),
-(DB_NAME(),''JSON_NATIVE'',N''Native JSON'',CASE WHEN @pMajor IS NULL THEN ''SOURCE_UNAVAILABLE'' WHEN @pMajor<17 THEN ''UNAVAILABLE_VERSION'' WHEN @NativeJson>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@NativeJson,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Erkannt wird nur der native JSON-Systemtyp ab SQL Server 2025; JSON in Zeichenketten oder Moduldefinitionen ist katalogseitig nicht zuverlässig inventarisierbar.''),
-(DB_NAME(),''VECTOR'',N''Vector'',CASE WHEN @pMajor IS NULL THEN ''SOURCE_UNAVAILABLE'' WHEN @pMajor<17 THEN ''UNAVAILABLE_VERSION'' WHEN @Vector>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Vector,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Erkannt werden sichtbare Spalten des nativen Vector-Systemtyps; Dimensionen, Inhalte und Indexqualität sind nicht bewertet.''),
-(DB_NAME(),''USER_DEFINED_TYPES'',N''User-defined Types'',CASE WHEN @UserTypes>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@UserTypes,NULL,N''sys.types'',NULL,''NOT_PLANNED'',N''Benutzerdefinierte Typzeilen werden aggregiert; Typnamen, Definitionen, Besitzer und Assemblydetails werden nicht ausgegeben.'');';
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''IN_MEMORY_OLTP'',N''In-Memory OLTP'',CASE WHEN @MemoryOptimized>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@MemoryOptimized,NULL,N''sys.tables|sys.filegroups'',N''USP_InMemoryOltpAnalysis'',''IMPLEMENTED'',N''Gezählt werden sichtbare memory-optimized Tabellen und XTP-Dateigruppen; Zustand und Speicherverbrauch sind erst im getrennten Deep-Dive-Modul bewertet.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''TEMPORAL'',N''Temporal Tables'',CASE WHEN @Temporal>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Temporal,NULL,N''sys.tables'',N''USP_TemporalAnalysis'',''IMPLEMENTED'',N''Gezählt werden sichtbare systemversionierte Current-Tabellen; Zuordnung, Retention, approximative Kapazität und Indexbaseline liegen im getrennten Deep-Dive-Modul, nicht jedoch ein Nachweis der Zeilenkonsistenz.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''SERVICE_BROKER'',N''Service Broker'',CASE WHEN @Broker>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Broker,CASE WHEN @BrokerEnabled=1 THEN N''ENABLED'' ELSE N''DISABLED'' END,N''sys.databases|sys.service_queues|sys.services'',N''USP_ServiceBrokerAnalysis'',''IMPLEMENTED'',N''Broker-Aktivierung und sichtbare Objekte werden gezählt; Queue-Schalter, approximative Kapazität, Aktivierungs-DMVs, Transmission und Conversation-Zustände liegen im getrennten Deep-Dive-Modul, Nachrichtenkörper bleiben ausgeschlossen.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''FULL_TEXT'',N''Full-Text'',CASE WHEN @FullText>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@FullText,NULL,N''sys.fulltext_catalogs|sys.fulltext_indexes'',N''USP_FullTextAnalysis'',''IMPLEMENTED'',N''Kataloge und Indizes werden gezählt; isolierte Population-, Batch-, Fragment-, Semantik- und serverweite Laufzeitevidenz liegt im getrennten Deep-Dive-Modul, Inhalte und Crawl-Logs bleiben ausgeschlossen.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''CHANGE_TRACKING'',N''Change Tracking'',CASE WHEN @ChangeTracking>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@ChangeTracking,NULL,N''sys.change_tracking_databases|sys.change_tracking_tables'',N''USP_DataCaptureDeepAnalysis'',''IMPLEMENTED'',N''Datenbank- und Tabellenmetadaten werden gezählt; das Deep-Dive-Modul bewertet MinValidVersion nur gegen einen explizit gelieferten Consumer-Wasserstand.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''CDC'',N''Change Data Capture'',CASE WHEN @Cdc>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Cdc,CASE WHEN @CdcEnabled=1 THEN N''ENABLED'' ELSE N''DISABLED'' END,N''sys.databases|sys.tables'',N''USP_DataCaptureDeepAnalysis'',''IMPLEMENTED'',N''CDC-Aktivierung und sichtbare erfasste Tabellen werden gezählt; isolierte Scan-, Fehler-, Job- und Cleanup-Evidenz liegt im Deep-Dive-Modul.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''ENCRYPTION'',N''Encryption'',CASE WHEN @Encryption>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Encryption,CASE WHEN @Encrypted=1 THEN N''DATABASE_ENCRYPTED'' ELSE N''DATABASE_NOT_ENCRYPTED'' END,N''sys.databases|sys.columns|sys.column_master_keys|sys.column_encryption_keys'',N''USP_EncryptionAnalysis'',''PLANNED'',N''TDE-Flag, verschlüsselte Spalten und Schlüsselmetadaten werden gezählt; Secrets, Schlüsselmaterial und geschützte Werte werden nicht gelesen.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''CLR'',N''CLR'',CASE WHEN @Clr>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Clr,NULL,N''sys.assemblies'',NULL,''NOT_PLANNED'',N''Nur benutzerdefinierte Assemblyzeilen werden gezählt; Assemblyname, CLR-Identität, Binary und Moduldefinitionen werden nicht ausgegeben.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''EXTERNAL_TABLES'',N''External Tables und Data Sources'',CASE WHEN @ExternalTables>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@ExternalTables,NULL,N''sys.external_tables|sys.external_data_sources'',NULL,''NOT_PLANNED'',N''Objektzahlen werden aggregiert; Locations, Connection Options, Credentials und Remote-Namen werden nicht gelesen.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''EXTERNAL_RUNTIME'',N''External Languages und Libraries'',CASE WHEN @ExternalRuntime>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@ExternalRuntime,NULL,N''sys.external_languages|sys.external_libraries'',NULL,''NOT_PLANNED'',N''Nur aggregierte Katalogzeilen; Namen, Dateien, Pfade, Besitzer und Libraryinhalte werden nicht gelesen.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''EXTERNAL_SCRIPTS'',N''External Scripts Configuration'',CASE WHEN @pExternalScriptsConfigured=1 THEN ''CONFIGURED_ONLY'' WHEN @pExternalScriptsConfigured=0 THEN ''NOT_DETECTED_VISIBLE_SCOPE'' ELSE ''SOURCE_UNAVAILABLE'' END,NULL,CASE WHEN @pExternalScriptsConfigured=1 THEN N''ENABLED'' WHEN @pExternalScriptsConfigured=0 THEN N''DISABLED'' ELSE N''UNKNOWN'' END,N''sys.configurations'',NULL,''NOT_PLANNED'',N''Die Serverkonfiguration beweist keine tatsächliche Skriptausführung; Moduldefinitionen und Laufzeithistorie werden nicht durchsucht.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''FILESTREAM_FILETABLE'',N''FILESTREAM und FileTable'',CASE WHEN @FileStream>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@FileStream,NULL,N''sys.columns|sys.tables'',NULL,''NOT_PLANNED'',N''Sichtbare FILESTREAM-Spalten und FileTables werden gezählt; Dateipfade und Inhalte werden nicht gelesen.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''GRAPH'',N''Graph'',CASE WHEN @Graph>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Graph,NULL,N''sys.tables'',NULL,''NOT_PLANNED'',N''Sichtbare Node- und Edge-Tabellen werden gezählt; Daten und Graphqualität sind nicht bewertet.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''SPATIAL'',N''Spatial'',CASE WHEN @Spatial>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Spatial,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Sichtbare geometry-/geography-Spalten werden gezählt; räumliche Daten und Indizes sind nicht bewertet.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''XML'',N''XML'',CASE WHEN @Xml>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Xml,NULL,N''sys.columns|sys.types|sys.xml_indexes'',NULL,''NOT_PLANNED'',N''Sichtbare XML-Spalten und XML-Indizes werden gezählt; XML-Inhalte und Schema-Definitionen werden nicht gelesen.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''JSON_NATIVE'',N''Native JSON'',CASE WHEN @pMajor IS NULL THEN ''SOURCE_UNAVAILABLE'' WHEN @pMajor<17 THEN ''UNAVAILABLE_VERSION'' WHEN @NativeJson>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@NativeJson,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Erkannt wird nur der native JSON-Systemtyp ab SQL Server 2025; JSON in Zeichenketten oder Moduldefinitionen ist katalogseitig nicht zuverlässig inventarisierbar.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''VECTOR'',N''Vector'',CASE WHEN @pMajor IS NULL THEN ''SOURCE_UNAVAILABLE'' WHEN @pMajor<17 THEN ''UNAVAILABLE_VERSION'' WHEN @Vector>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Vector,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Erkannt werden sichtbare Spalten des nativen Vector-Systemtyps; Dimensionen, Inhalte und Indexqualität sind nicht bewertet.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''USER_DEFINED_TYPES'',N''User-defined Types'',CASE WHEN @UserTypes>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@UserTypes,NULL,N''sys.types'',NULL,''NOT_PLANNED'',N''Benutzerdefinierte Typzeilen werden aggregiert; Typnamen, Definitionen, Besitzer und Assemblydetails werden nicht ausgegeben.'');';
 
                 EXEC [sys].[sp_executesql]
                       @Sql
@@ -318,15 +319,15 @@ VALUES
                     , @pMajor=@Major
                     , @pExternalScriptsConfigured=@ExternalScriptsConfigured;
 
-                UPDATE [#DatabaseStatus]
-                SET [FeatureRows]=(SELECT COUNT_BIG(*) FROM [#FeatureInventory] [f] WHERE [f].[DatabaseName]=@DbName),
-                    [DetectedFeatureRows]=(SELECT COUNT_BIG(*) FROM [#FeatureInventory] [f]
+                UPDATE [#SpecialFeatureInventory_DatabaseStatus]
+                SET [FeatureRows]=(SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory] [f] WHERE [f].[DatabaseName]=@DbName),
+                    [DetectedFeatureRows]=(SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory] [f]
                                            WHERE [f].[DatabaseName]=@DbName
                                              AND [f].[DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY'))
                 WHERE [DatabaseName]=@DbName;
             END TRY
             BEGIN CATCH
-                UPDATE [#DatabaseStatus]
+                UPDATE [#SpecialFeatureInventory_DatabaseStatus]
                 SET [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                       WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
                                       WHEN ERROR_NUMBER() IN (207,208) THEN 'UNAVAILABLE_OBJECT'
@@ -342,19 +343,19 @@ VALUES
         DEALLOCATE [DatabaseCursor];
     END;
 
-    IF EXISTS(SELECT 1 FROM [#DatabaseStatus] WHERE [StatusCode]<>'AVAILABLE')
+    IF EXISTS(SELECT 1 FROM [#SpecialFeatureInventory_DatabaseStatus] WHERE [StatusCode]<>'AVAILABLE')
     BEGIN
         SET @IsPartial=1;
-        IF EXISTS(SELECT 1 FROM [#FeatureInventory])
+        IF EXISTS(SELECT 1 FROM [#SpecialFeatureInventory_FeatureInventory])
             SET @StatusCode='AVAILABLE_LIMITED';
         ELSE
             SELECT TOP (1) @StatusCode=[StatusCode],@ErrorNumber=[ErrorNumber],@ErrorMessage=[ErrorMessage]
-            FROM [#DatabaseStatus]
+            FROM [#SpecialFeatureInventory_DatabaseStatus]
             WHERE [StatusCode]<>'AVAILABLE'
             ORDER BY [DatabaseName];
     END;
 
-    IF @ExternalScriptsConfigurationAvailable=0 AND EXISTS(SELECT 1 FROM [#FeatureInventory])
+    IF @ExternalScriptsConfigurationAvailable=0 AND EXISTS(SELECT 1 FROM [#SpecialFeatureInventory_FeatureInventory])
     BEGIN
         SET @IsPartial=1;
         IF @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
@@ -362,8 +363,8 @@ VALUES
             SET @ErrorMessage=N'Die Serverkonfiguration für External Scripts war nicht lesbar; übrige Featurezeilen bleiben erhalten.';
     END;
 
-    IF NOT EXISTS(SELECT 1 FROM [#DatabaseStatus]) AND @StatusCode<>'AVAILABLE'
-        INSERT [#DatabaseStatus]
+    IF NOT EXISTS(SELECT 1 FROM [#SpecialFeatureInventory_DatabaseStatus]) AND @StatusCode<>'AVAILABLE'
+        INSERT [#SpecialFeatureInventory_DatabaseStatus]
         VALUES(NULL,@StatusCode,1,0,0,@ErrorNumber,@ErrorMessage,N'Keine Featureinventur ausgeführt.');
 
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
@@ -382,15 +383,15 @@ VALUES
             (SELECT N'SpecialFeatureInventory' [resultName],1 [schemaVersion],@Now [generatedAtUtc],
                     @StatusCode [statusCode],@IsPartial [isPartial],@Major [productMajorVersion],
                     @NurErkannteFeatures [detectedOnly],
-                    (SELECT COUNT_BIG(*) FROM [#FeatureInventory]) [featureRowCount],
-                    (SELECT COUNT_BIG(*) FROM [#FeatureInventory]
+                    (SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory]) [featureRowCount],
+                    (SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory]
                      WHERE [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')) [detectedFeatureRowCount]
              FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @DatabaseJson nvarchar(max)=
-            (SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#SpecialFeatureInventory_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @FeatureJson nvarchar(max)=
             (SELECT TOP (@Limit) *
-             FROM [#FeatureInventory]
+             FROM [#SpecialFeatureInventory_FeatureInventory]
              WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
              ORDER BY [DatabaseName],[FeatureCode]
              FOR JSON PATH,INCLUDE_NULL_VALUES);
@@ -403,14 +404,14 @@ VALUES
     BEGIN
         SELECT N'USP_SpecialFeatureInventory' [ModuleName],@Now [CollectionTimeUtc],
                @StatusCode [StatusCode],@IsPartial [IsPartial],@Major [ProductMajorVersion],
-               (SELECT COUNT_BIG(*) FROM [#FeatureInventory]) [FeatureRowCount],
-               (SELECT COUNT_BIG(*) FROM [#FeatureInventory]
+               (SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory]) [FeatureRowCount],
+               (SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory]
                 WHERE [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')) [DetectedFeatureRowCount],
                @ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],
                N'Nutzungsinventar sichtbarer Metadaten; kein Gesundheitsurteil.' [Detail];
-        SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName];
+        SELECT * FROM [#SpecialFeatureInventory_DatabaseStatus] ORDER BY [DatabaseName];
         SELECT TOP (@Limit) *
-        FROM [#FeatureInventory]
+        FROM [#SpecialFeatureInventory_FeatureInventory]
         WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
         ORDER BY [DatabaseName],[FeatureCode];
     END
@@ -418,27 +419,27 @@ VALUES
     BEGIN
         SELECT N'Spezialfeature-Inventur' [Ergebnis],@Now [Stand_UTC],@StatusCode [Status],
                @IsPartial [Teilergebnis],@Major [Major_Version],
-               (SELECT COUNT_BIG(*) FROM [#FeatureInventory]
+               (SELECT COUNT_BIG(*) FROM [#SpecialFeatureInventory_FeatureInventory]
                 WHERE [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')) [Erkannte_Featurezeilen],
                @ErrorMessage [Hinweis];
         SELECT N'Datenbankstatus Spezialfeature-Inventur' [Ergebnis],
                [DatabaseName] [Datenbank],[StatusCode] [Status],[FeatureRows] [Featurezeilen],
                [DetectedFeatureRows] [Erkannt],[IsPartial] [Teilweise],[Detail] [Hinweis]
-        FROM [#DatabaseStatus]
+        FROM [#SpecialFeatureInventory_DatabaseStatus]
         ORDER BY [DatabaseName];
         SELECT TOP (@Limit) N'Spezialfeature' [Ergebnis],
                [DatabaseName] [Datenbank],[FeatureCode] [Featurecode],[FeatureFamily] [Featurefamilie],
                [DetectionStatus] [Erkennungsstatus],[DetectedItemCount] [Erkannte_Elemente],
                [ConfigurationState] [Konfiguration],[RecommendedModule] [Empfohlenes_Modul],
                [RecommendedModuleStatus] [Modulstatus],[EvidenceLimit] [Aussagegrenze]
-        FROM [#FeatureInventory]
+        FROM [#SpecialFeatureInventory_FeatureInventory]
         WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
         ORDER BY [DatabaseName],[FeatureCode];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#FeatureInventory'
+              @SourceTable = N'#SpecialFeatureInventory_FeatureInventory'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

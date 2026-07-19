@@ -49,10 +49,10 @@ GO
 
 USE [master];
 GO
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'Example2019RestrictedLogin') DROP LOGIN [Example2019RestrictedLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'Example2019ViewServerStateLogin') DROP LOGIN [Example2019ViewServerStateLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'Example2019ViewDatabaseStateLogin') DROP LOGIN [Example2019ViewDatabaseStateLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'Example2019GroupMemberLogin') DROP LOGIN [Example2019GroupMemberLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'Example2019RestrictedLogin') DROP LOGIN [Example2019RestrictedLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'Example2019ViewServerStateLogin') DROP LOGIN [Example2019ViewServerStateLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'Example2019ViewDatabaseStateLogin') DROP LOGIN [Example2019ViewDatabaseStateLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'Example2019GroupMemberLogin') DROP LOGIN [Example2019GroupMemberLogin];
 GO
 
 DECLARE @Password nvarchar(128)=N'$(PermissionMatrixPassword)';
@@ -100,7 +100,7 @@ GRANT SELECT ON SCHEMA::[monitor] TO [Example2019GroupMemberUser];
 GRANT EXECUTE ON SCHEMA::[monitor] TO [Example2019GroupMemberUser];
 GO
 
-CREATE TABLE [#PermissionMatrix2019]
+CREATE TABLE [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
 (
       [ScenarioCode] varchar(48) NOT NULL PRIMARY KEY
     , [EffectiveContext] sysname NOT NULL
@@ -181,7 +181,7 @@ BEGIN TRY
     DECLARE @CapabilityPermission1 sysname=NULL,@CapabilityHasPermission1 bit=NULL,@CapabilityStatus1 varchar(40)=NULL;
     DECLARE @QueryStoreRequired1 int=0,@QueryStoreGranted1 int=0,@PlanAllowed1 bit=NULL,@PlanReason1 varchar(20)=NULL;
     DECLARE @HasVss1 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'),0));
-    DECLARE @HasVds1 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'),0));
+    DECLARE @HasVds1 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson1 OUTPUT,@PrintMeldungen=0;
     EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson1 OUTPUT,@PrintMeldungen=0;
@@ -196,7 +196,7 @@ BEGIN TRY
     WHERE [ScopeType]='DATABASE' AND [RequiredPermission]='VIEW DATABASE STATE';
     SELECT @PlanAllowed1=[IsAllowed],@PlanReason1=[AccessReason] FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
-    INSERT [#PermissionMatrix2019]
+    INSERT [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     VALUES('RESTRICTED',N'Example2019RestrictedLogin',@HasVss1,@HasVds1,@SessionStatus1,@SessionPartial1,@CapabilityPermission1,COALESCE(@CapabilityHasPermission1,0),@CapabilityStatus1,@QueryStoreRequired1,@QueryStoreGranted1,@PlanAllowed1,@PlanReason1,CONVERT(bit,CASE WHEN ISJSON(@SessionJson1)=1 AND ISJSON(@StandardJson1)=1 AND ISJSON(@QueryStoreJson1)=1 THEN 1 ELSE 0 END));
     REVERT;
 END TRY
@@ -215,7 +215,7 @@ BEGIN TRY
     DECLARE @CapabilityPermission2 sysname=NULL,@CapabilityHasPermission2 bit=NULL,@CapabilityStatus2 varchar(40)=NULL;
     DECLARE @QueryStoreRequired2 int=0,@QueryStoreGranted2 int=0,@PlanAllowed2 bit=NULL,@PlanReason2 varchar(20)=NULL;
     DECLARE @HasVss2 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'),0));
-    DECLARE @HasVds2 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'),0));
+    DECLARE @HasVds2 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson2 OUTPUT,@PrintMeldungen=0;
     EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson2 OUTPUT,@PrintMeldungen=0;
@@ -230,7 +230,7 @@ BEGIN TRY
     WHERE [ScopeType]='DATABASE' AND [RequiredPermission]='VIEW DATABASE STATE';
     SELECT @PlanAllowed2=[IsAllowed],@PlanReason2=[AccessReason] FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
-    INSERT [#PermissionMatrix2019]
+    INSERT [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     VALUES('VIEW_SERVER_STATE',N'Example2019ViewServerStateLogin',@HasVss2,@HasVds2,@SessionStatus2,@SessionPartial2,@CapabilityPermission2,COALESCE(@CapabilityHasPermission2,0),@CapabilityStatus2,@QueryStoreRequired2,@QueryStoreGranted2,@PlanAllowed2,@PlanReason2,CONVERT(bit,CASE WHEN ISJSON(@SessionJson2)=1 AND ISJSON(@StandardJson2)=1 AND ISJSON(@QueryStoreJson2)=1 THEN 1 ELSE 0 END));
     REVERT;
 END TRY
@@ -249,7 +249,7 @@ BEGIN TRY
     DECLARE @CapabilityPermission3 sysname=NULL,@CapabilityHasPermission3 bit=NULL,@CapabilityStatus3 varchar(40)=NULL;
     DECLARE @QueryStoreRequired3 int=0,@QueryStoreGranted3 int=0,@PlanAllowed3 bit=NULL,@PlanReason3 varchar(20)=NULL;
     DECLARE @HasVss3 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'),0));
-    DECLARE @HasVds3 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'),0));
+    DECLARE @HasVds3 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson3 OUTPUT,@PrintMeldungen=0;
     EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson3 OUTPUT,@PrintMeldungen=0;
@@ -264,7 +264,7 @@ BEGIN TRY
     WHERE [ScopeType]='DATABASE' AND [RequiredPermission]='VIEW DATABASE STATE';
     SELECT @PlanAllowed3=[IsAllowed],@PlanReason3=[AccessReason] FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
-    INSERT [#PermissionMatrix2019]
+    INSERT [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     VALUES('VIEW_DATABASE_STATE',N'Example2019ViewDatabaseStateLogin',@HasVss3,@HasVds3,@SessionStatus3,@SessionPartial3,@CapabilityPermission3,COALESCE(@CapabilityHasPermission3,0),@CapabilityStatus3,@QueryStoreRequired3,@QueryStoreGranted3,@PlanAllowed3,@PlanReason3,CONVERT(bit,CASE WHEN ISJSON(@SessionJson3)=1 AND ISJSON(@StandardJson3)=1 AND ISJSON(@QueryStoreJson3)=1 THEN 1 ELSE 0 END));
     REVERT;
 END TRY
@@ -283,7 +283,7 @@ BEGIN TRY
     DECLARE @CapabilityPermission4 sysname=NULL,@CapabilityHasPermission4 bit=NULL,@CapabilityStatus4 varchar(40)=NULL;
     DECLARE @QueryStoreRequired4 int=0,@QueryStoreGranted4 int=0,@PlanAllowed4 bit=NULL,@PlanReason4 varchar(20)=NULL;
     DECLARE @HasVss4 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'),0));
-    DECLARE @HasVds4 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'),0));
+    DECLARE @HasVds4 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson4 OUTPUT,@PrintMeldungen=0;
     EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson4 OUTPUT,@PrintMeldungen=0;
@@ -298,7 +298,7 @@ BEGIN TRY
     WHERE [ScopeType]='DATABASE' AND [RequiredPermission]='VIEW DATABASE STATE';
     SELECT @PlanAllowed4=[IsAllowed],@PlanReason4=[AccessReason] FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
-    INSERT [#PermissionMatrix2019]
+    INSERT [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     VALUES('GROUP_MEMBER',N'Example2019GroupMemberLogin',@HasVss4,@HasVds4,@SessionStatus4,@SessionPartial4,@CapabilityPermission4,COALESCE(@CapabilityHasPermission4,0),@CapabilityStatus4,@QueryStoreRequired4,@QueryStoreGranted4,@PlanAllowed4,@PlanReason4,CONVERT(bit,CASE WHEN ISJSON(@SessionJson4)=1 AND ISJSON(@StandardJson4)=1 AND ISJSON(@QueryStoreJson4)=1 THEN 1 ELSE 0 END));
     REVERT;
 END TRY
@@ -315,7 +315,7 @@ DECLARE @SessionStatus5 varchar(40)=NULL,@SessionPartial5 bit=NULL;
 DECLARE @CapabilityPermission5 sysname=NULL,@CapabilityHasPermission5 bit=NULL,@CapabilityStatus5 varchar(40)=NULL;
 DECLARE @QueryStoreRequired5 int=0,@QueryStoreGranted5 int=0,@PlanAllowed5 bit=NULL,@PlanReason5 varchar(20)=NULL;
 DECLARE @HasVss5 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'),0));
-DECLARE @HasVds5 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'),0));
+DECLARE @HasVds5 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
 EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson5 OUTPUT,@PrintMeldungen=0;
 EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson5 OUTPUT,@PrintMeldungen=0;
@@ -330,24 +330,24 @@ FROM OPENJSON(@QueryStoreJson5,'$.capabilities') WITH([ScopeType] varchar(16) '$
 WHERE [ScopeType]='DATABASE' AND [RequiredPermission]='VIEW DATABASE STATE';
 SELECT @PlanAllowed5=[IsAllowed],@PlanReason5=[AccessReason] FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
-INSERT [#PermissionMatrix2019]
+INSERT [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
 VALUES('SYSADMIN',N'Example2019SysadminContext',@HasVss5,@HasVds5,@SessionStatus5,@SessionPartial5,@CapabilityPermission5,COALESCE(@CapabilityHasPermission5,0),@CapabilityStatus5,@QueryStoreRequired5,@QueryStoreGranted5,@PlanAllowed5,@PlanReason5,CONVERT(bit,CASE WHEN ISJSON(@SessionJson5)=1 AND ISJSON(@StandardJson5)=1 AND ISJSON(@QueryStoreJson5)=1 THEN 1 ELSE 0 END));
 GO
 
 RAISERROR(N'PERMISSION_MATRIX_2019 phase=assertions',10,1) WITH NOWAIT;
 SELECT [ScenarioCode],[HasViewServerState],[HasViewDatabaseState],[CurrentSessionsStatus],[CurrentSessionsIsPartial],[CurrentSessionsCapabilityPermission],[CurrentSessionsCapabilityHasPermission],[CurrentSessionsCapabilityStatus],[QueryStoreStateRequiredRows],[QueryStoreStateGrantedRows],[PlanCacheDeepAllowed],[PlanCacheDeepAccessReason],[AllJsonValid]
-FROM [#PermissionMatrix2019]
+FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
 ORDER BY [ScenarioCode];
 
-IF (SELECT COUNT(*) FROM [#PermissionMatrix2019])<>5
+IF (SELECT COUNT(*) FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019])<>5
     THROW 54310,N'Die SQL-Server-2019-Berechtigungsmatrix enthält nicht alle erwarteten Szenarien.',1;
 
-IF EXISTS(SELECT 1 FROM [#PermissionMatrix2019] WHERE [AllJsonValid]=0)
+IF EXISTS(SELECT 1 FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019] WHERE [AllJsonValid]=0)
     THROW 54311,N'Mindestens ein SQL-Server-2019-Berechtigungsszenario lieferte kein gültiges JSON.',1;
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix2019]
+    SELECT 1 FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     WHERE [ScenarioCode]='RESTRICTED'
       AND NOT
       (
@@ -365,7 +365,7 @@ IF EXISTS
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix2019]
+    SELECT 1 FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     WHERE [ScenarioCode]='VIEW_SERVER_STATE'
       AND NOT
       (
@@ -380,7 +380,7 @@ IF EXISTS
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix2019]
+    SELECT 1 FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     WHERE [ScenarioCode]='VIEW_DATABASE_STATE'
       AND NOT
       (
@@ -393,7 +393,7 @@ IF EXISTS
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix2019]
+    SELECT 1 FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     WHERE [ScenarioCode]='GROUP_MEMBER'
       AND NOT([PlanCacheDeepAllowed]=1 AND [PlanCacheDeepAccessReason]='IS_MEMBER')
 )
@@ -401,7 +401,7 @@ IF EXISTS
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix2019]
+    SELECT 1 FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019]
     WHERE [ScenarioCode]='SYSADMIN'
       AND NOT([PlanCacheDeepAllowed]=1 AND [PlanCacheDeepAccessReason]='SYSADMIN')
 )
@@ -463,7 +463,7 @@ SELECT
     , CAST(0 AS bit) AS [IsPartial]
     , COUNT(*) AS [ExecutedScenarios]
     , N'SQL Server 2019 permission matrix completed with synthetic principals only.' AS [Detail]
-FROM [#PermissionMatrix2019];
+FROM [#SQL_Server_2019_Permission_Matrix_PermissionMatrix2019];
 GO
 
 /* Standardpolicy wiederherstellen. */

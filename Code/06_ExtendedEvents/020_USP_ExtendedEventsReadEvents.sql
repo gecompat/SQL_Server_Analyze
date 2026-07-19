@@ -105,7 +105,7 @@ BEGIN
         @ConfiguredFilePath nvarchar(4000) = NULL,
         @TargetData xml = NULL;
 
-    CREATE TABLE [#Raw]
+    CREATE TABLE [#ExtendedEventsReadEvents_Raw]
     (
         [SourceType] varchar(20) NOT NULL,
         [EventName] sysname NULL,
@@ -115,7 +115,7 @@ BEGIN
         [EventXml] xml NULL
     );
 
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#ExtendedEventsReadEvents_SourceStatus]
     (
         [SourceType] varchar(20) NULL,
         [SessionName] sysname NULL,
@@ -166,11 +166,11 @@ BEGIN
     BEGIN
         BEGIN TRY
             SELECT @ConfiguredFilePath = MAX(CONVERT(nvarchar(4000), [f].[value]))
-            FROM [sys].[server_event_sessions] AS s
-            JOIN [sys].[server_event_session_targets] AS t
+            FROM [sys].[server_event_sessions] AS s WITH (NOLOCK)
+            JOIN [sys].[server_event_session_targets] AS t WITH (NOLOCK)
               ON [t].[event_session_id] = [s].[event_session_id]
              AND [t].[name] = N'event_file'
-            LEFT JOIN [sys].[server_event_session_fields] AS f
+            LEFT JOIN [sys].[server_event_session_fields] AS f WITH (NOLOCK)
               ON [f].[event_session_id] = [t].[event_session_id]
              AND [f].[object_id] = [t].[target_id]
              AND [f].[name] = N'filename'
@@ -178,7 +178,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             SET @IsPartial = 1;
-            INSERT [#SourceStatus] VALUES
+            INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES
             ('CATALOG', @ResolvedSourceExtendedEventSessionName, 'event_file', NULL,
              CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
              ERROR_NUMBER(), ERROR_MESSAGE(), N'Der konfigurierte event_file-Pfad konnte nicht gelesen werden. Ein expliziter @FilePath kann weiterhin funktionieren.');
@@ -206,7 +206,7 @@ BEGIN
         BEGIN
             SET @StatusCode = 'UNAVAILABLE_OBJECT';
             SET @ErrorMessage = N'Kein event_file-Pfad vorhanden. @FilePath angeben oder eine Session mit event_file-Target verwenden.';
-            INSERT [#SourceStatus] VALUES('EVENT_FILE', @ResolvedSourceExtendedEventSessionName, 'event_file', NULL, @StatusCode, NULL, @ErrorMessage, N'Keine Datei gelesen.');
+            INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES('EVENT_FILE', @ResolvedSourceExtendedEventSessionName, 'event_file', NULL, @StatusCode, NULL, @ErrorMessage, N'Keine Datei gelesen.');
         END
         ELSE
         BEGIN
@@ -216,7 +216,7 @@ BEGIN
                 SET @ResolvedFilePath = @ResolvedFilePath + N'*.xel';
 
             BEGIN TRY
-                INSERT [#Raw]([SourceType], [EventName], [TimestampUtc], [FileName], [FileOffset], [EventXml])
+                INSERT [#ExtendedEventsReadEvents_Raw]([SourceType], [EventName], [TimestampUtc], [FileName], [FileOffset], [EventXml])
                 SELECT TOP (@EffectiveMaxZeilen)
                     'EVENT_FILE',
                     [r].[object_name],
@@ -230,7 +230,7 @@ BEGIN
                   AND (@BisUtc IS NULL OR [r].[timestamp_utc] < @BisUtc)
                 ORDER BY [r].[timestamp_utc] DESC, [r].[file_name] DESC, [r].[file_offset] DESC;
 
-                INSERT [#SourceStatus] VALUES
+                INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES
                 ('EVENT_FILE', @ResolvedSourceExtendedEventSessionName, 'event_file', @ResolvedFilePath, 'AVAILABLE', NULL, NULL,
                  N'XEL-Dateien wurden gelesen. Große oder viele Rollover-Dateien können trotz Ergebnislimit vollständig gescannt werden.');
             END TRY
@@ -242,7 +242,7 @@ BEGIN
                                   END;
                 SET @ErrorNumber = ERROR_NUMBER();
                 SET @ErrorMessage = ERROR_MESSAGE();
-                INSERT [#SourceStatus] VALUES('EVENT_FILE', @ResolvedSourceExtendedEventSessionName, 'event_file', @ResolvedFilePath, @StatusCode, @ErrorNumber, @ErrorMessage, N'Event-Datei konnte nicht gelesen werden.');
+                INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES('EVENT_FILE', @ResolvedSourceExtendedEventSessionName, 'event_file', @ResolvedFilePath, @StatusCode, @ErrorNumber, @ErrorMessage, N'Event-Datei konnte nicht gelesen werden.');
             END CATCH;
         END;
     END;
@@ -253,14 +253,14 @@ BEGIN
         BEGIN
             SET @StatusCode = 'AVAILABLE_DISABLED';
             SET @ErrorMessage = N'RING_BUFFER erfordert @BestaetigeTargetFlush=1.';
-            INSERT [#SourceStatus] VALUES('RING_BUFFER', @ResolvedSourceExtendedEventSessionName, 'ring_buffer', NULL, @StatusCode, NULL, @ErrorMessage, N'sys.dm_xe_session_targets wurde nicht gelesen.');
+            INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES('RING_BUFFER', @ResolvedSourceExtendedEventSessionName, 'ring_buffer', NULL, @StatusCode, NULL, @ErrorMessage, N'sys.dm_xe_session_targets wurde nicht gelesen.');
         END
         ELSE
         BEGIN
             BEGIN TRY
                 SELECT @TargetData = TRY_CONVERT([xml], [t].[target_data])
-                FROM [sys].[dm_xe_session_targets] AS t
-                JOIN [sys].[dm_xe_sessions] AS s
+                FROM [sys].[dm_xe_session_targets] AS t WITH (NOLOCK)
+                JOIN [sys].[dm_xe_sessions] AS s WITH (NOLOCK)
                   ON [s].[address] = [t].[event_session_address]
                 WHERE [s].[name] = @ResolvedSourceExtendedEventSessionName
                   AND [t].[target_name] = N'ring_buffer';
@@ -269,11 +269,11 @@ BEGIN
                 BEGIN
                     SET @StatusCode = 'UNAVAILABLE_OBJECT';
                     SET @ErrorMessage = N'Kein laufendes ring_buffer-Target mit lesbaren Targetdaten gefunden.';
-                    INSERT [#SourceStatus] VALUES('RING_BUFFER', @ResolvedSourceExtendedEventSessionName, 'ring_buffer', NULL, @StatusCode, NULL, @ErrorMessage, N'Die Session ist möglicherweise gestoppt oder besitzt kein Ringbuffer-Target.');
+                    INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES('RING_BUFFER', @ResolvedSourceExtendedEventSessionName, 'ring_buffer', NULL, @StatusCode, NULL, @ErrorMessage, N'Die Session ist möglicherweise gestoppt oder besitzt kein Ringbuffer-Target.');
                 END
                 ELSE
                 BEGIN
-                    INSERT [#Raw]([SourceType], [EventName], [TimestampUtc], [FileName], [FileOffset], [EventXml])
+                    INSERT [#ExtendedEventsReadEvents_Raw]([SourceType], [EventName], [TimestampUtc], [FileName], [FileOffset], [EventXml])
                     SELECT TOP (@EffectiveMaxZeilen)
                         'RING_BUFFER',
                         x.e.value('(@name)[1]', 'sysname'),
@@ -287,7 +287,7 @@ BEGIN
                       AND (@BisUtc IS NULL OR x.e.value('(@timestamp)[1]', 'datetime2(7)') < @BisUtc)
                     ORDER BY x.e.value('(@timestamp)[1]', 'datetime2(7)') DESC;
 
-                    INSERT [#SourceStatus] VALUES
+                    INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES
                     ('RING_BUFFER', @ResolvedSourceExtendedEventSessionName, 'ring_buffer', NULL, 'AVAILABLE', NULL, NULL,
                      N'sys.dm_xe_session_targets wurde bewusst gelesen; dies kann einen Target-Flush auslösen.');
                 END;
@@ -300,7 +300,7 @@ BEGIN
                                   END;
                 SET @ErrorNumber = ERROR_NUMBER();
                 SET @ErrorMessage = ERROR_MESSAGE();
-                INSERT [#SourceStatus] VALUES('RING_BUFFER', @ResolvedSourceExtendedEventSessionName, 'ring_buffer', NULL, @StatusCode, @ErrorNumber, @ErrorMessage, N'Ringbuffer konnte nicht gelesen werden.');
+                INSERT [#ExtendedEventsReadEvents_SourceStatus] VALUES('RING_BUFFER', @ResolvedSourceExtendedEventSessionName, 'ring_buffer', NULL, @StatusCode, @ErrorNumber, @ErrorMessage, N'Ringbuffer konnte nicht gelesen werden.');
             END CATCH;
         END;
     END;
@@ -309,10 +309,10 @@ BEGIN
     IF @StatusCode='AVAILABLE' AND @EventPatternMode IN('REGEX','REGEXI')
     BEGIN
         IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] [d] WITH(NOLOCK) WHERE [d].[database_id]=DB_ID() AND [d].[compatibility_level]>=170) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END
-        ELSE EXEC [sys].[sp_executesql] N'DELETE FROM [#Raw] WHERE NOT REGEXP_LIKE([EventName],@P,@F);',N'@P nvarchar(4000),@F varchar(8)',@P=@EventPatternValue,@F=@EventPatternFlags;
+        ELSE EXEC [sys].[sp_executesql] N'DELETE FROM [#ExtendedEventsReadEvents_Raw] WHERE NOT REGEXP_LIKE([EventName],@P,@F);',N'@P nvarchar(4000),@F varchar(8)',@P=@EventPatternValue,@F=@EventPatternFlags;
     END;
 
-    SELECT @RowCount = COUNT_BIG(*) FROM [#Raw];
+    SELECT @RowCount = COUNT_BIG(*) FROM [#ExtendedEventsReadEvents_Raw];
 
     IF @StatusCode = 'AVAILABLE' AND @RowCount = 0
     BEGIN
@@ -336,16 +336,16 @@ END;
     BEGIN
         SELECT N'USP_ExtendedEventsReadEvents' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@RowCount [RowCount],@ResolvedSource [ResolvedSource],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage];
         IF @ResultSetArtNormalisiert='RAW'
-        BEGIN SELECT [r].[SourceType],[r].[EventName],[r].[TimestampUtc],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="database_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="database_id"]/value/text())[1]','nvarchar(32)'))) AS [DatabaseId],COALESCE([r].[EventXml].value('(/event/action[@name="database_name"]/value/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="database_name"]/value/text())[1]','nvarchar(256)')) AS [DatabaseName],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="session_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="session_id"]/value/text())[1]','nvarchar(32)'))) AS [SessionId],[r].[EventXml].value('(/event/action[@name="client_app_name"]/value/text())[1]','nvarchar(512)') AS [ClientApplication],[r].[EventXml].value('(/event/action[@name="client_hostname"]/value/text())[1]','nvarchar(512)') AS [ClientHostName],COALESCE([r].[EventXml].value('(/event/action[@name="username"]/value/text())[1]','nvarchar(512)'),[r].[EventXml].value('(/event/action[@name="server_principal_name"]/value/text())[1]','nvarchar(512)')) AS [LoginName],COALESCE([r].[EventXml].value('(/event/action[@name="sql_text"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="statement"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="batch_text"]/value/text())[1]','nvarchar(4000)')) AS [SqlText],TRY_CONVERT(bigint,[r].[EventXml].value('(/event/data[@name="duration"]/value/text())[1]','nvarchar(64)')) AS [DurationRaw],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="error_number"]/value/text())[1]','nvarchar(32)')) AS [ErrorNumber],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="severity"]/value/text())[1]','nvarchar(32)')) AS [Severity],COALESCE([r].[EventXml].value('(/event/data[@name="wait_type"]/text/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="wait_type"]/value/text())[1]','nvarchar(256)')) AS [WaitType],[r].[EventXml].value('(/event/data[@name="resource_description"]/value/text())[1]','nvarchar(4000)') AS [ResourceDescription],[r].[FileName],[r].[FileOffset],CASE WHEN @MitEventXml=1 THEN [r].[EventXml] END AS [EventXml] FROM [#Raw] [r] ORDER BY [r].[TimestampUtc] DESC,[r].[FileName] DESC,[r].[FileOffset] DESC;SELECT * FROM [#SourceStatus] ORDER BY [SourceType],[TargetName];END
+        BEGIN SELECT [r].[SourceType],[r].[EventName],[r].[TimestampUtc],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="database_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="database_id"]/value/text())[1]','nvarchar(32)'))) AS [DatabaseId],COALESCE([r].[EventXml].value('(/event/action[@name="database_name"]/value/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="database_name"]/value/text())[1]','nvarchar(256)')) AS [DatabaseName],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="session_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="session_id"]/value/text())[1]','nvarchar(32)'))) AS [SessionId],[r].[EventXml].value('(/event/action[@name="client_app_name"]/value/text())[1]','nvarchar(512)') AS [ClientApplication],[r].[EventXml].value('(/event/action[@name="client_hostname"]/value/text())[1]','nvarchar(512)') AS [ClientHostName],COALESCE([r].[EventXml].value('(/event/action[@name="username"]/value/text())[1]','nvarchar(512)'),[r].[EventXml].value('(/event/action[@name="server_principal_name"]/value/text())[1]','nvarchar(512)')) AS [LoginName],COALESCE([r].[EventXml].value('(/event/action[@name="sql_text"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="statement"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="batch_text"]/value/text())[1]','nvarchar(4000)')) AS [SqlText],TRY_CONVERT(bigint,[r].[EventXml].value('(/event/data[@name="duration"]/value/text())[1]','nvarchar(64)')) AS [DurationRaw],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="error_number"]/value/text())[1]','nvarchar(32)')) AS [ErrorNumber],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="severity"]/value/text())[1]','nvarchar(32)')) AS [Severity],COALESCE([r].[EventXml].value('(/event/data[@name="wait_type"]/text/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="wait_type"]/value/text())[1]','nvarchar(256)')) AS [WaitType],[r].[EventXml].value('(/event/data[@name="resource_description"]/value/text())[1]','nvarchar(4000)') AS [ResourceDescription],[r].[FileName],[r].[FileOffset],CASE WHEN @MitEventXml=1 THEN [r].[EventXml] END AS [EventXml] FROM [#ExtendedEventsReadEvents_Raw] [r] ORDER BY [r].[TimestampUtc] DESC,[r].[FileName] DESC,[r].[FileOffset] DESC;SELECT * FROM [#ExtendedEventsReadEvents_SourceStatus] ORDER BY [SourceType],[TargetName];END
         ELSE
-        BEGIN SELECT N'Extended-Events Event' [Ergebnis],[x].* FROM (SELECT [r].[SourceType],[r].[EventName],[r].[TimestampUtc],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="database_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="database_id"]/value/text())[1]','nvarchar(32)'))) AS [DatabaseId],COALESCE([r].[EventXml].value('(/event/action[@name="database_name"]/value/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="database_name"]/value/text())[1]','nvarchar(256)')) AS [DatabaseName],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="session_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="session_id"]/value/text())[1]','nvarchar(32)'))) AS [SessionId],[r].[EventXml].value('(/event/action[@name="client_app_name"]/value/text())[1]','nvarchar(512)') AS [ClientApplication],[r].[EventXml].value('(/event/action[@name="client_hostname"]/value/text())[1]','nvarchar(512)') AS [ClientHostName],COALESCE([r].[EventXml].value('(/event/action[@name="username"]/value/text())[1]','nvarchar(512)'),[r].[EventXml].value('(/event/action[@name="server_principal_name"]/value/text())[1]','nvarchar(512)')) AS [LoginName],COALESCE([r].[EventXml].value('(/event/action[@name="sql_text"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="statement"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="batch_text"]/value/text())[1]','nvarchar(4000)')) AS [SqlText],TRY_CONVERT(bigint,[r].[EventXml].value('(/event/data[@name="duration"]/value/text())[1]','nvarchar(64)')) AS [DurationRaw],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="error_number"]/value/text())[1]','nvarchar(32)')) AS [ErrorNumber],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="severity"]/value/text())[1]','nvarchar(32)')) AS [Severity],COALESCE([r].[EventXml].value('(/event/data[@name="wait_type"]/text/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="wait_type"]/value/text())[1]','nvarchar(256)')) AS [WaitType],[r].[EventXml].value('(/event/data[@name="resource_description"]/value/text())[1]','nvarchar(4000)') AS [ResourceDescription],[r].[FileName],[r].[FileOffset],CASE WHEN @MitEventXml=1 THEN [r].[EventXml] END AS [EventXml] FROM [#Raw] [r]) [x] ORDER BY [TimestampUtc] DESC,[FileName] DESC,[FileOffset] DESC;SELECT N'Extended-Events Quelle' [Ergebnis],[x].* FROM [#SourceStatus] [x] ORDER BY [SourceType],[TargetName];END;
+        BEGIN SELECT N'Extended-Events Event' [Ergebnis],[x].* FROM (SELECT [r].[SourceType],[r].[EventName],[r].[TimestampUtc],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="database_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="database_id"]/value/text())[1]','nvarchar(32)'))) AS [DatabaseId],COALESCE([r].[EventXml].value('(/event/action[@name="database_name"]/value/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="database_name"]/value/text())[1]','nvarchar(256)')) AS [DatabaseName],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="session_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="session_id"]/value/text())[1]','nvarchar(32)'))) AS [SessionId],[r].[EventXml].value('(/event/action[@name="client_app_name"]/value/text())[1]','nvarchar(512)') AS [ClientApplication],[r].[EventXml].value('(/event/action[@name="client_hostname"]/value/text())[1]','nvarchar(512)') AS [ClientHostName],COALESCE([r].[EventXml].value('(/event/action[@name="username"]/value/text())[1]','nvarchar(512)'),[r].[EventXml].value('(/event/action[@name="server_principal_name"]/value/text())[1]','nvarchar(512)')) AS [LoginName],COALESCE([r].[EventXml].value('(/event/action[@name="sql_text"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="statement"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="batch_text"]/value/text())[1]','nvarchar(4000)')) AS [SqlText],TRY_CONVERT(bigint,[r].[EventXml].value('(/event/data[@name="duration"]/value/text())[1]','nvarchar(64)')) AS [DurationRaw],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="error_number"]/value/text())[1]','nvarchar(32)')) AS [ErrorNumber],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="severity"]/value/text())[1]','nvarchar(32)')) AS [Severity],COALESCE([r].[EventXml].value('(/event/data[@name="wait_type"]/text/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="wait_type"]/value/text())[1]','nvarchar(256)')) AS [WaitType],[r].[EventXml].value('(/event/data[@name="resource_description"]/value/text())[1]','nvarchar(4000)') AS [ResourceDescription],[r].[FileName],[r].[FileOffset],CASE WHEN @MitEventXml=1 THEN [r].[EventXml] END AS [EventXml] FROM [#ExtendedEventsReadEvents_Raw] [r]) [x] ORDER BY [TimestampUtc] DESC,[FileName] DESC,[FileOffset] DESC;SELECT N'Extended-Events Quelle' [Ergebnis],[x].* FROM [#ExtendedEventsReadEvents_SourceStatus] [x] ORDER BY [SourceType],[TargetName];END;
     END;
     IF @JsonErzeugen=1
-    BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsReadEvents' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@ResolvedSource [source],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@EventsJson nvarchar(max)=(SELECT [r].[SourceType],[r].[EventName],[r].[TimestampUtc],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="database_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="database_id"]/value/text())[1]','nvarchar(32)'))) AS [DatabaseId],COALESCE([r].[EventXml].value('(/event/action[@name="database_name"]/value/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="database_name"]/value/text())[1]','nvarchar(256)')) AS [DatabaseName],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="session_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="session_id"]/value/text())[1]','nvarchar(32)'))) AS [SessionId],[r].[EventXml].value('(/event/action[@name="client_app_name"]/value/text())[1]','nvarchar(512)') AS [ClientApplication],[r].[EventXml].value('(/event/action[@name="client_hostname"]/value/text())[1]','nvarchar(512)') AS [ClientHostName],COALESCE([r].[EventXml].value('(/event/action[@name="username"]/value/text())[1]','nvarchar(512)'),[r].[EventXml].value('(/event/action[@name="server_principal_name"]/value/text())[1]','nvarchar(512)')) AS [LoginName],COALESCE([r].[EventXml].value('(/event/action[@name="sql_text"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="statement"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="batch_text"]/value/text())[1]','nvarchar(4000)')) AS [SqlText],TRY_CONVERT(bigint,[r].[EventXml].value('(/event/data[@name="duration"]/value/text())[1]','nvarchar(64)')) AS [DurationRaw],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="error_number"]/value/text())[1]','nvarchar(32)')) AS [ErrorNumber],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="severity"]/value/text())[1]','nvarchar(32)')) AS [Severity],COALESCE([r].[EventXml].value('(/event/data[@name="wait_type"]/text/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="wait_type"]/value/text())[1]','nvarchar(256)')) AS [WaitType],[r].[EventXml].value('(/event/data[@name="resource_description"]/value/text())[1]','nvarchar(4000)') AS [ResourceDescription],[r].[FileName],[r].[FileOffset],CASE WHEN @MitEventXml=1 THEN [r].[EventXml] END AS [EventXml] FROM [#Raw] [r] ORDER BY [r].[TimestampUtc] DESC,[r].[FileName] DESC,[r].[FileOffset] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@SourcesJson nvarchar(max)=(SELECT * FROM [#SourceStatus] ORDER BY [SourceType],[TargetName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"events":',COALESCE(@EventsJson,N'[]'),N',"sources":',COALESCE(@SourcesJson,N'[]'),N',"warnings":[]}');END;
+    BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsReadEvents' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@ResolvedSource [source],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@EventsJson nvarchar(max)=(SELECT [r].[SourceType],[r].[EventName],[r].[TimestampUtc],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="database_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="database_id"]/value/text())[1]','nvarchar(32)'))) AS [DatabaseId],COALESCE([r].[EventXml].value('(/event/action[@name="database_name"]/value/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="database_name"]/value/text())[1]','nvarchar(256)')) AS [DatabaseName],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="session_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="session_id"]/value/text())[1]','nvarchar(32)'))) AS [SessionId],[r].[EventXml].value('(/event/action[@name="client_app_name"]/value/text())[1]','nvarchar(512)') AS [ClientApplication],[r].[EventXml].value('(/event/action[@name="client_hostname"]/value/text())[1]','nvarchar(512)') AS [ClientHostName],COALESCE([r].[EventXml].value('(/event/action[@name="username"]/value/text())[1]','nvarchar(512)'),[r].[EventXml].value('(/event/action[@name="server_principal_name"]/value/text())[1]','nvarchar(512)')) AS [LoginName],COALESCE([r].[EventXml].value('(/event/action[@name="sql_text"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="statement"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="batch_text"]/value/text())[1]','nvarchar(4000)')) AS [SqlText],TRY_CONVERT(bigint,[r].[EventXml].value('(/event/data[@name="duration"]/value/text())[1]','nvarchar(64)')) AS [DurationRaw],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="error_number"]/value/text())[1]','nvarchar(32)')) AS [ErrorNumber],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="severity"]/value/text())[1]','nvarchar(32)')) AS [Severity],COALESCE([r].[EventXml].value('(/event/data[@name="wait_type"]/text/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="wait_type"]/value/text())[1]','nvarchar(256)')) AS [WaitType],[r].[EventXml].value('(/event/data[@name="resource_description"]/value/text())[1]','nvarchar(4000)') AS [ResourceDescription],[r].[FileName],[r].[FileOffset],CASE WHEN @MitEventXml=1 THEN [r].[EventXml] END AS [EventXml] FROM [#ExtendedEventsReadEvents_Raw] [r] ORDER BY [r].[TimestampUtc] DESC,[r].[FileName] DESC,[r].[FileOffset] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@SourcesJson nvarchar(max)=(SELECT * FROM [#ExtendedEventsReadEvents_SourceStatus] ORDER BY [SourceType],[TargetName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"events":',COALESCE(@EventsJson,N'[]'),N',"sources":',COALESCE(@SourcesJson,N'[]'),N',"warnings":[]}');END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Raw'
+              @SourceTable = N'#ExtendedEventsReadEvents_Raw'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

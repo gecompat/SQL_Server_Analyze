@@ -55,6 +55,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_TemporalAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -122,7 +123,7 @@ BEGIN
                @ErrorMessage=N'Regex-Pattern benötigen SQL Server 2025 oder neuer und Compatibility Level 170.';
     END;
 
-    CREATE TABLE [#NameFilters]
+    CREATE TABLE [#TemporalAnalysis_NameFilters]
     (
           [FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ItemOrdinal] int NOT NULL
@@ -131,7 +132,7 @@ BEGIN
         , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#TemporalAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -144,19 +145,19 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#TemporalAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
-    CREATE TABLE [#FeatureScope]
+    CREATE TABLE [#TemporalAnalysis_FeatureScope]
     (
           [DatabaseName] sysname NOT NULL PRIMARY KEY
         , [TemporalTableCount] bigint NOT NULL
         , [HistoryTableCount] bigint NOT NULL
     );
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#TemporalAnalysis_DatabaseStatus]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -170,7 +171,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#TemporalAnalysis_SourceStatus]
     (
           [DatabaseName] sysname NULL
         , [SourceCode] varchar(64) NOT NULL
@@ -182,7 +183,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#TemporalTable]
+    CREATE TABLE [#TemporalAnalysis_TemporalTable]
     (
           [DatabaseName] sysname NOT NULL
         , [CurrentSchemaName] sysname NOT NULL
@@ -214,7 +215,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
         , PRIMARY KEY ([DatabaseName],[CurrentObjectId])
     );
-    CREATE TABLE [#HistoryIndex]
+    CREATE TABLE [#TemporalAnalysis_HistoryIndex]
     (
           [DatabaseName] sysname NOT NULL
         , [CurrentSchemaName] sysname NOT NULL
@@ -231,7 +232,7 @@ BEGIN
         , [IsPeriodLeadingIndex] bit NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Findings]
+    CREATE TABLE [#TemporalAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
         , [DatabaseName] sysname NULL
@@ -260,7 +261,7 @@ BEGIN
             , @StatisticsNames=NULL
             , @ColumnNames=NULL
             , @StatusCode=@StatusCode OUTPUT
-            , @ErrorMessage=@ErrorMessage OUTPUT;
+            , @ErrorMessage=@ErrorMessage OUTPUT,@FilterTable=N'#TemporalAnalysis_NameFilters';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
@@ -275,34 +276,34 @@ BEGIN
             , @AnalysisClass='CROSS_DATABASE_DEEP'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
-            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#TemporalAnalysis_DatabaseCandidates',@WarningTable=N'#TemporalAnalysis_DatabaseCandidateWarnings';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
-    INSERT [#DatabaseStatus]
+    INSERT [#TemporalAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[TemporalTableCount],[HistoryTableCount],
      [SourceFailureCount],[FindingCount],[Detail])
     SELECT [DatabaseName],'PENDING',0,0,0,0,0,
            N'Feature-Gate und Temporal-Quellen werden datenbankweise best effort ausgewertet.'
-    FROM [#DatabaseCandidates];
+    FROM [#TemporalAnalysis_DatabaseCandidates];
 
-    INSERT [#DatabaseStatus]
+    INSERT [#TemporalAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[TemporalTableCount],[HistoryTableCount],
      [SourceFailureCount],[FindingCount],[ErrorMessage],[Detail])
     SELECT [RequestedName],[StatusCode],1,0,0,1,0,[ErrorMessage],N'Explizit angeforderte Datenbank nicht auswertbar.'
-    FROM [#DatabaseCandidateWarnings];
+    FROM [#TemporalAnalysis_DatabaseCandidateWarnings];
 
-    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#DatabaseCandidates])
+    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#TemporalAnalysis_DatabaseCandidates])
     BEGIN
         SELECT @StatusCode='NOT_APPLICABLE',@ErrorMessage=N'Keine auswertbare Datenbank im gewählten Scope.';
     END;
 
     DECLARE @SchemaPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#TemporalAnalysis_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#TemporalAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @ObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#TemporalAnalysis_NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#TemporalAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @FullObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#TemporalAnalysis_NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#TemporalAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     IF @SchemaPatternMode='LIKE'
         SET @SchemaPredicate+=N' AND [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
     IF @SchemaPatternMode IN('REGEX','REGEXI')
@@ -317,7 +318,7 @@ BEGIN
         DECLARE @DbName sysname,@CompatibilityLevel int,@Sql nvarchar(max),@Rows bigint;
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName],[CompatibilityLevel]
-            FROM [#DatabaseCandidates]
+            FROM [#TemporalAnalysis_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal],[DatabaseId]),[DatabaseId];
         OPEN [DatabaseCursor];
         FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -327,12 +328,12 @@ BEGIN
             IF (@SchemaPatternMode IN('REGEX','REGEXI') OR @ObjectPatternMode IN('REGEX','REGEXI'))
                AND COALESCE(@CompatibilityLevel,0)<170
             BEGIN
-                UPDATE [#DatabaseStatus]
+                UPDATE [#TemporalAnalysis_DatabaseStatus]
                 SET [StatusCode]='UNAVAILABLE_FEATURE',[IsPartial]=1,[SourceFailureCount]=1,
                     [ErrorMessage]=N'Regex-Pattern benötigen Compatibility Level 170.',
                     [Detail]=N'Für diese Datenbank wurde wegen inkompatiblem Patternvertrag keine Analyse ausgeführt.'
                 WHERE [DatabaseName]=@DbName;
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'FILTER_CONTRACT','UNAVAILABLE_FEATURE',1,0,NULL,NULL,
                        N'Regex-Pattern benötigen Compatibility Level 170.',N'Keine Quellenabfrage ausgeführt.');
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -341,7 +342,7 @@ BEGIN
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#FeatureScope]([DatabaseName],[TemporalTableCount],[HistoryTableCount])
+INSERT [#TemporalAnalysis_FeatureScope]([DatabaseName],[TemporalTableCount],[HistoryTableCount])
 SELECT @pDatabaseName,
        COALESCE(SUM(CASE WHEN [temporal_type]=2 THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0),
        COALESCE(SUM(CASE WHEN [temporal_type]=1 THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0)
@@ -351,30 +352,30 @@ SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_FEATURE_GATE','AVAILABLE',0,@Rows,
                        N'Katalogsicht auf sichtbare Datenbankmetadaten',NULL,NULL,
                        N'Zählt sichtbare aktuelle Temporal- und zugeordnete History-Tabellen; keine Nutzdaten.');
                 UPDATE [ds]
                 SET [TemporalTableCount]=[fs].[TemporalTableCount],
                     [HistoryTableCount]=[fs].[HistoryTableCount]
-                FROM [#DatabaseStatus] [ds]
-                JOIN [#FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName]
+                FROM [#TemporalAnalysis_DatabaseStatus] [ds]
+                JOIN [#TemporalAnalysis_FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName]
                 WHERE [ds].[DatabaseName]=@DbName;
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_FEATURE_GATE','ERROR_HANDLED',1,0,
                        N'Katalogsicht auf sichtbare Datenbankmetadaten',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Feature-Sichtbarkeit konnte nicht bestimmt werden.');
-                UPDATE [#DatabaseStatus]
+                UPDATE [#TemporalAnalysis_DatabaseStatus]
                 SET [StatusCode]='ERROR_HANDLED',[IsPartial]=1,[SourceFailureCount]=[SourceFailureCount]+1,
                     [ErrorNumber]=ERROR_NUMBER(),[ErrorMessage]=ERROR_MESSAGE(),
                     [Detail]=N'Feature-Gate fehlgeschlagen; keine belastbare Anwendbarkeitsaussage.'
                 WHERE [DatabaseName]=@DbName;
             END CATCH;
 
-            IF NOT EXISTS(SELECT 1 FROM [#FeatureScope] WHERE [DatabaseName]=@DbName)
+            IF NOT EXISTS(SELECT 1 FROM [#TemporalAnalysis_FeatureScope] WHERE [DatabaseName]=@DbName)
             BEGIN
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
                 CONTINUE;
@@ -382,15 +383,15 @@ SET @pRows=@@ROWCOUNT;';
 
             IF EXISTS
             (
-                SELECT 1 FROM [#FeatureScope]
+                SELECT 1 FROM [#TemporalAnalysis_FeatureScope]
                 WHERE [DatabaseName]=@DbName AND [TemporalTableCount]=0
             )
             BEGIN
-                UPDATE [#DatabaseStatus]
+                UPDATE [#TemporalAnalysis_DatabaseStatus]
                 SET [StatusCode]='NOT_APPLICABLE_VISIBLE_SCOPE',[IsPartial]=0,
                     [Detail]=N'Im sichtbaren Katalogscope wurde keine aktive systemversionierte Temporal Table erkannt; dies beweist keine vollständige Abwesenheit und erkennt keine früher getrennten Tabellenpaare.'
                 WHERE [DatabaseName]=@DbName;
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 SELECT @DbName,[SourceCode],'NOT_APPLICABLE',0,0,[RequiredPermission],NULL,NULL,
                        N'Quelle wegen negativem sichtbaren Feature-Gate nicht aufgerufen.'
                 FROM (VALUES
@@ -404,7 +405,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#TemporalTable]
+INSERT [#TemporalAnalysis_TemporalTable]
 ([DatabaseName],[CurrentSchemaName],[CurrentTableName],[CurrentObjectId],
  [HistorySchemaName],[HistoryTableName],[HistoryObjectId],
  [PeriodStartColumnName],[PeriodEndColumnName],[PeriodStartIsHidden],[PeriodEndIsHidden],
@@ -438,13 +439,13 @@ SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_CATALOG','AVAILABLE',0,@Rows,
                        N'Katalogsicht auf sichtbare Tabellen, Perioden und Spalten',NULL,NULL,
                        N'Aktive Zuordnung, Periodenspalten und Retention-Konfiguration; Nullzeilen können aus Filtern oder Metadatensichtbarkeit folgen.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_CATALOG','ERROR_HANDLED',1,0,
                        N'Katalogsicht auf sichtbare Tabellen, Perioden und Spalten',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Kapazitäts- und Indexquellen benötigen die Katalogzuordnung und werden für diese Datenbank ausgelassen.');
@@ -452,11 +453,11 @@ SET @pRows=@@ROWCOUNT;';
 
             IF EXISTS
             (
-                SELECT 1 FROM [#SourceStatus]
+                SELECT 1 FROM [#TemporalAnalysis_SourceStatus]
                 WHERE [DatabaseName]=@DbName AND [SourceCode]='TEMPORAL_CATALOG' AND [IsPartial]=1
             )
             BEGIN
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES
                 (@DbName,'TEMPORAL_CAPACITY','UNAVAILABLE_DEPENDENCY',1,0,
                  N'VIEW DATABASE STATE und VIEW DEFINITION; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE und VIEW SECURITY DEFINITION',
@@ -479,13 +480,13 @@ SET [CurrentRowsApprox]=[c].[RowCountApprox],
     [HistoryUsedMb]=[h].[UsedMb],
     [HistoryToCurrentRowRatio]=CASE WHEN [tt].[CurrentIsMemoryOptimized]=0 AND [c].[RowCountApprox]>0
                                     THEN CONVERT(decimal(19,4),CONVERT(decimal(38,4),[h].[RowCountApprox])/[c].[RowCountApprox]) END
-FROM [#TemporalTable] [tt]
+FROM [#TemporalAnalysis_TemporalTable] [tt]
 OUTER APPLY
 (
     SELECT SUM(CASE WHEN [index_id] IN(0,1) THEN CONVERT(bigint,[row_count]) END) AS [RowCountApprox],
            CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[reserved_page_count]))*8.0/1024.0) AS [ReservedMb],
            CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[used_page_count]))*8.0/1024.0) AS [UsedMb]
-    FROM [sys].[dm_db_partition_stats]
+    FROM [sys].[dm_db_partition_stats] WITH (NOLOCK)
     WHERE [object_id]=[tt].[CurrentObjectId]
 ) [c]
 OUTER APPLY
@@ -493,7 +494,7 @@ OUTER APPLY
     SELECT SUM(CASE WHEN [index_id] IN(0,1) THEN CONVERT(bigint,[row_count]) END) AS [RowCountApprox],
            CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[reserved_page_count]))*8.0/1024.0) AS [ReservedMb],
            CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[used_page_count]))*8.0/1024.0) AS [UsedMb]
-    FROM [sys].[dm_db_partition_stats]
+    FROM [sys].[dm_db_partition_stats] WITH (NOLOCK)
     WHERE [object_id]=[tt].[HistoryObjectId]
 ) [h]
 WHERE [tt].[DatabaseName]=@pDatabaseName;
@@ -501,13 +502,13 @@ SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_CAPACITY','AVAILABLE',0,@Rows,
                        N'VIEW DATABASE STATE und VIEW DEFINITION; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE und VIEW SECURITY DEFINITION',NULL,NULL,
                        N'Approximative Zeilen und Seiten aller Indizes; keine Tabellenzeilen. Current-Ratio wird für speicheroptimierte aktuelle Tabellen nicht behauptet.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_CAPACITY','ERROR_HANDLED',1,0,
                        N'VIEW DATABASE STATE und VIEW DEFINITION; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE und VIEW SECURITY DEFINITION',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Katalog- und Indexevidenz bleiben verfügbar.');
@@ -515,7 +516,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#HistoryIndex]
+INSERT [#TemporalAnalysis_HistoryIndex]
 SELECT [tt].[DatabaseName],[tt].[CurrentSchemaName],[tt].[CurrentTableName],
        [tt].[HistorySchemaName],[tt].[HistoryTableName],[i].[name],[i].[index_id],[i].[type_desc],
        [i].[is_unique],[i].[is_disabled],[k].[FirstKeyColumnName],[k].[SecondKeyColumnName],
@@ -524,7 +525,7 @@ SELECT [tt].[DatabaseName],[tt].[CurrentSchemaName],[tt].[CurrentTableName],
                             AND [k].[SecondKeyColumnName]=[tt].[PeriodStartColumnName]
                         THEN 1 ELSE 0 END),
        N''Bewertet nur die dokumentierte führende Schlüsselreihenfolge Periodenende/Periodenstart; keine Workload-, Selektivitäts- oder Plananalyse.''
-FROM [#TemporalTable] [tt]
+FROM [#TemporalAnalysis_TemporalTable] [tt]
 JOIN [sys].[indexes] [i] WITH (NOLOCK)
   ON [i].[object_id]=[tt].[HistoryObjectId] AND [i].[index_id]>0 AND [i].[is_hypothetical]=0
 OUTER APPLY
@@ -543,12 +544,12 @@ SET @pRows=@@ROWCOUNT;
 UPDATE [tt]
 SET [HistoryIndexCount]=[x].[IndexCount],
     [HasPeriodLeadingHistoryIndex]=[x].[HasPeriodLeading]
-FROM [#TemporalTable] [tt]
+FROM [#TemporalAnalysis_TemporalTable] [tt]
 OUTER APPLY
 (
     SELECT COUNT(*) AS [IndexCount],
            CONVERT(bit,COALESCE(MAX(CONVERT(tinyint,[hi].[IsPeriodLeadingIndex])),0)) AS [HasPeriodLeading]
-    FROM [#HistoryIndex] [hi]
+    FROM [#TemporalAnalysis_HistoryIndex] [hi]
     WHERE [hi].[DatabaseName]=[tt].[DatabaseName]
       AND [hi].[CurrentSchemaName]=[tt].[CurrentSchemaName]
       AND [hi].[CurrentTableName]=[tt].[CurrentTableName]
@@ -557,13 +558,13 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_HISTORY_INDEX','AVAILABLE',0,@Rows,
                        N'Katalogsicht auf sichtbare Indizes und Indexspalten',NULL,NULL,
                        N'Indexmetadaten ohne Schlüsselwerte; bewertet ausschließlich eine dokumentierte Baseline, keine endgültige Indexeignung.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#TemporalAnalysis_SourceStatus]
                 VALUES(@DbName,'TEMPORAL_HISTORY_INDEX','ERROR_HANDLED',1,0,
                        N'Katalogsicht auf sichtbare Indizes und Indexspalten',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Katalog- und Kapazitätsevidenz bleiben verfügbar.');
@@ -575,7 +576,7 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
         DEALLOCATE [DatabaseCursor];
     END;
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[HistorySchemaName],[HistoryTableName],
      [Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
@@ -584,10 +585,10 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
            N'Die aktive Temporal-Metadatenzeile enthält keine vollständig sichtbare zugeordnete History-Tabelle.',
            [EvidenceLimit],
            N'Metadatensichtbarkeit und Berechtigungen prüfen; erst danach eine strukturelle Abweichung untersuchen.'
-    FROM [#TemporalTable]
+    FROM [#TemporalAnalysis_TemporalTable]
     WHERE [HistoryObjectId] IS NULL OR [HistorySchemaName] IS NULL OR [HistoryTableName] IS NULL;
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[HistorySchemaName],[HistoryTableName],
      [Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
@@ -598,10 +599,10 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
            N'Für die sichtbare aktive Temporal Table sind Start- und Endspalte des SYSTEM_TIME-Periods nicht vollständig sichtbar.',
            [EvidenceLimit],
            N'Metadatensichtbarkeit und sys.periods/sys.columns-Zuordnung prüfen; keine Dateninkonsistenz daraus ableiten.'
-    FROM [#TemporalTable]
+    FROM [#TemporalAnalysis_TemporalTable]
     WHERE [PeriodStartColumnName] IS NULL OR [PeriodEndColumnName] IS NULL;
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[HistorySchemaName],[HistoryTableName],
      [Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
@@ -611,10 +612,10 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
            N'Eine endliche History-Retention ist konfiguriert, der datenbankweite automatische Temporal-Cleanup ist jedoch nicht aktiviert.',
            N'Der Schalter zeigt Konfiguration, nicht Ausführung, Fortschritt oder Löschberechtigung des Hintergrundtasks.',
            N'Datenbankoption, Restore-Historie und Cleanup-Fortschritt mit freigegebener Laufzeitevidenz prüfen.'
-    FROM [#TemporalTable]
+    FROM [#TemporalAnalysis_TemporalTable]
     WHERE [RetentionMode]='FINITE' AND [DatabaseRetentionEnabled]=0;
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[HistorySchemaName],[HistoryTableName],
      [Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
@@ -624,17 +625,17 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
            N'Kein aktiver sichtbarer B-Tree-History-Index beginnt mit Periodenende und Periodenstart.',
            N'Die dokumentierte Baseline ist kein universelles Workload-Optimum; Columnstore, Partitionierung, Schreiblast und konkrete Pläne bleiben unbewertet.',
            N'History-Workload und vorhandene Indexstrategie prüfen; DDL nur nach messbarer Plan- und Wartungsbewertung ableiten.'
-    FROM [#TemporalTable]
+    FROM [#TemporalAnalysis_TemporalTable]
     WHERE [HistoryObjectId] IS NOT NULL
       AND [HistorySchemaName] IS NOT NULL AND [HistoryTableName] IS NOT NULL
       AND [PeriodStartColumnName] IS NOT NULL AND [PeriodEndColumnName] IS NOT NULL
       AND COALESCE([HasPeriodLeadingHistoryIndex],0)=0
       AND EXISTS
-          (SELECT 1 FROM [#SourceStatus] [ss]
-           WHERE [ss].[DatabaseName]=[#TemporalTable].[DatabaseName]
+          (SELECT 1 FROM [#TemporalAnalysis_SourceStatus] [ss]
+           WHERE [ss].[DatabaseName]=[#TemporalAnalysis_TemporalTable].[DatabaseName]
              AND [ss].[SourceCode]='TEMPORAL_HISTORY_INDEX' AND [ss].[IsPartial]=0);
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[HistorySchemaName],[HistoryTableName],
      [Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
@@ -643,10 +644,10 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
            N'Die approximative reservierte History-Größe überschreitet den konfigurierten Kontextgrenzwert.',
            N'Pages sind approximativ und enthalten Tabellen- sowie Indexspeicher; Größe allein ist kein Fehler.',
            N'Wachstumsverlauf, Retentionsziel, Kompression, Partitionierung und Abfragebedarf gemeinsam bewerten.'
-    FROM [#TemporalTable]
+    FROM [#TemporalAnalysis_TemporalTable]
     WHERE [HistoryReservedMb]>=@HistorySizeWarnMb;
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[HistorySchemaName],[HistoryTableName],
      [Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
@@ -655,10 +656,10 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
            N'Die approximative History-Zeilenzahl überschreitet den konfigurierten Kontextgrenzwert.',
            N'row_count ist approximativ; Zeilenvolumen allein beweist weder Cleanup-Rückstand noch Kapazitätsdruck.',
            N'Wiederholte Messungen, Änderungsrate, Retentionsziel und Speichertrend korrelieren.'
-    FROM [#TemporalTable]
+    FROM [#TemporalAnalysis_TemporalTable]
     WHERE [HistoryRowsApprox]>=@HistoryRowsWarn;
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[HistorySchemaName],[HistoryTableName],
      [Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
@@ -668,26 +669,26 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
            N'Das approximative Verhältnis History zu Current überschreitet den konfigurierten Kontextgrenzwert.',
            N'Das Verhältnis ist für leere/kleine oder speicheroptimierte Current-Tabellen nicht belastbar und sagt nichts über fachlich zulässige Historientiefe aus.',
            N'Retentionsanforderung, Änderungsrate, Alter der History und Zeitverlauf prüfen.'
-    FROM [#TemporalTable]
+    FROM [#TemporalAnalysis_TemporalTable]
     WHERE [HistoryReservedMb]>=@MinHistoryMbForRatioWarn
       AND [HistoryToCurrentRowRatio]>=@HistoryToCurrentRatioWarn;
 
-    INSERT [#Findings]
+    INSERT [#TemporalAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','TEMPORAL_EVIDENCE_GAP',[SourceCode],
            COALESCE([ErrorMessage],N'Die angeforderte Quelle ist nicht verfügbar.'),
            [Detail],N'Berechtigung, Featureverfügbarkeit und Abhängigkeiten prüfen; andere Resultsets bleiben gültig.'
-    FROM [#SourceStatus]
+    FROM [#TemporalAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
     UPDATE [tt]
     SET [AssessmentStatus]=CASE WHEN EXISTS
-        (SELECT 1 FROM [#Findings] [f]
+        (SELECT 1 FROM [#TemporalAnalysis_Findings] [f]
          WHERE [f].[DatabaseName]=[tt].[DatabaseName]
            AND [f].[SchemaName]=[tt].[CurrentSchemaName]
            AND [f].[ObjectName]=[tt].[CurrentTableName]
            AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END
-    FROM [#TemporalTable] AS [tt];
+    FROM [#TemporalAnalysis_TemporalTable] AS [tt];
 
     UPDATE [ds]
     SET [SourceFailureCount]=[x].[FailureCount],
@@ -701,34 +702,34 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
                       WHEN [ds].[StatusCode]='PENDING' AND [f].[WarnCount]>0 THEN N'Mindestens ein konfigurierter Prüfhinweis liegt vor; kein automatisches Gesundheitsurteil.'
                       WHEN [ds].[StatusCode]='PENDING' THEN N'Kein konfigurierter Warnindikator in der zugänglichen Metadatenaufnahme; dies beweist weder Datenkonsistenz noch erfolgreichen Cleanup.'
                       ELSE [ds].[Detail] END
-    FROM [#DatabaseStatus] [ds]
+    FROM [#TemporalAnalysis_DatabaseStatus] [ds]
     OUTER APPLY
     (
         SELECT COUNT_BIG(*) AS [FailureCount]
-        FROM [#SourceStatus] [ss]
+        FROM [#TemporalAnalysis_SourceStatus] [ss]
         WHERE [ss].[DatabaseName]=[ds].[DatabaseName] AND [ss].[IsPartial]=1
     ) [x]
     OUTER APPLY
     (
         SELECT COUNT_BIG(*) AS [FindingCount],
                COALESCE(SUM(CASE WHEN [ff].[Severity]='WARN' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0) AS [WarnCount]
-        FROM [#Findings] [ff]
+        FROM [#TemporalAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
     ) [f];
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        IF EXISTS(SELECT 1 FROM [#DatabaseStatus] WHERE [IsPartial]=1)
+        IF EXISTS(SELECT 1 FROM [#TemporalAnalysis_DatabaseStatus] WHERE [IsPartial]=1)
             SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-        ELSE IF EXISTS(SELECT 1 FROM [#Findings] WHERE [Severity]='WARN')
+        ELSE IF EXISTS(SELECT 1 FROM [#TemporalAnalysis_Findings] WHERE [Severity]='WARN')
             SET @StatusCode='AVAILABLE_WITH_FINDING';
-        ELSE IF NOT EXISTS(SELECT 1 FROM [#FeatureScope] WHERE [TemporalTableCount]>0)
+        ELSE IF NOT EXISTS(SELECT 1 FROM [#TemporalAnalysis_FeatureScope] WHERE [TemporalTableCount]>0)
             SET @StatusCode='NOT_APPLICABLE';
     END;
 
     SELECT @ErrorNumber=COALESCE(@ErrorNumber,MIN([ErrorNumber])),
            @ErrorMessage=COALESCE(@ErrorMessage,MIN([ErrorMessage]))
-    FROM [#SourceStatus]
+    FROM [#TemporalAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
     IF @JsonErzeugen=1
@@ -736,11 +737,11 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
         SELECT @Json=(
             SELECT
                 JSON_QUERY((SELECT N'USP_TemporalAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
-                JSON_QUERY(COALESCE((SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
-                JSON_QUERY(COALESCE((SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#TemporalTable] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[HistoryReservedMb] DESC,[DatabaseName],[CurrentSchemaName],[CurrentTableName] FOR JSON PATH),N'[]')) AS [temporalTables],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) [hi].* FROM [#HistoryIndex] [hi] WHERE @NurProblematisch=0 OR EXISTS(SELECT 1 FROM [#TemporalTable] [tt] WHERE [tt].[DatabaseName]=[hi].[DatabaseName] AND [tt].[CurrentSchemaName]=[hi].[CurrentSchemaName] AND [tt].[CurrentTableName]=[hi].[CurrentTableName] AND [tt].[AssessmentStatus]='REVIEW') ORDER BY [hi].[DatabaseName],[hi].[CurrentSchemaName],[hi].[CurrentTableName],[hi].[IndexId] FOR JSON PATH),N'[]')) AS [historyIndexes]
+                JSON_QUERY(COALESCE((SELECT * FROM [#TemporalAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
+                JSON_QUERY(COALESCE((SELECT * FROM [#TemporalAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#TemporalAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#TemporalAnalysis_TemporalTable] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[HistoryReservedMb] DESC,[DatabaseName],[CurrentSchemaName],[CurrentTableName] FOR JSON PATH),N'[]')) AS [temporalTables],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) [hi].* FROM [#TemporalAnalysis_HistoryIndex] [hi] WHERE @NurProblematisch=0 OR EXISTS(SELECT 1 FROM [#TemporalAnalysis_TemporalTable] [tt] WHERE [tt].[DatabaseName]=[hi].[DatabaseName] AND [tt].[CurrentSchemaName]=[hi].[CurrentSchemaName] AND [tt].[CurrentTableName]=[hi].[CurrentTableName] AND [tt].[AssessmentStatus]='REVIEW') ORDER BY [hi].[DatabaseName],[hi].[CurrentSchemaName],[hi].[CurrentTableName],[hi].[IndexId] FOR JSON PATH),N'[]')) AS [historyIndexes]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
     END;
 
@@ -749,18 +750,18 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
         SELECT N'USP_TemporalAnalysis' AS [Module],@Now AS [CollectedAtUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],
                N'Read-only Metadatenaufnahme; keine Benutzertabellenzeilen, DBCC-, Cleanup- oder DDL-Ausführung.' AS [Detail];
-        SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#Findings]
+        SELECT * FROM [#TemporalAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
+        SELECT * FROM [#TemporalAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
+        SELECT TOP(@Limit) * FROM [#TemporalAnalysis_Findings]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
-        SELECT TOP(@Limit) * FROM [#TemporalTable]
+        SELECT TOP(@Limit) * FROM [#TemporalAnalysis_TemporalTable]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
         ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,
                  [HistoryReservedMb] DESC,[DatabaseName],[CurrentSchemaName],[CurrentTableName];
-        SELECT TOP(@Limit) [hi].* FROM [#HistoryIndex] [hi]
+        SELECT TOP(@Limit) [hi].* FROM [#TemporalAnalysis_HistoryIndex] [hi]
         WHERE @NurProblematisch=0 OR EXISTS
-              (SELECT 1 FROM [#TemporalTable] [tt]
+              (SELECT 1 FROM [#TemporalAnalysis_TemporalTable] [tt]
                WHERE [tt].[DatabaseName]=[hi].[DatabaseName]
                  AND [tt].[CurrentSchemaName]=[hi].[CurrentSchemaName]
                  AND [tt].[CurrentTableName]=[hi].[CurrentTableName]
@@ -779,7 +780,7 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Findings'
+              @SourceTable = N'#TemporalAnalysis_Findings'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

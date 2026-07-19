@@ -50,12 +50,12 @@ GO
 
 USE [master];
 GO
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleRestrictedLogin') DROP LOGIN [ExampleRestrictedLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerStateLogin') DROP LOGIN [ExampleViewServerStateLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewServerPerformanceLogin') DROP LOGIN [ExampleViewServerPerformanceLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabaseStateLogin') DROP LOGIN [ExampleViewDatabaseStateLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleViewDatabasePerformanceLogin') DROP LOGIN [ExampleViewDatabasePerformanceLogin];
-IF EXISTS(SELECT 1 FROM [sys].[server_principals] WHERE [name]=N'ExampleGroupMemberLogin') DROP LOGIN [ExampleGroupMemberLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'ExampleRestrictedLogin') DROP LOGIN [ExampleRestrictedLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'ExampleViewServerStateLogin') DROP LOGIN [ExampleViewServerStateLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'ExampleViewServerPerformanceLogin') DROP LOGIN [ExampleViewServerPerformanceLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'ExampleViewDatabaseStateLogin') DROP LOGIN [ExampleViewDatabaseStateLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'ExampleViewDatabasePerformanceLogin') DROP LOGIN [ExampleViewDatabasePerformanceLogin];
+IF EXISTS(SELECT 1 FROM [sys].[server_principals] WITH (NOLOCK) WHERE [name]=N'ExampleGroupMemberLogin') DROP LOGIN [ExampleGroupMemberLogin];
 GO
 
 DECLARE @Password nvarchar(128)=N'$(PermissionMatrixPassword)';
@@ -116,7 +116,7 @@ GRANT SELECT ON SCHEMA::[monitor] TO [ExampleGroupMemberUser];
 GRANT EXECUTE ON SCHEMA::[monitor] TO [ExampleGroupMemberUser];
 GO
 
-CREATE TABLE [#PermissionMatrix]
+CREATE TABLE [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
 (
       [ScenarioCode] varchar(48) NOT NULL PRIMARY KEY
     , [EffectiveContext] sysname NOT NULL
@@ -305,8 +305,8 @@ BEGIN
 
     SET @HasViewServerState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N''VIEW SERVER STATE''));
     SET @HasViewServerPerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N''VIEW SERVER PERFORMANCE STATE''));
-    SET @HasViewDatabaseState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE STATE''));
-    SET @HasViewDatabasePerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N''DATABASE'',N''VIEW DATABASE PERFORMANCE STATE''));
+    SET @HasViewDatabaseState=CONVERT(bit,HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N''DATABASE'',N''VIEW DATABASE STATE''));
+    SET @HasViewDatabasePerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N''DATABASE'',N''VIEW DATABASE PERFORMANCE STATE''));
     SELECT
           @HasViewServerState=COALESCE(@HasViewServerState,0)
         , @HasViewServerPerformanceState=COALESCE(@HasViewServerPerformanceState,0)
@@ -314,7 +314,7 @@ BEGIN
         , @HasViewDatabasePerformanceState=COALESCE(@HasViewDatabasePerformanceState,0);
 
     RAISERROR(N''PERMISSION_MATRIX step=insert_result'',10,1) WITH NOWAIT;
-    INSERT [#PermissionMatrix]
+    INSERT [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     (
           [ScenarioCode],[EffectiveContext]
         , [HasViewServerState],[HasViewServerPerformanceState]
@@ -443,15 +443,15 @@ WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
 
 SET @HasViewServerState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER STATE'));
 SET @HasViewServerPerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SERVER PERFORMANCE STATE'));
-SET @HasViewDatabaseState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE STATE'));
-SET @HasViewDatabasePerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME(DB_NAME(),N'DATABASE',N'VIEW DATABASE PERFORMANCE STATE'));
+SET @HasViewDatabaseState=CONVERT(bit,HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'));
+SET @HasViewDatabasePerformanceState=CONVERT(bit,HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE PERFORMANCE STATE'));
 SELECT
       @HasViewServerState=COALESCE(@HasViewServerState,0)
     , @HasViewServerPerformanceState=COALESCE(@HasViewServerPerformanceState,0)
     , @HasViewDatabaseState=COALESCE(@HasViewDatabaseState,0)
     , @HasViewDatabasePerformanceState=COALESCE(@HasViewDatabasePerformanceState,0);
 
-INSERT [#PermissionMatrix]
+INSERT [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
 VALUES
 (
       'SYSADMIN','ExampleSysadminContext'
@@ -481,7 +481,7 @@ SELECT
     , [QueryStorePerformanceGrantedRows]
     , [PlanCacheDeepAllowed]
     , [PlanCacheDeepAccessReason]
-FROM [#PermissionMatrix]
+FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
 ORDER BY CASE [ScenarioCode]
     WHEN 'RESTRICTED' THEN 1
     WHEN 'VIEW_SERVER_STATE' THEN 2
@@ -497,15 +497,15 @@ RAISERROR(N'PERMISSION_MATRIX phase=assertions',10,1) WITH NOWAIT;
 GO
 
 /* Verbindliche Erwartungsmatrix. */
-IF (SELECT COUNT(*) FROM [#PermissionMatrix])<>7
+IF (SELECT COUNT(*) FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix])<>7
     THROW 54210,N'Die Berechtigungsmatrix enthält nicht alle erwarteten Szenarien.',1;
 
-IF EXISTS(SELECT 1 FROM [#PermissionMatrix] WHERE [AllJsonValid]=0)
+IF EXISTS(SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix] WHERE [AllJsonValid]=0)
     THROW 54211,N'Mindestens ein Berechtigungsszenario lieferte kein gültiges JSON.',1;
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix]
+    SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     WHERE [ScenarioCode]='RESTRICTED'
       AND NOT
       (
@@ -525,7 +525,7 @@ AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix]
+    SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     WHERE [ScenarioCode]='VIEW_SERVER_STATE'
       AND NOT
       (
@@ -545,7 +545,7 @@ AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix]
+    SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     WHERE [ScenarioCode]='VIEW_SERVER_PERFORMANCE_STATE'
       AND NOT
       (
@@ -565,7 +565,7 @@ AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix]
+    SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     WHERE [ScenarioCode]='VIEW_DATABASE_STATE'
       AND NOT
       (
@@ -582,7 +582,7 @@ AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix]
+    SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     WHERE [ScenarioCode]='VIEW_DATABASE_PERFORMANCE_STATE'
       AND NOT
       (
@@ -599,7 +599,7 @@ AND [PlanCacheDeepAllowed]=0 AND [PlanCacheDeepAccessReason]='NO_MATCH'
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix]
+    SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     WHERE [ScenarioCode]='GROUP_MEMBER'
       AND NOT
       (
@@ -617,7 +617,7 @@ AND [PlanCacheDeepAllowed]=1 AND [PlanCacheDeepAccessReason]='IS_MEMBER'
 
 IF EXISTS
 (
-    SELECT 1 FROM [#PermissionMatrix]
+    SELECT 1 FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix]
     WHERE [ScenarioCode]='SYSADMIN'
       AND NOT
       (
@@ -692,7 +692,7 @@ SELECT
     , SUM(CASE WHEN [CurrentSessionsStatus]='AVAILABLE_LIMITED' THEN 1 ELSE 0 END) AS [LimitedCurrentSessionScenarios]
     , SUM(CASE WHEN [PlanCacheDeepAllowed]=1 THEN 1 ELSE 0 END) AS [AllowedProtectedClassScenarios]
     , N'SQL Server 2022+ permission matrix completed with synthetic principals only.' AS [Detail]
-FROM [#PermissionMatrix];
+FROM [#SQL_Server_2022_Permission_Matrix_PermissionMatrix];
 GO
 
 /* Standardpolicy wiederherstellen. */

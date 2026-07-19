@@ -60,6 +60,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InMemoryOltpAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -129,7 +130,7 @@ BEGIN
                @ErrorMessage=N'Regex-Pattern benötigen SQL Server 2025 oder neuer und Compatibility Level 170.';
     END;
 
-    CREATE TABLE [#NameFilters]
+    CREATE TABLE [#InMemoryOltpAnalysis_NameFilters]
     (
           [FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ItemOrdinal] int NOT NULL
@@ -138,7 +139,7 @@ BEGIN
         , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#InMemoryOltpAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -151,20 +152,20 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#InMemoryOltpAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
-    CREATE TABLE [#FeatureScope]
+    CREATE TABLE [#InMemoryOltpAnalysis_FeatureScope]
     (
           [DatabaseName] sysname NOT NULL PRIMARY KEY
         , [MemoryOptimizedTableCount] bigint NOT NULL
         , [MemoryOptimizedTableTypeCount] bigint NOT NULL
         , [MemoryOptimizedFilegroupCount] bigint NOT NULL
     );
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#InMemoryOltpAnalysis_DatabaseStatus]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -179,7 +180,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#InMemoryOltpAnalysis_SourceStatus]
     (
           [DatabaseName] sysname NULL
         , [SourceCode] varchar(64) NOT NULL
@@ -191,7 +192,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#TableMemory]
+    CREATE TABLE [#InMemoryOltpAnalysis_TableMemory]
     (
           [DatabaseName] sysname NOT NULL
         , [SchemaName] sysname NOT NULL
@@ -209,7 +210,7 @@ BEGIN
         , [FindingCode] varchar(120) NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#HashIndex]
+    CREATE TABLE [#InMemoryOltpAnalysis_HashIndex]
     (
           [DatabaseName] sysname NOT NULL
         , [SchemaName] sysname NOT NULL
@@ -228,7 +229,7 @@ BEGIN
         , [FindingCode] varchar(120) NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#MemoryConsumer]
+    CREATE TABLE [#InMemoryOltpAnalysis_MemoryConsumer]
     (
           [DatabaseName] sysname NOT NULL
         , [MemoryConsumerType] int NULL
@@ -240,7 +241,7 @@ BEGIN
         , [UsedPercent] decimal(9,4) NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Checkpoint]
+    CREATE TABLE [#InMemoryOltpAnalysis_Checkpoint]
     (
           [DatabaseName] sysname NOT NULL
         , [FileType] int NULL
@@ -255,7 +256,7 @@ BEGIN
         , [FindingCode] varchar(120) NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Transaction]
+    CREATE TABLE [#InMemoryOltpAnalysis_Transaction]
     (
           [DatabaseName] sysname NOT NULL
         , [TransactionState] int NULL
@@ -266,7 +267,7 @@ BEGIN
         , [FindingCode] varchar(120) NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#ResourcePool]
+    CREATE TABLE [#InMemoryOltpAnalysis_ResourcePool]
     (
           [DatabaseName] sysname NOT NULL
         , [ResourcePoolId] int NULL
@@ -284,7 +285,7 @@ BEGIN
         , [FindingCode] varchar(120) NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Findings]
+    CREATE TABLE [#InMemoryOltpAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
         , [DatabaseName] sysname NULL
@@ -312,7 +313,7 @@ BEGIN
             , @StatisticsNames=NULL
             , @ColumnNames=NULL
             , @StatusCode=@StatusCode OUTPUT
-            , @ErrorMessage=@ErrorMessage OUTPUT;
+            , @ErrorMessage=@ErrorMessage OUTPUT,@FilterTable=N'#InMemoryOltpAnalysis_NameFilters';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
@@ -327,24 +328,24 @@ BEGIN
             , @AnalysisClass='CROSS_DATABASE_DEEP'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
-            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#InMemoryOltpAnalysis_DatabaseCandidates',@WarningTable=N'#InMemoryOltpAnalysis_DatabaseCandidateWarnings';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
-    INSERT [#DatabaseStatus]
+    INSERT [#InMemoryOltpAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[MemoryOptimizedTableCount],[MemoryOptimizedTableTypeCount],
      [MemoryOptimizedFilegroupCount],[SourceFailureCount],[FindingCount],[Detail])
     SELECT [DatabaseName],'PENDING',0,0,0,0,0,0,
            N'Feature-Gate und Quellen werden datenbankweise best effort ausgewertet.'
-    FROM [#DatabaseCandidates];
+    FROM [#InMemoryOltpAnalysis_DatabaseCandidates];
 
-    INSERT [#DatabaseStatus]
+    INSERT [#InMemoryOltpAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[MemoryOptimizedTableCount],[MemoryOptimizedTableTypeCount],
      [MemoryOptimizedFilegroupCount],[SourceFailureCount],[FindingCount],[ErrorMessage],[Detail])
     SELECT [RequestedName],[StatusCode],1,0,0,0,1,0,[ErrorMessage],N'Explizit angeforderte Datenbank nicht auswertbar.'
-    FROM [#DatabaseCandidateWarnings];
+    FROM [#InMemoryOltpAnalysis_DatabaseCandidateWarnings];
 
-    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#DatabaseCandidates])
+    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_DatabaseCandidates])
     BEGIN
         SELECT @StatusCode='NOT_APPLICABLE',@ErrorMessage=N'Keine auswertbare Datenbank im gewählten Scope.';
     END;
@@ -358,11 +359,11 @@ BEGIN
     END;
 
     DECLARE @SchemaPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @ObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @FullObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     IF @SchemaPatternMode='LIKE'
         SET @SchemaPredicate+=N' AND [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
     IF @SchemaPatternMode IN('REGEX','REGEXI')
@@ -377,7 +378,7 @@ BEGIN
         DECLARE @DbName sysname,@CompatibilityLevel int,@Sql nvarchar(max),@Rows bigint;
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName],[CompatibilityLevel]
-            FROM [#DatabaseCandidates]
+            FROM [#InMemoryOltpAnalysis_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal],[DatabaseId]),[DatabaseId];
         OPEN [DatabaseCursor];
         FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -387,12 +388,12 @@ BEGIN
             IF (@SchemaPatternMode IN('REGEX','REGEXI') OR @ObjectPatternMode IN('REGEX','REGEXI'))
                AND COALESCE(@CompatibilityLevel,0)<170
             BEGIN
-                UPDATE [#DatabaseStatus]
+                UPDATE [#InMemoryOltpAnalysis_DatabaseStatus]
                 SET [StatusCode]='UNAVAILABLE_FEATURE',[IsPartial]=1,[SourceFailureCount]=1,
                     [ErrorMessage]=N'Regex-Pattern benötigen Compatibility Level 170.',
                     [Detail]=N'Für diese Datenbank wurde wegen inkompatiblem Patternvertrag keine Analyse ausgeführt.'
                 WHERE [DatabaseName]=@DbName;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'FILTER_CONTRACT','UNAVAILABLE_FEATURE',1,0,NULL,NULL,
                        N'Regex-Pattern benötigen Compatibility Level 170.',N'Keine Quellenabfrage ausgeführt.');
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -401,7 +402,7 @@ BEGIN
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#FeatureScope]([DatabaseName],[MemoryOptimizedTableCount],[MemoryOptimizedTableTypeCount],[MemoryOptimizedFilegroupCount])
+INSERT [#InMemoryOltpAnalysis_FeatureScope]([DatabaseName],[MemoryOptimizedTableCount],[MemoryOptimizedTableTypeCount],[MemoryOptimizedFilegroupCount])
 SELECT @pDatabaseName,
        (SELECT COUNT_BIG(*) FROM [sys].[tables] WITH (NOLOCK) WHERE [is_ms_shipped]=0 AND [is_memory_optimized]=1),
        (SELECT COUNT_BIG(*) FROM [sys].[table_types] WITH (NOLOCK) WHERE [is_memory_optimized]=1),
@@ -409,29 +410,29 @@ SELECT @pDatabaseName,
 SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',@pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_FEATURE_GATE','AVAILABLE',0,@Rows,N'Katalogsicht auf sichtbare Datenbankmetadaten',NULL,NULL,
                        N'Tabellen, Tabellentypen und MEMORY_OPTIMIZED_DATA-Dateigruppe; keine Nutzdaten.');
                 UPDATE [ds]
                 SET [MemoryOptimizedTableCount]=[fs].[MemoryOptimizedTableCount],
                     [MemoryOptimizedTableTypeCount]=[fs].[MemoryOptimizedTableTypeCount],
                     [MemoryOptimizedFilegroupCount]=[fs].[MemoryOptimizedFilegroupCount]
-                FROM [#DatabaseStatus] [ds]
-                JOIN [#FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName]
+                FROM [#InMemoryOltpAnalysis_DatabaseStatus] [ds]
+                JOIN [#InMemoryOltpAnalysis_FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName]
                 WHERE [ds].[DatabaseName]=@DbName;
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_FEATURE_GATE','ERROR_HANDLED',1,0,N'Katalogsicht auf sichtbare Datenbankmetadaten',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Feature-Sichtbarkeit konnte nicht bestimmt werden.');
-                UPDATE [#DatabaseStatus]
+                UPDATE [#InMemoryOltpAnalysis_DatabaseStatus]
                 SET [StatusCode]='ERROR_HANDLED',[IsPartial]=1,[SourceFailureCount]=[SourceFailureCount]+1,
                     [ErrorNumber]=ERROR_NUMBER(),[ErrorMessage]=ERROR_MESSAGE(),
                     [Detail]=N'Feature-Gate fehlgeschlagen; keine belastbare Anwendbarkeitsaussage.'
                 WHERE [DatabaseName]=@DbName;
             END CATCH;
 
-            IF NOT EXISTS(SELECT 1 FROM [#FeatureScope] WHERE [DatabaseName]=@DbName)
+            IF NOT EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_FeatureScope] WHERE [DatabaseName]=@DbName)
             BEGIN
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
                 CONTINUE;
@@ -439,16 +440,16 @@ SET @pRows=@@ROWCOUNT;';
 
             IF EXISTS
             (
-                SELECT 1 FROM [#FeatureScope]
+                SELECT 1 FROM [#InMemoryOltpAnalysis_FeatureScope]
                 WHERE [DatabaseName]=@DbName
                   AND [MemoryOptimizedTableCount]+[MemoryOptimizedTableTypeCount]+[MemoryOptimizedFilegroupCount]=0
             )
             BEGIN
-                UPDATE [#DatabaseStatus]
+                UPDATE [#InMemoryOltpAnalysis_DatabaseStatus]
                 SET [StatusCode]='NOT_APPLICABLE_VISIBLE_SCOPE',[IsPartial]=0,
                     [Detail]=N'Im sichtbaren Katalogscope wurde keine In-Memory-OLTP-Nutzung oder MEMORY_OPTIMIZED_DATA-Dateigruppe erkannt; dies beweist keine vollständige Abwesenheit.'
                 WHERE [DatabaseName]=@DbName;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 SELECT @DbName,[SourceCode],'NOT_APPLICABLE',0,0,[RequiredPermission],NULL,NULL,
                        N'Quelle wegen negativem sichtbaren Feature-Gate nicht aufgerufen.'
                 FROM (VALUES
@@ -466,7 +467,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#TableMemory]
+INSERT [#InMemoryOltpAnalysis_TableMemory]
 SELECT @pDatabaseName,[s].[name],[t].[name],[t].[object_id],[t].[durability_desc],
        CONVERT(decimal(19,2),[m].[memory_allocated_for_table_kb]/1024.0),
        CONVERT(decimal(19,2),[m].[memory_used_by_table_kb]/1024.0),
@@ -479,7 +480,7 @@ SELECT @pDatabaseName,[s].[name],[t].[name],[t].[object_id],[t].[durability_desc
        CASE WHEN ([m].[memory_used_by_table_kb]+[m].[memory_used_by_indexes_kb])/1024.0>=@pMinTableMemoryMb THEN ''INFO'' ELSE ''NONE'' END,
        CASE WHEN ([m].[memory_used_by_table_kb]+[m].[memory_used_by_indexes_kb])/1024.0>=@pMinTableMemoryMb THEN ''LARGE_MEMORY_CONSUMER_CONTEXT'' END,
        N''Tabellenspeicher ist eine Momentaufnahme und beweist weder Pooldruck noch zukünftigen Kapazitätsbedarf.''
-FROM [sys].[dm_db_xtp_table_memory_stats] [m]
+FROM [sys].[dm_db_xtp_table_memory_stats] [m] WITH (NOLOCK)
 JOIN [sys].[tables] [t] WITH (NOLOCK) ON [t].[object_id]=[m].[object_id]
 JOIN [sys].[schemas] [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id]
 WHERE [t].[is_ms_shipped]=0'+@SchemaPredicate+@ObjectPredicate+@FullObjectPredicate+N';
@@ -488,13 +489,13 @@ SET @pRows=@@ROWCOUNT;';
                 EXEC [sys].[sp_executesql] @Sql,
                      N'@pDatabaseName sysname,@pRows bigint OUTPUT,@pMinTableMemoryMb decimal(19,2)',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT,@pMinTableMemoryMb=@MinTableMemoryMb;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_TABLE_MEMORY','AVAILABLE',0,@Rows,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,NULL,
                        N'Sichtbare speicheroptimierte Tabellen; Nullzeilen können auch aus Filtern oder Metadatensichtbarkeit folgen.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_TABLE_MEMORY','ERROR_HANDLED',1,0,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Andere XTP-Quellen werden fortgesetzt.');
@@ -502,25 +503,25 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#MemoryConsumer]
+INSERT [#InMemoryOltpAnalysis_MemoryConsumer]
 SELECT @pDatabaseName,[memory_consumer_type],[memory_consumer_desc],COUNT_BIG(*),SUM(CONVERT(bigint,[allocation_count])),
        CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[allocated_bytes]))/1048576.0),
        CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[used_bytes]))/1048576.0),
        CONVERT(decimal(9,4),100.0*SUM(CONVERT(decimal(38,2),[used_bytes]))/NULLIF(SUM(CONVERT(decimal(38,2),[allocated_bytes])),0)),
        N''Aggregat nach Consumer-Typ; Typ 0 wird als reine Aggregationszeile ausgelassen und eine Datenbankzuordnung einzelner Verbraucher wird nicht behauptet.''
-FROM [sys].[dm_db_xtp_memory_consumers]
+FROM [sys].[dm_db_xtp_memory_consumers] WITH (NOLOCK)
 WHERE [memory_consumer_type]<>0
 GROUP BY [memory_consumer_type],[memory_consumer_desc];
 SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',@pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_MEMORY_CONSUMERS','AVAILABLE',0,@Rows,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,NULL,
                        N'Aggregierte Consumer-Typen ohne Objekt-, Session- oder Transaktionsidentifikatoren.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_MEMORY_CONSUMERS','ERROR_HANDLED',1,0,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Andere XTP-Quellen werden fortgesetzt.');
@@ -528,7 +529,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#HashIndex]
+INSERT [#InMemoryOltpAnalysis_HashIndex]
 SELECT @pDatabaseName,[s].[name],[t].[name],[i].[name],[t].[object_id],[i].[index_id],
        CONVERT(bigint,[i].[bucket_count]),NULL,NULL,NULL,NULL,NULL,
        ''NOT_REQUESTED'',''NONE'',NULL,
@@ -540,29 +541,29 @@ WHERE [t].[is_ms_shipped]=0'+@SchemaPredicate+@ObjectPredicate+@FullObjectPredic
 SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',@pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_HASH_INDEX_CATALOG','AVAILABLE',0,@Rows,N'Katalogsicht auf sichtbare Hashindizes',NULL,NULL,
                        N'Nur konfigurierte Bucket-Zahl; keine Benutzerdaten oder Schlüsselwerte.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_HASH_INDEX_CATALOG','ERROR_HANDLED',1,0,N'Katalogsicht auf sichtbare Hashindizes',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Andere XTP-Quellen werden fortgesetzt.');
             END CATCH;
 
             IF @MitHashIndexStats=0
             BEGIN
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_HASH_INDEX_STATS','NOT_REQUESTED',0,0,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,NULL,
                        N'Bewusst nicht ausgeführt: Die DMV kann vollständige Tabellen scannen.');
             END
             ELSE IF @HashStatsAllowed=0
             BEGIN
-                UPDATE [#HashIndex]
+                UPDATE [#InMemoryOltpAnalysis_HashIndex]
                 SET [RuntimeStatsStatus]='DENIED_GROUP'
                 WHERE [DatabaseName]=@DbName AND [RuntimeStatsStatus]='NOT_REQUESTED';
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_HASH_INDEX_STATS','DENIED_GROUP',1,0,
                        N'CATALOG_DEEP und VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,
                        N'CATALOG_DEEP ist nicht freigegeben.',N'Basisevidenz bleibt verfügbar; Laufzeitketten wurden nicht gelesen.');
@@ -577,26 +578,26 @@ SET [TotalBucketCount]=[x].[total_bucket_count],
     [AverageChainLength]=CONVERT(decimal(19,4),[x].[avg_chain_length]),
     [MaxChainLength]=[x].[max_chain_length],
     [RuntimeStatsStatus]=''AVAILABLE''
-FROM [#HashIndex] [h]
-JOIN [sys].[dm_db_xtp_hash_index_stats] [x]
+FROM [#InMemoryOltpAnalysis_HashIndex] [h]
+JOIN [sys].[dm_db_xtp_hash_index_stats] [x] WITH (NOLOCK)
   ON [x].[object_id]=[h].[ObjectId] AND [x].[index_id]=[h].[IndexId]
 WHERE [h].[DatabaseName]=@pDatabaseName;
 SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',@pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                UPDATE [#HashIndex]
+                UPDATE [#InMemoryOltpAnalysis_HashIndex]
                 SET [RuntimeStatsStatus]='NO_RUNTIME_ROW'
                 WHERE [DatabaseName]=@DbName AND [RuntimeStatsStatus]='NOT_REQUESTED';
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_HASH_INDEX_STATS','AVAILABLE',0,@Rows,
                        N'CATALOG_DEEP und VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,NULL,
                        N'Opt-in-Laufzeitketten; die DMV kann vollständige Tabellen scannen.');
             END TRY
             BEGIN CATCH
-                UPDATE [#HashIndex]
+                UPDATE [#InMemoryOltpAnalysis_HashIndex]
                 SET [RuntimeStatsStatus]='ERROR_HANDLED'
                 WHERE [DatabaseName]=@DbName AND [RuntimeStatsStatus]='NOT_REQUESTED';
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_HASH_INDEX_STATS','ERROR_HANDLED',1,0,
                        N'CATALOG_DEEP und VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Basisevidenz bleibt verfügbar; Laufzeitketten fehlen.');
@@ -604,7 +605,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#Checkpoint]
+INSERT [#InMemoryOltpAnalysis_Checkpoint]
 SELECT @pDatabaseName,[file_type],[file_type_desc],[state],[state_desc],COUNT_BIG(*),
        CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[file_size_in_bytes]))/1048576.0),
        CONVERT(decimal(19,2),SUM(CONVERT(decimal(38,2),[file_size_used_in_bytes]))/1048576.0),
@@ -612,19 +613,19 @@ SELECT @pDatabaseName,[file_type],[file_type_desc],[state],[state_desc],COUNT_BI
        CASE WHEN [state]=8 AND SUM(CONVERT(decimal(38,2),[file_size_in_bytes]))/1048576.0>=@pWarnMb THEN ''WARN'' ELSE ''NONE'' END,
        CASE WHEN [state]=8 AND SUM(CONVERT(decimal(38,2),[file_size_in_bytes]))/1048576.0>=@pWarnMb THEN ''WAITING_LOG_TRUNCATION_REVIEW'' END,
        N''State 8 kann transient sein; Momentaufnahme ohne Verlauf, Log-Reuse-Wait oder Merge-Fortschritt. Keine Dateipfade oder GUIDs ausgegeben.''
-FROM [sys].[dm_db_xtp_checkpoint_files]
+FROM [sys].[dm_db_xtp_checkpoint_files] WITH (NOLOCK)
 GROUP BY [file_type],[file_type_desc],[state],[state_desc];
 SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT,@pWarnMb decimal(19,2)',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT,@pWarnMb=@WaitingCheckpointWarnMb;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_CHECKPOINT_FILES','AVAILABLE',0,@Rows,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,NULL,
                        N'Aggregat nach Dateiart und Zustand; keine relativen Pfade oder Container-GUIDs.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_CHECKPOINT_FILES','ERROR_HANDLED',1,0,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Andere XTP-Quellen werden fortgesetzt.');
@@ -632,26 +633,26 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#Transaction]
+INSERT [#InMemoryOltpAnalysis_Transaction]
 SELECT @pDatabaseName,[state],
        CASE [state] WHEN 0 THEN N''ACTIVE'' WHEN 1 THEN N''COMMITTED'' WHEN 2 THEN N''ABORTED'' WHEN 3 THEN N''VALIDATING'' ELSE N''UNKNOWN'' END,
        [result_desc],COUNT_BIG(*),
        CASE WHEN [state] IN(0,3) AND COUNT_BIG(*)>=@pWarnCount THEN ''WARN'' ELSE ''NONE'' END,
        CASE WHEN [state] IN(0,3) AND COUNT_BIG(*)>=@pWarnCount THEN ''ACTIVE_TRANSACTION_VOLUME_REVIEW'' END,
        N''Aggregierte Momentaufnahme ohne Startzeit, Dauer, Session-, Benutzer- oder Transaktionsidentifikatoren.''
-FROM [sys].[dm_db_xtp_transactions]
+FROM [sys].[dm_db_xtp_transactions] WITH (NOLOCK)
 GROUP BY [state],[result_desc];
 SET @pRows=@@ROWCOUNT;';
                 SET @Rows=0;
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT,@pWarnCount int',
                      @pDatabaseName=@DbName,@pRows=@Rows OUTPUT,@pWarnCount=@ActiveTransactionWarnCount;
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_TRANSACTIONS','AVAILABLE',0,@Rows,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,NULL,
                        N'Aggregat nach Status und Ergebnis; keine Session-, Benutzer- oder Transaktionsidentifikatoren.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#InMemoryOltpAnalysis_SourceStatus]
                 VALUES(@DbName,'XTP_TRANSACTIONS','ERROR_HANDLED',1,0,
                        N'VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',
                        ERROR_NUMBER(),ERROR_MESSAGE(),N'Andere XTP-Quellen werden fortgesetzt.');
@@ -669,7 +670,7 @@ SET @pRows=@@ROWCOUNT;';
                 FROM [sys].[databases] WITH (NOLOCK)
                 GROUP BY [resource_pool_id]
             )
-            INSERT [#ResourcePool]
+            INSERT [#InMemoryOltpAnalysis_ResourcePool]
             SELECT [fs].[DatabaseName],[d].[resource_pool_id],[p].[name],
                    CONVERT(bit,CASE WHEN COALESCE([d].[resource_pool_id],2)=2 THEN 1 ELSE 0 END),
                    [u].[DatabaseCount],[p].[min_memory_percent],[p].[max_memory_percent],
@@ -687,32 +688,32 @@ SET @pRows=@@ROWCOUNT;';
                         WHEN 100.0*[p].[used_memory_kb]/NULLIF([p].[target_memory_kb],0)>=@PoolUsedWarnPercent THEN 'POOL_MEMORY_PRESSURE_REVIEW'
                         ELSE 'RESOURCE_POOL_CONTEXT' END,
                    N'Poolwerte sind eine Servermomentaufnahme. Der Defaultpool erlaubt keine belastbare Datenbankzuordnung; auch benannte Pools können von mehreren Datenbanken geteilt werden.'
-            FROM [#FeatureScope] [fs]
+            FROM [#InMemoryOltpAnalysis_FeatureScope] [fs]
             JOIN [sys].[databases] [d] WITH (NOLOCK) ON [d].[name]=[fs].[DatabaseName]
-            LEFT JOIN [sys].[dm_resource_governor_resource_pools] [p] ON [p].[pool_id]=COALESCE([d].[resource_pool_id],2)
+            LEFT JOIN [sys].[dm_resource_governor_resource_pools] [p] WITH (NOLOCK) ON [p].[pool_id]=COALESCE([d].[resource_pool_id],2)
             LEFT JOIN [PoolUse] [u] ON [u].[resource_pool_id]=[d].[resource_pool_id]
             WHERE [fs].[MemoryOptimizedTableCount]+[fs].[MemoryOptimizedTableTypeCount]+[fs].[MemoryOptimizedFilegroupCount]>0;
 
-            INSERT [#SourceStatus]
+            INSERT [#InMemoryOltpAnalysis_SourceStatus]
             SELECT [fs].[DatabaseName],'RESOURCE_POOL_MEMORY','AVAILABLE',0,
                    COUNT_BIG([p].[DatabaseName]),N'VIEW SERVER STATE; SQL Server 2022+: VIEW SERVER PERFORMANCE STATE',NULL,NULL,
                    N'Poolweite Momentaufnahme; keine datenbankgenaue Speicherattribution.'
-            FROM [#FeatureScope] [fs]
-            LEFT JOIN [#ResourcePool] [p] ON [p].[DatabaseName]=[fs].[DatabaseName]
+            FROM [#InMemoryOltpAnalysis_FeatureScope] [fs]
+            LEFT JOIN [#InMemoryOltpAnalysis_ResourcePool] [p] ON [p].[DatabaseName]=[fs].[DatabaseName]
             WHERE [fs].[MemoryOptimizedTableCount]+[fs].[MemoryOptimizedTableTypeCount]+[fs].[MemoryOptimizedFilegroupCount]>0
             GROUP BY [fs].[DatabaseName];
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus]
+            INSERT [#InMemoryOltpAnalysis_SourceStatus]
             SELECT [DatabaseName],'RESOURCE_POOL_MEMORY','ERROR_HANDLED',1,0,
                    N'VIEW SERVER STATE; SQL Server 2022+: VIEW SERVER PERFORMANCE STATE',
                    ERROR_NUMBER(),ERROR_MESSAGE(),N'XTP-Datenbankquellen bleiben verfügbar.'
-            FROM [#FeatureScope]
+            FROM [#InMemoryOltpAnalysis_FeatureScope]
             WHERE [MemoryOptimizedTableCount]+[MemoryOptimizedTableTypeCount]+[MemoryOptimizedFilegroupCount]>0;
         END CATCH;
     END;
 
-    UPDATE [#HashIndex]
+    UPDATE [#InMemoryOltpAnalysis_HashIndex]
     SET [Severity]=CASE
           WHEN [RuntimeStatsStatus]<>'AVAILABLE' THEN 'NONE'
           WHEN [AverageChainLength]>@HashAvgChainWarn OR [MaxChainLength]>=@HashMaxChainWarn
@@ -729,17 +730,17 @@ SET @pRows=@@ROWCOUNT;';
           WHEN [RuntimeStatsStatus]='AVAILABLE' THEN N'Bucket- und Kettenwerte sind Momentaufnahmen. Lange Ketten können durch Bucket-Anzahl, Duplikate oder Datenverteilung entstehen; daraus folgt keine automatische DDL.'
           ELSE [EvidenceLimit] END;
 
-    INSERT [#Findings]
+    INSERT [#InMemoryOltpAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[IndexName],[Severity],[Confidence],[FindingCode],
      [MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[TableName],NULL,'INFO','MEDIUM',[FindingCode],
            'TOTAL_USED_MB',[TotalUsedMb],@MinTableMemoryMb,
            N'Die speicheroptimierte Tabelle überschreitet den konfigurierten Kontextgrenzwert.',[EvidenceLimit],
            N'Poolbindung, Gesamt-XTP-Speicher, Wachstum und Workloadverlauf gemeinsam prüfen.'
-    FROM [#TableMemory]
+    FROM [#InMemoryOltpAnalysis_TableMemory]
     WHERE [FindingCode]='LARGE_MEMORY_CONSUMER_CONTEXT';
 
-    INSERT [#Findings]
+    INSERT [#InMemoryOltpAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[IndexName],[Severity],[Confidence],[FindingCode],
      [MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[TableName],[IndexName],'WARN','MEDIUM',[FindingCode],
@@ -754,26 +755,26 @@ SET @pRows=@@ROWCOUNT;';
                 ELSE @HashAvgChainWarn END,
            N'Die opt-in Hashindex-Momentaufnahme überschreitet mindestens einen konfigurierten Prüfgrenzwert.',[EvidenceLimit],
            N'Bucket-Leeranteil, mittlere und maximale Kettenlänge, Duplikate sowie Abfrageprädikate zusammen prüfen; keine automatische DDL ableiten.'
-    FROM [#HashIndex]
+    FROM [#InMemoryOltpAnalysis_HashIndex]
     WHERE [Severity]='WARN';
 
-    INSERT [#Findings]
+    INSERT [#InMemoryOltpAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','LOW',[FindingCode],'CHECKPOINT_FILE_SIZE_MB',[FileSizeMb],@WaitingCheckpointWarnMb,
            N'Checkpoint-Dateien im Zustand WAITING FOR LOG TRUNCATION überschreiten den konfigurierten Momentaufnahmegrenzwert.',[EvidenceLimit],
            N'Wiederholte Messung, log_reuse_wait_desc, Log-Backupkette und Merge-Fortschritt korrelieren.'
-    FROM [#Checkpoint] WHERE [Severity]='WARN';
+    FROM [#InMemoryOltpAnalysis_Checkpoint] WHERE [Severity]='WARN';
 
-    INSERT [#Findings]
+    INSERT [#InMemoryOltpAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','LOW',[FindingCode],'ACTIVE_OR_VALIDATING_TRANSACTION_COUNT',[TransactionCount],@ActiveTransactionWarnCount,
            N'Aktive oder validierende XTP-Transaktionen überschreiten den konfigurierten Momentaufnahmegrenzwert.',[EvidenceLimit],
            N'Über Zeit wiederholen und mit zulässiger Laufzeit-, Konflikt- und Workload-Evidenz korrelieren.'
-    FROM [#Transaction] WHERE [Severity]='WARN';
+    FROM [#InMemoryOltpAnalysis_Transaction] WHERE [Severity]='WARN';
 
-    INSERT [#Findings]
+    INSERT [#InMemoryOltpAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','MEDIUM',[FindingCode],
@@ -782,14 +783,14 @@ SET @pRows=@@ROWCOUNT;';
            CASE WHEN [FindingCode]='POOL_OUT_OF_MEMORY_RECORDED' THEN 0 ELSE @PoolUsedWarnPercent END,
            N'Der zugeordnete oder gemeinsame Resource-Governor-Pool zeigt einen konfigurierten Druckindikator.',[EvidenceLimit],
            N'Poolfreigaben, geteilte Nutzung, Serverspeicher und Zeitverlauf prüfen; keine datenbankgenaue Attribution aus dem Poolwert ableiten.'
-    FROM [#ResourcePool] WHERE [Severity]='WARN';
+    FROM [#InMemoryOltpAnalysis_ResourcePool] WHERE [Severity]='WARN';
 
-    INSERT [#Findings]
+    INSERT [#InMemoryOltpAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','XTP_EVIDENCE_GAP',[SourceCode],
            COALESCE([ErrorMessage],N'Die angeforderte Quelle ist nicht verfügbar.'),
            [Detail],N'Berechtigung, Featureverfügbarkeit und Analysis-Class-Policy prüfen; andere Resultsets bleiben gültig.'
-    FROM [#SourceStatus]
+    FROM [#InMemoryOltpAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
     UPDATE [ds]
@@ -804,30 +805,30 @@ SET @pRows=@@ROWCOUNT;';
                       WHEN [ds].[StatusCode]='PENDING' AND [f].[WarnCount]>0 THEN N'Mindestens ein konfigurierter Prüfhinweis liegt vor; kein automatisches Gesundheitsurteil.'
                       WHEN [ds].[StatusCode]='PENDING' THEN N'Kein konfigurierter Warnindikator in der zugänglichen Momentaufnahme; dies beweist keinen fehlerfreien Zustand.'
                       ELSE [ds].[Detail] END
-    FROM [#DatabaseStatus] [ds]
+    FROM [#InMemoryOltpAnalysis_DatabaseStatus] [ds]
     OUTER APPLY
     (
         SELECT COUNT_BIG(*) AS [FailureCount]
-        FROM [#SourceStatus] [ss]
+        FROM [#InMemoryOltpAnalysis_SourceStatus] [ss]
         WHERE [ss].[DatabaseName]=[ds].[DatabaseName] AND [ss].[IsPartial]=1
     ) [x]
     OUTER APPLY
     (
         SELECT COUNT_BIG(*) AS [FindingCount],
                COALESCE(SUM(CASE WHEN [ff].[Severity]='WARN' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0) AS [WarnCount]
-        FROM [#Findings] [ff]
+        FROM [#InMemoryOltpAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
     ) [f];
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        IF EXISTS(SELECT 1 FROM [#DatabaseStatus] WHERE [IsPartial]=1)
+        IF EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_DatabaseStatus] WHERE [IsPartial]=1)
             SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-        ELSE IF EXISTS(SELECT 1 FROM [#Findings] WHERE [Severity]='WARN')
+        ELSE IF EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_Findings] WHERE [Severity]='WARN')
             SET @StatusCode='AVAILABLE_WITH_FINDING';
         ELSE IF NOT EXISTS
         (
-            SELECT 1 FROM [#FeatureScope]
+            SELECT 1 FROM [#InMemoryOltpAnalysis_FeatureScope]
             WHERE [MemoryOptimizedTableCount]+[MemoryOptimizedTableTypeCount]+[MemoryOptimizedFilegroupCount]>0
         )
             SET @StatusCode='NOT_APPLICABLE';
@@ -835,7 +836,7 @@ SET @pRows=@@ROWCOUNT;';
 
     SELECT @ErrorNumber=COALESCE(@ErrorNumber,MIN([ErrorNumber])),
            @ErrorMessage=COALESCE(@ErrorMessage,MIN([ErrorMessage]))
-    FROM [#SourceStatus]
+    FROM [#InMemoryOltpAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
     IF @JsonErzeugen=1
@@ -843,15 +844,15 @@ SET @pRows=@@ROWCOUNT;';
         SELECT @Json=(
             SELECT
                 JSON_QUERY((SELECT N'USP_InMemoryOltpAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
-                JSON_QUERY(COALESCE((SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
-                JSON_QUERY(COALESCE((SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#TableMemory] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY [TotalUsedMb] DESC,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [tableMemory],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#HashIndex] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName],[IndexName] FOR JSON PATH),N'[]')) AS [hashIndexes],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#MemoryConsumer] WHERE @NurProblematisch=0 ORDER BY [UsedMb] DESC,[DatabaseName] FOR JSON PATH),N'[]')) AS [memoryConsumers],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#Checkpoint] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[State],[FileType] FOR JSON PATH),N'[]')) AS [checkpointFiles],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#Transaction] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[TransactionState] FOR JSON PATH),N'[]')) AS [transactions],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ResourcePool] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName] FOR JSON PATH),N'[]')) AS [resourcePools]
+                JSON_QUERY(COALESCE((SELECT * FROM [#InMemoryOltpAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
+                JSON_QUERY(COALESCE((SELECT * FROM [#InMemoryOltpAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_TableMemory] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY [TotalUsedMb] DESC,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [tableMemory],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_HashIndex] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName],[IndexName] FOR JSON PATH),N'[]')) AS [hashIndexes],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_MemoryConsumer] WHERE @NurProblematisch=0 ORDER BY [UsedMb] DESC,[DatabaseName] FOR JSON PATH),N'[]')) AS [memoryConsumers],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Checkpoint] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[State],[FileType] FOR JSON PATH),N'[]')) AS [checkpointFiles],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Transaction] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[TransactionState] FOR JSON PATH),N'[]')) AS [transactions],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_ResourcePool] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName] FOR JSON PATH),N'[]')) AS [resourcePools]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
     END;
 
@@ -860,27 +861,27 @@ SET @pRows=@@ROWCOUNT;';
         SELECT N'USP_InMemoryOltpAnalysis' AS [Module],@Now AS [CollectedAtUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],
                N'Momentaufnahme und Prüfhinweise; keine automatische DDL-, Daten- oder Gesundheitsentscheidung.' AS [Detail];
-        SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#Findings]
+        SELECT * FROM [#InMemoryOltpAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
+        SELECT * FROM [#InMemoryOltpAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
+        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Findings]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
-        SELECT TOP(@Limit) * FROM [#TableMemory]
+        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_TableMemory]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY [TotalUsedMb] DESC,[DatabaseName],[SchemaName],[TableName];
-        SELECT TOP(@Limit) * FROM [#HashIndex]
+        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_HashIndex]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName],[IndexName];
-        SELECT TOP(@Limit) * FROM [#MemoryConsumer]
+        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_MemoryConsumer]
         WHERE @NurProblematisch=0
         ORDER BY [UsedMb] DESC,[DatabaseName];
-        SELECT TOP(@Limit) * FROM [#Checkpoint]
+        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Checkpoint]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[State],[FileType];
-        SELECT TOP(@Limit) * FROM [#Transaction]
+        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Transaction]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[TransactionState];
-        SELECT TOP(@Limit) * FROM [#ResourcePool]
+        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_ResourcePool]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName];
     END;
@@ -896,7 +897,7 @@ SET @pRows=@@ROWCOUNT;';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Findings'
+              @SourceTable = N'#InMemoryOltpAnalysis_Findings'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

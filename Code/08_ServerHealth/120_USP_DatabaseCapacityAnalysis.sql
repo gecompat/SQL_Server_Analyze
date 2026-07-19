@@ -69,7 +69,7 @@ BEGIN
         CASE WHEN IS_SRVROLEMEMBER(N'sysadmin') = 1 THEN 1
              ELSE COALESCE(HAS_PERMS_BY_NAME(NULL, N'SERVER', @RequiredServerPermission), 0) END;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#DatabaseCapacityAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -83,14 +83,14 @@ BEGIN
         , [RequestedOrdinal] int NULL
     );
 
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#DatabaseCapacityAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    CREATE TABLE [#Capacity]
+    CREATE TABLE [#DatabaseCapacityAnalysis_Capacity]
     (
           [DatabaseId] int NULL
         , [DatabaseName] sysname NULL
@@ -143,7 +143,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DatabaseCapacityAnalysis_DatabaseCandidates',@WarningTable=N'#DatabaseCapacityAnalysis_DatabaseCandidateWarnings';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -156,7 +156,7 @@ BEGIN
 
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseId], [DatabaseName]
-            FROM [#DatabaseCandidates]
+            FROM [#DatabaseCapacityAnalysis_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
         OPEN [DatabaseCursor];
@@ -165,7 +165,7 @@ BEGIN
         BEGIN
             BEGIN TRY
                 SET @Sql = N'USE ' + QUOTENAME(@DatabaseName) + N';
-INSERT [#Capacity]
+INSERT [#DatabaseCapacityAnalysis_Capacity]
 (
       [DatabaseId], [DatabaseName], [FileId], [LogicalFileName]
     , [FileTypeDesc], [PhysicalName], [FileSizeMb], [UsedInFileMb]
@@ -175,7 +175,7 @@ INSERT [#Capacity]
     , [FindingCode], [EvidenceLimit]
 )
 SELECT
-      DB_ID(), DB_NAME(), [f].[file_id], [f].[name], [f].[type_desc], [f].[physical_name]
+      DB_ID(), (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()), [f].[file_id], [f].[name], [f].[type_desc], [f].[physical_name]
     , CONVERT(decimal(19,2), [f].[size] * 8.0 / 1024.0)
     , CONVERT(decimal(19,2), COALESCE(FILEPROPERTY([f].[name], ''SpaceUsed''), 0) * 8.0 / 1024.0)
     , CONVERT(decimal(19,2), ([f].[size] - COALESCE(FILEPROPERTY([f].[name], ''SpaceUsed''), 0)) * 8.0 / 1024.0)
@@ -208,7 +208,7 @@ SELECT
           ELSE ''NO_CAPACITY_INDICATOR''
       END
     , N''Momentaufnahme; ohne persistente Messpunkte wird keine Zeit-bis-voll-Prognose erzeugt.''
-FROM [sys].[database_files] AS [f]
+FROM [sys].[database_files] AS [f] WITH (NOLOCK)
 OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
 
                 EXEC [sys].[sp_executesql]
@@ -218,7 +218,7 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
             END TRY
             BEGIN CATCH
                 SET @IsPartial = 1;
-                INSERT [#DatabaseCandidateWarnings]
+                INSERT [#DatabaseCapacityAnalysis_DatabaseCandidateWarnings]
                 VALUES
                 (
                       @DatabaseName
@@ -235,10 +235,10 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
     END;
 
     IF @StatusCode = 'AVAILABLE'
-       AND (@IsPartial = 1 OR EXISTS (SELECT 1 FROM [#DatabaseCandidateWarnings]))
+       AND (@IsPartial = 1 OR EXISTS (SELECT 1 FROM [#DatabaseCapacityAnalysis_DatabaseCandidateWarnings]))
         SET @StatusCode = 'AVAILABLE_LIMITED';
     ELSE IF @StatusCode = 'AVAILABLE'
-        AND EXISTS (SELECT 1 FROM [#Capacity] WHERE [FindingCode] <> 'NO_CAPACITY_INDICATOR')
+        AND EXISTS (SELECT 1 FROM [#DatabaseCapacityAnalysis_Capacity] WHERE [FindingCode] <> 'NO_CAPACITY_INDICATOR')
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
     SELECT @StatusCodeOut = @StatusCode,
@@ -262,11 +262,11 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
         IF @OutputMode = 'RAW'
         BEGIN
             SELECT TOP (@Limit) *
-            FROM [#Capacity]
+            FROM [#DatabaseCapacityAnalysis_Capacity]
             WHERE @NurProblematisch = 0 OR [FindingCode] <> 'NO_CAPACITY_INDICATOR'
             ORDER BY CASE WHEN [FindingCode] = 'NO_CAPACITY_INDICATOR' THEN 1 ELSE 0 END,
                      [VolumeFreePercent], [DatabaseName], [FileId];
-            SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+            SELECT * FROM [#DatabaseCapacityAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
         END
         ELSE
         BEGIN
@@ -284,7 +284,7 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
                 , [VolumeFreePercent] AS [Frei auf Volume Prozent]
                 , [VolumeMountPoint] AS [Volume]
                 , [EvidenceLimit] AS [Aussagegrenze]
-            FROM [#Capacity]
+            FROM [#DatabaseCapacityAnalysis_Capacity]
             WHERE @NurProblematisch = 0 OR [FindingCode] <> 'NO_CAPACITY_INDICATOR'
             ORDER BY CASE WHEN [FindingCode] = 'NO_CAPACITY_INDICATOR' THEN 1 ELSE 0 END,
                      [VolumeFreePercent], [DatabaseName], [FileId];
@@ -304,14 +304,14 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
         DECLARE @CapacityJson nvarchar(max) =
         (
             SELECT TOP (@Limit) *
-            FROM [#Capacity]
+            FROM [#DatabaseCapacityAnalysis_Capacity]
             WHERE @NurProblematisch = 0 OR [FindingCode] <> 'NO_CAPACITY_INDICATOR'
             ORDER BY CASE WHEN [FindingCode] = 'NO_CAPACITY_INDICATOR' THEN 1 ELSE 0 END,
                      [VolumeFreePercent], [DatabaseName], [FileId]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @WarningsJson nvarchar(max) =
-            (SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#DatabaseCapacityAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
         (
@@ -324,7 +324,7 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Capacity'
+              @SourceTable = N'#DatabaseCapacityAnalysis_Capacity'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

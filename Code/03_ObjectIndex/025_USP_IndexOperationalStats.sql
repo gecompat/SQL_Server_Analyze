@@ -108,18 +108,18 @@ BEGIN
         SELECT @DatabaseListCount=COUNT(*),@DatabaseName=MIN([NameValue]) FROM [monitor].[TVF_ParseSqlNameList](@DatabaseNames) WHERE [IsValid]=1;
     SET @CrossDatabaseRequestedInternal=CONVERT(bit,CASE WHEN @DatabaseNames IS NULL OR @DatabaseNamePattern IS NOT NULL OR @DatabaseListCount>1 THEN 1 ELSE 0 END);
     SELECT @DatenbankNameLike=CASE WHEN [PatternMode]='LIKE' THEN [PatternValue] END FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
-    CREATE TABLE [#NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
-    CREATE TABLE [#DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
+    CREATE TABLE [#IndexOperationalStats_NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+    CREATE TABLE [#IndexOperationalStats_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
-    EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=@IndexNames,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT;
-    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+    EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=@IndexNames,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#IndexOperationalStats_NameFilters';
+    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IndexOperationalStats_DatabaseCandidates';
     DECLARE @SchemaPredicateS nvarchar(max),@SchemaPredicateSch nvarchar(max),@ObjectPredicateO nvarchar(max),@FullObjectPredicateSO nvarchar(max),@IndexPredicateI nvarchar(max),@StatisticsPredicateSt nvarchar(max);
-    SET @SchemaPredicateS=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @SchemaPredicateS=N' AND (NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     SET @SchemaPredicateSch=REPLACE(@SchemaPredicateS,N'[s].[name]',N'[sch].[name]');
-    SET @ObjectPredicateO=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
-    SET @FullObjectPredicateSO=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDbName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
-    SET @IndexPredicateI=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''INDEX'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''INDEX'' AND [f].[NameValue]=[i].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
-    SET @StatisticsPredicateSt=N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''STATISTICS'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''STATISTICS'' AND [f].[NameValue]=[st].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @ObjectPredicateO=N' AND (NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @FullObjectPredicateSO=N' AND (NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDbName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @IndexPredicateI=N' AND (NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]=''INDEX'') OR EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] [f] WHERE [f].[FilterType]=''INDEX'' AND [f].[NameValue]=[i].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+    SET @StatisticsPredicateSt=N' AND (NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]=''STATISTICS'') OR EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] [f] WHERE [f].[FilterType]=''STATISTICS'' AND [f].[NameValue]=[st].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     IF @SchemaPatternMode='LIKE' BEGIN SET @SchemaPredicateS+=N' AND [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';SET @SchemaPredicateSch+=N' AND [sch].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';END;
     IF @SchemaPatternMode IN('REGEX','REGEXI') BEGIN SET @SchemaPredicateS+=N' AND REGEXP_LIKE([s].[name],N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''','''+@SchemaRegexFlags+N''')';SET @SchemaPredicateSch+=N' AND REGEXP_LIKE([sch].[name],N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''','''+@SchemaRegexFlags+N''')';END;
     IF @ObjectPatternMode='LIKE' SET @ObjectPredicateO+=N' AND [o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@ObjectPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
@@ -159,7 +159,7 @@ BEGIN
             @Detail nvarchar(2000)=NULL,
             @OperationalDeepAllowed bit=1;
 
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#IndexOperationalStats_DatabaseStatus]
     (
           [DatabaseName] sysname NULL, [StatusCode] varchar(40) NOT NULL,
           [IsPartial] bit NOT NULL, [RowCount] bigint NOT NULL,
@@ -167,7 +167,7 @@ BEGIN
           [ErrorMessage] nvarchar(2048) NULL, [Detail] nvarchar(2000) NULL
     );
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#IndexOperationalStats_Result]
     (
           [DatabaseName] sysname NOT NULL, [SchemaName] sysname NULL,
           [ObjectName] sysname NULL, [ObjectId] int NOT NULL,
@@ -207,9 +207,9 @@ BEGIN
     ELSE IF @AnalyseModus NOT IN ('GEZIELT','VOLL')
     BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'@AnalyseModus muss GEZIELT oder VOLL sein.'; END
     ELSE IF @AnalyseModus='GEZIELT'
-         AND NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]='FULL_OBJECT')
-         AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]='SCHEMA')
-              OR NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]='OBJECT'))
+         AND NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]='FULL_OBJECT')
+         AND (NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]='SCHEMA')
+              OR NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]='OBJECT'))
     BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'GEZIELT benötigt @FullObjectNames oder exakte @SchemaNames und @ObjectNames.'; END
     ELSE IF @AnalyseModus='VOLL' AND @OperationalDeepAllowed=0
     BEGIN SET @OverallStatus='DENIED_GROUP'; SET @ErrorMessage=N'INDEX_OPERATIONAL_DEEP ist nicht freigegeben.'; END
@@ -218,7 +218,7 @@ BEGIN
 
     IF @OverallStatus<>'AVAILABLE'
     BEGIN
-        INSERT [#DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,N'Keine DMF-Abfrage ausgeführt.');
+        INSERT [#IndexOperationalStats_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,N'Keine DMF-Abfrage ausgeführt.');
         SET @IsPartial=1;
     END
     ELSE
@@ -227,7 +227,7 @@ BEGIN
         DECLARE @DbId int,@DbName sysname,@Sql nvarchar(max),@Rows bigint;
         DECLARE dbcur CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseId],[DatabaseName]
-            FROM [#DatabaseCandidates];
+            FROM [#IndexOperationalStats_DatabaseCandidates];
         OPEN dbcur; FETCH NEXT FROM dbcur INTO @DbId,@DbName;
         WHILE @@FETCH_STATUS=0
         BEGIN
@@ -242,7 +242,7 @@ BEGIN
     WHERE [o].[type] IN (''U'',''V'')'+@SchemaPredicateS+@ObjectPredicateO+@FullObjectPredicateSO+N';
     IF @ObjectIdFilter IS NULL THROW 50001,N''Zielobjekt nicht gefunden oder nicht sichtbar; die DMF wird nicht mit NULL-Wildcard aufgerufen.'',1;
 END;
-INSERT #Result
+INSERT #IndexOperationalStats_Result
 SELECT TOP (@pMaxRows)
        @pDbName,[s].[name],[o].[name],[os].[object_id],[t].[is_memory_optimized],[os].[index_id],[i].[name],[i].[type_desc],
        [os].[partition_number],[os].[hobt_id],
@@ -287,15 +287,15 @@ OPTION (MAXDOP 1,RECOMPILE);';
                      @pDbName=@DbName,@pDbId=@DbId,@pMode=@AnalyseModus,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike,
                      @pIndexLike=@IndexNameLike,@pPartition=@PartitionNumber,@pMaxRows=@EffectiveMaxZeilen,@pOnlyActivity=@NurMitAktivitaet,
                      @pMinLeafAlloc=@MinLeafPageAllocations,@pMinLockWaitMs=@MinLockWaitMs;
-                SELECT @Rows=COUNT_BIG(*) FROM [#Result] WHERE [DatabaseName]=@DbName;
-                INSERT [#DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,
+                SELECT @Rows=COUNT_BIG(*) FROM [#IndexOperationalStats_Result] WHERE [DatabaseName]=@DbName;
+                INSERT [#IndexOperationalStats_DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,
                     CASE WHEN @AnalyseModus='GEZIELT' THEN N'CONTROL am Zielobjekt oder Database-State-Recht'
                          WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW DATABASE PERFORMANCE STATE'
                          ELSE N'VIEW DATABASE STATE' END,
                     NULL,NULL,N'Kumulative Operational Stats erfolgreich gelesen; Counter können bei Metadata-Cache-Eviction zurückgesetzt werden.');
             END TRY
             BEGIN CATCH
-                INSERT [#DatabaseStatus] VALUES(@DbName,
+                INSERT [#IndexOperationalStats_DatabaseStatus] VALUES(@DbName,
                     CASE WHEN ERROR_NUMBER()=50001 THEN 'UNAVAILABLE_OBJECT'
                          WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
@@ -309,17 +309,17 @@ OPTION (MAXDOP 1,RECOMPILE);';
             FETCH NEXT FROM dbcur INTO @DbId,@DbName;
         END;
         CLOSE dbcur; DEALLOCATE dbcur;
-        IF NOT EXISTS(SELECT 1 FROM [#DatabaseStatus])
-            INSERT [#DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
+        IF NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_DatabaseStatus])
+            INSERT [#IndexOperationalStats_DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
     END;
 
     
-    SELECT @TotalRows=COUNT_BIG(*) FROM [#Result];
+    SELECT @TotalRows=COUNT_BIG(*) FROM [#IndexOperationalStats_Result];
     IF @OverallStatus='AVAILABLE'
     BEGIN
-        IF EXISTS(SELECT 1 FROM [#DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
-        BEGIN SET @OverallStatus=CASE WHEN @TotalRows>0 THEN 'PARTIAL' ELSE (SELECT TOP(1) [StatusCode] FROM [#DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE') ORDER BY [DatabaseName]) END; SET @IsPartial=1; END
-        ELSE IF EXISTS(SELECT 1 FROM [#DatabaseStatus] WHERE [StatusCode] IN ('AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
+        IF EXISTS(SELECT 1 FROM [#IndexOperationalStats_DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
+        BEGIN SET @OverallStatus=CASE WHEN @TotalRows>0 THEN 'PARTIAL' ELSE (SELECT TOP(1) [StatusCode] FROM [#IndexOperationalStats_DatabaseStatus] WHERE [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE') ORDER BY [DatabaseName]) END; SET @IsPartial=1; END
+        ELSE IF EXISTS(SELECT 1 FROM [#IndexOperationalStats_DatabaseStatus] WHERE [StatusCode] IN ('AVAILABLE_LIMITED','SKIPPED','NOT_APPLICABLE'))
         BEGIN SET @OverallStatus=CASE WHEN @TotalRows>0 THEN 'AVAILABLE_LIMITED' ELSE 'SKIPPED' END; SET @IsPartial=1; END;
     END;
     IF @PrintMeldungen=1 AND @OverallStatus<>'AVAILABLE'
@@ -330,19 +330,19 @@ END;
 
     IF @ResultSetArtNormalisiert<>'NONE' BEGIN
         SELECT @ModuleName [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@OverallStatus [StatusCode],@IsPartial [IsPartial],@TotalRows [RowCount],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
-        SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber]; ELSE SELECT N'Index Operational Stats' [Ergebnis],[r].* FROM [#Result] [r] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber];
+        SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#IndexOperationalStats_DatabaseStatus] ORDER BY [DatabaseName];
+        IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#IndexOperationalStats_Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber]; ELSE SELECT N'Index Operational Stats' [Ergebnis],[r].* FROM [#IndexOperationalStats_Result] [r] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber];
     END;
     IF @JsonErzeugen=1 BEGIN
         DECLARE @JsonMeta nvarchar(max)=(SELECT @ModuleName [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@OverallStatus [statusCode],@IsPartial [isPartial],@TotalRows [rowCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-        DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#IndexOperationalStats_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#IndexOperationalStats_Result] ORDER BY [LeafPageAllocationCount] DESC,[PageLockWaitMs] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId],[PartitionNumber] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"indexOperationalStats":',COALESCE(@JsonData1,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#IndexOperationalStats_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

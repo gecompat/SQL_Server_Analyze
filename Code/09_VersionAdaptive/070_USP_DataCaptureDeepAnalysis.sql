@@ -59,6 +59,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DataCaptureDeepAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -130,7 +131,7 @@ BEGIN
                @ErrorMessage=N'Regex-Pattern benoetigen SQL Server 2025 oder neuer und Compatibility Level 170.';
     END;
 
-    CREATE TABLE [#NameFilters]
+    CREATE TABLE [#DataCaptureDeepAnalysis_NameFilters]
     (
           [FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ItemOrdinal] int NOT NULL
@@ -139,7 +140,7 @@ BEGIN
         , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#DataCaptureDeepAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -152,13 +153,13 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#DataCaptureDeepAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
-    CREATE TABLE [#FeatureScope]
+    CREATE TABLE [#DataCaptureDeepAnalysis_FeatureScope]
     (
           [DatabaseName] sysname NOT NULL PRIMARY KEY
         , [IsChangeTrackingEnabled] bit NOT NULL
@@ -174,7 +175,7 @@ BEGIN
         , [IsMergePublished] bit NOT NULL
         , [IsDistributor] bit NOT NULL
     );
-    CREATE TABLE [#DatabaseStatus]
+    CREATE TABLE [#DataCaptureDeepAnalysis_DatabaseStatus]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -190,7 +191,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#SourceStatus]
+    CREATE TABLE [#DataCaptureDeepAnalysis_SourceStatus]
     (
           [DatabaseName] sysname NULL
         , [SourceCode] varchar(64) NOT NULL
@@ -202,11 +203,11 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , [Detail] nvarchar(2000) NULL
     );
-    CREATE TABLE [#DistributionDatabase]
+    CREATE TABLE [#DataCaptureDeepAnalysis_DistributionDatabase]
     (
           [DatabaseName] sysname NOT NULL PRIMARY KEY
     );
-    CREATE TABLE [#ChangeTrackingTable]
+    CREATE TABLE [#DataCaptureDeepAnalysis_ChangeTrackingTable]
     (
           [DatabaseName] sysname NOT NULL
         , [SchemaName] sysname NOT NULL
@@ -222,7 +223,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
         , PRIMARY KEY([DatabaseName],[TableObjectId])
     );
-    CREATE TABLE [#CdcCaptureInstance]
+    CREATE TABLE [#DataCaptureDeepAnalysis_CdcCaptureInstance]
     (
           [DatabaseName] sysname NOT NULL
         , [CaptureInstance] sysname NOT NULL
@@ -239,7 +240,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
         , PRIMARY KEY([DatabaseName],[CaptureInstance])
     );
-    CREATE TABLE [#CdcScanSession]
+    CREATE TABLE [#DataCaptureDeepAnalysis_CdcScanSession]
     (
           [DatabaseName] sysname NOT NULL
         , [SessionId] int NOT NULL
@@ -255,7 +256,7 @@ BEGIN
         , [AssessmentStatus] varchar(32) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#CdcErrorGroup]
+    CREATE TABLE [#DataCaptureDeepAnalysis_CdcErrorGroup]
     (
           [DatabaseName] sysname NOT NULL
         , [ErrorNumber] int NULL
@@ -266,7 +267,7 @@ BEGIN
         , [LastErrorTimeUtc] datetime NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#CdcJob]
+    CREATE TABLE [#DataCaptureDeepAnalysis_CdcJob]
     (
           [DatabaseName] sysname NOT NULL
         , [JobType] nvarchar(20) NOT NULL
@@ -282,7 +283,7 @@ BEGIN
         , [AssessmentStatus] varchar(32) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#ReplicationAgent]
+    CREATE TABLE [#DataCaptureDeepAnalysis_ReplicationAgent]
     (
           [AgentType] varchar(20) NOT NULL
         , [DistributionDatabase] sysname NOT NULL
@@ -304,7 +305,7 @@ BEGIN
         , [AssessmentStatus] varchar(32) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#ReplicationErrorGroup]
+    CREATE TABLE [#DataCaptureDeepAnalysis_ReplicationErrorGroup]
     (
           [DistributionDatabase] sysname NOT NULL
         , [ErrorCode] int NULL
@@ -313,7 +314,7 @@ BEGIN
         , [LastErrorTimeUtc] datetime NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Findings]
+    CREATE TABLE [#DataCaptureDeepAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
         , [DatabaseName] sysname NULL
@@ -340,7 +341,7 @@ BEGIN
             , @StatisticsNames=NULL
             , @ColumnNames=NULL
             , @StatusCode=@StatusCode OUTPUT
-            , @ErrorMessage=@ErrorMessage OUTPUT;
+            , @ErrorMessage=@ErrorMessage OUTPUT,@FilterTable=N'#DataCaptureDeepAnalysis_NameFilters';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
@@ -355,18 +356,18 @@ BEGIN
             , @AnalysisClass='CROSS_DATABASE_DEEP'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
-            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DataCaptureDeepAnalysis_DatabaseCandidates',@WarningTable=N'#DataCaptureDeepAnalysis_DatabaseCandidateWarnings';
         IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
     IF @StatusCode='AVAILABLE' AND @ChangeTrackingClientVersion IS NOT NULL
-       AND (SELECT COUNT_BIG(*) FROM [#DatabaseCandidates])<>1
+       AND (SELECT COUNT_BIG(*) FROM [#DataCaptureDeepAnalysis_DatabaseCandidates])<>1
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,
                @ErrorMessage=N'@ChangeTrackingClientVersion ist datenbankspezifisch und darf nur mit genau einer ausgewaehlten Datenbank verwendet werden.';
     END;
 
-    INSERT [#DatabaseStatus]
+    INSERT [#DataCaptureDeepAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[CtTableCount],[CdcCaptureInstanceCount],
      [FindingCount],[SourceFailureCount],[Detail])
     SELECT [DatabaseName],CASE WHEN @StatusCode='AVAILABLE' THEN 'PENDING' ELSE @StatusCode END,
@@ -375,23 +376,23 @@ BEGIN
            CASE WHEN @StatusCode='AVAILABLE'
                 THEN N'Feature-Gate und Data-Capture-Quellen werden datenbankweise best effort ausgewertet.'
                 ELSE @ErrorMessage END
-    FROM [#DatabaseCandidates];
+    FROM [#DataCaptureDeepAnalysis_DatabaseCandidates];
 
-    INSERT [#DatabaseStatus]
+    INSERT [#DataCaptureDeepAnalysis_DatabaseStatus]
     ([DatabaseName],[StatusCode],[IsPartial],[CtTableCount],[CdcCaptureInstanceCount],
      [FindingCount],[SourceFailureCount],[ErrorMessage],[Detail])
     SELECT [RequestedName],[StatusCode],1,0,0,0,1,[ErrorMessage],N'Explizit angeforderte Datenbank nicht auswertbar.'
-    FROM [#DatabaseCandidateWarnings];
+    FROM [#DataCaptureDeepAnalysis_DatabaseCandidateWarnings];
 
-    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#DatabaseCandidates])
+    IF @StatusCode='AVAILABLE' AND NOT EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_DatabaseCandidates])
         SELECT @StatusCode='NOT_APPLICABLE',@ErrorMessage=N'Keine auswertbare Datenbank im gewaehlten Scope.';
 
     DECLARE @SchemaPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @ObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_NameFilters] WHERE [FilterType]=''OBJECT'') OR EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''OBJECT'' AND [f].[NameValue]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     DECLARE @FullObjectPredicate nvarchar(max)=
-        N' AND (NOT EXISTS(SELECT 1 FROM [#NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
+        N' AND (NOT EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_NameFilters] WHERE [FilterType]=''FULL_OBJECT'') OR EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''FULL_OBJECT'' AND ([f].[DatabaseName] IS NULL OR [f].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS) AND ([f].[SchemaName] IS NULL OR [f].[SchemaName]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS) AND [f].[ObjectName]=[t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     IF @SchemaPatternMode='LIKE'
         SET @SchemaPredicate+=N' AND [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@SchemaPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
     IF @SchemaPatternMode IN('REGEX','REGEXI')
@@ -406,7 +407,7 @@ BEGIN
         DECLARE @DbName sysname,@CompatibilityLevel int,@Sql nvarchar(max),@Rows bigint,@HasCdcCatalog bit,@CdcCount bigint;
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName],[CompatibilityLevel]
-            FROM [#DatabaseCandidates]
+            FROM [#DataCaptureDeepAnalysis_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal],[DatabaseId]),[DatabaseId];
         OPEN [DatabaseCursor];
         FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -416,12 +417,12 @@ BEGIN
             IF (@SchemaPatternMode IN('REGEX','REGEXI') OR @ObjectPatternMode IN('REGEX','REGEXI'))
                AND COALESCE(@CompatibilityLevel,0)<170
             BEGIN
-                UPDATE [#DatabaseStatus]
+                UPDATE [#DataCaptureDeepAnalysis_DatabaseStatus]
                 SET [StatusCode]='UNAVAILABLE_FEATURE',[IsPartial]=1,[SourceFailureCount]=1,
                     [ErrorMessage]=N'Regex-Pattern benoetigen Compatibility Level 170.',
                     [Detail]=N'Fuer diese Datenbank wurde wegen inkompatiblem Patternvertrag keine Analyse ausgefuehrt.'
                 WHERE [DatabaseName]=@DbName;
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'FILTER_CONTRACT','UNAVAILABLE_FEATURE',1,0,NULL,NULL,
                        N'Regex-Pattern benoetigen Compatibility Level 170.',N'Keine Quellenabfrage ausgefuehrt.');
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
@@ -430,7 +431,7 @@ BEGIN
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#FeatureScope]
+INSERT [#DataCaptureDeepAnalysis_FeatureScope]
 ([DatabaseName],[IsChangeTrackingEnabled],[CurrentCtVersion],[CtRetentionPeriod],[CtRetentionUnit],
  [IsCtAutoCleanupOn],[CtTableCount],[IsCdcEnabled],[CdcCaptureInstanceCount],
  [IsPublished],[IsSubscribed],[IsMergePublished],[IsDistributor])
@@ -444,28 +445,28 @@ FROM [sys].[databases] [d] WITH (NOLOCK)
 LEFT JOIN [sys].[change_tracking_databases] [ctd] WITH (NOLOCK)
   ON [ctd].[database_id]=[d].[database_id]
 WHERE [d].[database_id]=DB_ID();
-SELECT @pHasCdcCatalog=CONVERT(bit,CASE WHEN OBJECT_ID(N''cdc.change_tables'') IS NULL THEN 0 ELSE 1 END);
+SELECT @pHasCdcCatalog=CONVERT(bit,CASE WHEN EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''cdc'' AND [t].[name]=N''change_tables'') THEN 1 ELSE 0 END);
 SET @pRows=@@ROWCOUNT;';
                 SELECT @Rows=0,@HasCdcCatalog=0;
                 EXEC [sys].[sp_executesql] @Sql,
                      N'@pDatabaseName sysname,@pHasCdcCatalog bit OUTPUT,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pHasCdcCatalog=@HasCdcCatalog OUTPUT,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'DATA_CAPTURE_FEATURE_GATE','AVAILABLE',0,@Rows,N'Katalogsicht',NULL,NULL,
                        N'Zaehlt sichtbare Feature- und Katalogmetadaten; Nullzaehlungen beweisen bei eingeschraenkter Sichtbarkeit keine Abwesenheit.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'DATA_CAPTURE_FEATURE_GATE','ERROR_HANDLED',1,0,N'Katalogsicht',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'Feature-Gate fehlgeschlagen; keine belastbare Anwendbarkeitsaussage.');
-                UPDATE [#DatabaseStatus]
+                UPDATE [#DataCaptureDeepAnalysis_DatabaseStatus]
                 SET [StatusCode]='ERROR_HANDLED',[IsPartial]=1,[SourceFailureCount]=[SourceFailureCount]+1,
                     [ErrorNumber]=ERROR_NUMBER(),[ErrorMessage]=ERROR_MESSAGE(),
                     [Detail]=N'Feature-Gate fehlgeschlagen; zugaengliche andere Datenbanken bleiben erhalten.'
                 WHERE [DatabaseName]=@DbName;
             END CATCH;
 
-            IF NOT EXISTS(SELECT 1 FROM [#FeatureScope] WHERE [DatabaseName]=@DbName)
+            IF NOT EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope] WHERE [DatabaseName]=@DbName)
             BEGIN
                 FETCH NEXT FROM [DatabaseCursor] INTO @DbName,@CompatibilityLevel;
                 CONTINUE;
@@ -473,7 +474,7 @@ SET @pRows=@@ROWCOUNT;';
 
             BEGIN TRY
                 SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#ChangeTrackingTable]
+INSERT [#DataCaptureDeepAnalysis_ChangeTrackingTable]
 ([DatabaseName],[SchemaName],[TableName],[TableObjectId],[IsTrackColumnsUpdatedOn],
  [BeginVersion],[CleanupVersion],[MinValidVersion],[CurrentVersion],[ClientVersion],
  [AssessmentStatus],[EvidenceLimit])
@@ -490,12 +491,12 @@ SET @pRows=@@ROWCOUNT;';
                 EXEC [sys].[sp_executesql] @Sql,
                      N'@pDatabaseName sysname,@pClientVersion bigint,@pRows bigint OUTPUT',
                      @pDatabaseName=@DbName,@pClientVersion=@ChangeTrackingClientVersion,@pRows=@Rows OUTPUT;
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'CHANGE_TRACKING_TABLES','AVAILABLE',0,@Rows,N'Katalogsicht',NULL,NULL,
                        N'Es werden ausschliesslich CT-Katalogversionen und keine Aenderungszeilen gelesen.');
             END TRY
             BEGIN CATCH
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'CHANGE_TRACKING_TABLES','ERROR_HANDLED',1,0,N'Katalogsicht',ERROR_NUMBER(),ERROR_MESSAGE(),
                        N'CT-Tabellenevidenz konnte nicht gelesen werden.');
             END CATCH;
@@ -504,7 +505,7 @@ SET @pRows=@@ROWCOUNT;';
             BEGIN
                 BEGIN TRY
                     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#CdcCaptureInstance]
+INSERT [#DataCaptureDeepAnalysis_CdcCaptureInstance]
 ([DatabaseName],[CaptureInstance],[SourceSchema],[SourceTable],[SourceObjectId],
  [SupportsNetChanges],[HasDropPending],[CreateDate],[OldestAvailableTimeUtc],
  [OldestAvailableAgeMinutes],[AssessmentStatus],[EvidenceLimit])
@@ -526,27 +527,27 @@ SELECT @pCdcCount=COUNT_BIG(*) FROM [cdc].[change_tables] WITH (NOLOCK);';
                     EXEC [sys].[sp_executesql] @Sql,
                          N'@pDatabaseName sysname,@pNow datetime2(3),@pCdcCount bigint OUTPUT,@pRows bigint OUTPUT',
                          @pDatabaseName=@DbName,@pNow=@Now,@pCdcCount=@CdcCount OUTPUT,@pRows=@Rows OUTPUT;
-                    UPDATE [#FeatureScope] SET [CdcCaptureInstanceCount]=@CdcCount WHERE [DatabaseName]=@DbName;
-                    INSERT [#SourceStatus]
+                    UPDATE [#DataCaptureDeepAnalysis_FeatureScope] SET [CdcCaptureInstanceCount]=@CdcCount WHERE [DatabaseName]=@DbName;
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_CAPTURE_INSTANCES','AVAILABLE',0,@Rows,N'Katalogsicht auf CDC-Metadaten',NULL,NULL,
                            N'Es werden Capture-Konfiguration und LSN-Zeitgrenzen, aber keine Change-Table-Zeilen gelesen.');
                 END TRY
                 BEGIN CATCH
-                    INSERT [#SourceStatus]
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_CAPTURE_INSTANCES','ERROR_HANDLED',1,0,N'Katalogsicht auf CDC-Metadaten',ERROR_NUMBER(),ERROR_MESSAGE(),
                            N'CDC-Capture-Instanzen oder ihre Zeitgrenzen konnten nicht gelesen werden.');
                 END CATCH;
             END
             ELSE
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'CDC_CAPTURE_INSTANCES','NOT_APPLICABLE',0,0,N'Katalogsicht auf CDC-Metadaten',NULL,NULL,
                        N'cdc.change_tables ist im sichtbaren Datenbankkontext nicht vorhanden.');
 
-            IF EXISTS(SELECT 1 FROM [#FeatureScope] WHERE [DatabaseName]=@DbName AND [IsCdcEnabled]=1)
+            IF EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope] WHERE [DatabaseName]=@DbName AND [IsCdcEnabled]=1)
             BEGIN
                 BEGIN TRY
                     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#CdcScanSession]
+INSERT [#DataCaptureDeepAnalysis_CdcScanSession]
 ([DatabaseName],[SessionId],[StartTimeUtc],[EndTimeUtc],[ScanPhase],[ErrorCount],
  [LastCommitTimeUtc],[LastCommitCdcTimeUtc],[LatencySeconds],
  [EmptyScanCount],[FailedSessionsCount],[AssessmentStatus],[EvidenceLimit])
@@ -555,18 +556,18 @@ SELECT @pDatabaseName,[session_id],[start_time],[end_time],[scan_phase],[error_c
        [empty_scan_count],[failed_sessions_count],''AVAILABLE'',
        N''CDC-Scan-DMVs enthalten nur einen Neustart-/Failover-abhaengigen Ausschnitt; auf einer AG-Sekundaerreplik kann die Quelle leer sein.''
 FROM [sys].[dm_cdc_log_scan_sessions] WITH (NOLOCK)
-WHERE [session_id]=0 OR [session_id]=(SELECT MAX([session_id]) FROM [sys].[dm_cdc_log_scan_sessions]);
+WHERE [session_id]=0 OR [session_id]=(SELECT MAX([session_id]) FROM [sys].[dm_cdc_log_scan_sessions] WITH (NOLOCK));
 SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
                          @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
-                    INSERT [#SourceStatus]
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_LOG_SCAN_SESSIONS','AVAILABLE',0,@Rows,
                            N'VIEW DATABASE STATE; SQL Server 2022+ quellenabhaengige Datenbankberechtigung',NULL,NULL,
                            N'Aggregatzeile und neueste Sitzung; DMV wird bei Neustart oder Failover zurueckgesetzt.');
                 END TRY
                 BEGIN CATCH
-                    INSERT [#SourceStatus]
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_LOG_SCAN_SESSIONS','ERROR_HANDLED',1,0,
                            N'VIEW DATABASE STATE; SQL Server 2022+ quellenabhaengige Datenbankberechtigung',ERROR_NUMBER(),ERROR_MESSAGE(),
                            N'CDC-Scan-Evidenz fehlt; andere Quellen bleiben gueltig.');
@@ -574,7 +575,7 @@ SET @pRows=@@ROWCOUNT;';
 
                 BEGIN TRY
                     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DbName)+N';
-INSERT [#CdcErrorGroup]
+INSERT [#DataCaptureDeepAnalysis_CdcErrorGroup]
 ([DatabaseName],[ErrorNumber],[ErrorSeverity],[PhaseNumber],[ErrorCount],
  [FirstErrorTimeUtc],[LastErrorTimeUtc],[EvidenceLimit])
 SELECT @pDatabaseName,[error_number],[error_severity],[phase_number],COUNT_BIG(*),MIN([entry_time]),MAX([entry_time]),
@@ -587,13 +588,13 @@ SET @pRows=@@ROWCOUNT;';
                     EXEC [sys].[sp_executesql] @Sql,
                          N'@pDatabaseName sysname,@pLookback int,@pNow datetime2(3),@pRows bigint OUTPUT',
                          @pDatabaseName=@DbName,@pLookback=@ErrorLookbackHours,@pNow=@Now,@pRows=@Rows OUTPUT;
-                    INSERT [#SourceStatus]
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_ERRORS','AVAILABLE',0,@Rows,
                            N'SQL Server 2019: VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',NULL,NULL,
                            N'Fehler werden nach Nummer, Schweregrad und Phase aggregiert; keine Meldungstexte oder LSNs.');
                 END TRY
                 BEGIN CATCH
-                    INSERT [#SourceStatus]
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_ERRORS','ERROR_HANDLED',1,0,
                            N'SQL Server 2019: VIEW DATABASE STATE; SQL Server 2022+: VIEW DATABASE PERFORMANCE STATE',ERROR_NUMBER(),ERROR_MESSAGE(),
                            N'CDC-Fehlerevidenz fehlt; andere Quellen bleiben gueltig.');
@@ -601,20 +602,20 @@ SET @pRows=@@ROWCOUNT;';
             END
             ELSE
             BEGIN
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES
                 (@DbName,'CDC_LOG_SCAN_SESSIONS','NOT_APPLICABLE',0,0,N'VIEW DATABASE STATE',NULL,NULL,N'CDC ist laut sichtbarem Feature-Gate nicht aktiviert.'),
                 (@DbName,'CDC_ERRORS','NOT_APPLICABLE',0,0,N'VIEW DATABASE STATE',NULL,NULL,N'CDC ist laut sichtbarem Feature-Gate nicht aktiviert.');
             END;
 
-            IF EXISTS(SELECT 1 FROM [#FeatureScope] WHERE [DatabaseName]=@DbName AND [IsCdcEnabled]=1)
+            IF EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope] WHERE [DatabaseName]=@DbName AND [IsCdcEnabled]=1)
             BEGIN
                 BEGIN TRY
                     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N';
 SELECT @pRows=0;
-IF OBJECT_ID(N''msdb.dbo.cdc_jobs'') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t] WITH (NOLOCK) JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name]=N''cdc_jobs'')
 BEGIN
-    INSERT [#CdcJob]
+    INSERT [#DataCaptureDeepAnalysis_CdcJob]
     ([DatabaseName],[JobType],[IsEnabled],[LastRunOutcome],[LastRunTimeUtc],
      [MaxTrans],[MaxScans],[IsContinuous],[PollingIntervalSeconds],[RetentionMinutes],
      [DeleteThreshold],[AssessmentStatus],[EvidenceLimit])
@@ -632,7 +633,7 @@ BEGIN
         WHERE [x].[job_id]=[cj].[job_id] AND [x].[step_id]=0
         ORDER BY [x].[instance_id] DESC
     ) [h]
-    WHERE [cj].[database_id]=DB_ID(@pDatabaseName);
+    WHERE [cj].[database_id]=(SELECT [database_id] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [name]=@pDatabaseName);
     SET @pRows=@@ROWCOUNT;
 END;
 ';
@@ -641,26 +642,26 @@ END;
                          @pDatabaseName=@DbName,@pRows=@Rows OUTPUT;
                     UPDATE [ci]
                     SET [CleanupRetentionMinutes]=[j].[RetentionMinutes]
-                    FROM [#CdcCaptureInstance] [ci]
+                    FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance] [ci]
                     CROSS APPLY
                     (
                         SELECT MAX([RetentionMinutes]) AS [RetentionMinutes]
-                        FROM [#CdcJob]
+                        FROM [#DataCaptureDeepAnalysis_CdcJob]
                         WHERE [DatabaseName]=@DbName AND [JobType]=N'cleanup'
                     ) [j]
                     WHERE [ci].[DatabaseName]=@DbName;
-                    INSERT [#SourceStatus]
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_JOBS','AVAILABLE',0,@Rows,N'Lesesicht auf msdb CDC- und Agent-Metadaten',NULL,NULL,
                            N'Jobnamen, Owner, Schritte, Commands, Proxies und Anmeldeinformationen werden nicht ausgegeben.');
                 END TRY
                 BEGIN CATCH
-                    INSERT [#SourceStatus]
+                    INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                     VALUES(@DbName,'CDC_JOBS','ERROR_HANDLED',1,0,N'Lesesicht auf msdb CDC- und Agent-Metadaten',ERROR_NUMBER(),ERROR_MESSAGE(),
                            N'CDC-Jobevidenz fehlt; andere Quellen bleiben gueltig.');
                 END CATCH;
             END
             ELSE
-                INSERT [#SourceStatus]
+                INSERT [#DataCaptureDeepAnalysis_SourceStatus]
                 VALUES(@DbName,'CDC_JOBS','NOT_APPLICABLE',0,0,N'Lesesicht auf msdb CDC- und Agent-Metadaten',NULL,NULL,
                        N'CDC ist laut sichtbarem Feature-Gate nicht aktiviert.');
 
@@ -674,7 +675,7 @@ END;
     DECLARE @DistributionDatabase sysname=NULL;
     DECLARE @ReplicationScopeDetected bit=CONVERT(bit,CASE WHEN EXISTS
     (
-        SELECT 1 FROM [#FeatureScope]
+        SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope]
         WHERE [IsPublished]=1 OR [IsSubscribed]=1 OR [IsMergePublished]=1 OR [IsDistributor]=1
     ) THEN 1 ELSE 0 END);
     DECLARE @ReplicationAllowed bit=0;
@@ -686,42 +687,42 @@ END;
         WHERE [AnalysisClass]='ENTERPRISE_TOPOLOGY_DEEP';
 
         IF COALESCE(@ReplicationAllowed,0)=0
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_POLICY','DENIED_GROUP',1,0,N'ENTERPRISE_TOPOLOGY_DEEP',NULL,
                    N'Die lokale Replikations-Tiefenanalyse ist fuer den aktuellen Login nicht freigegeben.',
                    N'Die Topologie bleibt unbeobachtet; dies ist kein gesunder Befund.');
         ELSE
         BEGIN TRY
-                IF OBJECT_ID(N'msdb.dbo.MSdistributiondbs') IS NOT NULL
-                    INSERT [#DistributionDatabase]([DatabaseName])
+                IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t] WITH (NOLOCK) JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'dbo' AND [t].[name]=N'MSdistributiondbs')
+                    INSERT [#DataCaptureDeepAnalysis_DistributionDatabase]([DatabaseName])
                     SELECT DISTINCT [name]
                     FROM [msdb].[dbo].[MSdistributiondbs] WITH (NOLOCK)
-                    WHERE DB_ID([name]) IS NOT NULL;
-            INSERT [#SourceStatus]
+                    WHERE EXISTS(SELECT 1 FROM [master].[sys].[databases] AS [d] WITH (NOLOCK) WHERE [d].[name]=[MSdistributiondbs].[name]);
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_DISTRIBUTOR_DISCOVERY','AVAILABLE',0,
-                   (SELECT COUNT_BIG(*) FROM [#DistributionDatabase]),
+                   (SELECT COUNT_BIG(*) FROM [#DataCaptureDeepAnalysis_DistributionDatabase]),
                    N'Lesesicht auf msdb Replikationsmetadaten',NULL,NULL,
-                   CASE WHEN NOT EXISTS(SELECT 1 FROM [#DistributionDatabase])
+                   CASE WHEN NOT EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_DistributionDatabase])
                         THEN N'Keine lokal registrierte Distribution-Datenbank sichtbar; Remote- oder Berechtigungsgrenzen werden datenbankbezogen bewertet.'
                         ELSE N'Lokal registrierte Distribution-Datenbanken sind sichtbar; nur lokale aggregierte Metadaten werden gelesen.' END);
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_DISTRIBUTOR_DISCOVERY','ERROR_HANDLED',1,0,
                    N'Lesesicht auf msdb Replikationsmetadaten',ERROR_NUMBER(),ERROR_MESSAGE(),
                    N'Distributor-Topologie ist nicht belastbar bestimmbar; dies ist kein gesunder Befund.');
         END CATCH;
     END;
     ELSE
-        INSERT [#SourceStatus]
+        INSERT [#DataCaptureDeepAnalysis_SourceStatus]
         VALUES(NULL,'REPLICATION_DISTRIBUTOR_DISCOVERY','NOT_APPLICABLE',0,0,
                N'ENTERPRISE_TOPOLOGY_DEEP und Lesesicht auf msdb Replikationsmetadaten',NULL,NULL,
                N'Keine Replikationsrolle im sichtbaren ausgewaehlten Datenbankscope erkannt.');
 
-    IF EXISTS(SELECT 1 FROM [#DistributionDatabase])
+    IF EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_DistributionDatabase])
     BEGIN
         DECLARE [DistributionDatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
-            SELECT [DatabaseName] FROM [#DistributionDatabase] ORDER BY [DatabaseName];
+            SELECT [DatabaseName] FROM [#DataCaptureDeepAnalysis_DistributionDatabase] ORDER BY [DatabaseName];
         OPEN [DistributionDatabaseCursor];
         FETCH NEXT FROM [DistributionDatabaseCursor] INTO @DistributionDatabase;
 
@@ -729,12 +730,9 @@ END;
         BEGIN
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF OBJECT_ID(N''dbo.MSdistribution_agents'') IS NULL
- OR OBJECT_ID(N''dbo.MSdistribution_history'') IS NULL
- OR OBJECT_ID(N''dbo.MSdistribution_status'') IS NULL
- OR OBJECT_ID(N''dbo.MSsubscriptions'') IS NULL
+IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name] IN (N''MSdistribution_agents'',N''MSdistribution_history'',N''MSdistribution_status'',N''MSsubscriptions''))<>4
     ;THROW 54020,N''Erforderliche lokale Distribution-Metadaten fehlen.'',1;
-INSERT [#ReplicationAgent]
+INSERT [#DataCaptureDeepAnalysis_ReplicationAgent]
 ([AgentType],[DistributionDatabase],[AgentId],[PublisherDatabase],[PublicationName],[SubscriberName],
  [SubscriberDatabase],[RunStatus],[LastHistoryTimeUtc],[DurationSeconds],
  [DeliveryLatencyMs],[PendingCommandCount],[DeliveredCommandCount],
@@ -766,7 +764,7 @@ OUTER APPLY
 ) [s]
 WHERE EXISTS
 (
-    SELECT 1 FROM [#FeatureScope] [fs]
+    SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope] [fs]
     WHERE [fs].[DatabaseName]=[a].[publisher_db] COLLATE SQL_Latin1_General_CP1_CS_AS
        OR [fs].[DatabaseName]=[a].[subscriber_db] COLLATE SQL_Latin1_General_CP1_CS_AS
        OR [fs].[IsDistributor]=1
@@ -775,21 +773,21 @@ SET @pRows=@@ROWCOUNT;';
             SET @Rows=0;
             EXEC [sys].[sp_executesql] @Sql,N'@pDistributionDatabase sysname,@pNow datetime2(3),@pRows bigint OUTPUT',
                  @pDistributionDatabase=@DistributionDatabase,@pNow=@Now,@pRows=@Rows OUTPUT;
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_DISTRIBUTION_AGENTS','AVAILABLE',0,@Rows,N'Lesesicht auf lokale Distribution-Datenbank',NULL,NULL,
                    N'Keine Replikationsbefehle, Sequenznummern, Kommentare, Job-Commands oder Sicherheitsprofile werden gelesen.');
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_DISTRIBUTION_AGENTS','ERROR_HANDLED',1,0,N'Lesesicht auf lokale Distribution-Datenbank',ERROR_NUMBER(),ERROR_MESSAGE(),
                    N'Distribution-Agent-, Rueckstands- oder Historienevidenz fehlt.');
         END CATCH;
 
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF OBJECT_ID(N''dbo.MSlogreader_agents'') IS NULL OR OBJECT_ID(N''dbo.MSlogreader_history'') IS NULL
+IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name] IN (N''MSlogreader_agents'',N''MSlogreader_history''))<>2
     ;THROW 54021,N''Erforderliche lokale Log-Reader-Metadaten fehlen.'',1;
-INSERT [#ReplicationAgent]
+INSERT [#DataCaptureDeepAnalysis_ReplicationAgent]
 ([AgentType],[DistributionDatabase],[AgentId],[PublisherDatabase],[PublicationName],[RunStatus],
  [LastHistoryTimeUtc],[DurationSeconds],[DeliveryLatencyMs],[DeliveredCommandCount],
  [LastHistoryAgeMinutes],[AssessmentStatus],[EvidenceLimit])
@@ -807,7 +805,7 @@ OUTER APPLY
 ) [h]
 WHERE EXISTS
 (
-    SELECT 1 FROM [#FeatureScope] [fs]
+    SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope] [fs]
     WHERE [fs].[DatabaseName]=[a].[publisher_db] COLLATE SQL_Latin1_General_CP1_CS_AS
        OR [fs].[IsDistributor]=1
 );
@@ -815,21 +813,21 @@ SET @pRows=@@ROWCOUNT;';
             SET @Rows=0;
             EXEC [sys].[sp_executesql] @Sql,N'@pDistributionDatabase sysname,@pNow datetime2(3),@pRows bigint OUTPUT',
                  @pDistributionDatabase=@DistributionDatabase,@pNow=@Now,@pRows=@Rows OUTPUT;
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_LOG_READER_AGENTS','AVAILABLE',0,@Rows,N'Lesesicht auf lokale Distribution-Datenbank',NULL,NULL,
                    N'Agent- und Historienmetadaten ohne Login-, Passwort-, Command-, Kommentar- oder Sequenzdaten.');
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_LOG_READER_AGENTS','ERROR_HANDLED',1,0,N'Lesesicht auf lokale Distribution-Datenbank',ERROR_NUMBER(),ERROR_MESSAGE(),
                    N'Log-Reader-Agent- oder Historienevidenz fehlt.');
         END CATCH;
 
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF OBJECT_ID(N''dbo.MSmerge_agents'') IS NULL OR OBJECT_ID(N''dbo.MSmerge_sessions'') IS NULL
+IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name] IN (N''MSmerge_agents'',N''MSmerge_sessions''))<>2
     ;THROW 54022,N''Erforderliche lokale Merge-Metadaten fehlen.'',1;
-INSERT [#ReplicationAgent]
+INSERT [#DataCaptureDeepAnalysis_ReplicationAgent]
 ([AgentType],[DistributionDatabase],[AgentId],[PublisherDatabase],[PublicationName],[SubscriberName],
  [SubscriberDatabase],[RunStatus],[LastHistoryTimeUtc],[DurationSeconds],
  [ConflictCount],[RetryCount],[LastHistoryAgeMinutes],[AssessmentStatus],[EvidenceLimit])
@@ -850,7 +848,7 @@ OUTER APPLY
 ) [h]
 WHERE EXISTS
 (
-    SELECT 1 FROM [#FeatureScope] [fs]
+    SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope] [fs]
     WHERE [fs].[DatabaseName]=[a].[publisher_db] COLLATE SQL_Latin1_General_CP1_CS_AS
        OR [fs].[DatabaseName]=[a].[subscriber_db] COLLATE SQL_Latin1_General_CP1_CS_AS
        OR [fs].[IsDistributor]=1
@@ -859,21 +857,21 @@ SET @pRows=@@ROWCOUNT;';
             SET @Rows=0;
             EXEC [sys].[sp_executesql] @Sql,N'@pDistributionDatabase sysname,@pNow datetime2(3),@pRows bigint OUTPUT',
                  @pDistributionDatabase=@DistributionDatabase,@pNow=@Now,@pRows=@Rows OUTPUT;
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_MERGE_AGENTS','AVAILABLE',0,@Rows,N'Lesesicht auf lokale Distribution-Datenbank',NULL,NULL,
                    N'Keine Zeilenkonflikte, Resolver-Nutzdaten, Agent-Credentials oder Job-Commands werden gelesen.');
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_MERGE_AGENTS','ERROR_HANDLED',1,0,N'Lesesicht auf lokale Distribution-Datenbank',ERROR_NUMBER(),ERROR_MESSAGE(),
                    N'Merge-Agent- oder Sessionevidenz fehlt.');
         END CATCH;
 
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF OBJECT_ID(N''dbo.MSrepl_errors'') IS NULL
+IF NOT EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name]=N''MSrepl_errors'')
     ;THROW 54023,N''Lokale Replikationsfehlertabelle fehlt.'',1;
-INSERT [#ReplicationErrorGroup]
+INSERT [#DataCaptureDeepAnalysis_ReplicationErrorGroup]
 ([DistributionDatabase],[ErrorCode],[ErrorCount],[FirstErrorTimeUtc],[LastErrorTimeUtc],[EvidenceLimit])
 SELECT @pDistributionDatabase,[error_code],COUNT_BIG(*),MIN([time]),MAX([time]),
        N''Replikationsfehler werden nur nach Code und Zeit aggregiert; Quellname, Fehlertext, Command und Sequenznummern bleiben ausgeschlossen.''
@@ -884,12 +882,12 @@ SET @pRows=@@ROWCOUNT;';
             SET @Rows=0;
             EXEC [sys].[sp_executesql] @Sql,N'@pDistributionDatabase sysname,@pLookback int,@pNow datetime2(3),@pRows bigint OUTPUT',
                  @pDistributionDatabase=@DistributionDatabase,@pLookback=@ErrorLookbackHours,@pNow=@Now,@pRows=@Rows OUTPUT;
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_ERRORS','AVAILABLE',0,@Rows,N'Lesesicht auf lokale Distribution-Datenbank',NULL,NULL,
                    N'Nur Fehlercode, Anzahl und Zeitgrenzen werden ausgegeben.');
         END TRY
         BEGIN CATCH
-            INSERT [#SourceStatus]
+            INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_ERRORS','ERROR_HANDLED',1,0,N'Lesesicht auf lokale Distribution-Datenbank',ERROR_NUMBER(),ERROR_MESSAGE(),
                    N'Aggregierte lokale Replikationsfehlerevidenz fehlt.');
         END CATCH;
@@ -902,7 +900,7 @@ SET @pRows=@@ROWCOUNT;';
     END
     ELSE
     BEGIN
-        INSERT [#SourceStatus]
+        INSERT [#DataCaptureDeepAnalysis_SourceStatus]
         VALUES
         (NULL,'REPLICATION_DISTRIBUTION_AGENTS','NOT_APPLICABLE',0,0,N'Lesesicht auf lokale Distribution-Datenbank',NULL,NULL,N'Lokale Distribution nicht aufgerufen oder nicht sichtbar; Discovery- und Policy-Status beachten.'),
         (NULL,'REPLICATION_LOG_READER_AGENTS','NOT_APPLICABLE',0,0,N'Lesesicht auf lokale Distribution-Datenbank',NULL,NULL,N'Lokale Distribution nicht aufgerufen oder nicht sichtbar; Discovery- und Policy-Status beachten.'),
@@ -918,89 +916,89 @@ SET @pRows=@@ROWCOUNT;';
         [HasReplicationRole]=CONVERT(bit,CASE WHEN [fs].[IsPublished]=1 OR [fs].[IsSubscribed]=1
                                                   OR [fs].[IsMergePublished]=1 OR [fs].[IsDistributor]=1
                                              THEN 1 ELSE 0 END)
-    FROM [#DatabaseStatus] [ds]
-    JOIN [#FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName];
+    FROM [#DataCaptureDeepAnalysis_DatabaseStatus] [ds]
+    JOIN [#DataCaptureDeepAnalysis_FeatureScope] [fs] ON [fs].[DatabaseName]=[ds].[DatabaseName];
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'INFO','HIGH','CT_CLIENT_WATERMARK_NOT_SUPPLIED','CLIENT_VERSION',
            N'Change Tracking ist sichtbar, aber es wurde kein Client-Wasserstand geliefert; ein Synchronisationsverlust kann daher nicht bewertet werden.',
            N'MinValidVersion allein belegt keinen betroffenen Client. Verschiedene Consumer koennen unterschiedliche Wasserstaende besitzen.',
            N'Pro Consumer dessen zuletzt erfolgreich bestaetigte Synchronisationsversion kontrolliert als @ChangeTrackingClientVersion pruefen.'
-    FROM [#FeatureScope]
+    FROM [#DataCaptureDeepAnalysis_FeatureScope]
     WHERE [IsChangeTrackingEnabled]=1 AND @ChangeTrackingClientVersion IS NULL;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[TableName],'WARN','HIGH','CT_CLIENT_REINITIALIZATION_REQUIRED','CLIENT_VERSION',
            [ClientVersion],[MinValidVersion],
            N'Der gelieferte Client-Wasserstand liegt unter der minimal gueltigen Version dieser Change-Tracking-Tabelle.',
            [EvidenceLimit],N'Consumer fuer diese Tabelle kontrolliert reinitialisieren; keine inkrementelle Enumeration ab dem ungueltigen Wasserstand fortsetzen.'
-    FROM [#ChangeTrackingTable]
+    FROM [#DataCaptureDeepAnalysis_ChangeTrackingTable]
     WHERE [ClientVersion] IS NOT NULL AND [MinValidVersion] IS NOT NULL AND [ClientVersion]<[MinValidVersion];
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SchemaName],[TableName],'WARN','HIGH','CT_CLIENT_VERSION_IN_FUTURE','CLIENT_VERSION',
            [ClientVersion],[CurrentVersion],N'Der gelieferte Client-Wasserstand liegt ueber der aktuellen Datenbankversion.',
            [EvidenceLimit],N'Consumer-Zustand, Datenbankzuordnung und Persistenz des Wasserstands korrigieren, bevor synchronisiert wird.'
-    FROM [#ChangeTrackingTable]
+    FROM [#DataCaptureDeepAnalysis_ChangeTrackingTable]
     WHERE [ClientVersion] IS NOT NULL AND [CurrentVersion] IS NOT NULL AND [ClientVersion]>[CurrentVersion];
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'INFO','HIGH','CT_AUTO_CLEANUP_DISABLED','AUTO_CLEANUP_ON',0,1,
            N'Change-Tracking-Auto-Cleanup ist deaktiviert.',
            N'Dies kann absichtliche Konfiguration sein und ist ohne Speicher- und Betriebsziel kein Fehler.',
            N'Retention-, Speicher- und Consumer-Anforderungen pruefen; keine automatische Konfigurationsaenderung ausfuehren.'
-    FROM [#FeatureScope]
+    FROM [#DataCaptureDeepAnalysis_FeatureScope]
     WHERE [IsChangeTrackingEnabled]=1 AND [IsCtAutoCleanupOn]=0;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SourceSchema],COALESCE([SourceTable],[CaptureInstance]),'WARN','HIGH','CDC_CAPTURE_INSTANCE_DROP_PENDING','HAS_DROP_PENDING',1,0,
            N'Die CDC-Capture-Instanz ist als drop-pending markiert.',[EvidenceLimit],
            N'CDC-DDL-Historie, lang laufende Capture-/Cleanup-Aktivitaet und den beabsichtigten Instanzlebenszyklus in der Laufzeitumgebung pruefen.'
-    FROM [#CdcCaptureInstance]
+    FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance]
     WHERE [HasDropPending]=1;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [fs].[DatabaseName],'WARN','HIGH','CDC_CAPTURE_JOB_MISSING_OR_DISABLED','ENABLED_CAPTURE_JOB_COUNT',
            COALESCE([j].[EnabledCount],0),1,N'CDC ist mit sichtbarer Capture-Instanz aktiviert, aber kein aktivierter Capture-Job ist sichtbar.',
            N'Bei alternativer Plattform- oder Hochverfuegbarkeitssteuerung kann die Jobinterpretation abweichen; fehlende Rechte koennen Sichtbarkeit begrenzen.',
            N'CDC-Betriebsmodus und Agentjob in der Laufzeitumgebung pruefen; keine automatische Jobaenderung ausfuehren.'
-    FROM [#FeatureScope] [fs]
+    FROM [#DataCaptureDeepAnalysis_FeatureScope] [fs]
     OUTER APPLY
     (
         SELECT SUM(CASE WHEN [IsEnabled]=1 THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END) AS [EnabledCount]
-        FROM [#CdcJob] WHERE [DatabaseName]=[fs].[DatabaseName] AND [JobType]=N'capture'
+        FROM [#DataCaptureDeepAnalysis_CdcJob] WHERE [DatabaseName]=[fs].[DatabaseName] AND [JobType]=N'capture'
     ) [j]
     WHERE [fs].[IsCdcEnabled]=1 AND [fs].[CdcCaptureInstanceCount]>0 AND COALESCE([j].[EnabledCount],0)=0
-      AND EXISTS(SELECT 1 FROM [#SourceStatus] WHERE [DatabaseName]=[fs].[DatabaseName] AND [SourceCode]='CDC_JOBS' AND [StatusCode]='AVAILABLE');
+      AND EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_SourceStatus] WHERE [DatabaseName]=[fs].[DatabaseName] AND [SourceCode]='CDC_JOBS' AND [StatusCode]='AVAILABLE');
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [fs].[DatabaseName],'WARN','HIGH','CDC_CLEANUP_JOB_MISSING_OR_DISABLED','ENABLED_CLEANUP_JOB_COUNT',
            COALESCE([j].[EnabledCount],0),1,N'CDC ist mit sichtbarer Capture-Instanz aktiviert, aber kein aktivierter Cleanup-Job ist sichtbar.',
            N'Alternative Plattformsteuerung und eingeschraenkte msdb-Sichtbarkeit koennen die Jobinterpretation begrenzen.',
            N'Cleanup-Betriebsmodus und Retention in der Laufzeitumgebung pruefen; keine automatische Bereinigung starten.'
-    FROM [#FeatureScope] [fs]
+    FROM [#DataCaptureDeepAnalysis_FeatureScope] [fs]
     OUTER APPLY
     (
         SELECT SUM(CASE WHEN [IsEnabled]=1 THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END) AS [EnabledCount]
-        FROM [#CdcJob] WHERE [DatabaseName]=[fs].[DatabaseName] AND [JobType]=N'cleanup'
+        FROM [#DataCaptureDeepAnalysis_CdcJob] WHERE [DatabaseName]=[fs].[DatabaseName] AND [JobType]=N'cleanup'
     ) [j]
     WHERE [fs].[IsCdcEnabled]=1 AND [fs].[CdcCaptureInstanceCount]>0 AND COALESCE([j].[EnabledCount],0)=0
-      AND EXISTS(SELECT 1 FROM [#SourceStatus] WHERE [DatabaseName]=[fs].[DatabaseName] AND [SourceCode]='CDC_JOBS' AND [StatusCode]='AVAILABLE');
+      AND EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_SourceStatus] WHERE [DatabaseName]=[fs].[DatabaseName] AND [SourceCode]='CDC_JOBS' AND [StatusCode]='AVAILABLE');
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [s].[DatabaseName],CASE WHEN COALESCE([j].[IsContinuous],1)=1 THEN 'WARN' ELSE 'INFO' END,
@@ -1009,162 +1007,162 @@ SET @pRows=@@ROWCOUNT;';
            'LATENCY_SECONDS',[s].[LatencySeconds],@CdcLatencyWarnSeconds,
            N'Die aggregierte CDC-Scan-Latenz ueberschreitet den konfigurierten Grenzwert.',[s].[EvidenceLimit],
            N'Wiederholt messen und Capture-Modus, Polling, Logaktivitaet, Agentstatus sowie Ressourcen korrelieren.'
-    FROM [#CdcScanSession] [s]
+    FROM [#DataCaptureDeepAnalysis_CdcScanSession] [s]
     OUTER APPLY
     (
-        SELECT TOP(1) [IsContinuous] FROM [#CdcJob]
+        SELECT TOP(1) [IsContinuous] FROM [#DataCaptureDeepAnalysis_CdcJob]
         WHERE [DatabaseName]=[s].[DatabaseName] AND [JobType]=N'capture'
     ) [j]
     WHERE [s].[SessionId]=0 AND [s].[LatencySeconds]>=@CdcLatencyWarnSeconds;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','MEDIUM','CDC_SCAN_FAILURES_VISIBLE','FAILED_SESSION_COUNT',
            [FailedSessionsCount],0,N'Die aggregierte CDC-Scan-DMV meldet fehlgeschlagene Sitzungen.',[EvidenceLimit],
            N'Neueste CDC-Fehlergruppe, Agentjobausgang und freigegebene Laufzeitlogs korrelieren; DMV-Resetgrenze beachten.'
-    FROM [#CdcScanSession]
+    FROM [#DataCaptureDeepAnalysis_CdcScanSession]
     WHERE [SessionId]=0 AND COALESCE([FailedSessionsCount],0)>0;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','CDC_ERRORS_IN_LOOKBACK','ERROR_COUNT',SUM([ErrorCount]),0,
            N'Die CDC-Fehler-DMV enthaelt Fehler im konfigurierten Rueckblick.',MIN([EvidenceLimit]),
            N'Fehlernummern und Phasen mit Agentstatus und geschuetzten Laufzeitlogs korrelieren; keine Fehlermeldung in Repositoryartefakte kopieren.'
-    FROM [#CdcErrorGroup]
+    FROM [#DataCaptureDeepAnalysis_CdcErrorGroup]
     GROUP BY [DatabaseName];
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],[SourceSchema],COALESCE([SourceTable],[CaptureInstance]),'WARN','LOW','CDC_OLDEST_AVAILABLE_EXCEEDS_RETENTION','OLDEST_AVAILABLE_AGE_MINUTES',
            [OldestAvailableAgeMinutes],[CleanupRetentionMinutes]+@CdcCleanupGraceMinutes,
            N'Die aelteste verfuegbare CDC-Zeitgrenze liegt jenseits von Retention plus Toleranz.',[EvidenceLimit],
            N'Cleanup-Jobverlauf, Logaktivitaet und wiederholte LSN-Zeitgrenzen pruefen; keine automatische Loeschung ausfuehren.'
-    FROM [#CdcCaptureInstance]
+    FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance]
     WHERE [CleanupRetentionMinutes] IS NOT NULL AND [OldestAvailableAgeMinutes]>[CleanupRetentionMinutes]+@CdcCleanupGraceMinutes;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','REPLICATION_TOPOLOGY_NOT_LOCALLY_OBSERVABLE','LOCAL_DISTRIBUTOR_VISIBLE',0,1,
            N'Die Datenbank besitzt eine sichtbare Replikationsrolle, aber keine lokale Distribution-Datenbank ist erreichbar.',
            N'Ein Remote Distributor oder fehlende Rechte verhindern lokale Agent-, Rueckstands- und Fehleraussagen; dies ist kein Gesundheitsnachweis.',
            N'Diagnose am Distributor mit freigegebenem Zugriff ausfuehren und die Evidenz ausschliesslich in der Laufzeitumgebung korrelieren.'
-    FROM [#FeatureScope]
+    FROM [#DataCaptureDeepAnalysis_FeatureScope]
     WHERE ([IsPublished]=1 OR [IsSubscribed]=1 OR [IsMergePublished]=1 OR [IsDistributor]=1)
-      AND NOT EXISTS(SELECT 1 FROM [#DistributionDatabase]);
+      AND NOT EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_DistributionDatabase]);
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [PublisherDatabase],[PublicationName],'WARN','HIGH','REPLICATION_PENDING_COMMANDS_HIGH','PENDING_COMMAND_COUNT',
            [PendingCommandCount],@ReplicationPendingCommandWarn,
            N'Der lokale Distributor meldet einen Rueckstand oberhalb des konfigurierten Grenzwerts.',[EvidenceLimit],
            N'Rueckstand und Delivery-Rate wiederholt messen sowie Agentstatus, Subscriber-Erreichbarkeit und Ressourcen korrelieren.'
-    FROM [#ReplicationAgent]
+    FROM [#DataCaptureDeepAnalysis_ReplicationAgent]
     WHERE [AgentType]='DISTRIBUTION' AND [PendingCommandCount]>=@ReplicationPendingCommandWarn;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [PublisherDatabase],[PublicationName],'WARN','MEDIUM','REPLICATION_AGENT_FAILED_OR_RETRYING','RUN_STATUS',
            [RunStatus],4,N'Der neueste lokale Agent-Historienstatus ist Retry oder Fail.',[EvidenceLimit],
            N'Neueste Fehlercodes, Jobausgang und geschuetzte Laufzeitlogs korrelieren; ein einzelner Status beweist keine dauerhafte Stoerung.'
-    FROM [#ReplicationAgent]
+    FROM [#DataCaptureDeepAnalysis_ReplicationAgent]
     WHERE [RunStatus] IN(5,6);
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [PublisherDatabase],[PublicationName],'WARN','MEDIUM','REPLICATION_DELIVERY_LATENCY_HIGH','DELIVERY_LATENCY_SECONDS',
            CONVERT(decimal(38,4),[DeliveryLatencyMs])/1000.0,@ReplicationLatencyWarnSeconds,
            N'Die lokale Agenthistorie meldet eine Delivery-Latenz oberhalb des konfigurierten Grenzwerts.',[EvidenceLimit],
            N'Mehrere Messpunkte und den passenden Agenttyp mit Rueckstand, Delivery-Rate, Netzwerk und Subscriber-Ressourcen korrelieren.'
-    FROM [#ReplicationAgent]
+    FROM [#DataCaptureDeepAnalysis_ReplicationAgent]
     WHERE CONVERT(decimal(38,4),[DeliveryLatencyMs])/1000.0>=@ReplicationLatencyWarnSeconds;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [PublisherDatabase],[PublicationName],'WARN','MEDIUM','REPLICATION_INACTIVE_SUBSCRIPTION_REVIEW','INACTIVE_SUBSCRIPTION_COUNT',
            [InactiveSubscriptionCount],0,
            N'Mindestens eine lokale Subscription-Zeile des Distribution Agents ist nicht aktiv.',[EvidenceLimit],
            N'Initialisierung, Subscription-Status und Agentfehler pruefen; dieser Indikator allein beweist keine erforderliche Reinitialisierung.'
-    FROM [#ReplicationAgent]
+    FROM [#DataCaptureDeepAnalysis_ReplicationAgent]
     WHERE COALESCE([InactiveSubscriptionCount],0)>0;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [PublisherDatabase],[PublicationName],'WARN','LOW','REPLICATION_AGENT_STALE_WITH_BACKLOG','LAST_HISTORY_AGE_MINUTES',
            [LastHistoryAgeMinutes],@ReplicationAgentStaleWarnMinutes,
            N'Die letzte Agenthistorie ist alt und zugleich ist ein lokaler Rueckstand sichtbar.',[EvidenceLimit],
            N'Agentjob und neue Historienzeilen pruefen. Idle oder seltene Zeitplaene ohne Rueckstand sind ausdruecklich kein Fehler.'
-    FROM [#ReplicationAgent]
+    FROM [#DataCaptureDeepAnalysis_ReplicationAgent]
     WHERE [AgentType]='DISTRIBUTION' AND [LastHistoryAgeMinutes]>=@ReplicationAgentStaleWarnMinutes
       AND COALESCE([PendingCommandCount],0)>0;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [PublisherDatabase],[PublicationName],'WARN','MEDIUM','MERGE_CONFLICT_OR_RETRY_VISIBLE','CONFLICT_AND_RETRY_COUNT',
            COALESCE([ConflictCount],0)+COALESCE([RetryCount],0),0,
            N'Die neueste lokale Merge-Session meldet Konflikte oder Retries.',[EvidenceLimit],
            N'Publication-Regeln, Resolver und freigegebene Laufzeitevidenz pruefen; keine Konfliktzeilen in Repositoryartefakte uebernehmen.'
-    FROM [#ReplicationAgent]
+    FROM [#DataCaptureDeepAnalysis_ReplicationAgent]
     WHERE [AgentType]='MERGE' AND COALESCE([ConflictCount],0)+COALESCE([RetryCount],0)>0;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],
      [Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT 'WARN','HIGH','REPLICATION_ERRORS_IN_LOOKBACK','ERROR_COUNT',SUM([ErrorCount]),0,
            N'Die lokale Distribution-Datenbank enthaelt Replikationsfehler im konfigurierten Rueckblick.',MIN([EvidenceLimit]),
            N'Fehlercodes mit Agenten und geschuetzten Laufzeitlogs korrelieren; Fehlertexte oder Commands nicht persistieren.'
-    FROM [#ReplicationErrorGroup]
+    FROM [#DataCaptureDeepAnalysis_ReplicationErrorGroup]
     HAVING SUM([ErrorCount])>0;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([DatabaseName],[Severity],[Confidence],[FindingCode],[MetricName],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT [DatabaseName],'WARN','HIGH','DATA_CAPTURE_EVIDENCE_GAP',[SourceCode],
            COALESCE([ErrorMessage],N'Die angeforderte Quelle ist nicht verfuegbar.'),[Detail],
            N'Berechtigung, Featureverfuegbarkeit und Topologie pruefen; andere Resultsets bleiben gueltig.'
-    FROM [#SourceStatus]
+    FROM [#DataCaptureDeepAnalysis_SourceStatus]
     WHERE [IsPartial]=1 AND [DatabaseName] IS NOT NULL;
 
-    INSERT [#Findings]
+    INSERT [#DataCaptureDeepAnalysis_Findings]
     ([Severity],[Confidence],[FindingCode],[MetricName],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
     SELECT 'WARN','HIGH','REPLICATION_EVIDENCE_GAP',[SourceCode],
            COALESCE([ErrorMessage],N'Die lokale Replikationsquelle ist nicht verfuegbar.'),[Detail],
            N'Berechtigung und Distributor-Topologie pruefen; eine Quellenluecke niemals als gesunden Zustand behandeln.'
-    FROM [#SourceStatus]
+    FROM [#DataCaptureDeepAnalysis_SourceStatus]
     WHERE [IsPartial]=1 AND [DatabaseName] IS NULL;
 
     UPDATE [x]
     SET [AssessmentStatus]=CASE WHEN EXISTS
-        (SELECT 1 FROM [#Findings] [f]
+        (SELECT 1 FROM [#DataCaptureDeepAnalysis_Findings] [f]
          WHERE [f].[DatabaseName]=[x].[DatabaseName]
            AND [f].[SchemaName]=[x].[SchemaName]
            AND [f].[ObjectName]=[x].[TableName]
            AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END
-    FROM [#ChangeTrackingTable] [x];
+    FROM [#DataCaptureDeepAnalysis_ChangeTrackingTable] [x];
 
     UPDATE [x]
     SET [AssessmentStatus]=CASE WHEN EXISTS
-        (SELECT 1 FROM [#Findings] [f]
+        (SELECT 1 FROM [#DataCaptureDeepAnalysis_Findings] [f]
          WHERE [f].[DatabaseName]=[x].[DatabaseName]
            AND ([f].[ObjectName]=[x].[SourceTable] OR [f].[ObjectName]=[x].[CaptureInstance])
            AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END
-    FROM [#CdcCaptureInstance] [x];
+    FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance] [x];
 
     UPDATE [x]
     SET [AssessmentStatus]=CASE WHEN EXISTS
-        (SELECT 1 FROM [#Findings] [f]
+        (SELECT 1 FROM [#DataCaptureDeepAnalysis_Findings] [f]
          WHERE ([f].[DatabaseName]=[x].[PublisherDatabase] OR [f].[DatabaseName] IS NULL)
            AND ([f].[ObjectName]=[x].[PublicationName] OR [f].[ObjectName] IS NULL)
            AND [f].[Severity]='WARN') THEN 'REVIEW' ELSE 'AVAILABLE' END
-    FROM [#ReplicationAgent] [x];
+    FROM [#DataCaptureDeepAnalysis_ReplicationAgent] [x];
 
     UPDATE [ds]
     SET [SourceFailureCount]=[x].[FailureCount]+CASE WHEN [ds].[HasReplicationRole]=1 THEN [g].[GlobalFailureCount] ELSE 0 END,
@@ -1184,36 +1182,36 @@ SET @pRows=@@ROWCOUNT;';
                       WHEN [f].[WarnCount]>0
                           THEN N'Mindestens ein Pruefhinweis liegt vor; kein automatisches Gesundheitsurteil.'
                       ELSE N'Kein konfigurierter Warnindikator in der zugaenglichen Momentaufnahme; dies beweist keine fehlerfreie Verarbeitung.' END
-    FROM [#DatabaseStatus] [ds]
+    FROM [#DataCaptureDeepAnalysis_DatabaseStatus] [ds]
     OUTER APPLY
     (
         SELECT CONVERT(int,COUNT_BIG(*)) AS [FailureCount],MIN([ss].[ErrorNumber]) AS [ErrorNumber],MIN([ss].[ErrorMessage]) AS [ErrorMessage]
-        FROM [#SourceStatus] [ss]
+        FROM [#DataCaptureDeepAnalysis_SourceStatus] [ss]
         WHERE [ss].[DatabaseName]=[ds].[DatabaseName] AND [ss].[IsPartial]=1
     ) [x]
     CROSS APPLY
     (
         SELECT CONVERT(int,COUNT_BIG(*)) AS [GlobalFailureCount],MIN([ss].[ErrorNumber]) AS [ErrorNumber],MIN([ss].[ErrorMessage]) AS [ErrorMessage]
-        FROM [#SourceStatus] [ss]
+        FROM [#DataCaptureDeepAnalysis_SourceStatus] [ss]
         WHERE [ss].[DatabaseName] IS NULL AND [ss].[IsPartial]=1
     ) [g]
     OUTER APPLY
     (
         SELECT COUNT_BIG(*) AS [FindingCount],
                COALESCE(SUM(CASE WHEN [ff].[Severity]='WARN' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0) AS [WarnCount]
-        FROM [#Findings] [ff]
+        FROM [#DataCaptureDeepAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
            OR ([ff].[DatabaseName] IS NULL AND [ds].[HasReplicationRole]=1)
     ) [f];
 
     IF @StatusCode='AVAILABLE'
     BEGIN
-        IF EXISTS(SELECT 1 FROM [#DatabaseStatus] WHERE [IsPartial]=1)
+        IF EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_DatabaseStatus] WHERE [IsPartial]=1)
             SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-        ELSE IF EXISTS(SELECT 1 FROM [#Findings] WHERE [Severity]='WARN')
+        ELSE IF EXISTS(SELECT 1 FROM [#DataCaptureDeepAnalysis_Findings] WHERE [Severity]='WARN')
             SET @StatusCode='AVAILABLE_WITH_FINDING';
         ELSE IF NOT EXISTS
-            (SELECT 1 FROM [#FeatureScope]
+            (SELECT 1 FROM [#DataCaptureDeepAnalysis_FeatureScope]
              WHERE [IsChangeTrackingEnabled]=1 OR [IsCdcEnabled]=1 OR [IsPublished]=1
                 OR [IsSubscribed]=1 OR [IsMergePublished]=1 OR [IsDistributor]=1)
             SET @StatusCode='NOT_APPLICABLE';
@@ -1221,7 +1219,7 @@ SET @pRows=@@ROWCOUNT;';
 
     SELECT @ErrorNumber=COALESCE(@ErrorNumber,MIN([ErrorNumber])),
            @ErrorMessage=COALESCE(@ErrorMessage,MIN([ErrorMessage]))
-    FROM [#SourceStatus]
+    FROM [#DataCaptureDeepAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
     IF @JsonErzeugen=1
@@ -1229,16 +1227,16 @@ SET @pRows=@@ROWCOUNT;';
         SELECT @Json=(
             SELECT
                 JSON_QUERY((SELECT N'USP_DataCaptureDeepAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
-                JSON_QUERY(COALESCE((SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
-                JSON_QUERY(COALESCE((SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ChangeTrackingTable] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [changeTrackingTables],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#CdcCaptureInstance] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[CaptureInstance] FOR JSON PATH),N'[]')) AS [cdcCaptureInstances],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#CdcScanSession] ORDER BY [DatabaseName],[SessionId] FOR JSON PATH),N'[]')) AS [cdcScanSessions],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#CdcErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DatabaseName],[ErrorNumber] FOR JSON PATH),N'[]')) AS [cdcErrors],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#CdcJob] ORDER BY [DatabaseName],[JobType] FOR JSON PATH),N'[]')) AS [cdcJobs],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ReplicationAgent] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DistributionDatabase],[AgentType],[PublisherDatabase],[PublicationName],[AgentId] FOR JSON PATH),N'[]')) AS [replicationAgents],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ReplicationErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DistributionDatabase],[ErrorCode] FOR JSON PATH),N'[]')) AS [replicationErrors]
+                JSON_QUERY(COALESCE((SELECT * FROM [#DataCaptureDeepAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
+                JSON_QUERY(COALESCE((SELECT * FROM [#DataCaptureDeepAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ChangeTrackingTable] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [changeTrackingTables],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[CaptureInstance] FOR JSON PATH),N'[]')) AS [cdcCaptureInstances],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcScanSession] ORDER BY [DatabaseName],[SessionId] FOR JSON PATH),N'[]')) AS [cdcScanSessions],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DatabaseName],[ErrorNumber] FOR JSON PATH),N'[]')) AS [cdcErrors],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcJob] ORDER BY [DatabaseName],[JobType] FOR JSON PATH),N'[]')) AS [cdcJobs],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ReplicationAgent] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DistributionDatabase],[AgentType],[PublisherDatabase],[PublicationName],[AgentId] FOR JSON PATH),N'[]')) AS [replicationAgents],
+                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ReplicationErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DistributionDatabase],[ErrorCode] FOR JSON PATH),N'[]')) AS [replicationErrors]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
     END;
 
@@ -1247,24 +1245,24 @@ SET @pRows=@@ROWCOUNT;';
         SELECT N'USP_DataCaptureDeepAnalysis' AS [Module],@Now AS [CollectedAtUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],
                N'Read-only Metadatenaufnahme; keine Change-Zeilen, Replikationsbefehle, Credentials, Agent-Commands oder Aenderungen.' AS [Detail];
-        SELECT * FROM [#DatabaseStatus] ORDER BY [DatabaseName];
-        SELECT * FROM [#SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#Findings]
+        SELECT * FROM [#DataCaptureDeepAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
+        SELECT * FROM [#DataCaptureDeepAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_Findings]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
-        SELECT TOP(@Limit) * FROM [#ChangeTrackingTable]
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ChangeTrackingTable]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
         ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName];
-        SELECT TOP(@Limit) * FROM [#CdcCaptureInstance]
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
         ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[CaptureInstance];
-        SELECT TOP(@Limit) * FROM [#CdcScanSession] ORDER BY [DatabaseName],[SessionId];
-        SELECT TOP(@Limit) * FROM [#CdcErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DatabaseName],[ErrorNumber];
-        SELECT TOP(@Limit) * FROM [#CdcJob] ORDER BY [DatabaseName],[JobType];
-        SELECT TOP(@Limit) * FROM [#ReplicationAgent]
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcScanSession] ORDER BY [DatabaseName],[SessionId];
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DatabaseName],[ErrorNumber];
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcJob] ORDER BY [DatabaseName],[JobType];
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ReplicationAgent]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
         ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DistributionDatabase],[AgentType],[PublisherDatabase],[PublicationName],[AgentId];
-        SELECT TOP(@Limit) * FROM [#ReplicationErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DistributionDatabase],[ErrorCode];
+        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ReplicationErrorGroup] ORDER BY [LastErrorTimeUtc] DESC,[DistributionDatabase],[ErrorCode];
     END;
 
     IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE','NOT_APPLICABLE')
@@ -1278,7 +1276,7 @@ SET @pRows=@@ROWCOUNT;';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Findings'
+              @SourceTable = N'#DataCaptureDeepAnalysis_Findings'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

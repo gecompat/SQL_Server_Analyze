@@ -39,6 +39,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_AgentMonitoringAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -64,7 +65,7 @@ BEGIN
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
 
-    CREATE TABLE [#Services]
+    CREATE TABLE [#AgentMonitoringAnalysis_Services]
     (
           [ServiceName] nvarchar(256) NULL
         , [StatusDesc] nvarchar(60) NULL
@@ -72,7 +73,7 @@ BEGIN
         , [LastStartupTime] datetimeoffset(7) NULL
         , [FindingCode] varchar(80) NOT NULL
     );
-    CREATE TABLE [#Findings]
+    CREATE TABLE [#AgentMonitoringAnalysis_Findings]
     (
           [Category] varchar(40) NOT NULL
         , [FindingCode] varchar(100) NOT NULL
@@ -83,7 +84,7 @@ BEGIN
         , [Evidence] nvarchar(1000) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
-    CREATE TABLE [#Jobs]
+    CREATE TABLE [#AgentMonitoringAnalysis_Jobs]
     (
           [JobId] uniqueidentifier NOT NULL
         , [JobName] sysname NOT NULL
@@ -96,7 +97,7 @@ BEGIN
         , [FindingCode] varchar(100) NOT NULL
         , [FindingSeverity] varchar(16) NOT NULL
     );
-    CREATE TABLE [#Mail]
+    CREATE TABLE [#AgentMonitoringAnalysis_Mail]
     (
           [SentStatus] varchar(8) NULL
         , [ItemCount] bigint NOT NULL
@@ -114,11 +115,11 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN
         BEGIN TRY
-            INSERT [#Services]
+            INSERT [#AgentMonitoringAnalysis_Services]
             SELECT [servicename], [status_desc], [startup_type_desc], [last_startup_time],
                    CASE WHEN [status_desc] = N'Running' THEN 'AGENT_SERVICE_RUNNING'
                         ELSE 'AGENT_SERVICE_NOT_RUNNING' END
-            FROM [sys].[dm_server_services]
+            FROM [sys].[dm_server_services] WITH (NOLOCK)
             WHERE [servicename] LIKE N'SQL Server Agent%';
         END TRY
         BEGIN CATCH
@@ -135,7 +136,7 @@ BEGIN
                 UNION ALL SELECT CONCAT('SEVERITY_', [n]), 0, [n]
                 FROM (VALUES (19),(20),(21),(22),(23),(24),(25)) AS [v]([n])
             )
-            INSERT [#Findings]
+            INSERT [#AgentMonitoringAnalysis_Findings]
             SELECT
                   'ALERT_COVERAGE', 'REQUIRED_AGENT_ALERT_MISSING', 'HIGH', N'ALERT_REQUIREMENT'
                 , [r].[Code], NULL
@@ -151,7 +152,7 @@ BEGIN
                     OR ([r].[Severity] > 0 AND [a].[severity] = [r].[Severity]))
             );
 
-            INSERT [#Findings]
+            INSERT [#AgentMonitoringAnalysis_Findings]
             SELECT
                   'ALERT_ROUTING', [route].[FindingCode], [route].[FindingSeverity], N'ALERT', [a].[name]
                 , CONVERT(bigint, [a].[occurrence_count])
@@ -172,7 +173,7 @@ BEGIN
             ) AS [route]
             WHERE [route].[FindingCode]='ENABLED_ALERT_WITHOUT_ACTION';
 
-            INSERT [#Findings]
+            INSERT [#AgentMonitoringAnalysis_Findings]
             SELECT
                   'ALERT_ROUTING', 'ALERT_TARGET_OPERATOR_DISABLED', 'HIGH', N'OPERATOR', [o].[name]
                 , COUNT_BIG(*)
@@ -184,7 +185,7 @@ BEGIN
             WHERE [a].[enabled] = 1 AND [o].[enabled] = 0
             GROUP BY [o].[name];
 
-            INSERT [#Findings]
+            INSERT [#AgentMonitoringAnalysis_Findings]
             SELECT
                   'ALERT_ACTIVITY', 'ALERT_OCCURRED_IN_WINDOW', 'MEDIUM', N'ALERT', [a].[name]
                 , CONVERT(bigint, [a].[occurrence_count])
@@ -223,7 +224,7 @@ BEGIN
                     JOIN [msdb].[dbo].[sysschedules] AS [s] WITH (NOLOCK) ON [s].[schedule_id] = [js].[schedule_id]
                     GROUP BY [js].[job_id]
                 )
-                INSERT [#Jobs]
+                INSERT [#AgentMonitoringAnalysis_Jobs]
                 SELECT
                       [j].[job_id], [j].[name], [j].[enabled], [o].[RunDateTime], [o].[run_status]
                     , [o].[run_duration], COALESCE([s].[ScheduleCount], 0), COALESCE([s].[EnabledCount], 0)
@@ -248,7 +249,7 @@ BEGIN
         IF @MitDatabaseMail = 1
         BEGIN
             BEGIN TRY
-                INSERT [#Mail]
+                INSERT [#AgentMonitoringAnalysis_Mail]
                 SELECT [sent_status], COUNT_BIG(*), MIN([send_request_date]), MAX([send_request_date])
                 FROM [msdb].[dbo].[sysmail_allitems] WITH (NOLOCK)
                 WHERE [send_request_date] >= @CutoffLocal
@@ -262,21 +263,21 @@ BEGIN
             END CATCH;
         END;
 
-        INSERT [#Findings]
+        INSERT [#AgentMonitoringAnalysis_Findings]
         SELECT 'JOB_ACTIVITY', [FindingCode], [FindingSeverity],
                N'JOB', [JobName], NULL,
                CONCAT(N'Letzter Status=', COALESCE(CONVERT(nvarchar(20), [LatestRunStatus]), N'NULL'),
                       N'; Schedules=', [ScheduleCount], N'; aktive Schedules=', [EnabledScheduleCount], N'.'),
                N'On-demand Jobs und externe Scheduler können einen fehlenden SQL-Agent-Zeitplan erklären.'
-        FROM [#Jobs]
+        FROM [#AgentMonitoringAnalysis_Jobs]
         WHERE [FindingCode] <> 'JOB_STATE_INFORMATIONAL';
 
-        INSERT [#Findings]
+        INSERT [#AgentMonitoringAnalysis_Findings]
         SELECT 'DATABASE_MAIL', [state].[FindingCode], [state].[FindingSeverity],
                N'MAIL_STATUS', [m].[SentStatus], [m].[ItemCount],
                CONCAT(N'Database-Mail-Elemente mit Status ', [m].[SentStatus], N' im Sichtfenster.'),
                N'Empfänger, Betreff und Nachrichtentext werden bewusst nicht gelesen; Mailserver separat prüfen.'
-        FROM [#Mail] AS [m]
+        FROM [#AgentMonitoringAnalysis_Mail] AS [m]
         CROSS APPLY [monitor].[TVF_InterpretDatabaseMailStatus]([m].[SentStatus]) AS [state]
         WHERE [state].[FindingSeverity] IN ('HIGH','MEDIUM');
 
@@ -284,9 +285,9 @@ BEGIN
             SET @StatusCode = 'AVAILABLE_LIMITED';
         ELSE IF EXISTS
                 (
-                    SELECT 1 FROM [#Findings] WHERE [Severity] IN ('HIGH', 'MEDIUM')
+                    SELECT 1 FROM [#AgentMonitoringAnalysis_Findings] WHERE [Severity] IN ('HIGH', 'MEDIUM')
                     UNION ALL
-                    SELECT 1 FROM [#Services] WHERE [FindingCode] = 'AGENT_SERVICE_NOT_RUNNING'
+                    SELECT 1 FROM [#AgentMonitoringAnalysis_Services] WHERE [FindingCode] = 'AGENT_SERVICE_NOT_RUNNING'
                 )
             SET @StatusCode = 'AVAILABLE_WITH_FINDING';
     END;
@@ -301,15 +302,15 @@ BEGIN
                     @Now AS [generatedAtUtc], @StatusCode AS [statusCode], @IsPartial AS [isPartial],
                     @HistoryHours AS [historyHours]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
-        DECLARE @ServicesJson nvarchar(max) = (SELECT * FROM [#Services] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @ServicesJson nvarchar(max) = (SELECT * FROM [#AgentMonitoringAnalysis_Services] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @FindingsJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Findings]
+            (SELECT TOP (@Limit) * FROM [#AgentMonitoringAnalysis_Findings]
              ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                       [Category], [ScopeName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @JobsJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Jobs] ORDER BY [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT TOP (@Limit) * FROM [#AgentMonitoringAnalysis_Jobs] ORDER BY [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @MailJson nvarchar(max) =
-            (SELECT * FROM [#Mail] ORDER BY [SentStatus] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#AgentMonitoringAnalysis_Mail] ORDER BY [SentStatus] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
                            N',"services":', COALESCE(@ServicesJson, N'[]'),
                            N',"findings":', COALESCE(@FindingsJson, N'[]'),
@@ -323,12 +324,12 @@ BEGIN
                @StatusCode AS [StatusCode], @IsPartial AS [IsPartial],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Keine Adressen, Empfänger, Jobbefehle oder Nachrichtentexte gelesen.' AS [Detail];
-        SELECT * FROM [#Services];
-        SELECT TOP (@Limit) * FROM [#Findings]
+        SELECT * FROM [#AgentMonitoringAnalysis_Services];
+        SELECT TOP (@Limit) * FROM [#AgentMonitoringAnalysis_Findings]
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [Category], [ScopeName];
-        SELECT TOP (@Limit) * FROM [#Jobs] ORDER BY [JobName];
-        SELECT * FROM [#Mail] ORDER BY [SentStatus];
+        SELECT TOP (@Limit) * FROM [#AgentMonitoringAnalysis_Jobs] ORDER BY [JobName];
+        SELECT * FROM [#AgentMonitoringAnalysis_Mail] ORDER BY [SentStatus];
     END
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
@@ -337,19 +338,19 @@ BEGIN
         SELECT N'SQL-Agent-Dienst' AS [Ergebnis], [ServiceName] AS [Dienst],
                [StatusDesc] AS [Status], [StartupTypeDesc] AS [Starttyp],
                [LastStartupTime] AS [Letzter_Start], [FindingCode] AS [Befund]
-        FROM [#Services];
+        FROM [#AgentMonitoringAnalysis_Services];
         SELECT TOP (@Limit) N'Monitoring-Befund' AS [Ergebnis], [Category] AS [Kategorie],
                [ScopeType] AS [Bereichstyp], [ScopeName] AS [Bereich],
                [FindingCode] AS [Befund], [Severity] AS [Prioritaet],
                [MetricValue] AS [Messwert], [Evidence] AS [Evidenz], [EvidenceLimit] AS [Grenze]
-        FROM [#Findings]
+        FROM [#AgentMonitoringAnalysis_Findings]
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [Category], [ScopeName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Findings'
+              @SourceTable = N'#AgentMonitoringAnalysis_Findings'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

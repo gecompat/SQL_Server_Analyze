@@ -64,7 +64,7 @@ BEGIN
     DECLARE @MonitorPrintMessage nvarchar(2048) = NULL;
     DECLARE @Delay char(8);
 
-    CREATE TABLE [#Before]
+    CREATE TABLE [#PerformanceCounters_Before]
     (
           [ObjectName] nvarchar(128) NOT NULL
         , [CounterName] nvarchar(128) NOT NULL
@@ -74,7 +74,7 @@ BEGIN
         , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName], [CounterType])
     );
 
-    CREATE TABLE [#After]
+    CREATE TABLE [#PerformanceCounters_After]
     (
           [ObjectName] nvarchar(128) NOT NULL
         , [CounterName] nvarchar(128) NOT NULL
@@ -84,7 +84,7 @@ BEGIN
         , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName], [CounterType])
     );
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#PerformanceCounters_Result]
     (
           [ObjectName] nvarchar(128) NOT NULL
         , [CounterName] nvarchar(128) NOT NULL
@@ -122,11 +122,11 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
         SELECT @SqlServerStartTime = TRY_CONVERT(datetime2(3), [sqlserver_start_time])
-        FROM [sys].[dm_os_sys_info];
+        FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
 
-        INSERT [#Before]
+        INSERT [#PerformanceCounters_Before]
         SELECT DISTINCT RTRIM([object_name]), RTRIM([counter_name]), RTRIM([instance_name]), [cntr_value], [cntr_type]
-        FROM [sys].[dm_os_performance_counters]
+        FROM [sys].[dm_os_performance_counters] WITH (NOLOCK)
         WHERE
             (@ObjectNames IS NULL OR EXISTS
              (
@@ -153,7 +153,7 @@ BEGIN
                      = RTRIM([counter_name]) COLLATE SQL_Latin1_General_CP1_CI_AS
              ));
 
-        IF NOT EXISTS (SELECT 1 FROM [#Before])
+        IF NOT EXISTS (SELECT 1 FROM [#PerformanceCounters_Before])
         BEGIN
             SELECT @StatusCode = 'UNAVAILABLE_OBJECT',
                    @IsPartial = 1,
@@ -169,17 +169,17 @@ BEGIN
 
         SET @SampleEndUtc = SYSUTCDATETIME();
 
-        INSERT [#After]
+        INSERT [#PerformanceCounters_After]
         SELECT DISTINCT RTRIM([p].[object_name]), RTRIM([p].[counter_name]), RTRIM([p].[instance_name]),
                [p].[cntr_value], [p].[cntr_type]
-        FROM [sys].[dm_os_performance_counters] AS [p]
-        JOIN [#Before] AS [b]
+        FROM [sys].[dm_os_performance_counters] AS [p] WITH (NOLOCK)
+        JOIN [#PerformanceCounters_Before] AS [b]
          ON [b].[ObjectName] = [p].[object_name]
          AND [b].[CounterName] = [p].[counter_name]
          AND [b].[InstanceName] = [p].[instance_name]
          AND [b].[CounterType] = [p].[cntr_type];
 
-        INSERT [#Result]
+        INSERT [#PerformanceCounters_Result]
         SELECT
               [a].[ObjectName]
             , [a].[CounterName]
@@ -200,20 +200,20 @@ BEGIN
                 DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0)
             , @SqlServerStartTime
             , [i].[FindingCode]
-        FROM [#After] AS [a]
-        JOIN [#Before] AS [b]
+        FROM [#PerformanceCounters_After] AS [a]
+        JOIN [#PerformanceCounters_Before] AS [b]
          ON [b].[ObjectName] = [a].[ObjectName]
          AND [b].[CounterName] = [a].[CounterName]
          AND [b].[InstanceName] = [a].[InstanceName]
          AND [b].[CounterType] = [a].[CounterType]
-        LEFT JOIN [#Before] AS [baseBefore]
+        LEFT JOIN [#PerformanceCounters_Before] AS [baseBefore]
           ON [baseBefore].[ObjectName] = [a].[ObjectName]
          AND [baseBefore].[InstanceName] = [a].[InstanceName]
          AND [baseBefore].[CounterName] COLLATE SQL_Latin1_General_CP1_CI_AS =
              CONVERT(nvarchar(128), CONCAT(RTRIM([a].[CounterName]), N' base'))
              COLLATE SQL_Latin1_General_CP1_CI_AS
          AND [baseBefore].[CounterType] IN (1073939458, 1073939712)
-        LEFT JOIN [#After] AS [baseAfter]
+        LEFT JOIN [#PerformanceCounters_After] AS [baseAfter]
           ON [baseAfter].[ObjectName] = [a].[ObjectName]
          AND [baseAfter].[InstanceName] = [a].[InstanceName]
          AND [baseAfter].[CounterName] COLLATE SQL_Latin1_General_CP1_CI_AS =
@@ -233,7 +233,7 @@ BEGIN
         ) AS [i]
         WHERE [a].[CounterType] NOT IN (1073939458, 1073939712);
 
-        IF NOT EXISTS (SELECT 1 FROM [#Result])
+        IF NOT EXISTS (SELECT 1 FROM [#PerformanceCounters_Result])
         BEGIN
             SELECT @StatusCode = 'UNAVAILABLE_OBJECT',
                    @IsPartial = 1,
@@ -272,7 +272,7 @@ BEGIN
         IF @OutputMode = 'RAW'
         BEGIN
             SELECT TOP (@Limit) *
-            FROM [#Result]
+            FROM [#PerformanceCounters_Result]
             ORDER BY [ObjectName], [CounterName], [InstanceName];
         END
         ELSE
@@ -288,7 +288,7 @@ BEGIN
                 , [CounterType] AS [Countertyp]
                 , [FindingCode] AS [Bewertung]
                 , [SampleSeconds] AS [Sample Sekunden]
-            FROM [#Result]
+            FROM [#PerformanceCounters_Result]
             ORDER BY [ObjectName], [CounterName], [InstanceName];
         END;
     END;
@@ -307,7 +307,7 @@ BEGIN
         DECLARE @CountersJson nvarchar(max) =
         (
             SELECT TOP (@Limit) *
-            FROM [#Result]
+            FROM [#PerformanceCounters_Result]
             ORDER BY [ObjectName], [CounterName], [InstanceName]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -321,7 +321,7 @@ BEGIN
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#PerformanceCounters_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

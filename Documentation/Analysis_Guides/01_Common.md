@@ -220,9 +220,9 @@ LOW bis MEDIUM. Viele kleine Probes können bei zahlreichen Datenbanken kumulier
 
 Technischer interner Auswahlvertrag. Nicht als normale Analyse-Procedure verwenden.
 
-Die Procedure erwartet, dass der Aufrufer lokale Temp-Tabellen mit exakt definiertem Schema anlegt. Sie liefert keine Resultsets.
+Die Procedure erwartet, dass der Aufrufer lokale Temp-Tabellen mit exakt definiertem Schema anlegt und deren eindeutige Namen über `@CandidateTable` sowie optional `@WarningTable` übergibt. Sie liefert keine Resultsets.
 
-### Befüllte Temp-Tabelle `#DatabaseCandidates`
+### Befüllte Temp-Tabelle `@CandidateTable`
 
 | Spalte | Bedeutung |
 |---|---|
@@ -237,7 +237,7 @@ Die Procedure erwartet, dass der Aufrufer lokale Temp-Tabellen mit exakt definie
 | `IsSystemDatabase` | Systemdatenbankkennzeichen |
 | `RequestedOrdinal` | Reihenfolge einer expliziten Liste |
 
-Optional wird `#DatabaseCandidateWarnings(RequestedName, StatusCode, ErrorMessage)` befüllt.
+Optional wird `@WarningTable(RequestedName, StatusCode, ErrorMessage)` befüllt.
 
 ### OUTPUT-Parameter
 
@@ -271,7 +271,7 @@ Interne Procedure für bracket-aware, case-sensitive Namensfilter. Kein normaler
 
 ### Erwartete Temp-Tabelle
 
-`#NameFilters(FilterType, ItemOrdinal, NameValue, DatabaseName, SchemaName, ObjectName)`
+Die über `@FilterTable` eindeutig benannte lokale Tabelle mit dem Schema `(FilterType, ItemOrdinal, NameValue, DatabaseName, SchemaName, ObjectName)`.
 
 ### Filtertypen
 

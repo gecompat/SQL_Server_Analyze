@@ -519,7 +519,7 @@ Quelle: `Code/04_PlanCache/040_USP_PlanDetails.sql`
 Quelle: `Code/01_Common/083_USP_PrepareDatabaseCandidates.sql`
 
 ```sql
-@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @AnalysisClass varchar(64) = 'CROSS_DATABASE_DEEP', @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT, @CrossDatabaseRequested bit OUTPUT
+@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @AnalysisClass varchar(64) = 'CROSS_DATABASE_DEEP', @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT, @CrossDatabaseRequested bit OUTPUT, @CandidateTable sysname = N'#PrepareDatabaseCandidates_Result', @WarningTable sysname = NULL
 ```
 
 ## `[monitor].[USP_PrepareNameFilters]`
@@ -527,7 +527,7 @@ Quelle: `Code/01_Common/083_USP_PrepareDatabaseCandidates.sql`
 Quelle: `Code/01_Common/084_USP_PrepareNameFilters.sql`
 
 ```sql
-@SchemaNames nvarchar(max) = NULL, @ObjectNames nvarchar(max) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @StatisticsNames nvarchar(max) = NULL, @ColumnNames nvarchar(max) = NULL, @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT
+@SchemaNames nvarchar(max) = NULL, @ObjectNames nvarchar(max) = NULL, @FullObjectNames nvarchar(max) = NULL, @IndexNames nvarchar(max) = NULL, @StatisticsNames nvarchar(max) = NULL, @ColumnNames nvarchar(max) = NULL, @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT, @FilterTable sysname = N'#PrepareNameFilters_Result'
 ```
 
 ## `[monitor].[USP_QueryHashAnalysis]`

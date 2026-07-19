@@ -17,7 +17,7 @@ SET XACT_ABORT ON;
 DECLARE @ExecutedCases TABLE([CaseId] varchar(64) NOT NULL PRIMARY KEY);
 DECLARE @Json nvarchar(max),@Status varchar(40),@Partial bit,@ErrorNumber int,@ErrorMessage nvarchar(2048);
 DECLARE @Definition nvarchar(max),@Sql nvarchar(max);
-DECLARE @DatabaseName sysname=DB_NAME();
+DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID());
 DECLARE @DeniedDatabase sysname=N'ExampleFeatureDeniedDatabase';
 DECLARE @Impersonating bit=0;
 DECLARE @ChangeTrackingWasEnabled bit=
@@ -198,7 +198,12 @@ BEGIN TRY
     INSERT @ExecutedCases VALUES('FEATURE-BOUNDED');
 
     /* FEATURE-DENIED: zweite Datenbank bleibt für den synthetischen User unzugänglich. */
-    IF DB_ID(@DeniedDatabase) IS NOT NULL
+    IF EXISTS
+       (
+           SELECT 1
+           FROM [master].[sys].[databases] WITH (NOLOCK)
+           WHERE [name]=@DeniedDatabase COLLATE SQL_Latin1_General_CP1_CS_AS
+       )
     BEGIN
         SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';';
         EXEC [sys].[sp_executesql] @Sql;
@@ -276,7 +281,12 @@ BEGIN CATCH
         IF EXISTS(SELECT 1 FROM [sys].[service_queues] WITH (NOLOCK) WHERE [name]=N'ExampleFeatureQueue') DROP QUEUE [dbo].[ExampleFeatureQueue];
         IF EXISTS(SELECT 1 FROM [sys].[types] WITH (NOLOCK) WHERE [is_user_defined]=1 AND [name]=N'ExampleFeatureType') DROP TYPE [dbo].[ExampleFeatureType];
         IF USER_ID(N'ExampleFeatureRestrictedUser') IS NOT NULL DROP USER [ExampleFeatureRestrictedUser];
-        IF DB_ID(@DeniedDatabase) IS NOT NULL
+        IF EXISTS
+           (
+               SELECT 1
+               FROM [master].[sys].[databases] WITH (NOLOCK)
+               WHERE [name]=@DeniedDatabase COLLATE SQL_Latin1_General_CP1_CS_AS
+           )
         BEGIN
             SET @Sql=N'ALTER DATABASE '+QUOTENAME(@DeniedDatabase)+N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE '+QUOTENAME(@DeniedDatabase)+N';';
             EXEC [sys].[sp_executesql] @Sql;

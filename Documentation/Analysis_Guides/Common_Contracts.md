@@ -13,7 +13,9 @@ Dieses Dokument gilt für alle Analyse-Procedures. Die familienbezogenen Guides 
 | `TABLE` | primäres typisiertes Ergebnis in lokaler `#Temp`-Tabelle | Weiterverarbeitung in derselben SQL-Sitzung |
 | `NONE` | keine fachlichen Resultsets | JSON-only, Aggregatoren und statusorientierte Aufrufe |
 
-Bei technischer Verarbeitung ist `RAW` oder `TABLE` ausdrücklich zu setzen. Die sichtbare CONSOLE-Ausgabe kann Spalten ausblenden, formatieren oder mehrere technische Werte zusammenfassen. `TABLE` benötigt eine vom Aufrufer angelegte lokale Platzhaltertabelle, beispielsweise `CREATE TABLE #Result ([__MonitorPlaceholder] bit NULL)`, und `@ResultTable=N'#Result'`. Permanente Tabellen und globale Temp-Tabellen sind nicht Bestandteil dieses Vertrags.
+Bei technischer Verarbeitung ist `RAW` oder `TABLE` ausdrücklich zu setzen. Die sichtbare CONSOLE-Ausgabe kann Spalten ausblenden, formatieren oder mehrere technische Werte zusammenfassen. `TABLE` benötigt eine vom Aufrufer angelegte leere lokale Tabelle mit genau einer beliebigen Dummy-Spalte, beispielsweise `CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL)`, und `@ResultTable=N'#CurrentRequests_Result'`. Permanente Tabellen und globale Temp-Tabellen sind nicht Bestandteil dieses Vertrags.
+
+Jede öffentliche Procedure bleibt eigenständig aufrufbar und ermittelt zeitabhängige Daten für ihren eigenen Aufruf frisch. Innerhalb einer Procedure werden sicher wiederverwendbare Kataloginformationen begrenzt materialisiert; zwischen nacheinander ausgeführten öffentlichen Procedures existiert bewusst kein impliziter Cache, weil dessen Alter und Scope sonst die Ergebnissemantik verändern würden.
 
 ## 2. JSON und OUTPUT-Status
 

@@ -33,7 +33,7 @@ RETURN
     OUTER APPLY
     (
         SELECT TOP (1) *
-        FROM [monitor].[WaitTypeCatalog] WITH (READUNCOMMITTED)
+        FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK)
         WHERE [WaitType] = @WaitType
     ) AS [c]
     CROSS APPLY

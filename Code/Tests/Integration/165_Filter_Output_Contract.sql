@@ -18,13 +18,13 @@ SET XACT_ABORT ON;
 SET LOCK_TIMEOUT 5000;
 GO
 
-CREATE TABLE [#Failure]
+CREATE TABLE [#Filter_Output_Contract_Failure]
 (
       [TestName] sysname NOT NULL
     , [Detail] nvarchar(2048) NOT NULL
 );
 
-CREATE TABLE [#PublicProcedureResult]
+CREATE TABLE [#Filter_Output_Contract_PublicProcedureResult]
 (
       [ProcedureName] sysname NOT NULL
     , [TestStatus] varchar(16) NOT NULL
@@ -35,7 +35,7 @@ CREATE TABLE [#PublicProcedureResult]
 
 /* Bracket-aware Pipe-Listen: Trennung nur außerhalb von [ ... ]. */
 IF (SELECT COUNT(*) FROM [monitor].[TVF_ParsePipeList](N'[A|B]|[C]]D]|E') WHERE [IsValid]=1) <> 3
-    INSERT [#Failure] VALUES(N'TVF_ParsePipeList_valid',N'Gültige bracket-aware Pipe-Liste wurde nicht in drei Elemente zerlegt.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePipeList_valid',N'Gültige bracket-aware Pipe-Liste wurde nicht in drei Elemente zerlegt.');
 
 IF NOT EXISTS
 (
@@ -43,7 +43,7 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParsePipeList](N'[A|B]|[C]]D]|E')
     WHERE [ItemOrdinal]=1 AND [ItemText]=N'[A|B]' AND [IsBracketQuoted]=1 AND [IsValid]=1
 )
-    INSERT [#Failure] VALUES(N'TVF_ParsePipeList_bracket_pipe',N'Pipe innerhalb eines bracket-quotierten Elements wurde nicht erhalten.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePipeList_bracket_pipe',N'Pipe innerhalb eines bracket-quotierten Elements wurde nicht erhalten.');
 
 IF NOT EXISTS
 (
@@ -51,7 +51,7 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParsePipeList](N'A||B')
     WHERE [ItemOrdinal]=2 AND [IsValid]=0 AND [ErrorCode]='EMPTY_ITEM'
 )
-    INSERT [#Failure] VALUES(N'TVF_ParsePipeList_empty_item',N'Leeres Pipe-Listenelement wurde nicht als ungültig erkannt.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePipeList_empty_item',N'Leeres Pipe-Listenelement wurde nicht als ungültig erkannt.');
 
 IF NOT EXISTS
 (
@@ -59,12 +59,12 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParsePipeList](N'[A|B')
     WHERE [IsValid]=0 AND [ErrorCode]='INVALID_BRACKET_SYNTAX'
 )
-    INSERT [#Failure] VALUES(N'TVF_ParsePipeList_bracket_syntax',N'Nicht geschlossene Klammer wurde nicht als ungültig erkannt.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePipeList_bracket_syntax',N'Nicht geschlossene Klammer wurde nicht als ungültig erkannt.');
 
 
 /* Numerische Listen: Pipe, Beistrich und Strichpunkt sind gleichwertig. */
 IF (SELECT COUNT(*) FROM [monitor].[TVF_ParseBigintList](N'11, 22;33|44') WHERE [IsValid]=1) <> 4
-    INSERT [#Failure] VALUES(N'TVF_ParseBigintList_delimiters',N'Gemischte numerische Trennzeichen wurden nicht in vier gültige Elemente zerlegt.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParseBigintList_delimiters',N'Gemischte numerische Trennzeichen wurden nicht in vier gültige Elemente zerlegt.');
 
 IF NOT EXISTS
 (
@@ -72,7 +72,7 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParseBigintList](N'11, 22;33|44')
     WHERE [ItemOrdinal]=2 AND [ItemText]=N'22' AND [NumberValue]=22 AND [IsValid]=1
 )
-    INSERT [#Failure] VALUES(N'TVF_ParseBigintList_ordinal',N'Beistrich-getrenntes numerisches Listenelement wurde nicht korrekt normalisiert.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParseBigintList_ordinal',N'Beistrich-getrenntes numerisches Listenelement wurde nicht korrekt normalisiert.');
 
 IF NOT EXISTS
 (
@@ -80,7 +80,7 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParseBigintList](N'11,;22')
     WHERE [ItemOrdinal]=2 AND [IsValid]=0 AND [ErrorCode]='EMPTY_ITEM'
 )
-    INSERT [#Failure] VALUES(N'TVF_ParseBigintList_empty_item',N'Leeres numerisches Listenelement zwischen gemischten Trennzeichen wurde nicht erkannt.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParseBigintList_empty_item',N'Leeres numerisches Listenelement zwischen gemischten Trennzeichen wurde nicht erkannt.');
 
 IF NOT EXISTS
 (
@@ -88,7 +88,7 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParseSqlNameList](N'[A|B]|[C]]D]')
     WHERE [ItemOrdinal]=1 AND [NameValue]=N'A|B' AND [IsValid]=1
 )
-    INSERT [#Failure] VALUES(N'TVF_ParseSqlNameList',N'Bracket-quotierter einteiliger SQL-Name wurde nicht korrekt entquotet.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParseSqlNameList',N'Bracket-quotierter einteiliger SQL-Name wurde nicht korrekt entquotet.');
 
 IF NOT EXISTS
 (
@@ -96,7 +96,7 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParseFullObjectNameList](N'[ExampleDatabase].[dbo].[A|B]|[dbo].[C]')
     WHERE [ItemOrdinal]=1 AND [DatabaseName]=N'ExampleDatabase' AND [SchemaName]=N'dbo' AND [ObjectName]=N'A|B' AND [IsValid]=1
 )
-    INSERT [#Failure] VALUES(N'TVF_ParseFullObjectNameList',N'Dreiteiliger bracket-aware Objektname wurde nicht korrekt verarbeitet.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParseFullObjectNameList',N'Dreiteiliger bracket-aware Objektname wurde nicht korrekt verarbeitet.');
 
 IF NOT EXISTS
 (
@@ -104,7 +104,7 @@ IF NOT EXISTS
     FROM [monitor].[TVF_ParseFullObjectNameList](N'[Server].[DeineDatenbank].[dbo].[Objekt]')
     WHERE [IsValid]=0 AND [ErrorCode]='FOUR_PART_NAME_NOT_ALLOWED'
 )
-    INSERT [#Failure] VALUES(N'TVF_ParseFullObjectNameList_four_part',N'Verbotener vierteiliger Objektname wurde nicht abgelehnt.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParseFullObjectNameList_four_part',N'Verbotener vierteiliger Objektname wurde nicht abgelehnt.');
 
 /* Pattern-Präfixe sind case-insensitiv, der Patterninhalt bleibt unverändert. */
 IF NOT EXISTS
@@ -112,28 +112,28 @@ IF NOT EXISTS
     SELECT 1 FROM [monitor].[TVF_ParsePattern](N'LiKe:Ab_%')
     WHERE [PatternMode]='LIKE' AND [PatternValue]=N'Ab_%' AND [IsValid]=1
 )
-    INSERT [#Failure] VALUES(N'TVF_ParsePattern_like',N'LIKE-Pattern wurde nicht korrekt normalisiert.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePattern_like',N'LIKE-Pattern wurde nicht korrekt normalisiert.');
 
 IF NOT EXISTS
 (
     SELECT 1 FROM [monitor].[TVF_ParsePattern](N'ReGeX:^Ab.+$')
     WHERE [PatternMode]='REGEX' AND [RegexFlags]='c' AND [IsValid]=1
 )
-    INSERT [#Failure] VALUES(N'TVF_ParsePattern_regex',N'regex:-Pattern wurde nicht korrekt normalisiert.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePattern_regex',N'regex:-Pattern wurde nicht korrekt normalisiert.');
 
 IF NOT EXISTS
 (
     SELECT 1 FROM [monitor].[TVF_ParsePattern](N'ReGeXi:^ab.+$')
     WHERE [PatternMode]='REGEXI' AND [RegexFlags]='i' AND [IsValid]=1
 )
-    INSERT [#Failure] VALUES(N'TVF_ParsePattern_regexi',N'regexi:-Pattern wurde nicht korrekt normalisiert.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePattern_regexi',N'regexi:-Pattern wurde nicht korrekt normalisiert.');
 
 IF NOT EXISTS
 (
     SELECT 1 FROM [monitor].[TVF_ParsePattern](N'regex:')
     WHERE [IsValid]=0 AND [ErrorCode]='EMPTY_PATTERN'
 )
-    INSERT [#Failure] VALUES(N'TVF_ParsePattern_empty',N'Leeres Pattern nach Präfix wurde nicht abgelehnt.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePattern_empty',N'Leeres Pattern nach Präfix wurde nicht abgelehnt.');
 
 /* Repräsentative reale Consumer: exakte Listen, LIKE und Konfliktvalidierung. */
 DECLARE @SelfSessionIds nvarchar(20)=CONVERT(nvarchar(20),@@SPID);
@@ -148,7 +148,7 @@ EXEC [monitor].[USP_CurrentSessions]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_CurrentSessions_exact_list',N'Exakte Sessionliste erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CurrentSessions_exact_list',N'Exakte Sessionliste erzeugte kein gültiges JSON.');
 
 SET @Json=NULL;
 EXEC [monitor].[USP_CurrentSessions]
@@ -160,7 +160,7 @@ EXEC [monitor].[USP_CurrentSessions]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_CurrentSessions_like',N'LIKE-Filter erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CurrentSessions_like',N'LIKE-Filter erzeugte kein gültiges JSON.');
 
 SET @Json=NULL;
 EXEC [monitor].[USP_CurrentSessions]
@@ -172,7 +172,7 @@ EXEC [monitor].[USP_CurrentSessions]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF JSON_VALUE(@Json,N'$.meta.statusCode')<>N'INVALID_PARAMETER'
-    INSERT [#Failure] VALUES(N'USP_CurrentSessions_list_pattern_conflict',N'Gleichzeitige exakte Liste und Pattern wurden nicht als INVALID_PARAMETER zurückgewiesen.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CurrentSessions_list_pattern_conflict',N'Gleichzeitige exakte Liste und Pattern wurden nicht als INVALID_PARAMETER zurückgewiesen.');
 
 SET @Json=NULL;
 EXEC [monitor].[USP_CurrentWaits]
@@ -183,7 +183,7 @@ EXEC [monitor].[USP_CurrentWaits]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_CurrentWaits_exact_list',N'Exakte Waitliste erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CurrentWaits_exact_list',N'Exakte Waitliste erzeugte kein gültiges JSON.');
 
 SET @Json=NULL;
 EXEC [monitor].[USP_CurrentWaits]
@@ -194,7 +194,7 @@ EXEC [monitor].[USP_CurrentWaits]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_CurrentWaits_like',N'LIKE-Waitfilter erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CurrentWaits_like',N'LIKE-Waitfilter erzeugte kein gültiges JSON.');
 
 SET @Json=NULL;
 EXEC [monitor].[USP_CurrentWaits]
@@ -206,9 +206,9 @@ EXEC [monitor].[USP_CurrentWaits]
     , @PrintMeldungen=0;
 IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17
    AND JSON_VALUE(@Json,N'$.meta.statusCode')<>N'UNAVAILABLE_FEATURE'
-    INSERT [#Failure] VALUES(N'USP_CurrentWaits_regex_version_fallback',N'Regex wurde auf einem Server vor SQL Server 2025 nicht als UNAVAILABLE_FEATURE ausgewiesen.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CurrentWaits_regex_version_fallback',N'Regex wurde auf einem Server vor SQL Server 2025 nicht als UNAVAILABLE_FEATURE ausgewiesen.');
 IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=17 AND ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_CurrentWaits_regex',N'Regex-Waitfilter erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CurrentWaits_regex',N'Regex-Waitfilter erzeugte kein gültiges JSON.');
 
 SET @Json=NULL;
 EXEC [monitor].[USP_CheckFrameworkCapabilities]
@@ -219,7 +219,7 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_CheckFrameworkCapabilities_database_scope',N'Aktueller Datenbankscope erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CheckFrameworkCapabilities_database_scope',N'Aktueller Datenbankscope erzeugte kein gültiges JSON.');
 
 SET @Json=NULL;
 EXEC [monitor].[USP_CheckFrameworkCapabilities]
@@ -230,7 +230,7 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_CheckFrameworkCapabilities_database_like',N'Datenbank-LIKE-Filter erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_CheckFrameworkCapabilities_database_like',N'Datenbank-LIKE-Filter erzeugte kein gültiges JSON.');
 
 /* Query Store: dynamische Regressionsermittlung muss ohne abgefangene SQL-Fehler laufen. */
 SET @Json=NULL;
@@ -243,7 +243,7 @@ EXEC [monitor].[USP_QueryStoreRegressions]
     , @Json=@Json OUTPUT
     , @PrintMeldungen=0;
 IF ISJSON(@Json)<>1
-    INSERT [#Failure] VALUES(N'USP_QueryStoreRegressions_json',N'Query-Store-Regressionsanalyse erzeugte kein gültiges JSON.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_QueryStoreRegressions_json',N'Query-Store-Regressionsanalyse erzeugte kein gültiges JSON.');
 ELSE IF JSON_VALUE(@Json,N'$.meta.statusCode')=N'ERROR_HANDLED'
      OR EXISTS
      (
@@ -256,14 +256,14 @@ ELSE IF JSON_VALUE(@Json,N'$.meta.statusCode')=N'ERROR_HANDLED'
          ) AS [w]
          WHERE [w].[StatusCode]=N'ERROR_HANDLED' OR [w].[ErrorNumber]=209
      )
-    INSERT [#Failure] VALUES(N'USP_QueryStoreRegressions_dynamic_sql',N'Query-Store-Regressionsanalyse enthielt einen abgefangenen dynamischen SQL-Fehler.');
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'USP_QueryStoreRegressions_dynamic_sql',N'Query-Store-Regressionsanalyse enthielt einen abgefangenen dynamischen SQL-Fehler.');
 
 /* Alle öffentlichen Procedures: NONE+JSON mit sicheren Begrenzungen. */
 DECLARE @ProcedureName sysname,@ObjectId int,@Sql nvarchar(max),@Arguments nvarchar(max);
 DECLARE [ProcedureCursor] CURSOR LOCAL FAST_FORWARD FOR
 SELECT [p].[name],[p].[object_id]
-FROM [sys].[procedures] AS [p]
-JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[p].[schema_id]
+FROM [sys].[procedures] AS [p] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id]
 WHERE [s].[name]=N'monitor'
   AND [p].[name] NOT IN(N'USP_PrepareDatabaseCandidates',N'USP_PrepareNameFilters',N'InternalWriteResultTable')
 ORDER BY [p].[name];
@@ -273,23 +273,23 @@ FETCH NEXT FROM [ProcedureCursor] INTO @ProcedureName,@ObjectId;
 WHILE @@FETCH_STATUS=0
 BEGIN
     SET @Arguments=N'@ResultSetArt=N''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WHERE [object_id]=@ObjectId AND [name]=N'@DatabaseNames') SET @Arguments+=N',@DatabaseNames=N''''';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WHERE [object_id]=@ObjectId AND [name]=N'@QueryStoreDatabaseNames') SET @Arguments+=N',@QueryStoreDatabaseNames=N''''';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WHERE [object_id]=@ObjectId AND [name]=N'@MaxDatenbanken') SET @Arguments+=N',@MaxDatenbanken=1';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WHERE [object_id]=@ObjectId AND [name]=N'@MaxZeilen') SET @Arguments+=N',@MaxZeilen=1';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WHERE [object_id]=@ObjectId AND [name]=N'@MaxAnalyseobjekte') SET @Arguments+=N',@MaxAnalyseobjekte=1';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WHERE [object_id]=@ObjectId AND [name]=N'@LockTimeoutMs') SET @Arguments+=N',@LockTimeoutMs=5000';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WHERE [object_id]=@ObjectId AND [name]=N'@PrintMeldungen') SET @Arguments+=N',@PrintMeldungen=0';
+    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@DatabaseNames') SET @Arguments+=N',@DatabaseNames=N''''';
+    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@QueryStoreDatabaseNames') SET @Arguments+=N',@QueryStoreDatabaseNames=N''''';
+    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@MaxDatenbanken') SET @Arguments+=N',@MaxDatenbanken=1';
+    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@MaxZeilen') SET @Arguments+=N',@MaxZeilen=1';
+    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@MaxAnalyseobjekte') SET @Arguments+=N',@MaxAnalyseobjekte=1';
+    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@LockTimeoutMs') SET @Arguments+=N',@LockTimeoutMs=5000';
+    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@PrintMeldungen') SET @Arguments+=N',@PrintMeldungen=0';
 
     SET @Sql=N'
 BEGIN TRY
     DECLARE @Json nvarchar(max);
     EXEC [monitor].'+QUOTENAME(@ProcedureName)+N' '+@Arguments+N';
-    INSERT [#PublicProcedureResult]([ProcedureName],[TestStatus],[JsonStatus])
+    INSERT [#Filter_Output_Contract_PublicProcedureResult]([ProcedureName],[TestStatus],[JsonStatus])
     VALUES(N'''+REPLACE(@ProcedureName,N'''',N'''''')+N''',''PASS'',CASE WHEN ISJSON(@Json)=1 THEN ''VALID_JSON'' ELSE ''MISSING_OR_INVALID_JSON'' END);
 END TRY
 BEGIN CATCH
-    INSERT [#PublicProcedureResult]([ProcedureName],[TestStatus],[ErrorNumber],[ErrorMessage])
+    INSERT [#Filter_Output_Contract_PublicProcedureResult]([ProcedureName],[TestStatus],[ErrorNumber],[ErrorMessage])
     VALUES(N'''+REPLACE(@ProcedureName,N'''',N'''''')+N''',''FAIL'',ERROR_NUMBER(),ERROR_MESSAGE());
 END CATCH;';
     EXEC [sys].[sp_executesql] @Sql;
@@ -298,9 +298,9 @@ END;
 CLOSE [ProcedureCursor];
 DEALLOCATE [ProcedureCursor];
 
-INSERT [#Failure]([TestName],[Detail])
+INSERT [#Filter_Output_Contract_Failure]([TestName],[Detail])
 SELECT [ProcedureName],CONCAT(N'NONE/JSON-Laufzeittest fehlgeschlagen: ',COALESCE([ErrorMessage],[JsonStatus],N'Unbekannter Fehler.'))
-FROM [#PublicProcedureResult]
+FROM [#Filter_Output_Contract_PublicProcedureResult]
 WHERE [TestStatus]<>'PASS' OR [JsonStatus]<>'VALID_JSON';
 
 /* Repräsentative RAW- und CONSOLE-Ausführung derselben öffentlichen API. */
@@ -329,15 +329,15 @@ BEGIN TRY
         , @PrintMeldungen=0;
 END TRY
 BEGIN CATCH
-    INSERT [#Failure] VALUES(N'RAW_CONSOLE_contract',CONCAT(N'RAW- oder CONSOLE-Ausführung fehlgeschlagen: ',ERROR_MESSAGE()));
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'RAW_CONSOLE_contract',CONCAT(N'RAW- oder CONSOLE-Ausführung fehlgeschlagen: ',ERROR_MESSAGE()));
 END CATCH;
 
-SELECT [TestName],[Detail] FROM [#Failure] ORDER BY [TestName];
+SELECT [TestName],[Detail] FROM [#Filter_Output_Contract_Failure] ORDER BY [TestName];
 SELECT [TestStatus],[JsonStatus],COUNT(*) AS [ProcedureCount]
-FROM [#PublicProcedureResult]
+FROM [#Filter_Output_Contract_PublicProcedureResult]
 GROUP BY [TestStatus],[JsonStatus]
 ORDER BY [TestStatus],[JsonStatus];
 
-IF EXISTS(SELECT 1 FROM [#Failure])
+IF EXISTS(SELECT 1 FROM [#Filter_Output_Contract_Failure])
     THROW 54130,N'Der Filter-, Ausgabe- oder JSON-Vertrag ist verletzt.',1;
 GO

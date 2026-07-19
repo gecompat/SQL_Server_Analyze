@@ -75,7 +75,7 @@ BEGIN
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
 
-    CREATE TABLE [#Cfg]
+    CREATE TABLE [#ResourceGovernorAnalysis_Cfg]
     (
           [ClassifierFunctionId]   int            NULL
         , [IsEnabled]              bit            NULL
@@ -83,7 +83,7 @@ BEGIN
         , [ClassifierFunctionName] nvarchar(517)  NULL
     );
 
-    CREATE TABLE [#Pools]
+    CREATE TABLE [#ResourceGovernorAnalysis_Pools]
     (
           [PoolId]                    int            NOT NULL
         , [PoolName]                  sysname        NOT NULL
@@ -107,7 +107,7 @@ BEGIN
         , [UsedOfMaxMemoryPercent]    decimal(9,2)   NULL
     );
 
-    CREATE TABLE [#Groups]
+    CREATE TABLE [#ResourceGovernorAnalysis_Groups]
     (
           [GroupId]                              int            NOT NULL
         , [GroupName]                            sysname        NOT NULL
@@ -133,7 +133,7 @@ BEGIN
         , [TotalLockWaitTimeMs]                  bigint         NULL
     );
 
-    CREATE TABLE [#Sessions]
+    CREATE TABLE [#ResourceGovernorAnalysis_Sessions]
     (
           [SessionId]        int            NOT NULL
         , [LoginName]        sysname        NULL
@@ -151,7 +151,7 @@ BEGIN
         , [LogicalReads]     bigint         NULL
     );
 
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#ResourceGovernorAnalysis_Warnings]
     (
           [WarningCode]    varchar(40)     NOT NULL
         , [WarningMessage] nvarchar(2048)  NOT NULL
@@ -168,7 +168,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#Cfg]
+        INSERT [#ResourceGovernorAnalysis_Cfg]
         (
               [ClassifierFunctionId], [IsEnabled]
             , [ReconfigurationPending], [ClassifierFunctionName]
@@ -183,14 +183,14 @@ BEGIN
                   ELSE QUOTENAME([classifier_schema].[name])
                        + N'.' + QUOTENAME([classifier_object].[name])
               END
-        FROM [sys].[resource_governor_configuration] AS [stored]
-        CROSS JOIN [sys].[dm_resource_governor_configuration] AS [effective]
+        FROM [sys].[resource_governor_configuration] AS [stored] WITH (NOLOCK)
+        CROSS JOIN [sys].[dm_resource_governor_configuration] AS [effective] WITH (NOLOCK)
         LEFT JOIN [master].[sys].[objects] AS [classifier_object] WITH (NOLOCK)
           ON [classifier_object].[object_id] = [stored].[classifier_function_id]
         LEFT JOIN [master].[sys].[schemas] AS [classifier_schema] WITH (NOLOCK)
           ON [classifier_schema].[schema_id] = [classifier_object].[schema_id];
 
-        INSERT [#Pools]
+        INSERT [#ResourceGovernorAnalysis_Pools]
         (
               [PoolId], [PoolName], [MinCpuPercent], [MaxCpuPercent]
             , [MinMemoryPercent], [MaxMemoryPercent], [CapCpuPercent]
@@ -221,12 +221,12 @@ BEGIN
             , [d].[memgrant_waiter_count]
             , CONVERT(decimal(9,2), 100.0 * [d].[used_memory_kb] / NULLIF([d].[target_memory_kb], 0))
             , CONVERT(decimal(9,2), 100.0 * [d].[used_memory_kb] / NULLIF([d].[max_memory_kb], 0))
-        FROM [sys].[resource_governor_resource_pools] AS [p]
-        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [d]
+        FROM [sys].[resource_governor_resource_pools] AS [p] WITH (NOLOCK)
+        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [d] WITH (NOLOCK)
           ON [d].[pool_id] = [p].[pool_id]
         ORDER BY [p].[pool_id];
 
-        INSERT [#Groups]
+        INSERT [#ResourceGovernorAnalysis_Groups]
         (
               [GroupId], [GroupName], [PoolId], [PoolName], [Importance]
             , [RequestMaxMemoryGrantPercent]
@@ -275,18 +275,18 @@ BEGIN
             , [dg].[total_cpu_usage_ms]
             , [dg].[total_lock_wait_count]
             , [dg].[total_lock_wait_time_ms]
-        FROM [sys].[resource_governor_workload_groups] AS [g]
-        LEFT JOIN [sys].[resource_governor_resource_pools] AS [p]
+        FROM [sys].[resource_governor_workload_groups] AS [g] WITH (NOLOCK)
+        LEFT JOIN [sys].[resource_governor_resource_pools] AS [p] WITH (NOLOCK)
           ON [p].[pool_id] = [g].[pool_id]
-        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [dg]
+        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [dg] WITH (NOLOCK)
           ON [dg].[group_id] = [g].[group_id]
-        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [dp]
+        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [dp] WITH (NOLOCK)
           ON [dp].[pool_id] = [g].[pool_id]
         ORDER BY [g].[group_id];
 
         IF @MitSessions = 1
         BEGIN
-            INSERT [#Sessions]
+            INSERT [#ResourceGovernorAnalysis_Sessions]
             (
                   [SessionId], [LoginName], [HostName], [ProgramName]
                 , [GroupId], [GroupName], [PoolName], [Status]
@@ -308,10 +308,10 @@ BEGIN
                 , [s].[reads]
                 , [s].[writes]
                 , [s].[logical_reads]
-            FROM [sys].[dm_exec_sessions] AS [s]
-            LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [g]
+            FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+            LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [g] WITH (NOLOCK)
               ON [g].[group_id] = [s].[group_id]
-            LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [p]
+            LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [p] WITH (NOLOCK)
               ON [p].[pool_id] = [g].[pool_id]
             WHERE [s].[is_user_process] = 1
             ORDER BY [s].[cpu_time] DESC, [s].[session_id];
@@ -323,7 +323,7 @@ BEGIN
         SET @IsPartial = 1;
         SET @ErrorNumber = ERROR_NUMBER();
         SET @ErrorMessage = ERROR_MESSAGE();
-        INSERT [#Warnings] VALUES(@StatusCode, @ErrorMessage);
+        INSERT [#ResourceGovernorAnalysis_Warnings] VALUES(@StatusCode, @ErrorMessage);
 
         IF @PrintMeldungen = 1
         BEGIN
@@ -352,16 +352,16 @@ BEGIN
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @CfgJson nvarchar(max) =
-            (SELECT * FROM [#Cfg] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#ResourceGovernorAnalysis_Cfg] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @PoolsJson nvarchar(max) =
-            (SELECT * FROM [#Pools] ORDER BY [PoolId] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#ResourceGovernorAnalysis_Pools] ORDER BY [PoolId] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @GroupsJson nvarchar(max) =
-            (SELECT * FROM [#Groups] ORDER BY [GroupId] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#ResourceGovernorAnalysis_Groups] ORDER BY [GroupId] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SessionsJson nvarchar(max) =
-            (SELECT * FROM [#Sessions] ORDER BY [CpuTimeMs] DESC, [SessionId] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#ResourceGovernorAnalysis_Sessions] ORDER BY [CpuTimeMs] DESC, [SessionId] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
             (SELECT [WarningCode] AS [code], [WarningMessage] AS [message]
-             FROM [#Warnings] FOR JSON PATH, INCLUDE_NULL_VALUES);
+             FROM [#ResourceGovernorAnalysis_Warnings] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
         (
@@ -384,10 +384,10 @@ BEGIN
             , @IsPartial AS [IsPartial]
             , @ErrorNumber AS [ErrorNumber]
             , @ErrorMessage AS [ErrorMessage];
-        SELECT * FROM [#Cfg];
-        SELECT * FROM [#Pools] ORDER BY [PoolId];
-        SELECT * FROM [#Groups] ORDER BY [GroupId];
-        SELECT * FROM [#Sessions] ORDER BY [CpuTimeMs] DESC, [SessionId];
+        SELECT * FROM [#ResourceGovernorAnalysis_Cfg];
+        SELECT * FROM [#ResourceGovernorAnalysis_Pools] ORDER BY [PoolId];
+        SELECT * FROM [#ResourceGovernorAnalysis_Groups] ORDER BY [GroupId];
+        SELECT * FROM [#ResourceGovernorAnalysis_Sessions] ORDER BY [CpuTimeMs] DESC, [SessionId];
     END
     ELSE IF @ResultSetArtNormalisiert = 'CONSOLE'
     BEGIN
@@ -403,7 +403,7 @@ BEGIN
             , [ClassifierFunctionName] AS [Classifier_Function]
             , [IsEnabled] AS [Aktiv]
             , [ReconfigurationPending] AS [Reconfiguration_ausständig]
-        FROM [#Cfg];
+        FROM [#ResourceGovernorAnalysis_Cfg];
 
         SELECT
               N'Resource Pool' AS [Ergebnis]
@@ -419,7 +419,7 @@ BEGIN
             , CONCAT(CONVERT(varchar(40), [UsedOfTargetMemoryPercent]), N' %') AS [Verwendet_vom_Target]
             , [PendingMemgrantCount] AS [Wartende_Memory_Grants]
             , [OutOfMemoryCount] AS [Out_of_Memory]
-        FROM [#Pools]
+        FROM [#ResourceGovernorAnalysis_Pools]
         ORDER BY [PoolId];
 
         SELECT
@@ -435,7 +435,7 @@ BEGIN
             , [ActiveRequestCount] AS [Aktive_Requests]
             , [QueuedRequestCount] AS [Wartende_Requests]
             , [TotalReducedMemgrantCount] AS [Reduzierte_Memory_Grants]
-        FROM [#Groups]
+        FROM [#ResourceGovernorAnalysis_Groups]
         ORDER BY [GroupId];
 
         IF @MitSessions = 1
@@ -452,14 +452,14 @@ BEGIN
                 , CONCAT(CONVERT(varchar(40), [MemoryUsageMb]), N' MB') AS [Session_Memory]
                 , [CpuTimeMs] AS [CPU_ms]
                 , [LogicalReads] AS [Logical_Reads]
-            FROM [#Sessions]
+            FROM [#ResourceGovernorAnalysis_Sessions]
             ORDER BY [CpuTimeMs] DESC, [SessionId];
         END;
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Cfg'
+              @SourceTable = N'#ResourceGovernorAnalysis_Cfg'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

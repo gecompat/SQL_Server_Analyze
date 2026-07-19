@@ -130,7 +130,7 @@ BEGIN
     DECLARE @TextPredicate nvarchar(max) = N'';
     DECLARE @ReferencedPredicate nvarchar(max) = N'';
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#QueryStoreRuntimeStats_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname NOT NULL
@@ -144,7 +144,7 @@ BEGIN
         , [RequestedOrdinal] int NULL
     );
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#QueryStoreRuntimeStats_Result]
     (
           [QueryStoreDatabaseId] int NULL
         , [QueryStoreDatabaseName] sysname NOT NULL
@@ -176,7 +176,7 @@ BEGIN
         , [QueryPlan] nvarchar(max) NULL
     );
 
-    CREATE TABLE [#Errors]
+    CREATE TABLE [#QueryStoreRuntimeStats_Errors]
     (
           [DatabaseName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL
@@ -228,7 +228,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#QueryStoreRuntimeStats_DatabaseCandidates';
     END;
 
     SET @Deep = CONVERT
@@ -300,7 +300,7 @@ BEGIN
     BEGIN
         DECLARE [c] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseName], [CompatibilityLevel]
-            FROM [#DatabaseCandidates]
+            FROM [#QueryStoreRuntimeStats_DatabaseCandidates]
             ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
         OPEN [c];
@@ -316,7 +316,7 @@ BEGIN
                    OR @DbCompatibilityLevel < 170
                )
             BEGIN
-                INSERT [#Errors]
+                INSERT [#QueryStoreRuntimeStats_Errors]
                 VALUES
                 (
                       @Db
@@ -332,7 +332,7 @@ BEGIN
 IF EXISTS
 (
     SELECT 1
-    FROM [sys].[database_query_store_options]
+    FROM [sys].[database_query_store_options] WITH (NOLOCK)
     WHERE [actual_state] IN (1, 2, 4)
 )
 BEGIN
@@ -356,8 +356,8 @@ BEGIN
             , SUM(CONVERT(float, [rs].[avg_rowcount]) * [rs].[count_executions]) AS [rows_weighted]
             , SUM(CONVERT(float, [rs].[avg_log_bytes_used]) * [rs].[count_executions]) AS [log_weighted]
             , SUM(CONVERT(float, [rs].[avg_tempdb_space_used]) * [rs].[count_executions]) AS [tempdb_weighted]
-        FROM [sys].[query_store_runtime_stats] AS [rs]
-        JOIN [sys].[query_store_runtime_stats_interval] AS [rsi]
+        FROM [sys].[query_store_runtime_stats] AS [rs] WITH (NOLOCK)
+        JOIN [sys].[query_store_runtime_stats_interval] AS [rsi] WITH (NOLOCK)
           ON [rsi].[runtime_stats_interval_id] = [rs].[runtime_stats_interval_id]
         WHERE [rsi].[end_time] > @FromUtc
           AND [rsi].[start_time] < @ToUtc
@@ -389,11 +389,11 @@ BEGIN
             , [qt].[query_sql_text]
             , [p].[query_plan]
         FROM [RI]
-        JOIN [sys].[query_store_plan] AS [p]
+        JOIN [sys].[query_store_plan] AS [p] WITH (NOLOCK)
           ON [p].[plan_id] = [RI].[plan_id]
-        JOIN [sys].[query_store_query] AS [q]
+        JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
           ON [q].[query_id] = [p].[query_id]
-        JOIN [sys].[query_store_query_text] AS [qt]
+        JOIN [sys].[query_store_query_text] AS [qt] WITH (NOLOCK)
           ON [qt].[query_text_id] = [q].[query_text_id]
         WHERE (@QueryId IS NULL OR [q].[query_id] = @QueryId)
           AND (@QueryHash IS NULL OR [q].[query_hash] = @QueryHash)' + @TextPredicate + @ReferencedPredicate + N'
@@ -401,7 +401,7 @@ BEGIN
                  [p].[query_plan_hash], [q].[object_id],
                  [RI].[execution_type_desc], [qt].[query_sql_text], [p].[query_plan]
     )
-    INSERT [#Result]
+    INSERT [#QueryStoreRuntimeStats_Result]
     (
           [QueryStoreDatabaseId], [QueryStoreDatabaseName], [QueryId], [PlanId]
         , [QueryHash], [QueryPlanHash], [ObjectId], [ObjectName]
@@ -415,7 +415,7 @@ BEGIN
     )
     SELECT TOP (@TopRows)
           DB_ID()
-        , DB_NAME()
+        , (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())
         , [query_id]
         , [plan_id]
         , [query_hash]
@@ -472,7 +472,7 @@ END;';
                     , @ReferencedRegexFlags = @ReferencedRegexFlags;
             END TRY
             BEGIN CATCH
-                INSERT [#Errors]
+                INSERT [#QueryStoreRuntimeStats_Errors]
                 VALUES
                 (
                       @Db
@@ -502,18 +502,18 @@ END;';
         CLOSE [c];
         DEALLOCATE [c];
 
-        SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#Result];
+        SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#QueryStoreRuntimeStats_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen THEN 1 ELSE 0 END);
         SET @RowCount = CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen
                              THEN @EffectiveMaxZeilen ELSE @CandidateRowCount END;
 
-        IF @RowCount = 0 AND EXISTS (SELECT 1 FROM [#Errors])
+        IF @RowCount = 0 AND EXISTS (SELECT 1 FROM [#QueryStoreRuntimeStats_Errors])
         BEGIN
             SET @StatusCode = 'AVAILABLE_LIMITED';
             SELECT TOP (1)
                   @ErrorNumber = [ErrorNumber]
                 , @ErrorMessage = [ErrorMessage]
-            FROM [#Errors]
+            FROM [#QueryStoreRuntimeStats_Errors]
             ORDER BY [DatabaseName];
         END
         ELSE IF @IsPartial = 1
@@ -547,7 +547,7 @@ END;';
             FROM
             (
                 SELECT TOP (@EffectiveMaxZeilen) [r].*
-                FROM [#Result] AS [r]
+                FROM [#QueryStoreRuntimeStats_Result] AS [r]
                 ORDER BY
                       CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
                     , CASE WHEN @Sortierung = 'CPU_TOTAL' THEN [TotalCpuMs]
@@ -568,7 +568,7 @@ END;';
         DECLARE @WarningsJson nvarchar(max) =
             (SELECT [DatabaseName] AS [databaseName], [StatusCode] AS [code],
                     [ErrorNumber] AS [errorNumber], [ErrorMessage] AS [message]
-             FROM [#Errors] ORDER BY [DatabaseName]
+             FROM [#QueryStoreRuntimeStats_Errors] ORDER BY [DatabaseName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
@@ -599,7 +599,7 @@ END;';
                      N'; Deep=', @Deep) AS [Detail];
 
         SELECT TOP (@EffectiveMaxZeilen) [r].*
-        FROM [#Result] AS [r]
+        FROM [#QueryStoreRuntimeStats_Result] AS [r]
         ORDER BY
               CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
             , CASE WHEN @Sortierung = 'CPU_TOTAL' THEN [TotalCpuMs]
@@ -615,7 +615,7 @@ END;';
             , [QueryId]
             , [PlanId];
 
-        SELECT * FROM [#Errors] ORDER BY [DatabaseName];
+        SELECT * FROM [#QueryStoreRuntimeStats_Errors] ORDER BY [DatabaseName];
     END
     ELSE IF @ResultSetArtNormalisiert = 'CONSOLE'
     BEGIN
@@ -650,7 +650,7 @@ END;';
             , [r].[LastExecutionTimeUtc] AS [Letzte_Ausführung_UTC]
             , [r].[QuerySqlText] AS [SQL_Text]
             , [r].[QueryPlan] AS [Query_Plan]
-        FROM [#Result] AS [r]
+        FROM [#QueryStoreRuntimeStats_Result] AS [r]
         ORDER BY
               CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
             , CASE WHEN @Sortierung = 'CPU_TOTAL' THEN [TotalCpuMs]
@@ -672,13 +672,13 @@ END;';
             , [StatusCode] AS [Status]
             , [ErrorNumber] AS [Fehlernummer]
             , [ErrorMessage] AS [Meldung]
-        FROM [#Errors]
+        FROM [#QueryStoreRuntimeStats_Errors]
         ORDER BY [DatabaseName];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#QueryStoreRuntimeStats_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

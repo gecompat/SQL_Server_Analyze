@@ -62,6 +62,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentLog]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -107,7 +108,7 @@ BEGIN
              THEN N'VIEW SERVER PERFORMANCE STATE / VIEW DATABASE PERFORMANCE STATE'
              ELSE N'VIEW SERVER STATE' END;
 
-    CREATE TABLE [#DatabaseCandidates]
+    CREATE TABLE [#CurrentLog_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -121,14 +122,14 @@ BEGIN
         , [RequestedOrdinal] int NULL
     );
 
-    CREATE TABLE [#DatabaseCandidateWarnings]
+    CREATE TABLE [#CurrentLog_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StatusCode] varchar(40) NOT NULL
         , [ErrorMessage] nvarchar(2048) NOT NULL
     );
 
-    CREATE TABLE [#Result]
+    CREATE TABLE [#CurrentLog_Result]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
@@ -151,7 +152,7 @@ BEGIN
         , [PvsStatus] varchar(40) NOT NULL
     );
 
-    CREATE TABLE [#Errors]
+    CREATE TABLE [#CurrentLog_Errors]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SubModule] varchar(40) NOT NULL
@@ -179,7 +180,7 @@ BEGIN
             , @AnalysisClass = 'CROSS_DATABASE_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
-            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT;
+            , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#CurrentLog_DatabaseCandidates',@WarningTable=N'#CurrentLog_DatabaseCandidateWarnings';
     END;
 
     IF @StatusCode = 'AVAILABLE' AND @MitVlfInformationen = 1
@@ -191,7 +192,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             SET @VlfAllowed = 0;
-            INSERT [#Errors] VALUES(NULL, 'VLF_GATE', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT [#CurrentLog_Errors] VALUES(NULL, 'VLF_GATE', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
 
         SET @VlfStatus = CASE WHEN @VlfAllowed = 1 THEN 'AVAILABLE' ELSE 'DENIED_GROUP' END;
@@ -200,7 +201,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN
-        INSERT [#Result]
+        INSERT [#CurrentLog_Result]
         (
               [DatabaseId], [DatabaseName], [RecoveryModel], [LogReuseWaitDesc]
             , [IsAdrEnabled], [SpaceStatus], [StatsStatus], [VlfStatus], [PvsStatus]
@@ -215,8 +216,8 @@ BEGIN
             , 'PENDING'
             , CASE WHEN @MitVlfInformationen = 0 THEN 'SKIPPED' ELSE @VlfStatus END
             , CASE WHEN @MitPersistentVersionStore = 0 THEN 'SKIPPED' ELSE 'PENDING' END
-        FROM [master].[sys].[databases] AS [d] WITH (READUNCOMMITTED)
-        INNER JOIN [#DatabaseCandidates] AS [c]
+        FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)
+        INNER JOIN [#CurrentLog_DatabaseCandidates] AS [c]
           ON [c].[DatabaseId] = [d].[database_id];
 
         DECLARE @DbName sysname;
@@ -235,7 +236,7 @@ BEGIN
 
         DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
         SELECT [DatabaseId], [DatabaseName]
-        FROM [#DatabaseCandidates]
+        FROM [#CurrentLog_DatabaseCandidates]
         ORDER BY COALESCE([RequestedOrdinal], [DatabaseId]), [DatabaseId];
 
         OPEN [DatabaseCursor];
@@ -251,22 +252,22 @@ SELECT
     , @Used  = CONVERT(decimal(19,2), [used_log_space_in_bytes] / 1048576.0)
     , @Pct   = CONVERT(decimal(19,4), [used_log_space_in_percent])
     , @Since = CONVERT(decimal(19,2), [log_space_in_bytes_since_last_backup] / 1048576.0)
-FROM [sys].[dm_db_log_space_usage];';
+FROM [sys].[dm_db_log_space_usage] WITH (NOLOCK);';
                 EXEC [sys].[sp_executesql] @Sql,
                     N'@Total decimal(19,2) OUTPUT,@Used decimal(19,2) OUTPUT,@Pct decimal(19,4) OUTPUT,@Since decimal(19,2) OUTPUT',
                     @Total OUTPUT, @Used OUTPUT, @Pct OUTPUT, @Since OUTPUT;
-                UPDATE [#Result]
+                UPDATE [#CurrentLog_Result]
                 SET [TotalLogSizeMb] = @Total, [UsedLogSizeMb] = @Used,
                     [UsedLogPercent] = @Pct, [LogSinceLastBackupMb] = @Since,
                     [SpaceStatus] = 'AVAILABLE'
                 WHERE [DatabaseId] = @DbId;
             END TRY
             BEGIN CATCH
-                UPDATE [#Result]
+                UPDATE [#CurrentLog_Result]
                 SET [SpaceStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END
                 WHERE [DatabaseId] = @DbId;
-                INSERT [#Errors] VALUES(@DbName, 'LOG_SPACE',
+                INSERT [#CurrentLog_Errors] VALUES(@DbName, 'LOG_SPACE',
                     CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
@@ -287,18 +288,18 @@ FROM [sys].[dm_db_log_stats](DB_ID());';
                 EXEC [sys].[sp_executesql] @Sql,
                     N'@ActiveVlf bigint OUTPUT,@TotalVlf bigint OUTPUT,@Holdup nvarchar(60) OUTPUT,@Backup datetime OUTPUT,@Recovery decimal(19,2) OUTPUT',
                     @ActiveVlf OUTPUT, @TotalVlf OUTPUT, @Holdup OUTPUT, @Backup OUTPUT, @Recovery OUTPUT;
-                UPDATE [#Result]
+                UPDATE [#CurrentLog_Result]
                 SET [ActiveVlfCount] = @ActiveVlf, [TotalVlfCount] = @TotalVlf,
                     [LogTruncationHoldupReason] = @Holdup, [LogBackupTime] = @Backup,
                     [LogRecoverySizeMb] = @Recovery, [StatsStatus] = 'AVAILABLE'
                 WHERE [DatabaseId] = @DbId;
             END TRY
             BEGIN CATCH
-                UPDATE [#Result]
+                UPDATE [#CurrentLog_Result]
                 SET [StatsStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END
                 WHERE [DatabaseId] = @DbId;
-                INSERT [#Errors] VALUES(@DbName, 'LOG_STATS',
+                INSERT [#CurrentLog_Errors] VALUES(@DbName, 'LOG_STATS',
                     CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                          WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
@@ -312,16 +313,16 @@ FROM [sys].[dm_db_log_stats](DB_ID());';
                     SET @Sql = N'USE ' + QUOTENAME(@DbName) + N';
 SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
                     EXEC [sys].[sp_executesql] @Sql, N'@Cnt bigint OUTPUT', @Cnt OUTPUT;
-                    UPDATE [#Result]
+                    UPDATE [#CurrentLog_Result]
                     SET [TotalVlfCount] = COALESCE([TotalVlfCount], @Cnt), [VlfStatus] = 'AVAILABLE'
                     WHERE [DatabaseId] = @DbId;
                 END TRY
                 BEGIN CATCH
-                    UPDATE [#Result]
+                    UPDATE [#CurrentLog_Result]
                     SET [VlfStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                                            WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END
                     WHERE [DatabaseId] = @DbId;
-                    INSERT [#Errors] VALUES(@DbName, 'LOG_INFO',
+                    INSERT [#CurrentLog_Errors] VALUES(@DbName, 'LOG_INFO',
                         CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
                              WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
                         ERROR_NUMBER(), ERROR_MESSAGE());
@@ -341,40 +342,40 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
                 ;WITH [Pvs] AS
                 (
                     SELECT [database_id], SUM([persistent_version_store_size_kb]) AS [PersistentVersionStoreSizeKb]
-                    FROM [sys].[dm_tran_persistent_version_store_stats]
+                    FROM [sys].[dm_tran_persistent_version_store_stats] WITH (NOLOCK)
                     GROUP BY [database_id]
                 )
                 UPDATE [r]
                 SET [PersistentVersionStoreMb] = CONVERT(decimal(19,2), COALESCE([p].[PersistentVersionStoreSizeKb], 0) / 1024.0),
                     [PvsStatus] = 'AVAILABLE'
-                FROM [#Result] AS [r]
+                FROM [#CurrentLog_Result] AS [r]
                 LEFT JOIN [Pvs] AS [p] ON [p].[database_id] = [r].[DatabaseId]
                 WHERE [r].[IsAdrEnabled] = 1;
 
-                UPDATE [#Result]
+                UPDATE [#CurrentLog_Result]
                 SET [PvsStatus] = 'NOT_APPLICABLE'
                 WHERE [IsAdrEnabled] = 0 AND [PvsStatus] = 'PENDING';
             END TRY
             BEGIN CATCH
-                INSERT [#Errors] VALUES(NULL, 'ADR_PVS',
+                INSERT [#CurrentLog_Errors] VALUES(NULL, 'ADR_PVS',
                     CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                     ERROR_NUMBER(), ERROR_MESSAGE());
-                UPDATE [#Result]
+                UPDATE [#CurrentLog_Result]
                 SET [PvsStatus] = CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
                 WHERE [PvsStatus] = 'PENDING';
                 SET @IsPartial = 1;
             END CATCH;
         END;
 
-        DELETE FROM [#Result]
+        DELETE FROM [#CurrentLog_Result]
         WHERE @MinUsedPercent IS NOT NULL
           AND COALESCE([UsedLogPercent], -1) < @MinUsedPercent;
 
-        SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#Result];
+        SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#CurrentLog_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen THEN 1 ELSE 0 END);
         SET @RowCount = CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen THEN @EffectiveMaxZeilen ELSE @CandidateRowCount END;
 
-        IF EXISTS(SELECT 1 FROM [#Errors]) OR EXISTS(SELECT 1 FROM [#DatabaseCandidateWarnings]) OR @VlfStatus = 'DENIED_GROUP'
+        IF EXISTS(SELECT 1 FROM [#CurrentLog_Errors]) OR EXISTS(SELECT 1 FROM [#CurrentLog_DatabaseCandidateWarnings]) OR @VlfStatus = 'DENIED_GROUP'
         BEGIN
             SET @StatusCode = CASE WHEN @RowCount > 0 THEN 'PARTIAL_RESULT' ELSE 'ERROR_HANDLED' END;
             SET @IsPartial = 1;
@@ -382,10 +383,10 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
 
         SET @Detail = CONCAT
         (
-              N'Datenbanken=', (SELECT COUNT(*) FROM [#DatabaseCandidates])
+              N'Datenbanken=', (SELECT COUNT(*) FROM [#CurrentLog_DatabaseCandidates])
             , N'; Ergebniszeilen=', @RowCount
-            , N'; Fehler=', (SELECT COUNT(*) FROM [#Errors])
-            , N'; nicht verfügbare explizite Datenbanken=', (SELECT COUNT(*) FROM [#DatabaseCandidateWarnings])
+            , N'; Fehler=', (SELECT COUNT(*) FROM [#CurrentLog_Errors])
+            , N'; nicht verfügbare explizite Datenbanken=', (SELECT COUNT(*) FROM [#CurrentLog_DatabaseCandidateWarnings])
             , N'; VLF=', CASE WHEN @MitVlfInformationen = 0 THEN N'aus' ELSE @VlfStatus END
             , N'.'
         );
@@ -420,21 +421,21 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
         DECLARE @JsonLogs nvarchar(max) =
         (
             SELECT TOP (@EffectiveMaxZeilen) [r].*
-            FROM [#Result] AS [r]
+            FROM [#CurrentLog_Result] AS [r]
             ORDER BY [r].[UsedLogPercent] DESC, [r].[DatabaseName]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @JsonStatus nvarchar(max) =
         (
             SELECT [DatabaseName], [SubModule], [StatusCode], [ErrorNumber], [ErrorMessage]
-            FROM [#Errors]
+            FROM [#CurrentLog_Errors]
             ORDER BY [DatabaseName], [SubModule]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @JsonWarnings nvarchar(max) =
         (
             SELECT [RequestedName] AS [databaseName], [StatusCode] AS [code], [ErrorMessage] AS [message]
-            FROM [#DatabaseCandidateWarnings]
+            FROM [#CurrentLog_DatabaseCandidateWarnings]
             ORDER BY [RequestedName]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -463,11 +464,11 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
             , @Detail AS [Detail];
 
         SELECT TOP (@EffectiveMaxZeilen) [r].*
-        FROM [#Result] AS [r]
+        FROM [#CurrentLog_Result] AS [r]
         ORDER BY [r].[UsedLogPercent] DESC, [r].[DatabaseName];
 
         SELECT [DatabaseName], [SubModule], [StatusCode], [ErrorNumber], [ErrorMessage]
-        FROM [#Errors]
+        FROM [#CurrentLog_Errors]
         ORDER BY [DatabaseName], [SubModule];
     END
     ELSE IF @ResultSetArtNormalisiert = 'CONSOLE'
@@ -497,7 +498,7 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
             , [r].[StatsStatus] AS [Stats_Status]
             , [r].[VlfStatus] AS [VLF_Status]
             , [r].[PvsStatus] AS [PVS_Status]
-        FROM [#Result] AS [r]
+        FROM [#CurrentLog_Result] AS [r]
         ORDER BY [r].[UsedLogPercent] DESC, [r].[DatabaseName];
 
         SELECT
@@ -507,13 +508,13 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
             , [StatusCode] AS [Status]
             , [ErrorNumber] AS [Fehlernummer]
             , [ErrorMessage] AS [Fehlermeldung]
-        FROM [#Errors]
+        FROM [#CurrentLog_Errors]
         ORDER BY [DatabaseName], [SubModule];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Result'
+              @SourceTable = N'#CurrentLog_Result'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

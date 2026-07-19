@@ -20,12 +20,12 @@ EXEC [monitor].[USP_DiagnosticFindings]
     , @Json = @Json OUTPUT;
 SELECT @Json AS [Json];
 
-CREATE TABLE #RequestResult ([__MonitorPlaceholder] bit NULL);
+CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL);
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen = 100
     , @ResultSetArt = 'TABLE'
-    , @ResultTable = N'#RequestResult';
-SELECT * FROM #RequestResult ORDER BY [SessionId],[RequestId];
+    , @ResultTable = N'#CurrentRequests_Result';
+SELECT * FROM #CurrentRequests_Result ORDER BY [SessionId],[RequestId];
 
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetails=0,@MaxZeilen=100;
 EXEC [monitor].[USP_PerformanceCounters] @SampleSeconds=5,@MaxZeilen=100;

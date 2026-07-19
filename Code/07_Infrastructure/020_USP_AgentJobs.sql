@@ -72,14 +72,14 @@ BEGIN
     DECLARE @ErrorNumber int = NULL;
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
 
-    CREATE TABLE [#JobNameFilter]
+    CREATE TABLE [#AgentJobs_JobNameFilter]
     (
           [ItemOrdinal] int NOT NULL
         , [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , CONSTRAINT [PK_JobNameFilter] PRIMARY KEY ([JobName])
     );
 
-    CREATE TABLE [#Jobs]
+    CREATE TABLE [#AgentJobs_Jobs]
     (
           [JobId] uniqueidentifier
         , [JobName] sysname
@@ -100,7 +100,7 @@ BEGIN
         , [ProblemCode] varchar(100)
     );
 
-    CREATE TABLE [#Steps]
+    CREATE TABLE [#AgentJobs_Steps]
     (
           [JobName] sysname
         , [StepId] int
@@ -116,7 +116,7 @@ BEGIN
 
     IF @JobNames IS NOT NULL
     BEGIN
-        INSERT [#JobNameFilter]([ItemOrdinal], [JobName])
+        INSERT [#AgentJobs_JobNameFilter]([ItemOrdinal], [JobName])
         SELECT [ItemOrdinal], [NameValue]
         FROM [monitor].[TVF_ParseSqlNameList](@JobNames)
         WHERE [IsValid] = 1;
@@ -182,7 +182,7 @@ BEGIN
               ON [sc].[schedule_id] = [js].[schedule_id]
             GROUP BY [js].[job_id]
         )
-        INSERT [#Jobs]
+        INSERT [#AgentJobs_Jobs]
         SELECT TOP (CASE WHEN @PatternMode IN ('REGEX', 'REGEXI') THEN CONVERT(bigint, 9223372036854775807) ELSE @EffectiveMaxZeilen END)
               [j].[job_id]
             , [j].[name]
@@ -218,11 +218,11 @@ BEGIN
         LEFT JOIN [S] AS [s] ON [s].[job_id] = [j].[job_id]
         WHERE
             (
-                NOT EXISTS (SELECT 1 FROM [#JobNameFilter])
+                NOT EXISTS (SELECT 1 FROM [#AgentJobs_JobNameFilter])
                 OR EXISTS
                    (
                        SELECT 1
-                       FROM [#JobNameFilter] AS [f]
+                       FROM [#AgentJobs_JobNameFilter] AS [f]
                        WHERE [f].[JobName] = [j].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
                    )
             )
@@ -249,7 +249,7 @@ BEGIN
         IF @PatternMode IN ('REGEX', 'REGEXI')
         BEGIN
             DECLARE @RegexSql nvarchar(max) = N'DELETE [j]
-FROM [#Jobs] AS [j]
+FROM [#AgentJobs_Jobs] AS [j]
 WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
 
             EXEC [sys].[sp_executesql]
@@ -267,10 +267,10 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
                       [JobId]
                     , ROW_NUMBER() OVER
                       (ORDER BY CASE WHEN [ProblemCode] IS NULL THEN 1 ELSE 0 END, [JobName]) AS [rn]
-                FROM [#Jobs]
+                FROM [#AgentJobs_Jobs]
             )
             DELETE [j]
-            FROM [#Jobs] AS [j]
+            FROM [#AgentJobs_Jobs] AS [j]
             JOIN [D] AS [d] ON [d].[JobId] = [j].[JobId]
             WHERE [d].[rn] > @EffectiveMaxZeilen;
         END;
@@ -282,7 +282,7 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
             FROM [msdb].[dbo].[sysjobhistory] AS [h] WITH (NOLOCK)
             WHERE [h].[step_id] > 0
         )
-        INSERT [#Steps]
+        INSERT [#AgentJobs_Steps]
         SELECT TOP (@EffectiveMaxZeilen)
               [j].[name], [st].[step_id], [st].[step_name], [st].[subsystem], [h].[run_status]
             , CASE [h].[run_status] WHEN 0 THEN N'FAILED' WHEN 1 THEN N'SUCCEEDED'
@@ -294,7 +294,7 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
             , [h].[retries_attempted], [h].[message]
         FROM [msdb].[dbo].[sysjobsteps] AS [st] WITH (NOLOCK)
         JOIN [msdb].[dbo].[sysjobs] AS [j] WITH (NOLOCK) ON [j].[job_id] = [st].[job_id]
-        JOIN [#Jobs] AS [selected] ON [selected].[JobId] = [j].[job_id]
+        JOIN [#AgentJobs_Jobs] AS [selected] ON [selected].[JobId] = [j].[job_id]
         LEFT JOIN [SH] AS [h]
           ON [h].[job_id] = [st].[job_id]
          AND [h].[step_id] = [st].[step_id]
@@ -325,8 +325,8 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
 
         IF @ResultSetArtNormalisiert = 'RAW'
         BEGIN
-            SELECT * FROM [#Jobs] ORDER BY CASE WHEN [ProblemCode] IS NULL THEN 1 ELSE 0 END, [JobName];
-            SELECT * FROM [#Steps] ORDER BY [JobName], [StepId];
+            SELECT * FROM [#AgentJobs_Jobs] ORDER BY CASE WHEN [ProblemCode] IS NULL THEN 1 ELSE 0 END, [JobName];
+            SELECT * FROM [#AgentJobs_Steps] ORDER BY [JobName], [StepId];
         END;
         ELSE
         BEGIN
@@ -345,7 +345,7 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
                 , [EnabledScheduleCount] AS [Aktive Schedules]
                 , [StepCount] AS [Steps]
                 , [LastMessage] AS [Letzte Meldung]
-            FROM [#Jobs]
+            FROM [#AgentJobs_Jobs]
             ORDER BY CASE WHEN [ProblemCode] IS NULL THEN 1 ELSE 0 END, [JobName];
 
             SELECT
@@ -359,7 +359,7 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
                 , CASE WHEN [LastRunDurationSeconds] IS NULL THEN NULL ELSE CONCAT([LastRunDurationSeconds], N' s') END AS [Laufzeit]
                 , [LastRunRetries] AS [Retries]
                 , [LastRunMessage] AS [Meldung]
-            FROM [#Steps]
+            FROM [#AgentJobs_Steps]
             ORDER BY [JobName], [StepId];
         END;
     END;
@@ -375,16 +375,16 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
                 , @StatusCode AS [statusCode]
                 , @IsPartial AS [isPartial]
                 , @MaxZeilen AS [requestedMaxRows]
-                , (SELECT COUNT_BIG(*) FROM [#Jobs]) AS [jobCount]
-                , (SELECT COUNT_BIG(*) FROM [#Steps]) AS [stepCount]
+                , (SELECT COUNT_BIG(*) FROM [#AgentJobs_Jobs]) AS [jobCount]
+                , (SELECT COUNT_BIG(*) FROM [#AgentJobs_Steps]) AS [stepCount]
                 , @ErrorNumber AS [errorNumber]
                 , @ErrorMessage AS [errorMessage]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @JobsJson nvarchar(max) =
-            (SELECT * FROM [#Jobs] ORDER BY CASE WHEN [ProblemCode] IS NULL THEN 1 ELSE 0 END, [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#AgentJobs_Jobs] ORDER BY CASE WHEN [ProblemCode] IS NULL THEN 1 ELSE 0 END, [JobName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @StepsJson nvarchar(max) =
-            (SELECT * FROM [#Steps] ORDER BY [JobName], [StepId] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT * FROM [#AgentJobs_Steps] ORDER BY [JobName], [StepId] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
         SET @Json = CONCAT
         (
@@ -397,7 +397,7 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Jobs'
+              @SourceTable = N'#AgentJobs_Jobs'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

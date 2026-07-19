@@ -11,26 +11,26 @@ Zweck        : Entfernt ausschließlich veraltete Frameworkobjekte aus früheren
 ===============================================================================
 */
 
-IF OBJECT_ID(N'monitor.USP_SQLServer2025Features',N'P') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[procedures] AS [p] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id] WHERE [s].[name]=N'monitor' AND [p].[name]=N'USP_SQLServer2025Features')
     DROP PROCEDURE [monitor].[USP_SQLServer2025Features];
 GO
 
-IF OBJECT_ID(N'monitor.USP_FrameworkContractInventory',N'P') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[procedures] AS [p] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id] WHERE [s].[name]=N'monitor' AND [p].[name]=N'USP_FrameworkContractInventory')
     DROP PROCEDURE [monitor].[USP_FrameworkContractInventory];
-IF OBJECT_ID(N'monitor.USP_FrameworkSelfTest',N'P') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[procedures] AS [p] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id] WHERE [s].[name]=N'monitor' AND [p].[name]=N'USP_FrameworkSelfTest')
     DROP PROCEDURE [monitor].[USP_FrameworkSelfTest];
-IF OBJECT_ID(N'monitor.USP_FrameworkInstallationHistory',N'P') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[procedures] AS [p] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id] WHERE [s].[name]=N'monitor' AND [p].[name]=N'USP_FrameworkInstallationHistory')
     DROP PROCEDURE [monitor].[USP_FrameworkInstallationHistory];
-IF OBJECT_ID(N'monitor.USP_FrameworkInstallationFinish',N'P') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[procedures] AS [p] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id] WHERE [s].[name]=N'monitor' AND [p].[name]=N'USP_FrameworkInstallationFinish')
     DROP PROCEDURE [monitor].[USP_FrameworkInstallationFinish];
-IF OBJECT_ID(N'monitor.USP_FrameworkInstallationBegin',N'P') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[procedures] AS [p] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id] WHERE [s].[name]=N'monitor' AND [p].[name]=N'USP_FrameworkInstallationBegin')
     DROP PROCEDURE [monitor].[USP_FrameworkInstallationBegin];
 GO
 
-IF OBJECT_ID(N'monitor.FrameworkProcedureContract',N'U') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'monitor' AND [t].[name]=N'FrameworkProcedureContract')
     DROP TABLE [monitor].[FrameworkProcedureContract];
-IF OBJECT_ID(N'monitor.FrameworkExpectedObject',N'U') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'monitor' AND [t].[name]=N'FrameworkExpectedObject')
     DROP TABLE [monitor].[FrameworkExpectedObject];
-IF OBJECT_ID(N'monitor.FrameworkInstallationHistory',N'U') IS NOT NULL
+IF EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'monitor' AND [t].[name]=N'FrameworkInstallationHistory')
     DROP TABLE [monitor].[FrameworkInstallationHistory];
 GO

@@ -69,9 +69,9 @@ FROM @Expected AS [e]
 WHERE NOT EXISTS
 (
     SELECT 1
-    FROM [sys].[procedures] AS [p]
-    JOIN [sys].[schemas] AS [s] ON [s].[schema_id]=[p].[schema_id]
-    JOIN [sys].[parameters] AS [x] ON [x].[object_id]=[p].[object_id]
+    FROM [sys].[procedures] AS [p] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id]
+    JOIN [sys].[parameters] AS [x] WITH (NOLOCK) ON [x].[object_id]=[p].[object_id]
     WHERE [s].[name]=N'monitor'
       AND [p].[name]=[e].[ProcedureName]
       AND [x].[name]=[e].[RequiredParameter]
@@ -83,11 +83,32 @@ BEGIN
     THROW 54100,@Message,1;
 END;
 
+DECLARE @ProcedureMetadata TABLE
+(
+      [ProcedureName] sysname NOT NULL PRIMARY KEY
+    , [ObjectId] int NOT NULL
+    , [Definition] nvarchar(max) NULL
+);
+
+INSERT @ProcedureMetadata ([ProcedureName],[ObjectId],[Definition])
+SELECT [p].[name],[p].[object_id],[m].[definition]
+FROM [sys].[procedures] AS [p] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id]=[p].[schema_id]
+LEFT JOIN [sys].[sql_modules] AS [m] WITH (NOLOCK)
+  ON [m].[object_id]=[p].[object_id]
+WHERE [s].[name]=N'monitor';
+
+DECLARE @DiagnosticFindingsObjectId int =
+    (SELECT [ObjectId] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_DiagnosticFindings');
+DECLARE @ServerHealthAnalysisObjectId int =
+    (SELECT [ObjectId] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_ServerHealthAnalysis');
+
 IF NOT EXISTS
 (
     SELECT 1
-    FROM [sys].[sql_expression_dependencies] AS [d]
-    WHERE [d].[referencing_id]=OBJECT_ID(N'monitor.USP_DiagnosticFindings')
+    FROM [sys].[sql_expression_dependencies] AS [d] WITH (NOLOCK)
+    WHERE [d].[referencing_id]=@DiagnosticFindingsObjectId
       AND [d].[referenced_entity_name]=N'USP_DatabaseIntegrityAnalysis'
 )
     THROW 54101,N'USP_DiagnosticFindings besitzt keine erkennbare Abhängigkeit zur Integritätsevidenz.',1;
@@ -95,8 +116,8 @@ IF NOT EXISTS
 IF NOT EXISTS
 (
     SELECT 1
-    FROM [sys].[parameters]
-    WHERE [object_id]=OBJECT_ID(N'monitor.USP_ServerHealthAnalysis')
+    FROM [sys].[parameters] WITH (NOLOCK)
+    WHERE [object_id]=@ServerHealthAnalysisObjectId
       AND [name]=N'@MitFindings'
 )
     THROW 54102,N'Der Server-Health-Orchestrator veröffentlicht @MitFindings nicht.',1;
@@ -104,13 +125,14 @@ IF NOT EXISTS
 IF NOT EXISTS
 (
     SELECT 1
-    FROM [sys].[sql_expression_dependencies] AS [d]
-    WHERE [d].[referencing_id]=OBJECT_ID(N'monitor.USP_DiagnosticFindings')
+    FROM [sys].[sql_expression_dependencies] AS [d] WITH (NOLOCK)
+    WHERE [d].[referencing_id]=@DiagnosticFindingsObjectId
       AND [d].[referenced_entity_name]=N'USP_StatisticsDistributionAnalysis'
 )
     THROW 54103,N'USP_DiagnosticFindings besitzt keine erkennbare Abhängigkeit zur Statistikverteilung.',1;
 
-DECLARE @InMemoryDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_InMemoryOltpAnalysis'));
+DECLARE @InMemoryDefinition nvarchar(max)=
+    (SELECT [Definition] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_InMemoryOltpAnalysis');
 IF @InMemoryDefinition IS NULL
     THROW 54104,N'Die Definition der In-Memory-OLTP-Analyse ist nicht sichtbar.',1;
 
@@ -122,7 +144,8 @@ IF @InMemoryDefinition LIKE N'%[[]relative_file_path[]]%'
  OR @InMemoryDefinition LIKE N'%[[]memory_address[]]%'
     THROW 54105,N'Die In-Memory-OLTP-Analyse referenziert einen ausgeschlossenen Detailidentifikator.',1;
 
-DECLARE @TemporalDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_TemporalAnalysis'));
+DECLARE @TemporalDefinition nvarchar(max)=
+    (SELECT [Definition] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_TemporalAnalysis');
 IF @TemporalDefinition IS NULL
     THROW 54106,N'Die Definition der Temporal-Tables-Analyse ist nicht sichtbar.',1;
 
@@ -144,7 +167,8 @@ IF @TemporalDefinition LIKE N'%FOR SYSTEM_TIME AS OF%'
  OR @TemporalDefinition LIKE N'%SYSTEM_VERSIONING = OFF%'
     THROW 54108,N'Die Temporal-Tables-Analyse enthält einen ausgeschlossenen Nutzdaten- oder Änderungszugriff.',1;
 
-DECLARE @BrokerDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_ServiceBrokerAnalysis'));
+DECLARE @BrokerDefinition nvarchar(max)=
+    (SELECT [Definition] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_ServiceBrokerAnalysis');
 IF @BrokerDefinition IS NULL
     THROW 54109,N'Die Definition der Service-Broker-Analyse ist nicht sichtbar.',1;
 
@@ -169,7 +193,8 @@ IF @BrokerDefinition LIKE N'%[[]message_body[]]%'
  OR @BrokerDefinition LIKE N'%END CONVERSATION [[]%'
     THROW 54111,N'Die Service-Broker-Analyse enthält einen ausgeschlossenen Payload- oder Änderungszugriff.',1;
 
-DECLARE @FullTextDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_FullTextAnalysis'));
+DECLARE @FullTextDefinition nvarchar(max)=
+    (SELECT [Definition] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_FullTextAnalysis');
 IF @FullTextDefinition IS NULL
     THROW 54112,N'Die Definition der Full-Text-Analyse ist nicht sichtbar.',1;
 
@@ -195,7 +220,8 @@ IF CHARINDEX(N'[sys].[dm_fts_index_keywords',@FullTextDefinition COLLATE SQL_Lat
  OR CHARINDEX(N'START FULL POPULATION;',@FullTextDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
     THROW 54114,N'Die Full-Text-Analyse enthält einen ausgeschlossenen Inhalts-, Pfad- oder Änderungszugriff.',1;
 
-DECLARE @DataCaptureDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_DataCaptureDeepAnalysis'));
+DECLARE @DataCaptureDefinition nvarchar(max)=
+    (SELECT [Definition] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_DataCaptureDeepAnalysis');
 IF @DataCaptureDefinition IS NULL
     THROW 54115,N'Die Data-Capture-Tiefenanalyse ist nicht sichtbar.',1;
 
@@ -233,7 +259,8 @@ IF CHARINDEX(N'CHANGETABLE(',@DataCaptureDefinition COLLATE SQL_Latin1_General_C
  OR CHARINDEX(N'ALTER DATABASE ',@DataCaptureDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
     THROW 54117,N'Die Data-Capture-Tiefenanalyse enthält einen ausgeschlossenen Nutzdaten-, Credential-, Command- oder Änderungszugriff.',1;
 
-DECLARE @EncryptionDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_EncryptionAnalysis'));
+DECLARE @EncryptionDefinition nvarchar(max)=
+    (SELECT [Definition] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_EncryptionAnalysis');
 IF @EncryptionDefinition IS NULL
     THROW 54118,N'Die Verschluesselungsanalyse ist nicht sichtbar.',1;
 
@@ -250,7 +277,8 @@ IF CHARINDEX(N'[key_path]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_
  OR CHARINDEX(N'[physical_device_name]',@EncryptionDefinition COLLATE SQL_Latin1_General_CP1_CS_AS)>0
     THROW 54120,N'Die Verschluesselungsanalyse referenziert ausgeschlossene Schluessel-, Konto- oder Medieninformationen.',1;
 
-DECLARE @MaintenanceDefinition nvarchar(max)=OBJECT_DEFINITION(OBJECT_ID(N'monitor.USP_MaintenanceOperations'));
+DECLARE @MaintenanceDefinition nvarchar(max)=
+    (SELECT [Definition] FROM @ProcedureMetadata WHERE [ProcedureName]=N'USP_MaintenanceOperations');
 IF @MaintenanceDefinition IS NULL
     THROW 54121,N'Die Wartungsoperationsanalyse ist nicht sichtbar.',1;
 

@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_AvailabilityDeepAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -63,21 +64,21 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @ProductMajorVersion int = TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
 
-    CREATE TABLE [#Cluster]
+    CREATE TABLE [#AvailabilityDeepAnalysis_Cluster]
     (
           [ClusterName] nvarchar(128) NULL
         , [QuorumTypeDesc] nvarchar(60) NULL
         , [QuorumStateDesc] nvarchar(60) NULL
         , [FindingCode] varchar(80) NOT NULL
     );
-    CREATE TABLE [#Members]
+    CREATE TABLE [#AvailabilityDeepAnalysis_Members]
     (
           [MemberName] nvarchar(256) NULL
         , [MemberTypeDesc] nvarchar(60) NULL
         , [MemberStateDesc] nvarchar(60) NULL
         , [NumberOfQuorumVotes] int NULL
     );
-    CREATE TABLE [#Networks]
+    CREATE TABLE [#AvailabilityDeepAnalysis_Networks]
     (
           [MemberName] nvarchar(128) NULL
         , [NetworkSubnetIp] nvarchar(48) NULL
@@ -85,7 +86,7 @@ BEGIN
         , [IsPublic] bit NULL
         , [IsIpv4] bit NULL
     );
-    CREATE TABLE [#Replicas]
+    CREATE TABLE [#AvailabilityDeepAnalysis_Replicas]
     (
           [AvailabilityGroupName] sysname NULL
         , [ReplicaServerName] nvarchar(256) NULL
@@ -99,7 +100,7 @@ BEGIN
         , [SeedingModeDesc] nvarchar(60) NULL
         , [FindingCode] varchar(80) NOT NULL
     );
-    CREATE TABLE [#Databases]
+    CREATE TABLE [#AvailabilityDeepAnalysis_Databases]
     (
           [AvailabilityGroupName] sysname NULL
         , [ReplicaServerName] nvarchar(256) NULL
@@ -118,7 +119,7 @@ BEGIN
         , [FindingCode] varchar(100) NOT NULL
         , [FindingSeverity] varchar(16) NOT NULL
     );
-    CREATE TABLE [#Seeding]
+    CREATE TABLE [#AvailabilityDeepAnalysis_Seeding]
     (
           [RemoteMachineName] nvarchar(256) NULL
         , [RoleDesc] nvarchar(60) NULL
@@ -136,7 +137,7 @@ BEGIN
         , [FindingCode] varchar(100) NOT NULL
         , [FindingSeverity] varchar(16) NOT NULL
     );
-    CREATE TABLE [#PageRepair]
+    CREATE TABLE [#AvailabilityDeepAnalysis_PageRepair]
     (
           [DatabaseId] int NULL
         , [DatabaseName] sysname NULL
@@ -164,28 +165,28 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
     BEGIN
         BEGIN TRY
-            INSERT [#Cluster]
+            INSERT [#AvailabilityDeepAnalysis_Cluster]
             SELECT [cluster_name], [quorum_type_desc], [quorum_state_desc],
                    CASE WHEN [quorum_state_desc] = N'NORMAL_QUORUM'
                         THEN 'QUORUM_STATE_NORMAL' ELSE 'QUORUM_STATE_REVIEW' END
-            FROM [sys].[dm_hadr_cluster];
+            FROM [sys].[dm_hadr_cluster] WITH (NOLOCK);
 
-            IF NOT EXISTS (SELECT 1 FROM [#Cluster])
-                INSERT [#Cluster]
+            IF NOT EXISTS (SELECT 1 FROM [#AvailabilityDeepAnalysis_Cluster])
+                INSERT [#AvailabilityDeepAnalysis_Cluster]
                 VALUES (NULL, NULL, NULL, 'QUORUM_STATE_NOT_VISIBLE');
 
-            INSERT [#Members]
+            INSERT [#AvailabilityDeepAnalysis_Members]
             SELECT [member_name], [member_type_desc], [member_state_desc], [number_of_quorum_votes]
-            FROM [sys].[dm_hadr_cluster_members];
+            FROM [sys].[dm_hadr_cluster_members] WITH (NOLOCK);
 
             IF @MitClusterNetzwerken = 1
             BEGIN
-                INSERT [#Networks]
+                INSERT [#AvailabilityDeepAnalysis_Networks]
                 SELECT [member_name], [network_subnet_ip], [network_subnet_prefix_length], [is_public], [is_ipv4]
-                FROM [sys].[dm_hadr_cluster_networks];
+                FROM [sys].[dm_hadr_cluster_networks] WITH (NOLOCK);
             END;
 
-            INSERT [#Replicas]
+            INSERT [#AvailabilityDeepAnalysis_Replicas]
             SELECT
                   [ag].[name], [ar].[replica_server_name], [rs].[is_local], [rs].[role_desc]
                 , [rs].[operational_state_desc], [rs].[connected_state_desc]
@@ -196,23 +197,23 @@ BEGIN
                        WHEN [rs].[operational_state_desc] NOT IN (N'ONLINE', N'PENDING_FAILOVER')
                             AND [rs].[operational_state_desc] IS NOT NULL THEN 'REPLICA_OPERATIONAL_STATE_REVIEW'
                        ELSE 'REPLICA_STATE_ACCEPTABLE' END
-            FROM [sys].[availability_groups] AS [ag]
-            JOIN [sys].[availability_replicas] AS [ar] ON [ar].[group_id] = [ag].[group_id]
-            LEFT JOIN [sys].[dm_hadr_availability_replica_states] AS [rs]
+            FROM [sys].[availability_groups] AS [ag] WITH (NOLOCK)
+            JOIN [sys].[availability_replicas] AS [ar] WITH (NOLOCK) ON [ar].[group_id] = [ag].[group_id]
+            LEFT JOIN [sys].[dm_hadr_availability_replica_states] AS [rs] WITH (NOLOCK)
               ON [rs].[group_id] = [ar].[group_id] AND [rs].[replica_id] = [ar].[replica_id];
 
-            INSERT [#Databases]
+            INSERT [#AvailabilityDeepAnalysis_Databases]
             SELECT
-                  [ag].[name], [ar].[replica_server_name], [drs].[database_id], DB_NAME([drs].[database_id])
+                  [ag].[name], [ar].[replica_server_name], [drs].[database_id], (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [drs].[database_id])
                 , [drs].[is_local], [drs].[synchronization_state_desc]
                 , [drs].[synchronization_health_desc], [drs].[database_state_desc]
                 , [drs].[is_suspended], [drs].[suspend_reason_desc]
                 , [drs].[log_send_queue_size], [drs].[redo_queue_size]
                 , [drs].[secondary_lag_seconds], [drs].[last_commit_time]
                 , [state].[FindingCode], [state].[FindingSeverity]
-            FROM [sys].[dm_hadr_database_replica_states] AS [drs]
-            JOIN [sys].[availability_groups] AS [ag] ON [ag].[group_id] = [drs].[group_id]
-            JOIN [sys].[availability_replicas] AS [ar]
+            FROM [sys].[dm_hadr_database_replica_states] AS [drs] WITH (NOLOCK)
+            JOIN [sys].[availability_groups] AS [ag] WITH (NOLOCK) ON [ag].[group_id] = [drs].[group_id]
+            JOIN [sys].[availability_replicas] AS [ar] WITH (NOLOCK)
               ON [ar].[group_id] = [drs].[group_id] AND [ar].[replica_id] = [drs].[replica_id]
             CROSS APPLY [monitor].[TVF_InterpretAvailabilityDatabaseState]
             (
@@ -222,7 +223,7 @@ BEGIN
                 , @QueueWarnMb, @SecondaryLagWarnSeconds
             ) AS [state];
 
-            INSERT [#Seeding]
+            INSERT [#AvailabilityDeepAnalysis_Seeding]
             SELECT
                   [ps].[remote_machine_name], [ps].[role_desc], [ps].[local_database_name], [ps].[internal_state_desc]
                 , [ps].[failure_code], [ps].[transferred_size_bytes], [ps].[database_size_bytes]
@@ -230,31 +231,31 @@ BEGIN
                 , CONVERT(datetime,[ps].[end_time_utc]), CONVERT(datetime,[ps].[estimate_time_complete_utc])
                 , [state].[ProgressPercent], [state].[RemainingBytes]
                 , [state].[FindingCode], [state].[FindingSeverity]
-            FROM [sys].[dm_hadr_physical_seeding_stats] AS [ps]
+            FROM [sys].[dm_hadr_physical_seeding_stats] AS [ps] WITH (NOLOCK)
             CROSS APPLY [monitor].[TVF_InterpretAvailabilitySeedingState]
             (
                   [ps].[failure_code], [ps].[transferred_size_bytes], [ps].[database_size_bytes]
                 , [ps].[transfer_rate_bytes_per_second], CONVERT(datetime,[ps].[end_time_utc])
             ) AS [state];
 
-            INSERT [#PageRepair]
-            SELECT [database_id], DB_NAME([database_id]), [file_id], [page_id], [error_type]
+            INSERT [#AvailabilityDeepAnalysis_PageRepair]
+            SELECT [database_id], (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [database_id]), [file_id], [page_id], [error_type]
                  , [page_status], [modification_time]
                  , CASE WHEN [page_status] = 5 THEN 'PAGE_REPAIR_SUCCEEDED'
                         ELSE 'PAGE_REPAIR_PENDING_OR_FAILED' END
-            FROM [sys].[dm_hadr_auto_page_repair];
+            FROM [sys].[dm_hadr_auto_page_repair] WITH (NOLOCK);
 
             IF EXISTS
                (
-                   SELECT 1 FROM [#Cluster] WHERE [FindingCode] <> 'QUORUM_STATE_NORMAL'
+                   SELECT 1 FROM [#AvailabilityDeepAnalysis_Cluster] WHERE [FindingCode] <> 'QUORUM_STATE_NORMAL'
                    UNION ALL
-                   SELECT 1 FROM [#Replicas] WHERE [FindingCode] <> 'REPLICA_STATE_ACCEPTABLE'
+                   SELECT 1 FROM [#AvailabilityDeepAnalysis_Replicas] WHERE [FindingCode] <> 'REPLICA_STATE_ACCEPTABLE'
                    UNION ALL
-                   SELECT 1 FROM [#Databases] WHERE [FindingCode] <> 'DATABASE_STATE_ACCEPTABLE'
+                   SELECT 1 FROM [#AvailabilityDeepAnalysis_Databases] WHERE [FindingCode] <> 'DATABASE_STATE_ACCEPTABLE'
                    UNION ALL
-                   SELECT 1 FROM [#Seeding] WHERE [FindingSeverity] <> 'INFO'
+                   SELECT 1 FROM [#AvailabilityDeepAnalysis_Seeding] WHERE [FindingSeverity] <> 'INFO'
                    UNION ALL
-                   SELECT 1 FROM [#PageRepair] WHERE [FindingCode] <> 'PAGE_REPAIR_SUCCEEDED'
+                   SELECT 1 FROM [#AvailabilityDeepAnalysis_PageRepair] WHERE [FindingCode] <> 'PAGE_REPAIR_SUCCEEDED'
                )
                 SET @StatusCode = 'AVAILABLE_WITH_FINDING';
         END TRY
@@ -276,26 +277,26 @@ BEGIN
                     @QueueWarnMb AS [queueWarnMb], @SecondaryLagWarnSeconds AS [secondaryLagWarnSeconds],
                     @ProductMajorVersion AS [productMajorVersion]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-        DECLARE @ClusterJson nvarchar(max) = (SELECT * FROM [#Cluster] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @ClusterJson nvarchar(max) = (SELECT * FROM [#AvailabilityDeepAnalysis_Cluster] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @MemberJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Members] ORDER BY [MemberName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Members] ORDER BY [MemberName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @NetworkJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Networks] ORDER BY [MemberName], [NetworkSubnetIp] FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Networks] ORDER BY [MemberName], [NetworkSubnetIp] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @ReplicaJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Replicas] ORDER BY [AvailabilityGroupName], [ReplicaServerName]
+            (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Replicas] ORDER BY [AvailabilityGroupName], [ReplicaServerName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @DatabaseJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Databases]
+            (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Databases]
              ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                       [AvailabilityGroupName], [DatabaseName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SeedingJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#Seeding]
+            (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Seeding]
              ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                       [StartTimeUtc] DESC
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @RepairJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#PageRepair] ORDER BY [ModificationTime] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
+            (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_PageRepair] ORDER BY [ModificationTime] DESC FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
                            N',"cluster":', COALESCE(@ClusterJson, N'[]'),
                            N',"members":', COALESCE(@MemberJson, N'[]'),
@@ -312,17 +313,17 @@ BEGIN
                @StatusCode AS [StatusCode], @IsPartial AS [IsPartial],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Read-only Always-On-Momentaufnahme.' AS [Detail];
-        SELECT * FROM [#Cluster];
-        SELECT TOP (@Limit) * FROM [#Members] ORDER BY [MemberName];
-        SELECT TOP (@Limit) * FROM [#Networks] ORDER BY [MemberName], [NetworkSubnetIp];
-        SELECT TOP (@Limit) * FROM [#Replicas] ORDER BY [AvailabilityGroupName], [ReplicaServerName];
-        SELECT TOP (@Limit) * FROM [#Databases]
+        SELECT * FROM [#AvailabilityDeepAnalysis_Cluster];
+        SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Members] ORDER BY [MemberName];
+        SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Networks] ORDER BY [MemberName], [NetworkSubnetIp];
+        SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Replicas] ORDER BY [AvailabilityGroupName], [ReplicaServerName];
+        SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Databases]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [AvailabilityGroupName], [DatabaseName];
-        SELECT TOP (@Limit) * FROM [#Seeding]
+        SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Seeding]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [StartTimeUtc] DESC;
-        SELECT TOP (@Limit) * FROM [#PageRepair] ORDER BY [ModificationTime] DESC;
+        SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_PageRepair] ORDER BY [ModificationTime] DESC;
     END
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
@@ -330,7 +331,7 @@ BEGIN
                @StatusCode AS [Status], @IsPartial AS [Teilweise], @ErrorMessage AS [Hinweis];
         SELECT N'Clusterquorum' AS [Ergebnis], [ClusterName] AS [Cluster],
                [QuorumTypeDesc] AS [Quorum_Typ], [QuorumStateDesc] AS [Quorum_Status], [FindingCode] AS [Befund]
-        FROM [#Cluster];
+        FROM [#AvailabilityDeepAnalysis_Cluster];
         SELECT TOP (@Limit) N'AG-Datenbank' AS [Ergebnis], [AvailabilityGroupName] AS [AG],
                [ReplicaServerName] AS [Replikat], [DatabaseName] AS [Datenbank],
                [SynchronizationStateDesc] AS [Synchronisation],
@@ -338,7 +339,7 @@ BEGIN
                [LogSendQueueSizeKb] AS [Log_Send_Queue_KB], [RedoQueueSizeKb] AS [Redo_Queue_KB],
                [SecondaryLagSeconds] AS [Lag_Sekunden], [FindingCode] AS [Befund],
                [FindingSeverity] AS [Prioritaet]
-        FROM [#Databases]
+        FROM [#AvailabilityDeepAnalysis_Databases]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [AvailabilityGroupName], [DatabaseName];
         SELECT TOP (@Limit) N'AG-Seeding' AS [Ergebnis], [RemoteMachineName] AS [Remote_Knoten],
@@ -347,14 +348,14 @@ BEGIN
                [ProgressPercent] AS [Fortschritt_Prozent], [RemainingBytes] AS [Verbleibende_Bytes],
                [EstimateTimeCompleteUtc] AS [Geschaetztes_Ende_UTC], [FindingCode] AS [Befund],
                [FindingSeverity] AS [Prioritaet], [StartTimeUtc] AS [Start_UTC], [EndTimeUtc] AS [Ende_UTC]
-        FROM [#Seeding]
+        FROM [#AvailabilityDeepAnalysis_Seeding]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [StartTimeUtc] DESC;
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Replicas'
+              @SourceTable = N'#AvailabilityDeepAnalysis_Replicas'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

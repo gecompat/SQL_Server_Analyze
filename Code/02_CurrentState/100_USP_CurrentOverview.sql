@@ -43,6 +43,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -68,7 +69,7 @@ BEGIN
     DECLARE @Message nvarchar(2048);
     DECLARE @ChildJson nvarchar(max);
 
-    CREATE TABLE [#ModuleJson]
+    CREATE TABLE [#CurrentOverview_ModuleJson]
     (
           [ModuleOrdinal] int NOT NULL PRIMARY KEY
         , [PropertyName] varchar(40) NOT NULL
@@ -141,11 +142,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (10, 'sessions', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (10, 'sessions', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (10, 'sessions', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (10, 'sessions', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -166,11 +167,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (20, 'requests', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (20, 'requests', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (20, 'requests', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (20, 'requests', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -188,11 +189,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (30, 'blocking', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (30, 'blocking', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (30, 'blocking', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (30, 'blocking', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -211,11 +212,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (40, 'waits', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (40, 'waits', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (40, 'waits', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (40, 'waits', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -233,11 +234,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (50, 'transactions', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (50, 'transactions', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (50, 'transactions', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (50, 'transactions', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -255,11 +256,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (60, 'memoryGrants', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (60, 'memoryGrants', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (60, 'memoryGrants', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (60, 'memoryGrants', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -275,11 +276,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (70, 'tempdb', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (70, 'tempdb', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (70, 'tempdb', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (70, 'tempdb', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -299,11 +300,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (80, 'io', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (80, 'io', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (80, 'io', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (80, 'io', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -322,11 +323,11 @@ BEGIN
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ChildJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen;
-            INSERT [#ModuleJson] VALUES (90, 'log', @ChildJson, 'AVAILABLE', NULL);
+            INSERT [#CurrentOverview_ModuleJson] VALUES (90, 'log', @ChildJson, 'AVAILABLE', NULL);
         END TRY
         BEGIN CATCH
             SET @FailedModules += 1;
-            INSERT [#ModuleJson] VALUES (90, 'log', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
+            INSERT [#CurrentOverview_ModuleJson] VALUES (90, 'log', NULL, 'ERROR_HANDLED', ERROR_MESSAGE());
         END CATCH;
     END;
 
@@ -350,7 +351,7 @@ BEGIN
             , DATEDIFF_BIG(MILLISECOND, @StartedAtUtc, SYSUTCDATETIME()) AS [DurationMs];
 
         SELECT [PropertyName] AS [ModuleName], [StatusCode], [ErrorMessage]
-        FROM [#ModuleJson]
+        FROM [#CurrentOverview_ModuleJson]
         WHERE [StatusCode] <> 'AVAILABLE'
         ORDER BY [ModuleOrdinal];
     END;
@@ -374,7 +375,7 @@ BEGIN
         DECLARE @Warnings nvarchar(max) =
         (
             SELECT [PropertyName] AS [moduleName], [StatusCode] AS [statusCode], [ErrorMessage] AS [errorMessage]
-            FROM [#ModuleJson]
+            FROM [#CurrentOverview_ModuleJson]
             WHERE [StatusCode] <> 'AVAILABLE'
             ORDER BY [ModuleOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -395,12 +396,12 @@ BEGIN
             , N',"warnings":', COALESCE(@Warnings, N'[]')
             , N'}'
         )
-        FROM [#ModuleJson];
+        FROM [#CurrentOverview_ModuleJson];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#ModuleJson'
+              @SourceTable = N'#CurrentOverview_ModuleJson'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

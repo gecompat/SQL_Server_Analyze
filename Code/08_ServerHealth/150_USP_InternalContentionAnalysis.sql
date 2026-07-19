@@ -34,6 +34,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InternalContentionAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -63,21 +64,21 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @Delay varchar(8);
 
-    CREATE TABLE [#LatchStart]
+    CREATE TABLE [#InternalContentionAnalysis_LatchStart]
     (
           [LatchClass] nvarchar(120) NOT NULL
         , [WaitingRequestsCount] bigint NOT NULL
         , [WaitTimeMs] bigint NOT NULL
         , [MaxWaitTimeMs] bigint NOT NULL
     );
-    CREATE TABLE [#LatchEnd]
+    CREATE TABLE [#InternalContentionAnalysis_LatchEnd]
     (
           [LatchClass] nvarchar(120) NOT NULL
         , [WaitingRequestsCount] bigint NOT NULL
         , [WaitTimeMs] bigint NOT NULL
         , [MaxWaitTimeMs] bigint NOT NULL
     );
-    CREATE TABLE [#SpinStart]
+    CREATE TABLE [#InternalContentionAnalysis_SpinStart]
     (
           [SpinlockName] nvarchar(256) NOT NULL
         , [Collisions] bigint NOT NULL
@@ -85,7 +86,7 @@ BEGIN
         , [SleepTime] bigint NOT NULL
         , [Backoffs] bigint NOT NULL
     );
-    CREATE TABLE [#SpinEnd]
+    CREATE TABLE [#InternalContentionAnalysis_SpinEnd]
     (
           [SpinlockName] nvarchar(256) NOT NULL
         , [Collisions] bigint NOT NULL
@@ -93,7 +94,7 @@ BEGIN
         , [SleepTime] bigint NOT NULL
         , [Backoffs] bigint NOT NULL
     );
-    CREATE TABLE [#LatchResult]
+    CREATE TABLE [#InternalContentionAnalysis_LatchResult]
     (
           [LatchClass] nvarchar(120) NOT NULL
         , [MeasurementKind] varchar(30) NOT NULL
@@ -104,7 +105,7 @@ BEGIN
         , [WaitMsPerSecond] decimal(19,4) NULL
         , [CounterResetDetected] bit NOT NULL
     );
-    CREATE TABLE [#SpinResult]
+    CREATE TABLE [#InternalContentionAnalysis_SpinResult]
     (
           [SpinlockName] nvarchar(256) NOT NULL
         , [MeasurementKind] varchar(30) NOT NULL
@@ -116,7 +117,7 @@ BEGIN
         , [BackoffsPerSecond] decimal(19,4) NULL
         , [CounterResetDetected] bit NOT NULL
     );
-    CREATE TABLE [#HotPages]
+    CREATE TABLE [#InternalContentionAnalysis_HotPages]
     (
           [SessionId] smallint NOT NULL
         , [DatabaseId] int NULL
@@ -144,17 +145,17 @@ BEGIN
     BEGIN
         BEGIN TRY
             SELECT @SqlServerStartTime = [sqlserver_start_time]
-            FROM [sys].[dm_os_sys_info];
+            FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
 
-            INSERT [#LatchStart]
+            INSERT [#InternalContentionAnalysis_LatchStart]
             SELECT [latch_class], [waiting_requests_count], [wait_time_ms], [max_wait_time_ms]
-            FROM [sys].[dm_os_latch_stats];
+            FROM [sys].[dm_os_latch_stats] WITH (NOLOCK);
 
             IF @MitSpinlocks = 1
             BEGIN
-                INSERT [#SpinStart]
+                INSERT [#InternalContentionAnalysis_SpinStart]
                 SELECT [name], [collisions], [spins], [sleep_time], [backoffs]
-                FROM [sys].[dm_os_spinlock_stats];
+                FROM [sys].[dm_os_spinlock_stats] WITH (NOLOCK);
             END;
 
             SET @SampleStartUtc = SYSUTCDATETIME();
@@ -171,30 +172,30 @@ BEGIN
                 DATEDIFF_BIG(MICROSECOND, @SampleStartUtc, @SampleEndUtc) / 1000000.0
             );
 
-            INSERT [#LatchEnd]
+            INSERT [#InternalContentionAnalysis_LatchEnd]
             SELECT [latch_class], [waiting_requests_count], [wait_time_ms], [max_wait_time_ms]
-            FROM [sys].[dm_os_latch_stats];
+            FROM [sys].[dm_os_latch_stats] WITH (NOLOCK);
 
             IF @MitSpinlocks = 1
             BEGIN
-                INSERT [#SpinEnd]
+                INSERT [#InternalContentionAnalysis_SpinEnd]
                 SELECT [name], [collisions], [spins], [sleep_time], [backoffs]
-                FROM [sys].[dm_os_spinlock_stats];
+                FROM [sys].[dm_os_spinlock_stats] WITH (NOLOCK);
             END;
 
             ;WITH [LatchStart] AS
             (
                 SELECT [LatchClass],SUM([WaitingRequestsCount]) AS [WaitingRequestsCount],
                        SUM([WaitTimeMs]) AS [WaitTimeMs],MAX([MaxWaitTimeMs]) AS [MaxWaitTimeMs]
-                FROM [#LatchStart] GROUP BY [LatchClass]
+                FROM [#InternalContentionAnalysis_LatchStart] GROUP BY [LatchClass]
             ),
             [LatchEnd] AS
             (
                 SELECT [LatchClass],SUM([WaitingRequestsCount]) AS [WaitingRequestsCount],
                        SUM([WaitTimeMs]) AS [WaitTimeMs],MAX([MaxWaitTimeMs]) AS [MaxWaitTimeMs]
-                FROM [#LatchEnd] GROUP BY [LatchClass]
+                FROM [#InternalContentionAnalysis_LatchEnd] GROUP BY [LatchClass]
             )
-            INSERT [#LatchResult]
+            INSERT [#InternalContentionAnalysis_LatchResult]
             SELECT
                   [e].[LatchClass]
                 , CASE WHEN @SampleSeconds = 0 THEN 'CUMULATIVE_SINCE_START' ELSE 'SAMPLE_DELTA' END
@@ -221,15 +222,15 @@ BEGIN
                 (
                     SELECT [SpinlockName],SUM([Collisions]) AS [Collisions],SUM([Spins]) AS [Spins],
                            SUM([SleepTime]) AS [SleepTime],SUM([Backoffs]) AS [Backoffs]
-                    FROM [#SpinStart] GROUP BY [SpinlockName]
+                    FROM [#InternalContentionAnalysis_SpinStart] GROUP BY [SpinlockName]
                 ),
                 [SpinEnd] AS
                 (
                     SELECT [SpinlockName],SUM([Collisions]) AS [Collisions],SUM([Spins]) AS [Spins],
                            SUM([SleepTime]) AS [SleepTime],SUM([Backoffs]) AS [Backoffs]
-                    FROM [#SpinEnd] GROUP BY [SpinlockName]
+                    FROM [#InternalContentionAnalysis_SpinEnd] GROUP BY [SpinlockName]
                 )
-                INSERT [#SpinResult]
+                INSERT [#InternalContentionAnalysis_SpinResult]
                 SELECT
                       [e].[SpinlockName]
                     , CASE WHEN @SampleSeconds = 0 THEN 'CUMULATIVE_SINCE_START' ELSE 'SAMPLE_DELTA' END
@@ -262,17 +263,17 @@ BEGIN
 
             IF @MitHotPages = 1
             BEGIN
-                INSERT [#HotPages]
+                INSERT [#InternalContentionAnalysis_HotPages]
                 (
                       [SessionId], [DatabaseId], [DatabaseName], [WaitType]
                     , [WaitTimeMs], [WaitResource], [FileId], [PageId]
                 )
                 SELECT
-                      [r].[session_id], [r].[database_id], DB_NAME([r].[database_id])
+                      [r].[session_id], [r].[database_id], (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [r].[database_id])
                     , [r].[wait_type], [r].[wait_time], [r].[wait_resource]
                     , TRY_CONVERT(int, PARSENAME(REPLACE([r].[wait_resource], N':', N'.'), 2))
                     , TRY_CONVERT(bigint, PARSENAME(REPLACE([r].[wait_resource], N':', N'.'), 1))
-                FROM [sys].[dm_exec_requests] AS [r]
+                FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
                 WHERE [r].[session_id] <> @@SPID
                   AND ([r].[wait_type] LIKE N'PAGELATCH%'
                        OR [r].[wait_type] LIKE N'PAGEIOLATCH%');
@@ -283,7 +284,7 @@ BEGIN
                     SET [PageTypeDesc] = [p].[page_type_desc],
                         [ObjectId] = [p].[object_id],
                         [IndexId] = [p].[index_id]
-                    FROM [#HotPages] AS [h]
+                    FROM [#InternalContentionAnalysis_HotPages] AS [h]
                     OUTER APPLY [sys].[dm_db_page_info]
                     ([h].[DatabaseId], [h].[FileId], [h].[PageId], 'LIMITED') AS [p]
                     WHERE [h].[DatabaseId] IS NOT NULL
@@ -303,11 +304,11 @@ BEGIN
     IF @StatusCode = 'AVAILABLE'
        AND EXISTS
            (
-               SELECT 1 FROM [#LatchResult] WHERE [CounterResetDetected] = 1
+               SELECT 1 FROM [#InternalContentionAnalysis_LatchResult] WHERE [CounterResetDetected] = 1
                UNION ALL
-               SELECT 1 FROM [#SpinResult] WHERE [CounterResetDetected] = 1
+               SELECT 1 FROM [#InternalContentionAnalysis_SpinResult] WHERE [CounterResetDetected] = 1
                UNION ALL
-               SELECT 1 FROM [#HotPages]
+               SELECT 1 FROM [#InternalContentionAnalysis_HotPages]
            )
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
@@ -323,13 +324,13 @@ BEGIN
                     @SqlServerStartTime AS [sqlServerStartTime]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
         DECLARE @LatchJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#LatchResult]
+            (SELECT TOP (@Limit) * FROM [#InternalContentionAnalysis_LatchResult]
              ORDER BY [WaitTimeMs] DESC, [LatchClass] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SpinJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#SpinResult]
+            (SELECT TOP (@Limit) * FROM [#InternalContentionAnalysis_SpinResult]
              ORDER BY [Collisions] DESC, [SpinlockName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @HotJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#HotPages]
+            (SELECT TOP (@Limit) * FROM [#InternalContentionAnalysis_HotPages]
              ORDER BY [WaitTimeMs] DESC, [SessionId] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'),
                            N',"latches":', COALESCE(@LatchJson, N'[]'),
@@ -345,9 +346,9 @@ BEGIN
                @SqlServerStartTime AS [SqlServerStartTime],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Intervalldeltas bei SampleSeconds>0; sonst kumulativ seit Serverstart.' AS [Detail];
-        SELECT TOP (@Limit) * FROM [#LatchResult] ORDER BY [WaitTimeMs] DESC, [LatchClass];
-        SELECT TOP (@Limit) * FROM [#SpinResult] ORDER BY [Collisions] DESC, [SpinlockName];
-        SELECT TOP (@Limit) * FROM [#HotPages] ORDER BY [WaitTimeMs] DESC, [SessionId];
+        SELECT TOP (@Limit) * FROM [#InternalContentionAnalysis_LatchResult] ORDER BY [WaitTimeMs] DESC, [LatchClass];
+        SELECT TOP (@Limit) * FROM [#InternalContentionAnalysis_SpinResult] ORDER BY [Collisions] DESC, [SpinlockName];
+        SELECT TOP (@Limit) * FROM [#InternalContentionAnalysis_HotPages] ORDER BY [WaitTimeMs] DESC, [SessionId];
     END
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
@@ -360,21 +361,21 @@ BEGIN
                [WaitingRequests] AS [Wartevorgaenge], [WaitTimeMs] AS [Wartezeit_ms],
                [WaitsPerSecond] AS [Wartevorgaenge_pro_s], [WaitMsPerSecond] AS [Wartezeit_ms_pro_s],
                [CounterResetDetected] AS [Reset_erkannt]
-        FROM [#LatchResult] ORDER BY [WaitTimeMs] DESC, [LatchClass];
+        FROM [#InternalContentionAnalysis_LatchResult] ORDER BY [WaitTimeMs] DESC, [LatchClass];
         SELECT TOP (@Limit) N'Spinlock' AS [Ergebnis], [SpinlockName] AS [Name],
                [Collisions], [Backoffs], [CollisionsPerSecond] AS [Kollisionen_pro_s],
                [BackoffsPerSecond] AS [Backoffs_pro_s], [CounterResetDetected] AS [Reset_erkannt]
-        FROM [#SpinResult] ORDER BY [Collisions] DESC, [SpinlockName];
+        FROM [#InternalContentionAnalysis_SpinResult] ORDER BY [Collisions] DESC, [SpinlockName];
         SELECT TOP (@Limit) N'Hot Page' AS [Ergebnis], [SessionId] AS [Session_ID],
                [DatabaseName] AS [Datenbank], [WaitType] AS [Wait_Typ], [WaitTimeMs] AS [Wartezeit_ms],
                [FileId] AS [Datei_ID], [PageId] AS [Seiten_ID], [PageTypeDesc] AS [Seitentyp],
                [ObjectId] AS [Objekt_ID], [IndexId] AS [Index_ID]
-        FROM [#HotPages] ORDER BY [WaitTimeMs] DESC, [SessionId];
+        FROM [#InternalContentionAnalysis_HotPages] ORDER BY [WaitTimeMs] DESC, [SessionId];
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#LatchResult'
+              @SourceTable = N'#InternalContentionAnalysis_LatchResult'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;

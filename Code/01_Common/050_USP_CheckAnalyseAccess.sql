@@ -23,6 +23,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CheckAnalyseAccess]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -42,7 +43,7 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#Access]
+    CREATE TABLE [#CheckAnalyseAccess_Access]
     (
           [AnalysisClass] varchar(64) NOT NULL
         , [AnalysisLevel] varchar(16) NOT NULL
@@ -58,7 +59,7 @@ BEGIN
         , [StatusCode] varchar(40) NOT NULL
     );
 
-    CREATE TABLE [#Policies]
+    CREATE TABLE [#CheckAnalyseAccess_Policies]
     (
           [AnalysisClass] varchar(64) NOT NULL
         , [ADGroupName] nvarchar(256) NOT NULL
@@ -70,7 +71,7 @@ BEGIN
         , [Comment] nvarchar(1000) NULL
     );
 
-    CREATE TABLE [#Warnings]
+    CREATE TABLE [#CheckAnalyseAccess_Warnings]
     (
           [WarningCode] varchar(40) NOT NULL
         , [WarningMessage] nvarchar(2048) NOT NULL
@@ -95,7 +96,7 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
-        INSERT [#Access]
+        INSERT [#CheckAnalyseAccess_Access]
         (
               [AnalysisClass], [AnalysisLevel], [RequiresGroupGate]
             , [OriginalLoginName], [EffectiveLoginName], [IsSysadmin]
@@ -123,7 +124,7 @@ BEGIN
               AND ([p].[ValidToUtc] IS NULL OR [p].[ValidToUtc] > SYSUTCDATETIME())
               AND (@AnalyseKlasse IS NULL OR [p].[AnalysisClass] IN (@AnalyseKlasse, '*'))
         )
-        INSERT [#Policies]
+        INSERT [#CheckAnalyseAccess_Policies]
         (
               [AnalysisClass], [ADGroupName], [Priority], [ValidFromUtc]
             , [ValidToUtc], [MatchesLoginToken], [MatchesIsMember], [Comment]
@@ -134,7 +135,7 @@ BEGIN
             , CONVERT(bit, CASE WHEN EXISTS
               (
                   SELECT 1
-                  FROM [sys].[login_token] AS [lt]
+                  FROM [sys].[login_token] AS [lt] WITH (NOLOCK)
                   WHERE [lt].[type] = N'WINDOWS GROUP'
                     AND UPPER(CONVERT(nvarchar(256), [lt].[name])) COLLATE Latin1_General_100_CI_AS
                       = UPPER([p].[ADGroupName]) COLLATE Latin1_General_100_CI_AS
@@ -143,9 +144,9 @@ BEGIN
             , [p].[Comment]
         FROM [ActivePolicy] AS [p];
 
-        IF EXISTS (SELECT 1 FROM [#Access] WHERE [IsAllowed] = 0)
+        IF EXISTS (SELECT 1 FROM [#CheckAnalyseAccess_Access] WHERE [IsAllowed] = 0)
         BEGIN
-            INSERT [#Warnings] VALUES ('DENIED_GROUP', N'Mindestens eine Analyseklasse ist durch die aktuelle Gruppenpolicy gesperrt.');
+            INSERT [#CheckAnalyseAccess_Warnings] VALUES ('DENIED_GROUP', N'Mindestens eine Analyseklasse ist durch die aktuelle Gruppenpolicy gesperrt.');
             SET @StatusCode = 'AVAILABLE_LIMITED';
         END;
     END TRY
@@ -153,7 +154,7 @@ BEGIN
         SET @StatusCode = 'ERROR_HANDLED';
         SET @ErrorNumber = ERROR_NUMBER();
         SET @ErrorMessage = ERROR_MESSAGE();
-        INSERT [#Warnings] VALUES (@StatusCode, @ErrorMessage);
+        INSERT [#CheckAnalyseAccess_Warnings] VALUES (@StatusCode, @ErrorMessage);
     END CATCH;
 
     IF @PrintMeldungen = 1 AND @ErrorMessage IS NOT NULL
@@ -175,9 +176,9 @@ BEGIN
 
         IF @ResultSetArtNormalisiert = 'RAW'
         BEGIN
-            SELECT * FROM [#Access] ORDER BY [RequiresGroupGate], [AnalysisLevel], [AnalysisClass];
-            SELECT * FROM [#Policies] ORDER BY [Priority], [AnalysisClass], [ADGroupName];
-            SELECT * FROM [#Warnings] ORDER BY [WarningCode], [WarningMessage];
+            SELECT * FROM [#CheckAnalyseAccess_Access] ORDER BY [RequiresGroupGate], [AnalysisLevel], [AnalysisClass];
+            SELECT * FROM [#CheckAnalyseAccess_Policies] ORDER BY [Priority], [AnalysisClass], [ADGroupName];
+            SELECT * FROM [#CheckAnalyseAccess_Warnings] ORDER BY [WarningCode], [WarningMessage];
         END;
         ELSE
         BEGIN
@@ -189,7 +190,7 @@ BEGIN
                 , [AccessReason] AS [Begründung]
                 , [MatchedGroupCount] AS [passende Gruppen]
                 , [StatusCode] AS [Status]
-            FROM [#Access]
+            FROM [#CheckAnalyseAccess_Access]
             ORDER BY [RequiresGroupGate], [AnalysisLevel], [AnalysisClass];
 
             SELECT
@@ -200,11 +201,11 @@ BEGIN
                 , [MatchesLoginToken] AS [im Login-Token]
                 , [MatchesIsMember] AS [IS_MEMBER]
                 , [Comment] AS [Kommentar]
-            FROM [#Policies]
+            FROM [#CheckAnalyseAccess_Policies]
             ORDER BY [Priority], [AnalysisClass], [ADGroupName];
 
             SELECT N'Warnung' AS [Ergebnis], [WarningCode] AS [Code], [WarningMessage] AS [Meldung]
-            FROM [#Warnings]
+            FROM [#CheckAnalyseAccess_Warnings]
             ORDER BY [WarningCode], [WarningMessage];
         END;
     END;
@@ -222,15 +223,15 @@ BEGIN
                 , @ErrorMessage AS [errorMessage]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
-        DECLARE @AccessJson nvarchar(max) = (SELECT * FROM [#Access] ORDER BY [RequiresGroupGate], [AnalysisLevel], [AnalysisClass] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @PoliciesJson nvarchar(max) = (SELECT * FROM [#Policies] ORDER BY [Priority], [AnalysisClass], [ADGroupName] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#Warnings] ORDER BY [WarningCode], [WarningMessage] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @AccessJson nvarchar(max) = (SELECT * FROM [#CheckAnalyseAccess_Access] ORDER BY [RequiresGroupGate], [AnalysisLevel], [AnalysisClass] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @PoliciesJson nvarchar(max) = (SELECT * FROM [#CheckAnalyseAccess_Policies] ORDER BY [Priority], [AnalysisClass], [ADGroupName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#CheckAnalyseAccess_Warnings] ORDER BY [WarningCode], [WarningMessage] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson, N'{}'), N',"access":', COALESCE(@AccessJson, N'[]'), N',"policies":', COALESCE(@PoliciesJson, N'[]'), N',"warnings":', COALESCE(@WarningsJson, N'[]'), N'}');
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#Access'
+              @SourceTable = N'#CheckAnalyseAccess_Access'
             , @ResultTable = @ResultTable
             , @ThrowOnError = 1;
     END;
