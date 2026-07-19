@@ -31,6 +31,7 @@ IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName')<>N'QueryStats'
     THROW 53301,N'Die erwarteten Child-Payloads fehlen im Plan-Cache-JSON.',1;
 
 IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode')<>'AVAILABLE'
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.errorNumber') IS NOT NULL
 BEGIN
     DECLARE @QueryStatsContractError nvarchar(2048)=CONCAT
     (
@@ -45,6 +46,7 @@ BEGIN
 END;
 
 IF JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode')<>'AVAILABLE'
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.errorNumber') IS NOT NULL
     THROW 53303,N'Der Query-Hash-Snapshot-Consumer war nicht erfolgreich.',1;
 
 IF EXISTS (SELECT 1 FROM OPENJSON(@PlanCacheJson,N'$.warnings'))
