@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DataCaptureStatus]
     , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 10000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -49,6 +50,8 @@ BEGIN
     SET LOCK_TIMEOUT 0;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
     DECLARE @LocalCandidateRows bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen BETWEEN 1 AND 2147483646 THEN CONVERT(bigint, @MaxZeilen) + 1 WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -59,7 +62,7 @@ BEGIN
         PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' ist ungültig.';
         PRINT N'@DatabaseNamePattern=like:...|regex:...|regexi:...; ein Pattern, keine Pipe-Liste.';
         PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; @MaxZeilen gilt global je fachlichem Resultset.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -352,6 +355,13 @@ ORDER BY [s].[name], [t].[name];';
         SELECT TOP (@EffectiveMaxZeilen) N'Change-Tracking-Tabelle' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SchemaName] AS [Schema], [TableName] AS [Tabelle], [IsTrackColumnsUpdatedOn] AS [Spaltenänderungen_aufzeichnen], [BeginVersion] AS [Beginn_Version], [CleanupVersion] AS [Cleanup_Version], [MinValidVersion] AS [Min_gültige_Version] FROM [#Ct] ORDER BY [DatabaseName], [SchemaName], [TableName];
         SELECT TOP (@EffectiveMaxZeilen) N'CDC-Agentjob' AS [Ergebnis], [DatabaseName] AS [Datenbank], [JobType] AS [Job_Typ], [JobName] AS [Job], [Enabled] AS [Aktiv], [LastRunOutcome] AS [Letzter_Status], [LastRunDateTime] AS [Letzter_Lauf], [LastMessage] AS [Meldung] FROM [#Jobs] ORDER BY [DatabaseName], [JobType], [JobName];
         SELECT N'Data-Capture-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SourceName] AS [Quelle], [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer], [ErrorMessage] AS [Fehlermeldung] FROM [#Warnings] ORDER BY [DatabaseName], [SourceName];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Db'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

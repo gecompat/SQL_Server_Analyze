@@ -28,6 +28,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_EncryptionAnalysis]
     , @MaxZeilen                                  int            = 1000
     , @LockTimeoutMs                              int            = 0
     , @ResultSetArt                               varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                               bit            = 0
     , @Json                                       nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                             bit            = 1
@@ -43,6 +44,8 @@ BEGIN
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                                THEN CONVERT(bigint,9223372036854775807)
                                ELSE CONVERT(bigint,@MaxZeilen) END;
@@ -363,6 +366,13 @@ BEGIN
         FROM [#SourceStatus] ORDER BY [SourceName];
         SELECT N'Datenbankwarnung' AS [Ergebnis],[RequestedName] AS [Datenbank],[StatusCode] AS [Status],[ErrorMessage] AS [Meldung]
         FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Encryption'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

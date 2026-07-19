@@ -35,6 +35,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
     , @SampleSeconds                 tinyint         = 0
     , @MaxZeilen                     int             = 500
     , @ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                  bit              = 0
     , @Json                          nvarchar(max)    = NULL OUTPUT
     , @PrintMeldungen                bit              = 1
@@ -45,13 +46,15 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
 
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentOverview';
         PRINT N'@SessionIds = exakte Pipe-Liste; @DatabaseNames: N'''' aktuelle DB, NULL alle zulässigen DBs.';
         PRINT N'@DatabaseNamePattern ist zu @DatabaseNames gegenseitig exklusiv.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|NONE; der Wert wird case-insensitiv verarbeitet.';
+        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; der Wert wird case-insensitiv verarbeitet.';
         PRINT N'@GesamtenSqlTextEinbeziehen, @InputBufferEinbeziehen und @ModulInfoEinbeziehen werden an USP_CurrentRequests weitergegeben.';
         PRINT N'@MaxSqlTextZeichen: positiv begrenzt die Textdarstellung; NULL/0 liefert vollständige Texte.';
         PRINT N'@JsonErzeugen=1 liefert meta sowie benannte Child-Objekte sessions, requests, blocking, waits, transactions, memoryGrants, tempdb, io und log.';
@@ -393,6 +396,13 @@ BEGIN
             , N'}'
         )
         FROM [#ModuleJson];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#ModuleJson'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

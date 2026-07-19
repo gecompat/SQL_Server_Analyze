@@ -59,6 +59,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectAnalysis]
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -69,6 +70,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @AnalyseModus varchar(16) = CASE WHEN @Vollanalyse = 1 THEN 'VOLL' ELSE 'GEZIELT' END;
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
@@ -85,7 +88,7 @@ BEGIN
         PRINT N'Pattern unterstützen like:, regex:, regexi: und werden nicht an Pipe getrennt.';
         PRINT N'@Vollanalyse=0 nutzt GEZIELT; ressourcenintensive Teilmodule bleiben zusätzlich gruppengeschützt.';
         PRINT N'@MitStatisticsDistribution=1 aktiviert die begrenzte, CATALOG_DEEP-geschützte Histogramm-/Partitionsverteilung.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt benannte Teilmodule in @Json.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt benannte Teilmodule in @Json.';
         RETURN;
     END;
 
@@ -296,6 +299,13 @@ BEGIN
             SELECT * FROM [#ModuleStatus] ORDER BY [ModuleName];
         ELSE
             SELECT N'Teilmodulstatus' [Ergebnis],[ModuleName] [Modul],[StatusCode] [Status],[ErrorNumber] [Fehlernummer],[ErrorMessage] [Fehlermeldung] FROM [#ModuleStatus] ORDER BY [ModuleName];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#ModuleStatus'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

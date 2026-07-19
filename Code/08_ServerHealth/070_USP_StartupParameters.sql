@@ -13,13 +13,17 @@ Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrück
 */
 
 CREATE OR ALTER PROCEDURE [monitor].[USP_StartupParameters]
- @PrintMeldungen bit=1,@Hilfe bit=0,@ResultSetArt varchar(16)='CONSOLE',@JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,
+ @PrintMeldungen bit=1,@Hilfe bit=0,@ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTable                     sysname        = NULL
+    , @JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,
  @StatusCodeOut varchar(40)=NULL OUTPUT,@IsPartialOut bit=NULL OUTPUT,@ErrorNumberOut int=NULL OUTPUT,@ErrorMessageOut nvarchar(2048)=NULL OUTPUT
 AS
 BEGIN
- SET NOCOUNT ON;SET @Json=NULL;DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters';RETURN;END;
+ SET NOCOUNT ON;SET @Json=NULL;DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL,@Platform nvarchar(60)=NULL;
- IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW oder NONE enthalten.';
+ IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  CREATE TABLE [#X]([registry_key] nvarchar(512),[value_name] nvarchar(256),[value_data] nvarchar(2048),[ParameterType] varchar(40));
  BEGIN TRY SELECT TOP(1)@Platform=[host_platform] FROM [sys].[dm_os_host_info];END TRY BEGIN CATCH END CATCH;
  IF OBJECT_ID(N'sys.dm_server_registry')IS NULL SELECT @S=CASE WHEN @Platform=N'Linux'THEN'UNAVAILABLE_PLATFORM'ELSE'UNAVAILABLE_OBJECT'END,@P=1,@M=N'sys.dm_server_registry ist nicht verfügbar; Startparameter können auf dieser Plattform/Version nicht über diese Quelle gelesen werden.';
@@ -27,5 +31,12 @@ BEGIN
  SELECT @StatusCodeOut=@S,@IsPartialOut=@P,@ErrorNumberOut=@E,@ErrorMessageOut=@M;IF @PrintMeldungen=1 AND @S<>'AVAILABLE'RAISERROR(N'USP_StartupParameters: %s',10,1,@M) WITH NOWAIT;
  IF @ResultSetArtNormalisiert<>'NONE' BEGIN SELECT CAST('2.0' AS varchar(16)) [ContractVersion],@T [CollectionTimeUtc],N'monitor.USP_StartupParameters' [ModuleName],@S [StatusCode],@P [IsPartial],@E [ErrorNumber],@M [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#X] ORDER BY [registry_key],[value_name]; END ELSE BEGIN SELECT N'startupParameters' [Ergebnis],[x].* FROM [#X] [x] ORDER BY [registry_key],[value_name]; END;END;
  IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'StartupParameters' [resultName],1 [schemaVersion],@T [generatedAtUtc],@S [statusCode],@P [isPartial],@E [errorNumber],@M [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@J0 nvarchar(max)=(SELECT * FROM [#X] ORDER BY [registry_key],[value_name] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"startupParameters":',COALESCE(@J0,N'[]'),N',"warnings":[]}');END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#X'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

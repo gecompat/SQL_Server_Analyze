@@ -47,6 +47,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanDetails]
     , @MaxAnalyseobjekte      int            = 20
     , @MaxSqlTextZeichen     int            = 8000
     , @ResultSetArt          varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen          bit            = 0
     , @Json                   nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen        bit            = 1
@@ -56,6 +57,8 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @SingleSessionId smallint=NULL;
     DECLARE @EffectiveMaxAnalyseobjekte bigint = CASE WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxAnalyseobjekte) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -215,6 +218,13 @@ END;
         DECLARE @MetaJson nvarchar(max)=(SELECT N'PlanDetails' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [candidateCount],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @CandidatesJson nvarchar(max)=(SELECT * FROM [#CandidatesOutput] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@AttributesJson nvarchar(max)=(SELECT * FROM [#Attributes] ORDER BY [CandidateId],[AttributeName] FOR JSON PATH,INCLUDE_NULL_VALUES),@PlansJson nvarchar(max)=(SELECT [CandidateId],[SourceType],[StatusCode],[DatabaseId],[ObjectId],[IsEncrypted],CONVERT(nvarchar(max),[QueryPlanXml]) [QueryPlanXml],[QueryPlanText],[ErrorNumber],[ErrorMessage] FROM [#Plans] ORDER BY [CandidateId],[SourceType] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"candidates":',COALESCE(@CandidatesJson,N'[]'),N',"attributes":',COALESCE(@AttributesJson,N'[]'),N',"plans":',COALESCE(@PlansJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#CandidatesOutput'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

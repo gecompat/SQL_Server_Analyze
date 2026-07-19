@@ -1,6 +1,6 @@
 # Gemeinsame Verträge und Interpretationsregeln
 
-**Stand:** 17. Juli 2026
+**Stand:** 19. Juli 2026
 
 Dieses Dokument gilt für alle Analyse-Procedures. Die familienbezogenen Guides wiederholen nur Abweichungen und verfahrensspezifische Besonderheiten.
 
@@ -10,9 +10,10 @@ Dieses Dokument gilt für alle Analyse-Procedures. Die familienbezogenen Guides 
 |---|---|---|
 | `CONSOLE` | verdichtete, lesbare Ad-hoc-Ausgabe | interaktive Analyse in SSMS oder Azure Data Studio |
 | `RAW` | stabiler technischer Resultset-Vertrag | genaue Spaltenanalyse, Tests und Consumer |
+| `TABLE` | primäres typisiertes Ergebnis in lokaler `#Temp`-Tabelle | Weiterverarbeitung in derselben SQL-Sitzung |
 | `NONE` | keine fachlichen Resultsets | JSON-only, Aggregatoren und statusorientierte Aufrufe |
 
-Bei technischer Verarbeitung ist `RAW` ausdrücklich zu setzen. Die sichtbare CONSOLE-Ausgabe kann Spalten ausblenden, formatieren oder mehrere technische Werte zusammenfassen.
+Bei technischer Verarbeitung ist `RAW` oder `TABLE` ausdrücklich zu setzen. Die sichtbare CONSOLE-Ausgabe kann Spalten ausblenden, formatieren oder mehrere technische Werte zusammenfassen. `TABLE` benötigt eine vom Aufrufer angelegte lokale Platzhaltertabelle, beispielsweise `CREATE TABLE #Result ([__MonitorPlaceholder] bit NULL)`, und `@ResultTable=N'#Result'`. Permanente Tabellen und globale Temp-Tabellen sind nicht Bestandteil dieses Vertrags.
 
 ## 2. JSON und OUTPUT-Status
 

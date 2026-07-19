@@ -39,6 +39,7 @@ und in SSMS/ADS den SQLCMD-Modus aktivieren.
 :r ../01_Common/092_TVF_InterpretAgentAlertRoute.sql
 :r ../01_Common/093_TVF_InterpretAgentJobState.sql
 :r ../01_Common/094_TVF_InterpretDatabaseMailStatus.sql
+:r ../01_Common/095_USP_InternalWriteResultTable.sql
 :r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
 :r ../02_CurrentState/010_USP_CurrentSessions.sql
 :r ../02_CurrentState/020_USP_CurrentRequests.sql

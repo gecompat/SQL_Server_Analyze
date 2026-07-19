@@ -50,6 +50,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsBlockedProcesses]
     , @MitProcessXml           bit             = 0
     , @BestaetigeTargetFlush   bit             = 0
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
     , @Json                            nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen          bit             = 1
@@ -59,6 +60,8 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @ResolvedSourceExtendedEventSessionName sysname=NULL;
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -290,5 +293,12 @@ END;
     IF @ResultSetArtNormalisiert<>'NONE'
     BEGIN SELECT N'USP_ExtendedEventsBlockedProcesses' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@RowCount [RowCount],@ResolvedSessionName [SessionName],@ResolvedSource [ResolvedSource],@BlockedProcessThresholdSeconds [BlockedProcessThresholdSeconds],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#ReportSummary] ORDER BY [ReportTimeUtc] DESC,[ReportId];SELECT * FROM [#BlockedProcesses] ORDER BY [ReportTimeUtc] DESC,[ReportId];SELECT * FROM [#BlockingProcesses] ORDER BY [ReportTimeUtc] DESC,[ReportId];SELECT * FROM [#SourceStatus] ORDER BY [SourceType];END ELSE BEGIN SELECT N'Blocked Process Report' [Ergebnis],[x].* FROM [#ReportSummary] [x] ORDER BY [ReportTimeUtc] DESC,[ReportId];SELECT N'Blockierter Prozess' [Ergebnis],[ReportId] [Report],[SessionId] [Session],[WaitTimeMs] [Wait ms],[WaitResource] [Wait-Ressource],[DatabaseName] [Datenbank],[LoginName] [Login],[HostName] [Host],[SessionId] [Session SQL],[InputBuffer] [SQL] FROM [#BlockedProcesses] ORDER BY [ReportTimeUtc] DESC,[ReportId];SELECT N'Blockierender Prozess' [Ergebnis],[ReportId] [Report],[SessionId] [Session],[DatabaseName] [Datenbank],[LoginName] [Login],[HostName] [Host],[SessionId] [Session SQL],[InputBuffer] [SQL] FROM [#BlockingProcesses] ORDER BY [ReportTimeUtc] DESC,[ReportId];SELECT N'Extended-Events Quelle' [Ergebnis],[x].* FROM [#SourceStatus] [x] ORDER BY [SourceType];END;END;
     IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsBlockedProcesses' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@ResolvedSessionName [sessionName],@ResolvedSource [source],@BlockedProcessThresholdSeconds [blockedProcessThresholdSeconds],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@R nvarchar(max)=(SELECT [ReportId],[SourceType],[ReportTimeUtc],[FileName],[FileOffset],[MonitorLoop],[BlockedSessionId],[BlockingSessionId],[WaitTimeMs],[DatabaseId],[DatabaseName],[WaitResource],[RequestedLockMode],CONVERT(nvarchar(max),[ReportXml]) [ReportXml] FROM [#ReportSummary] ORDER BY [ReportTimeUtc] DESC,[ReportId] FOR JSON PATH,INCLUDE_NULL_VALUES),@B nvarchar(max)=(SELECT [ReportId],[ReportTimeUtc],[SessionId],[ExecutionContextId],[ProcessStatus],[WaitResource],[WaitTimeMs],[LockMode],[DatabaseId],[DatabaseName],[ClientApplication],[HostName],[LoginName],[InputBuffer],CONVERT(nvarchar(max),[ProcessXml]) [ProcessXml] FROM [#BlockedProcesses] ORDER BY [ReportTimeUtc] DESC,[ReportId] FOR JSON PATH,INCLUDE_NULL_VALUES),@G nvarchar(max)=(SELECT [ReportId],[ReportTimeUtc],[SessionId],[ExecutionContextId],[ProcessStatus],[WaitResource],[WaitTimeMs],[LockMode],[DatabaseId],[DatabaseName],[ClientApplication],[HostName],[LoginName],[InputBuffer],CONVERT(nvarchar(max),[ProcessXml]) [ProcessXml] FROM [#BlockingProcesses] ORDER BY [ReportTimeUtc] DESC,[ReportId] FOR JSON PATH,INCLUDE_NULL_VALUES),@S nvarchar(max)=(SELECT * FROM [#SourceStatus] ORDER BY [SourceType] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"reports":',COALESCE(@R,N'[]'),N',"blockedProcesses":',COALESCE(@B,N'[]'),N',"blockingProcesses":',COALESCE(@G,N'[]'),N',"sources":',COALESCE(@S,N'[]'),N',"warnings":[]}');END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#ReportSummary'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

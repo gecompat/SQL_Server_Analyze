@@ -50,6 +50,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsSessions]
     , @MitFeldern           bit           = 0
     , @MaxZeilen            int           = 5000
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
     , @Json                            nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen       bit           = 1
@@ -59,6 +60,8 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @SessionPatternMode varchar(8),@SessionPatternValue nvarchar(4000),@SessionPatternFlags varchar(8),@SessionPatternValid bit;
     DECLARE @EventPatternMode varchar(8),@EventPatternValue nvarchar(4000),@EventPatternFlags varchar(8),@EventPatternValid bit;
     DECLARE @TargetPatternMode varchar(8),@TargetPatternValue nvarchar(4000),@TargetPatternFlags varchar(8),@TargetPatternValid bit;
@@ -489,6 +492,13 @@ END;
     BEGIN
         DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsSessions' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [sessionCount],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@SessionsJson nvarchar(max)=(SELECT * FROM [#Sessions] ORDER BY [SessionName] FOR JSON PATH,INCLUDE_NULL_VALUES),@EventsJson nvarchar(max)=(SELECT * FROM [#Events] ORDER BY [SessionName],[EventId] FOR JSON PATH,INCLUDE_NULL_VALUES),@ActionsJson nvarchar(max)=(SELECT * FROM [#Actions] ORDER BY [SessionName],[EventName],[ActionOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES),@TargetsJson nvarchar(max)=(SELECT * FROM [#Targets] ORDER BY [SessionName],[TargetId] FOR JSON PATH,INCLUDE_NULL_VALUES),@FieldsJson nvarchar(max)=(SELECT * FROM [#Fields] ORDER BY [SessionName],[ObjectType],[ObjectId],[FieldName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"sessions":',COALESCE(@SessionsJson,N'[]'),N',"events":',COALESCE(@EventsJson,N'[]'),N',"actions":',COALESCE(@ActionsJson,N'[]'),N',"targets":',COALESCE(@TargetsJson,N'[]'),N',"fields":',COALESCE(@FieldsJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Sessions'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

@@ -10,7 +10,7 @@
 
 Dieser Vertrag gilt ausschließlich für Inhalte, die in Repositorydateien oder GitHub-Inhalte geschrieben beziehungsweise für Commits, Pull Requests, Issues, Dokumentation, Tests, Metadaten, Screenshots, generierte Dateien, Archive oder andere Downloads vorbereitet werden.
 
-Er verändert keine diagnostische Runtime-Ausgabe. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE- und JSON-Ausgaben der Procedures dürfen die für die angeforderte Diagnose erforderlichen realen Werte unverändert liefern, soweit der Datenbank-Sicherheitskontext dies erlaubt. Dieser Vertrag ist insbesondere kein Auftrag, Runtime-Spalten zu entfernen, Werte zu maskieren, zu kürzen, zu hashen oder zu pseudonymisieren.
+Er verändert keine diagnostische Runtime-Ausgabe. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE-, TABLE- und JSON-Ausgaben der Procedures dürfen die für die angeforderte Diagnose erforderlichen realen Werte unverändert liefern, soweit der Datenbank-Sicherheitskontext dies erlaubt. Dieser Vertrag ist insbesondere kein Auftrag, Runtime-Spalten zu entfernen, Werte zu maskieren, zu kürzen, zu hashen oder zu pseudonymisieren. TABLE bleibt auf lokale `#Temp`-Tabellen derselben Sitzung begrenzt und führt keine Repository- oder dauerhafte Frameworkpersistenz ein.
 
 Reale personen-, benutzer-, kunden-, firmen-, organisations-, betriebs- oder umgebungsbezogene Informationen dürfen niemals Bestandteil eines Repository- oder Downloadartefakts werden. Das gilt unabhängig davon, ob sie aus Screenshots, Hardcopys, Chats, Uploads, bestehenden Skripten, Logs, Abfrageergebnissen, Ausführungsplänen oder anderen Diagnoseausgaben stammen.
 

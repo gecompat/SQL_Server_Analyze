@@ -45,6 +45,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServiceBrokerAnalysis]
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -61,6 +62,8 @@ BEGIN
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
     DECLARE @ErrorNumber int=NULL;
@@ -943,5 +946,12 @@ SET @pRows=@@ROWCOUNT;';
 
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
            @ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Findings'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

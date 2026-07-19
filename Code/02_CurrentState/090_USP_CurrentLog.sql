@@ -54,6 +54,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentLog]
     , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 1000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -64,6 +65,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
              WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen)
@@ -82,7 +85,7 @@ BEGIN
         PRINT N'@DatabaseNamePattern: ein Pattern mit like:, regex: oder regexi:; exklusiv zu @DatabaseNames.';
         PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; explizite Listen werden vollständig verarbeitet.';
         PRINT N'@MaxZeilen: positiv begrenzt; NULL/0=unbegrenzt; negativ=INVALID_PARAMETER.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'@MitVlfInformationen=1 erfordert LOG_VLF_DEEP.';
         RETURN;
     END;
@@ -506,6 +509,13 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
             , [ErrorMessage] AS [Fehlermeldung]
         FROM [#Errors]
         ORDER BY [DatabaseName], [SubModule];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

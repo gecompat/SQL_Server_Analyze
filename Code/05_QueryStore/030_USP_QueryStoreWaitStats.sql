@@ -9,7 +9,7 @@ Stand        : 2026-07-15
 Zweck        : Query-Store-Wait-Statistiken aus einer oder mehreren
                Quelldatenbanken; exaktes globales Top-N über lokale N+1-
                Kandidaten. Optionaler Filter auf in Showplans referenzierte DBs.
-Ausgabe      : RAW, CONSOLE oder NONE; optional JSON mit meta, waitStats,
+Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit meta, waitStats,
                warnings. Steuerwerte werden case-insensitiv normalisiert.
 ===============================================================================
 */
@@ -28,6 +28,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreWaitStats]
     , @MaxDatenbanken                   int            = 16
     , @MaxSqlTextZeichen                int            = 4000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -38,6 +39,8 @@ BEGIN
     SET @Json = NULL;
     SET @AnalyseModus = UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus, 'TOP'))));
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE 0 END;
     DECLARE @LocalRows bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen<2147483647 THEN CONVERT(bigint,@MaxZeilen)+1 ELSE CONVERT(bigint,@MaxZeilen) END;
     IF @Hilfe=1
@@ -46,7 +49,7 @@ BEGIN
         PRINT N'@QueryStoreDatabaseNames: exakte bracket-aware Pipe-Liste; NULL=alle; N''''=ungültig.';
         PRINT N'@ReferencedDatabaseNames/Pattern: optionaler Showplan-Referenzfilter.';
         PRINT N'@MaxZeilen ist global; lokal werden N+1 Kandidaten je DB gelesen.';
-        PRINT N'@ResultSetArt RAW|CONSOLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@ResultSetArt RAW|CONSOLE|TABLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
     IF @BisUtc IS NULL SET @BisUtc=SYSUTCDATETIME();
@@ -107,6 +110,13 @@ END;';
       DECLARE @Data nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Result] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
       DECLARE @Warnings nvarchar(max)=(SELECT * FROM [#Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
       SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"waitStats":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

@@ -36,6 +36,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerHealthAnalysis]
     , @MaxDatenbanken   int           = 16
     , @MaxZeilen        int           = 100
     , @ResultSetArt     varchar(16)   = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen     bit           = 0
     , @Json             nvarchar(max) = NULL OUTPUT
     , @PrintMeldungen   bit           = 1
@@ -46,6 +47,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @OverallStatus varchar(40) = 'AVAILABLE';
     DECLARE @ChildStatus varchar(40);
@@ -82,7 +85,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ServerHealthAnalysis';
-        PRINT N'@ResultSetArt = RAW, CONSOLE oder NONE; optional JSON mit benannten Modulobjekten.';
+        PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON mit benannten Modulobjekten.';
         RETURN;
     END;
 
@@ -506,6 +509,13 @@ BEGIN
             , N',"warnings":', COALESCE(@Warnings, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#ModuleStatus'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

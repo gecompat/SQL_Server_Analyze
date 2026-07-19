@@ -8,7 +8,7 @@ Version      : 2.0.1
 Stand        : 2026-07-16
 Zweck        : Prüft Framework-Capabilities serverweit und je ausgewählter DB.
 Datenbanken  : @DatabaseNames bracket-aware Pipe-Liste; NULL=alle; N''=aktuelle.
-Ausgabe      : RAW, CONSOLE oder NONE; optional JSON mit capabilities, summary,
+Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit capabilities, summary,
                databaseStatus und warnings.
 Änderungen   : 2.0.1 - SQL-Literal-Escaping für Datenbanknamen korrigiert.
 ===============================================================================
@@ -22,6 +22,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CheckFrameworkCapabilities]
     , @NurNichtVerfuegbar               bit            = 0
     , @MitGruppenpruefung               bit            = 1
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit             = 0
     , @Json                              nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit             = 1
@@ -32,6 +33,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @Major int = TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @ProductVersion nvarchar(128) = CONVERT(nvarchar(128), SERVERPROPERTY(N'ProductVersion'));
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
@@ -44,7 +47,7 @@ BEGIN
         PRINT N'monitor.USP_CheckFrameworkCapabilities';
         PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; NULL=alle; leer=aktuelle Datenbank.';
         PRINT N'@DatabaseNamePattern: like:, regex: oder regexi:; exakte Liste und Pattern sind exklusiv.';
-        PRINT N'@ResultSetArt=RAW, CONSOLE oder NONE; optional JSON.';
+        PRINT N'@ResultSetArt=RAW, CONSOLE, TABLE oder NONE; optional JSON.';
         RETURN;
     END;
 
@@ -101,7 +104,7 @@ BEGIN
     IF @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SET @OverallStatus = 'INVALID_PARAMETER';
-        SET @OverallError = N'@ResultSetArt muss CONSOLE, RAW oder NONE enthalten.';
+        SET @OverallError = N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
     END;
     ELSE IF @MaxDatenbanken < 0
     BEGIN
@@ -393,6 +396,13 @@ BEGIN
         DECLARE @SummaryJson nvarchar(max) = (SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount] FROM [#Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson,N'{}'), N',"capabilities":', COALESCE(@CapabilitiesJson,N'[]'), N',"summary":', COALESCE(@SummaryJson,N'[]'), N',"warnings":', COALESCE(@WarningsJson,N'[]'), N'}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Capabilities'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

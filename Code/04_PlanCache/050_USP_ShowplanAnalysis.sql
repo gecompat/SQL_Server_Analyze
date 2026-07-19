@@ -57,6 +57,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ShowplanAnalysis]
     , @MaxDurationSeconds  int            = 30
     , @MaxZeilen          int            = 50000
     , @ResultSetArt        varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen        bit            = 0
     , @Json                 nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen      bit            = 1
@@ -66,6 +67,8 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxAnalyseobjekte bigint = CASE WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxAnalyseobjekte) END;
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -340,6 +343,13 @@ END;
         DECLARE @MetaJson nvarchar(max)=(SELECT N'ShowplanAnalysis' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [candidateCount],@ProcessedPlans [processedPlanCount],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @PlanStatusJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#PlanStatus] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@StatementsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Statements] ORDER BY [CandidateId],[StatementId] FOR JSON PATH,INCLUDE_NULL_VALUES),@FindingsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[CandidateId],[FindingType],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@MissingJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#MissingIndexes] ORDER BY [Impact] DESC,[CandidateId],[TableName],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES),@ObjectsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Objects] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[IndexName] FOR JSON PATH,INCLUDE_NULL_VALUES),@StatisticsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Statistics] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES),@OperatorsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Operators] ORDER BY [CandidateId],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@CardinalityJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Cardinality] WHERE [ActualRows] IS NOT NULL OR [ActualRowsRead] IS NOT NULL ORDER BY [CandidateId],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@MemoryJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Memory] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@ParametersJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#Parameters] ORDER BY [CandidateId],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"planStatus":',COALESCE(@PlanStatusJson,N'[]'),N',"statements":',COALESCE(@StatementsJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N',"missingIndexes":',COALESCE(@MissingJson,N'[]'),N',"objects":',COALESCE(@ObjectsJson,N'[]'),N',"statistics":',COALESCE(@StatisticsJson,N'[]'),N',"operators":',COALESCE(@OperatorsJson,N'[]'),N',"cardinality":',COALESCE(@CardinalityJson,N'[]'),N',"memory":',COALESCE(@MemoryJson,N'[]'),N',"parameters":',COALESCE(@ParametersJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Findings'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

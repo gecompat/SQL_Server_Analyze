@@ -24,19 +24,23 @@ Partial      : Fehlende Features, Objekte oder Rechte werden strukturiert als
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_LogShippingStatus]
- @MaxZeilen int=5000,@ResultSetArt varchar(16)='CONSOLE',@JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,@PrintMeldungen bit=1,@Hilfe bit=0
+ @MaxZeilen int=5000,@ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTable                     sysname        = NULL
+    , @JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,@PrintMeldungen bit=1,@Hilfe bit=0
 AS
 BEGIN
  SET NOCOUNT ON;
  SET @Json=NULL;
  DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_LogShippingStatus'; PRINT N'@MaxZeilen int=5000: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig. @PrintMeldungen bit=1; @Hilfe bit=0.'; RETURN; END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
  IF @MaxZeilen<0 SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@MaxZeilen darf nicht negativ sein; NULL/0 bedeutet unbegrenzt.';
  CREATE TABLE [#P]([PrimaryServer] sysname,[PrimaryDatabase] sysname,[BackupDirectory] nvarchar(500),[BackupShare] nvarchar(500),[BackupRetentionPeriod] int,[BackupThreshold] int,[ThresholdAlertEnabled] bit,[LastBackupFile] nvarchar(500),[LastBackupDate] datetime,[BackupAgeMinutes] int,[LastBackupDateUtc] datetime,[HistoryRetentionPeriod] int);
  CREATE TABLE [#S]([SecondaryServer] sysname,[SecondaryDatabase] sysname,[PrimaryServer] sysname,[PrimaryDatabase] sysname,[RestoreDelay] int,[RestoreThreshold] int,[ThresholdAlertEnabled] bit,[LastCopiedFile] nvarchar(500),[LastCopiedDate] datetime,[CopyAgeMinutes] int,[LastRestoredFile] nvarchar(500),[LastRestoredDate] datetime,[RestoreAgeMinutes] int,[LastRestoredLatency] int,[RestoreMode] int,[DisconnectUsers] bit);
- IF @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE') SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW oder NONE enthalten.';
+ IF @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE') SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  SET LOCK_TIMEOUT 0;
  IF @StatusCode='AVAILABLE'
  BEGIN
@@ -110,5 +114,12 @@ BEGIN
   DECLARE @SecondaryJson nvarchar(max)=(SELECT * FROM [#S] ORDER BY [SecondaryDatabase] FOR JSON PATH,INCLUDE_NULL_VALUES);
   SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"primary":',COALESCE(@PrimaryJson,N'[]'),N',"secondary":',COALESCE(@SecondaryJson,N'[]'),N'}');
  END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#P'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

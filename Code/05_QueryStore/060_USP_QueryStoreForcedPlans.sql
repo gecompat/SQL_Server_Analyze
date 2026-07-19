@@ -22,6 +22,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreForcedPlans]
     , @MaxDatenbanken                   int            = 16
     , @MaxSqlTextZeichen                int            = 4000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -29,7 +30,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreForcedPlans]
 AS
 BEGIN
  SET NOCOUNT ON;SET @Json=NULL;DECLARE @Out varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),@Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN @MaxZeilen ELSE 0 END,@Local bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen<2147483647 THEN CONVERT(bigint,@MaxZeilen)+1 ELSE @MaxZeilen END;
- IF @Hilfe=1 BEGIN PRINT N'monitor.USP_QueryStoreForcedPlans';PRINT N'Quell-DB-Liste/Pattern, Referenz-DB-Liste/Pattern, RAW|CONSOLE|NONE und JSON.';RETURN;END;
+    DECLARE @TableResultRequested bit = CASE WHEN @Out = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @Out = 'NONE';
+ IF @Hilfe=1 BEGIN PRINT N'monitor.USP_QueryStoreForcedPlans';PRINT N'Quell-DB-Liste/Pattern, Referenz-DB-Liste/Pattern, RAW|CONSOLE|TABLE|NONE und JSON.';RETURN;END;
  DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Status varchar(40)='AVAILABLE',@Partial bit=0,@Error nvarchar(2048)=NULL,@Cross bit=0,@Allowed bit=1,@Db sysname,@Compat tinyint,@Sql nvarchar(max),@Count bigint=0,@HasMore bit=0,@Msg nvarchar(2048),@RefMode varchar(8),@RefValue nvarchar(4000),@RefFlags varchar(8),@RefValid bit,@RefPredicate nvarchar(max)=N'';
  SELECT @RefMode=[PatternMode],@RefValue=[PatternValue],@RefFlags=[RegexFlags],@RefValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ReferencedDatabaseNamePattern);
  CREATE TABLE [#DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
@@ -46,5 +49,12 @@ BEGIN
  SELECT @Count=COUNT_BIG(*) FROM [#Result];SET @HasMore=CONVERT(bit,CASE WHEN @Limit<9223372036854775807 AND @Count>@Limit THEN 1 ELSE 0 END);IF @Partial=1 AND @Status='AVAILABLE' SET @Status='AVAILABLE_LIMITED';
  IF @Out<>'NONE' BEGIN SELECT N'USP_QueryStoreForcedPlans' [ModuleName],@Now [CollectionTimeUtc],@Status [StatusCode],@Partial [IsPartial],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [ReturnedRowCount],@HasMore [HasMoreRows],@Error [ErrorMessage];IF @Out='RAW' SELECT TOP(@Limit) * FROM [#Result] ORDER BY CASE WHEN [LastForceFailureReason]<>0 THEN 0 ELSE 1 END,[LastExecutionTimeUtc] DESC;ELSE SELECT TOP(@Limit) N'Erzwungener Query-Store-Plan' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[PlanId] [Plan],[LastForceFailureReasonDesc] [letzter Fehler],[ForceFailureCount] [Fehleranzahl],[LastExecutionTimeUtc] [letzte Ausführung],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text],[QueryPlan] [Plan-XML] FROM [#Result] ORDER BY CASE WHEN [LastForceFailureReason]<>0 THEN 0 ELSE 1 END,[LastExecutionTimeUtc] DESC;SELECT * FROM [#Errors] ORDER BY [DatabaseName];END;
  IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'QueryStoreForcedPlans' [resultName],1 [schemaVersion],@Now [generatedAtUtc],@Status [statusCode],@MaxZeilen [requestedMaxRows],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [returnedRows],@HasMore [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT TOP(@Limit) * FROM [#Result] ORDER BY CASE WHEN [LastForceFailureReason]<>0 THEN 0 ELSE 1 END,[LastExecutionTimeUtc] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT * FROM [#Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"forcedPlans":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
+    END;
 END;
 GO

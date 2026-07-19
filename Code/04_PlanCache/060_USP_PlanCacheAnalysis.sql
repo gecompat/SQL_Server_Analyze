@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanCacheAnalysis]
     , @MaxAnalyseobjekte                int            = 20
     , @MaxDurationSeconds               int            = 30
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -40,6 +41,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Mode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus, 'TOP'))));
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
@@ -65,7 +68,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_PlanCacheAnalysis';
         PRINT N'Datenbank- und Textfilter folgen den zentralen Listen-/Patternverträgen.';
-        PRINT N'@ResultSetArt = RAW, CONSOLE oder NONE; optional JSON über @Json OUTPUT.';
+        PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON über @Json OUTPUT.';
         RETURN;
     END;
 
@@ -243,6 +246,14 @@ BEGIN
             , N',"warnings":', COALESCE(@Warnings, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        SELECT * INTO [#MonitorTableResult] FROM @Errors;
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#MonitorTableResult'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

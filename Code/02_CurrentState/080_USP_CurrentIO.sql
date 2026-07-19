@@ -20,6 +20,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentIO]
     , @SampleSeconds                  tinyint         = 0
     , @MaxZeilen                      int             = 1000
     , @ResultSetArt                   varchar(16)      = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit              = 0
     , @Json                           nvarchar(max)    = NULL OUTPUT
     , @PrintMeldungen                 bit              = 1
@@ -30,6 +31,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
                                  WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE 0 END;
     DECLARE @Candidates bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
@@ -43,7 +46,7 @@ BEGIN
         PRINT N'Explizite Datenbanklisten werden nicht durch @MaxDatenbanken gekürzt.';
         PRINT N'@SampleSeconds=0 liefert kumulative Zähler; 1..60 liefert ein Delta.';
         PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|NONE; Steuerwert case-insensitiv.';
+        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert case-insensitiv.';
         RETURN;
     END;
 
@@ -384,6 +387,13 @@ BEGIN
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         SET @Json = CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"files":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

@@ -47,6 +47,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentRequests]
     , @MaxZeilen                     int            = 500
     , @Sortierung                    varchar(32)    = 'RELEVANZ'
     , @ResultSetArt                  varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                  bit            = 0
     , @Json                          nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                bit            = 1
@@ -66,6 +67,8 @@ BEGIN
     DECLARE @ErrorMessage nvarchar(2048) = NULL;
     DECLARE @Detail nvarchar(2000) = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @RequiredPermission nvarchar(256) =
         CASE
             WHEN TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) >= 16
@@ -110,7 +113,7 @@ BEGIN
         PRINT N'@InputBufferEinbeziehen=1 ergänzt den ursprünglich an SQL Server übergebenen Befehl, z. B. EXEC/RPC-Aufruf.';
         PRINT N'@ModulInfoEinbeziehen=1 löst dbid/objectid über die Systemtabellen der jeweiligen Datenbank auf.';
         PRINT N'@MaxSqlTextZeichen: positiver Wert kürzt die Darstellung; NULL/0 gibt den jeweiligen Text vollständig aus.';
-        PRINT N'@MaxZeilen: positiver Wert begrenzt; NULL/0 unbegrenzt. @ResultSetArt CONSOLE (Default), RAW oder NONE; optional @Json OUTPUT.';
+        PRINT N'@MaxZeilen: positiver Wert begrenzt; NULL/0 unbegrenzt. @ResultSetArt CONSOLE (Default), RAW, TABLE oder NONE; optional @Json OUTPUT.';
         RETURN;
     END;
 
@@ -1284,6 +1287,13 @@ BEGIN
             FROM [#Warnings] AS [w]
             ORDER BY [w].[WarningId];
         END;
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

@@ -18,6 +18,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentTempDB]
     , @MitDateien                 bit           = 1
     , @MaxZeilen                  int           = 1000
     , @ResultSetArt               varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen               bit            = 0
     , @Json                       nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen             bit            = 1
@@ -28,6 +29,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
                                  WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE 0 END;
     DECLARE @Candidates bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
@@ -39,7 +42,7 @@ BEGIN
         PRINT N'@SessionIds = N''57|61''; NULL = keine Einschränkung.';
         PRINT N'@MitDateien=1 liefert ein zweites Resultset beziehungsweise das JSON-Array tempdbFiles.';
         PRINT N'@MaxZeilen positiv = begrenzt, NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|NONE; Steuerwert case-insensitiv.';
+        PRINT N'@ResultSetArt = CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert case-insensitiv.';
         RETURN;
     END;
 
@@ -300,6 +303,13 @@ ORDER BY [df].[file_id];';
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         SET @Json = CONCAT(N'{"meta":', COALESCE(@Meta,N'{}'), N',"sessions":', COALESCE(@SessionsJson,N'[]'), N',"tempdbFiles":', COALESCE(@FilesJson,N'[]'), N',"warnings":', COALESCE(@WarningsJson,N'[]'), N'}');
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Sessions'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

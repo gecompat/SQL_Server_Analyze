@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_BackupRecovery]
     , @MitRestoreHistory              bit            = 1
     , @MaxZeilen                      int            = 5000
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
     , @Json                           nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                 bit            = 1
@@ -41,6 +42,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
              THEN CONVERT(bigint, 9223372036854775807)
@@ -54,7 +57,7 @@ BEGIN
         PRINT N'@MaxDatenbanken begrenzt nur die automatische Auswahl; explizite Listen werden nicht gekürzt.';
         PRINT N'@FullWarnHours=48; @DiffWarnHours=24; @LogWarnMinutes=30; @MitRestoreHistory=1.';
         PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -346,6 +349,13 @@ BEGIN
             , N',"warnings":', COALESCE(@WarningsJson, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Fresh'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

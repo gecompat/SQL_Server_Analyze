@@ -19,7 +19,7 @@ Pattern      : LIKE (Default/like:), regex:, regexi:. Regex benötigt SQL Server
                2025 und Compatibility Level 170 der jeweils ausgewerteten DB.
 Top-N        : Je Quelldatenbank werden höchstens N+1 lokale Kandidaten gelesen;
                anschließend wird daraus das exakte globale Top N gebildet.
-Ausgabe      : RAW, CONSOLE oder NONE; optionales JSON mit meta, runtimeStats
+Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optionales JSON mit meta, runtimeStats
                und warnings.
 Änderungen   : 2.0.0 - Quell-/Referenzdatenbanken getrennt, @AlleDatenbanken
                          entfernt, globale Top-N-Logik, Pattern und JSON.
@@ -43,6 +43,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreRuntimeStats]
     , @MitPlanXml                       bit            = 0
     , @MaxSqlTextZeichen                int            = 4000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -66,6 +67,8 @@ BEGIN
              ELSE CONVERT(bigint, 0) END;
     DECLARE @ResultSetArtNormalisiert varchar(16) =
         UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     SET @Sortierung = UPPER(LTRIM(RTRIM(COALESCE(@Sortierung, 'CPU_TOTAL'))));
     SET @AnalyseModus = UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus, 'TOP'))));
 
@@ -101,7 +104,7 @@ BEGIN
         PRINT N'@TextPattern akzeptiert LIKE (Default/like:), regex: oder regexi:.';
         PRINT N'@Sortierung: CPU_TOTAL, DURATION_TOTAL, READS_TOTAL, WRITES_TOTAL, EXECUTIONS, MEMORY_MAX, TEMPDB_TOTAL, LOG_BYTES_TOTAL, LAST_EXECUTION.';
         PRINT N'@MaxZeilen ist global über alle Quelldatenbanken; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -671,6 +674,13 @@ END;';
             , [ErrorMessage] AS [Meldung]
         FROM [#Errors]
         ORDER BY [DatabaseName];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Result'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

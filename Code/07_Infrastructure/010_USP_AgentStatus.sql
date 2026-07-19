@@ -22,6 +22,7 @@ Locking      : LOCK_TIMEOUT 0; keine fachlichen Schreibzugriffe.
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_AgentStatus]
       @ResultSetArt   varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen   bit            = 0
     , @Json           nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen bit            = 1
@@ -34,11 +35,13 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) =
         UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
 
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_AgentStatus';
-        PRINT N'@ResultSetArt: CONSOLE (Default), RAW oder NONE; der Steuerwert wird case-insensitiv verarbeitet.';
+        PRINT N'@ResultSetArt: CONSOLE (Default), RAW, TABLE oder NONE; der Steuerwert wird case-insensitiv verarbeitet.';
         PRINT N'@JsonErzeugen=1 setzt @Json OUTPUT mit meta und agentStatus.';
         PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0.';
         PRINT N'Nur lesend; der SQL Server Agent wird weder gestartet noch gestoppt.';
@@ -67,7 +70,7 @@ BEGIN
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @IsPartial = 1;
-        SET @ErrorMessage = N'@ResultSetArt muss CONSOLE, RAW oder NONE enthalten.';
+        SET @ErrorMessage = N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
     END;
 
     SET LOCK_TIMEOUT 0;
@@ -173,6 +176,13 @@ BEGIN
             , N',"agentStatus":', COALESCE(@DataJson, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#AgentStatus'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

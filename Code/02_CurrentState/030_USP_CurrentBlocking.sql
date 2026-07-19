@@ -12,7 +12,7 @@ Zweck        : Ermittelt aktuelle Blocking-Ketten sowie optional die zugehörige
 SQL-Version  : SQL Server 2019 oder neuer.
 Parameter    : @SessionIds = NULL oder z. B. N'57|61'; @MaxZeilen > 0
                begrenzt, NULL/0 ist unbegrenzt. @ResultSetArt akzeptiert
-               RAW, CONSOLE oder NONE case-insensitiv. JSON wird als Envelope
+               RAW, CONSOLE, TABLE oder NONE case-insensitiv. JSON wird als Envelope
                mit blockingChains, locks und warnings geliefert.
 Berechtigung : VIEW SERVER STATE bis SQL Server 2019 beziehungsweise
                VIEW SERVER PERFORMANCE STATE ab SQL Server 2022. Lockdetails
@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentBlocking]
     , @MitLockDetails             bit            = 0
     , @MaxZeilen                  int            = 1000
     , @ResultSetArt               varchar(16)     = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen               bit             = 0
     , @Json                       nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen             bit             = 1
@@ -40,6 +41,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
              WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen)
@@ -55,7 +58,7 @@ BEGIN
         PRINT N'@SessionIds: exakte Session-IDs als Pipe-Liste, z. B. N''57|61''; NULL = keine Einschränkung.';
         PRINT N'@MitLockDetails=1 aktiviert die gruppengeschützte LOCKS_DEEP-Auswertung.';
         PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig.';
-        PRINT N'@ResultSetArt: CONSOLE (Default), RAW oder NONE; Groß-/Kleinschreibung wird ignoriert.';
+        PRINT N'@ResultSetArt: CONSOLE (Default), RAW, TABLE oder NONE; Groß-/Kleinschreibung wird ignoriert.';
         PRINT N'@JsonErzeugen=1 liefert blockingChains, locks und warnings in @Json OUTPUT.';
         RETURN;
     END;
@@ -573,6 +576,13 @@ BEGIN
             , N',"warnings":', COALESCE(@WarningsJson, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#BlockingChains'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

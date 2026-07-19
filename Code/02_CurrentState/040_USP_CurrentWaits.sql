@@ -27,6 +27,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentWaits]
     , @TopWaitPercentage            decimal(5,2)   = 95.00
     , @MaxZeilen                    int            = 1000
     , @ResultSetArt                 varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                 bit            = 0
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
@@ -39,6 +40,8 @@ BEGIN
     DECLARE @StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@TaskRowCount bigint=0,@InstanceRowCount bigint=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,@DeltaStatus varchar(40)=CASE WHEN @SampleSeconds=0 THEN 'CUMULATIVE_CONTEXT' ELSE 'SKIPPED' END,@DeltaDetail nvarchar(2000)=NULL;
     DECLARE @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
     DECLARE @CandidateMaxZeilen bigint,@MonitorPrintMessage nvarchar(2048),@StartBefore datetime,@StartAfter datetime;
 
@@ -48,7 +51,7 @@ BEGIN
         PRINT N'@SessionIds, @WaitTypes und @WaitGroups akzeptieren bracket-aware Pipe-Listen.';
         PRINT N'@WaitTypePattern/@WaitGroupPattern: LIKE (Default/like:), regex: oder regexi:; Liste und Pattern sind gegenseitig exklusiv.';
         PRINT N'@SampleSeconds=0 liefert kumulative Instanzwerte; 1..60 liefert ein Delta.';
-        PRINT N'@MaxZeilen positiv begrenzt; NULL/0 unbegrenzt. @ResultSetArt CONSOLE (Default), RAW oder NONE; optional @Json OUTPUT.';
+        PRINT N'@MaxZeilen positiv begrenzt; NULL/0 unbegrenzt. @ResultSetArt CONSOLE (Default), RAW, TABLE oder NONE; optional @Json OUTPUT.';
         RETURN;
     END;
 
@@ -171,6 +174,13 @@ BEGIN
         SELECT N'Wait-Analyse' AS [Ergebnis],@StatusCode AS [Status],@DeltaStatus AS [Messstatus],@TaskRowCount AS [Aktuelle_Tasks],@InstanceRowCount AS [Instanz_Waits],@DeltaDetail AS [Messhinweis],@ErrorMessage AS [Fehler];
         SELECT N'Aktuelle wartende Task' AS [Ergebnis],[SessionId] AS [Session],[ExecContextId] AS [Exec_Context],[LoginName] AS [Login],[HostName] AS [Host],[ProgramName] AS [Programm],[Command] AS [Befehl],[WaitType] AS [Wait],CONCAT(CONVERT(varchar(40),[WaitDurationMs]),N' ms') AS [Wartezeit],[BlockingSessionId] AS [Blockiert_durch],[WaitGroup] AS [Wait_Gruppe],[WaitMeaning] AS [Bedeutung],[CurrentStatement] AS [Aktuelles_Statement] FROM [#Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId];
         SELECT N'Instanzweite Wait-Messung' AS [Ergebnis],[WaitType] AS [Wait],[WaitGroup] AS [Wait_Gruppe],[MeasurementType] AS [Messart],[WaitingTasksCount] AS [Tasks],CONCAT(CONVERT(varchar(40),[WaitTimeMs]),N' ms') AS [Wartezeit],CONCAT(CONVERT(varchar(40),[WaitPercentage]),N' %') AS [Anteil],CONCAT(CONVERT(varchar(40),[AverageWaitMs]),N' ms') AS [Durchschnitt],[WaitMeaning] AS [Bedeutung],[RecommendedChecks] AS [Empfohlene_Pruefung] FROM [#Instance] ORDER BY [WaitTimeMs] DESC,[WaitType];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Tasks'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

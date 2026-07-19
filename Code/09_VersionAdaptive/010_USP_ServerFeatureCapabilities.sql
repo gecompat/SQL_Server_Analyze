@@ -35,6 +35,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerFeatureCapabilities]
     , @MitPlattformdetails              bit            = 1
     , @MaxZeilen                        int            = 5000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -46,6 +47,8 @@ BEGIN
     SET LOCK_TIMEOUT 0;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
@@ -55,7 +58,7 @@ BEGIN
         PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet aktuelle Datenbank.';
         PRINT N'@DatabaseNamePattern unterstützt like:, regex:, regexi: und ist exklusiv zu @DatabaseNames.';
         PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; @MaxZeilen begrenzt jedes fachliche Resultset global.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -306,6 +309,13 @@ END;';
         SELECT TOP(@EffectiveMaxZeilen) N'Datenbank-Capability' [Ergebnis],[DatabaseName] [Datenbank],[CompatibilityLevel] [Compatibility_Level],[FeatureName] [Feature],[AvailabilityStatus] [Verfügbarkeit],[FeatureValue] [Wert],[LogicPath] [Logik/Fallback],[Detail] [Hinweis] FROM [#DatabaseFeatures] ORDER BY [DatabaseName],[FeatureName];
         IF @MitSpezialindizes=1 SELECT TOP(@EffectiveMaxZeilen) N'Spezialindex' [Ergebnis],[DatabaseName] [Datenbank],[SchemaName] [Schema],[ObjectName] [Objekt],[IndexName] [Index],[IndexFamily] [Indexfamilie],[IndexDetails] [Details],[AvailabilityStatus] [Verfügbarkeit] FROM [#SpecialIndexes] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexName];
         SELECT N'Capability-Warnung' [Ergebnis],[DatabaseName] [Datenbank],[ModuleName] [Modul],[ErrorNumber] [Fehlernummer],[ErrorMessage] [Fehlermeldung] FROM [#Errors] ORDER BY [DatabaseName],[ModuleName];
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Capabilities'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO

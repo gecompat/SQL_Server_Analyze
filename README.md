@@ -114,9 +114,23 @@ Für die vollständige Aufrufsammlung siehe:
 |---|---|
 | `CONSOLE` | lesbare, formatierte Ad-hoc-Ausgabe |
 | `RAW` | stabiler technischer Resultset-Vertrag |
+| `TABLE` | primäres typisiertes Ergebnis in eine lokale `#Temp`-Tabelle des Aufrufers |
 | `NONE` | keine fachlichen Resultsets, beispielsweise bei reiner JSON-Nutzung |
 
-Viele Procedures können zusätzlich JSON über `@Json nvarchar(max) OUTPUT` zurückgeben. RAW-, CONSOLE- und JSON-Ausgabe werden aus derselben kanonischen Datenbasis erzeugt.
+Für `TABLE` legt der Aufrufer eine leere Platzhaltertabelle an; das Framework ersetzt den Platzhalter durch die native Struktur des primären Ergebnisses:
+
+```sql
+CREATE TABLE #RequestResult ([__MonitorPlaceholder] bit NULL);
+
+EXEC [monitor].[USP_CurrentRequests]
+      @MaxZeilen = 100
+    , @ResultSetArt = 'TABLE'
+    , @ResultTable = N'#RequestResult';
+
+SELECT * FROM #RequestResult;
+```
+
+Unterstützt werden bewusst nur lokale `#Temp`-Tabellen. Eine bereits exakt passende Tabelle wird ergänzt; eine abweichende oder gefüllte Platzhaltertabelle wird ohne Strukturänderung abgelehnt. Viele Procedures können zusätzlich JSON über `@Json nvarchar(max) OUTPUT` zurückgeben. Alle Ausgabearten werden aus derselben kanonischen Datenbasis erzeugt.
 
 ## Filter- und Limitvertrag
 
@@ -205,7 +219,7 @@ Empfohlene Einstiegspunkte:
 - [Procedure-Referenz](./Documentation/Reference/Procedure_Reference.md)
 - [Spezialfallmodule: Evidenz, Kosten und Grenzen](./Documentation/Architecture/Special_Case_Modules.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
-- [RAW-, CONSOLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
+- [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
 - [Datenschutz- und Sicherheitsvertrag für Repositoryartefakte](./Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md)
 - [Vertrag für ein späteres Snapshot-/Baseline-Paket](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
@@ -222,7 +236,7 @@ Empfohlene Einstiegspunkte:
 
 Der Repositorybestand enthält reproduzierbare statische API-, Installer- und Dokumentationsprüfungen sowie dokumentierte Datenschutz- und Migrationsaudits. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json). Das unter [`Documentation/Quality/Repository_Privacy_Validation.md`](./Documentation/Quality/Repository_Privacy_Validation.md) beschriebene Repository- und ZIP-Datenschutzgate prüft versionierte Dateien und den vollständigen ZIP-Lieferumfang automatisiert, ohne Laufzeit-Resultsets zu verändern.
 
-Die Version `1.1.0-special.9` ergänzt die P2-Module für Verschlüsselungslebenszyklus und Wartungsoperationen. Der Release-Gate-Vertrag umfasst nun 31 Suiten; alle 17 P0-, 40 P1- und 124 P2-Fälle besitzen commitbezogene Drei-Versionen-Evidenz. Die 115 zuvor offenen P2-Zeilen sind abgeschlossen. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.
+Die Version `1.1.0-special.10` ergänzt den einheitlichen, typisierten `TABLE`-/`@ResultTable`-Vertrag für alle 82 Analyse-Procedures. Der Release-Gate-Vertrag umfasst nun 32 Suiten; die vorhandene Drei-Versionen-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle bleibt erhalten und wird um den synthetischen TABLE-Laufzeitvertrag ergänzt. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.
 
 Die geplanten SQL-Server-, Editions-, Plattform- und Berechtigungskombinationen stehen in [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv). `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 

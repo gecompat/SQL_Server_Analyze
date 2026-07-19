@@ -56,6 +56,6 @@ Nicht jede Seite benötigt einen langen Abschnitt zu jedem Punkt. Nicht anwendba
 - Live, Sample, kumulativ und historisch unterscheiden.
 - `NULL`, 0 und keine Zeile unterscheiden.
 - Repository-Default, Produktaussage und Heuristik kennzeichnen.
-- CONSOLE für Einstieg, RAW für vollständige technische Analyse.
+- CONSOLE für Einstieg, RAW für vollständige technische Analyse und TABLE für die typisierte SQL-interne Weiterverarbeitung des Primärergebnisses.
 - Keine automatische DDL-, KILL-, Failover-, Repair- oder Forcing-Empfehlung.
 - Nur eindeutig synthetische `Example*`-Werte in Beispielen.

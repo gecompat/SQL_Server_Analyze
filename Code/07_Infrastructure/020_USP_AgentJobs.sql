@@ -25,6 +25,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_AgentJobs]
     , @LongRunningMinutes int           = 60
     , @MaxZeilen         int            = 2000
     , @ResultSetArt      varchar(16)    = 'CONSOLE'
+    , @ResultTable                     sysname        = NULL
     , @JsonErzeugen      bit            = 0
     , @Json              nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen    bit            = 1
@@ -36,6 +37,8 @@ BEGIN
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
+    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @PatternMode varchar(8);
     DECLARE @PatternValue nvarchar(4000);
     DECLARE @RegexFlags varchar(8);
@@ -59,7 +62,7 @@ BEGIN
         PRINT N'@JobNamePattern: genau ein LIKE-/Regex-Pattern; exakte Liste und Pattern sind gegenseitig exklusiv.';
         PRINT N'@NurProblematisch bit=0; @LongRunningMinutes int=60.';
         PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -390,6 +393,13 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
             , N',"steps":', COALESCE(@StepsJson, N'[]')
             , N'}'
         );
+    END;
+    IF @TableResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalWriteResultTable]
+              @SourceTable = N'#Jobs'
+            , @ResultTable = @ResultTable
+            , @ThrowOnError = 1;
     END;
 END;
 GO
