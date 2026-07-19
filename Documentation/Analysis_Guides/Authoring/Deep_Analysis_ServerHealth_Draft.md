@@ -291,7 +291,7 @@
 
 ## 3. Offizielle Primärquellen
 
-- [SQL Server thread and task architecture guide](https://learn.microsoft.com/sql/relational-databases/sql-server-thread-and-task-architecture-guide)
+- [SQL Server thread and task architecture guide](https://learn.microsoft.com/en-us/sql/relational-databases/thread-and-task-architecture-guide?view=sql-server-ver17)
 - [Soft-NUMA](https://learn.microsoft.com/sql/database-engine/configure-windows/soft-numa-sql-server)
 - [Server memory configuration options](https://learn.microsoft.com/sql/database-engine/configure-windows/server-memory-server-configuration-options)
 - [TempDB database](https://learn.microsoft.com/sql/relational-databases/databases/tempdb-database)

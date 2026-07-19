@@ -1,7 +1,9 @@
 # Recherchequellen und Referenzlösungen
 
-**Recherche-/Prüfstand:** 18. Juli 2026
+**Recherche-/Prüfstand:** 20. Juli 2026
 **Verwendung:** fachliche Referenz, Abgleich von Semantik, Berechtigungen, Versionsunterschieden, Overhead und bekannten Risiken. Community-Code wird nicht ungeprüft übernommen.
+
+Die versionsabhängigen Kernaussagen der Analysis Guides sind zusätzlich in `Documentation/Analysis_Guides/Version_Primary_Source_Matrix.md` den unterstützten Zielversionen, betroffenen Bereichen und noch erforderlichen Laufzeitnachweisen zugeordnet. Der externe Linkvalidator prüft diese Datei und die Analysis Guides auf dauerhaft verlorene Ziele.
 
 ## 1. Primärquellen – Microsoft SQL Server
 
@@ -88,7 +90,7 @@ Die genannten Community-Projekte werden in diesem Stand nur referenziert. Es wur
 - Microsoft: `sys.dm_io_virtual_file_stats` – kumulative Datei-I/O-Zähler und Berechtigungen: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-virtual-file-stats-transact-sql
 - Microsoft: `sys.dm_db_log_space_usage`: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-log-space-usage-transact-sql
 - Microsoft: `sys.dm_db_log_stats`: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-log-stats-transact-sql
-- Microsoft: `sys.dm_tran_persistent_version_store_stats`: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-tran-persistent-version-store-stats-transact-sql
+- Microsoft: `sys.dm_tran_persistent_version_store_stats`: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-tran-persistent-version-store-stats?view=sql-server-ver17
 - Microsoft: `SET LOCK_TIMEOUT` – verbindungsweiter Zustand; deshalb nicht ungesichert im Framework setzen: https://learn.microsoft.com/en-us/sql/t-sql/statements/set-lock-timeout-transact-sql
 
 
@@ -99,7 +101,7 @@ Die genannten Community-Projekte werden in diesem Stand nur referenziert. Es wur
 - Microsoft: `sys.dm_db_index_operational_stats` – kumulative Zugriffs-, Lock-, Latch-, I/O-Latch-, Allocation- und Eskalationszähler; NULL-Parameter wirken als Wildcards: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-index-operational-stats-transact-sql
 - Microsoft: `sys.dm_db_index_physical_stats` – Physical Stats, Scanmodi, Locks und Einschränkungen: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-index-physical-stats-transact-sql
 - Microsoft: `sys.dm_db_missing_index_details` – flüchtige Missing-Index-Metadaten und begrenzte DMV-Kapazität: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-missing-index-details-transact-sql
-- Microsoft: `sys.dm_db_stats_properties` – Statistikzeitpunkt, Zeilen, Sample und Modification Counter: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-functions/sys-dm-db-stats-properties-transact-sql
+- Microsoft: `sys.dm_db_stats_properties` – Statistikzeitpunkt, Zeilen, Sample und Modification Counter: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-stats-properties-transact-sql?view=sql-server-ver17
 - Microsoft: `sys.partitions` – Partitionen und Datenkompression: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-partitions-transact-sql
 - Microsoft: `sys.column_store_row_groups` – Columnstore-Rowgroup-Metadaten: https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-store-row-groups-transact-sql
 - Microsoft: `sys.dm_db_column_store_row_group_physical_stats` – aktuelle Rowgroup-Physical-Stats: https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-column-store-row-group-physical-stats-transact-sql

@@ -1,5 +1,13 @@
 # Release Notes
 
+## Stand 2026-07-20 – Deep-Analysis-Authoring konsolidiert
+
+- Die 84/84-Drafts bleiben als nicht kanonisches Authoring-Archiv erhalten; veraltete Zukunfts- und Offen-Markierungen sind durch Abschlussstand und klare erneute Rechercheauslöser ersetzt.
+- `USP_CurrentWaits` und `USP_QueryStoreWaitStats` verweisen ausschließlich auf kanonische Grundlagen- und Familienguides.
+- Eine neue Versions-/Primärquellenmatrix verbindet SQL Server 2019, 2022 und 2025, Compatibility-/Berechtigungsgrenzen und feature-positive Evidenzlücken mit offiziellen Microsoft-Quellen.
+- Der neue externe Linkvalidator prüft URL-Struktur repositoryweit und blockiert dauerhafte HTTP-404-/410-Ziele im Analysis-Guide-/Quellenscope; transiente Fremdsystemfehler bleiben nicht blockierende Warnungen.
+- Beim ersten vollständigen Lauf wurden veraltete Microsoft-Learn-Pfade für Execution-, I/O-, Statistics-, Index-, Plan-, PVS-, Query-Store-, Thread-/Task- und HADR-Quellen korrigiert.
+
 ## Stand 2026-07-20 – SC-023 Snapshot- und Baseline-Design freigegeben
 
 - Der Architekturentscheid für eine separate, konfigurierbar benannte Snapshot-Datenbank je SQL-Server-Instanz ist freigegeben; die Implementierung bleibt bis zu einem eigenen Auftrag zurückgestellt.

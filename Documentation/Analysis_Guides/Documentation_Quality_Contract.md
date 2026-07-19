@@ -24,6 +24,7 @@ Jede eigenständige Seite erklärt:
 - Eigenlast, wenn der Pfad über LOW hinausgeht,
 - eine technische Vertiefung mit Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse,
 - einen Link auf das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md).
+- bei versionsabhängigen Aussagen einen nachvollziehbaren Eintrag oder Verweis in der [Versions- und Primärquellenmatrix](Version_Primary_Source_Matrix.md).
 
 ## Fachlicher Mindestvertrag
 
@@ -35,7 +36,7 @@ Jede eigenständige Seite erklärt:
 
 ## Wartbarkeit
 
-Die Strukturprüfung `Code/Tests/Static/900_Validate_Analysis_Documentation.ps1` vergleicht Referenz und Seiten, Pflichtüberschriften sowie interne Markdownlinks. Sie ersetzt keine fachliche oder Datenschutzprüfung.
+Die Strukturprüfung `Code/Tests/Static/900_Validate_Analysis_Documentation.ps1` vergleicht Referenz und Seiten, Pflichtüberschriften sowie interne Markdownlinks. `Code/Tests/Static/980_Validate_External_Documentation_Links.py` prüft externe URL-Struktur repositoryweit und erkennt im Analysis-Guide-/Quellenscope dauerhafte HTTP-Fehler. Transiente Netzwerk-, Rate-Limit- oder Serverfehler werden als Warnung gezählt, damit ein Fremdsystemausfall das Liefergate nicht fälschlich blockiert. Beide Prüfungen ersetzen keine fachliche oder Datenschutzprüfung.
 
 ## Datenschutz
 

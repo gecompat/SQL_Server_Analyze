@@ -216,9 +216,9 @@ Die 84 Einzelpages dürfen gemeinsame Grundlagen nicht jeweils widersprüchlich 
 11. Agent, `msdb`-Historie, HADR, Replication und verteilte Sicht.
 12. Capability Detection, Version, Edition und Compatibility Level.
 
-## 13. Integrationsreihenfolge
+## 13. Historische Integrationsreihenfolge
 
-Nach Ende der parallelen Repositoryarbeit:
+Die folgende Reihenfolge wurde bei der abgeschlossenen 84/84-Integration verwendet und bleibt als Redaktionsnachweis erhalten:
 
 1. Inventar und RAW-Verträge erneut gegen aktuellen `main` prüfen.
 2. gemeinsame Grundlagenkapitel anlegen.
@@ -248,9 +248,9 @@ Primäre technische Aussagen sollen aus dem kanonischen T-SQL-Code und offiziell
 
 Ergänzende Expert:innenquellen dürfen unterschiedliche Praxiserfahrungen erklären, müssen aber als solche gekennzeichnet werden und dürfen offizielle Produktsemantik nicht ersetzen.
 
-## 15. Aussagegrenze dieses Drafts
+## 15. Aussagegrenze dieses Archivs
 
-Diese Matrix stellt jetzt sicher, dass der technische Dokumentationsauftrag alle 84 Procedures umfasst. Sie ist noch nicht die geforderte Endtiefe jeder Einzelpage. Die Endtiefe entsteht erst durch:
+Diese Matrix weist die ursprüngliche Research-Abdeckung aller 84 Procedures nach, ist aber nicht die kanonische Enddokumentation. Die folgenden Inhalte sind inzwischen in den Procedure-Seiten, Familienguides und technischen Grundlagen integriert:
 
 - vollständigen Spaltenkatalog aus dem tatsächlichen RAW-Vertrag,
 - Quellspalte-zu-Ausgabespalte-Mapping,

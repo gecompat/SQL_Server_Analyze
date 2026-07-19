@@ -164,4 +164,4 @@ flowchart TD
 
 ## 4. Integrationshinweis
 
-Die spätere Dokumentation soll für jede optionale Quelle einen dreistufigen Status ausgeben: `nicht unterstützt`, `unterstützt aber nicht konfiguriert` und `konfiguriert, Evidenz vorhanden/fehlend`. Dadurch lernen Anfänger:innen, dass fehlende Daten nicht automatisch Fehler oder Gesundheit bedeuten.
+Die kanonische Dokumentation unterscheidet für optionale Quellen `nicht unterstützt`, `unterstützt aber nicht konfiguriert` und `konfiguriert, Evidenz vorhanden/fehlend`. Dadurch bleibt sichtbar, dass fehlende Daten nicht automatisch Fehler oder Gesundheit bedeuten.

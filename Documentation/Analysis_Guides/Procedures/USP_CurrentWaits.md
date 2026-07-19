@@ -61,6 +61,6 @@ Ein Wait ist keine Root Cause und ein hoher kumulativer Wert kein aktuelles Prob
 
 ### Folgeanalyse
 
-Vollständige Vertiefung in `Deep_Analysis_Documentation_Draft.md`; je Familie Blocking, I/O, Grants, CPU oder HADR weiterverfolgen.
+Die kanonischen [Wait-Details](../02_Current_State.md#4-monitorusp_currentwaits) und das [Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) verwenden; danach je Familie Blocking, I/O, Grants, CPU oder HADR weiterverfolgen.
 
 [Technische Detailbeschreibung](../02_Current_State.md#4-monitorusp_currentwaits)

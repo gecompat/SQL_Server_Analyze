@@ -1,6 +1,6 @@
 # Index der technischen Deep-Analysis-Drafts
 
-**Stand:** 19. Juli 2026
+**Stand:** 20. Juli 2026
 **Status:** Index des integrierten Authoring-Archivs; nicht kanonisch
 **Integrierte Abdeckung:** 84 von 84 öffentlichen Procedures
 
@@ -62,3 +62,5 @@ Die kanonische Einzelpage verbindet diese Felder mit:
 2. Alle 84 Procedure-Seiten besitzen die sieben procedurespezifischen Vertiefungsfelder.
 3. Bestehende sichere Aufrufe, Zeilenbedeutungen, Beispiele, Leer-/Partialgrenzen und Familienlinks blieben erhalten.
 4. Die Dateien in diesem Verzeichnis bleiben als Redaktionsnachweis bestehen, sind aber keine zweite kanonische Referenz.
+5. Historische Roadmaps und offene Arbeitspakete sind als abgeschlossen gekennzeichnet; neue Recherche entsteht ausschließlich über die dokumentierten Änderungs- und Versionsauslöser.
+6. Kanonische Seiten verweisen nicht mehr auf Draftdateien. Versionsabhängige Aussagen werden in der [Versions- und Primärquellenmatrix](../Version_Primary_Source_Matrix.md) nachgewiesen.
