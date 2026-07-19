@@ -76,8 +76,24 @@ IF NOT EXISTS
 )
     INSERT [#TableOutputFailure] VALUES(N'DATETIME_SHAPE',N'Scale oder Nullability der datetime2-Spalte wurden nicht erhalten.');
 
-IF (SELECT COUNT_BIG(*) FROM [#TableContractTarget])<>2
-   OR NOT EXISTS(SELECT 1 FROM [#TableContractTarget] WHERE [Id]=1 AND [Name]=N'Example A' AND [Amount]=CONVERT(decimal(19,4),12.3456))
+DECLARE @TypedRowCount bigint,@TypedValueFound bit;
+EXEC [sys].[sp_executesql]
+      N'SELECT
+              @RowCount=COUNT_BIG(*)
+            , @ValueFound=CONVERT(bit,CASE WHEN EXISTS
+              (
+                  SELECT 1
+                  FROM [#TableContractTarget]
+                  WHERE [Id]=1
+                    AND [Name]=N''Example A''
+                    AND [Amount]=CONVERT(decimal(19,4),12.3456)
+              ) THEN 1 ELSE 0 END)
+        FROM [#TableContractTarget];'
+    , N'@RowCount bigint OUTPUT,@ValueFound bit OUTPUT'
+    , @RowCount=@TypedRowCount OUTPUT
+    , @ValueFound=@TypedValueFound OUTPUT;
+
+IF @TypedRowCount<>2 OR @TypedValueFound<>1
     INSERT [#TableOutputFailure] VALUES(N'TYPED_INSERT',N'Die synthetischen typisierten Zeilen wurden nicht unverändert kopiert.');
 
 SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
