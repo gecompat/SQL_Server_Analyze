@@ -1214,6 +1214,9 @@ USP_DiagnosticFindings,MitIQP,bit,0
 USP_DiagnosticFindings,MitContention,bit,0
 USP_DiagnosticFindings,ContentionSampleSeconds,tinyint,5
 USP_DiagnosticFindings,ContentionMinWaitMs,bigint,1000
+USP_DiagnosticFindings,ParentIntegrityJson,nvarchar(max),NULL
+USP_DiagnosticFindings,ParentCapacityJson,nvarchar(max),NULL
+USP_DiagnosticFindings,ParentBufferPoolJson,nvarchar(max),NULL
 USP_DiagnosticFindings,NurAbPrioritaet,varchar(16),'INFO'
 USP_DiagnosticFindings,MaxZeilen,int,1000
 USP_DiagnosticFindings,ResultSetArt,varchar(16),'CONSOLE'

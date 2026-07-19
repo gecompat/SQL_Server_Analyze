@@ -728,6 +728,8 @@ Opt-in:
 
 `ExecutionOrdinal`, `ModuleName`, `InvocationStatus`, `EvidenceStatus`, `IsPartial`, `ErrorNumber`, `ErrorMessage`.
 
+`EXECUTED` bedeutet, dass das Child in diesem Aufruf frisch lief. `REUSED_PARENT_RESULT` bedeutet, dass ein im selben `USP_ServerHealthAnalysis`-Lauf bereits mit gleichem Scope erhobenes Ergebnis verwendet wurde. Der Status ändert nichts an `IsPartial`: eine unvollständige Parent-Evidenz bleibt unvollständig.
+
 ### Interpretation
 
 - Ein leeres Findings-Resultset ist nur bei vollständigen relevanten Kindmodulen sinnvoll.
@@ -736,6 +738,7 @@ Opt-in:
 - `EvidenceMetric` besitzt keine globale Einheit; SourceModule/FindingCode bestimmen die Bedeutung.
 - Aggregatorresultat ist komprimierter als Childresultsets.
 - Aktiviertes Contention-Modul misst ein Sample und verlängert den Lauf.
+- Direkte Aufrufe von `USP_DiagnosticFindings` lesen ihre aktivierten Quellen frisch; eine Wiederverwendung über unabhängige Aufrufe hinweg findet nicht statt.
 
 ### Anfänger-Entscheidungsbaum
 

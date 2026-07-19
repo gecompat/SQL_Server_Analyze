@@ -42,7 +42,7 @@ Welche normalisierten Befunde aus mehreren Spezialmodulen verdienen Priorität u
 
 ### Technischer Hintergrund
 
-Aggregator ruft Children über definierte JSON-/RAW-Verträge auf und normalisiert Category, Severity, Confidence, Scope, Evidence, EvidenceLimit und Next Check. Er reduziert Detail für Triage und muss Childstatus separat erhalten.
+Aggregator ruft Children über definierte JSON-/RAW-Verträge auf und normalisiert Category, Severity, Confidence, Scope, Evidence, EvidenceLimit und Next Check. Innerhalb von `USP_ServerHealthAnalysis` werden bereits kontextgleich erhobene Integritäts-, Kapazitäts- und Buffer-Pool-Ergebnisse wiederverwendet; `InvocationStatus=REUSED_PARENT_RESULT` macht dies sichtbar. Ein direkter Aufruf ohne Parent-Ergebnis liest die aktivierten Quellen frisch.
 
 ### Datenkette
 
@@ -50,7 +50,7 @@ Aggregator ruft Children über definierte JSON-/RAW-Verträge auf und normalisie
 
 ### Zeit- und Scope-Modell
 
-Mix aus Child-Snapshots, Samples und Historien im selben Lauf.
+Mix aus Child-Snapshots, Samples und Historien im selben Lauf. Wiederverwendung gilt nur innerhalb desselben Parent-Laufs; es gibt keinen sitzungs- oder aufrufübergreifenden Cache.
 
 ### Bewertung und Gegenprobe
 

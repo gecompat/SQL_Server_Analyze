@@ -54,7 +54,7 @@ Alle Beispiele verwenden ausschließlich generische Platzhalter. Die Procedures 
 
 ## Befundvertrag
 
-`USP_DiagnosticFindings` ruft Kindmodule mit `@ResultSetArt='NONE'` und `@JsonErzeugen=1` auf. Übernommen werden nur definierte Felder wie Befundcode, Messwert, Scope, Evidenzgrenze und Status. Nicht übernommen werden SQL-/Plantexte, Event-XML, Dateipfade, Mailinhalte oder freie Meldungstexte.
+`USP_DiagnosticFindings` ruft Kindmodule mit `@ResultSetArt='NONE'` und `@JsonErzeugen=1` auf. Innerhalb eines `USP_ServerHealthAnalysis`-Laufs verwendet es bereits erhobene Integritäts-, Kapazitäts- und Buffer-Pool-Ergebnisse bei gleichem Scope erneut; ohne Parent-Ergebnis liest es frisch. `InvocationStatus=REUSED_PARENT_RESULT` trennt Wiederverwendung von einer Child-Ausführung. Übernommen werden nur definierte Felder wie Befundcode, Messwert, Scope, Evidenzgrenze und Status. Nicht übernommen werden SQL-/Plantexte, Event-XML, Dateipfade, Mailinhalte oder freie Meldungstexte.
 
 Jeder normalisierte Befund enthält Quelle, Kategorie, Priorität, Konfidenz, technischen Scope, stabilen Befundcode, begrenzten Messwert, Aussagegrenze und nächste kontrollierte Prüfung.
 

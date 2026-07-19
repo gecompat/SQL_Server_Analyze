@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 178_P1_Diagnostic_Findings_Runtime_Contract.sql
-Zweck        : Laufzeitverträge für vier P1-Findings-Fälle.
+Zweck        : Laufzeitverträge für sechs P1-Findings-Fälle.
 Datenschutz  : Ausschließlich synthetische Principals und technische Statuswerte;
                keine SQL-, Plan-, Mail-, Pfad- oder freien Child-Meldungstexte
                werden als Testevidenz persistiert.
@@ -23,7 +23,8 @@ DECLARE @DatabaseName sysname=(SELECT [name] FROM [master].[sys].[databases] WIT
 DECLARE @AlterCompatibilitySql nvarchar(max);
 DECLARE @Impersonating bit=0;
 
-/* FIND-CORE und FIND-OPTOUT: ein Kernmodul, optionale teure Module bleiben per Default aus. */
+/* FIND-CORE, FIND-STANDALONE-FRESH und FIND-OPTOUT: ein Kernmodul wird ohne
+   Parent-Ergebnis frisch ausgeführt; optionale teure Module bleiben per Default aus. */
 EXEC [monitor].[USP_DiagnosticFindings]
      @DatabaseNames=N'[DeineDatenbank]',
      @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
@@ -55,6 +56,7 @@ IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE_WITH_FINDING','AVAILABLE_LIMITE
       )
     THROW 55200,N'P1-Vertrag FIND-CORE fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('FIND-CORE');
+INSERT @ExecutedCases VALUES('FIND-STANDALONE-FRESH');
 
 IF EXISTS
 (
@@ -67,6 +69,47 @@ IF EXISTS
 )
     THROW 55201,N'P1-Vertrag FIND-OPTOUT fehlgeschlagen.',1;
 INSERT @ExecutedCases VALUES('FIND-OPTOUT');
+
+/* FIND-PARENT-REUSE: Der Parent erhebt drei kontextgleiche Ergebnisse einmal;
+   der Findings-Child verwendet sie ohne erneuten Aufruf dieser Module. */
+SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
+EXEC [monitor].[USP_ServerHealthAnalysis]
+     @MitCpu=0,@MitNuma=0,@MitMemory=0,@MitTempDB=0,
+     @MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,
+     @MitIntegritaet=1,@MitKapazitaet=1,@MitPerformanceCounters=0,
+     @MitCriticalEvents=0,@MitContention=0,@MitBufferPool=1,@MitFindings=1,
+     @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=100,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+
+IF ISJSON(@Json)<>1
+   OR
+   (
+       SELECT COUNT_BIG(*)
+       FROM OPENJSON(@Json,N'$.diagnosticFindings.modules')
+       WITH
+       (
+           [ModuleName] sysname N'$.ModuleName',
+           [InvocationStatus] varchar(40) N'$.InvocationStatus'
+       )
+       WHERE [ModuleName] IN
+             (N'USP_DatabaseIntegrityAnalysis',N'USP_DatabaseCapacityAnalysis',N'USP_BufferPoolAnalysis')
+         AND [InvocationStatus]='REUSED_PARENT_RESULT'
+   )<>3
+   OR EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@Json,N'$.diagnosticFindings.modules')
+          WITH
+          (
+              [ModuleName] sysname N'$.ModuleName',
+              [InvocationStatus] varchar(40) N'$.InvocationStatus'
+          )
+          WHERE [ModuleName] IN
+                (N'USP_DatabaseIntegrityAnalysis',N'USP_DatabaseCapacityAnalysis',N'USP_BufferPoolAnalysis')
+            AND [InvocationStatus]<>'REUSED_PARENT_RESULT'
+      )
+    THROW 55206,N'P1-Vertrag FIND-PARENT-REUSE fehlgeschlagen.',1;
+INSERT @ExecutedCases VALUES('FIND-PARENT-REUSE');
 
 /* FIND-PARTIAL: eingeschränkter User verliert eine Child-Quelle, andere Child-Status bleiben erhalten. */
 IF USER_ID(N'ExampleDiagnosticFindingsRestrictedUser') IS NOT NULL
@@ -169,11 +212,11 @@ BEGIN CATCH
 END CATCH;
 INSERT @ExecutedCases VALUES('FIND-COMPAT');
 
-IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>4
+IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>6
     THROW 55205,N'Der P1-Findings-Vertrag hat nicht alle vorgesehenen Fälle ausgeführt.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
        COUNT_BIG(*) AS [ExecutedCases],
-       N'Vier P1-Findings-Fälle wurden mit Feld-Whitelist und vollständig rückgesetzten Kontexten geprüft.' AS [Detail]
+       N'Sechs P1-Findings-Fälle wurden einschließlich Parent-Reuse, Standalone-Frischlesung und vollständig rückgesetzten Kontexten geprüft.' AS [Detail]
 FROM @ExecutedCases;
 GO
