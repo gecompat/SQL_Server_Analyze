@@ -98,10 +98,12 @@ BEGIN
     IF @StatusCode='AVAILABLE' AND @MitDatenbankVerteilung=1
     BEGIN TRY
         INSERT [#PlanCacheHealth_Db]
-        SELECT TRY_CONVERT([int],[pa].[value]),(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = TRY_CONVERT([int],[pa].[value])),COUNT_BIG(*),SUM(CONVERT(bigint,[cp].[size_in_bytes])),SUM(CASE WHEN [cp].[usecounts]<=1 THEN CONVERT(bigint,1) ELSE 0 END)
+        SELECT TRY_CONVERT([int],[pa].[value]),[d].[name],COUNT_BIG(*),SUM(CONVERT(bigint,[cp].[size_in_bytes])),SUM(CASE WHEN [cp].[usecounts]<=1 THEN CONVERT(bigint,1) ELSE 0 END)
         FROM [sys].[dm_exec_cached_plans] AS cp WITH (NOLOCK)
         OUTER APPLY (SELECT TOP(1) [value] FROM sys.dm_exec_plan_attributes([cp].[plan_handle]) WHERE [attribute]='dbid') AS pa
-        GROUP BY TRY_CONVERT([int],[pa].[value]),(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = TRY_CONVERT([int],[pa].[value])) OPTION(MAXDOP 1);
+        LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+          ON [d].[database_id]=TRY_CONVERT([int],[pa].[value])
+        GROUP BY TRY_CONVERT([int],[pa].[value]),[d].[name] OPTION(MAXDOP 1);
     END TRY BEGIN CATCH SET @IsPartial=1;SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
 
     IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitSingleUseDetails=1
@@ -112,9 +114,11 @@ BEGIN
             FROM [sys].[dm_exec_cached_plans] AS cp WITH (NOLOCK) WHERE [cp].[usecounts]<=1 ORDER BY [cp].[size_in_bytes] DESC
         )
         INSERT [#PlanCacheHealth_Single]
-        SELECT [c].[plan_handle],[c].[cacheobjtype],[c].[objtype],[c].[usecounts],[c].[size_in_bytes],TRY_CONVERT([int],[pa].[value]),(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = TRY_CONVERT([int],[pa].[value])),CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [st].[text] ELSE LEFT([st].[text],@MaxSqlTextZeichen) END
+        SELECT [c].[plan_handle],[c].[cacheobjtype],[c].[objtype],[c].[usecounts],[c].[size_in_bytes],TRY_CONVERT([int],[pa].[value]),[d].[name],CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [st].[text] ELSE LEFT([st].[text],@MaxSqlTextZeichen) END
         FROM [C] AS c OUTER APPLY sys.dm_exec_sql_text([c].[plan_handle]) AS st
-        OUTER APPLY (SELECT TOP(1) [value] FROM sys.dm_exec_plan_attributes([c].[plan_handle]) WHERE [attribute]='dbid') AS pa;
+        OUTER APPLY (SELECT TOP(1) [value] FROM sys.dm_exec_plan_attributes([c].[plan_handle]) WHERE [attribute]='dbid') AS pa
+        LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+          ON [d].[database_id]=TRY_CONVERT([int],[pa].[value]);
     END TRY BEGIN CATCH SET @IsPartial=1;SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
 
     IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE') BEGIN
