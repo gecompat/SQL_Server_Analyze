@@ -132,14 +132,14 @@ Vorzusehen sind unter anderem Filter für:
 ### 8.1 Datenschutzgrenze für Laufzeit und Lieferartefakte
 
 - Interaktive `SELECT`-Ausgaben dürfen die zur Diagnose erforderlichen Benutzer-IDs, Benutzer- und Login-Namen, Session- und Request-IDs, Firmen- und Organisationsbezüge, Host-, Programm-, Server-, Datenbank-, Schema- und Objektnamen sowie benutzerdefinierte Informationen anzeigen.
-- Das Liefergate gilt ausschließlich für Repository-, GitHub- und Downloadartefakte. Es ist kein Auftrag, Resultsets, OUTPUT-Parameter oder RAW-, CONSOLE-, TABLE- und JSON-Ausgaben zu maskieren, zu kürzen, zu hashen, zu pseudonymisieren oder um diagnostisch erforderliche Spalten zu reduzieren. TABLE schreibt ausschließlich in lokale `#Temp`-Tabellen des Aufrufers; dauerhafte Persistenz bleibt eine gesonderte Consumerentscheidung.
+- Das Liefergate gilt ausschließlich für Repository-, GitHub- und Downloadartefakte. Es ist kein Auftrag, Resultsets, OUTPUT-Parameter oder RAW-, CONSOLE-, TABLE- und JSON-Ausgaben zu maskieren, zu kürzen, zu hashen, zu pseudonymisieren oder um diagnostisch erforderliche Spalten zu reduzieren. TABLE schreibt ausschließlich in lokale `#Temp`-Tabellen des Aufrufers. Das separat installierbare SC-023-Paket darf vollständige reale Frameworkausgaben dauerhaft in seiner betrieblichen Zieldatenbank speichern.
 - Dieselben realen Werte dürfen niemals Bestandteil eines downloadbaren oder versionierten Dokuments oder Projektartefakts werden. Das gilt insbesondere für Repositorydateien, Git-Commits, Dokumentation, Screenshots, Beispielausgaben, Tests, Fixtures, Auditberichte, CSV-/JSON-/XML-/Textdateien, Logs, Buildartefakte und ZIP-Lieferungen.
 - Das Verbot umfasst außerdem reale interne Datenbankstrukturen, Namenskonventionen, fachliche Metadaten und andere proprietäre Informationen, die aus Screenshots, Hardcopys, Chats, Uploads, bestehenden Skripten, Logs oder Diagnoseausgaben bekannt wurden.
 - SQL-Text, Input Buffer, Planparameter, Query-Store-Texte, Extended-Events-Payloads, Error-Log-Text und sonstiger Freitext sind als potentiell besonders sensibel zu behandeln.
 - Technische Systembezeichner und API-Namen wie `login_name`, `session_id` oder `database_id` dürfen im Quellcode stehen. Beispiele verwenden ausschließlich eindeutig synthetische, generische Werte und bilden keine reale interne Struktur nach.
 - Öffentliche Hersteller-, Produkt- und Projektnamen in Quellenangaben sowie bewusst veröffentlichte Lizenz-, Urheber- und Attributionstexte bleiben zulässig und werden nicht mit versehentlich extrahierten Betriebs- oder Kundendaten gleichgesetzt.
 - Eine Zustimmung oder vorhandener Zugriff hebt das Repositoryverbot nicht auf. Erfordert eine Aufgabe scheinbar reale interne oder personenbezogene Informationen in einem Artefakt, wird vor dem Schreiben angehalten und nach einer nicht sensitiven Alternative gefragt.
-- Jede spätere Snapshot-, Persistenz-, Retention- oder Exportfunktion benötigt vor ihrer Implementierung ein eigenes Datenschutz-, Zugriffs-, Aufbewahrungs- und Löschkonzept; dies verändert den bestehenden Runtime-Ausgabevertrag nicht.
+- Jede Snapshot-, Persistenz-, Retention- oder Exportfunktion benötigt einen dokumentierten Datenschutz-, Zugriffs-, Aufbewahrungs- und Löschvertrag; dies verändert den bestehenden Runtime-Ausgabevertrag nicht. Für SC-023 ist dieser Architekturvertrag mit den Entscheidungen vom 20. Juli 2026 freigegeben.
 - Ein zweifelhafter Fund darf nicht stillschweigend als harmlos klassifiziert werden. Vor Aufnahme in ein Repository- oder Lieferartefakt ist nachzufragen.
 - Maßgebliche Detailentscheidung: `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`.
 
@@ -255,3 +255,20 @@ Die Anforderungen basieren auf:
 - Der Datenbankplatzhalter `[DeineDatenbank]` steht am Anfang der SQL-Skripte. Ausführbare Frameworklogik ermittelt die Installationsdatenbank über den aktuellen Datenbankkontext und enthält keinen hart codierten Platzhalter als Stringliteral.
 - Verbotene Umgebungspräfixe, frühere Werkzeugnamen, konkrete externe Objektbezeichner und externe Hilfsfunktionen werden nicht übernommen.
 - Relevante Erkenntnisse aus früheren Analysen liegen abstrahiert als Systemquellenkatalog, Berechtigungs-/Featureinventar, Abhängigkeitsentscheidung und Performance-/Risikobewertung vor.
+
+## Entscheidung 2026-07-20: SC-023 Snapshot- und Baseline-Architektur
+
+- Pro SQL-Server-Instanz wird eine eigene, konfigurierbar benannte Snapshot-Datenbank betrieben; eine zentrale Flottensicht bleibt SC-024.
+- Der Aufbau verwendet typisierte Konfigurations-, Sammler- und Retentiontabellen. Ein allgemeines Key-Value-Modell ist nicht verpflichtend und nicht der Primärvertrag.
+- Granularität reicht von Server und Datenbank bis zu Datei, Schema, Objekt, Index, Statistik, Session, Request, Query und Plan.
+- Das Zielmodell kombiniert normalisierte typisierte Metriken mit versionierten vollständigen Payloads und späteren Rollups.
+- Die betriebliche Zieldatenbank darf alle realen Werte speichern, die autorisierte Frameworksammler liefern. Das Repositoryverbot gilt nur für Repository-, GitHub-, Test-, Dokumentations- und Downloadartefakte.
+- Standardintervalle sind 30 Sekunden für leichte Laufzeitmetriken, 5 Minuten für Datenbank/Kapazität und Query-/Planaggregate sowie 1 Stunde für Konfiguration und Inventar. Große Payloads sind aus Volumen- und Laufzeitgründen standardmäßig aus; alles bleibt steuerbar.
+- Default-Retention: 14 Tage typisierte Rohmetriken, 7 Tage große Payloads, 180 Tage Rollups, 10 GB weiches Budget und stündlicher begrenzter Purge.
+- Am weiterhin überschrittenen Budget werden abgelaufene Daten bereinigt und danach Sammler kontrolliert gestoppt; nicht abgelaufene Daten werden standardmäßig nicht stillschweigend gelöscht.
+- SQL Server Agent ist der erste Scheduler. Ein schedulerneutraler Procedure-Einstieg bleibt auch für externe Scheduler verwendbar; der Agentjob enthält keine Sammellogik.
+- Bereits gelesene Quellen werden innerhalb eines Parentlaufs wiederverwendet. Einzelaufrufe lesen frisch; über Lauf- oder Sitzungsgrenzen entsteht kein Cache.
+- Reset-Epochen, UTC, Partialität und Versionswechsel sind Teil jedes Laufvertrags. `READPAST` ist nur zulässig, wenn Auslassungen erkennbar, partiell markiert und gezielt nachlesbar sind.
+- Deinstallation bewahrt Historie standardmäßig. Export ist standardmäßig deaktiviert; ein anonymisierter Export ist eine spätere, getrennte Funktion.
+- Das Framework vergibt weiterhin keine Rechte. Implementierung erfolgt später in kleinen vertikalen Schritten und beginnt erst nach eigenem Auftrag.
+- Maßgeblicher Detailvertrag: `Documentation/Architecture/Snapshot_Baseline_Package_Contract.md`.
