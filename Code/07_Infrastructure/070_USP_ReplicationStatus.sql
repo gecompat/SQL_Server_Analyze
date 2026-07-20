@@ -24,8 +24,8 @@ Partial      : Fehlende Features, Objekte oder Rechte werden strukturiert als
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ReplicationStatus]
- @MitDistributionDetails bit=0,@MaxZeilen int=5000,@ResultSetArt varchar(16)='CONSOLE'
-    , @ResultTable                     sysname        = NULL
+ @MitDistributionDetails bit=0,@MaxZeilen int=5000,@HighImpactConfirmed bit=0,@ResultSetArt varchar(16)='CONSOLE'
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,@PrintMeldungen bit=1,@Hilfe bit=0
 AS
 BEGIN
@@ -33,7 +33,11 @@ BEGIN
  SET @Json=NULL;
  DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ReplicationStatus'; PRINT N'@MitDistributionDetails bit=0: liest die konfigurierte Distribution-Datenbank.'; PRINT N'@MaxZeilen int=5000: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig. @PrintMeldungen bit=1; @Hilfe bit=0.'; RETURN; END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@DistDb sysname=NULL,@sql nvarchar(max),@Allowed bit=1;
@@ -42,8 +46,7 @@ BEGIN
  CREATE TABLE [#ReplicationStatus_Pub]([PublicationId] int,[PublisherDatabase] sysname,[PublicationName] sysname,[PublicationType] int,[ImmediateSync] bit,[AllowPush] bit,[AllowPull] bit,[Status] int);
  CREATE TABLE [#ReplicationStatus_Sub]([PublisherDatabase] sysname,[PublicationName] sysname,[SubscriberName] sysname,[SubscriberDatabase] sysname,[SubscriptionType] int,[Status] int,[AgentId] int,[LastAction] nvarchar(4000),[LastTimestamp] datetime);
  CREATE TABLE [#ReplicationStatus_Err]([ErrorId] int,[ErrorTime] datetime,[SourceName] nvarchar(100),[ErrorCode] int,[ErrorText] nvarchar(4000));
- IF @StatusCode='AVAILABLE' AND @MitDistributionDetails=1 SELECT @Allowed=[IsAllowed] FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='ENTERPRISE_TOPOLOGY_DEEP';
- IF @StatusCode='AVAILABLE' AND @MitDistributionDetails=1 AND COALESCE(@Allowed,0)=0 SELECT @StatusCode='DENIED_GROUP',@ErrorMessage=N'ENTERPRISE_TOPOLOGY_DEEP ist für den aktuellen Login nicht erlaubt.';
+ IF @StatusCode='AVAILABLE' AND @MitDistributionDetails=1 EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='ENTERPRISE_TOPOLOGY_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
  IF @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE') SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  SET LOCK_TIMEOUT 0;
  IF @StatusCode='AVAILABLE' BEGIN TRY
@@ -62,7 +65,7 @@ BEGIN
    END
   END
  END TRY BEGIN CATCH SELECT @StatusCode='ERROR_HANDLED',@IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(); IF @PrintMeldungen=1 RAISERROR(N'Replication konnte nicht vollständig gelesen werden: %s',10,1,@ErrorMessage) WITH NOWAIT; END CATCH;
- 
+
  IF @ResultSetArtNormalisiert<>'NONE'
  BEGIN
   SELECT @CollectionTimeUtc AS [CollectionTimeUtc],CAST(N'monitor.USP_ReplicationStatus' AS nvarchar(256)) AS [ModuleName],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];
@@ -77,11 +80,18 @@ BEGIN
   DECLARE @DbJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Db] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES),@PubJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Pub] ORDER BY [PublisherDatabase],[PublicationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@SubJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Sub] ORDER BY [PublisherDatabase],[PublicationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@ErrJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Err] ORDER BY [ErrorTime] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
   SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"databases":',COALESCE(@DbJson,N'[]'),N',"publications":',COALESCE(@PubJson,N'[]'),N',"subscriptions":',COALESCE(@SubJson,N'[]'),N',"errors":',COALESCE(@ErrJson,N'[]'),N'}');
  END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ReplicationStatus_Db'
+            , @ResultLabel=N'ReplicationStatus'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#ReplicationStatus_Db'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

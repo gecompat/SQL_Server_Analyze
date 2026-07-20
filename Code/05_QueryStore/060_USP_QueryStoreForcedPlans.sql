@@ -11,18 +11,18 @@ Zweck        : Erzwungene Query-Store-Pläne aus mehreren Quelldatenbanken mit
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreForcedPlans]
-      @QueryStoreDatabaseNames          nvarchar(max)  = N''
+      @QueryStoreDatabaseNames          nvarchar(max)  = NULL
     , @QueryStoreDatabaseNamePattern    nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @ReferencedDatabaseNames          nvarchar(max)  = NULL
     , @ReferencedDatabaseNamePattern    nvarchar(4000) = NULL
     , @QueryId                          bigint         = NULL
     , @NurMitFehler                     bit            = 0
     , @MitPlanXml                       bit            = 0
     , @MaxZeilen                        int            = 100
-    , @MaxDatenbanken                   int            = 16
     , @MaxSqlTextZeichen                int            = 4000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -31,16 +31,20 @@ AS
 BEGIN
  SET NOCOUNT ON;SET @Json=NULL;DECLARE @Out varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),@Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN @MaxZeilen ELSE 0 END,@Local bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen<2147483647 THEN CONVERT(bigint,@MaxZeilen)+1 ELSE @MaxZeilen END;
     DECLARE @TableResultRequested bit = CASE WHEN @Out = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @Out = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @Out = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'forcedPlans',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @Out = 'NONE';
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_QueryStoreForcedPlans';PRINT N'Quell-DB-Liste/Pattern, Referenz-DB-Liste/Pattern, RAW|CONSOLE|TABLE|NONE und JSON.';RETURN;END;
  DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Status varchar(40)='AVAILABLE',@Partial bit=0,@Error nvarchar(2048)=NULL,@Cross bit=0,@Allowed bit=1,@Db sysname,@Compat tinyint,@Sql nvarchar(max),@Count bigint=0,@HasMore bit=0,@Msg nvarchar(2048),@RefMode varchar(8),@RefValue nvarchar(4000),@RefFlags varchar(8),@RefValid bit,@RefPredicate nvarchar(max)=N'';
  SELECT @RefMode=[PatternMode],@RefValue=[PatternValue],@RefFlags=[RegexFlags],@RefValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ReferencedDatabaseNamePattern);
  CREATE TABLE [#QueryStoreForcedPlans_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
  CREATE TABLE [#QueryStoreForcedPlans_Result]([QueryStoreDatabaseId] int,[QueryStoreDatabaseName] sysname,[QueryId] bigint,[PlanId] bigint,[QueryHash] binary(8),[QueryPlanHash] binary(8),[ObjectId] bigint NULL,[ObjectName] nvarchar(517) NULL,[IsForcedPlan] bit,[PlanForcingTypeDesc] nvarchar(60),[ForceFailureCount] bigint,[LastForceFailureReason] int,[LastForceFailureReasonDesc] nvarchar(128),[CountCompiles] bigint,[LastCompileStartTimeUtc] datetimeoffset,[LastExecutionTimeUtc] datetimeoffset,[EngineVersion] nvarchar(32),[CompatibilityLevel] smallint,[QuerySqlText] nvarchar(max),[QueryPlan] nvarchar(max) NULL);
  CREATE TABLE [#QueryStoreForcedPlans_Errors]([DatabaseName] sysname,[StatusCode] varchar(40),[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048));
- IF @MaxZeilen<0 OR @MaxDatenbanken<0 OR @MaxSqlTextZeichen < 0 OR @Out NOT IN('RAW','CONSOLE','NONE') OR @RefValid=0 OR (@ReferencedDatabaseNames IS NOT NULL AND @ReferencedDatabaseNamePattern IS NOT NULL) OR (@ReferencedDatabaseNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) WHERE [IsValid]=0)) BEGIN SET @Status='INVALID_PARAMETER';SET @Error=N'Ungültiger Parameter.';END;
- IF @Status='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@QueryStoreDatabaseNames,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=@QueryStoreDatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@Status OUTPUT,@ErrorMessage=@Error OUTPUT,@CrossDatabaseRequested=@Cross OUTPUT,@CandidateTable=N'#QueryStoreForcedPlans_DatabaseCandidates';
- IF @Status='AVAILABLE' AND (@MitPlanXml=1 OR @Limit>1000 OR @ReferencedDatabaseNames IS NOT NULL OR @ReferencedDatabaseNamePattern IS NOT NULL) BEGIN SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='QUERY_STORE_DEEP';IF @Allowed=0 BEGIN SET @Status='DENIED_GROUP';SET @Error=N'QUERY_STORE_DEEP ist nicht freigegeben.';END;END;
+ IF @MaxZeilen<0 OR @MaxSqlTextZeichen < 0 OR @Out NOT IN('RAW','CONSOLE','NONE') OR @RefValid=0 OR (@ReferencedDatabaseNames IS NOT NULL AND @ReferencedDatabaseNamePattern IS NOT NULL) OR (@ReferencedDatabaseNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) WHERE [IsValid]=0)) BEGIN SET @Status='INVALID_PARAMETER';SET @Error=N'Ungültiger Parameter.';END;
+ IF @Status='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@QueryStoreDatabaseNames,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=@QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='QUERY_STORE_CURRENT',@StatusCode=@Status OUTPUT,@ErrorMessage=@Error OUTPUT,@CrossDatabaseRequested=@Cross OUTPUT,@CandidateTable=N'#QueryStoreForcedPlans_DatabaseCandidates';
+ IF @Status='AVAILABLE' AND (@MitPlanXml=1 OR @Limit>1000 OR @ReferencedDatabaseNames IS NOT NULL OR @ReferencedDatabaseNamePattern IS NOT NULL) EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='QUERY_STORE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@Status OUTPUT,@ErrorMessage=@Error OUTPUT;
  IF @ReferencedDatabaseNames IS NOT NULL SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) JOIN [monitor].[TVF_ParseSqlNameList](@ReferencedNames) [rf] ON [rf].[IsValid]=1 AND [rf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS)';
  ELSE IF @RefMode='LIKE' SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @RefValue COLLATE SQL_Latin1_General_CP1_CS_AS)';
  ELSE IF @RefMode IN('REGEX','REGEXI') SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE REGEXP_LIKE(PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1),@RefValue,@RefFlags))';
@@ -49,11 +53,18 @@ BEGIN
  SELECT @Count=COUNT_BIG(*) FROM [#QueryStoreForcedPlans_Result];SET @HasMore=CONVERT(bit,CASE WHEN @Limit<9223372036854775807 AND @Count>@Limit THEN 1 ELSE 0 END);IF @Partial=1 AND @Status='AVAILABLE' SET @Status='AVAILABLE_LIMITED';
  IF @Out<>'NONE' BEGIN SELECT N'USP_QueryStoreForcedPlans' [ModuleName],@Now [CollectionTimeUtc],@Status [StatusCode],@Partial [IsPartial],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [ReturnedRowCount],@HasMore [HasMoreRows],@Error [ErrorMessage];IF @Out='RAW' SELECT TOP(@Limit) * FROM [#QueryStoreForcedPlans_Result] ORDER BY CASE WHEN [LastForceFailureReason]<>0 THEN 0 ELSE 1 END,[LastExecutionTimeUtc] DESC;ELSE SELECT TOP(@Limit) N'Erzwungener Query-Store-Plan' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[PlanId] [Plan],[LastForceFailureReasonDesc] [letzter Fehler],[ForceFailureCount] [Fehleranzahl],[LastExecutionTimeUtc] [letzte Ausführung],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text],[QueryPlan] [Plan-XML] FROM [#QueryStoreForcedPlans_Result] ORDER BY CASE WHEN [LastForceFailureReason]<>0 THEN 0 ELSE 1 END,[LastExecutionTimeUtc] DESC;SELECT * FROM [#QueryStoreForcedPlans_Errors] ORDER BY [DatabaseName];END;
  IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'QueryStoreForcedPlans' [resultName],1 [schemaVersion],@Now [generatedAtUtc],@Status [statusCode],@MaxZeilen [requestedMaxRows],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [returnedRows],@HasMore [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT TOP(@Limit) * FROM [#QueryStoreForcedPlans_Result] ORDER BY CASE WHEN [LastForceFailureReason]<>0 THEN 0 ELSE 1 END,[LastExecutionTimeUtc] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT * FROM [#QueryStoreForcedPlans_Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"forcedPlans":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryStoreForcedPlans_Result'
+            , @ResultLabel=N'QueryStoreForcedPlans'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryStoreForcedPlans_Result'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

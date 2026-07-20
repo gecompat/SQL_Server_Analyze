@@ -32,13 +32,13 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerHealthAnalysis]
     , @MitContention    bit           = 0
     , @MitBufferPool    bit           = 0
     , @MitFindings      bit           = 0
-    , @DatabaseNames    nvarchar(max) = N''
+    , @DatabaseNames    nvarchar(max) = NULL
     , @SystemdatenbankenEinbeziehen bit = 0
     , @DatabaseNamePattern nvarchar(4000) = NULL
-    , @MaxDatenbanken   int           = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MaxZeilen        int           = 100
     , @ResultSetArt     varchar(16)   = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen     bit           = 0
     , @Json             nvarchar(max) = NULL OUTPUT
     , @PrintMeldungen   bit           = 1
@@ -51,7 +51,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'moduleStatus',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @ChildJsonRequested bit = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @OverallStatus varchar(40) = 'AVAILABLE';
@@ -93,7 +97,7 @@ BEGIN
         RETURN;
     END;
 
-    IF @MaxZeilen < 0 OR @MaxDatenbanken < 0
+    IF @MaxZeilen < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR (@MitCpu = 0 AND @MitNuma = 0 AND @MitMemory = 0 AND @MitTempDB = 0
            AND @MitConfiguration = 0 AND @MitTraceFlags = 0 AND @MitStartup = 0
@@ -311,8 +315,8 @@ BEGIN
             EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken, @MitPageDetails = 0
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+                , @MitPageDetails = 0
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @ChildJsonRequested, @Json = @IntegrityJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
@@ -331,8 +335,8 @@ BEGIN
             EXEC [monitor].[USP_DatabaseCapacityAnalysis]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+                , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode, @JsonErzeugen = @ChildJsonRequested
                 , @Json = @CapacityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
@@ -415,7 +419,7 @@ BEGIN
             EXEC [monitor].[USP_DiagnosticFindings]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @ParentIntegrityJson = @IntegrityJson
                 , @ParentCapacityJson = @CapacityJson
                 , @ParentBufferPoolJson = @BufferPoolJson
@@ -517,11 +521,18 @@ BEGIN
             , N'}'
         );
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ServerHealthAnalysis_ModuleStatus'
+            , @ResultLabel=N'ServerHealthAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#ServerHealthAnalysis_ModuleStatus'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentRequests]
     , @ProgramNamePattern            nvarchar(4000) = NULL
     , @DatabaseNames                 nvarchar(max)  = NULL
     , @DatabaseNamePattern           nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @TextPattern                   nvarchar(4000) = NULL
     , @MitSqlText                    bit            = 1
     , @GesamtenSqlTextEinbeziehen    bit            = 0
@@ -47,7 +48,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentRequests]
     , @MaxZeilen                     int            = 500
     , @Sortierung                    varchar(32)    = 'RELEVANZ'
     , @ResultSetArt                  varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                  bit            = 0
     , @Json                          nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                bit            = 1
@@ -69,7 +70,11 @@ BEGIN
     DECLARE @Detail nvarchar(2000) = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'requests',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @RequiredPermission nvarchar(256) =
         CASE
             WHEN TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) >= 16
@@ -1289,11 +1294,18 @@ BEGIN
             ORDER BY [w].[WarningId];
         END;
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#CurrentRequests_Result'
+            , @ResultLabel=N'Aktuelle Requests'
+            , @EmptyMessage=N'Keine aktiven Requests';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#CurrentRequests_Result'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

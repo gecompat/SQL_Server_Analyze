@@ -22,7 +22,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_BufferPoolAnalysis]
     , @MitBufferPoolVerteilung  bit            = 0
     , @MaxZeilen                int            = 100
     , @ResultSetArt             varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen             bit            = 0
     , @Json                     nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen           bit            = 1
@@ -39,7 +39,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'memory',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
                                  THEN CONVERT(bigint, 9223372036854775807)
                                  ELSE CONVERT(bigint, @MaxZeilen) END;
@@ -49,7 +53,7 @@ BEGIN
         PRINT N'monitor.USP_BufferPoolAnalysis';
         PRINT N'Korrelierte Momentaufnahme; keine Trend- oder Konfigurationsempfehlung.';
         PRINT N'@MitBufferPoolVerteilung=0 ist der sichere Standard; 1 scannt sys.dm_os_buffer_descriptors.';
-        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson.';
         RETURN;
     END;
 
@@ -282,11 +286,18 @@ BEGIN
                [FreeSpaceMb] AS [Freiraum_in_Seiten_MB], [NumaNodeCount] AS [NUMA_Nodes]
         FROM [#BufferPoolAnalysis_BufferPool] ORDER BY [CachedPages] DESC, [DatabaseId];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#BufferPoolAnalysis_MemorySnapshot'
+            , @ResultLabel=N'BufferPoolAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#BufferPoolAnalysis_MemorySnapshot'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

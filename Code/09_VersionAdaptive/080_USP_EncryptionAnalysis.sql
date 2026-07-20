@@ -19,16 +19,16 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_EncryptionAnalysis]
       @DatabaseNames                              nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen               bit            = 0
     , @DatabaseNamePattern                        nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @NurProblematisch                           bit            = 0
     , @TdeTransitionWarnMinutes                   int            = 60
     , @CertificateExpiryWarnDays                  int            = 90
     , @ExpliziteBackupverschluesselungErwartet    bit            = 0
     , @BackupLookbackDays                         int            = 35
-    , @MaxDatenbanken                             int            = 16
     , @MaxZeilen                                  int            = 1000
     , @LockTimeoutMs                              int            = 0
     , @ResultSetArt                               varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                               bit            = 0
     , @Json                                       nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                             bit            = 1
@@ -45,7 +45,11 @@ BEGIN
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                                THEN CONVERT(bigint,9223372036854775807)
                                ELSE CONVERT(bigint,@MaxZeilen) END;
@@ -121,7 +125,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NULL
     );
 
-    IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs<0
+    IF @MaxZeilen<0 OR @LockTimeoutMs<0
        OR @TdeTransitionWarnMinutes<1 OR @TdeTransitionWarnMinutes>525600
        OR @CertificateExpiryWarnDays<1 OR @CertificateExpiryWarnDays>36500
        OR @BackupLookbackDays<1 OR @BackupLookbackDays>3650
@@ -136,8 +140,8 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
             , @AnalysisClass=NULL
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
@@ -367,11 +371,18 @@ BEGIN
         SELECT N'Datenbankwarnung' AS [Ergebnis],[RequestedName] AS [Datenbank],[StatusCode] AS [Status],[ErrorMessage] AS [Meldung]
         FROM [#EncryptionAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#EncryptionAnalysis_Encryption'
+            , @ResultLabel=N'EncryptionAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#EncryptionAnalysis_Encryption'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

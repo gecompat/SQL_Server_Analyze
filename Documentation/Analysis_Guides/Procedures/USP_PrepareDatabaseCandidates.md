@@ -21,7 +21,9 @@ Eine offline, unsichtbare oder unzulässige Datenbank fehlt in der Fachanalyse. 
 
 ## Wann ist es kein Problem?
 
-`@MaxDatenbanken=1` schneidet eine explizite Liste nicht still ab. Explizit genannte Datenbanken werden als vollständiger Auftrag behandelt und Abweichungen gemeldet.
+Eine große sichtbare Datenbankmenge ist allein kein Deep-Pfad. Die Auswahl wird
+nicht vorab gekürzt; erst die tatsächlich aktivierte Analyseklasse entscheidet,
+ob `@HighImpactConfirmed = 1` erforderlich ist.
 
 ## Beispiel und Folgeschritt
 
@@ -37,7 +39,7 @@ Welche Datenbanken gehören tatsächlich zum Cross-Database-Auftrag und dürfen 
 
 ### Technischer Hintergrund
 
-Die Procedure bildet aus exakten Namen oder Pattern einen stabilen Kandidatenscope. Sie liest Datenbankstatus aus Systemkatalogen, berücksichtigt Systemdatenbanken, Zugriffsregeln, Online-/User-Access-Zustand und explizite Auswahl. Sie stellt den Scope über eine Temp-Tabelle für aufrufende Module bereit.
+Die Procedure bildet aus exakten Namen oder Pattern einen stabilen Kandidatenscope. Ohne explizite Einschränkung liefert sie alle sichtbaren, zugreifbaren und online befindlichen Benutzerdatenbanken. Es gibt keinen CURRENT-Scope und keine Vorabbegrenzung. Systemdatenbanken sind opt-in. Die Procedure prüft zusätzlich die vom Aufrufer tatsächlich aktivierte Analyseklasse und beendet einen bestätigungspflichtigen Pfad vor dem teuren Fachzugriff mit `HIGH_IMPACT_CONFIRMATION_REQUIRED`.
 
 ### Datenkette
 
@@ -53,7 +55,9 @@ Explizit angeforderte, aber ausgeschlossene Datenbanken müssen als fehlende Evi
 
 ### Typische Fehlinterpretation
 
-`@MaxDatenbanken`, Pattern und explizite Liste dürfen nicht stillschweigend als derselbe Auftrag behandelt werden. Ein Partialstatus ist fachlich relevant.
+Pattern und explizite Liste sind alternative Einschränkungen und dürfen nicht
+gleichzeitig gesetzt werden. Eine explizit nicht verfügbare Datenbank bleibt als
+Warning sichtbar; sie darf nicht als erfolgreich untersuchter Scope gelten.
 
 ### Folgeanalyse
 

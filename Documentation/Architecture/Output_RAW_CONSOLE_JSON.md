@@ -1,17 +1,19 @@
 # Ausgabe-Vertrag CONSOLE, RAW, TABLE und JSON
 
-Stand: 2026-07-19
+Stand: 2026-07-20
 
 ## Parameter
 
 ```sql
 @ResultSetArt varchar(16) = 'CONSOLE',
-@ResultTable sysname = NULL,
+@ResultTablesJson nvarchar(max) = NULL,
 @JsonErzeugen bit = 0,
 @Json nvarchar(max) = NULL OUTPUT
 ```
 
-`@ResultSetArt` akzeptiert case-insensitiv `CONSOLE`, `RAW`, `TABLE` und `NONE`. JSON kann unabhängig davon zusätzlich erzeugt werden. `@ResultTable` wird nur für `TABLE` ausgewertet.
+`@ResultSetArt` akzeptiert case-insensitiv `CONSOLE`, `RAW`, `TABLE` und
+`NONE`. JSON kann unabhängig davon zusätzlich erzeugt werden.
+`@ResultTablesJson` ist ausschließlich mit `TABLE` zulässig.
 
 ## Default
 
@@ -19,7 +21,11 @@ Stand: 2026-07-19
 
 ## CONSOLE
 
-Menschenorientierte Projektion. Die erste Spalte bezeichnet je Zeile den Inhalt. Zahlen, Zeiten, Größen und Status dürfen lesbar formatiert werden. Identifikatoren wie `SessionId` werden in breiten Resultsets nur an tatsächlich sinnvollen fachlichen Blockgrenzen wiederholt, nicht mechanisch nach einer festen Spaltenanzahl.
+Menschenorientierte Projektion. Eine einzelne Procedure liefert im Normalfall
+genau ein fachliches Resultset. Ein separates technisches Meta-Grid sowie leere
+Warning- oder Detail-Grids werden unterdrückt. Bei leerer Fachmenge erscheint
+genau eine verständliche Zeile; Hinweise dürfen zusätzlich als `RAISERROR`
+Severity 10 mit `NOWAIT` ausgegeben werden.
 
 CONSOLE ist kein stabiler Importvertrag. Darstellungsspalten, Reihenfolge und Formatierung dürfen zur besseren Ad-hoc-Diagnose weiterentwickelt werden.
 
@@ -36,7 +42,9 @@ EXEC [monitor].[USP_CurrentRequests]
 
 ## TABLE
 
-`TABLE` schreibt die primäre, nativ typisierte Datenmenge einer Procedure in eine lokale `#Temp`-Tabelle des Aufrufers. Die Procedure erzeugt die Zieltabelle nicht selbst, weil eine in der Procedure erzeugte Temp-Tabelle nach deren Ende nicht mehr zuverlässig als Aufrufervertrag zur Verfügung stünde.
+`TABLE` schreibt eine oder mehrere benannte, nativ typisierte Datenmengen in
+lokale `#Temp`-Tabellen des Aufrufers. Semantische JSON-Properties ersetzen jede
+positionsabhängige Zuordnung.
 
 Der kanonische Aufruf ist:
 
@@ -46,7 +54,7 @@ CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL);
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen = 100
     , @ResultSetArt = 'TABLE'
-    , @ResultTable = N'#CurrentRequests_Result';
+    , @ResultTablesJson = N'{"requests":"#CurrentRequests_Result"}';
 
 SELECT * FROM #CurrentRequests_Result;
 ```
@@ -56,7 +64,11 @@ Der Writer kennt zwei zulässige Zielzustände:
 1. Eine leere Tabelle mit exakt einer beliebigen Dummy-Spalte. Der Writer ersetzt diese Spalte unabhängig von Name, Datentyp und Nullability durch die nativen Quellspalten.
 2. Eine bereits exakt passende Spaltenstruktur. Der Writer hängt weitere Zeilen an.
 
-Spaltenname und -reihenfolge, Systemdatentyp, Länge beziehungsweise `MAX`, Precision, Scale, Collation und Nullability müssen übereinstimmen. Eine abweichende Struktur führt kontrolliert zu `TARGET_SCHEMA_MISMATCH`; nur eine leere Ein-Spalten-Tabelle wird automatisch umgebaut. Die öffentliche Procedure meldet Writerfehler als Fehler `51010`.
+Unbekannte Resultsetnamen, doppelte Namen oder Ziele sowie ungültige,
+nicht vorhandene oder gefüllte Ziele werden atomar vor dem fachlichen
+Systemzugriff abgelehnt. Spaltenname und -reihenfolge, Systemdatentyp, Länge
+beziehungsweise `MAX`, Precision, Scale, Collation und Nullability müssen beim
+Append übereinstimmen.
 
 Bewusste Grenzen:
 
@@ -65,8 +77,8 @@ Bewusste Grenzen:
 - Frameworkinterne Temp-Tabellen tragen einen Bezug zur erzeugenden Procedure oder zum Skript; wiederverwendete Helper erhalten den konkreten lokalen Tabellennamen als Parameter.
 - Tabellen besitzen keine garantierte Zeilenreihenfolge; Consumer müssen beim Lesen selbst `ORDER BY` setzen.
 - Identity-, Computed-, CLR-/benutzerdefinierte, schema-gebundene XML- und `rowversion`-Spalten werden nicht automatisch reproduziert.
-- Bei Procedures mit mehreren fachlichen Datenmengen wird das in `Metadata/Inventory/TableOutput.csv` ausgewiesene Primärergebnis geschrieben. Aggregatoren liefern ihren Modulstatus beziehungsweise ihre Modul-Envelopes; typisierte Details werden direkt über die jeweilige Kindprocedure angefordert.
-- Die Analyse läuft vor dem Tabellen-Writer. Procedureabhängige Status-OUTPUT-Parameter und Warnmeldungen bleiben deshalb maßgeblich für Verfügbarkeit und Teilresultate.
+- Alle exportierbaren Namen und ihre geordneten nativen Schemas stehen in `Metadata/Inventory/ResultSets.csv`.
+- Alle Ziele werden aus den bereits während desselben Aufrufs materialisierten Ergebnissen geschrieben. Der Export löst keine erneuten DMV-, Plan-Cache-, Query-Store-, Extended-Events- oder Katalogzugriffe aus.
 
 Die Beschränkung auf lokale Temp-Tabellen ist auch eine Datenschutzgrenze: Persistenz, Aufbewahrung, Berechtigungen und Schema-Drift permanenter Ergebnistabellen müssen außerhalb des Frameworks bewusst entworfen werden.
 

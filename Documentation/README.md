@@ -53,7 +53,11 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
 Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
-Die Version `1.1.0-special.12` vertieft alle 347 kuratierten Wait Types um Einordnung, Ursachenhypothesen, Wirkung, Minderungsansätze, Gegenbeweise, Queranalysen und Messhinweise. Die typisierte Quellenstruktur trennt Definition, Messmethodik, Interpretation und Diagnose. Der bestehende `TABLE`-/`@ResultTable`-Vertrag, blockierungsarme Katalogzugriffe und die vorhandene Drei-Versionen-Evidenz bleiben erhalten.
+Der Ausgabe-Vertrag 2.0 verarbeitet standardmäßig alle sichtbaren Online-
+Benutzerdatenbanken, trennt die menschliche CONSOLE-Darstellung von RAW und
+verwendet für TABLE ausschließlich semantisch benannte Ziele in
+`@ResultTablesJson`. Die vollständigen nativen Schemas stehen im
+Resultsetinventar.
 
 ## Forschungs- und Inventareinstieg
 
@@ -66,4 +70,4 @@ Die Version `1.1.0-special.12` vertieft alle 347 kuratierten Wait Types um Einor
 - `Metadata/Inventory/SystemSources.csv`
 - `Metadata/Inventory/NonSystemDependencies.csv`
 - `Metadata/Inventory/PermissionsAndFeatures.csv`
-- `Metadata/Inventory/TableOutput.csv`
+- `Metadata/Inventory/ResultSets.csv`

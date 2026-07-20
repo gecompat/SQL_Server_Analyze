@@ -27,9 +27,10 @@ Kosten       : MEDIUM; Hashindex-Laufzeitstatistik HIGH_OPT_IN, da die DMV nach
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_InMemoryOltpAnalysis]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                      nvarchar(max)  = NULL
     , @SchemaNamePattern                nvarchar(4000) = NULL
     , @ObjectNames                      nvarchar(max)  = NULL
@@ -44,11 +45,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InMemoryOltpAnalysis]
     , @WaitingCheckpointWarnMb          decimal(19,2)  = 1024
     , @ActiveTransactionWarnCount       int            = 100
     , @PoolUsedWarnPercent              decimal(9,4)   = 80
-    , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -67,7 +67,11 @@ BEGIN
     DECLARE @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
     DECLARE @ErrorNumber int=NULL;
@@ -84,7 +88,7 @@ BEGIN
         PRINT N'@MitHashIndexStats=1 aktiviert eine potenziell teure vollständige Hashindex-DMV-Auswertung und benötigt CATALOG_DEEP.';
         PRINT N'Exakte Namenslisten und Pattern derselben Eigenschaft sind gegenseitig exklusiv; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfhinweise, keine automatische DDL- oder Kapazitätsempfehlung.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Es werden keine Benutzertabellendaten, Moduldefinitionen, SQL-Texte, Transaktions-IDs oder Checkpoint-Dateipfade gelesen.';
         RETURN;
     END;
@@ -98,7 +102,7 @@ BEGIN
        OR @WaitingCheckpointWarnMb IS NULL OR @WaitingCheckpointWarnMb<0
        OR @ActiveTransactionWarnCount IS NULL OR @ActiveTransactionWarnCount<1
        OR @PoolUsedWarnPercent IS NULL OR @PoolUsedWarnPercent<0 OR @PoolUsedWarnPercent>100
-       OR @MaxDatenbanken<0 OR @MaxZeilen<0
+ OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
     BEGIN
@@ -323,9 +327,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
-            , @AnalysisClass='CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass='OBJECT_ANALYSIS_CURRENT'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#InMemoryOltpAnalysis_DatabaseCandidates',@WarningTable=N'#InMemoryOltpAnalysis_DatabaseCandidateWarnings';
@@ -350,13 +354,13 @@ BEGIN
         SELECT @StatusCode='NOT_APPLICABLE',@ErrorMessage=N'Keine auswertbare Datenbank im gewählten Scope.';
     END;
 
-    DECLARE @HashStatsAllowed bit=1;
-    IF @MitHashIndexStats=1
-    BEGIN
-        SELECT @HashStatsAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass]='CATALOG_DEEP';
-    END;
+    IF @StatusCode='AVAILABLE' AND @MitHashIndexStats=1
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='CATALOG_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
+    DECLARE @HashStatsAllowed bit=CONVERT(bit,CASE WHEN @StatusCode='AVAILABLE' THEN 1 ELSE 0 END);
 
     DECLARE @SchemaPredicate nvarchar(max)=
         N' AND (NOT EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
@@ -894,11 +898,18 @@ SET @pRows=@@ROWCOUNT;';
 
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
            @ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#InMemoryOltpAnalysis_Findings'
+            , @ResultLabel=N'InMemoryOltpAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#InMemoryOltpAnalysis_Findings'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

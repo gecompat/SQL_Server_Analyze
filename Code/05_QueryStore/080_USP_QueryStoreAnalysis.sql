@@ -13,8 +13,9 @@ Zweck        : Orchestriert Query-Store-Module mit einheitlichem Quell- und
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
-      @QueryStoreDatabaseNames          nvarchar(max)  = N''
+      @QueryStoreDatabaseNames          nvarchar(max)  = NULL
     , @QueryStoreDatabaseNamePattern    nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @ReferencedDatabaseNames          nvarchar(max)  = NULL
     , @ReferencedDatabaseNamePattern    nvarchar(4000) = NULL
     , @VonUtc                           datetime2(7)   = NULL
@@ -27,10 +28,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
     , @MitForcedPlans                   bit            = 0
     , @MitHints                         bit            = 0
     , @MitIQP                           bit            = 0
-    , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 100
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -43,7 +43,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'moduleStatus',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
     DECLARE @StatusJson nvarchar(max);
@@ -77,8 +81,7 @@ BEGIN
         RETURN;
     END;
 
-    IF @MaxDatenbanken < 0
-       OR @MaxZeilen < 0
+    IF @MaxZeilen < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR (@VonUtc IS NOT NULL AND @BisUtc IS NOT NULL AND @VonUtc > @BisUtc)
        OR (@MitStatus = 0 AND @MitRuntimeStats = 0 AND @MitWaitStats = 0
@@ -93,8 +96,8 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_QueryStoreStatus]
                   @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
-                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @StatusJson OUTPUT
@@ -112,12 +115,12 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_QueryStoreRuntimeStats]
                   @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
-                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @ReferencedDatabaseNames = @ReferencedDatabaseNames
                 , @ReferencedDatabaseNamePattern = @ReferencedDatabaseNamePattern
                 , @VonUtc = @VonUtc
                 , @BisUtc = @BisUtc
-                , @MaxDatenbanken = @MaxDatenbanken
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -136,12 +139,12 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_QueryStoreWaitStats]
                   @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
-                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @ReferencedDatabaseNames = @ReferencedDatabaseNames
                 , @ReferencedDatabaseNamePattern = @ReferencedDatabaseNamePattern
                 , @VonUtc = @VonUtc
                 , @BisUtc = @BisUtc
-                , @MaxDatenbanken = @MaxDatenbanken
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -160,11 +163,11 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_QueryStorePlanChanges]
                   @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
-                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @ReferencedDatabaseNames = @ReferencedDatabaseNames
                 , @ReferencedDatabaseNamePattern = @ReferencedDatabaseNamePattern
                 , @VonUtc = @VonUtc
-                , @MaxDatenbanken = @MaxDatenbanken
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -183,12 +186,12 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_QueryStoreRegressions]
                   @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
-                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @ReferencedDatabaseNames = @ReferencedDatabaseNames
                 , @ReferencedDatabaseNamePattern = @ReferencedDatabaseNamePattern
                 , @VergleichVonUtc = @VonUtc
                 , @VergleichBisUtc = @BisUtc
-                , @MaxDatenbanken = @MaxDatenbanken
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -207,10 +210,10 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_QueryStoreForcedPlans]
                   @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
-                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @ReferencedDatabaseNames = @ReferencedDatabaseNames
                 , @ReferencedDatabaseNamePattern = @ReferencedDatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -229,8 +232,8 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_QueryStoreHints]
                   @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
-                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -249,8 +252,8 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
                   @DatabaseNames = @QueryStoreDatabaseNames
-                , @DatabaseNamePattern = @QueryStoreDatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -346,12 +349,19 @@ BEGIN
             , N'}'
         );
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryStoreAnalysis_MonitorTableResult'
+            , @ResultLabel=N'QueryStoreAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         SELECT * INTO [#QueryStoreAnalysis_MonitorTableResult] FROM @ModuleStatus;
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryStoreAnalysis_MonitorTableResult'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

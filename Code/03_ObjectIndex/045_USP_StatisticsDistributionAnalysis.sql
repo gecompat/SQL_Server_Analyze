@@ -28,9 +28,10 @@ Kosten       : HIGH_OPT_IN. CATALOG_DEEP-Freigabe, gezielter Scope oder bewusst
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_StatisticsDistributionAnalysis]
-      @DatabaseNames                       nvarchar(max)  = N''
+      @DatabaseNames                       nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen        bit            = 0
     , @DatabaseNamePattern                 nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                         nvarchar(max)  = NULL
     , @SchemaNamePattern                   nvarchar(4000) = NULL
     , @ObjectNames                         nvarchar(max)  = NULL
@@ -45,11 +46,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_StatisticsDistributionAnalysis]
     , @DominanterSchrittWarnPercent        decimal(9,4)    = 50
     , @ModificationWarnPercent             decimal(9,4)    = 20
     , @PartitionSpreadWarnPercent          decimal(9,4)    = 20
-    , @MaxDatenbanken                      int             = 16
     , @MaxZeilen                           int             = 1000
     , @LockTimeoutMs                       int             = 0
     , @ResultSetArt                        varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                        bit             = 0
     , @Json                                nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                      bit             = 1
@@ -66,7 +66,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,''))));
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40)='AVAILABLE';
@@ -88,7 +92,7 @@ BEGIN
         PRINT N'@AnalyseModus=GEZIELT erfordert Objekt-/Schema-/Statistikfilter; VOLL benötigt CATALOG_DEEP.';
         PRINT N'@MaxVerteilungsStatistiken=1..250 begrenzt den Histogrammzugriff je Datenbank vor der Analyse.';
         PRINT N'@MinVerteilungsZeilen, @SkewWarnFaktor, @DominanterSchrittWarnPercent, @ModificationWarnPercent und @PartitionSpreadWarnPercent steuern Hinweise.';
-        PRINT N'@MaxZeilen positiv begrenzt Resultsets; NULL/0 bedeutet unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        PRINT N'@MaxZeilen positiv begrenzt Resultsets; NULL/0 bedeutet unbegrenzt. @ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson.';
         PRINT N'Verteilungsindikatoren beweisen weder schlechte Pläne noch Out-of-Range-Werte; Query- und Laufzeitkontext separat prüfen.';
         RETURN;
     END;
@@ -101,22 +105,19 @@ BEGIN
        OR @DominanterSchrittWarnPercent IS NULL OR @DominanterSchrittWarnPercent<0 OR @DominanterSchrittWarnPercent>100
        OR @ModificationWarnPercent IS NULL OR @ModificationWarnPercent<0 OR @ModificationWarnPercent>100
        OR @PartitionSpreadWarnPercent IS NULL OR @PartitionSpreadWarnPercent<0 OR @PartitionSpreadWarnPercent>100
-       OR @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+ OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,
                @ErrorMessage=N'Ungültiger Modus, Grenzwert-, Mengen-, Lock-Timeout- oder Ausgabeparameter.';
     END;
 
-    DECLARE @CatalogAllowed bit=1;
     IF @StatusCode='AVAILABLE'
-        SELECT @CatalogAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass]='CATALOG_DEEP';
-    IF @StatusCode='AVAILABLE' AND @CatalogAllowed=0
-    BEGIN
-        SELECT @StatusCode='DENIED_GROUP',@IsPartial=1,
-               @ErrorMessage=N'CATALOG_DEEP ist für die Statistikverteilungsanalyse nicht freigegeben.';
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='CATALOG_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
+    IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
 
     DECLARE @CurrentCompatibilityLevel int=NULL;
     IF @StatusCode='AVAILABLE'
@@ -250,13 +251,13 @@ BEGIN
         EXEC [monitor].[USP_Statistics]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern
             , @ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern
             , @FullObjectNames=@FullObjectNames
             , @StatisticsNames=@StatisticsNames,@StatisticsNamePattern=@StatisticsNamePattern
             , @AnalyseModus=@Mode,@MinModificationPercent=0,@MinAlterTage=0
-            , @MitIncrementellenDetails=1,@MaxDatenbanken=@MaxDatenbanken
+            , @MitIncrementellenDetails=1
             , @MaxZeilen=@CandidatePoolRows,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StatisticsJson OUTPUT
             , @PrintMeldungen=@PrintMeldungen;
@@ -579,11 +580,18 @@ WHERE [c].[DatabaseName]=@pDbName;';
         SELECT TOP (@Limit) N'Statistikverteilungsbefund' [Ergebnis],[f].* FROM [#StatisticsDistributionAnalysis_Findings] [f]
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#StatisticsDistributionAnalysis_Findings'
+            , @ResultLabel=N'StatisticsDistributionAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#StatisticsDistributionAnalysis_Findings'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

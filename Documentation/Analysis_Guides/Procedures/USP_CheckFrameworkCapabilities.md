@@ -33,7 +33,9 @@ Query Store kann versionsseitig unterstützt und lesbar, aber deaktiviert sein. 
 
 ## Leere oder partielle Ausgabe
 
-Fehlende Capability-Zeilen können durch Datenbankauswahl, Rechte oder `@MaxDatenbanken` entstehen. Status- und Warnresultsets gehören zwingend zur Bewertung.
+Fehlende Capability-Zeilen können durch eine explizite Datenbankauswahl, Rechte
+oder nicht verfügbare Datenbanken entstehen. Status und Warnings gehören
+zwingend zur Bewertung.
 
 ## Technische Vertiefung
 

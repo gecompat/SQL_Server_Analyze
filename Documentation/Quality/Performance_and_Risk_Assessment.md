@@ -21,7 +21,9 @@ Nicht vorhandene DMVs, DMFs, Views oder Spalten können bereits bei Kompilierung
 Plan Cache, Showplan XML, Query Store, Physical Stats und breite Cross-Database-Katalogläufe können hohe CPU-, I/O-, Speicher- oder Laufzeitkosten verursachen. Gegenmaßnahmen:
 
 - gezielter Modus als Default;
-- globale Zeilenbegrenzung getrennt von `@MaxAnalyseobjekte` und `@MaxDatenbanken`;
+- globale Zeilenbegrenzung getrennt von `@MaxAnalyseobjekte`;
+- vollständige Datenbankkandidatenmenge vor globaler Bewertung und Sortierung;
+- `@HighImpactConfirmed=1` für den tatsächlich aktivierten breiten Pfad;
 - lokale Kandidatenmenge vor globalem Ranking;
 - Gruppenpolicy vor dem teuren Quellzugriff;
 - optionale Zeitbudgets und `LOCK_TIMEOUT`-Behandlung;

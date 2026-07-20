@@ -67,7 +67,7 @@ Verbindliche Erwartungen:
 
 ## 0.3 Automatisiertes synthetisches Linux-Target für SQL Server 2019
 
-Der Workflow `.github/workflows/sqlserver-2019-linux-release-gate.yml` führt dieselbe Installation und dieselben zwanzig Release-Gate-Suiten gegen `mcr.microsoft.com/mssql/server:2019-latest` aus. Die synthetische Installationsdatenbank verwendet Compatibility Level 150 und dieselbe case-sensitive Collation wie die anderen Testtargets.
+Der Workflow `.github/workflows/sqlserver-2019-linux-release-gate.yml` führt dieselbe Installation und dieselben 34 Release-Gate-Suiten gegen `mcr.microsoft.com/mssql/server:2019-latest` aus. Die synthetische Installationsdatenbank verwendet Compatibility Level 150 und dieselbe case-sensitive Collation wie die anderen Testtargets.
 
 Anschließend wird `Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql` ausgeführt. Die Matrix prüft fünf vollständig synthetische Kontexte:
 
@@ -91,7 +91,7 @@ Das 2019-Target speichert keine vollständigen SQLCMD-Ausgaben oder Resultsets. 
 
 ## 0.4 Automatisiertes synthetisches Linux-Target für SQL Server 2025
 
-Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 32-Suite-Release-Gate einschließlich aller P0-, P1-, P2- und TABLE-Verträge und die SQL-Server-2022+-Berechtigungsmatrix werden automatisiert ausgeführt.
+Der Workflow `.github/workflows/sqlserver-2025-linux-release-gate.yml` verwendet das offizielle Image `mcr.microsoft.com/mssql/server:2025-latest`, erzwingt Product Major Version 17, Compatibility Level 170 und die gemeinsame case-sensitive Collation. Installer, 34-Suite-Release-Gate einschließlich aller P0-, P1-, P2-, CONSOLE- und TABLE-Verträge und die SQL-Server-2022+-Berechtigungsmatrix werden automatisiert ausgeführt.
 
 Wie bei den anderen Targets werden Kennwort und Datenbank erst im Job erzeugt, vollständige Ausgaben nicht als Artefakt persistiert, Fehlerartefakte auf eine generische Kurzfassung und einen Tag Retention begrenzt und der Container immer entfernt.
 
@@ -125,7 +125,7 @@ Aus dem Verzeichnis `Code/Tests` ausführen:
 sqlcmd -S "<ZIEL>" -d "<INSTALLATIONSDATENBANK>" -E -b -i "Run_Release_Gate.sql"
 ```
 
-Der Runner beendet sich beim ersten SQL-Fehler und führt folgende 32 Suiten aus:
+Der Runner beendet sich beim ersten SQL-Fehler und führt folgende 34 Suiten aus:
 
 1. Smoke Test
 2. Parameter-API-Vertrag
@@ -151,19 +151,21 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende 32 Suiten aus
 22. P2-Encryption-Laufzeitvertrag
 23. P2-Maintenance-Laufzeitvertrag
 24. TABLE-Ausgabevertrag
-25. Common
-26. Current State
-27. Object und Index
-28. Plan Cache
-29. Query Store
-30. Extended Events
-31. Infrastructure
-32. Server Health
+25. Ausgabe-Pilotvertrag
+26. Frameworkweiter Ausgabevertrag
+27. Common
+28. Current State
+29. Object und Index
+30. Plan Cache
+31. Query Store
+32. Extended Events
+33. Infrastructure
+34. Server Health
 
 Erwartung bei vollständigem Erfolg:
 
 - Prozess-Exitcode `0`.
-- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=32`.
+- Letztes Resultset: `StatusCode=AVAILABLE`, `IsPartial=0`, `ExecutedSuites=34`.
 - Kein `THROW`, kein unbehandelter Fehler und kein vorzeitiges Ende.
 
 ## 4. Spezialfallmatrix ausführen

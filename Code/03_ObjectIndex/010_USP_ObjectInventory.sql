@@ -17,7 +17,6 @@ Parameter    :
   @DatenbankNameLike             nvarchar(256)  = NULL  - Filter im Cross-Database-Modus.
   @SchemaNamePattern                nvarchar(256)  = NULL  - LIKE-Filter auf Schema.
   @ObjectNamePattern                nvarchar(256)  = NULL  - LIKE-Filter auf Objekt.
-  @MaxDatenbanken                int            = 16    - positive Werte begrenzen; NULL/0 = alle sichtbaren Datenbanken.
   @MaxZeilen                     int            = 5000  - positive Werte begrenzen; NULL/0 = unbegrenzt.
   @LockTimeoutMs                 int            = 0     - 0 = nicht auf Metadatenlocks warten.
   @PrintMeldungen                bit            = 1     - Warnungen via RAISERROR 10.
@@ -41,9 +40,10 @@ Beispiele    :
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectInventory]
-      @DatabaseNames                  nvarchar(max)  = N''
+      @DatabaseNames                  nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen   bit            = 0
     , @DatabaseNamePattern            nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                    nvarchar(max)  = NULL
     , @SchemaNamePattern              nvarchar(4000) = NULL
     , @ObjectNames                    nvarchar(max)  = NULL
@@ -53,11 +53,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectInventory]
     , @AnalyseModus                   varchar(16)   = 'GEZIELT'
     , @MitIndizes                     bit           = 1
     , @MitSpaltenlisten               bit           = 1
-    , @MaxDatenbanken                 int           = 16
     , @MaxZeilen                      int           = 5000
     , @LockTimeoutMs                  int           = 0
     , @ResultSetArt                  varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                  bit            = 0
     , @Json                          nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                 bit           = 1
@@ -69,7 +68,11 @@ BEGIN
     SET @Json = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'objects',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @DatabaseName sysname=NULL,@CrossDatabaseRequestedInternal bit=0,@DatenbankNameLike nvarchar(4000)=NULL;
     DECLARE @SchemaNameLike nvarchar(4000)=NULL,@ObjectNameLike nvarchar(4000)=NULL;
     DECLARE @SchemaPatternMode varchar(8),@SchemaPatternValue nvarchar(4000),@SchemaRegexFlags varchar(8),@SchemaPatternValid bit;
@@ -89,7 +92,9 @@ BEGIN
     CREATE TABLE [#ObjectInventory_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=NULL,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#ObjectInventory_NameFilters';
-    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ObjectInventory_DatabaseCandidates';
+    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='OBJECT_ANALYSIS_CURRENT',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ObjectInventory_DatabaseCandidates';
+    IF @FilterStatus='AVAILABLE' AND UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,''))))='VOLL'
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='CATALOG_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT;
     DECLARE @SchemaPredicateS nvarchar(max),@SchemaPredicateSch nvarchar(max),@ObjectPredicateO nvarchar(max),@FullObjectPredicateSO nvarchar(max),@IndexPredicateI nvarchar(max),@StatisticsPredicateSt nvarchar(max);
     SET @SchemaPredicateS=N' AND (NOT EXISTS(SELECT 1 FROM [#ObjectInventory_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#ObjectInventory_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     SET @SchemaPredicateSch=REPLACE(@SchemaPredicateS,N'[s].[name]',N'[sch].[name]');
@@ -106,15 +111,14 @@ BEGIN
     IF @StatisticsPatternMode='LIKE' SET @StatisticsPredicateSt+=N' AND [st].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@StatisticsPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
     IF @StatisticsPatternMode IN('REGEX','REGEXI') SET @StatisticsPredicateSt+=N' AND REGEXP_LIKE([st].[name],N'''+REPLACE(@StatisticsPatternValue,N'''',N'''''')+N''','''+@StatisticsRegexFlags+N''')';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
-    DECLARE @EffectiveMaxDatenbanken bigint = CASE WHEN @MaxDatenbanken IS NULL OR @MaxDatenbanken=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxDatenbanken) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @ObjectType = UPPER(LTRIM(RTRIM(COALESCE(@ObjectType,'TABLE'))));
     SET @AnalyseModus = UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'GEZIELT'))));
 
     IF @Hilfe = 1
     BEGIN
-        PRINT N'monitor.USP_ObjectInventory';        PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken; N'''' = ungültiger sicherer Default.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0: Systemdatenbanken einbeziehen.';        PRINT N'Exakte Listen und ...NamePattern sind gegenseitig exklusiv. Pattern: LIKE (Default/like:), regex: oder regexi:.';
-        PRINT N'@MaxDatenbanken int = 16; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
+        PRINT N'monitor.USP_ObjectInventory';        PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken; N'''' = keine Einschränkung.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0: Systemdatenbanken einbeziehen.';        PRINT N'Exakte Listen und ...NamePattern sind gegenseitig exklusiv. Pattern: LIKE (Default/like:), regex: oder regexi:.';
+        PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
         PRINT N'Zweck: Objekt-, Größen-, Partitions-, Kompressions- und Indexinventar.';
@@ -152,10 +156,10 @@ BEGIN
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
     IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') BEGIN SET @OverallStatus='INVALID_PARAMETER';SET @ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';END;
     IF @SchemaPatternValid=0 OR @ObjectPatternValid=0 OR @IndexPatternValid=0 OR @StatisticsPatternValid=0 OR (@SchemaNames IS NOT NULL AND @SchemaNamePattern IS NOT NULL) OR (@ObjectNames IS NOT NULL AND @ObjectNamePattern IS NOT NULL) BEGIN SET @OverallStatus='INVALID_PARAMETER';SET @ErrorMessage=N'Exakte Liste und Pattern derselben Eigenschaft sind gegenseitig exklusiv.';END;
-IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
     BEGIN
         SET @OverallStatus = 'INVALID_PARAMETER';
-        SET @ErrorMessage = N'Ungültiger Parameter: @MaxDatenbanken, @MaxZeilen oder @LockTimeoutMs außerhalb des zulässigen Bereichs.';
+        SET @ErrorMessage = N'Ungültiger Parameter: @MaxZeilen oder @LockTimeoutMs außerhalb des zulässigen Bereichs.';
     END
 
 
@@ -364,7 +368,7 @@ OPTION (MAXDOP 1, RECOMPILE);';
             INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
     END;
 
-    
+
 
     SELECT @TotalRows = COUNT_BIG(*) FROM [#ObjectInventory_Result];
 
@@ -399,11 +403,18 @@ END;
         DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#ObjectInventory_Result] ORDER BY [ObjectReservedMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@JsonMeta,N'{}'),N',"objects":',COALESCE(@JsonData1,N'[]'),N',"databaseStatus":',COALESCE(@JsonDatabaseStatus,N'[]'),N'}');
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ObjectInventory_Result'
+            , @ResultLabel=N'ObjectInventory'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#ObjectInventory_Result'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

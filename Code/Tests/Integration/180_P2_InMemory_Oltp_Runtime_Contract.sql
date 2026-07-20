@@ -26,9 +26,10 @@ IF @Definition IS NULL THROW 55400,N'XTP-Proceduredefinition ist nicht sichtbar.
 
 /* XTP-NONE */
 EXEC [monitor].[USP_InMemoryOltpAnalysis]
-     @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=10,
+     @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=10,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1 OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE','AVAILABLE_LIMITED')
    OR NOT EXISTS
       (

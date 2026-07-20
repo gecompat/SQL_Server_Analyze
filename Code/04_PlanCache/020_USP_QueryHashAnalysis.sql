@@ -41,8 +41,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryHashAnalysis]
     , @MaxZeilen           int         = 100
     , @MaxSqlTextZeichen   int         = 4000
     , @ParentQueryStatsSnapshot bit    = 0
+    , @HighImpactConfirmed bit         = 0
     , @ResultSetArt        varchar(16) = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen        bit         = 0
     , @Json                 nvarchar(max) = NULL OUTPUT
     , @PrintMeldungen      bit         = 1
@@ -54,7 +55,11 @@ BEGIN
     SET @Json = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'queryHashes',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @Sortierung=UPPER(LTRIM(RTRIM(COALESCE(@Sortierung,'CPU_TOTAL'))));
@@ -108,10 +113,7 @@ BEGIN
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0 OR @MinPlanVarianten<1 OR @MinExecutionCount<0 OR @ParentQueryStatsSnapshot IS NULL)
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameterwert.';END;
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @QueryHash IS NULL OR @EffectiveMaxZeilen>1000)
-    BEGIN
-        SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
-        IF @Allowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'PLAN_CACHE_DEEP ist für die breite Query-Hash-Aggregation nicht freigegeben.';END;
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
 
     IF @StatusCode='AVAILABLE'
     BEGIN TRY
@@ -251,11 +253,18 @@ END;
         DECLARE @DataJson nvarchar(max)=(SELECT * FROM [#QueryHashAnalysis_Output] ORDER BY CASE @Sortierung WHEN 'CPU_TOTAL' THEN [TotalCpuMs] WHEN 'ELAPSED_TOTAL' THEN [TotalElapsedMs] WHEN 'READS_TOTAL' THEN [TotalReads] WHEN 'WRITES_TOTAL' THEN [TotalWrites] WHEN 'EXECUTIONS' THEN [ExecutionCount] WHEN 'PLAN_VARIANTS' THEN [PlanVariantCount] WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"queryHashes":',COALESCE(@DataJson,N'[]'),N',"warnings":[]}');
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryHashAnalysis_Output'
+            , @ResultLabel=N'QueryHashAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryHashAnalysis_Output'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

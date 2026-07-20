@@ -1,6 +1,6 @@
 # Verbindliche Parameter- und API-Konvention
 
-Stand: 2026-07-15
+Stand: 2026-07-20
 
 ## Grundsatz
 
@@ -12,11 +12,12 @@ Textuelle **Steuerwerte** werden dagegen mit `UPPER(LTRIM(RTRIM(...)))` normalis
 
 - `@MaxZeilen int`: positive Werte begrenzen, `NULL`/`0` bedeutet unbegrenzt, negative Werte sind `INVALID_PARAMETER`.
 - `@MaxAnalyseobjekte int`: getrenntes Budget für zu analysierende Pläne/Objekte.
-- `@MaxDatenbanken int`: begrenzt nur automatisch ermittelte Datenbanken; eine explizite Liste wird nie still gekürzt.
-- `@DatabaseNames nvarchar(max)`: bracket-aware Pipe-Liste; `NULL` = alle zulässigen Datenbanken, `N''` = aktuelle Datenbank.
+- `@DatabaseNames nvarchar(max)`: bracket-aware Pipe-Liste; `NULL`/`N''` = keine Einschränkung, also alle sichtbaren Online-Benutzerdatenbanken.
 - `@DatabaseNamePattern nvarchar(4000)`: ein einzelnes `like:`, `regex:` oder `regexi:` Pattern; exklusiv zu `@DatabaseNames`.
+- `@SystemdatenbankenEinbeziehen bit=0`: Systemdatenbanken sind ausschließlich opt-in.
+- `@HighImpactConfirmed bit=0`: bestätigt nur einen tatsächlich aktivierten ressourcenintensiven Pfad.
 - `@SessionIds nvarchar(max)`: Liste numerischer Session-IDs; Pipe, Beistrich und Strichpunkt sind gleichwertige Trennzeichen und dürfen gemischt werden.
-- `@ResultSetArt varchar(16)='CONSOLE'`, `@JsonErzeugen bit=0`, `@Json nvarchar(max)=NULL OUTPUT`.
+- `@ResultSetArt varchar(16)='CONSOLE'`, `@ResultTablesJson nvarchar(max)=NULL`, `@JsonErzeugen bit=0`, `@Json nvarchar(max)=NULL OUTPUT`.
 - `@PrintMeldungen bit=1`, `@Hilfe bit=0`.
 
 ## Query Store

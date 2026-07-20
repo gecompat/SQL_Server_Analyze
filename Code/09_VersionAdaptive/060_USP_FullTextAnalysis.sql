@@ -28,9 +28,10 @@ Kosten       : MEDIUM; Kataloge und aggregierte Full-Text-Laufzeitmetadaten.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_FullTextAnalysis]
-      @DatabaseNames                    nvarchar(max)   = N''
+      @DatabaseNames                    nvarchar(max)   = NULL
     , @SystemdatenbankenEinbeziehen     bit             = 0
     , @DatabaseNamePattern              nvarchar(4000)  = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                      nvarchar(max)   = NULL
     , @SchemaNamePattern                nvarchar(4000)  = NULL
     , @ObjectNames                      nvarchar(max)   = NULL
@@ -42,11 +43,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_FullTextAnalysis]
     , @OutstandingBatchWarn             bigint          = 100
     , @FailedDocumentWarn               bigint          = 1
     , @CatalogSizeWarnMb                decimal(19,2)   = 10240
-    , @MaxDatenbanken                   int             = 16
     , @MaxZeilen                        int             = 2000
     , @LockTimeoutMs                    int             = 0
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit             = 0
     , @Json                             nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                   bit             = 1
@@ -66,7 +66,11 @@ BEGIN
     DECLARE @IsFullTextInstalled bit=COALESCE(TRY_CONVERT(bit,SERVERPROPERTY(N'IsFullTextInstalled')),0);
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
     DECLARE @ErrorNumber int=NULL;
@@ -83,7 +87,7 @@ BEGIN
         PRINT N'Geprueft werden Indexschalter, Crawl-Kontext, aktuelle Populationen, Batches, Fragmente und semantische Populationen.';
         PRINT N'Exakte Namenslisten und Pattern beziehen sich auf Tabellenschema und Tabellenname; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte sind Heuristiken. MANUAL/OFF, eine leere DMV oder ein alter Crawl beweisen fuer sich keinen Fehler.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Keine Tabelleninhalte, Suchbegriffe, Crawl-Logs, Dateipfade, Stopwords, Schluesselwerte oder DDL.';
         RETURN;
     END;
@@ -95,7 +99,7 @@ BEGIN
        OR @OutstandingBatchWarn IS NULL OR @OutstandingBatchWarn<0
        OR @FailedDocumentWarn IS NULL OR @FailedDocumentWarn<0
        OR @CatalogSizeWarnMb IS NULL OR @CatalogSizeWarnMb<0
-       OR @MaxDatenbanken IS NULL OR @MaxDatenbanken<0
+
        OR @MaxZeilen IS NULL OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
@@ -348,9 +352,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
-            , @AnalysisClass='CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass='CATALOG_DEEP'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#FullTextAnalysis_DatabaseCandidates',@WarningTable=N'#FullTextAnalysis_DatabaseCandidateWarnings';
@@ -1149,11 +1153,18 @@ SET @pRows=@@ROWCOUNT;';
 
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
            @ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#FullTextAnalysis_Findings'
+            , @ResultLabel=N'FullTextAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#FullTextAnalysis_Findings'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

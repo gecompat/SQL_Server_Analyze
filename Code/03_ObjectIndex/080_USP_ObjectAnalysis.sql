@@ -15,7 +15,7 @@ Parameter    : @DatabaseNames, @DatabaseNamePattern, @SchemaNames,
                @SchemaNamePattern, @ObjectNames, @ObjectNamePattern,
                @FullObjectNames, @IndexNames, @IndexNamePattern,
                @StatisticsNames, @StatisticsNamePattern, Modulschalter,
-               @MaxDatenbanken, @MaxZeilen, @ResultSetArt,
+               @MaxZeilen, @ResultSetArt,
                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
 Semantik     : Exakte Listen sind bracket-aware Pipe-Listen; Pattern sind
                einzelne LIKE-/Regex-Ausdrücke. Exakte Liste und Pattern
@@ -32,9 +32,10 @@ Ausgabe      : Aktivierte Teilmodule liefern RAW oder CONSOLE. NONE unterdrückt
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectAnalysis]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                      nvarchar(max)  = NULL
     , @SchemaNamePattern                nvarchar(4000) = NULL
     , @ObjectNames                      nvarchar(max)  = NULL
@@ -55,11 +56,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectAnalysis]
     , @MitColumnstore                   bit            = 0
     , @MitPhysicalStats                 bit            = 0
     , @MitSchemaDesign                  bit            = 0
-    , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -72,7 +72,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'moduleStatus',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @AnalyseModus varchar(16) = CASE WHEN @Vollanalyse = 1 THEN 'VOLL' ELSE 'GEZIELT' END;
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
@@ -101,7 +105,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+    IF @MaxZeilen < 0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
@@ -148,9 +152,9 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitObjectInventory = 1
     BEGIN TRY
         EXEC [monitor].[USP_ObjectInventory]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
-            , @AnalyseModus=@AnalyseModus,@MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            , @AnalyseModus=@AnalyseModus,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonObjectInventory OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_ObjectInventory',COALESCE(JSON_VALUE(@JsonObjectInventory,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_ObjectInventory','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -158,9 +162,9 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitIndexUsage = 1
     BEGIN TRY
         EXEC [monitor].[USP_IndexUsage]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
-            , @AnalyseModus=@AnalyseModus,@MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            , @AnalyseModus=@AnalyseModus,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonIndexUsage OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexUsage',COALESCE(JSON_VALUE(@JsonIndexUsage,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexUsage','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -168,9 +172,9 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitMissingIndexes = 1
     BEGIN TRY
         EXEC [monitor].[USP_MissingIndexes]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
-            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            ,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonMissingIndexes OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_MissingIndexes',COALESCE(JSON_VALUE(@JsonMissingIndexes,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_MissingIndexes','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -178,10 +182,10 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitOperationalStats = 1
     BEGIN TRY
         EXEC [monitor].[USP_IndexOperationalStats]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
             , @IndexNames=@IndexNames,@IndexNamePattern=@IndexNamePattern,@AnalyseModus=@AnalyseModus
-            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            ,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonOperationalStats OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexOperationalStats',COALESCE(JSON_VALUE(@JsonOperationalStats,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexOperationalStats','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -189,10 +193,10 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitStatistics = 1
     BEGIN TRY
         EXEC [monitor].[USP_Statistics]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
             , @StatisticsNames=@StatisticsNames,@StatisticsNamePattern=@StatisticsNamePattern,@AnalyseModus=@AnalyseModus
-            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            ,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonStatistics OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_Statistics',COALESCE(JSON_VALUE(@JsonStatistics,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_Statistics','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -200,10 +204,10 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitStatisticsDistribution = 1
     BEGIN TRY
         EXEC [monitor].[USP_StatisticsDistributionAnalysis]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
             , @StatisticsNames=@StatisticsNames,@StatisticsNamePattern=@StatisticsNamePattern,@AnalyseModus=@AnalyseModus
-            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            ,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonStatisticsDistribution OUTPUT,@PrintMeldungen=@PrintMeldungen
             , @StatusCodeOut=@StatisticsDistributionStatus OUTPUT,@IsPartialOut=@StatisticsDistributionPartial OUTPUT
             , @ErrorNumberOut=@StatisticsDistributionErrorNumber OUTPUT,@ErrorMessageOut=@StatisticsDistributionErrorMessage OUTPUT;
@@ -213,9 +217,9 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitPartitions = 1
     BEGIN TRY
         EXEC [monitor].[USP_Partitions]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
-            , @AnalyseModus=@AnalyseModus,@MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            , @AnalyseModus=@AnalyseModus,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonPartitions OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_Partitions',COALESCE(JSON_VALUE(@JsonPartitions,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_Partitions','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -223,9 +227,9 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitColumnstore = 1
     BEGIN TRY
         EXEC [monitor].[USP_Columnstore]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
-            , @AnalyseModus=@AnalyseModus,@MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            , @AnalyseModus=@AnalyseModus,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonColumnstore OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_Columnstore',COALESCE(JSON_VALUE(@JsonColumnstore,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_Columnstore','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -233,10 +237,10 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitPhysicalStats = 1
     BEGIN TRY
         EXEC [monitor].[USP_IndexPhysicalStats]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
             , @IndexNames=@IndexNames,@IndexNamePattern=@IndexNamePattern,@AnalyseModus=@AnalyseModus
-            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            ,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonPhysicalStats OUTPUT,@PrintMeldungen=@PrintMeldungen;
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexPhysicalStats',COALESCE(JSON_VALUE(@JsonPhysicalStats,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexPhysicalStats','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
@@ -244,8 +248,8 @@ BEGIN
     IF @StatusCode = 'AVAILABLE' AND @MitSchemaDesign = 1
     BEGIN TRY
         EXEC [monitor].[USP_SchemaDesignAnalysis]
-              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken,@MaxZeilen=@MaxZeilen
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+            ,@MaxZeilen=@MaxZeilen
             , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonSchemaDesign OUTPUT,@PrintMeldungen=@PrintMeldungen
             , @StatusCodeOut=@SchemaDesignStatus OUTPUT,@IsPartialOut=@SchemaDesignPartial OUTPUT
             , @ErrorNumberOut=@SchemaDesignErrorNumber OUTPUT,@ErrorMessageOut=@SchemaDesignErrorMessage OUTPUT;
@@ -301,11 +305,18 @@ BEGIN
         ELSE
             SELECT N'Teilmodulstatus' [Ergebnis],[ModuleName] [Modul],[StatusCode] [Status],[ErrorNumber] [Fehlernummer],[ErrorMessage] [Fehlermeldung] FROM [#ObjectAnalysis_ModuleStatus] ORDER BY [ModuleName];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ObjectAnalysis_ModuleStatus'
+            , @ResultLabel=N'ObjectAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#ObjectAnalysis_ModuleStatus'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

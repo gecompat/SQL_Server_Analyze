@@ -14,8 +14,9 @@ Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit meta, waitStats,
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreWaitStats]
-      @QueryStoreDatabaseNames          nvarchar(max)  = N''
+      @QueryStoreDatabaseNames          nvarchar(max)  = NULL
     , @QueryStoreDatabaseNamePattern    nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @ReferencedDatabaseNames          nvarchar(max)  = NULL
     , @ReferencedDatabaseNamePattern    nvarchar(4000) = NULL
     , @QueryId                          bigint         = NULL
@@ -25,10 +26,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreWaitStats]
     , @BisUtc                           datetime2(7)   = NULL
     , @AnalyseModus                     varchar(16)    = 'TOP'
     , @MaxZeilen                        int            = 100
-    , @MaxDatenbanken                   int            = 16
     , @MaxSqlTextZeichen                int            = 4000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -40,13 +40,17 @@ BEGIN
     SET @AnalyseModus = UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus, 'TOP'))));
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'waitStats',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE 0 END;
     DECLARE @LocalRows bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen<2147483647 THEN CONVERT(bigint,@MaxZeilen)+1 ELSE CONVERT(bigint,@MaxZeilen) END;
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_QueryStoreWaitStats';
-        PRINT N'@QueryStoreDatabaseNames: exakte bracket-aware Pipe-Liste; NULL=alle; N''''=ungültig.';
+        PRINT N'@QueryStoreDatabaseNames: exakte bracket-aware Pipe-Liste; NULL=alle; N''''=keine Einschränkung.';
         PRINT N'@ReferencedDatabaseNames/Pattern: optionaler Showplan-Referenzfilter.';
         PRINT N'@MaxZeilen ist global; lokal werden N+1 Kandidaten je DB gelesen.';
         PRINT N'@ResultSetArt RAW|CONSOLE|TABLE|NONE; @JsonErzeugen=1 setzt @Json OUTPUT.';
@@ -60,11 +64,11 @@ BEGIN
     CREATE TABLE [#QueryStoreWaitStats_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
     CREATE TABLE [#QueryStoreWaitStats_Result]([QueryStoreDatabaseId] int,[QueryStoreDatabaseName] sysname,[QueryId] bigint,[PlanId] bigint,[QueryHash] binary(8),[QueryPlanHash] binary(8),[WaitCategory] tinyint,[WaitCategoryDesc] nvarchar(128),[ExecutionTypeDesc] nvarchar(128),[FirstIntervalStartUtc] datetimeoffset,[LastIntervalEndUtc] datetimeoffset,[RecordedRows] bigint,[TotalQueryWaitTimeMs] bigint,[AverageRecordedQueryWaitTimeMs] decimal(38,3),[MaxQueryWaitTimeMs] bigint,[QuerySqlText] nvarchar(max));
     CREATE TABLE [#QueryStoreWaitStats_Errors]([DatabaseName] sysname,[StatusCode] varchar(40),[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048));
-    IF @AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @MaxDatenbanken<0 OR @MaxSqlTextZeichen < 0 OR @VonUtc>=@BisUtc OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @RefValid=0 OR (@ReferencedDatabaseNames IS NOT NULL AND @ReferencedDatabaseNamePattern IS NOT NULL) OR (@ReferencedDatabaseNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) WHERE [IsValid]=0))
+    IF @AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @MaxSqlTextZeichen < 0 OR @VonUtc>=@BisUtc OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @RefValid=0 OR (@ReferencedDatabaseNames IS NOT NULL AND @ReferencedDatabaseNamePattern IS NOT NULL) OR (@ReferencedDatabaseNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) WHERE [IsValid]=0))
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameter oder Zeitraum.';END;
-    IF @StatusCode='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@QueryStoreDatabaseNames,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=@QueryStoreDatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT,@CrossDatabaseRequested=@Cross OUTPUT,@CandidateTable=N'#QueryStoreWaitStats_DatabaseCandidates';
+    IF @StatusCode='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@QueryStoreDatabaseNames,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=@QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='QUERY_STORE_CURRENT',@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT,@CrossDatabaseRequested=@Cross OUTPUT,@CandidateTable=N'#QueryStoreWaitStats_DatabaseCandidates';
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @EffectiveMaxZeilen>1000 OR DATEDIFF(HOUR,@VonUtc,@BisUtc)>24 OR @ReferencedDatabaseNames IS NOT NULL OR @ReferencedDatabaseNamePattern IS NOT NULL)
-    BEGIN SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='QUERY_STORE_DEEP';IF @Allowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'QUERY_STORE_DEEP ist nicht freigegeben.';END;END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='QUERY_STORE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
     IF @ReferencedDatabaseNames IS NOT NULL SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) JOIN [monitor].[TVF_ParseSqlNameList](@ReferencedNames) [rf] ON [rf].[IsValid]=1 AND [rf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS)';
     ELSE IF @RefMode='LIKE' SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @RefValue COLLATE SQL_Latin1_General_CP1_CS_AS)';
     ELSE IF @RefMode IN('REGEX','REGEXI') SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE REGEXP_LIKE(PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1),@RefValue,@RefFlags))';
@@ -111,11 +115,18 @@ END;';
       DECLARE @Warnings nvarchar(max)=(SELECT * FROM [#QueryStoreWaitStats_Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
       SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"waitStats":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryStoreWaitStats_Result'
+            , @ResultLabel=N'QueryStoreWaitStats'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryStoreWaitStats_Result'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

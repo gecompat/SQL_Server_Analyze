@@ -6,7 +6,7 @@ Exakte Signaturen und Defaultwerte stehen im [Procedure-Referenzhandbuch](../Ref
 
 - `CONSOLE`: sichere interaktive Orientierung.
 - `RAW`: vollständige technische Spalten und stabiler Consumer-Vertrag.
-- `TABLE`: primäres typisiertes Ergebnis zur SQL-internen Weiterverarbeitung in einer lokalen `#Temp`-Tabelle.
+- `TABLE`: semantisch benannte typisierte Ergebnisse zur SQL-internen Weiterverarbeitung in lokalen `#Temp`-Tabellen.
 - `NONE`: keine fachlichen Resultsets, beispielsweise JSON-only.
 
 ## 2. Umfangsparameter
@@ -14,7 +14,7 @@ Exakte Signaturen und Defaultwerte stehen im [Procedure-Referenzhandbuch](../Ref
 | Parametergruppe | Bedeutung | Sicherer Einstieg | Risiko |
 |---|---|---|---|
 | `@MaxZeilen` | Ausgabezeilen je Procedure/Child | positiven kleinen Wert verwenden | `0` oder `NULL` kann sehr große Ausgabe erzeugen |
-| `@MaxDatenbanken` | automatisch ausgewählte Datenbanken | klein halten | breite Cross-Database-Katalogarbeit |
+| `@HighImpactConfirmed` | tatsächlich aktivierter Deep-Pfad | nur nach bewusster Scope-Prüfung auf `1` setzen | breite Katalog-, Cache- oder Forensikarbeit |
 | `@MaxAnalyseobjekte` | XML-/Plantiefenanalyse | 1–5 Kandidaten | hohe CPU für Plan-XML |
 | Zeitfenster | Query Store, XE, msdb | kurz beginnen | Retention- und Scanaufwand |
 | `@SampleSeconds` | Deltaanalyse | 5–10 Sekunden | blockiert die aufrufende Session während WAITFOR |
@@ -23,11 +23,11 @@ Exakte Signaturen und Defaultwerte stehen im [Procedure-Referenzhandbuch](../Ref
 
 Frameworktypisch:
 
-- `N''`: aktuelle Datenbank,
-- `NULL`: alle zulässigen Datenbanken,
+- `N''` oder `NULL`: alle sichtbaren Online-Benutzerdatenbanken,
 - explizite Pipe-Liste: nur genannte Datenbanken.
 
-Die konkrete Procedure kann abweichen. Immer Hilfe und Status prüfen.
+Systemdatenbanken bleiben ohne ausdrückliches Opt-in ausgeschlossen. Immer Hilfe
+und Status prüfen.
 
 ## 4. Exakte Listen und Pattern
 

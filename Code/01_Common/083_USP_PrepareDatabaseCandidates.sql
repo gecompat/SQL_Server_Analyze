@@ -4,30 +4,25 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_PrepareDatabaseCandidates
-Version      : 1.1.0
-Stand        : 2026-07-15
-Typ          : Stored Procedure, gemeinsamer interner Auswahlvertrag
-Zweck        : Validiert Datenbanklisten und Patterns und befüllt eine vom
-               Aufrufer benannte lokale Temp-Tabelle.
-Voraussetzung: @CandidateTable besitzt die Spalten DatabaseId,
-               DatabaseName, StateDesc, UserAccessDesc, IsReadOnly,
-               CompatibilityLevel, CollationName, RecoveryModelDesc,
-               IsSystemDatabase und RequestedOrdinal.
-Semantik     : @DatabaseNames bracket-aware Pipe-Liste; NULL = alle;
-               N'' beziehungsweise nur Leerzeichen = aktuelle Datenbank. Explizite Listen werden nicht durch
-               @MaxDatenbanken gekürzt. Pattern: LIKE/regex/regexi.
-Regex        : SQL Server 2025 und Compatibility Level 170 für DeineDatenbank;
-               Ausführung ausschließlich dynamisch für 2019/2022-Kompilierung.
-Resultsets   : keine. Optional befüllt die Procedure die vom Aufrufer angelegte
-               @WarningTable(RequestedName,StatusCode,ErrorMessage).
+Version      : 2.0.0
+Stand        : 2026-07-20
+Typ          : Interne Stored Procedure
+Zweck        : Validiert die frameworkweite Datenbankauswahl, prüft den
+               tatsächlich aktivierten Analysepfad und befüllt lokale
+               Kandidaten- und Warning-Temp-Tabellen des Aufrufers.
+Semantik     : Ohne explizite Einschränkung alle sichtbaren, online befindlichen
+               Benutzerdatenbanken. Kein CURRENT-Scope und keine Vorabbegrenzung.
+High Impact  : Nur eine tatsächlich aktivierte Analyseklasse mit
+               RequiresGroupGate=1 verlangt @HighImpactConfirmed=1.
+Vertrag      : Die Procedure kennt keine Datenbank-Mengenbegrenzung.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_PrepareDatabaseCandidates]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
-    , @AnalysisClass                    varchar(64)    = 'CROSS_DATABASE_DEEP'
+    , @AnalysisClass                    varchar(64)    = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @StatusCode                       varchar(40)    OUTPUT
     , @ErrorMessage                     nvarchar(2048) OUTPUT
     , @CrossDatabaseRequested           bit            OUTPUT
@@ -38,41 +33,44 @@ BEGIN
     SET NOCOUNT ON;
     SET LOCK_TIMEOUT 0;
 
-    SET @StatusCode = 'AVAILABLE';
-    SET @ErrorMessage = NULL;
-    SET @CrossDatabaseRequested = 0;
+    SELECT
+          @StatusCode = 'AVAILABLE'
+        , @ErrorMessage = NULL
+        , @CrossDatabaseRequested = 0;
 
-    DECLARE @EffectiveDatabaseNames nvarchar(max) = @DatabaseNames;
-    -- NULL ist der explizite Cross-Database-Modus. Nur ein nicht-NULLer,
-    -- leerer Wert bedeutet die aktuelle Datenbank als sicheren Standard.
-    IF @EffectiveDatabaseNames IS NOT NULL
-       AND NULLIF(LTRIM(RTRIM(@EffectiveDatabaseNames)), N'') IS NULL
-    BEGIN
-        IF @DatabaseNamePattern IS NOT NULL
-            SET @EffectiveDatabaseNames = NULL;
-        ELSE
-            SET @EffectiveDatabaseNames = QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()));
-    END;
-
+    DECLARE @EffectiveDatabaseNames nvarchar(max) =
+        CASE WHEN NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames, N''))), N'') IS NULL
+             THEN NULL ELSE @DatabaseNames END;
     DECLARE @PatternMode varchar(8);
     DECLARE @PatternValue nvarchar(4000);
     DECLARE @RegexFlags varchar(8);
     DECLARE @PatternIsValid bit;
     DECLARE @DatabaseListCount int = 0;
-    DECLARE @Allowed bit = 1;
     DECLARE @Sql nvarchar(max);
     DECLARE @CandidateTableQuoted nvarchar(258);
     DECLARE @WarningTableQuoted nvarchar(258);
 
-    IF @CandidateTable IS NULL
-       OR LEFT(@CandidateTable,1)<>N'#'
-       OR LEFT(@CandidateTable,2)=N'##'
-       OR LEN(@CandidateTable)>116
-       OR (@WarningTable IS NOT NULL AND
-          (LEFT(@WarningTable,1)<>N'#' OR LEFT(@WarningTable,2)=N'##' OR LEN(@WarningTable)>116))
+    IF @SystemdatenbankenEinbeziehen IS NULL
+       OR @SystemdatenbankenEinbeziehen NOT IN (0,1)
+       OR @HighImpactConfirmed IS NULL
+       OR @HighImpactConfirmed NOT IN (0,1)
+       OR @CandidateTable IS NULL
+       OR LEFT(@CandidateTable,1) <> N'#'
+       OR LEFT(@CandidateTable,2) = N'##'
+       OR LEN(@CandidateTable) > 116
+       OR
+       (
+           @WarningTable IS NOT NULL
+           AND
+           (
+               LEFT(@WarningTable,1) <> N'#'
+               OR LEFT(@WarningTable,2) = N'##'
+               OR LEN(@WarningTable) > 116
+           )
+       )
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
-        SET @ErrorMessage = N'@CandidateTable und @WarningTable müssen gültige lokale #Temp-Tabellennamen enthalten.';
+        SET @ErrorMessage = N'Ungültige Auswahl-, Bestätigungs- oder interne Temp-Tabellenparameter.';
         RETURN;
     END;
 
@@ -83,7 +81,7 @@ BEGIN
     CREATE TABLE [#PrepareDatabaseCandidates_Work]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StateDesc] nvarchar(60) NULL
         , [UserAccessDesc] nvarchar(60) NULL
         , [IsReadOnly] bit NULL
@@ -93,6 +91,7 @@ BEGIN
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
+
     CREATE TABLE [#PrepareDatabaseCandidates_RequestedNames]
     (
           [NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
@@ -105,12 +104,14 @@ BEGIN
         FROM [monitor].[TVF_ParseSqlNameList](@EffectiveDatabaseNames);
 
     BEGIN TRY
-        SET @Sql = N'SELECT TOP (0) [DatabaseId],[DatabaseName] FROM ' + @CandidateTableQuoted + N';';
+        SET @Sql = N'DECLARE @DatabaseId int,@DatabaseName sysname;
+SELECT TOP (0) @DatabaseId=[DatabaseId],@DatabaseName=[DatabaseName]
+FROM ' + @CandidateTableQuoted + N';';
         EXEC [sys].[sp_executesql] @Sql;
     END TRY
     BEGIN CATCH
         SET @StatusCode = 'INTERNAL_ERROR';
-        SET @ErrorMessage = N'Die über @CandidateTable benannte Temp-Tabelle wurde vom Aufrufer nicht angelegt.';
+        SET @ErrorMessage = N'Die Kandidaten-Temp-Tabelle wurde nicht mit dem erwarteten Schema angelegt.';
         RETURN;
     END CATCH;
 
@@ -122,11 +123,9 @@ BEGIN
     FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
 
     IF @EffectiveDatabaseNames IS NOT NULL
-    BEGIN
         SELECT @DatabaseListCount = COUNT(*)
         FROM [#PrepareDatabaseCandidates_RequestedNames]
         WHERE [IsValid] = 1;
-    END;
 
     SET @CrossDatabaseRequested = CONVERT
     (
@@ -135,42 +134,46 @@ BEGIN
              THEN 1 ELSE 0 END
     );
 
-    IF @MaxDatenbanken < 0
-       OR @PatternIsValid = 0
-       OR (@EffectiveDatabaseNames IS NOT NULL AND EXISTS
-          (
-              SELECT 1
-              FROM [#PrepareDatabaseCandidates_RequestedNames]
-              WHERE [IsValid] = 0
-          ))
+    IF @PatternIsValid = 0
+       OR
+       (
+           @EffectiveDatabaseNames IS NOT NULL
+           AND EXISTS
+           (
+               SELECT 1
+               FROM [#PrepareDatabaseCandidates_RequestedNames]
+               WHERE [IsValid] = 0
+           )
+       )
        OR (@EffectiveDatabaseNames IS NOT NULL AND @DatabaseNamePattern IS NOT NULL)
-       OR (@EffectiveDatabaseNames IS NOT NULL AND EXISTS
-          (
-              SELECT [NameValue]
-              FROM [#PrepareDatabaseCandidates_RequestedNames]
-              WHERE [IsValid] = 1
-              GROUP BY [NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
-              HAVING COUNT(*) > 1
-          ))
+       OR
+       (
+           @EffectiveDatabaseNames IS NOT NULL
+           AND EXISTS
+           (
+               SELECT [NameValue]
+               FROM [#PrepareDatabaseCandidates_RequestedNames]
+               WHERE [IsValid] = 1
+               GROUP BY [NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
+               HAVING COUNT(*) > 1
+           )
+       )
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Ungültige oder doppelte Datenbankliste beziehungsweise ungültiges Pattern. Exakte Liste und Pattern sind gegenseitig exklusiv.';
         RETURN;
     END;
 
-    IF @CrossDatabaseRequested = 1
-       AND NULLIF(@AnalysisClass, '') IS NOT NULL
+    IF NULLIF(@AnalysisClass, '') IS NOT NULL
     BEGIN
-        SELECT @Allowed = COALESCE(MAX(CONVERT(tinyint, [IsAllowed])), 0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass] = @AnalysisClass;
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass=@AnalysisClass
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
 
-        IF @Allowed = 0
-        BEGIN
-            SET @StatusCode = 'DENIED_GROUP';
-            SET @ErrorMessage = CONCAT(@AnalysisClass, N' ist nicht freigegeben.');
+        IF @StatusCode<>'AVAILABLE'
             RETURN;
-        END;
     END;
 
     INSERT [#PrepareDatabaseCandidates_Work]
@@ -185,8 +188,9 @@ BEGIN
         , [IsSystemDatabase],[RequestedOrdinal]
     FROM [monitor].[TVF_DatabaseCandidates]
     (
-          @EffectiveDatabaseNames,@SystemdatenbankenEinbeziehen
-        , @DatabaseNamePattern,@MaxDatenbanken
+          @EffectiveDatabaseNames
+        , @SystemdatenbankenEinbeziehen
+        , @DatabaseNamePattern
     );
 
     SET @Sql = N'INSERT ' + @CandidateTableQuoted + N'
@@ -200,7 +204,6 @@ SELECT
     , [CompatibilityLevel],[CollationName],[RecoveryModelDesc]
     , [IsSystemDatabase],[RequestedOrdinal]
 FROM [#PrepareDatabaseCandidates_Work];';
-
     EXEC [sys].[sp_executesql] @Sql;
 
     DECLARE @WarningTableAvailable bit = 0;
@@ -219,18 +222,36 @@ FROM [#PrepareDatabaseCandidates_Work];';
     IF @WarningTableAvailable = 1 AND @EffectiveDatabaseNames IS NOT NULL
     BEGIN
         SET @Sql = N'INSERT ' + @WarningTableQuoted + N' ([RequestedName],[StatusCode],[ErrorMessage])
-SELECT [n].[NameValue],''DATABASE_UNAVAILABLE'',
-       N''Die explizit angeforderte Datenbank ist nicht vorhanden, nicht online oder für den aktuellen Login nicht zugreifbar.''
+SELECT
+      [n].[NameValue]
+    , CASE
+          WHEN @IncludeSystem = 0
+           AND [n].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
+               IN (N''master'',N''tempdb'',N''model'',N''msdb'')
+              THEN ''SYSTEM_DATABASE_EXCLUDED''
+          ELSE ''DATABASE_UNAVAILABLE''
+      END
+    , CASE
+          WHEN @IncludeSystem = 0
+           AND [n].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
+               IN (N''master'',N''tempdb'',N''model'',N''msdb'')
+              THEN N''Die explizit angeforderte Systemdatenbank ist ohne Opt-in ausgeschlossen.''
+          ELSE N''Die explizit angeforderte Datenbank ist nicht vorhanden, nicht online oder für den aktuellen Login nicht zugreifbar.''
+      END
 FROM [#PrepareDatabaseCandidates_RequestedNames] AS [n]
-WHERE [n].[IsValid]=1
+WHERE [n].[IsValid] = 1
   AND NOT EXISTS
       (
-          SELECT 1 FROM ' + @CandidateTableQuoted + N' AS [c]
+          SELECT 1
+          FROM ' + @CandidateTableQuoted + N' AS [c]
           WHERE [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
               = [n].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
       );';
 
-        EXEC [sys].[sp_executesql] @Sql;
+        EXEC [sys].[sp_executesql]
+              @Sql
+            , N'@IncludeSystem bit'
+            , @IncludeSystem = @SystemdatenbankenEinbeziehen;
     END;
 
     IF @PatternMode IN ('REGEX', 'REGEXI')

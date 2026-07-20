@@ -13,8 +13,9 @@ Ausgabe      : RAW/CONSOLE/NONE; JSON mit meta, regressions und warnings.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreRegressions]
-      @QueryStoreDatabaseNames          nvarchar(max)  = N''
+      @QueryStoreDatabaseNames          nvarchar(max)  = NULL
     , @QueryStoreDatabaseNamePattern    nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @ReferencedDatabaseNames          nvarchar(max)  = NULL
     , @ReferencedDatabaseNamePattern    nvarchar(4000) = NULL
     , @QueryId                          bigint         = NULL
@@ -28,10 +29,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreRegressions]
     , @MinRegressionProzent             decimal(9,2)   = 20.0
     , @AnalyseModus                     varchar(16)    = 'TOP'
     , @MaxZeilen                        int            = 100
-    , @MaxDatenbanken                   int            = 16
     , @MaxSqlTextZeichen                int            = 4000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -41,7 +41,11 @@ BEGIN
  SET NOCOUNT ON;SET @Json=NULL;SET @Metrik=UPPER(LTRIM(RTRIM(COALESCE(@Metrik,'DURATION_AVG'))));SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'TOP'))));
  DECLARE @Out varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),@Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN @MaxZeilen ELSE 0 END,@Local bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen<2147483647 THEN CONVERT(bigint,@MaxZeilen)+1 ELSE @MaxZeilen END;
     DECLARE @TableResultRequested bit = CASE WHEN @Out = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @Out = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @Out = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'regressions',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @Out = 'NONE';
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_QueryStoreRegressions';PRINT N'Quell-DB-Liste/Pattern; Referenz-DB-Liste/Pattern; zwei Zeitfenster; globales @MaxZeilen; RAW|CONSOLE|TABLE|NONE und JSON.';RETURN;END;
  IF @VergleichBisUtc IS NULL SET @VergleichBisUtc=SYSUTCDATETIME();IF @VergleichVonUtc IS NULL SET @VergleichVonUtc=DATEADD(HOUR,-1,@VergleichBisUtc);IF @BaselineBisUtc IS NULL SET @BaselineBisUtc=@VergleichVonUtc;IF @BaselineVonUtc IS NULL SET @BaselineVonUtc=DATEADD(HOUR,-1,@BaselineBisUtc);
  DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Status varchar(40)='AVAILABLE',@Partial bit=0,@Error nvarchar(2048)=NULL,@Cross bit=0,@Allowed bit=1,@Db sysname,@Compat tinyint,@Sql nvarchar(max),@Count bigint=0,@HasMore bit=0,@Msg nvarchar(2048),@MetricB nvarchar(240),@MetricC nvarchar(240),@RefMode varchar(8),@RefValue nvarchar(4000),@RefFlags varchar(8),@RefValid bit,@RefPredicate nvarchar(max)=N'';
@@ -51,9 +55,9 @@ BEGIN
  CREATE TABLE [#QueryStoreRegressions_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
  CREATE TABLE [#QueryStoreRegressions_Result]([QueryStoreDatabaseId] int,[QueryStoreDatabaseName] sysname,[QueryId] bigint,[QueryHash] binary(8),[ObjectId] bigint NULL,[ObjectName] nvarchar(517) NULL,[BaselineExecutions] bigint,[ComparisonExecutions] bigint,[BaselinePlanCount] bigint,[ComparisonPlanCount] bigint,[BaselineValue] decimal(38,3),[ComparisonValue] decimal(38,3),[AbsoluteChange] decimal(38,3),[RegressionPercent] decimal(38,3),[LastExecutionTimeUtc] datetimeoffset,[QuerySqlText] nvarchar(max));
  CREATE TABLE [#QueryStoreRegressions_Errors]([DatabaseName] sysname,[StatusCode] varchar(40),[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048));
- IF @MetricB IS NULL OR @AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @MaxDatenbanken<0 OR @MaxSqlTextZeichen < 0 OR @MinAusfuehrungenJeFenster<1 OR @MinRegressionProzent<0 OR @BaselineVonUtc>=@BaselineBisUtc OR @VergleichVonUtc>=@VergleichBisUtc OR @BaselineBisUtc>@VergleichVonUtc OR @Out NOT IN('RAW','CONSOLE','NONE') OR @RefValid=0 OR (@ReferencedDatabaseNames IS NOT NULL AND @ReferencedDatabaseNamePattern IS NOT NULL) OR (@ReferencedDatabaseNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) WHERE [IsValid]=0)) BEGIN SET @Status='INVALID_PARAMETER';SET @Error=N'Ungültige Metrik, Grenze oder Zeitfenster.';END;
- IF @Status='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@QueryStoreDatabaseNames,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=@QueryStoreDatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@Status OUTPUT,@ErrorMessage=@Error OUTPUT,@CrossDatabaseRequested=@Cross OUTPUT,@CandidateTable=N'#QueryStoreRegressions_DatabaseCandidates';
- IF @Status='AVAILABLE' AND (@AnalyseModus='VOLL' OR @Limit>1000 OR DATEDIFF(HOUR,@BaselineVonUtc,@VergleichBisUtc)>24 OR @ReferencedDatabaseNames IS NOT NULL OR @ReferencedDatabaseNamePattern IS NOT NULL) BEGIN SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='QUERY_STORE_DEEP';IF @Allowed=0 BEGIN SET @Status='DENIED_GROUP';SET @Error=N'QUERY_STORE_DEEP ist nicht freigegeben.';END;END;
+ IF @MetricB IS NULL OR @AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @MaxSqlTextZeichen < 0 OR @MinAusfuehrungenJeFenster<1 OR @MinRegressionProzent<0 OR @BaselineVonUtc>=@BaselineBisUtc OR @VergleichVonUtc>=@VergleichBisUtc OR @BaselineBisUtc>@VergleichVonUtc OR @Out NOT IN('RAW','CONSOLE','NONE') OR @RefValid=0 OR (@ReferencedDatabaseNames IS NOT NULL AND @ReferencedDatabaseNamePattern IS NOT NULL) OR (@ReferencedDatabaseNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) WHERE [IsValid]=0)) BEGIN SET @Status='INVALID_PARAMETER';SET @Error=N'Ungültige Metrik, Grenze oder Zeitfenster.';END;
+ IF @Status='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@QueryStoreDatabaseNames,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=@QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='QUERY_STORE_CURRENT',@StatusCode=@Status OUTPUT,@ErrorMessage=@Error OUTPUT,@CrossDatabaseRequested=@Cross OUTPUT,@CandidateTable=N'#QueryStoreRegressions_DatabaseCandidates';
+ IF @Status='AVAILABLE' AND (@AnalyseModus='VOLL' OR @Limit>1000 OR DATEDIFF(HOUR,@BaselineVonUtc,@VergleichBisUtc)>24 OR @ReferencedDatabaseNames IS NOT NULL OR @ReferencedDatabaseNamePattern IS NOT NULL) EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='QUERY_STORE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@Status OUTPUT,@ErrorMessage=@Error OUTPUT;
  IF @ReferencedDatabaseNames IS NOT NULL SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) JOIN [monitor].[TVF_ParseSqlNameList](@ReferencedNames) [rf] ON [rf].[IsValid]=1 AND [rf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS)';
  ELSE IF @RefMode='LIKE' SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @RefValue COLLATE SQL_Latin1_General_CP1_CS_AS)';
  ELSE IF @RefMode IN('REGEX','REGEXI') SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE REGEXP_LIKE(PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1),@RefValue,@RefFlags))';
@@ -86,11 +90,18 @@ END;';
  SELECT @Count=COUNT_BIG(*) FROM [#QueryStoreRegressions_Result];SET @HasMore=CONVERT(bit,CASE WHEN @Limit<9223372036854775807 AND @Count>@Limit THEN 1 ELSE 0 END);IF @Partial=1 AND @Status='AVAILABLE' SET @Status='AVAILABLE_LIMITED';
  IF @Out<>'NONE' BEGIN SELECT N'USP_QueryStoreRegressions' [ModuleName],@Now [CollectionTimeUtc],@Status [StatusCode],@Partial [IsPartial],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [ReturnedRowCount],@HasMore [HasMoreRows],@Metrik [Metric],@Error [ErrorMessage];IF @Out='RAW' SELECT TOP(@Limit) * FROM [#QueryStoreRegressions_Result] ORDER BY [RegressionPercent] DESC,[AbsoluteChange] DESC;ELSE SELECT TOP(@Limit) N'Query-Store Regression' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[ObjectName] [Objekt],CONCAT(CONVERT(varchar(30),[BaselineValue]),N' → ',CONVERT(varchar(30),[ComparisonValue])) [Vergleich],CONCAT(CONVERT(varchar(30),[RegressionPercent]),N' %') [Regression],[LastExecutionTimeUtc] [letzte Ausführung],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text] FROM [#QueryStoreRegressions_Result] ORDER BY [RegressionPercent] DESC,[AbsoluteChange] DESC;SELECT * FROM [#QueryStoreRegressions_Errors] ORDER BY [DatabaseName];END;
  IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'QueryStoreRegressions' [resultName],1 [schemaVersion],@Now [generatedAtUtc],@Status [statusCode],@Metrik [metric],@MaxZeilen [requestedMaxRows],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [returnedRows],@HasMore [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT TOP(@Limit) * FROM [#QueryStoreRegressions_Result] ORDER BY [RegressionPercent] DESC,[AbsoluteChange] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT * FROM [#QueryStoreRegressions_Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"regressions":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryStoreRegressions_Result'
+            , @ResultLabel=N'QueryStoreRegressions'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryStoreRegressions_Result'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

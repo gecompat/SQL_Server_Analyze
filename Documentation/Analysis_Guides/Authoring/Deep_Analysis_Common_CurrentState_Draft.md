@@ -58,7 +58,9 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Bewertung und Gegenprobe:** Explizit angeforderte, aber ausgeschlossene Datenbanken müssen als fehlende Evidenz dokumentiert werden. Eine Analyse über neun von zehn angeforderten Datenbanken ist nicht automatisch eine vollständige Entwarnung.
 
-**Typische Fehlinterpretation:** `@MaxDatenbanken`, Pattern und explizite Liste dürfen nicht stillschweigend als derselbe Auftrag behandelt werden. Ein Partialstatus ist fachlich relevant.
+**Typische Fehlinterpretation:** Pattern und explizite Liste dürfen nicht
+stillschweigend als derselbe Auftrag behandelt werden. Ein Partialstatus und
+Warnings für nicht verfügbare explizite Datenbanken sind fachlich relevant.
 
 **Folgeanalyse:** Warnings und OUTPUT-Status zusammen mit jedem Cross-Database-Resultset lesen.
 

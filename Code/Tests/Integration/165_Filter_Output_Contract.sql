@@ -213,7 +213,7 @@ IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=17 AND ISJSON(@Json)
 SET @Json=NULL;
 EXEC [monitor].[USP_CheckFrameworkCapabilities]
       @DatabaseNames=N''
-    , @MaxDatenbanken=1
+
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
     , @Json=@Json OUTPUT
@@ -224,7 +224,7 @@ IF ISJSON(@Json)<>1
 SET @Json=NULL;
 EXEC [monitor].[USP_CheckFrameworkCapabilities]
       @DatabaseNamePattern=N'like:%'
-    , @MaxDatenbanken=1
+
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
     , @Json=@Json OUTPUT
@@ -236,7 +236,7 @@ IF ISJSON(@Json)<>1
 SET @Json=NULL;
 EXEC [monitor].[USP_QueryStoreRegressions]
       @QueryStoreDatabaseNames=N''
-    , @MaxDatenbanken=1
+
     , @MaxZeilen=10
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
@@ -265,7 +265,8 @@ SELECT [p].[name],[p].[object_id]
 FROM [sys].[procedures] AS [p] WITH (NOLOCK)
 JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id]
 WHERE [s].[name]=N'monitor'
-  AND [p].[name] NOT IN(N'USP_PrepareDatabaseCandidates',N'USP_PrepareNameFilters',N'InternalWriteResultTable')
+  AND [p].[name] NOT LIKE N'Internal%'
+  AND [p].[name] NOT LIKE N'USP_Prepare%'
 ORDER BY [p].[name];
 
 OPEN [ProcedureCursor];
@@ -275,7 +276,6 @@ BEGIN
     SET @Arguments=N'@ResultSetArt=N''NONE'',@JsonErzeugen=1,@Json=@Json OUTPUT';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@DatabaseNames') SET @Arguments+=N',@DatabaseNames=N''''';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@QueryStoreDatabaseNames') SET @Arguments+=N',@QueryStoreDatabaseNames=N''''';
-    IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@MaxDatenbanken') SET @Arguments+=N',@MaxDatenbanken=1';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@MaxZeilen') SET @Arguments+=N',@MaxZeilen=1';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@MaxAnalyseobjekte') SET @Arguments+=N',@MaxAnalyseobjekte=1';
     IF EXISTS(SELECT 1 FROM [sys].[parameters] WITH (NOLOCK) WHERE [object_id]=@ObjectId AND [name]=N'@LockTimeoutMs') SET @Arguments+=N',@LockTimeoutMs=5000';
@@ -319,12 +319,12 @@ BEGIN TRY
         , @PrintMeldungen=0;
     EXEC [monitor].[USP_CheckFrameworkCapabilities]
           @DatabaseNames=N''
-        , @MaxDatenbanken=1
+
         , @ResultSetArt='RAW'
         , @PrintMeldungen=0;
     EXEC [monitor].[USP_CheckFrameworkCapabilities]
           @DatabaseNames=N''
-        , @MaxDatenbanken=1
+
         , @ResultSetArt='CONSOLE'
         , @PrintMeldungen=0;
 END TRY

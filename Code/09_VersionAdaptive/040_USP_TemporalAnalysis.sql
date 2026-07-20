@@ -26,9 +26,10 @@ Kosten       : MEDIUM; Katalogabfragen und approximative Partitionsstatistik.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_TemporalAnalysis]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                      nvarchar(max)  = NULL
     , @SchemaNamePattern                nvarchar(4000) = NULL
     , @ObjectNames                      nvarchar(max)  = NULL
@@ -39,11 +40,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_TemporalAnalysis]
     , @HistoryRowsWarn                  bigint         = 10000000
     , @HistoryToCurrentRatioWarn        decimal(19,4)  = 10
     , @MinHistoryMbForRatioWarn         decimal(19,2)  = 100
-    , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -62,7 +62,11 @@ BEGIN
     DECLARE @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
     DECLARE @ErrorNumber int=NULL;
@@ -79,7 +83,7 @@ BEGIN
         PRINT N'Geprüft werden Katalogzuordnung, Periodenmetadaten, Retention-Schalter, approximative Größe/Zeilen und History-Indexreihenfolge End/Start.';
         PRINT N'Exakte Namenslisten und Pattern derselben Eigenschaft sind gegenseitig exklusiv; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfkontext, keine automatische Retention-, DDL- oder Kapazitätsentscheidung.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Es werden keine Zeilen aus aktuellen oder historischen Benutzertabellen gelesen und keine zeitliche Datenkonsistenz behauptet.';
         RETURN;
     END;
@@ -90,7 +94,7 @@ BEGIN
        OR @HistoryRowsWarn IS NULL OR @HistoryRowsWarn<0
        OR @HistoryToCurrentRatioWarn IS NULL OR @HistoryToCurrentRatioWarn<=0
        OR @MinHistoryMbForRatioWarn IS NULL OR @MinHistoryMbForRatioWarn<0
-       OR @MaxDatenbanken IS NULL OR @MaxDatenbanken<0
+
        OR @MaxZeilen IS NULL OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
@@ -271,9 +275,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
-            , @AnalysisClass='CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass='CATALOG_DEEP'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#TemporalAnalysis_DatabaseCandidates',@WarningTable=N'#TemporalAnalysis_DatabaseCandidateWarnings';
@@ -777,11 +781,18 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
 
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
            @ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#TemporalAnalysis_Findings'
+            , @ResultLabel=N'TemporalAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#TemporalAnalysis_Findings'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

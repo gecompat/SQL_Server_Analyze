@@ -23,14 +23,14 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_BackupRecovery]
       @DatabaseNames                  nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen   bit            = 0
     , @DatabaseNamePattern            nvarchar(4000) = NULL
-    , @MaxDatenbanken                 int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @FullWarnHours                  int            = 48
     , @DiffWarnHours                  int            = 24
     , @LogWarnMinutes                 int            = 30
     , @MitRestoreHistory              bit            = 1
     , @MaxZeilen                      int            = 5000
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                   bit            = 0
     , @Json                           nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                 bit            = 1
@@ -43,7 +43,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'freshness',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
              THEN CONVERT(bigint, 9223372036854775807)
@@ -54,7 +58,7 @@ BEGIN
         PRINT N'monitor.USP_BackupRecovery';
         PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
         PRINT N'@DatabaseNamePattern: alternatives LIKE-/Regex-Pattern; Liste und Pattern sind gegenseitig exklusiv.';
-        PRINT N'@MaxDatenbanken begrenzt nur die automatische Auswahl; explizite Listen werden nicht gekürzt.';
+        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt.';
         PRINT N'@FullWarnHours=48; @DiffWarnHours=24; @LogWarnMinutes=30; @MitRestoreHistory=1.';
         PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
@@ -135,7 +139,7 @@ BEGIN
     );
 
     IF @MaxZeilen < 0
-       OR @MaxDatenbanken < 0
+
        OR @FullWarnHours < 1
        OR @DiffWarnHours < 1
        OR @LogWarnMinutes < 1
@@ -151,8 +155,8 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
             , @AnalysisClass = NULL
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
@@ -325,7 +329,6 @@ BEGIN
                 , @CollectionTimeUtc AS [generatedAtUtc]
                 , @StatusCode AS [statusCode]
                 , @IsPartial AS [isPartial]
-                , @MaxDatenbanken AS [requestedMaxDatabases]
                 , @MaxZeilen AS [requestedMaxRows]
                 , @ErrorNumber AS [errorNumber]
                 , @ErrorMessage AS [errorMessage]
@@ -350,11 +353,18 @@ BEGIN
             , N'}'
         );
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#BackupRecovery_Fresh'
+            , @ResultLabel=N'BackupRecovery'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#BackupRecovery_Fresh'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

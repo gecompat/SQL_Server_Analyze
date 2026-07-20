@@ -17,7 +17,7 @@ Datenquellen : master.sys.databases, sys.dm_db_log_space_usage,
 Parameter    : @DatabaseNames, @DatabaseNamePattern,
                @SystemdatenbankenEinbeziehen, @MinUsedPercent,
                @MitVlfInformationen, @MitPersistentVersionStore,
-               @MaxDatenbanken, @MaxZeilen, @ResultSetArt,
+               @MaxZeilen, @ResultSetArt,
                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
 Semantik     : @DatabaseNames enthält eine bracket-aware Pipe-Liste exakter
                Namen. NULL bedeutet alle zulässigen Datenbanken; N'' ist
@@ -29,7 +29,7 @@ Berechtigung : Je Datenquelle VIEW SERVER STATE/VIEW SERVER PERFORMANCE STATE
                bzw. VIEW DATABASE PERFORMANCE STATE ab SQL Server 2022.
 Gruppengate  : Cross-Database über CROSS_DATABASE_DEEP; VLF über LOG_VLF_DEEP.
 Eigenlast    : Standard moderat; automatische Datenbankauswahl ist durch
-               @MaxDatenbanken begrenzt. Explizite Listen werden nie gekürzt.
+               keine Datenbank-Vorabbegrenzung.
 Locking      : Datenbankliste READUNCOMMITTED; System-DMVs je Datenbank.
 Beispiele    : EXEC [monitor].[USP_CurrentLog]
                     @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]';
@@ -45,16 +45,16 @@ Beispiele    : EXEC [monitor].[USP_CurrentLog]
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentLog]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @MinUsedPercent                   decimal(5,2)   = NULL
     , @MitVlfInformationen              bit            = 0
     , @MitPersistentVersionStore        bit            = 0
-    , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 1000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -67,7 +67,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'logs',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
              WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen)
@@ -82,9 +86,9 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentLog';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle zulässigen Datenbanken; N'''' ist ungültig.';
+        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle zulässigen Datenbanken; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern: ein Pattern mit like:, regex: oder regexi:; exklusiv zu @DatabaseNames.';
-        PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; explizite Listen werden vollständig verarbeitet.';
+        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt.';
         PRINT N'@MaxZeilen: positiv begrenzt; NULL/0=unbegrenzt; negativ=INVALID_PARAMETER.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'@MitVlfInformationen=1 erfordert LOG_VLF_DEEP.';
@@ -161,8 +165,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0
-       OR @MaxZeilen < 0
+    IF @MaxZeilen < 0
        OR (@MinUsedPercent IS NOT NULL AND (@MinUsedPercent < 0 OR @MinUsedPercent > 100))
        OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
@@ -175,9 +178,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'STANDARD_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#CurrentLog_DatabaseCandidates',@WarningTable=N'#CurrentLog_DatabaseCandidateWarnings';
@@ -185,18 +188,14 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE' AND @MitVlfInformationen = 1
     BEGIN
-        BEGIN TRY
-            SELECT @VlfAllowed = COALESCE(MAX(CONVERT(tinyint, [IsAllowed])), 0)
-            FROM [monitor].[VW_AnalyseAccessCurrent]
-            WHERE [AnalysisClass] = 'LOG_VLF_DEEP';
-        END TRY
-        BEGIN CATCH
-            SET @VlfAllowed = 0;
-            INSERT [#CurrentLog_Errors] VALUES(NULL, 'VLF_GATE', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
-        END CATCH;
-
-        SET @VlfStatus = CASE WHEN @VlfAllowed = 1 THEN 'AVAILABLE' ELSE 'DENIED_GROUP' END;
-        IF @VlfAllowed = 0 SET @IsPartial = 1;
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='LOG_VLF_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
+        SET @VlfStatus=@StatusCode;
+        SET @VlfAllowed=CONVERT(bit,CASE WHEN @StatusCode='AVAILABLE' THEN 1 ELSE 0 END);
+        IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
     END;
 
     IF @StatusCode = 'AVAILABLE'
@@ -511,11 +510,18 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
         FROM [#CurrentLog_Errors]
         ORDER BY [DatabaseName], [SubModule];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#CurrentLog_Result'
+            , @ResultLabel=N'Transaktionsprotokolle'
+            , @EmptyMessage=N'Keine Protokollergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#CurrentLog_Result'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

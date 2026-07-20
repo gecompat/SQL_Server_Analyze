@@ -69,9 +69,10 @@ INSERT @ExecutedCases SELECT [CaseId] FROM @States;
 /* ENC-BACKUP-EXPLICIT: realer Read-only-Pfad auf der synthetischen Installationsdatenbank. */
 EXEC [monitor].[USP_EncryptionAnalysis]
      @DatabaseNames=N'[DeineDatenbank]',@ExpliziteBackupverschluesselungErwartet=1,
-     @BackupLookbackDays=1,@MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',
+     @BackupLookbackDays=1,@MaxZeilen=0,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1
    OR NOT EXISTS
       (
@@ -102,9 +103,10 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXECUTE AS USER=N'ExampleEncryptionRestrictedUser';
 SET @Impersonating=1;
 EXEC [monitor].[USP_EncryptionAnalysis]
-     @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=10,
+     @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=10,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 REVERT;
 SET @Impersonating=0;
 

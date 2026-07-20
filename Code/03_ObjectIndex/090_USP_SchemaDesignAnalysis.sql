@@ -18,14 +18,14 @@ Grenzen      : Kein DDL und keine automatische Lösch-/Indexempfehlung. Nutzung,
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_SchemaDesignAnalysis]
-      @DatabaseNames                nvarchar(max)  = N''
+      @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @IdentityWarnPercent          decimal(5,2)   = 80.00
     , @MaxZeilen                    int            = 1000
     , @ResultSetArt                 varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                 bit            = 0
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
@@ -41,7 +41,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
                                  THEN CONVERT(bigint, 9223372036854775807)
                                  ELSE CONVERT(bigint, @MaxZeilen) END;
@@ -50,7 +54,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_SchemaDesignAnalysis';
         PRINT N'Rein lesende Strukturprüfung; erzeugt oder ändert keine Constraints und Indizes.';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N'''' = aktuelle DB; NULL = alle zulässigen DBs.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
         PRINT N'Ein gleicher Index oder fehlender FK-Stützindex ist ein Prüfauftrag, keine automatische DDL-Anweisung.';
         RETURN;
     END;
@@ -105,7 +109,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0
+    IF @MaxZeilen < 0
        OR @IdentityWarnPercent < 0 OR @IdentityWarnPercent > 100
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
@@ -118,9 +122,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'CATALOG_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#SchemaDesignAnalysis_DatabaseCandidates',@WarningTable=N'#SchemaDesignAnalysis_DatabaseCandidateWarnings';
@@ -378,11 +382,18 @@ WHERE [q].[is_exhausted] = 1 OR [x].[UsedPercent] >= @IdentityWarnPercent;';
                [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer], [ErrorMessage] AS [Meldung]
         FROM [#SchemaDesignAnalysis_Errors] ORDER BY [DatabaseName];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#SchemaDesignAnalysis_Findings'
+            , @ResultLabel=N'SchemaDesignAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#SchemaDesignAnalysis_Findings'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

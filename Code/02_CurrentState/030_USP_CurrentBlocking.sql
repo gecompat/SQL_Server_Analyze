@@ -28,9 +28,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentBlocking]
     , @MitSqlText                 bit            = 1
     , @MaxSqlTextZeichen          int            = 3000
     , @MitLockDetails             bit            = 0
+    , @HighImpactConfirmed        bit            = 0
     , @MaxZeilen                  int            = 1000
     , @ResultSetArt               varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen               bit             = 0
     , @Json                       nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen             bit             = 1
@@ -43,7 +44,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'blockingChains',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
              WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen)
@@ -179,6 +184,14 @@ BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Mindestens ein Parameter besitzt einen ungültigen Wert.';
     END;
+
+    IF @StatusCode = 'AVAILABLE'
+       AND @MitLockDetails=1
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='LOCKS_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
@@ -366,10 +379,7 @@ BEGIN
 
         IF @MitLockDetails = 1
         BEGIN
-            DECLARE @LockAllowed bit = 0;
-            SELECT @LockAllowed = COALESCE(MAX(CONVERT(tinyint, [IsAllowed])), 0)
-            FROM [monitor].[VW_AnalyseAccessCurrent]
-            WHERE [AnalysisClass] = 'LOCKS_DEEP';
+            DECLARE @LockAllowed bit = 1;
 
             IF @LockAllowed = 0
             BEGIN
@@ -578,11 +588,18 @@ BEGIN
             , N'}'
         );
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#CurrentBlocking_BlockingChains'
+            , @ResultLabel=N'Blocking-Ketten'
+            , @EmptyMessage=N'Keine Blocking-Ketten';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#CurrentBlocking_BlockingChains'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;
