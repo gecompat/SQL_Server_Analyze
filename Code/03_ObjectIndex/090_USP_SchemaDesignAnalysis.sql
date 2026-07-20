@@ -18,10 +18,10 @@ Grenzen      : Kein DDL und keine automatische Lösch-/Indexempfehlung. Nutzung,
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_SchemaDesignAnalysis]
-      @DatabaseNames                nvarchar(max)  = N''
+      @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @IdentityWarnPercent          decimal(5,2)   = 80.00
     , @MaxZeilen                    int            = 1000
     , @ResultSetArt                 varchar(16)    = 'CONSOLE'
@@ -50,7 +50,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_SchemaDesignAnalysis';
         PRINT N'Rein lesende Strukturprüfung; erzeugt oder ändert keine Constraints und Indizes.';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N'''' = aktuelle DB; NULL = alle zulässigen DBs.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
         PRINT N'Ein gleicher Index oder fehlender FK-Stützindex ist ein Prüfauftrag, keine automatische DDL-Anweisung.';
         RETURN;
     END;
@@ -105,7 +105,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0
+    IF @MaxZeilen < 0
        OR @IdentityWarnPercent < 0 OR @IdentityWarnPercent > 100
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
@@ -118,9 +118,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'CATALOG_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#SchemaDesignAnalysis_DatabaseCandidates',@WarningTable=N'#SchemaDesignAnalysis_DatabaseCandidateWarnings';

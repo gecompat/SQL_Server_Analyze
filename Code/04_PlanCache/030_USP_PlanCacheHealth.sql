@@ -33,6 +33,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanCacheHealth]
     , @MitDatenbankVerteilung     bit         = 0
     , @MitSingleUseDetails        bit         = 0
     , @MaxZeilen                  int         = 100
+    , @HighImpactConfirmed        bit         = 0
     , @MaxSqlTextZeichen          int         = 4000
     , @ResultSetArt               varchar(16) = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
@@ -73,10 +74,7 @@ BEGIN
     IF @AnalyseModus NOT IN('SUMMARY','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameterwert.';END;
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @MitDatenbankVerteilung=1 OR @MitSingleUseDetails=1)
-    BEGIN
-        SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
-        IF @Allowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'PLAN_CACHE_DEEP ist nicht freigegeben.';END;
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
     IF @StatusCode='AVAILABLE' AND @AnalyseModus='SUMMARY' AND (@MitDatenbankVerteilung=1 OR @MitSingleUseDetails=1)
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Detailresultsets erfordern @AnalyseModus=VOLL.';END;
 

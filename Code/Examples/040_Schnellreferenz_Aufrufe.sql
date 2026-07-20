@@ -8,7 +8,7 @@ EXEC [monitor].[USP_CurrentOverview] @MaxZeilen=100,@ResultSetArt='console';
 -- Zwei Datenbanken exakt
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@AnalyseModus='VOLL',@MaxZeilen=200;
 -- Query Store aller zum Pattern passenden Datenbanken, globales Top 100
-EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=NULL,@QueryStoreDatabaseNamePattern=N'like:Database_%',@MaxDatenbanken=16,@MaxZeilen=100;
+EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=NULL,@QueryStoreDatabaseNamePattern=N'like:Database_%',@MaxZeilen=100;
 -- Memory Grants einschließlich Resource Governor
 EXEC [monitor].[USP_CurrentMemoryGrants] @NurWartende=0,@MaxZeilen=100,@ResultSetArt='CONSOLE';
 

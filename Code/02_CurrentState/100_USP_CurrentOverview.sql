@@ -20,6 +20,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
     , @DatabaseNames                 nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen  bit            = 0
     , @DatabaseNamePattern           nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @Detailgrad                    varchar(16)     = 'SUMMARY'
     , @MitSessions                   bit             = 1
     , @MitRequests                   bit             = 1
@@ -361,7 +362,7 @@ BEGIN
             EXEC [monitor].[USP_CurrentIO]
                   @DatabaseNames=@DatabaseNames
                 , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern=@DatabaseNamePattern
+                , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @SampleSeconds=@SampleSeconds
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
@@ -388,7 +389,7 @@ BEGIN
             EXEC [monitor].[USP_CurrentLog]
                   @DatabaseNames=@DatabaseNames
                 , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern=@DatabaseNamePattern
+                , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
                 , @ResultTable=N'#CurrentOverview_Logs'

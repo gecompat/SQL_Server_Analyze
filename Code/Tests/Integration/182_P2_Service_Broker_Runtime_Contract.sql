@@ -67,7 +67,7 @@ BEGIN TRY
     EXEC [sys].[sp_executesql] @Sql;
     /* BROKER-NONE */
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
-         @DatabaseNames=N'[ExampleBrokerNoneDatabase]',@MaxDatenbanken=1,@MaxZeilen=10,
+         @DatabaseNames=N'[ExampleBrokerNoneDatabase]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE_LIMITED')
@@ -78,7 +78,7 @@ BEGIN TRY
     /* BROKER-CONFIG-ONLY */
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
-         @DatabaseNames=N'[ExampleBrokerConfigDatabase]',@MaxDatenbanken=1,@MaxZeilen=10,
+         @DatabaseNames=N'[ExampleBrokerConfigDatabase]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_LIMITED')
@@ -89,7 +89,7 @@ BEGIN TRY
     /* BROKER-DISABLED-OBJECTS */
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
-         @DatabaseNames=N'[ExampleBrokerDisabledDatabase]',@MaxDatenbanken=1,@MaxZeilen=0,
+         @DatabaseNames=N'[ExampleBrokerDisabledDatabase]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF NOT EXISTS
@@ -113,7 +113,7 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleBrokerQueue%',
-         @QueueRowsWarn=0,@MaxDatenbanken=1,@MaxZeilen=0,
+         @QueueRowsWarn=0,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1 OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))<>2
@@ -150,7 +150,7 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleBrokerQueueRetention',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))<>1
        OR JSON_VALUE(@Json,N'$.queues[0].QueueName')<>N'ExampleBrokerQueueRetention'
@@ -161,7 +161,7 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleBrokerQueue%',
-         @MaxDatenbanken=1,@MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databaseStatus'))<>1

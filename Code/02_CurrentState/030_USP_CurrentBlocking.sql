@@ -28,6 +28,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentBlocking]
     , @MitSqlText                 bit            = 1
     , @MaxSqlTextZeichen          int            = 3000
     , @MitLockDetails             bit            = 0
+    , @HighImpactConfirmed        bit            = 0
     , @MaxZeilen                  int            = 1000
     , @ResultSetArt               varchar(16)     = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
@@ -179,6 +180,14 @@ BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Mindestens ein Parameter besitzt einen ungültigen Wert.';
     END;
+
+    IF @StatusCode = 'AVAILABLE'
+       AND @MitLockDetails=1
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='LOCKS_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
@@ -366,10 +375,7 @@ BEGIN
 
         IF @MitLockDetails = 1
         BEGIN
-            DECLARE @LockAllowed bit = 0;
-            SELECT @LockAllowed = COALESCE(MAX(CONVERT(tinyint, [IsAllowed])), 0)
-            FROM [monitor].[VW_AnalyseAccessCurrent]
-            WHERE [AnalysisClass] = 'LOCKS_DEEP';
+            DECLARE @LockAllowed bit = 1;
 
             IF @LockAllowed = 0
             BEGIN

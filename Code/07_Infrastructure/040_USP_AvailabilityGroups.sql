@@ -56,7 +56,7 @@ BEGIN
    IF @MitRouting=1 INSERT [#AvailabilityGroups_Route] SELECT TOP (@EffectiveMaxZeilen) [ag].[name],[ar].[replica_server_name],[rl].[routing_priority],[ar2].[replica_server_name] FROM [sys].[availability_read_only_routing_lists] rl WITH (NOLOCK) JOIN [sys].[availability_replicas] ar WITH (NOLOCK) ON [ar].[replica_id]=[rl].[replica_id] JOIN [sys].[availability_replicas] ar2 WITH (NOLOCK) ON [ar2].[replica_id]=[rl].[read_only_replica_id] JOIN [sys].[availability_groups] ag WITH (NOLOCK) ON [ag].[group_id]=[ar].[group_id] ORDER BY [ag].[name],[ar].[replica_server_name],[rl].[routing_priority];
   END
  END TRY BEGIN CATCH SELECT @StatusCode='ERROR_HANDLED',@IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(); IF @PrintMeldungen=1 RAISERROR(N'Availability Groups konnten nicht vollständig gelesen werden: %s',10,1,@ErrorMessage) WITH NOWAIT; END CATCH;
- 
+
  IF @ResultSetArtNormalisiert<>'NONE'
  BEGIN
   SELECT @CollectionTimeUtc AS [CollectionTimeUtc],CAST(N'monitor.USP_AvailabilityGroups' AS nvarchar(256)) AS [ModuleName],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];

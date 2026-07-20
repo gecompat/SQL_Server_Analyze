@@ -51,6 +51,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsReadEvents]
     , @MaxZeilen               int             = 1000
     , @MitEventXml             bit             = 1
     , @BestaetigeTargetFlush   bit             = 0
+    , @HighImpactConfirmed     bit             = 0
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                   bit            = 0
@@ -148,17 +149,7 @@ BEGIN
     END;
 
     IF @StatusCode = 'AVAILABLE'
-    BEGIN
-        SELECT @Allowed = COALESCE(MAX(CONVERT(tinyint, [IsAllowed])), 0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass] = 'EXTENDED_EVENTS_FORENSICS_DEEP';
-
-        IF @Allowed = 0
-        BEGIN
-            SET @StatusCode = 'DENIED_GROUP';
-            SET @ErrorMessage = N'EXTENDED_EVENTS_FORENSICS_DEEP ist für den aktuellen Login nicht freigegeben.';
-        END;
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='EXTENDED_EVENTS_FORENSICS_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
 
     SET LOCK_TIMEOUT 0;
 
@@ -324,7 +315,7 @@ BEGIN
     IF @IsPartial = 1 AND @StatusCode = 'AVAILABLE'
         SET @StatusCode = 'AVAILABLE_LIMITED';
 
-    
+
 
     IF @PrintMeldungen = 1 AND @StatusCode NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED')
         BEGIN

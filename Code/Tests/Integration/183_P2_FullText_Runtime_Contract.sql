@@ -27,7 +27,7 @@ IF @Definition IS NULL THROW 55700,N'Full-Text-Proceduredefinition ist nicht sic
 /* FULLTEXT-NONE: echter capability-adaptiver Aufruf ohne Full-Text-Objekte. */
 EXEC [monitor].[USP_FullTextAnalysis]
      @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleFullText%',
-     @MaxDatenbanken=1,@MaxZeilen=10,@ResultSetArt='NONE',
+     @MaxZeilen=10,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 IF ISJSON(@Json)<>1
@@ -40,7 +40,7 @@ INSERT @ExecutedCases VALUES('FULLTEXT-NONE');
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_FullTextAnalysis]
      @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleFullTextA',
-     @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',
+     @MaxZeilen=0,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 IF ISJSON(@Json)<>1
@@ -51,7 +51,7 @@ INSERT @ExecutedCases VALUES('FULLTEXT-FILTER');
 /* FULLTEXT-BOUNDED: alle JSON-Detailarrays bleiben auf eine Zeile begrenzt. */
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_FullTextAnalysis]
-     @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=1,
+     @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=1,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 IF ISJSON(@Json)<>1

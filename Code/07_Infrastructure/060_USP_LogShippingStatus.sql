@@ -98,7 +98,7 @@ BEGIN
   END
   END TRY BEGIN CATCH SELECT @StatusCode='ERROR_HANDLED',@IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(); IF @PrintMeldungen=1 RAISERROR(N'Log Shipping konnte nicht vollständig gelesen werden: %s',10,1,@ErrorMessage) WITH NOWAIT; END CATCH;
  END;
- 
+
  IF @ResultSetArtNormalisiert<>'NONE'
  BEGIN
   SELECT @CollectionTimeUtc AS [CollectionTimeUtc],CAST(N'monitor.USP_LogShippingStatus' AS nvarchar(256)) AS [ModuleName],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];

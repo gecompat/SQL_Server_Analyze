@@ -447,7 +447,7 @@ END;
         END CATCH;
     END;
 
-    
+
 
     IF @StatusCode IN('AVAILABLE','AVAILABLE_LIMITED')
     BEGIN

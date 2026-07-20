@@ -23,7 +23,7 @@ DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 
 /* INT-CHECKDB: blockierungsfrei nicht verfügbare CHECKDB-Zeit bleibt eine Evidenzgrenze. */
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MitPageDetails=0,@MaxZeilen=20,
+     @DatabaseNames=@DatabaseNames,@MitPageDetails=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
      @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
@@ -43,7 +43,7 @@ DBCC CHECKDB WITH NO_INFOMSGS;
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MitPageDetails=0,@MaxZeilen=20,
+     @DatabaseNames=@DatabaseNames,@MitPageDetails=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
      @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
@@ -67,7 +67,7 @@ VALUES (DB_ID(),1,1,1,1,GETDATE());
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MitPageDetails=1,@MaxZeilen=1,
+     @DatabaseNames=@DatabaseNames,@MitPageDetails=1,@MaxZeilen=1,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
      @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
@@ -111,7 +111,7 @@ SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databa
 EXEC [sys].[sp_executesql] @Sql;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
+     @DatabaseNames=@DatabaseNames,@MinVolumeFreePercent=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 IF ISJSON(@Json)<>1 OR NOT EXISTS
@@ -129,7 +129,7 @@ SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databa
 EXEC [sys].[sp_executesql] @Sql;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
+     @DatabaseNames=@DatabaseNames,@MinVolumeFreePercent=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 IF ISJSON(@Json)<>1 OR NOT EXISTS
@@ -146,7 +146,7 @@ SET @Sql=N'ALTER DATABASE '+QUOTENAME((SELECT [name] FROM [master].[sys].[databa
 EXEC [sys].[sp_executesql] @Sql;
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MinVolumeFreePercent=0,@MaxZeilen=20,
+     @DatabaseNames=@DatabaseNames,@MinVolumeFreePercent=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 IF ISJSON(@Json)<>1 OR NOT EXISTS

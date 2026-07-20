@@ -20,10 +20,10 @@ Grenzen      : Vorhandene oder fehlende Feedbackzeilen beweisen weder Nutzen
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_IntelligentQueryProcessingAnalysis]
-      @DatabaseNames                nvarchar(max)  = N''
+      @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MaxZeilen                    int            = 1000
     , @ResultSetArt                 varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
@@ -53,7 +53,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_IntelligentQueryProcessingAnalysis';
         PRINT N'Liest nur IQP-Konfiguration und aggregierte Evidenz; niemals Query-Text oder Showplan.';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N'''' = aktuelle DB; NULL = alle zulässigen DBs.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
         PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
         RETURN;
     END;
@@ -141,8 +141,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0
-       OR @MaxZeilen < 0
+    IF @MaxZeilen < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER',
@@ -155,9 +154,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'CATALOG_DEEP'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IntelligentQueryProcessingAnalysis_DatabaseCandidates',@WarningTable=N'#IntelligentQueryProcessingAnalysis_DatabaseCandidateWarnings';

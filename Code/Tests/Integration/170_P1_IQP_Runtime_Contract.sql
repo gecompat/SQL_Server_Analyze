@@ -28,7 +28,7 @@ DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 IF @Major=15
 BEGIN
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-         @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+         @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 
@@ -51,7 +51,7 @@ BEGIN
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-         @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+         @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1 OR NOT EXISTS
@@ -69,7 +69,7 @@ BEGIN
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-         @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+         @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1 OR NOT EXISTS
@@ -94,7 +94,7 @@ END;
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 

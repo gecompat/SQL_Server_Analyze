@@ -43,7 +43,7 @@ BEGIN TRY
 
     /* TEMPORAL-NONE */
     EXEC [monitor].[USP_TemporalAnalysis]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=10,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE_LIMITED')
@@ -100,7 +100,7 @@ BEGIN TRY
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleTemporal%',
          @HistorySizeWarnMb=0,@HistoryRowsWarn=0,@HistoryToCurrentRatioWarn=1,@MinHistoryMbForRatioWarn=0,
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING','AVAILABLE_LIMITED')
@@ -154,7 +154,7 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleTemporalIndexed',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF NOT EXISTS
     (
@@ -175,7 +175,7 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleTemporalIndexed',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.temporalTables'))<>1
        OR JSON_VALUE(@Json,N'$.temporalTables[0].CurrentTableName')<>N'ExampleTemporalIndexed'
@@ -186,7 +186,7 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleTemporal%',
-         @MaxDatenbanken=1,@MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.temporalTables'))>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databaseStatus'))<>1
@@ -208,7 +208,7 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleTemporalMissingIndex',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.temporalTables'))<>0
        OR CHARINDEX(N'früher getrennten Tabellenpaare',@Definition)=0

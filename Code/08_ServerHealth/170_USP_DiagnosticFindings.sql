@@ -23,10 +23,10 @@ Grenzen      : Priorität ist Triage, keine automatische Ursachenfeststellung.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DiagnosticFindings]
-      @DatabaseNames                nvarchar(max)  = N''
+      @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MitIntegritaet               bit            = 1
     , @MitKapazitaet                bit            = 1
     , @MitSpeicher                  bit            = 1
@@ -127,7 +127,7 @@ BEGIN
         , [RecommendedNextCheck] nvarchar(1000) NOT NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @ContentionSampleSeconds > 60
+    IF @MaxZeilen < 0 OR @ContentionSampleSeconds > 60
        OR @ContentionMinWaitMs < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR @MinimumSeverity NOT IN ('INFO', 'LOW', 'MEDIUM', 'HIGH')
@@ -179,7 +179,7 @@ BEGIN
                 SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
                 EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
                       @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                    , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                    , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                     , @MitPageDetails = 0, @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE'
                     , @JsonErzeugen = 1, @Json = @IntegrityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                     , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
@@ -210,7 +210,7 @@ BEGIN
                 SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
                 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
                       @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                    , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                    , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                     , @NurProblematisch = 0, @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE'
                     , @JsonErzeugen = 1, @Json = @CapacityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                     , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
@@ -259,7 +259,7 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_BackupChainAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @BackupJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
@@ -309,7 +309,7 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_SchemaDesignAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @SchemaJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
@@ -327,8 +327,8 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_StatisticsDistributionAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @AnalyseModus = 'VOLL'
-                , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed, @AnalyseModus = 'VOLL'
+                , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @StatisticsDistributionJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
@@ -346,7 +346,7 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @IqpJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT

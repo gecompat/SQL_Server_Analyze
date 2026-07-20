@@ -14,15 +14,13 @@ Semantik     : Ohne explizite Einschränkung alle sichtbaren, online befindliche
                Benutzerdatenbanken. Kein CURRENT-Scope und keine Vorabbegrenzung.
 High Impact  : Nur eine tatsächlich aktivierte Analyseklasse mit
                RequiresGroupGate=1 verlangt @HighImpactConfirmed=1.
-Übergang     : @MaxDatenbanken wird während des Piloten akzeptiert und ignoriert;
-               der frameworkweite Rollout entfernt ihn vollständig.
+Vertrag      : Die Procedure kennt keine Datenbank-Mengenbegrenzung.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_PrepareDatabaseCandidates]
       @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = NULL
     , @AnalysisClass                    varchar(64)    = NULL
     , @HighImpactConfirmed              bit            = 0
     , @StatusCode                       varchar(40)    OUTPUT
@@ -48,8 +46,6 @@ BEGIN
     DECLARE @RegexFlags varchar(8);
     DECLARE @PatternIsValid bit;
     DECLARE @DatabaseListCount int = 0;
-    DECLARE @Allowed bit = 1;
-    DECLARE @RequiresHighImpact bit = 0;
     DECLARE @Sql nvarchar(max);
     DECLARE @CandidateTableQuoted nvarchar(258);
     DECLARE @WarningTableQuoted nvarchar(258);
@@ -170,46 +166,14 @@ FROM ' + @CandidateTableQuoted + N';';
 
     IF NULLIF(@AnalysisClass, '') IS NOT NULL
     BEGIN
-        SELECT
-              @RequiresHighImpact = COALESCE(MAX(CONVERT(tinyint, [c].[RequiresGroupGate])), 0)
-            , @Allowed = COALESCE(MAX(CONVERT(tinyint, [a].[IsAllowed])), 0)
-        FROM [monitor].[VW_AnalyseClassCatalog] AS [c]
-        LEFT JOIN [monitor].[VW_AnalyseAccessCurrent] AS [a]
-          ON [a].[AnalysisClass] = [c].[AnalysisClass]
-        WHERE [c].[AnalysisClass] = @AnalysisClass;
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass=@AnalysisClass
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
 
-        IF NOT EXISTS
-        (
-            SELECT 1
-            FROM [monitor].[VW_AnalyseClassCatalog]
-            WHERE [AnalysisClass] = @AnalysisClass
-        )
-        BEGIN
-            SET @StatusCode = 'INVALID_PARAMETER';
-            SET @ErrorMessage = N'Unbekannte Analyseklasse.';
+        IF @StatusCode<>'AVAILABLE'
             RETURN;
-        END;
-
-        IF @Allowed = 0
-        BEGIN
-            SET @StatusCode = 'DENIED_GROUP';
-            SET @ErrorMessage = CONCAT(@AnalysisClass, N' ist nicht freigegeben.');
-            RETURN;
-        END;
-
-        /*
-        Der Übergangsparameter kennzeichnet ausschließlich noch nicht migrierte
-        Aufrufer. Nach dem Pilot-Gate wird er frameworkweit entfernt; dann ist
-        die Bestätigung für jede aktivierte Deep-Klasse ausnahmslos wirksam.
-        */
-        IF @RequiresHighImpact = 1
-           AND @HighImpactConfirmed <> 1
-           AND @MaxDatenbanken IS NULL
-        BEGIN
-            SET @StatusCode = 'HIGH_IMPACT_CONFIRMATION_REQUIRED';
-            SET @ErrorMessage = CONCAT(N'Der aktivierte Analysepfad ', @AnalysisClass, N' erfordert @HighImpactConfirmed=1.');
-            RETURN;
-        END;
     END;
 
     INSERT [#PrepareDatabaseCandidates_Work]
@@ -227,7 +191,6 @@ FROM ' + @CandidateTableQuoted + N';';
           @EffectiveDatabaseNames
         , @SystemdatenbankenEinbeziehen
         , @DatabaseNamePattern
-        , NULL
     );
 
     SET @Sql = N'INSERT ' + @CandidateTableQuoted + N'

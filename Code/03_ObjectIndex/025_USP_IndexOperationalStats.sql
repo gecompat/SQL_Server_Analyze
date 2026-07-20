@@ -16,7 +16,7 @@ SQL-Version  : SQL Server 2019 oder neuer.
 Datenquellen : sys.dm_db_index_operational_stats sowie sys.objects, sys.schemas,
                sys.indexes und sys.tables der jeweiligen Zieldatenbank.
 Parameter    :
-  @DatabaseNames nvarchar(max) = N'' - Zieldatenbank; im Einzelmodus Pflicht.
+  @DatabaseNames nvarchar(max) = NULL - Zieldatenbank; im Einzelmodus Pflicht.
   @CrossDatabaseRequestedInternal bit = 0 - Cross-Database; CROSS_DATABASE_DEEP erforderlich.
   @SystemdatenbankenEinbeziehen bit = 0 - Systemdatenbanken einbeziehen.
   @DatenbankNameLike nvarchar(256) = NULL - Datenbank-LIKE-Filter.
@@ -29,7 +29,6 @@ Parameter    :
   @NurMitAktivitaet bit = 1 - nur Zeilen mit wenigstens einem relevanten Counter.
   @MinLeafPageAllocations bigint = 0 - Mindestzahl Leaf-Page-Allokationen.
   @MinLockWaitMs bigint = 0 - Mindestwartezeit aus Row- und Page-Locks.
-  @MaxDatenbanken int = 16 - positive Werte begrenzen; NULL/0 = alle sichtbaren Datenbanken.
   @MaxZeilen int = 5000 - positive Werte begrenzen; NULL/0 = unbegrenzt; begrenzt Ausgabe, nicht DMF-Arbeit.
   @LockTimeoutMs int = 0 - 0 bis 60000; begrenzt Lock-Wartezeit.
   @PrintMeldungen bit = 1 - Warnungen via RAISERROR Severity 10.
@@ -58,9 +57,10 @@ Beispiele    :
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_IndexOperationalStats]
-      @DatabaseNames                  nvarchar(max)  = N''
+      @DatabaseNames                  nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen   bit            = 0
     , @DatabaseNamePattern            nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                    nvarchar(max)  = NULL
     , @SchemaNamePattern              nvarchar(4000) = NULL
     , @ObjectNames                    nvarchar(max)  = NULL
@@ -73,7 +73,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_IndexOperationalStats]
     , @NurMitAktivitaet            bit           = 1
     , @MinLeafPageAllocations      bigint        = 0
     , @MinLockWaitMs               bigint        = 0
-    , @MaxDatenbanken              int           = 16
     , @MaxZeilen                   int           = 5000
     , @LockTimeoutMs               int           = 0
     , @ResultSetArt                  varchar(16)    = 'CONSOLE'
@@ -112,7 +111,9 @@ BEGIN
     CREATE TABLE [#IndexOperationalStats_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=@IndexNames,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#IndexOperationalStats_NameFilters';
-    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IndexOperationalStats_DatabaseCandidates';
+    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='OBJECT_ANALYSIS_CURRENT',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IndexOperationalStats_DatabaseCandidates';
+    IF @FilterStatus='AVAILABLE' AND UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,''))))='VOLL'
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='INDEX_OPERATIONAL_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT;
     DECLARE @SchemaPredicateS nvarchar(max),@SchemaPredicateSch nvarchar(max),@ObjectPredicateO nvarchar(max),@FullObjectPredicateSO nvarchar(max),@IndexPredicateI nvarchar(max),@StatisticsPredicateSt nvarchar(max);
     SET @SchemaPredicateS=N' AND (NOT EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#IndexOperationalStats_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     SET @SchemaPredicateSch=REPLACE(@SchemaPredicateS,N'[s].[name]',N'[sch].[name]');
@@ -129,7 +130,6 @@ BEGIN
     IF @StatisticsPatternMode='LIKE' SET @StatisticsPredicateSt+=N' AND [st].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@StatisticsPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
     IF @StatisticsPatternMode IN('REGEX','REGEXI') SET @StatisticsPredicateSt+=N' AND REGEXP_LIKE([st].[name],N'''+REPLACE(@StatisticsPatternValue,N'''',N'''''')+N''','''+@StatisticsRegexFlags+N''')';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
-    DECLARE @EffectiveMaxDatenbanken bigint = CASE WHEN @MaxDatenbanken IS NULL OR @MaxDatenbanken=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxDatenbanken) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'GEZIELT'))));
 
@@ -137,13 +137,13 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_IndexOperationalStats';
         PRINT N'Zweck: kumulative Zugriffs-, Lock-, Latch-, I/O-Latch-, Page-Split- und Eskalationszähler je Indexpartition.';
-        PRINT N'@DatabaseNames nvarchar(max) = N'': im Einzelmodus Pflicht.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0; @DatenbankNameLike nvarchar(256) = NULL.';
+        PRINT N'@DatabaseNames nvarchar(max) = NULL: im Einzelmodus Pflicht.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0; @DatenbankNameLike nvarchar(256) = NULL.';
         PRINT N'@SchemaNamePattern/@ObjectNamePattern: GEZIELT benötigt beide und vergleicht per Equality; Zeichen wie Unterstrich sind zulässig. VOLL behandelt sie als LIKE-Filter.';
         PRINT N'@IndexNamePattern nvarchar(256) = NULL: optionaler LIKE-Filter.';
         PRINT N'@AnalyseModus varchar(16) = GEZIELT: VOLL erfordert INDEX_OPERATIONAL_DEEP.';
         PRINT N'@PartitionNumber int = NULL: nur im GEZIELT-Modus.';
         PRINT N'@NurMitAktivitaet bit = 1; @MinLeafPageAllocations bigint = 0; @MinLockWaitMs bigint = 0.';
-        PRINT N'@MaxDatenbanken int = 16; @MaxZeilen int = 5000; @LockTimeoutMs int = 0.';
+        PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int = 5000; @LockTimeoutMs int = 0.';
         PRINT N'@PrintMeldungen bit = 1; @Hilfe bit = 0.';
         PRINT N'Beispiel: EXEC monitor.USP_IndexOperationalStats @DatabaseNames=N''DWH'', @SchemaNamePattern=N''dbo'', @ObjectNamePattern=N''FactSales'';';
         RETURN;
@@ -201,7 +201,7 @@ BEGIN
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
     IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') BEGIN SET @OverallStatus='INVALID_PARAMETER';SET @ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';END;
     IF @SchemaPatternValid=0 OR @ObjectPatternValid=0 OR @IndexPatternValid=0 OR @StatisticsPatternValid=0 OR (@SchemaNames IS NOT NULL AND @SchemaNamePattern IS NOT NULL) OR (@ObjectNames IS NOT NULL AND @ObjectNamePattern IS NOT NULL) OR (@IndexNames IS NOT NULL AND @IndexNamePattern IS NOT NULL) BEGIN SET @OverallStatus='INVALID_PARAMETER';SET @ErrorMessage=N'Exakte Liste und Pattern derselben Eigenschaft sind gegenseitig exklusiv.';END;
-    IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+    IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @MinLeafPageAllocations<0 OR @MinLockWaitMs<0 OR (@PartitionNumber IS NOT NULL AND @PartitionNumber<1)
     BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'Numerischer Parameter außerhalb des zulässigen Bereichs.'; END
     ELSE IF @AnalyseModus NOT IN ('GEZIELT','VOLL')
@@ -313,7 +313,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
             INSERT [#IndexOperationalStats_DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
     END;
 
-    
+
     SELECT @TotalRows=COUNT_BIG(*) FROM [#IndexOperationalStats_Result];
     IF @OverallStatus='AVAILABLE'
     BEGIN

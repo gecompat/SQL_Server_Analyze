@@ -32,10 +32,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerHealthAnalysis]
     , @MitContention    bit           = 0
     , @MitBufferPool    bit           = 0
     , @MitFindings      bit           = 0
-    , @DatabaseNames    nvarchar(max) = N''
+    , @DatabaseNames    nvarchar(max) = NULL
     , @SystemdatenbankenEinbeziehen bit = 0
     , @DatabaseNamePattern nvarchar(4000) = NULL
-    , @MaxDatenbanken   int           = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MaxZeilen        int           = 100
     , @ResultSetArt     varchar(16)   = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
@@ -93,7 +93,7 @@ BEGIN
         RETURN;
     END;
 
-    IF @MaxZeilen < 0 OR @MaxDatenbanken < 0
+    IF @MaxZeilen < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR (@MitCpu = 0 AND @MitNuma = 0 AND @MitMemory = 0 AND @MitTempDB = 0
            AND @MitConfiguration = 0 AND @MitTraceFlags = 0 AND @MitStartup = 0
@@ -311,8 +311,8 @@ BEGIN
             EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken, @MitPageDetails = 0
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+                , @MitPageDetails = 0
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @ChildJsonRequested, @Json = @IntegrityJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
@@ -331,8 +331,8 @@ BEGIN
             EXEC [monitor].[USP_DatabaseCapacityAnalysis]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+                , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @OutputMode, @JsonErzeugen = @ChildJsonRequested
                 , @Json = @CapacityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                 , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
@@ -415,7 +415,7 @@ BEGIN
             EXEC [monitor].[USP_DiagnosticFindings]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @ParentIntegrityJson = @IntegrityJson
                 , @ParentCapacityJson = @CapacityJson
                 , @ParentBufferPoolJson = @BufferPoolJson

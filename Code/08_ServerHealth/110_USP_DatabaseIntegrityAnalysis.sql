@@ -16,10 +16,10 @@ Kosten       : Metadaten LOW; gezielte Seitenauflösung MEDIUM und opt-in.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseIntegrityAnalysis]
-      @DatabaseNames                nvarchar(max)  = N''
+      @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @CheckdbWarnHours             int            = 168
     , @BackupHistoryDays            int            = 35
     , @MitPageDetails               bit            = 0
@@ -52,7 +52,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_DatabaseIntegrityAnalysis';
         PRINT N'Rein lesende Evidenz; führt niemals DBCC CHECKDB, Restore oder Reparatur aus.';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N'''' = aktuelle DB; NULL = alle zulässigen DBs.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
         PRINT N'@CheckdbWarnHours=168; @MitPageDetails=0 löst verdächtige Seiten nicht auf.';
         PRINT N'@BackupHistoryDays=35 begrenzt die Backupmetadaten-Evidenz.';
         PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
@@ -146,8 +146,7 @@ BEGIN
         , [AllocUnitId] bigint NULL
     );
 
-    IF @MaxDatenbanken < 0
-       OR @CheckdbWarnHours < 1
+    IF @CheckdbWarnHours < 1
        OR @BackupHistoryDays < 1
        OR @BackupHistoryDays > 3650
        OR @MaxZeilen < 0
@@ -171,9 +170,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'HA_DR_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DatabaseIntegrityAnalysis_DatabaseCandidates',@WarningTable=N'#DatabaseIntegrityAnalysis_DatabaseCandidateWarnings';

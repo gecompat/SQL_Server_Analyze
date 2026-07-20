@@ -184,8 +184,8 @@ BEGIN TRY
     DECLARE @HasVds1 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson1 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson1 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson1 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson1 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson1 OUTPUT,@PrintMeldungen=0;
 
     SELECT @SessionStatus1=JSON_VALUE(@SessionJson1,'$.meta.statusCode'),@SessionPartial1=TRY_CONVERT(bit,JSON_VALUE(@SessionJson1,'$.meta.isPartial'));
     SELECT TOP(1) @CapabilityPermission1=[RequiredPermission],@CapabilityHasPermission1=[HasRequiredPermission],@CapabilityStatus1=[StatusCode]
@@ -218,8 +218,8 @@ BEGIN TRY
     DECLARE @HasVds2 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson2 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson2 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson2 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson2 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson2 OUTPUT,@PrintMeldungen=0;
 
     SELECT @SessionStatus2=JSON_VALUE(@SessionJson2,'$.meta.statusCode'),@SessionPartial2=TRY_CONVERT(bit,JSON_VALUE(@SessionJson2,'$.meta.isPartial'));
     SELECT TOP(1) @CapabilityPermission2=[RequiredPermission],@CapabilityHasPermission2=[HasRequiredPermission],@CapabilityStatus2=[StatusCode]
@@ -252,8 +252,8 @@ BEGIN TRY
     DECLARE @HasVds3 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson3 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson3 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson3 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson3 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson3 OUTPUT,@PrintMeldungen=0;
 
     SELECT @SessionStatus3=JSON_VALUE(@SessionJson3,'$.meta.statusCode'),@SessionPartial3=TRY_CONVERT(bit,JSON_VALUE(@SessionJson3,'$.meta.isPartial'));
     SELECT TOP(1) @CapabilityPermission3=[RequiredPermission],@CapabilityHasPermission3=[HasRequiredPermission],@CapabilityStatus3=[StatusCode]
@@ -286,8 +286,8 @@ BEGIN TRY
     DECLARE @HasVds4 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
     EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson4 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson4 OUTPUT,@PrintMeldungen=0;
-    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson4 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson4 OUTPUT,@PrintMeldungen=0;
+    EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson4 OUTPUT,@PrintMeldungen=0;
 
     SELECT @SessionStatus4=JSON_VALUE(@SessionJson4,'$.meta.statusCode'),@SessionPartial4=TRY_CONVERT(bit,JSON_VALUE(@SessionJson4,'$.meta.isPartial'));
     SELECT TOP(1) @CapabilityPermission4=[RequiredPermission],@CapabilityHasPermission4=[HasRequiredPermission],@CapabilityStatus4=[StatusCode]
@@ -318,8 +318,8 @@ DECLARE @HasVss5 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME(NULL,NULL,N'VIEW SER
 DECLARE @HasVds5 bit=CONVERT(bit,COALESCE(HAS_PERMS_BY_NAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),N'DATABASE',N'VIEW DATABASE STATE'),0));
 
 EXEC [monitor].[USP_CurrentSessions] @AktuelleSessionEinbeziehen=1,@MitSqlText=0,@MaxZeilen=5,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@SessionJson5 OUTPUT,@PrintMeldungen=0;
-EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson5 OUTPUT,@PrintMeldungen=0;
-EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@MaxDatenbanken=1,@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson5 OUTPUT,@PrintMeldungen=0;
+EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='STANDARD_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StandardJson5 OUTPUT,@PrintMeldungen=0;
+EXEC [monitor].[USP_CheckFrameworkCapabilities] @DatabaseNames=N'',@AnalyseKlasse='QUERY_STORE_CURRENT',@MitGruppenpruefung=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@QueryStoreJson5 OUTPUT,@PrintMeldungen=0;
 
 SELECT @SessionStatus5=JSON_VALUE(@SessionJson5,'$.meta.statusCode'),@SessionPartial5=TRY_CONVERT(bit,JSON_VALUE(@SessionJson5,'$.meta.isPartial'));
 SELECT TOP(1) @CapabilityPermission5=[RequiredPermission],@CapabilityHasPermission5=[HasRequiredPermission],@CapabilityStatus5=[StatusCode]
@@ -418,7 +418,7 @@ BEGIN TRY
 
     EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
           @DatabaseNames=N''
-        , @MaxDatenbanken=1
+
         , @MitPageDetails=0
         , @MaxZeilen=20
         , @ResultSetArt='NONE'
@@ -430,7 +430,7 @@ BEGIN TRY
 
     EXEC [monitor].[USP_DatabaseCapacityAnalysis]
           @DatabaseNames=N''
-        , @MaxDatenbanken=1
+
         , @MinVolumeFreePercent=0
         , @MaxZeilen=20
         , @ResultSetArt='NONE'

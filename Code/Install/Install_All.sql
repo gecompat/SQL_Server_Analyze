@@ -33,6 +33,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/080_TVF_ParseSqlNameList.sql
 :r ../01_Common/081_TVF_ParseFullObjectNameList.sql
 :r ../01_Common/082_TVF_DatabaseCandidates.sql
+:r ../01_Common/083a_USP_InternalCheckAnalysisPath.sql
 :r ../01_Common/083_USP_PrepareDatabaseCandidates.sql
 :r ../01_Common/084_USP_PrepareNameFilters.sql
 :r ../01_Common/085_TVF_ParseBigintList.sql

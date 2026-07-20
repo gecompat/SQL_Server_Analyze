@@ -46,10 +46,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ShowplanAnalysis]
       @PlanHandle          varbinary(64)  = NULL
     , @QueryHash           binary(8)      = NULL
     , @QueryPlanHash       binary(8)      = NULL
-    , @DatabaseNames       nvarchar(max)  = N''
+    , @DatabaseNames       nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit   = 0
     , @DatabaseNamePattern nvarchar(4000) = NULL
-    , @MaxDatenbanken      int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @TextPattern         nvarchar(4000) = NULL
     , @AnalyseModus        varchar(16)    = 'GEZIELT'
     , @PlanQuelle          varchar(16)    = 'AUTO'
@@ -116,15 +116,15 @@ BEGIN
     CREATE TABLE [#ShowplanAnalysis_Memory]([CandidateId] int,[SerialRequiredMemoryKb] bigint NULL,[SerialDesiredMemoryKb] bigint NULL,[RequiredMemoryKb] bigint NULL,[DesiredMemoryKb] bigint NULL,[RequestedMemoryKb] bigint NULL,[GrantWaitTimeMs] bigint NULL,[GrantedMemoryKb] bigint NULL,[MaxUsedMemoryKb] bigint NULL,[MaxQueryMemoryKb] bigint NULL,[LastRequestedMemoryKb] bigint NULL,[IsMemoryGrantFeedbackAdjusted] nvarchar(128));
     CREATE TABLE [#ShowplanAnalysis_Parameters]([CandidateId] int,[ParameterName] nvarchar(256),[ParameterDataType] nvarchar(256),[CompiledValue] nvarchar(4000),[RuntimeValue] nvarchar(4000));
 
-    IF @AnalyseModus NOT IN('GEZIELT','VOLL') OR @PlanQuelle NOT IN('AUTO','COMPILE','LAST_ACTUAL') OR @MaxAnalyseobjekte<0 OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @MaxZeilen<0 OR @MinExecutionCount<0 OR @MaxDatenbanken<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @ParentQueryStatsSnapshot IS NULL
+    IF @AnalyseModus NOT IN('GEZIELT','VOLL') OR @PlanQuelle NOT IN('AUTO','COMPILE','LAST_ACTUAL') OR @MaxAnalyseobjekte<0 OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @MaxZeilen<0 OR @MinExecutionCount<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @ParentQueryStatsSnapshot IS NULL
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Modus oder Grenzwert.';END;
-    IF @StatusCode='AVAILABLE' AND @AnalyseModus='GEZIELT' AND @PlanHandle IS NULL AND @QueryHash IS NULL AND @QueryPlanHash IS NULL AND @DatabaseNames=N'' AND @DatabaseNamePattern IS NULL AND @TextPattern IS NULL
+    IF @StatusCode='AVAILABLE' AND @AnalyseModus='GEZIELT' AND @PlanHandle IS NULL AND @QueryHash IS NULL AND @QueryPlanHash IS NULL AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NULL AND @DatabaseNamePattern IS NULL AND @TextPattern IS NULL
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'GEZIELT benötigt mindestens einen Selektor.';END;
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @EffectiveMaxAnalyseobjekte>20)
     BEGIN
-        SELECT @PlanCacheAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
-        SELECT @ShowplanAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='SHOWPLAN_XML_DEEP';
-        IF @PlanCacheAllowed=0 OR @ShowplanAllowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'PLAN_CACHE_DEEP und SHOWPLAN_XML_DEEP sind erforderlich.';END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
+        IF @StatusCode='AVAILABLE'
+            EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='SHOWPLAN_XML_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
     END;
     IF @StatusCode='AVAILABLE' SET @Deadline=DATEADD(SECOND,@MaxDurationSeconds,@CollectionTimeUtc);
     CREATE TABLE [#ShowplanAnalysis_DatabaseCandidates]([DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
@@ -132,7 +132,7 @@ BEGIN
     DECLARE @TextMode varchar(8),@TextValue nvarchar(4000),@TextRegexFlags varchar(8),@TextPatternValid bit;
     SELECT @TextMode=[PatternMode],@TextValue=[PatternValue],@TextRegexFlags=[RegexFlags],@TextPatternValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@TextPattern);
     IF @StatusCode='AVAILABLE' AND @TextPatternValid=0 BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'@TextPattern ist ungültig.';END;
-    IF @StatusCode='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='PLAN_CACHE_DEEP',@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ShowplanAnalysis_DatabaseCandidates',@WarningTable=N'#ShowplanAnalysis_DatabaseCandidateWarnings';
+    IF @StatusCode='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='SHOWPLAN_TARGETED',@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ShowplanAnalysis_DatabaseCandidates',@WarningTable=N'#ShowplanAnalysis_DatabaseCandidateWarnings';
     IF @StatusCode='AVAILABLE' AND @TextMode IN('REGEX','REGEXI') AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] AS [d] WITH(NOLOCK) WHERE [d].[database_id]=DB_ID() AND [d].[compatibility_level]>=170)) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END;
 
     SET @OrderExpression=CASE @Sortierung WHEN 'CPU_TOTAL' THEN N'[qs].[total_worker_time]' WHEN 'ELAPSED_TOTAL' THEN N'[qs].[total_elapsed_time]'

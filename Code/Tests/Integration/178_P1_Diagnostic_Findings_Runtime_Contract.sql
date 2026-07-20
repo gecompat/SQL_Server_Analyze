@@ -29,7 +29,7 @@ EXEC [monitor].[USP_DiagnosticFindings]
      @DatabaseNames=N'[DeineDatenbank]',
      @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
      @MitAvailability=0,@MitAgentMonitoring=1,
-     @MaxDatenbanken=1,@MaxZeilen=100,@ResultSetArt='NONE',
+     @MaxZeilen=100,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
      @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
@@ -91,7 +91,7 @@ EXEC [monitor].[USP_ServerHealthAnalysis]
      @MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,
      @MitIntegritaet=1,@MitKapazitaet=1,@MitPerformanceCounters=0,
      @MitCriticalEvents=0,@MitContention=0,@MitBufferPool=1,@MitFindings=1,
-     @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=100,
+     @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=100,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
 
 IF ISJSON(@Json)<>1
@@ -140,7 +140,7 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',
          @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
          @MitAvailability=1,@MitAgentMonitoring=1,
-         @MaxDatenbanken=1,@MaxZeilen=100,@ResultSetArt='NONE',
+         @MaxZeilen=100,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
          @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
@@ -196,7 +196,7 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',
          @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
          @MitAvailability=0,@MitAgentMonitoring=1,
-         @MaxDatenbanken=1,@MaxZeilen=10,@ResultSetArt='NONE',
+         @MaxZeilen=10,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
          @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;

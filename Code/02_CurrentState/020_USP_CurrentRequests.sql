@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentRequests]
     , @ProgramNamePattern            nvarchar(4000) = NULL
     , @DatabaseNames                 nvarchar(max)  = NULL
     , @DatabaseNamePattern           nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @TextPattern                   nvarchar(4000) = NULL
     , @MitSqlText                    bit            = 1
     , @GesamtenSqlTextEinbeziehen    bit            = 0
