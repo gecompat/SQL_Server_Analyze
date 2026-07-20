@@ -50,7 +50,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CheckFrameworkCapabilities';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; NULL=alle; leer=aktuelle Datenbank.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; NULL/leer=alle sichtbaren Online-Benutzerdatenbanken.';
         PRINT N'@DatabaseNamePattern: like:, regex: oder regexi:; exakte Liste und Pattern sind exklusiv.';
         PRINT N'@ResultSetArt=RAW, CONSOLE, TABLE oder NONE; optional JSON.';
         RETURN;
