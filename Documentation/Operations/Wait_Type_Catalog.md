@@ -56,7 +56,7 @@ Quellen eines Wait Types abfragen:
 
 ```sql
 SELECT *
-FROM [monitor].[TVF_WaitTypeSources](N'WRITELOG')
+FROM [monitor].[TVF_WaitTypeSources] (N'WRITELOG')
 ORDER BY [SourceOrdinal];
 ```
 
