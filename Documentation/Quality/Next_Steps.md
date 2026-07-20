@@ -80,6 +80,16 @@ Vorgemerkte zukünftige Architekturhärtung:
   Case-Semantik grün nachzuweisen. Bis dahin bleibt
   `SQL_Latin1_General_CP1_CS_AS` die freigegebene Plattformgrenze.
 
+- **DIAG-001 bis DIAG-007 – zusätzliche Diagnoseinformationen:** Die
+  recherchierten Anforderungen für Serverversion/CU/GDR/Lifecycle,
+  anklickbare native XML-Ausgaben, Compile- und verfügbare Runtimeparameter,
+  die ausdrückliche Grenze nicht allgemein auslesbarer lokaler Variablen,
+  Statement-/Requestkontext, zusätzliche Plan-/Optimizerinformationen,
+  Provenienz und den vollständigen Ausgabe-/Testvertrag stehen im
+  [Zukunftsvertrag für zusätzliche Diagnoseinformationen](../Architecture/Diagnostic_Information_Enrichment_Backlog.md).
+  Der maschinenlesbare Status steht in
+  `Metadata/Quality/Future_Enhancement_Backlog.csv`.
+
 Nächste Freigabeschritte:
 
 1. Pro weiterem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner umfasst 24 Integrationsverträge und acht Bereichssuiten und bricht beim ersten SQL-Fehler ab.
