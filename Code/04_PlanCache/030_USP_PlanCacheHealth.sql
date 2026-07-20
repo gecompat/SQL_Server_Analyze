@@ -48,10 +48,11 @@ BEGIN
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'overview',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'SUMMARY'))));
@@ -151,6 +152,13 @@ END;
         DECLARE @OverviewJson nvarchar(max)=(SELECT COALESCE(SUM([PlanCount]),0) [planCount],COALESCE(SUM([TotalSizeBytes]),0) [totalSizeBytes],CONVERT(decimal(19,2),COALESCE(SUM([TotalSizeBytes]),0)/1048576.0) [totalSizeMb],COALESCE(SUM([SingleUsePlanCount]),0) [singleUsePlanCount],COALESCE(SUM([SingleUseSizeBytes]),0) [singleUseSizeBytes],CONVERT(decimal(9,2),100.0*SUM([SingleUseSizeBytes])/NULLIF(SUM([TotalSizeBytes]),0)) [singleUseMemoryPercent] FROM [#PlanCacheHealth_Summary] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @CategoriesJson nvarchar(max)=(SELECT * FROM [#PlanCacheHealth_Summary] ORDER BY [TotalSizeBytes] DESC,[PlanCount] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@DatabasesJson nvarchar(max)=(SELECT * FROM [#PlanCacheHealth_Db] ORDER BY [TotalSizeBytes] DESC,[PlanCount] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@SingleJson nvarchar(max)=(SELECT * FROM [#PlanCacheHealth_Single] ORDER BY [SizeBytes] DESC,[PlanHandle] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"overview":',COALESCE(@OverviewJson,N'{}'),N',"categories":',COALESCE(@CategoriesJson,N'[]'),N',"databases":',COALESCE(@DatabasesJson,N'[]'),N',"singleUsePlans":',COALESCE(@SingleJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#PlanCacheHealth_Summary'
+            , @ResultLabel=N'PlanCacheHealth'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

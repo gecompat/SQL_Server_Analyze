@@ -28,10 +28,11 @@ AS
 BEGIN
     SET NOCOUNT ON;SET @Json=NULL;DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'configuration',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe = 1
@@ -276,6 +277,13 @@ END;
       ELSE BEGIN SELECT N'Sicherheitsquelle' [Ergebnis],[x].* FROM [#ServerSecurityConfiguration_SourceStatus] [x] ORDER BY [SourceName];SELECT N'Sicherheitskonfiguration' [Ergebnis],[ConfigurationName] [Einstellung],CONVERT(nvarchar(4000),[ConfiguredValue]) [konfiguriert],CONVERT(nvarchar(4000),[RunningValue]) [aktiv],[Finding] [Bewertung] FROM [#ServerSecurityConfiguration_Configuration] ORDER BY [ConfigurationName];SELECT N'SQL-Dienst' [Ergebnis],[x].* FROM [#ServerSecurityConfiguration_Services] [x] ORDER BY [ServiceName];SELECT N'Server-Eigenschaft' [Ergebnis],[x].* FROM [#ServerSecurityConfiguration_Properties] [x];END;
     END;
     IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ServerSecurityConfiguration' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Sources nvarchar(max)=(SELECT * FROM [#ServerSecurityConfiguration_SourceStatus] ORDER BY [SourceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Cfg nvarchar(max)=(SELECT [ConfigurationName],CONVERT(nvarchar(4000),[ConfiguredValue]) [ConfiguredValue],CONVERT(nvarchar(4000),[RunningValue]) [RunningValue],[Finding] FROM [#ServerSecurityConfiguration_Configuration] ORDER BY [ConfigurationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Services nvarchar(max)=(SELECT * FROM [#ServerSecurityConfiguration_Services] ORDER BY [ServiceName] FOR JSON PATH,INCLUDE_NULL_VALUES),@Props nvarchar(max)=(SELECT * FROM [#ServerSecurityConfiguration_Properties] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"sources":',COALESCE(@Sources,N'[]'),N',"configuration":',COALESCE(@Cfg,N'[]'),N',"services":',COALESCE(@Services,N'[]'),N',"properties":',COALESCE(@Props,N'[]'),N',"warnings":[]}');END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ServerSecurityConfiguration_Configuration'
+            , @ResultLabel=N'ServerSecurityConfiguration'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]

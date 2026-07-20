@@ -66,10 +66,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,''))));
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @StatusCode varchar(40)='AVAILABLE';
@@ -578,6 +579,13 @@ WHERE [c].[DatabaseName]=@pDbName;';
         ORDER BY [ModificationSpreadPercentPoints] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
         SELECT TOP (@Limit) N'Statistikverteilungsbefund' [Ergebnis],[f].* FROM [#StatisticsDistributionAnalysis_Findings] [f]
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal];
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#StatisticsDistributionAnalysis_Findings'
+            , @ResultLabel=N'StatisticsDistributionAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

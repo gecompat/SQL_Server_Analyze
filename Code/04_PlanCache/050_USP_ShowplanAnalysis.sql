@@ -72,10 +72,11 @@ BEGIN
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxAnalyseobjekte bigint = CASE WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxAnalyseobjekte) END;
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -353,6 +354,13 @@ END;
         DECLARE @MetaJson nvarchar(max)=(SELECT N'ShowplanAnalysis' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [candidateCount],@ProcessedPlans [processedPlanCount],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @PlanStatusJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@StatementsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Statements] ORDER BY [CandidateId],[StatementId] FOR JSON PATH,INCLUDE_NULL_VALUES),@FindingsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[CandidateId],[FindingType],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@MissingJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_MissingIndexes] ORDER BY [Impact] DESC,[CandidateId],[TableName],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES),@ObjectsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Objects] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[IndexName] FOR JSON PATH,INCLUDE_NULL_VALUES),@StatisticsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Statistics] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES),@OperatorsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Operators] ORDER BY [CandidateId],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@CardinalityJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Cardinality] WHERE [ActualRows] IS NOT NULL OR [ActualRowsRead] IS NOT NULL ORDER BY [CandidateId],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@MemoryJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Memory] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@ParametersJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Parameters] ORDER BY [CandidateId],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"planStatus":',COALESCE(@PlanStatusJson,N'[]'),N',"statements":',COALESCE(@StatementsJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N',"missingIndexes":',COALESCE(@MissingJson,N'[]'),N',"objects":',COALESCE(@ObjectsJson,N'[]'),N',"statistics":',COALESCE(@StatisticsJson,N'[]'),N',"operators":',COALESCE(@OperatorsJson,N'[]'),N',"cardinality":',COALESCE(@CardinalityJson,N'[]'),N',"memory":',COALESCE(@MemoryJson,N'[]'),N',"parameters":',COALESCE(@ParametersJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ShowplanAnalysis_Findings'
+            , @ResultLabel=N'ShowplanAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

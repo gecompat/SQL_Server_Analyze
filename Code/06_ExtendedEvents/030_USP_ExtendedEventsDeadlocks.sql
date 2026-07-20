@@ -63,10 +63,11 @@ BEGIN
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'deadlocks',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @ResolvedSourceExtendedEventSessionName sysname=NULL;
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -304,6 +305,13 @@ END;
       ELSE BEGIN SELECT N'Deadlock' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_DeadlockSummary] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId];SELECT N'Deadlock Victim' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_Victims] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId];SELECT N'Deadlock Prozess' [Ergebnis],[DeadlockId] [Deadlock],[SessionId] [Session],[ExecutionContextId] [ECID],[IsVictim] [Victim],[WaitTimeMs] [Wait ms],[WaitResource] [Wait-Ressource],[LoginName] [Login],[HostName] [Host],[SessionId] [Session SQL],[InputBuffer] [SQL] FROM [#ExtendedEventsDeadlocks_DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId];SELECT N'Deadlock Ressource' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_DeadlockResources] [x] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType];SELECT N'Extended-Events Quelle' [Ergebnis],[x].* FROM [#ExtendedEventsDeadlocks_SourceStatus] [x] ORDER BY [SourceType];END;
     END;
     IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsDeadlocks' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@ResolvedSource [source],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@D nvarchar(max)=(SELECT [DeadlockId],[SourceType],[DeadlockTimeUtc],[FileName],[FileOffset],[VictimCount],[ProcessCount],[ResourceCount],[FirstDatabaseId],CONVERT(nvarchar(max),[DeadlockXml]) [DeadlockXml] FROM [#ExtendedEventsDeadlocks_DeadlockSummary] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId] FOR JSON PATH,INCLUDE_NULL_VALUES),@V nvarchar(max)=(SELECT * FROM [#ExtendedEventsDeadlocks_Victims] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[VictimProcessId] FOR JSON PATH,INCLUDE_NULL_VALUES),@P nvarchar(max)=(SELECT [DeadlockId],[DeadlockTimeUtc],[ProcessId],[IsVictim],[SessionId],[ExecutionContextId],[ProcessStatus],[WaitResource],[WaitTimeMs],[LockMode],[TransactionName],[IsolationLevel],[DatabaseId],[ClientApplication],[HostName],[LoginName],[HostProcessId],[TransactionCount],[LogUsed],[InputBuffer],CONVERT(nvarchar(max),[ProcessXml]) [ProcessXml] FROM [#ExtendedEventsDeadlocks_DeadlockProcesses] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[SessionId],[ExecutionContextId] FOR JSON PATH,INCLUDE_NULL_VALUES),@R nvarchar(max)=(SELECT [DeadlockId],[DeadlockTimeUtc],[ResourceType],[DatabaseId],[ObjectId],[IndexId],[AssociatedObjectId],[ResourceId],[ResourceMode],CONVERT(nvarchar(max),[OwnerListXml]) [OwnerListXml],CONVERT(nvarchar(max),[WaiterListXml]) [WaiterListXml],CONVERT(nvarchar(max),[ResourceXml]) [ResourceXml] FROM [#ExtendedEventsDeadlocks_DeadlockResources] ORDER BY [DeadlockTimeUtc] DESC,[DeadlockId],[ResourceType] FOR JSON PATH,INCLUDE_NULL_VALUES),@S nvarchar(max)=(SELECT * FROM [#ExtendedEventsDeadlocks_SourceStatus] ORDER BY [SourceType] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"deadlocks":',COALESCE(@D,N'[]'),N',"victims":',COALESCE(@V,N'[]'),N',"processes":',COALESCE(@P,N'[]'),N',"resources":',COALESCE(@R,N'[]'),N',"sources":',COALESCE(@S,N'[]'),N',"warnings":[]}');END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ExtendedEventsDeadlocks_DeadlockSummary'
+            , @ResultLabel=N'ExtendedEventsDeadlocks'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]

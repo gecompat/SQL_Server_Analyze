@@ -36,10 +36,11 @@ BEGIN
  SET @Json=NULL;
  DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'replicas',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_AvailabilityGroups'; PRINT N'@MitRouting bit=1; @MaxZeilen int=5000; @PrintMeldungen bit=1; @Hilfe bit=0.'; PRINT N'Keine Failover-, Resume-, Suspend- oder Routingänderung.'; RETURN; END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
@@ -87,6 +88,13 @@ BEGIN
   DECLARE @RoutingJson nvarchar(max)=(SELECT * FROM [#AvailabilityGroups_Route] ORDER BY [AgName],[ReplicaServerName],[RoutingPriority] FOR JSON PATH,INCLUDE_NULL_VALUES);
   SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"replicas":',COALESCE(@ReplicasJson,N'[]'),N',"databases":',COALESCE(@DatabasesJson,N'[]'),N',"listeners":',COALESCE(@ListenersJson,N'[]'),N',"routing":',COALESCE(@RoutingJson,N'[]'),N'}');
  END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#AvailabilityGroups_R'
+            , @ResultLabel=N'AvailabilityGroups'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]

@@ -33,10 +33,11 @@ BEGIN
  SET @Json=NULL;
  DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ReplicationStatus'; PRINT N'@MitDistributionDetails bit=0: liest die konfigurierte Distribution-Datenbank.'; PRINT N'@MaxZeilen int=5000: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig. @PrintMeldungen bit=1; @Hilfe bit=0.'; RETURN; END;
  DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@DistDb sysname=NULL,@sql nvarchar(max),@Allowed bit=1;
@@ -79,6 +80,13 @@ BEGIN
   DECLARE @DbJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Db] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES),@PubJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Pub] ORDER BY [PublisherDatabase],[PublicationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@SubJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Sub] ORDER BY [PublisherDatabase],[PublicationName] FOR JSON PATH,INCLUDE_NULL_VALUES),@ErrJson nvarchar(max)=(SELECT * FROM [#ReplicationStatus_Err] ORDER BY [ErrorTime] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
   SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"databases":',COALESCE(@DbJson,N'[]'),N',"publications":',COALESCE(@PubJson,N'[]'),N',"subscriptions":',COALESCE(@SubJson,N'[]'),N',"errors":',COALESCE(@ErrJson,N'[]'),N'}');
  END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ReplicationStatus_Db'
+            , @ResultLabel=N'ReplicationStatus'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]

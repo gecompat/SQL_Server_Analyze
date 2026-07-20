@@ -36,10 +36,11 @@ BEGIN
  SET NOCOUNT ON;SET @Json=NULL;SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'TOP'))));
  DECLARE @Out varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),@Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN @MaxZeilen ELSE 0 END,@Local bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen<2147483647 THEN CONVERT(bigint,@MaxZeilen)+1 ELSE @MaxZeilen END;
     DECLARE @TableResultRequested bit = CASE WHEN @Out = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @Out = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'queries',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @Out = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @Out = 'NONE';
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_QueryStorePlanChanges';PRINT N'Quell-DB-Liste/Pattern, Referenz-DB-Liste/Pattern, globales @MaxZeilen, RAW|CONSOLE|TABLE|NONE und JSON.';RETURN;END;
  DECLARE @Now datetime2(3)=SYSUTCDATETIME(),@Status varchar(40)='AVAILABLE',@Partial bit=0,@Error nvarchar(2048)=NULL,@Cross bit=0,@Allowed bit=1,@Db sysname,@Compat tinyint,@Sql nvarchar(max),@Count bigint=0,@HasMore bit=0,@Msg nvarchar(2048),@RefMode varchar(8),@RefValue nvarchar(4000),@RefFlags varchar(8),@RefValid bit,@RefPredicate nvarchar(max)=N'';
  SELECT @RefMode=[PatternMode],@RefValue=[PatternValue],@RefFlags=[RegexFlags],@RefValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ReferencedDatabaseNamePattern);
@@ -78,6 +79,13 @@ END;';
  DELETE [p] FROM [#QueryStorePlanChanges_Plans] [p] WHERE NOT EXISTS(SELECT 1 FROM (SELECT TOP(@Limit) [QueryStoreDatabaseId],[QueryId] FROM [#QueryStorePlanChanges_Summary] ORDER BY [LastExecutionTimeUtc] DESC,[LastCompileTimeUtc] DESC) [k] WHERE [k].[QueryStoreDatabaseId]=[p].[QueryStoreDatabaseId] AND [k].[QueryId]=[p].[QueryId]);
  IF @Out<>'NONE' BEGIN SELECT N'USP_QueryStorePlanChanges' [ModuleName],@Now [CollectionTimeUtc],@Status [StatusCode],@Partial [IsPartial],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [ReturnedRowCount],@HasMore [HasMoreRows],@Error [ErrorMessage];IF @Out='RAW' BEGIN SELECT TOP(@Limit) * FROM [#QueryStorePlanChanges_Summary] ORDER BY [LastExecutionTimeUtc] DESC,[LastCompileTimeUtc] DESC;SELECT * FROM [#QueryStorePlanChanges_Plans] ORDER BY [QueryStoreDatabaseName],[QueryId],[LastExecutionTimeUtc] DESC,[PlanId];END ELSE BEGIN SELECT TOP(@Limit) N'Query-Store Planwechsel' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[PlanCount] [Pläne],[DistinctPlanHashCount] [verschiedene Plan-Hashes],[ForcedPlanCount] [erzwungene Pläne],[LastExecutionTimeUtc] [letzte Ausführung],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text] FROM [#QueryStorePlanChanges_Summary] ORDER BY [LastExecutionTimeUtc] DESC,[LastCompileTimeUtc] DESC;SELECT N'Query-Store Plan' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[PlanId] [Plan],[IsForcedPlan] [erzwungen],[LastExecutionTimeUtc] [letzte Ausführung],[AverageCompileDurationMs] [Compile Ø ms],[QueryPlan] [Plan-XML] FROM [#QueryStorePlanChanges_Plans] ORDER BY [QueryStoreDatabaseName],[QueryId],[LastExecutionTimeUtc] DESC,[PlanId];END;SELECT * FROM [#QueryStorePlanChanges_Errors] ORDER BY [DatabaseName];END;
  IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'QueryStorePlanChanges' [resultName],1 [schemaVersion],@Now [generatedAtUtc],@Status [statusCode],@MaxZeilen [requestedMaxRows],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [returnedRows],@HasMore [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Queries nvarchar(max)=(SELECT TOP(@Limit) * FROM [#QueryStorePlanChanges_Summary] ORDER BY [LastExecutionTimeUtc] DESC,[LastCompileTimeUtc] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@Plans nvarchar(max)=(SELECT * FROM [#QueryStorePlanChanges_Plans] ORDER BY [QueryStoreDatabaseName],[QueryId],[LastExecutionTimeUtc] DESC,[PlanId] FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT * FROM [#QueryStorePlanChanges_Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"queries":',COALESCE(@Queries,N'[]'),N',"plans":',COALESCE(@Plans,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryStorePlanChanges_Summary'
+            , @ResultLabel=N'QueryStorePlanChanges'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
