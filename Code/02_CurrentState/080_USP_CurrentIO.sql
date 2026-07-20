@@ -279,7 +279,7 @@ BEGIN
                       ELSE [a].[ReadStallMs]+[a].[WriteStallMs] END)*1.0
                 / NULLIF(CASE WHEN @SampleSeconds > 0
                               THEN ([a].[Reads]-[b].[Reads])+([a].[Writes]-[b].[Writes])
-                              ELSE [a].[Reads]+[a].[Writes] END,0))
+                              ELSE [a].[Reads]+[a].[Writes] END,0)) AS [OverallLatencyMs]
             , CONVERT(decimal(19,3),CASE WHEN @SampleSeconds > 0
                      THEN ([a].[ReadBytes]-[b].[ReadBytes])/1048576.0/NULLIF(@SampleSeconds,0) END)
             , CONVERT(decimal(19,3),CASE WHEN @SampleSeconds > 0
