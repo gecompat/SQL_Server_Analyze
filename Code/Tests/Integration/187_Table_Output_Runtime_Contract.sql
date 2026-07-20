@@ -39,7 +39,7 @@ DECLARE @Rows bigint,@Status varchar(40),@ErrorNumber int,@ErrorMessage nvarchar
 
 EXEC [monitor].[InternalWriteResultTable]
       @SourceTable=N'#TableOutputRuntimeContract_Source'
-    , @ResultTable=N'#TableOutputRuntimeContract_AdaptTarget'
+    , @TargetTable=N'#TableOutputRuntimeContract_AdaptTarget'
     , @InsertedRows=@Rows OUTPUT
     , @StatusCode=@Status OUTPUT
     , @ErrorNumber=@ErrorNumber OUTPUT
@@ -126,7 +126,7 @@ CREATE TABLE [#TableOutputRuntimeContract_ExactTarget]
 SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
 EXEC [monitor].[InternalWriteResultTable]
       @SourceTable=N'#TableOutputRuntimeContract_Source'
-    , @ResultTable=N'#TableOutputRuntimeContract_ExactTarget'
+    , @TargetTable=N'#TableOutputRuntimeContract_ExactTarget'
     , @InsertedRows=@Rows OUTPUT
     , @StatusCode=@Status OUTPUT
     , @ErrorNumber=@ErrorNumber OUTPUT
@@ -148,7 +148,7 @@ IF @Status<>'AVAILABLE'
 SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
 EXEC [monitor].[InternalWriteResultTable]
       @SourceTable=N'#TableOutputRuntimeContract_Source'
-    , @ResultTable=N'#TableOutputRuntimeContract_ExactTarget'
+    , @TargetTable=N'#TableOutputRuntimeContract_ExactTarget'
     , @InsertedRows=@Rows OUTPUT
     , @StatusCode=@Status OUTPUT
     , @ErrorNumber=@ErrorNumber OUTPUT
@@ -162,7 +162,7 @@ INSERT [#TableOutputRuntimeContract_NonEmptyMismatch] VALUES(99);
 SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
 EXEC [monitor].[InternalWriteResultTable]
       @SourceTable=N'#TableOutputRuntimeContract_Source'
-    , @ResultTable=N'#TableOutputRuntimeContract_NonEmptyMismatch'
+    , @TargetTable=N'#TableOutputRuntimeContract_NonEmptyMismatch'
     , @InsertedRows=@Rows OUTPUT
     , @StatusCode=@Status OUTPUT
     , @ErrorNumber=@ErrorNumber OUTPUT
@@ -186,7 +186,7 @@ INSERT [#TableOutputRuntimeContract_NonEmptyDummy] VALUES(N'keep');
 SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
 EXEC [monitor].[InternalWriteResultTable]
       @SourceTable=N'#TableOutputRuntimeContract_Source'
-    , @ResultTable=N'#TableOutputRuntimeContract_NonEmptyDummy'
+    , @TargetTable=N'#TableOutputRuntimeContract_NonEmptyDummy'
     , @InsertedRows=@Rows OUTPUT
     , @StatusCode=@Status OUTPUT
     , @ErrorNumber=@ErrorNumber OUTPUT
@@ -207,7 +207,7 @@ IF @Status<>'TARGET_SCHEMA_MISMATCH'
 SET @Status=NULL;SET @ErrorMessage=NULL;
 EXEC [monitor].[InternalWriteResultTable]
       @SourceTable=N'#TableOutputRuntimeContract_Source'
-    , @ResultTable=N'dbo.ExamplePermanentTarget'
+    , @TargetTable=N'dbo.ExamplePermanentTarget'
     , @StatusCode=@Status OUTPUT
     , @ErrorMessage=@ErrorMessage OUTPUT;
 IF @Status<>'INVALID_PARAMETER'
@@ -217,7 +217,7 @@ CREATE TABLE [#TableOutputRuntimeContract_PublicTarget] ([SeedColumn] uniqueiden
 BEGIN TRY
     EXEC [monitor].[USP_CheckAnalyseAccess]
           @ResultSetArt=' table '
-        , @ResultTable=N'#TableOutputRuntimeContract_PublicTarget'
+        , @ResultTablesJson=N'{"access":"#TableOutputRuntimeContract_PublicTarget"}'
         , @PrintMeldungen=0;
 
     IF EXISTS
@@ -237,7 +237,7 @@ BEGIN TRY
            WHERE [t].[name] LIKE N'#TableOutputRuntimeContract_PublicTarget%'
              AND [c].[name] IN (N'AnalysisClass',N'StatusCode')
        )
-        INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_TABLE_MODE',N'Die öffentliche Procedure hat ihre primäre native Ergebnisstruktur nicht in @ResultTable geschrieben.');
+        INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_TABLE_MODE',N'Die öffentliche Procedure hat ihre primäre native Ergebnisstruktur nicht in das benannte TABLE-Ziel geschrieben.');
 END TRY
 BEGIN CATCH
     INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_TABLE_MODE',CONCAT(N'Öffentlicher TABLE-Aufruf fehlgeschlagen: ',ERROR_MESSAGE()));
@@ -248,7 +248,7 @@ INSERT [#TableOutputRuntimeContract_PublicMismatch] VALUES(1);
 BEGIN TRY
     EXEC [monitor].[USP_CheckAnalyseAccess]
           @ResultSetArt='TABLE'
-        , @ResultTable=N'#TableOutputRuntimeContract_PublicMismatch'
+        , @ResultTablesJson=N'{"access":"#TableOutputRuntimeContract_PublicMismatch"}'
         , @PrintMeldungen=0;
     INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_SCHEMA_ERROR',N'Die öffentliche Procedure hat eine abweichende Zielstruktur nicht mit Fehler 51010 abgelehnt.');
 END TRY
