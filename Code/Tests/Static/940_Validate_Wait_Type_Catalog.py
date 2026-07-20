@@ -208,6 +208,11 @@ def validate(repository_root: Path) -> tuple[list[Finding], int]:
         for field in REQUIRED_ANALYSIS_FIELDS:
             if f"[{field}]" not in schema_text:
                 findings.append(Finding("ANALYSIS_SCHEMA_FIELD", schema_path.relative_to(repository_root).as_posix()))
+            if (
+                f"[t].[name]=N'WaitTypeCatalog' AND [c].[name]=N'{field}'"
+                not in schema_text
+            ):
+                findings.append(Finding("ANALYSIS_UPGRADE_TARGET", schema_path.relative_to(repository_root).as_posix()))
         if "[WaitTypeCatalogSource]" not in schema_text or "[SupportsFields]" not in schema_text:
             findings.append(Finding("SOURCE_SCHEMA", schema_path.relative_to(repository_root).as_posix()))
     except (OSError, UnicodeDecodeError):
