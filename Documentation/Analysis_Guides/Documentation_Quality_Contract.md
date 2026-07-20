@@ -11,13 +11,13 @@ Die Existenz einer Procedure-Seite ist noch kein Nachweis fachlicher Tiefe. Desh
 - `BASELINE`: Die Procedure ist strukturell erfasst und besitzt die bisherigen technischen Vertiefungsfelder. Die Seite ist noch nicht vollständig gegen Vertragsversion 2 redaktionell geprüft.
 - `DEEP_REVIEWED`: Zweck, Leserichtung, Datenentstehung, Aussagegrenzen, Eigenlast und Gegenproben wurden am aktuellen T-SQL geprüft; alle nachfolgenden Pflichtinhalte sind erfüllt.
 
-Der maschinenlesbare Stand liegt in [`Metadata/Quality/Analysis_Documentation_Review.csv`](../../Metadata/Quality/Analysis_Documentation_Review.csv). Zum Stand dieses Vertrags sind **3 von 84** Seiten `DEEP_REVIEWED`; die übrigen 81 Seiten bleiben ausdrücklich `BASELINE`. Die drei Referenzseiten sind:
+Der maschinenlesbare Stand liegt in [`Metadata/Quality/Analysis_Documentation_Review.csv`](../../Metadata/Quality/Analysis_Documentation_Review.csv). Zum Stand dieses Vertrags sind **84 von 84** Seiten `DEEP_REVIEWED`. Als Kalibrierungsfälle für unterschiedliche Kosten- und Zeitmodelle dienen weiterhin:
 
 1. [`USP_CurrentRequests`](Procedures/USP_CurrentRequests.md) als flüchtige Live-DMV-Analyse,
 2. [`USP_IndexPhysicalStats`](Procedures/USP_IndexPhysicalStats.md) als potenziell I/O-intensiver physischer Scan,
 3. [`USP_ExtendedEventsReadEvents`](Procedures/USP_ExtendedEventsReadEvents.md) als Datei-/XML-Analyse mit möglicher Nebenwirkung.
 
-Eine Abdeckungszahl darf nur zusammen mit ihrer Qualitätsstufe genannt werden. Die 84 vorhandenen Seiten bedeuten daher 84/84 strukturelle Abdeckung, nicht 84/84 abgeschlossene Tiefenprüfung.
+Eine Abdeckungszahl darf nur zusammen mit ihrer Qualitätsstufe genannt werden. Aktuell sind sowohl die strukturelle Abdeckung als auch die redaktionelle Tiefenprüfung mit 84/84 vollständig. Eine spätere relevante Änderung an T-SQL, Resultsets, Gates oder Kostenpfaden kann einzelne Seiten gemäß den Pflege- und Reviewregeln wieder auf `BASELINE` zurücksetzen.
 
 ## Abdeckungsvertrag
 
@@ -45,6 +45,7 @@ Eine `DEEP_REVIEWED`-Seite beantwortet aus Sicht des Anwenders und aus Sicht der
 10. **Leere oder partielle Ausgabe:** Unterschied zwischen keiner Zeile, `NULL`, 0, fehlender Berechtigung, deaktivierter Quelle, Filterwirkung und gekürzter Ausgabe.
 11. **Folgeanalyse:** Mindestens eine zweite, möglichst unabhängige Evidenzquelle; keine automatische Änderungsanweisung.
 12. **Primärquellen:** Links auf passende Microsoft-Produktdokumentation bei versions-, berechtigungs-, locking- oder kostenrelevanten Aussagen.
+13. **Weiterführende Vertiefung (optional):** sorgfältig ausgewählte externe Fach- oder Open-Source-Quellen, wenn sie die praktische Diagnose oder eine alternative Aufbereitung konkret vertiefen.
 
 Die gemeinsame Basis bildet das [Execution-, Zeit-, Evidenz- und Kostenmodell](Technical_Foundations.md). Vollständige Spaltentabellen dürfen im Familienguide bleiben, solange die Einzelseite die für die Entscheidung benötigten Schlüsselspalten erklärt und direkt auf die Detailtabelle verweist.
 
@@ -68,6 +69,8 @@ Jede `DEEP_REVIEWED`-Seite besitzt den Abschnitt `Eigenlast und Grenzen` mit ein
 
 Kostenklassen sind qualitative Betriebsrisiken und keine Laufzeitgarantie. `@MaxZeilen = 100` bedeutet insbesondere nicht automatisch, dass eine Quelle nur 100 Elemente lesen musste. Filter- und Limitposition in der tatsächlichen Datenkette müssen ausdrücklich beschrieben werden.
 
+Der dokumentierte sichere Einstieg muss mit den aktuellen Analyse-Gates ausführbar sein. Wenn bereits der gezeigte kleine Pfad eine Analyseklasse mit High-Impact-Bestätigung prüft, enthält das Beispiel `@HighImpactConfirmed = 1` und erläutert, dass die Bestätigung weder Scope, Quellarbeit noch Laufzeit begrenzt. `None`, `TBD` und `N/A` sind keine Kostenklassen; nicht anwendbare Ressourcen oder Nebenwirkungen werden stattdessen in der jeweiligen Dimension begründet.
+
 ## Fachlicher Mindestvertrag
 
 - Ein Einzelwert wird nicht als Root Cause dargestellt.
@@ -86,8 +89,14 @@ Kostenklassen sind qualitative Betriebsrisiken und keine Laufzeitgarantie. `@Max
 - Neue Beispiele verwenden ausschließlich eindeutig synthetische `Example*`-Werte. Reale Login-, Host-, Firmen-, Datenbank-, Objekt-, Pfad- oder Workloadwerte gehören weder in die Dokumentation noch in Reviewartefakte.
 - Tiefenprüfung ist kein Wortzahlwettbewerb. Ein kurzer Pfad darf kurz bleiben, muss Nichtanwendbares aber ausdrücklich und begründet ausweisen.
 
+## Externe Vertiefungen
+
+Microsoft-Produktdokumentation bleibt die Primärquelle für Engineverhalten, Versionen, Berechtigungen, Locks und dokumentierte Nebenwirkungen. Externe Links stehen in einem getrennten Abschnitt `Weiterführende Vertiefung` und dürfen diese Primärquelle nicht ersetzen.
+
+Eine externe Quelle wird nur aufgenommen, wenn sie einen konkreten Mehrwert für die betreffende Procedure besitzt, über HTTPS erreichbar ist und Autor beziehungsweise Organisation klar erkennbar sind. Bevorzugt werden etablierte, gepflegte Projektseiten oder fachlich fokussierte Referenzen. Reine Marketing-, Affiliate-, ungekennzeichnete Kopie- oder allgemeine Linklisten werden nicht verwendet. Tooldokumentation wird als alternative Praxisperspektive, nicht als Beweis für Produktaussagen beschrieben. Ein externer Link ist nicht pro Seite verpflichtend; fachliche Passung geht vor Anzahl.
+
 ## Automatische und manuelle Prüfung
 
-Die Strukturprüfung `Code/Tests/Static/900_Validate_Analysis_Documentation.ps1` vergleicht Referenz, SQL-Signaturen, Seiten, Resultset-Inventar und Review-Manifest. Für `DEEP_REVIEWED` erzwingt sie die Vertragsüberschriften, alle Kostendimensionen, Primärquellen, Beispielkennzeichnung und eine substanzielle Mindesttiefe. Die externe Linkprüfung kontrolliert URL-Struktur und dauerhafte HTTP-Fehler.
+Die Strukturprüfung `Code/Tests/Static/900_Validate_Analysis_Documentation.ps1` vergleicht Referenz, SQL-Signaturen, Seiten, Resultset-Inventar und Review-Manifest. Für `DEEP_REVIEWED` erzwingt sie die Vertragsüberschriften, alle Kostendimensionen, Primärquellen, Beispielkennzeichnung und eine substanzielle Mindesttiefe. Falls ein Abschnitt `Weiterführende Vertiefung` existiert, prüft sie außerdem die Trennung von Microsoft-Primärquellen und externen HTTPS-Quellen. Die externe Linkprüfung kontrolliert URL-Struktur und dauerhafte HTTP-Fehler.
 
 Diese Gates erkennen fehlende oder widersprüchliche Struktur, beweisen aber weder fachliche Richtigkeit noch angemessene Kosten im konkreten Produktionssystem. Vor jedem Merge bleiben ein manueller T-SQL-Abgleich, fachlicher Review und Datenschutzcheck des vollständigen Diffs verpflichtend.

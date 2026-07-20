@@ -2,7 +2,7 @@
 
 **Stand:** 20. Juli 2026<br>
 **Strukturelle Abdeckung:** 84 Procedures<br>
-**Tief geprüft nach Qualitätsvertrag v2:** 3 Procedures
+**Tief geprüft nach Qualitätsvertrag v2:** 84 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -17,15 +17,15 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 
 ## Reifegrad richtig lesen
 
-Alle 84 öffentlichen Procedures besitzen eine `BASELINE`-Seite. Das ist noch kein Nachweis, dass Kosten, Limits, Datenentstehung und Aussagegrenzen bereits vollständig am aktuellen T-SQL geprüft wurden. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
+Alle 84 öffentlichen Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
 
-Als fachliche Referenz für die weitere Überarbeitung dienen derzeit:
+Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
 - [USP_CurrentRequests](USP_CurrentRequests.md): flüchtiger Live-Snapshot,
 - [USP_IndexPhysicalStats](USP_IndexPhysicalStats.md): physischer Scan mit High-Impact-Gate,
 - [USP_ExtendedEventsReadEvents](USP_ExtendedEventsReadEvents.md): Datei/XML und bewusste Nebenwirkung.
 
-Bei allen übrigen Seiten bedeutet `BASELINE`: für Nutzung weiterhin mit SQL-Quelle, Familienguide und gemeinsamen Verträgen abgleichen; fehlende Tiefe nicht als nicht anwendbar interpretieren.
+Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung, Problem- und Gegenbeispiel, leere/partielle Ausgabe sowie ein vollständiges Kosten- und Grenzprofil aus. Externe Vertiefungslinks sind bewusst optional und ersetzen die Microsoft-Primärquellen nicht.
 
 ## Common
 

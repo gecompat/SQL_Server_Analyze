@@ -14,7 +14,7 @@
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
-Die 84 Seiten sind strukturell vollständig, aber noch nicht alle fachlich tief geprüft. Der [Qualitätsvertrag](Documentation_Quality_Contract.md) trennt `BASELINE` von `DEEP_REVIEWED`; aktuell bilden [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) die drei Referenzseiten für die weitere Überarbeitung.
+Die 84 Seiten sind strukturell vollständig und nach dem [Qualitätsvertrag](Documentation_Quality_Contract.md) fachlich `DEEP_REVIEWED`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) bleiben Kalibrierungsfälle für Live-Snapshot, physischen Scan und Datei-/XML-Analyse.
 
 Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_Concept.md) ist kein Anwenderhandbuch.
 
