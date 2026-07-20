@@ -31,7 +31,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentBlocking]
     , @HighImpactConfirmed        bit            = 0
     , @MaxZeilen                  int            = 1000
     , @ResultSetArt               varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen               bit             = 0
     , @Json                       nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen             bit             = 1
@@ -44,6 +44,9 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'blockingChains',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807)
@@ -588,7 +591,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#CurrentBlocking_BlockingChains'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

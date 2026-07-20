@@ -442,7 +442,7 @@ BEGIN
         IF @TargetTable IS NOT NULL
             EXEC [monitor].[InternalWriteResultTable]
                   @SourceTable=N'#CurrentIO_ModuleStatus'
-                , @ResultTable=@TargetTable
+                , @TargetTable=@TargetTable
                 , @ThrowOnError=1;
 
         SET @TargetTable=NULL;
@@ -452,7 +452,7 @@ BEGIN
         IF @TargetTable IS NOT NULL
             EXEC [monitor].[InternalWriteResultTable]
                   @SourceTable=N'#CurrentIO_Result'
-                , @ResultTable=@TargetTable
+                , @TargetTable=@TargetTable
                 , @ThrowOnError=1;
 
         SET @TargetTable=NULL;
@@ -462,7 +462,7 @@ BEGIN
         IF @TargetTable IS NOT NULL
             EXEC [monitor].[InternalWriteResultTable]
                   @SourceTable=N'#CurrentIO_DatabaseCandidateWarnings'
-                , @ResultTable=@TargetTable
+                , @TargetTable=@TargetTable
                 , @ThrowOnError=1;
     END;
 END;

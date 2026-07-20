@@ -48,6 +48,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/094_TVF_InterpretDatabaseMailStatus.sql
 :r ../01_Common/095_USP_InternalWriteResultTable.sql
 :r ../01_Common/096_USP_InternalPrepareResultTables.sql
+:r ../01_Common/097_USP_InternalPrepareSingleResultTable.sql
 :r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
 :r ../02_CurrentState/010_USP_CurrentSessions.sql
 :r ../02_CurrentState/020_USP_CurrentRequests.sql

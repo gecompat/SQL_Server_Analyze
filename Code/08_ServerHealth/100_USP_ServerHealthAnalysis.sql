@@ -38,7 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServerHealthAnalysis]
     , @HighImpactConfirmed              bit            = 0
     , @MaxZeilen        int           = 100
     , @ResultSetArt     varchar(16)   = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen     bit           = 0
     , @Json             nvarchar(max) = NULL OUTPUT
     , @PrintMeldungen   bit           = 1
@@ -51,6 +51,9 @@ BEGIN
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'moduleStatus',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
     IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @ChildJsonRequested bit = CASE WHEN @JsonErzeugen=1 OR @MitFindings=1 THEN 1 ELSE 0 END;
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
@@ -521,7 +524,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#ServerHealthAnalysis_ModuleStatus'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

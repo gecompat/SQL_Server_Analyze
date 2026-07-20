@@ -181,7 +181,7 @@ BEGIN
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_Sessions'
+                , @ResultTablesJson=N'{"sessions":"#CurrentOverview_Sessions"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -210,7 +210,7 @@ BEGIN
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_Requests'
+                , @ResultTablesJson=N'{"requests":"#CurrentOverview_Requests"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -236,7 +236,7 @@ BEGIN
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_Blocking'
+                , @ResultTablesJson=N'{"blockingChains":"#CurrentOverview_Blocking"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -263,7 +263,7 @@ BEGIN
                 , @SampleSeconds=@SampleSeconds
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_Waits'
+                , @ResultTablesJson=N'{"currentTasks":"#CurrentOverview_Waits"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -289,7 +289,7 @@ BEGIN
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_Transactions'
+                , @ResultTablesJson=N'{"transactions":"#CurrentOverview_Transactions"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -315,7 +315,7 @@ BEGIN
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_MemoryGrants'
+                , @ResultTablesJson=N'{"memoryGrants":"#CurrentOverview_MemoryGrants"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -339,7 +339,7 @@ BEGIN
                   @SessionIds=@SessionIds
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_TempDBSessions'
+                , @ResultTablesJson=N'{"sessions":"#CurrentOverview_TempDBSessions"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -392,7 +392,7 @@ BEGIN
                 , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTable=N'#CurrentOverview_Logs'
+                , @ResultTablesJson=N'{"logs":"#CurrentOverview_Logs"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen;
@@ -605,7 +605,7 @@ BuildOutputs:
             IF @CanExport=1
                 EXEC [monitor].[InternalWriteResultTable]
                       @SourceTable=@ExportSourceTable
-                    , @ResultTable=@ExportTargetTable
+                    , @TargetTable=@ExportTargetTable
                     , @ThrowOnError=1;
 
             FETCH NEXT FROM [ExportCursor] INTO @ExportResultName,@ExportTargetTable;

@@ -25,7 +25,7 @@ GO
 
 CREATE OR ALTER PROCEDURE [monitor].[InternalWriteResultTable]
       @SourceTable  sysname
-    , @ResultTable  sysname
+    , @TargetTable  sysname
     , @InsertedRows bigint         = NULL OUTPUT
     , @StatusCode   varchar(40)    = NULL OUTPUT
     , @ErrorNumber  int            = NULL OUTPUT
@@ -55,20 +55,20 @@ BEGIN
     IF @SourceTable IS NULL
        OR LEFT(@SourceTable, 1) <> N'#'
        OR LEFT(@SourceTable, 2) = N'##'
-       OR @ResultTable IS NULL
-       OR LEFT(@ResultTable, 1) <> N'#'
-       OR LEFT(@ResultTable, 2) = N'##'
+       OR @TargetTable IS NULL
+       OR LEFT(@TargetTable, 1) <> N'#'
+       OR LEFT(@TargetTable, 2) = N'##'
        OR LEN(@SourceTable) > 116
-       OR LEN(@ResultTable) > 116
-       OR @ResultTable LIKE N'#Monitor%' COLLATE Latin1_General_100_CI_AS
+       OR LEN(@TargetTable) > 116
+       OR @TargetTable LIKE N'#Monitor%' COLLATE Latin1_General_100_CI_AS
     BEGIN
         SELECT
               @StatusCode = 'INVALID_PARAMETER'
-            , @ErrorMessage = N'@SourceTable und @ResultTable müssen lokale #Temp-Tabellen bezeichnen; ##Temp-, permanente Tabellen und das reservierte Präfix #Monitor sind nicht zulässig.';
+            , @ErrorMessage = N'@SourceTable und @TargetTable müssen lokale #Temp-Tabellen bezeichnen; ##Temp-, permanente Tabellen und das reservierte Präfix #Monitor sind nicht zulässig.';
         GOTO TableWriteFailed;
     END;
 
-    IF @SourceTable = @ResultTable COLLATE Latin1_General_100_CI_AS
+    IF @SourceTable = @TargetTable COLLATE Latin1_General_100_CI_AS
     BEGIN
         SELECT
               @StatusCode = 'INVALID_PARAMETER'
@@ -123,7 +123,7 @@ BEGIN
     END;
 
     BEGIN TRY
-        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@ResultTable)
+        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@TargetTable)
                         + N' ADD ' + QUOTENAME(@TargetMarker) + N' bit NULL;';
         EXEC [sys].[sp_executesql] @ResolveSql;
     END TRY
@@ -131,7 +131,7 @@ BEGIN
         SELECT
               @StatusCode = CASE WHEN ERROR_NUMBER() = 1222 THEN 'LOCK_TIMEOUT' ELSE 'TARGET_NOT_FOUND' END
             , @ErrorNumber = ERROR_NUMBER()
-            , @ErrorMessage = N'@ResultTable konnte nicht aufgelöst werden: ' + ERROR_MESSAGE();
+            , @ErrorMessage = N'@TargetTable konnte nicht aufgelöst werden: ' + ERROR_MESSAGE();
         GOTO TableWriteFailed;
     END CATCH;
 
@@ -142,7 +142,7 @@ BEGIN
     WHERE [c].[name] = @TargetMarker;
 
     BEGIN TRY
-        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@ResultTable)
+        SET @ResolveSql = N'ALTER TABLE ' + QUOTENAME(@TargetTable)
                         + N' DROP COLUMN ' + QUOTENAME(@TargetMarker) + N';';
         EXEC [sys].[sp_executesql] @ResolveSql;
     END TRY
@@ -158,7 +158,7 @@ BEGIN
     BEGIN
         SELECT
               @StatusCode = 'METADATA_NOT_VISIBLE'
-            , @ErrorMessage = N'@ResultTable ist vorhanden, ihre Katalogzeile war jedoch ohne Warten nicht sichtbar.';
+            , @ErrorMessage = N'@TargetTable ist vorhanden, ihre Katalogzeile war jedoch ohne Warten nicht sichtbar.';
         GOTO TableWriteFailed;
     END;
 
@@ -333,7 +333,7 @@ BEGIN
 
         DECLARE @HasRowsSql nvarchar(max) =
             N'SELECT @HasRows = CONVERT(bit, CASE WHEN EXISTS (SELECT 1 FROM '
-            + QUOTENAME(@ResultTable)
+            + QUOTENAME(@TargetTable)
             + N') THEN 1 ELSE 0 END);';
 
         BEGIN TRY
@@ -398,10 +398,10 @@ BEGIN
 
         BEGIN TRY
             DECLARE @AlterSql nvarchar(max) =
-                  N'ALTER TABLE ' + QUOTENAME(@ResultTable) + N' ADD ' + QUOTENAME(@BridgeColumnName) + N' bit NULL;'
-                + N' ALTER TABLE ' + QUOTENAME(@ResultTable) + N' DROP COLUMN ' + QUOTENAME(@DummyColumnName) + N';'
-                + N' ALTER TABLE ' + QUOTENAME(@ResultTable) + N' ADD ' + @ColumnDefinitions + N';'
-                + N' ALTER TABLE ' + QUOTENAME(@ResultTable) + N' DROP COLUMN ' + QUOTENAME(@BridgeColumnName) + N';';
+                  N'ALTER TABLE ' + QUOTENAME(@TargetTable) + N' ADD ' + QUOTENAME(@BridgeColumnName) + N' bit NULL;'
+                + N' ALTER TABLE ' + QUOTENAME(@TargetTable) + N' DROP COLUMN ' + QUOTENAME(@DummyColumnName) + N';'
+                + N' ALTER TABLE ' + QUOTENAME(@TargetTable) + N' ADD ' + @ColumnDefinitions + N';'
+                + N' ALTER TABLE ' + QUOTENAME(@TargetTable) + N' DROP COLUMN ' + QUOTENAME(@BridgeColumnName) + N';';
 
             EXEC [sys].[sp_executesql] @AlterSql;
         END TRY
@@ -479,7 +479,7 @@ BEGIN
     BEGIN
         SELECT
               @StatusCode = 'TARGET_SCHEMA_MISMATCH'
-            , @ErrorMessage = N'Die vorhandene Struktur von @ResultTable stimmt nicht exakt mit dem ausgewählten Resultset überein.';
+            , @ErrorMessage = N'Die vorhandene Struktur von @TargetTable stimmt nicht exakt mit dem ausgewählten Resultset überein.';
         GOTO TableWriteFailed;
     END;
 
@@ -500,7 +500,7 @@ BEGIN
 
     BEGIN TRY
         DECLARE @InsertSql nvarchar(max) =
-              N'INSERT ' + QUOTENAME(@ResultTable) + N' (' + @ColumnList + N')'
+              N'INSERT ' + QUOTENAME(@TargetTable) + N' (' + @ColumnList + N')'
             + N' SELECT ' + @ColumnList + N' FROM ' + QUOTENAME(@SourceTable) + N';'
             + N' SET @Rows = @@ROWCOUNT;';
 

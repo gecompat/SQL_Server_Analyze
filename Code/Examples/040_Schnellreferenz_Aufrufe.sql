@@ -17,7 +17,7 @@ CREATE TABLE [#Schnellreferenz_Aufrufe_RequestResult] ([Dummy] int NULL);
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen=100
     , @ResultSetArt='TABLE'
-    , @ResultTable=N'#Schnellreferenz_Aufrufe_RequestResult';
+    , @ResultTablesJson=N'{"requests":"#Schnellreferenz_Aufrufe_RequestResult"}';
 SELECT * FROM [#Schnellreferenz_Aufrufe_RequestResult] ORDER BY [SessionId],[RequestId];
 DROP TABLE [#Schnellreferenz_Aufrufe_RequestResult];
 
