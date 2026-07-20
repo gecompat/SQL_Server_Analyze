@@ -29,7 +29,8 @@ EXEC [monitor].[USP_FullTextAnalysis]
      @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleFullText%',
      @MaxZeilen=10,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1
    OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE','AVAILABLE_LIMITED','UNAVAILABLE_FEATURE')
    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.fullTextIndexes'))<>0
@@ -42,7 +43,8 @@ EXEC [monitor].[USP_FullTextAnalysis]
      @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleFullTextA',
      @MaxZeilen=0,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1
    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.fullTextIndexes'))<>0
     THROW 55702,N'P2-Vertrag FULLTEXT-FILTER fehlgeschlagen.',1;
@@ -53,7 +55,8 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_FullTextAnalysis]
      @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=1,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1
    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.catalogs'))>1
    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.fullTextIndexes'))>1

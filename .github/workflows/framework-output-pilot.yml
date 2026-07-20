@@ -6,10 +6,14 @@ on:
       - '.github/workflows/framework-output-pilot.yml'
       - 'Code/01_Common/082_TVF_DatabaseCandidates.sql'
       - 'Code/01_Common/083_USP_PrepareDatabaseCandidates.sql'
+      - 'Code/01_Common/095_USP_InternalWriteResultTable.sql'
       - 'Code/01_Common/096_USP_InternalPrepareResultTables.sql'
+      - 'Code/01_Common/097_USP_InternalPrepareSingleResultTable.sql'
+      - 'Code/01_Common/098_USP_InternalEmitConsoleResult.sql'
       - 'Code/02_CurrentState/080_USP_CurrentIO.sql'
       - 'Code/02_CurrentState/100_USP_CurrentOverview.sql'
       - 'Code/Tests/Integration/188_Framework_Output_Pilot_Runtime_Contract.sql'
+      - 'Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql'
       - 'Code/Install/Install_All.sql'
   workflow_dispatch:
 

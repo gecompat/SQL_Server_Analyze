@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-18 — 84 Procedures
+Stand: 2026-07-20 — 84 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -24,7 +24,7 @@ CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL);
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen = 100
     , @ResultSetArt = 'TABLE'
-    , @ResultTable = N'#CurrentRequests_Result';
+    , @ResultTablesJson = N'{"requests":"#CurrentRequests_Result"}';
 SELECT * FROM #CurrentRequests_Result ORDER BY [SessionId],[RequestId];
 
 EXEC [monitor].[USP_DatabaseIntegrityAnalysis] @DatabaseNames=N'',@MitPageDetails=0,@MaxZeilen=100;

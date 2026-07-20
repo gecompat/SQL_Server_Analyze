@@ -62,15 +62,17 @@
 - `USP_PlanCacheAnalysis` materialisiert `sys.dm_exec_query_stats` bei mindestens zwei aktiven Consumern einmalig; Query Stats, Query Hash und die Showplan-Kandidatenauswahl verwenden denselben laufgebundenen Stand.
 - Ein einzelner Plan-Cache-Consumer und jeder direkte Child-Aufruf lesen weiterhin frisch. `READPAST` wird nicht verwendet; ein gescheiterter gemeinsamer Read führt zum isolierten Frischlese-Fallback.
 
-## Stand 2026-07-19 – typisierte TABLE-Ausgabe `1.1.0-special.11`
+## Stand 2026-07-20 – frameworkweiter Ausgabe-Vertrag 2.0
 
-- Alle 82 öffentlichen Analyse-Procedures akzeptieren `@ResultSetArt='TABLE'` und `@ResultTable`.
-- Der interne Writer passt jede leere lokale Ein-Spalten-Tabelle unabhängig von Dummy-Spaltenname und -typ an die native Primärstruktur an oder ergänzt eine bereits exakt passende Tabelle.
+- Alle 82 öffentlichen Analyse-Procedures akzeptieren ausschließlich die benannte TABLE-Zuordnung `@ResultTablesJson`; der frühere Einzelzielparameter ist entfernt.
+- CONSOLE liefert je Procedure im Normalfall ein fachliches Grid und bei leerer Fachmenge genau eine verständliche Zeile; technische Meta-Grids und leere Details werden unterdrückt.
+- Der gemeinsame Preflight lehnt unbekannte Resultsetnamen, doppelte Ziele und ungültige Temp-Tabellen vor dem fachlichen Systemzugriff ab.
+- `USP_CurrentOverview` materialisiert jedes Child genau einmal und verwendet dessen expliziten Status-, Partialitäts- und Zeilenvertrag für Summary, Details, JSON und TABLE.
 - Globale Temp- und permanente Tabellen, gefüllte Ein-Spalten-Tabellen, sonstige Schemaabweichungen sowie nicht sicher reproduzierbare Typen werden kontrolliert abgelehnt.
 - Alle in Procedures und Tests erzeugten lokalen Temp-Tabellen tragen einen objektbezogenen Namen; die gemeinsamen Auswahl-Helper erhalten die konkreten Namen als Parameter.
 - Katalogzugriffe verwenden projektweit `WITH (NOLOCK)` und `LOCK_TIMEOUT 0`; potenziell blockierende Metadatenfunktionen sind durch direkte `sys.*`-Abfragen oder einen expliziten Nicht-verfügbar-Status ersetzt. Ein statischer Gate schützt den Vertrag.
-- `Metadata/Inventory/TableOutput.csv` weist das Primärergebnis jeder Procedure aus; Aggregatoren liefern Modulstatus oder Modul-Envelopes.
-- Suite 187 erweitert den Release-Gate-Vertrag auf 32 Suiten und prüft Struktur, Typen, Append sowie fehlerseitige Unverändertheit mit synthetischen Daten.
+- `Metadata/Inventory/ResultSets.csv` inventarisiert alle 94 TABLE-exportierbaren Resultsets einschließlich stabiler Namen und geordneter nativer Schemas.
+- Die Suiten 187 bis 189 prüfen Writer, Pilot und frameworkweiten Ausgabe-Laufzeitvertrag synthetisch auf SQL Server 2019, 2022 und 2025.
 
 ## Stand 2026-07-19 – integrierte technische Analyse-Guides
 

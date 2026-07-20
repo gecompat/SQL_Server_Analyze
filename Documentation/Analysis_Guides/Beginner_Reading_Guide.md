@@ -113,7 +113,9 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Warum problematisch:** Eine explizit angeforderte Datenbank, die in der Warnung als nicht verfügbar erscheint, fehlt anschließend vollständig in der Fachanalyse. Das kann zu falscher Entwarnung führen, wenn die Warnung ignoriert wird.
 
-**Wann nicht problematisch:** `@MaxDatenbanken=1` schneidet eine explizite Liste nicht ab. Explizit genannte Datenbanken werden absichtlich als vollständiger Auftrag behandelt.
+**Wann nicht problematisch:** Die vollständige Kandidatenmenge ist beabsichtigt.
+Explizit genannte, aber nicht verfügbare Datenbanken werden als Warning
+ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zwei Datenbanken wurden angefordert, eine ist offline. Die Analyse enthält nur die online Datenbank; die Warnung muss als fehlender Scope dokumentiert werden.
 

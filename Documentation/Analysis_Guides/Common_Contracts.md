@@ -1,6 +1,6 @@
 # Gemeinsame Verträge und Interpretationsregeln
 
-**Stand:** 19. Juli 2026
+**Stand:** 20. Juli 2026
 
 Dieses Dokument gilt für alle Analyse-Procedures. Die familienbezogenen Guides wiederholen nur Abweichungen und verfahrensspezifische Besonderheiten.
 
@@ -8,12 +8,16 @@ Dieses Dokument gilt für alle Analyse-Procedures. Die familienbezogenen Guides 
 
 | Wert | Bedeutung | Geeignet für |
 |---|---|---|
-| `CONSOLE` | verdichtete, lesbare Ad-hoc-Ausgabe | interaktive Analyse in SSMS oder Azure Data Studio |
+| `CONSOLE` | genau eine verdichtete Fachansicht; bei Leere eine verständliche Zeile | interaktive Analyse in SSMS oder Azure Data Studio |
 | `RAW` | stabiler technischer Resultset-Vertrag | genaue Spaltenanalyse, Tests und Consumer |
-| `TABLE` | primäres typisiertes Ergebnis in lokaler `#Temp`-Tabelle | Weiterverarbeitung in derselben SQL-Sitzung |
+| `TABLE` | semantisch benannte typisierte Ergebnisse in lokalen `#Temp`-Tabellen | Weiterverarbeitung in derselben SQL-Sitzung |
 | `NONE` | keine fachlichen Resultsets | JSON-only, Aggregatoren und statusorientierte Aufrufe |
 
-Bei technischer Verarbeitung ist `RAW` oder `TABLE` ausdrücklich zu setzen. Die sichtbare CONSOLE-Ausgabe kann Spalten ausblenden, formatieren oder mehrere technische Werte zusammenfassen. `TABLE` benötigt eine vom Aufrufer angelegte leere lokale Tabelle mit genau einer beliebigen Dummy-Spalte, beispielsweise `CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL)`, und `@ResultTable=N'#CurrentRequests_Result'`. Permanente Tabellen und globale Temp-Tabellen sind nicht Bestandteil dieses Vertrags.
+Bei technischer Verarbeitung ist `RAW` oder `TABLE` ausdrücklich zu setzen.
+CONSOLE gibt keine separaten technischen Meta-Grids und keine leeren Details aus.
+`TABLE` verwendet ausschließlich `@ResultTablesJson`, beispielsweise
+`N'{"requests":"#CurrentRequests_Result"}'`. Permanente Tabellen und globale
+Temp-Tabellen sind nicht Bestandteil dieses Vertrags.
 
 Jede öffentliche Procedure bleibt eigenständig aufrufbar und ermittelt zeitabhängige Daten für ihren eigenen Aufruf frisch. Ruft ein Orchestrator mehrere Children im selben Lauf auf, darf er ein bereits erhobenes Ergebnis weiterreichen, wenn Quelle, Scope, Filter, Optionen und Berechtigungskontext fachlich gleich sind oder das Parent-Ergebnis ein nachweisbares Superset bildet. Der Childstatus kennzeichnet dies als `REUSED_PARENT_RESULT`; ein unvollständiges Ergebnis bleibt unvollständig und darf nicht als frische Vollerhebung erscheinen. Nur fehlende beziehungsweise wegen einer Sperre nicht erhobene Teilbereiche dürfen gezielt nachgelesen werden. Zwischen nacheinander ausgeführten öffentlichen Procedures existiert bewusst kein impliziter Cache, weil dessen Alter und Scope sonst die Ergebnissemantik verändern würden.
 
@@ -51,7 +55,8 @@ Die tatsächliche Statusliste ist procedureabhängig. `IsPartial = 1` hat Vorran
 - `@MaxZeilen > 0`: begrenzt die ausgegebenen Zeilen.
 - `@MaxZeilen = 0` oder `NULL`: unbegrenzt.
 - Negative Werte: ungültig.
-- `@MaxDatenbanken`: begrenzt Datenbankkandidaten, nicht Zeilen je Datenbank.
+- Datenbankkandidaten werden vor globaler Bewertung und Sortierung nicht willkürlich begrenzt.
+- Breite ressourcenintensive Pfade benötigen `@HighImpactConfirmed=1`; leichte Pfade nicht.
 - `@MaxAnalyseobjekte`: begrenzt teure Plan-/XML-Analyseobjekte.
 - Spezielle Limits wie `@MaxVerteilungsStatistiken` verhindern breite Tiefenscans.
 
@@ -83,11 +88,10 @@ Frameworktypisch bedeutet:
 
 | Wert | Bedeutung |
 |---|---|
-| `N''` | aktuelle Datenbank |
-| `NULL` | alle zulässigen Datenbanken, abhängig von Procedure und Berechtigung |
+| `N''` oder `NULL` | alle sichtbaren Online-Benutzerdatenbanken |
 | explizite Liste | nur genannte Datenbanken |
 
-Der konkrete Guide weist auf Abweichungen hin.
+Systemdatenbanken benötigen stets `@SystemdatenbankenEinbeziehen=1`.
 
 ## 5. Gemeinsame technische Spalten
 

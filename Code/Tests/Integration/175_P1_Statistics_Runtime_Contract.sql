@@ -172,7 +172,8 @@ BEGIN TRY
          @ModificationWarnPercent=100,@PartitionSpreadWarnPercent=100,
          @MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE'
        OR NOT EXISTS
           (SELECT 1
@@ -205,7 +206,8 @@ BEGIN TRY
          @ModificationWarnPercent=100,@PartitionSpreadWarnPercent=100,
          @MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE_WITH_FINDING'
        OR NOT EXISTS
           (SELECT 1
@@ -229,7 +231,8 @@ BEGIN TRY
          @ModificationWarnPercent=100,@PartitionSpreadWarnPercent=100,
          @MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE_WITH_FINDING'
        OR NOT EXISTS
           (SELECT 1
@@ -253,7 +256,8 @@ BEGIN TRY
          @ModificationWarnPercent=20,@PartitionSpreadWarnPercent=100,
          @MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE_WITH_FINDING'
        OR NOT EXISTS
           (SELECT 1
@@ -277,7 +281,8 @@ BEGIN TRY
          @ModificationWarnPercent=100,@PartitionSpreadWarnPercent=100,
          @MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE'
        OR NOT EXISTS
           (SELECT 1
@@ -304,7 +309,8 @@ BEGIN TRY
          @ModificationWarnPercent=100,@PartitionSpreadWarnPercent=20,
          @MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE_WITH_FINDING'
        OR NOT EXISTS
           (SELECT 1
@@ -334,7 +340,8 @@ BEGIN TRY
          @ModificationWarnPercent=100,@PartitionSpreadWarnPercent=100,
          @MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING')
        OR TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.distributionCount'))<>2
        OR EXISTS
@@ -385,7 +392,8 @@ FROM
              @MaxVerteilungsStatistiken=1,@MinVerteilungsZeilen=0,
              @MaxZeilen=0,@ResultSetArt='NONE',
              @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-             @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+             @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+             @HighImpactConfirmed=1;
         REVERT;
         SET @Impersonating=0;
         IF ISJSON(@Json)<>1 OR @Status<>'DENIED_GROUP' OR @Partial<>1

@@ -110,12 +110,13 @@ Für die vollständige Aufrufsammlung siehe:
 
 | Ausgabeart | Zweck |
 |---|---|
-| `CONSOLE` | lesbare, formatierte Ad-hoc-Ausgabe |
+| `CONSOLE` | genau eine lesbare Fachansicht; bei Leere eine verständliche Zeile |
 | `RAW` | stabiler technischer Resultset-Vertrag |
-| `TABLE` | primäres typisiertes Ergebnis in eine lokale `#Temp`-Tabelle des Aufrufers |
+| `TABLE` | benannte typisierte Ergebnisse in lokale `#Temp`-Tabellen des Aufrufers |
 | `NONE` | keine fachlichen Resultsets, beispielsweise bei reiner JSON-Nutzung |
 
-Für `TABLE` legt der Aufrufer eine leere Tabelle mit genau einer beliebigen Dummy-Spalte an; das Framework ersetzt diese Spalte durch die native Struktur des primären Ergebnisses:
+Für `TABLE` legt der Aufrufer je gewünschtem benannten Ergebnis eine leere
+Tabelle mit genau einer beliebigen Seed-Spalte an:
 
 ```sql
 CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL);
@@ -123,7 +124,7 @@ CREATE TABLE #CurrentRequests_Result ([Dummy] int NULL);
 EXEC [monitor].[USP_CurrentRequests]
       @MaxZeilen = 100
     , @ResultSetArt = 'TABLE'
-    , @ResultTable = N'#CurrentRequests_Result';
+    , @ResultTablesJson = N'{"requests":"#CurrentRequests_Result"}';
 
 SELECT * FROM #CurrentRequests_Result;
 ```
@@ -234,7 +235,11 @@ Empfohlene Einstiegspunkte:
 
 Der Repositorybestand enthält reproduzierbare statische API-, Installer- und Dokumentationsprüfungen sowie dokumentierte Datenschutz- und Migrationsaudits. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json). Das unter [`Documentation/Quality/Repository_Privacy_Validation.md`](./Documentation/Quality/Repository_Privacy_Validation.md) beschriebene Repository- und ZIP-Datenschutzgate prüft versionierte Dateien und den vollständigen ZIP-Lieferumfang automatisiert, ohne Laufzeit-Resultsets zu verändern.
 
-Die Version `1.1.0-special.12` vertieft alle 347 kuratierten Wait Types um Einordnung, Ursachenhypothesen, Wirkung, Minderungsansätze, Gegenbeweise, Queranalysen und Messhinweise. Typisierte Quellen trennen Definition, Messmethodik, Interpretation und Diagnose; interne Waits bleiben als begrenzte Evidenz kenntlich. Der typisierte `TABLE`-/`@ResultTable`-Vertrag, blockierungsarme Katalogzugriffe, objektbezogene lokale Temp-Namen und die vorhandene Drei-Versionen-Evidenz der P0-/P1-/P2-Verträge bleiben erhalten.
+Der frameworkweite Ausgabe-Vertrag 2.0 verarbeitet ohne expliziten Filter alle
+sichtbaren Online-Benutzerdatenbanken, fordert eine Bestätigung nur für den
+tatsächlich aktivierten High-Impact-Pfad und verwendet für TABLE ausschließlich
+`@ResultTablesJson`. Das Resultsetinventar dokumentiert stabile Namen und native
+Schemas; alle Exportziele stammen aus derselben Aufrufmaterialisierung.
 
 Die geplanten SQL-Server-, Editions-, Plattform- und Berechtigungskombinationen stehen in [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv). `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 
