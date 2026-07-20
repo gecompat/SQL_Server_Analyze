@@ -1,0 +1,187 @@
+name: Framework output pilot
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/framework-output-pilot.yml'
+      - 'Code/01_Common/082_TVF_DatabaseCandidates.sql'
+      - 'Code/01_Common/083_USP_PrepareDatabaseCandidates.sql'
+      - 'Code/01_Common/096_USP_InternalPrepareResultTables.sql'
+      - 'Code/02_CurrentState/080_USP_CurrentIO.sql'
+      - 'Code/02_CurrentState/100_USP_CurrentOverview.sql'
+      - 'Code/Tests/Integration/188_Framework_Output_Pilot_Runtime_Contract.sql'
+      - 'Code/Install/Install_All.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: framework-output-pilot-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pilot:
+    name: SQL Server ${{ matrix.version }} output pilot
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '2019'
+            major: '15'
+            compatibility: '150'
+            image: 'mcr.microsoft.com/mssql/server:2019-latest'
+            container: 'sqlserver-output-pilot-2019'
+          - version: '2022'
+            major: '16'
+            compatibility: '160'
+            image: 'mcr.microsoft.com/mssql/server:2022-latest'
+            container: 'sqlserver-output-pilot-2022'
+          - version: '2025'
+            major: '17'
+            compatibility: '170'
+            image: 'mcr.microsoft.com/mssql/server:2025-latest'
+            container: 'sqlserver-output-pilot-2025'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Prepare isolated SQL files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R Code "$RUNNER_TEMP/Code"
+          find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
+            | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
+
+      - name: Generate ephemeral SQL credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$password"
+          echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Start synthetic SQL Server
+        shell: bash
+        env:
+          SQLSERVER_IMAGE: ${{ matrix.image }}
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          docker pull --quiet "$SQLSERVER_IMAGE" >/dev/null
+          image_digest=$(docker image inspect --format='{{index .RepoDigests 0}}' "$SQLSERVER_IMAGE")
+          if [[ ! "$image_digest" =~ ^mcr\.microsoft\.com/mssql/server@sha256:[0-9a-f]{64}$ ]]; then
+            echo 'SQL Server container image digest validation failed.'
+            exit 1
+          fi
+          docker run --name "$SQLSERVER_CONTAINER" \
+            --detach \
+            --env ACCEPT_EULA=Y \
+            --env MSSQL_PID=Developer \
+            --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
+            "$image_digest" >/dev/null
+
+      - name: Wait for readiness
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+          SQLSERVER_MAJOR: ${{ matrix.major }}
+        run: |
+          set -euo pipefail
+          sqlcmd_path=''
+          ready=0
+          for attempt in $(seq 1 120); do
+            sqlcmd_path=$(docker exec "$SQLSERVER_CONTAINER" bash -lc \
+              "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
+              || true)
+            if [ -n "$sqlcmd_path" ] && docker exec \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              "$SQLSERVER_CONTAINER" \
+              "$sqlcmd_path" -S localhost -U sa -C -b -Q \
+              "SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>$SQLSERVER_MAJOR THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;" \
+              >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker logs --tail 40 "$SQLSERVER_CONTAINER"
+            exit 1
+          fi
+          echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+
+      - name: Create synthetic test database
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+          SQLSERVER_COMPATIBILITY: ${{ matrix.compatibility }}
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = $SQLSERVER_COMPATIBILITY;" \
+            >/dev/null
+
+      - name: Install framework
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          install_log="$RUNNER_TEMP/framework-output-pilot-install.log"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Install \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql \
+            >"$install_log" 2>&1; then
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 120 || true
+            exit 1
+          fi
+
+      - name: Run output pilot contract
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          pilot_log="$RUNNER_TEMP/framework-output-pilot-test.log"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests/Integration \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i 188_Framework_Output_Pilot_Runtime_Contract.sql \
+            >"$pilot_log" 2>&1; then
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$pilot_log" | tail -n 120 || true
+            tail -n 80 "$pilot_log"
+            exit 1
+          fi
+
+      - name: Record generic success summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '## Framework output pilot'
+            echo '- Synthetic SQL Server version: ${{ matrix.version }}'
+            echo '- Installer: passed'
+            echo '- Database selection contract: passed'
+            echo '- CONSOLE and named TABLE pilot: passed'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop synthetic SQL Server
+        if: always()
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: docker rm --force "$SQLSERVER_CONTAINER" >/dev/null 2>&1 || true
