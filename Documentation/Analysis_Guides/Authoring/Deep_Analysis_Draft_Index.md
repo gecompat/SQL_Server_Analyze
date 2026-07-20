@@ -3,7 +3,7 @@
 **Stand:** 20. Juli 2026<br>
 **Status:** Index des integrierten Authoring-Archivs; nicht kanonisch<br>
 **Research-Abdeckung:** 84 von 84 öffentlichen Procedures<br>
-**Fachliche Tiefenprüfung nach Qualitätsvertrag v2:** 3 von 84 Procedure-Seiten
+**Fachliche Tiefenprüfung nach Qualitätsvertrag v2:** 84 von 84 Procedure-Seiten
 
 ## Zweck und Aussagegrenze
 
@@ -29,19 +29,15 @@ Für die Nutzung gelten [Technical_Foundations.md](../Technical_Foundations.md) 
 
 Jede der 84 Research-Sections besitzt Leitfrage, technischen Hintergrund, Datenkette, Zeit-/Scope-Modell, Bewertung und Gegenprobe, typische Fehlinterpretation sowie Folgeanalyse. Diese Felder bilden eine Arbeitsgrundlage.
 
-Erst der Status `DEEP_REVIEWED` bestätigt zusätzlich den Abgleich der kanonischen Seite mit aktuellem T-SQL, sicheren Aufrufen, Resultsetvertrag, konkreter Leserichtung, synthetischen Beispielen, Primärquellen und vollständigem Kosten-/Grenzprofil. Aktuell erfüllen dies:
-
-- [`USP_CurrentRequests`](../Procedures/USP_CurrentRequests.md),
-- [`USP_IndexPhysicalStats`](../Procedures/USP_IndexPhysicalStats.md),
-- [`USP_ExtendedEventsReadEvents`](../Procedures/USP_ExtendedEventsReadEvents.md).
+Erst der Status `DEEP_REVIEWED` bestätigt zusätzlich den Abgleich der kanonischen Seite mit aktuellem T-SQL, sicheren Aufrufen, Resultsetvertrag, konkreter Leserichtung, synthetischen Beispielen, Primärquellen und vollständigem Kosten-/Grenzprofil. Diesen Status erfüllen alle 84 kanonischen [Procedure-Seiten](../Procedures/README.md); das [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv) hält Datum und Vertragsversion je Procedure fest.
 
 ## Validierter Stand
 
 - aktuelles öffentliches Inventory: 84 Procedures,
 - Familien-Research-Sections: 84,
-- kanonische Procedure-Seiten: 84 `BASELINE` oder besser,
-- fachlich tief geprüfte Referenzseiten: 3,
-- Primärquellen-Domain im Authoring-Archiv: ausschließlich `learn.microsoft.com`,
+- kanonische Procedure-Seiten: 84 `DEEP_REVIEWED`,
+- fachlich tief geprüfte Procedure-Seiten: 84,
+- Primärquellen für Engine-, Versions- und Berechtigungsaussagen: Microsoft Learn; ausgewählte kanonische Seiten ergänzen praxisnahe externe Vertiefungen mit ausdrücklich begrenztem Evidenzrang,
 - Beispiele verwenden keine realen Laufzeit-, Benutzer-, Firmen- oder Umgebungswerte,
 - die Dokumentationsintegration ändert kein T-SQL-Runtimeverhalten.
 

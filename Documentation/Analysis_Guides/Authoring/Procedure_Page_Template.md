@@ -70,6 +70,12 @@ Jede neue öffentliche Analyse-Procedure benötigt eine Datei unter `Procedures/
 
 - [Passende Microsoft-Produktdokumentation](https://learn.microsoft.com/...)
 
+## Weiterführende Vertiefung
+
+Optional und nur bei konkretem Mehrwert:
+
+- [Externe Fach- oder Projektquelle](https://example.org/...)
+
 Technische Detailbeschreibung: ../Familienguide.md#anker
 ```
 
@@ -84,9 +90,12 @@ Technische Detailbeschreibung: ../Familienguide.md#anker
 - CONSOLE als fachlichen Einstieg, RAW für vollständige technische Resultsets und TABLE für die typisierte SQL-interne Weiterverarbeitung des im Resultset-Inventar benannten Ergebnisses erklären.
 - Bei `@MaxZeilen`, `TOP` und Filtern anhand des T-SQL angeben, ob sie Quellarbeit oder nur Rückgabemenge begrenzen.
 - Kosten des Standardpfads und des teuersten zulässigen Pfads getrennt bewerten.
+- Der sichere Beispielaufruf muss mit den dokumentierten Gates tatsächlich ausführbar sein. Prüft bereits dieser Pfad eine Analyseklasse mit High-Impact-Bestätigung, muss er `@HighImpactConfirmed = 1` zeigen und zugleich erklären, dass die Bestätigung keine Scopebegrenzung ist.
+- Kostenklasse in Kopf und Kostentabelle aus dem realen Quellpfad ableiten; Platzhalter wie `None`, `TBD` oder `N/A` sind unzulässig.
 - Locking, I/O, CPU, Speicher, TempDB, Ergebnistransfer und bewusste Nebenwirkungen nur als nicht anwendbar ausweisen, wenn dies aus dem Quellpfad begründbar ist.
 - Keine automatische DDL-, `KILL`-, Failover-, Repair- oder Forcing-Empfehlung.
 - Nur eindeutig synthetische `Example*`-Werte in Beispielen.
 - Primärquellen direkt auf die relevante Microsoft-Produktseite verlinken; Drafts oder Sekundärblogs sind kein Ersatz.
+- Externe Vertiefungen getrennt ausweisen, als ergänzende Praxisperspektive beschreiben und nicht zur Begründung von Engine-, Versions- oder Berechtigungsaussagen verwenden.
 
 Nicht jede Seite benötigt dieselbe Länge. Nicht anwendbare Punkte müssen jedoch ausdrücklich erklärt werden. Der Manifeststatus wird erst nach fachlichem Abgleich mit der kanonischen SQL-Quelle auf `DEEP_REVIEWED` gesetzt.

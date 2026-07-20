@@ -59,7 +59,23 @@ $referenceDeepReviewedPages = @(
     'USP_IndexPhysicalStats',
     'USP_ExtendedEventsReadEvents'
 )
-$minimumDeepReviewedCount = 3
+$safeEntryRequiresHighImpact = @(
+    'USP_DataCaptureDeepAnalysis',
+    'USP_ExtendedEventsBlockedProcesses',
+    'USP_ExtendedEventsDeadlocks',
+    'USP_ExtendedEventsReadEvents',
+    'USP_ExtendedEventsTargetRuntime',
+    'USP_FullTextAnalysis',
+    'USP_IndexPhysicalStats',
+    'USP_IntelligentQueryProcessingAnalysis',
+    'USP_PlanCacheAnalysis',
+    'USP_QueryHashAnalysis',
+    'USP_SchemaDesignAnalysis',
+    'USP_ServiceBrokerAnalysis',
+    'USP_StatisticsDistributionAnalysis',
+    'USP_TemporalAnalysis'
+)
+$minimumDeepReviewedCount = 84
 
 $errors = [System.Collections.Generic.List[string]]::new()
 $markdownAnchorCache = @{}
@@ -436,8 +452,40 @@ foreach ($file in $pageFiles) {
         if ($text -notmatch '(?m)^\*\*Kostenklasse:\*\*\s+\S') {
             $errors.Add("Missing DEEP_REVIEWED cost class: $($file.FullName)")
         }
+        elseif ($text -notmatch '(?m)^\*\*Kostenklasse:\*\*\s+.*(?:LOW|MEDIUM|HIGH_OPT_IN)') {
+            $errors.Add("Invalid DEEP_REVIEWED cost class: $($file.FullName)")
+        }
+        if ($text -match '(?m)^\|\s*Kostenklasse\s*\|\s*(?:None|TBD|N/?A|[-–])\s*\|') {
+            $errors.Add("Placeholder DEEP_REVIEWED cost class: $($file.FullName)")
+        }
+        if ($file.BaseName -in $safeEntryRequiresHighImpact) {
+            $safeEntryMatch = [regex]::Match(
+                $text,
+                '(?ms)^## Sicherer Einstieg\s*$\s*(.*?)(?=^## |\z)'
+            )
+            if (-not $safeEntryMatch.Success -or
+                $safeEntryMatch.Groups[1].Value -notmatch '@HighImpactConfirmed\s*=\s*1') {
+                $errors.Add("Safe entry must show required @HighImpactConfirmed = 1: $($file.FullName)")
+            }
+        }
         if ($text -notmatch '(?m)^## Primärquellen\s*$[\s\S]*https://learn\.microsoft\.com/') {
             $errors.Add("Missing Microsoft primary source in DEEP_REVIEWED page: $($file.FullName)")
+        }
+        $externalSectionMatch = [regex]::Match(
+            $text,
+            '(?ms)^## Weiterführende Vertiefung\s*$\s*(.*?)(?=^## |^\[Technische Detailbeschreibung\]|\z)'
+        )
+        if ($externalSectionMatch.Success) {
+            $externalSection = $externalSectionMatch.Groups[1].Value
+            if ($externalSection -notmatch 'https://(?!learn\.microsoft\.com/)[^\s)>]+') {
+                $errors.Add("External deep-dive section has no non-Microsoft HTTPS source: $($file.FullName)")
+            }
+            if ($externalSection -match 'http://') {
+                $errors.Add("External deep-dive source must use HTTPS: $($file.FullName)")
+            }
+            if ($externalSection -notmatch 'keine Grundlage für versions-, Berechtigungs- oder Engineaussagen') {
+                $errors.Add("External deep-dive section does not state its evidence boundary: $($file.FullName)")
+            }
         }
         if ($text.IndexOf('Example', [System.StringComparison]::Ordinal) -lt 0) {
             $errors.Add("Missing explicit synthetic Example* marker in DEEP_REVIEWED page: $($file.FullName)")
