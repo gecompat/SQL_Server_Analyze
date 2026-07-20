@@ -11,11 +11,11 @@ Zweck        : Versionsadaptive Erkennung zusätzlicher Diagnosefunktionen für
                eine explizite Datenbankliste oder alle zulässigen Datenbanken.
 SQL-Version  : SQL Server 2019 oder neuer.
 Parameter    : @DatabaseNames, @DatabaseNamePattern,
-               @SystemdatenbankenEinbeziehen, @MaxDatenbanken,
+               @SystemdatenbankenEinbeziehen,
                @MitSpezialindizes, @MitQueryStoreReplicas,
                @MitPlattformdetails, @MaxZeilen, @ResultSetArt,
                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
-Semantik     : bracket-aware Pipe-Liste; NULL=alle; N''=ungültig. Pattern ist
+Semantik     : bracket-aware Pipe-Liste; NULL/N''=alle. Pattern ist
                separat und mit exakter Liste gegenseitig exklusiv.
 Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
 Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
@@ -26,16 +26,16 @@ Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ServerFeatureCapabilities]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MitSpezialindizes                bit            = 1
     , @MitQueryStoreReplicas            bit            = 1
     , @MitPlattformdetails              bit            = 1
     , @MaxZeilen                        int            = 5000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -48,16 +48,20 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'capabilities',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ServerFeatureCapabilities';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet aktuelle Datenbank.';
+        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern unterstützt like:, regex:, regexi: und ist exklusiv zu @DatabaseNames.';
-        PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; @MaxZeilen begrenzt jedes fachliche Resultset global.';
+        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen begrenzt jedes fachliche Resultset global.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;
@@ -136,7 +140,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE')
+    IF @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Ungültige Mengen- oder Ausgabeparameter.';
@@ -147,9 +151,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'OBJECT_ANALYSIS_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ServerFeatureCapabilities_DatabaseCandidates',@WarningTable=N'#ServerFeatureCapabilities_DatabaseCandidateWarnings';
@@ -316,11 +320,18 @@ END;';
         IF @MitSpezialindizes=1 SELECT TOP(@EffectiveMaxZeilen) N'Spezialindex' [Ergebnis],[DatabaseName] [Datenbank],[SchemaName] [Schema],[ObjectName] [Objekt],[IndexName] [Index],[IndexFamily] [Indexfamilie],[IndexDetails] [Details],[AvailabilityStatus] [Verfügbarkeit] FROM [#ServerFeatureCapabilities_SpecialIndexes] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexName];
         SELECT N'Capability-Warnung' [Ergebnis],[DatabaseName] [Datenbank],[ModuleName] [Modul],[ErrorNumber] [Fehlernummer],[ErrorMessage] [Fehlermeldung] FROM [#ServerFeatureCapabilities_Errors] ORDER BY [DatabaseName],[ModuleName];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ServerFeatureCapabilities_Capabilities'
+            , @ResultLabel=N'ServerFeatureCapabilities'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#ServerFeatureCapabilities_Capabilities'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

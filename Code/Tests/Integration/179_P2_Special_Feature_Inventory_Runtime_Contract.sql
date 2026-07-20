@@ -41,10 +41,11 @@ IF @Definition IS NULL
 BEGIN TRY
     /* FEATURE-ABSENT: leerer sichtbarer Scope bleibt ein Inventar, kein Abwesenheitsbeweis. */
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=0,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-         @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+         @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+         @HighImpactConfirmed=1;
 
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_LIMITED')
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.features'))<>18
@@ -121,9 +122,10 @@ BEGIN TRY
 
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=0,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
 
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_LIMITED')
         THROW 55302,N'P2-Feature-Inventur lieferte für synthetische Fixtures keinen gültigen Vertrag.',1;
@@ -188,9 +190,10 @@ BEGIN TRY
     /* FEATURE-BOUNDED */
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=1,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=1,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.features'))>1
        OR TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.featureRowCount'))<>18
@@ -223,9 +226,10 @@ BEGIN TRY
     EXECUTE AS USER=N'ExampleFeatureRestrictedUser';
     SET @Impersonating=1;
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]|[ExampleFeatureDeniedDatabase]',@MaxDatenbanken=2,@MaxZeilen=0,
+         @DatabaseNames=N'[DeineDatenbank]|[ExampleFeatureDeniedDatabase]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     REVERT;
     SET @Impersonating=0;
 

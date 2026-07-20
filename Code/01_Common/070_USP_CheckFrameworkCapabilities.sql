@@ -7,22 +7,22 @@ Objekt       : monitor.USP_CheckFrameworkCapabilities
 Version      : 2.0.1
 Stand        : 2026-07-16
 Zweck        : Prüft Framework-Capabilities serverweit und je ausgewählter DB.
-Datenbanken  : @DatabaseNames bracket-aware Pipe-Liste; NULL=alle; N''=aktuelle.
+Datenbanken  : @DatabaseNames bracket-aware Pipe-Liste; NULL/N''=alle.
 Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit capabilities, summary,
                databaseStatus und warnings.
 Änderungen   : 2.0.1 - SQL-Literal-Escaping für Datenbanknamen korrigiert.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CheckFrameworkCapabilities]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @AnalyseKlasse                    varchar(64)     = NULL
     , @NurNichtVerfuegbar               bit            = 0
     , @MitGruppenpruefung               bit            = 1
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit             = 0
     , @Json                              nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit             = 1
@@ -35,7 +35,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'capabilities',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @Major int = TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @ProductVersion nvarchar(128) = CONVERT(nvarchar(128), SERVERPROPERTY(N'ProductVersion'));
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
@@ -46,7 +50,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CheckFrameworkCapabilities';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; NULL=alle; leer=aktuelle Datenbank.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; NULL/leer=alle sichtbaren Online-Benutzerdatenbanken.';
         PRINT N'@DatabaseNamePattern: like:, regex: oder regexi:; exakte Liste und Pattern sind exklusiv.';
         PRINT N'@ResultSetArt=RAW, CONSOLE, TABLE oder NONE; optional JSON.';
         RETURN;
@@ -107,11 +111,6 @@ BEGIN
         SET @OverallStatus = 'INVALID_PARAMETER';
         SET @OverallError = N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
     END;
-    ELSE IF @MaxDatenbanken < 0
-    BEGIN
-        SET @OverallStatus = 'INVALID_PARAMETER';
-        SET @OverallError = N'@MaxDatenbanken darf nicht negativ sein.';
-    END;
     ELSE IF @AnalyseKlasse IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM [monitor].[VW_AnalyseClassCatalog] WHERE [AnalysisClass] = @AnalyseKlasse)
     BEGIN
@@ -124,9 +123,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = NULL
             , @StatusCode = @OverallStatus OUTPUT
             , @ErrorMessage = @OverallError OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#CheckFrameworkCapabilities_DatabaseCandidates',@WarningTable=N'#CheckFrameworkCapabilities_DatabaseCandidateWarnings';
@@ -398,11 +397,18 @@ BEGIN
         DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson,N'{}'), N',"capabilities":', COALESCE(@CapabilitiesJson,N'[]'), N',"summary":', COALESCE(@SummaryJson,N'[]'), N',"warnings":', COALESCE(@WarningsJson,N'[]'), N'}');
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#CheckFrameworkCapabilities_Capabilities'
+            , @ResultLabel=N'CheckFrameworkCapabilities'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#CheckFrameworkCapabilities_Capabilities'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

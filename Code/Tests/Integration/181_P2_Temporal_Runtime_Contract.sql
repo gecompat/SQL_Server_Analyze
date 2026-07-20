@@ -43,9 +43,10 @@ BEGIN TRY
 
     /* TEMPORAL-NONE */
     EXEC [monitor].[USP_TemporalAnalysis]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=10,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE_LIMITED')
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.temporalTables'))<>0
         THROW 55501,N'P2-Vertrag TEMPORAL-NONE fehlgeschlagen.',1;
@@ -100,8 +101,9 @@ BEGIN TRY
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleTemporal%',
          @HistorySizeWarnMb=0,@HistoryRowsWarn=0,@HistoryToCurrentRatioWarn=1,@MinHistoryMbForRatioWarn=0,
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
 
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING','AVAILABLE_LIMITED')
         THROW 55502,N'Temporal-Fixtures lieferten keinen gültigen Vertrag.',1;
@@ -154,8 +156,9 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleTemporalIndexed',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF NOT EXISTS
     (
         SELECT 1 FROM OPENJSON(@Json,N'$.findings')
@@ -175,8 +178,9 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleTemporalIndexed',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.temporalTables'))<>1
        OR JSON_VALUE(@Json,N'$.temporalTables[0].CurrentTableName')<>N'ExampleTemporalIndexed'
         THROW 55506,N'P2-Vertrag TEMPORAL-FILTER fehlgeschlagen.',1;
@@ -186,8 +190,9 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleTemporal%',
-         @MaxDatenbanken=1,@MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.temporalTables'))>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databaseStatus'))<>1
         THROW 55507,N'P2-Vertrag TEMPORAL-BOUNDED fehlgeschlagen.',1;
@@ -208,8 +213,9 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_TemporalAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleTemporalMissingIndex',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.temporalTables'))<>0
        OR CHARINDEX(N'früher getrennten Tabellenpaare',@Definition)=0
         THROW 55509,N'P2-Vertrag TEMPORAL-DISABLED-LIMIT fehlgeschlagen.',1;

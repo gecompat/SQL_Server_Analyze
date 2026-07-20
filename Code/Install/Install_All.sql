@@ -33,6 +33,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/080_TVF_ParseSqlNameList.sql
 :r ../01_Common/081_TVF_ParseFullObjectNameList.sql
 :r ../01_Common/082_TVF_DatabaseCandidates.sql
+:r ../01_Common/083a_USP_InternalCheckAnalysisPath.sql
 :r ../01_Common/083_USP_PrepareDatabaseCandidates.sql
 :r ../01_Common/084_USP_PrepareNameFilters.sql
 :r ../01_Common/085_TVF_ParseBigintList.sql
@@ -46,6 +47,9 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/093_TVF_InterpretAgentJobState.sql
 :r ../01_Common/094_TVF_InterpretDatabaseMailStatus.sql
 :r ../01_Common/095_USP_InternalWriteResultTable.sql
+:r ../01_Common/096_USP_InternalPrepareResultTables.sql
+:r ../01_Common/097_USP_InternalPrepareSingleResultTable.sql
+:r ../01_Common/098_USP_InternalEmitConsoleResult.sql
 :r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
 :r ../02_CurrentState/010_USP_CurrentSessions.sql
 :r ../02_CurrentState/020_USP_CurrentRequests.sql

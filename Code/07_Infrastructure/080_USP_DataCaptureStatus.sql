@@ -14,12 +14,12 @@ Datenquellen : master.sys.databases, sys.change_tracking_databases,
                database-lokale sys.tables/sys.schemas/
                sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.
 Parameter    : @DatabaseNames, @DatabaseNamePattern,
-               @SystemdatenbankenEinbeziehen, @MaxDatenbanken, @MaxZeilen,
+               @SystemdatenbankenEinbeziehen, @MaxZeilen,
                @ResultSetArt, @JsonErzeugen, @Json OUTPUT,
                @PrintMeldungen, @Hilfe.
 Semantik     : @DatabaseNames=N'[Db1]|[Db2]'; NULL=alle zulässigen
                Datenbanken; N''=INVALID_PARAMETER. Exakte Liste und Pattern
-               sind exklusiv. @MaxDatenbanken kürzt keine explizite Liste.
+               sind exklusiv. Die Datenbankauswahl wird nicht vorab begrenzt.
 Ausgabe      : RAW/CONSOLE/NONE; JSON mit meta, databases, cdcTables,
                changeTrackingTables, cdcJobs und warnings.
 Berechtigung : Cross-Database wird über CROSS_DATABASE_DEEP geprüft.
@@ -32,13 +32,13 @@ Locking      : LOCK_TIMEOUT 0; Systemkataloge READUNCOMMITTED.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DataCaptureStatus]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MaxZeilen                        int            = 10000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -51,7 +51,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
     DECLARE @LocalCandidateRows bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen BETWEEN 1 AND 2147483646 THEN CONVERT(bigint, @MaxZeilen) + 1 WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -59,9 +63,9 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_DataCaptureStatus';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' ist ungültig.';
+        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern=like:...|regex:...|regexi:...; ein Pattern, keine Pipe-Liste.';
-        PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; @MaxZeilen gilt global je fachlichem Resultset.';
+        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen gilt global je fachlichem Resultset.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;
@@ -157,7 +161,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
+    IF @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Ungültige Mengen- oder Ausgabeparameter.';
@@ -168,9 +172,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'HA_DR_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DataCaptureStatus_DatabaseCandidates',@WarningTable=N'#DataCaptureStatus_DatabaseCandidateWarnings';
@@ -356,11 +360,18 @@ ORDER BY [s].[name], [t].[name];';
         SELECT TOP (@EffectiveMaxZeilen) N'CDC-Agentjob' AS [Ergebnis], [DatabaseName] AS [Datenbank], [JobType] AS [Job_Typ], [JobName] AS [Job], [Enabled] AS [Aktiv], [LastRunOutcome] AS [Letzter_Status], [LastRunDateTime] AS [Letzter_Lauf], [LastMessage] AS [Meldung] FROM [#DataCaptureStatus_Jobs] ORDER BY [DatabaseName], [JobType], [JobName];
         SELECT N'Data-Capture-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SourceName] AS [Quelle], [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer], [ErrorMessage] AS [Fehlermeldung] FROM [#DataCaptureStatus_Warnings] ORDER BY [DatabaseName], [SourceName];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#DataCaptureStatus_Db'
+            , @ResultLabel=N'DataCaptureStatus'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#DataCaptureStatus_Db'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

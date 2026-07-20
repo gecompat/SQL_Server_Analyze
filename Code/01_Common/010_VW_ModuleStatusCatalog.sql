@@ -4,11 +4,13 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_ModuleStatusCatalog
-Version      : 1.1.0
-Stand        : 2026-07-14
+Version      : 1.2.0
+Stand        : 2026-07-20
 Typ          : View
 Zweck        : Zentraler Katalog aller maschinenlesbaren Framework-Statuscodes.
-Änderungen   : 1.1.0 - Plattform-, Messkontext- und Resetstatus ergänzt.
+Änderungen   : 1.2.0 - Datenbank-, High-Impact-, Childstatus- und TABLE-
+                         Preflightstatus des Ausgabe-Vertrags 2.0 ergänzt.
+               1.1.0 - Plattform-, Messkontext- und Resetstatus ergänzt.
 ===============================================================================
 */
 CREATE OR ALTER VIEW [monitor].[VW_ModuleStatusCatalog]
@@ -30,10 +32,15 @@ AS
       ('UNAVAILABLE_FEATURE',2,0,0,1,N'Feature nicht verfügbar',N'Das optionale Feature ist nicht installiert, nicht aktiviert oder für Edition beziehungsweise Rolle nicht nutzbar.'),
       ('UNAVAILABLE_OBJECT',2,0,0,1,N'Objekt nicht verfügbar',N'Das optionale System- oder Frameworkobjekt ist nicht vorhanden.'),
       ('DATABASE_UNAVAILABLE',2,0,0,1,N'Datenbank nicht verfügbar',N'Die Zieldatenbank ist nicht vorhanden, nicht online oder für den Login nicht zugänglich.'),
+      ('SYSTEM_DATABASE_EXCLUDED',1,0,0,1,N'Systemdatenbank ausgeschlossen',N'Die explizit angeforderte Systemdatenbank ist ohne @SystemdatenbankenEinbeziehen=1 nicht Teil der Kandidatenmenge.'),
+      ('HIGH_IMPACT_CONFIRMATION_REQUIRED',2,0,0,1,N'High-Impact-Bestätigung erforderlich',N'Der tatsächlich aktivierte ressourcenintensive Analysepfad wurde vor dem teuren Systemzugriff beendet, weil @HighImpactConfirmed nicht 1 ist.'),
+      ('STATUS_UNAVAILABLE',2,0,0,1,N'Childstatus nicht verfügbar',N'Das Child lieferte keinen vollständigen validierbaren Statusvertrag; Erfolg wird nicht aus dem Ausbleiben eines Fehlers abgeleitet.'),
       ('DENIED_PERMISSION',2,0,0,1,N'Berechtigung fehlt',N'Die Quelle konnte wegen fehlender SQL-Server-Berechtigung nicht abgefragt werden.'),
       ('DENIED_GROUP',2,0,0,1,N'Analyseklasse gesperrt',N'Die Analyseklasse ist durch die konfigurierte Gruppenpolicy nicht freigegeben.'),
       ('TIMEOUT',2,0,0,1,N'Zeitlimit erreicht',N'Das Teilmodul wurde wegen Lock- oder Laufzeitlimit beendet.'),
       ('ERROR_HANDLED',2,0,0,1,N'Fehler abgefangen',N'Ein Teilfehler wurde isoliert und strukturiert zurückgegeben.'),
+      ('INVALID_RESULT_TABLE_MAPPING',2,0,0,1,N'Ungültige TABLE-Zuordnung',N'Das JSON-Objekt enthält unbekannte oder doppelte Resultsetnamen, doppelte Ziele oder unzulässige Zielnamen.'),
+      ('INVALID_RESULT_TABLE_TARGET',2,0,0,1,N'Ungültiges TABLE-Ziel',N'Mindestens eine lokale Ziel-Temp-Tabelle fehlt, enthält Daten oder besitzt keine sichere Seed-Struktur.'),
       ('INVALID_PARAMETER',2,0,0,1,N'Ungültiger Parameter',N'Der Aufruf enthält einen ungültigen oder widersprüchlichen Parameterwert.')
     ) v(StatusCode,SeverityLevel,IsSuccess,IsQueryable,IsTerminal,GermanDescription,TechnicalMeaning);
 GO

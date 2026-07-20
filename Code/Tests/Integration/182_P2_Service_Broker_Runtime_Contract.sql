@@ -67,9 +67,10 @@ BEGIN TRY
     EXEC [sys].[sp_executesql] @Sql;
     /* BROKER-NONE */
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
-         @DatabaseNames=N'[ExampleBrokerNoneDatabase]',@MaxDatenbanken=1,@MaxZeilen=10,
+         @DatabaseNames=N'[ExampleBrokerNoneDatabase]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE_LIMITED')
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))<>0
         THROW 55601,N'P2-Vertrag BROKER-NONE fehlgeschlagen.',1;
@@ -78,9 +79,10 @@ BEGIN TRY
     /* BROKER-CONFIG-ONLY */
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
-         @DatabaseNames=N'[ExampleBrokerConfigDatabase]',@MaxDatenbanken=1,@MaxZeilen=10,
+         @DatabaseNames=N'[ExampleBrokerConfigDatabase]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE','AVAILABLE_LIMITED')
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))<>0
         THROW 55602,N'P2-Vertrag BROKER-CONFIG-ONLY fehlgeschlagen.',1;
@@ -89,9 +91,10 @@ BEGIN TRY
     /* BROKER-DISABLED-OBJECTS */
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
-         @DatabaseNames=N'[ExampleBrokerDisabledDatabase]',@MaxDatenbanken=1,@MaxZeilen=0,
+         @DatabaseNames=N'[ExampleBrokerDisabledDatabase]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF NOT EXISTS
        (
            SELECT 1 FROM OPENJSON(@Json,N'$.findings')
@@ -113,9 +116,10 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleBrokerQueue%',
-         @QueueRowsWarn=0,@MaxDatenbanken=1,@MaxZeilen=0,
+         @QueueRowsWarn=0,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))<>2
         THROW 55604,N'Broker-Queuefixtures wurden nicht vollständig erkannt.',1;
 
@@ -150,8 +154,9 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNames=N'ExampleBrokerQueueRetention',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))<>1
        OR JSON_VALUE(@Json,N'$.queues[0].QueueName')<>N'ExampleBrokerQueueRetention'
         THROW 55608,N'P2-Vertrag BROKER-FILTER fehlgeschlagen.',1;
@@ -161,8 +166,9 @@ BEGIN TRY
     SET @Json=NULL;
     EXEC [monitor].[USP_ServiceBrokerAnalysis]
          @DatabaseNames=N'[DeineDatenbank]',@ObjectNamePattern=N'like:ExampleBrokerQueue%',
-         @MaxDatenbanken=1,@MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.queues'))>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databaseStatus'))<>1
         THROW 55609,N'P2-Vertrag BROKER-BOUNDED fehlgeschlagen.',1;

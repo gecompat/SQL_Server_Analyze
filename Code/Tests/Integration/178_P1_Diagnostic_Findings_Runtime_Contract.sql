@@ -29,10 +29,11 @@ EXEC [monitor].[USP_DiagnosticFindings]
      @DatabaseNames=N'[DeineDatenbank]',
      @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
      @MitAvailability=0,@MitAgentMonitoring=1,
-     @MaxDatenbanken=1,@MaxZeilen=100,@ResultSetArt='NONE',
+     @MaxZeilen=100,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1 OR @Status NOT IN('AVAILABLE_WITH_FINDING','AVAILABLE_LIMITED')
    OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@Json,N'$.meta.totalFindingCount')),0)<1
@@ -79,7 +80,8 @@ EXEC [monitor].[USP_DiagnosticFindings]
      @ParentIntegrityJson=N'{"meta":{"resultName":"OtherResult","schemaVersion":1}}',
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1 OR @Status<>'INVALID_PARAMETER' OR @Partial<>1
    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.modules'))<>0
@@ -91,8 +93,9 @@ EXEC [monitor].[USP_ServerHealthAnalysis]
      @MitConfiguration=0,@MitTraceFlags=0,@MitStartup=0,@MitOS=0,@MitSecurity=0,
      @MitIntegritaet=1,@MitKapazitaet=1,@MitPerformanceCounters=0,
      @MitCriticalEvents=0,@MitContention=0,@MitBufferPool=1,@MitFindings=1,
-     @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=100,
-     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+     @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=100,
+     @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1
    OR
@@ -140,10 +143,11 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',
          @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
          @MitAvailability=1,@MitAgentMonitoring=1,
-         @MaxDatenbanken=1,@MaxZeilen=100,@ResultSetArt='NONE',
+         @MaxZeilen=100,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-         @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+         @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+         @HighImpactConfirmed=1;
     REVERT;
     SET @Impersonating=0;
 
@@ -196,10 +200,11 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',
          @MitIntegritaet=0,@MitKapazitaet=0,@MitSpeicher=0,@MitBackupketten=0,
          @MitAvailability=0,@MitAgentMonitoring=1,
-         @MaxDatenbanken=1,@MaxZeilen=10,@ResultSetArt='NONE',
+         @MaxZeilen=10,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-         @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+         @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+         @HighImpactConfirmed=1;
 
     SET @AlterCompatibilitySql=N'ALTER DATABASE '+QUOTENAME(@DatabaseName)+N' SET COMPATIBILITY_LEVEL = '
                                +CONVERT(nvarchar(10),@OriginalCompatibilityLevel)+N';';

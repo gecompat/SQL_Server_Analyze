@@ -23,10 +23,10 @@ Grenzen      : Priorität ist Triage, keine automatische Ursachenfeststellung.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DiagnosticFindings]
-      @DatabaseNames                nvarchar(max)  = N''
+      @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MitIntegritaet               bit            = 1
     , @MitKapazitaet                bit            = 1
     , @MitSpeicher                  bit            = 1
@@ -45,7 +45,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DiagnosticFindings]
     , @NurAbPrioritaet              varchar(16)     = 'INFO'
     , @MaxZeilen                    int             = 1000
     , @ResultSetArt                 varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                 bit             = 0
     , @Json                         nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen               bit             = 1
@@ -62,7 +62,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @MinimumSeverity varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@NurAbPrioritaet, ''))));
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
                                  THEN CONVERT(bigint, 9223372036854775807)
@@ -127,7 +131,7 @@ BEGIN
         , [RecommendedNextCheck] nvarchar(1000) NOT NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @ContentionSampleSeconds > 60
+    IF @MaxZeilen < 0 OR @ContentionSampleSeconds > 60
        OR @ContentionMinWaitMs < 0
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR @MinimumSeverity NOT IN ('INFO', 'LOW', 'MEDIUM', 'HIGH')
@@ -179,7 +183,7 @@ BEGIN
                 SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
                 EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
                       @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                    , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                    , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                     , @MitPageDetails = 0, @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE'
                     , @JsonErzeugen = 1, @Json = @IntegrityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                     , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
@@ -210,7 +214,7 @@ BEGIN
                 SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
                 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
                       @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                    , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                    , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                     , @NurProblematisch = 0, @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE'
                     , @JsonErzeugen = 1, @Json = @CapacityJson OUTPUT, @PrintMeldungen = @PrintMeldungen
                     , @StatusCodeOut = @ChildStatus OUTPUT, @IsPartialOut = @ChildPartial OUTPUT
@@ -259,7 +263,7 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_BackupChainAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @BackupJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
@@ -309,7 +313,7 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_SchemaDesignAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @SchemaJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
@@ -327,8 +331,8 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_StatisticsDistributionAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @AnalyseModus = 'VOLL'
-                , @MaxDatenbanken = @MaxDatenbanken, @MaxZeilen = @MaxZeilen
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed, @AnalyseModus = 'VOLL'
+                , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @StatisticsDistributionJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
@@ -346,7 +350,7 @@ BEGIN
             SELECT @ChildStatus = NULL, @ChildPartial = NULL, @ChildErrorNumber = NULL, @ChildErrorMessage = NULL;
             EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
                   @DatabaseNames = @DatabaseNames, @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern, @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen = @MaxZeilen, @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @IqpJson OUTPUT
                 , @PrintMeldungen = @PrintMeldungen, @StatusCodeOut = @ChildStatus OUTPUT
                 , @IsPartialOut = @ChildPartial OUTPUT, @ErrorNumberOut = @ChildErrorNumber OUTPUT
@@ -645,11 +649,18 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
                [EvidenceStatus] AS [Evidenzstatus], [IsPartial] AS [Teilweise], [ErrorMessage] AS [Fehler]
         FROM @ModuleStatus ORDER BY [ExecutionOrdinal];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#DiagnosticFindings_Findings'
+            , @ResultLabel=N'DiagnosticFindings'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#DiagnosticFindings_Findings'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

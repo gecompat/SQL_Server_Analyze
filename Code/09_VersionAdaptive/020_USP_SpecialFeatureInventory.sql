@@ -24,15 +24,15 @@ Kosten       : LOW. Ausschließlich aggregierte Systemkatalogabfragen; keine
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_SpecialFeatureInventory]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @NurErkannteFeatures              bit            = 0
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                     bit            = 0
     , @Json                             nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
@@ -49,7 +49,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'features',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @Major int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @StatusCode varchar(40)='AVAILABLE';
@@ -68,17 +72,17 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_SpecialFeatureInventory';
         PRINT N'Leichtgewichtige Nutzungsinventur sichtbarer Spezialfeature-Metadaten; kein Gesundheitsurteil.';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet aktuelle Datenbank. Pattern separat.';
+        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung. Pattern separat.';
         PRINT N'@NurErkannteFeatures=1 unterdrückt NOT_DETECTED_VISIBLE_SCOPE und UNAVAILABLE_VERSION in der Ausgabe.';
-        PRINT N'@MaxDatenbanken begrenzt automatische Auswahl; @MaxZeilen positiv begrenzt Ausgaben, NULL/0 ist unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen positiv begrenzt Ausgaben, NULL/0 ist unbegrenzt.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Keine externen Locations, Credentials, Payloads, CLR-Binaries oder Moduldefinitionen werden gelesen.';
         RETURN;
     END;
 
     IF @SystemdatenbankenEinbeziehen IS NULL OR @NurErkannteFeatures IS NULL
        OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
-       OR @MaxDatenbanken<0 OR @MaxZeilen<0
+ OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN ('RAW','CONSOLE','NONE')
     BEGIN
@@ -146,8 +150,8 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
             , @AnalysisClass=NULL
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
@@ -436,11 +440,18 @@ VALUES
         WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
         ORDER BY [DatabaseName],[FeatureCode];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#SpecialFeatureInventory_FeatureInventory'
+            , @ResultLabel=N'SpecialFeatureInventory'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#SpecialFeatureInventory_FeatureInventory'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

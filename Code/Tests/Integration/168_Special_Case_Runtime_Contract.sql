@@ -23,51 +23,59 @@ DECLARE @Results TABLE
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL; SET @ErrorNumber=NULL; SET @ErrorMessage=NULL;
 EXEC [monitor].[USP_SpecialFeatureInventory]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
      @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,
-     @IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+     @IsPartialOut=@Partial OUTPUT,@ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_SpecialFeatureInventory',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_InMemoryOltpAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_InMemoryOltpAnalysis',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_TemporalAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_TemporalAnalysis',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_ServiceBrokerAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_ServiceBrokerAnalysis',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_FullTextAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_FullTextAnalysis',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_DataCaptureDeepAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_DataCaptureDeepAnalysis',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_EncryptionAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_EncryptionAnalysis',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_MaintenanceOperations]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=20,@ResultSetArt='NONE',
-     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=20,@ResultSetArt='NONE',
+     @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 INSERT @Results VALUES(N'USP_MaintenanceOperations',@Status,@Partial,CONVERT(bit,COALESCE(ISJSON(@Json),0)));
 
 IF EXISTS(SELECT 1 FROM @Results WHERE [JsonValid]=0 OR [StatusCode] IS NULL

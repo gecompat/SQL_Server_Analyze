@@ -13,12 +13,12 @@ Datenquellen : monitor.TVF_DatabaseCandidates,
                monitor.TVF_ParseSqlNameList, monitor.TVF_ParsePattern,
                sys.database_query_store_options.
 Parameter    : @QueryStoreDatabaseNames, @SystemdatenbankenEinbeziehen,
-               @QueryStoreDatabaseNamePattern, @MaxDatenbanken,
+               @QueryStoreDatabaseNamePattern,
                @ResultSetArt, @JsonErzeugen, @Json OUTPUT,
                @PrintMeldungen, @Hilfe.
 Semantik     : @QueryStoreDatabaseNames ist eine bracket-aware Pipe-Liste.
-               NULL bedeutet alle zulässigen Datenbanken; N'' beziehungsweise nur Leerzeichen bedeutet aktuelle Datenbank.
-               Eine explizite Liste wird nicht durch @MaxDatenbanken gekürzt.
+               NULL, N'' und Leerzeichen bedeuten keine Einschränkung.
+               Die Datenbankauswahl wird nicht vorab begrenzt.
 Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optionales JSON mit meta,
                queryStoreStatus und warnings.
 Berechtigung : SQL 2019 VIEW DATABASE STATE; SQL 2022+
@@ -31,12 +31,12 @@ Locking      : LOCK_TIMEOUT 0; keine Änderungen.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreStatus]
-      @QueryStoreDatabaseNames         nvarchar(max)  = N''
+      @QueryStoreDatabaseNames         nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen    bit            = 0
     , @QueryStoreDatabaseNamePattern   nvarchar(4000) = NULL
-    , @MaxDatenbanken                  int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @ResultSetArt                    varchar(16)    = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen                    bit            = 0
     , @Json                            nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                  bit            = 1
@@ -49,7 +49,11 @@ BEGIN
     DECLARE @ResultSetArtNormalisiert varchar(16) =
         UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'queryStoreStatus',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @PatternMode varchar(8);
     DECLARE @PatternValue nvarchar(4000);
     DECLARE @RegexFlags varchar(8);
@@ -65,10 +69,10 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_QueryStoreStatus';
-        PRINT N'@QueryStoreDatabaseNames=N'''' verwendet die aktuelle Datenbank; konkreter Name oder Pipe-Liste auswählbar; NULL = alle zulässigen Datenbanken.';
+        PRINT N'@QueryStoreDatabaseNames: konkreter Name oder Pipe-Liste; NULL/N'''' = alle zulässigen Datenbanken.';
         PRINT N'Beispiel: @QueryStoreDatabaseNames=N''[DeineDatenbank]|[BeispielDatenbankB]''.';
         PRINT N'@QueryStoreDatabaseNamePattern akzeptiert LIKE (Default/like:), regex: oder regexi:; Pattern und exakte Liste sind gegenseitig exklusiv.';
-        PRINT N'@MaxDatenbanken begrenzt nur die automatische Auswahl bei @QueryStoreDatabaseNames=NULL; NULL/0 = alle.';
+        PRINT N'Ohne Query-Store-Datenbankfilter werden alle sichtbaren Online-Benutzerdatenbanken verarbeitet.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE wird case-insensitiv verarbeitet; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
@@ -139,8 +143,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0
-       OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
+    IF @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR @PatternIsValid = 0
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
@@ -152,9 +155,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @QueryStoreDatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @QueryStoreDatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass='QUERY_STORE_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#QueryStoreStatus_DatabaseCandidates';
@@ -312,7 +315,6 @@ FROM [sys].[database_query_store_options] WITH (NOLOCK);';
                 , @StatusCode AS [statusCode]
                 , @IsPartial AS [isPartial]
                 , @RowCount AS [returnedRows]
-                , @MaxDatenbanken AS [requestedMaxDatabases]
                 , @ErrorNumber AS [errorNumber]
                 , @ErrorMessage AS [errorMessage]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
@@ -384,11 +386,18 @@ FROM [sys].[database_query_store_options] WITH (NOLOCK);';
         FROM [#QueryStoreStatus_Errors]
         ORDER BY [DatabaseName];
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryStoreStatus_Result'
+            , @ResultLabel=N'QueryStoreStatus'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryStoreStatus_Result'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

@@ -5,7 +5,7 @@
 - Repositoryweit auf case-sensitive Namenskonsistenz prüfen.
 - Einzelobjekt und alle daraus generierten Installer gemeinsam aktualisieren.
 - Keine konkrete Installationsdatenbank in Code oder Dokumentation einführen.
-- Das Repository-Liefergate darf Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE- und JSON-Ausgaben nicht anonymisieren oder fachlich reduzieren.
+- Das Repository-Liefergate darf Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE-, TABLE- und JSON-Ausgaben nicht anonymisieren oder fachlich reduzieren.
 - Reale Benutzer-, Kunden-, Firmen-, Organisations-, Umgebungs- oder Fachwerte und proprietäre interne Strukturen dürfen niemals aus Screenshots, Hardcopys, Chats, Uploads, Skripten, Logs oder Diagnoseausgaben in Repository-, GitHub-, Dokumentations-, Test- oder Downloadartefakte übernommen werden.
 - Beispiele und gespeicherte Testergebnisse verwenden ausschließlich eindeutig synthetische, generische Werte und bilden keine reale interne Struktur nach.
 - Bei einem uneindeutigen Artefaktwert vor dem Schreiben anhalten und nach einer nicht sensitiven Alternative fragen; eine Zustimmung hebt das Repositoryverbot nicht auf.
@@ -25,6 +25,6 @@
 
 ## Maßgeblicher Ausgangsstand
 
-Der Stand `1.1.0-special.9` schließt die lokalen P2-Module einschließlich Verschlüsselungslebenszyklus und Wartungsoperationen. `167_Special_Case_API_Contract.sql` prüft die statische Grenze; `168_Special_Case_Runtime_Contract.sql` wird in den versionsharten Actions-Gates auf SQL Server 2019, 2022 und 2025 ausgeführt. P3 bleibt getrennt: SC-023 benötigt ausdrückliche Persistenzentscheidungen, SC-024 eine externe Komponente und SC-025 eine autorisierte isolierte Restore-/Hostausführung.
+Der aktuelle Architekturstand ergänzt den frameworkweiten Datenbank-, CONSOLE- und benannten TABLE-Vertrag. `187_Table_Output_Runtime_Contract.sql`, `188_Framework_Output_Pilot_Runtime.sql` und `189_Framework_Output_Runtime_Contract.sql` prüfen den Mehrfach-Export, die Pilotmodule sowie die öffentliche Frameworkgrenze im 34-Suite-Gate auf SQL Server 2019, 2022 und 2025. P3 bleibt getrennt: SC-023 benötigt ausdrückliche Persistenzentscheidungen, SC-024 eine externe Komponente und SC-025 eine autorisierte isolierte Restore-/Hostausführung.
 
 Die priorisierte Ausbauplanung steht in `Documentation/Research/Special_Case_Gap_Analysis.md`; der maschinenlesbare Backlog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.

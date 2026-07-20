@@ -57,9 +57,10 @@ BEGIN TRY
     INSERT [dbo].[ExampleIdentityRange] DEFAULT VALUES;
 
     EXEC [monitor].[USP_SchemaDesignAnalysis]
-         @DatabaseNames=N'',@MaxDatenbanken=1,@IdentityWarnPercent=80,
+         @DatabaseNames=N'',@IdentityWarnPercent=80,
          @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
 
     IF @Status='AVAILABLE_LIMITED'
     BEGIN

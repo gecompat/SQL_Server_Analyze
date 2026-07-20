@@ -28,9 +28,10 @@ DECLARE @ExecutedCases TABLE([CaseId] varchar(40) NOT NULL PRIMARY KEY);
 IF @Major=15
 BEGIN
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-         @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+         @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
 
     IF ISJSON(@Json)<>1
        OR EXISTS
@@ -51,9 +52,10 @@ BEGIN
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-         @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+         @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR NOT EXISTS
        (SELECT 1 FROM OPENJSON(@Json,N'$.databaseState')
         WITH ([CompatibilityLevel] int N'$.CompatibilityLevel',[PspEligible] bit N'$.PspEligible')
@@ -69,9 +71,10 @@ BEGIN
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-         @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+         @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR NOT EXISTS
        (SELECT 1 FROM OPENJSON(@Json,N'$.databaseState')
         WITH ([CompatibilityLevel] int N'$.CompatibilityLevel',[OppoEligible] bit N'$.OppoEligible')
@@ -94,9 +97,10 @@ END;
 
 SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
-     @DatabaseNames=@DatabaseNames,@MaxDatenbanken=1,@MaxZeilen=100,
+     @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1 OR NOT EXISTS
    (SELECT 1 FROM OPENJSON(@Json,N'$.databaseState')

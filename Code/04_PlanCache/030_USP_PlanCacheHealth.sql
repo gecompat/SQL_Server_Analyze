@@ -33,9 +33,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanCacheHealth]
     , @MitDatenbankVerteilung     bit         = 0
     , @MitSingleUseDetails        bit         = 0
     , @MaxZeilen                  int         = 100
+    , @HighImpactConfirmed        bit         = 0
     , @MaxSqlTextZeichen          int         = 4000
     , @ResultSetArt               varchar(16) = 'CONSOLE'
-    , @ResultTable                     sysname        = NULL
+    , @ResultTablesJson               nvarchar(max) = NULL
     , @JsonErzeugen               bit         = 0
     , @Json                        nvarchar(max) = NULL OUTPUT
     , @PrintMeldungen             bit         = 1
@@ -47,7 +48,11 @@ BEGIN
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @TableTarget sysname=NULL;
+    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
+    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'overview',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'SUMMARY'))));
@@ -73,10 +78,7 @@ BEGIN
     IF @AnalyseModus NOT IN('SUMMARY','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameterwert.';END;
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @MitDatenbankVerteilung=1 OR @MitSingleUseDetails=1)
-    BEGIN
-        SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
-        IF @Allowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'PLAN_CACHE_DEEP ist nicht freigegeben.';END;
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
     IF @StatusCode='AVAILABLE' AND @AnalyseModus='SUMMARY' AND (@MitDatenbankVerteilung=1 OR @MitSingleUseDetails=1)
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Detailresultsets erfordern @AnalyseModus=VOLL.';END;
 
@@ -151,11 +153,18 @@ END;
         DECLARE @CategoriesJson nvarchar(max)=(SELECT * FROM [#PlanCacheHealth_Summary] ORDER BY [TotalSizeBytes] DESC,[PlanCount] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@DatabasesJson nvarchar(max)=(SELECT * FROM [#PlanCacheHealth_Db] ORDER BY [TotalSizeBytes] DESC,[PlanCount] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@SingleJson nvarchar(max)=(SELECT * FROM [#PlanCacheHealth_Single] ORDER BY [SizeBytes] DESC,[PlanHandle] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"overview":',COALESCE(@OverviewJson,N'{}'),N',"categories":',COALESCE(@CategoriesJson,N'[]'),N',"databases":',COALESCE(@DatabasesJson,N'[]'),N',"singleUsePlans":',COALESCE(@SingleJson,N'[]'),N',"warnings":[]}');
     END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#PlanCacheHealth_Summary'
+            , @ResultLabel=N'PlanCacheHealth'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#PlanCacheHealth_Summary'
-            , @ResultTable = @ResultTable
+            , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
 END;

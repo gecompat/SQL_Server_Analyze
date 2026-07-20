@@ -222,7 +222,8 @@ Die Anforderungen basieren auf:
 - Die Anzahl zurückgegebener Zeilen wird ausschließlich mit `@MaxZeilen int` gesteuert. Positive Werte begrenzen, `NULL` oder `0` bedeuten unbegrenzt, negative Werte sind ungültig.
 - Mehrere Detail-Resultsets derselben Procedure verwenden denselben öffentlichen `@MaxZeilen`-Parameter.
 - Die Anzahl zu analysierender Pläne beziehungsweise anderer ressourcenintensiver Quellobjekte wird getrennt mit `@MaxAnalyseobjekte int` gesteuert.
-- Cross-Database-Scope verwendet `@DatabaseNames nvarchar(max)`, `@MaxDatenbanken int = 16` und `@SystemdatenbankenEinbeziehen bit = 0`. `NULL` bedeutet alle zulässigen Datenbanken; `N''` die aktuelle Datenbank.
+- Ohne explizite Einschränkung werden alle sichtbaren Online-Benutzerdatenbanken verarbeitet. `@DatabaseNames` und `@DatabaseNamePattern` schränken ausschließlich explizit ein; Systemdatenbanken bleiben mit `@SystemdatenbankenEinbeziehen=0` ausgeschlossen. Es gibt keinen CURRENT-Scope und keine Datenbank-Vorabbegrenzung.
+- Tatsächlich aktivierte ressourcenintensive Pfade verlangen `@HighImpactConfirmed=1` und brechen andernfalls vor dem teuren Systemzugriff mit `HIGH_IMPACT_CONFIRMATION_REQUIRED` ab.
 - Patternfilter verwenden `@DatenbankNameLike` beziehungsweise `@TextLike`.
 - Zeitintervalle verwenden `@VonUtc` und `@BisUtc` als `datetime2(7)`; parallele Vergleichsfenster verwenden fachliche Präfixe.
 - Sortierparameter heißen `@Sortierung varchar(32)`.

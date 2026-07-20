@@ -79,9 +79,10 @@ BEGIN TRY
     EXEC [monitor].[USP_MaintenanceOperations]
          @DatabaseNames=N'[DeineDatenbank]',
          @JobNames=N'ExampleMaintenanceJobA|ExampleMaintenanceJobB',
-         @MaxDatenbanken=1,@MaxZeilen=10,@ResultSetArt='NONE',
+         @MaxZeilen=10,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     REVERT;
     SET @Impersonating=0;
 

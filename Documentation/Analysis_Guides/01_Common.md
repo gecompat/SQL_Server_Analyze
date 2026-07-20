@@ -210,7 +210,10 @@ Die konkrete Procedure nur für Zeilen mit `IsUsable=1` ausführen. Bei Teilverf
 
 ### Kosten
 
-LOW bis MEDIUM. Viele kleine Probes können bei zahlreichen Datenbanken kumulieren; `@MaxDatenbanken` begrenzt den automatischen Kandidatenscope.
+LOW bis MEDIUM. Viele kleine Probes können bei zahlreichen Datenbanken
+kumulieren. Für tatsächlich aktivierte ressourcenintensive Pfade ist deshalb
+`@HighImpactConfirmed=1` erforderlich; die Kandidatenmenge selbst wird nicht
+willkürlich vorab gekürzt.
 
 ---
 
@@ -249,9 +252,9 @@ Optional wird `@WarningTable(RequestedName, StatusCode, ErrorMessage)` befüllt.
 
 ### Auswahlsemantik
 
-- `@DatabaseNames=N''`: aktuelle Datenbank.
-- `@DatabaseNames=NULL`: alle zulässigen Datenbanken.
-- Explizite Listen werden nicht durch `@MaxDatenbanken` abgeschnitten.
+- `@DatabaseNames=N''` oder `NULL`: alle sichtbaren Online-Benutzerdatenbanken.
+- Eine nicht leere Liste oder ein Pattern schränkt explizit ein.
+- Systemdatenbanken benötigen ein ausdrückliches Opt-in.
 - Liste und Pattern sind exklusiv.
 - Doppelte Namen werden case-sensitiv abgelehnt.
 - Regex benötigt SQL Server 2025 und Compatibility Level 170 der Installationsdatenbank.
@@ -259,7 +262,9 @@ Optional wird `@WarningTable(RequestedName, StatusCode, ErrorMessage)` befüllt.
 
 ### Fehlinterpretation
 
-`@MaxDatenbanken=1` begrenzt nicht eine explizite Liste mit mehreren Namen. Das ist absichtlich: ausdrücklich angeforderte Datenbanken werden entweder vollständig akzeptiert oder als nicht verfügbar gemeldet.
+Die Kandidatenmenge wird vollständig ermittelt. Ausdrücklich angeforderte, aber
+nicht verfügbare Datenbanken werden als Warning ausgewiesen; sie verschwinden
+nicht still aus dem Auftrag.
 
 ---
 

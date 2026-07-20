@@ -16,7 +16,7 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
     , @MitPlanCacheHealth=0
     , @MitShowplanAnalysis=0
     , @DatabaseNames=N'[DeineDatenbank]'
-    , @MaxDatenbanken=1
+    , @HighImpactConfirmed=1
     , @MaxZeilen=10
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
@@ -26,11 +26,14 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
 IF ISJSON(@PlanCacheJson)<>1
     THROW 53300,N'Der Plan-Cache-Orchestrator hat kein gültiges JSON geliefert.',1;
 
-IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName')<>N'QueryStats'
+IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName') IS NULL
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.resultName')<>N'QueryStats'
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.resultName') IS NULL
    OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.resultName')<>N'QueryHashAnalysis'
     THROW 53301,N'Die erwarteten Child-Payloads fehlen im Plan-Cache-JSON.',1;
 
-IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode')<>'AVAILABLE'
+IF JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode') IS NULL
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.statusCode')<>'AVAILABLE'
    OR JSON_VALUE(@PlanCacheJson,N'$.queryStats.meta.errorNumber') IS NOT NULL
 BEGIN
     DECLARE @QueryStatsContractError nvarchar(2048)=CONCAT
@@ -45,7 +48,8 @@ BEGIN
     THROW 53302,@QueryStatsContractError,1;
 END;
 
-IF JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode')<>'AVAILABLE'
+IF JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode') IS NULL
+   OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.statusCode')<>'AVAILABLE'
    OR JSON_VALUE(@PlanCacheJson,N'$.queryHashes.meta.errorNumber') IS NOT NULL
     THROW 53303,N'Der Query-Hash-Snapshot-Consumer war nicht erfolgreich.',1;
 
@@ -76,7 +80,7 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
     , @MitPlanCacheHealth=0
     , @MitShowplanAnalysis=0
     , @DatabaseNames=N'[DeineDatenbank]'
-    , @MaxDatenbanken=1
+
     , @MaxZeilen=10
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
