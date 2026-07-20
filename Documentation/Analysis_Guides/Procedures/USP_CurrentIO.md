@@ -7,9 +7,14 @@
 
 ```sql
 EXEC [monitor].[USP_CurrentIO]
-      @SampleSeconds = 10,
-      @ResultSetArt = 'CONSOLE';
+      @SampleSeconds = 10
+    , @ResultSetArt = 'CONSOLE';
 ```
+
+Ohne `@DatabaseNames` oder `@DatabaseNamePattern` werden alle sichtbaren,
+online befindlichen Benutzerdatenbanken ausgewertet. Systemdatenbanken bleiben
+mit `@SystemdatenbankenEinbeziehen = 0` ausgeschlossen. Das Modul ist
+leichtgewichtig und verlangt keine High-Impact-Bestätigung.
 
 ## Eine Zeile bedeutet
 
@@ -41,7 +46,14 @@ Wie viele I/O-Operationen und Bytes wurden pro Datei verarbeitet, und wie lange 
 
 ### Technischer Hintergrund
 
-`sys.dm_io_virtual_file_stats` liefert kumulative Read-/Writeanzahl, Bytes und Stalls pro Daten-/Logdatei. Aus Differenzen zweier Messungen entstehen aktuelle IOPS, Durchsatz und Latenz. Dateimetadaten lösen Database/File/Type auf.
+`sys.dm_io_virtual_file_stats` liefert kumulative Read-/Writeanzahl, Bytes und Stalls pro Daten-/Logdatei. Aus Differenzen zweier Messungen entstehen aktuelle IOPS, Durchsatz und Latenz. Die Procedure liest die DMV serverweit mit `(NULL, NULL)` genau einmal je Messzeitpunkt und schränkt die materialisierte Menge danach relational auf die Datenbankkandidaten ein. Dateimetadaten lösen Database/File/Type auf.
+
+### Ausgabe
+
+CONSOLE liefert ohne separates technisches Meta-Grid genau die lesbare
+Dateiansicht. Bei leerem Ergebnis erscheint eine einzelne verständliche Zeile.
+TABLE verwendet `@ResultTablesJson` mit den stabilen Namen `moduleStatus`,
+`files` und `warnings`; alle Ziele stammen aus derselben Messung.
 
 ### Datenkette
 

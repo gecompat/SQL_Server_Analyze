@@ -182,9 +182,10 @@ positionsabhängige Zuordnung über Pipe-, Komma- oder Semikolonlisten ist verbo
 ## 5. Orchestratoren und `USP_CurrentOverview`
 
 Orchestratoren rufen jedes Child höchstens einmal pro eigener Ausführung auf.
-Children laufen mit `@ResultSetArt = 'NONE'`; materialisierte Childdaten,
-Status, Partialität und Zeilenanzahl werden über benannte interne Übergaben
-oder das im selben Aufruf erzeugte JSON-Envelope übernommen.
+Children laufen niemals mit CONSOLE. Je nach benötigter Übergabe verwenden sie
+`NONE` oder einen benannten internen TABLE-Export; Status, Partialität und
+Zeilenanzahl werden aus dem im selben Childaufruf erzeugten JSON-Envelope
+übernommen.
 
 Das Ausbleiben eines SQL-Fehlers ist kein Verfügbarkeitsnachweis. Der Childstatus
 wird aus dessen explizitem Statusvertrag gelesen. Fehlt ein valider Status, ist

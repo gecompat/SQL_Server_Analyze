@@ -169,8 +169,8 @@ BEGIN
     IF NULLIF(@AnalysisClass, '') IS NOT NULL
     BEGIN
         SELECT
-              @RequiresHighImpact = COALESCE(MAX(CONVERT(tinyint, [RequiresGroupGate])), 0)
-            , @Allowed = COALESCE(MAX(CONVERT(tinyint, [IsAllowed])), 0)
+              @RequiresHighImpact = COALESCE(MAX(CONVERT(tinyint, [c].[RequiresGroupGate])), 0)
+            , @Allowed = COALESCE(MAX(CONVERT(tinyint, [a].[IsAllowed])), 0)
         FROM [monitor].[VW_AnalyseClassCatalog] AS [c]
         LEFT JOIN [monitor].[VW_AnalyseAccessCurrent] AS [a]
           ON [a].[AnalysisClass] = [c].[AnalysisClass]

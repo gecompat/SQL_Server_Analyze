@@ -10,11 +10,18 @@ EXEC [monitor].[USP_CurrentOverview]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Sampling und vollständige SQL-Texte nur gezielt aktivieren.
+Der Default `@Detailgrad = 'SUMMARY'` liefert genau ein konsolidiertes
+Modul-Summary. `RELEVANT` ergänzt nicht leere diagnostisch relevante Details;
+`ALL` ergänzt alle nicht leeren aktivierten Childdetails. Sampling und
+vollständige SQL-Texte nur gezielt aktivieren.
 
 ## Eine Zeile bedeutet
 
-Die Granularität hängt vom Childresultset ab: Session, Request, Blockingkante, Wait, Transaktion, Grant, TempDB-Verbrauch, Datei-I/O oder Logzustand.
+Im Summary entspricht eine Zeile einem Childmodul. Status, Partialität,
+Zeilenanzahl und Dauer stammen aus dem expliziten Childvertrag. In den bewusst
+aktivierten Detailgraden entspricht eine Detailzeile weiterhin Session, Request,
+Blockingkante, Wait, Transaktion, Grant, TempDB-Verbrauch, Datei-I/O oder
+Logzustand.
 
 ## So lesen
 
@@ -42,7 +49,16 @@ Welche Current-State-Symptome verdienen als Erstes eine spezialisierte Analyse?
 
 ### Technischer Hintergrund
 
-Der Orchestrator ruft Childmodule mit definierten Schaltern auf und sammelt Resultsets, JSON-/Statusverträge und Fehlergrenzen. Er erzeugt keine neue einheitliche Messmethode; jedes Child behält sein eigenes Zeitmodell.
+Der Orchestrator ruft jedes aktivierte Child genau einmal und niemals mit
+CONSOLE auf. Der eine Childaufruf materialisiert das Primärergebnis und erzeugt
+den JSON-/Statusvertrag. Summary, optionale Details, JSON und TABLE-Export nutzen
+diese Materialisierung weiter. Das Ausbleiben eines SQL-Fehlers wird nicht als
+`AVAILABLE` interpretiert; ein fehlender oder unvollständiger Statusvertrag wird
+als `STATUS_UNAVAILABLE` partiell ausgewiesen.
+
+TABLE verwendet ausschließlich `@ResultTablesJson`. Exportierbar sind
+`moduleStatus`, `sessions`, `requests`, `blocking`, `waits`, `transactions`,
+`memoryGrants`, `tempdbSessions`, `io`, `logs` und `warnings`.
 
 ### Datenkette
 
