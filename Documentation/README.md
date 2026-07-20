@@ -67,7 +67,9 @@ Resultsetinventar.
 - `Documentation/Analysis_Guides/Authoring/Deep_Research_Analysis_Guides_Concept.md`
 - `Documentation/Research/System_Source_Catalog.md`
 - `Documentation/Quality/Performance_and_Risk_Assessment.md`
+- `Documentation/Architecture/Diagnostic_Information_Enrichment_Backlog.md`
 - `Metadata/Inventory/SystemSources.csv`
 - `Metadata/Inventory/NonSystemDependencies.csv`
 - `Metadata/Inventory/PermissionsAndFeatures.csv`
 - `Metadata/Inventory/ResultSets.csv`
+- `Metadata/Quality/Future_Enhancement_Backlog.csv`
