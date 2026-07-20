@@ -90,6 +90,15 @@ Vorgemerkte zukünftige Architekturhärtung:
   Der maschinenlesbare Status steht in
   `Metadata/Quality/Future_Enhancement_Backlog.csv`.
 
+- **OUT-001 – sichtbare und aufhebbare Ausgabekürzung:** Große Text- und
+  XML-Payloads bleiben nativ als `nvarchar(max)` beziehungsweise `xml`
+  materialisiert. Positive Zeichenlimits begrenzen nur die Ausgabe, `0`
+  bedeutet unbegrenzt und künstliche Obergrenzen entfallen. Jede Kürzung wird
+  zeilenbezogen maschinenlesbar sowie einmal pro Aufruf mit Parametername,
+  aktuellem Limit und größter benötigter Länge gewarnt. Der vollständige
+  Vertrag steht in
+  [Database_Console_Table_Contract.md](../Architecture/Database_Console_Table_Contract.md).
+
 Nächste Freigabeschritte:
 
 1. Pro weiterem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner umfasst 24 Integrationsverträge und acht Bereichssuiten und bricht beim ersten SQL-Fehler ab.

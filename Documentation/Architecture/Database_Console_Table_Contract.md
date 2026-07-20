@@ -161,6 +161,69 @@ Alle angeforderten Ziele werden aus bereits im selben Procedure-Aufruf
 materialisierten Quellen geschrieben. Ein TABLE-Export darf keinen erneuten
 DMV-, Plan-Cache-, Query-Store-, Extended-Events- oder Katalogzugriff auslösen.
 
+### 3.5 Begrenzung großer Text- und XML-Payloads
+
+Eine explizit angeforderte Begrenzung darf große Inhalte für die Ausgabe
+kürzen, niemals jedoch stillschweigend Vollständigkeit vortäuschen. Native
+Quell- und Materialisierungstypen bleiben `nvarchar(max)` beziehungsweise
+`xml`; `nvarchar(4000)` ist keine allgemeine XML- oder Payloadgrenze.
+
+Für zeichenbasierte Ausgabeparameter wie `@MaxTargetDataZeichen` gilt bei der
+zukünftigen Umsetzung von `OUT-001` frameworkweit:
+
+- ein eigener `@Mit...`-Schalter entscheidet, ob der Inhalt überhaupt
+  ausgegeben wird;
+- ein positiver Grenzwert kürzt ausschließlich die Ausgabeprojektion;
+- `0` bedeutet vollständige, nicht durch das Framework gekürzte Ausgabe;
+- negative Werte sind `INVALID_PARAMETER`;
+- eine zusätzliche künstliche Obergrenze wie `1000000` ist unzulässig; die
+  technischen Grenzen des nativen MAX-/XML-Datentyps bleiben maßgeblich;
+- die Implementierung darf beim Kürzen kein gültiges Unicode-Zeichen und
+  insbesondere kein UTF-16-Surrogate-Paar teilen.
+
+Jedes kürzbare benannte Ergebnis stellt die Vollständigkeit maschinenlesbar
+bereit. Für `USP_ExtendedEventsTargetRuntime` sind mindestens folgende Felder
+vorgesehen:
+
+```text
+TargetDataCharacters   bigint
+TargetDataBytes        bigint
+TargetDataIsTruncated  bit
+TargetData             nvarchar(max)
+```
+
+Die Zeichenmetrik muss eindeutig und Unicode-sicher definiert sein; die
+Bytegröße wird unabhängig davon mit `DATALENGTH` ermittelt. Der für eine
+ungekürzte Ausgabe benötigte Grenzwert wird aus der ursprünglichen, bereits im
+selben Aufruf materialisierten Länge bestimmt. Seine Ermittlung darf keinen
+erneuten Systemzugriff auslösen.
+
+Sobald mindestens ein Wert gekürzt wurde, wird genau eine technische Warning
+pro Procedure-Aufruf ausgegeben, nicht eine Warning je Zeile. Sie verwendet
+`RAISERROR` Severity 10 mit `WITH NOWAIT` und nennt mindestens:
+
+- den stabilen Code `OUTPUT_VALUE_TRUNCATED`;
+- Anzahl der gekürzten Werte;
+- Namen und aktuellen Wert des begrenzenden Parameters;
+- die größte für diesen Aufruf benötigte ungekürzte Länge;
+- den konkreten ausreichenden Parameterwert sowie `0` als unbegrenzte Option.
+
+Beispiel:
+
+```text
+OUTPUT_VALUE_TRUNCATED: 3 Targetwerte wurden durch
+@MaxTargetDataZeichen=4000 gekürzt. Der größte Wert benötigt 28734 Zeichen.
+Verwenden Sie @MaxTargetDataZeichen=28734 oder 0 für eine vollständige Ausgabe.
+```
+
+RAW und TABLE erhalten keine künstliche Warning-Datenzeile. Die
+zeilenbezogenen Längen- und Kürzungsfelder bleiben dort sowie in JSON erhalten;
+CONSOLE darf sie menschenlesbar projizieren. Eine bewusst konfigurierte
+Ausgabekürzung macht die fachliche Quellenerhebung nicht automatisch
+`PARTIAL`, muss aber immer über `TargetDataIsTruncated` und die einmalige
+Warning sichtbar bleiben. `@PrintMeldungen` darf die menschliche Meldung
+unterdrücken, nicht jedoch die maschinenlesbare Kennzeichnung.
+
 ## 4. Resultsetinventar
 
 `Metadata/Inventory/ResultSets.csv` ist die kanonische maschinenlesbare
