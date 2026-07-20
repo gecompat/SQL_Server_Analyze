@@ -26,7 +26,8 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
      @DatabaseNames=@DatabaseNames,@MitPageDetails=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1 OR NOT EXISTS
 (
@@ -46,7 +47,8 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
      @DatabaseNames=@DatabaseNames,@MitPageDetails=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1 OR NOT EXISTS
 (
@@ -70,7 +72,8 @@ EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
      @DatabaseNames=@DatabaseNames,@MitPageDetails=1,@MaxZeilen=1,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
      @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
-     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
+     @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1 OR NOT EXISTS
 (
@@ -113,7 +116,8 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
      @DatabaseNames=@DatabaseNames,@MinVolumeFreePercent=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1 OR NOT EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.capacity')
@@ -131,7 +135,8 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
      @DatabaseNames=@DatabaseNames,@MinVolumeFreePercent=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1 OR NOT EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.capacity')
@@ -148,7 +153,8 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_DatabaseCapacityAnalysis]
      @DatabaseNames=@DatabaseNames,@MinVolumeFreePercent=0,@MaxZeilen=20,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 IF ISJSON(@Json)<>1 OR NOT EXISTS
 (
     SELECT 1 FROM OPENJSON(@Json,N'$.capacity')

@@ -30,7 +30,8 @@ BEGIN
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
          @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
 
     IF ISJSON(@Json)<>1
        OR EXISTS
@@ -53,7 +54,8 @@ BEGIN
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
          @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR NOT EXISTS
        (SELECT 1 FROM OPENJSON(@Json,N'$.databaseState')
         WITH ([CompatibilityLevel] int N'$.CompatibilityLevel',[PspEligible] bit N'$.PspEligible')
@@ -71,7 +73,8 @@ BEGIN
     EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
          @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR NOT EXISTS
        (SELECT 1 FROM OPENJSON(@Json,N'$.databaseState')
         WITH ([CompatibilityLevel] int N'$.CompatibilityLevel',[OppoEligible] bit N'$.OppoEligible')
@@ -96,7 +99,8 @@ SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
 EXEC [monitor].[USP_IntelligentQueryProcessingAnalysis]
      @DatabaseNames=@DatabaseNames,@MaxZeilen=100,
      @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+     @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+     @HighImpactConfirmed=1;
 
 IF ISJSON(@Json)<>1 OR NOT EXISTS
    (SELECT 1 FROM OPENJSON(@Json,N'$.databaseState')

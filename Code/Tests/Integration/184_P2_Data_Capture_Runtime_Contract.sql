@@ -65,7 +65,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureNoneDatabase]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE_LIMITED')
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))<>0
         THROW 55801,N'P2-Vertrag DATACAPTURE-NONE fehlgeschlagen.',1;
@@ -76,7 +77,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNamePattern=N'like:ExampleCt%',
          @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF NOT EXISTS
        (
            SELECT 1 FROM OPENJSON(@Json,N'$.findings')
@@ -96,7 +98,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]|[ExampleDataCaptureCtDatabase2]',
          @ChangeTrackingClientVersion=@CurrentVersion,@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF @Status<>'INVALID_PARAMETER' OR @Partial<>1
         THROW 55803,N'P2-Vertrag CT-WATERMARK-MULTI-DB fehlgeschlagen.',1;
     INSERT @ExecutedCases VALUES('CT-WATERMARK-MULTI-DB');
@@ -107,7 +110,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNames=N'ExampleCtA',
          @ChangeTrackingClientVersion=@CurrentVersion,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF EXISTS
        (
            SELECT 1 FROM OPENJSON(@Json,N'$.findings')
@@ -124,7 +128,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNames=N'ExampleCtA',
          @ChangeTrackingClientVersion=@FutureVersion,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF NOT EXISTS
        (
            SELECT 1 FROM OPENJSON(@Json,N'$.findings')
@@ -141,7 +146,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED''',@Definition)=0
        OR NOT EXISTS
           (
@@ -157,7 +163,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNames=N'ExampleCtA',
          @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))<>1
        OR JSON_VALUE(@Json,N'$.changeTrackingTables[0].TableName')<>N'ExampleCtA'
         THROW 55807,N'P2-Vertrag DATACAPTURE-FILTER fehlgeschlagen.',1;
@@ -168,7 +175,8 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNamePattern=N'like:ExampleCt%',
          @MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
-         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databaseStatus'))<>1
         THROW 55808,N'P2-Vertrag DATACAPTURE-BOUNDED fehlgeschlagen.',1;

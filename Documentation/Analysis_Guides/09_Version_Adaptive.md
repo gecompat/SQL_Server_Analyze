@@ -22,7 +22,10 @@ Ermittelt versions- und plattformabhängige Diagnosefähigkeiten auf Server- und
 
 ### Auswahlhinweis
 
-Der Kopfkommentar bezeichnet `N''` als ungültig, die Hilfezeile als aktuelle Datenbank. Da der zentrale Kandidatenvertrag `N''` normalerweise als aktuelle Datenbank behandelt, muss bei produktiver Automatisierung der tatsächliche Status geprüft oder eine explizite Datenbankliste verwendet werden.
+`N''` und `NULL` schränken den Datenbankscope nicht ein. Ohne explizite Liste
+oder Pattern werden alle sichtbaren Online-Benutzerdatenbanken verarbeitet;
+Systemdatenbanken bleiben opt-in. Bei produktiver Automatisierung Status und
+Warnings für explizit nicht verfügbare Datenbanken prüfen.
 
 ### Aufrufe
 

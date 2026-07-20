@@ -69,8 +69,8 @@ def validate(root: Path) -> list[str]:
             errors.append(f"P2 backlog status differs: {gap_id}")
 
     runner = (root / "Code/Tests/Run_Release_Gate.sql").read_text(encoding="utf-8")
-    if "CAST(32 AS int) AS [ExecutedSuites]" not in runner:
-        errors.append("Release gate does not report 32 suites.")
+    if "CAST(34 AS int) AS [ExecutedSuites]" not in runner:
+        errors.append("Release gate does not report 34 suites.")
     for suite_file in P2_SUITE_FILES:
         if suite_file not in runner:
             errors.append(f"Release gate is missing P2 suite: {suite_file}")

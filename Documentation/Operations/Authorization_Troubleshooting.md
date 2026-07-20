@@ -208,7 +208,7 @@ Die Gruppenfreigabe hebt Schutzlimits nicht auf.
 Prüfen:
 
 - `@MaxZeilen`;
-- `@MaxDatenbanken`;
+- `@HighImpactConfirmed` und tatsächlich aktivierte Analyseklasse;
 - Analysemodus;
 - Samplingdauer;
 - Lock-Timeout;

@@ -115,14 +115,16 @@ EXEC [monitor].[USP_PrepareDatabaseCandidates]
       @DatabaseNames                  = @DatabaseNames
     , @SystemdatenbankenEinbeziehen   = @SystemdatenbankenEinbeziehen
     , @DatabaseNamePattern            = @DatabaseNamePattern
-    , @MaxDatenbanken                 = @MaxDatenbanken
     , @AnalysisClass                  = 'CROSS_DATABASE_DEEP'
+    , @HighImpactConfirmed            = @HighImpactConfirmed
     , @StatusCode                     = @StatusCode OUTPUT
     , @ErrorMessage                   = @ErrorMessage OUTPUT
     , @CrossDatabaseRequested         = @CrossDatabaseRequested OUTPUT;
 ```
 
-Die maximale Datenbankanzahl bleibt auch bei Gruppenfreigabe begrenzt. Freigabe ist kein Grund, Schutzlimits zu entfernen.
+Die Kandidatenmenge wird nicht vorab gekürzt. Der tatsächlich aktivierte
+High-Impact-Pfad benötigt unabhängig von der Gruppenfreigabe eine ausdrückliche
+Bestätigung.
 
 ## 7. Capability und SQL-Berechtigung ergänzen
 

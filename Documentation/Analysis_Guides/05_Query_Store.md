@@ -38,7 +38,6 @@ EXEC [monitor].[USP_QueryStoreStatus]
 ```sql
 EXEC [monitor].[USP_QueryStoreStatus]
       @QueryStoreDatabaseNames = NULL,
-      @MaxDatenbanken = 16,
       @ResultSetArt = 'RAW';
 ```
 

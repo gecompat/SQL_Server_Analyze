@@ -35,7 +35,8 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1 OR @Status<>'AVAILABLE_WITH_FINDING'
        OR NOT EXISTS
           (SELECT 1 FROM OPENJSON(@Json,N'$.summary')
@@ -55,7 +56,8 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1
        OR NOT EXISTS
           (SELECT 1 FROM OPENJSON(@Json,N'$.summary')
@@ -78,7 +80,8 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1
        OR NOT EXISTS
           (SELECT 1 FROM OPENJSON(@Json,N'$.summary')
@@ -122,7 +125,8 @@ BEGIN TRY
          @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
-         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+         @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
+         @HighImpactConfirmed=1;
     IF ISJSON(@Json)<>1
        OR NOT EXISTS
           (SELECT 1 FROM OPENJSON(@Json,N'$.summary')

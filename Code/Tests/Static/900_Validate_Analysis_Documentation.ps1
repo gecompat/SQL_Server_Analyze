@@ -14,7 +14,7 @@ $referencePath = Join-Path $RepositoryRoot 'Documentation/Reference/Procedure_Re
 $pagesRoot = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Procedures'
 $objectIndexPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Object_Index.md'
 $technicalFoundationsPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Technical_Foundations.md'
-$tableOutputPath = Join-Path $RepositoryRoot 'Metadata/Inventory/TableOutput.csv'
+$resultSetsPath = Join-Path $RepositoryRoot 'Metadata/Inventory/ResultSets.csv'
 $codeRoot = Join-Path $RepositoryRoot 'Code'
 $requiredHeadings = @(
     '## Eine Zeile bedeutet',
@@ -119,7 +119,7 @@ function Get-MarkdownAnchors {
     return @($anchors)
 }
 
-foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $tableOutputPath)) {
+foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $resultSetsPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required documentation file not found: $requiredPath"
     }
@@ -138,11 +138,11 @@ $sectionMatches = [regex]::Matches(
 )
 
 $referenceNames = @($sectionMatches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
-$tableOutputRows = @(Import-Csv -LiteralPath $tableOutputPath -Encoding UTF8)
-$tableOutputNames = @($tableOutputRows | ForEach-Object { $_.ProcedureName } | Sort-Object -Unique)
-$expectedTableOutputNames = @($referenceNames | Where-Object { $_ -notin @('USP_PrepareDatabaseCandidates','USP_PrepareNameFilters') })
-if ($tableOutputRows.Count -ne $expectedTableOutputNames.Count -or $tableOutputNames.Count -ne $expectedTableOutputNames.Count) {
-    $errors.Add("Expected $($expectedTableOutputNames.Count) unique TABLE primary-result rows, found $($tableOutputRows.Count) rows and $($tableOutputNames.Count) unique names.")
+$resultSetRows = @(Import-Csv -LiteralPath $resultSetsPath -Encoding UTF8)
+$resultSetProcedureNames = @($resultSetRows | ForEach-Object { $_.ProcedureName } | Sort-Object -Unique)
+$expectedResultSetProcedureNames = @($referenceNames | Where-Object { $_ -notin @('USP_PrepareDatabaseCandidates','USP_PrepareNameFilters') })
+if ($resultSetProcedureNames.Count -ne $expectedResultSetProcedureNames.Count) {
+    $errors.Add("Expected $($expectedResultSetProcedureNames.Count) procedures in the result-set inventory, found $($resultSetProcedureNames.Count).")
 }
 $pageFiles = @(Get-ChildItem -LiteralPath $pagesRoot -Filter 'USP_*.md' -File)
 $pageNames = @($pageFiles | ForEach-Object { $_.BaseName } | Sort-Object -Unique)
@@ -155,16 +155,28 @@ foreach ($name in @($referenceNames | Where-Object { $_ -notin $pageNames })) {
 foreach ($name in @($pageNames | Where-Object { $_ -notin $referenceNames })) {
     $errors.Add("Procedure page without reference entry: $name")
 }
-foreach ($name in @($expectedTableOutputNames | Where-Object { $_ -notin $tableOutputNames })) {
-    $errors.Add("Missing TABLE primary-result inventory row: $name")
+foreach ($name in @($expectedResultSetProcedureNames | Where-Object { $_ -notin $resultSetProcedureNames })) {
+    $errors.Add("Missing result-set inventory procedure: $name")
 }
-foreach ($name in @($tableOutputNames | Where-Object { $_ -notin $expectedTableOutputNames })) {
-    $errors.Add("Unknown TABLE primary-result inventory row: $name")
+foreach ($name in @($resultSetProcedureNames | Where-Object { $_ -notin $expectedResultSetProcedureNames })) {
+    $errors.Add("Unknown result-set inventory procedure: $name")
 }
-foreach ($row in $tableOutputRows) {
-    if ([string]::IsNullOrWhiteSpace($row.PrimaryResultName) -or [string]::IsNullOrWhiteSpace($row.ContractNote)) {
-        $errors.Add("Incomplete TABLE primary-result inventory row: $($row.ProcedureName)")
+foreach ($row in $resultSetRows) {
+    if ([string]::IsNullOrWhiteSpace($row.ResultName) -or
+        [string]::IsNullOrWhiteSpace($row.SourceTable) -or
+        [string]::IsNullOrWhiteSpace($row.SourceSchema) -or
+        $row.IsTableExportable -ne '1') {
+        $errors.Add("Incomplete TABLE-exportable result-set inventory row: $($row.ProcedureName)/$($row.ResultName)")
     }
+}
+
+$duplicateResultSetKeys = @(
+    $resultSetRows |
+        Group-Object -Property ProcedureName,ResultName |
+        Where-Object { $_.Count -gt 1 }
+)
+foreach ($duplicate in $duplicateResultSetKeys) {
+    $errors.Add("Duplicate result-set inventory key: $($duplicate.Name)")
 }
 
 foreach ($name in $referenceNames) {
