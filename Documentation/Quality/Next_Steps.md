@@ -63,6 +63,23 @@ Unmittelbar offene Repository-Qualitätsaufgaben:
 
 - Keine. `RQ-001` bis `RQ-006` sind im Repository umgesetzt; noch ausstehende Laufzeitnachweise stehen ausschließlich in der nachfolgenden Testreihenfolge.
 
+Vorgemerkte zukünftige Architekturhärtung:
+
+- **COLL-001 – Frameworkweite Collation-Portabilität:** Alle installierbaren Objekte,
+  lokalen `#Temp`-Tabellen, Tabellenvariablen, dynamischen SQL-Pfade, Filter,
+  JSON-/Listenparser, Joins, Vergleiche, Gruppierungen, Sortierungen,
+  Eindeutigkeitsprüfungen sowie RAW-, CONSOLE- und TABLE-Ausgaben sind so zu
+  härten, dass das Framework unabhängig von der gewählten case-sensitiven oder
+  case-insensitiven Collation korrekt arbeitet. Dies umfasst ausdrücklich
+  unterschiedliche Collations von Server, `tempdb`, Frameworkdatenbank und
+  einzelnen analysierten Datenbanken in beliebiger unterstützter Kombination.
+  Vor einer Lockerung der Installerprüfung sind alle Collation-Grenzen zu
+  inventarisieren, die fachlich gewünschte Vergleichssemantik je Grenze
+  festzulegen und eine gemischte Laufzeitmatrix auf SQL Server 2019, 2022 und
+  2025 einschließlich stabiler TABLE-Schemas, Konfliktfreiheit und
+  Case-Semantik grün nachzuweisen. Bis dahin bleibt
+  `SQL_Latin1_General_CP1_CS_AS` die freigegebene Plattformgrenze.
+
 Nächste Freigabeschritte:
 
 1. Pro weiterem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner umfasst 24 Integrationsverträge und acht Bereichssuiten und bricht beim ersten SQL-Fehler ab.
