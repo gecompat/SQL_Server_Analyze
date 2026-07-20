@@ -10,15 +10,18 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Jedes SQL-Skript beginnt mit `USE [DeineDatenbank];` und `GO`.
 - Beispielaufrufe sind nur als `[monitor].[Objektname]` zu schreiben.
 - Öffentliche Procedures verwenden `@ResultSetArt = 'CONSOLE'` als Default; Steuerwerte werden intern case-insensitiv normalisiert.
-- `RAW` ist der stabile technische Vertrag, `CONSOLE` die formatierte Ad-hoc-Ausgabe, `NONE` unterdrückt fachliche Resultsets.
+- `RAW` ist der stabile technische Vertrag, `CONSOLE` die formatierte Ad-hoc-Ausgabe, `TABLE` der benannte Mehrfach-Export und `NONE` unterdrückt fachliche Resultsets.
+- `CONSOLE` liefert im Normalfall genau ein fachliches Resultset; leere fachliche Ergebnisse erhalten eine verständliche Console-Zeile, während RAW und TABLE keine künstliche Datenzeile erzeugen.
+- `TABLE` verwendet ausschließlich `@ResultTablesJson`; die stabilen Resultsetnamen und nativen Schemas stehen in `Metadata/Inventory/ResultSets.csv`.
 - JSON wird optional über `@Json nvarchar(max) OUTPUT` mit Metadaten und benannten Arrays geliefert.
 - `@MaxZeilen`: positiv begrenzt, `NULL` oder `0` bedeutet vollständig, negativ ist ungültig.
 - Exakte Mehrfachfilter verwenden bracket-aware Pipe-Listen; Pipe trennt nur außerhalb von `[...]`.
 - Patternfilter sind von exakten Listen getrennt und unterstützen `like:`, versionsabhängig `regex:` und `regexi:`.
 - Query Store wird im Kontext jeder ausgewählten Quelldatenbank gelesen.
 - Statementtext wird zentral anhand der Byte-Offsets extrahiert; Batch-, Modul- und Input-Buffer-Text sind getrennte Diagnoseinformationen.
-- Katalogzugriffe sollen Locking/Blocking minimieren; ressourcenintensive Pfade sind nicht der Default.
-- Frameworkversion `1.1.0-special.9`, Vertragsversion `1.14`: dokumentierbare Testmatrix und einundzwanzig Spezialfallprocedures einschließlich Verschlüsselungslebenszyklus und Wartungsoperationen.
+- Standardmäßig werden alle sichtbaren, online befindlichen Benutzerdatenbanken verarbeitet; explizite Namens- und Patternfilter schränken ein, Systemdatenbanken bleiben opt-in und es gibt keinen CURRENT-Scope oder `@MaxDatenbanken`.
+- Katalogzugriffe sollen Locking/Blocking minimieren; nur tatsächlich aktivierte ressourcenintensive Pfade verlangen `@HighImpactConfirmed = 1` vor dem ersten teuren Zugriff.
+- Der frameworkweite Datenbank-, CONSOLE- und TABLE-Vertrag wird durch die Integrationssuiten `187` bis `189` abgesichert.
 - P0/P1-Reihenfolge und Aussagegrenzen stehen in `Documentation/Architecture/Special_Case_Modules.md`.
 - `monitor.USP_DiagnosticFindings` ist der letzte Aggregator und hängt über definierte JSON-Verträge von den vorherigen Spezialfallmodulen ab; Schema, IQP und Contention bleiben dort opt-in.
 - `monitor.USP_SpecialFeatureInventory` trennt sichtbare Nutzung beziehungsweise reine Konfiguration von Plattform-Capability und gibt ausdrücklich kein Gesundheitsurteil ab.
@@ -29,8 +32,8 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - `monitor.USP_DataCaptureDeepAnalysis` bewertet CT-Verlust nur mit Consumer-Wasserstand, isoliert CDC- und lokale Replikationsquellen und behandelt Remote-Topologie als Evidenzlücke; Change-Zeilen, Commands, Fehlertexte, Credentials und DDL bleiben ausgeschlossen.
 - `monitor.USP_EncryptionAnalysis` trennt TDE von expliziter Backupverschlüsselung und liest keine Schlüssel-, Medien-, Konto- oder geschützten Inhaltsdaten; externe Schlüsselkopie und Restore bleiben außerhalb des Beweisumfangs.
 - `monitor.USP_MaintenanceOperations` liest Jobaktivität nur bei explizitem Filter und führt keine Resume-, Abort-, Kill-, Cleanup- oder Jobaktion aus; SQL-/Jobinhalte und Identitäts-/Clientdaten bleiben ausgeschlossen.
-- Actions führen Installer, 20-Suite-Gate einschließlich der ersten achtundzwanzig P1-Fälle bis Statistikverteilung und synthetische Berechtigungsmatrix versionshart auf SQL Server 2019, 2022 und 2025 aus.
-- Maßgeblicher sauberer Runtime-Evidenzcommit für die Statistikverteilung ist `f4bf1d4333e7f4a38814dea72a0799ca1d949364`; die drei Versionsläufe sind in der Testmatrix commitbezogen verknüpft.
+- Actions führen Installer, 34-Suite-Release-Gate und synthetische Berechtigungsmatrix versionshart auf SQL Server 2019, 2022 und 2025 aus.
+- Maßgebliche Runtime-Evidenz wird commitbezogen in `Metadata/Quality/Test_Matrix.csv` und `Metadata/Quality/Release_Gate_Evidence.csv` verknüpft.
 
 ## Datenschutz und Portabilität
 

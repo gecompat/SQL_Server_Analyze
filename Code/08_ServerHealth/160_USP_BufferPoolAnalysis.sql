@@ -53,7 +53,7 @@ BEGIN
         PRINT N'monitor.USP_BufferPoolAnalysis';
         PRINT N'Korrelierte Momentaufnahme; keine Trend- oder Konfigurationsempfehlung.';
         PRINT N'@MitBufferPoolVerteilung=0 ist der sichere Standard; 1 scannt sys.dm_os_buffer_descriptors.';
-        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson.';
         RETURN;
     END;
 

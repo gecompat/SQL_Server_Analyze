@@ -85,7 +85,7 @@ BEGIN
         PRINT N'Geprüft werden Queue-Schalter, approximative Queue-Zeilen, Aktivierungs-DMVs, Transmission-Alter und Conversation-Zustände.';
         PRINT N'Exakte Namenslisten und Pattern beziehen sich auf Queue-Schema und Queue-Name; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfkontext und keine automatische Betriebs-, Routing- oder Bereinigungsentscheidung.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Es werden keine Queue-Nutzdaten oder Nachrichtenkörper gelesen und keine Broker-Objekte verändert.';
         RETURN;
     END;

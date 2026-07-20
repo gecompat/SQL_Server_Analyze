@@ -83,7 +83,7 @@ BEGIN
         PRINT N'Geprüft werden Katalogzuordnung, Periodenmetadaten, Retention-Schalter, approximative Größe/Zeilen und History-Indexreihenfolge End/Start.';
         PRINT N'Exakte Namenslisten und Pattern derselben Eigenschaft sind gegenseitig exklusiv; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfkontext, keine automatische Retention-, DDL- oder Kapazitätsentscheidung.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Es werden keine Zeilen aus aktuellen oder historischen Benutzertabellen gelesen und keine zeitliche Datenkonsistenz behauptet.';
         RETURN;
     END;

@@ -88,7 +88,7 @@ BEGIN
         PRINT N'@MitHashIndexStats=1 aktiviert eine potenziell teure vollständige Hashindex-DMV-Auswertung und benötigt CATALOG_DEEP.';
         PRINT N'Exakte Namenslisten und Pattern derselben Eigenschaft sind gegenseitig exklusiv; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfhinweise, keine automatische DDL- oder Kapazitätsempfehlung.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Es werden keine Benutzertabellendaten, Moduldefinitionen, SQL-Texte, Transaktions-IDs oder Checkpoint-Dateipfade gelesen.';
         RETURN;
     END;
