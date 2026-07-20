@@ -11,7 +11,9 @@ Benötigt werden:
 - Windows PowerShell oder PowerShell 7 zum Erzeugen des eigenständigen Installers;
 - eine lokale Kopie dieses Repositorys;
 - für die einmalige Installation ausreichende DDL-Rechte in der Installationsdatenbank. Für die Erstinstallation ist die Datenbankrolle `db_owner` der einfachste verlässliche Weg;
-- Server, `tempdb` und Installationsdatenbank mit der Collation `SQL_Latin1_General_CP1_CS_AS`.
+- für den derzeit freigegebenen und automatisiert geprüften Installationspfad:
+  Server, `tempdb` und Installationsdatenbank mit der Collation
+  `SQL_Latin1_General_CP1_CS_AS`.
 
 Das Framework vergibt keine Benutzer-, Datenbank- oder Serverberechtigungen und ändert keine Serverkonfiguration.
 
@@ -39,13 +41,35 @@ SELECT
        WHERE [name] = N'tempdb')                              AS [TempDbCollation];
 ```
 
-Die Installation ist nur freigegeben, wenn:
+Der derzeitige Release- und Teststand ist nur freigegeben, wenn:
 
 - `ProductMajorVersion` mindestens `15` ist;
 - `ServerCollation` exakt `SQL_Latin1_General_CP1_CS_AS` lautet;
 - `TempDbCollation` exakt `SQL_Latin1_General_CP1_CS_AS` lautet.
 
-Eine abweichende Server- oder `tempdb`-Collation lässt sich nicht durch eine anders collatierte Frameworkdatenbank kompensieren. In diesem Fall die Installation abbrechen und die Zielinstanz prüfen.
+Der Installer lehnt eine abweichende Server-, `tempdb`- oder
+Installationsdatenbank-Collation derzeit ausdrücklich ab. Diese Prüfung bildet
+die aktuell automatisiert getestete und unterstützte Plattformgrenze ab. Sie
+beweist nicht, dass das Framework unter jeder anderen Collation technisch
+grundsätzlich funktionsunfähig wäre.
+
+Der Hintergrund der Einschränkung sind noch nicht vollständig verifizierte
+Collation-Übergänge. Textspalten in lokalen `#Temp`-Tabellen erben gewöhnlich
+die Collation von `tempdb`; Frameworktabellen, Systemkataloge und analysierte
+Datenbanken können andere Collations verwenden. Nicht ausdrücklich
+collatierte Vergleiche können dann entweder mit einem Collation-Konflikt
+abbrechen oder unter einer case-insensitiven Collation abweichende Ergebnisse
+bei Vergleichen, Gruppierung, Sortierung und Eindeutigkeit erzeugen. Viele
+Frameworkpfade besitzen bereits explizite `COLLATE`-Angaben, die vollständige
+frameworkweite Absicherung und eine gemischte Testmatrix stehen jedoch noch
+aus. Diese zukünftige Architekturhärtung ist als `COLL-001` in den
+[nächsten Arbeitsschritten](../Quality/Next_Steps.md) vorgemerkt.
+
+Bis diese Portabilitätsarbeit abgeschlossen und auf SQL Server 2019, 2022 und
+2025 nachgewiesen ist, bleibt die Prüfung verbindlich: Bei einer Abweichung die
+Installation abbrechen und die Zielinstanz beziehungsweise den zukünftigen
+Freigabestand prüfen. Eine bloß anders collatierte Frameworkdatenbank ist für
+den aktuellen Installer daher keine freigegebene Umgehung der Prüfung.
 
 ## 4. Installationsdatenbank anlegen oder prüfen
 
@@ -390,7 +414,7 @@ Frameworkeigene Standardzeilen im Wait-Katalog werden aktualisiert; eigene Katal
 | Meldung oder Symptom | Wahrscheinliche Ursache | Maßnahme |
 |---|---|---|
 | Datenbank `DeineDatenbank` nicht gefunden | Platzhalter wurde nicht ersetzt | Erste `USE`-Zeile beziehungsweise Testdatei korrigieren |
-| Nicht unterstützte Server-, `tempdb`- oder Datenbank-Collation | Eine der drei Collations weicht ab | Installation auf dieser Instanz abbrechen und Plattformvoraussetzung klären |
+| Der Installer meldet eine nicht unterstützte Server-, `tempdb`- oder Datenbank-Collation | Eine der drei Collations liegt außerhalb der derzeit getesteten und freigegebenen Plattformgrenze | Installation abbrechen; die Prüfung nicht umgehen und erst einen Frameworkstand mit nachgewiesener Collation-Portabilität verwenden |
 | Syntaxfehler bei `:r` | Include-Installer ohne SQLCMD-Modus ausgeführt | SQLCMD-Modus aktivieren oder generierten Installer verwenden |
 | Include-Datei nicht gefunden | Repository unvollständig, verschoben oder falscher Ausführungskontext | Repository vollständig entpacken oder generierten Installer verwenden |
 | `CREATE`/`ALTER`/`CREATE SCHEMA` verweigert | DDL-Rechte fehlen | Installation mit einem dafür freigegebenen Konto ausführen |
