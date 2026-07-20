@@ -265,7 +265,8 @@ SELECT [p].[name],[p].[object_id]
 FROM [sys].[procedures] AS [p] WITH (NOLOCK)
 JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[p].[schema_id]
 WHERE [s].[name]=N'monitor'
-  AND [p].[name] NOT IN(N'USP_PrepareDatabaseCandidates',N'USP_PrepareNameFilters',N'InternalWriteResultTable')
+  AND [p].[name] NOT LIKE N'Internal%'
+  AND [p].[name] NOT LIKE N'USP_Prepare%'
 ORDER BY [p].[name];
 
 OPEN [ProcedureCursor];
