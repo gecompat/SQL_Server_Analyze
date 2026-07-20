@@ -57,6 +57,7 @@ Abgeschlossen:
 45. Die neun durch das vollständige Actions-Gate erledigten Backlogzeilen SC-002 bis SC-010 sind auf `IMPLEMENTED_ACTIONS_GATE` abgeglichen. Ein versehentlich versioniertes Python-Cacheartefakt wurde entfernt und durch Repository-Ignore-Regeln gegen Wiederholung abgesichert.
 46. Die Datenschutz-Allowlist enthält nun auch den bereits vorhandenen, zur Laufzeit synthetisch erzeugten Credential-Pfad des Statistics-Evidence-Workflows. Die Ausnahme ist wie alle übrigen Einträge an Regel, Pfad und Match-Hash gebunden.
 47. Das Deep-Analysis-Authoring-Archiv ist konsolidiert: historische Roadmaps sind abgeschlossen markiert, kanonische Draft-Verweise entfernt, eine Versions-/Primärquellenmatrix ergänzt und dauerhaft verlorene externe Links werden automatisiert erkannt.
+48. Der Wait-Type-Katalog beantwortet für alle 347 Framework-Waits Einordnung, Ursachenhypothesen, Wirkung, Gegenbeweise, Minderung, Queranalysen und Messgrenzen. Mindestens vier typisierte, aussagebezogene Quellen je Wait ersetzen den früheren pauschalen Einzelverweis; seltene interne Waits bleiben als begrenzte Evidenz sichtbar.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 

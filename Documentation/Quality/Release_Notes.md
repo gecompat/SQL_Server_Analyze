@@ -1,5 +1,27 @@
 # Release Notes
 
+## Stand 2026-07-20 – vertiefter Wait-Type-Katalog `1.1.0-special.12`
+
+- Alle 347 kuratierten Wait Types beantworten zusätzlich Einordnung,
+  Begründung, häufige Ursachen, mögliche Wirkung, Gegenbeweise,
+  Minderungsansätze, verwandte Waits und Messhinweise. Seltene interne Waits
+  bleiben ausdrücklich als begrenzte Evidenz gekennzeichnet.
+- Die bisher gemeinsame `SourceReference` bleibt ausschließlich der Beleg für
+  offizielle Namen und Kurzdefinitionen. Die neue normalisierte
+  `WaitTypeCatalogSource` trennt Definition, Messmethodik, Interpretation sowie
+  Diagnose/Minderung und nennt die jeweils unterstützten Felder.
+- Jeder Framework-Wait besitzt mindestens vier typisierte Quellen; acht
+  besonders entscheidungsrelevante Waits erhalten eine zusätzliche exakte
+  Diagnosequelle. Der Seed umfasst damit 1.396 Quellenzuordnungen und mehr als
+  zwanzig unterschiedliche Quellziele.
+- `TVF_WaitTypeInfo` liefert die neuen Analysefelder und die Quellenanzahl;
+  `TVF_WaitTypeSources` gibt exakte Quellen aus und kennzeichnet bei neuen,
+  unbekannten Waits einen generischen Quellenfallback transparent.
+- Installer, Frameworkvertrag, Smoke-Test, Inventar, Evidenzdatei,
+  Betriebsdokumentation und Offline-Validator sind synchronisiert. Der
+  Validator verhindert insbesondere eine Rückkehr zu einer einzigen
+  pauschalen Quelle.
+
 ## Stand 2026-07-20 – SSMS-Installationsanleitung
 
 - Die Installationsreferenz führt nun vollständig durch Repositorydownload,

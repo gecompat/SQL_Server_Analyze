@@ -1,6 +1,6 @@
 # Kuratierung des Wait-Type-Katalogs
 
-Stand: 2026-07-18
+Stand: 2026-07-20
 
 ## Ergebnis
 
@@ -31,6 +31,28 @@ Commit [`ee244f0`](https://github.com/gecompat/SQL_Server_Analyze/commit/ee244f0
 
 Zusätzlich wurden drei erkennbar abgeschnittene Beschreibungen repariert. `SourceReference` verweist nun auf die Microsoft-Primärquelle; der SQLskills-Link bleibt ausschließlich als optionale `HelpUrl` bestehen und ist kein kopierter Beschreibungstext.
 
+## Analytische Vertiefung und Quellenprovenienz
+
+Die Namenskurierung allein reicht für Performanceanalysen nicht aus. Der
+Katalog beantwortet nun für alle 347 Frameworkzeilen zusätzlich Einordnung,
+Ursachenhypothesen, mögliche Wirkung, Minderungsansätze, Gegenbeweise,
+verwandte Waits und Messmethodik. Der frühere Sammelwert `OTHER_OR_NEW` wird zur
+Laufzeit nicht mehr ausgegeben; fachlich erkennbare Komponenten besitzen eigene
+Gruppen, nicht stabil dokumentierte Enginepfade bleiben ehrlich als
+`ENGINE_INTERNAL` beziehungsweise `INTERNAL_LIMITED` markiert.
+
+Der vorher für alle Zeilen gleiche `SourceReference` bleibt ausschließlich der
+Beleg für Name und Microsoft-Kurzdefinition. Die neue Tabelle
+`WaitTypeCatalogSource` speichert mindestens vier typisierte Quellen je Wait.
+Damit ist nachvollziehbar, ob eine Aussage aus Primärdokumentation,
+Microsoft-Engineering, Microsoft-Diagnosewerkzeugen, einer wait-spezifischen
+Spezialistenreferenz oder einer begrenzten Frameworkableitung stammt.
+
+Die vertiefte Struktur und der Quellenvertrag sind unter
+[`../Operations/Wait_Type_Catalog.md`](../Operations/Wait_Type_Catalog.md)
+dokumentiert. Maschinenlesbare Sollzahlen und Provenienzregeln stehen weiterhin
+in `Metadata/Quality/Wait_Type_Curation_Evidence.json`.
+
 Beim Upgrade entfernt Seed-Teil 01 die zehn verworfenen und vier ersetzten Namen ausschließlich dann, wenn die Zeile weiterhin als `IsFrameworkDefault = 1` gekennzeichnet ist. Benutzerdefinierte Katalogzeilen bleiben unangetastet.
 
 ## Automatischer Vertrag
@@ -51,5 +73,8 @@ Das Gate blockiert insbesondere:
 - eine geänderte finale Namensmenge,
 - eine fehlende oder veränderte Microsoft-Quellenreferenz sowie
 - inkonsistente Entscheidungsevidenz.
+- fehlende Analysefelder, Quelltypen oder Installereinbindungen,
+- weniger als vier typisierte Frameworkquellen je Wait sowie
+- eine Rückkehr des Laufzeit-Sammelwerts `OTHER_OR_NEW`.
 
 Trefferberichte enthalten nur Regelcode, Pfad und Anzahl, niemals den Inhalt einer Seed-Zeile.

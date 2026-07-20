@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.11
-Stand        : 2026-07-19
+Version      : 1.1.0-special.12
+Stand        : 2026-07-20
 Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
                Analysepaket. Keine Installationshistorie und kein Deployment-
                Framework.
@@ -34,12 +34,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.11',
-    [ReleaseDate]='20260719',
+SET [FrameworkVersion]='1.1.0-special.12',
+    [ReleaseDate]='20260720',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.16',
+    [ContractVersion]='1.17',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.16: beliebige Ein-Spalten-Dummys für TABLE, nonblocking Systemkatalogzugriffe und objektbezogene Temp-Namen.'
+    [ReleaseNotes]=N'API 1.17: Wait-Katalog mit vertiefter Analyse, belastbarer Einordnung und typisierten, aussagebezogenen Quellen.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -51,9 +51,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.11','20260719',15,
-        '1.16',SYSUTCDATETIME(),
-        N'API 1.16: beliebige Ein-Spalten-Dummys für TABLE, nonblocking Systemkatalogzugriffe und objektbezogene Temp-Namen.'
+        N'SQLServerMonitoringFramework','1.1.0-special.12','20260720',15,
+        '1.17',SYSUTCDATETIME(),
+        N'API 1.17: Wait-Katalog mit vertiefter Analyse, belastbarer Einordnung und typisierten, aussagebezogenen Quellen.'
     );
 END;
 GO

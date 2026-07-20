@@ -17,7 +17,7 @@ Je Resultset beschreibt eine Zeile einen sichtbaren Wait beziehungsweise eine Ag
 
 ## So lesen
 
-Waittyp und Waitgruppe mit Dauer, Anzahl, Session, Request und Samplemodus lesen. Gesamtzeit und Wiederholung vor Einzelspitzen priorisieren.
+Waittyp und Waitgruppe mit Dauer, Anzahl, Session, Request und Samplemodus lesen. Gesamtzeit und Wiederholung vor Einzelspitzen priorisieren. Für die vertiefte Einordnung `TVF_WaitTypeInfo` und für die aussagebezogenen Belege `TVF_WaitTypeSources` verwenden.
 
 ## Warum kann das problematisch sein?
 
@@ -61,6 +61,6 @@ Ein Wait ist keine Root Cause und ein hoher kumulativer Wert kein aktuelles Prob
 
 ### Folgeanalyse
 
-Die kanonischen [Wait-Details](../02_Current_State.md#4-monitorusp_currentwaits) und das [Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) verwenden; danach je Familie Blocking, I/O, Grants, CPU oder HADR weiterverfolgen.
+Die kanonischen [Wait-Details](../02_Current_State.md#4-monitorusp_currentwaits), den [Betriebsvertrag des Wait-Katalogs](../../Operations/Wait_Type_Catalog.md) und das [Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) verwenden; danach je Familie Blocking, I/O, Grants, CPU oder HADR weiterverfolgen.
 
 [Technische Detailbeschreibung](../02_Current_State.md#4-monitorusp_currentwaits)

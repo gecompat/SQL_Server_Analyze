@@ -16,10 +16,20 @@ RETURN
         , COALESCE([c].[TypicalOccurrence], [f].[TypicalOccurrence]) AS [TypicalOccurrence]
         , COALESCE([c].[HighWaitImpact], [f].[HighWaitImpact]) AS [HighWaitImpact]
         , COALESCE([c].[RecommendedChecks], [f].[RecommendedChecks]) AS [RecommendedChecks]
+        , COALESCE([c].[DefaultAssessment], CASE WHEN [f].[IsGenerallyBenign]=1 THEN 'EXPECTED_OR_IDLE' ELSE 'CONTEXT_DEPENDENT' END) AS [DefaultAssessment]
+        , COALESCE([c].[AssessmentBasis], N'Familienfallback: Erst aktiven Task, Ressource, Delta und Workloadwirkung bestätigen.') AS [AssessmentBasis]
+        , COALESCE([c].[CommonCauses], [f].[TypicalOccurrence]) AS [CommonCauses]
+        , COALESCE([c].[PerformanceImpact], [f].[HighWaitImpact]) AS [PerformanceImpact]
+        , COALESCE([c].[Mitigation], N'Nicht den Wait Type unterdrücken; die nachgewiesene Ressourcen- oder Komponentenursache beheben.') AS [Mitigation]
+        , COALESCE([c].[CounterEvidence], N'Kein aktiver Task und kein reproduzierbares Lastdelta sprechen gegen einen aktuellen Engpass.') AS [CounterEvidence]
+        , [c].[RelatedWaitTypes] AS [RelatedWaitTypes]
+        , COALESCE([c].[MeasurementGuidance], N'Aktive Tasks und ein belastungsbezogenes Delta gemeinsam bewerten.') AS [MeasurementGuidance]
+        , COALESCE([c].[AnalysisConfidence], 'FAMILY_INFERENCE') AS [AnalysisConfidence]
         , COALESCE([c].[HelpUrl], CASE WHEN @WaitType IS NOT NULL THEN N'https://www.sqlskills.com/help/waits/' + @WaitType END) AS [HelpUrl]
         , COALESCE([c].[DescriptionSource], 'FAMILY_FALLBACK') AS [DescriptionSource]
         , COALESCE([c].[DescriptionQuality], 'GENERIC') AS [DescriptionQuality]
         , [c].[SourceReference] AS [SourceReference]
+        , CONVERT(int,(SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalogSource] AS [src] WITH (NOLOCK) WHERE [src].[WaitType]=[c].[WaitType])) AS [SourceCount]
         , CONVERT
           (
               nvarchar(400)
