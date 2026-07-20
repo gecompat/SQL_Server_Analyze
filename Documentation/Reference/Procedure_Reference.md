@@ -139,8 +139,8 @@ Quelle: `Code/02_CurrentState/030_USP_CurrentBlocking.sql`
 Quelle: `Code/02_CurrentState/080_USP_CurrentIO.sql`
 
 ```sql
-@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MinLatencyMs decimal(19,3) = 0, @SampleSeconds tinyint = 0, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE',
-@ResultTable sysname = NULL,
+@DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MinLatencyMs decimal(19,3) = 0, @SampleSeconds tinyint = 0, @MaxZeilen int = 1000, @ResultSetArt varchar(16) = 'CONSOLE',
+@ResultTablesJson nvarchar(max) = NULL,
 @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
 
@@ -169,8 +169,8 @@ Quelle: `Code/02_CurrentState/060_USP_CurrentMemoryGrants.sql`
 Quelle: `Code/02_CurrentState/100_USP_CurrentOverview.sql`
 
 ```sql
-@SessionIds nvarchar(max) = NULL, @DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @MitSessions bit = 1, @MitRequests bit = 1, @MitBlocking bit = 1, @MitWaits bit = 1, @MitTransactions bit = 1, @MitMemoryGrants bit = 1, @MitTempDB bit = 1, @MitIO bit = 1, @MitLog bit = 1, @MitSqlText bit = 1, @GesamtenSqlTextEinbeziehen bit = 0, @InputBufferEinbeziehen bit = 0, @ModulInfoEinbeziehen bit = 1, @MaxSqlTextZeichen int = 4000, @SampleSeconds tinyint = 0, @MaxZeilen int = 500, @ResultSetArt varchar(16) = 'CONSOLE',
-@ResultTable sysname = NULL,
+@SessionIds nvarchar(max) = NULL, @DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @Detailgrad varchar(16) = 'SUMMARY', @MitSessions bit = 1, @MitRequests bit = 1, @MitBlocking bit = 1, @MitWaits bit = 1, @MitTransactions bit = 1, @MitMemoryGrants bit = 1, @MitTempDB bit = 1, @MitIO bit = 1, @MitLog bit = 1, @MitSqlText bit = 1, @GesamtenSqlTextEinbeziehen bit = 0, @InputBufferEinbeziehen bit = 0, @ModulInfoEinbeziehen bit = 1, @MaxSqlTextZeichen int = 4000, @SampleSeconds tinyint = 0, @MaxZeilen int = 500, @ResultSetArt varchar(16) = 'CONSOLE',
+@ResultTablesJson nvarchar(max) = NULL,
 @JsonErzeugen bit = 0, @Json nvarchar(max) = NULL OUTPUT, @PrintMeldungen bit = 1, @Hilfe bit = 0
 ```
 
@@ -519,7 +519,7 @@ Quelle: `Code/04_PlanCache/040_USP_PlanDetails.sql`
 Quelle: `Code/01_Common/083_USP_PrepareDatabaseCandidates.sql`
 
 ```sql
-@DatabaseNames nvarchar(max) = N'', @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = 16, @AnalysisClass varchar(64) = 'CROSS_DATABASE_DEEP', @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT, @CrossDatabaseRequested bit OUTPUT, @CandidateTable sysname = N'#PrepareDatabaseCandidates_Result', @WarningTable sysname = NULL
+@DatabaseNames nvarchar(max) = NULL, @SystemdatenbankenEinbeziehen bit = 0, @DatabaseNamePattern nvarchar(4000) = NULL, @MaxDatenbanken int = NULL, @AnalysisClass varchar(64) = NULL, @HighImpactConfirmed bit = 0, @StatusCode varchar(40) OUTPUT, @ErrorMessage nvarchar(2048) OUTPUT, @CrossDatabaseRequested bit OUTPUT, @CandidateTable sysname = N'#PrepareDatabaseCandidates_Result', @WarningTable sysname = NULL
 ```
 
 ## `[monitor].[USP_PrepareNameFilters]`
