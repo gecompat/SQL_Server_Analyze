@@ -15,6 +15,7 @@ $pagesRoot = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Procedures
 $objectIndexPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Object_Index.md'
 $technicalFoundationsPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Technical_Foundations.md'
 $resultSetsPath = Join-Path $RepositoryRoot 'Metadata/Inventory/ResultSets.csv'
+$reviewManifestPath = Join-Path $RepositoryRoot 'Metadata/Quality/Analysis_Documentation_Review.csv'
 $codeRoot = Join-Path $RepositoryRoot 'Code'
 $requiredHeadings = @(
     '## Eine Zeile bedeutet',
@@ -30,6 +31,35 @@ $requiredHeadings = @(
     '### Typische Fehlinterpretation',
     '### Folgeanalyse'
 )
+$deepReviewedRequiredHeadings = @(
+    '## Entscheidungsfrage und Einsatz',
+    '## Nicht beantwortete Fragen',
+    '## Sicherer Einstieg',
+    '## Resultsets und Leserichtung',
+    '## Beispiele und Gegenbeispiele',
+    '## Leere oder partielle Ausgabe',
+    '## Eigenlast und Grenzen',
+    '## Primärquellen'
+)
+$deepReviewedCostDimensions = @(
+    'Kostenklasse',
+    'Standardpfad',
+    'Teuerster Pfad',
+    'Haupttreiber',
+    'Skalierung',
+    'Ressourcen',
+    'Begrenzungswirkung',
+    'Locking und Nebenwirkungen',
+    'Schutzmechanismus',
+    'Sicherer Einsatz',
+    'Aussagegrenze'
+)
+$referenceDeepReviewedPages = @(
+    'USP_CurrentRequests',
+    'USP_IndexPhysicalStats',
+    'USP_ExtendedEventsReadEvents'
+)
+$minimumDeepReviewedCount = 3
 
 $errors = [System.Collections.Generic.List[string]]::new()
 $markdownAnchorCache = @{}
@@ -119,7 +149,7 @@ function Get-MarkdownAnchors {
     return @($anchors)
 }
 
-foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $resultSetsPath)) {
+foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $resultSetsPath, $reviewManifestPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required documentation file not found: $requiredPath"
     }
@@ -139,6 +169,7 @@ $sectionMatches = [regex]::Matches(
 
 $referenceNames = @($sectionMatches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
 $resultSetRows = @(Import-Csv -LiteralPath $resultSetsPath -Encoding UTF8)
+$reviewRows = @(Import-Csv -LiteralPath $reviewManifestPath -Encoding UTF8)
 $resultSetProcedureNames = @($resultSetRows | ForEach-Object { $_.ProcedureName } | Sort-Object -Unique)
 $expectedResultSetProcedureNames = @($referenceNames | Where-Object { $_ -notin @('USP_PrepareDatabaseCandidates','USP_PrepareNameFilters') })
 if ($resultSetProcedureNames.Count -ne $expectedResultSetProcedureNames.Count) {
@@ -148,6 +179,7 @@ $pageFiles = @(Get-ChildItem -LiteralPath $pagesRoot -Filter 'USP_*.md' -File)
 $pageNames = @($pageFiles | ForEach-Object { $_.BaseName } | Sort-Object -Unique)
 $parameterNamesByProcedure = @{}
 $declaredSourcePaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$reviewStatusByProcedure = @{}
 
 foreach ($name in @($referenceNames | Where-Object { $_ -notin $pageNames })) {
     $errors.Add("Missing procedure page: $name")
@@ -161,6 +193,90 @@ foreach ($name in @($expectedResultSetProcedureNames | Where-Object { $_ -notin 
 foreach ($name in @($resultSetProcedureNames | Where-Object { $_ -notin $expectedResultSetProcedureNames })) {
     $errors.Add("Unknown result-set inventory procedure: $name")
 }
+
+if ($reviewRows.Count -eq 0) {
+    $errors.Add('Analysis documentation review manifest is empty.')
+}
+else {
+    $requiredReviewColumns = @('ProcedureName', 'ReviewStatus', 'ReviewedUtc', 'ReviewContractVersion')
+    $actualReviewColumns = @($reviewRows[0].PSObject.Properties.Name)
+    foreach ($column in $requiredReviewColumns) {
+        if ($column -notin $actualReviewColumns) {
+            $errors.Add("Missing review-manifest column: $column")
+        }
+    }
+}
+
+$reviewProcedureNames = @(
+    $reviewRows |
+        ForEach-Object { $_.ProcedureName } |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Sort-Object -Unique
+)
+foreach ($name in @($referenceNames | Where-Object { $_ -notin $reviewProcedureNames })) {
+    $errors.Add("Missing review-manifest procedure: $name")
+}
+foreach ($name in @($reviewProcedureNames | Where-Object { $_ -notin $referenceNames })) {
+    $errors.Add("Unknown review-manifest procedure: $name")
+}
+
+$duplicateReviewRows = @(
+    $reviewRows |
+        Group-Object -Property ProcedureName |
+        Where-Object { $_.Count -gt 1 }
+)
+foreach ($duplicate in $duplicateReviewRows) {
+    $errors.Add("Duplicate review-manifest procedure: $($duplicate.Name)")
+}
+
+foreach ($row in $reviewRows) {
+    $procedureName = $row.ProcedureName
+    if ([string]::IsNullOrWhiteSpace($procedureName)) {
+        $errors.Add('Review-manifest row has no ProcedureName.')
+        continue
+    }
+
+    $reviewStatusByProcedure[$procedureName] = $row.ReviewStatus
+    switch ($row.ReviewStatus) {
+        'BASELINE' {
+            if (-not [string]::IsNullOrWhiteSpace($row.ReviewedUtc)) {
+                $errors.Add("BASELINE review row must not have ReviewedUtc: $procedureName")
+            }
+            if ($row.ReviewContractVersion -ne '1') {
+                $errors.Add("BASELINE review row must use contract version 1: $procedureName")
+            }
+        }
+        'DEEP_REVIEWED' {
+            if ($row.ReviewContractVersion -ne '2') {
+                $errors.Add("DEEP_REVIEWED row must use contract version 2: $procedureName")
+            }
+            try {
+                [void][datetime]::ParseExact(
+                    $row.ReviewedUtc,
+                    'yyyy-MM-dd',
+                    [System.Globalization.CultureInfo]::InvariantCulture
+                )
+            }
+            catch {
+                $errors.Add("DEEP_REVIEWED row has invalid ReviewedUtc: $procedureName")
+            }
+        }
+        default {
+            $errors.Add("Invalid review status '$($row.ReviewStatus)': $procedureName")
+        }
+    }
+}
+
+$deepReviewedCount = @($reviewRows | Where-Object { $_.ReviewStatus -eq 'DEEP_REVIEWED' }).Count
+if ($deepReviewedCount -lt $minimumDeepReviewedCount) {
+    $errors.Add("Expected at least $minimumDeepReviewedCount DEEP_REVIEWED pages, found $deepReviewedCount.")
+}
+foreach ($name in $referenceDeepReviewedPages) {
+    if (-not $reviewStatusByProcedure.ContainsKey($name) -or $reviewStatusByProcedure[$name] -ne 'DEEP_REVIEWED') {
+        $errors.Add("Reference page must remain DEEP_REVIEWED: $name")
+    }
+}
+
 foreach ($row in $resultSetRows) {
     if ([string]::IsNullOrWhiteSpace($row.ResultName) -or
         [string]::IsNullOrWhiteSpace($row.SourceTable) -or
@@ -299,6 +415,40 @@ foreach ($file in $pageFiles) {
         $errors.Add("Missing technical foundations link: $($file.FullName)")
     }
 
+    if ($reviewStatusByProcedure.ContainsKey($file.BaseName) -and
+        $reviewStatusByProcedure[$file.BaseName] -eq 'DEEP_REVIEWED') {
+        foreach ($heading in $deepReviewedRequiredHeadings) {
+            if ($text.IndexOf($heading, [System.StringComparison]::Ordinal) -lt 0) {
+                $errors.Add("Missing DEEP_REVIEWED heading '$heading': $($file.FullName)")
+            }
+        }
+
+        foreach ($dimension in $deepReviewedCostDimensions) {
+            $dimensionPattern = '(?m)^\|\s*' + [regex]::Escape($dimension) + '\s*\|'
+            if ($text -notmatch $dimensionPattern) {
+                $errors.Add("Missing DEEP_REVIEWED cost dimension '$dimension': $($file.FullName)")
+            }
+        }
+
+        if ($text -notmatch '(?m)^\*\*Beobachtungsart:\*\*\s+\S') {
+            $errors.Add("Missing DEEP_REVIEWED observation type: $($file.FullName)")
+        }
+        if ($text -notmatch '(?m)^\*\*Kostenklasse:\*\*\s+\S') {
+            $errors.Add("Missing DEEP_REVIEWED cost class: $($file.FullName)")
+        }
+        if ($text -notmatch '(?m)^## Primärquellen\s*$[\s\S]*https://learn\.microsoft\.com/') {
+            $errors.Add("Missing Microsoft primary source in DEEP_REVIEWED page: $($file.FullName)")
+        }
+        if ($text.IndexOf('Example', [System.StringComparison]::Ordinal) -lt 0) {
+            $errors.Add("Missing explicit synthetic Example* marker in DEEP_REVIEWED page: $($file.FullName)")
+        }
+
+        $wordCount = [regex]::Matches($text, '[\p{L}\p{Nd}][\p{L}\p{Nd}_-]*').Count
+        if ($wordCount -lt 700) {
+            $errors.Add("DEEP_REVIEWED page is below the 700-word substantive floor ($wordCount): $($file.FullName)")
+        }
+    }
+
     if ($parameterNamesByProcedure.ContainsKey($file.BaseName)) {
         $knownParameterNames = @($parameterNamesByProcedure[$file.BaseName])
         $procedurePattern = [regex]::Escape($file.BaseName)
@@ -365,6 +515,7 @@ Write-Host "Referenced procedures:      $($referenceNames.Count)"
 Write-Host "Canonical source procedures: $($sourceProcedureNames.Count)"
 Write-Host "Procedure pages:             $($pageNames.Count)"
 Write-Host "Referenced source files:     $($declaredSourcePaths.Count)"
+Write-Host "Deep-reviewed pages:         $deepReviewedCount"
 
 if ($referenceNames.Count -ne 84) {
     $errors.Add("Expected 84 reference procedures, found $($referenceNames.Count).")

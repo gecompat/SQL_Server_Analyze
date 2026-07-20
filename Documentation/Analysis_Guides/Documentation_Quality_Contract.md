@@ -1,43 +1,93 @@
 # Verbindlicher Qualitätsvertrag für Analyse-Dokumentation
 
-## Abdeckung
+**Vertragsversion:** 2<br>
+**Stand:** 20. Juli 2026<br>
+**Geltungsbereich:** alle öffentlichen Procedures unter `Documentation/Analysis_Guides/Procedures/`
+
+## Qualitätsstufen und aktueller Stand
+
+Die Existenz einer Procedure-Seite ist noch kein Nachweis fachlicher Tiefe. Deshalb werden zwei überprüfbare Stufen getrennt:
+
+- `BASELINE`: Die Procedure ist strukturell erfasst und besitzt die bisherigen technischen Vertiefungsfelder. Die Seite ist noch nicht vollständig gegen Vertragsversion 2 redaktionell geprüft.
+- `DEEP_REVIEWED`: Zweck, Leserichtung, Datenentstehung, Aussagegrenzen, Eigenlast und Gegenproben wurden am aktuellen T-SQL geprüft; alle nachfolgenden Pflichtinhalte sind erfüllt.
+
+Der maschinenlesbare Stand liegt in [`Metadata/Quality/Analysis_Documentation_Review.csv`](../../Metadata/Quality/Analysis_Documentation_Review.csv). Zum Stand dieses Vertrags sind **3 von 84** Seiten `DEEP_REVIEWED`; die übrigen 81 Seiten bleiben ausdrücklich `BASELINE`. Die drei Referenzseiten sind:
+
+1. [`USP_CurrentRequests`](Procedures/USP_CurrentRequests.md) als flüchtige Live-DMV-Analyse,
+2. [`USP_IndexPhysicalStats`](Procedures/USP_IndexPhysicalStats.md) als potenziell I/O-intensiver physischer Scan,
+3. [`USP_ExtendedEventsReadEvents`](Procedures/USP_ExtendedEventsReadEvents.md) als Datei-/XML-Analyse mit möglicher Nebenwirkung.
+
+Eine Abdeckungszahl darf nur zusammen mit ihrer Qualitätsstufe genannt werden. Die 84 vorhandenen Seiten bedeuten daher 84/84 strukturelle Abdeckung, nicht 84/84 abgeschlossene Tiefenprüfung.
+
+## Abdeckungsvertrag
 
 Jede im öffentlichen Procedure-Referenzhandbuch geführte Procedure besitzt:
 
 1. einen Eintrag im Objektindex,
 2. eine eigenständige Seite unter `Procedures/`,
 3. einen technischen Abschnitt im Familienguide,
-4. eine Signatur im Procedure-Referenzhandbuch.
+4. eine Signatur im Procedure-Referenzhandbuch,
+5. genau einen Eintrag im Review-Manifest.
 
-## Didaktischer Mindestvertrag
+## Pflichtinhalt einer tief geprüften Seite
 
-Jede eigenständige Seite erklärt:
+Eine `DEEP_REVIEWED`-Seite beantwortet aus Sicht des Anwenders und aus Sicht der Engine:
 
-- Zeilengranularität,
-- Zeitbezug oder Reset-/Retention-Grenze,
-- sichere Leserichtung,
-- technische Problembegründung,
-- möglichen unkritischen Kontext,
-- mindestens ein synthetisches Beispiel,
-- Folgeanalyse,
-- mögliche partielle/leere Ausgabe,
-- Eigenlast, wenn der Pfad über LOW hinausgeht,
-- eine technische Vertiefung mit Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse,
-- einen Link auf das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md).
-- bei versionsabhängigen Aussagen einen nachvollziehbaren Eintrag oder Verweis in der [Versions- und Primärquellenmatrix](Version_Primary_Source_Matrix.md).
+1. **Entscheidungsfrage und Einsatz:** Welche konkrete Frage beantwortet die Auswertung, in welcher Betriebssituation und mit welcher erwarteten Entscheidung?
+2. **Nicht beantwortete Fragen:** Welche Ursachen oder historischen Aussagen lassen sich aus dieser Quelle gerade nicht ableiten?
+3. **Sicherer Einstieg:** Welcher kleine, synthetische Aufruf ist sinnvoll; welche Berechtigung, Freigabe oder bewusste Nebenwirkung ist erforderlich?
+4. **Resultsets und Leserichtung:** Welche fachlichen und technischen Resultsets entstehen je Ausgabemodus und in welcher Reihenfolge werden sie interpretiert?
+5. **Zeilengranularität:** Was genau repräsentiert eine Zeile; wodurch können mehrere Zeilen zum vermeintlich gleichen Objekt entstehen?
+6. **Datenentstehung:** Welche Systemquelle wird in welcher Reihenfolge gelesen, gefiltert, aggregiert, gekürzt und ausgegeben?
+7. **Zeit-, Scope- und Resetmodell:** Snapshot, kumulative Messung, Stichprobe oder Historie; Instanz-/Datenbank-/Objektscope; Restart-, Eviction-, Retention- und Rollovergrenzen.
+8. **Interpretation:** Welche Werte gehören zusammen, was ist Beobachtung, Hypothese oder Auswirkung, und welche plausible Gegenhypothese ist zu prüfen?
+9. **Beispiele und Gegenbeispiele:** Mindestens ein synthetischer Problemfall und ein ähnlich aussehender unkritischer oder nicht entscheidbarer Fall.
+10. **Leere oder partielle Ausgabe:** Unterschied zwischen keiner Zeile, `NULL`, 0, fehlender Berechtigung, deaktivierter Quelle, Filterwirkung und gekürzter Ausgabe.
+11. **Folgeanalyse:** Mindestens eine zweite, möglichst unabhängige Evidenzquelle; keine automatische Änderungsanweisung.
+12. **Primärquellen:** Links auf passende Microsoft-Produktdokumentation bei versions-, berechtigungs-, locking- oder kostenrelevanten Aussagen.
+
+Die gemeinsame Basis bildet das [Execution-, Zeit-, Evidenz- und Kostenmodell](Technical_Foundations.md). Vollständige Spaltentabellen dürfen im Familienguide bleiben, solange die Einzelseite die für die Entscheidung benötigten Schlüsselspalten erklärt und direkt auf die Detailtabelle verweist.
+
+## Verbindliches Kosten- und Grenzprofil
+
+Jede `DEEP_REVIEWED`-Seite besitzt den Abschnitt `Eigenlast und Grenzen` mit einer Tabelle, die mindestens diese Dimensionen ausweist:
+
+| Dimension | Verbindliche Aussage |
+|---|---|
+| Kostenklasse | `LOW`, `MEDIUM` oder `HIGH_OPT_IN`; bei variablem Verhalten als Spannweite |
+| Standardpfad | Eigenlast des dokumentierten sicheren Einstiegs |
+| Teuerster Pfad | konkret benannter ungünstigster erlaubter Aufruf |
+| Haupttreiber | beispielsweise Requests, Datenbanken, Pages, Pläne, XEL-Dateien oder XML-Knoten |
+| Skalierung | womit Laufzeit, CPU, I/O, TempDB, Speicher oder Ergebnistransfer wachsen |
+| Ressourcen | primär beanspruchte Engine- und Betriebssystemressourcen |
+| Begrenzungswirkung | ob `TOP`, `@MaxZeilen` oder Filter nur Ausgabezeilen oder bereits den Quellzugriff begrenzen |
+| Locking und Nebenwirkungen | mögliche Locks, Blocking, Flushes, Cache-/Dateizugriffe oder sonstige Zustandswirkungen |
+| Schutzmechanismus | Gate, Opt-in, Timeout, Scopepflicht oder fehlender technischer Schutz |
+| Sicherer Einsatz | kleinster sinnvoller Scope und geeigneter Betriebszeitpunkt |
+| Aussagegrenze | welche Genauigkeit oder Vollständigkeit durch die Begrenzung verloren geht |
+
+Kostenklassen sind qualitative Betriebsrisiken und keine Laufzeitgarantie. `@MaxZeilen = 100` bedeutet insbesondere nicht automatisch, dass eine Quelle nur 100 Elemente lesen musste. Filter- und Limitposition in der tatsächlichen Datenkette müssen ausdrücklich beschrieben werden.
 
 ## Fachlicher Mindestvertrag
 
 - Ein Einzelwert wird nicht als Root Cause dargestellt.
-- Prozent und Durchschnitt besitzen einen erklärten Nenner.
+- Beobachtung, Ursachehypothese, Auswirkung und Handlung werden sprachlich getrennt.
+- Prozentwerte und Durchschnitte besitzen einen erklärten Nenner.
 - Findings werden als Triage, nicht als automatische Änderung behandelt.
-- Status- und Childresultsets werden vor Fachdaten bewertet.
-- Query Store, XE, Plan Cache und DMVs erhalten ihre jeweiligen Retention-/Resetgrenzen.
+- Status-, Warnungs- und Childresultsets werden vor Fachdaten bewertet, sofern der gewählte Ausgabemodus sie liefert.
+- Query Store, Extended Events, Plan Cache und DMVs erhalten ihre jeweiligen Retention-, Reset- und Sichtbarkeitsgrenzen.
+- Repository-Default, Microsoft-Produktaussage und Frameworkheuristik werden nicht miteinander vermischt.
+- `NULL`, 0, leere Menge, ausgelassener Scope und Fehlerstatus werden unterschieden.
 
-## Wartbarkeit
+## Pflege- und Reviewregeln
 
-Die Strukturprüfung `Code/Tests/Static/900_Validate_Analysis_Documentation.ps1` vergleicht Referenz und Seiten, Pflichtüberschriften sowie interne Markdownlinks. `Code/Tests/Static/980_Validate_External_Documentation_Links.py` prüft externe URL-Struktur repositoryweit und erkennt im Analysis-Guide-/Quellenscope dauerhafte HTTP-Fehler. Transiente Netzwerk-, Rate-Limit- oder Serverfehler werden als Warnung gezählt, damit ein Fremdsystemausfall das Liefergate nicht fälschlich blockiert. Beide Prüfungen ersetzen keine fachliche oder Datenschutzprüfung.
+- Eine Seite darf erst nach Abgleich mit aktuellem T-SQL und Familienguide auf `DEEP_REVIEWED` gesetzt werden.
+- Änderungen an Quelle, Resultsets, Gates, Defaults oder Kostenpfad setzen die fachliche Prüfung der betroffenen Seite voraus. Bis zur Prüfung wird der Manifeststatus wieder `BASELINE`.
+- Neue Beispiele verwenden ausschließlich eindeutig synthetische `Example*`-Werte. Reale Login-, Host-, Firmen-, Datenbank-, Objekt-, Pfad- oder Workloadwerte gehören weder in die Dokumentation noch in Reviewartefakte.
+- Tiefenprüfung ist kein Wortzahlwettbewerb. Ein kurzer Pfad darf kurz bleiben, muss Nichtanwendbares aber ausdrücklich und begründet ausweisen.
 
-## Datenschutz
+## Automatische und manuelle Prüfung
 
-Repositorybeispiele verwenden ausschließlich generische Systembegriffe und eindeutig synthetische Werte. Automatisierte Scanner sind nur unterstützend; die manuelle Prüfung des vollständigen Diffs bleibt verpflichtend.
+Die Strukturprüfung `Code/Tests/Static/900_Validate_Analysis_Documentation.ps1` vergleicht Referenz, SQL-Signaturen, Seiten, Resultset-Inventar und Review-Manifest. Für `DEEP_REVIEWED` erzwingt sie die Vertragsüberschriften, alle Kostendimensionen, Primärquellen, Beispielkennzeichnung und eine substanzielle Mindesttiefe. Die externe Linkprüfung kontrolliert URL-Struktur und dauerhafte HTTP-Fehler.
+
+Diese Gates erkennen fehlende oder widersprüchliche Struktur, beweisen aber weder fachliche Richtigkeit noch angemessene Kosten im konkreten Produktionssystem. Vor jedem Merge bleiben ein manueller T-SQL-Abgleich, fachlicher Review und Datenschutzcheck des vollständigen Diffs verpflichtend.
