@@ -100,14 +100,14 @@ BEGIN
           )
        OR EXISTS
           (
-              SELECT [ResultName]
+              SELECT 1
               FROM [#InternalPrepareResultTables_Parsed]
               GROUP BY [ResultName] COLLATE SQL_Latin1_General_CP1_CS_AS
               HAVING COUNT(*) > 1
           )
        OR EXISTS
           (
-              SELECT [TargetTable]
+              SELECT 1
               FROM [#InternalPrepareResultTables_Parsed]
               GROUP BY [TargetTable] COLLATE Latin1_General_100_CI_AS
               HAVING COUNT(*) > 1
