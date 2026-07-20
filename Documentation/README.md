@@ -37,10 +37,11 @@ Empfohlene Leserichtung:
 
 ## Installation
 
-1. In allen SQL-Skripten den Platzhalter `[DeineDatenbank]` durch die vorgesehene Installationsdatenbank ersetzen.
-2. Sicherstellen, dass Server, `tempdb` und Installationsdatenbank die Collation `SQL_Latin1_General_CP1_CS_AS` verwenden.
-3. `Code/Install/Install_All.sql` im SQLCMD-Modus ausführen oder mit `Code/Install/Build-StandaloneInstaller.ps1` einen eigenständigen Installer erzeugen.
-4. Danach das Release-Gate gemäß `Documentation/Quality/Release_Gate_Runbook.md` ausführen.
+Die vollständige [Schritt-für-Schritt-Anleitung für SSMS](Reference/Installation.md)
+führt durch Download, Versions- und Collationprüfung, Datenbankanlage,
+Installerzeugung, Installation, Smoke-Test, Berechtigungsprüfung und ersten
+Analyseaufruf. Für SSMS wird der eigenständige Installer empfohlen; der
+SQLCMD-Include-Weg bleibt als Alternative dokumentiert.
 
 Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nicht mit einer Datenbank qualifiziert.
 
