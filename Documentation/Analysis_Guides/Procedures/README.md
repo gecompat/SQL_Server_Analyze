@@ -1,7 +1,8 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
-**Stand:** 18. Juli 2026
-**Abdeckung:** 84 Procedures
+**Stand:** 20. Juli 2026<br>
+**Strukturelle Abdeckung:** 84 Procedures<br>
+**Tief geprüft nach Qualitätsvertrag v2:** 3 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -13,6 +14,18 @@ Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie 
 6. Warum ist eine leere oder partielle Ausgabe nicht automatisch eine Entwarnung?
 
 Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familienguides. Exakte Parameter und Defaults liefert zusätzlich `@Hilfe=1` beziehungsweise das [Procedure-Referenzhandbuch](../../Reference/Procedure_Reference.md).
+
+## Reifegrad richtig lesen
+
+Alle 84 öffentlichen Procedures besitzen eine `BASELINE`-Seite. Das ist noch kein Nachweis, dass Kosten, Limits, Datenentstehung und Aussagegrenzen bereits vollständig am aktuellen T-SQL geprüft wurden. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
+
+Als fachliche Referenz für die weitere Überarbeitung dienen derzeit:
+
+- [USP_CurrentRequests](USP_CurrentRequests.md): flüchtiger Live-Snapshot,
+- [USP_IndexPhysicalStats](USP_IndexPhysicalStats.md): physischer Scan mit High-Impact-Gate,
+- [USP_ExtendedEventsReadEvents](USP_ExtendedEventsReadEvents.md): Datei/XML und bewusste Nebenwirkung.
+
+Bei allen übrigen Seiten bedeutet `BASELINE`: für Nutzung weiterhin mit SQL-Quelle, Familienguide und gemeinsamen Verträgen abgleichen; fehlende Tiefe nicht als nicht anwendbar interpretieren.
 
 ## Common
 

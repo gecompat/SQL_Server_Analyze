@@ -42,7 +42,10 @@ Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
 - Pflichtüberschriften einschließlich der sieben technischen Vertiefungsfelder,
 - Links auf das gemeinsame Zeit-/Evidenzmodell und die technischen Familienbeschreibungen,
 - interne relative Markdownziele,
-- interne Markdown-Anker.
+- interne Markdown-Anker,
+- exakte Übereinstimmung des Review-Manifests mit den 84 Referenz-Procedures,
+- zulässige Status-/Versionskombinationen für `BASELINE` und `DEEP_REVIEWED`,
+- für tief geprüfte Seiten die erweiterten Pflichtabschnitte, vollständigen Kostendimensionen, Primärquellen, synthetische Beispiele und substanzielle Mindesttiefe,
 - syntaktisch gültige externe HTTP-/HTTPS-Links in der gesamten Dokumentation,
 - dauerhaft nicht vorhandene externe Ziele mit HTTP `404` oder `410` in den Analysis Guides und der zentralen Quellenliste.
 
@@ -53,7 +56,7 @@ Nicht automatisiert bewiesen werden:
 - fachliche Richtigkeit jeder Aussage,
 - fachliche Aktualität des Inhalts hinter einem erreichbaren externen Link,
 - tatsächliche Runtime-Resultsets,
-- korrekte Kostenklassifizierung jeder Analyse,
+- korrekte Kostenklassifizierung im konkreten Produktionssystem,
 - Datenschutz als beweisbarer Automatismus.
 
 Vor Merge bleibt eine manuelle fachliche und datenschutzbezogene Diffprüfung erforderlich. Der statische Test ergänzt das SQL-Release-Gate, ersetzt es aber nicht.

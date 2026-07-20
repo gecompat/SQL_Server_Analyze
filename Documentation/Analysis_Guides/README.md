@@ -1,6 +1,6 @@
 # Analysehandbuch für SQL_Server_Analyze
 
-**Stand:** 19. Juli 2026
+**Stand:** 20. Juli 2026
 **Geltungsbereich:** 84 Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
@@ -13,6 +13,8 @@
 5. Für vollständige Resultsets und Spalten in den verlinkten Familienguide wechseln.
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
+
+Die 84 Seiten sind strukturell vollständig, aber noch nicht alle fachlich tief geprüft. Der [Qualitätsvertrag](Documentation_Quality_Contract.md) trennt `BASELINE` von `DEEP_REVIEWED`; aktuell bilden [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) die drei Referenzseiten für die weitere Überarbeitung.
 
 Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_Concept.md) ist kein Anwenderhandbuch.
 
@@ -37,10 +39,11 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Begriffserklärungen | [Glossary.md](Glossary.md) |
 | Parameter und sichere Aufrufe | [Parameter_Reading_Guide.md](Parameter_Reading_Guide.md) |
 | Gemeinsame Verträge | [Common_Contracts.md](Common_Contracts.md) |
-| Technische Grundlagen | [Technical_Foundations.md](Technical_Foundations.md) |
+| Technische Grundlagen einschließlich Kostenmodell | [Technical_Foundations.md](Technical_Foundations.md) |
 | Versions- und Primärquellennachweis | [Version_Primary_Source_Matrix.md](Version_Primary_Source_Matrix.md) |
 | Vollständiger Objektindex | [Object_Index.md](Object_Index.md) |
 | Redaktionsstandard | [Documentation_Quality_Contract.md](Documentation_Quality_Contract.md) |
+| Reviewstatus je Procedure | [Analysis_Documentation_Review.csv](../../Metadata/Quality/Analysis_Documentation_Review.csv) |
 
 ## Familienguides
 
