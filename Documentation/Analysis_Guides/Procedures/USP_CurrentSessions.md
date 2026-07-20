@@ -30,6 +30,12 @@ Der Einstieg erhebt Session- und Requestmetadaten ohne SQL-Text. Bei einer
 auffälligen Session anschließend über `@SessionIds` eingrenzen und Text nur für
 diesen Kandidaten ergänzen.
 
+Erkannte Tool-Hintergrundsessions sind im Default ausgeblendet. Mit
+`@ToolHintergrundabfragenEinbeziehen = 1` werden sie samt Regelcode, Kategorie,
+Erkennungsart und Konfidenz sichtbar. Die Erkennung ist eine
+[konfigurierbare Diagnoseheuristik](../../Architecture/Tool_Background_Query_Filtering.md),
+kein Sicherheitsmerkmal.
+
 Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
 
 ## Resultsets und Leserichtung
@@ -44,7 +50,7 @@ Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Obj
 
 ## So lesen
 
-Zuerst `SessionStatus`, `RequestStatus` und `OpenTransactionCount`, danach letzte Aktivität, kumulative CPU/I/O-Werte und Verbindungsinformationen.
+Zuerst `SessionStatus`, `RequestStatus` und `OpenTransactionCount`, danach letzte Aktivität, kumulative CPU/I/O-Werte und Verbindungsinformationen. Bei eingeblendeten Tool-Sessions `ToolBackgroundRuleCode` und `ToolBackgroundConfidence` mitlesen.
 
 Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
 

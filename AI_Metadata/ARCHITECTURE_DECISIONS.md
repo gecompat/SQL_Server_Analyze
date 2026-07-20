@@ -17,3 +17,5 @@
 15. Git ist die maßgebliche Versions- und Integritätsquelle; ein zusätzliches per-Datei-Hash-Manifest wird nicht gepflegt.
 16. Der Platzhalter `[DeineDatenbank]` darf nur als einleitender `USE`-Kontext oder in ausdrücklich gekennzeichneten Beispielen vorkommen, nie als ausführbares internes Stringliteral.
 17. Historische Quellenanalysen werden ausschließlich abstrahiert als Systemquellen-, Capability-, Abhängigkeits- und Risikokatalog migriert.
+18. Tool-Hintergrundabfragen werden ausschließlich diagnostisch über priorisierte, aktivierbare `LIKE`-Regeln in `monitor.ToolBackgroundQueryPattern` klassifiziert. Default ist Ausblenden; Opt-in zeigt Regel und Konfidenz. Blocking filtert nur erkannte Tool-Blätter und erhält Tool-Zwischen-/Root-Blocker normaler Ketten.
+19. `USP_CurrentBlocking` materialisiert vollständige sichtbare Ketten vor Session- und Toolfilterung und liefert neben direktem Blocker die lesbare Kette sowie Status-, Identitäts-, Transaktions- und Statementkontext des äußersten Root Blockers.

@@ -22,6 +22,8 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Standardmäßig werden alle sichtbaren, online befindlichen Benutzerdatenbanken verarbeitet; explizite Namens- und Patternfilter schränken ein, Systemdatenbanken bleiben opt-in und es gibt keinen CURRENT-Scope oder `@MaxDatenbanken`.
 - Katalogzugriffe sollen Locking/Blocking minimieren; nur tatsächlich aktivierte ressourcenintensive Pfade verlangen `@HighImpactConfirmed = 1` vor dem ersten teuren Zugriff.
 - Der frameworkweite Datenbank-, CONSOLE- und TABLE-Vertrag wird durch die Integrationssuiten `187` bis `189` abgesichert.
+- Tool-Hintergrundaktivität wird in Current Sessions, Requests, Blocking-Blättern und aktuellen Waiting Tasks standardmäßig ausgeblendet. Die Erkennung verwendet metadatengetriebene `LIKE`-Regeln, ist kein Sicherheitsmerkmal und bleibt über `@ToolHintergrundabfragenEinbeziehen=1` vollständig sichtbar.
+- Blocking liefert `BlockingChain` und `RootBlocker*`-Kontext; ein Tool als Zwischen- oder Root-Blocker einer normalen Abfrage darf nicht aus der Kette entfernt werden.
 - P0/P1-Reihenfolge und Aussagegrenzen stehen in `Documentation/Architecture/Special_Case_Modules.md`.
 - `monitor.USP_DiagnosticFindings` ist der letzte Aggregator und hängt über definierte JSON-Verträge von den vorherigen Spezialfallmodulen ab; Schema, IQP und Contention bleiben dort opt-in.
 - `monitor.USP_SpecialFeatureInventory` trennt sichtbare Nutzung beziehungsweise reine Konfiguration von Plattform-Capability und gibt ausdrücklich kein Gesundheitsurteil ab.

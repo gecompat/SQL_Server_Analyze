@@ -5,6 +5,18 @@ GO
 EXEC [monitor].[USP_CurrentOverview] @Hilfe=1;
 -- Aktuelle Übersicht, Console
 EXEC [monitor].[USP_CurrentOverview] @MaxZeilen=100,@ResultSetArt='console';
+-- Erkannte Tool-Hintergrundaktivität bewusst einblenden
+EXEC [monitor].[USP_CurrentOverview]
+      @ToolHintergrundabfragenEinbeziehen=1
+    , @Detailgrad='RELEVANT'
+    , @MaxZeilen=100
+    , @ResultSetArt='CONSOLE';
+-- Aktive metadatengetriebene LIKE-Regeln prüfen
+SELECT [RuleCode],[Priority],[ProgramNameLikePattern],[ToolBackgroundCategory],
+       [ToolBackgroundConfidence],[SourceUrl]
+FROM [monitor].[ToolBackgroundQueryPattern] WITH (NOLOCK)
+WHERE [IsEnabled]=1
+ORDER BY [Priority] DESC,[RuleCode];
 -- Zwei Datenbanken exakt
 EXEC [monitor].[USP_ObjectInventory] @DatabaseNames=N'[DeineDatenbank]|[BeispielDatenbankB]',@AnalyseModus='VOLL',@MaxZeilen=200;
 -- Query Store aller zum Pattern passenden Datenbanken, globales Top 100

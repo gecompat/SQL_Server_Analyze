@@ -40,6 +40,9 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/086_TVF_ParseStringList.sql
 :r ../01_Common/086a_TVF_ParseBlockingResource.sql
 :r ../01_Common/087_TVF_StatementText.sql
+:r ../01_Common/087a_ToolBackgroundQueryPattern.sql
+:r ../01_Common/087b_ToolBackgroundQueryPattern_Seed.sql
+:r ../01_Common/087c_TVF_ToolBackgroundQueryInfo.sql
 :r ../01_Common/088_TVF_InterpretPerformanceCounter.sql
 :r ../01_Common/089_TVF_InterpretContentionCounter.sql
 :r ../01_Common/090_TVF_InterpretAvailabilityDatabaseState.sql

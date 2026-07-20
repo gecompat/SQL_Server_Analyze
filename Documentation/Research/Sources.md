@@ -1,6 +1,6 @@
 # Recherchequellen und Referenzlösungen
 
-**Recherche-/Prüfstand:** 20. Juli 2026
+**Recherche-/Prüfstand:** 21. Juli 2026
 **Verwendung:** fachliche Referenz, Abgleich von Semantik, Berechtigungen, Versionsunterschieden, Overhead und bekannten Risiken. Community-Code wird nicht ungeprüft übernommen.
 
 Die versionsabhängigen Kernaussagen der Analysis Guides sind zusätzlich in `Documentation/Analysis_Guides/Version_Primary_Source_Matrix.md` den unterstützten Zielversionen, betroffenen Bereichen und noch erforderlichen Laufzeitnachweisen zugeordnet. Der externe Linkvalidator prüft diese Datei und die Analysis Guides auf dauerhaft verlorene Ziele.
@@ -193,6 +193,25 @@ Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließl
 - SQL Server First Responder Kit, Checks by Priority: https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit/blob/dev/Documentation/sp_Blitz_Checks_by_Priority.md
 
 Diese Prüfkataloge wurden ausschließlich zum Abgleich von Vorfallklassen verwendet. Semantik, Berechtigungen, Versionen und Ausführungskosten wurden über Microsoft-Primärquellen bewertet; fremder Quellcode wurde nicht übernommen.
+
+## Ergänzung Tool-Hintergrundabfragen – 21. Juli 2026
+
+- Microsoft Learn: dokumentierte `client_app_name`-Werte für GitHub Copilot
+  und Copilot Completions in SSMS:
+  https://learn.microsoft.com/en-us/ssms/github-copilot/troubleshoot
+- Microsoft Learn: Zweck und Arbeitsweise des SSMS Object Explorer; die Seite
+  dokumentiert keinen stabilen `program_name`-Vertrag:
+  https://learn.microsoft.com/en-us/ssms/object/open-and-configure-object-explorer
+- Microsoft Learn: ein clientseitig gesetzter Application Name wird als
+  `sys.dm_exec_sessions.program_name` sichtbar:
+  https://learn.microsoft.com/en-us/fabric/data-warehouse/configure-custom-sql-pools-api
+- Redgate: SQL Prompt verwaltet Verbindungen und lädt Metadaten für Vorschläge;
+  ein stabiler Application Name wird nicht zugesichert:
+  https://documentation.red-gate.com/sp11/managing-sql-prompt-behavior/managing-connections-and-memory
+
+Die beiden Copilot-Namen werden als hoch-konfidente Herstellerangabe geführt.
+Object-Explorer- und SQL-Prompt-Muster bleiben ausdrücklich konfigurierbare
+Heuristiken. Das Ergebnis wird nur zur diagnostischen Sichtbarkeit verwendet.
 
 ## Ergänzung Wait-Type-Katalog – 20. Juli 2026
 

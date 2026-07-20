@@ -31,6 +31,11 @@ Das Sample betrifft die instanzweiten Wait-Statistiken; aktuelle wartende Tasks
 werden einmalig als Snapshot gelesen. SQL-Text anschließend nur für konkrete
 Sessions zuschalten.
 
+Erkannte Tool-Hintergrundtasks sind im Default ausgeblendet und werden mit
+`@ToolHintergrundabfragenEinbeziehen = 1` samt Klassifikation sichtbar. Der
+Schalter betrifft nur aktuelle Tasks; instanzweite Wait-Stats lassen sich nicht
+nach Client aufteilen.
+
 Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
 
 ## Resultsets und Leserichtung

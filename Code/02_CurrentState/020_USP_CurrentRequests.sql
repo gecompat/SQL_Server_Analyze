@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentRequests
-Version      : 2.1.0
-Stand        : 2026-07-16
+Version      : 2.2.0
+Stand        : 2026-07-21
 Typ          : Stored Procedure
 Zweck        : Aktive Requests mit Session-, Wait-, Memory-Grant-, Modul- und
                exakt abgegrenztem SQL-Statement- sowie Ausführungs-/Verschachtelungskontext.
@@ -25,6 +25,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentRequests]
     , @EigeneSessionsModus           varchar(16)    = 'ALLE'
     , @AktuelleSessionEinbeziehen    bit            = 0
     , @SystemSessionsEinbeziehen     bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit        = 0
     , @NurBlockierte                 bit            = 0
     , @NurMitWait                    bit            = 0
     , @MinLaufzeitSekunden           int            = NULL
@@ -113,6 +114,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_CurrentRequests';
         PRINT N'@SessionIds: Pipe-Liste. Exakte Namenslisten und die zugehörigen ...Pattern sind gegenseitig exklusiv.';
+        PRINT N'@ToolHintergrundabfragenEinbeziehen=0 blendet erkannte Object-Explorer-, Copilot- und SQL-Prompt-Hintergrundrequests standardmäßig aus; 1 zeigt sie samt Klassifikation.';
         PRINT N'Pattern: LIKE (Default/like:), regex: oder regexi:. @TextPattern prüft das aktuelle Statement und den vollständigen Batch-/Modultext.';
         PRINT N'@MitSqlText=1 gibt das exakt über die Request-Offsets ermittelte Statement aus.';
         PRINT N'@GesamtenSqlTextEinbeziehen=1 gibt zusätzlich den vollständigen Batch beziehungsweise persistenten Modultext aus.';
@@ -290,6 +292,7 @@ BEGIN
            OR @GesamtenSqlTextEinbeziehen IS NULL OR @GesamtenSqlTextEinbeziehen NOT IN (0, 1)
            OR @InputBufferEinbeziehen IS NULL OR @InputBufferEinbeziehen NOT IN (0, 1)
            OR @ModulInfoEinbeziehen IS NULL OR @ModulInfoEinbeziehen NOT IN (0, 1)
+           OR @ToolHintergrundabfragenEinbeziehen IS NULL OR @ToolHintergrundabfragenEinbeziehen NOT IN (0, 1)
            OR @JsonErzeugen IS NULL OR @JsonErzeugen NOT IN (0, 1)
        )
     BEGIN
@@ -313,6 +316,11 @@ BEGIN
         , [OriginalLoginName] nvarchar(128) NULL
         , [HostName] nvarchar(128) NULL
         , [ProgramName] nvarchar(128) NULL
+        , [IsToolBackgroundQuery] bit NOT NULL
+        , [ToolBackgroundRuleCode] varchar(64) NULL
+        , [ToolBackgroundCategory] varchar(40) NULL
+        , [ToolBackgroundDetection] varchar(40) NULL
+        , [ToolBackgroundConfidence] varchar(16) NULL
         , [StartTime] datetime NULL
         , [ElapsedMs] int NULL
         , [CpuMs] int NULL
@@ -404,7 +412,11 @@ BEGIN
         (
               [SessionId], [RequestId], [RequestStatus], [Command]
             , [DatabaseId], [DatabaseName], [LoginName], [OriginalLoginName]
-            , [HostName], [ProgramName], [StartTime], [ElapsedMs], [CpuMs]
+            , [HostName], [ProgramName]
+            , [IsToolBackgroundQuery], [ToolBackgroundRuleCode]
+            , [ToolBackgroundCategory]
+            , [ToolBackgroundDetection], [ToolBackgroundConfidence]
+            , [StartTime], [ElapsedMs], [CpuMs]
             , [LogicalReads], [Reads], [Writes], [RowCount], [PercentComplete]
             , [EstimatedCompletionTimeMs], [BlockingSessionId], [WaitType]
             , [WaitTimeMs], [LastWaitType], [WaitResource], [WaitingTaskCount]
@@ -441,6 +453,11 @@ BEGIN
             , [s].[original_login_name]
             , [s].[host_name]
             , [s].[program_name]
+            , [tool].[IsToolBackgroundQuery]
+            , [tool].[ToolBackgroundRuleCode]
+            , [tool].[ToolBackgroundCategory]
+            , [tool].[ToolBackgroundDetection]
+            , [tool].[ToolBackgroundConfidence]
             , [r].[start_time]
             , [r].[total_elapsed_time]
             , [r].[cpu_time]
@@ -524,6 +541,7 @@ BEGIN
         FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
         JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [r].[session_id]
+        CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([s].[program_name]) AS [tool]
         LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK)
           ON [c].[session_id] = [r].[session_id]
         LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
@@ -561,6 +579,7 @@ BEGIN
                   (SELECT 1 FROM [#CurrentRequests_SessionIdFilter] AS [f] WHERE [f].[SessionId] = [r].[session_id]))
           AND (@AktuelleSessionEinbeziehen = 1 OR [r].[session_id] <> @@SPID)
           AND (@SystemSessionsEinbeziehen = 1 OR [s].[is_user_process] = 1)
+          AND (@ToolHintergrundabfragenEinbeziehen = 1 OR [tool].[IsToolBackgroundQuery] = 0)
           AND
           (
               @EigeneSessionsModus = 'ALLE'
@@ -943,6 +962,7 @@ BEGIN
                 , @InputBufferEinbeziehen AS [inputBufferIncluded]
                 , @ModulInfoEinbeziehen AS [moduleInfoIncluded]
                 , @MaxSqlTextZeichen AS [maxSqlTextCharacters]
+                , @ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
 
@@ -958,6 +978,11 @@ BEGIN
                 , [r].[LoginName] AS [loginName]
                 , [r].[HostName] AS [hostName]
                 , [r].[ProgramName] AS [programName]
+                , [r].[IsToolBackgroundQuery] AS [isToolBackgroundQuery]
+                , [r].[ToolBackgroundRuleCode] AS [toolBackgroundRuleCode]
+                , [r].[ToolBackgroundCategory] AS [toolBackgroundCategory]
+                , [r].[ToolBackgroundDetection] AS [toolBackgroundDetection]
+                , [r].[ToolBackgroundConfidence] AS [toolBackgroundConfidence]
                 , [r].[StartTime] AS [startTime]
                 , [r].[ElapsedMs] AS [elapsedMs]
                 , [r].[CpuMs] AS [cpuMs]

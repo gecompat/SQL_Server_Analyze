@@ -41,6 +41,11 @@ EXEC [monitor].[USP_CurrentBlocking]
 
 `DEEP` aktiviert zusätzlich `sys.dm_tran_locks` für die beteiligten Sessions und ist über `LOCKS_DEEP` gruppen- und bestätigungsgeschützt.
 
+Tool-Hintergrundabfragen als blockiertes Blatt sind standardmäßig
+ausgeblendet. `@ToolHintergrundabfragenEinbeziehen = 1` zeigt auch diese Ketten.
+Ein Tool als Zwischen- oder Root-Blocker einer normalen Abfrage bleibt dagegen
+immer sichtbar; die normale Kette wird nicht abgeschnitten.
+
 Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
 
 ## Resultsets und Leserichtung
@@ -51,7 +56,15 @@ Im typisierten TABLE-Vertrag sind für diese Procedure `blockingChains` registri
 
 Im Kettenresultset beschreibt eine Zeile eine sichtbare Blockingbeziehung mit ihrem Root Blocker. `BlockingResourceName` ist die bestmögliche Übersetzung der weiterhin unverändert ausgegebenen `WaitResource`. Lockdetails besitzen eine eigene Granularität.
 
-Das additive Ketten- und JSON-Schema trägt Version `2`.
+Das additive Ketten- und JSON-Schema trägt Version `3`. `BlockingChain` zeigt
+die komplette Leserichtung bis zum äußersten Blocker. Die `RootBlocker*`-
+Spalten ergänzen Login, Host, Programm, Session-/Requeststatus, offene
+Transaktionen und letzte Requestzeiten. `RootBlockerStatementSource` zeigt, ob
+der Text aus einem aktiven Request (`ACTIVE_REQUEST`) oder bei einem schlafenden
+Root Blocker aus `most_recent_sql_handle` der Verbindung
+(`MOST_RECENT_CONNECTION`) stammt. `UNAVAILABLE` und `NOT_REQUESTED` verhindern,
+dass ein fehlender beziehungsweise nicht angeforderter Text als fachlicher
+Befund fehlinterpretiert wird.
 
 Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
 
@@ -68,7 +81,7 @@ Zuerst `BlockingResourceResolutionStatus` lesen:
 - `DENIED_PERMISSION` oder `ERROR_HANDLED`: ausschließlich diese Anreicherung war nicht lesbar beziehungsweise schlug kontrolliert fehl;
 - `INVALID_FORMAT` oder `EMPTY`: Quelle war nicht interpretierbar beziehungsweise leer.
 
-Danach Waitzeit, `BlockingResourceName`, Aktivität und Transaktionszustand des Root Blockers vergleichen. `BlockingOwnerType` kennzeichnet neben Sessions auch die SQL-Server-Sonderblocker `ORPHAN_DTC`, `DEFERRED_RECOVERY`, `LATCH_OWNER_TRANSIENT` und `LATCH_OWNER_UNTRACKED`.
+Danach `BlockingChain`, Waitzeit, `BlockingResourceName`, Aktivität und Transaktionszustand des Root Blockers vergleichen. `BlockingOwnerType` kennzeichnet neben Sessions auch die SQL-Server-Sonderblocker `ORPHAN_DTC`, `DEFERRED_RECOVERY`, `LATCH_OWNER_TRANSIENT` und `LATCH_OWNER_UNTRACKED`. Ein `NULL`-Root-Requeststatus ist bei einer sleeping Root-Session möglich und kein Beweis für fehlende Blockerwirkung.
 
 Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
 
@@ -136,11 +149,15 @@ Im tiefen Pfad kommen `DATABASE`, `FILE`, `OBJECT`, `PAGE`, `KEY`, `RID`, `HOBT`
 
 ### Datenkette
 
-`master.sys.databases`, `master.sys.master_files`, `sys.servers`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, gezielt `sys.dm_db_page_info` sowie im tiefen Pfad `sys.dm_tran_locks`; für die begrenzten Kandidaten außerdem `sys.objects`, `sys.schemas`, `sys.indexes`, `sys.partitions`, `sys.allocation_units` und `sys.stats` der betroffenen Datenbanken.
+`master.sys.databases`, `master.sys.master_files`, `sys.servers`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_connections`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, gezielt `sys.dm_db_page_info` sowie im tiefen Pfad `sys.dm_tran_locks`; für die begrenzten Kandidaten außerdem `sys.objects`, `sys.schemas`, `sys.indexes`, `sys.partitions`, `sys.allocation_units` und `sys.stats` der betroffenen Datenbanken.
 
 ### Zeit- und Scope-Modell
 
 Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
+
+Die [Toolfilter-Architektur](../../Architecture/Tool_Background_Query_Filtering.md)
+beschreibt die metadatengetriebenen `LIKE`-Regeln und die kettenbewahrende
+Filterreihenfolge.
 
 ### Kosten und Grenzen
 

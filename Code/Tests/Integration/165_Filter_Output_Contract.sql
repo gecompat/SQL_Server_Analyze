@@ -135,6 +135,105 @@ IF NOT EXISTS
 )
     INSERT [#Filter_Output_Contract_Failure] VALUES(N'TVF_ParsePattern_empty',N'Leeres Pattern nach Präfix wurde nicht abgelehnt.');
 
+/* Metadatengetriebene Tool-Hintergrundklassifikation mit echter LIKE-Semantik. */
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [sys].[tables] AS [table] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [schema] WITH (NOLOCK)
+      ON [schema].[schema_id] = [table].[schema_id]
+    WHERE [schema].[name] = N'monitor'
+      AND [table].[name] = N'ToolBackgroundQueryPattern'
+)
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'ToolBackground_pattern_table',N'Die Steuertabelle ToolBackgroundQueryPattern fehlt.');
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [monitor].[TVF_ToolBackgroundQueryInfo]
+         (N'Microsoft SQL Server Management Studio - GitHub Copilot')
+    WHERE [IsToolBackgroundQuery]=1
+      AND [ToolBackgroundRuleCode]='SSMS_GITHUB_COPILOT'
+      AND [ToolBackgroundConfidence]='HIGH'
+)
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'ToolBackground_copilot',N'Der dokumentierte Copilot-Clientname wurde nicht hoch-konfident klassifiziert.');
+
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [monitor].[TVF_ToolBackgroundQueryInfo]
+         (N'Microsoft SQL Server Management Studio - Object Explorer Details')
+    WHERE [IsToolBackgroundQuery]=1
+      AND [ToolBackgroundRuleCode]='SSMS_OBJECT_EXPLORER'
+      AND [ToolBackgroundConfidence]='MEDIUM'
+)
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'ToolBackground_like',N'Das Object-Explorer-LIKE-Muster mit Suffix wurde nicht ausgewertet.');
+
+IF EXISTS
+(
+    SELECT 1
+    FROM [monitor].[TVF_ToolBackgroundQueryInfo](N'Example Business Application')
+    WHERE [IsToolBackgroundQuery]<>0
+       OR [ToolBackgroundRuleCode] IS NOT NULL
+)
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'ToolBackground_nonmatch',N'Eine nicht passende Fachanwendung wurde fälschlich als Tool-Hintergrundabfrage klassifiziert.');
+
+IF EXISTS
+(
+    SELECT [required].[ProcedureName]
+    FROM (VALUES
+          (N'USP_CurrentSessions'),(N'USP_CurrentRequests'),
+          (N'USP_CurrentBlocking'),(N'USP_CurrentWaits'),
+          (N'USP_CurrentOverview')) AS [required]([ProcedureName])
+    WHERE NOT EXISTS
+    (
+        SELECT 1
+        FROM [sys].[procedures] AS [procedure] WITH (NOLOCK)
+        JOIN [sys].[schemas] AS [schema] WITH (NOLOCK)
+          ON [schema].[schema_id]=[procedure].[schema_id]
+        JOIN [sys].[parameters] AS [parameter] WITH (NOLOCK)
+          ON [parameter].[object_id]=[procedure].[object_id]
+        WHERE [schema].[name]=N'monitor'
+          AND [procedure].[name]=[required].[ProcedureName]
+          AND [parameter].[name]=N'@ToolHintergrundabfragenEinbeziehen'
+    )
+)
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'ToolBackground_public_parameter',N'Der öffentliche Tool-Hintergrundparameter fehlt bei mindestens einer Current-State-Procedure.');
+
+BEGIN TRY
+    CREATE TABLE [#Filter_Output_Contract_Blocking]([Dummy] int NULL);
+    EXEC [monitor].[USP_CurrentBlocking]
+          @BlockingObjektTiefe='NONE'
+        , @ToolHintergrundabfragenEinbeziehen=1
+        , @MitSqlText=0
+        , @MaxZeilen=1
+        , @ResultSetArt='TABLE'
+        , @ResultTablesJson=N'{"blockingChains":"#Filter_Output_Contract_Blocking"}'
+        , @PrintMeldungen=0;
+
+    IF
+    (
+        SELECT COUNT(DISTINCT [column].[name])
+        FROM [tempdb].[sys].[tables] AS [table] WITH (NOLOCK)
+        JOIN [tempdb].[sys].[columns] AS [column] WITH (NOLOCK)
+          ON [column].[object_id] = [table].[object_id]
+        WHERE [table].[name] LIKE N'#Filter_Output_Contract_Blocking%'
+          AND [column].[name] IN
+              (
+                  N'BlockingChain', N'RootBlockerProgramName'
+                , N'RootBlockerOpenTransactionCount', N'RootBlockerStatementSource'
+                , N'RootBlockerStatement', N'BlockedToolBackgroundRuleCode'
+              )
+    ) <> 6
+        INSERT [#Filter_Output_Contract_Failure] VALUES(N'CurrentBlocking_chain_schema',N'Der TABLE-Vertrag enthält nicht alle Ketten-, Root-Blocker- und Toolklassifikationsspalten.');
+
+    DROP TABLE [#Filter_Output_Contract_Blocking];
+END TRY
+BEGIN CATCH
+    INSERT [#Filter_Output_Contract_Failure] VALUES(N'CurrentBlocking_chain_runtime',CONCAT(N'Blocking-Kettenvertrag konnte nicht materialisiert werden: ',ERROR_MESSAGE()));
+    DROP TABLE IF EXISTS [#Filter_Output_Contract_Blocking];
+END CATCH;
+
 /* Repräsentative reale Consumer: exakte Listen, LIKE und Konfliktvalidierung. */
 DECLARE @SelfSessionIds nvarchar(20)=CONVERT(nvarchar(20),@@SPID);
 DECLARE @Json nvarchar(max);

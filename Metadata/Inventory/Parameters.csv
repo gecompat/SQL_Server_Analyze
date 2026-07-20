@@ -43,6 +43,7 @@ USP_CurrentSessions,SessionIds,nvarchar(max),NULL
 USP_CurrentSessions,EigeneSessionsModus,varchar(16),'ALLE'
 USP_CurrentSessions,AktuelleSessionEinbeziehen,bit,0
 USP_CurrentSessions,SystemSessionsEinbeziehen,bit,0
+USP_CurrentSessions,ToolHintergrundabfragenEinbeziehen,bit,0
 USP_CurrentSessions,InaktiveSessionsEinbeziehen,bit,1
 USP_CurrentSessions,LoginNames,nvarchar(max),NULL
 USP_CurrentSessions,LoginNamePattern,nvarchar(4000),NULL
@@ -67,6 +68,7 @@ USP_CurrentRequests,SessionIds,nvarchar(max),NULL
 USP_CurrentRequests,EigeneSessionsModus,varchar(16),'ALLE'
 USP_CurrentRequests,AktuelleSessionEinbeziehen,bit,0
 USP_CurrentRequests,SystemSessionsEinbeziehen,bit,0
+USP_CurrentRequests,ToolHintergrundabfragenEinbeziehen,bit,0
 USP_CurrentRequests,NurBlockierte,bit,0
 USP_CurrentRequests,NurMitWait,bit,0
 USP_CurrentRequests,MinLaufzeitSekunden,int,NULL
@@ -98,6 +100,7 @@ USP_CurrentRequests,Hilfe,bit,0
 USP_CurrentBlocking,SessionIds,nvarchar(max),NULL
 USP_CurrentBlocking,MinWaitMs,bigint,0
 USP_CurrentBlocking,SystemSessionsEinbeziehen,bit,0
+USP_CurrentBlocking,ToolHintergrundabfragenEinbeziehen,bit,0
 USP_CurrentBlocking,MitSqlText,bit,1
 USP_CurrentBlocking,MaxSqlTextZeichen,int,3000
 USP_CurrentBlocking,BlockingObjektTiefe,varchar(16),'STANDARD'
@@ -118,6 +121,7 @@ USP_CurrentWaits,WaitTypePattern,nvarchar(4000),NULL
 USP_CurrentWaits,WaitGroups,nvarchar(max),NULL
 USP_CurrentWaits,WaitGroupPattern,nvarchar(4000),NULL
 USP_CurrentWaits,SystemSessionsEinbeziehen,bit,0
+USP_CurrentWaits,ToolHintergrundabfragenEinbeziehen,bit,0
 USP_CurrentWaits,MitSqlText,bit,1
 USP_CurrentWaits,MaxSqlTextZeichen,int,2000
 USP_CurrentWaits,SampleSeconds,tinyint,0
@@ -201,6 +205,7 @@ USP_CurrentOverview,DatabaseNames,nvarchar(max),NULL
 USP_CurrentOverview,SystemdatenbankenEinbeziehen,bit,0
 USP_CurrentOverview,DatabaseNamePattern,nvarchar(4000),NULL
 USP_CurrentOverview,HighImpactConfirmed,bit,0
+USP_CurrentOverview,ToolHintergrundabfragenEinbeziehen,bit,0
 USP_CurrentOverview,Detailgrad,varchar(16),'SUMMARY'
 USP_CurrentOverview,MitSessions,bit,1
 USP_CurrentOverview,MitRequests,bit,1

@@ -1,5 +1,30 @@
 # Release Notes
 
+## Stand 2026-07-21 – Root-Blocker-Ketten und Tool-Hintergrundfilter
+
+- `USP_CurrentBlocking` liefert die lesbare vollständige `BlockingChain` sowie
+  Identität, Session-/Requeststatus, offene Transaktionen, letzte Requestzeiten
+  und SQL-Textkontext des äußersten Root Blockers. Die Statementquelle
+  unterscheidet aktiven Request, zuletzt bekannte Verbindung, nicht verfügbar
+  und nicht angefordert.
+- Sessionfilter wirken auf die bereits rekonstruierte Kette. Dadurch bleibt der
+  Root-Kontext erhalten, wenn eine ausgewählte Session an beliebiger Stelle der
+  Kette vorkommt.
+- `@ToolHintergrundabfragenEinbeziehen=0` blendet erkannte Object-Explorer-,
+  Copilot- und SQL-Prompt-Hintergrundaktivität in Sessions, Requests,
+  Blocking-Blättern und aktuellen Waiting Tasks standardmäßig aus; Opt-in zeigt
+  Regelcode, Kategorie, Erkennungsart und Konfidenz.
+- Blocking bleibt kettenbewahrend: Ein Tool als Zwischen- oder Root-Blocker
+  einer normalen Abfrage wird nicht entfernt. Nur eine erkannte Toolabfrage als
+  blockiertes Blatt wird im Default unterdrückt.
+- Die Erkennung ist über aktive `LIKE`-Muster in
+  `monitor.ToolBackgroundQueryPattern` steuerbar. Framework-Seed, lokale
+  Erweiterungen, Priorität und lokales Deaktivieren sind installerfest; die
+  Klassifikation bleibt ausdrücklich eine Diagnoseheuristik.
+- Installer, Overview-Weitergabe, JSON-/TABLE-Schemas, Resultset- und
+  Parameterinventar, Beispiele, Architektur, Primärquellen und Integrationsgate
+  sind auf den neuen Vertrag synchronisiert.
+
 ## Stand 2026-07-20 – vollständige Blocking-Ressourcensicht
 
 - `USP_CurrentBlocking` klassifiziert und übersetzt Wait- und Lockressourcen
