@@ -49,21 +49,7 @@ Das Framework vergibt selbst keine Benutzer- oder Serverberechtigungen.
 
 ## Schnellstart
 
-### Variante 1: SQLCMD-Installer
-
-1. Repository herunterladen oder klonen.
-2. Den Platzhalter `[DeineDatenbank]` in `Code/Install/Install_All.sql` und den eingebundenen SQL-Dateien durch die vorgesehene Installationsdatenbank ersetzen.
-3. `Code/Install/Install_All.sql` in SSMS oder Azure Data Studio im SQLCMD-Modus ausführen.
-4. Anschließend den Smoke-Test ausführen:
-
-```sql
-USE [DeineDatenbank];
-GO
-
-:r Code/Tests/Integration/110_Smoke_Test.sql
-```
-
-### Variante 2: eigenständigen Installer erzeugen
+### Empfohlen für SSMS: eigenständigen Installer erzeugen
 
 ```powershell
 Set-Location ./Code/Install
@@ -71,6 +57,18 @@ Set-Location ./Code/Install
 ```
 
 Dadurch entsteht `Code/Install/Install_All.generated.sql`. In dieser Datei muss der Platzhalter `[DeineDatenbank]` nur einmal am Anfang ersetzt werden. Das generierte Build-Artefakt wird nicht versioniert.
+
+Die generierte Datei anschließend vollständig in SSMS ausführen und mit
+`Code/Tests/Integration/110_Smoke_Test.sql` prüfen. Eine vollständige Anleitung
+einschließlich Datenbankanlage, Collation-, Versions-, Erfolgs- und
+Berechtigungsprüfung steht unter
+[`Documentation/Reference/Installation.md`](./Documentation/Reference/Installation.md).
+
+### Alternative: SQLCMD-Installer
+
+Der Include-Weg über `Code/Install/Install_All.sql` bleibt für Entwicklungs- und
+Automatisierungsabläufe verfügbar. Dafür muss der Datenbankplatzhalter in allen
+eingebundenen Dateien ersetzt und in SSMS der SQLCMD-Modus aktiviert werden.
 
 ## Erste Aufrufe
 

@@ -1,5 +1,15 @@
 # Release Notes
 
+## Stand 2026-07-20 – SSMS-Installationsanleitung
+
+- Die Installationsreferenz führt nun vollständig durch Repositorydownload,
+  Versions- und Collationprüfung, Datenbankanlage, Erzeugung und Ausführung des
+  eigenständigen Installers, Smoke-Test, Berechtigungsprüfung, ersten Aufruf,
+  Upgrade und typische Fehlerbilder.
+- Für SSMS ist der eigenständige Installer als robuster Standardweg dokumentiert;
+  der SQLCMD-Include-Installer bleibt als Alternative für Entwicklung und
+  Automatisierung erhalten.
+
 ## Stand 2026-07-20 – Deep-Analysis-Authoring konsolidiert
 
 - Die 84/84-Drafts bleiben als nicht kanonisches Authoring-Archiv erhalten; veraltete Zukunfts- und Offen-Markierungen sind durch Abschlussstand und klare erneute Rechercheauslöser ersetzt.
