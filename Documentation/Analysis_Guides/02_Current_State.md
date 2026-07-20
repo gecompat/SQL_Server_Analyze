@@ -16,6 +16,10 @@ Current-State-Daten beantworten die Frage **„Was ist jetzt sichtbar?“**. Sie
 
 Inventarisiert aktuelle Sessions einschließlich Identität, Netzwerk, kumulativer Sessionaktivität und optional aktuellem Request-/SQL-Kontext.
 
+Erkannte Object-Explorer-, Copilot- und SQL-Prompt-Hintergrundsessions sind
+standardmäßig ausgeblendet. `@ToolHintergrundabfragenEinbeziehen = 1` zeigt sie
+einschließlich der metadatengetriebenen Klassifikation wieder an.
+
 **Einsetzen bei:** unbekannten Verbindungen, hoher Sessionzahl, sleeping Sessions, offenen Transaktionen, auffälliger kumulativer CPU/I/O-Last oder Client-/Verschlüsselungsfragen.
 
 **Nicht allein einsetzen bei:** konkreter Query-Ursache; dafür `USP_CurrentRequests` oder Query Store verwenden.
@@ -55,6 +59,7 @@ EXEC [monitor].[USP_CurrentSessions]
 | Schlüssel | `SessionId`, `RequestId`, `IsUserProcess` | `RequestId=NULL` ist bei einer sleeping Session normal. Session-IDs sind wiederverwendbar. |
 | Status | `SessionStatus`, `RequestStatus` | `sleeping` heißt nicht automatisch harmlos; offene Transaktionen prüfen. `suspended` bedeutet Warten, nicht zwingend Blocking. |
 | Identität | `LoginName`, `OriginalLoginName`, `HostName`, `ProgramName`, `ClientInterfaceName` | Clientwerte sind nützlich, aber vom Client geliefert und nicht manipulationssicher. Original-/Effektivlogin bei Impersonation unterscheiden. |
+| Tool-Klassifikation | `IsToolBackgroundQuery`, `ToolBackgroundRuleCode`, `ToolBackgroundCategory`, `ToolBackgroundDetection`, `ToolBackgroundConfidence` | Diagnoseheuristik aus einer aktivierten `LIKE`-Regel; niemals als Sicherheitsmerkmal verwenden. |
 | Zeit | `LoginTime`, `LastRequestStartTime`, `LastRequestEndTime` | Lange Login-Dauer ist bei Connection Pools normal. Entscheidend sind Aktivität und Transaktionszustand. |
 | Datenbank/Transaktion | `DatabaseId`, `DatabaseName`, `OpenTransactionCount`, `TransactionIsolationLevel` | Sleeping + offene Transaktion ist besonders relevant. Datenbank ist der aktuelle Kontext, nicht zwingend jedes referenzierte Objekt. |
 | Sessionkumulierung | `SessionCpuMs`, `SessionReads`, `SessionWrites`, `SessionLogicalReads`, `SessionMemoryMb`, `SessionRowCount` | Werte gelten seit Sessionbeginn und sind zwischen Sessions unterschiedlicher Lebensdauer nicht direkt vergleichbar. |
@@ -91,6 +96,9 @@ LOW. Optionaler SQL-Text erhöht CPU und Ausgabegröße. Ohne serverweite Perfor
 
 Zentrale Live-Analyse aktuell ausgeführter Requests. Sie korreliert Laufzeit, CPU, I/O, Blocking, Task-Waits, Memory Grants, Parallelität, Transaktion, Resource Governor, Query-/Planidentität sowie Statement-, Batch-, Modul- und Input-Buffer-Kontext.
 
+Tool-Hintergrundrequests sind standardmäßig ausgeblendet. Für eine bewusste
+Vollansicht `@ToolHintergrundabfragenEinbeziehen = 1` setzen.
+
 ### Aufrufe
 
 ```sql
@@ -122,6 +130,7 @@ Der letzte Aufruf ist nur gezielt sinnvoll, weil vollständige Texte und unbegre
 | Gruppe | Wichtige Spalten | Interpretation |
 |---|---|---|
 | Identität | `SessionId`, `RequestId`, `DatabaseName`, `LoginName`, `OriginalLoginName`, `HostName`, `ProgramName` | Ausgangspunkt für Korrelation; keine dauerhafte ID. |
+| Tool-Klassifikation | `IsToolBackgroundQuery`, `ToolBackgroundRuleCode`, `ToolBackgroundCategory`, `ToolBackgroundDetection`, `ToolBackgroundConfidence` | Aktive `LIKE`-Regel und Konfidenz der diagnostischen Erkennung. |
 | Arbeit | `StartTime`, `ElapsedMs`, `CpuMs`, `LogicalReads`, `Reads`, `Writes`, `RowCount` | hohe Laufzeit + niedrige CPU deutet eher auf Warten; hohe CPU + hohe Reads eher auf Query-/Planarbeit. |
 | Fortschritt | `PercentComplete`, `EstimatedCompletionTimeMs`, `Command` | nur für unterstützte Operationen; Schätzung schwankt. |
 | Blocking/Waits | `BlockingSessionId`, `WaitType`, `WaitTimeMs`, `LastWaitType`, `WaitResource`, `WaitingTaskCount`, `MaxTaskWaitMs`, `TaskWaitTypes` | parallele Requests können mehrere unterschiedliche Task-Waits besitzen. |
@@ -159,7 +168,7 @@ Der letzte Aufruf ist nur gezielt sinnvoll, weil vollständige Texte und unbegre
 
 ### Zweck
 
-Ermittelt aktuelle Blocking-Kanten, rekonstruiert Ketten bis zum Root Blocker und löst technische Blockingressourcen begrenzt auf Datenbank, Schema, Objekt, Index, Partition und Page auf. Negative Sonderblocker-IDs `-2` bis `-5` werden als eigene Owner-Typen beschrieben.
+Ermittelt aktuelle Blocking-Kanten, rekonstruiert Ketten bis zum Root Blocker und löst technische Blockingressourcen begrenzt auf Datenbank, Schema, Objekt, Index, Partition und Page auf. Negative Sonderblocker-IDs `-2` bis `-5` werden als eigene Owner-Typen beschrieben. Die lesbare Kette und der Session-/Request-/Transaktionskontext des äußersten Root Blockers sind Bestandteil derselben materialisierten Ergebniszeile.
 
 ### Aufrufe
 
@@ -195,6 +204,7 @@ EXEC [monitor].[USP_CurrentBlocking]
 | `BlockedSessionId` | Session auf dieser Kantenstufe |
 | `BlockingSessionId` | direkter Blocker |
 | `RootBlockingSessionId` | äußerster erkannter Root Blocker |
+| `BlockingChain` | Leserichtung `blockierte Session <- direkter Blocker <- ... <- Root Blocker` |
 | `BlockingOwnerType`, `BlockingOwnerDescription` | Session oder Sonderowner wie verwaiste DTC-/Recovery-/Latch-Zuordnung |
 | `ChainDepth` | Tiefe der Kette |
 | `IsCycle` | Schleife erkannt; selten und als flüchtiges/inkonsistentes Snapshotbild prüfen |
@@ -206,8 +216,17 @@ EXEC [monitor].[USP_CurrentBlocking]
 | `BlockingResourceMetadataSubtype`, `BlockingResourceMetadataName` | beispielsweise `STATS` plus Statistikname, `SCHEMA` oder Cache-Metadaten |
 | `BlockingResourceResolutionStatus` | `RESOLVED`, `PARTIAL`, `RAW_ONLY`, `SKIPPED_LIMIT`, `SKIPPED`, `TIMEOUT`, `DENIED_PERMISSION`, `ERROR_HANDLED`, `INVALID_FORMAT` oder `EMPTY` |
 | `BlockedLoginName`, `BlockedHostName`, `BlockedProgramName` | blockierte Seite |
+| `BlockedIsToolBackgroundQuery`, `BlockedToolBackground*` | Klassifikation der blockierten Blattabfrage; diese Blätter sind standardmäßig ausgeblendet |
 | `BlockerLoginName`, `BlockerHostName`, `BlockerProgramName` | blockierende Seite |
-| `BlockedStatement`, `BlockerStatement` | aktuelle Statements, sofern sichtbar |
+| `RootBlockerLoginName`, `RootBlockerHostName`, `RootBlockerProgramName` | Identität des äußersten Root Blockers |
+| `RootBlockerSessionStatus`, `RootBlockerRequestStatus`, `RootBlockerOpenTransactionCount`, `RootBlockerLastRequest*` | Zustand und Transaktionskontext des Root Blockers |
+| `RootIsToolBackgroundQuery`, `RootToolBackground*` | Klassifikation des Root Blockers; ein Tool-Root einer normalen Abfrage bleibt sichtbar |
+| `BlockedStatement`, `BlockerStatement` | aktuelle Statements von Blatt und direktem Blocker, sofern sichtbar |
+| `RootBlockerStatementSource`, `RootBlockerStatement` | aktives Root-Statement oder bei einer schlafenden Root-Session das zuletzt bekannte Verbindungsbatch; die Quelle verhindert eine Verwechslung beider Semantiken |
+
+Die Toolfilterung ist kettenbewahrend: Nur ein erkanntes Tool als blockiertes
+Blatt wird standardmäßig unterdrückt. Ist ein Tool Zwischen- oder Root-Blocker
+einer normalen Abfrage, bleibt die gesamte normale Kette sichtbar.
 
 ### Locks
 
@@ -296,6 +315,7 @@ EXEC [monitor].[USP_CurrentWaits]
 |---|---|
 | Task | `SessionId`, `ExecContextId`, `WaitDurationMs`, `WaitType`, `BlockingSessionId`, `ResourceDescription` |
 | Kontext | `SessionStatus`, `RequestStatus`, `LoginName`, `HostName`, `ProgramName`, `DatabaseId`, `Command`, `CurrentStatement` |
+| Tool-Klassifikation | `IsToolBackgroundQuery`, `ToolBackgroundRuleCode`, `ToolBackgroundCategory`, `ToolBackgroundDetection`, `ToolBackgroundConfidence` |
 | Katalog | `WaitGroup`, `WaitSeverity`, `IsGenerallyBenign`, `WaitMeaning`, `WaitTypicalOccurrence`, `HighWaitImpact`, `RecommendedChecks`, `WaitHelpUrl`, `DescriptionSource`, `DescriptionQuality`, `CatalogMatchType` |
 
 ### InstanceWaits-Spalten

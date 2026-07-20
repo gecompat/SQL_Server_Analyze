@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentBlocking
-Version      : 2.2.0
-Stand        : 2026-07-20
+Version      : 2.3.0
+Stand        : 2026-07-21
 Typ          : Stored Procedure
 Zweck        : Ermittelt aktuelle Blocking-Ketten, löst deren Ressourcen
                begrenzt auf Datenbank-, Objekt-, Index-, Partitions- und
@@ -28,6 +28,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentBlocking]
       @SessionIds                 nvarchar(max)  = NULL
     , @MinWaitMs                  bigint         = 0
     , @SystemSessionsEinbeziehen  bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit     = 0
     , @MitSqlText                 bit            = 1
     , @MaxSqlTextZeichen          int            = 3000
     , @BlockingObjektTiefe        varchar(16)    = 'STANDARD'
@@ -68,6 +69,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_CurrentBlocking';
         PRINT N'@SessionIds: exakte Session-IDs als Pipe-Liste, z. B. N''57|61''; NULL = keine Einschränkung.';
+        PRINT N'@ToolHintergrundabfragenEinbeziehen=0 blendet Ketten mit erkanntem Tool-Hintergrundrequest als Blatt standardmäßig aus; 1 zeigt sie. Ein Tool-Blocker einer normalen Abfrage bleibt immer in deren Kette sichtbar.';
         PRINT N'@BlockingObjektTiefe: NONE, STANDARD oder DEEP. DEEP aktiviert zusätzlich Lockdetails und benötigt LOCKS_DEEP plus @HighImpactConfirmed=1.';
         PRINT N'@MaxObjektAufloesungen begrenzt Katalog- und Page-Auflösungen auf 1 bis 1000 Kandidaten.';
         PRINT N'Jede Namens-/Objektanreicherung läuft einzeln mit LOCK_TIMEOUT 0; ein Timeout betrifft nur diesen Kandidaten.';
@@ -128,6 +130,7 @@ BEGIN
         , [RootBlockingSessionId] smallint       NULL
         , [BlockingOwnerType]     varchar(40)    NULL
         , [BlockingOwnerDescription] nvarchar(512) NULL
+        , [BlockingChain]          nvarchar(4000) NULL
         , [ChainDepth]            int            NOT NULL
         , [IsCycle]               bit            NOT NULL
         , [WaitType]              nvarchar(120)  NULL
@@ -154,11 +157,36 @@ BEGIN
         , [BlockedLoginName]      nvarchar(128)  NULL
         , [BlockedHostName]       nvarchar(128)  NULL
         , [BlockedProgramName]    nvarchar(128)  NULL
+        , [BlockedIsToolBackgroundQuery] bit      NOT NULL
+        , [BlockedToolBackgroundRuleCode] varchar(64) NULL
+        , [BlockedToolBackgroundCategory] varchar(40) NULL
+        , [BlockedToolBackgroundDetection] varchar(40) NULL
+        , [BlockedToolBackgroundConfidence] varchar(16) NULL
         , [BlockerLoginName]      nvarchar(128)  NULL
         , [BlockerHostName]       nvarchar(128)  NULL
         , [BlockerProgramName]    nvarchar(128)  NULL
+        , [RootBlockerLoginName]  nvarchar(128)  NULL
+        , [RootBlockerHostName]   nvarchar(128)  NULL
+        , [RootBlockerProgramName] nvarchar(128) NULL
+        , [RootBlockerSessionStatus] nvarchar(30) NULL
+        , [RootBlockerRequestStatus] nvarchar(30) NULL
+        , [RootBlockerOpenTransactionCount] int NULL
+        , [RootBlockerLastRequestStartTime] datetime NULL
+        , [RootBlockerLastRequestEndTime] datetime NULL
+        , [RootIsToolBackgroundQuery] bit NOT NULL
+        , [RootToolBackgroundRuleCode] varchar(64) NULL
+        , [RootToolBackgroundCategory] varchar(40) NULL
+        , [RootToolBackgroundDetection] varchar(40) NULL
+        , [RootToolBackgroundConfidence] varchar(16) NULL
         , [BlockedStatement]      nvarchar(max)  NULL
         , [BlockerStatement]      nvarchar(max)  NULL
+        , [RootBlockerStatementSource] varchar(32) NULL
+        , [RootBlockerStatement]  nvarchar(max)  NULL
+    );
+
+    CREATE TABLE [#CurrentBlocking_RetainedSessions]
+    (
+        [SessionId] smallint NOT NULL PRIMARY KEY
     );
 
     CREATE TABLE [#CurrentBlocking_Locks]
@@ -266,6 +294,8 @@ BEGIN
            OR @MaxObjektAufloesungen NOT BETWEEN 1 AND 1000
            OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
            OR @SystemSessionsEinbeziehen IS NULL
+           OR @ToolHintergrundabfragenEinbeziehen IS NULL
+           OR @ToolHintergrundabfragenEinbeziehen NOT IN (0,1)
            OR @MitSqlText IS NULL
            OR @MitLockDetails IS NULL
            OR @HighImpactConfirmed IS NULL
@@ -309,16 +339,6 @@ BEGIN
           AND [r].[blocking_session_id] <> [r].[session_id]
           AND (@SystemSessionsEinbeziehen = 1 OR [s].[is_user_process] = 1)
           AND COALESCE([r].[wait_time], 0) >= @MinWaitMs
-          AND
-          (
-              @SessionIds IS NULL
-              OR EXISTS
-                 (
-                     SELECT 1
-                     FROM [#CurrentBlocking_SessionFilter] AS [f]
-                     WHERE [f].[SessionId] IN ([r].[session_id], [r].[blocking_session_id])
-                 )
-          )
         GROUP BY [r].[session_id], [r].[blocking_session_id];
 
         INSERT [#CurrentBlocking_Edges]
@@ -340,16 +360,6 @@ BEGIN
           AND [w].[blocking_session_id] <> [w].[session_id]
           AND COALESCE([w].[wait_duration_ms], 0) >= @MinWaitMs
           AND (@SystemSessionsEinbeziehen = 1 OR COALESCE([s].[is_user_process], 1) = 1)
-          AND
-          (
-              @SessionIds IS NULL
-              OR EXISTS
-                 (
-                     SELECT 1
-                     FROM [#CurrentBlocking_SessionFilter] AS [f]
-                     WHERE [f].[SessionId] IN ([w].[session_id], [w].[blocking_session_id])
-                 )
-          )
           AND NOT EXISTS
               (
                   SELECT 1
@@ -367,6 +377,7 @@ BEGIN
                 , [e].[BlockingSessionId]
                 , 1 AS [ChainDepth]
                 , CONVERT(varchar(4000), CONCAT('|', [e].[BlockedSessionId], '|', [e].[BlockingSessionId], '|')) AS [Path]
+                , CONVERT(nvarchar(4000), CONCAT([e].[BlockedSessionId], N' <- ', [e].[BlockingSessionId])) AS [BlockingChain]
                 , CONVERT(bit, 0) AS [IsCycle]
             FROM [#CurrentBlocking_Edges] AS [e]
 
@@ -378,6 +389,7 @@ BEGIN
                 , [e].[BlockingSessionId]
                 , [c].[ChainDepth] + 1
                 , CONVERT(varchar(4000), CONCAT([c].[Path], [e].[BlockingSessionId], '|'))
+                , CONVERT(nvarchar(4000), CONCAT([c].[BlockingChain], N' <- ', [e].[BlockingSessionId]))
                 , CONVERT
                   (
                       bit,
@@ -397,7 +409,7 @@ BEGIN
                 , ROW_NUMBER() OVER
                   (
                       PARTITION BY [c].[LeafSessionId]
-                      ORDER BY [c].[ChainDepth] DESC
+                      ORDER BY [c].[ChainDepth] DESC, [c].[Path]
                   ) AS [RowNumber]
             FROM [Chain] AS [c]
         )
@@ -405,11 +417,22 @@ BEGIN
         (
               [LeafSessionId], [BlockedSessionId], [BlockingSessionId]
             , [RootBlockingSessionId], [BlockingOwnerType], [BlockingOwnerDescription]
-            , [ChainDepth], [IsCycle]
+            , [BlockingChain], [ChainDepth], [IsCycle]
             , [WaitType], [WaitTimeMs], [WaitResource]
             , [BlockedLoginName], [BlockedHostName], [BlockedProgramName]
+            , [BlockedIsToolBackgroundQuery], [BlockedToolBackgroundRuleCode]
+            , [BlockedToolBackgroundCategory], [BlockedToolBackgroundDetection]
+            , [BlockedToolBackgroundConfidence]
             , [BlockerLoginName], [BlockerHostName], [BlockerProgramName]
+            , [RootBlockerLoginName], [RootBlockerHostName], [RootBlockerProgramName]
+            , [RootBlockerSessionStatus], [RootBlockerRequestStatus]
+            , [RootBlockerOpenTransactionCount]
+            , [RootBlockerLastRequestStartTime], [RootBlockerLastRequestEndTime]
+            , [RootIsToolBackgroundQuery], [RootToolBackgroundRuleCode]
+            , [RootToolBackgroundCategory], [RootToolBackgroundDetection]
+            , [RootToolBackgroundConfidence]
             , [BlockedStatement], [BlockerStatement]
+            , [RootBlockerStatementSource], [RootBlockerStatement]
         )
         SELECT TOP (@CandidateRows)
               [r].[LeafSessionId]
@@ -428,6 +451,7 @@ BEGIN
                   WHEN -4 THEN N'Der Latch-Besitzer war während der Momentaufnahme nicht bestimmbar.'
                   WHEN -5 THEN N'Der Latch-Besitzer wird für diesen Ressourcentyp nicht verfolgt.'
                   ELSE N'Blockierende SQL-Server-Session.' END
+            , [r].[BlockingChain]
             , [r].[ChainDepth]
             , [r].[IsCycle]
             , [e].[WaitType]
@@ -436,11 +460,36 @@ BEGIN
             , [blockedSession].[login_name]
             , [blockedSession].[host_name]
             , [blockedSession].[program_name]
+            , [blockedTool].[IsToolBackgroundQuery]
+            , [blockedTool].[ToolBackgroundRuleCode]
+            , [blockedTool].[ToolBackgroundCategory]
+            , [blockedTool].[ToolBackgroundDetection]
+            , [blockedTool].[ToolBackgroundConfidence]
             , [blockerSession].[login_name]
             , [blockerSession].[host_name]
             , [blockerSession].[program_name]
+            , [rootSession].[login_name]
+            , [rootSession].[host_name]
+            , [rootSession].[program_name]
+            , [rootSession].[status]
+            , [rootRequest].[status]
+            , [rootSession].[open_transaction_count]
+            , [rootSession].[last_request_start_time]
+            , [rootSession].[last_request_end_time]
+            , [rootTool].[IsToolBackgroundQuery]
+            , [rootTool].[ToolBackgroundRuleCode]
+            , [rootTool].[ToolBackgroundCategory]
+            , [rootTool].[ToolBackgroundDetection]
+            , [rootTool].[ToolBackgroundConfidence]
             , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [blockedStatement].[StatementText] ELSE LEFT([blockedStatement].[StatementText], @MaxSqlTextZeichen) END END
             , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [blockerStatement].[StatementText] ELSE LEFT([blockerStatement].[StatementText], @MaxSqlTextZeichen) END END
+            , CASE
+                  WHEN @MitSqlText = 0 THEN 'NOT_REQUESTED'
+                  WHEN [rootRequest].[sql_handle] IS NOT NULL THEN 'ACTIVE_REQUEST'
+                  WHEN [rootConnection].[most_recent_sql_handle] IS NOT NULL THEN 'MOST_RECENT_CONNECTION'
+                  ELSE 'UNAVAILABLE'
+              END
+            , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [rootStatement].[StatementText] ELSE LEFT([rootStatement].[StatementText], @MaxSqlTextZeichen) END END
         FROM [Root] AS [r]
         INNER JOIN [#CurrentBlocking_Edges] AS [e]
           ON [e].[BlockedSessionId] = [r].[LeafSessionId]
@@ -448,10 +497,38 @@ BEGIN
           ON [blockedSession].[session_id] = [e].[BlockedSessionId]
         LEFT JOIN [sys].[dm_exec_sessions] AS [blockerSession] WITH (NOLOCK)
           ON [blockerSession].[session_id] = [e].[BlockingSessionId]
-        LEFT JOIN [sys].[dm_exec_requests] AS [blockedRequest] WITH (NOLOCK)
-          ON [blockedRequest].[session_id] = [e].[BlockedSessionId]
-        LEFT JOIN [sys].[dm_exec_requests] AS [blockerRequest] WITH (NOLOCK)
-          ON [blockerRequest].[session_id] = [e].[BlockingSessionId]
+        LEFT JOIN [sys].[dm_exec_sessions] AS [rootSession] WITH (NOLOCK)
+          ON [rootSession].[session_id] = [r].[BlockingSessionId]
+        OUTER APPLY
+        (
+            SELECT TOP (1) [request].*
+            FROM [sys].[dm_exec_requests] AS [request] WITH (NOLOCK)
+            WHERE [request].[session_id] = [e].[BlockedSessionId]
+            ORDER BY [request].[request_id]
+        ) AS [blockedRequest]
+        OUTER APPLY
+        (
+            SELECT TOP (1) [request].*
+            FROM [sys].[dm_exec_requests] AS [request] WITH (NOLOCK)
+            WHERE [request].[session_id] = [e].[BlockingSessionId]
+            ORDER BY [request].[request_id]
+        ) AS [blockerRequest]
+        OUTER APPLY
+        (
+            SELECT TOP (1) [request].*
+            FROM [sys].[dm_exec_requests] AS [request] WITH (NOLOCK)
+            WHERE [request].[session_id] = [r].[BlockingSessionId]
+            ORDER BY [request].[request_id]
+        ) AS [rootRequest]
+        OUTER APPLY
+        (
+            SELECT TOP (1) [connection].[most_recent_sql_handle]
+            FROM [sys].[dm_exec_connections] AS [connection] WITH (NOLOCK)
+            WHERE [connection].[session_id] = [r].[BlockingSessionId]
+            ORDER BY [connection].[connect_time] DESC
+        ) AS [rootConnection]
+        CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([blockedSession].[program_name]) AS [blockedTool]
+        CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([rootSession].[program_name]) AS [rootTool]
         OUTER APPLY [sys].[dm_exec_sql_text]
         (
             CASE WHEN @MitSqlText = 1 THEN [blockedRequest].[sql_handle] END
@@ -472,8 +549,75 @@ BEGIN
             , [blockerRequest].[statement_start_offset]
             , [blockerRequest].[statement_end_offset]
         ) AS [blockerStatement]
+        OUTER APPLY [sys].[dm_exec_sql_text]
+        (
+            CASE WHEN @MitSqlText = 1
+                 THEN COALESCE([rootRequest].[sql_handle], [rootConnection].[most_recent_sql_handle]) END
+        ) AS [rootText]
+        OUTER APPLY [monitor].[TVF_StatementText]
+        (
+              [rootText].[text]
+            , CASE WHEN [rootRequest].[sql_handle] IS NOT NULL
+                   THEN [rootRequest].[statement_start_offset] END
+            , CASE WHEN [rootRequest].[sql_handle] IS NOT NULL
+                   THEN [rootRequest].[statement_end_offset] END
+        ) AS [rootStatement]
         WHERE [r].[RowNumber] = 1
+          AND
+          (
+              @SessionIds IS NULL
+              OR EXISTS
+                 (
+                     SELECT 1
+                     FROM [#CurrentBlocking_SessionFilter] AS [filter]
+                     WHERE [r].[Path] LIKE CONCAT('%|', [filter].[SessionId], '|%')
+                 )
+          )
+          AND
+          (
+              @ToolHintergrundabfragenEinbeziehen = 1
+              OR [blockedTool].[IsToolBackgroundQuery] = 0
+          )
         ORDER BY [e].[WaitTimeMs] DESC, [e].[BlockedSessionId]
+        OPTION (MAXRECURSION 32);
+
+        ;WITH [RetainedChain] AS
+        (
+            SELECT
+                  [e].[BlockedSessionId]
+                , [e].[BlockingSessionId]
+                , 1 AS [ChainDepth]
+                , CONVERT(varchar(4000), CONCAT('|', [e].[BlockedSessionId], '|', [e].[BlockingSessionId], '|')) AS [Path]
+            FROM [#CurrentBlocking_Edges] AS [e]
+            JOIN [#CurrentBlocking_BlockingChains] AS [retained]
+              ON [retained].[LeafSessionId] = [e].[BlockedSessionId]
+
+            UNION ALL
+
+            SELECT
+                  [e].[BlockedSessionId]
+                , [e].[BlockingSessionId]
+                , [chain].[ChainDepth] + 1
+                , CONVERT(varchar(4000), CONCAT([chain].[Path], [e].[BlockingSessionId], '|'))
+            FROM [RetainedChain] AS [chain]
+            JOIN [#CurrentBlocking_Edges] AS [e]
+              ON [e].[BlockedSessionId] = [chain].[BlockingSessionId]
+            WHERE [chain].[ChainDepth] < 32
+              AND [chain].[Path] NOT LIKE CONCAT('%|', [e].[BlockingSessionId], '|%')
+        ),
+        [RetainedSessions] AS
+        (
+            SELECT [BlockedSessionId] AS [SessionId]
+            FROM [RetainedChain]
+            WHERE [BlockedSessionId] > 0
+            UNION
+            SELECT [BlockingSessionId]
+            FROM [RetainedChain]
+            WHERE [BlockingSessionId] > 0
+        )
+        INSERT [#CurrentBlocking_RetainedSessions]([SessionId])
+        SELECT [SessionId]
+        FROM [RetainedSessions]
         OPTION (MAXRECURSION 32);
 
         SELECT @MainCandidateCount = COUNT_BIG(*) FROM [#CurrentBlocking_BlockingChains];
@@ -524,9 +668,8 @@ BEGIN
                 WHERE EXISTS
                       (
                           SELECT 1
-                          FROM [#CurrentBlocking_Edges] AS [e]
-                          WHERE [e].[BlockedSessionId] = [l].[request_session_id]
-                             OR [e].[BlockingSessionId] = [l].[request_session_id]
+                          FROM [#CurrentBlocking_RetainedSessions] AS [retained]
+                          WHERE [retained].[SessionId] = [l].[request_session_id]
                       )
                 ORDER BY
                       [l].[request_session_id]
@@ -1298,6 +1441,7 @@ BEGIN
             , CASE WHEN @MainCandidateCount > @EffectiveMaxZeilen
                    THEN @EffectiveMaxZeilen ELSE @MainCandidateCount END AS [ReturnedRowCount]
             , @HasMoreRows AS [HasMoreRows]
+            , @ToolHintergrundabfragenEinbeziehen AS [ToolBackgroundQueriesIncluded]
             , @LockStatusCode AS [LockStatusCode]
             , @BlockingObjektTiefeNormalisiert AS [BlockingObjectDepth]
             , @ObjectResolutionStatusCode AS [ObjectResolutionStatusCode]
@@ -1320,7 +1464,7 @@ BEGIN
             SELECT TOP (@EffectiveMaxZeilen)
                   [LeafSessionId], [BlockedSessionId], [BlockingSessionId]
                 , [RootBlockingSessionId], [BlockingOwnerType], [BlockingOwnerDescription]
-                , [ChainDepth], [IsCycle]
+                , [BlockingChain], [ChainDepth], [IsCycle]
                 , [WaitType], [WaitTimeMs], [WaitResource]
                 , [BlockingResourceType], [BlockingResourceDatabaseId], [BlockingResourceDatabaseName]
                 , [BlockingResourceSchemaName], [BlockingResourceObjectId], [BlockingResourceObjectName]
@@ -1331,8 +1475,19 @@ BEGIN
                 , [BlockingResourcePageTypeDesc]
                 , [BlockingResourceName], [BlockingResourceResolutionStatus]
                 , [BlockedLoginName], [BlockedHostName], [BlockedProgramName]
+                , [BlockedIsToolBackgroundQuery], [BlockedToolBackgroundRuleCode]
+                , [BlockedToolBackgroundCategory], [BlockedToolBackgroundDetection]
+                , [BlockedToolBackgroundConfidence]
                 , [BlockerLoginName], [BlockerHostName], [BlockerProgramName]
+                , [RootBlockerLoginName], [RootBlockerHostName], [RootBlockerProgramName]
+                , [RootBlockerSessionStatus], [RootBlockerRequestStatus]
+                , [RootBlockerOpenTransactionCount]
+                , [RootBlockerLastRequestStartTime], [RootBlockerLastRequestEndTime]
+                , [RootIsToolBackgroundQuery], [RootToolBackgroundRuleCode]
+                , [RootToolBackgroundCategory], [RootToolBackgroundDetection]
+                , [RootToolBackgroundConfidence]
                 , [BlockedStatement], [BlockerStatement]
+                , [RootBlockerStatementSource], [RootBlockerStatement]
             FROM [#CurrentBlocking_BlockingChains]
             ORDER BY [WaitTimeMs] DESC, [BlockedSessionId];
 
@@ -1360,6 +1515,7 @@ BEGIN
                 , [BlockedSessionId] AS [Blockierte Session]
                 , [BlockingSessionId] AS [Blockierende Session]
                 , [RootBlockingSessionId] AS [Root Blocker]
+                , [BlockingChain] AS [Blocker-Kette]
                 , [BlockingOwnerType] AS [Blocker-Typ]
                 , [BlockingOwnerDescription] AS [Blocker-Typbeschreibung]
                 , [ChainDepth] AS [Kettentiefe]
@@ -1376,9 +1532,17 @@ BEGIN
                 , [BlockerLoginName] AS [Blocker Login]
                 , [BlockerHostName] AS [Blocker Host]
                 , [BlockerProgramName] AS [Blocker Programm]
+                , [RootBlockerLoginName] AS [Root-Blocker Login]
+                , [RootBlockerHostName] AS [Root-Blocker Host]
+                , [RootBlockerProgramName] AS [Root-Blocker Programm]
+                , [RootBlockerSessionStatus] AS [Root-Blocker Sessionstatus]
+                , [RootBlockerRequestStatus] AS [Root-Blocker Requeststatus]
+                , [RootBlockerOpenTransactionCount] AS [Root-Blocker offene Transaktionen]
                 , [BlockedSessionId] AS [Session_SQL]
                 , [BlockedStatement] AS [Blockiertes Statement]
                 , [BlockerStatement] AS [Blocker Statement]
+                , [RootBlockerStatementSource] AS [Root-Blocker Statementquelle]
+                , [RootBlockerStatement] AS [Root-Blocker Statement]
             FROM [#CurrentBlocking_BlockingChains]
             ORDER BY [WaitTimeMs] DESC, [BlockedSessionId];
 
@@ -1414,7 +1578,7 @@ BEGIN
         (
             SELECT
                   N'CurrentBlocking' AS [resultName]
-                , 2 AS [schemaVersion]
+                , 3 AS [schemaVersion]
                 , @CollectionTimeUtc AS [generatedAtUtc]
                 , @StatusCode AS [statusCode]
                 , @MaxZeilen AS [requestedMaxRows]
@@ -1434,6 +1598,7 @@ BEGIN
                 , @ObjectResolutionDeniedCount AS [objectResolutionDeniedCount]
                 , @ObjectResolutionErrorCount AS [objectResolutionErrorCount]
                 , @ObjectResolutionSkippedLimitCount AS [objectResolutionSkippedLimitCount]
+                , @ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );
         DECLARE @ChainsJson nvarchar(max) =

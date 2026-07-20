@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentSessions
-Version      : 2.0.2
-Stand        : 2026-07-18
+Version      : 2.1.0
+Stand        : 2026-07-21
 Typ          : Stored Procedure
 Zweck        : Liefert aktuelle Sessions mit exakten Mehrfachfiltern, Pattern-
                Filtern und RAW-, CONSOLE- oder JSON-Ausgabe.
@@ -22,6 +22,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentSessions]
     , @EigeneSessionsModus          varchar(16)    = 'ALLE'
     , @AktuelleSessionEinbeziehen   bit            = 0
     , @SystemSessionsEinbeziehen    bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit       = 0
     , @InaktiveSessionsEinbeziehen  bit            = 1
     , @LoginNames                   nvarchar(max)  = NULL
     , @LoginNamePattern             nvarchar(4000) = NULL
@@ -77,6 +78,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_CurrentSessions';
         PRINT N'@SessionIds: Pipe-Liste, z. B. N''57|61''.';
+        PRINT N'@ToolHintergrundabfragenEinbeziehen=0 blendet erkannte Object-Explorer-, Copilot- und SQL-Prompt-Hintergrundsessions standardmäßig aus; 1 zeigt sie samt Klassifikation.';
         PRINT N'@LoginNames/@HostNames/@ProgramNames/@DatabaseNames: exakte bracket-aware Pipe-Listen.';
         PRINT N'Die jeweiligen ...Pattern-Parameter akzeptieren LIKE, like:, regex: oder regexi: und sind mit der exakten Liste gegenseitig exklusiv.';
         PRINT N'@MaxZeilen: positiv begrenzt; NULL/0 = unbegrenzt; negativ = INVALID_PARAMETER.';
@@ -157,7 +159,7 @@ BEGIN
     END;
 
     IF @StatusCode='AVAILABLE'
-       AND (@EigeneSessionsModus NOT IN('ALLE','NUR','AUSSCHLIESSEN') OR @Sortierung NOT IN('CPU','READS','WRITES','LOGIN','SESSION') OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxZeilen<0 OR @MaxSqlTextZeichen<0)
+       AND (@EigeneSessionsModus NOT IN('ALLE','NUR','AUSSCHLIESSEN') OR @Sortierung NOT IN('CPU','READS','WRITES','LOGIN','SESSION') OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxZeilen<0 OR @MaxSqlTextZeichen<0 OR @ToolHintergrundabfragenEinbeziehen IS NULL OR @ToolHintergrundabfragenEinbeziehen NOT IN(0,1))
     BEGIN
         SET @StatusCode='INVALID_PARAMETER';
         SET @ErrorMessage=N'Mindestens ein Steuerparameter ist ungültig.';
@@ -172,6 +174,11 @@ BEGIN
         , [SessionStatus] nvarchar(30) NULL, [RequestStatus] nvarchar(30) NULL
         , [LoginName] nvarchar(128) NULL, [OriginalLoginName] nvarchar(128) NULL
         , [HostName] nvarchar(128) NULL, [ProgramName] nvarchar(128) NULL
+        , [IsToolBackgroundQuery] bit NOT NULL
+        , [ToolBackgroundRuleCode] varchar(64) NULL
+        , [ToolBackgroundCategory] varchar(40) NULL
+        , [ToolBackgroundDetection] varchar(40) NULL
+        , [ToolBackgroundConfidence] varchar(16) NULL
         , [ClientInterfaceName] nvarchar(32) NULL, [LoginTime] datetime NULL
         , [LastRequestStartTime] datetime NULL, [LastRequestEndTime] datetime NULL
         , [DatabaseId] smallint NULL, [DatabaseName] sysname NULL
@@ -195,7 +202,11 @@ BEGIN
         INSERT [#CurrentSessions_Result]
         SELECT TOP (@CandidateMaxZeilen)
               [s].[session_id],[r].[request_id],[s].[is_user_process],[s].[status],[r].[status]
-            , [s].[login_name],[s].[original_login_name],[s].[host_name],[s].[program_name],[s].[client_interface_name]
+            , [s].[login_name],[s].[original_login_name],[s].[host_name],[s].[program_name]
+            , [tool].[IsToolBackgroundQuery],[tool].[ToolBackgroundRuleCode]
+            , [tool].[ToolBackgroundCategory]
+            , [tool].[ToolBackgroundDetection],[tool].[ToolBackgroundConfidence]
+            , [s].[client_interface_name]
             , [s].[login_time],[s].[last_request_start_time],[s].[last_request_end_time],[r].[database_id],[d].[name]
             , [s].[open_transaction_count]
             , CASE [s].[transaction_isolation_level] WHEN 0 THEN N'Unspecified' WHEN 1 THEN N'ReadUncommitted' WHEN 2 THEN N'ReadCommitted' WHEN 3 THEN N'RepeatableRead' WHEN 4 THEN N'Serializable' WHEN 5 THEN N'Snapshot' END
@@ -211,9 +222,11 @@ BEGIN
         LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK) ON [d].[database_id]=[r].[database_id]
         OUTER APPLY [sys].[dm_exec_sql_text](CASE WHEN @MitSqlText=1 THEN COALESCE([r].[sql_handle],[c].[most_recent_sql_handle]) END) AS [t]
         OUTER APPLY [monitor].[TVF_StatementText]([t].[text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
+        CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([s].[program_name]) AS [tool]
         WHERE (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_SessionIdFilter]) OR EXISTS(SELECT 1 FROM [#CurrentSessions_SessionIdFilter] AS [f] WHERE [f].[SessionId]=[s].[session_id]))
           AND (@AktuelleSessionEinbeziehen=1 OR [s].[session_id]<>@@SPID)
           AND (@SystemSessionsEinbeziehen=1 OR [s].[is_user_process]=1)
+          AND (@ToolHintergrundabfragenEinbeziehen=1 OR [tool].[IsToolBackgroundQuery]=0)
           AND (@InaktiveSessionsEinbeziehen=1 OR [r].[session_id] IS NOT NULL OR [s].[open_transaction_count]>0)
           AND (@EigeneSessionsModus='ALLE' OR (@EigeneSessionsModus='NUR' AND [s].[original_login_name]=ORIGINAL_LOGIN()) OR (@EigeneSessionsModus='AUSSCHLIESSEN' AND ISNULL([s].[original_login_name],N'')<>ORIGINAL_LOGIN()))
           AND (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] WHERE [FilterType]='LOGIN') OR EXISTS(SELECT 1 FROM [#CurrentSessions_StringFilter] AS [f] WHERE [f].[FilterType]='LOGIN' AND [f].[StringValue]=[s].[login_name] COLLATE SQL_Latin1_General_CP1_CS_AS))
@@ -268,7 +281,7 @@ BEGIN
 
     IF @JsonErzeugen=1
     BEGIN
-        DECLARE @MetaJson nvarchar(max)=(SELECT @ModuleName AS [resultName],1 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@MaxZeilen AS [requestedMaxRows],@RowCount AS [returnedRows],@HasMoreRows AS [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @MetaJson nvarchar(max)=(SELECT @ModuleName AS [resultName],2 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@MaxZeilen AS [requestedMaxRows],@RowCount AS [returnedRows],@HasMoreRows AS [hasMoreRows],@ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @SessionsJson nvarchar(max)=(SELECT [r].*,[wi].[WaitGroup] AS [waitGroup],[wi].[Severity] AS [waitSeverity],[wi].[Meaning] AS [waitMeaning] FROM [#CurrentSessions_Result] AS [r] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi] ORDER BY [SessionId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"sessions":',COALESCE(@SessionsJson,N'[]'),N',"warnings":',CASE WHEN @ErrorMessage IS NULL AND @Detail IS NULL THEN N'[]' ELSE (SELECT @StatusCode AS [code],COALESCE(@ErrorMessage,@Detail) AS [message] FOR JSON PATH,INCLUDE_NULL_VALUES) END,N'}');
     END;

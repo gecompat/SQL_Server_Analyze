@@ -53,6 +53,19 @@ EXEC [monitor].[USP_CurrentRequests]
 
 SQL-Text, Login, Host, Programm, Clientadresse und Input Buffer können in einer realen Laufzeitumgebung schutzbedürftige Inhalte enthalten. Ergebnisse nur im erforderlichen Umfang anzeigen, nicht ungeprüft exportieren und niemals als Beispiel ins Repository übernehmen.
 
+Object-Explorer-, Copilot- und SQL-Prompt-Hintergrundrequests sind
+standardmäßig ausgeblendet. Für eine bewusste Vollansicht gilt:
+
+```sql
+EXEC [monitor].[USP_CurrentRequests]
+      @ToolHintergrundabfragenEinbeziehen = 1,
+      @ResultSetArt = 'CONSOLE';
+```
+
+Die [LIKE-Regeln und ihre Grenzen](../../Architecture/Tool_Background_Query_Filtering.md)
+sind zentral dokumentiert. Die clientseitige Kennzeichnung ist keine
+Sicherheitsidentität.
+
 ## Resultsets und Leserichtung
 
 - `CONSOLE` liefert genau ein fachliches Resultset aus der materialisierten Requestmenge. Es eignet sich für die erste Sichtung.
@@ -71,7 +84,7 @@ Die Zähler `ElapsedMs`, `CpuMs`, `LogicalReads`, `Reads`, `Writes` und `RowCoun
 ## So lesen
 
 1. **Vollständigkeit:** In `RAW` Status, partielle Sicht und Zeilenlimit prüfen. Ohne vollständige Server-State-Berechtigung kann die Engine nur eingeschränkte Sessions zeigen.
-2. **Identität und Scope:** `SessionId`, `RequestId`, Datenbank, Command und Startzeit bestimmen. Die aktuelle eigene Session und System-Sessions sind standardmäßig ausgeschlossen.
+2. **Identität und Scope:** `SessionId`, `RequestId`, Datenbank, Command und Startzeit bestimmen. Die aktuelle eigene Session, System-Sessions und erkannte Tool-Hintergrundrequests sind standardmäßig ausgeschlossen. Bei Opt-in Regelcode und Konfidenz prüfen.
 3. **Zeitaufteilung:** `ElapsedMs` mit `CpuMs` vergleichen. CPU ist verbrauchte Rechenzeit, Elapsed ist verstrichene Wanduhrzeit. Die Differenz ist nicht automatisch ein einzelner Wait, sondern kann verschiedene Warte- und Runnable-Phasen enthalten.
 4. **Arbeit:** `LogicalReads`, physische `Reads`, `Writes` und `RowCount` gemeinsam lesen. Viele Logical Reads zeigen Seitenzugriffe im Buffer Pool, nicht automatisch langsames Storage. Bei parallelen Row-Mode-Requests weist Microsoft darauf hin, dass bestimmte Zähler in `sys.dm_exec_requests` nur am Coordinator sichtbar und dort nicht für alle Worker fortgeschrieben werden; sie sind dann keine vollständige Tasksumme.
 5. **Warten und Blocking:** `WaitType`, `WaitTimeMs`, `TaskWaitTypes`, `BlockingSessionId` und `WaitResource` zusammen bewerten. Der Wait-Katalog liefert eine Einordnung, keine Root-Cause-Garantie.

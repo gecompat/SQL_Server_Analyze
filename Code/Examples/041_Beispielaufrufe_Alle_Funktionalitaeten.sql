@@ -25,6 +25,10 @@ GO
 -- Vollständige Locktypsicht für beteiligte Sessions; benötigt LOCKS_DEEP-Freigabe:
 -- EXEC [monitor].[USP_CurrentBlocking] @BlockingObjektTiefe='DEEP', @MaxObjektAufloesungen=500, @HighImpactConfirmed=1, @ResultSetArt='RAW';
 
+-- Tool-Hintergrundabfragen einschließlich Object Explorer, Copilot und SQL Prompt bewusst einblenden:
+-- EXEC [monitor].[USP_CurrentBlocking] @ToolHintergrundabfragenEinbeziehen=1, @ResultSetArt='CONSOLE';
+-- SELECT * FROM [monitor].[ToolBackgroundQueryPattern] WITH (NOLOCK) WHERE [IsEnabled]=1 ORDER BY [Priority] DESC,[RuleCode];
+
 -- EXEC [monitor].[USP_CurrentWaits] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_CurrentTransactions] @Hilfe = 1;

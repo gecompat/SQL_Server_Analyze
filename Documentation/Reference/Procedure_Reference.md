@@ -257,6 +257,7 @@ Quelle: `Code/02_CurrentState/030_USP_CurrentBlocking.sql`
 @SessionIds                 nvarchar(max)  = NULL
     , @MinWaitMs                  bigint         = 0
     , @SystemSessionsEinbeziehen  bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit     = 0
     , @MitSqlText                 bit            = 1
     , @MaxSqlTextZeichen          int            = 3000
     , @BlockingObjektTiefe        varchar(16)    = 'STANDARD'
@@ -344,6 +345,7 @@ Quelle: `Code/02_CurrentState/100_USP_CurrentOverview.sql`
     , @SystemdatenbankenEinbeziehen  bit            = 0
     , @DatabaseNamePattern           nvarchar(4000) = NULL
     , @HighImpactConfirmed              bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit          = 0
     , @Detailgrad                    varchar(16)     = 'SUMMARY'
     , @MitSessions                   bit             = 1
     , @MitRequests                   bit             = 1
@@ -380,6 +382,7 @@ Quelle: `Code/02_CurrentState/020_USP_CurrentRequests.sql`
     , @EigeneSessionsModus           varchar(16)    = 'ALLE'
     , @AktuelleSessionEinbeziehen    bit            = 0
     , @SystemSessionsEinbeziehen     bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit        = 0
     , @NurBlockierte                 bit            = 0
     , @NurMitWait                    bit            = 0
     , @MinLaufzeitSekunden           int            = NULL
@@ -419,6 +422,7 @@ Quelle: `Code/02_CurrentState/010_USP_CurrentSessions.sql`
     , @EigeneSessionsModus          varchar(16)    = 'ALLE'
     , @AktuelleSessionEinbeziehen   bit            = 0
     , @SystemSessionsEinbeziehen    bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit       = 0
     , @InaktiveSessionsEinbeziehen  bit            = 1
     , @LoginNames                   nvarchar(max)  = NULL
     , @LoginNamePattern             nvarchar(4000) = NULL
@@ -492,6 +496,7 @@ Quelle: `Code/02_CurrentState/040_USP_CurrentWaits.sql`
     , @WaitGroups                   nvarchar(max)  = NULL
     , @WaitGroupPattern             nvarchar(4000) = NULL
     , @SystemSessionsEinbeziehen    bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit       = 0
     , @MitSqlText                   bit            = 1
     , @MaxSqlTextZeichen            int            = 2000
     , @SampleSeconds                tinyint        = 0

@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentOverview
-Version      : 3.1.0
-Stand        : 2026-07-20
+Version      : 3.2.0
+Stand        : 2026-07-21
 Zweck        : Orchestriert jedes aktivierte Current-State-Child genau einmal,
                übernimmt dessen expliziten Status und materialisiert Daten für
                CONSOLE, JSON und benannte TABLE-Exporte ohne erneute Systemlese.
@@ -21,6 +21,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
     , @SystemdatenbankenEinbeziehen  bit            = 0
     , @DatabaseNamePattern           nvarchar(4000) = NULL
     , @HighImpactConfirmed              bit            = 0
+    , @ToolHintergrundabfragenEinbeziehen bit          = 0
     , @Detailgrad                    varchar(16)     = 'SUMMARY'
     , @MitSessions                   bit             = 1
     , @MitRequests                   bit             = 1
@@ -60,6 +61,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_CurrentOverview';
         PRINT N'Ohne Datenbankfilter werden alle sichtbaren, online befindlichen Benutzerdatenbanken berücksichtigt.';
+        PRINT N'@ToolHintergrundabfragenEinbeziehen=0 blendet erkannte Tool-Hintergrundaktivität in Sessions, Requests, Blocking-Blättern und aktuellen Waiting Tasks aus; 1 zeigt sie samt Klassifikation.';
         PRINT N'@Detailgrad=SUMMARY (Default)|RELEVANT|ALL. Leere Childdetails erzeugen kein Grid.';
         PRINT N'@BlockingObjektTiefe=NONE|STANDARD|DEEP; DEEP benötigt LOCKS_DEEP und @HighImpactConfirmed=1.';
         PRINT N'@MaxObjektAufloesungen begrenzt die Blocking-Ressourcenauflösung auf 1 bis 1000 Kandidaten.';
@@ -150,6 +152,7 @@ BEGIN
        OR @MitLog IS NULL OR @MitLog NOT IN (0,1)
        OR @MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)
        OR @HighImpactConfirmed IS NULL OR @HighImpactConfirmed NOT IN (0,1)
+       OR @ToolHintergrundabfragenEinbeziehen IS NULL OR @ToolHintergrundabfragenEinbeziehen NOT IN (0,1)
        OR @GesamtenSqlTextEinbeziehen IS NULL OR @GesamtenSqlTextEinbeziehen NOT IN (0,1)
        OR @InputBufferEinbeziehen IS NULL OR @InputBufferEinbeziehen NOT IN (0,1)
        OR @ModulInfoEinbeziehen IS NULL OR @ModulInfoEinbeziehen NOT IN (0,1)
@@ -185,6 +188,7 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_CurrentSessions]
                   @SessionIds=@SessionIds
+                , @ToolHintergrundabfragenEinbeziehen=@ToolHintergrundabfragenEinbeziehen
                 , @MitSqlText=@MitSqlText
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @MaxZeilen=@MaxZeilen
@@ -211,6 +215,7 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_CurrentRequests]
                   @SessionIds=@SessionIds
+                , @ToolHintergrundabfragenEinbeziehen=@ToolHintergrundabfragenEinbeziehen
                 , @MitSqlText=@MitSqlText
                 , @GesamtenSqlTextEinbeziehen=@GesamtenSqlTextEinbeziehen
                 , @InputBufferEinbeziehen=@InputBufferEinbeziehen
@@ -240,6 +245,7 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_CurrentBlocking]
                   @SessionIds=@SessionIds
+                , @ToolHintergrundabfragenEinbeziehen=@ToolHintergrundabfragenEinbeziehen
                 , @MitSqlText=@MitSqlText
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @BlockingObjektTiefe=@BlockingObjectDepth
@@ -269,6 +275,7 @@ BEGIN
         BEGIN TRY
             EXEC [monitor].[USP_CurrentWaits]
                   @SessionIds=@SessionIds
+                , @ToolHintergrundabfragenEinbeziehen=@ToolHintergrundabfragenEinbeziehen
                 , @MitSqlText=@MitSqlText
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @SampleSeconds=@SampleSeconds
@@ -539,13 +546,14 @@ BuildOutputs:
         (
             SELECT
                   N'CurrentOverview' AS [resultName]
-                , 2 AS [schemaVersion]
+                , 3 AS [schemaVersion]
                 , @StartedAtUtc AS [generatedAtUtc]
                 , @StatusCode AS [statusCode]
                 , CONVERT(bit,CASE WHEN @PartialModules>0 OR @FailedModules>0 THEN 1 ELSE 0 END) AS [isPartial]
                 , @ExecutedModules AS [executedModules]
                 , @FailedModules AS [failedModules]
                 , @PartialModules AS [partialModules]
+                , @ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES
         );
         DECLARE @ModuleStatusJson nvarchar(max)=

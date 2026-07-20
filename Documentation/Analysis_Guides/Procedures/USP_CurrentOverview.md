@@ -32,6 +32,12 @@ Modul-Summary. `RELEVANT` ergänzt nicht leere diagnostisch relevante Details;
 `ALL` ergänzt alle nicht leeren aktivierten Childdetails. Sampling und
 vollständige SQL-Texte nur gezielt aktivieren.
 
+`@ToolHintergrundabfragenEinbeziehen = 0` wird an Sessions, Requests, Blocking
+und aktuelle Waiting Tasks weitergegeben. Mit Wert `1` werden erkannte
+Tool-Hintergrundaktivitäten samt Klassifikation in allen vier Childresultaten
+sichtbar. Die Blockingkette normaler Abfragen bleibt auch dann vollständig,
+wenn ihr Zwischen- oder Root-Blocker ein erkanntes Tool ist.
+
 Die Blocking-Ressourcenauflösung ist durchgereicht: `NONE` deaktiviert sie,
 `STANDARD` ist der auf 100 Kandidaten begrenzte Default. `DEEP` liest zusätzlich
 die Locks beteiligter Blocking-Sessions und verlangt `LOCKS_DEEP` sowie

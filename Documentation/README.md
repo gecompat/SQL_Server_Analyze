@@ -59,6 +59,11 @@ verwendet für TABLE ausschließlich semantisch benannte Ziele in
 `@ResultTablesJson`. Die vollständigen nativen Schemas stehen im
 Resultsetinventar.
 
+Die [Tool-Hintergrundabfragen- und Blocking-Ketten-Architektur](Architecture/Tool_Background_Query_Filtering.md)
+beschreibt den standardmäßigen Filter für Object Explorer, Copilot und SQL
+Prompt, seine metadatengetriebenen `LIKE`-Regeln sowie die Grenzen der
+clientseitigen `program_name`-Erkennung.
+
 ## Forschungs- und Inventareinstieg
 
 - `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`
