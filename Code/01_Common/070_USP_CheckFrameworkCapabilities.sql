@@ -35,10 +35,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'capabilities',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @Major int = TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @ProductVersion nvarchar(128) = CONVERT(nvarchar(128), SERVERPROPERTY(N'ProductVersion'));
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
@@ -395,6 +396,13 @@ BEGIN
         DECLARE @SummaryJson nvarchar(max) = (SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount] FROM [#CheckFrameworkCapabilities_Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson,N'{}'), N',"capabilities":', COALESCE(@CapabilitiesJson,N'[]'), N',"summary":', COALESCE(@SummaryJson,N'[]'), N',"warnings":', COALESCE(@WarningsJson,N'[]'), N'}');
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#CheckFrameworkCapabilities_Capabilities'
+            , @ResultLabel=N'CheckFrameworkCapabilities'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

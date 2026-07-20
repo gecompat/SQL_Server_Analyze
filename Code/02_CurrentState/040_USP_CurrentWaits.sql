@@ -42,10 +42,11 @@ BEGIN
     DECLARE @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'currentTasks',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
     DECLARE @CandidateMaxZeilen bigint,@MonitorPrintMessage nvarchar(2048),@StartBefore datetime,@StartAfter datetime;
 
@@ -178,6 +179,13 @@ BEGIN
         SELECT N'Wait-Analyse' AS [Ergebnis],@StatusCode AS [Status],@DeltaStatus AS [Messstatus],@TaskRowCount AS [Aktuelle_Tasks],@InstanceRowCount AS [Instanz_Waits],@DeltaDetail AS [Messhinweis],@ErrorMessage AS [Fehler];
         SELECT N'Aktuelle wartende Task' AS [Ergebnis],[SessionId] AS [Session],[ExecContextId] AS [Exec_Context],[LoginName] AS [Login],[HostName] AS [Host],[ProgramName] AS [Programm],[Command] AS [Befehl],[WaitType] AS [Wait],CONCAT(CONVERT(varchar(40),[WaitDurationMs]),N' ms') AS [Wartezeit],[BlockingSessionId] AS [Blockiert_durch],[WaitGroup] AS [Wait_Gruppe],[WaitMeaning] AS [Bedeutung],[CurrentStatement] AS [Aktuelles_Statement] FROM [#CurrentWaits_Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId];
         SELECT N'Instanzweite Wait-Messung' AS [Ergebnis],[WaitType] AS [Wait],[WaitGroup] AS [Wait_Gruppe],[MeasurementType] AS [Messart],[WaitingTasksCount] AS [Tasks],CONCAT(CONVERT(varchar(40),[WaitTimeMs]),N' ms') AS [Wartezeit],CONCAT(CONVERT(varchar(40),[WaitPercentage]),N' %') AS [Anteil],CONCAT(CONVERT(varchar(40),[AverageWaitMs]),N' ms') AS [Durchschnitt],[WaitMeaning] AS [Bedeutung],[RecommendedChecks] AS [Empfohlene_Pruefung] FROM [#CurrentWaits_Instance] ORDER BY [WaitTimeMs] DESC,[WaitType];
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#CurrentWaits_Tasks'
+            , @ResultLabel=N'Aktuelle Waits'
+            , @EmptyMessage=N'Keine aktiven Waits';
     END;
     IF @TableResultRequested = 1
     BEGIN

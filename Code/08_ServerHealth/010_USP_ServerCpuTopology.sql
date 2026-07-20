@@ -21,10 +21,11 @@ AS
 BEGIN
  SET NOCOUNT ON;SET @Json=NULL;DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'cpuTopology',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE'; IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ServerCpuTopology';RETURN;END;
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE'; IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ServerCpuTopology';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  CREATE TABLE [#ServerCpuTopology_I]([cpu_count] int,[scheduler_count] int,[hyperthread_ratio] int,[socket_count] int,[cores_per_socket] int,[numa_node_count] int,[softnuma_configuration_desc] nvarchar(60),[sqlserver_start_time] datetime,[affinity_type_desc] nvarchar(60));
@@ -42,6 +43,13 @@ BEGIN
  IF @PrintMeldungen=1 AND @S<>'AVAILABLE' RAISERROR(N'USP_ServerCpuTopology: %s',10,1,@M) WITH NOWAIT;
  IF @ResultSetArtNormalisiert<>'NONE' BEGIN SELECT CAST('2.0' AS varchar(16)) [ContractVersion],@T [CollectionTimeUtc],N'monitor.USP_ServerCpuTopology' [ModuleName],@S [StatusCode],@P [IsPartial],@E [ErrorNumber],@M [ErrorMessage];IF @ResultSetArtNormalisiert='RAW' BEGIN SELECT * FROM [#ServerCpuTopology_I] ;SELECT * FROM [#ServerCpuTopology_Sch] ORDER BY [parent_node_id],[status];SELECT * FROM [#ServerCpuTopology_N] ORDER BY [node_id]; END ELSE BEGIN SELECT N'cpuTopology' [Ergebnis],[x].* FROM [#ServerCpuTopology_I] [x] ;SELECT N'schedulers' [Ergebnis],[x].* FROM [#ServerCpuTopology_Sch] [x] ORDER BY [parent_node_id],[status];SELECT N'numaNodes' [Ergebnis],[x].* FROM [#ServerCpuTopology_N] [x] ORDER BY [node_id]; END;END;
  IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ServerCpuTopology' [resultName],1 [schemaVersion],@T [generatedAtUtc],@S [statusCode],@P [isPartial],@E [errorNumber],@M [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@J0 nvarchar(max)=(SELECT * FROM [#ServerCpuTopology_I]  FOR JSON PATH,INCLUDE_NULL_VALUES),@J1 nvarchar(max)=(SELECT * FROM [#ServerCpuTopology_Sch] ORDER BY [parent_node_id],[status] FOR JSON PATH,INCLUDE_NULL_VALUES),@J2 nvarchar(max)=(SELECT * FROM [#ServerCpuTopology_N] ORDER BY [node_id] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"cpuTopology":',COALESCE(@J0,N'[]'),N',"schedulers":',COALESCE(@J1,N'[]'),N',"numaNodes":',COALESCE(@J2,N'[]'),N',"warnings":[]}');END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ServerCpuTopology_I'
+            , @ResultLabel=N'ServerCpuTopology'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]

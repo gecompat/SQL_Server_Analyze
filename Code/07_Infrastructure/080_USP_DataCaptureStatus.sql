@@ -51,10 +51,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'databases',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
     DECLARE @LocalCandidateRows bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint, 9223372036854775807) WHEN @MaxZeilen BETWEEN 1 AND 2147483646 THEN CONVERT(bigint, @MaxZeilen) + 1 WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen) ELSE CONVERT(bigint, 0) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -358,6 +359,13 @@ ORDER BY [s].[name], [t].[name];';
         SELECT TOP (@EffectiveMaxZeilen) N'Change-Tracking-Tabelle' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SchemaName] AS [Schema], [TableName] AS [Tabelle], [IsTrackColumnsUpdatedOn] AS [Spaltenänderungen_aufzeichnen], [BeginVersion] AS [Beginn_Version], [CleanupVersion] AS [Cleanup_Version], [MinValidVersion] AS [Min_gültige_Version] FROM [#DataCaptureStatus_Ct] ORDER BY [DatabaseName], [SchemaName], [TableName];
         SELECT TOP (@EffectiveMaxZeilen) N'CDC-Agentjob' AS [Ergebnis], [DatabaseName] AS [Datenbank], [JobType] AS [Job_Typ], [JobName] AS [Job], [Enabled] AS [Aktiv], [LastRunOutcome] AS [Letzter_Status], [LastRunDateTime] AS [Letzter_Lauf], [LastMessage] AS [Meldung] FROM [#DataCaptureStatus_Jobs] ORDER BY [DatabaseName], [JobType], [JobName];
         SELECT N'Data-Capture-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank], [SourceName] AS [Quelle], [StatusCode] AS [Status], [ErrorNumber] AS [Fehlernummer], [ErrorMessage] AS [Fehlermeldung] FROM [#DataCaptureStatus_Warnings] ORDER BY [DatabaseName], [SourceName];
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#DataCaptureStatus_Db'
+            , @ResultLabel=N'DataCaptureStatus'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

@@ -39,10 +39,11 @@ BEGIN
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'latches',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @OutputMode = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
                                  THEN CONVERT(bigint, 9223372036854775807)
                                  ELSE CONVERT(bigint, @MaxZeilen) END;
@@ -374,6 +375,13 @@ BEGIN
                [FileId] AS [Datei_ID], [PageId] AS [Seiten_ID], [PageTypeDesc] AS [Seitentyp],
                [ObjectId] AS [Objekt_ID], [IndexId] AS [Index_ID]
         FROM [#InternalContentionAnalysis_HotPages] ORDER BY [WaitTimeMs] DESC, [SessionId];
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#InternalContentionAnalysis_LatchResult'
+            , @ResultLabel=N'InternalContentionAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

@@ -60,10 +60,11 @@ BEGIN
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'candidates',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @SingleSessionId smallint=NULL;
     DECLARE @EffectiveMaxAnalyseobjekte bigint = CASE WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxAnalyseobjekte) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
@@ -220,6 +221,13 @@ END;
         DECLARE @MetaJson nvarchar(max)=(SELECT N'PlanDetails' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [candidateCount],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @CandidatesJson nvarchar(max)=(SELECT * FROM [#PlanDetails_CandidatesOutput] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@AttributesJson nvarchar(max)=(SELECT * FROM [#PlanDetails_Attributes] ORDER BY [CandidateId],[AttributeName] FOR JSON PATH,INCLUDE_NULL_VALUES),@PlansJson nvarchar(max)=(SELECT [CandidateId],[SourceType],[StatusCode],[DatabaseId],[ObjectId],[IsEncrypted],CONVERT(nvarchar(max),[QueryPlanXml]) [QueryPlanXml],[QueryPlanText],[ErrorNumber],[ErrorMessage] FROM [#PlanDetails_Plans] ORDER BY [CandidateId],[SourceType] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"candidates":',COALESCE(@CandidatesJson,N'[]'),N',"attributes":',COALESCE(@AttributesJson,N'[]'),N',"plans":',COALESCE(@PlansJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#PlanDetails_CandidatesOutput'
+            , @ResultLabel=N'PlanDetails'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

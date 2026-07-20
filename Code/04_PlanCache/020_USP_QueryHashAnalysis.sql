@@ -55,10 +55,11 @@ BEGIN
     SET @Json = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'queryHashes',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
     SET @Sortierung=UPPER(LTRIM(RTRIM(COALESCE(@Sortierung,'CPU_TOTAL'))));
@@ -251,6 +252,13 @@ END;
         DECLARE @MetaJson nvarchar(max)=(SELECT N'QueryHashAnalysis' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@Sortierung [sortOrder],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @DataJson nvarchar(max)=(SELECT * FROM [#QueryHashAnalysis_Output] ORDER BY CASE @Sortierung WHEN 'CPU_TOTAL' THEN [TotalCpuMs] WHEN 'ELAPSED_TOTAL' THEN [TotalElapsedMs] WHEN 'READS_TOTAL' THEN [TotalReads] WHEN 'WRITES_TOTAL' THEN [TotalWrites] WHEN 'EXECUTIONS' THEN [ExecutionCount] WHEN 'PLAN_VARIANTS' THEN [PlanVariantCount] WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"queryHashes":',COALESCE(@DataJson,N'[]'),N',"warnings":[]}');
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryHashAnalysis_Output'
+            , @ResultLabel=N'QueryHashAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

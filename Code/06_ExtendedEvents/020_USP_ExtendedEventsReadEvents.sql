@@ -64,10 +64,11 @@ BEGIN
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'events',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @ResolvedSourceExtendedEventSessionName sysname=NULL;
     DECLARE @EventPatternMode varchar(8),@EventPatternValue nvarchar(4000),@EventPatternFlags varchar(8),@EventPatternValid bit;
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
@@ -336,6 +337,13 @@ END;
     END;
     IF @JsonErzeugen=1
     BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'ExtendedEventsReadEvents' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [returnedRows],@ResolvedSource [source],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@EventsJson nvarchar(max)=(SELECT [r].[SourceType],[r].[EventName],[r].[TimestampUtc],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="database_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="database_id"]/value/text())[1]','nvarchar(32)'))) AS [DatabaseId],COALESCE([r].[EventXml].value('(/event/action[@name="database_name"]/value/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="database_name"]/value/text())[1]','nvarchar(256)')) AS [DatabaseName],TRY_CONVERT(int,COALESCE([r].[EventXml].value('(/event/action[@name="session_id"]/value/text())[1]','nvarchar(32)'),[r].[EventXml].value('(/event/data[@name="session_id"]/value/text())[1]','nvarchar(32)'))) AS [SessionId],[r].[EventXml].value('(/event/action[@name="client_app_name"]/value/text())[1]','nvarchar(512)') AS [ClientApplication],[r].[EventXml].value('(/event/action[@name="client_hostname"]/value/text())[1]','nvarchar(512)') AS [ClientHostName],COALESCE([r].[EventXml].value('(/event/action[@name="username"]/value/text())[1]','nvarchar(512)'),[r].[EventXml].value('(/event/action[@name="server_principal_name"]/value/text())[1]','nvarchar(512)')) AS [LoginName],COALESCE([r].[EventXml].value('(/event/action[@name="sql_text"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="statement"]/value/text())[1]','nvarchar(4000)'),[r].[EventXml].value('(/event/data[@name="batch_text"]/value/text())[1]','nvarchar(4000)')) AS [SqlText],TRY_CONVERT(bigint,[r].[EventXml].value('(/event/data[@name="duration"]/value/text())[1]','nvarchar(64)')) AS [DurationRaw],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="error_number"]/value/text())[1]','nvarchar(32)')) AS [ErrorNumber],TRY_CONVERT(int,[r].[EventXml].value('(/event/data[@name="severity"]/value/text())[1]','nvarchar(32)')) AS [Severity],COALESCE([r].[EventXml].value('(/event/data[@name="wait_type"]/text/text())[1]','nvarchar(256)'),[r].[EventXml].value('(/event/data[@name="wait_type"]/value/text())[1]','nvarchar(256)')) AS [WaitType],[r].[EventXml].value('(/event/data[@name="resource_description"]/value/text())[1]','nvarchar(4000)') AS [ResourceDescription],[r].[FileName],[r].[FileOffset],CASE WHEN @MitEventXml=1 THEN [r].[EventXml] END AS [EventXml] FROM [#ExtendedEventsReadEvents_Raw] [r] ORDER BY [r].[TimestampUtc] DESC,[r].[FileName] DESC,[r].[FileOffset] DESC FOR JSON PATH,INCLUDE_NULL_VALUES),@SourcesJson nvarchar(max)=(SELECT * FROM [#ExtendedEventsReadEvents_SourceStatus] ORDER BY [SourceType],[TargetName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"events":',COALESCE(@EventsJson,N'[]'),N',"sources":',COALESCE(@SourcesJson,N'[]'),N',"warnings":[]}');END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ExtendedEventsReadEvents_Raw'
+            , @ResultLabel=N'ExtendedEventsReadEvents'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]

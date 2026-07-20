@@ -48,10 +48,11 @@ BEGIN
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'capabilities',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen > 0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
@@ -318,6 +319,13 @@ END;';
         SELECT TOP(@EffectiveMaxZeilen) N'Datenbank-Capability' [Ergebnis],[DatabaseName] [Datenbank],[CompatibilityLevel] [Compatibility_Level],[FeatureName] [Feature],[AvailabilityStatus] [Verfügbarkeit],[FeatureValue] [Wert],[LogicPath] [Logik/Fallback],[Detail] [Hinweis] FROM [#ServerFeatureCapabilities_DatabaseFeatures] ORDER BY [DatabaseName],[FeatureName];
         IF @MitSpezialindizes=1 SELECT TOP(@EffectiveMaxZeilen) N'Spezialindex' [Ergebnis],[DatabaseName] [Datenbank],[SchemaName] [Schema],[ObjectName] [Objekt],[IndexName] [Index],[IndexFamily] [Indexfamilie],[IndexDetails] [Details],[AvailabilityStatus] [Verfügbarkeit] FROM [#ServerFeatureCapabilities_SpecialIndexes] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[IndexName];
         SELECT N'Capability-Warnung' [Ergebnis],[DatabaseName] [Datenbank],[ModuleName] [Modul],[ErrorNumber] [Fehlernummer],[ErrorMessage] [Fehlermeldung] FROM [#ServerFeatureCapabilities_Errors] ORDER BY [DatabaseName],[ModuleName];
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ServerFeatureCapabilities_Capabilities'
+            , @ResultLabel=N'ServerFeatureCapabilities'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN

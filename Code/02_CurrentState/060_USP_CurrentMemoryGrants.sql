@@ -64,10 +64,11 @@ BEGIN
     DECLARE @ResultSetArtNormalisiert varchar(16) =
         UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
     IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'memoryGrants',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
+    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
              THEN CONVERT(bigint, 9223372036854775807)
@@ -528,6 +529,13 @@ BEGIN
         FROM [#CurrentMemoryGrants_Result] AS [r]
         ORDER BY [r].[IsWaiting] DESC, [r].[RequestedMemoryMb] DESC,
                  [r].[WaitTimeMs] DESC, [r].[SessionId], [r].[RequestId];
+    END;
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#CurrentMemoryGrants_Result'
+            , @ResultLabel=N'Aktuelle Memory Grants'
+            , @EmptyMessage=N'Keine aktiven Memory Grants';
     END;
     IF @TableResultRequested = 1
     BEGIN
