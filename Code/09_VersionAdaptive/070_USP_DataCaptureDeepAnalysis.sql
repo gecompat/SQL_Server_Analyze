@@ -88,7 +88,7 @@ BEGIN
         PRINT N'@ChangeTrackingClientVersion ist optional; ohne Client-Wasserstand wird kein Synchronisationsverlust behauptet.';
         PRINT N'CDC- und Replikationsgrenzwerte sind Heuristiken; zeitgesteuerte Capture-Jobs und Momentaufnahmen werden kenntlich gemacht.';
         PRINT N'Exakte Schema-/Objektfilter betreffen CT- und CDC-Quelltabellen; Pattern: LIKE, regex: oder regexi:.';
-        PRINT N'@ResultSetArt=CONSOLE|RAW|NONE; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Keine Nutzdaten, Change-Table-Zeilen, Replikationsbefehle, Credentials, Agent-Commands oder Aenderungen.';
         RETURN;
     END;

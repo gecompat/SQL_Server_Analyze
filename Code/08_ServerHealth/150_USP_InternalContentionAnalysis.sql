@@ -53,7 +53,7 @@ BEGIN
         PRINT N'monitor.USP_InternalContentionAnalysis';
         PRINT N'@SampleSeconds=0..60; 0 zeigt kumulative Werte, >0 misst Deltas.';
         PRINT N'@MitPageDetails=1 löst ausschließlich aktuell wartende Seiten über sys.dm_db_page_info auf.';
-        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson.';
         RETURN;
     END;
 

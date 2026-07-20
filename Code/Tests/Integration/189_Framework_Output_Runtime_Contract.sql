@@ -156,6 +156,48 @@ BEGIN CATCH
         VALUES(N'DUPLICATE_RESULT_NAME',CONCAT(N'Erwartet Fehler 51011, erhalten ',ERROR_NUMBER(),N'.'));
 END CATCH;
 
+BEGIN TRY
+    EXEC [monitor].[USP_CurrentIO]
+          @ResultSetArt='TABLE'
+        , @ResultTablesJson=N'{"databaseStatus":"#FrameworkOutputRuntimeContract_TargetB","ioFiles":"#FrameworkOutputRuntimeContract_TargetB"}'
+        , @PrintMeldungen=0;
+    INSERT [#FrameworkOutputRuntimeContract_Failure]
+    VALUES(N'DUPLICATE_TARGET',N'Ein doppelt verwendetes TABLE-Ziel wurde nicht abgelehnt.');
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51011
+        INSERT [#FrameworkOutputRuntimeContract_Failure]
+        VALUES(N'DUPLICATE_TARGET',CONCAT(N'Erwartet Fehler 51011, erhalten ',ERROR_NUMBER(),N'.'));
+END CATCH;
+
+BEGIN TRY
+    EXEC [monitor].[USP_CheckAnalyseAccess]
+          @ResultSetArt='TABLE'
+        , @ResultTablesJson=N'{"unknownResult":"#FrameworkOutputRuntimeContract_TargetB"}'
+        , @PrintMeldungen=0;
+    INSERT [#FrameworkOutputRuntimeContract_Failure]
+    VALUES(N'UNKNOWN_RESULT_NAME',N'Ein unbekannter Resultsetname wurde nicht abgelehnt.');
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51011
+        INSERT [#FrameworkOutputRuntimeContract_Failure]
+        VALUES(N'UNKNOWN_RESULT_NAME',CONCAT(N'Erwartet Fehler 51011, erhalten ',ERROR_NUMBER(),N'.'));
+END CATCH;
+
+BEGIN TRY
+    EXEC [monitor].[USP_CheckAnalyseAccess]
+          @ResultSetArt='TABLE'
+        , @ResultTablesJson=N'{"access":"#FrameworkOutputRuntimeContract_Missing"}'
+        , @PrintMeldungen=0;
+    INSERT [#FrameworkOutputRuntimeContract_Failure]
+    VALUES(N'MISSING_TARGET',N'Eine nicht vorhandene lokale Ziel-Temp-Tabelle wurde nicht abgelehnt.');
+END TRY
+BEGIN CATCH
+    IF ERROR_NUMBER()<>51011
+        INSERT [#FrameworkOutputRuntimeContract_Failure]
+        VALUES(N'MISSING_TARGET',CONCAT(N'Erwartet Fehler 51011, erhalten ',ERROR_NUMBER(),N'.'));
+END CATCH;
+
 INSERT [#FrameworkOutputRuntimeContract_TargetA] VALUES(1);
 BEGIN TRY
     EXEC [monitor].[USP_CheckAnalyseAccess]

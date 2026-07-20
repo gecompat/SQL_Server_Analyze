@@ -92,7 +92,7 @@ BEGIN
         PRINT N'@AnalyseModus=GEZIELT erfordert Objekt-/Schema-/Statistikfilter; VOLL benötigt CATALOG_DEEP.';
         PRINT N'@MaxVerteilungsStatistiken=1..250 begrenzt den Histogrammzugriff je Datenbank vor der Analyse.';
         PRINT N'@MinVerteilungsZeilen, @SkewWarnFaktor, @DominanterSchrittWarnPercent, @ModificationWarnPercent und @PartitionSpreadWarnPercent steuern Hinweise.';
-        PRINT N'@MaxZeilen positiv begrenzt Resultsets; NULL/0 bedeutet unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        PRINT N'@MaxZeilen positiv begrenzt Resultsets; NULL/0 bedeutet unbegrenzt. @ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson.';
         PRINT N'Verteilungsindikatoren beweisen weder schlechte Pläne noch Out-of-Range-Werte; Query- und Laufzeitkontext separat prüfen.';
         RETURN;
     END;

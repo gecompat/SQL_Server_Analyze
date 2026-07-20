@@ -58,7 +58,7 @@ BEGIN
         PRINT N'monitor.USP_IntelligentQueryProcessingAnalysis';
         PRINT N'Liest nur IQP-Konfiguration und aggregierte Evidenz; niemals Query-Text oder Showplan.';
         PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
-        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|NONE.';
+        PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson.';
         RETURN;
     END;
 

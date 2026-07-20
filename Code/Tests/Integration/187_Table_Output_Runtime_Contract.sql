@@ -250,11 +250,11 @@ BEGIN TRY
           @ResultSetArt='TABLE'
         , @ResultTablesJson=N'{"access":"#TableOutputRuntimeContract_PublicMismatch"}'
         , @PrintMeldungen=0;
-    INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_SCHEMA_ERROR',N'Die öffentliche Procedure hat eine abweichende Zielstruktur nicht mit Fehler 51010 abgelehnt.');
+    INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_PREFLIGHT_ERROR',N'Die öffentliche Procedure hat ein gefülltes Ziel nicht im Preflight mit Fehler 51011 abgelehnt.');
 END TRY
 BEGIN CATCH
-    IF ERROR_NUMBER()<>51010
-        INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_SCHEMA_ERROR',CONCAT(N'Erwartet Fehler 51010, erhalten ',ERROR_NUMBER(),N': ',ERROR_MESSAGE()));
+    IF ERROR_NUMBER()<>51011
+        INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'PUBLIC_PREFLIGHT_ERROR',CONCAT(N'Erwartet Fehler 51011, erhalten ',ERROR_NUMBER(),N': ',ERROR_MESSAGE()));
 END CATCH;
 
 IF NOT EXISTS
