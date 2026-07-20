@@ -231,10 +231,11 @@ CREATE TABLE [#FrameworkOutputPilotRuntimeContract_Console]
     , [Status] varchar(40) NULL
     , [Hinweis] nvarchar(2048) NULL
 );
+DECLARE @MinimumConsoleLatency decimal(19,3)=999999999.000;
 BEGIN TRY
     INSERT [#FrameworkOutputPilotRuntimeContract_Console]
     EXEC [monitor].[USP_CurrentIO]
-          @MinLatencyMs=CONVERT(decimal(19,3),999999999.000)
+          @MinLatencyMs=@MinimumConsoleLatency
         , @ResultSetArt='CONSOLE'
         , @PrintMeldungen=0;
 
