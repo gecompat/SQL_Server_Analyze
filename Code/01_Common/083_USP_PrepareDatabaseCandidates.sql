@@ -108,7 +108,9 @@ BEGIN
         FROM [monitor].[TVF_ParseSqlNameList](@EffectiveDatabaseNames);
 
     BEGIN TRY
-        SET @Sql = N'SELECT TOP (0) [DatabaseId],[DatabaseName] FROM ' + @CandidateTableQuoted + N';';
+        SET @Sql = N'DECLARE @DatabaseId int,@DatabaseName sysname;
+SELECT TOP (0) @DatabaseId=[DatabaseId],@DatabaseName=[DatabaseName]
+FROM ' + @CandidateTableQuoted + N';';
         EXEC [sys].[sp_executesql] @Sql;
     END TRY
     BEGIN CATCH

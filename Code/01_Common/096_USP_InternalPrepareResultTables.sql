@@ -143,7 +143,9 @@ BEGIN
     DECLARE @Sql nvarchar(max);
 
     BEGIN TRY
-        SET @Sql = N'SELECT TOP (0) [ResultName],[TargetTable] FROM ' + @MappingTableQuoted + N';';
+        SET @Sql = N'DECLARE @ResultName sysname,@TargetTable sysname;
+SELECT TOP (0) @ResultName=[ResultName],@TargetTable=[TargetTable]
+FROM ' + @MappingTableQuoted + N';';
         EXEC [sys].[sp_executesql] @Sql;
     END TRY
     BEGIN CATCH
