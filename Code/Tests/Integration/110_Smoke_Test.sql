@@ -21,8 +21,10 @@ VALUES
 (N'monitor.VW_AnalyseClassCatalog','V'),
 (N'monitor.VW_FrameworkFeatureCatalog','V'),
 (N'monitor.WaitTypeCatalog','U'),
+(N'monitor.WaitTypeCatalogSource','U'),
 (N'monitor.FrameworkVersion','U'),
 (N'monitor.TVF_WaitTypeInfo','IF'),
+(N'monitor.TVF_WaitTypeSources','IF'),
 (N'monitor.TVF_StatementText','IF'),
 (N'monitor.TVF_InterpretPerformanceCounter','IF'),
 (N'monitor.TVF_InterpretContentionCounter','IF'),
@@ -86,7 +88,7 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.11'
+      AND [FrameworkVersion]='1.1.0-special.12'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
@@ -103,6 +105,56 @@ IF EXISTS
            OR [DescriptionSource]<>'FRAMEWORK_CURATED' OR [DescriptionQuality]<>'FRAMEWORK_CURATED')
 )
     THROW 54003,N'Der Framework-Wait-Katalog enthält unvollständige Pflichtinformationen.',1;
+
+IF EXISTS
+(
+    SELECT 1
+    FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK)
+    WHERE [IsFrameworkDefault]=1
+      AND
+      (
+           [DefaultAssessment] IS NULL OR [AssessmentBasis] IS NULL
+        OR [CommonCauses] IS NULL OR [PerformanceImpact] IS NULL
+        OR [Mitigation] IS NULL OR [CounterEvidence] IS NULL
+        OR [MeasurementGuidance] IS NULL OR [AnalysisConfidence] IS NULL
+        OR [WaitGroup]=N'OTHER_OR_NEW'
+      )
+)
+    THROW 54021,N'Der Framework-Wait-Katalog enthält unvollständige Analysefelder oder eine nicht migrierte Sammelgruppe.',1;
+
+IF EXISTS
+(
+    SELECT [c].[WaitType]
+    FROM [monitor].[WaitTypeCatalog] AS [c] WITH (NOLOCK)
+    LEFT JOIN [monitor].[WaitTypeCatalogSource] AS [s] WITH (NOLOCK)
+      ON [s].[WaitType]=[c].[WaitType]
+     AND [s].[IsFrameworkDefault]=1
+    WHERE [c].[IsFrameworkDefault]=1
+    GROUP BY [c].[WaitType]
+    HAVING COUNT_BIG([s].[SourceOrdinal])<4
+        OR COUNT(DISTINCT CASE
+               WHEN [s].[SourceType] IN ('DEFINITION','MEASUREMENT','INTERPRETATION','DIAGNOSTIC_MITIGATION')
+               THEN [s].[SourceType]
+             END)<4
+)
+    THROW 54022,N'Für mindestens einen Framework-Wait fehlen die vier verpflichtenden Quellenrollen.',1;
+
+IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalogSource] WITH (NOLOCK) WHERE [IsFrameworkDefault]=1)<>1396
+    THROW 54023,N'Der Framework-Quellkatalog entspricht nicht dem erwarteten Stand.',1;
+
+IF EXISTS
+(
+    SELECT [c].[WaitType]
+    FROM [monitor].[WaitTypeCatalog] AS [c] WITH (NOLOCK)
+    CROSS APPLY [monitor].[TVF_WaitTypeSources]([c].[WaitType]) AS [s]
+    WHERE [c].[IsFrameworkDefault]=1
+    GROUP BY [c].[WaitType]
+    HAVING COUNT(DISTINCT CASE
+               WHEN [s].[SourceType] IN ('DEFINITION','MEASUREMENT','INTERPRETATION','DIAGNOSTIC_MITIGATION')
+               THEN [s].[SourceType]
+             END)<4
+)
+    THROW 54024,N'Die Wait-Type-Quellenfunktion liefert nicht alle verpflichtenden Quellenrollen.',1;
 
 IF EXISTS
 (

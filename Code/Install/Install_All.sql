@@ -22,7 +22,10 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/074b_WaitTypeCatalog_Seed_02.sql
 :r ../01_Common/074c_WaitTypeCatalog_Seed_03.sql
 :r ../01_Common/074d_WaitTypeCatalog_Seed_04.sql
+:r ../01_Common/074e_WaitTypeCatalog_Analysis.sql
+:r ../01_Common/074f_WaitTypeCatalog_Source_Seed.sql
 :r ../01_Common/075_TVF_WaitTypeInfo.sql
+:r ../01_Common/075a_TVF_WaitTypeSources.sql
 :r ../01_Common/076_TVF_QueryStoreWaitCategoryInfo.sql
 :r ../01_Common/077_FrameworkVersion.sql
 :r ../01_Common/078_TVF_ParsePipeList.sql

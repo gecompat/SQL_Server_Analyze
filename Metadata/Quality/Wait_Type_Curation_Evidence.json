@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 1,
-  "reviewedAt": "2026-07-18",
+  "schemaVersion": 2,
+  "reviewedAt": "2026-07-20",
   "targetScope": [
     "SQL Server 2019",
     "SQL Server 2022",
@@ -40,6 +40,40 @@
       "UMSTHREAD"
     ],
     "removalRule": "No exact entry in the reviewed Microsoft wait-type table for the target scope; an unverified alias or duplicate is not retained as curated evidence."
+  },
+  "analysisRevision": {
+    "analysisEnrichedRows": 347,
+    "remainingOtherOrNewRows": 0,
+    "analysisQuestions": [
+      "What does the wait synchronize or wait for?",
+      "When does it arise?",
+      "What makes it expected, context-dependent, actionable, or critical?",
+      "What are common but not automatically proven causes?",
+      "What user-visible or system-level impact can follow?",
+      "What mitigation is appropriate after the cause is proven?",
+      "What counter-evidence argues against this wait as root cause?",
+      "Which related waits and cross-analyses narrow the diagnosis?",
+      "How must active, delta, cumulative, reset, signal, and resource evidence be measured?"
+    ],
+    "sourceModelVersion": 1,
+    "minimumSourcesPerWait": 4,
+    "exactDiagnosticSourceRows": 8,
+    "expectedFrameworkSourceRows": 1396,
+    "sourceTypes": [
+      "DEFINITION",
+      "MEASUREMENT",
+      "INTERPRETATION",
+      "DIAGNOSTIC_MITIGATION",
+      "EXACT_DIAGNOSTIC"
+    ],
+    "evidenceLevels": [
+      "PRIMARY_VENDOR",
+      "VENDOR_ENGINEERING",
+      "VENDOR_TOOLING",
+      "SPECIALIST_REFERENCE"
+    ],
+    "provenanceRule": "The shared Microsoft Types of Waits page supports names and documented definitions only. Interpretation, diagnostics, mitigation, and measurement claims require separately typed sources or an explicit limited-confidence framework inference.",
+    "copyrightRule": "SQLskills pages are linked as wait-specific specialist references. Their text is not copied into the repository."
   },
   "result": {
     "catalogRows": 347,

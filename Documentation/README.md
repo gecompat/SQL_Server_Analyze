@@ -53,7 +53,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
 Die Strukturprüfung ersetzt keine manuelle fachliche und Datenschutzprüfung.
 
-Die Version `1.1.0-special.11` erweitert den typisierten `TABLE`-/`@ResultTable`-Vertrag auf beliebige leere Ein-Spalten-Dummys, erzwingt blockierungsarme Katalogzugriffe und verwendet objektbezogene lokale Temp-Namen. Der Release-Gate-Vertrag umfasst 32 Suiten; die vorhandene Drei-Versionen-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle bleibt erhalten und wird durch den synthetischen TABLE- sowie den statischen Metadaten-/Temp-Namensvertrag ergänzt. Feature-positive Windows-/Azure-MI-Zustände, Lasttests und externe Restorefälle bleiben separate Nachweise.
+Die Version `1.1.0-special.12` vertieft alle 347 kuratierten Wait Types um Einordnung, Ursachenhypothesen, Wirkung, Minderungsansätze, Gegenbeweise, Queranalysen und Messhinweise. Die typisierte Quellenstruktur trennt Definition, Messmethodik, Interpretation und Diagnose. Der bestehende `TABLE`-/`@ResultTable`-Vertrag, blockierungsarme Katalogzugriffe und die vorhandene Drei-Versionen-Evidenz bleiben erhalten.
 
 ## Forschungs- und Inventareinstieg
 

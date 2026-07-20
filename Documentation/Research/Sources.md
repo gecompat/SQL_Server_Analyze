@@ -193,3 +193,60 @@ Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließl
 - SQL Server First Responder Kit, Checks by Priority: https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit/blob/dev/Documentation/sp_Blitz_Checks_by_Priority.md
 
 Diese Prüfkataloge wurden ausschließlich zum Abgleich von Vorfallklassen verwendet. Semantik, Berechtigungen, Versionen und Ausführungskosten wurden über Microsoft-Primärquellen bewertet; fremder Quellcode wurde nicht übernommen.
+
+## Ergänzung Wait-Type-Katalog – 20. Juli 2026
+
+Die Quellenrevision trennt ausdrücklich vier verschiedene Behauptungsarten:
+offizielle Definition, korrekte Messung, fachliche Interpretation sowie
+komponentenbezogene Diagnose/Minderung. Ein Link darf nur die in
+`SupportsFields` genannten Aussagen stützen. Der allgemeine Microsoft-Wait-
+Katalog bleibt daher Definitionsquelle, ist aber kein pauschaler Beleg für alle
+Ursachen- und Handlungstexte.
+
+### Zentrale Primärquellen und Engineeringreferenzen
+
+- Microsoft Learn: `sys.dm_os_wait_stats` – dokumentierte Wait-Namen,
+  Kurzdefinitionen, kumulative Semantik und ausgeschlossene Idle-/Queue-Waits:
+  https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-wait-stats-transact-sql?view=sql-server-ver17
+- Microsoft Learn: Troubleshoot slow-running queries – methodischer Ablauf aus
+  Wait-/Bottleneck-Erkennung, Request-, Plan- und Ressourcenanalyse:
+  https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/troubleshoot-slow-running-queries
+- Microsoft Learn: Blocking verstehen und beheben – Root Blocker, offene
+  Transaktionen, Isolation und Querydauer:
+  https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/understand-resolve-blocking
+- Microsoft Learn: SQL-I/O-Probleme – Korrelation von I/O-Waits, Datei-
+  Latenzen, Betriebssystem und Storage:
+  https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/troubleshoot-sql-io-performance
+- Microsoft Learn: Memory-Grant-Probleme – Grantwarteschlange, Schätzungen,
+  Pläne, Resource Governor und `RESOURCE_SEMAPHORE`:
+  https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/troubleshoot-memory-grant-issues
+- Microsoft Learn: `ASYNC_NETWORK_IO` – langsamer Clientkonsum, große
+  Resultsets und Netzwerk als getrennte Hypothesen:
+  https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/troubleshoot-query-async-network-io
+- Microsoft Learn: `PAGELATCH_EX` – In-Memory-Latch-Contention und TempDB-
+  Allocation als spezifischer, nicht allgemeingültiger Fall:
+  https://learn.microsoft.com/en-us/troubleshoot/sql/database-engine/performance/resolve-pagelatch-ex-contention
+- Microsoft Learn: Always-On-Performance – Send-/Redo-Queues, Flusskontrolle,
+  Transport und Replica-Kontext:
+  https://learn.microsoft.com/en-us/sql/database-engine/availability-groups/windows/monitor-performance-for-always-on-availability-groups?view=sql-server-ver17
+- Microsoft SQL Server Blog: `HADR_SYNC_COMMIT` – Commitpfad und
+  Queranalyse von Log-, Netzwerk- und Replica-Latenz:
+  https://techcommunity.microsoft.com/blog/sqlserver/troubleshooting-high-hadr-sync-commit-wait-type-with-always-on-availability-grou/385369
+- Microsoft SQL Server Support Blog: `CMEMTHREAD` – partitionierte
+  Speicherobjekte und diagnostische Grenzen:
+  https://techcommunity.microsoft.com/blog/sqlserversupport/how-it-works-cmemthread-and-debugging-them/317488
+- Microsoft SQL Server Blog: Parallelism waits – getrennte Bewertung von
+  `CXPACKET` und `CXCONSUMER` im Plan-/Workloadkontext:
+  https://techcommunity.microsoft.com/blog/sqlserver/making-parallelism-waits-actionable/385691
+- Microsoft Learn: Transaktionslogarchitektur – Logblöcke, Flush,
+  Abschneidung, VLFs und Recovery-Kontext für Log-Waits:
+  https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-log-architecture-and-management-guide?view=sql-server-ver17
+
+### Externe wait-spezifische Referenz
+
+- SQLskills Wait Types Library: https://www.sqlskills.com/help/waits/
+
+Die Bibliothek wird nur als wait-spezifischer Navigations- und
+Interpretationshinweis verlinkt. Texte werden nicht kopiert. Bei Widerspruch,
+Versionsunsicherheit oder Änderungsempfehlungen haben aktuelle Microsoft-
+Primärdokumentation und reproduzierbare Laufzeitevidenz Vorrang.

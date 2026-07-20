@@ -7,6 +7,7 @@ PROCEDURE,USP_CheckAnalyseAccess,Code/01_Common/050_USP_CheckAnalyseAccess.sql
 VIEW,VW_FrameworkFeatureCatalog,Code/01_Common/060_VW_FrameworkFeatureCatalog.sql
 PROCEDURE,USP_CheckFrameworkCapabilities,Code/01_Common/070_USP_CheckFrameworkCapabilities.sql
 FUNCTION,TVF_WaitTypeInfo,Code/01_Common/075_TVF_WaitTypeInfo.sql
+FUNCTION,TVF_WaitTypeSources,Code/01_Common/075a_TVF_WaitTypeSources.sql
 FUNCTION,TVF_QueryStoreWaitCategoryInfo,Code/01_Common/076_TVF_QueryStoreWaitCategoryInfo.sql
 FUNCTION,TVF_ParsePipeList,Code/01_Common/078_TVF_ParsePipeList.sql
 FUNCTION,TVF_ParsePattern,Code/01_Common/079_TVF_ParsePattern.sql
