@@ -1,5 +1,32 @@
 # Release Notes
 
+## Stand 2026-07-20 – vollständige Blocking-Ressourcensicht
+
+- `USP_CurrentBlocking` klassifiziert und übersetzt Wait- und Lockressourcen
+  jetzt begrenzt in Datenbank-, Objekt-, Index-, Partitions-, Datei-, Seiten-,
+  Zeilen- und Metadatenkontext; die unveränderten Rohwerte und nativen IDs
+  bleiben immer erhalten.
+- `@BlockingObjektTiefe` trennt `NONE`, den ressourcenschonenden Default
+  `STANDARD` und den gruppengeschützten Pfad `DEEP`. Das Kandidatenlimit ist
+  über `@MaxObjektAufloesungen` zwischen 1 und 1000 steuerbar; beide Parameter
+  werden auch von `USP_CurrentOverview` an das Blockingmodul durchgereicht.
+- `DEEP` liest `sys.dm_tran_locks` ausschließlich für Sessions erkannter
+  Blockingketten. Alle gelieferten Locktypen werden ausgegeben; bekannte Typen
+  werden bestmöglich aufgelöst, unbekannte und interne Typen transparent als
+  `RAW_ONLY` oder `PARTIAL` ausgewiesen.
+- Negative SQL-Server-Blocker-IDs `-2` bis `-5` werden als DTC-, Recovery- oder
+  Latch-Owner beschrieben. Nach dem materialisierten Kern-Snapshot wird jeder
+  deduplizierte Anreicherungskandidat einzeln mit `LOCK_TIMEOUT 0` verarbeitet.
+  Ein Metadatenlock markiert deshalb nur diesen Kandidaten als `TIMEOUT`; rohe
+  Ressource und native IDs sowie alle übrigen Bereiche bleiben erhalten.
+- Objekt-, Schema-, Index-, Partitions- und Statistiknamen werden direkt aus den
+  `sys.*`-Katalogsichten gelesen. Blockierungsanfällige Metadatenfunktionen wie
+  `OBJECT_ID()` und `OBJECT_NAME()` werden auch für bekannte TempDB-Objekt-IDs
+  nicht verwendet. Separate Meta-Zähler weisen partielle, rohe, abgewiesene,
+  zeitüberschrittene, fehlerhafte und limitbedingt ausgelassene Kandidaten aus.
+- Das additive Blocking-Resultset und der JSON-Vertrag verwenden Schema-Version
+  2; Parser-, Installer-, Inventar- und Dokumentationsverträge sind synchronisiert.
+
 ## Stand 2026-07-20 – vertiefter Wait-Type-Katalog `1.1.0-special.12`
 
 - Alle 347 kuratierten Wait Types beantworten zusätzlich Einordnung,

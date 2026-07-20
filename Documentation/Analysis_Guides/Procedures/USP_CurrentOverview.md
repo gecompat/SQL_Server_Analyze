@@ -32,6 +32,28 @@ Modul-Summary. `RELEVANT` ergänzt nicht leere diagnostisch relevante Details;
 `ALL` ergänzt alle nicht leeren aktivierten Childdetails. Sampling und
 vollständige SQL-Texte nur gezielt aktivieren.
 
+Die Blocking-Ressourcenauflösung ist durchgereicht: `NONE` deaktiviert sie,
+`STANDARD` ist der auf 100 Kandidaten begrenzte Default. `DEEP` liest zusätzlich
+die Locks beteiligter Blocking-Sessions und verlangt `LOCKS_DEEP` sowie
+`@HighImpactConfirmed = 1`.
+
+```sql
+DECLARE @OverviewJson nvarchar(max);
+EXEC [monitor].[USP_CurrentOverview]
+      @BlockingObjektTiefe = 'DEEP',
+      @MaxObjektAufloesungen = 500,
+      @HighImpactConfirmed = 1,
+      @ResultSetArt = 'NONE',
+      @JsonErzeugen = 1,
+      @Json = @OverviewJson OUTPUT;
+SELECT JSON_QUERY(@OverviewJson, '$.blocking.locks') AS BlockingLocks;
+```
+
+Die vollständigen Deep-Lockzeilen liegen im Overview-JSON unter
+`$.blocking.locks`. CONSOLE- und TABLE-Details des Orchestrators materialisieren
+nur die Blockingketten. Für ein direktes Lockgrid ist
+`USP_CurrentBlocking @ResultSetArt = 'RAW'` der passendere Aufruf.
+
 Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
 
 ## Resultsets und Leserichtung
@@ -126,6 +148,10 @@ Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
 ### Zeit- und Scope-Modell
 
 Nahe beieinanderliegende, aber nicht atomare Momentaufnahmen; Samplingchildren können den Aufruf verlängern.
+
+`@BlockingObjektTiefe = 'DEEP'` kann bei lockintensiven Systemen die Eigenlast
+des Overview merklich erhöhen. Der Standardpfad bleibt dedupliziert und durch
+`@MaxObjektAufloesungen` begrenzt.
 
 ### Bewertung und Gegenprobe
 
