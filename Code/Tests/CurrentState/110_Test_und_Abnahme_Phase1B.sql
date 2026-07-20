@@ -48,7 +48,7 @@ EXEC [monitor].[USP_CurrentBlocking]
     , @Json=@BlockingJson OUTPUT
     , @PrintMeldungen=0;
 IF COALESCE(ISJSON(@BlockingJson),0)<>1
-   OR JSON_VALUE(@BlockingJson,N'$.meta.schemaVersion')<>N'2'
+   OR JSON_VALUE(@BlockingJson,N'$.meta.schemaVersion')<>N'3'
    OR JSON_VALUE(@BlockingJson,N'$.meta.blockingObjectDepth')<>N'NONE'
    OR JSON_VALUE(@BlockingJson,N'$.meta.objectResolutionTimeoutCount')<>N'0'
    OR JSON_VALUE(@BlockingJson,N'$.meta.objectResolutionDeniedCount')<>N'0'
