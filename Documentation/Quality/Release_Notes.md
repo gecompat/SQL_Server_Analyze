@@ -9,6 +9,11 @@
 - Für SSMS ist der eigenständige Installer als robuster Standardweg dokumentiert;
   der SQLCMD-Include-Installer bleibt als Alternative für Entwicklung und
   Automatisierung erhalten.
+- Der alternative SSMS-SQLCMD-Weg beschreibt nun ebenfalls den vollständigen
+  Ablauf von der getrennten Arbeitskopie und repositoryweiten
+  Platzhalterersetzung über Modus- und Include-Kontrolle bis zu Smoke-Test und
+  Fehlerdiagnose. `Install_All.sql` beendet den Include-Lauf mit
+  `:ON ERROR EXIT` beim ersten SQL-Fehler.
 
 ## Stand 2026-07-20 – Deep-Analysis-Authoring konsolidiert
 

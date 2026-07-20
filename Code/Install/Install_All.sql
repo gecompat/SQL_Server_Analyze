@@ -1,3 +1,5 @@
+:ON ERROR EXIT
+
 USE [DeineDatenbank];
 GO
 
@@ -5,6 +7,7 @@ GO
 SQLCMD-Installer für den vollständigen Frameworkbestand.
 Vor Ausführung den Platzhalter [DeineDatenbank] in allen SQL-Dateien ersetzen
 und in SSMS/ADS den SQLCMD-Modus aktivieren.
+Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 */
 
 :r ../00_Setup/000_Preflight_und_Schema.sql
