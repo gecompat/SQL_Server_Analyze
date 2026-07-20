@@ -1,7 +1,7 @@
 # [monitor].[USP_CurrentBlocking]
 
 **Bereich:** Current State<br>
-**Zweck:** Rekonstruiert aktuelle Blockingkanten und -ketten bis zum Root Blocker.<br>
+**Zweck:** Rekonstruiert aktuelle Blockingkanten und -ketten bis zum Root Blocker und übersetzt technische Wait-/Lockressourcen in den sichtbaren Datenbank-, Objekt-, Index-, Partitions- oder Seitenkontext.<br>
 **Beobachtungsart:** Snapshot<br>
 **Kostenklasse:** LOW–HIGH_OPT_IN
 
@@ -22,10 +22,24 @@ Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rech
 ```sql
 EXEC [monitor].[USP_CurrentBlocking]
       @MinWaitMs = 1000,
+      @BlockingObjektTiefe = 'STANDARD',
       @ResultSetArt = 'CONSOLE';
 ```
 
-Lockdetails nur gezielt aktivieren.
+`STANDARD` ist der ressourcenschonende Default. Die Procedure dedupliziert ausschließlich Ressourcen bereits erkannter Blockingketten und löst höchstens `@MaxObjektAufloesungen` Kandidaten auf.
+
+Für einen vollständigen Lockkontext:
+
+```sql
+EXEC [monitor].[USP_CurrentBlocking]
+      @MinWaitMs = 1000,
+      @BlockingObjektTiefe = 'DEEP',
+      @MaxObjektAufloesungen = 500,
+      @HighImpactConfirmed = 1,
+      @ResultSetArt = 'RAW';
+```
+
+`DEEP` aktiviert zusätzlich `sys.dm_tran_locks` für die beteiligten Sessions und ist über `LOCKS_DEEP` gruppen- und bestätigungsgeschützt.
 
 Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
 
@@ -35,13 +49,26 @@ Im typisierten TABLE-Vertrag sind für diese Procedure `blockingChains` registri
 
 ## Eine Zeile bedeutet
 
-Im Kettenresultset beschreibt eine Zeile eine Blockingkante. Eine vollständige Kette besteht häufig aus mehreren Zeilen; Lockdetails besitzen eine eigene Granularität.
+Im Kettenresultset beschreibt eine Zeile eine sichtbare Blockingbeziehung mit ihrem Root Blocker. `BlockingResourceName` ist die bestmögliche Übersetzung der weiterhin unverändert ausgegebenen `WaitResource`. Lockdetails besitzen eine eigene Granularität.
+
+Das additive Ketten- und JSON-Schema trägt Version `2`.
 
 Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
 
 ## So lesen
 
-Vom `LeafSessionId` über jede Kante bis `RootBlockingSessionId` gehen. Waitzeit, Ressource, Aktivität und Transaktionszustand des Root Blockers vergleichen.
+Zuerst `BlockingResourceResolutionStatus` lesen:
+
+- `RESOLVED`: ein fachlicher Name oder eine eindeutig klassifizierte Ressource wurde ermittelt;
+- `PARTIAL`: Typ beziehungsweise Datenbank ist bekannt, eine tiefere Zuordnung war nicht möglich;
+- `RAW_ONLY`: interne oder versionsabhängige Ressource ohne sichere Namensübersetzung;
+- `SKIPPED_LIMIT`: Rohwert vorhanden, aber Kandidatenlimit erreicht;
+- `SKIPPED`: Auflösung mit `NONE` deaktiviert;
+- `TIMEOUT`: ausschließlich die Anreicherung dieses Kandidaten traf auf einen Lock;
+- `DENIED_PERMISSION` oder `ERROR_HANDLED`: ausschließlich diese Anreicherung war nicht lesbar beziehungsweise schlug kontrolliert fehl;
+- `INVALID_FORMAT` oder `EMPTY`: Quelle war nicht interpretierbar beziehungsweise leer.
+
+Danach Waitzeit, `BlockingResourceName`, Aktivität und Transaktionszustand des Root Blockers vergleichen. `BlockingOwnerType` kennzeichnet neben Sessions auch die SQL-Server-Sonderblocker `ORPHAN_DTC`, `DEFERRED_RECOVERY`, `LATCH_OWNER_TRANSIENT` und `LATCH_OWNER_UNTRACKED`.
 
 Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
 
@@ -101,15 +128,32 @@ Welche Session blockiert welche andere Session, und wo liegt der Root Blocker de
 
 ### Technischer Hintergrund
 
-Blocking entsteht, wenn ein Task einen Lock oder eine andere blockierende Ressource benötigt, die inkompatibel gehalten wird. Die Procedure korreliert Request-/Taskblocker, Sessions, SQL-Kontext und Locks und rekonstruiert Kanten beziehungsweise Ketten. Ein Root Blocker ist die oberste sichtbare Session ohne weiteren sichtbaren Blocker.
+Blocking entsteht, wenn ein Task einen Lock oder eine andere blockierende Ressource benötigt, die nicht verfügbar ist. Die Procedure korreliert Request-/Taskblocker, Sessions, SQL-Kontext und – nur in `DEEP` beziehungsweise mit expliziten Lockdetails – Locks.
+
+Die leichte Auflösung interpretiert unter anderem `OBJECT`, `KEY`, `PAGE`, `RID`, `EXTENT`, `HOBT`, `OIB`, `DATABASE`, `FILE`, `APPLICATION`, `XACT`, numerische Page-Ressourcen, Metadata-Varianten und benannte interne Ressourcen. Für Page/RID/Extent wird `sys.dm_db_page_info(..., 'LIMITED')` ausschließlich für die begrenzten Kandidaten verwendet. Objekt-, Index-, Partitions-, Statistik- und Schema-Namen werden nur in den tatsächlich referenzierten Online-Datenbanken nachgeschlagen. Dafür werden bekannte IDs direkt mit `sys.objects`, `sys.schemas` und den weiteren Katalogsichten verbunden; Metadatenfunktionen wie `OBJECT_ID()` oder `OBJECT_NAME()` sind nicht Teil des Ausführungspfads. Das gilt auch bei `database_id = 2`: Eine bekannte TempDB-Objekt-ID wird direkt über `tempdb.sys.objects` aufgelöst.
+
+Im tiefen Pfad kommen `DATABASE`, `FILE`, `OBJECT`, `PAGE`, `KEY`, `RID`, `HOBT`, `EXTENT`, `ALLOCATION_UNIT`, `APPLICATION`, `METADATA`, `XACT`, `OIB`, `ROW_GROUP` und künftige von `sys.dm_tran_locks` gelieferte Typen hinzu. `OIB` wird wie eine HoBt-Ressource behandelt. Bei `ROW_GROUP` und anderen Typen ohne dokumentierte stabile Objekt-ID-Beziehung bleiben Rohbeschreibung, Subtyp und Entity-ID erhalten; das Framework erfindet keine Objektzuordnung.
 
 ### Datenkette
 
-`master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, `sys.dm_tran_locks`.
+`master.sys.databases`, `master.sys.master_files`, `sys.servers`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, gezielt `sys.dm_db_page_info` sowie im tiefen Pfad `sys.dm_tran_locks`; für die begrenzten Kandidaten außerdem `sys.objects`, `sys.schemas`, `sys.indexes`, `sys.partitions`, `sys.allocation_units` und `sys.stats` der betroffenen Datenbanken.
 
 ### Zeit- und Scope-Modell
 
 Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
+
+### Kosten und Grenzen
+
+- `NONE` überspringt die Namensauflösung vollständig.
+- `STANDARD` liest `sys.dm_tran_locks` nicht zusätzlich. Parsing erfolgt im Speicher; Katalog- und Page-Zugriffe sind dedupliziert und standardmäßig auf 100 Ressourcen begrenzt.
+- `DEEP` liest Lockzeilen nur für Sessions der bereits erkannten Ketten. Der Pfad kann bei vielen Locks merkliche CPU- und DMV-Kosten verursachen und verlangt deshalb Freigabe und `@HighImpactConfirmed=1`.
+- `@MaxObjektAufloesungen` akzeptiert 1 bis 1000. Bei Erreichen des Limits bleiben alle Rohressourcen sichtbar und der Status wird `SKIPPED_LIMIT` beziehungsweise `AVAILABLE_LIMITED`.
+- `@MaxZeilen` begrenzt auch die erfassten Lockzeilen. Wer in einem kontrollierten Einzelaufruf wirklich jeden aktuell beobachteten nativen Locktyp sehen muss, kann `@MaxZeilen = 0` verwenden; die Namensauflösung bleibt trotzdem auf höchstens 1000 deduplizierte Kandidaten begrenzt.
+- Der Blocking-/Wait-Snapshot wird zuerst in lokalen Temp-Tabellen materialisiert. Erst danach läuft jede deduplizierte Datenbank-, Datei-, Page- oder Kataloganreicherung in einem eigenen Batch mit `LOCK_TIMEOUT 0`. Timeout, fehlende Berechtigung oder Fehler markieren nur diesen Kandidaten; alle weiteren Kandidaten werden trotzdem verarbeitet.
+- Die Meta-Zähler `ObjectResolutionResolvedCount`, `ObjectResolutionPartialCount`, `ObjectResolutionRawOnlyCount`, `ObjectResolutionTimeoutCount`, `ObjectResolutionDeniedCount`, `ObjectResolutionErrorCount` und `ObjectResolutionSkippedLimitCount` machen sichtbar, ob einzelne Anreicherungen fehlen. Rohressource und native IDs bleiben in jedem Fall erhalten.
+- `NOLOCK` und mehrere flüchtige Quellen bilden keinen transaktional atomaren Snapshot. Eine zweite Messung kann andere Ketten oder Namen zeigen.
+- Hashwerte eines `KEY`-Locks lassen sich nicht zuverlässig in den konkreten Schlüsselwert zurückrechnen. Die Auflösung endet deshalb bei Tabelle, Index und Partition.
+- Nicht öffentlich dokumentierte oder versionsabhängige interne Ressourcen werden klassifiziert und roh ausgegeben, aber nur bei belastbarer ID-Beziehung auf ein Objekt abgebildet.
 
 ### Bewertung und Gegenprobe
 
@@ -125,7 +169,9 @@ Die am längsten wartende Session ist nicht automatisch Ursache. `KILL` eines Op
 
 ## Primärquellen
 
+- [sys.dm_exec_requests und Sonderwerte von blocking_session_id](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-exec-requests-transact-sql)
 - [sys.dm_tran_locks](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-tran-locks-transact-sql?view=sql-server-ver17)
+- [sys.dm_db_page_info](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-page-info-transact-sql)
 
 ## Weiterführende Vertiefung
 

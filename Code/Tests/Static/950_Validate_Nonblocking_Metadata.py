@@ -71,6 +71,21 @@ for path in sorted(CODE.rglob("*.sql")):
     relative = path.relative_to(ROOT)
     text = path.read_text(encoding="utf-8-sig")
 
+    if relative.as_posix() == "Code/02_CurrentState/030_USP_CurrentBlocking.sql":
+        executable_text = re.sub(r"N?'(?:''|[^'])*'", "''", text, flags=re.DOTALL)
+        executable_text = re.sub(r"/\*.*?\*/", "", executable_text, flags=re.DOTALL)
+        executable_text = re.sub(r"--[^\r\n]*", "", executable_text)
+        if re.search(r"\bSET\s+LOCK_TIMEOUT\s+0\b", executable_text, re.IGNORECASE):
+            errors.append(
+                f"{relative}: LOCK_TIMEOUT 0 darf den Blocking-Kern nicht global beeinflussen; "
+                "nur einzelne Anreicherungs-Batches sind zulässig"
+            )
+        if len(re.findall(r"N'SET\s+LOCK_TIMEOUT\s+0\s*;", text, re.IGNORECASE)) < 5:
+            errors.append(
+                f"{relative}: isolierte LOCK_TIMEOUT-0-Batches für Datenbank, Datei, "
+                "benannte Ressource, Page und Katalog fehlen"
+            )
+
     for function_name in FORBIDDEN_METADATA_FUNCTIONS:
         match = re.search(rf"\b{function_name}\s*\(", text, re.IGNORECASE)
         if match:

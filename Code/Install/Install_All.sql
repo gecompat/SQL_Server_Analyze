@@ -38,6 +38,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/084_USP_PrepareNameFilters.sql
 :r ../01_Common/085_TVF_ParseBigintList.sql
 :r ../01_Common/086_TVF_ParseStringList.sql
+:r ../01_Common/086a_TVF_ParseBlockingResource.sql
 :r ../01_Common/087_TVF_StatementText.sql
 :r ../01_Common/088_TVF_InterpretPerformanceCounter.sql
 :r ../01_Common/089_TVF_InterpretContentionCounter.sql

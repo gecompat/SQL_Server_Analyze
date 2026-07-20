@@ -159,24 +159,26 @@ Der letzte Aufruf ist nur gezielt sinnvoll, weil vollständige Texte und unbegre
 
 ### Zweck
 
-Ermittelt aktuelle Blocking-Kanten und rekonstruiert Ketten bis zum Root Blocker. Optional liest die Procedure Lockdetails ausschließlich für beteiligte Sessions.
+Ermittelt aktuelle Blocking-Kanten, rekonstruiert Ketten bis zum Root Blocker und löst technische Blockingressourcen begrenzt auf Datenbank, Schema, Objekt, Index, Partition und Page auf. Negative Sonderblocker-IDs `-2` bis `-5` werden als eigene Owner-Typen beschrieben.
 
 ### Aufrufe
 
 ```sql
 EXEC [monitor].[USP_CurrentBlocking]
       @MinWaitMs = 1000,
+      @BlockingObjektTiefe = 'STANDARD',
       @ResultSetArt = 'RAW';
 ```
 
 ```sql
 EXEC [monitor].[USP_CurrentBlocking]
       @SessionIds = N'57|74',
-      @MitLockDetails = 1,
+      @BlockingObjektTiefe = 'DEEP',
+      @HighImpactConfirmed = 1,
       @ResultSetArt = 'RAW';
 ```
 
-`@MitLockDetails=1` ist gruppengeschützt (`LOCKS_DEEP`).
+`@BlockingObjektTiefe` akzeptiert `NONE`, `STANDARD` und `DEEP`. `DEEP` aktiviert Lockdetails und ist gruppengeschützt (`LOCKS_DEEP`). `@MaxObjektAufloesungen` begrenzt die deduplizierte Auflösung auf 1 bis 1000 Kandidaten; Default ist 100.
 
 ### RAW-Resultsets
 
@@ -193,9 +195,16 @@ EXEC [monitor].[USP_CurrentBlocking]
 | `BlockedSessionId` | Session auf dieser Kantenstufe |
 | `BlockingSessionId` | direkter Blocker |
 | `RootBlockingSessionId` | äußerster erkannter Root Blocker |
+| `BlockingOwnerType`, `BlockingOwnerDescription` | Session oder Sonderowner wie verwaiste DTC-/Recovery-/Latch-Zuordnung |
 | `ChainDepth` | Tiefe der Kette |
 | `IsCycle` | Schleife erkannt; selten und als flüchtiges/inkonsistentes Snapshotbild prüfen |
 | `WaitType`, `WaitTimeMs`, `WaitResource` | Wait der blockierten Kante |
+| `BlockingResourceType`, `BlockingResourceName` | klassifizierter Typ und bestmöglich aufgelöster Name |
+| `BlockingResourceDatabase*`, `BlockingResourceSchemaName`, `BlockingResourceObject*` | Datenbank- und Objektbezug |
+| `BlockingResourceIndex*`, `BlockingResourcePartition*` | Index- und Partitionsbezug |
+| `BlockingResourceFileId`, `BlockingResourcePageId`, `BlockingResourceRowId`, `BlockingResourcePageTypeDesc` | physischer Page-/Row-Kontext, soweit sicher bestimmbar |
+| `BlockingResourceMetadataSubtype`, `BlockingResourceMetadataName` | beispielsweise `STATS` plus Statistikname, `SCHEMA` oder Cache-Metadaten |
+| `BlockingResourceResolutionStatus` | `RESOLVED`, `PARTIAL`, `RAW_ONLY`, `SKIPPED_LIMIT`, `SKIPPED`, `TIMEOUT`, `DENIED_PERMISSION`, `ERROR_HANDLED`, `INVALID_FORMAT` oder `EMPTY` |
 | `BlockedLoginName`, `BlockedHostName`, `BlockedProgramName` | blockierte Seite |
 | `BlockerLoginName`, `BlockerHostName`, `BlockerProgramName` | blockierende Seite |
 | `BlockedStatement`, `BlockerStatement` | aktuelle Statements, sofern sichtbar |
@@ -208,8 +217,10 @@ EXEC [monitor].[USP_CurrentBlocking]
 | `ResourceType` | DATABASE, OBJECT, PAGE, KEY usw. |
 | `ResourceDatabaseId`, `ResourceDatabaseName` | Datenbankkontext |
 | `ResourceDescription` | technische Ressource; nicht immer direkt objektauflösbar |
+| `ResourceSubtype`, `ResourceAssociatedEntityId`, `ResourceLockPartition` | native Lockidentität für die tiefe Auflösung |
+| `ResolvedResourceName`, `ResourceResolutionStatus` | aufgelöster Objektkontext und Verlässlichkeit |
 | `RequestMode` | S, U, X, IS, IX, Sch-M usw. |
-| `RequestStatus` | GRANT, WAIT oder CONVERT |
+| `RequestStatus` | beispielsweise GRANTED, WAIT, CONVERT oder LOW_PRIORITY_WAIT |
 | `RequestOwnerType` | Owner-Kontext, etwa TRANSACTION |
 | `RequestReferenceCount` | interne Referenzzahl |
 | `LockOwnerAddress` | Korrelationsadresse, keine stabile ID |
@@ -226,6 +237,10 @@ EXEC [monitor].[USP_CurrentBlocking]
 | viele blockierte Sessions, aber kurze Gesamtdauer | Burst; erst Verlauf prüfen |
 
 **Nie nur die Opfer-Session beenden.** Root Blocker, Transaktion, Geschäftsvorgang und Rollbackkosten zuerst prüfen.
+
+### Kosten und Grenzen
+
+`STANDARD` parst nur bereits gefundene, deduplizierte Wait-Ressourcen. Der Blocking-/Wait-Snapshot wird vor der Namensauflösung materialisiert. Danach läuft jeder Katalog- oder Page-Kandidat einzeln mit `LOCK_TIMEOUT 0`; ein gesperrter Kandidat erhält `TIMEOUT`, die übrigen Kandidaten werden weiter aufgelöst. Die Meta-Zähler trennen vollständige, partielle, rohe, zeitüberschrittene, nicht berechtigte, fehlerhafte und limitbedingt ausgelassene Kandidaten. Die Auflösung verwendet direkte Joins auf `sys.objects`, `sys.schemas`, `sys.indexes`, `sys.partitions`, `sys.allocation_units` und `sys.stats`, nicht `OBJECT_ID()` oder vergleichbare Metadatenfunktionen. `DEEP` ergänzt Lockzeilen aller beteiligten Sessions und ist daher bestätigungspflichtig. Schlüsselhashes und nicht dokumentierte interne Adressen werden nicht in erfundene Objekt- oder Schlüsselwerte übersetzt.
 
 ### Folgeanalyse
 
@@ -643,6 +658,18 @@ EXEC [monitor].[USP_CurrentOverview]
       @ResultSetArt = 'RAW';
 ```
 
+```sql
+DECLARE @OverviewJson nvarchar(max);
+EXEC [monitor].[USP_CurrentOverview]
+      @BlockingObjektTiefe = 'DEEP',
+      @MaxObjektAufloesungen = 500,
+      @HighImpactConfirmed = 1,
+      @ResultSetArt = 'NONE',
+      @JsonErzeugen = 1,
+      @Json = @OverviewJson OUTPUT;
+SELECT JSON_QUERY(@OverviewJson, '$.blocking.locks') AS BlockingLocks;
+```
+
 ### Metaresultset
 
 | Spalte | Bedeutung |
@@ -659,6 +686,11 @@ EXEC [monitor].[USP_CurrentOverview]
 - Ein Childfehler verhindert andere Children nicht.
 - `FailedModules=0` bedeutet nicht, dass jeder Childstatus vollständig `AVAILABLE` war; Child-Meta lesen.
 - Der Default kann für häufiges Polling unnötig breit sein.
+- `@BlockingObjektTiefe='DEEP'` liest zusätzlich Locks beteiligter Sessions;
+  `NONE` vermeidet die Ressourcenauflösung, `STANDARD` begrenzt sie standardmäßig
+  auf 100 deduplizierte Kandidaten.
+- Die Deep-Lockzeilen sind im Overview unter `$.blocking.locks` im JSON
+  enthalten; das materialisierte Blockingdetail enthält nur die Ketten.
 - Für wiederholte Analyse nur die problemrelevanten Module aktivieren.
 
 ### Anfänger-Entscheidungsbaum

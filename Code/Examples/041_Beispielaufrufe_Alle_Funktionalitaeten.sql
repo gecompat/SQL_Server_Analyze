@@ -19,6 +19,12 @@ GO
 
 -- EXEC [monitor].[USP_CurrentBlocking] @Hilfe = 1;
 
+-- Ressourcenschonende Auflösung der bereits sichtbaren Wait-Ressourcen:
+-- EXEC [monitor].[USP_CurrentBlocking] @BlockingObjektTiefe='STANDARD', @MaxObjektAufloesungen=100, @ResultSetArt='RAW';
+
+-- Vollständige Locktypsicht für beteiligte Sessions; benötigt LOCKS_DEEP-Freigabe:
+-- EXEC [monitor].[USP_CurrentBlocking] @BlockingObjektTiefe='DEEP', @MaxObjektAufloesungen=500, @HighImpactConfirmed=1, @ResultSetArt='RAW';
+
 -- EXEC [monitor].[USP_CurrentWaits] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_CurrentTransactions] @Hilfe = 1;
@@ -32,6 +38,10 @@ GO
 -- EXEC [monitor].[USP_CurrentLog] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_CurrentOverview] @Hilfe = 1;
+
+-- DECLARE @OverviewJson nvarchar(max);
+-- EXEC [monitor].[USP_CurrentOverview] @BlockingObjektTiefe='DEEP', @MaxObjektAufloesungen=500, @HighImpactConfirmed=1, @ResultSetArt='NONE', @JsonErzeugen=1, @Json=@OverviewJson OUTPUT;
+-- SELECT JSON_QUERY(@OverviewJson,'$.blocking.locks') AS [BlockingLocks];
 
 -- EXEC [monitor].[USP_ObjectInventory] @Hilfe = 1;
 

@@ -259,6 +259,8 @@ Quelle: `Code/02_CurrentState/030_USP_CurrentBlocking.sql`
     , @SystemSessionsEinbeziehen  bit            = 0
     , @MitSqlText                 bit            = 1
     , @MaxSqlTextZeichen          int            = 3000
+    , @BlockingObjektTiefe        varchar(16)    = 'STANDARD'
+    , @MaxObjektAufloesungen      int            = 100
     , @MitLockDetails             bit            = 0
     , @HighImpactConfirmed        bit            = 0
     , @MaxZeilen                  int            = 1000
@@ -346,6 +348,8 @@ Quelle: `Code/02_CurrentState/100_USP_CurrentOverview.sql`
     , @MitSessions                   bit             = 1
     , @MitRequests                   bit             = 1
     , @MitBlocking                   bit             = 1
+    , @BlockingObjektTiefe           varchar(16)     = 'STANDARD'
+    , @MaxObjektAufloesungen         int             = 100
     , @MitWaits                      bit             = 1
     , @MitTransactions               bit             = 1
     , @MitMemoryGrants               bit             = 1

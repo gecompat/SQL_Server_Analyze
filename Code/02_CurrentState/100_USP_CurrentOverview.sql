@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentOverview
-Version      : 3.0.0
+Version      : 3.1.0
 Stand        : 2026-07-20
 Zweck        : Orchestriert jedes aktivierte Current-State-Child genau einmal,
                übernimmt dessen expliziten Status und materialisiert Daten für
@@ -25,6 +25,8 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
     , @MitSessions                   bit             = 1
     , @MitRequests                   bit             = 1
     , @MitBlocking                   bit             = 1
+    , @BlockingObjektTiefe           varchar(16)     = 'STANDARD'
+    , @MaxObjektAufloesungen         int             = 100
     , @MitWaits                      bit             = 1
     , @MitTransactions               bit             = 1
     , @MitMemoryGrants               bit             = 1
@@ -52,12 +54,15 @@ BEGIN
 
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,N''))));
     DECLARE @DetailMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@Detailgrad,N''))));
+    DECLARE @BlockingObjectDepth varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@BlockingObjektTiefe,N''))));
 
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentOverview';
         PRINT N'Ohne Datenbankfilter werden alle sichtbaren, online befindlichen Benutzerdatenbanken berücksichtigt.';
         PRINT N'@Detailgrad=SUMMARY (Default)|RELEVANT|ALL. Leere Childdetails erzeugen kein Grid.';
+        PRINT N'@BlockingObjektTiefe=NONE|STANDARD|DEEP; DEEP benötigt LOCKS_DEEP und @HighImpactConfirmed=1.';
+        PRINT N'@MaxObjektAufloesungen begrenzt die Blocking-Ressourcenauflösung auf 1 bis 1000 Kandidaten.';
         PRINT N'Children werden genau einmal und nie mit CONSOLE aufgerufen.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet ausschließlich @ResultTablesJson.';
         PRINT N'TABLE-Namen: moduleStatus, sessions, requests, blocking, waits, transactions, memoryGrants, tempdbSessions, io, logs, warnings.';
@@ -127,6 +132,8 @@ BEGIN
 
     IF @OutputMode NOT IN ('RAW','CONSOLE','TABLE','NONE')
        OR @DetailMode NOT IN ('SUMMARY','RELEVANT','ALL')
+       OR @BlockingObjectDepth NOT IN ('NONE','STANDARD','DEEP')
+       OR @MaxObjektAufloesungen IS NULL OR @MaxObjektAufloesungen NOT BETWEEN 1 AND 1000
        OR @SampleSeconds > 60
        OR @MaxZeilen < 0
        OR @MaxSqlTextZeichen < 0
@@ -142,6 +149,7 @@ BEGIN
        OR @MitIO IS NULL OR @MitIO NOT IN (0,1)
        OR @MitLog IS NULL OR @MitLog NOT IN (0,1)
        OR @MitSqlText IS NULL OR @MitSqlText NOT IN (0,1)
+       OR @HighImpactConfirmed IS NULL OR @HighImpactConfirmed NOT IN (0,1)
        OR @GesamtenSqlTextEinbeziehen IS NULL OR @GesamtenSqlTextEinbeziehen NOT IN (0,1)
        OR @InputBufferEinbeziehen IS NULL OR @InputBufferEinbeziehen NOT IN (0,1)
        OR @ModulInfoEinbeziehen IS NULL OR @ModulInfoEinbeziehen NOT IN (0,1)
@@ -234,6 +242,9 @@ BEGIN
                   @SessionIds=@SessionIds
                 , @MitSqlText=@MitSqlText
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
+                , @BlockingObjektTiefe=@BlockingObjectDepth
+                , @MaxObjektAufloesungen=@MaxObjektAufloesungen
+                , @HighImpactConfirmed=@HighImpactConfirmed
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
                 , @ResultTablesJson=N'{"blockingChains":"#CurrentOverview_Blocking"}'

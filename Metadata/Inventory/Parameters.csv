@@ -100,6 +100,8 @@ USP_CurrentBlocking,MinWaitMs,bigint,0
 USP_CurrentBlocking,SystemSessionsEinbeziehen,bit,0
 USP_CurrentBlocking,MitSqlText,bit,1
 USP_CurrentBlocking,MaxSqlTextZeichen,int,3000
+USP_CurrentBlocking,BlockingObjektTiefe,varchar(16),'STANDARD'
+USP_CurrentBlocking,MaxObjektAufloesungen,int,100
 USP_CurrentBlocking,MitLockDetails,bit,0
 USP_CurrentBlocking,HighImpactConfirmed,bit,0
 USP_CurrentBlocking,MaxZeilen,int,1000
@@ -203,6 +205,8 @@ USP_CurrentOverview,Detailgrad,varchar(16),'SUMMARY'
 USP_CurrentOverview,MitSessions,bit,1
 USP_CurrentOverview,MitRequests,bit,1
 USP_CurrentOverview,MitBlocking,bit,1
+USP_CurrentOverview,BlockingObjektTiefe,varchar(16),'STANDARD'
+USP_CurrentOverview,MaxObjektAufloesungen,int,100
 USP_CurrentOverview,MitWaits,bit,1
 USP_CurrentOverview,MitTransactions,bit,1
 USP_CurrentOverview,MitMemoryGrants,bit,1
