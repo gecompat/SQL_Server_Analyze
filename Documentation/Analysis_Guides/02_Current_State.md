@@ -254,8 +254,8 @@ Konfidenz und Quellenanzahl. `TVF_WaitTypeSources` trennt die konkreten Belege
 nach Definition, Messmethodik, Interpretation und Diagnose/Minderung.
 
 ```sql
-SELECT * FROM [monitor].[TVF_WaitTypeInfo](N'RESOURCE_SEMAPHORE');
-SELECT * FROM [monitor].[TVF_WaitTypeSources](N'RESOURCE_SEMAPHORE')
+SELECT * FROM [monitor].[TVF_WaitTypeInfo] (N'RESOURCE_SEMAPHORE');
+SELECT * FROM [monitor].[TVF_WaitTypeSources] (N'RESOURCE_SEMAPHORE')
 ORDER BY [SourceOrdinal];
 ```
 
