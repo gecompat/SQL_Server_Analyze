@@ -73,6 +73,7 @@
 - Katalogzugriffe verwenden projektweit `WITH (NOLOCK)` und `LOCK_TIMEOUT 0`; potenziell blockierende Metadatenfunktionen sind durch direkte `sys.*`-Abfragen oder einen expliziten Nicht-verfügbar-Status ersetzt. Ein statischer Gate schützt den Vertrag.
 - `Metadata/Inventory/ResultSets.csv` inventarisiert alle 94 TABLE-exportierbaren Resultsets einschließlich stabiler Namen und geordneter nativer Schemas.
 - Die Suiten 187 bis 189 prüfen Writer, Pilot und frameworkweiten Ausgabe-Laufzeitvertrag synthetisch auf SQL Server 2019, 2022 und 2025.
+- Commit `53fe82d57e6d3d53b5a16ec1c220ccb98c2050f8` hat Installer, alle 34 Release-Gate-Suiten, Berechtigungsmatrizen und die zusätzliche SQL-Server-2025-Regex-Matrix bestanden: [2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29738745942), [2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29738745932), [2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29738746060).
 
 ## Stand 2026-07-19 – integrierte technische Analyse-Guides
 
