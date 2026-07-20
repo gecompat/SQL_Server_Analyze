@@ -20,6 +20,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentIO]
       @DatabaseNames                  nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen   bit            = 0
     , @DatabaseNamePattern            nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @MinLatencyMs                   decimal(19,3)  = 0
     , @SampleSeconds                  tinyint         = 0
     , @MaxZeilen                      int             = 1000
@@ -196,7 +197,6 @@ BEGIN
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
             , @DatabaseNamePattern = @DatabaseNamePattern
             , @AnalysisClass = 'STANDARD_CURRENT'
-            , @HighImpactConfirmed = 0
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT

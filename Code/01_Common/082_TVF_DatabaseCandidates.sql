@@ -15,9 +15,8 @@ Datenquellen : master.sys.databases, monitor.TVF_ParseSqlNameList,
 Semantik     : NULL, N'' und Leerzeichen bedeuten keine Einschränkung.
                Systemdatenbanken sind ausschließlich per Opt-in enthalten.
                Die Kandidatenmenge wird niemals vorab mengenmäßig begrenzt.
-Übergang     : @MaxDatenbanken wird während des Piloten nur zur Installierbarkeit
-               noch nicht migrierter Aufrufer akzeptiert und bewusst ignoriert.
-               Der frameworkweite Rollout entfernt den Parameter vollständig.
+Vertrag      : Die Kandidatenmenge wird erst nach vollständiger Ermittlung und
+               ohne willkürliche Vorabbegrenzung an den Aufrufer zurückgegeben.
 ===============================================================================
 */
 CREATE OR ALTER FUNCTION [monitor].[TVF_DatabaseCandidates]
@@ -25,7 +24,6 @@ CREATE OR ALTER FUNCTION [monitor].[TVF_DatabaseCandidates]
       @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = NULL
 )
 RETURNS TABLE
 AS

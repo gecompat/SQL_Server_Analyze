@@ -15,10 +15,10 @@ Nebenwirkung : rein lesend; keine Datei- oder Datenbankänderung.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DatabaseCapacityAnalysis]
-      @DatabaseNames                nvarchar(max)  = N''
+      @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MinVolumeFreePercent         decimal(9,2)   = 10.00
     , @NurProblematisch             bit            = 0
     , @MaxZeilen                    int            = 1000
@@ -50,7 +50,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_DatabaseCapacityAnalysis';
         PRINT N'Trennt Dateifreiraum und Volumefreiraum; erzeugt ohne Historie keine Zeit-bis-voll-Prognose.';
-        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N'''' = aktuelle DB; NULL = alle zulässigen DBs.';
+        PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
         PRINT N'@MinVolumeFreePercent=10; @NurProblematisch=0; @MaxZeilen NULL/0 = unbegrenzt.';
         RETURN;
     END;
@@ -114,8 +114,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(500) NOT NULL
     );
 
-    IF @MaxDatenbanken < 0
-       OR @MaxZeilen < 0
+    IF @MaxZeilen < 0
        OR @MinVolumeFreePercent < 0
        OR @MinVolumeFreePercent > 100
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
@@ -138,9 +137,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'SERVER_HEALTH_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DatabaseCapacityAnalysis_DatabaseCandidates',@WarningTable=N'#DatabaseCapacityAnalysis_DatabaseCandidateWarnings';

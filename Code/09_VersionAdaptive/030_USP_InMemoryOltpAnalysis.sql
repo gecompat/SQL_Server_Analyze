@@ -27,9 +27,10 @@ Kosten       : MEDIUM; Hashindex-Laufzeitstatistik HIGH_OPT_IN, da die DMV nach
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_InMemoryOltpAnalysis]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                      nvarchar(max)  = NULL
     , @SchemaNamePattern                nvarchar(4000) = NULL
     , @ObjectNames                      nvarchar(max)  = NULL
@@ -44,7 +45,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InMemoryOltpAnalysis]
     , @WaitingCheckpointWarnMb          decimal(19,2)  = 1024
     , @ActiveTransactionWarnCount       int            = 100
     , @PoolUsedWarnPercent              decimal(9,4)   = 80
-    , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
@@ -98,7 +98,7 @@ BEGIN
        OR @WaitingCheckpointWarnMb IS NULL OR @WaitingCheckpointWarnMb<0
        OR @ActiveTransactionWarnCount IS NULL OR @ActiveTransactionWarnCount<1
        OR @PoolUsedWarnPercent IS NULL OR @PoolUsedWarnPercent<0 OR @PoolUsedWarnPercent>100
-       OR @MaxDatenbanken<0 OR @MaxZeilen<0
+ OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
     BEGIN
@@ -323,9 +323,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
-            , @AnalysisClass='CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass='OBJECT_ANALYSIS_CURRENT'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#InMemoryOltpAnalysis_DatabaseCandidates',@WarningTable=N'#InMemoryOltpAnalysis_DatabaseCandidateWarnings';
@@ -350,13 +350,13 @@ BEGIN
         SELECT @StatusCode='NOT_APPLICABLE',@ErrorMessage=N'Keine auswertbare Datenbank im gewählten Scope.';
     END;
 
-    DECLARE @HashStatsAllowed bit=1;
-    IF @MitHashIndexStats=1
-    BEGIN
-        SELECT @HashStatsAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass]='CATALOG_DEEP';
-    END;
+    IF @StatusCode='AVAILABLE' AND @MitHashIndexStats=1
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='CATALOG_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
+    DECLARE @HashStatsAllowed bit=CONVERT(bit,CASE WHEN @StatusCode='AVAILABLE' THEN 1 ELSE 0 END);
 
     DECLARE @SchemaPredicate nvarchar(max)=
         N' AND (NOT EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#InMemoryOltpAnalysis_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';

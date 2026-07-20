@@ -45,6 +45,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanDetails]
     , @MitLastActualPlan     bit            = 0
     , @MitLivePlan           bit            = 0
     , @MaxAnalyseobjekte      int            = 20
+    , @HighImpactConfirmed   bit            = 0
     , @MaxSqlTextZeichen     int            = 8000
     , @ResultSetArt          varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
@@ -101,10 +102,7 @@ BEGIN
     IF @MaxAnalyseobjekte<0 OR @MaxSqlTextZeichen < 0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE')
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'@MaxAnalyseobjekte oder @MaxSqlTextZeichen darf nicht negativ sein.';END;
     IF @StatusCode='AVAILABLE' AND @EffectiveMaxAnalyseobjekte>20
-    BEGIN
-        SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
-        IF @Allowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'PLAN_CACHE_DEEP ist für mehr als 20 Pläne nicht freigegeben.';END;
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
 
     IF @StatusCode='AVAILABLE'
     BEGIN TRY

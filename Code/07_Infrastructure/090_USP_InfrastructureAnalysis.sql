@@ -21,7 +21,6 @@ Berechtigung : Das Framework vergibt keine Rechte und ändert keine Konfiguratio
                          als opt-in Teilmodule ergänzt.
                2.0.0 - @AlleDatenbanken entfernt; einheitlicher Datenbankscope,
                          Ausgabeadapter und JSON-Orchestrierung.
-               1.2.0 - @MaxDatenbanken für Data-Capture-Scope ergänzt.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_InfrastructureAnalysis]
@@ -40,7 +39,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_InfrastructureAnalysis]
     , @DatabaseNames                  nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen   bit            = 0
     , @DatabaseNamePattern            nvarchar(4000) = NULL
-    , @MaxDatenbanken                 int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MaxZeilen                      int            = 2000
     , @ResultSetArt                   varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
@@ -66,7 +65,7 @@ BEGIN
         PRINT N'Modulschalter: bestehende Module sowie opt-in @MitBackupChain, @MitAvailabilityDeep und @MitAgentMonitoring.';
         PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
         PRINT N'@DatabaseNamePattern: alternatives LIKE-/Regex-Pattern; exakte Liste und Pattern sind gegenseitig exklusiv.';
-        PRINT N'@MaxDatenbanken und @MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig.';
+        PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
@@ -95,8 +94,7 @@ BEGIN
     DECLARE @ChildErrorNumber int = NULL;
     DECLARE @ChildErrorMessage nvarchar(2048) = NULL;
 
-    IF @MaxDatenbanken < 0
-       OR @MaxZeilen < 0
+    IF @MaxZeilen < 0
        OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR (@DatabaseNames IS NOT NULL AND @DatabaseNamePattern IS NOT NULL)
     BEGIN
@@ -171,8 +169,8 @@ BEGIN
             EXEC [monitor].[USP_BackupRecovery]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @ResultSetArtNormalisiert
                 , @JsonErzeugen = @JsonErzeugen
@@ -203,6 +201,7 @@ BEGIN
             EXEC [monitor].[USP_ReplicationStatus]
                   @MitDistributionDetails = @MitReplicationDetails
                 , @MaxZeilen = @MaxZeilen
+                , @HighImpactConfirmed = @HighImpactConfirmed
                 , @ResultSetArt = @ResultSetArtNormalisiert
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @ReplicationJson OUTPUT
@@ -218,8 +217,8 @@ BEGIN
             EXEC [monitor].[USP_DataCaptureStatus]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @ResultSetArtNormalisiert
                 , @JsonErzeugen = @JsonErzeugen
@@ -237,8 +236,8 @@ BEGIN
             EXEC [monitor].[USP_BackupChainAnalysis]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @MaxZeilen = @MaxZeilen
                 , @ResultSetArt = @ResultSetArtNormalisiert
                 , @JsonErzeugen = @JsonErzeugen
@@ -344,7 +343,6 @@ BEGIN
                 , @CollectionTimeUtc AS [generatedAtUtc]
                 , @OverallStatus AS [statusCode]
                 , @IsPartial AS [isPartial]
-                , @MaxDatenbanken AS [requestedMaxDatabases]
                 , @MaxZeilen AS [requestedMaxRows]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES
         );

@@ -7,17 +7,17 @@ Objekt       : monitor.USP_CheckFrameworkCapabilities
 Version      : 2.0.1
 Stand        : 2026-07-16
 Zweck        : Prüft Framework-Capabilities serverweit und je ausgewählter DB.
-Datenbanken  : @DatabaseNames bracket-aware Pipe-Liste; NULL=alle; N''=aktuelle.
+Datenbanken  : @DatabaseNames bracket-aware Pipe-Liste; NULL/N''=alle.
 Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit capabilities, summary,
                databaseStatus und warnings.
 Änderungen   : 2.0.1 - SQL-Literal-Escaping für Datenbanknamen korrigiert.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CheckFrameworkCapabilities]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @AnalyseKlasse                    varchar(64)     = NULL
     , @NurNichtVerfuegbar               bit            = 0
     , @MitGruppenpruefung               bit            = 1
@@ -107,11 +107,6 @@ BEGIN
         SET @OverallStatus = 'INVALID_PARAMETER';
         SET @OverallError = N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
     END;
-    ELSE IF @MaxDatenbanken < 0
-    BEGIN
-        SET @OverallStatus = 'INVALID_PARAMETER';
-        SET @OverallError = N'@MaxDatenbanken darf nicht negativ sein.';
-    END;
     ELSE IF @AnalyseKlasse IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM [monitor].[VW_AnalyseClassCatalog] WHERE [AnalysisClass] = @AnalyseKlasse)
     BEGIN
@@ -124,9 +119,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = NULL
             , @StatusCode = @OverallStatus OUTPUT
             , @ErrorMessage = @OverallError OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#CheckFrameworkCapabilities_DatabaseCandidates',@WarningTable=N'#CheckFrameworkCapabilities_DatabaseCandidateWarnings';

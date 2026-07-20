@@ -18,10 +18,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanCacheAnalysis]
     , @MitQueryHashAnalysis             bit            = 0
     , @MitPlanCacheHealth               bit            = 0
     , @MitShowplanAnalysis              bit            = 0
-    , @DatabaseNames                    nvarchar(max)  = N''
+    , @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @QueryHash                        binary(8)      = NULL
     , @QueryPlanHash                    binary(8)      = NULL
     , @PlanHandle                       varbinary(64)  = NULL
@@ -124,7 +124,7 @@ BEGIN
 
     IF @MaxZeilen < 0
        OR @MaxAnalyseobjekte < 0
-       OR @MaxDatenbanken < 0
+
        OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600
        OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
        OR @Mode NOT IN ('TOP', 'VOLL')
@@ -145,18 +145,14 @@ BEGIN
            OR @MaxZeilen = 0
            OR @MaxZeilen > 1000
        )
-    BEGIN TRY
-        SELECT @QueryStatsSnapshotAllowed = COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
-
-        IF @QueryStatsSnapshotAllowed=0
-            SET @Detail=N'Der gemeinsame Query-Stats-Snapshot wurde ohne PLAN_CACHE_DEEP nicht aufgebaut; die Children prüfen ihren Scope und lesen zulässige Pfade frisch.';
-    END TRY
-    BEGIN CATCH
-        SET @QueryStatsSnapshotAllowed=0;
-        SET @Detail=N'Die Freigabe für den gemeinsamen Query-Stats-Snapshot war nicht blockierungsfrei lesbar; die Children prüfen ihren Scope und lesen mit eigener Fehlerbehandlung frisch.';
-    END CATCH;
+    BEGIN
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='PLAN_CACHE_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@Detail OUTPUT;
+        SET @QueryStatsSnapshotAllowed=CONVERT(bit,CASE WHEN @StatusCode='AVAILABLE' THEN 1 ELSE 0 END);
+    END;
 
     IF @StatusCode = 'AVAILABLE'
        AND @QueryStatsSnapshotConsumerCount >= 2
@@ -196,8 +192,8 @@ BEGIN
             EXEC [monitor].[USP_QueryStats]
                   @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @QueryHash = @QueryHash
                 , @QueryPlanHash = @QueryPlanHash
                 , @PlanHandle = @PlanHandle
@@ -227,6 +223,7 @@ BEGIN
                 , @Sortierung = @Sortierung
                 , @AnalyseModus = @Mode
                 , @MaxZeilen = @MaxZeilen
+                , @HighImpactConfirmed = @HighImpactConfirmed
                 , @ParentQueryStatsSnapshot = @QueryStatsSnapshotAvailable
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
@@ -248,6 +245,7 @@ BEGIN
                   @AnalyseModus = @HealthMode
                 , @MitDatenbankVerteilung = @MitDbVerteilung
                 , @MaxZeilen = @MaxZeilen
+                , @HighImpactConfirmed = @HighImpactConfirmed
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @HealthJson OUTPUT
@@ -269,8 +267,8 @@ BEGIN
                 , @QueryPlanHash = @QueryPlanHash
                 , @DatabaseNames = @DatabaseNames
                 , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-                , @DatabaseNamePattern = @DatabaseNamePattern
-                , @MaxDatenbanken = @MaxDatenbanken
+                , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
                 , @TextPattern = @TextPattern
                 , @AnalyseModus = @ShowplanMode
                 , @Sortierung = @Sortierung

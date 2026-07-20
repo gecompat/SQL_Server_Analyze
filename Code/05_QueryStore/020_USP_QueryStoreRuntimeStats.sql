@@ -11,7 +11,7 @@ Zweck        : Liefert Query-Store-Runtime-Statistiken aus einer oder mehreren
                Query-Store-Quelldatenbanken mit exaktem globalem Top-N.
 SQL-Version  : SQL Server 2019 oder neuer.
 Quelldatenbanken: @QueryStoreDatabaseNames bracket-aware Pipe-Liste;
-               NULL = alle zulässigen Datenbanken, N'' = ungültig.
+               NULL/N'' = alle zulässigen Datenbanken.
 Referenzfilter: @ReferencedDatabaseNames beziehungsweise
                @ReferencedDatabaseNamePattern filtern auf Datenbanken, die in
                gespeicherten Showplans referenziert werden.
@@ -27,8 +27,9 @@ Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optionales JSON mit meta, runtimeS
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreRuntimeStats]
-      @QueryStoreDatabaseNames          nvarchar(max)  = N''
+      @QueryStoreDatabaseNames          nvarchar(max)  = NULL
     , @QueryStoreDatabaseNamePattern    nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @ReferencedDatabaseNames          nvarchar(max)  = NULL
     , @ReferencedDatabaseNamePattern    nvarchar(4000) = NULL
     , @QueryId                          bigint         = NULL
@@ -39,7 +40,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreRuntimeStats]
     , @Sortierung                       varchar(32)    = 'CPU_TOTAL'
     , @AnalyseModus                     varchar(16)    = 'TOP'
     , @MaxZeilen                        int            = 100
-    , @MaxDatenbanken                   int            = 16
     , @MitPlanXml                       bit            = 0
     , @MaxSqlTextZeichen                int            = 4000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
@@ -98,7 +98,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_QueryStoreRuntimeStats';
-        PRINT N'@QueryStoreDatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle; N'''' = ungültig.';
+        PRINT N'@QueryStoreDatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle; N'''' = keine Einschränkung.';
         PRINT N'@QueryStoreDatabaseNamePattern: alternatives LIKE-/Regex-Pattern für Quelldatenbanken.';
         PRINT N'@ReferencedDatabaseNames/@ReferencedDatabaseNamePattern: Filter auf in Showplans referenzierte Datenbanken; Deep-Analyse.';
         PRINT N'@TextPattern akzeptiert LIKE (Default/like:), regex: oder regexi:.';
@@ -199,7 +199,7 @@ BEGIN
     IF @AnalyseModus NOT IN ('TOP', 'VOLL')
        OR @Order IS NULL
        OR @MaxZeilen < 0
-       OR @MaxDatenbanken < 0
+
        OR @MaxSqlTextZeichen < 0
        OR @VonUtc >= @BisUtc
        OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
@@ -223,9 +223,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @QueryStoreDatabaseNames
             , @SystemdatenbankenEinbeziehen = 0
-            , @DatabaseNamePattern = @QueryStoreDatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass='QUERY_STORE_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#QueryStoreRuntimeStats_DatabaseCandidates';
@@ -246,15 +246,11 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE' AND @Deep = 1
     BEGIN
-        SELECT @Allowed = COALESCE(MAX(CONVERT(tinyint, [IsAllowed])), 0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass] = 'QUERY_STORE_DEEP';
-
-        IF @Allowed = 0
-        BEGIN
-            SET @StatusCode = 'DENIED_GROUP';
-            SET @ErrorMessage = N'QUERY_STORE_DEEP ist nicht freigegeben.';
-        END;
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='QUERY_STORE_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
     END;
 
     IF @TextPatternMode = 'LIKE'

@@ -14,12 +14,12 @@ Datenquellen : master.sys.databases, sys.change_tracking_databases,
                database-lokale sys.tables/sys.schemas/
                sys.change_tracking_tables/cdc.change_tables, msdb CDC-Jobs.
 Parameter    : @DatabaseNames, @DatabaseNamePattern,
-               @SystemdatenbankenEinbeziehen, @MaxDatenbanken, @MaxZeilen,
+               @SystemdatenbankenEinbeziehen, @MaxZeilen,
                @ResultSetArt, @JsonErzeugen, @Json OUTPUT,
                @PrintMeldungen, @Hilfe.
 Semantik     : @DatabaseNames=N'[Db1]|[Db2]'; NULL=alle zulässigen
                Datenbanken; N''=INVALID_PARAMETER. Exakte Liste und Pattern
-               sind exklusiv. @MaxDatenbanken kürzt keine explizite Liste.
+               sind exklusiv. Die Datenbankauswahl wird nicht vorab begrenzt.
 Ausgabe      : RAW/CONSOLE/NONE; JSON mit meta, databases, cdcTables,
                changeTrackingTables, cdcJobs und warnings.
 Berechtigung : Cross-Database wird über CROSS_DATABASE_DEEP geprüft.
@@ -32,10 +32,10 @@ Locking      : LOCK_TIMEOUT 0; Systemkataloge READUNCOMMITTED.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DataCaptureStatus]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MaxZeilen                        int            = 10000
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
@@ -59,9 +59,9 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_DataCaptureStatus';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' ist ungültig.';
+        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern=like:...|regex:...|regexi:...; ein Pattern, keine Pipe-Liste.';
-        PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; @MaxZeilen gilt global je fachlichem Resultset.';
+        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen gilt global je fachlichem Resultset.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;
@@ -157,7 +157,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
+    IF @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Ungültige Mengen- oder Ausgabeparameter.';
@@ -168,9 +168,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'HA_DR_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#DataCaptureStatus_DatabaseCandidates',@WarningTable=N'#DataCaptureStatus_DatabaseCandidateWarnings';

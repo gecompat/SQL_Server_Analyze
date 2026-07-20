@@ -18,6 +18,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_MaintenanceOperations]
       @DatabaseNames                       nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen        bit            = 0
     , @DatabaseNamePattern                 nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @JobNames                            nvarchar(max)  = NULL
     , @JobNamePattern                      nvarchar(4000) = NULL
     , @NurProblematisch                    bit            = 0
@@ -25,7 +26,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_MaintenanceOperations]
     , @BlockedWarnMs                       bigint         = 5000
     , @PvsWarnMb                           decimal(19,2)  = 1024
     , @AbortedTransactionsWarnCount        bigint         = 1
-    , @MaxDatenbanken                      int            = 16
     , @MaxZeilen                           int            = 1000
     , @LockTimeoutMs                       int            = 0
     , @ResultSetArt                        varchar(16)    = 'CONSOLE'
@@ -122,7 +122,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
 
-    IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs<0
+    IF @MaxZeilen<0 OR @LockTimeoutMs<0
        OR @ResumablePausedWarnMinutes<1 OR @ResumablePausedWarnMinutes>525600
        OR @BlockedWarnMs<0 OR @PvsWarnMb<0 OR @AbortedTransactionsWarnCount<0
        OR @JobPatternIsValid=0 OR (@JobNames IS NOT NULL AND @JobNamePattern IS NOT NULL)
@@ -147,7 +147,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass=NULL
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass=NULL
             , @StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#MaintenanceOperations_DatabaseCandidates',@WarningTable=N'#MaintenanceOperations_DatabaseCandidateWarnings';
     END;

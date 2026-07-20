@@ -41,6 +41,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryHashAnalysis]
     , @MaxZeilen           int         = 100
     , @MaxSqlTextZeichen   int         = 4000
     , @ParentQueryStatsSnapshot bit    = 0
+    , @HighImpactConfirmed bit         = 0
     , @ResultSetArt        varchar(16) = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
     , @JsonErzeugen        bit         = 0
@@ -108,10 +109,7 @@ BEGIN
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0 OR @MinPlanVarianten<1 OR @MinExecutionCount<0 OR @ParentQueryStatsSnapshot IS NULL)
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameterwert.';END;
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @QueryHash IS NULL OR @EffectiveMaxZeilen>1000)
-    BEGIN
-        SELECT @Allowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PLAN_CACHE_DEEP';
-        IF @Allowed=0 BEGIN SET @StatusCode='DENIED_GROUP';SET @ErrorMessage=N'PLAN_CACHE_DEEP ist für die breite Query-Hash-Aggregation nicht freigegeben.';END;
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
 
     IF @StatusCode='AVAILABLE'
     BEGIN TRY

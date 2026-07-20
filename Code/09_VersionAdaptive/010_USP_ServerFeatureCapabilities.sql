@@ -11,11 +11,11 @@ Zweck        : Versionsadaptive Erkennung zusätzlicher Diagnosefunktionen für
                eine explizite Datenbankliste oder alle zulässigen Datenbanken.
 SQL-Version  : SQL Server 2019 oder neuer.
 Parameter    : @DatabaseNames, @DatabaseNamePattern,
-               @SystemdatenbankenEinbeziehen, @MaxDatenbanken,
+               @SystemdatenbankenEinbeziehen,
                @MitSpezialindizes, @MitQueryStoreReplicas,
                @MitPlattformdetails, @MaxZeilen, @ResultSetArt,
                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
-Semantik     : bracket-aware Pipe-Liste; NULL=alle; N''=ungültig. Pattern ist
+Semantik     : bracket-aware Pipe-Liste; NULL/N''=alle. Pattern ist
                separat und mit exakter Liste gegenseitig exklusiv.
 Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
 Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
@@ -26,10 +26,10 @@ Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ServerFeatureCapabilities]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
-    , @MaxDatenbanken                   int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @MitSpezialindizes                bit            = 1
     , @MitQueryStoreReplicas            bit            = 1
     , @MitPlattformdetails              bit            = 1
@@ -55,9 +55,9 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_ServerFeatureCapabilities';
-        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet aktuelle Datenbank.';
+        PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern unterstützt like:, regex:, regexi: und ist exklusiv zu @DatabaseNames.';
-        PRINT N'@MaxDatenbanken begrenzt nur automatische Auswahl; @MaxZeilen begrenzt jedes fachliche Resultset global.';
+        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen begrenzt jedes fachliche Resultset global.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;
@@ -136,7 +136,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE')
+    IF @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE')
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Ungültige Mengen- oder Ausgabeparameter.';
@@ -147,9 +147,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
-            , @AnalysisClass = 'CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass = 'OBJECT_ANALYSIS_CURRENT'
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ServerFeatureCapabilities_DatabaseCandidates',@WarningTable=N'#ServerFeatureCapabilities_DatabaseCandidateWarnings';

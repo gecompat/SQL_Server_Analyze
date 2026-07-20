@@ -41,7 +41,7 @@ IF @Definition IS NULL
 BEGIN TRY
     /* FEATURE-ABSENT: leerer sichtbarer Scope bleibt ein Inventar, kein Abwesenheitsbeweis. */
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=0,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT,
          @ErrorNumberOut=@ErrorNumber OUTPUT,@ErrorMessageOut=@ErrorMessage OUTPUT;
@@ -121,7 +121,7 @@ BEGIN TRY
 
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=0,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
 
@@ -188,7 +188,7 @@ BEGIN TRY
     /* FEATURE-BOUNDED */
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@MaxZeilen=1,
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=1,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1
@@ -223,7 +223,7 @@ BEGIN TRY
     EXECUTE AS USER=N'ExampleFeatureRestrictedUser';
     SET @Impersonating=1;
     EXEC [monitor].[USP_SpecialFeatureInventory]
-         @DatabaseNames=N'[DeineDatenbank]|[ExampleFeatureDeniedDatabase]',@MaxDatenbanken=2,@MaxZeilen=0,
+         @DatabaseNames=N'[DeineDatenbank]|[ExampleFeatureDeniedDatabase]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     REVERT;

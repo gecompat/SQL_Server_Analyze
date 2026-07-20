@@ -32,7 +32,7 @@ BEGIN TRY
 
     /* BKP-FULL: ohne sichtbares nicht-copy-only Full bleibt die Lücke explizit. */
     EXEC [monitor].[USP_BackupChainAnalysis]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@HistoryDays=1,
+         @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
@@ -52,7 +52,7 @@ BEGIN TRY
     /* BKP-RESTORE: fehlende Restorehistorie ist Evidenzlücke, kein Restorebeweis. */
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_BackupChainAnalysis]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@HistoryDays=1,
+         @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
@@ -75,7 +75,7 @@ BEGIN TRY
 
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_BackupChainAnalysis]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@HistoryDays=1,
+         @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
@@ -119,7 +119,7 @@ BEGIN TRY
 
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
     EXEC [monitor].[USP_BackupChainAnalysis]
-         @DatabaseNames=N'[DeineDatenbank]',@MaxDatenbanken=1,@HistoryDays=1,
+         @DatabaseNames=N'[DeineDatenbank]',@HistoryDays=1,
          @MitRestoreEvidence=1,@MaxZeilen=0,@ResultSetArt='NONE',
          @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;

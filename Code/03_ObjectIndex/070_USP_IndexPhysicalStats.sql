@@ -17,7 +17,6 @@ Parameter    :
   @DatenbankNameLike             nvarchar(256)  = NULL  - Filter im Cross-Database-Modus.
   @SchemaNamePattern                nvarchar(256)  = NULL  - GEZIELT: exakter Schemaname; VOLL: LIKE.
   @ObjectNamePattern                nvarchar(256)  = NULL  - GEZIELT: exakter Objektname; VOLL: LIKE.
-  @MaxDatenbanken                int            = 16     - positive Werte begrenzen; NULL/0 = alle sichtbaren Datenbanken; bewusst kleiner Default.
   @MaxZeilen                     int            = 10000 - positive Werte begrenzen; NULL/0 = unbegrenzt.
   @LockTimeoutMs                 int            = 0     - 0 = nicht auf Metadatenlocks warten.
   @PrintMeldungen                bit            = 1     - Warnungen via RAISERROR 10.
@@ -44,9 +43,10 @@ Beispiele    :
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_IndexPhysicalStats]
-      @DatabaseNames                  nvarchar(max)  = N''
+      @DatabaseNames                  nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen   bit            = 0
     , @DatabaseNamePattern            nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                    nvarchar(max)  = NULL
     , @SchemaNamePattern              nvarchar(4000) = NULL
     , @ObjectNames                    nvarchar(max)  = NULL
@@ -60,7 +60,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_IndexPhysicalStats]
     , @PartitionNumber                int           = NULL
     , @MinPageCount                   bigint        = 1000
     , @MinFragmentationPercent        decimal(9,2)  = 0
-    , @MaxDatenbanken                 int           = 16
     , @MaxZeilen                      int           = 10000
     , @LockTimeoutMs                  int           = 0
     , @ResultSetArt                  varchar(16)    = 'CONSOLE'
@@ -99,7 +98,7 @@ BEGIN
     CREATE TABLE [#IndexPhysicalStats_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=@IndexNames,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#IndexPhysicalStats_NameFilters';
-    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@MaxDatenbanken=@MaxDatenbanken,@AnalysisClass='CROSS_DATABASE_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IndexPhysicalStats_DatabaseCandidates';
+    IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='PHYSICAL_STATS_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IndexPhysicalStats_DatabaseCandidates';
     DECLARE @SchemaPredicateS nvarchar(max),@SchemaPredicateSch nvarchar(max),@ObjectPredicateO nvarchar(max),@FullObjectPredicateSO nvarchar(max),@IndexPredicateI nvarchar(max),@StatisticsPredicateSt nvarchar(max);
     SET @SchemaPredicateS=N' AND (NOT EXISTS(SELECT 1 FROM [#IndexPhysicalStats_NameFilters] WHERE [FilterType]=''SCHEMA'') OR EXISTS(SELECT 1 FROM [#IndexPhysicalStats_NameFilters] [f] WHERE [f].[FilterType]=''SCHEMA'' AND [f].[NameValue]=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))';
     SET @SchemaPredicateSch=REPLACE(@SchemaPredicateS,N'[s].[name]',N'[sch].[name]');
@@ -116,14 +115,13 @@ BEGIN
     IF @StatisticsPatternMode='LIKE' SET @StatisticsPredicateSt+=N' AND [st].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE N'''+REPLACE(@StatisticsPatternValue,N'''',N'''''')+N''' COLLATE SQL_Latin1_General_CP1_CS_AS';
     IF @StatisticsPatternMode IN('REGEX','REGEXI') SET @StatisticsPredicateSt+=N' AND REGEXP_LIKE([st].[name],N'''+REPLACE(@StatisticsPatternValue,N'''',N'''''')+N''','''+@StatisticsRegexFlags+N''')';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
-    DECLARE @EffectiveMaxDatenbanken bigint = CASE WHEN @MaxDatenbanken IS NULL OR @MaxDatenbanken=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxDatenbanken) END;
     DECLARE @MonitorPrintMessage nvarchar(2048); SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'GEZIELT')))); SET @ScanMode=UPPER(LTRIM(RTRIM(COALESCE(@ScanMode,'LIMITED'))));
  IF @Hilfe=1
  BEGIN
-        PRINT N'monitor.USP_IndexPhysicalStats';        PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken; N'''' = ungültiger sicherer Default.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0: Systemdatenbanken einbeziehen.';
+        PRINT N'monitor.USP_IndexPhysicalStats';        PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken; N'''' = keine Einschränkung.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0: Systemdatenbanken einbeziehen.';
         PRINT N'@DatenbankNameLike: optionaler Cross-Database-LIKE-Filter.';
         PRINT N'@SchemaNamePattern/@ObjectNamePattern: GEZIELT beide als exakte Equality-Namen; VOLL als optionale LIKE-Filter.';
-        PRINT N'@MaxDatenbanken int = 16; @MaxZeilen int = 10000: harte Ergebnismengenbegrenzung.';
+        PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int = 10000: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
         PRINT N'Zweck: Physical Stats für Rowstore/Heaps; keine Wartungsaktion.';
@@ -163,10 +161,10 @@ BEGIN
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
     IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') BEGIN SET @OverallStatus='INVALID_PARAMETER';SET @ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';END;
     IF @SchemaPatternValid=0 OR @ObjectPatternValid=0 OR @IndexPatternValid=0 OR @StatisticsPatternValid=0 OR (@SchemaNames IS NOT NULL AND @SchemaNamePattern IS NOT NULL) OR (@ObjectNames IS NOT NULL AND @ObjectNamePattern IS NOT NULL) OR (@IndexNames IS NOT NULL AND @IndexNamePattern IS NOT NULL) BEGIN SET @OverallStatus='INVALID_PARAMETER';SET @ErrorMessage=N'Exakte Liste und Pattern derselben Eigenschaft sind gegenseitig exklusiv.';END;
-IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
     BEGIN
         SET @OverallStatus = 'INVALID_PARAMETER';
-        SET @ErrorMessage = N'Ungültiger Parameter: @MaxDatenbanken, @MaxZeilen oder @LockTimeoutMs außerhalb des zulässigen Bereichs.';
+        SET @ErrorMessage = N'Ungültiger Parameter: @MaxZeilen oder @LockTimeoutMs außerhalb des zulässigen Bereichs.';
     END
 
 
@@ -236,7 +234,7 @@ OPTION (MAXDOP 1,RECOMPILE);';
   IF NOT EXISTS(SELECT 1 FROM [#IndexPhysicalStats_DatabaseStatus]) INSERT [#IndexPhysicalStats_DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
  END;
 
-    
+
 
     SELECT @TotalRows = COUNT_BIG(*) FROM [#IndexPhysicalStats_Result];
 

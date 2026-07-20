@@ -27,9 +27,10 @@ Kosten       : MEDIUM; Kataloge, aggregierte Broker-Laufzeitmetadaten und
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ServiceBrokerAnalysis]
-      @DatabaseNames                    nvarchar(max)  = N''
+      @DatabaseNames                    nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen     bit            = 0
     , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                      nvarchar(max)  = NULL
     , @SchemaNamePattern                nvarchar(4000) = NULL
     , @ObjectNames                      nvarchar(max)  = NULL
@@ -41,7 +42,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServiceBrokerAnalysis]
     , @QueueRowsWarn                    bigint         = 10000
     , @ActivationSilenceWarnMinutes     bigint         = 60
     , @ConversationRowsWarn             bigint         = 100000
-    , @MaxDatenbanken                   int            = 16
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
     , @ResultSetArt                     varchar(16)     = 'CONSOLE'
@@ -93,7 +93,7 @@ BEGIN
        OR @QueueRowsWarn IS NULL OR @QueueRowsWarn<0
        OR @ActivationSilenceWarnMinutes IS NULL OR @ActivationSilenceWarnMinutes<0
        OR @ConversationRowsWarn IS NULL OR @ConversationRowsWarn<0
-       OR @MaxDatenbanken IS NULL OR @MaxDatenbanken<0
+
        OR @MaxZeilen IS NULL OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
@@ -285,9 +285,9 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
-            , @AnalysisClass='CROSS_DATABASE_DEEP'
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
+            , @AnalysisClass='CATALOG_DEEP'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
             , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ServiceBrokerAnalysis_DatabaseCandidates',@WarningTable=N'#ServiceBrokerAnalysis_DatabaseCandidateWarnings';

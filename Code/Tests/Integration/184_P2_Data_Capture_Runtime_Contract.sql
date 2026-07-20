@@ -63,7 +63,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
 
     /* DATACAPTURE-NONE */
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
-         @DatabaseNames=N'[ExampleDataCaptureNoneDatabase]',@MaxDatenbanken=1,@MaxZeilen=10,
+         @DatabaseNames=N'[ExampleDataCaptureNoneDatabase]',@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF ISJSON(@Json)<>1 OR @Status NOT IN('NOT_APPLICABLE','AVAILABLE_LIMITED')
@@ -75,7 +75,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNamePattern=N'like:ExampleCt%',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF NOT EXISTS
        (
@@ -94,7 +94,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]|[ExampleDataCaptureCtDatabase2]',
-         @ChangeTrackingClientVersion=@CurrentVersion,@MaxDatenbanken=2,@MaxZeilen=10,
+         @ChangeTrackingClientVersion=@CurrentVersion,@MaxZeilen=10,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF @Status<>'INVALID_PARAMETER' OR @Partial<>1
@@ -105,7 +105,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNames=N'ExampleCtA',
-         @ChangeTrackingClientVersion=@CurrentVersion,@MaxDatenbanken=1,@MaxZeilen=0,
+         @ChangeTrackingClientVersion=@CurrentVersion,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF EXISTS
@@ -122,7 +122,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNames=N'ExampleCtA',
-         @ChangeTrackingClientVersion=@FutureVersion,@MaxDatenbanken=1,@MaxZeilen=0,
+         @ChangeTrackingClientVersion=@FutureVersion,@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF NOT EXISTS
@@ -139,7 +139,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
-         @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@MaxDatenbanken=1,@MaxZeilen=0,
+         @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@MaxZeilen=0,
          @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
          @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF CHARINDEX(N'''CT_AUTO_CLEANUP_DISABLED''',@Definition)=0
@@ -156,7 +156,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNames=N'ExampleCtA',
-         @MaxDatenbanken=1,@MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=0,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))<>1
        OR JSON_VALUE(@Json,N'$.changeTrackingTables[0].TableName')<>N'ExampleCtA'
@@ -167,7 +167,7 @@ INSERT [dbo].[ExampleCtOther]([Id]) VALUES(1);';
     SET @Json=NULL;
     EXEC [monitor].[USP_DataCaptureDeepAnalysis]
          @DatabaseNames=N'[ExampleDataCaptureCtDatabase]',@ObjectNamePattern=N'like:ExampleCt%',
-         @MaxDatenbanken=1,@MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
+         @MaxZeilen=1,@ResultSetArt='NONE',@JsonErzeugen=1,@Json=@Json OUTPUT,
          @PrintMeldungen=0,@StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.changeTrackingTables'))>1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json,N'$.databaseStatus'))<>1

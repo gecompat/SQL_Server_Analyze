@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsAnalysis]
     , @MitBlockedProcesses             bit            = 0
     , @MaxZeilen                       int            = 100
     , @BestaetigeTargetFlush           bit            = 0
+    , @HighImpactConfirmed             bit            = 0
     , @ResultSetArt                    varchar(16)    = 'CONSOLE'
     , @ResultTable                     sysname        = NULL
     , @JsonErzeugen                    bit            = 0
@@ -113,6 +114,7 @@ BEGIN
                 , @TargetNames = @TargetNames
                 , @TargetNamePattern = @TargetNamePattern
                 , @BestaetigeTargetFlush = @BestaetigeTargetFlush
+                , @HighImpactConfirmed = @HighImpactConfirmed
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @TargetJson OUTPUT
@@ -138,6 +140,7 @@ BEGIN
                 , @BisUtc = @BisUtc
                 , @MaxZeilen = @MaxZeilen
                 , @BestaetigeTargetFlush = @BestaetigeTargetFlush
+                , @HighImpactConfirmed = @HighImpactConfirmed
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @EventsJson OUTPUT
@@ -161,6 +164,7 @@ BEGIN
                 , @BisUtc = @BisUtc
                 , @MaxZeilen = @MaxZeilen
                 , @BestaetigeTargetFlush = @BestaetigeTargetFlush
+                , @HighImpactConfirmed = @HighImpactConfirmed
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @DeadlocksJson OUTPUT
@@ -184,6 +188,7 @@ BEGIN
                 , @BisUtc = @BisUtc
                 , @MaxZeilen = @MaxZeilen
                 , @BestaetigeTargetFlush = @BestaetigeTargetFlush
+                , @HighImpactConfirmed = @HighImpactConfirmed
                 , @ResultSetArt = @OutputMode
                 , @JsonErzeugen = @JsonErzeugen
                 , @Json = @BlockedJson OUTPUT

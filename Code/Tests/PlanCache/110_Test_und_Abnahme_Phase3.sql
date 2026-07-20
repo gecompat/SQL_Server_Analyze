@@ -16,7 +16,7 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
     , @MitPlanCacheHealth=0
     , @MitShowplanAnalysis=0
     , @DatabaseNames=N'[DeineDatenbank]'
-    , @MaxDatenbanken=1
+
     , @MaxZeilen=10
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
@@ -76,7 +76,7 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
     , @MitPlanCacheHealth=0
     , @MitShowplanAnalysis=0
     , @DatabaseNames=N'[DeineDatenbank]'
-    , @MaxDatenbanken=1
+
     , @MaxZeilen=10
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1

@@ -31,6 +31,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentSessions]
     , @ProgramNamePattern           nvarchar(4000) = NULL
     , @DatabaseNames                nvarchar(max)  = NULL
     , @DatabaseNamePattern          nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @MitSqlText                   bit            = 0
     , @MaxSqlTextZeichen            int            = 2000
     , @MaxZeilen                    int            = 500

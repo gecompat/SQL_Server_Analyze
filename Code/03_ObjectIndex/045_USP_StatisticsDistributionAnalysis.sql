@@ -28,9 +28,10 @@ Kosten       : HIGH_OPT_IN. CATALOG_DEEP-Freigabe, gezielter Scope oder bewusst
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_StatisticsDistributionAnalysis]
-      @DatabaseNames                       nvarchar(max)  = N''
+      @DatabaseNames                       nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen        bit            = 0
     , @DatabaseNamePattern                 nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @SchemaNames                         nvarchar(max)  = NULL
     , @SchemaNamePattern                   nvarchar(4000) = NULL
     , @ObjectNames                         nvarchar(max)  = NULL
@@ -45,7 +46,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_StatisticsDistributionAnalysis]
     , @DominanterSchrittWarnPercent        decimal(9,4)    = 50
     , @ModificationWarnPercent             decimal(9,4)    = 20
     , @PartitionSpreadWarnPercent          decimal(9,4)    = 20
-    , @MaxDatenbanken                      int             = 16
     , @MaxZeilen                           int             = 1000
     , @LockTimeoutMs                       int             = 0
     , @ResultSetArt                        varchar(16)     = 'CONSOLE'
@@ -101,22 +101,19 @@ BEGIN
        OR @DominanterSchrittWarnPercent IS NULL OR @DominanterSchrittWarnPercent<0 OR @DominanterSchrittWarnPercent>100
        OR @ModificationWarnPercent IS NULL OR @ModificationWarnPercent<0 OR @ModificationWarnPercent>100
        OR @PartitionSpreadWarnPercent IS NULL OR @PartitionSpreadWarnPercent<0 OR @PartitionSpreadWarnPercent>100
-       OR @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+ OR @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,
                @ErrorMessage=N'Ungültiger Modus, Grenzwert-, Mengen-, Lock-Timeout- oder Ausgabeparameter.';
     END;
 
-    DECLARE @CatalogAllowed bit=1;
     IF @StatusCode='AVAILABLE'
-        SELECT @CatalogAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0)
-        FROM [monitor].[VW_AnalyseAccessCurrent]
-        WHERE [AnalysisClass]='CATALOG_DEEP';
-    IF @StatusCode='AVAILABLE' AND @CatalogAllowed=0
-    BEGIN
-        SELECT @StatusCode='DENIED_GROUP',@IsPartial=1,
-               @ErrorMessage=N'CATALOG_DEEP ist für die Statistikverteilungsanalyse nicht freigegeben.';
-    END;
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='CATALOG_DEEP'
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT;
+    IF @StatusCode<>'AVAILABLE' SET @IsPartial=1;
 
     DECLARE @CurrentCompatibilityLevel int=NULL;
     IF @StatusCode='AVAILABLE'
@@ -250,13 +247,13 @@ BEGIN
         EXEC [monitor].[USP_Statistics]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
             , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern
             , @ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern
             , @FullObjectNames=@FullObjectNames
             , @StatisticsNames=@StatisticsNames,@StatisticsNamePattern=@StatisticsNamePattern
             , @AnalyseModus=@Mode,@MinModificationPercent=0,@MinAlterTage=0
-            , @MitIncrementellenDetails=1,@MaxDatenbanken=@MaxDatenbanken
+            , @MitIncrementellenDetails=1
             , @MaxZeilen=@CandidatePoolRows,@LockTimeoutMs=@LockTimeoutMs
             , @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@StatisticsJson OUTPUT
             , @PrintMeldungen=@PrintMeldungen;

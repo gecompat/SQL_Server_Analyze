@@ -24,7 +24,7 @@ Partial      : Fehlende Features, Objekte oder Rechte werden strukturiert als
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ReplicationStatus]
- @MitDistributionDetails bit=0,@MaxZeilen int=5000,@ResultSetArt varchar(16)='CONSOLE'
+ @MitDistributionDetails bit=0,@MaxZeilen int=5000,@HighImpactConfirmed bit=0,@ResultSetArt varchar(16)='CONSOLE'
     , @ResultTable                     sysname        = NULL
     , @JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,@PrintMeldungen bit=1,@Hilfe bit=0
 AS
@@ -42,8 +42,7 @@ BEGIN
  CREATE TABLE [#ReplicationStatus_Pub]([PublicationId] int,[PublisherDatabase] sysname,[PublicationName] sysname,[PublicationType] int,[ImmediateSync] bit,[AllowPush] bit,[AllowPull] bit,[Status] int);
  CREATE TABLE [#ReplicationStatus_Sub]([PublisherDatabase] sysname,[PublicationName] sysname,[SubscriberName] sysname,[SubscriberDatabase] sysname,[SubscriptionType] int,[Status] int,[AgentId] int,[LastAction] nvarchar(4000),[LastTimestamp] datetime);
  CREATE TABLE [#ReplicationStatus_Err]([ErrorId] int,[ErrorTime] datetime,[SourceName] nvarchar(100),[ErrorCode] int,[ErrorText] nvarchar(4000));
- IF @StatusCode='AVAILABLE' AND @MitDistributionDetails=1 SELECT @Allowed=[IsAllowed] FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='ENTERPRISE_TOPOLOGY_DEEP';
- IF @StatusCode='AVAILABLE' AND @MitDistributionDetails=1 AND COALESCE(@Allowed,0)=0 SELECT @StatusCode='DENIED_GROUP',@ErrorMessage=N'ENTERPRISE_TOPOLOGY_DEEP ist für den aktuellen Login nicht erlaubt.';
+ IF @StatusCode='AVAILABLE' AND @MitDistributionDetails=1 EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='ENTERPRISE_TOPOLOGY_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
  IF @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE') SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
  SET LOCK_TIMEOUT 0;
  IF @StatusCode='AVAILABLE' BEGIN TRY
@@ -62,7 +61,7 @@ BEGIN
    END
   END
  END TRY BEGIN CATCH SELECT @StatusCode='ERROR_HANDLED',@IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(); IF @PrintMeldungen=1 RAISERROR(N'Replication konnte nicht vollständig gelesen werden: %s',10,1,@ErrorMessage) WITH NOWAIT; END CATCH;
- 
+
  IF @ResultSetArtNormalisiert<>'NONE'
  BEGIN
   SELECT @CollectionTimeUtc AS [CollectionTimeUtc],CAST(N'monitor.USP_ReplicationStatus' AS nvarchar(256)) AS [ModuleName],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];

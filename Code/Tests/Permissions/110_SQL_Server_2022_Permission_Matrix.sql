@@ -246,7 +246,7 @@ BEGIN
     RAISERROR(N''PERMISSION_MATRIX step=standard_capabilities'',10,1) WITH NOWAIT;
     EXEC [monitor].[USP_CheckFrameworkCapabilities]
           @DatabaseNames=N''''
-        , @MaxDatenbanken=1
+
         , @AnalyseKlasse=''STANDARD_CURRENT''
         , @MitGruppenpruefung=0
         , @ResultSetArt=''NONE''
@@ -257,7 +257,7 @@ BEGIN
     RAISERROR(N''PERMISSION_MATRIX step=query_store_capabilities'',10,1) WITH NOWAIT;
     EXEC [monitor].[USP_CheckFrameworkCapabilities]
           @DatabaseNames=N''''
-        , @MaxDatenbanken=1
+
         , @AnalyseKlasse=''QUERY_STORE_CURRENT''
         , @MitGruppenpruefung=0
         , @ResultSetArt=''NONE''
@@ -387,7 +387,7 @@ EXEC [monitor].[USP_CurrentSessions]
 
 EXEC [monitor].[USP_CheckFrameworkCapabilities]
       @DatabaseNames=N''
-    , @MaxDatenbanken=1
+
     , @AnalyseKlasse='STANDARD_CURRENT'
     , @MitGruppenpruefung=0
     , @ResultSetArt='NONE'
@@ -397,7 +397,7 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 
 EXEC [monitor].[USP_CheckFrameworkCapabilities]
       @DatabaseNames=N''
-    , @MaxDatenbanken=1
+
     , @AnalyseKlasse='QUERY_STORE_CURRENT'
     , @MitGruppenpruefung=0
     , @ResultSetArt='NONE'
@@ -644,7 +644,7 @@ BEGIN TRY
 
     EXEC [monitor].[USP_DatabaseIntegrityAnalysis]
           @DatabaseNames=N''
-        , @MaxDatenbanken=1
+
         , @MitPageDetails=0
         , @MaxZeilen=20
         , @ResultSetArt='NONE'
@@ -656,7 +656,7 @@ BEGIN TRY
 
     EXEC [monitor].[USP_DatabaseCapacityAnalysis]
           @DatabaseNames=N''
-        , @MaxDatenbanken=1
+
         , @MinVolumeFreePercent=0
         , @MaxZeilen=20
         , @ResultSetArt='NONE'

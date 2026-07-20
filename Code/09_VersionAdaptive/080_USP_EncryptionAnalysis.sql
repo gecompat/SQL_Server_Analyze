@@ -19,12 +19,12 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_EncryptionAnalysis]
       @DatabaseNames                              nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen               bit            = 0
     , @DatabaseNamePattern                        nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
     , @NurProblematisch                           bit            = 0
     , @TdeTransitionWarnMinutes                   int            = 60
     , @CertificateExpiryWarnDays                  int            = 90
     , @ExpliziteBackupverschluesselungErwartet    bit            = 0
     , @BackupLookbackDays                         int            = 35
-    , @MaxDatenbanken                             int            = 16
     , @MaxZeilen                                  int            = 1000
     , @LockTimeoutMs                              int            = 0
     , @ResultSetArt                               varchar(16)    = 'CONSOLE'
@@ -121,7 +121,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NULL
     );
 
-    IF @MaxDatenbanken<0 OR @MaxZeilen<0 OR @LockTimeoutMs<0
+    IF @MaxZeilen<0 OR @LockTimeoutMs<0
        OR @TdeTransitionWarnMinutes<1 OR @TdeTransitionWarnMinutes>525600
        OR @CertificateExpiryWarnDays<1 OR @CertificateExpiryWarnDays>36500
        OR @BackupLookbackDays<1 OR @BackupLookbackDays>3650
@@ -136,8 +136,8 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames=@DatabaseNames
             , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern=@DatabaseNamePattern
-            , @MaxDatenbanken=@MaxDatenbanken
+            , @DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
             , @AnalysisClass=NULL
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT

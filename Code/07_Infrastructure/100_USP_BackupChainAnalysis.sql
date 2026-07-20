@@ -19,7 +19,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_BackupChainAnalysis]
       @DatabaseNames                nvarchar(max)  = NULL
     , @SystemdatenbankenEinbeziehen bit            = 0
     , @DatabaseNamePattern          nvarchar(4000) = NULL
-    , @MaxDatenbanken               int            = 16
+    , @HighImpactConfirmed              bit            = 0
     , @HistoryDays                  int            = 35
     , @MitRestoreEvidence           bit            = 1
     , @MaxZeilen                    int            = 1000
@@ -122,7 +122,7 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
 
-    IF @MaxDatenbanken < 0 OR @HistoryDays < 1 OR @HistoryDays > 3650
+    IF @HistoryDays < 1 OR @HistoryDays > 3650
        OR @MaxZeilen < 0 OR @OutputMode NOT IN ('RAW', 'CONSOLE', 'NONE')
     BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER', @IsPartial = 1,
@@ -134,8 +134,8 @@ BEGIN
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
               @DatabaseNames = @DatabaseNames
             , @SystemdatenbankenEinbeziehen = @SystemdatenbankenEinbeziehen
-            , @DatabaseNamePattern = @DatabaseNamePattern
-            , @MaxDatenbanken = @MaxDatenbanken
+            , @DatabaseNamePattern = @DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+
             , @AnalysisClass = NULL
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
