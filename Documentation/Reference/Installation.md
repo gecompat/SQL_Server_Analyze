@@ -209,20 +209,171 @@ EXEC [monitor].[USP_CurrentWaits]
 
 Weitere ausführbare Beispiele stehen in `Code\Examples\040_Schnellreferenz_Aufrufe.sql`.
 
-## Alternative: SQLCMD-Installer mit Einzeldateien
+## 12. Alternative: Installation im SQLCMD-Modus von SSMS
 
-Der Include-Installer `Code\Install\Install_All.sql` bindet die kanonischen Dateien mit `:r` ein. Dieser Weg ist vor allem für Entwicklungs- und Automatisierungsabläufe gedacht.
+Der Include-Installer `Code\Install\Install_All.sql` bindet die kanonischen
+Einzeldateien mit `:r` in ihrer abhängigkeitssicheren Reihenfolge ein. Dieser Weg
+installiert unmittelbar aus den Quelldateien und benötigt keinen vorher
+generierten Gesamtinstaller. Er eignet sich besonders für Entwicklung und für
+Administratoren, die den einbezogenen Quellbestand einzeln kontrollieren wollen.
 
-1. In einer lokalen Repositorykopie `[DeineDatenbank]` in `Install_All.sql` und allen eingebundenen SQL-Dateien durch den Zielnamen ersetzen.
-2. `Code\Install\Install_All.sql` in SSMS öffnen.
-3. Für genau dieses Abfragefenster **Abfrage > SQLCMD-Modus** aktivieren. SQLCMD-Modus ist in SSMS standardmäßig nicht aktiv.
-4. Kontrollieren, dass die Repositorystruktur und alle relativen `:r`-Pfade unverändert vorhanden sind.
-5. Die gesamte Datei ausführen.
+Der SQLCMD-Modus ersetzt den Datenbankplatzhalter nicht automatisch. Weil jede
+kanonische SQL-Datei auch einzeln ausführbar bleibt, muss `[DeineDatenbank]` vor
+der Installation in allen eingebundenen Dateien ersetzt werden.
 
-Die Aktivierung und die in SSMS unterstützten SQLCMD-Befehle beschreibt
-[Microsoft Learn: Edit SQLCMD scripts with Query Editor](https://learn.microsoft.com/en-us/ssms/scripting/sqlcmd-scripts-query-editor).
+### 12.1 Separate Arbeitskopie anlegen
 
-Erscheint ein Syntaxfehler direkt bei `:r`, war der SQLCMD-Modus nicht aktiv. Meldet SSMS eine nicht gefundene Include-Datei, sind Pfad oder Repositorystruktur falsch; in diesem Fall ist der eigenständige Installer der robustere Weg.
+1. Das Repository vollständig herunterladen oder klonen.
+2. Für die Installation eine separate lokale Arbeitskopie verwenden. Dadurch
+   bleiben die heruntergeladenen Originaldateien unverändert und können später
+   mit Git beziehungsweise dem Download verglichen werden.
+3. Die Verzeichnisse unter `Code` nicht verschieben oder einzeln kopieren. Die
+   `:r`-Anweisungen in `Install_All.sql` benötigen die vorhandene relative
+   Verzeichnisstruktur.
+
+Beispielstruktur:
+
+```text
+SQL_Server_Analyze-SqlCmd\
+└── Code\
+    ├── 00_Setup\
+    ├── 01_Common\
+    ├── ...
+    ├── 09_VersionAdaptive\
+    └── Install\
+        └── Install_All.sql
+```
+
+### 12.2 Datenbankplatzhalter in der Arbeitskopie ersetzen
+
+Vor dem Ersetzen muss die Installationsdatenbank gemäß den Schritten 3 und 4
+dieser Anleitung geprüft beziehungsweise angelegt worden sein.
+
+Mit einem Editor, der **Suchen und Ersetzen in Dateien** unterstützt:
+
+1. Als Suchbereich ausschließlich den Ordner `Code` der Arbeitskopie wählen.
+2. Nach dem exakten Text `[DeineDatenbank]` suchen.
+3. Durch den korrekt geklammerten lokalen Datenbanknamen ersetzen.
+4. Nur Dateien mit der Endung `.sql` ändern.
+5. Anschließend repositoryweit prüfen, dass unter `Code` kein
+   `[DeineDatenbank]` mehr vorkommt.
+
+Alternativ kann die Ersetzung reproduzierbar mit PowerShell erfolgen. Das
+folgende Skript fragt den Namen ab, klammert auch eine schließende eckige Klammer
+im Namen korrekt und bearbeitet ausschließlich `.sql`-Dateien unter `Code`:
+
+```powershell
+$RepositoryRoot = 'C:\Tools\SQL_Server_Analyze-SqlCmd'
+$DatabaseName = Read-Host 'Name der Installationsdatenbank'
+
+if ([string]::IsNullOrWhiteSpace($DatabaseName)) {
+    throw 'Der Datenbankname darf nicht leer sein.'
+}
+
+$QuotedDatabaseName = '[' + $DatabaseName.Replace(']', ']]') + ']'
+$Utf8WithoutBom = [Text.UTF8Encoding]::new($false)
+
+Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot 'Code') `
+              -Filter '*.sql' -File -Recurse |
+    ForEach-Object {
+        $Content = [IO.File]::ReadAllText($_.FullName)
+        $UpdatedContent = $Content.Replace(
+            '[DeineDatenbank]',
+            $QuotedDatabaseName
+        )
+        if ($UpdatedContent -ne $Content) {
+            [IO.File]::WriteAllText(
+                $_.FullName,
+                $UpdatedContent,
+                $Utf8WithoutBom
+            )
+        }
+    }
+
+$Remaining = Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot 'Code') `
+                           -Filter '*.sql' -File -Recurse |
+    Select-String -SimpleMatch '[DeineDatenbank]'
+
+if ($Remaining) {
+    throw 'Der Datenbankplatzhalter ist noch in SQL-Dateien vorhanden.'
+}
+```
+
+Dieser Schritt verändert nur die lokale Arbeitskopie und führt noch kein SQL
+aus.
+
+### 12.3 Include-Installer in SSMS öffnen
+
+1. SSMS starten und mit der vorgesehenen SQL-Server-Instanz verbinden.
+2. Über **Datei > Öffnen > Datei** genau die vorbereitete Datei
+   `Code\Install\Install_All.sql` öffnen. Kein neues leeres Abfragefenster
+   verwenden und den Inhalt nicht in ein solches kopieren.
+3. Kontrollieren, dass die erste `USE`-Anweisung den gewählten Datenbanknamen
+   enthält.
+4. Prüfen, dass darunter `:r`-Zeilen für `00_Setup` bis
+   `09_VersionAdaptive` vorhanden sind.
+5. Das Abfragefenster noch nicht ausführen.
+
+### 12.4 SQLCMD-Modus aktivieren und kontrollieren
+
+1. Im aktiven Installerfenster **Abfrage > SQLCMD-Modus** auswählen.
+2. Kontrollieren, dass der Menüeintrag aktiviert ist. Der SQLCMD-Modus gilt nur
+   für das jeweilige Abfragefenster.
+3. Die `:ON ERROR EXIT`- und `:r`-Zeilen müssen nun als SQLCMD-Befehle mit
+   schattiertem Hintergrund dargestellt werden. Bleiben sie gewöhnlicher
+   SQL-Text, ist der Modus nicht aktiv.
+
+SQLCMD-Modus ist in SSMS standardmäßig nicht aktiv. Microsoft dokumentiert die
+Aktivierung, die farbliche Kennzeichnung und die Unterstützung von `:r` unter
+[Microsoft Learn: SQLCMD-Skripts mit dem Abfrage-Editor bearbeiten](https://learn.microsoft.com/de-de/ssms/scripting/sqlcmd-scripts-query-editor).
+
+### 12.5 Verbindung und Ausführung prüfen
+
+Vor `F5` kontrollieren:
+
+- Das Abfragefenster ist mit der richtigen Serverinstanz verbunden.
+- Die Installationsdatenbank existiert und ist `ONLINE` sowie beschreibbar.
+- Die Collationprüfungen aus Schritt 3 waren erfolgreich.
+- Der Datenbankplatzhalter ist vollständig ersetzt.
+- Die Arbeitskopie enthält weiterhin alle von `:r` referenzierten Dateien.
+- Der ausführende Login besitzt die erforderlichen DDL-Rechte.
+
+Danach:
+
+1. Sicherstellen, dass kein Text im Abfragefenster markiert ist. Andernfalls
+   würde SSMS nur den markierten Ausschnitt ausführen.
+2. **Ausführen** wählen oder `F5` drücken.
+3. Die Verarbeitung bis zum Ende abwarten.
+4. Die Registerkarte **Meldungen** kontrollieren. `:ON ERROR EXIT` beendet den
+   Include-Installer beim ersten SQL-Fehler; nach einem Fehler ist die
+   Installation als unvollständig zu behandeln.
+
+### 12.6 SQLCMD-Installation verifizieren
+
+Nach einem fehlerfreien Installerlauf dieselben Prüfungen wie beim empfohlenen
+Weg durchführen:
+
+1. Version und Kernobjekte gemäß Schritt 8 kontrollieren.
+2. `Code\Tests\Integration\110_Smoke_Test.sql` aus derselben vorbereiteten
+   Arbeitskopie öffnen und vollständig ausführen. Der Datenbankplatzhalter ist
+   dort durch die repositoryweite Ersetzung bereits gesetzt.
+3. Die Capability- und Berechtigungsprüfung aus Schritt 10 ausführen.
+4. Erst danach mit den begrenzten Beispielaufrufen aus Schritt 11 beginnen.
+
+### 12.7 Typische SQLCMD-Fehler
+
+| Meldung oder Beobachtung | Ursache | Maßnahme |
+|---|---|---|
+| Syntaxfehler bei `:` oder `:r` | SQLCMD-Modus war nicht aktiv | Im betroffenen Abfragefenster **Abfrage > SQLCMD-Modus** aktivieren und Darstellung kontrollieren |
+| `A fatal scripting error occurred. File ... could not be opened` | Include-Datei fehlt oder relative Verzeichnisstruktur wurde verändert | Vollständige Arbeitskopie wiederherstellen und `Install_All.sql` direkt aus `Code\Install` öffnen |
+| Datenbank `DeineDatenbank` nicht gefunden | Platzhalter wurde nicht vollständig ersetzt | Ersetzung und abschließende Suche unter `Code` wiederholen |
+| Installation endet nach dem ersten SQL-Fehler | `:ON ERROR EXIT` arbeitet wie vorgesehen | Erste SQL-Fehlermeldung beheben und anschließend den vollständigen Installer erneut ausführen |
+| `:r`-Zeilen bleiben unmarkiert | Falsches Fenster oder Modus nicht aktiv | Installerfenster aktivieren und SQLCMD-Modus erneut einschalten |
+| Installer funktioniert, Analyse ist partiell | Laufzeitberechtigung oder Feature fehlt | Schritt 10 und die Berechtigungsdokumentation verwenden |
+
+Der eigenständige Installer bleibt die einfachere SSMS-Variante. Der
+SQLCMD-Modus ist fachlich gleichwertig, verlangt aber eine vollständige,
+konsistent vorbereitete Arbeitskopie der Einzeldateien.
 
 ## Upgrade
 

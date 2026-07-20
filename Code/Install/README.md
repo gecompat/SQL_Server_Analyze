@@ -4,6 +4,9 @@ Für eine vollständige Schritt-für-Schritt-Installation in SSMS siehe
 [`Documentation/Reference/Installation.md`](../../Documentation/Reference/Installation.md).
 
 `Install_All.sql` ist ein schlanker SQLCMD-Installer und bindet die kanonischen Einzeldateien über `:r` ein.
+Der vollständige SSMS-Ablauf einschließlich Arbeitskopie, Platzhalterersetzung,
+Modusprüfung und Fehlerbehandlung ist in Abschnitt 12 der Installationsanleitung
+beschrieben. `:ON ERROR EXIT` beendet den Include-Lauf beim ersten SQL-Fehler.
 
 Für einen eigenständigen, vollständig eingebetteten Installer:
 
