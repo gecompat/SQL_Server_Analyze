@@ -7,6 +7,14 @@ $ErrorActionPreference = 'Stop'
 if ([string]::IsNullOrWhiteSpace($RepositoryRoot)) {
     $RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '../../..')).Path
 }
+else {
+    $RepositoryRoot = (Resolve-Path -LiteralPath $RepositoryRoot).Path
+}
+
+$repositoryRootPrefix = $RepositoryRoot.TrimEnd([char[]]@(
+    [IO.Path]::DirectorySeparatorChar,
+    [IO.Path]::AltDirectorySeparatorChar
+)) + [IO.Path]::DirectorySeparatorChar
 
 $frameworkInstaller = Join-Path $RepositoryRoot 'Code/Install/Install_SnapshotBaseline_Framework.sql'
 $targetInstaller = Join-Path $RepositoryRoot 'Code/Install/Install_SnapshotBaseline_Target.sql'
@@ -47,7 +55,7 @@ function Get-SqlIncludes {
         if ($item.Extension -ne '.sql') {
             throw "SC023_INCLUDE_NOT_SQL: $([IO.Path]::GetFileName($InstallerPath))"
         }
-        if (-not ($item.FullName.StartsWith($RepositoryRoot, [StringComparison]::OrdinalIgnoreCase))) {
+        if (-not ($item.FullName.StartsWith($repositoryRootPrefix, [StringComparison]::OrdinalIgnoreCase))) {
             throw "SC023_INCLUDE_OUTSIDE_REPOSITORY: $([IO.Path]::GetFileName($InstallerPath))"
         }
         $item
