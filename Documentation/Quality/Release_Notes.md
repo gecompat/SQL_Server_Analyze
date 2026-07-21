@@ -136,7 +136,7 @@
 - `USP_ConfigureSnapshotTarget`, `USP_RunSnapshotCollectionCycle` und `USP_PurgeSnapshotData` bilden Konfiguration, schedulerneutralen Lauf und begrenzte Retention ab; das Paket erstellt keine Datenbank, Rechte oder Agentjobs.
 - Genau ein Performance-Counter-Collector persistiert Raw- und interpretierte Samples mit UTC-, Partialitäts- und Reset-Epochenvertrag. Payloadpersistenz ist standardmäßig aus und bei Aktivierung verlustfrei komprimiert und gehasht.
 - No-wait-Applock, Due-Prüfung, child-first Batch-Purge und `PURGE_EXPIRED_THEN_STOP` verhindern parallele Doppelreads und das stille Löschen frischer Evidenz.
-- Der Stand bleibt bis zum grünen separaten SQL-Server-2019-/2022-/2025-Workflow `IMPLEMENTED_PENDING_ACTIONS_GATE`; alle Repositoryfixtures sind synthetisch.
+- Der separate [SQL-Server-2019-/2022-/2025-Workflow](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29860488769) ist auf Commit `c4e2ee6114b7de9cae9236d390a93a81e78599e9` grün; der erste Slice steht auf `IMPLEMENTED_ACTIONS_GATE`. Alle Repositoryfixtures sind synthetisch.
 
 ## Stand 2026-07-19 – laufinterne Wiederverwendung von Analyseergebnissen
 

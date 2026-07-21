@@ -8,7 +8,7 @@ Maschinenlesbarer Backlog: `Metadata/Quality/Future_Enhancement_Backlog.csv`
 
 Dieser Vertrag hält implementierte und weiterhin offene Diagnosebereiche fest, die aus dem Abgleich des Frameworkbestands mit Microsoft-Dokumentation, SQL Assessment API, BPCheck, First Responder Kit und Glenn Berrys Diagnostic Information Queries entstanden sind.
 
-Die Einträge ergänzen den zustandslosen Kern. Sie ändern weder den abgeschlossenen Status der bestehenden P0-/P1-/P2-Spezialfallmatrix noch den separat freigegebenen, aber noch nicht implementierten SC-023-Snapshot- und Baseline-Vertrag.
+Die Einträge ergänzen den zustandslosen Kern. Sie ändern weder den abgeschlossenen Status der bestehenden P0-/P1-/P2-Spezialfallmatrix noch den separat als `IMPLEMENTED_ACTIONS_GATE` abgenommenen ersten SC-023-Snapshot- und Baseline-Slice.
 
 Eine Abweichung oder ein Einzelindikator ist grundsätzlich Evidenz für eine weitere Prüfung und kein automatischer Fehlernachweis. Kein Modul darf Konfigurationen ändern, Logs rotieren, Remoteverbindungen testen, Wartung starten oder DDL ausführen.
 
@@ -112,7 +112,7 @@ Ein leichter Inventarpfad meldet sichtbare Benutzerobjekte in `master`, `model` 
 3. `OPS-005`, `OPS-006` und `OPS-008`.
 4. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
 
-Wenn Historie, Trends und Maintenance-Wirkung wichtiger sind als weitere Momentaufnahmen, ist die alternative nächste Welle die Umsetzung des bereits freigegebenen SC-023-Pakets. Diese Alternative hat höheren Zeitreihennutzen, benötigt aber Persistenz, Retention, Scheduler, Größenbudget und einen eigenen Berechtigungsbetrieb.
+Wenn Historie, Trends und Maintenance-Wirkung wichtiger sind als weitere Momentaufnahmen, ist die alternative nächste Welle der Ausbau des bereits abgenommenen ersten SC-023-Slice um zusätzliche Sammler und Rollups. Dieser Ausbau hat höheren Zeitreihennutzen und benötigt weiterhin einen expliziten Persistenz-, Retention-, Scheduler-, Größenbudget- und Berechtigungsbetrieb.
 
 ## Gemeinsame Abnahmekriterien
 

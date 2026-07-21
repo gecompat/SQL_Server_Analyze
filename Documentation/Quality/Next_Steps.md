@@ -107,7 +107,8 @@ Vorgemerkte zukünftige Architekturhärtung:
 
 Nächste Arbeitsschritte nach der abgeschlossenen Welle 2:
 
-1. Den implementierten SC-023-Performance-Counter-Slice auf dem konkreten Commit durch die separate SQL-Server-2019-/2022-/2025-Matrix abnehmen und erst danach auf `IMPLEMENTED_ACTIONS_GATE` setzen.
-2. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen feature-positive Windows-/Azure-MI-Targets, kontrollierte Lastfälle und externe Restore-/Host-Nachweise.
-3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
-4. Danach `DIAG-003` bis `DIAG-005` und die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
+Der erste SC-023-Performance-Counter-Slice ist auf dem konkreten Implementierungscommit durch die separate SQL-Server-2019-/2022-/2025-Matrix als `IMPLEMENTED_ACTIONS_GATE` abgenommen.
+
+1. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen feature-positive Windows-/Azure-MI-Targets, kontrollierte Lastfälle und externe Restore-/Host-Nachweise.
+2. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
+3. Danach `DIAG-003` bis `DIAG-005` und die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.

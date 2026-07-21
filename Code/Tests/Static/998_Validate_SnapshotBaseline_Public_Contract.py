@@ -317,7 +317,7 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
                 errors.append("PUBLIC_CONTRACT_ID")
             if public_contract.get("contractVersion") != 1:
                 errors.append("PUBLIC_CONTRACT_VERSION")
-            if public_contract.get("releaseState") != "IMPLEMENTED_PENDING_ACTIONS_GATE":
+            if public_contract.get("releaseState") != "IMPLEMENTED_ACTIONS_GATE":
                 errors.append("PUBLIC_CONTRACT_RELEASE_STATE")
             if public_contract.get("targetSqlServerMajorVersions") != [15, 16, 17]:
                 errors.append("PUBLIC_CONTRACT_TARGET_VERSIONS")
@@ -592,7 +592,7 @@ GO
             {
                 "contractId": "SC-023-PUBLIC-V1",
                 "contractVersion": 1,
-                "releaseState": "IMPLEMENTED_PENDING_ACTIONS_GATE",
+                "releaseState": "IMPLEMENTED_ACTIONS_GATE",
                 "targetSqlServerMajorVersions": [15, 16, 17],
                 "packageBoundary": {
                     "frameworkInstaller": FRAMEWORK_INSTALLER.as_posix(),

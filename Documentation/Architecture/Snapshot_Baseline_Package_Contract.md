@@ -2,7 +2,7 @@
 
 Stand: 2026-07-21
 Backlog: SC-023
-Status: `IMPLEMENTED_PENDING_ACTIONS_GATE`
+Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Ziel und Paketgrenze
 
@@ -129,8 +129,9 @@ Die Snapshot-Datenbank darf reale Laufzeitdaten vollständig enthalten und nach 
 
 ## Nächster Schritt
 
-Der erste vertikale Slice ist implementiert. Vor dem Status
-`IMPLEMENTED_ACTIONS_GATE` muss der konkrete Commit die separate synthetische
-SQL-Server-2019-/2022-/2025-Matrix vollständig bestehen. Danach folgt entweder
-ein weiterer leichter Sammler mit laufinterner Quellenwiederverwendung oder der
+Der erste vertikale Slice ist implementiert und auf Commit
+`c4e2ee6114b7de9cae9236d390a93a81e78599e9` durch die separate
+[synthetische SQL-Server-2019-/2022-/2025-Matrix](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29860488769)
+als `IMPLEMENTED_ACTIONS_GATE` abgenommen. Danach folgt entweder ein weiterer
+leichter Sammler mit laufinterner Quellenwiederverwendung oder der
 Rollupvertrag; Export und Agentjob-DDL bleiben getrennte Entscheidungen.

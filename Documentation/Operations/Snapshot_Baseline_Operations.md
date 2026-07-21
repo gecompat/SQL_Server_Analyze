@@ -1,7 +1,7 @@
 # Betrieb des optionalen Snapshot-/Baseline-Pakets SC-023
 
 Stand: 2026-07-21
-Status: `IMPLEMENTED_PENDING_ACTIONS_GATE`
+Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Paketgrenze
 
@@ -103,4 +103,4 @@ Der Purge arbeitet child-first und begrenzt jede Löschschleife durch `PurgeBatc
 
 ## Abnahmegrenze
 
-Der Repositoryvertrag prüft Installertrennung, Idempotenz, Collection, Reset-Epoche, optionale Payloadverlustfreiheit, Retention, Größenstopp und Zwei-Session-Concurrency synthetisch auf SQL Server 2019, 2022 und 2025. Bis die Actions-Matrix auf dem konkreten Commit grün ist, bleibt der Status `IMPLEMENTED_PENDING_ACTIONS_GATE`.
+Der Repositoryvertrag prüft Installertrennung, Idempotenz, Collection, Reset-Epoche, optionale Payloadverlustfreiheit, Retention, Größenstopp und Zwei-Session-Concurrency synthetisch auf SQL Server 2019, 2022 und 2025. Commit `c4e2ee6114b7de9cae9236d390a93a81e78599e9` hat diese [Drei-Versionen-Matrix](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29860488769) bestanden; der erste Slice steht deshalb auf `IMPLEMENTED_ACTIONS_GATE`.
