@@ -28,6 +28,22 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
+      - name: Correct generated Showplan inventory column order
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('.bootstrap/fix_execution_plan_compile_and_contracts.py')
+          text = path.read_text(encoding='utf-8')
+          old = """    'USP_ShowplanAnalysis', 'findings', '1', '1', '2',
+              '#ShowplanAnalysis_Findings', '1', showplan_schema,"""
+          new = """    'USP_ShowplanAnalysis', 'findings', '1', '1', '1',
+              '#ShowplanAnalysis_Findings', '2', showplan_schema,"""
+          if old not in text:
+              raise RuntimeError('Showplan result-set row template was not found.')
+          path.write_text(text.replace(old, new, 1), encoding='utf-8', newline='\n')
+          PY
+
       - name: Apply SQL and contract fixes
         shell: bash
         run: python3 ./.bootstrap/fix_execution_plan_compile_and_contracts.py
@@ -37,26 +53,10 @@ jobs:
         run: python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
 
       - name: Validate procedure documentation
-        id: documentation
-        continue-on-error: true
         shell: pwsh
-        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 *> ${{ runner.temp }}/execution-plan-documentation.log
-
-      - name: Upload documentation diagnostic
-        if: ${{ steps.documentation.outcome == 'failure' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: execution-plan-documentation-fix-log
-          path: ${{ runner.temp }}/execution-plan-documentation.log
-          retention-days: 1
-
-      - name: Fail on documentation error
-        if: ${{ steps.documentation.outcome == 'failure' }}
-        shell: bash
-        run: exit 1
+        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
       - name: Commit SQL and contract fixes
-        if: ${{ steps.documentation.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
