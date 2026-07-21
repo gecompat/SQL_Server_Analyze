@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ShowplanAnalysis
-Version      : 2.0.0
+Version      : 2.0.1
 Stand        : 2026-07-21
 Typ          : Stored Procedure
 Zweck        : Selektiert begrenzt Plan-Cache-Kandidaten und verwendet je
@@ -62,7 +62,7 @@ BEGIN
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @Deadline datetime2(3)=DATEADD(SECOND,@MaxDurationSeconds,@Now);
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @ConsoleRequested bit=CONVERT(bit,CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END);
+    DECLARE @ConsoleResultRequested bit=CONVERT(bit,CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END);
     DECLARE @TableRequested bit=CONVERT(bit,CASE WHEN @OutputMode='TABLE' THEN 1 ELSE 0 END);
     DECLARE @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'GEZIELT'))));
     DECLARE @Source varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@PlanQuelle,'AUTO'))));
@@ -165,7 +165,7 @@ BEGIN
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultTablesJson ist ausschließlich mit TABLE zulässig.';
     END;
-    IF @ConsoleRequested=1 SET @OutputMode='NONE';
+    IF @ConsoleResultRequested=1 SET @OutputMode='NONE';
 
     DECLARE @TextMode varchar(8),@TextValue nvarchar(4000),@TextFlags varchar(8),@TextValid bit;
     SELECT @TextMode=[PatternMode],@TextValue=[PatternValue],@TextFlags=[RegexFlags],@TextValid=[IsValid]
@@ -386,7 +386,7 @@ OPTION (RECOMPILE,MAXDOP 1);';
         SELECT TOP (@ResultLimit) * FROM [#ShowplanAnalysis_Findings]
         ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[CandidateId],[FindingOrdinal];
     END;
-    IF @ConsoleRequested=1
+    IF @ConsoleResultRequested=1
         EXEC [monitor].[InternalEmitConsoleResult]
               @SourceTable=N'#ShowplanAnalysis_Findings',@ResultLabel=N'Showplan Finding'
             , @EmptyMessage=N'Keine Showplan-Findings im gewählten Scope'
