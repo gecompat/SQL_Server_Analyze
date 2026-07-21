@@ -129,9 +129,17 @@ jobs:
         run: |
           set -euo pipefail
           log="$RUNNER_TEMP/sc023-database-setup-${{ matrix.version }}.log"
-          if ! docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" "${{ matrix.container }}" \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -d master -Q \
-            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET RECOVERY SIMPLE; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET READ_COMMITTED_SNAPSHOT ON;" >"$log" 2>&1; then
+          database_ready=0
+          for attempt in $(seq 1 10); do
+            if docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" "${{ matrix.container }}" \
+              "$SQLCMD_PATH" -S localhost -U sa -C -b -d master -Q \
+              "IF DB_ID(N'SQLServerAnalyzeTest') IS NULL EXEC(N'CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS'); ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; IF DB_ID(N'SQLServerAnalyzeSnapshotTest') IS NULL EXEC(N'CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE SQL_Latin1_General_CP1_CS_AS'); ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET RECOVERY SIMPLE; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET READ_COMMITTED_SNAPSHOT ON;" >"$log" 2>&1; then
+              database_ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$database_ready" -ne 1 ]; then
             echo 'SC023_DATABASE_SETUP_FAILED'
             grep -E -A 1 'Msg [0-9]+|Sqlcmd: Error|Error:' "$log" | tail -n 40 || true
             exit 1

@@ -101,21 +101,9 @@ IF EXISTS (SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[MetricSample
     THROW 53730,N'SC023_NOT_DUE_READ_SOURCE',1;
 
 CREATE TABLE [#SnapshotBaselineRuntimeContract_RunOutput]
-(
-      [CaptureRunId] bigint NULL,[TargetDatabaseName] sysname NULL,[CollectorCode] varchar(64) NULL
-    , [SchedulerType] varchar(16) NULL,[StartedAtUtc] datetime2(3) NULL,[EndedAtUtc] datetime2(3) NULL
-    , [SqlServerStartTimeUtc] datetime2(3) NULL,[ResetEpochId] uniqueidentifier NULL
-    , [StatusCode] varchar(40) NOT NULL,[IsPartial] bit NOT NULL
-    , [MetricSampleCount] bigint NOT NULL,[PayloadCount] bigint NOT NULL
-    , [ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
-);
+([Seed] bit NULL);
 CREATE TABLE [#SnapshotBaselineRuntimeContract_ModuleOutput]
-(
-      [ModuleStatusId] bigint NULL,[CaptureRunId] bigint NULL,[ModuleName] sysname NOT NULL
-    , [CollectionTimeUtc] datetime2(3) NOT NULL,[StatusCode] varchar(40) NOT NULL
-    , [IsPartial] bit NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
-    , [EvidenceLimit] nvarchar(1000) NULL
-);
+([Seed] bit NULL);
 DECLARE @TableRun bigint;
 EXEC [monitor].[USP_RunSnapshotCollectionCycle]
      @SchedulerType='EXTERNAL',@RunEvenIfNotDue=0,@ResultSetArt='TABLE',
@@ -188,16 +176,7 @@ IF NOT EXISTS (SELECT 1 FROM [SQLServerAnalyzeSnapshotTest].[snapshot].[CaptureR
     THROW 53735,N'SC023_UNEXPIRED_RUN_DELETED',1;
 
 CREATE TABLE [#SnapshotBaselineRuntimeContract_PurgeOutput]
-(
-      [PurgeRunId] bigint NULL,[TargetDatabaseName] sysname NULL
-    , [StartedAtUtc] datetime2(3) NULL,[EndedAtUtc] datetime2(3) NULL
-    , [StatusCode] varchar(40) NOT NULL,[BatchesExecuted] int NOT NULL
-    , [MetricRowsDeleted] bigint NOT NULL,[PayloadRowsDeleted] bigint NOT NULL
-    , [ModuleRowsDeleted] bigint NOT NULL,[CaptureRunsDeleted] bigint NOT NULL
-    , [ScopeRowsDeleted] bigint NOT NULL,[UsedDataMbBefore] decimal(19,3) NULL
-    , [UsedDataMbAfter] decimal(19,3) NULL,[SoftBudgetMb] bigint NULL
-    , [BudgetExceeded] bit NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
-);
+([Seed] bit NULL);
 DECLARE @TablePurgeRun bigint;
 EXEC [monitor].[USP_PurgeSnapshotData]
      @MaxBatches=2,@Force=0,@ResultSetArt='TABLE',
