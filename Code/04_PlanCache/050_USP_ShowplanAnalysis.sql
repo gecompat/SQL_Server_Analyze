@@ -4,370 +4,403 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ShowplanAnalysis
-Version      : 1.2.0
-Stand        : 2026-07-19
+Version      : 2.0.1
+Stand        : 2026-07-21
 Typ          : Stored Procedure
-Zweck        : Analysiert gezielt oder explizit breit Showplan-XML auf Statements,
-               Warnings, Missing Indexes, Objekte, Statistiken, Operatoren,
-               Cardinality-Abweichungen und Memory Grants.
+Zweck        : Selektiert begrenzt Plan-Cache-Kandidaten und verwendet je
+               eindeutigem Planhandle die zentrale Execution-Plan-Analyse.
+               Mehrere dm_exec_query_stats-Statements desselben Batchplans
+               führen nicht mehr zu wiederholtem XML-Shredding.
 SQL-Version  : SQL Server 2019 oder neuer.
-Datenquellen : sys.dm_exec_query_stats, sys.dm_exec_sql_text,
-               sys.dm_exec_plan_attributes, sys.dm_exec_query_plan,
-               sys.dm_exec_query_plan_stats und Showplan-XML.
-Parameter    : @PlanHandle, @QueryHash, @QueryPlanHash, @DatabaseNames,
-               @TextPattern, @AnalyseModus, @PlanQuelle, @Sortierung,
-               @MinExecutionCount, @MaxAnalyseobjekte, @MaxDurationSeconds,
-               @MaxZeilen, @ParentQueryStatsSnapshot, @PrintMeldungen, @Hilfe.
-Resultsets   : 1. Modulstatus. 2. Status je Plan. 3. Statements. 4. Findings.
-               5. Missing-Index-Spalten. 6. verwendete Objekte.
-               7. verwendete Statistiken. 8. Operatoren.
-               9. Cardinality. 10. Memory-Grant-Informationen. 11. Parameterwerte.
-Berechtigung : VIEW SERVER STATE bzw. SQL Server 2022+ VIEW SERVER PERFORMANCE STATE.
-Eigenlast    : XML wird erst nach Kandidatenselektion planweise geladen und
-               geschreddert. VOLL oder mehr als 20 Pläne prüft PLAN_CACHE_DEEP
-               und SHOWPLAN_XML_DEEP; dies gilt ebenfalls ab mehr als 20 Plänen.
-               Zeit- und Mengenlimits sind hart vorgesehen.
-Locking      : Keine Benutzerobjekte.
-Partial      : Jeder Plan wird isoliert verarbeitet. Timeout, Cache-Eviction,
-               deaktivierte Last-Actual-Plan-Erfassung und XML-Fehler lassen
-               andere Pläne und Resultsets bestehen.
-Beispiele    : EXEC monitor.USP_ShowplanAnalysis @PlanHandle=0x...;
-               EXEC monitor.USP_ShowplanAnalysis @QueryHash=0x...,@PlanQuelle='AUTO';
-               EXEC monitor.USP_ShowplanAnalysis @AnalyseModus='VOLL',@MaxAnalyseobjekte=500,@MaxDurationSeconds=60;
-               EXEC monitor.USP_ShowplanAnalysis @Hilfe=1;
-Änderungen   : 1.2.0 - Kandidatenauswahl kann den laufgebundenen Query-Stats-
-                         Snapshot des Orchestrators wiederverwenden.
-               1.1.0 - Deep-Gate ab mehr als 20 Plänen und sichere
-               Vorberechnung der Runtime-Counter vor Aggregation.
-               1.0.0 - Erstfassung Phase 3.
+Resultsets   : CONSOLE/TABLE: findings. RAW: moduleStatus, planStatus, findings.
+Berechtigung : VIEW SERVER STATE bzw. SQL Server 2022+
+               VIEW SERVER PERFORMANCE STATE für Plan-Cache-Quellen.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ShowplanAnalysis]
-      @PlanHandle          varbinary(64)  = NULL
-    , @QueryHash           binary(8)      = NULL
-    , @QueryPlanHash       binary(8)      = NULL
-    , @DatabaseNames       nvarchar(max)  = NULL
-    , @SystemdatenbankenEinbeziehen bit   = 0
-    , @DatabaseNamePattern nvarchar(4000) = NULL
-    , @HighImpactConfirmed              bit            = 0
-    , @TextPattern         nvarchar(4000) = NULL
-    , @AnalyseModus        varchar(16)    = 'GEZIELT'
-    , @PlanQuelle          varchar(16)    = 'AUTO'
-    , @Sortierung         varchar(32)    = 'CPU_TOTAL'
-    , @MinExecutionCount   bigint         = 1
-    , @MaxAnalyseobjekte  int            = 20
-    , @MaxDurationSeconds  int            = 30
-    , @MaxZeilen          int            = 50000
-    , @ParentQueryStatsSnapshot bit       = 0
-    , @ResultSetArt        varchar(16)    = 'CONSOLE'
-    , @ResultTablesJson               nvarchar(max) = NULL
-    , @JsonErzeugen        bit            = 0
-    , @Json                 nvarchar(max)  = NULL OUTPUT
-    , @PrintMeldungen      bit            = 1
-    , @Hilfe               bit            = 0
+      @PlanHandle                    varbinary(64)   = NULL
+    , @QueryHash                     binary(8)       = NULL
+    , @QueryPlanHash                 binary(8)       = NULL
+    , @DatabaseNames                 nvarchar(max)   = NULL
+    , @SystemdatenbankenEinbeziehen  bit             = 0
+    , @DatabaseNamePattern           nvarchar(4000)  = NULL
+    , @HighImpactConfirmed           bit             = 0
+    , @TextPattern                   nvarchar(4000)  = NULL
+    , @AnalyseModus                  varchar(16)      = 'GEZIELT'
+    , @PlanQuelle                    varchar(16)      = 'AUTO'
+    , @Sortierung                    varchar(32)      = 'CPU_TOTAL'
+    , @MinExecutionCount             bigint          = 1
+    , @MaxAnalyseobjekte             int             = 20
+    , @MaxDurationSeconds            int             = 30
+    , @MaxZeilen                     int             = 50000
+    , @ParentQueryStatsSnapshot      bit             = 0
+    , @WorkloadProfil                varchar(32)      = 'AUTO'
+    , @MinSchweregrad                varchar(16)      = 'INFO'
+    , @MitThreadRuntime              bit             = 0
+    , @MitSqlText                    bit             = 0
+    , @StatistikEvidenzModus         varchar(16)      = 'PLAN_ONLY'
+    , @HistogrammModus               varchar(16)      = 'NONE'
+    , @MetadatenQuellenmodus         varchar(16)      = 'EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt       bit             = 0
+    , @EvidenzDatenschutzModus       varchar(24)      = 'DERIVED_ONLY'
+    , @IdentifierDatenschutzModus    varchar(16)      = 'RAW'
+    , @SensitiveDataConfirmed        bit             = 0
+    , @MaxStatistiken                int             = 100
+    , @MaxHistogrammSchritte         int             = 20000
+    , @ResultSetArt                  varchar(16)      = 'CONSOLE'
+    , @ResultTablesJson              nvarchar(max)   = NULL
+    , @JsonErzeugen                  bit             = 0
+    , @Json                          nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen                bit             = 1
+    , @Hilfe                         bit             = 0
 AS
 BEGIN
     SET NOCOUNT ON;
     SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
-    DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
-    IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'findings',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
-    IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
-    DECLARE @EffectiveMaxAnalyseobjekte bigint = CASE WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxAnalyseobjekte) END;
-    DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
-    DECLARE @MonitorPrintMessage nvarchar(2048);
-    SET @AnalyseModus=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'GEZIELT'))));
-    SET @PlanQuelle=UPPER(LTRIM(RTRIM(COALESCE(@PlanQuelle,'AUTO'))));
-    SET @Sortierung=UPPER(LTRIM(RTRIM(COALESCE(@Sortierung,'CPU_TOTAL'))));
+
+    DECLARE @Now datetime2(3)=SYSUTCDATETIME();
+    DECLARE @Deadline datetime2(3)=DATEADD(SECOND,@MaxDurationSeconds,@Now);
+    DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @ConsoleResultRequested bit=CONVERT(bit,CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END);
+    DECLARE @TableRequested bit=CONVERT(bit,CASE WHEN @OutputMode='TABLE' THEN 1 ELSE 0 END);
+    DECLARE @Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus,'GEZIELT'))));
+    DECLARE @Source varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@PlanQuelle,'AUTO'))));
+    DECLARE @Order varchar(32)=UPPER(LTRIM(RTRIM(COALESCE(@Sortierung,'CPU_TOTAL'))));
+    DECLARE @Limit bigint=CASE WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0 THEN CONVERT(bigint,9223372036854775807) ELSE @MaxAnalyseobjekte END;
+    DECLARE @ResultLimit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE @MaxZeilen END;
+    DECLARE @StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
+    DECLARE @ProcessedPlans int=0,@CandidateCount int=0;
+    DECLARE @CrossDatabaseRequested bit=0;
+    DECLARE @ChildAnalyseTiefe varchar(16)=CASE WHEN @Mode='VOLL' THEN 'FULL' ELSE 'STANDARD' END;
+    DECLARE @ChildMaxRows int=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 50000 WHEN @MaxZeilen>2147483647 THEN 2147483647 ELSE @MaxZeilen END;
+
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ShowplanAnalysis';
-        PRINT N'@PlanHandle, @QueryHash, @QueryPlanHash, @DatabaseNames, @TextPattern: Selektoren. GEZIELT benötigt mindestens einen Selektor.';
-        PRINT N'@AnalyseModus GEZIELT oder VOLL. VOLL und mehr als 20 Pläne prüfen PLAN_CACHE_DEEP und SHOWPLAN_XML_DEEP.';
-        PRINT N'@PlanQuelle AUTO, COMPILE oder LAST_ACTUAL. AUTO versucht Last Actual und fällt je Plan auf Compile zurück.';
-        PRINT N'@Sortierung CPU_TOTAL, ELAPSED_TOTAL, READS_TOTAL, EXECUTIONS, SPILLS_TOTAL, GRANT_MAX, LAST_EXECUTION.';
-        PRINT N'@MinExecutionCount bigint=1; @MaxAnalyseobjekte int=20 und @MaxZeilen int=50000: positive Werte begrenzen, NULL/0 = unbegrenzt; @MaxDurationSeconds int=30 (1..3600).';
-        PRINT N'@ParentQueryStatsSnapshot ist nur für die laufinterne Wiederverwendung durch USP_PlanCacheAnalysis bestimmt; 0 liest frisch.';
-        PRINT N'@PrintMeldungen bit=1; @Hilfe bit=0. Das Framework aktiviert LAST_QUERY_PLAN_STATS niemals.';
-        PRINT N'Findings sind Diagnosehinweise und keine automatischen Tuning- oder Indexbefehle.';
+        PRINT N'Selektiert eindeutige Planhandles und verwendet monitor.USP_ExecutionPlanAnalysis als zentrale Analyse-Engine.';
+        PRINT N'@AnalyseModus GEZIELT|VOLL. GEZIELT benötigt mindestens einen Plan-, Hash-, Datenbank- oder Textselektor.';
+        PRINT N'@PlanQuelle AUTO|COMPILE|LAST_ACTUAL; @Sortierung CPU_TOTAL|ELAPSED_TOTAL|READS_TOTAL|EXECUTIONS|SPILLS_TOTAL|GRANT_MAX|LAST_EXECUTION.';
+        PRINT N'@MaxAnalyseobjekte und @MaxZeilen: positive Grenze; NULL/0 unbegrenzt. Breite Pfade benötigen High-Impact-Bestätigung.';
+        PRINT N'Die Datenschutz-, Statistik- und Histogrammparameter entsprechen USP_ExecutionPlanAnalysis.';
         RETURN;
     END;
 
-    DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@Deadline datetime2(3),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,
-            @RowCount bigint=0,@ProcessedPlans int=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,
-            @PlanCacheAllowed bit=1,@ShowplanAllowed bit=1,@CrossDatabaseRequested bit=0,@OrderExpression nvarchar(300),@Sql nvarchar(max),
-            @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
-
-    CREATE TABLE [#ShowplanAnalysis_Candidate]
+    CREATE TABLE [#ShowplanAnalysis_TableMap]([ResultName] sysname NOT NULL,[TargetTable] sysname NOT NULL);
+    CREATE TABLE [#ShowplanAnalysis_DatabaseCandidates]
     (
-        [CandidateId] int IDENTITY(1,1) PRIMARY KEY,[PlanHandle] varbinary(64) NOT NULL,[SqlHandle] varbinary(64) NULL,
-        [StatementStartOffset] int NULL,[StatementEndOffset] int NULL,[QueryHash] binary(8) NULL,[QueryPlanHash] binary(8) NULL,
-        [ExecutionCount] bigint NULL,[TotalWorkerTime] bigint NULL,[TotalElapsedTime] bigint NULL,[TotalLogicalReads] bigint NULL,
-        [TotalSpills] bigint NULL,[MaxGrantKb] bigint NULL,[LastExecutionTime] datetime NULL
+          [DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname NOT NULL
+        , [StateDesc] nvarchar(60) NULL,[UserAccessDesc] nvarchar(60) NULL,[IsReadOnly] bit NULL
+        , [CompatibilityLevel] tinyint NULL,[CollationName] sysname NULL,[RecoveryModelDesc] nvarchar(60) NULL
+        , [IsSystemDatabase] bit NULL,[RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#ShowplanAnalysis_PlanStatus]([CandidateId] int,[PlanHandle] varbinary(64),[PlanSource] varchar(16),[StatusCode] varchar(40),[ParseDurationMs] bigint,[StatementCount] bigint,[FindingCount] bigint,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL);
-    CREATE TABLE [#ShowplanAnalysis_Statements]([CandidateId] int,[StatementId] int IDENTITY(1,1),[StatementType] nvarchar(128),[StatementText] nvarchar(max),[StatementSubTreeCost] decimal(38,8) NULL,[CardinalityEstimationModelVersion] int NULL,[OptimizationLevel] nvarchar(128),[EarlyAbortReason] nvarchar(256),[RetrievedFromCache] bit NULL,[StatementQueryHash] nvarchar(130),[StatementQueryPlanHash] nvarchar(130));
-    CREATE TABLE [#ShowplanAnalysis_Findings]([CandidateId] int,[FindingType] varchar(64),[Severity] varchar(16),[NodeId] int NULL,[PhysicalOp] nvarchar(128) NULL,[LogicalOp] nvarchar(128) NULL,[Detail] nvarchar(4000) NULL);
-    CREATE TABLE [#ShowplanAnalysis_MissingIndexes]([CandidateId] int,[Impact] decimal(19,4) NULL,[DatabaseName] nvarchar(256),[SchemaName] nvarchar(256),[TableName] nvarchar(256),[ColumnGroupUsage] nvarchar(60),[ColumnName] nvarchar(256),[ColumnId] int NULL);
-    CREATE TABLE [#ShowplanAnalysis_Objects]([CandidateId] int,[DatabaseName] nvarchar(256),[SchemaName] nvarchar(256),[TableName] nvarchar(256),[IndexName] nvarchar(256),[AliasName] nvarchar(256),[Storage] nvarchar(128));
-    CREATE TABLE [#ShowplanAnalysis_Statistics]([CandidateId] int,[DatabaseName] nvarchar(256),[SchemaName] nvarchar(256),[TableName] nvarchar(256),[StatisticsName] nvarchar(256),[LastUpdate] datetime NULL,[ModificationCount] bigint NULL,[SamplingPercent] decimal(19,4) NULL);
-    CREATE TABLE [#ShowplanAnalysis_Operators]([CandidateId] int,[NodeId] int NULL,[PhysicalOp] nvarchar(128),[LogicalOp] nvarchar(128),[EstimateRows] decimal(38,4) NULL,[EstimatedRowsRead] decimal(38,4) NULL,[EstimatedTotalSubtreeCost] decimal(38,8) NULL,[Parallel] bit NULL,[EstimateRebinds] decimal(38,4) NULL,[EstimateRewinds] decimal(38,4) NULL);
-    CREATE TABLE [#ShowplanAnalysis_Cardinality]([CandidateId] int,[NodeId] int NULL,[PhysicalOp] nvarchar(128),[LogicalOp] nvarchar(128),[EstimateRows] decimal(38,4) NULL,[ActualRows] decimal(38,4) NULL,[EstimateRowsRead] decimal(38,4) NULL,[ActualRowsRead] decimal(38,4) NULL,[ActualExecutions] bigint NULL,[ActualToEstimatedRatio] decimal(38,6) NULL);
-    CREATE TABLE [#ShowplanAnalysis_Memory]([CandidateId] int,[SerialRequiredMemoryKb] bigint NULL,[SerialDesiredMemoryKb] bigint NULL,[RequiredMemoryKb] bigint NULL,[DesiredMemoryKb] bigint NULL,[RequestedMemoryKb] bigint NULL,[GrantWaitTimeMs] bigint NULL,[GrantedMemoryKb] bigint NULL,[MaxUsedMemoryKb] bigint NULL,[MaxQueryMemoryKb] bigint NULL,[LastRequestedMemoryKb] bigint NULL,[IsMemoryGrantFeedbackAdjusted] nvarchar(128));
-    CREATE TABLE [#ShowplanAnalysis_Parameters]([CandidateId] int,[ParameterName] nvarchar(256),[ParameterDataType] nvarchar(256),[CompiledValue] nvarchar(4000),[RuntimeValue] nvarchar(4000));
+    CREATE TABLE [#ShowplanAnalysis_DatabaseCandidateWarnings]
+    (
+          [RequestedName] sysname NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NULL
+    );
+    CREATE TABLE [#ShowplanAnalysis_Candidates]
+    (
+          [CandidateId] int IDENTITY(1,1) NOT NULL PRIMARY KEY
+        , [PlanHandle] varbinary(64) NOT NULL UNIQUE
+        , [ExecutionCount] bigint NULL,[TotalWorkerTime] bigint NULL,[TotalElapsedTime] bigint NULL
+        , [TotalLogicalReads] bigint NULL,[TotalSpills] bigint NULL,[MaxGrantKb] bigint NULL
+        , [LastExecutionTime] datetime NULL
+    );
+    CREATE TABLE [#ShowplanAnalysis_PlanStatus]
+    (
+          [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[StatusCode] varchar(40) NOT NULL
+        , [IsPartial] bit NOT NULL,[PlanSource] varchar(24) NULL,[RuntimeCounterScope] varchar(32) NULL
+        , [FindingCount] int NOT NULL,[ParseDurationMs] bigint NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
+    );
+    CREATE TABLE [#ShowplanAnalysis_Findings]
+    (
+          [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[FindingOrdinal] bigint NOT NULL
+        , [FindingCode] varchar(100) NOT NULL,[Category] varchar(40) NOT NULL,[Severity] varchar(16) NOT NULL
+        , [Confidence] varchar(32) NOT NULL,[EvidenceLevel] varchar(40) NOT NULL
+        , [StatementOrdinal] int NULL,[StatementId] int NULL,[NodeId] int NULL
+        , [PhysicalOp] nvarchar(128) NULL,[LogicalOp] nvarchar(128) NULL
+        , [MetricName] varchar(80) NULL,[MetricValue] decimal(38,4) NULL,[MetricUnit] nvarchar(40) NULL
+        , [ThresholdValue] decimal(38,4) NULL,[ThresholdSource] varchar(80) NULL,[WorkloadProfile] varchar(32) NOT NULL
+        , [Summary] nvarchar(1000) NOT NULL,[Evidence] nvarchar(2000) NOT NULL,[EvidenceLimit] nvarchar(2000) NOT NULL
+        , [CounterEvidence] nvarchar(1000) NULL,[RecommendedNextCheck] nvarchar(1000) NOT NULL
+    );
+    CREATE TABLE [#ShowplanAnalysis_Analyses]
+    (
+          [CandidateId] int NOT NULL PRIMARY KEY
+        , [AnalysisJson] nvarchar(max) NULL
+    );
+    CREATE TABLE [#ShowplanAnalysis_ModuleStatus]
+    (
+          [ModuleName] sysname NOT NULL,[CollectionTimeUtc] datetime2(3) NOT NULL,[StatusCode] varchar(40) NOT NULL
+        , [IsPartial] bit NOT NULL,[CandidateCount] int NOT NULL,[ProcessedPlanCount] int NOT NULL
+        , [FindingCount] bigint NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
+    );
 
-    IF @AnalyseModus NOT IN('GEZIELT','VOLL') OR @PlanQuelle NOT IN('AUTO','COMPILE','LAST_ACTUAL') OR @MaxAnalyseobjekte<0 OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @MaxZeilen<0 OR @MinExecutionCount<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @ParentQueryStatsSnapshot IS NULL
-    BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Modus oder Grenzwert.';END;
-    IF @StatusCode='AVAILABLE' AND @AnalyseModus='GEZIELT' AND @PlanHandle IS NULL AND @QueryHash IS NULL AND @QueryPlanHash IS NULL AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NULL AND @DatabaseNamePattern IS NULL AND @TextPattern IS NULL
-    BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'GEZIELT benötigt mindestens einen Selektor.';END;
-    IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @EffectiveMaxAnalyseobjekte>20)
+    IF @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
+       OR @Mode NOT IN ('GEZIELT','VOLL') OR @Source NOT IN ('AUTO','COMPILE','LAST_ACTUAL')
+       OR @Order NOT IN ('CPU_TOTAL','ELAPSED_TOTAL','READS_TOTAL','EXECUTIONS','SPILLS_TOTAL','GRANT_MAX','LAST_EXECUTION')
+       OR @MaxAnalyseobjekte<0 OR @MaxZeilen<0 OR @MinExecutionCount<0
+       OR @MaxDurationSeconds NOT BETWEEN 1 AND 3600 OR @ParentQueryStatsSnapshot NOT IN (0,1)
+       OR @JsonErzeugen NOT IN (0,1)
     BEGIN
-        EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
-        IF @StatusCode='AVAILABLE'
-            EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='SHOWPLAN_XML_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
+        SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'Ungültiger Modus-, Grenzwert-, Quell- oder Ausgabeparameter.';
     END;
-    IF @StatusCode='AVAILABLE' SET @Deadline=DATEADD(SECOND,@MaxDurationSeconds,@CollectionTimeUtc);
-    CREATE TABLE [#ShowplanAnalysis_DatabaseCandidates]([DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
-    CREATE TABLE [#ShowplanAnalysis_DatabaseCandidateWarnings]([RequestedName] sysname NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NULL);
-    DECLARE @TextMode varchar(8),@TextValue nvarchar(4000),@TextRegexFlags varchar(8),@TextPatternValid bit;
-    SELECT @TextMode=[PatternMode],@TextValue=[PatternValue],@TextRegexFlags=[RegexFlags],@TextPatternValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@TextPattern);
-    IF @StatusCode='AVAILABLE' AND @TextPatternValid=0 BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'@TextPattern ist ungültig.';END;
-    IF @StatusCode='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='SHOWPLAN_TARGETED',@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ShowplanAnalysis_DatabaseCandidates',@WarningTable=N'#ShowplanAnalysis_DatabaseCandidateWarnings';
-    IF @StatusCode='AVAILABLE' AND @TextMode IN('REGEX','REGEXI') AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17 OR NOT EXISTS(SELECT 1 FROM [master].[sys].[databases] AS [d] WITH(NOLOCK) WHERE [d].[database_id]=DB_ID() AND [d].[compatibility_level]>=170)) BEGIN SET @StatusCode='UNAVAILABLE_FEATURE';SET @ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';END;
+    IF @StatusCode='AVAILABLE' AND @Mode='GEZIELT' AND @PlanHandle IS NULL AND @QueryHash IS NULL AND @QueryPlanHash IS NULL
+       AND NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NULL
+       AND @DatabaseNamePattern IS NULL AND @TextPattern IS NULL
+    BEGIN
+        SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'GEZIELT benötigt mindestens einen Selektor.';
+    END;
 
-    SET @OrderExpression=CASE @Sortierung WHEN 'CPU_TOTAL' THEN N'[qs].[total_worker_time]' WHEN 'ELAPSED_TOTAL' THEN N'[qs].[total_elapsed_time]'
-        WHEN 'READS_TOTAL' THEN N'[qs].[total_logical_reads]' WHEN 'EXECUTIONS' THEN N'[qs].[execution_count]' WHEN 'SPILLS_TOTAL' THEN N'[qs].[total_spills]'
-        WHEN 'GRANT_MAX' THEN N'[qs].[max_grant_kb]' WHEN 'LAST_EXECUTION' THEN N'DATEDIFF_BIG(MILLISECOND,''20000101'',[qs].[last_execution_time])' ELSE NULL END;
-    IF @StatusCode='AVAILABLE' AND @OrderExpression IS NULL BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Unbekannter @Sortierung-Wert.';END;
+    IF @StatusCode='AVAILABLE' AND @TableRequested=1
+    BEGIN
+        EXEC [monitor].[InternalPrepareResultTables]
+              @ResultTablesJson=@ResultTablesJson
+            , @AllowedResultNames=N'findings'
+            , @MappingTable=N'#ShowplanAnalysis_TableMap'
+            , @ThrowOnError=1;
+        SET @OutputMode='NONE';
+    END
+    ELSE IF @StatusCode='AVAILABLE' AND @ResultTablesJson IS NOT NULL
+    BEGIN
+        SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@ResultTablesJson ist ausschließlich mit TABLE zulässig.';
+    END;
+    IF @ConsoleResultRequested=1 SET @OutputMode='NONE';
+
+    DECLARE @TextMode varchar(8),@TextValue nvarchar(4000),@TextFlags varchar(8),@TextValid bit;
+    SELECT @TextMode=[PatternMode],@TextValue=[PatternValue],@TextFlags=[RegexFlags],@TextValid=[IsValid]
+    FROM [monitor].[TVF_ParsePattern](@TextPattern);
+    IF @StatusCode='AVAILABLE' AND @TextValid=0
+        SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'@TextPattern ist ungültig.';
+    IF @StatusCode='AVAILABLE' AND @TextMode IN ('REGEX','REGEXI')
+       AND (TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<17
+            OR NOT EXISTS(SELECT 1 FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id]=DB_ID() AND [compatibility_level]>=170))
+        SELECT @StatusCode='UNAVAILABLE_FEATURE',@IsPartial=1,@ErrorMessage=N'Regex benötigt SQL Server 2025 und Compatibility Level 170.';
+
+    IF @StatusCode='AVAILABLE' AND @PlanHandle IS NULL
+    BEGIN
+        EXEC [monitor].[USP_PrepareDatabaseCandidates]
+              @DatabaseNames=@DatabaseNames
+            , @SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen
+            , @DatabaseNamePattern=@DatabaseNamePattern
+            , @HighImpactConfirmed=@HighImpactConfirmed
+            , @AnalysisClass='PLAN_CACHE_CURRENT'
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT
+            , @CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT
+            , @CandidateTable=N'#ShowplanAnalysis_DatabaseCandidates'
+            , @WarningTable=N'#ShowplanAnalysis_DatabaseCandidateWarnings';
+    END;
+
+    IF @StatusCode='AVAILABLE' AND (@Mode='VOLL' OR @Limit>20)
+    BEGIN
+        EXEC [monitor].[InternalCheckAnalysisPath]
+              @AnalysisClass='PLAN_CACHE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed
+            , @StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
+        IF @StatusCode='AVAILABLE'
+            EXEC [monitor].[InternalCheckAnalysisPath]
+                  @AnalysisClass='SHOWPLAN_XML_DEEP',@HighImpactConfirmed=@HighImpactConfirmed
+                , @StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
+    END;
 
     IF @StatusCode='AVAILABLE'
     BEGIN TRY
         IF @PlanHandle IS NOT NULL
-            INSERT [#ShowplanAnalysis_Candidate]([PlanHandle]) VALUES(@PlanHandle);
+            INSERT [#ShowplanAnalysis_Candidates]([PlanHandle]) VALUES(@PlanHandle);
         ELSE
         BEGIN
-            SET @Sql=N'INSERT [#ShowplanAnalysis_Candidate]([PlanHandle],[SqlHandle],[StatementStartOffset],[StatementEndOffset],[QueryHash],[QueryPlanHash],[ExecutionCount],[TotalWorkerTime],[TotalElapsedTime],[TotalLogicalReads],[TotalSpills],[MaxGrantKb],[LastExecutionTime])
-            SELECT TOP(@TopRows) [qs].[plan_handle],[qs].[sql_handle],[qs].[statement_start_offset],[qs].[statement_end_offset],[qs].[query_hash],[qs].[query_plan_hash],[qs].[execution_count],[qs].[total_worker_time],[qs].[total_elapsed_time],[qs].[total_logical_reads],[qs].[total_spills],[qs].[max_grant_kb],[qs].[last_execution_time]
-            FROM '+CASE WHEN @ParentQueryStatsSnapshot=1
-                        THEN N'[#PlanCacheAnalysis_QueryStatsSnapshot] AS [qs] '
-                        ELSE N'[sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK) ' END;
-            SET @Sql+=N'OUTER APPLY (SELECT TOP (1) TRY_CONVERT(int, [value]) AS [dbid] FROM [sys].[dm_exec_plan_attributes]([qs].[plan_handle]) WHERE [attribute] = ''dbid'') AS [pa] ';
-            IF @TextMode IS NOT NULL SET @Sql+=N'OUTER APPLY [sys].[dm_exec_sql_text]([qs].[sql_handle]) AS [st] ';
-            SET @Sql+=N'WHERE [qs].[execution_count] >= @MinExec AND (@QH IS NULL OR [qs].[query_hash] = @QH) AND (@QPH IS NULL OR [qs].[query_plan_hash] = @QPH) ';
-            SET @Sql+=N'AND EXISTS(SELECT 1 FROM [#ShowplanAnalysis_DatabaseCandidates] AS [dc] WHERE [dc].[DatabaseId]=[pa].[dbid]) ';
-            IF @TextMode='LIKE' SET @Sql+=N'AND [st].[text] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @TextValue COLLATE SQL_Latin1_General_CP1_CS_AS ';
-            IF @TextMode IN('REGEX','REGEXI') SET @Sql+=N'AND REGEXP_LIKE([st].[text],@TextValue,@TextFlags) ';
-            SET @Sql+=N'ORDER BY '+@OrderExpression+N' DESC, [qs].[last_execution_time] DESC OPTION (RECOMPILE, MAXDOP 1);';
-            EXEC [sys].[sp_executesql] @Sql,N'@TopRows bigint,@MinExec bigint,@QH binary(8),@QPH binary(8),@TextValue nvarchar(4000),@TextFlags varchar(8)',@TopRows=@EffectiveMaxAnalyseobjekte,@MinExec=@MinExecutionCount,@QH=@QueryHash,@QPH=@QueryPlanHash,@TextValue=@TextValue,@TextFlags=@TextRegexFlags;
+            DECLARE @OrderExpression nvarchar(300)=CASE @Order
+                WHEN 'CPU_TOTAL' THEN N'SUM([qs].[total_worker_time])'
+                WHEN 'ELAPSED_TOTAL' THEN N'SUM([qs].[total_elapsed_time])'
+                WHEN 'READS_TOTAL' THEN N'SUM([qs].[total_logical_reads])'
+                WHEN 'EXECUTIONS' THEN N'SUM([qs].[execution_count])'
+                WHEN 'SPILLS_TOTAL' THEN N'SUM([qs].[total_spills])'
+                WHEN 'GRANT_MAX' THEN N'MAX([qs].[max_grant_kb])'
+                WHEN 'LAST_EXECUTION' THEN N'DATEDIFF_BIG(MILLISECOND,''20000101'',MAX([qs].[last_execution_time]))' END;
+            DECLARE @Sql nvarchar(max)=N'
+INSERT [#ShowplanAnalysis_Candidates]
+([PlanHandle],[ExecutionCount],[TotalWorkerTime],[TotalElapsedTime],[TotalLogicalReads],[TotalSpills],[MaxGrantKb],[LastExecutionTime])
+SELECT TOP (@TopRows)
+      [qs].[plan_handle],SUM([qs].[execution_count]),SUM([qs].[total_worker_time])
+    , SUM([qs].[total_elapsed_time]),SUM([qs].[total_logical_reads]),SUM([qs].[total_spills])
+    , MAX([qs].[max_grant_kb]),MAX([qs].[last_execution_time])
+FROM '+CASE WHEN @ParentQueryStatsSnapshot=1 THEN N'[#PlanCacheAnalysis_QueryStatsSnapshot]' ELSE N'[sys].[dm_exec_query_stats]' END+N' AS [qs] WITH (NOLOCK)
+OUTER APPLY (SELECT TOP (1) TRY_CONVERT(int,[value]) [dbid] FROM [sys].[dm_exec_plan_attributes]([qs].[plan_handle]) WHERE [attribute]=''dbid'') AS [pa] '
+                +CASE WHEN @TextMode IS NOT NULL THEN N'OUTER APPLY [sys].[dm_exec_sql_text]([qs].[sql_handle]) AS [st] ' ELSE N'' END+N'
+WHERE [qs].[execution_count]>=@MinExec
+  AND (@QH IS NULL OR [qs].[query_hash]=@QH)
+  AND (@QPH IS NULL OR [qs].[query_plan_hash]=@QPH)
+  AND EXISTS(SELECT 1 FROM [#ShowplanAnalysis_DatabaseCandidates] AS [dc] WHERE [dc].[DatabaseId]=[pa].[dbid]) '
+                +CASE WHEN @TextMode='LIKE' THEN N'AND [st].[text] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @TextValue COLLATE SQL_Latin1_General_CP1_CS_AS '
+                      WHEN @TextMode IN ('REGEX','REGEXI') THEN N'AND REGEXP_LIKE([st].[text],@TextValue,@TextFlags) ' ELSE N'' END+N'
+GROUP BY [qs].[plan_handle]
+ORDER BY '+@OrderExpression+N' DESC,MAX([qs].[last_execution_time]) DESC
+OPTION (RECOMPILE,MAXDOP 1);';
+            EXEC [sys].[sp_executesql]
+                  @Sql
+                , N'@TopRows bigint,@MinExec bigint,@QH binary(8),@QPH binary(8),@TextValue nvarchar(4000),@TextFlags varchar(8)'
+                , @TopRows=@Limit,@MinExec=@MinExecutionCount,@QH=@QueryHash,@QPH=@QueryPlanHash
+                , @TextValue=@TextValue,@TextFlags=@TextFlags;
         END;
-        SELECT @RowCount=COUNT_BIG(*) FROM [#ShowplanAnalysis_Candidate];SET @Detail=CASE WHEN @RowCount=0 THEN N'Keine passenden Plankandidaten.' ELSE N'Plankandidaten vorselektiert; XML wird planweise verarbeitet.' END;
+        SELECT @CandidateCount=COUNT(*) FROM [#ShowplanAnalysis_Candidates];
     END TRY
     BEGIN CATCH
-        SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();SET @IsPartial=1;
-        SET @StatusCode=CASE WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END;
+        SELECT @StatusCode=CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+               @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
     END CATCH;
 
-    DECLARE @CandidateId int,@CurrentPlanHandle varbinary(64),@PlanXml xml,@PlanSource varchar(16),@Started datetime2(3),@PlanError int,@PlanErrorMessage nvarchar(2048),@StatementCount bigint,@FindingCount bigint;
-    DECLARE PlanCursor CURSOR LOCAL FAST_FORWARD FOR SELECT [CandidateId],[PlanHandle] FROM [#ShowplanAnalysis_Candidate] ORDER BY [CandidateId];
+    DECLARE @CandidateId int,@CurrentPlanHandle varbinary(64),@ChildJson nvarchar(max),@ChildStatus varchar(40),@ChildPartial bit,@ChildError int,@ChildMessage nvarchar(2048),@Started datetime2(3);
+    DECLARE [PlanCursor] CURSOR LOCAL FAST_FORWARD FOR
+        SELECT [CandidateId],[PlanHandle] FROM [#ShowplanAnalysis_Candidates] ORDER BY [CandidateId];
     IF @StatusCode='AVAILABLE'
     BEGIN
-        OPEN PlanCursor;FETCH NEXT FROM PlanCursor INTO @CandidateId,@CurrentPlanHandle;
+        OPEN [PlanCursor];
+        FETCH NEXT FROM [PlanCursor] INTO @CandidateId,@CurrentPlanHandle;
         WHILE @@FETCH_STATUS=0
         BEGIN
-            IF SYSUTCDATETIME()>=@Deadline OR (SELECT COUNT_BIG(*) FROM [#ShowplanAnalysis_Findings])>=@EffectiveMaxZeilen
-            BEGIN SET @StatusCode='PARTIAL';SET @IsPartial=1;SET @Detail=N'Zeit- oder Ergebnismengenbudget erreicht; verbleibende Pläne wurden nicht verarbeitet.';BREAK;END;
-            SELECT @PlanXml=NULL,@PlanSource=NULL,@Started=SYSUTCDATETIME(),@PlanError=NULL,@PlanErrorMessage=NULL,@StatementCount=0,@FindingCount=0;
+            IF SYSUTCDATETIME()>=@Deadline
+            BEGIN
+                SELECT @StatusCode='PARTIAL',@IsPartial=1,@ErrorMessage=N'Das Zeitbudget wurde erreicht; weitere Pläne wurden nicht analysiert.';
+                BREAK;
+            END;
+            SELECT @Started=SYSUTCDATETIME(),@ChildJson=NULL,@ChildStatus=NULL,@ChildPartial=NULL,@ChildError=NULL,@ChildMessage=NULL;
             BEGIN TRY
-                IF @PlanQuelle IN('AUTO','LAST_ACTUAL')
+                EXEC [monitor].[USP_ExecutionPlanAnalysis]
+                      @PlanHandle=@CurrentPlanHandle
+                    , @PlanQuelle=@Source
+                    , @StatementQueryHash=@QueryHash
+                    , @StatementQueryPlanHash=@QueryPlanHash
+                    , @AnalyseTiefe=@ChildAnalyseTiefe
+                    , @WorkloadProfil=@WorkloadProfil
+                    , @MinSchweregrad=@MinSchweregrad
+                    , @MitThreadRuntime=@MitThreadRuntime
+                    , @MitSqlText=@MitSqlText
+                    , @StatistikEvidenzModus=@StatistikEvidenzModus
+                    , @HistogrammModus=@HistogrammModus
+                    , @MetadatenQuellenmodus=@MetadatenQuellenmodus
+                    , @QuellumgebungBestaetigt=@QuellumgebungBestaetigt
+                    , @EvidenzDatenschutzModus=@EvidenzDatenschutzModus
+                    , @IdentifierDatenschutzModus=@IdentifierDatenschutzModus
+                    , @SensitiveDataConfirmed=@SensitiveDataConfirmed
+                    , @MaxOperatoren=@ChildMaxRows
+                    , @MaxFindings=@ChildMaxRows
+                    , @MaxStatistiken=@MaxStatistiken
+                    , @MaxHistogrammSchritte=@MaxHistogrammSchritte
+                    , @MaxDurationSeconds=@MaxDurationSeconds
+                    , @HighImpactConfirmed=@HighImpactConfirmed
+                    , @ResultSetArt='NONE'
+                    , @JsonErzeugen=1
+                    , @Json=@ChildJson OUTPUT
+                    , @PrintMeldungen=0
+                    , @StatusCodeOut=@ChildStatus OUTPUT
+                    , @IsPartialOut=@ChildPartial OUTPUT
+                    , @ErrorNumberOut=@ChildError OUTPUT
+                    , @ErrorMessageOut=@ChildMessage OUTPUT;
+
+                DECLARE @ChildPlanSource varchar(24)=NULL,@ChildRuntimeScope varchar(32)=NULL,@ChildFindingCount int=0;
+                IF ISJSON(@ChildJson)=1
                 BEGIN
-                    SELECT @PlanXml=[query_plan] FROM sys.dm_exec_query_plan_stats(@CurrentPlanHandle);
-                    IF @PlanXml IS NOT NULL SET @PlanSource='LAST_ACTUAL';
+                    SELECT
+                          @ChildPlanSource=JSON_VALUE(@ChildJson,N'$.meta.planSource')
+                        , @ChildRuntimeScope=JSON_VALUE(@ChildJson,N'$.meta.runtimeCounterScope')
+                        , @ChildFindingCount=(SELECT COUNT(*) FROM OPENJSON(@ChildJson,N'$.findings'));
                 END;
-                IF @PlanXml IS NULL AND @PlanQuelle IN('AUTO','COMPILE')
+
+                INSERT [#ShowplanAnalysis_PlanStatus]
+                SELECT @CandidateId,@CurrentPlanHandle,COALESCE(@ChildStatus,'STATUS_UNAVAILABLE'),COALESCE(@ChildPartial,1),
+                       @ChildPlanSource,@ChildRuntimeScope,@ChildFindingCount,
+                       DATEDIFF_BIG(MILLISECOND,@Started,SYSUTCDATETIME()),@ChildError,@ChildMessage;
+                INSERT [#ShowplanAnalysis_Analyses] VALUES(@CandidateId,CASE WHEN ISJSON(@ChildJson)=1 THEN @ChildJson END);
+
+                IF ISJSON(@ChildJson)=1
                 BEGIN
-                    SELECT @PlanXml=[query_plan] FROM sys.dm_exec_query_plan(@CurrentPlanHandle);
-                    IF @PlanXml IS NOT NULL SET @PlanSource='COMPILE';
+                    INSERT [#ShowplanAnalysis_Findings]
+                    (
+                          [CandidateId],[PlanHandle],[FindingOrdinal],[FindingCode],[Category],[Severity],[Confidence],[EvidenceLevel]
+                        , [StatementOrdinal],[StatementId],[NodeId],[PhysicalOp],[LogicalOp],[MetricName],[MetricValue],[MetricUnit]
+                        , [ThresholdValue],[ThresholdSource],[WorkloadProfile],[Summary],[Evidence],[EvidenceLimit],[CounterEvidence],[RecommendedNextCheck]
+                    )
+                    SELECT @CandidateId,@CurrentPlanHandle,[FindingOrdinal],[FindingCode],[Category],[Severity],[Confidence],[EvidenceLevel]
+                         , [StatementOrdinal],[StatementId],[NodeId],[PhysicalOp],[LogicalOp],[MetricName],[MetricValue],[MetricUnit]
+                         , [ThresholdValue],[ThresholdSource],[WorkloadProfile],[Summary],[Evidence],[EvidenceLimit],[CounterEvidence],[RecommendedNextCheck]
+                    FROM OPENJSON(@ChildJson,N'$.findings')
+                    WITH
+                    (
+                          [FindingOrdinal] bigint N'$.FindingOrdinal',[FindingCode] varchar(100) N'$.FindingCode'
+                        , [Category] varchar(40) N'$.Category',[Severity] varchar(16) N'$.Severity'
+                        , [Confidence] varchar(32) N'$.Confidence',[EvidenceLevel] varchar(40) N'$.EvidenceLevel'
+                        , [StatementOrdinal] int N'$.StatementOrdinal',[StatementId] int N'$.StatementId',[NodeId] int N'$.NodeId'
+                        , [PhysicalOp] nvarchar(128) N'$.PhysicalOp',[LogicalOp] nvarchar(128) N'$.LogicalOp'
+                        , [MetricName] varchar(80) N'$.MetricName',[MetricValue] decimal(38,4) N'$.MetricValue'
+                        , [MetricUnit] nvarchar(40) N'$.MetricUnit',[ThresholdValue] decimal(38,4) N'$.ThresholdValue'
+                        , [ThresholdSource] varchar(80) N'$.ThresholdSource',[WorkloadProfile] varchar(32) N'$.WorkloadProfile'
+                        , [Summary] nvarchar(1000) N'$.Summary',[Evidence] nvarchar(2000) N'$.Evidence'
+                        , [EvidenceLimit] nvarchar(2000) N'$.EvidenceLimit',[CounterEvidence] nvarchar(1000) N'$.CounterEvidence'
+                        , [RecommendedNextCheck] nvarchar(1000) N'$.RecommendedNextCheck'
+                    );
                 END;
-                IF @PlanXml IS NULL
+                SET @ProcessedPlans+=1;
+                IF COALESCE(@ChildStatus,'STATUS_UNAVAILABLE')<>'AVAILABLE'
                 BEGIN
-                    INSERT [#ShowplanAnalysis_PlanStatus] VALUES(@CandidateId,@CurrentPlanHandle,COALESCE(@PlanSource,@PlanQuelle),'UNAVAILABLE_OBJECT',DATEDIFF_BIG([MILLISECOND],@Started,SYSUTCDATETIME()),0,0,NULL,N'Plan nicht verfügbar, evictet, nicht cachebar, Last Actual deaktiviert oder XML-Tiefenlimit erreicht.');
-                END
-                ELSE
-                BEGIN
-                    INSERT [#ShowplanAnalysis_Statements]([CandidateId],[StatementType],[StatementText],[StatementSubTreeCost],[CardinalityEstimationModelVersion],[OptimizationLevel],[EarlyAbortReason],[RetrievedFromCache],[StatementQueryHash],[StatementQueryPlanHash])
-                    SELECT @CandidateId,NULLIF(s.value('string((@StatementType)[1])','nvarchar(128)'),N''),NULLIF(s.value('string((@StatementText)[1])','nvarchar(max)'),N''),
-                           TRY_CONVERT(decimal(38,8),NULLIF(s.value('string((@StatementSubTreeCost)[1])','nvarchar(100)'),N'')),
-                           TRY_CONVERT([int],NULLIF(s.value('string((@CardinalityEstimationModelVersion)[1])','nvarchar(100)'),N'')),
-                           NULLIF(s.value('string((@StatementOptmLevel)[1])','nvarchar(128)'),N''),NULLIF(s.value('string((@StatementOptmEarlyAbortReason)[1])','nvarchar(256)'),N''),
-                           TRY_CONVERT([bit],NULLIF(s.value('string((@RetrievedFromCache)[1])','nvarchar(20)'),N'')),NULLIF(s.value('string((@QueryHash)[1])','nvarchar(130)'),N''),NULLIF(s.value('string((@QueryPlanHash)[1])','nvarchar(130)'),N'')
-                    FROM @PlanXml.nodes('//*[local-name(.)="StmtSimple"]') AS [X]([s]);
-
-                    INSERT [#ShowplanAnalysis_Operators]([CandidateId],[NodeId],[PhysicalOp],[LogicalOp],[EstimateRows],[EstimatedRowsRead],[EstimatedTotalSubtreeCost],[Parallel],[EstimateRebinds],[EstimateRewinds])
-                    SELECT @CandidateId,TRY_CONVERT([int],NULLIF(r.value('string((@NodeId)[1])','nvarchar(50)'),N'')),NULLIF(r.value('string((@PhysicalOp)[1])','nvarchar(128)'),N''),NULLIF(r.value('string((@LogicalOp)[1])','nvarchar(128)'),N''),
-                           TRY_CONVERT(decimal(38,4),NULLIF(r.value('string((@EstimateRows)[1])','nvarchar(100)'),N'')),TRY_CONVERT(decimal(38,4),NULLIF(r.value('string((@EstimatedRowsRead)[1])','nvarchar(100)'),N'')),
-                           TRY_CONVERT(decimal(38,8),NULLIF(r.value('string((@EstimatedTotalSubtreeCost)[1])','nvarchar(100)'),N'')),TRY_CONVERT([bit],NULLIF(r.value('string((@Parallel)[1])','nvarchar(20)'),N'')),
-                           TRY_CONVERT(decimal(38,4),NULLIF(r.value('string((@EstimateRebinds)[1])','nvarchar(100)'),N'')),TRY_CONVERT(decimal(38,4),NULLIF(r.value('string((@EstimateRewinds)[1])','nvarchar(100)'),N''))
-                    FROM @PlanXml.nodes('//*[local-name(.)="RelOp"]') AS [X]([r]);
-
-                    INSERT [#ShowplanAnalysis_Cardinality]([CandidateId],[NodeId],[PhysicalOp],[LogicalOp],[EstimateRows],[ActualRows],[EstimateRowsRead],[ActualRowsRead],[ActualExecutions],[ActualToEstimatedRatio])
-                    SELECT @CandidateId,[v].[NodeId],[v].[PhysicalOp],[v].[LogicalOp],[v].[EstimateRows],
-                           SUM([av].[ActualRows]),
-                           [v].[EstimateRowsRead],
-                           SUM([av].[ActualRowsRead]),
-                           SUM([av].[ActualExecutions]),NULL
-                    FROM @PlanXml.nodes('//*[local-name(.)="RelOp"]') AS [X]([r])
-                    CROSS APPLY (VALUES
-                    (
-                        TRY_CONVERT([int],NULLIF(r.value('string((@NodeId)[1])','nvarchar(50)'),N'')),
-                        NULLIF(r.value('string((@PhysicalOp)[1])','nvarchar(128)'),N''),
-                        NULLIF(r.value('string((@LogicalOp)[1])','nvarchar(128)'),N''),
-                        TRY_CONVERT(decimal(38,4),NULLIF(r.value('string((@EstimateRows)[1])','nvarchar(100)'),N'')),
-                        TRY_CONVERT(decimal(38,4),NULLIF(r.value('string((@EstimatedRowsRead)[1])','nvarchar(100)'),N''))
-                    )) AS [v]([NodeId],[PhysicalOp],[LogicalOp],[EstimateRows],[EstimateRowsRead])
-                    OUTER APPLY r.nodes('./*[local-name(.)="RunTimeInformation"]/*[local-name(.)="RunTimeCountersPerThread"]') AS [A]([a])
-                    OUTER APPLY
-                    (
-                        VALUES
-                        (
-                            TRY_CONVERT(decimal(38,4),NULLIF(a.value('string((@ActualRows)[1])','nvarchar(100)'),N'')),
-                            TRY_CONVERT(decimal(38,4),NULLIF(a.value('string((@ActualRowsRead)[1])','nvarchar(100)'),N'')),
-                            TRY_CONVERT([bigint],NULLIF(a.value('string((@ActualExecutions)[1])','nvarchar(100)'),N''))
-                        )
-                    ) AS [av]([ActualRows],[ActualRowsRead],[ActualExecutions])
-                    GROUP BY [v].[NodeId],[v].[PhysicalOp],[v].[LogicalOp],[v].[EstimateRows],[v].[EstimateRowsRead];
-                    UPDATE [#ShowplanAnalysis_Cardinality] SET [ActualToEstimatedRatio]=[ActualRows]/NULLIF([EstimateRows],0) WHERE [CandidateId]=@CandidateId;
-
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'NO_JOIN_PREDICATE','HIGH',TRY_CONVERT([int],NULLIF(r.value('string((@NodeId)[1])','nvarchar(50)'),N'')),r.value('string((@PhysicalOp)[1])','nvarchar(128)'),r.value('string((@LogicalOp)[1])','nvarchar(128)'),N'Warnings/@NoJoinPredicate=1'
-                    FROM @PlanXml.nodes('//*[local-name(.)="RelOp"]') AS [X]([r]) WHERE r.exist('./*[local-name(.)="Warnings"][@NoJoinPredicate="1"]')=1;
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'IMPLICIT_CONVERSION','MEDIUM',NULL,NULL,NULL,LEFT(NULLIF(s.value('string((@ScalarString)[1])','nvarchar(4000)'),N''),4000)
-                    FROM @PlanXml.nodes('//*[local-name(.)="ScalarOperator"][contains(@ScalarString,"CONVERT_IMPLICIT")]') AS [X]([s]);
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'PLAN_AFFECTING_CONVERT','HIGH',NULL,NULL,NULL,LEFT(CONCAT(N'Issue=',p.value('string((@ConvertIssue)[1])','nvarchar(256)'),N'; Expression=',p.value('string((@Expression)[1])','nvarchar(3500)')),4000)
-                    FROM @PlanXml.nodes('//*[local-name(.)="PlanAffectingConvert"]') AS [X]([p]);
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'SPILL','HIGH',NULL,NULL,NULL,LEFT(CONCAT(N'Element=',sp.value('local-name(.)','nvarchar(128)'),N'; SpillLevel=',sp.value('string((@SpillLevel)[1])','nvarchar(100)'),N'; SpilledDataSize=',sp.value('string((@SpilledDataSize)[1])','nvarchar(100)')),4000)
-                    FROM @PlanXml.nodes('//*[local-name(.)="SpillToTempDb" or local-name(.)="HashSpillDetails" or local-name(.)="SortSpillDetails"]') AS [X]([sp]);
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'COLUMN_WITHOUT_STATISTICS','HIGH',NULL,NULL,NULL,LEFT(CONCAT(c.value('string((@Database)[1])','nvarchar(256)'),N'.',c.value('string((@Schema)[1])','nvarchar(256)'),N'.',c.value('string((@Table)[1])','nvarchar(256)'),N'.',c.value('string((@Column)[1])','nvarchar(256)')),4000)
-                    FROM @PlanXml.nodes('//*[local-name(.)="ColumnsWithNoStatistics"]/*[local-name(.)="ColumnReference"]') AS [X]([c]);
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'UNMATCHED_INDEX','MEDIUM',NULL,NULL,NULL,N'Plan enthält UnmatchedIndexes-Warnung.' FROM @PlanXml.nodes('//*[local-name(.)="UnmatchedIndexes"]') AS [X]([u]);
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'OPTIMIZER_EARLY_ABORT','MEDIUM',NULL,NULL,NULL,s.value('string((@StatementOptmEarlyAbortReason)[1])','nvarchar(4000)')
-                    FROM @PlanXml.nodes('//*[local-name(.)="StmtSimple"][@StatementOptmEarlyAbortReason]') AS [X]([s]);
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'KEY_LOOKUP','MEDIUM',TRY_CONVERT([int],NULLIF(r.value('string((@NodeId)[1])','nvarchar(50)'),N'')),r.value('string((@PhysicalOp)[1])','nvarchar(128)'),r.value('string((@LogicalOp)[1])','nvarchar(128)'),N'Key Lookup bzw. Lookup=1 im Plan.'
-                    FROM @PlanXml.nodes('//*[local-name(.)="RelOp"]') AS [X]([r]) WHERE r.value('string((@PhysicalOp)[1])','nvarchar(128)')='Key Lookup' OR r.exist('.//*[@Lookup="1"]')=1;
-                    INSERT [#ShowplanAnalysis_Findings] SELECT @CandidateId,'TABLE_SCAN','INFO',TRY_CONVERT([int],NULLIF(r.value('string((@NodeId)[1])','nvarchar(50)'),N'')),r.value('string((@PhysicalOp)[1])','nvarchar(128)'),r.value('string((@LogicalOp)[1])','nvarchar(128)'),N'Table Scan; fachlich und mengenbezogen bewerten.'
-                    FROM @PlanXml.nodes('//*[local-name(.)="RelOp"][@PhysicalOp="Table Scan"]') AS [X]([r]);
-
-                    INSERT [#ShowplanAnalysis_MissingIndexes]([CandidateId],[Impact],[DatabaseName],[SchemaName],[TableName],[ColumnGroupUsage],[ColumnName],[ColumnId])
-                    SELECT @CandidateId,TRY_CONVERT(decimal(19,4),NULLIF(g.value('string((@Impact)[1])','nvarchar(100)'),N'')),mi.value('string((@Database)[1])','nvarchar(256)'),mi.value('string((@Schema)[1])','nvarchar(256)'),mi.value('string((@Table)[1])','nvarchar(256)'),
-                           cg.value('string((@Usage)[1])','nvarchar(60)'),c.value('string((@Name)[1])','nvarchar(256)'),TRY_CONVERT([int],NULLIF(c.value('string((@ColumnId)[1])','nvarchar(50)'),N''))
-                    FROM @PlanXml.nodes('//*[local-name(.)="MissingIndexGroup"]') AS [G]([g])
-                    CROSS APPLY g.nodes('./*[local-name(.)="MissingIndex"]') AS [MI]([mi])
-                    CROSS APPLY mi.nodes('./*[local-name(.)="ColumnGroup"]') AS [CG]([cg])
-                    CROSS APPLY cg.nodes('./*[local-name(.)="Column"]') AS [C]([c]);
-
-                    INSERT [#ShowplanAnalysis_Objects]
-                    SELECT DISTINCT @CandidateId,o.value('string((@Database)[1])','nvarchar(256)'),o.value('string((@Schema)[1])','nvarchar(256)'),o.value('string((@Table)[1])','nvarchar(256)'),o.value('string((@Index)[1])','nvarchar(256)'),o.value('string((@Alias)[1])','nvarchar(256)'),o.value('string((@Storage)[1])','nvarchar(128)')
-                    FROM @PlanXml.nodes('//*[local-name(.)="Object"]') AS [X]([o]);
-
-                    INSERT [#ShowplanAnalysis_Statistics]
-                    SELECT DISTINCT @CandidateId,s.value('string((@Database)[1])','nvarchar(256)'),s.value('string((@Schema)[1])','nvarchar(256)'),s.value('string((@Table)[1])','nvarchar(256)'),s.value('string((@Statistics)[1])','nvarchar(256)'),
-                           TRY_CONVERT([datetime],NULLIF(s.value('string((@LastUpdate)[1])','nvarchar(100)'),N'')),TRY_CONVERT([bigint],NULLIF(s.value('string((@ModificationCount)[1])','nvarchar(100)'),N'')),TRY_CONVERT(decimal(19,4),NULLIF(s.value('string((@SamplingPercent)[1])','nvarchar(100)'),N''))
-                    FROM @PlanXml.nodes('//*[local-name(.)="OptimizerStatsUsage"]/*[local-name(.)="StatisticsInfo"]') AS [X]([s]);
-
-                    INSERT [#ShowplanAnalysis_Memory]
-                    SELECT @CandidateId,TRY_CONVERT([bigint],NULLIF(m.value('string((@SerialRequiredMemory)[1])','nvarchar(100)'),N'')),TRY_CONVERT([bigint],NULLIF(m.value('string((@SerialDesiredMemory)[1])','nvarchar(100)'),N'')),
-                           TRY_CONVERT([bigint],NULLIF(m.value('string((@RequiredMemory)[1])','nvarchar(100)'),N'')),TRY_CONVERT([bigint],NULLIF(m.value('string((@DesiredMemory)[1])','nvarchar(100)'),N'')),
-                           TRY_CONVERT([bigint],NULLIF(m.value('string((@RequestedMemory)[1])','nvarchar(100)'),N'')),TRY_CONVERT([bigint],NULLIF(m.value('string((@GrantWaitTime)[1])','nvarchar(100)'),N'')),
-                           TRY_CONVERT([bigint],NULLIF(m.value('string((@GrantedMemory)[1])','nvarchar(100)'),N'')),TRY_CONVERT([bigint],NULLIF(m.value('string((@MaxUsedMemory)[1])','nvarchar(100)'),N'')),
-                           TRY_CONVERT([bigint],NULLIF(m.value('string((@MaxQueryMemory)[1])','nvarchar(100)'),N'')),TRY_CONVERT([bigint],NULLIF(m.value('string((@LastRequestedMemory)[1])','nvarchar(100)'),N'')),m.value('string((@IsMemoryGrantFeedbackAdjusted)[1])','nvarchar(128)')
-                    FROM @PlanXml.nodes('//*[local-name(.)="MemoryGrantInfo"]') AS [X]([m]);
-
-                    INSERT [#ShowplanAnalysis_Parameters]
-                    SELECT @CandidateId,p.value('string((@Column)[1])','nvarchar(256)'),p.value('string((@ParameterDataType)[1])','nvarchar(256)'),
-                           p.value('string((@ParameterCompiledValue)[1])','nvarchar(4000)'),p.value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)')
-                    FROM @PlanXml.nodes('//*[local-name(.)="ParameterList"]/*[local-name(.)="ColumnReference"]') AS [X]([p]);
-
-                    INSERT [#ShowplanAnalysis_Findings]
-                    SELECT @CandidateId,'CARDINALITY_MISESTIMATE',CASE WHEN [ActualToEstimatedRatio]>=100 OR [ActualToEstimatedRatio]<=0.01 THEN 'HIGH' ELSE 'MEDIUM' END,[NodeId],[PhysicalOp],[LogicalOp],
-                           CONCAT(N'Actual/Estimated=',CONVERT(nvarchar(100),[ActualToEstimatedRatio]),N'; Estimated=',CONVERT(nvarchar(100),[EstimateRows]),N'; Actual=',CONVERT(nvarchar(100),[ActualRows]))
-                    FROM [#ShowplanAnalysis_Cardinality] WHERE [CandidateId]=@CandidateId AND [ActualToEstimatedRatio] IS NOT NULL AND ([ActualToEstimatedRatio]>=10 OR [ActualToEstimatedRatio]<=0.1);
-                    INSERT [#ShowplanAnalysis_Findings]
-                    SELECT @CandidateId,'MEMORY_GRANT_OVER','MEDIUM',NULL,NULL,NULL,CONCAT(N'GrantedKB=',[GrantedMemoryKb],N'; MaxUsedKB=',[MaxUsedMemoryKb])
-                    FROM [#ShowplanAnalysis_Memory] WHERE [CandidateId]=@CandidateId AND [GrantedMemoryKb]>=10240 AND [GrantedMemoryKb]>4*NULLIF([MaxUsedMemoryKb],0);
-                    INSERT [#ShowplanAnalysis_Findings]
-                    SELECT @CandidateId,'MEMORY_GRANT_PRESSURE','HIGH',NULL,NULL,NULL,CONCAT(N'GrantedKB=',[GrantedMemoryKb],N'; MaxUsedKB=',[MaxUsedMemoryKb],N'; GrantWaitMs=',[GrantWaitTimeMs])
-                    FROM [#ShowplanAnalysis_Memory] WHERE [CandidateId]=@CandidateId AND (([MaxUsedMemoryKb] IS NOT NULL AND [GrantedMemoryKb] IS NOT NULL AND [MaxUsedMemoryKb]>=[GrantedMemoryKb]) OR COALESCE([GrantWaitTimeMs],0)>0);
-
-                    SELECT @StatementCount=COUNT_BIG(*) FROM [#ShowplanAnalysis_Statements] WHERE [CandidateId]=@CandidateId;
-                    SELECT @FindingCount=COUNT_BIG(*) FROM [#ShowplanAnalysis_Findings] WHERE [CandidateId]=@CandidateId;
-                    INSERT [#ShowplanAnalysis_PlanStatus] VALUES(@CandidateId,@CurrentPlanHandle,@PlanSource,'AVAILABLE',DATEDIFF_BIG([MILLISECOND],@Started,SYSUTCDATETIME()),@StatementCount,@FindingCount,NULL,NULL);
-                    SET @ProcessedPlans+=1;
+                    SET @IsPartial=1;
+                    IF @StatusCode='AVAILABLE' SET @StatusCode='PARTIAL';
                 END;
             END TRY
             BEGIN CATCH
-                SET @PlanError=ERROR_NUMBER();SET @PlanErrorMessage=ERROR_MESSAGE();SET @IsPartial=1;SET @StatusCode='PARTIAL';
-                INSERT [#ShowplanAnalysis_PlanStatus] VALUES(@CandidateId,@CurrentPlanHandle,COALESCE(@PlanSource,@PlanQuelle),'ERROR_HANDLED',DATEDIFF_BIG([MILLISECOND],@Started,SYSUTCDATETIME()),0,0,@PlanError,@PlanErrorMessage);
+                INSERT [#ShowplanAnalysis_PlanStatus]
+                VALUES(@CandidateId,@CurrentPlanHandle,'ERROR_HANDLED',1,NULL,NULL,0,DATEDIFF_BIG(MILLISECOND,@Started,SYSUTCDATETIME()),ERROR_NUMBER(),ERROR_MESSAGE());
+                SET @IsPartial=1;
+                IF @StatusCode='AVAILABLE' SET @StatusCode='PARTIAL';
+                IF @ErrorNumber IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER(); SET @ErrorMessage=ERROR_MESSAGE(); END;
             END CATCH;
-            FETCH NEXT FROM PlanCursor INTO @CandidateId,@CurrentPlanHandle;
+            IF (SELECT COUNT_BIG(*) FROM [#ShowplanAnalysis_Findings])>=@ResultLimit
+            BEGIN
+                SELECT @StatusCode='PARTIAL',@IsPartial=1,@ErrorMessage=N'Das Findinglimit wurde erreicht; weitere Pläne wurden nicht analysiert.';
+                BREAK;
+            END;
+            FETCH NEXT FROM [PlanCursor] INTO @CandidateId,@CurrentPlanHandle;
         END;
-        CLOSE PlanCursor;DEALLOCATE PlanCursor;
+        CLOSE [PlanCursor];DEALLOCATE [PlanCursor];
     END;
 
-    IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE') BEGIN
-    SET @MonitorPrintMessage = FORMATMESSAGE(N'WARNUNG USP_ShowplanAnalysis: %s - %s', @StatusCode, COALESCE(@ErrorMessage,@Detail,N''));
-    RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
-END;
-    IF @ResultSetArtNormalisiert<>'NONE'
-    BEGIN
-        SELECT N'USP_ShowplanAnalysis' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@RowCount [CandidateCount],@ProcessedPlans [ProcessedPlanCount],@RequiredPermission [RequiredPermission],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
-        IF @ResultSetArtNormalisiert='RAW'
-        BEGIN
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Statements] ORDER BY [CandidateId],[StatementId];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[CandidateId],[FindingType],[NodeId];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_MissingIndexes] ORDER BY [Impact] DESC,[CandidateId],[TableName],[ColumnGroupUsage],[ColumnId];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Objects] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[IndexName];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Statistics] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[StatisticsName];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Operators] ORDER BY [CandidateId],[NodeId];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Cardinality] WHERE [ActualRows] IS NOT NULL OR [ActualRowsRead] IS NOT NULL ORDER BY ABS(LOG10(CASE WHEN [ActualToEstimatedRatio]>0 THEN [ActualToEstimatedRatio] ELSE 1 END)) DESC,[CandidateId],[NodeId];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Memory] ORDER BY [CandidateId];
-            SELECT TOP (@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Parameters] ORDER BY [CandidateId],[ParameterName];
-        END
-        ELSE
-        BEGIN
-            SELECT TOP (@EffectiveMaxZeilen) N'Showplan Status' [Ergebnis],[CandidateId] [Kandidat],[PlanSource] [Planquelle],[StatusCode] [Status],CONCAT([ParseDurationMs],N' ms') [Parsezeit],[StatementCount] [Statements],[FindingCount] [Findings],[ErrorMessage] [Hinweis] FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId];
-            SELECT TOP (@EffectiveMaxZeilen) N'Showplan Statement' [Ergebnis],[CandidateId] [Kandidat],[StatementId] [Statement],[StatementType] [Typ],[StatementSubTreeCost] [Kosten],[OptimizationLevel] [Optimierung],[EarlyAbortReason] [Abbruchgrund],[CandidateId] [Kandidat SQL],[StatementText] [SQL-Text] FROM [#ShowplanAnalysis_Statements] ORDER BY [CandidateId],[StatementId];
-            SELECT TOP (@EffectiveMaxZeilen) N'Showplan Finding' [Ergebnis],[CandidateId] [Kandidat],[Severity] [Schweregrad],[FindingType] [Finding],[NodeId] [Node],[PhysicalOp] [physischer Operator],[LogicalOp] [logischer Operator],[Detail] [Details] FROM [#ShowplanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[CandidateId],[FindingType],[NodeId];
-            SELECT TOP (@EffectiveMaxZeilen) N'Fehlender Index' [Ergebnis],[CandidateId] [Kandidat],CONCAT(CONVERT(varchar(40),CONVERT(decimal(19,2),[Impact])),N' %') [Impact],[DatabaseName] [Datenbank],[SchemaName] [Schema],[TableName] [Tabelle],[ColumnGroupUsage] [Spaltengruppe],[ColumnName] [Spalte] FROM [#ShowplanAnalysis_MissingIndexes] ORDER BY [Impact] DESC,[CandidateId],[TableName],[ColumnId];
-            SELECT TOP (@EffectiveMaxZeilen) N'Verwendetes Objekt' [Ergebnis],[CandidateId] [Kandidat],[DatabaseName] [Datenbank],[SchemaName] [Schema],[TableName] [Tabelle],[IndexName] [Index],[AliasName] [Alias],[Storage] [Storage] FROM [#ShowplanAnalysis_Objects] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[IndexName];
-            SELECT TOP (@EffectiveMaxZeilen) N'Verwendete Statistik' [Ergebnis],[CandidateId] [Kandidat],[DatabaseName] [Datenbank],[SchemaName] [Schema],[TableName] [Tabelle],[StatisticsName] [Statistik],[LastUpdate] [letzte Aktualisierung],[ModificationCount] [Änderungen],[SamplingPercent] [Sample %] FROM [#ShowplanAnalysis_Statistics] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[StatisticsName];
-            SELECT TOP (@EffectiveMaxZeilen) N'Showplan Operator' [Ergebnis],[CandidateId] [Kandidat],[NodeId] [Node],[PhysicalOp] [physischer Operator],[LogicalOp] [logischer Operator],[EstimateRows] [geschätzte Zeilen],[EstimatedRowsRead] [geschätzt gelesen],[EstimatedTotalSubtreeCost] [Teilbaumkosten],[Parallel] [parallel] FROM [#ShowplanAnalysis_Operators] ORDER BY [CandidateId],[NodeId];
-            SELECT TOP (@EffectiveMaxZeilen) N'Kardinalität' [Ergebnis],[CandidateId] [Kandidat],[NodeId] [Node],[PhysicalOp] [Operator],[EstimateRows] [geschätzt],[ActualRows] [tatsächlich],[ActualToEstimatedRatio] [Ist/Schätzung] FROM [#ShowplanAnalysis_Cardinality] WHERE [ActualRows] IS NOT NULL OR [ActualRowsRead] IS NOT NULL ORDER BY ABS(LOG10(CASE WHEN [ActualToEstimatedRatio]>0 THEN [ActualToEstimatedRatio] ELSE 1 END)) DESC,[CandidateId],[NodeId];
-            SELECT TOP (@EffectiveMaxZeilen) N'Memory Grant im Plan' [Ergebnis],[CandidateId] [Kandidat],CONCAT(CONVERT(varchar(40),CONVERT(decimal(19,2),[RequestedMemoryKb]/1024.0)),N' MB') [angefordert],CONCAT(CONVERT(varchar(40),CONVERT(decimal(19,2),[GrantedMemoryKb]/1024.0)),N' MB') [gewährt],CONCAT(CONVERT(varchar(40),CONVERT(decimal(19,2),[MaxUsedMemoryKb]/1024.0)),N' MB') [maximal verwendet],[IsMemoryGrantFeedbackAdjusted] [Feedback] FROM [#ShowplanAnalysis_Memory] ORDER BY [CandidateId];
-            SELECT TOP (@EffectiveMaxZeilen) N'Planparameter' [Ergebnis],[CandidateId] [Kandidat],[ParameterName] [Parameter],[ParameterDataType] [Datentyp],[CompiledValue] [kompiliert],[RuntimeValue] [Laufzeit] FROM [#ShowplanAnalysis_Parameters] ORDER BY [CandidateId],[ParameterName];
-        END;
-    END;
+    IF @IsPartial=1 AND @StatusCode='AVAILABLE' SET @StatusCode='PARTIAL';
+    INSERT [#ShowplanAnalysis_ModuleStatus]
+    SELECT N'USP_ShowplanAnalysis',@Now,@StatusCode,@IsPartial,@CandidateCount,@ProcessedPlans,
+           (SELECT COUNT_BIG(*) FROM [#ShowplanAnalysis_Findings]),@ErrorNumber,@ErrorMessage;
+
     IF @JsonErzeugen=1
     BEGIN
-        DECLARE @MetaJson nvarchar(max)=(SELECT N'ShowplanAnalysis' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@RowCount [candidateCount],@ProcessedPlans [processedPlanCount],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-        DECLARE @PlanStatusJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@StatementsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Statements] ORDER BY [CandidateId],[StatementId] FOR JSON PATH,INCLUDE_NULL_VALUES),@FindingsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[CandidateId],[FindingType],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@MissingJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_MissingIndexes] ORDER BY [Impact] DESC,[CandidateId],[TableName],[ColumnId] FOR JSON PATH,INCLUDE_NULL_VALUES),@ObjectsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Objects] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[IndexName] FOR JSON PATH,INCLUDE_NULL_VALUES),@StatisticsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Statistics] ORDER BY [CandidateId],[DatabaseName],[SchemaName],[TableName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES),@OperatorsJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Operators] ORDER BY [CandidateId],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@CardinalityJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Cardinality] WHERE [ActualRows] IS NOT NULL OR [ActualRowsRead] IS NOT NULL ORDER BY [CandidateId],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES),@MemoryJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Memory] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES),@ParametersJson nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#ShowplanAnalysis_Parameters] ORDER BY [CandidateId],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"planStatus":',COALESCE(@PlanStatusJson,N'[]'),N',"statements":',COALESCE(@StatementsJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N',"missingIndexes":',COALESCE(@MissingJson,N'[]'),N',"objects":',COALESCE(@ObjectsJson,N'[]'),N',"statistics":',COALESCE(@StatisticsJson,N'[]'),N',"operators":',COALESCE(@OperatorsJson,N'[]'),N',"cardinality":',COALESCE(@CardinalityJson,N'[]'),N',"memory":',COALESCE(@MemoryJson,N'[]'),N',"parameters":',COALESCE(@ParametersJson,N'[]'),N',"warnings":[]}');
+        DECLARE @Meta nvarchar(max)=(SELECT N'ShowplanAnalysis' [resultName],2 [schemaVersion],@Now [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@CandidateCount [candidateCount],@ProcessedPlans [processedPlanCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @PlanStatusJson nvarchar(max)=(SELECT * FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @FindingsJson nvarchar(max)=(SELECT TOP (@ResultLimit) * FROM [#ShowplanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[CandidateId],[FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @AnalysesJson nvarchar(max)=N'[]';
+        SELECT @AnalysesJson=COALESCE(N'['+STRING_AGG(CONVERT(nvarchar(max),[AnalysisJson]),N',') WITHIN GROUP (ORDER BY [CandidateId])+N']',N'[]')
+        FROM [#ShowplanAnalysis_Analyses] WHERE ISJSON([AnalysisJson])=1;
+        SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"planStatus":',COALESCE(@PlanStatusJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N',"analyses":',COALESCE(@AnalysesJson,N'[]'),N'}');
     END;
-    IF @ConsoleResultRequested = 1
+
+    IF @OutputMode='RAW'
     BEGIN
+        SELECT * FROM [#ShowplanAnalysis_ModuleStatus];
+        SELECT * FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId];
+        SELECT TOP (@ResultLimit) * FROM [#ShowplanAnalysis_Findings]
+        ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[CandidateId],[FindingOrdinal];
+    END;
+    IF @ConsoleResultRequested=1
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#ShowplanAnalysis_Findings'
-            , @ResultLabel=N'ShowplanAnalysis'
-            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
-    END;
-    IF @TableResultRequested = 1
+              @SourceTable=N'#ShowplanAnalysis_Findings',@ResultLabel=N'Showplan Finding'
+            , @EmptyMessage=N'Keine Showplan-Findings im gewählten Scope'
+            , @StatusCode=@StatusCode,@StatusMessage=@ErrorMessage;
+    IF @TableRequested=1
     BEGIN
+        DECLARE @TargetTable sysname=(SELECT TOP (1) [TargetTable] FROM [#ShowplanAnalysis_TableMap] WHERE [ResultName]=N'findings');
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#ShowplanAnalysis_Findings'
-            , @TargetTable=@TableTarget
-            , @ThrowOnError = 1;
+              @SourceTable=N'#ShowplanAnalysis_Findings',@TargetTable=@TargetTable,@ThrowOnError=1;
+    END;
+    IF @PrintMeldungen=1 AND @StatusCode<>'AVAILABLE'
+    BEGIN
+        DECLARE @Message nvarchar(2048)=FORMATMESSAGE(N'WARNUNG USP_ShowplanAnalysis: %s - %s',@StatusCode,COALESCE(@ErrorMessage,N'partielle Analyse'));
+        RAISERROR(N'%s',10,1,@Message) WITH NOWAIT;
     END;
 END;
 GO

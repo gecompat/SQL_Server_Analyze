@@ -163,3 +163,7 @@ EXEC [monitor].[USP_CurrentRequests]
     , @Json = @CurrentRequestsJson OUTPUT;
 SELECT @CurrentRequestsJson AS [Json];
 -- END STATEMENT-KONTEXT-BEISPIELE
+
+-- Eigenständige Plananalyse: Signatur und sichere Modi anzeigen.
+EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe=1;

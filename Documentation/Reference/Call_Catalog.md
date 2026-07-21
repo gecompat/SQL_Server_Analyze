@@ -548,3 +548,19 @@ EXEC [monitor].[USP_EncryptionAnalysis] @Hilfe = 1;
 ```sql
 EXEC [monitor].[USP_MaintenanceOperations] @Hilfe = 1;
 ```
+
+## Eigenständige Execution-Plan-Analyse
+
+```sql
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml = @ExamplePlanXml
+    , @EvidenzDatenschutzModus = 'DERIVED_ONLY'
+    , @ResultSetArt = 'CONSOLE';
+
+DECLARE @EvidenceJson nvarchar(max);
+EXEC [monitor].[USP_CreateExecutionEvidenceJson]
+      @StatisticsIoText = @ExampleStatisticsIoText
+    , @StatisticsTimeText = @ExampleStatisticsTimeText
+    , @ResultSetArt = 'NONE'
+    , @Json = @EvidenceJson OUTPUT;
+```

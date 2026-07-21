@@ -382,3 +382,11 @@ flowchart TD
 - [sys.dm_exec_query_plan_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-plan-stats-transact-sql?view=sql-server-ver17)
 - [sys.dm_exec_query_statistics_xml](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-exec-query-statistics-xml-transact-sql?view=sql-server-ver17)
 - [Showplan XML schema](https://learn.microsoft.com/sql/relational-databases/showplan-logical-and-physical-operators-reference)
+
+## Standalone Execution Plan Analysis
+
+`monitor.USP_ExecutionPlanAnalysis` analysiert genau ein Plan-XML ohne zwingenden Plan-Cache- oder Query-Store-Zugriff. Die technische Identität lautet `AnalysisObjectId + StatementOrdinal + NodeId`; gleiche NodeIds verschiedener Statements bleiben getrennt. Compile- und Runtimewerte werden nicht vermischt, fehlende Capabilities bleiben `NULL` mit Status.
+
+## Execution Evidence JSON
+
+`monitor.USP_CreateExecutionEvidenceJson` normalisiert bereits erfasste `SET STATISTICS IO`-/`TIME`-Meldungen sowie optionale Statistik- und Histogrammevidenz. `DERIVED_ONLY` ist der Datenschutzdefault: konkrete Histogrammgrenzen, Parameter und Predicatewerte werden nach lokaler Korrelation nicht exportiert. Predicate-Histogramm-Mappings erhalten StepOrdinal und Mappingstatus, sodass Verteilungsbeziehungen ohne fachliche Rohwerte analysierbar bleiben.

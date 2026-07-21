@@ -138,3 +138,6 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_FullTextAnalysis](USP_FullTextAnalysis.md)
 - [USP_DataCaptureDeepAnalysis](USP_DataCaptureDeepAnalysis.md)
 - [USP_EncryptionAnalysis](USP_EncryptionAnalysis.md)
+
+- [`USP_CreateExecutionEvidenceJson`](USP_CreateExecutionEvidenceJson.md) – normalisierte Execution Evidence mit Datenschutzstatus.
+- [`USP_ExecutionPlanAnalysis`](USP_ExecutionPlanAnalysis.md) – eigenständig installierbare Analyse eines Showplan-XML.

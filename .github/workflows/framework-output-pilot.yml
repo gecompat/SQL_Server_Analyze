@@ -2,6 +2,11 @@ name: Framework output pilot
 
 on:
   pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
     paths:
       - '.github/workflows/framework-output-pilot.yml'
       - 'Code/01_Common/082_TVF_DatabaseCandidates.sql'
@@ -26,29 +31,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  select-matrix:
+    name: Select output pilot matrix
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.value }}
+    steps:
+      - id: matrix
+        name: Select development or final matrix
+        shell: bash
+        env:
+          DEVELOPMENT_DRAFT: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft == true && github.head_ref == 'agent/implement-execution-plan-analysis' }}
+        run: |
+          set -euo pipefail
+          if [ "$DEVELOPMENT_DRAFT" = 'true' ]; then
+            echo 'value={"include":[{"version":"2025","major":"17","compatibility":"170","image":"mcr.microsoft.com/mssql/server:2025-latest","container":"sqlserver-output-pilot-2025"}]}' >> "$GITHUB_OUTPUT"
+          else
+            echo 'value={"include":[{"version":"2019","major":"15","compatibility":"150","image":"mcr.microsoft.com/mssql/server:2019-latest","container":"sqlserver-output-pilot-2019"},{"version":"2022","major":"16","compatibility":"160","image":"mcr.microsoft.com/mssql/server:2022-latest","container":"sqlserver-output-pilot-2022"},{"version":"2025","major":"17","compatibility":"170","image":"mcr.microsoft.com/mssql/server:2025-latest","container":"sqlserver-output-pilot-2025"}]}' >> "$GITHUB_OUTPUT"
+          fi
+
   pilot:
+    needs: select-matrix
     name: SQL Server ${{ matrix.version }} output pilot
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - version: '2019'
-            major: '15'
-            compatibility: '150'
-            image: 'mcr.microsoft.com/mssql/server:2019-latest'
-            container: 'sqlserver-output-pilot-2019'
-          - version: '2022'
-            major: '16'
-            compatibility: '160'
-            image: 'mcr.microsoft.com/mssql/server:2022-latest'
-            container: 'sqlserver-output-pilot-2022'
-          - version: '2025'
-            major: '17'
-            compatibility: '170'
-            image: 'mcr.microsoft.com/mssql/server:2025-latest'
-            container: 'sqlserver-output-pilot-2025'
+      matrix: ${{ fromJSON(needs.select-matrix.outputs.matrix) }}
 
     steps:
       - name: Check out repository

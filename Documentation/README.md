@@ -75,6 +75,7 @@ clientseitigen `program_name`-Erkennung.
 - `Documentation/Architecture/Diagnostic_Information_Enrichment_Backlog.md`
 - [`Documentation/Architecture/Execution_Plan_Analysis_Design.md`](Architecture/Execution_Plan_Analysis_Design.md) – vollständiger Standalone-, Evidenz-, Statistik-, Histogramm-, Regel- und Versionsvertrag für `PLAN-001`
 - [`Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract.md`](Architecture/Execution_Plan_Analysis_Installation_Contract.md) – minimaler Teilinstaller und Einbindung in `Install_All.sql`
+- [`Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json`](../Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json) – maschinenlesbarer eingefrorener V1-Vertrag für Signaturen, Defaults, Resultsets, JSON, Statuscodes, Privacy und Standalone-Objektclosure
 - `Metadata/Inventory/SystemSources.csv`
 - `Metadata/Inventory/NonSystemDependencies.csv`
 - `Metadata/Inventory/PermissionsAndFeatures.csv`
