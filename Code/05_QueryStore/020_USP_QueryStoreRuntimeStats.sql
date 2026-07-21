@@ -544,7 +544,7 @@ END;';
                   @ErrorNumber=@PlanErrorNumber OUTPUT,@ErrorMessage=@PlanErrorMessage OUTPUT;
             UPDATE [#QueryStoreRuntimeStats_Result]
             SET [QueryPlanStatus]=@PlanStatus,
-                [QueryPlanCharacters]=CASE WHEN @PlanText IS NULL THEN NULL ELSE CONVERT(bigint,LEN((@PlanText+NCHAR(1)) COLLATE Latin1_General_100_BIN2_SC)-1) END,
+                [QueryPlanCharacters]=CASE WHEN @PlanText IS NULL THEN NULL ELSE CONVERT(bigint,LEN((@PlanText+NCHAR(1)) COLLATE Latin1_General_100_CI_AS_SC)-1) END,
                 [QueryPlanBytes]=CONVERT(bigint,DATALENGTH(@PlanText)),
                 [QueryPlan]=@PlanXml,
                 [QueryPlanTextFallback]=CASE WHEN @PlanStatus IN('AVAILABLE','XML_EMPTY','SOURCE_NULL') THEN NULL ELSE @PlanText END
