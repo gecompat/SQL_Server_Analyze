@@ -70,11 +70,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .bootstrap/integrate_execution_plan_analysis.py
-          rm -f .bootstrap/patch_integration_schema.py
+          git checkout -- .bootstrap/integrate_execution_plan_analysis.py .bootstrap/patch_integration_schema.py
           rm -f .bootstrap/integration-error.log
-          rmdir .bootstrap 2>/dev/null || true
-          rm -f .github/workflows/integrate-execution-plan-analysis.yml
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
