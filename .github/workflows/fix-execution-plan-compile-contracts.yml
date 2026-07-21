@@ -37,10 +37,26 @@ jobs:
         run: python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
 
       - name: Validate procedure documentation
+        id: documentation
+        continue-on-error: true
         shell: pwsh
-        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 *> ${{ runner.temp }}/execution-plan-documentation.log
+
+      - name: Upload documentation diagnostic
+        if: ${{ steps.documentation.outcome == 'failure' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: execution-plan-documentation-fix-log
+          path: ${{ runner.temp }}/execution-plan-documentation.log
+          retention-days: 1
+
+      - name: Fail on documentation error
+        if: ${{ steps.documentation.outcome == 'failure' }}
+        shell: bash
+        run: exit 1
 
       - name: Commit SQL and contract fixes
+        if: ${{ steps.documentation.outcome == 'success' }}
         shell: bash
         run: |
           set -euo pipefail
