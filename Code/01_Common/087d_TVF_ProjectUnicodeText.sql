@@ -11,7 +11,7 @@ Zweck        : Projiziert einen bereits materialisierten Unicode-MAX-Wert mit
                messbarer, aufhebbarer und Surrogate-sicherer Begrenzung.
 Semantik     : NULL oder 0 als Grenze bedeutet unbegrenzt; negative Grenzen
                validiert die aufrufende Procedure vor Verwendung der Funktion.
-Unicode      : Latin1_General_100_BIN2_SC zählt und schneidet UTF-16-
+Unicode      : Latin1_General_100_CI_AS_SC zählt und schneidet UTF-16-
                Surrogate-Paare als ein Zeichen. Ein angehängtes Nicht-Leerzeichen
                sorgt dafür, dass abschließende Leerzeichen mitgezählt werden.
 Nebenwirkung : Keine. Die Funktion liest keine System- oder Benutzerdaten.
@@ -46,7 +46,7 @@ RETURN
               CASE WHEN @Value IS NULL THEN NULL
                    WHEN @MaxCharacters IS NULL OR @MaxCharacters = 0 THEN @Value
                    WHEN [m].[CharacterCount] <= @MaxCharacters THEN @Value
-                   ELSE LEFT(@Value COLLATE Latin1_General_100_BIN2_SC,@MaxCharacters)
+                   ELSE LEFT(@Value COLLATE Latin1_General_100_CI_AS_SC,@MaxCharacters)
               END
           )
     FROM
@@ -54,7 +54,7 @@ RETURN
         SELECT [CharacterCount] = CONVERT
         (
             bigint,
-            LEN((@Value + NCHAR(1)) COLLATE Latin1_General_100_BIN2_SC) - 1
+            LEN((@Value + NCHAR(1)) COLLATE Latin1_General_100_CI_AS_SC) - 1
         )
     ) AS [m]
 );

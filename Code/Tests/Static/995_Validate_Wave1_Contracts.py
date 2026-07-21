@@ -113,6 +113,14 @@ def main() -> int:
         if token not in parser_text:
             fail("XML_STATUS_MISSING", token)
 
+    projection_text = (root / "Code/01_Common/087d_TVF_ProjectUnicodeText.sql").read_text(
+        encoding="utf-8-sig"
+    )
+    if "Latin1_General_100_BIN2_SC" in projection_text:
+        fail("INVALID_SC_COLLATION", "TVF_ProjectUnicodeText")
+    if "Latin1_General_100_CI_AS_SC" not in projection_text:
+        fail("SC_COLLATION_MISSING", "TVF_ProjectUnicodeText")
+
     inventory_path = root / "Metadata/Inventory/ResultSets.csv"
     with inventory_path.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
