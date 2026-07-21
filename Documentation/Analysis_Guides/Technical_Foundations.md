@@ -1,7 +1,7 @@
 # Technische Grundlagen für belastbare SQL-Server-Analysen
 
 **Stand:** 20. Juli 2026
-**Geltungsbereich:** alle 88 dokumentierten öffentlichen Procedures einschließlich der zwei gemeinsamen Vorbereitungs-APIs
+**Geltungsbereich:** alle 90 dokumentierten öffentlichen Procedures einschließlich der zwei gemeinsamen Vorbereitungs-APIs
 
 Dieses Dokument beschreibt das gemeinsame Execution-, Zeit- und Evidenzmodell. Die Procedure-Seiten ergänzen es um ihre konkrete Datenkette, Bewertungslogik, Gegenproben und Folgeanalysen.
 

@@ -1,11 +1,11 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 21. Juli 2026
-**Abdeckung:** alle 90 Procedures des Frameworks
+**Abdeckung:** alle 90 öffentlichen `USP_*`-Procedures des Frameworks
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
-Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientierten Runbooks](Runbooks/README.md). Unbekannte Begriffe erklärt das [Glossar](Glossary.md).
+Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientierten Runbooks](Runbooks/README.md). Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [Referenz der unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) dokumentiert die installierten Views, TVFs, internen Procedures und Tabellen.
 
 ## Common
 
@@ -148,15 +148,15 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | Bereich | Anzahl |
 |---|---:|
 | Common | 4 |
-| Current State | 10 |
+| Current State | 11 |
 | Object und Index | 11 |
-| Plan Cache und Showplan | 6 |
+| Plan Cache und Showplan | 8 |
 | Query Store | 9 |
 | Extended Events | 6 |
 | Infrastruktur | 13 |
-| Server Health | 17 |
+| Server Health | 19 |
 | Versionsadaptive Spezialanalysen | 9 |
-| **Gesamt** | **85** |
+| **Gesamt** | **90** |
 
 ## Weitere Einstiege
 
@@ -165,3 +165,4 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 - [Parameter-Lesehilfe](Parameter_Reading_Guide.md)
 - [Gemeinsame Verträge](Common_Contracts.md)
 - [Technische Signaturen](../Reference/Procedure_Reference.md)
+- [Unterstützende Frameworkobjekte](../Reference/Object_Reference.md)

@@ -14,6 +14,9 @@ $referencePath = Join-Path $RepositoryRoot 'Documentation/Reference/Procedure_Re
 $pagesRoot = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Procedures'
 $objectIndexPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Object_Index.md'
 $technicalFoundationsPath = Join-Path $RepositoryRoot 'Documentation/Analysis_Guides/Technical_Foundations.md'
+$objectReferencePath = Join-Path $RepositoryRoot 'Documentation/Reference/Object_Reference.md'
+$callCatalogPath = Join-Path $RepositoryRoot 'Documentation/Reference/Call_Catalog.md'
+$objectInventoryPath = Join-Path $RepositoryRoot 'Metadata/Inventory/Objects.csv'
 $resultSetsPath = Join-Path $RepositoryRoot 'Metadata/Inventory/ResultSets.csv'
 $reviewManifestPath = Join-Path $RepositoryRoot 'Metadata/Quality/Analysis_Documentation_Review.csv'
 $codeRoot = Join-Path $RepositoryRoot 'Code'
@@ -165,7 +168,7 @@ function Get-MarkdownAnchors {
     return @($anchors)
 }
 
-foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $resultSetsPath, $reviewManifestPath)) {
+foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $objectReferencePath, $callCatalogPath, $objectInventoryPath, $resultSetsPath, $reviewManifestPath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required documentation file not found: $requiredPath"
     }
@@ -178,12 +181,30 @@ foreach ($requiredDirectory in @($pagesRoot, $codeRoot)) {
 
 $referenceText = Get-Content -LiteralPath $referencePath -Raw -Encoding UTF8
 $objectIndexText = Get-Content -LiteralPath $objectIndexPath -Raw -Encoding UTF8
+$objectReferenceText = Get-Content -LiteralPath $objectReferencePath -Raw -Encoding UTF8
+$callCatalogText = Get-Content -LiteralPath $callCatalogPath -Raw -Encoding UTF8
+$objectInventoryRows = @(Import-Csv -LiteralPath $objectInventoryPath -Encoding UTF8)
+$expectedProcedureNames = @(
+    $objectInventoryRows |
+        Where-Object { $_.ObjectType -eq 'PROCEDURE' -and $_.ObjectName -match '^USP_' } |
+        ForEach-Object { $_.ObjectName } |
+        Sort-Object -Unique
+)
+$supportingObjectRows = @(
+    $objectInventoryRows |
+        Where-Object { -not ($_.ObjectType -eq 'PROCEDURE' -and $_.ObjectName -match '^USP_') }
+)
 $sectionMatches = [regex]::Matches(
     $referenceText,
     '(?ms)^## `\[monitor\]\.\[(USP_[A-Za-z0-9_]+)\]`\s*$\s*(.*?)(?=^## `\[monitor\]\.\[USP_[A-Za-z0-9_]+\]`|\z)'
 )
 
 $referenceNames = @($sectionMatches | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+$callCatalogNames = @(
+    [regex]::Matches($callCatalogText, '(?m)^## `\[monitor\]\.\[(USP_[A-Za-z0-9_]+)\]`\s*$') |
+        ForEach-Object { $_.Groups[1].Value } |
+        Sort-Object -Unique
+)
 $resultSetRows = @(Import-Csv -LiteralPath $resultSetsPath -Encoding UTF8)
 $reviewRows = @(Import-Csv -LiteralPath $reviewManifestPath -Encoding UTF8)
 $resultSetProcedureNames = @($resultSetRows | ForEach-Object { $_.ProcedureName } | Sort-Object -Unique)
@@ -196,6 +217,50 @@ $pageNames = @($pageFiles | ForEach-Object { $_.BaseName } | Sort-Object -Unique
 $parameterNamesByProcedure = @{}
 $declaredSourcePaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 $reviewStatusByProcedure = @{}
+
+if ($objectInventoryRows.Count -eq 0) {
+    $errors.Add('Object inventory is empty.')
+}
+foreach ($row in $objectInventoryRows) {
+    if ([string]::IsNullOrWhiteSpace($row.ObjectType) -or
+        [string]::IsNullOrWhiteSpace($row.ObjectName) -or
+        [string]::IsNullOrWhiteSpace($row.SourcePath)) {
+        $errors.Add('Incomplete object-inventory row.')
+        continue
+    }
+
+    $inventorySourcePath = Join-Path $RepositoryRoot $row.SourcePath
+    if (-not (Test-Path -LiteralPath $inventorySourcePath -PathType Leaf)) {
+        $errors.Add("Inventory source does not exist: $($row.ObjectType)/$($row.ObjectName)")
+    }
+}
+
+foreach ($row in $supportingObjectRows) {
+    $headingPattern = '(?m)^### `\[monitor\]\.\[' + [regex]::Escape($row.ObjectName) + '\]`\s*$'
+    if ($objectReferenceText -notmatch $headingPattern) {
+        $errors.Add("Supporting object missing from object reference: $($row.ObjectType)/$($row.ObjectName)")
+        continue
+    }
+
+    $sectionPattern = '(?ms)^### `\[monitor\]\.\[' + [regex]::Escape($row.ObjectName) + '\]`\s*$\s*(.*?)(?=^### `\[monitor\]\.\[|\z)'
+    $sectionMatch = [regex]::Match($objectReferenceText, $sectionPattern)
+    if (-not $sectionMatch.Success -or $sectionMatch.Groups[1].Value -notmatch ('(?m)^Quelle:\s*`' + [regex]::Escape($row.SourcePath) + '`\s*$')) {
+        $errors.Add("Supporting object has no canonical source declaration: $($row.ObjectType)/$($row.ObjectName)")
+    }
+}
+
+foreach ($name in @($expectedProcedureNames | Where-Object { $_ -notin $referenceNames })) {
+    $errors.Add("Inventory procedure missing from procedure reference: $name")
+}
+foreach ($name in @($referenceNames | Where-Object { $_ -notin $expectedProcedureNames })) {
+    $errors.Add("Procedure reference entry missing from object inventory: $name")
+}
+foreach ($name in @($expectedProcedureNames | Where-Object { $_ -notin $callCatalogNames })) {
+    $errors.Add("Inventory procedure missing from call catalog: $name")
+}
+foreach ($name in @($callCatalogNames | Where-Object { $_ -notin $expectedProcedureNames })) {
+    $errors.Add("Call-catalog procedure missing from object inventory: $name")
+}
 
 foreach ($name in @($referenceNames | Where-Object { $_ -notin $pageNames })) {
     $errors.Add("Missing procedure page: $name")
@@ -562,17 +627,22 @@ foreach ($file in $allMarkdown) {
 Write-Host "Referenced procedures:      $($referenceNames.Count)"
 Write-Host "Canonical source procedures: $($sourceProcedureNames.Count)"
 Write-Host "Procedure pages:             $($pageNames.Count)"
+Write-Host "Call-catalog procedures:     $($callCatalogNames.Count)"
+Write-Host "Supporting objects:          $($supportingObjectRows.Count)"
 Write-Host "Referenced source files:     $($declaredSourcePaths.Count)"
 Write-Host "Deep-reviewed pages:         $deepReviewedCount"
 
-if ($referenceNames.Count -ne 90) {
-    $errors.Add("Expected 90 reference procedures, found $($referenceNames.Count).")
+if ($referenceNames.Count -ne $expectedProcedureNames.Count) {
+    $errors.Add("Expected $($expectedProcedureNames.Count) reference procedures from the object inventory, found $($referenceNames.Count).")
 }
-if ($sourceProcedureNames.Count -ne 90) {
-    $errors.Add("Expected 90 canonical SQL procedures, found $($sourceProcedureNames.Count).")
+if ($sourceProcedureNames.Count -ne $expectedProcedureNames.Count) {
+    $errors.Add("Expected $($expectedProcedureNames.Count) canonical SQL procedures from the object inventory, found $($sourceProcedureNames.Count).")
 }
-if ($pageNames.Count -ne 90) {
-    $errors.Add("Expected 90 procedure pages, found $($pageNames.Count).")
+if ($pageNames.Count -ne $expectedProcedureNames.Count) {
+    $errors.Add("Expected $($expectedProcedureNames.Count) procedure pages from the object inventory, found $($pageNames.Count).")
+}
+if ($callCatalogNames.Count -ne $expectedProcedureNames.Count) {
+    $errors.Add("Expected $($expectedProcedureNames.Count) call-catalog procedures from the object inventory, found $($callCatalogNames.Count).")
 }
 
 if ($errors.Count -gt 0) {
