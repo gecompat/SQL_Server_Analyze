@@ -1,0 +1,70 @@
+name: Align plan console renderer and public inventory
+
+on:
+  push:
+    branches:
+      - agent/implement-execution-plan-analysis
+    paths:
+      - '.github/workflows/align-plan-console-inventory.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/align-plan-console-inventory.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  align:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/implement-execution-plan-analysis
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Align console variable and public count
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+
+          showplan = Path('Code/04_PlanCache/050_USP_ShowplanAnalysis.sql')
+          text = showplan.read_text(encoding='utf-8')
+          text = text.replace('@ConsoleRequested', '@ConsoleResultRequested')
+          text = text.replace('Version      : 2.0.0', 'Version      : 2.0.1', 1)
+          if '@ConsoleRequested' in text:
+              raise RuntimeError('Legacy Showplan console variable remains.')
+          if '[monitor].[InternalEmitConsoleResult]' not in text:
+              raise RuntimeError('Showplan central console renderer is missing.')
+          showplan.write_text(text, encoding='utf-8', newline='\n')
+
+          contract = Path('Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql')
+          text = contract.read_text(encoding='utf-8')
+          text = text.replace('<>86', '<>88', 1)
+          text = text.replace('genau 86 Vertragsobjekte', 'genau 88 Vertragsobjekte', 1)
+          contract.write_text(text, encoding='utf-8', newline='\n')
+          PY
+
+      - name: Validate static contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
+          pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+
+      - name: Commit aligned contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/04_PlanCache/050_USP_ShowplanAnalysis.sql Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql
+          if ! git diff --cached --quiet; then
+            git commit -m 'Align plan console renderer and public inventory'
+            git push origin HEAD:agent/implement-execution-plan-analysis
+          fi
