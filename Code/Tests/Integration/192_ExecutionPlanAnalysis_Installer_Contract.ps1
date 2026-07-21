@@ -19,8 +19,8 @@ $required=@(
 '098_USP_InternalEmitConsoleResult.sql','041_PlanAnalysisProfile.sql','042_PlanAnalysisRuleThreshold.sql',
 '043_PlanAnalysisProfileAssignment.sql','044_TVF_ParseStatisticsIoText.sql','045_TVF_ParseStatisticsTimeText.sql',
 '046_TVF_ExecutionPlanObjectReferences.sql','047_TVF_ExecutionPlanStatisticsUsage.sql',
-'048_TVF_ExecutionPlanColumnReferences.sql','049_USP_InternalCollectExecutionPlanMetadata.sql',
-'051_USP_InternalAnalyzeExecutionPlan.sql','052_USP_CreateExecutionEvidenceJson.sql','053_USP_ExecutionPlanAnalysis.sql'
+'048_TVF_ExecutionPlanColumnReferences.sql','049_InternalCollectExecutionPlanMetadata.sql',
+'051_InternalAnalyzeExecutionPlan.sql','052_USP_CreateExecutionEvidenceJson.sql','053_USP_ExecutionPlanAnalysis.sql'
 )
 foreach($item in $required) { if($text -notmatch [regex]::Escape($item)) { throw "Teilinstaller enthält $item nicht." } }
 $forbidden=@('USP_QueryStats.sql','USP_QueryHashAnalysis.sql','USP_PlanCacheHealth.sql','USP_PlanDetails.sql','USP_ShowplanAnalysis.sql','USP_PlanCacheAnalysis.sql','QueryStore','ExtendedEvents','ServerHealth')
