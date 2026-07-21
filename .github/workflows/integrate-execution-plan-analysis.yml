@@ -86,7 +86,7 @@ jobs:
               raise RuntimeError(f"Unclosed CREATE TABLE: {table_name}")'''
           text, count = re.subn(
               r'def table_schema\(.*?\n\n\ndef insert_before',
-              replacement + '\n\n\ndef insert_before',
+              lambda _: replacement + '\n\n\ndef insert_before',
               text,
               flags=re.S,
           )
