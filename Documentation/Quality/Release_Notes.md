@@ -380,4 +380,4 @@ Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlich
 - `@MaxSqlTextZeichen` ist frameworkweit vereinheitlicht: positiv kürzt, `NULL`/`0` liefert den vollständigen Text, negative Werte sind ungültig.
 <!-- END API_15_STATEMENT_CONTEXT -->
 
-- `PLAN-001`: eigenständig installierbarer Execution-Plan-Kern mit statementgenauer Operatoranalyse, Evidence JSON, Statistik-/Histogrammkorrelation, `DERIVED_ONLY`-Datenschutzdefault und Integration in den Gesamtinstaller; Release-Gate-Evidenz steht noch aus.
+- `PLAN-001`: eigenständig installierbarer Execution-Plan-Kern mit statementgenauer Operatoranalyse, Evidence JSON, Statistik-/Histogrammkorrelation, `DERIVED_ONLY`-Datenschutzdefault und Integration in den Gesamtinstaller. Der öffentliche V1-Vertrag ist eingefroren, das isolierte und vollständige SQL-Server-2025-Gate ist erfolgreich; die finale Matrix für SQL Server 2019, 2022 und 2025 steht aus.

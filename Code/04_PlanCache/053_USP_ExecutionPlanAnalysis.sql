@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ExecutionPlanAnalysis
-Version      : 1.0.1
+Version      : 1.0.2
 Stand        : 2026-07-21
 Typ          : Stored Procedure
 Zweck        : Analysiert genau ein direkt übergebenes oder gezielt beschafftes
@@ -103,6 +103,7 @@ BEGIN
         PRINT N'Optional: @EvidenzJson oder bereits erfasste @StatisticsIoText/@StatisticsTimeText.';
         PRINT N'@StatistikEvidenzModus NONE|PLAN_ONLY|USED|RELEVANT|OBJECT_ALL; @HistogrammModus NONE|SUMMARY|STEPS.';
         PRINT N'@EvidenzDatenschutzModus DERIVED_ONLY|TOKENIZED|STRUCTURE_ONLY|RAW; RAW benötigt @SensitiveDataConfirmed=1.';
+        PRINT N'@MitSqlText=1 benötigt @SensitiveDataConfirmed=1, weil StatementText Literale enthalten kann.';
         PRINT N'@ResultSetArt CONSOLE|RAW|TABLE|NONE; CONSOLE liefert Findings, TABLE verwendet benannte Ziele.';
         RETURN;
     END;
@@ -475,6 +476,11 @@ BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'RAW-Parameter- oder Histogrammwerte benötigen @SensitiveDataConfirmed=1.';
     END;
+    IF @StatusCodeOut='AVAILABLE' AND @MitSqlText=1 AND @SensitiveDataConfirmed<>1
+    BEGIN
+        SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
+               @ErrorMessageOut=N'StatementText kann Literale und proprietären SQL-Text enthalten. @MitSqlText=1 benötigt @SensitiveDataConfirmed=1.';
+    END;
     IF @StatusCodeOut='AVAILABLE' AND @MetadataMode='CURRENT_SERVER' AND @QuellumgebungBestaetigt<>1
     BEGIN
         SELECT @StatusCodeOut='SOURCE_ENVIRONMENT_CONFIRMATION_REQUIRED',@IsPartialOut=1,
@@ -627,16 +633,10 @@ WHERE [p].[plan_id]=@PlanId;';
             SET @Profile='BALANCED';
     END;
 
-    /* Bereits erfasste Meldungen beziehungsweise Current-Server-Evidenz normalisieren. */
+    /* Public contract: Jede externe oder intern erzeugte Evidenz wird vor der
+       Analyse erneut normalisiert. Dadurch gelten Datenschutz-, Shape- und
+       Versionsregeln auch für direkt übergebenes @EvidenzJson. */
     IF @StatusCodeOut='AVAILABLE'
-       AND
-       (
-            @EvidenceForAnalysis IS NULL
-         OR @StatisticsIoText IS NOT NULL
-         OR @StatisticsTimeText IS NOT NULL
-         OR @StatisticsMode IN ('USED','RELEVANT','OBJECT_ALL')
-         OR @HistogramMode<>'NONE'
-       )
     BEGIN
         DECLARE @EvidenceStatus varchar(40),@EvidencePartial bit,@EvidenceError int,@EvidenceMessage nvarchar(2048);
         EXEC [monitor].[USP_CreateExecutionEvidenceJson]
@@ -848,6 +848,14 @@ WHERE [p].[plan_id]=@PlanId;';
 
     IF @MitSqlText=0 UPDATE [#ExecutionPlanAnalysis_Statements] SET [StatementText]=NULL;
 
+    /* Sensitive Histogrammwerte nochmals am öffentlichen Ausgaberand sichern.
+       Der Evidence-Generator hat sie bereits normalisiert; diese Projektion ist
+       bewusst Defense in Depth für spätere interne Integrationspfade. */
+    IF @PrivacyMode<>'RAW'
+        UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKey]=NULL;
+    IF @PrivacyMode<>'TOKENIZED'
+        UPDATE [#ExecutionPlanAnalysis_HistogramSteps] SET [RangeHighKeyToken]=NULL;
+
     /* Identifikatordatenschutz erst nach fachlicher Korrelation. */
     IF @IdentifierMode IN ('TOKENIZED','OMIT')
     BEGIN
@@ -868,6 +876,24 @@ WHERE [p].[plan_id]=@PlanId;';
             [StatisticsName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [StatisticsName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[StatisticsName])),1)) END;
         UPDATE [#ExecutionPlanAnalysis_Parameters]
         SET [ParameterName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ParameterName] IS NOT NULL THEN CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ParameterName])),1) END;
+        UPDATE [#ExecutionPlanAnalysis_HistogramSummaries]
+        SET [DatabaseName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [DatabaseName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[DatabaseName])),1)) END,
+            [SchemaName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [SchemaName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[SchemaName])),1)) END,
+            [ObjectName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ObjectName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ObjectName])),1)) END,
+            [StatisticsName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [StatisticsName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[StatisticsName])),1)) END,
+            [LeadingColumnName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [LeadingColumnName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[LeadingColumnName])),1)) END;
+        UPDATE [#ExecutionPlanAnalysis_HistogramSteps]
+        SET [DatabaseName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [DatabaseName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[DatabaseName])),1)) END,
+            [SchemaName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [SchemaName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[SchemaName])),1)) END,
+            [ObjectName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ObjectName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ObjectName])),1)) END,
+            [StatisticsName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [StatisticsName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[StatisticsName])),1)) END,
+            [LeadingColumnName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [LeadingColumnName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[LeadingColumnName])),1)) END;
+        UPDATE [#ExecutionPlanAnalysis_PredicateHistogramMappings]
+        SET [DatabaseName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [DatabaseName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[DatabaseName])),1)) END,
+            [SchemaName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [SchemaName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[SchemaName])),1)) END,
+            [ObjectName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ObjectName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ObjectName])),1)) END,
+            [ColumnName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ColumnName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ColumnName])),1)) END,
+            [StatisticsName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [StatisticsName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[StatisticsName])),1)) END;
     END;
 
     IF (SELECT COUNT(*) FROM [#ExecutionPlanAnalysis_Operators])>@MaxOperatoren

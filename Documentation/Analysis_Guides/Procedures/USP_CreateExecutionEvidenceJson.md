@@ -25,6 +25,8 @@ EXEC [monitor].[USP_CreateExecutionEvidenceJson]
     , @Json = @EvidenceJson OUTPUT;
 ```
 
+`@RawTextHandling = 'INCLUDE'` ist nur zusammen mit `@SensitiveDataConfirmed = 1` und `@IdentifierDatenschutzModus = 'RAW'` zulässig, weil Meldungsrohtext vertrauliche Werte und nicht zuverlässig einzeln anonymisierbare Identifikatoren enthalten kann. `TOKENIZED` erzeugt ausschließlich capture-lokale Tokens; `OMIT` und der Default `DERIVED_ONLY` geben weder Rohgrenzen noch Rohidentifikatoren aus.
+
 ## Resultsets und Leserichtung
 
 `captureStatus` beschreibt Umfang, Partialität und Datenschutzmodus. Danach folgen `statisticsIo`, `statisticsTime`, `planStatisticsUsage`, `objectReferences`, optionale aktuelle Statistiken und Histogramme, Predicate-Mappings, Collection-Status und Warnings. TABLE exportiert ausschließlich ausdrücklich benannte Ziele.
@@ -55,7 +57,7 @@ Welche zusätzliche Ausführungsevidenz ist vorhanden, wie sicher ist ihre Zuord
 
 ### Technischer Hintergrund
 
-`SET STATISTICS IO` und `SET STATISTICS TIME` liefern Meldungstext, kein relationales Resultset. Die Parser sind deshalb best effort und markieren unbekannte oder partielle Formate. Histogrammgrenzwerte und Parameterwerte werden erst nach lokaler Korrelation entfernt oder tokenisiert.
+`SET STATISTICS IO` und `SET STATISTICS TIME` liefern Meldungstext, kein relationales Resultset. Die Parser sind deshalb best effort und markieren unbekannte oder partielle Formate. Histogrammgrenzwerte und Parameterwerte werden erst nach lokaler Korrelation entfernt oder tokenisiert. Bereits vorhandenes Evidence JSON wird ebenfalls erneut normalisiert und nicht als vorab vertrauenswürdig behandelt.
 
 ### Datenkette
 

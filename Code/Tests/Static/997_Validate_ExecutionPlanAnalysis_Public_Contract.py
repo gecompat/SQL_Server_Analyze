@@ -1,0 +1,247 @@
+#!/usr/bin/env python3
+"""Validate the frozen PLAN-001 public contract against canonical sources."""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import json
+import re
+import sys
+from pathlib import Path
+
+
+CONTRACT_PATH = Path("Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json")
+
+
+def normalize_space(value: str) -> str:
+    return re.sub(r"\s+", " ", value.strip())
+
+
+def normalize_type(value: str) -> str:
+    return re.sub(r"\s+", "", value.strip()).lower()
+
+
+def extract_parameters(sql_text: str, procedure_name: str) -> list[tuple[str, str, str]]:
+    match = re.search(
+        rf"CREATE\s+OR\s+ALTER\s+PROCEDURE\s+\[monitor\]\.\[{re.escape(procedure_name)}\]\s*(.*?)^AS\s*$",
+        sql_text,
+        re.IGNORECASE | re.MULTILINE | re.DOTALL,
+    )
+    if not match:
+        raise ValueError(f"Procedure declaration not found: {procedure_name}")
+
+    block = re.sub(r"(?m)--.*$", "", match.group(1))
+    declarations = re.split(r",\s*(?=@[A-Za-z_])", block.strip().lstrip(",").strip())
+    parameters: list[tuple[str, str, str]] = []
+    pattern = re.compile(
+        r"^@(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s+"
+        r"(?P<data_type>[A-Za-z_][A-Za-z0-9_]*(?:\s*\([^)]*\))?)\s*=\s*"
+        r"(?P<default>.+)$",
+        re.IGNORECASE | re.DOTALL,
+    )
+    for declaration in declarations:
+        parameter = pattern.match(normalize_space(declaration))
+        if not parameter:
+            raise ValueError(f"Unparseable parameter declaration: {declaration!r}")
+        parameters.append(
+            (
+                parameter.group("name"),
+                normalize_type(parameter.group("data_type")),
+                normalize_space(parameter.group("default")),
+            )
+        )
+    return parameters
+
+
+def expected_parameters(rows: list[dict[str, str]], procedure_name: str) -> list[tuple[str, str, str]]:
+    return [
+        (
+            row["ParameterName"],
+            normalize_type(row["DataType"]),
+            normalize_space(row["DefaultExpression"]),
+        )
+        for row in rows
+        if row["ProcedureName"] == procedure_name
+    ]
+
+
+def require_fragments(text: str, fragments: list[str], label: str, errors: list[str]) -> None:
+    for fragment in fragments:
+        if fragment not in text:
+            errors.append(f"Missing {label}: {fragment}")
+
+
+def validate(repository_root: Path) -> list[str]:
+    errors: list[str] = []
+    contract_file = repository_root / CONTRACT_PATH
+    if not contract_file.is_file():
+        return [f"Missing public contract: {contract_file}"]
+
+    contract = json.loads(contract_file.read_text(encoding="utf-8"))
+    if contract.get("contractId") != "PLAN-001-PUBLIC-V1" or contract.get("contractVersion") != 1:
+        errors.append("Unexpected PLAN-001 contract identity or version.")
+    if contract.get("releaseState") != "PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX":
+        errors.append("PLAN-001 public contract is not in the frozen pre-matrix state.")
+    if contract.get("targetSqlServerMajorVersions") != [15, 16, 17]:
+        errors.append("Target SQL Server major-version matrix must remain 15, 16 and 17.")
+
+    inventory_paths = contract["canonicalInventories"]
+    for relative_path in inventory_paths.values():
+        if not (repository_root / relative_path).is_file():
+            errors.append(f"Missing canonical inventory: {relative_path}")
+
+    with (repository_root / inventory_paths["parameters"]).open(encoding="utf-8-sig", newline="") as handle:
+        parameter_rows = list(csv.DictReader(handle))
+    with (repository_root / inventory_paths["resultSets"]).open(encoding="utf-8-sig", newline="") as handle:
+        result_rows = list(csv.DictReader(handle))
+    with (repository_root / inventory_paths["dependencies"]).open(encoding="utf-8-sig", newline="") as handle:
+        dependency_rows = list(csv.DictReader(handle))
+
+    source_texts: dict[str, str] = {}
+    for procedure_name, procedure_contract in contract["publicProcedures"].items():
+        source_path = repository_root / procedure_contract["sourcePath"]
+        if not source_path.is_file():
+            errors.append(f"Missing procedure source: {source_path}")
+            continue
+        source_text = source_path.read_text(encoding="utf-8-sig")
+        source_texts[procedure_name] = source_text
+
+        actual_parameters = extract_parameters(source_text, procedure_name)
+        inventory_parameters = expected_parameters(parameter_rows, procedure_name)
+        if len(actual_parameters) != procedure_contract["parameterCount"]:
+            errors.append(f"Parameter count changed: {procedure_name}")
+        if actual_parameters != inventory_parameters:
+            errors.append(f"Source and parameter inventory differ: {procedure_name}")
+
+        frozen_defaults = contract["frozenDefaults"][procedure_name]
+        actual_by_name = {name: default for name, _data_type, default in actual_parameters}
+        for parameter_name, expected_default in frozen_defaults.items():
+            if actual_by_name.get(parameter_name) != expected_default:
+                errors.append(f"Frozen default changed: {procedure_name}.@{parameter_name}")
+
+        procedure_result_rows = [
+            row for row in result_rows if row["ProcedureName"] == procedure_name
+        ]
+        actual_result_names = [row["ResultName"] for row in procedure_result_rows]
+        if actual_result_names != procedure_contract["resultSets"]:
+            errors.append(f"Result-set order or names changed: {procedure_name}")
+        if any(row["SchemaVersion"] != "1" for row in procedure_result_rows):
+            errors.append(f"Result-set schema version changed without a contract version: {procedure_name}")
+        console_defaults = [
+            row["ResultName"] for row in procedure_result_rows if row["IsConsoleDefault"] == "1"
+        ]
+        if console_defaults != [procedure_contract["consoleDefaultResult"]]:
+            errors.append(f"CONSOLE default changed: {procedure_name}")
+
+        allowed_match = re.search(r"@AllowedResultNames\s*=\s*N'([^']+)'", source_text)
+        allowed_names = allowed_match.group(1).split("|") if allowed_match else []
+        if allowed_names != procedure_contract["resultSets"]:
+            errors.append(f"TABLE allowlist differs from frozen result sets: {procedure_name}")
+
+        json_fragments = []
+        for index, property_name in enumerate(procedure_contract["jsonTopLevelProperties"]):
+            prefix = "{" if index == 0 else ","
+            json_fragments.append(f'N\'{prefix}"{property_name}":')
+        require_fragments(source_text, json_fragments, f"JSON property in {procedure_name}", errors)
+        expected_result_name = (
+            "ExecutionEvidence"
+            if procedure_name == "USP_CreateExecutionEvidenceJson"
+            else "ExecutionPlanAnalysis"
+        )
+        schema_marker = (
+            f"SELECT N'{expected_result_name}' [resultName],"
+            f"{procedure_contract['jsonSchemaVersion']} [schemaVersion]"
+        )
+        if schema_marker not in source_text:
+            errors.append(f"JSON schema marker changed: {procedure_name}")
+
+    analysis_text = source_texts.get("USP_ExecutionPlanAnalysis", "")
+    evidence_text = source_texts.get("USP_CreateExecutionEvidenceJson", "")
+    internal_text = (repository_root / "Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql").read_text(
+        encoding="utf-8-sig"
+    )
+    collector_text = (repository_root / "Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql").read_text(
+        encoding="utf-8-sig"
+    )
+    combined_text = "\n".join((analysis_text, evidence_text, internal_text, collector_text))
+
+    require_fragments(combined_text, contract["directStatusCodes"], "direct status code", errors)
+    require_fragments(internal_text, contract["capabilityCodes"], "capability code", errors)
+    require_fragments(internal_text, contract["findingCodes"], "finding code", errors)
+    require_fragments(evidence_text, contract["evidenceWarningCodes"], "evidence warning code", errors)
+
+    privacy_markers = [
+        "Jede externe oder intern erzeugte Evidenz wird vor der",
+        "@MitSqlText=1 AND @SensitiveDataConfirmed<>1",
+        "UPDATE [#ExecutionPlanAnalysis_HistogramSummaries]",
+        "UPDATE [#ExecutionPlanAnalysis_HistogramSteps]",
+        "UPDATE [#ExecutionPlanAnalysis_PredicateHistogramMappings]",
+    ]
+    require_fragments(analysis_text, privacy_markers, "analysis privacy invariant", errors)
+    evidence_privacy_markers = [
+        "@RawMode='INCLUDE'",
+        "@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW'",
+        "@PrivacyMode IN ('RAW','TOKENIZED') THEN [RangeHighKey]",
+    ]
+    require_fragments(evidence_text, evidence_privacy_markers, "evidence privacy invariant", errors)
+
+    standalone_objects = [
+        row["ObjectName"] for row in dependency_rows if row["StandaloneRequired"] == "1"
+    ]
+    if standalone_objects != contract["standaloneObjects"]:
+        errors.append("Standalone dependency closure differs from the frozen public contract.")
+
+    for document in (
+        "Documentation/Architecture/Execution_Plan_Analysis_Design.md",
+        "Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract.md",
+    ):
+        text = (repository_root / document).read_text(encoding="utf-8-sig")
+        if "PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX" not in text:
+            errors.append(f"Frozen contract state missing from {document}")
+
+    return errors
+
+
+def run_self_test() -> None:
+    sample = """
+CREATE OR ALTER PROCEDURE [monitor].[USP_Example]
+      @ExampleId int = NULL
+    , @Mode varchar(16) = 'AUTO'
+    , @Value nvarchar(max) = NULL OUTPUT
+AS
+BEGIN
+    RETURN;
+END;
+"""
+    expected = [
+        ("ExampleId", "int", "NULL"),
+        ("Mode", "varchar(16)", "'AUTO'"),
+        ("Value", "nvarchar(max)", "NULL OUTPUT"),
+    ]
+    actual = extract_parameters(sample, "USP_Example")
+    if actual != expected:
+        raise AssertionError(f"Parameter parser self-test failed: {actual!r}")
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--repository-root", type=Path, default=Path("."))
+    parser.add_argument("--self-test", action="store_true")
+    args = parser.parse_args()
+    if args.self_test:
+        run_self_test()
+        print("Execution Plan Analysis public-contract validator self-test passed.")
+        return 0
+
+    errors = validate(args.repository_root.resolve())
+    if errors:
+        for error in errors:
+            print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    print("Execution Plan Analysis public contract passed.")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

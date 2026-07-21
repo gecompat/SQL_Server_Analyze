@@ -27,6 +27,8 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
 
 Das Minimal-XML dient nur als synthetischer Aufrufrahmen; für fachliche Ergebnisse ist ein vollständiger Example-Showplan erforderlich. `FULL`, breite Statistikmodi und Histogramm-Steps benötigen `@HighImpactConfirmed = 1`.
 
+`@MitSqlText = 1` gibt potentiell literalen oder proprietären SQL-Text aus und benötigt deshalb `@SensitiveDataConfirmed = 1`. Dasselbe gilt für `@EvidenzDatenschutzModus = 'RAW'`. Direkt übergebenes `@EvidenzJson` wird unabhängig von seiner Herkunft immer erneut auf den angeforderten Evidenz- und Identifier-Datenschutzmodus normalisiert; `DERIVED_ONLY` bleibt der Standard.
+
 ## Resultsets und Leserichtung
 
 CONSOLE zeigt priorisierte `findings`. RAW, TABLE und JSON trennen `moduleStatus`, Capabilities, PlanDocument, Statements, Operatorbaum, Runtime, Threadruntime, Access Paths, Statistics Usage, Parameter, Memory/Spills, Execution Evidence, Histogramme, Predicate-Mappings und Findings.
@@ -61,7 +63,7 @@ Die Ausführung ist pull-basiert; ein Plan ist keine lineare zeitliche Schrittfo
 
 ### Datenkette
 
-Direktes Showplan XML oder gezielte Quellen `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml` beziehungsweise `sys.query_store_plan`; optional Evidence JSON.
+Direktes Showplan XML oder gezielte Quellen `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml` beziehungsweise `sys.query_store_plan`; optional Evidence JSON. Importierte Histogramm- und Predicate-Mappings passieren vor jeder Ausgabe erneut die öffentliche Privacy-Grenze.
 
 ### Zeit- und Scope-Modell
 

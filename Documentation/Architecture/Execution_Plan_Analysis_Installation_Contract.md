@@ -1,14 +1,14 @@
 # Execution-Plan-Analyse – Teilinstaller- und Integrationsvertrag
 
 **Stand:** 2026-07-21  
-**Status:** `IMPLEMENTED_PENDING_RELEASE_GATE`  
+**Status:** `PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX`
 **Zugehörige Architektur:** [`Execution_Plan_Analysis_Design.md`](Execution_Plan_Analysis_Design.md)
 
-> Dieser Vertrag beschreibt, wie die geplante Execution-Plan-Analyse eigenständig installiert und zugleich vollständig in das Gesamtframework integriert wird. Er legt noch keinen lauffähigen Installer an, bevor die referenzierten Objekte implementiert sind. Ein absichtlich fehlschlagender oder unvollständiger Installer-Stub ist nicht zulässig.
+> Dieser Vertrag beschreibt den implementierten Teilinstaller und seine Integration in das Gesamtframework. Die exakte Abhängigkeitsschließung steht in [`ExecutionPlanAnalysisDependencies.csv`](../../Metadata/Inventory/ExecutionPlanAnalysisDependencies.csv); der eingefrorene öffentliche V1-Vertrag steht in [`ExecutionPlanAnalysis_Public_Contract.json`](../../Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json). Beide werden automatisiert gegen Installer, SQL-Quellen und Inventare geprüft.
 
 ## 1. Ziel
 
-Die Implementierung erhält einen eigenständigen Installer:
+Die Implementierung besitzt einen eigenständigen Installer:
 
 ```text
 Code/Install/Install_ExecutionPlanAnalysis.sql
@@ -83,7 +83,7 @@ Der Teilinstaller muss idempotent sein. Eine erneute Ausführung:
 
 #### Gemeinsame Mindestinfrastruktur
 
-Die konkrete Dateiliste wird in Welle 0 aus echten SQL-Abhängigkeiten erzeugt. Inhaltlich sind mindestens folgende Fähigkeiten notwendig:
+Die konkrete Dateiliste ist im Dependency-Manifest eingefroren. Sie stellt folgende Fähigkeiten bereit:
 
 ```text
 Schema [monitor]
@@ -117,7 +117,7 @@ monitor.USP_ExecutionPlanAnalysis
 
 #### Frameworkmetadaten
 
-Der Teilinstaller installiert beziehungsweise aktualisiert die für seine Objekte erforderlichen Framework-Metadaten nur dann als Datenbankobjekte, wenn die spätere Implementierung solche Laufzeitmetadaten tatsächlich verwendet. Repositoryinventare wie CSV-Dateien sind kein SQL-Installationsbestandteil.
+Der Teilinstaller installiert beziehungsweise aktualisiert die für seine Objekte erforderlichen Framework-Metadaten nur dann als Datenbankobjekte, wenn der implementierte Stand solche Laufzeitmetadaten tatsächlich verwendet. Repositoryinventare wie CSV-Dateien sind kein SQL-Installationsbestandteil.
 
 ### 3.2 Nicht enthalten
 
@@ -151,65 +151,66 @@ Planhandle COMPILE beziehungsweise LAST_ACTUAL
 Live-Plan einer expliziten Session
 ```
 
-Query-Store-Planbeschaffung oder detailliertes Query-Store-Feedback gehört standardmäßig nicht zum Teilinstaller, sofern die Abhängigkeitsschließung dadurch die gesamte Query-Store-Familie installieren müsste. Der Standalone-Pfad kann Query-Store-Evidenz stattdessen über `@EvidenzJson` übernehmen.
+Die gezielte Beschaffung genau eines Query-Store-Plans ist direkt im öffentlichen Einstieg implementiert und benötigt keine Query-Store-Analysefamilie. Detailliertes Query-Store-Feedback wird nicht dupliziert; der Standalone-Pfad übernimmt es bei Bedarf über `@EvidenzJson`.
 
 ## 5. Installationsreihenfolge
 
 Die verbindliche logische Reihenfolge lautet:
 
 ```text
-01  Schema und grundlegende gemeinsame Datentyp-/Outputvoraussetzungen
-02  gemeinsame Parser- und Validierungshelper
-03  gemeinsame Berechtigungs- und High-Impact-Helper
-04  gemeinsame TABLE-/CONSOLE-/JSON-Helper
-05  PlanAnalysisProfile
-06  PlanAnalysisRuleThreshold
-07  PlanAnalysisProfileAssignment
-08  TVF_ParseStatisticsIoText
-09  TVF_ParseStatisticsTimeText
-10  TVF_ExecutionPlanObjectReferences
-11  TVF_ExecutionPlanStatisticsUsage
-12  TVF_ExecutionPlanColumnReferences
-13  InternalCollectExecutionPlanMetadata
-14  InternalAnalyzeExecutionPlan
-15  USP_CreateExecutionEvidenceJson
-16  USP_ExecutionPlanAnalysis
-17  Teilinstaller-Smoke-Test beziehungsweise post-install validation
+01  Schema und Preflight
+02  VW_AnalyseClassCatalog
+03  VW_AnalyseAccessPolicy
+04  VW_AnalyseAccessCurrent
+05  TVF_ParsePipeList
+06  TVF_ParseBigintList
+07  InternalCheckAnalysisPath
+08  InternalWriteResultTable
+09  InternalPrepareResultTables
+10  InternalEmitConsoleResult
+11  PlanAnalysisProfile
+12  PlanAnalysisRuleThreshold
+13  PlanAnalysisProfileAssignment
+14  TVF_ParseStatisticsIoText
+15  TVF_ParseStatisticsTimeText
+16  TVF_ExecutionPlanObjectReferences
+17  TVF_ExecutionPlanStatisticsUsage
+18  TVF_ExecutionPlanColumnReferences
+19  InternalCollectExecutionPlanMetadata
+20  InternalAnalyzeExecutionPlan
+21  USP_CreateExecutionEvidenceJson
+22  USP_ExecutionPlanAnalysis
 ```
 
-Der spätere `Install_All.sql` setzt danach fort mit:
+`Install_All.sql` setzt danach unter anderem fort mit:
 
 ```text
-18  USP_ShowplanAnalysis
-19  USP_PlanCacheAnalysis und weitere Plan-Cache-Integrationen
-20  Query-Store-/IQP-Integrationen
-21  übrige Frameworkmodule
+23  USP_ShowplanAnalysis
+24  USP_PlanCacheAnalysis und weitere Plan-Cache-Integrationen
+25  Query-Store-/IQP-Integrationen
+26  übrige Frameworkmodule
 ```
 
-Die konkreten Dateinummern dürfen sich an die tatsächliche Repositoryordnung anpassen. Die fachliche Abhängigkeitsreihenfolge bleibt verbindlich.
+Die Quellpfade und Ordinals stehen verbindlich im Dependency-Manifest. Ein Post-Install-Test ist kein Installerobjekt und läuft als separater synthetischer Contract.
 
-## 6. Geplante Repositorydateien
+## 6. Implementierte Repositorydateien
 
 ### 6.1 Kerncode
 
-Die genaue Nummerierung wird in Welle 0 gegen die dann aktuelle Verzeichnisbelegung geprüft. Der aktuelle Arbeitsvorschlag lautet:
-
 ```text
-Code/04_PlanCache/041_TVF_ParseStatisticsIoText.sql
-Code/04_PlanCache/042_TVF_ParseStatisticsTimeText.sql
-Code/04_PlanCache/043_PlanAnalysisProfile.sql
-Code/04_PlanCache/044_PlanAnalysisRuleThreshold.sql
-Code/04_PlanCache/045_PlanAnalysisProfileAssignment.sql
+Code/04_PlanCache/041_PlanAnalysisProfile.sql
+Code/04_PlanCache/042_PlanAnalysisRuleThreshold.sql
+Code/04_PlanCache/043_PlanAnalysisProfileAssignment.sql
+Code/04_PlanCache/044_TVF_ParseStatisticsIoText.sql
+Code/04_PlanCache/045_TVF_ParseStatisticsTimeText.sql
 Code/04_PlanCache/046_TVF_ExecutionPlanObjectReferences.sql
 Code/04_PlanCache/047_TVF_ExecutionPlanStatisticsUsage.sql
 Code/04_PlanCache/048_TVF_ExecutionPlanColumnReferences.sql
 Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql
-Code/04_PlanCache/050_InternalAnalyzeExecutionPlan.sql
-Code/04_PlanCache/051_USP_CreateExecutionEvidenceJson.sql
-Code/04_PlanCache/052_USP_ExecutionPlanAnalysis.sql
+Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql
+Code/04_PlanCache/052_USP_CreateExecutionEvidenceJson.sql
+Code/04_PlanCache/053_USP_ExecutionPlanAnalysis.sql
 ```
-
-Da `050_USP_ShowplanAnalysis.sql` bereits existiert, muss die finale Nummerierung vor Implementierungsbeginn konfliktfrei neu festgelegt werden. Die Nummern in diesem Abschnitt sind keine Freigabe zum Überschreiben bestehender Dateien.
 
 ### 6.2 Installer
 
@@ -221,13 +222,11 @@ Code/Install/Install_All.sql
 ### 6.3 Tests
 
 ```text
-Code/Tests/PlanCache/ExecutionPlanAnalysis_Standalone.sql
-Code/Tests/PlanCache/ExecutionEvidence_Contract.sql
-Code/Tests/PlanCache/ExecutionPlanAnalysis_Privacy.sql
-Code/Tests/Integration/ExecutionPlanAnalysis_FrameworkIntegration.sql
+Code/Tests/PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql
+Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1
+Code/Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql
+Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py
 ```
-
-Die finale Nummerierung wird mit dem vorhandenen Release-Gate-Schema abgestimmt.
 
 ## 7. Generierung statt manueller Doppelpflege
 
@@ -248,30 +247,15 @@ Nicht zulässig:
 
 ## 8. Dependency-Manifest
 
-Vor Welle 1 wird ein maschinenlesbares Manifest angelegt. Vorgesehene Felder:
+Das maschinenlesbare Manifest besitzt folgende eingefrorene Felder:
 
 ```text
 InstallOrdinal
 ObjectType
 ObjectName
 SourcePath
-DependencyClass
 StandaloneRequired
-FrameworkIntegrationRequired
-OptionalFeature
-MinimumSqlServerMajorVersion
-MinimumCompatibilityLevel
-Notes
-```
-
-`DependencyClass`:
-
-```text
-COMMON_REQUIRED
-PLAN_ANALYSIS_CORE
-PLAN_ANALYSIS_OPTIONAL
-FRAMEWORK_INTEGRATION_ONLY
-TEST_ONLY
+FrameworkIntegrationRole
 ```
 
 Das Manifest ist die Quelle für:
@@ -358,7 +342,7 @@ CREATE OR ALTER
 
 ## 13. Post-Install-Validierung
 
-Der Teilinstaller endet mit einer leichten Validierung, die keine realen Pläne oder Benutzerdaten benötigt.
+Der Teilinstaller selbst enthält nur kanonische SQLCMD-Includes und führt keine versteckten Testabfragen aus. Die leichte Post-Install-Validierung läuft unmittelbar danach über einen separaten synthetischen Runtime-Contract, damit Installation und Test eindeutig getrennt bleiben.
 
 Mindestens zu prüfen:
 
@@ -373,7 +357,7 @@ TABLE-Zielpreflight funktionsfähig
 kein High-Impact-Zugriff im Smoke-Test
 ```
 
-Der Teilinstaller führt keine vollständigen Deep-Tests aus.
+Der Teilinstaller führt keine vollständigen Deep-Tests aus. `193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql` prüft Erstinstallation, beide Public APIs, Reinstallation, lokale Seed-Erhaltung, Objektclosure sowie die Unabhängigkeit von `USP_ShowplanAnalysis`, Query Store und Extended Events.
 
 ## 14. Release-Gate
 
@@ -384,6 +368,8 @@ SQL Server 2019
 SQL Server 2022
 SQL Server 2025
 ```
+
+Der SQL-Server-2025-Standalone- und Gesamtgate ist dokumentiert erfolgreich. SQL Server 2019 und 2022 werden nach dem Public-Contract-Freeze gemeinsam mit 2025 in der finalen Matrix ausgeführt.
 
 Zusätzlich:
 
@@ -410,4 +396,4 @@ Der Teilinstaller ist fertig, wenn:
 
 ## 16. Implementierungsentscheidung
 
-Der Teilinstaller wird erst angelegt, wenn mindestens Welle 0 abgeschlossen und die erste vollständige transitive Abhängigkeitsschließung bestimmt ist. Bis dahin ist dieser Vertrag die verbindliche Spezifikation. Dadurch entsteht kein scheinbar installierbares, tatsächlich aber unvollständiges Script.
+Der Teilinstaller ist aus derselben kanonischen Quellmenge wie `Install_All.sql` aufgebaut. Der Installervertrag vergleicht seine Includes mit dem Dependency-Manifest; der Standalone-Runtime-Contract prüft zusätzlich die tatsächlich installierte Objektclosure und die Idempotenz auf einer leeren synthetischen Datenbank.

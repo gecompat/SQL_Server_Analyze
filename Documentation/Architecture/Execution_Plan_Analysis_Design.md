@@ -1,21 +1,21 @@
 # Execution-Plan-Analyse – Architektur- und Implementierungsvertrag
 
 **Stand:** 2026-07-21  
-**Status:** `IMPLEMENTED_PENDING_RELEASE_GATE`  
+**Status:** `PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX`
 **Backlog:** `PLAN-001`  
 **Zielversionen:** SQL Server 2019, 2022 und 2025  
 **Mindestversion:** SQL Server 2019
 
-> Diese Datei ist die kanonische Spezifikation für die geplante eigenständige und frameworkintegrierte Execution-Plan-Analyse. Sie ist noch keine Implementierung. Beispiele verwenden ausschließlich synthetische Bezeichner. Reale Plan-, Parameter-, Histogramm-, Objekt-, Server-, Benutzer- oder Geschäftsdaten dürfen nicht in Repositorydateien, Tests, Fixtures oder andere herunterladbare Artefakte übernommen werden.
+> Diese Datei beschreibt die implementierte eigenständige und frameworkintegrierte Execution-Plan-Analyse. Der eingefrorene maschinenlesbare V1-Vertrag steht in [`ExecutionPlanAnalysis_Public_Contract.json`](../../Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json). Exakte Parameterdeklarationen, Resultsets und Installerabhängigkeiten werden zusätzlich durch die dort referenzierten Inventare festgelegt und automatisch gegen die kanonischen SQL-Quellen geprüft. Beispiele verwenden ausschließlich synthetische Bezeichner. Reale Plan-, Parameter-, Histogramm-, Objekt-, Server-, Benutzer- oder Geschäftsdaten dürfen nicht in Repositorydateien, Tests, Fixtures oder andere herunterladbare Artefakte übernommen werden.
 
 ## 1. Zielbild
 
-Die neue Analyse soll zwei gleichwertige Betriebsarten unterstützen:
+Die Analyse unterstützt zwei gleichwertige Betriebsarten:
 
 1. **Standalone:** Ein vorhandenes Showplan-XML und optionale zusätzliche Ausführungsevidenz werden direkt übergeben. Der Standardpfad liest weder Plan Cache noch Query Store noch Benutzerobjekte.
 2. **Frameworkintegriert:** Bestehende Frameworkmodule beschaffen Pläne aus Plan Cache, Last Known Actual Plan, einer laufenden Session oder Query Store und verwenden anschließend dieselbe zentrale Analyse-Engine.
 
-Der Standalone-Pfad muss auch einen Plan analysieren können, der von einer anderen SQL-Server-Instanz stammt. Die Version des analysierenden Servers darf dabei nicht stillschweigend als Quellversion des Plans interpretiert werden.
+Der Standalone-Pfad kann auch einen Plan analysieren, der von einer anderen SQL-Server-Instanz stammt. Die Version des analysierenden Servers wird dabei nicht stillschweigend als Quellversion des Plans interpretiert.
 
 ### 1.1 Kernziele
 
@@ -71,7 +71,7 @@ workload- und evidenzabhängige Regeln
 Findings und Folgeanalysen
 ```
 
-### 3.1 Geplante öffentliche Objekte
+### 3.1 Implementierte öffentliche Objekte
 
 ```text
 monitor.USP_ExecutionPlanAnalysis
@@ -83,14 +83,14 @@ monitor.TVF_ExecutionPlanStatisticsUsage
 monitor.TVF_ExecutionPlanColumnReferences
 ```
 
-### 3.2 Geplante interne Objekte
+### 3.2 Implementierte interne Objekte
 
 ```text
 monitor.InternalAnalyzeExecutionPlan
 monitor.InternalCollectExecutionPlanMetadata
 ```
 
-### 3.3 Geplante Steuertabellen
+### 3.3 Implementierte Steuertabellen
 
 ```text
 monitor.PlanAnalysisProfile
@@ -134,7 +134,7 @@ Interne zentrale Analyse-Engine. Sie erhält ein Plan-XML, optionales Evidenz-JS
 
 ### 4.3 `monitor.USP_ShowplanAnalysis`
 
-Bestehender Multi-Plan-Wrapper. Die künftige Verantwortung ist:
+Bestehender Multi-Plan-Wrapper. Seine Verantwortung ist:
 
 1. Kandidaten selektieren;
 2. statementbezogene Identität erhalten;
@@ -164,7 +164,7 @@ Die drei Extractor-Funktionen lesen ausschließlich das übergebene XML und grei
 
 Normalisiert Referenzen aus Access Paths, DML Targets, Statistics Usage, Missing Index, Column References, Function References und Remote-Elementen.
 
-Vorgesehene Spalten:
+Implementierte Spalten:
 
 ```text
 ReferenceOrdinal
@@ -236,44 +236,55 @@ IsPartitionColumn
 
 ## 5. Öffentliche Signatur von `USP_ExecutionPlanAnalysis`
 
-Die finale Implementierung darf Parameter nach dem Vertragsreview noch zusammenfassen. Der geplante Funktionsumfang ist:
+Die folgende V1-Signatur ist eingefroren. Änderungen an Namen, Reihenfolge, Datentypen, OUTPUT-Eigenschaft oder Defaults benötigen eine neue Contract-Version:
 
 ```sql
 CREATE OR ALTER PROCEDURE [monitor].[USP_ExecutionPlanAnalysis]
-      @PlanXml                       xml             = NULL
-    , @PlanHandle                    varbinary(64)   = NULL
-    , @SessionIds                     smallint       = NULL
-    , @RequestId                     int            = NULL
-    , @QueryStoreDatabaseName        sysname         = NULL
-    , @QueryStorePlanId              bigint          = NULL
-    , @PlanQuelle                    varchar(24)      = 'AUTO'
-    , @StatementId                   int             = NULL
-    , @StatementQueryHash            binary(8)       = NULL
-    , @EvidenzJson                   nvarchar(max)   = NULL
-    , @AnalyseTiefe                  varchar(16)      = 'STANDARD'
-    , @WorkloadProfil                varchar(32)      = 'AUTO'
-    , @Regelsatz                     varchar(32)      = 'DEFAULT'
-    , @MinSchweregrad                varchar(16)      = 'INFO'
-    , @MitAktuellenMetadaten         bit             = 0
-    , @MitAktuellenStatistiken       bit             = 0
-    , @MitQueryStoreKontext          bit             = 0
-    , @MitThreadRuntime              bit             = 0
-    , @MitAusdrucksdetails           bit             = 1
-    , @MaxOperatoren                 int             = 50000
-    , @MaxFindings                   int             = 5000
-    , @MaxDurationSeconds            int             = 30
-    , @LockTimeoutMs                 int             = 0
-    , @HighImpactConfirmed           bit             = 0
-    , @ResultSetArt                  varchar(16)      = 'CONSOLE'
-    , @ResultTablesJson              nvarchar(max)   = NULL
-    , @JsonErzeugen                  bit             = 0
-    , @Json                          nvarchar(max)   = NULL OUTPUT
-    , @PrintMeldungen                bit             = 1
-    , @Hilfe                         bit             = 0
-    , @StatusCodeOut                 varchar(40)     = NULL OUTPUT
-    , @IsPartialOut                  bit             = NULL OUTPUT
-    , @ErrorNumberOut                int             = NULL OUTPUT
-    , @ErrorMessageOut               nvarchar(2048)  = NULL OUTPUT;
+      @PlanXml                        xml             = NULL
+    , @PlanHandle                     varbinary(64)   = NULL
+    , @SessionIds                     nvarchar(max)   = NULL
+    , @RequestId                      int             = NULL
+    , @QueryStoreDatabaseName         sysname         = NULL
+    , @QueryStorePlanId               bigint          = NULL
+    , @PlanQuelle                     varchar(24)      = 'AUTO'
+    , @StatementId                    int             = NULL
+    , @StatementQueryHash             binary(8)       = NULL
+    , @StatementQueryPlanHash         binary(8)       = NULL
+    , @EvidenzJson                    nvarchar(max)   = NULL
+    , @StatisticsIoText               nvarchar(max)   = NULL
+    , @StatisticsTimeText             nvarchar(max)   = NULL
+    , @StatisticsLanguage             varchar(16)     = 'AUTO'
+    , @StatistikEvidenzModus          varchar(16)     = 'PLAN_ONLY'
+    , @HistogrammModus                varchar(16)     = 'NONE'
+    , @MetadatenQuellenmodus          varchar(16)     = 'EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt        bit             = 0
+    , @MitPredicateHistogramMap       bit             = 1
+    , @AnalyseTiefe                   varchar(16)     = 'STANDARD'
+    , @WorkloadProfil                 varchar(32)     = 'AUTO'
+    , @Regelsatz                      varchar(32)      = 'DEFAULT'
+    , @MinSchweregrad                 varchar(16)     = 'INFO'
+    , @MitThreadRuntime               bit             = 0
+    , @MitSqlText                     bit             = 0
+    , @EvidenzDatenschutzModus        varchar(24)      = 'DERIVED_ONLY'
+    , @IdentifierDatenschutzModus     varchar(16)      = 'RAW'
+    , @SensitiveDataConfirmed         bit             = 0
+    , @MaxOperatoren                  int             = 50000
+    , @MaxFindings                    int             = 5000
+    , @MaxStatistiken                 int             = 100
+    , @MaxHistogrammSchritte          int             = 20000
+    , @MaxDurationSeconds             int             = 30
+    , @LockTimeoutMs                  int             = 0
+    , @HighImpactConfirmed            bit             = 0
+    , @ResultSetArt                   varchar(16)      = 'CONSOLE'
+    , @ResultTablesJson               nvarchar(max)   = NULL
+    , @JsonErzeugen                   bit             = 0
+    , @Json                           nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen                 bit             = 1
+    , @Hilfe                          bit             = 0
+    , @StatusCodeOut                  varchar(40)     = NULL OUTPUT
+    , @IsPartialOut                   bit             = NULL OUTPUT
+    , @ErrorNumberOut                 int             = NULL OUTPUT
+    , @ErrorMessageOut                nvarchar(2048)  = NULL OUTPUT;
 ```
 
 ### 5.1 Planquellen
@@ -322,6 +333,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CreateExecutionEvidenceJson]
     , @StrictValidation              bit             = 1
     , @ResultSetArt                  varchar(16)     = 'CONSOLE'
     , @ResultTablesJson              nvarchar(max)   = NULL
+    , @JsonErzeugen                  bit             = 1
     , @Json                          nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                bit             = 1
     , @Hilfe                         bit             = 0
@@ -377,8 +389,10 @@ CURRENT_SERVER
 
 ```json
 {
-  "schemaVersion": 1,
-  "generator": {},
+  "meta": {
+    "resultName": "ExecutionEvidence",
+    "schemaVersion": 1
+  },
   "capture": {},
   "sourceEnvironment": {},
   "planIdentity": {},
@@ -387,19 +401,16 @@ CURRENT_SERVER
   "statistics": {
     "planUsage": [],
     "currentSnapshot": [],
-    "databaseSettings": [],
-    "statisticsColumns": [],
     "histogramSummaries": [],
-    "histogramSteps": [],
-    "predicateHistogramMappings": []
+    "histogramSteps": []
   },
-  "objectMetadata": [],
-  "indexMetadata": [],
-  "additionalEvidence": {},
-  "parseStatus": [],
-  "sensitiveDataStatus": [],
+  "objectReferences": [],
+  "predicateHistogramMappings": [],
+  "collectionStatus": [],
   "warnings": [],
-  "rawInput": {}
+  "rawInput": {},
+  "importedEvidence": {},
+  "additionalEvidence": null
 }
 ```
 
@@ -426,7 +437,7 @@ HASH_ONLY
 INCLUDE
 ```
 
-Default ist `HASH_ONLY`. Gespeichert werden nur Länge und Capture-spezifischer Hash. `INCLUDE` ist kein Repositorymodus und darf reale Meldungsinhalte nicht in Tests, Dokumentation oder Artefakte übernehmen.
+Default ist `HASH_ONLY`. Gespeichert werden nur Länge und Capture-spezifischer Hash. `INCLUDE` benötigt `@SensitiveDataConfirmed = 1` und `@IdentifierDatenschutzModus = 'RAW'`, weil Rohzeilen sensible Werte und nicht zuverlässig einzeln anonymisierbare Identifikatoren enthalten können. `INCLUDE` ist kein Repositorymodus und darf reale Meldungsinhalte nicht in Tests, Dokumentation oder Artefakte übernehmen.
 
 ## 8. Statistik- und Histogramm-Evidenz
 
@@ -520,6 +531,8 @@ Default ist `DERIVED_ONLY`.
 - `STRUCTURE_ONLY`: auch Tokens entfallen; nur Struktur und Verteilungsmetriken.
 
 `RAW` ohne Bestätigung liefert `SENSITIVE_DATA_CONFIRMATION_REQUIRED`.
+
+`@MitSqlText = 1` ist ein separater sensibler Ausgabepfad und benötigt ebenfalls `@SensitiveDataConfirmed = 1`, weil `StatementText` Literale und proprietären SQL-Text enthalten kann. Die übrigen strukturierten Werte folgen weiterhin dem gewählten Evidenz-Datenschutzmodus.
 
 ### 9.3 Identifier-Datenschutz
 
@@ -1148,32 +1161,28 @@ Die Major Version allein genügt nicht, weil Attribute durch Service Packs oder 
 ## 21. Capability-Resultset
 
 ```text
+AnalysisObjectId
 FeatureCode
-RequiredPlanType
-MinimumServerMajorVersion
-MinimumCompatibilityLevel
-DetectedFrom
 IsAvailable
 AvailabilityReason
-EvidenceLevel
+EvidenceSource
+Detail
 ```
 
-Beispiele:
+Die in V1 eingefrorenen Capabilitycodes sind:
 
 ```text
-ACTUAL_ROWS
+STATEMENTS
+OPERATOR_TREE
+EXECUTION_EVIDENCE_JSON
+ACTUAL_RUNTIME
 ACTUAL_ROWS_READ
 THREAD_RUNTIME
-MEMORY_GRANT_RUNTIME
-SPILL_DETAILS
 PSP_VARIANT
 OPPO_VARIANT
-QUERY_STORE_PLAN_FEEDBACK
-STATISTICS_IO
-STATISTICS_TIME
-CURRENT_STATISTICS
-HISTOGRAM_MAPPING
 ```
+
+`AvailabilityReason` unterscheidet insbesondere `AVAILABLE`, fehlende XML-Attribute, nicht angeforderte Threaddetails, ungültige externe Evidenz und nicht auflösbare Operatorpfade. Neue Capabilitycodes sind additive V1-Erweiterungen; Umdeutung oder Entfernung eines bestehenden Codes benötigt eine neue Contract-Version.
 
 ## 22. Resultsets
 
@@ -1189,25 +1198,20 @@ statements
 operatorTree
 operatorRuntime
 operatorThreadRuntime
-objectReferences
-columnReferences
 accessPaths
-predicates
 statisticsUsage
-statisticsColumns
+parametersAndVariants
+memoryAndSpills
+executionEvidence
 histogramSummaries
 histogramSteps
 predicateHistogramMappings
-memoryAndSpills
-parametersAndVariants
-missingIndexes
-executionEvidence
-sensitiveDataStatus
 findings
-warnings
 ```
 
-Jedes benannte Resultset besitzt eine eigene `schemaVersion`. Änderungen werden im kanonischen `Metadata/Inventory/ResultSets.csv` gepflegt.
+`USP_CreateExecutionEvidenceJson` besitzt den separaten CONSOLE-Default `captureStatus` und die V1-Resultsets `captureStatus`, `statisticsIo`, `statisticsTime`, `planStatisticsUsage`, `objectReferences`, `currentStatistics`, `histogramSummaries`, `histogramSteps`, `predicateHistogramMappings`, `collectionStatus` und `warnings`.
+
+Jedes benannte Resultset besitzt `schemaVersion = 1`. Exakte Spalten, Datentypen, NULL-Eigenschaften, Reihenfolge und Exportfähigkeit stehen im kanonischen [`Metadata/Inventory/ResultSets.csv`](../../Metadata/Inventory/ResultSets.csv). Änderungen werden dort und im maschinenlesbaren Public Contract gemeinsam versioniert.
 
 ## 23. Eigenlast und Locking
 
@@ -1302,7 +1306,9 @@ GitHub Actions testet SQL Server 2019, 2022 und 2025. Nicht verfügbare Features
 
 ## 25. Umsetzungswellen
 
-### Welle 0 – Vertragsfreeze
+Die Wellen dokumentieren den Implementierungsweg und den Umfang des eingefrorenen V1-Kerns. Nicht im V1-Resultsetinventar enthaltene Vertiefungen bleiben mögliche spätere Erweiterungen und sind kein stillschweigender Bestandteil des Public Contracts.
+
+### Welle 0 – Vertragsfreeze – abgeschlossen für V1
 
 - öffentliche und interne Objektrollen;
 - Parameter;
@@ -1310,9 +1316,9 @@ GitHub Actions testet SQL Server 2019, 2022 und 2025. Nicht verfügbare Features
 - Evidenz-JSON-Schema;
 - Finding- und Capabilitycodes;
 - Installer-Dependency-Manifest;
-- leere Testcontracts.
+- ausführbare statische und synthetische Runtime-Contracts.
 
-### Welle 1 – XML-Extractor und Standalone-Kern
+### Welle 1 – XML-Extractor und Standalone-Kern – abgeschlossen für V1
 
 - Objekt-, Statistik- und Spalten-Extractor;
 - Statementidentität;
@@ -1321,47 +1327,47 @@ GitHub Actions testet SQL Server 2019, 2022 und 2025. Nicht verfügbare Features
 - sichere `ActualRowsRead`- und Cardinality-Kennzahlen;
 - direkter `@PlanXml`-Aufruf.
 
-### Welle 2 – Evidenzerzeugung
+### Welle 2 – Evidenzerzeugung – abgeschlossen für V1
 
 - `STATISTICS IO`-/`TIME`-Parser;
 - `USP_CreateExecutionEvidenceJson`;
 - Capture-Confidence;
 - JSON-Validierung und Raw-Text-Handling.
 
-### Welle 3 – Statistik, Histogramm und Datenschutz
+### Welle 3 – Statistik, Histogramm und Datenschutz – abgeschlossen für V1
 
 - zielgerichteter Metadata Collector;
 - Compile-/Current-State-Korrelation;
 - Histogrammzusammenfassung und Mapping;
 - Datenschutzmodi und `sensitiveDataStatus`.
 
-### Welle 4 – Regeln und Workloadprofile
+### Welle 4 – Regeln und Workloadprofile – V1-Kern abgeschlossen
 
 - Profile und Schwellenwerttabellen;
 - Severity und Confidence;
 - Cardinality-, Access-, Lookup-, Scan-, Spill-, Grant- und Parallelismusregeln.
 
-### Welle 5 – Index- und Predicate-Analyse
+### Welle 5 – Index- und Predicate-Analyse – V1-Basismodell implementiert
 
 - Seek Keys und Residual Predicates;
 - Schlüsselpräfix und Range-Position;
 - ASC/DESC, Required Order, Backward Scan und Sortvermeidung.
 
-### Welle 6 – SQL-Versionen und IQP
+### Welle 6 – SQL-Versionen und IQP – Capability-Erkennung implementiert, finale Matrix ausstehend
 
 - SQL-2019-Capabilities;
 - PSP und Plan Feedback für 2022+;
 - OPPO für 2025+;
 - unbekannte zukünftige Showplan-Elemente.
 
-### Welle 7 – Frameworkintegration
+### Welle 7 – Frameworkintegration – zentraler Wrapperpfad implementiert
 
 - `USP_ShowplanAnalysis` auf den zentralen Kern umstellen;
 - Planhandles deduplizieren;
 - `USP_PlanCacheAnalysis` weiterleiten;
 - Überschneidungen mit `USP_PlanDetails` und IQP-Modulen reduzieren.
 
-### Welle 8 – Dokumentation und Release Gate
+### Welle 8 – Dokumentation und Release Gate – Public Contract eingefroren, finale Matrix ausstehend
 
 - Procedure-Seiten;
 - synthetische Beispiele;
@@ -1371,7 +1377,7 @@ GitHub Actions testet SQL Server 2019, 2022 und 2025. Nicht verfügbare Features
 
 ## 26. Installationsmodell
 
-Die Implementierung erhält einen eigenen Teilinstaller:
+Die Implementierung besitzt einen eigenen Teilinstaller:
 
 ```text
 Code/Install/Install_ExecutionPlanAnalysis.sql
@@ -1379,14 +1385,14 @@ Code/Install/Install_ExecutionPlanAnalysis.sql
 
 Dieser installiert nur die Standalone-Execution-Plan-Analyse und ihre tatsächliche transitive Abhängigkeitsschließung. `Code/Install/Install_All.sql` integriert dieselben Objekte in identischer Reihenfolge und installiert anschließend die übrigen Frameworkmodule und Integrationswrapper. Der verbindliche Detailvertrag steht in [`Execution_Plan_Analysis_Installation_Contract.md`](Execution_Plan_Analysis_Installation_Contract.md).
 
-## 27. Offene Entscheidungen vor Welle 0
+## 27. Für V1 entschiedene Vertragsfragen
 
-1. Soll `@AnalyseTiefe` mehrere Detailbits ersetzen oder ergänzen?
-2. Sollen `TOKENIZED`-Werte innerhalb eines Aufrufs über alle Evidenzbereiche denselben Capture-Salt verwenden?
-3. Soll `OBJECT_ALL` überhaupt im öffentlichen Standalone-Objekt oder nur im frameworkinternen Deep-Pfad verfügbar sein?
-4. Welche Resultsets sind in Version 1 TABLE-exportierbar, um den Erstvertrag nicht unnötig breit zu machen?
-5. Werden Query-Store-Feedbackdetails in `USP_ExecutionPlanAnalysis` gesammelt oder nur über einen bestehenden IQP-Collector übergeben?
-6. Soll der spätere Client-Collector Bestandteil dieses Repositorys oder ein separates Tool bleiben?
+1. `@AnalyseTiefe` ersetzt keine expliziten Detailparameter. `FULL` kennzeichnet den ressourcenintensiven Pfad und benötigt die High-Impact-Bestätigung; Statistik-, Histogramm- und Threaddetails bleiben separat steuerbar.
+2. `TOKENIZED`-Werte sind absichtlich component- beziehungsweise capture-lokal und nicht als stabiler Join-Key zwischen getrennten Procedure-Aufrufen oder Outputbereichen zugesagt. Fachliche Korrelation verwendet abgeleitete Ordinals und Mappingstatus.
+3. `OBJECT_ALL` bleibt im öffentlichen Standalone-Objekt verfügbar, ist aber ein bestätigungspflichtiger High-Impact-Pfad.
+4. Alle im Public Contract aufgelisteten V1-Resultsets sind TABLE-exportierbar. Neue Resultsets sind nur additiv innerhalb V1; bestehende Schemata werden nicht stillschweigend geändert.
+5. Query-Store-Feedbackdetails werden nicht durch einen zweiten Collector in `USP_ExecutionPlanAnalysis` dupliziert. Sie kommen über bestehende IQP-/Query-Store-Module oder über normalisierte externe Evidenz.
+6. Ein späterer Client-Collector ist nicht Bestandteil des eingefrorenen Repositoryvertrags und bleibt ein getrennt zu entscheidendes Artefakt.
 
 ## 28. Hauptentscheidung
 

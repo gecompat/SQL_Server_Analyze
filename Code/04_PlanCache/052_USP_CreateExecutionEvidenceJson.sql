@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CreateExecutionEvidenceJson
-Version      : 1.0.1
+Version      : 1.0.2
 Stand        : 2026-07-21
 Typ          : Stored Procedure
 Zweck        : Erzeugt und validiert ein versioniertes Execution-Evidence-JSON
@@ -86,7 +86,8 @@ BEGIN
         PRINT N'@StatistikEvidenzModus NONE|PLAN_ONLY|USED|RELEVANT|OBJECT_ALL; aktuelle Metadaten benötigen CURRENT_SERVER und bestätigte Quellumgebung.';
         PRINT N'@HistogrammModus NONE|SUMMARY|STEPS. @EvidenzDatenschutzModus DERIVED_ONLY (Default)|TOKENIZED|STRUCTURE_ONLY|RAW.';
         PRINT N'RAW benötigt @SensitiveDataConfirmed=1. @IdentifierDatenschutzModus RAW|TOKENIZED|OMIT.';
-        PRINT N'@RawTextHandling NONE|HASH_ONLY|INCLUDE. Der Generator führt die analysierte Query niemals selbst aus.';
+        PRINT N'@RawTextHandling NONE|HASH_ONLY|INCLUDE. INCLUDE benötigt @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW.';
+        PRINT N'Der Generator führt die analysierte Query niemals selbst aus.';
         RETURN;
     END;
 
@@ -216,6 +217,14 @@ BEGIN
     BEGIN
         SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
                @ErrorMessageOut=N'RAW-Evidenz kann Parameter-, Predicate-, Filter- oder Histogrammwerte enthalten und benötigt @SensitiveDataConfirmed=1.';
+    END;
+
+    IF @StatusCodeOut='AVAILABLE'
+       AND @RawMode='INCLUDE'
+       AND (@SensitiveDataConfirmed<>1 OR @IdentifierMode<>'RAW')
+    BEGIN
+        SELECT @StatusCodeOut='SENSITIVE_DATA_CONFIRMATION_REQUIRED',@IsPartialOut=1,
+               @ErrorMessageOut=N'Rohtext kann sensible Werte und nicht zuverlässig einzeln anonymisierbare Identifikatoren enthalten. INCLUDE benötigt @SensitiveDataConfirmed=1 und @IdentifierDatenschutzModus=RAW.';
     END;
 
     IF @StatusCodeOut='AVAILABLE'
@@ -467,7 +476,7 @@ BEGIN
 
                 INSERT [#CreateExecutionEvidenceJson_HistogramSteps]
                 SELECT [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StatisticsId],[LeadingColumnName],
-                       [StepOrdinal],CASE WHEN @PrivacyMode='RAW' THEN [RangeHighKey] END,[RangeRows],[EqualRows],
+                       [StepOrdinal],CASE WHEN @PrivacyMode IN ('RAW','TOKENIZED') THEN [RangeHighKey] END,[RangeRows],[EqualRows],
                        [DistinctRangeRows],[AverageRangeRows],[IsPredicateTarget],[PredicateMatchCount]
                 FROM OPENJSON(@CanonicalEvidenceJson,N'$.statistics.histogramSteps')
                 WITH
