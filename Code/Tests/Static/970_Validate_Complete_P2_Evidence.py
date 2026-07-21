@@ -13,7 +13,6 @@ from pathlib import Path
 # P2 suite rows retain their first complete evidence; the target matrix and
 # RELEASE_GATE_ALL rows point to the latest full framework revalidation.
 P2_EVIDENCE_COMMIT = "40d54fdc195b5cfa0015e2cbe281da595e427ab0"
-CURRENT_RELEASE_COMMIT = "53fe82d57e6d3d53b5a16ec1c220ccb98c2050f8"
 P2_MODULES = {'USP_ServiceBrokerAnalysis', 'USP_SpecialFeatureInventory', 'USP_EncryptionAnalysis', 'USP_TemporalAnalysis', 'USP_InMemoryOltpAnalysis', 'USP_FullTextAnalysis', 'USP_DataCaptureDeepAnalysis', 'USP_MaintenanceOperations'}
 P2_SUITE_IDS = {'P2_FEATURE_INVENTORY_RUNTIME', 'P2_BROKER_RUNTIME', 'P2_FULLTEXT_RUNTIME', 'P2_ENCRYPTION_RUNTIME', 'P2_DATA_CAPTURE_RUNTIME', 'P2_XTP_RUNTIME', 'P2_MAINTENANCE_RUNTIME', 'P2_TEMPORAL_RUNTIME'}
 TARGET_IDS = {'SQL2025-LINUX', 'SQL2019-LINUX', 'SQL2022-LINUX'}
@@ -34,6 +33,13 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 
 def validate(root: Path) -> list[str]:
     errors: list[str] = []
+    matrix = read_csv(root / "Metadata/Quality/Test_Matrix.csv")
+    current_target_rows = [row for row in matrix if row.get("TargetId") in TARGET_IDS]
+    current_commits = {row.get("CommitSha", "") for row in current_target_rows}
+    current_release_commit = next(iter(current_commits), "") if len(current_commits) == 1 else ""
+    if not re.fullmatch(r"[0-9a-f]{40}", current_release_commit):
+        errors.append("Canonical current release commit differs.")
+
     cases = read_csv(root / "Metadata/Quality/Special_Case_Test_Cases.csv")
     p2_rows = [row for row in cases if row.get("Module") in P2_MODULES]
     if len(p2_rows) != 124:
@@ -50,7 +56,7 @@ def validate(root: Path) -> list[str]:
         release_rows = [row for row in evidence if row.get("TargetId") == target_id and row.get("SuiteId") == "RELEASE_GATE_ALL"]
         if len(release_rows) != 1:
             errors.append(f"Release-gate row count differs: {target_id}")
-        elif release_rows[0].get("CommitSha") != CURRENT_RELEASE_COMMIT or release_rows[0].get("TestStatus") != "PASS":
+        elif release_rows[0].get("CommitSha") != current_release_commit or release_rows[0].get("TestStatus") != "PASS":
             errors.append(f"Release-gate evidence differs: {target_id}")
         for suite_id in P2_SUITE_IDS:
             rows = [row for row in evidence if row.get("TargetId") == target_id and row.get("SuiteId") == suite_id]
@@ -59,10 +65,9 @@ def validate(root: Path) -> list[str]:
             elif rows[0].get("CommitSha") != P2_EVIDENCE_COMMIT or rows[0].get("TestStatus") != "PASS_WITH_LIMITATIONS":
                 errors.append(f"P2 suite evidence differs: {target_id}/{suite_id}")
 
-    matrix = read_csv(root / "Metadata/Quality/Test_Matrix.csv")
     for row in matrix:
         if row.get("TargetId") in TARGET_IDS:
-            if row.get("CommitSha") != CURRENT_RELEASE_COMMIT or row.get("TestStatus") != "PASS_WITH_LIMITATIONS":
+            if row.get("CommitSha") != current_release_commit or row.get("TestStatus") != "PASS_WITH_LIMITATIONS":
                 errors.append(f"P2 target matrix differs: {row.get('TargetId')}")
 
     backlog = read_csv(root / "Metadata/Quality/Special_Case_Gap_Backlog.csv")
@@ -84,7 +89,7 @@ def validate(root: Path) -> list[str]:
         errors.append("Release audit still reports open special cases.")
     if docs.get("specialCaseRowsPassWithLimitations") != 181:
         errors.append("Release audit evidenced case count differs.")
-    if docs.get("actionEvidence", {}).get("commitSha") != P2_EVIDENCE_COMMIT:
+    if docs.get("actionEvidence", {}).get("commitSha") != current_release_commit:
         errors.append("Release audit runtime commit differs.")
     checks = audit.get("staticChecks", {})
     for key in (

@@ -1,18 +1,19 @@
 {
   "release": "1.1.0-special.9",
-  "generatedAtUtc": "2026-07-18T18:36:02Z",
+  "generatedAtUtc": "2026-07-21T06:05:42Z",
   "status": "ACTIONS_PASS",
-  "scope": "green commit-specific 31-suite SQL Server 2019, 2022 and 2025 evidence for all 181 P0 P1 and P2 cases",
+  "scope": "green commit-specific 34-suite SQL Server 2019, 2022 and 2025 evidence for all 181 P0 P1 and P2 cases plus the framework output contracts",
+  "canonicalEvidenceSource": "Metadata/Quality/Test_Matrix.csv",
   "inventory": {
-    "repositoryFiles": 362,
-    "canonicalSqlSources": 117,
-    "sqlFilesIncludingTestsAndExamples": 153,
-    "objects": 106,
+    "repositoryFiles": 391,
+    "canonicalSqlSources": 126,
+    "sqlFilesIncludingTestsAndExamples": 168,
+    "objects": 115,
     "procedures": 84,
-    "functions": 17,
+    "functions": 20,
     "views": 5,
-    "procedureParameters": 1356,
-    "systemSources": 214
+    "procedureParameters": 1469,
+    "systemSources": 217
   },
   "staticChecks": {
     "sqlLexicalBalance": {
@@ -503,46 +504,46 @@
     "targetRows": 6,
     "targetRowsNotExecuted": 3,
     "targetRowsPassWithLimitations": 3,
-    "releaseGateSuiteRows": 80,
+    "releaseGateSuiteRows": 89,
     "releaseGateSuiteRowsNotExecuted": 15,
-    "releaseGateSuiteRowsPass": 8,
+    "releaseGateSuiteRowsPass": 17,
     "releaseGateSuiteRowsPassWithLimitations": 57,
     "specialCaseRows": 181,
     "specialCaseRowsNotExecuted": 0,
     "specialCaseRowsPassWithLimitations": 181,
     "specialCaseRowsAutomatedPending": 0,
     "runtimeStatus": "ACTIONS_PASS",
-    "claim": "Commit 40d54fdc195b5cfa0015e2cbe281da595e427ab0 passed the synthetic Linux installer, 31-suite release gate and permission contract on SQL Server 2019, 2022 and 2025 for all 181 special cases. Feature-positive Windows or Azure MI states, load tests, external restore and operational mutations remain separate evidence classes.",
+    "claim": "Commit 57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45 passed the synthetic Linux installer, 34-suite release gate and permission contract on SQL Server 2019, 2022 and 2025 for all 181 special cases and the framework output contracts. Feature-positive Windows or Azure MI states, load tests, external restore and operational mutations remain separate evidence classes.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
       "sqlServer2019": {
         "productVersion": "15.0.4480.2",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2019-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:46f719fd3457d4e7e8e5845fe00c35c20e7bae7ff1e8b9fe595f2a81029f5ba8",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843161"
       },
       "sqlServer2022": {
         "productVersion": "16.0.4265.3",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2022-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:ba4c8329f48fb8f02e1416be6a930ebfd71268caee78aa985f3af4315e457c89",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843138"
       },
       "sqlServer2025": {
         "productVersion": "17.0.4065.4",
         "containerImageReference": "mcr.microsoft.com/mssql/server:2025-latest",
         "containerImageDigest": "mcr.microsoft.com/mssql/server@sha256:86cc6144ef39bb0fbed2329e1ad79b13ee82e7b2e4739213a0db0800e668a74a",
-        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672"
+        "actionRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843126"
       }
     },
     "actionEvidence": {
-      "commitSha": "40d54fdc195b5cfa0015e2cbe281da595e427ab0",
-      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983337",
-      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29644565464",
-      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29647983332",
-      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121684",
-      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121674",
-      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672",
-      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29656121672",
+      "commitSha": "57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45",
+      "documentationRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843203",
+      "repositoryPrivacyRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843157",
+      "commitMessageRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843171",
+      "sqlServer2019Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843161",
+      "sqlServer2022Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843138",
+      "sqlServer2025Run": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843126",
+      "sqlServer2025RegexRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843126",
       "runtimeEvidenceScope": "COMMIT_SPECIFIC_SQL_RUNTIME"
     }
   },
