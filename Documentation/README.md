@@ -18,7 +18,7 @@ Für praktische Analysen nicht im Forschungsdokument beginnen:
 3. [`Analysis_Guides/Glossary.md`](Analysis_Guides/Glossary.md) – technische Begriffe
 4. [`Analysis_Guides/Parameter_Reading_Guide.md`](Analysis_Guides/Parameter_Reading_Guide.md) – Parameter und sichere Aufrufe
 5. [`Analysis_Guides/README.md`](Analysis_Guides/README.md) – Gesamtübersicht und Familienguides
-6. [`Reference/Object_Reference.md`](Reference/Object_Reference.md) – installierte Views, TVFs, interne Procedures und Tabellen
+6. [`Reference/Object_Reference.md`](Reference/Object_Reference.md) – Direktnavigation und Detailabschnitte mit Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten und Stabilitätsgrenze für jede installierte View, TVF, interne Procedure und Tabelle; derzeit sind keine SVFs installiert
 
 Jede Procedure-Seite erklärt Zeilengranularität, Leserichtung, Problembegründung, Gegenbeispiel, Folgeanalyse und Grenzen leerer/partieller Resultsets.
 
