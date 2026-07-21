@@ -44,6 +44,7 @@ BEGIN
 
     DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @ConsoleResultRequested bit=CASE WHEN UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))))='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
     DECLARE @ErrorNumber int=NULL;
@@ -214,6 +215,21 @@ BEGIN
         , [ErrorNumber] int NULL
         , [Message] nvarchar(2048) NOT NULL
         , [EvidenceLimit] nvarchar(1000) NOT NULL
+    );
+    CREATE TABLE [#ServerVersionInformation_Console]
+    (
+          [Build] varchar(32) NULL
+        , [Release] nvarchar(64) NULL
+        , [ServicingBranch] varchar(16) NULL
+        , [BuildStatus] varchar(40) NULL
+        , [CatalogStatus] varchar(40) NULL
+        , [LifecycleStatus] varchar(40) NULL
+        , [MainstreamEndDate] date NULL
+        , [ExtendedEndDate] date NULL
+        , [LatestKnownBuildInBranch] varchar(32) NULL
+        , [BuildOverviewUrl] nvarchar(512) NULL
+        , [ModuleStatus] varchar(40) NOT NULL
+        , [IsPartial] bit NOT NULL
     );
 
     SET LOCK_TIMEOUT 0;
@@ -457,22 +473,21 @@ BEGIN
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"serverVersion":',COALESCE(@ServerJson,N'[]'),N',"buildAssessment":',COALESCE(@BuildJson,N'[]'),N',"lifecycle":',COALESCE(@LifecycleJson,N'[]'),N',"instanceFeatures":',COALESCE(@FeaturesJson,N'[]'),N',"databaseCompatibility":',COALESCE(@DatabasesJson,N'[]'),N',"references":',COALESCE(@ReferencesJson,N'[]'),N',"warnings":',COALESCE(@WarningsJson,N'[]'),N'}');
     END;
 
-    IF @OutputMode='CONSOLE'
+    IF @ConsoleResultRequested=1
     BEGIN
-        SELECT N'Serverversion' AS [Ergebnis],
-               [b].[ProductVersion] AS [Build],
-               [b].[KnownReleaseName] AS [Release],
-               [b].[ServicingBranch] AS [Servicing-Zweig],
-               [b].[AssessmentStatus] AS [Buildstatus],
-               [b].[CatalogFreshnessStatus] AS [Katalogstatus],
-               [l].[LifecycleStatus] AS [Lifecycle],
-               [l].[MainstreamEndDate] AS [Mainstream-Ende],
-               [l].[ExtendedEndDate] AS [Extended-Ende],
-               [b].[LatestKnownBuildInBranch] AS [Neuester bekannter Build im Zweig],
-               [b].[BuildOverviewUrl] AS [Microsoft-Buildübersicht],
-               @StatusCode AS [Modulstatus],@IsPartial AS [Partiell]
+        INSERT [#ServerVersionInformation_Console]
+        SELECT [b].[ProductVersion],[b].[KnownReleaseName],[b].[ServicingBranch],
+               [b].[AssessmentStatus],[b].[CatalogFreshnessStatus],
+               [l].[LifecycleStatus],[l].[MainstreamEndDate],[l].[ExtendedEndDate],
+               [b].[LatestKnownBuildInBranch],[b].[BuildOverviewUrl],
+               @StatusCode,@IsPartial
         FROM [#ServerVersionInformation_BuildAssessment] AS [b]
         CROSS JOIN [#ServerVersionInformation_Lifecycle] AS [l];
+
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#ServerVersionInformation_Console'
+            , @ResultLabel=N'Serverversion'
+            , @EmptyMessage=N'Keine Serverversionsinformation';
     END
     ELSE IF @OutputMode='RAW'
     BEGIN
