@@ -5,7 +5,7 @@
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
-Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientierten Runbooks](Runbooks/README.md). Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [Referenz der unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) dokumentiert die installierten Views, TVFs, internen Procedures und Tabellen.
+Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientierten Runbooks](Runbooks/README.md). Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [detaillierte Referenz der unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) führt jede installierte View, TVF, interne Procedure und Tabelle einzeln auf und beschreibt Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten sowie Stabilitätsgrenze. Scalar-Valued Functions (SVFs) sind im aktuellen Inventory nicht vorhanden.
 
 ## Common
 
