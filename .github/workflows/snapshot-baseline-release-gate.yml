@@ -128,9 +128,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" "${{ matrix.container }}" \
-            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
-            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET RECOVERY SIMPLE; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET READ_COMMITTED_SNAPSHOT ON;" >/dev/null
+          log="$RUNNER_TEMP/sc023-database-setup-${{ matrix.version }}.log"
+          if ! docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" "${{ matrix.container }}" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -d master -Q \
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET RECOVERY SIMPLE; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET READ_COMMITTED_SNAPSHOT ON;" >"$log" 2>&1; then
+            echo 'SC023_DATABASE_SETUP_FAILED'
+            grep -E -A 1 'Msg [0-9]+|Sqlcmd: Error|Error:' "$log" | tail -n 40 || true
+            exit 1
+          fi
 
       - name: Reject a system-database snapshot target
         shell: bash
@@ -165,7 +170,7 @@ jobs:
             "${{ matrix.container }}" "$SQLCMD_PATH" -S localhost -U sa -C -b \
             -i ../Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql >"$log" 2>&1; then
             echo 'SC023_RUNTIME_FAILED'
-            grep -E 'SC023_[A-Z0-9_]+|Msg [0-9]+|Sqlcmd: Error|Error:' "$log" | tail -n 120 || true
+            grep -E -A 1 'SC023_[A-Z0-9_]+|Msg [0-9]+|Sqlcmd: Error|Error:' "$log" | tail -n 120 || true
             exit 1
           fi
           grep -q 'SC023_RUNTIME_CONTRACT PASS' "$log"
