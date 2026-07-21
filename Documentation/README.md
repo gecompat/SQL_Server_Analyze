@@ -14,7 +14,7 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 Für praktische Analysen nicht im Forschungsdokument beginnen:
 
 1. [`Analysis_Guides/Runbooks/README.md`](Analysis_Guides/Runbooks/README.md) – Einstieg nach Symptom
-2. [`Analysis_Guides/Procedures/README.md`](Analysis_Guides/Procedures/README.md) – eigenständige Seiten für alle 84 Procedures
+2. [`Analysis_Guides/Procedures/README.md`](Analysis_Guides/Procedures/README.md) – eigenständige Seiten für alle 85 Procedures
 3. [`Analysis_Guides/Glossary.md`](Analysis_Guides/Glossary.md) – technische Begriffe
 4. [`Analysis_Guides/Parameter_Reading_Guide.md`](Analysis_Guides/Parameter_Reading_Guide.md) – Parameter und sichere Aufrufe
 5. [`Analysis_Guides/README.md`](Analysis_Guides/README.md) – Gesamtübersicht und Familienguides

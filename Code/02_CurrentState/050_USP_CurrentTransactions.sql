@@ -80,6 +80,9 @@ BEGIN
         , [DatabaseName]             sysname        NULL
         , [LogBytesUsed]             bigint         NULL
         , [LogBytesReserved]         bigint         NULL
+        , [StatementTextCharacters]  bigint         NULL
+        , [StatementTextBytes]       bigint         NULL
+        , [StatementTextIsTruncated] bit            NOT NULL DEFAULT(0)
         , [StatementText]            nvarchar(max)  NULL
     );
     CREATE TABLE [#CurrentTransactions_Warnings]
@@ -139,7 +142,8 @@ BEGIN
             , [TransactionAgeSeconds], [TransactionType], [TransactionState]
             , [OpenTransactionCount], [LoginName], [HostName], [ProgramName]
             , [SessionStatus], [RequestStatus], [DatabaseId], [DatabaseName]
-            , [LogBytesUsed], [LogBytesReserved], [StatementText]
+            , [LogBytesUsed], [LogBytesReserved]
+            , [StatementTextCharacters], [StatementTextBytes], [StatementTextIsTruncated], [StatementText]
         )
         SELECT TOP (@Candidates)
               [st].[session_id]
@@ -158,7 +162,7 @@ BEGIN
             , [d].[name]
             , [dt].[database_transaction_log_bytes_used]
             , [dt].[database_transaction_log_bytes_reserved]
-            , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [statementText].[StatementText] ELSE LEFT([statementText].[StatementText], @MaxSqlTextZeichen) END END
+            , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText = 1 THEN [statementText].[StatementText] END
         FROM [sys].[dm_tran_session_transactions] AS [st] WITH (NOLOCK)
         INNER JOIN [sys].[dm_tran_active_transactions] AS [at] WITH (NOLOCK)
           ON [at].[transaction_id] = [st].[transaction_id]
@@ -193,6 +197,17 @@ BEGIN
               DATEDIFF_BIG(SECOND, [at].[transaction_begin_time], GETDATE()) DESC
             , [st].[session_id]
             , [at].[transaction_id];
+
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentTransactions_Result',@TextColumn=N'StatementText'
+            , @CharactersColumn=N'StatementTextCharacters',@BytesColumn=N'StatementTextBytes'
+            , @IsTruncatedColumn=N'StatementTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@TruncatedValueCount OUTPUT,@LargestRequiredCharacters=@LargestRequiredCharacters OUTPUT;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
 
         SELECT @RowCount = COUNT_BIG(*) FROM [#CurrentTransactions_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);

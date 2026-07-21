@@ -194,6 +194,9 @@ BEGIN
         , [ElapsedMs]                              int            NULL
         , [CpuMs]                                  int            NULL
         , [LogicalReads]                           bigint         NULL
+        , [CurrentStatementCharacters]             bigint         NULL
+        , [CurrentStatementBytes]                  bigint         NULL
+        , [CurrentStatementIsTruncated]            bit            NOT NULL DEFAULT(0)
         , [CurrentStatement]                       nvarchar(max)  NULL
     );
 
@@ -237,7 +240,8 @@ BEGIN
             , [ReservedWorkerCount], [UsedWorkerCount], [MaxUsedWorkerCount]
             , [QueueId], [WaitOrder], [LoginName], [HostName], [ProgramName]
             , [DatabaseId], [DatabaseName], [RequestStatus], [Command]
-            , [ElapsedMs], [CpuMs], [LogicalReads], [CurrentStatement]
+            , [ElapsedMs], [CpuMs], [LogicalReads]
+            , [CurrentStatementCharacters], [CurrentStatementBytes], [CurrentStatementIsTruncated], [CurrentStatement]
         )
         SELECT TOP (@CandidateMaxZeilen)
               [g].[session_id]
@@ -308,13 +312,8 @@ BEGIN
             , [r].[total_elapsed_time]
             , [r].[cpu_time]
             , [r].[logical_reads]
-            , CASE WHEN @MitSqlText = 1
-                   THEN CASE
-                            WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0
-                                THEN [statementText].[StatementText]
-                            ELSE LEFT([statementText].[StatementText], @MaxSqlTextZeichen)
-                        END
-              END
+            , NULL,NULL,CONVERT(bit,0)
+            , CASE WHEN @MitSqlText = 1 THEN [statementText].[StatementText] END
         FROM [sys].[dm_exec_query_memory_grants] AS [g] WITH (NOLOCK)
         LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
           ON [s].[session_id] = [g].[session_id]
@@ -377,6 +376,17 @@ BEGIN
             , [g].[wait_time_ms] DESC
             , [g].[session_id]
             , [g].[request_id];
+
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentMemoryGrants_Result',@TextColumn=N'CurrentStatement'
+            , @CharactersColumn=N'CurrentStatementCharacters',@BytesColumn=N'CurrentStatementBytes'
+            , @IsTruncatedColumn=N'CurrentStatementIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@TruncatedValueCount OUTPUT,@LargestRequiredCharacters=@LargestRequiredCharacters OUTPUT;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
 
         SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#CurrentMemoryGrants_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen THEN 1 ELSE 0 END);

@@ -13,6 +13,7 @@ on:
       - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
+      - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Documentation/**/*.md'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
@@ -35,6 +36,7 @@ on:
       - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
+      - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Documentation/**/*.md'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
@@ -104,6 +106,16 @@ jobs:
       - name: Validate canonical release evidence
         shell: bash
         run: python3 ./Code/Tests/Static/990_Validate_Release_Evidence.py --repository-root .
+
+      - name: Validate Wave 1 contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/995_Validate_Wave1_Contracts.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/995_Validate_Wave1_Contracts.py \
+            --repository-root .
 
       - name: Validate procedure documentation
         shell: pwsh

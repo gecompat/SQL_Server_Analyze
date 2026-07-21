@@ -206,6 +206,9 @@ END;
         , [MaxGrantKb] bigint NOT NULL
         , [FirstCreationTime] datetime NULL
         , [LastExecutionTime] datetime NULL
+        , [SampleStatementTextCharacters] bigint NULL
+        , [SampleStatementTextBytes] bigint NULL
+        , [SampleStatementTextIsTruncated] bit NOT NULL DEFAULT(0)
         , [SampleStatementText] nvarchar(max) NULL
     );
 
@@ -215,10 +218,7 @@ END;
            CONVERT(decimal(38,3),[h].[TotalElapsedUs]/1000.0),CONVERT(decimal(38,3),[h].[TotalElapsedUs]/NULLIF([h].[ExecutionCount],0)/1000.0),
            [h].[TotalReads],CONVERT(decimal(38,3),[h].[TotalReads]*1.0/NULLIF([h].[ExecutionCount],0)),[h].[TotalWrites],[h].[TotalSpills],[h].[MaxGrantKb],
            [h].[FirstCreationTime],[h].[LastExecutionTime],
-           CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0
-                THEN [statementText].[StatementText]
-                ELSE LEFT([statementText].[StatementText], @MaxSqlTextZeichen)
-           END
+           NULL,NULL,CONVERT(bit,0),[statementText].[StatementText]
     FROM [#QueryHashAnalysis_Hash] AS [h]
     OUTER APPLY [sys].[dm_exec_sql_text]([h].[SampleSqlHandle]) AS [st]
     OUTER APPLY [monitor].[TVF_StatementText]
@@ -227,6 +227,17 @@ END;
         , [h].[SampleStartOffset]
         , [h].[SampleEndOffset]
     ) AS [statementText];
+
+    DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+    EXEC [monitor].[InternalProjectUnicodeTextColumn]
+          @SourceTable=N'#QueryHashAnalysis_Output',@TextColumn=N'SampleStatementText'
+        , @CharactersColumn=N'SampleStatementTextCharacters',@BytesColumn=N'SampleStatementTextBytes'
+        , @IsTruncatedColumn=N'SampleStatementTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+        , @TruncatedValueCount=@TruncatedValueCount OUTPUT,@LargestRequiredCharacters=@LargestRequiredCharacters OUTPUT;
+    EXEC [monitor].[InternalEmitTruncationWarning]
+          @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+        , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+        , @PrintMeldungen=@PrintMeldungen;
 
     IF @ResultSetArtNormalisiert <> 'NONE'
     BEGIN

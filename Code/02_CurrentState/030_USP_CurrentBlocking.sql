@@ -178,9 +178,18 @@ BEGIN
         , [RootToolBackgroundCategory] varchar(40) NULL
         , [RootToolBackgroundDetection] varchar(40) NULL
         , [RootToolBackgroundConfidence] varchar(16) NULL
+        , [BlockedStatementCharacters] bigint NULL
+        , [BlockedStatementBytes] bigint NULL
+        , [BlockedStatementIsTruncated] bit NOT NULL DEFAULT(0)
         , [BlockedStatement]      nvarchar(max)  NULL
+        , [BlockerStatementCharacters] bigint NULL
+        , [BlockerStatementBytes] bigint NULL
+        , [BlockerStatementIsTruncated] bit NOT NULL DEFAULT(0)
         , [BlockerStatement]      nvarchar(max)  NULL
         , [RootBlockerStatementSource] varchar(32) NULL
+        , [RootBlockerStatementCharacters] bigint NULL
+        , [RootBlockerStatementBytes] bigint NULL
+        , [RootBlockerStatementIsTruncated] bit NOT NULL DEFAULT(0)
         , [RootBlockerStatement]  nvarchar(max)  NULL
     );
 
@@ -431,8 +440,10 @@ BEGIN
             , [RootIsToolBackgroundQuery], [RootToolBackgroundRuleCode]
             , [RootToolBackgroundCategory], [RootToolBackgroundDetection]
             , [RootToolBackgroundConfidence]
-            , [BlockedStatement], [BlockerStatement]
-            , [RootBlockerStatementSource], [RootBlockerStatement]
+            , [BlockedStatementCharacters], [BlockedStatementBytes], [BlockedStatementIsTruncated], [BlockedStatement]
+            , [BlockerStatementCharacters], [BlockerStatementBytes], [BlockerStatementIsTruncated], [BlockerStatement]
+            , [RootBlockerStatementSource]
+            , [RootBlockerStatementCharacters], [RootBlockerStatementBytes], [RootBlockerStatementIsTruncated], [RootBlockerStatement]
         )
         SELECT TOP (@CandidateRows)
               [r].[LeafSessionId]
@@ -481,15 +492,15 @@ BEGIN
             , [rootTool].[ToolBackgroundCategory]
             , [rootTool].[ToolBackgroundDetection]
             , [rootTool].[ToolBackgroundConfidence]
-            , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [blockedStatement].[StatementText] ELSE LEFT([blockedStatement].[StatementText], @MaxSqlTextZeichen) END END
-            , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [blockerStatement].[StatementText] ELSE LEFT([blockerStatement].[StatementText], @MaxSqlTextZeichen) END END
+            , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText = 1 THEN [blockedStatement].[StatementText] END
+            , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText = 1 THEN [blockerStatement].[StatementText] END
             , CASE
                   WHEN @MitSqlText = 0 THEN 'NOT_REQUESTED'
                   WHEN [rootRequest].[sql_handle] IS NOT NULL THEN 'ACTIVE_REQUEST'
                   WHEN [rootConnection].[most_recent_sql_handle] IS NOT NULL THEN 'MOST_RECENT_CONNECTION'
                   ELSE 'UNAVAILABLE'
               END
-            , CASE WHEN @MitSqlText = 1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [rootStatement].[StatementText] ELSE LEFT([rootStatement].[StatementText], @MaxSqlTextZeichen) END END
+            , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText = 1 THEN [rootStatement].[StatementText] END
         FROM [Root] AS [r]
         INNER JOIN [#CurrentBlocking_Edges] AS [e]
           ON [e].[BlockedSessionId] = [r].[LeafSessionId]
@@ -1411,6 +1422,34 @@ BEGIN
             UPDATE [#CurrentBlocking_Locks]
             SET [ResourceResolutionStatus] = 'SKIPPED';
         END;
+
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        DECLARE @ColumnTruncatedCount bigint=0,@ColumnLargestCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentBlocking_BlockingChains',@TextColumn=N'BlockedStatement'
+            , @CharactersColumn=N'BlockedStatementCharacters',@BytesColumn=N'BlockedStatementBytes'
+            , @IsTruncatedColumn=N'BlockedStatementIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentBlocking_BlockingChains',@TextColumn=N'BlockerStatement'
+            , @CharactersColumn=N'BlockerStatementCharacters',@BytesColumn=N'BlockerStatementBytes'
+            , @IsTruncatedColumn=N'BlockerStatementIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentBlocking_BlockingChains',@TextColumn=N'RootBlockerStatement'
+            , @CharactersColumn=N'RootBlockerStatementCharacters',@BytesColumn=N'RootBlockerStatementBytes'
+            , @IsTruncatedColumn=N'RootBlockerStatementIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
     END TRY
     BEGIN CATCH
         SET @ErrorNumber = ERROR_NUMBER();
@@ -1486,8 +1525,10 @@ BEGIN
                 , [RootIsToolBackgroundQuery], [RootToolBackgroundRuleCode]
                 , [RootToolBackgroundCategory], [RootToolBackgroundDetection]
                 , [RootToolBackgroundConfidence]
-                , [BlockedStatement], [BlockerStatement]
-                , [RootBlockerStatementSource], [RootBlockerStatement]
+                , [BlockedStatementCharacters], [BlockedStatementBytes], [BlockedStatementIsTruncated], [BlockedStatement]
+                , [BlockerStatementCharacters], [BlockerStatementBytes], [BlockerStatementIsTruncated], [BlockerStatement]
+                , [RootBlockerStatementSource]
+                , [RootBlockerStatementCharacters], [RootBlockerStatementBytes], [RootBlockerStatementIsTruncated], [RootBlockerStatement]
             FROM [#CurrentBlocking_BlockingChains]
             ORDER BY [WaitTimeMs] DESC, [BlockedSessionId];
 

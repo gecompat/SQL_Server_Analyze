@@ -56,14 +56,27 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanDetails]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
     DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
+    CREATE TABLE [#PlanDetails_ResultTableMap]
+    (
+          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'candidates',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested=1
+    BEGIN
+        DECLARE @TablePreflightStatus varchar(40),@TablePreflightError nvarchar(2048);
+        EXEC [monitor].[InternalPrepareResultTables]
+              @ResultTablesJson=@ResultTablesJson
+            , @AllowedResultNames=N'candidates|attributes|plans'
+            , @MappingTable=N'#PlanDetails_ResultTableMap'
+            , @StatusCode=@TablePreflightStatus OUTPUT
+            , @ErrorMessage=@TablePreflightError OUTPUT
+            , @ThrowOnError=1;
+    END;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @SingleSessionId smallint=NULL;
     DECLARE @EffectiveMaxAnalyseobjekte bigint = CASE WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxAnalyseobjekte) END;
@@ -100,6 +113,8 @@ BEGIN
     );
     CREATE TABLE [#PlanDetails_Attributes]([CandidateId] int,[AttributeName] varchar(128),[AttributeValue] nvarchar(4000),[IsCacheKey] bit);
     CREATE TABLE [#PlanDetails_Plans]([CandidateId] int,[SourceType] varchar(24),[StatusCode] varchar(40),[DatabaseId] int NULL,[ObjectId] int NULL,[IsEncrypted] bit NULL,[QueryPlanXml] xml NULL,[QueryPlanText] nvarchar(max) NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL);
+
+    SET LOCK_TIMEOUT 0;
 
     IF @SessionIds IS NULL AND @PlanHandle IS NULL AND @SqlHandle IS NULL AND @QueryHash IS NULL
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Mindestens ein Selektor ist erforderlich.';END;
@@ -185,13 +200,15 @@ END;
     (
           [CandidateId] int,[SessionId] smallint NULL,[RequestId] int NULL,[PlanHandle] varbinary(64) NULL,[SqlHandle] varbinary(64) NULL
         , [QueryHash] binary(8) NULL,[QueryPlanHash] binary(8) NULL,[StatementStartOffset] int NULL,[StatementEndOffset] int NULL
-        , [CreationTime] datetime NULL,[LastExecutionTime] datetime NULL,[ExecutionCount] bigint NULL,[StatementText] nvarchar(max) NULL
-        , [BatchText] nvarchar(max) NULL,[SqlTextDatabaseId] int NULL,[SqlTextDatabaseName] sysname NULL,[SqlTextObjectId] int NULL
+        , [CreationTime] datetime NULL,[LastExecutionTime] datetime NULL,[ExecutionCount] bigint NULL
+        , [StatementTextCharacters] bigint NULL,[StatementTextBytes] bigint NULL,[StatementTextIsTruncated] bit NOT NULL DEFAULT(0),[StatementText] nvarchar(max) NULL
+        , [BatchTextCharacters] bigint NULL,[BatchTextBytes] bigint NULL,[BatchTextIsTruncated] bit NOT NULL DEFAULT(0),[BatchText] nvarchar(max) NULL
+        , [SqlTextDatabaseId] int NULL,[SqlTextDatabaseName] sysname NULL,[SqlTextObjectId] int NULL
     );
     INSERT [#PlanDetails_CandidatesOutput]
     SELECT [c].[CandidateId],[c].[SessionId],[c].[RequestId],[c].[PlanHandle],[c].[SqlHandle],[c].[QueryHash],[c].[QueryPlanHash],[c].[StatementStartOffset],[c].[StatementEndOffset],[c].[CreationTime],[c].[LastExecutionTime],[c].[ExecutionCount],
-           CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [statementText].[StatementText] ELSE LEFT([statementText].[StatementText], @MaxSqlTextZeichen) END,
-           CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [st].[text] ELSE LEFT([st].[text], @MaxSqlTextZeichen) END,[st].[dbid],(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [st].[dbid]),[st].[objectid]
+           NULL,NULL,CONVERT(bit,0),[statementText].[StatementText],
+           NULL,NULL,CONVERT(bit,0),[st].[text],[st].[dbid],(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [st].[dbid]),[st].[objectid]
     FROM [#PlanDetails_Candidate] AS [c]
     OUTER APPLY [sys].[dm_exec_sql_text](COALESCE([c].[SqlHandle],[c].[PlanHandle])) AS [st]
     OUTER APPLY [monitor].[TVF_StatementText]
@@ -200,6 +217,27 @@ END;
         , [c].[StatementStartOffset]
         , [c].[StatementEndOffset]
     ) AS [statementText];
+
+    DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+    DECLARE @ColumnTruncatedCount bigint=0,@ColumnLargestCharacters bigint=NULL;
+    EXEC [monitor].[InternalProjectUnicodeTextColumn]
+          @SourceTable=N'#PlanDetails_CandidatesOutput',@TextColumn=N'StatementText'
+        , @CharactersColumn=N'StatementTextCharacters',@BytesColumn=N'StatementTextBytes'
+        , @IsTruncatedColumn=N'StatementTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+        , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+    SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+           @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+    EXEC [monitor].[InternalProjectUnicodeTextColumn]
+          @SourceTable=N'#PlanDetails_CandidatesOutput',@TextColumn=N'BatchText'
+        , @CharactersColumn=N'BatchTextCharacters',@BytesColumn=N'BatchTextBytes'
+        , @IsTruncatedColumn=N'BatchTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+        , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+    SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+           @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+    EXEC [monitor].[InternalEmitTruncationWarning]
+          @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+        , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+        , @PrintMeldungen=@PrintMeldungen;
     IF @ResultSetArtNormalisiert<>'NONE'
     BEGIN
         SELECT N'USP_PlanDetails' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@RowCount [RowCount],@RequiredPermission [RequiredPermission],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
@@ -231,10 +269,22 @@ END;
     END;
     IF @TableResultRequested = 1
     BEGIN
-        EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#PlanDetails_CandidatesOutput'
-            , @TargetTable=@TableTarget
-            , @ThrowOnError = 1;
+        DECLARE @TableResultName sysname,@TableTarget sysname,@TableSource sysname;
+        DECLARE [TableResultCursor] CURSOR LOCAL FAST_FORWARD FOR
+            SELECT [ResultName],[TargetTable] FROM [#PlanDetails_ResultTableMap] ORDER BY [ResultName];
+        OPEN [TableResultCursor];
+        FETCH NEXT FROM [TableResultCursor] INTO @TableResultName,@TableTarget;
+        WHILE @@FETCH_STATUS=0
+        BEGIN
+            SET @TableSource=CASE @TableResultName
+                WHEN N'candidates' THEN N'#PlanDetails_CandidatesOutput'
+                WHEN N'attributes' THEN N'#PlanDetails_Attributes'
+                WHEN N'plans' THEN N'#PlanDetails_Plans' END;
+            EXEC [monitor].[InternalWriteResultTable]
+                  @SourceTable=@TableSource,@TargetTable=@TableTarget,@ThrowOnError=1;
+            FETCH NEXT FROM [TableResultCursor] INTO @TableResultName,@TableTarget;
+        END;
+        CLOSE [TableResultCursor];DEALLOCATE [TableResultCursor];
     END;
 END;
 GO

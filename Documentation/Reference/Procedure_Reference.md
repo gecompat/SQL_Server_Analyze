@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-07-20
+Stand: 2026-07-21
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` oder die benannte Mehrfachzuordnung `TABLE` mit `@ResultTablesJson`; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -1648,6 +1648,28 @@ Quelle: `Code/09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql`
     , @Json                             nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                   bit            = 1
     , @Hilfe                            bit            = 0
+```
+
+## `[monitor].[USP_ServerVersionInformation]`
+
+Quelle: `Code/09_VersionAdaptive/015_USP_ServerVersionInformation.sql`
+
+```sql
+@MitDatenbankKompatibilitaet bit            = 0
+    , @DatabaseNames                nvarchar(max)  = NULL
+    , @DatabaseNamePattern          nvarchar(4000) = NULL
+    , @SystemdatenbankenEinbeziehen bit            = 0
+    , @MaxZeilen                    int            = 2000
+    , @ResultSetArt                 varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson             nvarchar(max)  = NULL
+    , @JsonErzeugen                 bit            = 0
+    , @Json                         nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen               bit            = 1
+    , @Hilfe                        bit            = 0
+    , @StatusCodeOut                varchar(40)    = NULL OUTPUT
+    , @IsPartialOut                 bit            = NULL OUTPUT
+    , @ErrorNumberOut               int            = NULL OUTPUT
+    , @ErrorMessageOut              nvarchar(2048) = NULL OUTPUT
 ```
 
 ## `[monitor].[USP_ServerHealthAnalysis]`

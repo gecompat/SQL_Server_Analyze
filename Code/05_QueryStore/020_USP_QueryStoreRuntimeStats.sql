@@ -176,8 +176,20 @@ BEGIN
         , [TotalRowCount] decimal(38,3) NULL
         , [TotalLogBytes] decimal(38,3) NULL
         , [TotalTempdbKb] decimal(38,3) NULL
+        , [SourceType] varchar(32) NULL
+        , [SourceObject] nvarchar(256) NULL
+        , [CapturedAtUtc] datetime2(3) NULL
+        , [EvidenceScope] varchar(40) NULL
+        , [QuerySqlTextCharacters] bigint NULL
+        , [QuerySqlTextBytes] bigint NULL
+        , [QuerySqlTextIsTruncated] bit NULL
         , [QuerySqlText] nvarchar(max) NULL
-        , [QueryPlan] nvarchar(max) NULL
+        , [QueryPlanStatus] varchar(40) NULL
+        , [QueryPlanCharacters] bigint NULL
+        , [QueryPlanBytes] bigint NULL
+        , [QueryPlan] xml NULL
+        , [QueryPlanTextFallback] nvarchar(max) NULL
+        , [EvidenceLimit] nvarchar(1000) NULL
     );
 
     CREATE TABLE [#QueryStoreRuntimeStats_Errors]
@@ -267,7 +279,7 @@ BEGIN
  AND EXISTS
  (
      SELECT 1
-     FROM (SELECT TRY_CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
+     FROM (SELECT CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
      CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') AS [n]([ObjectNode])
      JOIN [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) AS [rf]
        ON [rf].[IsValid] = 1
@@ -279,7 +291,7 @@ BEGIN
  AND EXISTS
  (
      SELECT 1
-     FROM (SELECT TRY_CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
+     FROM (SELECT CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
      CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') AS [n]([ObjectNode])
      WHERE PARSENAME([n].[ObjectNode].value(''@Database'', ''nvarchar(776)''), 1) COLLATE SQL_Latin1_General_CP1_CS_AS
            LIKE @ReferencedPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS
@@ -289,7 +301,7 @@ BEGIN
  AND EXISTS
  (
      SELECT 1
-     FROM (SELECT TRY_CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
+     FROM (SELECT CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
      CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') AS [n]([ObjectNode])
      WHERE REGEXP_LIKE(PARSENAME([n].[ObjectNode].value(''@Database'', ''nvarchar(776)''), 1), @ReferencedPatternValue, @ReferencedRegexFlags)
  )';
@@ -411,7 +423,7 @@ BEGIN
         , [AverageLogicalReads], [TotalLogicalWrites], [AverageLogicalWrites]
         , [TotalPhysicalReads], [TotalMemoryGrantKb], [MaxMemoryGrantKb]
         , [TotalRowCount], [TotalLogBytes], [TotalTempdbKb]
-        , [QuerySqlText], [QueryPlan]
+        , [QuerySqlText], [QueryPlanTextFallback]
     )
     SELECT TOP (@TopRows)
           DB_ID()
@@ -441,7 +453,7 @@ BEGIN
         , CONVERT(decimal(38,3), [rows_weighted])
         , CONVERT(decimal(38,3), [log_weighted])
         , CONVERT(decimal(38,3), [tempdb_weighted] * 8.0)
-        , CASE WHEN @TextChars IS NULL OR @TextChars=0 THEN [query_sql_text] ELSE LEFT([query_sql_text], @TextChars) END
+        , [query_sql_text]
         , CASE WHEN @IncludePlan = 1 THEN [query_plan] END
     FROM [A]
     LEFT JOIN [sys].[objects] AS [oo] WITH (NOLOCK)
@@ -502,6 +514,61 @@ END;';
         CLOSE [c];
         DEALLOCATE [c];
 
+        UPDATE [r]
+        SET [SourceType]='QUERY_STORE',
+            [SourceObject]=N'sys.query_store_runtime_stats|sys.query_store_plan|sys.query_store_query_text',
+            [CapturedAtUtc]=@CollectionTimeUtc,
+            [EvidenceScope]='DATABASE_QUERY_PLAN_INTERVAL',
+            [QuerySqlTextCharacters]=[projection].[OriginalCharacters],
+            [QuerySqlTextBytes]=[projection].[OriginalBytes],
+            [QuerySqlTextIsTruncated]=[projection].[IsTruncated],
+            [QuerySqlText]=[projection].[ProjectedValue],
+            [QueryPlanStatus]=CASE WHEN @MitPlanXml=0 THEN 'NOT_REQUESTED' ELSE 'PENDING' END,
+            [EvidenceLimit]=N'Query Store liefert aggregierte Intervallwerte und den gespeicherten Plan; keine aktuelle Einzelausführung und keine vollständigen Runtimeparameter.'
+        FROM [#QueryStoreRuntimeStats_Result] AS [r]
+        CROSS APPLY [monitor].[TVF_ProjectUnicodeText]([r].[QuerySqlText],@MaxSqlTextZeichen) AS [projection];
+
+        DECLARE @PlanDatabaseId int,@PlanQueryId bigint,@PlanId bigint,@PlanText nvarchar(max);
+        DECLARE @PlanXml xml,@PlanStatus varchar(40),@PlanErrorNumber int,@PlanErrorMessage nvarchar(2048);
+        DECLARE [PlanCursor] CURSOR LOCAL FAST_FORWARD FOR
+            SELECT [QueryStoreDatabaseId],[QueryId],[PlanId],[QueryPlanTextFallback]
+            FROM [#QueryStoreRuntimeStats_Result]
+            WHERE @MitPlanXml=1
+            ORDER BY [QueryStoreDatabaseId],[QueryId],[PlanId];
+        OPEN [PlanCursor];
+        FETCH NEXT FROM [PlanCursor] INTO @PlanDatabaseId,@PlanQueryId,@PlanId,@PlanText;
+        WHILE @@FETCH_STATUS=0
+        BEGIN
+            EXEC [monitor].[InternalParseXmlText]
+                  @XmlText=@PlanText,@XmlValue=@PlanXml OUTPUT,@StatusCode=@PlanStatus OUTPUT,
+                  @ErrorNumber=@PlanErrorNumber OUTPUT,@ErrorMessage=@PlanErrorMessage OUTPUT;
+            UPDATE [#QueryStoreRuntimeStats_Result]
+            SET [QueryPlanStatus]=@PlanStatus,
+                [QueryPlanCharacters]=CASE WHEN @PlanText IS NULL THEN NULL ELSE CONVERT(bigint,LEN((@PlanText+NCHAR(1)) COLLATE Latin1_General_100_BIN2_SC)-1) END,
+                [QueryPlanBytes]=CONVERT(bigint,DATALENGTH(@PlanText)),
+                [QueryPlan]=@PlanXml,
+                [QueryPlanTextFallback]=CASE WHEN @PlanStatus IN('AVAILABLE','XML_EMPTY','SOURCE_NULL') THEN NULL ELSE @PlanText END
+            WHERE [QueryStoreDatabaseId]=@PlanDatabaseId AND [QueryId]=@PlanQueryId AND [PlanId]=@PlanId;
+            IF @PlanStatus IN('XML_INVALID','XML_UNAVAILABLE_LIMIT')
+            BEGIN
+                INSERT [#QueryStoreRuntimeStats_Errors]
+                VALUES((SELECT TOP(1) [QueryStoreDatabaseName] FROM [#QueryStoreRuntimeStats_Result] WHERE [QueryStoreDatabaseId]=@PlanDatabaseId),@PlanStatus,@PlanErrorNumber,@PlanErrorMessage);
+                SET @IsPartial=1;
+            END;
+            FETCH NEXT FROM [PlanCursor] INTO @PlanDatabaseId,@PlanQueryId,@PlanId,@PlanText;
+        END;
+        CLOSE [PlanCursor];
+        DEALLOCATE [PlanCursor];
+
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        SELECT @TruncatedValueCount=COUNT_BIG(*),@LargestRequiredCharacters=MAX([QuerySqlTextCharacters])
+        FROM [#QueryStoreRuntimeStats_Result]
+        WHERE [QuerySqlTextIsTruncated]=1;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen',
+              @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters,
+              @PrintMeldungen=@PrintMeldungen;
+
         SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#QueryStoreRuntimeStats_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen THEN 1 ELSE 0 END);
         SET @RowCount = CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen
@@ -546,7 +613,20 @@ END;';
             SELECT *
             FROM
             (
-                SELECT TOP (@EffectiveMaxZeilen) [r].*
+                SELECT TOP (@EffectiveMaxZeilen)
+                      [r].[QueryStoreDatabaseId],[r].[QueryStoreDatabaseName],[r].[QueryId],[r].[PlanId]
+                    , [r].[QueryHash],[r].[QueryPlanHash],[r].[ObjectId],[r].[ObjectName]
+                    , [r].[ExecutionTypeDesc],[r].[FirstExecutionTimeUtc],[r].[LastExecutionTimeUtc]
+                    , [r].[ExecutionCount],[r].[TotalDurationMs],[r].[AverageDurationMs]
+                    , [r].[TotalCpuMs],[r].[AverageCpuMs],[r].[TotalLogicalReads],[r].[AverageLogicalReads]
+                    , [r].[TotalLogicalWrites],[r].[AverageLogicalWrites],[r].[TotalPhysicalReads]
+                    , [r].[TotalMemoryGrantKb],[r].[MaxMemoryGrantKb],[r].[TotalRowCount]
+                    , [r].[TotalLogBytes],[r].[TotalTempdbKb],[r].[SourceType],[r].[SourceObject]
+                    , [r].[CapturedAtUtc],[r].[EvidenceScope],[r].[QuerySqlTextCharacters]
+                    , [r].[QuerySqlTextBytes],[r].[QuerySqlTextIsTruncated],[r].[QuerySqlText]
+                    , [r].[QueryPlanStatus],[r].[QueryPlanCharacters],[r].[QueryPlanBytes]
+                    , CONVERT(nvarchar(max),[r].[QueryPlan]) AS [QueryPlan]
+                    , [r].[QueryPlanTextFallback],[r].[EvidenceLimit]
                 FROM [#QueryStoreRuntimeStats_Result] AS [r]
                 ORDER BY
                       CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
