@@ -107,12 +107,13 @@ jobs:
           set -euo pipefail
           ready=0
           sqlcmd_path=''
+          readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>${{ matrix.major }} THROW 53750,N'SC023_VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 53751,N'SC023_COLLATION_NOT_READY',1; SELECT 1;"
           for attempt in $(seq 1 120); do
             sqlcmd_path=$(docker exec "${{ matrix.container }}" bash -lc \
               "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" || true)
             if [ -n "$sqlcmd_path" ] && docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
               "${{ matrix.container }}" "$sqlcmd_path" -S localhost -U sa -C -b -Q \
-              "IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>${{ matrix.major }} THROW 53750,N'SC023_VERSION_NOT_READY',1;" >/dev/null 2>&1; then
+              "$readiness_query" >/dev/null 2>&1; then
               ready=1
               break
             fi
