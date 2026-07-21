@@ -79,6 +79,14 @@ $safeEntryRequiresHighImpact = @(
     'USP_TemporalAnalysis'
 )
 $minimumDeepReviewedCount = 88
+$supportingRequiredDimensions = @(
+    'Aufgabe',
+    'Schnittstelle',
+    'Verwendung',
+    'Last und Sperren',
+    'Vertrag'
+)
+$supportingMinimumWordCount = 90
 
 $errors = [System.Collections.Generic.List[string]]::new()
 $markdownAnchorCache = @{}
@@ -194,6 +202,25 @@ $supportingObjectRows = @(
     $objectInventoryRows |
         Where-Object { -not ($_.ObjectType -eq 'PROCEDURE' -and $_.ObjectName -match '^USP_') }
 )
+$supportingReferenceSectionNames = @(
+    [regex]::Matches(
+        $objectReferenceText,
+        '(?m)^### `\[[A-Za-z_][A-Za-z0-9_]*\]\.\[([A-Za-z_][A-Za-z0-9_]*)\]`\s*$'
+    ) |
+        ForEach-Object { $_.Groups[1].Value }
+)
+$duplicateSupportingReferenceSections = @(
+    $supportingReferenceSectionNames |
+        Group-Object |
+        Where-Object { $_.Count -gt 1 }
+)
+foreach ($duplicate in $duplicateSupportingReferenceSections) {
+    $errors.Add("Duplicate supporting-object reference section: $($duplicate.Name)")
+}
+foreach ($name in @($supportingReferenceSectionNames | Where-Object { $_ -notin $supportingObjectRows.ObjectName })) {
+    $errors.Add("Object-reference section is missing from inventory: $name")
+}
+
 $sectionMatches = [regex]::Matches(
     $referenceText,
     '(?ms)^## `\[monitor\]\.\[(USP_[A-Za-z0-9_]+)\]`\s*$\s*(.*?)(?=^## `\[monitor\]\.\[USP_[A-Za-z0-9_]+\]`|\z)'
@@ -270,6 +297,23 @@ foreach ($row in $supportingObjectRows) {
     $sectionMatch = [regex]::Match($objectReferenceText, $sectionPattern)
     if (-not $sectionMatch.Success -or $sectionMatch.Groups[1].Value -notmatch ('(?m)^Quelle:\s*`' + [regex]::Escape($row.SourcePath) + '`\s*$')) {
         $errors.Add("Supporting object has no canonical source declaration: $($row.ObjectType)/$($row.ObjectName)")
+        continue
+    }
+
+    $supportingSectionBody = $sectionMatch.Groups[1].Value
+    foreach ($dimension in $supportingRequiredDimensions) {
+        $dimensionPattern = '(?m)^\|\s*' + [regex]::Escape($dimension) + '\s*\|\s*\S.*\|\s*$'
+        if ($supportingSectionBody -notmatch $dimensionPattern) {
+            $errors.Add("Supporting object is missing documentation dimension '$dimension': $($row.ObjectType)/$($row.ObjectName)")
+        }
+    }
+
+    $supportingWordCount = [regex]::Matches(
+        $supportingSectionBody,
+        '[\p{L}\p{Nd}][\p{L}\p{Nd}_-]*'
+    ).Count
+    if ($supportingWordCount -lt $supportingMinimumWordCount) {
+        $errors.Add("Supporting object documentation is below the $supportingMinimumWordCount-word substantive floor ($supportingWordCount): $($row.ObjectType)/$($row.ObjectName)")
     }
 }
 

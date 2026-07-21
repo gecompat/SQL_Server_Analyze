@@ -212,13 +212,14 @@ AI_Metadata/
 
 ## Dokumentation
 
-Empfohlene Einstiegspunkte:
+Empfohlene Einstiegspunkte. Der aktuelle Inventory-Vertrag umfasst 93 öffentliche Procedures und 64 unterstützende Objekte; jede unterstützende View, TVF, interne Procedure und Tabelle besitzt einen eigenen Detailabschnitt. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+
 
 - [Projektübersicht](./Documentation/README.md)
 - [Anforderungen und Entscheidungen](./Documentation/Requirements/Requirements_and_Decisions.md)
 - [Installation](./Documentation/Reference/Installation.md)
 - [Procedure-Referenz](./Documentation/Reference/Procedure_Reference.md)
-- [Referenz der unterstützenden Frameworkobjekte](./Documentation/Reference/Object_Reference.md)
+- [Detaillierte Referenz aller unterstützenden Frameworkobjekte](./Documentation/Reference/Object_Reference.md)
 - [Spezialfallmodule: Evidenz, Kosten und Grenzen](./Documentation/Architecture/Special_Case_Modules.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
