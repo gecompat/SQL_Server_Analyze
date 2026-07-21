@@ -771,3 +771,61 @@ flowchart TD
 - [sys.dm_os_latch_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-os-latch-stats-transact-sql)
 - [sys.dm_os_spinlock_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-os-spinlock-stats-transact-sql)
 - [sys.dm_os_buffer_descriptors](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-os-buffer-descriptors-transact-sql)
+
+---
+
+## 18. [monitor].[USP_WorkerPressureAnalysis]
+
+### Zweck
+
+Trennt Tasks in `work_queue_count`, die noch auf einen Worker warten, von
+gebundenen Workern in `runnable_tasks_count`, die auf CPU-Zeit warten. Ein
+kurzes Scheduler-Sample wird mit aggregierten Workern, `THREADPOOL`, Blocking
+und einem begrenzten Requestkontext korreliert.
+
+### Leserichtung
+
+1. Schedulerquelle und `CounterResetDetected` prüfen.
+2. Worker Queue und `THREADPOOL` gemeinsam bewerten.
+3. Runnable Queue als getrennte CPU-Spur lesen.
+4. Blocking, lange Requests und Workerzustände als Kontext verwenden.
+
+### Grenzen
+
+Ein Sample ist keine Historie. SQL-, Plan-, Login-, Host- und Programmnamen
+werden nicht gelesen. Workerbelegung besitzt keinen universellen Grenzwert;
+die Procedure empfiehlt keine automatische Änderung von `max worker threads`.
+
+### Primärquellen
+
+- [sys.dm_os_schedulers](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-schedulers-transact-sql?view=sql-server-ver17)
+- [sys.dm_os_workers](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-os-workers-transact-sql?view=sql-server-ver17)
+
+---
+
+## 19. [monitor].[USP_DatabaseConfigurationAnalysis]
+
+### Zweck
+
+Inventarisiert sichtbare Datenbankoptionen, Database Scoped Configurations und
+Query-Store-Optionen. Ohne Profil wird ausschließlich lokale Variation
+ausgewiesen; ein optionales JSON-Profil erzeugt explizite Sollabweichungen.
+
+### Leserichtung
+
+1. Datenbank- und Quellstatus auf partielle Sichtbarkeit prüfen.
+2. `settings` als Rohinventar lesen.
+3. `LOCAL_VARIATION` nicht mit einem Sollwert verwechseln.
+4. `PROFILE_MISMATCH` nur gegen das freigegebene Aufruferprofil bewerten.
+
+### Grenzen
+
+Der häufigste lokale Wert ist keine Best Practice. Katalogsnapshots zeigen
+keine Workloadwirkung oder Changehistorie. Die Procedure führt keine DDL aus;
+versionsabhängige Optionen werden nur bei vorhandener Katalogspalte gelesen.
+
+### Primärquellen
+
+- [sys.databases](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-databases-transact-sql?view=sql-server-ver17)
+- [sys.database_scoped_configurations](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-scoped-configurations-transact-sql?view=sql-server-ver17)
+- [sys.database_query_store_options](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-query-store-options-transact-sql?view=sql-server-ver17)

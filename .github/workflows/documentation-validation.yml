@@ -14,7 +14,9 @@ on:
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
+      - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Documentation/**/*.md'
+      - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
@@ -37,7 +39,9 @@ on:
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
+      - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Documentation/**/*.md'
+      - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
@@ -115,6 +119,16 @@ jobs:
             --repository-root . \
             --self-test
           python3 ./Code/Tests/Static/995_Validate_Wave1_Contracts.py \
+            --repository-root .
+
+      - name: Validate Wave 2 contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/996_Validate_Wave2_Contracts.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/996_Validate_Wave2_Contracts.py \
             --repository-root .
 
       - name: Validate procedure documentation

@@ -137,6 +137,8 @@ GO
 
 -- EXEC [monitor].[USP_MaintenanceOperations] @Hilfe = 1;
 
+-- EXEC [monitor].[USP_ErrorLogAnalysis] @Hilfe = 1;
+
 -- EXEC [monitor].[USP_ServerCpuTopology] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_ServerNuma] @Hilfe = 1;
@@ -170,6 +172,10 @@ GO
 -- EXEC [monitor].[USP_BufferPoolAnalysis] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_DiagnosticFindings] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_WorkerPressureAnalysis] @Hilfe = 1;
+
+-- EXEC [monitor].[USP_DatabaseConfigurationAnalysis] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_ServerFeatureCapabilities] @Hilfe = 1;
 

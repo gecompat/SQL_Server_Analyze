@@ -24,6 +24,33 @@ EXEC [monitor].[USP_QueryStoreRuntimeStats] @QueryStoreDatabaseNames=NULL,@Query
 -- Memory Grants einschließlich Resource Governor
 EXEC [monitor].[USP_CurrentMemoryGrants] @NurWartende=0,@MaxZeilen=100,@ResultSetArt='CONSOLE';
 
+-- Datei-I/O plus flüchtige Pending-I/O-Evidenz; physische Pfade bleiben aus
+EXEC [monitor].[USP_CurrentIO]
+      @DatabaseNames=N'[DeineDatenbank]'
+    , @SampleSeconds=5
+    , @PendingIoEinbeziehen=1
+    , @NurWiederholtPending=0
+    , @PhysischePfadeEinbeziehen=0
+    , @MaxZeilen=100;
+
+-- Worker Queue und CPU-Runnable-Queue getrennt auswerten
+EXEC [monitor].[USP_WorkerPressureAnalysis]
+      @SampleSeconds=1
+    , @MinRequestElapsedMs=5000
+    , @MaxZeilen=100;
+
+-- Lokale Konfigurationsvariation ohne universelles Sollprofil
+EXEC [monitor].[USP_DatabaseConfigurationAnalysis]
+      @DatabaseNames=N'[DeineDatenbank]'
+    , @MaxZeilen=200;
+
+-- Aktuelles SQL-Server-Errorlog, kategorisiert und ohne Meldungsvolltext
+EXEC [monitor].[USP_ErrorLogAnalysis]
+      @MaxArchivNummer=0
+    , @MeldungstextEinbeziehen=0
+    , @MaxQuellzeilen=10000
+    , @MaxZeilen=100;
+
 -- Primäres typisiertes Ergebnis in einer lokalen Temp-Tabelle weiterverarbeiten
 CREATE TABLE [#Schnellreferenz_Aufrufe_RequestResult] ([Dummy] int NULL);
 EXEC [monitor].[USP_CurrentRequests]
