@@ -125,8 +125,9 @@ Vorzusehen sind unter anderem Filter für:
 - Der Root-Ordner ist eigenständig und enthält den vollständigen fachlichen Repositorybestand.
 - Nicht enthalten sind `.git`, generierte Installer, temporäre Migrations-, Payload-, Workflow- oder Transferdateien.
 - Gelöschte Dateien sind mit vollständigem relativem Pfad zu nennen.
-- Jede Lieferung enthält eine kopierbare Commit Message.
-- Die Commit Message ist exakt einzeilig und enthält keine Zeilenumbrüche.
+- Jede manuelle ZIP-Lieferung enthält eine kopierbare Commit Message. Nur für diesen manuellen Übernahmeweg muss sie exakt einzeilig sein und darf keine Zeilenumbrüche enthalten.
+- Wenn die KI direkt commiten und pushen kann und dies ausdrücklich angefordert wurde, darf die Commit Message aus einem Betreff und einem optionalen mehrzeiligen Body bestehen. Das gilt auch für automatisch erzeugte Squash-Messages.
+- Der direkte Git-Weg darf wegen eines zulässigen Message Body weder einen leeren Korrekturcommit noch ein History-Rewrite erzeugen.
 - Direkte GitHub-Schreibzugriffe erfolgen nur nach ausdrücklicher Anforderung; der Standardweg ist die manuelle Übernahme des ZIP-Inhalts.
 
 ### 8.1 Datenschutzgrenze für Laufzeit und Lieferartefakte

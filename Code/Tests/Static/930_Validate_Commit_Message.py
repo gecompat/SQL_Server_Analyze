@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate that newly introduced Git commits have exactly one message line."""
+"""Validate commit messages according to the selected delivery path."""
 
 from __future__ import annotations
 
@@ -16,6 +16,9 @@ from typing import Iterable
 
 SHA_PATTERN = re.compile(r"[0-9a-f]{40}")
 ZERO_SHA = "0" * 40
+DIRECT_GIT = "DIRECT_GIT"
+MANUAL_ZIP = "MANUAL_ZIP"
+DELIVERY_MODES = (DIRECT_GIT, MANUAL_ZIP)
 
 
 @dataclass(frozen=True)
@@ -24,7 +27,11 @@ class Finding:
     commit_id: str
 
 
-def validate_message(message: bytes, commit_id: str) -> list[Finding]:
+def validate_message(
+    message: bytes,
+    commit_id: str,
+    delivery_mode: str,
+) -> list[Finding]:
     try:
         text = message.decode("utf-8")
     except UnicodeDecodeError:
@@ -39,7 +46,7 @@ def validate_message(message: bytes, commit_id: str) -> list[Finding]:
 
     if not logical_text:
         return [Finding("COMMIT_MESSAGE_EMPTY", commit_id)]
-    if "\n" in logical_text or "\r" in logical_text:
+    if delivery_mode == MANUAL_ZIP and ("\n" in logical_text or "\r" in logical_text):
         return [Finding("COMMIT_MESSAGE_NOT_SINGLE_LINE", commit_id)]
     return []
 
@@ -97,6 +104,7 @@ def scan_repository(
     repository_root: Path,
     head_sha: str,
     base_sha: str | None,
+    delivery_mode: str,
 ) -> tuple[list[Finding], int]:
     commits, findings = introduced_commits(repository_root, head_sha, base_sha)
     if findings:
@@ -106,24 +114,28 @@ def scan_repository(
         message, message_findings = commit_message(repository_root, commit_sha)
         findings.extend(message_findings)
         if message is not None:
-            findings.extend(validate_message(message, commit_sha))
+            findings.extend(validate_message(message, commit_sha, delivery_mode))
     return findings, len(commits)
 
 
 def run_self_test() -> list[Finding]:
     cases = {
-        "SINGLE_LINE_WITH_TERMINATOR": (b"docs: update contract\n", 0),
-        "SINGLE_LINE_WITHOUT_TERMINATOR": (b"docs: update contract", 0),
-        "SINGLE_LINE_CRLF_TERMINATOR": (b"docs: update contract\r\n", 0),
-        "EMPTY_MESSAGE": (b"\n", 1),
-        "MESSAGE_BODY": (b"docs: update contract\nadditional detail\n", 1),
-        "TRAILING_BLANK_LINE": (b"docs: update contract\n\n", 1),
-        "EMBEDDED_CARRIAGE_RETURN": (b"docs: update\rcontract\n", 1),
-        "NON_UTF8_MESSAGE": (b"docs: update \xff\n", 1),
+        "MANUAL_SINGLE_LINE_WITH_TERMINATOR": (MANUAL_ZIP, b"docs: update contract\n", 0),
+        "MANUAL_SINGLE_LINE_WITHOUT_TERMINATOR": (MANUAL_ZIP, b"docs: update contract", 0),
+        "MANUAL_SINGLE_LINE_CRLF_TERMINATOR": (MANUAL_ZIP, b"docs: update contract\r\n", 0),
+        "MANUAL_EMPTY_MESSAGE": (MANUAL_ZIP, b"\n", 1),
+        "MANUAL_MESSAGE_BODY": (MANUAL_ZIP, b"docs: update contract\nadditional detail\n", 1),
+        "MANUAL_TRAILING_BLANK_LINE": (MANUAL_ZIP, b"docs: update contract\n\n", 1),
+        "MANUAL_EMBEDDED_CARRIAGE_RETURN": (MANUAL_ZIP, b"docs: update\rcontract\n", 1),
+        "MANUAL_NON_UTF8_MESSAGE": (MANUAL_ZIP, b"docs: update \xff\n", 1),
+        "DIRECT_SINGLE_LINE": (DIRECT_GIT, b"docs: update contract\n", 0),
+        "DIRECT_MESSAGE_BODY": (DIRECT_GIT, b"docs: update contract\n\nAdditional detail.\n", 0),
+        "DIRECT_EMPTY_MESSAGE": (DIRECT_GIT, b"\n", 1),
+        "DIRECT_NON_UTF8_MESSAGE": (DIRECT_GIT, b"docs: update \xff\n", 1),
     }
     failures: list[Finding] = []
-    for case_id, (message, expected_count) in cases.items():
-        actual_count = len(validate_message(message, case_id))
+    for case_id, (delivery_mode, message, expected_count) in cases.items():
+        actual_count = len(validate_message(message, case_id, delivery_mode))
         if actual_count != expected_count:
             failures.append(Finding("SELF_TEST_CONTRACT_FAILED", case_id))
     return failures
@@ -156,6 +168,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repository-root", type=Path, default=Path.cwd())
     parser.add_argument("--head-sha")
     parser.add_argument("--base-sha")
+    parser.add_argument(
+        "--delivery-mode",
+        choices=DELIVERY_MODES,
+        default=DIRECT_GIT,
+        help="DIRECT_GIT permits a message body; MANUAL_ZIP requires exactly one line.",
+    )
     parser.add_argument("--self-test", action="store_true")
     return parser.parse_args()
 
@@ -163,13 +181,14 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.self_test:
-        return report(run_self_test(), "SELF_TEST", 8)
+        return report(run_self_test(), "SELF_TEST", 12)
     if args.head_sha is None:
         return report([Finding("HEAD_SHA_MISSING", "HEAD")], "REPOSITORY", 0)
     findings, commit_count = scan_repository(
         args.repository_root.resolve(),
         args.head_sha.lower(),
         args.base_sha.lower() if args.base_sha else None,
+        args.delivery_mode,
     )
     return report(findings, "REPOSITORY", commit_count)
 

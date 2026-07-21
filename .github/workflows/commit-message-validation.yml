@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate one-line commit messages
+    name: Validate direct Git commit messages
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     env:
@@ -35,13 +35,14 @@ jobs:
           set -euo pipefail
           python3 ./Code/Tests/Static/930_Validate_Commit_Message.py \
             --repository-root . \
+            --delivery-mode DIRECT_GIT \
             --self-test
 
       - name: Validate newly introduced commits
         shell: bash
         run: |
           set -euo pipefail
-          arguments=(--repository-root . --head-sha "$HEAD_SHA")
+          arguments=(--repository-root . --delivery-mode DIRECT_GIT --head-sha "$HEAD_SHA")
           if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ ! "$BASE_SHA" =~ ^0{40}$ ]]; then
             arguments+=(--base-sha "$BASE_SHA")
           fi

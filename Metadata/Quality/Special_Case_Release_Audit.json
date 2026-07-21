@@ -133,10 +133,12 @@
       "status": "PASS",
       "implementationStatus": "IMPLEMENTED_AUTOMATED_GATE",
       "validator": "Code/Tests/Static/930_Validate_Commit_Message.py",
-      "validatorSelfTests": 8,
+      "validatorSelfTests": 12,
       "newCommitRangeOnly": true,
       "historicalMessagesRewritten": false,
       "messageContentInFindings": false,
+      "manualZipSingleLineRequired": true,
+      "directGitMessageBodyAllowed": true,
       "firstActionsRun": "https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29634126487"
     },
     "waitTypeCatalogCuration": {
