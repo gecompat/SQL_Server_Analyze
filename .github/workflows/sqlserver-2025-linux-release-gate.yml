@@ -125,7 +125,42 @@ jobs:
             --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
             sqlserver-analyze-test-2025 \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
-            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170;" >/dev/null
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" >/dev/null
+
+      - name: Run isolated Execution Plan Analysis standalone contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          standalone_log="$RUNNER_TEMP/execution-plan-analysis-standalone.log"
+          error_summary="$RUNNER_TEMP/sqlserver-analyze-error.txt"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Install \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
+            >"$standalone_log" 2>&1; then
+            echo 'Execution Plan Analysis standalone contract failed.'
+            {
+              echo 'Detected SQL errors:'
+              grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$standalone_log" | tail -n 120 || true
+              echo 'Final standalone-contract output:'
+              tail -n 120 "$standalone_log"
+            } >"$error_summary"
+            cat "$error_summary"
+            exit 1
+          fi
+          echo 'Execution Plan Analysis standalone contract succeeded.'
+
+      - name: Reset synthetic database for full framework gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            sqlserver-analyze-test-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "USE [master]; ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170;" >/dev/null
 
       - name: Install framework
         shell: bash
@@ -230,6 +265,7 @@ jobs:
             echo "- Product version: $SQLSERVER_PRODUCT_VERSION"
             echo "- Container image reference: $SQLSERVER_IMAGE_REFERENCE"
             echo "- Container image digest: $SQLSERVER_IMAGE_DIGEST"
+            echo '- Standalone Execution Plan Analysis installer contract: passed'
             echo '- Installer: passed'
             echo '- Release gate: passed'
             echo '- Permission matrix: passed'

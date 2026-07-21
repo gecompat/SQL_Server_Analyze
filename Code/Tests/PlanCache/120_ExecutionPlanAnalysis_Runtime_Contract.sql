@@ -46,7 +46,6 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
     , @WorkloadProfil='BALANCED'
     , @MitThreadRuntime=1
     , @MitSqlText=0
-    , @EvidenzDatenschutzModus='DERIVED_ONLY'
     , @IdentifierDatenschutzModus='RAW'
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
@@ -127,5 +126,5 @@ IF TRY_CONVERT(bigint,JSON_VALUE(@EvidenceJson,N'$.statisticsIo[0].logicalReads'
 IF TRY_CONVERT(bigint,JSON_VALUE(@EvidenceJson,N'$.statisticsTime[0].elapsedMs'))<>2
     THROW 53607,N'STATISTICS TIME wurde nicht strukturiert erkannt.',1;
 IF JSON_VALUE(@EvidenceJson,N'$.statisticsIo[0].rawLine') IS NOT NULL
-    THROW 53608,N'HASH_ONLY hat den Rohtext unerwartet ausgegeben.',1;
+    THROW 53608,N'DERIVED_ONLY hat den Rohtext unerwartet ausgegeben.',1;
 GO
