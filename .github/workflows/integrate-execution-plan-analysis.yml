@@ -1,0 +1,38 @@
+name: Integrate execution plan analysis framework contracts
+
+on:
+  push:
+    branches:
+      - agent/implement-execution-plan-analysis
+    paths:
+      - '.bootstrap/integrate_execution_plan_analysis.py'
+      - '.github/workflows/integrate-execution-plan-analysis.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply framework integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./.bootstrap/integrate_execution_plan_analysis.py
+          rm -f .bootstrap/integrate_execution_plan_analysis.py
+          rmdir .bootstrap 2>/dev/null || true
+          rm -f .github/workflows/integrate-execution-plan-analysis.yml
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          if ! git diff --cached --quiet; then
+            git commit -m 'Integrate execution plan analysis framework contracts'
+            git push
+          fi
