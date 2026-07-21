@@ -73,6 +73,8 @@ clientseitigen `program_name`-Erkennung.
 - `Documentation/Research/System_Source_Catalog.md`
 - `Documentation/Quality/Performance_and_Risk_Assessment.md`
 - `Documentation/Architecture/Diagnostic_Information_Enrichment_Backlog.md`
+- [`Documentation/Architecture/Execution_Plan_Analysis_Design.md`](Architecture/Execution_Plan_Analysis_Design.md) – vollständiger Standalone-, Evidenz-, Statistik-, Histogramm-, Regel- und Versionsvertrag für `PLAN-001`
+- [`Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract.md`](Architecture/Execution_Plan_Analysis_Installation_Contract.md) – minimaler Teilinstaller und Einbindung in `Install_All.sql`
 - `Metadata/Inventory/SystemSources.csv`
 - `Metadata/Inventory/NonSystemDependencies.csv`
 - `Metadata/Inventory/PermissionsAndFeatures.csv`
