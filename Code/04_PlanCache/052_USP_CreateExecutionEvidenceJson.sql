@@ -90,12 +90,12 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#EPE_TableMap]
+    CREATE TABLE [#CreateExecutionEvidenceJson_TableMap]
     (
           [ResultName] sysname NOT NULL
         , [TargetTable] sysname NOT NULL
     );
-    CREATE TABLE [#EPE_CaptureStatus]
+    CREATE TABLE [#CreateExecutionEvidenceJson_CaptureStatus]
     (
           [ModuleName] sysname NOT NULL
         , [GeneratedAtUtc] datetime2(3) NOT NULL
@@ -114,7 +114,7 @@ BEGIN
         , [ErrorNumber] int NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#EPE_StatisticsIo]
+    CREATE TABLE [#CreateExecutionEvidenceJson_StatisticsIo]
     (
           [StatementOrdinal] int NULL,[MessageOrdinal] int NOT NULL,[ObjectOrdinal] int NOT NULL
         , [ObjectDisplayName] nvarchar(512) NULL,[ScanCount] bigint NULL,[LogicalReads] bigint NULL
@@ -123,13 +123,13 @@ BEGIN
         , [LobPageServerReads] bigint NULL,[LobReadAheadReads] bigint NULL,[LobPageServerReadAheadReads] bigint NULL
         , [LanguageDetected] varchar(16) NOT NULL,[ParseStatus] varchar(40) NOT NULL,[RawLine] nvarchar(4000) NULL
     );
-    CREATE TABLE [#EPE_StatisticsTime]
+    CREATE TABLE [#CreateExecutionEvidenceJson_StatisticsTime]
     (
           [StatementOrdinal] int NULL,[MessageOrdinal] int NOT NULL,[TimeCategory] varchar(24) NOT NULL
         , [CpuMs] bigint NULL,[ElapsedMs] bigint NULL,[LanguageDetected] varchar(16) NOT NULL
         , [ParseStatus] varchar(40) NOT NULL,[RawLine] nvarchar(4000) NULL
     );
-    CREATE TABLE [#EPE_PlanStatisticsUsage]
+    CREATE TABLE [#CreateExecutionEvidenceJson_PlanStatisticsUsage]
     (
           [StatisticsUsageOrdinal] bigint NOT NULL,[StatementOrdinal] int NOT NULL
         , [StatementId] int NULL,[StatementCompId] int NULL
@@ -137,7 +137,7 @@ BEGIN
         , [LastUpdateAtCompile] datetime2(7) NULL,[ModificationCountAtCompile] bigint NULL
         , [SamplingPercentAtCompile] decimal(19,6) NULL,[SourceElement] nvarchar(128) NOT NULL,[ParseStatus] varchar(40) NOT NULL
     );
-    CREATE TABLE [#EPE_ObjectReferences]
+    CREATE TABLE [#CreateExecutionEvidenceJson_ObjectReferences]
     (
           [ReferenceOrdinal] bigint NOT NULL,[StatementOrdinal] int NOT NULL,[StatementId] int NULL,[StatementCompId] int NULL
         , [NodeId] int NULL,[ReferenceType] varchar(40) NOT NULL,[ReferenceSource] varchar(40) NOT NULL
@@ -146,7 +146,7 @@ BEGIN
         , [IsTemporaryObject] bit NOT NULL,[IsTableVariable] bit NOT NULL,[IsRemoteObject] bit NOT NULL,[IsDmlTarget] bit NOT NULL
         , [ResolutionCapability] varchar(40) NOT NULL,[SourceElement] nvarchar(128) NOT NULL
     );
-    CREATE TABLE [#EPE_StatisticsCurrent]
+    CREATE TABLE [#CreateExecutionEvidenceJson_StatisticsCurrent]
     (
           [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[ObjectId] int NOT NULL
         , [StatisticsName] sysname NOT NULL,[StatisticsId] int NOT NULL,[IsIndexStatistics] bit NOT NULL
@@ -156,7 +156,7 @@ BEGIN
         , [Steps] int NULL,[UnfilteredRows] bigint NULL,[ModificationCounter] bigint NULL,[ModificationPercent] decimal(19,6) NULL
         , [PersistedSamplePercent] float NULL,[CollectionStatus] varchar(40) NOT NULL
     );
-    CREATE TABLE [#EPE_HistogramSteps]
+    CREATE TABLE [#CreateExecutionEvidenceJson_HistogramSteps]
     (
           [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL
         , [StatisticsName] sysname NOT NULL,[StatisticsId] int NOT NULL,[LeadingColumnName] sysname NULL
@@ -164,7 +164,7 @@ BEGIN
         , [RangeRows] float NULL,[EqualRows] float NULL,[DistinctRangeRows] bigint NULL,[AverageRangeRows] float NULL
         , [IsPredicateTarget] bit NULL,[PredicateMatchCount] int NULL
     );
-    CREATE TABLE [#EPE_HistogramSummary]
+    CREATE TABLE [#CreateExecutionEvidenceJson_HistogramSummary]
     (
           [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL
         , [StatisticsName] sysname NOT NULL,[StatisticsId] int NOT NULL,[LeadingColumnName] sysname NULL
@@ -172,7 +172,7 @@ BEGIN
         , [MaxRangeRows] float NULL,[MaxStepRows] float NULL,[DominantStepPercent] decimal(19,6) NULL
         , [TailStepRows] float NULL,[TailStepPercent] decimal(19,6) NULL,[CollectionStatus] varchar(40) NOT NULL
     );
-    CREATE TABLE [#EPE_PredicateHistogramMappings]
+    CREATE TABLE [#CreateExecutionEvidenceJson_PredicateHistogramMappings]
     (
           [PredicateReferenceId] bigint NOT NULL,[StatementOrdinal] int NOT NULL,[NodeId] int NULL
         , [DatabaseName] sysname NULL,[SchemaName] sysname NULL,[ObjectName] sysname NULL,[ColumnName] sysname NULL
@@ -181,12 +181,12 @@ BEGIN
         , [MatchesRangeHighKey] bit NOT NULL,[IsBelowHistogram] bit NOT NULL,[IsAboveHistogram] bit NOT NULL
         , [SensitiveValueStatus] varchar(40) NOT NULL
     );
-    CREATE TABLE [#EPE_CollectionStatus]
+    CREATE TABLE [#CreateExecutionEvidenceJson_CollectionStatus]
     (
           [DatabaseName] sysname NULL,[SchemaName] sysname NULL,[ObjectName] sysname NULL,[StatisticsName] sysname NULL
         , [StatusCode] varchar(40) NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
     );
-    CREATE TABLE [#EPE_Warnings]
+    CREATE TABLE [#CreateExecutionEvidenceJson_Warnings]
     (
           [WarningCode] varchar(80) NOT NULL
         , [Severity] varchar(16) NOT NULL
@@ -239,7 +239,7 @@ BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
             , @AllowedResultNames=N'captureStatus|statisticsIo|statisticsTime|planStatisticsUsage|objectReferences|currentStatistics|histogramSummaries|histogramSteps|predicateHistogramMappings|collectionStatus|warnings'
-            , @MappingTable=N'#EPE_TableMap'
+            , @MappingTable=N'#CreateExecutionEvidenceJson_TableMap'
             , @ThrowOnError=1;
         SET @OutputMode='NONE';
     END
@@ -252,10 +252,10 @@ BEGIN
 
     IF @StatusCodeOut='AVAILABLE'
     BEGIN TRY
-        INSERT [#EPE_StatisticsIo]
+        INSERT [#CreateExecutionEvidenceJson_StatisticsIo]
         SELECT * FROM [monitor].[TVF_ParseStatisticsIoText](@StatisticsIoText,@StatisticsLanguage);
 
-        INSERT [#EPE_StatisticsTime]
+        INSERT [#CreateExecutionEvidenceJson_StatisticsTime]
         SELECT * FROM [monitor].[TVF_ParseStatisticsTimeText](@StatisticsTimeText,@StatisticsLanguage);
 
         DECLARE @PlanStatementCount int=0;
@@ -266,52 +266,52 @@ BEGIN
 
             IF @StatementOrdinal IS NOT NULL
             BEGIN
-                UPDATE [#EPE_StatisticsIo] SET [StatementOrdinal]=@StatementOrdinal WHERE [StatementOrdinal] IS NULL;
-                UPDATE [#EPE_StatisticsTime] SET [StatementOrdinal]=@StatementOrdinal WHERE [StatementOrdinal] IS NULL;
+                UPDATE [#CreateExecutionEvidenceJson_StatisticsIo] SET [StatementOrdinal]=@StatementOrdinal WHERE [StatementOrdinal] IS NULL;
+                UPDATE [#CreateExecutionEvidenceJson_StatisticsTime] SET [StatementOrdinal]=@StatementOrdinal WHERE [StatementOrdinal] IS NULL;
             END
             ELSE IF @PlanStatementCount=1
             BEGIN
-                UPDATE [#EPE_StatisticsIo] SET [StatementOrdinal]=1 WHERE [StatementOrdinal] IS NULL;
-                UPDATE [#EPE_StatisticsTime] SET [StatementOrdinal]=1 WHERE [StatementOrdinal] IS NULL;
+                UPDATE [#CreateExecutionEvidenceJson_StatisticsIo] SET [StatementOrdinal]=1 WHERE [StatementOrdinal] IS NULL;
+                UPDATE [#CreateExecutionEvidenceJson_StatisticsTime] SET [StatementOrdinal]=1 WHERE [StatementOrdinal] IS NULL;
             END
-            ELSE IF @PlanStatementCount>1 AND (EXISTS(SELECT 1 FROM [#EPE_StatisticsIo]) OR EXISTS(SELECT 1 FROM [#EPE_StatisticsTime]))
+            ELSE IF @PlanStatementCount>1 AND (EXISTS(SELECT 1 FROM [#CreateExecutionEvidenceJson_StatisticsIo]) OR EXISTS(SELECT 1 FROM [#CreateExecutionEvidenceJson_StatisticsTime]))
             BEGIN
-                INSERT [#EPE_Warnings] VALUES('AMBIGUOUS_STATEMENT_MAPPING','MEDIUM',N'STATISTICS IO/TIME wurde für einen Mehrstatementplan ohne explizite @StatementOrdinal übergeben. Die Werte bleiben planbezogen.');
+                INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('AMBIGUOUS_STATEMENT_MAPPING','MEDIUM',N'STATISTICS IO/TIME wurde für einen Mehrstatementplan ohne explizite @StatementOrdinal übergeben. Die Werte bleiben planbezogen.');
                 SET @IsPartialOut=1;
             END;
 
             IF @StatisticsMode<>'NONE'
             BEGIN
-                INSERT [#EPE_PlanStatisticsUsage]
+                INSERT [#CreateExecutionEvidenceJson_PlanStatisticsUsage]
                 SELECT * FROM [monitor].[TVF_ExecutionPlanStatisticsUsage](@PlanXml,@StatementId);
             END;
 
-            INSERT [#EPE_ObjectReferences]
+            INSERT [#CreateExecutionEvidenceJson_ObjectReferences]
             SELECT * FROM [monitor].[TVF_ExecutionPlanObjectReferences](@PlanXml,@StatementId);
         END;
 
         IF @StatisticsEvidenceJson IS NOT NULL AND ISJSON(@StatisticsEvidenceJson)<>1
         BEGIN
             IF @StrictValidation=1 THROW 51021,N'@StatisticsEvidenceJson ist kein gültiges JSON.',1;
-            INSERT [#EPE_Warnings] VALUES('INVALID_STATISTICS_EVIDENCE_JSON','MEDIUM',N'Externes Statistik-Evidenz-JSON wurde verworfen.');
+            INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('INVALID_STATISTICS_EVIDENCE_JSON','MEDIUM',N'Externes Statistik-Evidenz-JSON wurde verworfen.');
             SET @IsPartialOut=1;
         END;
         IF @ObjectMetadataJson IS NOT NULL AND ISJSON(@ObjectMetadataJson)<>1
         BEGIN
             IF @StrictValidation=1 THROW 51022,N'@ObjectMetadataJson ist kein gültiges JSON.',1;
-            INSERT [#EPE_Warnings] VALUES('INVALID_OBJECT_METADATA_JSON','MEDIUM',N'Externes Objektmetadaten-JSON wurde verworfen.');
+            INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('INVALID_OBJECT_METADATA_JSON','MEDIUM',N'Externes Objektmetadaten-JSON wurde verworfen.');
             SET @IsPartialOut=1;
         END;
         IF @AdditionalEvidenceJson IS NOT NULL AND ISJSON(@AdditionalEvidenceJson)<>1
         BEGIN
             IF @StrictValidation=1 THROW 51023,N'@AdditionalEvidenceJson ist kein gültiges JSON.',1;
-            INSERT [#EPE_Warnings] VALUES('INVALID_ADDITIONAL_EVIDENCE_JSON','MEDIUM',N'Zusätzliche Evidenz wurde verworfen.');
+            INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('INVALID_ADDITIONAL_EVIDENCE_JSON','MEDIUM',N'Zusätzliche Evidenz wurde verworfen.');
             SET @IsPartialOut=1;
         END;
         IF @ExistingEvidenceJson IS NOT NULL AND ISJSON(@ExistingEvidenceJson)<>1
         BEGIN
             IF @StrictValidation=1 THROW 51024,N'@ExistingEvidenceJson ist kein gültiges JSON.',1;
-            INSERT [#EPE_Warnings] VALUES('INVALID_EXISTING_EVIDENCE_JSON','MEDIUM',N'Bestehende Evidenz wurde verworfen.');
+            INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('INVALID_EXISTING_EVIDENCE_JSON','MEDIUM',N'Bestehende Evidenz wurde verworfen.');
             SET @IsPartialOut=1;
         END;
 
@@ -330,7 +330,7 @@ BEGIN
             IF @StatisticsSection IS NULL
             BEGIN
                 IF @StrictValidation=1 THROW 51021,N'@StatisticsEvidenceJson muss ein JSON-Objekt mit Statistikabschnitten enthalten.',1;
-                INSERT [#EPE_Warnings] VALUES('INVALID_STATISTICS_EVIDENCE_SHAPE','MEDIUM',N'Externes Statistik-Evidenz-JSON besitzt keine unterstützte Objektstruktur.');
+                INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('INVALID_STATISTICS_EVIDENCE_SHAPE','MEDIUM',N'Externes Statistik-Evidenz-JSON besitzt keine unterstützte Objektstruktur.');
                 SET @IsPartialOut=1;
             END
             ELSE
@@ -345,7 +345,7 @@ BEGIN
             IF @ObjectSection IS NULL
             BEGIN
                 IF @StrictValidation=1 THROW 51022,N'@ObjectMetadataJson muss ein JSON-Array oder objectReferences enthalten.',1;
-                INSERT [#EPE_Warnings] VALUES('INVALID_OBJECT_METADATA_SHAPE','MEDIUM',N'Externes Objektmetadaten-JSON besitzt keine unterstützte Arraystruktur.');
+                INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('INVALID_OBJECT_METADATA_SHAPE','MEDIUM',N'Externes Objektmetadaten-JSON besitzt keine unterstützte Arraystruktur.');
                 SET @IsPartialOut=1;
             END
             ELSE
@@ -357,7 +357,7 @@ BEGIN
            aufgebaut; bereits erfasste IO-/TIME-Werte bleiben erhalten. */
         IF ISJSON(@CanonicalEvidenceJson)=1
         BEGIN
-            INSERT [#EPE_StatisticsIo]
+            INSERT [#CreateExecutionEvidenceJson_StatisticsIo]
             SELECT [StatementOrdinal],[MessageOrdinal],[ObjectOrdinal],[ObjectDisplayName],
                    [ScanCount],[LogicalReads],[PhysicalReads],[PageServerReads],[ReadAheadReads],
                    [PageServerReadAheadReads],[LobLogicalReads],[LobPhysicalReads],[LobPageServerReads],
@@ -376,7 +376,7 @@ BEGIN
                 , [LanguageDetected] varchar(16) N'$.languageDetected',[ParseStatus] varchar(40) N'$.parseStatus'
             );
 
-            INSERT [#EPE_StatisticsTime]
+            INSERT [#CreateExecutionEvidenceJson_StatisticsTime]
             SELECT [StatementOrdinal],[MessageOrdinal],[TimeCategory],[CpuMs],[ElapsedMs],[LanguageDetected],[ParseStatus],NULL
             FROM OPENJSON(@CanonicalEvidenceJson,N'$.statisticsTime')
             WITH
@@ -389,7 +389,7 @@ BEGIN
 
             IF @PlanXml IS NULL
             BEGIN
-                INSERT [#EPE_PlanStatisticsUsage]
+                INSERT [#CreateExecutionEvidenceJson_PlanStatisticsUsage]
                 SELECT [StatisticsUsageOrdinal],[StatementOrdinal],[StatementId],[StatementCompId],
                        [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[LastUpdateAtCompile],
                        [ModificationCountAtCompile],[SamplingPercentAtCompile],[SourceElement],[ParseStatus]
@@ -407,7 +407,7 @@ BEGIN
                 );
           
 
-                INSERT [#EPE_ObjectReferences]
+                INSERT [#CreateExecutionEvidenceJson_ObjectReferences]
                 SELECT [ReferenceOrdinal],[StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
                        [ReferenceType],[ReferenceSource],[DatabaseName],[SchemaName],[ObjectName],[IndexName],
                        [AliasName],[StorageType],[PlanObjectId],[PlanIndexId],[IsTemporaryObject],
@@ -430,7 +430,7 @@ BEGIN
 
             IF @MetadataSourceMode<>'CURRENT_SERVER'
             BEGIN
-                INSERT [#EPE_StatisticsCurrent]
+                INSERT [#CreateExecutionEvidenceJson_StatisticsCurrent]
                 SELECT *
                 FROM OPENJSON(@CanonicalEvidenceJson,N'$.statistics.currentSnapshot')
                 WITH
@@ -450,7 +450,7 @@ BEGIN
                     , [PersistedSamplePercent] float N'$.persistedSamplePercent',[CollectionStatus] varchar(40) N'$.collectionStatus'
                 );
 
-                INSERT [#EPE_HistogramSummary]
+                INSERT [#CreateExecutionEvidenceJson_HistogramSummary]
                 SELECT *
                 FROM OPENJSON(@CanonicalEvidenceJson,N'$.statistics.histogramSummaries')
                 WITH
@@ -465,7 +465,7 @@ BEGIN
                     , [CollectionStatus] varchar(40) N'$.collectionStatus'
                 );
 
-                INSERT [#EPE_HistogramSteps]
+                INSERT [#CreateExecutionEvidenceJson_HistogramSteps]
                 SELECT [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StatisticsId],[LeadingColumnName],
                        [StepOrdinal],CASE WHEN @PrivacyMode='RAW' THEN [RangeHighKey] END,[RangeRows],[EqualRows],
                        [DistinctRangeRows],[AverageRangeRows],[IsPredicateTarget],[PredicateMatchCount]
@@ -481,7 +481,7 @@ BEGIN
                     , [IsPredicateTarget] bit N'$.isPredicateTarget',[PredicateMatchCount] int N'$.predicateMatchCount'
                 );
 
-                INSERT [#EPE_PredicateHistogramMappings]
+                INSERT [#CreateExecutionEvidenceJson_PredicateHistogramMappings]
                 SELECT [PredicateReferenceId],[StatementOrdinal],[NodeId],[DatabaseName],[SchemaName],[ObjectName],
                        [ColumnName],[StatisticsName],[PredicateKind],[ValueSource],[MappingStatus],[MappingConfidence],
                        [MatchedStepOrdinal],COALESCE([MatchesRangeHighKey],0),COALESCE([IsBelowHistogram],0),
@@ -524,7 +524,7 @@ BEGIN
             IF @CollectionStatus<>'AVAILABLE'
             BEGIN
                 SET @IsPartialOut=1;
-                INSERT [#EPE_Warnings]
+                INSERT [#CreateExecutionEvidenceJson_Warnings]
                 VALUES('CURRENT_METADATA_COLLECTION_LIMITED','MEDIUM',CONCAT(N'Status=',COALESCE(@CollectionStatus,N'<NULL>'),N'; ',COALESCE(@CollectionMessage,N'')));
             END;
         END;
@@ -532,11 +532,11 @@ BEGIN
         UPDATE [h]
         SET [h].[IsPredicateTarget]=CONVERT(bit,CASE WHEN [m].[PredicateMatchCount]>0 THEN 1 ELSE 0 END),
             [h].[PredicateMatchCount]=COALESCE([m].[PredicateMatchCount],0)
-        FROM [#EPE_HistogramSteps] AS [h]
+        FROM [#CreateExecutionEvidenceJson_HistogramSteps] AS [h]
         OUTER APPLY
         (
             SELECT COUNT(*) [PredicateMatchCount]
-            FROM [#EPE_PredicateHistogramMappings] AS [p]
+            FROM [#CreateExecutionEvidenceJson_PredicateHistogramMappings] AS [p]
             WHERE [p].[DatabaseName]=[h].[DatabaseName]
               AND [p].[SchemaName]=[h].[SchemaName]
               AND [p].[ObjectName]=[h].[ObjectName]
@@ -546,14 +546,14 @@ BEGIN
 
         IF @RawMode<>'INCLUDE'
         BEGIN
-            UPDATE [#EPE_StatisticsIo] SET [RawLine]=NULL;
-            UPDATE [#EPE_StatisticsTime] SET [RawLine]=NULL;
+            UPDATE [#CreateExecutionEvidenceJson_StatisticsIo] SET [RawLine]=NULL;
+            UPDATE [#CreateExecutionEvidenceJson_StatisticsTime] SET [RawLine]=NULL;
         END;
 
-        IF EXISTS(SELECT 1 FROM [#EPE_StatisticsIo] WHERE [ParseStatus]<>'PARSED')
-           OR EXISTS(SELECT 1 FROM [#EPE_StatisticsTime] WHERE [ParseStatus]<>'PARSED')
+        IF EXISTS(SELECT 1 FROM [#CreateExecutionEvidenceJson_StatisticsIo] WHERE [ParseStatus]<>'PARSED')
+           OR EXISTS(SELECT 1 FROM [#CreateExecutionEvidenceJson_StatisticsTime] WHERE [ParseStatus]<>'PARSED')
         BEGIN
-            INSERT [#EPE_Warnings] VALUES('MESSAGE_PARSE_PARTIAL','LOW',N'Mindestens eine STATISTICS IO/TIME-Zeile konnte nur teilweise geparst werden.');
+            INSERT [#CreateExecutionEvidenceJson_Warnings] VALUES('MESSAGE_PARSE_PARTIAL','LOW',N'Mindestens eine STATISTICS IO/TIME-Zeile konnte nur teilweise geparst werden.');
             SET @IsPartialOut=1;
         END;
     END TRY
@@ -573,10 +573,10 @@ BEGIN
         , [ScanCount],[LogicalReads],[PhysicalReads],[PageServerReads],[ReadAheadReads],[PageServerReadAheadReads]
         , [LobLogicalReads],[LobPhysicalReads],[LobPageServerReads],[LobReadAheadReads],[LobPageServerReadAheadReads]
         , [LanguageDetected],[ParseStatus],[RawLine]
-    INTO [#EPE_StatisticsIoOutput]
-    FROM [#EPE_StatisticsIo];
+    INTO [#CreateExecutionEvidenceJson_StatisticsIoOutput]
+    FROM [#CreateExecutionEvidenceJson_StatisticsIo];
 
-    SELECT * INTO [#EPE_StatisticsTimeOutput] FROM [#EPE_StatisticsTime];
+    SELECT * INTO [#CreateExecutionEvidenceJson_StatisticsTimeOutput] FROM [#CreateExecutionEvidenceJson_StatisticsTime];
 
     SELECT
           [StatisticsUsageOrdinal],[StatementOrdinal],[StatementId],[StatementCompId]
@@ -585,8 +585,8 @@ BEGIN
         , [ObjectName]=CASE @IdentifierMode WHEN 'RAW' THEN [ObjectName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([ObjectName],N''))),1)) ELSE NULL END
         , [StatisticsName]=CASE @IdentifierMode WHEN 'RAW' THEN [StatisticsName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([StatisticsName],N''))),1)) ELSE NULL END
         , [LastUpdateAtCompile],[ModificationCountAtCompile],[SamplingPercentAtCompile],[SourceElement],[ParseStatus]
-    INTO [#EPE_PlanStatisticsUsageOutput]
-    FROM [#EPE_PlanStatisticsUsage];
+    INTO [#CreateExecutionEvidenceJson_PlanStatisticsUsageOutput]
+    FROM [#CreateExecutionEvidenceJson_PlanStatisticsUsage];
 
     SELECT
           [ReferenceOrdinal],[StatementOrdinal],[StatementId],[StatementCompId],[NodeId],[ReferenceType],[ReferenceSource]
@@ -597,8 +597,8 @@ BEGIN
         , [AliasName]=CASE @IdentifierMode WHEN 'RAW' THEN [AliasName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([AliasName],N''))),1)) ELSE NULL END
         , [StorageType],[PlanObjectId],[PlanIndexId],[IsTemporaryObject],[IsTableVariable],[IsRemoteObject],[IsDmlTarget]
         , [ResolutionCapability],[SourceElement]
-    INTO [#EPE_ObjectReferencesOutput]
-    FROM [#EPE_ObjectReferences];
+    INTO [#CreateExecutionEvidenceJson_ObjectReferencesOutput]
+    FROM [#CreateExecutionEvidenceJson_ObjectReferences];
 
     SELECT
           [DatabaseName]=CASE @IdentifierMode WHEN 'RAW' THEN [DatabaseName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[DatabaseName])),1)) ELSE NULL END
@@ -612,8 +612,8 @@ BEGIN
         , [LeadingColumnName]=CASE @IdentifierMode WHEN 'RAW' THEN [LeadingColumnName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([LeadingColumnName],N''))),1)) ELSE NULL END
         , [LastUpdated],[Rows],[RowsSampled],[SamplePercent],[Steps],[UnfilteredRows]
         , [ModificationCounter],[ModificationPercent],[PersistedSamplePercent],[CollectionStatus]
-    INTO [#EPE_StatisticsCurrentOutput]
-    FROM [#EPE_StatisticsCurrent];
+    INTO [#CreateExecutionEvidenceJson_StatisticsCurrentOutput]
+    FROM [#CreateExecutionEvidenceJson_StatisticsCurrent];
 
     SELECT
           [DatabaseName]=CASE @IdentifierMode WHEN 'RAW' THEN [DatabaseName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[DatabaseName])),1)) ELSE NULL END
@@ -624,8 +624,8 @@ BEGIN
         , [LeadingColumnName]=CASE @IdentifierMode WHEN 'RAW' THEN [LeadingColumnName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([LeadingColumnName],N''))),1)) ELSE NULL END
         , [HistogramSteps],[HistogramEstimatedRows],[MaxEqualRows],[MaxRangeRows],[MaxStepRows]
         , [DominantStepPercent],[TailStepRows],[TailStepPercent],[CollectionStatus]
-    INTO [#EPE_HistogramSummaryOutput]
-    FROM [#EPE_HistogramSummary];
+    INTO [#CreateExecutionEvidenceJson_HistogramSummaryOutput]
+    FROM [#CreateExecutionEvidenceJson_HistogramSummary];
 
     SELECT
           [DatabaseName]=CASE @IdentifierMode WHEN 'RAW' THEN [DatabaseName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[DatabaseName])),1)) ELSE NULL END
@@ -643,8 +643,8 @@ BEGIN
         , [SensitiveValueStatus]=CONVERT(varchar(40),CASE @PrivacyMode WHEN 'RAW' THEN 'AVAILABLE_RAW'
              WHEN 'TOKENIZED' THEN 'TOKENIZED_CAPTURE_LOCAL' WHEN 'STRUCTURE_ONLY' THEN 'OMITTED_STRUCTURE_ONLY'
              ELSE 'OMITTED_DERIVED_ONLY' END)
-    INTO [#EPE_HistogramStepsOutput]
-    FROM [#EPE_HistogramSteps];
+    INTO [#CreateExecutionEvidenceJson_HistogramStepsOutput]
+    FROM [#CreateExecutionEvidenceJson_HistogramSteps];
 
     SELECT
           [PredicateReferenceId],[StatementOrdinal],[NodeId]
@@ -655,18 +655,18 @@ BEGIN
         , [StatisticsName]=CASE @IdentifierMode WHEN 'RAW' THEN [StatisticsName] WHEN 'TOKENIZED' THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([StatisticsName],N''))),1)) ELSE NULL END
         , [PredicateKind],[ValueSource],[MappingStatus],[MappingConfidence],[MatchedStepOrdinal]
         , [MatchesRangeHighKey],[IsBelowHistogram],[IsAboveHistogram],[SensitiveValueStatus]
-    INTO [#EPE_PredicateMappingsOutput]
-    FROM [#EPE_PredicateHistogramMappings];
+    INTO [#CreateExecutionEvidenceJson_PredicateMappingsOutput]
+    FROM [#CreateExecutionEvidenceJson_PredicateHistogramMappings];
 
-    INSERT [#EPE_CaptureStatus]
+    INSERT [#CreateExecutionEvidenceJson_CaptureStatus]
     SELECT
           N'USP_CreateExecutionEvidenceJson',@GeneratedAtUtc,@StatusCodeOut,@IsPartialOut,1
-        , (SELECT COUNT_BIG(*) FROM [#EPE_StatisticsIoOutput])
-        , (SELECT COUNT_BIG(*) FROM [#EPE_StatisticsTimeOutput])
-        , (SELECT COUNT_BIG(*) FROM [#EPE_PlanStatisticsUsageOutput])
-        , (SELECT COUNT_BIG(*) FROM [#EPE_StatisticsCurrentOutput])
-        , (SELECT COUNT_BIG(*) FROM [#EPE_HistogramStepsOutput])
-        , (SELECT COUNT_BIG(*) FROM [#EPE_PredicateMappingsOutput])
+        , (SELECT COUNT_BIG(*) FROM [#CreateExecutionEvidenceJson_StatisticsIoOutput])
+        , (SELECT COUNT_BIG(*) FROM [#CreateExecutionEvidenceJson_StatisticsTimeOutput])
+        , (SELECT COUNT_BIG(*) FROM [#CreateExecutionEvidenceJson_PlanStatisticsUsageOutput])
+        , (SELECT COUNT_BIG(*) FROM [#CreateExecutionEvidenceJson_StatisticsCurrentOutput])
+        , (SELECT COUNT_BIG(*) FROM [#CreateExecutionEvidenceJson_HistogramStepsOutput])
+        , (SELECT COUNT_BIG(*) FROM [#CreateExecutionEvidenceJson_PredicateMappingsOutput])
         , @PrivacyMode,@IdentifierMode,@SameExecutionConfidence,@ErrorNumberOut,@ErrorMessageOut;
 
     IF @JsonErzeugen=1
@@ -685,12 +685,12 @@ BEGIN
             , [LobPhysicalReads] [lobPhysicalReads],[LobPageServerReads] [lobPageServerReads]
             , [LobReadAheadReads] [lobReadAheadReads],[LobPageServerReadAheadReads] [lobPageServerReadAheadReads]
             , [LanguageDetected] [languageDetected],[ParseStatus] [parseStatus],[RawLine] [rawLine]
-            FROM [#EPE_StatisticsIoOutput] ORDER BY [MessageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_StatisticsIoOutput] ORDER BY [MessageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @TimeJson nvarchar(max)=(SELECT
               [StatementOrdinal] [statementOrdinal],[MessageOrdinal] [messageOrdinal],[TimeCategory] [timeCategory]
             , [CpuMs] [cpuMs],[ElapsedMs] [elapsedMs],[LanguageDetected] [languageDetected]
             , [ParseStatus] [parseStatus],[RawLine] [rawLine]
-            FROM [#EPE_StatisticsTimeOutput] ORDER BY [MessageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_StatisticsTimeOutput] ORDER BY [MessageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @PlanStatsJson nvarchar(max)=(SELECT
               [StatisticsUsageOrdinal] [statisticsUsageOrdinal],[StatementOrdinal] [statementOrdinal]
             , [StatementId] [statementId],[StatementCompId] [statementCompId]
@@ -699,7 +699,7 @@ BEGIN
             , [ModificationCountAtCompile] [modificationCountAtCompile]
             , [SamplingPercentAtCompile] [samplingPercentAtCompile],[SourceElement] [sourceElement]
             , [ParseStatus] [parseStatus]
-            FROM [#EPE_PlanStatisticsUsageOutput] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_PlanStatisticsUsageOutput] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @ObjectsJson nvarchar(max)=(SELECT
               [ReferenceOrdinal] [referenceOrdinal],[StatementOrdinal] [statementOrdinal]
             , [StatementId] [statementId],[StatementCompId] [statementCompId],[NodeId] [nodeId]
@@ -710,7 +710,7 @@ BEGIN
             , [IsTemporaryObject] [isTemporaryObject],[IsTableVariable] [isTableVariable]
             , [IsRemoteObject] [isRemoteObject],[IsDmlTarget] [isDmlTarget]
             , [ResolutionCapability] [resolutionCapability],[SourceElement] [sourceElement]
-            FROM [#EPE_ObjectReferencesOutput] ORDER BY [StatementOrdinal],[ReferenceOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_ObjectReferencesOutput] ORDER BY [StatementOrdinal],[ReferenceOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @CurrentStatsJson nvarchar(max)=(SELECT
               [DatabaseName] [databaseName],[SchemaName] [schemaName],[ObjectName] [objectName]
             , [ObjectId] [objectId],[StatisticsName] [statisticsName],[StatisticsId] [statisticsId]
@@ -722,7 +722,7 @@ BEGIN
             , [UnfilteredRows] [unfilteredRows],[ModificationCounter] [modificationCounter]
             , [ModificationPercent] [modificationPercent],[PersistedSamplePercent] [persistedSamplePercent]
             , [CollectionStatus] [collectionStatus]
-            FROM [#EPE_StatisticsCurrentOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_StatisticsCurrentOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @HistogramSummaryJson nvarchar(max)=(SELECT
               [DatabaseName] [databaseName],[SchemaName] [schemaName],[ObjectName] [objectName]
             , [StatisticsName] [statisticsName],[StatisticsId] [statisticsId],[LeadingColumnName] [leadingColumnName]
@@ -730,7 +730,7 @@ BEGIN
             , [MaxEqualRows] [maxEqualRows],[MaxRangeRows] [maxRangeRows],[MaxStepRows] [maxStepRows]
             , [DominantStepPercent] [dominantStepPercent],[TailStepRows] [tailStepRows]
             , [TailStepPercent] [tailStepPercent],[CollectionStatus] [collectionStatus]
-            FROM [#EPE_HistogramSummaryOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_HistogramSummaryOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @HistogramStepsJson nvarchar(max)=(SELECT
               [DatabaseName] [databaseName],[SchemaName] [schemaName],[ObjectName] [objectName]
             , [StatisticsName] [statisticsName],[StatisticsId] [statisticsId],[LeadingColumnName] [leadingColumnName]
@@ -738,7 +738,7 @@ BEGIN
             , [RangeRows] [rangeRows],[EqualRows] [equalRows],[DistinctRangeRows] [distinctRangeRows]
             , [AverageRangeRows] [averageRangeRows],[IsPredicateTarget] [isPredicateTarget]
             , [PredicateMatchCount] [predicateMatchCount],[SensitiveValueStatus] [sensitiveValueStatus]
-            FROM [#EPE_HistogramStepsOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StepOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_HistogramStepsOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StepOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @MappingsJson nvarchar(max)=(SELECT
               [PredicateReferenceId] [predicateReferenceId],[StatementOrdinal] [statementOrdinal],[NodeId] [nodeId]
             , [DatabaseName] [databaseName],[SchemaName] [schemaName],[ObjectName] [objectName]
@@ -747,15 +747,15 @@ BEGIN
             , [MatchedStepOrdinal] [matchedStepOrdinal],[MatchesRangeHighKey] [matchesRangeHighKey]
             , [IsBelowHistogram] [isBelowHistogram],[IsAboveHistogram] [isAboveHistogram]
             , [SensitiveValueStatus] [sensitiveValueStatus]
-            FROM [#EPE_PredicateMappingsOutput] ORDER BY [StatementOrdinal],[PredicateReferenceId],[ValueSource] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_PredicateMappingsOutput] ORDER BY [StatementOrdinal],[PredicateReferenceId],[ValueSource] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @StatusJson nvarchar(max)=(SELECT
               [DatabaseName] [databaseName],[SchemaName] [schemaName],[ObjectName] [objectName]
             , [StatisticsName] [statisticsName],[StatusCode] [statusCode],[ErrorNumber] [errorNumber]
             , [ErrorMessage] [errorMessage]
-            FROM [#EPE_CollectionStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_CollectionStatus] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max)=(SELECT
               [WarningCode] [warningCode],[Severity] [severity],[Detail] [detail]
-            FROM [#EPE_Warnings] FOR JSON PATH,INCLUDE_NULL_VALUES);
+            FROM [#CreateExecutionEvidenceJson_Warnings] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @RawInputJson nvarchar(max)=(SELECT
               LEN(@StatisticsIoText) [statisticsIoCharacters]
             , CASE WHEN @RawMode IN ('HASH_ONLY','INCLUDE') AND @StatisticsIoText IS NOT NULL THEN CONVERT(nvarchar(130),HASHBYTES('SHA2_256',CONVERT(varbinary(max),@StatisticsIoText)),1) END [statisticsIoHash]
@@ -806,22 +806,22 @@ BEGIN
 
     IF @OutputMode='RAW'
     BEGIN
-        SELECT * FROM [#EPE_CaptureStatus];
-        SELECT * FROM [#EPE_StatisticsIoOutput] ORDER BY [MessageOrdinal];
-        SELECT * FROM [#EPE_StatisticsTimeOutput] ORDER BY [MessageOrdinal];
-        SELECT * FROM [#EPE_PlanStatisticsUsageOutput] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal];
-        SELECT * FROM [#EPE_ObjectReferencesOutput] ORDER BY [StatementOrdinal],[ReferenceOrdinal];
-        SELECT * FROM [#EPE_StatisticsCurrentOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
-        SELECT * FROM [#EPE_HistogramSummaryOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
-        SELECT * FROM [#EPE_HistogramStepsOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StepOrdinal];
-        SELECT * FROM [#EPE_PredicateMappingsOutput] ORDER BY [StatementOrdinal],[PredicateReferenceId],[ValueSource];
-        SELECT * FROM [#EPE_CollectionStatus];
-        SELECT * FROM [#EPE_Warnings];
+        SELECT * FROM [#CreateExecutionEvidenceJson_CaptureStatus];
+        SELECT * FROM [#CreateExecutionEvidenceJson_StatisticsIoOutput] ORDER BY [MessageOrdinal];
+        SELECT * FROM [#CreateExecutionEvidenceJson_StatisticsTimeOutput] ORDER BY [MessageOrdinal];
+        SELECT * FROM [#CreateExecutionEvidenceJson_PlanStatisticsUsageOutput] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal];
+        SELECT * FROM [#CreateExecutionEvidenceJson_ObjectReferencesOutput] ORDER BY [StatementOrdinal],[ReferenceOrdinal];
+        SELECT * FROM [#CreateExecutionEvidenceJson_StatisticsCurrentOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
+        SELECT * FROM [#CreateExecutionEvidenceJson_HistogramSummaryOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
+        SELECT * FROM [#CreateExecutionEvidenceJson_HistogramStepsOutput] ORDER BY [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StepOrdinal];
+        SELECT * FROM [#CreateExecutionEvidenceJson_PredicateMappingsOutput] ORDER BY [StatementOrdinal],[PredicateReferenceId],[ValueSource];
+        SELECT * FROM [#CreateExecutionEvidenceJson_CollectionStatus];
+        SELECT * FROM [#CreateExecutionEvidenceJson_Warnings];
     END;
 
     IF @ConsoleRequested=1
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#EPE_CaptureStatus'
+              @SourceTable=N'#CreateExecutionEvidenceJson_CaptureStatus'
             , @ResultLabel=N'Execution Evidence'
             , @EmptyMessage=N'Keine Evidenz erzeugt'
             , @StatusCode=@StatusCodeOut
@@ -831,23 +831,23 @@ BEGIN
     BEGIN
         DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
         DECLARE [MapCursor] CURSOR LOCAL FAST_FORWARD FOR
-            SELECT [ResultName],[TargetTable] FROM [#EPE_TableMap] ORDER BY [ResultName];
+            SELECT [ResultName],[TargetTable] FROM [#CreateExecutionEvidenceJson_TableMap] ORDER BY [ResultName];
         OPEN [MapCursor];
         FETCH NEXT FROM [MapCursor] INTO @ResultName,@TargetTable;
         WHILE @@FETCH_STATUS=0
         BEGIN
             SET @SourceTable=CASE @ResultName
-                WHEN N'captureStatus' THEN N'#EPE_CaptureStatus'
-                WHEN N'statisticsIo' THEN N'#EPE_StatisticsIoOutput'
-                WHEN N'statisticsTime' THEN N'#EPE_StatisticsTimeOutput'
-                WHEN N'planStatisticsUsage' THEN N'#EPE_PlanStatisticsUsageOutput'
-                WHEN N'objectReferences' THEN N'#EPE_ObjectReferencesOutput'
-                WHEN N'currentStatistics' THEN N'#EPE_StatisticsCurrentOutput'
-                WHEN N'histogramSummaries' THEN N'#EPE_HistogramSummaryOutput'
-                WHEN N'histogramSteps' THEN N'#EPE_HistogramStepsOutput'
-                WHEN N'predicateHistogramMappings' THEN N'#EPE_PredicateMappingsOutput'
-                WHEN N'collectionStatus' THEN N'#EPE_CollectionStatus'
-                WHEN N'warnings' THEN N'#EPE_Warnings' END;
+                WHEN N'captureStatus' THEN N'#CreateExecutionEvidenceJson_CaptureStatus'
+                WHEN N'statisticsIo' THEN N'#CreateExecutionEvidenceJson_StatisticsIoOutput'
+                WHEN N'statisticsTime' THEN N'#CreateExecutionEvidenceJson_StatisticsTimeOutput'
+                WHEN N'planStatisticsUsage' THEN N'#CreateExecutionEvidenceJson_PlanStatisticsUsageOutput'
+                WHEN N'objectReferences' THEN N'#CreateExecutionEvidenceJson_ObjectReferencesOutput'
+                WHEN N'currentStatistics' THEN N'#CreateExecutionEvidenceJson_StatisticsCurrentOutput'
+                WHEN N'histogramSummaries' THEN N'#CreateExecutionEvidenceJson_HistogramSummaryOutput'
+                WHEN N'histogramSteps' THEN N'#CreateExecutionEvidenceJson_HistogramStepsOutput'
+                WHEN N'predicateHistogramMappings' THEN N'#CreateExecutionEvidenceJson_PredicateMappingsOutput'
+                WHEN N'collectionStatus' THEN N'#CreateExecutionEvidenceJson_CollectionStatus'
+                WHEN N'warnings' THEN N'#CreateExecutionEvidenceJson_Warnings' END;
             EXEC [monitor].[InternalWriteResultTable]
                   @SourceTable=@SourceTable,@TargetTable=@TargetTable,@ThrowOnError=1;
             FETCH NEXT FROM [MapCursor] INTO @ResultName,@TargetTable;

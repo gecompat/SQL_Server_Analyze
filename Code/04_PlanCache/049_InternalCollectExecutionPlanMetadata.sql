@@ -11,9 +11,9 @@ Zweck        : Ermittelt aus einem Plan zielgerichtet aktuelle Objekt-, Index-
                und Statistikmetadaten der ausdrücklich bestätigten Quellumgebung.
                Histogrammrohwerte verbleiben ausschließlich in lokalen Temp-
                Tabellen des aufrufenden Evidenzgenerators.
-Voraussetzung: Der Aufrufer legt #EPE_StatisticsCurrent, #EPE_HistogramSteps,
-               #EPE_HistogramSummary, #EPE_PredicateHistogramMappings und
-               #EPE_CollectionStatus mit dem dokumentierten Schema an.
+Voraussetzung: Der Aufrufer legt #CreateExecutionEvidenceJson_StatisticsCurrent, #CreateExecutionEvidenceJson_HistogramSteps,
+               #CreateExecutionEvidenceJson_HistogramSummary, #CreateExecutionEvidenceJson_PredicateHistogramMappings und
+               #CreateExecutionEvidenceJson_CollectionStatus mit dem dokumentierten Schema an.
 Locking      : Katalogabfragen mit LOCK_TIMEOUT; kein Zugriff auf Benutzerdaten.
 ===============================================================================
 */
@@ -34,6 +34,7 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalCollectExecutionPlanMetadata]
 AS
 BEGIN
     SET NOCOUNT ON;
+    SET LOCK_TIMEOUT 0;
 
     SELECT
           @StatistikEvidenzModus=UPPER(LTRIM(RTRIM(COALESCE(@StatistikEvidenzModus,'USED'))))
@@ -59,11 +60,11 @@ BEGIN
     END;
 
     BEGIN TRY
-        SELECT TOP (0) * FROM [#EPE_StatisticsCurrent];
-        SELECT TOP (0) * FROM [#EPE_HistogramSteps];
-        SELECT TOP (0) * FROM [#EPE_HistogramSummary];
-        SELECT TOP (0) * FROM [#EPE_PredicateHistogramMappings];
-        SELECT TOP (0) * FROM [#EPE_CollectionStatus];
+        SELECT TOP (0) * FROM [#CreateExecutionEvidenceJson_StatisticsCurrent];
+        SELECT TOP (0) * FROM [#CreateExecutionEvidenceJson_HistogramSteps];
+        SELECT TOP (0) * FROM [#CreateExecutionEvidenceJson_HistogramSummary];
+        SELECT TOP (0) * FROM [#CreateExecutionEvidenceJson_PredicateHistogramMappings];
+        SELECT TOP (0) * FROM [#CreateExecutionEvidenceJson_CollectionStatus];
     END TRY
     BEGIN CATCH
         SELECT @StatusCodeOut='INTERNAL_ERROR',@IsPartialOut=1,
@@ -115,14 +116,14 @@ BEGIN
     EXEC [sys].[sp_executesql] @LockTimeoutSql;
 
     BEGIN TRY
-    CREATE TABLE [#EPE_Metadata_ObjectReferences]
+    CREATE TABLE [#InternalCollectExecutionPlanMetadata_ObjectReferences]
     (
           [DatabaseName] sysname NOT NULL
         , [SchemaName] sysname NOT NULL
         , [ObjectName] sysname NOT NULL
         , PRIMARY KEY ([DatabaseName],[SchemaName],[ObjectName])
     );
-    CREATE TABLE [#EPE_Metadata_RelevantColumns]
+    CREATE TABLE [#InternalCollectExecutionPlanMetadata_RelevantColumns]
     (
           [DatabaseName] sysname NOT NULL
         , [SchemaName] sysname NOT NULL
@@ -130,7 +131,7 @@ BEGIN
         , [ColumnName] sysname NOT NULL
         , PRIMARY KEY ([DatabaseName],[SchemaName],[ObjectName],[ColumnName])
     );
-    CREATE TABLE [#EPE_Metadata_CandidateStatistics]
+    CREATE TABLE [#InternalCollectExecutionPlanMetadata_CandidateStatistics]
     (
           [CandidateId] int IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [DatabaseName] sysname NOT NULL
@@ -140,7 +141,7 @@ BEGIN
         , [CandidateSource] varchar(40) NOT NULL
         , UNIQUE ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName])
     );
-    CREATE TABLE [#EPE_Metadata_PredicateValues]
+    CREATE TABLE [#InternalCollectExecutionPlanMetadata_PredicateValues]
     (
           [PredicateReferenceId] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [StatementOrdinal] int NOT NULL
@@ -157,14 +158,14 @@ BEGIN
         , [RuntimeValueNormalized] nvarchar(4000) NULL
     );
 
-    INSERT [#EPE_Metadata_ObjectReferences]([DatabaseName],[SchemaName],[ObjectName])
+    INSERT [#InternalCollectExecutionPlanMetadata_ObjectReferences]([DatabaseName],[SchemaName],[ObjectName])
     SELECT [DatabaseName],[SchemaName],[ObjectName]
     FROM [monitor].[TVF_ExecutionPlanObjectReferences](@PlanXml,NULL)
     WHERE [ResolutionCapability]='CATALOG_RESOLVABLE'
       AND [DatabaseName] IS NOT NULL AND [SchemaName] IS NOT NULL AND [ObjectName] IS NOT NULL
     GROUP BY [DatabaseName],[SchemaName],[ObjectName];
 
-    INSERT [#EPE_Metadata_RelevantColumns]([DatabaseName],[SchemaName],[ObjectName],[ColumnName])
+    INSERT [#InternalCollectExecutionPlanMetadata_RelevantColumns]([DatabaseName],[SchemaName],[ObjectName],[ColumnName])
     SELECT [DatabaseName],[SchemaName],[ObjectName],[ColumnName]
     FROM [monitor].[TVF_ExecutionPlanColumnReferences](@PlanXml,NULL)
     WHERE [ColumnUsage] IN ('SEEK','RESIDUAL','JOIN','ORDER_BY','GROUP_BY')
@@ -172,7 +173,7 @@ BEGIN
       AND [ObjectName] IS NOT NULL AND [ColumnName] IS NOT NULL
     GROUP BY [DatabaseName],[SchemaName],[ObjectName],[ColumnName];
 
-    INSERT [#EPE_Metadata_CandidateStatistics]
+    INSERT [#InternalCollectExecutionPlanMetadata_CandidateStatistics]
     ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[CandidateSource])
     SELECT [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],'PLAN_USED'
     FROM [monitor].[TVF_ExecutionPlanStatisticsUsage](@PlanXml,NULL)
@@ -184,7 +185,7 @@ BEGIN
     DECLARE @Db sysname,@Schema sysname,@Object sysname,@Sql nvarchar(max);
     DECLARE [ObjectCursor] CURSOR LOCAL FAST_FORWARD FOR
         SELECT [DatabaseName],[SchemaName],[ObjectName]
-        FROM [#EPE_Metadata_ObjectReferences]
+        FROM [#InternalCollectExecutionPlanMetadata_ObjectReferences]
         ORDER BY [DatabaseName],[SchemaName],[ObjectName];
 
     IF @StatistikEvidenzModus IN ('RELEVANT','OBJECT_ALL')
@@ -202,7 +203,7 @@ BEGIN
             BEGIN
                 BEGIN TRY
                     SET @Sql=N'USE '+QUOTENAME(@Db)+N';
-INSERT [#EPE_Metadata_CandidateStatistics]
+INSERT [#InternalCollectExecutionPlanMetadata_CandidateStatistics]
 ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[CandidateSource])
 SELECT @DatabaseName,[sc].[name],[o].[name],[st].[name],
        CASE WHEN @Mode=''OBJECT_ALL'' THEN ''OBJECT_ALL'' ELSE ''RELEVANT_LEADING_COLUMN'' END
@@ -219,7 +220,7 @@ WHERE [sc].[name]=@SchemaName AND [o].[name]=@ObjectName
           FROM [sys].[stats_columns] AS [stc] WITH (NOLOCK)
           JOIN [sys].[columns] AS [c] WITH (NOLOCK)
             ON [c].[object_id]=[stc].[object_id] AND [c].[column_id]=[stc].[column_id]
-          JOIN [#EPE_Metadata_RelevantColumns] AS [rc]
+          JOIN [#InternalCollectExecutionPlanMetadata_RelevantColumns] AS [rc]
             ON [rc].[DatabaseName]=@DatabaseName
            AND [rc].[SchemaName]=@SchemaName
            AND [rc].[ObjectName]=@ObjectName
@@ -231,7 +232,7 @@ WHERE [sc].[name]=@SchemaName AND [o].[name]=@ObjectName
   )
   AND NOT EXISTS
   (
-      SELECT 1 FROM [#EPE_Metadata_CandidateStatistics] AS [x]
+      SELECT 1 FROM [#InternalCollectExecutionPlanMetadata_CandidateStatistics] AS [x]
       WHERE [x].[DatabaseName]=@DatabaseName
         AND [x].[SchemaName]=[sc].[name]
         AND [x].[ObjectName]=[o].[name]
@@ -243,7 +244,7 @@ WHERE [sc].[name]=@SchemaName AND [o].[name]=@ObjectName
                         , @DatabaseName=@Db,@SchemaName=@Schema,@ObjectName=@Object,@Mode=@StatistikEvidenzModus;
                 END TRY
                 BEGIN CATCH
-                    INSERT [#EPE_CollectionStatus]
+                    INSERT [#CreateExecutionEvidenceJson_CollectionStatus]
                     ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StatusCode],[ErrorNumber],[ErrorMessage])
                     VALUES(@Db,@Schema,@Object,NULL,'ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE());
                     SET @IsPartialOut=1;
@@ -251,7 +252,7 @@ WHERE [sc].[name]=@SchemaName AND [o].[name]=@ObjectName
             END
             ELSE
             BEGIN
-                INSERT [#EPE_CollectionStatus]
+                INSERT [#CreateExecutionEvidenceJson_CollectionStatus]
                 ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StatusCode],[ErrorNumber],[ErrorMessage])
                 VALUES(@Db,@Schema,@Object,NULL,'DATABASE_UNAVAILABLE',NULL,N'Die im Plan referenzierte Datenbank ist in der bestätigten aktuellen Umgebung nicht zugreifbar.');
                 SET @IsPartialOut=1;
@@ -264,18 +265,18 @@ WHERE [sc].[name]=@SchemaName AND [o].[name]=@ObjectName
     END;
 
     DELETE [c]
-    FROM [#EPE_Metadata_CandidateStatistics] AS [c]
+    FROM [#InternalCollectExecutionPlanMetadata_CandidateStatistics] AS [c]
     WHERE [c].[CandidateId] NOT IN
     (
         SELECT TOP (@MaxStatistiken) [CandidateId]
-        FROM [#EPE_Metadata_CandidateStatistics]
+        FROM [#InternalCollectExecutionPlanMetadata_CandidateStatistics]
         ORDER BY CASE [CandidateSource] WHEN 'PLAN_USED' THEN 1 WHEN 'RELEVANT_LEADING_COLUMN' THEN 2 ELSE 3 END,
                  [DatabaseName],[SchemaName],[ObjectName],[StatisticsName]
     );
 
     DECLARE [DatabaseCursor] CURSOR LOCAL FAST_FORWARD FOR
         SELECT [DatabaseName]
-        FROM [#EPE_Metadata_CandidateStatistics]
+        FROM [#InternalCollectExecutionPlanMetadata_CandidateStatistics]
         GROUP BY [DatabaseName]
         ORDER BY [DatabaseName];
 
@@ -291,7 +292,7 @@ WHERE [sc].[name]=@SchemaName AND [o].[name]=@ObjectName
         )
         BEGIN TRY
             SET @Sql=N'USE '+QUOTENAME(@Db)+N';
-INSERT [#EPE_StatisticsCurrent]
+INSERT [#CreateExecutionEvidenceJson_StatisticsCurrent]
 (
       [DatabaseName],[SchemaName],[ObjectName],[ObjectId]
     , [StatisticsName],[StatisticsId],[IsIndexStatistics]
@@ -312,7 +313,7 @@ SELECT
     , CONVERT(decimal(19,6),CASE WHEN [sp].[rows]>0 THEN 100.0*[sp].[modification_counter]/[sp].[rows] END)
     , [sp].[persisted_sample_percent]
     , CASE WHEN [sp].[last_updated] IS NULL THEN ''PROPERTIES_UNAVAILABLE'' ELSE ''AVAILABLE'' END
-FROM [#EPE_Metadata_CandidateStatistics] AS [cs]
+FROM [#InternalCollectExecutionPlanMetadata_CandidateStatistics] AS [cs]
 JOIN [sys].[schemas] AS [sc] WITH (NOLOCK) ON [sc].[name]=[cs].[SchemaName]
 JOIN [sys].[objects] AS [o] WITH (NOLOCK) ON [o].[schema_id]=[sc].[schema_id] AND [o].[name]=[cs].[ObjectName]
 JOIN [sys].[stats] AS [st] WITH (NOLOCK) ON [st].[object_id]=[o].[object_id] AND [st].[name]=[cs].[StatisticsName]
@@ -323,7 +324,7 @@ OUTER APPLY [sys].[dm_db_stats_properties]([st].[object_id],[st].[stats_id]) AS 
 WHERE [cs].[DatabaseName]=@DatabaseName
   AND NOT EXISTS
   (
-      SELECT 1 FROM [#EPE_StatisticsCurrent] AS [x]
+      SELECT 1 FROM [#CreateExecutionEvidenceJson_StatisticsCurrent] AS [x]
       WHERE [x].[DatabaseName]=@DatabaseName AND [x].[SchemaName]=[sc].[name]
         AND [x].[ObjectName]=[o].[name] AND [x].[StatisticsName]=[st].[name]
   );';
@@ -331,12 +332,12 @@ WHERE [cs].[DatabaseName]=@DatabaseName
 
             IF @HistogrammModus<>'NONE'
             BEGIN
-                DECLARE @ExistingSteps int=(SELECT COUNT(*) FROM [#EPE_HistogramSteps]);
+                DECLARE @ExistingSteps int=(SELECT COUNT(*) FROM [#CreateExecutionEvidenceJson_HistogramSteps]);
                 DECLARE @RemainingSteps int=@MaxHistogrammSchritte-@ExistingSteps;
                 IF @RemainingSteps>0
                 BEGIN
                     SET @Sql=N'USE '+QUOTENAME(@Db)+N';
-INSERT [#EPE_HistogramSteps]
+INSERT [#CreateExecutionEvidenceJson_HistogramSteps]
 (
       [DatabaseName],[SchemaName],[ObjectName],[StatisticsName]
     , [StatisticsId],[LeadingColumnName],[StepOrdinal],[RangeHighKeyRaw]
@@ -347,7 +348,7 @@ SELECT TOP (@RemainingSteps)
     , [st].[stats_id],[lc].[name],[h].[step_number]
     , CONVERT(nvarchar(4000),[h].[range_high_key])
     , [h].[range_rows],[h].[equal_rows],[h].[distinct_range_rows],[h].[average_range_rows]
-FROM [#EPE_Metadata_CandidateStatistics] AS [cs]
+FROM [#InternalCollectExecutionPlanMetadata_CandidateStatistics] AS [cs]
 JOIN [sys].[schemas] AS [sc] WITH (NOLOCK) ON [sc].[name]=[cs].[SchemaName]
 JOIN [sys].[objects] AS [o] WITH (NOLOCK) ON [o].[schema_id]=[sc].[schema_id] AND [o].[name]=[cs].[ObjectName]
 JOIN [sys].[stats] AS [st] WITH (NOLOCK) ON [st].[object_id]=[o].[object_id] AND [st].[name]=[cs].[StatisticsName]
@@ -364,7 +365,7 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
             END;
         END TRY
         BEGIN CATCH
-            INSERT [#EPE_CollectionStatus]
+            INSERT [#CreateExecutionEvidenceJson_CollectionStatus]
             ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StatusCode],[ErrorNumber],[ErrorMessage])
             VALUES(@Db,NULL,NULL,NULL,CASE WHEN ERROR_NUMBER()=1222 THEN 'LOCK_TIMEOUT' ELSE 'ERROR_HANDLED' END,ERROR_NUMBER(),ERROR_MESSAGE());
             SET @IsPartialOut=1;
@@ -375,7 +376,7 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
     CLOSE [DatabaseCursor];
     DEALLOCATE [DatabaseCursor];
 
-    INSERT [#EPE_HistogramSummary]
+    INSERT [#CreateExecutionEvidenceJson_HistogramSummary]
     (
           [DatabaseName],[SchemaName],[ObjectName],[StatisticsName]
         , [StatisticsId],[LeadingColumnName],[HistogramSteps]
@@ -397,11 +398,11 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
                    THEN COALESCE([RangeRows],0)+COALESCE([EqualRows],0) END)
             /NULLIF(SUM(COALESCE([RangeRows],0)+COALESCE([EqualRows],0)),0))
         , 'AVAILABLE'
-    FROM [#EPE_HistogramSteps] AS [h]
+    FROM [#CreateExecutionEvidenceJson_HistogramSteps] AS [h]
     CROSS APPLY
     (
         SELECT MAX([StepOrdinal]) [MaxStepOrdinal]
-        FROM [#EPE_HistogramSteps] AS [h2]
+        FROM [#CreateExecutionEvidenceJson_HistogramSteps] AS [h2]
         WHERE [h2].[DatabaseName]=[h].[DatabaseName]
           AND [h2].[SchemaName]=[h].[SchemaName]
           AND [h2].[ObjectName]=[h].[ObjectName]
@@ -413,7 +414,7 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
     Predicate-/Parameterextraktion. Die Rohwerte bleiben in dieser internen
     Temp-Tabelle und werden weder von dieser Procedure ausgegeben noch persistiert.
     */
-    IF @MitPredicateHistogramMap=1 AND EXISTS(SELECT 1 FROM [#EPE_HistogramSteps])
+    IF @MitPredicateHistogramMap=1 AND EXISTS(SELECT 1 FROM [#CreateExecutionEvidenceJson_HistogramSteps])
     BEGIN
         ;WITH [StatementsBase] AS
         (
@@ -432,7 +433,7 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
                 , [StatementXml]
             FROM [StatementsBase]
         )
-        INSERT [#EPE_Metadata_PredicateValues]
+        INSERT [#InternalCollectExecutionPlanMetadata_PredicateValues]
         (
               [StatementOrdinal],[NodeId],[DatabaseName],[SchemaName],[ObjectName]
             , [ColumnName],[PredicateKind],[ParameterName]
@@ -505,11 +506,11 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
         (
             SELECT [PredicateReferenceId],[StatementOrdinal],[NodeId],[DatabaseName],[SchemaName],[ObjectName],[ColumnName],
                    [PredicateKind],CONVERT(varchar(32),'COMPILED_PARAMETER') [ValueSource],[CompiledValueNormalized] [ValueText]
-            FROM [#EPE_Metadata_PredicateValues] WHERE [CompiledValueNormalized] IS NOT NULL
+            FROM [#InternalCollectExecutionPlanMetadata_PredicateValues] WHERE [CompiledValueNormalized] IS NOT NULL
             UNION ALL
             SELECT [PredicateReferenceId],[StatementOrdinal],[NodeId],[DatabaseName],[SchemaName],[ObjectName],[ColumnName],
                    [PredicateKind],'RUNTIME_PARAMETER',[RuntimeValueNormalized]
-            FROM [#EPE_Metadata_PredicateValues] WHERE [RuntimeValueNormalized] IS NOT NULL
+            FROM [#InternalCollectExecutionPlanMetadata_PredicateValues] WHERE [RuntimeValueNormalized] IS NOT NULL
         ),
         [Candidates] AS
         (
@@ -522,7 +523,7 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
                 , [DateBoundary]=TRY_CONVERT(datetime2(7),[h].[RangeHighKeyRaw])
                 , [ExactMatch]=CONVERT(bit,CASE WHEN [v].[ValueText]=[h].[RangeHighKeyRaw] THEN 1 ELSE 0 END)
             FROM [ValuesToMap] AS [v]
-            JOIN [#EPE_HistogramSteps] AS [h]
+            JOIN [#CreateExecutionEvidenceJson_HistogramSteps] AS [h]
               ON [h].[DatabaseName]=[v].[DatabaseName]
              AND [h].[SchemaName]=[v].[SchemaName]
              AND [h].[ObjectName]=[v].[ObjectName]
@@ -546,7 +547,7 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
                    [MaximumDateBoundary]=MAX([DateBoundary]) OVER (PARTITION BY [PredicateReferenceId],[ValueSource],[StatisticsName])
             FROM [Candidates] AS [c]
         )
-        INSERT [#EPE_PredicateHistogramMappings]
+        INSERT [#CreateExecutionEvidenceJson_PredicateHistogramMappings]
         (
               [PredicateReferenceId],[StatementOrdinal],[NodeId]
             , [DatabaseName],[SchemaName],[ObjectName],[ColumnName]
@@ -585,17 +586,17 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
         WHERE [CandidateRank]=1;
     END;
 
-    INSERT [#EPE_CollectionStatus]
+    INSERT [#CreateExecutionEvidenceJson_CollectionStatus]
     ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[StatusCode],[ErrorNumber],[ErrorMessage])
     SELECT [DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[CollectionStatus],NULL,NULL
-    FROM [#EPE_StatisticsCurrent]
+    FROM [#CreateExecutionEvidenceJson_StatisticsCurrent]
     WHERE NOT EXISTS
     (
-        SELECT 1 FROM [#EPE_CollectionStatus] AS [x]
-        WHERE [x].[DatabaseName]=[#EPE_StatisticsCurrent].[DatabaseName]
-          AND [x].[SchemaName]=[#EPE_StatisticsCurrent].[SchemaName]
-          AND [x].[ObjectName]=[#EPE_StatisticsCurrent].[ObjectName]
-          AND [x].[StatisticsName]=[#EPE_StatisticsCurrent].[StatisticsName]
+        SELECT 1 FROM [#CreateExecutionEvidenceJson_CollectionStatus] AS [x]
+        WHERE [x].[DatabaseName]=[#CreateExecutionEvidenceJson_StatisticsCurrent].[DatabaseName]
+          AND [x].[SchemaName]=[#CreateExecutionEvidenceJson_StatisticsCurrent].[SchemaName]
+          AND [x].[ObjectName]=[#CreateExecutionEvidenceJson_StatisticsCurrent].[ObjectName]
+          AND [x].[StatisticsName]=[#CreateExecutionEvidenceJson_StatisticsCurrent].[StatisticsName]
     );
 
     IF @IsPartialOut=1 AND @StatusCodeOut='AVAILABLE' SET @StatusCodeOut='PARTIAL';

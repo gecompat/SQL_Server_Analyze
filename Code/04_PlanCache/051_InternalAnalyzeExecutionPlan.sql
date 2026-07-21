@@ -10,7 +10,7 @@ Typ          : Interne Stored Procedure
 Zweck        : Zerlegt genau ein Showplan-XML einmalig in statementgenaue,
                relationale Plan-, Operator-, Runtime-, Statistik-, Parameter-
                und Findingtabellen des Aufrufers.
-Voraussetzung: Der Aufrufer legt die lokalen #EPA_*-Temp-Tabellen entsprechend
+Voraussetzung: Der Aufrufer legt die lokalen #ExecutionPlanAnalysis_*-Temp-Tabellen entsprechend
                dem Resultsetinventar an. Keine Benutzertabellenzugriffe.
 ===============================================================================
 */
@@ -65,34 +65,34 @@ BEGIN
         SET @WorkloadProfile='BALANCED';
 
     BEGIN TRY
-        SELECT TOP (0) * FROM [#EPA_Capabilities];
-        SELECT TOP (0) * FROM [#EPA_PlanDocuments];
-        SELECT TOP (0) * FROM [#EPA_Statements];
-        SELECT TOP (0) * FROM [#EPA_Operators];
-        SELECT TOP (0) * FROM [#EPA_OperatorRuntime];
-        SELECT TOP (0) * FROM [#EPA_OperatorThreadRuntime];
-        SELECT TOP (0) * FROM [#EPA_AccessPaths];
-        SELECT TOP (0) * FROM [#EPA_StatisticsUsage];
-        SELECT TOP (0) * FROM [#EPA_Parameters];
-        SELECT TOP (0) * FROM [#EPA_MemoryAndSpills];
-        SELECT TOP (0) * FROM [#EPA_ExecutionEvidence];
-        SELECT TOP (0) * FROM [#EPA_Findings];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Capabilities];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_PlanDocuments];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Statements];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Operators];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_OperatorRuntime];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_OperatorThreadRuntime];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_AccessPaths];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_StatisticsUsage];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Parameters];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_MemoryAndSpills];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_ExecutionEvidence];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Findings];
     END TRY
     BEGIN CATCH
         SELECT @StatusCodeOut='INTERNAL_ERROR',@IsPartialOut=1,
                @ErrorNumberOut=ERROR_NUMBER(),
-               @ErrorMessageOut=N'Die erwarteten lokalen #EPA_*-Temp-Tabellen fehlen oder besitzen ein unpassendes Schema.';
+               @ErrorMessageOut=N'Die erwarteten lokalen #ExecutionPlanAnalysis_*-Temp-Tabellen fehlen oder besitzen ein unpassendes Schema.';
         RETURN;
     END CATCH;
 
-    CREATE TABLE [#EPA_InternalStatementXml]
+    CREATE TABLE [#InternalAnalyzeExecutionPlan_StatementXml]
     (
           [StatementOrdinal] int NOT NULL PRIMARY KEY
         , [StatementId] int NULL
         , [StatementCompId] int NULL
         , [StatementXml] xml NOT NULL
     );
-    CREATE TABLE [#EPA_InternalEdges]
+    CREATE TABLE [#InternalAnalyzeExecutionPlan_Edges]
     (
           [StatementOrdinal] int NOT NULL
         , [ParentNodeId] int NOT NULL
@@ -111,7 +111,7 @@ BEGIN
                 , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'')
             FROM @PlanXml.nodes('//*[local-name(.)="StmtSimple"]') AS [s]([n])
         )
-        INSERT [#EPA_InternalStatementXml]
+        INSERT [#InternalAnalyzeExecutionPlan_StatementXml]
         ([StatementOrdinal],[StatementId],[StatementCompId],[StatementXml])
         SELECT
               CONVERT(int,ROW_NUMBER() OVER
@@ -119,16 +119,16 @@ BEGIN
             , [StatementId],[StatementCompId],[StatementXml]
         FROM [StatementBase];
 
-        IF NOT EXISTS(SELECT 1 FROM [#EPA_InternalStatementXml])
+        IF NOT EXISTS(SELECT 1 FROM [#InternalAnalyzeExecutionPlan_StatementXml])
         BEGIN
-            INSERT [#EPA_Capabilities]
+            INSERT [#ExecutionPlanAnalysis_Capabilities]
             VALUES(@AnalysisObjectId,'STATEMENTS',0,'NO_STMT_SIMPLE','PLAN_XML',N'Das Plan-XML enthält kein unterstütztes StmtSimple-Element.');
             SELECT @StatusCodeOut='UNAVAILABLE_OBJECT',@IsPartialOut=1,
                    @ErrorMessageOut=N'Das Plan-XML enthält keine analysierbaren StmtSimple-Elemente.';
             RETURN;
         END;
 
-        INSERT [#EPA_Statements]
+        INSERT [#ExecutionPlanAnalysis_Statements]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId],[StatementCompId]
             , [StatementType],[StatementText],[StatementQueryHash],[StatementQueryPlanHash]
@@ -153,9 +153,9 @@ BEGIN
             , TRY_CONVERT(bigint,NULLIF([x].[StatementXml].value('string((.//*[local-name(.)="QueryPlan"]/@CompileMemory)[1])','nvarchar(100)'),N''))
             , TRY_CONVERT(bit,NULLIF([x].[StatementXml].value('string((@RetrievedFromCache)[1])','nvarchar(20)'),N''))
             , NULLIF([x].[StatementXml].value('string((.//*[local-name(.)="QueryPlan"]/@NonParallelPlanReason)[1])','nvarchar(256)'),N'')
-        FROM [#EPA_InternalStatementXml] AS [x];
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [x];
 
-        INSERT [#EPA_Operators]
+        INSERT [#ExecutionPlanAnalysis_Operators]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
             , [ParentNodeId],[ChildOrdinal],[Depth],[OperatorPath]
@@ -190,10 +190,10 @@ BEGIN
             , NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Schema)[1])','nvarchar(256)'),N'')
             , NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Table)[1])','nvarchar(256)'),N'')
             , NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Index)[1])','nvarchar(256)'),N'')
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"]') AS [r]([n]);
 
-        INSERT [#EPA_InternalEdges]
+        INSERT [#InternalAnalyzeExecutionPlan_Edges]
         ([StatementOrdinal],[ParentNodeId],[ChildNodeId],[ChildOrdinal])
         SELECT
               [st].[StatementOrdinal]
@@ -202,7 +202,7 @@ BEGIN
             , CONVERT(int,ROW_NUMBER() OVER
                 (PARTITION BY [st].[StatementOrdinal],TRY_CONVERT(int,NULLIF([p].[n].value('string((@NodeId)[1])','nvarchar(50)'),N''))
                  ORDER BY TRY_CONVERT(int,NULLIF([c].[n].value('string((@NodeId)[1])','nvarchar(50)'),N''))))
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"]') AS [p]([n])
         CROSS APPLY [p].[n].nodes('./*/*[local-name(.)="RelOp"]') AS [c]([n])
         WHERE NULLIF([p].[n].value('string((@NodeId)[1])','nvarchar(50)'),N'') IS NOT NULL
@@ -211,13 +211,13 @@ BEGIN
         UPDATE [o]
         SET [o].[ParentNodeId]=[e].[ParentNodeId],
             [o].[ChildOrdinal]=[e].[ChildOrdinal]
-        FROM [#EPA_Operators] AS [o]
-        JOIN [#EPA_InternalEdges] AS [e]
+        FROM [#ExecutionPlanAnalysis_Operators] AS [o]
+        JOIN [#InternalAnalyzeExecutionPlan_Edges] AS [e]
           ON [e].[StatementOrdinal]=[o].[StatementOrdinal]
          AND [e].[ChildNodeId]=[o].[NodeId]
         WHERE [o].[AnalysisObjectId]=@AnalysisObjectId;
 
-        UPDATE [#EPA_Operators]
+        UPDATE [#ExecutionPlanAnalysis_Operators]
         SET [Depth]=0,
             [OperatorPath]=CONCAT(N'/',CONVERT(nvarchar(20),[NodeId]))
         WHERE [AnalysisObjectId]=@AnalysisObjectId
@@ -230,8 +230,8 @@ BEGIN
             UPDATE [c]
             SET [c].[Depth]=@Depth,
                 [c].[OperatorPath]=CONCAT([p].[OperatorPath],N'/',CONVERT(nvarchar(20),[c].[NodeId]))
-            FROM [#EPA_Operators] AS [c]
-            JOIN [#EPA_Operators] AS [p]
+            FROM [#ExecutionPlanAnalysis_Operators] AS [c]
+            JOIN [#ExecutionPlanAnalysis_Operators] AS [p]
               ON [p].[AnalysisObjectId]=[c].[AnalysisObjectId]
              AND [p].[StatementOrdinal]=[c].[StatementOrdinal]
              AND [p].[NodeId]=[c].[ParentNodeId]
@@ -243,19 +243,19 @@ BEGIN
 
         IF EXISTS
         (
-            SELECT 1 FROM [#EPA_Operators]
+            SELECT 1 FROM [#ExecutionPlanAnalysis_Operators]
             WHERE [AnalysisObjectId]=@AnalysisObjectId AND [Depth] IS NULL
         )
         BEGIN
             SET @IsPartialOut=1;
-            INSERT [#EPA_Capabilities]
+            INSERT [#ExecutionPlanAnalysis_Capabilities]
             VALUES(@AnalysisObjectId,'OPERATOR_TREE',0,'UNRESOLVED_PARENT_PATH','PLAN_XML',N'Mindestens ein Operator konnte nicht in einen eindeutigen Parentpfad eingeordnet werden.');
         END
         ELSE
-            INSERT [#EPA_Capabilities]
+            INSERT [#ExecutionPlanAnalysis_Capabilities]
             VALUES(@AnalysisObjectId,'OPERATOR_TREE',1,'AVAILABLE','PLAN_XML',N'Parent, Child-Ordinal, Tiefe und Operatorpfad wurden relational ermittelt.');
 
-        INSERT [#EPA_OperatorThreadRuntime]
+        INSERT [#ExecutionPlanAnalysis_OperatorThreadRuntime]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
             , [ThreadId],[BrickId],[ActualRows],[ActualRowsRead],[ActualExecutions]
@@ -285,11 +285,11 @@ BEGIN
             , TRY_CONVERT(bigint,NULLIF([t].[n].value('string((@ActualLobPhysicalReads)[1])','nvarchar(100)'),N''))
             , CONVERT(bit,CASE WHEN NULLIF([t].[n].value('string((@ActualRowsRead)[1])','nvarchar(100)'),N'') IS NOT NULL
                                THEN 1 ELSE 0 END)
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"]') AS [r]([n])
         CROSS APPLY [r].[n].nodes('./*[local-name(.)="RunTimeInformation"]/*[local-name(.)="RunTimeCountersPerThread"]') AS [t]([n]);
 
-        INSERT [#EPA_OperatorRuntime]
+        INSERT [#ExecutionPlanAnalysis_OperatorRuntime]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
             , [RuntimeCounterCount],[RowsReadCounterCount],[RowsReadCounterCoveragePercent]
@@ -321,8 +321,8 @@ BEGIN
                    WHEN SUM(CONVERT(int,COALESCE([t].[IsRowsReadPaired],0)))=0 THEN 'ACTUAL_ROWS_READ_NOT_AVAILABLE'
                    WHEN SUM(CONVERT(int,COALESCE([t].[IsRowsReadPaired],0)))<COUNT([t].[NodeId]) THEN 'PARTIAL_COUNTER_COVERAGE'
                    ELSE 'AVAILABLE' END
-        FROM [#EPA_Operators] AS [o]
-        LEFT JOIN [#EPA_OperatorThreadRuntime] AS [t]
+        FROM [#ExecutionPlanAnalysis_Operators] AS [o]
+        LEFT JOIN [#ExecutionPlanAnalysis_OperatorThreadRuntime] AS [t]
           ON [t].[AnalysisObjectId]=[o].[AnalysisObjectId]
          AND [t].[StatementOrdinal]=[o].[StatementOrdinal]
          AND [t].[NodeId]=[o].[NodeId]
@@ -359,10 +359,10 @@ BEGIN
                   WHEN [r].[RowsReadCounterCount]<[r].[RuntimeCounterCount] THEN 'PARTIAL_COUNTER_COVERAGE'
                   WHEN [r].[PairedActualRowsRead]=0 THEN 'ZERO_ROWS_READ'
                   ELSE 'AVAILABLE' END
-        FROM [#EPA_OperatorRuntime] AS [r]
+        FROM [#ExecutionPlanAnalysis_OperatorRuntime] AS [r]
         WHERE [r].[AnalysisObjectId]=@AnalysisObjectId;
 
-        INSERT [#EPA_AccessPaths]
+        INSERT [#ExecutionPlanAnalysis_AccessPaths]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
             , [PhysicalOp],[LogicalOp],[DatabaseName],[SchemaName],[ObjectName]
@@ -378,8 +378,8 @@ BEGIN
             , [o].[Ordered],[o].[ScanDirection],[o].[EstimateRows],[o].[EstimatedRowsRead]
             , [r].[ActualRows],[r].[ActualRowsRead],[r].[ActualExecutions]
             , [r].[RowsReadNotReturned],[r].[RowsReadNotReturnedPercent]
-        FROM [#EPA_Operators] AS [o]
-        LEFT JOIN [#EPA_OperatorRuntime] AS [r]
+        FROM [#ExecutionPlanAnalysis_Operators] AS [o]
+        LEFT JOIN [#ExecutionPlanAnalysis_OperatorRuntime] AS [r]
           ON [r].[AnalysisObjectId]=[o].[AnalysisObjectId]
          AND [r].[StatementOrdinal]=[o].[StatementOrdinal]
          AND [r].[NodeId]=[o].[NodeId]
@@ -391,7 +391,7 @@ BEGIN
               OR [o].[PhysicalOp] IN (N'Key Lookup',N'RID Lookup')
           );
 
-        INSERT [#EPA_StatisticsUsage]
+        INSERT [#ExecutionPlanAnalysis_StatisticsUsage]
         (
               [AnalysisObjectId],[StatisticsUsageOrdinal],[StatementOrdinal]
             , [StatementId],[StatementCompId],[DatabaseName],[SchemaName]
@@ -410,7 +410,7 @@ BEGIN
         FROM [monitor].[TVF_ExecutionPlanStatisticsUsage](@PlanXml,NULL);
 
         DECLARE @TokenSalt varbinary(32)=CRYPT_GEN_RANDOM(32);
-        INSERT [#EPA_Parameters]
+        INSERT [#ExecutionPlanAnalysis_Parameters]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId]
             , [ParameterName],[ParameterDataType]
@@ -437,10 +437,10 @@ BEGIN
                    ELSE 'OMITTED_DERIVED_ONLY' END
             , CASE WHEN NULLIF([p].[n].value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)'),N'') IS NOT NULL
                    THEN 'COMPILE_AND_RUNTIME_PLAN' ELSE 'COMPILE_PLAN' END
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="ParameterList"]/*[local-name(.)="ColumnReference"]') AS [p]([n]);
 
-        INSERT [#EPA_MemoryAndSpills]
+        INSERT [#ExecutionPlanAnalysis_MemoryAndSpills]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
             , [RecordType],[SpillKind],[SpillLevel],[SpilledDataSize]
@@ -457,10 +457,10 @@ BEGIN
             , TRY_CONVERT(bigint,NULLIF([m].[n].value('string((@GrantWaitTime)[1])','nvarchar(100)'),N''))
             , NULLIF([m].[n].value('string((@IsMemoryGrantFeedbackAdjusted)[1])','nvarchar(128)'),N'')
             , N'Statementbezogene MemoryGrantInfo aus dem Plan.'
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="MemoryGrantInfo"]') AS [m]([n]);
 
-        INSERT [#EPA_MemoryAndSpills]
+        INSERT [#ExecutionPlanAnalysis_MemoryAndSpills]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
             , [RecordType],[SpillKind],[SpillLevel],[SpilledDataSize]
@@ -478,14 +478,14 @@ BEGIN
             , TRY_CONVERT(bigint,NULLIF([sp].[n].value('string((@ReadsFromTempDb)[1])','nvarchar(100)'),N''))
             , NULL,NULL,NULL,NULL,NULL
             , N'Operatorbezogene Spillinformation aus dem Actual Plan.'
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"]') AS [r]([n])
         CROSS APPLY [r].[n].nodes('./*[local-name(.)="Warnings"]/*[local-name(.)="SpillToTempDb" or local-name(.)="HashSpillDetails" or local-name(.)="SortSpillDetails" or local-name(.)="ExchangeSpillDetails"]') AS [sp]([n]);
 
         /* Optionale strukturierte zusätzliche Ausführungsevidenz. */
         IF @EvidenceJson IS NOT NULL AND ISJSON(@EvidenceJson)=1
         BEGIN
-            INSERT [#EPA_ExecutionEvidence]
+            INSERT [#ExecutionPlanAnalysis_ExecutionEvidence]
             (
                   [AnalysisObjectId],[EvidenceType],[StatementOrdinal]
                 , [ScopeName],[MetricName],[MetricValue],[MetricUnit]
@@ -519,7 +519,7 @@ BEGIN
             ) AS [v]([MetricName],[MetricValue])
             WHERE [v].[MetricValue] IS NOT NULL;
 
-            INSERT [#EPA_ExecutionEvidence]
+            INSERT [#ExecutionPlanAnalysis_ExecutionEvidence]
             (
                   [AnalysisObjectId],[EvidenceType],[StatementOrdinal]
                 , [ScopeName],[MetricName],[MetricValue],[MetricUnit]
@@ -544,39 +544,39 @@ BEGIN
         ELSE IF @EvidenceJson IS NOT NULL
         BEGIN
             SET @IsPartialOut=1;
-            INSERT [#EPA_Capabilities]
+            INSERT [#ExecutionPlanAnalysis_Capabilities]
             VALUES(@AnalysisObjectId,'EXECUTION_EVIDENCE_JSON',0,'INVALID_JSON','EXTERNAL_EVIDENCE',N'Übergebene Ausführungsevidenz ist kein gültiges JSON.');
         END;
 
         /* Capabilitymodell ausschließlich nach tatsächlich vorhandenen Elementen. */
-        INSERT [#EPA_Capabilities]
+        INSERT [#ExecutionPlanAnalysis_Capabilities]
         SELECT @AnalysisObjectId,'ACTUAL_RUNTIME',CONVERT(bit,CASE WHEN EXISTS
-            (SELECT 1 FROM [#EPA_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>0) THEN 1 ELSE 0 END),
-            CASE WHEN EXISTS(SELECT 1 FROM [#EPA_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>0) THEN 'AVAILABLE' ELSE 'ATTRIBUTE_NOT_PRESENT' END,
+            (SELECT 1 FROM [#ExecutionPlanAnalysis_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>0) THEN 1 ELSE 0 END),
+            CASE WHEN EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>0) THEN 'AVAILABLE' ELSE 'ATTRIBUTE_NOT_PRESENT' END,
             'PLAN_XML',N'Runtimecounter werden nur als verfügbar ausgewiesen, wenn entsprechende XML-Elemente vorhanden sind.';
-        INSERT [#EPA_Capabilities]
+        INSERT [#ExecutionPlanAnalysis_Capabilities]
         SELECT @AnalysisObjectId,'ACTUAL_ROWS_READ',CONVERT(bit,CASE WHEN EXISTS
-            (SELECT 1 FROM [#EPA_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RowsReadCounterCount]>0) THEN 1 ELSE 0 END),
-            CASE WHEN EXISTS(SELECT 1 FROM [#EPA_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RowsReadCounterCount]>0) THEN 'AVAILABLE' ELSE 'ATTRIBUTE_NOT_PRESENT' END,
+            (SELECT 1 FROM [#ExecutionPlanAnalysis_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RowsReadCounterCount]>0) THEN 1 ELSE 0 END),
+            CASE WHEN EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RowsReadCounterCount]>0) THEN 'AVAILABLE' ELSE 'ATTRIBUTE_NOT_PRESENT' END,
             'PLAN_XML',N'ActualRowsRead wird threadweise gepaart und fehlende Attribute werden nicht als 0 interpretiert.';
-        INSERT [#EPA_Capabilities]
+        INSERT [#ExecutionPlanAnalysis_Capabilities]
         SELECT @AnalysisObjectId,'THREAD_RUNTIME',CONVERT(bit,CASE WHEN @MitThreadRuntime=1 AND EXISTS
-            (SELECT 1 FROM [#EPA_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>1) THEN 1 ELSE 0 END),
+            (SELECT 1 FROM [#ExecutionPlanAnalysis_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>1) THEN 1 ELSE 0 END),
             CASE WHEN @MitThreadRuntime=0 THEN 'NOT_REQUESTED'
-                 WHEN EXISTS(SELECT 1 FROM [#EPA_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>1) THEN 'AVAILABLE'
+                 WHEN EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>1) THEN 'AVAILABLE'
                  ELSE 'THREAD_DETAIL_NOT_PRESENT' END,
             'PLAN_XML',N'Threaddetails werden nur bei expliziter Anforderung ausgegeben.';
-        INSERT [#EPA_Capabilities]
+        INSERT [#ExecutionPlanAnalysis_Capabilities]
         SELECT @AnalysisObjectId,'PSP_VARIANT',CONVERT(bit,CASE WHEN (@PlanXml.exist('//*[@QueryVariantID]')=1 OR @PlanXml.exist('//*[@QueryVariantId]')=1) THEN 1 ELSE 0 END),
             CASE WHEN (@PlanXml.exist('//*[@QueryVariantID]')=1 OR @PlanXml.exist('//*[@QueryVariantId]')=1) THEN 'AVAILABLE' ELSE 'ELEMENT_NOT_PRESENT' END,
             'PLAN_XML',N'PSP-/Multiplanmerkmale werden anhand vorhandener XML-Attribute erkannt.';
-        INSERT [#EPA_Capabilities]
+        INSERT [#ExecutionPlanAnalysis_Capabilities]
         SELECT @AnalysisObjectId,'OPPO_VARIANT',CONVERT(bit,CASE WHEN @PlanXml.exist('//*[local-name(.)="OptionalPredicate"]')=1 THEN 1 ELSE 0 END),
             CASE WHEN @PlanXml.exist('//*[local-name(.)="OptionalPredicate"]')=1 THEN 'AVAILABLE' ELSE 'ELEMENT_NOT_PRESENT' END,
             'PLAN_XML',N'OPPO wird nur bei tatsächlich vorhandenem OptionalPredicate-Element ausgewiesen.';
 
         /* Explizite Planwarnungen. */
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -595,10 +595,10 @@ BEGIN
             , CONCAT(N'Reason=',[EarlyAbortReason])
             , N'GoodEnoughPlanFound kann normal sein; TimeOut ist ein Vertiefungshinweis, aber kein Beweis eines schlechten Plans.'
             , NULL,N'Compilezeit, Joinkomplexität und Query-Store-Historie prüfen.'
-        FROM [#EPA_Statements]
+        FROM [#ExecutionPlanAnalysis_Statements]
         WHERE [AnalysisObjectId]=@AnalysisObjectId AND [EarlyAbortReason] IS NOT NULL;
 
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -617,11 +617,11 @@ BEGIN
             , N'Warnings/@NoJoinPredicate=1.'
             , N'Ein fachlich beabsichtigtes kartesisches Produkt ist möglich.'
             , NULL,N'Querytext und erwartete Ergebnismenge prüfen.'
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"]') AS [r]([n])
         WHERE [r].[n].exist('./*[local-name(.)="Warnings"][@NoJoinPredicate="1"]')=1;
 
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -637,10 +637,10 @@ BEGIN
             , LEFT(CONCAT(N'Issue=',[p].[n].value('string((@ConvertIssue)[1])','nvarchar(256)'),N'; Expression=',[p].[n].value('string((@Expression)[1])','nvarchar(3000)')),4000)
             , N'Nicht jede implizite Konvertierung beeinflusst den Zugriff; die PlanAffectingConvert-Warnung besitzt höhere Evidenz als ein bloßer ScalarString-Treffer.'
             , NULL,N'Datentypen auf Spalten- und Parameterseite vergleichen.'
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="PlanAffectingConvert"]') AS [p]([n]);
 
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -656,11 +656,11 @@ BEGIN
             , N'ColumnsWithNoStatistics wurde im Plan gespeichert.'
             , N'Die Ursache kann Sichtbarkeit, temporäre Struktur oder Featuresemantik sein; ein Statistik-Create ist keine automatische Folgerung.'
             , NULL,N'Objektart, Spaltenrolle und aktuelle Statistikmetadaten prüfen.'
-        FROM [#EPA_InternalStatementXml] AS [st]
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
         WHERE [st].[StatementXml].exist('.//*[local-name(.)="ColumnsWithNoStatistics"]')=1;
 
         /* Spills sind explizite Runtimeevidenz. */
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -682,8 +682,8 @@ BEGIN
             , CONCAT(N'SpillKind=',[m].[SpillKind],N'; SpillLevel=',COALESCE(CONVERT(nvarchar(30),[m].[SpillLevel]),N'<NULL>'))
             , N'Ein kleiner einmaliger Spill muss nicht die Hauptursache sein; Menge, Wiederholung, Grant und Gesamtlaufzeit gemeinsam bewerten.'
             , NULL,N'Memory Grant, Kardinalität und STATISTICS IO/TIME korrelieren.'
-        FROM [#EPA_MemoryAndSpills] AS [m]
-        LEFT JOIN [#EPA_Operators] AS [o]
+        FROM [#ExecutionPlanAnalysis_MemoryAndSpills] AS [m]
+        LEFT JOIN [#ExecutionPlanAnalysis_Operators] AS [o]
           ON [o].[AnalysisObjectId]=[m].[AnalysisObjectId]
          AND [o].[StatementOrdinal]=[m].[StatementOrdinal]
          AND [o].[NodeId]=[m].[NodeId]
@@ -693,8 +693,8 @@ BEGIN
         ;WITH [Candidate] AS
         (
             SELECT [r].*,[o].[PhysicalOp],[o].[LogicalOp]
-            FROM [#EPA_OperatorRuntime] AS [r]
-            JOIN [#EPA_Operators] AS [o]
+            FROM [#ExecutionPlanAnalysis_OperatorRuntime] AS [r]
+            JOIN [#ExecutionPlanAnalysis_Operators] AS [o]
               ON [o].[AnalysisObjectId]=[r].[AnalysisObjectId]
              AND [o].[StatementOrdinal]=[r].[StatementOrdinal]
              AND [o].[NodeId]=[r].[NodeId]
@@ -714,7 +714,7 @@ BEGIN
              AND [c].[ActualToEstimatedRatio]>=[t].[MinRatio]
              AND ABS(COALESCE([c].[ActualRows],0)-COALESCE([c].[EstimatedRowsTotal],0))>=COALESCE([t].[MinAbsoluteRows],0)
         )
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -734,8 +734,8 @@ BEGIN
         ;WITH [Candidate] AS
         (
             SELECT [r].*,[o].[PhysicalOp],[o].[LogicalOp]
-            FROM [#EPA_OperatorRuntime] AS [r]
-            JOIN [#EPA_Operators] AS [o]
+            FROM [#ExecutionPlanAnalysis_OperatorRuntime] AS [r]
+            JOIN [#ExecutionPlanAnalysis_Operators] AS [o]
               ON [o].[AnalysisObjectId]=[r].[AnalysisObjectId]
              AND [o].[StatementOrdinal]=[r].[StatementOrdinal]
              AND [o].[NodeId]=[r].[NodeId]
@@ -755,7 +755,7 @@ BEGIN
              AND [c].[ActualToEstimatedRatio]<=[t].[MaxRatio]
              AND ABS(COALESCE([c].[ActualRows],0)-COALESCE([c].[EstimatedRowsTotal],0))>=COALESCE([t].[MinAbsoluteRows],0)
         )
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -778,7 +778,7 @@ BEGIN
                    ROW_NUMBER() OVER
                    (PARTITION BY [a].[StatementOrdinal],[a].[NodeId]
                     ORDER BY CASE [t].[Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END DESC) [rn]
-            FROM [#EPA_AccessPaths] AS [a]
+            FROM [#ExecutionPlanAnalysis_AccessPaths] AS [a]
             JOIN [monitor].[PlanAnalysisRuleThreshold] AS [t]
               ON [t].[RuleCode]='ROWS_READ_NOT_RETURNED'
              AND [t].[ProfileCode]=@WorkloadProfile AND [t].[IsEnabled]=1
@@ -787,7 +787,7 @@ BEGIN
              AND [a].[RowsReadNotReturnedPercent]>=COALESCE([t].[MinRowsNotReturnedPercent],0)
             WHERE [a].[AnalysisObjectId]=@AnalysisObjectId
         )
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -811,14 +811,14 @@ BEGIN
                    ROW_NUMBER() OVER
                    (PARTITION BY [a].[StatementOrdinal],[a].[NodeId]
                     ORDER BY CASE [t].[Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END DESC) [rn]
-            FROM [#EPA_AccessPaths] AS [a]
+            FROM [#ExecutionPlanAnalysis_AccessPaths] AS [a]
             JOIN [monitor].[PlanAnalysisRuleThreshold] AS [t]
               ON [t].[RuleCode]='LOOKUP_HIGH_EXECUTIONS'
              AND [t].[ProfileCode]=@WorkloadProfile AND [t].[IsEnabled]=1
              AND [a].[ActualExecutions]>=COALESCE([t].[MinExecutionCount],0)
             WHERE [a].[AnalysisObjectId]=@AnalysisObjectId AND [a].[IsLookup]=1
         )
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -842,14 +842,14 @@ BEGIN
                    ROW_NUMBER() OVER
                    (PARTITION BY [a].[StatementOrdinal],[a].[NodeId]
                     ORDER BY CASE [t].[Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END DESC) [rn]
-            FROM [#EPA_AccessPaths] AS [a]
+            FROM [#ExecutionPlanAnalysis_AccessPaths] AS [a]
             JOIN [monitor].[PlanAnalysisRuleThreshold] AS [t]
               ON [t].[RuleCode]='LARGE_SCAN'
              AND [t].[ProfileCode]=@WorkloadProfile AND [t].[IsEnabled]=1
              AND [a].[ActualRowsRead]>=COALESCE([t].[MinRowsRead],0)
             WHERE [a].[AnalysisObjectId]=@AnalysisObjectId AND [a].[PhysicalOp] LIKE N'%Scan%'
         )
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -868,7 +868,7 @@ BEGIN
         FROM [Matched] WHERE [rn]=1;
 
         /* Memory Grant: Vollauslastung allein ist kein Undergrantbeweis. */
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -883,7 +883,7 @@ BEGIN
                CONCAT(N'GrantWaitMs=',[GrantWaitTimeMs],N'; RequestedKB=',[RequestedMemoryKb],N'; GrantedKB=',[GrantedMemoryKb]),
                N'Ein isolierter kurzer Wait muss mit gleichzeitigem Server-Memorydruck korreliert werden.',
                NULL,N'Current Memory Grants, Resource Semaphore und Konkurrenzsituation prüfen.'
-        FROM [#EPA_MemoryAndSpills]
+        FROM [#ExecutionPlanAnalysis_MemoryAndSpills]
         WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RecordType]='MEMORY_GRANT' AND COALESCE([GrantWaitTimeMs],0)>0;
 
         ;WITH [Matched] AS
@@ -894,7 +894,7 @@ BEGIN
                    ROW_NUMBER() OVER
                    (PARTITION BY [m].[StatementOrdinal]
                     ORDER BY CASE [t].[Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END DESC) [rn]
-            FROM [#EPA_MemoryAndSpills] AS [m]
+            FROM [#ExecutionPlanAnalysis_MemoryAndSpills] AS [m]
             JOIN [monitor].[PlanAnalysisRuleThreshold] AS [t]
               ON [t].[RuleCode]='MEMORY_GRANT_OVER'
              AND [t].[ProfileCode]=@WorkloadProfile AND [t].[IsEnabled]=1
@@ -904,7 +904,7 @@ BEGIN
                  /NULLIF(CONVERT(decimal(38,12),[m].[MaxUsedMemoryKb]),CONVERT(decimal(38,12),0)))>=[t].[MinRatio]
             WHERE [m].[AnalysisObjectId]=@AnalysisObjectId AND [m].[RecordType]='MEMORY_GRANT'
         )
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -930,7 +930,7 @@ BEGIN
                 , [TotalRows]=SUM(COALESCE([ActualRows],0))
                 , [MaxRows]=MAX(COALESCE([ActualRows],0))
                 , [AverageRows]=AVG(CONVERT(decimal(38,8),COALESCE([ActualRows],0)))
-            FROM [#EPA_OperatorThreadRuntime]
+            FROM [#ExecutionPlanAnalysis_OperatorThreadRuntime]
             WHERE [AnalysisObjectId]=@AnalysisObjectId
             GROUP BY [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
         ),
@@ -942,7 +942,7 @@ BEGIN
                    (PARTITION BY [s].[StatementOrdinal],[s].[NodeId]
                     ORDER BY CASE [t].[Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END DESC) [rn]
             FROM [ThreadStats] AS [s]
-            JOIN [#EPA_Operators] AS [o]
+            JOIN [#ExecutionPlanAnalysis_Operators] AS [o]
               ON [o].[AnalysisObjectId]=[s].[AnalysisObjectId]
              AND [o].[StatementOrdinal]=[s].[StatementOrdinal]
              AND [o].[NodeId]=[s].[NodeId]
@@ -953,7 +953,7 @@ BEGIN
              AND [s].[TotalRows]>=COALESCE([t].[MinAbsoluteRows],0)
              AND CONVERT(decimal(38,8),[s].[MaxRows]/NULLIF([s].[AverageRows],0))>=[t].[MinRatio]
         )
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -972,7 +972,7 @@ BEGIN
         FROM [Matched] WHERE [rn]=1;
 
         /* Sortoperatoren werden als Review, nicht als automatischer Indexfehler bewertet. */
-        INSERT [#EPA_Findings]
+        INSERT [#ExecutionPlanAnalysis_Findings]
         (
               [AnalysisObjectId],[FindingCode],[Category],[Severity],[Confidence]
             , [EvidenceLevel],[StatementOrdinal],[StatementId],[NodeId]
@@ -990,31 +990,31 @@ BEGIN
                CONCAT(N'Rows=',COALESCE(CONVERT(nvarchar(100),[r].[ActualRows]),CONVERT(nvarchar(100),[o].[EstimateRows]))),
                N'Daraus folgt nicht automatisch, dass ein Index falsch sortiert ist; Gleichheitspräfix, ASC/DESC, Backward Scan, andere Workloads und DML-Kosten fehlen möglicherweise.',
                NULL,N'Sort Keys mit Indexschlüsselreihenfolge und ScanDirection vergleichen.'
-        FROM [#EPA_Operators] AS [o]
-        LEFT JOIN [#EPA_OperatorRuntime] AS [r]
+        FROM [#ExecutionPlanAnalysis_Operators] AS [o]
+        LEFT JOIN [#ExecutionPlanAnalysis_OperatorRuntime] AS [r]
           ON [r].[AnalysisObjectId]=[o].[AnalysisObjectId]
          AND [r].[StatementOrdinal]=[o].[StatementOrdinal]
          AND [r].[NodeId]=[o].[NodeId]
         WHERE [o].[AnalysisObjectId]=@AnalysisObjectId AND [o].[PhysicalOp]=N'Sort';
 
         IF @MitThreadRuntime=0
-            DELETE FROM [#EPA_OperatorThreadRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId;
+            DELETE FROM [#ExecutionPlanAnalysis_OperatorThreadRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId;
 
         DECLARE @MinSeverityRank int=CASE @MinSeverity WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END;
-        DELETE FROM [#EPA_Findings]
+        DELETE FROM [#ExecutionPlanAnalysis_Findings]
         WHERE [AnalysisObjectId]=@AnalysisObjectId
           AND CASE [Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END<@MinSeverityRank;
 
         DECLARE @ShowplanVersion nvarchar(64)=NULLIF(@PlanXml.value('string((/*[local-name(.)="ShowPlanXML"]/@Version)[1])','nvarchar(64)'),N'');
         DECLARE @ShowplanBuild nvarchar(64)=NULLIF(@PlanXml.value('string((/*[local-name(.)="ShowPlanXML"]/@Build)[1])','nvarchar(64)'),N'');
         DECLARE @HasRuntime bit=CONVERT(bit,CASE WHEN EXISTS
-            (SELECT 1 FROM [#EPA_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>0) THEN 1 ELSE 0 END);
-        DECLARE @StatementCount int=(SELECT COUNT(*) FROM [#EPA_Statements] WHERE [AnalysisObjectId]=@AnalysisObjectId);
-        DECLARE @OperatorCount int=(SELECT COUNT(*) FROM [#EPA_Operators] WHERE [AnalysisObjectId]=@AnalysisObjectId);
-        DECLARE @CeVersion int=(SELECT MAX([CardinalityEstimationModelVersion]) FROM [#EPA_Statements] WHERE [AnalysisObjectId]=@AnalysisObjectId);
+            (SELECT 1 FROM [#ExecutionPlanAnalysis_OperatorRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId AND [RuntimeCounterCount]>0) THEN 1 ELSE 0 END);
+        DECLARE @StatementCount int=(SELECT COUNT(*) FROM [#ExecutionPlanAnalysis_Statements] WHERE [AnalysisObjectId]=@AnalysisObjectId);
+        DECLARE @OperatorCount int=(SELECT COUNT(*) FROM [#ExecutionPlanAnalysis_Operators] WHERE [AnalysisObjectId]=@AnalysisObjectId);
+        DECLARE @CeVersion int=(SELECT MAX([CardinalityEstimationModelVersion]) FROM [#ExecutionPlanAnalysis_Statements] WHERE [AnalysisObjectId]=@AnalysisObjectId);
         DECLARE @PlanHash varbinary(32)=HASHBYTES('SHA2_256',CONVERT(varbinary(max),CONVERT(nvarchar(max),@PlanXml)));
 
-        INSERT [#EPA_PlanDocuments]
+        INSERT [#ExecutionPlanAnalysis_PlanDocuments]
         (
               [AnalysisObjectId],[PlanSource],[RuntimeCounterScope]
             , [ShowplanVersion],[ShowplanBuild],[SourceProductVersion]
