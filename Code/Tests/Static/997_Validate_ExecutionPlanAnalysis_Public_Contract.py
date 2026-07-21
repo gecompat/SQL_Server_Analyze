@@ -81,10 +81,48 @@ def validate(repository_root: Path) -> list[str]:
     contract = json.loads(contract_file.read_text(encoding="utf-8"))
     if contract.get("contractId") != "PLAN-001-PUBLIC-V1" or contract.get("contractVersion") != 1:
         errors.append("Unexpected PLAN-001 contract identity or version.")
-    if contract.get("releaseState") != "PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX":
-        errors.append("PLAN-001 public contract is not in the frozen pre-matrix state.")
+    if contract.get("releaseState") != "IMPLEMENTED_ACTIONS_GATE":
+        errors.append("PLAN-001 public contract is not in the verified Actions-gate state.")
     if contract.get("targetSqlServerMajorVersions") != [15, 16, 17]:
         errors.append("Target SQL Server major-version matrix must remain 15, 16 and 17.")
+
+    release_evidence = contract.get("releaseEvidence", {})
+    if not re.fullmatch(r"[0-9a-f]{40}", release_evidence.get("verifiedHeadSha", "")):
+        errors.append("Verified PLAN-001 head SHA is missing or invalid.")
+    if release_evidence.get("verifiedDate") != "2026-07-21":
+        errors.append("PLAN-001 verification date is missing or unexpected.")
+    if release_evidence.get("environment") != "ACTIONS_SYNTHETIC_LINUX":
+        errors.append("PLAN-001 verification environment is not explicit.")
+    target_evidence = release_evidence.get("targets", [])
+    if [target.get("majorVersion") for target in target_evidence] != [15, 16, 17]:
+        errors.append("PLAN-001 release evidence does not cover SQL Server 2019, 2022 and 2025 in order.")
+    for target in target_evidence:
+        major_version = target.get("majorVersion")
+        if not re.fullmatch(rf"{major_version}\.[0-9]+\.[0-9]+\.[0-9]+", target.get("productVersion", "")):
+            errors.append(f"Invalid PLAN-001 product version for major {major_version}.")
+        if not re.fullmatch(
+            r"mcr\.microsoft\.com/mssql/server@sha256:[0-9a-f]{64}",
+            target.get("containerImageDigest", ""),
+        ):
+            errors.append(f"Invalid PLAN-001 image digest for major {major_version}.")
+        if target.get("releaseGate") != "PASS" or target.get("permissionMatrix") != "PASS":
+            errors.append(f"Incomplete PLAN-001 gate evidence for major {major_version}.")
+        if not re.fullmatch(
+            r"https://github\.com/gecompat/SQL_Server_Analyze/actions/runs/[0-9]+",
+            target.get("runUrl", ""),
+        ):
+            errors.append(f"Invalid PLAN-001 run URL for major {major_version}.")
+    sql_2025_evidence = target_evidence[-1] if target_evidence else {}
+    if sql_2025_evidence.get("regexMatrix") != "PASS" or sql_2025_evidence.get("isolatedStandaloneInstaller") != "PASS":
+        errors.append("SQL Server 2025 regex or isolated standalone evidence is incomplete.")
+    output_evidence = release_evidence.get("outputMatrix", {})
+    if output_evidence.get("targetMajorVersions") != [15, 16, 17] or output_evidence.get("status") != "PASS":
+        errors.append("PLAN-001 output matrix evidence is incomplete.")
+    if not re.fullmatch(
+        r"https://github\.com/gecompat/SQL_Server_Analyze/actions/runs/[0-9]+",
+        output_evidence.get("runUrl", ""),
+    ):
+        errors.append("Invalid PLAN-001 output-matrix run URL.")
 
     inventory_paths = contract["canonicalInventories"]
     for relative_path in inventory_paths.values():
@@ -197,8 +235,8 @@ def validate(repository_root: Path) -> list[str]:
         "Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract.md",
     ):
         text = (repository_root / document).read_text(encoding="utf-8-sig")
-        if "PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX" not in text:
-            errors.append(f"Frozen contract state missing from {document}")
+        if "IMPLEMENTED_ACTIONS_GATE" not in text:
+            errors.append(f"Verified contract state missing from {document}")
 
     return errors
 

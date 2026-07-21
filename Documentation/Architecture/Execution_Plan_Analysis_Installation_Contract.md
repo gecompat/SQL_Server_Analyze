@@ -1,7 +1,7 @@
 # Execution-Plan-Analyse – Teilinstaller- und Integrationsvertrag
 
 **Stand:** 2026-07-21  
-**Status:** `PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX`
+**Status:** `IMPLEMENTED_ACTIONS_GATE`
 **Zugehörige Architektur:** [`Execution_Plan_Analysis_Design.md`](Execution_Plan_Analysis_Design.md)
 
 > Dieser Vertrag beschreibt den implementierten Teilinstaller und seine Integration in das Gesamtframework. Die exakte Abhängigkeitsschließung steht in [`ExecutionPlanAnalysisDependencies.csv`](../../Metadata/Inventory/ExecutionPlanAnalysisDependencies.csv); der eingefrorene öffentliche V1-Vertrag steht in [`ExecutionPlanAnalysis_Public_Contract.json`](../../Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json). Beide werden automatisiert gegen Installer, SQL-Quellen und Inventare geprüft.
@@ -369,7 +369,7 @@ SQL Server 2022
 SQL Server 2025
 ```
 
-Der SQL-Server-2025-Standalone- und Gesamtgate ist dokumentiert erfolgreich. SQL Server 2019 und 2022 werden nach dem Public-Contract-Freeze gemeinsam mit 2025 in der finalen Matrix ausgeführt.
+Die finale synthetische Linux-Matrix ist dokumentiert erfolgreich: SQL Server 2019, 2022 und 2025 haben Gesamtgate und Permission Matrix bestanden; SQL Server 2025 zusätzlich den isolierten Teilinstallervertrag und die Regex Matrix. Der Output-Pilot ist auf allen drei Zielversionen erfolgreich. Die verbindlichen Actions-Verweise, Zielbuilds und Container-Digests stehen im maschinenlesbaren Public Contract.
 
 Zusätzlich:
 

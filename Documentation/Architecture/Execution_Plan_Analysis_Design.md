@@ -1,7 +1,7 @@
 # Execution-Plan-Analyse – Architektur- und Implementierungsvertrag
 
 **Stand:** 2026-07-21  
-**Status:** `PUBLIC_CONTRACT_V1_FROZEN_PENDING_FINAL_MATRIX`
+**Status:** `IMPLEMENTED_ACTIONS_GATE`
 **Backlog:** `PLAN-001`  
 **Zielversionen:** SQL Server 2019, 2022 und 2025  
 **Mindestversion:** SQL Server 2019
@@ -1355,7 +1355,7 @@ Die Wellen dokumentieren den Implementierungsweg und den Umfang des eingefrorene
 - Schlüsselpräfix und Range-Position;
 - ASC/DESC, Required Order, Backward Scan und Sortvermeidung.
 
-### Welle 6 – SQL-Versionen und IQP – Capability-Erkennung implementiert, finale Matrix ausstehend
+### Welle 6 – SQL-Versionen und IQP – abgeschlossen für V1
 
 - SQL-2019-Capabilities;
 - PSP und Plan Feedback für 2022+;
@@ -1369,7 +1369,7 @@ Die Wellen dokumentieren den Implementierungsweg und den Umfang des eingefrorene
 - `USP_PlanCacheAnalysis` weiterleiten;
 - Überschneidungen mit `USP_PlanDetails` und IQP-Modulen reduzieren.
 
-### Welle 8 – Dokumentation und Release Gate – Public Contract eingefroren, finale Matrix ausstehend
+### Welle 8 – Dokumentation und Release Gate – abgeschlossen für V1
 
 - Procedure-Seiten;
 - synthetische Beispiele;
