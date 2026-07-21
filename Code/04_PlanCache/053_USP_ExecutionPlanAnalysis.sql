@@ -72,7 +72,7 @@ BEGIN
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @ConsoleRequested bit=CONVERT(bit,CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END);
+    DECLARE @ConsoleResultRequested bit=CONVERT(bit,CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END);
     DECLARE @TableRequested bit=CONVERT(bit,CASE WHEN @OutputMode='TABLE' THEN 1 ELSE 0 END);
     DECLARE @RequestedPlanSource varchar(24)=UPPER(LTRIM(RTRIM(COALESCE(@PlanQuelle,'AUTO'))));
     DECLARE @Depth varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@AnalyseTiefe,'STANDARD'))));
@@ -495,7 +495,7 @@ BEGIN
         SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
                @ErrorMessageOut=N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.';
     END;
-    IF @ConsoleRequested=1 SET @OutputMode='NONE';
+    IF @ConsoleResultRequested=1 SET @OutputMode='NONE';
 
     /* Planbeschaffung. Direkt übergebenes XML bleibt vollständig standalone. */
     IF @StatusCodeOut='AVAILABLE'
@@ -1011,7 +1011,7 @@ WHERE [p].[plan_id]=@PlanId;';
         SELECT * FROM [#ExecutionPlanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[FindingOrdinal];
     END;
 
-    IF @ConsoleRequested=1
+    IF @ConsoleResultRequested=1
         EXEC [monitor].[InternalEmitConsoleResult]
               @SourceTable=N'#ExecutionPlanAnalysis_Findings'
             , @ResultLabel=N'Execution Plan Finding'
