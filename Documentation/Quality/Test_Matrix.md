@@ -109,3 +109,7 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
 Ein Target gilt nur dann als freigegeben, wenn `TestStatus` mindestens `PASS_WITH_LIMITATIONS` ist, der getestete Commit exakt angegeben wurde und jede Einschränkung als generische Capability- oder Berechtigungsaussage dokumentiert ist. Nicht ausgeführte Zeilen bleiben ausdrücklich `NOT_EXECUTED`.
 
 Die drei Windows-Zeilen der CSV bleiben Planungseinträge und keine behaupteten Testergebnisse.
+
+## Execution-Plan-Analyse
+
+`PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql` prüft synthetische Mehrstatementpläne, gleiche NodeIds in unterschiedlichen Statements, paarweise ActualRows-/ActualRowsRead-Auswertung, JSON- und TABLE-Ausgabe, erneute Evidenznormalisierung, die Datenschutzmodi `DERIVED_ONLY`, `TOKENIZED` und `OMIT` sowie IO-/TIME-Parsing. Der Teilinstallervertrag wird zusätzlich durch `Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1` und den isolierten SQL-Server-2025-Lauf `Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql` geprüft. Die finale Actions-Matrix auf SQL Server 2019, 2022 und 2025 ist bestanden; die kanonischen PLAN-001-Verweise stehen in `Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json`.

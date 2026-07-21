@@ -426,3 +426,7 @@ Frameworkeigene Standardzeilen im Wait-Katalog werden aktualisiert; eigene Katal
 Es gibt bewusst keine persistente Installationshistorie, keine automatische Rechtevergabe und keine implizite Datenspeicherung. Git ist die maßgebliche Versions- und Integritätsquelle; ein zusätzliches, bei jeder Änderung nachzuführendes Dateihash-Manifest wird nicht verwendet.
 
 Ein realer Compile- und Laufzeittest auf der konkreten Zielversion, Edition, Plattform und Berechtigungsstufe bleibt erforderlich.
+
+## Teilinstallation der Execution-Plan-Analyse
+
+Für eine eigenständig nutzbare Plananalyse verwenden Sie `Code/Install/Install_ExecutionPlanAnalysis.sql` im SQLCMD-Modus. Alternativ erzeugt `Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1` einen vollständig eingebetteten Installer. Verfügbar sind danach mindestens `monitor.USP_ExecutionPlanAnalysis` und `monitor.USP_CreateExecutionEvidenceJson`; Query Store, Current State, Extended Events und Server Health werden nicht mitinstalliert.

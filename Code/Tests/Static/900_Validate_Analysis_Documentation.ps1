@@ -565,14 +565,14 @@ Write-Host "Procedure pages:             $($pageNames.Count)"
 Write-Host "Referenced source files:     $($declaredSourcePaths.Count)"
 Write-Host "Deep-reviewed pages:         $deepReviewedCount"
 
-if ($referenceNames.Count -ne 88) {
-    $errors.Add("Expected 88 reference procedures, found $($referenceNames.Count).")
+if ($referenceNames.Count -ne 90) {
+    $errors.Add("Expected 90 reference procedures, found $($referenceNames.Count).")
 }
-if ($sourceProcedureNames.Count -ne 88) {
-    $errors.Add("Expected 88 canonical SQL procedures, found $($sourceProcedureNames.Count).")
+if ($sourceProcedureNames.Count -ne 90) {
+    $errors.Add("Expected 90 canonical SQL procedures, found $($sourceProcedureNames.Count).")
 }
-if ($pageNames.Count -ne 88) {
-    $errors.Add("Expected 88 procedure pages, found $($pageNames.Count).")
+if ($pageNames.Count -ne 90) {
+    $errors.Add("Expected 90 procedure pages, found $($pageNames.Count).")
 }
 
 if ($errors.Count -gt 0) {

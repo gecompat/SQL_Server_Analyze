@@ -121,6 +121,7 @@ RAISERROR(N'RELEASE_GATE 29/34: Object und Index',10,1) WITH NOWAIT;
 
 RAISERROR(N'RELEASE_GATE 30/34: Plan Cache',10,1) WITH NOWAIT;
 :r PlanCache/110_Test_und_Abnahme_Phase3.sql
+:r PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 31/34: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql

@@ -1749,33 +1749,144 @@ Quelle: `Code/08_ServerHealth/090_USP_ServerSecurityConfiguration.sql`
     @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
 
+## `[monitor].[USP_CreateExecutionEvidenceJson]`
+
+Quelle: `Code/04_PlanCache/052_USP_CreateExecutionEvidenceJson.sql`
+
+```sql
+@PlanXml                       xml             = NULL
+    , @StatisticsIoText              nvarchar(max)   = NULL
+    , @StatisticsTimeText            nvarchar(max)   = NULL
+    , @StatisticsLanguage            varchar(16)     = 'AUTO'
+    , @StatisticsEvidenceJson        nvarchar(max)   = NULL
+    , @ObjectMetadataJson            nvarchar(max)   = NULL
+    , @StatistikEvidenzModus         varchar(16)     = 'PLAN_ONLY'
+    , @HistogrammModus               varchar(16)     = 'NONE'
+    , @MetadatenQuellenmodus         varchar(16)     = 'EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt       bit             = 0
+    , @EvidenzDatenschutzModus       varchar(24)     = 'DERIVED_ONLY'
+    , @IdentifierDatenschutzModus    varchar(16)     = 'RAW'
+    , @SensitiveDataConfirmed        bit             = 0
+    , @MitPredicateHistogramMap      bit             = 1
+    , @StatementId                   int             = NULL
+    , @StatementOrdinal              int             = NULL
+    , @SameExecutionAsPlanConfirmed  bit             = NULL
+    , @CapturedAtUtc                 datetime2(3)    = NULL
+    , @SourceProductVersion          nvarchar(128)   = NULL
+    , @SourceCompatibilityLevel      smallint        = NULL
+    , @SourceEngineEdition           int             = NULL
+    , @MaxStatistiken                int             = 100
+    , @MaxHistogrammSchritte         int             = 20000
+    , @LockTimeoutMs                 int             = 0
+    , @HighImpactConfirmed           bit             = 0
+    , @AdditionalEvidenceJson        nvarchar(max)   = NULL
+    , @ExistingEvidenceJson          nvarchar(max)   = NULL
+    , @RawTextHandling               varchar(16)     = 'HASH_ONLY'
+    , @StrictValidation              bit             = 1
+    , @ResultSetArt                  varchar(16)     = 'CONSOLE'
+    , @ResultTablesJson              nvarchar(max)   = NULL
+    , @JsonErzeugen                  bit             = 1
+    , @Json                          nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen                bit             = 1
+    , @Hilfe                         bit             = 0
+    , @StatusCodeOut                 varchar(40)     = NULL OUTPUT
+    , @IsPartialOut                  bit             = NULL OUTPUT
+    , @ErrorNumberOut                int             = NULL OUTPUT
+    , @ErrorMessageOut               nvarchar(2048)  = NULL OUTPUT
+```
+
+## `[monitor].[USP_ExecutionPlanAnalysis]`
+
+Quelle: `Code/04_PlanCache/053_USP_ExecutionPlanAnalysis.sql`
+
+```sql
+@PlanXml                        xml             = NULL
+    , @PlanHandle                     varbinary(64)   = NULL
+    , @SessionIds                     nvarchar(max)   = NULL
+    , @RequestId                      int             = NULL
+    , @QueryStoreDatabaseName         sysname         = NULL
+    , @QueryStorePlanId               bigint          = NULL
+    , @PlanQuelle                     varchar(24)      = 'AUTO'
+    , @StatementId                    int             = NULL
+    , @StatementQueryHash             binary(8)       = NULL
+    , @StatementQueryPlanHash         binary(8)       = NULL
+    , @EvidenzJson                    nvarchar(max)   = NULL
+    , @StatisticsIoText               nvarchar(max)   = NULL
+    , @StatisticsTimeText             nvarchar(max)   = NULL
+    , @StatisticsLanguage             varchar(16)     = 'AUTO'
+    , @StatistikEvidenzModus          varchar(16)     = 'PLAN_ONLY'
+    , @HistogrammModus                varchar(16)     = 'NONE'
+    , @MetadatenQuellenmodus          varchar(16)     = 'EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt        bit             = 0
+    , @MitPredicateHistogramMap       bit             = 1
+    , @AnalyseTiefe                   varchar(16)      = 'STANDARD'
+    , @WorkloadProfil                 varchar(32)      = 'AUTO'
+    , @Regelsatz                      varchar(32)      = 'DEFAULT'
+    , @MinSchweregrad                 varchar(16)      = 'INFO'
+    , @MitThreadRuntime               bit             = 0
+    , @MitSqlText                     bit             = 0
+    , @EvidenzDatenschutzModus        varchar(24)      = 'DERIVED_ONLY'
+    , @IdentifierDatenschutzModus     varchar(16)      = 'RAW'
+    , @SensitiveDataConfirmed         bit             = 0
+    , @MaxOperatoren                  int             = 50000
+    , @MaxFindings                    int             = 5000
+    , @MaxStatistiken                 int             = 100
+    , @MaxHistogrammSchritte          int             = 20000
+    , @MaxDurationSeconds             int             = 30
+    , @LockTimeoutMs                  int             = 0
+    , @HighImpactConfirmed            bit             = 0
+    , @ResultSetArt                   varchar(16)      = 'CONSOLE'
+    , @ResultTablesJson               nvarchar(max)   = NULL
+    , @JsonErzeugen                   bit             = 0
+    , @Json                           nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen                 bit             = 1
+    , @Hilfe                          bit             = 0
+    , @StatusCodeOut                  varchar(40)     = NULL OUTPUT
+    , @IsPartialOut                   bit             = NULL OUTPUT
+    , @ErrorNumberOut                 int             = NULL OUTPUT
+    , @ErrorMessageOut                nvarchar(2048)  = NULL OUTPUT
+```
+
 ## `[monitor].[USP_ShowplanAnalysis]`
 
 Quelle: `Code/04_PlanCache/050_USP_ShowplanAnalysis.sql`
 
 ```sql
-@PlanHandle          varbinary(64)  = NULL
-    , @QueryHash           binary(8)      = NULL
-    , @QueryPlanHash       binary(8)      = NULL
-    , @DatabaseNames       nvarchar(max)  = NULL
-    , @SystemdatenbankenEinbeziehen bit   = 0
-    , @DatabaseNamePattern nvarchar(4000) = NULL
-    , @HighImpactConfirmed              bit            = 0
-    , @TextPattern         nvarchar(4000) = NULL
-    , @AnalyseModus        varchar(16)    = 'GEZIELT'
-    , @PlanQuelle          varchar(16)    = 'AUTO'
-    , @Sortierung         varchar(32)    = 'CPU_TOTAL'
-    , @MinExecutionCount   bigint         = 1
-    , @MaxAnalyseobjekte  int            = 20
-    , @MaxDurationSeconds  int            = 30
-    , @MaxZeilen          int            = 50000
-    , @ParentQueryStatsSnapshot bit       = 0
-    , @ResultSetArt        varchar(16)    = 'CONSOLE'
-    , @ResultTablesJson               nvarchar(max) = NULL
-    , @JsonErzeugen        bit            = 0
-    , @Json                 nvarchar(max)  = NULL OUTPUT
-    , @PrintMeldungen      bit            = 1
-    , @Hilfe               bit            = 0
+@PlanHandle                    varbinary(64)   = NULL
+    , @QueryHash                     binary(8)       = NULL
+    , @QueryPlanHash                 binary(8)       = NULL
+    , @DatabaseNames                 nvarchar(max)   = NULL
+    , @SystemdatenbankenEinbeziehen  bit             = 0
+    , @DatabaseNamePattern           nvarchar(4000)  = NULL
+    , @HighImpactConfirmed           bit             = 0
+    , @TextPattern                   nvarchar(4000)  = NULL
+    , @AnalyseModus                  varchar(16)      = 'GEZIELT'
+    , @PlanQuelle                    varchar(16)      = 'AUTO'
+    , @Sortierung                    varchar(32)      = 'CPU_TOTAL'
+    , @MinExecutionCount             bigint          = 1
+    , @MaxAnalyseobjekte             int             = 20
+    , @MaxDurationSeconds            int             = 30
+    , @MaxZeilen                     int             = 50000
+    , @ParentQueryStatsSnapshot      bit             = 0
+    , @WorkloadProfil                varchar(32)      = 'AUTO'
+    , @MinSchweregrad                varchar(16)      = 'INFO'
+    , @MitThreadRuntime              bit             = 0
+    , @MitSqlText                    bit             = 0
+    , @StatistikEvidenzModus         varchar(16)      = 'PLAN_ONLY'
+    , @HistogrammModus               varchar(16)      = 'NONE'
+    , @MetadatenQuellenmodus         varchar(16)      = 'EVIDENCE_ONLY'
+    , @QuellumgebungBestaetigt       bit             = 0
+    , @EvidenzDatenschutzModus       varchar(24)      = 'DERIVED_ONLY'
+    , @IdentifierDatenschutzModus    varchar(16)      = 'RAW'
+    , @SensitiveDataConfirmed        bit             = 0
+    , @MaxStatistiken                int             = 100
+    , @MaxHistogrammSchritte         int             = 20000
+    , @ResultSetArt                  varchar(16)      = 'CONSOLE'
+    , @ResultTablesJson              nvarchar(max)   = NULL
+    , @JsonErzeugen                  bit             = 0
+    , @Json                          nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen                bit             = 1
+    , @Hilfe                         bit             = 0
 ```
 
 ## `[monitor].[USP_ServiceBrokerAnalysis]`
