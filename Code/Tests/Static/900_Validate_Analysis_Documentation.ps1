@@ -208,7 +208,16 @@ $callCatalogNames = @(
 $resultSetRows = @(Import-Csv -LiteralPath $resultSetsPath -Encoding UTF8)
 $reviewRows = @(Import-Csv -LiteralPath $reviewManifestPath -Encoding UTF8)
 $resultSetProcedureNames = @($resultSetRows | ForEach-Object { $_.ProcedureName } | Sort-Object -Unique)
-$expectedResultSetProcedureNames = @($referenceNames | Where-Object { $_ -notin @('USP_PrepareDatabaseCandidates','USP_PrepareNameFilters') })
+$expectedResultSetProcedureNames = @(
+    $referenceNames |
+        Where-Object {
+            $_ -notin @(
+                'USP_PrepareDatabaseCandidates',
+                'USP_PrepareNameFilters',
+                'USP_ConfigureSnapshotTarget'
+            )
+        }
+)
 if ($resultSetProcedureNames.Count -ne $expectedResultSetProcedureNames.Count) {
     $errors.Add("Expected $($expectedResultSetProcedureNames.Count) procedures in the result-set inventory, found $($resultSetProcedureNames.Count).")
 }
