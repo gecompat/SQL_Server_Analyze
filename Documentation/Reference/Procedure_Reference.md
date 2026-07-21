@@ -284,6 +284,10 @@ Quelle: `Code/02_CurrentState/080_USP_CurrentIO.sql`
     , @HighImpactConfirmed              bit            = 0
     , @MinLatencyMs                   decimal(19,3)  = 0
     , @SampleSeconds                  tinyint         = 0
+    , @PendingIoEinbeziehen           bit             = 1
+    , @NurWiederholtPending           bit             = 0
+    , @MinPendingIoMs                 bigint          = 0
+    , @PhysischePfadeEinbeziehen      bit             = 0
     , @MaxZeilen                      int             = 1000
     , @ResultSetArt                   varchar(16)     = 'CONSOLE'
     , @ResultTablesJson               nvarchar(max)   = NULL
@@ -2021,4 +2025,72 @@ Quelle: `Code/07_Infrastructure/130_USP_MaintenanceOperations.sql`
     , @IsPartialOut                        bit            = NULL OUTPUT
     , @ErrorNumberOut                      int            = NULL OUTPUT
     , @ErrorMessageOut                     nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_ErrorLogAnalysis]`
+
+Quelle: `Code/07_Infrastructure/140_USP_ErrorLogAnalysis.sql`
+
+```sql
+@AgentEinbeziehen          bit             = 0
+    , @MaxArchivNummer           tinyint         = 0
+    , @SeitServerlokalzeit       datetime2(3)    = NULL
+    , @Suchtext1                 nvarchar(4000)  = NULL
+    , @Suchtext2                 nvarchar(4000)  = NULL
+    , @MeldungstextEinbeziehen   bit             = 0
+    , @MaxMeldungszeichen        int             = 4000
+    , @MaxQuellzeilen            int             = 10000
+    , @MaxZeilen                 int             = 1000
+    , @ResultSetArt              varchar(16)     = 'CONSOLE'
+    , @ResultTablesJson          nvarchar(max)   = NULL
+    , @JsonErzeugen              bit             = 0
+    , @Json                       nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen            bit             = 1
+    , @Hilfe                     bit             = 0
+    , @StatusCodeOut             varchar(40)     = NULL OUTPUT
+    , @IsPartialOut              bit             = NULL OUTPUT
+    , @ErrorNumberOut            int             = NULL OUTPUT
+    , @ErrorMessageOut           nvarchar(2048)  = NULL OUTPUT
+```
+
+## `[monitor].[USP_WorkerPressureAnalysis]`
+
+Quelle: `Code/08_ServerHealth/180_USP_WorkerPressureAnalysis.sql`
+
+```sql
+@SampleSeconds       tinyint         = 1
+    , @MinRequestElapsedMs int             = 5000
+    , @MaxZeilen           int             = 1000
+    , @ResultSetArt        varchar(16)     = 'CONSOLE'
+    , @ResultTablesJson    nvarchar(max)   = NULL
+    , @JsonErzeugen        bit             = 0
+    , @Json                nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen      bit             = 1
+    , @Hilfe               bit             = 0
+    , @StatusCodeOut       varchar(40)     = NULL OUTPUT
+    , @IsPartialOut        bit             = NULL OUTPUT
+    , @ErrorNumberOut      int             = NULL OUTPUT
+    , @ErrorMessageOut     nvarchar(2048)  = NULL OUTPUT
+```
+
+## `[monitor].[USP_DatabaseConfigurationAnalysis]`
+
+Quelle: `Code/08_ServerHealth/190_USP_DatabaseConfigurationAnalysis.sql`
+
+```sql
+@DatabaseNames                  nvarchar(max)  = NULL
+    , @SystemdatenbankenEinbeziehen   bit            = 0
+    , @DatabaseNamePattern            nvarchar(4000) = NULL
+    , @ProfileJson                    nvarchar(max)  = NULL
+    , @MaxZeilen                      int            = 2000
+    , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson               nvarchar(max)  = NULL
+    , @JsonErzeugen                   bit            = 0
+    , @Json                           nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen                 bit            = 1
+    , @Hilfe                          bit            = 0
+    , @StatusCodeOut                  varchar(40)    = NULL OUTPUT
+    , @IsPartialOut                   bit            = NULL OUTPUT
+    , @ErrorNumberOut                 int            = NULL OUTPUT
+    , @ErrorMessageOut                nvarchar(2048) = NULL OUTPUT
 ```

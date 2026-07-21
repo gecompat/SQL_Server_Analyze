@@ -23,6 +23,8 @@ Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rech
 EXEC [monitor].[USP_CurrentIO]
       @DatabaseNames = N'[ExampleDatabase]',
       @SampleSeconds = 5,
+      @PendingIoEinbeziehen = 1,
+      @NurWiederholtPending = 0,
       @MaxZeilen = 100,
       @ResultSetArt = 'CONSOLE';
 ```
@@ -36,11 +38,11 @@ Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSch
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `moduleStatus`, `files`, `warnings` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Im typisierten TABLE-Vertrag sind `moduleStatus`, `sourceStatus`, `files`, `pendingIo` und `warnings` registriert. `files` enthält kumulative oder gesampelte Dateiwerte. `pendingIo` enthält den flüchtigen Pending-I/O-Snapshot beziehungsweise bei einem Sample die zweite Beobachtung; `ObservationCount=2` bedeutet, dass dieselbe Requestadresse an beiden Messpunkten sichtbar war. Schedulerwerte sind nur gleichzeitiger Kontext und keine kausale Requestzuordnung. Physische Pfade erscheinen dort nur bei `@PhysischePfadeEinbeziehen=1`. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach Datei- und Pending-Evidenz. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung bestimmt; JSON übernimmt die fachliche Hüllensemantik.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile entspricht einer Datenbankdatei im gewählten Scope. Im Samplemodus beschreiben Raten und Latenzen die Differenz zwischen zwei Messpunkten.
+In `files` entspricht eine Zeile einer Datenbankdatei im gewählten Scope. Im Samplemodus beschreiben Raten und Latenzen die Differenz zwischen zwei Messpunkten. In `pendingIo` entspricht eine Zeile einer am letzten Messpunkt noch ausstehenden I/O-Requestadresse, die über das File Handle auf eine sichtbare Datenbankdatei abgebildet werden konnte.
 
 Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
 
@@ -83,14 +85,14 @@ Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entschei
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Mit Default `@SampleSeconds = 0` wird `sys.dm_io_virtual_file_stats(NULL,NULL)` einmal gelesen; Vorher/Nachher sind identisch und die Ausgabe zeigt kumulative Werte seit Engine-/Dateistart, keine aktuelle Rate. |
-| Teuerster Pfad | `@SampleSeconds = 60`, alle sichtbaren Datenbanken und unbegrenzte Ausgabe: die instanzweite DMV-Funktion wird zweimal aufgerufen, dazwischen bleibt die Session im WAITFOR. Viele parallele Sampler vervielfachen diese Arbeit. |
-| Haupttreiber | Anzahl der Dateien auf der Instanz und ein oder zwei Aufrufe von `sys.dm_io_virtual_file_stats(NULL,NULL)`. Kandidatendatenbanken bestimmen die behaltenen Zeilen; `master.sys.master_files` ergänzt Namen/Pfade erst für die Rangliste. |
+| Standardpfad | Mit Default `@SampleSeconds = 0` wird `sys.dm_io_virtual_file_stats(NULL,NULL)` einmal und Pending I/O als Snapshot gelesen; die Dateiwerte sind kumulativ, keine aktuelle Rate. |
+| Teuerster Pfad | `@SampleSeconds = 60`, Pending I/O an, alle sichtbaren Datenbanken und unbegrenzte Ausgabe: Datei- und Pending-Quellen werden zweimal beobachtet, dazwischen bleibt die Session im WAITFOR. |
+| Haupttreiber | Anzahl Dateien, Pending Requests und Schedulerkontext sowie ein oder zwei instanzweite Beobachtungen. |
 | Skalierung | Snapshotkosten wachsen annähernd mit der Dateizahl. Das Delta benötigt zwei vollständige Messpunkte; Sortierung nach Latenz erfolgt danach. Transferkosten hängen vom Limit ab, die DMV-Aufrufe selbst nicht im selben Maß. |
-| Ressourcen | SQLOS-DMV-CPU, kleine Temp-Tabellen, Join auf `master.sys.master_files` und bei Sampling eine wartende Verbindung. Kein Dateiinhalt wird gelesen und keine Nutzdatenbanktabelle gescannt. |
+| Ressourcen | SQLOS-DMV-CPU, kleine Temp-Tabellen, Join auf `master.sys.master_files` und bei Sampling eine wartende Verbindung. Kein Dateiinhalt und keine Nutzdatentabelle werden gelesen. |
 | Begrenzungswirkung | Datenbankscope filtert die behaltenen DMV-Zeilen, ändert aber nicht die Funktionssignatur `dm_io_virtual_file_stats(NULL,NULL)`. `@MaxZeilen` greift erst beim sortierten Kandidatenset als N+1-Limit; es reduziert weder den ersten noch den zweiten Messpunkt. |
 | Locking und Nebenwirkungen | Read-only; WAITFOR hält die Session, aber die Procedure hält keine Nutzdatenlocks absichtlich über das Intervall. Ein SQL-Server-Restart oder Counterreset zwischen den Messpunkten macht das Delta ungültig und wird als Statuskontext behandelt. |
-| Schutzmechanismus | Die Kandidatenliste verwendet `STANDARD_CURRENT` und verlangt im aktuellen Code kein Gruppengate. `@HighImpactConfirmed` ist zwar deklariert, wird von diesem Implementierungsstand aber in keinem Analysepfad ausgewertet; Schutz liefern Scope, maximal 60 Sekunden und Zeilenlimit. |
+| Schutzmechanismus | Scope, maximal 60 Sekunden, Zeilenlimit, getrennte Quellstatus und opt-in physische Pfade. `@NurWiederholtPending=1` verlangt ein Sample. |
 | Sicherer Einsatz | Eine `ExampleDatabase`, fünf Sekunden, `@MaxZeilen = 100` und nur ein Sampler. Für Baselinefragen mehrere getrennte Intervalle statt vieler paralleler Aufrufe erfassen. |
 | Aussagegrenze | Kumulative Latenz ist ein Lebenszeitmittel und kann aktuelle Probleme verdünnen; ein kurzes Delta kann einzelne Bursts überbetonen. Nicht ausgewählte Datenbanken fehlen, und Top-N nach Latenz kann stark ausgelastete, aber schnellere Dateien verdrängen. |
 
@@ -104,7 +106,7 @@ Wie viele I/O-Operationen und Bytes wurden pro Datei verarbeitet, und wie lange 
 
 ### Technischer Hintergrund
 
-`sys.dm_io_virtual_file_stats` liefert kumulative Read-/Writeanzahl, Bytes und Stalls pro Daten-/Logdatei. Aus Differenzen zweier Messungen entstehen aktuelle IOPS, Durchsatz und Latenz. Die Procedure liest die DMV serverweit mit `(NULL, NULL)` genau einmal je Messzeitpunkt und schränkt die materialisierte Menge danach relational auf die Datenbankkandidaten ein. Dateimetadaten lösen Database/File/Type auf.
+`sys.dm_io_virtual_file_stats` liefert kumulative Read-/Writeanzahl, Bytes und Stalls pro Datei. Aus Differenzen zweier Messungen entstehen Durchsatz und Latenz. `sys.dm_io_pending_io_requests` liefert flüchtige ausstehende Requestadressen und einen informational/internal Pending-Zähler. File Handles verbinden diese Sicht mit Dateien. Scheduler-, Request- und I/O-Wait-Anzahlen werden nur aggregiert als gleichzeitiger Kontext ergänzt.
 
 ### Ausgabe
 
@@ -115,11 +117,11 @@ TABLE verwendet `@ResultTablesJson` mit den stabilen Namen `moduleStatus`,
 
 ### Datenkette
 
-`master.sys.master_files`, `sys.dm_io_virtual_file_stats`.
+`master.sys.master_files`, `sys.dm_io_virtual_file_stats`, `sys.dm_io_pending_io_requests`, `sys.dm_os_schedulers`, `sys.dm_os_tasks`, `sys.dm_os_waiting_tasks`, `sys.dm_exec_requests`.
 
 ### Zeit- und Scope-Modell
 
-Kumulativ seit Start/Dateizustand oder Sampledelta. Reset, Restart, Dateiwechsel und sehr kleine Nenner begrenzen Vergleichbarkeit.
+Dateizähler sind kumulativ seit Start/Dateizustand oder ein Sampledelta. Pending I/O ist ein flüchtiger Snapshot; eine wiederholte Adresse in zwei Samples erhöht die Relevanz, beweist aber weder Dauer außerhalb des Fensters noch Storageursache.
 
 ### Bewertung und Gegenprobe
 
@@ -136,6 +138,7 @@ Eine einzelne Operation mit 500 ms erzeugt 500 ms Durchschnitt, aber keine anhal
 ## Primärquellen
 
 - [sys.dm_io_virtual_file_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-io-virtual-file-stats-transact-sql?view=sql-server-ver17)
+- [sys.dm_io_pending_io_requests](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-io-pending-io-requests-transact-sql?view=sql-server-ver17)
 
 ## Weiterführende Vertiefung
 

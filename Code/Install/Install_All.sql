@@ -44,6 +44,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/087b_ToolBackgroundQueryPattern_Seed.sql
 :r ../01_Common/087c_TVF_ToolBackgroundQueryInfo.sql
 :r ../01_Common/087d_TVF_ProjectUnicodeText.sql
+:r ../01_Common/087e_TVF_ClassifyErrorLogEvent.sql
 :r ../01_Common/098_USP_InternalProjectUnicodeTextColumn.sql
 :r ../01_Common/088_TVF_InterpretPerformanceCounter.sql
 :r ../01_Common/089_TVF_InterpretContentionCounter.sql
@@ -113,6 +114,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql
 :r ../07_Infrastructure/120_USP_AgentMonitoringAnalysis.sql
 :r ../07_Infrastructure/130_USP_MaintenanceOperations.sql
+:r ../07_Infrastructure/140_USP_ErrorLogAnalysis.sql
 :r ../07_Infrastructure/090_USP_InfrastructureAnalysis.sql
 :r ../08_ServerHealth/010_USP_ServerCpuTopology.sql
 :r ../08_ServerHealth/020_USP_ServerNuma.sql
@@ -130,6 +132,8 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../08_ServerHealth/150_USP_InternalContentionAnalysis.sql
 :r ../08_ServerHealth/160_USP_BufferPoolAnalysis.sql
 :r ../08_ServerHealth/170_USP_DiagnosticFindings.sql
+:r ../08_ServerHealth/180_USP_WorkerPressureAnalysis.sql
+:r ../08_ServerHealth/190_USP_DatabaseConfigurationAnalysis.sql
 :r ../08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 :r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
 :r ../09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql

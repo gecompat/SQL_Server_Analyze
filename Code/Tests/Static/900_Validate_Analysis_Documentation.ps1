@@ -75,7 +75,7 @@ $safeEntryRequiresHighImpact = @(
     'USP_StatisticsDistributionAnalysis',
     'USP_TemporalAnalysis'
 )
-$minimumDeepReviewedCount = 85
+$minimumDeepReviewedCount = 88
 
 $errors = [System.Collections.Generic.List[string]]::new()
 $markdownAnchorCache = @{}
@@ -565,14 +565,14 @@ Write-Host "Procedure pages:             $($pageNames.Count)"
 Write-Host "Referenced source files:     $($declaredSourcePaths.Count)"
 Write-Host "Deep-reviewed pages:         $deepReviewedCount"
 
-if ($referenceNames.Count -ne 85) {
-    $errors.Add("Expected 85 reference procedures, found $($referenceNames.Count).")
+if ($referenceNames.Count -ne 88) {
+    $errors.Add("Expected 88 reference procedures, found $($referenceNames.Count).")
 }
-if ($sourceProcedureNames.Count -ne 85) {
-    $errors.Add("Expected 85 canonical SQL procedures, found $($sourceProcedureNames.Count).")
+if ($sourceProcedureNames.Count -ne 88) {
+    $errors.Add("Expected 88 canonical SQL procedures, found $($sourceProcedureNames.Count).")
 }
-if ($pageNames.Count -ne 85) {
-    $errors.Add("Expected 85 procedure pages, found $($pageNames.Count).")
+if ($pageNames.Count -ne 88) {
+    $errors.Add("Expected 88 procedure pages, found $($pageNames.Count).")
 }
 
 if ($errors.Count -gt 0) {

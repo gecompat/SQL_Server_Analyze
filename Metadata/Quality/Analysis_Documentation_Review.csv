@@ -84,3 +84,6 @@ USP_StatisticsDistributionAnalysis,DEEP_REVIEWED,2026-07-20,2
 USP_TempDBConfiguration,DEEP_REVIEWED,2026-07-20,2
 USP_TemporalAnalysis,DEEP_REVIEWED,2026-07-20,2
 USP_TraceFlags,DEEP_REVIEWED,2026-07-20,2
+USP_ErrorLogAnalysis,DEEP_REVIEWED,2026-07-21,2
+USP_WorkerPressureAnalysis,DEEP_REVIEWED,2026-07-21,2
+USP_DatabaseConfigurationAnalysis,DEEP_REVIEWED,2026-07-21,2

@@ -1,5 +1,14 @@
 # Release Notes
 
+## Stand 2026-07-21 – Welle 2 Betriebsdiagnosen
+
+- Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` hat Installer, alle 34 Release-Gate-Suiten, den Welle-2-Begleitvertrag und die Berechtigungsmatrizen auf [SQL Server 2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699638), [SQL Server 2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699733) und [SQL Server 2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699655) bestanden; das 2025-Gate enthält zusätzlich die Regex-Matrix.
+- `OPS-003` erweitert `monitor.USP_CurrentIO` um das benannte Resultset `pendingIo`, zwei begrenzte Beobachtungen, Datei-/Scheduler-/Request-/Wait-Kontext, physische Pfade nur per Opt-in und eine ausdrücklich nicht kausale Einzelwertbewertung.
+- `OPS-002` ergänzt `monitor.USP_WorkerPressureAnalysis`: Schedulerqueues, Workeraggregate, `THREADPOOL`, Blocking und begrenzte Requests bleiben getrennte Evidenz; ein Einzelindikator erzeugt keine Empfehlung für `max worker threads`.
+- `OPS-001` ergänzt `monitor.USP_DatabaseConfigurationAnalysis` mit versionsadaptiven Datenbank-, Scoped-Configuration- und Query-Store-Werten. Lokale Variation und explizite Profilabweichung sind getrennt; das Modul führt keine Konfigurationsänderung aus.
+- `OPS-004` ergänzt `monitor.USP_ErrorLogAnalysis` mit begrenzten SQL-Server- und optionalen Agent-Archiven, Kategorien und Zeitfenstern. Vollständige Meldungstexte und Agentzugriff sind Opt-in; Logrotation und operative Änderungen sind ausgeschlossen.
+- Der Begleitvertrag `191_Wave2_Operational_Diagnostics_Runtime_Contract.sql` prüft Installation, Signaturen, NONE/JSON/TABLE/CONSOLE, eingeschränkte Rechte und kontrollierte synthetische Positivpfade innerhalb der bestehenden 26. Ausgabesuite. [Dokumentation/Nonblocking](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699523), [Datenschutz](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699628), [Commit-Messages](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699639) und der [Ausgabe-Pilot](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699554) sind ebenfalls grün.
+
 ## Stand 2026-07-21 – Welle 1 Ausgabe, XML und Provenienz
 
 - Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` hat Installer, alle 34 Release-Gate-Suiten und die Berechtigungsmatrizen auf [SQL Server 2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091324), [SQL Server 2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091252) und [SQL Server 2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091262) bestanden; das 2025-Gate enthält zusätzlich die Regex-Matrix.

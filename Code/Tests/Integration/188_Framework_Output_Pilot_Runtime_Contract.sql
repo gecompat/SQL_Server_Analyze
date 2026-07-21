@@ -236,6 +236,7 @@ BEGIN TRY
     INSERT [#FrameworkOutputPilotRuntimeContract_Console]
     EXEC [monitor].[USP_CurrentIO]
           @MinLatencyMs=@MinimumConsoleLatency
+        , @PendingIoEinbeziehen=0
         , @ResultSetArt='CONSOLE'
         , @PrintMeldungen=0;
 

@@ -553,3 +553,33 @@ Das Modul liest keine SQL-Texte oder Handles, Jobschritte, Jobbefehle, Meldungen
 - [ADR verwalten](https://learn.microsoft.com/en-us/sql/relational-databases/accelerated-database-recovery-management)
 - [sys.dm_tran_persistent_version_store_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-tran-persistent-version-store-stats?view=sql-server-ver17)
 - [sys.dm_hadr_auto_page_repair](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-hadr-auto-page-repair-transact-sql?view=sql-server-ver17)
+
+---
+
+## 14. [monitor].[USP_ErrorLogAnalysis]
+
+### Zweck
+
+Liest SQL-Server- und optional Agent-Errorlogs über die dokumentierten
+`sp_readerrorlog`-Filter. Der Standard liefert nur Kategorien, Häufigkeiten und
+serverlokale Zeitgrenzen des aktuellen SQL-Server-Logs. Meldungstext, Agent und
+ältere Archive sind opt-in.
+
+### Leserichtung
+
+1. `moduleStatus` und `sourceStatus` auf Rechte, Archive und Quelllimit prüfen.
+2. `summary` nach Kategorie sowie erstem und letztem Zeitpunkt lesen.
+3. `details` nur gezielt aktivieren; Kürzungsmetriken mit auswerten.
+4. Treffer immer mit einer unabhängigen Engine-, OS-, Storage- oder
+   Workloadquelle korrelieren.
+
+### Grenzen
+
+`sp_readerrorlog` besitzt keinen dokumentierten Zeitparameter. Keywordfilter
+wirken in der Systemprocedure, die Zeitgrenze wirkt anschließend. Rotation,
+Lokalisierung und fehlende Rechte begrenzen Negativaussagen. Das Modul wechselt
+oder löscht kein Log und persistiert keinen Meldungstext.
+
+### Primärquelle
+
+- [sp_readerrorlog](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-readerrorlog-transact-sql?view=sql-server-ver17)

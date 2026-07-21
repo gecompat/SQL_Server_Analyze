@@ -526,6 +526,7 @@ EXEC [monitor].[USP_CurrentIO]
       @DatabaseNames = NULL,
       @SampleSeconds = 10,
       @MinLatencyMs = 5,
+      @PendingIoEinbeziehen = 1,
       @ResultSetArt = 'RAW';
 ```
 
@@ -541,6 +542,11 @@ EXEC [monitor].[USP_CurrentIO]
 | `ReadThroughputMbPerSecond`, `WriteThroughputMbPerSecond` | nur beim Delta sinnvoll |
 | `SizeOnDiskMb` | Dateigröße auf Storage |
 
+`pendingIo` ergänzt Requestadresse, Dateiabbildung, SQL-/OS-Pending-Layer,
+Pending-Dauer und die Zahl der Beobachtungen. `io_pending_ms_ticks` ist eine
+informational/internal Engineangabe. Schedulerzahlen sind gleichzeitiger
+Kontext und keine kausale Zuordnung. Physische Pfade bleiben opt-in.
+
 ### Interpretation
 
 - Latenz ist Durchschnitt; einzelne Peaks werden geglättet.
@@ -549,6 +555,8 @@ EXEC [monitor].[USP_CurrentIO]
 - Logdateien haben andere Zugriffsmuster als Datenfiles.
 - Hohe Durchsatzwerte können erwünschte Batcharbeit sein.
 - DMV-Stallzeit umfasst die SQL-Server-Sicht, nicht jede Storage-Layer-Komponente.
+- Ein einzelner Pending Request beweist keinen Storagefehler; Wiederholung,
+  Dateilast, I/O-Waits und externe Storage-Telemetrie korrelieren.
 
 ### Synthetische Beispiele
 

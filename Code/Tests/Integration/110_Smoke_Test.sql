@@ -28,6 +28,7 @@ VALUES
 (N'monitor.TVF_StatementText','IF'),
 (N'monitor.TVF_InterpretPerformanceCounter','IF'),
 (N'monitor.TVF_InterpretContentionCounter','IF'),
+(N'monitor.TVF_ClassifyErrorLogEvent','IF'),
 (N'monitor.USP_CheckAnalyseAccess','P'),
 (N'monitor.USP_CheckFrameworkCapabilities','P'),
 (N'monitor.USP_CurrentOverview','P'),
@@ -51,6 +52,9 @@ VALUES
 (N'monitor.USP_AvailabilityDeepAnalysis','P'),
 (N'monitor.USP_AgentMonitoringAnalysis','P'),
 (N'monitor.USP_DiagnosticFindings','P'),
+(N'monitor.USP_ErrorLogAnalysis','P'),
+(N'monitor.USP_WorkerPressureAnalysis','P'),
+(N'monitor.USP_DatabaseConfigurationAnalysis','P'),
 (N'monitor.USP_ServerFeatureCapabilities','P'),
 (N'monitor.USP_SpecialFeatureInventory','P'),
 (N'monitor.USP_InMemoryOltpAnalysis','P'),
@@ -88,7 +92,7 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.12'
+      AND [FrameworkVersion]='1.1.0-special.13'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
