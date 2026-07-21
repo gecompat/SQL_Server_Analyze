@@ -275,7 +275,7 @@ IF EXISTS
     LEFT JOIN [sys].[objects] AS [o] WITH (NOLOCK)
       ON [o].[schema_id]=SCHEMA_ID(N'monitor')
      AND [o].[name]=[e].[ObjectName]
-     AND [o].[type]=[e].[ObjectType]
+     AND [o].[type] COLLATE DATABASE_DEFAULT=[e].[ObjectType]
     WHERE [o].[object_id] IS NULL
 )
     THROW 53628,N'Die Standalone-Installation enthält nicht alle erforderlichen PLAN-001-Objekte.',1;
@@ -286,7 +286,7 @@ IF EXISTS
     FROM [sys].[objects] AS [o] WITH (NOLOCK)
     LEFT JOIN @ExpectedObjects AS [e]
       ON [e].[ObjectName]=[o].[name]
-     AND [e].[ObjectType]=[o].[type]
+     AND [e].[ObjectType]=[o].[type] COLLATE DATABASE_DEFAULT
     WHERE [o].[schema_id]=SCHEMA_ID(N'monitor')
       AND [o].[type] IN ('U','V','P','IF','TF','FN')
       AND [o].[is_ms_shipped]=0
