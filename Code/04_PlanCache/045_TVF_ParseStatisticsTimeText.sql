@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.TVF_ParseStatisticsTimeText
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-07-21
 Typ          : Multi-statement Table-valued Function
 Zweck        : Parst bereits vorliegenden SET STATISTICS TIME-Meldungstext ohne
@@ -45,8 +45,8 @@ BEGIN
         , @MessageOrdinal int=0
         , @CpuPosition int
         , @ElapsedPosition int
-        , @Token nvarchar(100)
-        , @TokenLength int
+        , @NumericText nvarchar(100)
+        , @NumericTextLength int
         , @CpuMs bigint
         , @ElapsedMs bigint;
 
@@ -88,22 +88,22 @@ BEGIN
         SELECT @CpuMs=NULL,@ElapsedMs=NULL;
         IF @CpuPosition>0
         BEGIN
-            SET @Token=LTRIM(SUBSTRING(@LowerLine,@CpuPosition+CASE WHEN SUBSTRING(@LowerLine,@CpuPosition,8)=N'cpu time' THEN LEN(N'cpu time =') ELSE LEN(N'cpu-zeit =') END,100));
-            SET @TokenLength=1;
-            WHILE @TokenLength<=LEN(@Token)
-              AND SUBSTRING(@Token,@TokenLength,1) LIKE N'[0-9-]'
-                SET @TokenLength+=1;
-            SET @CpuMs=TRY_CONVERT(bigint,NULLIF(LEFT(@Token,@TokenLength-1),N''));
+            SET @NumericText=LTRIM(SUBSTRING(@LowerLine,@CpuPosition+CASE WHEN SUBSTRING(@LowerLine,@CpuPosition,8)=N'cpu time' THEN LEN(N'cpu time =') ELSE LEN(N'cpu-zeit =') END,100));
+            SET @NumericTextLength=1;
+            WHILE @NumericTextLength<=LEN(@NumericText)
+              AND SUBSTRING(@NumericText,@NumericTextLength,1) LIKE N'[0-9-]'
+                SET @NumericTextLength+=1;
+            SET @CpuMs=TRY_CONVERT(bigint,NULLIF(LEFT(@NumericText,@NumericTextLength-1),N''));
         END;
 
         IF @ElapsedPosition>0
         BEGIN
-            SET @Token=LTRIM(SUBSTRING(@LowerLine,@ElapsedPosition+CASE WHEN SUBSTRING(@LowerLine,@ElapsedPosition,7)=N'elapsed' THEN LEN(N'elapsed time =') ELSE LEN(N'verstrichene zeit =') END,100));
-            SET @TokenLength=1;
-            WHILE @TokenLength<=LEN(@Token)
-              AND SUBSTRING(@Token,@TokenLength,1) LIKE N'[0-9-]'
-                SET @TokenLength+=1;
-            SET @ElapsedMs=TRY_CONVERT(bigint,NULLIF(LEFT(@Token,@TokenLength-1),N''));
+            SET @NumericText=LTRIM(SUBSTRING(@LowerLine,@ElapsedPosition+CASE WHEN SUBSTRING(@LowerLine,@ElapsedPosition,7)=N'elapsed' THEN LEN(N'elapsed time =') ELSE LEN(N'verstrichene zeit =') END,100));
+            SET @NumericTextLength=1;
+            WHILE @NumericTextLength<=LEN(@NumericText)
+              AND SUBSTRING(@NumericText,@NumericTextLength,1) LIKE N'[0-9-]'
+                SET @NumericTextLength+=1;
+            SET @ElapsedMs=TRY_CONVERT(bigint,NULLIF(LEFT(@NumericText,@NumericTextLength-1),N''));
         END;
 
         SET @MessageOrdinal+=1;
