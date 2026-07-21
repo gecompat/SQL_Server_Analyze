@@ -109,7 +109,6 @@ text = text.replace('ELSE IF @SessionId IS NOT NULL', 'ELSE IF @EffectiveSession
 text = text.replace('[sys].[dm_exec_query_statistics_xml](@SessionId)', '[sys].[dm_exec_query_statistics_xml](@EffectiveSessionId)')
 write(procedure_path, text)
 
-# Dedicated installer gains the canonical numeric-list parser chain.
 installer_path = 'Code/Install/Install_ExecutionPlanAnalysis.sql'
 installer = read(installer_path)
 include_block = ':r ../01_Common/078_TVF_ParsePipeList.sql\n:r ../01_Common/085_TVF_ParseBigintList.sql\n'
@@ -118,23 +117,14 @@ if ':r ../01_Common/078_TVF_ParsePipeList.sql' not in installer:
     installer = installer.replace(anchor, include_block + anchor, 1)
 write(installer_path, installer)
 
-# Dependency manifest: renumber deterministic install order and include shared parser dependencies.
 manifest_path = 'Metadata/Inventory/ExecutionPlanAnalysisDependencies.csv'
 manifest_rows = list(csv.DictReader(io.StringIO(read(manifest_path))))
 existing = {row['ObjectName'] for row in manifest_rows}
 additional = []
 if 'TVF_ParsePipeList' not in existing:
-    additional.append({
-        'ObjectType':'FUNCTION','ObjectName':'TVF_ParsePipeList',
-        'SourcePath':'Code/01_Common/078_TVF_ParsePipeList.sql','StandaloneRequired':'1',
-        'FrameworkIntegrationRole':'shared list parser'
-    })
+    additional.append({'ObjectType':'FUNCTION','ObjectName':'TVF_ParsePipeList','SourcePath':'Code/01_Common/078_TVF_ParsePipeList.sql','StandaloneRequired':'1','FrameworkIntegrationRole':'shared list parser'})
 if 'TVF_ParseBigintList' not in existing:
-    additional.append({
-        'ObjectType':'FUNCTION','ObjectName':'TVF_ParseBigintList',
-        'SourcePath':'Code/01_Common/085_TVF_ParseBigintList.sql','StandaloneRequired':'1',
-        'FrameworkIntegrationRole':'shared numeric list parser'
-    })
+    additional.append({'ObjectType':'FUNCTION','ObjectName':'TVF_ParseBigintList','SourcePath':'Code/01_Common/085_TVF_ParseBigintList.sql','StandaloneRequired':'1','FrameworkIntegrationRole':'shared numeric list parser'})
 manifest_rows.extend(additional)
 order = [
     'monitor schema','VW_AnalyseClassCatalog','VW_AnalyseAccessPolicy','VW_AnalyseAccessCurrent',
@@ -156,7 +146,6 @@ for row in manifest_rows:
     writer.writerow(row)
 write(manifest_path, output.getvalue())
 
-# Installer contract mirrors the exact source filenames.
 test_path = 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
 test_text = read(test_path)
 if "'078_TVF_ParsePipeList.sql'" not in test_text:
@@ -167,7 +156,6 @@ if "'078_TVF_ParsePipeList.sql'" not in test_text:
     )
 write(test_path, test_text)
 
-# Architecture and procedure page use the canonical parameter name.
 for path in [
     'Documentation/Architecture/Execution_Plan_Analysis_Design.md',
     'Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract.md',
@@ -176,7 +164,6 @@ for path in [
     doc = read(path).replace('@SessionId', '@SessionIds')
     write(path, doc)
 
-# Synchronize public reference signature.
 procedure_text = read(procedure_path)
 procedure_signature = signature(procedure_text, 'USP_ExecutionPlanAnalysis')
 reference_path = 'Documentation/Reference/Procedure_Reference.md'
@@ -186,15 +173,11 @@ pattern = re.compile(
     r'Quelle:\s*`Code/04_PlanCache/053_USP_ExecutionPlanAnalysis\.sql`\s*$\s*'
     r'```sql\s*$).*?(^```\s*$)'
 )
-reference, count = pattern.subn(
-    lambda match: match.group(1) + '\n' + procedure_signature + '\n' + match.group(2),
-    reference,
-)
+reference, count = pattern.subn(lambda match: match.group(1) + '\n' + procedure_signature + '\n' + match.group(2), reference)
 if count != 1:
     raise RuntimeError(f'Expected one execution-plan reference section, replaced {count}.')
 write(reference_path, reference)
 
-# Synchronize parameter inventory for the public procedure.
 parameters_path = 'Metadata/Inventory/Parameters.csv'
 parameter_lines = read(parameters_path).splitlines()
 retained = [parameter_lines[0]]
@@ -207,7 +190,7 @@ for line in parameter_lines[1:]:
 retained.extend(csv_line(row) for row in parameter_rows('USP_ExecutionPlanAnalysis', procedure_signature))
 write(parameters_path, '\n'.join(retained) + '\n')
 
-# Guard against accidental legacy use outside the contract test that intentionally lists it.
+legacy_pattern = re.compile(r'@SessionId\b')
 legacy_hits = []
 for path in [
     ROOT / procedure_path,
@@ -217,7 +200,7 @@ for path in [
     ROOT / reference_path,
     ROOT / parameters_path,
 ]:
-    if '@SessionId' in path.read_text(encoding='utf-8'):
+    if legacy_pattern.search(path.read_text(encoding='utf-8')):
         legacy_hits.append(path.as_posix())
 if legacy_hits:
     raise RuntimeError('Legacy session parameter remains in: ' + ', '.join(legacy_hits))
