@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 
 ## Reifegrad richtig lesen
 
-Alle 85 öffentlichen Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
+Alle 88 dokumentierten öffentlichen Procedures einschließlich der zwei gemeinsamen Vorbereitungs-APIs besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 

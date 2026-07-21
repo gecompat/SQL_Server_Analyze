@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.12
-Stand        : 2026-07-20
+Version      : 1.1.0-special.13
+Stand        : 2026-07-21
 Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
                Analysepaket. Keine Installationshistorie und kein Deployment-
                Framework.
@@ -34,12 +34,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.12',
-    [ReleaseDate]='20260720',
+SET [FrameworkVersion]='1.1.0-special.13',
+    [ReleaseDate]='20260721',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.17',
+    [ContractVersion]='1.18',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.17: Wait-Katalog mit vertiefter Analyse, belastbarer Einordnung und typisierten, aussagebezogenen Quellen.'
+    [ReleaseNotes]=N'API 1.18: Pending I/O, Worker-/Scheduler-Druck, Datenbankkonfigurationsdrift und begrenzte Errorlog-Analyse.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -51,9 +51,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.12','20260720',15,
-        '1.17',SYSUTCDATETIME(),
-        N'API 1.17: Wait-Katalog mit vertiefter Analyse, belastbarer Einordnung und typisierten, aussagebezogenen Quellen.'
+        N'SQLServerMonitoringFramework','1.1.0-special.13','20260721',15,
+        '1.18',SYSUTCDATETIME(),
+        N'API 1.18: Pending I/O, Worker-/Scheduler-Druck, Datenbankkonfigurationsdrift und begrenzte Errorlog-Analyse.'
     );
 END;
 GO
