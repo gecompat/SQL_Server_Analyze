@@ -6,18 +6,18 @@ on:
       - agent/implement-execution-plan-analysis
     paths:
       - '.bootstrap/integrate_execution_plan_analysis.py'
+      - '.bootstrap/patch_integration_schema.py'
       - '.github/workflows/integrate-execution-plan-analysis.yml'
   pull_request:
     branches:
       - main
     paths:
       - '.bootstrap/integrate_execution_plan_analysis.py'
+      - '.bootstrap/patch_integration_schema.py'
       - '.github/workflows/integrate-execution-plan-analysis.yml'
 
 permissions:
   contents: write
-  pull-requests: write
-  issues: write
 
 jobs:
   integrate:
@@ -32,85 +32,45 @@ jobs:
 
       - name: Apply framework integration
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
 
-          path = Path('.bootstrap/integrate_execution_plan_analysis.py')
-          text = path.read_text(encoding='utf-8')
-          replacement = r'''def table_schema(sql_text: str, table_name: str) -> str:
-              aliases = {
-                  "#EPE_StatisticsIoOutput": "#EPE_StatisticsIo",
-                  "#EPE_StatisticsTimeOutput": "#EPE_StatisticsTime",
-                  "#EPE_PlanStatisticsUsageOutput": "#EPE_PlanStatisticsUsage",
-                  "#EPE_ObjectReferencesOutput": "#EPE_ObjectReferences",
-                  "#EPE_HistogramSummaryOutput": "#EPE_HistogramSummary",
-                  "#EPE_PredicateMappingsOutput": "#EPE_PredicateHistogramMappings",
-              }
-              overrides = {
-                  "#EPE_StatisticsCurrentOutput": "[DatabaseName] sysname NULL, [SchemaName] sysname NULL, [ObjectName] sysname NULL, [ObjectId] int NOT NULL, [StatisticsName] sysname NULL, [StatisticsId] int NOT NULL, [IsIndexStatistics] bit NOT NULL, [IsAutoCreated] bit NULL, [IsUserCreated] bit NULL, [IsFiltered] bit NULL, [FilterDefinition] nvarchar(max) NULL, [FilterDefinitionStatus] varchar(40) NOT NULL, [NoRecompute] bit NULL, [IsIncremental] bit NULL, [HasPersistedSample] bit NULL, [LeadingColumnName] sysname NULL, [LastUpdated] datetime2(7) NULL, [Rows] bigint NULL, [RowsSampled] bigint NULL, [SamplePercent] decimal(19,6) NULL, [Steps] int NULL, [UnfilteredRows] bigint NULL, [ModificationCounter] bigint NULL, [ModificationPercent] decimal(19,6) NULL, [PersistedSamplePercent] float NULL, [CollectionStatus] varchar(40) NOT NULL",
-                  "#EPE_HistogramStepsOutput": "[DatabaseName] sysname NULL, [SchemaName] sysname NULL, [ObjectName] sysname NULL, [StatisticsName] sysname NULL, [StatisticsId] int NOT NULL, [LeadingColumnName] sysname NULL, [StepOrdinal] int NOT NULL, [RangeHighKey] nvarchar(4000) NULL, [RangeHighKeyToken] varbinary(32) NULL, [RangeRows] float NULL, [EqualRows] float NULL, [DistinctRangeRows] bigint NULL, [AverageRangeRows] float NULL, [IsPredicateTarget] bit NOT NULL, [PredicateMatchCount] int NOT NULL, [SensitiveValueStatus] varchar(40) NOT NULL",
-              }
-              if table_name in overrides:
-                  return overrides[table_name]
-              if table_name in aliases:
-                  return table_schema(sql_text, aliases[table_name])
-              match = re.search(rf"CREATE\s+TABLE\s+\[{re.escape(table_name)}\]\s*\(", sql_text, re.IGNORECASE)
-              if not match:
-                  raise RuntimeError(f"Temp table not found: {table_name}")
-              start = match.end() - 1
-              depth = 0
-              in_string = False
-              index = start
-              while index < len(sql_text):
-                  char = sql_text[index]
-                  if char == "'":
-                      if in_string and index + 1 < len(sql_text) and sql_text[index + 1] == "'":
-                          index += 2
-                          continue
-                      in_string = not in_string
-                  elif not in_string:
-                      if char == "(":
-                          depth += 1
-                      elif char == ")":
-                          depth -= 1
-                          if depth == 0:
-                              body = sql_text[start + 1 : index]
-                              return re.sub(r"\s+", " ", body).strip().rstrip(",")
-                  index += 1
-              raise RuntimeError(f"Unclosed CREATE TABLE: {table_name}")'''
-          text, count = re.subn(
-              r'def table_schema\(.*?\n\n\ndef insert_before',
-              lambda _: replacement + '\n\n\ndef insert_before',
-              text,
-              flags=re.S,
-          )
-          if count != 1:
-              raise RuntimeError(f'Expected one table_schema function, replaced {count}.')
-          text = text.replace('table_schema(evidence_sql, table_name[1:])', 'table_schema(evidence_sql, table_name)')
-          text = text.replace('table_schema(analysis_sql, table_name[1:])', 'table_schema(analysis_sql, table_name)')
-          path.write_text(text, encoding='utf-8', newline='\n')
-          PY
+          record_failure() {
+            local phase="$1"
+            local log_path="$2"
+            {
+              echo "Phase: ${phase}"
+              echo
+              tail -n 40 "$log_path"
+            } > .bootstrap/integration-error.log
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add .bootstrap/integration-error.log
+            git commit -m 'Record execution plan integration failure'
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
+          }
+
+          set +e
+          python3 ./.bootstrap/patch_integration_schema.py > /tmp/epa-patch.log 2>&1
+          patch_status=$?
+          set -e
+          if [ "$patch_status" -ne 0 ]; then
+            record_failure 'schema patch' /tmp/epa-patch.log
+            exit "$patch_status"
+          fi
 
           set +e
           python3 ./.bootstrap/integrate_execution_plan_analysis.py > /tmp/epa-integration.log 2>&1
           integration_status=$?
           set -e
           if [ "$integration_status" -ne 0 ]; then
-            tail -n 40 /tmp/epa-integration.log
-            if [ -n "${PR_NUMBER:-}" ]; then
-              diagnostic="$(tail -n 20 /tmp/epa-integration.log)"
-              gh pr comment "$PR_NUMBER" --body "Execution-plan integration generator failed with the following technical diagnostic:\n\n\`\`\`text\n${diagnostic}\n\`\`\`"
-            fi
+            record_failure 'framework integration' /tmp/epa-integration.log
             exit "$integration_status"
           fi
 
           rm -f .bootstrap/integrate_execution_plan_analysis.py
+          rm -f .bootstrap/patch_integration_schema.py
+          rm -f .bootstrap/integration-error.log
           rmdir .bootstrap 2>/dev/null || true
           rm -f .github/workflows/integrate-execution-plan-analysis.yml
 
