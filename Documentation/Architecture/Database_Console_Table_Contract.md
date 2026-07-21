@@ -1,7 +1,7 @@
 # Frameworkvertrag für Datenbankauswahl, CONSOLE und TABLE
 
 **Vertragsversion:** 2.0  
-**Stand:** 20. Juli 2026  
+**Stand:** 21. Juli 2026
 **Status:** VERBINDLICH
 
 ## 1. Ausgangslage und Migrationsumfang
@@ -168,8 +168,8 @@ kürzen, niemals jedoch stillschweigend Vollständigkeit vortäuschen. Native
 Quell- und Materialisierungstypen bleiben `nvarchar(max)` beziehungsweise
 `xml`; `nvarchar(4000)` ist keine allgemeine XML- oder Payloadgrenze.
 
-Für zeichenbasierte Ausgabeparameter wie `@MaxTargetDataZeichen` gilt bei der
-zukünftigen Umsetzung von `OUT-001` frameworkweit:
+`OUT-001` ist frameworkweit umgesetzt. Für zeichenbasierte Ausgabeparameter
+wie `@MaxTargetDataZeichen` gilt:
 
 - ein eigener `@Mit...`-Schalter entscheidet, ob der Inhalt überhaupt
   ausgegeben wird;
@@ -182,8 +182,8 @@ zukünftigen Umsetzung von `OUT-001` frameworkweit:
   insbesondere kein UTF-16-Surrogate-Paar teilen.
 
 Jedes kürzbare benannte Ergebnis stellt die Vollständigkeit maschinenlesbar
-bereit. Für `USP_ExtendedEventsTargetRuntime` sind mindestens folgende Felder
-vorgesehen:
+bereit. Für `USP_ExtendedEventsTargetRuntime` und entsprechend benannte
+Textfelder sind folgende Metriken implementiert:
 
 ```text
 TargetDataCharacters   bigint

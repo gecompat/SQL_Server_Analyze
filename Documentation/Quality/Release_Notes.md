@@ -1,5 +1,14 @@
 # Release Notes
 
+## Stand 2026-07-21 – Welle 1 Ausgabe, XML und Provenienz
+
+- Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` hat Installer, alle 34 Release-Gate-Suiten und die Berechtigungsmatrizen auf [SQL Server 2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091324), [SQL Server 2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091252) und [SQL Server 2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091262) bestanden; das 2025-Gate enthält zusätzlich die Regex-Matrix.
+- `OUT-001` ist frameworkweit umgesetzt: große Textwerte bleiben intern `nvarchar(max)`, `0` hebt das sichtbare Limit auf, positive Limits kürzen UTF-16-surrogatsicher und melden je Zeile Ursprungslänge/Kürzungsstatus sowie höchstens eine Warnung je Aufruf.
+- `DIAG-002` liefert valide Showplan-, Query-Store-, Deadlock- und Extended-Events-Payloads in RAW und TABLE nativ als `xml`; NULL, leere Quelle, ungültiges XML und das dokumentierte XML-Tiefenlimit bleiben unterscheidbar.
+- `DIAG-006` und `DIAG-007` sind als verbindliche Provenienz-, Zeit-, Partialitäts-, Resultset-, TABLE-/JSON- und Drei-Versionen-Verträge in den betroffenen Modulen, Inventaren und Tests umgesetzt.
+- `DIAG-001` ergänzt `monitor.USP_ServerVersionInformation` mit Produkt-, Build-, Branch-, Lifecycle- und Katalogstatus. Die Bewertung verwendet ausschließlich den mitgelieferten, auf den 21. Juli 2026 datierten Offline-Katalog; unbekannte oder neuere Builds werden nicht pauschal als veraltet bewertet.
+- Der Begleitvertrag `190_Wave1_Output_Xml_Version_Runtime_Contract.sql` prüft Unicode-/Surrogatgrenzen, native XML-Typen, Provenienz und Offline-Buildbewertung innerhalb der bestehenden 26. Ausgabesuite. [Dokumentation/Nonblocking](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091316), [Datenschutz](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091274), [Commit-Messages](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091275) und der [Ausgabe-Pilot](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091243) sind ebenfalls grün.
+
 ## Stand 2026-07-21 – Welle 0 Release- und Evidence-Konsolidierung
 
 - Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` hat Installer, alle 34 Release-Gate-Suiten und die Berechtigungsmatrizen auf [SQL Server 2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843161), [SQL Server 2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843138) und [SQL Server 2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843126) bestanden; das 2025-Gate enthält zusätzlich die Regex-Matrix.

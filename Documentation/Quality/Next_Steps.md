@@ -2,7 +2,7 @@
 
 Stand: 2026-07-21
 
-Der Stand `1.1.0-special.9` besitzt für Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` vollständige grüne Linux-Evidenz auf SQL Server 2019, 2022 und 2025. Der Release-Gate-Vertrag umfasst 34 Suiten, alle 17 P0-, 40 P1- und 124 P2-Fälle sowie die frameworkweiten Ausgabe-Verträge. Kanonische Quelle für Release, Commit, Zielversionen und Zählwerte ist `Metadata/Quality/Test_Matrix.csv`; ihre Konsistenz mit Detailmatrix, Release-Audit und Statusdokumenten wird statisch geprüft.
+Der Stand `1.1.0-special.9` besitzt für Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` vollständige grüne Linux-Evidenz auf SQL Server 2019, 2022 und 2025. Der Release-Gate-Vertrag umfasst 34 Suiten, alle 17 P0-, 40 P1- und 124 P2-Fälle sowie die frameworkweiten Ausgabe- und Welle-1-Verträge. Kanonische Quelle für Release, Commit, Zielversionen und Zählwerte ist `Metadata/Quality/Test_Matrix.csv`; ihre Konsistenz mit Detailmatrix, Release-Audit und Statusdokumenten wird statisch geprüft.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
@@ -53,12 +53,13 @@ Abgeschlossen:
 41. Sechste P2-Gruppe abgeschlossen: Suite `184` prüft 25 Change-Tracking-, CDC- und Replikationsverträge ohne Change-Zeilen oder Commands.
 42. Siebte P2-Gruppe abgeschlossen: Suite `185` prüft sieben zuvor offene Encryption-Verträge ohne Schlüssel-, Medien- oder Kontoinhalte.
 43. Achte P2-Gruppe abgeschlossen: Suite `186` prüft vier zuvor offene Maintenance-Verträge ohne RESUME, ABORT, KILL oder Jobmutation.
-44. Die technische Deep-Analysis-Dokumentation ist 84/84 integriert: jede öffentliche Procedure-Seite besitzt Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse; das gemeinsame Execution-/Evidenzmodell ist kanonisch zentralisiert.
+44. Die damalige technische Deep-Analysis-Dokumentation wurde 84/84 integriert; die mit Welle 1 ergänzte Procedure führt denselben Vertrag fort, sodass aktuell alle 85 öffentlichen Procedure-Seiten Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse besitzen. Das gemeinsame Execution-/Evidenzmodell ist kanonisch zentralisiert.
 45. Die neun durch das vollständige Actions-Gate erledigten Backlogzeilen SC-002 bis SC-010 sind auf `IMPLEMENTED_ACTIONS_GATE` abgeglichen. Ein versehentlich versioniertes Python-Cacheartefakt wurde entfernt und durch Repository-Ignore-Regeln gegen Wiederholung abgesichert.
 46. Die Datenschutz-Allowlist enthält nun auch den bereits vorhandenen, zur Laufzeit synthetisch erzeugten Credential-Pfad des Statistics-Evidence-Workflows. Die Ausnahme ist wie alle übrigen Einträge an Regel, Pfad und Match-Hash gebunden.
 47. Das Deep-Analysis-Authoring-Archiv ist konsolidiert: historische Roadmaps sind abgeschlossen markiert, kanonische Draft-Verweise entfernt, eine Versions-/Primärquellenmatrix ergänzt und dauerhaft verlorene externe Links werden automatisiert erkannt.
 48. Der Wait-Type-Katalog beantwortet für alle 347 Framework-Waits Einordnung, Ursachenhypothesen, Wirkung, Gegenbeweise, Minderung, Queranalysen und Messgrenzen. Mindestens vier typisierte, aussagebezogene Quellen je Wait ersetzen den früheren pauschalen Einzelverweis; seltene interne Waits bleiben als begrenzte Evidenz sichtbar.
 49. Welle 0 abgeschlossen: Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` hat Installer, 34 Release-Suiten und Berechtigungsmatrizen auf SQL Server 2019, 2022 und 2025 bestanden; Dokumentations-/Nonblocking-, Datenschutz- und Commit-Message-Gates sind ebenfalls grün. `Test_Matrix.csv` ist die kanonische Evidence-Quelle, `990_Validate_Release_Evidence.py` verhindert abweichende Current-State-Angaben.
+50. Welle 1 abgeschlossen: Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` setzt `OUT-001`, `DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007` um. Unicode-sichere sichtbare Kürzung, native XML-Ausgaben, gemeinsame Provenienz- und Resultsetverträge sowie die Offline-Serverversionsbewertung sind auf SQL Server 2019, 2022 und 2025 einschließlich des synthetischen Begleitvertrags `190` grün.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
@@ -81,24 +82,15 @@ Vorgemerkte zukünftige Architekturhärtung:
   Case-Semantik grün nachzuweisen. Bis dahin bleibt
   `SQL_Latin1_General_CP1_CS_AS` die freigegebene Plattformgrenze.
 
-- **DIAG-001 bis DIAG-007 – zusätzliche Diagnoseinformationen:** Die
-  recherchierten Anforderungen für Serverversion/CU/GDR/Lifecycle,
-  anklickbare native XML-Ausgaben, Compile- und verfügbare Runtimeparameter,
+- **DIAG-003 bis DIAG-005 – zusätzliche Diagnoseinformationen:** Die
+  noch offenen Anforderungen für Compile- und verfügbare Runtimeparameter,
   die ausdrückliche Grenze nicht allgemein auslesbarer lokaler Variablen,
-  Statement-/Requestkontext, zusätzliche Plan-/Optimizerinformationen,
-  Provenienz und den vollständigen Ausgabe-/Testvertrag stehen im
+  Statement-/Requestkontext sowie zusätzliche Plan-/Optimizerinformationen stehen im
   [Zukunftsvertrag für zusätzliche Diagnoseinformationen](../Architecture/Diagnostic_Information_Enrichment_Backlog.md).
+  `DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007` sind mit Welle 1
+  `IMPLEMENTED_ACTIONS_GATE`.
   Der maschinenlesbare Status steht in
   `Metadata/Quality/Future_Enhancement_Backlog.csv`.
-
-- **OUT-001 – sichtbare und aufhebbare Ausgabekürzung:** Große Text- und
-  XML-Payloads bleiben nativ als `nvarchar(max)` beziehungsweise `xml`
-  materialisiert. Positive Zeichenlimits begrenzen nur die Ausgabe, `0`
-  bedeutet unbegrenzt und künstliche Obergrenzen entfallen. Jede Kürzung wird
-  zeilenbezogen maschinenlesbar sowie einmal pro Aufruf mit Parametername,
-  aktuellem Limit und größter benötigter Länge gewarnt. Der vollständige
-  Vertrag steht in
-  [Database_Console_Table_Contract.md](../Architecture/Database_Console_Table_Contract.md).
 
 - **OPS-001 bis OPS-009 und SQL25-001 bis SQL25-005 – zusätzliche
   Betriebs- und Versionsdiagnosen:** Die recherchierten Lücken für
@@ -111,10 +103,10 @@ Vorgemerkte zukünftige Architekturhärtung:
   sind Future Enhancements und ändern nicht den abgeschlossenen Status
   der bestehenden Special-Case-Testmatrix.
 
-Nächste Arbeitsschritte nach der abgeschlossenen Welle 0:
+Nächste Arbeitsschritte nach der abgeschlossenen Welle 1:
 
-1. Welle 1 mit `OUT-001`, danach `DIAG-002`, den verbindlichen Querschnittsverträgen `DIAG-006`/`DIAG-007` und schließlich `DIAG-001` umsetzen.
+1. Welle 2 in der Reihenfolge `OPS-003` Pending I/O, `OPS-002` Worker-/Scheduler-Druck, `OPS-001` Datenbankkonfiguration und Drift sowie `OPS-004` strukturierte Errorlog-Analyse umsetzen.
 2. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen feature-positive Windows-/Azure-MI-Targets, kontrollierte Lastfälle und externe Restore-/Host-Nachweise.
 3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
-4. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
-5. Der SC-023-Architekturentscheid ist freigegeben und dokumentiert; ein späterer eigener Umsetzungsauftrag beginnt mit einem kleinen vertikalen Sammler. SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
+4. Danach den freigegebenen SC-023-Architekturentscheid als kleinen vertikalen Persistenz-Slice mit genau einem Sammler, Retention und schedulerneutralem Einstieg umsetzen.
+5. `DIAG-003` bis `DIAG-005` und die SQL-Server-2025-Vertiefungen bleiben nach Welle 2 beziehungsweise SC-023 eingeordnet. SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
