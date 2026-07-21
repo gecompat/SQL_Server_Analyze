@@ -13,12 +13,13 @@ Dieses Repository enthält ein T-SQL-basiertes Diagnoseframework für SQL Server
 
 Für praktische Analysen nicht im Forschungsdokument beginnen:
 
-1. [`Analysis_Guides/Runbooks/README.md`](Analysis_Guides/Runbooks/README.md) – Einstieg nach Symptom
-2. [`Analysis_Guides/Procedures/README.md`](Analysis_Guides/Procedures/README.md) – eigenständige Seiten für alle 93 Procedures
-3. [`Analysis_Guides/Glossary.md`](Analysis_Guides/Glossary.md) – technische Begriffe
-4. [`Analysis_Guides/Parameter_Reading_Guide.md`](Analysis_Guides/Parameter_Reading_Guide.md) – Parameter und sichere Aufrufe
-5. [`Analysis_Guides/README.md`](Analysis_Guides/README.md) – Gesamtübersicht und Familienguides
-6. [`Reference/Object_Reference.md`](Reference/Object_Reference.md) – Direktnavigation und Detailabschnitte mit Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten und Stabilitätsgrenze für jede installierte View, TVF, interne Procedure und Tabelle; derzeit sind keine SVFs installiert
+1. [`Analysis_Guides/Beginner_Reading_Guide.md`](Analysis_Guides/Beginner_Reading_Guide.md) – Einstieg und feste Leserichtung
+2. [`Analysis_Guides/Runbooks/README.md`](Analysis_Guides/Runbooks/README.md) – Einstieg nach Symptom
+3. [`Analysis_Guides/Procedures/README.md`](Analysis_Guides/Procedures/README.md) – eigenständige Seiten für alle 93 Procedures
+4. [`Analysis_Guides/Glossary.md`](Analysis_Guides/Glossary.md) – technische Begriffe
+5. [`Analysis_Guides/Parameter_Reading_Guide.md`](Analysis_Guides/Parameter_Reading_Guide.md) – Parameter und sichere Aufrufe
+6. [`Analysis_Guides/README.md`](Analysis_Guides/README.md) – Gesamtübersicht und Familienguides
+7. [`Reference/Object_Reference.md`](Reference/Object_Reference.md) – Direktnavigation und Detailabschnitte mit Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten und Stabilitätsgrenze für jede installierte View, TVF, interne Procedure und Tabelle; derzeit sind keine SVFs installiert
 
 Jede Procedure-Seite erklärt Zeilengranularität, Leserichtung, Problembegründung, Gegenbeispiel, Folgeanalyse und Grenzen leerer/partieller Resultsets.
 
@@ -65,20 +66,90 @@ beschreibt den standardmäßigen Filter für Object Explorer, Copilot und SQL
 Prompt, seine metadatengetriebenen `LIKE`-Regeln sowie die Grenzen der
 clientseitigen `program_name`-Erkennung.
 
-## Forschungs- und Inventareinstieg
+## Vollständiger Bereichsindex
 
-- `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`
-- `Documentation/Architecture/Special_Case_Modules.md`
-- `Documentation/Research/Special_Case_Gap_Analysis.md`
-- `Documentation/Analysis_Guides/Authoring/Deep_Research_Analysis_Guides_Concept.md`
-- `Documentation/Research/System_Source_Catalog.md`
-- `Documentation/Quality/Performance_and_Risk_Assessment.md`
-- `Documentation/Architecture/Diagnostic_Information_Enrichment_Backlog.md`
-- [`Documentation/Architecture/Execution_Plan_Analysis_Design.md`](Architecture/Execution_Plan_Analysis_Design.md) – vollständiger Standalone-, Evidenz-, Statistik-, Histogramm-, Regel- und Versionsvertrag für `PLAN-001`
-- [`Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract.md`](Architecture/Execution_Plan_Analysis_Installation_Contract.md) – minimaler Teilinstaller und Einbindung in `Install_All.sql`
-- [`Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json`](../Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json) – maschinenlesbarer eingefrorener V1-Vertrag für Signaturen, Defaults, Resultsets, JSON, Statuscodes, Privacy und Standalone-Objektclosure
-- `Metadata/Inventory/SystemSources.csv`
-- `Metadata/Inventory/NonSystemDependencies.csv`
-- `Metadata/Inventory/PermissionsAndFeatures.csv`
-- `Metadata/Inventory/ResultSets.csv`
-- `Metadata/Quality/Future_Enhancement_Backlog.csv`
+Die folgenden Einstiege ergänzen das Analysehandbuch. Procedure-Einzelseiten und
+Runbooks sind über ihre jeweiligen `README.md`-Dateien verlinkt.
+
+### Anforderungen und Architektur
+
+- [`Requirements/Requirements_and_Decisions.md`](Requirements/Requirements_and_Decisions.md)
+- [`Architecture/Authorization_Architecture.md`](Architecture/Authorization_Architecture.md)
+- [`Architecture/Database_Console_Table_Contract.md`](Architecture/Database_Console_Table_Contract.md)
+- [`Architecture/Diagnostic_Information_Enrichment_Backlog.md`](Architecture/Diagnostic_Information_Enrichment_Backlog.md)
+- [`Architecture/Execution_Plan_Analysis_Design.md`](Architecture/Execution_Plan_Analysis_Design.md) – Standalone-, Evidenz-, Statistik-, Histogramm-, Regel- und Versionsvertrag für `PLAN-001`
+- [`Architecture/Execution_Plan_Analysis_Installation_Contract.md`](Architecture/Execution_Plan_Analysis_Installation_Contract.md) – minimaler Teilinstaller und Einbindung in `Install_All.sql`
+- [`Architecture/Filter_Lists_and_Patterns.md`](Architecture/Filter_Lists_and_Patterns.md)
+- [`Architecture/Fleet_Correlation_Contract.md`](Architecture/Fleet_Correlation_Contract.md)
+- [`Architecture/Memory_Grants_and_Resource_Governor.md`](Architecture/Memory_Grants_and_Resource_Governor.md)
+- [`Architecture/Operational_Diagnostic_Gap_Backlog.md`](Architecture/Operational_Diagnostic_Gap_Backlog.md)
+- [`Architecture/Output_RAW_CONSOLE_JSON.md`](Architecture/Output_RAW_CONSOLE_JSON.md)
+- [`Architecture/Parameter_API.md`](Architecture/Parameter_API.md)
+- [`Architecture/Row_Limits.md`](Architecture/Row_Limits.md)
+- [`Architecture/Runtime_Data_and_Repository_Privacy.md`](Architecture/Runtime_Data_and_Repository_Privacy.md)
+- [`Architecture/SQL_Text_Statement_Batch_Module.md`](Architecture/SQL_Text_Statement_Batch_Module.md)
+- [`Architecture/Snapshot_Baseline_Package_Contract.md`](Architecture/Snapshot_Baseline_Package_Contract.md)
+- [`Architecture/Special_Case_Modules.md`](Architecture/Special_Case_Modules.md)
+- [`Architecture/Tool_Background_Query_Filtering.md`](Architecture/Tool_Background_Query_Filtering.md)
+
+### Betrieb
+
+- [`Operations/Authorization_Administration.md`](Operations/Authorization_Administration.md)
+- [`Operations/Authorization_Troubleshooting.md`](Operations/Authorization_Troubleshooting.md)
+- [`Operations/Snapshot_Baseline_Operations.md`](Operations/Snapshot_Baseline_Operations.md)
+- [`Operations/Version_Adaptive_Features.md`](Operations/Version_Adaptive_Features.md)
+- [`Operations/Wait_Stats_Methodology.md`](Operations/Wait_Stats_Methodology.md)
+- [`Operations/Wait_Type_Catalog.md`](Operations/Wait_Type_Catalog.md)
+
+### Referenz
+
+- [`Reference/Authorization_Policy_Examples.md`](Reference/Authorization_Policy_Examples.md)
+- [`Reference/Authorization_Status_and_Access_Reasons.md`](Reference/Authorization_Status_and_Access_Reasons.md)
+- [`Reference/Call_Catalog.md`](Reference/Call_Catalog.md)
+- [`Reference/Installation.md`](Reference/Installation.md)
+- [`Reference/Object_Reference.md`](Reference/Object_Reference.md)
+- [`Reference/Procedure_Reference.md`](Reference/Procedure_Reference.md)
+- [`Reference/Resultset_Conventions.md`](Reference/Resultset_Conventions.md)
+- [`Reference/Scenarios.md`](Reference/Scenarios.md)
+
+### Qualität und Release
+
+- [`Quality/Analysis_Documentation_Validation.md`](Quality/Analysis_Documentation_Validation.md)
+- [`Quality/Commit_Message_Validation.md`](Quality/Commit_Message_Validation.md)
+- [`Quality/External_Restore_Host_Proof_Runbook.md`](Quality/External_Restore_Host_Proof_Runbook.md)
+- [`Quality/Known_Issues.md`](Quality/Known_Issues.md)
+- [`Quality/Next_Steps.md`](Quality/Next_Steps.md)
+- [`Quality/Performance_and_Risk_Assessment.md`](Quality/Performance_and_Risk_Assessment.md)
+- [`Quality/Release_Gate_Runbook.md`](Quality/Release_Gate_Runbook.md)
+- [`Quality/Release_Notes.md`](Quality/Release_Notes.md)
+- [`Quality/Repository_Privacy_Validation.md`](Quality/Repository_Privacy_Validation.md)
+- [`Quality/SQL_Server_2025_Regex_Gate.md`](Quality/SQL_Server_2025_Regex_Gate.md)
+- [`Quality/Test_Matrix.md`](Quality/Test_Matrix.md)
+- [`Quality/Wait_Type_Curation.md`](Quality/Wait_Type_Curation.md)
+
+### Forschung
+
+- [`Research/Extended_Events.md`](Research/Extended_Events.md)
+- [`Research/Legacy_Analysis_Results.md`](Research/Legacy_Analysis_Results.md)
+- [`Research/Plan_Cache_and_Showplan.md`](Research/Plan_Cache_and_Showplan.md)
+- [`Research/Query_Store.md`](Research/Query_Store.md)
+- [`Research/Sources.md`](Research/Sources.md)
+- [`Research/Special_Case_Gap_Analysis.md`](Research/Special_Case_Gap_Analysis.md)
+- [`Research/System_Source_Catalog.md`](Research/System_Source_Catalog.md)
+
+### Entwicklung und Redaktion
+
+- [`Development/Integrating_New_Module_Authorization.md`](Development/Integrating_New_Module_Authorization.md)
+- [`Analysis_Guides/Deep_Research_Analysis_Guides_Concept.md`](Analysis_Guides/Deep_Research_Analysis_Guides_Concept.md)
+- [`Analysis_Guides/Authoring/Deep_Research_Analysis_Guides_Concept.md`](Analysis_Guides/Authoring/Deep_Research_Analysis_Guides_Concept.md)
+- [`Analysis_Guides/Authoring/Deep_Analysis_Draft_Index.md`](Analysis_Guides/Authoring/Deep_Analysis_Draft_Index.md)
+- [`Analysis_Guides/Authoring/Procedure_Page_Template.md`](Analysis_Guides/Authoring/Procedure_Page_Template.md)
+
+### Maschinenlesbare Inventare und Verträge
+
+- [`Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json`](../Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json) – eingefrorener V1-Vertrag für `PLAN-001`
+- [`Metadata/Inventory/SystemSources.csv`](../Metadata/Inventory/SystemSources.csv)
+- [`Metadata/Inventory/NonSystemDependencies.csv`](../Metadata/Inventory/NonSystemDependencies.csv)
+- [`Metadata/Inventory/PermissionsAndFeatures.csv`](../Metadata/Inventory/PermissionsAndFeatures.csv)
+- [`Metadata/Inventory/ResultSets.csv`](../Metadata/Inventory/ResultSets.csv)
+- [`Metadata/Quality/Future_Enhancement_Backlog.csv`](../Metadata/Quality/Future_Enhancement_Backlog.csv)
