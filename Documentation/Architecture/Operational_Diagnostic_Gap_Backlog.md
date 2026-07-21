@@ -1,12 +1,12 @@
 # Backlog für zusätzliche Betriebs- und Versionsdiagnosen
 
 Stand: 2026-07-21
-Status: `RESEARCHED_NOT_IMPLEMENTED`
+Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004` sind `IMPLEMENTED_ACTIONS_GATE`
 Maschinenlesbarer Backlog: `Metadata/Quality/Future_Enhancement_Backlog.csv`
 
 ## Ziel und Abgrenzung
 
-Dieser Zukunftsvertrag hält Diagnosebereiche fest, die nach dem Abgleich des aktuellen Frameworkbestands mit Microsoft-Dokumentation, SQL Assessment API, BPCheck, First Responder Kit und Glenn Berrys Diagnostic Information Queries noch nicht oder nicht tief genug abgedeckt sind.
+Dieser Vertrag hält implementierte und weiterhin offene Diagnosebereiche fest, die aus dem Abgleich des Frameworkbestands mit Microsoft-Dokumentation, SQL Assessment API, BPCheck, First Responder Kit und Glenn Berrys Diagnostic Information Queries entstanden sind.
 
 Die Einträge ergänzen den zustandslosen Kern. Sie ändern weder den abgeschlossenen Status der bestehenden P0-/P1-/P2-Spezialfallmatrix noch den separat freigegebenen, aber noch nicht implementierten SC-023-Snapshot- und Baseline-Vertrag.
 
@@ -14,12 +14,12 @@ Eine Abweichung oder ein Einzelindikator ist grundsätzlich Evidenz für eine we
 
 ## Priorisierte Lücken
 
-| ID | Priorität | Bereich | Geplantes Ziel | Wesentliche Grenze |
+| ID | Priorität | Bereich | Umsetzung | Wesentliche Grenze |
 |---|---|---|---|---|
-| `OPS-001` | P1 | Datenbankkonfiguration und Drift | neue `monitor.USP_DatabaseConfigurationAnalysis` | Abweichung ist nicht automatisch Fehlkonfiguration |
-| `OPS-002` | P1 | Worker- und Scheduler-Druck | bestehende Servermodule vertiefen oder neue `monitor.USP_WorkerPressureAnalysis` | `THREADPOOL` rechtfertigt nicht automatisch mehr Worker |
-| `OPS-003` | P1 | aktuell ausstehende I/O-Requests | `monitor.USP_CurrentIO` um `pendingIo` erweitern | einzelner Pending Request beweist keinen Storagefehler |
-| `OPS-004` | P1 | SQL-Server- und Agent-Errorlogs | neue `monitor.USP_ErrorLogAnalysis` | begrenztes Lesen; kein Logwechsel und kein Volltext im Default |
+| `OPS-001` | P1 | Datenbankkonfiguration und Drift | implementiert: `monitor.USP_DatabaseConfigurationAnalysis` | Abweichung ist nicht automatisch Fehlkonfiguration |
+| `OPS-002` | P1 | Worker- und Scheduler-Druck | implementiert: `monitor.USP_WorkerPressureAnalysis` | `THREADPOOL` rechtfertigt nicht automatisch mehr Worker |
+| `OPS-003` | P1 | aktuell ausstehende I/O-Requests | implementiert: `monitor.USP_CurrentIO.pendingIo` | einzelner Pending Request beweist keinen Storagefehler |
+| `OPS-004` | P1 | SQL-Server- und Agent-Errorlogs | implementiert: `monitor.USP_ErrorLogAnalysis` | begrenztes Lesen; kein Logwechsel und kein Volltext im Default |
 | `SQL25-001` | P2 | Vector-Index-Laufzeit | neue Detailanalyse oder Erweiterung der Objektanalyse | Capability, Zustand und Maintenance getrennt bewerten |
 | `SQL25-002` | P2 | JSON-Index-Inventar | bestehende Objekt- und Indexinventare erweitern | versionsadaptiv; zunächst keine überdimensionierte Einzel-Procedure |
 | `SQL25-003` | P2 | TempDB Resource Governance | Resource-Governor- und TempDB-Module erweitern | Limits, Nutzung und Verletzungszähler getrennt ausgeben |
@@ -33,9 +33,11 @@ Eine Abweichung oder ein Einzelindikator ist grundsätzlich Evidenz für eine we
 
 ## P1-Umfang
 
+Der folgende P1-Umfang wurde in Welle 2 umgesetzt und durch den synthetischen Drei-Versionen-Vertrag `191` abgenommen.
+
 ### OPS-001 – Datenbankkonfiguration und Drift
 
-Quellen: `sys.databases`, datenbanklokal `sys.database_scoped_configurations`, `sys.database_query_store_options` und versionsabhängig `DATABASEPROPERTYEX`.
+Quellen: `sys.databases` sowie datenbanklokal `sys.database_scoped_configurations` und `sys.database_query_store_options`; versionsabhängige Spalten werden erst nach Katalogprüfung referenziert.
 
 Mindestens auszuwerten sind Statistikoptionen, `AUTO_CLOSE`, `AUTO_SHRINK`, RCSI und Snapshot Isolation, Parameterisierung, Recovery Model, `PAGE_VERIFY`, ADR, Optimized Locking, Compatibility Level, Collation, Query Store sowie verfügbare Database Scoped Configurations. Der Default vergleicht sichtbare Datenbanken lokal; ein Sollprofil muss ausdrücklich gewählt werden. Fleet-Drift bleibt SC-024.
 
@@ -105,13 +107,10 @@ Ein leichter Inventarpfad meldet sichtbare Benutzerobjekte in `master`, `model` 
 
 ## Umsetzungsreihenfolge
 
-1. `OPS-001` Datenbankkonfiguration und Drift.
-2. `OPS-003` Pending-I/O-Erweiterung in `USP_CurrentIO`.
-3. `OPS-002` Worker-/Scheduler-Druck.
-4. `OPS-004` Errorlog-Analyse.
-5. `SQL25-001` bis `SQL25-005` als versionsadaptive Welle.
-6. `OPS-005`, `OPS-006` und `OPS-008`.
-7. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
+1. Abgeschlossen: `OPS-001` bis `OPS-004` in Welle 2.
+2. `SQL25-001` bis `SQL25-005` als versionsadaptive Welle.
+3. `OPS-005`, `OPS-006` und `OPS-008`.
+4. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
 
 Wenn Historie, Trends und Maintenance-Wirkung wichtiger sind als weitere Momentaufnahmen, ist die alternative nächste Welle die Umsetzung des bereits freigegebenen SC-023-Pakets. Diese Alternative hat höheren Zeitreihennutzen, benötigt aber Persistenz, Retention, Scheduler, Größenbudget und einen eigenen Berechtigungsbetrieb.
 

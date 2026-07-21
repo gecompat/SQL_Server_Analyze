@@ -2,7 +2,7 @@
 
 Stand: 2026-07-21
 
-Die Version `1.1.0-special.9` besitzt für Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 34 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 181 P0-/P1-/P2-Fälle sowie die Welle-1-Verträge für Unicode-sichere sichtbare Kürzung, native XML-Ausgaben, Provenienz und Offline-Versionsbewertung auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile. Der aktuelle Evidence-Stand wird kanonisch in `Metadata/Quality/Test_Matrix.csv` geführt und durch `Code/Tests/Static/990_Validate_Release_Evidence.py` gegen Detailmatrix und Release-Audit geprüft.
+Die Version `1.1.0-special.13` besitzt für Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 34 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 181 P0-/P1-/P2-Fälle sowie die Welle-1- und Welle-2-Verträge auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile. Der aktuelle Evidence-Stand wird kanonisch in `Metadata/Quality/Test_Matrix.csv` geführt und durch `Code/Tests/Static/990_Validate_Release_Evidence.py` gegen Detailmatrix und Release-Audit geprüft.
 
 Verbleibende Repository- und Evidenzpunkte:
 
