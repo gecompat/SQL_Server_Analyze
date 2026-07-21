@@ -7,6 +7,12 @@ on:
     paths:
       - '.bootstrap/fix_execution_plan_compile_and_contracts.py'
       - '.github/workflows/fix-execution-plan-compile-contracts.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.bootstrap/fix_execution_plan_compile_and_contracts.py'
+      - '.github/workflows/fix-execution-plan-compile-contracts.yml'
 
 permissions:
   contents: write
