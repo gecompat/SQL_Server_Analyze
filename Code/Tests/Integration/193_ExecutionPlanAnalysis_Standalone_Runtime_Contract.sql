@@ -19,19 +19,19 @@ IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17
 IF EXISTS
 (
     SELECT 1
-    FROM [sys].[database_query_store_options]
+    FROM [sys].[database_query_store_options] WITH (NOLOCK)
     WHERE [actual_state_desc]<>N'OFF'
 )
     THROW 53621,N'Query Store muss für den unabhängigen Standalone-Test deaktiviert sein.',1;
 
-CREATE TABLE [#ExecutionPlanAnalysisStandaloneBaseline]
+CREATE TABLE [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline]
 (
       [MetricName] varchar(64) NOT NULL PRIMARY KEY
     , [MetricCount] bigint NOT NULL
     , [MetricChecksum] int NULL
 );
 
-INSERT [#ExecutionPlanAnalysisStandaloneBaseline]
+INSERT [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline]
 (
       [MetricName]
     , [MetricCount]
@@ -41,7 +41,7 @@ SELECT
       'SERVER_EVENT_SESSIONS'
     , COUNT_BIG(*)
     , CHECKSUM_AGG(BINARY_CHECKSUM([event_session_id],[name],[startup_state]))
-FROM [sys].[server_event_sessions];
+FROM [sys].[server_event_sessions] WITH (NOLOCK);
 GO
 
 /* 1. Erstinstallation des eigenständigen Teilprojekts. */
@@ -54,7 +54,15 @@ USE [DeineDatenbank];
 GO
 SET NOCOUNT ON;
 
-IF OBJECT_ID(N'[monitor].[USP_ShowplanAnalysis]',N'P') IS NOT NULL
+IF EXISTS
+(
+    SELECT 1
+    FROM [sys].[procedures] AS [p] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[schema_id]=[p].[schema_id]
+    WHERE [s].[name]=N'monitor'
+      AND [p].[name]=N'USP_ShowplanAnalysis'
+)
     THROW 53622,N'Die Erstinstallation hat USP_ShowplanAnalysis unerwartet installiert.',1;
 
 CREATE USER [ExampleStandaloneUser] WITHOUT LOGIN;
@@ -272,8 +280,10 @@ IF EXISTS
 (
     SELECT 1
     FROM @ExpectedObjects AS [e]
+    LEFT JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[name]=N'monitor'
     LEFT JOIN [sys].[objects] AS [o] WITH (NOLOCK)
-      ON [o].[schema_id]=SCHEMA_ID(N'monitor')
+      ON [o].[schema_id]=[s].[schema_id]
      AND [o].[name]=[e].[ObjectName]
      AND [o].[type] COLLATE DATABASE_DEFAULT=[e].[ObjectType]
     WHERE [o].[object_id] IS NULL
@@ -284,10 +294,12 @@ IF EXISTS
 (
     SELECT 1
     FROM [sys].[objects] AS [o] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[schema_id]=[o].[schema_id]
     LEFT JOIN @ExpectedObjects AS [e]
       ON [e].[ObjectName]=[o].[name]
      AND [e].[ObjectType]=[o].[type] COLLATE DATABASE_DEFAULT
-    WHERE [o].[schema_id]=SCHEMA_ID(N'monitor')
+    WHERE [s].[name]=N'monitor'
       AND [o].[type] IN ('U','V','P','IF','TF','FN')
       AND [o].[is_ms_shipped]=0
       AND [e].[ObjectName] IS NULL
@@ -301,9 +313,11 @@ IF EXISTS
     FROM [sys].[sql_expression_dependencies] AS [d] WITH (NOLOCK)
     JOIN [sys].[objects] AS [referencing] WITH (NOLOCK)
       ON [referencing].[object_id]=[d].[referencing_id]
+    JOIN [sys].[schemas] AS [referencingSchema] WITH (NOLOCK)
+      ON [referencingSchema].[schema_id]=[referencing].[schema_id]
     LEFT JOIN @ExpectedObjects AS [expectedReferenced]
       ON [expectedReferenced].[ObjectName]=[d].[referenced_entity_name]
-    WHERE [referencing].[schema_id]=SCHEMA_ID(N'monitor')
+    WHERE [referencingSchema].[name]=N'monitor'
       AND [referencing].[type] IN ('V','P','IF','TF','FN')
       AND [d].[referenced_database_name] IS NULL
       AND [d].[referenced_schema_name]=N'monitor'
@@ -311,13 +325,21 @@ IF EXISTS
 )
     THROW 53630,N'Die Standalone-Installation besitzt eine unresolved Abhängigkeit zu einem nicht installierten monitor-Modul.',1;
 
-IF OBJECT_ID(N'[monitor].[USP_ShowplanAnalysis]',N'P') IS NOT NULL
+IF EXISTS
+(
+    SELECT 1
+    FROM [sys].[procedures] AS [p] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[schema_id]=[p].[schema_id]
+    WHERE [s].[name]=N'monitor'
+      AND [p].[name]=N'USP_ShowplanAnalysis'
+)
     THROW 53631,N'USP_ShowplanAnalysis wurde durch den Standalone-Installer installiert.',1;
 
 IF EXISTS
 (
     SELECT 1
-    FROM [sys].[database_query_store_options]
+    FROM [sys].[database_query_store_options] WITH (NOLOCK)
     WHERE [actual_state_desc]<>N'OFF'
 )
     THROW 53632,N'Der Standalone-Test hat Query Store aktiviert oder benötigt.',1;
@@ -325,13 +347,13 @@ IF EXISTS
 IF EXISTS
 (
     SELECT 1
-    FROM [#ExecutionPlanAnalysisStandaloneBaseline] AS [b]
+    FROM [#193_ExecutionPlanAnalysis_Standalone_Runtime_Contract_Baseline] AS [b]
     CROSS APPLY
     (
         SELECT
               COUNT_BIG(*) AS [MetricCount]
             , CHECKSUM_AGG(BINARY_CHECKSUM([event_session_id],[name],[startup_state])) AS [MetricChecksum]
-        FROM [sys].[server_event_sessions]
+        FROM [sys].[server_event_sessions] WITH (NOLOCK)
     ) AS [currentState]
     WHERE [b].[MetricName]='SERVER_EVENT_SESSIONS'
       AND
