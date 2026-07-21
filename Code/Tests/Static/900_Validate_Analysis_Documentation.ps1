@@ -236,13 +236,28 @@ foreach ($row in $objectInventoryRows) {
 }
 
 foreach ($row in $supportingObjectRows) {
-    $headingPattern = '(?m)^### `\[monitor\]\.\[' + [regex]::Escape($row.ObjectName) + '\]`\s*$'
+    $inventorySourcePath = Join-Path $RepositoryRoot $row.SourcePath
+    if (-not (Test-Path -LiteralPath $inventorySourcePath -PathType Leaf)) {
+        continue
+    }
+
+    $inventorySourceText = Get-Content -LiteralPath $inventorySourcePath -Raw -Encoding UTF8
+    $declarationPattern = '(?ims)\bCREATE\s+(?:OR\s+ALTER\s+)?(?:TABLE|VIEW|FUNCTION|PROCEDURE)\s+' +
+        '\[(?<Schema>[A-Za-z_][A-Za-z0-9_]*)\]\.\[' + [regex]::Escape($row.ObjectName) + '\]'
+    $declarationMatch = [regex]::Match($inventorySourceText, $declarationPattern)
+    if (-not $declarationMatch.Success) {
+        $errors.Add("Supporting object declaration not found: $($row.ObjectType)/$($row.ObjectName)")
+        continue
+    }
+
+    $schemaName = $declarationMatch.Groups['Schema'].Value
+    $headingPattern = '(?m)^### `\[' + [regex]::Escape($schemaName) + '\]\.\[' + [regex]::Escape($row.ObjectName) + '\]`\s*$'
     if ($objectReferenceText -notmatch $headingPattern) {
         $errors.Add("Supporting object missing from object reference: $($row.ObjectType)/$($row.ObjectName)")
         continue
     }
 
-    $sectionPattern = '(?ms)^### `\[monitor\]\.\[' + [regex]::Escape($row.ObjectName) + '\]`\s*$\s*(.*?)(?=^### `\[monitor\]\.\[|\z)'
+    $sectionPattern = '(?ms)^### `\[' + [regex]::Escape($schemaName) + '\]\.\[' + [regex]::Escape($row.ObjectName) + '\]`\s*$\s*(.*?)(?=^### `\[[A-Za-z_][A-Za-z0-9_]*\]\.\[|\z)'
     $sectionMatch = [regex]::Match($objectReferenceText, $sectionPattern)
     if (-not $sectionMatch.Success -or $sectionMatch.Groups[1].Value -notmatch ('(?m)^Quelle:\s*`' + [regex]::Escape($row.SourcePath) + '`\s*$')) {
         $errors.Add("Supporting object has no canonical source declaration: $($row.ObjectType)/$($row.ObjectName)")

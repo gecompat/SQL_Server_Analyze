@@ -206,6 +206,15 @@ Typische Laufzeitrechte sind:
 
 Die tatsächlich erforderlichen Rechte hängen vom aufgerufenen Modul ab. Das Framework erteilt sie bewusst nicht automatisch. Nach dem Ersttest das Laufzeitkonto und die interne Policy anhand der [Administrationsanleitung](../Operations/Authorization_Administration.md) einrichten.
 
+### Optional: persistentes Snapshot-/Baseline-Paket SC-023
+
+`Install_All.sql` installiert keine Persistenz. Für restartfeste Performance-
+Counter-Baselines sind eine eigene Snapshot-Datenbank, anschließend
+`Install_SnapshotBaseline_Target.sql` in deren Verbindungskontext und danach
+`Install_SnapshotBaseline_Framework.sql` in der Frameworkdatenbank erforderlich.
+Das Paket erstellt keine Datenbank, Berechtigungen oder Schedulerobjekte. Siehe
+[Snapshot-/Baseline-Betrieb](../Operations/Snapshot_Baseline_Operations.md).
+
 ## 11. Erste Analyse starten
 
 Eine leichte, begrenzte Übersicht:

@@ -271,5 +271,5 @@ Die Anforderungen basieren auf:
 - Bereits gelesene Quellen werden innerhalb eines Parentlaufs wiederverwendet. Einzelaufrufe lesen frisch; über Lauf- oder Sitzungsgrenzen entsteht kein Cache.
 - Reset-Epochen, UTC, Partialität und Versionswechsel sind Teil jedes Laufvertrags. `READPAST` ist nur zulässig, wenn Auslassungen erkennbar, partiell markiert und gezielt nachlesbar sind.
 - Deinstallation bewahrt Historie standardmäßig. Export ist standardmäßig deaktiviert; ein anonymisierter Export ist eine spätere, getrennte Funktion.
-- Das Framework vergibt weiterhin keine Rechte. Implementierung erfolgt später in kleinen vertikalen Schritten und beginnt erst nach eigenem Auftrag.
+- Das Framework vergibt weiterhin keine Rechte. Der erste kleine vertikale Slice ist separat implementiert: Performance Counters, Reset-Epoche, optionale Payloadpersistenz, begrenzte Retention, Größenstopp und schedulerneutraler Entry Point. Weitere Sammler, Rollups, Export und Agentjob-DDL bleiben getrennte Schritte.
 - Maßgeblicher Detailvertrag: `Documentation/Architecture/Snapshot_Baseline_Package_Contract.md`.

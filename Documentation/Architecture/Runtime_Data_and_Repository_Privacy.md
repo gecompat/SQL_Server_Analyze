@@ -143,7 +143,7 @@ Die Entscheidung ist erfüllt, wenn:
 - keine reale Laufzeitausgabe als Repository-, Test-, Dokumentations- oder Lieferinhalt eingecheckt wird,
 - Code, Kommentare und Dokumentation keine aus Hardcopys, Screenshots, Chats, Uploads oder realen Umgebungen übernommenen internen Namen oder Strukturen enthalten,
 - Beispiele ausschließlich eindeutig synthetische, generische Werte ohne Nachbildung realer interner Strukturen enthalten,
-- Persistenz- und Exportfunktionen einen dokumentierten Datenschutz-, Berechtigungs-, Retention- und Löschvertrag besitzen; SC-023 erfüllt den Architekturentscheid, bleibt aber noch unimplementiert,
+- Persistenz- und Exportfunktionen einen dokumentierten Datenschutz-, Berechtigungs-, Retention- und Löschvertrag besitzen; der erste SC-023-Slice ist separat implementiert und bleibt bis zur grünen Drei-Versionen-Matrix `IMPLEMENTED_PENDING_ACTIONS_GATE`,
 - ein uneindeutiger Datenfund die Fragepflicht auslöst,
 - die Prüfung keine sensitiven Werte selbst in Auditmeldungen vervielfältigt.
 

@@ -1,0 +1,210 @@
+name: Snapshot baseline release gate
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/snapshot-baseline-release-gate.yml'
+      - 'Code/10_SnapshotBaseline/**'
+      - 'Code/Install/Install_SnapshotBaseline_*.sql'
+      - 'Code/Tests/Integration/*_SnapshotBaseline_*'
+      - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
+      - 'Documentation/**'
+      - 'Metadata/**'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/snapshot-baseline-release-gate.yml'
+      - 'Code/10_SnapshotBaseline/**'
+      - 'Code/Install/Install_SnapshotBaseline_*.sql'
+      - 'Code/Tests/Integration/*_SnapshotBaseline_*'
+      - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
+      - 'Documentation/**'
+      - 'Metadata/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: snapshot-baseline-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  runtime:
+    name: SQL Server ${{ matrix.version }} snapshot baseline
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - version: '2019'
+            major: '15'
+            compatibility: '150'
+            image: 'mcr.microsoft.com/mssql/server:2019-latest'
+            container: 'sqlserver-snapshot-2019'
+          - version: '2022'
+            major: '16'
+            compatibility: '160'
+            image: 'mcr.microsoft.com/mssql/server:2022-latest'
+            container: 'sqlserver-snapshot-2022'
+          - version: '2025'
+            major: '17'
+            compatibility: '170'
+            image: 'mcr.microsoft.com/mssql/server:2025-latest'
+            container: 'sqlserver-snapshot-2025'
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate static package contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py --repository-root . --self-test
+          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py --repository-root .
+          pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1 -RepositoryRoot .
+          python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
+          python3 ./Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root .
+
+      - name: Prepare isolated SQL files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R Code "$RUNNER_TEMP/Code"
+          find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
+            | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
+
+      - name: Generate ephemeral SQL credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$password"
+          echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Start SQL Server
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull --quiet "${{ matrix.image }}" >/dev/null
+          image_digest=$(docker image inspect --format='{{index .RepoDigests 0}}' "${{ matrix.image }}")
+          if [[ ! "$image_digest" =~ ^mcr\.microsoft\.com/mssql/server@sha256:[0-9a-f]{64}$ ]]; then
+            echo 'SC023_IMAGE_DIGEST_INVALID'
+            exit 1
+          fi
+          docker run --name "${{ matrix.container }}" --detach \
+            --env ACCEPT_EULA=Y --env MSSQL_PID=Developer \
+            --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --volume "$RUNNER_TEMP/Code:/work/Code:ro" "$image_digest" >/dev/null
+
+      - name: Wait for readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          sqlcmd_path=''
+          for attempt in $(seq 1 120); do
+            sqlcmd_path=$(docker exec "${{ matrix.container }}" bash -lc \
+              "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" || true)
+            if [ -n "$sqlcmd_path" ] && docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              "${{ matrix.container }}" "$sqlcmd_path" -S localhost -U sa -C -b -Q \
+              "IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>${{ matrix.major }} THROW 53750,N'SC023_VERSION_NOT_READY',1;" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo 'SC023_SQLSERVER_NOT_READY'
+            exit 1
+          fi
+          echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+
+      - name: Create synthetic databases
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" "${{ matrix.container }}" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL=${{ matrix.compatibility }}; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET RECOVERY SIMPLE; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET READ_COMMITTED_SNAPSHOT ON;" >/dev/null
+
+      - name: Reject a system-database snapshot target
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/sc023-system-target-${{ matrix.version }}.log"
+          if docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" --workdir /work/Code/Install \
+            "${{ matrix.container }}" "$SQLCMD_PATH" -S localhost -U sa -C -b -d master \
+            -i Install_SnapshotBaseline_Target.sql >"$log" 2>&1; then
+            echo 'SC023_SYSTEM_TARGET_ACCEPTED'
+            exit 1
+          fi
+          grep -q 'Msg 51031' "$log"
+
+      - name: Install stateless framework
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/sc023-core-${{ matrix.version }}.log"
+          if ! docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" --workdir /work/Code/Install \
+            "${{ matrix.container }}" "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql >"$log" 2>&1; then
+            grep -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$log" | tail -n 80 || true
+            exit 1
+          fi
+
+      - name: Run snapshot runtime contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          log="$RUNNER_TEMP/sc023-runtime-${{ matrix.version }}.log"
+          if ! docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" --workdir /work/Code/Install \
+            "${{ matrix.container }}" "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i ../Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql >"$log" 2>&1; then
+            echo 'SC023_RUNTIME_FAILED'
+            grep -E 'SC023_[A-Z0-9_]+|Msg [0-9]+|Sqlcmd: Error|Error:' "$log" | tail -n 120 || true
+            exit 1
+          fi
+          grep -q 'SC023_RUNTIME_CONTRACT PASS' "$log"
+
+      - name: Run two-session concurrency contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          holder_log="$RUNNER_TEMP/sc023-holder-${{ matrix.version }}.log"
+          assert_log="$RUNNER_TEMP/sc023-concurrency-${{ matrix.version }}.log"
+          docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" --workdir /work/Code/Install \
+            "${{ matrix.container }}" "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i ../Tests/Integration/196_SnapshotBaseline_Concurrency_Holder.sql >"$holder_log" 2>&1 &
+          holder_pid=$!
+          sleep 2
+          if ! docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" --workdir /work/Code/Install \
+            "${{ matrix.container }}" "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i ../Tests/Integration/197_SnapshotBaseline_Concurrency_Assert.sql >"$assert_log" 2>&1; then
+            echo 'SC023_CONCURRENCY_FAILED'
+            grep -E 'SC023_[A-Z0-9_]+|Msg [0-9]+|Sqlcmd: Error|Error:' "$assert_log" | tail -n 80 || true
+            wait "$holder_pid" || true
+            exit 1
+          fi
+          wait "$holder_pid"
+          grep -q 'SC023_CONCURRENCY_CONTRACT PASS' "$assert_log"
+
+      - name: Record generic success summary
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo "## SQL Server ${{ matrix.version }} SC-023"
+            echo '- Separate installers and stateless-core boundary: passed'
+            echo '- Collection, reset epoch, payload, idempotence, retention and budget: passed'
+            echo '- Two-session no-wait concurrency: passed'
+            echo '- Fixtures: synthetic only'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop SQL Server
+        if: always()
+        shell: bash
+        run: docker rm --force "${{ matrix.container }}" >/dev/null 2>&1 || true

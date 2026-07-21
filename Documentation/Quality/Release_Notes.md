@@ -128,7 +128,15 @@
 - Typisierte Konfiguration, Sammler- und Retentionrichtlinien ersetzen ein verpflichtendes allgemeines Key-Value-Modell. Normalisierte Metriken werden mit vollständigen versionierten Payloads kombiniert.
 - Granularität, Schedulervertrag, laufinterne Quellenwiederverwendung, Reset-Epochen, Partialität, Retention, Größenbudget, Purge, Löschung und Exportdefaults sind verbindlich dokumentiert.
 - Die betriebliche Snapshot-Datenbank darf vollständige reale Frameworkausgaben speichern. Ausschließlich Repository-, GitHub-, Test-, Dokumentations- und Downloadartefakte bleiben auf synthetische Daten begrenzt.
-- SQL Server Agent ist der erste Scheduler; externe Scheduler verwenden später denselben fachlich neutralen Procedure-Einstieg. Ein anonymisierter Export bleibt ein separates Folgevorhaben.
+- MANUAL, EXTERNAL und SQL_AGENT verwenden denselben schedulerneutralen Procedure-Einstieg; das Paket erstellt selbst keinen Agentjob. Ein anonymisierter Export bleibt ein separates Folgevorhaben.
+
+## Stand 2026-07-21 – erster SC-023-Persistenz-Slice implementiert
+
+- Zwei getrennte, idempotente Installer halten `Install_All.sql` zustandslos und installieren die Framework- beziehungsweise Zielseite nur nach ausdrücklicher Auswahl.
+- `USP_ConfigureSnapshotTarget`, `USP_RunSnapshotCollectionCycle` und `USP_PurgeSnapshotData` bilden Konfiguration, schedulerneutralen Lauf und begrenzte Retention ab; das Paket erstellt keine Datenbank, Rechte oder Agentjobs.
+- Genau ein Performance-Counter-Collector persistiert Raw- und interpretierte Samples mit UTC-, Partialitäts- und Reset-Epochenvertrag. Payloadpersistenz ist standardmäßig aus und bei Aktivierung verlustfrei komprimiert und gehasht.
+- No-wait-Applock, Due-Prüfung, child-first Batch-Purge und `PURGE_EXPIRED_THEN_STOP` verhindern parallele Doppelreads und das stille Löschen frischer Evidenz.
+- Der Stand bleibt bis zum grünen separaten SQL-Server-2019-/2022-/2025-Workflow `IMPLEMENTED_PENDING_ACTIONS_GATE`; alle Repositoryfixtures sind synthetisch.
 
 ## Stand 2026-07-19 – laufinterne Wiederverwendung von Analyseergebnissen
 
@@ -204,7 +212,7 @@
 - Die Regex-Matrix meldet konsistent zehn Verträge. Der statische Check ist nun ein eigenständiger Validator mit acht generischen Selbsttests, erkennt mehrzeilige Fehlformen und gibt bei einem Fund keinen Quellzeileninhalt aus.
 - Ein eigenes Actions-Gate erzwingt für neue Pull-Request- und Main-Commits exakt einzeilige Commit Messages, ohne historische Nachrichten umzuschreiben oder den Message-Inhalt in Fehlmeldungen auszugeben.
 - SQL Server 2025 meldet fehlendes `VIEW SERVER PERFORMANCE STATE` zusätzlich mit Fehler 371. Alle isolierten Berechtigungsfehler-Zuordnungen behandeln ihn kontrolliert als `DENIED_PERMISSION`; ein statischer Check schützt die vollständige Zuordnung.
-- SC-023 bis SC-025 besitzen sichere Repositoryverträge beziehungsweise ein externes Runbook; Persistenz, Fleet-Infrastruktur und echter Restore bleiben bis zu ausdrücklicher externer Autorisierung unimplementiert.
+- SC-023 besitzt inzwischen den separat installierbaren ersten Performance-Counter-Slice; weitere Sammler und Rollups bleiben offen. SC-024/SC-025 besitzen sichere Schnittstellenverträge beziehungsweise ein externes Runbook, benötigen aber weiterhin externe autorisierte Infrastruktur oder Ziele.
 
 ## Stand 2026-07-18 – Data-Capture-/Replikations-Deep-Dive `1.1.0-special.8`
 

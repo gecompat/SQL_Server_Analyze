@@ -224,7 +224,7 @@ Empfohlene Einstiegspunkte:
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
 - [Datenschutz- und Sicherheitsvertrag für Repositoryartefakte](./Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md)
-- [Vertrag für ein späteres Snapshot-/Baseline-Paket](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md)
+- [Vertrag und Betrieb des optionalen Snapshot-/Baseline-Pakets](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) ([Betriebsleitfaden](./Documentation/Operations/Snapshot_Baseline_Operations.md))
 - [Schnittstellenvertrag für eine spätere Fleet-Korrelation](./Documentation/Architecture/Fleet_Correlation_Contract.md)
 - [Externer Restore- und Hostnachweis](./Documentation/Quality/External_Restore_Host_Proof_Runbook.md)
 - [Gate für einzeilige Commit Messages](./Documentation/Quality/Commit_Message_Validation.md)
