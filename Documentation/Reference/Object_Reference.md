@@ -773,7 +773,7 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 | Aufgabe | Versioniert Paket und Zielschema und protokolliert den letzten Installerlauf. |
 | Schnittstelle | Persistente Tabelle mit 5 in der Quelle typisierten Spalten: `PackageCode`, `PackageVersion`, `SchemaVersion`, `InstalledAtUtc`, `LastInstallerRunUtc`. Schlüssel, Constraints und Defaults sind Bestandteil des Installationsskripts. |
 | Verwendung | Die Tabelle gehört zum optionalen Snapshot-/Baseline-Paket und wird ausschließlich von dessen Installations-, Collection- und Retentionpfaden verwaltet. Direkte DML ist kein unterstützter Betriebsweg. |
-| Last und Sperren | Persistenter Snapshot-Speicher. Collection erzeugt protokollierte Inserts; Retention löscht abgelaufene Zeilen child-first und begrenzt in Batches. Fremdschlüssel und Indizes bestimmen die kurzzeitigen Zeilen- und Schlüsselsperren. |
+| Last und Sperren | Kleine Paketmetadatentabelle. Der versionierte Installer aktualisiert genau die SC-023-Zeile; Betriebsprüfungen lesen sie punktuell. Dadurch entstehen nur kurze Schlüssel- und Zeilensperren, keine volumenabhängigen Scans. |
 | Vertrag | Persistenter interner Paketvertrag. Schemaänderungen erfolgen ausschließlich über den versionierten SC-023-Installer; außerhalb des Pakets besteht keine Kompatibilitätszusage. |
 
 ### `[snapshot].[RetentionPolicy]`
@@ -785,7 +785,7 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 | Aufgabe | Definiert typisierte Retention-, Batch- und Softbudgetgrenzen. |
 | Schnittstelle | Persistente Tabelle mit 11 in der Quelle typisierten Spalten: `RetentionPolicyCode`, `RawRetentionDays`, `PayloadRetentionDays`, `RollupRetentionDays`, `SoftBudgetMB`, `PurgeIntervalMinutes`, `PurgeBatchRows`, `BudgetAction`, `IsFrameworkDefault`, `SeedVersion`, `LastUpdatedUtc`. Schlüssel, Constraints und Defaults sind Bestandteil des Installationsskripts. |
 | Verwendung | Die Tabelle gehört zum optionalen Snapshot-/Baseline-Paket und wird ausschließlich von dessen Installations-, Collection- und Retentionpfaden verwaltet. Direkte DML ist kein unterstützter Betriebsweg. |
-| Last und Sperren | Persistenter Snapshot-Speicher. Collection erzeugt protokollierte Inserts; Retention löscht abgelaufene Zeilen child-first und begrenzt in Batches. Fremdschlüssel und Indizes bestimmen die kurzzeitigen Zeilen- und Schlüsselsperren. |
+| Last und Sperren | Kleine Policytabelle. Die öffentliche Konfiguration schreibt die ausgewählte Policy transaktional; Collection und Purge lesen wenige Zeilen. Die Last ist nicht von der Menge persistierter Samples abhängig. |
 | Vertrag | Persistenter interner Paketvertrag. Schemaänderungen erfolgen ausschließlich über den versionierten SC-023-Installer; außerhalb des Pakets besteht keine Kompatibilitätszusage. |
 
 ### `[snapshot].[CollectorPolicy]`
@@ -797,7 +797,7 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 | Aufgabe | Begrenzt Intervall, Zeilenumfang und optionales Payload je Collector. |
 | Schnittstelle | Persistente Tabelle mit 9 in der Quelle typisierten Spalten: `CollectorCode`, `IsEnabled`, `CollectionIntervalSeconds`, `MaxRows`, `PayloadEnabled`, `RetentionPolicyCode`, `IsFrameworkDefault`, `SeedVersion`, `LastUpdatedUtc`. Schlüssel, Constraints und Defaults sind Bestandteil des Installationsskripts. |
 | Verwendung | Die Tabelle gehört zum optionalen Snapshot-/Baseline-Paket und wird ausschließlich von dessen Installations-, Collection- und Retentionpfaden verwaltet. Direkte DML ist kein unterstützter Betriebsweg. |
-| Last und Sperren | Persistenter Snapshot-Speicher. Collection erzeugt protokollierte Inserts; Retention löscht abgelaufene Zeilen child-first und begrenzt in Batches. Fremdschlüssel und Indizes bestimmen die kurzzeitigen Zeilen- und Schlüsselsperren. |
+| Last und Sperren | Kleine Policytabelle. Die öffentliche Konfiguration aktualisiert Collectorgrenzen transaktional; der Scheduler liest die aktive Zeile. Sperren bleiben auf kurze Schlüssel- und Zeilenzugriffe begrenzt. |
 | Vertrag | Persistenter interner Paketvertrag. Schemaänderungen erfolgen ausschließlich über den versionierten SC-023-Installer; außerhalb des Pakets besteht keine Kompatibilitätszusage. |
 
 ### `[snapshot].[CaptureRun]`
@@ -845,7 +845,7 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 | Aufgabe | Versioniert Metrikcode, Datentyp, Einheit und Bedeutung. |
 | Schnittstelle | Persistente Tabelle mit 9 in der Quelle typisierten Spalten: `MetricDefinitionId`, `MetricCode`, `ValueType`, `Unit`, `ContractVersion`, `Description`, `IsFrameworkDefault`, `SeedVersion`, `LastUpdatedUtc`. Schlüssel, Constraints und Defaults sind Bestandteil des Installationsskripts. |
 | Verwendung | Die Tabelle gehört zum optionalen Snapshot-/Baseline-Paket und wird ausschließlich von dessen Installations-, Collection- und Retentionpfaden verwaltet. Direkte DML ist kein unterstützter Betriebsweg. |
-| Last und Sperren | Persistenter Snapshot-Speicher. Collection erzeugt protokollierte Inserts; Retention löscht abgelaufene Zeilen child-first und begrenzt in Batches. Fremdschlüssel und Indizes bestimmen die kurzzeitigen Zeilen- und Schlüsselsperren. |
+| Last und Sperren | Kleine, versionierte Definitions- und Seedtabelle. Der Installer pflegt Definitionen; Collection löst Metrik-IDs per indexiertem Lookup auf und verändert die Definitionen nicht. Die Last wächst nicht mit der Samplehistorie. |
 | Vertrag | Persistenter interner Paketvertrag. Schemaänderungen erfolgen ausschließlich über den versionierten SC-023-Installer; außerhalb des Pakets besteht keine Kompatibilitätszusage. |
 
 ### `[snapshot].[MetricSample]`
@@ -881,6 +881,6 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 | Aufgabe | Protokolliert ausschließlich technische Summen begrenzter Retentionläufe. |
 | Schnittstelle | Persistente Tabelle mit 15 in der Quelle typisierten Spalten: `PurgeRunId`, `StartedAtUtc`, `EndedAtUtc`, `StatusCode`, `BatchesExecuted`, `MetricRowsDeleted`, `PayloadRowsDeleted`, `ModuleRowsDeleted`, `CaptureRunsDeleted`, `ScopeRowsDeleted`, `UsedDataMbBefore`, `UsedDataMbAfter` sowie 3 weitere Spalten. Schlüssel, Constraints und Defaults sind Bestandteil des Installationsskripts. |
 | Verwendung | Die Tabelle gehört zum optionalen Snapshot-/Baseline-Paket und wird ausschließlich von dessen Installations-, Collection- und Retentionpfaden verwaltet. Direkte DML ist kein unterstützter Betriebsweg. |
-| Last und Sperren | Persistenter Snapshot-Speicher. Collection erzeugt protokollierte Inserts; Retention löscht abgelaufene Zeilen child-first und begrenzt in Batches. Fremdschlüssel und Indizes bestimmen die kurzzeitigen Zeilen- und Schlüsselsperren. |
+| Last und Sperren | Schreibt pro Retentionlauf eine technische Laufzeile und aktualisiert deren Summen. Diese Metadaten sind klein gegenüber den Sampletabellen; die eigentlichen Löschkosten entstehen in den child-first verarbeiteten Evidenztabellen. |
 | Vertrag | Persistenter interner Paketvertrag. Schemaänderungen erfolgen ausschließlich über den versionierten SC-023-Installer; außerhalb des Pakets besteht keine Kompatibilitätszusage. |
 
