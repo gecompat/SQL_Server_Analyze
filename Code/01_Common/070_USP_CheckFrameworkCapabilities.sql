@@ -30,7 +30,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CheckFrameworkCapabilities]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
@@ -152,6 +151,9 @@ BEGIN
         , [Description] nvarchar(1000) NULL
         , [DatabaseName] sysname NULL
     );
+
+    /* Eigene tempdb-/Tabellenvariablen-DDL bleibt außerhalb des No-Wait-Vertrags. */
+    SET LOCK_TIMEOUT 0;
 
     IF @OverallStatus = 'AVAILABLE'
     BEGIN
