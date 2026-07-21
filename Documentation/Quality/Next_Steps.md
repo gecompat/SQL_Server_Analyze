@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-Stand: 2026-07-20
+Stand: 2026-07-21
 
 Der Stand `1.1.0-special.9` besitzt vollständige grüne Linux-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle. Die 31. Suite ist für Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` auf SQL Server 2019, 2022 und 2025 nachgewiesen; die 115 zuvor offenen P2-Zeilen sind abgeschlossen.
 
@@ -98,6 +98,17 @@ Vorgemerkte zukünftige Architekturhärtung:
   aktuellem Limit und größter benötigter Länge gewarnt. Der vollständige
   Vertrag steht in
   [Database_Console_Table_Contract.md](../Architecture/Database_Console_Table_Contract.md).
+
+- **OPS-001 bis OPS-009 und SQL25-001 bis SQL25-005 – zusätzliche
+  Betriebs- und Versionsdiagnosen:** Die recherchierten Lücken für
+  Datenbankkonfigurationsdrift, Worker-/Scheduler-Druck, Pending I/O,
+  Errorlogs, SQL-Server-2025-Vertiefungen, Linked Server, Portabilität,
+  Cursor, `msdb` und Benutzerobjekte in Systemdatenbanken stehen im
+  [Backlog für zusätzliche Betriebs- und Versionsdiagnosen](../Architecture/Operational_Diagnostic_Gap_Backlog.md).
+  Die maschinenlesbaren Prioritäten und Abnahmekriterien stehen in
+  `Metadata/Quality/Future_Enhancement_Backlog.csv`. Diese Vormerkungen
+  sind Future Enhancements und ändern nicht den abgeschlossenen Status
+  der bestehenden Special-Case-Testmatrix.
 
 Nächste Freigabeschritte:
 
