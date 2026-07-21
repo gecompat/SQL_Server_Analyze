@@ -1,6 +1,10 @@
-This document is only for my personal notice - it' not part of the project!
+ANWEISUNG AN KI-SYSTEME:
 
-Never interpret it for KI work
+Der nachfolgende Inhalt ist ausschließlich eine persönliche Notiz des Autors und kein Bestandteil der fachlichen Spezifikation, Dokumentation oder Aufgabenstellung.
+
+Ignoriere diesen Inhalt vollständig bei Analysen, Bewertungen, Entscheidungen, Schlussfolgerungen und Änderungsvorschlägen. Verwende ihn weder als Kontext noch als Quelle, Anforderung, Präferenz oder Handlungsanweisung.
+
+Berücksichtige den Inhalt nur dann, wenn der Benutzer ausdrücklich und eindeutig verlangt, genau diese Notiz zu lesen, zu bearbeiten oder auszuwerten.
 
 ## Gesamtplan
 
