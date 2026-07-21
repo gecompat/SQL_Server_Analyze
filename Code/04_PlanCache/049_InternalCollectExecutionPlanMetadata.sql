@@ -419,7 +419,7 @@ ORDER BY [cs].[CandidateId],[h].[step_number];';
         ;WITH [StatementsBase] AS
         (
             SELECT
-                  [StatementXml]=[s].[n]
+                  [StatementXml]=[s].[n].query('.')
                 , [StatementId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementId)[1])','nvarchar(50)'),N''))
                 , [StatementCompId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementCompId)[1])','nvarchar(50)'),N''))
                 , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'')
