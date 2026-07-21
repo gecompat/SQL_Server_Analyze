@@ -71,6 +71,7 @@ jobs:
         run: |
           set -euo pipefail
           git checkout -- .bootstrap/integrate_execution_plan_analysis.py .bootstrap/patch_integration_schema.py
+          git checkout -- .github/workflows/documentation-validation.yml
           rm -f .bootstrap/integration-error.log
 
           git config user.name 'github-actions[bot]'
