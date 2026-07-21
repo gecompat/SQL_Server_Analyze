@@ -177,6 +177,8 @@ Code/
 
 Documentation/
 ├── Architecture/
+├── Analysis_Guides/
+├── Development/
 ├── Operations/
 ├── Quality/
 ├── Reference/
@@ -216,6 +218,7 @@ Empfohlene Einstiegspunkte:
 - [Anforderungen und Entscheidungen](./Documentation/Requirements/Requirements_and_Decisions.md)
 - [Installation](./Documentation/Reference/Installation.md)
 - [Procedure-Referenz](./Documentation/Reference/Procedure_Reference.md)
+- [Referenz der unterstützenden Frameworkobjekte](./Documentation/Reference/Object_Reference.md)
 - [Spezialfallmodule: Evidenz, Kosten und Grenzen](./Documentation/Architecture/Special_Case_Modules.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)

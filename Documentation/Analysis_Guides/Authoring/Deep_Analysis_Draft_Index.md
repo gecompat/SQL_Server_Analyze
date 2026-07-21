@@ -3,7 +3,7 @@
 **Stand:** 20. Juli 2026<br>
 **Status:** Index des integrierten Authoring-Archivs; nicht kanonisch<br>
 **Historische Research-Abdeckung:** 84 Procedures<br>
-**Fachliche Tiefenprüfung nach Qualitätsvertrag v2:** 85 von 85 Procedure-Seiten
+**Fachliche Tiefenprüfung nach Qualitätsvertrag v2:** 90 von 90 Procedure-Seiten
 
 ## Zweck und Aussagegrenze
 
@@ -29,14 +29,14 @@ Für die Nutzung gelten [Technical_Foundations.md](../Technical_Foundations.md) 
 
 Jede der 84 Research-Sections besitzt Leitfrage, technischen Hintergrund, Datenkette, Zeit-/Scope-Modell, Bewertung und Gegenprobe, typische Fehlinterpretation sowie Folgeanalyse. Diese Felder bilden eine Arbeitsgrundlage.
 
-Erst der Status `DEEP_REVIEWED` bestätigt zusätzlich den Abgleich der kanonischen Seite mit aktuellem T-SQL, sicheren Aufrufen, Resultsetvertrag, konkreter Leserichtung, synthetischen Beispielen, Primärquellen und vollständigem Kosten-/Grenzprofil. Diesen Status erfüllen alle 85 kanonischen [Procedure-Seiten](../Procedures/README.md); das [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv) hält Datum und Vertragsversion je Procedure fest. Die später hinzugekommene `USP_ServerVersionInformation` wurde direkt als kanonische, tief geprüfte Einzelseite erstellt und erweitert deshalb das historische 84er-Draftarchiv nicht rückwirkend.
+Erst der Status `DEEP_REVIEWED` bestätigt zusätzlich den Abgleich der kanonischen Seite mit aktuellem T-SQL, sicheren Aufrufen, Resultsetvertrag, konkreter Leserichtung, synthetischen Beispielen, Primärquellen und vollständigem Kosten-/Grenzprofil. Diesen Status erfüllen alle 90 kanonischen [Procedure-Seiten](../Procedures/README.md); das [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv) hält Datum und Vertragsversion je Procedure fest. Später ergänzte öffentliche Procedures wurden unmittelbar als kanonische, tief geprüfte Einzelseiten erstellt; das historische 84er-Draftarchiv wird dadurch nicht rückwirkend erweitert.
 
 ## Validierter Stand
 
-- aktuelles öffentliches Inventory: 85 Procedures,
+- aktuelles öffentliches Inventory: 90 Procedures,
 - Familien-Research-Sections: 84,
-- kanonische Procedure-Seiten: 85 `DEEP_REVIEWED`,
-- fachlich tief geprüfte Procedure-Seiten: 85,
+- kanonische Procedure-Seiten: 90 `DEEP_REVIEWED`,
+- fachlich tief geprüfte Procedure-Seiten: 90,
 - Primärquellen für Engine-, Versions- und Berechtigungsaussagen: Microsoft Learn; ausgewählte kanonische Seiten ergänzen praxisnahe externe Vertiefungen mit ausdrücklich begrenztem Evidenzrang,
 - Beispiele verwenden keine realen Laufzeit-, Benutzer-, Firmen- oder Umgebungswerte,
 - die Dokumentationsintegration ändert kein T-SQL-Runtimeverhalten.

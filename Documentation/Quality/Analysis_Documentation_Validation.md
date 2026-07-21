@@ -33,7 +33,8 @@ Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
 ## Geprüft wird
 
 - Referenzmenge gegen Procedure-Seiten,
-- erwartete Gesamtzahl von 85 Procedures in Referenz, kanonischen SQL-Quellen und Einzelseiten,
+- die aus `Metadata/Inventory/Objects.csv` abgeleitete öffentliche Proceduremenge in Referenz, kanonischen SQL-Quellen, Einzelseiten und Aufrufkatalog,
+- jede inventarisierte View, TVF, interne Procedure und Tabelle mit Abschnitt und kanonischem Quellpfad in `Reference/Object_Reference.md`,
 - Existenz der in der Referenz genannten SQL-Quelldateien,
 - Procedure-Name der Quelldatei,
 - Parameterreihenfolge, Parameternamen, Datentypen, Defaults und `OUTPUT`-Kennzeichnung gegen die kanonische SQL-Signatur,
@@ -43,7 +44,7 @@ Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
 - Links auf das gemeinsame Zeit-/Evidenzmodell und die technischen Familienbeschreibungen,
 - interne relative Markdownziele,
 - interne Markdown-Anker,
-- exakte Übereinstimmung des Review-Manifests mit den 85 Referenz-Procedures,
+- exakte Übereinstimmung des Review-Manifests mit den inventarisierten Referenz-Procedures,
 - zulässige Status-/Versionskombinationen für `BASELINE` und `DEEP_REVIEWED`,
 - für tief geprüfte Seiten die erweiterten Pflichtabschnitte, vollständigen Kostendimensionen, Primärquellen, synthetische Beispiele und substanzielle Mindesttiefe,
 - syntaktisch gültige externe HTTP-/HTTPS-Links in der gesamten Dokumentation,

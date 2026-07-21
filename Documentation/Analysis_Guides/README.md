@@ -1,7 +1,7 @@
 # Analysehandbuch für SQL_Server_Analyze
 
 **Stand:** 20. Juli 2026
-**Geltungsbereich:** 85 Procedures
+**Geltungsbereich:** 90 öffentliche Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
 ## Empfohlener Einstieg
@@ -14,7 +14,7 @@
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
-Die 85 Seiten sind strukturell vollständig und nach dem [Qualitätsvertrag](Documentation_Quality_Contract.md) fachlich `DEEP_REVIEWED`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) bleiben Kalibrierungsfälle für Live-Snapshot, physischen Scan und Datei-/XML-Analyse.
+Die 90 Seiten sind strukturell vollständig und nach dem [Qualitätsvertrag](Documentation_Quality_Contract.md) fachlich `DEEP_REVIEWED`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) bleiben Kalibrierungsfälle für Live-Snapshot, physischen Scan und Datei-/XML-Analyse.
 
 Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_Concept.md) ist kein Anwenderhandbuch.
 
@@ -50,15 +50,15 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Bereich | Dokument | Procedures |
 |---|---|---:|
 | Common | [01_Common.md](01_Common.md) | 4 |
-| Current State | [02_Current_State.md](02_Current_State.md) | 10 |
+| Current State | [02_Current_State.md](02_Current_State.md) | 11 |
 | Object und Index | [03_Object_Index.md](03_Object_Index.md) | 11 |
-| Plan Cache | [04_Plan_Cache.md](04_Plan_Cache.md) | 6 |
+| Plan Cache | [04_Plan_Cache.md](04_Plan_Cache.md) | 8 |
 | Query Store | [05_Query_Store.md](05_Query_Store.md) | 9 |
 | Extended Events | [06_Extended_Events.md](06_Extended_Events.md) | 6 |
 | Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 13 |
-| Server Health | [08_Server_Health.md](08_Server_Health.md) | 17 |
+| Server Health | [08_Server_Health.md](08_Server_Health.md) | 19 |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 9 |
-| **Gesamt** | | **85** |
+| **Gesamt** | | **90** |
 
 ## Schnellwahl nach Symptom
 
