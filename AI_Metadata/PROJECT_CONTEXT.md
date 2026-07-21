@@ -37,6 +37,14 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Actions führen Installer, 34-Suite-Release-Gate und synthetische Berechtigungsmatrix versionshart auf SQL Server 2019, 2022 und 2025 aus.
 - Maßgebliche Runtime-Evidenz wird commitbezogen in `Metadata/Quality/Test_Matrix.csv` und `Metadata/Quality/Release_Gate_Evidence.csv` verknüpft.
 
+## GitHub-Veröffentlichung aus ChatGPT-Laufzeiten
+
+- Scheitert ein direkter HTTPS-Push nachweislich ausschließlich an fehlenden GitHub-Credentials der Laufzeit, darf derselbe Push nicht erneut versucht werden.
+- Vor dem Connector-Fallback muss der aktuelle Stand von Remote-`main` neu gelesen und der vollständige beabsichtigte Änderungsumfang gegen diese Basis geprüft werden.
+- Der unveränderte, bereits geprüfte Commit-Tree wird über den GitHub Connector ohne Force-Push auf einem neuen, eindeutig benannten Branch veröffentlicht; `main` wird dabei niemals direkt aktualisiert und ein bestehender Branch nicht überschrieben.
+- Aus diesem Branch wird ein Draft-PR gegen den neu geprüften Stand von `main` erstellt.
+- Ist der freigegebene Umfang auf `AI_Metadata/` beschränkt, dürfen ausschließlich Pfade unterhalb dieses Ordners enthalten sein. Sobald eine Änderung außerhalb von `AI_Metadata/` vorhanden ist oder nicht sicher ausgeschlossen werden kann, darf weder veröffentlicht noch ein PR erstellt werden; die Verarbeitung wird mit einer Scope-Meldung beendet.
+
 ## Datenschutz und Portabilität
 
 - Das Datenschutz-Liefergate gilt ausschließlich für Repository-, GitHub- und Downloadartefakte. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE- und JSON-Ausgaben werden deshalb weder anonymisiert noch fachlich reduziert.
