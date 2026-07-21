@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.TVF_ExecutionPlanColumnReferences
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-07-21
 Typ          : Inline Table-valued Function
 Zweck        : Normalisiert Spaltenrollen aus Showplan-XML für zielgerichtete
@@ -51,7 +51,8 @@ RETURN
     [Roles] AS
     (
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               CONVERT(varchar(40),'SEEK') [ColumnUsage],CONVERT(varchar(80),'SEEK_PREDICATE') [ExpressionContext],[c].[n].query('.')
+               CONVERT(varchar(40),'SEEK') [ColumnUsage],CONVERT(varchar(80),'SEEK_PREDICATE') [ExpressionContext],
+               [ColumnReferenceXml]=[c].[n].query('.')
         FROM [RelOps]
         CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="SeekPredicates"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
@@ -90,11 +91,11 @@ RETURN
         SELECT
               [StatementOrdinal],[StatementId],[StatementCompId],[NodeId]
             , [ColumnUsage],[ExpressionContext]
-            , [DatabaseRaw]=NULLIF([n].value('string((@Database)[1])','nvarchar(256)'),N'')
-            , [SchemaRaw]=NULLIF([n].value('string((@Schema)[1])','nvarchar(256)'),N'')
-            , [ObjectRaw]=NULLIF([n].value('string((@Table)[1])','nvarchar(256)'),N'')
-            , [AliasRaw]=NULLIF([n].value('string((@Alias)[1])','nvarchar(256)'),N'')
-            , [ColumnRaw]=NULLIF([n].value('string((@Column)[1])','nvarchar(256)'),N'')
+            , [DatabaseRaw]=NULLIF([ColumnReferenceXml].value('string((@Database)[1])','nvarchar(256)'),N'')
+            , [SchemaRaw]=NULLIF([ColumnReferenceXml].value('string((@Schema)[1])','nvarchar(256)'),N'')
+            , [ObjectRaw]=NULLIF([ColumnReferenceXml].value('string((@Table)[1])','nvarchar(256)'),N'')
+            , [AliasRaw]=NULLIF([ColumnReferenceXml].value('string((@Alias)[1])','nvarchar(256)'),N'')
+            , [ColumnRaw]=NULLIF([ColumnReferenceXml].value('string((@Column)[1])','nvarchar(256)'),N'')
         FROM [Roles]
     )
     SELECT
