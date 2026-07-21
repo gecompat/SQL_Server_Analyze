@@ -227,7 +227,7 @@ Empfohlene Einstiegspunkte:
 - [Vertrag und Betrieb des optionalen Snapshot-/Baseline-Pakets](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) ([Betriebsleitfaden](./Documentation/Operations/Snapshot_Baseline_Operations.md))
 - [Schnittstellenvertrag für eine spätere Fleet-Korrelation](./Documentation/Architecture/Fleet_Correlation_Contract.md)
 - [Externer Restore- und Hostnachweis](./Documentation/Quality/External_Restore_Host_Proof_Runbook.md)
-- [Gate für einzeilige Commit Messages](./Documentation/Quality/Commit_Message_Validation.md)
+- [Kontextabhängiger Commit-Message-Vertrag](./Documentation/Quality/Commit_Message_Validation.md)
 - [Nächste Arbeitsschritte](./Documentation/Quality/Next_Steps.md)
 - [Bekannte Restpunkte](./Documentation/Quality/Known_Issues.md)
 - [Tiefenanalyse fehlender Auswertungen und Spezialfälle](./Documentation/Research/Special_Case_Gap_Analysis.md)

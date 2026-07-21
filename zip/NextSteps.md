@@ -180,7 +180,7 @@ Für jede Welle:
 * höchstens ein aktiver kurzlebiger Implementierungsbranch;
 * nach grünem Merge sofort löschen;
 * keine parallelen Langzeitbranches;
-* kleine vertikale Commits mit exakt einzeiliger Commit Message;
+* kleine vertikale Commits; bei manueller Übernahme über ein downloadbares ZIP mit exakt einzeiliger Commit Message, bei direktem KI-Commit optional mit mehrzeiligem Body;
 * Code, Installer, Inventare, Tests, Beispiele und Dokumentation gemeinsam aktualisieren;
 * vor jedem Schreib- oder Git-Vorgang manuelle Datenschutzprüfung;
 * keine realen Resultsets oder Umgebungsinformationen als Testevidenz speichern;
