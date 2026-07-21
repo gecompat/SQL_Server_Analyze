@@ -16,8 +16,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
-  issues: write
 
 jobs:
   fix:
@@ -39,29 +37,10 @@ jobs:
         run: python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
 
       - name: Validate procedure documentation
-        id: documentation
-        continue-on-error: true
         shell: pwsh
-        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 > /tmp/documentation.log 2>&1
-
-      - name: Report documentation contract failure
-        if: steps.documentation.outcome == 'failure'
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const fs = require('fs');
-            const text = fs.existsSync('/tmp/documentation.log') ? fs.readFileSync('/tmp/documentation.log', 'utf8') : 'No diagnostic file was created.';
-            const tail = text.split(/\r?\n/).slice(-80).join('\n');
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: 27,
-              body: `Execution-plan contract synchronization still has documentation errors:\n\n\`\`\`text\n${tail}\n\`\`\``
-            });
-            core.setFailed('Documentation contract still has errors.');
+        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 
       - name: Commit SQL and contract fixes
-        if: steps.documentation.outcome == 'success'
         shell: bash
         run: |
           set -euo pipefail
