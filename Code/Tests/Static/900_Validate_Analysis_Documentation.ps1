@@ -19,6 +19,8 @@ $callCatalogPath = Join-Path $RepositoryRoot 'Documentation/Reference/Call_Catal
 $objectInventoryPath = Join-Path $RepositoryRoot 'Metadata/Inventory/Objects.csv'
 $resultSetsPath = Join-Path $RepositoryRoot 'Metadata/Inventory/ResultSets.csv'
 $reviewManifestPath = Join-Path $RepositoryRoot 'Metadata/Quality/Analysis_Documentation_Review.csv'
+$rootReadmePath = Join-Path $RepositoryRoot 'README.md'
+$documentationReadmePath = Join-Path $RepositoryRoot 'Documentation/README.md'
 $codeRoot = Join-Path $RepositoryRoot 'Code'
 $requiredHeadings = @(
     '## Eine Zeile bedeutet',
@@ -176,7 +178,7 @@ function Get-MarkdownAnchors {
     return @($anchors)
 }
 
-foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $objectReferencePath, $callCatalogPath, $objectInventoryPath, $resultSetsPath, $reviewManifestPath)) {
+foreach ($requiredPath in @($referencePath, $objectIndexPath, $technicalFoundationsPath, $objectReferencePath, $callCatalogPath, $objectInventoryPath, $resultSetsPath, $reviewManifestPath, $rootReadmePath, $documentationReadmePath)) {
     if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
         throw "Required documentation file not found: $requiredPath"
     }
@@ -653,8 +655,11 @@ foreach ($file in $pageFiles) {
     }
 }
 
-$allMarkdown = @(Get-ChildItem -LiteralPath (Join-Path $RepositoryRoot 'Documentation') -Filter '*.md' -File -Recurse)
-foreach ($file in $allMarkdown) {
+$documentationRoot = [System.IO.Path]::GetFullPath((Join-Path $RepositoryRoot 'Documentation'))
+$allMarkdown = @(Get-ChildItem -LiteralPath $documentationRoot -Filter '*.md' -File -Recurse)
+$linkedMarkdownPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+$navigationSources = @($allMarkdown) + @(Get-Item -LiteralPath $rootReadmePath)
+foreach ($file in $navigationSources) {
     $text = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
     $relativeLinks = [regex]::Matches(
         $text,
@@ -681,6 +686,15 @@ foreach ($file in $allMarkdown) {
             continue
         }
 
+        $resolvedFullPath = [System.IO.Path]::GetFullPath($resolved)
+        $sourceFullPath = [System.IO.Path]::GetFullPath($file.FullName)
+        if ((Test-Path -LiteralPath $resolved -PathType Leaf) -and
+            [System.IO.Path]::GetExtension($resolved).Equals('.md', [System.StringComparison]::OrdinalIgnoreCase) -and
+            $resolvedFullPath.StartsWith($documentationRoot + [System.IO.Path]::DirectorySeparatorChar, [System.StringComparison]::OrdinalIgnoreCase) -and
+            -not $resolvedFullPath.Equals($sourceFullPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+            [void]$linkedMarkdownPaths.Add($resolvedFullPath)
+        }
+
         if (-not [string]::IsNullOrWhiteSpace($fragment) -and
             (Test-Path -LiteralPath $resolved -PathType Leaf) -and
             [System.IO.Path]::GetExtension($resolved).Equals('.md', [System.StringComparison]::OrdinalIgnoreCase)) {
@@ -690,6 +704,22 @@ foreach ($file in $allMarkdown) {
             }
         }
     }
+}
+
+foreach ($file in $allMarkdown) {
+    if (-not $linkedMarkdownPaths.Contains([System.IO.Path]::GetFullPath($file.FullName))) {
+        $relativePath = [System.IO.Path]::GetRelativePath($RepositoryRoot, $file.FullName)
+        $errors.Add("Documentation page has no inbound Markdown link: $relativePath")
+    }
+}
+
+$documentationReadmeText = Get-Content -LiteralPath $documentationReadmePath -Raw -Encoding UTF8
+$plainNavigationPaths = [regex]::Matches(
+    $documentationReadmeText,
+    '(?m)^\s*[-*]\s+`(?<Path>(?:Documentation|Metadata)/[^`]+\.(?:md|csv|json))`\s*$'
+)
+foreach ($plainNavigationPath in $plainNavigationPaths) {
+    $errors.Add("Documentation README contains a non-clickable file path: $($plainNavigationPath.Groups['Path'].Value)")
 }
 
 Write-Host "Referenced procedures:      $($referenceNames.Count)"

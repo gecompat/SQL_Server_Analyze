@@ -44,6 +44,8 @@ Der Workflow benötigt nur lesenden Zugriff auf Repositoryinhalte.
 - Links auf das gemeinsame Zeit-/Evidenzmodell und die technischen Familienbeschreibungen,
 - interne relative Markdownziele,
 - interne Markdown-Anker,
+- mindestens einen eingehenden Link für jede Markdown-Seite unter `Documentation/` aus einer anderen Dokumentationsseite oder dem Root-README,
+- anklickbare Datei-Einstiege in `Documentation/README.md` anstelle nicht verlinkter Markdown-, CSV- oder JSON-Pfade,
 - exakte Übereinstimmung des Review-Manifests mit den inventarisierten Referenz-Procedures,
 - zulässige Status-/Versionskombinationen für `BASELINE` und `DEEP_REVIEWED`,
 - für tief geprüfte Seiten die erweiterten Pflichtabschnitte, vollständigen Kostendimensionen, Primärquellen, synthetische Beispiele und substanzielle Mindesttiefe,
