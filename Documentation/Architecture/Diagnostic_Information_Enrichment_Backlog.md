@@ -1,8 +1,12 @@
 # Zukunftsvertrag für zusätzliche Diagnoseinformationen
 
-Stand: 2026-07-20
-Status: `BACKLOG_RESEARCHED_NOT_IMPLEMENTED`
+Stand: 2026-07-21
+Status: `PARTIALLY_IMPLEMENTED_ACTIONS_GATE`
 Backlog: `DIAG-001` bis `DIAG-007`
+
+Umgesetzt und auf SQL Server 2019, 2022 und 2025 nachgewiesen sind
+`DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007`. Offen bleiben
+`DIAG-003` bis `DIAG-005`.
 
 ## Ziel
 
@@ -21,6 +25,10 @@ prüfen. Neue Procedures dürfen diese Quellen in einem Overview- oder
 Exportaufruf nicht erneut lesen.
 
 ## DIAG-001: Serverversion, Build, CU und Lifecycle
+
+Status: `IMPLEMENTED_ACTIONS_GATE` durch
+`monitor.USP_ServerVersionInformation`, `monitor.SqlServerBuildCatalog` und
+`monitor.SqlServerLifecycleCatalog`.
 
 Eine leichte Procedure, Arbeitstitel `monitor.USP_ServerVersionInformation`,
 soll ohne High-Impact-Gate die technische Instanzversion und eine offline
@@ -92,6 +100,10 @@ Vorgesehene benannte Resultsets:
 - `warnings`.
 
 ## DIAG-002: Native strukturierte Datentypen erhalten
+
+Status: `IMPLEMENTED_ACTIONS_GATE` für PlanDetails, Query Store, Deadlocks,
+Extended Events und kritische Engine-Ereignisse; native TABLE-Schemata und
+Fallbackstatus werden durch den Welle-1-Vertrag geschützt.
 
 XML-Daten müssen als SQL-Datentyp `xml` materialisiert und ausgegeben werden,
 wenn die Quelle valides XML liefert. Dies gilt insbesondere für Showplan XML,
@@ -239,6 +251,9 @@ dieser Pfad ist nur ad hoc mit restriktiven Prädikaten zulässig.
 
 ## DIAG-006: Provenienz, Zeitbezug und Evidenzgrenzen
 
+Status: `IMPLEMENTED_ACTIONS_GATE` als verbindlicher Querschnittsvertrag für
+neue und in Welle 1 migrierte Resultsets.
+
 Jede neue Information benötigt, soweit fachlich relevant:
 
 - `SourceType` und konkretes Quellobjekt;
@@ -256,6 +271,10 @@ berechtigt, nicht unterstützt, evictet, zu groß, zu tief oder ungültig zu
 unterscheiden.
 
 ## DIAG-007: Ausgabe-, Inventar- und Testvertrag
+
+Status: `IMPLEMENTED_ACTIONS_GATE` für die in Welle 1 umgesetzten Resultsets.
+Parameter- und weitere Planresultsets aus `DIAG-003` bis `DIAG-005` müssen
+diesen Vertrag bei ihrer späteren Umsetzung ebenfalls erfüllen.
 
 Vor einer Umsetzung werden alle neuen Resultsets semantisch benannt und in
 `Metadata/Inventory/ResultSets.csv` mit stabilen Schemas erfasst. TABLE-Ziele

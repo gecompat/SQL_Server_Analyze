@@ -1,6 +1,6 @@
 # Testablauf für das Release-Gate
 
-**Stand:** 18. Juli 2026  
+**Stand:** 21. Juli 2026
 **Runner:** `Code/Tests/Run_Release_Gate.sql`  
 **Zielstatus vor Ausführung:** `NOT_EXECUTED`
 
@@ -152,7 +152,7 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende 34 Suiten aus
 23. P2-Maintenance-Laufzeitvertrag
 24. TABLE-Ausgabevertrag
 25. Ausgabe-Pilotvertrag
-26. Frameworkweiter Ausgabevertrag
+26. Frameworkweiter Ausgabevertrag einschließlich `190_Wave1_Output_Xml_Version_Runtime_Contract.sql` als Begleitvertrag für Unicode, native XML, Provenienz und Offline-Versionsbewertung
 27. Common
 28. Current State
 29. Object und Index

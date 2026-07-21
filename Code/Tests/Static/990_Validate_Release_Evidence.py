@@ -28,6 +28,14 @@ CURRENT_DOCUMENTS = (
     "Documentation/Quality/Release_Notes.md",
     "Documentation/Quality/Test_Matrix.md",
 )
+WAVE1_SUITE = "WAVE1_OUTPUT_XML_VERSION_RUNTIME"
+WAVE1_ENHANCEMENTS = {
+    "DIAG-001",
+    "DIAG-002",
+    "DIAG-006",
+    "DIAG-007",
+    "OUT-001",
+}
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -104,6 +112,41 @@ def main() -> int:
         if any(row[field] != value for field, value in expected.items()):
             fail("RELEASE_GATE_DETAIL", target)
 
+    wave1_rows = {
+        row["TargetId"]: row
+        for row in detail
+        if row["TargetId"] in TARGETS and row["SuiteId"] == WAVE1_SUITE
+    }
+    if set(wave1_rows) != set(TARGETS):
+        fail("WAVE1_TARGET_SET", str(detail_path.relative_to(root)))
+    for target, row in wave1_rows.items():
+        canonical = current[target]
+        expected = {
+            "CommitSha": canonical["CommitSha"],
+            "TestedAtUtc": canonical["TestedAtUtc"],
+            "EvidenceReference": canonical["EvidenceReference"],
+            "TestStatus": "PASS",
+            "EvidenceStatus": "INDEPENDENTLY_VERIFIED",
+            "LimitationCode": "ACTIONS_SYNTHETIC_WAVE1_CONTRACT",
+        }
+        if any(row[field] != value for field, value in expected.items()):
+            fail("WAVE1_DETAIL", target)
+
+    backlog_path = root / "Metadata/Quality/Future_Enhancement_Backlog.csv"
+    backlog = read_csv(backlog_path)
+    wave1_backlog = {
+        row["EnhancementId"]: row
+        for row in backlog
+        if row["EnhancementId"] in WAVE1_ENHANCEMENTS
+    }
+    if set(wave1_backlog) != WAVE1_ENHANCEMENTS:
+        fail("WAVE1_BACKLOG_SET", str(backlog_path.relative_to(root)))
+    if any(
+        row["ImplementationStatus"] != "IMPLEMENTED_ACTIONS_GATE"
+        for row in wave1_backlog.values()
+    ):
+        fail("WAVE1_BACKLOG_STATUS", str(backlog_path.relative_to(root)))
+
     audit_path = root / "Metadata/Quality/Special_Case_Release_Audit.json"
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     documentation = audit.get("testDocumentation", {})
@@ -122,7 +165,7 @@ def main() -> int:
 
     print(
         "Canonical release evidence validation passed: "
-        "targets=3 suites=34 p0=17 p1=40 p2=124 findings=0"
+        "targets=3 suites=34 wave1=5 p0=17 p1=40 p2=124 findings=0"
     )
     return 0
 
