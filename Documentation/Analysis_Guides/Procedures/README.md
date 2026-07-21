@@ -1,8 +1,8 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 21. Juli 2026<br>
-**Strukturelle Abdeckung:** 85 Procedures<br>
-**Tief geprüft nach Qualitätsvertrag v2:** 85 Procedures
+**Strukturelle Abdeckung:** 90 Procedures<br>
+**Tief geprüft nach Qualitätsvertrag v2:** 90 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 
 ## Reifegrad richtig lesen
 
-Alle 88 dokumentierten öffentlichen Procedures einschließlich der zwei gemeinsamen Vorbereitungs-APIs besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
+Alle 90 dokumentierten öffentlichen Procedures einschließlich der zwei gemeinsamen Vorbereitungs-APIs besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -44,6 +44,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_CurrentMemoryGrants](USP_CurrentMemoryGrants.md)
 - [USP_CurrentTempDB](USP_CurrentTempDB.md)
 - [USP_CurrentIO](USP_CurrentIO.md)
+- [USP_ErrorLogAnalysis](USP_ErrorLogAnalysis.md)
 - [USP_CurrentLog](USP_CurrentLog.md)
 - [USP_CurrentOverview](USP_CurrentOverview.md)
 
@@ -126,6 +127,8 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_InternalContentionAnalysis](USP_InternalContentionAnalysis.md)
 - [USP_BufferPoolAnalysis](USP_BufferPoolAnalysis.md)
 - [USP_DiagnosticFindings](USP_DiagnosticFindings.md)
+- [USP_WorkerPressureAnalysis](USP_WorkerPressureAnalysis.md)
+- [USP_DatabaseConfigurationAnalysis](USP_DatabaseConfigurationAnalysis.md)
 
 ## Versionsadaptive Spezialanalysen
 

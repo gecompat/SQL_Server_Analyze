@@ -1,6 +1,6 @@
 # Aufrufkatalog aller öffentlichen Funktionalitäten
 
-Stand: 2026-07-21 — 85 Procedures
+Stand: 2026-07-21 — 90 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -563,4 +563,34 @@ EXEC [monitor].[USP_CreateExecutionEvidenceJson]
     , @StatisticsTimeText = @ExampleStatisticsTimeText
     , @ResultSetArt = 'NONE'
     , @Json = @EvidenceJson OUTPUT;
+```
+
+## `[monitor].[USP_CreateExecutionEvidenceJson]`
+
+```sql
+EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe = 1;
+```
+
+## `[monitor].[USP_DatabaseConfigurationAnalysis]`
+
+```sql
+EXEC [monitor].[USP_DatabaseConfigurationAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ErrorLogAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ErrorLogAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExecutionPlanAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_WorkerPressureAnalysis]`
+
+```sql
+EXEC [monitor].[USP_WorkerPressureAnalysis] @Hilfe = 1;
 ```
