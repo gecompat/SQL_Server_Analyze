@@ -379,3 +379,5 @@ Der Basisstand vor `1.1.0-special.1` wurde nach Angabe des Projektverantwortlich
 - Der technische Ausführungskontext umfasst unter anderem Verschachtelungsebene, Transaction-/Connection-ID, Scheduler/Task, Workload Group, Resource Pool sowie Statement-Handle und Statement-Context-ID.
 - `@MaxSqlTextZeichen` ist frameworkweit vereinheitlicht: positiv kürzt, `NULL`/`0` liefert den vollständigen Text, negative Werte sind ungültig.
 <!-- END API_15_STATEMENT_CONTEXT -->
+
+- `PLAN-001`: eigenständig installierbarer Execution-Plan-Kern mit statementgenauer Operatoranalyse, Evidence JSON, Statistik-/Histogrammkorrelation, `DERIVED_ONLY`-Datenschutzdefault und Integration in den Gesamtinstaller; Release-Gate-Evidenz steht noch aus.

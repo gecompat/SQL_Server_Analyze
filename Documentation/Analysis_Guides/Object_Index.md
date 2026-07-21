@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 21. Juli 2026
-**Abdeckung:** alle 85 Procedures des Frameworks
+**Abdeckung:** alle 87 Procedures des Frameworks
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -56,6 +56,9 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | `[monitor].[USP_QueryHashAnalysis]` | [Query-Hash-Gruppen und Planvarianten](Procedures/USP_QueryHashAnalysis.md) |
 | `[monitor].[USP_PlanCacheHealth]` | [Cachegröße und Single-Use-Anteil](Procedures/USP_PlanCacheHealth.md) |
 | `[monitor].[USP_PlanDetails]` | [Planattribute und Planquellen](Procedures/USP_PlanDetails.md) |
+| `[monitor].[USP_CreateExecutionEvidenceJson]` | [Normalisierte IO-, TIME-, Statistik- und Histogrammevidenz](Procedures/USP_CreateExecutionEvidenceJson.md) |
+| `[monitor].[USP_ExecutionPlanAnalysis]` | [Eigenständige statement- und operatorbezogene Plananalyse](Procedures/USP_ExecutionPlanAnalysis.md) |
+
 | `[monitor].[USP_ShowplanAnalysis]` | [Operatoren, Schätzfehler, Grants und Parameter](Procedures/USP_ShowplanAnalysis.md) |
 | `[monitor].[USP_PlanCacheAnalysis]` | [Orchestrierte Plan-Cache-Analyse](Procedures/USP_PlanCacheAnalysis.md) |
 

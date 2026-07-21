@@ -550,7 +550,7 @@ WHERE [p].[plan_id]=@PlanId;';
         END;
     END TRY
     BEGIN CATCH
-        SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+        SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                @IsPartialOut=1,@ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=ERROR_MESSAGE();
     END CATCH;
 
@@ -657,7 +657,7 @@ WHERE [p].[plan_id]=@PlanId;';
     IF @StatusCodeOut='AVAILABLE'
     BEGIN
         DECLARE @AnalyzerStatus varchar(40),@AnalyzerPartial bit,@AnalyzerError int,@AnalyzerMessage nvarchar(2048);
-        EXEC [monitor].[USP_InternalAnalyzeExecutionPlan]
+        EXEC [monitor].[InternalAnalyzeExecutionPlan]
               @AnalysisObjectId=1
             , @PlanXml=@EffectivePlanXml
             , @PlanSource=@EffectivePlanSource

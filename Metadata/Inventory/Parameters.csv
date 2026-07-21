@@ -1534,3 +1534,87 @@ USP_EncryptionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_EncryptionAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_EncryptionAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_EncryptionAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_CreateExecutionEvidenceJson,PlanXml,xml,NULL
+USP_CreateExecutionEvidenceJson,StatisticsIoText,nvarchar(max),NULL
+USP_CreateExecutionEvidenceJson,StatisticsTimeText,nvarchar(max),NULL
+USP_CreateExecutionEvidenceJson,StatisticsLanguage,varchar(16),'AUTO'
+USP_CreateExecutionEvidenceJson,StatisticsEvidenceJson,nvarchar(max),NULL
+USP_CreateExecutionEvidenceJson,ObjectMetadataJson,nvarchar(max),NULL
+USP_CreateExecutionEvidenceJson,StatistikEvidenzModus,varchar(16),'PLAN_ONLY'
+USP_CreateExecutionEvidenceJson,HistogrammModus,varchar(16),'NONE'
+USP_CreateExecutionEvidenceJson,MetadatenQuellenmodus,varchar(16),'EVIDENCE_ONLY'
+USP_CreateExecutionEvidenceJson,QuellumgebungBestaetigt,bit,0
+USP_CreateExecutionEvidenceJson,EvidenzDatenschutzModus,varchar(24),'DERIVED_ONLY'
+USP_CreateExecutionEvidenceJson,IdentifierDatenschutzModus,varchar(16),'RAW'
+USP_CreateExecutionEvidenceJson,SensitiveDataConfirmed,bit,0
+USP_CreateExecutionEvidenceJson,MitPredicateHistogramMap,bit,1
+USP_CreateExecutionEvidenceJson,StatementId,int,NULL
+USP_CreateExecutionEvidenceJson,StatementOrdinal,int,NULL
+USP_CreateExecutionEvidenceJson,SameExecutionAsPlanConfirmed,bit,NULL
+USP_CreateExecutionEvidenceJson,CapturedAtUtc,datetime2(3),NULL
+USP_CreateExecutionEvidenceJson,SourceProductVersion,nvarchar(128),NULL
+USP_CreateExecutionEvidenceJson,SourceCompatibilityLevel,smallint,NULL
+USP_CreateExecutionEvidenceJson,SourceEngineEdition,int,NULL
+USP_CreateExecutionEvidenceJson,MaxStatistiken,int,100
+USP_CreateExecutionEvidenceJson,MaxHistogrammSchritte,int,20000
+USP_CreateExecutionEvidenceJson,LockTimeoutMs,int,0
+USP_CreateExecutionEvidenceJson,HighImpactConfirmed,bit,0
+USP_CreateExecutionEvidenceJson,AdditionalEvidenceJson,nvarchar(max),NULL
+USP_CreateExecutionEvidenceJson,ExistingEvidenceJson,nvarchar(max),NULL
+USP_CreateExecutionEvidenceJson,RawTextHandling,varchar(16),'HASH_ONLY'
+USP_CreateExecutionEvidenceJson,StrictValidation,bit,1
+USP_CreateExecutionEvidenceJson,ResultSetArt,varchar(16),'CONSOLE'
+USP_CreateExecutionEvidenceJson,ResultTablesJson,nvarchar(max),NULL
+USP_CreateExecutionEvidenceJson,JsonErzeugen,bit,1
+USP_CreateExecutionEvidenceJson,Json,nvarchar(max),NULL OUTPUT
+USP_CreateExecutionEvidenceJson,PrintMeldungen,bit,1
+USP_CreateExecutionEvidenceJson,Hilfe,bit,0
+USP_CreateExecutionEvidenceJson,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_CreateExecutionEvidenceJson,IsPartialOut,bit,NULL OUTPUT
+USP_CreateExecutionEvidenceJson,ErrorNumberOut,int,NULL OUTPUT
+USP_CreateExecutionEvidenceJson,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ExecutionPlanAnalysis,PlanXml,xml,NULL
+USP_ExecutionPlanAnalysis,PlanHandle,varbinary(64),NULL
+USP_ExecutionPlanAnalysis,SessionId,smallint,NULL
+USP_ExecutionPlanAnalysis,RequestId,int,NULL
+USP_ExecutionPlanAnalysis,QueryStoreDatabaseName,sysname,NULL
+USP_ExecutionPlanAnalysis,QueryStorePlanId,bigint,NULL
+USP_ExecutionPlanAnalysis,PlanQuelle,varchar(24),'AUTO'
+USP_ExecutionPlanAnalysis,StatementId,int,NULL
+USP_ExecutionPlanAnalysis,StatementQueryHash,binary(8),NULL
+USP_ExecutionPlanAnalysis,StatementQueryPlanHash,binary(8),NULL
+USP_ExecutionPlanAnalysis,EvidenzJson,nvarchar(max),NULL
+USP_ExecutionPlanAnalysis,StatisticsIoText,nvarchar(max),NULL
+USP_ExecutionPlanAnalysis,StatisticsTimeText,nvarchar(max),NULL
+USP_ExecutionPlanAnalysis,StatisticsLanguage,varchar(16),'AUTO'
+USP_ExecutionPlanAnalysis,StatistikEvidenzModus,varchar(16),'PLAN_ONLY'
+USP_ExecutionPlanAnalysis,HistogrammModus,varchar(16),'NONE'
+USP_ExecutionPlanAnalysis,MetadatenQuellenmodus,varchar(16),'EVIDENCE_ONLY'
+USP_ExecutionPlanAnalysis,QuellumgebungBestaetigt,bit,0
+USP_ExecutionPlanAnalysis,MitPredicateHistogramMap,bit,1
+USP_ExecutionPlanAnalysis,AnalyseTiefe,varchar(16),'STANDARD'
+USP_ExecutionPlanAnalysis,WorkloadProfil,varchar(32),'AUTO'
+USP_ExecutionPlanAnalysis,Regelsatz,varchar(32),'DEFAULT'
+USP_ExecutionPlanAnalysis,MinSchweregrad,varchar(16),'INFO'
+USP_ExecutionPlanAnalysis,MitThreadRuntime,bit,0
+USP_ExecutionPlanAnalysis,MitSqlText,bit,0
+USP_ExecutionPlanAnalysis,EvidenzDatenschutzModus,varchar(24),'DERIVED_ONLY'
+USP_ExecutionPlanAnalysis,IdentifierDatenschutzModus,varchar(16),'RAW'
+USP_ExecutionPlanAnalysis,SensitiveDataConfirmed,bit,0
+USP_ExecutionPlanAnalysis,MaxOperatoren,int,50000
+USP_ExecutionPlanAnalysis,MaxFindings,int,5000
+USP_ExecutionPlanAnalysis,MaxStatistiken,int,100
+USP_ExecutionPlanAnalysis,MaxHistogrammSchritte,int,20000
+USP_ExecutionPlanAnalysis,MaxDurationSeconds,int,30
+USP_ExecutionPlanAnalysis,LockTimeoutMs,int,0
+USP_ExecutionPlanAnalysis,HighImpactConfirmed,bit,0
+USP_ExecutionPlanAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExecutionPlanAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_ExecutionPlanAnalysis,JsonErzeugen,bit,0
+USP_ExecutionPlanAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ExecutionPlanAnalysis,PrintMeldungen,bit,1
+USP_ExecutionPlanAnalysis,Hilfe,bit,0
+USP_ExecutionPlanAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ExecutionPlanAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_ExecutionPlanAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_ExecutionPlanAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

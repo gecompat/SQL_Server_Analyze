@@ -1,7 +1,7 @@
 # Execution-Plan-Analyse – Architektur- und Implementierungsvertrag
 
 **Stand:** 2026-07-21  
-**Status:** `RESEARCHED_NOT_IMPLEMENTED`  
+**Status:** `IMPLEMENTED_PENDING_RELEASE_GATE`  
 **Backlog:** `PLAN-001`  
 **Zielversionen:** SQL Server 2019, 2022 und 2025  
 **Mindestversion:** SQL Server 2019
@@ -86,8 +86,8 @@ monitor.TVF_ExecutionPlanColumnReferences
 ### 3.2 Geplante interne Objekte
 
 ```text
-monitor.USP_InternalAnalyzeExecutionPlan
-monitor.USP_InternalCollectExecutionPlanMetadata
+monitor.InternalAnalyzeExecutionPlan
+monitor.InternalCollectExecutionPlanMetadata
 ```
 
 ### 3.3 Geplante Steuertabellen
@@ -128,7 +128,7 @@ monitor.USP_IntelligentQueryProcessingAnalysis
 - liefert benannte RAW-, TABLE- und JSON-Ergebnisse sowie ein kompaktes CONSOLE-Hauptergebnis;
 - führt kein übergebenes SQL aus.
 
-### 4.2 `monitor.USP_InternalAnalyzeExecutionPlan`
+### 4.2 `monitor.InternalAnalyzeExecutionPlan`
 
 Interne zentrale Analyse-Engine. Sie erhält ein Plan-XML, optionales Evidenz-JSON, vorbereitete Temp-Tabellen und den bereits ermittelten Workloadkontext. Sie schreibt ausschließlich in die bereitgestellten lokalen Temp-Tabellen. Standalone- und Multi-Plan-Pfad verwenden dadurch dieselbe technische Interpretation und dieselben Findingcodes.
 
@@ -610,7 +610,7 @@ Ein einfacher ungesalzener Hash ist für kleine oder vorhersehbare Wertebereiche
 
 ## 10. Zielgerichtete Metadatenermittlung
 
-`monitor.USP_InternalCollectExecutionPlanMetadata` verwendet die Extractor-Funktionen, dedupliziert erst für den Katalogzugriff und gruppiert nach Datenbank. Die Objektauflösung erfolgt relational über Systemkataloge und nicht über `OBJECT_ID()` oder `OBJECT_NAME()`.
+`monitor.InternalCollectExecutionPlanMetadata` verwendet die Extractor-Funktionen, dedupliziert erst für den Katalogzugriff und gruppiert nach Datenbank. Die Objektauflösung erfolgt relational über Systemkataloge und nicht über `OBJECT_ID()` oder `OBJECT_NAME()`.
 
 Vorgesehener Zugriff je bestätigter Datenbank:
 

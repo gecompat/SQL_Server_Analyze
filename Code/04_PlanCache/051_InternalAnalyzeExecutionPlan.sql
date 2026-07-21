@@ -3,7 +3,7 @@ GO
 
 /*
 ===============================================================================
-Objekt       : monitor.USP_InternalAnalyzeExecutionPlan
+Objekt       : monitor.InternalAnalyzeExecutionPlan
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Interne Stored Procedure
@@ -14,7 +14,7 @@ Voraussetzung: Der Aufrufer legt die lokalen #EPA_*-Temp-Tabellen entsprechend
                dem Resultsetinventar an. Keine Benutzertabellenzugriffe.
 ===============================================================================
 */
-CREATE OR ALTER PROCEDURE [monitor].[USP_InternalAnalyzeExecutionPlan]
+CREATE OR ALTER PROCEDURE [monitor].[InternalAnalyzeExecutionPlan]
       @AnalysisObjectId          int
     , @PlanXml                   xml
     , @PlanSource                varchar(24)

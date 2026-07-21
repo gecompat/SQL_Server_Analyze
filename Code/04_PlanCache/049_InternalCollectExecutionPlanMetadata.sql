@@ -3,7 +3,7 @@ GO
 
 /*
 ===============================================================================
-Objekt       : monitor.USP_InternalCollectExecutionPlanMetadata
+Objekt       : monitor.InternalCollectExecutionPlanMetadata
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Interne Stored Procedure
@@ -17,7 +17,7 @@ Voraussetzung: Der Aufrufer legt #EPE_StatisticsCurrent, #EPE_HistogramSteps,
 Locking      : Katalogabfragen mit LOCK_TIMEOUT; kein Zugriff auf Benutzerdaten.
 ===============================================================================
 */
-CREATE OR ALTER PROCEDURE [monitor].[USP_InternalCollectExecutionPlanMetadata]
+CREATE OR ALTER PROCEDURE [monitor].[InternalCollectExecutionPlanMetadata]
       @PlanXml                      xml
     , @StatistikEvidenzModus        varchar(16)    = 'USED'
     , @HistogrammModus              varchar(16)    = 'NONE'

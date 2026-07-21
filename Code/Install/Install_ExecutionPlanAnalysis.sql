@@ -26,7 +26,7 @@ und die für PLAN-001 benötigten Plananalyseobjekte. Er installiert weder die
 :r ../04_PlanCache/046_TVF_ExecutionPlanObjectReferences.sql
 :r ../04_PlanCache/047_TVF_ExecutionPlanStatisticsUsage.sql
 :r ../04_PlanCache/048_TVF_ExecutionPlanColumnReferences.sql
-:r ../04_PlanCache/049_USP_InternalCollectExecutionPlanMetadata.sql
-:r ../04_PlanCache/051_USP_InternalAnalyzeExecutionPlan.sql
+:r ../04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql
+:r ../04_PlanCache/051_InternalAnalyzeExecutionPlan.sql
 :r ../04_PlanCache/052_USP_CreateExecutionEvidenceJson.sql
 :r ../04_PlanCache/053_USP_ExecutionPlanAnalysis.sql

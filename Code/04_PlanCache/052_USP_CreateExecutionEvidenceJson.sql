@@ -506,7 +506,7 @@ BEGIN
            AND @StatisticsMode IN ('USED','RELEVANT','OBJECT_ALL')
         BEGIN
             DECLARE @CollectionStatus varchar(40),@CollectionPartial bit,@CollectionError int,@CollectionMessage nvarchar(2048);
-            EXEC [monitor].[USP_InternalCollectExecutionPlanMetadata]
+            EXEC [monitor].[InternalCollectExecutionPlanMetadata]
                   @PlanXml=@PlanXml
                 , @StatistikEvidenzModus=@StatisticsMode
                 , @HistogrammModus=@HistogramMode

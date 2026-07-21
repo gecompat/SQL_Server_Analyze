@@ -202,3 +202,7 @@ GO
 -- EXEC [monitor].[USP_CurrentRequests] @ResultSetArt='NONE',@JsonErzeugen=1,@Json=@CurrentRequestsJson OUTPUT;
 -- SELECT @CurrentRequestsJson AS [Json];
 -- END CURRENTREQUESTS-STATEMENT-KONTEXT
+
+-- PLAN-001: eigenständig installierbare Execution-Plan- und Evidence-Analyse.
+EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe=1;

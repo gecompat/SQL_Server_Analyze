@@ -1,7 +1,7 @@
 # Execution-Plan-Analyse – Teilinstaller- und Integrationsvertrag
 
 **Stand:** 2026-07-21  
-**Status:** `RESEARCHED_NOT_IMPLEMENTED`  
+**Status:** `IMPLEMENTED_PENDING_RELEASE_GATE`  
 **Zugehörige Architektur:** [`Execution_Plan_Analysis_Design.md`](Execution_Plan_Analysis_Design.md)
 
 > Dieser Vertrag beschreibt, wie die geplante Execution-Plan-Analyse eigenständig installiert und zugleich vollständig in das Gesamtframework integriert wird. Er legt noch keinen lauffähigen Installer an, bevor die referenzierten Objekte implementiert sind. Ein absichtlich fehlschlagender oder unvollständiger Installer-Stub ist nicht zulässig.
@@ -109,8 +109,8 @@ monitor.TVF_ParseStatisticsTimeText
 monitor.TVF_ExecutionPlanObjectReferences
 monitor.TVF_ExecutionPlanStatisticsUsage
 monitor.TVF_ExecutionPlanColumnReferences
-monitor.USP_InternalCollectExecutionPlanMetadata
-monitor.USP_InternalAnalyzeExecutionPlan
+monitor.InternalCollectExecutionPlanMetadata
+monitor.InternalAnalyzeExecutionPlan
 monitor.USP_CreateExecutionEvidenceJson
 monitor.USP_ExecutionPlanAnalysis
 ```
@@ -170,8 +170,8 @@ Die verbindliche logische Reihenfolge lautet:
 10  TVF_ExecutionPlanObjectReferences
 11  TVF_ExecutionPlanStatisticsUsage
 12  TVF_ExecutionPlanColumnReferences
-13  USP_InternalCollectExecutionPlanMetadata
-14  USP_InternalAnalyzeExecutionPlan
+13  InternalCollectExecutionPlanMetadata
+14  InternalAnalyzeExecutionPlan
 15  USP_CreateExecutionEvidenceJson
 16  USP_ExecutionPlanAnalysis
 17  Teilinstaller-Smoke-Test beziehungsweise post-install validation
@@ -203,8 +203,8 @@ Code/04_PlanCache/045_PlanAnalysisProfileAssignment.sql
 Code/04_PlanCache/046_TVF_ExecutionPlanObjectReferences.sql
 Code/04_PlanCache/047_TVF_ExecutionPlanStatisticsUsage.sql
 Code/04_PlanCache/048_TVF_ExecutionPlanColumnReferences.sql
-Code/04_PlanCache/049_USP_InternalCollectExecutionPlanMetadata.sql
-Code/04_PlanCache/050_USP_InternalAnalyzeExecutionPlan.sql
+Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql
+Code/04_PlanCache/050_InternalAnalyzeExecutionPlan.sql
 Code/04_PlanCache/051_USP_CreateExecutionEvidenceJson.sql
 Code/04_PlanCache/052_USP_ExecutionPlanAnalysis.sql
 ```
