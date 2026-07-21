@@ -16,6 +16,8 @@ Datenschutz  : Laufzeitausgaben werden nicht in Dateien geschrieben. Eine
                Übernahme in Repositoryartefakte ist separat zu prüfen.
 Evidenz      : Versionsworkflows veröffentlichen commitbezogene Statuskontexte
                und bilden die kanonische Release-Candidate-Laufzeitevidenz.
+Nachlauf     : Ein expliziter Verifikationscommit prüft nachgelagerte reine
+               Status- und Evidence-Änderungen erneut auf allen Zielversionen.
 P1           : Suiten 170 bis 178 prüfen alle 40 P1-Fälle.
 P2           : Suiten 179 bis 186 prüfen Feature Inventory, In-Memory OLTP,
                Temporal, Service Broker, Full-Text, Data Capture, Encryption
