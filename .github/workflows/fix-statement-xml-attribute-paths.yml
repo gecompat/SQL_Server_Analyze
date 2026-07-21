@@ -1,0 +1,71 @@
+name: Fix materialized statement XML attribute paths
+
+on:
+  push:
+    branches:
+      - agent/implement-execution-plan-analysis
+    paths:
+      - '.github/workflows/fix-statement-xml-attribute-paths.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/fix-statement-xml-attribute-paths.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/implement-execution-plan-analysis
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Correct statement document attribute paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          path = Path('Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql')
+          text = path.read_text(encoding='utf-8')
+          pattern = re.compile(r"(?P<prefix>\[x\]\.\[StatementXml\]\.value\('string\(\()@(?P<attribute>[A-Za-z][A-Za-z0-9_]*)(?P<suffix>\)\[1\]\)'[^)]*\))")
+          text, count = pattern.subn(
+              lambda match: match.group('prefix') + '/*/@' + match.group('attribute') + match.group('suffix'),
+              text,
+          )
+          if count < 1:
+              raise RuntimeError('No top-level StatementXml attribute path was found.')
+          remaining = re.findall(r"\[x\]\.\[StatementXml\]\.value\('string\(\(@[A-Za-z]", text)
+          if remaining:
+              raise RuntimeError('Top-level StatementXml attribute paths remain after correction.')
+          text = text.replace('Version      : 1.0.0', 'Version      : 1.0.1', 1)
+          path.write_text(text, encoding='utf-8', newline='\n')
+          print(f'Corrected {count} materialized statement attribute paths.')
+          PY
+
+      - name: Validate static contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
+          pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+
+      - name: Commit statement XML path correction
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql
+          if ! git diff --cached --quiet; then
+            git commit -m 'Fix materialized statement XML attribute paths'
+            git push origin HEAD:agent/implement-execution-plan-analysis
+          fi
