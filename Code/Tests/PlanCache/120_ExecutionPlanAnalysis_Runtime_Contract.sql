@@ -314,14 +314,27 @@ IF EXISTS
         , [ObjectName] sysname N'$.ObjectName'
         , [StatisticsName] sysname N'$.StatisticsName'
         , [LeadingColumnName] sysname N'$.LeadingColumnName'
-        , [RangeHighKey] nvarchar(4000) N'$.RangeHighKey'
-        , [RangeHighKeyToken] varbinary(32) N'$.RangeHighKeyToken'
     )
     WHERE [DatabaseName] IS NOT NULL OR [SchemaName] IS NOT NULL OR [ObjectName] IS NOT NULL
        OR [StatisticsName] IS NOT NULL OR [LeadingColumnName] IS NOT NULL
-       OR [RangeHighKey] IS NOT NULL OR [RangeHighKeyToken] IS NOT NULL
 )
-    THROW 53616,N'DERIVED_ONLY/OMIT hat Histogrammwerte oder Identifikatoren ausgegeben.',1;
+    THROW 53616,N'OMIT hat Histogrammidentifikatoren ausgegeben.',1;
+IF EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@SanitizedJson,N'$.histogramSteps')
+    WITH ([RangeHighKey] nvarchar(4000) N'$.RangeHighKey')
+    WHERE [RangeHighKey] IS NOT NULL
+)
+    THROW 53636,N'DERIVED_ONLY hat einen Histogrammgrenzwert ausgegeben.',1;
+IF EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@SanitizedJson,N'$.histogramSteps')
+    WITH ([RangeHighKeyToken] varbinary(32) N'$.RangeHighKeyToken')
+    WHERE [RangeHighKeyToken] IS NOT NULL
+)
+    THROW 53637,N'DERIVED_ONLY hat einen Histogrammgrenzwert-Token ausgegeben.',1;
 IF EXISTS
 (
     SELECT 1
