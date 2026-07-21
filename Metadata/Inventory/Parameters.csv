@@ -558,28 +558,6 @@ USP_PlanDetails,JsonErzeugen,bit,0
 USP_PlanDetails,Json,nvarchar(max),NULL OUTPUT
 USP_PlanDetails,PrintMeldungen,bit,1
 USP_PlanDetails,Hilfe,bit,0
-USP_ShowplanAnalysis,PlanHandle,varbinary(64),NULL
-USP_ShowplanAnalysis,QueryHash,binary(8),NULL
-USP_ShowplanAnalysis,QueryPlanHash,binary(8),NULL
-USP_ShowplanAnalysis,DatabaseNames,nvarchar(max),NULL
-USP_ShowplanAnalysis,SystemdatenbankenEinbeziehen,bit,0
-USP_ShowplanAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
-USP_ShowplanAnalysis,HighImpactConfirmed,bit,0
-USP_ShowplanAnalysis,TextPattern,nvarchar(4000),NULL
-USP_ShowplanAnalysis,AnalyseModus,varchar(16),'GEZIELT'
-USP_ShowplanAnalysis,PlanQuelle,varchar(16),'AUTO'
-USP_ShowplanAnalysis,Sortierung,varchar(32),'CPU_TOTAL'
-USP_ShowplanAnalysis,MinExecutionCount,bigint,1
-USP_ShowplanAnalysis,MaxAnalyseobjekte,int,20
-USP_ShowplanAnalysis,MaxDurationSeconds,int,30
-USP_ShowplanAnalysis,MaxZeilen,int,50000
-USP_ShowplanAnalysis,ParentQueryStatsSnapshot,bit,0
-USP_ShowplanAnalysis,ResultSetArt,varchar(16),'CONSOLE'
-USP_ShowplanAnalysis,ResultTablesJson,nvarchar(max),NULL
-USP_ShowplanAnalysis,JsonErzeugen,bit,0
-USP_ShowplanAnalysis,Json,nvarchar(max),NULL OUTPUT
-USP_ShowplanAnalysis,PrintMeldungen,bit,1
-USP_ShowplanAnalysis,Hilfe,bit,0
 USP_PlanCacheAnalysis,MitQueryStats,bit,1
 USP_PlanCacheAnalysis,MitQueryHashAnalysis,bit,0
 USP_PlanCacheAnalysis,MitPlanCacheHealth,bit,0
@@ -1618,3 +1596,38 @@ USP_ExecutionPlanAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ExecutionPlanAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_ExecutionPlanAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_ExecutionPlanAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ShowplanAnalysis,PlanHandle,varbinary(64),NULL
+USP_ShowplanAnalysis,QueryHash,binary(8),NULL
+USP_ShowplanAnalysis,QueryPlanHash,binary(8),NULL
+USP_ShowplanAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_ShowplanAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_ShowplanAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ShowplanAnalysis,HighImpactConfirmed,bit,0
+USP_ShowplanAnalysis,TextPattern,nvarchar(4000),NULL
+USP_ShowplanAnalysis,AnalyseModus,varchar(16),'GEZIELT'
+USP_ShowplanAnalysis,PlanQuelle,varchar(16),'AUTO'
+USP_ShowplanAnalysis,Sortierung,varchar(32),'CPU_TOTAL'
+USP_ShowplanAnalysis,MinExecutionCount,bigint,1
+USP_ShowplanAnalysis,MaxAnalyseobjekte,int,20
+USP_ShowplanAnalysis,MaxDurationSeconds,int,30
+USP_ShowplanAnalysis,MaxZeilen,int,50000
+USP_ShowplanAnalysis,ParentQueryStatsSnapshot,bit,0
+USP_ShowplanAnalysis,WorkloadProfil,varchar(32),'AUTO'
+USP_ShowplanAnalysis,MinSchweregrad,varchar(16),'INFO'
+USP_ShowplanAnalysis,MitThreadRuntime,bit,0
+USP_ShowplanAnalysis,MitSqlText,bit,0
+USP_ShowplanAnalysis,StatistikEvidenzModus,varchar(16),'PLAN_ONLY'
+USP_ShowplanAnalysis,HistogrammModus,varchar(16),'NONE'
+USP_ShowplanAnalysis,MetadatenQuellenmodus,varchar(16),'EVIDENCE_ONLY'
+USP_ShowplanAnalysis,QuellumgebungBestaetigt,bit,0
+USP_ShowplanAnalysis,EvidenzDatenschutzModus,varchar(24),'DERIVED_ONLY'
+USP_ShowplanAnalysis,IdentifierDatenschutzModus,varchar(16),'RAW'
+USP_ShowplanAnalysis,SensitiveDataConfirmed,bit,0
+USP_ShowplanAnalysis,MaxStatistiken,int,100
+USP_ShowplanAnalysis,MaxHistogrammSchritte,int,20000
+USP_ShowplanAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ShowplanAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_ShowplanAnalysis,JsonErzeugen,bit,0
+USP_ShowplanAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ShowplanAnalysis,PrintMeldungen,bit,1
+USP_ShowplanAnalysis,Hilfe,bit,0

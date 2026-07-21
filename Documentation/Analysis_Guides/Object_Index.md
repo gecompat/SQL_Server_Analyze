@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 21. Juli 2026
-**Abdeckung:** alle 87 Procedures des Frameworks
+**Abdeckung:** alle 90 Procedures des Frameworks
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 

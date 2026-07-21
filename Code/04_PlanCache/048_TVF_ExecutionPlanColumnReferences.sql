@@ -24,7 +24,7 @@ RETURN
     WITH [StatementsBase] AS
     (
         SELECT
-              [StatementXml]=[s].[n]
+              [StatementXml]=[s].[n].query('.')
             , [StatementId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementId)[1])','nvarchar(50)'),N''))
             , [StatementCompId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementCompId)[1])','nvarchar(50)'),N''))
             , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'')
@@ -44,44 +44,44 @@ RETURN
         SELECT
               [st].[StatementOrdinal],[st].[StatementId],[st].[StatementCompId]
             , [NodeId]=TRY_CONVERT(int,NULLIF([r].[n].value('string((@NodeId)[1])','nvarchar(50)'),N''))
-            , [RelOpXml]=[r].[n]
+            , [RelOpXml]=[r].[n].query('.')
         FROM [Statements] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"]') AS [r]([n])
     ),
     [Roles] AS
     (
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               CONVERT(varchar(40),'SEEK') [ColumnUsage],CONVERT(varchar(80),'SEEK_PREDICATE') [ExpressionContext],[c].[n]
+               CONVERT(varchar(40),'SEEK') [ColumnUsage],CONVERT(varchar(80),'SEEK_PREDICATE') [ExpressionContext],[c].[n].query('.')
         FROM [RelOps]
         CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="SeekPredicates"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               'RESIDUAL','PREDICATE',[c].[n]
+               'RESIDUAL','PREDICATE',[c].[n].query('.')
         FROM [RelOps]
         CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="Predicate"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               'JOIN','JOIN_KEY_OR_PREDICATE',[c].[n]
+               'JOIN','JOIN_KEY_OR_PREDICATE',[c].[n].query('.')
         FROM [RelOps]
         CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="HashKeysBuild" or local-name(.)="HashKeysProbe" or local-name(.)="InnerSideJoinColumns" or local-name(.)="OuterSideJoinColumns" or local-name(.)="OuterReferences"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               'ORDER_BY','ORDER_REQUIREMENT',[c].[n]
+               'ORDER_BY','ORDER_REQUIREMENT',[c].[n].query('.')
         FROM [RelOps]
         CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="OrderBy" or local-name(.)="SortKeys"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               'GROUP_BY','GROUP_REQUIREMENT',[c].[n]
+               'GROUP_BY','GROUP_REQUIREMENT',[c].[n].query('.')
         FROM [RelOps]
         CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="GroupBy"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               'OUTPUT','OUTPUT_LIST',[c].[n]
+               'OUTPUT','OUTPUT_LIST',[c].[n].query('.')
         FROM [RelOps]
         CROSS APPLY [RelOpXml].nodes('./*[local-name(.)="OutputList"]/*[local-name(.)="ColumnReference"]') AS [c]([n])
     ),
