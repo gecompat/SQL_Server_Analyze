@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.TVF_ParseStatisticsIoText
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-07-21
 Typ          : Multi-statement Table-valued Function
 Zweck        : Parst bereits vorliegenden SET STATISTICS IO-Meldungstext ohne
@@ -88,8 +88,8 @@ BEGIN
         , @MetricCode varchar(40)
         , @LabelText nvarchar(100)
         , @MetricPosition int
-        , @Token nvarchar(100)
-        , @TokenLength int
+        , @NumericText nvarchar(100)
+        , @NumericTextLength int
         , @MetricValue bigint
         , @ScanCount bigint
         , @LogicalReads bigint
@@ -149,12 +149,12 @@ BEGIN
             SET @MetricPosition=CHARINDEX(@LabelText,@LowerLine);
             IF @MetricPosition>0
             BEGIN
-                SET @Token=LTRIM(SUBSTRING(@LowerLine,@MetricPosition+LEN(@LabelText),100));
-                SET @TokenLength=1;
-                WHILE @TokenLength<=LEN(@Token)
-                  AND SUBSTRING(@Token,@TokenLength,1) LIKE N'[0-9-]'
-                    SET @TokenLength+=1;
-                SET @MetricValue=TRY_CONVERT(bigint,NULLIF(LEFT(@Token,@TokenLength-1),N''));
+                SET @NumericText=LTRIM(SUBSTRING(@LowerLine,@MetricPosition+LEN(@LabelText),100));
+                SET @NumericTextLength=1;
+                WHILE @NumericTextLength<=LEN(@NumericText)
+                  AND SUBSTRING(@NumericText,@NumericTextLength,1) LIKE N'[0-9-]'
+                    SET @NumericTextLength+=1;
+                SET @MetricValue=TRY_CONVERT(bigint,NULLIF(LEFT(@NumericText,@NumericTextLength-1),N''));
 
                 IF @MetricCode='SCAN_COUNT' AND @ScanCount IS NULL SET @ScanCount=@MetricValue;
                 IF @MetricCode='LOGICAL_READS' AND @LogicalReads IS NULL SET @LogicalReads=@MetricValue;
