@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.InternalAnalyzeExecutionPlan
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-07-21
 Typ          : Interne Stored Procedure
 Zweck        : Zerlegt genau ein Showplan-XML einmalig in statementgenaue,
@@ -139,19 +139,19 @@ BEGIN
         )
         SELECT
               @AnalysisObjectId,[x].[StatementOrdinal],[x].[StatementId],[x].[StatementCompId]
-            , NULLIF([x].[StatementXml].value('string((@StatementType)[1])','nvarchar(128)'),N'')
-            , NULLIF([x].[StatementXml].value('string((@StatementText)[1])','nvarchar(max)'),N'')
-            , NULLIF([x].[StatementXml].value('string((@QueryHash)[1])','nvarchar(130)'),N'')
-            , NULLIF([x].[StatementXml].value('string((@QueryPlanHash)[1])','nvarchar(130)'),N'')
-            , TRY_CONVERT(decimal(38,8),NULLIF([x].[StatementXml].value('string((@StatementSubTreeCost)[1])','nvarchar(100)'),N''))
-            , TRY_CONVERT(decimal(38,4),NULLIF([x].[StatementXml].value('string((@StatementEstRows)[1])','nvarchar(100)'),N''))
-            , NULLIF([x].[StatementXml].value('string((@StatementOptmLevel)[1])','nvarchar(128)'),N'')
-            , NULLIF([x].[StatementXml].value('string((@StatementOptmEarlyAbortReason)[1])','nvarchar(256)'),N'')
+            , NULLIF([x].[StatementXml].value('string((/*/@StatementType)[1])','nvarchar(128)'),N'')
+            , NULLIF([x].[StatementXml].value('string((/*/@StatementText)[1])','nvarchar(max)'),N'')
+            , NULLIF([x].[StatementXml].value('string((/*/@QueryHash)[1])','nvarchar(130)'),N'')
+            , NULLIF([x].[StatementXml].value('string((/*/@QueryPlanHash)[1])','nvarchar(130)'),N'')
+            , TRY_CONVERT(decimal(38,8),NULLIF([x].[StatementXml].value('string((/*/@StatementSubTreeCost)[1])','nvarchar(100)'),N''))
+            , TRY_CONVERT(decimal(38,4),NULLIF([x].[StatementXml].value('string((/*/@StatementEstRows)[1])','nvarchar(100)'),N''))
+            , NULLIF([x].[StatementXml].value('string((/*/@StatementOptmLevel)[1])','nvarchar(128)'),N'')
+            , NULLIF([x].[StatementXml].value('string((/*/@StatementOptmEarlyAbortReason)[1])','nvarchar(256)'),N'')
             , TRY_CONVERT(int,NULLIF([x].[StatementXml].value('string((.//*[local-name(.)="QueryPlan"]/@CardinalityEstimationModelVersion)[1])','nvarchar(100)'),N''))
             , TRY_CONVERT(bigint,NULLIF([x].[StatementXml].value('string((.//*[local-name(.)="QueryPlan"]/@CompileTime)[1])','nvarchar(100)'),N''))
             , TRY_CONVERT(bigint,NULLIF([x].[StatementXml].value('string((.//*[local-name(.)="QueryPlan"]/@CompileCPU)[1])','nvarchar(100)'),N''))
             , TRY_CONVERT(bigint,NULLIF([x].[StatementXml].value('string((.//*[local-name(.)="QueryPlan"]/@CompileMemory)[1])','nvarchar(100)'),N''))
-            , TRY_CONVERT(bit,NULLIF([x].[StatementXml].value('string((@RetrievedFromCache)[1])','nvarchar(20)'),N''))
+            , TRY_CONVERT(bit,NULLIF([x].[StatementXml].value('string((/*/@RetrievedFromCache)[1])','nvarchar(20)'),N''))
             , NULLIF([x].[StatementXml].value('string((.//*[local-name(.)="QueryPlan"]/@NonParallelPlanReason)[1])','nvarchar(256)'),N'')
         FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [x];
 
