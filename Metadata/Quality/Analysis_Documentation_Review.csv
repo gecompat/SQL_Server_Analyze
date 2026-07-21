@@ -89,3 +89,6 @@ USP_WorkerPressureAnalysis,DEEP_REVIEWED,2026-07-21,2
 USP_DatabaseConfigurationAnalysis,DEEP_REVIEWED,2026-07-21,2
 USP_CreateExecutionEvidenceJson,BASELINE,,1
 USP_ExecutionPlanAnalysis,BASELINE,,1
+USP_ConfigureSnapshotTarget,BASELINE,,1
+USP_RunSnapshotCollectionCycle,BASELINE,,1
+USP_PurgeSnapshotData,BASELINE,,1

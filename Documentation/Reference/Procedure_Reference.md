@@ -2205,3 +2205,69 @@ Quelle: `Code/08_ServerHealth/190_USP_DatabaseConfigurationAnalysis.sql`
     , @ErrorNumberOut                 int            = NULL OUTPUT
     , @ErrorMessageOut                nvarchar(2048) = NULL OUTPUT
 ```
+
+## `[monitor].[USP_ConfigureSnapshotTarget]`
+
+Quelle: `Code/10_SnapshotBaseline/080_USP_ConfigureSnapshotTarget.sql`
+
+```sql
+@TargetDatabaseName       sysname
+    , @IsEnabled                bit           = 1
+    , @SchedulerType            varchar(16)   = 'EXTERNAL'
+    , @CollectionIntervalSeconds smallint      = 30
+    , @MaxRows                  int            = 1000
+    , @PayloadEnabled           bit            = 0
+    , @RawRetentionDays         smallint       = 14
+    , @PayloadRetentionDays     smallint       = 7
+    , @RollupRetentionDays      smallint       = 180
+    , @SoftBudgetMB             int            = 10240
+    , @PurgeIntervalMinutes     smallint       = 60
+    , @PurgeBatchRows           int            = 10000
+    , @BudgetAction             varchar(32)    = 'PURGE_EXPIRED_THEN_STOP'
+    , @PrintMeldungen           bit            = 1
+    , @Hilfe                    bit            = 0
+    , @StatusCodeOut            varchar(40)    = NULL OUTPUT
+    , @IsPartialOut             bit            = NULL OUTPUT
+    , @ErrorNumberOut           int            = NULL OUTPUT
+    , @ErrorMessageOut          nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_RunSnapshotCollectionCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/090_USP_RunSnapshotCollectionCycle.sql`
+
+```sql
+@SchedulerType     varchar(16)    = 'EXTERNAL'
+    , @RunEvenIfNotDue   bit            = 0
+    , @ResultSetArt      varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson  nvarchar(max)  = NULL
+    , @JsonErzeugen      bit            = 0
+    , @Json              nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen    bit            = 1
+    , @Hilfe             bit            = 0
+    , @CaptureRunIdOut   bigint         = NULL OUTPUT
+    , @StatusCodeOut     varchar(40)    = NULL OUTPUT
+    , @IsPartialOut      bit            = NULL OUTPUT
+    , @ErrorNumberOut    int            = NULL OUTPUT
+    , @ErrorMessageOut   nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_PurgeSnapshotData]`
+
+Quelle: `Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql`
+
+```sql
+@MaxBatches       int            = 10
+    , @Force            bit            = 0
+    , @ResultSetArt     varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max)  = NULL
+    , @JsonErzeugen     bit            = 0
+    , @Json             nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen   bit            = 1
+    , @Hilfe            bit            = 0
+    , @PurgeRunIdOut    bigint         = NULL OUTPUT
+    , @StatusCodeOut    varchar(40)    = NULL OUTPUT
+    , @IsPartialOut     bit            = NULL OUTPUT
+    , @ErrorNumberOut   int            = NULL OUTPUT
+    , @ErrorMessageOut  nvarchar(2048) = NULL OUTPUT
+```

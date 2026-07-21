@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 21. Juli 2026
-**Abdeckung:** alle 90 öffentlichen `USP_*`-Procedures des Frameworks
+**Abdeckung:** alle 93 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -143,6 +143,14 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | `[monitor].[USP_DataCaptureDeepAnalysis]` | [Change Tracking, CDC und lokale Replikation](Procedures/USP_DataCaptureDeepAnalysis.md) |
 | `[monitor].[USP_EncryptionAnalysis]` | [TDE, Schutzobjekte, Backupverschlüsselung, Always Encrypted und Ledger](Procedures/USP_EncryptionAnalysis.md) |
 
+## Snapshot und Baseline
+
+| Objekt | Eigenständige Beschreibung |
+|---|---|
+| `[monitor].[USP_ConfigureSnapshotTarget]` | [Explizites Ziel sowie Collector-, Retention- und Budgetpolicy](Procedures/USP_ConfigureSnapshotTarget.md) |
+| `[monitor].[USP_RunSnapshotCollectionCycle]` | [Schedulerneutraler, begrenzter Performance-Counter-Snapshot](Procedures/USP_RunSnapshotCollectionCycle.md) |
+| `[monitor].[USP_PurgeSnapshotData]` | [Child-first-Retention in begrenzten Batches](Procedures/USP_PurgeSnapshotData.md) |
+
 ## Vollständigkeit
 
 | Bereich | Anzahl |
@@ -156,7 +164,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | Infrastruktur | 13 |
 | Server Health | 19 |
 | Versionsadaptive Spezialanalysen | 9 |
-| **Gesamt** | **90** |
+| Snapshot und Baseline | 3 |
+| **Gesamt** | **93** |
 
 ## Weitere Einstiege
 

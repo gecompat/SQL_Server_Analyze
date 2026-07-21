@@ -1,8 +1,8 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 21. Juli 2026<br>
-**Strukturelle Abdeckung:** 90 Procedures<br>
-**Tief geprüft nach Qualitätsvertrag v2:** 90 Procedures
+**Strukturelle Abdeckung:** 93 Procedures<br>
+**Tief geprüft nach Qualitätsvertrag v2:** 88 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 
 ## Reifegrad richtig lesen
 
-Alle 90 dokumentierten öffentlichen Procedures einschließlich der zwei gemeinsamen Vorbereitungs-APIs besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
+88 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001- und drei SC-023-Seiten stehen als vollständig strukturierte `BASELINE` bereit. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -144,3 +144,9 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 
 - [`USP_CreateExecutionEvidenceJson`](USP_CreateExecutionEvidenceJson.md) – normalisierte Execution Evidence mit Datenschutzstatus.
 - [`USP_ExecutionPlanAnalysis`](USP_ExecutionPlanAnalysis.md) – eigenständig installierbare Analyse eines Showplan-XML.
+
+## Snapshot und Baseline
+
+- [`USP_ConfigureSnapshotTarget`](USP_ConfigureSnapshotTarget.md) – explizite Ziel-, Collector-, Retention- und Budgetpolicy.
+- [`USP_RunSnapshotCollectionCycle`](USP_RunSnapshotCollectionCycle.md) – schedulerneutraler, begrenzter Collection Cycle.
+- [`USP_PurgeSnapshotData`](USP_PurgeSnapshotData.md) – begrenzte Child-first-Retention.
