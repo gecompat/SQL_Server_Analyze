@@ -73,7 +73,7 @@ BEGIN
             @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
     CREATE TABLE [#PlanCacheHealth_Summary]([CacheObjectType] nvarchar(34),[ObjectType] nvarchar(16),[PlanCount] bigint,[TotalSizeBytes] bigint,[SingleUsePlanCount] bigint,[SingleUseSizeBytes] bigint,[TotalUseCounts] bigint,[AverageUseCount] decimal(19,4));
     CREATE TABLE [#PlanCacheHealth_Db]([DatabaseId] int NULL,[DatabaseName] sysname NULL,[PlanCount] bigint,[TotalSizeBytes] bigint,[SingleUsePlanCount] bigint);
-    CREATE TABLE [#PlanCacheHealth_Single]([PlanHandle] varbinary(64),[CacheObjectType] nvarchar(34),[ObjectType] nvarchar(16),[UseCounts] int,[SizeBytes] int,[DatabaseId] int NULL,[DatabaseName] sysname NULL,[SqlText] nvarchar(max));
+    CREATE TABLE [#PlanCacheHealth_Single]([PlanHandle] varbinary(64),[CacheObjectType] nvarchar(34),[ObjectType] nvarchar(16),[UseCounts] int,[SizeBytes] int,[DatabaseId] int NULL,[DatabaseName] sysname NULL,[SqlTextCharacters] bigint NULL,[SqlTextBytes] bigint NULL,[SqlTextIsTruncated] bit NOT NULL DEFAULT(0),[SqlText] nvarchar(max));
 
     IF @AnalyseModus NOT IN('SUMMARY','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameterwert.';END;
@@ -116,11 +116,22 @@ BEGIN
             FROM [sys].[dm_exec_cached_plans] AS cp WITH (NOLOCK) WHERE [cp].[usecounts]<=1 ORDER BY [cp].[size_in_bytes] DESC
         )
         INSERT [#PlanCacheHealth_Single]
-        SELECT [c].[plan_handle],[c].[cacheobjtype],[c].[objtype],[c].[usecounts],[c].[size_in_bytes],TRY_CONVERT([int],[pa].[value]),[d].[name],CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [st].[text] ELSE LEFT([st].[text],@MaxSqlTextZeichen) END
+        SELECT [c].[plan_handle],[c].[cacheobjtype],[c].[objtype],[c].[usecounts],[c].[size_in_bytes],TRY_CONVERT([int],[pa].[value]),[d].[name],NULL,NULL,CONVERT(bit,0),[st].[text]
         FROM [C] AS c OUTER APPLY sys.dm_exec_sql_text([c].[plan_handle]) AS st
         OUTER APPLY (SELECT TOP(1) [value] FROM sys.dm_exec_plan_attributes([c].[plan_handle]) WHERE [attribute]='dbid') AS pa
         LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
           ON [d].[database_id]=TRY_CONVERT([int],[pa].[value]);
+
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#PlanCacheHealth_Single',@TextColumn=N'SqlText'
+            , @CharactersColumn=N'SqlTextCharacters',@BytesColumn=N'SqlTextBytes'
+            , @IsTruncatedColumn=N'SqlTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@TruncatedValueCount OUTPUT,@LargestRequiredCharacters=@LargestRequiredCharacters OUTPUT;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
     END TRY BEGIN CATCH SET @IsPartial=1;SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
 
     IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE') BEGIN

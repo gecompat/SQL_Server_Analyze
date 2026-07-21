@@ -15,7 +15,7 @@ pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
 Erwartung:
 
 - Prozess-Exitcode `0`.
-- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `84`.
+- `Referenced procedures`, `Canonical source procedures` und `Procedure pages` ergeben jeweils `85`.
 - Letzte Meldung: `Analysis documentation validation succeeded.`
 - Bei einem Fehler keine Installation und kein SQL-Release-Gate starten, sondern zuerst Referenz, SQL-Signatur, Procedure-Seite, Beispielparameter oder Markdownlink korrigieren.
 

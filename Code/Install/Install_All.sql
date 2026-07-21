@@ -43,6 +43,8 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/087a_ToolBackgroundQueryPattern.sql
 :r ../01_Common/087b_ToolBackgroundQueryPattern_Seed.sql
 :r ../01_Common/087c_TVF_ToolBackgroundQueryInfo.sql
+:r ../01_Common/087d_TVF_ProjectUnicodeText.sql
+:r ../01_Common/098_USP_InternalProjectUnicodeTextColumn.sql
 :r ../01_Common/088_TVF_InterpretPerformanceCounter.sql
 :r ../01_Common/089_TVF_InterpretContentionCounter.sql
 :r ../01_Common/090_TVF_InterpretAvailabilityDatabaseState.sql
@@ -54,6 +56,8 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/096_USP_InternalPrepareResultTables.sql
 :r ../01_Common/097_USP_InternalPrepareSingleResultTable.sql
 :r ../01_Common/098_USP_InternalEmitConsoleResult.sql
+:r ../01_Common/099_USP_InternalEmitTruncationWarning.sql
+:r ../01_Common/099a_USP_InternalParseXmlText.sql
 :r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
 :r ../02_CurrentState/010_USP_CurrentSessions.sql
 :r ../02_CurrentState/020_USP_CurrentRequests.sql
@@ -129,6 +133,9 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 :r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
 :r ../09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql
+:r ../09_VersionAdaptive/011_SqlServerBuildCatalog.sql
+:r ../09_VersionAdaptive/012_SqlServerLifecycleCatalog.sql
+:r ../09_VersionAdaptive/015_USP_ServerVersionInformation.sql
 :r ../09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql
 :r ../09_VersionAdaptive/030_USP_InMemoryOltpAnalysis.sql
 :r ../09_VersionAdaptive/040_USP_TemporalAnalysis.sql

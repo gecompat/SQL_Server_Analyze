@@ -1,8 +1,8 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
-**Stand:** 20. Juli 2026<br>
-**Strukturelle Abdeckung:** 84 Procedures<br>
-**Tief geprüft nach Qualitätsvertrag v2:** 84 Procedures
+**Stand:** 21. Juli 2026<br>
+**Strukturelle Abdeckung:** 85 Procedures<br>
+**Tief geprüft nach Qualitätsvertrag v2:** 85 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 
 ## Reifegrad richtig lesen
 
-Alle 84 öffentlichen Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
+Alle 85 öffentlichen Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -130,6 +130,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 ## Versionsadaptive Spezialanalysen
 
 - [USP_ServerFeatureCapabilities](USP_ServerFeatureCapabilities.md)
+- [USP_ServerVersionInformation](USP_ServerVersionInformation.md)
 - [USP_SpecialFeatureInventory](USP_SpecialFeatureInventory.md)
 - [USP_InMemoryOltpAnalysis](USP_InMemoryOltpAnalysis.md)
 - [USP_TemporalAnalysis](USP_TemporalAnalysis.md)

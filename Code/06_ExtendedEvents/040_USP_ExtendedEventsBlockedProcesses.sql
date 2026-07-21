@@ -209,7 +209,7 @@ BEGIN
                 SET @ResolvedFilePath=@ResolvedFilePath+N'*.xel';
             BEGIN TRY
                 INSERT [#ExtendedEventsBlockedProcesses_Raw]
-                SELECT TOP (@EffectiveMaxZeilen) 'EVENT_FILE',[r].[timestamp_utc],[r].[file_name],[r].[file_offset],TRY_CONVERT([xml],[r].[event_data])
+                SELECT TOP (@EffectiveMaxZeilen) 'EVENT_FILE',[r].[timestamp_utc],[r].[file_name],[r].[file_offset],CONVERT([xml],[r].[event_data])
                 FROM sys.fn_xe_file_target_read_file(@ResolvedFilePath,NULL,NULL,NULL) AS r
                 WHERE [r].[object_name]=N'blocked_process_report'
                   AND (@VonUtc IS NULL OR [r].[timestamp_utc]>=@VonUtc)
@@ -218,7 +218,7 @@ BEGIN
                 INSERT [#ExtendedEventsBlockedProcesses_SourceStatus] VALUES('EVENT_FILE',@ResolvedSessionName,@ResolvedFilePath,'AVAILABLE',NULL,NULL,N'blocked_process_report aus XEL gelesen.');
             END TRY
             BEGIN CATCH
-                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN(6335,6336,6337) THEN 'XML_UNAVAILABLE_LIMIT' WHEN ERROR_NUMBER() BETWEEN 9400 AND 9431 THEN 'XML_INVALID' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();
                 INSERT [#ExtendedEventsBlockedProcesses_SourceStatus] VALUES('EVENT_FILE',@ResolvedSessionName,@ResolvedFilePath,@StatusCode,@ErrorNumber,@ErrorMessage,N'XEL-Datei konnte nicht gelesen werden.');
             END CATCH;
@@ -235,7 +235,7 @@ BEGIN
         ELSE
         BEGIN
             BEGIN TRY
-                SELECT @TargetData=TRY_CONVERT([xml],[t].[target_data])
+                SELECT @TargetData=CONVERT([xml],[t].[target_data])
                 FROM [sys].[dm_xe_session_targets] AS t WITH (NOLOCK)
                 JOIN [sys].[dm_xe_sessions] AS s WITH (NOLOCK) ON [s].[address]=[t].[event_session_address]
                 WHERE [s].[name]=@ResolvedSessionName AND [t].[target_name]=N'ring_buffer';
@@ -256,7 +256,7 @@ BEGIN
                 END;
             END TRY
             BEGIN CATCH
-                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                SET @StatusCode=CASE WHEN ERROR_NUMBER() IN(229,262,297,300,371) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN(6335,6336,6337) THEN 'XML_UNAVAILABLE_LIMIT' WHEN ERROR_NUMBER() BETWEEN 9400 AND 9431 THEN 'XML_INVALID' ELSE 'ERROR_HANDLED' END;
                 SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();
                 INSERT [#ExtendedEventsBlockedProcesses_SourceStatus] VALUES('RING_BUFFER',@ResolvedSessionName,NULL,@StatusCode,@ErrorNumber,@ErrorMessage,N'Ringbuffer konnte nicht gelesen werden.');
             END CATCH;

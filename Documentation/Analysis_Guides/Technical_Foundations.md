@@ -1,7 +1,7 @@
 # Technische Grundlagen für belastbare SQL-Server-Analysen
 
 **Stand:** 20. Juli 2026
-**Geltungsbereich:** alle 84 öffentlichen Procedures
+**Geltungsbereich:** alle 85 öffentlichen Procedures
 
 Dieses Dokument beschreibt das gemeinsame Execution-, Zeit- und Evidenzmodell. Die Procedure-Seiten ergänzen es um ihre konkrete Datenkette, Bewertungslogik, Gegenproben und Folgeanalysen.
 

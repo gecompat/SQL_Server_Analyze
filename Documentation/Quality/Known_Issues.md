@@ -7,7 +7,7 @@ Die Version `1.1.0-special.9` besitzt für Commit `57ea12b81096dd4b10adb7ebb0fb4
 Verbleibende Repository- und Evidenzpunkte:
 
 - Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
-- Keine offene Deep-Analysis-Redaktionswelle: alle 84 öffentlichen Procedure-Seiten enthalten die procedurespezifische technische Vertiefung und verweisen auf das gemeinsame Execution-, Zeit- und Evidenzmodell.
+- Keine offene Deep-Analysis-Redaktionswelle: alle 85 öffentlichen Procedure-Seiten enthalten die procedurespezifische technische Vertiefung und verweisen auf das gemeinsame Execution-, Zeit- und Evidenzmodell.
 - Die vier ersten P1-IQP-Fälle sind automatisiert und commitbezogen nachgewiesen.
 - Die vier P1-Contention-Fälle sind als sechzehnte Suite nachgewiesen. Der Page-Detail-Fall erzwingt keinen künstlichen realen PAGELATCH-Wait, sondern prüft den opt-in- und Zeilengrenzenvertrag; diese Einschränkung bleibt ausdrücklich erhalten.
 - Die vier P1-Speicherfälle sind als siebzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Speicherdruck und Resource-Semaphore-Waiter wurden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz und bleibt deshalb `PASS_WITH_LIMITATIONS`.

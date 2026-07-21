@@ -218,7 +218,7 @@ BEGIN
                     [r].[timestamp_utc],
                     [r].[file_name],
                     [r].[file_offset],
-                    TRY_CONVERT([xml], [r].[event_data])
+                    CONVERT([xml], [r].[event_data])
                 FROM sys.fn_xe_file_target_read_file(@ResolvedFilePath, NULL, NULL, NULL) AS r
                 WHERE ((@EventNames IS NULL OR EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@EventNames) [ef] WHERE [ef].[IsValid]=1 AND [ef].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[r].[object_name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@EventPatternMode IN('NONE','REGEX','REGEXI') OR [r].[object_name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @EventPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS))
                   AND (@VonUtc IS NULL OR [r].[timestamp_utc] >= @VonUtc)
@@ -233,6 +233,8 @@ BEGIN
                 SET @StatusCode = CASE
                                     WHEN ERROR_NUMBER() IN (229,262,297,300,371) THEN 'DENIED_PERMISSION'
                                     WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
+                                    WHEN ERROR_NUMBER() IN(6335,6336,6337) THEN 'XML_UNAVAILABLE_LIMIT'
+                                    WHEN ERROR_NUMBER() BETWEEN 9400 AND 9431 THEN 'XML_INVALID'
                                     ELSE 'ERROR_HANDLED'
                                   END;
                 SET @ErrorNumber = ERROR_NUMBER();
@@ -253,7 +255,7 @@ BEGIN
         ELSE
         BEGIN
             BEGIN TRY
-                SELECT @TargetData = TRY_CONVERT([xml], [t].[target_data])
+                SELECT @TargetData = CONVERT([xml], [t].[target_data])
                 FROM [sys].[dm_xe_session_targets] AS t WITH (NOLOCK)
                 JOIN [sys].[dm_xe_sessions] AS s WITH (NOLOCK)
                   ON [s].[address] = [t].[event_session_address]
@@ -291,6 +293,8 @@ BEGIN
                 SET @StatusCode = CASE
                                     WHEN ERROR_NUMBER() IN (229,262,297,300,371) THEN 'DENIED_PERMISSION'
                                     WHEN ERROR_NUMBER() = 1222 THEN 'TIMEOUT'
+                                    WHEN ERROR_NUMBER() IN(6335,6336,6337) THEN 'XML_UNAVAILABLE_LIMIT'
+                                    WHEN ERROR_NUMBER() BETWEEN 9400 AND 9431 THEN 'XML_INVALID'
                                     ELSE 'ERROR_HANDLED'
                                   END;
                 SET @ErrorNumber = ERROR_NUMBER();

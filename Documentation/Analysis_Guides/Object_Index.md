@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 18. Juli 2026
-**Abdeckung:** alle 84 Procedures des Frameworks
+**Stand:** 21. Juli 2026
+**Abdeckung:** alle 85 Procedures des Frameworks
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -128,6 +128,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | Objekt | Eigenständige Beschreibung |
 |---|---|
 | `[monitor].[USP_ServerFeatureCapabilities]` | [Version, Plattform und Featurefähigkeit](Procedures/USP_ServerFeatureCapabilities.md) |
+| `[monitor].[USP_ServerVersionInformation]` | [Build, Servicing-Zweig und Lifecycle](Procedures/USP_ServerVersionInformation.md) |
 | `[monitor].[USP_SpecialFeatureInventory]` | [Spezialfeature-Inventar und Deep-Dive-Auswahl](Procedures/USP_SpecialFeatureInventory.md) |
 | `[monitor].[USP_InMemoryOltpAnalysis]` | [XTP, Hashindizes, Checkpoints und Pools](Procedures/USP_InMemoryOltpAnalysis.md) |
 | `[monitor].[USP_TemporalAnalysis]` | [Temporal History, Retention und Wachstum](Procedures/USP_TemporalAnalysis.md) |
@@ -148,8 +149,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | Extended Events | 6 |
 | Infrastruktur | 13 |
 | Server Health | 17 |
-| Versionsadaptive Spezialanalysen | 8 |
-| **Gesamt** | **84** |
+| Versionsadaptive Spezialanalysen | 9 |
+| **Gesamt** | **85** |
 
 ## Weitere Einstiege
 

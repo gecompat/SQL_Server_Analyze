@@ -2,8 +2,8 @@
 
 **Stand:** 20. Juli 2026<br>
 **Status:** Index des integrierten Authoring-Archivs; nicht kanonisch<br>
-**Research-Abdeckung:** 84 von 84 öffentlichen Procedures<br>
-**Fachliche Tiefenprüfung nach Qualitätsvertrag v2:** 84 von 84 Procedure-Seiten
+**Historische Research-Abdeckung:** 84 Procedures<br>
+**Fachliche Tiefenprüfung nach Qualitätsvertrag v2:** 85 von 85 Procedure-Seiten
 
 ## Zweck und Aussagegrenze
 
@@ -23,20 +23,20 @@ Für die Nutzung gelten [Technical_Foundations.md](../Technical_Foundations.md) 
 | [Deep_Analysis_Infrastructure_Draft.md](Deep_Analysis_Infrastructure_Draft.md) | Agent, Resource Governor, AG, Backup, Log Shipping, Replication, Data Capture und Maintenance | 13 |
 | [Deep_Analysis_ServerHealth_Draft.md](Deep_Analysis_ServerHealth_Draft.md) | CPU/NUMA, Memory, TempDB, Configuration, OS, Security, Integrity, Capacity, Counters und Engine Events | 17 |
 | [Deep_Analysis_VersionAdaptive_Draft.md](Deep_Analysis_VersionAdaptive_Draft.md) | Capability Detection, Special Features, In-Memory OLTP, Temporal, Service Broker, Full Text, Data Capture und Encryption | 8 |
-| **Familien-Deep-Drafts gesamt** | jede öffentliche Procedure genau einmal | **84** |
+| **Historische Familien-Deep-Drafts gesamt** | ursprünglicher Frameworkstand | **84** |
 
 ## Research-Section-Vertrag
 
 Jede der 84 Research-Sections besitzt Leitfrage, technischen Hintergrund, Datenkette, Zeit-/Scope-Modell, Bewertung und Gegenprobe, typische Fehlinterpretation sowie Folgeanalyse. Diese Felder bilden eine Arbeitsgrundlage.
 
-Erst der Status `DEEP_REVIEWED` bestätigt zusätzlich den Abgleich der kanonischen Seite mit aktuellem T-SQL, sicheren Aufrufen, Resultsetvertrag, konkreter Leserichtung, synthetischen Beispielen, Primärquellen und vollständigem Kosten-/Grenzprofil. Diesen Status erfüllen alle 84 kanonischen [Procedure-Seiten](../Procedures/README.md); das [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv) hält Datum und Vertragsversion je Procedure fest.
+Erst der Status `DEEP_REVIEWED` bestätigt zusätzlich den Abgleich der kanonischen Seite mit aktuellem T-SQL, sicheren Aufrufen, Resultsetvertrag, konkreter Leserichtung, synthetischen Beispielen, Primärquellen und vollständigem Kosten-/Grenzprofil. Diesen Status erfüllen alle 85 kanonischen [Procedure-Seiten](../Procedures/README.md); das [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv) hält Datum und Vertragsversion je Procedure fest. Die später hinzugekommene `USP_ServerVersionInformation` wurde direkt als kanonische, tief geprüfte Einzelseite erstellt und erweitert deshalb das historische 84er-Draftarchiv nicht rückwirkend.
 
 ## Validierter Stand
 
-- aktuelles öffentliches Inventory: 84 Procedures,
+- aktuelles öffentliches Inventory: 85 Procedures,
 - Familien-Research-Sections: 84,
-- kanonische Procedure-Seiten: 84 `DEEP_REVIEWED`,
-- fachlich tief geprüfte Procedure-Seiten: 84,
+- kanonische Procedure-Seiten: 85 `DEEP_REVIEWED`,
+- fachlich tief geprüfte Procedure-Seiten: 85,
 - Primärquellen für Engine-, Versions- und Berechtigungsaussagen: Microsoft Learn; ausgewählte kanonische Seiten ergänzen praxisnahe externe Vertiefungen mit ausdrücklich begrenztem Evidenzrang,
 - Beispiele verwenden keine realen Laufzeit-, Benutzer-, Firmen- oder Umgebungswerte,
 - die Dokumentationsintegration ändert kein T-SQL-Runtimeverhalten.

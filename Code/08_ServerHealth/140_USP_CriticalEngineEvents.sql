@@ -172,7 +172,7 @@ BEGIN
                     SELECT TOP (@Limit)
                           [r].[timestamp_utc] AS [TimestampUtc]
                         , [r].[object_name] AS [EventName]
-                        , TRY_CONVERT(xml, [r].[event_data]) AS [EventXml]
+                        , CONVERT(xml, [r].[event_data]) AS [EventXml]
                     FROM [sys].[fn_xe_file_target_read_file]
                          (@ResolvedFilePath, NULL, NULL, NULL) AS [r]
                     WHERE [r].[object_name] IN
@@ -241,8 +241,10 @@ BEGIN
             VALUES
             (
                   N'system_health event_file'
-                , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371)
-                       THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
+                , CASE WHEN ERROR_NUMBER() IN (229, 262, 297, 300, 371) THEN 'DENIED_PERMISSION'
+                       WHEN ERROR_NUMBER() IN(6335,6336,6337) THEN 'XML_UNAVAILABLE_LIMIT'
+                       WHEN ERROR_NUMBER() BETWEEN 9400 AND 9431 THEN 'XML_INVALID'
+                       ELSE 'ERROR_HANDLED' END
                 , ERROR_NUMBER(), ERROR_MESSAGE()
                 , N'Das Eventfile konnte nicht ausgewertet werden; andere Quellen bleiben verfügbar.'
             );
