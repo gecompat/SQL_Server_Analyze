@@ -338,17 +338,12 @@ IF EXISTS
 IF EXISTS
 (
     SELECT 1
-    FROM OPENJSON(@SanitizedJson,N'$.predicateHistogramMappings')
-    WITH
-    (
-          [DatabaseName] sysname N'$.DatabaseName'
-        , [SchemaName] sysname N'$.SchemaName'
-        , [ObjectName] sysname N'$.ObjectName'
-        , [ColumnName] sysname N'$.ColumnName'
-        , [StatisticsName] sysname N'$.StatisticsName'
-    )
-    WHERE [DatabaseName] IS NOT NULL OR [SchemaName] IS NOT NULL OR [ObjectName] IS NOT NULL
-       OR [ColumnName] IS NOT NULL OR [StatisticsName] IS NOT NULL
+    FROM OPENJSON(@SanitizedJson,N'$.predicateHistogramMappings') AS [j]
+    WHERE JSON_VALUE([j].[value],N'$.DatabaseName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.SchemaName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.ObjectName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.ColumnName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.StatisticsName') IS NOT NULL
 )
     THROW 53617,N'OMIT hat Predicate-Histogramm-Identifikatoren ausgegeben.',1;
 IF CHARINDEX(N'ExampleSensitiveBoundary',@SanitizedJson)>0
