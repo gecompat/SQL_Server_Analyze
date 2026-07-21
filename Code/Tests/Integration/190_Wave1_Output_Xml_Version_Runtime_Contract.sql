@@ -91,7 +91,7 @@ IF @TruncatedCount<>1 OR @LargestRequired<>2
 
 /* XML wird aus dem vollständigen Quellwert kontrolliert typisiert. */
 DECLARE @XmlValue xml,@XmlStatus varchar(40),@XmlError int,@XmlMessage nvarchar(2048);
-DECLARE @LongValidXml nvarchar(max)=N'<root>'+REPLICATE(N'x',5000)+N'</root>';
+DECLARE @LongValidXml nvarchar(max)=N'<root>'+REPLICATE(CONVERT(nvarchar(max),N'x'),5000)+N'</root>';
 EXEC [monitor].[InternalParseXmlText]
       @XmlText=@LongValidXml,@XmlValue=@XmlValue OUTPUT,@StatusCode=@XmlStatus OUTPUT
     , @ErrorNumber=@XmlError OUTPUT,@ErrorMessage=@XmlMessage OUTPUT;
