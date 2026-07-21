@@ -34,6 +34,46 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalWriteResultTable]
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    -- Diese lokalen Tabellen entstehen vor LOCK_TIMEOUT 0. Der No-Wait-
+    -- Vertrag gilt für die fremden Quell-/Ziel-Temp-Tabellen, nicht für die
+    -- eigene tempdb-Metadatenanlage des Writers.
+    CREATE TABLE [#InternalWriteResultTable_SourceSchema]
+    (
+          [ColumnId] int NOT NULL
+        , [ColumnName] sysname NOT NULL
+        , [TypeName] sysname NOT NULL
+        , [SystemTypeId] tinyint NOT NULL
+        , [MaxLength] smallint NOT NULL
+        , [Precision] tinyint NOT NULL
+        , [Scale] tinyint NOT NULL
+        , [CollationName] sysname NULL
+        , [IsNullable] bit NOT NULL
+        , [IsIdentity] bit NOT NULL
+        , [IsComputed] bit NOT NULL
+        , [IsUserDefined] bit NOT NULL
+        , [IsAssemblyType] bit NOT NULL
+        , [XmlCollectionId] int NOT NULL
+    );
+
+    CREATE TABLE [#InternalWriteResultTable_TargetSchema]
+    (
+          [ColumnId] int NOT NULL
+        , [ColumnName] sysname NOT NULL
+        , [TypeName] sysname NOT NULL
+        , [SystemTypeId] tinyint NOT NULL
+        , [MaxLength] smallint NOT NULL
+        , [Precision] tinyint NOT NULL
+        , [Scale] tinyint NOT NULL
+        , [CollationName] sysname NULL
+        , [IsNullable] bit NOT NULL
+        , [IsIdentity] bit NOT NULL
+        , [IsComputed] bit NOT NULL
+        , [IsUserDefined] bit NOT NULL
+        , [IsAssemblyType] bit NOT NULL
+        , [XmlCollectionId] int NOT NULL
+    );
+
     SET LOCK_TIMEOUT 0;
 
     DECLARE @TableThrowMessage nvarchar(2048);
@@ -161,42 +201,6 @@ BEGIN
             , @ErrorMessage = N'@TargetTable ist vorhanden, ihre Katalogzeile war jedoch ohne Warten nicht sichtbar.';
         GOTO TableWriteFailed;
     END;
-
-    CREATE TABLE [#InternalWriteResultTable_SourceSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname NOT NULL
-        , [TypeName] sysname NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
-
-    CREATE TABLE [#InternalWriteResultTable_TargetSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname NOT NULL
-        , [TypeName] sysname NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
 
     INSERT [#InternalWriteResultTable_SourceSchema]
     (

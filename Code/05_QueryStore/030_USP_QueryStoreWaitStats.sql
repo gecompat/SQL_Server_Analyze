@@ -62,16 +62,16 @@ BEGIN
     DECLARE @RefMode varchar(8),@RefValue nvarchar(4000),@RefFlags varchar(8),@RefValid bit,@RefPredicate nvarchar(max)=N'';
     SELECT @RefMode=[PatternMode],@RefValue=[PatternValue],@RefFlags=[RegexFlags],@RefValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ReferencedDatabaseNamePattern);
     CREATE TABLE [#QueryStoreWaitStats_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
-    CREATE TABLE [#QueryStoreWaitStats_Result]([QueryStoreDatabaseId] int,[QueryStoreDatabaseName] sysname,[QueryId] bigint,[PlanId] bigint,[QueryHash] binary(8),[QueryPlanHash] binary(8),[WaitCategory] tinyint,[WaitCategoryDesc] nvarchar(128),[ExecutionTypeDesc] nvarchar(128),[FirstIntervalStartUtc] datetimeoffset,[LastIntervalEndUtc] datetimeoffset,[RecordedRows] bigint,[TotalQueryWaitTimeMs] bigint,[AverageRecordedQueryWaitTimeMs] decimal(38,3),[MaxQueryWaitTimeMs] bigint,[QuerySqlText] nvarchar(max));
+    CREATE TABLE [#QueryStoreWaitStats_Result]([QueryStoreDatabaseId] int,[QueryStoreDatabaseName] sysname,[QueryId] bigint,[PlanId] bigint,[QueryHash] binary(8),[QueryPlanHash] binary(8),[WaitCategory] tinyint,[WaitCategoryDesc] nvarchar(128),[ExecutionTypeDesc] nvarchar(128),[FirstIntervalStartUtc] datetimeoffset,[LastIntervalEndUtc] datetimeoffset,[RecordedRows] bigint,[TotalQueryWaitTimeMs] bigint,[AverageRecordedQueryWaitTimeMs] decimal(38,3),[MaxQueryWaitTimeMs] bigint,[QuerySqlText] nvarchar(max),[SourceType] varchar(32) NULL,[SourceObject] nvarchar(256) NULL,[CapturedAtUtc] datetime2(3) NULL,[EvidenceScope] varchar(40) NULL,[IsAggregated] bit NULL,[QuerySqlTextCharacters] bigint NULL,[QuerySqlTextBytes] bigint NULL,[QuerySqlTextIsTruncated] bit NOT NULL DEFAULT(0),[EvidenceLimit] nvarchar(1000) NULL);
     CREATE TABLE [#QueryStoreWaitStats_Errors]([DatabaseName] sysname,[StatusCode] varchar(40),[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048));
     IF @AnalyseModus NOT IN('TOP','VOLL') OR @MaxZeilen<0 OR @MaxSqlTextZeichen < 0 OR @VonUtc>=@BisUtc OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @RefValid=0 OR (@ReferencedDatabaseNames IS NOT NULL AND @ReferencedDatabaseNamePattern IS NOT NULL) OR (@ReferencedDatabaseNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) WHERE [IsValid]=0))
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameter oder Zeitraum.';END;
     IF @StatusCode='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@QueryStoreDatabaseNames,@SystemdatenbankenEinbeziehen=0,@DatabaseNamePattern=@QueryStoreDatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='QUERY_STORE_CURRENT',@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT,@CrossDatabaseRequested=@Cross OUTPUT,@CandidateTable=N'#QueryStoreWaitStats_DatabaseCandidates';
     IF @StatusCode='AVAILABLE' AND (@AnalyseModus='VOLL' OR @EffectiveMaxZeilen>1000 OR DATEDIFF(HOUR,@VonUtc,@BisUtc)>24 OR @ReferencedDatabaseNames IS NOT NULL OR @ReferencedDatabaseNamePattern IS NOT NULL)
         EXEC [monitor].[InternalCheckAnalysisPath] @AnalysisClass='QUERY_STORE_DEEP',@HighImpactConfirmed=@HighImpactConfirmed,@StatusCode=@StatusCode OUTPUT,@ErrorMessage=@ErrorMessage OUTPUT;
-    IF @ReferencedDatabaseNames IS NOT NULL SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) JOIN [monitor].[TVF_ParseSqlNameList](@ReferencedNames) [rf] ON [rf].[IsValid]=1 AND [rf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS)';
-    ELSE IF @RefMode='LIKE' SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @RefValue COLLATE SQL_Latin1_General_CP1_CS_AS)';
-    ELSE IF @RefMode IN('REGEX','REGEXI') SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT TRY_CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE REGEXP_LIKE(PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1),@RefValue,@RefFlags))';
+    IF @ReferencedDatabaseNames IS NOT NULL SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) JOIN [monitor].[TVF_ParseSqlNameList](@ReferencedNames) [rf] ON [rf].[IsValid]=1 AND [rf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS)';
+    ELSE IF @RefMode='LIKE' SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1) COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @RefValue COLLATE SQL_Latin1_General_CP1_CS_AS)';
+    ELSE IF @RefMode IN('REGEX','REGEXI') SET @RefPredicate=N' AND EXISTS(SELECT 1 FROM (SELECT CONVERT(xml,[p].[query_plan]) [PlanXml]) [px] CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') [n]([x]) WHERE REGEXP_LIKE(PARSENAME([n].[x].value(''@Database'',''nvarchar(776)''),1),@RefValue,@RefFlags))';
     SET LOCK_TIMEOUT 0;
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -89,8 +89,8 @@ BEGIN
  WHERE [i].[end_time]>@FromUtc AND [i].[start_time]<@ToUtc AND (@WaitCategory IS NULL OR [ws].[wait_category_desc]=@WaitCategory OR CONVERT(nvarchar(10),[ws].[wait_category])=@WaitCategory)
  GROUP BY [ws].[plan_id],[ws].[execution_type_desc],[ws].[wait_category],[ws].[wait_category_desc]
 )
-INSERT [#QueryStoreWaitStats_Result]
-SELECT TOP(@TopRows) DB_ID(),(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),[q].[query_id],[p].[plan_id],[q].[query_hash],[p].[query_plan_hash],[W].[wait_category],[W].[wait_category_desc],[W].[execution_type_desc],[W].[FirstStart],[W].[LastEnd],[W].[RecordedRows],[W].[TotalWait],CONVERT(decimal(38,3),[W].[AverageWait]),[W].[MaxWait],CASE WHEN @TextChars IS NULL OR @TextChars=0 THEN [qt].[query_sql_text] ELSE LEFT([qt].[query_sql_text],@TextChars) END
+INSERT [#QueryStoreWaitStats_Result]([QueryStoreDatabaseId],[QueryStoreDatabaseName],[QueryId],[PlanId],[QueryHash],[QueryPlanHash],[WaitCategory],[WaitCategoryDesc],[ExecutionTypeDesc],[FirstIntervalStartUtc],[LastIntervalEndUtc],[RecordedRows],[TotalQueryWaitTimeMs],[AverageRecordedQueryWaitTimeMs],[MaxQueryWaitTimeMs],[QuerySqlText])
+SELECT TOP(@TopRows) DB_ID(),(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),[q].[query_id],[p].[plan_id],[q].[query_hash],[p].[query_plan_hash],[W].[wait_category],[W].[wait_category_desc],[W].[execution_type_desc],[W].[FirstStart],[W].[LastEnd],[W].[RecordedRows],[W].[TotalWait],CONVERT(decimal(38,3),[W].[AverageWait]),[W].[MaxWait],[qt].[query_sql_text]
 FROM [W] JOIN [sys].[query_store_plan] [p] WITH (NOLOCK) ON [p].[plan_id]=[W].[plan_id] JOIN [sys].[query_store_query] [q] WITH (NOLOCK) ON [q].[query_id]=[p].[query_id] JOIN [sys].[query_store_query_text] [qt] WITH (NOLOCK) ON [qt].[query_text_id]=[q].[query_text_id]
 WHERE (@QueryId IS NULL OR [q].[query_id]=@QueryId) AND (@QueryHash IS NULL OR [q].[query_hash]=@QueryHash)'+@RefPredicate+N'
 ORDER BY [W].[TotalWait] DESC,[W].[LastEnd] DESC;
@@ -100,6 +100,20 @@ END;';
         FETCH NEXT FROM [c] INTO @Db,@DbCompat;
       END;CLOSE [c];DEALLOCATE [c];
     END;
+    UPDATE [#QueryStoreWaitStats_Result]
+    SET [SourceType]='QUERY_STORE',[SourceObject]=N'sys.query_store_wait_stats|sys.query_store_plan|sys.query_store_query_text',
+        [CapturedAtUtc]=@CollectionTimeUtc,[EvidenceScope]='DATABASE_QUERY_PLAN_INTERVAL',[IsAggregated]=1,
+        [EvidenceLimit]=N'Query-Store-Intervalaggregate; keine aktuelle Einzelausführung und keine vollständige Wait-Timeline.';
+    DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+    EXEC [monitor].[InternalProjectUnicodeTextColumn]
+          @SourceTable=N'#QueryStoreWaitStats_Result',@TextColumn=N'QuerySqlText'
+        , @CharactersColumn=N'QuerySqlTextCharacters',@BytesColumn=N'QuerySqlTextBytes'
+        , @IsTruncatedColumn=N'QuerySqlTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+        , @TruncatedValueCount=@TruncatedValueCount OUTPUT,@LargestRequiredCharacters=@LargestRequiredCharacters OUTPUT;
+    EXEC [monitor].[InternalEmitTruncationWarning]
+          @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+        , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+        , @PrintMeldungen=@PrintMeldungen;
     SELECT @RowCount=COUNT_BIG(*) FROM [#QueryStoreWaitStats_Result];SET @HasMoreRows=CONVERT(bit,CASE WHEN @EffectiveMaxZeilen<9223372036854775807 AND @RowCount>@EffectiveMaxZeilen THEN 1 ELSE 0 END);IF @IsPartial=1 AND @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
     IF @ResultSetArtNormalisiert<>'NONE'
     BEGIN

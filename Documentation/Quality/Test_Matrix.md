@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 21. Juli 2026
-**Status:** commitbezogene 34-Suite-Evidenz einschließlich des frameworkweiten Datenbank-, CONSOLE- und TABLE-Vertrags vorhanden
+**Status:** commitbezogene 34-Suite-Evidenz einschließlich der Welle-1-Verträge für sichtbare Unicode-Kürzung, native XML-Ausgaben, Provenienz und Offline-Versionsbewertung vorhanden
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` hat Installer, den 34-Suite-Release-Gate-Vertrag einschließlich aller 181 Spezialfälle, der TABLE-/Pilot-/Framework-Ausgabesuiten sowie die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` hat Installer, den 34-Suite-Release-Gate-Vertrag einschließlich aller 181 Spezialfälle, der TABLE-/Pilot-/Framework-Ausgabesuiten und des Welle-1-Begleitvertrags sowie die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29805843161](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843161) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29805843138](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843138) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29805843126](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843126) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29812091324](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091324) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1-Vertrag |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29812091252](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091252) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1-Vertrag |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29812091262](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091262) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1-Vertrag; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 
@@ -67,7 +67,7 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
 1. Bei Containerzielen den öffentlichen Image-Tag pullen, den aufgelösten `repo@sha256`-Digest validieren und exakt diesen Digest starten; nach Bereitschaft `SERVERPROPERTY('ProductVersion')` erfassen.
 2. Installer im vorgesehenen Datenbankkontext ausführen.
 3. Compile- und Objektbestand prüfen.
-4. Im SQLCMD-Modus aus `Code/Tests` den Runner `Run_Release_Gate.sql` ausführen. Er startet die sechsundzwanzig folgenden Verträge und danach acht Bereichs-Smoke-Tests in fester Reihenfolge; beim ersten SQL-Fehler wird beendet:
+4. Im SQLCMD-Modus aus `Code/Tests` den Runner `Run_Release_Gate.sql` ausführen. Er startet die sechsundzwanzig folgenden Vertragsgruppen und danach acht Bereichs-Smoke-Tests in fester Reihenfolge; beim ersten SQL-Fehler wird beendet:
    - `Integration/110_Smoke_Test.sql`
    - `Integration/163_Parameter_API_Vertrag.sql`
    - `Integration/165_Filter_Output_Contract.sql`
@@ -94,6 +94,7 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
    - `Integration/187_Table_Output_Runtime_Contract.sql`
    - `Integration/188_Framework_Output_Pilot_Runtime_Contract.sql`
    - `Integration/189_Framework_Output_Runtime_Contract.sql`
+     - `Integration/190_Wave1_Output_Xml_Version_Runtime_Contract.sql` als Begleitvertrag derselben 26. Ausgabesuite
    - Common, Current State, Object/Index, Plan Cache, Query Store, Extended Events, Infrastructure und Server Health
 5. Bereichstests für Common, Current State, Object/Index, Plan Cache, Query Store, Extended Events, Infrastructure und Server Health ausführen.
 6. Neue Spezialfallmodule gegen Capability-, Leerzustands-, Positiv-, Berechtigungs-, Reset- und Lastfälle prüfen; bei Statistikverteilung zusätzlich Uniform-, Dominanz-, Tail-, Modification-, Filter-, Incremental- und Kandidatengrenzfälle. Für `USP_SpecialFeatureInventory` sind Feature-absent, eingeschränkte Metadatensichtbarkeit, Begrenzung sowie je ein positiver Fall für alle 18 Featurecodes vorgesehen. Für `USP_InMemoryOltpAnalysis` sind No-XTP, Schema-only, Speicher-, Hashketten-, Checkpoint-, Transaktions-, Pool-, Berechtigungs-, Filter-, Begrenzungs- und Kostenfälle definiert. Für `USP_TemporalAnalysis` sind No-Temporal, Zuordnung/Period, Retention, Kapazität/Ratio, Indexbaseline, Memory-Optimized, Berechtigung, Filter, Begrenzung und die ausdrückliche Nichterkennbarkeit getrennter Paare vorgesehen. Für `USP_ServiceBrokerAnalysis` sind No-Broker, Konfiguration ohne Objekte, deaktivierter Broker mit Objekten, Queue-Schalter, approximative Kapazität, interne Aktivierung, Transmission-Alter/-Status, Conversation-Zustände, Retention, Berechtigungen, Filter, Begrenzung und ein statischer Payload-Ausschluss vorgesehen. Für `USP_FullTextAnalysis` sind Feature-/Katalogzustand, Indexschalter, Populationen, Batches, Fragmente, Semantik, Memory/FDHost, Berechtigungen, Filter, Begrenzung und Inhalts-/DDL-Ausschluss vorgesehen. Für `USP_DataCaptureDeepAnalysis` sind CT-Consumer-Versionen, CDC-Scan/Fehler/Jobs/Cleanup, lokale Replikationsagenten/Rückstand/Fehler, Remote-Topologielücke, Berechtigungen, Filter, Begrenzung und Nutzdaten-/Credential-/Command-/DDL-Ausschluss vorgesehen. `USP_EncryptionAnalysis` trennt TDE, Zertifikatslebenszyklus, explizite Backupverschlüsselung und aggregierte Always-Encrypted-/Ledger-Fälle. `USP_MaintenanceOperations` trennt pausierte/aktive Requests, PVS-Versionen, ungefilterte und explizit gefilterte Jobfälle sowie den statischen Änderungs- und Inhaltsausschluss. Alle Fälle stehen in `Special_Case_Test_Cases.csv`.

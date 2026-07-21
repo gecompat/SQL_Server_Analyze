@@ -119,7 +119,13 @@ BEGIN
         , [DatabaseId] int NULL
         , [DatabaseName] sysname NULL
         , [ObjectId] int NULL
+        , [StatementTextCharacters] bigint NULL
+        , [StatementTextBytes] bigint NULL
+        , [StatementTextIsTruncated] bit NOT NULL DEFAULT(0)
         , [StatementText] nvarchar(max) NULL
+        , [BatchTextCharacters] bigint NULL
+        , [BatchTextBytes] bigint NULL
+        , [BatchTextIsTruncated] bit NOT NULL DEFAULT(0)
         , [BatchText] nvarchar(max) NULL
         , [CreationTime] datetime NOT NULL
         , [LastExecutionTime] datetime NOT NULL
@@ -251,7 +257,9 @@ INSERT [#QueryStats_Result]
 (
       [QueryHash], [QueryPlanHash], [PlanHandle], [SqlHandle]
     , [StatementStartOffset], [StatementEndOffset], [PlanGenerationNumber]
-    , [DatabaseId], [DatabaseName], [ObjectId], [StatementText], [BatchText]
+    , [DatabaseId], [DatabaseName], [ObjectId]
+    , [StatementTextCharacters], [StatementTextBytes], [StatementTextIsTruncated], [StatementText]
+    , [BatchTextCharacters], [BatchTextBytes], [BatchTextIsTruncated], [BatchText]
     , [CreationTime], [LastExecutionTime], [ExecutionCount]
     , [TotalCpuMs], [LastCpuMs], [MinCpuMs], [MaxCpuMs], [AvgCpuMs]
     , [TotalElapsedMs], [LastElapsedMs], [MinElapsedMs], [MaxElapsedMs], [AvgElapsedMs]
@@ -276,14 +284,8 @@ SELECT TOP (@CandidateRows)
     , [resolved].[DatabaseId]
     , [dbc].[DatabaseName]
     , [st].[objectid]
-    , CASE
-          WHEN @TextChars IS NULL OR @TextChars = 0 THEN [statementText].[StatementText]
-          ELSE LEFT([statementText].[StatementText], @TextChars)
-      END
-    , CASE
-          WHEN @TextChars IS NULL OR @TextChars = 0 THEN [st].[text]
-          ELSE LEFT([st].[text], @TextChars)
-      END
+    , NULL,NULL,CONVERT(bit,0),[statementText].[StatementText]
+    , NULL,NULL,CONVERT(bit,0),[st].[text]
     , [qs].[creation_time]
     , [qs].[last_execution_time]
     , [qs].[execution_count]
@@ -392,6 +394,27 @@ OPTION (RECOMPILE, MAXDOP 1);';
             , @TextValue = @TextValue
             , @TextFlags = @TextRegexFlags;
 
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        DECLARE @ColumnTruncatedCount bigint=0,@ColumnLargestCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#QueryStats_Result',@TextColumn=N'StatementText'
+            , @CharactersColumn=N'StatementTextCharacters',@BytesColumn=N'StatementTextBytes'
+            , @IsTruncatedColumn=N'StatementTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#QueryStats_Result',@TextColumn=N'BatchText'
+            , @CharactersColumn=N'BatchTextCharacters',@BytesColumn=N'BatchTextBytes'
+            , @IsTruncatedColumn=N'BatchTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
+
         SELECT @RowCount = COUNT_BIG(*) FROM [#QueryStats_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
     END TRY
@@ -427,7 +450,9 @@ OPTION (RECOMPILE, MAXDOP 1);';
             SELECT TOP (@Limit)
                   [QueryHash], [QueryPlanHash], [PlanHandle], [SqlHandle]
                 , [StatementStartOffset], [StatementEndOffset], [PlanGenerationNumber]
-                , [DatabaseId], [DatabaseName], [ObjectId], [StatementText], [BatchText]
+                , [DatabaseId], [DatabaseName], [ObjectId]
+                , [StatementTextCharacters], [StatementTextBytes], [StatementTextIsTruncated], [StatementText]
+                , [BatchTextCharacters], [BatchTextBytes], [BatchTextIsTruncated], [BatchText]
                 , [CreationTime], [LastExecutionTime], [ExecutionCount]
                 , [TotalCpuMs], [LastCpuMs], [MinCpuMs], [MaxCpuMs], [AvgCpuMs]
                 , [TotalElapsedMs], [LastElapsedMs], [MinElapsedMs], [MaxElapsedMs], [AvgElapsedMs]
@@ -486,7 +511,9 @@ OPTION (RECOMPILE, MAXDOP 1);';
             SELECT TOP (@Limit)
                   [QueryHash], [QueryPlanHash], [PlanHandle], [SqlHandle]
                 , [StatementStartOffset], [StatementEndOffset], [PlanGenerationNumber]
-                , [DatabaseId], [DatabaseName], [ObjectId], [StatementText], [BatchText]
+                , [DatabaseId], [DatabaseName], [ObjectId]
+                , [StatementTextCharacters], [StatementTextBytes], [StatementTextIsTruncated], [StatementText]
+                , [BatchTextCharacters], [BatchTextBytes], [BatchTextIsTruncated], [BatchText]
                 , [CreationTime], [LastExecutionTime], [ExecutionCount]
                 , [TotalCpuMs], [LastCpuMs], [MinCpuMs], [MaxCpuMs], [AvgCpuMs]
                 , [TotalElapsedMs], [LastElapsedMs], [MinElapsedMs], [MaxElapsedMs], [AvgElapsedMs]

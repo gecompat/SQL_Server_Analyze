@@ -89,7 +89,7 @@ BEGIN
 
     CREATE TABLE [#CurrentWaits_Tasks]
     (
-        [SessionId] smallint NULL,[ExecContextId] int NULL,[WaitDurationMs] bigint NULL,[WaitType] nvarchar(120) NULL,[BlockingSessionId] smallint NULL,[ResourceDescription] nvarchar(3072) NULL,[SessionStatus] nvarchar(30) NULL,[RequestStatus] nvarchar(30) NULL,[LoginName] nvarchar(128) NULL,[HostName] nvarchar(128) NULL,[ProgramName] nvarchar(128) NULL,[IsToolBackgroundQuery] bit NOT NULL,[ToolBackgroundRuleCode] varchar(64) NULL,[ToolBackgroundCategory] varchar(40) NULL,[ToolBackgroundDetection] varchar(40) NULL,[ToolBackgroundConfidence] varchar(16) NULL,[DatabaseId] smallint NULL,[Command] nvarchar(32) NULL,[CurrentStatement] nvarchar(max) NULL,[WaitGroup] nvarchar(64) NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) NULL,[WaitTypicalOccurrence] nvarchar(1200) NULL,[HighWaitImpact] nvarchar(1200) NULL,[RecommendedChecks] nvarchar(1500) NULL,[WaitHelpUrl] nvarchar(500) NULL,[DescriptionSource] varchar(40) NULL,[DescriptionQuality] varchar(40) NULL,[CatalogMatchType] varchar(20) NULL
+        [SessionId] smallint NULL,[ExecContextId] int NULL,[WaitDurationMs] bigint NULL,[WaitType] nvarchar(120) NULL,[BlockingSessionId] smallint NULL,[ResourceDescription] nvarchar(3072) NULL,[SessionStatus] nvarchar(30) NULL,[RequestStatus] nvarchar(30) NULL,[LoginName] nvarchar(128) NULL,[HostName] nvarchar(128) NULL,[ProgramName] nvarchar(128) NULL,[IsToolBackgroundQuery] bit NOT NULL,[ToolBackgroundRuleCode] varchar(64) NULL,[ToolBackgroundCategory] varchar(40) NULL,[ToolBackgroundDetection] varchar(40) NULL,[ToolBackgroundConfidence] varchar(16) NULL,[DatabaseId] smallint NULL,[Command] nvarchar(32) NULL,[CurrentStatementCharacters] bigint NULL,[CurrentStatementBytes] bigint NULL,[CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0),[CurrentStatement] nvarchar(max) NULL,[WaitGroup] nvarchar(64) NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) NULL,[WaitTypicalOccurrence] nvarchar(1200) NULL,[HighWaitImpact] nvarchar(1200) NULL,[RecommendedChecks] nvarchar(1500) NULL,[WaitHelpUrl] nvarchar(500) NULL,[DescriptionSource] varchar(40) NULL,[DescriptionQuality] varchar(40) NULL,[CatalogMatchType] varchar(20) NULL
     );
     CREATE TABLE [#CurrentWaits_A]([WaitType] nvarchar(120) PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
     CREATE TABLE [#CurrentWaits_B]([WaitType] nvarchar(120) PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
@@ -105,7 +105,7 @@ BEGIN
     BEGIN
         BEGIN TRY
             INSERT [#CurrentWaits_Tasks]
-            SELECT TOP(@CandidateMaxZeilen) [w].[session_id],[w].[exec_context_id],[w].[wait_duration_ms],[w].[wait_type],NULLIF([w].[blocking_session_id],0),[w].[resource_description],[s].[status],[r].[status],[s].[login_name],[s].[host_name],[s].[program_name],[tool].[IsToolBackgroundQuery],[tool].[ToolBackgroundRuleCode],[tool].[ToolBackgroundCategory],[tool].[ToolBackgroundDetection],[tool].[ToolBackgroundConfidence],[r].[database_id],[r].[command],CASE WHEN @MitSqlText=1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [st].[StatementText] ELSE LEFT([st].[StatementText],@MaxSqlTextZeichen) END END,[wi].[WaitGroup],[wi].[Severity],[wi].[IsGenerallyBenign],[wi].[Meaning],[wi].[TypicalOccurrence],[wi].[HighWaitImpact],[wi].[RecommendedChecks],[wi].[HelpUrl],[wi].[DescriptionSource],[wi].[DescriptionQuality],[wi].[CatalogMatchType]
+            SELECT TOP(@CandidateMaxZeilen) [w].[session_id],[w].[exec_context_id],[w].[wait_duration_ms],[w].[wait_type],NULLIF([w].[blocking_session_id],0),[w].[resource_description],[s].[status],[r].[status],[s].[login_name],[s].[host_name],[s].[program_name],[tool].[IsToolBackgroundQuery],[tool].[ToolBackgroundRuleCode],[tool].[ToolBackgroundCategory],[tool].[ToolBackgroundDetection],[tool].[ToolBackgroundConfidence],[r].[database_id],[r].[command],NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText=1 THEN [st].[StatementText] END,[wi].[WaitGroup],[wi].[Severity],[wi].[IsGenerallyBenign],[wi].[Meaning],[wi].[TypicalOccurrence],[wi].[HighWaitImpact],[wi].[RecommendedChecks],[wi].[HelpUrl],[wi].[DescriptionSource],[wi].[DescriptionQuality],[wi].[CatalogMatchType]
             FROM [sys].[dm_os_waiting_tasks] AS [w] WITH (NOLOCK)
             LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK) ON [s].[session_id]=[w].[session_id]
             LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK) ON [r].[session_id]=[w].[session_id]
@@ -164,6 +164,16 @@ BEGIN
             ;WITH [T] AS (SELECT ROW_NUMBER() OVER(ORDER BY [WaitDurationMs] DESC,[SessionId]) AS [rn],* FROM [#CurrentWaits_Tasks]) DELETE FROM [T] WHERE [rn]>@MaxZeilen;
             ;WITH [I] AS (SELECT ROW_NUMBER() OVER(ORDER BY [WaitTimeMs] DESC,[WaitType]) AS [rn],* FROM [#CurrentWaits_Instance]) DELETE FROM [I] WHERE [rn]>@MaxZeilen;
         END;
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentWaits_Tasks',@TextColumn=N'CurrentStatement'
+            , @CharactersColumn=N'CurrentStatementCharacters',@BytesColumn=N'CurrentStatementBytes'
+            , @IsTruncatedColumn=N'CurrentStatementIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@TruncatedValueCount OUTPUT,@LargestRequiredCharacters=@LargestRequiredCharacters OUTPUT;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
         SELECT @TaskRowCount=COUNT_BIG(*) FROM [#CurrentWaits_Tasks];SELECT @InstanceRowCount=COUNT_BIG(*) FROM [#CurrentWaits_Instance];
         IF @IsPartial=1 AND @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
     END;

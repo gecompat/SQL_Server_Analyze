@@ -1,6 +1,6 @@
 # Versionsadaptive und spezialisierte Analysepfade
 
-**Procedures:** 7
+**Procedures:** 9
 **Evidenz:** Version, Plattform, sichtbare Kataloge, Spezialfeature-Metadaten und isolierte Runtime-DMVs  
 **Kosten:** LOW bis HIGH_OPT_IN
 
@@ -664,3 +664,38 @@ Das Modul liest keine Schlüsselpfade, Signaturen, verschlüsselten Werte, Backu
 - [backupset](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql)
 - [sys.column_master_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-master-keys-transact-sql)
 - [sys.column_encryption_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-encryption-keys-transact-sql)
+
+---
+
+## 9. [monitor].[USP_ServerVersionInformation]
+
+### Zweck
+
+Liefert eine leichte, offline reproduzierbare Einordnung von Instanzbuild,
+Servicing-Zweig und Microsoft-Produktlifecycle. Die Procedure trennt aktuelle
+`SERVERPROPERTY`-/Hostevidenz vom Stand der mitgelieferten Frameworkkataloge.
+
+### Sicherer Aufruf
+
+```sql
+EXEC [monitor].[USP_ServerVersionInformation]
+      @ResultSetArt = 'CONSOLE';
+```
+
+`databaseCompatibility` ist opt-in. Die normale Console enthält keine Server-,
+Host-, Instanz-, Konto- oder Pfadidentität.
+
+### Interpretation
+
+- `EXACT_MATCH` ist ein exakter Offline-Katalogtreffer, keine Patchfreigabe.
+- `OLDER_KNOWN_BUILD` zeigt einen älteren bekannten Katalogeintrag.
+- `BUILD_NEWER_THAN_OFFLINE_CATALOG` ist keine Veraltet-Aussage.
+- `CATALOG_STALE` bewertet den Katalogstand, nicht den Serverzustand.
+- Lifecycle gilt für die Produkt-Hauptversion und ersetzt keine editions- oder
+  vertragsspezifische Supportprüfung.
+
+### Primärquellen
+
+- [SERVERPROPERTY](https://learn.microsoft.com/en-us/sql/t-sql/functions/serverproperty-transact-sql?view=sql-server-ver17)
+- [SQL Server build versions](https://learn.microsoft.com/en-us/troubleshoot/sql/releases/download-and-install-latest-updates)
+- [Microsoft Lifecycle](https://learn.microsoft.com/en-us/lifecycle/)

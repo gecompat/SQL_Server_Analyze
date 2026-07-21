@@ -22,8 +22,10 @@ P1           : Suiten 170 bis 178 prüfen alle 40 P1-Fälle.
 P2           : Suiten 179 bis 186 prüfen Feature Inventory, In-Memory OLTP,
                Temporal, Service Broker, Full-Text, Data Capture, Encryption
                und Maintenance capability-adaptiv und ohne reale Nutzdaten.
-OUTPUT       : Suiten 187 bis 189 prüfen Strukturadaption, Pilotvertrag und den
-               frameworkweiten CONSOLE-/TABLE-Laufzeitvertrag.
+OUTPUT       : Suiten 187 bis 190 prüfen Strukturadaption, Pilotvertrag, den
+               frameworkweiten CONSOLE-/TABLE-Vertrag sowie die Welle-1-
+               Verträge. Suite 190 ist Begleittest der Suite 26; die kanonische
+               Anzahl der Release-Suiten bleibt deshalb 34.
 ===============================================================================
 */
 
@@ -104,6 +106,7 @@ RAISERROR(N'RELEASE_GATE 25/34: Ausgabe-Pilotvertrag',10,1) WITH NOWAIT;
 
 RAISERROR(N'RELEASE_GATE 26/34: Frameworkweiter Ausgabevertrag',10,1) WITH NOWAIT;
 :r Integration/189_Framework_Output_Runtime_Contract.sql
+:r Integration/190_Wave1_Output_Xml_Version_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 27/34: Common',10,1) WITH NOWAIT;
 :r Common/090_Test_und_Abnahme_Phase1A.sql

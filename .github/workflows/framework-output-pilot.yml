@@ -14,6 +14,7 @@ on:
       - 'Code/02_CurrentState/100_USP_CurrentOverview.sql'
       - 'Code/Tests/Integration/188_Framework_Output_Pilot_Runtime_Contract.sql'
       - 'Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql'
+      - 'Code/Tests/Integration/190_Wave1_Output_Xml_Version_Runtime_Contract.sql'
       - 'Code/Install/Install_All.sql'
   workflow_dispatch:
 

@@ -55,7 +55,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_TemporalAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -254,6 +253,13 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
         , [RecommendedNextCheck] nvarchar(1000) NOT NULL
     );
+
+    -- Lokale TempDB-DDL soll nicht an einer flüchtigen Metadatenkollision mit
+    -- dem für fachliche Quellen gewünschten NOWAIT-Vertrag scheitern. Erst
+    -- nach vollständiger Materialisierung der Arbeitsstrukturen wird NOWAIT
+    -- für die leichten Framework-/Katalogzugriffe aktiviert. Die isolierten
+    -- datenbanklokalen Child-Batches verwenden weiterhin @LockTimeoutMs.
+    SET LOCK_TIMEOUT 0;
 
     IF @StatusCode='AVAILABLE'
     BEGIN

@@ -42,4 +42,4 @@ Diese Matrix verbindet versionsabhängige Aussagen der Analysis Guides mit offiz
 
 ## Ergebnis des Reviews vom 20. Juli 2026
 
-Die 84 Procedure-Seiten und neun Familienguides bleiben fachlich abgedeckt. Die noch offenen Punkte sind keine fehlenden Draftfamilien, sondern die in der letzten Spalte genannten feature-positiven Laufzeitnachweise. Änderungen an SQL-Server-Versionen, Compatibility-Logik, Berechtigungen oder Quellobjekten lösen einen erneuten gezielten Primärquellenabgleich aus.
+Die 85 Procedure-Seiten und neun Familienguides bleiben fachlich abgedeckt. Die noch offenen Punkte sind keine fehlenden Draftfamilien, sondern die in der letzten Spalte genannten feature-positiven Laufzeitnachweise. Änderungen an SQL-Server-Versionen, Compatibility-Logik, Berechtigungen oder Quellobjekten lösen einen erneuten gezielten Primärquellenabgleich aus.

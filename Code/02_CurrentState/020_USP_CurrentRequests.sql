@@ -385,15 +385,18 @@ BEGIN
         , [StatementEndCharacter] int NULL
         , [StatementStartLine] int NULL
         , [StatementEndLine] int NULL
-        , [CurrentStatementCharacterCount] int NULL
+        , [CurrentStatementCharacterCount] bigint NULL
+        , [CurrentStatementBytes] bigint NULL
         , [CurrentStatementIsTruncated] bit NULL
-        , [BatchTextCharacterCount] int NULL
+        , [BatchTextCharacterCount] bigint NULL
+        , [BatchTextBytes] bigint NULL
         , [BatchTextIsTruncated] bit NULL
         , [CurrentStatement] nvarchar(max) NULL
         , [BatchText] nvarchar(max) NULL
         , [InputBufferEventType] nvarchar(256) NULL
         , [InputBufferParameterCount] smallint NULL
-        , [InputBufferCharacterCount] int NULL
+        , [InputBufferCharacterCount] bigint NULL
+        , [InputBufferBytes] bigint NULL
         , [InputBufferIsTruncated] bit NULL
         , [InputBufferText] nvarchar(max) NULL
         , PRIMARY KEY ([SessionId], [RequestId])
@@ -435,11 +438,11 @@ BEGIN
             , [StatementStartOffsetBytes], [StatementEndOffsetBytes]
             , [StatementStartCharacter], [StatementEndCharacter]
             , [StatementStartLine], [StatementEndLine]
-            , [CurrentStatementCharacterCount], [CurrentStatementIsTruncated]
-            , [BatchTextCharacterCount], [BatchTextIsTruncated]
+            , [CurrentStatementCharacterCount], [CurrentStatementBytes], [CurrentStatementIsTruncated]
+            , [BatchTextCharacterCount], [BatchTextBytes], [BatchTextIsTruncated]
             , [CurrentStatement], [BatchText]
             , [InputBufferEventType], [InputBufferParameterCount]
-            , [InputBufferCharacterCount], [InputBufferIsTruncated]
+            , [InputBufferCharacterCount], [InputBufferBytes], [InputBufferIsTruncated]
             , [InputBufferText]
         )
         SELECT TOP (@CandidateMaxZeilen)
@@ -528,11 +531,14 @@ BEGIN
             , [st].[StatementStartLine]
             , [st].[StatementEndLine]
             , [st].[StatementCharacterCount]
+            , NULL
             , CONVERT(bit, 0)
             , [st].[BatchCharacterCount]
+            , NULL
             , CONVERT(bit, 0)
             , CASE WHEN @StatementTextErforderlich = 1 THEN [st].[StatementText] END
             , CASE WHEN @BatchTextErforderlich = 1 THEN [txt].[text] END
+            , NULL
             , NULL
             , NULL
             , NULL
@@ -833,7 +839,6 @@ BEGIN
             SET
                   [InputBufferEventType] = [ib].[event_type]
                 , [InputBufferParameterCount] = [ib].[parameters]
-                , [InputBufferCharacterCount] = DATALENGTH([ib].[event_info]) / 2
                 , [InputBufferText] = [ib].[event_info]
             FROM [#CurrentRequests_Result] AS [r]
             OUTER APPLY [sys].[dm_exec_input_buffer]
@@ -844,62 +849,38 @@ BEGIN
         END;
 
         UPDATE [r]
-        SET
-              [CurrentStatementIsTruncated] = CONVERT
-                (
-                    bit,
-                    CASE
-                        WHEN [r].[CurrentStatement] IS NOT NULL
-                         AND @MaxSqlTextZeichen IS NOT NULL
-                         AND @MaxSqlTextZeichen > 0
-                         AND DATALENGTH([r].[CurrentStatement]) / 2 > @MaxSqlTextZeichen
-                            THEN 1
-                        ELSE 0
-                    END
-                )
-            , [BatchTextIsTruncated] = CONVERT
-                (
-                    bit,
-                    CASE
-                        WHEN [r].[BatchText] IS NOT NULL
-                         AND @MaxSqlTextZeichen IS NOT NULL
-                         AND @MaxSqlTextZeichen > 0
-                         AND DATALENGTH([r].[BatchText]) / 2 > @MaxSqlTextZeichen
-                            THEN 1
-                        ELSE 0
-                    END
-                )
-            , [InputBufferIsTruncated] = CONVERT
-                (
-                    bit,
-                    CASE
-                        WHEN [r].[InputBufferText] IS NOT NULL
-                         AND @MaxSqlTextZeichen IS NOT NULL
-                         AND @MaxSqlTextZeichen > 0
-                         AND DATALENGTH([r].[InputBufferText]) / 2 > @MaxSqlTextZeichen
-                            THEN 1
-                        ELSE 0
-                    END
-                )
-            , [CurrentStatement] =
-                CASE
-                    WHEN @MitSqlText = 0 THEN NULL
-                    WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [r].[CurrentStatement]
-                    ELSE LEFT([r].[CurrentStatement], @MaxSqlTextZeichen)
-                END
-            , [BatchText] =
-                CASE
-                    WHEN @GesamtenSqlTextEinbeziehen = 0 THEN NULL
-                    WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [r].[BatchText]
-                    ELSE LEFT([r].[BatchText], @MaxSqlTextZeichen)
-                END
-            , [InputBufferText] =
-                CASE
-                    WHEN @InputBufferEinbeziehen = 0 THEN NULL
-                    WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen = 0 THEN [r].[InputBufferText]
-                    ELSE LEFT([r].[InputBufferText], @MaxSqlTextZeichen)
-                END
+        SET [CurrentStatement]=CASE WHEN @MitSqlText=1 THEN [CurrentStatement] END,
+            [BatchText]=CASE WHEN @GesamtenSqlTextEinbeziehen=1 THEN [BatchText] END,
+            [InputBufferText]=CASE WHEN @InputBufferEinbeziehen=1 THEN [InputBufferText] END
         FROM [#CurrentRequests_Result] AS [r];
+
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        DECLARE @ColumnTruncatedCount bigint=0,@ColumnLargestCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentRequests_Result',@TextColumn=N'CurrentStatement'
+            , @CharactersColumn=N'CurrentStatementCharacterCount',@BytesColumn=N'CurrentStatementBytes'
+            , @IsTruncatedColumn=N'CurrentStatementIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentRequests_Result',@TextColumn=N'BatchText'
+            , @CharactersColumn=N'BatchTextCharacterCount',@BytesColumn=N'BatchTextBytes'
+            , @IsTruncatedColumn=N'BatchTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentRequests_Result',@TextColumn=N'InputBufferText'
+            , @CharactersColumn=N'InputBufferCharacterCount',@BytesColumn=N'InputBufferBytes'
+            , @IsTruncatedColumn=N'InputBufferIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
 
         SELECT @RowCount = COUNT_BIG(*)
         FROM [#CurrentRequests_Result];
@@ -1042,6 +1023,7 @@ BEGIN
                 , [r].[StatementStartLine] AS [startLine]
                 , [r].[StatementEndLine] AS [endLine]
                 , [r].[CurrentStatementCharacterCount] AS [characterCount]
+                , [r].[CurrentStatementBytes] AS [bytes]
                 , [r].[CurrentStatementIsTruncated] AS [isTruncated]
                 , [r].[CurrentStatement] AS [text]
             FROM [#CurrentRequests_Result] AS [r]
@@ -1061,6 +1043,7 @@ BEGIN
                 , [r].[SqlTextObjectNumber] AS [sqlTextObjectNumber]
                 , [r].[SqlTextIsEncrypted] AS [isEncrypted]
                 , [r].[BatchTextCharacterCount] AS [characterCount]
+                , [r].[BatchTextBytes] AS [bytes]
                 , [r].[BatchTextIsTruncated] AS [isTruncated]
                 , [r].[BatchText] AS [text]
             FROM [#CurrentRequests_Result] AS [r]
@@ -1077,6 +1060,7 @@ BEGIN
                 , [r].[InputBufferEventType] AS [eventType]
                 , [r].[InputBufferParameterCount] AS [parameterCount]
                 , [r].[InputBufferCharacterCount] AS [characterCount]
+                , [r].[InputBufferBytes] AS [bytes]
                 , [r].[InputBufferIsTruncated] AS [isTruncated]
                 , [r].[InputBufferText] AS [text]
             FROM [#CurrentRequests_Result] AS [r]
