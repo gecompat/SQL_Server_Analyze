@@ -60,6 +60,8 @@ IF @Status NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@AnalysisJson)<>1
     THROW 53600,N'Die eigenständige Plananalyse lieferte keinen gültigen Vertrag.',1;
 IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>1
    OR JSON_VALUE(@AnalysisJson,N'$.meta.resultName')<>N'ExecutionPlanAnalysis'
+   OR JSON_VALUE(@AnalysisJson,N'$.meta.evidencePrivacyMode')<>N'DERIVED_ONLY'
+   OR JSON_VALUE(@AnalysisJson,N'$.meta.identifierPrivacyMode')<>N'RAW'
    OR JSON_QUERY(@AnalysisJson,N'$.capabilities') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.planDocuments') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.statements') IS NULL
@@ -303,20 +305,18 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
     , @IsPartialOut=@GuardPartial OUTPUT;
 IF @GuardStatus NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@SanitizedJson)<>1
     THROW 53615,N'Die erneute Normalisierung importierter Evidenz ist fehlgeschlagen.',1;
+IF JSON_VALUE(@SanitizedJson,N'$.meta.evidencePrivacyMode')<>N'DERIVED_ONLY'
+   OR JSON_VALUE(@SanitizedJson,N'$.meta.identifierPrivacyMode')<>N'OMIT'
+    THROW 53638,N'Die Plananalyse weist nicht die angeforderten Datenschutzmodi aus.',1;
 IF EXISTS
 (
     SELECT 1
-    FROM OPENJSON(@SanitizedJson,N'$.histogramSteps')
-    WITH
-    (
-          [DatabaseName] sysname N'$.DatabaseName'
-        , [SchemaName] sysname N'$.SchemaName'
-        , [ObjectName] sysname N'$.ObjectName'
-        , [StatisticsName] sysname N'$.StatisticsName'
-        , [LeadingColumnName] sysname N'$.LeadingColumnName'
-    )
-    WHERE [DatabaseName] IS NOT NULL OR [SchemaName] IS NOT NULL OR [ObjectName] IS NOT NULL
-       OR [StatisticsName] IS NOT NULL OR [LeadingColumnName] IS NOT NULL
+    FROM OPENJSON(@SanitizedJson,N'$.histogramSteps') AS [j]
+    WHERE JSON_VALUE([j].[value],N'$.DatabaseName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.SchemaName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.ObjectName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.StatisticsName') IS NOT NULL
+       OR JSON_VALUE([j].[value],N'$.LeadingColumnName') IS NOT NULL
 )
     THROW 53616,N'OMIT hat Histogrammidentifikatoren ausgegeben.',1;
 IF EXISTS
@@ -370,8 +370,11 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
     , @StatusCodeOut=@GuardStatus OUTPUT
     , @IsPartialOut=@GuardPartial OUTPUT;
 IF @GuardStatus NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@TokenizedJson)<>1
+   OR JSON_VALUE(@TokenizedJson,N'$.meta.evidencePrivacyMode')<>N'TOKENIZED'
+   OR JSON_VALUE(@TokenizedJson,N'$.meta.identifierPrivacyMode')<>N'TOKENIZED'
    OR JSON_VALUE(@TokenizedJson,N'$.histogramSteps[0].RangeHighKey') IS NOT NULL
    OR JSON_VALUE(@TokenizedJson,N'$.histogramSteps[0].RangeHighKeyToken') IS NULL
+   OR JSON_VALUE(@TokenizedJson,N'$.histogramSteps[0].DatabaseName') IS NULL
    OR CHARINDEX(N'ExampleSensitiveBoundary',@TokenizedJson)>0
    OR CHARINDEX(N'ExampleDatabase',@TokenizedJson)>0
     THROW 53619,N'TOKENIZED hat Rohdaten ausgegeben oder keinen Capture-Token erzeugt.',1;

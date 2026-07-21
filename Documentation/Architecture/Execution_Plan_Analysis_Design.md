@@ -414,6 +414,8 @@ CURRENT_SERVER
 }
 ```
 
+Das Analyse-JSON weist in `meta.evidencePrivacyMode` und `meta.identifierPrivacyMode` die für seine Ausgabe tatsächlich angewendeten Modi aus. Dadurch kann ein Consumer die Datenschutzprojektion prüfen, ohne Identifier- oder Rohwerte auszuwerten.
+
 Das Plan-XML wird standardmäßig nicht im Evidenz-JSON dupliziert. `planIdentity` enthält nur korrelationsfähige Merkmale wie Planhash, Statement-ID, Query Hash und Query Plan Hash.
 
 ### 7.2 Capture-Confidence
