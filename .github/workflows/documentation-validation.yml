@@ -15,6 +15,7 @@ on:
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
       - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
@@ -40,6 +41,7 @@ on:
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
+      - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
       - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
@@ -130,6 +132,10 @@ jobs:
             --self-test
           python3 ./Code/Tests/Static/996_Validate_Wave2_Contracts.py \
             --repository-root .
+
+      - name: Validate Execution Plan Analysis installer contract
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1
 
       - name: Validate procedure documentation
         shell: pwsh
