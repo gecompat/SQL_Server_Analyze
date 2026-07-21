@@ -1,5 +1,12 @@
 # Release Notes
 
+## Stand 2026-07-21 – Welle 0 Release- und Evidence-Konsolidierung
+
+- Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` hat Installer, alle 34 Release-Gate-Suiten und die Berechtigungsmatrizen auf [SQL Server 2019](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843161), [SQL Server 2022](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843138) und [SQL Server 2025](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843126) bestanden; das 2025-Gate enthält zusätzlich die Regex-Matrix.
+- [Dokumentation und Nonblocking-Metadaten](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843203), [Repository-/ZIP-Datenschutz](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843157) und [einzeilige Commit-Messages](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843171) sind auf demselben Commit grün.
+- `Metadata/Quality/Test_Matrix.csv` ist die kanonische maschinenlesbare Quelle für Release, Evidence-Commit, Suite-/Fallzahlen, Zielbuilds, Image-Digests und Actions-Verweise. Ein neuer statischer Vertrag gleicht Release-Gate-Detailmatrix, Release-Audit und aktuelle Statusdokumente dagegen ab.
+- Die bestehenden Evidenzgrenzen bleiben unverändert: Feature-positive Windows-/Azure-MI-Zustände, kontrollierte Last, echter Failover, externe Restore-Nachweise und operative Mutationen sind durch die synthetischen Linux-Gates nicht bewiesen.
+
 ## Stand 2026-07-21 – Root-Blocker-Ketten und Tool-Hintergrundfilter
 
 - `USP_CurrentBlocking` liefert die lesbare vollständige `BlockingChain` sowie

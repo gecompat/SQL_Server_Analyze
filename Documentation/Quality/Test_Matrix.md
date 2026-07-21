@@ -1,6 +1,6 @@
 # Testmatrix und Freigabeprotokoll
 
-**Stand:** 20. Juli 2026
+**Stand:** 21. Juli 2026
 **Status:** commitbezogene 34-Suite-Evidenz einschließlich des frameworkweiten Datenbank-, CONSOLE- und TABLE-Vertrags vorhanden
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `53fe82d57e6d3d53b5a16ec1c220ccb98c2050f8` hat Installer, den 34-Suite-Release-Gate-Vertrag einschließlich aller 181 Spezialfälle, der TABLE-/Pilot-/Framework-Ausgabesuiten sowie die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` hat Installer, den 34-Suite-Release-Gate-Vertrag einschließlich aller 181 Spezialfälle, der TABLE-/Pilot-/Framework-Ausgabesuiten sowie die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29738745942](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29738745942) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29738745932](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29738745932) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29738746060](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29738746060) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29805843161](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843161) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29805843138](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843138) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29805843126](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29805843126) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Ausgabe-Vertrag; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 
@@ -54,9 +54,13 @@ Das Protokoll enthält ausschließlich technische Produktmerkmale und synthetisc
 | Collation | erwartete case-sensitive Zielcollation |
 | PermissionProfile | technische Berechtigungsklasse ohne Principalnamen |
 | OptionalFeatures | Pipe-Liste generischer Featurecodes |
+| FrameworkRelease | kanonische Frameworkversion des aktuellen Evidence-Satzes |
+| ReleaseGateSuiteCount | Anzahl der im vollständigen Release-Gate ausgeführten Suiten |
+| P0CaseCount / P1CaseCount / P2CaseCount | kanonische Fallzahlen je Prioritätsklasse |
 | CommitSha | exakt getesteter Commit |
 | TestStatus | NOT_EXECUTED, PASS, PASS_WITH_LIMITATIONS oder FAIL |
 | EvidenceStatus | REPORTED oder INDEPENDENTLY_VERIFIED |
+| EvidenceReference | öffentlicher technischer Actions-Verweis ohne Laufzeitdaten |
 
 ## Verbindliche Prüffolge je Target
 

@@ -1,8 +1,8 @@
 # Bekannte Restpunkte
 
-Stand: 2026-07-19
+Stand: 2026-07-21
 
-Die Version `1.1.0-special.9` besitzt für Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 31 Suiten, die versionsspezifischen Berechtigungsmatrizen sowie alle 181 P0-/P1-/P2-Fälle auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile.
+Die Version `1.1.0-special.9` besitzt für Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 34 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 181 P0-/P1-/P2-Fälle und die frameworkweiten Ausgabe-Verträge auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile. Der aktuelle Evidence-Stand wird kanonisch in `Metadata/Quality/Test_Matrix.csv` geführt und durch `Code/Tests/Static/990_Validate_Release_Evidence.py` gegen Detailmatrix und Release-Audit geprüft.
 
 Verbleibende Repository- und Evidenzpunkte:
 

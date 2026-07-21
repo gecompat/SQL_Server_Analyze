@@ -2,7 +2,7 @@
 
 Stand: 2026-07-21
 
-Der Stand `1.1.0-special.9` besitzt vollständige grüne Linux-Evidenz für alle 17 P0-, 40 P1- und 124 P2-Fälle. Die 31. Suite ist für Commit `40d54fdc195b5cfa0015e2cbe281da595e427ab0` auf SQL Server 2019, 2022 und 2025 nachgewiesen; die 115 zuvor offenen P2-Zeilen sind abgeschlossen.
+Der Stand `1.1.0-special.9` besitzt für Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` vollständige grüne Linux-Evidenz auf SQL Server 2019, 2022 und 2025. Der Release-Gate-Vertrag umfasst 34 Suiten, alle 17 P0-, 40 P1- und 124 P2-Fälle sowie die frameworkweiten Ausgabe-Verträge. Kanonische Quelle für Release, Commit, Zielversionen und Zählwerte ist `Metadata/Quality/Test_Matrix.csv`; ihre Konsistenz mit Detailmatrix, Release-Audit und Statusdokumenten wird statisch geprüft.
 
 Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
@@ -58,6 +58,7 @@ Abgeschlossen:
 46. Die Datenschutz-Allowlist enthält nun auch den bereits vorhandenen, zur Laufzeit synthetisch erzeugten Credential-Pfad des Statistics-Evidence-Workflows. Die Ausnahme ist wie alle übrigen Einträge an Regel, Pfad und Match-Hash gebunden.
 47. Das Deep-Analysis-Authoring-Archiv ist konsolidiert: historische Roadmaps sind abgeschlossen markiert, kanonische Draft-Verweise entfernt, eine Versions-/Primärquellenmatrix ergänzt und dauerhaft verlorene externe Links werden automatisiert erkannt.
 48. Der Wait-Type-Katalog beantwortet für alle 347 Framework-Waits Einordnung, Ursachenhypothesen, Wirkung, Gegenbeweise, Minderung, Queranalysen und Messgrenzen. Mindestens vier typisierte, aussagebezogene Quellen je Wait ersetzen den früheren pauschalen Einzelverweis; seltene interne Waits bleiben als begrenzte Evidenz sichtbar.
+49. Welle 0 abgeschlossen: Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` hat Installer, 34 Release-Suiten und Berechtigungsmatrizen auf SQL Server 2019, 2022 und 2025 bestanden; Dokumentations-/Nonblocking-, Datenschutz- und Commit-Message-Gates sind ebenfalls grün. `Test_Matrix.csv` ist die kanonische Evidence-Quelle, `990_Validate_Release_Evidence.py` verhindert abweichende Current-State-Angaben.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
@@ -110,9 +111,9 @@ Vorgemerkte zukünftige Architekturhärtung:
   sind Future Enhancements und ändern nicht den abgeschlossenen Status
   der bestehenden Special-Case-Testmatrix.
 
-Nächste Freigabeschritte:
+Nächste Arbeitsschritte nach der abgeschlossenen Welle 0:
 
-1. Pro weiterem Ziel `Code/Tests/Run_Release_Gate.sql` im SQLCMD-Modus aus `Code/Tests` ausführen; der Runner umfasst 24 Integrationsverträge und acht Bereichssuiten und bricht beim ersten SQL-Fehler ab.
+1. Welle 1 mit `OUT-001`, danach `DIAG-002`, den verbindlichen Querschnittsverträgen `DIAG-006`/`DIAG-007` und schließlich `DIAG-001` umsetzen.
 2. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen feature-positive Windows-/Azure-MI-Targets, kontrollierte Lastfälle und externe Restore-/Host-Nachweise.
 3. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten und breite Cross-Database-Auswahl.
 4. Erst nach vollständiger, anonym dokumentierter Zielmatrix den Stand als Laufzeit-Release freigeben.
