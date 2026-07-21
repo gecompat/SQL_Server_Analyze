@@ -1,6 +1,6 @@
-# Aufrufkatalog aller öffentlichen Funktionalitäten
+# Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-07-21 — 90 Procedures
+Stand: 2026-07-21 — 93 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -547,6 +547,56 @@ EXEC [monitor].[USP_EncryptionAnalysis] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_MaintenanceOperations] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ErrorLogAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ErrorLogAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_WorkerPressureAnalysis]`
+
+```sql
+EXEC [monitor].[USP_WorkerPressureAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_DatabaseConfigurationAnalysis]`
+
+```sql
+EXEC [monitor].[USP_DatabaseConfigurationAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_CreateExecutionEvidenceJson]`
+
+```sql
+EXEC [monitor].[USP_CreateExecutionEvidenceJson] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExecutionPlanAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ConfigureSnapshotTarget]`
+
+```sql
+EXEC [monitor].[USP_ConfigureSnapshotTarget]
+     @TargetDatabaseName = N'ExampleSnapshotDatabase',
+     @Hilfe = 1;
+```
+
+## `[monitor].[USP_RunSnapshotCollectionCycle]`
+
+```sql
+EXEC [monitor].[USP_RunSnapshotCollectionCycle] @Hilfe = 1;
+```
+
+## `[monitor].[USP_PurgeSnapshotData]`
+
+```sql
+EXEC [monitor].[USP_PurgeSnapshotData] @Hilfe = 1;
 ```
 
 ## Eigenständige Execution-Plan-Analyse

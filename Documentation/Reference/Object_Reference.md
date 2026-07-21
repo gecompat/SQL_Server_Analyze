@@ -3,8 +3,9 @@
 Stand: 2026-07-21
 
 Diese Referenz ergänzt die [Procedure-Referenz](Procedure_Reference.md). Sie
-beschreibt alle installierten Objekte, die keine öffentliche `USP_*`-Analyse
-sind: Views, Table-Valued Functions (TVFs), interne Procedures und Tabellen.
+beschreibt alle inventarisierten Framework- und optionalen Paketobjekte, die
+keine öffentliche `USP_*`-Analyse sind: Views, Table-Valued Functions (TVFs),
+interne Procedures und Tabellen.
 Die vollständige und maschinenlesbare Installationsmenge ist
 [`Metadata/Inventory/Objects.csv`](../../Metadata/Inventory/Objects.csv).
 
@@ -327,3 +328,105 @@ Hinterlegt je Analyseprofil die Schwellenwerte der Plananalyse-Regeln.
 Quelle: `Code/04_PlanCache/043_PlanAnalysisProfileAssignment.sql`
 
 Ordnet einer Plananalyse ein passendes Profil zu.
+
+## Optionales Snapshot-/Baseline-Paket SC-023
+
+### `[monitor].[SnapshotTargetConfiguration]`
+
+Quelle: `Code/10_SnapshotBaseline/010_SnapshotTargetConfiguration.sql`
+
+Hält als typisierter Singleton das ausdrücklich konfigurierte lokale
+Snapshotziel. Ohne separate Paketinstallation bleibt der Frameworkkern
+zustandslos.
+
+### `[snapshot].[PackageVersion]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Versioniert Paket und Zielschema und protokolliert den letzten Installerlauf.
+
+### `[snapshot].[RetentionPolicy]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Definiert typisierte Retention-, Batch- und Softbudgetgrenzen.
+
+### `[snapshot].[CollectorPolicy]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Begrenzt Intervall, Zeilenumfang und optionales Payload je Collector.
+
+### `[snapshot].[CaptureRun]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Speichert Lauf, Schedulerherkunft, UTC-Grenzen, Reset-Epoche und Gesamtstatus.
+
+### `[snapshot].[ModuleStatus]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Bewahrt Partialität, Fehlergrenze und Evidenzlimit je Laufmodul.
+
+### `[snapshot].[Scope]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Ordnet gehashte technische Scopeidentitäten den persistierten Samples zu.
+
+### `[snapshot].[MetricDefinition]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Versioniert Metrikcode, Datentyp, Einheit und Bedeutung.
+
+### `[snapshot].[MetricSample]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Speichert genau einen typisierten Wert je Lauf, Scope und Metrikdefinition.
+
+### `[snapshot].[PayloadSnapshot]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Hält optional den vollständigen komprimierten und hashgebundenen
+Collectorvertrag im autorisierten Zielsystem.
+
+### `[snapshot].[PurgeRun]`
+
+Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
+
+Protokolliert ausschließlich technische Summen begrenzter Retentionläufe.
+
+### `[snapshot].[InternalConfigureSnapshotPolicy]`
+
+Quelle: `Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql`
+
+Validiert und schreibt die typisierten Zielpolicies transaktional.
+
+### `[snapshot].[InternalPrepareCollectionCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/040_InternalPrepareCollectionCycle.sql`
+
+Prüft Due-Zeit und Softbudget vor jedem Quellread und eröffnet den Lauf.
+
+### `[snapshot].[InternalCompletePerformanceCounterCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/050_InternalCompletePerformanceCounterCycle.sql`
+
+Normalisiert den transient übergebenen Performance-Counter-JSON-Vertrag und
+persistiert optionale Payloads.
+
+### `[snapshot].[InternalFinalizeCollectionCycle]`
+
+Quelle: `Code/10_SnapshotBaseline/060_InternalFinalizeCollectionCycle.sql`
+
+Schließt einen eröffneten Lauf mit Status und technischen Zeilensummen ab.
+
+### `[snapshot].[InternalPurgeExpiredData]`
+
+Quelle: `Code/10_SnapshotBaseline/070_InternalPurgeExpiredData.sql`
+
+Entfernt ausschließlich abgelaufene Evidenz child-first in begrenzten Batches.

@@ -1,16 +1,31 @@
-# Vertrag für das spätere Snapshot- und Baseline-Paket
+# Vertrag für das Snapshot- und Baseline-Paket
 
-Stand: 2026-07-20
+Stand: 2026-07-21
 Backlog: SC-023
-Status: `DESIGN_APPROVED_IMPLEMENTATION_DEFERRED`
+Status: `IMPLEMENTED_ACTIONS_GATE`
 
 ## Ziel und Paketgrenze
 
-SC-023 ergänzt den zustandslosen Frameworkkern später um ein ausdrücklich installierbares Persistenzpaket. Pro SQL-Server-Instanz wird eine eigene Snapshot-Datenbank verwendet. Sie darf alle realen Laufzeitwerte speichern, die ein berechtigter Frameworkaufruf liefert: Messwerte, Namen, technische Identitäten, SQL- und Planinformationen, freie Texte, Fehlerkontext und versionierte Rohpayloads. Die Berechtigung zur Speicherung erweitert jedoch weder die Quellabfragen noch den Sicherheitskontext eines Sammlers; Secrets, Kennwörter oder Schlüsselmaterial werden nicht neu erhoben.
+SC-023 ergänzt den zustandslosen Frameworkkern um ein ausdrücklich installierbares Persistenzpaket. Pro SQL-Server-Instanz wird eine eigene Snapshot-Datenbank verwendet. Sie darf alle realen Laufzeitwerte speichern, die ein berechtigter Frameworkaufruf liefert: Messwerte, Namen, technische Identitäten, SQL- und Planinformationen, freie Texte, Fehlerkontext und versionierte Rohpayloads. Die Berechtigung zur Speicherung erweitert jedoch weder die Quellabfragen noch den Sicherheitskontext eines Sammlers; Secrets, Kennwörter oder Schlüsselmaterial werden nicht neu erhoben.
 
 Die Beschränkung auf synthetische Daten gilt ausschließlich für Repository-, GitHub-, Test-, Dokumentations- und Downloadartefakte. Die betriebliche Snapshot-Datenbank ist kein Repositoryartefakt. Ein späterer anonymisierter Export ist ein eigenes Vorhaben und nicht Teil der ersten Implementierung.
 
-Der bestehende Frameworkkern bleibt ohne installiertes SC-023-Paket zustandslos. Dieses Dokument genehmigt den Entwurf, erstellt aber noch keine Datenbank, Tabelle, Berechtigung oder SQL-Agent-Aufgabe.
+Der bestehende Frameworkkern bleibt ohne installiertes SC-023-Paket zustandslos. Das erste Paket liefert getrennte Framework- und Zielinstaller, erstellt aber weiterhin keine Datenbank, Berechtigung oder SQL-Agent-Aufgabe.
+
+## Implementierter erster Slice
+
+Der Stand vom 21. Juli 2026 implementiert ausschließlich einen leichten
+Performance-Counter-Collector mit `@SampleSeconds=0`. `CaptureRun`,
+`ModuleStatus`, `Scope`, `MetricDefinition`, `MetricSample` und optional
+`PayloadSnapshot` bilden den persistenten Lauf ab. `SqlServerStartTimeUtc`
+bindet Samples an eine restartfeste Reset-Epoche. Retention arbeitet child-first
+in Batches; `PURGE_EXPIRED_THEN_STOP` schützt nicht abgelaufene Evidenz.
+
+Public APIs sind `monitor.USP_ConfigureSnapshotTarget`,
+`monitor.USP_RunSnapshotCollectionCycle` und
+`monitor.USP_PurgeSnapshotData`. MANUAL, EXTERNAL und SQL_AGENT verwenden
+denselben Entry Point. Wait-, I/O-, Query-, Plan-, Rollup-, Export- und
+Agentjob-Module bleiben spätere Ausbauschritte.
 
 ## Konfigurationsmodell
 
@@ -43,7 +58,7 @@ Die Scopehierarchie reicht von Server und Datenbank bis zu Datei, Schema, Objekt
 
 ## Erfassung und Wiederverwendung
 
-Ein schedulerneutraler Einstieg, konzeptionell `snapshot.USP_RunCollectionCycle`, führt einen Sammlungslauf aus. SQL Server Agent startet zunächst diesen Einstieg; ein externer Scheduler kann später denselben Vertrag aufrufen. Der Agentjob enthält keine fachliche Sammellogik und wird als separates idempotentes DDL-Paket geliefert.
+Der schedulerneutrale Einstieg `monitor.USP_RunSnapshotCollectionCycle` führt einen Sammlungslauf aus. MANUAL, EXTERNAL und SQL_AGENT verwenden bereits denselben Vertrag. Ein Agentjob enthält keine fachliche Sammellogik und wird von diesem Paket nicht erstellt; ein mögliches späteres Agentjob-DDL bleibt ein separates idempotentes Paket.
 
 Innerhalb eines Laufes wird eine Quelle nur einmal gelesen und das Ergebnis an alle abhängigen Sammler weitergereicht. Das gilt insbesondere für Plan Cache, Query Stats und andere teure oder zeitlich veränderliche Quellen. Ein eigenständig gestarteter Sammler liest stets frisch und übernimmt keine Daten eines früheren Laufes. Teilweise überlesene oder blockierte Teilmengen werden als unvollständig markiert; nur der fehlende Scope darf gezielt nachgelesen werden.
 
@@ -51,7 +66,7 @@ Pro Instanz läuft höchstens ein Collection Cycle gleichzeitig. Der Einstieg ve
 
 ## Granularität und Sammlerdefaults
 
-Alle Werte bleiben je Sammler steuerbar. Die ersten Defaults sind:
+Alle Werte bleiben je Sammler steuerbar. Für spätere Ausbauschritte sind folgende Zielintervalle vorgemerkt:
 
 | Sammlerklasse | Standardintervall | Standardumfang |
 |---|---:|---|
@@ -60,7 +75,7 @@ Alle Werte bleiben je Sammler steuerbar. Die ersten Defaults sind:
 | Query- und Planaggregate | 5 Minuten | Top 100 je konfigurierter Rangfolge |
 | Konfiguration und Objektinventar | 1 Stunde | alle sichtbaren Objekte |
 
-Der initiale Sammlerkatalog umfasst CPU/Performance Counter, Speicher/Buffer Pool, Waits mit Resetbezug, IO, TempDB, Log/Kapazität, Plan-Cache-Aggregate sowie Modulstatus und Partialität. Große SQL-, Text-, XML- und Planpayloads sind wegen Volumen und Laufzeit zunächst deaktiviert, aber vollständig unterstützt und je Sammler aktivierbar. Diese Voreinstellung ist keine Datenschutzmaskierung.
+Der implementierte erste Slice umfasst ausschließlich Performance Counter sowie Modulstatus und Partialität. Speicher/Buffer Pool, Waits mit Resetbezug, IO, TempDB, Log/Kapazität und Plan-Cache-Aggregate bleiben im Erweiterungskatalog. Der Payloadschalter ist wegen Volumen und Laufzeit standardmäßig deaktiviert; im ersten Slice kann er ausschließlich den vollständigen Performance-Counter-JSON-Vertrag speichern. Diese Voreinstellung ist keine Datenschutzmaskierung.
 
 ## Reset-, Zeit- und Qualitätsvertrag
 
@@ -107,11 +122,16 @@ Die Snapshot-Datenbank darf reale Laufzeitdaten vollständig enthalten und nach 
 - SQL Server 2019, 2022 und 2025 bestehen UTC-, Restart-, Reset-, Versions-, Partialitäts- und Schedulerverträglichkeitstests.
 - Concurrency, Retention, Batch-Purge, Größenlimit und `PURGE_EXPIRED_THEN_STOP` werden mit synthetischen Fixtures geprüft.
 - Agent und externer Scheduler erzeugen über denselben Einstieg denselben Laufvertrag.
-- Ein vollständig synthetischer Payload mit sensibel wirkenden Feldklassen wird in der Zielstruktur verlustfrei gespeichert; damit wird die fehlende Runtime-Maskierung bewiesen, ohne reale Daten ins Repository zu übernehmen.
+- Der vollständige Performance-Counter-Payload der isolierten synthetischen Testinstanz wird in der Zielstruktur verlustfrei gespeichert und gehasht, ohne seinen Inhalt in Repository- oder Actions-Artefakte zu übernehmen.
 - Repository- und Liefergates blockieren weiterhin markierte reale Artefaktdaten. Alle eingecheckten Fixtures bleiben eindeutig synthetisch.
 - Ein partieller oder übersprungener Read erzeugt weder einen scheinbar vollständigen Trend noch einen erfundenen Nullwert.
 - Kein Installations- oder Laufpfad vergibt Rechte oder löscht bei Deinstallation automatisch Historie.
 
 ## Nächster Schritt
 
-Der Architekturentscheid ist freigegeben und für eine spätere Umsetzung dokumentiert. Die Implementierung beginnt erst mit einem eigenen Auftrag und startet mit der kleinen vertikalen Umsetzung aus den Schritten 1 und 2; SC-023 bleibt bis dahin fachlich entschieden, aber technisch unimplementiert.
+Der erste vertikale Slice ist implementiert und auf Commit
+`c4e2ee6114b7de9cae9236d390a93a81e78599e9` durch die separate
+[synthetische SQL-Server-2019-/2022-/2025-Matrix](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29860488769)
+als `IMPLEMENTED_ACTIONS_GATE` abgenommen. Danach folgt entweder ein weiterer
+leichter Sammler mit laufinterner Quellenwiederverwendung oder der
+Rollupvertrag; Export und Agentjob-DDL bleiben getrennte Entscheidungen.

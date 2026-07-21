@@ -1,7 +1,7 @@
 # Analysehandbuch für SQL_Server_Analyze
 
 **Stand:** 20. Juli 2026
-**Geltungsbereich:** 90 öffentliche Procedures
+**Geltungsbereich:** 93 Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
 ## Empfohlener Einstieg
@@ -14,7 +14,7 @@
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
-Die 90 Seiten sind strukturell vollständig und nach dem [Qualitätsvertrag](Documentation_Quality_Contract.md) fachlich `DEEP_REVIEWED`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) bleiben Kalibrierungsfälle für Live-Snapshot, physischen Scan und Datei-/XML-Analyse.
+Alle 93 Seiten sind strukturell vollständig. Davon sind 88 nach dem [Qualitätsvertrag](Documentation_Quality_Contract.md) fachlich `DEEP_REVIEWED`; die fünf eigenständig installierbaren PLAN-001-/SC-023-Seiten stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) bleiben Kalibrierungsfälle für Live-Snapshot, physischen Scan und Datei-/XML-Analyse.
 
 Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_Concept.md) ist kein Anwenderhandbuch.
 
@@ -58,7 +58,9 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 13 |
 | Server Health | [08_Server_Health.md](08_Server_Health.md) | 19 |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 9 |
-| **Gesamt** | | **90** |
+| **Integriertes Framework gesamt** | | **90** |
+
+Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher.
 
 ## Schnellwahl nach Symptom
 

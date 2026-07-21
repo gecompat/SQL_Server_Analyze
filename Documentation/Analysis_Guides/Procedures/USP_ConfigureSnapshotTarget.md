@@ -1,0 +1,64 @@
+# [monitor].[USP_ConfigureSnapshotTarget]
+
+**Bereich:** Optionales Snapshot-/Baseline-Paket SC-023
+**Zweck:** Verknüpft die Frameworkdatenbank mit einer separat installierten Snapshot-Datenbank und schreibt Collector-, Retention- und Budgetpolicy typisiert.
+
+Die Procedure erstellt weder Datenbanken noch Rechte oder Schedulerobjekte. Der Aufruf ist erst nach beiden SC-023-Installern sinnvoll. Alle Beispielnamen sind synthetisch.
+
+```sql
+EXEC [monitor].[USP_ConfigureSnapshotTarget]
+     @TargetDatabaseName = N'ExampleSnapshotDatabase',
+     @IsEnabled = 1,
+     @SchedulerType = 'EXTERNAL',
+     @PayloadEnabled = 0;
+```
+
+## Eine Zeile bedeutet
+
+Die Procedure besitzt kein fachliches Resultset. OUTPUT-Status beschreibt genau den atomaren Konfigurationsversuch; die persistierte Singletonzeile bezeichnet das aktive lokale Ziel.
+
+## So lesen
+
+`AVAILABLE` bedeutet, dass die Ziel-Datenbank online, schreibbar und mit dem erwarteten internen Konfigurationsobjekt erreichbar war. `TARGET_UNAVAILABLE` trennt fehlenden Zielkontext von `DENIED_PERMISSION`. `IsEnabled=0` bewahrt vorhandene Historie und verhindert neue Collection Cycles.
+
+## Warum kann das problematisch sein?
+
+Ein falsches Ziel kann reale Laufzeitwerte in einer unerwarteten Datenbank persistieren. Zu lange Retention, aktivierte Payloads oder ein zu großes Zeilenlimit erhöhen Speicher-, Log- und Purgekosten. Der Installer vergibt deshalb absichtlich keine Rechte und aktiviert keinen Job.
+
+## Wann ist es kein Problem?
+
+Eine deaktivierte Konfiguration ist ein gültiger sicherer Zustand. Ein Zielname im Repository ist nur dann zulässig, wenn er wie `ExampleSnapshotDatabase` eindeutig synthetisch ist; der reale Zielname verbleibt ausschließlich in der Betriebsdatenbank.
+
+## Technische Vertiefung
+
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
+### Leitfrage
+
+Welches explizite Ziel und welche begrenzte Policy dürfen der schedulerneutrale Collector und der Purge verwenden?
+
+### Technischer Hintergrund
+
+`monitor.SnapshotTargetConfiguration` ist ein typisierter Singleton. Zielseitig bilden `snapshot.CollectorPolicy` und `snapshot.RetentionPolicy` die validierten Optionen ab; ein allgemeiner Key-Value-Speicher ersetzt diese bekannten Felder nicht.
+
+### Datenkette
+
+Framework-Singleton → validierter Drei-Part-Name → `snapshot.InternalConfigureSnapshotPolicy` → typisierte Zielpolicy.
+
+### Zeit- und Scope-Modell
+
+`LastUpdatedUtc` ist UTC. Die Konfiguration gilt für genau die lokale Framework-/Snapshot-Datenbankbeziehung; Fleet-Transport gehört nicht zu SC-023.
+
+### Bewertung und Gegenprobe
+
+Nach dem Aufruf Zielname, Aktivierungsstatus und Policy in beiden Datenbanken prüfen; danach einen manuellen Cycle mit begrenztem Zeilenlimit starten.
+
+### Typische Fehlinterpretation
+
+`AVAILABLE` beweist nicht, dass der Ausführer später alle DMV- und Zielschreibrechte besitzt. Konfiguration und Collection haben getrennte Rechte- und Statuspfade.
+
+### Folgeanalyse
+
+`USP_RunSnapshotCollectionCycle`, `USP_PurgeSnapshotData` und der Betriebsleitfaden.
+
+[Technische Detailbeschreibung](../../Operations/Snapshot_Baseline_Operations.md)

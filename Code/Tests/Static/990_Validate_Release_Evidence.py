@@ -16,6 +16,11 @@ TARGETS = {
     "SQL2022-LINUX": ("16", "160"),
     "SQL2025-LINUX": ("17", "170"),
 }
+WINDOWS_PLANNING_TARGETS = {
+    "SQL2019-WINDOWS": ("15", "150"),
+    "SQL2022-WINDOWS": ("16", "160"),
+    "SQL2025-WINDOWS": ("17", "170"),
+}
 COUNTS = {
     "ReleaseGateSuiteCount": "34",
     "P0CaseCount": "17",
@@ -42,7 +47,14 @@ WAVE2_ENHANCEMENTS = {"OPS-001", "OPS-002", "OPS-003", "OPS-004"}
 
 def read_csv(path: Path) -> list[dict[str, str]]:
     with path.open(encoding="utf-8", newline="") as handle:
-        return list(csv.DictReader(handle))
+        reader = csv.DictReader(handle)
+        rows = list(reader)
+    if reader.fieldnames is None or any(
+        None in row or any(value is None for value in row.values())
+        for row in rows
+    ):
+        fail("CSV_FIELD_COUNT", path.name)
+    return rows
 
 
 def fail(code: str, location: str) -> None:
@@ -61,6 +73,31 @@ def main() -> int:
 
     matrix_path = root / "Metadata/Quality/Test_Matrix.csv"
     matrix = read_csv(matrix_path)
+    windows_planning = {
+        row["TargetId"]: row
+        for row in matrix
+        if row["TargetId"] in WINDOWS_PLANNING_TARGETS
+    }
+    if set(windows_planning) != set(WINDOWS_PLANNING_TARGETS):
+        fail("WINDOWS_PLANNING_TARGET_SET", str(matrix_path.relative_to(root)))
+    for target, (major, compatibility) in WINDOWS_PLANNING_TARGETS.items():
+        row = windows_planning[target]
+        if (
+            row["ProductMajorVersion"] != major
+            or row["CompatibilityLevel"] != compatibility
+            or row["Platform"] != "WINDOWS"
+        ):
+            fail("WINDOWS_PLANNING_TARGET", target)
+        expected = {
+            "CommitSha": "",
+            "TestStatus": "NOT_EXECUTED",
+            "EvidenceStatus": "REPORTED",
+            "TestedAtUtc": "",
+            "EvidenceReference": "",
+        }
+        if any(row[field] != value for field, value in expected.items()) or not row["Limitations"]:
+            fail("WINDOWS_PLANNING_STATUS", target)
+
     current = {row["TargetId"]: row for row in matrix if row["TargetId"] in TARGETS}
     if set(current) != set(TARGETS):
         fail("CURRENT_TARGET_SET", str(matrix_path.relative_to(root)))

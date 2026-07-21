@@ -1631,3 +1631,48 @@ USP_ExecutionPlanAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ExecutionPlanAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_ExecutionPlanAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_ExecutionPlanAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ConfigureSnapshotTarget,TargetDatabaseName,sysname,
+USP_ConfigureSnapshotTarget,IsEnabled,bit,1
+USP_ConfigureSnapshotTarget,SchedulerType,varchar(16),'EXTERNAL'
+USP_ConfigureSnapshotTarget,CollectionIntervalSeconds,smallint,30
+USP_ConfigureSnapshotTarget,MaxRows,int,1000
+USP_ConfigureSnapshotTarget,PayloadEnabled,bit,0
+USP_ConfigureSnapshotTarget,RawRetentionDays,smallint,14
+USP_ConfigureSnapshotTarget,PayloadRetentionDays,smallint,7
+USP_ConfigureSnapshotTarget,RollupRetentionDays,smallint,180
+USP_ConfigureSnapshotTarget,SoftBudgetMB,int,10240
+USP_ConfigureSnapshotTarget,PurgeIntervalMinutes,smallint,60
+USP_ConfigureSnapshotTarget,PurgeBatchRows,int,10000
+USP_ConfigureSnapshotTarget,BudgetAction,varchar(32),'PURGE_EXPIRED_THEN_STOP'
+USP_ConfigureSnapshotTarget,PrintMeldungen,bit,1
+USP_ConfigureSnapshotTarget,Hilfe,bit,0
+USP_ConfigureSnapshotTarget,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ConfigureSnapshotTarget,IsPartialOut,bit,NULL OUTPUT
+USP_ConfigureSnapshotTarget,ErrorNumberOut,int,NULL OUTPUT
+USP_ConfigureSnapshotTarget,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_RunSnapshotCollectionCycle,SchedulerType,varchar(16),'EXTERNAL'
+USP_RunSnapshotCollectionCycle,RunEvenIfNotDue,bit,0
+USP_RunSnapshotCollectionCycle,ResultSetArt,varchar(16),'CONSOLE'
+USP_RunSnapshotCollectionCycle,ResultTablesJson,nvarchar(max),NULL
+USP_RunSnapshotCollectionCycle,JsonErzeugen,bit,0
+USP_RunSnapshotCollectionCycle,Json,nvarchar(max),NULL OUTPUT
+USP_RunSnapshotCollectionCycle,PrintMeldungen,bit,1
+USP_RunSnapshotCollectionCycle,Hilfe,bit,0
+USP_RunSnapshotCollectionCycle,CaptureRunIdOut,bigint,NULL OUTPUT
+USP_RunSnapshotCollectionCycle,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_RunSnapshotCollectionCycle,IsPartialOut,bit,NULL OUTPUT
+USP_RunSnapshotCollectionCycle,ErrorNumberOut,int,NULL OUTPUT
+USP_RunSnapshotCollectionCycle,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_PurgeSnapshotData,MaxBatches,int,10
+USP_PurgeSnapshotData,Force,bit,0
+USP_PurgeSnapshotData,ResultSetArt,varchar(16),'CONSOLE'
+USP_PurgeSnapshotData,ResultTablesJson,nvarchar(max),NULL
+USP_PurgeSnapshotData,JsonErzeugen,bit,0
+USP_PurgeSnapshotData,Json,nvarchar(max),NULL OUTPUT
+USP_PurgeSnapshotData,PrintMeldungen,bit,1
+USP_PurgeSnapshotData,Hilfe,bit,0
+USP_PurgeSnapshotData,PurgeRunIdOut,bigint,NULL OUTPUT
+USP_PurgeSnapshotData,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_PurgeSnapshotData,IsPartialOut,bit,NULL OUTPUT
+USP_PurgeSnapshotData,ErrorNumberOut,int,NULL OUTPUT
+USP_PurgeSnapshotData,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

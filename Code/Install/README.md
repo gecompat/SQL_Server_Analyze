@@ -23,3 +23,13 @@ und die generierte Datei benötigt keinen SQLCMD-Modus.
 ## Eigenständige Execution-Plan-Analyse
 
 `Install_ExecutionPlanAnalysis.sql` installiert nur die für die direkte Plan- und Evidenzanalyse erforderlichen Objekte. Mit `Build-ExecutionPlanAnalysisInstaller.ps1` kann daraus ein vollständig eingebettetes SSMS-Artefakt `Install_ExecutionPlanAnalysis.generated.sql` erzeugt werden. Der Teilinstaller installiert nicht die übrigen Analysefamilien und kann idempotent neben einer vollständigen Frameworkinstallation ausgeführt werden.
+
+## Optionales Snapshot-/Baseline-Paket
+
+SC-023 bleibt absichtlich außerhalb von `Install_All.sql`. Zuerst wird
+`Install_SnapshotBaseline_Target.sql` im explizit gewählten Kontext einer
+eigenen, beschreibbaren Nicht-Systemdatenbank ausgeführt. Danach installiert
+`Install_SnapshotBaseline_Framework.sql` die Konfiguration und die drei Public
+APIs in der Frameworkdatenbank. Das Paket erstellt keine Datenbank, Rechte oder
+SQL-Agent-Objekte. Der vollständige Ablauf steht im
+[Betriebsleitfaden](../../Documentation/Operations/Snapshot_Baseline_Operations.md).

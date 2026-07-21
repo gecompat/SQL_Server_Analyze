@@ -16,7 +16,9 @@ on:
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
+      - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
       - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
@@ -27,6 +29,7 @@ on:
       - 'Metadata/Quality/Special_Case_Gap_Backlog.csv'
       - 'Metadata/Quality/Special_Case_Release_Audit.json'
       - 'Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json'
+      - 'Metadata/Quality/SnapshotBaseline_Public_Contract.json'
   push:
     branches:
       - main
@@ -44,7 +47,9 @@ on:
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
+      - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
       - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
@@ -55,6 +60,7 @@ on:
       - 'Metadata/Quality/Special_Case_Gap_Backlog.csv'
       - 'Metadata/Quality/Special_Case_Release_Audit.json'
       - 'Metadata/Quality/ExecutionPlanAnalysis_Public_Contract.json'
+      - 'Metadata/Quality/SnapshotBaseline_Public_Contract.json'
   workflow_dispatch:
 
 permissions:
@@ -150,6 +156,20 @@ jobs:
       - name: Validate Execution Plan Analysis installer contract
         shell: pwsh
         run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1
+
+      - name: Validate Snapshot Baseline public contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py \
+            --repository-root .
+
+      - name: Validate Snapshot Baseline installer contract
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1
 
       - name: Validate procedure documentation
         shell: pwsh
