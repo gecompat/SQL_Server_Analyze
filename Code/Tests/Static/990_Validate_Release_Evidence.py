@@ -29,6 +29,7 @@ CURRENT_DOCUMENTS = (
     "Documentation/Quality/Test_Matrix.md",
 )
 WAVE1_SUITE = "WAVE1_OUTPUT_XML_VERSION_RUNTIME"
+WAVE2_SUITE = "WAVE2_OPERATIONAL_DIAGNOSTICS_RUNTIME"
 WAVE1_ENHANCEMENTS = {
     "DIAG-001",
     "DIAG-002",
@@ -36,6 +37,7 @@ WAVE1_ENHANCEMENTS = {
     "DIAG-007",
     "OUT-001",
 }
+WAVE2_ENHANCEMENTS = {"OPS-001", "OPS-002", "OPS-003", "OPS-004"}
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -132,6 +134,26 @@ def main() -> int:
         if any(row[field] != value for field, value in expected.items()):
             fail("WAVE1_DETAIL", target)
 
+    wave2_rows = {
+        row["TargetId"]: row
+        for row in detail
+        if row["TargetId"] in TARGETS and row["SuiteId"] == WAVE2_SUITE
+    }
+    if set(wave2_rows) != set(TARGETS):
+        fail("WAVE2_TARGET_SET", str(detail_path.relative_to(root)))
+    for target, row in wave2_rows.items():
+        canonical = current[target]
+        expected = {
+            "CommitSha": canonical["CommitSha"],
+            "TestedAtUtc": canonical["TestedAtUtc"],
+            "EvidenceReference": canonical["EvidenceReference"],
+            "TestStatus": "PASS",
+            "EvidenceStatus": "INDEPENDENTLY_VERIFIED",
+            "LimitationCode": "ACTIONS_SYNTHETIC_WAVE2_CONTRACT",
+        }
+        if any(row[field] != value for field, value in expected.items()):
+            fail("WAVE2_DETAIL", target)
+
     backlog_path = root / "Metadata/Quality/Future_Enhancement_Backlog.csv"
     backlog = read_csv(backlog_path)
     wave1_backlog = {
@@ -147,6 +169,19 @@ def main() -> int:
     ):
         fail("WAVE1_BACKLOG_STATUS", str(backlog_path.relative_to(root)))
 
+    wave2_backlog = {
+        row["EnhancementId"]: row
+        for row in backlog
+        if row["EnhancementId"] in WAVE2_ENHANCEMENTS
+    }
+    if set(wave2_backlog) != WAVE2_ENHANCEMENTS:
+        fail("WAVE2_BACKLOG_SET", str(backlog_path.relative_to(root)))
+    if any(
+        row["ImplementationStatus"] != "IMPLEMENTED_ACTIONS_GATE"
+        for row in wave2_backlog.values()
+    ):
+        fail("WAVE2_BACKLOG_STATUS", str(backlog_path.relative_to(root)))
+
     audit_path = root / "Metadata/Quality/Special_Case_Release_Audit.json"
     audit = json.loads(audit_path.read_text(encoding="utf-8"))
     documentation = audit.get("testDocumentation", {})
@@ -155,7 +190,11 @@ def main() -> int:
         fail("RELEASE_AUDIT_IDENTITY", str(audit_path.relative_to(root)))
     if audit.get("canonicalEvidenceSource") != "Metadata/Quality/Test_Matrix.csv":
         fail("CANONICAL_SOURCE", str(audit_path.relative_to(root)))
-    if "34-suite" not in audit.get("scope", "") or commit not in documentation.get("claim", ""):
+    if (
+        "34-suite" not in audit.get("scope", "")
+        or "Wave-2" not in audit.get("scope", "")
+        or commit not in documentation.get("claim", "")
+    ):
         fail("RELEASE_AUDIT_SCOPE", str(audit_path.relative_to(root)))
 
     for relative in CURRENT_DOCUMENTS:
@@ -165,7 +204,7 @@ def main() -> int:
 
     print(
         "Canonical release evidence validation passed: "
-        "targets=3 suites=34 wave1=5 p0=17 p1=40 p2=124 findings=0"
+        "targets=3 suites=34 wave1=5 wave2=4 p0=17 p1=40 p2=124 findings=0"
     )
     return 0
 

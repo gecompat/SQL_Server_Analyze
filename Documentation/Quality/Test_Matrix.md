@@ -1,7 +1,7 @@
 # Testmatrix und Freigabeprotokoll
 
 **Stand:** 21. Juli 2026
-**Status:** commitbezogene 34-Suite-Evidenz einschließlich der Welle-1-Verträge für sichtbare Unicode-Kürzung, native XML-Ausgaben, Provenienz und Offline-Versionsbewertung vorhanden
+**Status:** commitbezogene 34-Suite-Evidenz einschließlich der Welle-1- und Welle-2-Verträge vorhanden
 **Maschinenlesbare Fassung:** `Metadata/Quality/Test_Matrix.csv`
 **Integrationsrunner:** `Code/Tests/Run_Release_Gate.sql`  
 **Suite-Evidenz:** `Metadata/Quality/Release_Gate_Evidence.csv`
@@ -17,13 +17,13 @@ Technische Grundlage sind die offiziellen Verträge zum [Pullen beziehungsweise 
 
 ## Automatisierte Evidence
 
-Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` hat Installer, den 34-Suite-Release-Gate-Vertrag einschließlich aller 181 Spezialfälle, der TABLE-/Pilot-/Framework-Ausgabesuiten und des Welle-1-Begleitvertrags sowie die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
+Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` hat Installer, den 34-Suite-Release-Gate-Vertrag einschließlich aller 181 Spezialfälle, der TABLE-/Pilot-/Framework-Ausgabesuiten sowie der Welle-1- und Welle-2-Begleitverträge und die Berechtigungsmatrix auf den drei Linux-Targets erfolgreich abgeschlossen. Das SQL-Server-2025-Gate hat zusätzlich die eigenständige Regex-Matrix ausgeführt:
 
 | Target | ProductVersion | Compatibility Level | Actions-Nachweis | Ergebnis |
 |---|---|---:|---|---|
-| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29812091324](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091324) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1-Vertrag |
-| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29812091252](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091252) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1-Vertrag |
-| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29812091262](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29812091262) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1-Vertrag; `REGEX_MATRIX=PASS` |
+| SQL Server 2019 | `15.0.4480.2` | 150 | [Run 29817699638](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699638) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1- und Welle-2-Vertrag |
+| SQL Server 2022 | `16.0.4265.3` | 160 | [Run 29817699733](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699733) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1- und Welle-2-Vertrag |
+| SQL Server 2025 | `17.0.4065.4` | 170 | [Run 29817699655](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29817699655) | `PASS_WITH_LIMITATIONS`; 34 Suiten einschließlich Welle-1- und Welle-2-Vertrag; `REGEX_MATRIX=PASS` |
 
 Die Läufe haben nach dem Pull den aufgelösten Digest validiert und exakt diesen unveränderlichen Bezug gestartet:
 

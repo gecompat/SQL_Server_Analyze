@@ -152,7 +152,7 @@ Der Runner beendet sich beim ersten SQL-Fehler und führt folgende 34 Suiten aus
 23. P2-Maintenance-Laufzeitvertrag
 24. TABLE-Ausgabevertrag
 25. Ausgabe-Pilotvertrag
-26. Frameworkweiter Ausgabevertrag einschließlich `190_Wave1_Output_Xml_Version_Runtime_Contract.sql` als Begleitvertrag für Unicode, native XML, Provenienz und Offline-Versionsbewertung
+26. Frameworkweiter Ausgabevertrag einschließlich `190_Wave1_Output_Xml_Version_Runtime_Contract.sql` für Unicode, native XML, Provenienz und Offline-Versionsbewertung sowie `191_Wave2_Operational_Diagnostics_Runtime_Contract.sql` für Pending I/O, Worker-/Scheduler-Druck, Datenbankkonfigurationsdrift und Errorlog-Analyse
 27. Common
 28. Current State
 29. Object und Index

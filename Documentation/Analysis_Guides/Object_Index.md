@@ -28,6 +28,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | `[monitor].[USP_CurrentMemoryGrants]` | [Angeforderte, gewährte und genutzte Grants](Procedures/USP_CurrentMemoryGrants.md) |
 | `[monitor].[USP_CurrentTempDB]` | [TempDB-Verbrauch nach Ursache und Session](Procedures/USP_CurrentTempDB.md) |
 | `[monitor].[USP_CurrentIO]` | [Datei-I/O und Sample-Latenz](Procedures/USP_CurrentIO.md) |
+| `[monitor].[USP_ErrorLogAnalysis]` | [Begrenzte Errorlog-Kategorien und Quellenstatus](Procedures/USP_ErrorLogAnalysis.md) |
 | `[monitor].[USP_CurrentLog]` | [Logauslastung und Wiederverwendungsgrund](Procedures/USP_CurrentLog.md) |
 | `[monitor].[USP_CurrentOverview]` | [Orchestrierter Live-Überblick](Procedures/USP_CurrentOverview.md) |
 
@@ -122,6 +123,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | `[monitor].[USP_InternalContentionAnalysis]` | [Spinlocks, Latches und Hot Pages](Procedures/USP_InternalContentionAnalysis.md) |
 | `[monitor].[USP_BufferPoolAnalysis]` | [Buffer Pool, Clerks und Pressure](Procedures/USP_BufferPoolAnalysis.md) |
 | `[monitor].[USP_DiagnosticFindings]` | [Severity, Confidence und SourceModule](Procedures/USP_DiagnosticFindings.md) |
+| `[monitor].[USP_WorkerPressureAnalysis]` | [Worker- und Scheduler-Druck](Procedures/USP_WorkerPressureAnalysis.md) |
+| `[monitor].[USP_DatabaseConfigurationAnalysis]` | [Datenbankkonfiguration und explizite Driftprofile](Procedures/USP_DatabaseConfigurationAnalysis.md) |
 
 ## Versionsadaptive Spezialanalysen
 
