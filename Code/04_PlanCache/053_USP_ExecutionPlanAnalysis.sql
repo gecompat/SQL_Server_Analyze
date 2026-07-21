@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ExecutionPlanAnalysis
-Version      : 1.0.0
+Version      : 1.0.1
 Stand        : 2026-07-21
 Typ          : Stored Procedure
 Zweck        : Analysiert genau ein direkt übergebenes oder gezielt beschafftes
@@ -21,7 +21,7 @@ SQL-Version  : SQL Server 2019 oder neuer.
 CREATE OR ALTER PROCEDURE [monitor].[USP_ExecutionPlanAnalysis]
       @PlanXml                        xml             = NULL
     , @PlanHandle                     varbinary(64)   = NULL
-    , @SessionId                      smallint        = NULL
+    , @SessionIds                     nvarchar(max)   = NULL
     , @RequestId                      int             = NULL
     , @QueryStoreDatabaseName         sysname         = NULL
     , @QueryStorePlanId               bigint          = NULL
@@ -90,13 +90,14 @@ BEGIN
     DECLARE @EvidenceForAnalysis nvarchar(max)=@EvidenzJson;
     DECLARE @Deadline datetime2(3)=DATEADD(SECOND,@MaxDurationSeconds,@Now);
     DECLARE @TokenSalt varbinary(32)=CRYPT_GEN_RANDOM(32);
+    DECLARE @EffectiveSessionId smallint=NULL;
 
     SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
 
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ExecutionPlanAnalysis';
-        PRINT N'Genau eine Planquelle: @PlanXml, @PlanHandle, @SessionId oder @QueryStoreDatabaseName+@QueryStorePlanId.';
+        PRINT N'Genau eine Planquelle: @PlanXml, @PlanHandle, genau ein Wert in @SessionIds oder @QueryStoreDatabaseName+@QueryStorePlanId.';
         PRINT N'Der direkte @PlanXml-Pfad benötigt weder Plan Cache noch Query Store. Es wird niemals übergebenes SQL ausgeführt.';
         PRINT N'@PlanQuelle gilt für @PlanHandle: AUTO|COMPILE|LAST_ACTUAL. AUTO fällt kontrolliert auf COMPILE zurück.';
         PRINT N'Optional: @EvidenzJson oder bereits erfasste @StatisticsIoText/@StatisticsTimeText.';
@@ -429,10 +430,32 @@ BEGIN
                @ErrorMessageOut=N'Ungültiger Modus-, Grenzwert-, Planquellen-, Ausgabe- oder Datenschutzparameter.';
     END;
 
+    IF @StatusCodeOut='AVAILABLE'
+       AND NULLIF(LTRIM(RTRIM(COALESCE(@SessionIds,N''))),N'') IS NOT NULL
+    BEGIN
+        IF EXISTS
+           (
+               SELECT 1
+               FROM [monitor].[TVF_ParseBigintList](@SessionIds)
+               WHERE [IsValid]<>1
+                  OR [NumberValue] NOT BETWEEN 1 AND 32767
+           )
+           OR 1<>(SELECT COUNT(*) FROM [monitor].[TVF_ParseBigintList](@SessionIds))
+        BEGIN
+            SELECT @StatusCodeOut='INVALID_PARAMETER',@IsPartialOut=1,
+                   @ErrorMessageOut=N'@SessionIds muss für diese Ein-Plan-Analyse genau eine gültige smallint-Session-ID enthalten.';
+        END
+        ELSE
+        BEGIN
+            SELECT @EffectiveSessionId=CONVERT(smallint,[NumberValue])
+            FROM [monitor].[TVF_ParseBigintList](@SessionIds);
+        END;
+    END;
+
     DECLARE @PlanSourceGroupCount int=
           CASE WHEN @PlanXml IS NOT NULL THEN 1 ELSE 0 END
         + CASE WHEN @PlanHandle IS NOT NULL THEN 1 ELSE 0 END
-        + CASE WHEN @SessionId IS NOT NULL THEN 1 ELSE 0 END
+        + CASE WHEN @EffectiveSessionId IS NOT NULL THEN 1 ELSE 0 END
         + CASE WHEN @QueryStoreDatabaseName IS NOT NULL OR @QueryStorePlanId IS NOT NULL THEN 1 ELSE 0 END;
 
     IF @StatusCodeOut='AVAILABLE' AND @PlanSourceGroupCount<>1
@@ -507,16 +530,16 @@ BEGIN
                 END;
             END;
         END
-        ELSE IF @SessionId IS NOT NULL
+        ELSE IF @EffectiveSessionId IS NOT NULL
         BEGIN
             DECLARE @RequestCount int;
             SELECT @RequestCount=COUNT(*)
-            FROM [sys].[dm_exec_query_statistics_xml](@SessionId)
+            FROM [sys].[dm_exec_query_statistics_xml](@EffectiveSessionId)
             WHERE @RequestId IS NULL OR [request_id]=@RequestId;
             IF @RequestCount>1 AND @RequestId IS NULL
                 THROW 51031,N'Die Sitzung besitzt mehrere aktive Requests; @RequestId ist erforderlich.',1;
             SELECT TOP (1) @EffectivePlanXml=[query_plan]
-            FROM [sys].[dm_exec_query_statistics_xml](@SessionId)
+            FROM [sys].[dm_exec_query_statistics_xml](@EffectiveSessionId)
             WHERE @RequestId IS NULL OR [request_id]=@RequestId
             ORDER BY [request_id];
             IF @EffectivePlanXml IS NOT NULL

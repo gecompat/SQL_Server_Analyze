@@ -14,6 +14,8 @@ und die für PLAN-001 benötigten Plananalyseobjekte. Er installiert weder die
 :r ../01_Common/020_VW_AnalyseClassCatalog.sql
 :r ../01_Common/030_VW_AnalyseAccessPolicy.sql
 :r ../01_Common/040_VW_AnalyseAccessCurrent.sql
+:r ../01_Common/078_TVF_ParsePipeList.sql
+:r ../01_Common/085_TVF_ParseBigintList.sql
 :r ../01_Common/083a_USP_InternalCheckAnalysisPath.sql
 :r ../01_Common/095_USP_InternalWriteResultTable.sql
 :r ../01_Common/096_USP_InternalPrepareResultTables.sql

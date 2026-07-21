@@ -242,7 +242,7 @@ Die finale Implementierung darf Parameter nach dem Vertragsreview noch zusammenf
 CREATE OR ALTER PROCEDURE [monitor].[USP_ExecutionPlanAnalysis]
       @PlanXml                       xml             = NULL
     , @PlanHandle                    varbinary(64)   = NULL
-    , @SessionId                     smallint       = NULL
+    , @SessionIds                     smallint       = NULL
     , @RequestId                     int            = NULL
     , @QueryStoreDatabaseName        sysname         = NULL
     , @QueryStorePlanId              bigint          = NULL
@@ -282,7 +282,7 @@ Pro Aufruf ist genau eine Planquellengruppe zulässig:
 
 - `@PlanXml`: echter Standalone-Pfad;
 - `@PlanHandle`: `COMPILE`, `LAST_ACTUAL` oder `AUTO`;
-- `@SessionId` und optional `@RequestId`: aktueller, möglicherweise partieller Live-Plan;
+- `@SessionIds` und optional `@RequestId`: aktueller, möglicherweise partieller Live-Plan;
 - `@QueryStoreDatabaseName` und `@QueryStorePlanId`: Query-Store-Plan.
 
 `AUTO` versucht Last Actual und fällt bei Nichtverfügbarkeit auf Compile zurück. Der tatsächliche Fallback wird ausgegeben. Query-Store-Pläne sind Compile-/Estimated-Evidenz; Runtimewerte stammen aus getrennten Quellen.

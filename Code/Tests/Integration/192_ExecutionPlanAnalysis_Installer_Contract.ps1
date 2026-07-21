@@ -15,7 +15,7 @@ foreach($path in @($installer,$builder,$manifest)) {
 $text=Get-Content -LiteralPath $installer -Raw -Encoding UTF8
 $required=@(
 '000_Preflight_und_Schema.sql','020_VW_AnalyseClassCatalog.sql','030_VW_AnalyseAccessPolicy.sql',
-'040_VW_AnalyseAccessCurrent.sql','083a_USP_InternalCheckAnalysisPath.sql','095_USP_InternalWriteResultTable.sql','096_USP_InternalPrepareResultTables.sql',
+'040_VW_AnalyseAccessCurrent.sql','078_TVF_ParsePipeList.sql','085_TVF_ParseBigintList.sql','083a_USP_InternalCheckAnalysisPath.sql','095_USP_InternalWriteResultTable.sql','096_USP_InternalPrepareResultTables.sql',
 '098_USP_InternalEmitConsoleResult.sql','041_PlanAnalysisProfile.sql','042_PlanAnalysisRuleThreshold.sql',
 '043_PlanAnalysisProfileAssignment.sql','044_TVF_ParseStatisticsIoText.sql','045_TVF_ParseStatisticsTimeText.sql',
 '046_TVF_ExecutionPlanObjectReferences.sql','047_TVF_ExecutionPlanStatisticsUsage.sql',

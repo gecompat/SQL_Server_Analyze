@@ -1802,7 +1802,7 @@ Quelle: `Code/04_PlanCache/053_USP_ExecutionPlanAnalysis.sql`
 ```sql
 @PlanXml                        xml             = NULL
     , @PlanHandle                     varbinary(64)   = NULL
-    , @SessionId                      smallint        = NULL
+    , @SessionIds                     nvarchar(max)   = NULL
     , @RequestId                      int             = NULL
     , @QueryStoreDatabaseName         sysname         = NULL
     , @QueryStorePlanId               bigint          = NULL
