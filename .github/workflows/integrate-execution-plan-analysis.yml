@@ -16,6 +16,8 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
+  issues: write
 
 jobs:
   integrate:
@@ -26,9 +28,13 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
+          show-progress: false
 
       - name: Apply framework integration
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -91,7 +97,19 @@ jobs:
           path.write_text(text, encoding='utf-8', newline='\n')
           PY
 
-          python3 ./.bootstrap/integrate_execution_plan_analysis.py
+          set +e
+          python3 ./.bootstrap/integrate_execution_plan_analysis.py > /tmp/epa-integration.log 2>&1
+          integration_status=$?
+          set -e
+          if [ "$integration_status" -ne 0 ]; then
+            tail -n 40 /tmp/epa-integration.log
+            if [ -n "${PR_NUMBER:-}" ]; then
+              diagnostic="$(tail -n 20 /tmp/epa-integration.log)"
+              gh pr comment "$PR_NUMBER" --body "Execution-plan integration generator failed with the following technical diagnostic:\n\n\`\`\`text\n${diagnostic}\n\`\`\`"
+            fi
+            exit "$integration_status"
+          fi
+
           rm -f .bootstrap/integrate_execution_plan_analysis.py
           rmdir .bootstrap 2>/dev/null || true
           rm -f .github/workflows/integrate-execution-plan-analysis.yml
