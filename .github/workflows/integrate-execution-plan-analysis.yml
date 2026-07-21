@@ -7,6 +7,12 @@ on:
     paths:
       - '.bootstrap/integrate_execution_plan_analysis.py'
       - '.github/workflows/integrate-execution-plan-analysis.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - '.bootstrap/integrate_execution_plan_analysis.py'
+      - '.github/workflows/integrate-execution-plan-analysis.yml'
 
 permissions:
   contents: write
@@ -18,6 +24,7 @@ jobs:
       - name: Check out branch
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.head_ref || github.ref_name }}
           fetch-depth: 0
 
       - name: Apply framework integration
@@ -34,5 +41,5 @@ jobs:
           git add -A
           if ! git diff --cached --quiet; then
             git commit -m 'Integrate execution plan analysis framework contracts'
-            git push
+            git push origin HEAD:${{ github.head_ref || github.ref_name }}
           fi
