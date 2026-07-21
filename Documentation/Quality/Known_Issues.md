@@ -2,12 +2,12 @@
 
 Stand: 2026-07-21
 
-Die Version `1.1.0-special.9` besitzt für Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 34 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 181 P0-/P1-/P2-Fälle und die frameworkweiten Ausgabe-Verträge auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile. Der aktuelle Evidence-Stand wird kanonisch in `Metadata/Quality/Test_Matrix.csv` geführt und durch `Code/Tests/Static/990_Validate_Release_Evidence.py` gegen Detailmatrix und Release-Audit geprüft.
+Die Version `1.1.0-special.9` besitzt für Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 34 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 181 P0-/P1-/P2-Fälle sowie die Welle-1-Verträge für Unicode-sichere sichtbare Kürzung, native XML-Ausgaben, Provenienz und Offline-Versionsbewertung auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile. Der aktuelle Evidence-Stand wird kanonisch in `Metadata/Quality/Test_Matrix.csv` geführt und durch `Code/Tests/Static/990_Validate_Release_Evidence.py` gegen Detailmatrix und Release-Audit geprüft.
 
 Verbleibende Repository- und Evidenzpunkte:
 
 - Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
-- Keine offene Deep-Analysis-Redaktionswelle: alle 84 öffentlichen Procedure-Seiten enthalten die procedurespezifische technische Vertiefung und verweisen auf das gemeinsame Execution-, Zeit- und Evidenzmodell.
+- Keine offene Deep-Analysis-Redaktionswelle: alle 85 öffentlichen Procedure-Seiten enthalten die procedurespezifische technische Vertiefung und verweisen auf das gemeinsame Execution-, Zeit- und Evidenzmodell.
 - Die vier ersten P1-IQP-Fälle sind automatisiert und commitbezogen nachgewiesen.
 - Die vier P1-Contention-Fälle sind als sechzehnte Suite nachgewiesen. Der Page-Detail-Fall erzwingt keinen künstlichen realen PAGELATCH-Wait, sondern prüft den opt-in- und Zeilengrenzenvertrag; diese Einschränkung bleibt ausdrücklich erhalten.
 - Die vier P1-Speicherfälle sind als siebzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Speicherdruck und Resource-Semaphore-Waiter wurden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz und bleibt deshalb `PASS_WITH_LIMITATIONS`.
@@ -28,6 +28,9 @@ Verbleibende Repository- und Evidenzpunkte:
 
 Verbleibende fachliche beziehungsweise betriebliche Punkte:
 
+- Der mitgelieferte Build- und Lifecycle-Katalog von `USP_ServerVersionInformation` besitzt den expliziten Stand 21. Juli 2026 und ersetzt keine spätere Katalogpflege. Ein nicht enthaltener oder neuerer Build liefert eine Evidenzlücke beziehungsweise `UNKNOWN_NEWER_BUILD`, aber keine automatische Veraltet-Aussage.
+- Die synthetischen Welle-1-Verträge prüfen Unicode-/Surrogatgrenzen, native XML-Spaltentypen und fest definierte XML-Zustände. Sie beweisen weder die Darstellung in jeder grafischen Clientversion noch Größe, Struktur oder Interpretierbarkeit realer Produktionspayloads.
+- Die TempDB-Arbeitstabellen von `USP_TemporalAnalysis` und den gemeinsamen TABLE-Helfern werden vor dem prozedurweiten No-Wait-Metadatenpfad erzeugt. Damit ist die in einem früheren Verifikationslauf beobachtete flüchtige TempDB-DDL-Lockkollision gezielt ausgeschlossen; fachliche Benutzer-Metadatenzugriffe bleiben weiterhin nonblocking und können kontrolliert als partiell enden.
 - Die automatisierten synthetischen Linux-Vertragspfade ersetzen keine weiteren Feature-Positiv-, Grenzwert-, Last-, Windows- oder Azure-MI-Tests.
 - Bei jeder weiteren Zielversion oder abweichenden Plattform sind Installer, Smoke Tests, Parametervertrag und `165_Filter_Output_Contract.sql` erneut auszuführen.
 - Phase 7 liefert überwiegend Inventar- und Momentaufnahmen; zeitbasierte CPU-, NUMA- und Memory-Trends sind bewusst nicht Bestandteil dieses Ad-hoc-Pakets.

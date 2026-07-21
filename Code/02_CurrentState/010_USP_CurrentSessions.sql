@@ -191,8 +191,11 @@ BEGIN
         , [WaitResource] nvarchar(256) NULL, [PercentComplete] real NULL
         , [ClientNetAddress] varchar(48) NULL, [NetTransport] nvarchar(40) NULL
         , [ProtocolType] nvarchar(40) NULL, [EncryptOption] nvarchar(40) NULL
-        , [AuthScheme] nvarchar(40) NULL, [CurrentStatement] nvarchar(max) NULL
-        , [BatchText] nvarchar(max) NULL
+        , [AuthScheme] nvarchar(40) NULL
+        , [CurrentStatementCharacters] bigint NULL, [CurrentStatementBytes] bigint NULL
+        , [CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0), [CurrentStatement] nvarchar(max) NULL
+        , [BatchTextCharacters] bigint NULL, [BatchTextBytes] bigint NULL
+        , [BatchTextIsTruncated] bit NOT NULL DEFAULT(0), [BatchText] nvarchar(max) NULL
     );
 
     SET @CandidateMaxZeilen = CASE WHEN @HasRegex=1 OR @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen)+1 END;
@@ -214,8 +217,8 @@ BEGIN
             , [r].[cpu_time],[r].[total_elapsed_time],[r].[logical_reads],[r].[reads],[r].[writes],NULLIF([r].[blocking_session_id],0)
             , [r].[wait_type],[r].[wait_time],[r].[wait_resource],[r].[percent_complete]
             , [c].[client_net_address],[c].[net_transport],[c].[protocol_type],[c].[encrypt_option],[c].[auth_scheme]
-            , CASE WHEN @MitSqlText=1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [st].[StatementText] ELSE LEFT([st].[StatementText],@MaxSqlTextZeichen) END END
-            , CASE WHEN @MitSqlText=1 THEN CASE WHEN @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen=0 THEN [t].[text] ELSE LEFT([t].[text],@MaxSqlTextZeichen) END END
+            , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText=1 THEN [st].[StatementText] END
+            , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText=1 THEN [t].[text] END
         FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
         LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK) ON [c].[session_id]=[s].[session_id]
         OUTER APPLY (SELECT TOP (1) [rr].* FROM [sys].[dm_exec_requests] AS [rr] WITH (NOLOCK) WHERE [rr].[session_id]=[s].[session_id] ORDER BY [rr].[request_id]) AS [r]
@@ -263,6 +266,27 @@ BEGIN
             )
             DELETE FROM [R] WHERE [rn]>@MaxZeilen;
         END;
+
+        DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+        DECLARE @ColumnTruncatedCount bigint=0,@ColumnLargestCharacters bigint=NULL;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentSessions_Result',@TextColumn=N'CurrentStatement'
+            , @CharactersColumn=N'CurrentStatementCharacters',@BytesColumn=N'CurrentStatementBytes'
+            , @IsTruncatedColumn=N'CurrentStatementIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalProjectUnicodeTextColumn]
+              @SourceTable=N'#CurrentSessions_Result',@TextColumn=N'BatchText'
+            , @CharactersColumn=N'BatchTextCharacters',@BytesColumn=N'BatchTextBytes'
+            , @IsTruncatedColumn=N'BatchTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+            , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
+        SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
+               @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
+        EXEC [monitor].[InternalEmitTruncationWarning]
+              @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
+            , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
+            , @PrintMeldungen=@PrintMeldungen;
 
         SELECT @RowCount=COUNT_BIG(*) FROM [#CurrentSessions_Result];
         IF @HasFullView=0 BEGIN SET @StatusCode='AVAILABLE_LIMITED';SET @IsPartial=1;SET @Detail=N'Ohne vollständige Server-State-Berechtigung kann die Sicht auf eigene Sessions begrenzt sein.';END

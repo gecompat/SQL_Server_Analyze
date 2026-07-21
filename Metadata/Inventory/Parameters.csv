@@ -1291,6 +1291,21 @@ USP_ServerFeatureCapabilities,JsonErzeugen,bit,0
 USP_ServerFeatureCapabilities,Json,nvarchar(max),NULL OUTPUT
 USP_ServerFeatureCapabilities,PrintMeldungen,bit,1
 USP_ServerFeatureCapabilities,Hilfe,bit,0
+USP_ServerVersionInformation,MitDatenbankKompatibilitaet,bit,0
+USP_ServerVersionInformation,DatabaseNames,nvarchar(max),NULL
+USP_ServerVersionInformation,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ServerVersionInformation,SystemdatenbankenEinbeziehen,bit,0
+USP_ServerVersionInformation,MaxZeilen,int,2000
+USP_ServerVersionInformation,ResultSetArt,varchar(16),'CONSOLE'
+USP_ServerVersionInformation,ResultTablesJson,nvarchar(max),NULL
+USP_ServerVersionInformation,JsonErzeugen,bit,0
+USP_ServerVersionInformation,Json,nvarchar(max),NULL OUTPUT
+USP_ServerVersionInformation,PrintMeldungen,bit,1
+USP_ServerVersionInformation,Hilfe,bit,0
+USP_ServerVersionInformation,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ServerVersionInformation,IsPartialOut,bit,NULL OUTPUT
+USP_ServerVersionInformation,ErrorNumberOut,int,NULL OUTPUT
+USP_ServerVersionInformation,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_SpecialFeatureInventory,DatabaseNames,nvarchar(max),NULL
 USP_SpecialFeatureInventory,SystemdatenbankenEinbeziehen,bit,0
 USP_SpecialFeatureInventory,DatabaseNamePattern,nvarchar(4000),NULL

@@ -11,13 +11,13 @@ Die Existenz einer Procedure-Seite ist noch kein Nachweis fachlicher Tiefe. Desh
 - `BASELINE`: Die Procedure ist strukturell erfasst und besitzt die bisherigen technischen Vertiefungsfelder. Die Seite ist noch nicht vollständig gegen Vertragsversion 2 redaktionell geprüft.
 - `DEEP_REVIEWED`: Zweck, Leserichtung, Datenentstehung, Aussagegrenzen, Eigenlast und Gegenproben wurden am aktuellen T-SQL geprüft; alle nachfolgenden Pflichtinhalte sind erfüllt.
 
-Der maschinenlesbare Stand liegt in [`Metadata/Quality/Analysis_Documentation_Review.csv`](../../Metadata/Quality/Analysis_Documentation_Review.csv). Zum Stand dieses Vertrags sind **84 von 84** Seiten `DEEP_REVIEWED`. Als Kalibrierungsfälle für unterschiedliche Kosten- und Zeitmodelle dienen weiterhin:
+Der maschinenlesbare Stand liegt in [`Metadata/Quality/Analysis_Documentation_Review.csv`](../../Metadata/Quality/Analysis_Documentation_Review.csv). Zum Stand dieses Vertrags sind **85 von 85** Seiten `DEEP_REVIEWED`. Als Kalibrierungsfälle für unterschiedliche Kosten- und Zeitmodelle dienen weiterhin:
 
 1. [`USP_CurrentRequests`](Procedures/USP_CurrentRequests.md) als flüchtige Live-DMV-Analyse,
 2. [`USP_IndexPhysicalStats`](Procedures/USP_IndexPhysicalStats.md) als potenziell I/O-intensiver physischer Scan,
 3. [`USP_ExtendedEventsReadEvents`](Procedures/USP_ExtendedEventsReadEvents.md) als Datei-/XML-Analyse mit möglicher Nebenwirkung.
 
-Eine Abdeckungszahl darf nur zusammen mit ihrer Qualitätsstufe genannt werden. Aktuell sind sowohl die strukturelle Abdeckung als auch die redaktionelle Tiefenprüfung mit 84/84 vollständig. Eine spätere relevante Änderung an T-SQL, Resultsets, Gates oder Kostenpfaden kann einzelne Seiten gemäß den Pflege- und Reviewregeln wieder auf `BASELINE` zurücksetzen.
+Eine Abdeckungszahl darf nur zusammen mit ihrer Qualitätsstufe genannt werden. Aktuell sind sowohl die strukturelle Abdeckung als auch die redaktionelle Tiefenprüfung mit 85/85 vollständig. Eine spätere relevante Änderung an T-SQL, Resultsets, Gates oder Kostenpfaden kann einzelne Seiten gemäß den Pflege- und Reviewregeln wieder auf `BASELINE` zurücksetzen.
 
 ## Abdeckungsvertrag
 

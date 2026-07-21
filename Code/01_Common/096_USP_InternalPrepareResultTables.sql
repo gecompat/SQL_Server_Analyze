@@ -25,6 +25,22 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalPrepareResultTables]
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    -- Lokale Metadatenobjekte werden vor dem bewussten No-Wait-Vertrag
+    -- angelegt, damit eine kurzzeitige tempdb-DDL-Kollision nicht schon den
+    -- rein internen Arbeitsbereich mit Fehler 1222 abbrechen lässt.
+    CREATE TABLE [#InternalPrepareResultTables_Allowed]
+    (
+        [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+    );
+
+    CREATE TABLE [#InternalPrepareResultTables_Parsed]
+    (
+          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [JsonType] int NOT NULL
+    );
+
     SET LOCK_TIMEOUT 0;
 
     SELECT
@@ -57,18 +73,6 @@ BEGIN
         SET @ErrorMessage = N'@ResultTablesJson muss ein gültiges JSON-Objekt enthalten.';
         GOTO PreflightFailed;
     END;
-
-    CREATE TABLE [#InternalPrepareResultTables_Allowed]
-    (
-        [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
-    );
-
-    CREATE TABLE [#InternalPrepareResultTables_Parsed]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [JsonType] int NOT NULL
-    );
 
     INSERT [#InternalPrepareResultTables_Allowed]([ResultName])
     SELECT CONVERT(sysname, LTRIM(RTRIM([value])))
