@@ -61,6 +61,25 @@ IF @Status NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@AnalysisJson)<>1
     THROW 53600,N'Die eigenständige Plananalyse lieferte keinen gültigen Vertrag.',1;
 IF (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.statements'))<>2
     THROW 53601,N'Der Mehrstatementplan wurde nicht statementgenau zerlegt.',1;
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@AnalysisJson,N'$.statements')
+    WITH
+    (
+          [StatementOrdinal] int N'$.StatementOrdinal'
+        , [StatementType] nvarchar(128) N'$.StatementType'
+        , [StatementQueryHash] nvarchar(130) N'$.StatementQueryHash'
+        , [StatementSubTreeCost] decimal(38,8) N'$.StatementSubTreeCost'
+        , [OptimizationLevel] nvarchar(128) N'$.OptimizationLevel'
+    )
+    WHERE [StatementOrdinal]=1
+      AND [StatementType]=N'SELECT'
+      AND [StatementQueryHash]=N'0x0101010101010101'
+      AND [StatementSubTreeCost]=CONVERT(decimal(38,8),1)
+      AND [OptimizationLevel]=N'FULL'
+)
+    THROW 53609,N'Direkte Attribute des materialisierten StmtSimple-Elements wurden nicht korrekt gelesen.',1;
 IF (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.operatorTree') WITH ([StatementOrdinal] int N'$.StatementOrdinal',[NodeId] int N'$.NodeId') WHERE [NodeId]=1)<>2
     THROW 53602,N'Gleiche NodeIds verschiedener Statements wurden nicht getrennt erhalten.',1;
 IF NOT EXISTS
