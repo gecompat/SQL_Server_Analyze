@@ -9,3 +9,11 @@ Die Richtlinie gilt für alle berührten README-Dateien, Architektur- und Analys
 Eine technische Änderung berechtigt nicht zu einer unverbundenen redaktionellen Gesamtüberarbeitung. Stilkorrekturen bleiben auf den sachlich betroffenen Dokumentationsumfang begrenzt.
 
 Ordnerspezifische Ausschlussanweisungen für persönliche Notizen oder nicht maßgebliche Inhalte bleiben unabhängig von dieser Schreibstilrichtlinie verbindlich.
+
+## Geschützter Lizenzblock der Root-README
+
+Der zweisprachige Lizenzblock am Anfang der Root-Datei [`README.md`](README.md) ist vor jeder Bearbeitung dieser Datei vollständig zu lesen. Maßgeblich ist stets der zu Beginn der Aufgabe im Zielbranch vorhandene Stand; dadurch werden zwischenzeitliche Anpassungen des Repositoryinhabers nicht zurückgesetzt.
+
+Ein automatisiertes Bearbeitungssystem muss den gesamten Block einschließlich des englischen Abschnitts `READ BEFORE USE`, des deutschen Abschnitts `Lizenzhinweis`, der Überschriften, Listen, Links, Trennlinien, Hervorhebungen, Zeichensetzung, Leerzeilen und sonstigen Formatierung unverändert erhalten. Allgemeine Aufträge zum Aktualisieren, Korrigieren, Formatieren oder stilistischen Überarbeiten der Root-README oder der Repositorydokumentation erteilen keine Berechtigung, diesen Block zu verändern.
+
+Eine Änderung ist nur zulässig, wenn der Benutzer ausdrücklich und unmittelbar eine Änderung des Lizenzblocks verlangt. Bei jeder anderen Änderung der Root-README ist vor dem Commit zu prüfen, dass der Lizenzblock gegenüber dem zu Beginn der Aufgabe gelesenen Stand inhaltlich und formal unverändert geblieben ist.
