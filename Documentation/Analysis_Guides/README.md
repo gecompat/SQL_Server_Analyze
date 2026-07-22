@@ -1,7 +1,7 @@
 # Analysehandbuch für SQL_Server_Analyze
 
 **Stand:** 21. Juli 2026
-**Geltungsbereich:** 94 öffentliche Procedures
+**Geltungsbereich:** 96 öffentliche Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
 ## Empfohlener Einstieg
@@ -15,7 +15,7 @@
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
-Alle 94 Procedure-Seiten sind strukturell vollständig. 89 Seiten besitzen den tief geprüften Status `DEEP_REVIEWED`; die zwei eigenständig installierbaren PLAN-001- und drei optionalen SC-023-Seiten stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md), [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) und [USP_AnalysisNavigator](Procedures/USP_AnalysisNavigator.md) zeigen die unterschiedlichen Verträge von Live-Snapshot, physischem Scan, Datei-/XML-Analyse und reiner Metadatennavigation.
+Alle 96 Procedure-Seiten sind strukturell vollständig. 91 Seiten besitzen den tief geprüften Status `DEEP_REVIEWED`; die zwei eigenständig installierbaren PLAN-001- und drei optionalen SC-023-Seiten stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md), [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) und [USP_AnalysisNavigator](Procedures/USP_AnalysisNavigator.md) zeigen die unterschiedlichen Verträge von Live-Snapshot, physischem Scan, Datei-/XML-Analyse und reiner Metadatennavigation.
 
 ## Feste Leserichtung
 
@@ -57,10 +57,10 @@ Alle 94 Procedure-Seiten sind strukturell vollständig. 89 Seiten besitzen den t
 | Extended Events | [06_Extended_Events.md](06_Extended_Events.md) | 6 |
 | Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 13 |
 | Server Health | [08_Server_Health.md](08_Server_Health.md) | 19 |
-| Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 9 |
-| **Integriertes Framework gesamt** | | **91** |
+| Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 11 |
+| **Integriertes Framework gesamt** | | **93** |
 
-Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher. Der vollständige Dokumentationsbestand umfasst damit 94 Procedures.
+Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher. Der vollständige Dokumentationsbestand umfasst damit 96 Procedures.
 
 ## Schnellwahl nach Symptom
 
@@ -92,4 +92,4 @@ Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan For
 
 ## Vollständigkeit
 
-Der [Objektindex](Object_Index.md) enthält alle 94 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 67 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
+Der [Objektindex](Object_Index.md) enthält alle 96 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 67 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.

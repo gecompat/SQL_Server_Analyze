@@ -1,7 +1,8 @@
 # Unterstützte Plattform- und Nachweismatrix
 
 **Stand:** 21. Juli 2026
-**Frameworkrelease:** `1.1.0-special.13`
+**Kanonischer nachgewiesener Frameworkstand:** `1.1.0-special.13`
+**Aktueller RUNTIME-001-Vertragsstand:** `1.1.0-special.14`
 **Maschinenlesbare Detailmatrix:** `Metadata/Quality/Test_Matrix.csv`
 
 ## Nachweisregel
@@ -48,6 +49,8 @@ Für den Analysis Navigator definiert das Release-Gate zusätzlich einen Metadat
 | Temporal | keine Prüfung realer History-Nutzzeilen oder Periodenüberlappungen |
 | Service Broker | keine Nachrichtenkörper, Queue-Payloads oder Conversation-Mutationen |
 | Full-Text | Linux kann feature-positive Full-Text-Komponenten begrenzen; keine indizierten Inhalte |
+| External Runtime | portabler Vertrag ohne Featureaktivierung oder Scriptausführung; keine feature-positiven R-, Python-, Java-, C#- oder Custom-Language-Läufe und kein End-to-End-Launchpad-Nachweis |
+| SQL CLR | portabler Vertrag ohne Assemblyerzeugung oder Ausführung; keine synthetische SAFE-Assembly und keine Windows-Fälle für `EXTERNAL_ACCESS` oder `UNSAFE` |
 | Data Capture | lokale Metadaten und Klassifikation; keine Remote-Subscriber-/Distributor-Netzpfade |
 | Verschlüsselung | keine Schlüssel- oder Medieninhalte und kein externer Restorebeweis |
 | Wartung | keine operative Wartungsänderung |
@@ -56,6 +59,8 @@ Für den Analysis Navigator definiert das Release-Gate zusätzlich einen Metadat
 ## Nicht durch die Kernmatrix abgedeckt
 
 - Windows-spezifische Feature-Positivpfade;
+- konkrete External-Runtime-Installationen und eine tatsächlich ausgeführte synthetische External-Language-Workload;
+- synthetische SQL-CLR-SAFE-Assembly sowie Windows-Securityfälle für höhere Permission Sets;
 - Azure SQL Managed Instance;
 - abweichende Server-/`tempdb`-Collations;
 - reale Unternehmens-, Kunden- oder Produktionsdaten;
