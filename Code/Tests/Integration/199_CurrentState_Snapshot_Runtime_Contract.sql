@@ -13,6 +13,7 @@ Nebenwirkung : Ausschließlich lokale Temp-Tabellen.
 */
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
+SET QUOTED_IDENTIFIER ON;
 
 CREATE TABLE [#CurrentStateSnapshotRuntimeContract_SnapshotStatus]([Seed] bit NULL);
 
