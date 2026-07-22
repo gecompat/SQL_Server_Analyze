@@ -118,14 +118,14 @@ Set-Location 'C:\Tools\SQL_Server_Analyze\Code\Install'
 .\Build-StandaloneInstaller.ps1
 ```
 
-4. Die Erfolgsmeldung kontrollieren. Im selben Verzeichnis muss nun die Datei `Install_All.generated.sql` liegen.
+4. Die Erfolgsmeldung kontrollieren. Im Unterverzeichnis `generated` muss nun die Datei `Install_All.generated.sql` liegen.
 
-Das Buildskript übernimmt die kanonischen SQL-Dateien in ihrer abhängigkeitssicheren Reihenfolge. `Install_All.generated.sql` ist ein lokales Build-Artefakt und wird nicht in Git versioniert. Falls die lokale PowerShell-Richtlinie das Skript blockiert, die Richtlinie nicht unkontrolliert umgehen, sondern die Ausführung mit der zuständigen Administration klären oder den alternativen SQLCMD-Weg verwenden.
+Das Buildskript übernimmt die kanonischen SQL-Dateien in ihrer abhängigkeitssicheren Reihenfolge. `generated/Install_All.generated.sql` ist ein lokales Build-Artefakt und wird nicht in Git versioniert. Falls die lokale PowerShell-Richtlinie das Skript blockiert, die Richtlinie nicht unkontrolliert umgehen, sondern die Ausführung mit der zuständigen Administration klären oder den alternativen SQLCMD-Weg verwenden.
 
 ## 6. Installer in SSMS vorbereiten
 
 1. In SSMS **Datei > Öffnen > Datei** wählen.
-2. `Code\Install\Install_All.generated.sql` öffnen.
+2. `Code\Install\generated\Install_All.generated.sql` öffnen.
 3. Nur die erste Zeile anpassen:
 
 ```sql
@@ -211,6 +211,11 @@ Die tatsächlich erforderlichen Rechte hängen vom aufgerufenen Modul ab. Das Fr
 Counter-Baselines sind eine eigene Snapshot-Datenbank, anschließend
 `Install_SnapshotBaseline_Target.sql` in deren Verbindungskontext und danach
 `Install_SnapshotBaseline_Framework.sql` in der Frameworkdatenbank erforderlich.
+Alternativ erzeugt `Code/Install/Build-SnapshotBaselineInstallers.ps1` unter
+`Code/Install/generated/` zwei vollständig eingebettete Installer ohne
+SQLCMD-Abhängigkeit. Der Target-Installer wird weiterhin in der ausdrücklich
+ausgewählten Snapshotdatenbank ausgeführt; erst danach folgt der
+Framework-Installer in der Frameworkdatenbank.
 Das Paket erstellt keine Datenbank, Berechtigungen oder Schedulerobjekte. Siehe
 [Snapshot-/Baseline-Betrieb](../Operations/Snapshot_Baseline_Operations.md).
 
@@ -451,4 +456,4 @@ Ein realer Compile- und Laufzeittest auf der konkreten Zielversion, Edition, Pla
 
 ## Teilinstallation der Execution-Plan-Analyse
 
-Für eine eigenständig nutzbare Plananalyse verwenden Sie `Code/Install/Install_ExecutionPlanAnalysis.sql` im SQLCMD-Modus. Alternativ erzeugt `Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1` einen vollständig eingebetteten Installer. Verfügbar sind danach mindestens `monitor.USP_ExecutionPlanAnalysis` und `monitor.USP_CreateExecutionEvidenceJson`; Query Store, Current State, Extended Events und Server Health werden nicht mitinstalliert.
+Für eine eigenständig nutzbare Plananalyse verwenden Sie `Code/Install/Install_ExecutionPlanAnalysis.sql` im SQLCMD-Modus. Alternativ erzeugt `Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1` unter `Code/Install/generated/` einen vollständig eingebetteten Installer. Verfügbar sind danach mindestens `monitor.USP_ExecutionPlanAnalysis` und `monitor.USP_CreateExecutionEvidenceJson`; Query Store, Current State, Extended Events und Server Health werden nicht mitinstalliert.

@@ -27,4 +27,34 @@ $forbidden=@('USP_QueryStats.sql','USP_QueryHashAnalysis.sql','USP_PlanCacheHeal
 foreach($item in $forbidden) { if($text -match [regex]::Escape($item)) { throw "Teilinstaller enthält unzulässigen Frameworkumfang: $item" } }
 $rows=@(Import-Csv -LiteralPath $manifest -Encoding UTF8)
 if($rows.Count -ne $required.Count+2) { throw "Dependency-Manifest besitzt eine unerwartete Zeilenanzahl." }
+
+$builderText=Get-Content -LiteralPath $builder -Raw -Encoding UTF8
+if($builderText -notmatch 'generated/Install_ExecutionPlanAnalysis\.generated\.sql') {
+    throw 'PLAN_STANDALONE_DEFAULT_OUTPUT_DIRECTORY_INVALID'
+}
+$testDirectory=Join-Path ([IO.Path]::GetTempPath()) ('sql-server-analyze-plan-' + [guid]::NewGuid().ToString('N'))
+$outputPath=Join-Path $testDirectory 'nested/Install_ExecutionPlanAnalysis.generated.sql'
+try {
+    & $builder -RepositoryRoot $RepositoryRoot -OutputPath $outputPath
+    if(-not (Test-Path -LiteralPath $outputPath -PathType Leaf)) {
+        throw 'PLAN_STANDALONE_GENERATED_FILE_MISSING'
+    }
+    $generatedText=Get-Content -LiteralPath $outputPath -Raw -Encoding UTF8
+    if($generatedText -match '(?im)^\s*:(?:r|ON\s+ERROR)\b') {
+        throw 'PLAN_STANDALONE_SQLCMD_DIRECTIVE_FOUND'
+    }
+    $includeCount=@([Text.RegularExpressions.Regex]::Matches($text,'(?m)^\s*:r\s+(.+?)\s*$')).Count
+    $sourceCount=@([Text.RegularExpressions.Regex]::Matches($generatedText,'(?m)^-- BEGIN SOURCE: (.+?)$')).Count
+    if($sourceCount -ne $includeCount) { throw 'PLAN_STANDALONE_SOURCE_COUNT_INVALID' }
+    $firstHash=(Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash
+    & $builder -RepositoryRoot $RepositoryRoot -OutputPath $outputPath
+    if((Get-FileHash -LiteralPath $outputPath -Algorithm SHA256).Hash -ne $firstHash) {
+        throw 'PLAN_STANDALONE_GENERATION_NOT_DETERMINISTIC'
+    }
+}
+finally {
+    if(Test-Path -LiteralPath $testDirectory) {
+        Remove-Item -LiteralPath $testDirectory -Recurse -Force
+    }
+}
 Write-Host 'Execution Plan Analysis installer contract passed.'
