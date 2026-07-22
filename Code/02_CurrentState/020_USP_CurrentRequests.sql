@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentRequests
-Version      : 2.2.0
-Stand        : 2026-07-21
+Version      : 2.3.0
+Stand        : 2026-07-22
 Typ          : Stored Procedure
 Zweck        : Liefert aktive Requests mit Session-, Wait-, Memory-Grant-,
                Modul- und exakt abgegrenztem SQL-Statement- sowie Ausführungs-
@@ -55,6 +55,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentRequests]
     , @Json                          nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                bit            = 1
     , @Hilfe                         bit            = 0
+    , @ParentCurrentStateSnapshotId  uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -95,6 +96,8 @@ BEGIN
     DECLARE @SqlTextErforderlich bit;
     DECLARE @StatementTextErforderlich bit;
     DECLARE @BatchTextErforderlich bit;
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
+    DECLARE @ParentSnapshotIsPartial bit=0;
 
     SET @EigeneSessionsModus = UPPER(LTRIM(RTRIM(COALESCE(@EigeneSessionsModus, 'ALLE'))));
     SET @Sortierung = UPPER(LTRIM(RTRIM(COALESCE(@Sortierung, 'RELEVANZ'))));
@@ -123,6 +126,7 @@ BEGIN
         PRINT N'@ModulInfoEinbeziehen=1 löst dbid/objectid über die Systemtabellen der jeweiligen Datenbank auf.';
         PRINT N'@MaxSqlTextZeichen: positiver Wert kürzt die Darstellung; NULL/0 gibt den jeweiligen Text vollständig aus.';
         PRINT N'@MaxZeilen: positiver Wert begrenzt; NULL/0 unbegrenzt. @ResultSetArt CONSOLE (Default), RAW, TABLE oder NONE; optional @Json OUTPUT.';
+        PRINT N'@ParentCurrentStateSnapshotId ist ausschließlich für den laufinternen Overview-Consumer bestimmt; NULL erzwingt einen frischen Einzelread.';
         RETURN;
     END;
 
@@ -403,6 +407,290 @@ BEGIN
         , PRIMARY KEY ([SessionId], [RequestId])
     );
 
+
+    CREATE TABLE [#CurrentRequests_SourceSessions]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [is_user_process] bit NOT NULL
+        , [login_name] nvarchar(128) NOT NULL
+        , [original_login_name] nvarchar(128) NOT NULL
+        , [host_name] nvarchar(128) NULL
+        , [program_name] nvarchar(128) NULL
+    );
+    CREATE TABLE [#CurrentRequests_SourceRequests]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [command] nvarchar(32) NOT NULL
+        , [database_id] smallint NOT NULL
+        , [start_time] datetime NOT NULL
+        , [total_elapsed_time] int NOT NULL
+        , [cpu_time] int NOT NULL
+        , [logical_reads] bigint NOT NULL
+        , [reads] bigint NOT NULL
+        , [writes] bigint NOT NULL
+        , [row_count] bigint NOT NULL
+        , [percent_complete] real NOT NULL
+        , [estimated_completion_time] bigint NOT NULL
+        , [blocking_session_id] smallint NULL
+        , [wait_type] nvarchar(60) NULL
+        , [wait_time] int NOT NULL
+        , [last_wait_type] nvarchar(60) NOT NULL
+        , [wait_resource] nvarchar(256) NOT NULL
+        , [dop] int NOT NULL
+        , [parallel_worker_count] int NULL
+        , [transaction_isolation_level] smallint NOT NULL
+        , [open_transaction_count] int NOT NULL
+        , [open_resultset_count] int NOT NULL
+        , [transaction_id] bigint NOT NULL
+        , [scheduler_id] int NULL
+        , [task_address] varbinary(8) NULL
+        , [nest_level] int NOT NULL
+        , [group_id] int NOT NULL
+        , [statement_sql_handle] varbinary(64) NULL
+        , [statement_context_id] bigint NULL
+        , [is_resumable] bit NOT NULL
+        , [executing_managed_code] bit NOT NULL
+        , [context_info] varbinary(128) NULL
+        , [query_hash] binary(8) NULL
+        , [query_plan_hash] binary(8) NULL
+        , [sql_handle] varbinary(64) NULL
+        , [plan_handle] varbinary(64) NULL
+        , [statement_start_offset] int NULL
+        , [statement_end_offset] int NULL
+        , PRIMARY KEY ([session_id],[request_id])
+    );
+    CREATE TABLE [#CurrentRequests_SourceConnections]
+    (
+          [session_id] int NULL
+        , [connection_id] uniqueidentifier NOT NULL PRIMARY KEY
+        , [client_net_address] varchar(48) NULL
+    );
+    CREATE INDEX [IX_CurrentRequests_SourceConnections_SessionId]
+        ON [#CurrentRequests_SourceConnections]([session_id]);
+    CREATE TABLE [#CurrentRequests_SourceWaitingTasks]
+    (
+          [session_id] smallint NULL
+        , [wait_duration_ms] bigint NOT NULL
+        , [wait_type] nvarchar(60) NOT NULL
+    );
+    CREATE INDEX [IX_CurrentRequests_SourceWaitingTasks_SessionId]
+        ON [#CurrentRequests_SourceWaitingTasks]([session_id]);
+    CREATE TABLE [#CurrentRequests_SourceMemoryGrants]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [requested_memory_kb] bigint NOT NULL
+        , [granted_memory_kb] bigint NULL
+        , [used_memory_kb] bigint NULL
+        , [ideal_memory_kb] bigint NULL
+    );
+    CREATE INDEX [IX_CurrentRequests_SourceMemoryGrants_Request]
+        ON [#CurrentRequests_SourceMemoryGrants]([session_id],[request_id]);
+    CREATE TABLE [#CurrentRequests_SourceWorkloadGroups]
+    (
+          [group_id] int NOT NULL PRIMARY KEY
+        , [name] sysname NOT NULL
+        , [pool_id] int NOT NULL
+    );
+    CREATE TABLE [#CurrentRequests_SourceResourcePools]
+    (
+          [pool_id] int NOT NULL PRIMARY KEY
+        , [name] sysname NOT NULL
+    );
+    CREATE TABLE [#CurrentRequests_SourceSqlText]
+    (
+          [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
+        , [text] nvarchar(max) NULL
+        , [dbid] int NULL
+        , [objectid] int NULL
+        , [number] smallint NULL
+        , [encrypted] bit NULL
+    );
+    CREATE TABLE [#CurrentRequests_SourceInputBuffer]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [event_type] nvarchar(256) NULL
+        , [parameters] smallint NULL
+        , [event_info] nvarchar(max) NULL
+        , PRIMARY KEY ([session_id],[request_id])
+    );
+
+    IF @StatusCode='AVAILABLE' AND @ParentCurrentStateSnapshotId IS NOT NULL
+    BEGIN
+        IF OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Context') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SourceStatus') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Sessions') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Requests') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Connections') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_WaitingTasks') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_MemoryGrants') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_WorkloadGroups') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_ResourcePools') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SqlText') IS NULL
+        BEGIN
+            SET @StatusCode='INVALID_PARENT_SNAPSHOT';
+            SET @IsPartial=1;
+            SET @ErrorMessage=N'Der angegebene Parent-Snapshot ist im aktuellen Aufruf nicht verfügbar.';
+        END
+        ELSE
+        BEGIN TRY
+            IF NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentStateSnapshot_Context]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                  AND [ContractVersion]=1
+            )
+            BEGIN
+                SET @StatusCode='INVALID_PARENT_SNAPSHOT';
+                SET @IsPartial=1;
+                SET @ErrorMessage=N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.';
+            END
+            ELSE
+            BEGIN
+                INSERT [#CurrentRequests_SourceSessions]
+                SELECT [session_id],[is_user_process],[login_name],[original_login_name],[host_name],[program_name]
+                FROM [#CurrentStateSnapshot_Sessions]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentRequests_SourceRequests]
+                SELECT
+                      [session_id],[request_id],[status],[command],[database_id],[start_time]
+                    , [total_elapsed_time],[cpu_time],[logical_reads],[reads],[writes],[row_count]
+                    , [percent_complete],[estimated_completion_time],[blocking_session_id]
+                    , [wait_type],[wait_time],[last_wait_type],[wait_resource],[dop]
+                    , [parallel_worker_count],[transaction_isolation_level]
+                    , [open_transaction_count],[open_resultset_count],[transaction_id]
+                    , [scheduler_id],[task_address],[nest_level],[group_id]
+                    , [statement_sql_handle],[statement_context_id],[is_resumable]
+                    , [executing_managed_code],[context_info],[query_hash],[query_plan_hash]
+                    , [sql_handle],[plan_handle],[statement_start_offset],[statement_end_offset]
+                FROM [#CurrentStateSnapshot_Requests]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentRequests_SourceConnections]
+                SELECT [session_id],[connection_id],[client_net_address]
+                FROM [#CurrentStateSnapshot_Connections]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentRequests_SourceWaitingTasks]
+                SELECT [session_id],[wait_duration_ms],[wait_type]
+                FROM [#CurrentStateSnapshot_WaitingTasks]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentRequests_SourceMemoryGrants]
+                SELECT [session_id],[request_id],[requested_memory_kb],[granted_memory_kb],[used_memory_kb],[ideal_memory_kb]
+                FROM [#CurrentStateSnapshot_MemoryGrants]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentRequests_SourceWorkloadGroups]
+                SELECT [group_id],[name],[pool_id]
+                FROM [#CurrentStateSnapshot_WorkloadGroups]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentRequests_SourceResourcePools]
+                SELECT [pool_id],[name]
+                FROM [#CurrentStateSnapshot_ResourcePools]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                IF @SqlTextErforderlich=1
+                    INSERT [#CurrentRequests_SourceSqlText]
+                    SELECT [SqlHandle],[Text],[DatabaseId],[ObjectId],[ObjectNumber],[IsEncrypted]
+                    FROM [#CurrentStateSnapshot_SqlText]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                SELECT
+                      @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                    , @ParentSnapshotIsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
+                FROM [#CurrentStateSnapshot_SourceStatus]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [SourceCode] IN
+                      ('SESSIONS','REQUESTS','CONNECTIONS','WAITING_TASKS','MEMORY_GRANTS',
+                       'WORKLOAD_GROUPS','RESOURCE_POOLS','SQL_TEXT');
+            END;
+        END TRY
+        BEGIN CATCH
+            SELECT
+                  @ErrorNumber=ERROR_NUMBER()
+                , @ErrorMessage=ERROR_MESSAGE()
+                , @IsPartial=1
+                , @StatusCode=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                    WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                    ELSE 'INVALID_PARENT_SNAPSHOT' END;
+        END CATCH;
+    END
+    ELSE IF @StatusCode='AVAILABLE'
+    BEGIN TRY
+        SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+
+        INSERT [#CurrentRequests_SourceSessions]
+        SELECT [session_id],[is_user_process],[login_name],[original_login_name],[host_name],[program_name]
+        FROM [sys].[dm_exec_sessions] WITH (NOLOCK);
+
+        INSERT [#CurrentRequests_SourceRequests]
+        SELECT
+              [session_id],[request_id],[status],[command],[database_id],[start_time]
+            , [total_elapsed_time],[cpu_time],[logical_reads],[reads],[writes],[row_count]
+            , [percent_complete],[estimated_completion_time],[blocking_session_id]
+            , [wait_type],[wait_time],[last_wait_type],[wait_resource],[dop]
+            , [parallel_worker_count],[transaction_isolation_level]
+            , [open_transaction_count],[open_resultset_count],[transaction_id]
+            , [scheduler_id],[task_address],[nest_level],[group_id]
+            , [statement_sql_handle],[statement_context_id],[is_resumable]
+            , [executing_managed_code],[context_info],[query_hash],[query_plan_hash]
+            , [sql_handle],[plan_handle],[statement_start_offset],[statement_end_offset]
+        FROM [sys].[dm_exec_requests] WITH (NOLOCK);
+
+        INSERT [#CurrentRequests_SourceConnections]
+        SELECT [session_id],[connection_id],[client_net_address]
+        FROM [sys].[dm_exec_connections] WITH (NOLOCK);
+
+        INSERT [#CurrentRequests_SourceWaitingTasks]
+        SELECT [session_id],[wait_duration_ms],[wait_type]
+        FROM [sys].[dm_os_waiting_tasks] WITH (NOLOCK);
+
+        INSERT [#CurrentRequests_SourceMemoryGrants]
+        SELECT [session_id],[request_id],[requested_memory_kb],[granted_memory_kb],[used_memory_kb],[ideal_memory_kb]
+        FROM [sys].[dm_exec_query_memory_grants] WITH (NOLOCK);
+
+        INSERT [#CurrentRequests_SourceWorkloadGroups]
+        SELECT [group_id],[name],[pool_id]
+        FROM [sys].[dm_resource_governor_workload_groups] WITH (NOLOCK);
+
+        INSERT [#CurrentRequests_SourceResourcePools]
+        SELECT [pool_id],[name]
+        FROM [sys].[dm_resource_governor_resource_pools] WITH (NOLOCK);
+
+        IF @SqlTextErforderlich=1
+        BEGIN
+            INSERT [#CurrentRequests_SourceSqlText]
+            ([SqlHandle],[text],[dbid],[objectid],[number],[encrypted])
+            SELECT
+                  [h].[SqlHandle],[t].[text],[t].[dbid],[t].[objectid],[t].[number],[t].[encrypted]
+            FROM
+            (
+                SELECT [sql_handle] AS [SqlHandle]
+                FROM [#CurrentRequests_SourceRequests]
+                WHERE [sql_handle] IS NOT NULL
+                GROUP BY [sql_handle]
+            ) AS [h]
+            OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle]) AS [t];
+        END;
+    END TRY
+    BEGIN CATCH
+        SELECT
+              @ErrorNumber=ERROR_NUMBER()
+            , @ErrorMessage=ERROR_MESSAGE()
+            , @IsPartial=1
+            , @StatusCode=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                ELSE 'ERROR_HANDLED' END;
+    END CATCH;
+
     SET @CandidateMaxZeilen =
         CASE
             WHEN @HasRegex = 1 OR @MaxZeilen IS NULL OR @MaxZeilen = 0
@@ -545,11 +833,11 @@ BEGIN
             , NULL
             , CONVERT(bit, 0)
             , NULL
-        FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
-        JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+        FROM [#CurrentRequests_SourceRequests] AS [r]
+        JOIN [#CurrentRequests_SourceSessions] AS [s]
           ON [s].[session_id] = [r].[session_id]
         CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([s].[program_name]) AS [tool]
-        LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK)
+        LEFT JOIN [#CurrentRequests_SourceConnections] AS [c]
           ON [c].[session_id] = [r].[session_id]
         LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
           ON [d].[database_id] = [r].[database_id]
@@ -560,20 +848,18 @@ BEGIN
                 , [MaxTaskWaitMs] = MAX(CONVERT(bigint, [w].[wait_duration_ms]))
                 , [TaskWaitTypes] = STRING_AGG(CONVERT(nvarchar(max), [w].[wait_type]), N',')
                     WITHIN GROUP (ORDER BY [w].[wait_type])
-            FROM [sys].[dm_os_waiting_tasks] AS [w] WITH (NOLOCK)
+            FROM [#CurrentRequests_SourceWaitingTasks] AS [w]
             WHERE [w].[session_id] = [r].[session_id]
         ) AS [wt]
-        LEFT JOIN [sys].[dm_exec_query_memory_grants] AS [mg] WITH (NOLOCK)
+        LEFT JOIN [#CurrentRequests_SourceMemoryGrants] AS [mg]
           ON [mg].[session_id] = [r].[session_id]
          AND [mg].[request_id] = [r].[request_id]
-        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [wg] WITH (NOLOCK)
+        LEFT JOIN [#CurrentRequests_SourceWorkloadGroups] AS [wg]
           ON [wg].[group_id] = [r].[group_id]
-        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp] WITH (NOLOCK)
+        LEFT JOIN [#CurrentRequests_SourceResourcePools] AS [rp]
           ON [rp].[pool_id] = [wg].[pool_id]
-        OUTER APPLY [sys].[dm_exec_sql_text]
-        (
-            CASE WHEN @SqlTextErforderlich = 1 THEN [r].[sql_handle] END
-        ) AS [txt]
+        LEFT JOIN [#CurrentRequests_SourceSqlText] AS [txt]
+          ON [txt].[SqlHandle]=CASE WHEN @SqlTextErforderlich=1 THEN [r].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
               [txt].[text]
@@ -836,17 +1122,29 @@ BEGIN
 
         IF @InputBufferEinbeziehen = 1
         BEGIN
-            UPDATE [r]
-            SET
-                  [InputBufferEventType] = [ib].[event_type]
-                , [InputBufferParameterCount] = [ib].[parameters]
-                , [InputBufferText] = [ib].[event_info]
+            INSERT [#CurrentRequests_SourceInputBuffer]
+            (
+                [session_id],[request_id],[event_type],[parameters],[event_info]
+            )
+            SELECT
+                  [r].[SessionId],[r].[RequestId]
+                , [ib].[event_type],[ib].[parameters],[ib].[event_info]
             FROM [#CurrentRequests_Result] AS [r]
             OUTER APPLY [sys].[dm_exec_input_buffer]
             (
                   [r].[SessionId]
                 , [r].[RequestId]
             ) AS [ib];
+
+            UPDATE [r]
+            SET
+                  [InputBufferEventType]=[ib].[event_type]
+                , [InputBufferParameterCount]=[ib].[parameters]
+                , [InputBufferText]=[ib].[event_info]
+            FROM [#CurrentRequests_Result] AS [r]
+            LEFT JOIN [#CurrentRequests_SourceInputBuffer] AS [ib]
+              ON [ib].[session_id]=[r].[SessionId]
+             AND [ib].[request_id]=[r].[RequestId];
         END;
 
         UPDATE [r]
@@ -886,20 +1184,20 @@ BEGIN
         SELECT @RowCount = COUNT_BIG(*)
         FROM [#CurrentRequests_Result];
 
-        IF @HasFullView = 0
+        IF @HasFullView=0 OR @ParentSnapshotIsPartial=1
         BEGIN
-            SET @StatusCode = 'AVAILABLE_LIMITED';
-            SET @IsPartial = 1;
-            SET @Detail = N'Ohne vollständige Server-State-Berechtigung kann die Sicht eingeschränkt sein.';
+            SET @StatusCode='AVAILABLE_LIMITED';
+            SET @IsPartial=1;
+            SET @Detail=N'Mindestens eine Current-State-Quelle war nur eingeschränkt verfügbar.';
         END;
-        ELSE IF @IsPartial = 1
+        ELSE IF @IsPartial=1
         BEGIN
-            SET @StatusCode = 'PARTIAL_RESULT';
-            SET @Detail = N'Requests wurden gelesen; mindestens eine optionale Modulauflösung war nicht vollständig möglich.';
+            SET @StatusCode='PARTIAL_RESULT';
+            SET @Detail=N'Requests wurden gelesen; mindestens eine optionale Modulauflösung war nicht vollständig möglich.';
         END;
         ELSE
         BEGIN
-            SET @Detail = N'Aktive Requests mit Statement-Offset-, Modul- und SQL-Text-Kontext erfolgreich gelesen.';
+            SET @Detail=N'Aktive Requests aus einer frischen laufinternen Evidenzbasis gelesen.';
         END;
     END TRY
     BEGIN CATCH
@@ -932,8 +1230,8 @@ BEGIN
         (
             SELECT
                   @ModuleName AS [resultName]
-                , 2 AS [schemaVersion]
-                , @CollectionTimeUtc AS [generatedAtUtc]
+                , 3 AS [schemaVersion]
+                , @CollectionTimeUtc AS [generatedAtUtc],@EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc],@ParentCurrentStateSnapshotId AS [evidenceSnapshotId]
                 , @StatusCode AS [statusCode]
                 , @IsPartial AS [isPartial]
                 , @MaxZeilen AS [requestedMaxRows]
@@ -1100,6 +1398,8 @@ BEGIN
         SELECT
               @ModuleName AS [ModuleName]
             , @CollectionTimeUtc AS [CollectionTimeUtc]
+            , @EvidenceSnapshotStartedAtUtc AS [EvidenceSnapshotStartedAtUtc]
+            , @ParentCurrentStateSnapshotId AS [EvidenceSnapshotId]
             , @StatusCode AS [StatusCode]
             , @IsPartial AS [IsPartial]
             , @RowCount AS [RowCount]

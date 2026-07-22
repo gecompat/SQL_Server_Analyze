@@ -61,7 +61,7 @@ Abgeschlossen:
 49. Welle 0 abgeschlossen: Commit `57ea12b81096dd4b10adb7ebb0fb4b6b5c65be45` hat Installer, 34 Release-Suiten und Berechtigungsmatrizen auf SQL Server 2019, 2022 und 2025 bestanden; Dokumentations-/Nonblocking-, Datenschutz- und Commit-Message-Gates sind ebenfalls grün. `Test_Matrix.csv` ist die kanonische Evidence-Quelle, `990_Validate_Release_Evidence.py` verhindert abweichende Current-State-Angaben.
 50. Welle 1 abgeschlossen: Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` setzt `OUT-001`, `DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007` um. Unicode-sichere sichtbare Kürzung, native XML-Ausgaben, gemeinsame Provenienz- und Resultsetverträge sowie die Offline-Serverversionsbewertung sind auf SQL Server 2019, 2022 und 2025 einschließlich des synthetischen Begleitvertrags `190` grün.
 51. Welle 2 abgeschlossen: Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` setzt `OPS-001` bis `OPS-004` um. Datenbankkonfigurationsdrift, Worker-/Scheduler-Druck, Pending I/O und begrenzte Errorlog-Analyse sind einschließlich Begleitvertrag `191`, Ausgabe-Pilot und Berechtigungsmatrizen auf SQL Server 2019, 2022 und 2025 grün.
-52. `RUNTIME-001` als zustandslosen Current-State-Kern umgesetzt: `USP_ExternalRuntimeAnalysis` trennt External-Scripts-Konfiguration, registrierte Languages und Libraries, Launchpad-, Request-, External-Pool-, Execution-Stats- und Counterevidenz. `USP_ClrAnalysis` trennt CLR-Konfiguration, sichtbare Assemblies und Module, Host-, AppDomain-, Task-, Request-, Speicher- und Counterevidenz. Der portable Begleitvertrag `198` prüft Installation, Status, JSON, TABLE, Routing, Capabilities, Read-only-Abgrenzung und Wiederherstellung von `LOCK_TIMEOUT`, ohne ein Feature zu aktivieren oder externen beziehungsweise CLR-Code auszuführen.
+52. `RUNTIME-001` als zustandslosen Current-State-Kern umgesetzt: `USP_ExternalRuntimeAnalysis` trennt External-Scripts-Konfiguration, registrierte Languages und Libraries, Launchpad-, Request-, External-Pool-, Execution-Stats- und Counterevidenz. `USP_ClrAnalysis` trennt CLR-Konfiguration, sichtbare Assemblies und Module, Host-, AppDomain-, Task-, Request-, Speicher- und Counterevidenz. Der portable Begleitvertrag `198` prüft Installation, Status, JSON, TABLE, Routing, Capabilities, Read-only-Abgrenzung und Wiederherstellung von `LOCK_TIMEOUT`, ohne ein Feature zu aktivieren oder externen beziehungsweise CLR-Code auszuführen. Der Produktstatus lautet `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`; die feature-positive Plattformmatrix ist ein externer Nachweis und keine fehlende portable Kernfunktion.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
@@ -91,8 +91,12 @@ Vorgemerkte zukünftige Architekturhärtung:
   [Zukunftsvertrag für zusätzliche Diagnoseinformationen](../Architecture/Diagnostic_Information_Enrichment_Backlog.md).
   `DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007` sind mit Welle 1
   `IMPLEMENTED_ACTIONS_GATE`.
-  Der maschinenlesbare Status steht in
-  `Metadata/Quality/Future_Enhancement_Backlog.csv`.
+  `DIAG-003` bis `DIAG-005` werden als `PARTIAL_PRODUCT_FUNCTION` geführt.
+  Der erste laufinterne Snapshot-Slice ist für `USP_CurrentSessions` und
+  `USP_CurrentRequests` umgesetzt; die übrigen Current-State-Consumer und die
+  fachlichen Zielresultsets bleiben offen. Der maschinenlesbare Status steht in
+  `Metadata/Quality/Future_Enhancement_Backlog.csv` sowie im kanonischen
+  `Metadata/Quality/Implementation_Status.csv`.
 
 - **OPS-005 bis OPS-009 und SQL25-001 bis SQL25-005 – zusätzliche
   Betriebs- und Versionsdiagnosen:** Die recherchierten Lücken für
@@ -112,4 +116,4 @@ Der erste SC-023-Performance-Counter-Slice ist auf dem konkreten Implementierung
 
 1. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen feature-positive Windows-/Azure-MI-Targets, kontrollierte Lastfälle und externe Restore-/Host-Nachweise. Für RUNTIME-001 sind R, Python, Java, C# und Custom Language Extensions sowie SQL CLR mit einer synthetischen SAFE-Assembly und getrennten Plattformgrenzen nachzuweisen.
 2. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten, breite Cross-Database-Auswahl sowie RUNTIME-001-Sampling mit gültigem Delta und Resetgrenzen.
-3. Danach `DIAG-003` bis `DIAG-005` und die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
+3. `DIAG-003` bis `DIAG-005` auf Basis des begonnenen laufinternen Snapshot-Slice fortsetzen und danach die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.

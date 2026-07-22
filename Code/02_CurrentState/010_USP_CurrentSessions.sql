@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentSessions
-Version      : 2.1.0
-Stand        : 2026-07-21
+Version      : 2.2.0
+Stand        : 2026-07-22
 Typ          : Stored Procedure
 Zweck        : Liefert aktuelle Sessions mit exakten Mehrfachfiltern, Pattern-
                Filtern und RAW-, CONSOLE- oder JSON-Ausgabe.
@@ -43,6 +43,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentSessions]
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
     , @Hilfe                        bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -69,6 +70,8 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @CandidateMaxZeilen bigint;
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
+    DECLARE @ParentSnapshotIsPartial bit=0;
     DECLARE @MonitorPrintMessage nvarchar(2048);
 
     SET @EigeneSessionsModus = UPPER(LTRIM(RTRIM(COALESCE(@EigeneSessionsModus,'ALLE'))));
@@ -84,6 +87,7 @@ BEGIN
         PRINT N'@MaxZeilen: positiv begrenzt; NULL/0 = unbegrenzt; negativ = INVALID_PARAMETER.';
         PRINT N'@MaxSqlTextZeichen: positiv begrenzt die Darstellung; NULL/0 liefert vollständige Texte.';
         PRINT N'@ResultSetArt: CONSOLE (Default), RAW, TABLE oder NONE; Groß-/Kleinschreibung ist egal.';
+        PRINT N'@ParentCurrentStateSnapshotId ist ausschließlich für den laufinternen Overview-Consumer bestimmt; NULL erzwingt einen frischen Einzelread.';
         PRINT N'@JsonErzeugen=1 erzeugt ein JSON-Envelope in @Json OUTPUT.';
         RETURN;
     END;
@@ -198,6 +202,210 @@ BEGIN
         , [BatchTextIsTruncated] bit NOT NULL DEFAULT(0), [BatchText] nvarchar(max) NULL
     );
 
+    CREATE TABLE [#CurrentSessions_SourceSessions]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [is_user_process] bit NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [login_name] nvarchar(128) NOT NULL
+        , [original_login_name] nvarchar(128) NOT NULL
+        , [host_name] nvarchar(128) NULL
+        , [program_name] nvarchar(128) NULL
+        , [client_interface_name] nvarchar(32) NULL
+        , [login_time] datetime NOT NULL
+        , [last_request_start_time] datetime NOT NULL
+        , [last_request_end_time] datetime NULL
+        , [open_transaction_count] int NOT NULL
+        , [transaction_isolation_level] smallint NOT NULL
+        , [cpu_time] int NOT NULL
+        , [reads] bigint NOT NULL
+        , [writes] bigint NOT NULL
+        , [logical_reads] bigint NOT NULL
+        , [memory_usage] int NOT NULL
+        , [row_count] bigint NOT NULL
+    );
+    CREATE TABLE [#CurrentSessions_SourceRequests]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [database_id] smallint NOT NULL
+        , [cpu_time] int NOT NULL
+        , [total_elapsed_time] int NOT NULL
+        , [logical_reads] bigint NOT NULL
+        , [reads] bigint NOT NULL
+        , [writes] bigint NOT NULL
+        , [blocking_session_id] smallint NULL
+        , [wait_type] nvarchar(60) NULL
+        , [wait_time] int NOT NULL
+        , [wait_resource] nvarchar(256) NOT NULL
+        , [percent_complete] real NOT NULL
+        , [sql_handle] varbinary(64) NULL
+        , [statement_start_offset] int NULL
+        , [statement_end_offset] int NULL
+        , PRIMARY KEY ([session_id],[request_id])
+    );
+    CREATE TABLE [#CurrentSessions_SourceConnections]
+    (
+          [session_id] int NULL
+        , [connection_id] uniqueidentifier NOT NULL PRIMARY KEY
+        , [most_recent_sql_handle] varbinary(64) NULL
+        , [client_net_address] varchar(48) NULL
+        , [net_transport] nvarchar(40) NOT NULL
+        , [protocol_type] nvarchar(40) NULL
+        , [encrypt_option] nvarchar(40) NOT NULL
+        , [auth_scheme] nvarchar(40) NOT NULL
+    );
+    CREATE INDEX [IX_CurrentSessions_SourceConnections_SessionId]
+        ON [#CurrentSessions_SourceConnections]([session_id]);
+    CREATE TABLE [#CurrentSessions_SourceSqlText]
+    (
+          [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
+        , [text] nvarchar(max) NULL
+        , [dbid] int NULL
+        , [objectid] int NULL
+        , [number] smallint NULL
+        , [encrypted] bit NULL
+    );
+
+    IF @StatusCode='AVAILABLE' AND @ParentCurrentStateSnapshotId IS NOT NULL
+    BEGIN
+        IF OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Context') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SourceStatus') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Sessions') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Requests') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Connections') IS NULL
+           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SqlText') IS NULL
+        BEGIN
+            SET @StatusCode='INVALID_PARENT_SNAPSHOT';
+            SET @IsPartial=1;
+            SET @ErrorMessage=N'Der angegebene Parent-Snapshot ist im aktuellen Aufruf nicht verfügbar.';
+        END
+        ELSE
+        BEGIN TRY
+            IF NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentStateSnapshot_Context]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                  AND [ContractVersion]=1
+            )
+            BEGIN
+                SET @StatusCode='INVALID_PARENT_SNAPSHOT';
+                SET @IsPartial=1;
+                SET @ErrorMessage=N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.';
+            END
+            ELSE
+            BEGIN
+                INSERT [#CurrentSessions_SourceSessions]
+                SELECT
+                      [session_id],[is_user_process],[status],[login_name],[original_login_name]
+                    , [host_name],[program_name],[client_interface_name],[login_time]
+                    , [last_request_start_time],[last_request_end_time],[open_transaction_count]
+                    , [transaction_isolation_level],[cpu_time],[reads],[writes],[logical_reads]
+                    , [memory_usage],[row_count]
+                FROM [#CurrentStateSnapshot_Sessions]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentSessions_SourceRequests]
+                SELECT
+                      [session_id],[request_id],[status],[database_id],[cpu_time]
+                    , [total_elapsed_time],[logical_reads],[reads],[writes]
+                    , [blocking_session_id],[wait_type],[wait_time],[wait_resource]
+                    , [percent_complete],[sql_handle],[statement_start_offset],[statement_end_offset]
+                FROM [#CurrentStateSnapshot_Requests]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentSessions_SourceConnections]
+                SELECT
+                      [session_id],[connection_id],[most_recent_sql_handle],[client_net_address]
+                    , [net_transport],[protocol_type],[encrypt_option],[auth_scheme]
+                FROM [#CurrentStateSnapshot_Connections]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                IF @MitSqlText=1
+                    INSERT [#CurrentSessions_SourceSqlText]
+                    SELECT [SqlHandle],[Text],[DatabaseId],[ObjectId],[ObjectNumber],[IsEncrypted]
+                    FROM [#CurrentStateSnapshot_SqlText]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                SELECT
+                      @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                    , @ParentSnapshotIsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
+                FROM [#CurrentStateSnapshot_SourceStatus]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [SourceCode] IN ('SESSIONS','REQUESTS','CONNECTIONS','SQL_TEXT');
+            END;
+        END TRY
+        BEGIN CATCH
+            SELECT
+                  @ErrorNumber=ERROR_NUMBER()
+                , @ErrorMessage=ERROR_MESSAGE()
+                , @IsPartial=1
+                , @StatusCode=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                    WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                    ELSE 'INVALID_PARENT_SNAPSHOT' END;
+        END CATCH;
+    END
+    ELSE IF @StatusCode='AVAILABLE'
+    BEGIN TRY
+        SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+
+        INSERT [#CurrentSessions_SourceSessions]
+        SELECT
+              [session_id],[is_user_process],[status],[login_name],[original_login_name]
+            , [host_name],[program_name],[client_interface_name],[login_time]
+            , [last_request_start_time],[last_request_end_time],[open_transaction_count]
+            , [transaction_isolation_level],[cpu_time],[reads],[writes],[logical_reads]
+            , [memory_usage],[row_count]
+        FROM [sys].[dm_exec_sessions] WITH (NOLOCK);
+
+        INSERT [#CurrentSessions_SourceRequests]
+        SELECT
+              [session_id],[request_id],[status],[database_id],[cpu_time]
+            , [total_elapsed_time],[logical_reads],[reads],[writes]
+            , [blocking_session_id],[wait_type],[wait_time],[wait_resource]
+            , [percent_complete],[sql_handle],[statement_start_offset],[statement_end_offset]
+        FROM [sys].[dm_exec_requests] WITH (NOLOCK);
+
+        INSERT [#CurrentSessions_SourceConnections]
+        SELECT
+              [session_id],[connection_id],[most_recent_sql_handle],[client_net_address]
+            , [net_transport],[protocol_type],[encrypt_option],[auth_scheme]
+        FROM [sys].[dm_exec_connections] WITH (NOLOCK);
+
+        IF @MitSqlText=1
+        BEGIN
+            INSERT [#CurrentSessions_SourceSqlText]
+            (
+                [SqlHandle],[text],[dbid],[objectid],[number],[encrypted]
+            )
+            SELECT
+                  [h].[SqlHandle],[t].[text],[t].[dbid],[t].[objectid],[t].[number],[t].[encrypted]
+            FROM
+            (
+                SELECT [sql_handle] AS [SqlHandle]
+                FROM [#CurrentSessions_SourceRequests]
+                WHERE [sql_handle] IS NOT NULL
+                UNION
+                SELECT [most_recent_sql_handle]
+                FROM [#CurrentSessions_SourceConnections]
+                WHERE [most_recent_sql_handle] IS NOT NULL
+            ) AS [h]
+            OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle]) AS [t];
+        END;
+    END TRY
+    BEGIN CATCH
+        SELECT
+              @ErrorNumber=ERROR_NUMBER()
+            , @ErrorMessage=ERROR_MESSAGE()
+            , @IsPartial=1
+            , @StatusCode=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                ELSE 'ERROR_HANDLED' END;
+    END CATCH;
+
     SET @CandidateMaxZeilen = CASE WHEN @HasRegex=1 OR @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen)+1 END;
 
     IF @StatusCode='AVAILABLE'
@@ -219,11 +427,11 @@ BEGIN
             , [c].[client_net_address],[c].[net_transport],[c].[protocol_type],[c].[encrypt_option],[c].[auth_scheme]
             , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText=1 THEN [st].[StatementText] END
             , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText=1 THEN [t].[text] END
-        FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
-        LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK) ON [c].[session_id]=[s].[session_id]
-        OUTER APPLY (SELECT TOP (1) [rr].* FROM [sys].[dm_exec_requests] AS [rr] WITH (NOLOCK) WHERE [rr].[session_id]=[s].[session_id] ORDER BY [rr].[request_id]) AS [r]
+        FROM [#CurrentSessions_SourceSessions] AS [s]
+        LEFT JOIN [#CurrentSessions_SourceConnections] AS [c] ON [c].[session_id]=[s].[session_id]
+        OUTER APPLY (SELECT TOP (1) [rr].* FROM [#CurrentSessions_SourceRequests] AS [rr] WHERE [rr].[session_id]=[s].[session_id] ORDER BY [rr].[request_id]) AS [r]
         LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK) ON [d].[database_id]=[r].[database_id]
-        OUTER APPLY [sys].[dm_exec_sql_text](CASE WHEN @MitSqlText=1 THEN COALESCE([r].[sql_handle],[c].[most_recent_sql_handle]) END) AS [t]
+        LEFT JOIN [#CurrentSessions_SourceSqlText] AS [t] ON [t].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN COALESCE([r].[sql_handle],[c].[most_recent_sql_handle]) END
         OUTER APPLY [monitor].[TVF_StatementText]([t].[text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
         CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([s].[program_name]) AS [tool]
         WHERE (NOT EXISTS(SELECT 1 FROM [#CurrentSessions_SessionIdFilter]) OR EXISTS(SELECT 1 FROM [#CurrentSessions_SessionIdFilter] AS [f] WHERE [f].[SessionId]=[s].[session_id]))
@@ -289,8 +497,13 @@ BEGIN
             , @PrintMeldungen=@PrintMeldungen;
 
         SELECT @RowCount=COUNT_BIG(*) FROM [#CurrentSessions_Result];
-        IF @HasFullView=0 BEGIN SET @StatusCode='AVAILABLE_LIMITED';SET @IsPartial=1;SET @Detail=N'Ohne vollständige Server-State-Berechtigung kann die Sicht auf eigene Sessions begrenzt sein.';END
-        ELSE SET @Detail=N'Current-State-Sessions erfolgreich gelesen.';
+        IF @HasFullView=0 OR @ParentSnapshotIsPartial=1
+        BEGIN
+            SET @StatusCode='AVAILABLE_LIMITED';
+            SET @IsPartial=1;
+            SET @Detail=N'Mindestens eine Current-State-Quelle war nur eingeschränkt verfügbar.';
+        END
+        ELSE SET @Detail=N'Current-State-Sessions aus einer frischen laufinternen Evidenzbasis gelesen.';
     END TRY
     BEGIN CATCH
         SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();SET @IsPartial=1;
@@ -305,14 +518,14 @@ BEGIN
 
     IF @JsonErzeugen=1
     BEGIN
-        DECLARE @MetaJson nvarchar(max)=(SELECT @ModuleName AS [resultName],2 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@MaxZeilen AS [requestedMaxRows],@RowCount AS [returnedRows],@HasMoreRows AS [hasMoreRows],@ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @MetaJson nvarchar(max)=(SELECT @ModuleName AS [resultName], 3 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc],@ParentCurrentStateSnapshotId AS [evidenceSnapshotId],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@MaxZeilen AS [requestedMaxRows],@RowCount AS [returnedRows],@HasMoreRows AS [hasMoreRows],@ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @SessionsJson nvarchar(max)=(SELECT [r].*,[wi].[WaitGroup] AS [waitGroup],[wi].[Severity] AS [waitSeverity],[wi].[Meaning] AS [waitMeaning] FROM [#CurrentSessions_Result] AS [r] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi] ORDER BY [SessionId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"sessions":',COALESCE(@SessionsJson,N'[]'),N',"warnings":',CASE WHEN @ErrorMessage IS NULL AND @Detail IS NULL THEN N'[]' ELSE (SELECT @StatusCode AS [code],COALESCE(@ErrorMessage,@Detail) AS [message] FOR JSON PATH,INCLUDE_NULL_VALUES) END,N'}');
     END;
 
     IF @ResultSetArtNormalisiert='RAW'
     BEGIN
-        SELECT @ModuleName AS [ModuleName],@CollectionTimeUtc AS [CollectionTimeUtc],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@RowCount AS [RowCount],@MaxZeilen AS [RequestedMaxRows],@HasMoreRows AS [HasMoreRows],@RequiredPermission AS [RequiredPermission],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],@Detail AS [Detail];
+        SELECT @ModuleName AS [ModuleName],@CollectionTimeUtc AS [CollectionTimeUtc],@EvidenceSnapshotStartedAtUtc AS [EvidenceSnapshotStartedAtUtc],@ParentCurrentStateSnapshotId AS [EvidenceSnapshotId],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@RowCount AS [RowCount],@MaxZeilen AS [RequestedMaxRows],@HasMoreRows AS [HasMoreRows],@RequiredPermission AS [RequiredPermission],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],@Detail AS [Detail];
         SELECT [r].*,[wi].[WaitGroup],[wi].[Severity] AS [WaitSeverity],[wi].[IsGenerallyBenign],[wi].[Meaning] AS [WaitMeaning],[wi].[TypicalOccurrence] AS [WaitTypicalOccurrence],[wi].[HighWaitImpact],[wi].[RecommendedChecks],[wi].[HelpUrl] AS [WaitHelpUrl],[wi].[InterpretationScope],[wi].[CatalogMatchType]
         FROM [#CurrentSessions_Result] AS [r] CROSS APPLY [monitor].[TVF_WaitTypeInfo]([r].[WaitType]) AS [wi]
         ORDER BY CASE WHEN @Sortierung='CPU' THEN COALESCE([RequestCpuMs],[SessionCpuMs]) END DESC,CASE WHEN @Sortierung='READS' THEN COALESCE([RequestLogicalReads],[SessionLogicalReads]) END DESC,CASE WHEN @Sortierung='WRITES' THEN COALESCE([RequestWrites],[SessionWrites]) END DESC,CASE WHEN @Sortierung='LOGIN' THEN DATEDIFF_BIG(SECOND,'20000101',[LoginTime]) END DESC,[SessionId];

@@ -1,12 +1,23 @@
 # Zukunftsvertrag für zusätzliche Diagnoseinformationen
 
-Stand: 2026-07-21
-Status: `PARTIALLY_IMPLEMENTED_ACTIONS_GATE`
+Stand: 2026-07-22
+Status: `PARTIAL_PRODUCT_FUNCTION`
 Backlog: `DIAG-001` bis `DIAG-007`
 
 Umgesetzt und auf SQL Server 2019, 2022 und 2025 nachgewiesen sind
-`DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007`. Offen bleiben
-`DIAG-003` bis `DIAG-005`.
+`DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007`. `DIAG-003` bis
+`DIAG-005` besitzen nutzbare Bausteine, ihre öffentlichen Gesamtverträge sind
+jedoch noch nicht abgeschlossen und werden deshalb als
+`PARTIAL_PRODUCT_FUNCTION` geführt.
+
+Der erste Slice der gemeinsamen laufinternen Evidenzbasis materialisiert
+Sessions, Requests, Connections, Waiting Tasks, Memory Grants,
+Resource-Governor-Zuordnung und begrenzten
+SQL-Text laufintern einmal. Input Buffer bleibt im ersten Slice eine gezielte
+Post-Candidate-Quelle von `USP_CurrentRequests`. `USP_CurrentSessions` und
+`USP_CurrentRequests` verwenden diese Evidenz innerhalb von
+`USP_CurrentOverview`. Die Migration der übrigen Current-State-Consumer ist
+noch offen; Einzelaufrufe lesen weiterhin frisch.
 
 ## Ziel
 
@@ -21,8 +32,8 @@ Der bestehende Kern liefert bereits viele Einzelinformationen. Insbesondere
 `USP_ShowplanAnalysis`, die Query-Store-Module,
 `USP_ServerFeatureCapabilities` und `USP_OSInformation` sind vor einer
 Implementierung als vorhandene Quellen und mögliche Materialisierungs-Owner zu
-prüfen. Neue Procedures dürfen diese Quellen in einem Overview- oder
-Ein Exportaufruf darf diese Quellen nicht erneut lesen.
+prüfen. Neue Procedures dürfen diese Quellen in einem Overview- oder Exportaufruf
+nicht erneut lesen.
 
 ## DIAG-001: Serverversion, Build, CU und Lifecycle
 
@@ -143,7 +154,27 @@ Frameworkweit zu prüfen sind mindestens Query-Store-Pläne, die derzeit teils
 als `nvarchar(max)` materialisiert werden, Plan-Cache-Pläne, Live-/Last-Actual-
 Pläne, Deadlock-XML und Extended-Events-Eventdaten.
 
+## Öffentlicher Zielvertrag für DIAG-003 bis DIAG-005
+
+Die folgenden Namen sind reservierte Zielverträge. Sie gelten erst dann als
+implementiert, wenn Procedure, TABLE-Schema, JSON, Inventar und Runtimevertrag
+übereinstimmen.
+
+| Work Item | Kanonische Resultsets | Mindestprovenienz |
+|---|---|---|
+| `DIAG-003` | `parameters` | Candidate-, Session-, Request-, Statement-, Query- und Planbezug; getrennte Compile-/Runtimepräsenz; Quelle, Quellzeit, Aktualität, Vollständigkeit und Status |
+| `DIAG-004` | `snapshotStatus`, `requestContext`, `statements`, `batches`, `inputBuffers` | Snapshot-ID, Quelle und eigener Capture-Zeitpunkt; Requestende, Berechtigung, Trunkierung und Auslassungsgrund |
+| `DIAG-005` | `planWarnings`, `optimizerContext`, `runtimeFeedback`, `queryStoreContext`, `feedbackAndVariants` | Planquelle, Planzeitbezug, Current-/Last-known-Semantik, Messung gegenüber Ableitung und False-Positive-Grenze |
+
+`parametersAndVariants` bleibt bis zur expliziten Migration ein bestehendes
+Legacy-Resultset. Es darf nicht stillschweigend in `parameters` umbenannt
+werden. Der neue Vertrag muss fehlendes XML-Attribut, erfassten SQL-`NULL`,
+nicht erhobenen Wert und nicht verfügbare Quelle unterscheidbar halten.
+
 ## DIAG-003: Parameter- und Variablenwerte
+
+Status: `PARTIAL_PRODUCT_FUNCTION`. Die Showplan-Extraktion ist vorhanden; der
+kanonische quellen-, zeit- und statusbezogene Evidenzvertrag ist offen.
 
 SQL Server stellt keine allgemeine DMV bereit, über die zu einem fremden
 laufenden Statement sämtliche aktuellen lokalen T-SQL-Variablenwerte gelesen
@@ -195,6 +226,11 @@ unterliegen jedoch dem Repository-Datenschutzvertrag.
 
 ## DIAG-004: Statement- und Requestkontext
 
+Status: `PARTIAL_PRODUCT_FUNCTION`. Der gemeinsame Primär-Snapshot-Owner und
+die Consumer `USP_CurrentSessions` sowie `USP_CurrentRequests` sind
+implementiert. Blocking, Waits, Transactions, Memory Grants, TempDB und I/O
+lesen in diesem Slice noch über ihre bisherigen isolierten Pfade.
+
 Vorhandene Materialisierungen sind um eine einheitliche, quellenbezogene Sicht
 zu konsolidieren. Sinnvolle Informationen sind:
 
@@ -221,6 +257,10 @@ stammen oder ihren abweichenden Erfassungszeitpunkt ausweisen. Ein Join auf
 später erneut gelesene DMVs darf keine scheinbar atomare Sicht vortäuschen.
 
 ## DIAG-005: Plan-, Query-Store- und Optimizerkontext
+
+Status: `PARTIAL_PRODUCT_FUNCTION`. Planoperatoren, Runtime-Counter,
+Statistikevidenz, Parameter-Varianten und Findings sind vorhanden; die oben
+reservierten normalisierten Zielresultsets fehlen noch.
 
 Neben dem anklickbaren XML sind folgende Informationen sinnvoll:
 

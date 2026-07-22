@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-07-21
+Stand: 2026-07-22
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` oder die benannte Mehrfachzuordnung `TABLE` mit `@ResultTablesJson`; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -434,6 +434,7 @@ Quelle: `Code/02_CurrentState/020_USP_CurrentRequests.sql`
     , @Json                          nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen                bit            = 1
     , @Hilfe                         bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_CurrentSessions]`
@@ -466,6 +467,7 @@ Quelle: `Code/02_CurrentState/010_USP_CurrentSessions.sql`
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
     , @Hilfe                        bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_CurrentTempDB]`
