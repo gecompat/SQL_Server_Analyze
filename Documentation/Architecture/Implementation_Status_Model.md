@@ -13,7 +13,7 @@ darf vorhandener Teilcode keinen vollständigen Produktvertrag vortäuschen.
 | Status | Bedeutung | Zulässiger Einsatz |
 |---|---|---|
 | `IMPLEMENTED_ACTIONS_GATE` | Der definierte Produktumfang ist implementiert und durch die vorgesehene automatisierte Matrix nachgewiesen. | Code, Installer, Inventare, Dokumentation und verpflichtende Runtimeverträge stimmen überein. |
-| `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` | Der portable Produktkern ist implementiert; ein ausdrücklich externer, plattform- oder feature-positiver Nachweis steht noch aus. | Die fehlende Evidenz ist nicht Teil der portablen Kernfunktion und wird in `External_Evidence_Gates.csv` geführt. |
+| `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` | Der portable Produktkern ist implementiert; ein ausdrücklich externer, plattformabhängiger Nachweis in einer Umgebung mit aktiviertem Feature steht noch aus. | Die fehlende Evidenz ist nicht Teil der portablen Kernfunktion und wird in `External_Evidence_Gates.csv` geführt. |
 | `PARTIAL_PRODUCT_FUNCTION` | Nutzbare Bausteine sind vorhanden, der zugesagte öffentliche Gesamtvertrag ist aber noch nicht vollständig. | Der vorhandene und der offene Umfang müssen getrennt benannt werden. |
 | `RESEARCHED_NOT_IMPLEMENTED` | Recherche oder Design liegen vor, jedoch kein auslieferbarer Produkt-Slice. | Capability-Erkennung allein gilt nicht als Implementierung der Analysefunktion. |
 | `OPTIONAL_FUTURE` | Eine Erweiterung ist bewusst optional und blockiert keinen aktuellen Produktabschluss. | Sie darf nicht als fehlende Kernfunktion oder Releasefehler gezählt werden. |

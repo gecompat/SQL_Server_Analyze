@@ -1,7 +1,7 @@
 # RUNTIME-001 – External Runtime und SQL CLR Analysis
 
 **Stand:** 22. Juli 2026  
-**Produktstatus:** `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` – der portable Current-State-Kern ist implementiert; feature-positive Plattformnachweise stehen aus. Optionale Snapshot-Collector sind kein fehlender Kernumfang.  
+**Produktstatus:** `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` – der portable Current-State-Kern ist implementiert; Plattformnachweise mit aktivierten Features stehen aus. Optionale Snapshot-Collector sind kein fehlender Kernumfang.  
 **Zielversionen:** SQL Server 2019, 2022 und 2025
 
 ## 1. Auftrag und Abgrenzung

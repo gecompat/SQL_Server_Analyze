@@ -7,7 +7,7 @@ Objekt       : monitor.InternalCaptureCurrentStateSnapshot
 Version      : 1.0.0
 Stand        : 2026-07-22
 Typ          : Interne Stored Procedure
-Zweck        : Befüllt die vom aufrufenden Orchestrator angelegten lokalen
+Zweck        : Schreibt die vom aufrufenden Orchestrator angelegten lokalen
                Snapshot-Tabellen. Jede aktivierte Systemquelle wird genau
                einmal gelesen; nicht angeforderte Quellen werden nicht berührt.
 Lebensdauer  : Der Aufrufer besitzt die lokalen Temp-Tabellen. Sie verschwinden
