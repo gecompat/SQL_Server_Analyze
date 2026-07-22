@@ -7,15 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche Wartungsoperationen laufen, sind pausiert/resumable oder blockiert, und wie belastbar ist ihre Fortschrittsanzeige?** Der dokumentierte Zweck ist: Korrelierte read-only Sicht auf resumierbare Indexoperationen, technische Wartungsrequests, ADR/PVS und ausdrücklich ausgewählte Agent-Jobs. Der Aufruf soll die Arbeitsentscheidung vorbereiten, ob Betriebsbereitschaft, Wiederherstellbarkeit oder verteilte Datenbewegung auffällig ist und welcher zuständige Teilprozess geprüft werden muss. Status und Scope sind dabei Teil der Evidenz, nicht bloß technische Begleitinformation.
-
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
+Die Procedure beantwortet die Betriebsfrage: **Welche Wartungsoperationen laufen, sind pausiert/resumable oder blockiert, und wie belastbar ist ihre Fortschrittsanzeige?** Sie unterstützt die Entscheidung, ob Betriebsbereitschaft, Wiederherstellbarkeit oder verteilte Datenbewegung auffällig ist und welcher zuständige Teilprozess geprüft werden muss.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keinen erfolgreichen Restore, Failover oder End-to-End-Datenfluss nur aus Konfigurations- und Historymetadaten. Ihr Zeitvertrag lautet ausdrücklich: Aktueller Requestsnapshot plus persistierter resumable Zustand. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
-
-Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rechte ausgelassene Details und bereits durch Retention, Restart, Eviction oder Statuswechsel verlorene Zustände. Findings, Prozentwerte und Durchschnitte müssen mit Nenner, Erfassungsfenster und Zeilengranularität gelesen werden. Eine Änderung an DDL, Forcing, Failover, KILL, Repair oder Konfiguration benötigt unabhängige Evidenz und einen Rollbackplan.
+Die Procedure beantwortet keinen erfolgreichen Restore, Failover oder End-to-End-Datenfluss nur aus Konfigurations- und Historymetadaten. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -26,43 +22,33 @@ EXEC [monitor].[USP_MaintenanceOperations]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `resumableOperations` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Der typisierte TABLE-Vertrag registriert `resumableOperations`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einer resumierbaren Indexoperation, einem laufenden Wartungsrequest, dem ADR/PVS-Zustand einer Datenbank, einem ausdrücklich gefilterten Job oder einem Quellenstatus.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-Zuerst Quellenstatus und Versionsgrenze prüfen. Ein pausierter resumierbarer Vorgang wird mit Alter und Fortschritt gelesen. Bei Requests Blockierung, Wait, Fortschritt und Engine-Schätzung gemeinsam bewerten. PVS ist eine Momentaufnahme. Ohne `@JobNames` oder `@JobNamePattern` ist die Jobquelle absichtlich `NOT_REQUESTED`.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+Prüfen Sie zuerst Quellenstatus und Versionsgrenze. Ein pausierter resumierbarer Vorgang wird mit Alter und Fortschritt gelesen. Bewerten Sie bei Requests Blockierung, Wait, Fortschritt und Engine-Schätzung gemeinsam. PVS ist eine Momentaufnahme. Ohne `@JobNames` oder `@JobNamePattern` ist die Jobquelle absichtlich `NOT_REQUESTED`.
 
 ## Warum kann das problematisch sein?
 
 Lange pausierte Indexoperationen, blockierte Wartung oder eine große PVS mit abgebrochenen Transaktionen können Ressourcen binden und geplante Wartungsziele verfehlen. Überlappende ausdrücklich gewählte Jobs können konkurrieren.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
-Pause, lange Dauer, hoher IO-Zähler oder ein laufender Rollback können beabsichtigt beziehungsweise arbeitsmengenbedingt sein. Ein einzelner PVS-Wert beweist keine Bereinigungsstörung. Jobnamen werden ohne explizite Auswahl nicht einmal gelesen.
-
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
+Eine Pause, eine lange Dauer, ein hoher I/O-Zähler oder ein laufender Rollback können beabsichtigt beziehungsweise arbeitsmengenbedingt sein. Ein einzelner PVS-Wert beweist keine Bereinigungsstörung. Jobnamen werden ohne explizite Auswahl nicht gelesen.
 
 ## Beispiele und Gegenbeispiele
 
 **Synthetischer Problemfall (`Example*`):** Lange pausierte Indexoperationen, blockierte Wartung oder eine große PVS mit abgebrochenen Transaktionen können Ressourcen binden und geplante Wartungsziele verfehlen. Überlappende ausdrücklich gewählte Jobs können konkurrieren.
 
-**Ähnlich aussehender Gegenfall:** Pause, lange Dauer, hoher IO-Zähler oder ein laufender Rollback können beabsichtigt beziehungsweise arbeitsmengenbedingt sein. Ein einzelner PVS-Wert beweist keine Bereinigungsstörung. Jobnamen werden ohne explizite Auswahl nicht einmal gelesen. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
+**Ähnlich aussehender Gegenfall:** Eine Pause, eine lange Dauer, ein hoher I/O-Zähler oder ein laufender Rollback können beabsichtigt beziehungsweise arbeitsmengenbedingt sein. Ein einzelner PVS-Wert beweist keine Bereinigungsstörung. Jobnamen werden ohne explizite Auswahl nicht gelesen. Derselbe Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei einer zeitgleichen SLA-Verletzung eine Vertiefung rechtfertigt.
 
 ## Leere oder partielle Ausgabe
 
@@ -73,8 +59,6 @@ Für `USP_MaintenanceOperations` gilt zusätzlich: **keine Zeile** bedeutet, das
 ## Eigenlast und Grenzen
 
 Die Procedure führt kein `RESUME`, `ABORT`, `KILL`, Cleanup, Job-Start oder Job-Stop aus. Sie liest keine SQL-Texte, Jobschritte, Jobbefehle, Meldungen, Konten, Clientdaten oder Wait-Ressourcen.
-
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
@@ -134,15 +118,15 @@ WHERE [r].[session_id] <> @@SPID
   );
 ```
 
-**Wichtig für die Eigenlast:** Datenbankscope vor `sys.index_resumable_operations` und PVS-Statistiken setzen. Agent-Jobaktivität nur bei angefordertem Jobfilter lesen; SQL- und Plantexte gehören bewusst nicht zu diesem Pfad.
+**Wichtig für die Eigenlast:** Setzen Sie Datenbankscope vor `sys.index_resumable_operations` und PVS-Statistiken. Agent-Jobaktivität nur bei angefordertem Jobfilter lesen; SQL- und Plantexte gehören bewusst nicht zu diesem Pfad.
 
 ### Zeit- und Scope-Modell
 
-Aktueller Requestsnapshot plus persistierter resumable Zustand.
+Die Auswertung beschreibt den aktuellen Requestsnapshot sowie den persistierten Zustand resumierbarer Operationen.
 
 ### Bewertung und Gegenprobe
 
-Command, Status, Percent Complete, Estimated Completion, DOP, Wait/Blocker, Log-/TempDB-/I/O-Kontext und Resume/Pauseoptionen lesen. Pausierte Operation kann weiterhin Speicher/Strukturzustand belegen.
+Berücksichtigen Sie Command, Status, Percent Complete, Estimated Completion, DOP, Wait und Blocker, den Log-, TempDB- und I/O-Kontext sowie Resume- und Pauseoptionen. Eine pausierte Operation kann weiterhin Speicher und Strukturzustand belegen.
 
 ### Typische Fehlinterpretation
 
@@ -150,7 +134,7 @@ Percent Complete ist nur für unterstützte Commands und nicht linear. Abbruch k
 
 ### Folgeanalyse
 
-Current Requests/Blocking/IO/Log und operationsspezifischer Runbook.
+Für die weitere Analyse gelten folgende Schritte und Quellen: Current Requests/Blocking/IO/Log und operationsspezifischer Runbook.
 
 ## Primärquellen
 

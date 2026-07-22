@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Datei        : 170_P1_IQP_Runtime_Contract.sql
-Zweck        : Versionsadaptive, rücksetzbare Laufzeitverträge für die ersten
-               vier P1-Fälle der Intelligent-Query-Processing-Analyse.
+Zweck        : Prüft versionsadaptive, rücksetzbare Laufzeitverträge für die
+               ersten vier P1-Fälle der Intelligent-Query-Processing-Analyse.
 Datenschutz  : Ausschließlich technische Zustände der disposable synthetischen
                Actions-Datenbank; keine Laufzeitausgabe wird persistiert.
 Nebenwirkung : Compatibility Level und Query-Store-Zustand werden kontrolliert

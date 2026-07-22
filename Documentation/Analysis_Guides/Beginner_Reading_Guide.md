@@ -2,7 +2,7 @@
 
 **Stand:** 17. Juli 2026  
 **Abdeckung:** alle 94 dokumentierten öffentlichen Procedures einschließlich der eigenständigen und optionalen Pakete
-**Zweck:** erklären, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können
+**Zweck:** Der Leitfaden erklärt, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können.
 
 > Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Familienguides nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
 
@@ -33,7 +33,7 @@ Ein einzelner hoher oder niedriger Wert ist selten schon eine Diagnose. Ein bela
 
 ### Schritt A – Status zuerst
 
-Vor den Fachdaten immer `StatusCode`, `IsPartial`, Warnungen und Fehler lesen.
+Lesen Sie vor den Fachdaten immer `StatusCode`, `IsPartial`, Warnungen und Fehler.
 
 - `AVAILABLE` bedeutet: Der vorgesehene Pfad war grundsätzlich verfügbar.
 - `AVAILABLE_LIMITED` oder `IsPartial=1` bedeutet: Ein Teil der Evidenz fehlt.
@@ -85,19 +85,19 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 ## [monitor].[USP_CheckAnalyseAccess]
 
-**So lesen:** Zuerst `IsAllowed`, danach `AccessReason`, `RelevantPolicyCount` und `MatchedGroupCount`. Dann Original- und Effektivlogin vergleichen.
+**Auswertung:** Prüfen Sie zuerst `IsAllowed` und danach `AccessReason`, `RelevantPolicyCount` sowie `MatchedGroupCount`. Vergleichen Sie anschließend Original- und Effektivlogin.
 
 **Warum problematisch:** `RelevantPolicyCount > 0` und `MatchedGroupCount = 0` bedeutet, dass für diese Analyseklasse Regeln existieren, aber keine passende Gruppenmitgliedschaft erkannt wurde. Der Zugriff ist deshalb erwartbar gesperrt und nicht technisch defekt.
 
 **Wann nicht problematisch:** `RelevantPolicyCount = 0` und `IsAllowed = 1` entspricht dem Frameworkvertrag: Ohne definierte Policy bleibt die Klasse offen.
 
-**Beispiel:** `IsAllowed=0`, `AccessReason=NO_GROUP_MATCH` ist kein DMV-Fehler. Zuerst die Gruppenpolicy prüfen, nicht SQL-Berechtigungen ändern.
+**Beispiel:** `IsAllowed=0`, `AccessReason=NO_GROUP_MATCH` ist kein DMV-Fehler. Prüfen Sie zuerst die Gruppenpolicy und ändern Sie nicht die SQL-Berechtigungen.
 
-**Danach:** `USP_CheckFrameworkCapabilities` prüft, ob der technisch erlaubte Pfad auch tatsächlich lesbar ist. [Detailbeschreibung](01_Common.md#2-monitorusp_checkanalyseaccess)
+**Nächster Schritt:** `USP_CheckFrameworkCapabilities` prüft, ob der technisch erlaubte Pfad auch tatsächlich lesbar ist. [Detailbeschreibung](01_Common.md#2-monitorusp_checkanalyseaccess)
 
 ## [monitor].[USP_CheckFrameworkCapabilities]
 
-**So lesen:** In der Reihenfolge `VersionSupported` → `GroupAccessAllowed` → `HasRequiredPermission` → `IsQueryable` → `IsFeatureEnabled` → `IsUsable`.
+**Auswertung:** Prüfen Sie die Angaben in der Reihenfolge `VersionSupported` → `GroupAccessAllowed` → `HasRequiredPermission` → `IsQueryable` → `IsFeatureEnabled` → `IsUsable`.
 
 **Warum problematisch:** `HasRequiredPermission=1`, aber `IsQueryable=0` zeigt, dass die formale Permission allein nicht genügt. Datenbankstatus, Plattform, Replica-Rolle oder ein Laufzeitfehler begrenzen den Pfad.
 
@@ -105,11 +105,11 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Beispiel:** Query Store ist versionsseitig unterstützt und lesbar, aber deaktiviert. Ein leeres Query-Store-Resultset ist dann erwartbar und keine Aussage über die Queryqualität.
 
-**Danach:** Nur Procedures aufrufen, deren relevanter Scope `IsUsable=1` meldet. [Detailbeschreibung](01_Common.md#3-monitorusp_checkframeworkcapabilities)
+**Nächster Schritt:** Rufen Sie nur Procedures auf, deren relevanter Scope `IsUsable=1` meldet. [Detailbeschreibung](01_Common.md#3-monitorusp_checkframeworkcapabilities)
 
 ## [monitor].[USP_PrepareDatabaseCandidates]
 
-**So lesen:** Diese interne Procedure liefert keine normalen Resultsets. Entscheidend sind die befüllte `#DatabaseCandidates`, Warnungen und OUTPUT-Statuswerte.
+**Auswertung:** Diese interne Procedure liefert keine normalen Resultsets. Entscheidend sind die befüllte `#DatabaseCandidates`, Warnungen und OUTPUT-Statuswerte.
 
 **Warum problematisch:** Eine explizit angeforderte Datenbank, die in der Warnung als nicht verfügbar erscheint, fehlt anschließend vollständig in der Fachanalyse. Das kann zu falscher Entwarnung führen, wenn die Warnung ignoriert wird.
 
@@ -119,11 +119,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zwei Datenbanken wurden angefordert, eine ist offline. Die Analyse enthält nur die online Datenbank; die Warnung muss als fehlender Scope dokumentiert werden.
 
-**Danach:** Warnungen immer zusammen mit dem Resultset der aufrufenden Procedure lesen. [Detailbeschreibung](01_Common.md#4-monitorusp_preparedatabasecandidates)
+**Nächster Schritt:** Lesen Sie Warnungen immer zusammen mit dem Resultset der aufrufenden Procedure. [Detailbeschreibung](01_Common.md#4-monitorusp_preparedatabasecandidates)
 
 ## [monitor].[USP_PrepareNameFilters]
 
-**So lesen:** Prüfen, welche Filterart befüllt wurde und ob der Status gültig ist. Bei Fehlern wird die Temp-Tabelle geleert.
+**Auswertung:** Prüfen Sie, welche Filterart befüllt wurde und ob der Status gültig ist. Bei Fehlern wird die temporäre Tabelle geleert.
 
 **Warum problematisch:** Eine leere Filtertabelle nach `INVALID_PARAMETER` darf nicht wie „kein Filter“ behandelt werden. Sonst könnte eine nachfolgende Analyse versehentlich zu breit laufen.
 
@@ -131,13 +131,13 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Doppelte identische Namen verursachen absichtlich einen Fehler; zwei nur in Groß-/Kleinschreibung verschiedene Namen nicht.
 
-**Danach:** Eingabeliste korrigieren und die aufrufende Analyse erneut ausführen. [Detailbeschreibung](01_Common.md#5-monitorusp_preparenamefilters)
+**Nächster Schritt:** Korrigieren Sie die Eingabeliste und führen Sie die aufrufende Analyse erneut aus. [Detailbeschreibung](01_Common.md#5-monitorusp_preparenamefilters)
 
 # 4. Current State
 
 ## [monitor].[USP_CurrentSessions]
 
-**So lesen:** Zuerst `SessionStatus`, `RequestStatus` und `OpenTransactionCount`; danach letzte Aktivität, kumulative CPU/I/O-Werte und Verbindungsinformationen.
+**Auswertung:** Prüfen Sie zuerst `SessionStatus`, `RequestStatus` und `OpenTransactionCount`. Berücksichtigen Sie danach die letzte Aktivität, die kumulativen CPU-/I/O-Werte und die Verbindungsinformationen.
 
 **Warum problematisch:** `sleeping` + `OpenTransactionCount > 0` bedeutet, dass der Client aktuell nichts ausführt, aber eine Transaktion offen bleibt. Dadurch können Locks, Log-Wiederverwendung und Blocking bestehen bleiben.
 
@@ -145,11 +145,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Eine Session ist seit acht Stunden verbunden, aber zuletzt vor zehn Sekunden aktiv und ohne Transaktion. Das Alter allein ist kein Problem. Dieselbe Session mit offener Transaktion seit zwei Stunden ist kritisch.
 
-**Danach:** `USP_CurrentTransactions` und bei aktiver Arbeit `USP_CurrentRequests`. [Detailbeschreibung](02_Current_State.md#1-monitorusp_currentsessions)
+**Nächster Schritt:** Prüfen Sie `USP_CurrentTransactions` und bei aktiver Arbeit `USP_CurrentRequests`. [Detailbeschreibung](02_Current_State.md#1-monitorusp_currentsessions)
 
 ## [monitor].[USP_CurrentRequests]
 
-**So lesen:** Erst `ElapsedMs`, `CpuMs`, Reads und Writes vergleichen. Danach Blocking/Waits, Memory Grant, DOP und den aktuellen Statementtext lesen.
+**Auswertung:** Vergleichen Sie zuerst `ElapsedMs`, `CpuMs`, Reads und Writes. Berücksichtigen Sie danach Blocking, Waits, Memory Grant, DOP und den aktuellen Statementtext.
 
 **Warum problematisch:** Hohe Laufzeit bei sehr niedriger CPU bedeutet, dass die Zeit überwiegend nicht mit Rechenarbeit verbracht wurde. Ein wachsender Lock-Wait oder fehlender Memory Grant erklärt dann die Verzögerung.
 
@@ -157,11 +157,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** `ElapsedMs=180000`, `CpuMs=900`, `WaitType=LCK_M_X`, `BlockingSessionId=74` bedeutet: Drei Minuten vergangen, aber nur 0,9 Sekunden CPU. Fast die gesamte Zeit wartet der Request auf einen exklusiven Lock – deshalb ist Blocking die relevante Spur.
 
-**Danach:** Blocking → `USP_CurrentBlocking`; Grant → `USP_CurrentMemoryGrants`; CPU/Reads → Plan Cache oder Query Store. [Detailbeschreibung](02_Current_State.md#2-monitorusp_currentrequests)
+**Nächster Schritt:** Prüfen Sie Blocking → `USP_CurrentBlocking`; Grant → `USP_CurrentMemoryGrants`; CPU/Reads → Plan Cache oder Query Store. [Detailbeschreibung](02_Current_State.md#2-monitorusp_currentrequests)
 
 ## [monitor].[USP_CurrentBlocking]
 
-**So lesen:** Vom `LeafSessionId` über jede Kante bis `RootBlockingSessionId` gehen. Waitzeit, Ressource und Zustand des Root Blockers vergleichen.
+**Auswertung:** Verfolgen Sie die Kanten von `LeafSessionId` bis `RootBlockingSessionId`. Vergleichen Sie dabei Waitzeit, Ressource und Zustand des Root Blockers.
 
 **Warum problematisch:** Viele blockierte Sessions können dieselbe einzelne Root-Session haben. Das Beenden eines Opfers löst die Ursache nicht; der Root Blocker hält weiterhin die Ressource.
 
@@ -169,11 +169,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zehn Sessions warten jeweils zwei Minuten auf Session 51, die sleeping ist und eine offene Transaktion besitzt. Das ist problematischer als eine aktiv arbeitende Session, die seit 50 ms kurz einen Lock hält.
 
-**Danach:** Root-Session mit `USP_CurrentTransactions` und `USP_CurrentRequests` untersuchen; Historie über Blocked-Process-XE. [Detailbeschreibung](02_Current_State.md#3-monitorusp_currentblocking)
+**Nächster Schritt:** Untersuchen Sie die Root-Session mit `USP_CurrentTransactions` und `USP_CurrentRequests`. Verwenden Sie Blocked-Process-XE für die historische Analyse. [Detailbeschreibung](02_Current_State.md#3-monitorusp_currentblocking)
 
 ## [monitor].[USP_CurrentWaits]
 
-**So lesen:** Waittyp und Waitgruppe zusammen mit Dauer, Anzahl, Session, Request und Samplemodus lesen. Bei Sampling das Delta, nicht den kumulativen Gesamtwert bewerten.
+**Auswertung:** Berücksichtigen Sie Waittyp und Waitgruppe zusammen mit Dauer, Anzahl, Session, Request und Samplemodus. Bewerten Sie bei einem Sampling das Delta und nicht den kumulativen Gesamtwert.
 
 **Warum problematisch:** Ein dominanter Wait zeigt, wo Zeit verloren geht. Er wird erst mit hoher Gesamtdauer, Wiederholung und messbarer Auswirkung relevant.
 
@@ -181,11 +181,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** `PAGEIOLATCH_SH` über 20 ms einmalig ist kein Beweis für langsames Storage. Millionen solcher Waits mit steigender Datei-Latenz und langsamen Queries sind dagegen eine starke I/O-Spur.
 
-**Danach:** Lockwaits → Blocking; I/O-Waits → `USP_CurrentIO`; Grantwaits → Memory Grants; CPU/Scheduler → Server Health. [Detailbeschreibung](02_Current_State.md#4-monitorusp_currentwaits)
+**Nächster Schritt:** Prüfen Sie Lockwaits → Blocking; I/O-Waits → `USP_CurrentIO`; Grantwaits → Memory Grants; CPU/Scheduler → Server Health. [Detailbeschreibung](02_Current_State.md#4-monitorusp_currentwaits)
 
 ## [monitor].[USP_CurrentTransactions]
 
-**So lesen:** Transaktionsalter, Sessionstatus, `OpenTransactionCount`, Logbytes und SQL-Kontext gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Transaktionsalter, Sessionstatus, `OpenTransactionCount`, Logbytes und SQL-Kontext gemeinsam.
 
 **Warum problematisch:** Eine alte Transaktion kann Locks halten, die Log-Wiederverwendung verhindern und bei Rollback sehr lange benötigen. Sleeping verstärkt den Verdacht auf vergessene Commit-/Rollback-Logik.
 
@@ -193,11 +193,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Sleeping seit 30 Minuten, offene Transaktion, wachsender Logverbrauch und mehrere Blockierte: starke Evidenz für einen Anwendungspfad, der die Transaktion nicht beendet hat.
 
-**Danach:** `USP_CurrentBlocking`, `USP_CurrentLog` und Anwendungsablauf prüfen. [Detailbeschreibung](02_Current_State.md#5-monitorusp_currenttransactions)
+**Nächster Schritt:** Prüfen Sie `USP_CurrentBlocking`, `USP_CurrentLog` und Anwendungsablauf. [Detailbeschreibung](02_Current_State.md#5-monitorusp_currenttransactions)
 
 ## [monitor].[USP_CurrentMemoryGrants]
 
-**So lesen:** `RequestedMemoryMb`, `GrantedMemoryMb`, `UsedMemoryMb`, Wartezeit und Konkurrenz vergleichen.
+**Auswertung:** Vergleichen Sie `RequestedMemoryMb`, `GrantedMemoryMb`, `UsedMemoryMb`, Wartezeit und Konkurrenz.
 
 **Warum problematisch:** Ein Request mit großem angefordertem Grant und `GrantedMemoryMb=0` wartet, bis genügend Query Execution Memory verfügbar wird. Viele solche Requests können sich gegenseitig stauen.
 
@@ -205,11 +205,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 32 GB angefordert, 0 gewährt, 60 Sekunden `RESOURCE_SEMAPHORE`: der Request arbeitet nicht langsam – er durfte noch gar nicht beginnen. Dagegen sind 32 GB gewährt und 28 GB genutzt bei einem geplanten großen Report plausibel.
 
-**Danach:** Plan, Kardinalität, DOP, Konkurrenz und Servermemory prüfen. [Detailbeschreibung](02_Current_State.md#6-monitorusp_currentmemorygrants)
+**Nächster Schritt:** Prüfen Sie Plan, Kardinalität, DOP, Konkurrenz und Servermemory. [Detailbeschreibung](02_Current_State.md#6-monitorusp_currentmemorygrants)
 
 ## [monitor].[USP_CurrentTempDB]
 
-**So lesen:** Erst Datei- und Gesamtauslastung, danach Sessionverbrauch und Art der Belegung unterscheiden: User Objects, Internal Objects, Version Store oder freie Fläche.
+**Auswertung:** Prüfen Sie zuerst die Datei- und Gesamtauslastung. Unterscheiden Sie danach den Sessionverbrauch nach User Objects, Internal Objects, Version Store und freier Fläche.
 
 **Warum problematisch:** Eine einzelne Session mit stark wachsendem Internal-Object-Verbrauch kann große Sorts, Hashes oder Spills erzeugen. Version Store wächst dagegen typischerweise durch lange Snapshot-/RCSI-Transaktionen.
 
@@ -217,11 +217,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** TempDB 90 % voll allein erklärt die Ursache nicht. 80 % Version Store + sehr alte Snapshot-Transaktion weist auf etwas anderes hin als 80 % Internal Objects einer einzelnen Query.
 
-**Danach:** Session → `USP_CurrentRequests`; Version Store → Transaktionen; Dateien → `USP_TempDBConfiguration`. [Detailbeschreibung](02_Current_State.md#7-monitorusp_currenttempdb)
+**Nächster Schritt:** Prüfen Sie Session → `USP_CurrentRequests`; Version Store → Transaktionen; Dateien → `USP_TempDBConfiguration`. [Detailbeschreibung](02_Current_State.md#7-monitorusp_currenttempdb)
 
 ## [monitor].[USP_CurrentIO]
 
-**So lesen:** Kumulative Durchschnittswerte und Sample-Delta trennen. Reads/Writes, Bytes, Operationen und Latenz je Datei vergleichen.
+**Auswertung:** Trennen Sie kumulative Durchschnittswerte vom Sample-Delta. Vergleichen Sie Reads, Writes, Bytes, Operationen und Latenz je Datei.
 
 **Warum problematisch:** Hohe Latenz bei vielen aktuellen I/O-Operationen kann Requests unmittelbar bremsen. Ein hoher kumulativer Durchschnitt kann jedoch von einem alten Ereignis stammen.
 
@@ -229,11 +229,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 500 ms Durchschnitt bei nur einer Operation seit Start ist schwach. 25 ms im 10-Sekunden-Sample bei zehntausenden Reads und gleichzeitigem `PAGEIOLATCH` ist deutlich belastbarer.
 
-**Danach:** betroffene Queries, Datei-/Volumekapazität und externes Storage-Monitoring prüfen. [Detailbeschreibung](02_Current_State.md#8-monitorusp_currentio)
+**Nächster Schritt:** Prüfen Sie betroffene Queries, Datei-/Volumekapazität und externes Storage-Monitoring. [Detailbeschreibung](02_Current_State.md#8-monitorusp_currentio)
 
 ## [monitor].[USP_CurrentLog]
 
-**So lesen:** Used Percent, Loggröße, `log_reuse_wait_desc`, Wachstum, VLF und gegebenenfalls Persistent Version Store gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Used Percent, Loggröße, `log_reuse_wait_desc`, Wachstum, VLF und gegebenenfalls den Persistent Version Store gemeinsam.
 
 **Warum problematisch:** Hohe Auslastung ist besonders kritisch, wenn die Wiederverwendung durch eine alte Transaktion, fehlende Logbackups oder Replikations-/AG-Lag verhindert wird. Dann hilft bloßes Vergrößern nur vorübergehend.
 
@@ -241,11 +241,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 95 % genutzt + `ACTIVE_TRANSACTION` + 2-Stunden-Transaktion: Ursache ist nicht primär die Dateigröße, sondern die offene Transaktion.
 
-**Danach:** `USP_CurrentTransactions`, Backup-/AG-Status und Kapazitätsanalyse. [Detailbeschreibung](02_Current_State.md#9-monitorusp_currentlog)
+**Nächster Schritt:** Prüfen Sie `USP_CurrentTransactions`, Backup-/AG-Status und Kapazitätsanalyse. [Detailbeschreibung](02_Current_State.md#9-monitorusp_currentlog)
 
 ## [monitor].[USP_CurrentOverview]
 
-**So lesen:** Zuerst Modulstatus lesen, dann vom Symptom zum Detailmodul wechseln. Nicht alle Childresultsets gleichzeitig gleich gewichten.
+**Auswertung:** Prüfen Sie zuerst den Modulstatus und wechseln Sie dann vom Symptom zum passenden Detailmodul. Gewichten Sie nicht alle Child-Resultsets gleichermaßen.
 
 **Warum problematisch:** Ein auffälliger Wert in einem Child kann ohne Kontext irreführen. Der Überblick dient Triage, nicht endgültiger Ursachenfeststellung.
 
@@ -253,13 +253,13 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Overview zeigt Blocking und hohe Logauslastung. Erst die Blocking-/Transaktionskette kann zeigen, dass dieselbe alte Transaktion beide Symptome verursacht.
 
-**Danach:** Das spezifische Childmodul mit engeren Filtern erneut aufrufen. [Detailbeschreibung](02_Current_State.md#10-monitorusp_currentoverview)
+**Nächster Schritt:** Rufen Sie das spezifische Childmodul mit engeren Filtern erneut auf. [Detailbeschreibung](02_Current_State.md#10-monitorusp_currentoverview)
 
 # 5. Object und Index
 
 ## [monitor].[USP_ObjectInventory]
 
-**So lesen:** Objektgröße und Zeilen zuerst, dann Indexart, Schlüssel/Includes, Partitionierung, Kompression und Sonderzustände.
+**Auswertung:** Prüfen Sie zuerst Objektgröße und Zeilenanzahl. Berücksichtigen Sie danach Indexart, Schlüssel, Includes, Partitionierung, Kompression und Sonderzustände.
 
 **Warum problematisch:** Ein großer deaktivierter, hypothetischer oder stark redundanter Index kann Speicher und Wartungskosten verursachen. Die Definition allein beweist aber keine Entbehrlichkeit.
 
@@ -267,11 +267,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zwei Indizes haben gleiche Schlüssel, aber einer sichert eine Unique Constraint. Trotz Ähnlichkeit darf er nicht wie ein gewöhnlicher Duplikatindex behandelt werden.
 
-**Danach:** Usage, Operational Stats und konkrete Pläne prüfen. [Detailbeschreibung](03_Object_Index.md#1-monitorusp_objectinventory)
+**Nächster Schritt:** Prüfen Sie Usage, Operational Stats und konkrete Pläne. [Detailbeschreibung](03_Object_Index.md#1-monitorusp_objectinventory)
 
 ## [monitor].[USP_IndexUsage]
 
-**So lesen:** Resetzeit, Reads, Updates, letzte Nutzung und Schutzmerkmale wie PK/Unique gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Resetzeit, Reads, Updates, letzte Nutzung und Schutzmerkmale wie Primary Key oder Unique Constraint gemeinsam.
 
 **Warum problematisch:** Viele Updates ohne Reads bedeuten potenzielle Schreib-, Log-, Lock- und Speicherlast ohne sichtbaren Lesebedarf.
 
@@ -279,11 +279,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 0 Reads, 8 Mio. Updates, 180 Tage Beobachtung ist ein starker Reviewkandidat. 0 Reads, 40 Updates, zwei Stunden seit Restart ist praktisch bedeutungslos.
 
-**Danach:** Query Store, Abhängigkeiten, Constraints und `USP_IndexOperationalStats`. [Detailbeschreibung](03_Object_Index.md#2-monitorusp_indexusage)
+**Nächster Schritt:** Prüfen Sie Query Store, Abhängigkeiten, Constraints und `USP_IndexOperationalStats`. [Detailbeschreibung](03_Object_Index.md#2-monitorusp_indexusage)
 
 ## [monitor].[USP_IndexOperationalStats]
 
-**So lesen:** Zähler nie allein lesen, sondern pro Aktivität oder pro Wait normalisieren. DML, Allocations, Locks, Latches und Scans vergleichen.
+**Auswertung:** Bewerten Sie Zähler nicht isoliert, sondern normalisieren Sie diese pro Aktivität oder Wait. Vergleichen Sie DML, Allocations, Locks, Latches und Scans.
 
 **Warum problematisch:** Viele Page Allocations pro Insert können Page-Split-/Wachstumsdruck anzeigen; hohe Lock-/Latchzeiten können Parallelität und Durchsatz begrenzen.
 
@@ -291,11 +291,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Eine Million Page-Latch-Waits über ein Jahr kann weniger kritisch sein als 50.000 Waits in fünf Minuten auf derselben Hot Page.
 
-**Danach:** Live-Waits, Showplan, Keyverteilung und gegebenenfalls `OPTIMIZE_FOR_SEQUENTIAL_KEY`-Kontext prüfen. [Detailbeschreibung](03_Object_Index.md#3-monitorusp_indexoperationalstats)
+**Nächster Schritt:** Prüfen Sie Live-Waits, Showplan, Keyverteilung und gegebenenfalls `OPTIMIZE_FOR_SEQUENTIAL_KEY`-Kontext. [Detailbeschreibung](03_Object_Index.md#3-monitorusp_indexoperationalstats)
 
 ## [monitor].[USP_MissingIndexes]
 
-**So lesen:** Erst Reads und Compiles, dann Impact und Improvement Measure. Danach vorgeschlagene Schlüssel/Includes mit vorhandenen Indizes vergleichen.
+**Auswertung:** Prüfen Sie zuerst Reads und Compiles und danach Impact und Improvement Measure. Vergleichen Sie anschließend vorgeschlagene Schlüssel und Includes mit vorhandenen Indizes.
 
 **Warum problematisch:** Der Optimizer schätzt, dass relevante Queries ohne geeigneten Zugriff mehr Kosten verursachen. Die DMV kennt aber Schreibkosten, Speicher, Duplikate und betriebliche Abhängigkeiten nur unzureichend.
 
@@ -303,11 +303,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 25 % Impact bei fünf Millionen Reads kann mehr Gesamtnutzen haben als 99 % bei einer einzigen Ausführung.
 
-**Danach:** vorhandene Indizes, Querytext, Plan, Usage und Write-Last prüfen; erst dann DDL entwerfen. [Detailbeschreibung](03_Object_Index.md#4-monitorusp_missingindexes)
+**Nächster Schritt:** Prüfen Sie vorhandene Indizes, Querytext, Plan, Usage und Write-Last. Entwerfen Sie DDL erst nach dieser Prüfung. [Detailbeschreibung](03_Object_Index.md#4-monitorusp_missingindexes)
 
 ## [monitor].[USP_Statistics]
 
-**So lesen:** Rows, Rows Sampled, Modification Counter, führende Spalte, Filter und letzten Updatezeitpunkt gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Rows, Rows Sampled, Modification Counter, führende Spalte, Filter und letzten Updatezeitpunkt gemeinsam.
 
 **Warum problematisch:** Stark geänderte oder unpassend gesampelte Statistiken können falsche Kardinalitätsschätzungen und damit schlechte Join-, Grant- oder Zugriffspfade verursachen.
 
@@ -315,11 +315,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zehn Jahre alt + Modification Counter 0 ist nicht automatisch schlecht. Eine gestern aktualisierte Statistik kann trotzdem einen neu entstandenen stark verzerrten Tail schlecht abbilden.
 
-**Danach:** Histogramm-/Verteilungsanalyse und betroffene Pläne prüfen. [Detailbeschreibung](03_Object_Index.md#5-monitorusp_statistics)
+**Nächster Schritt:** Prüfen Sie Histogramm-/Verteilungsanalyse und betroffene Pläne. [Detailbeschreibung](03_Object_Index.md#5-monitorusp_statistics)
 
 ## [monitor].[USP_StatisticsDistributionAnalysis]
 
-**So lesen:** Zuerst Sample und Modification, dann Dominant Step, Skew, Tail und Partitionsspread. Findings erst danach bewerten.
+**Auswertung:** Prüfen Sie zuerst Sample und Modification und danach Dominant Step, Skew, Tail und Partitionsspread. Bewerten Sie die Findings erst im Anschluss.
 
 **Warum problematisch:** Starke Verteilungsspitzen oder neue Tailwerte können dazu führen, dass ein für einen Parameter guter Plan für einen anderen Parameter ungeeignet ist.
 
@@ -327,11 +327,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Ein Wert umfasst 70 % der Zeilen. Das ist erst dann problematisch, wenn seltene und häufige Parameter denselben gecachten Plan verwenden und stark unterschiedliche Zeilenmengen erzeugen.
 
-**Danach:** Query Store Plan Changes, Parameterwerte und Showplan vergleichen. [Detailbeschreibung](03_Object_Index.md#6-monitorusp_statisticsdistributionanalysis)
+**Nächster Schritt:** Vergleichen Sie Query Store Plan Changes, Parameterwerte und Showplan. [Detailbeschreibung](03_Object_Index.md#6-monitorusp_statisticsdistributionanalysis)
 
 ## [monitor].[USP_Partitions]
 
-**So lesen:** RowCount und Größe je Partition, Grenzintervalle, Filegroup, Kompression und Indexausrichtung vergleichen.
+**Auswertung:** Vergleichen Sie RowCount und Größe je Partition, Grenzintervalle, Filegroup, Kompression und Indexausrichtung.
 
 **Warum problematisch:** Stark unausgewogene Partitionen können Wartung, Statistiken und Lastverteilung erschweren. Falsche Grenzen oder nicht ausgerichtete Indizes können Partition Switching und Elimination verhindern.
 
@@ -339,11 +339,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Eine leere zukünftige Monatspartition ist normal. Eine einzelne aktuelle Partition mit 95 % aller Zeilen und ohne passende Prädikate kann dagegen den erwarteten Partitionierungsvorteil verhindern.
 
-**Danach:** Showplan auf Partition Elimination, Statistikdetails und Kapazität prüfen. [Detailbeschreibung](03_Object_Index.md#7-monitorusp_partitions)
+**Nächster Schritt:** Prüfen Sie Showplan auf Partition Elimination, Statistikdetails und Kapazität. [Detailbeschreibung](03_Object_Index.md#7-monitorusp_partitions)
 
 ## [monitor].[USP_Columnstore]
 
-**So lesen:** Rowgroupzustand, Total/Deleted/Active Rows, Fullness, Trim Reason und Alter vergleichen. Segmente und Dictionaries nur bei konkretem Bedarf vertiefen.
+**Auswertung:** Vergleichen Sie Rowgroupzustand, Total, Deleted und Active Rows, Fullness, Trim Reason sowie Alter. Vertiefen Sie Segmente und Dictionaries nur bei konkretem Bedarf.
 
 **Warum problematisch:** Viele kleine komprimierte Rowgroups oder hohe Deleted-Rows-Anteile verschlechtern Kompression, Segment Elimination und Scan-Effizienz.
 
@@ -351,11 +351,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 40 % Deleted Rows in einer häufig gescannten großen Rowgroup ist relevanter als 40 % in einer winzigen Archivpartition. Die gleiche Prozentzahl hat unterschiedliche Auswirkung.
 
-**Danach:** Ladebatchgröße, Tuple Mover, Partitionierung und Querypläne prüfen. [Detailbeschreibung](03_Object_Index.md#8-monitorusp_columnstore)
+**Nächster Schritt:** Prüfen Sie Ladebatchgröße, Tuple Mover, Partitionierung und Querypläne. [Detailbeschreibung](03_Object_Index.md#8-monitorusp_columnstore)
 
 ## [monitor].[USP_IndexPhysicalStats]
 
-**So lesen:** Immer `PageCount` vor `AvgFragmentationPercent`; danach Seitendichte, Scanmodus, Record-/Ghost-/Forwarded-Werte.
+**Auswertung:** Bewerten Sie `PageCount` immer vor `AvgFragmentationPercent`. Berücksichtigen Sie danach Seitendichte, Scanmodus sowie Record-, Ghost- und Forwarded-Werte.
 
 **Warum problematisch:** Große fragmentierte Strukturen können Range Scans und Read-Ahead beeinträchtigen; niedrige Seitendichte erhöht Speicher- und I/O-Bedarf.
 
@@ -363,11 +363,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Fünf Millionen Seiten, 45 % Fragmentierung und 55 % Dichte sind relevant, weil sehr viele zusätzliche Seiten gelesen und gecacht werden können. Acht Seiten mit denselben Prozentwerten sind es nicht.
 
-**Danach:** Usage, Workload, Wartungsfenster und Dichtewirkung prüfen. [Detailbeschreibung](03_Object_Index.md#9-monitorusp_indexphysicalstats)
+**Nächster Schritt:** Prüfen Sie Usage, Workload, Wartungsfenster und Dichtewirkung. [Detailbeschreibung](03_Object_Index.md#9-monitorusp_indexphysicalstats)
 
 ## [monitor].[USP_SchemaDesignAnalysis]
 
-**So lesen:** FindingCode, Severity, betroffenes Objekt, verwandtes Objekt, Metrik und EvidenceLimit zusammen lesen.
+**Auswertung:** Berücksichtigen Sie FindingCode, Severity, betroffenes Objekt, verwandtes Objekt, Metrik und EvidenceLimit gemeinsam.
 
 **Warum problematisch:** Nicht vertrauenswürdige Constraints, fehlende FK-Unterstützung oder fast erschöpfte Identitybereiche können Optimierung, DML und Verfügbarkeit beeinträchtigen.
 
@@ -375,11 +375,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** FK ohne passenden Index ist besonders relevant, wenn Parent-Deletes/Updates blockieren oder große Childscans auslösen. Bei statischen Tabellen ohne solche Operationen kann die Priorität niedriger sein.
 
-**Danach:** Objektinventar, Usage, Pläne und Änderungsrisiko prüfen. [Detailbeschreibung](03_Object_Index.md#10-monitorusp_schemadesignanalysis)
+**Nächster Schritt:** Prüfen Sie Objektinventar, Usage, Pläne und Änderungsrisiko. [Detailbeschreibung](03_Object_Index.md#10-monitorusp_schemadesignanalysis)
 
 ## [monitor].[USP_ObjectAnalysis]
 
-**So lesen:** Childstatus zuerst, dann vom Inventar über Nutzung zur spezifischen Tiefenanalyse gehen. Ein Childresultset ersetzt nicht die anderen.
+**Auswertung:** Prüfen Sie zuerst den Childstatus und gehen Sie dann vom Inventar über die Nutzung zur spezifischen Tiefenanalyse über. Ein Child-Resultset ersetzt die übrigen Resultsets nicht.
 
 **Warum problematisch:** Ein Missing-Index-Vorschlag ohne Inventar und Usage kann zu redundanten Indizes führen; Fragmentierung ohne Page Count kann unnötige Wartung auslösen.
 
@@ -387,25 +387,25 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Inventar zeigt ähnlichen Index, Missing Index schlägt neuen vor, Usage zeigt bestehende geringe Nutzung. Die Kombination spricht eher für Konsolidierung als für blindes Erstellen.
 
-**Danach:** Das relevante Child gezielt mit engerem Scope erneut ausführen. [Detailbeschreibung](03_Object_Index.md#11-monitorusp_objectanalysis)
+**Nächster Schritt:** Führen Sie das relevante Child gezielt mit einem engeren Scope erneut aus. [Detailbeschreibung](03_Object_Index.md#11-monitorusp_objectanalysis)
 
 # 6. Plan Cache und Showplan
 
 ## [monitor].[USP_QueryStats]
 
-**So lesen:** Cachefenster (`CreationTime`, `LastExecutionTime`) und Execution Count zuerst, dann Total-, Avg-, Max- und Lastwerte getrennt betrachten.
+**Auswertung:** Prüfen Sie zuerst Cachefenster (`CreationTime`, `LastExecutionTime`) und Execution Count. Betrachten Sie danach Total-, Average-, Maximal- und Letztwerte getrennt.
 
 **Warum problematisch:** Hohe Totalwerte zeigen Gesamtauswirkung, hohe Maxwerte Ausreißer, hohe Durchschnittswerte systematische Kosten. Reads bei wenigen Ergebniszeilen weisen auf ineffizienten Zugriff hin.
 
 **Wann nicht problematisch:** Eine einmalige schwere administrative Query kann hohe Maxwerte haben, aber geringe Gesamtauswirkung.
 
-**Beispiel:** Eine Million Ausführungen zu je 2 ms verursachen mehr Gesamtkosten als eine einmalige 10-Minuten-Query. Deshalb Total und Average gemeinsam lesen.
+**Beispiel:** Eine Million Ausführungen zu je 2 ms verursachen mehr Gesamtkosten als eine einmalige 10-Minuten-Query. Berücksichtigen Sie deshalb Total und Average gemeinsam.
 
-**Danach:** Query Hash, Plan Details, Showplan oder Query Store. [Detailbeschreibung](04_Plan_Cache.md#1-monitorusp_querystats)
+**Nächster Schritt:** Prüfen Sie Query Hash, Plan Details, Showplan oder Query Store. [Detailbeschreibung](04_Plan_Cache.md#1-monitorusp_querystats)
 
 ## [monitor].[USP_QueryHashAnalysis]
 
-**So lesen:** `PlanVariantCount`, `PlanHandleCount`, Ausführungen und Ressourcen je Variante vergleichen.
+**Auswertung:** Vergleichen Sie `PlanVariantCount`, `PlanHandleCount`, Ausführungen und Ressourcen je Variante.
 
 **Warum problematisch:** Viele Planvarianten können instabile Performance, Parameter Sensitivity oder unterschiedliche Compilekontexte erzeugen. Viele Handles bei gleichem Plan Hash können Cachebloat anzeigen.
 
@@ -413,11 +413,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Acht Planvarianten, aber eine verbraucht 99 % der CPU. Nicht die Anzahl allein, sondern die dominante schlechte Variante ist relevant.
 
-**Danach:** einzelne Handles über `USP_PlanDetails` und Historie über Query Store vergleichen. [Detailbeschreibung](04_Plan_Cache.md#2-monitorusp_queryhashanalysis)
+**Nächster Schritt:** Vergleichen Sie einzelne Handles über `USP_PlanDetails` und Historie über Query Store. [Detailbeschreibung](04_Plan_Cache.md#2-monitorusp_queryhashanalysis)
 
 ## [monitor].[USP_PlanCacheHealth]
 
-**So lesen:** Gesamtgröße, Plananzahl, Single-Use-Anteil, Use Counts und Memory Pressure gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Gesamtgröße, Plananzahl, Single-Use-Anteil, Use Counts und Memory Pressure gemeinsam.
 
 **Warum problematisch:** Viele große Single-Use-Pläne verbrauchen Cache für Texte, die kaum wiederverwendet werden, und verdrängen möglicherweise nützlichere Pläne oder Datenseiten.
 
@@ -425,11 +425,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 70 % Single-Use bei reichlich freiem Speicher ist weniger dringend als 20 % Single-Use auf einem Server mit starkem Memory Pressure.
 
-**Danach:** Textvarianz, Parametrisierung, `optimize for ad hoc workloads` und Memoryanalyse prüfen. [Detailbeschreibung](04_Plan_Cache.md#3-monitorusp_plancachehealth)
+**Nächster Schritt:** Prüfen Sie Textvarianz, Parametrisierung, `optimize for ad hoc workloads` und Memoryanalyse. [Detailbeschreibung](04_Plan_Cache.md#3-monitorusp_plancachehealth)
 
 ## [monitor].[USP_PlanDetails]
 
-**So lesen:** Kandidatenidentität prüfen, dann Planattribute und anschließend die verfügbare Planquelle unterscheiden: Compile, Last Actual oder Live.
+**Auswertung:** Prüfen Sie zuerst die Kandidatenidentität und danach die Planattribute. Unterscheiden Sie anschließend zwischen den verfügbaren Planquellen Compile, Last Actual und Live.
 
 **Warum problematisch:** Abweichende Cache-Key-Attribute können mehrere Planhandles erzeugen; Actual-Pläne können Schätzfehler, Spills und reale Zeilenmengen zeigen.
 
@@ -437,11 +437,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zwei identische Texte mit unterschiedlichem `set_options` können getrennte Cacheeinträge haben. Das ist eine Erklärung für mehrere Handles, nicht automatisch Planinstabilität.
 
-**Danach:** `USP_ShowplanAnalysis` oder manueller Planvergleich. [Detailbeschreibung](04_Plan_Cache.md#4-monitorusp_plandetails)
+**Nächster Schritt:** Verwenden Sie `USP_ShowplanAnalysis` oder führen Sie einen manuellen Planvergleich durch. [Detailbeschreibung](04_Plan_Cache.md#4-monitorusp_plandetails)
 
 ## [monitor].[USP_ShowplanAnalysis]
 
-**So lesen:** Statementebene → Warnungen → Operatoren → Estimate/Actual → Memory → Parameter. Absolute Zeilenmengen vor Ratios lesen.
+**Auswertung:** Prüfen Sie die Angaben in der Reihenfolge Statementebene → Warnungen → Operatoren → Estimate/Actual → Memory → Parameter. Bewerten Sie absolute Zeilenmengen vor den Ratios.
 
 **Warum problematisch:** Große Estimate-/Actual-Abweichungen können falsche Joinarten, Grants und Zugriffspfade erzeugen. Spills zeigen, dass Arbeit nach TempDB ausgelagert wurde.
 
@@ -449,25 +449,25 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Estimate 1, Actual 10 Mio. erklärt, warum ein Nested Loops Plan oder kleiner Grant kollabieren kann. Estimate 1, Actual 10 hat dieselbe Ratio, aber viel geringere Auswirkung.
 
-**Danach:** Statistik, Parameter, Query Store, Index- und Memorykontext prüfen. [Detailbeschreibung](04_Plan_Cache.md#5-monitorusp_showplananalysis)
+**Nächster Schritt:** Prüfen Sie Statistik, Parameter, Query Store, Index- und Memorykontext. [Detailbeschreibung](04_Plan_Cache.md#5-monitorusp_showplananalysis)
 
 ## [monitor].[USP_PlanCacheAnalysis]
 
-**So lesen:** Modulstatus und Reihenfolge beachten. Query Stats priorisiert Kandidaten, Query Hash erklärt Varianten, Health den Cache und Showplan den Planinhalt.
+**Auswertung:** Beachten Sie Modulstatus und Reihenfolge. Query Stats priorisiert Kandidaten, Query Hash erklärt Varianten, Health beschreibt den Cache und Showplan den Planinhalt.
 
 **Warum problematisch:** Ein breiter Showplanlauf kann selbst hohe CPU verursachen und liefert viele Befunde ohne Priorisierung.
 
 **Wann nicht problematisch:** Nicht aktivierte Children sind normal; der Default ist absichtlich leichtgewichtig.
 
-**Beispiel:** Erst Top-CPU identifizieren, dann nur die fünf relevanten Pläne parsen. Das ist belastbarer und günstiger als den gesamten Cache zu analysieren.
+**Beispiel:** Identifizieren Sie zuerst die Queries mit der höchsten CPU-Nutzung und parsen Sie danach nur die fünf relevanten Pläne. Dieses Vorgehen liefert fokussiertere Evidenz und verursacht geringere Analysekosten als eine Analyse des gesamten Cache.
 
-**Danach:** fokussierte Childanalyse oder Query Store für Historie. [Detailbeschreibung](04_Plan_Cache.md#6-monitorusp_plancacheanalysis)
+**Nächster Schritt:** Führen Sie eine fokussierte Childanalyse aus oder verwenden Sie Query Store für die historische Analyse. [Detailbeschreibung](04_Plan_Cache.md#6-monitorusp_plancacheanalysis)
 
 # 7. Query Store
 
 ## [monitor].[USP_QueryStoreStatus]
 
-**So lesen:** `ActualStateDesc`, Readonly Reason, Storage Used, Capture Mode, Cleanup, Interval Length und Wait Capture prüfen.
+**Auswertung:** Prüfen Sie `ActualStateDesc`, Readonly Reason, Storage Used, Capture Mode, Cleanup, Interval Length und Wait Capture.
 
 **Warum problematisch:** Read-only, voller Speicher oder Capture Mode können Historienlücken erzeugen. Dann ist ein fehlender Queryeintrag keine Entwarnung.
 
@@ -475,11 +475,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Wait-Resultset leer + Wait Capture OFF ist erwartbar. Leer + Capture ON + passendes Zeitfenster verlangt weitere Prüfung.
 
-**Danach:** Erst bei geeignetem Status Runtime-, Wait- oder Plananalysen starten. [Detailbeschreibung](05_Query_Store.md#1-monitorusp_querystorestatus)
+**Nächster Schritt:** Starten Sie erst bei geeignetem Status Runtime-, Wait- oder Plananalysen. [Detailbeschreibung](05_Query_Store.md#1-monitorusp_querystorestatus)
 
 ## [monitor].[USP_QueryStoreRuntimeStats]
 
-**So lesen:** Zeitfenster und Intervalllänge, Execution Count, Total und Average je Ressource sowie PlanId vergleichen.
+**Auswertung:** Vergleichen Sie Zeitfenster und Intervalllänge, Execution Count, Total und Average je Ressource sowie PlanId.
 
 **Warum problematisch:** Mehrere Pläne derselben Query mit stark unterschiedlichen Werten können Regression oder Parameter Sensitivity anzeigen.
 
@@ -487,11 +487,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Plan A 10 ms × 100.000, Plan B 500 ms × 20. Plan B ist pro Aufruf schlechter, Plan A verursacht möglicherweise mehr Gesamtlast.
 
-**Danach:** Wait Stats, Plan Changes, Regressions und Showplan. [Detailbeschreibung](05_Query_Store.md#2-monitorusp_querystoreruntimestats)
+**Nächster Schritt:** Prüfen Sie Wait Stats, Plan Changes, Regressions und Showplan. [Detailbeschreibung](05_Query_Store.md#2-monitorusp_querystoreruntimestats)
 
 ## [monitor].[USP_QueryStoreWaitStats]
 
-**So lesen:** Waitkategorie, Totalzeit, Maxwert, Recorded Rows und Zeitintervalle zusammen lesen.
+**Auswertung:** Berücksichtigen Sie Waitkategorie, Totalzeit, Maximalwert, Recorded Rows und Zeitintervalle gemeinsam.
 
 **Warum problematisch:** Hohe Totalzeit zeigt kumulative Auswirkung; hoher Maxwert kann einzelne Ausreißer anzeigen. Kategorien sind gröber als Live-Waittypen.
 
@@ -499,11 +499,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Lock-Wait dominiert ein einzelnes Intervall, danach nicht mehr: möglicher Burst. Lock-Wait dominiert täglich über Stunden: systematisches Problem.
 
-**Danach:** Runtimewerte, Planwechsel und bei Reproduktion Live-Blocking prüfen. [Detailbeschreibung](05_Query_Store.md#3-monitorusp_querystorewaitstats)
+**Nächster Schritt:** Prüfen Sie Runtimewerte, Planwechsel und bei Reproduktion Live-Blocking. [Detailbeschreibung](05_Query_Store.md#3-monitorusp_querystorewaitstats)
 
 ## [monitor].[USP_QueryStorePlanChanges]
 
-**So lesen:** PlanCount, Distinct Plan Hashes, Compile-/Executionzeiten und Forced-Status vergleichen.
+**Auswertung:** Vergleichen Sie PlanCount, Distinct Plan Hashes, Compile- und Executionzeiten sowie Forced-Status.
 
 **Warum problematisch:** Ein neuer Plan kann andere Kosten, Parallelität oder Zugriffspfade haben und zeitlich mit einer Regression zusammenfallen.
 
@@ -511,11 +511,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Vier PlanIds, aber nur zwei Plan Hashes; einer wurde seit Monaten nicht ausgeführt. Für die aktuelle Ursache sind die aktiven Varianten entscheidend.
 
-**Danach:** Runtime Stats je Plan, Regressionen und Planvergleich. [Detailbeschreibung](05_Query_Store.md#4-monitorusp_querystoreplanchanges)
+**Nächster Schritt:** Prüfen Sie Runtime Stats je Plan, Regressionen und Planvergleich. [Detailbeschreibung](05_Query_Store.md#4-monitorusp_querystoreplanchanges)
 
 ## [monitor].[USP_QueryStoreRegressions]
 
-**So lesen:** Baseline- und Vergleichsfenster, Ausführungsanzahl, absolute Werte und Prozentänderung gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Baseline- und Vergleichsfenster, Ausführungsanzahl, absolute Werte und Prozentänderung gemeinsam.
 
 **Warum problematisch:** Eine belastbare Regression bedeutet, dass vergleichbare Workload im neuen Fenster deutlich mehr Ressourcen oder Zeit benötigt.
 
@@ -523,11 +523,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 100 ms → 150 ms bei je 100.000 Ausführungen ist eine belastbare 50-%-Regression. 1 ms → 10 ms bei je einer Ausführung noch nicht.
 
-**Danach:** Plan Changes, Wait Stats und konkrete Parameter-/Plananalyse. [Detailbeschreibung](05_Query_Store.md#5-monitorusp_querystoreregressions)
+**Nächster Schritt:** Prüfen Sie Plan Changes, Wait Stats und konkrete Parameter-/Plananalyse. [Detailbeschreibung](05_Query_Store.md#5-monitorusp_querystoreregressions)
 
 ## [monitor].[USP_QueryStoreForcedPlans]
 
-**So lesen:** IsForced, Forcing Type, Failure Count/Reason, letzte Ausführung und Engine-/Compatibility-Kontext lesen.
+**Auswertung:** Berücksichtigen Sie IsForced, Forcing Type, Failure Count, Failure Reason, letzte Ausführung sowie Engine- und Compatibility-Kontext.
 
 **Warum problematisch:** Force-Fehler bedeuten, dass die gewünschte Planbindung nicht zuverlässig angewendet wird. Ein alter Forced Plan kann neue Optimizerverbesserungen verhindern.
 
@@ -535,11 +535,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 50 Force-Fehler und aktuelle Regression sind dringender als ein seit Monaten stabiler Forced Plan ohne Fehler.
 
-**Danach:** Plan Changes, Runtimevergleich und Rücknahmepfad prüfen. [Detailbeschreibung](05_Query_Store.md#6-monitorusp_querystoreforcedplans)
+**Nächster Schritt:** Prüfen Sie Plan Changes, Runtimevergleich und Rücknahmepfad. [Detailbeschreibung](05_Query_Store.md#6-monitorusp_querystoreforcedplans)
 
 ## [monitor].[USP_QueryStoreHints]
 
-**So lesen:** Hinttext, Quelle, Failure Count/Reason und betroffene Query zusammen lesen.
+**Auswertung:** Berücksichtigen Sie Hinttext, Quelle, Failure Count, Failure Reason und betroffene Query gemeinsam.
 
 **Warum problematisch:** Ein Hint kann die Optimizerfreiheit begrenzen und nach Daten-, Schema- oder Versionsänderungen schädlich werden.
 
@@ -547,11 +547,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Fehlerfreier Hint heißt nur, dass er angewendet wird – nicht, dass er weiterhin nützlich ist.
 
-**Danach:** Runtime, Regression, Plan Changes und Change-Governance prüfen. [Detailbeschreibung](05_Query_Store.md#7-monitorusp_querystorehints)
+**Nächster Schritt:** Prüfen Sie Runtime, Regression, Plan Changes und Change-Governance. [Detailbeschreibung](05_Query_Store.md#7-monitorusp_querystorehints)
 
 ## [monitor].[USP_IntelligentQueryProcessingAnalysis]
 
-**So lesen:** Eligibility, Database-scoped Configurations, Query-Store-Zustand und Evidenzcounts trennen.
+**Auswertung:** Trennen Sie Eligibility, Database-scoped Configurations, Query-Store-Zustand und Evidenzcounts voneinander.
 
 **Warum problematisch:** Ein Feature kann versionsseitig geeignet, aber deaktiviert sein; Query Store OFF kann persistentes Feedback begrenzen.
 
@@ -559,11 +559,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** PSP eligible, aber keine Query Variants. Das ist kein Fehler; erst eine bekannte parameter-sensitive Query liefert eine sinnvolle Gegenprobe.
 
-**Danach:** Query Store, konkrete Query und Showplan prüfen. [Detailbeschreibung](05_Query_Store.md#8-monitorusp_intelligentqueryprocessinganalysis)
+**Nächster Schritt:** Prüfen Sie Query Store, konkrete Query und Showplan. [Detailbeschreibung](05_Query_Store.md#8-monitorusp_intelligentqueryprocessinganalysis)
 
 ## [monitor].[USP_QueryStoreAnalysis]
 
-**So lesen:** Statuschild zuerst, danach nur die für die Frage aktivierten Children. Zeitfenster und Wrappersemantik beachten.
+**Auswertung:** Prüfen Sie zuerst das Status-Child und danach nur die für die Fragestellung aktivierten Children. Beachten Sie Zeitfenster und Wrappersemantik.
 
 **Warum problematisch:** Regressionen können falsch interpretiert werden, wenn das übergebene Fenster als Baseline statt Vergleich verstanden wird.
 
@@ -571,13 +571,13 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Wrapper bekommt letzte Stunde; diese ist das Vergleichsfenster, die Baseline liegt unmittelbar davor.
 
-**Danach:** relevantes Child mit QueryId/Hash und engem Zeitraum wiederholen. [Detailbeschreibung](05_Query_Store.md#9-monitorusp_querystoreanalysis)
+**Nächster Schritt:** Wiederholen Sie das relevante Child mit QueryId beziehungsweise Query Hash und einem engen Zeitraum. [Detailbeschreibung](05_Query_Store.md#9-monitorusp_querystoreanalysis)
 
 # 8. Extended Events
 
 ## [monitor].[USP_ExtendedEventsSessions]
 
-**So lesen:** Sessiondefinition, Laufzeitstatus, Events, Actions, Targets und Felder getrennt prüfen.
+**Auswertung:** Prüfen Sie Sessiondefinition, Laufzeitstatus, Events, Actions, Targets und Felder getrennt.
 
 **Warum problematisch:** Eine definierte, aber nicht laufende Session sammelt keine Daten. Ein Event ohne erforderliche Actions kann später wichtige Korrelationsinformationen vermissen lassen.
 
@@ -585,11 +585,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Deadlockevent ist konfiguriert, aber kein Event-File-Target vorhanden und Ringbuffer klein. Historische Tiefe kann dadurch fehlen.
 
-**Danach:** Target Runtime und tatsächliche Events lesen. [Detailbeschreibung](06_Extended_Events.md#1-monitorusp_extendedeventssessions)
+**Nächster Schritt:** Lesen Sie Target Runtime und tatsächliche Events. [Detailbeschreibung](06_Extended_Events.md#1-monitorusp_extendedeventssessions)
 
 ## [monitor].[USP_ExtendedEventsReadEvents]
 
-**So lesen:** Quelle, Zeitfenster, Eventname, Dateireihenfolge und XML-/Payloadverfügbarkeit prüfen.
+**Auswertung:** Prüfen Sie Quelle, Zeitfenster, Eventname, Dateireihenfolge und XML- beziehungsweise Payloadverfügbarkeit.
 
 **Warum problematisch:** Fehlende Events können durch Rollover, Retention, falschen Pfad oder nicht aktive Session entstehen – nicht nur dadurch, dass das Ereignis nie auftrat.
 
@@ -597,11 +597,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Keine Events im Ringbuffer nach Restart sagt nichts über die Zeit davor. Eventdateien können dagegen ältere Historie enthalten.
 
-**Danach:** Session-/Targetstatus und externe Datei-Retention prüfen. [Detailbeschreibung](06_Extended_Events.md#2-monitorusp_extendedeventsreadevents)
+**Nächster Schritt:** Prüfen Sie Session-/Targetstatus und externe Datei-Retention. [Detailbeschreibung](06_Extended_Events.md#2-monitorusp_extendedeventsreadevents)
 
 ## [monitor].[USP_ExtendedEventsDeadlocks]
 
-**So lesen:** Opfer, Prozesse, Ressourcen und Kanten des Deadlockgraphs gemeinsam lesen. Nicht nur die Opferquery betrachten.
+**Auswertung:** Berücksichtigen Sie Opfer, Prozesse, Ressourcen und Kanten des Deadlockgraphs gemeinsam. Betrachten Sie nicht nur die Opferquery.
 
 **Warum problematisch:** Ein Deadlock ist zyklisches Warten; mindestens eine Transaktion muss abgebrochen werden. Wiederholung verursacht Fehler, Rollbacks und Durchsatzverlust.
 
@@ -609,11 +609,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zwei Sessions sperren dieselben Tabellen in umgekehrter Reihenfolge. Die Lösung liegt häufig in konsistenter Zugriffsreihenfolge, nicht im Opferprozess.
 
-**Danach:** beteiligte Statements, Indizes, Isolation und Transaktionsreihenfolge prüfen. [Detailbeschreibung](06_Extended_Events.md#3-monitorusp_extendedeventsdeadlocks)
+**Nächster Schritt:** Prüfen Sie beteiligte Statements, Indizes, Isolation und Transaktionsreihenfolge. [Detailbeschreibung](06_Extended_Events.md#3-monitorusp_extendedeventsdeadlocks)
 
 ## [monitor].[USP_ExtendedEventsBlockedProcesses]
 
-**So lesen:** Blockeddauer, Blocker/Blocked-Statements, Ressource und Wiederholungen über Zeit vergleichen.
+**Auswertung:** Vergleichen Sie Blockeddauer, Blocker- und Blocked-Statements, Ressource und zeitliche Wiederholungen.
 
 **Warum problematisch:** Wiederholte Reports derselben Kette zeigen persistierendes Blocking und nicht nur einen kurzen Snapshot.
 
@@ -621,11 +621,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Alle fünf Sekunden derselbe Root Blocker über zwei Minuten ist starke Evidenz; ein einzelner Report ohne Wiederholung deutlich schwächer.
 
-**Danach:** Live mit Current Blocking/Transactions korrelieren. [Detailbeschreibung](06_Extended_Events.md#4-monitorusp_extendedeventsblockedprocesses)
+**Nächster Schritt:** Korrelieren Sie Live mit Current Blocking/Transactions. [Detailbeschreibung](06_Extended_Events.md#4-monitorusp_extendedeventsblockedprocesses)
 
 ## [monitor].[USP_ExtendedEventsTargetRuntime]
 
-**So lesen:** Targettyp, Laufzeitstatus, Dateipfad, Speicher-/Eventanzahl, Dropped Events und optional Targetdata prüfen.
+**Auswertung:** Prüfen Sie Targettyp, Laufzeitstatus, Dateipfad, Speicher- und Eventanzahl, Dropped Events sowie optional die Targetdaten.
 
 **Warum problematisch:** Dropped Events oder volles/kleines Target bedeuten Evidenzverlust. Ein Flush kann I/O und Zielzustand beeinflussen und ist deshalb opt-in.
 
@@ -633,11 +633,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Session läuft, aber Target zeigt viele verlorene Events. Ein leeres Detailresultset kann dann nicht als „kein Problem“ interpretiert werden.
 
-**Danach:** Targetgröße, Eventrate und Event-File-Strategie prüfen. [Detailbeschreibung](06_Extended_Events.md#5-monitorusp_extendedeventstargetruntime)
+**Nächster Schritt:** Prüfen Sie Targetgröße, Eventrate und Event-File-Strategie. [Detailbeschreibung](06_Extended_Events.md#5-monitorusp_extendedeventstargetruntime)
 
 ## [monitor].[USP_ExtendedEventsAnalysis]
 
-**So lesen:** Erst Inventar und Targetstatus, dann Ereignis- oder Spezialparser. Childstatus beachten.
+**Auswertung:** Prüfen Sie zuerst Inventar und Targetstatus und danach den Ereignis- oder Spezialparser. Beachten Sie dabei den Childstatus.
 
 **Warum problematisch:** Deadlock-/Blockinganalyse ohne verlässliche Quelle kann falsche Entwarnung liefern.
 
@@ -645,13 +645,13 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Inventar zeigt Session gestoppt; Deadlockresultset leer. Die korrekte Schlussfolgerung ist „keine Evidenz erfasst“, nicht „keine Deadlocks“.
 
-**Danach:** Session/Target korrigieren oder vorhandene Eventdateien gezielt lesen. [Detailbeschreibung](06_Extended_Events.md#6-monitorusp_extendedeventsanalysis)
+**Nächster Schritt:** Korrigieren Sie Session oder Target oder lesen Sie vorhandene Eventdateien gezielt. [Detailbeschreibung](06_Extended_Events.md#6-monitorusp_extendedeventsanalysis)
 
 # 9. Infrastruktur
 
 ## [monitor].[USP_AgentStatus]
 
-**So lesen:** Plattformunterstützung, Dienststatus, Startmodus und Agentkonfiguration unterscheiden.
+**Auswertung:** Unterscheiden Sie Plattformunterstützung, Dienststatus, Startmodus und Agentkonfiguration.
 
 **Warum problematisch:** Gestoppter Agent verhindert geplante Jobs, Backups, Wartung und Alerts.
 
@@ -659,11 +659,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Agent gestoppt auf einer Instanz mit geplanten Logbackups ist kritisch; auf einer bewusst agentlosen Plattform nicht.
 
-**Danach:** Jobs und alternative Scheduler prüfen. [Detailbeschreibung](07_Infrastructure.md#1-monitorusp_agentstatus)
+**Nächster Schritt:** Prüfen Sie Jobs und alternative Scheduler. [Detailbeschreibung](07_Infrastructure.md#1-monitorusp_agentstatus)
 
 ## [monitor].[USP_AgentJobs]
 
-**So lesen:** Enabled, aktueller Laufstatus, letzter Outcome, Dauer, nächste Ausführung und Schrittfehler gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Enabled, aktuellen Laufstatus, letzten Outcome, Dauer, nächste Ausführung und Schrittfehler gemeinsam.
 
 **Warum problematisch:** Wiederholte Fehler oder deutlich längere Laufzeiten können Backups, ETL und Wartungsfenster gefährden.
 
@@ -671,11 +671,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Job läuft 90 Minuten, historischer Normalwert 20 Minuten und blockiert Folgeschritte: echte Abweichung. Ein monatlicher Full Backup mit 90 Minuten Normalwert nicht.
 
-**Danach:** Schrittoutput, Blocking, I/O und Historie prüfen. [Detailbeschreibung](07_Infrastructure.md#2-monitorusp_agentjobs)
+**Nächster Schritt:** Prüfen Sie Schrittoutput, Blocking, I/O und Historie. [Detailbeschreibung](07_Infrastructure.md#2-monitorusp_agentjobs)
 
 ## [monitor].[USP_ResourceGovernorAnalysis]
 
-**So lesen:** Poollimits, Workload-Group-Limits, aktuelle Nutzung und zugeordnete Sessions vergleichen.
+**Auswertung:** Vergleichen Sie Poollimits, Workload-Group-Limits, aktuelle Nutzung und zugeordnete Sessions.
 
 **Warum problematisch:** CPU-, Memory- oder Parallelitätslimits können Requests absichtlich drosseln oder Grants begrenzen.
 
@@ -683,11 +683,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Query ist langsam, aber ihrer Gruppe ist nur 20 % CPU zugewiesen. Das ist nicht zwingend ein schlechter Plan, sondern möglicherweise Policywirkung.
 
-**Danach:** Sessionzuordnung, Classifier und SLA prüfen. [Detailbeschreibung](07_Infrastructure.md#3-monitorusp_resourcegovernoranalysis)
+**Nächster Schritt:** Prüfen Sie Sessionzuordnung, Classifier und SLA. [Detailbeschreibung](07_Infrastructure.md#3-monitorusp_resourcegovernoranalysis)
 
 ## [monitor].[USP_AvailabilityGroups]
 
-**So lesen:** Replica-Rolle, Connected/Synchronization State, Health, Failover Mode, Availability Mode und Routing zusammen lesen.
+**Auswertung:** Berücksichtigen Sie Replica-Rolle, Connected State, Synchronization State, Health, Failover Mode, Availability Mode und Routing gemeinsam.
 
 **Warum problematisch:** Disconnected oder not synchronizing kann Datenverlust- oder Failoverrisiko erhöhen; fehlerhaftes Routing kann Read-Only-Workload falsch lenken.
 
@@ -695,11 +695,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** `ASYNCHRONOUS_COMMIT` mit 30 Sekunden Lag kann policykonform sein. Derselbe Lag bei synchroner HA-Replica vor geplantem Failover ist kritisch.
 
-**Danach:** `USP_AvailabilityDeepAnalysis`. [Detailbeschreibung](07_Infrastructure.md#4-monitorusp_availabilitygroups)
+**Nächster Schritt:** Prüfen Sie `USP_AvailabilityDeepAnalysis`. [Detailbeschreibung](07_Infrastructure.md#4-monitorusp_availabilitygroups)
 
 ## [monitor].[USP_BackupRecovery]
 
-**So lesen:** Recovery Model, Alter von Full/Diff/Log, letzte erfolgreiche Sicherung, Copy-only und Restorehistorie gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Recovery Model, Alter der Full-, Differential- und Log-Sicherungen, letzte erfolgreiche Sicherung, Copy-only und Restorehistorie gemeinsam.
 
 **Warum problematisch:** Fehlende oder alte Logbackups vergrößern möglichen Datenverlust und können Log-Wiederverwendung verhindern.
 
@@ -707,11 +707,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** FULL Recovery + letztes Logbackup vor sechs Stunden bei 30-Minuten-RPO ist kritisch. SIMPLE Recovery + kein Logbackup ist erwartbar.
 
-**Danach:** Backup Chain und realen Restore-Test prüfen. [Detailbeschreibung](07_Infrastructure.md#5-monitorusp_backuprecovery)
+**Nächster Schritt:** Prüfen Sie Backup Chain und realen Restore-Test. [Detailbeschreibung](07_Infrastructure.md#5-monitorusp_backuprecovery)
 
 ## [monitor].[USP_LogShippingStatus]
 
-**So lesen:** Backup-, Copy- und Restorezeit, Schwellenstatus, Sekundärmodus und Metadatenverfügbarkeit vergleichen.
+**Auswertung:** Vergleichen Sie Backup-, Copy- und Restorezeit, Schwellenstatus, Sekundärmodus und Metadatenverfügbarkeit.
 
 **Warum problematisch:** Wachsende Differenz zwischen Backup, Copy und Restore zeigt, an welcher Stufe die Pipeline zurückfällt.
 
@@ -719,11 +719,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Backups aktuell, Copy 90 Minuten zurück, Restore ebenfalls zurück: Transportpfad ist wahrscheinlicher als Backupjob.
 
-**Danach:** Jobhistorie, Netzwerk, Share und Sekundärstatus prüfen. [Detailbeschreibung](07_Infrastructure.md#6-monitorusp_logshippingstatus)
+**Nächster Schritt:** Prüfen Sie Jobhistorie, Netzwerk, Share und Sekundärstatus. [Detailbeschreibung](07_Infrastructure.md#6-monitorusp_logshippingstatus)
 
 ## [monitor].[USP_ReplicationStatus]
 
-**So lesen:** Publikation/Subscription, Agentstatus, letzte Aktion, Latenz, Pending Commands und Fehler zusammen lesen.
+**Auswertung:** Berücksichtigen Sie Publikation, Subscription, Agentstatus, letzte Aktion, Latenz, Pending Commands und Fehler gemeinsam.
 
 **Warum problematisch:** Wachsender Backlog bedeutet, dass Änderungen schneller entstehen als verteilt werden oder ein Agent blockiert ist.
 
@@ -731,11 +731,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Pending Commands steigen in drei Messungen kontinuierlich und Latenz wächst: systematischer Rückstand. Ein einmaliger Peak mit anschließendem Abbau nicht.
 
-**Danach:** Agentjob, Distributor, Blocking und Netzwerk prüfen. [Detailbeschreibung](07_Infrastructure.md#7-monitorusp_replicationstatus)
+**Nächster Schritt:** Prüfen Sie Agentjob, Distributor, Blocking und Netzwerk. [Detailbeschreibung](07_Infrastructure.md#7-monitorusp_replicationstatus)
 
 ## [monitor].[USP_DataCaptureStatus]
 
-**So lesen:** Feature aktiviert, Capture-/Cleanup-Jobstatus, Retention und Datenbankzustand unterscheiden.
+**Auswertung:** Unterscheiden Sie Featureaktivierung, Status der Capture- und Cleanup-Jobs, Retention und Datenbankzustand.
 
 **Warum problematisch:** Aktiviertes CDC ohne laufenden Capturejob erzeugt wachsenden Log- und Datenrückstand; Cleanupfehler vergrößern Tabellen.
 
@@ -743,11 +743,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** CDC enabled + Capturejob disabled ist ein konkreter Fehlerzustand. CDC disabled allein nicht.
 
-**Danach:** Agentjobs, Logstatus und Featurekonfiguration prüfen. [Detailbeschreibung](07_Infrastructure.md#8-monitorusp_datacapturestatus)
+**Nächster Schritt:** Prüfen Sie Agentjobs, Logstatus und Featurekonfiguration. [Detailbeschreibung](07_Infrastructure.md#8-monitorusp_datacapturestatus)
 
 ## [monitor].[USP_InfrastructureAnalysis]
 
-**So lesen:** Childstatus zuerst, danach nur relevante Infrastrukturmodule. Verfügbarkeit und Featureeinsatz unterscheiden.
+**Auswertung:** Prüfen Sie zuerst den Childstatus und danach nur die relevanten Infrastrukturmodule. Unterscheiden Sie Verfügbarkeit und Featureeinsatz.
 
 **Warum problematisch:** Ein leeres Child kann durch nicht verwendetes Feature oder durch fehlende Rechte entstehen; beide Fälle sind fachlich verschieden.
 
@@ -755,11 +755,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Backupchild meldet partiell, AG-Child unavailable feature. Nur der Backupbereich braucht Nacharbeit.
 
-**Danach:** auffälliges Child gezielt aufrufen. [Detailbeschreibung](07_Infrastructure.md#12-monitorusp_infrastructureanalysis)
+**Nächster Schritt:** Rufen Sie auffälliges Child gezielt auf. [Detailbeschreibung](07_Infrastructure.md#12-monitorusp_infrastructureanalysis)
 
 ## [monitor].[USP_BackupChainAnalysis]
 
-**So lesen:** Full-Basis, Differential Base, Log-LSN-Folge, Gap-Status und Restoreevidenz in zeitlicher Reihenfolge lesen.
+**Auswertung:** Berücksichtigen Sie Full-Basis, Differential Base, Log-LSN-Folge, Gap-Status und Restoreevidenz in zeitlicher Reihenfolge.
 
 **Warum problematisch:** Eine unterbrochene LSN-Kette kann Point-in-Time-Restore verhindern. Vorhandene Dateien allein garantieren keine wiederherstellbare Kette.
 
@@ -767,11 +767,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Full vorhanden, viele Logbackups, aber ein fehlendes LSN-Segment: Restore bis zum Ende ist nicht möglich.
 
-**Danach:** Backupmedien und echten Restore testen. [Detailbeschreibung](07_Infrastructure.md#9-monitorusp_backupchainanalysis)
+**Nächster Schritt:** Prüfen Sie die Backupmedien und führen Sie einen tatsächlichen Restore-Test durch. [Detailbeschreibung](07_Infrastructure.md#9-monitorusp_backupchainanalysis)
 
 ## [monitor].[USP_AvailabilityDeepAnalysis]
 
-**So lesen:** Send Queue, Redo Queue, geschätzte Lagzeit, Synchronisierungszustand und Replica-Rolle gemeinsam lesen. Trend ist wichtiger als Einzelwert.
+**Auswertung:** Berücksichtigen Sie Send Queue, Redo Queue, geschätzte Lagzeit, Synchronisierungszustand und Replica-Rolle gemeinsam. Der Trend ist aussagekräftiger als ein Einzelwert.
 
 **Warum problematisch:** Wachsende Send Queue bedeutet Transport-/Primärproblem; wachsende Redo Queue bedeutet Sekundär-Redo kann nicht folgen.
 
@@ -779,11 +779,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Send Queue stabil klein, Redo Queue wächst über mehrere Messungen: Fokus auf Sekundär-I/O/CPU/Redo, nicht Netzwerk.
 
-**Danach:** Performance Counter, Storage, Netzwerk und Cluster prüfen. [Detailbeschreibung](07_Infrastructure.md#10-monitorusp_availabilitydeepanalysis)
+**Nächster Schritt:** Prüfen Sie Performance Counter, Storage, Netzwerk und Cluster. [Detailbeschreibung](07_Infrastructure.md#10-monitorusp_availabilitydeepanalysis)
 
 ## [monitor].[USP_AgentMonitoringAnalysis]
 
-**So lesen:** Jobprobleme, Alert-/Operator-Konfiguration und Database-Mail-Verfügbarkeit getrennt betrachten.
+**Auswertung:** Betrachten Sie Jobprobleme, Alert- und Operator-Konfiguration sowie Database-Mail-Verfügbarkeit getrennt.
 
 **Warum problematisch:** Ein Fehler kann auftreten, aber unbemerkt bleiben, wenn Alert, Operator oder Mailpfad fehlt.
 
@@ -791,37 +791,37 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Kritischer Job schlägt wiederholt fehl, aber kein aktiver Operator ist erreichbar. Das Betriebsrisiko ist höher als der Jobfehler allein.
 
-**Danach:** Agent Jobs, Mailstatus und Monitoringprozess prüfen. [Detailbeschreibung](07_Infrastructure.md#11-monitorusp_agentmonitoringanalysis)
+**Nächster Schritt:** Prüfen Sie Agent Jobs, Mailstatus und Monitoringprozess. [Detailbeschreibung](07_Infrastructure.md#11-monitorusp_agentmonitoringanalysis)
 
 # 10. Server Health
 
 ## [monitor].[USP_ServerCpuTopology]
 
-**So lesen:** logische CPUs, Sockets, Cores, Scheduler, Soft-NUMA und sichtbare CPUs vergleichen.
+**Auswertung:** Vergleichen Sie logische CPUs, Sockets, Cores, Scheduler, Soft-NUMA und sichtbare CPUs.
 
 **Warum problematisch:** Unerwartet offline/hidden Scheduler oder ungewöhnliche Topologie kann Parallelität, Lizenzierung und Lastverteilung beeinflussen.
 
 **Wann nicht problematisch:** Soft-NUMA und bestimmte Schedulerzustände können vom SQL Server absichtlich erzeugt sein.
 
-**Beispiel:** 64 OS-CPUs, aber nur 32 online sichtbar: Lizenz-/Affinity-/Editionkontext prüfen, nicht sofort Hardwarefehler annehmen.
+**Beispiel:** Wenn von 64 OS-CPUs nur 32 online sichtbar sind, müssen Lizenz-, Affinity- und Editionskontext geprüft werden. Ein Hardwarefehler darf daraus nicht unmittelbar abgeleitet werden.
 
-**Danach:** NUMA, Konfiguration und Betriebssystem prüfen. [Detailbeschreibung](08_Server_Health.md#1-monitorusp_servercputopology)
+**Nächster Schritt:** Prüfen Sie NUMA, Konfiguration und Betriebssystem. [Detailbeschreibung](08_Server_Health.md#1-monitorusp_servercputopology)
 
 ## [monitor].[USP_ServerNuma]
 
-**So lesen:** Scheduler pro Node, Online-/Idle-Zustand, Memory Node und Foreign Memory vergleichen.
+**Auswertung:** Vergleichen Sie Scheduler pro Node, Online- und Idle-Zustand, Memory Node sowie Foreign Memory.
 
 **Warum problematisch:** Stark unausgewogene Scheduler- oder Memoryverteilung kann lokale Engpässe und Remote-Memory-Zugriffe begünstigen.
 
 **Wann nicht problematisch:** Unterschiedliche Momentanlast je Node ist normal; persistente Asymmetrie ist relevanter.
 
-**Beispiel:** Ein Node dauerhaft voll ausgelastet, anderer nahezu idle und Sessions konzentriert: Affinity, Verbindungslast und Soft-NUMA prüfen.
+**Beispiel:** Wenn ein Node dauerhaft voll ausgelastet ist, ein anderer nahezu idle bleibt und Sessions konzentriert sind, müssen Affinity, Verbindungslast und Soft-NUMA geprüft werden.
 
-**Danach:** CPU, Schedulerwaits und Konfiguration korrelieren. [Detailbeschreibung](08_Server_Health.md#2-monitorusp_servernuma)
+**Nächster Schritt:** Korrelieren Sie CPU, Schedulerwaits und Konfiguration. [Detailbeschreibung](08_Server_Health.md#2-monitorusp_servernuma)
 
 ## [monitor].[USP_ServerMemory]
 
-**So lesen:** OS Available Memory, SQL Process Memory, Target/Total Server Memory, Memory Pressure und größte Clerks gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie OS Available Memory, SQL Process Memory, Target und Total Server Memory, Memory Pressure und die größten Clerks gemeinsam.
 
 **Warum problematisch:** OS- und SQL-Druck gleichzeitig kann Paging, Cacheverdrängung und Grantknappheit verursachen.
 
@@ -829,11 +829,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Total≈Target allein ist gesund. Total≈Target + OS kaum frei + Process Physical Memory Low + Grantwaits ist problematisch.
 
-**Danach:** Memory Grants, Buffer Pool und max server memory prüfen. [Detailbeschreibung](08_Server_Health.md#3-monitorusp_servermemory)
+**Nächster Schritt:** Prüfen Sie Memory Grants, Buffer Pool und max server memory. [Detailbeschreibung](08_Server_Health.md#3-monitorusp_servermemory)
 
 ## [monitor].[USP_TempDBConfiguration]
 
-**So lesen:** Dateianzahl, Größen-/Growth-Gleichheit, Autogrowth-Einheit, Platz, VLF und Version Store prüfen.
+**Auswertung:** Prüfen Sie Dateianzahl, Gleichheit von Größe und Growth, Autogrowth-Einheit, verfügbaren Platz, VLF und Version Store.
 
 **Warum problematisch:** Ungleich große Datenfiles können proportional unterschiedlich genutzt werden; kleine Growthschritte verursachen viele Wachstumsereignisse.
 
@@ -841,23 +841,23 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Acht Dateien sind kein Selbstzweck. Vier gleich große Dateien ohne Contention können besser sein als acht stark ungleiche.
 
-**Danach:** Current TempDB, Contention und Filegrowth-Historie. [Detailbeschreibung](08_Server_Health.md#4-monitorusp_tempdbconfiguration)
+**Nächster Schritt:** Prüfen Sie Current TempDB, Contention und Filegrowth-Historie. [Detailbeschreibung](08_Server_Health.md#4-monitorusp_tempdbconfiguration)
 
 ## [monitor].[USP_ServerConfiguration]
 
-**So lesen:** Configured Value, Run Value, Dynamic/Advanced-Status und Beschreibung vergleichen.
+**Auswertung:** Vergleichen Sie Configured Value, Run Value, Dynamic- und Advanced-Status sowie Beschreibung.
 
 **Warum problematisch:** Abweichende Run Values können pending restart/reconfigure anzeigen; extreme Werte können Ressourcen falsch begrenzen.
 
 **Wann nicht problematisch:** Nicht jeder vom Default abweichende Wert ist falsch – viele produktive Systeme benötigen bewusste Anpassungen.
 
-**Beispiel:** `max server memory` niedrig bei großer Instanz kann absichtlich für andere Dienste reserviert sein. Erst OS- und Workloadkontext prüfen.
+**Beispiel:** Ein niedriger Wert für `max server memory` kann bei einer großen Instanz absichtlich Speicher für andere Dienste reservieren. Prüfen Sie zuerst den Betriebssystem- und Workloadkontext.
 
-**Danach:** Memory, CPU, TempDB oder konkrete Featureanalyse. [Detailbeschreibung](08_Server_Health.md#5-monitorusp_serverconfiguration)
+**Nächster Schritt:** Prüfen Sie Memory, CPU, TempDB oder konkrete Featureanalyse. [Detailbeschreibung](08_Server_Health.md#5-monitorusp_serverconfiguration)
 
 ## [monitor].[USP_TraceFlags]
 
-**So lesen:** Flagnummer, global/session scope, Status und versionsabhängige Bedeutung prüfen.
+**Auswertung:** Prüfen Sie Flagnummer, globalen beziehungsweise sessionbezogenen Scope, Status und versionsabhängige Bedeutung.
 
 **Warum problematisch:** Undokumentierte oder veraltete Flags können Optimizer-/Engineverhalten unerwartet verändern.
 
@@ -865,11 +865,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Aktives altes Kompatibilitäts-Flag nach Upgrade kann neue Standardverbesserungen überdecken.
 
-**Danach:** Startup Parameters, Microsoft-Dokumentation und Changehistorie prüfen. [Detailbeschreibung](08_Server_Health.md#6-monitorusp_traceflags)
+**Nächster Schritt:** Prüfen Sie Startup Parameters, Microsoft-Dokumentation und Changehistorie. [Detailbeschreibung](08_Server_Health.md#6-monitorusp_traceflags)
 
 ## [monitor].[USP_StartupParameters]
 
-**So lesen:** Parameterart, Pfade, Trace Flags und Startoptionen prüfen.
+**Auswertung:** Prüfen Sie Parameterart, Pfade, Trace Flags und Startoptionen.
 
 **Warum problematisch:** Falsche Master-/Errorlog-/Startpfade oder unerwartete Flags können Start und Verhalten beeinflussen.
 
@@ -877,11 +877,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Trace Flag nur als Startup-Parameter erklärt, warum es nach jedem Neustart wieder aktiv ist.
 
-**Danach:** Trace Flags, Dateisystem und Dienstkonfiguration prüfen. [Detailbeschreibung](08_Server_Health.md#7-monitorusp_startupparameters)
+**Nächster Schritt:** Prüfen Sie Trace Flags, Dateisystem und Dienstkonfiguration. [Detailbeschreibung](08_Server_Health.md#7-monitorusp_startupparameters)
 
 ## [monitor].[USP_OSInformation]
 
-**So lesen:** OS-Version, Virtualisierung, Speicher, Zeit, Uptime und Plattformgrenzen zusammen lesen.
+**Auswertung:** Berücksichtigen Sie OS-Version, Virtualisierung, Speicher, Zeit, Uptime und Plattformgrenzen gemeinsam.
 
 **Warum problematisch:** Sehr geringe Uptime erklärt resetete DMVs; Zeitabweichungen erschweren Korrelation; Memory-/Virtualisierungsgrenzen beeinflussen SQL.
 
@@ -889,11 +889,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Index Usage zeigt 0 Reads, OS Uptime zwei Stunden. Die Beobachtung ist zu kurz für eine Löschungsentscheidung.
 
-**Danach:** CPU, Memory, I/O und Hypervisor-/OS-Monitoring. [Detailbeschreibung](08_Server_Health.md#8-monitorusp_osinformation)
+**Nächster Schritt:** Prüfen Sie CPU, Memory, I/O und Hypervisor-/OS-Monitoring. [Detailbeschreibung](08_Server_Health.md#8-monitorusp_osinformation)
 
 ## [monitor].[USP_ServerSecurityConfiguration]
 
-**So lesen:** Jede Konfiguration mit Scope, aktuellem Wert, Exposition und EvidenceLimit lesen.
+**Auswertung:** Berücksichtigen Sie jede Konfiguration zusammen mit Scope, aktuellem Wert, Exposition und EvidenceLimit.
 
 **Warum problematisch:** Unsichere Optionen können Angriffsfläche oder unerwünschte Rechtepfade eröffnen.
 
@@ -901,11 +901,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** `xp_cmdshell` aktiviert ist ein Reviewbefund, aber die reale Gefährdung hängt von Berechtigungen, Nutzung und Kompensationskontrollen ab.
 
-**Danach:** Berechtigungen, Audit und Sicherheitskonzept prüfen. [Detailbeschreibung](08_Server_Health.md#9-monitorusp_serversecurityconfiguration)
+**Nächster Schritt:** Prüfen Sie Berechtigungen, Audit und Sicherheitskonzept. [Detailbeschreibung](08_Server_Health.md#9-monitorusp_serversecurityconfiguration)
 
 ## [monitor].[USP_ServerHealthAnalysis]
 
-**So lesen:** Childstatus zuerst und Symptome familienweise lesen. Keine Summenzeile als vollständige Gesundheitsgarantie interpretieren.
+**Auswertung:** Prüfen Sie zuerst den Childstatus und danach die Symptome je Familie. Interpretieren Sie keine Summenzeile als vollständigen Nachweis eines fehlerfreien Zustands.
 
 **Warum problematisch:** Ein Child kann partiell sein; ein anderer Child kann nur Konfiguration, nicht aktuelle Auswirkung zeigen.
 
@@ -913,11 +913,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Memorykonfiguration auffällig, aber aktuelle Memorywerte normal. Das ist ein Review, kein akuter Incident.
 
-**Danach:** entsprechendes Child fokussiert aufrufen. [Detailbeschreibung](08_Server_Health.md#10-monitorusp_serverhealthanalysis)
+**Nächster Schritt:** Rufen Sie das entsprechende Child mit einem fokussierten Scope auf. [Detailbeschreibung](08_Server_Health.md#10-monitorusp_serverhealthanalysis)
 
 ## [monitor].[USP_DatabaseIntegrityAnalysis]
 
-**So lesen:** Datenbankstatus, PAGE_VERIFY, CHECKDB-Alter, Suspect Pages, beschädigte Backups und HADR-Reparaturen gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Datenbankstatus, PAGE_VERIFY, CHECKDB-Alter, Suspect Pages, beschädigte Backups und HADR-Reparaturen gemeinsam.
 
 **Warum problematisch:** Suspect Pages oder beschädigte Backup-Evidenz weisen auf mögliche physische/inhaltliche Schäden hin. Pending HADR-Reparatur zeigt ungelösten Zustand.
 
@@ -925,23 +925,23 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** `SuspectPageCount=0` bedeutet nur, dass diese Quelle nichts meldet. `SuspectPageCount=3` ist dagegen konkrete negative Evidenz und muss eskaliert werden.
 
-**Danach:** Page Details, CHECKDB-Strategie, Backup Chain und Restore-Test. [Detailbeschreibung](08_Server_Health.md#11-monitorusp_databaseintegrityanalysis)
+**Nächster Schritt:** Prüfen Sie Page Details, CHECKDB-Strategie, Backup Chain und Restore-Test. [Detailbeschreibung](08_Server_Health.md#11-monitorusp_databaseintegrityanalysis)
 
 ## [monitor].[USP_DatabaseCapacityAnalysis]
 
-**So lesen:** Dateigröße, belegt/frei, Volume Free, Growthsetting, MaxSize und Wachstumsspielraum gemeinsam lesen.
+**Auswertung:** Berücksichtigen Sie Dateigröße, belegten und freien Speicher, Volume Free, Growthsetting, MaxSize und Wachstumsspielraum gemeinsam.
 
 **Warum problematisch:** Kleine freie Fläche + kleine häufige Autogrowths kann zu Pausen und Fragmentierung führen; MaxSize oder volles Volume kann Wachstum vollständig verhindern.
 
 **Wann nicht problematisch:** Niedriger Prozentwert bei sehr großem absoluten freien Speicher kann ausreichend sein; hoher Prozentwert bei winziger Disk dagegen nicht.
 
-**Beispiel:** 5 % frei von 20 TB sind 1 TB und eventuell ausreichend. 20 % frei von 10 GB sind nur 2 GB. Prozent und absolute Menge gemeinsam lesen.
+**Beispiel:** 5 % freier Speicher von 20 TB entsprechen 1 TB und können ausreichend sein. 20 % freier Speicher von 10 GB entsprechen dagegen nur 2 GB. Berücksichtigen Sie den Prozentwert und die absolute Menge gemeinsam.
 
-**Danach:** Wachstumstrend, Backup-/Logstatus und Storagekapazität prüfen. [Detailbeschreibung](08_Server_Health.md#12-monitorusp_databasecapacityanalysis)
+**Nächster Schritt:** Prüfen Sie Wachstumstrend, Backup-/Logstatus und Storagekapazität. [Detailbeschreibung](08_Server_Health.md#12-monitorusp_databasecapacityanalysis)
 
 ## [monitor].[USP_PerformanceCounters]
 
-**So lesen:** Countertyp und Normalisierung beachten. Bei Rate-/Fraction-Countern Samplewerte statt Rohwert verwenden.
+**Auswertung:** Beachten Sie Countertyp und Normalisierung. Verwenden Sie bei Rate- und Fraction-Countern Samplewerte anstelle des Rohwerts.
 
 **Warum problematisch:** Rohcounter ohne Typ können völlig falsch interpretiert werden. Delta und Base sind für manche Counter zwingend.
 
@@ -949,11 +949,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Page Life Expectancy hat keine universelle feste Grenze. Ein abrupter Einbruch zusammen mit Memory Pressure und I/O ist relevanter als ein einzelner Wert unter einer alten Faustregel.
 
-**Danach:** Server Memory, I/O, Workload und Baseline prüfen. [Detailbeschreibung](08_Server_Health.md#13-monitorusp_performancecounters)
+**Nächster Schritt:** Prüfen Sie Server Memory, I/O, Workload und Baseline. [Detailbeschreibung](08_Server_Health.md#13-monitorusp_performancecounters)
 
 ## [monitor].[USP_CriticalEngineEvents]
 
-**So lesen:** Eventtyp, Severity, Zeit, Quelle und Wiederholung vergleichen. XML/Details nur gezielt aktivieren.
+**Auswertung:** Vergleichen Sie Eventtyp, Severity, Zeit, Quelle und Wiederholung. Aktivieren Sie XML und Details nur gezielt.
 
 **Warum problematisch:** Schwere Fehler, Schedulerprobleme oder Dumps können Engine-, Hardware- oder I/O-Risiken anzeigen.
 
@@ -961,11 +961,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Severity-20+-Fehler mehrfach in kurzer Zeit plus suspect pages ist deutlich kritischer als ein einzelnes altes Ereignis ohne Wiederholung.
 
-**Danach:** Error Log, system_health, Integrität und Infrastruktur prüfen. [Detailbeschreibung](08_Server_Health.md#14-monitorusp_criticalengineevents)
+**Nächster Schritt:** Prüfen Sie Error Log, system_health, Integrität und Infrastruktur. [Detailbeschreibung](08_Server_Health.md#14-monitorusp_criticalengineevents)
 
 ## [monitor].[USP_InternalContentionAnalysis]
 
-**So lesen:** Delta über Sample, Spin-/Latchklasse, Waitdauer, Hot Page und Wiederholung betrachten.
+**Auswertung:** Betrachten Sie Delta über Sample, Spin- und Latchklasse, Waitdauer, Hot Page und Wiederholung.
 
 **Warum problematisch:** Hohe interne Synchronisationswartezeiten können CPU-Durchsatz begrenzen, obwohl einzelne Queries unauffällig wirken.
 
@@ -973,11 +973,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Hot Page erscheint in mehreren Samples mit wachsender Waitzeit: belastbare Contention. Ein einmaliger kleiner Peak nicht.
 
-**Danach:** Page Details, TempDB/Indexdesign, Insertmuster und aktuelle Requests. [Detailbeschreibung](08_Server_Health.md#15-monitorusp_internalcontentionanalysis)
+**Nächster Schritt:** Prüfen Sie Page Details, TempDB/Indexdesign, Insertmuster und aktuelle Requests. [Detailbeschreibung](08_Server_Health.md#15-monitorusp_internalcontentionanalysis)
 
 ## [monitor].[USP_BufferPoolAnalysis]
 
-**So lesen:** Gesamtbuffer, Clerks, Datenbankverteilung, Dirty/Clean Pages und Memory Pressure zusammen lesen.
+**Auswertung:** Berücksichtigen Sie Gesamtbuffer, Clerks, Datenbankverteilung, Dirty und Clean Pages sowie Memory Pressure gemeinsam.
 
 **Warum problematisch:** Ungewöhnliche Verteilung oder dominanter Clerk kann Speicher verdrängen; Dirty Pages können Checkpoint-/I/O-Druck anzeigen.
 
@@ -985,11 +985,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 80 % Buffer für ExampleDatabase ist nicht automatisch schlecht. Problematisch wird es, wenn andere aktive Datenbanken ständig physisch lesen und Memory Pressure besteht.
 
-**Danach:** Server Memory, I/O, Query Reads und Workloadanteil prüfen. [Detailbeschreibung](08_Server_Health.md#16-monitorusp_bufferpoolanalysis)
+**Nächster Schritt:** Prüfen Sie Server Memory, I/O, Query Reads und Workloadanteil. [Detailbeschreibung](08_Server_Health.md#16-monitorusp_bufferpoolanalysis)
 
 ## [monitor].[USP_DiagnosticFindings]
 
-**So lesen:** Severity und Confidence zusammen mit SourceModule, Evidence, EvidenceLimit und Modulstatus lesen.
+**Auswertung:** Berücksichtigen Sie Severity und Confidence zusammen mit SourceModule, Evidence, EvidenceLimit und Modulstatus.
 
 **Warum problematisch:** HIGH/HIGH bedeutet starke priorisierte Evidenz. HIGH/LOW bedeutet dringende Verifikation, aber noch keine bestätigte Ursache.
 
@@ -997,13 +997,13 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Leeres Findingsresultset + Integritätsmodul `PERMISSION_DENIED` ist keine Entwarnung. `SUSPECT_PAGE_EVIDENCE_PRESENT`, HIGH/HIGH dagegen sofortige Eskalation.
 
-**Danach:** Immer zum `SourceModule` wechseln und Detailresultsets lesen. [Detailbeschreibung](08_Server_Health.md#17-monitorusp_diagnosticfindings)
+**Nächster Schritt:** Wechseln Sie immer zum angegebenen `SourceModule` und lesen Sie dessen Detailresultsets. [Detailbeschreibung](08_Server_Health.md#17-monitorusp_diagnosticfindings)
 
 # 11. Versionsadaptive Spezialanalysen
 
 ## [monitor].[USP_ServerFeatureCapabilities]
 
-**So lesen:** Serverversion/Edition/Plattform, Datenbank-Compatibility und einzelne Featurefähigkeit unterscheiden.
+**Auswertung:** Unterscheiden Sie Serverversion, Edition, Plattform, Datenbank-Compatibility und die jeweilige Featurefähigkeit.
 
 **Warum problematisch:** Codepfade können auf einer Version vorhanden, aber auf Plattform/Edition oder in einer Datenbank nicht nutzbar sein.
 
@@ -1011,11 +1011,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** SQL Server 2025 installiert, aber Compatibility 160: bestimmte 170-Features sind für diese Datenbank noch nicht aktivierbar.
 
-**Danach:** konkretes Spezialmodul nur für geeignete Scopes ausführen. [Detailbeschreibung](09_Version_Adaptive.md#1-monitorusp_serverfeaturecapabilities)
+**Nächster Schritt:** Führen Sie das konkrete Spezialmodul nur für geeignete Scopes aus. [Detailbeschreibung](09_Version_Adaptive.md#1-monitorusp_serverfeaturecapabilities)
 
 ## [monitor].[USP_SpecialFeatureInventory]
 
-**So lesen:** FeatureCode, Erkennungsstatus, Nutzungsumfang, empfohlene Tiefenanalyse und EvidenceLimit lesen.
+**Auswertung:** Berücksichtigen Sie FeatureCode, Erkennungsstatus, Nutzungsumfang, empfohlene Tiefenanalyse und EvidenceLimit.
 
 **Warum problematisch:** Ein erkanntes Spezialfeature benötigt eigene Betriebs-, Backup-, Kapazitäts- und Performancebetrachtung, die Standardanalysen nicht vollständig abdecken.
 
@@ -1023,11 +1023,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Temporal Tables erkannt bedeutet nicht, dass Retention falsch ist; es bedeutet, dass `USP_TemporalAnalysis` sinnvoll wird.
 
-**Danach:** empfohlenes Deep-Dive-Modul. [Detailbeschreibung](09_Version_Adaptive.md#2-monitorusp_specialfeatureinventory)
+**Nächster Schritt:** Prüfen Sie das empfohlene Deep-Dive-Modul. [Detailbeschreibung](09_Version_Adaptive.md#2-monitorusp_specialfeatureinventory)
 
 ## [monitor].[USP_InMemoryOltpAnalysis]
 
-**So lesen:** Tabellenmemory, Hash-Buckets/Chainlängen, Checkpointfiles, aktive Transaktionen und Resource Pool zusammen lesen.
+**Auswertung:** Berücksichtigen Sie Tabellenmemory, Hash-Buckets, Chainlängen, Checkpointfiles, aktive Transaktionen und Resource Pool gemeinsam.
 
 **Warum problematisch:** Lange Hashketten verursachen mehr Vergleiche; wartende Checkpointdaten oder hohe Poolauslastung können Speicher-/Persistenzdruck anzeigen.
 
@@ -1035,11 +1035,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Avg Chain 20, Max 500 und kaum leere Buckets bei vielen Equality Lookups spricht für zu kleine Bucketzahl. Dieselben Werte bei nicht verwendetem Hashindex haben geringere Auswirkung.
 
-**Danach:** Workload, Indexart, Bucketdimensionierung, Pool und Checkpoints prüfen. [Detailbeschreibung](09_Version_Adaptive.md#3-monitorusp_inmemoryoltpanalysis)
+**Nächster Schritt:** Prüfen Sie Workload, Indexart, Bucketdimensionierung, Pool und Checkpoints. [Detailbeschreibung](09_Version_Adaptive.md#3-monitorusp_inmemoryoltpanalysis)
 
 ## [monitor].[USP_TemporalAnalysis]
 
-**So lesen:** Current-/History-Zuordnung, Historygröße, Retention, Konsistenzstatus, Indexierung und Wachstum vergleichen.
+**Auswertung:** Vergleichen Sie Current- und History-Zuordnung, Historygröße, Retention, Konsistenzstatus, Indexierung und Wachstum.
 
 **Warum problematisch:** Unbegrenzte oder nicht funktionierende Retention kann Historytabellen stark wachsen lassen; ungeeignete Indizes verteuern Zeitabfragen und Cleanup.
 
@@ -1047,11 +1047,11 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** History wächst monatlich stark, Retention ist konfiguriert, aber Cleanupstatus zeigt keine Wirkung. Das ist ein konkreter Betriebsbefund, nicht nur „große Tabelle“.
 
-**Danach:** Kapazität, Partitionierung, Retentionjob und Abfragepläne prüfen. [Detailbeschreibung](09_Version_Adaptive.md#4-monitorusp_temporalanalysis)
+**Nächster Schritt:** Prüfen Sie Kapazität, Partitionierung, Retentionjob und Abfragepläne. [Detailbeschreibung](09_Version_Adaptive.md#4-monitorusp_temporalanalysis)
 
 ## [monitor].[USP_ServiceBrokerAnalysis]
 
-**So lesen:** Zuerst Datenbank- und Quellenstatus, danach Queue-Schalter und Rückstand, Aktivierungszustand, Transmission-Gruppen und Conversation-Zustände gemeinsam lesen.
+**Auswertung:** Prüfen Sie zuerst den Datenbank- und Quellenstatus. Berücksichtigen Sie danach Queue-Schalter und Rückstand, Aktivierungszustand, Transmission-Gruppen und Conversation-Zustände gemeinsam.
 
 **Warum problematisch:** Deaktiviertes RECEIVE, ausbleibende Aktivierung, alte Transmission-Einträge oder Conversation-Errorzustände können Verarbeitung und Zustellung blockieren.
 
@@ -1059,23 +1059,23 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Eine nichtleere Queue ohne sichtbaren Task ist erst dann ein Aktivierungsbefund, wenn Queue-Monitor und Taskquelle vollständig auswertbar sind. RECEIVE OFF allein beweist keine Poison Message.
 
-**Danach:** Zeitverlauf, Fehlerlog beziehungsweise freigegebene Events, Routing, Endpunkt und Anwendungstransaktionen prüfen. [Detailbeschreibung](09_Version_Adaptive.md#5-monitorusp_servicebrokeranalysis)
+**Nächster Schritt:** Prüfen Sie Zeitverlauf, Fehlerlog beziehungsweise freigegebene Events, Routing, Endpunkt und Anwendungstransaktionen. [Detailbeschreibung](09_Version_Adaptive.md#5-monitorusp_servicebrokeranalysis)
 
 ## [monitor].[USP_FullTextAnalysis]
 
-**So lesen:** Zuerst Datenbank- und Quellenstatus, danach Indexschalter, Crawl-Kontext, aktuelle Populationen, Batches, Fragmente und semantische Population gemeinsam lesen.
+**Auswertung:** Prüfen Sie zuerst den Datenbank- und Quellenstatus. Berücksichtigen Sie danach Indexschalter, Crawl-Kontext, aktuelle Populationen, Batches, Fragmente und semantische Population gemeinsam.
 
 **Warum problematisch:** Deaktivierte Indizes, abgebrochene Populationen, Batchfehler oder fehlgeschlagene Dokumente können Suchaktualität und Auffindbarkeit beeinträchtigen; viele Fragmente können Suchabfragen verteuern.
 
 **Wann nicht problematisch:** `MANUAL/OFF`, ein absichtlich verzögerter initialer Crawl und ein langer, aber fortschreitender Lauf können korrekt sein. Die DMVs sind Momentaufnahmen und keine Historie.
 
-**Beispiel:** Eine Population läuft seit zwei Stunden, ihre abgeschlossenen Ranges steigen jedoch zwischen Messungen. Das ist kein Stillstandsbeweis. Erst Verlauf, Batches, I/O und geschützte Logs gemeinsam bewerten.
+**Beispiel:** Eine Population läuft seit zwei Stunden, ihre abgeschlossenen Ranges steigen jedoch zwischen Messungen. Dies belegt keinen Stillstand. Bewerten Sie zuerst Verlauf, Batches, I/O und geschützte Logs gemeinsam.
 
-**Danach:** Folgeaufnahme, Full-Text-/Crawl-Logs ausschließlich in der Laufzeitumgebung, I/O-/Logkontext und Suchlatenz prüfen. [Detailbeschreibung](09_Version_Adaptive.md#6-monitorusp_fulltextanalysis)
+**Nächster Schritt:** Prüfen Sie in einer Folgeaufnahme den I/O- und Logkontext sowie die Suchlatenz. Full-Text- und Crawl-Logs dürfen ausschließlich in der Laufzeitumgebung ausgewertet werden. [Detailbeschreibung](09_Version_Adaptive.md#6-monitorusp_fulltextanalysis)
 
 ## [monitor].[USP_DataCaptureDeepAnalysis]
 
-**So lesen:** CT, CDC und Replikation getrennt behandeln. Zuerst Quellenstatus, dann CT-Versionen, CDC-Scan/Jobs und lokale Replikationsagenten mit Rückstand gemeinsam lesen.
+**Auswertung:** Behandeln Sie Change Tracking, CDC und Replikation getrennt. Prüfen Sie zuerst den Quellenstatus und berücksichtigen Sie danach CT-Versionen, CDC-Scan und Jobs sowie lokale Replikationsagenten mit Rückstand gemeinsam.
 
 **Warum problematisch:** Ein echter CT-Consumer-Wasserstand unter `MinValidVersion` erfordert Reinitialisierung. CDC-Fehler oder fehlende Jobs können Capture/Cleanup verhindern. Hoher lokaler Replikationsrückstand zusammen mit Fail/Retry weist auf eine Zustellstörung hin.
 
@@ -1083,7 +1083,7 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** 20.000 undistributed commands und ein Distribution Agent im Retry-Zustand sind gemeinsam wesentlich stärker als eine alte Idle-History ohne Rückstand.
 
-**Danach:** Verlauf wiederholen, Consumer-Wasserstand, Jobausgang, Distributor-/Subscriber-Erreichbarkeit und geschützte Logs in der Laufzeitumgebung prüfen. [Detailbeschreibung](09_Version_Adaptive.md#7-monitorusp_datacapturedeepanalysis)
+**Nächster Schritt:** Wiederholen Sie die Verlaufsmessung und prüfen Sie Consumer-Wasserstand, Jobausgang sowie Distributor- und Subscriber-Erreichbarkeit. Geschützte Logs dürfen nur in der Laufzeitumgebung ausgewertet werden. [Detailbeschreibung](09_Version_Adaptive.md#7-monitorusp_datacapturedeepanalysis)
 
 # 12. Praktisches Vorgehen für Anfänger
 

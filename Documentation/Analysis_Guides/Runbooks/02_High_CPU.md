@@ -7,20 +7,20 @@ EXEC [monitor].[USP_CurrentRequests] @Sortierung='CPU', @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_QueryStats] @Sortierung='CPU_TOTAL', @MaxZeilen=50, @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Aktuelle CPU, Elapsed Time, Reads, DOP, Ausführungszahl, Total-/Average-CPU und Query-/Plan-Hash vergleichen.
+Vergleichen Sie aktuelle CPU, Elapsed Time, Reads, DOP, Ausführungszahl, Total- und Average-CPU sowie Query- und Plan-Hash.
 
-## Warum
+## Interpretation
 
-- hohe CPU + hohe Reads + wenige Ergebniszeilen → möglicher ineffizienter Zugriff,
-- niedrige Average-CPU + sehr viele Ausführungen → kumulative Kleinstquerylast,
-- hohe CPU nur in einem kurzen geplanten Report → möglicherweise normal.
+- Hohe CPU, hohe Reads und wenige Ergebniszeilen sprechen für einen möglicherweise ineffizienten Zugriff.
+- Eine niedrige Average-CPU bei sehr vielen Ausführungen kann auf kumulative Last durch häufige kleine Queries hinweisen.
+- Hohe CPU ausschließlich während eines kurzen, geplanten Reports kann dem erwarteten Betriebsprofil entsprechen.
 
 ## Gegenprobe
 
-`USP_QueryHashAnalysis`, `USP_ShowplanAnalysis`, Query Store Runtime Stats und Server-CPU-/NUMA-Kontext.
+Prüfen Sie `USP_QueryHashAnalysis`, `USP_ShowplanAnalysis`, Query Store Runtime Stats sowie den Server-CPU- und NUMA-Kontext als unabhängige Gegenproben.
 
-## Nicht tun
+## Nicht ableiten
 
-MAXDOP, Cost Threshold oder Indizes nicht allein anhand eines einzelnen Parallelitätswaits ändern.
+Ändern Sie MAXDOP, Cost Threshold oder Indizes nicht allein aufgrund eines einzelnen Parallelitätswaits.

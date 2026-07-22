@@ -84,12 +84,12 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_DataCaptureDeepAnalysis';
-        PRINT N'Read-only Tiefenanalyse von Change Tracking, CDC und lokal erreichbarer Replikation.';
+        PRINT N'Die Procedure führt eine rein lesende Tiefenanalyse von Change Tracking, CDC und lokal erreichbarer Replikation durch.';
         PRINT N'@ChangeTrackingClientVersion ist optional; ohne Client-Wasserstand wird kein Synchronisationsverlust behauptet.';
         PRINT N'CDC- und Replikationsgrenzwerte sind Heuristiken; zeitgesteuerte Capture-Jobs und Momentaufnahmen werden kenntlich gemacht.';
         PRINT N'Exakte Schema-/Objektfilter betreffen CT- und CDC-Quelltabellen; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
-        PRINT N'Keine Nutzdaten, Change-Table-Zeilen, Replikationsbefehle, Credentials, Agent-Commands oder Aenderungen.';
+        PRINT N'Es werden keine Nutzdaten, Change-Table-Zeilen, Replikationsbefehle, Credentials oder Agent-Commands gelesen und keine Änderungen ausgeführt.';
         RETURN;
     END;
 

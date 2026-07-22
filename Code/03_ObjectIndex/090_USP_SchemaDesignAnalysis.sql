@@ -53,7 +53,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_SchemaDesignAnalysis';
-        PRINT N'Rein lesende Strukturprüfung; erzeugt oder ändert keine Constraints und Indizes.';
+        PRINT N'Die Procedure führt eine rein lesende Strukturprüfung durch und erzeugt oder ändert keine Constraints und Indizes.';
         PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
         PRINT N'Ein gleicher Index oder fehlender FK-Stützindex ist ein Prüfauftrag, keine automatische DDL-Anweisung.';
         RETURN;

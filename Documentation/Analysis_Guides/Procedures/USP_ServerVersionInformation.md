@@ -24,7 +24,7 @@ EXEC [monitor].[USP_ServerVersionInformation]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Optionaler, synthetischer Datenbankkontext:
+Verwenden Sie mit folgendem Aufruf einen optionalen, synthetischen Datenbankkontext:
 
 ```sql
 EXEC [monitor].[USP_ServerVersionInformation]
@@ -37,7 +37,7 @@ EXEC [monitor].[USP_ServerVersionInformation]
 
 Die sieben stabilen Resultsetnamen lauten `serverVersion`, `buildAssessment`, `lifecycle`, `instanceFeatures`, `databaseCompatibility`, `references` und `warnings`. CONSOLE verdichtet Build- und Lifecyclebewertung zu genau einem Grid. RAW liefert alle sieben Resultsets in dieser Reihenfolge. TABLE akzeptiert eine beliebige eindeutige Teilmenge der sieben Namen; JSON verwendet gleichnamige Arrays unter einer gemeinsamen `meta`-Hülle.
 
-Zuerst `warnings`, Modulstatus und `buildAssessment` lesen. Danach `lifecycle`, technische `serverVersion`-Eigenschaften und bei Bedarf `instanceFeatures`. `references` enthält ausschließlich öffentliche Microsoft-URLs und den Katalogstand.
+Berücksichtigen Sie zuerst `warnings`, Modulstatus und `buildAssessment`. Prüfen Sie danach `lifecycle`, die technischen `serverVersion`-Eigenschaften und bei Bedarf `instanceFeatures`. `references` enthält ausschließlich öffentliche Microsoft-URLs und den Katalogstand.
 
 ## Eine Zeile bedeutet
 
@@ -49,7 +49,7 @@ Die Granularitäten dürfen nicht ohne Resultsetname zusammengeführt werden. `C
 
 `AssessmentStatus` unterscheidet unter anderem `EXACT_MATCH`, `OLDER_KNOWN_BUILD`, `UNKNOWN_BUILD`, `BUILD_NEWER_THAN_OFFLINE_CATALOG`, `PREVIEW_BUILD` und `ON_DEMAND_BUILD`. `CatalogFreshnessStatus` bewertet ausschließlich das Alter des mitgelieferten Katalogs. Der Lifecycle-Status bezieht sich auf die Hauptversion, nicht auf Edition, ESU-Vertrag oder eine konkrete KB.
 
-`LatestKnownBuildInBranch` ist nur bei eindeutig bekanntem Servicing-Zweig vergleichbar. `LatestKnownBuildForMajor` ist ein Navigationshinweis und keine universelle Upgradeempfehlung. Bei einer unbekannten oder höheren Buildnummer zuerst die verlinkte Microsoft-Buildübersicht prüfen.
+`LatestKnownBuildInBranch` ist nur bei eindeutig bekanntem Servicing-Zweig vergleichbar. `LatestKnownBuildForMajor` ist ein Navigationshinweis und keine universelle Upgradeempfehlung. Prüfen Sie bei einer unbekannten oder höheren Buildnummer zuerst die verlinkte Microsoft-Buildübersicht.
 
 ## Warum kann das problematisch sein?
 
@@ -139,7 +139,7 @@ Instanzeigenschaften und Datenbankkatalog sind ein aktueller Aufrufsnapshot; Bui
 
 ### Bewertung und Gegenprobe
 
-Vollständige Buildnummer, exakter Treffer, Servicing-Zweig, Katalogalter und offizielle Buildübersicht gemeinsam lesen. Gegenprobe ist die aktuelle Microsoft-Buildseite der erkannten Hauptversion; Lifecycle separat auf der Microsoft-Lifecycle-Seite prüfen.
+Berücksichtigen Sie die vollständige Buildnummer, den exakten Treffer, den Servicing-Zweig, das Katalogalter und die offizielle Buildübersicht gemeinsam. Verwenden Sie die aktuelle Microsoft-Buildseite der erkannten Hauptversion als Gegenprobe und prüfen Sie den Lifecycle separat auf der Microsoft-Lifecycle-Seite.
 
 ### Typische Fehlinterpretation
 
@@ -147,7 +147,7 @@ Die höchste numerische Buildnummer kann aus einem anderen Servicing-Zweig stamm
 
 ### Folgeanalyse
 
-Vor einer Patchentscheidung Release Notes, Security Advisory, Backup-/Rollbackplan, Kompatibilitätstests und organisationsspezifische Freigabe prüfen. Für Featurefähigkeit anschließend `USP_ServerFeatureCapabilities` verwenden.
+Prüfen Sie vor einer Patchentscheidung Release Notes, Security Advisory, Backup- und Rollbackplan, Kompatibilitätstests sowie die organisationsspezifische Freigabe. Verwenden Sie anschließend `USP_ServerFeatureCapabilities`, um die Featurefähigkeit zu ermitteln.
 
 ## Primärquellen
 

@@ -220,16 +220,16 @@ Die 84 Einzelpages dürfen gemeinsame Grundlagen nicht jeweils widersprüchlich 
 
 Die folgende Reihenfolge wurde bei der abgeschlossenen 84/84-Integration verwendet und bleibt als Redaktionsnachweis erhalten:
 
-1. Inventar und RAW-Verträge erneut gegen aktuellen `main` prüfen.
-2. gemeinsame Grundlagenkapitel anlegen.
-3. Current State vollständig vertiefen.
-4. Object/Index/Statistics und Plan Cache vertiefen.
-5. Query Store und Extended Events vertiefen.
-6. Infrastructure und Server Health vertiefen.
-7. Version Adaptive vertiefen.
-8. alle Procedure-Seiten auf 16-Punkte-Standard bringen.
-9. statische Dokumentationsvalidierung um RAW-Spalten-, Quellen- und Linkchecks erweitern.
-10. fachliches sowie datenschutzbezogenes Review vor jeder Integration.
+1. Das damalige Review prüfte Inventar und RAW-Verträge erneut gegen den aktuellen `main`-Stand.
+2. Es legte gemeinsame Grundlagenkapitel an.
+3. Es vertiefte Current State vollständig.
+4. Es vertiefte Object, Index, Statistics und Plan Cache.
+5. Es vertiefte Query Store und Extended Events.
+6. Es vertiefte Infrastructure und Server Health.
+7. Es vertiefte Version Adaptive.
+8. Es brachte alle Procedure-Seiten auf den 16-Punkte-Standard.
+9. Es erweiterte die statische Dokumentationsvalidierung um RAW-Spalten-, Quellen- und Linkprüfungen.
+10. Vor jeder Integration erfolgte ein fachliches und datenschutzbezogenes Review.
 
 ## 14. Quellenstrategie
 

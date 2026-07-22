@@ -1,25 +1,24 @@
-# SQL-Server Analyze Tool
+# SQL Server Analyze
 
-# ⚠️ READ BEFORE USE
+## Lizenzhinweis
 
-**NOTICE: This software is NOT Open Source. Use is governed by a custom Community & Attribution License.**
+SQL Server Analyze ist keine Open-Source-Software. Die Nutzung richtet sich nach der projektspezifischen Community & Attribution License.
 
-1. **NO RESALE:** Selling or charging for access to this software is strictly prohibited.
-2. **ATTRIBUTION REQUIRED:** You must preserve the copyright notice for **gecompat - Gerhard Pisch**.
-3. **NO LIABILITY:** Use this software at your own risk. The author is **NOT liable** for any damages, data loss, or business interruptions.
+1. Der Verkauf der Software und das Entgelt für den Zugang zur Software sind untersagt.
+2. Der Copyright-Hinweis für **gecompat – Gerhard Pisch** muss erhalten bleiben.
+3. Die Nutzung erfolgt auf eigenes Risiko; der Autor haftet nicht für Schäden, Datenverlust oder Betriebsunterbrechungen.
 
-Full legal terms can be found in the [LICENSE.md](./LICENSE.md) file.
-
-
----
+Maßgeblich ist der vollständige Wortlaut in [LICENSE.md](./LICENSE.md).
 
 ## Überblick
 
 SQL Server Analyze ist ein T-SQL-basiertes Diagnoseframework für SQL Server ab Version 2019. Es unterstützt Ad-hoc-Analysen laufender Prozesse ebenso wie tiefergehende Untersuchungen von Objekten, Indizes, Ausführungsplänen, Query Store, Extended Events, Serverkonfiguration und Infrastrukturkomponenten.
 
-Das Framework wird in einer frei wählbaren Datenbank im Schema `[monitor]` installiert. 
+Das Framework wird in einer frei wählbaren Datenbank im Schema `[monitor]` installiert.
 
 ## Schwerpunkte
+
+Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 
 - aktuelle Sessions, Requests, Blocking, Waits und Transaktionen
 - Memory Grants einschließlich Resource Governor und Resource Semaphores
@@ -58,8 +57,8 @@ Set-Location ./Code/Install
 
 Dadurch entsteht `Code/Install/generated/Install_All.generated.sql`. In dieser Datei muss der Platzhalter `[DeineDatenbank]` nur einmal am Anfang ersetzt werden. Generierte Build-Artefakte werden nicht versioniert.
 
-Die generierte Datei anschließend vollständig in SSMS ausführen und mit
-`Code/Tests/Integration/110_Smoke_Test.sql` prüfen. Eine vollständige Anleitung
+Führen Sie die generierte Datei anschließend vollständig in SSMS aus und prüfen Sie die Installation mit
+`Code/Tests/Integration/110_Smoke_Test.sql`. Eine vollständige Anleitung
 einschließlich Datenbankanlage, Collation-, Versions-, Erfolgs- und
 Berechtigungsprüfung steht unter
 [`Documentation/Reference/Installation.md`](./Documentation/Reference/Installation.md).
@@ -94,7 +93,7 @@ EXEC [monitor].[USP_CurrentMemoryGrants];
 
 EXEC [monitor].[USP_ObjectAnalysis]
       @SchemaNames = N'dbo'
-    , @ObjectNames = N'[BeispielObjekt]';
+    , @ObjectNames = N'[ExampleObject]';
 ```
 
 Für die vollständige Aufrufsammlung siehe:
@@ -198,14 +197,16 @@ Metadata/
 
 ## Performance- und Sicherheitsprinzipien
 
-- lesende Diagnosepfade sind der Standard
-- ressourcenintensive Katalog-, Plan- und Cross-Database-Analysen sind begrenzt und gesondert steuerbar
-- Systemkataloge werden möglichst direkt und mit minimalem Blocking-Risiko gelesen
-- fehlende optionale Quellen führen nach Möglichkeit zu strukturierten Teil- oder Verfügbarkeitsstatus statt zum Gesamtabbruch
-- versionsabhängige Syntax wird erst nach Featureprüfung verwendet
-- dynamisches SQL verwendet validierte Identifier und `QUOTENAME`
-- Resultsets werden nicht automatisch anonymisiert; SQL-Text, Namen, Clientkontext, Pläne, Ereignisse und Histogrammwerte können schutzbedürftige Laufzeitinformationen enthalten
-- optionale Text-, XML-, Ereignis-, JSON-, TABLE- und Persistenzpfade werden nur im erforderlichen Scope verwendet und unterliegen den dokumentierten Aufbewahrungs- und Zugriffsvorgaben
+Das Framework folgt den folgenden Betriebs- und Schutzregeln:
+
+- Lesende Diagnosepfade bilden den Standard.
+- Ressourcenintensive Katalog-, Plan- und Cross-Database-Analysen sind begrenzt und gesondert steuerbar.
+- Systemkataloge werden möglichst direkt und mit begrenztem Blocking-Risiko gelesen.
+- Fehlende optionale Quellen führen nach Möglichkeit zu strukturierten Teil- oder Verfügbarkeitsstatus und nicht zum Abbruch unabhängiger Module.
+- Versionsabhängige Syntax wird erst nach einer Capability-Prüfung verwendet.
+- Dynamisches SQL verwendet validierte Identifier und `QUOTENAME`.
+- Resultsets werden nicht automatisch anonymisiert. SQL-Text, Namen, Clientkontext, Pläne, Ereignisse und Histogrammwerte können schutzbedürftige Laufzeitinformationen enthalten.
+- Optionale Text-, XML-, Ereignis-, JSON-, TABLE- und Persistenzpfade werden nur im angeforderten Scope verwendet und unterliegen den dokumentierten Aufbewahrungs- und Zugriffsvorgaben.
 
 ## Dokumentation
 

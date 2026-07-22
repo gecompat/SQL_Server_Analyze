@@ -100,7 +100,7 @@ Dieses Glossar erklärt Begriffe so, wie sie im Framework verwendet werden.
 
 ## Ergebniszustände
 
-- **Keine Zeile:** Filter, Retention, Reset, Feature und Rechte prüfen.
+- **Keine Zeile:** Prüfen Sie Filter, Retention, Reset, Feature und Rechte.
 - **`NULL`:** Wert unbekannt, nicht anwendbar oder nicht auflösbar.
 - **`0`:** tatsächlicher Nullzähler im sichtbaren Scope – nur bei vollständiger Quelle belastbar.
 - **`IsPartial=1`:** mindestens ein Teil der Evidenz fehlt.

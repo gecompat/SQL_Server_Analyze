@@ -6,12 +6,12 @@
 
 ## Empfohlener Einstieg
 
-1. Auf [Hier beginnen](Start_Here.md) das beobachtete Symptom oder Ziel auswählen.
-2. Alternativ im installierten Framework mit `USP_AnalysisNavigator` nach deutschen oder englischen Begriffen suchen.
-3. Die vorgeschlagene [eigenständige Procedure-Seite](Procedures/README.md) lesen.
-4. Parameter anhand der [Parameter-Lesehilfe](Parameter_Reading_Guide.md) und `@Hilfe=1` prüfen.
-5. Status und Resultsets nach dem [Einsteiger-Leseleitfaden](Beginner_Reading_Guide.md) lesen.
-6. Für vollständige technische Zusammenhänge in den verlinkten Familienguide wechseln.
+1. Wählen Sie unter [Hier beginnen](Start_Here.md) das beobachtete Symptom oder Ziel aus.
+2. Suchen Sie alternativ im installierten Framework mit `USP_AnalysisNavigator` nach deutschen oder englischen Begriffen.
+3. Lesen Sie die vorgeschlagene [eigenständige Procedure-Seite](Procedures/README.md).
+4. Prüfen Sie die Parameter anhand der [Parameter-Lesehilfe](Parameter_Reading_Guide.md) und `@Hilfe=1`.
+5. Lesen Sie Status und Resultsets nach dem [Einsteiger-Leseleitfaden](Beginner_Reading_Guide.md).
+6. Wechseln Sie für vollständige technische Zusammenhänge in den verlinkten Familienguide.
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 

@@ -238,11 +238,11 @@ Current-State-Procedures zeigen primär flüchtige Live-Zustände. Ein einzelner
 
 Wichtige Grundregeln:
 
-- Momentaufnahme wiederholen, wenn eine Entwicklung beurteilt werden soll.
-- CPU, Reads, Laufzeit und Waits gemeinsam lesen.
+- Wiederholen Sie die Momentaufnahme, wenn eine Entwicklung beurteilt werden soll.
+- Lesen Sie CPU, Reads, Laufzeit und Waits gemeinsam.
 - Bei parallelen Requests können Task-Waits von der Request-Hauptzeile abweichen.
 - Ein hoher kumulativer Wert ist nicht automatisch ein aktuelles Problem.
-- Blockierende Sessions nicht vorschnell beenden; Root Blocker und Transaktionskontext zuerst bestimmen.
+- Beenden Sie blockierende Sessions nicht vorschnell; bestimmen Sie zuerst Root Blocker und Transaktionskontext.
 
 ### 7.2 Object und Index
 

@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_CurrentIO
 Version      : 3.1.0
 Stand        : 2026-07-21
-Zweck        : Leichtgewichtige serverweite Datei-I/O-Analyse mit optionalem
-               Delta-Sampling und expliziter Datenbankeinschränkung.
+Zweck        : Führt eine leichtgewichtige serverweite Datei-I/O-Analyse mit
+               optionalem Delta-Sampling und expliziter
+               Datenbankeinschränkung durch.
 Datenbanken  : Standardmäßig alle sichtbaren, online befindlichen
                Benutzerdatenbanken; kein CURRENT-Scope und keine Vorabgrenze.
 DMV-Zugriff  : sys.dm_io_virtual_file_stats(NULL,NULL) genau einmal je

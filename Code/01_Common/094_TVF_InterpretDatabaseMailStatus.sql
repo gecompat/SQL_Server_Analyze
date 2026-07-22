@@ -7,7 +7,8 @@ Objekt       : monitor.TVF_InterpretDatabaseMailStatus
 Version      : 1.0.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
-Zweck        : Reiner Klassifikationsvertrag für aggregierte Database-Mail-Status.
+Zweck        : Klassifiziert aggregierte Database-Mail-Status ohne
+               Seiteneffekte.
 Datenschutz  : Verarbeitet ausschließlich den technischen Versandstatus; keine
                Adresse, Empfänger, Betreffzeile oder Nachricht.
 ===============================================================================

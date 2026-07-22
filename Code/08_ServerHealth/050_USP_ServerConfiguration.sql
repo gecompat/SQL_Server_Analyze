@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_ServerConfiguration
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Zentrale Serverkonfiguration mit kontextabhängigen Review-Hinweisen.
+Zweck        : Liefert die zentrale Serverkonfiguration mit kontextabhängigen
+               Review-Hinweisen.
 Datenquellen : sys.configurations, sys.dm_os_sys_info
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

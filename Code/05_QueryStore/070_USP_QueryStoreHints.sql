@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_QueryStoreHints
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Query-Store-Hints aus einer oder mehreren Quelldatenbanken mit
-               globaler Top-N-Ausgabe. Verfügbar ab SQL Server 2022.
+Zweck        : Liefert Query-Store-Hints aus einer oder mehreren
+               Quelldatenbanken mit globaler Top-N-Ausgabe. Die Funktion ist
+               ab SQL Server 2022 verfügbar.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreHints]

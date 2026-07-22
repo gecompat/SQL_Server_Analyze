@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_OSInformation
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Host-, Speicher-, Prozess- und Dienstinformationen; jede optionale Quelle ist isoliert.
+Zweck        : Liefert Host-, Speicher-, Prozess- und Dienstinformationen. Jede
+               optionale Quelle besitzt eine eigene Fehlergrenze.
 Datenquellen : sys.dm_os_host_info, sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_server_services
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

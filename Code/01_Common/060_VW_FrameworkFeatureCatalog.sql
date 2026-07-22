@@ -7,8 +7,9 @@ Objekt       : monitor.VW_FrameworkFeatureCatalog
 Version      : 1.7.0
 Stand        : 2026-07-14
 Typ          : View
-Zweck        : Deklarativer Katalog prüfbarer Monitoring-Datenquellen und
-               Framework-Funktionsklassen für SQL Server 2019+.
+Zweck        : Stellt den deklarativen Katalog prüfbarer Monitoring-
+               Datenquellen und Framework-Funktionsklassen für SQL Server 2019
+               und neuer bereit.
 Parameter    : Keine.
 Resultset    : Feature-, Versions-, Berechtigungs-, Kosten- und Probe-Metadaten.
 Berechtigung : SELECT auf der View. Die genannten Berechtigungen sind Hinweise;

@@ -73,7 +73,7 @@ Für Live-Request-Analysen gelten:
 
 - `@MitSqlText = 1`: exakt abgegrenztes aktuelles Statement ausgeben.
 - `@GesamtenSqlTextEinbeziehen = 1`: vollständigen Batch- beziehungsweise Modultext zusätzlich ausgeben.
-- `@MaxSqlTextZeichen > 0`: Darstellung auf diese Zeichenzahl begrenzen.
+- Bei `@MaxSqlTextZeichen > 0` wird die Darstellung auf diese Zeichenzahl begrenzt.
 - `@MaxSqlTextZeichen = 0` oder `NULL`: vollständigen jeweiligen Text ausgeben.
 
 Eine Kürzung wird über eigene `...IsTruncated`-Spalten ausgewiesen. Die fachliche Textlänge wird vor der Kürzung festgehalten.

@@ -56,7 +56,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ServerVersionInformation';
-        PRINT N'Leichte Offline-Bewertung von Instanzversion, Buildzweig und Microsoft-Lifecycle.';
+        PRINT N'Die Procedure führt eine leichte Offline-Bewertung von Instanzversion, Buildzweig und Microsoft-Lifecycle durch.';
         PRINT N'@MitDatenbankKompatibilitaet bit=0: 1 ergänzt sichtbare Datenbanken; Namen werden nur in diesem expliziten Resultset ausgegeben.';
         PRINT N'@DatabaseNames und @DatabaseNamePattern sind alternative Filter; Systemdatenbanken benötigen @SystemdatenbankenEinbeziehen=1.';
         PRINT N'@MaxZeilen int=2000: positive Werte begrenzen Datenbankzeilen; NULL/0 bedeutet unbegrenzt.';

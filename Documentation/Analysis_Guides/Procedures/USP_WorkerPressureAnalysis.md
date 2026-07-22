@@ -27,11 +27,11 @@ EXEC [monitor].[USP_WorkerPressureAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Für einen synthetisch leeren Requestkontext kann `@MinRequestElapsedMs = 2147483647` verwendet werden. Mehrere parallele Sampler vermeiden. Erst bei wiederholter Queue-Evidenz den Zeitraum variieren und unabhängige CPU-, Wait- und Requestdaten korrelieren.
+Für einen synthetisch leeren Requestkontext kann `@MinRequestElapsedMs = 2147483647` verwendet werden. Vermeiden Sie mehrere parallele Sampler. Variieren Sie den Zeitraum erst bei wiederholter Queue-Evidenz und korrelieren Sie anschließend unabhängige CPU-, Wait- und Requestdaten.
 
 ## Resultsets und Leserichtung
 
-Der typisierte Vertrag umfasst `moduleStatus`, `summary`, `schedulers`, `waits`, `requests`, `sourceStatus` und `warnings`. Zuerst `moduleStatus` und `sourceStatus` lesen. Das Scheduler-Resultset ist die Primärevidenz; Worker, Waits und Requests sind unabhängig isolierte Kontextquellen. Danach `summary` prüfen, anschließend auffällige Scheduler und zuletzt den begrenzten Requestkontext. Ein partieller Worker-Scan macht Scheduler-Queues nicht null, begrenzt aber Workerbelegung und Zustandsverteilung.
+Der typisierte Vertrag umfasst `moduleStatus`, `summary`, `schedulers`, `waits`, `requests`, `sourceStatus` und `warnings`. Berücksichtigen Sie zuerst `moduleStatus` und `sourceStatus`. Das Scheduler-Resultset ist die Primärevidenz; Worker, Waits und Requests sind unabhängig isolierte Kontextquellen. Prüfen Sie danach `summary`, anschließend auffällige Scheduler und zuletzt den begrenzten Requestkontext. Ein partieller Worker-Scan macht Scheduler-Queues nicht null, begrenzt aber Workerbelegung und Zustandsverteilung.
 
 ## Eine Zeile bedeutet
 
@@ -39,7 +39,7 @@ In `summary` bedeutet eine Zeile den gesamten Aufruf. In `schedulers` ist eine Z
 
 ## So lesen
 
-`TotalWorkQueueCount` und `ThreadpoolWaitingTaskCount` gemeinsam, aber nicht als identischen Zähler lesen. `MaxWorkQueuePerScheduler` zeigt mögliche Ungleichverteilung. `TotalRunnableTasks` und `MaxRunnablePerScheduler` bilden den getrennten CPU-Pfad. Workerbelegung, fehlgeschlagene Worker-Erzeugung, Blocking und lange Requests sind Kontext. Bei einem Sample zeigen kumulative Schedulerzähler Deltas; `CounterResetDetected=1` macht diese Deltas unbekannt. Gauge-Differenzen wie Runnable- oder Workeränderung dürfen negativ sein.
+Berücksichtigen Sie `TotalWorkQueueCount` und `ThreadpoolWaitingTaskCount` gemeinsam, aber nicht als identischen Zähler. `MaxWorkQueuePerScheduler` zeigt mögliche Ungleichverteilung. `TotalRunnableTasks` und `MaxRunnablePerScheduler` bilden den getrennten CPU-Pfad. Workerbelegung, fehlgeschlagene Worker-Erzeugung, Blocking und lange Requests sind Kontext. Bei einem Sample zeigen kumulative Schedulerzähler Deltas; `CounterResetDetected=1` macht diese Deltas unbekannt. Gauge-Differenzen wie Runnable- oder Workeränderung dürfen negativ sein.
 
 ## Warum kann das problematisch sein?
 
@@ -55,7 +55,7 @@ Ein einzelner Runnable Task oder eine kurze Queue während eines geplanten Burst
 
 **Gegenbeispiel:** `runnable_tasks_count > 0`, aber Work Queue und `THREADPOOL` bleiben null. Das ist CPU-Scheduler-Kontext, kein Workerpoolnachweis.
 
-**Nicht entscheidbar:** Scheduler verfügbar, Worker-DMV verweigert. Queue-Evidenz bleibt gültig, Workerbelegung und Zustandsverteilung sind partiell. Keine Konfigurationsänderung aus dem unvollständigen Bild ableiten.
+**Nicht entscheidbar:** Scheduler verfügbar, Worker-DMV verweigert. Queue-Evidenz bleibt gültig, Workerbelegung und Zustandsverteilung sind partiell. Leiten Sie keine Konfigurationsänderung aus dem unvollständigen Bild ab.
 
 ## Leere oder partielle Ausgabe
 
@@ -126,19 +126,19 @@ WHERE [s].[scheduler_id] < 1048576
 
 ### Zeit- und Scope-Modell
 
-Scheduler vor/nach dem Sample; Worker, Waits und Requests am Sampleende. Kumulative Zähler können beim Engine-Neustart zurückgesetzt werden. Queues und Workerzahlen sind flüchtige Gauges.
+Die Auswertung vergleicht den Schedulerzustand vor und nach dem Sample; Worker, Waits und Requests werden am Sampleende erfasst. Kumulative Zähler können beim Engine-Neustart zurückgesetzt werden. Queues und Workerzahlen sind flüchtige Gauges.
 
 ### Bewertung und Gegenprobe
 
-Worker Queue plus `THREADPOOL` wiederholt prüfen; anschließend Blocking, Parallelität, lange Requests und CPU aus unabhängigen Quellen korrelieren.
+Prüfen Sie Worker Queue und `THREADPOOL` wiederholt. Korrelieren Sie anschließend Blocking, Parallelität, lange Requests und CPU anhand unabhängiger Quellen.
 
 ### Typische Fehlinterpretation
 
-Runnable Queue als Worker-Erschöpfung oder hohe Workerbelegung als Änderungsauftrag für `max worker threads` zu lesen.
+Eine Runnable Queue ist nicht ohne weitere Evidenz als Worker-Erschöpfung zu interpretieren. Eine hohe Workerbelegung stellt außerdem keinen unmittelbaren Änderungsauftrag für `max worker threads` dar.
 
 ### Folgeanalyse
 
-`USP_CurrentBlocking`, `USP_CurrentRequests`, `USP_CurrentWaits`, CPU-Topologie und externe OS-Telemetrie.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_CurrentBlocking`, `USP_CurrentRequests`, `USP_CurrentWaits`, CPU-Topologie und externe OS-Telemetrie.
 
 ## Primärquellen
 

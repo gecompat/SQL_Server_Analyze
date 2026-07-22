@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_MaintenanceOperations
 Version      : 1.0.0
 Stand        : 2026-07-18
-Zweck        : Korrelierte read-only Sicht auf laufende Wartungsanforderungen,
-               resumierbare Indexoperationen, ADR/PVS und explizit gewaehlte Jobs.
+Zweck        : Liefert eine korrelierte, rein lesende Sicht auf laufende
+               Wartungsanforderungen, resumierbare Indexoperationen, ADR/PVS
+               und explizit gewählte Jobs.
 Datenschutz  : Liest keine SQL-Texte, Jobschritte, Befehle, Meldungen, Konten,
                Clientdaten, Wait-Ressourcen oder Objektdefinitionen.
 Grenzen      : Dauer und Pausenzustand sind Kontext, kein automatischer Defekt.
@@ -70,7 +71,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_MaintenanceOperations';
-        PRINT N'Korrelierte read-only Sicht auf Wartungsrequests, resumierbare Indexoperationen, ADR/PVS und explizit gefilterte Agent-Jobs.';
+        PRINT N'Die Procedure liefert eine korrelierte, rein lesende Sicht auf Wartungsrequests, resumierbare Indexoperationen, ADR/PVS und explizit gefilterte Agent-Jobs.';
         PRINT N'Ohne @JobNames oder @JobNamePattern werden weder Jobnamen noch Jobaktivitaet gelesen; JobNamePattern ist ein LIKE-Pattern.';
         PRINT N'Keine SQL-Texte, Jobschritte, Befehlsinhalte, Meldungen, Konten, Clientdaten oder Wait-Ressourcen werden gelesen.';
         RETURN;

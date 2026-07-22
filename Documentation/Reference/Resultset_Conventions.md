@@ -18,13 +18,13 @@ Wo vorhanden, enthält das erste Resultset insbesondere:
 
 `monitor.USP_AnalysisNavigator` besitzt genau ein benanntes Fachresultset `navigation`. `RAW` liefert davor den Modulstatus; `CONSOLE` rendert nur die priorisierte Fachansicht; `TABLE` exportiert ausschließlich `navigation`; JSON verwendet `meta` und `navigation`. Das Resultset enthält Katalogempfehlungen, keine ausgeführten Diagnosebefunde. Der vollständige Spalten- und Rankingvertrag steht in der [Navigator-Referenz](Analysis_Navigator.md).
 
-## Phase 7
+## Stabilisierte Einzelmodule
 
-Die stabilisierten Phase-7-Einzelmodule liefern Status als erstes Resultset. Für den Orchestrator stehen zusätzlich OUTPUT-Parameter zur Verfügung, damit intern abgefangene Child-Fehler nicht als Erfolg erscheinen.
+Die stabilisierten Einzelmodule liefern den Status als erstes Resultset. Für den Orchestrator stehen zusätzlich OUTPUT-Parameter zur Verfügung, damit intern abgefangene Child-Fehler nicht als Erfolg erscheinen.
 
-## Ältere Module
+## Historisch abweichende Module
 
-Die Phasen 1B bis 6 besitzen historisch unterschiedliche Resultsets. Für Ad-hoc-Nutzung ist das akzeptabel. Ein Frontend soll nur jene Orchestrator-Procedures fest anbinden, die tatsächlich benötigt werden, und deren dokumentierte Resultset-Reihenfolge verwenden.
+Einige ältere Module besitzen historisch unterschiedliche Resultsets. Für die Ad-hoc-Nutzung ist diese Abweichung dokumentiert. Ein technischer Verbraucher bindet nur die tatsächlich benötigten Orchestrator-Procedures fest an und verwendet deren dokumentierte Resultset-Reihenfolge.
 
 <!-- BEGIN AUSGABE_VERTRAG -->
 ## Frameworkweiter Ausgabevertrag

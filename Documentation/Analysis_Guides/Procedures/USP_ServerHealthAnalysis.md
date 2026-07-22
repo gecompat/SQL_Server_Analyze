@@ -7,15 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche Server-Health-Bereiche sind auffällig und welches Spezialmodul soll als Nächstes laufen?** Der dokumentierte Zweck ist: Orchestriert Topologie, Memory, TempDB, Konfiguration, OS und optionale Spezialmodule. Der Aufruf soll die Arbeitsentscheidung vorbereiten, ob eine Instanzressource oder Konfiguration als belastbare Spur zum Symptom passt und welche unabhängige OS-, Verlaufs- oder Workloadevidenz fehlt. Status und Scope sind dabei Teil der Evidenz, nicht bloß technische Begleitinformation.
-
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
+Die Procedure beantwortet die Betriebsfrage: **Welche Server-Health-Bereiche sind auffällig und welches Spezialmodul soll als Nächstes laufen?** Sie unterstützt die Entscheidung, ob eine Instanzressource oder Konfiguration als belastbare Spur zum Symptom passt und welche unabhängige OS-, Verlaufs- oder Workloadevidenz fehlt.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keine vollständige OS-/Hypervisorursache und ohne Delta oder Verlauf keine belastbare Aussage über einen dauerhaften Engpass. Ihr Zeitvertrag lautet ausdrücklich: Nicht atomare Folge aktueller Konfigurations-/Runtimeabfragen. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
-
-Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rechte ausgelassene Details und bereits durch Retention, Restart, Eviction oder Statuswechsel verlorene Zustände. Findings, Prozentwerte und Durchschnitte müssen mit Nenner, Erfassungsfenster und Zeilengranularität gelesen werden. Eine Änderung an DDL, Forcing, Failover, KILL, Repair oder Konfiguration benötigt unabhängige Evidenz und einen Rollbackplan.
+Die Procedure beantwortet keine vollständige OS-/Hypervisorursache und ohne Delta oder Verlauf keine belastbare Aussage über einen dauerhaften Engpass. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -25,45 +21,35 @@ EXEC [monitor].[USP_ServerHealthAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Spezialmodule nur bei konkreter Frage aktivieren.
+Aktivieren Sie Spezialmodule nur bei konkreter Frage.
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `moduleStatus` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
 Die Granularität hängt vom Child ab: CPU, Scheduler, Node, Memory, Datei, Konfiguration, Ereignis oder Finding.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-Childstatus zuerst und Symptome familienweise lesen. Eine Summenzeile ist keine vollständige Gesundheitsgarantie.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+Berücksichtigen Sie Childstatus zuerst und Symptome familienweise. Eine Summenzeile ist keine vollständige Gesundheitsgarantie.
 
 ## Warum kann das problematisch sein?
 
 Ein Child kann partiell sein; ein anderes zeigt nur Konfiguration statt aktueller Auswirkung.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
 Nicht aktivierte Spezialmodule fehlen absichtlich.
 
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
-
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall (`Example*`):** Memorykonfiguration auffällig, aktuelle Memorywerte normal: Review, kein akuter Incident. Das betreffende Child fokussiert erneut ausführen.
+**Synthetischer Problemfall (`Example*`):** Memorykonfiguration auffällig, aktuelle Memorywerte normal: Review, kein akuter Incident. Führen Sie das betreffende Child fokussiert erneut aus.
 
 **Ähnlich aussehender Gegenfall:** Nicht aktivierte Spezialmodule fehlen absichtlich. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
 
 ## Leere oder partielle Ausgabe
 
@@ -72,8 +58,6 @@ Server-DMVs können plattform-, editions- oder berechtigungsbedingt fehlen. NULL
 Für `USP_ServerHealthAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
 ## Eigenlast und Grenzen
-
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
@@ -103,21 +87,21 @@ Wrapper über CPU, NUMA, Memory, TempDB, Config, Trace Flags, Startup, OS und Se
 
 ### Datenkette
 
-Frameworkinterne Orchestrierung; Quellen liegen in Childmodulen.
+Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen in den Childmodulen.
 
 ### Source Select
 
-Kein einzelnes Grundselect: Die Procedure orchestriert CPU-, NUMA-, Memory-, TempDB-, Konfigurations-, Trace-Flag-, Startup-, OS-, Security-, Integrity-, Capacity-, Counter-, Engine-Event-, Contention-, Buffer-Pool-, Finding- und Worker-Pressure-Module.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert CPU-, NUMA-, Memory-, TempDB-, Konfigurations-, Trace-Flag-, Startup-, OS-, Security-, Integrity-, Capacity-, Counter-, Engine-Event-, Contention-, Buffer-Pool-, Finding- und Worker-Pressure-Module.
 
-**Wichtig für die Eigenlast:** Zuerst die leichten Server-Snapshots verwenden und optionale Historien-, XEL-, Buffer-Descriptor- oder datenbankübergreifende Module gezielt aktivieren. Childstatus und Scope bleiben getrennt; ein finales Zeilenlimit spart deren Quellarbeit nicht.
+**Wichtig für die Eigenlast:** Verwenden Sie zuerst die leichten Server-Snapshots und aktivieren Sie optionale Historien-, XEL-, Buffer-Descriptor- oder datenbankübergreifende Module gezielt. Childstatus und Scope bleiben getrennt; ein finales Zeilenlimit spart deren Quellarbeit nicht.
 
 ### Zeit- und Scope-Modell
 
-Nicht atomare Folge aktueller Konfigurations-/Runtimeabfragen.
+Die Auswertung verwendet eine nicht atomare Folge aktueller Konfigurations- und Runtimeabfragen.
 
 ### Bewertung und Gegenprobe
 
-Childstatus und Partials zuerst, dann Befunde nach Ressource korrelieren. Triagepriorität statt Gesamtgesundheitsscore.
+Korrelieren Sie zuerst Childstatus und Partials, danach die Befunde nach Ressource. Das Ergebnis bestimmt eine Triagepriorität und keinen Gesamtgesundheitsscore.
 
 ### Typische Fehlinterpretation
 
@@ -125,7 +109,7 @@ Ein grüner Wrapper beweist keine Lastfreiheit oder Integrität; optionale/gespe
 
 ### Folgeanalyse
 
-Betroffenes Spezialmodul und Current-State-/Historical-Evidenz.
+Prüfen Sie das betroffene Spezialmodul sowie die Current-State- und Historical-Evidenz.
 
 ## Primärquellen
 

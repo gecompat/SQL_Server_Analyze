@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_TraceFlags
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Globale und sitzungsbezogene Trace Flags ohne Änderungen.
+Zweck        : Liefert globale und sitzungsbezogene Trace Flags, ohne deren
+               Zustand zu ändern.
 Datenquellen : DBCC TRACESTATUS
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

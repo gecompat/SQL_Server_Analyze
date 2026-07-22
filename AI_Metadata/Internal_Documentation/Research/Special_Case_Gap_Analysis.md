@@ -264,7 +264,7 @@ Priorität und Kosten sind unabhängig. Eine P0-Auswertung darf teuer sein und m
 - Basiszähler im selben Sample konsistent zuordnen,
 - SQL-Start-/Resetzeit und Sampleintervall ausgeben,
 - Kategorien für Buffer Manager, Memory Manager, Access Methods, Databases, SQL Statistics, General Statistics, Locks, Latches, Workload Group und Resource Pool,
-- keine universellen Alarmgrenzen als Fakten ausgeben.
+- Geben Sie keine universellen Alarmgrenzen als Fakten aus.
 
 **Abnahme:** Tests mit Snapshot-, Delta- und Fraction-Counter zeigen korrekte Einheiten und verhindern Division durch Null oder Mischung verschiedener Samples.
 
@@ -641,7 +641,7 @@ Das Framework soll dafür Evidenzlücken und nächste Prüfschritte ausgeben, ab
 - keine Kausalität aus einem Einzelindikator ableiten,
 - Einheiten und Nenner ausgeben,
 - Datenverlust durch DMV-Reset, Plan-Eviction, Query-Store-Cleanup oder msdb-Retention nennen,
-- Empfehlungen als nächste Prüfung, nicht als automatisch auszuführende Änderung formulieren.
+- Formulieren Sie Empfehlungen als nächste Prüfung und nicht als automatisch auszuführende Änderung.
 
 ### Datenschutz
 

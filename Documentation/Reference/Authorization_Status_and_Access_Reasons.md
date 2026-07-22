@@ -21,7 +21,7 @@ Ein positiver Gruppenmatch bedeutet nicht automatisch, dass die benötigten SQL-
 | `IS_MEMBER` | 1 | Positiver Fallback über `IS_MEMBER`. |
 | `NO_MATCH` | 0 | Aktive Whitelist, aber keine passende Gruppenregel. |
 
-Capabilityinterne Sonderwerte:
+Innerhalb der Capability-Prüfung können zusätzlich folgende Sonderwerte auftreten:
 
 | Wert | Bedeutung |
 |---|---|
@@ -66,7 +66,7 @@ Die Ressourcenschutz-Policy erlaubt den Pfad, aber SQL Server verweigert die tec
 
 ## 5. Leserichtung
 
-Bei einem verweigerten oder partiellen Ergebnis:
+Lesen Sie ein verweigertes oder partielles Ergebnis in der folgenden Reihenfolge:
 
 1. `StatusCode`
 2. `IsPartial`

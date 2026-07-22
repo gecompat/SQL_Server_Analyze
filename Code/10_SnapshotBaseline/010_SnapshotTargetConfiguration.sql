@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.SnapshotTargetConfiguration
 Version      : 1.0.0
 Stand        : 2026-07-21
-Zweck        : Typisierte Singleton-Konfiguration des optionalen SC-023-Pakets.
+Zweck        : Definiert die typisierte Singleton-Konfiguration des optionalen
+               SC-023-Pakets.
 Datenschutz  : Die Tabelle liegt nur im Zielsystem. Repository-Seeds enthalten
                ausschließlich den generischen, deaktivierten Defaultnamen.
 ===============================================================================

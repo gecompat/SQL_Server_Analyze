@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Datei        : 171_P1_Contention_Runtime_Contract.sql
-Zweck        : Deterministische und begrenzte Verträge für die vier P1-Fälle
-               der internen Contention-Analyse.
+Zweck        : Prüft deterministische und begrenzte Verträge für die vier
+               P1-Fälle der internen Contention-Analyse.
 Datenschutz  : Nur synthetische Zahlenwerte und technische Zustände; keine
                Laufzeitausgabe wird in Repositoryartefakte geschrieben.
 Nebenwirkung : Eine reale Ein-Sekunden-Messung; keine Zähler werden gelöscht.

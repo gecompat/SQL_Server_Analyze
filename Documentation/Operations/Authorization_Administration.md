@@ -32,7 +32,7 @@ Dieser Zustand erleichtert Installation und Ersttest. Für produktive Umgebungen
 
 Sobald **eine einzige aktive Policyzeile** existiert, wird die Whitelist für alle geschützten Klassen aktiv.
 
-Danach gilt:
+Danach gelten folgende Regeln:
 
 - passender Klassen- oder `*`-Gruppenmatch → erlaubt;
 - sysadmin → erlaubt;
@@ -40,14 +40,14 @@ Danach gilt:
 
 Es gibt derzeit keine expliziten Benutzer-Deny-Zeilen. Benutzer werden ausgeschlossen, indem sie keiner freigegebenen Gruppe angehören.
 
-Vor der ersten aktiven Policyzeile:
+Führen Sie vor der ersten aktiven Policyzeile die folgenden Schritte aus:
 
 1. alle Klassen mit `RequiresGroupGate=1` inventarisieren;
 2. gewünschte Deep-Pfade auswählen;
 3. Gruppenmodell definieren;
 4. bewusst über ein `*`-Fallback entscheiden;
 5. Auswirkungen auf nicht aufgeführte geschützte Klassen prüfen;
-6. Windows-Token mit einer neuen Anmeldung testen.
+6. Testen Sie das Windows-Token mit einer neuen Anmeldung.
 
 ## 4. Analyseklassen inventarisieren
 
@@ -159,11 +159,11 @@ Nur `1` aktiviert die Regel.
 
 ### `Priority`
 
-Nur Dokumentations- und Sortierwert. Es existiert keine Deny-overrides-Allow- oder First-Match-Logik.
+Dieser Wert dient ausschließlich der Dokumentation und Sortierung. Es existiert keine Deny-overrides-Allow- oder First-Match-Logik.
 
 ### `Comment`
 
-Lokaler Zweckhinweis. Keine realen personenbezogenen, kundenbezogenen oder internen Informationen in freigegebene Beispiele oder ungeschützte Exporte übernehmen.
+Dieser Wert enthält einen lokalen Zweckhinweis. Übernehmen Sie keine realen personenbezogenen, kundenbezogenen oder internen Informationen in freigegebene Beispiele oder ungeschützte Exporte.
 
 ## 8. Ressourcenschutz prüfen
 
@@ -233,7 +233,7 @@ Nach einer Änderung:
 1. bestehende SQL-Verbindung schließen;
 2. neue Verbindung öffnen;
 3. Token lokal kontrollieren;
-4. Policy erneut prüfen.
+4. Prüfen Sie die Policy erneut.
 
 ```sql
 SELECT [name], [type], [usage]

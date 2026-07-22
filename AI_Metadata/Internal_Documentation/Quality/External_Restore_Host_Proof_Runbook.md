@@ -21,15 +21,15 @@ Das Repository enthält weder Backup, Schlüssel, Pfade, Endpunkte, Hostnamen, K
 
 ## Ablauf
 
-1. Zielisolation, freie Kapazität und Version/Edition prüfen.
-2. Backup und erforderliches Schlüsselmaterial über den autorisierten Kanal bereitstellen.
-3. Restore unter einem ausschließlich für diesen Lauf erzeugten synthetischen Zielnamen durchführen.
-4. Restorefehler im geschützten Betriebslog behandeln; keine Rohmeldung in Git oder Downloads übernehmen.
-5. `DBCC CHECKDB` auf dem isolierten Restoreziel nach freigegebenem Betriebsverfahren ausführen.
-6. Anwendungsspezifische Start-/Lesetests nur mit synthetischen Eingaben und ohne externe Seiteneffekte ausführen.
-7. Host-/Storage-/Netzwerkmetriken mit den jeweiligen Plattformwerkzeugen separat erfassen; SQL-Metadaten nicht als Ersatz darstellen.
-8. Restoreziel, temporäre Credentials, bereitgestelltes Schlüsselmaterial und Arbeitskopien nach dem freigegebenen Verfahren entfernen.
-9. Nur die generische Evidenzzeile aus `External_Evidence_Gates.csv` ausfüllen; vor Datei- oder Git-Schreibzugriff Datenschutzrückfrage durchführen.
+1. Prüfen Sie Zielisolation, freie Kapazität sowie Version und Edition.
+2. Stellen Sie Backup und erforderliches Schlüsselmaterial über den autorisierten Kanal bereit.
+3. Führen Sie den Restore unter einem ausschließlich für diesen Lauf erzeugten synthetischen Zielnamen durch.
+4. Behandeln Sie Restorefehler im geschützten Betriebslog und übernehmen Sie keine Rohmeldung in Git oder Downloads.
+5. Führen Sie `DBCC CHECKDB` auf dem isolierten Restoreziel nach dem freigegebenen Betriebsverfahren aus.
+6. Führen Sie anwendungsspezifische Start- und Lesetests nur mit synthetischen Eingaben und ohne externe Seiteneffekte aus.
+7. Erfassen Sie Host-, Storage- und Netzwerkmetriken mit den jeweiligen Plattformwerkzeugen separat und stellen Sie SQL-Metadaten nicht als Ersatz dar.
+8. Entfernen Sie Restoreziel, temporäre Credentials, bereitgestelltes Schlüsselmaterial und Arbeitskopien nach dem freigegebenen Verfahren.
+9. Füllen Sie nur die generische Evidenzzeile aus `External_Evidence_Gates.csv` aus und führen Sie vor einem Datei- oder Git-Schreibzugriff die Datenschutzrückfrage durch.
 
 ## PASS-Kriterien
 

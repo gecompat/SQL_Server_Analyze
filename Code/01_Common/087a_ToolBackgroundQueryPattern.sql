@@ -7,8 +7,9 @@ Objekt       : monitor.ToolBackgroundQueryPattern
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Steuertabelle
-Zweck        : Erweiterbare LIKE-Muster zur diagnostischen Klassifikation von
-               Tool-Hintergrundabfragen anhand des clientseitigen program_name.
+Zweck        : Stellt erweiterbare LIKE-Muster zur diagnostischen Klassifikation
+               von Tool-Hintergrundabfragen anhand des clientseitigen
+               program_name bereit.
 Vertrag      : Kein Sicherheitsmerkmal. Höhere Priority gewinnt; bei gleicher
                Priority entscheidet RuleCode deterministisch.
 ===============================================================================

@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 167_Special_Case_API_Contract.sql
-Zweck        : Metadatenbasierter API-Vertrag der Spezialfallmodule.
+Zweck        : Prüft den metadatenbasierten API-Vertrag der Spezialfallmodule.
 Nebenwirkung : keine fachlichen Scans und keine Persistenz.
 ===============================================================================
 */

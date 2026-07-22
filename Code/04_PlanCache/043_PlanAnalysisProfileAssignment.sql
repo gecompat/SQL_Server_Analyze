@@ -7,8 +7,8 @@ Objekt       : monitor.PlanAnalysisProfileAssignment
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Steuertabelle
-Zweck        : Optionale lokale Zuordnung von Plan-/Workloadkontext zu einem
-               generischen Analyseprofil. Die Auslieferung enthält keine realen
+Zweck        : Ordnet Plan- und Workloadkontext optional einem generischen
+               lokalen Analyseprofil zu. Die Auslieferung enthält keine realen
                Zuordnungen und überschreibt keine lokalen Zeilen.
 ===============================================================================
 */

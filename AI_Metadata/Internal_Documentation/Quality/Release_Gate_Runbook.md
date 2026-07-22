@@ -97,14 +97,14 @@ Wie bei den anderen Targets werden Kennwort und Datenbank erst im Job erzeugt, v
 
 ## 1. Lokale Testkopie vorbereiten
 
-1. Exakt den zu testenden Commit in eine lokale, nicht zur Veröffentlichung vorgesehene Arbeitskopie übernehmen.
-2. In dieser lokalen Testkopie den generischen Platzhalter `[DeineDatenbank]` in den SQL-Dateien durch die Testdatenbank ersetzen.
-3. Die ersetzten Dateien, SQLCMD-Ausgaben und Resultsets niemals committen oder als Repositoryartefakt speichern.
-4. Für die Verbindung integrierte Authentifizierung oder eine sichere interaktive Anmeldung verwenden. Kennwörter gehören weder in Befehlszeilen noch in Nachweise.
+1. Übernehmen Sie exakt den zu testenden Commit in eine lokale, nicht zur Veröffentlichung vorgesehene Arbeitskopie.
+2. Ersetzen Sie in dieser lokalen Testkopie den generischen Platzhalter `[DeineDatenbank]` in den SQL-Dateien durch die Testdatenbank.
+3. Committen Sie die ersetzten Dateien, SQLCMD-Ausgaben und Resultsets niemals und speichern Sie diese nicht als Repositoryartefakt.
+4. Verwenden Sie für die Verbindung integrierte Authentifizierung oder eine sichere interaktive Anmeldung. Kennwörter gehören weder in Befehlszeilen noch in Nachweise.
 
 ## 2. Installation prüfen
 
-Aus dem Verzeichnis `Code/Install` den Gesamtinstaller im SQLCMD-Modus mit Abbruch bei SQL-Fehlern ausführen. Generische Befehlsform:
+Führen Sie den Gesamtinstaller aus dem Verzeichnis `Code/Install` im SQLCMD-Modus mit Abbruch bei SQL-Fehlern aus. Verwenden Sie dazu folgende generische Befehlsform:
 
 ```text
 sqlcmd -S "<ZIEL>" -d "<INSTALLATIONSDATENBANK>" -E -b -i "Install_All.sql"
@@ -115,7 +115,7 @@ Erwartung:
 - Prozess-Exitcode `0`.
 - Kein unbehandelter SQL-Fehler.
 - Keine fehlende Include-Datei.
-- Keine lokale Installer- oder Konsolenausgabe in das Repository übernehmen.
+- Übernehmen Sie keine lokale Installer- oder Konsolenausgabe in das Repository.
 
 ## 3. Automatisiertes Release-Gate ausführen
 
@@ -174,7 +174,7 @@ Danach die für das Target anwendbaren Fälle aus `Metadata/Quality/Special_Case
 
 Für `USP_SpecialFeatureInventory` sind der vollständig sichtbare Leerzustand, eingeschränkte Metadatensichtbarkeit, die Ausgabegrenze und je ein positiver Fall für alle 18 Featurecodes getrennt vorgesehen. Eine Nullzählung gilt nicht als Abwesenheitsbeweis und `CONFIGURED_ONLY` nicht als Nutzungsnachweis.
 
-Für `USP_InMemoryOltpAnalysis` müssen negativer Feature-Gate, schema-only Objekt, Tabellen-/Consumer-Speicher, Hashkatalog, kontrollierter Hashketten-Opt-in, Checkpointzustände, Transaktionsaggregate, benannter und Defaultpool, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Hashketten nur gegen synthetische Testobjekte und unter kontrolliertem Lastbudget ausführen.
+Für `USP_InMemoryOltpAnalysis` müssen negativer Feature-Gate, schema-only Objekt, Tabellen- und Consumer-Speicher, Hashkatalog, kontrollierter Hashketten-Opt-in, Checkpointzustände, Transaktionsaggregate, benannter Pool und Defaultpool, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Führen Sie den Hashkettenpfad nur gegen synthetische Testobjekte und unter einem kontrollierten Lastbudget aus.
 
 Für `USP_TemporalAnalysis` müssen negativer Feature-Gate, Current-/History-Zuordnung, sichtbare Periodenspalten, endliche und unendliche Retention, deaktivierter datenbankweiter Cleanup, approximative History-Größe/-Zeilen, Ratio-Grenze, vorhandene und fehlende Perioden-Indexbaseline, speicheroptimierte Current-Tabelle, Quellberechtigungen, Filter und Ergebnisgrenzen getrennt dokumentiert werden. Ein nach `SYSTEM_VERSIONING=OFF` getrenntes synthetisches Paar muss als bewusst nicht zuverlässig erkennbar bestätigt werden; keine echten Current- oder History-Zeilen als Evidenz speichern.
 

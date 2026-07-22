@@ -14,15 +14,15 @@ Current-State-Daten beantworten die Frage **„Was ist jetzt sichtbar?“**. Sie
 
 ### Zweck und Einsatz
 
-Inventarisiert aktuelle Sessions einschließlich Identität, Netzwerk, kumulativer Sessionaktivität und optional aktuellem Request-/SQL-Kontext.
+Die Procedure inventarisiert aktuelle Sessions einschließlich Identität, Netzwerk, kumulativer Sessionaktivität und optional aktuellem Request-/SQL-Kontext.
 
 Erkannte Object-Explorer-, Copilot- und SQL-Prompt-Hintergrundsessions sind
 standardmäßig ausgeblendet. `@ToolHintergrundabfragenEinbeziehen = 1` zeigt sie
 einschließlich der metadatengetriebenen Klassifikation wieder an.
 
-**Einsetzen bei:** unbekannten Verbindungen, hoher Sessionzahl, sleeping Sessions, offenen Transaktionen, auffälliger kumulativer CPU/I/O-Last oder Client-/Verschlüsselungsfragen.
+**Einsetzen bei:** Setzen Sie diese Procedure bei unbekannten Verbindungen, hoher Sessionzahl, sleeping Sessions, offenen Transaktionen, auffälliger kumulativer CPU-/I/O-Last oder Client- und Verschlüsselungsfragen ein.
 
-**Nicht allein einsetzen bei:** konkreter Query-Ursache; dafür `USP_CurrentRequests` oder Query Store verwenden.
+**Einschränkung:** Verwenden Sie diese Procedure nicht allein zur Ermittlung einer konkreten Query-Ursache. Nutzen Sie dafür `USP_CurrentRequests` oder Query Store.
 
 ### Aufrufe
 
@@ -82,7 +82,7 @@ EXEC [monitor].[USP_CurrentSessions]
 - aktive Query: `USP_CurrentRequests`
 - sleeping + Transaktion: `USP_CurrentTransactions`
 - Blocking: `USP_CurrentBlocking`
-- viele Verbindungen/Netzwerk: Anwendungs-Pool und SQL-Server-Endpunktkonfiguration prüfen
+- Prüfen Sie bei vielen Verbindungen oder Netzwerkauffälligkeiten den Anwendungspool und die SQL-Server-Endpunktkonfiguration.
 
 ### Kosten und Grenzen
 
@@ -94,10 +94,10 @@ LOW. Optionaler SQL-Text erhöht CPU und Ausgabegröße. Ohne serverweite Perfor
 
 ### Zweck und Einsatz
 
-Zentrale Live-Analyse aktuell ausgeführter Requests. Sie korreliert Laufzeit, CPU, I/O, Blocking, Task-Waits, Memory Grants, Parallelität, Transaktion, Resource Governor, Query-/Planidentität sowie Statement-, Batch-, Modul- und Input-Buffer-Kontext.
+Die Procedure ist die zentrale Live-Analyse aktuell ausgeführter Requests. Sie korreliert Laufzeit, CPU, I/O, Blocking, Task-Waits, Memory Grants, Parallelität, Transaktion, Resource Governor, Query-/Planidentität sowie Statement-, Batch-, Modul- und Input-Buffer-Kontext.
 
-Tool-Hintergrundrequests sind standardmäßig ausgeblendet. Für eine bewusste
-Vollansicht `@ToolHintergrundabfragenEinbeziehen = 1` setzen.
+Tool-Hintergrundrequests sind standardmäßig ausgeblendet. Setzen Sie für eine bewusste
+Vollansicht `@ToolHintergrundabfragenEinbeziehen = 1`.
 
 ### Aufrufe
 
@@ -168,7 +168,7 @@ Der letzte Aufruf ist nur gezielt sinnvoll, weil vollständige Texte und unbegre
 
 ### Zweck
 
-Ermittelt aktuelle Blocking-Kanten, rekonstruiert Ketten bis zum Root Blocker und löst technische Blockingressourcen begrenzt auf Datenbank, Schema, Objekt, Index, Partition und Page auf. Negative Sonderblocker-IDs `-2` bis `-5` werden als eigene Owner-Typen beschrieben. Die lesbare Kette und der Session-/Request-/Transaktionskontext des äußersten Root Blockers sind Bestandteil derselben materialisierten Ergebniszeile.
+Die Procedure ermittelt aktuelle Blocking-Kanten, rekonstruiert Ketten bis zum Root Blocker und löst technische Blockingressourcen begrenzt auf Datenbank, Schema, Objekt, Index, Partition und Page auf. Negative Sonderblocker-IDs `-2` bis `-5` werden als eigene Owner-Typen beschrieben. Die lesbare Kette und der Session-/Request-/Transaktionskontext des äußersten Root Blockers sind Bestandteil derselben materialisierten Ergebniszeile.
 
 ### Aufrufe
 
@@ -255,7 +255,7 @@ einer normalen Abfrage, bleibt die gesamte normale Kette sichtbar.
 | `Sch-M` blockiert viele Leser | DDL-/Deploymentkontext sofort prüfen |
 | viele blockierte Sessions, aber kurze Gesamtdauer | Burst; erst Verlauf prüfen |
 
-**Nie nur die Opfer-Session beenden.** Root Blocker, Transaktion, Geschäftsvorgang und Rollbackkosten zuerst prüfen.
+Beenden Sie nie ausschließlich die Opfer-Session. Prüfen Sie zuerst Root Blocker, Transaktion, Geschäftsvorgang und Rollbackkosten.
 
 ### Kosten und Grenzen
 
@@ -274,7 +274,7 @@ einer normalen Abfrage, bleibt die gesamte normale Kette sichtbar.
 
 ### Zweck
 
-Liefert zwei unterschiedliche Evidenzarten:
+Die Procedure liefert zwei unterschiedliche Evidenzarten:
 
 1. aktuelle wartende Tasks,
 2. instanzweite Waitstatistik kumulativ oder als 1–60-Sekunden-Delta.
@@ -337,7 +337,7 @@ EXEC [monitor].[USP_CurrentWaits]
 
 - **Kumulativ:** seit SQL-Server-Start oder letztem Reset; alte Probleme dominieren möglicherweise.
 - **Delta:** zeigt das Messintervall, kann aber kurze Peaks über- oder unterrepräsentieren.
-- **Signalanteil hoch:** CPU-Schedulingdruck möglich, aber Workload und Scheduler prüfen.
+- **Signalanteil hoch:** CPU-Schedulingdruck ist möglich; prüfen Sie jedoch auch Workload und Scheduler.
 - **Resourceanteil hoch:** externe oder interne Ressource; Waitgruppe bestimmt nächsten Schritt.
 - **Top 95 %:** reduziert Rauschen; Prozentanteile beziehen sich auf den gefilterten Scope.
 
@@ -366,7 +366,7 @@ EXEC [monitor].[USP_CurrentWaits]
 
 ### Zweck
 
-Zeigt aktive Transaktionen mit Session-/Requeststatus und Logverbrauch. Besonders wertvoll für alte oder sleeping Transaktionen.
+Die Procedure zeigt aktive Transaktionen mit Session-/Requeststatus und Logverbrauch. Die Ausgabe ist insbesondere für alte oder im Zustand `sleeping` verbliebene Transaktionen relevant.
 
 ### Aufrufe
 
@@ -417,7 +417,7 @@ EXEC [monitor].[USP_CurrentTransactions]
 
 ### Zweck
 
-Zeigt wartende und gewährte Query Execution Memory Grants einschließlich Resource-Governor-, Pool- und Semaphoregrenzen.
+Die Procedure zeigt wartende und gewährte Query Execution Memory Grants einschließlich Resource-Governor-, Pool- und Semaphoregrenzen.
 
 ### Aufrufe
 
@@ -469,7 +469,7 @@ Es gibt keine universelle „zu große Grant“-Grenze. Relevanter sind Konkurre
 
 ### Zweck
 
-Zeigt Netto-TempDB-Verbrauch je Session und optional Dateizustand.
+Die Procedure zeigt Netto-TempDB-Verbrauch je Session und optional Dateizustand.
 
 ### RAW-Resultsets
 
@@ -517,7 +517,7 @@ Zeigt Netto-TempDB-Verbrauch je Session und optional Dateizustand.
 
 ### Zweck
 
-Liefert Datei-I/O kumulativ oder als Delta. Ein Delta ist für aktuelle Storageprobleme meist aussagekräftiger.
+Die Procedure liefert Datei-I/O kumulativ oder als Delta. Ein Delta ist für aktuelle Storageprobleme meist aussagekräftiger.
 
 ### Aufrufe
 
@@ -555,8 +555,8 @@ Kontext und keine kausale Zuordnung. Physische Pfade bleiben opt-in.
 - Logdateien haben andere Zugriffsmuster als Datenfiles.
 - Hohe Durchsatzwerte können erwünschte Batcharbeit sein.
 - DMV-Stallzeit umfasst die SQL-Server-Sicht, nicht jede Storage-Layer-Komponente.
-- Ein einzelner Pending Request beweist keinen Storagefehler; Wiederholung,
-  Dateilast, I/O-Waits und externe Storage-Telemetrie korrelieren.
+- Ein einzelner Pending Request beweist keinen Storagefehler. Korrelieren Sie Wiederholung,
+  Dateilast, I/O-Waits und externe Storage-Telemetrie.
 
 ### Synthetische Beispiele
 
@@ -580,11 +580,11 @@ Es gibt keine seriöse universelle Latenzgrenze für jede Workload. SLA, IOPS, Q
 
 ### Zweck
 
-Analysiert aktuellen Logplatz, Wiederverwendungshindernisse, Logstatistik, optional VLFs und Persistent Version Store je Datenbank. Fehler einer Datenbank brechen andere Datenbanken nicht ab.
+Die Procedure analysiert aktuellen Logplatz, Wiederverwendungshindernisse, Logstatistik, optional VLFs und Persistent Version Store je Datenbank. Fehler einer Datenbank brechen andere Datenbanken nicht ab.
 
 ### Besonderheit der Auswahl
 
-Im Procedureheader ist `@DatabaseNames=N''` dokumentiert, die Hilfe erklärt jedoch `N''` als ungültig. Für produktive Aufrufe deshalb eine explizite Datenbankliste oder `NULL`/Pattern verwenden und Statusresultset prüfen.
+Im Procedureheader ist `@DatabaseNames=N''` dokumentiert, die Hilfe erklärt jedoch `N''` als ungültig. Verwenden Sie für produktive Aufrufe deshalb eine explizite Datenbankliste, `NULL` oder ein Pattern und prüfen Sie das Statusresultset.
 
 ### Aufrufe
 
@@ -649,7 +649,7 @@ VLF-Details benötigen `LOG_VLF_DEEP`.
 
 ### Zweck
 
-Orchestriert alle neun Current-State-Teilmodule fehlerisoliert. Es ist der bevorzugte Anfänger-Einstieg, aber nicht immer der effizienteste Wiederholungsaufruf.
+Die Procedure orchestriert alle neun Current-State-Teilmodule fehlerisoliert. Sie eignet sich für die Ersttriage, verursacht bei wiederholter Ausführung jedoch mehr Quellarbeit als ein gezielt gewähltes Einzelmodul.
 
 ### Standardreihenfolge
 
@@ -712,14 +712,14 @@ SELECT JSON_QUERY(@OverviewJson, '$.blocking.locks') AS BlockingLocks;
 
 - `@SampleSeconds` wird an Waits und I/O weitergegeben; dadurch wartet der Gesamtaufruf.
 - Ein Childfehler verhindert andere Children nicht.
-- `FailedModules=0` bedeutet nicht, dass jeder Childstatus vollständig `AVAILABLE` war; Child-Meta lesen.
+- `FailedModules=0` bedeutet nicht, dass jeder Childstatus vollständig `AVAILABLE` war; lesen Sie deshalb die Child-Metadaten.
 - Der Default kann für häufiges Polling unnötig breit sein.
 - `@BlockingObjektTiefe='DEEP'` liest zusätzlich Locks beteiligter Sessions;
   `NONE` vermeidet die Ressourcenauflösung, `STANDARD` begrenzt sie standardmäßig
   auf 100 deduplizierte Kandidaten.
 - Die Deep-Lockzeilen sind im Overview unter `$.blocking.locks` im JSON
   enthalten; das materialisierte Blockingdetail enthält nur die Ketten.
-- Für wiederholte Analyse nur die problemrelevanten Module aktivieren.
+- Aktivieren Sie für wiederholte Analysen nur die problemrelevanten Module.
 
 ### Anfänger-Entscheidungsbaum
 

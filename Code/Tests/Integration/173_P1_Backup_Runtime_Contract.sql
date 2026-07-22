@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 173_P1_Backup_Runtime_Contract.sql
-Zweck        : Laufzeitverträge für vier P1-Backupkettenfälle.
+Zweck        : Prüft Laufzeitverträge für vier P1-Backupkettenfälle.
 Datenschutz  : Ausschließlich die synthetische Testdatenbank wird verwendet.
                Laufzeitwerte werden nicht in Repositoryartefakte übernommen.
 Nebenwirkung : Erzeugt kurzlebige msdb-Backuphistorie und eine generische Datei

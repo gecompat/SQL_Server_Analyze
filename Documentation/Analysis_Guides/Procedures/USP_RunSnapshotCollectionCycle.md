@@ -18,7 +18,7 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
 
 ## So lesen
 
-Zuerst `StatusCode`, `IsPartial`, Start/Ende und `ResetEpochId` lesen. Danach `modules` auf fehlende Rechte oder Evidenzgrenzen prüfen. `SKIPPED_NOT_DUE`, `SKIPPED_CONCURRENT`, `DISABLED` und `STOPPED_SIZE_BUDGET` bedeuten ausdrücklich, dass kein Quellread stattfand.
+Berücksichtigen Sie zuerst `StatusCode`, `IsPartial`, Start/Ende und `ResetEpochId`. Prüfen Sie danach `modules` auf fehlende Rechte oder Evidenzgrenzen. `SKIPPED_NOT_DUE`, `SKIPPED_CONCURRENT`, `DISABLED` und `STOPPED_SIZE_BUDGET` bedeuten ausdrücklich, dass kein Quellread stattfand.
 
 ## Warum kann das problematisch sein?
 
@@ -70,7 +70,7 @@ Alle Laufzeiten sind UTC. `SqlServerStartTimeUtc` bestimmt die stabile `ResetEpo
 
 ### Bewertung und Gegenprobe
 
-Mehrere zeitlich getrennte Runs mit identischer Epoche vergleichen und auffällige Counter mit Current-State-, Wait-, I/O- oder OS-Evidenz gegenprüfen.
+Vergleichen Sie mehrere zeitlich getrennte Läufe mit identischer Epoche. Prüfen Sie auffällige Counter anhand von Current-State-, Wait-, I/O- oder OS-Evidenz gegen.
 
 ### Typische Fehlinterpretation
 
@@ -78,6 +78,6 @@ Fehlendes Sample ist weder Nullwert noch gesunder Zustand. `PARTIAL` darf nicht 
 
 ### Folgeanalyse
 
-`USP_PerformanceCounters`, `USP_PurgeSnapshotData` sowie passende Current-State- und Server-Health-Module.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_PerformanceCounters`, `USP_PurgeSnapshotData` sowie passende Current-State- und Server-Health-Module.
 
 [Technische Detailbeschreibung](../../Operations/Snapshot_Baseline_Operations.md)

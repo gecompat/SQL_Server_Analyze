@@ -60,14 +60,14 @@ ResourceWaitTimeMs = WaitTimeMs - SignalWaitTimeMs
 
 ## 5. Verbindliches Bewertungsmuster
 
-1. **Status und Vollständigkeit:** Modulstatus, Warnungen, ausgelassene Datenbanken und Rechte prüfen.
-2. **Scope:** Instanz, Datenbank, Session, Request, Task, Query, Plan, Objekt oder Datei bestimmen.
-3. **Zeit:** Snapshot, kumulativ, Sample oder persistierte Historie unterscheiden.
-4. **Menge:** Ausführungen, Tasks, I/Os, Seiten oder Zeilen als Nenner bestimmen.
-5. **Mechanismus:** erklären, welcher Enginevorgang den Wert erzeugen kann.
-6. **Auswirkung:** Laufzeit, Durchsatz, SLA, Blocking oder Kapazität messen.
-7. **Gegenprobe:** mindestens eine plausible Alternativerklärung prüfen.
-8. **Bestätigung:** eine zweite, unabhängige Evidenzquelle verwenden.
+1. **Status und Vollständigkeit:** Prüfen Sie Modulstatus, Warnungen, ausgelassene Datenbanken und Rechte.
+2. **Scope:** Bestimmen Sie Instanz, Datenbank, Session, Request, Task, Query, Plan, Objekt oder Datei.
+3. **Zeit:** Unterscheiden Sie Snapshot, kumulative Messung, Sample und persistierte Historie.
+4. **Menge:** Bestimmen Sie Ausführungen, Tasks, I/Os, Seiten oder Zeilen als Nenner.
+5. **Mechanismus:** Erklären Sie, welcher Enginevorgang den Wert erzeugen kann.
+6. **Auswirkung:** Messen Sie Laufzeit, Durchsatz, SLA, Blocking oder Kapazität.
+7. **Gegenprobe:** Prüfen Sie mindestens eine plausible Alternativerklärung.
+8. **Bestätigung:** Verwenden Sie eine zweite, unabhängige Evidenzquelle.
 
 Ein leeres Resultset ist nur für den dokumentierten Scope und Zeitpunkt leer. Es ist ohne Prüfung von Filtern, Rechten, Featurestatus, Capture und Retention weder ein Gesundheitsnachweis noch ein Beweis dafür, dass ein Ereignis nie stattgefunden hat.
 

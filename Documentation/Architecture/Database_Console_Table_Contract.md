@@ -100,7 +100,7 @@ Vor dem ersten teuren Zugriff gilt:
 3. Analyseklasse und Gruppenfreigabe prüfen;
 4. bei fehlender Bestätigung kontrolliert mit
    `HIGH_IMPACT_CONFIRMATION_REQUIRED` beenden;
-5. erst danach die teure Systemquelle lesen.
+5. Lesen Sie erst danach die teure Systemquelle.
 
 Leichte Pfade verlangen keine vorsorgliche Bestätigung. Die konkrete
 Kostenspannweite und ein sicherer Einstieg stehen im
@@ -311,14 +311,14 @@ Console-Detailgrad über ihre benannten Resultsetnamen steuerbar.
 
 ## 11. Leserichtung für Verbraucher
 
-1. Procedure und Scope im [Analysis Navigator](../Reference/Analysis_Navigator.md)
-   auswählen.
-2. `@Hilfe = 1` und die tiefe Procedure-Seite lesen.
-3. Zuerst Status, Partialität, Zeitbezug und Scope prüfen.
-4. Danach fachliche Zeilen und Einheiten interpretieren.
-5. Leere, gekürzte, optionale und nicht verfügbare Quellen unterscheiden.
-6. Für Automatisierung benannte RAW-, TABLE- oder JSON-Verträge verwenden.
-7. Einen Befund durch den dokumentierten Folge- oder Gegenpfad bestätigen.
+1. Wählen Sie Procedure und Scope im [Analysis Navigator](../Reference/Analysis_Navigator.md)
+   aus.
+2. Verwenden Sie `@Hilfe = 1` und lesen Sie die ausführliche Procedure-Seite.
+3. Prüfen Sie zuerst Status, Partialität, Zeitbezug und Scope.
+4. Interpretieren Sie danach fachliche Zeilen und Einheiten.
+5. Unterscheiden Sie leere, gekürzte, optionale und nicht verfügbare Quellen.
+6. Verwenden Sie für die Automatisierung benannte RAW-, TABLE- oder JSON-Verträge.
+7. Bestätigen Sie einen Befund durch den dokumentierten Folge- oder Gegenpfad.
 
 Die allgemeinen Aufruf- und Ausgabegrundlagen stehen zusätzlich in den
 [gemeinsamen Verträgen](../Analysis_Guides/Common_Contracts.md) und den

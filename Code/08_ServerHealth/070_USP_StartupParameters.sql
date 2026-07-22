@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_StartupParameters
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Startparameter und Registry-basierte Dienstparameter mit Plattformhinweis.
+Zweck        : Liefert Startparameter und Registry-basierte Dienstparameter
+               einschließlich eines Plattformhinweises.
 Datenquellen : sys.dm_server_registry
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

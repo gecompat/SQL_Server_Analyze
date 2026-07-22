@@ -548,14 +548,12 @@ Der separate `@IdentifierDatenschutzModus` gilt für Datenbank-, Schema-, Objekt
 
 ### 9.4 Verarbeitungsreihenfolge
 
-```text
-1. Histogrammwerte lokal und kurzfristig lesen
-2. Predicate- und Parameterwerte lokal normalisieren
-3. Werte gegen Histogramm und Statistikspalten abgleichen
-4. abgeleitete Beziehungen speichern
-5. Rohwerte entfernen oder tokenisieren
-6. erst danach Evidenz-JSON erzeugen
-```
+1. Das Verfahren liest Histogrammwerte lokal und kurzfristig.
+2. Es normalisiert Predicate- und Parameterwerte lokal.
+3. Es gleicht die Werte mit Histogramm und Statistikspalten ab.
+4. Es speichert die abgeleiteten Beziehungen.
+5. Es entfernt oder tokenisiert die Rohwerte.
+6. Erst danach erzeugt es das Evidenz-JSON.
 
 Die Anonymisierung darf nicht vor dem Mapping erfolgen.
 

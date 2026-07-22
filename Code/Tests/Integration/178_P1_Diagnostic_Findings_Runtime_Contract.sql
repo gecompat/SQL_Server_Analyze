@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 178_P1_Diagnostic_Findings_Runtime_Contract.sql
-Zweck        : Laufzeitverträge für sechs P1-Findings-Fälle.
+Zweck        : Prüft Laufzeitverträge für sechs P1-Findings-Fälle.
 Datenschutz  : Ausschließlich synthetische Principals und technische Statuswerte;
                keine SQL-, Plan-, Mail-, Pfad- oder freien Child-Meldungstexte
                werden als Testevidenz persistiert.

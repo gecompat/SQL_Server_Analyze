@@ -39,7 +39,7 @@ Je nach Resultset beschreibt eine Zeile einen Plan, ein Statement, einen Operato
 
 ## So lesen
 
-Zuerst Planquelle und `RuntimeCounterScope`, danach Statements und Operatorbaum. Absolute Zeilen- und Readmengen vor Ratios prüfen. Findings erst mit Severity, Confidence, Workloadprofil und Evidenzgrenze bewerten.
+Berücksichtigen Sie zuerst die Planquelle und `RuntimeCounterScope`, danach die Statements und den Operatorbaum. Prüfen Sie absolute Zeilen- und Readmengen vor Ratios. Bewerten Sie Findings erst mit Severity, Confidence, Workloadprofil und Evidenzgrenze.
 
 ## Warum kann das problematisch sein?
 
@@ -63,7 +63,7 @@ Die Ausführung ist pull-basiert; ein Plan ist keine lineare zeitliche Schrittfo
 
 ### Datenkette
 
-Direktes Showplan XML oder gezielte Quellen `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml` beziehungsweise `sys.query_store_plan`; optional Evidence JSON. Importierte Histogramm- und Predicate-Mappings passieren vor jeder Ausgabe erneut die öffentliche Privacy-Grenze.
+Die Procedure verwendet direktes Showplan XML oder die gezielten Quellen `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml` beziehungsweise `sys.query_store_plan`; Evidence JSON ist optional. Importierte Histogramm- und Predicate-Mappings passieren vor jeder Ausgabe erneut die öffentliche Privacy-Grenze.
 
 ### Source Select
 
@@ -86,7 +86,7 @@ Compile-, Last-Actual-, Current-Actual-, Query-Store- und importierte Evidenz bl
 
 ### Bewertung und Gegenprobe
 
-Relative Abweichung, absolute Arbeit je Ausführung, Wiederholung und kumulative Wirkung kombinieren. Statistiken, Query Store, IO/TIME und Indexkataloge dienen als unabhängige Gegenprobe.
+Berücksichtigen Sie die relative Abweichung, die absolute Arbeit je Ausführung, die Wiederholung und die kumulative Wirkung gemeinsam. Statistiken, Query Store, IO/TIME und Indexkataloge dienen als unabhängige Gegenprobe.
 
 ### Typische Fehlinterpretation
 
@@ -94,7 +94,7 @@ Ein 100-facher Estimatefehler bei wenigen Zeilen ist nicht automatisch kritische
 
 ### Folgeanalyse
 
-`USP_CreateExecutionEvidenceJson`, `USP_ShowplanAnalysis`, Query Store Regressionen, Index Usage und Statistics Distribution.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_CreateExecutionEvidenceJson`, `USP_ShowplanAnalysis`, Query Store Regressionen, Index Usage und Statistics Distribution.
 
 ## Primärquellen
 

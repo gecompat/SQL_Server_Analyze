@@ -67,12 +67,12 @@ ORDER BY [SourceOrdinal];
 - `sys.dm_os_wait_stats` ist seit Instanzstart oder letztem Reset kumulativ.
 - Mindestens zwei Messpunkte unter vergleichbarer Last sind für eine
   Engpassaussage erforderlich.
-- `WaitTimeMs`, Taskanzahl und Durchschnitt immer gemeinsam lesen. Viele kurze
+- Lesen Sie `WaitTimeMs`, Taskanzahl und Durchschnitt immer gemeinsam. Viele kurze
   Waits und wenige lange Waits haben unterschiedliche Ursachen.
 - `SignalWaitTimeMs` betrifft Runnable-/Schedulerzeit;
   `ResourceWaitTimeMs` die eigentliche Ressourcenwartezeit.
-- Neustart, `DBCC SQLPERF`-Reset, Failover und Rollenwechsel begrenzen
-  Vergleiche.
+- Neustart, `DBCC SQLPERF`-Reset, Failover und Rollenwechsel begrenzen die
+  Vergleichbarkeit.
 - Ein hoher Prozentanteil kann entstehen, weil andere Waits fehlen; absolute
   Dauer, Durchsatz und Benutzerlatenz bleiben erforderlich.
 

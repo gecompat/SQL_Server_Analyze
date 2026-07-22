@@ -7,18 +7,18 @@ EXEC [monitor].[USP_CurrentMemoryGrants] @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_ServerMemory] @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Requested, Granted, Used, Waitzeit, Warteschlangenlänge, DOP, aktuelle Konkurrenz und OS-/SQL-Memory-Pressure.
+Lesen Sie Requested, Granted, Used, Waitzeit, Warteschlangenlänge und DOP zusammen mit der aktuellen Konkurrenz sowie dem OS- und SQL-Memory-Pressure.
 
-## Warum
+## Interpretation
 
 `Granted=0` plus lange `RESOURCE_SEMAPHORE`-Wartezeit bedeutet, dass die Query noch nicht mit ihrer Hauptarbeit beginnen konnte.
 
 ## Gegenprobe
 
-Request/Plan über `USP_CurrentRequests` und `USP_ShowplanAnalysis`; Estimate/Actual und Memory Grant Feedback prüfen.
+Korrelieren Sie Request und Plan über `USP_CurrentRequests` und `USP_ShowplanAnalysis`. Prüfen Sie außerdem Estimate versus Actual und Memory Grant Feedback.
 
-## Nicht tun
+## Nicht ableiten
 
-Nicht automatisch max server memory erhöhen. Konkurrenz, Schätzfehler, DOP und übergroße Grants prüfen.
+Erhöhen Sie `max server memory` nicht automatisch. Prüfen Sie zunächst Konkurrenz, Schätzfehler, DOP und übergroße Grants.

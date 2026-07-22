@@ -7,7 +7,8 @@ Objekt       : monitor.TVF_InterpretAvailabilitySeedingState
 Version      : 1.0.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
-Zweck        : Reiner Rechen- und Klassifikationsvertrag für physisches Seeding.
+Zweck        : Berechnet und klassifiziert den Zustand eines physischen
+               Seedings ohne Seiteneffekte.
 Datenschutz  : Verarbeitet ausschließlich übergebene technische Zahlen- und
                Zeitwerte; freie Fehlermeldungen werden nicht benötigt.
 Grenzen      : Fortschritt basiert auf sichtbaren Bytezählern. Kompression,

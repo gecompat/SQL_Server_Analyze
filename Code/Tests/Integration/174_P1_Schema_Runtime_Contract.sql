@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 174_P1_Schema_Runtime_Contract.sql
-Zweck        : Laufzeitverträge für vier P1-Schema-/Designfälle.
+Zweck        : Prüft Laufzeitverträge für vier P1-Schema- und Designfälle.
 Datenschutz  : Nur generische synthetische Objekte; Resultate werden nicht
                in Repository- oder Downloadartefakte übernommen.
 Nebenwirkung : Sämtliche generisch benannten DDL-Fixtures werden im Erfolgs-

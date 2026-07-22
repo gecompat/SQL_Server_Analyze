@@ -1,6 +1,6 @@
 # Einsatzszenarien und Auswertung
 
-Wenn die passende Procedure noch nicht bekannt ist, zuerst [Hier beginnen](../Analysis_Guides/Start_Here.md) oder direkt suchen:
+Wenn die passende Procedure noch nicht bekannt ist, verwenden Sie zuerst [Hier beginnen](../Analysis_Guides/Start_Here.md) oder die direkte Suche:
 
 ```sql
 EXEC [monitor].[USP_AnalysisNavigator]
@@ -16,15 +16,15 @@ Der Navigator führt keinen der folgenden Analysepfade automatisch aus.
 3. `EXEC monitor.USP_CurrentBlocking;`
 4. `EXEC monitor.USP_QueryStats;`
 
-Waits immer als Wegweiser interpretieren. `LOCKING` führt zur Blocking-/Transaktionsanalyse, `STORAGE_DATA_IO` zu File-Latenzen und Read-Mustern, `CPU_SCHEDULER` zu Runnable Queue und Top-CPU-Plänen, `MEMORY` zu Grants und Cardinality.
+Interpretieren Sie Waits als Wegweiser und nicht als alleinige Ursache. `LOCKING` führt zur Blocking- und Transaktionsanalyse, `STORAGE_DATA_IO` zu File-Latenzen und Read-Mustern, `CPU_SCHEDULER` zu Runnable Queue und Top-CPU-Plänen sowie `MEMORY` zu Grants und Cardinality.
 
 ## Wait-Stats-Auswertung
 
 - Aktuelle Tasks beantworten „Was wartet jetzt?“.
 - `INSTANCE_DELTA` beantwortet „Wo wurde im Messfenster gewartet?“.
 - `INSTANCE_CUMULATIVE` ist nur Langzeitkontext.
-- `MEASUREMENT_RESET`: Sample verwerfen und erneut messen.
-- `IsGenerallyBenign=1`: standardmäßig nicht als Problem priorisieren.
+- `MEASUREMENT_RESET` bedeutet, dass Sie das Sample verwerfen und erneut messen müssen.
+- Bei `IsGenerallyBenign=1` sollten Sie den Wait standardmäßig nicht als Problem priorisieren.
 - `DescriptionQuality=FRAMEWORK_CURATED`: Name und Frameworkbeschreibung wurden gegen die dokumentierte Primärquelle geprüft; konkrete hohe Deltas bleiben dennoch im Versions- und Workload-Kontext zu bewerten.
 
 ## TempDB
@@ -33,7 +33,7 @@ Waits immer als Wegweiser interpretieren. `LOCKING` führt zur Blocking-/Transak
 
 ## Server Health
 
-`EXEC monitor.USP_ServerHealthAnalysis;` liefert eine Statusübersicht. Detailaufrufe: `USP_ServerCpuTopology`, `USP_ServerNuma`, `USP_ServerMemory`, `USP_TempDBConfiguration`, `USP_ServerConfiguration`, `USP_OSInformation`, `USP_ServerSecurityConfiguration`.
+`EXEC monitor.USP_ServerHealthAnalysis;` liefert eine Statusübersicht. Für die Vertiefung stehen `USP_ServerCpuTopology`, `USP_ServerNuma`, `USP_ServerMemory`, `USP_TempDBConfiguration`, `USP_ServerConfiguration`, `USP_OSInformation` und `USP_ServerSecurityConfiguration` zur Verfügung.
 
 ## Versionsadaptive Features
 
