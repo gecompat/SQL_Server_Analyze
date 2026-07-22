@@ -9,7 +9,7 @@ PLAN-001 kann unabhängig vom vollständigen SQL Server Analyze Framework instal
 | Weg | Datei | SQLCMD erforderlich |
 |---|---|---:|
 | Include-Installer | `Code/Install/Install_ExecutionPlanAnalysis.sql` | ja |
-| eingebetteter Einzelinstaller | Ausgabe von `Code/Install/Build-ExecutionPlanAnalysisInstaller.ps1` | nein |
+| eingebetteter Einzelinstaller | `Code/Install/generated/Install_ExecutionPlanAnalysis.generated.sql` aus `Build-ExecutionPlanAnalysisInstaller.ps1` | nein |
 | vollständiges Framework | `Code/Install/Install_All.sql` oder dessen eingebettete Ausgabe | abhängig vom gewählten Weg |
 
 Vor jedem Weg ist `[DeineDatenbank]` durch die gewählte Frameworkdatenbank zu ersetzen. Der Installer erstellt die Datenbank nicht.

@@ -18,10 +18,11 @@ $repositoryRootPrefix = $RepositoryRoot.TrimEnd([char[]]@(
 
 $frameworkInstaller = Join-Path $RepositoryRoot 'Code/Install/Install_SnapshotBaseline_Framework.sql'
 $targetInstaller = Join-Path $RepositoryRoot 'Code/Install/Install_SnapshotBaseline_Target.sql'
+$snapshotBuilder = Join-Path $RepositoryRoot 'Code/Install/Build-SnapshotBaselineInstallers.ps1'
 $installAll = Join-Path $RepositoryRoot 'Code/Install/Install_All.sql'
 $snapshotSourceRoot = Join-Path $RepositoryRoot 'Code/10_SnapshotBaseline'
 
-foreach ($path in @($frameworkInstaller, $targetInstaller, $installAll)) {
+foreach ($path in @($frameworkInstaller, $targetInstaller, $snapshotBuilder, $installAll)) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         throw "SC023_INSTALLER_FILE_MISSING: $([IO.Path]::GetFileName($path))"
     }
@@ -255,6 +256,67 @@ if ([Text.RegularExpressions.Regex]::IsMatch($installAllText, '(?i)SnapshotBasel
 
 Assert-NoMutationOfSecurityOrAgent -SqlText $frameworkText -ContractPart 'FRAMEWORK'
 Assert-NoMutationOfSecurityOrAgent -SqlText $targetText -ContractPart 'TARGET'
+
+$builderText = Get-Content -LiteralPath $snapshotBuilder -Raw -Encoding UTF8
+foreach ($defaultOutput in @(
+    'generated',
+    'Install_SnapshotBaseline_Framework.generated.sql',
+    'Install_SnapshotBaseline_Target.generated.sql'
+)) {
+    if ($builderText -notmatch [regex]::Escape($defaultOutput)) {
+        throw "SC023_BUILDER_DEFAULT_OUTPUT_MISSING: $defaultOutput"
+    }
+}
+
+$testOutputDirectory = Join-Path ([IO.Path]::GetTempPath()) ('sql-server-analyze-snapshot-' + [guid]::NewGuid().ToString('N'))
+try {
+    & $snapshotBuilder -RepositoryRoot $RepositoryRoot -OutputDirectory $testOutputDirectory
+    $generatedFrameworkPath = Join-Path $testOutputDirectory 'Install_SnapshotBaseline_Framework.generated.sql'
+    $generatedTargetPath = Join-Path $testOutputDirectory 'Install_SnapshotBaseline_Target.generated.sql'
+
+    foreach ($generatedPath in @($generatedFrameworkPath, $generatedTargetPath)) {
+        if (-not (Test-Path -LiteralPath $generatedPath -PathType Leaf)) {
+            throw "SC023_GENERATED_INSTALLER_MISSING: $([IO.Path]::GetFileName($generatedPath))"
+        }
+    }
+
+    $generatedFrameworkText = Get-Content -LiteralPath $generatedFrameworkPath -Raw -Encoding UTF8
+    $generatedTargetText = Get-Content -LiteralPath $generatedTargetPath -Raw -Encoding UTF8
+    foreach ($part in @(
+        @{ Name = 'FRAMEWORK'; Text = $generatedFrameworkText; Expected = $expectedFrameworkIncludes },
+        @{ Name = 'TARGET'; Text = $generatedTargetText; Expected = $expectedTargetIncludes }
+    )) {
+        if ($part.Text -match '(?im)^\s*:(?:r|ON\s+ERROR)\b') {
+            throw "SC023_GENERATED_SQLCMD_DIRECTIVE_FOUND: $($part.Name)"
+        }
+        $markers = @(
+            [Text.RegularExpressions.Regex]::Matches($part.Text, '(?m)^-- BEGIN SOURCE: (.+?)$') |
+                ForEach-Object { $_.Groups[1].Value.Trim() }
+        )
+        if ([string]::Join('|', $markers) -ne [string]::Join('|', $part.Expected)) {
+            throw "SC023_GENERATED_SOURCE_CLOSURE_OR_ORDER: $($part.Name)"
+        }
+    }
+    if (@([Text.RegularExpressions.Regex]::Matches($generatedFrameworkText, '(?im)^USE \[DeineDatenbank\];$')).Count -ne 1) {
+        throw 'SC023_GENERATED_FRAMEWORK_CONTEXT_COUNT_INVALID'
+    }
+    if ([Text.RegularExpressions.Regex]::IsMatch($generatedTargetText, '(?im)^\s*USE\s+\[')) {
+        throw 'SC023_GENERATED_TARGET_DATABASE_SWITCH_FORBIDDEN'
+    }
+
+    $frameworkHash = (Get-FileHash -LiteralPath $generatedFrameworkPath -Algorithm SHA256).Hash
+    $targetHash = (Get-FileHash -LiteralPath $generatedTargetPath -Algorithm SHA256).Hash
+    & $snapshotBuilder -RepositoryRoot $RepositoryRoot -OutputDirectory $testOutputDirectory
+    if ((Get-FileHash -LiteralPath $generatedFrameworkPath -Algorithm SHA256).Hash -ne $frameworkHash -or
+        (Get-FileHash -LiteralPath $generatedTargetPath -Algorithm SHA256).Hash -ne $targetHash) {
+        throw 'SC023_GENERATION_NOT_DETERMINISTIC'
+    }
+}
+finally {
+    if (Test-Path -LiteralPath $testOutputDirectory) {
+        Remove-Item -LiteralPath $testOutputDirectory -Recurse -Force
+    }
+}
 
 $allowedUseContexts = @(
     'DeineDatenbank',

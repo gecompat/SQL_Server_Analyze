@@ -19,6 +19,15 @@ TARGET_INSTALLER = pathlib.PurePosixPath(
     "Code/Install/Install_SnapshotBaseline_Target.sql"
 )
 INSTALL_ALL = pathlib.PurePosixPath("Code/Install/Install_All.sql")
+SNAPSHOT_BUILDER = pathlib.PurePosixPath(
+    "Code/Install/Build-SnapshotBaselineInstallers.ps1"
+)
+GENERATED_FRAMEWORK_INSTALLER = pathlib.PurePosixPath(
+    "Code/Install/generated/Install_SnapshotBaseline_Framework.generated.sql"
+)
+GENERATED_TARGET_INSTALLER = pathlib.PurePosixPath(
+    "Code/Install/generated/Install_SnapshotBaseline_Target.generated.sql"
+)
 SOURCE_ROOT = pathlib.PurePosixPath("Code/10_SnapshotBaseline")
 PUBLIC_CONTRACT = pathlib.PurePosixPath(
     "Metadata/Quality/SnapshotBaseline_Public_Contract.json"
@@ -329,8 +338,22 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
                 errors.append("PUBLIC_CONTRACT_FRAMEWORK_INSTALLER")
             if package_boundary.get("targetInstaller") != TARGET_INSTALLER.as_posix():
                 errors.append("PUBLIC_CONTRACT_TARGET_INSTALLER")
+            if package_boundary.get("standaloneBuilder") != SNAPSHOT_BUILDER.as_posix():
+                errors.append("PUBLIC_CONTRACT_STANDALONE_BUILDER")
+            if package_boundary.get(
+                "generatedFrameworkInstaller"
+            ) != GENERATED_FRAMEWORK_INSTALLER.as_posix():
+                errors.append("PUBLIC_CONTRACT_GENERATED_FRAMEWORK_INSTALLER")
+            if package_boundary.get(
+                "generatedTargetInstaller"
+            ) != GENERATED_TARGET_INSTALLER.as_posix():
+                errors.append("PUBLIC_CONTRACT_GENERATED_TARGET_INSTALLER")
             if package_boundary.get("coreInstallsPackage") is not False:
                 errors.append("PUBLIC_CONTRACT_CORE_BOUNDARY")
+
+    builder_path = repository_root / SNAPSHOT_BUILDER
+    if not builder_path.is_file():
+        errors.append("SNAPSHOT_STANDALONE_BUILDER_MISSING")
 
     framework_includes = resolve_includes(repository_root, framework_path, errors)
     target_includes = resolve_includes(repository_root, target_path, errors)
@@ -587,6 +610,9 @@ GO
         encoding="utf-8",
     )
     (root / INSTALL_ALL).write_text(":ON ERROR EXIT\n", encoding="utf-8")
+    (root / SNAPSHOT_BUILDER).write_text(
+        "# synthetic self-test builder\n", encoding="utf-8"
+    )
     (root / PUBLIC_CONTRACT).write_text(
         json.dumps(
             {
@@ -597,6 +623,9 @@ GO
                 "packageBoundary": {
                     "frameworkInstaller": FRAMEWORK_INSTALLER.as_posix(),
                     "targetInstaller": TARGET_INSTALLER.as_posix(),
+                    "standaloneBuilder": SNAPSHOT_BUILDER.as_posix(),
+                    "generatedFrameworkInstaller": GENERATED_FRAMEWORK_INSTALLER.as_posix(),
+                    "generatedTargetInstaller": GENERATED_TARGET_INSTALLER.as_posix(),
                     "coreInstallsPackage": False,
                 },
                 "publicProcedures": [f"monitor.{name}" for name in PUBLIC_APIS],

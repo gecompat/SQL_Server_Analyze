@@ -56,7 +56,7 @@ Set-Location ./Code/Install
 ./Build-StandaloneInstaller.ps1
 ```
 
-Dadurch entsteht `Code/Install/Install_All.generated.sql`. In dieser Datei muss der Platzhalter `[DeineDatenbank]` nur einmal am Anfang ersetzt werden. Das generierte Build-Artefakt wird nicht versioniert.
+Dadurch entsteht `Code/Install/generated/Install_All.generated.sql`. In dieser Datei muss der Platzhalter `[DeineDatenbank]` nur einmal am Anfang ersetzt werden. Generierte Build-Artefakte werden nicht versioniert.
 
 Die generierte Datei anschließend vollständig in SSMS ausführen und mit
 `Code/Tests/Integration/110_Smoke_Test.sql` prüfen. Eine vollständige Anleitung
