@@ -63,7 +63,35 @@ IF EXISTS
        OR [CapturedRowCount] < 0
        OR [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED')
 )
-    THROW 52199,N'snapshotStatus enthält einen ungültigen Zeit-, Mengen- oder Statuswert.',1;
+BEGIN
+    DECLARE @SnapshotStatusDiagnostic nvarchar(2048)=
+    (
+        SELECT STUFF
+        (
+            (
+                SELECT
+                      N'; '+CONVERT(nvarchar(40),[s].[SourceCode])
+                    + N'='+CONVERT(nvarchar(40),[s].[StatusCode])
+                    + N'/'+COALESCE(CONVERT(nvarchar(20),[s].[ErrorNumber]),N'-')
+                FROM [#CurrentStateSnapshotRuntimeContract_SnapshotStatus] AS [s]
+                WHERE [s].[SnapshotId] IS NULL
+                   OR [s].[CapturedAtUtc] IS NULL
+                   OR [s].[CompletedAtUtc] IS NULL
+                   OR [s].[CapturedRowCount] < 0
+                   OR [s].[StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED')
+                ORDER BY [s].[SourceOrdinal]
+                FOR XML PATH(N''),TYPE
+            ).value(N'.',N'nvarchar(1800)')
+            ,1,2,N''
+        )
+    );
+    SET @SnapshotStatusDiagnostic=CONCAT
+    (
+        N'snapshotStatus enthält einen ungültigen Zeit-, Mengen- oder Statuswert: '
+      , COALESCE(@SnapshotStatusDiagnostic,N'UNBEKANNT')
+    );
+    THROW 52199,@SnapshotStatusDiagnostic,1;
+END;
 
 IF ISJSON(@OverviewJson)<>1
    OR JSON_QUERY(@OverviewJson,N'$.snapshotStatus') IS NULL
