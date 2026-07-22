@@ -120,6 +120,8 @@ LEFT JOIN [ExampleDatabase].[sys].[assemblies] AS [catalog] WITH (NOLOCK)
  AND [domain].[db_id] = DB_ID(N'ExampleDatabase');
 ```
 
+**Wichtig für die Eigenlast:** Die CLR-DMVs besitzen serverweiten Scope und werden je Messpunkt einmal vollständig materialisiert. Datenbank- und Assemblyfilter begrenzen die anschließende Katalogauflösung, nicht jedoch die Arbeit dieser serverweiten DMV-Snapshots; `@MaxZeilen` wirkt erst auf die fertigen Resultsets.
+
 Die reale Procedure verwendet dynamisch quotierte Datenbanknamen aus dem zentralen Kandidatenvertrag. Binärinhalt und Hashquellen werden nicht referenziert.
 
 ### Zeit- und Scope-Modell

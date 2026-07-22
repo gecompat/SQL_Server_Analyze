@@ -116,6 +116,8 @@ LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
   ON [r].[external_script_request_id] = [er].[external_script_request_id];
 ```
 
+**Wichtig für die Eigenlast:** Aktive External Requests, External Resource Pools und Performance Counter besitzen serverweiten Scope und werden je Messpunkt einmal materialisiert. Datenbank- und Languagefilter begrenzen Katalog- und korrelierte Ausgabezeilen, nicht sämtliche serverweiten Quellzugriffe; `@MaxZeilen` wirkt erst nach der Materialisierung.
+
 Die Katalogprojektionen referenzieren niemals `content`, `parameters` oder `environment_variables`. Die Liveprojektion referenziert keinen SQL- oder Scripttext.
 
 ### Zeit- und Scope-Modell
