@@ -8,15 +8,25 @@
 | Dokumentationsstand | 22. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Bestand umfasst 163 inventarisierte Objekte:
+Der aktuelle Bestand umfasst 164 inventarisierte Objekte:
 
 - 96 öffentliche Procedures;
 - acht Views;
 - 27 Table-Valued Functions;
-- 15 interne Procedures;
+- 16 interne Procedures;
 - 17 Tabellen.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+
+## Abschlusswelle 0/1 – Statusmodell und Current-State-Evidenzbasis
+
+Die fünf kanonischen Abschlussstatus sind in einem gemeinsamen, maschinenlesbaren Modell festgelegt. DIAG-003 bis DIAG-005 werden als `PARTIAL_PRODUCT_FUNCTION`, RUNTIME-001 als `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`, der ausgelieferte SC-023-Slice als `IMPLEMENTED_ACTIONS_GATE` und optionale Ausbaupunkte separat als `OPTIONAL_FUTURE` geführt. Das Special-Feature-Routing für Verschlüsselung verweist nun konsistent auf die bereits implementierte `USP_EncryptionAnalysis`.
+
+Der erste Slice der gemeinsamen laufinternen Evidenzbasis ergänzt einen aufruflokalen Snapshot-Owner für Sessions, Requests, Connections, Waiting Tasks, Memory Grants, Resource Governor sowie begrenzte SQL-Text-Evidenz. `USP_CurrentOverview` liest jede aktivierte Primärquelle einmal und reicht denselben Snapshot an `USP_CurrentSessions` und `USP_CurrentRequests` weiter. Einzelaufrufe bleiben frisch und lehnen fremde oder abgelaufene Parent-IDs ab. Input Buffer bleibt bis zur späteren Konsolidierung eine begrenzte Post-Candidate-Quelle von `USP_CurrentRequests`. Das neue Resultset `snapshotStatus` weist Snapshot-ID, Quellzeit, Abschlusszeit, Zeilenzahl, Partialität und isolierte Quellenfehler aus.
+
+Dieser Slice schließt die gemeinsame Current-State-Evidenzbasis noch nicht ab. Blocking, Waits, Transaktionen, Memory Grants, TempDB, I/O und Log verwenden bis zu ihrer gezielten Migration weiterhin ihre bestehenden eigenständigen Lesewege.
+
 
 ## RUNTIME-001 – External Runtime und SQL CLR
 

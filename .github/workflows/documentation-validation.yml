@@ -17,6 +17,7 @@ on:
       - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
+      - 'Code/Tests/Static/993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
@@ -32,6 +33,9 @@ on:
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
       - 'Metadata/Quality/Release_Gate_Evidence.csv'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Future_Enhancement_Backlog.csv'
+      - 'Metadata/Quality/External_Evidence_Gates.csv'
       - 'Metadata/Quality/Test_Matrix.csv'
       - 'Metadata/Quality/Special_Case_Gap_Backlog.csv'
       - 'Metadata/Quality/Special_Case_Release_Audit.json'
@@ -55,6 +59,7 @@ on:
       - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
+      - 'Code/Tests/Static/993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
@@ -70,6 +75,9 @@ on:
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
       - 'Metadata/Quality/Release_Gate_Evidence.csv'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Future_Enhancement_Backlog.csv'
+      - 'Metadata/Quality/External_Evidence_Gates.csv'
       - 'Metadata/Quality/Test_Matrix.csv'
       - 'Metadata/Quality/Special_Case_Gap_Backlog.csv'
       - 'Metadata/Quality/Special_Case_Release_Audit.json'
@@ -179,6 +187,16 @@ jobs:
       - name: Validate canonical release evidence
         shell: bash
         run: python3 ./Code/Tests/Static/990_Validate_Release_Evidence.py --repository-root .
+
+      - name: Validate implementation status and Current-State snapshot contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py \
+            --repository-root .
 
       - name: Validate Wave 1 contracts
         shell: bash

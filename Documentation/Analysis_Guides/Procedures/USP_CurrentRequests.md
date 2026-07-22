@@ -66,6 +66,19 @@ Die [LIKE-Regeln und ihre Grenzen](../../Architecture/Tool_Background_Query_Filt
 sind zentral dokumentiert. Die clientseitige Kennzeichnung ist keine
 Sicherheitsidentität.
 
+
+## Snapshot-Verhalten
+
+Ein direkter Aufruf liest Sessions, Requests, Connections, Waiting Tasks,
+Memory Grants, Resource-Governor-Zuordnung und angeforderte Textquellen frisch.
+`@ParentCurrentStateSnapshotId` ist ausschließlich der interne
+Consumervertrag von `USP_CurrentOverview`; Anwender sollen ihn nicht setzen.
+Im Overview werden die gemeinsamen Primärquellen einmal materialisiert und
+SQL-Handles vor dem Textzugriff dedupliziert. Input Buffer bleibt bewusst eine
+Post-Candidate-Quelle: Er wird nur für die nach Filtern und Limit verbliebenen
+Requests und nur bei `@InputBufferEinbeziehen = 1` gelesen. RAW und JSON weisen
+Snapshot-ID und Startzeitpunkt aus.
+
 ## Resultsets und Leserichtung
 
 - `CONSOLE` liefert genau ein fachliches Resultset aus der materialisierten Requestmenge. Es eignet sich für die erste Sichtung.

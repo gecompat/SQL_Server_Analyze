@@ -21,7 +21,7 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | Views | 8 | ein Abschnitt je View |
 | Table-Valued Functions (TVFs) | 27 | ein Abschnitt je TVF |
 | Scalar-Valued Functions (SVFs) | 0 | derzeit keine SVF installiert |
-| Interne Procedures | 15 | ein Abschnitt je Procedure |
+| Interne Procedures | 16 | ein Abschnitt je Procedure |
 | Tabellen | 17 | ein Abschnitt je Tabelle |
 
 ## Direktnavigation
@@ -83,6 +83,7 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | [`InternalProjectUnicodeTextColumn`](#monitorinternalprojectunicodetextcolumn) | `monitor` | `Code/01_Common/098_USP_InternalProjectUnicodeTextColumn.sql` |
 | [`InternalEmitTruncationWarning`](#monitorinternalemittruncationwarning) | `monitor` | `Code/01_Common/099_USP_InternalEmitTruncationWarning.sql` |
 | [`InternalParseXmlText`](#monitorinternalparsexmltext) | `monitor` | `Code/01_Common/099a_USP_InternalParseXmlText.sql` |
+| [`InternalCaptureCurrentStateSnapshot`](#monitorinternalcapturecurrentstatesnapshot) | `monitor` | `Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql` |
 | [`InternalCollectExecutionPlanMetadata`](#monitorinternalcollectexecutionplanmetadata) | `monitor` | `Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql` |
 | [`InternalAnalyzeExecutionPlan`](#monitorinternalanalyzeexecutionplan) | `monitor` | `Code/04_PlanCache/051_InternalAnalyzeExecutionPlan.sql` |
 | [`InternalConfigureSnapshotPolicy`](#snapshotinternalconfiguresnapshotpolicy) | `snapshot` | `Code/10_SnapshotBaseline/020_InternalConfigureSnapshotPolicy.sql` |
@@ -651,6 +652,18 @@ Quelle: `Code/01_Common/099a_USP_InternalParseXmlText.sql`
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
 | Last und Sperren | Die Procedure koordiniert interne Verarbeitung ohne fachliche Persistenz unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
+
+### `[monitor].[InternalCaptureCurrentStateSnapshot]`
+
+Quelle: `Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Materialisiert die von einem Current-State-Orchestrator angeforderten primären DMV- und Textquellen einmalig in aufruflokalen Temp-Tabellen. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@SnapshotId uniqueidentifier`; sieben quellenbezogene `@Capture*`-Schalter; `@MaxSqlTextHandles int = 1000`. Der Aufrufer legt den versionierten Temp-Table-Vertrag an und besitzt dessen Lebensdauer. |
+| Verwendung | `USP_CurrentOverview` ruft den Baustein vor den Snapshot-fähigen Children auf. Einzelaufrufe der Children übergeben keine Parent-ID und lesen ihre Quellen frisch. |
+| Last und Sperren | Read-only unter `LOCK_TIMEOUT 0`. Nur aktivierte Quellen werden gelesen; SQL-Handles werden dedupliziert und optional begrenzt. Fehler einer Quelle werden isoliert in der Source-Status-Tabelle festgehalten. |
+| Vertrag | Nicht öffentlicher, aufruflokaler Vertrag. Snapshot-ID und Temp-Tabellen dürfen nur innerhalb desselben Orchestratoraufrufs verwendet werden; spätere oder fremde IDs werden abgelehnt. |
 
 ### `[monitor].[InternalCollectExecutionPlanMetadata]`
 
