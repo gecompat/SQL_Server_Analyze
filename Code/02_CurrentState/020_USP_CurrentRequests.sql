@@ -520,27 +520,24 @@ BEGIN
 
     IF @StatusCode='AVAILABLE' AND @ParentCurrentStateSnapshotId IS NOT NULL
     BEGIN
-        IF OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Context') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SourceStatus') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Sessions') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Requests') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Connections') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_WaitingTasks') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_MemoryGrants') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_WorkloadGroups') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_ResourcePools') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SqlText') IS NULL
-        BEGIN
-            SET @StatusCode='INVALID_PARENT_SNAPSHOT';
-            SET @IsPartial=1;
-            SET @ErrorMessage=N'Der angegebene Parent-Snapshot ist im aktuellen Aufruf nicht verfügbar.';
-        END
-        ELSE
         BEGIN TRY
+            EXEC [sys].[sp_executesql] N'
+                DECLARE @Probe int;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Connections] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_MemoryGrants] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_ResourcePools] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
+
             IF NOT EXISTS
             (
                 SELECT 1
-                FROM [#CurrentStateSnapshot_Context]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
                   AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
                   AND [ContractVersion]=1
@@ -554,7 +551,7 @@ BEGIN
             BEGIN
                 INSERT [#CurrentRequests_SourceSessions]
                 SELECT [session_id],[is_user_process],[login_name],[original_login_name],[host_name],[program_name]
-                FROM [#CurrentStateSnapshot_Sessions]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentRequests_SourceRequests]
@@ -569,44 +566,44 @@ BEGIN
                     , [statement_sql_handle],[statement_context_id],[is_resumable]
                     , [executing_managed_code],[context_info],[query_hash],[query_plan_hash]
                     , [sql_handle],[plan_handle],[statement_start_offset],[statement_end_offset]
-                FROM [#CurrentStateSnapshot_Requests]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Requests]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentRequests_SourceConnections]
                 SELECT [session_id],[connection_id],[client_net_address]
-                FROM [#CurrentStateSnapshot_Connections]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Connections]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentRequests_SourceWaitingTasks]
                 SELECT [session_id],[wait_duration_ms],[wait_type]
-                FROM [#CurrentStateSnapshot_WaitingTasks]
+                FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentRequests_SourceMemoryGrants]
                 SELECT [session_id],[request_id],[requested_memory_kb],[granted_memory_kb],[used_memory_kb],[ideal_memory_kb]
-                FROM [#CurrentStateSnapshot_MemoryGrants]
+                FROM [#CurrentOverview_CurrentStateSnapshot_MemoryGrants]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentRequests_SourceWorkloadGroups]
                 SELECT [group_id],[name],[pool_id]
-                FROM [#CurrentStateSnapshot_WorkloadGroups]
+                FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentRequests_SourceResourcePools]
                 SELECT [pool_id],[name]
-                FROM [#CurrentStateSnapshot_ResourcePools]
+                FROM [#CurrentOverview_CurrentStateSnapshot_ResourcePools]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 IF @SqlTextErforderlich=1
                     INSERT [#CurrentRequests_SourceSqlText]
                     SELECT [SqlHandle],[Text],[DatabaseId],[ObjectId],[ObjectNumber],[IsEncrypted]
-                    FROM [#CurrentStateSnapshot_SqlText]
+                    FROM [#CurrentOverview_CurrentStateSnapshot_SqlText]
                     WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 SELECT
                       @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
                     , @ParentSnapshotIsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
-                FROM [#CurrentStateSnapshot_SourceStatus]
+                FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
                   AND [SourceCode] IN
                       ('SESSIONS','REQUESTS','CONNECTIONS','WAITING_TASKS','MEMORY_GRANTS',

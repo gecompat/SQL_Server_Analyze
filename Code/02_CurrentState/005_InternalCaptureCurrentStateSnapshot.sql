@@ -44,27 +44,33 @@ BEGIN
        OR @MaxSqlTextHandles IS NULL OR @MaxSqlTextHandles < 0
         THROW 51020, N'Ungültiger Current-State-Snapshot-Parameter.', 1;
 
-    IF OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Context') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SourceStatus') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Sessions') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Requests') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Connections') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_WaitingTasks') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_MemoryGrants') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_WorkloadGroups') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_ResourcePools') IS NULL
-       OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SqlText') IS NULL
+    BEGIN TRY
+        EXEC [sys].[sp_executesql] N'
+            DECLARE @Probe int;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Connections] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_MemoryGrants] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_ResourcePools] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
+    END TRY
+    BEGIN CATCH
         THROW 51020, N'Der aufrufende Snapshot-Owner hat den Temp-Table-Vertrag nicht vollständig angelegt.', 1;
+    END CATCH;
 
     IF EXISTS
     (
         SELECT 1
-        FROM [#CurrentStateSnapshot_Context]
+        FROM [#CurrentOverview_CurrentStateSnapshot_Context]
         WHERE [SnapshotId] = @SnapshotId
     )
         THROW 51020, N'Diese Snapshot-ID wurde im aktuellen Aufruf bereits verwendet.', 1;
 
-    INSERT [#CurrentStateSnapshot_Context]
+    INSERT [#CurrentOverview_CurrentStateSnapshot_Context]
     (
         [SnapshotId],[OwnerSessionId],[CreatedAtUtc],[ContractVersion]
     )
@@ -94,7 +100,7 @@ BEGIN
     BEGIN
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentStateSnapshot_Sessions]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_Sessions]
             (
                 [SnapshotId],[CapturedAtUtc],[session_id],[is_user_process],[status],
                 [login_name],[original_login_name],[host_name],[program_name],
@@ -114,14 +120,14 @@ BEGIN
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,10,'SESSIONS',N'sys.dm_exec_sessions',@CapturedAtUtc,@CompletedAtUtc,
              @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,10,'SESSIONS',N'sys.dm_exec_sessions',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -133,7 +139,7 @@ BEGIN
     BEGIN
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentStateSnapshot_Requests]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_Requests]
             (
                 [SnapshotId],[CapturedAtUtc],[session_id],[request_id],[status],[command],
                 [start_time],[sql_handle],[statement_start_offset],[statement_end_offset],
@@ -163,14 +169,14 @@ BEGIN
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,20,'REQUESTS',N'sys.dm_exec_requests',@CapturedAtUtc,@CompletedAtUtc,
              @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,20,'REQUESTS',N'sys.dm_exec_requests',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -182,7 +188,7 @@ BEGIN
     BEGIN
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentStateSnapshot_Connections]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_Connections]
             (
                 [SnapshotId],[CapturedAtUtc],[session_id],[connection_id],
                 [most_recent_sql_handle],[client_net_address],[net_transport],
@@ -196,14 +202,14 @@ BEGIN
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,30,'CONNECTIONS',N'sys.dm_exec_connections',@CapturedAtUtc,@CompletedAtUtc,
              @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,30,'CONNECTIONS',N'sys.dm_exec_connections',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -215,7 +221,7 @@ BEGIN
     BEGIN
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentStateSnapshot_WaitingTasks]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_WaitingTasks]
             (
                 [SnapshotId],[CapturedAtUtc],[waiting_task_address],[session_id],
                 [exec_context_id],[wait_duration_ms],[wait_type],[resource_address],
@@ -231,14 +237,14 @@ BEGIN
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,40,'WAITING_TASKS',N'sys.dm_os_waiting_tasks',@CapturedAtUtc,@CompletedAtUtc,
              @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,40,'WAITING_TASKS',N'sys.dm_os_waiting_tasks',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -250,7 +256,7 @@ BEGIN
     BEGIN
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentStateSnapshot_MemoryGrants]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_MemoryGrants]
             (
                 [SnapshotId],[CapturedAtUtc],[session_id],[request_id],
                 [requested_memory_kb],[granted_memory_kb],[used_memory_kb],
@@ -264,14 +270,14 @@ BEGIN
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,50,'MEMORY_GRANTS',N'sys.dm_exec_query_memory_grants',@CapturedAtUtc,@CompletedAtUtc,
              @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,50,'MEMORY_GRANTS',N'sys.dm_exec_query_memory_grants',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -283,7 +289,7 @@ BEGIN
     BEGIN
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentStateSnapshot_WorkloadGroups]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
             (
                 [SnapshotId],[CapturedAtUtc],[group_id],[name],[pool_id]
             )
@@ -293,14 +299,14 @@ BEGIN
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,60,'WORKLOAD_GROUPS',N'sys.dm_resource_governor_workload_groups',@CapturedAtUtc,@CompletedAtUtc,
              @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,60,'WORKLOAD_GROUPS',N'sys.dm_resource_governor_workload_groups',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -309,7 +315,7 @@ BEGIN
 
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentStateSnapshot_ResourcePools]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_ResourcePools]
             (
                 [SnapshotId],[CapturedAtUtc],[pool_id],[name]
             )
@@ -319,14 +325,14 @@ BEGIN
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,70,'RESOURCE_POOLS',N'sys.dm_resource_governor_resource_pools',@CapturedAtUtc,@CompletedAtUtc,
              @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,70,'RESOURCE_POOLS',N'sys.dm_resource_governor_resource_pools',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -338,28 +344,28 @@ BEGIN
     BEGIN
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            CREATE TABLE [#CurrentStateSnapshot_SqlHandleCandidate]
+            CREATE TABLE [#InternalCaptureCurrentStateSnapshot_SqlHandleCandidate]
             (
                 [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
             );
 
-            INSERT [#CurrentStateSnapshot_SqlHandleCandidate]([SqlHandle])
+            INSERT [#InternalCaptureCurrentStateSnapshot_SqlHandleCandidate]([SqlHandle])
             SELECT [h].[SqlHandle]
             FROM
             (
                 SELECT [r].[sql_handle] AS [SqlHandle]
-                FROM [#CurrentStateSnapshot_Requests] AS [r]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Requests] AS [r]
                 WHERE [r].[SnapshotId]=@SnapshotId
                   AND [r].[sql_handle] IS NOT NULL
                 UNION
                 SELECT [c].[most_recent_sql_handle]
-                FROM [#CurrentStateSnapshot_Connections] AS [c]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Connections] AS [c]
                 WHERE [c].[SnapshotId]=@SnapshotId
                   AND [c].[most_recent_sql_handle] IS NOT NULL
             ) AS [h];
 
             DECLARE @SqlTextCandidateCount bigint=
-                (SELECT COUNT_BIG(*) FROM [#CurrentStateSnapshot_SqlHandleCandidate]);
+                (SELECT COUNT_BIG(*) FROM [#InternalCaptureCurrentStateSnapshot_SqlHandleCandidate]);
 
             IF @MaxSqlTextHandles>0 AND @SqlTextCandidateCount>@MaxSqlTextHandles
             BEGIN
@@ -368,13 +374,13 @@ BEGIN
                     SELECT
                         [SqlHandle],
                         [RowNumber]=ROW_NUMBER() OVER(ORDER BY [SqlHandle])
-                    FROM [#CurrentStateSnapshot_SqlHandleCandidate]
+                    FROM [#InternalCaptureCurrentStateSnapshot_SqlHandleCandidate]
                 )
                 DELETE FROM [Limited]
                 WHERE [RowNumber]>@MaxSqlTextHandles;
             END;
 
-            INSERT [#CurrentStateSnapshot_SqlText]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SqlText]
             (
                 [SnapshotId],[CapturedAtUtc],[SqlHandle],[Text],[DatabaseId],
                 [ObjectId],[ObjectNumber],[IsEncrypted],[EvidenceStatus]
@@ -383,14 +389,14 @@ BEGIN
                 @SnapshotId,@CapturedAtUtc,[h].[SqlHandle],[t].[text],[t].[dbid],
                 [t].[objectid],[t].[number],[t].[encrypted],
                 CONVERT(varchar(40),CASE WHEN [t].[text] IS NULL THEN 'TEXT_UNAVAILABLE' ELSE 'AVAILABLE' END)
-            FROM [#CurrentStateSnapshot_SqlHandleCandidate] AS [h]
+            FROM [#InternalCaptureCurrentStateSnapshot_SqlHandleCandidate] AS [h]
             OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle]) AS [t];
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
             SET @IsPartial=CASE WHEN @MaxSqlTextHandles>0 AND @SqlTextCandidateCount>@MaxSqlTextHandles THEN 1 ELSE @BaseIsPartial END;
             SET @StatusCode=CASE WHEN @IsPartial=1 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END;
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,80,'SQL_TEXT',N'sys.dm_exec_sql_text',@CapturedAtUtc,@CompletedAtUtc,
              @StatusCode,@IsPartial,@RowCount,NULL,
@@ -400,7 +406,7 @@ BEGIN
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
-            INSERT [#CurrentStateSnapshot_SourceStatus]
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
             (@SnapshotId,80,'SQL_TEXT',N'sys.dm_exec_sql_text',@CapturedAtUtc,@CompletedAtUtc,
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,

@@ -149,7 +149,7 @@ def main() -> int:
         if owner.count(token) != 1:
             fail("OWNER_SOURCE_READ_COUNT", f"{token}:{owner.count(token)}")
     for token in (
-        "#CurrentStateSnapshot_SourceStatus",
+        "#CurrentOverview_CurrentStateSnapshot_SourceStatus",
         "@CaptureSqlText",
         "@MaxSqlTextHandles",
         "AVAILABLE_LIMITED",
@@ -183,7 +183,7 @@ def main() -> int:
         for token in (
             "@ParentCurrentStateSnapshotId",
             "INVALID_PARENT_SNAPSHOT",
-            "#CurrentStateSnapshot_Context",
+            "#CurrentOverview_CurrentStateSnapshot_Context",
             local_source,
         ):
             if token not in text:

@@ -270,23 +270,20 @@ BEGIN
 
     IF @StatusCode='AVAILABLE' AND @ParentCurrentStateSnapshotId IS NOT NULL
     BEGIN
-        IF OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Context') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SourceStatus') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Sessions') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Requests') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_Connections') IS NULL
-           OR OBJECT_ID(N'tempdb..#CurrentStateSnapshot_SqlText') IS NULL
-        BEGIN
-            SET @StatusCode='INVALID_PARENT_SNAPSHOT';
-            SET @IsPartial=1;
-            SET @ErrorMessage=N'Der angegebene Parent-Snapshot ist im aktuellen Aufruf nicht verfügbar.';
-        END
-        ELSE
         BEGIN TRY
+            EXEC [sys].[sp_executesql] N'
+                DECLARE @Probe int;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Connections] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
+
             IF NOT EXISTS
             (
                 SELECT 1
-                FROM [#CurrentStateSnapshot_Context]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
                   AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
                   AND [ContractVersion]=1
@@ -305,7 +302,7 @@ BEGIN
                     , [last_request_start_time],[last_request_end_time],[open_transaction_count]
                     , [transaction_isolation_level],[cpu_time],[reads],[writes],[logical_reads]
                     , [memory_usage],[row_count]
-                FROM [#CurrentStateSnapshot_Sessions]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentSessions_SourceRequests]
@@ -314,26 +311,26 @@ BEGIN
                     , [total_elapsed_time],[logical_reads],[reads],[writes]
                     , [blocking_session_id],[wait_type],[wait_time],[wait_resource]
                     , [percent_complete],[sql_handle],[statement_start_offset],[statement_end_offset]
-                FROM [#CurrentStateSnapshot_Requests]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Requests]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 INSERT [#CurrentSessions_SourceConnections]
                 SELECT
                       [session_id],[connection_id],[most_recent_sql_handle],[client_net_address]
                     , [net_transport],[protocol_type],[encrypt_option],[auth_scheme]
-                FROM [#CurrentStateSnapshot_Connections]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Connections]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 IF @MitSqlText=1
                     INSERT [#CurrentSessions_SourceSqlText]
                     SELECT [SqlHandle],[Text],[DatabaseId],[ObjectId],[ObjectNumber],[IsEncrypted]
-                    FROM [#CurrentStateSnapshot_SqlText]
+                    FROM [#CurrentOverview_CurrentStateSnapshot_SqlText]
                     WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
 
                 SELECT
                       @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
                     , @ParentSnapshotIsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
-                FROM [#CurrentStateSnapshot_SourceStatus]
+                FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
                   AND [SourceCode] IN ('SESSIONS','REQUESTS','CONNECTIONS','SQL_TEXT');
             END;

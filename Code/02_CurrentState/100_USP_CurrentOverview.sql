@@ -159,14 +159,14 @@ BEGIN
         , PRIMARY KEY ([SourceOrdinal])
     );
 
-    CREATE TABLE [#CurrentStateSnapshot_Context]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_Context]
     (
           [SnapshotId] uniqueidentifier NOT NULL PRIMARY KEY
         , [OwnerSessionId] smallint NOT NULL
         , [CreatedAtUtc] datetime2(3) NOT NULL
         , [ContractVersion] smallint NOT NULL
     );
-    CREATE TABLE [#CurrentStateSnapshot_SourceStatus]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [SourceOrdinal] int NOT NULL
@@ -181,7 +181,7 @@ BEGIN
         , [ErrorMessage] nvarchar(2048) NULL
         , PRIMARY KEY ([SnapshotId],[SourceCode])
     );
-    CREATE TABLE [#CurrentStateSnapshot_Sessions]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_Sessions]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -206,7 +206,7 @@ BEGIN
         , [row_count] bigint NOT NULL
         , PRIMARY KEY ([SnapshotId],[session_id])
     );
-    CREATE TABLE [#CurrentStateSnapshot_Requests]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_Requests]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -253,7 +253,7 @@ BEGIN
         , [is_resumable] bit NOT NULL
         , PRIMARY KEY ([SnapshotId],[session_id],[request_id])
     );
-    CREATE TABLE [#CurrentStateSnapshot_Connections]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_Connections]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -267,7 +267,7 @@ BEGIN
         , [auth_scheme] nvarchar(40) NOT NULL
         , PRIMARY KEY ([SnapshotId],[connection_id])
     );
-    CREATE TABLE [#CurrentStateSnapshot_WaitingTasks]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_WaitingTasks]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -282,7 +282,7 @@ BEGIN
         , [blocking_exec_context_id] int NULL
         , [resource_description] nvarchar(3072) NOT NULL
     );
-    CREATE TABLE [#CurrentStateSnapshot_MemoryGrants]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_MemoryGrants]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -295,7 +295,7 @@ BEGIN
         , [group_id] int NULL
         , [pool_id] int NULL
     );
-    CREATE TABLE [#CurrentStateSnapshot_WorkloadGroups]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -304,7 +304,7 @@ BEGIN
         , [pool_id] int NOT NULL
         , PRIMARY KEY ([SnapshotId],[group_id])
     );
-    CREATE TABLE [#CurrentStateSnapshot_ResourcePools]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_ResourcePools]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -312,7 +312,7 @@ BEGIN
         , [name] sysname NOT NULL
         , PRIMARY KEY ([SnapshotId],[pool_id])
     );
-    CREATE TABLE [#CurrentStateSnapshot_SqlText]
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_SqlText]
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
@@ -413,7 +413,7 @@ BEGIN
                   [SourceOrdinal],@CurrentStateSnapshotId,[SourceCode],[SourceObject],[CapturedAtUtc]
                 , [CompletedAtUtc],[StatusCode],[IsPartial],[CapturedRowCount]
                 , [ErrorNumber],[ErrorMessage]
-            FROM [#CurrentStateSnapshot_SourceStatus]
+            FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             WHERE [SnapshotId]=@CurrentStateSnapshotId;
 
             SET @SnapshotConsumerId=@CurrentStateSnapshotId;
