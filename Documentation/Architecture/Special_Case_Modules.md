@@ -33,12 +33,14 @@ Die Spezialfallmodule schließen Diagnosefragen, die weder durch einen einzelnen
 | Full-Text | `USP_FullTextAnalysis` | Kataloge, Populationen, Batches und Fragmente | keine indizierten Dokumentinhalte |
 | Data Capture | `USP_DataCaptureDeepAnalysis` | Change Tracking, CDC und lokale Replikation | CT-Verlust benötigt Consumer-Wasserstand |
 | Verschlüsselung | `USP_EncryptionAnalysis` | TDE-, Backup-, AE- und Ledger-Metadaten | keine Schlüssel, Secrets oder Restoreprüfung |
+| External Runtime | `USP_ExternalRuntimeAnalysis` | Konfiguration, Languages, Libraries, Launchpad, aktive Requests, External Pools und Counter | keine Testausführung, Scripttexte, Parameter oder Runtime-Inhalte |
+| SQL CLR | `USP_ClrAnalysis` | Konfiguration, Assemblies, AppDomains, Tasks, Requests, Memory Clerks und Counter | kein Binary-/Hashabgleich, kein Assemblyladen und keine Aufrufhistorie |
 
-## Geplantes nächstes SubProject
+## RUNTIME-001
 
-[RUNTIME-001 – External Runtime und SQL CLR Analysis](External_Runtime_CLR_Analysis_Plan.md) ist das nächste geplante SubProject. Es entwirft zwei getrennte öffentliche Verfahren: `USP_ExternalRuntimeAnalysis` für R, Python, Java, C# und Custom Language Extensions sowie `USP_ClrAnalysis` für SQL CLR.
+[RUNTIME-001 – External Runtime und SQL CLR Analysis](External_Runtime_CLR_Analysis_Plan.md) ist im zustandslosen Current-State-Kern umgesetzt. Die zwei getrennten öffentlichen Verfahren behandeln R, Python, Java, C# und Custom Language Extensions beziehungsweise SQL CLR.
 
-Der Plan umfasst Evidenz- und Quellenmodell, Resultsets, Parameter, Capability- und Berechtigungspfade, Performance- und Lockingschutz, Datenschutz, Snapshot-Grenze, Frameworkintegration, Umsetzungsphasen und Abnahmematrix. Es ist noch keine Laufzeitimplementierung vorhanden. `USP_SpecialFeatureInventory` darf deshalb bis zum Abschluss weiterhin `NOT_PLANNED` für `CLR`, `EXTERNAL_RUNTIME` und `EXTERNAL_SCRIPTS` melden.
+`USP_SpecialFeatureInventory` routet `CLR`, `EXTERNAL_RUNTIME` und `EXTERNAL_SCRIPTS` mit Status `IMPLEMENTED` zu den neuen Modulen. Feature-positive Windows-, konkrete Runtime- und SAFE-Assembly-Tests sowie optionale Snapshot-Collector bleiben getrennte Nachweise und sind kein Bestandteil der portablen Kernimplementierung.
 
 ## Gemeinsamer Laufzeitvertrag
 

@@ -1,6 +1,6 @@
 # Versions- und Primärquellenmatrix
 
-**Stand:** 20. Juli 2026
+**Stand:** 22. Juli 2026
 **Status:** kanonische Nachweismatrix für versionsabhängige Aussagen
 **Zielplattformen:** SQL Server 2019, 2022 und 2025; Azure SQL Managed Instance nur bei ausdrücklich genanntem Plattformbezug
 
@@ -31,6 +31,9 @@ Diese Matrix verbindet versionsabhängige Aussagen der Analysis Guides mit offiz
 | ADR/Persistent Version Store ist seit 2019 verfügbar, Zustand und Kosten bleiben datenbankbezogen | 2019+ | Maintenance, TempDB, Current Transactions | [Accelerated Database Recovery](https://learn.microsoft.com/en-us/sql/relational-databases/accelerated-database-recovery-concepts?view=sql-server-ver17) | kontrollierte PVS-/Cleanup-Evidenz |
 | Der native `vector`-Datentyp ist ein 2025-Pfad | 2025 | Special Feature Inventory | [`vector` data type](https://learn.microsoft.com/en-us/sql/t-sql/data-types/vector-data-type?view=sql-server-ver17) | feature-positiver 2025-Laufzeitfall |
 | ZSTD-Backupkompression ist editions-, versions- und algorithmusabhängig | 2025 | Backup/Recovery und Feature Inventory | [Backup compression](https://learn.microsoft.com/en-us/sql/relational-databases/backup-restore/backup-compression-sql-server?view=sql-server-ver17) | kontrolliertes Backup auf geeignetem Ziel |
+| External-Script-DMVs zeigen aktive Requests beziehungsweise registrierte kumulative Featurefunktionen, aber keine allgemeine Script-Historie | 2019+; serverweite DMV-Berechtigung ändert sich ab 2022 | `USP_ExternalRuntimeAnalysis` | [`sys.dm_external_script_requests`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-external-script-requests?view=sql-server-ver17), [`sys.dm_external_script_execution_stats`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-external-script-execution-stats?view=sql-server-ver17) | feature-positive Runtime- und Restricted-Login-Fälle je Zielversion |
+| External Resource Pools liefern kumulative Werte seit `statistics_start_time`; Linux besitzt dokumentierte Einheitengrenzen | 2019+; Plattformgrenze Linux/Windows | `USP_ExternalRuntimeAnalysis` | [`sys.dm_resource_governor_external_resource_pools`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-resource-governor-external-resource-pools?view=sql-server-ver17) | resetgeprüftes Sample sowie Linux-/Windows-Gegenprobe |
+| CLR AppDomains, geladene Assemblies und Tasks sind aktuelle Host-/Cacheevidenz; `assembly_id` darf nur im AppDomain-Datenbankkontext katalogseitig korreliert werden | 2019+; serverweite DMV-Berechtigung ändert sich ab 2022 | `USP_ClrAnalysis` | [`sys.dm_clr_appdomains`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-clr-appdomains-transact-sql?view=sql-server-ver17), [`sys.dm_clr_loaded_assemblies`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-clr-loaded-assemblies-transact-sql?view=sql-server-ver17), [`sys.dm_clr_tasks`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-clr-tasks-transact-sql?view=sql-server-ver17) | synthetische SAFE-Assembly und Restricted-Login-Fälle je Zielversion |
 
 ## Pflegevertrag
 
@@ -42,4 +45,4 @@ Diese Matrix verbindet versionsabhängige Aussagen der Analysis Guides mit offiz
 
 ## Ergebnis des Reviews vom 20. Juli 2026
 
-Die 94 Procedure-Seiten und neun Familienguides sind fachlich abgedeckt. Offene Nachweise sind ausschließlich die in der letzten Spalte genannten feature-positiven Laufzeitfälle. Änderungen an SQL-Server-Versionen, Compatibility-Logik, Berechtigungen oder Quellobjekten erfordern einen erneuten gezielten Primärquellenabgleich.
+Die 96 Procedure-Seiten und neun Familienguides sind fachlich abgedeckt. Offene Nachweise sind ausschließlich die in der letzten Spalte genannten feature-positiven Laufzeitfälle. Änderungen an SQL-Server-Versionen, Compatibility-Logik, Berechtigungen oder Quellobjekten erfordern einen erneuten gezielten Primärquellenabgleich.
