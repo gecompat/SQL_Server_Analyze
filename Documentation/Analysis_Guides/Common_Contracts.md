@@ -2,7 +2,7 @@
 
 **Stand:** 20. Juli 2026
 
-Dieses Dokument gilt für alle Analyse-Procedures. Die familienbezogenen Guides wiederholen nur Abweichungen und verfahrensspezifische Besonderheiten.
+Dieses Dokument gilt für alle Analyse-Procedures. Die bereichsbezogenen Leitfäden wiederholen nur Abweichungen und verfahrensspezifische Besonderheiten.
 
 ## 1. Ausgabearten
 

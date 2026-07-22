@@ -1,7 +1,7 @@
 # RUNTIME-001 – External Runtime und SQL CLR Analysis
 
 **Stand:** 22. Juli 2026  
-**Status:** Current-State-Kern implementiert; feature-positive Plattformnachweise und optionale Snapshot-Collector ausstehend
+**Status:** Current-State-Kern implementiert; Plattformnachweise mit aktivierten Features und optionale Snapshot-Collector ausstehend
 **Zielversionen:** SQL Server 2019, 2022 und 2025
 
 ## 1. Auftrag und Abgrenzung
@@ -33,7 +33,7 @@ Der aktuelle Frameworkstand besitzt bereits Teilabdeckungen, die RUNTIME-001 kor
 
 | Bestehender Baustein | Aktueller Beitrag | Konsequenz für RUNTIME-001 |
 |---|---|---|
-| `USP_SpecialFeatureInventory` | zählt benutzerdefinierte CLR-Assemblies, External Languages und Libraries, liest `external scripts enabled` und routet zu beiden RUNTIME-001-Modulen | bleibt Discovery- und Routing-Einstieg |
+| `USP_SpecialFeatureInventory` | zählt benutzerdefinierte CLR-Assemblies, External Languages und Libraries, liest `external scripts enabled` und ordnet Ergebnisse beiden RUNTIME-001-Modulen zu | bleibt Discovery- und Routing-Einstieg |
 | `USP_CurrentRequests` | zeigt laufende Requests und `executing_managed_code` | neue Module materialisieren nur den fachspezifischen Requestkontext; bestehender RAW-Vertrag wird nicht beiläufig erweitert |
 | `USP_ResourceGovernorAnalysis` | analysiert reguläre Pools und Workload Groups | External Resource Pools werden im External-Runtime-Modul ergänzt und fachlich getrennt ausgewertet |
 | `USP_PerformanceCounters` | typisierte Counter und optionales Sampling | gemeinsame Counterlogik wiederverwenden; keine zweite öffentliche Samplingarchitektur |
@@ -340,17 +340,17 @@ Ein Teil der Launchpad-/Runtime-Ereignisse entsteht außerhalb von `sqlservr.exe
 |---|---|---|
 | 0 | öffentliche Parameter, Resultsets, Statuscodes, Datenschutz, Packaging und Quellenprojektionen | umgesetzt und statisch abgesichert |
 | 1 | Analyseklassen, Capability-Zeilen und gemeinsame Counterinterpretation | umgesetzt; versionsharte Laufzeitkompilierung bleibt Teil des Release-Gates |
-| 2 | `USP_ExternalRuntimeAnalysis` | Current-State-Pfad umgesetzt; feature-positive R-/Python-/Java-/C#- und Custom-Language-Fälle bleiben externe Nachweise |
+| 2 | `USP_ExternalRuntimeAnalysis` | Current-State-Pfad umgesetzt; R-/Python-/Java-/C#- und Custom-Language-Laufzeitnachweise mit aktivierten Features bleiben externe Nachweise |
 | 3 | `USP_ClrAnalysis` | Current-State-Pfad umgesetzt; synthetische SAFE-Assembly und Windows-Securityfälle bleiben externe Nachweise |
 | 4 | Inventory-, Navigator-, Search-, Relation- und Installerintegration | umgesetzt und statisch abgesichert |
 | 5 | optionale Snapshot-Collector | nicht umgesetzt; bleibt getrennte zukünftige Erweiterung des Snapshotpakets |
-| 6 | vollständige Dokumentation und finale Testmatrix | Dokumentation umgesetzt; portable Drei-Versionen-Verträge und feature-positive Plattformnachweise werden getrennt ausgewiesen |
+| 6 | vollständige Dokumentation und finale Testmatrix | Dokumentation umgesetzt; portable Drei-Versionen-Verträge und Plattformnachweise mit aktivierten Features werden getrennt ausgewiesen |
 
 ## 15. Abnahmematrix
 
-Für eine vollständige feature-positive Freigabe weiterhin erforderlich:
+Für eine vollständige Freigabe der aktivierten Features weiterhin erforderlich:
 
-- Entwicklung und erster Feature-Positive-Lauf auf SQL Server 2025;
+- Entwicklung und erster Laufzeitnachweis mit aktivem Feature auf SQL Server 2025;
 - finale Tests auf SQL Server 2019, 2022 und 2025;
 - Windows und Linux mit jeweils dokumentierten Capability-Grenzen;
 - R, Python, Java und C# Language Extension als getrennte Runtimefälle, soweit die Plattform sie unterstützt;
@@ -365,7 +365,7 @@ Für eine vollständige feature-positive Freigabe weiterhin erforderlich:
 - Prüfung, dass kein Analysepfad Rechte vergibt, Features aktiviert, externe Programme startet oder Testcode ausführt;
 - Dokumentationsgate für Source Select, Primärquellen, Kosten, sensible Felder, Evidenzgrenze und Gegenprobe.
 
-Der portable Integrationsvertrag prüft Installation, Status, JSON, TABLE, Routing, Capability, Read-only-Abgrenzung und Wiederherstellung von `LOCK_TIMEOUT`, ohne Features zu aktivieren. `NOT_EXECUTED` ist kein Laufzeitnachweis. Ein leerer oder synthetischer Test ersetzt keinen Feature-Positive-Lauf auf der jeweiligen Zielplattform.
+Der portable Integrationsvertrag prüft Installation, Status, JSON, TABLE, Routing, Capability, Read-only-Abgrenzung und Wiederherstellung von `LOCK_TIMEOUT`, ohne Features zu aktivieren. `NOT_EXECUTED` ist kein Laufzeitnachweis. Ein leerer oder synthetischer Test ersetzt keinen Laufzeitnachweis mit aktivem Feature auf der jeweiligen Zielplattform.
 
 ## 16. Primärquellen
 

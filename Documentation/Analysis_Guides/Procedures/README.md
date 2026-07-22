@@ -13,7 +13,7 @@ Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie 
 5. Welche zweite Analyse bestätigt oder widerlegt die Vermutung?
 6. Warum ist eine leere oder partielle Ausgabe nicht automatisch eine Entwarnung?
 
-Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familienguides. Exakte Parameter und Defaults liefert zusätzlich `@Hilfe=1` beziehungsweise das [Procedure-Referenzhandbuch](../../Reference/Procedure_Reference.md).
+Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Bereichsleitfäden. Exakte Parameter und Defaults liefert zusätzlich `@Hilfe=1` beziehungsweise das [Procedure-Referenzhandbuch](../../Reference/Procedure_Reference.md).
 
 ## Reifegrad richtig lesen
 

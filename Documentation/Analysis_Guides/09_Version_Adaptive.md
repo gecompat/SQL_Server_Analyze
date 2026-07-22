@@ -71,7 +71,7 @@ Beispielhafte Features:
 
 `DatabaseName`, `SchemaName`, `ObjectName`, `IndexName`, `IndexFamily`, `IndexDetails`, `AvailabilityStatus`.
 
-Die genaue Familie ist versionsabhängig. Das Resultset ist ein Inventar, kein Performanceurteil.
+Die genaue Indexgruppe ist versionsabhängig. Das Resultset ist ein Inventar, kein Performanceurteil.
 
 ### Errors
 
@@ -119,7 +119,7 @@ LOW bis MEDIUM. Cross-Database-Katalogzugriffe und optionales Spezialindexinvent
 
 Die Procedure erstellt eine aggregierte Nutzungsinventur sichtbarer Spezialfeatures mit begrenzter Quellarbeit. Sie liest keine externen Locations, Credentials, Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzerdaten.
 
-### Erkannte Familien
+### Erkannte Featuregruppen
 
 - In-Memory OLTP
 - System-versioned Temporal Tables
@@ -170,7 +170,7 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 |---|---|
 | `DatabaseName` | Datenbank |
 | `FeatureCode` | stabiler technischer Code |
-| `FeatureFamily` | lesbare Familie |
+| `FeatureFamily` | lesbare Featuregruppe |
 | `DetectionStatus` | etwa erkannt, nicht im sichtbaren Scope erkannt oder versionell nicht verfügbar |
 | `DetectedItemCount` | aggregierte Anzahl von Metadatenobjekten/-signalen |
 | `ConfigurationState` | Featurekonfiguration, sofern sinnvoll |
@@ -185,8 +185,8 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 - `DetectedItemCount=0` kann fehlende Sichtbarkeit bedeuten.
 - Konfiguriert, aber ohne Objekt ist ein anderer Zustand als aktiv genutzt.
 - External Scripts enabled ohne externe Bibliothek kann Vorbereitungs- oder Altzustand sein.
-- Database Encryption Flag, Always-Encrypted-Schlüsselmetadaten und verschlüsselte Spalten sind unterschiedliche Technologien, die in einer Familie zusammengefasst werden können.
-- `@NurErkannteFeatures=1` verbessert Lesbarkeit, entfernt aber die explizite Information über nicht erkennbare oder nicht verfügbare Familien.
+- Database Encryption Flag, Always-Encrypted-Schlüsselmetadaten und verschlüsselte Spalten sind unterschiedliche Technologien, die in einer Featuregruppe zusammengefasst werden können.
+- `@NurErkannteFeatures=1` verbessert die Lesbarkeit, entfernt aber die explizite Information über nicht erkennbare oder nicht verfügbare Featuregruppen.
 
 ### Plakative und grenzwertige Beispiele
 

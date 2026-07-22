@@ -11,7 +11,7 @@
 3. Lesen Sie die vorgeschlagene [eigenständige Procedure-Seite](Procedures/README.md).
 4. Prüfen Sie die Parameter anhand der [Parameter-Lesehilfe](Parameter_Reading_Guide.md) und `@Hilfe=1`.
 5. Lesen Sie Status und Resultsets nach dem [Einsteiger-Leseleitfaden](Beginner_Reading_Guide.md).
-6. Wechseln Sie für vollständige technische Zusammenhänge in den verlinkten Familienguide.
+6. Wechseln Sie für vollständige technische Zusammenhänge in den verlinkten Bereichsleitfaden.
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
@@ -45,7 +45,7 @@ Alle 96 Procedure-Seiten sind strukturell vollständig. 91 Seiten besitzen den t
 | Vollständiger Objektindex | [Object_Index.md](Object_Index.md) |
 | Vollständige Komponentenreferenz | [Object_Reference.md](../Reference/Object_Reference.md) |
 
-## Familienguides
+## Bereichsleitfäden
 
 | Bereich | Dokument | Procedures |
 |---|---|---:|

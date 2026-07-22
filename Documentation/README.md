@@ -37,7 +37,7 @@ Beispielaufrufe verwenden ausschließlich `[monitor].[Objektname]` und sind nich
 | Execution-, Zeit-, Scope- und Kostenmodell | [Technische Grundlagen](Analysis_Guides/Technical_Foundations.md) |
 | Versions- und Primärquellenzuordnung | [Primärquellenmatrix](Analysis_Guides/Version_Primary_Source_Matrix.md) |
 
-### Familienguides
+### Bereichsleitfäden
 
 - [Common, Zugriff und Frameworkschnittstellen](Analysis_Guides/01_Common.md)
 - [Current State und Live-Triage](Analysis_Guides/02_Current_State.md)

@@ -40,7 +40,7 @@ Die Spezialfallmodule schließen Diagnosefragen, die weder durch einen einzelnen
 
 [RUNTIME-001 – External Runtime und SQL CLR Analysis](External_Runtime_CLR_Analysis_Plan.md) ist im zustandslosen Current-State-Kern umgesetzt. Die zwei getrennten öffentlichen Verfahren behandeln R, Python, Java, C# und Custom Language Extensions beziehungsweise SQL CLR.
 
-`USP_SpecialFeatureInventory` routet `CLR`, `EXTERNAL_RUNTIME` und `EXTERNAL_SCRIPTS` mit Status `IMPLEMENTED` zu den neuen Modulen. Feature-positive Windows-, konkrete Runtime- und SAFE-Assembly-Tests sowie optionale Snapshot-Collector bleiben getrennte Nachweise und sind kein Bestandteil der portablen Kernimplementierung.
+`USP_SpecialFeatureInventory` ordnet `CLR`, `EXTERNAL_RUNTIME` und `EXTERNAL_SCRIPTS` mit Status `IMPLEMENTED` den neuen Modulen zu. Windows-Laufzeitnachweise mit aktivierten Features, konkrete Runtime- und SAFE-Assembly-Tests sowie optionale Snapshot-Collector bleiben getrennte Nachweise und sind kein Bestandteil der portablen Kernimplementierung.
 
 ## Gemeinsamer Laufzeitvertrag
 
@@ -114,7 +114,7 @@ Errorlogs, XE-Ereignisse, Pläne, Histogramme, SQL-Text, Namen und Infrastruktur
 
 - [Hier beginnen](../Analysis_Guides/Start_Here.md)
 - [Analysis Navigator](../Reference/Analysis_Navigator.md)
-- [Server-Health-Familie](../Analysis_Guides/08_Server_Health.md)
-- [Infrastruktur-Familie](../Analysis_Guides/07_Infrastructure.md)
+- [Leitfaden Server Health](../Analysis_Guides/08_Server_Health.md)
+- [Leitfaden Infrastruktur](../Analysis_Guides/07_Infrastructure.md)
 - [Versionsadaptive Spezialanalysen](../Analysis_Guides/09_Version_Adaptive.md)
 - [Procedure-Seiten](../Analysis_Guides/Procedures/README.md)

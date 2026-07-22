@@ -25,11 +25,11 @@ Der Frameworkkern enthält zwei getrennte, rein lesende Tiefenanalysen:
 - `USP_ExternalRuntimeAnalysis` trennt External-Scripts-Konfiguration, Language- und Libraryregistrierungen, Launchpad-Evidenz, aktive Requests, External Resource Pools, Execution Stats und Performance Counter.
 - `USP_ClrAnalysis` trennt SQL-CLR-Konfiguration, sichtbare Assemblies und Module, AppDomains, geladene Assemblies, CLR Tasks, Managed-Code-Requests, Memory Clerks und Performance Counter.
 
-Beide Verfahren isolieren Quelle und Berechtigungsfehler, stellen `LOCK_TIMEOUT` wieder her und unterstützen `CONSOLE`, `RAW`, `TABLE`, `NONE` sowie JSON. Sie führen weder externen Code noch Assemblies aus, aktivieren keine Features und lesen standardmäßig keine Identitäten, Binärinhalte, Script- oder SQL-Texte. Das maschinenlesbare Routing erfolgt über neue Capability-, Analyseklassen-, Navigator- und Spezialfeature-Verträge. Feature-positive Windows-, konkrete Runtime- und synthetische SAFE-Assembly-Nachweise bleiben ausdrücklich außerhalb des portablen Linux-Kerngates.
+Beide Verfahren isolieren Quelle und Berechtigungsfehler, stellen `LOCK_TIMEOUT` wieder her und unterstützen `CONSOLE`, `RAW`, `TABLE`, `NONE` sowie JSON. Sie führen weder externen Code noch Assemblies aus, aktivieren keine Features und lesen standardmäßig keine Identitäten, Binärinhalte, Script- oder SQL-Texte. Das maschinenlesbare Routing erfolgt über neue Capability-, Analyseklassen-, Navigator- und Spezialfeature-Verträge. Windows-Laufzeitnachweise mit aktivierten Features, konkrete Runtime-Nachweise und synthetische SAFE-Assembly-Nachweise bleiben ausdrücklich außerhalb der Linux-Kernprüfung des portablen Vertrags.
 
 ## Dokumentationsstil
 
-Der dokumentierte Bestand wurde gegen die verbindliche Schreibstilrichtlinie geprüft. Die Überarbeitung entfernt wiederholte Standardabsätze, vervollständigt fragmentarische Leserichtungen und vereinheitlicht die sachliche Darstellung in öffentlichen und maßgeblichen internen Dokumenten sowie in SQL-Dateiköpfen und Hilfeausgaben.
+Der dokumentierte Bestand wurde gegen die verbindliche Schreibstilrichtlinie geprüft. Die Überarbeitung entfernt wiederholte Standardabsätze, vervollständigt fragmentarische Leseanleitungen und vereinheitlicht die sachliche Darstellung in öffentlichen und maßgeblichen internen Dokumenten sowie in SQL-Dateiköpfen und Hilfeausgaben.
 
 Eine zusätzliche statische Prüfung blockiert die konkret entfernten Rückfallmuster. Sie ergänzt das weiterhin erforderliche fachliche und sprachliche Review, bewertet jedoch weder technische Richtigkeit noch die Angemessenheit einer Aussage im jeweiligen Betriebskontext.
 

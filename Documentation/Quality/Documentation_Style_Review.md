@@ -15,7 +15,7 @@ Eine Bestandsprüfung bedeutet nicht, dass jede geprüfte Datei geändert werden
 
 ## Durchgeführte Überarbeitung
 
-Die Überarbeitung beseitigt insbesondere wiederholte Standardabsätze, die den procedurespezifischen Inhalt überlagerten. Leserichtungen, Beispiele, Folgeanalysen und Einschränkungen sind als vollständige Sätze formuliert. Die Runbooks, Familienguides und der Einsteigerleitfaden verwenden nun konsistente Bezeichnungen für Auswertung, Interpretation und nächste Schritte.
+Die Überarbeitung beseitigt insbesondere wiederholte Standardabsätze, die den verfahrensspezifischen Inhalt überlagerten. Leseanleitungen, Beispiele, Folgeanalysen und Einschränkungen sind als vollständige Sätze formuliert. Die Runbooks, Bereichsleitfäden und der Einsteigerleitfaden verwenden nun konsistente Bezeichnungen für Auswertung, Interpretation und nächste Schritte.
 
 Die internen Authoring-Archive behalten ihre historischen Aussagen und Statuswerte. Ihre wiederkehrenden Felder zu Datenquellen, Zeit- und Scopemodell, Bewertung und weiterführender Analyse besitzen jedoch einen vollständigen sprachlichen Rahmen. Dateiköpfe und zentrale `@Hilfe=1`-Ausgaben der SQL-Module beschreiben ihren Zweck ebenfalls in vollständigen Sätzen.
 

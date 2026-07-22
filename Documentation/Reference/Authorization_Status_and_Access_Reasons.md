@@ -3,7 +3,7 @@
 **Stand:** 18. Juli 2026  
 **Kanonische Quellen:** `[monitor].[VW_ModuleStatusCatalog]`, `[monitor].[VW_AnalyseAccessCurrent]`
 
-## 1. Zwei getrennte Codefamilien
+## 1. Zwei getrennte Codebereiche
 
 - `AccessReason` erklärt, warum der interne Ressourcenschutz einen Analysepfad erlaubt oder ausschließt.
 - `StatusCode` erklärt, welches technische oder fachliche Ergebnis ein Modul liefert.
