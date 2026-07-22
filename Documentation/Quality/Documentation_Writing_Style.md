@@ -62,7 +62,7 @@ Falls eine sprachliche Korrektur einen möglichen fachlichen Widerspruch sichtba
 
 Der am Anfang der Root-`README.md` vorhandene englische und deutsche Lizenzblock ist von stilistischen, redaktionellen und allgemeinen README-Änderungen ausgenommen. Diese Richtlinie erteilt insbesondere keine Berechtigung, Wortlaut, Formatierung, Reihenfolge, Links, Überschriften, Listen, Trennlinien oder Leerzeilen dieses Blocks anzupassen.
 
-Maßgeblich ist der zu Beginn der jeweiligen Aufgabe im Zielbranch vorhandene Stand. Eine KI darf den Lizenzblock nur bearbeiten, wenn der Benutzer ausdrücklich und unmittelbar eine Änderung dieses Blocks verlangt. Bei allen anderen Änderungen der Root-`README.md` muss der Block inhaltlich und formal unverändert bleiben.
+Maßgeblich ist der zu Beginn der jeweiligen Aufgabe im Zielbranch vorhandene Stand. Ein automatisiertes Bearbeitungssystem darf den Lizenzblock nur bearbeiten, wenn der Benutzer ausdrücklich und unmittelbar eine Änderung dieses Blocks verlangt. Bei allen anderen Änderungen der Root-`README.md` muss der Block inhaltlich und formal unverändert bleiben.
 
 ## Anwendungsumfang
 
