@@ -730,7 +730,7 @@ Die exakten Dateinamen und Objektabhängigkeiten werden in Phase 0 festgeschrieb
 
 Verpflichtend:
 
-- Entwicklung und erster Feature-Positive-Lauf auf SQL Server 2025;
+- Entwicklung und erster Laufzeitnachweis mit aktivem Feature auf SQL Server 2025;
 - finale Tests auf SQL Server 2019, 2022 und 2025;
 - Windows für SSISDB- und SSIS-Runtime-Pfade;
 - Linux mit korrektem `UNAVAILABLE_PLATFORM` für SSISDB und weiterhin funktionsfähiger XML-Analyse;
@@ -751,7 +751,7 @@ Verpflichtend:
 - Dokumentationsgate für Source Select, Primärquellen, Kosten, sensible Felder, Evidenzgrenze und Gegenprobe;
 - eigenständiger Installer und Gesamtinstaller erzeugen denselben öffentlichen SSIS-001-Vertrag.
 
-`NOT_EXECUTED` ist kein Laufzeitnachweis. Ein leerer oder synthetischer Test ersetzt keinen Feature-Positive-Lauf für die jeweilige dokumentierte Quelle.
+`NOT_EXECUTED` ist kein Laufzeitnachweis. Ein leerer oder synthetischer Test ersetzt keinen Laufzeitnachweis mit aktivem Feature für die jeweilige dokumentierte Quelle.
 
 ## 19. Offene Architekturentscheidungen für Phase 0
 

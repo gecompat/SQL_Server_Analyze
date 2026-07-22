@@ -98,7 +98,7 @@ AS
         , (N'USP_PlanDetails',N'plan handle last actual live query plan','en',95,N'Gezielte Planbeschaffung.')
         , (N'USP_ShowplanAnalysis',N'Execution Plan Operator Warnungen','de',100,N'Extrahiert Operator-, Kardinalitäts-, Grant- und Warnungsevidenz.')
         , (N'USP_ShowplanAnalysis',N'showplan operator warning cardinality','en',95,N'Gezielte Showplan-XML-Analyse.')
-        , (N'USP_PlanCacheAnalysis',N'Plan Cache vollständig analysieren','de',100,N'Orchestriert die Plan-Cache-Familie.')
+        , (N'USP_PlanCacheAnalysis',N'Plan Cache vollständig analysieren','de',100,N'Orchestriert die Plan-Cache-Analysen.')
         , (N'USP_PlanCacheAnalysis',N'plan cache analysis orchestrator','en',95,N'Gebündelte Plan-Cache-Tiefenanalyse.')
         , (N'USP_CreateExecutionEvidenceJson',N'STATISTICS IO TIME normalisieren','de',100,N'Erzeugt ein normalisiertes Evidence-JSON aus bereits erfasster Evidenz.')
         , (N'USP_CreateExecutionEvidenceJson',N'execution evidence json statistics io time','en',95,N'Normalisiert Ausführungsevidenz für die Plananalyse.')

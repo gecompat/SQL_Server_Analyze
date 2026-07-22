@@ -216,7 +216,7 @@ Siehe [Datenschutz und Laufzeitausgaben](Runtime_Data_Privacy.md).
 
 ## Standalone-Grenze
 
-Das eigenständige Paket benötigt weder Current State, Query Store-Familie, Extended Events noch Server Health. Die direkte Query-Store-Planauflösung ist ein enger Quelladapter, keine Abhängigkeit von den Query-Store-Analyseprocedures. Der Analysis Navigator gehört nur zum vollständigen Framework und ist keine Voraussetzung der standalone Plananalyse.
+Das eigenständige Paket benötigt weder Current State, die Query-Store-Analyseverfahren, Extended Events noch Server Health. Die direkte Query-Store-Planauflösung ist ein enger Quelladapter, keine Abhängigkeit von den Query-Store-Analyseprocedures. Der Analysis Navigator gehört nur zum vollständigen Framework und ist keine Voraussetzung der eigenständigen Plananalyse.
 
 Der Installations- und Abhängigkeitsvertrag steht unter [Execution-Plan-Analyse – Installation](Execution_Plan_Analysis_Installation_Contract.md).
 
@@ -234,7 +234,7 @@ Der Installations- und Abhängigkeitsvertrag steht unter [Execution-Plan-Analyse
 
 - [Procedure-Seite `USP_ExecutionPlanAnalysis`](../Analysis_Guides/Procedures/USP_ExecutionPlanAnalysis.md)
 - [Procedure-Seite `USP_CreateExecutionEvidenceJson`](../Analysis_Guides/Procedures/USP_CreateExecutionEvidenceJson.md)
-- [Plan-Cache-Familienguide](../Analysis_Guides/04_Plan_Cache.md)
+- [Plan-Cache-Leitfaden](../Analysis_Guides/04_Plan_Cache.md)
 - [Installation](Execution_Plan_Analysis_Installation_Contract.md)
 - [Objektreferenz](../Reference/Object_Reference.md)
 - [Procedure-Referenz](../Reference/Procedure_Reference.md)

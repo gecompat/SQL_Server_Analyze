@@ -1,7 +1,7 @@
 USE [DeineDatenbank];
 GO
 
-/* Kataloggestützte Wait-Taxonomie mit exaktem Lookup und zukunftssicherem Familien-Fallback. */
+/* Kataloggestützte Wait-Taxonomie mit exaktem Lookup und regelbasiertem Fallback anhand der Wait Group. */
 CREATE OR ALTER FUNCTION [monitor].[TVF_WaitTypeInfo](@WaitType nvarchar(120))
 RETURNS TABLE
 AS
@@ -17,7 +17,7 @@ RETURN
         , COALESCE([c].[HighWaitImpact], [f].[HighWaitImpact]) AS [HighWaitImpact]
         , COALESCE([c].[RecommendedChecks], [f].[RecommendedChecks]) AS [RecommendedChecks]
         , COALESCE([c].[DefaultAssessment], CASE WHEN [f].[IsGenerallyBenign]=1 THEN 'EXPECTED_OR_IDLE' ELSE 'CONTEXT_DEPENDENT' END) AS [DefaultAssessment]
-        , COALESCE([c].[AssessmentBasis], N'Familienfallback: Erst aktiven Task, Ressource, Delta und Workloadwirkung bestätigen.') AS [AssessmentBasis]
+        , COALESCE([c].[AssessmentBasis], N'Fallback anhand der Wait Group: Erst aktiven Task, Ressource, Delta und Workloadwirkung bestätigen.') AS [AssessmentBasis]
         , COALESCE([c].[CommonCauses], [f].[TypicalOccurrence]) AS [CommonCauses]
         , COALESCE([c].[PerformanceImpact], [f].[HighWaitImpact]) AS [PerformanceImpact]
         , COALESCE([c].[Mitigation], N'Nicht den Wait Type unterdrücken; die nachgewiesene Ressourcen- oder Komponentenursache beheben.') AS [Mitigation]
@@ -35,7 +35,7 @@ RETURN
               nvarchar(400)
             , CASE
                   WHEN [c].[WaitType] IS NOT NULL THEN N'Exakter Katalogtreffer; DescriptionQuality beachten.'
-                  ELSE N'Familienbasierter Fallback; Detailseite und Workload-Kontext prüfen.'
+                  ELSE N'Fallback anhand der Wait Group; Detailseite und Workload-Kontext prüfen.'
               END
           ) AS [InterpretationScope]
         , CONVERT(varchar(20), CASE WHEN [c].[WaitType] IS NOT NULL THEN 'EXACT' ELSE 'FAMILY_FALLBACK' END) AS [CatalogMatchType]

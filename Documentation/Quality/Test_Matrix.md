@@ -48,8 +48,8 @@ Für den Analysis Navigator definiert das Release-Gate zusätzlich einen Metadat
 | In-Memory OLTP | kein erzwungener realer Speicherdruck; breiter Hashkettenpfad bleibt opt-in |
 | Temporal | keine Prüfung realer History-Nutzzeilen oder Periodenüberlappungen |
 | Service Broker | keine Nachrichtenkörper, Queue-Payloads oder Conversation-Mutationen |
-| Full-Text | Linux kann feature-positive Full-Text-Komponenten begrenzen; keine indizierten Inhalte |
-| External Runtime | portabler Vertrag ohne Featureaktivierung oder Scriptausführung; keine feature-positiven R-, Python-, Java-, C#- oder Custom-Language-Läufe und kein End-to-End-Launchpad-Nachweis |
+| Full-Text | Linux kann Tests mit aktivierten Full-Text-Komponenten begrenzen; keine indizierten Inhalte |
+| External Runtime | portabler Vertrag ohne Featureaktivierung oder Scriptausführung; keine R-, Python-, Java-, C#- oder Custom-Language-Läufe mit aktiviertem Feature und kein End-to-End-Launchpad-Nachweis |
 | SQL CLR | portabler Vertrag ohne Assemblyerzeugung oder Ausführung; keine synthetische SAFE-Assembly und keine Windows-Fälle für `EXTERNAL_ACCESS` oder `UNSAFE` |
 | Data Capture | lokale Metadaten und Klassifikation; keine Remote-Subscriber-/Distributor-Netzpfade |
 | Verschlüsselung | keine Schlüssel- oder Medieninhalte und kein externer Restorebeweis |

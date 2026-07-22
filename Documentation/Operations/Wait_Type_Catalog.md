@@ -1,8 +1,9 @@
 # Betrieb des WaitTypeCatalog
 
-Der Katalog trennt exakte Wait-Beschreibungen, analytische Einordnung,
-Messhinweise und Quellen von stabilen Familien-Fallbacks. Runtime-Abfragen
-verwenden ausschließlich lesende Lookups. Eigene Zeilen erhalten
+Der Katalog trennt exakte Wait-Beschreibungen, analytische Einordnung und
+Messhinweise. Für unbekannte Wait Types stellt er einen regelbasierten Fallback
+anhand der Wait Group sowie passende Quellen bereit. Runtime-Abfragen verwenden
+ausschließlich lesende Lookups. Eigene Zeilen erhalten
 `IsFrameworkDefault=0`; dadurch bleiben sie bei Framework-Upgrades unverändert.
 
 ## Welche Fragen eine Katalogzeile beantwortet
@@ -39,7 +40,7 @@ Framework-Wait mindestens vier getrennte Quellenrollen aus:
 | `DEFINITION` | offizieller Name, Definition und Versionshinweis |
 | `MEASUREMENT` | Runner-/Waiter-Abgrenzung, aktive Tasks, Delta und Plan-Waits |
 | `INTERPRETATION` | wait-spezifische Fachreferenz |
-| `DIAGNOSTIC_MITIGATION` | komponenten- oder familienbezogene Diagnose und Gegenmaßnahmen |
+| `DIAGNOSTIC_MITIGATION` | Diagnose und Gegenmaßnahmen für Komponenten oder Wait Groups |
 | `EXACT_DIAGNOSTIC` | zusätzliche exakte Quelle für besonders häufige Entscheidungen |
 
 `EvidenceLevel` unterscheidet Microsoft-Primärdokumentation,
@@ -84,7 +85,8 @@ Quellenzeilen mit `IsFrameworkDefault=0` bleiben erhalten. Für eigene Quellen
 sind die Ordinalwerte 11 bis 20 vorgesehen; die Frameworkzuordnungen verwenden
 1 bis 5.
 
-Neue oder unbekannte Wait Types erhalten über `TVF_WaitTypeInfo` einen
-Familienfallback und über `TVF_WaitTypeSources` transparente generische
-Definitions-, Mess- und Interpretationsquellen. Ein Fallback ist ausdrücklich
-keine vollständig kuratierte Detailanalyse.
+Neue oder unbekannte Wait Types erhalten über `TVF_WaitTypeInfo` eine
+generische Einordnung anhand der ermittelten Wait Group und über
+`TVF_WaitTypeSources` transparente generische Definitions-, Mess- und
+Interpretationsquellen. Diese Einordnung ist ausdrücklich keine vollständig
+kuratierte Detailanalyse.

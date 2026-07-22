@@ -244,7 +244,7 @@ WHERE [IsFrameworkDefault]=1 AND [WaitGroup] IN (N'NETWORK_CLIENT',N'NETWORK_PRO
 
 /* HA, Mirroring und Replikapipeline. */
 UPDATE [monitor].[WaitTypeCatalog]
-SET [AssessmentBasis]=N'HA-Waits umfassen Idle-Queues, interne Synchronisation und echte Send-, Flow-Control-, Redo- oder synchrone Commitlatenz. Der konkrete Wait und die Replikarolle entscheiden; die FamilienSumme ist nicht als einzelner Engpass zu lesen.',
+SET [AssessmentBasis]=N'HA-Waits umfassen Idle-Queues, interne Synchronisation und echte Send-, Flow-Control-, Redo- oder synchrone Commitlatenz. Der konkrete Wait und die Replikarolle entscheiden; die Summe über die Wait Group ist nicht als einzelner Engpass zu lesen.',
     [CommonCauses]=N'Erwartete Worker-/Timerleere, lokale Log-Flushlatenz, Netzwerk-RTT oder Durchsatz, Flow Control, große Logerzeugung, Log-Send-Queue, langsames Harden/Redo auf Secondary, Rollenwechsel oder ausgesetzter Datentransport.',
     [PerformanceImpact]=N'Je Stufe steigen Commitlatenz, RPO-/RTO-Risiko, Send-/Redo-Queue und Synchronisationsdauer. Idle-Waits besitzen dagegen keine negative Benutzerwirkung.',
     [Mitigation]=N'Replikarolle und Synchronisationsmodus feststellen; sys.dm_hadr_database_replica_states, log_send_queue_size, redo_queue_size, send/redo rate, last_commit_time, lokale WRITELOG-Latenz und Netzwerk-RTT zeitgleich messen. Die tatsächlich limitierende Pipeline-Stufe beheben.',
@@ -253,7 +253,7 @@ SET [AssessmentBasis]=N'HA-Waits umfassen Idle-Queues, interne Synchronisation u
     [AnalysisConfidence]='PRIMARY_AND_SPECIALIST'
 WHERE [IsFrameworkDefault]=1 AND [WaitGroup]=N'HA_REPLICATION';
 
-/* Komponentenfamilien: Erst Komponentenzustand und Fortschritt beweisen. */
+/* Komponentengruppen: Erst Komponentenzustand und Fortschritt nachweisen. */
 UPDATE [monitor].[WaitTypeCatalog]
 SET [AssessmentBasis]=N'Der Wait gehört zu einer optionalen SQL-Server-Komponente. Idle- und Koordinationswaits können normal sein; relevant wird er erst bei gleichzeitigem Funktionsfehler, Rückstau oder fehlendem Fortschritt dieser Komponente.',
     [CommonCauses]=CONCAT([TypicalOccurrence],N' Zusätzlich kommen Komponentenstart/-stopp, interne Synchronisation, Rückstau, externe Abhängigkeiten und eingeschränkte Ressourcen infrage.'),

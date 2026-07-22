@@ -49,7 +49,7 @@ Je Resultset entspricht eine Zeile einem Datenbankstatus, isolierten Quellenstat
 
 ## So lesen
 
-Prüfen Sie zuerst `StatusCode`, `IsPartial` und `SourceStatus`. Lesen Sie danach die drei Funktionsfamilien getrennt:
+Prüfen Sie zuerst `StatusCode`, `IsPartial` und `SourceStatus`. Lesen Sie danach die drei Funktionsbereiche getrennt:
 
 - Change Tracking: `ClientVersion` pro Consumer gegen `MinValidVersion` und `CurrentVersion`.
 - CDC: Capture-Instanzen, Jobs, aggregierte Scan-Latenz und Fehler gemeinsam.

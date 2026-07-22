@@ -6,7 +6,7 @@ GO
 Objekt       : Quellen-Seed für [monitor].[WaitTypeCatalogSource]
 Stand        : 2026-07-20
 Vertrag      : Definition, Messmethodik, wait-spezifische Fachreferenz und
-               familienbezogene Diagnosequelle werden getrennt ausgewiesen.
+               Diagnosequelle je Wait Group werden getrennt ausgewiesen.
                SQLskills-Inhalte werden nur verlinkt und nicht übernommen.
 ===============================================================================
 */

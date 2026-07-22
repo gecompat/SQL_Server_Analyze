@@ -515,7 +515,7 @@
     "specialCaseRowsPassWithLimitations": 181,
     "specialCaseRowsAutomatedPending": 0,
     "runtimeStatus": "ACTIONS_PASS",
-    "claim": "Commit 8572c02ccec7b349d104ccf72a01489733fc03a7 passed the synthetic Linux installer, 34-suite release gate and permission contract on SQL Server 2019, 2022 and 2025 for all 181 special cases plus the framework, Wave-1 and Wave-2 operational diagnostics contracts. Feature-positive Windows or Azure MI states, load tests, external restore and operational mutations remain separate evidence classes.",
+    "claim": "Commit 8572c02ccec7b349d104ccf72a01489733fc03a7 passed the synthetic Linux installer, 34-suite release gate and permission contract on SQL Server 2019, 2022 and 2025 for all 181 special cases plus the framework, Wave-1 and Wave-2 operational diagnostics contracts. States with the respective feature enabled on Windows or Azure MI, load tests, external restore and operational mutations remain separate evidence classes.",
     "targetRuntimeEvidence": {
       "evidenceClass": "PUBLIC_TECHNICAL_METADATA",
       "sqlServer2019": {
@@ -552,6 +552,6 @@
   },
   "runtimeLimitations": [
     "Local Docker, sqlcmd and PowerShell were unavailable; the primary runtime evidence is the three green commit-specific GitHub Actions gates.",
-    "Further feature-positive, boundary, load, Windows, Azure MI and external restore cases remain separate from the synthetic Actions contract."
+    "Further feature-enabled, boundary, load, Windows, Azure MI and external restore cases remain separate from the synthetic Actions contract."
   ]
 }

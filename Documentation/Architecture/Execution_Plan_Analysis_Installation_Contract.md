@@ -36,7 +36,7 @@ Der Teilinstaller enthält:
 - interne Planmetadatensammlung und Analysekern;
 - beide öffentlichen PLAN-001-Procedures.
 
-Die exakte Abhängigkeitsschließung steht in `Metadata/Inventory/ExecutionPlanAnalysisDependencies.csv`. Kein Objekt darf auf eine nicht mitinstallierte Frameworkfamilie verweisen.
+Die exakte Abhängigkeitsschließung steht in `Metadata/Inventory/ExecutionPlanAnalysisDependencies.csv`. Kein Objekt darf auf einen nicht mitinstallierten Frameworkbestandteil verweisen.
 
 ## Bewusste Nichtabhängigkeiten
 
@@ -118,8 +118,8 @@ Ein fachlicher Test verwendet ausschließlich ein bewusst ausgewähltes syntheti
 ## Upgrade und Koexistenz
 
 - PLAN-001-Objekte werden unter denselben Namen wie im Gesamtframework geführt.
-- Der vollständige Installer darf den Teilstand aktualisieren, ohne eine zweite Objektfamilie anzulegen.
-- Der Teilinstaller verändert keine fremden Frameworkfamilien.
+- Der vollständige Installer darf den Teilstand aktualisieren, ohne eine zweite parallele Objektgruppe anzulegen.
+- Der Teilinstaller verändert keine Frameworkobjekte außerhalb seines definierten Abhängigkeitsumfangs.
 - Resultset-Schemaversionen bleiben Bestandteil des öffentlichen Vertrags.
 - Nicht mehr unterstützte Tabellen- oder Spaltenstände benötigen einen expliziten Migrationspfad; stille Datenverluste sind ausgeschlossen.
 

@@ -35,7 +35,7 @@ Die Granularität hängt vom Child ab: CPU, Scheduler, Node, Memory, Datei, Konf
 
 ## So lesen
 
-Berücksichtigen Sie Childstatus zuerst und Symptome familienweise. Eine Summenzeile ist keine vollständige Gesundheitsgarantie.
+Berücksichtigen Sie zuerst den Status jeder Teilanalyse und danach deren Symptome. Eine Summenzeile ist keine vollständige Gesundheitsgarantie.
 
 ## Warum kann das problematisch sein?
 
