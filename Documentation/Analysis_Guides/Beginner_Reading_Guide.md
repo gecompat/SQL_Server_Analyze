@@ -4,7 +4,7 @@
 **Abdeckung:** alle 96 dokumentierten öffentlichen Procedures einschließlich der eigenständigen und optionalen Pakete
 **Zweck:** Der Leitfaden erklärt, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können.
 
-> Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Familienguides nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
+> Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Bereichsleitfäden nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
 
 ## 1. Die wichtigste Grundregel
 
@@ -905,9 +905,9 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 ## [monitor].[USP_ServerHealthAnalysis]
 
-**Auswertung:** Prüfen Sie zuerst den Childstatus und danach die Symptome je Familie. Interpretieren Sie keine Summenzeile als vollständigen Nachweis eines fehlerfreien Zustands.
+**Auswertung:** Prüfen Sie zuerst den Status jeder Teilanalyse und danach deren Symptome. Interpretieren Sie keine Summenzeile als vollständigen Nachweis eines fehlerfreien Zustands.
 
-**Warum problematisch:** Ein Child kann partiell sein; ein anderer Child kann nur Konfiguration, nicht aktuelle Auswirkung zeigen.
+**Warum problematisch:** Ein Teilergebnis kann unvollständig sein; ein anderes kann nur die Konfiguration, aber keine aktuelle Auswirkung zeigen.
 
 **Wann nicht problematisch:** Nicht aktivierte Spezialmodule fehlen absichtlich.
 

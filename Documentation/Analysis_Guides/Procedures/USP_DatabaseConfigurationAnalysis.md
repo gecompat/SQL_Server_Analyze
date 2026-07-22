@@ -44,7 +44,7 @@ Der typisierte Vertrag umfasst `moduleStatus`, `settings`, `drift`, `profile`, `
 
 ## Eine Zeile bedeutet
 
-In `settings` bedeutet eine Zeile eine Einstellung einer Datenbank aus genau einer Quellfamilie. In `drift` ist eine Zeile eine Datenbank-Einstellung, die vom lokalen Referenzwert oder expliziten Profilwert abweicht. `MatchingDatabaseCount` beschreibt beim lokalen Vergleich die Zahl sichtbarer Datenbanken mit dem aktuellen Wert; `ComparedDatabaseCount` ist der Nenner dieser Einstellung. In `sourceStatus` ist eine Zeile eine Datenbank-Quellkombination.
+In `settings` bedeutet eine Zeile eine Einstellung einer Datenbank aus genau einer Quellgruppe. In `drift` ist eine Zeile eine Datenbank-Einstellung, die vom lokalen Referenzwert oder expliziten Profilwert abweicht. `MatchingDatabaseCount` beschreibt beim lokalen Vergleich die Zahl sichtbarer Datenbanken mit dem aktuellen Wert; `ComparedDatabaseCount` ist der Nenner dieser Einstellung. In `sourceStatus` ist eine Zeile eine Datenbank-Quellkombination.
 
 ## So lesen
 
@@ -68,7 +68,7 @@ Eine Abweichung kann bewusst und dokumentiert sein. Unterschiedliche Compatibili
 
 ## Leere oder partielle Ausgabe
 
-Eine leere `drift`-Menge bedeutet: Im sichtbaren Scope wurde keine Variation beziehungsweise Profilabweichung erzeugt. Sie sagt nichts über ausgelassene Datenbanken oder nicht inventarisierte Einstellungen. `AVAILABLE_LIMITED` weist auf eine fehlende Teilquelle hin. Jede Datenbank und Quellfamilie besitzt einen eigenen Status, sodass vorhandene Werte nicht wegen einer anderen fehlenden Quelle verworfen werden.
+Eine leere `drift`-Menge bedeutet: Im sichtbaren Scope wurde keine Variation beziehungsweise Profilabweichung erzeugt. Sie sagt nichts über ausgelassene Datenbanken oder nicht inventarisierte Einstellungen. `AVAILABLE_LIMITED` weist auf eine fehlende Teilquelle hin. Jede Kombination aus Datenbank und Quellgruppe besitzt einen eigenen Status, sodass vorhandene Werte nicht wegen einer anderen fehlenden Quelle verworfen werden.
 
 ## Eigenlast und Grenzen
 

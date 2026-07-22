@@ -92,7 +92,7 @@ Der Datenbankcursor führt einen festen Satz aggregierter Katalogzählungen für
 
 ### Source Select
 
-Die einzelnen Featurefamilien werden bewusst getrennt gezählt. Der reduzierte Tabellenzweig lautet:
+Die einzelnen Featuregruppen werden bewusst getrennt gezählt. Der reduzierte Tabellenzweig lautet:
 
 ```sql
 SELECT

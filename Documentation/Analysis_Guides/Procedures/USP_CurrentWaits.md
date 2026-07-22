@@ -92,7 +92,7 @@ Auf welche Ressourcen oder Ereignisse warten Tasks aktuell, und welche Waits dom
 
 ### Technischer Hintergrund
 
-Die Procedure kombiniert aktuelle Waiting Tasks mit instanzweiten abgeschlossenen Waits und optionalem Delta. Ressource, Signalzeit, Taskparallelität und Waitfamilie gehören zum technischen Modell.
+Die Procedure kombiniert aktuelle Waiting Tasks mit instanzweiten abgeschlossenen Waits und optionalem Delta. Ressource, Signalzeit, Taskparallelität und Wait Group gehören zum technischen Modell.
 
 ### Datenkette
 
@@ -137,7 +137,7 @@ Ein Wait ist keine Root Cause und ein hoher kumulativer Wert kein aktuelles Prob
 
 ### Folgeanalyse
 
-Die kanonischen [Wait-Details](../02_Current_State.md#4-monitorusp_currentwaits), den [Betriebsvertrag des Wait-Katalogs](../../Operations/Wait_Type_Catalog.md) und das [Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md) verwenden; danach je Familie Blocking, I/O, Grants, CPU oder HADR weiterverfolgen.
+Verwenden Sie die kanonischen [Wait-Details](../02_Current_State.md#4-monitorusp_currentwaits), den [Betriebsvertrag des Wait-Katalogs](../../Operations/Wait_Type_Catalog.md) und das [Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md). Verfolgen Sie danach abhängig von der Wait Group Blocking, I/O, Grants, CPU oder HADR weiter.
 
 ## Primärquellen
 

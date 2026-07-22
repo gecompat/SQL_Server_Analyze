@@ -19,6 +19,44 @@ MARKDOWN_RULES: tuple[tuple[str, str], ...] = (
     ("LEGACY_NEGATIVE_INSTRUCTION_LABEL", "**Nicht tun:**"),
 )
 
+PUBLIC_TERMINOLOGY_RULES: tuple[tuple[str, re.Pattern[str]], ...] = (
+    (
+        "AMBIGUOUS_FAMILY_FALLBACK",
+        re.compile(
+            r"\b(?:Familien-?Fallbacks?|familienbasierter\s+Fallback)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "AMBIGUOUS_FAMILY_GUIDE",
+        re.compile(r"\bFamilienguides?\b", re.IGNORECASE),
+    ),
+    (
+        "AMBIGUOUS_FAMILY_COMPOUND",
+        re.compile(
+            r"\b(?:Code|Framework|Objekt|Analyse|Quell|Katalog|Wait|Funktions)"
+            r"familien?\b|\bfamilien(?:weise|uebergreifend|\u00fcbergreifend|bezogen\w*)\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "AMBIGUOUS_FEATURE_POSITIVE",
+        re.compile(r"\bfeature[- ]positive\w*\b", re.IGNORECASE),
+    ),
+    (
+        "TYPO_FAMILY_SUM",
+        re.compile(r"\bFamilienSumme\b"),
+    ),
+    (
+        "AWKWARD_PROCEDURE_COMPOUND",
+        re.compile(r"\bprocedurespezifisch\w*\b", re.IGNORECASE),
+    ),
+    (
+        "UNSUPPORTED_FUTURE_PROOF_CLAIM",
+        re.compile(r"\bzukunftssicher\w*\b", re.IGNORECASE),
+    ),
+)
+
 PROCEDURE_MARKDOWN_RULES: tuple[tuple[str, str], ...] = (
     (
         "GENERIC_PROCEDURE_BOILERPLATE",
@@ -111,6 +149,18 @@ def line_number(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
 
 
+def scan_public_terminology(text: str, path: str) -> list[Finding]:
+    if path.startswith("AI_Metadata/"):
+        return []
+    findings: list[Finding] = []
+    for rule_code, pattern in PUBLIC_TERMINOLOGY_RULES:
+        findings.extend(
+            Finding(rule_code, path, line_number(text, match.start()))
+            for match in pattern.finditer(text)
+        )
+    return findings
+
+
 def scan_markdown(text: str, path: str) -> list[Finding]:
     findings: list[Finding] = []
     rules = MARKDOWN_RULES
@@ -124,6 +174,7 @@ def scan_markdown(text: str, path: str) -> list[Finding]:
                 break
             findings.append(Finding(rule_code, path, line_number(text, offset)))
             start = offset + len(marker)
+    findings.extend(scan_public_terminology(text, path))
     return findings
 
 
@@ -139,6 +190,7 @@ def scan_sql(text: str, path: str) -> list[Finding]:
             findings.append(
                 Finding("SQL_PURPOSE_SENTENCE_FRAGMENT", path, line_number(text, match.start()))
             )
+    findings.extend(scan_public_terminology(text, path))
     return findings
 
 
@@ -155,17 +207,33 @@ def markdown_paths(repository_root: Path) -> list[Path]:
     return sorted(set(result))
 
 
+def metadata_text_paths(repository_root: Path) -> list[Path]:
+    metadata_root = repository_root / "Metadata"
+    return sorted(
+        path
+        for suffix in ("*.csv", "*.json")
+        for path in metadata_root.rglob(suffix)
+        if path.is_file()
+    )
+
+
 def scan_repository(repository_root: Path) -> tuple[list[Finding], int]:
     findings: list[Finding] = []
     markdown = markdown_paths(repository_root)
     sql = sorted((repository_root / "Code").rglob("*.sql"))
+    metadata_text = metadata_text_paths(repository_root)
     for path in markdown:
         relative = path.relative_to(repository_root).as_posix()
         findings.extend(scan_markdown(path.read_text(encoding="utf-8"), relative))
     for path in sql:
         relative = path.relative_to(repository_root).as_posix()
         findings.extend(scan_sql(path.read_text(encoding="utf-8-sig"), relative))
-    return findings, len(markdown) + len(sql)
+    for path in metadata_text:
+        relative = path.relative_to(repository_root).as_posix()
+        findings.extend(
+            scan_public_terminology(path.read_text(encoding="utf-8-sig"), relative)
+        )
+    return findings, len(markdown) + len(sql) + len(metadata_text)
 
 
 def run_self_test() -> list[Finding]:
@@ -173,6 +241,9 @@ def run_self_test() -> list[Finding]:
     markdown_cases = {
         "VALID": ("**Auswertung:** Lesen Sie zuerst den Status.\n", 0),
         "INVALID_LABEL": ("**So lesen:** Status zuerst.\n", 1),
+        "INVALID_TERMINOLOGY": ("Ein Familienfallback wird verwendet.\n", 1),
+        "INVALID_FAMILY_VARIANTS": ("Familien-Fallbacks und FamilienSumme.\n", 2),
+        "INVALID_FEATURE_TERM": ("Feature-positive Evidenz fehlt.\n", 1),
         "Documentation/Analysis_Guides/Procedures/USP_Example.md": (
             "Die Auswertung ist eine Triage- und Eingrenzungshilfe.\n",
             1,
@@ -182,6 +253,7 @@ def run_self_test() -> list[Finding]:
         "VALID": ("Zweck        : Liefert einen technischen Status.\n", 0),
         "INVALID_PURPOSE": ("Zweck        : Technischer Status.\n", 1),
         "INVALID_HELP": ("PRINT N'Zweck: technischer Status.';\n", 1),
+        "INVALID_SQL_TERMINOLOGY": ("-- zukunftssicherer Fallback\n", 1),
     }
     for case_id, (text, expected) in markdown_cases.items():
         if len(scan_markdown(text, case_id)) != expected:
@@ -224,7 +296,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.self_test:
-        return report(run_self_test(), "SELF_TEST", 6)
+        return report(run_self_test(), "SELF_TEST", 11)
     findings, file_count = scan_repository(args.repository_root.resolve())
     return report(findings, "REPOSITORY", file_count)
 

@@ -11,7 +11,7 @@ Datenschutz  : Verwendet nur den aktuellen Testdatenbankkontext und synthetische
                lokale Temp-Tabellen; keine Runtime-, Assembly- oder Scriptdaten
                werden erzeugt oder persistiert.
 Grenzen      : Der Test aktiviert keine Features und führt keinen externen oder
-               CLR-Code aus. Feature-positive Windows-Nachweise bleiben extern.
+               CLR-Code aus. Windows-Nachweise mit aktivierten Features bleiben extern.
 ===============================================================================
 */
 SET NOCOUNT ON;

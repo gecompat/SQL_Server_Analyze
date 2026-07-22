@@ -119,7 +119,7 @@ WHERE [ps].[name] = N'ExampleSchema'
   AND [pt].[name] = N'ExampleObject';
 ```
 
-**Wichtig für die Eigenlast:** Legen Sie Datenbank und Objekt vor Index-, Constraint-, Identity- und Sequence-Gegenprüfungen fest. Der breite High-Impact-Pfad liest mehrere Katalogfamilien; Findings entstehen erst danach und sind kein DDL-Auftrag.
+**Wichtig für die Eigenlast:** Legen Sie Datenbank und Objekt vor Index-, Constraint-, Identity- und Sequence-Gegenprüfungen fest. Der breite High-Impact-Pfad liest mehrere Katalogbereiche; Findings entstehen erst danach und sind kein DDL-Auftrag.
 
 ### Zeit- und Scope-Modell
 

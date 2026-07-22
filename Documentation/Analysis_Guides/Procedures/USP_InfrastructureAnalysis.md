@@ -106,7 +106,7 @@ Vertiefen Sie Modulstatus zuerst, dann nur konfigurierte/auffällige Komponenten
 
 ### Typische Fehlinterpretation
 
-Leere Resultsets dürfen nicht familienübergreifend als gesund zusammengefasst werden; jede Quelle besitzt eigene Retention und Berechtigung.
+Leere Resultsets dürfen nicht quellenübergreifend als gesund zusammengefasst werden; jede Quelle besitzt eigene Retention und Berechtigung.
 
 ### Folgeanalyse
 

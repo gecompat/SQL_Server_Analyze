@@ -22,7 +22,7 @@ und die generierte Datei benötigt keinen SQLCMD-Modus.
 
 ## Eigenständige Execution-Plan-Analyse
 
-`Install_ExecutionPlanAnalysis.sql` installiert nur die für die direkte Plan- und Evidenzanalyse erforderlichen Objekte. Mit `Build-ExecutionPlanAnalysisInstaller.ps1` kann daraus das vollständig eingebettete SSMS-Artefakt `generated/Install_ExecutionPlanAnalysis.generated.sql` erzeugt werden. Der Teilinstaller installiert nicht die übrigen Analysefamilien und kann idempotent neben einer vollständigen Frameworkinstallation ausgeführt werden.
+`Install_ExecutionPlanAnalysis.sql` installiert nur die für die direkte Plan- und Evidenzanalyse erforderlichen Objekte. Mit `Build-ExecutionPlanAnalysisInstaller.ps1` kann daraus das vollständig eingebettete SSMS-Artefakt `generated/Install_ExecutionPlanAnalysis.generated.sql` erzeugt werden. Der Teilinstaller installiert nicht die übrigen Analysebereiche und kann idempotent neben einer vollständigen Frameworkinstallation ausgeführt werden.
 
 ## Optionales Snapshot-/Baseline-Paket
 

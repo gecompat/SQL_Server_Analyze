@@ -89,7 +89,7 @@ Warum werden Service-Broker-Nachrichten nicht verarbeitet oder übertragen, und 
 
 ### Technischer Hintergrund
 
-Service Broker routet typisierte Dialognachrichten über Services/Contracts/Queues. Internal Activation startet Procedures nach Queuezustand. Remoteübertragung nutzt Routes/Endpoints; `sys.transmission_queue` hält nicht zustellbare Nachrichten mit Fehlertext. Conversation Endpoints besitzen Zustandsmaschine und Lifetime.
+Service Broker ordnet typisierte Dialognachrichten anhand von Services und Contracts einer Queue zu. Internal Activation startet Procedures nach Queuezustand. Remoteübertragung nutzt Routes und Endpoints; `sys.transmission_queue` hält nicht zustellbare Nachrichten mit Fehlertext. Conversation Endpoints besitzen Zustandsmaschine und Lifetime.
 
 ### Datenkette
 
