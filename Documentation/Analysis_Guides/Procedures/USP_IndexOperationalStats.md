@@ -7,15 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche internen Zugriffsmuster, Allocations, Locks und Latches erzeugt ein Index?** Der dokumentierte Zweck ist: Zeigt partitionsgenaue DML-, Allocation-, Lock-, Latch- und Zugriffsaktivität. Der Aufruf soll die Arbeitsentscheidung vorbereiten, ob ein Struktur- oder Metadatensignal eine workloadbezogene Gegenprüfung rechtfertigt, nicht ob automatisch DDL ausgeführt werden soll. Status und Scope sind dabei Teil der Evidenz, nicht bloß technische Begleitinformation.
-
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
+Die Procedure beantwortet die Betriebsfrage: **Welche internen Zugriffsmuster, Allocations, Locks und Latches erzeugt ein Index?** Sie unterstützt die Entscheidung, ob ein Struktur- oder Metadatensignal eine workloadbezogene Gegenprüfung rechtfertigt, nicht ob automatisch DDL ausgeführt werden soll.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keinen Geschäftsnutzen einer Strukturänderung, keine repräsentative Workload und keine automatische Aussage über den optimalen Index- oder Statistikzustand. Ihr Zeitvertrag lautet ausdrücklich: Kumulativ im Lebenszyklus der internen Struktur/Instanz. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
-
-Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rechte ausgelassene Details und bereits durch Retention, Restart, Eviction oder Statuswechsel verlorene Zustände. Findings, Prozentwerte und Durchschnitte müssen mit Nenner, Erfassungsfenster und Zeilengranularität gelesen werden. Eine Änderung an DDL, Forcing, Failover, KILL, Repair oder Konfiguration benötigt unabhängige Evidenz und einen Rollbackplan.
+Die Procedure beantwortet keinen Geschäftsnutzen einer Strukturänderung, keine repräsentative Workload und keine automatische Aussage über den optimalen Index- oder Statistikzustand. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -31,43 +27,33 @@ EXEC [monitor].[USP_IndexOperationalStats]
 `GEZIELT` löst genau ein Objekt auf und übergibt dessen ID an die DMF. Ohne
 Objektfilter wäre der Einstieg ungültig; `VOLL` ist ein eigener Deep-Pfad.
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `indexOperationalStats` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Der typisierte TABLE-Vertrag registriert `indexOperationalStats`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einem Index oder Heap **und einer Partition**. Werte verschiedener Partitionen dürfen nur bewusst aggregiert werden.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-DML, Allocations, Locks, Latches und Scans vergleichen; absolute Zähler pro Aktivität, Wait oder Beobachtungszeit normalisieren.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+Vergleichen Sie DML, Allocations, Locks, Latches und Scans. Normalisieren Sie absolute Zähler pro Aktivität, Wait oder Beobachtungszeit.
 
 ## Warum kann das problematisch sein?
 
 Viele Page Allocations pro Insert können Split-/Wachstumsdruck anzeigen. Hohe Lock-/Latchzeit kann Parallelität und Durchsatz begrenzen.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
 Hohe absolute Zähler sind bei stark genutzten Indizes normal. Verhältnis, Delta und aktuelle Auswirkung sind entscheidend.
 
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
-
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall (`Example*`):** Eine Million Latch-Waits über ein Jahr kann weniger kritisch sein als 50.000 in fünf Minuten auf derselben Hot Page. Live-Waits, Keyverteilung, Plan und Contention prüfen.
+**Synthetischer Problemfall (`Example*`):** Eine Million Latch-Waits über ein Jahr kann weniger kritisch sein als 50.000 in fünf Minuten auf derselben Hot Page. Prüfen Sie Live-Waits, Keyverteilung, Plan und Contention.
 
 **Ähnlich aussehender Gegenfall:** Hohe absolute Zähler sind bei stark genutzten Indizes normal. Verhältnis, Delta und aktuelle Auswirkung sind entscheidend. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
 
 ## Leere oder partielle Ausgabe
 
@@ -76,8 +62,6 @@ Bei Katalogpfaden sind Featureabwesenheit, Filter, Offline-/Permission-Scope und
 Für `USP_IndexOperationalStats` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
 ## Eigenlast und Grenzen
-
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
 
 **Quellcode-Hinweis zur Eigenlast:** GEZIELT ruft die DMF für genau ein zuvor sicher aufgelöstes Objekt auf. VOLL kann alle Heap-/B-Tree-/Columnstore-Rowsets lesen und ist deshalb explizit gruppengeschützt. TOP reduziert nicht zwingend die DMF-Arbeit.
 
@@ -141,11 +125,11 @@ FROM [sys].[dm_db_index_operational_stats]
 
 ### Zeit- und Scope-Modell
 
-Kumulativ im Lebenszyklus der internen Struktur/Instanz. Werte können bei Neustart oder Strukturänderung zurückgesetzt werden.
+Die Zähler sind innerhalb des Lebenszyklus der internen Struktur oder Instanz kumulativ. Die Werte können bei einem Neustart oder einer Strukturänderung zurückgesetzt werden.
 
 ### Bewertung und Gegenprobe
 
-Zähler durch passende Aktivität normieren: Page Allocations pro Insert, Lockwaitzeit pro Lockwait, Latchwaitzeit pro Zugriff. Hohe absolute Werte sind bei stark genutzten Indizes erwartbar.
+Normieren Sie die Zähler anhand der passenden Aktivität, beispielsweise Page Allocations pro Insert, Lockwaitzeit pro Lockwait und Latchwaitzeit pro Zugriff. Hohe absolute Werte sind bei stark genutzten Indizes erwartbar.
 
 ### Typische Fehlinterpretation
 
@@ -153,7 +137,7 @@ Zähler durch passende Aktivität normieren: Page Allocations pro Insert, Lockwa
 
 ### Folgeanalyse
 
-`USP_IndexPhysicalStats`, Current Blocking/Waits und konkrete DML-Pläne.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_IndexPhysicalStats`, Current Blocking/Waits und konkrete DML-Pläne.
 
 ## Primärquellen
 

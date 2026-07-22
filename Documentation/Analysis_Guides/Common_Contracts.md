@@ -192,7 +192,7 @@ Backup-, Restore- und Agenthistorie kann durch Cleanup, Wartungsjobs oder Migrat
 
 Diese drei Fälle sind zu unterscheiden:
 
-1. **Keine Resultsetzeile:** Filter, Retention, Reset, Feature oder Berechtigung prüfen.
+1. **Keine Resultsetzeile:** Prüfen Sie Filter, Retention, Reset, Feature und Berechtigung.
 2. **Zeile mit `NULL`:** Quelle kennt den Wert nicht, Wert ist nicht anwendbar oder Auflösung schlug fehl.
 3. **Zeile mit 0:** tatsächlicher Zählerstand 0 im sichtbaren Zeitfenster, sofern die Quelle vollständig ist.
 

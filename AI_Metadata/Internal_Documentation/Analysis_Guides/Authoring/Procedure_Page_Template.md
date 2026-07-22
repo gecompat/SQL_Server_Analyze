@@ -89,21 +89,21 @@ Technische Detailbeschreibung: ../Familienguide.md#anker
 
 ## Inhaltliche Regeln
 
-- Den erwarteten Anwendungsfall so konkret beschreiben, dass ein Leser entscheiden kann, ob die Procedure überhaupt die richtige ist.
-- Beobachtung, Ursachehypothese, Auswirkung und Handlung trennen.
-- Prozentwerte und Durchschnitte immer mit Nenner erklären.
-- Live, Sample, kumulativ und historisch unterscheiden; Restart, Reset, Eviction, Capture und Retention nennen.
-- `NULL`, 0, keine Zeile, fehlende Berechtigung und partielle Quelle unterscheiden.
-- Repository-Default, Produktaussage und Heuristik kennzeichnen.
-- CONSOLE als fachlichen Einstieg, RAW für vollständige technische Resultsets und TABLE für die typisierte SQL-interne Weiterverarbeitung des im Resultset-Inventar benannten Ergebnisses erklären.
-- Bei `@MaxZeilen`, `TOP` und Filtern anhand des T-SQL angeben, ob sie Quellarbeit oder nur Rückgabemenge begrenzen.
-- Kosten des Standardpfads und des teuersten zulässigen Pfads getrennt bewerten.
+- Beschreiben Sie den erwarteten Anwendungsfall so konkret, dass ein Leser entscheiden kann, ob die Procedure für die Fragestellung geeignet ist.
+- Trennen Sie Beobachtung, Ursachehypothese, Auswirkung und Handlung.
+- Erklären Sie Prozentwerte und Durchschnitte immer mit ihrem Nenner.
+- Unterscheiden Sie Live-, Sample-, kumulative und historische Werte und nennen Sie Restart, Reset, Eviction, Capture und Retention.
+- Unterscheiden Sie `NULL`, 0, keine Zeile, fehlende Berechtigung und partielle Quelle.
+- Kennzeichnen Sie Repository-Default, Produktaussage und Heuristik.
+- Erklären Sie CONSOLE als fachlichen Einstieg, RAW für vollständige technische Resultsets und TABLE für die typisierte SQL-interne Weiterverarbeitung des im Resultset-Inventar benannten Ergebnisses.
+- Geben Sie bei `@MaxZeilen`, `TOP` und Filtern anhand des T-SQL an, ob sie Quellarbeit oder nur Rückgabemenge begrenzen.
+- Bewerten Sie die Kosten des Standardpfads und des teuersten zulässigen Pfads getrennt.
 - Der sichere Beispielaufruf muss mit den dokumentierten Gates tatsächlich ausführbar sein. Prüft bereits dieser Pfad eine Analyseklasse mit High-Impact-Bestätigung, muss er `@HighImpactConfirmed = 1` zeigen und zugleich erklären, dass die Bestätigung keine Scopebegrenzung ist.
-- Kostenklasse in Kopf und Kostentabelle aus dem realen Quellpfad ableiten; Platzhalter wie `None`, `TBD` oder `N/A` sind unzulässig.
-- Locking, I/O, CPU, Speicher, TempDB, Ergebnistransfer und bewusste Nebenwirkungen nur als nicht anwendbar ausweisen, wenn dies aus dem Quellpfad begründbar ist.
-- Keine automatische DDL-, `KILL`-, Failover-, Repair- oder Forcing-Empfehlung.
-- Nur eindeutig synthetische `Example*`-Werte in Beispielen.
-- Primärquellen direkt auf die relevante Microsoft-Produktseite verlinken; Drafts oder Sekundärblogs sind kein Ersatz.
-- Externe Vertiefungen getrennt ausweisen, als ergänzende Praxisperspektive beschreiben und nicht zur Begründung von Engine-, Versions- oder Berechtigungsaussagen verwenden.
+- Leiten Sie die Kostenklasse in Kopf und Kostentabelle aus dem realen Quellpfad ab; Platzhalter wie `None`, `TBD` oder `N/A` sind unzulässig.
+- Weisen Sie Locking, I/O, CPU, Speicher, TempDB, Ergebnistransfer und bewusste Nebenwirkungen nur dann als nicht anwendbar aus, wenn dies aus dem Quellpfad begründbar ist.
+- Geben Sie keine automatische DDL-, `KILL`-, Failover-, Repair- oder Forcing-Empfehlung.
+- Verwenden Sie in Beispielen nur eindeutig synthetische `Example*`-Werte.
+- Verlinken Sie Primärquellen direkt auf die relevante Microsoft-Produktseite; Drafts oder Sekundärblogs sind kein Ersatz.
+- Weisen Sie externe Vertiefungen getrennt aus, beschreiben Sie diese als ergänzende Praxisperspektive und verwenden Sie sie nicht zur Begründung von Engine-, Versions- oder Berechtigungsaussagen.
 
 Nicht jede Seite benötigt dieselbe Länge. Nicht anwendbare Punkte müssen jedoch ausdrücklich erklärt werden. Der Manifeststatus wird erst nach fachlichem Abgleich mit der kanonischen SQL-Quelle auf `DEEP_REVIEWED` gesetzt.

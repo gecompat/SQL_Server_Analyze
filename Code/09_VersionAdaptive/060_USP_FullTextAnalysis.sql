@@ -83,12 +83,12 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_FullTextAnalysis';
-        PRINT N'Read-only Tiefenanalyse sichtbarer Full-Text-Kataloge, -Indizes und aggregierter Laufzeitmetadaten.';
-        PRINT N'Geprueft werden Indexschalter, Crawl-Kontext, aktuelle Populationen, Batches, Fragmente und semantische Populationen.';
+        PRINT N'Die Procedure führt eine rein lesende Tiefenanalyse sichtbarer Full-Text-Kataloge, -Indizes und aggregierter Laufzeitmetadaten durch.';
+        PRINT N'Geprüft werden Indexschalter, Crawl-Kontext, aktuelle Populationen, Batches, Fragmente und semantische Populationen.';
         PRINT N'Exakte Namenslisten und Pattern beziehen sich auf Tabellenschema und Tabellenname; Pattern: LIKE, regex: oder regexi:.';
-        PRINT N'Grenzwerte sind Heuristiken. MANUAL/OFF, eine leere DMV oder ein alter Crawl beweisen fuer sich keinen Fehler.';
+        PRINT N'Grenzwerte sind Heuristiken. MANUAL/OFF, eine leere DMV oder ein alter Crawl beweisen für sich keinen Fehler.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
-        PRINT N'Keine Tabelleninhalte, Suchbegriffe, Crawl-Logs, Dateipfade, Stopwords, Schluesselwerte oder DDL.';
+        PRINT N'Es werden keine Tabelleninhalte, Suchbegriffe, Crawl-Logs, Dateipfade, Stopwords oder Schlüsselwerte gelesen; DDL wird nicht ausgeführt.';
         RETURN;
     END;
 

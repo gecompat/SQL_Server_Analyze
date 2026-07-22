@@ -7,15 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche Query-Store-Perspektiven sollen kontrolliert in einem Lauf ausgeführt werden?** Der dokumentierte Zweck ist: Orchestriert Status, Runtime, Waits, Planwechsel, Regressionen, Forced Plans, Hints und IQP. Der Aufruf soll die Arbeitsentscheidung vorbereiten, ob persistierte Query-Store-Evidenz eine zeitlich belastbare Abweichung zeigt und welcher Query-/Plan-Scope danach gezielt geprüft wird. Status und Scope sind dabei Teil der Evidenz, nicht bloß technische Begleitinformation.
-
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
+Die Procedure beantwortet die Betriebsfrage: **Welche Query-Store-Perspektiven sollen kontrolliert in einem Lauf ausgeführt werden?** Sie unterstützt die Entscheidung, ob persistierte Query-Store-Evidenz eine zeitlich belastbare Abweichung zeigt und welcher Query-/Plan-Scope danach gezielt geprüft wird.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keine Ausführungen außerhalb Capture und Retention sowie keinen Beweis, dass ein beobachteter Planwechsel allein die Auswirkung verursacht hat. Ihr Zeitvertrag lautet ausdrücklich: Nicht atomare Folge persistierter Queries; Childstatus je Datenbank. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
-
-Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rechte ausgelassene Details und bereits durch Retention, Restart, Eviction oder Statuswechsel verlorene Zustände. Findings, Prozentwerte und Durchschnitte müssen mit Nenner, Erfassungsfenster und Zeilengranularität gelesen werden. Eine Änderung an DDL, Forcing, Failover, KILL, Repair oder Konfiguration benötigt unabhängige Evidenz und einen Rollbackplan.
+Die Procedure beantwortet keine Ausführungen außerhalb Capture und Retention sowie keinen Beweis, dass ein beobachteter Planwechsel allein die Auswirkung verursacht hat. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -37,53 +33,41 @@ Ohne `@VonUtc`/`@BisUtc` aggregiert das Runtime-Child die gesamte noch
 aufbewahrte Query-Store-Historie. Das kurze Fenster ist deshalb ein
 Quellkosten- und zugleich ein Aussage-Scope, nicht nur ein Ausgabefilter.
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `moduleStatus` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
 Die Granularität hängt vom Child ab: Datenbank, Query/Plan-Aggregat, Waitkategorie, Plan, Hint oder IQP-Signal.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-Statuschild zuerst, dann nur aktivierte Children. Zeitfenster und Wrappersemantik der Regressionen beachten.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+Prüfen Sie zuerst das Status-Child und danach nur die aktivierten Children. Beachten Sie Zeitfenster und Wrappersemantik der Regressionen.
 
 ## Warum kann das problematisch sein?
 
 Ein historisches Ergebnis kann durch Capture, Retention oder Wrapperfenster falsch eingeordnet werden. Der Wrapper übergibt das Fenster als Vergleichsfenster; die Baseline liegt davor.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
 Deaktivierte Children fehlen absichtlich.
 
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
-
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall (`Example*`):** Letzte Stunde als Eingabefenster bedeutet: Vergleich letzte Stunde, Baseline die Stunde davor. Auffälliges Child mit QueryId/Hash und engem Zeitraum wiederholen.
+**Synthetischer Problemfall (`Example*`):** Letzte Stunde als Eingabefenster bedeutet: Vergleich letzte Stunde, Baseline die Stunde davor. Wiederholen Sie Auffälliges Child mit QueryId/Hash und engem Zeitraum.
 
 **Ähnlich aussehender Gegenfall:** Deaktivierte Children fehlen absichtlich. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
 
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
-
 ## Leere oder partielle Ausgabe
 
-Query Store kann nutzbar, aber im gewählten Fenster leer sein; Capturemodus, Read-only-Status, Retention und UTC-Fenster zuerst prüfen.
+Query Store kann nutzbar sein, obwohl das gewählte Fenster leer ist. Prüfen Sie zuerst Capturemodus, Read-only-Status, Retention und UTC-Fenster.
 
 Für `USP_QueryStoreAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
 ## Eigenlast und Grenzen
-
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
@@ -113,29 +97,29 @@ Der Wrapper orchestriert Status, Runtime, Waits, PlanChanges, Regressions, Force
 
 ### Datenkette
 
-Frameworkinterne Orchestrierung; Quellen liegen in Childmodulen.
+Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen in den Childmodulen.
 
 ### Source Select
 
-Kein einzelnes Grundselect: Die Procedure orchestriert Status, Runtime Stats, Wait Stats, Planwechsel, Regressionen, Forced Plans, Hints und optional IQP-Details. Alle Childmodule lesen die ausgewählte Datenbank separat.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert Status, Runtime Stats, Wait Stats, Planwechsel, Regressionen, Forced Plans, Hints und optional IQP-Details. Alle Childmodule lesen die ausgewählte Datenbank separat.
 
-**Wichtig für die Eigenlast:** Datenbank, Zeitfenster und benötigte Childmodule vor jeder Query-Store-Abfrage festlegen. Ein finales Ergebnislimit verhindert weder Interval-/Runtime-Joins noch Plan-XML-Auflösung in den Childpfaden.
+**Wichtig für die Eigenlast:** Legen Sie Datenbank, Zeitfenster und benötigte Childmodule vor jeder Query-Store-Abfrage fest. Ein finales Ergebnislimit verhindert weder Interval-/Runtime-Joins noch Plan-XML-Auflösung in den Childpfaden.
 
 ### Zeit- und Scope-Modell
 
-Nicht atomare Folge persistierter Queries; Childstatus je Datenbank.
+Die Auswertung liest persistierte Queries in einer nicht atomaren Folge; der Childstatus gilt jeweils für eine Datenbank.
 
 ### Bewertung und Gegenprobe
 
-Status zuerst; dann Runtime priorisieren und nur bei Bedarf Wait/Plan/Regression/Intervention vertiefen. Deep-Optionen, Plan XML und viele Datenbanken erhöhen Kosten.
+Prüfen Sie zuerst den Status. Priorisieren Sie danach die Runtime und vertiefen Sie Wait, Plan, Regression und Intervention nur bei Bedarf. Deep-Optionen, Plan-XML und viele Datenbanken erhöhen die Kosten.
 
 ### Typische Fehlinterpretation
 
-Ein Wrapperfenster kann für Regression als Comparison Window verwendet werden, während Baseline davor abgeleitet wird. Resultsets nicht ohne Childnamen/-status zusammenführen.
+Ein Wrapperfenster kann für Regression als Comparison Window verwendet werden, während die Baseline davor abgeleitet wird. Führen Sie Resultsets nicht ohne Childnamen und Childstatus zusammen.
 
 ### Folgeanalyse
 
-Betroffenes Child gezielt erneut ausführen.
+Führen Sie das betroffene Child gezielt erneut aus.
 
 ## Primärquellen
 

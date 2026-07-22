@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Datei        : 169_P0_Runtime_Contract.sql
-Zweck        : Reproduzierbare P0-Positiv-, Leer- und Grenzfälle
-               gegen die ausschließlich synthetische Actions-Datenbank.
+Zweck        : Prüft reproduzierbare P0-Positiv-, Leer- und Grenzfälle gegen
+               die ausschließlich synthetische Actions-Datenbank.
 Datenschutz  : Persistiert keine Laufzeitausgabe. Namen, Ereignisse und
                Konfigurationswerte sind generische Testwerte; produktive
                Resultsets und OUTPUT-Parameter bleiben unverändert.

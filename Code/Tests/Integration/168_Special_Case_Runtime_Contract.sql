@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 168_Special_Case_Runtime_Contract.sql
-Zweck        : Fuehrt alle P2-Spezialfallmodule gegen die synthetische leere
+Zweck        : Führt alle P2-Spezialfallmodule gegen die synthetische leere
                Testdatenbank aus und validiert JSON- und Statusvertrag.
 Datenschutz  : Persistiert keine Laufzeitausgabe; keine fachlichen Testdaten.
 ===============================================================================

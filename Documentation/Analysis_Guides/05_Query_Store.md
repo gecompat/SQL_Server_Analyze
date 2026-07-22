@@ -25,7 +25,7 @@ Query Store ist historischer und stabiler als der Plan Cache, aber nicht lücken
 
 ### Zweck
 
-Inventarisiert Query-Store-Zustand und Konfiguration für eine oder mehrere Datenbanken. Dies ist der erste Aufruf vor jeder historischen Analyse.
+Die Procedure inventarisiert Query-Store-Zustand und Konfiguration für eine oder mehrere Datenbanken. Dies ist der erste Aufruf vor jeder historischen Analyse.
 
 ### Aufrufe
 
@@ -84,7 +84,7 @@ EXEC [monitor].[USP_QueryStoreStatus]
 
 ### Folgeanalyse
 
-Nur bei geeignetem Zustand `USP_QueryStoreRuntimeStats`, `USP_QueryStoreWaitStats` oder Planmodule aufrufen.
+Rufen Sie `USP_QueryStoreRuntimeStats`, `USP_QueryStoreWaitStats` oder die Planmodule nur bei einem geeigneten Zustand auf.
 
 ### Kosten
 
@@ -96,7 +96,7 @@ LOW. Cross-Database-Katalogzugriff; keine Plan-XML-Analyse.
 
 ### Zweck
 
-Aggregiert Laufzeitwerte je Query und Plan über ein Zeitfenster und mehrere Query-Store-Datenbanken. Defaultfenster: letzte Stunde.
+Die Procedure aggregiert Laufzeitwerte je Query und Plan über ein Zeitfenster und mehrere Query-Store-Datenbanken. Das Standardzeitfenster umfasst die letzte Stunde.
 
 ### Aufrufe
 
@@ -179,7 +179,7 @@ Der Referenzdatenbankfilter parst Showplan-XML und ist ein Deep-Pfad.
 
 ### Zweck
 
-Aggregiert Query-Store-Waitkategorien je Plan und Ausführungstyp über ein Zeitfenster. Default: letzte Stunde.
+Die Procedure aggregiert Query-Store-Waitkategorien je Plan und Ausführungstyp über ein Zeitfenster. Das Standardzeitfenster umfasst die letzte Stunde.
 
 ### Spalten
 
@@ -224,7 +224,7 @@ Aktuell reproduzierbar: `USP_CurrentWaits` und `USP_CurrentRequests`. Historisch
 
 ### Zweck
 
-Findet Queries mit mehreren Query-Store-Plänen und liefert eine Queryzusammenfassung sowie alle zugehörigen Planmetadaten.
+Die Procedure findet Queries mit mehreren Query-Store-Plänen und liefert eine Queryzusammenfassung sowie alle zugehörigen Planmetadaten.
 
 ### Query-Summary
 
@@ -272,7 +272,7 @@ RuntimeStats je Plan, Regressions, ForcedPlans und Showplanvergleich.
 
 ### Zweck
 
-Vergleicht zwei nicht überlappende Zeitfenster. Defaults:
+Die Procedure vergleicht zwei nicht überlappende Zeitfenster. Standardmäßig gelten folgende Fenster:
 
 - Vergleich: letzte Stunde,
 - Baseline: die Stunde unmittelbar davor,
@@ -314,7 +314,7 @@ Vergleicht zwei nicht überlappende Zeitfenster. Defaults:
 - Workloadmix, Parameter und Datenvolumen können zwischen Fenstern unterschiedlich sein.
 - Intervallüberlappung verwässert scharfe Grenzen.
 - Durchschnitt verdeckt P95/P99 und bimodale Verteilung.
-- Default `MinAusfuehrungenJeFenster=1` ist für belastbare Produktionsergebnisse oft zu niedrig; passend erhöhen.
+- Der Standardwert `MinAusfuehrungenJeFenster=1` ist für belastbare Produktionsergebnisse häufig zu niedrig; erhöhen Sie ihn passend zur Workload.
 - Eine Regression rechtfertigt nicht automatisch Planforcing.
 
 ### Folgeanalyse
@@ -327,7 +327,7 @@ PlanChanges, RuntimeStats je Plan, WaitStats, ForcedPlans und Showplan.
 
 ### Zweck
 
-Inventarisiert erzwungene Query-Store-Pläne und priorisiert Force-Fehler.
+Die Procedure inventarisiert erzwungene Query-Store-Pläne und priorisiert Force-Fehler.
 
 ### Spalten
 
@@ -339,7 +339,7 @@ Inventarisiert erzwungene Query-Store-Pläne und priorisiert Force-Fehler.
 - `ForceFailureCount>0` und `LastForceFailureReason<>0` benötigen Prüfung.
 - Ein alter Forced Plan ohne aktuelle Ausführung kann technisch irrelevant, aber als Konfigurationsschuld wichtig sein.
 - Schema-, Index-, Engine- oder Compatibility-Änderungen können Planforcing beeinflussen.
-- Automatic Plan Correction und manuelles Forcing über `PlanForcingTypeDesc` unterscheiden.
+- Unterscheiden Sie Automatic Plan Correction und manuelles Forcing über `PlanForcingTypeDesc`.
 
 ### Beispiele
 
@@ -360,7 +360,7 @@ PlanChanges, Regressions, RuntimeStats und vollständiger Planvergleich.
 
 ### Zweck
 
-Inventarisiert Query Store Hints ab SQL Server 2022 und priorisiert Hintfehler.
+Die Procedure inventarisiert Query Store Hints ab SQL Server 2022 und priorisiert Hintfehler.
 
 ### Spalten
 
@@ -392,7 +392,7 @@ RuntimeStats, Regressions, PlanChanges, ForcedPlans und Change-Dokumentation.
 
 ### Zweck
 
-Dokumentiert versionsadaptive IQP-Voraussetzungen und aggregierte Evidenz, ohne Querytext, Plan oder Benutzerdaten zu lesen.
+Die Procedure dokumentiert versionsadaptive IQP-Voraussetzungen und aggregierte Evidenz, ohne Querytext, Plan oder Benutzerdaten zu lesen.
 
 ### DatabaseState
 
@@ -442,7 +442,7 @@ Dokumentiert versionsadaptive IQP-Voraussetzungen und aggregierte Evidenz, ohne 
 
 ### Folgeanalyse
 
-Bei auffälligen Signalen Query Store Runtime/PlanChanges, Showplan und konkrete Queryanalyse.
+Prüfen Sie bei auffälligen Signalen Query Store Runtime und Plan Changes, Showplan und die konkrete Queryanalyse.
 
 ---
 
@@ -450,7 +450,7 @@ Bei auffälligen Signalen Query Store Runtime/PlanChanges, Showplan und konkrete
 
 ### Zweck
 
-Orchestriert alle Query-Store-Module. Default aktiviert Status und RuntimeStats.
+Die Procedure orchestriert alle Query-Store-Module. Standardmäßig sind Status und Runtime Stats aktiviert.
 
 ### Reihenfolge
 
@@ -500,7 +500,7 @@ Der Wrapper übergibt `@VonUtc/@BisUtc` als **Vergleichsfenster**. Das Baselinef
 
 ### Kosten
 
-Default LOW bis MEDIUM. Vollständiger Aufruf mit Referenzdatenbankfiltern, Plan-XML, langen Zeiträumen und vielen Datenbanken ist HIGH_OPT_IN.
+Der Standardaufruf liegt in der Kostenklasse LOW bis MEDIUM. Ein vollständiger Aufruf mit Referenzdatenbankfiltern, Plan-XML, langen Zeiträumen und vielen Datenbanken ist als HIGH_OPT_IN eingestuft.
 
 ## Anfänger-Entscheidungsbaum
 

@@ -6,9 +6,10 @@ GO
 Objekt       : monitor.USP_QueryStoreWaitStats
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Query-Store-Wait-Statistiken aus einer oder mehreren
-               Quelldatenbanken; exaktes globales Top-N über lokale N+1-
-               Kandidaten. Optionaler Filter auf in Showplans referenzierte DBs.
+Zweck        : Liefert Query-Store-Wait-Statistiken aus einer oder mehreren
+               Quelldatenbanken mit einem exakten globalen Top-N über lokale
+               N+1-Kandidaten. Ein optionaler Filter beschränkt die Ausgabe auf
+               in Showplans referenzierte Datenbanken.
 Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit meta, waitStats,
                warnings. Steuerwerte werden case-insensitiv normalisiert.
 ===============================================================================

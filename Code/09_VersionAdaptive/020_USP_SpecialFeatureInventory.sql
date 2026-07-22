@@ -71,10 +71,10 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_SpecialFeatureInventory';
-        PRINT N'Leichtgewichtige Nutzungsinventur sichtbarer Spezialfeature-Metadaten; kein Gesundheitsurteil.';
+        PRINT N'Die Procedure führt eine leichtgewichtige Nutzungsinventur sichtbarer Spezialfeature-Metadaten durch und gibt kein Gesundheitsurteil ab.';
         PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung. Pattern separat.';
         PRINT N'@NurErkannteFeatures=1 unterdrückt NOT_DETECTED_VISIBLE_SCOPE und UNAVAILABLE_VERSION in der Ausgabe.';
-        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen positiv begrenzt Ausgaben, NULL/0 ist unbegrenzt.';
+        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; ein positiver Wert in @MaxZeilen begrenzt die Ausgaben, während NULL oder 0 keine Begrenzung setzt.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Keine externen Locations, Credentials, Payloads, CLR-Binaries oder Moduldefinitionen werden gelesen.';
         RETURN;

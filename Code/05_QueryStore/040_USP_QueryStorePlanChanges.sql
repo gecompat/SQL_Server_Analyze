@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_QueryStorePlanChanges
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Queries mit mehreren Query-Store-Plänen, global begrenzt über
-               lokale N+1-Kandidaten; optional Referenzdatenbankfilter.
+Zweck        : Liefert Abfragen mit mehreren Query-Store-Plänen und begrenzt
+               die globale Ausgabe über lokale N+1-Kandidaten. Ein optionaler
+               Filter beschränkt die Referenzdatenbanken.
 Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit meta, queries, plans, warnings.
 ===============================================================================
 */

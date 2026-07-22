@@ -21,13 +21,12 @@ Exakte Signaturen und Defaultwerte stehen im [Procedure-Referenzhandbuch](../Ref
 
 ## 3. Datenbankfilter
 
-Frameworktypisch:
+Frameworkweit gelten für Datenbankfilter folgende Regeln:
 
 - `N''` oder `NULL`: alle sichtbaren Online-Benutzerdatenbanken,
 - explizite Pipe-Liste: nur genannte Datenbanken.
 
-Systemdatenbanken bleiben ohne ausdrückliches Opt-in ausgeschlossen. Immer Hilfe
-und Status prüfen.
+Systemdatenbanken bleiben ohne ausdrückliches Opt-in ausgeschlossen. Prüfen Sie vor der Interpretation die Hilfe und den Status des Aufrufs.
 
 ## 4. Exakte Listen und Pattern
 
@@ -38,11 +37,11 @@ und Status prüfen.
 
 ## 5. Tiefenoptionen
 
-Optionen wie Plan-XML, Event-XML, Lockdetails, Histogramme, Segmente, Dictionaries, Page Details oder breite Vollanalyse erhöhen CPU, I/O, Ausgabe und Laufzeit. Erst Kandidaten eingrenzen, dann Tiefenoption aktivieren.
+Optionen wie Plan-XML, Event-XML, Lockdetails, Histogramme, Segmente, Dictionaries, Page Details oder eine breite Vollanalyse erhöhen CPU, I/O, Ausgabe und Laufzeit. Grenzen Sie zuerst die Kandidaten ein und aktivieren Sie danach die benötigte Tiefenoption.
 
 ## 6. Textparameter
 
-Vollständiger SQL-Text, Batchtext und Input Buffer können große und sensible Laufzeitinhalte liefern. Sie nur für die erforderliche Diagnose anzeigen und nicht ungeprüft exportieren oder weitergeben.
+Vollständiger SQL-Text, Batchtext und Input Buffer können große und sensible Laufzeitinhalte liefern. Zeigen Sie diese Inhalte nur für die erforderliche Diagnose an und exportieren oder übertragen Sie sie nicht ungeprüft.
 
 ## 7. Schwellenwerte
 
@@ -57,8 +56,8 @@ Ein Schwellwert priorisiert; er beweist keine Ursache.
 
 ## 8. Vor breiten Aufrufen
 
-1. `USP_CheckAnalyseAccess` ausführen.
-2. `USP_CheckFrameworkCapabilities` prüfen.
-3. Zielscope explizit begrenzen.
-4. CONSOLE verwenden.
-5. Erst danach RAW/Deep-Optionen aktivieren.
+1. Führen Sie `USP_CheckAnalyseAccess` aus.
+2. Prüfen Sie `USP_CheckFrameworkCapabilities`.
+3. Begrenzen Sie den Zielscope explizit.
+4. Verwenden Sie CONSOLE.
+5. Aktivieren Sie erst danach RAW- und Deep-Optionen.

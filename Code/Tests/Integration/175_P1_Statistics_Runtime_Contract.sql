@@ -4,7 +4,8 @@ GO
 /*
 ===============================================================================
 Datei        : 175_P1_Statistics_Runtime_Contract.sql
-Zweck        : Laufzeitverträge für acht P1-Statistikverteilungsfälle.
+Zweck        : Prüft Laufzeitverträge für acht
+               P1-Statistikverteilungsfälle.
 Datenschutz  : Ausschließlich generische synthetische Objekte und Principals;
                Laufzeitwerte werden nicht in Repositoryartefakte übernommen.
 Nebenwirkung : Erzeugt kurzlebige Tabellen, Statistiken, eine Partitionierung

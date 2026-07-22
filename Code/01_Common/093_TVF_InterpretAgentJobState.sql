@@ -7,7 +7,8 @@ Objekt       : monitor.TVF_InterpretAgentJobState
 Version      : 1.0.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
-Zweck        : Reiner Klassifikationsvertrag für letzten Jobstatus und Zeitpläne.
+Zweck        : Klassifiziert den letzten Jobstatus und die zugehörigen
+               Zeitpläne ohne Seiteneffekte.
 Datenschutz  : Verarbeitet nur technische Status-, Zeit- und Anzahlwerte; keine
                Jobschritte, Befehle oder Meldungstexte.
 ===============================================================================

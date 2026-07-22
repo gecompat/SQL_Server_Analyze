@@ -7,20 +7,20 @@ EXEC [monitor].[USP_CurrentTempDB] @MitDateien=1, @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_TempDBConfiguration] @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Gesamtauslastung und Dateien, dann User Objects, Internal Objects und Version Store unterscheiden.
+Prüfen Sie zuerst die Gesamtauslastung und die Dateien. Unterscheiden Sie anschließend User Objects, Internal Objects und Version Store.
 
-## Warum
+## Interpretation
 
-- Internal Objects einer Session → Sort/Hash/Spill oder Worktable,
-- Version Store → lange Snapshot-/RCSI-Transaktion,
-- häufiges Wachstum → unzureichende Vorallokation/Growthsetting.
+- Internal Objects einer Session können durch Sort-, Hash-, Spill- oder Worktable-Aktivität entstehen.
+- Ein großer Version Store kann mit einer langen Snapshot- oder RCSI-Transaktion zusammenhängen.
+- Häufiges Wachstum kann auf unzureichende Vorallokation oder ungeeignete Growth-Einstellungen hinweisen.
 
 ## Gegenprobe
 
-Verursachende Session mit `USP_CurrentRequests`; Version Store mit `USP_CurrentTransactions`; Contention mit `USP_InternalContentionAnalysis`.
+Korrelieren Sie die verursachende Session mit `USP_CurrentRequests`, den Version Store mit `USP_CurrentTransactions` und Contention mit `USP_InternalContentionAnalysis`.
 
-## Nicht tun
+## Nicht ableiten
 
-Nicht nur Dateien vergrößern, ohne Verbrauchsart und verursachenden Vorgang zu bestimmen.
+Vergrößern Sie nicht ausschließlich die Dateien, ohne zuvor die Verbrauchsart und den verursachenden Vorgang zu bestimmen.

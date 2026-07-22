@@ -126,7 +126,7 @@ BEGIN
         PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Zweck: Kumulative Indexnutzung seit DMV-Reset; keine Historie.';
+        PRINT N'Die Procedure liefert die kumulative Indexnutzung seit dem DMV-Reset und keine Ausführungshistorie.';
         PRINT N'@AnalyseModus varchar(16) = GEZIELT: GEZIELT benötigt Schema-/Objektfilter; VOLL prüft CATALOG_DEEP.';
         PRINT N'@NurUngenutzt bit = 0: nur Indizes ohne User Seek/Scan/Lookup seit Reset.';
         PRINT N'@MinUserUpdates bigint = 0: Mindestanzahl Schreiboperationen.';

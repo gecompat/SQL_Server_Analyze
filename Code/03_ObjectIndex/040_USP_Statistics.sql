@@ -125,7 +125,7 @@ BEGIN
         PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Zweck: Statistikalter, Sample, Rows und Modification Counter.';
+        PRINT N'Die Procedure liefert Statistikalter, Stichprobenumfang, Zeilenanzahl und Modification Counter.';
         PRINT N'@AnalyseModus = GEZIELT: Schema- oder Objektfilter ist erforderlich; VOLL prüft CATALOG_DEEP.';
         PRINT N'@StatisticsNamePattern: optionaler Statistikname-Filter.';
         PRINT N'@MinModificationPercent: 0 bis 100; nur entsprechende Statistiken.';

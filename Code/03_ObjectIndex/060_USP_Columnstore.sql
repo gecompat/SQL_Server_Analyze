@@ -124,7 +124,7 @@ BEGIN
         PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Zweck: Rowgroups, Deleted Rows, Delta Stores sowie optionale Physical-/Segment-/Dictionary-Details.';
+        PRINT N'Die Procedure liefert Rowgroups, Deleted Rows, Delta Stores sowie optionale Physical-, Segment- und Dictionary-Details.';
         PRINT N'@AnalyseModus varchar(16) = GEZIELT: GEZIELT benötigt Schema-/Objektfilter; VOLL prüft CATALOG_DEEP.';
         PRINT N'@MitPhysicalStats/@MitSegmenten/@MitDictionaries: jeweils opt-in und COLUMNSTORE_DEEP-geschützt.';
         PRINT N'@MinDeletedPercent: Filter 0 bis 100.';

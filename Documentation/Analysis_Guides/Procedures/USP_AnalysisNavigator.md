@@ -23,7 +23,7 @@ Die Procedure bewertet nicht, ob eine vorgeschlagene Änderung fachlich zulässi
 
 ## Sicherer Einstieg
 
-Eine freie Symptomsuche:
+Führen Sie eine freie Symptomsuche mit folgendem Aufruf aus:
 
 ```sql
 EXEC [monitor].[USP_AnalysisNavigator]
@@ -32,7 +32,7 @@ EXEC [monitor].[USP_AnalysisNavigator]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Eine Übersicht der wichtigsten Startpunkte:
+Rufen Sie mit folgendem Beispiel die wichtigsten Startpunkte ab:
 
 ```sql
 EXEC [monitor].[USP_AnalysisNavigator]
@@ -40,7 +40,7 @@ EXEC [monitor].[USP_AnalysisNavigator]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Eine technische Bereichssuche ohne fachliche Quellabfrage:
+Führen Sie mit folgendem Beispiel eine technische Bereichssuche ohne fachliche Quellabfrage aus:
 
 ```sql
 EXEC [monitor].[USP_AnalysisNavigator]
@@ -51,13 +51,13 @@ EXEC [monitor].[USP_AnalysisNavigator]
       @ResultSetArt = 'RAW';
 ```
 
-`@NurInstallierte = 0` ist der vollständige Katalogmodus und zeigt auch optionale Paketobjekte. Vor dem Kopieren eines Aufrufs deshalb `IsInstalled` prüfen. Der Navigator verwendet ausschließlich synthetische Beispiele in `SafeCall`; dort angezeigte Platzhalter wie `[ExampleDatabase]`, `[ExampleSchema]` oder `[ExampleObject]` müssen bewusst ersetzt werden.
+`@NurInstallierte = 0` ist der vollständige Katalogmodus und zeigt auch optionale Paketobjekte. Prüfen Sie vor dem Kopieren eines Aufrufs deshalb `IsInstalled`. Der Navigator verwendet ausschließlich synthetische Beispiele in `SafeCall`; dort angezeigte Platzhalter wie `[ExampleDatabase]`, `[ExampleSchema]` oder `[ExampleObject]` müssen bewusst ersetzt werden.
 
 ## Resultsets und Leserichtung
 
 `CONSOLE` liefert genau die beschriftete Treffermenge `navigation`. Bei einer gültigen Suche ohne Treffer erscheint eine verständliche Leerzeile mit `NO_MATCH`. `RAW` liefert zuerst den Modulstatus und danach das native Resultset `navigation`. `TABLE` exportiert ausschließlich `navigation` in die unter `@ResultTablesJson` zugeordnete lokale Temp-Tabelle. `NONE` unterdrückt alle Resultsets. `@JsonErzeugen = 1` liefert `meta` und `navigation` aus derselben Materialisierung.
 
-Im RAW-Status zuerst `StatusCode`, `IsPartial`, `ErrorNumber`, `ErrorMessage` und die normalisierten Filter lesen. Erst danach die Treffer interpretieren. `INVALID_PARAMETER` unterscheidet sich von `NO_MATCH`: Im ersten Fall war ein Wert wie Bereich, Scope, Rolle, Zeilenlimit oder Suchtextlänge ungültig; im zweiten Fall war die Anfrage gültig, aber die Schnittmenge leer.
+Berücksichtigen Sie im RAW-Status zuerst `StatusCode`, `IsPartial`, `ErrorNumber`, `ErrorMessage` und die normalisierten Filter. Interpretieren Sie erst danach die Treffer. `INVALID_PARAMETER` unterscheidet sich von `NO_MATCH`: Im ersten Fall war ein Wert wie Bereich, Scope, Rolle, Zeilenlimit oder Suchtextlänge ungültig; im zweiten Fall war die Anfrage gültig, aber die Schnittmenge leer.
 
 ## Eine Zeile bedeutet
 
@@ -69,14 +69,14 @@ Eine Zeile in `navigation` ist genau ein priorisierter Vorschlag für eine öffe
 
 ## So lesen
 
-1. **Treffergrund:** `WhyMatched` lesen. Ein exakter Symptomtreffer ist aussagekräftiger als eine Übereinstimmung nur über einen allgemeinen Bereichsbegriff.
+1. **Treffergrund:** Berücksichtigen Sie `WhyMatched`. Ein exakter Symptomtreffer ist aussagekräftiger als eine Übereinstimmung nur über einen allgemeinen Bereichsbegriff.
 2. **Rolle:** `ENTRY` eignet sich für den ersten Aufruf. `FOLLOW_UP` erwartet bereits ein Signal. `TARGETED` benötigt ein bekanntes Ziel. `SETUP` hat eine Betriebswirkung oder prüft einen Setupvertrag. `SUPPORT` ist kein normaler Analyseaufruf.
 3. **Scope und Evidenz:** `ScopeCode` und `EvidenceType` bestimmen, was bekannt sein und welche Zeitgrenze später beachtet werden muss. Ein `LIVE_SNAPSHOT` beantwortet keine historische Frage; `PERSISTED_HISTORY` ist von Capture und Retention abhängig.
-4. **Kosten:** `CostRangeCode`, `AnalysisLevel`, `RequiresGroupGate`, `RequiresKnownTarget`, `RequiresHighImpactForSafeStart` und `HighImpactPathAvailable` zusammen lesen. Keines dieser Felder darf allein als Freigabe verstanden werden.
-5. **Paketstatus:** `PackageCode` und `IsInstalled` prüfen. Ein nicht installiertes optionales Paket bleibt sichtbar, damit der Funktionsumfang auffindbar ist.
-6. **Voraussetzung:** `PrerequisiteSummary` vor `SafeCall` lesen. Zeitfenster, Plan-XML, Query Store, XE-Session oder expliziter Datenbankscope können entscheidend sein.
-7. **Erster Aufruf:** `SafeCall` nicht blind ausführen, sondern Platzhalter, Scope und Schutzparameter prüfen. Danach die vollständige Procedure-Seite unter `DocumentationPath` lesen.
-8. **Gegenprobe:** `NextStep` und `RelationType` verwenden. Eine Vertiefung desselben Signals ist weniger unabhängig als eine echte Gegenprobe aus einer anderen Quelle.
+4. **Kosten:** Berücksichtigen Sie `CostRangeCode`, `AnalysisLevel`, `RequiresGroupGate`, `RequiresKnownTarget`, `RequiresHighImpactForSafeStart` und `HighImpactPathAvailable` gemeinsam. Keines dieser Felder darf allein als Freigabe verstanden werden.
+5. **Paketstatus:** Prüfen Sie `PackageCode` und `IsInstalled`. Ein nicht installiertes optionales Paket bleibt sichtbar, damit der Funktionsumfang auffindbar ist.
+6. **Voraussetzung:** Berücksichtigen Sie `PrerequisiteSummary` vor `SafeCall`. Zeitfenster, Plan-XML, Query Store, XE-Session oder expliziter Datenbankscope können entscheidend sein.
+7. **Erster Aufruf:** Führen Sie `SafeCall` nicht ungeprüft aus. Prüfen Sie zunächst Platzhalter, Scope und Schutzparameter und lesen Sie danach die vollständige Procedure-Seite unter `DocumentationPath`.
+8. **Gegenprobe:** Verwenden Sie `NextStep` und `RelationType`. Eine Vertiefung desselben Signals ist weniger unabhängig als eine Gegenprobe aus einer anderen Quelle.
 
 ## Warum kann das problematisch sein?
 
@@ -84,7 +84,7 @@ Das eigentliche Problem, das der Navigator reduziert, ist eine falsche oder zu t
 
 Auch ein fachlich passender Treffer kann falsch eingesetzt werden. Ein Query-Store-Pfad beantwortet bei deaktiviertem oder leerem Query Store keine Live-Frage. Eine aktuelle Blockinganalyse kann einen bereits beendeten Deadlock nicht rekonstruieren. Ein physischer Indexscan ist für die bloße Frage nach Nutzung unnötig teuer. Der Navigator macht diese Unterschiede über Rolle, Scope, Evidenz- und Kostenfelder sichtbar, kann aber die Entscheidung des Benutzers nicht ersetzen.
 
-Ein weiterer Risikofaktor ist das unkritische Kopieren von `SafeCall`. Der Aufruf ist synthetisch und absichtlich begrenzt, aber Platzhalter und tatsächliche Zielsystemrechte bleiben zu prüfen.
+Ein weiterer Risikofaktor ist das ungeprüfte Kopieren von `SafeCall`. Der Aufruf ist synthetisch und absichtlich begrenzt. Platzhalter und tatsächliche Zielsystemrechte müssen dennoch vor der Ausführung geprüft werden.
 
 ## Wann ist es kein Problem?
 
@@ -100,7 +100,7 @@ Ein niedrigerer Rang bedeutet nicht, dass die Procedure schlechter ist. Er besag
 
 **Synthetischer Mehrdeutigkeitsfall `ExampleCpuSearch`:** `CPU hoch` priorisiert `USP_CurrentRequests`. `USP_WorkerPressureAnalysis` bleibt relevant, wenn Runnable Queues oder THREADPOOL-Signale vermutet werden. Ein Server mit hoher produktiver analytischer Last kann viel CPU nutzen, ohne dass ein einzelner Plan fehlerhaft ist. Deshalb sind Purpose, Scope und NextStep wichtiger als der Score allein.
 
-**Synthetischer Paketfall `ExampleSnapshotSearch`:** Die Suche nach `Snapshot Baseline` kann `USP_RunSnapshotCollectionCycle` mit `PackageCode = SNAPSHOT_OPTIONAL` und `IsInstalled = 0` zeigen. Das ist eine vollständige Discovery-Antwort, aber kein ausführbarer lokaler Aufruf. Zuerst Paketvertrag und Zielkonfiguration lesen.
+**Synthetischer Paketfall `ExampleSnapshotSearch`:** Die Suche nach `Snapshot Baseline` kann `USP_RunSnapshotCollectionCycle` mit `PackageCode = SNAPSHOT_OPTIONAL` und `IsInstalled = 0` zeigen. Das ist eine vollständige Discovery-Antwort, aber kein ausführbarer lokaler Aufruf. Berücksichtigen Sie zuerst Paketvertrag und Zielkonfiguration.
 
 **Gegenbeispiel `ExampleExactProcedure`:** Bei `[monitor].[USP_IndexPhysicalStats]` steht der exakte Name sehr hoch. Das bedeutet nicht, dass ein physischer Scan die passende Antwort auf `Index ungenutzt` ist. Für die Nutzungsfrage bleibt `USP_IndexUsage` der sichere Einstieg; physische Stats beantworten Fragmentierung und Seitendichte unter einem anderen Kostenmodell.
 
@@ -191,7 +191,7 @@ Der höchste Score sei die bewiesene Root Cause; `ENTRY` sei immer billig; `IsIn
 
 ### Folgeanalyse
 
-Die Folgeanalyse ist nicht fest. Sie wird aus dem gewählten Treffer und seiner priorisierten Relation abgeleitet. Alle Alternativen stehen in `VW_AnalysisRelation`. Für unbekannte Resultsetsemantik zuerst den [Einsteiger-Leseleitfaden](../Beginner_Reading_Guide.md), danach die konkrete Procedure-Seite verwenden.
+Die Folgeanalyse ist nicht fest vorgegeben. Sie wird aus dem gewählten Treffer und seiner priorisierten Relation abgeleitet. Alle Alternativen stehen in `VW_AnalysisRelation`. Verwenden Sie bei unbekannter Resultsetsemantik zuerst den [Einsteiger-Leseleitfaden](../Beginner_Reading_Guide.md) und danach die konkrete Procedure-Seite.
 
 ## Primärquellen
 

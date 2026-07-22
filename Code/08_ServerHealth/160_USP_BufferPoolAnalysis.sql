@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_BufferPoolAnalysis
 Version      : 1.0.0
 Stand        : 2026-07-17
-Zweck        : Korrelierte Momentaufnahme von Prozess-, Betriebssystem-,
-               Resource-Semaphore-, Memory-Clerk- und Buffer-Pool-Evidenz.
+Zweck        : Liefert eine korrelierte Momentaufnahme von Prozess-,
+               Betriebssystem-, Resource-Semaphore-, Memory-Clerk- und
+               Buffer-Pool-Evidenz.
 Datenquellen : sys.dm_os_process_memory, sys.dm_os_sys_memory,
                sys.dm_exec_query_resource_semaphores,
                sys.dm_os_memory_clerks und optional sys.dm_os_buffer_descriptors.
@@ -51,7 +52,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_BufferPoolAnalysis';
-        PRINT N'Korrelierte Momentaufnahme; keine Trend- oder Konfigurationsempfehlung.';
+        PRINT N'Die Procedure liefert eine korrelierte Momentaufnahme, aber keine Trend- oder Konfigurationsempfehlung.';
         PRINT N'@MitBufferPoolVerteilung=0 ist der sichere Standard; 1 scannt sys.dm_os_buffer_descriptors.';
         PRINT N'@MaxZeilen positiv; NULL/0 = unbegrenzt. @ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson.';
         RETURN;

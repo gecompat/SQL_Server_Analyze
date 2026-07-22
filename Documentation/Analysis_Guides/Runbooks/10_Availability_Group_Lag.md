@@ -7,18 +7,18 @@ EXEC [monitor].[USP_AvailabilityGroups] @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_AvailabilityDeepAnalysis] @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Rolle, Availability Mode, Synchronization State, Send Queue, Redo Queue, Lagtrend und Connected State.
+Lesen Sie Rolle, Availability Mode, Synchronization State, Send Queue, Redo Queue, Lagtrend und Connected State gemeinsam.
 
-## Warum
+## Interpretation
 
 Wachsende Send Queue weist eher auf Primär-/Transportpfad hin; wachsende Redo Queue eher auf Secondary-I/O/CPU/Redo.
 
 ## Gegenprobe
 
-Performance Counter, Storage, Netzwerk, Cluster und Logerzeugungsrate.
+Prüfen Sie Performance Counter, Storage, Netzwerk, Cluster und Logerzeugungsrate als Gegenproben.
 
-## Nicht tun
+## Nicht ableiten
 
-Kein Failover nur anhand eines einzelnen Queue-Snapshots. RPO, Trend, Datenverlust- und Rollbackrisiko prüfen.
+Führen Sie kein Failover allein aufgrund eines einzelnen Queue-Snapshots aus. Prüfen Sie RPO, Trend sowie Datenverlust- und Rollbackrisiko.

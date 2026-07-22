@@ -7,18 +7,18 @@ EXEC [monitor].[USP_CurrentIO] @SampleSeconds=10, @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_CurrentWaits] @SampleSeconds=5, @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Sample- statt nur kumulative Latenz, Operationen, Bytes, Dateiart, PAGEIOLATCH-/WRITELOG-Waits und betroffene Requests.
+Bewerten Sie die Sample-Latenz und nicht nur den kumulativen Durchschnitt. Lesen Sie Operationen, Bytes, Dateiart, PAGEIOLATCH- beziehungsweise WRITELOG-Waits und betroffene Requests gemeinsam.
 
-## Warum
+## Interpretation
 
 Hohe Latenz bei vielen aktuellen Operationen plus passende Waits zeigt unmittelbare Workloadauswirkung.
 
 ## Gegenprobe
 
-`USP_DatabaseCapacityAnalysis`, Query Reads, Backup-/Logaktivität und externes Storage-Monitoring.
+Verwenden Sie `USP_DatabaseCapacityAnalysis`, Query Reads, Backup- und Logaktivität sowie externes Storage-Monitoring als Gegenproben.
 
-## Nicht tun
+## Nicht ableiten
 
-Eine einzelne langsame Operation oder alten kumulativen Durchschnitt nicht als Storageausfall bewerten.
+Bewerten Sie weder eine einzelne langsame Operation noch einen alten kumulativen Durchschnitt als Nachweis eines Storageausfalls.

@@ -86,7 +86,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentMemoryGrants';
-        PRINT N'Zweck: aktuelle wartende und gewährte Query Memory Grants einschließlich Resource-Governor-Grenzen.';
+        PRINT N'Die Procedure liefert aktuell wartende und gewährte Query Memory Grants einschließlich der Resource-Governor-Grenzen.';
         PRINT N'@SessionIds=NULL (Pipe-Liste); @AktuelleSessionEinbeziehen=0; @NurWartende=0; @MinRequestedMb/@MinGrantedMb=NULL.';
         PRINT N'@MitSqlText=1; @MaxSqlTextZeichen positiv begrenzt, NULL/0 liefert vollständigen Text; @MaxZeilen positiv begrenzt, NULL/0 unbegrenzt.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; Steuerwert wird case-insensitiv verarbeitet.';

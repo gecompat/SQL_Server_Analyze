@@ -86,7 +86,7 @@ LOW. Die Kataloge sind konstant, die Ergebnismenge ist auf 100 Zeilen begrenzt. 
 
 ### Zweck
 
-Prüft die effektive Analyseklassen- und Gruppenpolicy für den aktuellen Sicherheitskontext. Die Procedure beantwortet nicht, ob jede technische DMV lesbar ist; sie beantwortet, ob der Framework-Gate eine Analyseklasse grundsätzlich erlaubt.
+Die Procedure prüft die effektive Analyseklassen- und Gruppenpolicy für den aktuellen Sicherheitskontext. Sie beantwortet nicht, ob jede technische DMV lesbar ist, sondern ob der Framework-Gate eine Analyseklasse grundsätzlich erlaubt.
 
 ### Wann einsetzen?
 
@@ -193,7 +193,7 @@ LOW. Login-Token, Policies und Views werden gelesen. Das Resultset darf in der L
 
 ### Zweck
 
-Prüft pro Feature server- oder datenbankweit:
+Die Procedure prüft pro Feature server- oder datenbankweit:
 
 - Mindestversion,
 - Gruppenfreigabe,
@@ -285,11 +285,11 @@ Weitere RAW-Resultsets enthalten eine Zusammenfassung, Datenbankstatus und Warnu
 
 ### Folgeanalyse
 
-Die konkrete Procedure nur für Zeilen mit `IsUsable=1` ausführen. Bei Teilverfügbarkeit den Zielscope enger setzen.
+Führen Sie die konkrete Procedure nur für Zeilen mit `IsUsable=1` aus. Begrenzen Sie bei Teilverfügbarkeit den Zielscope stärker.
 
 ### Kosten
 
-LOW bis MEDIUM. Viele kleine Probes können bei zahlreichen Datenbanken
+Die Kosten liegen zwischen LOW und MEDIUM. Viele kleine Probes können sich bei zahlreichen Datenbanken
 kumulieren. Für tatsächlich aktivierte ressourcenintensive Pfade ist deshalb
 `@HighImpactConfirmed=1` erforderlich; die Kandidatenmenge selbst wird nicht
 willkürlich vorab gekürzt.
@@ -300,7 +300,7 @@ willkürlich vorab gekürzt.
 
 ### Rolle
 
-Technischer interner Auswahlvertrag. Nicht als normale Analyse-Procedure verwenden.
+Die Procedure implementiert den internen technischen Auswahlvertrag. Sie ist nicht als regulärer Analyseendpunkt vorgesehen.
 
 Die Procedure erwartet, dass der Aufrufer lokale Temp-Tabellen mit exakt definiertem Schema anlegt und deren eindeutige Namen über `@CandidateTable` sowie optional `@WarningTable` übergibt. Sie liefert keine Resultsets.
 
@@ -351,7 +351,7 @@ nicht still aus dem Auftrag.
 
 ### Rolle
 
-Interne Procedure für bracket-aware, case-sensitive Namensfilter. Kein normaler Direktaufruf und keine Resultsets.
+Die interne Procedure verarbeitet bracket-aware und case-sensitive Namensfilter. Sie ist nicht als regulärer Direktaufruf vorgesehen und liefert keine fachlichen Resultsets.
 
 ### Erwartete Temp-Tabelle
 

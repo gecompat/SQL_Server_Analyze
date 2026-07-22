@@ -18,7 +18,7 @@
 
 ### Zweck
 
-Zeigt CPU-/Socket-/Core-/Scheduler-/NUMA-Topologie und die momentane Schedulerlast.
+Die Procedure zeigt CPU-/Socket-/Core-/Scheduler-/NUMA-Topologie und die momentane Schedulerlast.
 
 ### Resultsets
 
@@ -74,7 +74,7 @@ LOW. Momentaufnahme; keine Rate und keine CPU-Auslastungsprozentmessung.
 
 ### Zweck
 
-Verdichtet NUMA-/Soft-NUMA-Verteilung, Scheduler-Skew und SQL-Memory-Nodes.
+Die Procedure verdichtet NUMA-/Soft-NUMA-Verteilung, Scheduler-Skew und SQL-Memory-Nodes.
 
 ### NUMA-Spalten
 
@@ -111,7 +111,7 @@ CPU-Topologie, aktive Requests nach Scheduler, Server Memory und Hypervisor-/NUM
 
 ### Zweck
 
-Korreliert OS-, Prozess- und SQL-Memory-Manager-Zustand, größte Memory Clerks und Query Grants.
+Die Procedure korreliert OS-, Prozess- und SQL-Memory-Manager-Zustand, größte Memory Clerks und Query Grants.
 
 ### Summary
 
@@ -163,7 +163,7 @@ Diese Regeln sind Sichtungshilfen. Auf einem kleinen Server ist 1 GB anders zu b
 
 ### Zweck
 
-Inventarisiert TempDB-Dateien, Größe, Growth und ausgewählte Instanzkonfigurationen.
+Die Procedure inventarisiert TempDB-Dateien, Größe, Growth und ausgewählte Instanzkonfigurationen.
 
 ### Files
 
@@ -205,7 +205,7 @@ Inventarisiert TempDB-Dateien, Größe, Growth und ausgewählte Instanzkonfigura
 
 ### Zweck
 
-Zeigt konfigurierte und laufende Serverwerte und kennzeichnet einige kontextabhängige Reviewfälle.
+Die Procedure zeigt konfigurierte und laufende Serverwerte und kennzeichnet einige kontextabhängige Reviewfälle.
 
 ### Spalten
 
@@ -227,7 +227,7 @@ Zeigt konfigurierte und laufende Serverwerte und kennzeichnet einige kontextabh�
 - Cost Threshold 5 ist Default und oft nur ein Startpunkt, aber Änderungen benötigen belastbare Parallelitäts-/CPU-Evidenz.
 - Unbeschränktes Max Memory kann auf dedizierten kleinen Instanzen funktionieren, lässt aber keine explizite OS-/Nebenprozessreserve.
 - `ConfiguredValue <> RunningValue` kann Reconfigure oder Neustart verlangen.
-- Aktiviertes `xp_cmdshell` kann eine begründete, kontrollierte Abhängigkeit sein; Exposure und Rechte prüfen.
+- Ein aktiviertes `xp_cmdshell` kann eine begründete, kontrollierte Abhängigkeit sein; prüfen Sie Exposition und Rechte.
 
 ### Folgeanalyse
 
@@ -239,7 +239,7 @@ CPU/NUMA, Memory, Security Configuration und konkrete Workload-DMVs.
 
 ### Zweck
 
-Liest alle aktuell aktiven globalen und sessionbezogenen Trace Flags über `DBCC TRACESTATUS(-1)`.
+Die Procedure liest alle aktuell aktiven globalen und sessionbezogenen Trace Flags über `DBCC TRACESTATUS(-1)`.
 
 ### Spalten
 
@@ -249,7 +249,7 @@ Liest alle aktuell aktiven globalen und sessionbezogenen Trace Flags über `DBCC
 
 - `GlobalFlag=1` wirkt instanzweit.
 - `SessionFlag=1` kann nur für die aufrufende Session gelten.
-- Ein aktives Flag ist nicht automatisch schädlich; SQL-Version, CU, dokumentierter Zweck und Gültigkeit prüfen.
+- Ein aktives Flag ist nicht automatisch schädlich; prüfen Sie SQL-Version, CU, dokumentierten Zweck und Gültigkeit.
 - Viele historische Trace Flags sind in neueren Versionen Defaultverhalten, wirkungslos oder nicht mehr empfohlen.
 - Runtimeflag kann durch Startupparameter, DBCC TRACEON oder internes Verhalten gesetzt sein.
 
@@ -263,7 +263,7 @@ Liest alle aktuell aktiven globalen und sessionbezogenen Trace Flags über `DBCC
 
 ### Zweck
 
-Liest auf unterstützten Plattformen Registry-basierte SQL-Dienst- und Startparameter.
+Die Procedure liest auf unterstützten Plattformen Registry-basierte SQL-Dienst- und Startparameter.
 
 ### Spalten
 
@@ -274,7 +274,7 @@ Liest auf unterstützten Plattformen Registry-basierte SQL-Dienst- und Startpara
 - `sys.dm_server_registry` ist plattform-/versionsabhängig; auf Linux wird `UNAVAILABLE_PLATFORM` erwartet.
 - Registrywerte sind Konfiguration, nicht zwingend vollständig der aktuell wirksame Prozesszustand.
 - `ImagePath` und `ObjectName` können sensible Umgebungswerte enthalten und dürfen nur kontrolliert exportiert oder weitergegeben werden.
-- Traceflag-Startupwerte mit `USP_TraceFlags` gegen aktiven Zustand vergleichen.
+- Vergleichen Sie Traceflag-Startupwerte mit dem aktiven Zustand aus `USP_TraceFlags`.
 
 ### Folgeanalyse
 
@@ -286,7 +286,7 @@ Trace Flags, OSInformation und Dienstverwaltung außerhalb SQL Server.
 
 ### Zweck
 
-Liest vier Quellen unabhängig, sodass ein Fehler nicht alle anderen Resultsets verhindert.
+Die Procedure liest vier Quellen unabhängig, sodass ein Fehler nicht alle anderen Resultsets verhindert.
 
 ### SourceStatus
 
@@ -322,7 +322,7 @@ Liest vier Quellen unabhängig, sodass ein Fehler nicht alle anderen Resultsets 
 
 ### Zweck
 
-Korreliert sicherheitsrelevante Serverkonfiguration, Dienstkonten/IFI und Servereigenschaften.
+Die Procedure korreliert sicherheitsrelevante Serverkonfiguration, Dienstkonten/IFI und Servereigenschaften.
 
 ### Resultsets
 
@@ -355,10 +355,10 @@ Findings:
 ### Interpretation
 
 - „Enabled“ ist ein Exposure-Hinweis, keine Schwachstellenbestätigung.
-- tatsächliche Berechtigung, Proxy-/Credentialmodell, Signierung und Nutzung prüfen.
+- Prüfen Sie die tatsächliche Berechtigung, das Proxy- und Credentialmodell, die Signierung und die Nutzung.
 - Windows-only Authentication kann Policyziel sein, ist aber nicht für jede Architektur möglich.
 - `CallerIsSysadmin` beschreibt nur den analysierenden Kontext.
-- Server-, Machine- und Service-Account-Werte nur in geschützten Betriebsberichten verwenden.
+- Verwenden Sie Server-, Machine- und Service-Account-Werte nur in geschützten Betriebsberichten.
 
 ---
 
@@ -366,7 +366,7 @@ Findings:
 
 ### Zweck
 
-Orchestriert alle Server-Health-Module. Die ersten neun Basismodule sind standardmäßig aktiv; Integrität, Kapazität, Counter, kritische Events, Contention, Buffer Pool und Findings sind opt-in.
+Die Procedure orchestriert alle Server-Health-Module. Die ersten neun Basismodule sind standardmäßig aktiv; Integrität, Kapazität, Counter, kritische Events, Contention, Buffer Pool und Findings müssen ausdrücklich angefordert werden.
 
 ### Reihenfolge
 
@@ -397,7 +397,7 @@ Orchestriert alle Server-Health-Module. Die ersten neun Basismodule sind standar
 - `@MaxZeilen` gilt je Kindmodul.
 - opt-in Module können WAITFOR, Eventfile-I/O, Cross-Database-Zugriffe oder Buffer-Descriptor-Scans auslösen.
 - Der Wrapper ist ein Überblick, nicht für häufiges Vollpolling.
-- Findings können mehrere der gleichen Kindmodule nochmals intern aufrufen; nicht gleichzeitig unreflektiert aktivieren.
+- Findings können mehrere gleiche Kindmodule nochmals intern aufrufen; aktivieren Sie diese nicht gleichzeitig ohne Prüfung der zusätzlichen Last.
 
 ### Beispiel
 
@@ -419,7 +419,7 @@ EXEC [monitor].[USP_ServerHealthAnalysis]
 
 ### Zweck
 
-Korrelierte rein lesende Integritätsevidenz aus Datenbankstatus, PAGE_VERIFY, letztem dokumentierten guten CHECKDB, `suspect_pages`, Backupflags, HADR Auto Page Repair und optionaler Seitenauflösung.
+Die Procedure korreliert ausschließlich lesende Integritätsevidenz aus Datenbankstatus, PAGE_VERIFY, dem letzten dokumentierten guten CHECKDB, `suspect_pages`, Backupflags, HADR Auto Page Repair und optionaler Seitenauflösung.
 
 Die Procedure führt **kein** DBCC CHECKDB, Restore oder Repair aus.
 
@@ -475,7 +475,7 @@ CHECKDB nach Betriebsplan, Error Log, Storagepfad, BackupChain, AvailabilityDeep
 
 ### Zweck
 
-Trennt freien Platz **innerhalb der Datei** von freiem Platz **auf dem Volume** und bewertet das nächste Autogrowth.
+Die Procedure trennt freien Platz **innerhalb der Datei** von freiem Platz **auf dem Volume** und bewertet das nächste Autogrowth.
 
 Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFORMANCE STATE` ab SQL Server 2022, wird insbesondere die Volumensicht als unvollständig markiert: `AVAILABLE_LIMITED`, `IsPartial=1`. Das Resultset selbst wird nicht maskiert oder umgeschrieben.
 
@@ -519,7 +519,7 @@ Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFO
 
 ### Zweck
 
-Typisiert SQL-Server-Performance-Counter als Snapshot, Rate, Fraction oder uninterpretierten Rohwert. Optional misst sie 1–60 Sekunden.
+Die Procedure typisiert SQL-Server-Performance-Counter als Snapshot, Rate, Fraction oder uninterpretierten Rohwert. Optional misst sie 1–60 Sekunden.
 
 ### Spalten
 
@@ -550,10 +550,10 @@ Typisiert SQL-Server-Performance-Counter als Snapshot, Rate, Fraction oder unint
 - Ratecounter ohne Sample sind nicht als Rate interpretierbar.
 - Liefert `sys.dm_os_performance_counters` keine Zeilen oder nach Ausschluss alleinstehender Basiscounter keine auswertbaren Counter, meldet die Procedure `UNAVAILABLE_OBJECT` und `IsPartial=1`, statt einen Snapshot oder eine Rate zu erfinden.
 - Perfmon-Counter können Instanzstart-/Resetkontext besitzen.
-- Countername allein bestimmt nicht die Einheit; `cntr_type` und Basecounter lesen.
+- Der Countername allein bestimmt nicht die Einheit; lesen Sie zusätzlich `cntr_type` und den Basecounter.
 - Die technische Counteridentität umfasst Objekt, Counter, Instanz und `cntr_type`; gleich benannte Zeilen verschiedener Typen werden nicht miteinander verrechnet.
 - Reset-, Rate- und Quotientenlogik liegt in `monitor.TVF_InterpretPerformanceCounter`; dadurch nutzt der deterministische Resetvertrag exakt denselben Rechenpfad wie die DMV-Auswertung.
-- Ein 5-Sekunden-Sample kann Burstlast zeigen, aber keine Tagesbaseline ersetzen.
+- Ein Fünf-Sekunden-Sample kann Burstlast zeigen, aber keine Tagesbaseline ersetzen.
 - Universelle Alarmgrenzen werden absichtlich nicht erzeugt.
 
 ### Beispiel
@@ -566,7 +566,7 @@ Ein Batch-Requests/sec-Wert von 10.000 kann auf Hardware A normal und auf Hardwa
 
 ### Zweck
 
-Liest begrenzte kritische Ereignisevidenz aus einem vorhandenen `system_health`-Eventfile und optional einen einmaligen `sys.sp_server_diagnostics`-Snapshot.
+Die Procedure liest begrenzte kritische Ereignisevidenz aus einem vorhandenen `system_health`-Eventfile und optional einen einmaligen `sys.sp_server_diagnostics`-Snapshot.
 
 ### Events
 
@@ -609,7 +609,7 @@ Integrität, Memory, CPU/NUMA, Deadlockparser, Error Log, OS-/Cluster-/Storageü
 
 ### Zweck
 
-Misst Latch- und optional Spinlock-Deltas und korreliert aktuelle PAGELATCH-/PAGEIOLATCH-Waits mit Seitenressourcen.
+Die Procedure misst Latch- und optional Spinlock-Deltas und korreliert aktuelle PAGELATCH-/PAGEIOLATCH-Waits mit Seitenressourcen.
 
 ### Latches
 
@@ -653,7 +653,7 @@ Die kumulative Resetgrenze und `DBCC SQLPERF ('sys.dm_os_latch_stats', CLEAR)` s
 
 ### Zweck
 
-Korrelierte Memory-Pressure-, Resource-Semaphore-, Clerk- und optional Buffer-Descriptor-Verteilung.
+Die Procedure korreliert Memory Pressure, Resource Semaphores, Memory Clerks und optional die Buffer-Descriptor-Verteilung.
 
 ### MemorySnapshot
 
@@ -678,9 +678,9 @@ Unter 5 % verfügbarem physischem OS-Speicher → `OS_AVAILABLE_MEMORY_BELOW_5_P
 ### Interpretation
 
 - `WaiterCount>0` ist aktuelle Grantdruckevidenz.
-- Timeout-/Forced-Grant-Zähler sind kumulativ; Resetzeit beachten.
+- Timeout- und Forced-Grant-Zähler sind kumulativ; beachten Sie die Resetzeit.
 - CachedSizeMb je DB zeigt Cacheverteilung, nicht „zugeteiltes“ Memory und nicht zwingend Working-Set-Nutzen.
-- Dirty Pages sind normale Schreibcachebestandteile; hohe Werte nur im Checkpoint-/I/O-Kontext bewerten.
+- Dirty Pages sind normale Bestandteile des Schreibcaches; bewerten Sie hohe Werte nur im Checkpoint- und I/O-Kontext.
 - Buffer-Descriptor-Scan kann auf großen Instanzen teuer sein.
 - Das Modul berechnet absichtlich keine Max-Server-Memory-Empfehlung.
 
@@ -690,7 +690,7 @@ Unter 5 % verfügbarem physischem OS-Speicher → `OS_AVAILABLE_MEMORY_BELOW_5_P
 
 ### Zweck
 
-Aggregiert normalisierte Findings mehrerer Spezialmodule über deren JSON-Verträge. Freie SQL-, Plan-, Mail-, Pfad- oder Ereignistexte werden nicht übernommen.
+Die Procedure aggregiert normalisierte Findings mehrerer Spezialmodule über deren JSON-Verträge. Freie SQL-, Plan-, Mail-, Pfad- oder Ereignistexte werden nicht übernommen.
 
 ### Default-Kindmodule
 
@@ -733,7 +733,7 @@ Opt-in:
 ### Interpretation
 
 - Ein leeres Findings-Resultset ist nur bei vollständigen relevanten Kindmodulen sinnvoll.
-- HIGH + HIGH Confidence → schnell priorisieren.
+- Priorisieren Sie Findings mit hoher Severity und hoher Confidence zeitnah.
 - HIGH + LOW Confidence → sofort validieren, nicht blind handeln.
 - `EvidenceMetric` besitzt keine globale Einheit; SourceModule/FindingCode bestimmen die Bedeutung.
 - Aggregatorresultat ist komprimierter als Childresultsets.
@@ -778,17 +778,17 @@ flowchart TD
 
 ### Zweck
 
-Trennt Tasks in `work_queue_count`, die noch auf einen Worker warten, von
+Die Procedure trennt Tasks in `work_queue_count`, die noch auf einen Worker warten, von
 gebundenen Workern in `runnable_tasks_count`, die auf CPU-Zeit warten. Ein
 kurzes Scheduler-Sample wird mit aggregierten Workern, `THREADPOOL`, Blocking
 und einem begrenzten Requestkontext korreliert.
 
 ### Leserichtung
 
-1. Schedulerquelle und `CounterResetDetected` prüfen.
-2. Worker Queue und `THREADPOOL` gemeinsam bewerten.
-3. Runnable Queue als getrennte CPU-Spur lesen.
-4. Blocking, lange Requests und Workerzustände als Kontext verwenden.
+1. Prüfen Sie die Schedulerquelle und `CounterResetDetected`.
+2. Bewerten Sie Worker Queue und `THREADPOOL` gemeinsam.
+3. Lesen Sie die Runnable Queue als getrennte CPU-Spur.
+4. Verwenden Sie Blocking, lange Requests und Workerzustände als Kontext.
 
 ### Grenzen
 
@@ -807,20 +807,20 @@ die Procedure empfiehlt keine automatische Änderung von `max worker threads`.
 
 ### Zweck
 
-Inventarisiert sichtbare Datenbankoptionen, Database Scoped Configurations und
+Die Procedure inventarisiert sichtbare Datenbankoptionen, Database Scoped Configurations und
 Query-Store-Optionen. Ohne Profil wird ausschließlich lokale Variation
 ausgewiesen; ein optionales JSON-Profil erzeugt explizite Sollabweichungen.
 
 ### Leserichtung
 
-1. Datenbank- und Quellstatus auf partielle Sichtbarkeit prüfen.
-2. `settings` als Rohinventar lesen.
+1. Prüfen Sie Datenbank- und Quellstatus auf partielle Sichtbarkeit.
+2. Lesen Sie `settings` als Rohinventar.
 3. `LOCAL_VARIATION` nicht mit einem Sollwert verwechseln.
-4. `PROFILE_MISMATCH` nur gegen das freigegebene Aufruferprofil bewerten.
+4. Bewerten Sie `PROFILE_MISMATCH` nur gegen das freigegebene Aufruferprofil.
 
 ### Grenzen
 
-Der häufigste lokale Wert ist keine Best Practice. Katalogsnapshots zeigen
+Der häufigste lokale Wert ist nicht automatisch die fachlich geeignete Konfiguration. Katalogsnapshots zeigen
 keine Workloadwirkung oder Changehistorie. Die Procedure führt keine DDL aus;
 versionsabhängige Optionen werden nur bei vorhandener Katalogspalte gelesen.
 

@@ -7,8 +7,8 @@ Objekt       : monitor.VW_AnalyseAccessPolicy
 Version      : 1.0.0
 Stand        : 2026-07-14
 Typ          : View
-Zweck        : Query-only Policyquelle für 1 bis n AD-Gruppen je
-               ressourcenintensiver Analyseklasse.
+Zweck        : Stellt die rein lesende Policyquelle für eine oder mehrere
+               AD-Gruppen je ressourcenintensiver Analyseklasse bereit.
 Standard     : Die ausgelieferte View enthält keine Zeilen. Solange keine aktive
                Gruppendefinition vorhanden ist, sind alle Analyseklassen erlaubt.
 Policy       : Sobald mindestens eine aktive Definition vorhanden ist, sind

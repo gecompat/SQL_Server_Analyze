@@ -19,7 +19,7 @@
 
 ### Zweck
 
-Inventarisiert serverweite XE-Sessions, deren Laufzeitstatus, Events, Actions, Targets und optional explizit konfigurierte Felder. Targetdaten selbst werden nicht gelesen.
+Die Procedure inventarisiert serverweite XE-Sessions, deren Laufzeitstatus, Events, Actions, Targets und optional explizit konfigurierte Felder. Targetdaten selbst werden nicht gelesen.
 
 ### Aufrufe
 
@@ -104,7 +104,7 @@ LOW. Nur Kataloge und optional `sys.dm_xe_sessions`; keine Targetdaten.
 
 ### Zweck
 
-Liest generische Ereignisse aus `event_file` oder `ring_buffer`. `AUTO` bevorzugt Event File.
+Die Procedure liest generische Ereignisse aus `event_file` oder `ring_buffer`. Im Modus `AUTO` wählt sie vorrangig das Event File.
 
 ### Aufrufe
 
@@ -173,7 +173,7 @@ Diese Zeilen sind zwingend zu lesen. Sie unterscheiden beispielsweise:
 
 ### Zweck
 
-Liest `xml_deadlock_report` und zerlegt jeden Deadlockgraph in Summary, Victims, Processes und Resources. Defaultzeitraum: letzte 24 Stunden.
+Die Procedure liest `xml_deadlock_report` und zerlegt jeden Deadlockgraph in Summary, Victims, Processes und Resources. Der Standardzeitraum umfasst die letzten 24 Stunden.
 
 ### Resultsets
 
@@ -240,7 +240,7 @@ Showplan, Query Store, Objekt-/Indexanalyse und Applikationstransaktionsdesign.
 
 ### Zweck
 
-Liest `blocked_process_report` und zerlegt Report, blockierte und blockierende Prozesse. Die Procedure ändert weder `blocked process threshold (s)` noch XE-Konfiguration.
+Die Procedure liest `blocked_process_report` und zerlegt Report, blockierte und blockierende Prozesse. Die Procedure ändert weder `blocked process threshold (s)` noch XE-Konfiguration.
 
 ### Voraussetzungen
 
@@ -282,7 +282,7 @@ Aktueller Zustand: `USP_CurrentBlocking` und `USP_CurrentTransactions`. Historis
 
 ### Zweck
 
-Liest Laufzeitmetriken laufender Targets. Dieser Zugriff kann einen Flush auslösen und ist deshalb ohne Bestätigung deaktiviert.
+Die Procedure liest Laufzeitmetriken laufender Targets. Dieser Zugriff kann einen Flush auslösen und ist deshalb ohne Bestätigung deaktiviert.
 
 ### Aufruf
 
@@ -325,7 +325,7 @@ Ohne Targetdata meist moderat, aber Flush-Nebenwirkung. Große `target_data` kan
 
 ### Zweck
 
-Orchestriert:
+Die Procedure orchestriert folgende Teilanalysen:
 
 1. Sessioninventar,
 2. Target Runtime,
@@ -333,7 +333,7 @@ Orchestriert:
 4. Deadlocks,
 5. Blocked Process Reports.
 
-Default ist nur das Sessioninventar.
+Standardmäßig wird nur das Sessioninventar ausgeführt.
 
 ### Resultsets
 
@@ -365,8 +365,8 @@ EXEC [monitor].[USP_ExtendedEventsAnalysis]
 
 - `@MaxZeilen` gilt je Child, nicht für den gesamten Wrapper.
 - Target Runtime und Ring Buffer brauchen Bestätigung.
-- Ein `InvocationStatus=EXECUTED` sagt nicht, dass das Child fachliche Events gefunden hat; Childstatus lesen.
-- Forensik nicht als häufigen Pollingpfad verwenden.
+- Ein `InvocationStatus=EXECUTED` sagt nicht, dass das Child fachliche Events gefunden hat; lesen Sie deshalb den Childstatus.
+- Verwenden Sie die Forensik nicht als häufigen Pollingpfad.
 
 ## Anfänger-Entscheidungsbaum
 

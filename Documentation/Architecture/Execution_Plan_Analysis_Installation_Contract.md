@@ -54,13 +54,13 @@ Die direkte Auflösung eines einzelnen Query-Store-Plans ist Teil des öffentlic
 
 ## Installationsreihenfolge
 
-1. Preflight, Version und Collation prüfen.
+1. Prüfen Sie Preflight, Version und Collation.
 2. Schema und gemeinsame statische Kataloge bereitstellen.
 3. Parser, TVFs und interne Ausgabehelper bereitstellen.
 4. Profiltabellen und deren sichere Defaultwerte bereitstellen.
 5. interne Plananalyseobjekte bereitstellen.
 6. öffentliche Procedures zuletzt bereitstellen.
-7. Hilfe- und Smoke-Aufrufe ausführen.
+7. Führen Sie die Hilfe- und Smoke-Aufrufe aus.
 
 Die Reihenfolge verhindert, dass eine Procedure während der Installation auf ein noch nicht vorhandenes Objekt verweist.
 

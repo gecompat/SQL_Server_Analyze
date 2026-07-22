@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 177_P1_Agent_Runtime_Contract.sql
-Zweck        : Laufzeitverträge für vier P1-Agent-/Alert-Fälle.
+Zweck        : Prüft Laufzeitverträge für vier P1-Agent- und Alert-Fälle.
 Datenschutz  : Es werden keine Adressen, Empfänger, Jobbefehle, Schrittinhalte
                oder freien Mail-/Fehlermeldungstexte gelesen oder persistiert.
 Nebenwirkung : Keine Änderung an SQL Agent, Alerts, Operatoren, Jobs oder Mail.

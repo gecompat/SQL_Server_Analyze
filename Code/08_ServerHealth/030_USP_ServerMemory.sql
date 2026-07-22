@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_ServerMemory
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : OS-, Prozess- und SQL-Speicher, Memory Model, Clerks und Grants.
+Zweck        : Liefert Angaben zu Betriebssystem-, Prozess- und SQL-Speicher,
+               Memory Model, Clerks und Grants.
 Datenquellen : sys.dm_os_sys_memory, sys.dm_os_process_memory, sys.dm_os_sys_info, sys.configurations, sys.dm_os_memory_clerks, sys.dm_exec_query_memory_grants
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

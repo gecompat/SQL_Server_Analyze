@@ -9,11 +9,9 @@
 
 Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche besonderen oder versionsabhängigen Datenbankfeatures sind im sichtbaren Scope erkannt oder lediglich konfiguriert, und welches spezialisierte Modul gehört dazu?** Sie ist eine leichtgewichtige Landkarte vor Migration, Upgrade, Betriebsübergabe oder gezielter Tiefenanalyse. Sie bewertet ausdrücklich nicht, ob ein erkanntes Feature gesund, performant oder fachlich noch genutzt ist.
 
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
-
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keine fachliche Korrektheit der Featurekonfiguration, keine geschützten Inhalte und keine End-to-End-Funktionsprüfung außerhalb sichtbarer Metadaten. Ihr Zeitvertrag lautet ausdrücklich: Aktueller Metadatenbestand je zugänglicher Datenbank; keine Nutzungs-/Historienmessung. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
+Die Procedure beantwortet keine fachliche Korrektheit der Featurekonfiguration, keine geschützten Inhalte und keine End-to-End-Funktionsprüfung außerhalb sichtbarer Metadaten. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein auffälliger Einzelwert ist eine Beobachtung, aber noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
 
 Nicht ableitbar sind außerdem Featureinhalte, Objektdefinitionen, externe Locations, Credentials, Broker-Nachrichten, CLR-Binaries oder tatsächliche Laufzeitnutzung. Die Zähler fassen je Feature unterschiedliche Katalogobjekte zusammen und sind deshalb weder datenbankübergreifende Nutzungsmetriken noch untereinander vergleichbare Größen. Eine Nullzählung gilt nur für sichtbare Metadaten im gewählten Scope.
 
@@ -26,43 +24,33 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-CONSOLE liefert zuerst den Aufrufstatus, danach genau eine Datenbankstatuszeile je ausgewählter oder explizit angeforderter Datenbank und zuletzt die Featurezeilen. RAW enthält dieselbe Reihenfolge mit technischen Spalten. TABLE exportiert ausschließlich das registrierte Resultset `features`; Datenbankstatus und Aufrufstatus müssen bei automatisierter Verarbeitung über OUTPUT-Parameter beziehungsweise einen separaten Kontrolllauf gesichert werden. JSON enthält dagegen `meta`, `databaseStatus` und `features` gemeinsam. Immer zuerst `StatusCode`, `IsPartial`, Datenbankstatus und erst danach `DetectionStatus` lesen.
+CONSOLE liefert zuerst den Aufrufstatus, danach genau eine Datenbankstatuszeile je ausgewählter oder explizit angeforderter Datenbank und zuletzt die Featurezeilen. RAW enthält dieselbe Reihenfolge mit technischen Spalten. TABLE exportiert ausschließlich das registrierte Resultset `features`; Datenbankstatus und Aufrufstatus müssen bei automatisierter Verarbeitung über OUTPUT-Parameter beziehungsweise einen separaten Kontrolllauf gesichert werden. JSON enthält dagegen `meta`, `databaseStatus` und `features` gemeinsam. Berücksichtigen Sie immer zuerst `StatusCode`, `IsPartial`, Datenbankstatus und erst danach `DetectionStatus`.
 
 ## Eine Zeile bedeutet
 
 Im Feature-Resultset identifiziert `(DatabaseName, FeatureCode)` eine Zeile. `DetectedItemCount` kann je Code verschiedene Dinge addieren – etwa Tabellen plus Dateigruppen oder Kataloge plus Indizes – und darf daher nur innerhalb der dokumentierten Featuresemantik interpretiert werden. Im Datenbankstatus steht eine Zeile für den Auswertungsversuch einer Datenbank, nicht für ein Feature.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-`DETECTED` bedeutet mindestens einen sichtbaren Katalogmarker; `CONFIGURED_ONLY` belegt nur eine Konfiguration; `NOT_DETECTED_VISIBLE_SCOPE` ist keine globale Abwesenheitsgarantie. `UNAVAILABLE_VERSION` und `SOURCE_UNAVAILABLE` sind Evidenzlücken, keine Nullmessungen. Danach `ConfigurationState`, `RecommendedModuleStatus` und besonders `EvidenceLimit` lesen. `NOT_PLANNED` bedeutet nur, dass das Framework kein eigenes Deep-Dive-Modul anbietet.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+`DETECTED` bedeutet mindestens einen sichtbaren Katalogmarker; `CONFIGURED_ONLY` belegt nur eine Konfiguration; `NOT_DETECTED_VISIBLE_SCOPE` ist keine globale Abwesenheitsgarantie. `UNAVAILABLE_VERSION` und `SOURCE_UNAVAILABLE` sind Evidenzlücken, keine Nullmessungen. Berücksichtigen Sie danach `ConfigurationState`, `RecommendedModuleStatus` und besonders `EvidenceLimit`. `NOT_PLANNED` bedeutet nur, dass das Framework kein eigenes Deep-Dive-Modul anbietet.
 
 ## Warum kann das problematisch sein?
 
 Spezialfeatures benötigen eigene Backup-, Kapazitäts-, Betriebs- und Performancebetrachtung, die Standardanalysen nicht vollständig abdecken.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
 Erkennung ist Inventar, kein Fehlerbefund.
-
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
 
 ## Beispiele und Gegenbeispiele
 
 **Synthetischer Problemfall (`Example*`):** Für eine Migration von `ExampleDb` werden Temporal Tables und CLR erkannt. Das ist kein Defekt, aber ein belastbarer Hinweis, Retention/History mit `USP_TemporalAnalysis` zu prüfen und die CLR-Abhängigkeit separat durch den zuständigen Owner zu verifizieren, bevor die Zielplattform festgelegt wird.
 
 **Ähnlich aussehender Gegenfall:** `EXTERNAL_SCRIPTS = CONFIGURED_ONLY` beweist keine ausgeführte externe Sprache. Die serverweite Option kann absichtlich bereitstehen, obwohl `ExampleDb` keine entsprechende Laufzeitabhängigkeit besitzt.
-
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
 
 ## Leere oder partielle Ausgabe
 
@@ -71,8 +59,6 @@ Mit `@NurErkannteFeatures = 1` kann das Feature-Resultset korrekt leer sein, obw
 Für `USP_SpecialFeatureInventory` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
 ## Eigenlast und Grenzen
-
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
@@ -120,15 +106,15 @@ FROM [sys].[tables] AS [t] WITH (NOLOCK)
 WHERE [t].[is_ms_shipped] = 0;
 ```
 
-**Wichtig für die Eigenlast:** Datenbank vor den jeweiligen Katalogzweigen festlegen. Full-Text, Broker, Change Tracking, External Objects, Encryption, CLR, XML und Vector haben eigene Quellen; die Procedure zählt sie isoliert und vereinigt erst die aggregierten Befunde.
+**Wichtig für die Eigenlast:** Legen Sie Datenbank vor den jeweiligen Katalogzweigen fest. Full-Text, Broker, Change Tracking, External Objects, Encryption, CLR, XML und Vector haben eigene Quellen; die Procedure zählt sie isoliert und vereinigt erst die aggregierten Befunde.
 
 ### Zeit- und Scope-Modell
 
-Aktueller Metadatenbestand je zugänglicher Datenbank; keine Nutzungs-/Historienmessung.
+Die Auswertung beschreibt den aktuellen Metadatenbestand je zugänglicher Datenbank; sie führt keine Nutzungs- oder Historienmessung durch.
 
 ### Bewertung und Gegenprobe
 
-Zuerst Datenbankstatus und `DetectionStatus`, dann die codespezifische Bedeutung von `DetectedItemCount`, Konfigurationsstatus und `EvidenceLimit` lesen. Nur bei passender Entscheidungssituation das empfohlene Deep-Modul ausführen. Das Inventar dient Migrations-/Upgrade-/Betriebsplanung, nicht der automatischen Fehlerbewertung.
+Berücksichtigen Sie zuerst Datenbankstatus und `DetectionStatus`, dann die codespezifische Bedeutung von `DetectedItemCount`, Konfigurationsstatus und `EvidenceLimit`. Führen Sie nur bei passender Entscheidungssituation das empfohlene Deep-Modul aus. Das Inventar dient Migrations-/Upgrade-/Betriebsplanung, nicht der automatischen Fehlerbewertung.
 
 ### Typische Fehlinterpretation
 
@@ -136,7 +122,7 @@ Objekt vorhanden bedeutet nicht aktiv genutzt, performant oder korrekt konfiguri
 
 ### Folgeanalyse
 
-Featurebezogene Deep Analysis, Query-/Dependencyanalyse und Ownerreview.
+Für die weitere Analyse gelten folgende Schritte und Quellen: Featurebezogene Deep Analysis, Query-/Dependencyanalyse und Ownerreview.
 
 ## Primärquellen
 

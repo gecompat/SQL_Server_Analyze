@@ -92,7 +92,7 @@ VALUES
 );
 ```
 
-Vor der Aufnahme einer lokalen Regel zuerst reale Werte lesen:
+Prüfen Sie vor der Aufnahme einer lokalen Regel zuerst die realen Werte in der kontrollierten Laufzeitumgebung:
 
 ```sql
 SELECT [program_name], COUNT_BIG(*) AS [SessionCount]

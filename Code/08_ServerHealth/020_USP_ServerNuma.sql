@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_ServerNuma
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : NUMA-/Soft-NUMA-Verteilung, Scheduler-Skew und Memory Nodes.
+Zweck        : Liefert die NUMA- und Soft-NUMA-Verteilung, den Scheduler-Skew
+               und die Memory Nodes.
 Datenquellen : sys.dm_os_nodes, sys.dm_os_schedulers, sys.dm_os_memory_nodes
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

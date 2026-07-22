@@ -55,7 +55,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_AvailabilityDeepAnalysis';
-        PRINT N'Rein lesende Always-On-Momentaufnahme; löst kein Failover und keine Konfigurationsänderung aus.';
+        PRINT N'Die Procedure liefert eine rein lesende Always-On-Momentaufnahme und löst weder ein Failover noch eine Konfigurationsänderung aus.';
         PRINT N'@QueueWarnMb und @SecondaryLagWarnSeconds sind Sichtungsgrenzen, keine universellen SLOs.';
         PRINT N'@MitClusterNetzwerken=0; Netzwerkdetails sind opt-in.';
         RETURN;

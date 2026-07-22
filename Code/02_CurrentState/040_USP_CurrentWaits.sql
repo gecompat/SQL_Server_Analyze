@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_CurrentWaits
 Version      : 3.1.0
 Stand        : 2026-07-21
-Zweck        : Aktuelle Waiting Tasks sowie kumulativer oder gesampelter
-               instanzweite Wait-Kontext mit Listen-/Patternfiltern.
+Zweck        : Liefert aktuelle Waiting Tasks sowie kumulativen oder
+               gesampelten instanzweiten Wait-Kontext mit Listen- und
+               Patternfiltern.
 Ausgabe      : RAW, CONSOLE, NONE und optionales JSON mit currentTasks,
                instanceWaits und warnings.
 ===============================================================================

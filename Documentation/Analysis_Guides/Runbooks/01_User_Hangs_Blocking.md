@@ -9,28 +9,30 @@ EXEC [monitor].[USP_CurrentOverview]
       @ResultSetArt = 'CONSOLE';
 ```
 
-## 2. Zuerst lesen
+## 2. Auswertung
 
-- Childstatus,
-- aktive Requests mit hoher Elapsed Time,
-- `BlockingSessionId`, Waittyp und Waitzeit,
-- offene Transaktionen,
-- Log-Wiederverwendungsgrund.
+Lesen Sie zuerst die folgenden Informationen gemeinsam:
 
-## 3. Entscheidung
+- den Status der aufgerufenen Teilmodule;
+- aktive Requests mit hoher Elapsed Time;
+- `BlockingSessionId`, Waittyp und Waitzeit;
+- offene Transaktionen;
+- den Wiederverwendungsgrund des Transaktionslogs.
 
-- Lockwait vorhanden → `USP_CurrentBlocking`.
-- Root Blocker sleeping/offene Transaktion → `USP_CurrentTransactions`.
-- kein Lockwait → Waittyp bestimmt I/O-, Grant-, CPU- oder Netzwerkanalyse.
+## 3. Entscheidungspfad
 
-## 4. Warum
+- Bei einem Lockwait folgt `USP_CurrentBlocking`.
+- Bei einem Root Blocker im Zustand `sleeping` oder mit offener Transaktion folgt `USP_CurrentTransactions`.
+- Ohne Lockwait bestimmt die Wait-Kategorie, ob die I/O-, Memory-Grant-, CPU- oder Netzwerkanalyse fortgesetzt wird.
+
+## 4. Interpretation
 
 Hohe Laufzeit allein erklärt keinen Hänger. Hohe Laufzeit plus niedrige CPU plus dominierende Lockwartezeit zeigt, dass der Request nicht arbeiten kann.
 
-## 5. Nicht tun
+## 5. Nicht ableiten
 
-Nicht zuerst Opfer-Sessions beenden. Root Blocker, Geschäftsvorgang, Rollbackkosten und Fortschritt prüfen.
+Beenden Sie nicht zuerst die Opfer-Sessions. Prüfen Sie den Root Blocker, den betroffenen Geschäftsvorgang, die Rollbackkosten und den sichtbaren Fortschritt.
 
 ## 6. Historische Gegenprobe
 
-`USP_ExtendedEventsBlockedProcesses` und gegebenenfalls Deadlocks/Query Store verwenden.
+Verwenden Sie `USP_ExtendedEventsBlockedProcesses` und bei Bedarf die Deadlock- oder Query-Store-Analyse als historische Gegenprobe.

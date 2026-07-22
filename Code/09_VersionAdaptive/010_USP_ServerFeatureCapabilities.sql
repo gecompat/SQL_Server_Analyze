@@ -7,8 +7,8 @@ Objekt       : monitor.USP_ServerFeatureCapabilities
 Version      : 3.0.0
 Stand        : 2026-07-15
 Typ          : Stored Procedure
-Zweck        : Versionsadaptive Erkennung zusätzlicher Diagnosefunktionen für
-               eine explizite Datenbankliste oder alle zulässigen Datenbanken.
+Zweck        : Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine
+               explizite Datenbankliste oder alle zulässigen Datenbanken.
 SQL-Version  : SQL Server 2019 oder neuer.
 Parameter    : @DatabaseNames, @DatabaseNamePattern,
                @SystemdatenbankenEinbeziehen,
@@ -61,7 +61,7 @@ BEGIN
         PRINT N'monitor.USP_ServerFeatureCapabilities';
         PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern unterstützt like:, regex:, regexi: und ist exklusiv zu @DatabaseNames.';
-        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen begrenzt jedes fachliche Resultset global.';
+        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; @MaxZeilen begrenzt jedes fachliche Resultset global.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;

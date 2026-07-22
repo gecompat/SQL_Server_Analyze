@@ -103,6 +103,7 @@ Die maschinenlesbaren Verträge liegen unter `Metadata/Inventory` und `Metadata/
 ## Qualität und unterstützte Nachweise
 
 - [Verbindlicher Schreibstil für Dokumentation](Quality/Documentation_Writing_Style.md)
+- [Bestandsprüfung des Dokumentationsstils](Quality/Documentation_Style_Review.md)
 - [Testmatrix](Quality/Test_Matrix.md)
 - [Performance- und Risikobewertung](Quality/Performance_and_Risk_Assessment.md)
 - [Bekannte Einschränkungen](Quality/Known_Issues.md)

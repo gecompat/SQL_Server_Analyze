@@ -7,18 +7,18 @@ EXEC [monitor].[USP_CurrentLog] @ResultSetArt='CONSOLE';
 EXEC [monitor].[USP_CurrentTransactions] @MinAlterSekunden=60, @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Used Percent und absolute Größe, `log_reuse_wait_desc`, offene Transaktionen, Logbackupalter, AG-/Replikations-/CDC-Kontext.
+Lesen Sie Used Percent und absolute Größe zusammen mit `log_reuse_wait_desc`, offenen Transaktionen, dem Alter des letzten Logbackups sowie dem AG-, Replikations- und CDC-Kontext.
 
-## Warum
+## Interpretation
 
 Hohe Nutzung ist Symptom. Der Wiederverwendungswartegrund zeigt, warum Platz nicht freigegeben wird.
 
 ## Gegenprobe
 
-`USP_BackupRecovery`, `USP_AvailabilityGroups`, `USP_ReplicationStatus` oder `USP_DataCaptureStatus` abhängig vom Wartegrund.
+Wählen Sie abhängig vom Wiederverwendungswartegrund `USP_BackupRecovery`, `USP_AvailabilityGroups`, `USP_ReplicationStatus` oder `USP_DataCaptureStatus` als Gegenprobe.
 
-## Nicht tun
+## Nicht ableiten
 
-Nicht nur wachsen lassen oder Recovery Model ändern. RPO, Backupkette und Ursache prüfen.
+Vergrößern Sie nicht ausschließlich das Log und ändern Sie nicht ohne Ursachenprüfung das Recovery Model. Berücksichtigen Sie RPO und Backupkette.

@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_ServerCpuTopology
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : CPU-, Scheduler- und NUMA-Topologie mit momentaner Schedulerlast.
+Zweck        : Liefert die CPU-, Scheduler- und NUMA-Topologie mit der
+               momentanen Schedulerlast.
 Datenquellen : sys.dm_os_sys_info, sys.dm_os_schedulers, sys.dm_os_nodes
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

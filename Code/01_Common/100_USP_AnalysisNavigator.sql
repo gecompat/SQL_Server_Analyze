@@ -72,7 +72,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_AnalysisNavigator';
-        PRINT N'Sicherer Wegweiser: Die Procedure führt niemals eine gefundene Analyse aus.';
+        PRINT N'Die Procedure dient als Wegweiser und führt keine gefundene Analyse aus.';
         PRINT N'Ohne Filter werden priorisierte, sichere Einstiege angezeigt.';
         PRINT N'@Suchbegriff: deutsches oder englisches Symptom, Ziel, Objektname oder Fachbegriff; maximal 400 Zeichen.';
         PRINT N'@Bereich: Code aus VW_AnalysisCatalog.PrimaryAreaCode, zum Beispiel LIVE, PLAN, OBJECT, OPERATIONS oder SERVER.';

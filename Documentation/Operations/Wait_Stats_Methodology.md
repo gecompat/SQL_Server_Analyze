@@ -1,6 +1,6 @@
 # Wait-Stats-Methodik
 
-Die Implementierung kombiniert die bewährten Prinzipien aus dem vorhandenen historische Analysequelle-Modul und der SQLskills-Waits-and-Queues-Methodik.
+Die Methodik verbindet aktuelle Task-Waits mit kumulativen oder gesampelten Instanz-Waits. Die SQLskills-Waits-and-Queues-Referenzen dienen als praktische Vertiefung; die jeweilige SQL-Server-DMV und ihre dokumentierte Reset-Semantik bleiben für den Messvertrag maßgeblich.
 
 1. Aktuelle Task-Waits werden nicht durch eine historische Ausschlussliste verborgen.
 2. Instanz-Waits werden bevorzugt als Delta zwischen zwei Snapshots bewertet.
@@ -11,6 +11,9 @@ Die Implementierung kombiniert die bewährten Prinzipien aus dem vorhandenen his
 7. Jeder Wait erhält Gruppe, Bedeutung, typisches Auftreten, mögliche Folgen, empfohlene Folgeprüfungen und eine direkte SQLskills-URL.
 8. Neue/unbekannte Wait Types erhalten einen stabilen Fallback statt NULL.
 
-Referenzen:
-- https://www.sqlskills.com/blogs/paul/wait-statistics-or-please-tell-me-where-it-hurts/
-- https://www.sqlskills.com/help/waits/
+## Referenzen
+
+- [Microsoft: sys.dm_os_wait_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-wait-stats-transact-sql)
+- [Microsoft: sys.dm_os_waiting_tasks](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-waiting-tasks-transact-sql)
+- [SQLskills: Wait statistics methodology](https://www.sqlskills.com/blogs/paul/wait-statistics-or-please-tell-me-where-it-hurts/)
+- [SQLskills: Wait types library](https://www.sqlskills.com/help/waits/)

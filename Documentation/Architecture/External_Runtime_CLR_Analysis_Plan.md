@@ -227,19 +227,19 @@ Die endgültigen Namen, Datentypen, Defaults, Status-OUTPUT-Parameter und Result
 
 ## 8. Verarbeitungsablauf je Aufruf
 
-1. Steuerparameter, Output Mode, Filter und sämtliche TABLE-Ziele validieren; noch keine fachliche Quelle lesen.
-2. Produktversion, Plattform, Edition, Objekt-/Spaltenverfügbarkeit und erforderliche Berechtigungen ermitteln.
-3. Tatsächlich aktivierte Analyseklasse bestimmen: `EXTERNAL_RUNTIME_CURRENT`, `CLR_CURRENT` und optional `CATALOG_DEEP`.
-4. Gruppen-Gate und `@HighImpactConfirmed` ausschließlich für den tatsächlich aktivierten Deep-Pfad prüfen.
-5. Datenbankkandidaten über den gemeinsamen Frameworkpfad bilden.
-6. Serverkonfiguration einmalig materialisieren.
-7. Datenbankkataloge je Datenbank mit `QUOTENAME`, direktem `sys.*`-Zugriff, `LOCK_TIMEOUT` und isoliertem `TRY/CATCH` lesen.
-8. Runtime-DMVs und Counter am Messpunkt `t1` jeweils einmalig materialisieren.
-9. Nur bei `@SampleSeconds > 0` einmal warten und alle Deltaquellen am gemeinsamen Messpunkt `t2` lesen.
-10. Deltas, Resetgrenzen, SourceStatus und Partialität berechnen.
-11. Bereits materialisierte Quellen korrelieren und Findings erzeugen; fehlende Evidenz bleibt sichtbar.
-12. Global sortieren, danach Resultset- und Analyseobjektlimits anwenden.
-13. Aus denselben Temp-Tabellen CONSOLE, RAW, TABLE und JSON projizieren.
+1. Das Verfahren validiert Steuerparameter, Output Mode, Filter und sämtliche TABLE-Ziele, ohne eine fachliche Quelle zu lesen.
+2. Es ermittelt Produktversion, Plattform, Edition, Objekt- und Spaltenverfügbarkeit sowie die erforderlichen Berechtigungen.
+3. Es bestimmt die tatsächlich aktivierte Analyseklasse: `EXTERNAL_RUNTIME_CURRENT`, `CLR_CURRENT` und optional `CATALOG_DEEP`.
+4. Es prüft das Gruppen-Gate und `@HighImpactConfirmed` ausschließlich für den tatsächlich aktivierten Deep-Pfad.
+5. Es bildet die Datenbankkandidaten über den gemeinsamen Frameworkpfad.
+6. Es materialisiert die Serverkonfiguration einmalig.
+7. Es liest die Datenbankkataloge je Datenbank mit `QUOTENAME`, direktem `sys.*`-Zugriff, `LOCK_TIMEOUT` und isoliertem `TRY/CATCH`.
+8. Es materialisiert Runtime-DMVs und Counter am Messpunkt `t1` jeweils einmalig.
+9. Nur bei `@SampleSeconds > 0` wartet es einmal und liest alle Deltaquellen am gemeinsamen Messpunkt `t2`.
+10. Es berechnet Deltas, Resetgrenzen, SourceStatus und Partialität.
+11. Es korreliert bereits materialisierte Quellen und erzeugt Findings; fehlende Evidenz bleibt sichtbar.
+12. Es sortiert global und wendet danach die Resultset- und Analyseobjektlimits an.
+13. Es projiziert CONSOLE, RAW, TABLE und JSON aus denselben Temp-Tabellen.
 
 Eine verweigerte, fehlende oder gesperrte Quelle verwirft erfolgreich erhobene andere Quellen nicht. Der Gesamtstatus wird `AVAILABLE_LIMITED`, sobald fachlich nutzbare Teilresultate neben einer Evidenzlücke existieren. Ohne verwertbare Quelle bleibt der spezifische Status wie `DENIED_PERMISSION`, `FEATURE_DISABLED`, `UNAVAILABLE_VERSION`, `LOCK_TIMEOUT` oder `SOURCE_UNAVAILABLE` erhalten.
 
@@ -384,4 +384,3 @@ Verpflichtend:
 - [Ressourcenschutz und Berechtigungen](Authorization_Architecture.md)
 - [Snapshot-/Baseline-Paket](Snapshot_Baseline_Package_Contract.md)
 - [Testmatrix](../Quality/Test_Matrix.md)
-

@@ -93,7 +93,7 @@ Eine leere Spezialanalyse kann bedeuten:
 - Zeilenlimit oder Problemfilter entfernt unauffällige Zeilen;
 - Zustand war beim Snapshot bereits beendet.
 
-Darum zuerst Modulstatus, `IsPartial`, Berechtigung, SourceStatus, Zeitbezug, Reset und Limits lesen.
+Lesen Sie deshalb zuerst Modulstatus, `IsPartial`, Berechtigung, SourceStatus, Zeitbezug, Reset und Limits.
 
 ## Auswahl über den Analysis Navigator
 
@@ -102,11 +102,11 @@ EXEC [monitor].[USP_AnalysisNavigator]
       @Suchbegriff = N'welche Spezialfeatures werden verwendet';
 ```
 
-`USP_SpecialFeatureInventory` ist der sichere Einstieg, wenn das vorhandene Feature unbekannt ist. Anschließend nur die erkannten und fachlich relevanten Tiefenmodule verwenden. Der Navigator zeigt Scope, Kostenband, Targetanforderung und High-Impact-Verfügbarkeit, führt aber kein Modul aus.
+`USP_SpecialFeatureInventory` ist der vorgesehene Einstieg, wenn das vorhandene Feature unbekannt ist. Verwenden Sie anschließend nur die erkannten und fachlich relevanten Tiefenmodule. Der Navigator zeigt Scope, Kostenband, Targetanforderung und High-Impact-Verfügbarkeit, führt aber kein Modul aus.
 
 ## Datenschutz
 
-Errorlogs, XE-Ereignisse, Pläne, Histogramme, SQL-Text, Namen und Infrastrukturattribute können schutzbedürftige Laufzeitinformationen enthalten. Optionale Detail-, Payload- und Textpfade nur mit fachlichem Bedarf aktivieren. Siehe [Datenschutz und Laufzeitausgaben](Runtime_Data_Privacy.md).
+Errorlogs, XE-Ereignisse, Pläne, Histogramme, SQL-Text, Namen und Infrastrukturattribute können schutzbedürftige Laufzeitinformationen enthalten. Aktivieren Sie optionale Detail-, Payload- und Textpfade nur bei einem fachlichen Bedarf. Siehe [Datenschutz und Laufzeitausgaben](Runtime_Data_Privacy.md).
 
 ## Weiterführende Dokumentation
 

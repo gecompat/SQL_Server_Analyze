@@ -66,7 +66,7 @@ Ablaufgrenzen werden aus `SYSUTCDATETIME()` berechnet. Raw- und Payloadretention
 
 ### Bewertung und Gegenprobe
 
-Vor/nach dem Lauf nur technische Summen vergleichen und stichprobenartig beweisen, dass ein frischer synthetischer Run bestehen blieb. Datenbankfilegröße kann trotz logischer Löschung allokiert bleiben.
+Vergleichen Sie vor und nach dem Lauf nur technische Summen und weisen Sie stichprobenartig nach, dass ein neuer synthetischer Run bestehen blieb. Die Datenbankdateigröße kann trotz logischer Löschung allokiert bleiben.
 
 ### Typische Fehlinterpretation
 
@@ -74,6 +74,6 @@ Ein erfolgreiches Purge schrumpft keine Datei und ist kein Auftrag zu `DBCC SHRI
 
 ### Folgeanalyse
 
-RetentionPolicy, CaptureRun-Status, Datenbankkapazität und Backup-/Recoveryplanung der Snapshot-Datenbank.
+Für die weitere Analyse gelten folgende Schritte und Quellen: RetentionPolicy, CaptureRun-Status, Datenbankkapazität und Backup-/Recoveryplanung der Snapshot-Datenbank.
 
 [Technische Detailbeschreibung](../../Operations/Snapshot_Baseline_Operations.md)

@@ -66,7 +66,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_InfrastructureAnalysis';
-        PRINT N'Modulschalter: bestehende Module sowie opt-in @MitBackupChain, @MitAvailabilityDeep und @MitAgentMonitoring.';
+        PRINT N'Die Modulschalter steuern die bestehenden Module sowie die optionalen Vertiefungen @MitBackupChain, @MitAvailabilityDeep und @MitAgentMonitoring.';
         PRINT N'@DatabaseNames: exakter Name oder bracket-aware Pipe-Liste; NULL = alle zulässigen Datenbanken.';
         PRINT N'@DatabaseNamePattern: alternatives LIKE-/Regex-Pattern; exakte Liste und Pattern sind gegenseitig exklusiv.';
         PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt; negative Werte sind ungültig.';

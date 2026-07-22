@@ -84,7 +84,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_InMemoryOltpAnalysis';
-        PRINT N'Read-only Tiefenanalyse sichtbarer In-Memory-OLTP-Metadaten und isolierter Laufzeitquellen.';
+        PRINT N'Die Procedure führt eine rein lesende Tiefenanalyse sichtbarer In-Memory-OLTP-Metadaten und isolierter Laufzeitquellen durch.';
         PRINT N'@MitHashIndexStats=1 aktiviert eine potenziell teure vollständige Hashindex-DMV-Auswertung und benötigt CATALOG_DEEP.';
         PRINT N'Exakte Namenslisten und Pattern derselben Eigenschaft sind gegenseitig exklusiv; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfhinweise, keine automatische DDL- oder Kapazitätsempfehlung.';

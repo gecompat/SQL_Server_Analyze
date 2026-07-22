@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.TVF_InterpretPerformanceCounter
 Version      : 1.0.0
 Stand        : 2026-07-18
-Zweck        : Reine, deterministische Interpretation eines Performance-
-               Counter-Paars einschließlich Reset- und Basiscountervertrag.
+Zweck        : Interpretiert ein Performance-Counter-Paar deterministisch und
+               ohne Seiteneffekte einschließlich Reset- und
+               Basiscountervertrag.
 Grenzen      : Keine DMV-Abfrage, keine Persistenz und keine Alarmgrenzen.
 ===============================================================================
 */

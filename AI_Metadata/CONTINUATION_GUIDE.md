@@ -2,29 +2,29 @@
 
 ## Vor jeder Änderung
 
-- Repositoryweit auf case-sensitive Namenskonsistenz prüfen.
-- Einzelobjekt und alle daraus generierten Installer gemeinsam aktualisieren.
-- Keine konkrete Installationsdatenbank in Code oder Dokumentation einführen.
+- Prüfen Sie repositoryweit die case-sensitive Namenskonsistenz.
+- Aktualisieren Sie ein Einzelobjekt und alle daraus generierten Installer gemeinsam.
+- Führen Sie keine konkrete Installationsdatenbank in Code oder Dokumentation ein.
 - Das Repository-Liefergate darf Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE-, TABLE- und JSON-Ausgaben nicht anonymisieren oder fachlich reduzieren.
 - Reale Benutzer-, Kunden-, Firmen-, Organisations-, Umgebungs- oder Fachwerte und proprietäre interne Strukturen dürfen niemals aus Screenshots, Hardcopys, Chats, Uploads, Skripten, Logs oder Diagnoseausgaben in Repository-, GitHub-, Dokumentations-, Test- oder Downloadartefakte übernommen werden.
 - Beispiele und gespeicherte Testergebnisse verwenden ausschließlich eindeutig synthetische, generische Werte und bilden keine reale interne Struktur nach.
-- Bei einem uneindeutigen Artefaktwert vor dem Schreiben anhalten und nach einer nicht sensitiven Alternative fragen; eine Zustimmung hebt das Repositoryverbot nicht auf.
+- Halten Sie bei einem uneindeutigen Artefaktwert vor dem Schreiben an und fragen Sie nach einer nicht sensitiven Alternative; eine Zustimmung hebt das Repositoryverbot nicht auf.
 
 ## Nach jeder Änderung
 
-- statischen API-, Portabilitäts- und Quellen-Audit ausführen;
-- `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root . --self-test` und anschließend `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root .` ausführen;
-- vor einer ZIP-Auslieferung zusätzlich `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root . --archive-path <ZIP>` gegen den vollständigen Lieferumfang ausführen; gefundene Inhalte werden niemals in der Prüfausgabe wiedergegeben;
-- den Lieferweg vor dem Commit festlegen und `python3 Code/Tests/Static/930_Validate_Commit_Message.py --repository-root . --self-test` lokal ausführen;
-- bei manueller Repositorypflege über ein downloadbares ZIP eine nicht leere, exakt einzeilige Commit Message ohne Zeilenumbruch bereitstellen und den neuen Commit mit `--delivery-mode MANUAL_ZIP` prüfen;
-- bei direktem Commit und Push durch die KI darf die Commit Message aus Betreff und optionalem mehrzeiligem Body bestehen; den neuen Commit mit `--delivery-mode DIRECT_GIT` prüfen und anschließend durch das Actions-Gate validieren lassen;
+- Führen Sie den statischen API-, Portabilitäts- und Quellenaudit aus.
+- Führen Sie `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root . --self-test` und anschließend `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root .` aus.
+- Führen Sie vor einer ZIP-Auslieferung zusätzlich `python3 Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root . --archive-path <ZIP>` gegen den vollständigen Lieferumfang aus; gefundene Inhalte werden niemals in der Prüfausgabe wiedergegeben.
+- Legen Sie den Lieferweg vor dem Commit fest und führen Sie `python3 Code/Tests/Static/930_Validate_Commit_Message.py --repository-root . --self-test` lokal aus.
+- Stellen Sie bei manueller Repositorypflege über ein downloadbares ZIP eine nicht leere, exakt einzeilige Commit Message ohne Zeilenumbruch bereit und prüfen Sie den neuen Commit mit `--delivery-mode MANUAL_ZIP`.
+- Bei einem direkten Commit und Push durch die KI darf die Commit Message aus Betreff und optionalem mehrzeiligem Body bestehen; prüfen Sie den neuen Commit mit `--delivery-mode DIRECT_GIT` und lassen Sie ihn anschließend durch das Actions-Gate validieren.
 - eine automatisch erzeugte mehrzeilige Squash-Message ist im direkten Git-Weg zulässig und erfordert weder leeren Korrekturcommit noch History-Rewrite;
-- Installer aus den kanonischen Einzeldateien neu erzeugen;
-- Beispielaufrufe und Referenz aktualisieren;
-- auf SQL Server 2019, 2022 und 2025 kompilieren und Smoke-Tests ausführen;
-- `AI_Metadata/Internal_Documentation/Quality/Migration_Audit_History.json` beziehungsweise einen neuen Release-Audit aktualisieren.
+- Erzeugen Sie die Installer aus den kanonischen Einzeldateien neu.
+- Aktualisieren Sie Beispielaufrufe und Referenz.
+- Kompilieren Sie auf SQL Server 2019, 2022 und 2025 und führen Sie die Smoke-Tests aus.
+- Aktualisieren Sie `AI_Metadata/Internal_Documentation/Quality/Migration_Audit_History.json` beziehungsweise einen neuen Release-Audit.
 
-- Kein SHA-/Dateimanifest regenerieren; Git und die maschinenlesbaren Fachinventare sind maßgeblich.
+- Regenerieren Sie kein SHA- oder Dateimanifest; Git und die maschinenlesbaren Fachinventare sind maßgeblich.
 
 ## Maßgeblicher Ausgangsstand
 

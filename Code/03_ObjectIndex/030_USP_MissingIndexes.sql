@@ -113,7 +113,7 @@ BEGIN
         PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Zweck: flüchtige Missing-Index-Hinweise; kein automatischer CREATE INDEX.';
+        PRINT N'Die Procedure liefert flüchtige Missing-Index-Hinweise und führt keine CREATE-INDEX-Anweisung aus.';
         PRINT N'@MinUserReads bigint = 1: Mindestwert user_seeks + user_scans.';
         PRINT N'@MinAvgUserImpact decimal(9,2) = 0: Mindestwirkung laut DMV.';
         PRINT N'@MinImprovementMeasure decimal(28,2) = 0: avg_total_user_cost * avg_user_impact * reads.';

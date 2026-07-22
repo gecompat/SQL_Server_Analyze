@@ -51,7 +51,7 @@ EXEC [monitor].[USP_CurrentRequests]
       @ResultSetArt = 'RAW';
 ```
 
-SQL-Text, Login, Host, Programm, Clientadresse und Input Buffer können in einer realen Laufzeitumgebung schutzbedürftige Inhalte enthalten. Ergebnisse nur im erforderlichen Umfang anzeigen und nicht ungeprüft exportieren oder weitergeben.
+SQL-Text, Login, Host, Programm, Clientadresse und Input Buffer können in einer realen Laufzeitumgebung schutzbedürftige Inhalte enthalten. Zeigen Sie Ergebnisse nur im erforderlichen Umfang an und exportieren oder übermitteln Sie diese nicht ungeprüft.
 
 Object-Explorer-, Copilot- und SQL-Prompt-Hintergrundrequests sind
 standardmäßig ausgeblendet. Für eine bewusste Vollansicht gilt:
@@ -69,7 +69,7 @@ Sicherheitsidentität.
 ## Resultsets und Leserichtung
 
 - `CONSOLE` liefert genau ein fachliches Resultset aus der materialisierten Requestmenge. Es eignet sich für die erste Sichtung.
-- `RAW` liefert zuerst den Modulstatus, danach die vollständigen Requests mit Wait-Kataloganreicherung und zuletzt optionale Warnungen. Für eine belastbare Analyse immer erst `StatusCode`, `IsPartial`, `HasMoreRows` und `RequiredPermission` lesen.
+- `RAW` liefert zuerst den Modulstatus, danach die vollständigen Requests mit Wait-Kataloganreicherung und zuletzt optionale Warnungen. Lesen Sie für eine belastbare Analyse immer zuerst `StatusCode`, `IsPartial`, `HasMoreRows` und `RequiredPermission`.
 - `TABLE` schreibt ausschließlich das im Inventar benannte Primärergebnis `requests` in die über `@ResultTablesJson` zugeordnete lokale Temp-Tabelle. Status und Warnungen werden nicht als eigene TABLE-Ergebnisse exportiert.
 - `@JsonErzeugen = 1` trennt `meta`, `requests`, `statements`, `batches`, `inputBuffers` und `warnings`.
 
@@ -83,13 +83,13 @@ Die Zähler `ElapsedMs`, `CpuMs`, `LogicalReads`, `Reads`, `Writes` und `RowCoun
 
 ## So lesen
 
-1. **Vollständigkeit:** In `RAW` Status, partielle Sicht und Zeilenlimit prüfen. Ohne vollständige Server-State-Berechtigung kann die Engine nur eingeschränkte Sessions zeigen.
-2. **Identität und Scope:** `SessionId`, `RequestId`, Datenbank, Command und Startzeit bestimmen. Die aktuelle eigene Session, System-Sessions und erkannte Tool-Hintergrundrequests sind standardmäßig ausgeschlossen. Bei Opt-in Regelcode und Konfidenz prüfen.
-3. **Zeitaufteilung:** `ElapsedMs` mit `CpuMs` vergleichen. CPU ist verbrauchte Rechenzeit, Elapsed ist verstrichene Wanduhrzeit. Die Differenz ist nicht automatisch ein einzelner Wait, sondern kann verschiedene Warte- und Runnable-Phasen enthalten.
-4. **Arbeit:** `LogicalReads`, physische `Reads`, `Writes` und `RowCount` gemeinsam lesen. Viele Logical Reads zeigen Seitenzugriffe im Buffer Pool, nicht automatisch langsames Storage. Bei parallelen Row-Mode-Requests weist Microsoft darauf hin, dass bestimmte Zähler in `sys.dm_exec_requests` nur am Coordinator sichtbar und dort nicht für alle Worker fortgeschrieben werden; sie sind dann keine vollständige Tasksumme.
-5. **Warten und Blocking:** `WaitType`, `WaitTimeMs`, `TaskWaitTypes`, `BlockingSessionId` und `WaitResource` zusammen bewerten. Der Wait-Katalog liefert eine Einordnung, keine Root-Cause-Garantie.
-6. **Memory und Parallelität:** angeforderten, gewährten und verwendeten Grant sowie `Dop` und `ParallelWorkerCount` vergleichen. `NULL` kann bedeuten, dass kein Query-Execution-Memory-Grant existiert; 0 ist ein tatsächlich gelieferter Zahlenwert.
-7. **Text und Modul:** aktiven Statementausschnitt vor Batchtext lesen. `CurrentStatementIsTruncated`, Offsetgültigkeit und Verschlüsselung prüfen, bevor aus fehlendem oder abgeschnittenem Text geschlossen wird.
+1. **Vollständigkeit:** Prüfen Sie in `RAW` den Status, die partielle Sicht und das Zeilenlimit. Ohne vollständige Server-State-Berechtigung kann die Engine nur eingeschränkte Sessions zeigen.
+2. **Identität und Scope:** Bestimmen Sie `SessionId`, `RequestId`, Datenbank, Command und Startzeit. Die aktuelle eigene Session, System-Sessions und erkannte Tool-Hintergrundrequests sind standardmäßig ausgeschlossen. Prüfen Sie bei einem Opt-in den Regelcode und die Konfidenz.
+3. **Zeitaufteilung:** Vergleichen Sie `ElapsedMs` mit `CpuMs`. CPU ist verbrauchte Rechenzeit, Elapsed ist verstrichene Wanduhrzeit. Die Differenz ist nicht automatisch ein einzelner Wait, sondern kann verschiedene Warte- und Runnable-Phasen enthalten.
+4. **Arbeit:** Berücksichtigen Sie `LogicalReads`, physische `Reads`, `Writes` und `RowCount` gemeinsam. Viele Logical Reads zeigen Seitenzugriffe im Buffer Pool, nicht automatisch langsames Storage. Bei parallelen Row-Mode-Requests weist Microsoft darauf hin, dass bestimmte Zähler in `sys.dm_exec_requests` nur am Coordinator sichtbar und dort nicht für alle Worker fortgeschrieben werden; sie sind dann keine vollständige Tasksumme.
+5. **Warten und Blocking:** Bewerten Sie `WaitType`, `WaitTimeMs`, `TaskWaitTypes`, `BlockingSessionId` und `WaitResource` gemeinsam. Der Wait-Katalog liefert eine Einordnung, keine Root-Cause-Garantie.
+6. **Memory und Parallelität:** Vergleichen Sie den angeforderten, gewährten und verwendeten Grant sowie `Dop` und `ParallelWorkerCount`. `NULL` kann bedeuten, dass kein Query-Execution-Memory-Grant existiert; 0 ist ein tatsächlich gelieferter Zahlenwert.
+7. **Text und Modul:** Berücksichtigen Sie den aktiven Statementausschnitt vor dem Batchtext. Prüfen Sie `CurrentStatementIsTruncated`, Offsetgültigkeit und Verschlüsselung, bevor Sie aus fehlendem oder abgeschnittenem Text Schlussfolgerungen ziehen.
 
 ## Warum kann das problematisch sein?
 
@@ -105,7 +105,7 @@ Ebenso ist `PercentComplete = NULL` kein Fehler: SQL Server liefert Fortschritt 
 
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall `ExampleBlockedRequest`:** `ElapsedMs = 180000`, `CpuMs = 900`, `WaitType = LCK_M_X`, `WaitTimeMs = 176000` und `BlockingSessionId = 57`. Beobachtung: Fast die gesamte Wanduhrzeit wurde nicht als CPU verbraucht, und aktuell ist ein inkompatibler Lock sichtbar. Hypothese: Blocking dominiert die Antwortzeit. Gegenprobe: Mit `USP_CurrentBlocking` die vollständige Kette und mit `USP_CurrentTransactions` Alter und Logwirkung der Root-Transaktion prüfen. Noch keine Session beenden.
+**Synthetischer Problemfall `ExampleBlockedRequest`:** `ElapsedMs = 180000`, `CpuMs = 900`, `WaitType = LCK_M_X`, `WaitTimeMs = 176000` und `BlockingSessionId = 57`. Beobachtung: Fast die gesamte Wanduhrzeit wurde nicht als CPU verbraucht, und aktuell ist ein inkompatibler Lock sichtbar. Hypothese: Blocking dominiert die Antwortzeit. Gegenprobe: Prüfen Sie mit `USP_CurrentBlocking` die vollständige Kette und mit `USP_CurrentTransactions` Alter und Logwirkung der Root-Transaktion. Beenden Sie noch keine Session.
 
 **Ähnlich auffällig, aber nicht automatisch problematisch `ExampleExpectedAnalytics`:** `ElapsedMs = 180000`, `CpuMs = 162000`, hohe Logical Reads, kein Wait und kein Blocker. Das ist CPU-/datenintensive Arbeit, aber noch kein Beweis für einen schlechten Plan. Erwartete Ausführung, DOP, gleichzeitige Konkurrenz, Query-Store-Vergleich und Planoperatoren entscheiden über die Bewertung.
 
@@ -187,11 +187,11 @@ WHERE [r].[session_id] <> @@SPID
   AND [r].[total_elapsed_time] >= @MinDauerMs;
 ```
 
-**Wichtig für die Eigenlast:** Exakte Session-, Datenbank- und Dauerfilter vor Waiting-Task-, Grant-, SQL-Text-, Modul- und Input-Buffer-Anreicherung setzen. Regex wirkt erst nach Materialisierung und spart daher keine DMV-Quellarbeit.
+**Wichtig für die Eigenlast:** Setzen Sie exakte Session-, Datenbank- und Dauerfilter vor Waiting-Task-, Grant-, SQL-Text-, Modul- und Input-Buffer-Anreicherung. Regex wirkt erst nach Materialisierung und spart daher keine DMV-Quellarbeit.
 
 ### Zeit- und Scope-Modell
 
-Instanzweite Live-Momentaufnahme der sichtbaren aktiven Requests. Zähler beginnen mit dem jeweiligen Request; sie besitzen keinen gemeinsamen globalen Resetzeitpunkt. Session-IDs können nach Sessionende wiederverwendet werden, daher für spätere Korrelation mindestens Startzeit und RequestId mitführen. Das Ergebnis enthält standardmäßig User-Requests außer der aufrufenden Session; Filter verengen diesen Scope.
+Die Auswertung liefert eine instanzweite Live-Momentaufnahme der sichtbaren aktiven Requests. Zähler beginnen mit dem jeweiligen Request; sie besitzen keinen gemeinsamen globalen Resetzeitpunkt. Session-IDs können nach dem Sessionende wiederverwendet werden. Führen Sie daher für spätere Korrelationen mindestens die Startzeit und `RequestId` mit. Das Ergebnis enthält standardmäßig User-Requests außer der aufrufenden Session; Filter verengen diesen Scope.
 
 ### Bewertung und Gegenprobe
 
@@ -203,11 +203,13 @@ Elapsed, CPU, Reads/Writes, aktueller Wait, Task-Waits, Blocking, Grant und DOP 
 
 ### Folgeanalyse
 
+Verwenden Sie abhängig vom Befund die folgenden Folgeanalysen:
+
 - Blocking: `USP_CurrentBlocking` und `USP_CurrentTransactions`
 - Memory Grant: `USP_CurrentMemoryGrants`
 - CPU/Reads und Verlauf: `USP_QueryStats` oder Query Store, anschließend `USP_ShowplanAnalysis`
 - Dateilatenz: `USP_CurrentIO`
-- wiederholt sehr kurzer Zustand: geplante XE- oder Stichprobenerfassung statt manuellem Polling
+- Wiederholt sehr kurzer Zustand: geplante XE- oder Stichprobenerfassung statt manuellem Polling
 
 ## Primärquellen
 

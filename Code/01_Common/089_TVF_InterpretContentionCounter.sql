@@ -4,7 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.TVF_InterpretContentionCounter
-Zweck        : Reiner Rechenvertrag für monotone Latch-/Spinlockzähler.
+Zweck        : Stellt den Rechenvertrag für monotone Latch-/Spinlockzähler
+               ohne Seiteneffekte bereit.
 Datenschutz  : Verarbeitet ausschließlich übergebene technische Zahlenwerte.
 Grenzen      : Ein fallender Wert kennzeichnet einen Reset; die betroffene
                Differenz und Rate bleiben NULL.

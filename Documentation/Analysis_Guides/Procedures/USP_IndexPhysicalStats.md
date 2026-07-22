@@ -34,7 +34,7 @@ EXEC [monitor].[USP_IndexPhysicalStats]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Vor dem Aufruf Objektname und Datenbank prüfen. `@DatabaseNames = NULL` bedeutet nach dem gemeinsamen Datenbankvertrag nicht „aktuelle Datenbank“, sondern alle sichtbaren, zugreifbaren, online befindlichen Userdatenbanken. Ein breiter Lauf ist daher niemals ein unbemerkter Ersatz für den gezielten Einstieg.
+Prüfen Sie vor dem Aufruf Objektname und Datenbank. `@DatabaseNames = NULL` bedeutet nach dem gemeinsamen Datenbankvertrag nicht „aktuelle Datenbank“, sondern alle sichtbaren, zugreifbaren, online befindlichen Userdatenbanken. Ein breiter Lauf ist daher niemals ein unbemerkter Ersatz für den gezielten Einstieg.
 
 ## Resultsets und Leserichtung
 
@@ -43,7 +43,7 @@ Vor dem Aufruf Objektname und Datenbank prüfen. `@DatabaseNames = NULL` bedeute
 - `TABLE` exportiert ausschließlich das Primärergebnis `indexPhysicalStats` in die zugeordnete lokale Temp-Tabelle. Der Datenbankstatus wird nicht als TABLE-Resultset exportiert.
 - JSON enthält `meta`, `indexPhysicalStats` und `databaseStatus`.
 
-Eine leere Fachdatenmenge ohne Statuskontext ist keine Wartungsaussage. Für Freigaben oder Cross-Database-Läufe deshalb zunächst `RAW` oder JSON verwenden.
+Eine leere Fachdatenmenge ohne Statuskontext ist keine Wartungsaussage. Verwenden Sie für Freigaben oder Cross-Database-Läufe deshalb zunächst `RAW` oder JSON.
 
 ## Eine Zeile bedeutet
 
@@ -53,15 +53,15 @@ Eine Zeile entspricht einer Kombination aus Datenbank, Objekt, `IndexId`, Partit
 - je B-Tree-Ebene,
 - je Allocation Unit wie `IN_ROW_DATA`, `LOB_DATA` oder `ROW_OVERFLOW_DATA`.
 
-Werte dürfen nicht blind über diese Zeilen addiert oder gemittelt werden. Für die übliche Leaf-Bewertung eines Rowstore-Indexes zuerst die relevante Partition und `IndexLevel = 0` isolieren. Bei einem Heap (`IndexId = 0`) gelten andere Strukturmerkmale; insbesondere `ForwardedRecordCount` ist ein Heapkontext und keine allgemeine Indexkennzahl.
+Werte dürfen nicht ungeprüft über diese Zeilen addiert oder gemittelt werden. Isolieren Sie für die übliche Leaf-Bewertung eines Rowstore-Indexes zuerst die relevante Partition und `IndexLevel = 0`. Bei einem Heap (`IndexId = 0`) gelten andere Strukturmerkmale; insbesondere `ForwardedRecordCount` ist ein Heapkontext und keine allgemeine Indexkennzahl.
 
 ## So lesen
 
 1. **Datenbankstatus:** Wurde die beabsichtigte Datenbank tatsächlich analysiert, oder wurde sie ausgelassen, abgelehnt beziehungsweise mit Fehler isoliert?
-2. **Identität:** Datenbank, Schema, Objekt, Index, Partition, Ebene und Allocation Unit festlegen. Erst danach Werte vergleichen.
-3. **Größe als Nenner:** `PageCount` und, soweit passend, `RecordCount` zuerst lesen. Ein Prozentwert ohne Größenbezug ist nicht entscheidungsfähig.
-4. **Scanmodus:** `ScanMode` mitlesen. `LIMITED` ist der leichteste Modus, `SAMPLED` liefert eine Stichprobe, `DETAILED` untersucht alle Pages und Ebenen am tiefsten.
-5. **Fragmentierung:** `AvgFragmentationPercent`, `FragmentCount` und `AvgFragmentSizePages` gemeinsam betrachten. Die mögliche Auswirkung hängt von Scanform, Read-Ahead, Storage, Größe und Workload ab.
+2. **Identität:** Legen Sie Datenbank, Schema, Objekt, Index, Partition, Ebene und Allocation Unit fest. Vergleichen Sie erst danach die Werte.
+3. **Größe als Nenner:** Berücksichtigen Sie zuerst `PageCount` und, soweit passend, `RecordCount`. Ein Prozentwert ohne Größenbezug ist nicht entscheidungsfähig.
+4. **Scanmodus:** Berücksichtigen Sie außerdem `ScanMode`. `LIMITED` ist der leichteste Modus, `SAMPLED` liefert eine Stichprobe, `DETAILED` untersucht alle Pages und Ebenen am tiefsten.
+5. **Fragmentierung:** Betrachten Sie `AvgFragmentationPercent`, `FragmentCount` und `AvgFragmentSizePages` gemeinsam. Die mögliche Auswirkung hängt von Scanform, Read-Ahead, Storage, Größe und Workload ab.
 6. **Seitendichte:** `AvgPageSpaceUsedPercent` zeigt die durchschnittliche Belegung der betrachteten Pages. Niedrige Dichte kann dieselbe Datenmenge auf mehr Pages verteilen und dadurch Buffer-Pool- und I/O-Bedarf erhöhen.
 7. **Spezialwerte:** Ghost-/Version-Ghost-Werte nur im MVCC-/Cleanupkontext; Forwarded Records nur beim Heap; `CompressedPageCount` nur dort interpretieren, wo Modus und Struktur den Wert sinnvoll liefern.
 
@@ -79,7 +79,7 @@ Auch mehrere Ergebniszeilen für denselben Index sind kein Duplikatfehler, wenn 
 
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Prüfbedarf `ExampleLargeIndex`:** Leafebene einer großen Partition mit `PageCount = 5000000`, `AvgFragmentationPercent = 45` und `AvgPageSpaceUsedPercent = 55`. Beobachtung: große, wenig dicht belegte und fragmentierte Struktur. Mögliche Auswirkung: mehr Pages im Buffer Pool und mehr Arbeit bei Range Scans. Gegenprobe: `USP_IndexUsage`, Query Store und konkrete Pläne müssen zeigen, dass relevante Scans/Reads und eine Geschäftsauswirkung existieren. Erst danach Wartungsoption, Log-/I/O-Budget und Rollback bewerten.
+**Synthetischer Prüfbedarf `ExampleLargeIndex`:** Leafebene einer großen Partition mit `PageCount = 5000000`, `AvgFragmentationPercent = 45` und `AvgPageSpaceUsedPercent = 55`. Beobachtung: große, wenig dicht belegte und fragmentierte Struktur. Mögliche Auswirkung: mehr Pages im Buffer Pool und mehr Arbeit bei Range Scans. Gegenprobe: `USP_IndexUsage`, Query Store und konkrete Pläne müssen zeigen, dass relevante Scans/Reads und eine Geschäftsauswirkung existieren. Bewerten Sie erst danach Wartungsoption, Log-/I/O-Budget und Rollback.
 
 **Unkritischer Gegenfall `ExampleTinyIndex`:** `PageCount = 8` bei ebenfalls 45 Prozent Fragmentierung. Der Prozentwert sieht gleich aus, die absolute Struktur ist aber winzig. Ohne messbare Auswirkung ist eine Wartungsaktion typischerweise teurer als die potenzielle Einsparung.
 
@@ -172,7 +172,7 @@ Die Messung gilt für den physischen Zustand während des Aufrufs. Gleichzeitige
 
 ### Bewertung und Gegenprobe
 
-Page Count ist der erste Nenner. Danach Dichte und Fragmentierung auf derselben Partition/Ebene bewerten. Nutzung und Auswirkung werden unabhängig über `USP_IndexUsage`, Query Store, konkrete Pläne und I/O-/Cacheevidenz bestätigt. Für einen Wartungsentscheid zusätzlich Logwachstum, AG/Replication, Blocking, Onlinefähigkeit, TempDB, Fenster und beobachtbaren Vorher-/Nachher-Effekt planen.
+Page Count ist der erste Nenner. Bewerten Sie danach Dichte und Fragmentierung auf derselben Partition und Ebene. Nutzung und Auswirkung werden unabhängig über `USP_IndexUsage`, Query Store, konkrete Pläne und I/O- und Cacheevidenz bestätigt. Planen Sie für einen Wartungsentscheid zusätzlich Logwachstum, AG und Replikation, Blocking, Onlinefähigkeit, TempDB, Wartungsfenster und einen beobachtbaren Vorher-Nachher-Effekt ein.
 
 ### Typische Fehlinterpretation
 
@@ -180,7 +180,7 @@ Pauschale 5-/30-Prozent-Schwellen sind keine universelle Engineentscheidung. Das
 
 ### Folgeanalyse
 
-`USP_IndexUsage` für Nutzung, `USP_IndexOperationalStats` für betriebliche Zugriffsmuster, Query Store und `USP_ShowplanAnalysis` für betroffene Queries. Erst bei bestätigter Auswirkung eine Wartungsstrategie mit Ressourcenbudget und Rollback formulieren.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_IndexUsage` für Nutzung, `USP_IndexOperationalStats` für betriebliche Zugriffsmuster, Query Store und `USP_ShowplanAnalysis` für betroffene Queries. Formulieren Sie erst bei bestätigter Auswirkung eine Wartungsstrategie mit Ressourcenbudget und Rollback.
 
 ## Primärquellen
 

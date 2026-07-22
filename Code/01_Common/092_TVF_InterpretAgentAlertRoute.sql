@@ -7,7 +7,7 @@ Objekt       : monitor.TVF_InterpretAgentAlertRoute
 Version      : 1.0.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
-Zweck        : Reiner Klassifikationsvertrag für die Aktion eines Agent-Alerts.
+Zweck        : Klassifiziert die Aktion eines Agent-Alerts ohne Seiteneffekte.
 Datenschutz  : Verarbeitet nur Schalter und aggregierte Anzahl; keine Operator-
                oder Empfängerdaten.
 ===============================================================================

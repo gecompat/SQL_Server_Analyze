@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 176_P1_Availability_Runtime_Contract.sql
-Zweck        : Laufzeitverträge für vier P1-Availability-Fälle.
+Zweck        : Prüft Laufzeitverträge für vier P1-Availability-Fälle.
 Datenschutz  : Ausschließlich technische SERVERPROPERTY-Werte und vollständig
                synthetische Status-/Zählerwerte; keine Clusterobjekte werden erzeugt.
 Nebenwirkung : Keine. Es erfolgt kein Failover, Suspend, Resume oder Seeding.

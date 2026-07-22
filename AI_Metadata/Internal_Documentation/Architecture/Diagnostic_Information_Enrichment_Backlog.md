@@ -22,7 +22,7 @@ Der bestehende Kern liefert bereits viele Einzelinformationen. Insbesondere
 `USP_ServerFeatureCapabilities` und `USP_OSInformation` sind vor einer
 Implementierung als vorhandene Quellen und mögliche Materialisierungs-Owner zu
 prüfen. Neue Procedures dürfen diese Quellen in einem Overview- oder
-Exportaufruf nicht erneut lesen.
+Ein Exportaufruf darf diese Quellen nicht erneut lesen.
 
 ## DIAG-001: Serverversion, Build, CU und Lifecycle
 
@@ -311,13 +311,9 @@ Erforderliche Tests auf SQL Server 2019, 2022 und 2025:
 
 ## Empfohlene Umsetzungsreihenfolge
 
-1. `DIAG-002`: frameworkweites XML-Typaudit und Korrektur der verlustbehafteten
-   `nvarchar(max)`-Planpfade.
-2. `DIAG-001`: leichte Serverversions-Procedure und versionierter
-   Offline-Build-/Lifecycle-Katalog.
-3. `DIAG-003`: vorhandene Parameterextraktion mit stabiler Provenienz und
-   TABLE-Vertrag ausbauen.
-4. `DIAG-004`: Statement-/Requestkontext ohne erneute DMV-Lesung konsolidieren.
-5. `DIAG-005`: zusätzliche Plan-/Optimizerinformationen priorisiert ergänzen.
-6. `DIAG-006` und `DIAG-007`: Provenienz-, Inventar- und Testvertrag in jeder
-   vertikalen Umsetzung gleichzeitig abschließen.
+1. `DIAG-002` umfasst das frameworkweite XML-Typaudit und die Korrektur der verlustbehafteten `nvarchar(max)`-Planpfade.
+2. `DIAG-001` umfasst eine leichte Serverversions-Procedure und einen versionierten Offline-Build- und Lifecycle-Katalog.
+3. `DIAG-003` erweitert die vorhandene Parameterextraktion um stabile Provenienz und einen TABLE-Vertrag.
+4. `DIAG-004` konsolidiert den Statement- und Requestkontext ohne erneute DMV-Lesung.
+5. `DIAG-005` ergänzt zusätzliche Plan- und Optimizerinformationen nach Priorität.
+6. `DIAG-006` und `DIAG-007` schließen den Provenienz-, Inventar- und Testvertrag in jeder vertikalen Umsetzung gleichzeitig ab.

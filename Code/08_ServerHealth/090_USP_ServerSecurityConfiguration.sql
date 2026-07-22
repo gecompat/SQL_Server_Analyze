@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_ServerSecurityConfiguration
 Version      : 2.0.1
 Stand        : 2026-07-15
-Zweck        : Sicherheits- und Dienstkonfiguration rein lesend.
+Zweck        : Liest die Sicherheits- und Dienstkonfiguration, ohne sie zu
+               verändern.
 Datenquellen : sys.configurations, sys.dm_server_services, SERVERPROPERTY
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt
                Resultsets und liefert Status ausschließlich über OUTPUT-Parameter.

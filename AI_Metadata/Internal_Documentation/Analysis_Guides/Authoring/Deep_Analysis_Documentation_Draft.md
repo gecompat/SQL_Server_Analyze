@@ -216,11 +216,11 @@ flowchart TD
 
 `@SampleSeconds` zwischen 1 und 60 führt diese Schritte aus:
 
-1. Engine-Startzeit und Waitzähler als Messung A lesen.
+1. Lesen Sie Engine-Startzeit und Waitzähler als Messung A.
 2. `WAITFOR DELAY` über die angeforderte Dauer.
-3. Engine-Startzeit und Waitzähler als Messung B lesen.
-4. Für jede Waitart `B - A` berechnen.
-5. Restart oder fallende Zähler als ungültige Messung `MEASUREMENT_RESET` markieren.
+3. Lesen Sie Engine-Startzeit und Waitzähler als Messung B.
+4. Berechnen Sie für jede Waitart `B - A`.
+5. Markieren Sie einen Restart oder fallende Zähler als ungültige Messung `MEASUREMENT_RESET`.
 
 Das Delta beantwortet: Welche abgeschlossenen Waits wurden während dieses kurzen Fensters aufgezeichnet?
 

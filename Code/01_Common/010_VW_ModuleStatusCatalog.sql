@@ -7,7 +7,8 @@ Objekt       : monitor.VW_ModuleStatusCatalog
 Version      : 1.2.0
 Stand        : 2026-07-20
 Typ          : View
-Zweck        : Zentraler Katalog aller maschinenlesbaren Framework-Statuscodes.
+Zweck        : Stellt den zentralen Katalog aller maschinenlesbaren Framework-
+               Statuscodes bereit.
 Änderungen   : 1.2.0 - Datenbank-, High-Impact-, Childstatus- und TABLE-
                          Preflightstatus des Ausgabe-Vertrags 2.0 ergänzt.
                1.1.0 - Plattform-, Messkontext- und Resetstatus ergänzt.

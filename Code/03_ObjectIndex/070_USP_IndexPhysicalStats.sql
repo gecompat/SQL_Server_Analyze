@@ -128,7 +128,7 @@ BEGIN
         PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int = 10000: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Zweck: Physical Stats für Rowstore/Heaps; keine Wartungsaktion.';
+        PRINT N'Die Procedure liefert Physical Stats für Rowstore-Indizes und Heaps, führt jedoch keine Wartungsaktion aus.';
         PRINT N'@IndexNamePattern nvarchar(256) = NULL: optionaler Indexfilter.';
         PRINT N'@AnalyseModus varchar(16) = GEZIELT: exakt ein Objekt; VOLL erlaubt LIKE-/Breitenscan. Beide Modi prüfen PHYSICAL_STATS_DEEP.';
         PRINT N'@ScanMode: LIMITED, SAMPLED oder DETAILED. DETAILED ist besonders kostenintensiv.';

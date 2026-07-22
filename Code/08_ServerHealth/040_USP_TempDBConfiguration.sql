@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_TempDBConfiguration
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : TempDB-Dateien, Größenverteilung, Growth und Konfiguration; CTE-Laufzeitfehler behoben.
+Zweck        : Analysiert TempDB-Dateien, Größenverteilung, Growth und
+               Konfiguration. Ein früherer CTE-Laufzeitfehler ist behoben.
 Datenquellen : tempdb.sys.database_files, sys.configurations
 Vertrag      : Resultset 1 ist immer Modulstatus; @ResultSetArt=NONE unterdrückt Resultsets; RAW und CONSOLE liefern unterschiedliche Projektionen. Optional JSON.
 ===============================================================================

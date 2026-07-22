@@ -26,7 +26,7 @@ EXEC [monitor].[USP_DatabaseConfigurationAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Ein explizites synthetisches Profil:
+Verwenden Sie mit folgendem Aufruf ein ausdrücklich synthetisches Profil:
 
 ```sql
 EXEC [monitor].[USP_DatabaseConfigurationAnalysis]
@@ -36,11 +36,11 @@ EXEC [monitor].[USP_DatabaseConfigurationAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Vor produktiver Nutzung das Profil versionieren, fachlich freigeben und die exakten sichtbaren Schreibweisen aus `settings` übernehmen. Profilabweichung ist Review-Evidenz, kein Änderungsauftrag.
+Versionieren und genehmigen Sie das Profil vor der produktiven Nutzung. Übernehmen Sie dabei die exakten sichtbaren Schreibweisen aus `settings`. Eine Profilabweichung ist Review-Evidenz und kein Änderungsauftrag.
 
 ## Resultsets und Leserichtung
 
-Der typisierte Vertrag umfasst `moduleStatus`, `settings`, `drift`, `profile`, `sourceStatus` und `warnings`. Zuerst Modul- und Quellstatus prüfen. Danach `profile` verifizieren, falls geliefert. `settings` ist das Rohinventar je Datenbank und Scope. `drift` enthält lokale Variation und explizite Profilabweichung. `warnings` zeigt nicht sichtbare Profileinträge, verweigerte Datenbanken oder Teilquellen.
+Der typisierte Vertrag umfasst `moduleStatus`, `settings`, `drift`, `profile`, `sourceStatus` und `warnings`. Prüfen Sie zuerst Modul- und Quellstatus. Verifizieren Sie danach `profile`, sofern es geliefert wurde. `settings` ist das Rohinventar je Datenbank und Scope. `drift` enthält lokale Variation und explizite Profilabweichung. `warnings` zeigt nicht sichtbare Profileinträge, verweigerte Datenbanken oder Teilquellen.
 
 ## Eine Zeile bedeutet
 
@@ -48,7 +48,7 @@ In `settings` bedeutet eine Zeile eine Einstellung einer Datenbank aus genau ein
 
 ## So lesen
 
-`DriftType` trennt `LOCAL_VARIATION` von `PROFILE_MISMATCH`. Beim lokalen Vergleich `ReferenceValue`, `MatchingDatabaseCount` und `ComparedDatabaseCount` gemeinsam lesen. Bei Gleichstand wählt die Procedure deterministisch nach Wert; dadurch entsteht Stabilität, aber keine fachliche Präferenz. Beim Profilvergleich ist `ExpectedValue` exakt die gelieferte Zeichenfolge, verglichen ohne Groß-/Kleinschreibung. `PROFILE_SETTING_NOT_VISIBLE` kann einen Tippfehler, eine Versionsdifferenz oder fehlende Sichtbarkeit bedeuten.
+`DriftType` trennt `LOCAL_VARIATION` von `PROFILE_MISMATCH`. Berücksichtigen Sie beim lokalen Vergleich `ReferenceValue`, `MatchingDatabaseCount` und `ComparedDatabaseCount` gemeinsam. Bei Gleichstand wählt die Procedure deterministisch nach Wert; dadurch entsteht Stabilität, aber keine fachliche Präferenz. Beim Profilvergleich ist `ExpectedValue` exakt die gelieferte Zeichenfolge, verglichen ohne Groß- und Kleinschreibung. `PROFILE_SETTING_NOT_VISIBLE` kann einen Tippfehler, eine Versionsdifferenz oder fehlende Sichtbarkeit bedeuten.
 
 ## Warum kann das problematisch sein?
 
@@ -64,7 +64,7 @@ Eine Abweichung kann bewusst und dokumentiert sein. Unterschiedliche Compatibili
 
 **Gegenbeispiel:** `ExampleLegacyDatabase` bleibt absichtlich auf einem niedrigeren Compatibility Level, während die Migration getestet wird. Die Variation ist erwartet und sollte dokumentiert, nicht „vereinheitlicht“ werden.
 
-**Nicht entscheidbar:** Ein Profilwert ist nicht sichtbar und die Scoped-Quelle steht auf `DENIED_PERMISSION`. Erst Sichtbarkeit herstellen; fehlende Zeile nicht als fehlende Einstellung interpretieren.
+**Nicht entscheidbar:** Ein Profilwert ist nicht sichtbar und die Scoped-Quelle steht auf `DENIED_PERMISSION`. Stellen Sie zuerst die erforderliche Sichtbarkeit her und interpretieren Sie eine fehlende Zeile nicht als fehlende Einstellung.
 
 ## Leere oder partielle Ausgabe
 
@@ -122,23 +122,23 @@ SELECT [name], [value], [value_for_secondary]
 FROM [sys].[database_scoped_configurations] WITH (NOLOCK);
 ```
 
-**Wichtig für die Eigenlast:** Die Datenbankliste vor dem Kontextwechsel filtern. Query-Store- und zusätzliche versionsabhängige Sichten nur für verbleibende Datenbanken abfragen; ein globales `TOP` darf nicht vor der fachlichen Datenbankauswahl stehen.
+**Wichtig für die Eigenlast:** Filtern Sie die Datenbankliste vor dem Kontextwechsel. Fragen Sie Query Store und zusätzliche versionsabhängige Sichten nur für verbleibende Datenbanken ab; ein globales `TOP` darf nicht vor der fachlichen Datenbankauswahl stehen.
 
 ### Zeit- und Scope-Modell
 
-Aktueller Katalogsnapshot pro Quelle. Zustände können sich zwischen Datenbanken und Quellzugriffen ändern; `CapturedAtUtc` kennzeichnet den Aufruf, nicht eine atomare serverweite Transaktion.
+Die Auswertung beschreibt den aktuellen Katalogsnapshot pro Quelle. Zustände können sich zwischen Datenbanken und Quellzugriffen ändern; `CapturedAtUtc` kennzeichnet den Aufruf, nicht eine atomare serverweite Transaktion.
 
 ### Bewertung und Gegenprobe
 
-Abweichung mit freigegebenem Profil, Changehistorie, Anwendungstest und Workloadevidenz prüfen. Vor DDL immer Rollback und betroffene Verfügbarkeits-/Recovery-Verträge klären.
+Prüfen Sie Abweichung mit freigegebenem Profil, Changehistorie, Anwendungstest und Workloadevidenz. Klären Sie vor DDL immer Rollback und betroffene Verfügbarkeits-/Recovery-Verträge.
 
 ### Typische Fehlinterpretation
 
-Den lokalen häufigsten Wert als Best Practice oder eine Profilabweichung als automatische Reparaturanweisung lesen.
+Der lokal häufigste Wert ist nicht als Best Practice zu interpretieren. Ebenso stellt eine Profilabweichung keine automatische Reparaturanweisung dar.
 
 ### Folgeanalyse
 
-Query Store, Statistik-, Recovery- und Verfügbarkeitsmodule sowie der externe Konfigurations-/Changevertrag der Organisation.
+Für die weitere Analyse gelten folgende Schritte und Quellen: Query Store, Statistik-, Recovery- und Verfügbarkeitsmodule sowie der externe Konfigurations-/Changevertrag der Organisation.
 
 ## Primärquellen
 

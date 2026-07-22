@@ -6,9 +6,9 @@ GO
 Objekt       : monitor.FrameworkVersion
 Version      : 1.1.0-special.13
 Stand        : 2026-07-21
-Zweck        : Leichte Versionsinformation für das installierte Ad-hoc-
-               Analysepaket. Keine Installationshistorie und kein Deployment-
-               Framework.
+Zweck        : Liefert eine kompakte Versionsinformation für das installierte
+               Ad-hoc-Analysepaket. Die Tabelle bildet weder eine
+               Installationshistorie noch ein Deployment-Framework ab.
 Seiteneffekte: Eine Zeile wird bei Installation oder Upgrade aktualisiert.
 ===============================================================================
 */

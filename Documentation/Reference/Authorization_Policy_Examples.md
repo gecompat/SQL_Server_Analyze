@@ -2,7 +2,7 @@
 
 **Stand:** 18. Juli 2026
 
-Alle Bezeichnungen sind synthetisch. Reale Domain-, Gruppen-, Login-, Server-, Datenbank- oder Unternehmenswerte nur in der geschützten lokalen Konfiguration verwenden.
+Alle Bezeichnungen sind synthetisch. Verwenden Sie reale Domain-, Gruppen-, Login-, Server-, Datenbank- oder Unternehmenswerte ausschließlich in der geschützten lokalen Konfiguration.
 
 ## 1. Offener Auslieferungszustand
 
@@ -45,7 +45,7 @@ AS
 GO
 ```
 
-Erwarteter `AccessReason` für geschützte Klassen: `OPEN_POLICY`.
+Für geschützte Klassen wird der `AccessReason` `OPEN_POLICY` erwartet.
 
 ## 2. Eine Gruppe für alle geschützten Pfade
 
@@ -85,7 +85,7 @@ AS
 GO
 ```
 
-Wirkung:
+Diese Konfiguration hat folgende Wirkung:
 
 - Gruppenmitglieder: alle geschützten Klassen erlaubt;
 - andere Nicht-sysadmin-Logins: alle geschützten Klassen ausgeschlossen;
@@ -139,7 +139,7 @@ AS
 GO
 ```
 
-Achtung: Alle anderen geschützten Klassen sind in diesem Beispiel ausgeschlossen, weil kein `*`-Fallback existiert.
+Alle anderen geschützten Klassen sind in diesem Beispiel ausgeschlossen, weil kein `*`-Fallback existiert.
 
 ## 4. Mehrere Gruppen für dieselbe Klasse
 
@@ -156,7 +156,7 @@ VALUES
    CAST(100 AS smallint), CAST(N'Synthetic group B.' AS nvarchar(1000)))
 ```
 
-Ein Match in einer Gruppe genügt.
+Ein positiver Match in einer der beiden Gruppen genügt.
 
 ## 5. Zeitlich begrenzte Freigabe
 
@@ -195,7 +195,7 @@ VALUES
    CAST(10 AS smallint), CAST(N'Synthetic administrator fallback.' AS nvarchar(1000)))
 ```
 
-`Priority=10` macht die Administratorregel nicht stärker. Jeder positive Match erlaubt.
+`Priority=10` macht die Administratorregel nicht stärker. Jeder positive Match erlaubt den betreffenden Pfad.
 
 ## 7. Wichtige Fehlannahmen
 

@@ -4,7 +4,7 @@
 
 ## 1. Diagnose in fester Reihenfolge
 
-Bei einem verweigerten, leeren oder partiellen Ergebnis nicht sofort SQL-Rechte vergeben. Zuerst die Ebenen trennen:
+Vergeben Sie bei einem verweigerten, leeren oder partiellen Ergebnis nicht unmittelbar zusätzliche SQL-Rechte. Prüfen Sie zuerst die folgenden Ebenen:
 
 1. Wurde überhaupt ein ressourcenintensiver Modus angefordert?
 2. Welche `AnalysisClass` gilt für diesen Modus?
@@ -29,7 +29,7 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
     , @ResultSetArt       = 'RAW';
 ```
 
-Reale Login-, Gruppen-, Server-, Datenbank- oder Objektwerte nur kontrolliert auswerten und nicht ungeprüft exportieren oder weitergeben.
+Werten Sie reale Login-, Gruppen-, Server-, Datenbank- oder Objektwerte nur kontrolliert aus. Exportieren oder übermitteln Sie diese Werte nicht ungeprüft.
 
 ## 3. `DENIED_GROUP`
 
@@ -65,7 +65,7 @@ ORDER BY [AnalysisClass];
 
 ### Maßnahme
 
-Policy und Login-Token prüfen. Nicht vorschnell DMV-Rechte erweitern.
+Prüfen Sie die Policy und das Login-Token. Erweitern Sie DMV-Rechte nicht ohne eine fachliche und sicherheitsbezogene Prüfung.
 
 ## 4. `DENIED_PERMISSION`
 
@@ -232,7 +232,7 @@ Ausreichend sind:
 - technische Fehlernummer;
 - Angabe, ob eine neue Anmeldung verwendet wurde.
 
-Nicht in ungeschützte Berichte, Tickets oder Downloads übernehmen:
+Übernehmen Sie die folgenden Informationen nicht in ungeschützte Berichte, Tickets oder Downloads:
 
 - reale Login- und Gruppennamen;
 - Server-, Instanz-, Domain- oder Datenbanknamen;

@@ -75,11 +75,11 @@ High-Impact-Bestätigung sind unabhängige Gates; beide müssen erfüllt sein.
 
 Vor dem ersten teuren Systemzugriff gilt:
 
-1. Steuerparameter und TABLE-Zuordnung validieren;
-2. tatsächlich aktivierte Analysepfade bestimmen;
-3. bei erforderlicher und fehlender Bestätigung mit
-   `HIGH_IMPACT_CONFIRMATION_REQUIRED` kontrolliert beenden;
-4. erst danach teure DMVs, Kataloge, Plan Cache, Query Store oder Eventdaten lesen.
+1. Das Verfahren validiert Steuerparameter und TABLE-Zuordnung.
+2. Es bestimmt die tatsächlich aktivierten Analysepfade.
+3. Bei erforderlicher und fehlender Bestätigung beendet es den Aufruf kontrolliert mit
+   `HIGH_IMPACT_CONFIRMATION_REQUIRED`.
+4. Erst danach liest es teure DMVs, Kataloge, Plan Cache, Query Store oder Eventdaten.
 
 Leichte Pfade verwenden keine Bestätigung. `USP_CurrentIO` gehört zur Klasse
 `STANDARD_CURRENT` und liest `sys.dm_io_virtual_file_stats(NULL, NULL)` je

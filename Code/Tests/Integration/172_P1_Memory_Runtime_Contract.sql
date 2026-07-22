@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Datei        : 172_P1_Memory_Runtime_Contract.sql
-Zweck        : Read-only Laufzeitverträge für vier P1-Speicherfälle.
+Zweck        : Prüft rein lesende Laufzeitverträge für vier P1-Speicherfälle.
 Datenschutz  : Technische DMV-Werte werden nur im laufenden Test verglichen und
                nicht in Repository- oder Downloadartefakte übernommen.
 Kosten       : MEM-BUFFER aktiviert den auf dem disposable Ziel erlaubten

@@ -65,7 +65,7 @@ BEGIN
         PRINT N'monitor.USP_DataCaptureStatus';
         PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern=like:...|regex:...|regexi:...; ein Pattern, keine Pipe-Liste.';
-        PRINT N'Keine Datenbank-Vorabbegrenzung; @MaxZeilen gilt global je fachlichem Resultset.';
+        PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; @MaxZeilen gilt global je fachlichem Resultset.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;

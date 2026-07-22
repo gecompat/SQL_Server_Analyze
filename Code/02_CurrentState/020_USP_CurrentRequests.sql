@@ -7,8 +7,9 @@ Objekt       : monitor.USP_CurrentRequests
 Version      : 2.2.0
 Stand        : 2026-07-21
 Typ          : Stored Procedure
-Zweck        : Aktive Requests mit Session-, Wait-, Memory-Grant-, Modul- und
-               exakt abgegrenztem SQL-Statement- sowie Ausführungs-/Verschachtelungskontext.
+Zweck        : Liefert aktive Requests mit Session-, Wait-, Memory-Grant-,
+               Modul- und exakt abgegrenztem SQL-Statement- sowie Ausführungs-
+               und Verschachtelungskontext.
 Filter       : Session-ID-Liste, exakte bracket-aware Textlisten und getrennte
                LIKE-/Regex-Patterns.
 SQL-Text     : Das laufende Statement wird über statement_start_offset und

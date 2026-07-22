@@ -140,7 +140,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_IndexOperationalStats';
-        PRINT N'Zweck: kumulative Zugriffs-, Lock-, Latch-, I/O-Latch-, Page-Split- und Eskalationszähler je Indexpartition.';
+        PRINT N'Die Procedure liefert kumulative Zugriffs-, Lock-, Latch-, I/O-Latch-, Page-Split- und Eskalationszähler je Indexpartition.';
         PRINT N'@DatabaseNames nvarchar(max) = NULL: im Einzelmodus Pflicht.';        PRINT N'@SystemdatenbankenEinbeziehen bit = 0; @DatenbankNameLike nvarchar(256) = NULL.';
         PRINT N'@SchemaNamePattern/@ObjectNamePattern: GEZIELT benötigt beide und vergleicht per Equality; Zeichen wie Unterstrich sind zulässig. VOLL behandelt sie als LIKE-Filter.';
         PRINT N'@IndexNamePattern nvarchar(256) = NULL: optionaler LIKE-Filter.';
