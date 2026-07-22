@@ -11,18 +11,18 @@ EXEC [monitor].[USP_ObjectInventory]
       @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Resetzeit, Reads, Updates, letzte Nutzung, PK/Unique/Constraint, Indexdefinition, Größe und saisonalen Workloadkontext.
+Lesen Sie Resetzeit, Reads, Updates, letzte Nutzung, PK-, Unique- und Constraint-Funktion, Indexdefinition und Größe zusammen mit dem saisonalen Workloadkontext.
 
-## Warum
+## Interpretation
 
 Viele Updates ohne Reads können unnötige Write-/Log-/Lockkosten anzeigen. Das gilt nur über ein belastbares Beobachtungsfenster.
 
 ## Gegenprobe
 
-Query Store, Plan Cache, Abhängigkeiten, Foreign Keys, Notfall-/Monatsreports und `USP_IndexOperationalStats`.
+Prüfen Sie Query Store, Plan Cache, Abhängigkeiten, Foreign Keys, seltene Notfall- oder Monatsreports und `USP_IndexOperationalStats` als Gegenproben.
 
-## Nicht tun
+## Nicht ableiten
 
-Keinen Index allein wegen `0 Reads` löschen.
+Löschen Sie keinen Index allein aufgrund von `0 Reads` im sichtbaren Beobachtungsfenster.

@@ -64,7 +64,7 @@ BEGIN
     BEGIN
         PRINT N'monitor.USP_EncryptionAnalysis';
         PRINT N'Bewertet TDE, Zertifikatlebenszyklus, explizite Backupverschluesselung sowie aggregierte Always-Encrypted- und Ledger-Metadaten.';
-        PRINT N'Keine Schluesselpfade, Thumbprints, verschluesselten Werte, Backupmedien, Konten oder privaten Schluessel werden gelesen.';
+        PRINT N'Es werden keine Schlüsselpfade, Thumbprints, verschlüsselten Werte, Backupmedien, Konten oder privaten Schlüssel gelesen.';
         PRINT N'Ein Zertifikat ohne lokale Backuphistorie ist nur ein Hinweis; ein externer Export kann trotzdem existieren.';
         RETURN;
     END;

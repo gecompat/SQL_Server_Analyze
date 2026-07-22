@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_RunSnapshotCollectionCycle
 Version      : 1.0.0
 Stand        : 2026-07-21
-Zweck        : Schedulerneutraler SC-023-Einstieg für genau einen leichten
-               Performance-Counter-Sammler und seine persistente Evidenz.
+Zweck        : Stellt den schedulerneutralen SC-023-Einstieg für genau einen
+               leichten Performance-Counter-Sammler und seine persistente
+               Evidenz bereit.
 Concurrency  : Benannte Session-Applock, Wartezeit 0; Parallelaufrufe lesen
                keine Quelle und enden als SKIPPED_CONCURRENT.
 ===============================================================================

@@ -45,7 +45,7 @@ Eine `DEEP_REVIEWED`-Seite beantwortet aus Sicht des Anwenders und aus Sicht der
 10. **Leere oder partielle Ausgabe:** Unterschied zwischen keiner Zeile, `NULL`, 0, fehlender Berechtigung, deaktivierter Quelle, Filterwirkung und gekürzter Ausgabe.
 11. **Folgeanalyse:** Mindestens eine zweite, möglichst unabhängige Evidenzquelle; keine automatische Änderungsanweisung.
 12. **Primärquellen:** Links auf passende Microsoft-Produktdokumentation bei versions-, berechtigungs-, locking- oder kostenrelevanten Aussagen.
-13. **Weiterführende Vertiefung (optional):** sorgfältig ausgewählte externe Fach- oder Open-Source-Quellen, wenn sie die praktische Diagnose oder eine alternative Aufbereitung konkret vertiefen.
+13. **Weiterführende Vertiefung (optional):** Wählen Sie externe Fach- oder Open-Source-Quellen sorgfältig aus und verwenden Sie diese nur, wenn sie die praktische Diagnose oder eine alternative Aufbereitung konkret vertiefen.
 
 Die gemeinsame Basis bildet das [Execution-, Zeit-, Evidenz- und Kostenmodell](Technical_Foundations.md). Vollständige Spaltentabellen dürfen im Familienguide bleiben, solange die Einzelseite die für die Entscheidung benötigten Schlüsselspalten erklärt und direkt auf die Detailtabelle verweist.
 
@@ -98,5 +98,7 @@ Eine externe Quelle wird nur aufgenommen, wenn sie einen konkreten Mehrwert für
 ## Automatische und manuelle Prüfung
 
 Die Strukturprüfung `Code/Tests/Static/900_Validate_Analysis_Documentation.ps1` vergleicht Referenz, SQL-Signaturen, Seiten, Resultset-Inventar und Review-Manifest. Für `DEEP_REVIEWED` erzwingt sie die Vertragsüberschriften, alle Kostendimensionen, Primärquellen, Beispielkennzeichnung und eine substanzielle Mindesttiefe. Falls ein Abschnitt `Weiterführende Vertiefung` existiert, prüft sie außerdem die Trennung von Microsoft-Primärquellen und externen HTTPS-Quellen. Die externe Linkprüfung kontrolliert URL-Struktur und dauerhafte HTTP-Fehler.
+
+Die Stilprüfung `Code/Tests/Static/915_Validate_Documentation_Style.py` blockiert bekannte Rückfälle in generische Procedure-Standardabsätze, fragmentarische Leserichtungen sowie nominale Zweck- und Hilfeformulierungen. Sie setzt die öffentliche Schreibstilrichtlinie für objektiv erkennbare Muster um, kann aber keine grammatikalische oder fachliche Gesamtbewertung automatisieren.
 
 Diese Gates erkennen fehlende oder widersprüchliche Struktur, beweisen aber weder fachliche Richtigkeit noch angemessene Kosten im konkreten Produktionssystem. Vor jedem Merge bleiben ein manueller T-SQL-Abgleich, fachlicher Review und Datenschutzcheck des vollständigen Diffs verpflichtend.

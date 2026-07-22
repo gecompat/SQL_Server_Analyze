@@ -7,7 +7,7 @@ Objekt       : monitor.TVF_InterpretAvailabilityDatabaseState
 Version      : 1.0.0
 Stand        : 2026-07-18
 Typ          : Inline Table-valued Function
-Zweck        : Reiner Klassifikationsvertrag für den Zustand einer AG-Datenbank.
+Zweck        : Klassifiziert den Zustand einer AG-Datenbank ohne Seiteneffekte.
 Datenschutz  : Verarbeitet ausschließlich übergebene technische Status- und
                Zählerwerte; keine Namen, Texte oder Umgebungswerte.
 Grenzen      : Momentaufnahme. Queue- und Lag-Grenzen sind Sichtungswerte und

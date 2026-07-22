@@ -4,8 +4,9 @@ GO
 /*
 ===============================================================================
 Datei        : 110_Smoke_Test.sql
-Zweck        : Kompakter optionaler Smoke Test nach Installation oder Upgrade.
-               Keine Persistenz, keine Konfigurationsänderung, keine Deep-Scans.
+Zweck        : Führt nach einer Installation oder einem Upgrade einen kompakten,
+               optionalen Smoke-Test aus. Der Test persistiert keine Daten,
+               ändert keine Konfiguration und führt keine Deep-Scans aus.
 ===============================================================================
 */
 SET NOCOUNT ON;

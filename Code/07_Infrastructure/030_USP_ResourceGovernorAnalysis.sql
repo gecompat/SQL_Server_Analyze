@@ -69,7 +69,7 @@ BEGIN
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE; der Steuerwert ist case-insensitiv.';
         PRINT N'@JsonErzeugen=1 erzeugt @Json OUTPUT mit benannten Arrays.';
         PRINT N'RequestMaxMemoryGrantPercent wird als decimal(9,4) ausgegeben; der Datentyp ist kein Bestandteil des Spaltennamens.';
-        PRINT N'Keine ALTER RESOURCE GOVERNOR- oder RECONFIGURE-Anweisung.';
+        PRINT N'Die Procedure führt weder ALTER RESOURCE GOVERNOR noch RECONFIGURE aus.';
         RETURN;
     END;
 

@@ -32,7 +32,7 @@ Für einen synthetischen Filter kann beispielsweise `@Suchtext1 = N'ExampleWave2
 
 ## Resultsets und Leserichtung
 
-Der typisierte Vertrag registriert `moduleStatus`, `summary`, `details`, `sourceStatus` und `warnings`. Zuerst `moduleStatus` und `sourceStatus` lesen: `HasMoreSourceRows`, `AVAILABLE_LIMITED`, verweigerte Archive und die Serverlokalzeit bestimmen die Aussagegrenze. Danach `summary` nach Produkt und Kategorie auswerten. `details` bleibt im Standard leer und enthält nur bei explizitem Opt-in den Unicode-sicher projizierten Meldungstext. `warnings` fasst Quelllücken und das globale Quelllimit zusammen.
+Der typisierte Vertrag registriert `moduleStatus`, `summary`, `details`, `sourceStatus` und `warnings`. Lesen Sie zuerst `moduleStatus` und `sourceStatus`: `HasMoreSourceRows`, `AVAILABLE_LIMITED`, verweigerte Archive und die Serverlokalzeit bestimmen die Aussagegrenze. Werten Sie danach `summary` nach Produkt und Kategorie aus. `details` bleibt im Standard leer und enthält nur bei einem ausdrücklichen Opt-in den Unicode-sicher projizierten Meldungstext. `warnings` fasst Quelllücken und das globale Quelllimit zusammen.
 
 ## Eine Zeile bedeutet
 
@@ -40,7 +40,7 @@ In `summary` bedeutet eine Zeile eine Kombination aus Produkt (`SQL_SERVER` oder
 
 ## So lesen
 
-Zuerst Zeitsemantik und Archivgrenze prüfen, dann vollständige und partielle Quellen trennen. Anschließend `EventCount`, ersten und letzten Zeitpunkt gemeinsam lesen. Ein wiederkehrendes Ereignis nahe dem Störungsfenster ist stärker als ein alter Einzelwert, bleibt aber eine Korrelation. Bei Details zeigen `MessageCharacters`, `MessageBytes` und `MessageIsTruncated`, ob der Text vollständig sichtbar ist. Mehrere Regeln können denselben Eintrag treffen; die Procedure dedupliziert nach Produkt, Archiv, Zeit, ProcessInfo und Text-Hash.
+Prüfen Sie zuerst die Zeitsemantik und Archivgrenze. Unterscheiden Sie danach vollständige und partielle Quellen. Berücksichtigen Sie anschließend `EventCount` sowie den ersten und letzten Zeitpunkt gemeinsam. Ein wiederkehrendes Ereignis nahe dem Störungsfenster ist aussagekräftiger als ein alter Einzelwert, bleibt jedoch eine Korrelation. Bei Details zeigen `MessageCharacters`, `MessageBytes` und `MessageIsTruncated`, ob der Text vollständig sichtbar ist. Mehrere Regeln können denselben Eintrag treffen; die Procedure dedupliziert nach Produkt, Archiv, Zeit, ProcessInfo und Text-Hash.
 
 ## Warum kann das problematisch sein?
 
@@ -56,7 +56,7 @@ Ein Treffer kann zu geplanter Wartung, einem bekannten Test oder einem bereits b
 
 **Gegenbeispiel:** Ein einzelner alter Backupfehler in Archiv 4 bei anschließend grüner Backupkette und erfolgreichem Restoretest rechtfertigt keine aktuelle Störungsaussage.
 
-**Nicht entscheidbar:** `NOT_EXECUTED_ROW_LIMIT` oder fehlende Rechte bei einzelnen Archiven verhindern Entwarnung. Scope enger setzen oder die Quelle mit autorisierten Rechten erneut prüfen.
+**Nicht entscheidbar:** `NOT_EXECUTED_ROW_LIMIT` oder fehlende Rechte bei einzelnen Archiven verhindern eine Entwarnung. Begrenzen Sie den Scope stärker oder prüfen Sie die Quelle mit autorisierten Rechten erneut.
 
 ## Leere oder partielle Ausgabe
 
@@ -117,7 +117,7 @@ EXEC [master].[sys].[sp_readerrorlog]
 
 ### Bewertung und Gegenprobe
 
-Kategorie, Wiederholung und zeitliche Nähe zuerst; dann passende Fachquelle wie Current I/O, Backupkette, Agentstatus oder OS-Telemetrie prüfen.
+Bewerten Sie zuerst Kategorie, Wiederholung und zeitliche Nähe. Prüfen Sie danach eine passende Fachquelle wie Current I/O, Backupkette, Agentstatus oder OS-Telemetrie.
 
 ### Typische Fehlinterpretation
 
@@ -125,7 +125,7 @@ Ein Keywordtreffer ist keine bestätigte Ursache; kein Treffer ist ohne vollstä
 
 ### Folgeanalyse
 
-`USP_CurrentIO`, `USP_BackupChainAnalysis`, `USP_AgentMonitoringAnalysis` sowie autorisierte OS-/Storage-Telemetrie.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_CurrentIO`, `USP_BackupChainAnalysis`, `USP_AgentMonitoringAnalysis` sowie autorisierte OS-/Storage-Telemetrie.
 
 ## Primärquellen
 

@@ -20,15 +20,15 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Technischer Hintergrund:** Das Framework besitzt eine zusätzliche Berechtigungsschiene oberhalb der SQL-Server-Quellberechtigungen. Es prüft Original- und Effektivlogin, sysadmin-Bypass sowie sichtbare Login-/Gruppentokens. Existiert für eine Analyseklasse keine Policy, bleibt sie gemäß Frameworkvertrag offen; existieren Policies, muss eine passende erlaubende Mitgliedschaft sichtbar sein.
 
-**Datenkette:** `sys.login_token`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `sys.login_token`.
 
-**Zeit-/Scope-Modell:** Momentaufnahme des aktuellen Login- und Execution-Kontexts. Gruppenauflösung kann sich durch Token, Impersonation oder Verzeichniszustand vom erwarteten Benutzerbild unterscheiden.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Momentaufnahme des aktuellen Login- und Execution-Kontexts. Gruppenauflösung kann sich durch Token, Impersonation oder Verzeichniszustand vom erwarteten Benutzerbild unterscheiden.
 
-**Bewertung und Gegenprobe:** `IsAllowed`, Policyanzahl, gematchte Gruppen und AccessReason gemeinsam lesen. Ein Deny bei vorhandener Policy und ohne Match ist erwartetes Policyverhalten; SQL-Quellrechte zu erweitern würde die Frameworksperre nicht fachlich lösen.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: `IsAllowed`, Policyanzahl, gematchte Gruppen und AccessReason gemeinsam lesen. Ein Deny bei vorhandener Policy und ohne Match ist erwartetes Policyverhalten; SQL-Quellrechte zu erweitern würde die Frameworksperre nicht fachlich lösen.
 
 **Typische Fehlinterpretation:** `IsAllowed=1` beweist nicht, dass die benötigten DMVs tatsächlich lesbar sind. Umgekehrt ist ein leeres Fachresultset kein Beweis für Policy-Deny.
 
-**Folgeanalyse:** `USP_CheckFrameworkCapabilities` trennt anschließend Feature-, Rechte- und Queryabilityprobleme.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CheckFrameworkCapabilities` trennt anschließend Feature-, Rechte- und Queryabilityprobleme.
 
 ### `[monitor].[USP_CheckFrameworkCapabilities]`
 
@@ -36,15 +36,15 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Technischer Hintergrund:** Version, Edition, Featurekonfiguration und formale Permission sind verschiedene Ebenen. Die Procedure führt capability-orientierte Prüfungen aus und kann geschützte Testabfragen dynamisch ausführen. Dadurch wird zwischen `supported`, `enabled`, `permitted`, `queryable` und `usable` unterschieden.
 
-**Datenkette:** `sys.sp_executesql`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `sys.sp_executesql`.
 
-**Zeit-/Scope-Modell:** Aktueller Umgebungszustand; Ergebnisse können sich nach Konfigurationsänderung, Failover, Datenbankstatuswechsel oder Berechtigungsänderung ändern.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Aktueller Umgebungszustand; Ergebnisse können sich nach Konfigurationsänderung, Failover, Datenbankstatuswechsel oder Berechtigungsänderung ändern.
 
-**Bewertung und Gegenprobe:** Die Prüfkette in der dokumentierten Reihenfolge lesen. `HasRequiredPermission=1` bei `IsQueryable=0` weist auf eine zusätzliche Laufzeitgrenze hin. `IsFeatureEnabled=0` kann bei bewusst ungenutztem Feature normal sein.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Die Prüfkette in der dokumentierten Reihenfolge lesen. `HasRequiredPermission=1` bei `IsQueryable=0` weist auf eine zusätzliche Laufzeitgrenze hin. `IsFeatureEnabled=0` kann bei bewusst ungenutztem Feature normal sein.
 
 **Typische Fehlinterpretation:** Capability ist kein Nachweis, dass relevante Daten vorhanden sind. Query Store kann nutzbar, aber leer sein; XE kann abfragbar, aber ohne passende Session sein.
 
-**Folgeanalyse:** Nur Fachmodule starten, deren benötigte Quelle nutzbar ist; bei Partialstatus die jeweilige Datenbank/Quelle gezielt prüfen.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: Nur Fachmodule starten, deren benötigte Quelle nutzbar ist; bei Partialstatus die jeweilige Datenbank/Quelle gezielt prüfen.
 
 ### `[monitor].[USP_PrepareDatabaseCandidates]`
 
@@ -52,17 +52,17 @@ Ein Snapshot beantwortet nur, was beim Lesen sichtbar war. Kumulative Session- o
 
 **Technischer Hintergrund:** Die Procedure bildet aus exakten Namen oder Pattern einen stabilen Kandidatenscope. Sie liest Datenbankstatus aus Systemkatalogen, berücksichtigt Systemdatenbanken, Zugriffsregeln, Online-/User-Access-Zustand und explizite Auswahl. Sie stellt den Scope über eine Temp-Tabelle für aufrufende Module bereit.
 
-**Datenkette:** `master.sys.databases`, `sys.sp_executesql`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.databases`, `sys.sp_executesql`.
 
-**Zeit-/Scope-Modell:** Momentaufnahme der Datenbankliste. Zwischen Kandidatenermittlung und späterer dynamischer Abfrage kann eine Datenbank offline gehen, failovern oder gelöscht werden.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Momentaufnahme der Datenbankliste. Zwischen Kandidatenermittlung und späterer dynamischer Abfrage kann eine Datenbank offline gehen, failovern oder gelöscht werden.
 
-**Bewertung und Gegenprobe:** Explizit angeforderte, aber ausgeschlossene Datenbanken müssen als fehlende Evidenz dokumentiert werden. Eine Analyse über neun von zehn angeforderten Datenbanken ist nicht automatisch eine vollständige Entwarnung.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Explizit angeforderte, aber ausgeschlossene Datenbanken müssen als fehlende Evidenz dokumentiert werden. Eine Analyse über neun von zehn angeforderten Datenbanken ist nicht automatisch eine vollständige Entwarnung.
 
 **Typische Fehlinterpretation:** Pattern und explizite Liste dürfen nicht
 stillschweigend als derselbe Auftrag behandelt werden. Ein Partialstatus und
 Warnings für nicht verfügbare explizite Datenbanken sind fachlich relevant.
 
-**Folgeanalyse:** Warnings und OUTPUT-Status zusammen mit jedem Cross-Database-Resultset lesen.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: Warnings und OUTPUT-Status zusammen mit jedem Cross-Database-Resultset lesen.
 
 ### `[monitor].[USP_PrepareNameFilters]`
 
@@ -70,15 +70,15 @@ Warnings für nicht verfügbare explizite Datenbanken sind fachlich relevant.
 
 **Technischer Hintergrund:** Die Procedure ist ein Schutzbaustein für Filter. Quote-/Bracket-aware Parser verhindern, dass Trenner innerhalb korrekt geklammerter Namen falsch zerlegt werden. Validierte Werte werden in Temp-Strukturen geschrieben; ungültige Eingaben führen kontrolliert zu leerem/ungültigem Filterstatus.
 
-**Datenkette:** Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
 
-**Zeit-/Scope-Modell:** Nur für den aktuellen Aufruf; keine Persistenz.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Nur für den aktuellen Aufruf; keine Persistenz.
 
-**Bewertung und Gegenprobe:** Case-Sensitivität, Duplikate, leere Elemente und ungültige Quote-/Bracketstruktur explizit behandeln. Ein absichtlich leerer Filter und ein aufgrund von Fehler geleerter Filter müssen unterscheidbar bleiben.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Case-Sensitivität, Duplikate, leere Elemente und ungültige Quote-/Bracketstruktur explizit behandeln. Ein absichtlich leerer Filter und ein aufgrund von Fehler geleerter Filter müssen unterscheidbar bleiben.
 
 **Typische Fehlinterpretation:** Eine leere Filtertabelle nach `INVALID_PARAMETER` darf nie als Freigabe für eine ungefilterte breite Analyse dienen.
 
-**Folgeanalyse:** Eingabe korrigieren und das aufrufende Fachmodul erneut starten.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: Eingabe korrigieren und das aufrufende Fachmodul erneut starten.
 
 ## 3. Current State
 
@@ -92,15 +92,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** `sys.dm_exec_sessions` hält den Sitzungskontext, während `sys.dm_exec_connections` Transport-/Verbindungsdaten und `sys.dm_exec_requests` aktuelle Arbeit ergänzt. Sessionzähler wie CPU oder Reads akkumulieren über die Session; Connection Pools können Sessions lange offen und `sleeping` halten.
 
-**Datenkette:** `master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
 
-**Zeit-/Scope-Modell:** Sessionmomentaufnahme mit kumulativen Zählern seit Sessionbeginn. Session-IDs können nach Ende wiederverwendet werden; Uhrzeit und Login-/Connectionkontext gehören zur Identität.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Sessionmomentaufnahme mit kumulativen Zählern seit Sessionbeginn. Session-IDs können nach Ende wiederverwendet werden; Uhrzeit und Login-/Connectionkontext gehören zur Identität.
 
-**Bewertung und Gegenprobe:** `sleeping` ohne offene Transaktion ist häufig normal. `sleeping` mit offener Transaktion, Locks oder wachsendem Logverbrauch ist wesentlich kritischer. Hohe kumulative CPU einer alten Poolsession beweist keine aktuelle Last.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: `sleeping` ohne offene Transaktion ist häufig normal. `sleeping` mit offener Transaktion, Locks oder wachsendem Logverbrauch ist wesentlich kritischer. Hohe kumulative CPU einer alten Poolsession beweist keine aktuelle Last.
 
 **Typische Fehlinterpretation:** `LastRequestEndTime` ist nicht automatisch Transaktionsende. Clientangaben wie Host/Program sind nicht manipulationssicher.
 
-**Folgeanalyse:** `USP_CurrentTransactions`; bei aktiver Arbeit `USP_CurrentRequests`; bei Auswirkungen `USP_CurrentBlocking`.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CurrentTransactions`; bei aktiver Arbeit `USP_CurrentRequests`; bei Auswirkungen `USP_CurrentBlocking`.
 
 ### `[monitor].[USP_CurrentRequests]`
 
@@ -108,15 +108,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** `sys.dm_exec_requests` liefert Status, Command, Laufzeit, CPU, Reads/Writes, Blocking, Wait und Plan-/Statementhandles. Sessions/Connections geben Herkunft, Waiting Tasks zeigen parallele Task-Waits, Memory Grants den Workspace-Memory-Zustand. Statementoffsets schneiden aus dem Batchtext das aktuell ausgeführte Statement.
 
-**Datenkette:** `master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_input_buffer`, `sys.dm_exec_query_memory_grants`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`, `sys.objects`, `sys.schemas`, `sys.sp_executesql`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_input_buffer`, `sys.dm_exec_query_memory_grants`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`, `sys.objects`, `sys.schemas`, `sys.sp_executesql`.
 
-**Zeit-/Scope-Modell:** Flüchtiger Snapshot; Requestzähler gelten seit Requeststart. Ein Request kann zwischen den einzelnen DMV-Lesungen Status oder Taskbild ändern.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Flüchtiger Snapshot; Requestzähler gelten seit Requeststart. Ein Request kann zwischen den einzelnen DMV-Lesungen Status oder Taskbild ändern.
 
-**Bewertung und Gegenprobe:** Elapsed, CPU, Reads, Writes, Row Count, Waits, Blocking und Grant zusammen lesen. Hohe Elapsed bei niedriger CPU legt Warten nahe; hohe CPU plus hohe Reads legt datenintensive Arbeit nahe. Bei mehreren Tasks ist der Request-Hauptwait nicht das vollständige Waitbild.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Elapsed, CPU, Reads, Writes, Row Count, Waits, Blocking und Grant zusammen lesen. Hohe Elapsed bei niedriger CPU legt Warten nahe; hohe CPU plus hohe Reads legt datenintensive Arbeit nahe. Bei mehreren Tasks ist der Request-Hauptwait nicht das vollständige Waitbild.
 
 **Typische Fehlinterpretation:** Ein angezeigter SQL-Text kann Batch statt Ursache sein; der aktive Statementausschnitt ist relevanter. `PercentComplete` existiert nur für unterstützte Commands und ist keine universelle Fortschrittsmessung.
 
-**Folgeanalyse:** Blocking → `USP_CurrentBlocking`; Grants → `USP_CurrentMemoryGrants`; I/O → `USP_CurrentIO`; Plan → `USP_ShowplanAnalysis`.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: Blocking → `USP_CurrentBlocking`; Grants → `USP_CurrentMemoryGrants`; I/O → `USP_CurrentIO`; Plan → `USP_ShowplanAnalysis`.
 
 ### `[monitor].[USP_CurrentBlocking]`
 
@@ -124,15 +124,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** Blocking entsteht, wenn ein Task einen Lock oder eine andere blockierende Ressource benötigt, die inkompatibel gehalten wird. Die Procedure korreliert Request-/Taskblocker, Sessions, SQL-Kontext und Locks und rekonstruiert Kanten beziehungsweise Ketten. Ein Root Blocker ist die oberste sichtbare Session ohne weiteren sichtbaren Blocker.
 
-**Datenkette:** `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, `sys.dm_tran_locks`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, `sys.dm_tran_locks`.
 
-**Zeit-/Scope-Modell:** Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
 
-**Bewertung und Gegenprobe:** Anzahl Opfer, längste Wartezeit, Lock-/Ressourcentyp, offene Transaktion und Zustand des Root Blockers gemeinsam bewerten. Ein aktiv arbeitender Root Blocker kann Fortschritt machen; ein sleeping Root Blocker mit alter Transaktion ist verdächtiger.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Anzahl Opfer, längste Wartezeit, Lock-/Ressourcentyp, offene Transaktion und Zustand des Root Blockers gemeinsam bewerten. Ein aktiv arbeitender Root Blocker kann Fortschritt machen; ein sleeping Root Blocker mit alter Transaktion ist verdächtiger.
 
 **Typische Fehlinterpretation:** Die am längsten wartende Session ist nicht automatisch Ursache. `KILL` eines Opfers entfernt den Root Lock nicht; `KILL` des Root Blockers kann langen Rollback und weitere Last auslösen.
 
-**Folgeanalyse:** `USP_CurrentTransactions`, `USP_CurrentRequests`; für Historie Blocked-Process-/Deadlock-XE.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CurrentTransactions`, `USP_CurrentRequests`; für Historie Blocked-Process-/Deadlock-XE.
 
 ### `[monitor].[USP_CurrentWaits]`
 
@@ -140,15 +140,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** Die Procedure kombiniert aktuelle Waiting Tasks mit instanzweiten abgeschlossenen Waits und optionalem Delta. Ressource, Signalzeit, Taskparallelität und Waitfamilie gehören zum technischen Modell.
 
-**Datenkette:** `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_sys_info`, `sys.dm_os_wait_stats`, `sys.dm_os_waiting_tasks`, `sys.sp_executesql`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_sys_info`, `sys.dm_os_wait_stats`, `sys.dm_os_waiting_tasks`, `sys.sp_executesql`.
 
-**Zeit-/Scope-Modell:** Tasksnapshot plus kumulativer Kontext oder gültiges Sampledelta. Current Tasks werden vor der optionalen Samplingpause erfasst.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Tasksnapshot plus kumulativer Kontext oder gültiges Sampledelta. Current Tasks werden vor der optionalen Samplingpause erfasst.
 
-**Bewertung und Gegenprobe:** Waittyp, Dauer, Anzahl, Resource/Signalanteil, Workloadwirkung und zweite Evidenzquelle kombinieren.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Waittyp, Dauer, Anzahl, Resource/Signalanteil, Workloadwirkung und zweite Evidenzquelle kombinieren.
 
 **Typische Fehlinterpretation:** Ein Wait ist keine Root Cause und ein hoher kumulativer Wert kein aktuelles Problem.
 
-**Folgeanalyse:** Vollständige Vertiefung in `Deep_Analysis_Documentation_Draft.md`; je Familie Blocking, I/O, Grants, CPU oder HADR weiterverfolgen.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: Vollständige Vertiefung in `Deep_Analysis_Documentation_Draft.md`; je Familie Blocking, I/O, Grants, CPU oder HADR weiterverfolgen.
 
 ### `[monitor].[USP_CurrentTransactions]`
 
@@ -156,15 +156,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** Transaktions-DMVs verbinden Datenbank-/Sessiontransaktionen mit Beginn, Zustand, Logbytes und Session/Request. Commit oder Rollback beendet die logische Transaktion; bis dahin können Locks und die für Recovery benötigte Logkette erhalten bleiben. Eine alte aktive Transaktion kann Logtruncation verhindern.
 
-**Datenkette:** `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_tran_active_transactions`, `sys.dm_tran_database_transactions`, `sys.dm_tran_session_transactions`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_tran_active_transactions`, `sys.dm_tran_database_transactions`, `sys.dm_tran_session_transactions`.
 
-**Zeit-/Scope-Modell:** Aktueller offener Zustand; Alter seit Transaktionsbeginn. Logbytes und Locks können während der Abfrage weiter wachsen.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Aktueller offener Zustand; Alter seit Transaktionsbeginn. Logbytes und Locks können während der Abfrage weiter wachsen.
 
-**Bewertung und Gegenprobe:** Alter, Sessionstatus, Requestfortschritt, Logverbrauch, Blockingopfer und `log_reuse_wait_desc` korrelieren. Lange Batchloads können legitim sein, benötigen aber Kapazitäts- und Fortschrittskontrolle.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Alter, Sessionstatus, Requestfortschritt, Logverbrauch, Blockingopfer und `log_reuse_wait_desc` korrelieren. Lange Batchloads können legitim sein, benötigen aber Kapazitäts- und Fortschrittskontrolle.
 
 **Typische Fehlinterpretation:** `OpenTransactionCount>0` nennt nicht automatisch die äußerste fachliche Transaktion; implizite, verschachtelte oder verteilte Kontexte beachten. Ein Rollback kann ungefähr so teuer wie die bisherige Änderung sein.
 
-**Folgeanalyse:** `USP_CurrentBlocking`, `USP_CurrentLog`, Request/Anwendungs-Transaktionslogik.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CurrentBlocking`, `USP_CurrentLog`, Request/Anwendungs-Transaktionslogik.
 
 ### `[monitor].[USP_CurrentMemoryGrants]`
 
@@ -172,15 +172,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** Der Optimizer schätzt den benötigten Query Execution Memory Grant aus Plan, Kardinalität, Row Size und DOP. Ein Request kann erst starten beziehungsweise bestimmte Operatoren ausführen, wenn der Grant verfügbar ist. `sys.dm_exec_query_memory_grants` zeigt angefordert, gewährt, genutzt und ideal sowie wartende Grants.
 
-**Datenkette:** `sys.databases`, `sys.dm_exec_query_memory_grants`, `sys.dm_exec_query_resource_semaphores`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `sys.databases`, `sys.dm_exec_query_memory_grants`, `sys.dm_exec_query_resource_semaphores`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`.
 
-**Zeit-/Scope-Modell:** Flüchtiger Zustand. Wartende Grants verschwinden bei Zuteilung/Abbruch; Nutzung verändert sich während der Ausführung.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Flüchtiger Zustand. Wartende Grants verschwinden bei Zuteilung/Abbruch; Nutzung verändert sich während der Ausführung.
 
-**Bewertung und Gegenprobe:** Wartedauer, Requested/Granted/Used/Ideal, DOP, Konkurrenz und Planoperatoren zusammen lesen. Große tatsächlich genutzte Grants können korrekt sein; großer ungenutzter Anteil spricht eher für Übergrant oder Schätzfehler.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Wartedauer, Requested/Granted/Used/Ideal, DOP, Konkurrenz und Planoperatoren zusammen lesen. Große tatsächlich genutzte Grants können korrekt sein; großer ungenutzter Anteil spricht eher für Übergrant oder Schätzfehler.
 
 **Typische Fehlinterpretation:** `GrantedMemory=0` kann vor Start normal kurz sichtbar sein; ein einzelner großer Grant beweist keinen Servermemorymangel. Server Memory und Query Execution Memory sind verwandte, aber nicht identische Ebenen.
 
-**Folgeanalyse:** `USP_CurrentRequests`, `USP_ServerMemory`, Showplan/Statistics und Query Store Runtime.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CurrentRequests`, `USP_ServerMemory`, Showplan/Statistics und Query Store Runtime.
 
 ### `[monitor].[USP_CurrentTempDB]`
 
@@ -188,15 +188,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** TempDB speichert User Objects, Internal Objects für Sort/Hash/Spool/Worktables, Version Store sowie freie/ungeordnete Bereiche. Datei-Space-DMVs und Session-/Task-Space-Usage besitzen unterschiedliche Aggregation. Version Store wird durch zeilenversionsbasierte Isolation und weitere Enginefeatures erzeugt.
 
-**Datenkette:** `sys.database_files`, `sys.dm_db_session_space_usage`, `sys.dm_exec_sessions`, `sys.sp_executesql`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `sys.database_files`, `sys.dm_db_session_space_usage`, `sys.dm_exec_sessions`, `sys.sp_executesql`.
 
-**Zeit-/Scope-Modell:** Aktueller Datei-/Datenbankzustand; Session-/Taskzähler seit Request/Sessionaktivität. Version Store kann nach Transaktionsende verzögert bereinigt werden.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Aktueller Datei-/Datenbankzustand; Session-/Taskzähler seit Request/Sessionaktivität. Version Store kann nach Transaktionsende verzögert bereinigt werden.
 
-**Bewertung und Gegenprobe:** Zuerst Belegungsart trennen, dann Verbraucher und Wachstum prüfen. Internal Objects plus Spillwarnung führt zum Plan; Version Store plus alte Snapshottransaktion zur Transaktionsanalyse; User Objects zu Tempobjekten.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Zuerst Belegungsart trennen, dann Verbraucher und Wachstum prüfen. Internal Objects plus Spillwarnung führt zum Plan; Version Store plus alte Snapshottransaktion zur Transaktionsanalyse; User Objects zu Tempobjekten.
 
 **Typische Fehlinterpretation:** Hohe Gesamtbelegung oder eine große Datei nennt keine Ursache. Freier Platz innerhalb TempDB und freier Volumeplatz sind verschiedene Größen.
 
-**Folgeanalyse:** `USP_CurrentRequests`, `USP_CurrentTransactions`, `USP_TempDBConfiguration`, Showplan.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CurrentRequests`, `USP_CurrentTransactions`, `USP_TempDBConfiguration`, Showplan.
 
 ### `[monitor].[USP_CurrentIO]`
 
@@ -204,15 +204,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** `sys.dm_io_virtual_file_stats` liefert kumulative Read-/Writeanzahl, Bytes und Stalls pro Daten-/Logdatei. Aus Differenzen zweier Messungen entstehen aktuelle IOPS, Durchsatz und Latenz. Dateimetadaten lösen Database/File/Type auf.
 
-**Datenkette:** `master.sys.master_files`, `sys.dm_io_virtual_file_stats`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.master_files`, `sys.dm_io_virtual_file_stats`.
 
-**Zeit-/Scope-Modell:** Kumulativ seit Start/Dateizustand oder Sampledelta. Reset, Restart, Dateiwechsel und sehr kleine Nenner begrenzen Vergleichbarkeit.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Kumulativ seit Start/Dateizustand oder Sampledelta. Reset, Restart, Dateiwechsel und sehr kleine Nenner begrenzen Vergleichbarkeit.
 
-**Bewertung und Gegenprobe:** Reads und Writes getrennt bewerten; Latenz immer mit Operationszahl, Bytes und Sampledauer lesen. Datenfiles und Logfiles besitzen unterschiedliche I/O-Muster. Parallel sichtbare PAGEIOLATCH/WRITELOG- und Requestwerte erhöhen die Evidenz.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Reads und Writes getrennt bewerten; Latenz immer mit Operationszahl, Bytes und Sampledauer lesen. Datenfiles und Logfiles besitzen unterschiedliche I/O-Muster. Parallel sichtbare PAGEIOLATCH/WRITELOG- und Requestwerte erhöhen die Evidenz.
 
 **Typische Fehlinterpretation:** Eine einzelne Operation mit 500 ms erzeugt 500 ms Durchschnitt, aber keine anhaltende Last. DMV-Stall enthält Queueing aus SQL-Sicht, nicht automatisch reine Geräte-Servicezeit.
 
-**Folgeanalyse:** `USP_CurrentRequests`, `USP_CurrentWaits`, `USP_CurrentLog`; externe OS-/Storage-Telemetrie.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CurrentRequests`, `USP_CurrentWaits`, `USP_CurrentLog`; externe OS-/Storage-Telemetrie.
 
 ### `[monitor].[USP_CurrentLog]`
 
@@ -220,15 +220,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** Das Log ist eine sequenzielle Recoverystruktur aus VLFs. Log Records müssen für Commit gehärtet und für Recovery/Backup/HADR/Replication je nach Konfiguration erhalten werden. Space-Usage, Filemetadaten, VLF-Kontext und `log_reuse_wait_desc` erklären verschiedene Ebenen.
 
-**Datenkette:** `master.sys.databases`, `sys.dm_db_log_info`, `sys.dm_db_log_space_usage`, `sys.dm_db_log_stats`, `sys.dm_tran_persistent_version_store_stats`, `sys.sp_executesql`.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: `master.sys.databases`, `sys.dm_db_log_info`, `sys.dm_db_log_space_usage`, `sys.dm_db_log_stats`, `sys.dm_tran_persistent_version_store_stats`, `sys.sp_executesql`.
 
-**Zeit-/Scope-Modell:** Aktueller Space-/Reusezustand; Filegröße und VLFs Metadaten, einzelne Zähler kumulativ. Reuse-Wait kann sich nach Backup/Commit rasch ändern.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Aktueller Space-/Reusezustand; Filegröße und VLFs Metadaten, einzelne Zähler kumulativ. Reuse-Wait kann sich nach Backup/Commit rasch ändern.
 
-**Bewertung und Gegenprobe:** Used Percent, absolute freie MB, Wachstumsoption, Volumeplatz und Reuse-Wait zusammen lesen. `ACTIVE_TRANSACTION`, `LOG_BACKUP`, `AVAILABILITY_REPLICA` oder `REPLICATION` führen zu unterschiedlichen Maßnahmen.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Used Percent, absolute freie MB, Wachstumsoption, Volumeplatz und Reuse-Wait zusammen lesen. `ACTIVE_TRANSACTION`, `LOG_BACKUP`, `AVAILABILITY_REPLICA` oder `REPLICATION` führen zu unterschiedlichen Maßnahmen.
 
 **Typische Fehlinterpretation:** Logvergrößerung beseitigt die Reuse-Ursache nicht. Shrink ist keine dauerhafte Lösung und kann VLF-/Autogrowthprobleme verschärfen.
 
-**Folgeanalyse:** `USP_CurrentTransactions`, Backup-/AG-/Replicationmodule, `USP_CurrentIO` für Logfilelatenz.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: `USP_CurrentTransactions`, Backup-/AG-/Replicationmodule, `USP_CurrentIO` für Logfilelatenz.
 
 ### `[monitor].[USP_CurrentOverview]`
 
@@ -236,15 +236,15 @@ Ein Worker läuft entweder auf CPU (`RUNNING`), wartet auf eine Ressource/ein Er
 
 **Technischer Hintergrund:** Der Orchestrator ruft Childmodule mit definierten Schaltern auf und sammelt Resultsets, JSON-/Statusverträge und Fehlergrenzen. Er erzeugt keine neue einheitliche Messmethode; jedes Child behält sein eigenes Zeitmodell.
 
-**Datenkette:** Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
+**Datenquellen:** Die Analyse verwendet folgende Datenquellen und Ausführungspfade: Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
 
-**Zeit-/Scope-Modell:** Nahe beieinanderliegende, aber nicht atomare Momentaufnahmen; Samplingchildren können den Aufruf verlängern.
+**Zeit- und Scopemodell:** Die zeitliche und fachliche Aussage ist wie folgt begrenzt: Nahe beieinanderliegende, aber nicht atomare Momentaufnahmen; Samplingchildren können den Aufruf verlängern.
 
-**Bewertung und Gegenprobe:** Zuerst Modulstatus und Partialflags, dann nur auffällige Children vertiefen. Korrelation ist möglich, wenn dieselbe Session/DB/Datei in mehreren Children erscheint.
+**Bewertung und Gegenprobe:** Für die Bewertung und Gegenprobe gelten folgende Prüfschritte: Zuerst Modulstatus und Partialflags, dann nur auffällige Children vertiefen. Korrelation ist möglich, wenn dieselbe Session/DB/Datei in mehreren Children erscheint.
 
 **Typische Fehlinterpretation:** Ein unauffälliger Overview beweist nicht, dass zwischen Childaufrufen kein kurzer Vorfall auftrat. Resultsets dürfen nicht so behandelt werden, als stammten sie aus einer gemeinsamen Transaktion.
 
-**Folgeanalyse:** Betroffenes Childmodul mit engeren Filtern erneut ausführen.
+**Weiterführende Analyse:** Für die weiterführende Analyse gelten folgende Schritte und Quellen: Betroffenes Childmodul mit engeren Filtern erneut ausführen.
 
 ## 4. Offizielle Primärquellen
 

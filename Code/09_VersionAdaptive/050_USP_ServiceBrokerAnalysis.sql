@@ -81,7 +81,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ServiceBrokerAnalysis';
-        PRINT N'Read-only Tiefenanalyse sichtbarer Service-Broker-Konfiguration und aggregierter Laufzeitmetadaten.';
+        PRINT N'Die Procedure führt eine rein lesende Tiefenanalyse sichtbarer Service-Broker-Konfiguration und aggregierter Laufzeitmetadaten durch.';
         PRINT N'Geprüft werden Queue-Schalter, approximative Queue-Zeilen, Aktivierungs-DMVs, Transmission-Alter und Conversation-Zustände.';
         PRINT N'Exakte Namenslisten und Pattern beziehen sich auf Queue-Schema und Queue-Name; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfkontext und keine automatische Betriebs-, Routing- oder Bereinigungsentscheidung.';

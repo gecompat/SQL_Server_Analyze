@@ -70,7 +70,7 @@ WHERE [c].[ConfigurationId] = 1;
 
 ### Bewertung und Gegenprobe
 
-Nach dem Aufruf Zielname, Aktivierungsstatus und Policy in beiden Datenbanken prüfen; danach einen manuellen Cycle mit begrenztem Zeilenlimit starten.
+Prüfen Sie nach dem Aufruf Zielname, Aktivierungsstatus und Policy in beiden Datenbanken. Starten Sie danach einen manuellen Cycle mit einem begrenzten Zeilenlimit.
 
 ### Typische Fehlinterpretation
 
@@ -78,6 +78,6 @@ Nach dem Aufruf Zielname, Aktivierungsstatus und Policy in beiden Datenbanken pr
 
 ### Folgeanalyse
 
-`USP_RunSnapshotCollectionCycle`, `USP_PurgeSnapshotData` und der Betriebsleitfaden.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_RunSnapshotCollectionCycle`, `USP_PurgeSnapshotData` und der Betriebsleitfaden.
 
 [Technische Detailbeschreibung](../../Operations/Snapshot_Baseline_Operations.md)

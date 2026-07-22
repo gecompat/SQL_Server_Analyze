@@ -24,8 +24,8 @@ Auch scheinbar technische Werte können in Kombination Rückschlüsse auf Mandan
 ## Datenminimierung
 
 1. Mit dem kleinsten fachlich ausreichenden Scope beginnen.
-2. Zeilen- und Datenbanklimits setzen.
-3. SQL-Text, vollständigen Batch, Modultext, Input Buffer, XML, XE-Eventdaten und Histogrammwerte nur bei konkretem Bedarf aktivieren.
+2. Setzen Sie Zeilen- und Datenbanklimits.
+3. Aktivieren Sie SQL-Text, vollständigen Batch, Modultext, Input Buffer, XML, XE-Eventdaten und Histogrammwerte nur bei konkretem Bedarf.
 4. Zuerst `CONSOLE` verwenden; `RAW`, `TABLE` und JSON nur für eine begründete Weiterverarbeitung.
 5. Exakte Datenbank-, Objekt-, Session-, Query-, Plan- oder Zeitfilter einer unbeschränkten Sammlung vorziehen.
 6. High-Impact-Bestätigung niemals als Datenschutzfreigabe missverstehen. Sie steuert Ressourcenpfade, nicht die zulässige Nutzung der Daten.
@@ -46,7 +46,7 @@ TABLE schreibt nur in lokale `#Temp`-Tabellen des aktuellen Aufrufers. Diese Beg
 
 ### JSON
 
-JSON entsteht aus derselben Materialisierung wie die Resultsets. Das Format ist leicht übertragbar und kann mehrere fachliche Bereiche bündeln. OUTPUT-Variablen, Clientlogs und Anwendungstelemetrie deshalb bewusst behandeln.
+JSON entsteht aus derselben Materialisierung wie die Resultsets. Das Format ist leicht übertragbar und kann mehrere fachliche Bereiche bündeln. Behandeln Sie OUTPUT-Variablen, Clientlogs und Anwendungstelemetrie deshalb bewusst.
 
 ## Text-, Plan- und Ereignispfade
 
@@ -90,10 +90,10 @@ Diese Einschränkungen im Analyseergebnis mitführen. Ein datensparsamer Lauf da
 ## Sichere Betriebsfolge
 
 1. Fragestellung und zulässigen Datenumfang bestimmen.
-2. Über den [Analysis Navigator](../Reference/Analysis_Navigator.md) den engsten passenden Einstieg wählen.
-3. Procedure-Seite auf sensible Felder, Kosten und Voraussetzungen prüfen.
-4. CONSOLE mit kleinen Limits und deaktivierten optionalen Text-/Payloadpfaden ausführen.
-5. Nur fehlende Evidenz gezielt in RAW, TABLE oder JSON ergänzen.
+2. Wählen Sie über den [Analysis Navigator](../Reference/Analysis_Navigator.md) den engsten passenden Einstieg.
+3. Prüfen Sie die Procedure-Seite auf sensible Felder, Kosten und Voraussetzungen.
+4. Führen Sie CONSOLE mit kleinen Limits und deaktivierten optionalen Text- und Payloadpfaden aus.
+5. Ergänzen Sie nur fehlende Evidenz gezielt in RAW, TABLE oder JSON.
 6. Ergebnisempfänger, Ablageort und Aufbewahrungsdauer vor einem Export festlegen.
 7. Temporäre und persistierte Kopien nach dem geltenden Löschvertrag entfernen.
 8. In Berichten Scope, Partialität, Kürzung und Retention offen ausweisen.

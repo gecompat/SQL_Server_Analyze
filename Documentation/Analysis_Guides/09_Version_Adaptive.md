@@ -18,14 +18,14 @@
 
 ### Zweck
 
-Ermittelt versions- und plattformabhängige Diagnosefähigkeiten auf Server- und Datenbankebene. Zusätzlich können Spezialindizes und Query-Store-Replica-Funktionen inventarisiert werden.
+Die Procedure ermittelt versions- und plattformabhängige Diagnosefähigkeiten auf Server- und Datenbankebene. Zusätzlich können Spezialindizes und Query-Store-Replica-Funktionen inventarisiert werden.
 
 ### Auswahlhinweis
 
 `N''` und `NULL` schränken den Datenbankscope nicht ein. Ohne explizite Liste
 oder Pattern werden alle sichtbaren Online-Benutzerdatenbanken verarbeitet;
-Systemdatenbanken bleiben opt-in. Bei produktiver Automatisierung Status und
-Warnings für explizit nicht verfügbare Datenbanken prüfen.
+Systemdatenbanken bleiben opt-in. Prüfen Sie bei produktiver Automatisierung den Status und
+die Warnungen für explizit nicht verfügbare Datenbanken.
 
 ### Aufrufe
 
@@ -104,7 +104,7 @@ Die genaue Familie ist versionsabhängig. Das Resultset ist ein Inventar, kein P
 - Service Broker gefunden → `USP_ServiceBrokerAnalysis`
 - Full-Text gefunden → `USP_FullTextAnalysis`
 - Change Tracking oder CDC gefunden → `USP_DataCaptureDeepAnalysis`
-- Query-Store-Replica verfügbar → Query-Store-Guides mit Replica Group beachten
+- Wenn eine Query-Store-Replica verfügbar ist, berücksichtigen Sie in den Query-Store-Guides die Replica Group.
 - Spezialindex → passende Objekt-/Plananalyse
 
 ### Kosten
@@ -117,7 +117,7 @@ LOW bis MEDIUM. Cross-Database-Katalogzugriffe und optionales Spezialindexinvent
 
 ### Zweck
 
-Leichtgewichtige aggregierte Nutzungsinventur sichtbarer Spezialfeatures. Es werden keine externen Locations, Credentials, Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzerdaten gelesen.
+Die Procedure erstellt eine aggregierte Nutzungsinventur sichtbarer Spezialfeatures mit begrenzter Quellarbeit. Sie liest keine externen Locations, Credentials, Broker-Payloads, CLR-Binaries, Moduldefinitionen oder Benutzerdaten.
 
 ### Erkannte Familien
 
@@ -200,7 +200,7 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 
 ### Folgeanalyse
 
-Das angegebene `RecommendedModule` verwenden. Fehlt ein Deep-Dive-Modul, Quelle und Betriebsanforderung manuell prüfen.
+Verwenden Sie das angegebene `RecommendedModule`. Wenn ein Deep-Dive-Modul fehlt, müssen Quelle und Betriebsanforderung manuell geprüft werden.
 
 ### Kosten
 
@@ -212,7 +212,7 @@ LOW. Aggregierte Systemkatalogabfragen, kein Daten- oder Definitionsscan.
 
 ### Zweck
 
-Best-Effort-Tiefenanalyse sichtbarer In-Memory-OLTP-Konfiguration und Runtimeevidenz zu Tabellen-/Indexmemory, Hashindizes, Memory Consumers, Checkpoint Files, aktiven Transaktionen und Resource Pools.
+Die Procedure führt eine Best-Effort-Tiefenanalyse der sichtbaren In-Memory-OLTP-Konfiguration und der Runtimeevidenz zu Tabellen- und Indexmemory, Hashindizes, Memory Consumers, Checkpoint Files, aktiven Transaktionen und Resource Pools durch.
 
 ### Framework-Schwellen
 
@@ -258,7 +258,7 @@ Jede Runtime-DMV wird separat behandelt. Ein partieller Hashindexstatus darf Tab
 
 `DatabaseName`, `FileType`, `FileTypeDesc`, `State`, `StateDesc`, `FileCount`, `FileSizeMb`, `FileUsedMb`, `LogicalRowCount`, `Severity`, `FindingCode`, `EvidenceLimit`.
 
-Checkpointfiles sind append-only Data-/Delta-Strukturen und durchlaufen mehrere legitime Zustände. `WAITING FOR LOG TRUNCATION` ist nicht automatisch ein Fehler; Logtrunkierung, Merge-/Recoverybedarf und Dauer prüfen.
+Checkpointfiles sind append-only Data- und Delta-Strukturen und durchlaufen mehrere legitime Zustände. `WAITING FOR LOG TRUNCATION` ist nicht automatisch ein Fehler; prüfen Sie Logtrunkierung, Merge- und Recoverybedarf sowie die Dauer.
 
 ### Transaction
 
@@ -305,7 +305,7 @@ Query-/XTP-Indexnutzung, aktuelle Grants/Memory, Resource Governor, Log-/Backups
 
 ### Zweck
 
-Analysiert sichtbare system-versioned Temporal Tables, Current-/History-Zuordnung, Periodenspalten, Retentionkonfiguration, approximative Größe/Zeilenzahl und die Indexreihenfolge der History-Tabelle.
+Die Procedure analysiert sichtbare system-versioned Temporal Tables, Current-/History-Zuordnung, Periodenspalten, Retentionkonfiguration, approximative Größe/Zeilenzahl und die Indexreihenfolge der History-Tabelle.
 
 Es werden keine aktuellen oder historischen Benutzertabellenzeilen gelesen.
 
@@ -381,7 +381,7 @@ Kapazität, Index Usage/Physical Stats, Query Store für Temporal Queries, Parti
 
 ### Zweck
 
-Analysiert sichtbare Service-Broker-Konfiguration und gruppierte Betriebsevidenz zu Queues, interner Aktivierung, Transmission Queue und Conversation Endpoints. Queue-Nutzdaten, Nachrichtenkörper und Conversation-Handles werden nicht gelesen.
+Die Procedure analysiert sichtbare Service-Broker-Konfiguration und gruppierte Betriebsevidenz zu Queues, interner Aktivierung, Transmission Queue und Conversation Endpoints. Queue-Nutzdaten, Nachrichtenkörper und Conversation-Handles werden nicht gelesen.
 
 ### Framework-Schwellen
 
@@ -447,7 +447,7 @@ Wichtige Reviewcodes sind deaktivierte Queue-Schalter, Aktivierungsstillstand be
 
 ### Folgeanalyse
 
-SQL-Fehlerlog beziehungsweise freigegebene Extended Events, Routing-/Endpunktkonfiguration, Zertifikate, Readerdurchsatz, Anwendungstransaktionen und wiederholte Messungen korrelieren. Laufzeitevidenz mit realen Namen oder Inhalten nur kontrolliert exportieren und weitergeben.
+Korrelieren Sie das SQL-Fehlerlog beziehungsweise freigegebene Extended Events mit Routing- und Endpunktkonfiguration, Zertifikaten, Readerdurchsatz, Anwendungstransaktionen und wiederholten Messungen. Exportieren und übermitteln Sie Laufzeitevidenz mit realen Namen oder Inhalten nur kontrolliert.
 
 ---
 
@@ -455,7 +455,7 @@ SQL-Fehlerlog beziehungsweise freigegebene Extended Events, Routing-/Endpunktkon
 
 ### Zweck
 
-Analysiert sichtbare Full-Text-Kataloge und -Indizes sowie aktuelle Populationen, ausstehende Batches, querybare Fragmente, semantische Ähnlichkeitspopulationen und serverweiten Gatherer-/FDHost-Kontext. Tabelleninhalte, Keywords, Stopwords, Parser-Eingaben, Schlüsselwerte, Crawl-Logs und Pfade bleiben ausgeschlossen.
+Die Procedure analysiert sichtbare Full-Text-Kataloge und -Indizes sowie aktuelle Populationen, ausstehende Batches, querybare Fragmente, semantische Ähnlichkeitspopulationen und serverweiten Gatherer-/FDHost-Kontext. Tabelleninhalte, Keywords, Stopwords, Parser-Eingaben, Schlüsselwerte, Crawl-Logs und Pfade bleiben ausgeschlossen.
 
 ### Framework-Schwellen
 
@@ -521,7 +521,7 @@ Memory Pools sind serverweit gemeinsam genutzter Gatherer-Kontext. FDHosts werde
 
 ### Folgeanalyse
 
-Folgemessung von Fortschritt und Batches, Suchlatenz, I/O-/Logkontext sowie geschützte Full-Text- und Crawl-Logs in der Laufzeitumgebung korrelieren. Nur abstrahierte, synthetische Testergebnisse dokumentieren.
+Korrelieren Sie bei einer Folgemessung Fortschritt und Batches, Suchlatenz, I/O- und Logkontext sowie geschützte Full-Text- und Crawl-Logs in der Laufzeitumgebung. Dokumentieren Sie ausschließlich abstrahierte, synthetische Testergebnisse.
 
 ---
 
@@ -529,7 +529,7 @@ Folgemessung von Fortschritt und Batches, Suchlatenz, I/O-/Logkontext sowie gesc
 
 ### Zweck
 
-Vertieft Change Tracking, CDC und lokal erreichbare Replikation. Das Modul liest ausschließlich Katalog-, DMV-, Job- und aggregierte Distributionsevidenz. Es liest keine Change-Zeilen, Replikationsbefehle, Kommentare, Fehlertexte, LSNs, Credentials oder Agentjob-Commands und verändert keine Konfiguration.
+Die Procedure vertieft Change Tracking, CDC und lokal erreichbare Replikation. Sie liest ausschließlich Katalog-, DMV-, Job- und aggregierte Distributionsevidenz. Change-Zeilen, Replikationsbefehle, Kommentare, Fehlertexte, LSNs, Credentials oder Agentjob-Commands werden nicht gelesen; die Konfiguration bleibt unverändert.
 
 ### Framework-Schwellen
 
@@ -578,7 +578,7 @@ Wenn eine Datenbank eine Replikationsrolle besitzt, aber keine lokale Distributi
 - Peer-to-Peer-, Pull- und Remote-Topologien können außerhalb der lokalen Sicht liegen.
 - Konkrete Fehlertexte, Commands, Zeilenkonflikte und Laufzeitnamen bleiben ausschließlich in der kontrollierten Laufzeitdiagnose.
 
-Wiederholte Messung, Consumer-spezifischen CT-Wasserstand, Agentjobausgang, Netz-/Subscriber-Erreichbarkeit und geschützte Laufzeitlogs korrelieren. Nur synthetische Testzustände persistieren.
+Korrelieren Sie wiederholte Messungen, den Consumer-spezifischen CT-Wasserstand, den Agentjobausgang, die Netzwerk- und Subscriber-Erreichbarkeit sowie geschützte Laufzeitlogs. Persistieren Sie ausschließlich synthetische Testzustände.
 
 ## Anfänger-Entscheidungsbaum
 
@@ -642,7 +642,7 @@ flowchart TD
 
 ### Zweck
 
-Das Modul verbindet TDE-Zustand und Scanfortschritt, sichtbaren Zertifikatlebenszyklus, den Verschlüsselungsstatus des letzten sichtbaren nicht-copy-only Full-Backups und aggregierte Always-Encrypted-/Ledger-Metadaten. Jede Quelle besitzt eine eigene Fehlergrenze.
+Die Procedure verbindet TDE-Zustand und Scanfortschritt, sichtbaren Zertifikatlebenszyklus, den Verschlüsselungsstatus des letzten sichtbaren nicht-copy-only Full-Backups und aggregierte Always-Encrypted-/Ledger-Metadaten. Jede Quelle besitzt eine eigene Fehlergrenze.
 
 ### Wichtige Trennungen
 
@@ -671,7 +671,7 @@ Das Modul liest keine Schlüsselpfade, Signaturen, verschlüsselten Werte, Backu
 
 ### Zweck
 
-Liefert eine leichte, offline reproduzierbare Einordnung von Instanzbuild,
+Die Procedure liefert eine leichte, offline reproduzierbare Einordnung von Instanzbuild,
 Servicing-Zweig und Microsoft-Produktlifecycle. Die Procedure trennt aktuelle
 `SERVERPROPERTY`-/Hostevidenz vom Stand der mitgelieferten Frameworkkataloge.
 

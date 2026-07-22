@@ -18,7 +18,7 @@
 
 ### Zweck
 
-Liefert SQL-Server-Agent-Dienststatus und ein kleines Basisinventar.
+Die Procedure liefert SQL-Server-Agent-Dienststatus und ein kleines Basisinventar.
 
 ### RAW-Spalten
 
@@ -53,7 +53,7 @@ Liefert SQL-Server-Agent-Dienststatus und ein kleines Basisinventar.
 
 ### Zweck
 
-Analysiert Jobdefinition, aktuellen Lauf, letzte Gesamtausführung, Schedules und letzte Stepausführung.
+Die Procedure analysiert Jobdefinition, aktuellen Lauf, letzte Gesamtausführung, Schedules und letzte Stepausführung.
 
 ### Parameter und Framework-Schwelle
 
@@ -103,7 +103,7 @@ Der Long-Running-Wert ist eine Sichtungsgrenze. Ein normaler DWH-Load kann läng
 
 ### Zweck
 
-Vergleicht gespeicherte und effektive Resource-Governor-Konfiguration, Pools, Workload Groups und optionale Sessions.
+Die Procedure vergleicht gespeicherte und effektive Resource-Governor-Konfiguration, Pools, Workload Groups und optionale Sessions.
 
 ### Configuration
 
@@ -141,7 +141,7 @@ Vergleicht gespeicherte und effektive Resource-Governor-Konfiguration, Pools, Wo
 - `PendingMemgrantCount>0` oder `QueuedRequestCount>0` ist relevanter als ein enges Limit allein.
 - `OutOfMemoryCount` ist kumulativ seit `StatisticsStartTime`.
 - `EffectiveMaxDop` kann von konfiguriertem `MaxDop` abweichen.
-- Default-/Internal-Pools nicht wie benutzerdefinierte Pools interpretieren.
+- Interpretieren Sie Default- und Internal-Pools nicht wie benutzerdefinierte Pools.
 - Sessionzuordnung zeigt Classifier-Ergebnis, nicht zwingend die fachlich gewünschte Klassifizierung.
 
 ### Folgeanalyse
@@ -154,7 +154,7 @@ Vergleicht gespeicherte und effektive Resource-Governor-Konfiguration, Pools, Wo
 
 ### Zweck
 
-Basisinventar für AG-Replikate, Datenbanken, Listener und Read-only Routing.
+Die Procedure erstellt ein Basisinventar für AG-Replikate, Datenbanken, Listener und Read-only Routing.
 
 ### Replicas
 
@@ -198,7 +198,7 @@ Basisinventar für AG-Replikate, Datenbanken, Listener und Read-only Routing.
 
 ### Zweck
 
-Bewertet Backupfrische und zeigt Backup-/Restorehistorie.
+Die Procedure bewertet Backupfrische und zeigt Backup-/Restorehistorie.
 
 ### Framework-Schwellen
 
@@ -251,7 +251,7 @@ Diese Defaults sind keine universellen RPOs.
 
 ### Zweck
 
-Zeigt Primary-Backup- und Secondary-Copy-/Restorezustand.
+Die Procedure zeigt Primary-Backup- und Secondary-Copy-/Restorezustand.
 
 ### Primary
 
@@ -263,11 +263,11 @@ Zeigt Primary-Backup- und Secondary-Copy-/Restorezustand.
 
 ### Interpretation
 
-- `BackupAgeMinutes` gegen `BackupThreshold` und RPO lesen.
+- Lesen Sie `BackupAgeMinutes` zusammen mit `BackupThreshold` und dem RPO.
 - `CopyAgeMinutes` hoch, BackupAge normal: Transport-/Shareproblem möglich.
 - Copy normal, RestoreAge hoch: Restorejob, RestoreDelay oder Secondaryproblem.
 - Konfigurierter `RestoreDelay` kann absichtlich hohes Restorealter erzeugen.
-- `ThresholdAlertEnabled=0` bedeutet nicht zwingend unüberwacht; externes Monitoring prüfen.
+- `ThresholdAlertEnabled=0` bedeutet nicht zwingend, dass die Komponente unüberwacht ist; prüfen Sie das externe Monitoring.
 - Last file/date können Monitorhistory und nicht realen Dateibestand widerspiegeln.
 
 ---
@@ -276,7 +276,7 @@ Zeigt Primary-Backup- und Secondary-Copy-/Restorezustand.
 
 ### Zweck
 
-Inventarisiert sichtbare Replikationsrollen. Distributiondetails sind opt-in und gruppengeschützt.
+Die Procedure inventarisiert sichtbare Replikationsrollen. Distributiondetails sind opt-in und gruppengeschützt.
 
 ### Databases
 
@@ -298,9 +298,9 @@ Inventarisiert sichtbare Replikationsrollen. Distributiondetails sind opt-in und
 
 - Basisrollen ohne Distributiondetails sagen wenig über Latenz oder Agentgesundheit.
 - `LastAction` ist Freitext aus Distributionhistory; fachlich prüfen und nicht ungeprüft persistieren.
-- Alte Errorzeilen können behoben sein; Zeit und Wiederholung beachten.
+- Alte Fehlerzeilen können einen bereits behobenen Zustand beschreiben; beachten Sie Zeitpunkt und Wiederholung.
 - Keine online sichtbare Distribution-DB kann Feature nicht vorhanden, remote Distributor oder fehlende Sicht bedeuten.
-- Statuscodes sind replizierungsspezifische numerische Codes; mit Microsoftdokumentation interpretieren.
+- Statuscodes sind replizierungsspezifische numerische Codes; interpretieren Sie diese anhand der Microsoft-Dokumentation.
 
 ---
 
@@ -308,11 +308,11 @@ Inventarisiert sichtbare Replikationsrollen. Distributiondetails sind opt-in und
 
 ### Zweck
 
-Inventarisiert CDC und Change Tracking über ausgewählte Datenbanken sowie CDC-Agentjobs.
+Die Procedure inventarisiert CDC und Change Tracking über ausgewählte Datenbanken sowie CDC-Agentjobs.
 
 ### Besonderheit
 
-Der Procedureheader hat `@DatabaseNames=N''`; die dokumentierte Semantik behandelt `N''` jedoch als ungültig. Daher explizite Liste, Pattern oder `NULL` verwenden und Statusresultset prüfen.
+Der Procedureheader hat `@DatabaseNames=N''`; die dokumentierte Semantik behandelt `N''` jedoch als ungültig. Verwenden Sie daher eine explizite Liste, ein Pattern oder `NULL` und prüfen Sie das Statusresultset.
 
 ### Databases
 
@@ -349,7 +349,7 @@ AgentJobs, Log-/Kapazitätsanalyse und Consumerzustand außerhalb des Frameworks
 
 ### Zweck
 
-Prüft Full-/Differentialbasis, Log-LSN-Übergänge, Recovery Forks, Damage-/Checksumflags und Restoreevidenz innerhalb eines Historienfensters. Medienpfade und Benutzernamen werden bewusst nicht gelesen.
+Die Procedure prüft Full-/Differentialbasis, Log-LSN-Übergänge, Recovery Forks, Damage-/Checksumflags und Restoreevidenz innerhalb eines Historienfensters. Medienpfade und Benutzernamen werden bewusst nicht gelesen.
 
 ### Backupdetails
 
@@ -389,14 +389,14 @@ Prüft Full-/Differentialbasis, Log-LSN-Übergänge, Recovery Forks, Damage-/Che
 
 ### Zweck
 
-Erweitert AG um Clusterquorum, Clusterknoten/-netzwerke, Replikabefunde, Datenbankqueues, Seeding und Auto Page Repair.
+Die Procedure erweitert die AG-Analyse um Clusterquorum, Clusterknoten und -netzwerke, Replikabefunde, Datenbankqueues, Seeding und Auto Page Repair.
 
 ### Framework-Schwellen
 
 - `@QueueWarnMb=1024`
 - `@SecondaryLagWarnSeconds=60`
 
-Sichtungsgrenzen, keine universellen SLOs.
+Diese Werte dienen als Sichtungsgrenzen und stellen keine universellen Service Level Objectives dar.
 
 ### Resultsets
 
@@ -414,7 +414,7 @@ Sichtungsgrenzen, keine universellen SLOs.
 
 - Quorumabweichung ist Clusterkontext; kein automatischer Failoverauftrag.
 - `DISCONNECTED`, `NOT_HEALTHY`, `NOT_SYNCHRONIZING` oder suspended sind hohe Priorität.
-- Queuegröße allein ist volumenabhängig; Lag/Raten und Trend ergänzen.
+- Die Queuegröße allein ist volumenabhängig; ergänzen Sie Lag, Raten und Trend.
 - Seeding-Rate 0 kann Pause, Fehler oder momentane Messung bedeuten.
 - Page Repair `SUCCEEDED` ist weiterhin Integritätsevidenz und Anlass für CHECKDB-/Storageprüfung.
 - Netzwerkkatalog zeigt Topologie, nicht Paketverlust, Latenz oder Firewallpfad.
@@ -425,7 +425,7 @@ Sichtungsgrenzen, keine universellen SLOs.
 
 ### Zweck
 
-Bewertet Agentservice, Standardalarmabdeckung, Alert-Routing, Operatorstatus, Jobzustand und aggregierten Database-Mail-Status. Es liest keine Mailadressen, Empfänger, Betreffzeilen, Jobstepbefehle oder Meldungstexte als Findings.
+Die Procedure bewertet Agentservice, Standardalarmabdeckung, Alert-Routing, Operatorstatus, Jobzustand und aggregierten Database-Mail-Status. Sie liest keine Mailadressen, Empfänger, Betreffzeilen, Jobstepbefehle oder Meldungstexte als Findings.
 
 ### Services
 
@@ -466,7 +466,7 @@ Wichtige Codes:
 
 ### Zweck
 
-Orchestriert alle elf Infrastrukturmodule. Basisfunktionen sind standardmäßig aktiv; Backup Chain, Availability Deep und Agent Monitoring sind opt-in.
+Die Procedure orchestriert alle elf Infrastrukturmodule. Die Basisfunktionen sind standardmäßig aktiv; Backup Chain, Availability Deep und Agent Monitoring müssen ausdrücklich angefordert werden.
 
 ### Modulreihenfolge
 
@@ -490,7 +490,7 @@ Orchestriert alle elf Infrastrukturmodule. Basisfunktionen sind standardmäßig 
 
 ### Grenzen
 
-- `EXECUTED` bei älteren Children bedeutet nur, dass kein äußerer CATCH ausgelöst wurde; Child-Meta lesen.
+- `EXECUTED` bei älteren Children bedeutet nur, dass kein äußerer CATCH ausgelöst wurde; lesen Sie deshalb die Child-Metadaten.
 - Neuere Deep-Children geben ihre eigenen Statuscodes an den Wrapper zurück.
 - Ein `@MaxZeilen` gilt je Modul.
 - Der Default ist breit und für häufiges Polling ungeeignet.
@@ -532,13 +532,13 @@ flowchart TD
 
 ### Zweck
 
-Korrelierte read-only Sicht auf vier getrennte Evidenzbereiche: resumierbare Indexoperationen je gewählter Datenbank, laufende technische Wartungsrequests, ADR/PVS-Momentaufnahmen sowie ausschließlich explizit nach Namen oder Pattern ausgewählte Agent-Jobs.
+Die Procedure erstellt eine korrelierte, ausschließlich lesende Sicht auf vier getrennte Evidenzbereiche: resumierbare Indexoperationen je gewählter Datenbank, laufende technische Wartungsrequests, ADR/PVS-Momentaufnahmen sowie ausschließlich explizit nach Namen oder Pattern ausgewählte Agent-Jobs.
 
 ### Leserichtung
 
-1. `SourceStatus` prüfen. Auf SQL Server 2019 ist der ausführliche PVS-Vertrag bewusst `UNAVAILABLE_VERSION`; der ADR-Konfigurationskontext bleibt erhalten.
-2. Pausierte resumierbare Operationen nach Pausenzeit und Fortschritt priorisieren. Eine Pause kann geplant sein.
-3. Requests nur bei sichtbarer Blockierung zusammen mit Waitdauer und Fortschritt bewerten. Engine-Restzeitschätzungen sind unverbindlich.
+1. Prüfen Sie `SourceStatus`. Auf SQL Server 2019 ist der ausführliche PVS-Vertrag bewusst `UNAVAILABLE_VERSION`; der ADR-Konfigurationskontext bleibt erhalten.
+2. Priorisieren Sie pausierte resumierbare Operationen nach Pausenzeit und Fortschritt. Eine Pause kann geplant sein.
+3. Bewerten Sie Requests nur bei sichtbarer Blockierung zusammen mit Waitdauer und Fortschritt. Engine-Restzeitschätzungen sind unverbindlich.
 4. PVS-Größe und Anzahl abgebrochener Transaktionen sind Schwellwertbeobachtungen, keine Bereinigungsdiagnose aus einem Einzelwert.
 5. Jobdaten erscheinen nur, wenn `@JobNames` oder `@JobNamePattern` gesetzt wurde. Ohne Filter wird die Quelle nicht gelesen.
 
@@ -560,18 +560,18 @@ Das Modul liest keine SQL-Texte oder Handles, Jobschritte, Jobbefehle, Meldungen
 
 ### Zweck
 
-Liest SQL-Server- und optional Agent-Errorlogs über die dokumentierten
+Die Procedure liest SQL-Server- und optional Agent-Errorlogs über die dokumentierten
 `sp_readerrorlog`-Filter. Der Standard liefert nur Kategorien, Häufigkeiten und
 serverlokale Zeitgrenzen des aktuellen SQL-Server-Logs. Meldungstext, Agent und
 ältere Archive sind opt-in.
 
 ### Leserichtung
 
-1. `moduleStatus` und `sourceStatus` auf Rechte, Archive und Quelllimit prüfen.
-2. `summary` nach Kategorie sowie erstem und letztem Zeitpunkt lesen.
-3. `details` nur gezielt aktivieren; Kürzungsmetriken mit auswerten.
-4. Treffer immer mit einer unabhängigen Engine-, OS-, Storage- oder
-   Workloadquelle korrelieren.
+1. Prüfen Sie `moduleStatus` und `sourceStatus` auf Rechte, Archive und Quelllimit.
+2. Lesen Sie `summary` nach Kategorie sowie erstem und letztem Zeitpunkt.
+3. Aktivieren Sie `details` nur gezielt und berücksichtigen Sie dabei die Kürzungsmetriken.
+4. Korrelieren Sie Treffer immer mit einer unabhängigen Engine-, OS-, Storage- oder
+   Workloadquelle.
 
 ### Grenzen
 

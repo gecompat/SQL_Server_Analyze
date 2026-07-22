@@ -224,14 +224,14 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 
 ## 11. Designprinzipien
 
-- Ressourcenschutz vor teurer Materialisierung prüfen.
+- Prüfen Sie den Ressourcenschutz vor einer teuren Materialisierung.
 - Leichte Standardpfade möglichst nutzbar lassen.
 - Deep-Pfade explizit, begrenzt und opt-in gestalten.
 - Gruppenfreigabe und SQL-Rechte getrennt melden.
 - Keine automatische Rechte- oder Gruppenvergabe.
 - Keine Persistenz von Gruppenmitgliedschaften.
 - Keine Abfrage beliebiger Verzeichnisdienste.
-- Beispiele und freigegebene Auszüge ausschließlich mit synthetischen Domain-, Gruppen-, Login- und Umgebungswerten verwenden.
+- Verwenden Sie Beispiele und freigegebene Auszüge ausschließlich mit synthetischen Domain-, Gruppen-, Login- und Umgebungswerten.
 
 ## 12. Weiterführende Dokumente
 

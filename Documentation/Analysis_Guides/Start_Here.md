@@ -74,7 +74,7 @@ Eine Procedure kann fachlich zu mehreren Situationen passen. Deshalb bleiben die
 ## In vier Schritten vom Treffer zur belastbaren Aussage
 
 1. **Treffer prüfen.** `WhyMatched`, Scope, Voraussetzung, Paketstatus und sicheren Aufruf lesen. Ein nicht installiertes optionales Paket wird angezeigt, aber nicht ausgeführt.
-2. **Klein beginnen.** `SafeCall` als Orientierung verwenden, Ziel und Filter bewusst setzen und zunächst `CONSOLE` lesen. High-Impact-Pfade nur bei fachlichem Bedarf und mit expliziter Bestätigung aktivieren.
+2. **Beginnen Sie mit einem kleinen Scope.** Verwenden Sie `SafeCall` als Orientierung, setzen Sie Ziel und Filter bewusst und lesen Sie zunächst `CONSOLE`. Aktivieren Sie High-Impact-Pfade nur bei fachlichem Bedarf und mit expliziter Bestätigung.
 3. **Status vor Fachwerten lesen.** In `RAW` zuerst `StatusCode`, `IsPartial`, Zeilenlimit, Berechtigungs- und Quellenstatus prüfen. Eine leere oder partielle Ausgabe ist keine automatische Entwarnung.
 4. **Unabhängig bestätigen.** `NextProcedureName` und `RelationType` nutzen. `REFINE_WITH` vertieft dasselbe Signal, `CONFIRM_WITH` liefert eine andere Evidenz, `ALTERNATIVE_TO` bietet einen anderen Zugang und `PREPARE_WITH` stellt eine Voraussetzung her.
 
@@ -90,7 +90,7 @@ EXEC [monitor].[USP_AnalysisNavigator]
       @MaxZeilen = 10;
 ```
 
-Nur lokal installierte Procedures anzeigen:
+Der folgende Aufruf beschränkt die Anzeige auf lokal installierte Procedures:
 
 ```sql
 EXEC [monitor].[USP_AnalysisNavigator]
@@ -98,17 +98,17 @@ EXEC [monitor].[USP_AnalysisNavigator]
       @NurInstallierte = 1;
 ```
 
-Der Default `@NurInstallierte = 0` ist absichtlich vollständig: So bleiben optionale Pakete auffindbar. Vor einem Aufruf immer `IsInstalled` prüfen.
+Der Standardwert `@NurInstallierte = 0` liefert bewusst den vollständigen Katalog, damit optionale Pakete auffindbar bleiben. Prüfen Sie vor einem Aufruf immer `IsInstalled`.
 
 ## Wenn kein Treffer erscheint
 
 `NO_MATCH` bedeutet ausschließlich, dass Suchtext und aktive Filter keine Katalogzeile ergaben. Dann:
 
-1. Suchbegriff verkürzen, beispielsweise `blocking`, `CPU`, `TempDB`, `Plan`, `Backup`, `Deadlock` oder `AG Lag`;
-2. Filter entfernen oder gültige Codes direkt aus `monitor.VW_AnalysisCatalog` lesen;
-3. in der [vollständigen Procedure-Übersicht](Procedures/README.md) nach Bereich navigieren;
-4. für ein bekanntes Symptom das [Runbook-Verzeichnis](Runbooks/README.md) verwenden;
-5. für technische Objekte den [vollständigen Objektindex](Object_Index.md) öffnen.
+1. Verkürzen Sie den Suchbegriff, beispielsweise auf `blocking`, `CPU`, `TempDB`, `Plan`, `Backup`, `Deadlock` oder `AG Lag`.
+2. Entfernen Sie Filter oder lesen Sie gültige Codes direkt aus `monitor.VW_AnalysisCatalog`.
+3. Navigieren Sie in der [vollständigen Procedure-Übersicht](Procedures/README.md) nach Bereich.
+4. Verwenden Sie für ein bekanntes Symptom das [Runbook-Verzeichnis](Runbooks/README.md).
+5. Öffnen Sie für technische Objekte den [vollständigen Objektindex](Object_Index.md).
 
 ## Weiterführende Leserichtung
 

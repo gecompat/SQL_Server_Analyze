@@ -7,15 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche Session blockiert welche andere Session, und wo liegt der Root Blocker der Kette?** Der dokumentierte Zweck ist: Rekonstruiert aktuelle Blockingkanten und -ketten bis zum Root Blocker. Der Aufruf soll die Arbeitsentscheidung vorbereiten, ob das aktuelle Symptom im Erfassungsmoment sichtbar ist und welcher engere Live-, Verlaufs- oder Planpfad als Nächstes sinnvoll ist. Status und Scope sind dabei Teil der Evidenz, nicht bloß technische Begleitinformation.
-
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
+Die Procedure beantwortet die Betriebsfrage: **Welche Session blockiert welche andere Session, und wo liegt der Root Blocker der Kette?** Sie unterstützt die Entscheidung, ob das aktuelle Symptom im Erfassungsmoment sichtbar ist und welcher engere Live-, Verlaufs- oder Planpfad als Nächstes sinnvoll ist.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keine lückenlose Historie und allein aus einem Snapshot weder Dauerhäufigkeit noch Root Cause oder zukünftige Entwicklung. Ihr Zeitvertrag lautet ausdrücklich: Momentaufnahme. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
-
-Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rechte ausgelassene Details und bereits durch Retention, Restart, Eviction oder Statuswechsel verlorene Zustände. Findings, Prozentwerte und Durchschnitte müssen mit Nenner, Erfassungsfenster und Zeilengranularität gelesen werden. Eine Änderung an DDL, Forcing, Failover, KILL, Repair oder Konfiguration benötigt unabhängige Evidenz und einen Rollbackplan.
+Die Procedure beantwortet keine lückenlose Historie und allein aus einem Snapshot weder Dauerhäufigkeit noch Root Cause oder zukünftige Entwicklung. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -28,7 +24,7 @@ EXEC [monitor].[USP_CurrentBlocking]
 
 `STANDARD` ist der ressourcenschonende Default. Die Procedure dedupliziert ausschließlich Ressourcen bereits erkannter Blockingketten und löst höchstens `@MaxObjektAufloesungen` Kandidaten auf.
 
-Für einen vollständigen Lockkontext:
+Verwenden Sie für einen vollständigen Lockkontext folgenden Aufruf:
 
 ```sql
 EXEC [monitor].[USP_CurrentBlocking]
@@ -46,11 +42,11 @@ ausgeblendet. `@ToolHintergrundabfragenEinbeziehen = 1` zeigt auch diese Ketten.
 Ein Tool als Zwischen- oder Root-Blocker einer normalen Abfrage bleibt dagegen
 immer sichtbar; die normale Kette wird nicht abgeschnitten.
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `blockingChains` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Der typisierte TABLE-Vertrag registriert `blockingChains`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
@@ -66,11 +62,9 @@ Root Blocker aus `most_recent_sql_handle` der Verbindung
 dass ein fehlender beziehungsweise nicht angeforderter Text als fachlicher
 Befund fehlinterpretiert wird.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-Zuerst `BlockingResourceResolutionStatus` lesen:
+Lesen Sie zuerst `BlockingResourceResolutionStatus`:
 
 - `RESOLVED`: ein fachlicher Name oder eine eindeutig klassifizierte Ressource wurde ermittelt;
 - `PARTIAL`: Typ beziehungsweise Datenbank ist bekannt, eine tiefere Zuordnung war nicht möglich;
@@ -81,29 +75,21 @@ Zuerst `BlockingResourceResolutionStatus` lesen:
 - `DENIED_PERMISSION` oder `ERROR_HANDLED`: ausschließlich diese Anreicherung war nicht lesbar beziehungsweise schlug kontrolliert fehl;
 - `INVALID_FORMAT` oder `EMPTY`: Quelle war nicht interpretierbar beziehungsweise leer.
 
-Danach `BlockingChain`, Waitzeit, `BlockingResourceName`, Aktivität und Transaktionszustand des Root Blockers vergleichen. `BlockingOwnerType` kennzeichnet neben Sessions auch die SQL-Server-Sonderblocker `ORPHAN_DTC`, `DEFERRED_RECOVERY`, `LATCH_OWNER_TRANSIENT` und `LATCH_OWNER_UNTRACKED`. Ein `NULL`-Root-Requeststatus ist bei einer sleeping Root-Session möglich und kein Beweis für fehlende Blockerwirkung.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+Vergleichen Sie danach `BlockingChain`, Waitzeit, `BlockingResourceName`, Aktivität und Transaktionszustand des Root Blockers. `BlockingOwnerType` kennzeichnet neben Sessions auch die SQL-Server-Sonderblocker `ORPHAN_DTC`, `DEFERRED_RECOVERY`, `LATCH_OWNER_TRANSIENT` und `LATCH_OWNER_UNTRACKED`. Ein `NULL`-Root-Requeststatus ist bei einer sleeping Root-Session möglich und kein Beweis für fehlende Blockerwirkung.
 
 ## Warum kann das problematisch sein?
 
 Viele Opfer können von einer einzelnen Root-Session abhängen. Das Beenden eines Opfers beseitigt die gehaltene Ressource nicht.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
 Kurze Lockwartezeiten gehören zur transaktionalen Konsistenz. Kritischer sind wachsende, wiederkehrende Ketten und SLA-Auswirkungen.
-
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
 
 ## Beispiele und Gegenbeispiele
 
 **Synthetischer Problemfall (`Example*`):** Zehn Sessions warten zwei Minuten auf eine sleeping Session mit offener Transaktion: starke Root-Blocker-Evidenz. Mit `USP_CurrentTransactions` und `USP_CurrentRequests` prüfen; erst danach betriebliche Eingriffe erwägen.
 
 **Ähnlich aussehender Gegenfall:** Kurze Lockwartezeiten gehören zur transaktionalen Konsistenz. Kritischer sind wachsende, wiederkehrende Ketten und SLA-Auswirkungen. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
 
 ## Leere oder partielle Ausgabe
 
@@ -113,9 +99,7 @@ Für `USP_CurrentBlocking` gilt zusätzlich: **keine Zeile** bedeutet, dass im s
 
 ## Eigenlast und Grenzen
 
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
-
-**Quellcode-Hinweis zur Eigenlast:** Standard gering. sys.dm_tran_locks wird nur bei expliziter Anforderung und nur für beteiligte Sessions gelesen.
+**Quellcode-Hinweis zur Eigenlast:** Der Standardpfad besitzt eine geringe Eigenlast. `sys.dm_tran_locks` wird nur bei ausdrücklicher Anforderung und nur für beteiligte Sessions gelesen.
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
@@ -175,11 +159,11 @@ WHERE [r].[session_id] <> @@SPID
   AND COALESCE([wt].[wait_duration_ms], [r].[wait_time], 0) >= @MinWaitMs;
 ```
 
-**Wichtig für die Eigenlast:** Session-/Waitfilter vor SQL-Text, Lock- und Katalogauflösung setzen. `sys.dm_tran_locks`, `sys.dm_db_page_info` und datenbanklokale Objektauflösung gehören nur in den gezielt bestätigten Detailpfad.
+**Wichtig für die Eigenlast:** Setzen Sie Session-/Waitfilter vor SQL-Text, Lock- und Katalogauflösung. `sys.dm_tran_locks`, `sys.dm_db_page_info` und datenbanklokale Objektauflösung gehören nur in den gezielt bestätigten Detailpfad.
 
 ### Zeit- und Scope-Modell
 
-Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
+Die Auswertung ist eine Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.
 
 Die [Toolfilter-Architektur](../../Architecture/Tool_Background_Query_Filtering.md)
 beschreibt die metadatengetriebenen `LIKE`-Regeln und die kettenbewahrende
@@ -200,7 +184,7 @@ Filterreihenfolge.
 
 ### Bewertung und Gegenprobe
 
-Anzahl Opfer, längste Wartezeit, Lock-/Ressourcentyp, offene Transaktion und Zustand des Root Blockers gemeinsam bewerten. Ein aktiv arbeitender Root Blocker kann Fortschritt machen; ein sleeping Root Blocker mit alter Transaktion ist verdächtiger.
+Bewerten Sie Anzahl Opfer, längste Wartezeit, Lock-/Ressourcentyp, offene Transaktion und Zustand des Root Blockers gemeinsam. Ein aktiv arbeitender Root Blocker kann Fortschritt machen; ein sleeping Root Blocker mit alter Transaktion ist verdächtiger.
 
 ### Typische Fehlinterpretation
 
@@ -208,7 +192,7 @@ Die am längsten wartende Session ist nicht automatisch Ursache. `KILL` eines Op
 
 ### Folgeanalyse
 
-`USP_CurrentTransactions`, `USP_CurrentRequests`; für Historie Blocked-Process-/Deadlock-XE.
+Verwenden Sie für die weitere Analyse `USP_CurrentTransactions` und `USP_CurrentRequests`. Nutzen Sie für die Historie Blocked-Process- oder Deadlock-Extended-Events.
 
 ## Primärquellen
 

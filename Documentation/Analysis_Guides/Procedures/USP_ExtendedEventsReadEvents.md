@@ -19,7 +19,7 @@ Ein generisches `DurationRaw` besitzt ohne Eventmetadaten keine universelle Einh
 
 ## Sicherer Einstieg
 
-Zuerst Parameter und Gate ohne Targetzugriff anzeigen:
+Zeigen Sie zuerst Parameter und Gate ohne Targetzugriff an:
 
 ```sql
 EXEC [monitor].[USP_ExtendedEventsReadEvents]
@@ -55,7 +55,7 @@ Keinen realen `@FilePath` in ungeschützte Dokumentation oder Tickets kopieren. 
 - `TABLE` exportiert ausschließlich das Primärergebnis `events` aus derselben Rohmenge in die über `@ResultTablesJson` zugeordnete lokale Temp-Tabelle. SourceStatus wird nicht mitexportiert.
 - JSON trennt `meta`, angereicherte `events`, `sources` und `warnings`.
 
-Wichtige Implementierungsgrenze: `@MitEventXml = 0` unterdrückt das vollständige XML in der RAW- und JSON-Projektion, nicht aber seine vorherige Konvertierung und Feldextraktion. CONSOLE und TABLE arbeiten aktuell direkt auf der Rohmenge und enthalten deshalb weiterhin `EventXml`. Wenn XML-Transfer vermieden werden soll, `RAW` mit `@MitEventXml = 0` verwenden; TABLE nicht als XML-freien Export interpretieren.
+Wichtige Implementierungsgrenze: `@MitEventXml = 0` unterdrückt das vollständige XML in der RAW- und JSON-Projektion, nicht aber seine vorherige Konvertierung und Feldextraktion. CONSOLE und TABLE arbeiten aktuell direkt auf der Rohmenge und enthalten deshalb weiterhin `EventXml`. Verwenden Sie `RAW` mit `@MitEventXml = 0`, wenn der XML-Transfer vermieden werden soll. TABLE ist nicht als XML-freier Export zu interpretieren.
 
 ## Eine Zeile bedeutet
 
@@ -65,13 +65,13 @@ Eine SourceStatus-Zeile ist keine Eventzeile. Sie beschreibt Katalog-, File- ode
 
 ## So lesen
 
-1. **Gate und Modulstatus:** `EXTENDED_EVENTS_FORENSICS_DEEP`, `@HighImpactConfirmed` und eventuelle Berechtigungs-/Featurefehler prüfen.
-2. **SourceStatus:** Wurde `EVENT_FILE` oder `RING_BUFFER` tatsächlich gelesen? War ein Pfad vorhanden, die Session gestartet und das Target lesbar?
-3. **Zeitfenster:** Die Procedure verwendet `TimestampUtc >= @VonUtc` und `TimestampUtc < @BisUtc`. Zeitzone des Symptoms vor dem Vergleich korrekt nach UTC umrechnen.
-4. **Ereignisidentität:** `EventName`, `SourceType`, Timestamp und Datei/Offset festhalten. Erst danach optionale Actions/Datafelder interpretieren.
+1. **Gate und Modulstatus:** Prüfen Sie `EXTENDED_EVENTS_FORENSICS_DEEP`, `@HighImpactConfirmed` und eventuelle Berechtigungs- oder Featurefehler.
+2. **SourceStatus:** Prüfen Sie, ob `EVENT_FILE` oder `RING_BUFFER` tatsächlich gelesen wurde. Ermitteln Sie außerdem, ob ein Pfad vorhanden, die Session gestartet und das Target lesbar war.
+3. **Zeitfenster:** Die Procedure verwendet `TimestampUtc >= @VonUtc` und `TimestampUtc < @BisUtc`. Rechnen Sie die Zeitzone des Symptoms vor dem Vergleich korrekt nach UTC um.
+4. **Ereignisidentität:** Halten Sie `EventName`, `SourceType`, Timestamp sowie Datei und Offset fest. Interpretieren Sie erst danach optionale Actions und Datenfelder.
 5. **Payloadverfügbarkeit:** `NULL` bei Datenbank, Session, SQL-Text, Wait oder Fehlernummer kann „für dieses Event nicht vorhanden“ bedeuten. Es ist kein gemessener Wert 0.
-6. **Eventsemantik:** `DurationRaw`, `WaitType`, Severity und ResourceDescription nur gegen die Definition des konkreten Events bewerten. Generische Spalten normalisieren Namen, nicht ihre gesamte Semantik.
-7. **Vollständigkeit:** Dateiwildcard, Rollover, Event-Session-Konfiguration, Predicate, Capturezeitraum und Zeilenlimit gegen den Untersuchungszeitraum halten.
+6. **Eventsemantik:** Bewerten Sie `DurationRaw`, `WaitType`, Severity und ResourceDescription nur gegen die Definition des konkreten Events. Generische Spalten normalisieren Namen, nicht ihre gesamte Semantik.
+7. **Vollständigkeit:** Vergleichen Sie Dateiwildcard, Rollover, Event-Session-Konfiguration, Predicate, Capturezeitraum und Zeilenlimit mit dem Untersuchungszeitraum.
 
 ## Warum kann das problematisch sein?
 
@@ -87,7 +87,7 @@ Selbst dann lautet die Aussage nur: „In dieser geprüften Capturequelle wurde 
 
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Fund `ExampleDeadlockEvidence`:** SourceStatus ist `AVAILABLE`; zwei `xml_deadlock_report`-Events liegen innerhalb des bestätigten UTC-Fensters in unterschiedlichen FileOffsets. Beobachtung: Die konfigurierte Session hat zwei Deadlockereignisse erhalten. Nächster Schritt: `USP_ExtendedEventsDeadlocks` für Victim, Prozesse und Ressourcen verwenden und Query-/Transaktionskontext unabhängig prüfen. Die Zahl zwei allein erklärt weder Root Cause noch Geschäftsauswirkung.
+**Synthetischer Fund `ExampleDeadlockEvidence`:** SourceStatus ist `AVAILABLE`; zwei `xml_deadlock_report`-Events liegen innerhalb des bestätigten UTC-Fensters in unterschiedlichen FileOffsets. Beobachtung: Die konfigurierte Session hat zwei Deadlockereignisse erhalten. Nächster Schritt: Verwenden Sie `USP_ExtendedEventsDeadlocks` für Victim, Prozesse und Ressourcen und prüfen Sie den Query- und Transaktionskontext unabhängig. Die Zahl zwei allein erklärt weder Root Cause noch Geschäftsauswirkung.
 
 **Falsche Entwarnung `ExampleEmptyAfterRollover`:** Keine Eventzeile, aber der konfigurierte XEL-Satz beginnt erst nach dem gemeldeten Vorfall. Das Ergebnis sagt nichts über den fehlenden Zeitraum. Rollover-/Retentionkonfiguration und vorhandene Dateien sind die Gegenprobe.
 
@@ -177,7 +177,7 @@ Jede Zeile ist ein Einzelereignis mit UTC-Timestamp innerhalb der noch vorhanden
 
 ### Bewertung und Gegenprobe
 
-Zuerst SourceStatus und Retentionsscope bestätigen, dann Eventtimestamp/-typ und Quellposition sichern. Payloadfelder nur eventbezogen auswerten. Deadlocks mit dem spezialisierten Parser und betroffenen Query-/Transaktionsquellen bestätigen; Fehler mit Error Log, Query Store oder Anwendungstelemetrie; Wait-/Schedulerereignisse mit Live-/kumulativer DMV-Evidenz. Eine zweite Quelle muss denselben Zeitraum abdecken.
+Bestätigen Sie zuerst SourceStatus und Retentionsscope. Sichern Sie danach Eventtimestamp, Eventtyp und Quellposition. Werten Sie Payloadfelder nur eventbezogen aus. Bestätigen Sie Deadlocks mit dem spezialisierten Parser und betroffenen Query- oder Transaktionsquellen, Fehler mit Error Log, Query Store oder Anwendungstelemetrie und Wait- oder Schedulerereignisse mit Live- oder kumulativer DMV-Evidenz. Eine zweite Quelle muss denselben Zeitraum abdecken.
 
 ### Typische Fehlinterpretation
 
@@ -185,11 +185,13 @@ Keine Eventzeile bedeutet nicht „kein Ereignis“. Ein Dateiname ist nicht aut
 
 ### Folgeanalyse
 
+Verwenden Sie abhängig vom Ereignistyp die folgenden Folgeanalysen:
+
 - Deadlocks: `USP_ExtendedEventsDeadlocks`
 - Blocked-Process-Reports: `USP_ExtendedEventsBlockedProcesses`
 - Session-/Targetzustand und Drops: `USP_ExtendedEventsSessions` sowie `USP_ExtendedEventsTargetRuntime`
 - Queryverlauf: Query Store oder Plananalyse mit Query-/Plan-Hash aus der Payload
-- unzureichende Retention: neue, eng definierte XE-Captureplanung mit geprüftem Speicher-/Filebudget
+- Unzureichende Retention: neue, eng definierte XE-Captureplanung mit geprüftem Speicher-/Filebudget
 
 ## Primärquellen
 

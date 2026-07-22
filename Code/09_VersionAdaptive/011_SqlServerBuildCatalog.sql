@@ -7,8 +7,9 @@ Objekt       : monitor.SqlServerBuildCatalog
 Version      : 1.0.0
 Stand        : 2026-07-21
 Typ          : Framework-Metadatentabelle und idempotenter Seed
-Zweck        : Offline reproduzierbare Einordnung ausgewählter RTM-, CU-, GDR-
-               und CU-GDR-Builds für SQL Server 2019, 2022 und 2025.
+Zweck        : Ermöglicht die offline reproduzierbare Einordnung ausgewählter
+               RTM-, CU-, GDR- und CU-GDR-Builds für SQL Server 2019, 2022 und
+               2025.
 Quelle       : Microsoft SQL Server build versions; Abruf 2026-07-21.
 Grenze       : Der Katalog ist kein Online-Patchscanner und kein
                Verwundbarkeits-, Neustart- oder Freigabenachweis.

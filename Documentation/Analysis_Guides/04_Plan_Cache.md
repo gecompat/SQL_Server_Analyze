@@ -18,7 +18,7 @@
 
 ### Zweck
 
-Rangiert aktuell gecachte Statements nach CPU, Laufzeit, Reads, Writes, Ausführungen, Grants, Spills, Zeilen oder letzter Ausführung.
+Die Procedure rangiert aktuell gecachte Statements nach CPU, Laufzeit, Reads, Writes, Ausführungen, Grants, Spills, Zeilen oder letzter Ausführung.
 
 ### Aufrufe
 
@@ -70,7 +70,7 @@ EXEC [monitor].[USP_QueryStats]
 
 ### Grenzbeispiel
 
-Eine Query mit 1 Mio. Ausführungen × 2 ms verbraucht insgesamt mehr als eine Query mit einmalig 10 Minuten. Deshalb sowohl Total- als auch Avg-/Maxsortierung verwenden.
+Eine Query mit einer Million Ausführungen zu jeweils 2 ms verbraucht insgesamt mehr Ressourcen als eine einmalig zehn Minuten laufende Query. Verwenden Sie deshalb sowohl die Total- als auch die Average- und Maximalwertsortierung.
 
 ### Folgeanalyse
 
@@ -82,7 +82,7 @@ Eine Query mit 1 Mio. Ausführungen × 2 ms verbraucht insgesamt mehr als eine Q
 
 ### Zweck
 
-Aggregiert alle aktuellen Cachezeilen eines Query Hash und zeigt Planvarianz, Compile-/Handlezahl und Gesamtressourcen.
+Die Procedure aggregiert alle aktuellen Cachezeilen eines Query Hash und zeigt Planvarianz, Compile-/Handlezahl und Gesamtressourcen.
 
 ### Spalten
 
@@ -126,7 +126,7 @@ Aggregiert alle aktuellen Cachezeilen eines Query Hash und zeigt Planvarianz, Co
 
 ### Zweck
 
-Bewertet Cachegröße und Single-Use-Anteil. Im Vollmodus optional Verteilung je Datenbank und größte Single-Use-Pläne.
+Die Procedure bewertet Cachegröße und Single-Use-Anteil. Im Vollmodus zeigt sie zusätzlich die Verteilung je Datenbank und die größten Single-Use-Pläne.
 
 ### RAW-Resultsets
 
@@ -181,7 +181,7 @@ Bewertet Cachegröße und Single-Use-Anteil. Im Vollmodus optional Verteilung je
 
 ### Zweck
 
-Löst gezielt Plan-Kandidaten über Session, Plan Handle, SQL Handle oder Query Hash auf und liefert Planattribute sowie Compile-, Text-, Last-Actual- oder Live-Plan.
+Die Procedure löst gezielt Plan-Kandidaten über Session, Plan Handle, SQL Handle oder Query Hash auf und liefert Planattribute sowie Compile-, Text-, Last-Actual- oder Live-Plan.
 
 ### Kandidatenresultset
 
@@ -229,7 +229,7 @@ Wichtige Attribute sind etwa `dbid`, `set_options`, `user_id`, `language_id`, `d
 
 ### Zweck
 
-Parst begrenzt Plan-XML und extrahiert Statements, Warnungen, Missing-Index-Elemente, verwendete Objekte/Statistiken, Operatoren, Kardinalitätsabweichungen, Memory Grants und Parameter.
+Die Procedure parst begrenzt Plan-XML und extrahiert Statements, Warnungen, Missing-Index-Elemente, verwendete Objekte/Statistiken, Operatoren, Kardinalitätsabweichungen, Memory Grants und Parameter.
 
 ### Sicherheitsbudgets
 
@@ -304,7 +304,7 @@ Compiled-/Runtime-Differenz kann Parameter Sensitivity anzeigen, aber ein einzel
 
 ### Kosten
 
-HIGH_OPT_IN bei mehreren/großen Plänen. XML-XQuery verursacht CPU; Last Actual kann große XML-Dokumente enthalten. Zeit- und Zeilenbudget nicht leichtfertig erhöhen.
+Die Kostenklasse ist bei mehreren oder großen Plänen HIGH_OPT_IN. XML-XQuery beansprucht CPU; Last Actual kann große XML-Dokumente enthalten. Erhöhen Sie das Zeit- und Zeilenbudget nur nach einer aufgabenspezifischen Prüfung.
 
 ---
 
@@ -312,14 +312,14 @@ HIGH_OPT_IN bei mehreren/großen Plänen. XML-XQuery verursacht CPU; Last Actual
 
 ### Zweck
 
-Orchestriert:
+Die Procedure orchestriert folgende Teilanalysen:
 
 1. `USP_QueryStats`
 2. `USP_QueryHashAnalysis`
 3. `USP_PlanCacheHealth`
 4. `USP_ShowplanAnalysis`
 
-Default ist nur Query Stats. Andere Module sind opt-in.
+Standardmäßig wird nur Query Stats ausgeführt. Die übrigen Module müssen ausdrücklich aktiviert werden.
 
 ### Orchestratorresultsets
 
@@ -351,7 +351,7 @@ EXEC [monitor].[USP_PlanCacheAnalysis]
 - `TOP` wird für Health zu `SUMMARY` und Showplan zu `GEZIELT` übersetzt.
 - `VOLL` aktiviert breitere Health-/Showplanpfade, aber nicht automatisch alle Modulschalter.
 - `MaxZeilen` gilt je Child; Gesamtumfang ist größer.
-- Ein `EXECUTED`-Modul kann intern `PARTIAL` melden; Child-Meta lesen.
+- Ein `EXECUTED`-Modul kann intern `PARTIAL` melden; lesen Sie deshalb die Child-Metadaten.
 - Sind mindestens zwei der Consumer Query Stats, Query Hash und Showplan-Kandidatenauswahl aktiv, liest der Orchestrator `sys.dm_exec_query_stats` einmal in `#PlanCacheAnalysis_QueryStatsSnapshot`. Breite Snapshots respektieren vor dem Read `PLAN_CACHE_DEEP`; ohne Freigabe prüfen die Children ihren jeweils zulässigen Scope und lesen frisch. Ein einzelner Consumer liest ohne Temp-Materialisierung frisch.
 - `USP_PlanCacheHealth` verwendet `sys.dm_exec_cached_plans` und teilt diesen Snapshot nicht. Plan-XML wird weiterhin planweise geladen; Eviction bleibt als `UNAVAILABLE_OBJECT` sichtbar.
 - `READPAST` wird nicht eingesetzt: lautlos übersprungene Pläne würden die Evidenz verfälschen. Scheitert der gemeinsame Read, fallen die Children auf ihre frische, isoliert fehlerbehandelte Erhebung zurück.

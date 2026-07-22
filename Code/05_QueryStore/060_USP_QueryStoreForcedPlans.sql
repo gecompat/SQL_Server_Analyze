@@ -6,8 +6,9 @@ GO
 Objekt       : monitor.USP_QueryStoreForcedPlans
 Version      : 2.0.0
 Stand        : 2026-07-15
-Zweck        : Erzwungene Query-Store-Pläne aus mehreren Quelldatenbanken mit
-               globaler Top-N-Ausgabe und optionalem Referenzdatenbankfilter.
+Zweck        : Liefert erzwungene Query-Store-Pläne aus mehreren
+               Quelldatenbanken mit globaler Top-N-Ausgabe und optionalem
+               Referenzdatenbankfilter.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreForcedPlans]

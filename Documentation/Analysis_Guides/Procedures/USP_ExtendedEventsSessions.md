@@ -7,15 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche XE-Sessions existieren, laufen sie, welche Events/Actions/Predicates und Targets besitzen sie?** Der dokumentierte Zweck ist: Inventarisiert XE-Sessions, Laufzeitstatus, Events, Actions, Targets und Felder. Der Aufruf soll die Arbeitsentscheidung vorbereiten, ob die konfigurierte Ereignisquelle die gesuchte Situation erfasst hat und welche einzelne Datei, Session oder XML-Struktur anschließend vertieft wird. Status und Scope sind dabei Teil der Evidenz, nicht bloß technische Begleitinformation.
-
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
+Die Procedure beantwortet die Betriebsfrage: **Welche XE-Sessions existieren, laufen sie, welche Events/Actions/Predicates und Targets besitzen sie?** Sie unterstützt die Entscheidung, ob die konfigurierte Ereignisquelle die gesuchte Situation erfasst hat und welche einzelne Datei, Session oder XML-Struktur anschließend vertieft wird.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keine Ereignisse, die nicht konfiguriert, vor Sessionstart aufgetreten oder durch Rollover/Targetgrenzen verloren gegangen sind. Ihr Zeitvertrag lautet ausdrücklich: Aktuelle Konfiguration plus Runtimezustand; Serverstart und Sessionstart beeinflussen Targetinhalt. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
-
-Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rechte ausgelassene Details und bereits durch Retention, Restart, Eviction oder Statuswechsel verlorene Zustände. Findings, Prozentwerte und Durchschnitte müssen mit Nenner, Erfassungsfenster und Zeilengranularität gelesen werden. Eine Änderung an DDL, Forcing, Failover, KILL, Repair oder Konfiguration benötigt unabhängige Evidenz und einen Rollbackplan.
+Die Procedure beantwortet keine Ereignisse, die nicht konfiguriert, vor Sessionstart aufgetreten oder durch Rollover/Targetgrenzen verloren gegangen sind. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -34,43 +30,33 @@ Dieser Einstieg grenzt das Inventar auf eine synthetisch benannte Session ein.
 Er liest Konfiguration und optionalen Laufzeitstatus, aber weder `target_data`
 noch XEL-Dateien und löst deshalb keinen Target-Flush aus.
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `sessions` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Der typisierte TABLE-Vertrag registriert `sessions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einer Session, einem Event, einer Action, einem Target oder einem konfigurierten Feld.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-Sessiondefinition, Laufzeitstatus, Events, Actions, Targets, Predicates und Verlustzähler getrennt prüfen.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+Prüfen Sie Sessiondefinition, Laufzeitstatus, Events, Actions, Targets, Predicates und Verlustzähler getrennt.
 
 ## Warum kann das problematisch sein?
 
 Eine definierte, aber gestoppte Session sammelt nichts. Fehlende Actions begrenzen spätere Korrelation; Dropped Events machen Historie unvollständig.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
 Eine bewusst nur bei Bedarf gestartete Session darf gestoppt sein.
 
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
-
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall (`Example*`):** Deadlockevent vorhanden, aber nur kleiner Ringbuffer: historische Tiefe kann fehlen. Danach Target Runtime und Events prüfen.
+**Synthetischer Problemfall (`Example*`):** Deadlockevent vorhanden, aber nur kleiner Ringbuffer: historische Tiefe kann fehlen. Prüfen Sie danach Target Runtime und Events.
 
 **Ähnlich aussehender Gegenfall:** Eine bewusst nur bei Bedarf gestartete Session darf gestoppt sein. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
 
 ## Leere oder partielle Ausgabe
 
@@ -80,9 +66,7 @@ Für `USP_ExtendedEventsSessions` gilt zusätzlich: **keine Zeile** bedeutet, da
 
 ## Eigenlast und Grenzen
 
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
-
-**Quellcode-Hinweis zur Eigenlast:** Gering. Es werden nur Extended-Events-Katalogviews und optional sys.dm_xe_sessions gelesen. Targetdaten werden nicht gelesen.
+**Quellcode-Hinweis zur Eigenlast:** Die Eigenlast ist gering. Es werden nur Extended-Events-Katalogviews und optional `sys.dm_xe_sessions` gelesen. Targetdaten werden nicht gelesen.
 
 | Dimension | Aussage für diese Procedure |
 |---|---|
@@ -134,15 +118,15 @@ LEFT JOIN [sys].[server_event_session_targets] AS [t] WITH (NOLOCK)
 WHERE [ses].[name] = N'ExampleXeSession';
 ```
 
-**Wichtig für die Eigenlast:** Sessionname vor Events, Actions, Fields und datenbanklokalen Objektauflösungen setzen. Die synthetische Session `ExampleXeSession` ist nur ein Platzhalter.
+**Wichtig für die Eigenlast:** Setzen Sie Sessionname vor Events, Actions, Fields und datenbanklokalen Objektauflösungen. Die synthetische Session `ExampleXeSession` ist nur ein Platzhalter.
 
 ### Zeit- und Scope-Modell
 
-Aktuelle Konfiguration plus Runtimezustand; Serverstart und Sessionstart beeinflussen Targetinhalt.
+Die Auswertung beschreibt die aktuelle Konfiguration und den Runtimezustand; Server- und Sessionstart beeinflussen den Targetinhalt.
 
 ### Bewertung und Gegenprobe
 
-Definition und Runtime verbinden: Session vorhanden/läuft, Event enthalten, Predicate nicht zu eng, Actions ausreichend, Target erreichbar. Startup State ist nur Startverhalten.
+Verbinden Sie Definition und Runtime: Prüfen Sie, ob die Session vorhanden ist und läuft, das Event enthalten ist, das Predicate nicht zu eng gefasst ist, ausreichende Actions konfiguriert sind und das Target erreichbar ist. Startup State beschreibt nur das Startverhalten.
 
 ### Typische Fehlinterpretation
 
@@ -150,7 +134,7 @@ Eine laufende Session beweist keine vollständige Erfassung. Eine konfigurierte,
 
 ### Folgeanalyse
 
-`USP_ExtendedEventsTargetRuntime` und anschließend Eventreader.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_ExtendedEventsTargetRuntime` und anschließend Eventreader.
 
 ## Primärquellen
 

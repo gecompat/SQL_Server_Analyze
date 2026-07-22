@@ -18,7 +18,7 @@
 
 ### Zweck
 
-Liefert Objekt- und Indexinventar mit Größe, Zeilenzahl, Partitionierung, Kompression, Speicherart und optionalen Key-/Include-Spaltenlisten.
+Die Procedure liefert Objekt- und Indexinventar mit Größe, Zeilenzahl, Partitionierung, Kompression, Speicherart und optionalen Key-/Include-Spaltenlisten.
 
 ### Wann einsetzen?
 
@@ -89,7 +89,7 @@ EXEC [monitor].[USP_ObjectInventory]
 
 ### Zweck
 
-Kumulative Nutzung seit DMV-Reset für klassische Indizes sowie separater In-Memory-OLTP-Nutzungsresultset.
+Die Procedure zeigt die kumulative Nutzung klassischer Indizes seit dem DMV-Reset und liefert ein separates Resultset für In-Memory-OLTP-Indizes.
 
 ### RAW-Resultsets
 
@@ -151,7 +151,7 @@ Kumulative Nutzung seit DMV-Reset für klassische Indizes sowie separater In-Mem
 
 ### Zweck
 
-Kumulative partitionsgenaue Betriebszähler aus `sys.dm_db_index_operational_stats`: DML, Page Allocations/Merges, Scans/Lookups, Forwarded Fetches, Locks, Latches, I/O-Latches, Eskalation und Kompression.
+Die Procedure liefert kumulative, partitionsgenaue Betriebszähler aus `sys.dm_db_index_operational_stats`. Dazu gehören DML, Page Allocations und Merges, Scans und Lookups, Forwarded Fetches, Locks, Latches, I/O-Latches, Eskalationen und Kompression.
 
 ### Spalten
 
@@ -194,7 +194,7 @@ GEZIELT moderat. VOLL benötigt `INDEX_OPERATIONAL_DEEP` und kann bei vielen Dat
 
 ### Zweck
 
-Liest flüchtige Missing-Index-DMVs und berechnet eine Priorisierungsmetrik sowie einen **nur als Entwurf** zu verstehenden CREATE-INDEX-Text.
+Die Procedure liest flüchtige Missing-Index-DMVs und berechnet eine Priorisierungsmetrik sowie einen **nur als Entwurf** zu verstehenden CREATE-INDEX-Text.
 
 ### Spalten
 
@@ -245,7 +245,7 @@ Liest flüchtige Missing-Index-DMVs und berechnet eine Priorisierungsmetrik sowi
 
 ### Zweck
 
-Inventarisiert Statistiken, Materialisierung, Sample, Änderungszähler, Alter, Filter und optional inkrementelle Partitionsdetails.
+Die Procedure inventarisiert Statistiken, Materialisierung, Sample, Änderungszähler, Alter, Filter und optional inkrementelle Partitionsdetails.
 
 ### Hauptspalten
 
@@ -291,7 +291,7 @@ Datenbank, Schema, Objekt, Statistik-ID/-Name, `PartitionNumber`, `LastUpdated`,
 
 ### Zweck
 
-Begrenzt ausgewählte Statistiken und wertet Histogrammverteilung, dominierende Schritte, Tails, Skew sowie inkrementelle Partitionsabweichungen aus. Liefert normalisierte Findings.
+Die Procedure begrenzt ausgewählte Statistiken und wertet Histogrammverteilung, dominierende Schritte, Tails, Skew sowie inkrementelle Partitionsabweichungen aus. Sie liefert normalisierte Findings.
 
 ### Kandidaten
 
@@ -340,7 +340,7 @@ Begrenzt ausgewählte Statistiken und wertet Histogrammverteilung, dominierende 
 
 ### Zweck
 
-Zeigt partitionsgenaue Größe, Kompression, Filegroupzuordnung, Partition Scheme/Function und echte Grenzintervalle.
+Die Procedure zeigt partitionsgenaue Größe, Kompression, Filegroupzuordnung, Partition Scheme/Function und echte Grenzintervalle.
 
 ### Spalten
 
@@ -358,8 +358,8 @@ Zeigt partitionsgenaue Größe, Kompression, Filegroupzuordnung, Partition Schem
 - Leere Randpartitionen können für Sliding Window normal und erwünscht sein.
 - Mixed Compression ist häufig Hot-/Cold-Design.
 - Ungleichmäßige RowCounts können reale Zeit- oder Mandantenverteilung abbilden.
-- Grenzwerte sind textuell konvertiert; Datentyp und Zeitzone beachten.
-- Partitionierung verbessert nicht automatisch Queryperformance; Partition Elimination und Indexausrichtung prüfen.
+- Grenzwerte sind textuell konvertiert; beachten Sie Datentyp und Zeitzone.
+- Partitionierung verbessert die Queryperformance nicht automatisch; prüfen Sie Partition Elimination und Indexausrichtung.
 
 ### Folgeanalyse
 
@@ -371,7 +371,7 @@ Showplan, `USP_IndexUsage`, `USP_Statistics` mit inkrementellen Details, Kapazit
 
 ### Zweck
 
-Analysiert Rowgroups; optional physische Rowgroupdetails, Segmente und Dictionaries.
+Die Procedure analysiert Rowgroups; optional physische Rowgroupdetails, Segmente und Dictionaries.
 
 ### Basis-/Physical-Rowgroups
 
@@ -419,7 +419,7 @@ Basis moderat. Physical/Segmente/Dictionaries benötigen `COLUMNSTORE_DEEP` und 
 
 ### Zweck
 
-Ruft `sys.dm_db_index_physical_stats` gezielt oder breit mit `LIMITED`, `SAMPLED` oder `DETAILED` auf.
+Die Procedure ruft `sys.dm_db_index_physical_stats` gezielt oder breit mit `LIMITED`, `SAMPLED` oder `DETAILED` auf.
 
 ### Spalten
 
@@ -430,7 +430,7 @@ Ruft `sys.dm_db_index_physical_stats` gezielt oder breit mit `LIMITED`, `SAMPLED
 - `PageCount` zuerst lesen. Kleine Strukturen verzerren Prozentwerte.
 - `AvgPageSpaceUsedPercent` kann wichtiger sein als Fragmentierung, besonders bei Read-/Cacheeffizienz.
 - `ForwardedRecordCount` betrifft Heaps.
-- Ghost Records sind während Cleanup normal; persistente große Werte im Kontext prüfen.
+- Ghost Records sind während des Cleanups normal; prüfen Sie persistente große Werte im jeweiligen Kontext.
 - IndexLevel 0 ist Leaf; höhere Levels beschreiben B-Tree-Ebenen.
 - LIMITED ist der sicherste Einstieg; DETAILED liest deutlich mehr Seiten.
 
@@ -455,7 +455,7 @@ Immer `PHYSICAL_STATS_DEEP`. `DETAILED` auf großen Datenbanken kann selbst subs
 
 ### Zweck
 
-Erzeugt normalisierte Designfindings, unter anderem für:
+Die Procedure erzeugt normalisierte Designfindings, unter anderem für:
 
 - deaktivierte oder nicht vertrauenswürdige Foreign Keys,
 - deaktivierte oder nicht vertrauenswürdige Check Constraints,
@@ -499,7 +499,7 @@ EXEC [monitor].[USP_SchemaDesignAnalysis]
 
 ### Zweck
 
-Orchestriert alle Objekt-/Indexmodule mit gemeinsamem Filtervertrag. Default aktiviert Inventar, Usage und Missing Indexes. Tiefenmodule sind opt-in.
+Die Procedure orchestriert alle Objekt- und Indexmodule mit einem gemeinsamen Filtervertrag. Standardmäßig sind Inventar, Usage und Missing Indexes aktiviert; die Tiefenmodule müssen ausdrücklich angefordert werden.
 
 ### Childreihenfolge
 
@@ -543,7 +543,7 @@ EXEC [monitor].[USP_ObjectAnalysis]
 - `@Vollanalyse=1` macht aus `GEZIELT` einen breiten Lauf, hebt aber Child-Gates nicht auf.
 - Ein einzelnes `@MaxZeilen` wird an Children weitergegeben; Gesamtzeilenzahl kann deutlich höher sein.
 - Wrapperresultsets ersetzen nicht die Child-Metaresultsets.
-- Physical/Histogramm/Columnstore-Deep nicht routinemäßig pollingartig ausführen.
+- Führen Sie Physical-, Histogramm- und Columnstore-Deep-Analysen nicht routinemäßig als Polling aus.
 
 ## Anfänger-Entscheidungsbaum
 

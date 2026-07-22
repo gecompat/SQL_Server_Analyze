@@ -115,7 +115,7 @@ BEGIN
         PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Zweck: Partitionen, Grenzen, Filegroups, Größe und Kompression.';
+        PRINT N'Die Procedure liefert Partitionen, Grenzwerte, Filegroups, Größe und Kompression.';
         PRINT N'@AnalyseModus=GEZIELT: Schema- oder Objektfilter erforderlich; VOLL prüft CATALOG_DEEP.';
         PRINT N'@NurPartitionierte: nur Indizes/Heaps mit mehr als einer Partition.';
         PRINT N'@NurGemischteKompression: nur Objekte mit unterschiedlichen data_compression_desc-Werten.';

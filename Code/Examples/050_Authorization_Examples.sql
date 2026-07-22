@@ -4,8 +4,8 @@ GO
 /*
 ==============================================================================
 Datei        : 050_Authorization_Examples.sql
-Zweck        : Sichere Beispielaufrufe für Ressourcenschutz, Gruppenpolicy und
-               technische Capabilityprüfung.
+Zweck        : Enthält sichere Beispielaufrufe für Ressourcenschutz,
+               Gruppenpolicy und technische Capabilityprüfung.
 Datenschutz  : Ausschließlich synthetische Gruppen- und Klassennamen.
 Hinweis      : Das Framework vergibt keine SQL-Server-Berechtigungen.
 ==============================================================================

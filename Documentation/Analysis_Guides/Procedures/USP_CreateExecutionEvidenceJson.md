@@ -37,7 +37,7 @@ Die Granularität hängt vom Resultset ab: eine Capture-Zusammenfassung, eine IO
 
 ## So lesen
 
-Zuerst `captureStatus`, `SameExecutionConfidence` und ParseStatus prüfen. Danach IO und TIME auf Statementebene lesen. Statistik- und Histogrammevidenz erst mit Compilezeit, Capturezeit und Datenschutzstatus bewerten.
+Prüfen Sie zuerst `captureStatus`, `SameExecutionConfidence` und ParseStatus. Berücksichtigen Sie danach IO und TIME auf Statementebene. Bewerten Sie Statistik- und Histogrammevidenz erst mit Compilezeit, Capturezeit und Datenschutzstatus.
 
 ## Warum kann das problematisch sein?
 
@@ -79,7 +79,7 @@ FROM [monitor].[TVF_ExecutionPlanObjectReferences]
      (@PlanXml, @StatementId) AS [r];
 ```
 
-**Wichtig für die Eigenlast:** `@StatementId` vor XML-Knotenextraktion setzen und nur benötigte Evidenzpfade aktivieren. Histogrammzugriffe erst nach der aus dem Plan abgeleiteten kleinen Statistikmenge ausführen; `@MaxStatistiken` und `@MaxHistogrammSchritte` begrenzen diese Vertiefung.
+**Wichtig für die Eigenlast:** Setzen Sie `@StatementId` vor der XML-Knotenextraktion und aktivieren Sie nur benötigte Evidenzpfade. Führen Sie Histogrammzugriffe erst nach der aus dem Plan abgeleiteten kleinen Statistikmenge aus; `@MaxStatistiken` und `@MaxHistogrammSchritte` begrenzen diese Vertiefung.
 
 ### Zeit- und Scope-Modell
 
@@ -87,7 +87,7 @@ Jeder Abschnitt besitzt einen eigenen Capture- oder Compilezeitbezug. Aktuelle S
 
 ### Bewertung und Gegenprobe
 
-Same-Execution-Status, Statementzuordnung, Planhash, Capturezeit und Parameterkontext gemeinsam prüfen. Bei importierter Evidenz die Quellumgebung ausdrücklich bestätigen.
+Prüfen Sie Same-Execution-Status, Statementzuordnung, Planhash, Capturezeit und Parameterkontext gemeinsam. Bestätigen Sie bei importierter Evidenz die Quellumgebung ausdrücklich.
 
 ### Typische Fehlinterpretation
 
@@ -95,7 +95,7 @@ Ein geparster Textblock ist nicht automatisch derselben Planexecution zugeordnet
 
 ### Folgeanalyse
 
-`USP_ExecutionPlanAnalysis`, Query Store Runtime/Regression und gezielte Statistikverteilungsanalyse.
+Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_ExecutionPlanAnalysis`, Query Store Runtime/Regression und gezielte Statistikverteilungsanalyse.
 
 ## Primärquellen
 

@@ -58,7 +58,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_ErrorLogAnalysis';
-        PRINT N'Default: aktuelles SQL-Server-Errorlog, letzte 24 Stunden in der vom Errorlog gelieferten Serverlokalzeit, kategorisierte Summary.';
+        PRINT N'Standardmäßig liest die Procedure das aktuelle SQL-Server-Errorlog für die letzten 24 Stunden in der vom Errorlog gelieferten Serverlokalzeit und erstellt eine kategorisierte Zusammenfassung.';
         PRINT N'@MaxArchivNummer=0 liest nur das aktuelle Log; höhere Werte lesen Archive 0..n. Kein Logwechsel wird ausgeführt.';
         PRINT N'@Suchtext1/@Suchtext2 ersetzen die kuratierten Defaultfilter durch einen benutzerdefinierten dokumentierten sp_readerrorlog-Filter.';
         PRINT N'@MeldungstextEinbeziehen=1 aktiviert Details. @MaxMeldungszeichen=0 ist unbegrenzt; Kürzung erzeugt genau eine Warning.';

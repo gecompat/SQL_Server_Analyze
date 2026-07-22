@@ -8,7 +8,7 @@ Der vollständige SSMS-Ablauf einschließlich Arbeitskopie, Platzhalterersetzung
 Modusprüfung und Fehlerbehandlung ist in Abschnitt 12 der Installationsanleitung
 beschrieben. `:ON ERROR EXIT` beendet den Include-Lauf beim ersten SQL-Fehler.
 
-Für einen eigenständigen, vollständig eingebetteten Installer:
+Ein eigenständiger, vollständig eingebetteter Installer wird mit folgendem Aufruf erzeugt:
 
 ```powershell
 ./Build-StandaloneInstaller.ps1

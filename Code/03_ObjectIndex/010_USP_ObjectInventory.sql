@@ -121,7 +121,7 @@ BEGIN
         PRINT N'Datenbankauswahl ohne Vorabbegrenzung; @MaxZeilen int: harte Ergebnismengenbegrenzung.';
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
-        PRINT N'Zweck: Objekt-, Größen-, Partitions-, Kompressions- und Indexinventar.';
+        PRINT N'Die Procedure liefert ein Objekt-, Größen-, Partitions-, Kompressions- und Indexinventar.';
         PRINT N'@ObjectType varchar(16) = TABLE: TABLE, VIEW oder ALLE.';
         PRINT N'@AnalyseModus varchar(16) = GEZIELT: GEZIELT benötigt Schema-/Objektfilter; VOLL prüft CATALOG_DEEP.';
         PRINT N'@MitIndizes bit = 1: 0 liefert nur Objektsummen.';

@@ -88,7 +88,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_StatisticsDistributionAnalysis';
-        PRINT N'Opt-in-Verteilungsanalyse sichtbarer Statistikhistogramme; keine Daten- oder Konfigurationsänderung.';
+        PRINT N'Die Procedure führt eine optionale Verteilungsanalyse sichtbarer Statistikhistogramme durch und verändert weder Daten noch Konfiguration.';
         PRINT N'@AnalyseModus=GEZIELT erfordert Objekt-/Schema-/Statistikfilter; VOLL benötigt CATALOG_DEEP.';
         PRINT N'@MaxVerteilungsStatistiken=1..250 begrenzt den Histogrammzugriff je Datenbank vor der Analyse.';
         PRINT N'@MinVerteilungsZeilen, @SkewWarnFaktor, @DominanterSchrittWarnPercent, @ModificationWarnPercent und @PartitionSpreadWarnPercent steuern Hinweise.';

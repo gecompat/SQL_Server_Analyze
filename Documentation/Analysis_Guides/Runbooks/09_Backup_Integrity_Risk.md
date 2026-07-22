@@ -12,18 +12,18 @@ EXEC [monitor].[USP_BackupChainAnalysis]
       @ResultSetArt='CONSOLE';
 ```
 
-## Lesen
+## Auswertung
 
-Datenbankstatus, PAGE_VERIFY, CHECKDB-Alter, suspect pages, Backupchecksums, LSN-Gaps, Restoreevidenz und HADR-Reparaturen.
+Lesen Sie Datenbankstatus, PAGE_VERIFY, CHECKDB-Alter, Suspect Pages, Backupchecksums, LSN-Gaps, Restoreevidenz und HADR-Reparaturen gemeinsam.
 
-## Warum
+## Interpretation
 
 Negative Evidenz kann auf Schaden oder nicht wiederherstellbare Ketten hinweisen. Fehlende negative Evidenz ist kein Integritätsbeweis.
 
 ## Gegenprobe
 
-Vollständige CHECKDB-Strategie, Backupmedien und realer Restore-Test.
+Prüfen Sie die vollständige CHECKDB-Strategie, die Backupmedien und einen real ausgeführten Restore-Test als Gegenproben.
 
-## Nicht tun
+## Nicht ableiten
 
-Kein Repair oder Datenverlust akzeptierendes Vorgehen allein aus dem Analysefinding ableiten.
+Leiten Sie weder Repair noch ein Datenverlust akzeptierendes Vorgehen allein aus einem Analysefinding ab.

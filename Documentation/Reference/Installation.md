@@ -22,11 +22,11 @@ Das Framework vergibt keine Benutzer-, Datenbank- oder Serverberechtigungen und 
 1. Auf der GitHub-Seite des Repositorys **Code** und danach **Download ZIP** wählen. Alternativ das Repository mit Git klonen.
 2. Die ZIP-Datei vollständig in ein lokales Verzeichnis entpacken, beispielsweise `C:\Tools\SQL_Server_Analyze`.
 3. Die Verzeichnisstruktur unverändert lassen. Der Build und der alternative SQLCMD-Installer verwenden relative Pfade.
-4. Vor Verwendung die Datei `LICENSE.md` lesen.
+4. Lesen Sie vor der Verwendung die Datei `LICENSE.md`.
 
 ## 3. Zielinstanz und Collation kontrollieren
 
-1. SSMS starten.
+1. Starten Sie SSMS.
 2. Mit der SQL-Server-Instanz verbinden, auf der das Framework installiert werden soll.
 3. **Neue Abfrage** öffnen und folgende Vorprüfung ausführen:
 
@@ -65,9 +65,9 @@ Server-/`tempdb`-Collation gehört dennoch nicht zur aktuell freigegebenen und
 nachgewiesenen Plattformmatrix.
 
 Bis diese Portabilitätsarbeit abgeschlossen und auf SQL Server 2019, 2022 und
-2025 nachgewiesen ist, bleibt die Prüfung verbindlich: Bei einer Abweichung die
-Installation abbrechen und die Zielinstanz beziehungsweise den zukünftigen
-Freigabestand prüfen. Eine bloß anders collatierte Frameworkdatenbank ist für
+2025 nachgewiesen ist, bleibt die Prüfung verbindlich: Brechen Sie die
+Installation bei einer Abweichung ab und prüfen Sie die Zielinstanz beziehungsweise den zukünftigen
+Freigabestand. Eine bloß anders collatierte Frameworkdatenbank ist für
 den aktuellen Installer daher keine freigegebene Umgehung der Prüfung.
 
 ## 4. Installationsdatenbank anlegen oder prüfen
@@ -105,7 +105,7 @@ Erwartet werden `ONLINE`, `MULTI_USER`, `is_read_only = 0` und die Collation `SQ
 
 Dieser Schritt benötigt keine SQL-Server-Verbindung und verändert den Server nicht.
 
-1. PowerShell öffnen.
+1. Öffnen Sie PowerShell.
 2. In das Installationsverzeichnis der entpackten Repositorykopie wechseln:
 
 ```powershell
@@ -120,12 +120,12 @@ Set-Location 'C:\Tools\SQL_Server_Analyze\Code\Install'
 
 4. Die Erfolgsmeldung kontrollieren. Im Unterverzeichnis `generated` muss nun die Datei `Install_All.generated.sql` liegen.
 
-Das Buildskript übernimmt die kanonischen SQL-Dateien in ihrer abhängigkeitssicheren Reihenfolge. `generated/Install_All.generated.sql` ist ein lokales Build-Artefakt und wird nicht in Git versioniert. Falls die lokale PowerShell-Richtlinie das Skript blockiert, die Richtlinie nicht unkontrolliert umgehen, sondern die Ausführung mit der zuständigen Administration klären oder den alternativen SQLCMD-Weg verwenden.
+Das Buildskript übernimmt die kanonischen SQL-Dateien in ihrer abhängigkeitssicheren Reihenfolge. `generated/Install_All.generated.sql` ist ein lokales Build-Artefakt und wird nicht in Git versioniert. Falls die lokale PowerShell-Richtlinie das Skript blockiert, dürfen Sie die Richtlinie nicht unkontrolliert umgehen. Klären Sie die Ausführung stattdessen mit der zuständigen Administration oder verwenden Sie den alternativen SQLCMD-Weg.
 
 ## 6. Installer in SSMS vorbereiten
 
-1. In SSMS **Datei > Öffnen > Datei** wählen.
-2. `Code\Install\generated\Install_All.generated.sql` öffnen.
+1. Wählen Sie in SSMS **Datei > Öffnen > Datei**.
+2. Öffnen Sie `Code\Install\generated\Install_All.generated.sql`.
 3. Nur die erste Zeile anpassen:
 
 ```sql
@@ -140,8 +140,8 @@ Der generierte Installer enthält keine `:r`-Anweisungen. Für ihn muss der SQLC
 ## 7. Installation ausführen
 
 1. Im Installerfenster **Ausführen** wählen oder `F5` drücken.
-2. Bis zum Ende warten und insbesondere die Registerkarte **Meldungen** kontrollieren.
-3. Bei einem Fehler nicht von einer vollständigen Installation ausgehen. Ursache beheben und anschließend den gesamten Installer erneut ausführen.
+2. Warten Sie bis zum Ende und kontrollieren Sie insbesondere die Registerkarte **Meldungen**.
+3. Gehen Sie bei einem Fehler nicht von einer vollständigen Installation aus. Beheben Sie die Ursache und führen Sie anschließend den gesamten Installer erneut aus.
 
 Die Frameworkobjekte liegen danach in der gewählten Datenbank im Schema `[monitor]`. Der Installer verwendet `CREATE OR ALTER` sowie idempotente DDL-/DML-Logik und kann deshalb auch für Upgrades erneut vollständig ausgeführt werden.
 
@@ -169,10 +169,10 @@ Die Versionsabfrage muss genau eine Frameworkzeile liefern. Die Prozedurzahl mus
 
 ## 9. Smoke-Test ausführen
 
-1. In SSMS die Datei `Code\Tests\Integration\110_Smoke_Test.sql` öffnen.
+1. Öffnen Sie in SSMS die Datei `Code\Tests\Integration\110_Smoke_Test.sql`.
 2. Beide Vorkommen von `[DeineDatenbank]` durch den lokal gewählten, korrekt
    geklammerten Datenbanknamen ersetzen.
-3. Die gesamte Datei mit `F5` ausführen.
+3. Führen Sie die gesamte Datei mit `F5` aus.
 
 Der letzte Ergebnisdatensatz muss unter anderem enthalten:
 
@@ -180,7 +180,7 @@ Der letzte Ergebnisdatensatz muss unter anderem enthalten:
 - `IsPartial = 0`;
 - `Detail = Kompakter Smoke Test erfolgreich.`
 
-Ein Fehler im Smoke-Test ist kein Grund, einzelne Prüfungen zu löschen oder auszukommentieren. Zuerst die Meldung und den vorherigen Installationslauf prüfen.
+Ein Fehler im Smoke-Test ist kein Grund, einzelne Prüfungen zu löschen oder auszukommentieren. Prüfen Sie zuerst die Meldung und den vorherigen Installationslauf.
 
 ## 10. Analysebereitschaft und Berechtigungen prüfen
 
@@ -221,7 +221,7 @@ Das Paket erstellt keine Datenbank, Berechtigungen oder Schedulerobjekte. Siehe
 
 ## 11. Erste Analyse starten
 
-Zuerst einen passenden Einstieg nach Symptom oder Ziel finden:
+Ermitteln Sie zuerst einen passenden Einstieg anhand des Symptoms oder Analyseziels:
 
 ```sql
 USE [DeineDatenbank];
@@ -302,9 +302,9 @@ dieser Anleitung geprüft beziehungsweise angelegt worden sein.
 
 Mit einem Editor, der **Suchen und Ersetzen in Dateien** unterstützt:
 
-1. Als Suchbereich ausschließlich den Ordner `Code` der Arbeitskopie wählen.
+1. Wählen Sie als Suchbereich ausschließlich den Ordner `Code` der Arbeitskopie.
 2. Nach dem exakten Text `[DeineDatenbank]` suchen.
-3. Durch den korrekt geklammerten lokalen Datenbanknamen ersetzen.
+3. Ersetzen Sie den Platzhalter durch den korrekt geklammerten lokalen Datenbanknamen.
 4. Nur Dateien mit der Endung `.sql` ändern.
 5. Anschließend repositoryweit prüfen, dass unter `Code` kein
    `[DeineDatenbank]` mehr vorkommt.
@@ -363,7 +363,7 @@ aus.
    enthält.
 4. Prüfen, dass darunter `:r`-Zeilen für `00_Setup` bis
    `09_VersionAdaptive` vorhanden sind.
-5. Das Abfragefenster noch nicht ausführen.
+5. Führen Sie das Abfragefenster noch nicht aus.
 
 ### 12.4 SQLCMD-Modus aktivieren und kontrollieren
 
@@ -404,11 +404,11 @@ Danach:
 Nach einem fehlerfreien Installerlauf dieselben Prüfungen wie beim empfohlenen
 Weg durchführen:
 
-1. Version und Kernobjekte gemäß Schritt 8 kontrollieren.
+1. Kontrollieren Sie Version und Kernobjekte gemäß Schritt 8.
 2. `Code\Tests\Integration\110_Smoke_Test.sql` aus derselben vorbereiteten
    Arbeitskopie öffnen und vollständig ausführen. Der Datenbankplatzhalter ist
    dort durch die repositoryweite Ersetzung bereits gesetzt.
-3. Die Capability- und Berechtigungsprüfung aus Schritt 10 ausführen.
+3. Führen Sie die Capability- und Berechtigungsprüfung aus Schritt 10 aus.
 4. Erst danach mit den begrenzten Beispielaufrufen aus Schritt 11 beginnen.
 
 ### 12.7 Typische SQLCMD-Fehler
@@ -430,9 +430,9 @@ konsistent vorbereitete Arbeitskopie der Einzeldateien.
 
 1. Die gewünschte neue Repositoryversion separat herunterladen oder auschecken.
 2. Den eigenständigen Installer aus genau diesem Stand neu erzeugen.
-3. Den Datenbanknamen in der ersten Zeile setzen.
-4. Den gesamten Installer erneut ausführen.
-5. Versionsprüfung und Smoke-Test wiederholen.
+3. Setzen Sie den Datenbanknamen in der ersten Zeile.
+4. Führen Sie den gesamten Installer erneut aus.
+5. Wiederholen Sie die Versionsprüfung und den Smoke-Test.
 
 Frameworkeigene Standardzeilen im Wait-Katalog werden aktualisiert; eigene Katalogzeilen bleiben erhalten. Vor produktiven Upgrades gelten die üblichen Sicherungs-, Change- und Rückfallprozesse der Umgebung.
 

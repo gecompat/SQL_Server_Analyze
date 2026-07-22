@@ -6,7 +6,8 @@ GO
 Objekt       : monitor.USP_DatabaseIntegrityAnalysis
 Version      : 1.0.2
 Stand        : 2026-07-18
-Zweck        : Korrelierte, rein lesende Integritätsevidenz je Datenbank.
+Zweck        : Liefert korrelierte, rein lesende Integritätsevidenz je
+               Datenbank.
 Datenquellen : master.sys.databases, DATABASEPROPERTYEX,
                msdb.dbo.suspect_pages, msdb.dbo.backupset,
                sys.dm_hadr_auto_page_repair und optional sys.dm_db_page_info.
@@ -55,7 +56,7 @@ BEGIN
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_DatabaseIntegrityAnalysis';
-        PRINT N'Rein lesende Evidenz; führt niemals DBCC CHECKDB, Restore oder Reparatur aus.';
+        PRINT N'Die Procedure liefert rein lesende Evidenz und führt weder DBCC CHECKDB noch Restore oder Reparatur aus.';
         PRINT N'@DatabaseNames: bracket-aware Pipe-Liste; N''''/NULL = keine Datenbankeinschränkung.';
         PRINT N'@CheckdbWarnHours=168; @MitPageDetails=0 löst verdächtige Seiten nicht auf.';
         PRINT N'@BackupHistoryDays=35 begrenzt die Backupmetadaten-Evidenz.';

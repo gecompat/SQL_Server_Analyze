@@ -7,15 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche zusätzlichen Nonclustered-Indexstrukturen hat der Optimizer während Kompilierungen als potenziell kostensenkend eingeschätzt?** Der dokumentierte Zweck ist: Priorisiert flüchtige Missing-Index-Evidenz und erzeugt einen ausdrücklich unverbindlichen DDL-Entwurf. Der Aufruf soll die Arbeitsentscheidung vorbereiten, ob ein Struktur- oder Metadatensignal eine workloadbezogene Gegenprüfung rechtfertigt, nicht ob automatisch DDL ausgeführt werden soll. Status und Scope sind dabei Teil der Evidenz, nicht bloß technische Begleitinformation.
-
-Die Auswertung ist eine Triage- und Eingrenzungshilfe. Zuerst wird festgestellt, ob die benötigte Quelle vollständig und im erwarteten Scope verfügbar war. Danach werden zusammengehörige Metriken gelesen und gegen eine zweite, möglichst anders erhobene Quelle geprüft. Erst diese Kette kann eine Änderung, Eskalation oder weitere Messung begründen; die Procedure selbst ist keine automatische Handlungsanweisung.
+Die Procedure beantwortet die Betriebsfrage: **Welche zusätzlichen Nonclustered-Indexstrukturen hat der Optimizer während Kompilierungen als potenziell kostensenkend eingeschätzt?** Sie unterstützt die Entscheidung, ob ein Struktur- oder Metadatensignal eine workloadbezogene Gegenprüfung rechtfertigt, nicht ob automatisch DDL ausgeführt werden soll.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keinen Geschäftsnutzen einer Strukturänderung, keine repräsentative Workload und keine automatische Aussage über den optimalen Index- oder Statistikzustand. Ihr Zeitvertrag lautet ausdrücklich: Flüchtig/kumulativ seit Restart/Reset und begrenzt in der Zahl gespeicherter Gruppen. Daraus folgt: Ein auffälliger Einzelwert ist Beobachtung, noch keine Ursache; eine unauffällige Zeile ist keine Garantie für andere Zeitpunkte, Scopes oder unsichtbare Quellen.
-
-Nicht ableitbar sind außerdem Daten außerhalb der Filter, wegen fehlender Rechte ausgelassene Details und bereits durch Retention, Restart, Eviction oder Statuswechsel verlorene Zustände. Findings, Prozentwerte und Durchschnitte müssen mit Nenner, Erfassungsfenster und Zeilengranularität gelesen werden. Eine Änderung an DDL, Forcing, Failover, KILL, Repair oder Konfiguration benötigt unabhängige Evidenz und einen Rollbackplan.
+Die Procedure beantwortet keinen Geschäftsnutzen einer Strukturänderung, keine repräsentative Workload und keine automatische Aussage über den optimalen Index- oder Statistikzustand. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -26,43 +22,33 @@ EXEC [monitor].[USP_MissingIndexes]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
+Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind für diese Procedure `missingIndexes` registriert. Diese Namen bezeichnen die stabil exportierbaren Fachergebnisse; CONSOLE und RAW können zusätzlich Status-, Warning- und Detailresultsets liefern, deren vollständige Reihenfolge der verlinkte Familienguide beschreibt. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach das fachliche Summary und erst dann Details. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung des ausdrücklich benannten Resultsets bestimmt; JSON übernimmt die fachliche Hüllensemantik. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder aufsummiert werden.
+Der typisierte TABLE-Vertrag registriert `missingIndexes`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einer Missing-Index-Gruppe aus den Optimizer-DMVs, nicht einem fertig geprüften Indexdesign.
 
-Die Identität einer Zeile muss daher zusammen mit Resultsetname, Datenbank-/Objekt-/Session-/Planbezug und Messzeitpunkt gespeichert werden. Gleich aussehende Namen oder IDs aus verschiedenen Scopes sind nicht automatisch dasselbe Analyseobjekt; wiederverwendbare IDs benötigen zusätzliche Zeit- oder Handlemerkmale.
-
 ## So lesen
 
-Reads und Compiles zuerst, danach Impact und Improvement Measure. Schlüssel und Includes mit vorhandenen Indizes vergleichen.
-
-Die feste Reihenfolge lautet: **(1)** Status und Partialität, **(2)** Scope und Filterwirkung, **(3)** Zeit-/Reset-/Retentionbezug, **(4)** Nenner und Datenmenge, **(5)** zusammengehörige Schlüsselwerte, **(6)** plausible Gegenhypothese. Danach folgt eine zweite Evidenzquelle. Eine Sortierung nach einem auffälligen Wert ist nur eine Priorisierung und verändert weder Bedeutung noch Vollständigkeit der zugrunde liegenden Messung.
+Prüfen Sie zuerst Reads und Compiles und danach Impact und Improvement Measure. Vergleichen Sie Schlüssel und Includes mit vorhandenen Indizes.
 
 ## Warum kann das problematisch sein?
 
 Der Optimizer sieht mögliche Lesekosten, aber nicht vollständig Schreiblast, Speicher, Wartung, Redundanz und fachliche Abhängigkeiten.
 
-Problematisch wird ein Signal erst durch die Kombination aus technischer Abweichung, passender Workloadwirkung und zeitlicher Korrelation. Das Dokument trennt deshalb Beobachtung, Ursachehypothese und Auswirkung. Wiederholung über mehrere gültige Messpunkte erhöht die Konfidenz; bloßes Wiederholen derselben DMV-Abfrage ist jedoch keine unabhängige Gegenprobe.
-
 ## Wann ist es kein Problem?
 
 98 % Impact bei zwei Reads ist plakativ, aber schwach. Ein ähnlicher vorhandener Index kann den Vorschlag überflüssig machen.
 
-Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und bekannte Featuresemantik mögliche Gegenhypothesen. Die Schwelle einer Frameworkregel ist eine Triageheuristik, keine Microsoft-Garantie und kein universeller SLO. Abweichende Baselines je Instanz, Datenbank und Tageszeit müssen dokumentiert werden.
-
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall (`Example*`):** 25 % Impact bei fünf Millionen Reads kann mehr Gesamtnutzen besitzen als 99 % bei einer Ausführung. Vor DDL immer Inventar, Usage, Querytext, Plan und Write-Last prüfen.
+**Synthetischer Problemfall (`Example*`):** 25 % Impact bei fünf Millionen Reads kann mehr Gesamtnutzen besitzen als 99 % bei einer Ausführung. Prüfen Sie vor DDL immer Inventar, Usage, Querytext, Plan und Write-Last.
 
 **Ähnlich aussehender Gegenfall:** 98 % Impact bei zwei Reads ist plakativ, aber schwach. Ein ähnlicher vorhandener Index kann den Vorschlag überflüssig machen. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
-
-**Noch nicht entscheidbar:** Sind Status, Nenner, Resetmarker oder Vergleichsfenster unbekannt, darf weder Entwarnung noch Änderungsentscheidung folgen. Dann zuerst denselben Scope sauber wiederholen oder eine unabhängige Historien-/OS-/Workloadquelle heranziehen.
 
 ## Leere oder partielle Ausgabe
 
@@ -73,8 +59,6 @@ Für `USP_MissingIndexes` gilt zusätzlich: **keine Zeile** bedeutet, dass im si
 Missing-Index-DMVs sind flüchtig und begrenzt. Leer kann Reset, fehlende Compiles oder nicht geeignete Queries bedeuten.
 
 ## Eigenlast und Grenzen
-
-Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
 
 **Quellcode-Hinweis zur Eigenlast:** DMV-Menge ist intern begrenzt; Join und Sortierung werden durch TOP begrenzt.
 
@@ -132,15 +116,15 @@ WHERE [mid].[database_id] = DB_ID()
   AND [migs].[user_seeks] + [migs].[user_scans] >= @MinUserReads;
 ```
 
-**Wichtig für die Eigenlast:** Datenbank und Mindestnutzung vor Objekt-/Schemaauflösung und DDL-Entwurf filtern. Die DMVs bleiben serverweit flüchtig; ein `TOP` nach der Bewertung reduziert nicht die zugrunde liegende DMV-Menge.
+**Wichtig für die Eigenlast:** Filtern Sie Datenbank und Mindestnutzung vor der Objekt- und Schemaauflösung sowie dem DDL-Entwurf. Die DMVs bleiben serverweit flüchtig; ein `TOP` nach der Bewertung reduziert nicht die zugrunde liegende DMV-Menge.
 
 ### Zeit- und Scope-Modell
 
-Flüchtig/kumulativ seit Restart/Reset und begrenzt in der Zahl gespeicherter Gruppen. Vorschläge können nach Plan Cache-/Metadatenänderungen verschwinden.
+Die Daten sind seit einem Neustart oder Reset flüchtig beziehungsweise kumulativ und auf eine begrenzte Anzahl gespeicherter Gruppen beschränkt. Vorschläge können nach Änderungen am Plan Cache oder an Metadaten verschwinden.
 
 ### Bewertung und Gegenprobe
 
-Queryhäufigkeit, Kosten, tatsächliche Reads, vorhandene Präfixe/Includes, Selectivity, DML-Kosten, Speicher und Locking prüfen. Mehrere Vorschläge häufig zu einem tragfähigen Indexdesign konsolidieren.
+Prüfen Sie Queryhäufigkeit, Kosten, tatsächliche Reads, vorhandene Präfixe und Includes, Selectivity, DML-Kosten, Speicher und Locking. Konsolidieren Sie mehrere Vorschläge nach fachlicher Prüfung zu einem tragfähigen Indexdesign.
 
 ### Typische Fehlinterpretation
 
@@ -148,7 +132,7 @@ Ein hoher Improvement-Wert ist keine gemessene Einsparung. Der Vorschlag kennt W
 
 ### Folgeanalyse
 
-Betroffene Pläne/Query Store, `USP_ObjectInventory`, `USP_IndexUsage`; DDL nur nach Test und Rollbackplan.
+Verwenden Sie für die weitere Analyse die betroffenen Pläne, Query Store, `USP_ObjectInventory` und `USP_IndexUsage`. Führen Sie DDL nur nach einem Test und mit einem Rollbackplan aus.
 
 ## Primärquellen
 

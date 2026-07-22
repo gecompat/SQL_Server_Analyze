@@ -2,9 +2,11 @@
 
 ## Aktueller Stand
 
-**Frameworkversion:** `1.1.0-special.13`
-**Dokumentationsstand:** 21. Juli 2026
-**Mindestversion:** SQL Server 2019
+| Merkmal | Stand |
+|---|---|
+| Frameworkversion | `1.1.0-special.13` |
+| Dokumentationsstand | 22. Juli 2026 |
+| Mindestversion | SQL Server 2019 |
 
 Der aktuelle Bestand umfasst 161 inventarisierte Objekte:
 
@@ -16,9 +18,15 @@ Der aktuelle Bestand umfasst 161 inventarisierte Objekte:
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
 
+## Dokumentationsstil
+
+Der dokumentierte Bestand wurde gegen die verbindliche Schreibstilrichtlinie geprüft. Die Überarbeitung entfernt wiederholte Standardabsätze, vervollständigt fragmentarische Leserichtungen und vereinheitlicht die sachliche Darstellung in öffentlichen und maßgeblichen internen Dokumenten sowie in SQL-Dateiköpfen und Hilfeausgaben.
+
+Eine zusätzliche statische Prüfung blockiert die konkret entfernten Rückfallmuster. Sie ergänzt das weiterhin erforderliche fachliche und sprachliche Review, bewertet jedoch weder technische Richtigkeit noch die Angemessenheit einer Aussage im jeweiligen Betriebskontext.
+
 ## Analysis Navigator
 
-Der vollständige Frameworkinstaller enthält den neuen sicheren Discovery-Pfad:
+Der Gesamtinstaller enthält folgenden Discovery-Pfad:
 
 - `VW_AnalysisCatalog`: eine fachliche Hauptzeile je öffentlicher Procedure;
 - `VW_AnalysisSearchTerm`: deutsche und englische Symptome, Synonyme und Ziele;
@@ -43,35 +51,35 @@ Anwenderdokumentation beschreibt ausschließlich Nutzung, Architektur, Laufzeitv
 
 ### Live-Triage
 
-Sessions, Requests, Blocking, Waits, Transaktionen, Memory Grants, TempDB, I/O, Log und orchestrierter Current Overview. Statementoffsets trennen das aktuell ausgeführte Statement vom Batch- und Modultext.
+Die Live-Triage erfasst Sessions, Requests, Blocking, Waits, Transaktionen, Memory Grants, TempDB, I/O und das Transaktionslog. `USP_CurrentOverview` orchestriert diese Perspektiven; Statementoffsets trennen das aktuell ausgeführte Statement vom Batch- und Modultext.
 
 ### Objekte und Datenbanken
 
-Inventar, Indexnutzung, Operational Stats, Missing Indexes, Statistiken und Histogramme, Partitionen, Columnstore, Physical Stats, Schemadesign und orchestrierte Objektanalyse.
+Die Objekt- und Datenbankanalyse umfasst Inventar, Indexnutzung, Operational Stats, Missing Indexes, Statistiken und Histogramme, Partitionen, Columnstore, Physical Stats und Schemadesign. `USP_ObjectAnalysis` orchestriert die zugehörigen Einzelmodule.
 
 ### Query und Plan
 
-Query Stats, Query Hash, Plan Cache Health, Plan Details, Showplan, Plan-Cache-Orchestrierung sowie eigenständig installierbare Execution-Plan-Analyse mit Evidence JSON.
+Die Query- und Plananalyse umfasst Query Stats, Query Hash, Plan Cache Health, Plan Details, Showplan und die Plan-Cache-Orchestrierung. Die Execution-Plan-Analyse mit Evidence JSON kann zusätzlich eigenständig installiert werden.
 
 ### Query Store
 
-Status, Runtime- und Wait-Stats, Planwechsel, Regressionen, Forced Plans, Hints, IQP und orchestrierte Query-Store-Analyse.
+Die Query-Store-Module analysieren Status, Runtime- und Wait-Stats, Planwechsel, Regressionen, Forced Plans, Hints und Intelligent Query Processing. `USP_QueryStoreAnalysis` orchestriert die Einzelmodule.
 
 ### Extended Events
 
-Session- und Targetinventar, begrenztes Ereignislesen, Deadlock- und Blocked-Process-Auswertung, Targetruntime und orchestrierte XE-Analyse.
+Die Extended-Events-Module liefern ein Session- und Targetinventar, begrenztes Ereignislesen, Deadlock- und Blocked-Process-Auswertung sowie Targetruntime. `USP_ExtendedEventsAnalysis` orchestriert diese Pfade.
 
 ### Infrastruktur und Betrieb
 
-Agent, Jobs, Alerts, Database Mail, Resource Governor, Availability Groups, Backup/Recovery, Log Shipping, Replikation, Data Capture, Backupketten, Wartungsoperationen und Errorlogs.
+Die Infrastrukturanalyse umfasst SQL Server Agent, Jobs, Alerts, Database Mail, Resource Governor, Availability Groups, Backup und Recovery, Log Shipping, Replikation, Data Capture, Backupketten, Wartungsoperationen und Errorlogs.
 
 ### Server Health
 
-CPU, NUMA, Memory, TempDB-Konfiguration, Server- und Datenbankkonfiguration, Trace Flags, Startup-Parameter, Betriebssystem, Security, Integrity, Capacity, Performance Counter, Engine-Ereignisse, Contention, Buffer Pool, Worker Pressure und normalisierte Findings.
+Die Server-Health-Module untersuchen CPU, NUMA, Memory, TempDB-Konfiguration, Server- und Datenbankkonfiguration, Trace Flags, Startup-Parameter, Betriebssystem, Security, Integrity, Capacity, Performance Counter, Engine-Ereignisse, Contention, Buffer Pool und Worker Pressure. Mehrere Module liefern zusätzlich normalisierte Findings.
 
 ### Versionen und Spezialfeatures
 
-Featurecapabilities, Build/Lifecycle, Spezialfeatureinventur, In-Memory OLTP, Temporal, Service Broker, Full-Text, Data Capture und Verschlüsselung.
+Die versionsadaptiven Module untersuchen Featurecapabilities, Build und Lifecycle, Spezialfeatureinventur, In-Memory OLTP, Temporal Tables, Service Broker, Full-Text, Data Capture und Verschlüsselung.
 
 ## Ausgabe- und Schutzvertrag
 

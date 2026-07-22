@@ -78,7 +78,7 @@ BEGIN
     IF @Hilfe=1
     BEGIN
         PRINT N'monitor.USP_TemporalAnalysis';
-        PRINT N'Read-only Tiefenanalyse sichtbarer systemversionierter Temporal Tables und zugeordneter History-Tabellen.';
+        PRINT N'Die Procedure führt eine rein lesende Tiefenanalyse sichtbarer systemversionierter Temporal Tables und zugeordneter History-Tabellen durch.';
         PRINT N'Geprüft werden Katalogzuordnung, Periodenmetadaten, Retention-Schalter, approximative Größe/Zeilen und History-Indexreihenfolge End/Start.';
         PRINT N'Exakte Namenslisten und Pattern derselben Eigenschaft sind gegenseitig exklusiv; Pattern: LIKE, regex: oder regexi:.';
         PRINT N'Grenzwerte erzeugen Prüfkontext, keine automatische Retention-, DDL- oder Kapazitätsentscheidung.';

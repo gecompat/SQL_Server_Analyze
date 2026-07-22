@@ -15,4 +15,4 @@ Runbooks beginnen bei einem beobachteten Symptom und führen über zwei unabhän
 
 ## Gemeinsame Regel
 
-Status → Zeitbezug → Nenner → Kombination → Auswirkung → Gegenprobe → Folgeanalyse → erst danach Änderung.
+Jede Analyse prüft zuerst Status, Zeitbezug und Nenner. Danach werden zusammengehörige Werte, ihre Auswirkung, eine unabhängige Gegenprobe und die erforderliche Folgeanalyse bewertet. Erst diese Reihenfolge kann eine Änderung begründen.

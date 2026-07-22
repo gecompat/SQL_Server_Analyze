@@ -6,8 +6,9 @@ GO
 Objekt       : [monitor].[WaitTypeCatalog]
 Version      : 2.2.0
 Stand        : 2026-07-20
-Zweck        : Persistenter, erweiterbarer Wait-Katalog mit geprüftem
-               Framework-Seed, analytischer Vertiefung und typisierten Quellen.
+Zweck        : Stellt einen persistenten, erweiterbaren Wait-Katalog mit
+               geprüftem Framework-Seed, analytischer Vertiefung und
+               typisierten Quellen bereit.
 Hinweis      : FRAMEWORK_CURATED kennzeichnet die belegte Namens- und Textprüfung.
                SQLskills-Inhalte werden nicht kopiert, sondern ausschließlich als
                optionale HelpUrl verlinkt.
