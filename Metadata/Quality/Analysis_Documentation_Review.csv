@@ -28,6 +28,8 @@ USP_DatabaseCapacityAnalysis,DEEP_REVIEWED,2026-07-22,3
 USP_DatabaseIntegrityAnalysis,DEEP_REVIEWED,2026-07-22,3
 USP_DiagnosticFindings,DEEP_REVIEWED,2026-07-22,3
 USP_EncryptionAnalysis,DEEP_REVIEWED,2026-07-22,3
+USP_ExternalRuntimeAnalysis,DEEP_REVIEWED,2026-07-22,3
+USP_ClrAnalysis,DEEP_REVIEWED,2026-07-22,3
 USP_ExtendedEventsAnalysis,DEEP_REVIEWED,2026-07-22,3
 USP_ExtendedEventsBlockedProcesses,DEEP_REVIEWED,2026-07-22,3
 USP_ExtendedEventsDeadlocks,DEEP_REVIEWED,2026-07-22,3

@@ -100,10 +100,22 @@ for path in sorted(CODE.rglob("*.sql")):
             "DB_ID(name) muss über master.sys.databases WITH (NOLOCK) ersetzt werden"
         )
 
-    if re.search(r"CREATE\s+OR\s+ALTER\s+PROCEDURE", text, re.IGNORECASE) and not re.search(
-        r"SET\s+LOCK_TIMEOUT\s+0", text, re.IGNORECASE
-    ):
-        errors.append(f"{relative}: Procedure setzt LOCK_TIMEOUT nicht auf 0")
+    if re.search(r"CREATE\s+OR\s+ALTER\s+PROCEDURE", text, re.IGNORECASE):
+        uses_zero_timeout = re.search(r"SET\s+LOCK_TIMEOUT\s+0", text, re.IGNORECASE)
+        captures_timeout = re.search(
+            r"DECLARE\s+@OriginalLockTimeout\s+int\s*=\s*@@LOCK_TIMEOUT", text, re.IGNORECASE
+        )
+        restores_timeout = re.search(
+            r"SET\s+@LockTimeoutSql\s*=\s*N?'SET\s+LOCK_TIMEOUT\s+'\s*\+\s*"
+            r"CONVERT\s*\(\s*nvarchar\s*\(\s*20\s*\)\s*,\s*@OriginalLockTimeout\s*\)",
+            text,
+            re.IGNORECASE,
+        )
+        if not uses_zero_timeout and not (captures_timeout and restores_timeout):
+            errors.append(
+                f"{relative}: Procedure setzt keinen nichtblockierenden LOCK_TIMEOUT "
+                "oder stellt den ursprünglichen Wert nicht nachweisbar wieder her"
+            )
 
     catalog_matches = list(SYS_SOURCE.finditer(text)) + list(SYSTEM_DATABASE_SOURCE.finditer(text))
     seen_offsets: set[int] = set()

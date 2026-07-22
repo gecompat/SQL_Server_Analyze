@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 21. Juli 2026
-**Abdeckung:** alle 94 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Stand:** 22. Juli 2026
+**Abdeckung:** alle 96 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -143,6 +143,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_FullTextAnalysis]` | [Kataloge, Populationen, Batches und Fragmente](Procedures/USP_FullTextAnalysis.md) |
 | `[monitor].[USP_DataCaptureDeepAnalysis]` | [Change Tracking, CDC und lokale Replikation](Procedures/USP_DataCaptureDeepAnalysis.md) |
 | `[monitor].[USP_EncryptionAnalysis]` | [TDE, Schutzobjekte, Backupverschlüsselung, Always Encrypted und Ledger](Procedures/USP_EncryptionAnalysis.md) |
+| `[monitor].[USP_ExternalRuntimeAnalysis]` | [External Languages, Libraries, Launchpad, Requests, Pools und Counter](Procedures/USP_ExternalRuntimeAnalysis.md) |
+| `[monitor].[USP_ClrAnalysis]` | [SQL CLR, Assemblies, AppDomains, Tasks, Requests, Speicher und Counter](Procedures/USP_ClrAnalysis.md) |
 
 ## Snapshot und Baseline
 
@@ -164,9 +166,9 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Extended Events | 6 |
 | Infrastruktur | 13 |
 | Server Health | 19 |
-| Versionsadaptive Spezialanalysen | 9 |
+| Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
-| **Gesamt** | **94** |
+| **Gesamt** | **96** |
 
 ## Weitere Einstiege
 

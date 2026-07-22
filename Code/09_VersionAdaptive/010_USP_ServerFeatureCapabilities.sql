@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ServerFeatureCapabilities
-Version      : 3.0.0
-Stand        : 2026-07-15
+Version      : 3.1.0
+Stand        : 2026-07-22
 Typ          : Stored Procedure
 Zweck        : Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine
                explizite Datenbankliste oder alle zulässigen Datenbanken.
@@ -20,7 +20,8 @@ Semantik     : bracket-aware Pipe-Liste; NULL/N''=alle. Pattern ist
 Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
 Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
                versionsabhängige Objekterkennung.
-Änderungen   : 3.0.0 - @AlleDatenbanken entfernt; zentraler Datenbankvertrag,
+Änderungen   : 3.1.0 - External-Runtime- und SQL-CLR-Quellen ergänzt.
+               3.0.0 - @AlleDatenbanken entfernt; zentraler Datenbankvertrag,
                          Ausgabevertrag und katalogbasierte Featureerkennung.
                2.1.0 - Vorheriger Stand.
 ===============================================================================
@@ -163,7 +164,13 @@ BEGIN
     VALUES
       (N'SERVER',N'PERFORMANCE_STATE_PERMISSION','AVAILABLE',CASE WHEN @Major >= 16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END,15,NULL,N'Berechtigungsbezeichnung wird versionsabhängig ausgewiesen.',NULL),
       (N'SERVER',N'ZSTD_BACKUP_COMPRESSION',CASE WHEN @Major >= 17 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,CASE WHEN @Major >= 17 THEN N'Algorithmus 3/ZSTD kann ausgewertet werden.' ELSE N'Vor SQL Server 2025 nicht verfügbar.' END,17,N'msdb backup metadata',CASE WHEN @Major >= 17 THEN N'ZSTD wird unterstützt.' ELSE N'ZSTD-spezifische Information ist auf dieser Version nicht möglich.' END,N'msdb read permissions'),
-      (N'SERVER',N'RESOURCE_GOVERNOR_STANDARD_EDITION',CASE WHEN @Major >= 17 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'Edition-/Versionsprüfung',17,N'sys.resource_governor_configuration',CASE WHEN @Major >= 17 THEN N'Resource Governor kann auch in Standard Edition verfügbar sein.' ELSE N'Ältere Editionsgrenzen gelten; die reale Katalogverfügbarkeit wird separat geprüft.' END,N'VIEW SERVER STATE/PERFORMANCE STATE');
+      (N'SERVER',N'RESOURCE_GOVERNOR_STANDARD_EDITION',CASE WHEN @Major >= 17 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'Edition-/Versionsprüfung',17,N'sys.resource_governor_configuration',CASE WHEN @Major >= 17 THEN N'Resource Governor kann auch in Standard Edition verfügbar sein.' ELSE N'Ältere Editionsgrenzen gelten; die reale Katalogverfügbarkeit wird separat geprüft.' END,N'VIEW SERVER STATE/PERFORMANCE STATE'),
+      (N'SERVER',N'EXTERNAL_LANGUAGE_CATALOG',CASE WHEN @Major >= 15 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'Datenbankkataloge werden je Ziel isoliert gelesen.',15,N'sys.external_languages|sys.external_language_files|sys.external_libraries|sys.external_library_files',N'Verfügbarkeit bedeutet Katalogsupport; Registrierung beweist keine Runtime-Startfähigkeit.',N'Metadata visibility; optional CATALOG_DEEP'),
+      (N'SERVER',N'EXTERNAL_SCRIPT_REQUESTS',CASE WHEN @Major >= 15 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'USP_ExternalRuntimeAnalysis isoliert den Zugriff.',15,N'sys.dm_external_script_requests|sys.dm_exec_requests',N'Nur aktuell aktive Requests; keine Script- oder Batchtexte.',CASE WHEN @Major >= 16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END),
+      (N'SERVER',N'EXTERNAL_RESOURCE_POOLS',CASE WHEN @Major >= 15 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'USP_ExternalRuntimeAnalysis isoliert den Zugriff.',15,N'sys.dm_resource_governor_external_resource_pools',N'Kumulative Poolwerte; Linux-Einheiten sind plattformspezifisch zu interpretieren.',CASE WHEN @Major >= 16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END),
+      (N'SERVER',N'LAUNCHPAD_SERVICE_STATE',CASE WHEN @Major >= 15 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'Nur aggregierter Servicezustand wird ausgegeben.',15,N'sys.dm_server_services',N'Der Servicestatus beweist keine Startfähigkeit einer konkreten Runtime.',CASE WHEN @Major >= 16 THEN N'VIEW SERVER SECURITY STATE' ELSE N'VIEW SERVER STATE' END),
+      (N'SERVER',N'CLR_HOST_RUNTIME',CASE WHEN @Major >= 15 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'USP_ClrAnalysis isoliert Host-, AppDomain-, Task- und Ladequellen.',15,N'sys.dm_clr_properties|sys.dm_clr_appdomains|sys.dm_clr_loaded_assemblies|sys.dm_clr_tasks',N'Host- und Live-DMVs bilden keine vollständige CLR-Aufrufhistorie.',CASE WHEN @Major >= 16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END),
+      (N'SERVER',N'CLR_TRUSTED_ASSEMBLIES',CASE WHEN @Major >= 15 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END,N'Nur bei expliziter Berechtigungsanalyse wird die Zeilenanzahl gelesen.',15,N'sys.trusted_assemblies',N'Hashes und Beschreibungen bleiben ausgeschlossen; deshalb entsteht kein Assembly-Trust-Nachweis.',N'VIEW SERVER STATE beziehungsweise Metadatensichtbarkeit; CATALOG_DEEP');
 
     IF @MitPlattformdetails = 1
     BEGIN

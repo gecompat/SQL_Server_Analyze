@@ -1,8 +1,8 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
-**Stand:** 21. Juli 2026<br>
-**Strukturelle Abdeckung:** 94 Procedures<br>
-**Tief geprüfte Seiten:** 89 Procedures
+**Stand:** 22. Juli 2026<br>
+**Strukturelle Abdeckung:** 96 Procedures<br>
+**Tief geprüfte Seiten:** 91 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 
 ## Reifegrad richtig lesen
 
-89 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001- und drei SC-023-Seiten stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
+91 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001- und drei SC-023-Seiten stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -144,6 +144,8 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_FullTextAnalysis](USP_FullTextAnalysis.md)
 - [USP_DataCaptureDeepAnalysis](USP_DataCaptureDeepAnalysis.md)
 - [USP_EncryptionAnalysis](USP_EncryptionAnalysis.md)
+- [USP_ExternalRuntimeAnalysis](USP_ExternalRuntimeAnalysis.md)
+- [USP_ClrAnalysis](USP_ClrAnalysis.md)
 
 ## Snapshot und Baseline
 
