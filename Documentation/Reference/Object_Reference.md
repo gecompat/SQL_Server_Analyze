@@ -8,15 +8,17 @@ keine öffentliche `USP_*`-Analyse sind. Maßgeblich für die Abdeckung ist
 [`Metadata/Inventory/Objects.csv`](../../Metadata/Inventory/Objects.csv).
 
 Jeder Objektabschnitt dokumentiert Aufgabe, Schnittstelle, vorgesehene
-Verwendung, Last-/Sperrverhalten und Stabilitätsgrenze. Die Referenz macht
-interne Bausteine auffindbar; sie erklärt ausdrücklich **keinen** öffentlichen
-Direktaufruf. Anwendungen verwenden die [öffentlichen Analyse-Procedures](../Analysis_Guides/Object_Index.md).
+Verwendung, Last-/Sperrverhalten und Stabilitätsgrenze. Die drei Analysis-
+Navigator-Views besitzen einen dokumentierten lesenden Katalogvertrag. Alle
+übrigen internen Bausteine sind auffindbar, aber kein eigenständiger
+Analyseendpunkt. Anwendungen verwenden grundsätzlich die
+[öffentlichen Analyse-Procedures](../Analysis_Guides/Object_Index.md).
 
 ## Abdeckung
 
 | Objektklasse | Inventarisiert | Dokumentationsumfang |
 |---|---:|---|
-| Views | 5 | ein Abschnitt je View |
+| Views | 8 | ein Abschnitt je View |
 | Table-Valued Functions (TVFs) | 27 | ein Abschnitt je TVF |
 | Scalar-Valued Functions (SVFs) | 0 | derzeit keine SVF installiert |
 | Interne Procedures | 15 | ein Abschnitt je Procedure |
@@ -30,6 +32,9 @@ Direktaufruf. Anwendungen verwenden die [öffentlichen Analyse-Procedures](../An
 |---|---|---|
 | [`VW_ModuleStatusCatalog`](#monitorvw_modulestatuscatalog) | `monitor` | `Code/01_Common/010_VW_ModuleStatusCatalog.sql` |
 | [`VW_AnalyseClassCatalog`](#monitorvw_analyseclasscatalog) | `monitor` | `Code/01_Common/020_VW_AnalyseClassCatalog.sql` |
+| [`VW_AnalysisCatalog`](#monitorvw_analysiscatalog) | `monitor` | `Code/01_Common/021_VW_AnalysisCatalog.sql` |
+| [`VW_AnalysisSearchTerm`](#monitorvw_analysissearchterm) | `monitor` | `Code/01_Common/022_VW_AnalysisSearchTerm.sql` |
+| [`VW_AnalysisRelation`](#monitorvw_analysisrelation) | `monitor` | `Code/01_Common/023_VW_AnalysisRelation.sql` |
 | [`VW_AnalyseAccessPolicy`](#monitorvw_analyseaccesspolicy) | `monitor` | `Code/01_Common/030_VW_AnalyseAccessPolicy.sql` |
 | [`VW_AnalyseAccessCurrent`](#monitorvw_analyseaccesscurrent) | `monitor` | `Code/01_Common/040_VW_AnalyseAccessCurrent.sql` |
 | [`VW_FrameworkFeatureCatalog`](#monitorvw_frameworkfeaturecatalog) | `monitor` | `Code/01_Common/060_VW_FrameworkFeatureCatalog.sql` |
@@ -133,6 +138,59 @@ Quelle: `Code/01_Common/020_VW_AnalyseClassCatalog.sql`
 | Verwendung | Framework-Procedures lesen diese Projektion, um Status-, Policy- oder Capability-Entscheidungen einheitlich zu treffen. Für Diagnoseaufrufe bleibt die jeweilige öffentliche `USP_*`-Procedure der unterstützte Einstieg. |
 | Last und Sperren | Read-only Projektion über konstante Framework-Metadaten. Der Aufruf schreibt nichts; CPU- und I/O-Kosten sind klein und unabhängig von der Größe der überwachten Benutzerdatenbanken. |
 | Vertrag | Unterstützendes Objekt, kein eigenständiger Analyseendpunkt. Spalten können mit internen Frameworkversionen erweitert werden; Verbraucher verwenden die dokumentierten öffentlichen Procedures. |
+
+### `[monitor].[VW_AnalysisCatalog]`
+
+Quelle: `Code/01_Common/021_VW_AnalysisCatalog.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Ordnet jede öffentliche Procedure genau einer primären Navigationsrolle und einem Primärbereich zu. Ergänzt werden Anzeigename, Scope, Evidenzart, Kostenband, repräsentative Analyseklasse, Voraussetzungen, Paket, sicherer Aufruf und Dokumentationspfade. |
+| Schnittstelle | Parameterlose read-only View mit genau einer Zeile je öffentlicher Procedure. Schlüssel ist `ProcedureName`. Die Spalten `NavigationRole`, `PrimaryAreaCode`, `ScopeCode`, `EvidenceType`, `CostRangeCode` und `PackageCode` verwenden dokumentierte Codewerte. |
+| Verwendung | `USP_AnalysisNavigator` nutzt die View als kanonische fachliche Objektbasis. Power User können sie direkt per `SELECT` nach Rolle, Bereich, Scope, Paket oder Kostenband filtern. Mehrfachzuordnungen stehen absichtlich nicht als doppelte Zeilen, sondern in Suchbegriffen und Relationen. |
+| Last und Sperren | Konstante `VALUES`-Projektion ohne Tabellen-, DMV- oder Systemkatalogzugriff. CPU und Ergebnistransfer wachsen nur mit der kleinen öffentlichen Objektzahl; keine Schreib- oder fachlichen Sperrwirkungen. |
+| Vertrag | Dokumentierte lesende Katalogschnittstelle. `ProcedureName` bleibt mit dem öffentlichen Objektinventar synchron. Neue Procedures oder zusätzliche Codewerte können Zeilen beziehungsweise Werte ergänzen; Verbraucher dürfen keine feste Zeilenzahl voraussetzen. `RepresentativeAnalysisClass` ist keine vollständige Laufzeitfreigabe. |
+
+Wesentliche Spaltengruppen:
+
+- Identität: `ProcedureName`, `DisplayName`, `Purpose`;
+- Navigation: `PrimaryAreaCode`, `PrimaryAreaName`, `NavigationRole`, `DefaultRank`;
+- Scope und Evidenz: `ScopeCode`, `EvidenceType`, `PrerequisiteSummary`;
+- Kosten: `CostRangeCode`, `RepresentativeAnalysisClass`, Target- und High-Impact-Flags;
+- Paket und Verwendung: `PackageCode`, `SafeCall`, `DocumentationPath`, `RunbookPath`.
+
+### `[monitor].[VW_AnalysisSearchTerm]`
+
+Quelle: `Code/01_Common/022_VW_AnalysisSearchTerm.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Liefert deutsche und englische Symptome, Ziele, Synonyme und technische Begriffe für jede öffentliche Procedure. Ein fachliches Gewicht priorisiert spezifische gegenüber allgemeinen Begriffen; `MatchReason` erklärt den Treffer. |
+| Schnittstelle | Parameterlose read-only View. Granularität ist eine Suchphrase je `ProcedureName`, `SearchTerm` und `LanguageCode`. `LanguageCode` ist `de` oder `en`; `SearchWeight` liegt zwischen 1 und 100. |
+| Verwendung | Der Navigator bewertet exakte und teilweise Phrasentreffer und verwendet `MatchReason` für `WhyMatched`. Direkte Abfragen eignen sich zur Begriffsübersicht einer Procedure oder zur Suche nach einem bekannten Synonym. |
+| Last und Sperren | Konstante `VALUES`-Projektion. Keine produktiven Quellen und keine Schreibzugriffe. Suchkosten wachsen linear mit der kleinen Phrasezahl und werden im Navigator durch Suchtext- und Ergebnisgrenzen kontrolliert. |
+| Vertrag | Dokumentierte lesende Suchschnittstelle. Jede öffentliche Procedure besitzt mindestens einen deutschen und einen englischen Begriff. Gewichte und Phrasen dürfen fachlich präzisiert werden; sie sind keine dauerhaften Business-Keys. |
+
+`SearchTerm` ist bewusst nicht eindeutig über alle Procedures. Begriffe wie `CPU hoch`, `blocking` oder `memory pressure` können mehrere plausible Pfade besitzen; Procedure, Gewicht, Rolle und Trefferart bestimmen die Reihenfolge.
+
+### `[monitor].[VW_AnalysisRelation]`
+
+Quelle: `Code/01_Common/023_VW_AnalysisRelation.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Verbindet öffentliche Procedures durch fachlich begründete nächste Schritte. Die View unterscheidet Vertiefung, unabhängige Gegenprobe, alternativen Evidenzpfad und Vorbereitung. |
+| Schnittstelle | Parameterlose read-only View. Eine Zeile verbindet `FromProcedureName` über `RelationType` mit `ToProcedureName`. `RelationPriority` gilt je Ausgangsprocedure und Relationstyp; `ConditionSummary` beschreibt, wann der Übergang sinnvoll ist. |
+| Verwendung | Der Navigator zeigt die höchstpriorisierte Relation je Treffer. Direkte Abfragen liefern alle Alternativen eines Ausgangsobjekts. Keine Relation führt die Zielprocedure aus und keine Relation behauptet automatisch Kausalität. |
+| Last und Sperren | Konstante `VALUES`-Projektion ohne fachliche Datenquelle. Keine Schreibzugriffe; Kosten sind unabhängig von Benutzer- und Systemdatenmengen. |
+| Vertrag | Dokumentierte lesende Relationsschnittstelle. Gültige Typen sind `REFINE_WITH`, `CONFIRM_WITH`, `ALTERNATIVE_TO` und `PREPARE_WITH`. Beide Endpunkte müssen öffentliche Katalogobjekte sein; Selbstbeziehungen sind ausgeschlossen. Weitere begründete Relationen dürfen ergänzt werden. |
+
+Die Relationstypen bedeuten:
+
+- `REFINE_WITH`: dasselbe Signal genauer untersuchen;
+- `CONFIRM_WITH`: einen anderen Mess- oder Evidenzpfad gegenprüfen;
+- `ALTERNATIVE_TO`: bei einer anderen verfügbaren Eingabe einen geeigneteren Zugang wählen;
+- `PREPARE_WITH`: eine dokumentierte Voraussetzung oder Betriebsfolge herstellen.
 
 ### `[monitor].[VW_AnalyseAccessPolicy]`
 
@@ -883,4 +941,3 @@ Quelle: `Code/10_SnapshotBaseline/030_Snapshot_Target_Schema.sql`
 | Verwendung | Die Tabelle gehört zum optionalen Snapshot-/Baseline-Paket und wird ausschließlich von dessen Installations-, Collection- und Retentionpfaden verwaltet. Direkte DML ist kein unterstützter Betriebsweg. |
 | Last und Sperren | Schreibt pro Retentionlauf eine technische Laufzeile und aktualisiert deren Summen. Diese Metadaten sind klein gegenüber den Sampletabellen; die eigentlichen Löschkosten entstehen in den child-first verarbeiteten Evidenztabellen. |
 | Vertrag | Persistenter interner Paketvertrag. Schemaänderungen erfolgen ausschließlich über den versionierten SC-023-Installer; außerhalb des Pakets besteht keine Kompatibilitätszusage. |
-

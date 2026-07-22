@@ -1,8 +1,8 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 21. Juli 2026<br>
-**Strukturelle Abdeckung:** 93 Procedures<br>
-**Tief geprüft nach Qualitätsvertrag v2:** 88 Procedures
+**Strukturelle Abdeckung:** 94 Procedures<br>
+**Tief geprüfte Seiten:** 89 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Familie
 
 ## Reifegrad richtig lesen
 
-88 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001- und drei SC-023-Seiten stehen als vollständig strukturierte `BASELINE` bereit. Den verbindlichen Unterschied zwischen `BASELINE` und `DEEP_REVIEWED` beschreibt der [Qualitätsvertrag](../Documentation_Quality_Contract.md); der Status je Procedure liegt im [Review-Manifest](../../../Metadata/Quality/Analysis_Documentation_Review.csv).
+89 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001- und drei SC-023-Seiten stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -29,6 +29,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 
 ## Common
 
+- [USP_AnalysisNavigator](USP_AnalysisNavigator.md)
 - [USP_CheckAnalyseAccess](USP_CheckAnalyseAccess.md)
 - [USP_CheckFrameworkCapabilities](USP_CheckFrameworkCapabilities.md)
 - [USP_PrepareDatabaseCandidates](USP_PrepareDatabaseCandidates.md)
@@ -68,6 +69,8 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_QueryHashAnalysis](USP_QueryHashAnalysis.md)
 - [USP_PlanCacheHealth](USP_PlanCacheHealth.md)
 - [USP_PlanDetails](USP_PlanDetails.md)
+- [USP_CreateExecutionEvidenceJson](USP_CreateExecutionEvidenceJson.md)
+- [USP_ExecutionPlanAnalysis](USP_ExecutionPlanAnalysis.md)
 - [USP_ShowplanAnalysis](USP_ShowplanAnalysis.md)
 - [USP_PlanCacheAnalysis](USP_PlanCacheAnalysis.md)
 
@@ -141,9 +144,6 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_FullTextAnalysis](USP_FullTextAnalysis.md)
 - [USP_DataCaptureDeepAnalysis](USP_DataCaptureDeepAnalysis.md)
 - [USP_EncryptionAnalysis](USP_EncryptionAnalysis.md)
-
-- [`USP_CreateExecutionEvidenceJson`](USP_CreateExecutionEvidenceJson.md) – normalisierte Execution Evidence mit Datenschutzstatus.
-- [`USP_ExecutionPlanAnalysis`](USP_ExecutionPlanAnalysis.md) – eigenständig installierbare Analyse eines Showplan-XML.
 
 ## Snapshot und Baseline
 

@@ -27,7 +27,7 @@ Ein falsches Ziel kann reale Laufzeitwerte in einer unerwarteten Datenbank persi
 
 ## Wann ist es kein Problem?
 
-Eine deaktivierte Konfiguration ist ein gültiger sicherer Zustand. Ein Zielname im Repository ist nur dann zulässig, wenn er wie `ExampleSnapshotDatabase` eindeutig synthetisch ist; der reale Zielname verbleibt ausschließlich in der Betriebsdatenbank.
+Eine deaktivierte Konfiguration ist ein gültiger sicherer Zustand. Dokumentierte Beispiele verwenden ausschließlich eindeutige Platzhalter wie `ExampleSnapshotDatabase`; der reale Zielname verbleibt in der geschützten Betriebsdatenbank.
 
 ## Technische Vertiefung
 

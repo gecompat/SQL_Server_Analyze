@@ -51,7 +51,7 @@ EXEC [monitor].[USP_CurrentRequests]
       @ResultSetArt = 'RAW';
 ```
 
-SQL-Text, Login, Host, Programm, Clientadresse und Input Buffer können in einer realen Laufzeitumgebung schutzbedürftige Inhalte enthalten. Ergebnisse nur im erforderlichen Umfang anzeigen, nicht ungeprüft exportieren und niemals als Beispiel ins Repository übernehmen.
+SQL-Text, Login, Host, Programm, Clientadresse und Input Buffer können in einer realen Laufzeitumgebung schutzbedürftige Inhalte enthalten. Ergebnisse nur im erforderlichen Umfang anzeigen und nicht ungeprüft exportieren oder weitergeben.
 
 Object-Explorer-, Copilot- und SQL-Prompt-Hintergrundrequests sind
 standardmäßig ausgeblendet. Für eine bewusste Vollansicht gilt:

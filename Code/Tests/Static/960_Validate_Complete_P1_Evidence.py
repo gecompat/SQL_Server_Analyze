@@ -70,7 +70,7 @@ def validate(root: Path) -> list[str]:
         if static_checks.get(key, {}).get("validatedCommit") != P1_EVIDENCE_COMMIT:
             errors.append(f"Release audit final P1 contract differs: {key}")
 
-    next_steps = (root / "Documentation/Quality/Next_Steps.md").read_text(encoding="utf-8")
+    next_steps = (root / "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md").read_text(encoding="utf-8")
     if "alle 17 P0-" not in next_steps or "40 P1-" not in next_steps:
         errors.append("Next-steps summary does not retain complete P1 evidence.")
     return sorted(set(errors))

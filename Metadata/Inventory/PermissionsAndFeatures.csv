@@ -1,4 +1,5 @@
 Capability,PrimaryDetection,DefaultBehavior,UnavailableStatus,Fallback,RightsGrantedByFramework
+ANALYSIS_NAVIGATION,"Static monitor catalog views plus local sys.schemas and sys.procedures visibility",Enabled by default; metadata-only and never starts a diagnostic procedure,AVAILABLE_LIMITED,Return every visible catalog entry and mark locally absent optional procedures as not installed,NO
 LIVE_SERVER_DMVS,Server version plus isolated source access in TRY/CATCH,Enabled for requested lightweight modules,DENIED_PERMISSION or UNAVAILABLE_VERSION,Return accessible/own-session data where possible and continue other modules,NO
 DATABASE_DMVS,Target database accessibility plus isolated source access,Database-by-database best effort,DENIED_PERMISSION or DATABASE_UNAVAILABLE,Skip only affected database/source and return warnings,NO
 QUERY_STORE,Database Query Store state and catalog availability,Only when explicitly requested,UNAVAILABLE_FEATURE or DENIED_PERMISSION,No historical claim; use current DMVs/plan cache only where appropriate,NO

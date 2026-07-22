@@ -435,7 +435,7 @@ Dieser Draft wurde nicht als zweite kanonische Gesamtreferenz übernommen. Die f
 | `USP_CurrentWaits` | bestehende Procedure-Seite plus `02_Current_State.md` |
 | `USP_QueryStoreWaitStats` | bestehende Procedure-Seite plus `05_Query_Store.md` |
 | Authoringstandard | mit `Deep_Research_Analysis_Guides_Concept.md` konsolidieren |
-| Quellen | `Documentation/Research/Sources.md` und lokale Quellenblöcke |
+| Quellen | `AI_Metadata/Internal_Documentation/Research/Sources.md` und lokale Quellenblöcke |
 
 ## 11. Qualitätssicherung für die Vollausbaustufe
 

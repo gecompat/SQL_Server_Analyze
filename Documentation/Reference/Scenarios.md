@@ -1,5 +1,14 @@
 # Einsatzszenarien und Auswertung
 
+Wenn die passende Procedure noch nicht bekannt ist, zuerst [Hier beginnen](../Analysis_Guides/Start_Here.md) oder direkt suchen:
+
+```sql
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Suchbegriff = N'Etwas ist jetzt langsam';
+```
+
+Der Navigator führt keinen der folgenden Analysepfade automatisch aus.
+
 ## Akute Langsamkeit
 
 1. `EXEC monitor.USP_CurrentOverview;`

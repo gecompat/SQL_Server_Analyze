@@ -46,7 +46,7 @@ EXEC [monitor].[USP_ExtendedEventsReadEvents]
 
 `RAW` ist hier trotz des allgemeinen CONSOLE-Einstiegs bewusst gewählt: Es zeigt den SourceStatus und unterdrückt bei `@MitEventXml = 0` die XML-Spalte der RAW-Projektion. Der Quellpfad bleibt trotzdem `HIGH_OPT_IN`; Zeit- und Eventfilter garantieren bei einem XEL-Wildcardscan keine proportionale Reduktion der gelesenen Dateien.
 
-Keinen realen `@FilePath` in Dokumentation, Tickets oder Repositoryartefakte kopieren. SourceStatus, Event XML, SQL-Text, Login, Host und Clientanwendung können in einer Laufzeitumgebung interne Pfade oder schutzbedürftige Inhalte enthalten.
+Keinen realen `@FilePath` in ungeschützte Dokumentation oder Tickets kopieren. SourceStatus, Event XML, SQL-Text, Login, Host und Clientanwendung können in einer Laufzeitumgebung interne Pfade oder schutzbedürftige Inhalte enthalten.
 
 ## Resultsets und Leserichtung
 

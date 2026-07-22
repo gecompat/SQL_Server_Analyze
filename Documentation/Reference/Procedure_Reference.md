@@ -56,6 +56,25 @@ Quelle: `Code/07_Infrastructure/010_USP_AgentStatus.sql`
     , @Hilfe          bit            = 0
 ```
 
+## `[monitor].[USP_AnalysisNavigator]`
+
+Quelle: `Code/01_Common/100_USP_AnalysisNavigator.sql`
+
+```sql
+@Suchbegriff       nvarchar(4000) = NULL
+    , @Bereich           varchar(40)    = NULL
+    , @Scope             varchar(40)    = NULL
+    , @Navigationsrolle  varchar(24)    = NULL
+    , @NurInstallierte   bit            = 0
+    , @MaxZeilen         int            = 12
+    , @ResultSetArt      varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson  nvarchar(max)  = NULL
+    , @JsonErzeugen      bit            = 0
+    , @Json              nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen    bit            = 1
+    , @Hilfe             bit            = 0
+```
+
 ## `[monitor].[USP_AvailabilityDeepAnalysis]`
 
 Quelle: `Code/07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql`

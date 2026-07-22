@@ -1,32 +1,42 @@
 # Frameworkvertrag für Datenbankauswahl, CONSOLE und TABLE
 
-**Vertragsversion:** 2.0  
-**Stand:** 21. Juli 2026
-**Status:** VERBINDLICH
+**Vertragsversion:** 2.0<br>
+**Stand:** 21. Juli 2026<br>
+**Status:** verbindlich
 
-## 1. Ausgangslage und Migrationsumfang
+Dieser Vertrag definiert die gemeinsamen Auswahl-, Schutz- und Ausgabegrenzen
+der öffentlichen Analyse-Procedures. Procedure-spezifische Parameter,
+Resultsetnamen und Aussagegrenzen ergänzen ihn, dürfen seinen Grundregeln aber
+nicht widersprechen.
 
-Die Bestandsaufnahme des `main`-Stands `973d5cab5eab7ebad067376e9b6751068638232b`
-ergab vor Beginn der Migration:
+## 1. Geltungsbereich
 
-- 66 SQL-Dateien mit `@MaxDatenbanken`;
-- 86 SQL-Dateien mit `@ResultTable`;
-- keine öffentliche Procedure mit `@HighImpactConfirmed`;
-- eine Datenbankauswahl, die `N''` als aktuelle Datenbank interpretiert;
-- eine TABLE-Inventur, die nur ein Primärergebnis je Procedure beschreibt;
-- Orchestratoren, die Child-Status teilweise aus dem Ausbleiben eines Fehlers
-  ableiten und CONSOLE an Children weiterreichen.
+Der Vertrag umfasst:
 
-Diese Zählwerte dokumentieren den Ausgangspunkt. Die Abschlussgates müssen für
-`@MaxDatenbanken` und `@ResultTable` jeweils null produktive Treffer ergeben.
+- Datenbankauswahl und Sichtbarkeitsgrenzen;
+- Zeilen- und Payloadbegrenzung;
+- Trennung leichter und bestätigungspflichtiger Analysepfade;
+- `CONSOLE`, `RAW`, `TABLE` und `NONE`;
+- JSON-Ausgabe aus derselben Materialisierung;
+- benannte Mehrfach-Resultset-Exporte;
+- Status-, Leer- und Partialitätssemantik;
+- Child-Aufrufe durch Orchestratoren.
+
+Die konkrete Signatur steht in der
+[Procedure-Referenz](../Reference/Procedure_Reference.md), die stabilen
+Resultsetnamen und nativen Spalten in
+[`Metadata/Inventory/ResultSets.csv`](../../Metadata/Inventory/ResultSets.csv).
 
 ## 2. Datenbankauswahl
 
-### 2.1 Standard
+### 2.1 Standardmenge
 
 Ohne expliziten Filter werden alle für den aktuellen Login sichtbaren,
-zugreifbaren und online befindlichen Benutzerdatenbanken berücksichtigt.
-Die Installationsdatenbank erhält keine Sonderstellung.
+zugreifbaren und online befindlichen Benutzerdatenbanken berücksichtigt. Die
+Installationsdatenbank besitzt keine Sonderstellung.
+
+Der gemeinsame Parametervertrag lautet, soweit die jeweilige Procedure einen
+Mehrdatenbankpfad besitzt:
 
 ```sql
 @DatabaseNames                nvarchar(max)  = NULL,
@@ -34,97 +44,139 @@ Die Installationsdatenbank erhält keine Sonderstellung.
 @SystemdatenbankenEinbeziehen bit            = 0
 ```
 
-`NULL`, eine leere Zeichenfolge oder nur Leerzeichen bedeuten bei
-`@DatabaseNames` **keine Einschränkung**. Eine nicht leere Liste ist eine
-explizite exakte Einschränkung. `@DatabaseNamePattern` ist eine alternative
-explizite Einschränkung. Liste und Pattern sind gegenseitig exklusiv.
+Für `@DatabaseNames` bedeuten `NULL`, eine leere Zeichenfolge und nur
+Leerzeichen: keine explizite Einschränkung. Eine nicht leere Liste ist eine
+exakte, bracket-aware Pipe-Liste. Ein Pattern ist eine alternative
+Einschränkung. Exakte Liste und Pattern sind gegenseitig exklusiv.
 
-Es gibt weder `CURRENT`-Scope noch `@DatabaseScope`. `@MaxDatenbanken` ist kein
-Bestandteil der öffentlichen oder internen API. Die Kandidatenmenge darf vor
-einer globalen Bewertung, Sortierung oder Ergebnisbegrenzung nicht willkürlich
-gekürzt werden.
+Systemdatenbanken bleiben ohne ausdrückliches Opt-in ausgeschlossen, auch wenn
+ihr Name in einer exakten Liste steht. Es gibt keinen impliziten
+`CURRENT`-Scope und kein Datenbankanzahllimit, das die Kandidatenmenge vor einer
+globalen Bewertung willkürlich abschneidet.
 
-Systemdatenbanken bleiben auch bei expliziter Namensnennung ausgeschlossen,
-solange `@SystemdatenbankenEinbeziehen <> 1` ist.
+### 2.2 Sichtbarkeit und nicht verfügbare Ziele
 
-### 2.2 Explizit nicht verfügbare Datenbanken
+Eine syntaktisch gültige, explizit angeforderte Datenbank, die nicht verwendet
+werden kann, erzeugt einen benannten Warning-Datensatz. Typische Statuscodes
+sind `DATABASE_UNAVAILABLE` und `SYSTEM_DATABASE_EXCLUDED`. Die Warnung darf
+keine Information offenlegen, die dem aktuellen Login nicht bereits sichtbar
+ist.
 
-Eine syntaktisch gültige, explizit angeforderte Datenbank, die nicht in die
-Kandidatenmenge aufgenommen werden kann, erzeugt einen benannten Warning-Datensatz.
-Der Status lautet `DATABASE_UNAVAILABLE`; für eine ohne Opt-in angeforderte
-Systemdatenbank ist `SYSTEM_DATABASE_EXCLUDED` zulässig. Die Warnung darf keine
-Information offenlegen, die der aktuelle Login nicht bereits sehen darf.
+Eine leere automatische Kandidatenmenge erzeugt in `RAW` und `TABLE` keine
+künstliche fachliche Zeile. `CONSOLE` darf genau eine verständliche Leerzeile
+anzeigen.
 
-Eine leere automatische Kandidatenmenge ist kein künstlicher fachlicher Datensatz.
-RAW und TABLE bleiben leer; CONSOLE darf eine verständliche Leerzeile ausgeben.
+### 2.3 Filtersemantik
 
-### 2.3 High-Impact-Gate
+- Exakte Mehrfachfilter verwenden bracket-aware Pipe-Listen.
+- `|` trennt nur außerhalb eines geklammerten SQL-Identifiers.
+- Exakte Listen und Pattern sind getrennte Parameter.
+- Pattern unterstützen `like:` sowie versionsabhängig `regex:` und `regexi:`.
+- Leere exakte Filter bedeuten keine Einschränkung, nicht die aktuelle
+  Datenbank.
+- Ein expliziter Objekt-, Query-, Session-, Zeit- oder Plangrenzwert wird vor
+  einem breiten Zugriff angewandt, sofern die zugrunde liegende SQL-Server-
+  Quelle dies ermöglicht.
 
-Cross-Database allein ist kein High-Impact-Merkmal. Die Bestätigung hängt vom
-tatsächlich aktivierten Analysepfad ab.
+## 3. Kosten- und High-Impact-Vertrag
+
+Cross-Database allein ist kein High-Impact-Merkmal. Entscheidend ist der
+tatsächlich aktivierte Pfad.
 
 ```sql
 @HighImpactConfirmed bit = 0
 ```
 
-Ein Pfad ist bestätigungspflichtig, wenn er eine Analyseklasse mit
-`RequiresGroupGate = 1` aktiviert oder ein Modul einen gleichwertigen breiten
-Katalog-, Plan-Cache-, Query-Store-, Showplan-, Physical-Stats-, Extended-Events-
-oder Forensikpfad ausdrücklich als High Impact einstuft. Gruppenfreigabe und
-High-Impact-Bestätigung sind unabhängige Gates; beide müssen erfüllt sein.
+Ein Pfad ist bestätigungspflichtig, wenn seine Analyseklasse
+`RequiresGroupGate = 1` verlangt oder die Procedure einen gleichwertigen
+breiten Katalog-, Plan-Cache-, Query-Store-, Showplan-, Physical-Stats-,
+Extended-Events- oder Forensikpfad ausdrücklich als High Impact klassifiziert.
+Gruppenfreigabe und `@HighImpactConfirmed` sind unabhängige Gates.
 
-Vor dem ersten teuren Systemzugriff gilt:
+Vor dem ersten teuren Zugriff gilt:
 
 1. Steuerparameter und TABLE-Zuordnung validieren;
 2. tatsächlich aktivierte Analysepfade bestimmen;
-3. bei erforderlicher und fehlender Bestätigung mit
-   `HIGH_IMPACT_CONFIRMATION_REQUIRED` kontrolliert beenden;
-4. erst danach teure DMVs, Kataloge, Plan Cache, Query Store oder Eventdaten lesen.
+3. Analyseklasse und Gruppenfreigabe prüfen;
+4. bei fehlender Bestätigung kontrolliert mit
+   `HIGH_IMPACT_CONFIRMATION_REQUIRED` beenden;
+5. erst danach die teure Systemquelle lesen.
 
-Leichte Pfade verwenden keine Bestätigung. `USP_CurrentIO` gehört zur Klasse
-`STANDARD_CURRENT` und liest `sys.dm_io_virtual_file_stats(NULL, NULL)` je
-Messzeitpunkt genau einmal serverweit. Die Kandidatenmenge wird anschließend
-relational angewendet.
+Leichte Pfade verlangen keine vorsorgliche Bestätigung. Die konkrete
+Kostenspannweite und ein sicherer Einstieg stehen im
+[Analysis-Navigator-Katalog](../Reference/Analysis_Navigator.md) und auf der
+jeweiligen tiefen Procedure-Seite.
 
-## 3. Ausgabemodi
+## 4. Zeilenbegrenzung
 
-### 3.1 Gemeinsame Parameter
+Für `@MaxZeilen` gilt frameworkweit:
+
+- ein positiver Wert begrenzt die Ergebnismenge;
+- `0` oder `NULL` bedeutet keine Ergebnisbegrenzung;
+- ein negativer Wert ist `INVALID_PARAMETER`;
+- eine Procedure darf für positive Werte eine dokumentierte Obergrenze setzen;
+- ein Zeilenlimit ist nur dann ein Quellbudget, wenn die Procedure es vor oder
+  innerhalb der teuren Quelloperation anwenden kann.
+
+Bei mehreren Datenbanken oder benannten Resultsets kann ein Limit je Datenbank
+oder je Resultset gelten. Die tiefe Procedure-Seite muss ausweisen, ob das
+Limit Kandidaten, materialisierte Daten oder nur die Ausgabe begrenzt.
+
+## 5. Gemeinsame Ausgabemodi
+
+### 5.1 Steuerparameter
 
 ```sql
 @ResultSetArt      varchar(16)   = 'CONSOLE',
-@ResultTablesJson nvarchar(max) = NULL,
+@ResultTablesJson  nvarchar(max) = NULL,
 @JsonErzeugen      bit           = 0,
 @Json              nvarchar(max) = NULL OUTPUT
 ```
 
 `@ResultSetArt` akzeptiert getrimmt und case-insensitiv `CONSOLE`, `RAW`,
-`TABLE` und `NONE`. `@ResultTable` ist entfernt.
+`TABLE` und `NONE`. `@ResultTablesJson` ist nur mit `TABLE` zulässig. JSON wird
+optional und unabhängig vom gewählten Resultsetmodus aus derselben
+Materialisierung erzeugt.
 
-### 3.2 CONSOLE
+### 5.2 CONSOLE
 
-CONSOLE ist menschenorientiert und kein Importvertrag.
+`CONSOLE` ist menschenorientiert und kein Importvertrag.
 
-- Im Normalfall liefert eine öffentliche Procedure genau ein fachliches
+- Im Normalfall erscheint genau ein fachliches, verständlich beschriftetes
   Resultset.
-- Technische Meta-Resultsets werden nicht separat ausgegeben.
-- Leere Warning- und Detail-Resultsets werden unterdrückt.
-- Bei leerem fachlichem Ergebnis wird genau eine verständliche Console-Zeile
-  ausgegeben; RAW und TABLE erhalten keine künstliche Datenzeile.
-- Technische Hinweise und Warnungen dürfen mit `RAISERROR` Severity 10 und
-  `WITH NOWAIT` ausgegeben werden.
+- Technische Meta-Resultsets erscheinen nicht als separate Grids.
+- Leere Warning- und Detailmengen werden unterdrückt.
+- Bei leerem fachlichem Ergebnis erscheint genau eine verständliche
+  Console-Zeile.
+- Hinweise dürfen per `RAISERROR` mit Severity 10 und `WITH NOWAIT` erscheinen.
 
-### 3.3 RAW und NONE
+Spaltenauswahl, Formatierung und Leerzeilen dürfen sich für die Lesbarkeit
+weiterentwickeln. Automatisierte Verbraucher verwenden `RAW`, `TABLE` oder
+JSON.
 
-RAW liefert die dokumentierten, nativ typisierten fachlichen Resultsets ohne
-Darstellungszeilen. Technischer Status wird nur ausgegeben, wenn er im
-Resultsetinventar als fachlich nutzbarer benannter Vertrag definiert ist.
-NONE unterdrückt Resultsets und wird insbesondere für Orchestrierung und
-JSON-only-Aufrufe verwendet.
+### 5.3 RAW
 
-### 3.4 TABLE mit benannter Mehrfachzuordnung
+`RAW` liefert nativ typisierte fachliche Resultsets in der dokumentierten
+Reihenfolge. Technischer Modulstatus erscheint dort, wo er Bestandteil des
+Procedurevertrags ist. Eine leere fachliche Menge bleibt leer; es werden keine
+Darstellungszeilen eingeschoben.
 
-TABLE verwendet ausschließlich ein JSON-Objekt, dessen Property-Namen stabile
-semantische Resultsetnamen und dessen Werte lokale Ziel-Temp-Tabellen sind.
+Die Kombination aus Resultsetname, Reihenfolge und nativem Schema ist im
+Resultsetinventar dokumentiert. Zusätzliche Spalten oder Ergebnisse erfordern
+eine entsprechende Vertragsänderung.
+
+### 5.4 NONE
+
+`NONE` unterdrückt alle Resultsets. Der Modus wird für JSON-only-Aufrufe und
+Orchestrierung verwendet. Er verhindert nicht automatisch die fachliche
+Erhebung; die Procedure führt die aktivierten Pfade aus, sofern kein separater
+Schalter sie deaktiviert.
+
+## 6. TABLE mit benannter Mehrfachzuordnung
+
+`TABLE` exportiert benannte Resultsets in lokale Temp-Tabellen des Aufrufers.
+Das JSON-Objekt verwendet den stabilen Resultsetnamen als Property und den
+lokalen Tabellennamen als Wert.
 
 ```sql
 CREATE TABLE #OverviewStatus   ([Seed] bit NULL);
@@ -142,120 +194,108 @@ EXEC [monitor].[USP_CurrentOverview]
       }';
 ```
 
+### 6.1 Preflight
+
 Vor dem ersten fachlichen Systemzugriff werden atomar abgelehnt:
 
-- ungültiges JSON oder ein anderer JSON-Top-Level-Typ als Objekt;
-- unbekannte oder für die Procedure nicht exportierbare Resultsetnamen;
+- ungültiges JSON oder ein anderer Top-Level-Typ als Objekt;
+- unbekannte oder nicht exportierbare Resultsetnamen;
 - doppelte JSON-Properties;
 - dasselbe Ziel für mehrere Resultsetnamen;
 - permanente Tabellen, globale Temp-Tabellen oder reservierte interne Namen;
 - nicht vorhandene Zieltabellen;
-- gefüllte oder für die sichere Strukturadaption ungeeignete Seed-Tabellen.
+- gefüllte oder nicht sicher adaptierbare Seed-Tabellen;
+- eine bereits strukturierte Zieltabelle mit abweichendem nativen Schema.
 
-Der Preflight akzeptiert als neu zu adaptierendes Ziel eine vorhandene, leere
-lokale `#Temp`-Tabelle mit genau einer Seed-Spalte. Eine bereits exakt passende
-Zielstruktur darf nur verwendet werden, wenn sie vor dem Systemzugriff anhand
-des inventarisierten Schemas vollständig validiert werden kann.
+### 6.2 Strukturadaption und Anhängen
 
-Alle angeforderten Ziele werden aus bereits im selben Procedure-Aufruf
-materialisierten Quellen geschrieben. Ein TABLE-Export darf keinen erneuten
-DMV-, Plan-Cache-, Query-Store-, Extended-Events- oder Katalogzugriff auslösen.
+Ein neues Ziel ist eine vorhandene, leere lokale `#Temp`-Tabelle mit genau
+einer beliebigen Seed-Spalte. Der gemeinsame Writer ersetzt diese Struktur
+durch das native Quellschema. Eine bereits exakt passende Zielstruktur darf
+zum Anhängen verwendet werden.
 
-### 3.5 Begrenzung großer Text- und XML-Payloads
+Verglichen werden Spaltenreihenfolge, Name, Systemtyp, Länge, Precision, Scale,
+Collation und Nullable-Eigenschaft. Identity-, berechnete, benutzerdefinierte,
+Assembly-, typisierte XML- und `rowversion`-Strukturen sind für automatische
+Adaption ausgeschlossen.
 
-Eine explizit angeforderte Begrenzung darf große Inhalte für die Ausgabe
-kürzen, niemals jedoch stillschweigend Vollständigkeit vortäuschen. Native
-Quell- und Materialisierungstypen bleiben `nvarchar(max)` beziehungsweise
-`xml`; `nvarchar(4000)` ist keine allgemeine XML- oder Payloadgrenze.
+Alle angeforderten Ziele werden aus bereits im selben Aufruf materialisierten
+Quellen geschrieben. Ein TABLE-Export darf keinen erneuten DMV-, Plan-Cache-,
+Query-Store-, Extended-Events- oder Katalogzugriff auslösen.
 
-`OUT-001` ist frameworkweit umgesetzt. Für zeichenbasierte Ausgabeparameter
-wie `@MaxTargetDataZeichen` gilt:
+## 7. JSON-Vertrag
 
-- ein eigener `@Mit...`-Schalter entscheidet, ob der Inhalt überhaupt
-  ausgegeben wird;
-- ein positiver Grenzwert kürzt ausschließlich die Ausgabeprojektion;
+Wenn `@JsonErzeugen = 1` ist, setzt die Procedure `@Json` auf ein gültiges
+JSON-Objekt. Es enthält mindestens technische Metadaten und die benannten
+fachlichen Arrays der Procedure. Leere Resultsets erscheinen als `[]`, nicht
+als fehlende oder `null`-Arrays, sofern die Procedure-Seite nichts
+Spezifischeres dokumentiert.
+
+JSON wird aus derselben Materialisierung wie RAW und TABLE erzeugt. Der
+JSON-Pfad darf keine zweite fachliche Erhebung starten. Native Zahlen und Bits
+bleiben JSON-Zahlen beziehungsweise Booleans; Zeit-, Binär-, XML- und
+Spezialtypen folgen der procedure-spezifisch dokumentierten Serialisierung.
+
+## 8. Begrenzung großer Text- und XML-Payloads
+
+Eine ausdrücklich angeforderte Begrenzung kürzt nur die Ausgabeprojektion und
+darf Vollständigkeit niemals vortäuschen. Native Quell- und
+Materialisierungstypen bleiben `nvarchar(max)` beziehungsweise `xml`.
+
+Für zeichenbasierte Grenzen wie `@MaxTargetDataZeichen` gilt:
+
+- ein eigener `@Mit...`-Schalter entscheidet, ob Inhalt erhoben oder ausgegeben
+  wird;
+- ein positiver Wert begrenzt die Projektion;
 - `0` bedeutet vollständige, nicht durch das Framework gekürzte Ausgabe;
-- negative Werte sind `INVALID_PARAMETER`;
-- eine zusätzliche künstliche Obergrenze wie `1000000` ist unzulässig; die
-  technischen Grenzen des nativen MAX-/XML-Datentyps bleiben maßgeblich;
-- die Implementierung darf beim Kürzen kein gültiges Unicode-Zeichen und
-  insbesondere kein UTF-16-Surrogate-Paar teilen.
+- negative Werte sind ungültig;
+- kein gültiges Unicode-Zeichen und kein UTF-16-Surrogate-Paar darf geteilt
+  werden;
+- Zeichen-, Byte- und Kürzungsmetriken bleiben maschinenlesbar.
 
-Jedes kürzbare benannte Ergebnis stellt die Vollständigkeit maschinenlesbar
-bereit. Für `USP_ExtendedEventsTargetRuntime` und entsprechend benannte
-Textfelder sind folgende Metriken implementiert:
+Ein kürzbares Ergebnis weist mindestens ursprüngliche Zeichenlänge,
+Bytegröße und ein `IsTruncated`-Kennzeichen aus. Sobald Werte gekürzt wurden,
+erscheint höchstens eine technische Warning pro Procedure-Aufruf mit dem Code
+`OUTPUT_VALUE_TRUNCATED`, der Anzahl betroffener Werte, dem aktiven Grenzwert
+und dem für diesen Aufruf ausreichenden Wert. `@PrintMeldungen` darf die
+menschliche Meldung unterdrücken, nicht die maschinenlesbare Kennzeichnung.
 
-```text
-TargetDataCharacters   bigint
-TargetDataBytes        bigint
-TargetDataIsTruncated  bit
-TargetData             nvarchar(max)
-```
+Eine bewusst konfigurierte Ausgabekürzung macht die fachliche Erhebung nicht
+automatisch partiell. Unabhängig davon bleibt sichtbar, dass die gelieferte
+Projektion gekürzt wurde.
 
-Die Zeichenmetrik muss eindeutig und Unicode-sicher definiert sein; die
-Bytegröße wird unabhängig davon mit `DATALENGTH` ermittelt. Der für eine
-ungekürzte Ausgabe benötigte Grenzwert wird aus der ursprünglichen, bereits im
-selben Aufruf materialisierten Länge bestimmt. Seine Ermittlung darf keinen
-erneuten Systemzugriff auslösen.
+## 9. Status, Partialität und leere Ergebnisse
 
-Sobald mindestens ein Wert gekürzt wurde, wird genau eine technische Warning
-pro Procedure-Aufruf ausgegeben, nicht eine Warning je Zeile. Sie verwendet
-`RAISERROR` Severity 10 mit `WITH NOWAIT` und nennt mindestens:
+Statuscodes benennen den Zustand einer Quelle oder eines Moduls, nicht bloß
+den SQL-Ausführungserfolg. Typische Gruppen sind:
 
-- den stabilen Code `OUTPUT_VALUE_TRUNCATED`;
-- Anzahl der gekürzten Werte;
-- Namen und aktuellen Wert des begrenzenden Parameters;
-- die größte für diesen Aufruf benötigte ungekürzte Länge;
-- den konkreten ausreichenden Parameterwert sowie `0` als unbegrenzte Option.
-
-Beispiel:
-
-```text
-OUTPUT_VALUE_TRUNCATED: 3 Targetwerte wurden durch
-@MaxTargetDataZeichen=4000 gekürzt. Der größte Wert benötigt 28734 Zeichen.
-Verwenden Sie @MaxTargetDataZeichen=28734 oder 0 für eine vollständige Ausgabe.
-```
-
-RAW und TABLE erhalten keine künstliche Warning-Datenzeile. Die
-zeilenbezogenen Längen- und Kürzungsfelder bleiben dort sowie in JSON erhalten;
-CONSOLE darf sie menschenlesbar projizieren. Eine bewusst konfigurierte
-Ausgabekürzung macht die fachliche Quellenerhebung nicht automatisch
-`PARTIAL`, muss aber immer über `TargetDataIsTruncated` und die einmalige
-Warning sichtbar bleiben. `@PrintMeldungen` darf die menschliche Meldung
-unterdrücken, nicht jedoch die maschinenlesbare Kennzeichnung.
-
-## 4. Resultsetinventar
-
-`Metadata/Inventory/ResultSets.csv` ist die kanonische maschinenlesbare
-Zuordnung. Mindestens folgende Felder sind verbindlich:
-
-| Feld | Bedeutung |
+| Gruppe | Bedeutung |
 |---|---|
-| `ProcedureName` | öffentlicher Prozedurname ohne Schema |
-| `ResultName` | stabiler semantischer Name |
-| `IsConsoleDefault` | Bestandteil des normalen Console-Resultsets |
-| `IsRawExportable` | als RAW-Resultset dokumentiert |
-| `IsTableExportable` | in `@ResultTablesJson` zulässig |
-| `SourceSchema` | geordnete native Spaltendefinition |
-| `EmptyConsoleMessage` | optionale menschenlesbare Leeranzeige |
+| `AVAILABLE` | Quelle wurde innerhalb des dokumentierten Scopes ausgewertet |
+| `NO_DATA` / `NO_MATCH` | gültiger Aufruf, aber keine passende fachliche Zeile |
+| `NOT_SUPPORTED` / `FEATURE_DISABLED` | Plattform oder Feature stellt die Quelle nicht bereit |
+| `PERMISSION_DENIED` / `NOT_AUTHORIZED` | Sichtbarkeit, SQL-Recht oder Frameworkpolicy fehlt |
+| `INVALID_PARAMETER` | Steuer- oder Scopeparameter verletzt den Vertrag |
+| `HIGH_IMPACT_CONFIRMATION_REQUIRED` | aktivierter Pfad benötigt ausdrückliche Bestätigung |
+| `LOCK_TIMEOUT` / `ERROR_HANDLED` | Quelle konnte kontrolliert nicht vollständig ausgewertet werden |
 
-`Metadata/Inventory/TableOutput.csv` wird durch dieses Inventar ersetzt. Eine
-positionsabhängige Zuordnung über Pipe-, Komma- oder Semikolonlisten ist verboten.
+`IsPartial = 1` bedeutet, dass die fachliche Gesamtaussage unvollständig ist.
+Eine leere Ergebnismenge allein ist nicht automatisch partiell. Umgekehrt darf
+das Ausbleiben eines SQL-Fehlers nie als `AVAILABLE` interpretiert werden, wenn
+der explizite Child- oder Quellenstatus fehlt.
 
-## 5. Orchestratoren und `USP_CurrentOverview`
+## 10. Orchestratoren
 
-Orchestratoren rufen jedes Child höchstens einmal pro eigener Ausführung auf.
-Children laufen niemals mit CONSOLE. Je nach benötigter Übergabe verwenden sie
-`NONE` oder einen benannten internen TABLE-Export; Status, Partialität und
-Zeilenanzahl werden aus dem im selben Childaufruf erzeugten JSON-Envelope
-übernommen.
+Ein Orchestrator ruft jedes aktivierte Child höchstens einmal je eigener
+Ausführung auf. Children laufen nicht im Modus `CONSOLE`. Je nach
+Übergabevertrag verwenden sie `NONE` oder benannte interne TABLE-Ziele.
 
-Das Ausbleiben eines SQL-Fehlers ist kein Verfügbarkeitsnachweis. Der Childstatus
-wird aus dessen explizitem Statusvertrag gelesen. Fehlt ein valider Status, ist
-`STATUS_UNAVAILABLE` beziehungsweise ein gleichwertiger partieller Status zu
-verwenden, niemals automatisch `AVAILABLE`.
+Childstatus, Partialität und Zeilenanzahl stammen aus dem expliziten Status-
+oder JSON-Vertrag desselben Childaufrufs. Ein fehlender valider Status wird als
+`STATUS_UNAVAILABLE` oder gleichwertig partiell behandelt, niemals automatisch
+als verfügbar.
 
-`USP_CurrentOverview` verwendet:
+`USP_CurrentOverview` verwendet den zusätzlichen Console-Vertrag:
 
 ```sql
 @Detailgrad varchar(16) = 'SUMMARY'
@@ -265,19 +305,21 @@ verwenden, niemals automatisch `AVAILABLE`.
 - `RELEVANT`: Summary plus nicht leere relevante Childdetails;
 - `ALL`: Summary plus alle nicht leeren aktivierten Childdetails.
 
-Leere Children erscheinen mit Status und Zeilenanzahl im Summary, erzeugen aber
-kein leeres Grid. TABLE und JSON bleiben unabhängig vom Console-Detailgrad über
-benannte Resultsetnamen steuerbar.
+Leere Children bleiben mit Status und Zeilenanzahl im Summary sichtbar, ohne
+ein leeres Grid zu erzeugen. TABLE und JSON bleiben unabhängig vom
+Console-Detailgrad über ihre benannten Resultsetnamen steuerbar.
 
-## 6. Reihenfolge der Einführung
+## 11. Leserichtung für Verbraucher
 
-1. gemeinsame Auswahl- und TABLE-Preflight-Helper;
-2. Pilot `USP_CurrentIO`;
-3. Pilot `USP_CurrentOverview` einschließlich Childstatus-Vertrag;
-4. Pilotgates auf SQL Server 2019, 2022 und 2025;
-5. frameworkweite API-Migration;
-6. Installer, Beispiele, Dokumentation und Metadaten;
-7. vollständige Release-, Dokumentations-, Datenschutz-, Nonblocking- und
-   Commit-Gates.
+1. Procedure und Scope im [Analysis Navigator](../Reference/Analysis_Navigator.md)
+   auswählen.
+2. `@Hilfe = 1` und die tiefe Procedure-Seite lesen.
+3. Zuerst Status, Partialität, Zeitbezug und Scope prüfen.
+4. Danach fachliche Zeilen und Einheiten interpretieren.
+5. Leere, gekürzte, optionale und nicht verfügbare Quellen unterscheiden.
+6. Für Automatisierung benannte RAW-, TABLE- oder JSON-Verträge verwenden.
+7. Einen Befund durch den dokumentierten Folge- oder Gegenpfad bestätigen.
 
-Ein Framework-Rollout vor grüner Pilotvalidierung ist nicht zulässig.
+Die allgemeinen Aufruf- und Ausgabegrundlagen stehen zusätzlich in den
+[gemeinsamen Verträgen](../Analysis_Guides/Common_Contracts.md) und den
+[Resultset-Konventionen](../Reference/Resultset_Conventions.md).

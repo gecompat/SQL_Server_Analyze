@@ -110,7 +110,7 @@ Die genannten Community-Projekte werden in diesem Stand nur referenziert. Es wur
 
 ## Phase 5 – Extended Events
 
-Siehe `Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließlich offizielle Microsoft-Learn-Primärquellen zu system_health, XE-Katalog-/Runtimeviews, Eventfile-Leser, Deadlockgraphen und blocked process threshold.
+Siehe `AI_Metadata/Internal_Documentation/Research/Extended_Events.md`. Verwendet wurden ausschließlich offizielle Microsoft-Learn-Primärquellen zu system_health, XE-Katalog-/Runtimeviews, Eventfile-Leser, Deadlockgraphen und blocked process threshold.
 
 
 ## Ergänzung Migration – zentrale offizielle Quellen

@@ -55,7 +55,7 @@ Liefert SQL-Server-Agent-Dienststatus und ein kleines Basisinventar.
 
 Analysiert Jobdefinition, aktuellen Lauf, letzte Gesamtausführung, Schedules und letzte Stepausführung.
 
-### Parameter und Repository-Schwelle
+### Parameter und Framework-Schwelle
 
 - `@LongRunningMinutes=60` markiert laufende Jobs ab 60 Minuten.
 - `@NurProblematisch=1` zeigt Disabled, Last Failed, Long Running, No Schedule oder No Enabled Schedule.
@@ -200,7 +200,7 @@ Basisinventar für AG-Replikate, Datenbanken, Listener und Read-only Routing.
 
 Bewertet Backupfrische und zeigt Backup-/Restorehistorie.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 | Parameter | Default |
 |---|---:|
@@ -239,7 +239,7 @@ Diese Defaults sind keine universellen RPOs.
 - `IsDamaged=1` ist hoch relevant.
 - Backup Checksum verbessert Evidenz, beweist aber keine erfolgreiche Wiederherstellung.
 - Restorehistory kann einen Restore auf derselben DB zeigen, nicht zwingend einen isolierten Recoverytest.
-- MediaPath ist Runtimeinformation und darf nicht in Repositoryartefakte übernommen werden.
+- `MediaPath` ist schutzbedürftige Laufzeitinformation und darf nur im erforderlichen Umfang exportiert oder weitergegeben werden.
 
 ### Folgeanalyse
 
@@ -391,7 +391,7 @@ Prüft Full-/Differentialbasis, Log-LSN-Übergänge, Recovery Forks, Damage-/Che
 
 Erweitert AG um Clusterquorum, Clusterknoten/-netzwerke, Replikabefunde, Datenbankqueues, Seeding und Auto Page Repair.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 - `@QueueWarnMb=1024`
 - `@SecondaryLagWarnSeconds=60`
@@ -544,7 +544,7 @@ Korrelierte read-only Sicht auf vier getrennte Evidenzbereiche: resumierbare Ind
 
 ### Sicherheits- und Datenschutzgrenze
 
-Das Modul liest keine SQL-Texte oder Handles, Jobschritte, Jobbefehle, Meldungen, Owner, Logins, Clients oder Wait-Ressourcen. Es führt weder `RESUME`, `ABORT`, `KILL`, Cleanup, Jobstart noch Jobstop aus. Laufzeitnamen dürfen im interaktiven Resultset erscheinen; sie werden nicht in Repositorynachweise übernommen.
+Das Modul liest keine SQL-Texte oder Handles, Jobschritte, Jobbefehle, Meldungen, Owner, Logins, Clients oder Wait-Ressourcen. Es führt weder `RESUME`, `ABORT`, `KILL`, Cleanup, Jobstart noch Jobstop aus. Laufzeitnamen dürfen im interaktiven Resultset erscheinen und sind bei Export oder Weitergabe zu schützen.
 
 ### Primärquellen
 

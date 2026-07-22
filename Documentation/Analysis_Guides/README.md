@@ -1,22 +1,21 @@
 # Analysehandbuch für SQL_Server_Analyze
 
-**Stand:** 20. Juli 2026
-**Geltungsbereich:** 93 Procedures
+**Stand:** 21. Juli 2026
+**Geltungsbereich:** 94 öffentliche Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
 ## Empfohlener Einstieg
 
-1. Bei einem konkreten Symptom im [Runbook-Verzeichnis](Runbooks/README.md) beginnen.
-2. Die betreffende [eigenständige Procedure-Seite](Procedures/README.md) lesen.
-3. Unbekannte Begriffe im [Glossar](Glossary.md) nachschlagen.
+1. Auf [Hier beginnen](Start_Here.md) das beobachtete Symptom oder Ziel auswählen.
+2. Alternativ im installierten Framework mit `USP_AnalysisNavigator` nach deutschen oder englischen Begriffen suchen.
+3. Die vorgeschlagene [eigenständige Procedure-Seite](Procedures/README.md) lesen.
 4. Parameter anhand der [Parameter-Lesehilfe](Parameter_Reading_Guide.md) und `@Hilfe=1` prüfen.
-5. Für vollständige Resultsets und Spalten in den verlinkten Familienguide wechseln.
+5. Status und Resultsets nach dem [Einsteiger-Leseleitfaden](Beginner_Reading_Guide.md) lesen.
+6. Für vollständige technische Zusammenhänge in den verlinkten Familienguide wechseln.
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
-Alle 93 Seiten sind strukturell vollständig. Davon sind 88 nach dem [Qualitätsvertrag](Documentation_Quality_Contract.md) fachlich `DEEP_REVIEWED`; die fünf eigenständig installierbaren PLAN-001-/SC-023-Seiten stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md) und [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) bleiben Kalibrierungsfälle für Live-Snapshot, physischen Scan und Datei-/XML-Analyse.
-
-Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_Concept.md) ist kein Anwenderhandbuch.
+Alle 94 Procedure-Seiten sind strukturell vollständig. 89 Seiten besitzen den tief geprüften Status `DEEP_REVIEWED`; die zwei eigenständig installierbaren PLAN-001- und drei optionalen SC-023-Seiten stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md), [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) und [USP_AnalysisNavigator](Procedures/USP_AnalysisNavigator.md) zeigen die unterschiedlichen Verträge von Live-Snapshot, physischem Scan, Datei-/XML-Analyse und reiner Metadatennavigation.
 
 ## Feste Leserichtung
 
@@ -34,6 +33,8 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 
 | Zweck | Dokument |
 |---|---|
+| Einstieg nach Symptom oder Ziel | [Start_Here.md](Start_Here.md) |
+| Navigator-Suche und Metadatenvertrag | [Analysis_Navigator.md](../Reference/Analysis_Navigator.md) |
 | Direkte Seite je Procedure | [Procedures/README.md](Procedures/README.md) |
 | Symptomorientierte Abläufe | [Runbooks/README.md](Runbooks/README.md) |
 | Begriffserklärungen | [Glossary.md](Glossary.md) |
@@ -42,14 +43,13 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Technische Grundlagen einschließlich Kostenmodell | [Technical_Foundations.md](Technical_Foundations.md) |
 | Versions- und Primärquellennachweis | [Version_Primary_Source_Matrix.md](Version_Primary_Source_Matrix.md) |
 | Vollständiger Objektindex | [Object_Index.md](Object_Index.md) |
-| Redaktionsstandard | [Documentation_Quality_Contract.md](Documentation_Quality_Contract.md) |
-| Reviewstatus je Procedure | [Analysis_Documentation_Review.csv](../../Metadata/Quality/Analysis_Documentation_Review.csv) |
+| Vollständige Komponentenreferenz | [Object_Reference.md](../Reference/Object_Reference.md) |
 
 ## Familienguides
 
 | Bereich | Dokument | Procedures |
 |---|---|---:|
-| Common | [01_Common.md](01_Common.md) | 4 |
+| Common und Navigation | [01_Common.md](01_Common.md) | 5 |
 | Current State | [02_Current_State.md](02_Current_State.md) | 11 |
 | Object und Index | [03_Object_Index.md](03_Object_Index.md) | 11 |
 | Plan Cache | [04_Plan_Cache.md](04_Plan_Cache.md) | 8 |
@@ -58,15 +58,15 @@ Das [Forschungs- und Redaktionskonzept](Authoring/Deep_Research_Analysis_Guides_
 | Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 13 |
 | Server Health | [08_Server_Health.md](08_Server_Health.md) | 19 |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 9 |
-| **Integriertes Framework gesamt** | | **90** |
+| **Integriertes Framework gesamt** | | **91** |
 
-Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher.
+Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher. Der vollständige Dokumentationsbestand umfasst damit 94 Procedures.
 
 ## Schnellwahl nach Symptom
 
 | Symptom | Erster Aufruf | Runbook |
 |---|---|---|
-| Hänger/Blocking | `USP_CurrentOverview` | [Blocking](Runbooks/01_User_Hangs_Blocking.md) |
+| Hänger/Blocking | `USP_CurrentBlocking` | [Blocking](Runbooks/01_User_Hangs_Blocking.md) |
 | CPU hoch | `USP_CurrentRequests`, `USP_QueryStats` | [High CPU](Runbooks/02_High_CPU.md) |
 | Query plötzlich langsamer | `USP_QueryStoreRegressions` | [Regression](Runbooks/03_Query_Regression.md) |
 | TempDB wächst | `USP_CurrentTempDB` | [TempDB](Runbooks/04_TempDB_Growth.md) |
@@ -90,10 +90,6 @@ Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehö
 
 Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan Forcing, Konfigurationsänderung, Failover oder Repair. Zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg sind vorher zu bestimmen.
 
-## Qualität prüfen
+## Vollständigkeit
 
-```powershell
-pwsh ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
-```
-
-Siehe [Validierungsanleitung](../Quality/Analysis_Documentation_Validation.md).
+Der [Objektindex](Object_Index.md) enthält alle 94 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 67 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.

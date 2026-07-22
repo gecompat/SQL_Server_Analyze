@@ -10,7 +10,7 @@
 - Katalogobjekterkennung ist belastbarer als hart codierte Versionsannahmen, bleibt aber berechtigungsabhängig.
 - `NOT_DETECTED_VISIBLE_SCOPE` bedeutet nur „im sichtbaren Metadatenscope nicht gefunden“.
 - Feature-Inventar ist kein Healthcheck.
-- In-Memory-, Temporal-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Findings verwenden konfigurierbare Repository-Heuristiken und führen keine DDL aus.
+- In-Memory-, Temporal-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Findings verwenden konfigurierbare Framework-Heuristiken und führen keine DDL aus.
 
 ---
 
@@ -214,7 +214,7 @@ LOW. Aggregierte Systemkatalogabfragen, kein Daten- oder Definitionsscan.
 
 Best-Effort-Tiefenanalyse sichtbarer In-Memory-OLTP-Konfiguration und Runtimeevidenz zu Tabellen-/Indexmemory, Hashindizes, Memory Consumers, Checkpoint Files, aktiven Transaktionen und Resource Pools.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 | Parameter | Default | Bedeutung |
 |---|---:|---|
@@ -309,7 +309,7 @@ Analysiert sichtbare system-versioned Temporal Tables, Current-/History-Zuordnun
 
 Es werden keine aktuellen oder historischen Benutzertabellenzeilen gelesen.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 | Parameter | Default |
 |---|---:|
@@ -383,7 +383,7 @@ Kapazität, Index Usage/Physical Stats, Query Store für Temporal Queries, Parti
 
 Analysiert sichtbare Service-Broker-Konfiguration und gruppierte Betriebsevidenz zu Queues, interner Aktivierung, Transmission Queue und Conversation Endpoints. Queue-Nutzdaten, Nachrichtenkörper und Conversation-Handles werden nicht gelesen.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 | Parameter | Default | Bedeutung |
 |---|---:|---|
@@ -447,7 +447,7 @@ Wichtige Reviewcodes sind deaktivierte Queue-Schalter, Aktivierungsstillstand be
 
 ### Folgeanalyse
 
-SQL-Fehlerlog beziehungsweise freigegebene Extended Events, Routing-/Endpunktkonfiguration, Zertifikate, Readerdurchsatz, Anwendungstransaktionen und wiederholte Messungen korrelieren. Laufzeitevidenz mit realen Namen oder Inhalten niemals in Repositoryartefakte übernehmen.
+SQL-Fehlerlog beziehungsweise freigegebene Extended Events, Routing-/Endpunktkonfiguration, Zertifikate, Readerdurchsatz, Anwendungstransaktionen und wiederholte Messungen korrelieren. Laufzeitevidenz mit realen Namen oder Inhalten nur kontrolliert exportieren und weitergeben.
 
 ---
 
@@ -457,7 +457,7 @@ SQL-Fehlerlog beziehungsweise freigegebene Extended Events, Routing-/Endpunktkon
 
 Analysiert sichtbare Full-Text-Kataloge und -Indizes sowie aktuelle Populationen, ausstehende Batches, querybare Fragmente, semantische Ähnlichkeitspopulationen und serverweiten Gatherer-/FDHost-Kontext. Tabelleninhalte, Keywords, Stopwords, Parser-Eingaben, Schlüsselwerte, Crawl-Logs und Pfade bleiben ausgeschlossen.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 | Parameter | Default | Bedeutung |
 |---|---:|---|
@@ -514,7 +514,7 @@ Memory Pools sind serverweit gemeinsam genutzter Gatherer-Kontext. FDHosts werde
 ### Aussagegrenzen
 
 - Katalogmetadaten beweisen keine Vollständigkeit indizierter Inhalte.
-- Crawl-Logs liegen außerhalb des Repositorys und dürfen keine realen Namen, Inhalte oder interne Strukturen in Artefakte übertragen.
+- Crawl-Logs liegen außerhalb des Frameworkscopes und dürfen nur in einer kontrollierten Laufzeitumgebung mit geeignetem Zugriff ausgewertet werden.
 - Eine leere Laufzeit-DMV ist keine Historie.
 - Alter, Batchzahl und Fragmentzahl sind ohne Zeitreihe und Workload kein Ursachenbeweis.
 - Das Modul führt kein `ALTER FULLTEXT`, keine Population und keine Reorganisation aus.
@@ -531,7 +531,7 @@ Folgemessung von Fortschritt und Batches, Suchlatenz, I/O-/Logkontext sowie gesc
 
 Vertieft Change Tracking, CDC und lokal erreichbare Replikation. Das Modul liest ausschließlich Katalog-, DMV-, Job- und aggregierte Distributionsevidenz. Es liest keine Change-Zeilen, Replikationsbefehle, Kommentare, Fehlertexte, LSNs, Credentials oder Agentjob-Commands und verändert keine Konfiguration.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 | Parameter | Default | Bedeutung |
 |---|---:|---|
