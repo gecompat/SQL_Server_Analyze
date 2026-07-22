@@ -99,6 +99,23 @@ Die Procedure ist ein Schutzbaustein für Filter. Quote-/Bracket-aware Parser ve
 
 Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
 
+### Source Select
+
+Keine Systemquelle: Die Procedure normalisiert vom Aufrufer gelieferte Namenslisten über die Framework-TVFs. Der direkte Parserzugriff lautet:
+
+```sql
+SELECT
+      [f].[ItemOrdinal]
+    , [f].[DatabaseName]
+    , [f].[SchemaName]
+    , [f].[ObjectName]
+    , [f].[IsValid]
+FROM [monitor].[TVF_ParseFullObjectNameList]
+     (@FullObjectNames) AS [f];
+```
+
+**Wichtig für die Eigenlast:** Die Listenmenge ist klein; der entscheidende Nutzen ist, exakte Namen vor teuren Katalog- oder DMF-Pfaden bereitzustellen. Pattern- und Regexfilter sind ein anderer Vertrag und ersetzen diese frühe Zielauflösung nicht.
+
 ### Zeit- und Scope-Modell
 
 Nur für den aktuellen Aufruf; keine Persistenz.

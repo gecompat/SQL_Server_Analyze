@@ -114,6 +114,31 @@ Die Procedure kombiniert aktuelle Waiting Tasks mit instanzweiten abgeschlossene
 
 `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_os_sys_info`, `sys.dm_os_wait_stats`, `sys.dm_os_waiting_tasks`, `sys.sp_executesql`.
 
+### Source Select
+
+Der Livepfad verbindet wartende Tasks mit Session und aktuellem Request:
+
+```sql
+SELECT
+      [wt].[session_id]
+    , [wt].[exec_context_id]
+    , [wt].[wait_type]
+    , [wt].[wait_duration_ms]
+    , [wt].[blocking_session_id]
+    , [r].[request_id]
+    , [r].[database_id]
+    , [s].[status] AS [SessionStatus]
+FROM [sys].[dm_os_waiting_tasks] AS [wt] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+  ON [r].[session_id] = [wt].[session_id]
+LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+  ON [s].[session_id] = [wt].[session_id]
+WHERE [wt].[session_id] <> @@SPID
+  AND [wt].[wait_duration_ms] >= @MinWaitMs;
+```
+
+**Wichtig für die Eigenlast:** Waittyp, Mindestdauer und Session vor SQL-Textauflösung filtern. Der optionale Delta-Pfad liest `sys.dm_os_wait_stats` zweimal; `@SampleSeconds` verursacht bewusst Wartezeit, aber keine Nutzdatenlocks.
+
 ### Zeit- und Scope-Modell
 
 Tasksnapshot plus kumulativer Kontext oder gültiges Sampledelta. Current Tasks werden vor der optionalen Samplingpause erfasst.

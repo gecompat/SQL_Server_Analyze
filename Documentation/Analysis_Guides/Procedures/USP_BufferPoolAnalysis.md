@@ -104,6 +104,24 @@ Buffer Descriptors repräsentieren gecachte 8-KB-Datenseiten. Verteilung nach Da
 
 `sys.dm_exec_query_resource_semaphores`, `sys.dm_os_buffer_descriptors`, `sys.dm_os_memory_clerks`, `sys.dm_os_process_memory`, `sys.dm_os_sys_memory`.
 
+### Source Select
+
+Der datenbankbezogene Buffer-Pool-Kern entsteht durch Gruppierung der Buffer Descriptors und Zuordnung zur Datenbank:
+
+```sql
+SELECT
+      [d].[name] AS [DatabaseName]
+    , COUNT_BIG(*) AS [CachedPages]
+    , COUNT_BIG(*) * 8.0 / 1024.0 AS [CachedMb]
+FROM [sys].[dm_os_buffer_descriptors] AS [bd] WITH (NOLOCK)
+JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[database_id] = [bd].[database_id]
+WHERE [d].[name] = N'ExampleDatabase'
+GROUP BY [d].[name];
+```
+
+**Wichtig für die Eigenlast:** `sys.dm_os_buffer_descriptors` kann sehr groß sein. Ein Datenbankprädikat reduziert Ergebnis und Aggregation, garantiert aber nicht, dass die Engine die DMV intern nur teilweise materialisiert; deshalb den Detailpfad bewusst verwenden.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Cachebestand; laufend durch Reads, Writes, Checkpoint und Memory Pressure verändert.

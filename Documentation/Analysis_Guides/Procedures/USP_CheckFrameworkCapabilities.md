@@ -107,6 +107,25 @@ Version, Edition, Featurekonfiguration und formale Permission sind verschiedene 
 
 `sys.sp_executesql`.
 
+### Source Select
+
+Die Capability-Prüfung startet mit dem deklarativen Featurekatalog; datenbankbezogene Einträge werden erst danach mit den ausgewählten Datenbanken vervielfacht:
+
+```sql
+SELECT
+      [f].[FeatureCode]
+    , [f].[ScopeType]
+    , [f].[AnalysisClass]
+    , [f].[MinimumMajorVersion]
+    , [f].[ProbeSqlTemplate]
+FROM [monitor].[VW_FrameworkFeatureCatalog] AS [f]
+WHERE [f].[AnalysisClass] = 'STANDARD_CURRENT'
+  AND [f].[MinimumMajorVersion]
+      <= TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
+```
+
+**Wichtig für die Eigenlast:** Analyseklasse und Datenbankscope vor dem Ausführen der Probe-Statements einschränken. Die Probes verwenden leichte Status- beziehungsweise `TOP (0)`-Abfragen, werden aber je Datenbank wiederholt.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Umgebungszustand; Ergebnisse können sich nach Konfigurationsänderung, Failover, Datenbankstatuswechsel oder Berechtigungsänderung ändern.

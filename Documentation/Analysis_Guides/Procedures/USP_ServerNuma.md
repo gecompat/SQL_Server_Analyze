@@ -102,6 +102,28 @@ NUMA hält CPU und lokal angebundenes Memory zusammen. SQLOS-Nodes/Scheduler ver
 
 `sys.dm_os_memory_nodes`, `sys.dm_os_nodes`, `sys.dm_os_schedulers`.
 
+### Source Select
+
+Scheduler werden nach Parent-Node aggregiert und dem NUMA-Node zugeordnet:
+
+```sql
+SELECT
+      [n].[node_id]
+    , [n].[memory_node_id]
+    , [n].[node_state_desc]
+    , COUNT_BIG([s].[scheduler_id]) AS [SchedulerCount]
+    , SUM(CONVERT(bigint, [s].[runnable_tasks_count])) AS [RunnableTasks]
+    , SUM(CONVERT(bigint, [s].[active_workers_count])) AS [ActiveWorkers]
+FROM [sys].[dm_os_nodes] AS [n] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_os_schedulers] AS [s] WITH (NOLOCK)
+  ON [s].[parent_node_id] = [n].[node_id]
+ AND [s].[scheduler_id] < 1048576
+WHERE [n].[node_state_desc] <> N'ONLINE DAC'
+GROUP BY [n].[node_id], [n].[memory_node_id], [n].[node_state_desc];
+```
+
+**Wichtig für die Eigenlast:** Interne/DAC-Scheduler an der Quelle ausschließen. `sys.dm_os_memory_nodes` ist eine separate Zeilengranularität und wird nur über Node-IDs interpretiert, nicht ungeprüft mit Schedulerzählern summiert.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Node-/Schedulerzustand; Loadcounter sind Momentaufnahme oder kumulativ je Quelle.

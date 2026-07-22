@@ -104,6 +104,29 @@ Welche Queries besitzen mehrere gespeicherte Pläne, und wodurch unterscheiden s
 
 `sys.database_query_store_options`, `sys.objects`, `sys.query_store_plan`, `sys.query_store_query`, `sys.query_store_query_text`, `sys.schemas`, `sys.sp_executesql`.
 
+### Source Select
+
+Planwechsel entstehen aus Query, Text und den dazugehörigen Planzeilen:
+
+```sql
+SELECT
+      [q].[query_id]
+    , [q].[query_hash]
+    , COUNT_BIG(*) AS [PlanCount]
+    , MIN([p].[initial_compile_start_time]) AS [FirstPlanCompile]
+    , MAX([p].[last_compile_start_time]) AS [LastPlanCompile]
+    , MAX([p].[last_execution_time]) AS [LastPlanExecution]
+FROM [sys].[query_store_query] AS [q] WITH (NOLOCK)
+JOIN [sys].[query_store_plan] AS [p] WITH (NOLOCK)
+  ON [p].[query_id] = [q].[query_id]
+WHERE [p].[last_compile_start_time] >= @VonUtc
+   OR [p].[last_execution_time] >= @VonUtc
+GROUP BY [q].[query_id], [q].[query_hash]
+HAVING COUNT_BIG(*) > 1;
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Zeitfenster vor Plananzahl und Text-/XML-Anreicherung setzen. Plan-XML erst für die begrenzte Kandidatenmenge laden; mehrere Pläne sind zunächst nur ein Befund, keine Regression.
+
 ### Zeit- und Scope-Modell
 
 Persistierter Planbestand innerhalb Query-Store-Retention; Last Execution zeigt Aktivität, nicht dauerhafte Gültigkeit.

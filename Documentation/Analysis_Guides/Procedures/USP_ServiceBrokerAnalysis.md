@@ -111,6 +111,32 @@ Service Broker routet typisierte Dialognachrichten über Services/Contracts/Queu
 
 `sys.conversation_endpoints`, `sys.databases`, `sys.dm_broker_activated_tasks`, `sys.dm_broker_queue_monitors`, `sys.dm_db_partition_stats`, `sys.schemas`, `sys.service_queues`, `sys.services`, `sys.sp_executesql`, `sys.transmission_queue`.
 
+### Source Select
+
+Der Katalogkern verbindet Queue, Schema und darauf gebundene Services:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [q].[name] AS [QueueName]
+    , [q].[is_receive_enabled]
+    , [q].[is_activation_enabled]
+    , COUNT_BIG([svc].[service_id]) AS [ServiceCount]
+FROM [sys].[service_queues] AS [q] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [q].[schema_id]
+LEFT JOIN [sys].[services] AS [svc] WITH (NOLOCK)
+  ON [svc].[service_queue_id] = [q].[object_id]
+WHERE [q].[is_ms_shipped] = 0
+  AND [s].[name] = N'ExampleSchema'
+  AND [q].[name] = N'ExampleObject'
+GROUP BY
+      [s].[name], [q].[name]
+    , [q].[is_receive_enabled], [q].[is_activation_enabled];
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Queue vor Queue-Monitor-, Activated-Task-, Transmission- und Conversation-Pfaden festlegen. Transmission und Endpoints werden aggregiert; Nachrichtenkörper werden nicht gelesen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Queue-/Conversation-/Transmissionzustand; Rows können bei Verarbeitung rasch verschwinden, alte Dialoge persistieren.

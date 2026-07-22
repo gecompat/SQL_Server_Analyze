@@ -103,6 +103,18 @@ Trace Flags aktivieren Diagnose- oder Verhaltenspfade auf globaler/sessionbezoge
 `DBCC TRACESTATUS(-1)` → Temp-Tabelle → nach Flagnummer sortierte
 CONSOLE-/RAW-/TABLE-/JSON-Projektion. Es gibt keine Childmodule.
 
+### Source Select
+
+Kein `SELECT` auf eine DMV: Die Engine stellt aktive Trace Flags über einen DBCC-Befehl bereit. Der direkte Quellaufruf lautet:
+
+```sql
+DBCC TRACESTATUS(-1) WITH NO_INFOMSGS;
+```
+
+Die Procedure fängt dieses Resultset in einer lokalen Temp-Tabelle ab und projiziert es sortiert in die Ausgabeformate.
+
+**Wichtig für die Eigenlast:** Der Befehl liefert nur aktive globale und sessionbezogene Flags und ändert keinen Zustand. Es existiert kein serverseitiger Flagfilter; Filterung erfolgt erst nach der kleinen DBCC-Ausgabe.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Runtimezustand; Sessionflags gelten nur im Kontext, globale bis Deaktivierung/Restart.

@@ -103,6 +103,28 @@ Existieren im sichtbaren Fenster die erwarteten Full-, Differential- und Logback
 
 `msdb.dbo.backupmediafamily`, `msdb.dbo.backupset`, `msdb.dbo.restorehistory`.
 
+### Source Select
+
+Backupsets werden über `media_set_id` mit den physischen Medien und optional über `backup_set_id` mit Restores verbunden:
+
+```sql
+SELECT
+      [bs].[database_name]
+    , [bs].[type]
+    , [bs].[backup_finish_date]
+    , [bmf].[physical_device_name]
+    , [rh].[restore_date]
+FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
+LEFT JOIN [msdb].[dbo].[backupmediafamily] AS [bmf] WITH (NOLOCK)
+  ON [bmf].[media_set_id] = [bs].[media_set_id]
+LEFT JOIN [msdb].[dbo].[restorehistory] AS [rh] WITH (NOLOCK)
+  ON [rh].[backup_set_id] = [bs].[backup_set_id]
+WHERE [bs].[database_name] = N'ExampleDatabase'
+  AND [bs].[backup_finish_date] >= DATEADD(DAY, -30, GETDATE());
+```
+
+**Wichtig für die Eigenlast:** Zuerst `backupset` nach Datenbank und Zeit begrenzen. Medien- und Restorezeilen erst anschließend anbinden; ein Backupset kann mehrere Media-Family-Zeilen besitzen.
+
 ### Zeit- und Scope-Modell
 
 Historie innerhalb `msdb`-Retention; Datenträger/Dateien werden nicht geöffnet.

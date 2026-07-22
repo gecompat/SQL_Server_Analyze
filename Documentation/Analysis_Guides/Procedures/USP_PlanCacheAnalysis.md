@@ -109,6 +109,12 @@ Der Wrapper orchestriert Query Stats, Hashgruppen, Cache Health, Details und Sho
 
 Frameworkinterne Orchestrierung; Quellen liegen in den aufgerufenen Childmodulen.
 
+### Source Select
+
+Kein einzelnes Grundselect: Die Procedure liest `sys.dm_exec_query_stats` einmal in einen lauflokalen Snapshot und übergibt diesen an `USP_QueryStats`, `USP_QueryHashAnalysis`, `USP_PlanCacheHealth` und optional `USP_ShowplanAnalysis`.
+
+**Wichtig für die Eigenlast:** Query Hash, Handle, Zeit und Analysemodus vor Showplan-XML eingrenzen. Die zentrale Einmalkopie verhindert wiederholte Query-Stats-Scans; breite XML-Analyse bleibt ein separater High-Impact-Pfad.
+
 ### Zeit- und Scope-Modell
 
 Query Stats, Query Hash und Showplan-Kandidatenauswahl verwenden im gemeinsamen Lauf denselben `dm_exec_query_stats`-Stand. Cache Health besitzt mit `dm_exec_cached_plans` eine eigene Quelle; Plan-XML wird später planweise geladen und kann nach Eviction fehlen. Einzelaufrufe lesen immer frisch.

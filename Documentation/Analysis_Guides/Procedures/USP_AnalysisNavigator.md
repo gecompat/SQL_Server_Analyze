@@ -153,6 +153,30 @@ Die Procedure normalisiert freie Texte explizit mit `Latin1_General_100_CI_AI`. 
 7. Kandidaten werden nach Relevanz, Rolle, Anzeigename und Procedure deterministisch begrenzt.
 8. CONSOLE, RAW, TABLE und JSON verwenden dieselbe Temp-Table-Materialisierung.
 
+### Source Select
+
+Der Navigator liest ausschließlich Frameworkmetadaten und prüft, ob die katalogisierte Procedure lokal installiert ist:
+
+```sql
+SELECT
+      [c].[ProcedureName]
+    , [c].[PrimaryAreaCode]
+    , [c].[NavigationRole]
+    , [ac].[AnalysisLevel]
+    , [p].[object_id]
+FROM [monitor].[VW_AnalysisCatalog] AS [c]
+LEFT JOIN [monitor].[VW_AnalyseClassCatalog] AS [ac]
+  ON [ac].[AnalysisClass] = [c].[RepresentativeAnalysisClass]
+LEFT JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[name] = N'monitor'
+LEFT JOIN [sys].[procedures] AS [p] WITH (NOLOCK)
+  ON [p].[schema_id] = [s].[schema_id]
+ AND [p].[name] = [c].[ProcedureName]
+WHERE [c].[PrimaryAreaCode] = 'LIVE';
+```
+
+**Wichtig für die Eigenlast:** Bereichs-, Scope- und Rollenfilter wirken vor der gewichteten Suchterm- und Relationsauswertung. Die Metadatenmengen sind klein; freier Suchtext löst keine fachliche Diagnose aus.
+
 ### Zeit- und Scope-Modell
 
 Der fachliche Katalog ist releasebezogen statisch. Nur `IsInstalled` ist eine lokale Momentaufnahme der Schema-/Procedure-Metadaten. Die Procedure untersucht keine andere Datenbank und keine fachliche Serverquelle. Dokumentationspfade sind relativ zur mitgelieferten Dokumentation; SQL Server prüft ihre externe Erreichbarkeit nicht.

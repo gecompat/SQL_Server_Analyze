@@ -42,6 +42,24 @@ Der Purge löscht MetricSample und PayloadSnapshot zuerst, anschließend ModuleS
 
 RetentionPolicy → Ablaufgrenzen → child-first Deletes → PurgeRun-Summen → erneute Größenbewertung.
 
+### Source Select
+
+Der Purge liest zuerst die aktive Retentionpolicy im Ziel und leitet daraus die Ablaufgrenzen für die Child-Tabellen ab:
+
+```sql
+SELECT
+      [p].[RetentionPolicyCode]
+    , [p].[RawRetentionDays]
+    , [p].[PayloadRetentionDays]
+    , [p].[RollupRetentionDays]
+    , [p].[PurgeBatchRows]
+    , [p].[SoftBudgetMB]
+FROM [ExampleSnapshotDatabase].[snapshot].[RetentionPolicy] AS [p] WITH (NOLOCK)
+WHERE [p].[IsFrameworkDefault] = 1;
+```
+
+**Wichtig für die Eigenlast:** Der eigentliche Pfad ist schreibend: abhängige Payload-, Metric-, Module- und Runzeilen werden child-first in kleinen Batches gelöscht. Ablaufzeit und Batchgröße begrenzen Log, Locks und Laufzeit; `@MaxBatches` ist der operative Schutz. `ExampleSnapshotDatabase` ist synthetisch.
+
 ### Zeit- und Scope-Modell
 
 Ablaufgrenzen werden aus `SYSUTCDATETIME()` berechnet. Raw- und Payloadretention sind getrennt; Rollupretention ist bereits reserviert, Rollups gehören aber nicht zum ersten Slice.

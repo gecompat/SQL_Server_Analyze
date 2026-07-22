@@ -31,6 +31,7 @@ $requiredHeadings = @(
     '### Leitfrage',
     '### Technischer Hintergrund',
     '### Datenkette',
+    '### Source Select',
     '### Zeit- und Scope-Modell',
     '### Bewertung und Gegenprobe',
     '### Typische Fehlinterpretation',
@@ -399,8 +400,8 @@ foreach ($row in $reviewRows) {
             }
         }
         'DEEP_REVIEWED' {
-            if ($row.ReviewContractVersion -ne '2') {
-                $errors.Add("DEEP_REVIEWED row must use contract version 2: $procedureName")
+            if ($row.ReviewContractVersion -ne '3') {
+                $errors.Add("DEEP_REVIEWED row must use contract version 3: $procedureName")
             }
             try {
                 [void][datetime]::ParseExact(
@@ -559,6 +560,29 @@ foreach ($file in $pageFiles) {
         }
     }
 
+    $sourceSelectMatches = [regex]::Matches(
+        $text,
+        '(?ms)^### Source Select\s*$\s*(.*?)(?=^### |\z)'
+    )
+    if ($sourceSelectMatches.Count -ne 1) {
+        $errors.Add("Expected exactly one Source Select section: $($file.FullName)")
+    }
+    else {
+        $sourceSelectBody = $sourceSelectMatches[0].Groups[1].Value
+        $hasSqlExample = $sourceSelectBody -match '(?m)^```sql\s*$'
+        $hasExplainedNonSelectPath =
+            $sourceSelectBody.Contains('Kein einzelnes Grundselect') -or
+            $sourceSelectBody.Contains('Kein direktes `SELECT`') -or
+            $sourceSelectBody.Contains('Kein `SELECT` auf eine DMV')
+
+        if (-not $hasSqlExample -and -not $hasExplainedNonSelectPath) {
+            $errors.Add("Source Select has neither SQL nor an explained non-SELECT path: $($file.FullName)")
+        }
+        if (-not $sourceSelectBody.Contains('**Wichtig für die Eigenlast:**')) {
+            $errors.Add("Source Select has no resource-scope note: $($file.FullName)")
+        }
+    }
+
     if ($text -notmatch '\[Technische Detailbeschreibung\]\(') {
         $errors.Add("Missing technical detail link: $($file.FullName)")
     }
@@ -662,8 +686,13 @@ $linkedMarkdownPaths = [System.Collections.Generic.HashSet[string]]::new([System
 $navigationSources = @($allMarkdown) + @(Get-Item -LiteralPath $rootReadmePath)
 foreach ($file in $navigationSources) {
     $text = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-    $relativeLinks = [regex]::Matches(
+    $linkScanText = [regex]::Replace(
         $text,
+        '(?ms)^[ \t]*```[^\r\n]*\r?\n.*?^[ \t]*```[ \t]*(?:\r?\n|\z)',
+        ''
+    )
+    $relativeLinks = [regex]::Matches(
+        $linkScanText,
         '\[[^\]]+\]\((?!https?://|mailto:)(?<Target>[^)#]*)(?:#(?<Fragment>[^)]+))?\)'
     )
 

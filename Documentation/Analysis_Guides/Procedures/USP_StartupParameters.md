@@ -102,6 +102,22 @@ Startupparameter definieren unter anderem Master Data/Log, Errorlog, Trace Flags
 
 `sys.dm_os_host_info`, `sys.dm_server_registry`.
 
+### Source Select
+
+Auf Windows liest der direkte Quellpfad nur Startup- und Dienstparameter aus der Registry-DMV:
+
+```sql
+SELECT
+      [r].[registry_key]
+    , [r].[value_name]
+    , CONVERT(nvarchar(2048), [r].[value_data]) AS [value_data]
+FROM [sys].[dm_server_registry] AS [r] WITH (NOLOCK)
+WHERE [r].[value_name] LIKE N'SQLArg%'
+   OR [r].[value_name] IN (N'ImagePath', N'ObjectName');
+```
+
+**Wichtig für die Eigenlast:** Der `value_name`-Filter wirkt direkt an der kleinen DMV. Pfade und Dienstidentitäten können in realen Resultsets schutzbedürftig sein; sie gehören nicht ungeprüft in Repositoryartefakte. Auf nicht unterstützten Plattformen wird kein Ersatz erfunden.
+
 ### Zeit- und Scope-Modell
 
 Konfiguration der laufenden Instanz; Wirkung seit letztem Start.

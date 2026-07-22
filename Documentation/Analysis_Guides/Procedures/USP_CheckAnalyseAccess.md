@@ -106,6 +106,26 @@ Das Framework besitzt eine zusätzliche Berechtigungsschiene oberhalb der SQL-Se
 
 `sys.login_token`.
 
+### Source Select
+
+Die effektive Policy basiert auf aktiven Policyzeilen und Gruppen im Login-Token. Das relevante Grundselect lautet:
+
+```sql
+SELECT
+      [p].[AnalysisClass]
+    , [p].[ADGroupName]
+    , [lt].[name] AS [MatchedLoginToken]
+FROM [monitor].[VW_AnalyseAccessPolicy] AS [p]
+LEFT JOIN [sys].[login_token] AS [lt] WITH (NOLOCK)
+  ON UPPER(CONVERT(nvarchar(256), [lt].[name])) COLLATE Latin1_General_100_CI_AS
+   = UPPER([p].[ADGroupName]) COLLATE Latin1_General_100_CI_AS
+ AND [lt].[type] = N'WINDOWS GROUP'
+WHERE [p].[IsEnabled] = 1
+  AND [p].[AnalysisClass] IN ('PLAN_CACHE_DEEP', '*');
+```
+
+**Wichtig für die Eigenlast:** Die Mengen sind klein. Der Klassenfilter verhindert unnötige `IS_MEMBER`-Fallbackprüfungen; die öffentliche Procedure ergänzt außerdem offene Policy und sysadmin-Bypass.
+
 ### Zeit- und Scope-Modell
 
 Momentaufnahme des aktuellen Login- und Execution-Kontexts. Gruppenauflösung kann sich durch Token, Impersonation oder Verzeichniszustand vom erwarteten Benutzerbild unterscheiden.

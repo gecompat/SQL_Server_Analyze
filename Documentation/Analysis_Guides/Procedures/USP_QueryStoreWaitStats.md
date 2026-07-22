@@ -109,6 +109,32 @@ Query Store ordnet konkrete Waittypen Kategorien zu und speichert Total/Avg/Min/
 
 `sys.database_query_store_options`, `sys.query_store_plan`, `sys.query_store_query`, `sys.query_store_query_text`, `sys.query_store_runtime_stats_interval`, `sys.query_store_wait_stats`, `sys.sp_executesql`.
 
+### Source Select
+
+Waitwerte werden über Intervall und Plan bis zur Query korreliert:
+
+```sql
+SELECT
+      [q].[query_id]
+    , [p].[plan_id]
+    , [i].[start_time]
+    , [i].[end_time]
+    , [ws].[wait_category_desc]
+    , [ws].[total_query_wait_time_ms]
+    , [ws].[avg_query_wait_time_ms]
+FROM [sys].[query_store_wait_stats] AS [ws] WITH (NOLOCK)
+JOIN [sys].[query_store_runtime_stats_interval] AS [i] WITH (NOLOCK)
+  ON [i].[runtime_stats_interval_id] = [ws].[runtime_stats_interval_id]
+JOIN [sys].[query_store_plan] AS [p] WITH (NOLOCK)
+  ON [p].[plan_id] = [ws].[plan_id]
+JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
+  ON [q].[query_id] = [p].[query_id]
+WHERE [i].[end_time] > @VonUtc
+  AND [i].[start_time] < @BisUtc;
+```
+
+**Wichtig für die Eigenlast:** Datenbank, Zeitfenster, Waitkategorie und optional Query-ID vor Textprojektion begrenzen. Query Store speichert Kategorien, nicht jeden einzelnen Engine-Waittyp.
+
 ### Zeit- und Scope-Modell
 
 Persistierte Waitkategorien innerhalb Retention und aktivem Wait Capture; datenbank-/planbezogen.

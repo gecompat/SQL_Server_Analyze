@@ -103,6 +103,24 @@ Die Procedure verbindet Product Major Version, Edition/Engine Edition, Compatibi
 
 `master.sys.all_objects`, `sys.databases`, `sys.dm_os_host_info`, `sys.objects`, `sys.query_store_replicas`, `sys.resource_governor_configuration`, `sys.schemas`, `sys.sp_executesql`, `sys.vector_indexes`, `sys.views`.
 
+### Source Select
+
+Der datenbanklokale Capability-Kern prüft aktuelle Versionsmerkmale direkt am Datenbankkatalog:
+
+```sql
+-- Dieser Zweig gilt für SQL Server 2025 oder neuer.
+SELECT
+      [d].[name] AS [DatabaseName]
+    , [d].[compatibility_level]
+    , [d].[state_desc]
+    , [d].[is_optimized_locking_on]
+    , CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) AS [CurrentMajorVersion]
+FROM [sys].[databases] AS [d] WITH (NOLOCK)
+WHERE [d].[database_id] = DB_ID();
+```
+
+**Wichtig für die Eigenlast:** Datenbankscope vor Katalog-Existenz- und Probezugriffen festlegen. Die Spalte `is_optimized_locking_on` wird nur im SQL-Server-2025-Pfad kompiliert; versionsspezifische Sichten wie Vector Indexes und Query Store Replicas werden nur nach Versions- und Objektprüfung gelesen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Instanz-/Datenbankzustand. Upgrade, Compatibilitywechsel, Failover oder Permissionänderung können Ergebnis ändern.
