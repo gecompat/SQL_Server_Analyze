@@ -276,7 +276,7 @@ DECLARE @Cases TABLE
     , [ExpectedProcedure] sysname NOT NULL
 );
 
-INSERT [@Cases]([SearchTerm],[ExpectedProcedure])
+INSERT @Cases([SearchTerm],[ExpectedProcedure])
 VALUES
       (N'Benutzer warten',N'USP_CurrentBlocking')
     , (N'CPU hoch',N'USP_CurrentRequests')
@@ -289,13 +289,13 @@ VALUES
     , (N'Deadlock',N'USP_ExtendedEventsDeadlocks')
     , (N'SQL Server Version CU Lifecycle',N'USP_ServerVersionInformation');
 
-DECLARE @CaseId int=1,@MaxCaseId int=(SELECT MAX([CaseId]) FROM [@Cases]);
+DECLARE @CaseId int=1,@MaxCaseId int=(SELECT MAX([CaseId]) FROM @Cases);
 DECLARE @SearchTerm nvarchar(200),@ExpectedProcedure sysname,@ActualProcedure sysname;
 
 WHILE @CaseId<=@MaxCaseId
 BEGIN
     SELECT @SearchTerm=[SearchTerm],@ExpectedProcedure=[ExpectedProcedure]
-    FROM [@Cases]
+    FROM @Cases
     WHERE [CaseId]=@CaseId;
 
     TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
