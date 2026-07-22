@@ -267,8 +267,6 @@ IF EXISTS
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
     VALUES(N'RELATION_COVERAGE',N'Mindestens ein regulärer Anwenderpfad besitzt keine dokumentierte Folgerelation.');
 
-CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
-
 DECLARE @Cases TABLE
 (
       [CaseId] int IDENTITY(1,1) NOT NULL PRIMARY KEY
@@ -298,7 +296,8 @@ BEGIN
     FROM @Cases
     WHERE [CaseId]=@CaseId;
 
-    TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+    DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+    CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 
     BEGIN TRY
         EXEC [monitor].[USP_AnalysisNavigator]
@@ -330,7 +329,8 @@ BEGIN
     SET @CaseId+=1;
 END;
 
-TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 EXEC [monitor].[USP_AnalysisNavigator]
       @Suchbegriff=N'BENÚTZER WARTEN'
     , @NurInstallierte=0
@@ -348,7 +348,8 @@ IF NOT EXISTS
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
     VALUES(N'CASE_ACCENT_INSENSITIVE',N'Die Suchcollation hat Großschreibung oder Akzent im synthetischen Blockingbegriff nicht ignoriert.');
 
-TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 BEGIN TRY
     EXEC [monitor].[USP_AnalysisNavigator]
           @Suchbegriff=N'CPU hoch cpu CÚP'
@@ -372,7 +373,8 @@ BEGIN CATCH
     VALUES(N'TOKEN_COLLATION_DEDUPLICATION',CONCAT(N'Die Token-Normalisierung hat einen Fehler ausgelöst: ',ERROR_MESSAGE()));
 END CATCH;
 
-TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 EXEC [monitor].[USP_AnalysisNavigator]
       @Bereich='PLAN'
     , @Navigationsrolle='TARGETED'
@@ -394,7 +396,8 @@ IF NOT EXISTS (SELECT 1 FROM [#AnalysisNavigatorRuntimeContract_Navigation])
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
     VALUES(N'AREA_ROLE_FILTER',N'Bereichs-, Rollen- oder Installationsfilter lieferte eine leere oder fachlich fremde Zeile.');
 
-TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 EXEC [monitor].[USP_AnalysisNavigator]
       @NurInstallierte=1
     , @MaxZeilen=12
@@ -418,7 +421,8 @@ IF (SELECT COUNT_BIG(*) FROM [#AnalysisNavigatorRuntimeContract_Navigation])<>12
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
     VALUES(N'DEFAULT_ENTRY_LIST',N'Die Defaultliste enthält nicht 12 Einträge, startet nicht mit CurrentOverview oder enthält den Navigator selbst.');
 
-TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 EXEC [monitor].[USP_AnalysisNavigator]
       @NurInstallierte=1
     , @MaxZeilen=0
@@ -430,7 +434,8 @@ IF (SELECT COUNT_BIG(*) FROM [#AnalysisNavigatorRuntimeContract_Navigation])<>16
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
     VALUES(N'UNLIMITED_DEFAULT_ENTRY_LIST',N'@MaxZeilen=0 lieferte nicht die vollständige kuratierte Startliste mit 16 Einträgen.');
 
-TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 EXEC [monitor].[USP_AnalysisNavigator]
       @Bereich='PLAN'
     , @MaxZeilen=NULL
@@ -442,7 +447,8 @@ IF (SELECT COUNT_BIG(*) FROM [#AnalysisNavigatorRuntimeContract_Navigation]) < 2
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
     VALUES(N'NULL_UNLIMITED_FILTER_LIST',N'@MaxZeilen=NULL lieferte für den PLAN-Bereich keine vollständige gefilterte Treffermenge.');
 
-TRUNCATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation];
+DROP TABLE IF EXISTS [#AnalysisNavigatorRuntimeContract_Navigation];
+CREATE TABLE [#AnalysisNavigatorRuntimeContract_Navigation] ([Seed] int NULL);
 EXEC [monitor].[USP_AnalysisNavigator]
       @Suchbegriff=N'Snapshot erfassen Baseline'
     , @NurInstallierte=0
