@@ -1,6 +1,6 @@
 param(
     [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot "../..")),
-    [string]$OutputPath = (Join-Path $PSScriptRoot "Install_ExecutionPlanAnalysis.generated.sql")
+    [string]$OutputPath = (Join-Path $PSScriptRoot "generated/Install_ExecutionPlanAnalysis.generated.sql")
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,6 +39,11 @@ foreach ($file in $files) {
     $content = [Text.RegularExpressions.Regex]::Replace($content, '^\uFEFF?USE \[DeineDatenbank\];\r?\nGO\r?\n\r?\n', '')
     [void]$builder.AppendLine($content.TrimEnd())
     [void]$builder.AppendLine("-- END SOURCE: $relative")
+}
+
+$outputDirectory = [IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($OutputPath))
+if (-not [string]::IsNullOrWhiteSpace($outputDirectory)) {
+    [IO.Directory]::CreateDirectory($outputDirectory) | Out-Null
 }
 
 [IO.File]::WriteAllText($OutputPath, $builder.ToString(), [Text.UTF8Encoding]::new($false))

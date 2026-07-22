@@ -25,9 +25,12 @@ ALTER DATABASE [ExampleSnapshotDatabase] SET READ_COMMITTED_SNAPSHOT ON;
 GO
 ```
 
-3. Mit SSMS/ADS auf `ExampleSnapshotDatabase` wechseln, SQLCMD-Modus aktivieren und `Code/Install/Install_SnapshotBaseline_Target.sql` vollständig ausführen. Der Installer bricht in `master`, `model`, `msdb`, `tempdb`, einer offline oder read-only Datenbank ab.
-4. In einer separaten Arbeitskopie `[DeineDatenbank]` durch den lokalen Frameworkdatenbanknamen ersetzen. Mit dieser Datenbank als Kontext `Code/Install/Install_SnapshotBaseline_Framework.sql` ausführen.
-5. Erst danach das Ziel explizit konfigurieren:
+3. Einen Installationsweg wählen:
+   - SQLCMD: die beiden `Code/Install/Install_SnapshotBaseline_*.sql` aus einer vollständigen Repositorykopie verwenden;
+   - Standalone: in `Code/Install` mit `./Build-SnapshotBaselineInstallers.ps1` zwei eingebettete Dateien unter `generated/` erzeugen.
+4. Mit SSMS/ADS auf `ExampleSnapshotDatabase` wechseln und den Target-Installer vollständig ausführen. Beim SQLCMD-Weg muss der SQLCMD-Modus aktiv sein; das generierte Artefakt benötigt ihn nicht. Der Installer bricht in `master`, `model`, `msdb`, `tempdb`, einer offline oder read-only Datenbank ab.
+5. Im Framework-Installer `[DeineDatenbank]` durch den lokalen Frameworkdatenbanknamen ersetzen und ihn anschließend vollständig ausführen. Der SQLCMD-Weg benötigt den SQLCMD-Modus; das generierte Artefakt nicht.
+6. Erst danach das Ziel explizit konfigurieren:
 
 ```sql
 DECLARE @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048);

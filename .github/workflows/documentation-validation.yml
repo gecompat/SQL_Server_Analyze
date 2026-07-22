@@ -6,6 +6,7 @@ on:
       - '.github/workflows/documentation-validation.yml'
       - 'README.md'
       - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
       - 'Code/Tests/Static/905_Validate_Analysis_Navigator.py'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
@@ -20,6 +21,7 @@ on:
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
       - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
       - 'AI_Metadata/Internal_Documentation/**/*.md'
@@ -40,6 +42,7 @@ on:
       - '.github/workflows/documentation-validation.yml'
       - 'README.md'
       - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
       - 'Code/Tests/Static/905_Validate_Analysis_Navigator.py'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
@@ -54,6 +57,7 @@ on:
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
       - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
+      - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
       - 'AI_Metadata/Internal_Documentation/**/*.md'
@@ -172,6 +176,10 @@ jobs:
       - name: Validate Execution Plan Analysis installer contract
         shell: pwsh
         run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1
+
+      - name: Validate full standalone installer contract
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/191_Standalone_Installer_Contract.ps1
 
       - name: Validate Snapshot Baseline public contract
         shell: bash

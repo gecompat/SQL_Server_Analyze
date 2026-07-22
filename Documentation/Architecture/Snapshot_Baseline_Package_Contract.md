@@ -18,9 +18,19 @@ Alle drei Procedures stehen im vollständigen Analysis Catalog mit `PackageCode 
 
 ## Installation
 
+Zwei gleichwertige Installationswege stehen zur Verfügung:
+
+- SQLCMD: die beiden kanonischen `Install_SnapshotBaseline_*.sql`-Masterinstaller
+  aus einer vollständigen Repositorykopie ausführen;
+- Standalone: `Code/Install/Build-SnapshotBaselineInstallers.ps1` ausführen und
+  danach die beiden eingebetteten Artefakte unter `Code/Install/generated/`
+  ohne SQLCMD-Modus verwenden.
+
+In beiden Fällen bleibt die Reihenfolge verbindlich:
+
 1. separate Snapshotdatenbank anlegen;
-2. `Code/Install/Install_SnapshotBaseline_Target.sql` in der Snapshotdatenbank ausführen;
-3. `Code/Install/Install_SnapshotBaseline_Framework.sql` in der Frameworkdatenbank ausführen;
+2. Target-Installer in der ausdrücklich ausgewählten Snapshotdatenbank ausführen;
+3. Framework-Installer nach Anpassung von `[DeineDatenbank]` in der Frameworkdatenbank ausführen;
 4. Ziel und Policies mit `USP_ConfigureSnapshotTarget` setzen;
 5. einen kontrollierten manuellen Collection Cycle prüfen;
 6. erst danach einen externen Scheduler konfigurieren.
