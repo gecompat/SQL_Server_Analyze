@@ -76,6 +76,7 @@ USP_CurrentSessions,JsonErzeugen,bit,0
 USP_CurrentSessions,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentSessions,PrintMeldungen,bit,1
 USP_CurrentSessions,Hilfe,bit,0
+USP_CurrentSessions,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentRequests,SessionIds,nvarchar(max),NULL
 USP_CurrentRequests,EigeneSessionsModus,varchar(16),'ALLE'
 USP_CurrentRequests,AktuelleSessionEinbeziehen,bit,0
@@ -109,6 +110,7 @@ USP_CurrentRequests,JsonErzeugen,bit,0
 USP_CurrentRequests,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentRequests,PrintMeldungen,bit,1
 USP_CurrentRequests,Hilfe,bit,0
+USP_CurrentRequests,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentBlocking,SessionIds,nvarchar(max),NULL
 USP_CurrentBlocking,MinWaitMs,bigint,0
 USP_CurrentBlocking,SystemSessionsEinbeziehen,bit,0

@@ -1,5 +1,8 @@
 # Optionales Snapshot-/Baseline-Paket – Architekturvertrag
 
+**Produktstatus des ausgelieferten Performance-Counter-Slice:** `IMPLEMENTED_ACTIONS_GATE`  
+**Weitere Collector, Rollups und Scheduler-/Exportpakete:** `OPTIONAL_FUTURE`
+
 ## Zweck und Abgrenzung
 
 Der Frameworkkern ist zustandslos. Das optionale Snapshot-/Baseline-Paket ergänzt eine ausdrücklich installierte lokale Persistenz für begrenzte Zeitreihen und technische Modulstatus. Es wird nicht durch `Install_All.sql` installiert und richtet keinen Scheduler ein.

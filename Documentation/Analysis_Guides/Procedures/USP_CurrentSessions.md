@@ -38,6 +38,16 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `sessions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+
+## Snapshot-Verhalten
+
+Ein direkter Aufruf liest die Systemquellen immer frisch.
+`@ParentCurrentStateSnapshotId` ist ein interner Consumerparameter für
+`USP_CurrentOverview`; Anwender sollen ihn nicht setzen. Innerhalb des
+Overview-Aufrufs werden Sessions, Requests, Connections und bei Bedarf
+deduplizierter SQL-Text aus demselben laufinternen Primär-Snapshot verwendet.
+RAW und JSON weisen den Startzeitpunkt sowie die Snapshot-ID aus.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile beschreibt eine aktuell sichtbare Session; ein Request kann fehlen, wenn die Session gerade inaktiv ist.

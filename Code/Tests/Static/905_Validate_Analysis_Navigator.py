@@ -787,8 +787,15 @@ def validate(repository_root: Path) -> list[str]:
     documentation_readme = (repository_root / "Documentation/README.md").read_text(
         encoding="utf-8-sig"
     )
+    expected_public_count = str(len(public_rows))
+    expected_inventory_count = str(len(object_rows))
     for label, text in (("README.md", root_readme), ("Documentation/README.md", documentation_readme)):
-        for fragment in ("96", "163", "Start_Here.md", "USP_AnalysisNavigator"):
+        for fragment in (
+            expected_public_count,
+            expected_inventory_count,
+            "Start_Here.md",
+            "USP_AnalysisNavigator",
+        ):
             if fragment not in text:
                 errors.append(f"{label} is missing discovery/inventory marker: {fragment}")
 
