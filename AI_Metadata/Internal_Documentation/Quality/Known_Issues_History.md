@@ -1,13 +1,13 @@
 # Bekannte Restpunkte
 
-Stand: 2026-07-21
+Stand: 2026-07-22
 
 Die Version `1.1.0-special.13` besitzt für Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` grüne Actions-Gates auf SQL Server 2019, 2022 und 2025. Die Evidence deckt Installer, 34 Suiten, die versionsspezifischen Berechtigungsmatrizen, alle 181 P0-/P1-/P2-Fälle sowie die Welle-1- und Welle-2-Verträge auf disposable synthetischen Linux-Zielen ab; in der Spezialfallmatrix verbleibt keine `NOT_EXECUTED`-Zeile. Der aktuelle Evidence-Stand wird kanonisch in `Metadata/Quality/Test_Matrix.csv` geführt und durch `Code/Tests/Static/990_Validate_Release_Evidence.py` gegen Detailmatrix und Release-Audit geprüft.
 
 Verbleibende Repository- und Evidenzpunkte:
 
 - Keine offenen RQ-Punkte. `RQ-006` ist mit 347 primärquellengeprüften, eindeutigen Wait Types und einem statischen Katalogvertrag abgeschlossen.
-- Keine offene fachliche Dokumentationslücke: alle 94 öffentlichen Procedure-Seiten einschließlich der eigenständigen und optionalen Pakete enthalten Zweck, sichere Leserichtung, Aussagegrenzen und technische Vertiefung beziehungsweise den vollständig strukturierten Baselinevertrag.
+- Keine offene fachliche Dokumentationslücke: alle 96 öffentlichen Procedure-Seiten einschließlich der eigenständigen und optionalen Pakete enthalten Zweck, sichere Leserichtung, Aussagegrenzen und technische Vertiefung beziehungsweise den vollständig strukturierten Baselinevertrag.
 - Die vier ersten P1-IQP-Fälle sind automatisiert und commitbezogen nachgewiesen.
 - Die vier P1-Contention-Fälle sind als sechzehnte Suite nachgewiesen. Der Page-Detail-Fall erzwingt keinen künstlichen realen PAGELATCH-Wait, sondern prüft den opt-in- und Zeilengrenzenvertrag; diese Einschränkung bleibt ausdrücklich erhalten.
 - Die vier P1-Speicherfälle sind als siebzehnte Suite auf SQL Server 2019, 2022 und 2025 nachgewiesen. Speicherdruck und Resource-Semaphore-Waiter wurden nicht künstlich erzeugt; der Vertrag prüft die bedingte Interpretation aktueller DMV-Evidenz und bleibt deshalb `PASS_WITH_LIMITATIONS`.
@@ -43,4 +43,5 @@ Verbleibende fachliche beziehungsweise betriebliche Punkte:
 - `USP_DataCaptureDeepAnalysis` kann CT-Synchronisationsverlust nur für einen explizit gelieferten Consumer-Wasserstand bewerten. CDC-DMVs und Agenthistorien sind begrenzt und reset-/cleanup-abhängig. Remote Distributor, Pull-/Peer-to-Peer-Topologien und Subscriber-Netzpfade können außerhalb der lokalen Sicht liegen; eine Evidenzlücke ist kein gesunder Befund.
 - `USP_EncryptionAnalysis` beweist weder den Besitz externer Schlüsselkopien noch Restorefähigkeit. TDE und explizite Backupverschlüsselung bleiben getrennt; Zertifikatablauf und lokaler Exportzeitpunkt sind Lebenszykluskontext.
 - `USP_MaintenanceOperations` ist eine Momentaufnahme. Pause, Laufdauer, PVS-Größe und Jobüberlappung benötigen Betriebs- und Verlaufskontext; das Modul nimmt niemals selbst eine Wartungsänderung vor.
+- `USP_ExternalRuntimeAnalysis` und `USP_ClrAnalysis` liefern einen zustandslosen Current-State-Kern. Der portable Vertrag aktiviert keine Runtime, führt kein Script aus und lädt keine Assembly. Feature-positive R-, Python-, Java-, C#-, Custom-Language- und SQL-CLR-Fälle sowie Windows-Securitykonstellationen bleiben deshalb getrennte Plattformnachweise.
 - SC-023 besitzt einen als `IMPLEMENTED_ACTIONS_GATE` abgenommenen, separat installierbaren Performance-Counter-Slice, aber noch keine Wait-, I/O-, Datenbank-, Query-, Plan- oder Rollup-Sammler. SC-024 und SC-025 benötigen weiterhin externe autorisierte Komponenten beziehungsweise Ziele.

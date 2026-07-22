@@ -4,19 +4,28 @@
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion | `1.1.0-special.13` |
+| Frameworkversion | `1.1.0-special.14` |
 | Dokumentationsstand | 22. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Bestand umfasst 161 inventarisierte Objekte:
+Der aktuelle Bestand umfasst 163 inventarisierte Objekte:
 
-- 94 öffentliche Procedures;
+- 96 öffentliche Procedures;
 - acht Views;
 - 27 Table-Valued Functions;
 - 15 interne Procedures;
 - 17 Tabellen.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+## RUNTIME-001 – External Runtime und SQL CLR
+
+Der Frameworkkern enthält zwei getrennte, rein lesende Tiefenanalysen:
+
+- `USP_ExternalRuntimeAnalysis` trennt External-Scripts-Konfiguration, Language- und Libraryregistrierungen, Launchpad-Evidenz, aktive Requests, External Resource Pools, Execution Stats und Performance Counter.
+- `USP_ClrAnalysis` trennt SQL-CLR-Konfiguration, sichtbare Assemblies und Module, AppDomains, geladene Assemblies, CLR Tasks, Managed-Code-Requests, Memory Clerks und Performance Counter.
+
+Beide Verfahren isolieren Quelle und Berechtigungsfehler, stellen `LOCK_TIMEOUT` wieder her und unterstützen `CONSOLE`, `RAW`, `TABLE`, `NONE` sowie JSON. Sie führen weder externen Code noch Assemblies aus, aktivieren keine Features und lesen standardmäßig keine Identitäten, Binärinhalte, Script- oder SQL-Texte. Das maschinenlesbare Routing erfolgt über neue Capability-, Analyseklassen-, Navigator- und Spezialfeature-Verträge. Feature-positive Windows-, konkrete Runtime- und synthetische SAFE-Assembly-Nachweise bleiben ausdrücklich außerhalb des portablen Linux-Kerngates.
 
 ## Dokumentationsstil
 
@@ -42,7 +51,7 @@ Der Einstieg beginnt bei Symptom und Ziel:
 - [Hier beginnen](../Analysis_Guides/Start_Here.md)
 - [Analysis-Navigator-Vertrag](../Reference/Analysis_Navigator.md)
 - [Runbooks](../Analysis_Guides/Runbooks/README.md)
-- [94 Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
+- [96 Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
 - [vollständige Objektreferenz](../Reference/Object_Reference.md)
 
 Anwenderdokumentation beschreibt ausschließlich Nutzung, Architektur, Laufzeitverträge, Betrieb, Qualität und Komponenten.

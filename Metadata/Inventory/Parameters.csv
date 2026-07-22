@@ -1524,6 +1524,52 @@ USP_EncryptionAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_EncryptionAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_EncryptionAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_EncryptionAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ExternalRuntimeAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_ExternalRuntimeAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_ExternalRuntimeAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ExternalRuntimeAnalysis,HighImpactConfirmed,bit,0
+USP_ExternalRuntimeAnalysis,LanguageNames,nvarchar(max),NULL
+USP_ExternalRuntimeAnalysis,LanguageNamePattern,nvarchar(4000),NULL
+USP_ExternalRuntimeAnalysis,SampleSeconds,tinyint,0
+USP_ExternalRuntimeAnalysis,MitDateimetadaten,bit,0
+USP_ExternalRuntimeAnalysis,MitBerechtigungsanalyse,bit,0
+USP_ExternalRuntimeAnalysis,MitSitzungskontext,bit,0
+USP_ExternalRuntimeAnalysis,NurProblematisch,bit,0
+USP_ExternalRuntimeAnalysis,MaxZeilen,int,100
+USP_ExternalRuntimeAnalysis,LockTimeoutMs,int,0
+USP_ExternalRuntimeAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ExternalRuntimeAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_ExternalRuntimeAnalysis,JsonErzeugen,bit,0
+USP_ExternalRuntimeAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ExternalRuntimeAnalysis,PrintMeldungen,bit,1
+USP_ExternalRuntimeAnalysis,Hilfe,bit,0
+USP_ExternalRuntimeAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ExternalRuntimeAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_ExternalRuntimeAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_ExternalRuntimeAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_ClrAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_ClrAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_ClrAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_ClrAnalysis,HighImpactConfirmed,bit,0
+USP_ClrAnalysis,AssemblyNames,nvarchar(max),NULL
+USP_ClrAnalysis,AssemblyNamePattern,nvarchar(4000),NULL
+USP_ClrAnalysis,SampleSeconds,tinyint,0
+USP_ClrAnalysis,MitModulzuordnung,bit,1
+USP_ClrAnalysis,MitBerechtigungsanalyse,bit,0
+USP_ClrAnalysis,MitSitzungskontext,bit,0
+USP_ClrAnalysis,NurProblematisch,bit,0
+USP_ClrAnalysis,MaxZeilen,int,100
+USP_ClrAnalysis,LockTimeoutMs,int,0
+USP_ClrAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_ClrAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_ClrAnalysis,JsonErzeugen,bit,0
+USP_ClrAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_ClrAnalysis,PrintMeldungen,bit,1
+USP_ClrAnalysis,Hilfe,bit,0
+USP_ClrAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_ClrAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_ClrAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_ClrAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_CreateExecutionEvidenceJson,PlanXml,xml,NULL
 USP_CreateExecutionEvidenceJson,StatisticsIoText,nvarchar(max),NULL
 USP_CreateExecutionEvidenceJson,StatisticsTimeText,nvarchar(max),NULL

@@ -2127,6 +2127,66 @@ Quelle: `Code/09_VersionAdaptive/080_USP_EncryptionAnalysis.sql`
     , @ErrorMessageOut                            nvarchar(2048) = NULL OUTPUT
 ```
 
+## `[monitor].[USP_ExternalRuntimeAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/090_USP_ExternalRuntimeAnalysis.sql`
+
+```sql
+@DatabaseNames                    nvarchar(max)  = NULL
+    , @SystemdatenbankenEinbeziehen     bit            = 0
+    , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
+    , @LanguageNames                    nvarchar(max)  = NULL
+    , @LanguageNamePattern              nvarchar(4000) = NULL
+    , @SampleSeconds                    tinyint         = 0
+    , @MitDateimetadaten                bit             = 0
+    , @MitBerechtigungsanalyse          bit             = 0
+    , @MitSitzungskontext               bit             = 0
+    , @NurProblematisch                 bit             = 0
+    , @MaxZeilen                        int             = 100
+    , @LockTimeoutMs                    int             = 0
+    , @ResultSetArt                     varchar(16)     = 'CONSOLE'
+    , @ResultTablesJson                 nvarchar(max)   = NULL
+    , @JsonErzeugen                     bit             = 0
+    , @Json                             nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen                   bit             = 1
+    , @Hilfe                            bit             = 0
+    , @StatusCodeOut                    varchar(40)     = NULL OUTPUT
+    , @IsPartialOut                     bit             = NULL OUTPUT
+    , @ErrorNumberOut                   int             = NULL OUTPUT
+    , @ErrorMessageOut                  nvarchar(2048)  = NULL OUTPUT
+```
+
+## `[monitor].[USP_ClrAnalysis]`
+
+Quelle: `Code/09_VersionAdaptive/100_USP_ClrAnalysis.sql`
+
+```sql
+@DatabaseNames                    nvarchar(max)  = NULL
+    , @SystemdatenbankenEinbeziehen     bit            = 0
+    , @DatabaseNamePattern              nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
+    , @AssemblyNames                    nvarchar(max)  = NULL
+    , @AssemblyNamePattern              nvarchar(4000) = NULL
+    , @SampleSeconds                    tinyint         = 0
+    , @MitModulzuordnung                bit             = 1
+    , @MitBerechtigungsanalyse          bit             = 0
+    , @MitSitzungskontext               bit             = 0
+    , @NurProblematisch                 bit             = 0
+    , @MaxZeilen                        int             = 100
+    , @LockTimeoutMs                    int             = 0
+    , @ResultSetArt                     varchar(16)     = 'CONSOLE'
+    , @ResultTablesJson                 nvarchar(max)   = NULL
+    , @JsonErzeugen                     bit             = 0
+    , @Json                             nvarchar(max)   = NULL OUTPUT
+    , @PrintMeldungen                   bit             = 1
+    , @Hilfe                            bit             = 0
+    , @StatusCodeOut                    varchar(40)     = NULL OUTPUT
+    , @IsPartialOut                     bit             = NULL OUTPUT
+    , @ErrorNumberOut                   int             = NULL OUTPUT
+    , @ErrorMessageOut                  nvarchar(2048)  = NULL OUTPUT
+```
+
 ## `[monitor].[USP_MaintenanceOperations]`
 
 Quelle: `Code/07_Infrastructure/130_USP_MaintenanceOperations.sql`

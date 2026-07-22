@@ -21,6 +21,7 @@ on:
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
       - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
+      - 'Code/Tests/Static/999_Validate_Runtime001_Contracts.py'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
@@ -58,6 +59,7 @@ on:
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
       - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
+      - 'Code/Tests/Static/999_Validate_Runtime001_Contracts.py'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
@@ -206,6 +208,16 @@ jobs:
       - name: Validate Snapshot Baseline installer contract
         shell: pwsh
         run: pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1
+
+      - name: Validate RUNTIME-001 contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/999_Validate_Runtime001_Contracts.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/999_Validate_Runtime001_Contracts.py \
+            --repository-root .
 
       - name: Validate procedure documentation
         shell: pwsh

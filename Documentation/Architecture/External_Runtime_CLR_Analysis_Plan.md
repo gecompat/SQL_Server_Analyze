@@ -1,7 +1,7 @@
 # RUNTIME-001 – External Runtime und SQL CLR Analysis
 
 **Stand:** 22. Juli 2026  
-**Status:** geplantes nächstes SubProject; noch nicht implementiert  
+**Status:** Current-State-Kern implementiert; feature-positive Plattformnachweise und optionale Snapshot-Collector ausstehend
 **Zielversionen:** SQL Server 2019, 2022 und 2025
 
 ## 1. Auftrag und Abgrenzung
@@ -11,12 +11,12 @@ RUNTIME-001 erweitert SQL Server Analyze um abfragbare Diagnoseverfahren für zw
 - das out-of-process Extensibility Framework für R, Python, Java, C# und Custom Language Extensions;
 - SQL CLR für von SQL Server gehostete .NET-Assemblies und CLR-Datenbankobjekte.
 
-Geplant sind zwei getrennte öffentliche Procedures:
+Implementiert sind zwei getrennte öffentliche Procedures:
 
 - `[monitor].[USP_ExternalRuntimeAnalysis]` für External Scripts, Language Extensions, Libraries, Launchpad und External Resource Pools;
 - `[monitor].[USP_ClrAnalysis]` für SQL CLR, Assemblies, AppDomains, Tasks, Speicher und Sicherheitskontext.
 
-`[monitor].[USP_SpecialFeatureInventory]` bleibt der leichtgewichtige Einstieg. Es erkennt Konfiguration und sichtbare Katalognutzung und soll nach Implementierung auf das passende Deep-Dive-Modul verweisen. Bis zur Implementierung bleiben seine Modulstatus für `CLR`, `EXTERNAL_RUNTIME` und `EXTERNAL_SCRIPTS` unverändert `NOT_PLANNED`; das Planungsdokument täuscht keine vorhandene Laufzeitfunktion vor.
+`[monitor].[USP_SpecialFeatureInventory]` bleibt der leichtgewichtige Einstieg. Es erkennt Konfiguration und sichtbare Katalognutzung und verweist für `CLR`, `EXTERNAL_RUNTIME` und `EXTERNAL_SCRIPTS` mit Status `IMPLEMENTED` auf das passende Deep-Dive-Modul.
 
 Nicht Bestandteil des ersten Releases sind:
 
@@ -33,7 +33,7 @@ Der aktuelle Frameworkstand besitzt bereits Teilabdeckungen, die RUNTIME-001 kor
 
 | Bestehender Baustein | Aktueller Beitrag | Konsequenz für RUNTIME-001 |
 |---|---|---|
-| `USP_SpecialFeatureInventory` | zählt benutzerdefinierte CLR-Assemblies, External Languages und Libraries und liest `external scripts enabled`; alle drei Deep-Dives sind noch `NOT_PLANNED` | bleibt Discovery- und Routing-Einstieg |
+| `USP_SpecialFeatureInventory` | zählt benutzerdefinierte CLR-Assemblies, External Languages und Libraries, liest `external scripts enabled` und routet zu beiden RUNTIME-001-Modulen | bleibt Discovery- und Routing-Einstieg |
 | `USP_CurrentRequests` | zeigt laufende Requests und `executing_managed_code` | neue Module materialisieren nur den fachspezifischen Requestkontext; bestehender RAW-Vertrag wird nicht beiläufig erweitert |
 | `USP_ResourceGovernorAnalysis` | analysiert reguläre Pools und Workload Groups | External Resource Pools werden im External-Runtime-Modul ergänzt und fachlich getrennt ausgewertet |
 | `USP_PerformanceCounters` | typisierte Counter und optionales Sampling | gemeinsame Counterlogik wiederverwenden; keine zweite öffentliche Samplingarchitektur |
@@ -102,11 +102,13 @@ Das Modul analysiert:
 
 SQL CLR ist ausdrücklich ausgeschlossen.
 
-### 5.2 Geplante Resultsets
+### 5.2 Implementierte Ausgabegruppen
+
+`RAW` und JSON enthalten die folgenden Gruppen. `TABLE` exportiert bewusst nur das primäre, normalisierte Resultset `findings`; dadurch bleibt der öffentliche Tabellenvertrag klein und stabil.
 
 | Resultset | Inhalt und Primärquellen |
 |---|---|
-| `moduleStatus` | Gesamtstatus, Partialität, Version, Plattform, Messzeitpunkte und Fehlergrenze |
+| `meta` | Gesamtstatus, Partialität, Version, Plattform, Messzeitpunkte und Fehlergrenze |
 | `sourceStatus` | Verfügbarkeit, Capability, Berechtigung, Lesezeitpunkt und Teilstatus je Quelle |
 | `configuration` | `external scripts enabled`, Plattform- und Launchpad-Evidenz |
 | `databaseStatus` | Auswahl-, Sichtbarkeits-, Sperr- und Fehlerstatus je Datenbank |
@@ -149,11 +151,13 @@ Das Modul analysiert ausschließlich SQL CLR:
 
 Die C# Language Extension gehört nicht in dieses Modul.
 
-### 6.2 Geplante Resultsets
+### 6.2 Implementierte Ausgabegruppen
+
+`RAW` und JSON enthalten die folgenden Gruppen. `TABLE` exportiert bewusst nur das primäre, normalisierte Resultset `findings`.
 
 | Resultset | Inhalt und Primärquellen |
 |---|---|
-| `moduleStatus` | Gesamtstatus, Partialität, Version, Plattform und Fehlergrenze |
+| `meta` | Gesamtstatus, Partialität, Version, Plattform und Fehlergrenze |
 | `sourceStatus` | Capability-, Berechtigungs- und Fehlerstatus je CLR-Quelle |
 | `configuration` | `clr enabled`, `clr strict security`, `lightweight pooling` und Plattform |
 | `databaseStatus` | datenbankbezogene Sichtbarkeit und isolierte Teilfehler |
@@ -171,7 +175,7 @@ Die C# Language Extension gehört nicht in dieses Modul.
 
 ### 6.3 Bewertungsregeln
 
-Geplante Findings:
+Implementierte Findings umfassen:
 
 - benutzerdefinierte Assemblies vorhanden, CLR aber deaktiviert;
 - `clr strict security` deaktiviert;
@@ -214,7 +218,7 @@ Modulspezifisch vorgesehen:
 | `@MitSitzungskontext = 0` | `@MitSitzungskontext = 0` |
 | `@NurProblematisch = 0` | `@NurProblematisch = 0` |
 
-Die endgültigen Namen, Datentypen, Defaults, Status-OUTPUT-Parameter und Resultsetreihenfolgen werden in Phase 0 als öffentlicher Vertrag festgeschrieben. Dabei gelten unverändert:
+Die Namen, Datentypen, Defaults, Status-OUTPUT-Parameter und Resultsetreihenfolgen sind in der Procedure-Referenz als öffentlicher Vertrag festgeschrieben. Dabei gelten:
 
 - standardmäßig alle sichtbaren, zugänglichen, `ONLINE` User-Datenbanken;
 - keine Sonderstellung der aktuellen oder der Frameworkdatenbank;
@@ -222,7 +226,7 @@ Die endgültigen Namen, Datentypen, Defaults, Status-OUTPUT-Parameter und Result
 - exakte bracket-aware Pipe-Liste und Pattern als getrennte Filter;
 - globale Sortierung vor dem fachlichen Ausgabelimit;
 - `CONSOLE`, `RAW`, `TABLE`, `NONE` und JSON aus derselben Materialisierung;
-- atomarer TABLE-Preflight vor dem ersten fachlichen Read;
+- atomarer TABLE-Preflight für `findings` vor dem ersten fachlichen Read;
 - sichtbare Warning bei Kürzung oder abgeschnittenem Resultset.
 
 ## 8. Verarbeitungsablauf je Aufruf
@@ -252,7 +256,7 @@ Eine verweigerte, fehlende oder gesperrte Quelle verwirft erfolgreich erhobene a
 - Dynamische Datenbankkontexte verwenden validierte sichtbare Namen und `QUOTENAME`.
 - `SET LOCK_TIMEOUT` wird lokal gesetzt und vor Rückgabe auf den vorherigen Wert zurückgeführt.
 - Fehler je Datenbank und Quelle werden isoliert; andere Datenbanken und Quellen laufen weiter.
-- Breite Permission-, Module-, Dependency- oder Typauflösung ist `CATALOG_DEEP` und verlangt die dafür geltenden Gates.
+- Owner-, `EXECUTE AS`- und Trust-List-Kontext ist `CATALOG_DEEP` und verlangt die dafür geltenden Gates; die begrenzte sichtbare Modul-, Referenz- und Typzuordnung bleibt Teil von `CLR_CURRENT`.
 - Cross-Database allein ist kein High-Impact-Merkmal.
 - Standard-Sampling ist `0`; ein aktives Sample ist auf maximal 60 Sekunden begrenzt.
 - Kein Pfad verändert Server-, Datenbank-, Resource-Governor-, CLR-, Launchpad-, XE- oder Agentzustand.
@@ -282,7 +286,7 @@ Installations- und Analysecode:
 
 ## 11. Frameworkintegration
 
-Nach erfolgreicher Implementierung sind folgende Integrationen erforderlich:
+Die folgenden Integrationen sind umgesetzt:
 
 - `USP_SpecialFeatureInventory`
   - `CLR` → `USP_ClrAnalysis`, Status `IMPLEMENTED`;
@@ -301,7 +305,7 @@ Nach erfolgreicher Implementierung sind folgende Integrationen erforderlich:
 
 Bestehende öffentliche Resultsets werden zunächst nicht erweitert. Insbesondere bleibt `ExternalScriptRequestId` im neuen Modul, bis eine eigene Schema- und Kompatibilitätsentscheidung für `USP_CurrentRequests` getroffen wurde.
 
-Jede neue Procedure-Seite erhält den Abschnitt **Source Select** mit den tatsächlichen Basis-SELECTs, Join-Schlüsseln, Capability-Guards, Resetregeln und bewusst ausgeschlossenen Spalten.
+Beide Procedure-Seiten enthalten den Abschnitt **Source Select** mit den tatsächlichen Basis-SELECTs, Join-Schlüsseln, Capability-Guards, Resetregeln und bewusst ausgeschlossenen Spalten.
 
 ## 12. Optionaler Snapshot-Ausbau
 
@@ -332,19 +336,19 @@ Ein Teil der Launchpad-/Runtime-Ereignisse entsteht außerhalb von `sqlservr.exe
 
 ## 14. Umsetzungsphasen
 
-| Phase | Inhalt | Exit-Kriterium |
+| Phase | Inhalt | Status und verbleibendes Exit-Kriterium |
 |---|---|---|
-| 0 | öffentliche Parameter, Resultsets, Statuscodes, Datenschutz, Packaging und Quellenprojektionen festschreiben | Vertragsreview ohne T-SQL-Implementierung abgeschlossen |
-| 1 | Analyseklassen, Capability-Zeilen und interne Counter-/Runtime-Collector | Rechte-, Version- und Quellenpfade auf SQL Server 2025 verifiziert |
-| 2 | `USP_ExternalRuntimeAnalysis` | disabled, configured, registered, active, reset und permission-denied getestet |
-| 3 | `USP_ClrAnalysis` | Konfiguration, Katalog, Tasks, Memory und Security-Findings getestet |
-| 4 | Inventory-, Navigator-, Search-, Relation- und Installerintegration | alle neuen Objekte über Frameworksuche auffindbar |
-| 5 | optionale Snapshot-Collector | reset-sichere numerische Zeitreihen ohne Payload |
-| 6 | vollständige Dokumentation und finale Testmatrix | SQL Server 2019, 2022 und 2025 freigegeben |
+| 0 | öffentliche Parameter, Resultsets, Statuscodes, Datenschutz, Packaging und Quellenprojektionen | umgesetzt und statisch abgesichert |
+| 1 | Analyseklassen, Capability-Zeilen und gemeinsame Counterinterpretation | umgesetzt; versionsharte Laufzeitkompilierung bleibt Teil des Release-Gates |
+| 2 | `USP_ExternalRuntimeAnalysis` | Current-State-Pfad umgesetzt; feature-positive R-/Python-/Java-/C#- und Custom-Language-Fälle bleiben externe Nachweise |
+| 3 | `USP_ClrAnalysis` | Current-State-Pfad umgesetzt; synthetische SAFE-Assembly und Windows-Securityfälle bleiben externe Nachweise |
+| 4 | Inventory-, Navigator-, Search-, Relation- und Installerintegration | umgesetzt und statisch abgesichert |
+| 5 | optionale Snapshot-Collector | nicht umgesetzt; bleibt getrennte zukünftige Erweiterung des Snapshotpakets |
+| 6 | vollständige Dokumentation und finale Testmatrix | Dokumentation umgesetzt; portable Drei-Versionen-Verträge und feature-positive Plattformnachweise werden getrennt ausgewiesen |
 
 ## 15. Abnahmematrix
 
-Verpflichtend:
+Für eine vollständige feature-positive Freigabe weiterhin erforderlich:
 
 - Entwicklung und erster Feature-Positive-Lauf auf SQL Server 2025;
 - finale Tests auf SQL Server 2019, 2022 und 2025;
@@ -361,7 +365,7 @@ Verpflichtend:
 - Prüfung, dass kein Analysepfad Rechte vergibt, Features aktiviert, externe Programme startet oder Testcode ausführt;
 - Dokumentationsgate für Source Select, Primärquellen, Kosten, sensible Felder, Evidenzgrenze und Gegenprobe.
 
-`NOT_EXECUTED` ist kein Laufzeitnachweis. Ein leerer oder synthetischer Test ersetzt keinen Feature-Positive-Lauf auf der jeweiligen Zielplattform.
+Der portable Integrationsvertrag prüft Installation, Status, JSON, TABLE, Routing, Capability, Read-only-Abgrenzung und Wiederherstellung von `LOCK_TIMEOUT`, ohne Features zu aktivieren. `NOT_EXECUTED` ist kein Laufzeitnachweis. Ein leerer oder synthetischer Test ersetzt keinen Feature-Positive-Lauf auf der jeweiligen Zielplattform.
 
 ## 16. Primärquellen
 

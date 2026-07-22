@@ -68,6 +68,8 @@ VALUES
 (N'monitor.USP_FullTextAnalysis','P'),
 (N'monitor.USP_DataCaptureDeepAnalysis','P'),
 (N'monitor.USP_EncryptionAnalysis','P'),
+(N'monitor.USP_ExternalRuntimeAnalysis','P'),
+(N'monitor.USP_ClrAnalysis','P'),
 (N'monitor.USP_MaintenanceOperations','P');
 
 SELECT @Missing = STRING_AGG([ObjectName],N', ')
@@ -97,12 +99,12 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.13'
+      AND [FrameworkVersion]='1.1.0-special.14'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 94
-    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 94 öffentlichen Procedures.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 96
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 96 öffentlichen Procedures.',1;
 
 IF EXISTS
 (

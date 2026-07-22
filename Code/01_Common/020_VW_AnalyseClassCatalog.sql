@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalyseClassCatalog
-Version      : 1.8.0
-Stand        : 2026-07-14
+Version      : 1.9.0
+Stand        : 2026-07-22
 Typ          : View
 Zweck        : Definiert Analyseklassen, Kostenniveau und Pflicht zur
                AD-Gruppenprüfung für ressourcenintensive Module.
@@ -19,7 +19,8 @@ Policy       : Keine aktive Gruppendefinition = alle Klassen erlaubt; sobald
 Eigenlast    : Konstant.
 Locking      : Keine fachlichen Tabellenzugriffe.
 Aufruf       : SELECT * FROM monitor.VW_AnalyseClassCatalog;
-Änderungen   : 1.8.0 - SERVER_HEALTH_CURRENT, SERVER_CONFIGURATION_CURRENT und SECURITY_CONFIGURATION_CURRENT ergänzt.
+Änderungen   : 1.9.0 - EXTERNAL_RUNTIME_CURRENT und CLR_CURRENT ergänzt.
+               1.8.0 - SERVER_HEALTH_CURRENT, SERVER_CONFIGURATION_CURRENT und SECURITY_CONFIGURATION_CURRENT ergänzt.
                1.7.0 - SQL_AGENT_CURRENT, RESOURCE_GOVERNOR_CURRENT, HA_DR_CURRENT und ENTERPRISE_TOPOLOGY_DEEP ergänzt.
                1.6.0 - EXTENDED_EVENTS_CURRENT für leichte reine Sessioninventarisierung ergänzt.
                1.5.0 - QUERY_STORE_CURRENT für gezielte lesende Query-Store-Analysen ergänzt.
@@ -47,6 +48,8 @@ AS
           (CAST('PLAN_CACHE_CURRENT'                AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(1000 AS int), CAST(30 AS int), CAST(N'Begrenzte Query-Stats- und Plan-Cache-Auswertungen ohne vollständiges XML-Shredding.' AS nvarchar(1000))),
           (CAST('SHOWPLAN_TARGETED'                 AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(100 AS int), CAST(30 AS int), CAST(N'Gezielte Showplan-Extraktion und XML-Analyse für konkret gefilterte Planhandles oder Query Hashes.' AS nvarchar(1000))),
           (CAST('OBJECT_ANALYSIS_CURRENT'           AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(5000 AS int), CAST(30 AS int), CAST(N'Gezielte Objekt-, Index-, Partitions- und Columnstore-Kataloganalyse einer Datenbank.' AS nvarchar(1000))),
+          (CAST('EXTERNAL_RUNTIME_CURRENT'          AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(2000 AS int), CAST(60 AS int), CAST(N'Lesende Konfigurations-, Katalog-, Request-, Pool- und Counteranalyse externer SQL-Server-Runtimes ohne Testausführung.' AS nvarchar(1000))),
+          (CAST('CLR_CURRENT'                       AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(2000 AS int), CAST(60 AS int), CAST(N'Lesende SQL-CLR-Katalog-, Host-, AppDomain-, Task-, Request-, Speicher- und Counteranalyse ohne Assemblyausführung.' AS nvarchar(1000))),
           (CAST('MISSING_INDEX_CURRENT'            AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(5000 AS int), CAST(30 AS int), CAST(N'Flüchtige Missing-Index-Hinweise mit begrenzter Ergebnismenge; keine automatische DDL-Ausführung.' AS nvarchar(1000))),
           (CAST('STATISTICS_TARGETED'              AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(5000 AS int), CAST(30 AS int), CAST(N'Gezielte Statistik-Eigenschaftsanalyse für gefilterte Objekte.' AS nvarchar(1000))),
           (CAST('COLUMNSTORE_CURRENT'              AS varchar(64)), CAST('ERWEITERT' AS varchar(16)), CAST(0 AS bit), CAST(5000 AS int), CAST(30 AS int), CAST(N'Gezielte Columnstore-Rowgroup-Analyse über Katalogsicht ohne Segment-/Dictionary-Vollscan.' AS nvarchar(1000))),

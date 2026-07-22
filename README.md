@@ -57,6 +57,7 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 - IQP-, Contention-, Buffer-Pool-, Backupketten-, Schema-, Statistikverteilungs-, Availability- und Agent-/Alert-Evidenz
 - normalisierte diagnostische Findings mit Priorität, Konfidenz und expliziter Aussagegrenze
 - versionsabhängige Capability-Erkennung, leichtgewichtige Spezialfeature-Inventur sowie isolierte In-Memory-OLTP-, Temporal-Tables-, Service-Broker-, Full-Text- und Data-Capture-/Replikations-Tiefenanalysen
+- getrennte External-Runtime- und SQL-CLR-Analyse für Konfiguration, registrierte Objekte, Host- und Laufzeitevidenz ohne Testausführung
 
 ## Voraussetzungen
 
@@ -232,7 +233,7 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventory-Vertrag umfasst 94 öffentliche Procedures und 67 unterstützende Objekte: acht Views, 27 TVFs, 15 interne Procedures und 17 Tabellen. Jedes der insgesamt 161 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+Der aktuelle Inventory-Vertrag umfasst 96 öffentliche Procedures und 67 unterstützende Objekte: acht Views, 27 TVFs, 15 interne Procedures und 17 Tabellen. Jedes der insgesamt 163 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
 
 - [Hier beginnen: passende Analyse finden](./Documentation/Analysis_Guides/Start_Here.md)
 - [Analysis Navigator – vollständiger Vertrag](./Documentation/Reference/Analysis_Navigator.md)

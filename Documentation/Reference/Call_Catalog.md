@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-07-21 — 94 Procedures
+Stand: 2026-07-22 — 96 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -551,6 +551,18 @@ EXEC [monitor].[USP_TraceFlags] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_EncryptionAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ExternalRuntimeAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ExternalRuntimeAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_ClrAnalysis]`
+
+```sql
+EXEC [monitor].[USP_ClrAnalysis] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_MaintenanceOperations]`

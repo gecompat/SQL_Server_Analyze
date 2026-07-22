@@ -699,3 +699,88 @@ Host-, Instanz-, Konto- oder Pfadidentität.
 - [SERVERPROPERTY](https://learn.microsoft.com/en-us/sql/t-sql/functions/serverproperty-transact-sql?view=sql-server-ver17)
 - [SQL Server build versions](https://learn.microsoft.com/en-us/troubleshoot/sql/releases/download-and-install-latest-updates)
 - [Microsoft Lifecycle](https://learn.microsoft.com/en-us/lifecycle/)
+
+---
+
+## 10. [monitor].[USP_ExternalRuntimeAnalysis]
+
+### Zweck
+
+Die Procedure trennt External-Runtime-Konfiguration, datenbankbezogene Language-/Libraryregistrierungen, aktive Requests, External Resource Pools, registrierte Execution Stats und Performance Counter. Sie führt keinen externen Code aus und erzeugt deshalb keinen End-to-End-Funktionsnachweis.
+
+### Resultsets
+
+| Resultset | Zeilengranularität und Aussage |
+|---|---|
+| `configuration` | Eine Servermomentaufnahme zu Installationsproperty, `external scripts enabled` und aggregiertem Launchpad-Status. |
+| `databaseStatus` | Eine Zeile je angeforderter beziehungsweise auswertbarer Datenbank. |
+| `sourceStatus` | Eine Zeile je isolierter Quelle und Messpunkt mit Berechtigungs-, Fehler- und Aussagegrenze. |
+| `languages`, `libraries` | Sichtbare datenbankbezogene Registrierungen; Datei- und Ownerdetails sind Opt-ins. |
+| `activeRequests` | Aktuell aktive External-Script-Requests, dokumentiert über `external_script_request_id` korreliert. |
+| `externalPools` | Aktueller Poolzustand und optional resetgeprüfte Deltas. |
+| `executionStats`, `performanceCounters` | Kumulative Werte beziehungsweise typisierte Samplemetriken; keine allgemeine Script-Historie. |
+| `findings` | Priorisierte Widersprüche und Livehinweise für Triage. |
+
+### Datenschutz und Grenzen
+
+Script- und Batchtexte, Parameter, Environment Variables, Datei- und Libraryinhalt sowie Pfade werden nicht gelesen. Login-, Host-, Client- und External-Worker-Identität sind standardmäßig `NULL`. Selbst mit `@MitDateimetadaten = 1` werden nur `file_name` und `platform_desc` der Language Extension beziehungsweise `platform_desc` der Library gelesen.
+
+`sys.dm_external_script_requests` ist eine flüchtige Momentaufnahme. `sys.dm_external_script_execution_stats` erfasst registrierte Featurefunktionen, nicht beliebige Scripts. External-Pool-Werte gelten seit `statistics_start_time`; Deltas werden bei Reset oder `pool_version`-Wechsel verworfen. Unter Linux sind die dokumentierten cgroup-basierten Einheitengrenzen zu beachten.
+
+### Sicherer Aufruf
+
+```sql
+EXEC [monitor].[USP_ExternalRuntimeAnalysis]
+      @DatabaseNames = N'[ExampleDatabase]',
+      @SampleSeconds = 0,
+      @MitDateimetadaten = 0,
+      @MitBerechtigungsanalyse = 0,
+      @MitSitzungskontext = 0,
+      @ResultSetArt = 'CONSOLE';
+```
+
+### Folgeanalyse
+
+Ordnen Sie aktive oder blockierte Requests mit `USP_CurrentRequests` und `USP_CurrentBlocking` ein. Prüfen Sie Poolkontext mit `USP_ResourceGovernorAnalysis`, Counter mit `USP_PerformanceCounters` und Betriebsfehler mit `USP_ErrorLogAnalysis` beziehungsweise bereits vorhandener Extended-Events-Evidenz. Die vollständige Leserichtung steht in der [Procedure-Seite](Procedures/USP_ExternalRuntimeAnalysis.md).
+
+---
+
+## 11. [monitor].[USP_ClrAnalysis]
+
+### Zweck
+
+Die Procedure analysiert SQL-CLR-Konfiguration und sichtbare benutzerdefinierte Assemblies, Module, direkte Assemblyreferenzen, CLR-Typen, Host Properties, AppDomains, geladene Assemblies, CLR Tasks, aktive Managed-Code-Requests, Memory Clerks und Counter. Sie ist vom out-of-process Language-Extension-Pfad getrennt.
+
+### Resultsets
+
+| Resultset | Zeilengranularität und Aussage |
+|---|---|
+| `configuration` | Eine Servermomentaufnahme zu `clr enabled`, `clr strict security`, `lightweight pooling` und optionaler Trust-List-Anzahl. |
+| `databaseStatus` | Eine Zeile je Datenbank mit sichtbarer Assembly-, High-Permission- und Modulanzahl. |
+| `assemblies` | Eine sichtbare benutzerdefinierte Assembly innerhalb genau einer Datenbank. |
+| `assemblyModules`, `assemblyDependencies` | Sichtbare CLR-Objekte, direkte Referenzen und CLR-Typen ohne Definition oder Binärinhalt. |
+| `clrProperties`, `appDomains`, `loadedAssemblies`, `clrTasks` | Aktueller Host- und Cachekontext; keine Aufrufhistorie. |
+| `activeRequests`, `memory`, `performanceCounters` | Flüchtige Requests, aktuelle Clerkaggregate und kumulative beziehungsweise gesampelte Counter. |
+| `findings` | Priorisierte Sicherheits-, Plattform-, Konfigurations- und Livehinweise. |
+
+### Sicherheits- und Korrelationsvertrag
+
+`assembly_id` ist nur innerhalb einer Datenbank eindeutig. Geladene Assemblies werden deshalb zuerst einem AppDomain und dessen Datenbank zugeordnet und erst danach gegen `sys.assemblies` korreliert. Ein serverweiter Join allein über `assembly_id` ist unzulässig.
+
+Assembly-Binärinhalt, SHA2-512-Hash, Trusted-Assembly-Beschreibung, Moduldefinition, SQL-Text und Plan bleiben ausgeschlossen. Der Standardpfad kann daher keinen Assembly-zu-Trust-List-Nachweis erzeugen. Owner-, `EXECUTE AS`- und Trust-List-Kontext erfordern einen expliziten Berechtigungs-Opt-in.
+
+### Sicherer Aufruf
+
+```sql
+EXEC [monitor].[USP_ClrAnalysis]
+      @DatabaseNames = N'[ExampleDatabase]',
+      @SampleSeconds = 0,
+      @MitModulzuordnung = 1,
+      @MitBerechtigungsanalyse = 0,
+      @MitSitzungskontext = 0,
+      @ResultSetArt = 'CONSOLE';
+```
+
+### Folgeanalyse
+
+Prüfen Sie blockierte Managed-Code-Requests mit `USP_CurrentRequests` und `USP_CurrentBlocking`, Instanzhärtung mit `USP_ServerSecurityConfiguration`, Speicher- und Counterevidenz mit `USP_ServerMemory` und `USP_PerformanceCounters` sowie Lade- oder Hostfehler mit `USP_ErrorLogAnalysis`. Die vollständige Leserichtung steht in der [Procedure-Seite](Procedures/USP_ClrAnalysis.md).
