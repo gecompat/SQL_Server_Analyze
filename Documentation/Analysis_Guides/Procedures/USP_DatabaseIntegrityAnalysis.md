@@ -106,6 +106,32 @@ Page Verify CHECKSUM erkennt bestimmte Pageänderungen bei Read; `suspect_pages`
 
 `master.sys.databases`, `msdb.dbo.backupset`, `msdb.dbo.suspect_pages`, `sys.dm_db_page_info`, `sys.dm_hadr_auto_page_repair`.
 
+### Source Select
+
+Der historische Kern verbindet verdächtige Seiten mit Datenbank und optionaler AG-Auto-Repair-Evidenz:
+
+```sql
+SELECT
+      [d].[name] AS [DatabaseName]
+    , [sp].[file_id]
+    , [sp].[page_id]
+    , [sp].[event_type]
+    , [sp].[last_update_date]
+    , [apr].[page_status]
+    , [apr].[modification_time]
+FROM [msdb].[dbo].[suspect_pages] AS [sp] WITH (NOLOCK)
+JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[database_id] = [sp].[database_id]
+LEFT JOIN [sys].[dm_hadr_auto_page_repair] AS [apr] WITH (NOLOCK)
+  ON [apr].[database_id] = [sp].[database_id]
+ AND [apr].[file_id] = [sp].[file_id]
+ AND [apr].[page_id] = [sp].[page_id]
+WHERE [d].[name] = N'ExampleDatabase'
+  AND [sp].[last_update_date] >= DATEADD(DAY, -30, GETDATE());
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Zeitfenster vor `dm_db_page_info` setzen. Die Seitenmetadaten-DMF nur für die kleine verbleibende Seitenmenge aufrufen; sie ist keine Ersatzprüfung für `DBCC CHECKDB`.
+
 ### Zeit- und Scope-Modell
 
 Historische/aktuelle Metadaten mit unterschiedlicher Retention; kein Live-CHECKDB.

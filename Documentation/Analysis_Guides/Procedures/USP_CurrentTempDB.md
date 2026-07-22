@@ -108,6 +108,31 @@ TempDB speichert User Objects, Internal Objects für Sort/Hash/Spool/Worktables,
 
 `sys.database_files`, `sys.dm_db_session_space_usage`, `sys.dm_exec_sessions`, `sys.sp_executesql`.
 
+### Source Select
+
+Der Sessionverbrauch entsteht aus Allokations- und Deallokationszählern und wird mit dem aktuellen Sessionzustand verbunden:
+
+```sql
+SELECT
+      [u].[session_id]
+    , [s].[status]
+    , [u].[user_objects_alloc_page_count]
+      - [u].[user_objects_dealloc_page_count] AS [UserObjectPages]
+    , [u].[internal_objects_alloc_page_count]
+      - [u].[internal_objects_dealloc_page_count] AS [InternalObjectPages]
+FROM [sys].[dm_db_session_space_usage] AS [u] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+  ON [s].[session_id] = [u].[session_id]
+WHERE [u].[session_id] <> @@SPID
+  AND
+  (
+      [u].[user_objects_alloc_page_count] <> [u].[user_objects_dealloc_page_count]
+      OR [u].[internal_objects_alloc_page_count] <> [u].[internal_objects_dealloc_page_count]
+  );
+```
+
+**Wichtig für die Eigenlast:** Nur Sessions mit Nettoverbrauch weiterverarbeiten. Die Dateisicht aus `tempdb.sys.database_files` ist klein und getrennt; sie darf nicht fälschlich einer einzelnen Session zugerechnet werden.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Datei-/Datenbankzustand; Session-/Taskzähler seit Request/Sessionaktivität. Version Store kann nach Transaktionsende verzögert bereinigt werden.

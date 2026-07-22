@@ -103,6 +103,27 @@ Welche Serveroptionen weichen von Default/Empfehlung ab und welche Werte sind ta
 
 `sys.configurations`, `sys.dm_os_sys_info`.
 
+### Source Select
+
+Der Konfigurationskern liest dokumentierten und aktiven Wert direkt aus `sys.configurations`:
+
+```sql
+SELECT
+      [c].[configuration_id]
+    , [c].[name]
+    , [c].[value]
+    , [c].[value_in_use]
+    , [c].[is_dynamic]
+    , [c].[is_advanced]
+FROM [sys].[configurations] AS [c] WITH (NOLOCK)
+WHERE [c].[name] IN
+      (N'max server memory (MB)',
+       N'max degree of parallelism',
+       N'cost threshold for parallelism');
+```
+
+**Wichtig für die Eigenlast:** Die Quelle ist klein. Konfigurationsnamen bereits im Quellselect begrenzen; die Procedure liest nur und führt weder `sp_configure` noch `RECONFIGURE` aus.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Konfigurationsstand; einige `value`-Änderungen noch nicht in use.

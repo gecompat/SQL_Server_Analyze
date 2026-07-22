@@ -58,6 +58,14 @@ Jede neue öffentliche Analyse-Procedure benötigt eine Datei unter `Procedures/
 
 ### Datenkette
 
+### Source Select
+
+Ein reduziertes, aus der Implementierung abgeleitetes Grundselect mit den
+tragenden `FROM`-/`JOIN`-Beziehungen. Nur Prädikate aufnehmen, die den Scope
+fachlich bestimmen oder teure Quellarbeit früh begrenzen. Falls kein einzelnes
+Grundselect existiert, den Orchestrierungs-, Befehls- oder Schreibpfad
+ausdrücklich als solchen erklären und keine künstliche Abfrage erfinden.
+
 ### Zeit- und Scope-Modell
 
 ### Bewertung und Gegenprobe

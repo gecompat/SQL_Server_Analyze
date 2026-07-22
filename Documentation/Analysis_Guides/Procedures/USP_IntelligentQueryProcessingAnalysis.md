@@ -106,6 +106,25 @@ IQP umfasst unter anderem PSP, OPPO, Memory Grant Feedback, DOP/CE Feedback, Ada
 
 `sys.database_automatic_tuning_options`, `sys.database_query_store_options`, `sys.database_scoped_configurations`, `sys.databases`, `sys.dm_db_tuning_recommendations`, `sys.query_store_plan_feedback`, `sys.query_store_query_variant`, `sys.sp_executesql`.
 
+### Source Select
+
+Der leichte Basispfad liest nur relevante datenbankweite Konfigurationswerte:
+
+```sql
+SELECT
+      [c].[name]
+    , [c].[value]
+    , [c].[value_for_secondary]
+FROM [sys].[database_scoped_configurations] AS [c] WITH (NOLOCK)
+WHERE [c].[name] IN
+      (N'LEGACY_CARDINALITY_ESTIMATION',
+       N'PARAMETER_SNIFFING',
+       N'QUERY_OPTIMIZER_HOTFIXES',
+       N'MAXDOP');
+```
+
+**Wichtig für die Eigenlast:** Datenbank vor Query-Store-Variant-, Plan-Feedback- und Tuning-Recommendation-Pfaden auswählen. Diese versionsabhängigen Detailquellen nur lesen, wenn Query Store und das jeweilige Feature verfügbar sind.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Version-/Compatibility-/Configurationzustand plus persistierte, sichtbare Feedback-/Variantenevidenz.

@@ -104,6 +104,24 @@ Der Datenbankcursor führt einen festen Satz aggregierter Katalogzählungen für
 
 `sys.assemblies`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.column_encryption_keys`, `sys.column_master_keys`, `sys.columns`, `sys.configurations`, `sys.databases`, `sys.external_data_sources`, `sys.external_languages`, `sys.external_libraries`, `sys.external_tables`, `sys.filegroups`, `sys.fulltext_catalogs`, `sys.fulltext_indexes`, `sys.objects`, `sys.service_queues`, `sys.services`, `sys.sp_executesql`, `sys.tables`, `sys.types`, `sys.xml_indexes`.
 
+### Source Select
+
+Die einzelnen Featurefamilien werden bewusst getrennt gezählt. Der reduzierte Tabellenzweig lautet:
+
+```sql
+SELECT
+      SUM(CASE WHEN [t].[is_memory_optimized] = 1 THEN 1 ELSE 0 END)
+        AS [MemoryOptimizedTableCount]
+    , SUM(CASE WHEN [t].[temporal_type] = 2 THEN 1 ELSE 0 END)
+        AS [SystemVersionedTableCount]
+    , SUM(CASE WHEN [t].[is_tracked_by_cdc] = 1 THEN 1 ELSE 0 END)
+        AS [CdcTableCount]
+FROM [sys].[tables] AS [t] WITH (NOLOCK)
+WHERE [t].[is_ms_shipped] = 0;
+```
+
+**Wichtig für die Eigenlast:** Datenbank vor den jeweiligen Katalogzweigen festlegen. Full-Text, Broker, Change Tracking, External Objects, Encryption, CLR, XML und Vector haben eigene Quellen; die Procedure zählt sie isoliert und vereinigt erst die aggregierten Befunde.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Metadatenbestand je zugänglicher Datenbank; keine Nutzungs-/Historienmessung.

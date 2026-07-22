@@ -102,6 +102,33 @@ SQL Server Memory Manager balanciert Buffer Pool, Plan Cache, Query Execution Me
 
 `sys.configurations`, `sys.dm_exec_query_memory_grants`, `sys.dm_os_memory_clerks`, `sys.dm_os_process_memory`, `sys.dm_os_sys_info`, `sys.dm_os_sys_memory`.
 
+### Source Select
+
+Die zusammenfassende Speicherzeile kombiniert drei Singleton-DMVs mit den zwei relevanten Serverkonfigurationen:
+
+```sql
+SELECT
+      [sm].[total_physical_memory_kb]
+    , [sm].[available_physical_memory_kb]
+    , [pm].[physical_memory_in_use_kb]
+    , [pm].[process_physical_memory_low]
+    , [si].[committed_kb]
+    , [si].[committed_target_kb]
+    , MAX(CASE WHEN [c].[name] = N'max server memory (MB)'
+               THEN [c].[value_in_use] END) AS [MaxServerMemoryMb]
+FROM [sys].[dm_os_sys_memory] AS [sm] WITH (NOLOCK)
+CROSS JOIN [sys].[dm_os_process_memory] AS [pm] WITH (NOLOCK)
+CROSS JOIN [sys].[dm_os_sys_info] AS [si] WITH (NOLOCK)
+CROSS JOIN [sys].[configurations] AS [c] WITH (NOLOCK)
+WHERE [c].[name] IN (N'min server memory (MB)', N'max server memory (MB)')
+GROUP BY
+      [sm].[total_physical_memory_kb], [sm].[available_physical_memory_kb]
+    , [pm].[physical_memory_in_use_kb], [pm].[process_physical_memory_low]
+    , [si].[committed_kb], [si].[committed_target_kb];
+```
+
+**Wichtig für die Eigenlast:** Summary ist klein. `dm_os_memory_clerks` wird vollständig gelesen und sofort nach Typ aggregiert; `@MaxZeilen` begrenzt dort das Ranking, nicht den DMV-Scan. Grantdetails nur bei passendem Symptom vertiefen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Zustand; Clerk-/Processwerte verändern sich, einzelne Counter seit Start.

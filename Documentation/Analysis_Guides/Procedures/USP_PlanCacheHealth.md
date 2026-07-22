@@ -105,6 +105,29 @@ Cache Stores und Cached Plans zeigen Planarten, Objekt-/Ad-hoc-Pläne, Größen 
 
 `sys.configurations`, `sys.dm_exec_cached_plans`, `sys.dm_exec_plan_attributes`, `sys.dm_exec_sql_text`.
 
+### Source Select
+
+Cachegröße und Nutzungsgrad stammen aus `dm_exec_cached_plans`; der Datenbankbezug wird gezielt aus den Planattributen gelesen:
+
+```sql
+SELECT
+      [cp].[cacheobjtype]
+    , [cp].[objtype]
+    , [cp].[usecounts]
+    , [cp].[size_in_bytes]
+    , TRY_CONVERT(int, [dbid].[value]) AS [DatabaseId]
+FROM [sys].[dm_exec_cached_plans] AS [cp] WITH (NOLOCK)
+OUTER APPLY
+(
+    SELECT TOP (1) [pa].[value]
+    FROM [sys].[dm_exec_plan_attributes]([cp].[plan_handle]) AS [pa]
+    WHERE [pa].[attribute] = N'dbid'
+) AS [dbid]
+WHERE [cp].[cacheobjtype] = N'Compiled Plan';
+```
+
+**Wichtig für die Eigenlast:** Cacheobjekttyp vor Planattribut- und SQL-Textauflösung filtern. Für reine Gesamtgrößenanalyse sind Text und Datenbankattribute nicht erforderlich und sollten ausgeschaltet bleiben.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Cachebestand; flüchtig und durch Workload/Memorydruck verändert.

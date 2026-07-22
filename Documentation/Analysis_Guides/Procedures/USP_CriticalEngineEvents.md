@@ -109,6 +109,24 @@ Welche kritischen Engineereignisse sind in system_health, Ring Buffers oder Diag
 
 `sys.fn_xe_file_target_read_file`, `sys.server_event_session_fields`, `sys.server_event_session_targets`, `sys.server_event_sessions`, `sys.sp_server_diagnostics`.
 
+### Source Select
+
+Der XE-Dateipfad liest nur die relevanten System-Health-Events im benötigten Zeitfenster:
+
+```sql
+SELECT
+      [x].[timestamp_utc]
+    , [x].[object_name]
+    , TRY_CAST([x].[event_data] AS xml) AS [EventXml]
+FROM [sys].[fn_xe_file_target_read_file]
+     (@EventFilePattern, NULL, NULL, NULL) AS [x]
+WHERE [x].[object_name] IN
+      (N'error_reported', N'scheduler_monitor_non_yielding_ring_buffer_recorded')
+  AND [x].[timestamp_utc] >= @VonUtc;
+```
+
+**Wichtig für die Eigenlast:** Zeitfenster und Eventnamen beim Dateizugriff einschränken, bevor XML zerlegt wird. `sys.sp_server_diagnostics` ist ein separater aktueller Snapshot und keine zweite Dateiquelle.
+
 ### Zeit- und Scope-Modell
 
 Nur erhaltene Ereignisse seit Session-/Engine-/Rollovergrenze; aktueller Diagnostikstatus.

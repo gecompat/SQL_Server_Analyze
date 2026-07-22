@@ -94,6 +94,23 @@ Die dokumentierten vier Parameter von `sp_readerrorlog` adressieren Archiv, Prod
 
 `master.sys.sp_readerrorlog`, `monitor.TVF_ClassifyErrorLogEvent`, `monitor.TVF_ProjectUnicodeText`.
 
+### Source Select
+
+Kein direktes `SELECT`: SQL Server stellt das Error Log über die System-Procedure bereit. Der reduzierte Quellaufruf zeigt die wichtigen serverseitigen Einschränkungen:
+
+```sql
+EXEC [master].[sys].[sp_readerrorlog]
+      @p1 = 0,
+      @p2 = 1,
+      @p3 = N'Error',
+      @p4 = NULL,
+      @p5 = @VonUtc,
+      @p6 = @BisUtc,
+      @p7 = N'desc';
+```
+
+**Wichtig für die Eigenlast:** Archivnummer, Suchbegriffe und Zeitfenster an `sp_readerrorlog` übergeben. Eine spätere Textklassifikation oder `@MaxZeilen`-Begrenzung spart keinen bereits erfolgten Logdateizugriff.
+
 ### Zeit- und Scope-Modell
 
 `LogDate` wird als `SERVER_LOCAL_TIME_FROM_ERRORLOG` erhalten. UTC-Umrechnung wird ohne sichere Offsetevidenz nicht erfunden. Archive, Produkt, Suchregeln, Zeit und Quelllimit bilden gemeinsam den Scope.

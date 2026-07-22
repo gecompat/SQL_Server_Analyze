@@ -44,6 +44,26 @@ Der Quell-JSON-Vertrag ist nur während des autorisierten Aufrufs transient. Roh
 
 Konfiguration → No-wait-Applock → begrenzter Purge → Due-/Budgetprüfung → `USP_PerformanceCounters` → Scope/MetricSample/Payload → CaptureRun/ModuleStatus.
 
+### Source Select
+
+Vor jeder Sammlung werden Singleton-Konfiguration und Zielzustand geprüft:
+
+```sql
+SELECT
+      [c].[TargetDatabaseName]
+    , [c].[IsEnabled]
+    , [c].[DefaultSchedulerType]
+    , [d].[state_desc]
+    , [d].[is_read_only]
+FROM [monitor].[SnapshotTargetConfiguration] AS [c] WITH (NOLOCK)
+LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[name] = [c].[TargetDatabaseName]
+WHERE [c].[ConfigurationId] = 1
+  AND [c].[IsEnabled] = 1;
+```
+
+**Wichtig für die Eigenlast:** Danach ist der Pfad schreibend: No-wait-Applock, Due-/Budgetprüfung, genau ein Collector-Aufruf und typisierte Inserts in `snapshot.CaptureRun`, `ModuleStatus`, `MetricSample` und optional Payload. Collectorpolicy, `MaxRows` und Zeitintervall begrenzen die Arbeit; Parallelität wird übersprungen statt blockiert.
+
 ### Zeit- und Scope-Modell
 
 Alle Laufzeiten sind UTC. `SqlServerStartTimeUtc` bestimmt die stabile `ResetEpochId`; Deltas oder Raten dürfen nie über einen Epochwechsel berechnet werden.

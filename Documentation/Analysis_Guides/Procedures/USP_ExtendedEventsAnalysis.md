@@ -107,6 +107,12 @@ Der Wrapper ruft Sessions, allgemeine Events, Deadlocks, Blocked Processes und T
 
 Frameworkinterne Orchestrierung; Quellen liegen in Childmodulen.
 
+### Source Select
+
+Kein einzelnes Grundselect: Die Procedure orchestriert `USP_ExtendedEventsSessions`, `USP_ExtendedEventsTargetRuntime`, `USP_ExtendedEventsReadEvents`, `USP_ExtendedEventsDeadlocks` und `USP_ExtendedEventsBlockedProcesses`. Katalog-, Runtime-, Datei- und XML-Quellen bleiben bewusst getrennte Childpfade.
+
+**Wichtig für die Eigenlast:** Zuerst nur Sessioninventar lesen. Targetdaten, XEL-Dateien und XML-Forensik gezielt je Session und Zeitfenster aktivieren; ein spätes Ergebnislimit ersetzt diese Quellbegrenzung nicht.
+
 ### Zeit- und Scope-Modell
 
 Nicht atomarer Mix aus aktuellem Zustand und Targethistorie.

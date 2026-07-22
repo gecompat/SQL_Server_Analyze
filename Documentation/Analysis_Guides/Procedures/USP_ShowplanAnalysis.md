@@ -113,6 +113,24 @@ Showplan XML modelliert RelOp-Baum, Estimated Rows/Cost, Predicate, Object/Index
 
 `master.sys.databases`, `sys.dm_exec_plan_attributes`, `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_stats`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
 
+### Source Select
+
+Die Procedure selektiert zuerst eindeutige Planhandles und delegiert deren Planauflösung an `USP_ExecutionPlanAnalysis`:
+
+```sql
+SELECT
+      [qs].[query_hash]
+    , [qs].[query_plan_hash]
+    , [qs].[plan_handle]
+    , [qs].[execution_count]
+    , [st].[text]
+FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
+OUTER APPLY [sys].[dm_exec_sql_text]([qs].[sql_handle]) AS [st]
+WHERE [qs].[plan_handle] = @PlanHandle;
+```
+
+**Wichtig für die Eigenlast:** Plan Handle, Query Hash oder enger Top-Kandidat vor dem Childaufruf setzen. Erst `USP_ExecutionPlanAnalysis` beschafft und zerlegt das Plan-XML; Operator- und Warning-Extraktion wächst mit der XML-Größe und benötigt im breiten Pfad das entsprechende Gate.
+
 ### Zeit- und Scope-Modell
 
 Planstand zum Compile-/Capturezeitpunkt; zugrunde liegende Daten/Statistiken können inzwischen geändert sein.

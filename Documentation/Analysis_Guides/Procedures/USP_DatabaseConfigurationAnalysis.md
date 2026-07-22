@@ -102,6 +102,28 @@ Welche sichtbaren Einstellungen variieren, und welche weichen von einem autorisi
 
 `master.sys.databases`, `sys.database_scoped_configurations`, `sys.database_query_store_options`.
 
+### Source Select
+
+Die Konfiguration besteht aus einem serverweiten Datenbankkatalog und datenbanklokalen Konfigurationssichten:
+
+```sql
+SELECT
+      [d].[name]
+    , [d].[compatibility_level]
+    , [d].[recovery_model_desc]
+    , [d].[is_auto_close_on]
+    , [d].[is_auto_shrink_on]
+FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)
+WHERE [d].[name] = N'ExampleDatabase'
+  AND [d].[state] = 0;
+
+-- Erst im Kontext der ausgewählten Datenbank:
+SELECT [name], [value], [value_for_secondary]
+FROM [sys].[database_scoped_configurations] WITH (NOLOCK);
+```
+
+**Wichtig für die Eigenlast:** Die Datenbankliste vor dem Kontextwechsel filtern. Query-Store- und zusätzliche versionsabhängige Sichten nur für verbleibende Datenbanken abfragen; ein globales `TOP` darf nicht vor der fachlichen Datenbankauswahl stehen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Katalogsnapshot pro Quelle. Zustände können sich zwischen Datenbanken und Quellzugriffen ändern; `CapturedAtUtc` kennzeichnet den Aufruf, nicht eine atomare serverweite Transaktion.

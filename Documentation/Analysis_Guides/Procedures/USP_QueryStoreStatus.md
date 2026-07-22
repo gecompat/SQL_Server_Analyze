@@ -105,6 +105,24 @@ Ist Query Store aktiviert, schreibfähig, ausreichend dimensioniert und für den
 
 `sys.database_query_store_options`, `sys.sp_executesql`.
 
+### Source Select
+
+Der Status ist eine direkte datenbanklokale Katalogabfrage:
+
+```sql
+SELECT
+      [actual_state_desc]
+    , [desired_state_desc]
+    , [current_storage_size_mb]
+    , [max_storage_size_mb]
+    , [readonly_reason]
+    , [stale_query_threshold_days]
+    , [interval_length_minutes]
+FROM [sys].[database_query_store_options] WITH (NOLOCK);
+```
+
+**Wichtig für die Eigenlast:** Die Quelle ist klein. Die Datenbankauswahl muss trotzdem vor dem Kontextwechsel erfolgen; Statusprüfung erfordert weder Runtime-Stats noch Query Text oder Plan-XML.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Zustand je ausgewählter Datenbank. Status sagt nichts über bereits gelöschte oder nie erfasste Historie.

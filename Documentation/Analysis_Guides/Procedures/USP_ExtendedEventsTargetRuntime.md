@@ -109,6 +109,26 @@ Runtime-DMVs liefern Targettyp/-daten, Buffer-/Memory-/Eventcounter und je Versi
 
 `master.sys.databases`, `sys.dm_xe_session_targets`, `sys.dm_xe_sessions`, `sys.sp_executesql`.
 
+### Source Select
+
+Runtime-Targetdaten werden über die Address der laufenden XE-Session mit der Session verbunden:
+
+```sql
+SELECT
+      [s].[name] AS [SessionName]
+    , [t].[target_name]
+    , [t].[execution_count]
+    , [t].[execution_duration_ms]
+    , [t].[target_data]
+FROM [sys].[dm_xe_sessions] AS [s] WITH (NOLOCK)
+JOIN [sys].[dm_xe_session_targets] AS [t] WITH (NOLOCK)
+  ON [t].[event_session_address] = [s].[address]
+WHERE [s].[name] = N'ExampleXeSession'
+  AND [t].[target_name] IN (N'event_file', N'ring_buffer');
+```
+
+**Wichtig für die Eigenlast:** Session und Targettyp vor Projektion von `target_data` filtern. Ring-Buffer-XML kann groß sein; Text-/XML-Ausgabe nur für die gezielt ausgewählte Targetzeile aktivieren.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Runtimezustand und Targetinhalt seit Sessionstart beziehungsweise Rollover.

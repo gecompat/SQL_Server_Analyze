@@ -115,6 +115,12 @@ Der Wrapper orchestriert Status, Runtime, Waits, PlanChanges, Regressions, Force
 
 Frameworkinterne Orchestrierung; Quellen liegen in Childmodulen.
 
+### Source Select
+
+Kein einzelnes Grundselect: Die Procedure orchestriert Status, Runtime Stats, Wait Stats, Planwechsel, Regressionen, Forced Plans, Hints und optional IQP-Details. Alle Childmodule lesen die ausgewählte Datenbank separat.
+
+**Wichtig für die Eigenlast:** Datenbank, Zeitfenster und benötigte Childmodule vor jeder Query-Store-Abfrage festlegen. Ein finales Ergebnislimit verhindert weder Interval-/Runtime-Joins noch Plan-XML-Auflösung in den Childpfaden.
+
 ### Zeit- und Scope-Modell
 
 Nicht atomare Folge persistierter Queries; Childstatus je Datenbank.

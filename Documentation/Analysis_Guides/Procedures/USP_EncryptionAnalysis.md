@@ -106,6 +106,25 @@ TDE verschlüsselt Daten-/Logseiten at rest über Database Encryption Key, gesch
 
 `msdb.dbo.backupset`, `sys.column_encryption_keys`, `sys.column_master_keys`, `sys.columns`, `sys.databases`, `sys.tables`, `master.sys.certificates`, `sys.dm_database_encryption_keys`.
 
+### Source Select
+
+Der TDE-Kern verbindet den Datenbankkatalog mit dem Encryption-Key-Laufzeitzustand:
+
+```sql
+SELECT
+      [d].[name] AS [DatabaseName]
+    , [dek].[encryption_state]
+    , [dek].[percent_complete]
+    , [dek].[encryptor_type]
+    , [dek].[encryptor_thumbprint]
+FROM [sys].[databases] AS [d] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_database_encryption_keys] AS [dek] WITH (NOLOCK)
+  ON [dek].[database_id] = [d].[database_id]
+WHERE [d].[name] = N'ExampleDatabase';
+```
+
+**Wichtig für die Eigenlast:** Datenbankfilter vor Zertifikats-, Backup- und Always-Encrypted-Katalogpfaden setzen. Die Procedure gibt keine Schlüsselmaterialien aus; Zertifikats- und Backupprüfung sind getrennte Metadatenzweige.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Encryption-/Keymetadatenzustand; Rotation/Scan kann Fortschrittszustände zeigen.

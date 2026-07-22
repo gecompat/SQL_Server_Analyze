@@ -103,6 +103,27 @@ Query Store Hints hängen an QueryId und injizieren unterstützte Queryoptionen 
 
 `sys.query_store_query`, `sys.query_store_query_hints`, `sys.query_store_query_text`, `sys.sp_executesql`.
 
+### Source Select
+
+Query Store Hints werden über `query_id` mit Query- und Textkatalog verbunden:
+
+```sql
+SELECT
+      [h].[query_id]
+    , [h].[query_hint_text]
+    , [h].[last_query_hint_failure_reason_desc]
+    , [q].[object_id]
+    , [qt].[query_sql_text]
+FROM [sys].[query_store_query_hints] AS [h] WITH (NOLOCK)
+JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
+  ON [q].[query_id] = [h].[query_id]
+JOIN [sys].[query_store_query_text] AS [qt] WITH (NOLOCK)
+  ON [qt].[query_text_id] = [q].[query_text_id]
+WHERE @QueryId IS NULL OR [h].[query_id] = @QueryId;
+```
+
+**Wichtig für die Eigenlast:** Wenn bekannt, `query_id` vor Textprojektion setzen. Query Store Hints sind ab SQL Server 2022 verfügbar; fehlende Sicht oder Version wird als Status behandelt, nicht durch einen Ersatzscan kompensiert.
+
 ### Zeit- und Scope-Modell
 
 Aktueller persistierter Hintbestand; QueryId ist datenbanklokal.

@@ -106,6 +106,12 @@ Der Wrapper orchestriert Agent, Resource Governor, AG, Backup, Log Shipping, Rep
 
 Frameworkinterne Orchestrierung; Quellen liegen in Childmodulen.
 
+### Source Select
+
+Kein einzelnes Grundselect: Die Procedure orchestriert Agent-, Resource-Governor-, Availability-, Backup-, Log-Shipping-, Replication- und Data-Capture-Module. Die direkten Beziehungen stehen auf den jeweiligen Child-Seiten.
+
+**Wichtig für die Eigenlast:** Nur die für das Symptom benötigten Module aktivieren. Datenbank- und Zeitfilter an History-Childmodule weiterreichen; ein finales Zeilenlimit spart deren `msdb`-, Distribution- oder HADR-Quellarbeit nicht.
+
 ### Zeit- und Scope-Modell
 
 Nicht atomare Mischung aus Snapshots und `msdb`-Historien.

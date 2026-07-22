@@ -112,6 +112,22 @@ SQL-/Planhandles referenzieren flüchtige Cacheobjekte. Plan Attributes enthalte
 
 `sys.dm_exec_plan_attributes`, `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml`, `sys.dm_exec_query_stats`, `sys.dm_exec_requests`, `sys.dm_exec_sql_text`, `sys.dm_exec_text_query_plan`.
 
+### Source Select
+
+Ein exaktes Plan-Handle vermeidet eine breite Cache-Suche und verbindet Planinhalt mit ausgewählten Planattributen:
+
+```sql
+SELECT
+      [qp].[query_plan]
+    , [pa].[attribute]
+    , [pa].[value]
+FROM [sys].[dm_exec_query_plan](@PlanHandle) AS [qp]
+CROSS APPLY [sys].[dm_exec_plan_attributes](@PlanHandle) AS [pa]
+WHERE [pa].[attribute] IN (N'dbid', N'objectid', N'set_options');
+```
+
+**Wichtig für die Eigenlast:** Handle oder Session vor Planbeschaffung eindeutig angeben. Last-Actual- und Live-Planquellen nur gezielt aktivieren; XML und vollständiger SQL-Text können Transfer und Speicher deutlich erhöhen.
+
 ### Zeit- und Scope-Modell
 
 Momentaufnahme eines Cacheeintrags. Handle kann zwischen Auswahl und Detailabruf evicted werden.

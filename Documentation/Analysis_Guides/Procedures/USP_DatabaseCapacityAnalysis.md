@@ -105,6 +105,26 @@ Database Files wachsen innerhalb Volume-/MaxSizegrenzen. Percent Growth erzeugt 
 
 `sys.database_files`, `sys.dm_os_volume_stats`, `sys.sp_executesql`.
 
+### Source Select
+
+Im Kontext einer bereits ausgewählten Datenbank werden Dateikatalog und Volume-Information verbunden:
+
+```sql
+SELECT
+      DB_NAME() AS [DatabaseName]
+    , [f].[file_id]
+    , [f].[name] AS [LogicalFileName]
+    , [f].[type_desc]
+    , [f].[size] * 8.0 / 1024.0 AS [SizeMb]
+    , [v].[volume_mount_point]
+    , [v].[available_bytes]
+FROM [sys].[database_files] AS [f] WITH (NOLOCK)
+OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v]
+WHERE [f].[state] = 0;
+```
+
+**Wichtig für die Eigenlast:** Zuerst die Datenbankkandidaten begrenzen. `dm_os_volume_stats` nur für deren Dateien aufrufen; `@MaxZeilen` reduziert sonst gegebenenfalls nur die spätere Ausgabe, nicht die Zahl der Volume-Auflösungen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Snapshot. Ohne historische Messpunkte keine Wachstumsrate/Forecast.

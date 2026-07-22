@@ -1,23 +1,23 @@
 # Verbindlicher Qualitätsvertrag für Analyse-Dokumentation
 
-**Vertragsversion:** 2<br>
-**Stand:** 20. Juli 2026<br>
+**Vertragsversion:** 3<br>
+**Stand:** 22. Juli 2026<br>
 **Geltungsbereich:** alle öffentlichen Procedures unter `Documentation/Analysis_Guides/Procedures/`
 
 ## Qualitätsstufen und aktueller Stand
 
 Die Existenz einer Procedure-Seite ist noch kein Nachweis fachlicher Tiefe. Deshalb werden zwei überprüfbare Stufen getrennt:
 
-- `BASELINE`: Die Procedure ist strukturell erfasst und besitzt die bisherigen technischen Vertiefungsfelder. Die Seite ist noch nicht vollständig gegen Vertragsversion 2 redaktionell geprüft.
+- `BASELINE`: Die Procedure ist strukturell erfasst und besitzt die bisherigen technischen Vertiefungsfelder. Die Seite ist noch nicht vollständig gegen Vertragsversion 3 redaktionell geprüft.
 - `DEEP_REVIEWED`: Zweck, Leserichtung, Datenentstehung, Aussagegrenzen, Eigenlast und Gegenproben wurden am aktuellen T-SQL geprüft; alle nachfolgenden Pflichtinhalte sind erfüllt.
 
-Der maschinenlesbare Stand liegt in [`Metadata/Quality/Analysis_Documentation_Review.csv`](../../Metadata/Quality/Analysis_Documentation_Review.csv). Zum Stand dieses Vertrags sind **85 von 85** Seiten `DEEP_REVIEWED`. Als Kalibrierungsfälle für unterschiedliche Kosten- und Zeitmodelle dienen weiterhin:
+Der maschinenlesbare Stand liegt in [`Metadata/Quality/Analysis_Documentation_Review.csv`](../../Metadata/Quality/Analysis_Documentation_Review.csv). Zum Stand dieses Vertrags sind **89 von 94** Seiten `DEEP_REVIEWED`; fünf PLAN-001-/SC-023-Seiten bleiben `BASELINE`. Als Kalibrierungsfälle für unterschiedliche Kosten- und Zeitmodelle dienen weiterhin:
 
 1. [`USP_CurrentRequests`](Procedures/USP_CurrentRequests.md) als flüchtige Live-DMV-Analyse,
 2. [`USP_IndexPhysicalStats`](Procedures/USP_IndexPhysicalStats.md) als potenziell I/O-intensiver physischer Scan,
 3. [`USP_ExtendedEventsReadEvents`](Procedures/USP_ExtendedEventsReadEvents.md) als Datei-/XML-Analyse mit möglicher Nebenwirkung.
 
-Eine Abdeckungszahl darf nur zusammen mit ihrer Qualitätsstufe genannt werden. Aktuell sind sowohl die strukturelle Abdeckung als auch die redaktionelle Tiefenprüfung mit 85/85 vollständig. Eine spätere relevante Änderung an T-SQL, Resultsets, Gates oder Kostenpfaden kann einzelne Seiten gemäß den Pflege- und Reviewregeln wieder auf `BASELINE` zurücksetzen.
+Eine Abdeckungszahl darf nur zusammen mit ihrer Qualitätsstufe genannt werden. Aktuell ist die strukturelle Abdeckung mit 94/94 vollständig; die redaktionelle Tiefenprüfung steht bei 89/94. Eine spätere relevante Änderung an T-SQL, Resultsets, Gates oder Kostenpfaden kann einzelne Seiten gemäß den Pflege- und Reviewregeln wieder auf `BASELINE` zurücksetzen.
 
 ## Abdeckungsvertrag
 
@@ -38,7 +38,7 @@ Eine `DEEP_REVIEWED`-Seite beantwortet aus Sicht des Anwenders und aus Sicht der
 3. **Sicherer Einstieg:** Welcher kleine, synthetische Aufruf ist sinnvoll; welche Berechtigung, Freigabe oder bewusste Nebenwirkung ist erforderlich?
 4. **Resultsets und Leserichtung:** Welche fachlichen und technischen Resultsets entstehen je Ausgabemodus und in welcher Reihenfolge werden sie interpretiert?
 5. **Zeilengranularität:** Was genau repräsentiert eine Zeile; wodurch können mehrere Zeilen zum vermeintlich gleichen Objekt entstehen?
-6. **Datenentstehung:** Welche Systemquelle wird in welcher Reihenfolge gelesen, gefiltert, aggregiert, gekürzt und ausgegeben?
+6. **Datenentstehung und Source Select:** Welche Systemquelle wird in welcher Reihenfolge gelesen, gefiltert, aggregiert, gekürzt und ausgegeben? Ein reduziertes Grundselect zeigt, soweit fachlich möglich, die tragenden `FROM`-/`JOIN`-Beziehungen und die wenigen Prädikate, die den Scope oder die Quellkosten wesentlich bestimmen. Orchestratoren, Befehlsquellen und Schreibpfade werden ausdrücklich als solche erklärt; dafür wird kein künstliches `SELECT` erfunden.
 7. **Zeit-, Scope- und Resetmodell:** Snapshot, kumulative Messung, Stichprobe oder Historie; Instanz-/Datenbank-/Objektscope; Restart-, Eviction-, Retention- und Rollovergrenzen.
 8. **Interpretation:** Welche Werte gehören zusammen, was ist Beobachtung, Hypothese oder Auswirkung, und welche plausible Gegenhypothese ist zu prüfen?
 9. **Beispiele und Gegenbeispiele:** Mindestens ein synthetischer Problemfall und ein ähnlich aussehender unkritischer oder nicht entscheidbarer Fall.

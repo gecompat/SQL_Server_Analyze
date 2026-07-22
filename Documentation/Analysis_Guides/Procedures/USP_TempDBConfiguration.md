@@ -102,6 +102,26 @@ TempDB wird bei jedem Start neu erstellt. Datafiles bilden Allocationkonkurrenz 
 
 `sys.configurations`, `tempdb.sys.database_files`.
 
+### Source Select
+
+Dateigröße, Wachstum und Ablage kommen direkt aus dem TempDB-Dateikatalog:
+
+```sql
+SELECT
+      [f].[file_id]
+    , [f].[name] AS [LogicalFileName]
+    , [f].[type_desc]
+    , [f].[size] * 8.0 / 1024.0 AS [SizeMb]
+    , [f].[growth]
+    , [f].[is_percent_growth]
+    , [f].[physical_name]
+FROM [tempdb].[sys].[database_files] AS [f] WITH (NOLOCK)
+WHERE [f].[state] = 0
+ORDER BY [f].[type], [f].[file_id];
+```
+
+**Wichtig für die Eigenlast:** Die Quelle ist klein und benötigt keinen Nutzdatenscan. `physical_name` kann in realen Resultsets umgebungsspezifisch sein; nicht ungeprüft exportieren. Die Procedure ändert weder Dateigröße noch Anzahl oder Wachstum.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Katalog-/Dateistand; TempDB-Inhalt seit Engine-Start.

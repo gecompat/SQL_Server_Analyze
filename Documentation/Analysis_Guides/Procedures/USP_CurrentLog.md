@@ -104,6 +104,23 @@ Das Log ist eine sequenzielle Recoverystruktur aus VLFs. Log Records müssen fü
 
 `master.sys.databases`, `sys.dm_db_log_info`, `sys.dm_db_log_space_usage`, `sys.dm_db_log_stats`, `sys.dm_tran_persistent_version_store_stats`, `sys.sp_executesql`.
 
+### Source Select
+
+Der datenbanklokale Kern verbindet Logbelegung und Logzustand; die Zieldatenbank muss vor dem DMF-Aufruf feststehen:
+
+```sql
+SELECT
+      [space].[total_log_size_in_bytes]
+    , [space].[used_log_space_in_bytes]
+    , [stats].[recovery_model]
+    , [stats].[log_truncation_holdup_reason]
+    , [stats].[total_vlf_count]
+FROM [sys].[dm_db_log_space_usage] AS [space] WITH (NOLOCK)
+CROSS APPLY [sys].[dm_db_log_stats](DB_ID()) AS [stats];
+```
+
+**Wichtig für die Eigenlast:** Zuerst die Datenbankkandidaten einschränken. `sys.dm_db_log_info` liefert eine Zeile je VLF und ist der wesentliche Vertiefungstreiber; VLF-Details nicht breit über alle Datenbanken lesen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Space-/Reusezustand; Filegröße und VLFs Metadaten, einzelne Zähler kumulativ. Reuse-Wait kann sich nach Backup/Commit rasch ändern.

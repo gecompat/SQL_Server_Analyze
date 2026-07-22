@@ -151,6 +151,32 @@ Im tiefen Pfad kommen `DATABASE`, `FILE`, `OBJECT`, `PAGE`, `KEY`, `RID`, `HOBT`
 
 `master.sys.databases`, `master.sys.master_files`, `sys.servers`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_connections`, `sys.dm_exec_sql_text`, `sys.dm_os_waiting_tasks`, gezielt `sys.dm_db_page_info` sowie im tiefen Pfad `sys.dm_tran_locks`; für die begrenzten Kandidaten außerdem `sys.objects`, `sys.schemas`, `sys.indexes`, `sys.partitions`, `sys.allocation_units` und `sys.stats` der betroffenen Datenbanken.
 
+### Source Select
+
+Das Live-Grundselect verbindet Requests, Sessions und aktuell wartende Tasks; nur echte Blockingkandidaten werden behalten:
+
+```sql
+SELECT
+      [r].[session_id]
+    , [r].[request_id]
+    , [r].[blocking_session_id]
+    , [r].[wait_type]
+    , [r].[wait_resource]
+    , [wt].[wait_duration_ms]
+    , [s].[status] AS [SessionStatus]
+FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+  ON [s].[session_id] = [r].[session_id]
+LEFT JOIN [sys].[dm_os_waiting_tasks] AS [wt] WITH (NOLOCK)
+  ON [wt].[session_id] = [r].[session_id]
+WHERE [r].[session_id] <> @@SPID
+  AND (NULLIF([r].[blocking_session_id], 0) IS NOT NULL
+       OR NULLIF([wt].[blocking_session_id], 0) IS NOT NULL)
+  AND COALESCE([wt].[wait_duration_ms], [r].[wait_time], 0) >= @MinWaitMs;
+```
+
+**Wichtig für die Eigenlast:** Session-/Waitfilter vor SQL-Text, Lock- und Katalogauflösung setzen. `sys.dm_tran_locks`, `sys.dm_db_page_info` und datenbanklokale Objektauflösung gehören nur in den gezielt bestätigten Detailpfad.
+
 ### Zeit- und Scope-Modell
 
 Momentaufnahme. Ketten können während der Rekonstruktion wachsen, verschwinden oder ihre Root-Session wechseln.

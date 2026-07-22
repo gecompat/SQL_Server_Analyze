@@ -105,6 +105,36 @@ CDC liest Transaction Log asynchron in Change Tables und räumt per Cleanupjob a
 
 `master.sys.databases`, `msdb.dbo.agent_datetime`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.databases`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+Der Basisstatus verbindet die Datenbankoption mit den Change-Tracking-Tabellen der ausgewählten Datenbank:
+
+```sql
+SELECT
+      [d].[name] AS [DatabaseName]
+    , [d].[is_cdc_enabled]
+    , [ctd].[retention_period]
+    , [ctd].[retention_period_units_desc]
+FROM [sys].[databases] AS [d] WITH (NOLOCK)
+LEFT JOIN [sys].[change_tracking_databases] AS [ctd] WITH (NOLOCK)
+  ON [ctd].[database_id] = [d].[database_id]
+WHERE [d].[database_id] = DB_ID();
+
+SELECT
+      [s].[name] AS [SchemaName]
+    , [t].[name] AS [TableName]
+    , [ct].[begin_version]
+    , CHANGE_TRACKING_MIN_VALID_VERSION([ct].[object_id]) AS [MinValidVersion]
+FROM [sys].[change_tracking_tables] AS [ct] WITH (NOLOCK)
+JOIN [sys].[tables] AS [t] WITH (NOLOCK)
+  ON [t].[object_id] = [ct].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [t].[schema_id]
+WHERE [t].[is_ms_shipped] = 0;
+```
+
+**Wichtig für die Eigenlast:** Die Datenbankauswahl erfolgt vor dem dynamischen datenbanklokalen Katalogzugriff. Jobhistorie nur für tatsächlich aktivierte CDC-Datenbanken und mit Zeitfenster ergänzen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Enablement-/Konfigurationszustand mit begrenzten Job-/LSN-/Versionmarken.

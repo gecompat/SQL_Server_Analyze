@@ -104,6 +104,30 @@ Agent führt Jobs über einen separaten Dienst und `msdb`-Metadaten aus. Dienstz
 
 `msdb.dbo.sysjobs`, `msdb.dbo.syssessions`, `sys.dm_server_services`.
 
+### Source Select
+
+Der Status entsteht aus dem sichtbaren Agent-Dienst und der letzten Agent-Session in `msdb`:
+
+```sql
+SELECT
+      [svc].[servicename]
+    , [svc].[status_desc]
+    , [agent].[session_id]
+    , [agent].[agent_start_date]
+FROM [sys].[dm_server_services] AS [svc] WITH (NOLOCK)
+OUTER APPLY
+(
+    SELECT TOP (1)
+          [ss].[session_id]
+        , [ss].[agent_start_date]
+    FROM [msdb].[dbo].[syssessions] AS [ss] WITH (NOLOCK)
+    ORDER BY [ss].[agent_start_date] DESC
+) AS [agent]
+WHERE [svc].[servicename] LIKE N'SQL Server Agent%';
+```
+
+**Wichtig für die Eigenlast:** Die Quellen sind klein. Der Dienstfilter verhindert, dass nicht benötigte SQL-Dienste in die weitere Auswertung gelangen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Servicezustand; bei Restart/Failover kann der Status wechseln.

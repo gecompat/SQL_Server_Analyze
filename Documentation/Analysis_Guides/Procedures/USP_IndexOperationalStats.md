@@ -111,6 +111,34 @@ Welche internen Zugriffsmuster, Allocations, Locks und Latches erzeugt ein Index
 
 `sys.dm_db_index_operational_stats`, `sys.indexes`, `sys.objects`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+Die Objekt-ID wird direkt aus Katalogen aufgelöst und als enger DMF-Parameter verwendet:
+
+```sql
+DECLARE @TargetObjectId int =
+(
+    SELECT [o].[object_id]
+    FROM [sys].[objects] AS [o] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[schema_id] = [o].[schema_id]
+    WHERE [s].[name] = N'ExampleSchema'
+      AND [o].[name] = N'ExampleObject'
+);
+
+SELECT
+      [os].[object_id]
+    , [os].[index_id]
+    , [os].[partition_number]
+    , [os].[leaf_allocation_count]
+    , [os].[row_lock_wait_in_ms]
+    , [os].[page_latch_wait_in_ms]
+FROM [sys].[dm_db_index_operational_stats]
+     (DB_ID(), @TargetObjectId, NULL, NULL) AS [os];
+```
+
+**Wichtig für die Eigenlast:** Die DMF nie versehentlich mit `NULL` als Objekt-Wildcard aufrufen, wenn ein Zielobjekt erwartet wird. Schema und Objekt müssen vor dem Zugriff eindeutig aufgelöst sein.
+
 ### Zeit- und Scope-Modell
 
 Kumulativ im Lebenszyklus der internen Struktur/Instanz. Werte können bei Neustart oder Strukturänderung zurückgesetzt werden.

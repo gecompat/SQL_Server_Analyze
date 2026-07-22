@@ -102,6 +102,25 @@ Host-/Windows-/Linux-DMVs liefern OS-Version, Hostplattform, Memory/Pagefile, St
 
 `sys.dm_os_host_info`, `sys.dm_os_process_memory`, `sys.dm_os_sys_memory`, `sys.dm_server_services`.
 
+### Source Select
+
+Die wichtigsten Host-, System- und Prozessspeicherwerte sind jeweils Singleton-DMVs und können ohne Nutzdatenjoin kombiniert werden:
+
+```sql
+SELECT
+      [h].[host_platform]
+    , [h].[host_distribution]
+    , [sm].[total_physical_memory_kb]
+    , [sm].[available_physical_memory_kb]
+    , [pm].[physical_memory_in_use_kb]
+    , [pm].[process_physical_memory_low]
+FROM [sys].[dm_os_host_info] AS [h] WITH (NOLOCK)
+CROSS JOIN [sys].[dm_os_sys_memory] AS [sm] WITH (NOLOCK)
+CROSS JOIN [sys].[dm_os_process_memory] AS [pm] WITH (NOLOCK);
+```
+
+**Wichtig für die Eigenlast:** Diese Quellen liefern wenige Zeilen. Dienstinformationen aus `sys.dm_server_services` sind ein getrennter kleiner Zweig; es werden keine OS-Dateien oder externen Befehle ausgeführt.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Gast-/Instanzkontext; OS-/Engine-Startzeiten können verschieden sein.

@@ -105,6 +105,26 @@ Die Procedure verbindet Job-/Step-/Schedule-/Historyanalyse mit Alerts, Operator
 
 `msdb.dbo.agent_datetime`, `msdb.dbo.sysalerts`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `msdb.dbo.sysjobschedules`, `msdb.dbo.sysmail_allitems`, `msdb.dbo.sysnotifications`, `msdb.dbo.sysoperators`, `msdb.dbo.sysschedules`, `sys.dm_server_services`.
 
+### Source Select
+
+Die Procedure besitzt mehrere fachlich getrennte Quellen. Der folgende Kernpfad zeigt die Beziehung für Alert-Routing; Jobzustand und Database Mail werden in separaten Zweigen gelesen:
+
+```sql
+SELECT
+      [a].[id] AS [AlertId]
+    , [a].[name] AS [AlertName]
+    , [n].[notification_method]
+    , [o].[name] AS [OperatorName]
+FROM [msdb].[dbo].[sysalerts] AS [a] WITH (NOLOCK)
+LEFT JOIN [msdb].[dbo].[sysnotifications] AS [n] WITH (NOLOCK)
+  ON [n].[alert_id] = [a].[id]
+LEFT JOIN [msdb].[dbo].[sysoperators] AS [o] WITH (NOLOCK)
+  ON [o].[id] = [n].[operator_id]
+WHERE [a].[enabled] = 1;
+```
+
+**Wichtig für die Eigenlast:** Alert- und Jobfilter früh setzen. Jobhistorie und `sysmail_allitems` erst danach und mit engem Zeitfenster lesen; diese beiden Historientabellen bestimmen typischerweise die Kosten.
+
 ### Zeit- und Scope-Modell
 
 Konfigurationssnapshot plus begrenzte Ausführungshistorie.

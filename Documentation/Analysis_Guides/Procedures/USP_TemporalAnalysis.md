@@ -106,6 +106,35 @@ Temporal Tables schreiben bei Update/Delete frühere Rowversionen in eine Histor
 
 `sys.columns`, `sys.databases`, `sys.dm_db_partition_stats`, `sys.index_columns`, `sys.indexes`, `sys.periods`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+System-versionierte Tabelle, History-Tabelle, Schema und Periodendefinition werden über Katalog-IDs verbunden:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [t].[name] AS [TableName]
+    , [t].[temporal_type_desc]
+    , [hs].[name] AS [HistorySchemaName]
+    , [ht].[name] AS [HistoryTableName]
+    , [p].[start_column_id]
+    , [p].[end_column_id]
+FROM [sys].[tables] AS [t] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [t].[schema_id]
+LEFT JOIN [sys].[tables] AS [ht] WITH (NOLOCK)
+  ON [ht].[object_id] = [t].[history_table_id]
+LEFT JOIN [sys].[schemas] AS [hs] WITH (NOLOCK)
+  ON [hs].[schema_id] = [ht].[schema_id]
+LEFT JOIN [sys].[periods] AS [p] WITH (NOLOCK)
+  ON [p].[object_id] = [t].[object_id]
+WHERE [t].[temporal_type] <> 0
+  AND [s].[name] = N'ExampleSchema'
+  AND [t].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Objekt vor History-Größen-, Partition- und Indexanalyse festlegen. `dm_db_partition_stats` erst für die aufgelösten Current-/History-Objekt-IDs lesen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Schemastand plus angesammelte Historydaten innerhalb fachlicher/technischer Retention.

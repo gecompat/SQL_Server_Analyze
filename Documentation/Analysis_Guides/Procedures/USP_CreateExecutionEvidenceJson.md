@@ -63,6 +63,24 @@ Welche zusätzliche Ausführungsevidenz ist vorhanden, wie sicher ist ihre Zuord
 
 Bereits übergebenes Showplan XML, `TVF_ParseStatisticsIoText`, `TVF_ParseStatisticsTimeText`, Plan-Extractor-Funktionen und optional gezielte Statistik-/Histogrammmetadaten.
 
+### Source Select
+
+Die Procedure führt keinen Workload aus. Ein zentraler Extraktionspfad liest Objektbezüge direkt aus bereits übergebenem Showplan-XML:
+
+```sql
+SELECT
+      [r].[StatementId]
+    , [r].[NodeId]
+    , [r].[DatabaseName]
+    , [r].[SchemaName]
+    , [r].[ObjectName]
+    , [r].[IndexName]
+FROM [monitor].[TVF_ExecutionPlanObjectReferences]
+     (@PlanXml, @StatementId) AS [r];
+```
+
+**Wichtig für die Eigenlast:** `@StatementId` vor XML-Knotenextraktion setzen und nur benötigte Evidenzpfade aktivieren. Histogrammzugriffe erst nach der aus dem Plan abgeleiteten kleinen Statistikmenge ausführen; `@MaxStatistiken` und `@MaxHistogrammSchritte` begrenzen diese Vertiefung.
+
 ### Zeit- und Scope-Modell
 
 Jeder Abschnitt besitzt einen eigenen Capture- oder Compilezeitbezug. Aktuelle Statistics Properties sind nicht rückwirkend der Compilezustand.

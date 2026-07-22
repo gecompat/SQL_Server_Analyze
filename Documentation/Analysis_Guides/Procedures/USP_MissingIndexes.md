@@ -108,6 +108,32 @@ Missing-Index-DMVs sammeln Gleichheits-, Ungleichheits- und Include-Spalten aus 
 
 `sys.dm_db_missing_index_details`, `sys.dm_db_missing_index_group_stats`, `sys.dm_db_missing_index_groups`, `sys.objects`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+Die drei Missing-Index-DMVs werden über Group- und Index-Handle verbunden; der Datenbankscope gehört in die erste Kandidatenmenge:
+
+```sql
+SELECT
+      [mid].[database_id]
+    , [mid].[object_id]
+    , [mid].[equality_columns]
+    , [mid].[inequality_columns]
+    , [mid].[included_columns]
+    , [migs].[user_seeks]
+    , [migs].[user_scans]
+    , [migs].[avg_total_user_cost]
+    , [migs].[avg_user_impact]
+FROM [sys].[dm_db_missing_index_details] AS [mid] WITH (NOLOCK)
+JOIN [sys].[dm_db_missing_index_groups] AS [mig] WITH (NOLOCK)
+  ON [mig].[index_handle] = [mid].[index_handle]
+JOIN [sys].[dm_db_missing_index_group_stats] AS [migs] WITH (NOLOCK)
+  ON [migs].[group_handle] = [mig].[index_group_handle]
+WHERE [mid].[database_id] = DB_ID()
+  AND [migs].[user_seeks] + [migs].[user_scans] >= @MinUserReads;
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Mindestnutzung vor Objekt-/Schemaauflösung und DDL-Entwurf filtern. Die DMVs bleiben serverweit flüchtig; ein `TOP` nach der Bewertung reduziert nicht die zugrunde liegende DMV-Menge.
+
 ### Zeit- und Scope-Modell
 
 Flüchtig/kumulativ seit Restart/Reset und begrenzt in der Zahl gespeicherter Gruppen. Vorschläge können nach Plan Cache-/Metadatenänderungen verschwinden.

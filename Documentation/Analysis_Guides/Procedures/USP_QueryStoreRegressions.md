@@ -107,6 +107,33 @@ Die Procedure aggregiert zwei nicht überlappende Zeiträume und vergleicht Dura
 
 `sys.database_query_store_options`, `sys.objects`, `sys.query_store_plan`, `sys.query_store_query`, `sys.query_store_query_text`, `sys.query_store_runtime_stats`, `sys.query_store_runtime_stats_interval`, `sys.schemas`, `sys.sp_executesql`.
 
+### Source Select
+
+Der kostenbestimmende Join verbindet Runtime-Statistik, Intervall, Plan und Query; beide Vergleichsfenster müssen früh begrenzt werden:
+
+```sql
+SELECT
+      [q].[query_id]
+    , [p].[plan_id]
+    , [i].[start_time]
+    , [i].[end_time]
+    , [rs].[count_executions]
+    , [rs].[avg_duration]
+    , [rs].[avg_cpu_time]
+    , [rs].[avg_logical_io_reads]
+FROM [sys].[query_store_runtime_stats] AS [rs] WITH (NOLOCK)
+JOIN [sys].[query_store_runtime_stats_interval] AS [i] WITH (NOLOCK)
+  ON [i].[runtime_stats_interval_id] = [rs].[runtime_stats_interval_id]
+JOIN [sys].[query_store_plan] AS [p] WITH (NOLOCK)
+  ON [p].[plan_id] = [rs].[plan_id]
+JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
+  ON [q].[query_id] = [p].[query_id]
+WHERE [i].[end_time] > @BaselineVonUtc
+  AND [i].[start_time] < @ProblemBisUtc;
+```
+
+**Wichtig für die Eigenlast:** Baseline- und Problemfenster sowie Datenbank vor Aggregation, Ranking und SQL-Text setzen. `@MaxZeilen` wirkt erst nach dem Vergleich und spart die Interval-Joins nicht.
+
 ### Zeit- und Scope-Modell
 
 Zwei persistierte Query-Store-Fenster innerhalb Retention; Defaultvergleich und abgeleitete Baseline müssen im Wrapperkontext dokumentiert sein.

@@ -104,6 +104,46 @@ Welche Jobs sind aktiviert, geplant, aktuell laufend oder zuletzt fehlgeschlagen
 
 `master.sys.databases`, `msdb.dbo.agent_datetime`, `msdb.dbo.syscategories`, `msdb.dbo.sysjobactivity`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `msdb.dbo.sysjobschedules`, `msdb.dbo.sysjobsteps`, `msdb.dbo.sysschedules`, `sys.sp_executesql`.
 
+### Source Select
+
+Das reduzierte Grundselect zeigt Jobdefinition, aktuellen Lauf und den Outcome der Job-Gesamtzeile:
+
+```sql
+WITH [LatestActivity] AS
+(
+    SELECT
+          [ja].*
+        , ROW_NUMBER() OVER
+          (PARTITION BY [ja].[job_id] ORDER BY [ja].[session_id] DESC) AS [rn]
+    FROM [msdb].[dbo].[sysjobactivity] AS [ja] WITH (NOLOCK)
+),
+[LatestOutcome] AS
+(
+    SELECT
+          [h].*
+        , ROW_NUMBER() OVER
+          (PARTITION BY [h].[job_id] ORDER BY [h].[instance_id] DESC) AS [rn]
+    FROM [msdb].[dbo].[sysjobhistory] AS [h] WITH (NOLOCK)
+    WHERE [h].[step_id] = 0
+)
+SELECT
+      [j].[job_id]
+    , [j].[name] AS [JobName]
+    , [ja].[start_execution_date]
+    , [ja].[stop_execution_date]
+    , [h].[run_status]
+FROM [msdb].[dbo].[sysjobs] AS [j] WITH (NOLOCK)
+LEFT JOIN [LatestActivity] AS [ja]
+  ON [ja].[job_id] = [j].[job_id]
+ AND [ja].[rn] = 1
+LEFT JOIN [LatestOutcome] AS [h]
+  ON [h].[job_id] = [j].[job_id]
+ AND [h].[rn] = 1
+WHERE [j].[enabled] = 1;
+```
+
+**Wichtig für die Eigenlast:** Jobname oder `job_id` möglichst vor Schedule-, Step- und History-Vertiefungen einschränken. `sysjobhistory` kann wesentlich größer als die Jobdefinition sein; ein Zeitfenster auf `run_date` spart dort die meiste Arbeit.
+
 ### Zeit- und Scope-Modell
 
 Konfigurationssnapshot plus aufbewahrte History. Agentrestart erzeugt neue Sessionkontexte; Cleanup begrenzt Historie.

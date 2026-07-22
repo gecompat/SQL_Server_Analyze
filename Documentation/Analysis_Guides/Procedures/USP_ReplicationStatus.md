@@ -105,6 +105,26 @@ Transactional Replication nutzt Log Reader und Distribution Agents; Merge Replic
 
 `sys.databases`, `sys.sp_executesql`.
 
+### Source Select
+
+Der leichte Basispfad erkennt nur Datenbanken mit sichtbaren Replication-Rollen:
+
+```sql
+SELECT
+      [d].[name]
+    , [d].[is_published]
+    , [d].[is_subscribed]
+    , [d].[is_merge_published]
+    , [d].[is_distributor]
+FROM [sys].[databases] AS [d] WITH (NOLOCK)
+WHERE [d].[is_published] = 1
+   OR [d].[is_subscribed] = 1
+   OR [d].[is_merge_published] = 1
+   OR [d].[is_distributor] = 1;
+```
+
+**Wichtig für die Eigenlast:** Dieser Katalogfilter ist der sichere Einstieg. Distributionstabellen, Agenthistorien und Fehlerdetails nur für erkannte Rollen und im expliziten Tiefenpfad lesen; dort Datenbank und Zeitfenster weiter einschränken.
+
 ### Zeit- und Scope-Modell
 
 Verteilte Momentaufnahme plus Distributor-/Agenthistory innerhalb Retention.

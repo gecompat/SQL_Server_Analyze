@@ -106,6 +106,34 @@ Welche aktuell gecachten Statements verursachten kumulativ oder durchschnittlich
 
 `master.sys.databases`, `sys.dm_exec_cached_plans`, `sys.dm_exec_plan_attributes`, `sys.dm_exec_query_stats`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
 
+### Source Select
+
+Der Grundpfad liest kumulative Statementzähler und löst Text sowie Datenbank-ID aus Handlemetadaten auf:
+
+```sql
+SELECT
+      [qs].[query_hash]
+    , [qs].[query_plan_hash]
+    , [qs].[execution_count]
+    , [qs].[total_worker_time]
+    , [qs].[total_logical_reads]
+    , [st].[text]
+    , TRY_CONVERT(int, [dbid].[value]) AS [DatabaseId]
+FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
+OUTER APPLY [sys].[dm_exec_sql_text]([qs].[sql_handle]) AS [st]
+OUTER APPLY
+(
+    SELECT TOP (1) [pa].[value]
+    FROM [sys].[dm_exec_plan_attributes]([qs].[plan_handle]) AS [pa]
+    WHERE [pa].[attribute] = N'dbid'
+) AS [dbid]
+WHERE [qs].[execution_count] >= @MinExecutionCount
+  AND (@VonUtc IS NULL OR [qs].[last_execution_time] >= @VonUtc)
+  AND (@QueryHash IS NULL OR [qs].[query_hash] = @QueryHash);
+```
+
+**Wichtig für die Eigenlast:** Hash, Handle, Ausführungsanzahl und Zeit wirken vor Sortierung. Datenbank- und Textfilter benötigen erst Handle-/Textauflösung; Regex wirkt nach Materialisierung. `@MaxZeilen` begrenzt nicht automatisch den Cache-Scan.
+
 ### Zeit- und Scope-Modell
 
 Kumulativ seit Cacheeintrag. Erstellung/letzte Ausführung und Engine-Start begrenzen das Fenster.

@@ -106,6 +106,36 @@ Aktive BACKUP/RESTORE/DBCC/INDEX-Commands erscheinen in Requests; resumable Inde
 
 `msdb.dbo.sysjobactivity`, `msdb.dbo.sysjobs`, `msdb.dbo.syssessions`, `sys.databases`, `sys.dm_exec_requests`, `sys.dm_tran_persistent_version_store_stats`, `sys.index_resumable_operations`.
 
+### Source Select
+
+Der aktuelle Requestpfad filtert Wartungsbefehle direkt an der DMV und ergänzt nur den Datenbanknamen:
+
+```sql
+SELECT
+      [r].[session_id]
+    , [r].[request_id]
+    , [d].[name] AS [DatabaseName]
+    , [r].[command]
+    , [r].[percent_complete]
+    , [r].[estimated_completion_time]
+    , [r].[blocking_session_id]
+    , [r].[wait_type]
+FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[database_id] = [r].[database_id]
+WHERE [r].[session_id] <> @@SPID
+  AND
+  (
+       [r].[command] LIKE N'ALTER INDEX%'
+    OR [r].[command] LIKE N'DBCC%'
+    OR [r].[command] LIKE N'BACKUP%'
+    OR [r].[command] LIKE N'RESTORE%'
+    OR [r].[command] LIKE N'ROLLBACK%'
+  );
+```
+
+**Wichtig für die Eigenlast:** Datenbankscope vor `sys.index_resumable_operations` und PVS-Statistiken setzen. Agent-Jobaktivität nur bei angefordertem Jobfilter lesen; SQL- und Plantexte gehören bewusst nicht zu diesem Pfad.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Requestsnapshot plus persistierter resumable Zustand.

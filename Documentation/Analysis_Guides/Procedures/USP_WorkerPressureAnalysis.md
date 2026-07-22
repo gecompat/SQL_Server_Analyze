@@ -93,6 +93,37 @@ SQLOS bindet Tasks an Worker und Worker an Scheduler. Pending Work Queues entste
 
 `sys.dm_os_schedulers`, `sys.dm_os_workers`, `sys.dm_os_sys_info`, `sys.configurations`, `sys.dm_os_waiting_tasks`, `sys.dm_exec_requests`.
 
+### Source Select
+
+Scheduler und vollständig aggregierte Worker werden über `scheduler_address` verbunden:
+
+```sql
+WITH [Workers] AS
+(
+    SELECT
+          [w].[scheduler_address]
+        , COUNT_BIG(*) AS [WorkerCount]
+        , SUM(CASE WHEN [w].[state] = N'RUNNABLE' THEN 1 ELSE 0 END)
+          AS [RunnableWorkerCount]
+    FROM [sys].[dm_os_workers] AS [w] WITH (NOLOCK)
+    GROUP BY [w].[scheduler_address]
+)
+SELECT
+      [s].[scheduler_id]
+    , [s].[parent_node_id]
+    , [s].[runnable_tasks_count]
+    , [s].[work_queue_count]
+    , [w].[WorkerCount]
+    , [w].[RunnableWorkerCount]
+FROM [sys].[dm_os_schedulers] AS [s] WITH (NOLOCK)
+LEFT JOIN [Workers] AS [w]
+  ON [w].[scheduler_address] = [s].[scheduler_address]
+WHERE [s].[scheduler_id] < 1048576
+  AND [s].[status] = N'VISIBLE ONLINE';
+```
+
+**Wichtig für die Eigenlast:** `dm_os_workers` wird vollständig gelesen, aber sofort je Scheduler aggregiert. THREADPOOL-Waits und auffällige Requests sind getrennte, bereits gefilterte Snapshots; SQL- und Plantexte werden nicht gelesen.
+
 ### Zeit- und Scope-Modell
 
 Scheduler vor/nach dem Sample; Worker, Waits und Requests am Sampleende. Kumulative Zähler können beim Engine-Neustart zurückgesetzt werden. Queues und Workerzahlen sind flüchtige Gauges.

@@ -45,6 +45,25 @@ Welches explizite Ziel und welche begrenzte Policy dürfen der schedulerneutrale
 
 Framework-Singleton → validierter Drei-Part-Name → `snapshot.InternalConfigureSnapshotPolicy` → typisierte Zielpolicy.
 
+### Source Select
+
+Die bestehende Singleton-Konfiguration wird mit dem sichtbaren Zustand der Zieldatenbank korreliert:
+
+```sql
+SELECT
+      [c].[TargetDatabaseName]
+    , [c].[IsEnabled]
+    , [c].[DefaultSchedulerType]
+    , [d].[state_desc]
+    , [d].[is_read_only]
+FROM [monitor].[SnapshotTargetConfiguration] AS [c] WITH (NOLOCK)
+LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[name] = [c].[TargetDatabaseName]
+WHERE [c].[ConfigurationId] = 1;
+```
+
+**Wichtig für die Eigenlast:** Das Lesen ist trivial. Die Procedure ist jedoch ein Konfigurations-Schreibpfad: Sie validiert genau eine Zieldatenbank, aktualisiert zuerst deren Snapshotpolicy und danach die Framework-Singletonzeile in einer Transaktion.
+
 ### Zeit- und Scope-Modell
 
 `LastUpdatedUtc` ist UTC. Die Konfiguration gilt für genau die lokale Framework-/Snapshot-Datenbankbeziehung; Fleet-Transport gehört nicht zu SC-023.

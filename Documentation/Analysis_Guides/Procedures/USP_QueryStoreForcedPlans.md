@@ -104,6 +104,29 @@ Query Store Plan Forcing beeinflusst die Planwahl über gespeicherte Planrepräs
 
 `sys.database_query_store_options`, `sys.objects`, `sys.query_store_plan`, `sys.query_store_query`, `sys.query_store_query_text`, `sys.schemas`, `sys.sp_executesql`.
 
+### Source Select
+
+Forced Plans werden über Plan, Query und Query Text verbunden; der Force-Status ist das frühe Fachprädikat:
+
+```sql
+SELECT
+      [p].[plan_id]
+    , [p].[query_id]
+    , [p].[is_forced_plan]
+    , [p].[force_failure_count]
+    , [p].[last_force_failure_reason_desc]
+    , [q].[object_id]
+    , [qt].[query_sql_text]
+FROM [sys].[query_store_plan] AS [p] WITH (NOLOCK)
+JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
+  ON [q].[query_id] = [p].[query_id]
+JOIN [sys].[query_store_query_text] AS [qt] WITH (NOLOCK)
+  ON [qt].[query_text_id] = [q].[query_text_id]
+WHERE [p].[is_forced_plan] = 1;
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Forced-Status vor SQL-Text und Plan-XML anwenden. Vollständiges XML nur für einzelne `plan_id`-Kandidaten lesen; die Inventarisierung benötigt es nicht.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Forcingstatus plus persistierter Planlebenszyklus.

@@ -108,6 +108,33 @@ Rows gelangen zunächst in Delta Stores oder direkt in komprimierte Rowgroups. T
 
 `sys.column_store_dictionaries`, `sys.column_store_row_groups`, `sys.column_store_segments`, `sys.columns`, `sys.dm_db_column_store_row_group_physical_stats`, `sys.indexes`, `sys.objects`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`.
 
+### Source Select
+
+Das Basismodell verbindet Rowgroups mit Objekt-, Schema- und Indexkatalog:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [o].[name] AS [ObjectName]
+    , [i].[name] AS [IndexName]
+    , [rg].[partition_number]
+    , [rg].[state_desc]
+    , [rg].[total_rows]
+    , [rg].[deleted_rows]
+FROM [sys].[column_store_row_groups] AS [rg] WITH (NOLOCK)
+JOIN [sys].[objects] AS [o] WITH (NOLOCK)
+  ON [o].[object_id] = [rg].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [o].[schema_id]
+JOIN [sys].[indexes] AS [i] WITH (NOLOCK)
+  ON [i].[object_id] = [rg].[object_id]
+ AND [i].[index_id] = [rg].[index_id]
+WHERE [s].[name] = N'ExampleSchema'
+  AND [o].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Objektfilter vor Physical-Stats-, Segment- und Dictionary-Pfaden setzen. Diese optionalen Vertiefungen lesen deutlich mehr Metadaten als der Rowgroup-Katalog.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Rowgroupzustand; verändert sich durch Loads, Deletes, Tuple Mover und Wartung.

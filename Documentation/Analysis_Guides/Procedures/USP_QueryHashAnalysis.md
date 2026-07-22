@@ -109,6 +109,25 @@ Grouping nach Query Hash konsolidiert ähnliche Statementtexte; Plan Hash trennt
 
 `sys.dm_exec_query_stats`, `sys.dm_exec_sql_text`.
 
+### Source Select
+
+Ein exakter Query Hash begrenzt die Query-Stats-Kandidaten vor Textprojektion und Variantenaggregation:
+
+```sql
+SELECT
+      [qs].[query_hash]
+    , [qs].[query_plan_hash]
+    , COUNT_BIG(*) AS [CacheEntryCount]
+    , SUM([qs].[execution_count]) AS [ExecutionCount]
+    , SUM([qs].[total_worker_time]) AS [TotalWorkerTime]
+    , SUM([qs].[total_logical_reads]) AS [TotalLogicalReads]
+FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
+WHERE [qs].[query_hash] = @QueryHash
+GROUP BY [qs].[query_hash], [qs].[query_plan_hash];
+```
+
+**Wichtig für die Eigenlast:** `@QueryHash`, `@SqlHandle` oder `@PlanHandle` vor `dm_exec_sql_text` setzen. Ohne Zielschlüssel muss die Procedure den breiten Plan-Cache-Snapshot gruppieren; ein finales `TOP` spart diesen Scan nicht.
+
 ### Zeit- und Scope-Modell
 
 Nur aktuell gecachte Einträge; verschiedene Creation Times und Evictions.

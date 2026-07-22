@@ -109,6 +109,34 @@ Transaktions-DMVs verbinden Datenbank-/Sessiontransaktionen mit Beginn, Zustand,
 
 `master.sys.databases`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_tran_active_transactions`, `sys.dm_tran_database_transactions`, `sys.dm_tran_session_transactions`.
 
+### Source Select
+
+Die tragende Beziehung läuft von Session-Transaktionen zu aktiver Transaktion, Session, Request und datenbankbezogenem Logverbrauch:
+
+```sql
+SELECT
+      [st].[session_id]
+    , [at].[transaction_id]
+    , [at].[transaction_begin_time]
+    , [at].[transaction_type]
+    , [s].[status] AS [SessionStatus]
+    , [r].[request_id]
+    , [dt].[database_id]
+    , [dt].[database_transaction_log_bytes_used]
+FROM [sys].[dm_tran_session_transactions] AS [st] WITH (NOLOCK)
+JOIN [sys].[dm_tran_active_transactions] AS [at] WITH (NOLOCK)
+  ON [at].[transaction_id] = [st].[transaction_id]
+LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+  ON [s].[session_id] = [st].[session_id]
+LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+  ON [r].[session_id] = [st].[session_id]
+LEFT JOIN [sys].[dm_tran_database_transactions] AS [dt] WITH (NOLOCK)
+  ON [dt].[transaction_id] = [at].[transaction_id]
+WHERE [at].[transaction_begin_time] <= DATEADD(SECOND, -@MinAlterSekunden, GETDATE());
+```
+
+**Wichtig für die Eigenlast:** Alter und Session-ID vor SQL-Textauflösung begrenzen. Eine Transaktion kann mehrere Datenbankzeilen besitzen; deshalb erst auf Transaktionsebene filtern und danach Logverbrauch summieren.
+
 ### Zeit- und Scope-Modell
 
 Aktueller offener Zustand; Alter seit Transaktionsbeginn. Logbytes und Locks können während der Abfrage weiter wachsen.

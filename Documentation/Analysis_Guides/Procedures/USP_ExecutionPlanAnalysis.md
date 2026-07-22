@@ -65,6 +65,21 @@ Die Ausführung ist pull-basiert; ein Plan ist keine lineare zeitliche Schrittfo
 
 Direktes Showplan XML oder gezielte Quellen `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml` beziehungsweise `sys.query_store_plan`; optional Evidence JSON. Importierte Histogramm- und Predicate-Mappings passieren vor jeder Ausgabe erneut die öffentliche Privacy-Grenze.
 
+### Source Select
+
+Bei einem gezielten Plan-Handle wird genau dieses Cacheobjekt aufgelöst; der direkte `@PlanXml`-Pfad überspringt die Cachequelle vollständig:
+
+```sql
+SELECT
+      [qp].[query_plan]
+FROM [sys].[dm_exec_query_plan](@PlanHandle) AS [qp]
+WHERE @PlanHandle IS NOT NULL;
+```
+
+Für einen aktuellen tatsächlichen Plan verwendet der alternative Pfad eine exakt bestimmte Session beziehungsweise ein exakt bestimmtes Handle und `sys.dm_exec_query_statistics_xml` oder `sys.dm_exec_query_plan_stats`.
+
+**Wichtig für die Eigenlast:** Genau eine Planquelle bestimmen, bevor XML analysiert wird. `@StatementId`, `@MaxOperatoren`, `@MaxFindings` und `@MaxDurationSeconds` begrenzen die XML-Arbeit; breite Plan-Cache-Suche gehört nicht in diesen Procedurepfad.
+
 ### Zeit- und Scope-Modell
 
 Compile-, Last-Actual-, Current-Actual-, Query-Store- und importierte Evidenz bleiben getrennt. Ein Last-Actual-Plan ist der letzte bekannte Aufruf, nicht zwingend der aktuelle.

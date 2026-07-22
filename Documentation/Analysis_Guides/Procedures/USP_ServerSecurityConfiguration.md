@@ -102,6 +102,31 @@ Server Principals/Roles/Permissions, Authentication, Endpoints, Service Accounts
 
 `sys.configurations`, `sys.dm_server_services`.
 
+### Source Select
+
+Der Konfigurationszweig liest ausschließlich die sicherheitsrelevanten Optionsnamen:
+
+```sql
+SELECT
+      [c].[name]
+    , [c].[value]
+    , [c].[value_in_use]
+    , [c].[is_dynamic]
+FROM [sys].[configurations] AS [c] WITH (NOLOCK)
+WHERE [c].[name] IN
+      (N'show advanced options',
+       N'xp_cmdshell',
+       N'Ole Automation Procedures',
+       N'Ad Hoc Distributed Queries',
+       N'clr enabled',
+       N'clr strict security',
+       N'external scripts enabled',
+       N'remote admin connections',
+       N'contained database authentication');
+```
+
+**Wichtig für die Eigenlast:** Die Quellen sind klein. Dienststatus und Instant File Initialization kommen separat aus `sys.dm_server_services`; die Procedure ändert keine Konfiguration und keine Dienstkonten.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Metadaten-/Konfigurationsstand.

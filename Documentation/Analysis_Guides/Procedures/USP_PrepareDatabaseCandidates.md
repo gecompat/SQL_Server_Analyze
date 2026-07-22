@@ -103,6 +103,27 @@ Die Procedure bildet aus exakten Namen oder Pattern einen stabilen Kandidatensco
 
 `master.sys.databases`, `sys.sp_executesql`.
 
+### Source Select
+
+Der zentrale Kandidatenpfad beginnt direkt im serverweiten Datenbankkatalog:
+
+```sql
+SELECT
+      [d].[database_id]
+    , [d].[name]
+    , [d].[state_desc]
+    , [d].[user_access_desc]
+    , [d].[is_read_only]
+    , [d].[compatibility_level]
+FROM [master].[sys].[databases] AS [d] WITH (NOLOCK)
+WHERE [d].[state] = 0
+  AND [d].[database_id] > 4
+  AND (@DatabaseNamePattern IS NULL
+       OR [d].[name] LIKE @DatabaseNamePattern);
+```
+
+**Wichtig für die Eigenlast:** Exakte Namensliste oder LIKE-Pattern wirken bereits an der Kandidatenquelle. Regex benötigt spätere Auswertung und darf nicht als gleichwertige frühe Quellbegrenzung beschrieben werden.
+
 ### Zeit- und Scope-Modell
 
 Momentaufnahme der Datenbankliste. Zwischen Kandidatenermittlung und späterer dynamischer Abfrage kann eine Datenbank offline gehen, failovern oder gelöscht werden.

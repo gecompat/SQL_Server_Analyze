@@ -151,6 +151,12 @@ TABLE verwendet ausschließlich `@ResultTablesJson`. Exportierbar sind
 
 Frameworkinterne Orchestrierung/Filterlogik; keine eigenständige Systemquelle.
 
+### Source Select
+
+Kein einzelnes Grundselect: Diese Procedure orchestriert `USP_CurrentSessions`, `USP_CurrentRequests`, `USP_CurrentBlocking`, `USP_CurrentWaits`, `USP_CurrentTransactions`, `USP_CurrentMemoryGrants`, `USP_CurrentTempDB`, `USP_CurrentIO` und `USP_CurrentLog`. Die direkten Quellbeziehungen stehen in den jeweiligen Child-Seiten.
+
+**Wichtig für die Eigenlast:** Die Childmodule laufen nacheinander und bilden keinen atomaren Snapshot. `@MitSqlText = 0`, ein endliches `@MaxZeilen` und `@SampleSeconds = 0` halten den Einstieg klein; anschließend nur den auffälligen Childpfad vertiefen.
+
 ### Zeit- und Scope-Modell
 
 Nahe beieinanderliegende, aber nicht atomare Momentaufnahmen; Samplingchildren können den Aufruf verlängern.

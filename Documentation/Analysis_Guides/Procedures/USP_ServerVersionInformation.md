@@ -107,6 +107,32 @@ Die Procedure materialisiert `SERVERPROPERTY` einmal, ergänzt nach Möglichkeit
 
 `SERVERPROPERTY` → `#ServerVersionInformation_ServerVersion` → `monitor.SqlServerBuildCatalog`/`monitor.SqlServerLifecycleCatalog` → benannte Ausgabe. Optional: `master.sys.databases` → `databaseCompatibility`. Die Ausgabe liest keine Primärquelle online.
 
+### Source Select
+
+Die lokale Buildnummer wird mit dem offline versionierten Build- und Lifecyclekatalog verbunden:
+
+```sql
+DECLARE @ProductVersion varchar(32) =
+    CONVERT(varchar(32), SERVERPROPERTY(N'ProductVersion'));
+DECLARE @ProductMajorVersion int =
+    CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
+
+SELECT
+      @ProductVersion AS [ProductVersion]
+    , [b].[ReleaseName]
+    , [b].[ServicingBranch]
+    , [b].[ReleaseDate]
+    , [l].[ProductName]
+    , [l].[MainstreamEndDate]
+    , [l].[ExtendedEndDate]
+FROM [monitor].[SqlServerBuildCatalog] AS [b] WITH (NOLOCK)
+LEFT JOIN [monitor].[SqlServerLifecycleCatalog] AS [l] WITH (NOLOCK)
+  ON [l].[ProductMajorVersion] = @ProductMajorVersion
+WHERE [b].[BuildVersion] = @ProductVersion;
+```
+
+**Wichtig für die Eigenlast:** Exakter Build- und Major-Key machen die Abfrage klein. Es erfolgt kein Onlinezugriff; unbekannte Builds bleiben unbekannt und müssen über die verlinkte Microsoft-Buildübersicht geprüft werden.
+
 ### Zeit- und Scope-Modell
 
 Instanzeigenschaften und Datenbankkatalog sind ein aktueller Aufrufsnapshot; Build- und Lifecyclezeilen besitzen den expliziten Katalogstand 2026-07-21. Ein später veröffentlichter Build erfordert ein Katalogupdate oder den manuellen Abgleich über `references`.

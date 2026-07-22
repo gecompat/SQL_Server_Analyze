@@ -149,6 +149,28 @@ Event XML ist schemaflexibel: Datafelder und Actions hängen vom Event und von d
 7. Regex wirkt nach der Materialisierung. Anschließend werden häufige Data-/Actionknoten für RAW/JSON extrahiert; SourceStatus dokumentiert den Quellenpfad.
 8. CONSOLE und TABLE verwenden die Rohmenge, RAW/JSON die angereicherte Projektion.
 
+### Source Select
+
+Das reduzierte Grundselect zeigt den EVENT_FILE-Pfad mit den kostentragenden Prädikaten:
+
+```sql
+SELECT TOP (@MaxZeilen)
+      [x].[timestamp_utc]
+    , [x].[object_name]
+    , [x].[file_name]
+    , [x].[file_offset]
+    , TRY_CAST([x].[event_data] AS xml) AS [EventXml]
+FROM [sys].[fn_xe_file_target_read_file]
+     (@EventFilePattern, NULL, NULL, NULL) AS [x]
+WHERE [x].[timestamp_utc] >= @VonUtc
+  AND (@EventName IS NULL OR [x].[object_name] = @EventName)
+ORDER BY [x].[timestamp_utc] DESC,
+         [x].[file_name] DESC,
+         [x].[file_offset] DESC;
+```
+
+**Wichtig für die Eigenlast:** Möglichst enger Wildcardpfad, Zeitfenster und Eventname sind wichtiger als `TOP`. XML-Data-/Action-Knoten erst für die materialisierten Kandidaten extrahieren; Regex wirkt später und spart keinen XEL-Lesezugriff.
+
 ### Zeit- und Scope-Modell
 
 Jede Zeile ist ein Einzelereignis mit UTC-Timestamp innerhalb der noch vorhandenen Targetretention. `@VonUtc` ist inklusive, `@BisUtc` exklusiv. Die Historiengrenze wird durch Sessionstart, Eventdefinition, Predicate, Dispatch/Flush, mögliche Drops, Ring-Buffer-Kapazität sowie Filegröße, Rollover und externe Dateiaufbewahrung bestimmt. Es gibt keinen Engine-Restart-unabhängigen Vollständigkeitsanspruch.

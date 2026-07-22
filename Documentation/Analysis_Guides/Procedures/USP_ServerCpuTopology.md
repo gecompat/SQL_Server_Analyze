@@ -102,6 +102,27 @@ SQL Server erstellt SQLOS-Scheduler für sichtbare logische CPUs unter Berücksi
 
 `sys.dm_os_nodes`, `sys.dm_os_schedulers`, `sys.dm_os_sys_info`.
 
+### Source Select
+
+Die momentane Schedulerlast wird nach NUMA-Parent-Node gruppiert und mit dem Nodekatalog verbunden:
+
+```sql
+SELECT
+      [n].[node_id]
+    , [n].[node_state_desc]
+    , COUNT_BIG(*) AS [SchedulerCount]
+    , SUM(CONVERT(bigint, [s].[runnable_tasks_count])) AS [RunnableTasks]
+    , SUM(CONVERT(bigint, [s].[active_workers_count])) AS [ActiveWorkers]
+FROM [sys].[dm_os_nodes] AS [n] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_os_schedulers] AS [s] WITH (NOLOCK)
+  ON [s].[parent_node_id] = [n].[node_id]
+ AND [s].[scheduler_id] < 1048576
+WHERE [n].[node_state_desc] <> N'ONLINE DAC'
+GROUP BY [n].[node_id], [n].[node_state_desc];
+```
+
+**Wichtig für die Eigenlast:** DAC- und interne Scheduler bereits an der Quelle ausschließen. Die DMVs sind klein; Werte sind ein flüchtiger Snapshot und keine CPU-Historie.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Instanz-/Startzustand; Hardwarezuweisung in VM/Container kann sich erst nach Neustart vollständig widerspiegeln.
