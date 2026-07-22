@@ -58,7 +58,6 @@ Eine rein redaktionelle Überarbeitung darf die fachliche Bedeutung nicht verän
 
 Falls eine sprachliche Korrektur einen möglichen fachlichen Widerspruch sichtbar macht, wird der Widerspruch geprüft oder ausdrücklich als offene Unsicherheit festgehalten. Er wird nicht stillschweigend durch eine stilistische Umformulierung entschieden.
 
-
 ## Geschützter Lizenzblock der Root-README
 
 Der am Anfang der Root-`README.md` vorhandene englische und deutsche Lizenzblock ist von stilistischen, redaktionellen und allgemeinen README-Änderungen ausgenommen. Diese Richtlinie erteilt insbesondere keine Berechtigung, Wortlaut, Formatierung, Reihenfolge, Links, Überschriften, Listen, Trennlinien oder Leerzeilen dieses Blocks anzupassen.
