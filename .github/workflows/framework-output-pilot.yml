@@ -9,6 +9,7 @@ on:
       - ready_for_review
     paths:
       - '.github/workflows/framework-output-pilot.yml'
+      - 'Code/Tests/Static/925_Select_CI_Impact.py'
       - 'Code/01_Common/082_TVF_DatabaseCandidates.sql'
       - 'Code/01_Common/083_USP_PrepareDatabaseCandidates.sql'
       - 'Code/01_Common/095_USP_InternalWriteResultTable.sql'
@@ -31,7 +32,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  impact:
+    name: Select framework output impact
+    runs-on: ubuntu-24.04
+    outputs:
+      run_runtime: ${{ steps.select.outputs.run_runtime }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: select
+        name: Select executable SQL impact
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py --self-test
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
+            --repository-root . \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --scope core \
+            --github-output "$GITHUB_OUTPUT"
+
   select-matrix:
+    if: needs.impact.outputs.run_runtime == 'true'
+    needs: impact
     name: Select output pilot matrix
     runs-on: ubuntu-24.04
     outputs:

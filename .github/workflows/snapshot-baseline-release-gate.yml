@@ -4,25 +4,25 @@ on:
   pull_request:
     paths:
       - '.github/workflows/snapshot-baseline-release-gate.yml'
+      - 'Code/Tests/Static/925_Select_CI_Impact.py'
       - 'Code/10_SnapshotBaseline/**'
       - 'Code/Install/Install_SnapshotBaseline_*.sql'
       - 'Code/Install/Build-SnapshotBaselineInstallers.ps1'
       - 'Code/Tests/Integration/*_SnapshotBaseline_*'
       - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
-      - 'Documentation/**'
-      - 'Metadata/**'
+      - 'Metadata/Quality/SnapshotBaseline_Public_Contract.json'
   push:
     branches:
       - main
     paths:
       - '.github/workflows/snapshot-baseline-release-gate.yml'
+      - 'Code/Tests/Static/925_Select_CI_Impact.py'
       - 'Code/10_SnapshotBaseline/**'
       - 'Code/Install/Install_SnapshotBaseline_*.sql'
       - 'Code/Install/Build-SnapshotBaselineInstallers.ps1'
       - 'Code/Tests/Integration/*_SnapshotBaseline_*'
       - 'Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py'
-      - 'Documentation/**'
-      - 'Metadata/**'
+      - 'Metadata/Quality/SnapshotBaseline_Public_Contract.json'
   workflow_dispatch:
 
 permissions:
@@ -33,7 +33,63 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  impact:
+    name: Select snapshot runtime impact
+    runs-on: ubuntu-24.04
+    outputs:
+      run_runtime: ${{ steps.select.outputs.run_runtime }}
+      snapshot_runtime: ${{ steps.select.outputs.snapshot_runtime }}
+      snapshot_concurrency: ${{ steps.select.outputs.snapshot_concurrency }}
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: select
+        name: Select executable snapshot impact
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py --self-test
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
+            --repository-root . \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --scope snapshot \
+            --github-output "$GITHUB_OUTPUT" \
+            --plan-json "$RUNNER_TEMP/ci-impact.json"
+          {
+            echo '## Snapshot impact selection'
+            echo '```json'
+            cat "$RUNNER_TEMP/ci-impact.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  static:
+    name: Validate snapshot static contracts
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate static package contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py --repository-root . --self-test
+          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py --repository-root .
+          pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1 -RepositoryRoot .
+          python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
+
   runtime:
+    if: needs.impact.outputs.run_runtime == 'true'
+    needs:
+      - impact
+      - static
     name: SQL Server ${{ matrix.version }} snapshot baseline
     runs-on: ubuntu-24.04
     timeout-minutes: 35
@@ -60,16 +116,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
-
-      - name: Validate static package contracts
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py --repository-root . --self-test
-          python3 ./Code/Tests/Static/998_Validate_SnapshotBaseline_Public_Contract.py --repository-root .
-          pwsh -NoLogo -NoProfile -File ./Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1 -RepositoryRoot .
-          python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
-          python3 ./Code/Tests/Static/910_Validate_Repository_Privacy.py --repository-root .
+        with:
+          fetch-depth: 0
 
       - name: Prepare isolated SQL files
         shell: bash
@@ -173,6 +221,7 @@ jobs:
           fi
 
       - name: Run snapshot runtime contract
+        if: needs.impact.outputs.snapshot_runtime == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -187,6 +236,7 @@ jobs:
           grep -q 'SC023_RUNTIME_CONTRACT PASS' "$log"
 
       - name: Run two-session concurrency contract
+        if: needs.impact.outputs.snapshot_concurrency == 'true'
         shell: bash
         run: |
           set -euo pipefail

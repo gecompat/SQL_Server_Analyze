@@ -106,6 +106,7 @@ Die maschinenlesbaren Verträge liegen unter `Metadata/Inventory` und `Metadata/
 - [Verbindlicher Schreibstil für Dokumentation](Quality/Documentation_Writing_Style.md)
 - [Bestandsprüfung des Dokumentationsstils](Quality/Documentation_Style_Review.md)
 - [Testmatrix](Quality/Test_Matrix.md)
+- [CI-Impact-Auswahl](Quality/CI_Impact_Selection.md)
 - [Performance- und Risikobewertung](Quality/Performance_and_Risk_Assessment.md)
 - [Bekannte Einschränkungen](Quality/Known_Issues.md)
 - [Release Notes](Quality/Release_Notes.md)
