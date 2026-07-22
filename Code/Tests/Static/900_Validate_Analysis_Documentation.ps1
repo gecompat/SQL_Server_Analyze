@@ -400,8 +400,8 @@ foreach ($row in $reviewRows) {
             }
         }
         'DEEP_REVIEWED' {
-            if ($row.ReviewContractVersion -ne '2') {
-                $errors.Add("DEEP_REVIEWED row must use contract version 2: $procedureName")
+            if ($row.ReviewContractVersion -ne '3') {
+                $errors.Add("DEEP_REVIEWED row must use contract version 3: $procedureName")
             }
             try {
                 [void][datetime]::ParseExact(
@@ -686,8 +686,13 @@ $linkedMarkdownPaths = [System.Collections.Generic.HashSet[string]]::new([System
 $navigationSources = @($allMarkdown) + @(Get-Item -LiteralPath $rootReadmePath)
 foreach ($file in $navigationSources) {
     $text = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8
-    $relativeLinks = [regex]::Matches(
+    $linkScanText = [regex]::Replace(
         $text,
+        '(?ms)^[ \t]*```[^\r\n]*\r?\n.*?^[ \t]*```[ \t]*(?:\r?\n|\z)',
+        ''
+    )
+    $relativeLinks = [regex]::Matches(
+        $linkScanText,
         '\[[^\]]+\]\((?!https?://|mailto:)(?<Target>[^)#]*)(?:#(?<Fragment>[^)]+))?\)'
     )
 
