@@ -42,13 +42,13 @@ Optionen wie Plan-XML, Event-XML, Lockdetails, Histogramme, Segmente, Dictionari
 
 ## 6. Textparameter
 
-Vollständiger SQL-Text, Batchtext und Input Buffer können große und sensible Runtimeinhalte liefern. Sie dürfen zur Diagnose ausgegeben werden, aber niemals als reale Beispiele in Repositorydateien übernommen werden.
+Vollständiger SQL-Text, Batchtext und Input Buffer können große und sensible Laufzeitinhalte liefern. Sie nur für die erforderliche Diagnose anzeigen und nicht ungeprüft exportieren oder weitergeben.
 
 ## 7. Schwellenwerte
 
 Jeden Schwellwert klassifizieren:
 
-1. Repository-Default,
+1. Framework-Default,
 2. Microsoft-dokumentierte Produkteigenschaft,
 3. betriebliche Heuristik,
 4. keine universelle Grenze.

@@ -127,4 +127,4 @@ Nur Fachmodule starten, deren benötigte Quelle nutzbar ist; bei Partialstatus d
 
 - [sys.sp_executesql](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-executesql-transact-sql?view=sql-server-ver17)
 
-[Technische Detailbeschreibung](../01_Common.md#2-monitorusp_checkframeworkcapabilities)
+[Technische Detailbeschreibung](../01_Common.md#3-monitorusp_checkframeworkcapabilities)

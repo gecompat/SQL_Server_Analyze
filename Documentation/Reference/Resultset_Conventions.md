@@ -14,6 +14,10 @@ Wo vorhanden, enthält das erste Resultset insbesondere:
 
 `StatusCode` wird über `monitor.VW_ModuleStatusCatalog` erläutert.
 
+## Analysis Navigator
+
+`monitor.USP_AnalysisNavigator` besitzt genau ein benanntes Fachresultset `navigation`. `RAW` liefert davor den Modulstatus; `CONSOLE` rendert nur die priorisierte Fachansicht; `TABLE` exportiert ausschließlich `navigation`; JSON verwendet `meta` und `navigation`. Das Resultset enthält Katalogempfehlungen, keine ausgeführten Diagnosebefunde. Der vollständige Spalten- und Rankingvertrag steht in der [Navigator-Referenz](Analysis_Navigator.md).
+
 ## Phase 7
 
 Die stabilisierten Phase-7-Einzelmodule liefern Status als erstes Resultset. Für den Orchestrator stehen zusätzlich OUTPUT-Parameter zur Verfügung, damit intern abgefangene Child-Fehler nicht als Erfolg erscheinen.

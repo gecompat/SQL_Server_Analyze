@@ -39,6 +39,18 @@ USP_PrepareNameFilters,ColumnNames,nvarchar(max),NULL
 USP_PrepareNameFilters,StatusCode,varchar(40),OUTPUT
 USP_PrepareNameFilters,ErrorMessage,nvarchar(2048),OUTPUT
 USP_PrepareNameFilters,FilterTable,sysname,N'#PrepareNameFilters_Result'
+USP_AnalysisNavigator,Suchbegriff,nvarchar(4000),NULL
+USP_AnalysisNavigator,Bereich,varchar(40),NULL
+USP_AnalysisNavigator,Scope,varchar(40),NULL
+USP_AnalysisNavigator,Navigationsrolle,varchar(24),NULL
+USP_AnalysisNavigator,NurInstallierte,bit,0
+USP_AnalysisNavigator,MaxZeilen,int,12
+USP_AnalysisNavigator,ResultSetArt,varchar(16),'CONSOLE'
+USP_AnalysisNavigator,ResultTablesJson,nvarchar(max),NULL
+USP_AnalysisNavigator,JsonErzeugen,bit,0
+USP_AnalysisNavigator,Json,nvarchar(max),NULL OUTPUT
+USP_AnalysisNavigator,PrintMeldungen,bit,1
+USP_AnalysisNavigator,Hilfe,bit,0
 USP_CurrentSessions,SessionIds,nvarchar(max),NULL
 USP_CurrentSessions,EigeneSessionsModus,varchar(16),'ALLE'
 USP_CurrentSessions,AktuelleSessionEinbeziehen,bit,0

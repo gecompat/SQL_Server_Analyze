@@ -24,8 +24,9 @@ P2           : Suiten 179 bis 186 prüfen Feature Inventory, In-Memory OLTP,
                und Maintenance capability-adaptiv und ohne reale Nutzdaten.
 OUTPUT       : Suiten 187 bis 190 prüfen Strukturadaption, Pilotvertrag, den
                frameworkweiten CONSOLE-/TABLE-Vertrag sowie die Welle-1-
-               Verträge. Suite 191 ergänzt die Welle-2-Betriebsdiagnosen.
-               Suiten 190 und 191 sind Begleittests der Suite 26; die
+               Verträge. Suite 191 ergänzt die Welle-2-Betriebsdiagnosen;
+               Suite 196 prüft den Analysis Navigator.
+               Suiten 190, 191 und 196 sind Begleittests der Suite 26; die
                kanonische Anzahl der Release-Suiten bleibt deshalb 34.
 ===============================================================================
 */
@@ -109,6 +110,7 @@ RAISERROR(N'RELEASE_GATE 26/34: Frameworkweiter Ausgabevertrag',10,1) WITH NOWAI
 :r Integration/189_Framework_Output_Runtime_Contract.sql
 :r Integration/190_Wave1_Output_Xml_Version_Runtime_Contract.sql
 :r Integration/191_Wave2_Operational_Diagnostics_Runtime_Contract.sql
+:r Integration/196_Analysis_Navigator_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 27/34: Common',10,1) WITH NOWAIT;
 :r Common/090_Test_und_Abnahme_Phase1A.sql

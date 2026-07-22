@@ -4,8 +4,10 @@ on:
   pull_request:
     paths:
       - '.github/workflows/documentation-validation.yml'
+      - 'README.md'
       - 'Code/**/*.sql'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
+      - 'Code/Tests/Static/905_Validate_Analysis_Navigator.py'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
       - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
       - 'Code/Tests/Static/950_Validate_Nonblocking_Metadata.py'
@@ -20,6 +22,7 @@ on:
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
+      - 'AI_Metadata/Internal_Documentation/**/*.md'
       - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
@@ -35,8 +38,10 @@ on:
       - main
     paths:
       - '.github/workflows/documentation-validation.yml'
+      - 'README.md'
       - 'Code/**/*.sql'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
+      - 'Code/Tests/Static/905_Validate_Analysis_Navigator.py'
       - 'Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py'
       - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
       - 'Code/Tests/Static/950_Validate_Nonblocking_Metadata.py'
@@ -51,6 +56,7 @@ on:
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
+      - 'AI_Metadata/Internal_Documentation/**/*.md'
       - 'Metadata/Inventory/*.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
       - 'Metadata/Quality/Analysis_Documentation_Review.csv'
@@ -89,6 +95,16 @@ jobs:
             --repository-root . \
             --self-test
           python3 ./Code/Tests/Static/920_Validate_SQL_Server_2025_Regex.py \
+            --repository-root .
+
+      - name: Validate Analysis Navigator contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/905_Validate_Analysis_Navigator.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/905_Validate_Analysis_Navigator.py \
             --repository-root .
 
       - name: Validate Wait Type catalog curation

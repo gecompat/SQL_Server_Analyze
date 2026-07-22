@@ -83,7 +83,7 @@ Ein einfaches synthetisches Modell:
 | `ExampleDomain\SqlMonitorForensics` | Forensik- und Eventdateipfade |
 | `ExampleDomain\SqlMonitorAdmins` | bewusstes `*`-Fallback |
 
-Repositorybeispiele verwenden ausschließlich synthetische Namen. Reale Domain- und Gruppennamen dürfen nur lokal gepflegt und niemals committed oder als Downloadartefakt verpackt werden.
+Beispiele verwenden ausschließlich synthetische Namen. Reale Domain- und Gruppennamen dürfen nur in der kontrollierten Laufzeitkonfiguration gepflegt und nicht ungeprüft exportiert oder weitergegeben werden.
 
 ## 6. Policy pflegen
 
@@ -163,7 +163,7 @@ Nur Dokumentations- und Sortierwert. Es existiert keine Deny-overrides-Allow- od
 
 ### `Comment`
 
-Lokaler Zweckhinweis. Keine realen personenbezogenen, kundenbezogenen oder internen Informationen in Repositoryartefakte übernehmen.
+Lokaler Zweckhinweis. Keine realen personenbezogenen, kundenbezogenen oder internen Informationen in freigegebene Beispiele oder ungeschützte Exporte übernehmen.
 
 ## 8. Ressourcenschutz prüfen
 
@@ -242,7 +242,7 @@ WHERE [type] = N'WINDOWS GROUP'
 ORDER BY [name];
 ```
 
-Diese lokale Runtimeausgabe kann reale Gruppenwerte enthalten und darf nicht in Repository-, Issue- oder Downloadartefakte übernommen werden.
+Diese lokale Laufzeitausgabe kann reale Gruppenwerte enthalten und darf nur kontrolliert gespeichert oder weitergegeben werden.
 
 ## 11. Zur offenen Policy zurückkehren
 
@@ -292,7 +292,7 @@ GO
 - [ ] Gruppenänderungen wurden mit neuer Anmeldung getestet.
 - [ ] `DENIED_GROUP` und `DENIED_PERMISSION` sind getrennt nachvollziehbar.
 - [ ] Freigegebene Deep-Aufrufe behalten Zeilen-, Datenbank- und Zeitlimits.
-- [ ] Keine realen Gruppen- oder Laufzeitdaten wurden committed oder archiviert.
+- [ ] Keine realen Gruppen- oder Laufzeitdaten wurden unkontrolliert exportiert oder archiviert.
 
 ## 13. Weiterführende Dokumente
 

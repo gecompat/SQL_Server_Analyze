@@ -1,12 +1,16 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-07-21 — 93 Procedures
+Stand: 2026-07-21 — 94 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
 ## Querschnittsbeispiele
 
 ```sql
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Suchbegriff = N'Benutzer warten'
+    , @MaxZeilen = 8;
+
 DECLARE @Json nvarchar(max);
 EXEC [monitor].[USP_DiagnosticFindings]
       @DatabaseNames = N''
@@ -55,6 +59,12 @@ EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_AgentStatus] @Hilfe = 1;
+```
+
+## `[monitor].[USP_AnalysisNavigator]`
+
+```sql
+EXEC [monitor].[USP_AnalysisNavigator] @Hilfe = 1;
 ```
 
 ## `[monitor].[USP_AvailabilityDeepAnalysis]`

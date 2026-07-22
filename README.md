@@ -66,8 +66,8 @@ Berechtigungsprüfung steht unter
 
 ### Alternative: SQLCMD-Installer
 
-Der Include-Weg über `Code/Install/Install_All.sql` bleibt für Entwicklungs- und
-Automatisierungsabläufe verfügbar. Dafür muss der Datenbankplatzhalter in allen
+Der Include-Weg über `Code/Install/Install_All.sql` bleibt für automatisierte
+Installationsabläufe verfügbar. Dafür muss der Datenbankplatzhalter in allen
 eingebundenen Dateien ersetzt und in SSMS der SQLCMD-Modus aktiviert werden.
 
 ## Erste Aufrufe
@@ -75,6 +75,9 @@ eingebundenen Dateien ersetzt und in SSMS der SQLCMD-Modus aktiviert werden.
 Die Beispielaufrufe verwenden absichtlich keine Datenbankqualifizierung:
 
 ```sql
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Suchbegriff = N'Benutzer warten';
+
 EXEC [monitor].[USP_CurrentOverview];
 
 EXEC [monitor].[USP_CurrentRequests]
@@ -178,26 +181,20 @@ Code/
 Documentation/
 ├── Architecture/
 ├── Analysis_Guides/
-├── Development/
 ├── Operations/
 ├── Quality/
-├── Reference/
-├── Requirements/
-└── Research/
+└── Reference/
 
 Metadata/
 ├── Inventory/
 └── Quality/
-
-AI_Metadata/
 ```
 
 ### Bedeutung
 
 - `Code/` enthält die kanonischen, ausführbaren SQL-Objekte, Installer, Tests und Beispiele.
-- `Documentation/` beschreibt Zielbild, Architektur, Funktionsumfang, Verträge, Rechercheergebnisse und Betrieb.
+- `Documentation/` beschreibt Einstieg, Architektur, Funktionsumfang, Verträge, Betrieb und vollständige Komponentenreferenz.
 - `Metadata/` enthält maschinenlesbare Objekt-, Parameter-, Systemquellen-, Abhängigkeits- und Capability-Inventare sowie Prüfergebnisse.
-- `AI_Metadata/` enthält den kompakten Projektkontext für eine konsistente KI-gestützte Weiterentwicklung.
 
 ## Performance- und Sicherheitsprinzipien
 
@@ -207,16 +204,17 @@ AI_Metadata/
 - fehlende optionale Quellen führen nach Möglichkeit zu strukturierten Teil- oder Verfügbarkeitsstatus statt zum Gesamtabbruch
 - versionsabhängige Syntax wird erst nach Featureprüfung verwendet
 - dynamisches SQL verwendet validierte Identifier und `QUOTENAME`
-- das Datenschutz-Liefergate gilt ausschließlich für Repository-, GitHub- und Downloadartefakte; es verändert oder anonymisiert keine Resultsets oder OUTPUT-Parameter
-- reale personen-, firmen-, kunden-, organisations-, betriebs- oder umgebungsbezogene Informationen und proprietäre interne Strukturen dürfen niemals in Code, Kommentare, Dokumentation, Tests, Audits oder Downloads übernommen werden; im Zweifel wird vor dem Schreiben nachgefragt
+- Resultsets werden nicht automatisch anonymisiert; SQL-Text, Namen, Clientkontext, Pläne, Ereignisse und Histogrammwerte können schutzbedürftige Laufzeitinformationen enthalten
+- optionale Text-, XML-, Ereignis-, JSON-, TABLE- und Persistenzpfade werden nur im erforderlichen Scope verwendet und unterliegen den dokumentierten Aufbewahrungs- und Zugriffsvorgaben
 
 ## Dokumentation
 
-Empfohlene Einstiegspunkte. Der aktuelle Inventory-Vertrag umfasst 93 öffentliche Procedures und 64 unterstützende Objekte; jede unterstützende View, TVF, interne Procedure und Tabelle besitzt einen eigenen Detailabschnitt. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+Der aktuelle Inventory-Vertrag umfasst 94 öffentliche Procedures und 67 unterstützende Objekte: acht Views, 27 TVFs, 15 interne Procedures und 17 Tabellen. Jedes der insgesamt 161 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
 
-
+- [Hier beginnen: passende Analyse finden](./Documentation/Analysis_Guides/Start_Here.md)
+- [Analysis Navigator – vollständiger Vertrag](./Documentation/Reference/Analysis_Navigator.md)
 - [Projektübersicht](./Documentation/README.md)
-- [Anforderungen und Entscheidungen](./Documentation/Requirements/Requirements_and_Decisions.md)
+- [Analysehandbuch](./Documentation/Analysis_Guides/README.md)
 - [Installation](./Documentation/Reference/Installation.md)
 - [Procedure-Referenz](./Documentation/Reference/Procedure_Reference.md)
 - [Detaillierte Referenz aller unterstützenden Frameworkobjekte](./Documentation/Reference/Object_Reference.md)
@@ -224,20 +222,16 @@ Empfohlene Einstiegspunkte. Der aktuelle Inventory-Vertrag umfasst 93 öffentlic
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
-- [Datenschutz- und Sicherheitsvertrag für Repositoryartefakte](./Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md)
+- [Datenschutz und Laufzeitausgaben](./Documentation/Architecture/Runtime_Data_Privacy.md)
 - [Vertrag und Betrieb des optionalen Snapshot-/Baseline-Pakets](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) ([Betriebsleitfaden](./Documentation/Operations/Snapshot_Baseline_Operations.md))
-- [Schnittstellenvertrag für eine spätere Fleet-Korrelation](./Documentation/Architecture/Fleet_Correlation_Contract.md)
-- [Externer Restore- und Hostnachweis](./Documentation/Quality/External_Restore_Host_Proof_Runbook.md)
-- [Kontextabhängiger Commit-Message-Vertrag](./Documentation/Quality/Commit_Message_Validation.md)
-- [Nächste Arbeitsschritte](./Documentation/Quality/Next_Steps.md)
-- [Bekannte Restpunkte](./Documentation/Quality/Known_Issues.md)
-- [Tiefenanalyse fehlender Auswertungen und Spezialfälle](./Documentation/Research/Special_Case_Gap_Analysis.md)
-- [Systemquellenkatalog](./Documentation/Research/System_Source_Catalog.md)
-- [Recherchequellen](./Documentation/Research/Sources.md)
+- [Bekannte Einschränkungen](./Documentation/Quality/Known_Issues.md)
+- [Performance- und Risikobewertung](./Documentation/Quality/Performance_and_Risk_Assessment.md)
+- [Testmatrix und unterstützte Nachweise](./Documentation/Quality/Test_Matrix.md)
+- [Release Notes](./Documentation/Quality/Release_Notes.md)
 
 ## Qualität und Projektstatus
 
-Der Repositorybestand enthält reproduzierbare statische API-, Installer- und Dokumentationsprüfungen sowie dokumentierte Datenschutz- und Migrationsaudits. Der historische Migrationsaudit steht unter [`Metadata/Quality/Migration_Audit.json`](./Metadata/Quality/Migration_Audit.json); der Audit der Spezialfallwelle unter [`Metadata/Quality/Special_Case_Release_Audit.json`](./Metadata/Quality/Special_Case_Release_Audit.json). Das unter [`Documentation/Quality/Repository_Privacy_Validation.md`](./Documentation/Quality/Repository_Privacy_Validation.md) beschriebene Repository- und ZIP-Datenschutzgate prüft versionierte Dateien und den vollständigen ZIP-Lieferumfang automatisiert, ohne Laufzeit-Resultsets zu verändern.
+Der veröffentlichte Bestand besitzt reproduzierbare statische API-, Installer-, Inventar- und Dokumentationsprüfungen. Die fachlichen Laufzeitnachweise und unterstützten Kombinationen stehen in der [Testmatrix](./Documentation/Quality/Test_Matrix.md); `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 
 Der frameworkweite Ausgabe-Vertrag 2.0 verarbeitet ohne expliziten Filter alle
 sichtbaren Online-Benutzerdatenbanken, fordert eine Bestätigung nur für den
@@ -245,6 +239,4 @@ tatsächlich aktivierten High-Impact-Pfad und verwendet für TABLE ausschließli
 `@ResultTablesJson`. Das Resultsetinventar dokumentiert stabile Namen und native
 Schemas; alle Exportziele stammen aus derselben Aufrufmaterialisierung.
 
-Die geplanten SQL-Server-, Editions-, Plattform- und Berechtigungskombinationen stehen in [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv). `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
-
-Die kanonischen Einzeldateien sind die maßgebliche Quelle. Generierte Installer dürfen nicht manuell gepflegt werden.
+Die maschinenlesbare Matrix steht ergänzend unter [`Metadata/Quality/Test_Matrix.csv`](./Metadata/Quality/Test_Matrix.csv).

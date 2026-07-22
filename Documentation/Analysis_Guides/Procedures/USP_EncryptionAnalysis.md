@@ -120,7 +120,7 @@ Encryption State, Percent Complete, Algorithm/Key Length, Encryptor Type, Certif
 
 ### Folgeanalyse
 
-Certificate-/Key-Backupinventar außerhalb Repository, echter Restoretest und Securitypolicy.
+Certificate-/Key-Backupinventar in einem geschützten Zielsystem, echter Restoretest und Securitypolicy.
 
 ## Primärquellen
 

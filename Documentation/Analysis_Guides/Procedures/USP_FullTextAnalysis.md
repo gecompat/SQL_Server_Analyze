@@ -61,7 +61,7 @@ Insbesondere sind kleine Nenner, geplante Betriebsphasen, einmalige Wartung und 
 
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall (`Example*`):** Eine Population über dem Altersgrenzwert mit weiter steigendem Fortschritt ist eher ein Kapazitäts- als ein Stillstandsfall. Erst bei wiederholt fehlendem Fortschritt zusätzlich Batches, I/O, Log und geschützte Full-Text-/Crawl-Logs in der Laufzeitumgebung korrelieren. Reale Logdaten oder interne Strukturen nicht in Repositoryartefakte übernehmen.
+**Synthetischer Problemfall (`Example*`):** Eine Population über dem Altersgrenzwert mit weiter steigendem Fortschritt ist eher ein Kapazitäts- als ein Stillstandsfall. Erst bei wiederholt fehlendem Fortschritt zusätzlich Batches, I/O, Log und geschützte Full-Text-/Crawl-Logs in der Laufzeitumgebung korrelieren. Reale Logdaten oder interne Strukturen nur kontrolliert speichern und weitergeben.
 
 **Ähnlich aussehender Gegenfall:** `MANUAL` oder `OFF` beim Change Tracking kann bewusst gewählt sein. Ein initialer Full Crawl kann durch `NO POPULATION` absichtlich ausstehen. Population-, Batch- und FDHost-DMVs sind Momentaufnahmen; Status 7 kann während eines automatischen Merge auftreten. Es existiert kein universeller Fragment- oder Laufzeitgrenzwert. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
 

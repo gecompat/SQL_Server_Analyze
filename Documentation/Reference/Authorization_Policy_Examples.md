@@ -2,7 +2,7 @@
 
 **Stand:** 18. Juli 2026
 
-Alle Bezeichnungen sind synthetisch. Reale Domain-, Gruppen-, Login-, Server-, Datenbank- oder Unternehmenswerte gehören nicht in Repositoryartefakte.
+Alle Bezeichnungen sind synthetisch. Reale Domain-, Gruppen-, Login-, Server-, Datenbank- oder Unternehmenswerte nur in der geschützten lokalen Konfiguration verwenden.
 
 ## 1. Offener Auslieferungszustand
 

@@ -231,7 +231,7 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 - Keine automatische Rechte- oder Gruppenvergabe.
 - Keine Persistenz von Gruppenmitgliedschaften.
 - Keine Abfrage beliebiger Verzeichnisdienste.
-- Reale Domain-, Gruppen-, Login- oder Umgebungswerte niemals in Repositoryartefakte übernehmen.
+- Beispiele und freigegebene Auszüge ausschließlich mit synthetischen Domain-, Gruppen-, Login- und Umgebungswerten verwenden.
 
 ## 12. Weiterführende Dokumente
 
@@ -239,5 +239,4 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 - [Fehlersuche](../Operations/Authorization_Troubleshooting.md)
 - [Policy-Beispiele](../Reference/Authorization_Policy_Examples.md)
 - [Status- und AccessReason-Referenz](../Reference/Authorization_Status_and_Access_Reasons.md)
-- [Integration neuer Module](../Development/Integrating_New_Module_Authorization.md)
 - [Beispielaufrufe](../../Code/Examples/050_Authorization_Examples.sql)

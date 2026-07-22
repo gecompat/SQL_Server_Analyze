@@ -125,4 +125,4 @@ Warnings und OUTPUT-Status zusammen mit jedem Cross-Database-Resultset lesen.
 
 - [sys.databases](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-databases-transact-sql?view=sql-server-ver17)
 
-[Technische Detailbeschreibung](../01_Common.md#3-monitorusp_preparedatabasecandidates)
+[Technische Detailbeschreibung](../01_Common.md#4-monitorusp_preparedatabasecandidates)
