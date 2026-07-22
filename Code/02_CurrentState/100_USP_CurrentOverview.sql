@@ -280,7 +280,7 @@ BEGIN
         , [blocking_task_address] varbinary(8) NULL
         , [blocking_session_id] smallint NULL
         , [blocking_exec_context_id] int NULL
-        , [resource_description] nvarchar(3072) NOT NULL
+        , [resource_description] nvarchar(3072) NULL
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_MemoryGrants]
     (
