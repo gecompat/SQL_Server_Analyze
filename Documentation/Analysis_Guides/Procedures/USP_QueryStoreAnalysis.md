@@ -101,7 +101,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie orchestriert Status, Runtime Stats, Wait Stats, Planwechsel, Regressionen, Forced Plans, Hints und optional IQP-Details. Alle Childmodule lesen die ausgewählte Datenbank separat.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert Status, Runtime Stats, Wait Stats, Planwechsel, Regressionen, Forced Plans, Hints und optional IQP-Details. Alle Childmodule lesen die ausgewählte Datenbank separat.
 
 **Wichtig für die Eigenlast:** Legen Sie Datenbank, Zeitfenster und benötigte Childmodule vor jeder Query-Store-Abfrage fest. Ein finales Ergebnislimit verhindert weder Interval-/Runtime-Joins noch Plan-XML-Auflösung in den Childpfaden.
 

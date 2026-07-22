@@ -98,7 +98,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie orchestriert je nach Schalter `USP_ObjectInventory`, `USP_IndexUsage`, `USP_MissingIndexes`, `USP_IndexOperationalStats`, `USP_Statistics`, `USP_StatisticsDistributionAnalysis`, `USP_Partitions`, `USP_Columnstore`, `USP_IndexPhysicalStats` und `USP_SchemaDesignAnalysis`.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert je nach Schalter `USP_ObjectInventory`, `USP_IndexUsage`, `USP_MissingIndexes`, `USP_IndexOperationalStats`, `USP_Statistics`, `USP_StatisticsDistributionAnalysis`, `USP_Partitions`, `USP_Columnstore`, `USP_IndexPhysicalStats` und `USP_SchemaDesignAnalysis`.
 
 **Wichtig für die Eigenlast:** Reichen Sie Datenbank und vollständigen Objektnamen an alle Childmodule weiter und aktivieren Sie nur benötigte Tiefenpfade. Das abschließende Zeilenlimit ersetzt weder den DMF-Objektparameter noch den frühen Katalogscope.
 

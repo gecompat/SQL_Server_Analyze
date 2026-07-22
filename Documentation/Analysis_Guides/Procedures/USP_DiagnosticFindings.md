@@ -91,7 +91,7 @@ Aggregator ruft Children über definierte JSON-/RAW-Verträge auf und normalisie
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie ruft die ausgewählten Diagnosemodule auf, übernimmt deren strukturierte Ergebnisse und normalisiert sie zu Findings. Direkte Quellen liegen unter anderem in `USP_DatabaseIntegrityAnalysis`, `USP_DatabaseCapacityAnalysis`, `USP_BufferPoolAnalysis`, `USP_BackupChainAnalysis`, `USP_AvailabilityDeepAnalysis`, `USP_AgentMonitoringAnalysis`, `USP_SchemaDesignAnalysis`, `USP_StatisticsDistributionAnalysis`, `USP_IntelligentQueryProcessingAnalysis` und `USP_InternalContentionAnalysis`.
+Kein einzelnes Grundselect wird verwendet. Die Procedure ruft die ausgewählten Diagnosemodule auf, übernimmt deren strukturierte Ergebnisse und normalisiert sie zu Findings. Direkte Quellen liegen unter anderem in `USP_DatabaseIntegrityAnalysis`, `USP_DatabaseCapacityAnalysis`, `USP_BufferPoolAnalysis`, `USP_BackupChainAnalysis`, `USP_AvailabilityDeepAnalysis`, `USP_AgentMonitoringAnalysis`, `USP_SchemaDesignAnalysis`, `USP_StatisticsDistributionAnalysis`, `USP_IntelligentQueryProcessingAnalysis` und `USP_InternalContentionAnalysis`.
 
 **Wichtig für die Eigenlast:** Aktivieren Sie nur benötigte Finding-Gruppen und reichen Sie den Datenbankscope früh weiter. Das spätere `@MaxZeilen` begrenzt die Findingausgabe, nicht automatisch die Quellarbeit jedes Childmoduls.
 

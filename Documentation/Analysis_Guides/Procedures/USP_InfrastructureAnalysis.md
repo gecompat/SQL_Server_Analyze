@@ -92,7 +92,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie orchestriert Agent-, Resource-Governor-, Availability-, Backup-, Log-Shipping-, Replication- und Data-Capture-Module. Die direkten Beziehungen stehen auf den jeweiligen Child-Seiten.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert Agent-, Resource-Governor-, Availability-, Backup-, Log-Shipping-, Replication- und Data-Capture-Module. Die direkten Beziehungen stehen auf den jeweiligen Child-Seiten.
 
 **Wichtig für die Eigenlast:** Aktivieren Sie nur die für das Symptom benötigten Module. Reichen Sie Datenbank- und Zeitfilter an History-Childmodule weiter; ein finales Zeilenlimit spart deren `msdb`-, Distribution- oder HADR-Quellarbeit nicht.
 

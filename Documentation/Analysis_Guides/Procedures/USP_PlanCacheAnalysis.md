@@ -95,7 +95,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie liest `sys.dm_exec_query_stats` einmal in einen lauflokalen Snapshot und übergibt diesen an `USP_QueryStats`, `USP_QueryHashAnalysis`, `USP_PlanCacheHealth` und optional `USP_ShowplanAnalysis`.
+Kein einzelnes Grundselect wird verwendet. Die Procedure liest `sys.dm_exec_query_stats` einmal in einen lauflokalen Snapshot und übergibt diesen an `USP_QueryStats`, `USP_QueryHashAnalysis`, `USP_PlanCacheHealth` und optional `USP_ShowplanAnalysis`.
 
 **Wichtig für die Eigenlast:** Query Hash, Handle, Zeit und Analysemodus vor Showplan-XML eingrenzen. Die zentrale Einmalkopie verhindert wiederholte Query-Stats-Scans; breite XML-Analyse bleibt ein separater High-Impact-Pfad.
 

@@ -93,7 +93,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie orchestriert `USP_ExtendedEventsSessions`, `USP_ExtendedEventsTargetRuntime`, `USP_ExtendedEventsReadEvents`, `USP_ExtendedEventsDeadlocks` und `USP_ExtendedEventsBlockedProcesses`. Katalog-, Runtime-, Datei- und XML-Quellen bleiben bewusst getrennte Childpfade.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert `USP_ExtendedEventsSessions`, `USP_ExtendedEventsTargetRuntime`, `USP_ExtendedEventsReadEvents`, `USP_ExtendedEventsDeadlocks` und `USP_ExtendedEventsBlockedProcesses`. Katalog-, Runtime-, Datei- und XML-Quellen bleiben bewusst getrennte Childpfade.
 
 **Wichtig für die Eigenlast:** Berücksichtigen Sie zuerst nur das Sessioninventar. Aktivieren Sie Targetdaten, XEL-Dateien und XML-Forensik gezielt je Session und Zeitfenster; ein spätes Ergebnislimit ersetzt diese Quellbegrenzung nicht.
 

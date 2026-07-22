@@ -91,7 +91,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie orchestriert CPU-, NUMA-, Memory-, TempDB-, Konfigurations-, Trace-Flag-, Startup-, OS-, Security-, Integrity-, Capacity-, Counter-, Engine-Event-, Contention-, Buffer-Pool-, Finding- und Worker-Pressure-Module.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert CPU-, NUMA-, Memory-, TempDB-, Konfigurations-, Trace-Flag-, Startup-, OS-, Security-, Integrity-, Capacity-, Counter-, Engine-Event-, Contention-, Buffer-Pool-, Finding- und Worker-Pressure-Module.
 
 **Wichtig für die Eigenlast:** Verwenden Sie zuerst die leichten Server-Snapshots und aktivieren Sie optionale Historien-, XEL-, Buffer-Descriptor- oder datenbankübergreifende Module gezielt. Childstatus und Scope bleiben getrennt; ein finales Zeilenlimit spart deren Quellarbeit nicht.
 

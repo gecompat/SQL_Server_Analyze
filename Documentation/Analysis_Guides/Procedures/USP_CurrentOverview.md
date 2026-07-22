@@ -137,7 +137,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung und Filterlogik; die
 
 ### Source Select
 
-Die Procedure besitzt kein einzelnes Grundselect. Sie orchestriert `USP_CurrentSessions`, `USP_CurrentRequests`, `USP_CurrentBlocking`, `USP_CurrentWaits`, `USP_CurrentTransactions`, `USP_CurrentMemoryGrants`, `USP_CurrentTempDB`, `USP_CurrentIO` und `USP_CurrentLog`. Die direkten Quellbeziehungen stehen in den jeweiligen Child-Seiten.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert `USP_CurrentSessions`, `USP_CurrentRequests`, `USP_CurrentBlocking`, `USP_CurrentWaits`, `USP_CurrentTransactions`, `USP_CurrentMemoryGrants`, `USP_CurrentTempDB`, `USP_CurrentIO` und `USP_CurrentLog`. Die direkten Quellbeziehungen stehen in den jeweiligen Child-Seiten.
 
 **Wichtig für die Eigenlast:** Die Childmodule laufen nacheinander und bilden keinen atomaren Snapshot. `@MitSqlText = 0`, ein endliches `@MaxZeilen` und `@SampleSeconds = 0` halten den Einstieg klein. Vertiefen Sie anschließend nur den auffälligen Childpfad.
 
