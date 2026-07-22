@@ -1,7 +1,7 @@
 # Kontextabhängiger Commit-Message-Vertrag
 
 **Stand:** 21. Juli 2026
-**Anforderung:** `Documentation/Requirements/Requirements_and_Decisions.md`, Abschnitt 8
+**Anforderung:** `AI_Metadata/Internal_Documentation/Requirements/Requirements_and_Decisions.md`, Abschnitt 8
 **Prüfskript:** `Code/Tests/Static/930_Validate_Commit_Message.py`
 **Workflow:** `.github/workflows/commit-message-validation.yml`
 **Status:** IMPLEMENTED_AUTOMATED_GATE

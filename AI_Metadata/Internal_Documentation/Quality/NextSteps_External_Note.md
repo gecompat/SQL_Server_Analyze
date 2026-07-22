@@ -135,7 +135,7 @@ Empfohlene Reihenfolge:
 4. **`OPS-004` Errorlog-Analyse**
    Erst nach `OUT-001`, weil Meldungstexte groß sein können und der Default keinen vollständigen Meldungstext liefern soll.
 
-Die detaillierten False-Positive-Grenzen stehen im [Operational Diagnostic Gap Backlog](https://github.com/gecompat/SQL_Server_Analyze/blob/main/Documentation/Architecture/Operational_Diagnostic_Gap_Backlog.md).
+Die detaillierten False-Positive-Grenzen stehen im [Operational Diagnostic Gap Backlog](../Architecture/Operational_Diagnostic_Gap_Backlog.md).
 
 ## 6. Welle 3 – SC-023 als kleiner vertikaler Slice
 

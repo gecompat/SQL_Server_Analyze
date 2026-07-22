@@ -2,6 +2,17 @@ USE [DeineDatenbank];
 GO
 
 -- Hilfe
+EXEC [monitor].[USP_AnalysisNavigator] @Hilfe=1;
+-- Geeignete Analyse nach Symptom finden; führt keinen Treffer aus
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Suchbegriff=N'Benutzer warten'
+    , @MaxZeilen=8
+    , @ResultSetArt='CONSOLE';
+-- Priorisierte sichere Einstiege ohne Suchbegriff
+EXEC [monitor].[USP_AnalysisNavigator]
+      @NurInstallierte=1
+    , @ResultSetArt='CONSOLE';
+
 EXEC [monitor].[USP_CurrentOverview] @Hilfe=1;
 -- Aktuelle Übersicht, Console
 EXEC [monitor].[USP_CurrentOverview] @MaxZeilen=100,@ResultSetArt='console';

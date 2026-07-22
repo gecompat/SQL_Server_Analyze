@@ -1,16 +1,17 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 21. Juli 2026
-**Abdeckung:** alle 93 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Abdeckung:** alle 94 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
-Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientierten Runbooks](Runbooks/README.md). Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [detaillierte Referenz der unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) führt jede installierte View, TVF, interne Procedure und Tabelle einzeln auf und beschreibt Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten sowie Stabilitätsgrenze. Scalar-Valued Functions (SVFs) sind im aktuellen Inventory nicht vorhanden.
+Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Start_Here.md) oder den installierten `USP_AnalysisNavigator`. Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [detaillierte Referenz der 67 unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) führt jede View, TVF, interne Procedure und Tabelle einzeln auf und beschreibt Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten sowie Stabilitätsgrenze. Scalar-Valued Functions (SVFs) sind im aktuellen Inventory nicht vorhanden.
 
 ## Common
 
 | Objekt | Eigenständige Beschreibung |
 |---|---|
+| `[monitor].[USP_AnalysisNavigator]` | [Symptom-, Ziel- und metadatenorientierte Auswahl](Procedures/USP_AnalysisNavigator.md) |
 | `[monitor].[USP_CheckAnalyseAccess]` | [Policy, Gruppenmatch und technische Abgrenzung](Procedures/USP_CheckAnalyseAccess.md) |
 | `[monitor].[USP_CheckFrameworkCapabilities]` | [Version, Rechte, Abfragbarkeit und Featurestatus](Procedures/USP_CheckFrameworkCapabilities.md) |
 | `[monitor].[USP_PrepareDatabaseCandidates]` | [Interner Datenbank-Auswahlvertrag](Procedures/USP_PrepareDatabaseCandidates.md) |
@@ -155,7 +156,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 
 | Bereich | Anzahl |
 |---|---:|
-| Common | 4 |
+| Common | 5 |
 | Current State | 11 |
 | Object und Index | 11 |
 | Plan Cache und Showplan | 8 |
@@ -165,11 +166,13 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie die [symptomorientie
 | Server Health | 19 |
 | Versionsadaptive Spezialanalysen | 9 |
 | Snapshot und Baseline | 3 |
-| **Gesamt** | **93** |
+| **Gesamt** | **94** |
 
 ## Weitere Einstiege
 
 - [Runbooks](Runbooks/README.md)
+- [Hier beginnen](Start_Here.md)
+- [Analysis-Navigator-Vertrag](../Reference/Analysis_Navigator.md)
 - [Glossar](Glossary.md)
 - [Parameter-Lesehilfe](Parameter_Reading_Guide.md)
 - [Gemeinsame Verträge](Common_Contracts.md)

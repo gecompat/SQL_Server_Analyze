@@ -95,7 +95,7 @@ Eine leere CDC-Scan-DMV kann nach Neustart/Failover oder auf einer AG-Sekundärr
 
 ## Eigenlast und Grenzen
 
-MEDIUM: sichtbare Kataloge, kleine CDC-DMVs, msdb-Jobmetadaten und aggregierte lokale Distributionstabellen. Das Modul liest keine `CHANGETABLE`-Ergebnisse, CDC-Change-Table-Zeilen, Replikationscommands, Kommentare, Fehlertexte, LSNs, Credentials oder Agentjob-Commands. Runtime-Namen bleiben für die Diagnose vollständig sichtbar, dürfen aber nicht in Repository- oder Downloadartefakte übernommen werden.
+MEDIUM: sichtbare Kataloge, kleine CDC-DMVs, msdb-Jobmetadaten und aggregierte lokale Distributionstabellen. Das Modul liest keine `CHANGETABLE`-Ergebnisse, CDC-Change-Table-Zeilen, Replikationscommands, Kommentare, Fehlertexte, LSNs, Credentials oder Agentjob-Commands. Laufzeitnamen bleiben für die Diagnose vollständig sichtbar und sind bei Export oder Weitergabe zu schützen.
 
 Kostenklassen sind qualitative Betriebsrisiken, keine Laufzeitgarantie. Entscheidend ist, ob Filter vor dem teuren Zugriff oder erst nach Materialisierung, XML-Parsing, Aggregation und Sortierung wirken.
 

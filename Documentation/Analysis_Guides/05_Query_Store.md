@@ -77,7 +77,7 @@ EXEC [monitor].[USP_QueryStoreStatus]
 |---|---|
 | Desired/Actual `READ_WRITE`, 35 % Storage | normaler Ausgangspunkt |
 | Desired `READ_WRITE`, Actual `READ_ONLY` | `ReadonlyReason` und Storage/Cleanup prüfen |
-| `StorageUsedPercent=94` | Repositoryhinweis; Cleanup und MaxSize prüfen |
+| `StorageUsedPercent=94` | Frameworkhinweis; Cleanup und MaxSize prüfen |
 | Capture Mode `AUTO` | seltene oder billige Queries können fehlen |
 | Wait Stats Capture OFF | leeres Wait-Resultset ist erwartbar |
 | Interval 60 min, Analysefenster 10 min | zeitliche Aussage stark vergröbert |

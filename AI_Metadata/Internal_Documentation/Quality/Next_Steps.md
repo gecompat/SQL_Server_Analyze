@@ -4,7 +4,7 @@ Stand: 2026-07-21
 
 Der Stand `1.1.0-special.13` besitzt für Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` vollständige grüne Linux-Evidenz auf SQL Server 2019, 2022 und 2025. Der Release-Gate-Vertrag umfasst 34 Suiten, alle 17 P0-, 40 P1- und 124 P2-Fälle sowie die frameworkweiten Ausgabe-, Welle-1- und Welle-2-Verträge. Kanonische Quelle für Release, Commit, Zielversionen und Zählwerte ist `Metadata/Quality/Test_Matrix.csv`; ihre Konsistenz mit Detailmatrix, Release-Audit und Statusdokumenten wird statisch geprüft.
 
-Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
+Die vollständige Herleitung, Priorisierung und die False-Positive-Grenzen stehen in `AI_Metadata/Internal_Documentation/Research/Special_Case_Gap_Analysis.md`. Der maschinenlesbare Umsetzungsbacklog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`. Die einzelnen Spezialfalltests und Zielsysteme stehen in `Metadata/Quality/Special_Case_Test_Cases.csv` und `Metadata/Quality/Test_Matrix.csv`.
 
 Abgeschlossen:
 

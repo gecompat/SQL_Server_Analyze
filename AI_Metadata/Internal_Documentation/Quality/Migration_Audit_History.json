@@ -31,7 +31,7 @@
     "nonSystemDependencies": "Metadata/Inventory/NonSystemDependencies.csv",
     "permissionsAndFeatures": "Metadata/Inventory/PermissionsAndFeatures.csv",
     "performanceAndRisk": "Documentation/Quality/Performance_and_Risk_Assessment.md",
-    "systemSourceCatalog": "Documentation/Research/System_Source_Catalog.md"
+    "systemSourceCatalog": "AI_Metadata/Internal_Documentation/Research/System_Source_Catalog.md"
   },
   "notes": [
     "Historical raw sources and environment-specific identifiers are not stored in the repository.",

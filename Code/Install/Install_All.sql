@@ -13,6 +13,9 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../00_Setup/000_Preflight_und_Schema.sql
 :r ../01_Common/010_VW_ModuleStatusCatalog.sql
 :r ../01_Common/020_VW_AnalyseClassCatalog.sql
+:r ../01_Common/021_VW_AnalysisCatalog.sql
+:r ../01_Common/022_VW_AnalysisSearchTerm.sql
+:r ../01_Common/023_VW_AnalysisRelation.sql
 :r ../01_Common/030_VW_AnalyseAccessPolicy.sql
 :r ../01_Common/040_VW_AnalyseAccessCurrent.sql
 :r ../01_Common/050_USP_CheckAnalyseAccess.sql
@@ -60,6 +63,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../01_Common/099_USP_InternalEmitTruncationWarning.sql
 :r ../01_Common/099a_USP_InternalParseXmlText.sql
 :r ../01_Common/070_USP_CheckFrameworkCapabilities.sql
+:r ../01_Common/100_USP_AnalysisNavigator.sql
 :r ../02_CurrentState/010_USP_CurrentSessions.sql
 :r ../02_CurrentState/020_USP_CurrentRequests.sql
 :r ../02_CurrentState/030_USP_CurrentBlocking.sql

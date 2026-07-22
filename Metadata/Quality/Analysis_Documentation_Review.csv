@@ -2,6 +2,7 @@ ProcedureName,ReviewStatus,ReviewedUtc,ReviewContractVersion
 USP_AgentJobs,DEEP_REVIEWED,2026-07-20,2
 USP_AgentMonitoringAnalysis,DEEP_REVIEWED,2026-07-20,2
 USP_AgentStatus,DEEP_REVIEWED,2026-07-20,2
+USP_AnalysisNavigator,DEEP_REVIEWED,2026-07-21,2
 USP_AvailabilityDeepAnalysis,DEEP_REVIEWED,2026-07-20,2
 USP_AvailabilityGroups,DEEP_REVIEWED,2026-07-20,2
 USP_BackupChainAnalysis,DEEP_REVIEWED,2026-07-20,2

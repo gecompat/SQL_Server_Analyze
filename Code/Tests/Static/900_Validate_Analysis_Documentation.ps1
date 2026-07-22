@@ -73,6 +73,7 @@ $safeEntryRequiresHighImpact = @(
     'USP_FullTextAnalysis',
     'USP_IndexPhysicalStats',
     'USP_IntelligentQueryProcessingAnalysis',
+    'USP_PlanDetails',
     'USP_PlanCacheAnalysis',
     'USP_QueryHashAnalysis',
     'USP_SchemaDesignAnalysis',
@@ -80,7 +81,7 @@ $safeEntryRequiresHighImpact = @(
     'USP_StatisticsDistributionAnalysis',
     'USP_TemporalAnalysis'
 )
-$minimumDeepReviewedCount = 88
+$minimumDeepReviewedCount = 89
 $supportingRequiredDimensions = @(
     'Aufgabe',
     'Schnittstelle',

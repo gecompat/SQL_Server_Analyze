@@ -60,10 +60,9 @@ Datenbanken können andere Collations verwenden. Nicht ausdrücklich
 collatierte Vergleiche können dann entweder mit einem Collation-Konflikt
 abbrechen oder unter einer case-insensitiven Collation abweichende Ergebnisse
 bei Vergleichen, Gruppierung, Sortierung und Eindeutigkeit erzeugen. Viele
-Frameworkpfade besitzen bereits explizite `COLLATE`-Angaben, die vollständige
-frameworkweite Absicherung und eine gemischte Testmatrix stehen jedoch noch
-aus. Diese zukünftige Architekturhärtung ist als `COLL-001` in den
-[nächsten Arbeitsschritten](../Quality/Next_Steps.md) vorgemerkt.
+Frameworkpfade besitzen bereits explizite `COLLATE`-Angaben; eine abweichende
+Server-/`tempdb`-Collation gehört dennoch nicht zur aktuell freigegebenen und
+nachgewiesenen Plattformmatrix.
 
 Bis diese Portabilitätsarbeit abgeschlossen und auf SQL Server 2019, 2022 und
 2025 nachgewiesen ist, bleibt die Prüfung verbindlich: Bei einer Abweichung die
@@ -216,6 +215,20 @@ Das Paket erstellt keine Datenbank, Berechtigungen oder Schedulerobjekte. Siehe
 [Snapshot-/Baseline-Betrieb](../Operations/Snapshot_Baseline_Operations.md).
 
 ## 11. Erste Analyse starten
+
+Zuerst einen passenden Einstieg nach Symptom oder Ziel finden:
+
+```sql
+USE [DeineDatenbank];
+GO
+
+EXEC [monitor].[USP_AnalysisNavigator]
+     @Suchbegriff = N'Etwas ist jetzt langsam',
+     @NurInstallierte = 1,
+     @ResultSetArt = 'CONSOLE';
+```
+
+Der Navigator führt keine vorgeschlagene Analyse aus.
 
 Eine leichte, begrenzte Übersicht:
 

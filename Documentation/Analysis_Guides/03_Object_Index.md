@@ -392,7 +392,7 @@ Datenbank/Objekt/Index/Partition/Spalte, `RowGroupId`, `EncodingType`, `Encoding
 
 Datenbank/Objekt/Index/Partition/Spalte, `DictionaryId`, `DictionaryType`, `DictionaryTypeDesc`, `EntryCount`, `OnDiskSizeMb`.
 
-### Repository-Heuristiken
+### Framework-Heuristiken
 
 - `DeletedPercent >= 20` erzeugt in der Basislogik `HIGH_DELETED_ROWS`.
 - komprimierte Rowgroup mit weniger als 102.400 Zeilen wird als `SMALL_COMPRESSED_ROWGROUP` markiert.
@@ -443,7 +443,7 @@ Ruft `sys.dm_db_index_physical_stats` gezielt oder breit mit `LIMITED`, `SAMPLED
 | 5 Mio. | 5 % | 50 % | geringe Fragmentierung, dennoch schlechte Dichte möglich |
 | 1 Mio. | 80 % | 98 % | Range-Scan-Workload entscheidet; kein reflexartiger Rebuild |
 
-`@MinPageCount=1000` ist Repository-Default, keine universelle Produktgrenze.
+`@MinPageCount=1000` ist Framework-Default, keine universelle Produktgrenze.
 
 ### Kosten
 

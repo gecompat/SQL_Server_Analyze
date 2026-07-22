@@ -101,7 +101,7 @@ def validate(root: Path) -> list[str]:
         if checks.get(key, {}).get("validatedCommit") != P2_EVIDENCE_COMMIT:
             errors.append(f"Release audit P2 contract differs: {key}")
 
-    next_steps = (root / "Documentation/Quality/Next_Steps.md").read_text(encoding="utf-8")
+    next_steps = (root / "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md").read_text(encoding="utf-8")
     if "keine offenen P0-, P1- oder P2-Zeilen" not in next_steps:
         errors.append("Next-steps summary still reports repository P2 work.")
 

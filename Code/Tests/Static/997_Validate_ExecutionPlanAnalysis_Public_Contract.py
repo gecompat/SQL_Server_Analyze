@@ -231,8 +231,8 @@ def validate(repository_root: Path) -> list[str]:
         errors.append("Standalone dependency closure differs from the frozen public contract.")
 
     for document in (
-        "Documentation/Architecture/Execution_Plan_Analysis_Design.md",
-        "Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract.md",
+        "AI_Metadata/Internal_Documentation/Architecture/Execution_Plan_Analysis_Design_History.md",
+        "AI_Metadata/Internal_Documentation/Architecture/Execution_Plan_Analysis_Installation_Contract_History.md",
     ):
         text = (repository_root / document).read_text(encoding="utf-8-sig")
         if "IMPLEMENTED_ACTIONS_GATE" not in text:

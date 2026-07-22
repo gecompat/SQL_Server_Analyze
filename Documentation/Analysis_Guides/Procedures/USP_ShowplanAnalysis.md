@@ -29,7 +29,7 @@ EXEC [monitor].[USP_ShowplanAnalysis]
       @ResultSetArt = 'CONSOLE';
 ```
 
-Nur synthetischer Beispielhash; echten Hash ausschließlich zur Laufzeitanalyse verwenden, nicht in Repositorydokumentation übernehmen.
+Nur synthetischer Beispielhash; echte Hashes ausschließlich zur kontrollierten Laufzeitanalyse verwenden und nicht ungeprüft weitergeben.
 
 Die im Beispiel verwendeten Bezeichner `ExampleServer`, `ExampleDb`, `ExampleSchema`, `ExampleObject` und `ExampleLogin` sind ausschließlich synthetische Platzhalter. Vor Produktionseinsatz mit `@Hilfe=1` beziehungsweise der Referenzsignatur prüfen, welche Filter tatsächlich früh wirken und welche Ausgabeoptionen zusätzliche Quellarbeit auslösen.
 

@@ -142,7 +142,7 @@ Vorzusehen sind unter anderem Filter für:
 - Eine Zustimmung oder vorhandener Zugriff hebt das Repositoryverbot nicht auf. Erfordert eine Aufgabe scheinbar reale interne oder personenbezogene Informationen in einem Artefakt, wird vor dem Schreiben angehalten und nach einer nicht sensitiven Alternative gefragt.
 - Jede Snapshot-, Persistenz-, Retention- oder Exportfunktion benötigt einen dokumentierten Datenschutz-, Zugriffs-, Aufbewahrungs- und Löschvertrag; dies verändert den bestehenden Runtime-Ausgabevertrag nicht. Für SC-023 ist dieser Architekturvertrag mit den Entscheidungen vom 20. Juli 2026 freigegeben.
 - Ein zweifelhafter Fund darf nicht stillschweigend als harmlos klassifiziert werden. Vor Aufnahme in ein Repository- oder Lieferartefakt ist nachzufragen.
-- Maßgebliche Detailentscheidung: `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`.
+- Maßgebliche Detailentscheidung: `AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`.
 
 ## 9. Herkunft dieser Konsolidierung
 

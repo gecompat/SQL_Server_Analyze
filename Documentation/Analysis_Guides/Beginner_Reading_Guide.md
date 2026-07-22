@@ -1,7 +1,7 @@
 # Analyse-Resultsets richtig lesen – Einsteigerleitfaden für alle Procedures
 
 **Stand:** 17. Juli 2026  
-**Abdeckung:** alle 90 dokumentierten öffentlichen Procedures einschließlich der zwei gemeinsamen Vorbereitungs-APIs
+**Abdeckung:** alle 94 dokumentierten öffentlichen Procedures einschließlich der eigenständigen und optionalen Pakete
 **Zweck:** erklären, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können
 
 > Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Familienguides nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
@@ -93,7 +93,7 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Beispiel:** `IsAllowed=0`, `AccessReason=NO_GROUP_MATCH` ist kein DMV-Fehler. Zuerst die Gruppenpolicy prüfen, nicht SQL-Berechtigungen ändern.
 
-**Danach:** `USP_CheckFrameworkCapabilities` prüft, ob der technisch erlaubte Pfad auch tatsächlich lesbar ist. [Detailbeschreibung](01_Common.md#1-monitorusp_checkanalyseaccess)
+**Danach:** `USP_CheckFrameworkCapabilities` prüft, ob der technisch erlaubte Pfad auch tatsächlich lesbar ist. [Detailbeschreibung](01_Common.md#2-monitorusp_checkanalyseaccess)
 
 ## [monitor].[USP_CheckFrameworkCapabilities]
 
@@ -105,7 +105,7 @@ Erst zweite Evidenzquelle, Auswirkung, Risiko und Rollbackweg bestimmen.
 
 **Beispiel:** Query Store ist versionsseitig unterstützt und lesbar, aber deaktiviert. Ein leeres Query-Store-Resultset ist dann erwartbar und keine Aussage über die Queryqualität.
 
-**Danach:** Nur Procedures aufrufen, deren relevanter Scope `IsUsable=1` meldet. [Detailbeschreibung](01_Common.md#2-monitorusp_checkframeworkcapabilities)
+**Danach:** Nur Procedures aufrufen, deren relevanter Scope `IsUsable=1` meldet. [Detailbeschreibung](01_Common.md#3-monitorusp_checkframeworkcapabilities)
 
 ## [monitor].[USP_PrepareDatabaseCandidates]
 
@@ -119,7 +119,7 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Zwei Datenbanken wurden angefordert, eine ist offline. Die Analyse enthält nur die online Datenbank; die Warnung muss als fehlender Scope dokumentiert werden.
 
-**Danach:** Warnungen immer zusammen mit dem Resultset der aufrufenden Procedure lesen. [Detailbeschreibung](01_Common.md#3-monitorusp_preparedatabasecandidates)
+**Danach:** Warnungen immer zusammen mit dem Resultset der aufrufenden Procedure lesen. [Detailbeschreibung](01_Common.md#4-monitorusp_preparedatabasecandidates)
 
 ## [monitor].[USP_PrepareNameFilters]
 
@@ -131,7 +131,7 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Doppelte identische Namen verursachen absichtlich einen Fehler; zwei nur in Groß-/Kleinschreibung verschiedene Namen nicht.
 
-**Danach:** Eingabeliste korrigieren und die aufrufende Analyse erneut ausführen. [Detailbeschreibung](01_Common.md#4-monitorusp_preparenamefilters)
+**Danach:** Eingabeliste korrigieren und die aufrufende Analyse erneut ausführen. [Detailbeschreibung](01_Common.md#5-monitorusp_preparenamefilters)
 
 # 4. Current State
 

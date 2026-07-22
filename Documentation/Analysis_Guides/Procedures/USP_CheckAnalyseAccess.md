@@ -126,4 +126,4 @@ Momentaufnahme des aktuellen Login- und Execution-Kontexts. Gruppenauflösung ka
 
 - [sys.login_token](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-login-token-transact-sql?view=sql-server-ver17)
 
-[Technische Detailbeschreibung](../01_Common.md#1-monitorusp_checkanalyseaccess)
+[Technische Detailbeschreibung](../01_Common.md#2-monitorusp_checkanalyseaccess)

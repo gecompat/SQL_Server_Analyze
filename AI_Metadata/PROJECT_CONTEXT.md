@@ -54,7 +54,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Öffentliche Quellen-, Lizenz- und Urheberangaben sind beabsichtigte Attribution und werden nicht als versehentliche Umgebungsdaten behandelt.
 - Eine Zustimmung oder vorhandener Zugriff hebt das Repositoryverbot nicht auf.
 - Bei uneindeutigen Datenfunden muss vor dem Schreiben oder Verpacken angehalten und nach einer nicht sensitiven Alternative gefragt werden.
-- Maßgebliche Entscheidung: `Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`.
+- Maßgebliche Entscheidung: `AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md`.
 
 ### Verbindlicher Kurzprompt
 

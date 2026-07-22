@@ -121,7 +121,7 @@ Systemdatenbanken benötigen stets `@SystemdatenbankenEinbeziehen=1`.
 | `StartTime` | Beginn des beobachteten Vorgangs | Zeitzone und Quelle beachten |
 | `LastExecutionTime` | letzte beobachtete Ausführung | Cache-/Historiengrenzen beachten |
 | `IntervalStartUtc` / `IntervalEndUtc` | Query-Store-Intervall | Werte sind im Intervall aggregiert |
-| `AgeSeconds`, `AgeHours`, `AgeDays` | berechnetes Alter | Repository-Heuristik, keine universelle Produktgrenze |
+| `AgeSeconds`, `AgeHours`, `AgeDays` | berechnetes Alter | Framework-Heuristik, keine universelle Produktgrenze |
 
 ### Status und Vollständigkeit
 
@@ -183,7 +183,7 @@ Backup-, Restore- und Agenthistorie kann durch Cleanup, Wartungsjobs oder Migrat
 
 | Klasse | Kennzeichnung im Guide | Beispiel |
 |---|---|---|
-| Code-Default | **Repository-Schwelle** | `@CheckdbWarnHours = 168` |
+| Code-Default | **Framework-Schwelle** | `@CheckdbWarnHours = 168` |
 | offizielle Produktaussage | **Microsoft-dokumentiert** | Query Store aggregiert Werte nach Intervallen |
 | praktische Betriebsregel | **Heuristik** | wachsender Lock-Wait über mehrere Messungen ist relevanter als 50 ms einmalig |
 | keine seriöse Universalgrenze | **Unspecified** | akzeptable PAGEIOLATCH-Latenz ohne Storage-/SLA-Kontext |

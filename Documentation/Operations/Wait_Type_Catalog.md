@@ -48,7 +48,7 @@ Spezialistenreferenzen. `SupportsFields` nennt ausdrücklich, welche
 Katalogaussagen die Quelle stützt.
 
 SQLskills wird wait-spezifisch verlinkt. Inhalte der Bibliothek werden nicht in
-das Repository kopiert. Seltene interne Waits bleiben mit
+eine freigegebene Laufzeitdokumentation kopiert. Seltene interne Waits bleiben mit
 `AnalysisConfidence = INTERNAL_LIMITED` gekennzeichnet; für sie werden keine
 undokumentierten Detailursachen oder Trace-Flag-Empfehlungen erfunden.
 

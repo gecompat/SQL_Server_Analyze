@@ -28,10 +28,10 @@ COUNTS = {
     "P2CaseCount": "124",
 }
 CURRENT_DOCUMENTS = (
-    "Documentation/Quality/Next_Steps.md",
-    "Documentation/Quality/Known_Issues.md",
-    "Documentation/Quality/Release_Notes.md",
-    "Documentation/Quality/Test_Matrix.md",
+    "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+    "AI_Metadata/Internal_Documentation/Quality/Known_Issues_History.md",
+    "AI_Metadata/Internal_Documentation/Quality/Release_Notes_History.md",
+    "AI_Metadata/Internal_Documentation/Quality/Test_Matrix_History.md",
 )
 WAVE1_SUITE = "WAVE1_OUTPUT_XML_VERSION_RUNTIME"
 WAVE2_SUITE = "WAVE2_OPERATIONAL_DIAGNOSTICS_RUNTIME"

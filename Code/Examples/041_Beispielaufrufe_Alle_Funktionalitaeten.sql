@@ -5,6 +5,10 @@ GO
 USE [DeineDatenbank];
 GO
 
+-- EXEC [monitor].[USP_AnalysisNavigator] @Hilfe = 1;
+-- EXEC [monitor].[USP_AnalysisNavigator] @Suchbegriff=N'query regression', @MaxZeilen=8, @ResultSetArt='CONSOLE';
+-- EXEC [monitor].[USP_AnalysisNavigator] @Bereich='PLAN', @Navigationsrolle='TARGETED', @NurInstallierte=1, @ResultSetArt='RAW';
+
 -- EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe = 1;
 
 -- EXEC [monitor].[USP_CheckFrameworkCapabilities] @Hilfe = 1;

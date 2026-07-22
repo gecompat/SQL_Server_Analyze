@@ -17,7 +17,7 @@ URL_PATTERN = re.compile(r"https?://[^\s<>()\]]+", re.IGNORECASE)
 PERMANENT_FAILURES = {404, 410}
 NETWORK_SCOPES = (
     pathlib.PurePosixPath("Documentation/Analysis_Guides"),
-    pathlib.PurePosixPath("Documentation/Research/Sources.md"),
+    pathlib.PurePosixPath("AI_Metadata/Internal_Documentation/Research/Sources.md"),
 )
 
 

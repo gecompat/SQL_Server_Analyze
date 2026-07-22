@@ -1,9 +1,88 @@
-# Common: Zugriff, Capabilities und interne Auswahlverträge
+# Common: Navigation, Zugriff, Capabilities und Auswahlverträge
 
-**Procedures:** 4  
+**Procedures:** 5
 **Primäre Kostenklasse:** LOW bis MEDIUM
 
-## 1. [monitor].[USP_CheckAnalyseAccess]
+## 1. [monitor].[USP_AnalysisNavigator]
+
+### Zweck
+
+Der Analysis Navigator findet geeignete öffentliche Procedures nach Symptom, Ziel, technischem Begriff, Themenbereich, Scope oder Navigationsrolle. Er verbindet drei statische Metadatenebenen:
+
+- `VW_AnalysisCatalog`: genau eine fachliche Hauptzeile je öffentlicher Procedure,
+- `VW_AnalysisSearchTerm`: deutsche und englische Suchbegriffe mit Gewicht und Begründung,
+- `VW_AnalysisRelation`: gerichtete Vertiefungs-, Gegenproben-, Alternativ- und Vorbereitungspfade.
+
+Die Procedure führt keinen Treffer aus. Sie liest nur Frameworkmetadaten und `sys.schemas`/`sys.procedures` zur lokalen Installationsprüfung.
+
+### Wann einsetzen?
+
+- als ersten Kontakt mit dem Framework,
+- wenn nur ein Symptom wie Blocking, CPU, TempDB, Log, I/O, Deadlock oder AG-Lag bekannt ist,
+- wenn eine Procedure nach Rolle, Scope oder Fachbereich gesucht wird,
+- um sichere Erstaufrufe, Kostenband, Paketstatus und Folgeanalysen zu vergleichen,
+- um optionale, lokal noch nicht installierte Paketfunktionen vollständig zu sehen.
+
+### Wann nicht einsetzen?
+
+- nicht zur Diagnose eines aktuellen Serverzustands,
+- nicht als Capability- oder Berechtigungsnachweis,
+- nicht als automatische Ausführungskette,
+- nicht als Schwere- oder Root-Cause-Scoring.
+
+### Aufrufe
+
+```sql
+EXEC [monitor].[USP_AnalysisNavigator];
+```
+
+```sql
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Suchbegriff = N'Query plötzlich langsamer',
+      @MaxZeilen = 8,
+      @ResultSetArt = 'CONSOLE';
+```
+
+```sql
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Bereich = 'PLAN',
+      @Navigationsrolle = 'TARGETED',
+      @NurInstallierte = 1,
+      @ResultSetArt = 'RAW';
+```
+
+### RAW-Resultsets
+
+#### Resultset 1: Modulstatus
+
+`StatusCode`, `IsPartial`, Fehlerkontext und die normalisierten Such-, Bereichs-, Scope- und Rollenfilter. `NO_MATCH` ist eine gültige leere Suche; `INVALID_PARAMETER` kennzeichnet einen fehlerhaften Filtervertrag.
+
+#### Resultset 2: navigation
+
+| Spaltengruppe | Bedeutung |
+|---|---|
+| `Rank`, `RelevanceScore` | Rang in diesem Aufruf; keine fachliche Schwere |
+| `ProcedureName`, `DisplayName`, `WhyMatched` | technischer Name, verständlicher Name und Treffergrund |
+| `NavigationRole`, `PrimaryAreaCode`, `ScopeCode` | Einstiegstyp und benötigter Untersuchungsscope |
+| `EvidenceType`, `CostRangeCode` | Zeit-/Quellenmodell und dokumentierte Kostenspannweite |
+| `RepresentativeAnalysisClass`, `AnalysisLevel`, `RequiresGroupGate` | repräsentativer Ressourcen- und Policykontext |
+| `RequiresKnownTarget`, `RequiresHighImpactForSafeStart`, `HighImpactPathAvailable` | Ziel- und Schutzanforderungen |
+| `PackageCode`, `IsInstalled` | Paketgrenze und lokale Existenz |
+| `SafeCall`, `PrerequisiteSummary` | begrenzter Einstieg und vorher zu prüfende Voraussetzung |
+| `NextProcedureName`, `RelationType`, `NextStep` | priorisierte Vertiefung oder unabhängige Gegenprobe |
+| `RunbookPath`, `DocumentationPath` | vertiefende Dokumentation |
+
+### Suchsemantik
+
+Der Vergleich ist unabhängig von der Datenbankcollation case- und accent-insensitiv. Exakte Procedure-, Anzeigenamen- und Phrasentreffer stehen vor Tokenüberschneidungen. `ENTRY` erhält nur einen kleinen Bonus und verdrängt keinen deutlich besseren Targettreffer. Ohne Suchtext und Filter erscheint die kuratierte Startliste; mit Filtern die passende Katalogmenge.
+
+### Kosten und Grenzen
+
+LOW. Die Kataloge sind konstant, die Ergebnismenge ist auf 100 Zeilen begrenzt. `IsInstalled` beweist keine Quellberechtigung oder Featureaktivierung. `SafeCall` muss an den realen Scope angepasst werden. Der vollständige Vertrag steht unter [Analysis Navigator](../Reference/Analysis_Navigator.md).
+
+---
+
+## 2. [monitor].[USP_CheckAnalyseAccess]
 
 ### Zweck
 
@@ -106,11 +185,11 @@ EXEC [monitor].[USP_CheckAnalyseAccess]
 
 ### Kosten und Grenzen
 
-LOW. Login-Token, Policies und Views werden gelesen. Das Resultset darf in der Runtime reale Identitäten anzeigen; Repositorybeispiele bleiben synthetisch.
+LOW. Login-Token, Policies und Views werden gelesen. Das Resultset darf in der Laufzeit reale Identitäten anzeigen; Exporte und weitergegebene Auszüge sind entsprechend zu schützen.
 
 ---
 
-## 2. [monitor].[USP_CheckFrameworkCapabilities]
+## 3. [monitor].[USP_CheckFrameworkCapabilities]
 
 ### Zweck
 
@@ -217,7 +296,7 @@ willkürlich vorab gekürzt.
 
 ---
 
-## 3. [monitor].[USP_PrepareDatabaseCandidates]
+## 4. [monitor].[USP_PrepareDatabaseCandidates]
 
 ### Rolle
 
@@ -268,7 +347,7 @@ nicht still aus dem Auftrag.
 
 ---
 
-## 4. [monitor].[USP_PrepareNameFilters]
+## 5. [monitor].[USP_PrepareNameFilters]
 
 ### Rolle
 

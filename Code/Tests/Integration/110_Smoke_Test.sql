@@ -19,6 +19,9 @@ INSERT @Expected([ObjectName],[ObjectType])
 VALUES
 (N'monitor.VW_ModuleStatusCatalog','V'),
 (N'monitor.VW_AnalyseClassCatalog','V'),
+(N'monitor.VW_AnalysisCatalog','V'),
+(N'monitor.VW_AnalysisSearchTerm','V'),
+(N'monitor.VW_AnalysisRelation','V'),
 (N'monitor.VW_FrameworkFeatureCatalog','V'),
 (N'monitor.WaitTypeCatalog','U'),
 (N'monitor.WaitTypeCatalogSource','U'),
@@ -31,6 +34,7 @@ VALUES
 (N'monitor.TVF_ClassifyErrorLogEvent','IF'),
 (N'monitor.USP_CheckAnalyseAccess','P'),
 (N'monitor.USP_CheckFrameworkCapabilities','P'),
+(N'monitor.USP_AnalysisNavigator','P'),
 (N'monitor.USP_CurrentOverview','P'),
 (N'monitor.USP_CurrentWaits','P'),
 (N'monitor.USP_ObjectAnalysis','P'),
@@ -95,6 +99,44 @@ IF NOT EXISTS
       AND [FrameworkVersion]='1.1.0-special.13'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
+
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 94
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 94 öffentlichen Procedures.',1;
+
+IF EXISTS
+(
+    SELECT 1
+    FROM [monitor].[VW_AnalysisCatalog] AS [c]
+    WHERE NOT EXISTS
+          (
+              SELECT 1
+              FROM [monitor].[VW_AnalysisSearchTerm] AS [t]
+              WHERE [t].[ProcedureName] = [c].[ProcedureName]
+                AND [t].[LanguageCode] = 'de'
+          )
+       OR NOT EXISTS
+          (
+              SELECT 1
+              FROM [monitor].[VW_AnalysisSearchTerm] AS [t]
+              WHERE [t].[ProcedureName] = [c].[ProcedureName]
+                AND [t].[LanguageCode] = 'en'
+          )
+)
+    THROW 54026,N'Mindestens eine öffentliche Procedure besitzt keine vollständige DE-/EN-Suchabdeckung.',1;
+
+IF EXISTS
+(
+    SELECT 1
+    FROM [monitor].[VW_AnalysisRelation] AS [r]
+    LEFT JOIN [monitor].[VW_AnalysisCatalog] AS [f]
+      ON [f].[ProcedureName] = [r].[FromProcedureName]
+    LEFT JOIN [monitor].[VW_AnalysisCatalog] AS [t]
+      ON [t].[ProcedureName] = [r].[ToProcedureName]
+    WHERE [f].[ProcedureName] IS NULL
+       OR [t].[ProcedureName] IS NULL
+       OR [r].[FromProcedureName] = [r].[ToProcedureName]
+)
+    THROW 54027,N'Der Analysis Relationskatalog enthält einen ungültigen Endpunkt.',1;
 
 IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK) WHERE [IsFrameworkDefault]=1) < 347
     THROW 54002,N'Der Framework-Wait-Katalog ist unvollständig.',1;
@@ -220,6 +262,19 @@ IF COALESCE(ISJSON(@CurrentRequestsJson),0)<>1
     THROW 54006,N'USP_CurrentRequests hat kein gültiges JSON geliefert.',1;
 
 -- Leichte Hilfepfade: prüfen die öffentlichen Einstiegspunkte ohne fachliche Deep-Scans.
+DECLARE @AnalysisNavigatorJson nvarchar(max);
+EXEC [monitor].[USP_AnalysisNavigator]
+      @Suchbegriff=N'Benutzer warten'
+    , @MaxZeilen=5
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@AnalysisNavigatorJson OUTPUT;
+
+IF COALESCE(ISJSON(@AnalysisNavigatorJson),0)<>1
+   OR JSON_VALUE(@AnalysisNavigatorJson,N'$.navigation[0].ProcedureName')<>N'USP_CurrentBlocking'
+    THROW 54028,N'Der Analysis Navigator hat für die synthetische Blockingsuche keinen gültigen priorisierten JSON-Treffer geliefert.',1;
+
+EXEC [monitor].[USP_AnalysisNavigator] @Hilfe=1;
 EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;
 EXEC [monitor].[USP_CheckFrameworkCapabilities] @Hilfe=1;
 EXEC [monitor].[USP_CurrentOverview] @Hilfe=1;

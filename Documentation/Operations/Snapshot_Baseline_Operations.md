@@ -7,7 +7,7 @@ Status: `IMPLEMENTED_ACTIONS_GATE`
 
 SC-023 ist absichtlich kein Bestandteil von `Install_All.sql`. Ohne die beiden separaten Installer bleibt der Frameworkkern zustandslos. Der erste vertikale Slice besitzt genau einen Collector: `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0`. Wait-, I/O-, Datenbank-, Query-, Plan-, Rollup-, Export- und Agentjob-Pakete gehören nicht zu diesem Stand.
 
-Die Snapshot-Datenbank darf im autorisierten Betrieb reale Laufzeitwerte speichern. Repository-, Test-, Dokumentations-, GitHub- und Downloadartefakte dürfen weiterhin ausschließlich synthetische Beispiele enthalten.
+Die Snapshot-Datenbank darf im autorisierten Betrieb reale Laufzeitwerte speichern. Exporte, Berichte und weitergegebene Auszüge benötigen einen eigenen Datenschutz-, Empfänger- und Aufbewahrungsvertrag.
 
 ## Installation
 
@@ -103,4 +103,4 @@ Der Purge arbeitet child-first und begrenzt jede Löschschleife durch `PurgeBatc
 
 ## Abnahmegrenze
 
-Der Repositoryvertrag prüft Installertrennung, Idempotenz, Collection, Reset-Epoche, optionale Payloadverlustfreiheit, Retention, Größenstopp und Zwei-Session-Concurrency synthetisch auf SQL Server 2019, 2022 und 2025. Commit `c4e2ee6114b7de9cae9236d390a93a81e78599e9` hat diese [Drei-Versionen-Matrix](https://github.com/gecompat/SQL_Server_Analyze/actions/runs/29860488769) bestanden; der erste Slice steht deshalb auf `IMPLEMENTED_ACTIONS_GATE`.
+Der Paketvertrag ist für Installertrennung, Idempotenz, Collection, Reset-Epoche, optionale Payloadverlustfreiheit, Retention, Größenstopp und Zwei-Session-Concurrency auf SQL Server 2019, 2022 und 2025 nachgewiesen. Die Plattform- und Evidenzgrenzen stehen in der [Testmatrix](../Quality/Test_Matrix.md).

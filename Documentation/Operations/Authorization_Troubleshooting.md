@@ -29,7 +29,7 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
     , @ResultSetArt       = 'RAW';
 ```
 
-Reale Login-, Gruppen-, Server-, Datenbank- oder Objektwerte nur lokal auswerten und nicht in Repositoryartefakte übernehmen.
+Reale Login-, Gruppen-, Server-, Datenbank- oder Objektwerte nur kontrolliert auswerten und nicht ungeprüft exportieren oder weitergeben.
 
 ## 3. `DENIED_GROUP`
 
@@ -232,7 +232,7 @@ Ausreichend sind:
 - technische Fehlernummer;
 - Angabe, ob eine neue Anmeldung verwendet wurde.
 
-Nicht in Repository, Issues oder Downloads übernehmen:
+Nicht in ungeschützte Berichte, Tickets oder Downloads übernehmen:
 
 - reale Login- und Gruppennamen;
 - Server-, Instanz-, Domain- oder Datenbanknamen;

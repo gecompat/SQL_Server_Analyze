@@ -10,7 +10,7 @@
 - Scheduler-, NUMA-, Latch-, Spinlock- und Performance-Counterwerte sind ohne Vergleichsfenster oder Baseline leicht irreführend.
 - Keine negative Integritätsevidenz ist kein Integritätsbeweis.
 - Konfigurationsfindings sind Review-Hinweise, keine automatischen Änderungsempfehlungen.
-- Server-, Dienst-, Registry-, Dateipfad-, Login- und Meldungswerte dürfen aus Runtimegründen real erscheinen, werden aber niemals in Repositorybeispiele kopiert.
+- Server-, Dienst-, Registry-, Dateipfad-, Login- und Meldungswerte dürfen in Laufzeitausgaben real erscheinen und sind bei Export oder Weitergabe zu schützen.
 
 ---
 
@@ -135,7 +135,7 @@ Korreliert OS-, Prozess- und SQL-Memory-Manager-Zustand, größte Memory Clerks 
 
 `ActiveOrWaitingGrants`, `RequestedMemoryKb`, `GrantedMemoryKb`, `UsedMemoryKb`, `WaitingGrantCount`.
 
-### Repository-Heuristiken
+### Framework-Heuristiken
 
 - weniger als 1.048.576 KB verfügbarer OS-Speicher → `LOW_OS_FREE_MEMORY_REVIEW`;
 - `committed_target_kb < committed_kb` → `TARGET_BELOW_COMMITTED`.
@@ -273,7 +273,7 @@ Liest auf unterstützten Plattformen Registry-basierte SQL-Dienst- und Startpara
 
 - `sys.dm_server_registry` ist plattform-/versionsabhängig; auf Linux wird `UNAVAILABLE_PLATFORM` erwartet.
 - Registrywerte sind Konfiguration, nicht zwingend vollständig der aktuell wirksame Prozesszustand.
-- `ImagePath` und `ObjectName` können sensible Umgebungswerte enthalten und dürfen nicht in Repositoryartefakte kopiert werden.
+- `ImagePath` und `ObjectName` können sensible Umgebungswerte enthalten und dürfen nur kontrolliert exportiert oder weitergegeben werden.
 - Traceflag-Startupwerte mit `USP_TraceFlags` gegen aktiven Zustand vergleichen.
 
 ### Folgeanalyse
@@ -312,7 +312,7 @@ Liest vier Quellen unabhängig, sodass ein Fehler nicht alle anderen Resultsets 
 
 - SourceStatus je Teilquelle lesen; `PARTIAL` kann trotzdem wertvolle Daten enthalten.
 - Pagefile-Freiraum ist kein Ersatz für physische RAM-Beurteilung.
-- Service Account ist Runtimeidentität und repositorysensitiv.
+- Service Account ist eine schutzbedürftige Laufzeitidentität.
 - Instant File Initialization beschleunigt Datafile-Growth/Restore, nicht Logfile-Growth.
 - SQL-Prozessspeicher kann wegen Allokationen außerhalb des durch Max Server Memory gesteuerten Bereichs höher erscheinen.
 
@@ -358,7 +358,7 @@ Findings:
 - tatsächliche Berechtigung, Proxy-/Credentialmodell, Signierung und Nutzung prüfen.
 - Windows-only Authentication kann Policyziel sein, ist aber nicht für jede Architektur möglich.
 - `CallerIsSysadmin` beschreibt nur den analysierenden Kontext.
-- Server-/Machine-/Service-Account-Werte niemals in Repositoryberichte übernehmen.
+- Server-, Machine- und Service-Account-Werte nur in geschützten Betriebsberichten verwenden.
 
 ---
 
@@ -425,7 +425,7 @@ Die Procedure führt **kein** DBCC CHECKDB, Restore oder Repair aus.
 
 Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFORMANCE STATE` ab SQL Server 2022, bleibt lesbare Teilevidenz erhalten, der Status wird jedoch ausdrücklich `AVAILABLE_LIMITED` mit `IsPartial=1`; ein sicherheitsgefiltertes leeres Ergebnis wird nicht als vollständige Evidenz behandelt.
 
-### Repository-Schwellen
+### Framework-Schwellen
 
 - `@CheckdbWarnHours=168`
 - `@BackupHistoryDays=35`
@@ -456,7 +456,7 @@ Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFO
 | Befund | Bewertung |
 |---|---|
 | alle Zähler 0 | keine negative Evidenz, aber kein Integritätsbeweis |
-| `CheckdbAgeHours > 168` | Repository-Policyhinweis |
+| `CheckdbAgeHours > 168` | Framework-Policyhinweis |
 | `SuspectPageCount > 0` | sofortige Nachverfolgung |
 | `DamagedBackupCount > 0` | hohe Priorität |
 | Page Repair succeeded | weiterhin Korruptions-/I/O-Evidenz; CHECKDB und Infrastruktur prüfen |
@@ -479,7 +479,7 @@ Trennt freien Platz **innerhalb der Datei** von freiem Platz **auf dem Volume** 
 
 Fehlt `VIEW SERVER STATE` auf SQL Server 2019 beziehungsweise `VIEW SERVER PERFORMANCE STATE` ab SQL Server 2022, wird insbesondere die Volumensicht als unvollständig markiert: `AVAILABLE_LIMITED`, `IsPartial=1`. Das Resultset selbst wird nicht maskiert oder umgeschrieben.
 
-### Repository-Schwelle
+### Framework-Schwelle
 
 `@MinVolumeFreePercent=10.00`.
 
@@ -659,7 +659,7 @@ Korrelierte Memory-Pressure-, Resource-Semaphore-, Clerk- und optional Buffer-De
 
 `PhysicalMemoryInUseKb`, `LockedPageAllocationsKb`, `LargePageAllocationsKb`, `MemoryUtilizationPercent`, `AvailableCommitLimitKb`, `ProcessPhysicalMemoryLow`, `ProcessVirtualMemoryLow`, `TotalPhysicalMemoryKb`, `AvailablePhysicalMemoryKb`, `AvailablePhysicalMemoryPercent`, `SystemMemoryStateDesc`, `FindingCode`, `FindingSeverity`, `EvidenceLimit`.
 
-### Repository-Heuristik
+### Framework-Heuristik
 
 Unter 5 % verfügbarem physischem OS-Speicher → `OS_AVAILABLE_MEMORY_BELOW_5_PERCENT` mit MEDIUM. Engine-Low-Memory-Flags erhalten HIGH.
 
