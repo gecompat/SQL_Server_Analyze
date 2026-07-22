@@ -104,6 +104,30 @@ In-Memory OLTP speichert Rows in Memory und nutzt MVCC statt klassischer Page Lo
 
 `sys.databases`, `sys.dm_db_xtp_checkpoint_files`, `sys.dm_db_xtp_hash_index_stats`, `sys.dm_db_xtp_memory_consumers`, `sys.dm_db_xtp_table_memory_stats`, `sys.dm_db_xtp_transactions`, `sys.dm_resource_governor_resource_pools`, `sys.filegroups`, `sys.hash_indexes`, `sys.schemas`, `sys.sp_executesql`, `sys.table_types`, `sys.tables`.
 
+### Source Select
+
+Der Speicherpfad verbindet Memory-Optimized-Tabellen mit den XTP-Tabellenstatistiken:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [t].[name] AS [TableName]
+    , [m].[memory_allocated_for_table_kb]
+    , [m].[memory_used_by_table_kb]
+    , [m].[memory_allocated_for_indexes_kb]
+    , [m].[memory_used_by_indexes_kb]
+FROM [sys].[tables] AS [t] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [t].[schema_id]
+LEFT JOIN [sys].[dm_db_xtp_table_memory_stats] AS [m] WITH (NOLOCK)
+  ON [m].[object_id] = [t].[object_id]
+WHERE [t].[is_memory_optimized] = 1
+  AND [s].[name] = N'ExampleSchema'
+  AND [t].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Objekt vor Hash-Index-, Checkpoint-File- und Transaction-DMVs bestimmen. Der breite Checkpoint- und Consumerpfad ist nur bei bestätigtem XTP-Symptom erforderlich.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Katalog-/Runtimezustand; Memory-/Transaction-/Checkpointwerte teils seit Start, Objektbestand aktuell.

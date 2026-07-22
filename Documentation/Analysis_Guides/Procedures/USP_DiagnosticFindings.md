@@ -105,6 +105,12 @@ Aggregator ruft Children über definierte JSON-/RAW-Verträge auf und normalisie
 
 `sys.databases`, `sys.sp_executesql`.
 
+### Source Select
+
+Kein einzelnes Grundselect: Die Procedure ruft die ausgewählten Diagnosemodule auf, übernimmt deren strukturierte Ergebnisse und normalisiert sie zu Findings. Direkte Quellen liegen unter anderem in `USP_DatabaseIntegrityAnalysis`, `USP_DatabaseCapacityAnalysis`, `USP_BufferPoolAnalysis`, `USP_BackupChainAnalysis`, `USP_AvailabilityDeepAnalysis`, `USP_AgentMonitoringAnalysis`, `USP_SchemaDesignAnalysis`, `USP_StatisticsDistributionAnalysis`, `USP_IntelligentQueryProcessingAnalysis` und `USP_InternalContentionAnalysis`.
+
+**Wichtig für die Eigenlast:** Nur benötigte Finding-Gruppen aktivieren und Datenbankscope früh weiterreichen. Das spätere `@MaxZeilen` begrenzt die Findingausgabe, nicht automatisch die Quellarbeit jedes Childmoduls.
+
 ### Zeit- und Scope-Modell
 
 Mix aus Child-Snapshots, Samples und Historien im selben Lauf. Wiederverwendung gilt nur innerhalb desselben Parent-Laufs; es gibt keinen sitzungs- oder aufrufübergreifenden Cache.

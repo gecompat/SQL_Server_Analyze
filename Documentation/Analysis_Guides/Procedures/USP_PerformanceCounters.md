@@ -110,6 +110,27 @@ Wie werden SQL-Server-Performance-Counter korrekt als Raw, Ratio, Rate oder Delt
 
 `sys.dm_os_performance_counters`, `sys.dm_os_sys_info`.
 
+### Source Select
+
+Der direkte Grundzugriff liest nur die benötigten Counter- und Instanznamen:
+
+```sql
+SELECT
+      [pc].[object_name]
+    , [pc].[counter_name]
+    , [pc].[instance_name]
+    , [pc].[cntr_value]
+    , [pc].[cntr_type]
+FROM [sys].[dm_os_performance_counters] AS [pc] WITH (NOLOCK)
+WHERE [pc].[counter_name] IN
+      (N'Page life expectancy',
+       N'Batch Requests/sec',
+       N'Page reads/sec')
+  AND [pc].[instance_name] IN (N'', N'_Total');
+```
+
+**Wichtig für die Eigenlast:** Counter- und Instanzlisten in der DMV-Abfrage anwenden. Base-Counter und zwei Messpunkte nur für Countertypen lesen, die diese Berechnung benötigen; `@MaxZeilen` ist sonst lediglich ein Ausgabelimit.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Rawstand oder Frameworksample; Reset typischerweise Engine-Start.

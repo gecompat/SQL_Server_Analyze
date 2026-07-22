@@ -115,6 +115,25 @@ Der Lock Monitor erkennt einen Zyklus, wählt anhand Deadlock Priority und Rollb
 
 `sys.dm_xe_session_targets`, `sys.dm_xe_sessions`, `sys.fn_xe_file_target_read_file`, `sys.server_event_session_fields`, `sys.server_event_session_targets`, `sys.server_event_sessions`.
 
+### Source Select
+
+Der zentrale Forensikpfad liest ausschließlich Deadlockevents aus der bereits ausgewählten XEL-Dateimenge:
+
+```sql
+SELECT
+      [x].[timestamp_utc]
+    , [x].[file_name]
+    , [x].[file_offset]
+    , TRY_CAST([x].[event_data] AS xml) AS [EventXml]
+FROM [sys].[fn_xe_file_target_read_file]
+     (@EventFilePattern, NULL, NULL, NULL) AS [x]
+WHERE [x].[object_name] = N'xml_deadlock_report'
+  AND [x].[timestamp_utc] >= @VonUtc
+ORDER BY [x].[timestamp_utc] DESC;
+```
+
+**Wichtig für die Eigenlast:** Rollovermenge und Zeitfenster begrenzen, bevor Deadlock-XML zerlegt wird. `TOP` nach einer unbeschränkten Dateifunktion reduziert möglicherweise nur Sortierungsausgabe, nicht den gesamten Dateizugriff.
+
 ### Zeit- und Scope-Modell
 
 Einzelne historische Deadlockereignisse soweit im Target erhalten.

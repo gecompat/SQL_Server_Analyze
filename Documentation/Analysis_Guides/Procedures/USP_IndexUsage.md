@@ -107,6 +107,34 @@ Welche sichtbaren Reads und Writes wurden einem Index seit dem DMV-Reset zugerec
 
 `sys.dm_db_index_usage_stats`, `sys.dm_db_xtp_index_stats`, `sys.dm_os_sys_info`, `sys.hash_indexes`, `sys.indexes`, `sys.objects`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+Die kumulative Nutzungs-DMV wird über Datenbank-, Objekt- und Index-ID mit dem Katalog verbunden:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [o].[name] AS [ObjectName]
+    , [i].[name] AS [IndexName]
+    , [us].[user_seeks]
+    , [us].[user_scans]
+    , [us].[user_lookups]
+    , [us].[user_updates]
+FROM [sys].[indexes] AS [i] WITH (NOLOCK)
+JOIN [sys].[objects] AS [o] WITH (NOLOCK)
+  ON [o].[object_id] = [i].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [o].[schema_id]
+LEFT JOIN [sys].[dm_db_index_usage_stats] AS [us] WITH (NOLOCK)
+  ON [us].[database_id] = DB_ID()
+ AND [us].[object_id] = [i].[object_id]
+ AND [us].[index_id] = [i].[index_id]
+WHERE [s].[name] = N'ExampleSchema'
+  AND [o].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Objekt im Katalogpfad früh eingrenzen. XTP-Indexstatistiken sind ein separater optionaler Zweig; fehlende DMV-Zeilen bedeuten nicht automatisch ungenutzte Indizes.
+
 ### Zeit- und Scope-Modell
 
 Kumulativ seit Engine-/Datenbank-/DMV-Lebenszyklus. Restart, Detach/Attach, Offline/Online und andere Ereignisse können den Beobachtungszeitraum verkürzen.

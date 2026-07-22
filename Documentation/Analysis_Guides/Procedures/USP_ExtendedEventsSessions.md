@@ -114,6 +114,28 @@ Katalogsichten für Sessions, Events, Actions, Fields und Targets bilden Definit
 
 `master.sys.databases`, `sys.dm_xe_sessions`, `sys.server_event_session_actions`, `sys.server_event_session_events`, `sys.server_event_session_fields`, `sys.server_event_session_targets`, `sys.server_event_sessions`, `sys.sp_executesql`.
 
+### Source Select
+
+Definition und Laufzeitzustand werden über den Sessionnamen verbunden; Events und Targets sind Childzeilen derselben Definition:
+
+```sql
+SELECT
+      [ses].[name] AS [SessionName]
+    , [dxs].[create_time]
+    , [ev].[name] AS [EventName]
+    , [t].[target_name]
+FROM [sys].[server_event_sessions] AS [ses] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_xe_sessions] AS [dxs] WITH (NOLOCK)
+  ON [dxs].[name] = [ses].[name]
+LEFT JOIN [sys].[server_event_session_events] AS [ev] WITH (NOLOCK)
+  ON [ev].[event_session_id] = [ses].[event_session_id]
+LEFT JOIN [sys].[server_event_session_targets] AS [t] WITH (NOLOCK)
+  ON [t].[event_session_id] = [ses].[event_session_id]
+WHERE [ses].[name] = N'ExampleXeSession';
+```
+
+**Wichtig für die Eigenlast:** Sessionname vor Events, Actions, Fields und datenbanklokalen Objektauflösungen setzen. Die synthetische Session `ExampleXeSession` ist nur ein Platzhalter.
+
 ### Zeit- und Scope-Modell
 
 Aktuelle Konfiguration plus Runtimezustand; Serverstart und Sessionstart beeinflussen Targetinhalt.

@@ -31,6 +31,7 @@ $requiredHeadings = @(
     '### Leitfrage',
     '### Technischer Hintergrund',
     '### Datenkette',
+    '### Source Select',
     '### Zeit- und Scope-Modell',
     '### Bewertung und Gegenprobe',
     '### Typische Fehlinterpretation',
@@ -556,6 +557,29 @@ foreach ($file in $pageFiles) {
     foreach ($heading in $requiredHeadings) {
         if ($text.IndexOf($heading, [System.StringComparison]::Ordinal) -lt 0) {
             $errors.Add("Missing heading '$heading': $($file.FullName)")
+        }
+    }
+
+    $sourceSelectMatches = [regex]::Matches(
+        $text,
+        '(?ms)^### Source Select\s*$\s*(.*?)(?=^### |\z)'
+    )
+    if ($sourceSelectMatches.Count -ne 1) {
+        $errors.Add("Expected exactly one Source Select section: $($file.FullName)")
+    }
+    else {
+        $sourceSelectBody = $sourceSelectMatches[0].Groups[1].Value
+        $hasSqlExample = $sourceSelectBody -match '(?m)^```sql\s*$'
+        $hasExplainedNonSelectPath =
+            $sourceSelectBody.Contains('Kein einzelnes Grundselect') -or
+            $sourceSelectBody.Contains('Kein direktes `SELECT`') -or
+            $sourceSelectBody.Contains('Kein `SELECT` auf eine DMV')
+
+        if (-not $hasSqlExample -and -not $hasExplainedNonSelectPath) {
+            $errors.Add("Source Select has neither SQL nor an explained non-SELECT path: $($file.FullName)")
+        }
+        if (-not $sourceSelectBody.Contains('**Wichtig für die Eigenlast:**')) {
+            $errors.Add("Source Select has no resource-scope note: $($file.FullName)")
         }
     }
 

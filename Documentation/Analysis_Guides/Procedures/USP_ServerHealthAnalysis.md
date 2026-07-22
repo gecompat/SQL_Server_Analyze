@@ -105,6 +105,12 @@ Wrapper über CPU, NUMA, Memory, TempDB, Config, Trace Flags, Startup, OS und Se
 
 Frameworkinterne Orchestrierung; Quellen liegen in Childmodulen.
 
+### Source Select
+
+Kein einzelnes Grundselect: Die Procedure orchestriert CPU-, NUMA-, Memory-, TempDB-, Konfigurations-, Trace-Flag-, Startup-, OS-, Security-, Integrity-, Capacity-, Counter-, Engine-Event-, Contention-, Buffer-Pool-, Finding- und Worker-Pressure-Module.
+
+**Wichtig für die Eigenlast:** Zuerst die leichten Server-Snapshots verwenden und optionale Historien-, XEL-, Buffer-Descriptor- oder datenbankübergreifende Module gezielt aktivieren. Childstatus und Scope bleiben getrennt; ein finales Zeilenlimit spart deren Quellarbeit nicht.
+
 ### Zeit- und Scope-Modell
 
 Nicht atomare Folge aktueller Konfigurations-/Runtimeabfragen.

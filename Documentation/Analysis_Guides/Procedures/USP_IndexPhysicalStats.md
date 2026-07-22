@@ -137,6 +137,35 @@ Die Procedure verwendet die DMF ausschließlich lesend. Sie reorganisiert oder r
 5. Erst auf den gelieferten DMF-Zeilen wirken Mindestpages, Mindestfragmentierung und bei breitem Modus Namenspattern; danach werden die größten Strukturen sortiert und je Datenbank begrenzt.
 6. Fehler und Zeilenzahl werden je Datenbank protokolliert, anschließend als CONSOLE, RAW, TABLE oder JSON ausgegeben.
 
+### Source Select
+
+Die kostenentscheidende Struktur ist die gezielte Katalogauflösung vor dem Physical-Stats-Aufruf:
+
+```sql
+DECLARE @TargetObjectId int =
+(
+    SELECT [o].[object_id]
+    FROM [sys].[objects] AS [o] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+      ON [s].[schema_id] = [o].[schema_id]
+    WHERE [s].[name] = N'ExampleSchema'
+      AND [o].[name] = N'ExampleObject'
+);
+
+SELECT
+      [ps].[object_id]
+    , [ps].[index_id]
+    , [ps].[partition_number]
+    , [ps].[page_count]
+    , [ps].[avg_fragmentation_in_percent]
+    , [ps].[avg_page_space_used_in_percent]
+FROM [sys].[dm_db_index_physical_stats]
+     (DB_ID(), @TargetObjectId, NULL, NULL, N'LIMITED') AS [ps]
+WHERE [ps].[page_count] >= @MinPageCount;
+```
+
+**Wichtig für die Eigenlast:** Objekt-ID, optional Index und Partition vor dem DMF-Aufruf bestimmen. `LIMITED` klein beginnen; Mindestpages und Fragmentierungsfilter wirken erst auf gelieferten DMF-Zeilen und verhindern den physischen Scan nicht.
+
 ### Zeit- und Scope-Modell
 
 Die Messung gilt für den physischen Zustand während des Aufrufs. Gleichzeitige DML, Page Splits, Ghost Cleanup oder Wartung können Werte während eines längeren Scans verändern; es gibt keinen transaktional eingefrorenen Strukturzeitpunkt. Es existiert kein kumulativer Resetzähler. Der Scope folgt expliziter Datenbank-, Objekt-, Index- und Partitionsauswahl sowie dem Scanmodus.

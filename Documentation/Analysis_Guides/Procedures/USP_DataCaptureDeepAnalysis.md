@@ -129,6 +129,28 @@ CDC Capture liest das Transaktionslog in Change Tables; Cleanup verschiebt `min_
 
 `msdb.dbo.agent_datetime`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.databases`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`, `cdc.change_tables`, `msdb.dbo.cdc_jobs`, `msdb.dbo.MSdistributiondbs`, `distribution.dbo.MSdistribution_agents`, `distribution.dbo.MSdistribution_history`, `distribution.dbo.MSdistribution_status`, `distribution.dbo.MSsubscriptions`, `distribution.dbo.MSlogreader_agents`, `distribution.dbo.MSlogreader_history`, `distribution.dbo.MSmerge_agents`, `distribution.dbo.MSmerge_sessions`, `distribution.dbo.MSrepl_errors`, `sys.dm_cdc_errors`, `sys.dm_cdc_log_scan_sessions`, `sys.fn_cdc_get_min_lsn`, `sys.fn_cdc_map_lsn_to_time`, `CHANGE_TRACKING_CURRENT_VERSION`, `CHANGE_TRACKING_MIN_VALID_VERSION`.
 
+### Source Select
+
+Die Procedure besitzt getrennte Pfade für Change Tracking, CDC und Replication. Der folgende Katalogkern zeigt die Beziehung der Change-Tracking-Tabellen:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [t].[name] AS [TableName]
+    , [ct].[begin_version]
+    , [ct].[cleanup_version]
+    , CHANGE_TRACKING_MIN_VALID_VERSION([ct].[object_id]) AS [MinValidVersion]
+FROM [sys].[change_tracking_tables] AS [ct] WITH (NOLOCK)
+JOIN [sys].[tables] AS [t] WITH (NOLOCK)
+  ON [t].[object_id] = [ct].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [t].[schema_id]
+WHERE [s].[name] = N'ExampleSchema'
+  AND [t].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Objekt vor CDC-Logscan- und Distribution-Historie festlegen. `sys.dm_cdc_log_scan_sessions`, `sys.dm_cdc_errors` und Distributionstabellen nur im fachlich benötigten, bestätigten Tiefenpfad und mit engem Zeitfenster lesen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Enablement-/Job-/Session-/LSN-/Versionstand plus begrenzte Historie.

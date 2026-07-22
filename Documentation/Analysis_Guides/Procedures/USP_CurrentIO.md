@@ -119,6 +119,26 @@ TABLE verwendet `@ResultTablesJson` mit den stabilen Namen `moduleStatus`,
 
 `master.sys.master_files`, `sys.dm_io_virtual_file_stats`, `sys.dm_io_pending_io_requests`, `sys.dm_os_schedulers`, `sys.dm_os_tasks`, `sys.dm_os_waiting_tasks`, `sys.dm_exec_requests`.
 
+### Source Select
+
+Die Datei-DMV wird je Messzeitpunkt genau einmal gelesen und erst dann mit dem gewünschten Datenbankscope verbunden:
+
+```sql
+SELECT
+      [d].[name] AS [DatabaseName]
+    , [v].[file_id]
+    , [v].[num_of_reads]
+    , [v].[io_stall_read_ms]
+    , [v].[num_of_writes]
+    , [v].[io_stall_write_ms]
+FROM [sys].[dm_io_virtual_file_stats](NULL, NULL) AS [v]
+JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[database_id] = [v].[database_id]
+WHERE [d].[name] = N'ExampleDatabase';
+```
+
+**Wichtig für die Eigenlast:** Die DMV nicht in einer Datenbankschleife erneut aufrufen. Pending-I/O und Scheduler-/Taskkontext sind optionale zweite Quellen; nur aktivieren, wenn die Dateiwerte oder das Symptom diese Vertiefung rechtfertigen.
+
 ### Zeit- und Scope-Modell
 
 Dateizähler sind kumulativ seit Start/Dateizustand oder ein Sampledelta. Pending I/O ist ein flüchtiger Snapshot; eine wiederholte Adresse in zwei Samples erhöht die Relevanz, beweist aber weder Dauer außerhalb des Fensters noch Storageursache.

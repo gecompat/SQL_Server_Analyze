@@ -104,6 +104,26 @@ Log Shipping besteht aus Backupjob auf Primary, Copy-/Restorejobs auf Secondary 
 
 `msdb.dbo.log_shipping_monitor_primary`, `msdb.dbo.log_shipping_monitor_secondary`, `msdb.dbo.log_shipping_primary_databases`, `msdb.dbo.log_shipping_secondary_databases`.
 
+### Source Select
+
+Der Primary-Pfad verbindet Konfiguration und Monitorstatus über `primary_id`:
+
+```sql
+SELECT
+      [p].[primary_database]
+    , [p].[backup_directory]
+    , [m].[last_backup_date]
+    , [m].[last_backup_file]
+    , [m].[backup_threshold]
+    , [m].[threshold_alert_enabled]
+FROM [msdb].[dbo].[log_shipping_primary_databases] AS [p] WITH (NOLOCK)
+LEFT JOIN [msdb].[dbo].[log_shipping_monitor_primary] AS [m] WITH (NOLOCK)
+  ON [m].[primary_id] = [p].[primary_id]
+WHERE [p].[primary_database] = N'ExampleDatabase';
+```
+
+**Wichtig für die Eigenlast:** Primary- beziehungsweise Secondary-Datenbank vor der jeweiligen Monitoransicht filtern. Primary und Secondary sind getrennte Zeilengranularitäten und werden nicht über Namen zu einer vermeintlich atomaren Kette verschmolzen.
+
 ### Zeit- und Scope-Modell
 
 Monitor-Metadaten mit eigener Aktualisierungszeit plus Jobhistory. Clock Skew und stale Monitor beeinflussen Interpretation.

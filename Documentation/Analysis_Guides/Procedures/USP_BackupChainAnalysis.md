@@ -105,6 +105,27 @@ Fullbackups definieren Database Backup LSN/Checkpoint; Differentials basieren au
 
 `msdb.dbo.backupset`, `msdb.dbo.restorehistory`.
 
+### Source Select
+
+Die Kette beginnt bei `backupset`; Restorehistorie wird über `backup_set_id` korreliert:
+
+```sql
+SELECT
+      [bs].[database_name]
+    , [bs].[backup_set_id]
+    , [bs].[type]
+    , [bs].[backup_start_date]
+    , [bs].[backup_finish_date]
+    , [rh].[restore_date]
+FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
+LEFT JOIN [msdb].[dbo].[restorehistory] AS [rh] WITH (NOLOCK)
+  ON [rh].[backup_set_id] = [bs].[backup_set_id]
+WHERE [bs].[database_name] = N'ExampleDatabase'
+  AND [bs].[backup_finish_date] >= DATEADD(DAY, -30, GETDATE());
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Zeitfenster gehören in die erste `backupset`-Abfrage. Ohne diese Einschränkungen wachsen Sortierung und Kettenbildung mit der gesamten `msdb`-Historie.
+
 ### Zeit- und Scope-Modell
 
 `msdb`-Metadaten im gewählten Fenster; ein zu kurzes Fenster kann die notwendige Basis ausblenden.

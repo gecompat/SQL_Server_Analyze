@@ -113,6 +113,32 @@ Der Optimizer schätzt den benötigten Query Execution Memory Grant aus Plan, Ka
 
 `sys.databases`, `sys.dm_exec_query_memory_grants`, `sys.dm_exec_query_resource_semaphores`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`.
 
+### Source Select
+
+Das Grundselect verbindet Grants mit Session, Request und Datenbank; der Wartestatus kann bereits an der Grantquelle gefiltert werden:
+
+```sql
+SELECT
+      [mg].[session_id]
+    , [mg].[request_id]
+    , [mg].[requested_memory_kb]
+    , [mg].[granted_memory_kb]
+    , [mg].[wait_time_ms]
+    , [r].[wait_type]
+    , [d].[name] AS [DatabaseName]
+FROM [sys].[dm_exec_query_memory_grants] AS [mg] WITH (NOLOCK)
+JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+  ON [s].[session_id] = [mg].[session_id]
+LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+  ON [r].[session_id] = [mg].[session_id]
+ AND [r].[request_id] = [mg].[request_id]
+LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[database_id] = [r].[database_id]
+WHERE [mg].[grant_time] IS NULL;
+```
+
+**Wichtig für die Eigenlast:** `NurWartende` beziehungsweise Sessionfilter vor SQL-Text und Statementextraktion anwenden. Resource-Governor- und Semaphorezeilen sind kleine Zusatzquellen, SQL-Text ist der vermeidbare breite Pfad.
+
 ### Zeit- und Scope-Modell
 
 Flüchtiger Zustand. Wartende Grants verschwinden bei Zuteilung/Abbruch; Nutzung verändert sich während der Ausführung.

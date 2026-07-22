@@ -116,6 +116,25 @@ Welche Blockings überschritten den konfigurierten Threshold und wurden als Repo
 
 `sys.configurations`, `sys.dm_xe_session_targets`, `sys.dm_xe_sessions`, `sys.fn_xe_file_target_read_file`, `sys.server_event_session_events`, `sys.server_event_session_fields`, `sys.server_event_session_targets`, `sys.server_event_sessions`.
 
+### Source Select
+
+Der Dateipfad filtert Blocked-Process-Events und Zeit bereits vor der XML-Zerlegung:
+
+```sql
+SELECT
+      [x].[timestamp_utc]
+    , [x].[file_name]
+    , [x].[file_offset]
+    , TRY_CAST([x].[event_data] AS xml) AS [EventXml]
+FROM [sys].[fn_xe_file_target_read_file]
+     (@EventFilePattern, NULL, NULL, NULL) AS [x]
+WHERE [x].[object_name] = N'blocked_process_report'
+  AND [x].[timestamp_utc] >= @VonUtc
+ORDER BY [x].[timestamp_utc] DESC;
+```
+
+**Wichtig für die Eigenlast:** Session, Eventname und Zeitfenster vor XML-Parsing festlegen. Ring Buffer nur gezielt verwenden; dessen `target_data` wird als Ganzes materialisiert. Ein optionaler Flush ist eine bewusste Nebenwirkung, keine Filtertechnik.
+
 ### Zeit- und Scope-Modell
 
 Historische Thresholdereignisse während aktiver Capture; keine lückenlose Lockhistorie.

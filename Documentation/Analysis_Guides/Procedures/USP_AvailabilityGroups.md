@@ -105,6 +105,28 @@ Primär erzeugt Log Records, sendet Logblöcke an Secondaries, diese harden und 
 
 `sys.availability_group_listener_ip_addresses`, `sys.availability_group_listeners`, `sys.availability_groups`, `sys.availability_read_only_routing_lists`, `sys.availability_replicas`, `sys.dm_hadr_`, `sys.dm_hadr_availability_replica_states`, `sys.dm_hadr_database_replica_states`, `sys.fn_hadr_is_primary_replica`.
 
+### Source Select
+
+Die wesentliche Beziehung verbindet AG-Konfiguration, Replikate und deren aktuellen Laufzeitzustand:
+
+```sql
+SELECT
+      [ag].[name] AS [AvailabilityGroupName]
+    , [ar].[replica_server_name]
+    , [ar].[availability_mode_desc]
+    , [ar].[failover_mode_desc]
+    , [ars].[role_desc]
+    , [ars].[connected_state_desc]
+FROM [sys].[availability_groups] AS [ag] WITH (NOLOCK)
+JOIN [sys].[availability_replicas] AS [ar] WITH (NOLOCK)
+  ON [ar].[group_id] = [ag].[group_id]
+LEFT JOIN [sys].[dm_hadr_availability_replica_states] AS [ars] WITH (NOLOCK)
+  ON [ars].[replica_id] = [ar].[replica_id]
+WHERE [ag].[name] = N'ExampleAvailabilityGroup';
+```
+
+**Wichtig für die Eigenlast:** Der AG-Name ist der wirksamste frühe Scope. Listener, IP-Adressen, Routinglisten und Datenbankzustände werden erst für die verbleibenden Gruppen ergänzt.
+
 ### Zeit- und Scope-Modell
 
 Aktueller lokaler Snapshot; Ratewerte können intern über begrenzte Intervalle berechnet werden und schwanken.

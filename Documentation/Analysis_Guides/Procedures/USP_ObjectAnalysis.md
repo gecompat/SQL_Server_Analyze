@@ -112,6 +112,12 @@ Der Orchestrator kombiniert Definition, Usage, Operations, Missing Indexes, Stat
 
 Frameworkinterne Orchestrierung; Quellen liegen in den aufgerufenen Childmodulen.
 
+### Source Select
+
+Kein einzelnes Grundselect: Die Procedure orchestriert je nach Schalter `USP_ObjectInventory`, `USP_IndexUsage`, `USP_MissingIndexes`, `USP_IndexOperationalStats`, `USP_Statistics`, `USP_StatisticsDistributionAnalysis`, `USP_Partitions`, `USP_Columnstore`, `USP_IndexPhysicalStats` und `USP_SchemaDesignAnalysis`.
+
+**Wichtig für die Eigenlast:** Datenbank und vollständigen Objektnamen an alle Childmodule weiterreichen und nur benötigte Tiefenpfade aktivieren. Das abschließende Zeilenlimit ersetzt weder den DMF-Objektparameter noch den frühen Katalogscope.
+
 ### Zeit- und Scope-Modell
 
 Nicht atomarer Mix aus Metadaten, kumulativen Zählern und aufrufbezogenen physischen Scans.

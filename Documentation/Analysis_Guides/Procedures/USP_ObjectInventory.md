@@ -107,6 +107,34 @@ Tabellen, Views, Indizes, Spalten, Partitionen, Kompression und Allocation Units
 
 `master.sys.databases`, `sys.allocation_units`, `sys.columns`, `sys.data_spaces`, `sys.index_columns`, `sys.indexes`, `sys.objects`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+Der Größenkern verbindet Objekt, Schema, Tabelle, Index, Partition und Allocation Unit:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [o].[name] AS [ObjectName]
+    , [i].[name] AS [IndexName]
+    , [p].[partition_number]
+    , SUM([au].[total_pages]) * 8.0 / 1024.0 AS [ReservedMb]
+FROM [sys].[objects] AS [o] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [o].[schema_id]
+LEFT JOIN [sys].[indexes] AS [i] WITH (NOLOCK)
+  ON [i].[object_id] = [o].[object_id]
+LEFT JOIN [sys].[partitions] AS [p] WITH (NOLOCK)
+  ON [p].[object_id] = [i].[object_id]
+ AND [p].[index_id] = [i].[index_id]
+LEFT JOIN [sys].[allocation_units] AS [au] WITH (NOLOCK)
+  ON [au].[container_id] IN ([p].[hobt_id], [p].[partition_id])
+WHERE [s].[name] = N'ExampleSchema'
+  AND [o].[name] = N'ExampleObject'
+GROUP BY [s].[name], [o].[name], [i].[name], [p].[partition_number];
+```
+
+**Wichtig für die Eigenlast:** Schema und Objekt vor Partitionen, Allocation Units, Spalten und Indexspalten filtern. Wegen mehrerer Allocation Units niemals ungeprüft Zeilen- oder Größenwerte über verschiedene Granularitäten summieren.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Metadaten- und Größenstand. Rowcounts aus DMVs sind für Diagnosezwecke geeignet, aber keine transaktional exakte `COUNT_BIG(*)`-Messung.

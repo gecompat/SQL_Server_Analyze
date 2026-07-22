@@ -107,6 +107,23 @@ Latches schützen interne In-Memory-Strukturen/Pages, Spinlocks sehr kurze Criti
 
 `sys.dm_db_page_info`, `sys.dm_exec_requests`, `sys.dm_os_latch_stats`, `sys.dm_os_spinlock_stats`, `sys.dm_os_sys_info`.
 
+### Source Select
+
+Das kumulative Grundselect beginnt bei den serverweiten Latch-Zählern und behält nur tatsächlich beobachtete Klassen:
+
+```sql
+SELECT
+      [l].[latch_class]
+    , [l].[waiting_requests_count]
+    , [l].[wait_time_ms]
+    , [l].[max_wait_time_ms]
+FROM [sys].[dm_os_latch_stats] AS [l] WITH (NOLOCK)
+WHERE [l].[waiting_requests_count] > 0
+ORDER BY [l].[wait_time_ms] DESC;
+```
+
+**Wichtig für die Eigenlast:** Latch-/Spinlock-Schwellen vor Detailprojektion anwenden. Request- und `dm_db_page_info`-Korrelation ist ein separater, gezielter Momentaufnahmepfad und darf nicht breit für alle historischen Counter ausgeführt werden.
+
 ### Zeit- und Scope-Modell
 
 Kurzes Sampledelta plus Tasksnapshot; Reset/Restart macht Delta ungültig.

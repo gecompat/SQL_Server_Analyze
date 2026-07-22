@@ -105,6 +105,43 @@ Partition Functions übersetzen Boundary Values in Partitionsnummern; RANGE LEFT
 
 `sys.allocation_units`, `sys.data_spaces`, `sys.destination_data_spaces`, `sys.dm_db_partition_stats`, `sys.indexes`, `sys.objects`, `sys.partition_functions`, `sys.partition_range_values`, `sys.partition_schemes`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`.
 
+### Source Select
+
+Die Partitionskette verbindet Indexpartition, Partitionsschema/-funktion und die unteren beziehungsweise oberen Grenzwerte:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [o].[name] AS [ObjectName]
+    , [i].[name] AS [IndexName]
+    , [p].[partition_number]
+    , [pf].[name] AS [PartitionFunctionName]
+    , [lo].[value] AS [LowerBoundaryValue]
+    , [hi].[value] AS [UpperBoundaryValue]
+FROM [sys].[objects] AS [o] WITH (NOLOCK)
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [o].[schema_id]
+JOIN [sys].[indexes] AS [i] WITH (NOLOCK)
+  ON [i].[object_id] = [o].[object_id]
+JOIN [sys].[partitions] AS [p] WITH (NOLOCK)
+  ON [p].[object_id] = [i].[object_id]
+ AND [p].[index_id] = [i].[index_id]
+LEFT JOIN [sys].[partition_schemes] AS [ps] WITH (NOLOCK)
+  ON [ps].[data_space_id] = [i].[data_space_id]
+LEFT JOIN [sys].[partition_functions] AS [pf] WITH (NOLOCK)
+  ON [pf].[function_id] = [ps].[function_id]
+LEFT JOIN [sys].[partition_range_values] AS [lo] WITH (NOLOCK)
+  ON [lo].[function_id] = [pf].[function_id]
+ AND [lo].[boundary_id] = [p].[partition_number] - 1
+LEFT JOIN [sys].[partition_range_values] AS [hi] WITH (NOLOCK)
+  ON [hi].[function_id] = [pf].[function_id]
+ AND [hi].[boundary_id] = [p].[partition_number]
+WHERE [s].[name] = N'ExampleSchema'
+  AND [o].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Objekt und Index vor Allocation-, Destination-Data-Space- und Boundary-Vertiefung begrenzen. Ob die untere beziehungsweise obere Grenze inklusive ist, ergibt sich zusätzlich aus `sys.partition_functions.boundary_value_on_right`.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Katalog- und Rowcount-/Spacezustand.

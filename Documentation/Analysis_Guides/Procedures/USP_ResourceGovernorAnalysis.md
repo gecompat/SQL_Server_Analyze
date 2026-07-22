@@ -105,6 +105,28 @@ Classifier Function ordnet neue Sessions Workload Groups zu; Groups verweisen au
 
 `master.sys.objects`, `master.sys.schemas`, `sys.dm_exec_sessions`, `sys.dm_resource_governor_configuration`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`, `sys.resource_governor_configuration`, `sys.resource_governor_resource_pools`, `sys.resource_governor_workload_groups`.
 
+### Source Select
+
+Konfiguration und kumulative Runtime werden über `pool_id` verbunden:
+
+```sql
+SELECT
+      [p].[pool_id]
+    , [p].[name] AS [PoolName]
+    , [p].[max_cpu_percent]
+    , [p].[max_memory_percent]
+    , [rp].[active_session_count]
+    , [rp].[active_request_count]
+    , [rp].[used_memory_kb]
+    , [rp].[out_of_memory_count]
+FROM [sys].[resource_governor_resource_pools] AS [p] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp] WITH (NOLOCK)
+  ON [rp].[pool_id] = [p].[pool_id]
+WHERE [p].[name] <> N'internal';
+```
+
+**Wichtig für die Eigenlast:** Pool oder Workload Group vor Sessionzuordnung filtern. Runtimezähler sind klein und kumulativ; SQL-Text und Requests werden nicht breit aufgelöst.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Config-/Runtimezustand; Counter meist kumulativ seit Aktivierung/Start. Bereits verbundene Sessions werden durch Classifieränderung nicht automatisch neu klassifiziert.

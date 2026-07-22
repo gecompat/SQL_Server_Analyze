@@ -112,6 +112,33 @@ Runtime Stats speichern aggregierte Messwerte je Plan, Intervall und Execution T
 
 `sys.database_query_store_options`, `sys.objects`, `sys.query_store_plan`, `sys.query_store_query`, `sys.query_store_query_text`, `sys.query_store_runtime_stats`, `sys.query_store_runtime_stats_interval`, `sys.schemas`, `sys.sp_executesql`.
 
+### Source Select
+
+Runtimewerte werden über Intervall, Plan, Query und Query Text verbunden:
+
+```sql
+SELECT
+      [q].[query_id]
+    , [p].[plan_id]
+    , [i].[start_time]
+    , [i].[end_time]
+    , [rs].[count_executions]
+    , [rs].[avg_duration]
+    , [rs].[avg_cpu_time]
+    , [rs].[avg_logical_io_reads]
+FROM [sys].[query_store_runtime_stats] AS [rs] WITH (NOLOCK)
+JOIN [sys].[query_store_runtime_stats_interval] AS [i] WITH (NOLOCK)
+  ON [i].[runtime_stats_interval_id] = [rs].[runtime_stats_interval_id]
+JOIN [sys].[query_store_plan] AS [p] WITH (NOLOCK)
+  ON [p].[plan_id] = [rs].[plan_id]
+JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
+  ON [q].[query_id] = [p].[query_id]
+WHERE [i].[end_time] > @VonUtc
+  AND [i].[start_time] < @BisUtc;
+```
+
+**Wichtig für die Eigenlast:** Zeitfenster und optional `query_id`/Query Hash vor Text- und Planprojektion anwenden. Die Intervallmenge bestimmt CPU und Speicher; ein späteres Top-N reduziert nur das Ergebnisranking.
+
 ### Zeit- und Scope-Modell
 
 Persistierte, intervalaggregierte Historie innerhalb Retention. Überlappende Randintervalle können vollständig einbezogen sein.

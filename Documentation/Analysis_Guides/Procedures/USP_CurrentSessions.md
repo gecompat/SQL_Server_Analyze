@@ -116,6 +116,31 @@ Welche Sessions sind verbunden, welchen Kontext besitzen sie und gibt es inaktiv
 
 `master.sys.databases`, `sys.databases`, `sys.dm_exec_connections`, `sys.dm_exec_requests`, `sys.dm_exec_sessions`, `sys.dm_exec_sql_text`, `sys.sp_executesql`.
 
+### Source Select
+
+Das Grundselect zeigt die Session als führende Quelle und die optional vorhandene Connection beziehungsweise den aktuellen Request:
+
+```sql
+SELECT
+      [s].[session_id]
+    , [s].[status] AS [SessionStatus]
+    , [s].[open_transaction_count]
+    , [s].[cpu_time]
+    , [s].[logical_reads]
+    , [c].[connect_time]
+    , [r].[status] AS [RequestStatus]
+    , [r].[database_id]
+FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK)
+  ON [c].[session_id] = [s].[session_id]
+LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+  ON [r].[session_id] = [s].[session_id]
+WHERE [s].[session_id] <> @@SPID
+  AND [s].[is_user_process] = 1;
+```
+
+**Wichtig für die Eigenlast:** User-/Session-/Statusfilter vor SQL-Textauflösung setzen. Eine Session kann inaktiv sein und deshalb keine Requestzeile besitzen; SQL-Text ist ein optionaler N+1-artiger Detailpfad.
+
 ### Zeit- und Scope-Modell
 
 Sessionmomentaufnahme mit kumulativen Zählern seit Sessionbeginn. Session-IDs können nach Ende wiederverwendet werden; Uhrzeit und Login-/Connectionkontext gehören zur Identität.

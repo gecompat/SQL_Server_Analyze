@@ -109,6 +109,35 @@ Histogrammsteps speichern `RANGE_HI_KEY`, `EQ_ROWS`, `RANGE_ROWS`, `DISTINCT_RAN
 
 `sys.columns`, `sys.databases`, `sys.dm_db_stats_histogram`, `sys.sp_executesql`, `sys.stats_columns`, `sys.types`.
 
+### Source Select
+
+Nach der vorgelagerten Zielauflösung zeigt der direkte Histogrammpfad die führende Statistikspalte und ihre Verteilung:
+
+```sql
+SELECT
+      [sc].[stats_column_id]
+    , [c].[name] AS [LeadingColumnName]
+    , [ty].[name] AS [LeadingTypeName]
+    , [h].[step_number]
+    , [h].[range_high_key]
+    , [h].[range_rows]
+    , [h].[equal_rows]
+    , [h].[distinct_range_rows]
+FROM [sys].[stats_columns] AS [sc] WITH (NOLOCK)
+JOIN [sys].[columns] AS [c] WITH (NOLOCK)
+  ON [c].[object_id] = [sc].[object_id]
+ AND [c].[column_id] = [sc].[column_id]
+JOIN [sys].[types] AS [ty] WITH (NOLOCK)
+  ON [ty].[user_type_id] = [c].[user_type_id]
+CROSS APPLY [sys].[dm_db_stats_histogram]
+            (@ObjectId, @StatisticsId) AS [h]
+WHERE [sc].[object_id] = @ObjectId
+  AND [sc].[stats_id] = @StatisticsId
+  AND [sc].[stats_column_id] = 1;
+```
+
+**Wichtig für die Eigenlast:** `@ObjectId` und `@StatisticsId` stammen aus der zuvor eng begrenzten Kandidatenmenge von `USP_Statistics`. Das Histogramm nie für eine unbeabsichtigt breite Statistikmenge öffnen; konkrete Grenzwerte können fachliche Schlüssel enthalten und bleiben im Default abgeleitet beziehungsweise anonymisiert.
+
 ### Zeit- und Scope-Modell
 
 Aktuelles Histogramm der letzten Statistikaktualisierung; maximal 200 Steps und gegebenenfalls Sample statt Vollscan.

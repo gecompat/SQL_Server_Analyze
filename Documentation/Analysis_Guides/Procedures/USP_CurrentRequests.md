@@ -160,6 +160,35 @@ Die Quellen werden nicht in einem transaktional konsistenten Snapshot eingefrore
 7. Optional folgen je betroffener Datenbank die Modulauflösung und je verbliebener Request der Input Buffer; Texte werden erst danach auf `@MaxSqlTextZeichen` gekürzt.
 8. Ausgabe erfolgt als CONSOLE, RAW, TABLE und/oder JSON.
 
+### Source Select
+
+Das zentrale Live-Select verbindet laufende Requests mit Session und Connection; optionale Quellen werden erst später ergänzt:
+
+```sql
+SELECT
+      [r].[session_id]
+    , [r].[request_id]
+    , [r].[status]
+    , [r].[command]
+    , [r].[total_elapsed_time]
+    , [r].[cpu_time]
+    , [r].[logical_reads]
+    , [r].[wait_type]
+    , [r].[blocking_session_id]
+    , [s].[program_name]
+    , [c].[client_net_address]
+FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+  ON [s].[session_id] = [r].[session_id]
+LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK)
+  ON [c].[session_id] = [r].[session_id]
+WHERE [r].[session_id] <> @@SPID
+  AND [s].[is_user_process] = 1
+  AND [r].[total_elapsed_time] >= @MinDauerMs;
+```
+
+**Wichtig für die Eigenlast:** Exakte Session-, Datenbank- und Dauerfilter vor Waiting-Task-, Grant-, SQL-Text-, Modul- und Input-Buffer-Anreicherung setzen. Regex wirkt erst nach Materialisierung und spart daher keine DMV-Quellarbeit.
+
 ### Zeit- und Scope-Modell
 
 Instanzweite Live-Momentaufnahme der sichtbaren aktiven Requests. Zähler beginnen mit dem jeweiligen Request; sie besitzen keinen gemeinsamen globalen Resetzeitpunkt. Session-IDs können nach Sessionende wiederverwendet werden, daher für spätere Korrelation mindestens Startzeit und RequestId mitführen. Das Ergebnis enthält standardmäßig User-Requests außer der aufrufenden Session; Filter verengen diesen Scope.

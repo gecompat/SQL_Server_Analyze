@@ -106,6 +106,37 @@ Die Procedure leitet normalisierte Findings aus Katalogmerkmalen ab, etwa Datent
 
 `sys.check_constraints`, `sys.foreign_key_columns`, `sys.foreign_keys`, `sys.identity_columns`, `sys.index_columns`, `sys.indexes`, `sys.objects`, `sys.schemas`, `sys.sequences`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+Der Foreign-Key-Kern verbindet Constraint, Parent-/Referenztabelle, Schema und Spaltenzuordnung:
+
+```sql
+SELECT
+      [ps].[name] AS [ParentSchema]
+    , [pt].[name] AS [ParentTable]
+    , [fk].[name] AS [ForeignKeyName]
+    , [rs].[name] AS [ReferencedSchema]
+    , [rt].[name] AS [ReferencedTable]
+    , [fkc].[constraint_column_id]
+    , [fkc].[parent_column_id]
+    , [fkc].[referenced_column_id]
+FROM [sys].[foreign_keys] AS [fk] WITH (NOLOCK)
+JOIN [sys].[tables] AS [pt] WITH (NOLOCK)
+  ON [pt].[object_id] = [fk].[parent_object_id]
+JOIN [sys].[schemas] AS [ps] WITH (NOLOCK)
+  ON [ps].[schema_id] = [pt].[schema_id]
+JOIN [sys].[tables] AS [rt] WITH (NOLOCK)
+  ON [rt].[object_id] = [fk].[referenced_object_id]
+JOIN [sys].[schemas] AS [rs] WITH (NOLOCK)
+  ON [rs].[schema_id] = [rt].[schema_id]
+JOIN [sys].[foreign_key_columns] AS [fkc] WITH (NOLOCK)
+  ON [fkc].[constraint_object_id] = [fk].[object_id]
+WHERE [ps].[name] = N'ExampleSchema'
+  AND [pt].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Datenbank und Objekt vor Index-, Constraint-, Identity- und Sequence-Gegenprüfungen festlegen. Der breite High-Impact-Pfad liest mehrere Katalogfamilien; Findings entstehen erst danach und sind kein DDL-Auftrag.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Metadatenstand; keine Runtime-/Workloadhistorie, sofern nicht explizit angereichert.

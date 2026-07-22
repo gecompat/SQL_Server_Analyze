@@ -111,6 +111,33 @@ Full-Text Engine tokenisiert sprachabhängig, speichert invertierte Indizes in C
 
 `sys.dm_fts_fdhosts`, `sys.dm_fts_index_population`, `sys.dm_fts_memory_pools`, `sys.dm_fts_outstanding_batches`, `sys.dm_fts_semantic_similarity_population`, `sys.fulltext_catalogs`, `sys.fulltext_index_columns`, `sys.fulltext_index_fragments`, `sys.fulltext_indexes`, `sys.indexes`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Source Select
+
+Der Katalogkern verbindet Full-Text-Index, Basistabelle, Schema, Katalog und Key-Index:
+
+```sql
+SELECT
+      [s].[name] AS [SchemaName]
+    , [t].[name] AS [TableName]
+    , [fc].[name] AS [FullTextCatalogName]
+    , [i].[name] AS [KeyIndexName]
+    , [fi].[change_tracking_state_desc]
+FROM [sys].[fulltext_indexes] AS [fi] WITH (NOLOCK)
+JOIN [sys].[tables] AS [t] WITH (NOLOCK)
+  ON [t].[object_id] = [fi].[object_id]
+JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+  ON [s].[schema_id] = [t].[schema_id]
+LEFT JOIN [sys].[fulltext_catalogs] AS [fc] WITH (NOLOCK)
+  ON [fc].[fulltext_catalog_id] = [fi].[fulltext_catalog_id]
+LEFT JOIN [sys].[indexes] AS [i] WITH (NOLOCK)
+  ON [i].[object_id] = [fi].[object_id]
+ AND [i].[index_id] = [fi].[unique_index_id]
+WHERE [s].[name] = N'ExampleSchema'
+  AND [t].[name] = N'ExampleObject';
+```
+
+**Wichtig für die Eigenlast:** Objektfilter vor Fragment- und Population-DMVs setzen. `sys.fulltext_index_fragments` und Outstanding-/Population-Details erst für verbleibende Full-Text-Indizes lesen.
+
 ### Zeit- und Scope-Modell
 
 Aktueller Metadaten-/Populationzustand plus begrenzte Crawl-/Errorhistorie.

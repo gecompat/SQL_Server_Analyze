@@ -103,6 +103,34 @@ Vertiefung kombiniert Cluster-/Replica-/Databasezustand, Send/Redo, Flow Control
 
 `sys.availability_groups`, `sys.availability_replicas`, `sys.dm_hadr_auto_page_repair`, `sys.dm_hadr_availability_replica_states`, `sys.dm_hadr_cluster`, `sys.dm_hadr_cluster_members`, `sys.dm_hadr_cluster_networks`, `sys.dm_hadr_database_replica_states`, `sys.dm_hadr_physical_seeding_stats`.
 
+### Source Select
+
+Das Grundselect zeigt die zentrale AG-Kette von Gruppe über Replikat bis zur lokalen Datenbank-Replikatzustandszeile:
+
+```sql
+SELECT
+      [ag].[name] AS [AvailabilityGroupName]
+    , [ar].[replica_server_name]
+    , [ars].[role_desc]
+    , [d].[name] AS [DatabaseName]
+    , [drs].[synchronization_state_desc]
+    , [drs].[log_send_queue_size]
+    , [drs].[redo_queue_size]
+FROM [sys].[availability_groups] AS [ag] WITH (NOLOCK)
+JOIN [sys].[availability_replicas] AS [ar] WITH (NOLOCK)
+  ON [ar].[group_id] = [ag].[group_id]
+LEFT JOIN [sys].[dm_hadr_availability_replica_states] AS [ars] WITH (NOLOCK)
+  ON [ars].[replica_id] = [ar].[replica_id]
+LEFT JOIN [sys].[dm_hadr_database_replica_states] AS [drs] WITH (NOLOCK)
+  ON [drs].[group_id] = [ag].[group_id]
+ AND [drs].[replica_id] = [ar].[replica_id]
+LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
+  ON [d].[database_id] = [drs].[database_id]
+WHERE [ag].[name] = N'ExampleAvailabilityGroup';
+```
+
+**Wichtig für die Eigenlast:** Gruppe oder Datenbank vor Physical-Seeding- und Auto-Page-Repair-Historie eingrenzen. Die synthetische Gruppe `ExampleAvailabilityGroup` ist nur ein Platzhalter.
+
 ### Zeit- und Scope-Modell
 
 Aktueller verteilungsabhängiger Snapshot; einige Daten nur auf Primary oder lokalem Replica verfügbar.
