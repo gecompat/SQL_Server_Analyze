@@ -4,6 +4,8 @@
 ---
 # ⚠️ READ BEFORE USE
 
+## License notice
+
 **NOTICE: This software is NOT Open Source. Use is governed by a custom Community & Attribution License.**
 
 1. **NO RESALE:** Selling or charging for access to this software is strictly prohibited.
@@ -15,7 +17,7 @@ Full legal terms can be found in the [LICENSE.md](./LICENSE.md) file.
 ---
 ## Lizenzhinweis
 
-SQL Server Analyze ist keine Open-Source-Software. Die Nutzung richtet sich nach der projektspezifischen Community & Attribution License.
+**NOTIZ: SQL Server Analyze ist keine Open-Source-Software. Die Nutzung richtet sich nach der projektspezifischen Community & Attribution License.**
 
 1.  **NO RESALE:** Der Verkauf der Software und das Entgelt für den Zugang zur Software sind untersagt.
 2. **ATTRIBUTION REQUIRED:** Der Copyright-Hinweis für **gecompat – Gerhard Pisch** muss erhalten bleiben.
