@@ -74,6 +74,7 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [Memory Grants und Resource Governor](Architecture/Memory_Grants_and_Resource_Governor.md)
 - [Spezialfallmodule](Architecture/Special_Case_Modules.md)
 - [RUNTIME-001: External Runtime und SQL CLR](Architecture/External_Runtime_CLR_Analysis_Plan.md)
+- [Geplantes SubProject SSIS-001: SSIS Package- und Execution-Analyse](Architecture/SSIS_Package_and_Execution_Analysis_Plan.md)
 - [Datenschutz und Laufzeitausgaben](Architecture/Runtime_Data_Privacy.md)
 - [Execution-Plan-Analyse](Architecture/Execution_Plan_Analysis_Design.md)
 - [Eigenständiges PLAN-001-Paket](Architecture/Execution_Plan_Analysis_Installation_Contract.md)
