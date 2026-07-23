@@ -31,15 +31,30 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `parameters` und `findings`. Status und Scope sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten zusätzlich `moduleStatus`, `planStatus` und die kandidatengenaue Parameterevidenz. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `parameters`, `planWarnings`,
+`optimizerContext`, `runtimeFeedback`, `queryStoreContext`,
+`feedbackAndVariants` und `findings`. Status und Scope sind vor den
+Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON
+erhalten zusätzlich `moduleStatus`, `planStatus` und die kandidatengenauen
+DIAG-003-/DIAG-005-Ergebnisse. Resultsets mit unterschiedlicher
+Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
-Je Resultset entspricht eine Zeile einem Finding oder einer kandidatengenauen Parameterevidenz. In `parameters` trennt `EvidenceKind = 'PARAMETER'` fachliche Parameter von `SOURCE_BOUNDARY` und `SOURCE_STATUS`; `CandidateId` und `PlanHandle` stellen den äußeren Mehrplanbezug her.
+Je Resultset entspricht eine Zeile einem Finding, einer Parameterevidenz,
+einer Planwarnung, einem Statementkontext, einer Runtimebeobachtung, einem
+Query-Store-Kontext oder einem Feature-/Variantenmerkmal. `CandidateId` und
+`PlanHandle` stellen in allen kanonischen Ergebnissen den äußeren
+Mehrplanbezug her.
 
 ## So lesen
 
-Prüfen Sie zuerst `planStatus`. Lesen Sie in `parameters` anschließend `ValueSource`, Presence-/SQL-NULL-Flags, `ValueStatus`, Quellzeit, Current-/Last-known-Semantik und `IsComplete`. `PLAN_EVICTED`, `REQUEST_FINISHED`, `NOT_COLLECTED` und `SQL_NULL` sind unterschiedliche Zustände. Vertiefen Sie danach die Findings im jeweiligen Child-Analyse-JSON.
+Prüfen Sie zuerst `planStatus`. Lesen Sie in `parameters` anschließend
+`ValueSource`, Presence-/SQL-NULL-Flags, `ValueStatus`, Quellzeit,
+Current-/Last-known-Semantik und `IsComplete`. Ordnen Sie dann Warnungen,
+Optimizer-/Cachekontext, Runtimefeedback und Varianten anhand von Quelle,
+Zeitbezug, Mess-/Ableitungsflags und False-Positive-Grenze ein. Vertiefen Sie
+danach die Findings im jeweiligen Child-Analyse-JSON.
 
 ## Warum kann das problematisch sein?
 
@@ -73,7 +88,7 @@ XML-XQuery ist CPU-intensiv. Halten Sie Scope, Zeit- und Objektbudget klein.
 | Standardpfad | `GEZIELT`, maximal 20 Candidates, 30-Sekunden-Deadline und 50.000 Ergebniszeilen. Ohne Handle/Hash/Text-/Datenbankfilter rangiert der Code trotzdem den sichtbaren Query-Stats-Snapshot und nimmt die Top-Candidates nach `@Sortierung`. |
 | Teuerster Pfad | `VOLL` oder unbegrenzte Candidates, große Plan-XMLs, 3.600-Sekunden-Deadline und unbegrenztes Zeilenbudget. Jeder Plan wird durch die zentrale Engine in mehrere fachliche Granularitäten zerlegt. |
 | Haupttreiber | Zahl/Größe der ausgewählten Compile- oder Last-Actual-Pläne und Operator-/Statementknoten je XML. Candidate-Ranking liest frisch `sys.dm_exec_query_stats` oder verwendet den Parent-Snapshot. |
-| Skalierung | Candidateauswahl scannt/rangiert den Cache einmal; anschließend wächst XQuery-Arbeit planweise mit XML-Komplexität. Die `ParameterList` wird in der Child-Analyse einmal zerlegt; die äußere Procedure aggregiert deren JSON und führt keine zweite Parameter-XQuery aus. |
+| Skalierung | Candidateauswahl scannt/rangiert den Cache einmal und materialisiert dabei den wiederverwendeten Cachekontext; anschließend wächst XQuery-Arbeit planweise mit XML-Komplexität. Die Child-Analyse zerlegt den Plan einmal; die äußere Procedure aggregiert deren JSON und führt keine zweite Parameter- oder Feature-XQuery aus. |
 | Ressourcen | CPU, Speicher und TempDB für XML-Laden und -Shredding; Cachezugriff sowie großer Transfer bei vollständigem Plan XML. |
 | Begrenzungswirkung | Candidate-Limit wirkt vor dem Planladen. Deadline und Finding-/Zeilenbudget werden zwischen Candidates geprüft, können aber das bereits begonnene XML-Shredding eines großen Plans nicht abbrechen. Die Ausgabe erhält zusätzlich pro Resultset TOP; Filter vor dem Ranking sind wirksamer. |
 | Locking und Nebenwirkungen | Keine Nutzdatenänderung. Cachehandles können verschwinden; `LAST_ACTUAL` liefert nur vorhandene Last-Actual-Evidenz und aktiviert kein Profiling. XML-Auswertung kann erhebliche Schedulerzeit verbrauchen. |

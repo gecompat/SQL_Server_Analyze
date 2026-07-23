@@ -1,15 +1,14 @@
 # Zukunftsvertrag für zusätzliche Diagnoseinformationen
 
 Stand: 2026-07-23
-Status: `PARTIAL_PRODUCT_FUNCTION`
+Status: `IMPLEMENTED_ACTIONS_GATE`
 Backlog: `DIAG-001` bis `DIAG-007`
 
 Umgesetzt und im Release-Gate für SQL Server 2019, 2022 und 2025 verankert sind
 `DIAG-001`, `DIAG-002`, `DIAG-003`, `DIAG-004`, `DIAG-006` und `DIAG-007`.
 `DIAG-004` ist mit seinem öffentlichen Request-Kontextvertrag abgeschlossen.
-`DIAG-005` besitzt nutzbare Bausteine, sein öffentlicher Gesamtvertrag ist
-jedoch noch nicht abgeschlossen und wird deshalb als
-`PARTIAL_PRODUCT_FUNCTION` geführt.
+`DIAG-005` ist mit fünf kanonischen Plan-/Optimizerresultsets, gezieltem
+Query-Store-Kontext und versionsübergreifendem Runtimevertrag abgeschlossen.
 
 Die gemeinsame laufinterne Evidenzbasis materialisiert Sessions, Requests,
 Connections, Waiting Tasks, Memory Grants, Resource Semaphores,
@@ -157,9 +156,9 @@ Pläne, Deadlock-XML und Extended-Events-Eventdaten.
 
 ## Öffentlicher Zielvertrag für DIAG-003 bis DIAG-005
 
-Die folgenden Namen bilden die Zielverträge. DIAG-003 und DIAG-004 sind
-umgesetzt; DIAG-005 bleibt reserviert, bis Procedure, TABLE-Schema, JSON,
-Inventar und Runtimevertrag übereinstimmen.
+Die folgenden Namen bilden die umgesetzten Zielverträge. Procedure,
+TABLE-Schema, JSON, Inventar und Runtimevertrag stimmen für DIAG-003 bis
+DIAG-005 überein.
 
 | Work Item | Kanonische Resultsets | Mindestprovenienz |
 |---|---|---|
@@ -276,14 +275,20 @@ abweichenden Erfassungszeitpunkt aus. Ein Join auf später erneut gelesene DMVs
 wird nicht als atomare Sicht dargestellt.
 
 Operatorbezogene Spill-Evidenz, Plan-Generation, Compile- beziehungsweise
-Recompile-Zeitpunkt und Cachealter gehören zum offenen DIAG-005-Scope und
+Recompile-Zeitpunkt und Cachealter gehören zum getrennten DIAG-005-Vertrag und
 werden nicht als Bestandteil des Request-Kontextvertrags ausgewiesen.
 
 ## DIAG-005: Plan-, Query-Store- und Optimizerkontext
 
-Status: `PARTIAL_PRODUCT_FUNCTION`. Planoperatoren, Runtime-Counter,
-Statistikevidenz, Parameter-Varianten und Findings sind vorhanden; die oben
-reservierten normalisierten Zielresultsets fehlen noch.
+Status: `IMPLEMENTED_ACTIONS_GATE`.
+
+`USP_ExecutionPlanAnalysis` erzeugt aus der einmal beschafften und einmal
+zerlegten Planquelle die Resultsets `planWarnings`, `optimizerContext`,
+`runtimeFeedback`, `queryStoreContext` und `feedbackAndVariants`.
+`USP_ShowplanAnalysis` aggregiert sie mit Candidate-ID und Planhandle; sein
+bereits bei der Kandidatenauswahl erfasster Cachekontext wird von der
+Einplanengine wiederverwendet. Ein direkter Planhandle-Aufruf verwendet
+stattdessen genau einen gezielten Cachekontext-Read.
 
 Neben dem anklickbaren XML sind folgende Informationen sinnvoll:
 
@@ -307,10 +312,25 @@ Neben dem anklickbaren XML sind folgende Informationen sinnvoll:
 - Vergleich von Compile- und Runtimeparametern als mögliche
   Parameter-Sensitivitätsevidenz, niemals als alleiniger Ursachenbeweis.
 
+Query-Store-Plan- und Querymetadaten sowie Runtimeaggregate werden nur für die
+ausdrücklich angeforderte Plan-ID gelesen. Feedback, Query-Store-Hints und
+Varianten sind auf SQL Server 2022 und neuer über versionsadaptives Dynamic
+SQL geschützt; SQL Server 2019 erhält einen expliziten Nichtverfügbarkeits-
+beziehungsweise Nichtanwendbarkeitsstatus. Querytexte werden nicht gelesen.
+Feedback- und Hintpayloads sind in `DERIVED_ONLY` und `STRUCTURE_ONLY`
+ausgelassen, in `TOKENIZED` nur als SHA-256-Token und nur im bestätigten
+`RAW`-Modus lesbar.
+
+Jede Zeile weist Quelle und Erfassungszeit sowie Current-/Last-known-Semantik
+aus. `IsMeasured`, `IsDerived` beziehungsweise `IsInferred` trennen Messung
+und Ableitung. Die False-Positive-Grenze verhindert insbesondere, dass eine
+einzelne Warnung, ein einzelner Plan oder das bloße Vorhandensein von PSP,
+OPPO oder Optimizerfeedback automatisch als Ursachen- oder Tuningnachweis
+interpretiert wird.
+
 Teure XML-, Plan-Cache-, Live-Plan-, Last-Actual- und Extended-Events-Pfade
-bleiben gezielt, begrenzt und laufintern wiederverwendet. Microsoft weist für
-breit aktiviertes `query_post_execution_showplan` auf relevanten Overhead hin;
-dieser Pfad ist nur ad hoc mit restriktiven Prädikaten zulässig.
+bleiben gezielt, begrenzt und laufintern wiederverwendet. Es wird weder
+automatisch getunt noch Tracing aktiviert.
 
 ## DIAG-006: Provenienz, Zeitbezug und Evidenzgrenzen
 
@@ -335,9 +355,8 @@ unterscheiden.
 
 ## DIAG-007: Ausgabe-, Inventar- und Testvertrag
 
-Status: `IMPLEMENTED_ACTIONS_GATE` für die in Welle 1 umgesetzten Resultsets.
-Parameter- und weitere Planresultsets aus `DIAG-003` bis `DIAG-005` müssen
-diesen Vertrag bei ihrer späteren Umsetzung ebenfalls erfüllen.
+Status: `IMPLEMENTED_ACTIONS_GATE` für alle Resultsets aus DIAG-003 bis
+DIAG-005.
 
 Vor einer Umsetzung werden alle neuen Resultsets semantisch benannt und in
 `Metadata/Inventory/ResultSets.csv` mit stabilen Schemas erfasst. TABLE-Ziele
@@ -378,5 +397,5 @@ Erforderliche Tests auf SQL Server 2019, 2022 und 2025:
 2. `DIAG-001` umfasst eine leichte Serverversions-Procedure und einen versionierten Offline-Build- und Lifecycle-Katalog.
 3. `DIAG-003` erweitert die vorhandene Parameterextraktion um stabile Provenienz und einen TABLE-Vertrag.
 4. `DIAG-004` konsolidiert den Statement- und Requestkontext ohne erneute DMV-Lesung.
-5. `DIAG-005` ergänzt zusätzliche Plan- und Optimizerinformationen nach Priorität.
+5. `DIAG-005` ergänzt zusätzliche Plan- und Optimizerinformationen nach Priorität und ist abgeschlossen.
 6. `DIAG-006` und `DIAG-007` schließen den Provenienz-, Inventar- und Testvertrag in jeder vertikalen Umsetzung gleichzeitig ab.

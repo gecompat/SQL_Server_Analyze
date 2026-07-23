@@ -79,7 +79,7 @@ def validate(repository_root: Path) -> list[str]:
         return [f"Missing public contract: {contract_file}"]
 
     contract = json.loads(contract_file.read_text(encoding="utf-8"))
-    if contract.get("contractId") != "PLAN-001-PUBLIC-V2" or contract.get("contractVersion") != 2:
+    if contract.get("contractId") != "PLAN-001-PUBLIC-V3" or contract.get("contractVersion") != 3:
         errors.append("Unexpected PLAN-001 contract identity or version.")
     if contract.get("releaseState") != "IMPLEMENTED_ACTIONS_GATE":
         errors.append("PLAN-001 public contract is not in the verified Actions-gate state.")
@@ -205,6 +205,9 @@ def validate(repository_root: Path) -> list[str]:
     showplan_text = (repository_root / "Code/04_PlanCache/050_USP_ShowplanAnalysis.sql").read_text(
         encoding="utf-8-sig"
     )
+    diag005_runtime_text = (
+        repository_root / "Code/Tests/PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql"
+    ).read_text(encoding="utf-8-sig")
     combined_text = "\n".join((analysis_text, evidence_text, internal_text, collector_text, showplan_text))
 
     diag003 = contract["diag003ParameterEvidence"]
@@ -253,13 +256,91 @@ def validate(repository_root: Path) -> list[str]:
         [
             "#ShowplanAnalysis_Parameters",
             "OPENJSON(@ChildJson,N'$.parameters')",
-            "@AllowedResultNames=N'parameters|findings'",
+            "@AllowedResultNames=N'parameters|planWarnings|optimizerContext|runtimeFeedback|queryStoreContext|feedbackAndVariants|findings'",
         ],
         "DIAG-003 multi-plan projection",
         errors,
     )
     if "ParameterList" in showplan_text:
         errors.append("USP_ShowplanAnalysis must not shred ParameterList a second time.")
+
+    diag005 = contract["diag005PlanOptimizerContext"]
+    execution_result_names = [
+        row["ResultName"]
+        for row in result_rows
+        if row["ProcedureName"] == "USP_ExecutionPlanAnalysis"
+    ]
+    for result_name in diag005["canonicalResultSets"]:
+        if execution_result_names.count(result_name) != 1:
+            errors.append(f"DIAG-005 canonical result set is missing or duplicated: {result_name}")
+    require_fragments(
+        analysis_text,
+        [
+            "#ExecutionPlanAnalysis_PlanWarnings",
+            "#ExecutionPlanAnalysis_OptimizerContext",
+            "#ExecutionPlanAnalysis_RuntimeFeedback",
+            "#ExecutionPlanAnalysis_QueryStoreContext",
+            "#ExecutionPlanAnalysis_FeedbackAndVariants",
+            "N',\"planWarnings\":'",
+            "N',\"optimizerContext\":'",
+            "N',\"runtimeFeedback\":'",
+            "N',\"queryStoreContext\":'",
+            "N',\"feedbackAndVariants\":'",
+        ],
+        "DIAG-005 execution-plan projection",
+        errors,
+    )
+    require_fragments(
+        showplan_text,
+        [
+            "#ShowplanAnalysis_ExecutionPlanSourceContext",
+            "OPENJSON(@ChildJson,N'$.planWarnings')",
+            "OPENJSON(@ChildJson,N'$.optimizerContext')",
+            "OPENJSON(@ChildJson,N'$.runtimeFeedback')",
+            "OPENJSON(@ChildJson,N'$.queryStoreContext')",
+            "OPENJSON(@ChildJson,N'$.feedbackAndVariants')",
+        ],
+        "DIAG-005 multi-plan projection",
+        errors,
+    )
+    if (
+        showplan_text.count("FROM [sys].[dm_exec_query_stats]") != 1
+        or "ELSE N'[sys].[dm_exec_query_stats]'" not in showplan_text
+    ):
+        errors.append("DIAG-005 ShowplanAnalysis must retain one broad and one mutually exclusive targeted query-stats path.")
+    if "sys].[query_store_query_text" in analysis_text:
+        errors.append("DIAG-005 must not read Query Store query text.")
+    require_fragments(
+        combined_text,
+        diag005["evidenceStatusCodes"],
+        "DIAG-005 evidence status",
+        errors,
+    )
+    require_fragments(
+        combined_text,
+        diag005["evidenceSources"],
+        "DIAG-005 evidence source",
+        errors,
+    )
+    require_fragments(
+        diag005_runtime_text,
+        [
+            "$.planWarnings",
+            "$.optimizerContext",
+            "$.runtimeFeedback",
+            "$.queryStoreContext",
+            "$.feedbackAndVariants",
+            "@ResultSetArt='TABLE'",
+            "@QueryStorePlanId=-1",
+        ],
+        "DIAG-005 runtime contract",
+        errors,
+    )
+    release_gate_text = (
+        repository_root / "Code/Tests/Run_Release_Gate.sql"
+    ).read_text(encoding="utf-8-sig")
+    if ":r PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql" not in release_gate_text:
+        errors.append("DIAG-005 runtime contract is not integrated into the release gate.")
 
     require_fragments(combined_text, contract["directStatusCodes"], "direct status code", errors)
     require_fragments(internal_text, contract["capabilityCodes"], "capability code", errors)
@@ -273,6 +354,8 @@ def validate(repository_root: Path) -> list[str]:
         "UPDATE [#ExecutionPlanAnalysis_HistogramSteps]",
         "UPDATE [#ExecutionPlanAnalysis_PredicateHistogramMappings]",
         "UPDATE [#ExecutionPlanAnalysis_ParameterEvidence]",
+        "UPDATE [#ExecutionPlanAnalysis_QueryStoreContext]",
+        "@EvidencePrivacyMode=''TOKENIZED''",
     ]
     require_fragments(analysis_text, privacy_markers, "analysis privacy invariant", errors)
     evidence_privacy_markers = [

@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure ist der eigenständig installierbare Einstieg für eine Plananalyse. Der direkte `@PlanXml`-Pfad benötigt weder Plan Cache noch Query Store. Statements, Operatoren, Runtime-Counter, Access Paths, verwendete Statistiken, Parameter, Memory Grants, Spills und Findings werden über dieselbe zentrale Engine verarbeitet wie der Framework-Multi-Plan-Pfad.
+Die Procedure ist der eigenständig installierbare Einstieg für eine Plananalyse. Der direkte `@PlanXml`-Pfad benötigt weder Plan Cache noch Query Store. Statements, Operatoren, Runtime-Counter, Access Paths, verwendete Statistiken, Parameter, Planwarnungen, Optimizer-/Cachekontext, Feedback-/Variantenmerkmale, Memory Grants, Spills und Findings werden über dieselbe zentrale Engine verarbeitet wie der Framework-Multi-Plan-Pfad.
 
 ## Nicht beantwortete Fragen
 
@@ -31,7 +31,7 @@ Das Minimal-XML dient nur als synthetischer Aufrufrahmen; für fachliche Ergebni
 
 ## Resultsets und Leserichtung
 
-CONSOLE zeigt priorisierte `findings`. RAW, TABLE und JSON trennen `moduleStatus`, Capabilities, PlanDocument, Statements, Operatorbaum, Runtime, Threadruntime, Access Paths, Statistics Usage, das bestehende `parametersAndVariants`, die kanonische Parameterevidenz `parameters`, Memory/Spills, Execution Evidence, Histogramme, Predicate-Mappings und Findings.
+CONSOLE zeigt priorisierte `findings`. RAW, TABLE und JSON trennen `moduleStatus`, Capabilities, PlanDocument, Statements, Operatorbaum, Runtime, Threadruntime, Access Paths, Statistics Usage, das bestehende `parametersAndVariants`, die kanonische Parameterevidenz `parameters`, `planWarnings`, `optimizerContext`, `runtimeFeedback`, `queryStoreContext`, `feedbackAndVariants`, Memory/Spills, Execution Evidence, Histogramme, Predicate-Mappings und Findings.
 
 ## Eine Zeile bedeutet
 
@@ -47,6 +47,14 @@ Statements und den Operatorbaum. In `parameters` prüfen Sie anschließend
 aktuelle Aufruf. Prüfen Sie absolute Zeilen- und Readmengen vor Ratios.
 Bewerten Sie Findings erst mit Severity, Confidence, Workloadprofil und
 Evidenzgrenze.
+
+Lesen Sie `planWarnings` zusammen mit `FalsePositiveGuard`,
+`optimizerContext` zusammen mit Planquelle und Cachezeit sowie
+`runtimeFeedback` zusammen mit `RuntimeCounterScope`. `queryStoreContext` ist
+bei nicht angeforderter Query-Store-Quelle ausdrücklich `NOT_APPLICABLE`.
+`feedbackAndVariants` belegt nur sichtbare Planmerkmale beziehungsweise
+persistierte Beziehungen; es bewertet weder Featurewirksamkeit noch
+Tuningnutzen.
 
 ## Warum kann das problematisch sein?
 
@@ -70,7 +78,11 @@ Die Ausführung ist pull-basiert; ein Plan ist keine lineare zeitliche Schrittfo
 
 ### Datenkette
 
-Die Procedure verwendet direktes Showplan XML oder die gezielten Quellen `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml` beziehungsweise `sys.query_store_plan`; Evidence JSON ist optional. Importierte Histogramm- und Predicate-Mappings passieren vor jeder Ausgabe erneut die öffentliche Privacy-Grenze.
+Die Procedure verwendet direktes Showplan XML oder die gezielten Quellen `sys.dm_exec_query_plan`, `sys.dm_exec_query_plan_stats`, `sys.dm_exec_query_statistics_xml` beziehungsweise `sys.query_store_plan`; Evidence JSON ist optional. Bei einem Query-Store-Plan werden Runtimeaggregate und auf SQL Server 2022 oder neuer Feedback-, Hint- und Variantenkataloge gezielt ergänzt, ohne Querytext zu lesen. Importierte Histogramm- und Predicate-Mappings passieren vor jeder Ausgabe erneut die öffentliche Privacy-Grenze.
+
+Query-Store-Hint- und Feedbackpayloads sind in `DERIVED_ONLY` und
+`STRUCTURE_ONLY` ausgelassen. `TOKENIZED` liefert nur Hash und Länge; RAW
+benötigt `@SensitiveDataConfirmed=1`.
 
 ### Source Select
 

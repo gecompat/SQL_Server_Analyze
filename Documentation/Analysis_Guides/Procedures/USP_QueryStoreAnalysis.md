@@ -132,3 +132,9 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 - [SQL Server First Responder Kit – ergänzende, quelloffene Praxiswerkzeuge für Triage](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)
 
 [Technische Detailbeschreibung](../05_Query_Store.md#9-monitorusp_querystoreanalysis)
+Für einen in den Query-Store-Children ausgewählten Plan liefert
+`USP_ExecutionPlanAnalysis` den gezielten DIAG-005-Vertrag mit
+`queryStoreContext` und `feedbackAndVariants`. Dieser Folgepfad liest keinen
+Querytext und behandelt persistierte Hint-/Feedbackpayloads nach dem
+angeforderten Evidenzdatenschutzmodus.
+

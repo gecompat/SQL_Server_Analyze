@@ -17,6 +17,14 @@ Query Store ist historischer und stabiler als der Plan Cache, aber nicht lücken
 - Query-Store-Datenbank versus im Plan referenzierte Datenbank,
 - Plan-/Query-Retention und Planlimit.
 
+Für einen gezielt gewählten Query-Store-Plan kann
+`USP_ExecutionPlanAnalysis` zusätzlich `queryStoreContext` und
+`feedbackAndVariants` liefern. Der Pfad liest keinen Querytext. Persistierte
+Feedback-/Hintpayloads sind standardmäßig ausgelassen, im TOKENIZED-Modus nur
+gehasht und nur nach expliziter Bestätigung roh sichtbar. Das Vorhandensein
+eines Hints, Feedbackeintrags oder einer Variantenbeziehung ist kein
+Wirksamkeits- oder Regressionsnachweis.
+
 **Wichtiger Grenzfall:** Die Procedures verwenden Runtime-Intervalle, die das angeforderte Zeitfenster überlappen. Ein Randintervall kann auch Messanteile außerhalb der exakten Start-/Endzeit enthalten. Je größer das Query-Store-Intervall gegenüber dem Analysefenster ist, desto ungenauer ist die zeitliche Abgrenzung.
 
 ---
