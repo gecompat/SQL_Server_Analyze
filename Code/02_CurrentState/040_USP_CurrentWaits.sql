@@ -250,7 +250,7 @@ BEGIN
             CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([s].[program_name]) AS [tool]
             LEFT JOIN [#CurrentWaits_SourceSqlText] AS [t]
               ON [t].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [r].[sql_handle] END
-            OUTER APPLY [monitor].[TVF_StatementText]([t].[text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
+            OUTER APPLY [monitor].[TVF_StatementText]([t].[Text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
             CROSS APPLY [monitor].[TVF_WaitTypeInfo]([w].[wait_type]) AS [wi]
             WHERE (NOT EXISTS(SELECT 1 FROM [#CurrentWaits_SessionIdFilter]) OR EXISTS(SELECT 1 FROM [#CurrentWaits_SessionIdFilter] AS [f] WHERE [f].[SessionId]=[w].[session_id]))
               AND [w].[wait_duration_ms]>=@MinWaitMs AND (@SystemSessionsEinbeziehen=1 OR COALESCE([s].[is_user_process],1)=1)
