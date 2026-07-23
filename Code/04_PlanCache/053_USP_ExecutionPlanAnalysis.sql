@@ -1417,7 +1417,7 @@ OUTER APPLY
             SET @IsPartialOut=1;
             UPDATE [#ExecutionPlanAnalysis_QueryStoreContext]
             SET
-                  [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916)
+                  [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916)
                                     THEN 'DENIED_PERMISSION' ELSE 'PARTIAL' END
                 , [EvidenceLimit]=N'Der Plan blieb analysierbar; zusätzliche Query-Store-Kontextquellen waren nicht vollständig verfügbar.'
             WHERE [AnalysisObjectId]=1;
@@ -1434,7 +1434,7 @@ OUTER APPLY
                   1,'SOURCE_STATUS','QUERY_STORE_OPTIONAL_CONTEXT',N'READ_FAILED'
                 , 'NO_SENSITIVE_PAYLOAD','QUERY_STORE_OPTIONAL_SOURCES',@Now
                 , 0,1,0,0
-                , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916)
+                , CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916)
                        THEN 'DENIED_PERMISSION' ELSE 'PARTIAL' END
                 , N'Der Plan blieb analysierbar; mindestens eine zusätzliche Query-Store-Kontextquelle war nicht vollständig verfügbar.'
             );
@@ -1447,7 +1447,7 @@ OUTER APPLY
             )
             SELECT
                   1,@QueryStoreDatabaseName,@QueryStorePlanId,0,0,0,0,@Now,0,1
-                , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'PARTIAL' END
+                , CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'PARTIAL' END
                 , N'Der Plan blieb analysierbar; zusätzliche Query-Store-Kontextquellen waren nicht vollständig verfügbar.'
             WHERE NOT EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_QueryStoreContext]);
             IF @ErrorNumberOut IS NULL
