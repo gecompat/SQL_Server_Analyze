@@ -24,8 +24,8 @@ Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle
 Die fünf kanonischen Abschlussstatus sind in einem gemeinsamen,
 maschinenlesbaren Modell festgelegt. Das Special-Feature-Routing für
 Verschlüsselung verweist konsistent auf die bereits implementierte
-`USP_EncryptionAnalysis`. DIAG-003 und DIAG-004 sind inzwischen
-`IMPLEMENTED_ACTIONS_GATE`; DIAG-005 bleibt `PARTIAL_PRODUCT_FUNCTION`.
+`USP_EncryptionAnalysis`. DIAG-003 bis DIAG-005 sind inzwischen
+`IMPLEMENTED_ACTIONS_GATE`.
 
 Der erste Slice der gemeinsamen laufinternen Evidenzbasis ergänzt einen aufruflokalen Snapshot-Owner für Sessions, Requests, Connections, Waiting Tasks, Memory Grants, Resource Governor sowie begrenzte SQL-Text-Evidenz. `USP_CurrentOverview` liest jede aktivierte Primärquelle einmal und reicht denselben Snapshot an `USP_CurrentSessions` und `USP_CurrentRequests` weiter. Einzelaufrufe bleiben frisch und lehnen fremde oder abgelaufene Parent-IDs ab. Input Buffer bleibt bis zur späteren Konsolidierung eine begrenzte Post-Candidate-Quelle von `USP_CurrentRequests`. Das neue Resultset `snapshotStatus` weist Snapshot-ID, Quellzeit, Abschlusszeit, Zeilenzahl, Partialität und isolierte Quellenfehler aus.
 
@@ -69,6 +69,29 @@ Der öffentliche Vertrag steht in
 Runtimeverträge `122` und `199` schützen kanonische JSON-/TABLE-Ausgabe,
 Statussemantik, Parent-Grenzen sowie die gemeinsame Snapshot-ID auf SQL Server
 2019, 2022 und 2025. DIAG-004 steht damit auf
+`IMPLEMENTED_ACTIONS_GATE`.
+
+## Welle 4 – DIAG-005 Plan-, Query-Store- und Optimizerkontext
+
+`USP_ExecutionPlanAnalysis` liefert die fünf kanonischen Resultsets
+`planWarnings`, `optimizerContext`, `runtimeFeedback`, `queryStoreContext`
+und `feedbackAndVariants` in RAW, JSON und benanntem TABLE. Explizite
+Planwarnungen, Optimizer-/Cacheattribute, Runtimeabweichungen sowie PSP-,
+Adaptive-Join-, Batch-Mode- und Memory-Grant-Feedback-Merkmale werden aus
+dem einmal materialisierten Plan abgeleitet.
+
+Bei einer ausdrücklich angeforderten Query-Store-Planquelle werden
+Plan-/Querymetadaten und Runtimeaggregate gezielt erfasst. Feedback, Hints und
+Varianten verwenden auf SQL Server 2022 und neuer versionsadaptives Dynamic
+SQL. Querytexte werden nicht gelesen. Potenziell sensitive Feedback- und
+Hintpayloads sind standardmäßig ausgelassen, im TOKENIZED-Modus gehasht und
+nur im bestätigten RAW-Modus sichtbar.
+
+`USP_ShowplanAnalysis` aggregiert die fünf Resultsets kandidatengenau und
+reicht den bereits während der Kandidatenauswahl materialisierten
+Cachekontext an die Einplanengine weiter. Current-/Last-known-Semantik,
+Messung gegenüber Ableitung, Quellstatus und False-Positive-Grenzen bleiben
+in jeder Zeile erhalten. DIAG-005 steht damit auf
 `IMPLEMENTED_ACTIONS_GATE`.
 
 ## RUNTIME-001 – External Runtime und SQL CLR
