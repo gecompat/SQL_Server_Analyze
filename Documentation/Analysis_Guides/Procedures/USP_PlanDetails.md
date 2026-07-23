@@ -139,3 +139,8 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 - [SQL Server First Responder Kit – ergänzende, quelloffene Praxiswerkzeuge für Triage](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)
 
 [Technische Detailbeschreibung](../04_Plan_Cache.md#4-monitorusp_plandetails)
+`USP_PlanDetails` bleibt die native Plan-/Attributansicht. Für normalisierte
+Warnungs-, Optimizer-, Runtime-, Query-Store- und Variantenresultsets reichen
+Sie das ausgewählte Planhandle anschließend an `USP_ExecutionPlanAnalysis`
+weiter; die Detailprocedure führt keine konkurrierende XML-Zerlegung aus.
+
