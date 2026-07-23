@@ -141,6 +141,7 @@ RAISERROR(N'RELEASE_GATE 32/34: Extended Events',10,1) WITH NOWAIT;
 
 RAISERROR(N'RELEASE_GATE 33/34: Infrastructure',10,1) WITH NOWAIT;
 :r Infrastructure/110_Test_und_Abnahme_Phase6.sql
+:r Infrastructure/122_SQL25_TempDB_Resource_Governance_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 34/34: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/110_Test_und_Abnahme_Phase7.sql

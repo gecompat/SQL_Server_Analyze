@@ -4,12 +4,14 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.InternalCaptureCurrentStateSnapshot
-Version      : 2.0.0
+Version      : 2.1.0
 Stand        : 2026-07-23
 Typ          : Interne Stored Procedure
 Zweck        : Schreibt die vom aufrufenden Orchestrator angelegten lokalen
                Snapshot-Tabellen. Jede aktivierte Systemquelle wird genau
                einmal gelesen; nicht angeforderte Quellen werden nicht berührt.
+               SQL25-003 ergänzt den vorhandenen Workload-Group-Snapshot
+               versions- und capability-adaptiv.
 Lebensdauer  : Der Aufrufer besitzt die lokalen Temp-Tabellen. Sie verschwinden
                mit dessen Procedure-Scope und können von einem späteren
                Einzelaufruf nicht wiederverwendet werden.
@@ -134,7 +136,9 @@ BEGIN
                 [s].[logical_reads],[s].[memory_usage],[s].[row_count]
             FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK);
 
-            SET @RowCount=@@ROWCOUNT;
+            SELECT @RowCount=COUNT_BIG(*)
+            FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
+            WHERE [SnapshotId]=@SnapshotId;
             SET @CompletedAtUtc=SYSUTCDATETIME();
             INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
@@ -344,33 +348,372 @@ BEGIN
 
     IF @CaptureResourceGovernor=1
     BEGIN
+        DECLARE @ProductMajorVersion int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
+        DECLARE @CatalogTempdbColumnsValid bit=0;
+        DECLARE @RuntimeTempdbColumnsValid bit=0;
+        DECLARE @TempdbGovernanceStatus varchar(40)=
+            CASE WHEN @ProductMajorVersion IS NULL OR @ProductMajorVersion<17
+                 THEN 'UNAVAILABLE_VERSION' ELSE 'AVAILABLE' END;
+        DECLARE @TempdbGovernanceErrorNumber int=NULL;
+        DECLARE @TempdbGovernanceErrorMessage nvarchar(2048)=NULL;
+        DECLARE @TempdbMaximumSizeMb decimal(19,2)=NULL;
+        DECLARE @TempdbFileStatus varchar(40)='NOT_APPLICABLE';
+        DECLARE @TempdbFileErrorNumber int=NULL;
+        DECLARE @TempdbFileErrorMessage nvarchar(2048)=NULL;
+        DECLARE @IsResourceGovernorEnabled bit=NULL;
+        DECLARE @ReconfigurationPending bit=NULL;
+        DECLARE @ResourceGovernorSql nvarchar(max);
+
+        IF @ProductMajorVersion>=17
+        BEGIN TRY
+            SELECT
+                  @CatalogTempdbColumnsValid=CONVERT
+                  (
+                      bit,
+                      CASE WHEN SUM(CASE WHEN [o].[name]=N'resource_governor_workload_groups'
+                                          AND [c].[name] IN
+                                              (N'group_max_tempdb_data_mb',N'group_max_tempdb_data_percent')
+                                        THEN 1 ELSE 0 END)=2
+                           THEN 1 ELSE 0 END
+                  )
+                , @RuntimeTempdbColumnsValid=CONVERT
+                  (
+                      bit,
+                      CASE WHEN SUM(CASE WHEN [o].[name]=N'dm_resource_governor_workload_groups'
+                                          AND [c].[name] IN
+                                              (N'tempdb_data_space_kb',N'peak_tempdb_data_space_kb',
+                                               N'total_tempdb_data_limit_violation_count')
+                                        THEN 1 ELSE 0 END)=3
+                           THEN 1 ELSE 0 END
+                  )
+            FROM [sys].[all_columns] AS [c] WITH (NOLOCK)
+            INNER JOIN [sys].[all_objects] AS [o] WITH (NOLOCK)
+              ON [o].[object_id]=[c].[object_id]
+            INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+              ON [s].[schema_id]=[o].[schema_id]
+            WHERE [s].[name]=N'sys'
+              AND [o].[name] IN
+                  (N'resource_governor_workload_groups',N'dm_resource_governor_workload_groups');
+
+            IF @CatalogTempdbColumnsValid=0 OR @RuntimeTempdbColumnsValid=0
+                SET @TempdbGovernanceStatus='UNAVAILABLE_SOURCE_SCHEMA';
+        END TRY
+        BEGIN CATCH
+            SELECT
+                  @TempdbGovernanceErrorNumber=ERROR_NUMBER()
+                , @TempdbGovernanceErrorMessage=ERROR_MESSAGE()
+                , @TempdbGovernanceStatus=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                     WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                     ELSE 'ERROR_HANDLED' END;
+        END CATCH;
+
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY
-            INSERT [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
-            (
-                [SnapshotId],[CapturedAtUtc],[group_id],[name],[pool_id],
-                [request_max_memory_grant_percent_numeric],[max_request_grant_memory_kb]
-            )
-            SELECT
-                @SnapshotId,@CapturedAtUtc,[g].[group_id],[g].[name],[g].[pool_id],
-                [g].[request_max_memory_grant_percent_numeric],[g].[max_request_grant_memory_kb]
-            FROM [sys].[dm_resource_governor_workload_groups] AS [g] WITH (NOLOCK);
+            DECLARE @RuntimeProjection nvarchar(max)=
+                CASE WHEN @ProductMajorVersion>=17 AND @RuntimeTempdbColumnsValid=1
+                     THEN N',CONVERT(decimal(19,2),[g].[tempdb_data_space_kb]/1024.0)
+                             ,CONVERT(decimal(19,2),[g].[peak_tempdb_data_space_kb]/1024.0)
+                             ,CONVERT(decimal(9,2),NULL)
+                             ,CONVERT(bigint,[g].[total_tempdb_data_limit_violation_count])
+                             ,CONVERT(bit,CASE WHEN [g].[total_tempdb_data_limit_violation_count]>0 THEN 1 ELSE 0 END)'
+                     ELSE N',CONVERT(decimal(19,2),NULL),CONVERT(decimal(19,2),NULL)
+                             ,CONVERT(decimal(9,2),NULL),CONVERT(bigint,NULL),CONVERT(bit,NULL)' END;
+
+            SET @ResourceGovernorSql=N'
+INSERT [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
+(
+      [SnapshotId],[CapturedAtUtc],[group_id],[name],[pool_id]
+    , [request_max_memory_grant_percent_numeric],[max_request_grant_memory_kb]
+    , [configured_group_max_tempdb_data_mb],[configured_group_max_tempdb_data_percent]
+    , [tempdb_maximum_size_mb],[effective_group_max_tempdb_data_mb]
+    , [effective_limit_source],[is_percent_limit_effective]
+    , [tempdb_data_space_mb],[peak_tempdb_data_space_mb]
+    , [effective_limit_utilization_percent]
+    , [total_tempdb_data_limit_violation_count],[has_recorded_limit_violation]
+    , [statistics_start_time],[is_resource_governor_enabled],[reconfiguration_pending]
+    , [tempdb_governance_status_code],[tempdb_governance_is_partial]
+    , [tempdb_governance_evidence_limit]
+)
+SELECT
+      @SnapshotId,@CapturedAtUtc,[g].[group_id],[g].[name],[g].[pool_id]
+    , CONVERT(decimal(9,4),[g].[request_max_memory_grant_percent_numeric])
+    , [g].[max_request_grant_memory_kb]
+    , CONVERT(decimal(19,2),NULL),CONVERT(decimal(9,4),NULL)
+    , CONVERT(decimal(19,2),NULL),CONVERT(decimal(19,2),NULL)
+    , CONVERT(varchar(40),''UNAVAILABLE''),CONVERT(bit,NULL)'
+    +@RuntimeProjection+
+N'
+    , [g].[statistics_start_time],CONVERT(bit,NULL),CONVERT(bit,NULL)
+    , @TempdbStatus
+    , CONVERT(bit,CASE WHEN @TempdbStatus=''AVAILABLE'' THEN 0 ELSE 1 END)
+    , CASE WHEN @TempdbStatus=''UNAVAILABLE_VERSION''
+           THEN N''TempDB Resource Governance beginnt mit SQL Server 2025 (17.x).''
+           WHEN @TempdbStatus<>''AVAILABLE''
+           THEN N''Die SQL-Server-2025-Quelle ist nicht vollständig verfügbar.''
+           ELSE N''Workload-Group-Zähler sind nicht direkt mit Sessionzählern addierbar; Version Store und TempDB-Log sind nicht umfasst.'' END
+FROM [sys].[dm_resource_governor_workload_groups] AS [g] WITH (NOLOCK);';
+
+            EXEC [sys].[sp_executesql]
+                  @ResourceGovernorSql
+                , N'@SnapshotId uniqueidentifier,@CapturedAtUtc datetime2(3),@TempdbStatus varchar(40)'
+                , @SnapshotId=@SnapshotId
+                , @CapturedAtUtc=@CapturedAtUtc
+                , @TempdbStatus=@TempdbGovernanceStatus;
 
             SET @RowCount=@@ROWCOUNT;
             SET @CompletedAtUtc=SYSUTCDATETIME();
             INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
-            (@SnapshotId,60,'WORKLOAD_GROUPS',N'sys.dm_resource_governor_workload_groups',@CapturedAtUtc,@CompletedAtUtc,
-             @BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
+            (
+                 @SnapshotId,60,'WORKLOAD_GROUPS',N'sys.dm_resource_governor_workload_groups'
+                ,@CapturedAtUtc,@CompletedAtUtc,@BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL
+            );
         END TRY
         BEGIN CATCH
             SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
             INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
             VALUES
-            (@SnapshotId,60,'WORKLOAD_GROUPS',N'sys.dm_resource_governor_workload_groups',@CapturedAtUtc,@CompletedAtUtc,
-             CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
-             1,0,@ErrorNumber,@ErrorMessage);
+            (
+                 @SnapshotId,60,'WORKLOAD_GROUPS',N'sys.dm_resource_governor_workload_groups'
+                ,@CapturedAtUtc,@CompletedAtUtc
+                ,CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT'
+                      WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                      ELSE 'ERROR_HANDLED' END
+                ,1,0,@ErrorNumber,@ErrorMessage
+            );
+            SELECT
+                  @TempdbGovernanceStatus=CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT'
+                       WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                       ELSE 'ERROR_HANDLED' END
+                , @TempdbGovernanceErrorNumber=@ErrorNumber
+                , @TempdbGovernanceErrorMessage=@ErrorMessage;
         END CATCH;
+
+        IF @ProductMajorVersion>=17
+           AND EXISTS
+               (
+                   SELECT 1
+                   FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
+                   WHERE [SnapshotId]=@SnapshotId
+               )
+        BEGIN
+            IF @CatalogTempdbColumnsValid=1
+            BEGIN TRY
+                SET @ResourceGovernorSql=N'
+UPDATE [target]
+SET
+      [configured_group_max_tempdb_data_mb]=
+          CONVERT(decimal(19,2),[source].[group_max_tempdb_data_mb])
+    , [configured_group_max_tempdb_data_percent]=
+          CONVERT(decimal(9,4),[source].[group_max_tempdb_data_percent])
+FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups] AS [target]
+INNER JOIN [sys].[resource_governor_workload_groups] AS [source] WITH (NOLOCK)
+  ON [source].[group_id]=[target].[group_id]
+WHERE [target].[SnapshotId]=@SnapshotId;';
+
+                EXEC [sys].[sp_executesql]
+                      @ResourceGovernorSql
+                    , N'@SnapshotId uniqueidentifier'
+                    , @SnapshotId=@SnapshotId;
+            END TRY
+            BEGIN CATCH
+                SELECT
+                      @TempdbGovernanceErrorNumber=ERROR_NUMBER()
+                    , @TempdbGovernanceErrorMessage=ERROR_MESSAGE()
+                    , @TempdbGovernanceStatus=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                         WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                         ELSE 'ERROR_HANDLED' END;
+            END CATCH;
+
+            BEGIN TRY
+                SELECT
+                      @IsResourceGovernorEnabled=[stored].[is_enabled]
+                    , @ReconfigurationPending=[effective].[is_reconfiguration_pending]
+                FROM [sys].[resource_governor_configuration] AS [stored] WITH (NOLOCK)
+                CROSS JOIN [sys].[dm_resource_governor_configuration] AS [effective] WITH (NOLOCK);
+            END TRY
+            BEGIN CATCH
+                SELECT
+                      @TempdbGovernanceErrorNumber=ERROR_NUMBER()
+                    , @TempdbGovernanceErrorMessage=ERROR_MESSAGE()
+                    , @TempdbGovernanceStatus=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                         WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                         ELSE 'ERROR_HANDLED' END;
+            END CATCH;
+
+            IF @TempdbGovernanceStatus='AVAILABLE'
+               AND EXISTS
+                   (
+                       SELECT 1
+                       FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
+                       WHERE [SnapshotId]=@SnapshotId
+                         AND [configured_group_max_tempdb_data_mb] IS NULL
+                         AND [configured_group_max_tempdb_data_percent] IS NOT NULL
+                   )
+            BEGIN
+                SET @TempdbFileStatus='AVAILABLE';
+                BEGIN TRY
+                    SELECT @TempdbMaximumSizeMb=
+                        CASE
+                            WHEN COUNT_BIG(*)>0
+                             AND
+                             (
+                                 SUM(CASE WHEN [f].[max_size]<>-1 AND [f].[growth]>0 THEN 1 ELSE 0 END)=COUNT_BIG(*)
+                                 OR
+                                 SUM(CASE WHEN [f].[max_size]=-1 AND [f].[growth]=0 THEN 1 ELSE 0 END)=COUNT_BIG(*)
+                             )
+                            THEN CONVERT
+                                 (
+                                     decimal(19,2),
+                                     SUM(CASE WHEN [f].[growth]=0 THEN CONVERT(bigint,[f].[size])
+                                              ELSE CONVERT(bigint,[f].[max_size]) END)*8.0/1024.0
+                                 )
+                        END
+                    FROM [master].[sys].[master_files] AS [f] WITH (NOLOCK)
+                    WHERE [f].[database_id]=2 AND [f].[type]=0;
+                END TRY
+                BEGIN CATCH
+                    SELECT
+                          @TempdbFileErrorNumber=ERROR_NUMBER()
+                        , @TempdbFileErrorMessage=ERROR_MESSAGE()
+                        , @TempdbFileStatus=CASE WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                             WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                             ELSE 'ERROR_HANDLED' END;
+                END CATCH;
+            END;
+
+            UPDATE [g]
+            SET
+                  [tempdb_maximum_size_mb]=@TempdbMaximumSizeMb
+                , [effective_group_max_tempdb_data_mb]=CONVERT
+                  (
+                      decimal(19,2),
+                      CASE
+                          WHEN @TempdbGovernanceStatus<>'AVAILABLE' THEN NULL
+                          WHEN [g].[configured_group_max_tempdb_data_mb] IS NULL
+                           AND [g].[configured_group_max_tempdb_data_percent] IS NULL THEN NULL
+                          WHEN @ReconfigurationPending=1 OR COALESCE(@IsResourceGovernorEnabled,0)=0 THEN NULL
+                          WHEN [g].[configured_group_max_tempdb_data_mb] IS NOT NULL
+                              THEN [g].[configured_group_max_tempdb_data_mb]
+                          WHEN @TempdbFileStatus<>'AVAILABLE' THEN NULL
+                          WHEN @TempdbMaximumSizeMb IS NOT NULL
+                              THEN [g].[configured_group_max_tempdb_data_percent]*@TempdbMaximumSizeMb/100.0
+                      END
+                  )
+                , [effective_limit_source]=CASE
+                      WHEN @TempdbGovernanceStatus<>'AVAILABLE' THEN 'UNAVAILABLE'
+                      WHEN [g].[configured_group_max_tempdb_data_mb] IS NULL
+                       AND [g].[configured_group_max_tempdb_data_percent] IS NULL THEN 'NO_LIMIT_CONFIGURED'
+                      WHEN @ReconfigurationPending=1 THEN 'RECONFIGURATION_PENDING'
+                      WHEN COALESCE(@IsResourceGovernorEnabled,0)=0 THEN 'RESOURCE_GOVERNOR_DISABLED'
+                      WHEN [g].[configured_group_max_tempdb_data_mb] IS NOT NULL THEN 'FIXED_MB_EFFECTIVE'
+                      WHEN @TempdbFileStatus<>'AVAILABLE' THEN 'UNAVAILABLE'
+                      WHEN @TempdbMaximumSizeMb IS NOT NULL THEN 'PERCENT_EFFECTIVE'
+                      ELSE 'PERCENT_NOT_EFFECTIVE'
+                  END
+                , [is_percent_limit_effective]=CASE
+                      WHEN [g].[configured_group_max_tempdb_data_percent] IS NULL THEN NULL
+                      WHEN [g].[configured_group_max_tempdb_data_mb] IS NOT NULL THEN CONVERT(bit,0)
+                      WHEN @ReconfigurationPending=1 OR COALESCE(@IsResourceGovernorEnabled,0)=0 THEN CONVERT(bit,0)
+                      WHEN @TempdbFileStatus<>'AVAILABLE' THEN NULL
+                      WHEN @TempdbMaximumSizeMb IS NOT NULL THEN CONVERT(bit,1)
+                      ELSE CONVERT(bit,0)
+                  END
+                , [effective_limit_utilization_percent]=CONVERT
+                  (
+                      decimal(9,2),
+                      100.0*[g].[tempdb_data_space_mb]
+                      /NULLIF
+                       (
+                           CASE
+                               WHEN @ReconfigurationPending=0 AND COALESCE(@IsResourceGovernorEnabled,0)=1
+                                AND [g].[configured_group_max_tempdb_data_mb] IS NOT NULL
+                                   THEN [g].[configured_group_max_tempdb_data_mb]
+                               WHEN @ReconfigurationPending=0 AND COALESCE(@IsResourceGovernorEnabled,0)=1
+                                AND [g].[configured_group_max_tempdb_data_mb] IS NULL
+                                AND @TempdbMaximumSizeMb IS NOT NULL
+                                   THEN [g].[configured_group_max_tempdb_data_percent]*@TempdbMaximumSizeMb/100.0
+                           END
+                       ,0)
+                  )
+                , [is_resource_governor_enabled]=@IsResourceGovernorEnabled
+                , [reconfiguration_pending]=@ReconfigurationPending
+                , [tempdb_governance_status_code]=CASE
+                      WHEN @TempdbGovernanceStatus='AVAILABLE'
+                       AND [g].[configured_group_max_tempdb_data_mb] IS NULL
+                       AND [g].[configured_group_max_tempdb_data_percent] IS NOT NULL
+                       AND @TempdbFileStatus<>'AVAILABLE'
+                          THEN @TempdbFileStatus
+                      WHEN @TempdbGovernanceStatus='AVAILABLE'
+                       AND @ReconfigurationPending=1
+                       AND
+                         (
+                             [g].[configured_group_max_tempdb_data_mb] IS NOT NULL
+                             OR [g].[configured_group_max_tempdb_data_percent] IS NOT NULL
+                         )
+                          THEN 'AVAILABLE_LIMITED'
+                      ELSE @TempdbGovernanceStatus
+                  END
+                , [tempdb_governance_is_partial]=CONVERT
+                  (
+                      bit,
+                      CASE
+                          WHEN @TempdbGovernanceStatus<>'AVAILABLE' THEN 1
+                          WHEN [g].[configured_group_max_tempdb_data_mb] IS NULL
+                           AND [g].[configured_group_max_tempdb_data_percent] IS NOT NULL
+                           AND @TempdbFileStatus<>'AVAILABLE' THEN 1
+                          WHEN @ReconfigurationPending=1
+                           AND
+                             (
+                                 [g].[configured_group_max_tempdb_data_mb] IS NOT NULL
+                                 OR [g].[configured_group_max_tempdb_data_percent] IS NOT NULL
+                             )
+                              THEN 1
+                          ELSE 0
+                      END
+                  )
+                , [tempdb_governance_evidence_limit]=CASE
+                      WHEN @TempdbGovernanceStatus<>'AVAILABLE'
+                          THEN COALESCE(@TempdbGovernanceErrorMessage,N'Die SQL-Server-2025-Quelle ist nicht vollständig verfügbar.')
+                      WHEN [g].[configured_group_max_tempdb_data_mb] IS NULL
+                       AND [g].[configured_group_max_tempdb_data_percent] IS NOT NULL
+                       AND @TempdbFileStatus<>'AVAILABLE'
+                          THEN COALESCE(@TempdbFileErrorMessage,N'Die TempDB-Dateikonfiguration ist im aktuellen Sicherheitskontext nicht auswertbar.')
+                      WHEN @ReconfigurationPending=1
+                          THEN N'Die gespeicherte Konfiguration kann von der aktiven Konfiguration abweichen, bis RECONFIGURE abgeschlossen ist.'
+                      WHEN [g].[configured_group_max_tempdb_data_mb] IS NULL
+                       AND [g].[configured_group_max_tempdb_data_percent] IS NOT NULL
+                       AND @TempdbMaximumSizeMb IS NULL
+                          THEN N'Das gespeicherte Prozentlimit ist wegen der TempDB-Dateikonfiguration nicht wirksam.'
+                      ELSE N'Workload-Group-Zähler sind nicht direkt mit Sessionzählern addierbar; Version Store und TempDB-Log sind nicht umfasst.'
+                  END
+            FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups] AS [g]
+            WHERE [g].[SnapshotId]=@SnapshotId;
+
+            SET @CompletedAtUtc=SYSUTCDATETIME();
+            SELECT @RowCount=COUNT_BIG(*)
+            FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
+            WHERE [SnapshotId]=@SnapshotId;
+
+            DECLARE @TempdbSnapshotStatus varchar(40)=CASE
+                WHEN @TempdbGovernanceStatus<>'AVAILABLE' THEN @TempdbGovernanceStatus
+                WHEN @TempdbFileStatus NOT IN ('AVAILABLE','NOT_APPLICABLE')
+                    THEN 'AVAILABLE_LIMITED'
+                ELSE 'AVAILABLE' END;
+
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            VALUES
+            (
+                 @SnapshotId,61,'TEMPDB_GOVERNANCE'
+                ,N'sys.resource_governor_workload_groups | sys.dm_resource_governor_workload_groups | master.sys.master_files'
+                ,@CapturedAtUtc,@CompletedAtUtc
+                ,@TempdbSnapshotStatus
+                ,CONVERT(bit,CASE WHEN @TempdbSnapshotStatus='AVAILABLE' THEN 0 ELSE 1 END)
+                ,@RowCount
+                ,COALESCE(@TempdbGovernanceErrorNumber,@TempdbFileErrorNumber)
+                ,COALESCE(@TempdbGovernanceErrorMessage,@TempdbFileErrorMessage)
+            );
+        END;
 
         SET @CapturedAtUtc=SYSUTCDATETIME();
         BEGIN TRY

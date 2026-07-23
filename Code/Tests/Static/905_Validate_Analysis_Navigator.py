@@ -147,6 +147,8 @@ EXPECTED_SEARCH_CASES = {
     "SQL Server Version CU Lifecycle": "USP_ServerVersionInformation",
     "JSON-Index Pfade inventarisieren": "USP_ObjectInventory",
     "JSON-Index Capability Preview": "USP_ServerFeatureCapabilities",
+    "TempDB Workload Group Limit Verletzung": "USP_CurrentTempDB",
+    "TempDB Resource Governance Wirksamkeit": "USP_ResourceGovernorAnalysis",
 }
 
 PUBLIC_DOCUMENTATION_FORBIDDEN = (

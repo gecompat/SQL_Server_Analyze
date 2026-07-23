@@ -63,9 +63,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 Der typisierte TABLE-Vertrag registriert `moduleStatus`, `snapshotStatus`,
 `sessions`, `requests`, `requestContext`, `statements`, `batches`,
 `inputBuffers`, `blocking`, `waits`, `transactions`, `memoryGrants`,
-`tempdbSessions`, `io`, `logs` und `warnings`. Status, Scope und Warnings sind
+`tempdbSessions`, `tempdbGovernance`, `io`, `logs` und `warnings`. Status, Scope und Warnings sind
 vor den Fachergebnissen zu lesen. Resultsets mit unterschiedlicher
-Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden. Im
+Overview-JSON liegt die Governance innerhalb des einmal erzeugten TempDB-Childs
+unter `$.tempdbSessions.tempdbGovernance`.
 
 
 ## Laufinterner Primär-Snapshot
@@ -80,7 +82,9 @@ noch nicht zum gemeinsamen Primär-Snapshot.
 
 Sessions, Requests, Blocking, Waits, Transactions, Memory Grants, TempDB und
 I/O erhalten dieselbe laufinterne Snapshot-ID und lesen die gemeinsam
-materialisierten Quellen nicht erneut. Eigene, nicht überlappende Quellen wie
+materialisierten Quellen nicht erneut. Mit `@MitTempDB=1` umfasst dieser
+Snapshot auf SQL Server 2025 auch Workload-Group-Limits, Nutzung, Peak,
+Verletzungszähler und Resetzeitpunkt. Eigene, nicht überlappende Quellen wie
 Locks, Instanz-Wait-Stats, Datei-I/O oder TempDB-Dateikatalog bleiben im
 jeweiligen Child. Schlägt der Owner selbst fehl, wird der Fehler als
 `SNAPSHOT_OWNER` ausgewiesen und die Children fallen auf frische Einzelreads
@@ -158,7 +162,8 @@ als `STATUS_UNAVAILABLE` partiell ausgewiesen.
 
 TABLE verwendet ausschließlich `@ResultTablesJson`. Exportierbar sind
 `moduleStatus`, `sessions`, `requests`, `blocking`, `waits`, `transactions`,
-`memoryGrants`, `tempdbSessions`, `io`, `logs` und `warnings`.
+`memoryGrants`, `tempdbSessions`, `tempdbGovernance`, `io`, `logs` und
+`warnings`.
 
 ### Datenkette
 

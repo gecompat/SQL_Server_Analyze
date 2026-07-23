@@ -23,26 +23,40 @@ EXEC [monitor].[USP_CurrentTempDB]
 ```
 
 Das Limit gilt für die Sessionrangliste; die kleine Dateisicht wird separat
-erhoben. Bei vielen Sessions zuerst über `@MinNettoMb` einen fachlich sinnvollen
-Setzen Sie den Mindestverbrauch.
+erhoben. Setzen Sie bei vielen Sessions über `@MinNettoMb` einen fachlich
+sinnvollen Mindestverbrauch.
 
 Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `sessions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `sessions` und
+`tempdbGovernance`. Status, Scope und Warnings sind vor den Fachergebnissen zu
+lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den
+technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen
+Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen
+nicht ungeprüft vereinigt oder summiert werden.
 
-Im Overview werden Sessions sowie Session- und Taskverbrauch in TempDB aus dem
-gemeinsamen Snapshot übernommen. Datei-, Space- und Version-Store-Sichten
-bleiben eigene TempDB-Quellen. Ein direkter Aufruf erhebt beide Gruppen frisch.
+Im Overview werden Sessions, Session-/Taskverbrauch und die
+Workload-Group-Governance aus dem gemeinsamen Snapshot übernommen. Datei-,
+Space- und Version-Store-Sichten bleiben eigene TempDB-Quellen. Ein direkter
+Aufruf erhebt beide Gruppen frisch. Auf SQL Server 2019/2022 liefert
+`tempdbGovernance` einen expliziten `UNAVAILABLE_VERSION`-Status.
 
 ## Eine Zeile bedeutet
 
-Je Resultset beschreibt eine Zeile eine Sessionallokation, eine Verbrauchsart oder eine TempDB-Datei. Diese Granularitäten dürfen nicht addiert werden, ohne das Resultset zu beachten.
+Je Resultset beschreibt eine Zeile eine Sessionallokation, eine Verbrauchsart,
+eine TempDB-Datei oder eine Workload Group. Sessionzähler und
+Workload-Group-Zähler besitzen unterschiedliche Granularität und dürfen nicht
+addiert werden.
 
 ## So lesen
 
-Unterscheiden Sie zuerst Gesamt- und Dateiauslastung, danach User Objects, Internal Objects, Version Store und verursachende Sessions.
+Unterscheiden Sie zuerst Gesamt- und Dateiauslastung, danach User Objects,
+Internal Objects, Version Store und verursachende Sessions. Auf SQL Server 2025
+lesen Sie anschließend `tempdbGovernance`: gespeichertes Limit, tatsächlich
+wirksames Limit, aktuelle Nutzung, Peak, Verletzungszähler und
+`StatisticsStartTime` getrennt.
 
 ## Warum kann das problematisch sein?
 
@@ -94,7 +108,12 @@ TempDB speichert User Objects, Internal Objects für Sort/Hash/Spool/Worktables,
 
 ### Datenkette
 
-`sys.database_files`, `sys.dm_db_session_space_usage`, `sys.dm_exec_sessions`, `sys.sp_executesql`.
+`sys.database_files`, `sys.dm_db_session_space_usage`, `sys.dm_exec_sessions`,
+`sys.resource_governor_workload_groups`,
+`sys.dm_resource_governor_workload_groups`,
+`sys.resource_governor_configuration`,
+`sys.dm_resource_governor_configuration`, bedingt `master.sys.master_files`
+und `sys.sp_executesql`.
 
 ### Source Select
 
@@ -123,7 +142,12 @@ WHERE [u].[session_id] <> @@SPID
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung beschreibt den aktuellen Datei- und Datenbankzustand; Session- und Taskzähler gelten seit der jeweiligen Request- oder Sessionaktivität. Der Version Store kann nach dem Transaktionsende verzögert bereinigt werden.
+Die Auswertung beschreibt den aktuellen Datei- und Datenbankzustand; Session-
+und Taskzähler gelten seit der jeweiligen Request- oder Sessionaktivität. Der
+Version Store kann nach dem Transaktionsende verzögert bereinigt werden.
+Workload-Group-Peak und Verletzungszähler gelten seit
+`StatisticsStartTime`, also seit Serverstart oder dem letzten
+`ALTER RESOURCE GOVERNOR RESET STATISTICS`.
 
 ### Bewertung und Gegenprobe
 
@@ -140,6 +164,8 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_CurrentReque
 ## Primärquellen
 
 - [sys.dm_db_session_space_usage](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-session-space-usage-transact-sql?view=sql-server-ver17)
+- [TempDB space resource governance](https://learn.microsoft.com/en-us/sql/relational-databases/resource-governor/tempdb-space-resource-governance?view=sql-server-ver17)
+- [sys.dm_resource_governor_workload_groups](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-resource-governor-workload-groups-transact-sql?view=sql-server-ver17)
 
 ## Weiterführende Vertiefung
 

@@ -40,15 +40,19 @@ Qualitätsregistern gültig. Sie ersetzen den Produktstatus nicht.
 ## Aktuelle Abgrenzung
 
 Die kanonischen Zuordnungen stehen in
-`Metadata/Quality/Implementation_Status.csv`. DIAG-003 bis DIAG-005 sowie SQL25-001 und SQL25-002 sind mit
+`Metadata/Quality/Implementation_Status.csv`. DIAG-003 bis DIAG-005 sowie SQL25-001 bis SQL25-003 sind mit
 ihren kanonischen Zielresultsets, Inventaren und versionsübergreifenden
-Runtimeverträgen abgeschlossen. SQL25-001 und SQL25-002 verweisen zusätzlich
+Runtimeverträgen abgeschlossen. SQL25-001 bis SQL25-003 verweisen zusätzlich
 auf die öffentlichen Verträge
 `Metadata/Quality/SQL25_Vector_Index_Public_Contract.json` und
-`Metadata/Quality/SQL25_JSON_Index_Public_Contract.json`. Für SQL25-001 gilt
+`Metadata/Quality/SQL25_JSON_Index_Public_Contract.json` und
+`Metadata/Quality/SQL25_TempDB_Resource_Governance_Public_Contract.json`.
+Für SQL25-001 gilt
 eine reine Capability-Inventur ausdrücklich nicht als Laufzeitimplementierung;
-SQL25-002 ist dagegen bewusst als Erweiterung der vorhandenen Objekt- und
-Capability-Inventare ohne eigene Procedure abgegrenzt.
+SQL25-002 ist bewusst als Erweiterung der vorhandenen Objekt- und
+Capability-Inventare ohne eigene Procedure abgegrenzt. SQL25-003 erweitert
+Resource-Governor-, TempDB- und Current-State-Pfade ohne neue öffentliche
+Procedure und trennt Konfiguration, Wirksamkeit, Laufzeit- und Resetevidenz.
 RUNTIME-001 ist als implementierter portabler Kern mit ausstehenden
 externen Feature-Nachweisen eingestuft. Bei SC-023 bleibt der bereits
 abgenommene Performance-Counter-Slice implementiert; weitere Collector und

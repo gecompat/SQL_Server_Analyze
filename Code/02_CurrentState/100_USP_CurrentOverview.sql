@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentOverview
-Version      : 4.0.0
+Version      : 4.1.0
 Stand        : 2026-07-23
 Zweck        : Orchestriert jedes aktivierte Current-State-Child genau einmal,
                übernimmt dessen expliziten Status und materialisiert Daten für
@@ -13,7 +13,7 @@ CONSOLE      : SUMMARY ist der Default. RELEVANT und ALL ergänzen ausschließli
                nicht leere Childdetails; Children erhalten niemals CONSOLE.
 TABLE-Namen  : moduleStatus, snapshotStatus, sessions, requests, requestContext,
                statements, batches, inputBuffers, blocking, waits, transactions,
-               memoryGrants, tempdbSessions, io, logs und warnings.
+               memoryGrants, tempdbSessions, tempdbGovernance, io, logs und warnings.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
@@ -51,6 +51,8 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
 AS
 BEGIN
     SET NOCOUNT ON;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @RestoreLockTimeoutSql nvarchar(100);
     SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
@@ -68,7 +70,9 @@ BEGIN
         PRINT N'@MaxObjektAufloesungen begrenzt die Blocking-Ressourcenauflösung auf 1 bis 1000 Kandidaten.';
         PRINT N'Children werden genau einmal und nie mit CONSOLE aufgerufen.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet ausschließlich @ResultTablesJson.';
-        PRINT N'TABLE-Namen: moduleStatus, snapshotStatus, sessions, requests, requestContext, statements, batches, inputBuffers, blocking, waits, transactions, memoryGrants, tempdbSessions, io, logs, warnings.';
+        PRINT N'TABLE-Namen: moduleStatus, snapshotStatus, sessions, requests, requestContext, statements, batches, inputBuffers, blocking, waits, transactions, memoryGrants, tempdbSessions, tempdbGovernance, io, logs, warnings.';
+        SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
         RETURN;
     END;
 
@@ -150,6 +154,7 @@ BEGIN
     CREATE TABLE [#CurrentOverview_Transactions]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_MemoryGrants]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_TempDBSessions]([Seed] bit NULL);
+    CREATE TABLE [#CurrentOverview_TempDBGovernance]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_IO]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_Logs]([Seed] bit NULL);
 
@@ -348,6 +353,23 @@ BEGIN
         , [pool_id] int NOT NULL
         , [request_max_memory_grant_percent_numeric] decimal(9,4) NULL
         , [max_request_grant_memory_kb] bigint NULL
+        , [configured_group_max_tempdb_data_mb] decimal(19,2) NULL
+        , [configured_group_max_tempdb_data_percent] decimal(9,4) NULL
+        , [tempdb_maximum_size_mb] decimal(19,2) NULL
+        , [effective_group_max_tempdb_data_mb] decimal(19,2) NULL
+        , [effective_limit_source] varchar(40) NOT NULL
+        , [is_percent_limit_effective] bit NULL
+        , [tempdb_data_space_mb] decimal(19,2) NULL
+        , [peak_tempdb_data_space_mb] decimal(19,2) NULL
+        , [effective_limit_utilization_percent] decimal(9,2) NULL
+        , [total_tempdb_data_limit_violation_count] bigint NULL
+        , [has_recorded_limit_violation] bit NULL
+        , [statistics_start_time] datetime NULL
+        , [is_resource_governor_enabled] bit NULL
+        , [reconfiguration_pending] bit NULL
+        , [tempdb_governance_status_code] varchar(40) NOT NULL
+        , [tempdb_governance_is_partial] bit NOT NULL
+        , [tempdb_governance_evidence_limit] nvarchar(1000) NULL
         , PRIMARY KEY ([SnapshotId],[group_id])
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_ResourcePools]
@@ -507,7 +529,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|io|logs|warnings'
+            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|tempdbGovernance|io|logs|warnings'
             , @MappingTable=N'#CurrentOverview_ResultTableMap'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
@@ -528,7 +550,7 @@ BEGIN
     SET @CaptureConnections=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 THEN 1 ELSE 0 END;
     SET @CaptureWaitingTasks=CASE WHEN @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitIO=1 THEN 1 ELSE 0 END;
     SET @CaptureMemoryGrants=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 THEN 1 ELSE 0 END;
-    SET @CaptureResourceGovernor=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 THEN 1 ELSE 0 END;
+    SET @CaptureResourceGovernor=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 OR @MitTempDB=1 THEN 1 ELSE 0 END;
     SET @CaptureTasks=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END;
     SET @CaptureSchedulers=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END;
     SET @CaptureTransactions=CASE WHEN @MitRequests=1 OR @MitTransactions=1 THEN 1 ELSE 0 END;
@@ -809,7 +831,7 @@ BEGIN
                   @SessionIds=@SessionIds
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTablesJson=N'{"sessions":"#CurrentOverview_TempDBSessions"}'
+                , @ResultTablesJson=N'{"sessions":"#CurrentOverview_TempDBSessions","tempdbGovernance":"#CurrentOverview_TempDBGovernance"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen
@@ -1102,12 +1124,17 @@ BuildOutputs:
                       WHEN @ExportResultName=N'statements' THEN N'#CurrentOverview_Statements'
                       WHEN @ExportResultName=N'batches' THEN N'#CurrentOverview_Batches'
                       WHEN @ExportResultName=N'inputBuffers' THEN N'#CurrentOverview_InputBuffers'
+                      WHEN @ExportResultName=N'tempdbGovernance' THEN N'#CurrentOverview_TempDBGovernance'
                       WHEN @ExportResultName=N'warnings' THEN N'#CurrentOverview_Warnings'
                       ELSE NULL END
-                , @CanExport=CASE WHEN @ExportResultName IN
-                    (N'moduleStatus',N'snapshotStatus',N'requestContext',
-                     N'statements',N'batches',N'inputBuffers',N'warnings')
-                    THEN 1 ELSE 0 END;
+                , @CanExport=CASE
+                    WHEN @ExportResultName=N'tempdbGovernance' THEN @MitTempDB
+                    WHEN @ExportResultName IN
+                         (N'moduleStatus',N'snapshotStatus',N'requestContext',
+                          N'statements',N'batches',N'inputBuffers',N'warnings')
+                        THEN 1
+                    ELSE 0
+                  END;
 
             IF @ExportSourceTable IS NULL
                 SELECT
@@ -1127,5 +1154,8 @@ BuildOutputs:
         CLOSE [ExportCursor];
         DEALLOCATE [ExportCursor];
     END;
+
+    SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
 END;
 GO
