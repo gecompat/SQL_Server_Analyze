@@ -18,6 +18,7 @@ on:
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py'
+      - 'Code/Tests/Static/994_Validate_SQL25_Vector_Index_Contract.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
@@ -34,6 +35,7 @@ on:
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
       - 'Metadata/Quality/Release_Gate_Evidence.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/SQL25_Vector_Index_Public_Contract.json'
       - 'Metadata/Quality/Future_Enhancement_Backlog.csv'
       - 'Metadata/Quality/External_Evidence_Gates.csv'
       - 'Metadata/Quality/Test_Matrix.csv'
@@ -60,6 +62,7 @@ on:
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py'
+      - 'Code/Tests/Static/994_Validate_SQL25_Vector_Index_Contract.py'
       - 'Code/Tests/Static/995_Validate_Wave1_Contracts.py'
       - 'Code/Tests/Static/996_Validate_Wave2_Contracts.py'
       - 'Code/Tests/Static/997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
@@ -76,6 +79,7 @@ on:
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
       - 'Metadata/Quality/Release_Gate_Evidence.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/SQL25_Vector_Index_Public_Contract.json'
       - 'Metadata/Quality/Future_Enhancement_Backlog.csv'
       - 'Metadata/Quality/External_Evidence_Gates.csv'
       - 'Metadata/Quality/Test_Matrix.csv'
@@ -196,6 +200,16 @@ jobs:
             --repository-root . \
             --self-test
           python3 ./Code/Tests/Static/993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py \
+            --repository-root .
+
+      - name: Validate SQL25-001 Vector-index contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/994_Validate_SQL25_Vector_Index_Contract.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/994_Validate_SQL25_Vector_Index_Contract.py \
             --repository-root .
 
       - name: Validate Wave 1 contracts

@@ -39,6 +39,7 @@ VALUES
 (N'monitor.USP_CurrentOverview','P'),
 (N'monitor.USP_CurrentWaits','P'),
 (N'monitor.USP_ObjectAnalysis','P'),
+(N'monitor.USP_VectorIndexAnalysis','P'),
 (N'monitor.USP_PlanCacheAnalysis','P'),
 (N'monitor.USP_QueryStoreAnalysis','P'),
 (N'monitor.USP_ExtendedEventsAnalysis','P'),
@@ -99,12 +100,12 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.14'
+      AND [FrameworkVersion]='1.1.0-special.16'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 96
-    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 96 öffentlichen Procedures.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 97
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 97 öffentlichen Procedures.',1;
 
 IF EXISTS
 (
@@ -294,6 +295,7 @@ EXEC [monitor].[USP_BufferPoolAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_BackupChainAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_SchemaDesignAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_StatisticsDistributionAnalysis] @Hilfe=1;
+EXEC [monitor].[USP_VectorIndexAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_AvailabilityDeepAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_AgentMonitoringAnalysis] @Hilfe=1;
 EXEC [monitor].[USP_DiagnosticFindings] @Hilfe=1;

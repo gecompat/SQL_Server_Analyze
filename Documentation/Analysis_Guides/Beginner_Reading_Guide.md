@@ -1,7 +1,7 @@
 # Analyse-Resultsets richtig lesen – Einsteigerleitfaden für alle Procedures
 
 **Stand:** 17. Juli 2026  
-**Abdeckung:** alle 96 dokumentierten öffentlichen Procedures einschließlich der eigenständigen und optionalen Pakete
+**Abdeckung:** alle 97 dokumentierten öffentlichen Procedures einschließlich der eigenständigen und optionalen Pakete
 **Zweck:** Der Leitfaden erklärt, **wie** die Resultsets gelesen werden, **worauf** zu achten ist und **warum** bestimmte Kombinationen problematisch oder unkritisch sein können.
 
 > Dieser Leitfaden ergänzt die technischen Detailbeschreibungen. Die Bereichsleitfäden nennen Resultsets und Spalten; hier wird daraus ein nachvollziehbarer Analyseweg.
@@ -375,7 +375,7 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** FK ohne passenden Index ist besonders relevant, wenn Parent-Deletes/Updates blockieren oder große Childscans auslösen. Bei statischen Tabellen ohne solche Operationen kann die Priorität niedriger sein.
 
-**Nächster Schritt:** Prüfen Sie Objektinventar, Usage, Pläne und Änderungsrisiko. [Detailbeschreibung](03_Object_Index.md#10-monitorusp_schemadesignanalysis)
+**Nächster Schritt:** Prüfen Sie Objektinventar, Usage, Pläne und Änderungsrisiko. [Detailbeschreibung](03_Object_Index.md#11-monitorusp_schemadesignanalysis)
 
 ## [monitor].[USP_ObjectAnalysis]
 
@@ -387,7 +387,7 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** Inventar zeigt ähnlichen Index, Missing Index schlägt neuen vor, Usage zeigt bestehende geringe Nutzung. Die Kombination spricht eher für Konsolidierung als für blindes Erstellen.
 
-**Nächster Schritt:** Führen Sie das relevante Child gezielt mit einem engeren Scope erneut aus. [Detailbeschreibung](03_Object_Index.md#11-monitorusp_objectanalysis)
+**Nächster Schritt:** Führen Sie das relevante Child gezielt mit einem engeren Scope erneut aus. [Detailbeschreibung](03_Object_Index.md#12-monitorusp_objectanalysis)
 
 # 6. Plan Cache und Showplan
 

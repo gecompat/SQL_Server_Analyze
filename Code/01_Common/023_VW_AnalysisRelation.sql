@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisRelation
-Version      : 1.0.0
-Stand        : 2026-07-21
+Version      : 1.1.0
+Stand        : 2026-07-23
 Typ          : View
 Zweck        : Beschreibt fachlich begründete Übergänge zwischen öffentlichen
                Analyse-Procedures für priorisierte nächste Schritte.
@@ -67,6 +67,7 @@ AS
         , (N'USP_IndexPhysicalStats','CONFIRM_WITH',N'USP_IndexUsage',1,N'Physische Auffälligkeiten nur zusammen mit Nutzung und Workloadrelevanz bewerten.')
         , (N'USP_ObjectAnalysis','REFINE_WITH',N'USP_IndexUsage',1,N'Indexbezogene Signale auf Nutzung und Änderungsaktivität eingrenzen.')
         , (N'USP_ObjectAnalysis','REFINE_WITH',N'USP_Statistics',2,N'Statistiksignale auf Alter, Modifikationen und ausgewählte Objekte vertiefen.')
+        , (N'USP_ObjectAnalysis','REFINE_WITH',N'USP_VectorIndexAnalysis',3,N'Bei SQL-Server-2025-Vector-Indizes den aktuellen Katalog- und Wartungszustand gezielt ergänzen.')
         , (N'USP_ObjectAnalysis','CONFIRM_WITH',N'USP_QueryStats',1,N'Objektbefunde gegen Query- und Plannutzung validieren.')
         , (N'USP_SchemaDesignAnalysis','CONFIRM_WITH',N'USP_ObjectAnalysis',1,N'Schemadesignhinweise mit Objektgröße, Nutzung, Indizes und Statistiken abgleichen.')
 
@@ -158,6 +159,8 @@ AS
         , (N'USP_SpecialFeatureInventory','REFINE_WITH',N'USP_EncryptionAnalysis',4,N'Bei sichtbaren Schutzfeatures den Verschlüsselungsstatus vertiefen.')
         , (N'USP_SpecialFeatureInventory','REFINE_WITH',N'USP_ExternalRuntimeAnalysis',5,N'Bei External Languages, Libraries oder aktivierter External-Scripts-Konfiguration den External-Runtime-Pfad vertiefen.')
         , (N'USP_SpecialFeatureInventory','REFINE_WITH',N'USP_ClrAnalysis',6,N'Bei sichtbaren benutzerdefinierten Assemblies den SQL-CLR-Pfad vertiefen.')
+        , (N'USP_SpecialFeatureInventory','REFINE_WITH',N'USP_VectorIndexAnalysis',7,N'Bei sichtbaren nativen Vector-Spalten die Vector-Index- und Wartungsevidenz gezielt prüfen.')
+        , (N'USP_VectorIndexAnalysis','CONFIRM_WITH',N'USP_ObjectAnalysis',1,N'Vector-Wartungshinweise gegen Objektgröße, Indexbestand und weitere Objektmetadaten abgleichen.')
         , (N'USP_InMemoryOltpAnalysis','CONFIRM_WITH',N'USP_ServerMemory',1,N'XTP-Memory- und Resource-Pool-Signale im gesamten Server-Memory-Kontext prüfen.')
         , (N'USP_TemporalAnalysis','CONFIRM_WITH',N'USP_DatabaseCapacityAnalysis',1,N'Historywachstum und Retention gegen Datenbankkapazität und Dateiwachstum prüfen.')
         , (N'USP_ServiceBrokerAnalysis','CONFIRM_WITH',N'USP_ErrorLogAnalysis',1,N'Queue-, Activation- oder Transmissionprobleme mit Engine-Logsignalen abgleichen.')
