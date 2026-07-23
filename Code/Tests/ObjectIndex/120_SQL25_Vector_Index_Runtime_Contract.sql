@@ -150,7 +150,32 @@ BEGIN TRY
                   WITH ([StatusCode] varchar(40) N'$.StatusCode')
                   WHERE [StatusCode] IN('UNAVAILABLE_FEATURE','UNAVAILABLE_SOURCE_SCHEMA')
               )
-            THROW 55703,N'SQL25-001 weist einen auf diesem SQL-Server-2025-Build nicht bereitgestellten Vector-Index-Pfad nicht explizit aus.',1;
+        BEGIN
+            DECLARE @CapabilityDetail nvarchar(2048)=
+            (
+                SELECT CONCAT
+                (
+                      N'SQL25-001 Capability-Status unerwartet: module=',COALESCE(@Status,'NULL')
+                    , N'; partial=',COALESCE(CONVERT(varchar(1),@Partial),'NULL')
+                    , N'; catalogObject=',CONVERT(varchar(1),@HasVectorCatalog)
+                    , N'; runtimeObject=',CONVERT(varchar(1),@HasVectorRuntime)
+                    , N'; sources='
+                    , COALESCE
+                      (
+                          STRING_AGG(CONCAT([SourceName],N'/',[StatusCode],N'/',CONVERT(varchar(1),[IsPartial])),N','),
+                          N'NONE'
+                      )
+                )
+                FROM OPENJSON(@Json,N'$.sourceStatus')
+                WITH
+                (
+                      [SourceName] sysname N'$.SourceName'
+                    , [StatusCode] varchar(40) N'$.StatusCode'
+                    , [IsPartial] bit N'$.IsPartial'
+                )
+            );
+            THROW 55703,@CapabilityDetail,1;
+        END;
 
         INSERT @ExecutedCases VALUES('FEATURE-UNAVAILABLE-EXPLICIT');
         IF COALESCE(@PreviewWasEnabled,0)=0
