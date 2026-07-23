@@ -285,7 +285,9 @@ VALUES
     , (N'Index ungenutzt',N'USP_IndexUsage')
     , (N'AG Lag Redo Queue Send Queue',N'USP_AvailabilityDeepAnalysis')
     , (N'Deadlock',N'USP_ExtendedEventsDeadlocks')
-    , (N'SQL Server Version CU Lifecycle',N'USP_ServerVersionInformation');
+    , (N'SQL Server Version CU Lifecycle',N'USP_ServerVersionInformation')
+    , (N'JSON-Index Pfade inventarisieren',N'USP_ObjectInventory')
+    , (N'JSON-Index Capability Preview',N'USP_ServerFeatureCapabilities');
 
 DECLARE @CaseId int=1,@MaxCaseId int=(SELECT MAX([CaseId]) FROM @Cases);
 DECLARE @SearchTerm nvarchar(200),@ExpectedProcedure sysname,@ActualProcedure sysname;

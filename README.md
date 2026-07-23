@@ -47,7 +47,7 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 - exaktes aktuell ausgeführtes Statement anhand der SQL-Server-Offsets
 - vollständiger Batch-, Modul- und Input-Buffer-Kontext bei Bedarf
 - TempDB-, I/O- und Transaktionslog-Diagnose
-- Objekt-, Index-, Statistik-, Partitionierungs- und Columnstore-Analyse
+- Objekt-, Index-, Statistik-, Partitionierungs- und Columnstore-Analyse einschließlich capability-adaptiver SQL-Server-2025-JSON-Index-/Pfadmetadaten
 - Plan Cache, Query Hash, Showplan und Plan-Detailanalyse
 - Query Store: Laufzeitwerte, Waits, Planwechsel, Regressionen, Forced Plans und Hints
 - Extended Events: Sessions, Targets, Deadlocks und Blocked-Process-Ereignisse
@@ -243,6 +243,7 @@ Der aktuelle Inventory-Vertrag umfasst 97 öffentliche Procedures und 68 unterst
 - [Procedure-Referenz](./Documentation/Reference/Procedure_Reference.md)
 - [Detaillierte Referenz aller unterstützenden Frameworkobjekte](./Documentation/Reference/Object_Reference.md)
 - [Spezialfallmodule: Evidenz, Kosten und Grenzen](./Documentation/Architecture/Special_Case_Modules.md)
+- [SQL-Server-2025-JSON-Index-Inventar](./Documentation/Architecture/SQL_Server_2025_JSON_Index_Inventory.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)

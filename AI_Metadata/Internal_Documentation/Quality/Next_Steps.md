@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-Stand: 2026-07-22
+Stand: 2026-07-23
 
 Der Stand `1.1.0-special.13` besitzt für Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` vollständige grüne Linux-Evidenz auf SQL Server 2019, 2022 und 2025. Der Release-Gate-Vertrag umfasst 34 Suiten, alle 17 P0-, 40 P1- und 124 P2-Fälle sowie die frameworkweiten Ausgabe-, Welle-1- und Welle-2-Verträge. Kanonische Quelle für Release, Commit, Zielversionen und Zählwerte ist `Metadata/Quality/Test_Matrix.csv`; ihre Konsistenz mit Detailmatrix, Release-Audit und Statusdokumenten wird statisch geprüft.
 
@@ -62,6 +62,8 @@ Abgeschlossen:
 50. Welle 1 abgeschlossen: Commit `fd0edabc811e5c5ffc2253da4196a95f6779e959` setzt `OUT-001`, `DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007` um. Unicode-sichere sichtbare Kürzung, native XML-Ausgaben, gemeinsame Provenienz- und Resultsetverträge sowie die Offline-Serverversionsbewertung sind auf SQL Server 2019, 2022 und 2025 einschließlich des synthetischen Begleitvertrags `190` grün.
 51. Welle 2 abgeschlossen: Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` setzt `OPS-001` bis `OPS-004` um. Datenbankkonfigurationsdrift, Worker-/Scheduler-Druck, Pending I/O und begrenzte Errorlog-Analyse sind einschließlich Begleitvertrag `191`, Ausgabe-Pilot und Berechtigungsmatrizen auf SQL Server 2019, 2022 und 2025 grün.
 52. `RUNTIME-001` als zustandslosen Current-State-Kern umgesetzt: `USP_ExternalRuntimeAnalysis` trennt External-Scripts-Konfiguration, registrierte Languages und Libraries, Launchpad-, Request-, External-Pool-, Execution-Stats- und Counterevidenz. `USP_ClrAnalysis` trennt CLR-Konfiguration, sichtbare Assemblies und Module, Host-, AppDomain-, Task-, Request-, Speicher- und Counterevidenz. Der portable Begleitvertrag `198` prüft Installation, Status, JSON, TABLE, Routing, Capabilities, Read-only-Abgrenzung und Wiederherstellung von `LOCK_TIMEOUT`, ohne ein Feature zu aktivieren oder externen beziehungsweise CLR-Code auszuführen. Der Produktstatus lautet `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`; die Plattformmatrix mit aktivierten Features ist ein externer Nachweis und keine fehlende portable Kernfunktion.
+53. Welle 5 / `SQL25-001` abgeschlossen: `USP_VectorIndexAnalysis` trennt sichtbare Katalogdefinition und aktuelle Hintergrundwartung, vermeidet Vector-Nutzdaten und automatische Rebuildaussagen und ist über den Drei-Versionen-Vertrag `120` abgenommen.
+54. Welle 6 / `SQL25-002` umgesetzt: Die bestehenden Objekt- und Capability-Inventare liefern versions- und capability-adaptive JSON-Index-/Pfadmetadaten ohne JSON-Dokumentwerte oder eigene zusätzliche Procedure. Der öffentliche Vertrag und Begleittest `121` binden Versionsgrenze, sichtbaren Previewpfad, leeren oder eingeschränkt sichtbaren Scope, TABLE/JSON und Routing.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 
@@ -100,13 +102,14 @@ Vorgemerkte zukünftige Architekturhärtung:
   `Metadata/Quality/Future_Enhancement_Backlog.csv` sowie in
   `Metadata/Quality/Implementation_Status.csv`.
 
-- **OPS-005 bis OPS-009 und SQL25-001 bis SQL25-005 – zusätzliche
+- **OPS-005 bis OPS-009 und SQL25-003 bis SQL25-005 – zusätzliche
   Betriebs- und Versionsdiagnosen:** Die recherchierten Lücken für
   Datenbankkonfigurationsdrift, Worker-/Scheduler-Druck, Pending I/O,
   Errorlogs, SQL-Server-2025-Vertiefungen, Linked Server, Portabilität,
   Cursor, `msdb` und Benutzerobjekte in Systemdatenbanken stehen im
   [Backlog für zusätzliche Betriebs- und Versionsdiagnosen](../Architecture/Operational_Diagnostic_Gap_Backlog.md).
-  `OPS-001` bis `OPS-004` sind mit Welle 2 `IMPLEMENTED_ACTIONS_GATE`.
+  `OPS-001` bis `OPS-004` sind mit Welle 2, `SQL25-001` mit Welle 5 und
+  `SQL25-002` mit Welle 6 `IMPLEMENTED_ACTIONS_GATE`.
   Die maschinenlesbaren Prioritäten und Abnahmekriterien stehen in
   `Metadata/Quality/Future_Enhancement_Backlog.csv`. Diese Vormerkungen
   sind Future Enhancements und ändern nicht den abgeschlossenen Status
@@ -118,7 +121,8 @@ Der erste SC-023-Performance-Counter-Slice ist auf dem konkreten Implementierung
 
 1. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen Windows-/Azure-MI-Ziele mit aktivierten Features, kontrollierte Lastfälle und externe Restore-/Host-Nachweise. Für RUNTIME-001 sind R, Python, Java, C# und Custom Language Extensions sowie SQL CLR mit einer synthetischen SAFE-Assembly und getrennten Plattformgrenzen nachzuweisen.
 2. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten, breite Cross-Database-Auswahl sowie RUNTIME-001-Sampling mit gültigem Delta und Resetgrenzen.
-3. Die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere
+3. Die verbleibenden SQL-Server-2025-Vertiefungen `SQL25-003` bis
+   `SQL25-005` umsetzen. Für SC-023 bleiben weitere
    Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024
    benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine
    autorisierte isolierte Ausführungsumgebung.
