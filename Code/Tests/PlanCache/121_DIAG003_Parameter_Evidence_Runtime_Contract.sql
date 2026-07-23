@@ -26,13 +26,13 @@ EXEC [monitor].[USP_ShowplanAnalysis]
 IF ISJSON(@ShowplanJson)<>1
    OR TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.meta.schemaVersion'))<>4
    OR JSON_QUERY(@ShowplanJson,N'$.parameters') IS NULL
-   OR JSON_VALUE(@ShowplanJson,N'$.parameters[0].ValueStatus')<>N'PLAN_EVICTED'
-   OR JSON_VALUE(@ShowplanJson,N'$.parameters[0].ValueSource')<>N'COMPILE_PLAN'
-   OR TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.parameters[0].CandidateId'))<>1
+   OR COALESCE(JSON_VALUE(@ShowplanJson,N'$.parameters[0].ValueStatus'),N'')<>N'PLAN_EVICTED'
+   OR COALESCE(JSON_VALUE(@ShowplanJson,N'$.parameters[0].ValueSource'),N'')<>N'COMPILE_PLAN'
+   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.parameters[0].CandidateId')),0)<>1
     THROW 53646,N'USP_ShowplanAnalysis aggregiert den DIAG-003-JSON-Vertrag nicht korrekt.',1;
 
 IF JSON_QUERY(@ShowplanJson,N'$.analyses[0].parameters') IS NULL
-   OR JSON_VALUE(@ShowplanJson,N'$.analyses[0].parameters[0].ValueStatus')<>N'PLAN_EVICTED'
+   OR COALESCE(JSON_VALUE(@ShowplanJson,N'$.analyses[0].parameters[0].ValueStatus'),N'')<>N'PLAN_EVICTED'
     THROW 53647,N'Der Child-Vertrag der Showplan-Analyse enthält keine konsistente Parameterevidenz.',1;
 
 CREATE TABLE [#121_DIAG003_Parameter_Evidence_Runtime_Contract_Parameters]
