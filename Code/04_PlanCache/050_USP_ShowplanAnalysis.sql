@@ -4,15 +4,15 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ShowplanAnalysis
-Version      : 2.0.1
-Stand        : 2026-07-21
+Version      : 2.1.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Selektiert begrenzt Plan-Cache-Kandidaten und verwendet je
                eindeutigem Planhandle die zentrale Execution-Plan-Analyse.
                Mehrere dm_exec_query_stats-Statements desselben Batchplans
                führen nicht mehr zu wiederholtem XML-Shredding.
 SQL-Version  : SQL Server 2019 oder neuer.
-Resultsets   : CONSOLE/TABLE: findings. RAW: moduleStatus, planStatus, findings.
+Resultsets   : CONSOLE: findings. TABLE: parameters, findings. RAW: moduleStatus, planStatus, parameters, findings.
 Berechtigung : VIEW SERVER STATE bzw. SQL Server 2022+
                VIEW SERVER PERFORMANCE STATE für Plan-Cache-Quellen.
 ===============================================================================
@@ -124,6 +124,44 @@ BEGIN
         , [Summary] nvarchar(1000) NOT NULL,[Evidence] nvarchar(2000) NOT NULL,[EvidenceLimit] nvarchar(2000) NOT NULL
         , [CounterEvidence] nvarchar(1000) NULL,[RecommendedNextCheck] nvarchar(1000) NOT NULL
     );
+    CREATE TABLE [#ShowplanAnalysis_Parameters]
+    (
+          [CandidateId] int NOT NULL
+        , [PlanHandle] varbinary(64) NOT NULL
+        , [SessionId] smallint NULL
+        , [RequestId] int NULL
+        , [StatementOrdinal] int NULL
+        , [StatementId] int NULL
+        , [StatementQueryHash] nvarchar(130) NULL
+        , [StatementQueryPlanHash] nvarchar(130) NULL
+        , [QueryStoreDatabaseName] sysname NULL
+        , [QueryStorePlanId] bigint NULL
+        , [PlanDocumentHash] nvarchar(66) NULL
+        , [EvidenceKind] varchar(24) NOT NULL
+        , [ParameterName] nvarchar(256) NULL
+        , [ParameterDataType] nvarchar(256) NULL
+        , [CompiledValuePresent] bit NOT NULL
+        , [RuntimeValuePresent] bit NOT NULL
+        , [CompiledValueIsSqlNull] bit NULL
+        , [RuntimeValueIsSqlNull] bit NULL
+        , [CompiledValue] nvarchar(4000) NULL
+        , [RuntimeValue] nvarchar(4000) NULL
+        , [CompiledValueToken] nvarchar(66) NULL
+        , [RuntimeValueToken] nvarchar(66) NULL
+        , [CompiledValueLength] int NULL
+        , [RuntimeValueLength] int NULL
+        , [CompiledValueStatus] varchar(40) NOT NULL
+        , [RuntimeValueStatus] varchar(40) NOT NULL
+        , [ValueStatus] varchar(40) NOT NULL
+        , [ValueHandlingStatus] varchar(40) NOT NULL
+        , [ValueSource] varchar(40) NOT NULL
+        , [SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [ValueCapturedAtUtc] datetime2(3) NULL
+        , [IsCurrentExecution] bit NULL
+        , [IsLastKnownExecution] bit NULL
+        , [IsComplete] bit NOT NULL
+        , [EvidenceLimit] nvarchar(1000) NULL
+    );
     CREATE TABLE [#ShowplanAnalysis_Analyses]
     (
           [CandidateId] int NOT NULL PRIMARY KEY
@@ -156,7 +194,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'findings'
+            , @AllowedResultNames=N'parameters|findings'
             , @MappingTable=N'#ShowplanAnalysis_TableMap'
             , @ThrowOnError=1;
         SET @OutputMode='NONE';
@@ -338,6 +376,72 @@ OPTION (RECOMPILE,MAXDOP 1);';
                         , [EvidenceLimit] nvarchar(2000) N'$.EvidenceLimit',[CounterEvidence] nvarchar(1000) N'$.CounterEvidence'
                         , [RecommendedNextCheck] nvarchar(1000) N'$.RecommendedNextCheck'
                     );
+
+                    INSERT [#ShowplanAnalysis_Parameters]
+                    (
+                          [CandidateId],[PlanHandle],[SessionId],[RequestId]
+                        , [StatementOrdinal],[StatementId],[StatementQueryHash],[StatementQueryPlanHash]
+                        , [QueryStoreDatabaseName],[QueryStorePlanId],[PlanDocumentHash]
+                        , [EvidenceKind],[ParameterName],[ParameterDataType]
+                        , [CompiledValuePresent],[RuntimeValuePresent]
+                        , [CompiledValueIsSqlNull],[RuntimeValueIsSqlNull]
+                        , [CompiledValue],[RuntimeValue],[CompiledValueToken],[RuntimeValueToken]
+                        , [CompiledValueLength],[RuntimeValueLength]
+                        , [CompiledValueStatus],[RuntimeValueStatus],[ValueStatus]
+                        , [ValueHandlingStatus],[ValueSource]
+                        , [SourceObservedAtUtc],[ValueCapturedAtUtc]
+                        , [IsCurrentExecution],[IsLastKnownExecution],[IsComplete],[EvidenceLimit]
+                    )
+                    SELECT
+                          @CandidateId,@CurrentPlanHandle,[SessionId],[RequestId]
+                        , [StatementOrdinal],[StatementId],[StatementQueryHash],[StatementQueryPlanHash]
+                        , [QueryStoreDatabaseName],[QueryStorePlanId],[PlanDocumentHash]
+                        , [EvidenceKind],[ParameterName],[ParameterDataType]
+                        , [CompiledValuePresent],[RuntimeValuePresent]
+                        , [CompiledValueIsSqlNull],[RuntimeValueIsSqlNull]
+                        , [CompiledValue],[RuntimeValue],[CompiledValueToken],[RuntimeValueToken]
+                        , [CompiledValueLength],[RuntimeValueLength]
+                        , [CompiledValueStatus],[RuntimeValueStatus],[ValueStatus]
+                        , [ValueHandlingStatus],[ValueSource]
+                        , [SourceObservedAtUtc],[ValueCapturedAtUtc]
+                        , [IsCurrentExecution],[IsLastKnownExecution],[IsComplete],[EvidenceLimit]
+                    FROM OPENJSON(@ChildJson,N'$.parameters')
+                    WITH
+                    (
+                          [SessionId] smallint N'$.SessionId'
+                        , [RequestId] int N'$.RequestId'
+                        , [StatementOrdinal] int N'$.StatementOrdinal'
+                        , [StatementId] int N'$.StatementId'
+                        , [StatementQueryHash] nvarchar(130) N'$.StatementQueryHash'
+                        , [StatementQueryPlanHash] nvarchar(130) N'$.StatementQueryPlanHash'
+                        , [QueryStoreDatabaseName] sysname N'$.QueryStoreDatabaseName'
+                        , [QueryStorePlanId] bigint N'$.QueryStorePlanId'
+                        , [PlanDocumentHash] nvarchar(66) N'$.PlanDocumentHash'
+                        , [EvidenceKind] varchar(24) N'$.EvidenceKind'
+                        , [ParameterName] nvarchar(256) N'$.ParameterName'
+                        , [ParameterDataType] nvarchar(256) N'$.ParameterDataType'
+                        , [CompiledValuePresent] bit N'$.CompiledValuePresent'
+                        , [RuntimeValuePresent] bit N'$.RuntimeValuePresent'
+                        , [CompiledValueIsSqlNull] bit N'$.CompiledValueIsSqlNull'
+                        , [RuntimeValueIsSqlNull] bit N'$.RuntimeValueIsSqlNull'
+                        , [CompiledValue] nvarchar(4000) N'$.CompiledValue'
+                        , [RuntimeValue] nvarchar(4000) N'$.RuntimeValue'
+                        , [CompiledValueToken] nvarchar(66) N'$.CompiledValueToken'
+                        , [RuntimeValueToken] nvarchar(66) N'$.RuntimeValueToken'
+                        , [CompiledValueLength] int N'$.CompiledValueLength'
+                        , [RuntimeValueLength] int N'$.RuntimeValueLength'
+                        , [CompiledValueStatus] varchar(40) N'$.CompiledValueStatus'
+                        , [RuntimeValueStatus] varchar(40) N'$.RuntimeValueStatus'
+                        , [ValueStatus] varchar(40) N'$.ValueStatus'
+                        , [ValueHandlingStatus] varchar(40) N'$.ValueHandlingStatus'
+                        , [ValueSource] varchar(40) N'$.ValueSource'
+                        , [SourceObservedAtUtc] datetime2(3) N'$.SourceObservedAtUtc'
+                        , [ValueCapturedAtUtc] datetime2(3) N'$.ValueCapturedAtUtc'
+                        , [IsCurrentExecution] bit N'$.IsCurrentExecution'
+                        , [IsLastKnownExecution] bit N'$.IsLastKnownExecution'
+                        , [IsComplete] bit N'$.IsComplete'
+                        , [EvidenceLimit] nvarchar(1000) N'$.EvidenceLimit'
+                    );
                 END;
                 SET @ProcessedPlans+=1;
                 IF COALESCE(@ChildStatus,'STATUS_UNAVAILABLE')<>'AVAILABLE'
@@ -370,19 +474,22 @@ OPTION (RECOMPILE,MAXDOP 1);';
 
     IF @JsonErzeugen=1
     BEGIN
-        DECLARE @Meta nvarchar(max)=(SELECT N'ShowplanAnalysis' [resultName],2 [schemaVersion],@Now [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@CandidateCount [candidateCount],@ProcessedPlans [processedPlanCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @Meta nvarchar(max)=(SELECT N'ShowplanAnalysis' [resultName],3 [schemaVersion],@Now [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],@CandidateCount [candidateCount],@ProcessedPlans [processedPlanCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @PlanStatusJson nvarchar(max)=(SELECT * FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @ParametersJson nvarchar(max)=(SELECT TOP (@ResultLimit) * FROM [#ShowplanAnalysis_Parameters] ORDER BY [CandidateId],[StatementOrdinal],[EvidenceKind],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @FindingsJson nvarchar(max)=(SELECT TOP (@ResultLimit) * FROM [#ShowplanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[CandidateId],[FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @AnalysesJson nvarchar(max)=N'[]';
         SELECT @AnalysesJson=COALESCE(N'['+STRING_AGG(CONVERT(nvarchar(max),[AnalysisJson]),N',') WITHIN GROUP (ORDER BY [CandidateId])+N']',N'[]')
         FROM [#ShowplanAnalysis_Analyses] WHERE ISJSON([AnalysisJson])=1;
-        SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"planStatus":',COALESCE(@PlanStatusJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N',"analyses":',COALESCE(@AnalysesJson,N'[]'),N'}');
+        SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"planStatus":',COALESCE(@PlanStatusJson,N'[]'),N',"parameters":',COALESCE(@ParametersJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N',"analyses":',COALESCE(@AnalysesJson,N'[]'),N'}');
     END;
 
     IF @OutputMode='RAW'
     BEGIN
         SELECT * FROM [#ShowplanAnalysis_ModuleStatus];
         SELECT * FROM [#ShowplanAnalysis_PlanStatus] ORDER BY [CandidateId];
+        SELECT TOP (@ResultLimit) * FROM [#ShowplanAnalysis_Parameters]
+        ORDER BY [CandidateId],[StatementOrdinal],[EvidenceKind],[ParameterName];
         SELECT TOP (@ResultLimit) * FROM [#ShowplanAnalysis_Findings]
         ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[CandidateId],[FindingOrdinal];
     END;
@@ -393,9 +500,24 @@ OPTION (RECOMPILE,MAXDOP 1);';
             , @StatusCode=@StatusCode,@StatusMessage=@ErrorMessage;
     IF @TableRequested=1
     BEGIN
-        DECLARE @TargetTable sysname=(SELECT TOP (1) [TargetTable] FROM [#ShowplanAnalysis_TableMap] WHERE [ResultName]=N'findings');
-        EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable=N'#ShowplanAnalysis_Findings',@TargetTable=@TargetTable,@ThrowOnError=1;
+        DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
+        DECLARE [ShowplanOutputCursor] CURSOR LOCAL FAST_FORWARD FOR
+            SELECT [ResultName],[TargetTable]
+            FROM [#ShowplanAnalysis_TableMap]
+            ORDER BY [ResultName];
+        OPEN [ShowplanOutputCursor];
+        FETCH NEXT FROM [ShowplanOutputCursor] INTO @ResultName,@TargetTable;
+        WHILE @@FETCH_STATUS=0
+        BEGIN
+            SET @SourceTable=CASE @ResultName
+                WHEN N'parameters' THEN N'#ShowplanAnalysis_Parameters'
+                WHEN N'findings' THEN N'#ShowplanAnalysis_Findings' END;
+            EXEC [monitor].[InternalWriteResultTable]
+                  @SourceTable=@SourceTable,@TargetTable=@TargetTable,@ThrowOnError=1;
+            FETCH NEXT FROM [ShowplanOutputCursor] INTO @ResultName,@TargetTable;
+        END;
+        CLOSE [ShowplanOutputCursor];
+        DEALLOCATE [ShowplanOutputCursor];
     END;
     IF @PrintMeldungen=1 AND @StatusCode<>'AVAILABLE'
     BEGIN

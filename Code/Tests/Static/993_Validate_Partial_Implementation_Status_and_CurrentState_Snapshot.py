@@ -17,7 +17,7 @@ ALLOWED_PRODUCT_STATUS = {
     "OPTIONAL_FUTURE",
 }
 REQUIRED_STATUS = {
-    "DIAG-003": "PARTIAL_PRODUCT_FUNCTION",
+    "DIAG-003": "IMPLEMENTED_ACTIONS_GATE",
     "DIAG-004": "PARTIAL_PRODUCT_FUNCTION",
     "DIAG-005": "PARTIAL_PRODUCT_FUNCTION",
     "RUNTIME-001": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
@@ -89,8 +89,13 @@ def main() -> int:
         root / "Metadata/Quality/Future_Enhancement_Backlog.csv"
     ).open(encoding="utf-8", newline="") as handle:
         future = {row["EnhancementId"]: row for row in csv.DictReader(handle)}
-    for work_item in ("DIAG-003", "DIAG-004", "DIAG-005"):
-        if future[work_item]["ImplementationStatus"] != "PARTIAL_PRODUCT_FUNCTION":
+    expected_future = {
+        "DIAG-003": "IMPLEMENTED_ACTIONS_GATE",
+        "DIAG-004": "PARTIAL_PRODUCT_FUNCTION",
+        "DIAG-005": "PARTIAL_PRODUCT_FUNCTION",
+    }
+    for work_item, expected in expected_future.items():
+        if future[work_item]["ImplementationStatus"] != expected:
             fail("FUTURE_BACKLOG_STATUS", work_item)
 
     diagnostic = (
@@ -99,7 +104,8 @@ def main() -> int:
         "Diagnostic_Information_Enrichment_Backlog.md"
     ).read_text(encoding="utf-8-sig")
     for token in (
-        "Status: `PARTIAL_PRODUCT_FUNCTION`",
+        "## DIAG-003: Parameter- und Variablenwerte",
+        "Status: `IMPLEMENTED_ACTIONS_GATE`",
         "Post-Candidate-Quelle",
         "USP_CurrentSessions",
         "USP_CurrentRequests",
@@ -225,9 +231,11 @@ def main() -> int:
     )
     if "199_CurrentState_Snapshot_Runtime_Contract.sql" not in release_gate:
         fail("RUNTIME_GATE_ENTRY", "Run_Release_Gate.sql")
+    if "121_DIAG003_Parameter_Evidence_Runtime_Contract.sql" not in release_gate:
+        fail("DIAG003_RUNTIME_GATE_ENTRY", "Run_Release_Gate.sql")
 
     print(
-        "Status/snapshot contracts passed: status_rows=6 external_gates=1 owner_sources=8 "
+        "Status/snapshot contracts passed: status_rows=6 diag003=implemented external_gates=1 owner_sources=8 "
         "primary_consumers=2 findings=0"
     )
     return 0

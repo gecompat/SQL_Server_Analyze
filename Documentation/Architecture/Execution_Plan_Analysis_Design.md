@@ -176,7 +176,8 @@ Der native Vertrag umfasst abhängig von Quelle und aktivierten Pfaden unter and
 - `columnReferences`
 - `statisticsUsage`
 - `predicates`
-- `parameterSensitivity`
+- `parametersAndVariants` als bestehende Legacy-Projektion
+- `parameters` als kanonischer DIAG-003-Evidenzvertrag
 - `histogramSummaries`
 - `histogramSteps`
 - `predicateHistogramMappings`
@@ -184,7 +185,20 @@ Der native Vertrag umfasst abhängig von Quelle und aktivierten Pfaden unter and
 
 Die exakten Spalten, Typen, Nullability, Reihenfolge und TABLE-Fähigkeit stehen im [Resultsetinventar](../Reference/Resultset_Conventions.md) und in `Metadata/Inventory/ResultSets.csv`.
 
-CONSOLE priorisiert Findings und lesbare Kernaussagen. RAW liefert Status und native Resultsets. TABLE schreibt ausschließlich explizit benannte Ergebnisse in lokale Temp-Tabellen. JSON enthält denselben Aufrufstand.
+CONSOLE priorisiert Findings und lesbare Kernaussagen. RAW liefert Status und
+native Resultsets. TABLE schreibt ausschließlich explizit benannte Ergebnisse
+in lokale Temp-Tabellen. JSON enthält denselben Aufrufstand.
+
+### Parameter-Evidenz
+
+`parameters` bewahrt Attributpräsenz, SQL-NULL-Semantik, Quelltyp,
+Quellbeobachtungszeit, Session-/Requestbezug sowie Current-/Last-known- und
+Vollständigkeitskennzeichen. Fehlende Runtimeattribute, SQL-`NULL`,
+Cache-Eviction, beendete Requests und die nicht allgemein zugänglichen lokalen
+Variablen besitzen getrennte Statuswerte. Die Parameterliste wird pro Plan nur
+einmal zerlegt; `parametersAndVariants` wird aus derselben
+Aufrufmaterialisierung erzeugt. `USP_ShowplanAnalysis` aggregiert diese
+Child-Evidenz kandidatengenau und führt keine zweite Parameter-XQuery aus.
 
 ## Kosten- und Schutzmodell
 

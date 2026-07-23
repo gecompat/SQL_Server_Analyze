@@ -1,6 +1,6 @@
 {
-  "contractId": "PLAN-001-PUBLIC-V1",
-  "contractVersion": 1,
+  "contractId": "PLAN-001-PUBLIC-V2",
+  "contractVersion": 2,
   "releaseState": "IMPLEMENTED_ACTIONS_GATE",
   "minimumSqlServerMajorVersion": 15,
   "targetSqlServerMajorVersions": [15, 16, 17],
@@ -99,6 +99,7 @@
         "accessPaths",
         "statisticsUsage",
         "parametersAndVariants",
+        "parameters",
         "memoryAndSpills",
         "executionEvidence",
         "histogramSummaries",
@@ -106,7 +107,7 @@
         "predicateHistogramMappings",
         "findings"
       ],
-      "jsonSchemaVersion": 1,
+      "jsonSchemaVersion": 2,
       "jsonTopLevelProperties": [
         "meta",
         "capabilities",
@@ -118,6 +119,7 @@
         "accessPaths",
         "statisticsUsage",
         "parametersAndVariants",
+        "parameters",
         "memoryAndSpills",
         "executionEvidence",
         "histogramSummaries",
@@ -126,6 +128,56 @@
         "findings"
       ]
     }
+  },
+  "diag003ParameterEvidence": {
+    "canonicalResultSet": "parameters",
+    "legacyResultSet": "parametersAndVariants",
+    "schemaVersion": 1,
+    "valueStatuses": [
+      "AVAILABLE",
+      "SQL_NULL",
+      "NOT_COLLECTED",
+      "PLAN_EVICTED",
+      "REQUEST_FINISHED",
+      "LOCAL_VARIABLE_NOT_EXPOSED",
+      "DENIED_PERMISSION",
+      "ERROR_HANDLED"
+    ],
+    "valueSources": [
+      "COMPILE_PLAN",
+      "LIVE_PLAN",
+      "LAST_ACTUAL_PLAN",
+      "QUERY_STORE_PLAN",
+      "IMPORTED_PLAN",
+      "PLAN_CACHE_ATTEMPT"
+    ],
+    "requiredColumns": [
+      "CandidateId",
+      "SessionId",
+      "RequestId",
+      "StatementOrdinal",
+      "StatementId",
+      "StatementQueryHash",
+      "StatementQueryPlanHash",
+      "PlanHandle",
+      "PlanDocumentHash",
+      "ParameterName",
+      "ParameterDataType",
+      "CompiledValuePresent",
+      "RuntimeValuePresent",
+      "CompiledValueIsSqlNull",
+      "RuntimeValueIsSqlNull",
+      "CompiledValueStatus",
+      "RuntimeValueStatus",
+      "ValueStatus",
+      "ValueSource",
+      "SourceObservedAtUtc",
+      "ValueCapturedAtUtc",
+      "IsCurrentExecution",
+      "IsLastKnownExecution",
+      "IsComplete",
+      "EvidenceLimit"
+    ]
   },
   "frozenDefaults": {
     "USP_CreateExecutionEvidenceJson": {

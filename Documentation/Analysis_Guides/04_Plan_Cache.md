@@ -229,7 +229,7 @@ Wichtige Attribute sind etwa `dbid`, `set_options`, `user_id`, `language_id`, `d
 
 ### Zweck
 
-Die Procedure parst begrenzt Plan-XML und extrahiert Statements, Warnungen, Missing-Index-Elemente, verwendete Objekte/Statistiken, Operatoren, Kardinalitätsabweichungen, Memory Grants und Parameter.
+Die Procedure selektiert begrenzt Plan-Cache-Kandidaten und delegiert jedes eindeutige Planhandle an die zentrale Einplananalyse. Öffentlich aggregiert sie `planStatus`, `parameters` und `findings`; das JSON enthält zusätzlich die vollständigen Child-Analysen.
 
 ### Sicherheitsbudgets
 
@@ -239,6 +239,11 @@ Die Procedure parst begrenzt Plan-XML und extrahiert Statements, Warnungen, Miss
 - `PLAN_CACHE_DEEP` und `SHOWPLAN_XML_DEEP` bei breiten Läufen.
 
 ### Resultsets und Spalten
+
+RAW liefert `moduleStatus`, `planStatus`, `parameters` und `findings`.
+TABLE akzeptiert `parameters` und `findings`; CONSOLE priorisiert Findings.
+Die weiteren unten beschriebenen Granularitäten liegen in den Child-Analysen
+des JSON-Vertrags.
 
 #### PlanStatus
 
@@ -286,9 +291,18 @@ Nur Last Actual/Live Pläne liefern zuverlässig Actualwerte. Ein extremes Ratio
 
 #### Parameters
 
-`CandidateId`, `ParameterName`, `ParameterDataType`, `CompiledValue`, `RuntimeValue`.
+`CandidateId` und `PlanHandle` identifizieren den äußeren Kandidaten.
+Session, Request, Statement, Query Hash, Plan Hash und PlanDocumentHash werden
+soweit verfügbar mitgeführt. Presence- und SQL-NULL-Flags trennen fehlende
+Compile-/Runtimeattribute von erfasstem SQL-`NULL`. `ValueSource`,
+`SourceObservedAtUtc`, `ValueCapturedAtUtc`, Current-/Last-known-Flags,
+`IsComplete` und `ValueStatus` beschreiben Zeit und Aussagegrenze.
 
-Compiled-/Runtime-Differenz kann Parameter Sensitivity anzeigen, aber ein einzelner Ausführungsplan beweist sie nicht.
+`PLAN_EVICTED`, `REQUEST_FINISHED`, `NOT_COLLECTED`,
+`SQL_NULL` und `LOCAL_VARIABLE_NOT_EXPOSED` sind unterschiedliche
+Zustände. Compiled-/Runtime-Differenz kann Parameter Sensitivity anzeigen,
+aber ein einzelner Ausführungsplan beweist sie nicht. `parametersAndVariants`
+bleibt nur in der Einplananalyse als Legacy-Projektion erhalten.
 
 ### Plakative und grenzwertige Beispiele
 
@@ -304,7 +318,7 @@ Compiled-/Runtime-Differenz kann Parameter Sensitivity anzeigen, aber ein einzel
 
 ### Kosten
 
-Die Kostenklasse ist bei mehreren oder großen Plänen HIGH_OPT_IN. XML-XQuery beansprucht CPU; Last Actual kann große XML-Dokumente enthalten. Erhöhen Sie das Zeit- und Zeilenbudget nur nach einer aufgabenspezifischen Prüfung.
+Die Kostenklasse ist bei mehreren oder großen Plänen HIGH_OPT_IN. XML-XQuery beansprucht CPU; Last Actual kann große XML-Dokumente enthalten. Die Parameterliste wird pro Plan nur in der zentralen Einplananalyse zerlegt; die äußere Aggregation führt keine zweite Parameter-XQuery aus. Erhöhen Sie das Zeit- und Zeilenbudget nur nach einer aufgabenspezifischen Prüfung.
 
 ---
 

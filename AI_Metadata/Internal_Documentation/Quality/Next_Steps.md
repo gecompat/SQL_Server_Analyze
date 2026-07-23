@@ -84,18 +84,17 @@ Vorgemerkte zukünftige Architekturhärtung:
   Case-Semantik grün nachzuweisen. Bis dahin bleibt
   `SQL_Latin1_General_CP1_CS_AS` die freigegebene Plattformgrenze.
 
-- **DIAG-003 bis DIAG-005 – zusätzliche Diagnoseinformationen:** Die
-  noch offenen Anforderungen für Compile- und verfügbare Runtimeparameter,
-  die ausdrückliche Grenze nicht allgemein auslesbarer lokaler Variablen,
-  Statement-/Requestkontext sowie zusätzliche Plan-/Optimizerinformationen stehen im
+- **DIAG-003 bis DIAG-005 – zusätzliche Diagnoseinformationen:** DIAG-003 ist
+  mit dem kanonischen `parameters`-Vertrag für Einplan- und
+  Mehrplananalyse, beibehaltenem Legacy-Resultset und den Runtimeverträgen
+  `120`/`121` als `IMPLEMENTED_ACTIONS_GATE` abgeschlossen.
+  DIAG-004 und DIAG-005 bleiben `PARTIAL_PRODUCT_FUNCTION`; ihre offenen
+  Statement-/Request- und Plan-/Optimizerverträge stehen im
   [Zukunftsvertrag für zusätzliche Diagnoseinformationen](../Architecture/Diagnostic_Information_Enrichment_Backlog.md).
-  `DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007` sind mit Welle 1
-  `IMPLEMENTED_ACTIONS_GATE`.
-  `DIAG-003` bis `DIAG-005` werden als `PARTIAL_PRODUCT_FUNCTION` geführt.
   Der erste laufinterne Snapshot-Slice ist für `USP_CurrentSessions` und
-  `USP_CurrentRequests` umgesetzt; die übrigen Current-State-Consumer und die
-  fachlichen Zielresultsets bleiben offen. Der maschinenlesbare Status steht in
-  `Metadata/Quality/Future_Enhancement_Backlog.csv` sowie im kanonischen
+  `USP_CurrentRequests` umgesetzt; die übrigen Current-State-Consumer und
+  die DIAG-004-/DIAG-005-Zielresultsets bleiben offen. Der maschinenlesbare
+  Status steht in `Metadata/Quality/Future_Enhancement_Backlog.csv` sowie in
   `Metadata/Quality/Implementation_Status.csv`.
 
 - **OPS-005 bis OPS-009 und SQL25-001 bis SQL25-005 – zusätzliche
@@ -116,4 +115,4 @@ Der erste SC-023-Performance-Counter-Slice ist auf dem konkreten Implementierung
 
 1. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen Windows-/Azure-MI-Ziele mit aktivierten Features, kontrollierte Lastfälle und externe Restore-/Host-Nachweise. Für RUNTIME-001 sind R, Python, Java, C# und Custom Language Extensions sowie SQL CLR mit einer synthetischen SAFE-Assembly und getrennten Plattformgrenzen nachzuweisen.
 2. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten, breite Cross-Database-Auswahl sowie RUNTIME-001-Sampling mit gültigem Delta und Resetgrenzen.
-3. `DIAG-003` bis `DIAG-005` auf Basis des begonnenen laufinternen Snapshot-Slice fortsetzen und danach die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
+3. `DIAG-004` und `DIAG-005` auf Basis des begonnenen laufinternen Snapshot-Slice fortsetzen und danach die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
