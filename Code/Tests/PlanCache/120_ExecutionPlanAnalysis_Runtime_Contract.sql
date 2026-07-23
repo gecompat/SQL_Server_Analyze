@@ -10,6 +10,7 @@ Datenschutz  : Keine realen SQL-, Objekt-, Parameter- oder Histogrammwerte.
 ===============================================================================
 */
 SET NOCOUNT ON;
+SET QUOTED_IDENTIFIER ON;
 
 DECLARE @Plan xml=N'
 <ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
@@ -58,7 +59,7 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
 
 IF @Status NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@AnalysisJson)<>1
     THROW 53600,N'Die eigenständige Plananalyse lieferte keinen gültigen Vertrag.',1;
-IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>1
+IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>2
    OR JSON_VALUE(@AnalysisJson,N'$.meta.resultName')<>N'ExecutionPlanAnalysis'
    OR JSON_VALUE(@AnalysisJson,N'$.meta.evidencePrivacyMode')<>N'DERIVED_ONLY'
    OR JSON_VALUE(@AnalysisJson,N'$.meta.identifierPrivacyMode')<>N'RAW'
@@ -67,6 +68,7 @@ IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>1
    OR JSON_QUERY(@AnalysisJson,N'$.statements') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.operatorTree') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.operatorRuntime') IS NULL
+   OR JSON_QUERY(@AnalysisJson,N'$.parameters') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.findings') IS NULL
     THROW 53610,N'Das ExecutionPlanAnalysis-JSON verletzt den eingefrorenen Top-Level-Vertrag.',1;
 IF (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.statements'))<>2
@@ -119,6 +121,64 @@ IF EXISTS
     WHERE [CompiledValue] IS NOT NULL OR [RuntimeValue] IS NOT NULL
 )
     THROW 53604,N'DERIVED_ONLY hat konkrete Parameterwerte ausgegeben.',1;
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@AnalysisJson,N'$.parameters')
+    WITH
+    (
+          [EvidenceKind] varchar(24) N'$.EvidenceKind'
+        , [ParameterName] nvarchar(256) N'$.ParameterName'
+        , [CompiledValuePresent] bit N'$.CompiledValuePresent'
+        , [RuntimeValuePresent] bit N'$.RuntimeValuePresent'
+        , [CompiledValueIsSqlNull] bit N'$.CompiledValueIsSqlNull'
+        , [RuntimeValueIsSqlNull] bit N'$.RuntimeValueIsSqlNull'
+        , [CompiledValue] nvarchar(4000) N'$.CompiledValue'
+        , [RuntimeValue] nvarchar(4000) N'$.RuntimeValue'
+        , [CompiledValueStatus] varchar(40) N'$.CompiledValueStatus'
+        , [RuntimeValueStatus] varchar(40) N'$.RuntimeValueStatus'
+        , [ValueStatus] varchar(40) N'$.ValueStatus'
+        , [ValueSource] varchar(40) N'$.ValueSource'
+        , [SourceObservedAtUtc] datetime2(3) N'$.SourceObservedAtUtc'
+        , [ValueCapturedAtUtc] datetime2(3) N'$.ValueCapturedAtUtc'
+        , [IsCurrentExecution] bit N'$.IsCurrentExecution'
+        , [IsLastKnownExecution] bit N'$.IsLastKnownExecution'
+        , [IsComplete] bit N'$.IsComplete'
+    )
+    WHERE [EvidenceKind]='PARAMETER'
+      AND [ParameterName]=N'@ExampleParameter'
+      AND [CompiledValuePresent]=1
+      AND [RuntimeValuePresent]=1
+      AND [CompiledValueIsSqlNull]=0
+      AND [RuntimeValueIsSqlNull]=0
+      AND [CompiledValue] IS NULL
+      AND [RuntimeValue] IS NULL
+      AND [CompiledValueStatus]='AVAILABLE'
+      AND [RuntimeValueStatus]='AVAILABLE'
+      AND [ValueStatus]='AVAILABLE'
+      AND [ValueSource]='IMPORTED_PLAN'
+      AND [SourceObservedAtUtc] IS NOT NULL
+      AND [ValueCapturedAtUtc] IS NULL
+      AND [IsCurrentExecution] IS NULL
+      AND [IsLastKnownExecution] IS NULL
+      AND [IsComplete]=1
+)
+    THROW 53639,N'Der kanonische DIAG-003-Parametervertrag ist für vorhandene Compile-/Runtimewerte unvollständig.',1;
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@AnalysisJson,N'$.parameters')
+    WITH
+    (
+          [EvidenceKind] varchar(24) N'$.EvidenceKind'
+        , [ValueStatus] varchar(40) N'$.ValueStatus'
+        , [IsComplete] bit N'$.IsComplete'
+    )
+    WHERE [EvidenceKind]='SOURCE_BOUNDARY'
+      AND [ValueStatus]='LOCAL_VARIABLE_NOT_EXPOSED'
+      AND [IsComplete]=0
+)
+    THROW 53640,N'Die dokumentierte Grenze für lokale Variablen fehlt im DIAG-003-Vertrag.',1;
 IF EXISTS
 (
     SELECT 1
@@ -132,11 +192,15 @@ CREATE TABLE [#120_ExecutionPlanAnalysis_Runtime_Contract_ModuleStatus]
 (
     [SeedColumn] bit NULL
 );
+CREATE TABLE [#120_ExecutionPlanAnalysis_Runtime_Contract_Parameters]
+(
+    [SeedColumn] bit NULL
+);
 SET @Status=NULL;SET @Partial=NULL;SET @Error=NULL;SET @Message=NULL;
 EXEC [monitor].[USP_ExecutionPlanAnalysis]
       @PlanXml=@Plan
     , @ResultSetArt='TABLE'
-    , @ResultTablesJson=N'{"moduleStatus":"#120_ExecutionPlanAnalysis_Runtime_Contract_ModuleStatus"}'
+    , @ResultTablesJson=N'{"moduleStatus":"#120_ExecutionPlanAnalysis_Runtime_Contract_ModuleStatus","parameters":"#120_ExecutionPlanAnalysis_Runtime_Contract_Parameters"}'
     , @JsonErzeugen=0
     , @PrintMeldungen=0
     , @StatusCodeOut=@Status OUTPUT
@@ -164,6 +228,33 @@ IF @Status NOT IN ('AVAILABLE','PARTIAL')
             AND [c].[name]=N'StatusCode'
       )
     THROW 53634,N'Der TABLE-Ausgabevertrag der eigenständigen Plananalyse ist fehlgeschlagen.',1;
+IF NOT EXISTS
+(
+    SELECT 1
+    FROM [#120_ExecutionPlanAnalysis_Runtime_Contract_Parameters]
+    WHERE [EvidenceKind]='PARAMETER'
+      AND [CompiledValuePresent]=1
+      AND [RuntimeValuePresent]=1
+)
+   OR EXISTS
+      (
+          SELECT 1
+          FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+          JOIN [tempdb].[sys].[tables] AS [t] WITH (NOLOCK)
+            ON [t].[object_id]=[c].[object_id]
+          WHERE [t].[name] LIKE N'#120_ExecutionPlanAnalysis_Runtime_Contract_Parameters%'
+            AND [c].[name]=N'SeedColumn'
+      )
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+          JOIN [tempdb].[sys].[tables] AS [t] WITH (NOLOCK)
+            ON [t].[object_id]=[c].[object_id]
+          WHERE [t].[name] LIKE N'#120_ExecutionPlanAnalysis_Runtime_Contract_Parameters%'
+            AND [c].[name]=N'ValueStatus'
+      )
+    THROW 53641,N'Der TABLE-Vertrag des kanonischen DIAG-003-Resultsets ist fehlgeschlagen.',1;
 GO
 
 DECLARE @EvidenceJson nvarchar(max),@EvidenceStatus varchar(40),@EvidencePartial bit;
@@ -373,4 +464,117 @@ IF @GuardStatus NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@TokenizedJson)<>1
    OR CHARINDEX(N'ExampleSensitiveBoundary',@TokenizedJson)>0
    OR CHARINDEX(N'ExampleDatabase',@TokenizedJson)>0
     THROW 53619,N'TOKENIZED hat Rohdaten ausgegeben oder keinen Capture-Token erzeugt.',1;
+
+/* DIAG-003: SQL-NULL, Cache-Eviction und beendeter Request bleiben getrennt. */
+DECLARE @NullPlan xml=N'
+<ShowPlanXML xmlns="http://schemas.microsoft.com/sqlserver/2004/07/showplan" Version="1.600" Build="17.0.1000.1">
+  <BatchSequence><Batch><Statements>
+    <StmtSimple StatementId="1" StatementCompId="1" StatementType="SELECT" StatementText="SELECT ExampleValue" StatementSubTreeCost="0.0" StatementEstRows="1" StatementOptmLevel="TRIVIAL">
+      <QueryPlan CardinalityEstimationModelVersion="170">
+        <RelOp NodeId="0" PhysicalOp="Constant Scan" LogicalOp="Constant Scan" EstimateRows="1" EstimatedTotalSubtreeCost="0.0"><ConstantScan /></RelOp>
+        <ParameterList><ColumnReference Column="@ExampleNullableParameter" ParameterDataType="int" ParameterCompiledValue="(NULL)" ParameterRuntimeValue="(NULL)" /></ParameterList>
+      </QueryPlan>
+    </StmtSimple>
+  </Statements></Batch></BatchSequence>
+</ShowPlanXML>';
+DECLARE @Diag003Json nvarchar(max),@Diag003Status varchar(40),@Diag003Partial bit,@Diag003Error int,@Diag003Message nvarchar(2048);
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanXml=@NullPlan
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@Diag003Json OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Diag003Status OUTPUT
+    , @IsPartialOut=@Diag003Partial OUTPUT
+    , @ErrorNumberOut=@Diag003Error OUTPUT
+    , @ErrorMessageOut=@Diag003Message OUTPUT;
+IF @Diag003Status NOT IN ('AVAILABLE','PARTIAL')
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM OPENJSON(@Diag003Json,N'$.parameters')
+          WITH
+          (
+                [EvidenceKind] varchar(24) N'$.EvidenceKind'
+              , [CompiledValuePresent] bit N'$.CompiledValuePresent'
+              , [RuntimeValuePresent] bit N'$.RuntimeValuePresent'
+              , [CompiledValueIsSqlNull] bit N'$.CompiledValueIsSqlNull'
+              , [RuntimeValueIsSqlNull] bit N'$.RuntimeValueIsSqlNull'
+              , [CompiledValueStatus] varchar(40) N'$.CompiledValueStatus'
+              , [RuntimeValueStatus] varchar(40) N'$.RuntimeValueStatus'
+              , [ValueStatus] varchar(40) N'$.ValueStatus'
+          )
+          WHERE [EvidenceKind]='PARAMETER'
+            AND [CompiledValuePresent]=1
+            AND [RuntimeValuePresent]=1
+            AND [CompiledValueIsSqlNull]=1
+            AND [RuntimeValueIsSqlNull]=1
+            AND [CompiledValueStatus]='SQL_NULL'
+            AND [RuntimeValueStatus]='SQL_NULL'
+            AND [ValueStatus]='SQL_NULL'
+      )
+    THROW 53642,N'Erfasstes SQL-NULL wurde nicht von fehlender Parameterevidenz unterschieden.',1;
+
+DECLARE @MissingPlanHandle varbinary(64)=CONVERT(varbinary(64),REPLICATE('01',64),2);
+SET @Diag003Json=NULL;SET @Diag003Status=NULL;SET @Diag003Partial=NULL;SET @Diag003Error=NULL;SET @Diag003Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @PlanHandle=@MissingPlanHandle
+    , @PlanQuelle='COMPILE'
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@Diag003Json OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Diag003Status OUTPUT
+    , @IsPartialOut=@Diag003Partial OUTPUT
+    , @ErrorNumberOut=@Diag003Error OUTPUT
+    , @ErrorMessageOut=@Diag003Message OUTPUT;
+DECLARE @Diag003EvictedValueStatus varchar(40)=JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueStatus');
+DECLARE @Diag003EvictedValueSource varchar(40)=JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueSource');
+IF @Diag003Status<>'UNAVAILABLE_OBJECT'
+   OR @Diag003EvictedValueStatus<>N'PLAN_EVICTED'
+   OR @Diag003EvictedValueSource<>N'COMPILE_PLAN'
+BEGIN
+    DECLARE @Diag003EvictedAssertMessage nvarchar(2048)=CONCAT
+    (
+          N'PLAN_EVICTED-Vertrag verletzt: status=',COALESCE(@Diag003Status,N'<NULL>')
+        , N'; error=',COALESCE(CONVERT(nvarchar(20),@Diag003Error),N'<NULL>')
+        , N'; valueStatus=',COALESCE(@Diag003EvictedValueStatus,N'<NULL>')
+        , N'; valueSource=',COALESCE(@Diag003EvictedValueSource,N'<NULL>')
+    );
+    THROW 53643,@Diag003EvictedAssertMessage,1;
+END;
+
+DECLARE @MissingSessionId smallint=32767;
+WHILE @MissingSessionId>1
+  AND EXISTS
+      (
+          SELECT 1
+          FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+          WHERE [s].[session_id]=@MissingSessionId
+      )
+    SET @MissingSessionId-=1;
+IF EXISTS
+(
+    SELECT 1
+    FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+    WHERE [s].[session_id]=@MissingSessionId
+)
+    THROW 53644,N'Für den REQUEST_FINISHED-Vertrag konnte keine freie synthetische Session-ID bestimmt werden.',1;
+
+DECLARE @MissingSessionIdText nvarchar(10)=CONVERT(nvarchar(10),@MissingSessionId);
+SET @Diag003Json=NULL;SET @Diag003Status=NULL;SET @Diag003Partial=NULL;SET @Diag003Error=NULL;SET @Diag003Message=NULL;
+EXEC [monitor].[USP_ExecutionPlanAnalysis]
+      @SessionIds=@MissingSessionIdText
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@Diag003Json OUTPUT
+    , @PrintMeldungen=0
+    , @StatusCodeOut=@Diag003Status OUTPUT
+    , @IsPartialOut=@Diag003Partial OUTPUT
+    , @ErrorNumberOut=@Diag003Error OUTPUT
+    , @ErrorMessageOut=@Diag003Message OUTPUT;
+IF @Diag003Status<>'UNAVAILABLE_OBJECT'
+   OR JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueStatus')<>N'REQUEST_FINISHED'
+   OR TRY_CONVERT(int,JSON_VALUE(@Diag003Json,N'$.parameters[0].SessionId'))<>@MissingSessionId
+    THROW 53645,N'Ein beendeter Request wurde nicht als REQUEST_FINISHED ausgewiesen.',1;
 GO

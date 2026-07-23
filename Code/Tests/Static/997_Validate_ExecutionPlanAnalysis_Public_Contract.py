@@ -79,7 +79,7 @@ def validate(repository_root: Path) -> list[str]:
         return [f"Missing public contract: {contract_file}"]
 
     contract = json.loads(contract_file.read_text(encoding="utf-8"))
-    if contract.get("contractId") != "PLAN-001-PUBLIC-V1" or contract.get("contractVersion") != 1:
+    if contract.get("contractId") != "PLAN-001-PUBLIC-V2" or contract.get("contractVersion") != 2:
         errors.append("Unexpected PLAN-001 contract identity or version.")
     if contract.get("releaseState") != "IMPLEMENTED_ACTIONS_GATE":
         errors.append("PLAN-001 public contract is not in the verified Actions-gate state.")
@@ -202,7 +202,64 @@ def validate(repository_root: Path) -> list[str]:
     collector_text = (repository_root / "Code/04_PlanCache/049_InternalCollectExecutionPlanMetadata.sql").read_text(
         encoding="utf-8-sig"
     )
-    combined_text = "\n".join((analysis_text, evidence_text, internal_text, collector_text))
+    showplan_text = (repository_root / "Code/04_PlanCache/050_USP_ShowplanAnalysis.sql").read_text(
+        encoding="utf-8-sig"
+    )
+    combined_text = "\n".join((analysis_text, evidence_text, internal_text, collector_text, showplan_text))
+
+    diag003 = contract["diag003ParameterEvidence"]
+    parameter_rows = [
+        row
+        for row in result_rows
+        if row["ProcedureName"] == "USP_ExecutionPlanAnalysis"
+        and row["ResultName"] == diag003["canonicalResultSet"]
+    ]
+    if len(parameter_rows) != 1:
+        errors.append("DIAG-003 canonical parameter result-set inventory row is missing or duplicated.")
+    else:
+        schema = parameter_rows[0]["SourceSchema"]
+        for column_name in diag003["requiredColumns"]:
+            if f"[{column_name}]" not in schema:
+                errors.append(f"DIAG-003 parameter schema misses column: {column_name}")
+
+    if internal_text.count(
+        """.nodes('.//*[local-name(.)="ParameterList"]/*[local-name(.)="ColumnReference"]')"""
+    ) != 1:
+        errors.append("DIAG-003 must shred the Showplan ParameterList exactly once per analyzed plan.")
+    require_fragments(
+        combined_text,
+        diag003["valueStatuses"],
+        "DIAG-003 value status",
+        errors,
+    )
+    require_fragments(
+        combined_text,
+        diag003["valueSources"],
+        "DIAG-003 value source",
+        errors,
+    )
+    require_fragments(
+        analysis_text,
+        [
+            "#ExecutionPlanAnalysis_ParameterEvidence",
+            """N',"parameters":'""",
+            "WHEN N'parameters' THEN N'#ExecutionPlanAnalysis_ParameterEvidence'",
+        ],
+        "DIAG-003 execution-plan projection",
+        errors,
+    )
+    require_fragments(
+        showplan_text,
+        [
+            "#ShowplanAnalysis_Parameters",
+            "OPENJSON(@ChildJson,N'$.parameters')",
+            "@AllowedResultNames=N'parameters|findings'",
+        ],
+        "DIAG-003 multi-plan projection",
+        errors,
+    )
+    if "ParameterList" in showplan_text:
+        errors.append("USP_ShowplanAnalysis must not shred ParameterList a second time.")
 
     require_fragments(combined_text, contract["directStatusCodes"], "direct status code", errors)
     require_fragments(internal_text, contract["capabilityCodes"], "capability code", errors)
@@ -215,6 +272,7 @@ def validate(repository_root: Path) -> list[str]:
         "UPDATE [#ExecutionPlanAnalysis_HistogramSummaries]",
         "UPDATE [#ExecutionPlanAnalysis_HistogramSteps]",
         "UPDATE [#ExecutionPlanAnalysis_PredicateHistogramMappings]",
+        "UPDATE [#ExecutionPlanAnalysis_ParameterEvidence]",
     ]
     require_fragments(analysis_text, privacy_markers, "analysis privacy invariant", errors)
     evidence_privacy_markers = [
