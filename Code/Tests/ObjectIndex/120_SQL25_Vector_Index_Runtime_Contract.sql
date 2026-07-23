@@ -140,14 +140,15 @@ BEGIN TRY
             , @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0
             , @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
         IF ISJSON(@Json)<>1
-           OR @Status NOT IN('UNAVAILABLE_FEATURE','NOT_APPLICABLE')
-           OR COALESCE(@Partial,1)<>0
+           OR @Status IS NULL
+           OR @Status NOT IN('UNAVAILABLE_FEATURE','UNAVAILABLE_SOURCE_SCHEMA','AVAILABLE_LIMITED','NOT_APPLICABLE')
+           OR COALESCE(CONVERT(int,@Partial),-1)<>CASE WHEN @Status IN('UNAVAILABLE_SOURCE_SCHEMA','AVAILABLE_LIMITED') THEN 1 ELSE 0 END
            OR NOT EXISTS
               (
                   SELECT 1
                   FROM OPENJSON(@Json,N'$.sourceStatus')
                   WITH ([StatusCode] varchar(40) N'$.StatusCode')
-                  WHERE [StatusCode]='UNAVAILABLE_FEATURE'
+                  WHERE [StatusCode] IN('UNAVAILABLE_FEATURE','UNAVAILABLE_SOURCE_SCHEMA')
               )
             THROW 55703,N'SQL25-001 weist einen auf diesem SQL-Server-2025-Build nicht bereitgestellten Vector-Index-Pfad nicht explizit aus.',1;
 
@@ -160,7 +161,7 @@ BEGIN TRY
             EXEC [sys].[sp_executesql] @Sql;
         END;
 
-        SELECT CAST(@Status AS varchar(40)) [StatusCode],CAST(0 AS bit) [IsPartial],
+        SELECT CAST(@Status AS varchar(40)) [StatusCode],@Partial [IsPartial],
                @ProductMajorVersion [ProductMajorVersion],
                (SELECT COUNT_BIG(*) FROM @ExecutedCases) [ExecutedCases],
                N'SQL25-001 Featuregrenze, TABLE/JSON und Orchestratorvertrag bestanden; der Build stellt den optionalen Previewpfad nicht bereit.' [Detail];
