@@ -961,7 +961,7 @@ INSERT [#ExecutionPlanAnalysis_QueryStorePlanSource]
     , [HasCompileReplayScript],[IsOptimizedPlanForcingDisabled],[PlanType],[PlanTypeDesc]
 )
 SELECT
-      1,DB_NAME(),[p].[plan_id],[p].[query_id]
+      1,@QueryStoreDatabaseName,[p].[plan_id],[p].[query_id]
     , [p].[plan_group_id],[p].[engine_version],[p].[compatibility_level],[p].[query_plan_hash]
     , TRY_CONVERT(xml,[p].[query_plan])
     , [p].[is_trivial_plan],[p].[is_parallel_plan],[p].[is_forced_plan],[p].[plan_forcing_type_desc]
@@ -976,8 +976,9 @@ JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
 WHERE [p].[plan_id]=@PlanId;';
             EXEC [sys].[sp_executesql]
                   @QueryStoreSql
-                , N'@PlanId bigint'
-                , @PlanId=@QueryStorePlanId;
+                , N'@PlanId bigint,@QueryStoreDatabaseName sysname'
+                , @PlanId=@QueryStorePlanId
+                , @QueryStoreDatabaseName=@QueryStoreDatabaseName;
             SELECT @EffectivePlanXml=[QueryPlanXml]
             FROM [#ExecutionPlanAnalysis_QueryStorePlanSource]
             WHERE [QueryStorePlanId]=@QueryStorePlanId;
