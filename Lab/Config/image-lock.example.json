@@ -1,0 +1,26 @@
+{
+  "SchemaVersion": "1.0",
+  "DataClassification": "PUBLIC_AND_SYNTHETIC",
+  "Images": [
+    {
+      "LogicalImageId": "SQL_SERVER_2025_DEVELOPER_LINUX",
+      "ProductFamily": "SQL_SERVER",
+      "ProductVersion": "2025",
+      "Platform": "LINUX_X86_64",
+      "ReadableReference": "PUBLIC_IMAGE_REFERENCE_REQUIRED",
+      "Digest": "SHA256_DIGEST_REQUIRED",
+      "Status": "UNRESOLVED_EXAMPLE"
+    }
+  ],
+  "Media": [
+    {
+      "LogicalMediaId": "WINDOWS_SERVER_CORE",
+      "ProductFamily": "WINDOWS_SERVER",
+      "ProductVersion": "SUPPORTED_VERSION_REQUIRED",
+      "Language": "CONFIGURED_LANGUAGE_REQUIRED",
+      "Checksum": "SHA256_CHECKSUM_REQUIRED",
+      "Status": "LOCAL_BINDING_REQUIRED"
+    }
+  ]
+}
+
