@@ -339,7 +339,7 @@ BEGIN
           ON [sqlText].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [r].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [sqlText].[text]
+              [sqlText].[Text]
             , [r].[statement_start_offset]
             , [r].[statement_end_offset]
         ) AS [statementText]

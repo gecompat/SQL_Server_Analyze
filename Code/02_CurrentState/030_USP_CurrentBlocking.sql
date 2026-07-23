@@ -700,7 +700,7 @@ BEGIN
           ON [blockedText].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [blockedRequest].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [blockedText].[text]
+              [blockedText].[Text]
             , [blockedRequest].[statement_start_offset]
             , [blockedRequest].[statement_end_offset]
         ) AS [blockedStatement]
@@ -708,7 +708,7 @@ BEGIN
           ON [blockerText].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [blockerRequest].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [blockerText].[text]
+              [blockerText].[Text]
             , [blockerRequest].[statement_start_offset]
             , [blockerRequest].[statement_end_offset]
         ) AS [blockerStatement]
@@ -717,7 +717,7 @@ BEGIN
                THEN COALESCE([rootRequest].[sql_handle],[rootConnection].[most_recent_sql_handle]) END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [rootText].[text]
+              [rootText].[Text]
             , CASE WHEN [rootRequest].[sql_handle] IS NOT NULL
                    THEN [rootRequest].[statement_start_offset] END
             , CASE WHEN [rootRequest].[sql_handle] IS NOT NULL
