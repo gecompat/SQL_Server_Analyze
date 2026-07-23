@@ -13,6 +13,7 @@ function ConvertTo-LabIpv4Range {
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
+        [AllowEmptyString()]
         [string] $Cidr,
 
         [Parameter()]
@@ -20,6 +21,9 @@ function ConvertTo-LabIpv4Range {
         [int] $MinimumPrefixLength = 0
     )
 
+    if ([string]::IsNullOrWhiteSpace($Cidr)) {
+        return $null
+    }
     $parts = $Cidr.Split('/')
     if ($parts.Count -ne 2) {
         return $null
@@ -152,7 +156,8 @@ function Test-LabNetworkPolicy {
             $routeCidrs = @(
                 $routes |
                     Where-Object {
-                        $null -ne $_.dst -and $_.dst -ne 'default'
+                        -not [string]::IsNullOrWhiteSpace([string] $_.dst) -and
+                        $_.dst -ne 'default'
                     } |
                     ForEach-Object { $_.dst }
             )

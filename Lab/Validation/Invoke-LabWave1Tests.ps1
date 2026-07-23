@@ -200,10 +200,15 @@ try {
         [pscustomobject] @{
             Overlap = Test-LabIpv4RangeOverlap -Left $left -Right $overlap
             Separate = Test-LabIpv4RangeOverlap -Left $left -Right $separate
+            Empty = (ConvertTo-LabIpv4Range -Cidr '')
         }
     }
     Assert-LabTest `
-        -Condition ($overlapResult.Overlap -and -not $overlapResult.Separate) `
+        -Condition (
+            $overlapResult.Overlap -and
+            -not $overlapResult.Separate -and
+            $null -eq $overlapResult.Empty
+        ) `
         -Message 'Network-range collision detection is not deterministic.'
 
     $imageLockPath = Join-Path $testRoot 'image-lock.json'
