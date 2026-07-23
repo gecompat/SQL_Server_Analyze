@@ -43,9 +43,9 @@ DECLARE @ExecutedCases TABLE
     [CaseId] varchar(80) NOT NULL PRIMARY KEY
 );
 
-CREATE TABLE [#SQL25003CurrentTempDBGovernance]([Seed] bit NULL);
-CREATE TABLE [#SQL25003ResourceGovernorGovernance]([Seed] bit NULL);
-CREATE TABLE [#SQL25003CurrentOverviewGovernance]([Seed] bit NULL);
+CREATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB]([Seed] bit NULL);
+CREATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]([Seed] bit NULL);
+CREATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentOverview]([Seed] bit NULL);
 
 BEGIN TRY
     SET LOCK_TIMEOUT 731;
@@ -54,7 +54,7 @@ BEGIN TRY
         , @MaxZeilen=50
         , @ResultSetArt='TABLE'
         , @ResultTablesJson=
-              N'{"tempdbGovernance":"#SQL25003CurrentTempDBGovernance"}'
+              N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB"}'
         , @JsonErzeugen=1
         , @Json=@CurrentJson OUTPUT
         , @PrintMeldungen=0;
@@ -66,7 +66,7 @@ BEGIN TRY
        OR NOT EXISTS
           (
               SELECT 1
-              FROM [#SQL25003CurrentTempDBGovernance]
+              FROM [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB]
               WHERE [SourceStatusCode] IS NOT NULL
                 AND [EffectiveLimitSource] IS NOT NULL
           )
@@ -79,7 +79,7 @@ BEGIN TRY
         , @MaxZeilen=50
         , @ResultSetArt='TABLE'
         , @ResultTablesJson=
-              N'{"tempdbGovernance":"#SQL25003ResourceGovernorGovernance"}'
+              N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}'
         , @JsonErzeugen=1
         , @Json=@ResourceGovernorJson OUTPUT
         , @PrintMeldungen=0;
@@ -91,7 +91,7 @@ BEGIN TRY
        OR NOT EXISTS
           (
               SELECT 1
-              FROM [#SQL25003ResourceGovernorGovernance]
+              FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
               WHERE [SourceStatusCode] IS NOT NULL
                 AND [EffectiveLimitSource] IS NOT NULL
           )
@@ -113,7 +113,7 @@ BEGIN TRY
         , @MaxZeilen=50
         , @ResultSetArt='TABLE'
         , @ResultTablesJson=
-              N'{"tempdbGovernance":"#SQL25003CurrentOverviewGovernance"}'
+              N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentOverview"}'
         , @JsonErzeugen=1
         , @Json=@OverviewJson OUTPUT
         , @PrintMeldungen=0;
@@ -125,7 +125,7 @@ BEGIN TRY
        OR NOT EXISTS
           (
               SELECT 1
-              FROM [#SQL25003CurrentOverviewGovernance]
+              FROM [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentOverview]
               WHERE [SourceStatusCode] IS NOT NULL
           )
         THROW 55825,N'SQL25-003 CurrentOverview-Parent-Routing fehlt.',1;
@@ -136,7 +136,7 @@ BEGIN TRY
         IF EXISTS
            (
                SELECT 1
-               FROM [#SQL25003CurrentTempDBGovernance]
+               FROM [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB]
                WHERE [SourceStatusCode]<>'UNAVAILABLE_VERSION'
                   OR [IsPartial]<>1
                   OR [EffectiveLimitSource]<>'UNAVAILABLE'
@@ -144,7 +144,7 @@ BEGIN TRY
            OR EXISTS
            (
                SELECT 1
-               FROM [#SQL25003ResourceGovernorGovernance]
+               FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
                WHERE [SourceStatusCode]<>'UNAVAILABLE_VERSION'
                   OR [IsPartial]<>1
                   OR [EffectiveLimitSource]<>'UNAVAILABLE'
@@ -152,7 +152,7 @@ BEGIN TRY
            OR EXISTS
            (
                SELECT 1
-               FROM [#SQL25003CurrentOverviewGovernance]
+               FROM [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentOverview]
                WHERE [SourceStatusCode]<>'UNAVAILABLE_VERSION'
                   OR [IsPartial]<>1
            )
@@ -212,7 +212,7 @@ BEGIN TRY
             IF EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003CurrentTempDBGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB]
                    WHERE [SourceStatusCode] NOT IN
                          ('UNAVAILABLE_SOURCE_SCHEMA','DENIED_PERMISSION',
                           'TIMEOUT','ERROR_HANDLED','AVAILABLE_LIMITED')
@@ -221,7 +221,7 @@ BEGIN TRY
                OR EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003ResourceGovernorGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
                    WHERE [SourceStatusCode] NOT IN
                          ('UNAVAILABLE_SOURCE_SCHEMA','DENIED_PERMISSION',
                           'TIMEOUT','ERROR_HANDLED','AVAILABLE_LIMITED')
@@ -290,8 +290,8 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             EXEC [sys].[sp_executesql] @Sql;
             SET @GroupsCreated=1;
 
-            TRUNCATE TABLE [#SQL25003CurrentTempDBGovernance];
-            TRUNCATE TABLE [#SQL25003ResourceGovernorGovernance];
+            TRUNCATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB];
+            TRUNCATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor];
 
             SET @CurrentJson=NULL;
             SET LOCK_TIMEOUT 737;
@@ -300,7 +300,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
                 , @MaxZeilen=100
                 , @ResultSetArt='TABLE'
                 , @ResultTablesJson=
-                      N'{"tempdbGovernance":"#SQL25003CurrentTempDBGovernance"}'
+                      N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB"}'
                 , @JsonErzeugen=1
                 , @Json=@CurrentJson OUTPUT
                 , @PrintMeldungen=0;
@@ -314,7 +314,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
                 , @MaxZeilen=100
                 , @ResultSetArt='TABLE'
                 , @ResultTablesJson=
-                      N'{"tempdbGovernance":"#SQL25003ResourceGovernorGovernance"}'
+                      N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}'
                 , @JsonErzeugen=1
                 , @Json=@ResourceGovernorJson OUTPUT
                 , @PrintMeldungen=0;
@@ -324,7 +324,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             IF NOT EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003ResourceGovernorGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
                    WHERE [GroupName]=N'ExampleTempdbGovernanceNoLimit'
                      AND [ConfiguredGroupMaxTempdbDataMb] IS NULL
                      AND [ConfiguredGroupMaxTempdbDataPercent] IS NULL
@@ -339,7 +339,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             IF NOT EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003ResourceGovernorGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
                    WHERE [GroupName]=N'ExampleTempdbGovernanceMb'
                      AND [ConfiguredGroupMaxTempdbDataMb]=64
                      AND [ConfiguredGroupMaxTempdbDataPercent]=50
@@ -355,7 +355,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             IF NOT EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003ResourceGovernorGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
                    WHERE [GroupName]=N'ExampleTempdbGovernancePercent'
                      AND [ConfiguredGroupMaxTempdbDataMb] IS NULL
                      AND [ConfiguredGroupMaxTempdbDataPercent]=25
@@ -380,7 +380,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             IF EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003ResourceGovernorGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
                    WHERE [GroupName] LIKE N'ExampleTempdbGovernance%'
                      AND
                      (
@@ -404,7 +404,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             IF NOT EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003CurrentTempDBGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB]
                    WHERE [GroupName]=N'ExampleTempdbGovernanceMb'
                      AND [EffectiveLimitSource]='FIXED_MB_EFFECTIVE'
                      AND [ConfiguredGroupMaxTempdbDataMb]=64
@@ -413,20 +413,20 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             INSERT @ExecutedCases VALUES('CURRENT-PEAK-VIOLATION-WINDOW');
 
             SELECT @BeforeResetStatisticsStartTime=[StatisticsStartTime]
-            FROM [#SQL25003ResourceGovernorGovernance]
+            FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
             WHERE [GroupName]=N'ExampleTempdbGovernanceMb';
 
             EXEC [sys].[sp_executesql]
                  N'ALTER RESOURCE GOVERNOR RESET STATISTICS;';
 
-            TRUNCATE TABLE [#SQL25003ResourceGovernorGovernance];
+            TRUNCATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor];
             SET LOCK_TIMEOUT 741;
             EXEC [monitor].[USP_ResourceGovernorAnalysis]
                   @MitSessions=0
                 , @MaxZeilen=100
                 , @ResultSetArt='TABLE'
                 , @ResultTablesJson=
-                      N'{"tempdbGovernance":"#SQL25003ResourceGovernorGovernance"}'
+                      N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}'
                 , @JsonErzeugen=0
                 , @PrintMeldungen=0;
             IF @@LOCK_TIMEOUT<>741
@@ -435,7 +435,7 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             IF NOT EXISTS
                (
                    SELECT 1
-                   FROM [#SQL25003ResourceGovernorGovernance]
+                   FROM [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]
                    WHERE [GroupName]=N'ExampleTempdbGovernanceMb'
                      AND [TotalTempdbDataLimitViolationCount]=0
                      AND [HasRecordedLimitViolation]=0
