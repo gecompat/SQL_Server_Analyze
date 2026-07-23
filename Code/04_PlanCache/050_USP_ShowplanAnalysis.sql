@@ -420,35 +420,44 @@ OPTION (RECOMPILE,MAXDOP 1);';
 
         IF @PlanHandle IS NOT NULL
         BEGIN
-            UPDATE [c]
-            SET
-                  [DatabaseId]=[a].[DatabaseId],[SetOptions]=[a].[SetOptions],[CompileUserId]=[a].[CompileUserId]
-                , [PlanGenerationNum]=[q].[PlanGenerationNum],[CacheCreationTime]=[q].[CacheCreationTime]
-                , [CacheLastExecutionTime]=[q].[CacheLastExecutionTime],[ExecutionCount]=[q].[ExecutionCount]
-                , [CacheObjectType]=[cp].[cacheobjtype],[CacheObjectClass]=[cp].[objtype]
-                , [CacheUseCounts]=[cp].[usecounts],[CacheRefCounts]=[cp].[refcounts]
-                , [CacheSizeBytes]=CONVERT(bigint,[cp].[size_in_bytes]),[CachePoolId]=[cp].[pool_id]
-            FROM [#ShowplanAnalysis_Candidates] AS [c]
-            LEFT JOIN [sys].[dm_exec_cached_plans] AS [cp] WITH (NOLOCK)
-              ON [cp].[plan_handle]=[c].[PlanHandle]
-            OUTER APPLY
-            (
-                SELECT
-                      MAX([qs].[plan_generation_num]) [PlanGenerationNum]
-                    , MIN([qs].[creation_time]) [CacheCreationTime]
-                    , MAX([qs].[last_execution_time]) [CacheLastExecutionTime]
-                    , SUM([qs].[execution_count]) [ExecutionCount]
-                FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
-                WHERE [qs].[plan_handle]=[c].[PlanHandle]
-            ) AS [q]
-            OUTER APPLY
-            (
-                SELECT
-                      MAX(CASE WHEN [attribute]='dbid' THEN TRY_CONVERT(int,[value]) END) [DatabaseId]
-                    , MAX(CASE WHEN [attribute]='set_options' THEN TRY_CONVERT(bigint,[value]) END) [SetOptions]
-                    , MAX(CASE WHEN [attribute]='user_id' THEN TRY_CONVERT(int,[value]) END) [CompileUserId]
-                FROM [sys].[dm_exec_plan_attributes]([c].[PlanHandle])
-            ) AS [a];
+            BEGIN TRY
+                UPDATE [c]
+                SET
+                      [DatabaseId]=[a].[DatabaseId],[SetOptions]=[a].[SetOptions],[CompileUserId]=[a].[CompileUserId]
+                    , [PlanGenerationNum]=[q].[PlanGenerationNum],[CacheCreationTime]=[q].[CacheCreationTime]
+                    , [CacheLastExecutionTime]=[q].[CacheLastExecutionTime],[ExecutionCount]=[q].[ExecutionCount]
+                    , [CacheObjectType]=[cp].[cacheobjtype],[CacheObjectClass]=[cp].[objtype]
+                    , [CacheUseCounts]=[cp].[usecounts],[CacheRefCounts]=[cp].[refcounts]
+                    , [CacheSizeBytes]=CONVERT(bigint,[cp].[size_in_bytes]),[CachePoolId]=[cp].[pool_id]
+                FROM [#ShowplanAnalysis_Candidates] AS [c]
+                LEFT JOIN [sys].[dm_exec_cached_plans] AS [cp] WITH (NOLOCK)
+                  ON [cp].[plan_handle]=[c].[PlanHandle]
+                OUTER APPLY
+                (
+                    SELECT
+                          MAX([qs].[plan_generation_num]) [PlanGenerationNum]
+                        , MIN([qs].[creation_time]) [CacheCreationTime]
+                        , MAX([qs].[last_execution_time]) [CacheLastExecutionTime]
+                        , SUM([qs].[execution_count]) [ExecutionCount]
+                    FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
+                    WHERE [qs].[plan_handle]=[c].[PlanHandle]
+                ) AS [q]
+                OUTER APPLY
+                (
+                    SELECT
+                          MAX(CASE WHEN [attribute]='dbid' THEN TRY_CONVERT(int,[value]) END) [DatabaseId]
+                        , MAX(CASE WHEN [attribute]='set_options' THEN TRY_CONVERT(bigint,[value]) END) [SetOptions]
+                        , MAX(CASE WHEN [attribute]='user_id' THEN TRY_CONVERT(int,[value]) END) [CompileUserId]
+                    FROM [sys].[dm_exec_plan_attributes]([c].[PlanHandle])
+                ) AS [a];
+            END TRY
+            BEGIN CATCH
+                /* Fehler 569 ist der erwartbare Race-Zustand eines inzwischen
+                   ungültigen Planhandles. Der Child-Analyzer klassifiziert
+                   den Plan selbst weiterhin als PLAN_EVICTED. */
+                IF ERROR_NUMBER()<>569
+                    THROW;
+            END CATCH;
         END;
 
         INSERT [#ShowplanAnalysis_ExecutionPlanSourceContext]
