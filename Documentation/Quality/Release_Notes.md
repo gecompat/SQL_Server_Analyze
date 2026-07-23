@@ -4,7 +4,7 @@
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion | `1.1.0-special.18` |
+| Frameworkversion | `1.1.0-special.19` |
 | Dokumentationsstand | 23. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
@@ -188,6 +188,34 @@ Validator prüfen Versionsgrenze, No-Limit-, MB-/Prozent-, Wirksamkeits-,
 Nutzungs-, Peak-, Verletzungs-, Reset-, Berechtigungs-, TABLE-/JSON-,
 Parent-Routing- und `LOCK_TIMEOUT`-Fälle auf SQL Server 2019, 2022 und 2025.
 SQL25-003 steht damit auf `IMPLEMENTED_ACTIONS_GATE`.
+
+## Welle 8 – SQL25-004 Statistiken auf lesbaren Secondaries
+
+`USP_Statistics` ergänzt das vorhandene Resultset `statistics` um
+`IsTemporary`, `CurrentReplicaRole`, `CurrentReplicaRoleStatus`,
+`ReplicaRoleId`, `ReplicaRoleDesc`, `ReplicaName` und
+`ReplicaMetadataStatus`. Aktuelle Datenbankrolle und Herkunft beziehungsweise
+letzte Aktualisierungsrolle einer Statistik bleiben getrennte Evidenz.
+
+Auf SQL Server 2019 und 2022 werden die drei neuen `sys.stats`-Spalten nicht
+referenziert; der typstabile Output liefert `UNAVAILABLE_VERSION`. Ab SQL
+Server 2025 werden Produktversion und Pflichtspalten geprüft, bevor Dynamic SQL
+die Herkunftsfelder liest. Fehlende Spalten, eingeschränkte Metadata
+Visibility, ein nicht lesbarer aktueller Replikatstatus und unvollständige
+Herkunftsfelder bleiben isolierte Zustände.
+
+`sys.stats` wird auch mit inkrementellen Details je Datenbank und Aufruf nur
+einmal gelesen. Der Detailpfad verwendet die bereits materialisierten
+Statistik-IDs. `@LockTimeoutMs` wird ausschließlich in isolierten dynamischen
+Datenbankbatches gesetzt; der äußere `LOCK_TIMEOUT` bleibt unverändert.
+
+Der öffentliche SQL25-004-Vertrag und Runtimevertrag `123` prüfen TABLE/JSON,
+Versionsgrenze, den echten SQL-Server-2025-Katalogpfad, Primary- oder
+`NOT_RECORDED`-Evidenz, synthetische Secondary-/Geo-Rollencodes,
+`PARTIAL_METADATA`, Begrenzung und eingeschränkte Sichtbarkeit. Die
+Container-Matrix behauptet keine aktive Availability Group. Herkunft ist kein
+Verwendungs-, Health- oder Wartungsnachweis. SQL25-004 steht damit auf
+`IMPLEMENTED_ACTIONS_GATE`.
 
 ## RUNTIME-001 – External Runtime und SQL CLR
 
