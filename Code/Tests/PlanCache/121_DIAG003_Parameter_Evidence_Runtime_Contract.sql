@@ -24,7 +24,7 @@ EXEC [monitor].[USP_ShowplanAnalysis]
     , @PrintMeldungen=0;
 
 IF ISJSON(@ShowplanJson)<>1
-   OR TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.meta.schemaVersion'))<>3
+   OR TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.meta.schemaVersion'))<>4
    OR JSON_QUERY(@ShowplanJson,N'$.parameters') IS NULL
    OR JSON_VALUE(@ShowplanJson,N'$.parameters[0].ValueStatus')<>N'PLAN_EVICTED'
    OR JSON_VALUE(@ShowplanJson,N'$.parameters[0].ValueSource')<>N'COMPILE_PLAN'
