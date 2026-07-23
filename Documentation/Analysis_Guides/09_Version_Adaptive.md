@@ -65,6 +65,7 @@ Beispielhafte Features:
 
 - `OPTIMIZED_LOCKING`
 - `QUERY_STORE_READABLE_SECONDARY`
+- `JSON_INDEX_METADATA`
 - weitere im Build erkannte datenbankbezogene Fähigkeiten.
 
 ### SpecialIndexes
@@ -72,6 +73,12 @@ Beispielhafte Features:
 `DatabaseName`, `SchemaName`, `ObjectName`, `IndexName`, `IndexFamily`, `IndexDetails`, `AvailabilityStatus`.
 
 Die genaue Indexgruppe ist versionsabhängig. Das Resultset ist ein Inventar, kein Performanceurteil.
+
+Für `IndexFamily = JSON` enthält `IndexDetails` nur Array-Suchoption,
+Pfadanzahl und Disabled-Status. Konkrete SQL/JSON-Pfade liefert der enger
+gefilterte Pfad `USP_ObjectInventory`. Beide Wege prüfen
+`sys.json_indexes` und `sys.json_index_paths` vor der Referenz und lesen keine
+JSON-Dokumentwerte.
 
 ### Errors
 
@@ -92,6 +99,9 @@ Die genaue Indexgruppe ist versionsabhängig. Das Resultset ist ein Inventar, ke
 
 - `AVAILABLE` heißt: Diagnosepfad/Katalog ist nach Erkennung verfügbar. Es heißt nicht, dass das Feature aktiviert, genutzt oder gesund ist.
 - `UNAVAILABLE_VERSION` kann auch bedeuten, dass das erwartete Systemobjekt auf diesem Build nicht existiert.
+- `UNAVAILABLE_FEATURE`, `UNAVAILABLE_SOURCE_SCHEMA` und
+  `AVAILABLE_LIMITED` halten die buildabhängige SQL-Server-2025-Previewgrenze
+  der JSON-Indexkataloge explizit.
 - `FeatureValue` muss featurebezogen interpretiert werden; Textwerte sind nicht global vergleichbar.
 - Optimized Locking kann Lockmemory und bestimmte Blockierungen reduzieren, beseitigt aber nicht jeden Lockkonflikt.
 - Query Store für lesbare Secondaries schreibt Ausführungsinformationen zum primären Query Store zurück; Replica-Dimensionen müssen in Auswertungen berücksichtigt werden.
@@ -106,6 +116,7 @@ Die genaue Indexgruppe ist versionsabhängig. Das Resultset ist ein Inventar, ke
 - Change Tracking oder CDC gefunden → `USP_DataCaptureDeepAnalysis`
 - Wenn eine Query-Store-Replica verfügbar ist, berücksichtigen Sie in den Query-Store-Guides die Replica Group.
 - Spezialindex → passende Objekt-/Plananalyse
+- JSON-Indexmetadaten → `USP_ObjectInventory`; Präsenz und Pfadzahl sind kein Health- oder Rebuildbefund
 
 ### Kosten
 
@@ -188,6 +199,10 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 - Database Encryption Flag, Always-Encrypted-Schlüsselmetadaten und verschlüsselte Spalten sind unterschiedliche Technologien, die in einer Featuregruppe zusammengefasst werden können.
 - `@NurErkannteFeatures=1` verbessert die Lesbarkeit, entfernt aber die explizite Information über nicht erkennbare oder nicht verfügbare Featuregruppen.
 - Sichtbare native Vector-Spalten verweisen auf `USP_VectorIndexAnalysis`; erst dieses Modul prüft vorhandene Vector-Indizes und ihre aktuelle Wartungsevidenz.
+- Sichtbare native JSON-Spalten verweisen auf `USP_ObjectInventory`; dort
+  werden capability-adaptiv JSON-Index- und Pfadmetadaten inventarisiert,
+  ohne JSON-Dokumentwerte zu lesen oder eine automatische Healthaussage zu
+  erzeugen.
 
 ### Plakative und grenzwertige Beispiele
 
@@ -201,7 +216,7 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 
 ### Folgeanalyse
 
-Verwenden Sie das angegebene `RecommendedModule`. Für `VECTOR` ist `USP_VectorIndexAnalysis` implementiert und versionsadaptiv; die Inventur allein ist kein Indexgesundheitsbefund. Wenn ein anderes Deep-Dive-Modul fehlt, müssen Quelle und Betriebsanforderung manuell geprüft werden.
+Verwenden Sie das angegebene `RecommendedModule`. Für `VECTOR` ist `USP_VectorIndexAnalysis` implementiert und versionsadaptiv. Für `JSON` ist der bestehende `USP_ObjectInventory`-Pfad implementiert; eine eigene JSON-Index-Procedure ist für den abgegrenzten Inventarumfang nicht erforderlich. Beide Inventare sind keine Indexgesundheitsbefunde. Wenn ein anderes Deep-Dive-Modul fehlt, müssen Quelle und Betriebsanforderung manuell geprüft werden.
 
 ### Kosten
 

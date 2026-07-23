@@ -1,7 +1,7 @@
 # Backlog für zusätzliche Betriebs- und Versionsdiagnosen
 
 Stand: 2026-07-21
-Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004` sind `IMPLEMENTED_ACTIONS_GATE`
+Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004`, `SQL25-001` und `SQL25-002` sind `IMPLEMENTED_ACTIONS_GATE`
 Maschinenlesbarer Backlog: `Metadata/Quality/Future_Enhancement_Backlog.csv`
 
 ## Ziel und Abgrenzung
@@ -21,7 +21,7 @@ Eine Abweichung oder ein Einzelindikator ist grundsätzlich Evidenz für eine we
 | `OPS-003` | P1 | aktuell ausstehende I/O-Requests | implementiert: `monitor.USP_CurrentIO.pendingIo` | einzelner Pending Request beweist keinen Storagefehler |
 | `OPS-004` | P1 | SQL-Server- und Agent-Errorlogs | implementiert: `monitor.USP_ErrorLogAnalysis` | begrenztes Lesen; kein Logwechsel und kein Volltext im Default |
 | `SQL25-001` | P2 | Vector-Index-Laufzeit | neue Detailanalyse oder Erweiterung der Objektanalyse | Capability, Zustand und Maintenance getrennt bewerten |
-| `SQL25-002` | P2 | JSON-Index-Inventar | bestehende Objekt- und Indexinventare erweitern | versionsadaptiv; zunächst keine überdimensionierte Einzel-Procedure |
+| `SQL25-002` | P2 | JSON-Index-Inventar | bestehende Objekt- und Indexinventare erweitert | versionsadaptiv; bewusst keine überdimensionierte Einzel-Procedure |
 | `SQL25-003` | P2 | TempDB Resource Governance | Resource-Governor- und TempDB-Module erweitern | Limits, Nutzung und Verletzungszähler getrennt ausgeben |
 | `SQL25-004` | P2 | Statistiken auf lesbaren Secondaries | `monitor.USP_Statistics` versionsadaptiv erweitern | Replica-Rolle und Herkunft explizit erhalten |
 | `SQL25-005` | P2 | Query Store auf Secondary Replicas | Query-Store-Module replica-aware machen | fehlende Replica-Evidenz nicht als gesunden Zustand behandeln |
@@ -71,7 +71,15 @@ Das Modul führt keinen Logwechsel aus. Fehlende Rechte, sehr große Logs und ni
 
 ### SQL25-001 und SQL25-002 – Vector- und JSON-Indizes
 
-`sys.dm_db_vector_indexes` soll Echtzeitzustand, Performance und Maintenance-Evidenz für tatsächlich vorhandene Vector Indexes liefern. `sys.vector_indexes`, `sys.json_indexes` und `sys.json_index_paths` werden zunächst in die vorhandenen Objekt- und Indexinventare integriert. Alle Referenzen sind vor dynamischer Verwendung per Feature- und Spaltenprüfung abzusichern.
+SQL25-001 liefert über `sys.vector_indexes` und
+`sys.dm_db_vector_indexes` den getrennten Katalog- und Wartungszustand
+vorhandener Vector-Indizes. SQL25-002 integriert `sys.json_indexes` und
+`sys.json_index_paths` in `USP_ObjectInventory` und
+`USP_ServerFeatureCapabilities`. Alle Referenzen werden vor dynamischer
+Verwendung per Versions-, Feature- und Spaltenprüfung abgesichert; jede
+fachliche Quelle wird je Datenbank und Procedure höchstens einmal gelesen.
+JSON-Dokumentwerte werden nicht erhoben, und die Inventur erzeugt keine
+Health- oder DDL-Aussage.
 
 ### SQL25-003 – TempDB Resource Governance
 
@@ -108,9 +116,10 @@ Ein leichter Inventarpfad meldet sichtbare Benutzerobjekte in `master`, `model` 
 ## Umsetzungsreihenfolge
 
 1. Abgeschlossen: `OPS-001` bis `OPS-004` in Welle 2.
-2. `SQL25-001` bis `SQL25-005` als versionsadaptive Welle.
-3. `OPS-005`, `OPS-006` und `OPS-008`.
-4. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
+2. Abgeschlossen: `SQL25-001` und `SQL25-002` als erste versionsadaptive Slices.
+3. Offen: `SQL25-003` bis `SQL25-005`.
+4. `OPS-005`, `OPS-006` und `OPS-008`.
+5. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
 
 Wenn Historie, Trends und Maintenance-Wirkung wichtiger sind als weitere Momentaufnahmen, ist die alternative nächste Welle der Ausbau des bereits abgenommenen ersten SC-023-Slice um zusätzliche Sammler und Rollups. Dieser Ausbau hat höheren Zeitreihennutzen und benötigt weiterhin einen expliziten Persistenz-, Retention-, Scheduler-, Größenbudget- und Berechtigungsbetrieb.
 

@@ -1,7 +1,7 @@
 # [monitor].[USP_ObjectInventory]
 
 **Bereich:** Object und Index<br>
-**Zweck:** Liefert Objekt- und Indexinventar mit Größe, Zeilen, Partitionierung, Kompression und Definition.<br>
+**Zweck:** Liefert Objekt- und Indexinventar mit Größe, Zeilen, Partitionierung, Kompression, Definition und capability-adaptiven JSON-Index-/Pfadmetadaten.<br>
 **Beobachtungsart:** Katalogsnapshot<br>
 **Kostenklasse:** LOW–HIGH_OPT_IN
 
@@ -29,6 +29,14 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `objects`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Auf SQL Server 2025 ergänzt `objects` die Felder `IsJsonIndex`,
+`OptimizeForArraySearch`, `JsonPathCount`, `JsonPaths`,
+`JsonIndexStatusCode` und `JsonIndexEvidenceLimit`. `databaseStatus` trennt
+Version, Buildfähigkeit, Pflichtschema, Sichtbarkeit und behandelte
+Quellenfehler. Vor SQL Server 2025 lautet der Status
+`UNAVAILABLE_VERSION`; die beiden neuen Systemquellen werden dort nicht
+referenziert.
+
 ## Eine Zeile bedeutet
 
 Eine Inventarzeile beschreibt typischerweise eine Objekt-/Index-Kombination. Objektgesamtwerte können deshalb je Index wiederholt erscheinen.
@@ -55,6 +63,12 @@ Gemischte Kompression oder ähnliche Indizes können Teil einer Hot-/Cold-, Cons
 
 Bei Katalogpfaden sind Featureabwesenheit, Filter, Offline-/Permission-Scope und tatsächlich fehlende Objekte getrennte Erklärungen.
 
+Für JSON-Indizes bedeutet `AVAILABLE_EMPTY_OR_RESTRICTED`, dass im
+angeforderten sichtbaren Scope keine Indexzeile entstand. Dieser Zustand
+beweist wegen Metadata Visibility keine serverweite Featureabwesenheit.
+`AVAILABLE_LIMITED` erhält eine sichtbare Indexdefinition, weist aber eine
+fehlende, schemaabweichende oder nicht lesbare Pfadquelle ausdrücklich aus.
+
 Für `USP_ObjectInventory` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
 ## Eigenlast und Grenzen
@@ -70,7 +84,7 @@ Für `USP_ObjectInventory` gilt zusätzlich: **keine Zeile** bedeutet, dass im s
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_ObjectInventory ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU, Katalogseiten und TempDB für Joins/Aggregation; bei breitem Cross-Database-Scope zusätzlicher Compile- und Ergebnistransferaufwand. |
 | Begrenzungswirkung | Datenbank-/Objektfilter begrenzen die Quellarbeit. TOP oder MaxZeilen werden häufig nach Katalogjoins und Aggregation angewandt und sind dann nur Ausgabelimits. |
-| Locking und Nebenwirkungen | Read-only; Katalogabfragen nehmen üblicherweise kurze Schema-Stability-Zugriffe und können mit gleichzeitigem DDL oder Datenbankstatuswechseln konkurrieren. |
+| Locking und Nebenwirkungen | Read-only; Katalogabfragen nehmen üblicherweise kurze Schema-Stability-Zugriffe und können mit gleichzeitigem DDL oder Datenbankstatuswechseln konkurrieren. Der konfigurierte `LOCK_TIMEOUT` gilt auch für die optionalen JSON-Quellen; der vorherige Sessionwert wird wiederhergestellt. |
 | Schutzmechanismus | `OBJECT_ANALYSIS_CURRENT` schützt den gezielten Pfad ohne High-Impact-Pflicht. Nur `VOLL` prüft zusätzlich `CATALOG_DEEP` und benötigt `@HighImpactConfirmed = 1`; das Gate ersetzt keine Objekt-/Datenbankgrenze. |
 | Sicherer Einsatz | Mit einer ExampleDb und einem ExampleObject starten; erst nach Größenprüfung auf mehrere Datenbanken oder VOLL erweitern. |
 | Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „Katalogsnapshot“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
@@ -89,7 +103,13 @@ Tabellen, Views, Indizes, Spalten, Partitionen, Kompression und Allocation Units
 
 ### Datenkette
 
-`master.sys.databases`, `sys.allocation_units`, `sys.columns`, `sys.data_spaces`, `sys.index_columns`, `sys.indexes`, `sys.objects`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
+`master.sys.databases`, `sys.allocation_units`, `sys.columns`, `sys.data_spaces`, `sys.index_columns`, `sys.indexes`, `sys.objects`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`, `sys.tables` sowie capability-abhängig `sys.json_indexes` und `sys.json_index_paths`.
+
+Jede der beiden JSON-Quellen wird je Zieldatenbank und Procedureaufruf
+höchstens einmal gelesen. Die Indexquelle bleibt auf den gewählten
+Objektscope begrenzt; die Pfadquelle wird nur zu den bereits materialisierten
+JSON-Indizes aggregiert. JSON-Dokumentwerte und Benutzertabellenzeilen werden
+nicht gelesen.
 
 ### Source Select
 
@@ -129,7 +149,7 @@ Berücksichtigen Sie Größe, Zeilen, Indexart, Schlüssel/Includes, Filter, Par
 
 ### Typische Fehlinterpretation
 
-Inventar zeigt Existenz, nicht Nutzen, Nutzung oder Redundanz. Eine kleine Tabelle mit vielen Indizes kann andere Trade-offs haben als eine große schreibintensive Tabelle.
+Inventar zeigt Existenz, nicht Nutzen, Nutzung oder Redundanz. Eine kleine Tabelle mit vielen Indizes kann andere Trade-offs haben als eine große schreibintensive Tabelle. Insbesondere beweisen ein sichtbarer JSON-Index, seine Pfadzahl oder `OptimizeForArraySearch` weder passende Workloadabdeckung noch Gesundheit oder Rebuildbedarf.
 
 ### Folgeanalyse
 
@@ -138,6 +158,8 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_IndexUsage`,
 ## Primärquellen
 
 - [SQL-Server-Katalogsichten](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/catalog-views-transact-sql?view=sql-server-ver17)
+- [sys.json_indexes (Transact-SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-json-indexes-transact-sql?view=sql-server-ver17)
+- [sys.json_index_paths (Transact-SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-json-index-paths-transact-sql?view=sql-server-ver17)
 
 ## Weiterführende Vertiefung
 
@@ -146,3 +168,5 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 - [Ola Hallengren: Index and Statistics Maintenance – betriebliche Wartungsperspektive](https://ola.hallengren.com/sql-server-index-and-statistics-maintenance.html)
 
 [Technische Detailbeschreibung](../03_Object_Index.md#1-monitorusp_objectinventory)
+
+[SQL-Server-2025-JSON-Index-Vertrag](../../Architecture/SQL_Server_2025_JSON_Index_Inventory.md)

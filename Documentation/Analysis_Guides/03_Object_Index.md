@@ -18,7 +18,7 @@
 
 ### Zweck
 
-Die Procedure liefert Objekt- und Indexinventar mit Größe, Zeilenzahl, Partitionierung, Kompression, Speicherart und optionalen Key-/Include-Spaltenlisten.
+Die Procedure liefert Objekt- und Indexinventar mit Größe, Zeilenzahl, Partitionierung, Kompression, Speicherart, optionalen Key-/Include-Spaltenlisten sowie capability-adaptiven SQL-Server-2025-JSON-Index- und Pfadmetadaten.
 
 ### Wann einsetzen?
 
@@ -68,6 +68,14 @@ EXEC [monitor].[USP_ObjectInventory]
 | Indexgröße | `IndexRowCount`, `IndexReservedMb`, `IndexUsedMb` | physischer Umfang je Index |
 | Kompression | `MinCompressionDesc`, `MaxCompressionDesc`, `HasMixedCompression` | gemischte Kompression kann absichtlich partitioniert sein |
 | Definition | `KeyColumns`, `IncludedColumns` | Reihenfolge und Includeumfang; nur bei aktivierter Spaltenliste |
+| JSON-Index | `IsJsonIndex`, `OptimizeForArraySearch`, `JsonPathCount`, `JsonPaths` | sichtbare Definition und SQL/JSON-Pfadmetadaten; keine JSON-Dokumentwerte |
+| JSON-Evidenz | `JsonIndexStatusCode`, `JsonIndexEvidenceLimit` | Version-, Build-, Schema-, Sichtbarkeits- und Fehlergrenze |
+
+`databaseStatus` enthält zusätzlich JSON-Index-/Pfadzeilenzähler und einen
+isolierten Quellenfehler. Vor SQL Server 2025 werden `sys.json_indexes` und
+`sys.json_index_paths` nicht referenziert. Auf SQL Server 2025 wird jede
+Quelle je Datenbank und Aufruf höchstens einmal gelesen; fehlt die Pfadquelle,
+bleibt eine sichtbare Indexdefinition als `AVAILABLE_LIMITED` erhalten.
 
 ### Beispiele
 
@@ -78,10 +86,13 @@ EXEC [monitor].[USP_ObjectInventory]
 | `HasMixedCompression=1` auf partitionierter Tabelle | häufig absichtliche Hot-/Cold-Strategie |
 | `IsHypothetical=1` | meist Tuningartefakt; Ursprung prüfen |
 | `OptimizeForSequentialKey=1` | Hinweis auf sequentiellen Last-Page-Kontext, kein Beweis für Nutzen |
+| sichtbarer JSON-Index mit zwei Pfaden | strukturelle Definition; kein Beweis für Nutzung, Gesundheit, Nutzen oder Rebuildbedarf |
 
 ### Folgeanalyse
 
 `USP_IndexUsage`, `USP_IndexOperationalStats`, `USP_Partitions`, `USP_IndexPhysicalStats`, `USP_SchemaDesignAnalysis`.
+
+[SQL-Server-2025-JSON-Index-Vertrag](../Architecture/SQL_Server_2025_JSON_Index_Inventory.md)
 
 ---
 
@@ -532,7 +543,7 @@ EXEC [monitor].[USP_SchemaDesignAnalysis]
 
 ### Zweck
 
-Die Procedure orchestriert alle Objekt- und Indexmodule mit einem gemeinsamen Filtervertrag. Standardmäßig sind Inventar, Usage und Missing Indexes aktiviert; die Tiefenmodule müssen ausdrücklich angefordert werden.
+Die Procedure orchestriert alle Objekt- und Indexmodule mit einem gemeinsamen Filtervertrag. Standardmäßig sind Inventar, Usage und Missing Indexes aktiviert; die Tiefenmodule müssen ausdrücklich angefordert werden. Das bestehende `USP_ObjectInventory` liefert dabei ohne neuen Schalter die SQL25-002-JSON-Indexmetadaten, wenn Indexdetails aktiviert sind; die Zahl der Childmodule ändert sich dadurch nicht.
 
 ### Childreihenfolge
 
@@ -578,6 +589,7 @@ EXEC [monitor].[USP_ObjectAnalysis]
 - `@Vollanalyse=1` macht aus `GEZIELT` einen breiten Lauf, hebt aber Child-Gates nicht auf.
 - Ein einzelnes `@MaxZeilen` wird an Children weitergegeben; Gesamtzeilenzahl kann deutlich höher sein.
 - Wrapperresultsets ersetzen nicht die Child-Metaresultsets.
+- JSON-Indexpräsenz, Pfadzahl und Array-Suchoption sind Inventar, kein Health- oder DDL-Befund.
 - Führen Sie Physical-, Histogramm- und Columnstore-Deep-Analysen nicht routinemäßig als Polling aus.
 
 ## Anfänger-Entscheidungsbaum

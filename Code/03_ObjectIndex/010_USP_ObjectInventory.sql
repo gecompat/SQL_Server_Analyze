@@ -4,12 +4,19 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ObjectInventory
-Version      : 1.0.0
-Stand        : 2026-07-14
+Version      : 1.1.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
-Zweck        : Liefert ein fehlertolerantes Objekt- und Indexinventar einschließlich Größe, Zeilen, Kompression, Partitionierung und optionalen Spaltenlisten.
+Zweck        : Liefert ein fehlertolerantes Objekt- und Indexinventar
+               einschließlich Größe, Zeilen, Kompression, Partitionierung,
+               optionalen Spaltenlisten sowie versionsadaptiven
+               SQL-Server-2025-JSON-Index- und Pfadmetadaten.
 SQL-Version  : SQL Server 2019 oder neuer.
-Datenquellen : master.sys.databases sowie je Zieldatenbank sys.objects, sys.tables, sys.schemas, sys.indexes, sys.index_columns, sys.columns, sys.partitions, sys.allocation_units und sys.data_spaces.
+Datenquellen : master.sys.databases sowie je Zieldatenbank sys.objects,
+               sys.tables, sys.schemas, sys.indexes, sys.index_columns,
+               sys.columns, sys.partitions, sys.allocation_units,
+               sys.data_spaces und capability-abhängig sys.json_indexes
+               sowie sys.json_index_paths.
 Parameter    :
   @DatabaseName                  sysname        = NULL  - Zieldatenbank; bei Einzelmodus Pflicht.
   @CrossDatabaseRequestedInternal               bit            = 0     - sichtbare Online-Datenbanken analysieren.
@@ -28,7 +35,8 @@ Parameter    :
 Resultsets   : 1. Modulstatus. 2. Status je Datenbank. 3. Objekt-/Indexinventar.
 Berechtigung : Katalogsicht gemäß Metadata Visibility; Cross-Database zusätzlich Gruppenpolicy. Keine Rechtevergabe.
 Eigenlast    : Gezielte Einzel-Datenbank-Abfrage gering bis moderat; Cross-Database und Spaltenlisten begrenzt durch TOP.
-Locking      : READUNCOMMITTED/NOLOCK auf Systemkatalogen und konfigurierbares LOCK_TIMEOUT; unvollständige Metadaten sind zulässig.
+Locking      : READUNCOMMITTED/NOLOCK auf Systemkatalogen und konfigurierbares
+               LOCK_TIMEOUT; der vorherige Sessionwert wird wiederhergestellt.
 Partial      : Fehler je Datenbank bzw. Teilquelle werden isoliert; vorhandene
                Teilergebnisse bleiben erhalten. Das Framework vergibt keine Rechte.
 Beispiele    :
@@ -36,7 +44,9 @@ Beispiele    :
   EXEC monitor.USP_ObjectInventory @DatabaseNames=N'[SampleDatabase]', @SchemaNames=N'[dbo]', @ObjectNamePattern=N'like:Fact%';
   EXEC monitor.USP_ObjectInventory @CrossDatabaseRequestedInternal=0, @AnalyseModus='VOLL', @MaxZeilen=20000;
   EXEC monitor.USP_ObjectInventory @Hilfe=1;
-Änderungen   : 1.0.0 - Erstfassung Phase 2.
+Änderungen   : 1.1.0 - SQL25-002: JSON-Indizes und aggregierte SQL/JSON-Pfade
+                         ohne Lesen von JSON-Dokumentwerten ergänzt.
+               1.0.0 - Erstfassung Phase 2.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectInventory]
@@ -66,6 +76,8 @@ BEGIN
     SET NOCOUNT ON;
 
     SET @Json = NULL;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @LockTimeoutSql nvarchar(64);
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
     DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
@@ -122,6 +134,7 @@ BEGIN
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
         PRINT N'Die Procedure liefert ein Objekt-, Größen-, Partitions-, Kompressions- und Indexinventar.';
+        PRINT N'Ab SQL Server 2025 werden sichtbare JSON-Indizes und SQL/JSON-Pfade nach Objekt- und Spaltenprüfung ergänzt; JSON-Dokumentwerte werden nicht gelesen.';
         PRINT N'@ObjectType varchar(16) = TABLE: TABLE, VIEW oder ALLE.';
         PRINT N'@AnalyseModus varchar(16) = GEZIELT: GEZIELT benötigt Schema-/Objektfilter; VOLL prüft CATALOG_DEEP.';
         PRINT N'@MitIndizes bit = 1: 0 liefert nur Objektsummen.';
@@ -133,6 +146,7 @@ BEGIN
 
     DECLARE @ModuleName sysname = N'USP_ObjectInventory';
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
+    DECLARE @ProductMajorVersion int = TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
 
     DECLARE @OverallStatus varchar(40) = 'AVAILABLE';
     DECLARE @IsPartial bit = 0;
@@ -151,6 +165,12 @@ BEGIN
         , [ErrorNumber]        int            NULL
         , [ErrorMessage]       nvarchar(2048) NULL
         , [Detail]             nvarchar(2000) NULL
+        , [JsonIndexStatusCode] varchar(40)   NOT NULL
+        , [JsonIndexRowCount]  bigint         NOT NULL
+        , [JsonPathRowCount]   bigint         NOT NULL
+        , [JsonIndexErrorNumber] int          NULL
+        , [JsonIndexErrorMessage] nvarchar(2048) NULL
+        , [JsonIndexEvidenceLimit] nvarchar(1000) NOT NULL
     );
 
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
@@ -165,13 +185,26 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
 
     IF @OverallStatus <> 'AVAILABLE'
     BEGIN
-        INSERT [#ObjectInventory_DatabaseStatus]([DatabaseName], [StatusCode], [IsPartial], [RowCount], [RequiredPermission], [ErrorNumber], [ErrorMessage], [Detail])
-        VALUES(@DatabaseName, @OverallStatus, 1, 0, NULL, NULL, @ErrorMessage, N'Keine Datenbankanalyse ausgeführt.');
+        INSERT [#ObjectInventory_DatabaseStatus]
+        (
+              [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+            , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+            , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+            , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+        )
+        VALUES
+        (
+              @DatabaseName,@OverallStatus,1,0
+            , NULL,NULL,@ErrorMessage,N'Keine Datenbankanalyse ausgeführt.'
+            , 'NOT_COLLECTED',0,0,NULL,NULL
+            , N'Die Objektinventur wurde vor dem optionalen JSON-Index-Pfad beendet.'
+        );
         SET @IsPartial = 1;
     END
     ELSE
     BEGIN
-        SET LOCK_TIMEOUT 0;
+        SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
     END;
 
     DECLARE @CatalogAllowed bit = 1;
@@ -220,35 +253,99 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
         , [HasMixedCompression]         bit             NULL
         , [KeyColumns]                  nvarchar(max)   NULL
         , [IncludedColumns]             nvarchar(max)   NULL
+        , [IsJsonIndex]                 bit             NULL
+        , [OptimizeForArraySearch]      bit             NULL
+        , [JsonPathCount]               bigint          NULL
+        , [JsonPaths]                   nvarchar(max)   NULL
+        , [JsonIndexStatusCode]         varchar(40)     NULL
+        , [JsonIndexEvidenceLimit]      nvarchar(1000)  NULL
+    );
+
+    CREATE TABLE [#ObjectInventory_JsonIndexes]
+    (
+          [DatabaseName]           sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectId]               int NOT NULL
+        , [IndexId]                int NOT NULL
+        , [OptimizeForArraySearch] bit NULL
+        , PRIMARY KEY ([DatabaseName],[ObjectId],[IndexId])
+    );
+
+    CREATE TABLE [#ObjectInventory_JsonPathAgg]
+    (
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectId]     int NOT NULL
+        , [IndexId]      int NOT NULL
+        , [JsonPathCount] bigint NOT NULL
+        , [JsonPaths]    nvarchar(max) NULL
+        , PRIMARY KEY ([DatabaseName],[ObjectId],[IndexId])
     );
 
     IF @OverallStatus = 'AVAILABLE' AND @ObjectType NOT IN ('TABLE','VIEW','ALLE')
     BEGIN
         SET @OverallStatus='INVALID_PARAMETER';
         SET @ErrorMessage=N'@ObjectType muss TABLE, VIEW oder ALLE sein.';
-        INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL);
+        INSERT [#ObjectInventory_DatabaseStatus]
+        (
+              [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+            , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+            , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+            , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+        )
+        VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL,
+               'NOT_COLLECTED',0,0,NULL,NULL,N'Parameterprüfung fehlgeschlagen.');
     END
     ELSE IF @OverallStatus = 'AVAILABLE' AND @AnalyseModus NOT IN ('GEZIELT','VOLL')
     BEGIN
         SET @OverallStatus='INVALID_PARAMETER';
         SET @ErrorMessage=N'@AnalyseModus muss GEZIELT oder VOLL sein.';
-        INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL);
+        INSERT [#ObjectInventory_DatabaseStatus]
+        (
+              [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+            , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+            , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+            , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+        )
+        VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL,
+               'NOT_COLLECTED',0,0,NULL,NULL,N'Parameterprüfung fehlgeschlagen.');
     END
     ELSE IF @OverallStatus = 'AVAILABLE' AND @AnalyseModus='GEZIELT' AND NOT EXISTS(SELECT 1 FROM [#ObjectInventory_NameFilters]) AND @SchemaNamePattern IS NULL AND @ObjectNamePattern IS NULL
     BEGIN
         SET @OverallStatus='INVALID_PARAMETER';
         SET @ErrorMessage=N'GEZIELT erfordert eine exakte Namensliste, @FullObjectNames oder ein Schema-/Objekt-Pattern. Für einen vollständigen Kataloglauf @AnalyseModus=''VOLL'' verwenden.';
-        INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL);
+        INSERT [#ObjectInventory_DatabaseStatus]
+        (
+              [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+            , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+            , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+            , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+        )
+        VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL,
+               'NOT_COLLECTED',0,0,NULL,NULL,N'Für GEZIELT wurde kein Objekt-Scope geliefert.');
     END
     ELSE IF @OverallStatus = 'AVAILABLE' AND @AnalyseModus='VOLL' AND @CatalogAllowed=0
     BEGIN
         SET @OverallStatus='DENIED_GROUP';
         SET @ErrorMessage=N'CATALOG_DEEP ist für die vollständige Objektinventur nicht freigegeben.';
-        INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL);
+        INSERT [#ObjectInventory_DatabaseStatus]
+        (
+              [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+            , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+            , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+            , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+        )
+        VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL,
+               'NOT_COLLECTED',0,0,NULL,NULL,N'CATALOG_DEEP wurde nicht freigegeben.');
     END
     ELSE IF @OverallStatus = 'AVAILABLE'
     BEGIN
         DECLARE @DbId int, @DbName sysname, @Sql nvarchar(max), @Rows bigint;
+        DECLARE @JsonProbeSql nvarchar(max);
+        DECLARE @HasJsonIndexes bit,@HasJsonIndexPaths bit;
+        DECLARE @JsonIndexesSchemaValid bit,@JsonIndexPathsSchemaValid bit;
+        DECLARE @JsonIndexStatusCode varchar(40),@JsonIndexSourcePartial bit;
+        DECLARE @JsonIndexRowCount bigint,@JsonPathRowCount bigint;
+        DECLARE @JsonIndexErrorNumber int,@JsonIndexErrorMessage nvarchar(2048);
+        DECLARE @JsonIndexEvidenceLimit nvarchar(1000);
         DECLARE dbcur CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseId], [DatabaseName]
             FROM [#ObjectInventory_DatabaseCandidates];
@@ -256,6 +353,215 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
         FETCH NEXT FROM dbcur INTO @DbId,@DbName;
         WHILE @@FETCH_STATUS=0
         BEGIN
+            SELECT
+                  @HasJsonIndexes=0
+                , @HasJsonIndexPaths=0
+                , @JsonIndexesSchemaValid=0
+                , @JsonIndexPathsSchemaValid=0
+                , @JsonIndexStatusCode='NOT_COLLECTED'
+                , @JsonIndexSourcePartial=0
+                , @JsonIndexRowCount=0
+                , @JsonPathRowCount=0
+                , @JsonIndexErrorNumber=NULL
+                , @JsonIndexErrorMessage=NULL
+                , @JsonIndexEvidenceLimit=N'JSON-Index-Metadaten wurden nicht angefordert.';
+
+            IF @MitIndizes=0
+            BEGIN
+                SET @JsonIndexEvidenceLimit=N'@MitIndizes=0 unterdrückt sämtliche Indexdetails einschließlich JSON-Index-Metadaten.';
+            END
+            ELSE IF @ObjectType='VIEW'
+            BEGIN
+                SET @JsonIndexStatusCode='NOT_APPLICABLE';
+                SET @JsonIndexEvidenceLimit=N'JSON-Indizes gelten für Tabellen; der angeforderte Scope enthält ausschließlich Views.';
+            END
+            ELSE IF @ProductMajorVersion IS NULL OR @ProductMajorVersion<17
+            BEGIN
+                SET @JsonIndexStatusCode='UNAVAILABLE_VERSION';
+                SET @JsonIndexEvidenceLimit=N'sys.json_indexes und sys.json_index_paths werden vor SQL Server 2025 nicht referenziert.';
+            END
+            ELSE
+            BEGIN
+                BEGIN TRY
+                    SET @JsonProbeSql=N'USE '+QUOTENAME(@DbName)+N';
+SELECT
+      @pHasJsonIndexesOut=CONVERT(bit,CASE WHEN EXISTS
+      (
+          SELECT 1
+          FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+          INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+             ON [s].[schema_id]=[o].[schema_id]
+          WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_indexes''
+      ) THEN 1 ELSE 0 END)
+    , @pHasJsonIndexPathsOut=CONVERT(bit,CASE WHEN EXISTS
+      (
+          SELECT 1
+          FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+          INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+             ON [s].[schema_id]=[o].[schema_id]
+          WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_index_paths''
+      ) THEN 1 ELSE 0 END);
+
+SELECT @pJsonIndexesSchemaValidOut=CONVERT(bit,CASE
+    WHEN @pHasJsonIndexesOut=1 AND
+         (
+             SELECT COUNT(DISTINCT [c].[name])
+             FROM [sys].[all_columns] AS [c] WITH (NOLOCK)
+             INNER JOIN [sys].[all_objects] AS [o] WITH (NOLOCK)
+                ON [o].[object_id]=[c].[object_id]
+             INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+                ON [s].[schema_id]=[o].[schema_id]
+             WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_indexes''
+               AND [c].[name] IN (N''object_id'',N''index_id'',N''optimize_for_array_search'')
+         )=3 THEN 1 ELSE 0 END);
+
+SELECT @pJsonIndexPathsSchemaValidOut=CONVERT(bit,CASE
+    WHEN @pHasJsonIndexPathsOut=1 AND
+         (
+             SELECT COUNT(DISTINCT [c].[name])
+             FROM [sys].[all_columns] AS [c] WITH (NOLOCK)
+             INNER JOIN [sys].[all_objects] AS [o] WITH (NOLOCK)
+                ON [o].[object_id]=[c].[object_id]
+             INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+                ON [s].[schema_id]=[o].[schema_id]
+             WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_index_paths''
+               AND [c].[name] IN (N''object_id'',N''index_id'',N''path'')
+         )=3 THEN 1 ELSE 0 END);';
+
+                    EXEC [sys].[sp_executesql]
+                          @JsonProbeSql
+                        , N'@pHasJsonIndexesOut bit OUTPUT,@pHasJsonIndexPathsOut bit OUTPUT,
+                            @pJsonIndexesSchemaValidOut bit OUTPUT,@pJsonIndexPathsSchemaValidOut bit OUTPUT'
+                        , @pHasJsonIndexesOut=@HasJsonIndexes OUTPUT
+                        , @pHasJsonIndexPathsOut=@HasJsonIndexPaths OUTPUT
+                        , @pJsonIndexesSchemaValidOut=@JsonIndexesSchemaValid OUTPUT
+                        , @pJsonIndexPathsSchemaValidOut=@JsonIndexPathsSchemaValid OUTPUT;
+                END TRY
+                BEGIN CATCH
+                    SELECT
+                          @JsonIndexStatusCode=CASE
+                              WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                              WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                              ELSE 'ERROR_HANDLED' END
+                        , @JsonIndexSourcePartial=1
+                        , @JsonIndexErrorNumber=ERROR_NUMBER()
+                        , @JsonIndexErrorMessage=ERROR_MESSAGE()
+                        , @JsonIndexEvidenceLimit=N'Die JSON-Index-Capability-Prüfung scheiterte; die allgemeine Objektinventur wird unabhängig fortgesetzt.';
+                END CATCH;
+
+                IF @JsonIndexStatusCode='NOT_COLLECTED'
+                BEGIN
+                    IF @HasJsonIndexes=0
+                    BEGIN
+                        SET @JsonIndexStatusCode='UNAVAILABLE_FEATURE';
+                        SET @JsonIndexEvidenceLimit=N'Der konkrete SQL-Server-2025-Build stellt sys.json_indexes nicht bereit.';
+                    END
+                    ELSE IF @JsonIndexesSchemaValid=0
+                    BEGIN
+                        SELECT
+                              @JsonIndexStatusCode='UNAVAILABLE_SOURCE_SCHEMA'
+                            , @JsonIndexSourcePartial=1
+                            , @JsonIndexEvidenceLimit=N'sys.json_indexes ist vorhanden, aber das benötigte Pflichtschema weicht ab.';
+                    END
+                    ELSE
+                    BEGIN TRY
+                        SET @Sql=N'USE '+QUOTENAME(@DbName)+N';
+INSERT [#ObjectInventory_JsonIndexes]
+(
+      [DatabaseName],[ObjectId],[IndexId],[OptimizeForArraySearch]
+)
+SELECT
+      @pDatabaseName,[ji].[object_id],[ji].[index_id]
+    , [ji].[optimize_for_array_search]
+FROM [sys].[json_indexes] AS [ji] WITH (NOLOCK)
+INNER JOIN [sys].[objects] AS [o] WITH (NOLOCK)
+   ON [o].[object_id]=[ji].[object_id]
+INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+   ON [s].[schema_id]=[o].[schema_id]
+WHERE [o].[type]=''U''
+'+@SchemaPredicateS+@ObjectPredicateO+@FullObjectPredicateSO+N';';
+                        EXEC [sys].[sp_executesql]
+                              @Sql
+                            , N'@pDatabaseName sysname'
+                            , @pDatabaseName=@DbName;
+                        SELECT @JsonIndexRowCount=COUNT_BIG(*)
+                        FROM [#ObjectInventory_JsonIndexes]
+                        WHERE [DatabaseName]=@DbName;
+                    END TRY
+                    BEGIN CATCH
+                        SELECT
+                              @JsonIndexStatusCode=CASE
+                                  WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                                  WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                  ELSE 'ERROR_HANDLED' END
+                            , @JsonIndexSourcePartial=1
+                            , @JsonIndexErrorNumber=ERROR_NUMBER()
+                            , @JsonIndexErrorMessage=ERROR_MESSAGE()
+                            , @JsonIndexEvidenceLimit=N'sys.json_indexes konnte nicht gelesen werden; die allgemeine Objektinventur wird unabhängig fortgesetzt.';
+                    END CATCH;
+
+                    IF @JsonIndexStatusCode='NOT_COLLECTED'
+                    BEGIN
+                        IF @HasJsonIndexPaths=0
+                        BEGIN
+                            SELECT
+                                  @JsonIndexStatusCode='AVAILABLE_LIMITED'
+                                , @JsonIndexSourcePartial=1
+                                , @JsonIndexEvidenceLimit=N'JSON-Indizes sind sichtbar; der konkrete Build stellt sys.json_index_paths jedoch nicht bereit.';
+                        END
+                        ELSE IF @JsonIndexPathsSchemaValid=0
+                        BEGIN
+                            SELECT
+                                  @JsonIndexStatusCode='AVAILABLE_LIMITED'
+                                , @JsonIndexSourcePartial=1
+                                , @JsonIndexEvidenceLimit=N'JSON-Indizes sind sichtbar; das Pflichtschema von sys.json_index_paths weicht jedoch ab.';
+                        END
+                        ELSE IF @JsonIndexRowCount=0
+                        BEGIN
+                            SELECT
+                                  @JsonIndexStatusCode='AVAILABLE_EMPTY_OR_RESTRICTED'
+                                , @JsonIndexEvidenceLimit=N'Keine JSON-Indexzeile ist im angeforderten Scope sichtbar; der Pfadkatalog wurde deshalb nicht gelesen. Metadata Visibility unterscheidet leeren Scope und verborgene Objekte nicht sicher.';
+                        END
+                        ELSE
+                        BEGIN TRY
+                            SET @Sql=N'USE '+QUOTENAME(@DbName)+N';
+INSERT [#ObjectInventory_JsonPathAgg]
+(
+      [DatabaseName],[ObjectId],[IndexId],[JsonPathCount],[JsonPaths]
+)
+SELECT
+      @pDatabaseName,[jp].[object_id],[jp].[index_id],COUNT_BIG(*)
+    , STRING_AGG(CONVERT(nvarchar(max),[jp].[path]),N'' | '')
+        WITHIN GROUP (ORDER BY [jp].[path])
+FROM [sys].[json_index_paths] AS [jp] WITH (NOLOCK)
+INNER JOIN [#ObjectInventory_JsonIndexes] AS [ji]
+   ON [ji].[DatabaseName]=@pDatabaseName
+  AND [ji].[ObjectId]=[jp].[object_id]
+  AND [ji].[IndexId]=[jp].[index_id]
+GROUP BY [jp].[object_id],[jp].[index_id];';
+                            EXEC [sys].[sp_executesql]
+                                  @Sql
+                                , N'@pDatabaseName sysname'
+                                , @pDatabaseName=@DbName;
+                            SELECT @JsonPathRowCount=COALESCE(SUM([JsonPathCount]),0)
+                            FROM [#ObjectInventory_JsonPathAgg]
+                            WHERE [DatabaseName]=@DbName;
+                            SELECT
+                                  @JsonIndexStatusCode='AVAILABLE'
+                                , @JsonIndexEvidenceLimit=N'JSON-Index- und Pfadkatalog wurden je Datenbank und Procedure-Aufruf höchstens einmal gelesen. SQL/JSON-Pfade sind Schemametadaten; JSON-Dokumentwerte wurden nicht gelesen.';
+                        END TRY
+                        BEGIN CATCH
+                            SELECT
+                                  @JsonIndexStatusCode='AVAILABLE_LIMITED'
+                                , @JsonIndexSourcePartial=1
+                                , @JsonIndexErrorNumber=ERROR_NUMBER()
+                                , @JsonIndexErrorMessage=ERROR_MESSAGE()
+                                , @JsonIndexEvidenceLimit=N'JSON-Indizes sind sichtbar, der Pfadkatalog konnte jedoch nicht vollständig gelesen werden.';
+                        END CATCH;
+                    END;
+                END;
+            END;
+
             BEGIN TRY
                 SET @Sql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs) + N'; USE ' + QUOTENAME(@DbName) + N';
 ;WITH PartitionBase AS
@@ -322,7 +628,26 @@ SELECT TOP (@pMaxRows)
        CASE WHEN @pMitIndizes=1 THEN [ia].[MaxCompressionDesc] END,
        CASE WHEN @pMitIndizes=1 THEN CONVERT(bit,CASE WHEN [ia].[MinCompressionDesc]<>[ia].[MaxCompressionDesc] THEN 1 ELSE 0 END) END,
        CASE WHEN @pMitIndizes=1 AND @pMitSpaltenlisten=1 THEN [kc].[KeyColumns] END,
-       CASE WHEN @pMitIndizes=1 AND @pMitSpaltenlisten=1 THEN [ic].[IncludedColumns] END
+       CASE WHEN @pMitIndizes=1 AND @pMitSpaltenlisten=1 THEN [ic].[IncludedColumns] END,
+       CASE WHEN @pMitIndizes=1 THEN CONVERT(bit,CASE WHEN [ji].[ObjectId] IS NULL THEN 0 ELSE 1 END) END,
+       CASE WHEN @pMitIndizes=1 THEN [ji].[OptimizeForArraySearch] END,
+       CASE
+           WHEN @pMitIndizes=1 AND [ji].[ObjectId] IS NOT NULL
+                AND @pJsonIndexStatusCode=''AVAILABLE''
+           THEN COALESCE([jp].[JsonPathCount],CONVERT(bigint,0))
+           WHEN @pMitIndizes=1 THEN [jp].[JsonPathCount]
+       END,
+       CASE WHEN @pMitIndizes=1 THEN [jp].[JsonPaths] END,
+       CASE
+           WHEN @pMitIndizes=0 THEN NULL
+           WHEN [ji].[ObjectId] IS NOT NULL AND @pJsonIndexStatusCode=''AVAILABLE_EMPTY_OR_RESTRICTED'' THEN ''AVAILABLE''
+           WHEN [ji].[ObjectId] IS NOT NULL THEN @pJsonIndexStatusCode
+           WHEN @pJsonIndexStatusCode IN
+                (''AVAILABLE'',''AVAILABLE_LIMITED'',''AVAILABLE_EMPTY_OR_RESTRICTED'')
+           THEN ''NOT_APPLICABLE''
+           ELSE @pJsonIndexStatusCode
+       END,
+       CASE WHEN @pMitIndizes=1 THEN @pJsonIndexEvidenceLimit END
 FROM sys.objects AS [o] WITH (NOLOCK)
 JOIN sys.schemas AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
 LEFT JOIN sys.tables AS [t] WITH (NOLOCK) ON [t].[object_id]=[o].[object_id]
@@ -330,6 +655,14 @@ LEFT JOIN ObjectAgg AS [oa] ON [oa].[object_id]=[o].[object_id]
 LEFT JOIN sys.indexes AS [i] WITH (NOLOCK) ON [i].[object_id]=[o].[object_id] AND @pMitIndizes=1
 LEFT JOIN IndexAgg AS [ia] ON [ia].[object_id]=[i].[object_id] AND [ia].[index_id]=[i].[index_id]
 LEFT JOIN sys.data_spaces AS [ds] WITH (NOLOCK) ON [ds].[data_space_id]=[i].[data_space_id]
+LEFT JOIN [#ObjectInventory_JsonIndexes] AS [ji]
+  ON [ji].[DatabaseName]=@pDatabaseName
+ AND [ji].[ObjectId]=[i].[object_id]
+ AND [ji].[IndexId]=[i].[index_id]
+LEFT JOIN [#ObjectInventory_JsonPathAgg] AS [jp]
+  ON [jp].[DatabaseName]=@pDatabaseName
+ AND [jp].[ObjectId]=[i].[object_id]
+ AND [jp].[IndexId]=[i].[index_id]
 OUTER APPLY
 (
     SELECT STUFF((SELECT N'', ''+QUOTENAME([c].[name])+CASE WHEN [ic2].[is_descending_key]=1 THEN N'' DESC'' ELSE N'''' END
@@ -353,19 +686,68 @@ WHERE [o].[type] IN (''U'',''V'')
 ORDER BY [oa].[ReservedPages] DESC,[o].[object_id],[i].[index_id]
 OPTION (MAXDOP 1, RECOMPILE);';
                 EXEC [sys].[sp_executesql] @Sql,
-                    N'@pDatabaseName sysname,@pMaxRows bigint,@pObjectType varchar(16),@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256),@pMitIndizes bit,@pMitSpaltenlisten bit',
-                    @pDatabaseName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pObjectType=@ObjectType,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike,@pMitIndizes=@MitIndizes,@pMitSpaltenlisten=@MitSpaltenlisten;
+                    N'@pDatabaseName sysname,@pMaxRows bigint,@pObjectType varchar(16),@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256),@pMitIndizes bit,@pMitSpaltenlisten bit,@pJsonIndexStatusCode varchar(40),@pJsonIndexEvidenceLimit nvarchar(1000)',
+                    @pDatabaseName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pObjectType=@ObjectType,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike,@pMitIndizes=@MitIndizes,@pMitSpaltenlisten=@MitSpaltenlisten,
+                    @pJsonIndexStatusCode=@JsonIndexStatusCode,@pJsonIndexEvidenceLimit=@JsonIndexEvidenceLimit;
                 SELECT @Rows=COUNT_BIG(*) FROM [#ObjectInventory_Result] WHERE [DatabaseName]=@DbName;
-                INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'Metadata Visibility / VIEW DEFINITION für vollständige Metadaten',NULL,NULL,N'Systemkatalog erfolgreich gelesen; unsichtbare Objekte werden nicht als Fehler gewertet.');
+                INSERT [#ObjectInventory_DatabaseStatus]
+                (
+                      [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+                    , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+                    , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+                    , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+                )
+                VALUES
+                (
+                      @DbName
+                    , CASE WHEN @JsonIndexSourcePartial=1 THEN 'AVAILABLE_LIMITED' ELSE 'AVAILABLE' END
+                    , @JsonIndexSourcePartial,@Rows
+                    , N'Metadata Visibility / VIEW DEFINITION für vollständige Metadaten'
+                    , NULL,NULL
+                    , N'Systemkatalog erfolgreich gelesen; unsichtbare Objekte werden nicht als Fehler gewertet.'
+                    , @JsonIndexStatusCode,@JsonIndexRowCount,@JsonPathRowCount
+                    , @JsonIndexErrorNumber,@JsonIndexErrorMessage,@JsonIndexEvidenceLimit
+                );
             END TRY
             BEGIN CATCH
-                INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' WHEN ERROR_NUMBER() IN (207,208,4121) THEN 'UNAVAILABLE_OBJECT' ELSE 'ERROR_HANDLED' END,1,0,N'Metadata Visibility / VIEW DEFINITION',ERROR_NUMBER(),ERROR_MESSAGE(),N'Datenbankfehler isoliert.');
+                INSERT [#ObjectInventory_DatabaseStatus]
+                (
+                      [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+                    , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+                    , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+                    , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+                )
+                VALUES
+                (
+                      @DbName
+                    , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                           WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                           WHEN ERROR_NUMBER() IN (207,208,4121) THEN 'UNAVAILABLE_OBJECT'
+                           ELSE 'ERROR_HANDLED' END
+                    , 1,0,N'Metadata Visibility / VIEW DEFINITION'
+                    , ERROR_NUMBER(),ERROR_MESSAGE(),N'Datenbankfehler isoliert.'
+                    , @JsonIndexStatusCode,@JsonIndexRowCount,@JsonPathRowCount
+                    , @JsonIndexErrorNumber,@JsonIndexErrorMessage,@JsonIndexEvidenceLimit
+                );
             END CATCH;
             FETCH NEXT FROM dbcur INTO @DbId,@DbName;
         END;
         CLOSE dbcur; DEALLOCATE dbcur;
         IF NOT EXISTS(SELECT 1 FROM [#ObjectInventory_DatabaseStatus])
-            INSERT [#ObjectInventory_DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
+            INSERT [#ObjectInventory_DatabaseStatus]
+            (
+                  [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+                , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+                , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+                , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+            )
+            VALUES
+            (
+                  @DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL
+                , N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL
+                , 'NOT_COLLECTED',0,0,NULL,NULL
+                , N'Keine sichtbare Online-Zieldatenbank wurde für die JSON-Index-Prüfung erreicht.'
+            );
     END;
 
 
@@ -392,9 +774,18 @@ OPTION (MAXDOP 1, RECOMPILE);';
     RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
 END;
 
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
+
     IF @ResultSetArtNormalisiert<>'NONE' BEGIN
         SELECT @ModuleName [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@OverallStatus [StatusCode],@IsPartial [IsPartial],@TotalRows [RowCount],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
-        SELECT [DatabaseName],[StatusCode],[IsPartial],[RowCount],[RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail] FROM [#ObjectInventory_DatabaseStatus] ORDER BY [DatabaseName];
+        SELECT
+              [DatabaseName],[StatusCode],[IsPartial],[RowCount]
+            , [RequiredPermission],[ErrorNumber],[ErrorMessage],[Detail]
+            , [JsonIndexStatusCode],[JsonIndexRowCount],[JsonPathRowCount]
+            , [JsonIndexErrorNumber],[JsonIndexErrorMessage],[JsonIndexEvidenceLimit]
+        FROM [#ObjectInventory_DatabaseStatus]
+        ORDER BY [DatabaseName];
         IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#ObjectInventory_Result] ORDER BY [ObjectReservedMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId]; ELSE SELECT N'Objekt-/Indexinventar' [Ergebnis],[r].* FROM [#ObjectInventory_Result] [r] ORDER BY [ObjectReservedMb] DESC,[DatabaseName],[SchemaName],[ObjectName],[IndexId];
     END;
     IF @JsonErzeugen=1 BEGIN
