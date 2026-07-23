@@ -8,24 +8,30 @@
 
 LAB-001 soll die bisher fehlenden externen Laufzeitnachweise des Frameworks reproduzierbar erzeugen. Das Lab stellt keine Produktionsumgebung nach und ist kein allgemeiner SQL-Server-Benchmark. Es erzeugt kontrollierte Zustände, führt die betroffenen Analyseverfahren aus und prüft fachliche Findings, Statuswerte und Evidenzgrenzen.
 
-Die verbindliche Zielarchitektur besteht aus drei Ebenen:
+Die verbindliche Zielarchitektur ist hardwareadaptiv und kennt drei Ausführungsmodi:
 
-1. Hyper-V bildet das Infrastruktur-Fundament auf einem Windows-Host.
-2. Eine dedizierte, minimale Linux-VM betreibt Docker Engine als primäre Container-Lane.
-3. Podman wird in derselben Linux-VM als optionale, getrennt ausgeführte Kompatibilitäts-Lane unterstützt.
+| Ausführungsmodus | Hostvoraussetzung | Abdeckung |
+|---|---|---|
+| `WINDOWS_SINGLE_HOST` | Windows Pro/Enterprise oder Windows Server mit Hyper-V | Vollständige Windows- und Linux-Abdeckung durch Windows-VMs und eine minimale Linux-Container-VM. |
+| `LINUX_NATIVE` | Unterstütztes x86-64-Linux mit Docker Engine oder Podman | Ressourcengünstige Container- und Linux-Abdeckung; Windows-, WSFC- und FCI-Szenarien bleiben sichtbar als `NOT_EXECUTED`. |
+| `DISTRIBUTED` | Windows-Hyper-V-Host plus separater x86-64-Linux-Host | Vollständige Abdeckung bei geringstem VM-Overhead: Windows-Szenarien laufen auf Hyper-V, Container-Szenarien nativ auf Linux. |
 
-Vollständige Windows-Server-VMs unter Hyper-V übernehmen Windows-spezifische und clusterabhängige Szenarien. Docker Desktop und Podman Desktop dürfen für lokale Entwicklung verwendet werden, sind aber wegen ihrer zusätzlichen internen VM, backendabhängiger I/O- und Netzwerksteuerung und geringerer Reproduzierbarkeit nicht die kanonische Lab-Plattform.
+`AUTO` wählt nach einem read-only Preflight den kompatiblen Modus mit dem geringsten Ressourcenbedarf. Hyper-V bleibt die verbindliche Plattform für Windows-, WSFC-, FCI-, vNUMA- und hardwarenahe VM-Szenarien. Ein nativer Linux-Host kann jedoch die bisher vorgesehene Linux-VM vollständig als Container-Lane ersetzen. Sind beide Hosttypen verfügbar, ist `DISTRIBUTED` die bevorzugte Betriebsform.
+
+Docker Engine bleibt die primäre Container-Runtime. Podman wird auf demselben Linux-Host als optionale, zeitlich getrennte Kompatibilitäts-Lane unterstützt. Docker Desktop und Podman Desktop dürfen für lokale Entwicklung verwendet werden, sind aber wegen ihrer zusätzlichen internen VM, backendabhängiger I/O- und Netzwerksteuerung und geringerer Reproduzierbarkeit nicht die kanonische Lab-Plattform.
 
 ```mermaid
 flowchart TD
-    H["Windows-Host mit Hyper-V"] --> C["Linux-VM: Container-Lane"]
-    H --> W["Windows-VMs: SQL Server und WSFC"]
-    H --> X["Optionale Linux-VMs: Router oder Pacemaker"]
-    C --> D["Docker Engine: primär"]
-    C --> P["Podman: Kompatibilitäts-Lane"]
+    O["Orchestrator und Preflight"] --> M{"Ausführungsmodus"}
+    M --> W["Windows: Hyper-V"]
+    M --> L["Linux: native Container"]
+    M --> D["Verteilt: Windows plus Linux"]
+    W --> WV["Windows-VMs plus Linux-VM"]
+    L --> LC["Docker primär; Podman optional"]
+    D --> DV["Windows-VMs plus native Container"]
 ```
 
-Diese Kombination minimiert den Ressourcenverbrauch, weil der überwiegende Teil der Szenarien in kurzlebigen Containern ausgeführt wird. Vollständige VMs werden nur für Szenarien gestartet, die Windows, WSFC, vNUMA, eigene virtuelle Datenträger oder einen vollständigen Betriebssystemstart benötigen.
+Die Modi minimieren den Ressourcenverbrauch, weil immer nur die für ein Szenario erforderliche Topologie gestartet wird. SQL-Server-Versionen laufen standardmäßig sequenziell. GPU und NPU beeinflussen die Basiskapazität des SQL-Diagnoselabors nicht; Accelerator-Szenarien müssen später als eigene optionale Capability ausgewiesen werden.
 
 ## 2. Abgrenzung der Aussagen
 
@@ -54,6 +60,8 @@ LAB-001 muss folgende Ziele erfüllen:
 - Jeder öffentliche Analyzer-Pfad erhält mindestens einen positiven Nachweis oder eine ausdrücklich begründete Fixture-Zuordnung.
 - Das Lab verändert keine Ressource außerhalb seines eigenen Namens-, Netzwerk-, Datenträger- und Run-ID-Scopes.
 - Rohdaten und umgebungsspezifische Laufzeitevidenz werden nicht automatisch in das Repository geschrieben.
+- Derselbe Szenariovertrag ist auf jedem kompatiblen Ausführungsmodus verwendbar; fehlende Plattformfähigkeiten ergeben `NOT_EXECUTED` statt eines fachlichen Testfehlers.
+- Hostnamen, Gerätebezeichnungen, Seriennummern, lokale Datenträgernamen, IP-Adressen und konkrete Kapazitätswerte bleiben ausschließlich im ignorierten lokalen Run-State.
 
 ## 4. Nichtziele und technische Grenzen
 
@@ -72,7 +80,7 @@ Nicht lokal und sicher erzeugbare Zustände werden als `CONTRACT_FIXTURE` gefüh
 
 ## 5. Plattformverantwortung
 
-| Funktionsgruppe | Docker Engine in Linux-VM | Podman in Linux-VM | Hyper-V-Windows | Hyper-V-Linux | Fixture |
+| Funktionsgruppe | Docker Engine auf Linux, nativ oder VM | Podman auf Linux, nativ oder VM | Hyper-V-Windows | Hyper-V-Linux | Fixture |
 |---|:---:|:---:|:---:|:---:|:---:|
 | Blocking, Deadlocks und Latches | primär | Kompatibilität | möglich | möglich | nein |
 | CPU-, Worker- und Memory-Druck | primär | Kompatibilität | ergänzend | ergänzend | nein |
@@ -88,7 +96,7 @@ Nicht lokal und sicher erzeugbare Zustände werden als `CONTRACT_FIXTURE` gefüh
 | Linux-Pacemaker-AG | nicht kanonisch | nicht kanonisch | nein | primär | möglich |
 | Physischer Host-, SAN- oder Standortausfall | nein | nein | auf Einzelhost nicht real | auf Einzelhost nicht real | primär |
 
-`Primär` bezeichnet die kanonische Nachweisplattform. `Kompatibilität` bedeutet, dass ein Szenario erst nach einem eigenen Podman-Lauf als unterstützt gilt.
+`Primär` bezeichnet die kanonische Nachweisplattform. `Kompatibilität` bedeutet, dass ein Szenario erst nach einem eigenen Podman-Lauf als unterstützt gilt. Ein nativer Linux-Host und eine Hyper-V-Linux-VM verwenden denselben Containervertrag; Abweichungen der Storage-, Netzwerk- oder cgroup-Fähigkeiten werden dennoch separat nachgewiesen.
 
 ## 6. Vorgesehene Repositorystruktur
 
@@ -105,10 +113,12 @@ Lab/
 ├── Config/
 │   ├── lab.config.example.psd1
 │   ├── resource-profiles.json
+│   ├── host-capabilities.example.json
 │   ├── image-lock.example.json
 │   └── capability-overrides.example.json
 ├── Contracts/
 │   ├── lab-config.schema.json
+│   ├── host-capability.schema.json
 │   ├── topology.schema.json
 │   ├── scenario.schema.json
 │   ├── evidence.schema.json
@@ -121,6 +131,10 @@ Lab/
 │           ├── DiagnosticLab.psm1
 │           ├── Public/
 │           └── Private/
+│               └── HostAdapters/
+│                   ├── WindowsHyperV.psm1
+│                   ├── LinuxNative.psm1
+│                   └── RemoteHost.psm1
 ├── Containers/
 │   ├── compose.yaml
 │   ├── compose.docker.yaml
@@ -208,6 +222,7 @@ Die zentrale Oberfläche ist `Lab/Orchestration/Invoke-DiagnosticLab.ps1`. Die v
 
 .\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
     -Action Up `
+    -ExecutionMode Auto `
     -Platform Container `
     -Engine Docker `
     -Topology Single `
@@ -229,7 +244,7 @@ Die endgültigen Parameter werden erst mit dem öffentlichen PowerShell-Vertrag 
 
 | Aktion | Vertrag |
 |---|---|
-| `Preflight` | Prüft Host, Berechtigungen, Tools, Kapazität, Image-Locks, Netzkonflikte und Secret-Verfügbarkeit; verändert keine Labressource. |
+| `Preflight` | Prüft read-only Host, Betriebssystem, Hypervisor, CPU, RAM, Storage-Ziele, Container-Runtimes, Berechtigungen, Image-Locks, Netzkonflikte und Secret-Verfügbarkeit; erzeugt lokal den Capability-Vektor und verändert keine Labressource. |
 | `BuildImage` | Erstellt ein versioniertes Basisimage außerhalb des Repositorys. |
 | `Up` | Erstellt ausschließlich die gewählte Topologie und wartet auf definierte Health Checks. |
 | `Run` | Führt genau ein Szenario oder eine explizite Szenariogruppe aus. |
@@ -249,6 +264,8 @@ Alle mutierenden PowerShell-Funktionen unterstützen soweit technisch möglich `
 `Lab/Config/lab.config.example.psd1` enthält nur generische Defaults und Platzhalter. Eine lokale Kopie `lab.config.psd1` ist ignoriert. Der Vertrag umfasst mindestens:
 
 - Host-Ressourcenreserve;
+- lokale Zuordnung der Hostrollen und optionaler Remote-Endpunkte;
+- erlaubte Ausführungsmodi und Capability-Overrides;
 - Pfade zu lokalen, rechtmäßig vorhandenen Installationsmedien;
 - gewünschte SQL-Server-Version;
 - Container-Engine und Compose-Provider;
@@ -276,71 +293,136 @@ Windows-ISOs, SQL-Server-Installationsmedien, Lizenzdateien und Produktschlüsse
 
 Developer-Editionen dürfen nur innerhalb ihrer jeweils gültigen Entwicklungs- und Testlizenz verwendet werden. Die konkrete Lizenzprüfung bleibt eine Voraussetzung des Betreibers und wird durch das Lab nicht ersetzt.
 
-## 9. Ressourcenstrategie
+## 9. Hardwareadaptive Ressourcenstrategie
 
-### 9.1 Grundsatz
+### 9.1 Trennung von Hostkapazität und Lastprofil
 
-Ressourcen werden nicht für die maximale Matrix gleichzeitig reserviert. SQL Server 2019, 2022 und 2025 laufen standardmäßig sequenziell. Ebenso werden Container- und Windows-Cluster-Lane nicht parallel betrieben, sofern das Szenario keine Cross-Platform-Topologie verlangt.
+LAB-001 trennt zwei unabhängige Entscheidungen:
 
-Der Orchestrator muss vor `Up` folgende Regeln anwenden:
+- Die **Hostkapazitätsklasse** beschreibt, welche Topologien auf der vorhandenen Hardware sicher und mit welcher Parallelität betrieben werden können.
+- Das **Ressourcenprofil** `Compact`, `Standard` oder `Stress` beschreibt die beabsichtigte Last eines Szenarios.
 
-- eine konfigurierbare Host-RAM-Reserve erhalten;
-- verfügbaren physischen Speicherplatz und nicht nur die virtuelle VHDX-Maximalgröße prüfen;
-- nicht benötigte VMs herunterfahren;
-- nicht benötigte Containerprofile deaktivieren;
-- pro Szenario ein Ressourcenbudget prüfen;
-- einen Lauf ablehnen, wenn die Mindestreserve unterschritten würde;
-- Stressprofile niemals automatisch aus einem Compact-Profil ableiten.
+Ein großer Host macht ein `Compact`-Szenario nicht automatisch zu `Stress`. Umgekehrt darf ein kleiner Host ein `Stress`-Szenario nicht durch aggressives Overcommit vortäuschen. Der Szenariovertrag enthält Mindest- und Maximalbudgets; der Scheduler darf nur innerhalb dieser Grenzen skalieren.
 
-### 9.2 Planungsprofile
+Der read-only Preflight ermittelt mindestens:
 
-Die Werte sind Startbudgets und müssen in Welle 0 und Welle 2 empirisch validiert werden.
+- Betriebssystemfamilie, Architektur und freigegebenen Hostadapter;
+- logische Prozessoren und aktuell verfügbare CPU-Reserve;
+- physischen und aktuell verfügbaren RAM;
+- konfigurierte Storage-Ziele, freie Bytes und logische Storage-Rollen;
+- Hyper-V-, Virtualisierungs- und PowerShell-Direct-Fähigkeiten auf Windows;
+- Docker-, Podman-, Compose-Provider-, cgroup- und Netzwerkfähigkeiten auf Linux;
+- Verfügbarkeit der lokal gebundenen Image- und Medien-IDs;
+- optionale Accelerator-Capabilities ausschließlich informativ.
 
-| Profil | Zweck | Gleichzeitige SQL-Instanzen | Startbudget pro SQL-Container | Startbudget pro Windows-SQL-VM |
-|---|---|---:|---:|---:|
-| `Compact` | funktionale Findings und Vertragsprüfungen | 1 bis 2 | 3 GiB RAM, 2 vCPU | 4 GiB RAM, 2 vCPU |
-| `Standard` | Mehrknotentopologie und belastbarere Lastformen | 2 bis 3 | 4 GiB RAM, 2 vCPU | 6 GiB RAM, 4 vCPU |
-| `Stress` | Memory-, Worker-, Parallelism- und Scale-Szenarien | szenarioabhängig | explizit berechnet | explizit berechnet |
+Der Capability-Vektor wird unter `Lab/.state/<LabRunId>` gespeichert. Er enthält keine Hostnamen, Gerätebezeichnungen, Seriennummern, lokalen Pfade oder Netzwerkidentitäten in veröffentlichbaren Evidenzzusammenfassungen.
 
-SQL Server benötigt auf Linux dokumentiert mindestens 2 GB RAM. LAB-001 setzt im Compact-Profil bewusst einen höheren Containerrahmen an und konfiguriert `MSSQL_MEMORY_LIMIT_MB` so, dass Betriebssystem- und Sidecar-Prozesse Reserve behalten. Der genaue Wert ist versions- und szenarioabhängig.
+### 9.2 Hostkapazitätsklassen
 
-### 9.3 Host-Zielklassen
+Die Schwellenwerte sind konservative Startwerte und müssen in Welle 0 und Welle 2 empirisch validiert werden. Maßgeblich ist die niedrigste erfüllte Dimension; die Betriebssystemklasse wird separat bewertet.
 
-| Hostklasse | Planungsziel | Aussagegrenze |
+| Klasse | Logische CPUs | Physischer RAM | Freier SSD-Speicher in freigegebenen Labzielen | Planungsaussage |
+|---|---:|---:|---:|---|
+| `HC1_COMPACT` | mindestens 8 | mindestens 48 GiB | mindestens 300 GiB | Container-Core und kleine Topologien sequenziell; keine allgemeine Zusage für parallele Cluster- oder Stressläufe. |
+| `HC2_STANDARD` | mindestens 12 | mindestens 60 GiB | mindestens 750 GiB | Vollständige funktionale Abdeckung auf einem Windows-Hyper-V-Host bei sequenzieller Ausführung; einzelne kontrollierte Stressszenarien. |
+| `HC3_EXTENDED` | mindestens 16 | mindestens 88 GiB | mindestens 1,5 TiB über freigegebene Labziele | Mehr Imagecache, größere Fault-Volumes und begrenzte parallele Ausführung; weiterhin keine vollständige Versionsmatrix gleichzeitig. |
+
+Diese Klassen sind Scheduling-Policies und keine SQL-Server-Produktanforderungen oder Benchmarkklassen. Ein Szenario darf auf einer niedrigeren Klasse laufen, wenn sein explizites Budget einschließlich Hostreserve erfüllt ist. Ein Linux-Host kann unabhängig von seiner Größe keine Windows- oder Hyper-V-Capability erfüllen.
+
+### 9.3 Hostreserve und Scheduling
+
+Standardmäßig gelten folgende zu validierende Reserven:
+
+- RAM-Reserve: der größere Wert aus 12 GiB und 20 Prozent des physischen RAM;
+- CPU-Reserve: der größere Wert aus zwei logischen Prozessoren und 15 Prozent der logischen Prozessoren;
+- Storage-Reserve: der größere Wert aus 100 GiB und 10 Prozent der Kapazität des jeweiligen System- oder Imagecache-Ziels;
+- keine gleichzeitige Ausführung der Versionen 2019, 2022 und 2025;
+- keine gleichzeitige Container- und Windows-Cluster-Lane, sofern der Szenariovertrag keine verteilte Topologie verlangt;
+- keine automatische Hochskalierung von `Compact` auf `Stress`;
+- keine dynamische Speicherzuweisung für SQL-VMs in Memory-, NUMA- oder reproduzierbaren Lastszenarien;
+- Startablehnung mit strukturiertem Grund, sobald eine Mindestreserve oder erforderliche Capability fehlt.
+
+Nicht benötigte VMs, Containerprofile, Fault-Volumes und Netzwerkadapter bleiben ausgeschaltet beziehungsweise werden nicht erzeugt. Der Scheduler berechnet die maximal zulässige Parallelität aus Szenariobudget, Hostreserve und bereits registrierten Labressourcen; eine feste Instanzanzahl allein ist nicht ausreichend.
+
+### 9.4 Ressourcenprofile und Rollenbudgets
+
+Die Werte sind Startbudgets. SQL Server benötigt auf Linux dokumentiert mindestens 2 GB RAM; LAB-001 verwendet bewusst höhere Containergrenzen und lässt Reserve für Betriebssystem- und Sidecar-Prozesse.
+
+| Rolle | `Compact` | `Standard` | Hinweise |
+|---|---:|---:|---|
+| SQL-Container | 3 GiB RAM, 2 vCPU | 4 GiB RAM, 2 vCPU | `MSSQL_MEMORY_LIMIT_MB` bleibt unter dem Containerlimit. |
+| Windows-SQL-VM | 5 GiB RAM, 2 vCPU | 8 GiB RAM, 4 vCPU | Fester VM-RAM und begrenztes `max server memory`. |
+| AD/DNS-VM | 2 GiB RAM, 2 vCPU | 3 GiB RAM, 2 vCPU | Nur bei Windows-Domänen- oder WSFC-Topologien. |
+| Router-/Fault-VM | 1 GiB RAM, 1 vCPU | 2 GiB RAM, 2 vCPU | Nur für Netzwerk-Fault-Injection. |
+| Separate Witness-VM | 1 GiB RAM, 1 vCPU | 2 GiB RAM, 1 vCPU | Entfällt im Compact-Pfad, sofern der Szenariovertrag keinen getrennten Witness verlangt. |
+| `Stress` | explizit berechnet | explizit berechnet | Keine globalen Defaults; das Manifest definiert Ziel und harte Obergrenze. |
+
+Der Orchestrator misst den tatsächlichen Peakverbrauch. Budgets dürfen erst nach wiederholten Referenzläufen angepasst werden; eine einzelne schnelle Maschine ist keine Grundlage für höhere allgemeine Defaults.
+
+### 9.5 Ausführungsmodi und Verteilung
+
+| Modus | Ressourcenstrategie | Aussagegrenze |
 |---|---|---|
-| 16 GiB RAM | einzelne Containerinstanz oder einzelne kleine Windows-VM | keine Zusage für WSFC, FCI oder realistischen Memory-Druck |
-| 32 GiB RAM | funktionale sequenzielle Abdeckung des Container-Cores und einer kompakten Zwei-Knoten-WSFC-Topologie | Welle-0-Nachweis erforderlich; Stressläufe können abgelehnt werden |
-| 64 GiB RAM oder mehr | Standard-Mehrknotenprofile und kontrollierte Lastszenarien | weiterhin kein Produktionsbenchmark |
+| `WINDOWS_SINGLE_HOST` | Container-Lane in kleiner Hyper-V-Linux-VM; Windows-Topologien zeitlich getrennt | Vollständige Abdeckung, aber zusätzlicher VM-Overhead für Container. |
+| `LINUX_NATIVE` | Docker beziehungsweise Podman direkt auf dem Linux-Host | Geringster RAM- und Storage-Overhead; keine Windows-, WSFC- oder FCI-Nachweise. |
+| `DISTRIBUTED` | Native Container auf Linux, Windows-VMs auf Hyper-V; zentrale Run-ID und getrennte lokale States | Bevorzugt bei zwei verfügbaren Hosts; erfordert explizit freigegebene Remoteverbindung und sichere Cleanup-Grenzen pro Host. |
 
-Als anfängliches Storage-Ziel werden 200 bis 300 GB freier SSD-Speicher vorgesehen, wenn Basisimages mehrerer SQL-Versionen lokal gehalten werden. Durch nur eine aktive Versionsfamilie, dynamische VHDX, Differencing Disks, Image-Locks und begrenzte Cache-Retention kann der tatsächliche Verbrauch darunter liegen. Der Wert ist eine Planungsannahme und wird nicht als Mindestanforderung festgeschrieben, bevor reale Imagegrößen gemessen wurden.
+Remote-Endpunkte, Hostidentitäten und Schlüssel stehen ausschließlich in der ignorierten lokalen Konfiguration beziehungsweise im lokalen Secret Store. Der Orchestrator überträgt nur synthetische Labartefakte und signierte beziehungsweise prüfsummengebundene Manifeste. Ein nicht erreichbarer Teilhost führt zu `NOT_EXECUTED` für abhängige Szenarien und löst keine unsichere Ersatzplatzierung aus.
 
-### 9.4 Speichersparende Mechanismen
+### 9.6 Storage-Rollen und Platzierung
 
-- Windows Server Core statt Desktop Experience, soweit das Szenario keine GUI-Komponente benötigt.
-- Ein schreibgeschütztes OS-Basisimage pro erforderlicher Windows-Generation.
-- Ein SQL-Basisimage pro freigegebener SQL-/Windows-Kombination.
-- Kurzlebige Differencing Disks pro Lab-Run.
-- Dynamische VHDX für funktionale Tests; feste VHDX nur für explizite I/O-Vergleichsszenarien.
-- Zusätzliche Data-, Log- und TempDB-Datenträger nur bei Szenarien, die getrennte Fehler- oder I/O-Pfade prüfen.
-- Container-Volumes pro Run-ID statt langfristiger gemeinsamer Datenvolumes.
-- Kontrollierte Cache-Retention nach Alter, Größe und Image-Lock.
-- Keine gleichzeitige Vorhaltung laufender Instanzen aller SQL-Versionen.
+Lokale Datenträger werden nicht durch Modell oder Laufwerksbuchstaben im Repository beschrieben. Die Konfiguration weist stattdessen logische Rollen zu:
+
+| Rolle | Zweck |
+|---|---|
+| `IMAGE_CACHE` | unveränderliche Parent-Images, Container-Images und Installationscache |
+| `ACTIVE_VM` | aktive Differencing Disks und VM-Laufzeitdateien |
+| `EPHEMERAL_DATA` | kurzlebige SQL-Data-, Log- und TempDB-Volumes |
+| `FAULT_TARGET` | kleine, hart begrenzte Datenträger für Disk-Full-, Corruption- und I/O-Szenarien |
+
+Auf einem Einzel-SSD-Host dürfen Rollen logisch zusammenfallen; dies ist jedoch keine physische I/O-Isolation und wird in der Evidenz entsprechend markiert. Bei mehreren SSDs verteilt der lokale Betreiber die Rollen, ohne Modell-, Seriennummern-, Pfad- oder Kapazitätsdaten zu versionieren. `FAULT_TARGET` erhält immer eine explizite Maximalgröße und darf nie das System- oder Imagecache-Ziel sein.
+
+Speichersparende Mechanismen:
+
+- Windows Server Core statt Desktop Experience, soweit keine GUI-Komponente erforderlich ist;
+- ein schreibgeschütztes OS-Parent pro erforderlicher Windows-Generation;
+- nur die aktuell benötigten SQL-/Windows-Parentkombinationen im warmen Cache;
+- kurzlebige Differencing Disks und dynamische VHDX für funktionale Tests;
+- feste VHDX nur für explizite I/O-Vergleichsszenarien;
+- zusätzliche Data-, Log- und TempDB-Datenträger nur bei fachlicher Notwendigkeit;
+- Container-Volumes pro Run-ID statt langfristiger gemeinsamer Datenvolumes;
+- Retentiongrenzen nach Alter, Größe, letztem Zugriff und Image-Lock;
+- Vorabprüfung der real freien Bytes statt Vertrauen auf virtuelle Maximalgrößen;
+- sequenzieller Image-Pull und Image-Build mit Cleanup nach erfolgreicher Validierung.
+
+### 9.7 GPU und NPU
+
+GPU und NPU sind für die Kernfunktionen von LAB-001 weder Voraussetzung noch Bestandteil der Hostkapazitätsklasse. Dadurch bleiben Ressourcenentscheidungen zwischen Hosts mit und ohne Accelerator vergleichbar.
+
+Ein späteres External-Runtime-Szenario darf `ACCELERATOR_GPU` als optionale Capability deklarieren, wenn Runtime, Treiber, Container-Passthrough und ein eigener positiver Vertrag nachgewiesen sind. Eine NPU-Capability wird nicht aus ihrer bloßen Hardwareexistenz abgeleitet. Fehlt eine optionale Accelerator-Capability, bleibt der CPU-Referenzpfad maßgeblich und das Accelerator-Szenario wird `NOT_EXECUTED`.
 
 ## 10. Container-Lane
 
-### 10.1 Linux-VM
+### 10.1 Container-Host
 
-Die Container-Lane läuft in einer dedizierten x86-64-Linux-VM. Die exakte Distribution und Version wird in `image-lock.example.json` gebunden und vor Freigabe gegen die aktuellen Docker-, Podman- und SQL-Server-Anforderungen geprüft. Die VM erhält:
+Die Container-Lane läuft auf einem unterstützten x86-64-Linux. Zwei gleichwertige Hostadapter sind vorgesehen:
+
+1. `LinuxNative` betreibt Docker Engine beziehungsweise Podman direkt auf einem dedizierten oder freigegebenen Linux-Host.
+2. `WindowsHyperV` erzeugt eine minimale x86-64-Linux-VM, wenn kein separater Linux-Host verfügbar ist.
+
+Die Distribution und Version werden über den Image-Lock gebunden. Der Preflight prüft insbesondere x86-64 ohne Emulation, unterstütztes Dateisystem für SQL-Daten, cgroup-Fähigkeiten, Compose-Provider und freien Storage. Ein nativer Linux-Host ist ressourcenseitig bevorzugt, weil die zusätzliche Gast-OS- und VHDX-Schicht entfällt. Die Linux-VM bleibt der reproduzierbare Fallback für einen vollständigen Windows-Einzelhost.
+
+Die Hyper-V-Linux-VM erhält:
 
 - eine kleine OS-Disk als Differencing Disk;
 - eine separate dynamische Container-Data-Disk;
 - optional getrennte virtuelle Disks für Data-, Log- und TempDB-I/O-Szenarien;
-- zwei vCPU im Compact-Profil;
+- zwei vCPU im kleinsten Profil;
 - 6 GiB RAM für eine einzelne SQL-Instanz beziehungsweise ein berechnetes Budget für Mehrinstanztopologien;
 - einen Managementadapter und einen internen Lab-Datenadapter;
 - keinen ungeprüften direkten Zugriff aus dem Lab-Datennetz auf das physische LAN.
 
-Docker Engine ist primär. Podman wird vorzugsweise rootful und nur in einer eigenen Ausführung verwendet, weil Block-I/O-, Netzwerk- und Capability-Tests bei rootless Betrieb eingeschränkt sein können. Docker und Podman dürfen nicht gleichzeitig dieselben Datenpfade oder Volumes verwenden.
+Der native Linux-Host verwendet dieselben logischen Storage- und Netzwerkrollen, aber keine Desktop-Runtime und keine zusätzliche Container-VM. Docker Engine ist primär. Podman wird vorzugsweise rootful und nur in einer eigenen Ausführung verwendet, weil Block-I/O-, Netzwerk- und Capability-Tests bei rootless Betrieb eingeschränkt sein können. Docker und Podman dürfen nicht gleichzeitig dieselben Datenpfade, Volumes oder Run-States verwenden.
 
 ### 10.2 Compose-Aufteilung
 
@@ -788,6 +870,7 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 - JSON-Schemata;
 - Szenario- und Topologieverträge;
 - Ressourcenprofile;
+- Host-Capability-Schema, Hostklassen und Ausführungsmodus-Vertrag;
 - vollständige Procedure-zu-Szenario-Coverage aus den Inventaren;
 - Security-, Cleanup- und Privacy-Review;
 - dokumentierte Host- und Medien-Preflightwerte.
@@ -802,7 +885,8 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 
 **Lieferumfang:**
 
-- `Preflight`, Run-ID, State Lock, Logging und Configauflösung;
+- `Preflight`, Capability-Vektor, Ausführungsmodus-Auflösung, Run-ID, State Lock, Logging und Configauflösung;
+- Hostadapter für Windows-Hyper-V, natives Linux und explizit freigegebene Remote-Ausführung;
 - Secret-Provider-Abstraktion;
 - `Status`, `Down`, `RecoveryCleanup` und `-WhatIf`;
 - sichere Objekt-ID-basierte Cleanup-Registry.
@@ -817,7 +901,7 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 
 **Lieferumfang:**
 
-- Docker-Linux-VM-Bootstrap;
+- gemeinsamer Linux-Container-Bootstrap für nativen Linux-Host und Hyper-V-Linux-VM;
 - `compose.yaml` und Docker-Override;
 - SQL-Server-2025-Single-Instanz;
 - Installerbereitstellung;
@@ -828,7 +912,8 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 
 - `Up → Run → Validate → Down` funktioniert ohne manuellen Eingriff;
 - zweiter Lauf startet aus sauberem Zustand;
-- Hostreserve und tatsächlicher Storageverbrauch werden geprüft.
+- Hostreserve und tatsächlicher Storageverbrauch werden geprüft;
+- derselbe Baselinevertrag läuft im nativen Linux-Modus und im Hyper-V-Linux-VM-Modus oder bleibt mit dokumentiertem `NOT_EXECUTED` sichtbar.
 
 ### Welle 3 – Core-Performance-Szenarien
 
@@ -949,7 +1034,8 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 - geplante Container-Matrix;
 - manuelles beziehungsweise geplantes Hyper-V-Gate;
 - Operations-Runbook;
-- Ressourcen- und Retentionbericht;
+- Ressourcen- und Retentionbericht je Hostkapazitätsklasse und Ausführungsmodus;
+- Nachweis des nativen Linux-, Windows-Einzelhost- und optionalen verteilten Modus;
 - Integration in `Test_Matrix.md` und externe Evidence Gates.
 
 **Abnahme:**
@@ -965,51 +1051,61 @@ LAB-001 ist als Produktfunktion erst abgeschlossen, wenn:
 
 1. die vollständige Verzeichnis-, Manifest- und CLI-Struktur implementiert ist;
 2. alle Szenarien idempotent und mit sicherem Cleanup ausführbar sind;
-3. der Container-Core auf Docker nachgewiesen ist;
-4. als unterstützt markierte Podman-Szenarien einen eigenen Nachweis besitzen;
-5. Windows-, WSFC-, FCI-, Runtime-, CLR- und Corruption-Gates auf ihren erforderlichen Plattformen ausgeführt wurden;
-6. jede öffentliche Procedure durch reales Szenario oder begründete Fixture abgedeckt ist;
-7. Version, Plattform, Feature, Berechtigung und Partialität korrekt unterschieden werden;
-8. Ressourcenbudgets und tatsächlicher Verbrauch dokumentiert sind;
-9. kein Szenario exakte Wait-Zahlen als universellen Assert verwendet;
-10. Repository- und Artefakt-Privacy bestanden sind;
-11. externe Laufzeitnachweise mit `Test_Matrix.md` und `Metadata/Quality` konsistent sind;
-12. das Operations-Runbook Aufbau, Reset, Recovery-Cleanup, Cachepflege und Fehlerbehebung beschreibt.
+3. der Host-Capability-Vektor und die Auswahl von `WINDOWS_SINGLE_HOST`, `LINUX_NATIVE` und `DISTRIBUTED` deterministisch und read-only vorab geprüft werden;
+4. der Container-Core auf Docker im nativen Linux-Modus und im Hyper-V-Linux-VM-Modus nachgewiesen oder die nicht ausgeführte Lane sichtbar begründet ist;
+5. als unterstützt markierte Podman-Szenarien einen eigenen Nachweis besitzen;
+6. Windows-, WSFC-, FCI-, Runtime-, CLR- und Corruption-Gates auf ihren erforderlichen Plattformen ausgeführt wurden;
+7. fehlende Host- oder Plattformfähigkeiten als `NOT_EXECUTED` und nicht als fachlicher Analyzerfehler erscheinen;
+8. jede öffentliche Procedure durch reales Szenario oder begründete Fixture abgedeckt ist;
+9. Version, Plattform, Feature, Berechtigung und Partialität korrekt unterschieden werden;
+10. Ressourcenbudgets, Reserven und tatsächlicher Peakverbrauch pro Hostklasse dokumentiert sind;
+11. Storage-Rollen auf Einzel- und Mehrdatenträgerhosts sicher aufgelöst werden und `FAULT_TARGET` nie auf ein ungeschütztes Systemziel fällt;
+12. kein Szenario exakte Wait-Zahlen als universellen Assert verwendet;
+13. Repository- und Artefakt-Privacy bestanden sind und keine reale Hostidentität oder Hardwareinventur veröffentlicht wird;
+14. externe Laufzeitnachweise mit `Test_Matrix.md` und `Metadata/Quality` konsistent sind;
+15. das Operations-Runbook Aufbau, Reset, Recovery-Cleanup, Cachepflege, Hostwechsel und Fehlerbehebung beschreibt.
 
 Vor Erfüllung dieser Kriterien bleibt LAB-001 `RESEARCHED_NOT_IMPLEMENTED` oder wechselt bei nutzbaren Teilwellen gemäß dem [Implementierungsstatusmodell](Implementation_Status_Model.md) auf einen präzise abgegrenzten Teilstatus.
 
-## 21. Noch benötigte Informationen vor der Implementierung
+## 21. Lokale Eingaben und automatische Ermittlung
 
-Für diesen Architekturplan werden keine weiteren Kerninformationen benötigt. Vor Welle 0 beziehungsweise spätestens vor Welle 5 sind folgende lokale Eingaben erforderlich:
+Die konkrete Hardwareinventur wird nicht im Repository gepflegt. Welle 0 implementiert stattdessen den read-only Preflight und ordnet jeden Host anhand der tatsächlich ermittelten Ressourcen und Fähigkeiten einer Hostkapazitätsklasse und einem Ausführungsmodus zu. Dadurch bleibt der Plan bei abweichenden oder später erweiterten Hosts gültig.
 
-- Windows-Hostedition und Hyper-V-Verfügbarkeit;
-- physischer RAM, logische CPUs und verfügbarer SSD-Speicher;
+Lokal erforderlich beziehungsweise zu entscheiden sind:
+
+- Windows-Edition und aktivierbare Hyper-V-Fähigkeit oder unterstützte x86-64-Linux-Distribution;
 - zulässige Windows-Server- und SQL-Server-Installationsmedien;
+- lokale Zuordnung der Storage-Rollen `IMAGE_CACHE`, `ACTIVE_VM`, `EPHEMERAL_DATA` und `FAULT_TARGET`;
 - gewünschte Priorität der SQL-Versionen;
 - Entscheidung, ob Podman nur optional oder verpflichtendes Release-Gate ist;
+- bei `DISTRIBUTED`: ausdrücklich freigegebene Remote-Endpunkte, lokaler Secret Store und erreichbares isoliertes Labnetz;
 - Möglichkeit eines isolierten Self-Hosted-Hyper-V-Runners;
 - zulässiger privater IP-Bereich für die lokale Umgebung;
 - gewünschte maximale Laufzeit und Cache-Retention.
 
-Diese Werte verändern Ressourcenprofile und Ausführungsreihenfolge, nicht die Grundarchitektur.
+CPU-, RAM- und freie Storage-Werte werden vor jedem Lauf neu gemessen. Lokale Pfade, Hostnamen, Gerätebezeichnungen, Seriennummern und konkrete Inventarwerte bleiben im ignorierten lokalen State und verändern weder Repositoryinhalt noch öffentliche Evidenz.
 
 ## 22. Quellen
 
 - Docker (2026): [Compose Deploy Specification](https://docs.docker.com/reference/compose-file/deploy/), abgerufen am 23. Juli 2026.
 - Docker (2026): [Resource constraints](https://docs.docker.com/engine/containers/resource_constraints/), abgerufen am 23. Juli 2026.
+- Docker (2026): [Install Docker Engine on Ubuntu](https://docs.docker.com/engine/install/ubuntu/), abgerufen am 23. Juli 2026.
 - HashiCorp (2026): [Packer Hyper-V ISO Builder](https://developer.hashicorp.com/packer/integrations/hashicorp/hyperv/latest/components/builder/iso), abgerufen am 23. Juli 2026.
 - Linux man-pages (2026): [tc-netem(8)](https://man7.org/linux/man-pages/man8/tc-netem.8.html), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [Docker: Run Containers for SQL Server on Linux](https://learn.microsoft.com/en-us/sql/linux/install-upgrade/quickstart-install-docker?view=sql-server-ver17), abgerufen am 23. Juli 2026.
+- Microsoft (2026): [Installation Guidance for SQL Server on Linux](https://learn.microsoft.com/en-us/sql/linux/install-upgrade/setup?view=sql-server-ver17), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [Configure SQL Server Linux containers](https://learn.microsoft.com/en-us/sql/linux/containers/configure?view=sql-server-ver17), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [Configure environment variables for SQL Server on Linux](https://learn.microsoft.com/en-us/sql/linux/configure/environment-variables?view=sql-server-ver17), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [Availability Groups for SQL Server on Linux](https://learn.microsoft.com/en-us/sql/linux/business-continuity/availability-groups/overview?view=sql-server-ver17), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [SQL Server Replication on Linux](https://learn.microsoft.com/en-us/sql/linux/replication/overview?view=sql-server-ver17), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [Install SQL Server Agent on Linux](https://learn.microsoft.com/en-us/sql/linux/install-upgrade/setup-sql-agent?view=sql-server-ver17), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [New-VM](https://learn.microsoft.com/en-us/powershell/module/hyper-v/new-vm?view=windowsserver2025-ps), abgerufen am 23. Juli 2026.
+- Microsoft (2025): [System Requirements for Hyper-V on Windows and Windows Server](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/host-hardware-requirements), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [New-VHD](https://learn.microsoft.com/en-us/powershell/module/hyper-v/new-vhd?view=windowsserver2025-ps), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [Set-VMHardDiskDrive](https://learn.microsoft.com/en-us/powershell/module/hyper-v/set-vmharddiskdrive?view=windowsserver2025-ps), abgerufen am 23. Juli 2026.
 - Microsoft (2025): [Manage Windows Virtual Machines with PowerShell Direct](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/powershell-direct), abgerufen am 23. Juli 2026.
 - Microsoft (2026): [Automate Windows Setup](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/automate-windows-setup?view=windows-11), abgerufen am 23. Juli 2026.
+- Podman (2026): [Podman Installation](https://podman.io/docs/installation), abgerufen am 23. Juli 2026.
 - Podman (2026): [podman compose](https://docs.podman.io/en/latest/markdown/podman-compose.1.html), abgerufen am 23. Juli 2026.
 - Podman (2026): [podman run resource limits](https://docs.podman.io/en/latest/markdown/podman-run.1.html), abgerufen am 23. Juli 2026.
 - Podman Desktop (2026): [Windows installation](https://podman-desktop.io/docs/installation/windows-install), abgerufen am 23. Juli 2026.
