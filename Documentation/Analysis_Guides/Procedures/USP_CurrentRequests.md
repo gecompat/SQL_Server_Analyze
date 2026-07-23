@@ -69,6 +69,9 @@ Sicherheitsidentität.
 
 ## Snapshot-Verhalten
 
+Der vollständige [Current-Request-Context-Vertrag](../../Architecture/Current_Request_Context_Contract.md)
+dokumentiert Resultsets, Provenienz, Zeitsemantik und Nichtverfügbarkeitsstatus.
+
 Ein direkter Aufruf liest Sessions, Requests, Connections, Waiting Tasks,
 Memory Grants, Resource Semaphores, Resource-Governor-Zuordnung, Tasks,
 Scheduler, Transaktionen, TempDB-Verbrauch und angeforderte Textquellen frisch.
