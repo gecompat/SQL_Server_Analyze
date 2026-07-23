@@ -528,10 +528,21 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
     , @IsPartialOut=@Diag003Partial OUTPUT
     , @ErrorNumberOut=@Diag003Error OUTPUT
     , @ErrorMessageOut=@Diag003Message OUTPUT;
+DECLARE @Diag003EvictedValueStatus varchar(40)=JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueStatus');
+DECLARE @Diag003EvictedValueSource varchar(40)=JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueSource');
 IF @Diag003Status<>'UNAVAILABLE_OBJECT'
-   OR JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueStatus')<>N'PLAN_EVICTED'
-   OR JSON_VALUE(@Diag003Json,N'$.parameters[0].ValueSource')<>N'COMPILE_PLAN'
-    THROW 53643,N'Ein nicht mehr auflösbarer Cacheplan wurde nicht als PLAN_EVICTED ausgewiesen.',1;
+   OR @Diag003EvictedValueStatus<>N'PLAN_EVICTED'
+   OR @Diag003EvictedValueSource<>N'COMPILE_PLAN'
+BEGIN
+    DECLARE @Diag003EvictedAssertMessage nvarchar(2048)=CONCAT
+    (
+          N'PLAN_EVICTED-Vertrag verletzt: status=',COALESCE(@Diag003Status,N'<NULL>')
+        , N'; error=',COALESCE(CONVERT(nvarchar(20),@Diag003Error),N'<NULL>')
+        , N'; valueStatus=',COALESCE(@Diag003EvictedValueStatus,N'<NULL>')
+        , N'; valueSource=',COALESCE(@Diag003EvictedValueSource,N'<NULL>')
+    );
+    THROW 53643,@Diag003EvictedAssertMessage,1;
+END;
 
 DECLARE @MissingSessionId smallint=32767;
 WHILE @MissingSessionId>1
