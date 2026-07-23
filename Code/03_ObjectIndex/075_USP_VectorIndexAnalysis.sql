@@ -378,7 +378,7 @@ BEGIN
                     , @VectorRuntimeSchemaValid=0;
 
                 SET @ProbeSql=N'USE '+QUOTENAME(@DatabaseName)+N';
-SELECT @pPreviewFeaturesEnabled=CONVERT(bit,MAX(CASE WHEN [name]=N''PREVIEW_FEATURES'' THEN TRY_CONVERT(tinyint,[value]) END))
+SELECT @pPreviewFeaturesEnabled=CONVERT(bit,MAX(CASE WHEN [name]=N''PREVIEW_FEATURES'' AND TRY_CONVERT(bit,[value])=1 THEN 1 ELSE 0 END))
 FROM [sys].[database_scoped_configurations] WITH (NOLOCK);
 
 SELECT @pHasVectorCatalog=CONVERT(bit,CASE WHEN EXISTS
