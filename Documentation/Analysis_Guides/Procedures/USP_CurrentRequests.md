@@ -69,24 +69,34 @@ Sicherheitsidentität.
 
 ## Snapshot-Verhalten
 
+Der vollständige [Current-Request-Context-Vertrag](../../Architecture/Current_Request_Context_Contract.md)
+dokumentiert Resultsets, Provenienz, Zeitsemantik und Nichtverfügbarkeitsstatus.
+
 Ein direkter Aufruf liest Sessions, Requests, Connections, Waiting Tasks,
-Memory Grants, Resource-Governor-Zuordnung und angeforderte Textquellen frisch.
+Memory Grants, Resource Semaphores, Resource-Governor-Zuordnung, Tasks,
+Scheduler, Transaktionen, TempDB-Verbrauch und angeforderte Textquellen frisch.
 `@ParentCurrentStateSnapshotId` ist ausschließlich der interne
 Consumervertrag von `USP_CurrentOverview`; Anwender sollen ihn nicht setzen.
 Im Overview werden die gemeinsamen Primärquellen einmal materialisiert und
 SQL-Handles vor dem Textzugriff dedupliziert. Input Buffer bleibt bewusst eine
 Post-Candidate-Quelle: Er wird nur für die nach Filtern und Limit verbliebenen
 Requests und nur bei `@InputBufferEinbeziehen = 1` gelesen. RAW und JSON weisen
-Snapshot-ID und Startzeitpunkt aus.
+Snapshot-ID, Quellzeitpunkte, Abschlusszeit, Zeilenzahl und Quellenstatus aus.
 
 ## Resultsets und Leserichtung
 
 - `CONSOLE` liefert genau ein fachliches Resultset aus der materialisierten Requestmenge. Es eignet sich für die erste Sichtung.
-- `RAW` liefert zuerst den Modulstatus, danach die vollständigen Requests mit Wait-Kataloganreicherung und zuletzt optionale Warnungen. Lesen Sie für eine belastbare Analyse immer zuerst `StatusCode`, `IsPartial`, `HasMoreRows` und `RequiredPermission`.
-- `TABLE` schreibt ausschließlich das im Inventar benannte Primärergebnis `requests` in die über `@ResultTablesJson` zugeordnete lokale Temp-Tabelle. Status und Warnungen werden nicht als eigene TABLE-Ergebnisse exportiert.
-- `@JsonErzeugen = 1` trennt `meta`, `requests`, `statements`, `batches`, `inputBuffers` und `warnings`.
+- `RAW` liefert Modulstatus, das kompatible Legacy-Resultset `requests`, danach `requestContext`, `snapshotStatus`, `statements`, `batches`, `inputBuffers` und `warnings`.
+- `TABLE` exportiert jeden dieser stabilen Namen gezielt über `@ResultTablesJson`; nicht benannte Ziele werden nicht geschrieben.
+- `@JsonErzeugen = 1` verwendet dieselben Materialisierungen und ergänzt das Schema 4 additiv um `requestContext` und `snapshotStatus`.
 
-Eine Statuszeile ist keine Requestzeile. Eine Warnung zur Modulauflösung macht die bereits gelesenen Requestwerte nicht automatisch falsch, kann aber Namen und Kontext unvollständig lassen.
+Eine Zeile in `requestContext` bündelt die zum Request korrelierbaren
+Connection-, Wait-, Task-, Scheduler-, Transaktions-, Memory-, TempDB- und
+Resource-Governor-Felder. `snapshotStatus` besitzt dagegen eine Zeile je
+Quelle. `statements`, `batches` und `inputBuffers` erzeugen je behaltenem
+Request eine Evidenzzeile, auch wenn der Text mit `NOT_COLLECTED`, `ENCRYPTED`,
+`INVALID_OFFSETS`, `TEXT_UNAVAILABLE`, `TEXT_TRUNCATED` oder
+`REQUEST_FINISHED` abgegrenzt werden muss.
 
 ## Eine Zeile bedeutet
 

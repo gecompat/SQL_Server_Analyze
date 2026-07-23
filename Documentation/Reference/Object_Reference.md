@@ -660,8 +660,8 @@ Quelle: `Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql`
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Materialisiert die von einem Current-State-Orchestrator angeforderten primären DMV- und Textquellen einmalig in aufruflokalen Temp-Tabellen. |
-| Schnittstelle | Interne Stored Procedure; Parameter: `@SnapshotId uniqueidentifier`; sieben quellenbezogene `@Capture*`-Schalter; `@MaxSqlTextHandles int = 1000`. Der Aufrufer legt den versionierten Temp-Table-Vertrag an und besitzt dessen Lebensdauer. |
-| Verwendung | `USP_CurrentOverview` ruft den Baustein vor den Snapshot-fähigen Children auf. Einzelaufrufe der Children übergeben keine Parent-ID und lesen ihre Quellen frisch. |
+| Schnittstelle | Interne Stored Procedure; Parameter: `@SnapshotId uniqueidentifier`; elf quellenbezogene `@Capture*`-Schalter; `@MaxSqlTextHandles int = 1000`. Der Aufrufer legt den Temp-Table-Vertrag Version 2 an und besitzt dessen Lebensdauer. |
+| Verwendung | `USP_CurrentOverview` ruft den Baustein vor Sessions, Requests, Blocking, Waits, Transactions, Memory Grants, TempDB und I/O auf. Einzelaufrufe der Children übergeben keine Parent-ID und lesen ihre Quellen frisch. |
 | Last und Sperren | Read-only unter `LOCK_TIMEOUT 0`. Nur aktivierte Quellen werden gelesen; SQL-Handles werden dedupliziert und optional begrenzt. Fehler einer Quelle werden isoliert in der Source-Status-Tabelle festgehalten. |
 | Vertrag | Nicht öffentlicher, aufruflokaler Vertrag. Snapshot-ID und Temp-Tabellen dürfen nur innerhalb desselben Orchestratoraufrufs verwendet werden; spätere oder fremde IDs werden abgelehnt. |
 

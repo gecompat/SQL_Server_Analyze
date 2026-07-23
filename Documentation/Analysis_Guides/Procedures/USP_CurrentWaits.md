@@ -38,6 +38,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `currentTasks`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Im Overview konsumiert der aktuelle Taskpfad Waiting Tasks, Sessions, Requests
+und deduplizierten SQL-Text aus derselben Snapshot-ID. Die instanzweiten
+Wait-Stats und ein optionales Delta-Sample bleiben eigene Messpunkte. Ein
+Standalone-Aufruf verwendet ausschließlich frische Quellen.
+
 ## Eine Zeile bedeutet
 
 Je Resultset beschreibt eine Zeile einen sichtbaren Wait beziehungsweise eine Aggregation nach Session, Request, Waittyp oder Gruppe. Im Samplemodus ist das Delta maßgeblich.

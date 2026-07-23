@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentTransactions
-Version      : 2.0.1
-Stand        : 2026-07-16
+Version      : 3.0.0
+Stand        : 2026-07-23
 Zweck        : Zeigt aktive Transaktionen einschließlich Session-, Request- und
                Logverbrauchsinformationen. Unterstützt Sessionlisten sowie
                RAW-, CONSOLE- und JSON-Ausgabe.
@@ -25,6 +25,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentTransactions]
     , @Json                       nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen             bit            = 1
     , @Hilfe                      bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -60,6 +61,9 @@ BEGIN
     DECLARE @RowCount bigint = 0;
     DECLARE @HasMoreRows bit = 0;
     DECLARE @Message nvarchar(2048);
+    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@Now;
+    DECLARE @EvidenceIsPartial bit=0;
 
     CREATE TABLE [#CurrentTransactions_SessionFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
     CREATE TABLE [#CurrentTransactions_Result]
@@ -90,6 +94,52 @@ BEGIN
           [StatusCode] varchar(40) NOT NULL
         , [ErrorNumber] int NULL
         , [ErrorMessage] nvarchar(2048) NULL
+    );
+    CREATE TABLE [#CurrentTransactions_SourceSessionTransactions]
+    (
+          [session_id] int NOT NULL
+        , [transaction_id] bigint NOT NULL
+        , PRIMARY KEY([session_id],[transaction_id])
+    );
+    CREATE TABLE [#CurrentTransactions_SourceActiveTransactions]
+    (
+          [transaction_id] bigint NOT NULL PRIMARY KEY
+        , [transaction_begin_time] datetime NULL
+        , [transaction_type] int NULL
+        , [transaction_state] int NULL
+    );
+    CREATE TABLE [#CurrentTransactions_SourceDatabaseTransactions]
+    (
+          [transaction_id] bigint NOT NULL
+        , [database_id] int NOT NULL
+        , [database_transaction_log_bytes_used] bigint NOT NULL
+        , [database_transaction_log_bytes_reserved] bigint NOT NULL
+    );
+    CREATE TABLE [#CurrentTransactions_SourceSessions]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [is_user_process] bit NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [open_transaction_count] int NOT NULL
+        , [login_name] nvarchar(128) NOT NULL
+        , [host_name] nvarchar(128) NULL
+        , [program_name] nvarchar(128) NULL
+    );
+    CREATE TABLE [#CurrentTransactions_SourceRequests]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [database_id] smallint NOT NULL
+        , [sql_handle] varbinary(64) NULL
+        , [statement_start_offset] int NULL
+        , [statement_end_offset] int NULL
+        , PRIMARY KEY([session_id],[request_id])
+    );
+    CREATE TABLE [#CurrentTransactions_SourceSqlText]
+    (
+          [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
+        , [Text] nvarchar(max) NULL
     );
 
     IF @SessionIds IS NOT NULL
@@ -136,6 +186,117 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
+        IF @ParentCurrentStateSnapshotId IS NOT NULL
+        BEGIN
+            EXEC [sys].[sp_executesql] N'
+                DECLARE @Probe int;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SessionTransactions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_ActiveTransactions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_DatabaseTransactions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
+
+            IF NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                  AND [ContractVersion]=2
+            )
+                THROW 51020,N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.',1;
+
+            INSERT [#CurrentTransactions_SourceSessionTransactions]
+            SELECT [session_id],[transaction_id]
+            FROM [#CurrentOverview_CurrentStateSnapshot_SessionTransactions]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentTransactions_SourceActiveTransactions]
+            SELECT [transaction_id],[transaction_begin_time],[transaction_type],[transaction_state]
+            FROM [#CurrentOverview_CurrentStateSnapshot_ActiveTransactions]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentTransactions_SourceDatabaseTransactions]
+            SELECT
+                  [transaction_id],[database_id],[database_transaction_log_bytes_used]
+                , [database_transaction_log_bytes_reserved]
+            FROM [#CurrentOverview_CurrentStateSnapshot_DatabaseTransactions]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentTransactions_SourceSessions]
+            SELECT
+                  [session_id],[is_user_process],[status],[open_transaction_count]
+                , [login_name],[host_name],[program_name]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentTransactions_SourceRequests]
+            SELECT
+                  [session_id],[request_id],[status],[database_id],[sql_handle]
+                , [statement_start_offset],[statement_end_offset]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Requests]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            IF @MitSqlText=1
+                INSERT [#CurrentTransactions_SourceSqlText]
+                SELECT [SqlHandle],[Text]
+                FROM [#CurrentOverview_CurrentStateSnapshot_SqlText]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            SELECT
+                  @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                , @EvidenceIsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
+            FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+              AND [SourceCode] IN
+                  ('SESSION_TRANSACTIONS','ACTIVE_TRANSACTIONS','DATABASE_TRANSACTIONS',
+                   'SESSIONS','REQUESTS','SQL_TEXT');
+        END
+        ELSE
+        BEGIN
+            SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentTransactions_SourceSessionTransactions]
+            SELECT [session_id],[transaction_id]
+            FROM [sys].[dm_tran_session_transactions] WITH (NOLOCK);
+
+            INSERT [#CurrentTransactions_SourceActiveTransactions]
+            SELECT [transaction_id],[transaction_begin_time],[transaction_type],[transaction_state]
+            FROM [sys].[dm_tran_active_transactions] WITH (NOLOCK);
+
+            INSERT [#CurrentTransactions_SourceDatabaseTransactions]
+            SELECT
+                  [transaction_id],[database_id],[database_transaction_log_bytes_used]
+                , [database_transaction_log_bytes_reserved]
+            FROM [sys].[dm_tran_database_transactions] WITH (NOLOCK);
+
+            INSERT [#CurrentTransactions_SourceSessions]
+            SELECT
+                  [session_id],[is_user_process],[status],[open_transaction_count]
+                , [login_name],[host_name],[program_name]
+            FROM [sys].[dm_exec_sessions] WITH (NOLOCK);
+
+            INSERT [#CurrentTransactions_SourceRequests]
+            SELECT
+                  [session_id],[request_id],[status],[database_id],[sql_handle]
+                , [statement_start_offset],[statement_end_offset]
+            FROM [sys].[dm_exec_requests] WITH (NOLOCK);
+
+            IF @MitSqlText=1
+                INSERT [#CurrentTransactions_SourceSqlText]
+                SELECT [h].[SqlHandle],[t].[text]
+                FROM
+                (
+                    SELECT [sql_handle] AS [SqlHandle]
+                    FROM [#CurrentTransactions_SourceRequests]
+                    WHERE [sql_handle] IS NOT NULL
+                    GROUP BY [sql_handle]
+                ) AS [h]
+                OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle]) AS [t];
+        END;
+
         INSERT [#CurrentTransactions_Result]
         (
               [SessionId], [TransactionId], [TransactionBeginTimeUtc]
@@ -163,21 +324,22 @@ BEGIN
             , [dt].[database_transaction_log_bytes_used]
             , [dt].[database_transaction_log_bytes_reserved]
             , NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText = 1 THEN [statementText].[StatementText] END
-        FROM [sys].[dm_tran_session_transactions] AS [st] WITH (NOLOCK)
-        INNER JOIN [sys].[dm_tran_active_transactions] AS [at] WITH (NOLOCK)
+        FROM [#CurrentTransactions_SourceSessionTransactions] AS [st]
+        INNER JOIN [#CurrentTransactions_SourceActiveTransactions] AS [at]
           ON [at].[transaction_id] = [st].[transaction_id]
-        INNER JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+        INNER JOIN [#CurrentTransactions_SourceSessions] AS [s]
           ON [s].[session_id] = [st].[session_id]
-        LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+        LEFT JOIN [#CurrentTransactions_SourceRequests] AS [r]
           ON [r].[session_id] = [st].[session_id]
-        LEFT JOIN [sys].[dm_tran_database_transactions] AS [dt] WITH (NOLOCK)
+        LEFT JOIN [#CurrentTransactions_SourceDatabaseTransactions] AS [dt]
           ON [dt].[transaction_id] = [st].[transaction_id]
         LEFT JOIN [master].[sys].[databases] AS [d] WITH (NOLOCK)
           ON [d].[database_id] = COALESCE([r].[database_id], [dt].[database_id])
-        OUTER APPLY [sys].[dm_exec_sql_text](CASE WHEN @MitSqlText = 1 THEN [r].[sql_handle] END) AS [sqlText]
+        LEFT JOIN [#CurrentTransactions_SourceSqlText] AS [sqlText]
+          ON [sqlText].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [r].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [sqlText].[text]
+              [sqlText].[Text]
             , [r].[statement_start_offset]
             , [r].[statement_end_offset]
         ) AS [statementText]
@@ -211,12 +373,16 @@ BEGIN
 
         SELECT @RowCount = COUNT_BIG(*) FROM [#CurrentTransactions_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
+        IF @EvidenceIsPartial=1 SET @StatusCode='AVAILABLE_LIMITED';
     END TRY
     BEGIN CATCH
         SET @ErrorNumber = ERROR_NUMBER();
         SET @ErrorMessage = ERROR_MESSAGE();
         SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
-                               WHEN @ErrorNumber = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                               WHEN @ErrorNumber = 1222 THEN 'TIMEOUT'
+                               WHEN @ParentCurrentStateSnapshotId IS NOT NULL
+                                AND @ErrorNumber IN (208, 51020) THEN 'INVALID_PARENT_SNAPSHOT'
+                               ELSE 'ERROR_HANDLED' END;
         INSERT [#CurrentTransactions_Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
     END CATCH;
 
@@ -231,6 +397,8 @@ BEGIN
         SELECT
               N'USP_CurrentTransactions' AS [ModuleName]
             , @Now AS [CollectionTimeUtc]
+            , @EvidenceSnapshotStartedAtUtc AS [EvidenceSnapshotStartedAtUtc]
+            , @EvidenceSnapshotId AS [EvidenceSnapshotId]
             , @StatusCode AS [StatusCode]
             , CONVERT(bit, CASE WHEN @StatusCode = 'AVAILABLE' THEN 0 ELSE 1 END) AS [IsPartial]
             , CASE WHEN @RowCount > @Limit THEN @Limit ELSE @RowCount END AS [ReturnedRowCount]
@@ -274,9 +442,12 @@ BEGIN
         (
             SELECT
                   N'CurrentTransactions' AS [resultName]
-                , 1 AS [schemaVersion]
+                , 2 AS [schemaVersion]
                 , @Now AS [generatedAtUtc]
+                , @EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc]
+                , @EvidenceSnapshotId AS [evidenceSnapshotId]
                 , @StatusCode AS [statusCode]
+                , CONVERT(bit,CASE WHEN @StatusCode='AVAILABLE' THEN 0 ELSE 1 END) AS [isPartial]
                 , @MaxZeilen AS [requestedMaxRows]
                 , CASE WHEN @RowCount > @Limit THEN @Limit ELSE @RowCount END AS [returnedRows]
                 , @HasMoreRows AS [hasMoreRows]

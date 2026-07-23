@@ -128,6 +128,7 @@ USP_CurrentBlocking,JsonErzeugen,bit,0
 USP_CurrentBlocking,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentBlocking,PrintMeldungen,bit,1
 USP_CurrentBlocking,Hilfe,bit,0
+USP_CurrentBlocking,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentWaits,SessionIds,nvarchar(max),NULL
 USP_CurrentWaits,MinWaitMs,bigint,0
 USP_CurrentWaits,WaitTypes,nvarchar(max),NULL
@@ -148,6 +149,7 @@ USP_CurrentWaits,JsonErzeugen,bit,0
 USP_CurrentWaits,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentWaits,PrintMeldungen,bit,1
 USP_CurrentWaits,Hilfe,bit,0
+USP_CurrentWaits,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentTransactions,SessionIds,nvarchar(max),NULL
 USP_CurrentTransactions,MinAlterSekunden,int,0
 USP_CurrentTransactions,NurSleeping,bit,0
@@ -161,6 +163,7 @@ USP_CurrentTransactions,JsonErzeugen,bit,0
 USP_CurrentTransactions,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentTransactions,PrintMeldungen,bit,1
 USP_CurrentTransactions,Hilfe,bit,0
+USP_CurrentTransactions,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentMemoryGrants,SessionIds,nvarchar(max),NULL
 USP_CurrentMemoryGrants,AktuelleSessionEinbeziehen,bit,0
 USP_CurrentMemoryGrants,NurWartende,bit,0
@@ -175,6 +178,7 @@ USP_CurrentMemoryGrants,JsonErzeugen,bit,0
 USP_CurrentMemoryGrants,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentMemoryGrants,PrintMeldungen,bit,1
 USP_CurrentMemoryGrants,Hilfe,bit,0
+USP_CurrentMemoryGrants,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentTempDB,SessionIds,nvarchar(max),NULL
 USP_CurrentTempDB,AktuelleSessionEinbeziehen,bit,0
 USP_CurrentTempDB,MinNettoMb,"decimal(19,2)",0
@@ -187,6 +191,7 @@ USP_CurrentTempDB,JsonErzeugen,bit,0
 USP_CurrentTempDB,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentTempDB,PrintMeldungen,bit,1
 USP_CurrentTempDB,Hilfe,bit,0
+USP_CurrentTempDB,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentIO,DatabaseNames,nvarchar(max),NULL
 USP_CurrentIO,SystemdatenbankenEinbeziehen,bit,0
 USP_CurrentIO,DatabaseNamePattern,nvarchar(4000),NULL
@@ -204,6 +209,7 @@ USP_CurrentIO,JsonErzeugen,bit,0
 USP_CurrentIO,Json,nvarchar(max),NULL OUTPUT
 USP_CurrentIO,PrintMeldungen,bit,1
 USP_CurrentIO,Hilfe,bit,0
+USP_CurrentIO,ParentCurrentStateSnapshotId,uniqueidentifier,NULL
 USP_CurrentLog,DatabaseNames,nvarchar(max),NULL
 USP_CurrentLog,SystemdatenbankenEinbeziehen,bit,0
 USP_CurrentLog,DatabaseNamePattern,nvarchar(4000),NULL

@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentTempDB
-Version      : 2.0.0
-Stand        : 2026-07-15
+Version      : 3.0.0
+Stand        : 2026-07-23
 Zweck        : Zeigt aktuellen TempDB-Verbrauch je Session und optional die
                TempDB-Dateien. Unterstützt Sessionlisten, RAW, CONSOLE und JSON.
 ===============================================================================
@@ -23,6 +23,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentTempDB]
     , @Json                       nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen             bit            = 1
     , @Hilfe                      bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -58,6 +59,9 @@ BEGIN
     DECLARE @RowCount bigint = 0;
     DECLARE @HasMoreRows bit = 0;
     DECLARE @Message nvarchar(2048);
+    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@Now;
+    DECLARE @EvidenceIsPartial bit=0;
 
     CREATE TABLE [#CurrentTempDB_SessionFilter]([SessionId] smallint NOT NULL PRIMARY KEY);
     CREATE TABLE [#CurrentTempDB_Sessions]
@@ -93,6 +97,23 @@ BEGIN
           [StatusCode] varchar(40) NOT NULL
         , [ErrorNumber] int NULL
         , [ErrorMessage] nvarchar(2048) NULL
+    );
+    CREATE TABLE [#CurrentTempDB_SourceSessions]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [is_user_process] bit NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [login_name] nvarchar(128) NOT NULL
+        , [host_name] nvarchar(128) NULL
+        , [program_name] nvarchar(128) NULL
+    );
+    CREATE TABLE [#CurrentTempDB_SourceSessionUsage]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [user_objects_alloc_page_count] bigint NOT NULL
+        , [user_objects_dealloc_page_count] bigint NOT NULL
+        , [internal_objects_alloc_page_count] bigint NOT NULL
+        , [internal_objects_dealloc_page_count] bigint NOT NULL
     );
 
     IF @SessionIds IS NOT NULL
@@ -138,6 +159,60 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
+        IF @ParentCurrentStateSnapshotId IS NOT NULL
+        BEGIN
+            EXEC [sys].[sp_executesql] N'
+                DECLARE @Probe int;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_TempDbSessionUsage] WHERE 1=0;';
+
+            IF NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                  AND [ContractVersion]=2
+            )
+                THROW 51020,N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.',1;
+
+            INSERT [#CurrentTempDB_SourceSessions]
+            SELECT [session_id],[is_user_process],[status],[login_name],[host_name],[program_name]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentTempDB_SourceSessionUsage]
+            SELECT
+                  [session_id],[user_objects_alloc_page_count],[user_objects_dealloc_page_count]
+                , [internal_objects_alloc_page_count],[internal_objects_dealloc_page_count]
+            FROM [#CurrentOverview_CurrentStateSnapshot_TempDbSessionUsage]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            SELECT
+                  @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                , @EvidenceIsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
+            FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+              AND [SourceCode] IN ('SESSIONS','TEMPDB_SESSION_USAGE');
+        END
+        ELSE
+        BEGIN
+            SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentTempDB_SourceSessions]
+            SELECT [session_id],[is_user_process],[status],[login_name],[host_name],[program_name]
+            FROM [sys].[dm_exec_sessions] WITH (NOLOCK);
+
+            EXEC [sys].[sp_executesql] N'
+                USE [tempdb];
+                INSERT [#CurrentTempDB_SourceSessionUsage]
+                SELECT
+                      [session_id],[user_objects_alloc_page_count],[user_objects_dealloc_page_count]
+                    , [internal_objects_alloc_page_count],[internal_objects_dealloc_page_count]
+                FROM [sys].[dm_db_session_space_usage] WITH (NOLOCK);';
+        END;
+
         INSERT [#CurrentTempDB_Sessions]
         (
               [SessionId], [LoginName], [HostName], [ProgramName], [SessionStatus]
@@ -162,8 +237,8 @@ BEGIN
                     [su].[user_objects_alloc_page_count] - [su].[user_objects_dealloc_page_count]
                     + [su].[internal_objects_alloc_page_count] - [su].[internal_objects_dealloc_page_count]
                 ) * 8.0 / 1024.0)
-        FROM [sys].[dm_db_session_space_usage] AS [su] WITH (NOLOCK)
-        LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+        FROM [#CurrentTempDB_SourceSessionUsage] AS [su]
+        LEFT JOIN [#CurrentTempDB_SourceSessions] AS [s]
           ON [s].[session_id] = [su].[session_id]
         WHERE (@AktuelleSessionEinbeziehen = 1 OR [su].[session_id] <> @@SPID)
           AND (@SystemSessionsEinbeziehen = 1 OR COALESCE([s].[is_user_process], 1) = 1)
@@ -214,12 +289,16 @@ ORDER BY [df].[file_id];';
 
         SELECT @RowCount = COUNT_BIG(*) FROM [#CurrentTempDB_Sessions];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
+        IF @EvidenceIsPartial=1 SET @StatusCode='AVAILABLE_LIMITED';
     END TRY
     BEGIN CATCH
         SET @ErrorNumber = ERROR_NUMBER();
         SET @ErrorMessage = ERROR_MESSAGE();
         SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
-                               WHEN @ErrorNumber = 1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END;
+                               WHEN @ErrorNumber = 1222 THEN 'TIMEOUT'
+                               WHEN @ParentCurrentStateSnapshotId IS NOT NULL
+                                AND @ErrorNumber IN (208, 51020) THEN 'INVALID_PARENT_SNAPSHOT'
+                               ELSE 'ERROR_HANDLED' END;
         INSERT [#CurrentTempDB_Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
     END CATCH;
 
@@ -234,6 +313,8 @@ ORDER BY [df].[file_id];';
         SELECT
               N'USP_CurrentTempDB' AS [ModuleName]
             , @Now AS [CollectionTimeUtc]
+            , @EvidenceSnapshotStartedAtUtc AS [EvidenceSnapshotStartedAtUtc]
+            , @EvidenceSnapshotId AS [EvidenceSnapshotId]
             , @StatusCode AS [StatusCode]
             , CONVERT(bit, CASE WHEN @StatusCode = 'AVAILABLE' THEN 0 ELSE 1 END) AS [IsPartial]
             , CASE WHEN @RowCount > @Limit THEN @Limit ELSE @RowCount END AS [ReturnedRowCount]
@@ -285,8 +366,12 @@ ORDER BY [df].[file_id];';
     BEGIN
         DECLARE @Meta nvarchar(max) =
         (
-            SELECT N'CurrentTempDB' AS [resultName], 1 AS [schemaVersion], @Now AS [generatedAtUtc],
-                   @StatusCode AS [statusCode], @MaxZeilen AS [requestedMaxRows],
+            SELECT N'CurrentTempDB' AS [resultName], 2 AS [schemaVersion], @Now AS [generatedAtUtc],
+                   @EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc],
+                   @EvidenceSnapshotId AS [evidenceSnapshotId],
+                   @StatusCode AS [statusCode],
+                   CONVERT(bit,CASE WHEN @StatusCode='AVAILABLE' THEN 0 ELSE 1 END) AS [isPartial],
+                   @MaxZeilen AS [requestedMaxRows],
                    CASE WHEN @RowCount > @Limit THEN @Limit ELSE @RowCount END AS [returnedRows],
                    @HasMoreRows AS [hasMoreRows]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES

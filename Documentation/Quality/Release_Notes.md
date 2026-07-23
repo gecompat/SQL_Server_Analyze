@@ -21,12 +21,13 @@ Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle
 
 ## Abschlusswelle 0/1 – Statusmodell und Current-State-Evidenzbasis
 
-Die fünf kanonischen Abschlussstatus sind in einem gemeinsamen, maschinenlesbaren Modell festgelegt. DIAG-003 wird als `IMPLEMENTED_ACTIONS_GATE`, DIAG-004 und DIAG-005 als `PARTIAL_PRODUCT_FUNCTION`, RUNTIME-001 als `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`, der ausgelieferte SC-023-Slice als `IMPLEMENTED_ACTIONS_GATE` und optionale Ausbaupunkte separat als `OPTIONAL_FUTURE` geführt. Das Special-Feature-Routing für Verschlüsselung verweist konsistent auf die bereits implementierte `USP_EncryptionAnalysis`.
+Die fünf kanonischen Abschlussstatus sind in einem gemeinsamen,
+maschinenlesbaren Modell festgelegt. Das Special-Feature-Routing für
+Verschlüsselung verweist konsistent auf die bereits implementierte
+`USP_EncryptionAnalysis`. DIAG-003 und DIAG-004 sind inzwischen
+`IMPLEMENTED_ACTIONS_GATE`; DIAG-005 bleibt `PARTIAL_PRODUCT_FUNCTION`.
 
 Der erste Slice der gemeinsamen laufinternen Evidenzbasis ergänzt einen aufruflokalen Snapshot-Owner für Sessions, Requests, Connections, Waiting Tasks, Memory Grants, Resource Governor sowie begrenzte SQL-Text-Evidenz. `USP_CurrentOverview` liest jede aktivierte Primärquelle einmal und reicht denselben Snapshot an `USP_CurrentSessions` und `USP_CurrentRequests` weiter. Einzelaufrufe bleiben frisch und lehnen fremde oder abgelaufene Parent-IDs ab. Input Buffer bleibt bis zur späteren Konsolidierung eine begrenzte Post-Candidate-Quelle von `USP_CurrentRequests`. Das neue Resultset `snapshotStatus` weist Snapshot-ID, Quellzeit, Abschlusszeit, Zeilenzahl, Partialität und isolierte Quellenfehler aus.
-
-Dieser Slice schließt die gemeinsame Current-State-Evidenzbasis noch nicht ab. Blocking, Waits, Transaktionen, Memory Grants, TempDB, I/O und Log verwenden bis zu ihrer gezielten Migration weiterhin ihre bestehenden eigenständigen Lesewege.
-
 
 ## Welle 2 – DIAG-003 Parameter-Evidenz
 
@@ -43,6 +44,32 @@ und Planhandle. Parameter-XML wird weiterhin nur in der zentralen Child-Engine
 zerlegt. Der Runtimevertrag `120` schützt den eigenständig installierbaren
 Einplanpfad; Vertrag `121` schützt die Frameworkaggregation im
 SQL-Server-2019-/2022-/2025-Release-Gate.
+
+## Welle 3 – DIAG-004 Statement- und Requestkontext
+
+`USP_CurrentRequests` ergänzt das kompatible Resultset `requests` um die
+kanonischen Resultsets `requestContext`, `snapshotStatus`, `statements`,
+`batches`, `inputBuffers` und `warnings`. Source-, Capture-, Trunkierungs- und
+Auslassungsstatus trennen nicht angeforderte, verschlüsselte, ungültig
+adressierte, nicht mehr verfügbare und gekürzte Texte. Connection-, Wait-,
+Task-, Scheduler-, Transaktions-, Memory-Grant-, TempDB-,
+Resource-Governor- und Query-Identität stehen pro Request in
+`requestContext`.
+
+Der laufinterne Snapshot-Owner verwendet Vertragsversion 2. Sessions,
+Requests, Blocking, Waits, Transactions, Memory Grants, TempDB und I/O
+konsumieren im Overview dieselbe Snapshot-ID und lesen überlappende
+Primärquellen nicht erneut. Quellzeitpunkte bleiben einzeln ausgewiesen und
+werden nicht als transaktional atomar dargestellt. Input Buffer bleibt eine
+begrenzte Post-Candidate-Quelle; Locks, Instanz-Wait-Stats, Datei-I/O und
+weitere nicht überlappende Childquellen behalten ihre eigenen Messpunkte.
+
+Der öffentliche Vertrag steht in
+`Metadata/Quality/CurrentRequestContext_Public_Contract.json`. Die
+Runtimeverträge `122` und `199` schützen kanonische JSON-/TABLE-Ausgabe,
+Statussemantik, Parent-Grenzen sowie die gemeinsame Snapshot-ID auf SQL Server
+2019, 2022 und 2025. DIAG-004 steht damit auf
+`IMPLEMENTED_ACTIONS_GATE`.
 
 ## RUNTIME-001 – External Runtime und SQL CLR
 

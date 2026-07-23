@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentWaits
-Version      : 3.1.0
-Stand        : 2026-07-21
+Version      : 4.0.0
+Stand        : 2026-07-23
 Zweck        : Liefert aktuelle Waiting Tasks sowie kumulativen oder
                gesampelten instanzweiten Wait-Kontext mit Listen- und
                Patternfiltern.
@@ -34,6 +34,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentWaits]
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
     , @Hilfe                        bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -51,6 +52,8 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
     DECLARE @CandidateMaxZeilen bigint,@MonitorPrintMessage nvarchar(2048),@StartBefore datetime,@StartAfter datetime;
+    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
 
     IF @Hilfe=1
     BEGIN
@@ -100,19 +103,155 @@ BEGIN
         [WaitType] nvarchar(120) NOT NULL,[WaitingTasksCount] bigint NULL,[WaitTimeMs] bigint NULL,[SignalWaitTimeMs] bigint NULL,[ResourceWaitTimeMs] bigint NULL,[SampleSeconds] int NULL,[MeasurementType] varchar(30) NOT NULL,[WaitGroup] nvarchar(64) NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) NULL,[WaitTypicalOccurrence] nvarchar(1200) NULL,[HighWaitImpact] nvarchar(1200) NULL,[RecommendedChecks] nvarchar(1500) NULL,[WaitHelpUrl] nvarchar(500) NULL,[DescriptionSource] varchar(40) NULL,[DescriptionQuality] varchar(40) NULL,[CatalogMatchType] varchar(20) NULL,[WaitPercentage] decimal(9,4) NULL,[CumulativePercentage] decimal(9,4) NULL,[AverageWaitMs] decimal(19,4) NULL,[AverageResourceWaitMs] decimal(19,4) NULL,[AverageSignalWaitMs] decimal(19,4) NULL
     );
     CREATE TABLE [#CurrentWaits_Warnings]([WarningCode] varchar(40) NOT NULL,[WarningMessage] nvarchar(2048) NOT NULL);
+    CREATE TABLE [#CurrentWaits_SourceWaitingTasks]
+    (
+          [waiting_task_address] varbinary(8) NOT NULL
+        , [session_id] smallint NULL
+        , [exec_context_id] int NULL
+        , [wait_duration_ms] bigint NOT NULL
+        , [wait_type] nvarchar(60) NOT NULL
+        , [blocking_session_id] smallint NULL
+        , [resource_description] nvarchar(3072) NULL
+    );
+    CREATE TABLE [#CurrentWaits_SourceSessions]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [is_user_process] bit NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [login_name] nvarchar(128) NOT NULL
+        , [host_name] nvarchar(128) NULL
+        , [program_name] nvarchar(128) NULL
+    );
+    CREATE TABLE [#CurrentWaits_SourceRequests]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [database_id] smallint NOT NULL
+        , [command] nvarchar(32) NOT NULL
+        , [sql_handle] varbinary(64) NULL
+        , [statement_start_offset] int NULL
+        , [statement_end_offset] int NULL
+        , PRIMARY KEY([session_id],[request_id])
+    );
+    CREATE TABLE [#CurrentWaits_SourceSqlText]
+    (
+          [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
+        , [Text] nvarchar(max) NULL
+    );
     SET @CandidateMaxZeilen=CASE WHEN @HasRegex=1 OR @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen)+1 END;
 
     IF @StatusCode='AVAILABLE'
     BEGIN
         BEGIN TRY
+            IF @ParentCurrentStateSnapshotId IS NOT NULL
+            BEGIN
+                EXEC [sys].[sp_executesql] N'
+                    DECLARE @Probe int;
+                    SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                    SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                    SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks] WHERE 1=0;
+                    SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+                    SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+                    SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
+
+                IF NOT EXISTS
+                (
+                    SELECT 1
+                    FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                      AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                      AND [ContractVersion]=2
+                )
+                    THROW 51020,N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.',1;
+
+                INSERT [#CurrentWaits_SourceWaitingTasks]
+                SELECT
+                      [waiting_task_address],[session_id],[exec_context_id],[wait_duration_ms]
+                    , [wait_type],[blocking_session_id],[resource_description]
+                FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentWaits_SourceSessions]
+                SELECT [session_id],[is_user_process],[status],[login_name],[host_name],[program_name]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                INSERT [#CurrentWaits_SourceRequests]
+                SELECT
+                      [session_id],[request_id],[status],[database_id],[command],[sql_handle]
+                    , [statement_start_offset],[statement_end_offset]
+                FROM [#CurrentOverview_CurrentStateSnapshot_Requests]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                IF @MitSqlText=1
+                    INSERT [#CurrentWaits_SourceSqlText]
+                    SELECT [SqlHandle],[Text]
+                    FROM [#CurrentOverview_CurrentStateSnapshot_SqlText]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                SELECT
+                      @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                    , @IsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
+                FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [SourceCode] IN ('WAITING_TASKS','SESSIONS','REQUESTS','SQL_TEXT');
+            END
+            ELSE
+            BEGIN
+                SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+                INSERT [#CurrentWaits_SourceWaitingTasks]
+                SELECT
+                      [waiting_task_address],[session_id],[exec_context_id],[wait_duration_ms]
+                    , [wait_type],[blocking_session_id],[resource_description]
+                FROM [sys].[dm_os_waiting_tasks] WITH (NOLOCK);
+
+                INSERT [#CurrentWaits_SourceSessions]
+                SELECT [session_id],[is_user_process],[status],[login_name],[host_name],[program_name]
+                FROM [sys].[dm_exec_sessions] WITH (NOLOCK);
+
+                INSERT [#CurrentWaits_SourceRequests]
+                SELECT
+                      [session_id],[request_id],[status],[database_id],[command],[sql_handle]
+                    , [statement_start_offset],[statement_end_offset]
+                FROM [sys].[dm_exec_requests] WITH (NOLOCK);
+
+                IF @MitSqlText=1
+                    INSERT [#CurrentWaits_SourceSqlText]
+                    SELECT [h].[SqlHandle],[t].[text]
+                    FROM
+                    (
+                        SELECT [sql_handle] AS [SqlHandle]
+                        FROM [#CurrentWaits_SourceRequests]
+                        WHERE [sql_handle] IS NOT NULL
+                        GROUP BY [sql_handle]
+                    ) AS [h]
+                    OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle]) AS [t];
+            END;
+        END TRY
+        BEGIN CATCH
+            SET @ErrorNumber=ERROR_NUMBER();
+            SET @ErrorMessage=ERROR_MESSAGE();
+            SET @IsPartial=1;
+            SET @StatusCode=CASE
+                WHEN @ErrorNumber=1222 THEN 'TIMEOUT'
+                WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                WHEN @ParentCurrentStateSnapshotId IS NOT NULL
+                 AND @ErrorNumber IN(208,51020) THEN 'INVALID_PARENT_SNAPSHOT'
+                ELSE 'ERROR_HANDLED' END;
+            INSERT [#CurrentWaits_Warnings] VALUES(@StatusCode,@ErrorMessage);
+        END CATCH;
+
+        BEGIN TRY
             INSERT [#CurrentWaits_Tasks]
             SELECT TOP(@CandidateMaxZeilen) [w].[session_id],[w].[exec_context_id],[w].[wait_duration_ms],[w].[wait_type],NULLIF([w].[blocking_session_id],0),[w].[resource_description],[s].[status],[r].[status],[s].[login_name],[s].[host_name],[s].[program_name],[tool].[IsToolBackgroundQuery],[tool].[ToolBackgroundRuleCode],[tool].[ToolBackgroundCategory],[tool].[ToolBackgroundDetection],[tool].[ToolBackgroundConfidence],[r].[database_id],[r].[command],NULL,NULL,CONVERT(bit,0),CASE WHEN @MitSqlText=1 THEN [st].[StatementText] END,[wi].[WaitGroup],[wi].[Severity],[wi].[IsGenerallyBenign],[wi].[Meaning],[wi].[TypicalOccurrence],[wi].[HighWaitImpact],[wi].[RecommendedChecks],[wi].[HelpUrl],[wi].[DescriptionSource],[wi].[DescriptionQuality],[wi].[CatalogMatchType]
-            FROM [sys].[dm_os_waiting_tasks] AS [w] WITH (NOLOCK)
-            LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK) ON [s].[session_id]=[w].[session_id]
-            LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK) ON [r].[session_id]=[w].[session_id]
+            FROM [#CurrentWaits_SourceWaitingTasks] AS [w]
+            LEFT JOIN [#CurrentWaits_SourceSessions] AS [s] ON [s].[session_id]=[w].[session_id]
+            LEFT JOIN [#CurrentWaits_SourceRequests] AS [r] ON [r].[session_id]=[w].[session_id]
             CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([s].[program_name]) AS [tool]
-            OUTER APPLY [sys].[dm_exec_sql_text](CASE WHEN @MitSqlText=1 THEN [r].[sql_handle] END) AS [t]
-            OUTER APPLY [monitor].[TVF_StatementText]([t].[text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
+            LEFT JOIN [#CurrentWaits_SourceSqlText] AS [t]
+              ON [t].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [r].[sql_handle] END
+            OUTER APPLY [monitor].[TVF_StatementText]([t].[Text],[r].[statement_start_offset],[r].[statement_end_offset]) AS [st]
             CROSS APPLY [monitor].[TVF_WaitTypeInfo]([w].[wait_type]) AS [wi]
             WHERE (NOT EXISTS(SELECT 1 FROM [#CurrentWaits_SessionIdFilter]) OR EXISTS(SELECT 1 FROM [#CurrentWaits_SessionIdFilter] AS [f] WHERE [f].[SessionId]=[w].[session_id]))
               AND [w].[wait_duration_ms]>=@MinWaitMs AND (@SystemSessionsEinbeziehen=1 OR COALESCE([s].[is_user_process],1)=1)
@@ -182,11 +321,11 @@ BEGIN
     IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE') BEGIN SET @MonitorPrintMessage=FORMATMESSAGE(N'WARNUNG %s: %s',@StatusCode,COALESCE(@ErrorMessage,@DeltaDetail,@Detail,N'eingeschränkte Sicht'));RAISERROR(N'%s',10,1,@MonitorPrintMessage) WITH NOWAIT;END;
     IF @JsonErzeugen=1
     BEGIN
-        DECLARE @Meta nvarchar(max)=(SELECT @ModuleName AS [resultName],2 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@MeasurementStartUtc AS [measurementStartUtc],@MeasurementEndUtc AS [measurementEndUtc],@StatusCode AS [statusCode],@DeltaStatus AS [measurementStatusCode],@TaskRowCount AS [currentTaskRows],@InstanceRowCount AS [instanceWaitRows],@ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Tasks nvarchar(max)=(SELECT * FROM [#CurrentWaits_Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId] FOR JSON PATH,INCLUDE_NULL_VALUES),@Instance nvarchar(max)=(SELECT * FROM [#CurrentWaits_Instance] ORDER BY [WaitTimeMs] DESC,[WaitType] FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT [WarningCode] AS [code],[WarningMessage] AS [message] FROM [#CurrentWaits_Warnings] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"currentTasks":',COALESCE(@Tasks,N'[]'),N',"instanceWaits":',COALESCE(@Instance,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
+        DECLARE @Meta nvarchar(max)=(SELECT @ModuleName AS [resultName],3 AS [schemaVersion],@CollectionTimeUtc AS [generatedAtUtc],@EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc],@EvidenceSnapshotId AS [evidenceSnapshotId],@MeasurementStartUtc AS [measurementStartUtc],@MeasurementEndUtc AS [measurementEndUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@DeltaStatus AS [measurementStatusCode],@TaskRowCount AS [currentTaskRows],@InstanceRowCount AS [instanceWaitRows],@ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Tasks nvarchar(max)=(SELECT * FROM [#CurrentWaits_Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId] FOR JSON PATH,INCLUDE_NULL_VALUES),@Instance nvarchar(max)=(SELECT * FROM [#CurrentWaits_Instance] ORDER BY [WaitTimeMs] DESC,[WaitType] FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT [WarningCode] AS [code],[WarningMessage] AS [message] FROM [#CurrentWaits_Warnings] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"currentTasks":',COALESCE(@Tasks,N'[]'),N',"instanceWaits":',COALESCE(@Instance,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
     END;
     IF @ResultSetArtNormalisiert='RAW'
     BEGIN
-        SELECT N'1.1' AS [ContractVersion],@ModuleName AS [ModuleName],@CollectionTimeUtc AS [CollectionTimeUtc],@MeasurementStartUtc AS [MeasurementStartUtc],@MeasurementEndUtc AS [MeasurementEndUtc],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@TaskRowCount AS [CurrentTaskRowCount],@InstanceRowCount AS [InstanceWaitRowCount],@RequiredPermission AS [RequiredPermission],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],@Detail AS [Detail],@DeltaStatus AS [DeltaStatusCode],@DeltaDetail AS [DeltaDetail],@StartBefore AS [ServerStartTimeBefore],@StartAfter AS [ServerStartTimeAfter];
+        SELECT N'2.0' AS [ContractVersion],@ModuleName AS [ModuleName],@CollectionTimeUtc AS [CollectionTimeUtc],@EvidenceSnapshotStartedAtUtc AS [EvidenceSnapshotStartedAtUtc],@EvidenceSnapshotId AS [EvidenceSnapshotId],@MeasurementStartUtc AS [MeasurementStartUtc],@MeasurementEndUtc AS [MeasurementEndUtc],@StatusCode AS [StatusCode],@IsPartial AS [IsPartial],@TaskRowCount AS [CurrentTaskRowCount],@InstanceRowCount AS [InstanceWaitRowCount],@RequiredPermission AS [RequiredPermission],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage],@Detail AS [Detail],@DeltaStatus AS [DeltaStatusCode],@DeltaDetail AS [DeltaDetail],@StartBefore AS [ServerStartTimeBefore],@StartAfter AS [ServerStartTimeAfter];
         SELECT * FROM [#CurrentWaits_Tasks] ORDER BY [WaitDurationMs] DESC,[SessionId];SELECT * FROM [#CurrentWaits_Instance] ORDER BY [WaitTimeMs] DESC,[WaitType];SELECT * FROM [#CurrentWaits_Warnings] ORDER BY [WarningCode];
     END
     ELSE IF @ResultSetArtNormalisiert='CONSOLE'
