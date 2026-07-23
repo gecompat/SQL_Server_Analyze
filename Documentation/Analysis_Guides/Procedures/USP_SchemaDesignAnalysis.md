@@ -147,4 +147,4 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 
 - [SQL Server First Responder Kit – ergänzende, quelloffene Praxiswerkzeuge für Triage](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)
 
-[Technische Detailbeschreibung](../03_Object_Index.md#10-monitorusp_schemadesignanalysis)
+[Technische Detailbeschreibung](../03_Object_Index.md#11-monitorusp_schemadesignanalysis)
