@@ -276,7 +276,7 @@ IF ISJSON(@ShowplanJson)<>1
    OR JSON_QUERY(@ShowplanJson,N'$.feedbackAndVariants') IS NULL
     THROW 53668,N'USP_ShowplanAnalysis aggregiert den DIAG-005-Statusvertrag nicht kandidatengenau.',1;
 
-DECLARE @MissingQueryStoreJson nvarchar(max),@ExampleDatabase sysname=DB_NAME();
+DECLARE @MissingQueryStoreJson nvarchar(max),@ExampleDatabase sysname=N'DeineDatenbank';
 EXEC [monitor].[USP_ExecutionPlanAnalysis]
       @QueryStoreDatabaseName=@ExampleDatabase
     , @QueryStorePlanId=-1
