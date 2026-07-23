@@ -94,6 +94,7 @@
     "A later statistics update on the primary transfers ownership metadata to the primary and does not prove that the statistics were never created on a secondary.",
     "Temporary and persisted permanent versions can coexist until recompilation or restart; duplicate column coverage is not by itself a defect.",
     "ReplicaName is expected to be null for primary-origin statistics.",
+    "UNAVAILABLE_VERSION and UNAVAILABLE_COLUMNS describe expected optional feature absence and do not make otherwise complete base statistics partial.",
     "An empty result can mean an empty filter scope or restricted metadata visibility and is reported as limited evidence, not feature absence."
   ],
   "runtimeMatrix": {

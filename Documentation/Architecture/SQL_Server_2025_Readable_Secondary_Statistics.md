@@ -93,14 +93,18 @@ unterscheidbar bleiben.
 
 Auf SQL Server 2019 und 2022 enthält der kompilierte Abfragepfad keine
 Referenz auf die drei SQL-Server-2025-Spalten. Die Ausgabespalten bleiben
-typstabil und erhalten `NULL` sowie `UNAVAILABLE_VERSION`.
+typstabil und erhalten `NULL` sowie `UNAVAILABLE_VERSION`. Diese erwartete
+Versionsgrenze macht vollständig sichtbare Basisstatistiken nicht partiell;
+der Datenbankstatus bleibt in diesem Fall `AVAILABLE`.
 
 Ab Produktmajorversion 17 prüft die Procedure einmal je Zieldatenbank über
 `sys.all_views`, `sys.all_columns` und `sys.schemas`, ob alle drei
 Pflichtspalten vorhanden sind. Erst danach wird die konkrete Projektion als
-Dynamic SQL aufgebaut. Fehlende oder nicht lesbare Spalten beeinträchtigen
-die bestehende Statistikdefinition nicht; der Datenbankstatus wird
-`AVAILABLE_LIMITED`.
+Dynamic SQL aufgebaut. Erwartet fehlende Spalten werden zeilengenau als
+`UNAVAILABLE_COLUMNS` ausgewiesen und machen die bestehende
+Statistikdefinition nicht partiell. Berechtigungs-, Timeout-,
+Capability- oder inkonsistente Herkunftsfehler führen dagegen zum
+Datenbankstatus `AVAILABLE_LIMITED`.
 
 ## Last- und Sperrverhalten
 

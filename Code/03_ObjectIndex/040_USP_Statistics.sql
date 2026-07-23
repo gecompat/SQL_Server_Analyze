@@ -435,7 +435,8 @@ END;';
           @DbName
         , CASE
               WHEN @Rows>0
-               AND @ReplicaMetadataCapabilityStatus='AVAILABLE'
+               AND @ReplicaMetadataCapabilityStatus IN
+                   ('AVAILABLE','UNAVAILABLE_VERSION','UNAVAILABLE_COLUMNS')
                AND @CurrentReplicaRoleStatus IN ('AVAILABLE','NOT_APPLICABLE')
                AND NOT EXISTS
                    (
@@ -449,7 +450,8 @@ END;';
           END
         , CONVERT(bit,CASE
               WHEN @Rows>0
-               AND @ReplicaMetadataCapabilityStatus='AVAILABLE'
+               AND @ReplicaMetadataCapabilityStatus IN
+                   ('AVAILABLE','UNAVAILABLE_VERSION','UNAVAILABLE_COLUMNS')
                AND @CurrentReplicaRoleStatus IN ('AVAILABLE','NOT_APPLICABLE')
                AND NOT EXISTS
                    (

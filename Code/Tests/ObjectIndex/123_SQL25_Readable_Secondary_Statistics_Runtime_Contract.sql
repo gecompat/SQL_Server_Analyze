@@ -155,7 +155,7 @@ BEGIN TRY
                         [StatusCode] varchar(40) N'$.StatusCode'
                       , [Detail] nvarchar(2000) N'$.Detail'
                   )
-                  WHERE [StatusCode]='AVAILABLE_LIMITED'
+                  WHERE [StatusCode]='AVAILABLE'
                     AND [Detail] LIKE
                         N'%ReplicaMetadataStatus=UNAVAILABLE_VERSION%'
               )
