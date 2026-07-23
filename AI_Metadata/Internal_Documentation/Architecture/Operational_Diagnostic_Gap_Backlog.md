@@ -1,7 +1,7 @@
 # Backlog für zusätzliche Betriebs- und Versionsdiagnosen
 
 Stand: 2026-07-21
-Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004`, `SQL25-001` und `SQL25-002` sind `IMPLEMENTED_ACTIONS_GATE`
+Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004` sowie `SQL25-001` bis `SQL25-003` sind `IMPLEMENTED_ACTIONS_GATE`
 Maschinenlesbarer Backlog: `Metadata/Quality/Future_Enhancement_Backlog.csv`
 
 ## Ziel und Abgrenzung
@@ -22,7 +22,7 @@ Eine Abweichung oder ein Einzelindikator ist grundsätzlich Evidenz für eine we
 | `OPS-004` | P1 | SQL-Server- und Agent-Errorlogs | implementiert: `monitor.USP_ErrorLogAnalysis` | begrenztes Lesen; kein Logwechsel und kein Volltext im Default |
 | `SQL25-001` | P2 | Vector-Index-Laufzeit | neue Detailanalyse oder Erweiterung der Objektanalyse | Capability, Zustand und Maintenance getrennt bewerten |
 | `SQL25-002` | P2 | JSON-Index-Inventar | bestehende Objekt- und Indexinventare erweitert | versionsadaptiv; bewusst keine überdimensionierte Einzel-Procedure |
-| `SQL25-003` | P2 | TempDB Resource Governance | Resource-Governor- und TempDB-Module erweitern | Limits, Nutzung und Verletzungszähler getrennt ausgeben |
+| `SQL25-003` | P2 | TempDB Resource Governance | Resource-Governor- und TempDB-Module erweitert | gespeichertes/wirksames Limit, Nutzung, Peak, Verletzung und Resetgrenze getrennt |
 | `SQL25-004` | P2 | Statistiken auf lesbaren Secondaries | `monitor.USP_Statistics` versionsadaptiv erweitern | Replica-Rolle und Herkunft explizit erhalten |
 | `SQL25-005` | P2 | Query Store auf Secondary Replicas | Query-Store-Module replica-aware machen | fehlende Replica-Evidenz nicht als gesunden Zustand behandeln |
 | `OPS-005` | P2 | Linked Server | neue `monitor.USP_LinkedServerAnalysis` | Remoteverbindungstest ausschließlich opt-in |
@@ -83,7 +83,7 @@ Health- oder DDL-Aussage.
 
 ### SQL25-003 – TempDB Resource Governance
 
-`monitor.USP_ResourceGovernorAnalysis` und `monitor.USP_CurrentTempDB` sollen konfigurierte Gruppenlimits, aktuelle und maximale TempDB-Nutzung sowie `total_tempdb_data_limit_violation_count` gemeinsam, aber semantisch getrennt ausgeben. Nicht konfigurierte Governance ist kein Fehler; eine dokumentierte Verletzung ist ohne Workloadkontext noch keine Ursachenfeststellung.
+`monitor.USP_ResourceGovernorAnalysis` und `monitor.USP_CurrentTempDB` liefern das gemeinsame benannte Resultset `tempdbGovernance`. Es trennt gespeicherte MB-/Prozentlimits, die wirksame Limitquelle, aktuelle und maximale TempDB-Datennutzung, `total_tempdb_data_limit_violation_count` und `statistics_start_time`. MB hat Vorrang; Prozentlimits werden nur bei geeigneter TempDB-Dateikonfiguration als wirksam berechnet. Der Current-State-Orchestrator materialisiert die Resource-Governor-Quellen einmal und reicht sie an `USP_CurrentTempDB` weiter. Nicht konfigurierte Governance ist kein Fehler; eine Verletzung ist ohne Workloadkontext keine Ursachenfeststellung. Version Store und TempDB-Log liegen außerhalb dieser Governance.
 
 ### SQL25-004 und SQL25-005 – Replica-aware Statistics und Query Store
 
@@ -116,8 +116,8 @@ Ein leichter Inventarpfad meldet sichtbare Benutzerobjekte in `master`, `model` 
 ## Umsetzungsreihenfolge
 
 1. Abgeschlossen: `OPS-001` bis `OPS-004` in Welle 2.
-2. Abgeschlossen: `SQL25-001` und `SQL25-002` als erste versionsadaptive Slices.
-3. Offen: `SQL25-003` bis `SQL25-005`.
+2. Abgeschlossen: `SQL25-001` bis `SQL25-003` als erste versionsadaptive Slices.
+3. Offen: `SQL25-004` und `SQL25-005`.
 4. `OPS-005`, `OPS-006` und `OPS-008`.
 5. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
 

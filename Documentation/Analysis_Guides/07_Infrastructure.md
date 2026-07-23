@@ -131,6 +131,22 @@ Die Procedure vergleicht gespeicherte und effektive Resource-Governor-Konfigurat
 | Concurrency | `GroupMaxRequests`, `ActiveRequestCount`, `QueuedRequestCount`, `TotalQueuedRequestCount` |
 | Historie | `TotalRequestCount`, `TotalReducedMemgrantCount`, `TotalCpuUsageMs`, `TotalLockWaitCount`, `TotalLockWaitTimeMs` |
 
+### tempdbGovernance (SQL Server 2025)
+
+| Gruppe | Spalten |
+|---|---|
+| Identität | `GroupId`, `GroupName`, `PoolId`, `PoolName` |
+| gespeichert | `ConfiguredGroupMaxTempdbDataMb`, `ConfiguredGroupMaxTempdbDataPercent` |
+| wirksam | `TempdbMaximumSizeMb`, `EffectiveGroupMaxTempdbDataMb`, `EffectiveLimitSource`, `IsPercentLimitEffective`, `EffectiveLimitUtilizationPercent` |
+| Runtimefenster | `TempdbDataSpaceMb`, `PeakTempdbDataSpaceMb`, `TotalTempdbDataLimitViolationCount`, `HasRecordedLimitViolation`, `StatisticsStartTime` |
+| Status | `IsResourceGovernorEnabled`, `ReconfigurationPending`, `SourceStatusCode`, `IsPartial`, `EvidenceLimit` |
+
+Das MB-Limit hat Vorrang vor einem gleichzeitig gespeicherten Prozentlimit.
+Ein Prozentlimit ist nur bei geeigneter TempDB-Dateikonfiguration wirksam.
+`StatisticsStartTime` begrenzt Peak und Verletzungszähler seit Serverstart oder
+`ALTER RESOURCE GOVERNOR RESET STATISTICS`. Kein Limit ist kein Fehler;
+Version Store und TempDB-Log gehören nicht zu dieser Governance.
+
 ### Sessions
 
 `SessionId`, `LoginName`, `HostName`, `ProgramName`, `GroupId`, `GroupName`, `PoolName`, `Status`, `CpuTimeMs`, `MemoryUsagePages`, `MemoryUsageMb`, `Reads`, `Writes`, `LogicalReads`.
@@ -143,10 +159,13 @@ Die Procedure vergleicht gespeicherte und effektive Resource-Governor-Konfigurat
 - `EffectiveMaxDop` kann von konfiguriertem `MaxDop` abweichen.
 - Interpretieren Sie Default- und Internal-Pools nicht wie benutzerdefinierte Pools.
 - Sessionzuordnung zeigt Classifier-Ergebnis, nicht zwingend die fachlich gewünschte Klassifizierung.
+- Workload-Group- und Sessionwerte besitzen unterschiedliche Granularitäten und sind nicht additiv.
+- `ReconfigurationPending=1` trennt gespeicherte von belastbar aktiver Konfiguration.
 
 ### Folgeanalyse
 
-`USP_CurrentMemoryGrants`, `USP_CurrentRequests`, `USP_ServerMemory`.
+`USP_CurrentMemoryGrants`, `USP_CurrentRequests`, `USP_CurrentTempDB`,
+`USP_ServerMemory`.
 
 ---
 

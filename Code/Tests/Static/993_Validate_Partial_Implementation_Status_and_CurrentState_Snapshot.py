@@ -23,6 +23,7 @@ REQUIRED_STATUS = {
     "DIAG-005": "IMPLEMENTED_ACTIONS_GATE",
     "SQL25-001": "IMPLEMENTED_ACTIONS_GATE",
     "SQL25-002": "IMPLEMENTED_ACTIONS_GATE",
+    "SQL25-003": "IMPLEMENTED_ACTIONS_GATE",
     "RUNTIME-001": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
     "SC-023": "IMPLEMENTED_ACTIONS_GATE",
     "SC-023-EXPANSION": "OPTIONAL_FUTURE",
@@ -106,6 +107,7 @@ def main() -> int:
         "DIAG-005": "IMPLEMENTED_ACTIONS_GATE",
         "SQL25-001": "IMPLEMENTED_ACTIONS_GATE",
         "SQL25-002": "IMPLEMENTED_ACTIONS_GATE",
+        "SQL25-003": "IMPLEMENTED_ACTIONS_GATE",
     }
     for work_item, expected in expected_future.items():
         if future[work_item]["ImplementationStatus"] != expected:
@@ -374,7 +376,7 @@ def main() -> int:
         fail("DIAG004_RUNTIME_GATE_ENTRY", "Run_Release_Gate.sql")
 
     print(
-        "Status/snapshot contracts passed: status_rows=8 diag003=implemented "
+        "Status/snapshot contracts passed: status_rows=9 diag003=implemented "
         "diag004=implemented external_gates=1 owner_sources=16 "
         "shared_consumers=8 canonical_request_results=6 findings=0"
     )

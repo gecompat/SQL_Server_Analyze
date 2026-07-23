@@ -4,7 +4,7 @@
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion | `1.1.0-special.17` |
+| Frameworkversion | `1.1.0-special.18` |
 | Dokumentationsstand | 23. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
@@ -156,6 +156,38 @@ eingeschränkte Metadata Visibility. Fehlt die konkrete Buildfähigkeit, muss
 der Status sie ausdrücklich als `UNAVAILABLE_FEATURE`,
 `UNAVAILABLE_SOURCE_SCHEMA` oder `AVAILABLE_LIMITED` ausweisen. SQL25-002
 steht damit auf `IMPLEMENTED_ACTIONS_GATE`.
+
+## Welle 7 – SQL25-003 TempDB Resource Governance
+
+`USP_ResourceGovernorAnalysis` und `USP_CurrentTempDB` liefern das identische
+benannte Resultset `tempdbGovernance`. Der Vertrag trennt gespeicherte
+`GROUP_MAX_TEMPDB_DATA_MB`-/`GROUP_MAX_TEMPDB_DATA_PERCENT`-Werte, die
+tatsächlich wirksame Limitquelle, aktuelle Nutzung, Peak,
+`total_tempdb_data_limit_violation_count` und `statistics_start_time`.
+Ein MB-Limit hat Vorrang. Ein Prozentlimit wird nur bei der dokumentierten
+TempDB-Dateikonfiguration in ein wirksames MB-Limit umgerechnet; deaktivierter
+Resource Governor und ausstehendes `RECONFIGURE` bleiben eigene Zustände.
+
+Auf SQL Server 2019 und 2022 werden die SQL-Server-2025-Spalten nicht
+referenziert. Auf SQL Server 2025 werden Systemobjekte und Pflichtspalten vor
+Dynamic SQL geprüft. Jede fachliche Quelle wird je Procedure und Aufruf
+höchstens einmal gelesen; nicht relevante Dateikonfiguration wird nicht
+abgefragt. `USP_CurrentOverview` materialisiert die Workload-Group-Evidenz
+einmal und reicht sie an `USP_CurrentTempDB` weiter.
+
+Aktuelle und Peak-Nutzung werden auch ohne konfiguriertes Limit ausgewiesen.
+Nicht konfigurierte Governance ist kein Fehler. Verletzungszähler sind
+kumulativ seit Serverstart oder `ALTER RESOURCE GOVERNOR RESET STATISTICS`
+und beweisen weder Ursache noch aktuellen Engpass. Version Store und
+TempDB-Transaktionslog werden von dieser Governance nicht erfasst;
+Sessionzähler aus `sys.dm_db_session_space_usage` sind nicht direkt mit
+Workload-Group-Zählern gleichzusetzen.
+
+Der öffentliche SQL25-003-Vertrag, Runtimevertrag `122` und der statische
+Validator prüfen Versionsgrenze, No-Limit-, MB-/Prozent-, Wirksamkeits-,
+Nutzungs-, Peak-, Verletzungs-, Reset-, Berechtigungs-, TABLE-/JSON-,
+Parent-Routing- und `LOCK_TIMEOUT`-Fälle auf SQL Server 2019, 2022 und 2025.
+SQL25-003 steht damit auf `IMPLEMENTED_ACTIONS_GATE`.
 
 ## RUNTIME-001 – External Runtime und SQL CLR
 

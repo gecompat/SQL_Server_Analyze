@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.17
+Version      : 1.1.0-special.18
 Stand        : 2026-07-23
 Zweck        : Liefert eine kompakte Versionsinformation für das installierte
                Ad-hoc-Analysepaket. Die Tabelle bildet weder eine
@@ -34,12 +34,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.17',
+SET [FrameworkVersion]='1.1.0-special.18',
     [ReleaseDate]='20260723',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.21',
+    [ContractVersion]='1.22',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.21: SQL25-002 ergänzt capability-adaptive JSON-Index- und SQL/JSON-Pfadmetadaten in den bestehenden Objekt- und Capability-Inventaren.'
+    [ReleaseNotes]=N'API 1.22: SQL25-003 ergänzt capability-adaptive TempDB-Resource-Governance mit getrennten Limits, Wirksamkeit, Nutzung, Peak, Verletzungen und Resetgrenze.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -51,9 +51,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.17','20260723',15,
-        '1.21',SYSUTCDATETIME(),
-        N'API 1.21: SQL25-002 ergänzt capability-adaptive JSON-Index- und SQL/JSON-Pfadmetadaten in den bestehenden Objekt- und Capability-Inventaren.'
+        N'SQLServerMonitoringFramework','1.1.0-special.18','20260723',15,
+        '1.22',SYSUTCDATETIME(),
+        N'API 1.22: SQL25-003 ergänzt capability-adaptive TempDB-Resource-Governance mit getrennten Limits, Wirksamkeit, Nutzung, Peak, Verletzungen und Resetgrenze.'
     );
 END;
 GO

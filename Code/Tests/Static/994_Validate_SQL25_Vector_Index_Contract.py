@@ -296,7 +296,7 @@ def validate_repository(root: Path) -> list[str]:
     )
 
     framework = read_text(root, "Code/01_Common/077_FrameworkVersion.sql")
-    require_tokens(framework, ("1.1.0-special.17", "[ContractVersion]='1.21'"), "version", errors)
+    require_tokens(framework, ("1.1.0-special.18", "[ContractVersion]='1.22'"), "version", errors)
 
     for relative in (
         "Documentation/Architecture/SQL_Server_2025_Vector_Index_Analysis.md",
