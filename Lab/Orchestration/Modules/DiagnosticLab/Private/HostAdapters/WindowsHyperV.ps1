@@ -78,13 +78,10 @@ function Get-LabWindowsHyperVHostCapability {
             -LogicalProcessorCount ([Environment]::ProcessorCount) `
             -PhysicalMemoryMiB $memory.PhysicalMemoryMiB `
             -ApprovedFreeStorageGiB $storage.ApprovedFreeStorageGiB
-        SupportedExecutionModes = if (
-            $hyperVAvailable -and $powerShellDirectAvailable
-        ) {
-            @('WINDOWS_SINGLE_HOST')
-        }
-        else {
-            @()
-        }
+        SupportedExecutionModes = @(
+            if ($hyperVAvailable -and $powerShellDirectAvailable) {
+                'WINDOWS_SINGLE_HOST'
+            }
+        )
     }
 }

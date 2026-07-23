@@ -74,12 +74,14 @@ function New-SyntheticCapability {
             RemoteHost = [bool] $RemoteHost
         }
         ResolvedHostClass = 'HC3_EXTENDED'
-        SupportedExecutionModes = if ($OperatingSystemFamily -eq 'WINDOWS') {
-            @('WINDOWS_SINGLE_HOST')
-        }
-        else {
-            @('LINUX_NATIVE')
-        }
+        SupportedExecutionModes = @(
+            if ($OperatingSystemFamily -eq 'WINDOWS') {
+                'WINDOWS_SINGLE_HOST'
+            }
+            else {
+                'LINUX_NATIVE'
+            }
+        )
     }
 }
 

@@ -198,6 +198,6 @@ function Get-LabLinuxHostCapability {
             -LogicalProcessorCount ([Environment]::ProcessorCount) `
             -PhysicalMemoryMiB $memory.PhysicalMemoryMiB `
             -ApprovedFreeStorageGiB $storage.ApprovedFreeStorageGiB
-        SupportedExecutionModes = $supportedModes
+        SupportedExecutionModes = @($supportedModes)
     }
 }

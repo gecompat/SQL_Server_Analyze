@@ -329,7 +329,7 @@ function Get-LabRemoteHostCapability {
                 -LogicalProcessorCount $remoteResult.LogicalProcessorCount `
                 -PhysicalMemoryMiB $remoteResult.PhysicalMemoryMiB `
                 -ApprovedFreeStorageGiB $remoteResult.ApprovedFreeStorageGiB
-            SupportedExecutionModes = $supportedModes
+            SupportedExecutionModes = @($supportedModes)
         }
         return [pscustomobject] @{
             LogicalHostId = $RemoteHostConfiguration.LogicalHostId
