@@ -4,13 +4,13 @@
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion | `1.1.0-special.15` |
+| Frameworkversion | `1.1.0-special.16` |
 | Dokumentationsstand | 23. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Bestand umfasst 164 inventarisierte Objekte:
+Der aktuelle Bestand umfasst 165 inventarisierte Objekte:
 
-- 96 öffentliche Procedures;
+- 97 öffentliche Procedures;
 - acht Views;
 - 27 Table-Valued Functions;
 - 16 interne Procedures;
@@ -96,6 +96,34 @@ Messung gegenüber Ableitung, Quellstatus und False-Positive-Grenzen bleiben
 in jeder Zeile erhalten. DIAG-005 steht damit auf
 `IMPLEMENTED_ACTIONS_GATE`.
 
+## Welle 5 – SQL25-001 Vector-Index-Laufzeit
+
+`USP_VectorIndexAnalysis` korreliert auf SQL Server 2025 sichtbare Vector-Indizes
+mit `sys.dm_db_vector_indexes`. Katalogdefinition, aktuelle ungefähre Staleness,
+Key-Space-Nutzung und der letzte Hintergrundtask bleiben getrennte Evidenz.
+SQL Server 2019 und 2022 liefern denselben öffentlichen Vertrag mit
+`UNAVAILABLE_VERSION`; die versionsspezifischen Quellen werden erst nach
+Produktversions- und Schemaprüfung in Dynamic SQL referenziert.
+
+Die Procedure liest jede der beiden fachlichen Quellen je Datenbank und Aufruf
+höchstens einmal. Vektorwerte, Querytexte, Pläne und interne
+`build_parameters` werden nicht erhoben. Findings sind auf Disabled-Status,
+letzten Taskfehler und einen konfigurierbaren Staleness-Reviewwert begrenzt;
+keines davon löst eine automatische Rebuildempfehlung aus.
+
+`USP_ObjectAnalysis` bindet den Pfad über `@MitVectorIndexes = 1` ein.
+`USP_SpecialFeatureInventory` empfiehlt ihn bei sichtbaren nativen Vector-Spalten.
+Der öffentliche SQL25-001-Vertrag und der synthetische Runtimevertrag decken
+Nichtverfügbarkeit, JSON und benanntes TABLE auf SQL Server 2019, 2022 und
+2025 ab. Auf SQL Server 2025 aktiviert der Test Compatibility Level 170 und
+`PREVIEW_FEATURES`; bei verfügbaren Quellen prüft er zusätzlich aktiven
+Katalog- und Wartungszustand, leere und begrenzte Ausgabe, Cross-Database und
+verweigerte Runtimeberechtigung. Stellt der konkrete Build die Previewquellen
+nicht bereit oder weicht ihr Pflichtschema ab, muss er stattdessen
+`UNAVAILABLE_FEATURE` beziehungsweise `UNAVAILABLE_SOURCE_SCHEMA` liefern und
+der Test behauptet keinen aktiven Pfad. SQL25-001 steht damit
+auf `IMPLEMENTED_ACTIONS_GATE`.
+
 ## RUNTIME-001 – External Runtime und SQL CLR
 
 Der Frameworkkern enthält zwei getrennte, rein lesende Tiefenanalysen:
@@ -129,7 +157,7 @@ Der Einstieg beginnt bei Symptom und Ziel:
 - [Hier beginnen](../Analysis_Guides/Start_Here.md)
 - [Analysis-Navigator-Vertrag](../Reference/Analysis_Navigator.md)
 - [Runbooks](../Analysis_Guides/Runbooks/README.md)
-- [96 Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
+- [97 Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
 - [vollständige Objektreferenz](../Reference/Object_Reference.md)
 
 Anwenderdokumentation beschreibt ausschließlich Nutzung, Architektur, Laufzeitverträge, Betrieb, Qualität und Komponenten.
@@ -142,7 +170,7 @@ Die Live-Triage erfasst Sessions, Requests, Blocking, Waits, Transaktionen, Memo
 
 ### Objekte und Datenbanken
 
-Die Objekt- und Datenbankanalyse umfasst Inventar, Indexnutzung, Operational Stats, Missing Indexes, Statistiken und Histogramme, Partitionen, Columnstore, Physical Stats und Schemadesign. `USP_ObjectAnalysis` orchestriert die zugehörigen Einzelmodule.
+Die Objekt- und Datenbankanalyse umfasst Inventar, Indexnutzung, Operational Stats, Missing Indexes, Statistiken und Histogramme, Partitionen, Columnstore, Physical Stats, SQL-Server-2025-Vector-Index-Wartung und Schemadesign. `USP_ObjectAnalysis` orchestriert die zugehörigen Einzelmodule.
 
 ### Query und Plan
 

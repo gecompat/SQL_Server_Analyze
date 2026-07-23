@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-07-22
+Stand: 2026-07-23
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` oder die benannte Mehrfachzuordnung `TABLE` mit `@ResultTablesJson`; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -1135,6 +1135,7 @@ Quelle: `Code/03_ObjectIndex/080_USP_ObjectAnalysis.sql`
     , @MitPartitions                    bit            = 0
     , @MitColumnstore                   bit            = 0
     , @MitPhysicalStats                 bit            = 0
+    , @MitVectorIndexes                 bit            = 0
     , @MitSchemaDesign                  bit            = 0
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
@@ -2249,6 +2250,37 @@ Quelle: `Code/07_Infrastructure/140_USP_ErrorLogAnalysis.sql`
     , @IsPartialOut              bit             = NULL OUTPUT
     , @ErrorNumberOut            int             = NULL OUTPUT
     , @ErrorMessageOut           nvarchar(2048)  = NULL OUTPUT
+```
+
+## `[monitor].[USP_VectorIndexAnalysis]`
+
+Quelle: `Code/03_ObjectIndex/075_USP_VectorIndexAnalysis.sql`
+
+```sql
+@DatabaseNames                  nvarchar(max)  = NULL
+    , @SystemdatenbankenEinbeziehen   bit            = 0
+    , @DatabaseNamePattern            nvarchar(4000) = NULL
+    , @HighImpactConfirmed            bit            = 0
+    , @SchemaNames                    nvarchar(max)  = NULL
+    , @SchemaNamePattern              nvarchar(4000) = NULL
+    , @ObjectNames                    nvarchar(max)  = NULL
+    , @ObjectNamePattern              nvarchar(4000) = NULL
+    , @FullObjectNames                nvarchar(max)  = NULL
+    , @IndexNames                     nvarchar(max)  = NULL
+    , @IndexNamePattern               nvarchar(4000) = NULL
+    , @StalenessReviewPercent         decimal(5,2)  = 15.00
+    , @MaxZeilen                      int            = 2000
+    , @LockTimeoutMs                  int            = 0
+    , @ResultSetArt                   varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson               nvarchar(max)  = NULL
+    , @JsonErzeugen                   bit            = 0
+    , @Json                           nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen                 bit            = 1
+    , @Hilfe                          bit            = 0
+    , @StatusCodeOut                  varchar(40)    = NULL OUTPUT
+    , @IsPartialOut                   bit            = NULL OUTPUT
+    , @ErrorNumberOut                 int            = NULL OUTPUT
+    , @ErrorMessageOut                nvarchar(2048) = NULL OUTPUT
 ```
 
 ## `[monitor].[USP_WorkerPressureAnalysis]`

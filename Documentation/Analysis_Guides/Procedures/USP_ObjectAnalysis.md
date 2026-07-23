@@ -1,7 +1,7 @@
 # [monitor].[USP_ObjectAnalysis]
 
 **Bereich:** Object und Index, Orchestrator<br>
-**Zweck:** Orchestriert Inventar, Usage, Missing Indexes und optionale Tiefenmodule mit gemeinsamem Filtervertrag.<br>
+**Zweck:** Orchestriert Inventar, Usage, Missing Indexes und optionale Tiefenmodule einschließlich SQL-Server-2025-Vector-Indizes mit gemeinsamem Filtervertrag.<br>
 **Beobachtungsart:** nicht atomarer Mix aus Katalog, kumulativen Zählern und optionalem physischem Scan<br>
 **Kostenklasse:** LOW–HIGH_OPT_IN
 
@@ -70,7 +70,7 @@ Für `USP_ObjectAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im si
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
 | Standardpfad | `GEZIELT` mit Objektinventar, Index Usage und Missing Indexes. Ohne Objektfilter kann auch dieser Default viele Datenbanken/Katalogobjekte berühren; „gezielt“ bezeichnet den Childmodus, nicht automatisch einen engen Eingabescope. |
-| Teuerster Pfad | `@Vollanalyse = 1`, alle zehn Children und unbegrenzte Zeilen: Kataloge und Index-DMVs werden wiederholt gelesen, Histogramme zerlegt und `sys.dm_db_index_physical_stats` über den freigegebenen Scope ausgeführt. |
+| Teuerster Pfad | `@Vollanalyse = 1`, alle elf Children und unbegrenzte Zeilen: Kataloge und Index-DMVs werden wiederholt gelesen, Histogramme zerlegt und `sys.dm_db_index_physical_stats` über den freigegebenen Scope ausgeführt. |
 | Haupttreiber | Zahl der ausgewählten Datenbanken, Objekte, Indizes, Statistiken und Partitionen; bei Physical Stats zusätzlich Seitenzahl/Scanmodus, bei Statistikverteilung Kandidatenzahl und bis zu 200 Histogrammschritte je Statistik. |
 | Skalierung | Children laufen sequenziell und teilen keinen Katalogsnapshot. Dieselben Objekte werden für Inventar, Usage, Operational Stats, Statistics, Partitionen, Columnstore und Design jeweils neu aufgelöst; VOLL vergrößert Scope und Detailarbeit. |
 | Ressourcen | Datenbankkatalog- und DMV-CPU, Metadaten-I/O, Arbeitsspeicher/TempDB für Gruppierung sowie optional physischer Indexscan und Histogrammabruf. Kein `msdb`, XEL- oder Samplingpfad. |
@@ -90,7 +90,7 @@ Welche objektbezogenen Evidenzpfade sollen für einen Scope gemeinsam ausgeführ
 
 ### Technischer Hintergrund
 
-Der Orchestrator kombiniert Definition, Usage, Operations, Missing Indexes, Statistics, Partitions, Columnstore und optional Physical Stats. Jedes Child behält eigene Quelle, Kosten und Resetsemantik.
+Der Orchestrator kombiniert Definition, Usage, Operations, Missing Indexes, Statistics, Partitions, Columnstore sowie optional Physical Stats und Vector-Index-Wartung. Jedes Child behält eigene Quelle, Kosten und Resetsemantik.
 
 ### Datenkette
 
@@ -98,7 +98,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert je nach Schalter `USP_ObjectInventory`, `USP_IndexUsage`, `USP_MissingIndexes`, `USP_IndexOperationalStats`, `USP_Statistics`, `USP_StatisticsDistributionAnalysis`, `USP_Partitions`, `USP_Columnstore`, `USP_IndexPhysicalStats` und `USP_SchemaDesignAnalysis`.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert je nach Schalter `USP_ObjectInventory`, `USP_IndexUsage`, `USP_MissingIndexes`, `USP_IndexOperationalStats`, `USP_Statistics`, `USP_StatisticsDistributionAnalysis`, `USP_Partitions`, `USP_Columnstore`, `USP_IndexPhysicalStats`, `USP_VectorIndexAnalysis` und `USP_SchemaDesignAnalysis`.
 
 **Wichtig für die Eigenlast:** Reichen Sie Datenbank und vollständigen Objektnamen an alle Childmodule weiter und aktivieren Sie nur benötigte Tiefenpfade. Das abschließende Zeilenlimit ersetzt weder den DMF-Objektparameter noch den frühen Katalogscope.
 
@@ -116,7 +116,7 @@ Die Zusammenfassung ist keine DDL-Liste. Ein Childfehler darf nicht als unauffä
 
 ### Folgeanalyse
 
-Führen Sie je Befund das spezialisierte Child mit engem Scope erneut aus.
+Führen Sie je Befund das spezialisierte Child mit engem Scope erneut aus. `@MitVectorIndexes = 1` bleibt opt-in und liefert auf älteren Versionen einen expliziten Childstatus statt eines Parserfehlers.
 
 ## Primärquellen
 
@@ -128,4 +128,4 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 
 - [SQL Server First Responder Kit – ergänzende, quelloffene Praxiswerkzeuge für Triage](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)
 
-[Technische Detailbeschreibung](../03_Object_Index.md#11-monitorusp_objectanalysis)
+[Technische Detailbeschreibung](../03_Object_Index.md#12-monitorusp_objectanalysis)

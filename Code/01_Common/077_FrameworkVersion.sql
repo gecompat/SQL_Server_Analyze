@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.14
-Stand        : 2026-07-22
+Version      : 1.1.0-special.16
+Stand        : 2026-07-23
 Zweck        : Liefert eine kompakte Versionsinformation für das installierte
                Ad-hoc-Analysepaket. Die Tabelle bildet weder eine
                Installationshistorie noch ein Deployment-Framework ab.
@@ -34,12 +34,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.14',
-    [ReleaseDate]='20260722',
+SET [FrameworkVersion]='1.1.0-special.16',
+    [ReleaseDate]='20260723',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.19',
+    [ContractVersion]='1.20',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.19: External-Runtime- und SQL-CLR-Analyse mit getrennten Capability-, Quellen-, Datenschutz- und Ausgabeverträgen.'
+    [ReleaseNotes]=N'API 1.20: SQL-Server-2025-Vector-Index-Katalog- und Wartungsanalyse mit versionssicherem Quellen-, Begrenzungs- und False-Positive-Vertrag.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -51,9 +51,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.14','20260722',15,
-        '1.19',SYSUTCDATETIME(),
-        N'API 1.19: External-Runtime- und SQL-CLR-Analyse mit getrennten Capability-, Quellen-, Datenschutz- und Ausgabeverträgen.'
+        N'SQLServerMonitoringFramework','1.1.0-special.16','20260723',15,
+        '1.20',SYSUTCDATETIME(),
+        N'API 1.20: SQL-Server-2025-Vector-Index-Katalog- und Wartungsanalyse mit versionssicherem Quellen-, Begrenzungs- und False-Positive-Vertrag.'
     );
 END;
 GO

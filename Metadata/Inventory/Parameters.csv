@@ -463,6 +463,30 @@ USP_IndexPhysicalStats,JsonErzeugen,bit,0
 USP_IndexPhysicalStats,Json,nvarchar(max),NULL OUTPUT
 USP_IndexPhysicalStats,PrintMeldungen,bit,1
 USP_IndexPhysicalStats,Hilfe,bit,0
+USP_VectorIndexAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_VectorIndexAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_VectorIndexAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_VectorIndexAnalysis,HighImpactConfirmed,bit,0
+USP_VectorIndexAnalysis,SchemaNames,nvarchar(max),NULL
+USP_VectorIndexAnalysis,SchemaNamePattern,nvarchar(4000),NULL
+USP_VectorIndexAnalysis,ObjectNames,nvarchar(max),NULL
+USP_VectorIndexAnalysis,ObjectNamePattern,nvarchar(4000),NULL
+USP_VectorIndexAnalysis,FullObjectNames,nvarchar(max),NULL
+USP_VectorIndexAnalysis,IndexNames,nvarchar(max),NULL
+USP_VectorIndexAnalysis,IndexNamePattern,nvarchar(4000),NULL
+USP_VectorIndexAnalysis,StalenessReviewPercent,"decimal(5,2)",15.00
+USP_VectorIndexAnalysis,MaxZeilen,int,2000
+USP_VectorIndexAnalysis,LockTimeoutMs,int,0
+USP_VectorIndexAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_VectorIndexAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_VectorIndexAnalysis,JsonErzeugen,bit,0
+USP_VectorIndexAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_VectorIndexAnalysis,PrintMeldungen,bit,1
+USP_VectorIndexAnalysis,Hilfe,bit,0
+USP_VectorIndexAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_VectorIndexAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_VectorIndexAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_VectorIndexAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_ObjectAnalysis,DatabaseNames,nvarchar(max),NULL
 USP_ObjectAnalysis,SystemdatenbankenEinbeziehen,bit,0
 USP_ObjectAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
@@ -486,6 +510,7 @@ USP_ObjectAnalysis,MitStatisticsDistribution,bit,0
 USP_ObjectAnalysis,MitPartitions,bit,0
 USP_ObjectAnalysis,MitColumnstore,bit,0
 USP_ObjectAnalysis,MitPhysicalStats,bit,0
+USP_ObjectAnalysis,MitVectorIndexes,bit,0
 USP_ObjectAnalysis,MitSchemaDesign,bit,0
 USP_ObjectAnalysis,MaxZeilen,int,2000
 USP_ObjectAnalysis,LockTimeoutMs,int,0

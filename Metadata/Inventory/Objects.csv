@@ -63,6 +63,7 @@ PROCEDURE,USP_StatisticsDistributionAnalysis,Code/03_ObjectIndex/045_USP_Statist
 PROCEDURE,USP_Partitions,Code/03_ObjectIndex/050_USP_Partitions.sql
 PROCEDURE,USP_Columnstore,Code/03_ObjectIndex/060_USP_Columnstore.sql
 PROCEDURE,USP_IndexPhysicalStats,Code/03_ObjectIndex/070_USP_IndexPhysicalStats.sql
+PROCEDURE,USP_VectorIndexAnalysis,Code/03_ObjectIndex/075_USP_VectorIndexAnalysis.sql
 PROCEDURE,USP_ObjectAnalysis,Code/03_ObjectIndex/080_USP_ObjectAnalysis.sql
 PROCEDURE,USP_SchemaDesignAnalysis,Code/03_ObjectIndex/090_USP_SchemaDesignAnalysis.sql
 PROCEDURE,USP_QueryStats,Code/04_PlanCache/010_USP_QueryStats.sql

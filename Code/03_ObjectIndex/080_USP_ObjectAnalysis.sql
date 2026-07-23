@@ -4,11 +4,11 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ObjectAnalysis
-Version      : 2.2.0
-Stand        : 2026-07-17
+Version      : 2.3.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Orchestriert die Objekt-, Index-, Statistik-, Partition-,
-               Columnstore- und Physical-Stats-Analysen mit einem einheitlichen
+               Columnstore-, Vector-Index- und Physical-Stats-Analysen mit einem einheitlichen
                Listen-, Pattern- und Ausgabevertrag.
 SQL-Version  : SQL Server 2019 oder neuer.
 Parameter    : @DatabaseNames, @DatabaseNamePattern, @SchemaNames,
@@ -23,7 +23,9 @@ Semantik     : Exakte Listen sind bracket-aware Pipe-Listen; Pattern sind
 Ausgabe      : Aktivierte Teilmodule liefern RAW oder CONSOLE. NONE unterdrückt
                fachliche Resultsets. JSON enthält die Teilmodul-Envelopes unter
                benannten Eigenschaften und einen Orchestratorstatus.
-Änderungen   : 2.2.0 - Begrenzte Statistikverteilungsanalyse als opt-in
+Änderungen   : 2.3.0 - SQL-Server-2025-Vector-Index-Laufzeitanalyse als
+                          capability-adaptives opt-in Teilmodul integriert.
+               2.2.0 - Begrenzte Statistikverteilungsanalyse als opt-in
                          Teilmodul integriert.
                2.1.0 - Schema-/Designkorrektheit als opt-in Teilmodul.
                2.0.0 - Mehrfachfilter, getrennte Pattern, Cross-Database-Scope,
@@ -55,6 +57,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectAnalysis]
     , @MitPartitions                    bit            = 0
     , @MitColumnstore                   bit            = 0
     , @MitPhysicalStats                 bit            = 0
+    , @MitVectorIndexes                 bit            = 0
     , @MitSchemaDesign                  bit            = 0
     , @MaxZeilen                        int            = 2000
     , @LockTimeoutMs                    int            = 0
@@ -93,6 +96,7 @@ BEGIN
         PRINT N'Pattern unterstützen like:, regex:, regexi: und werden nicht an Pipe getrennt.';
         PRINT N'@Vollanalyse=0 nutzt GEZIELT; ressourcenintensive Teilmodule bleiben zusätzlich gruppengeschützt.';
         PRINT N'@MitStatisticsDistribution=1 aktiviert die begrenzte, CATALOG_DEEP-geschützte Histogramm-/Partitionsverteilung.';
+        PRINT N'@MitVectorIndexes=1 aktiviert die versionsadaptive Vector-Index-Katalog- und Wartungsanalyse; auf älteren Versionen bleibt der Childstatus explizit UNAVAILABLE_VERSION.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt benannte Teilmodule in @Json.';
         RETURN;
     END;
@@ -139,11 +143,16 @@ BEGIN
     DECLARE @JsonPartitions nvarchar(max) = NULL;
     DECLARE @JsonColumnstore nvarchar(max) = NULL;
     DECLARE @JsonPhysicalStats nvarchar(max) = NULL;
+    DECLARE @JsonVectorIndexes nvarchar(max) = NULL;
     DECLARE @JsonSchemaDesign nvarchar(max) = NULL;
     DECLARE @StatisticsDistributionStatus varchar(40) = NULL;
     DECLARE @StatisticsDistributionPartial bit = NULL;
     DECLARE @StatisticsDistributionErrorNumber int = NULL;
     DECLARE @StatisticsDistributionErrorMessage nvarchar(2048) = NULL;
+    DECLARE @VectorIndexStatus varchar(40) = NULL;
+    DECLARE @VectorIndexPartial bit = NULL;
+    DECLARE @VectorIndexErrorNumber int = NULL;
+    DECLARE @VectorIndexErrorMessage nvarchar(2048) = NULL;
     DECLARE @SchemaDesignStatus varchar(40) = NULL;
     DECLARE @SchemaDesignPartial bit = NULL;
     DECLARE @SchemaDesignErrorNumber int = NULL;
@@ -245,6 +254,18 @@ BEGIN
         INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexPhysicalStats',COALESCE(JSON_VALUE(@JsonPhysicalStats,'$.meta.statusCode'),'EXECUTED'),NULL,NULL);
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_IndexPhysicalStats','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
 
+    IF @StatusCode = 'AVAILABLE' AND @MitVectorIndexes = 1
+    BEGIN TRY
+        EXEC [monitor].[USP_VectorIndexAnalysis]
+              @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed
+            , @SchemaNames=@SchemaNames,@SchemaNamePattern=@SchemaNamePattern,@ObjectNames=@ObjectNames,@ObjectNamePattern=@ObjectNamePattern,@FullObjectNames=@FullObjectNames
+            , @IndexNames=@IndexNames,@IndexNamePattern=@IndexNamePattern,@MaxZeilen=@MaxZeilen,@LockTimeoutMs=@LockTimeoutMs
+            , @ResultSetArt=@ResultSetArtNormalisiert,@JsonErzeugen=@JsonErzeugen,@Json=@JsonVectorIndexes OUTPUT,@PrintMeldungen=@PrintMeldungen
+            , @StatusCodeOut=@VectorIndexStatus OUTPUT,@IsPartialOut=@VectorIndexPartial OUTPUT
+            , @ErrorNumberOut=@VectorIndexErrorNumber OUTPUT,@ErrorMessageOut=@VectorIndexErrorMessage OUTPUT;
+        INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_VectorIndexAnalysis',COALESCE(@VectorIndexStatus,'ERROR_HANDLED'),@VectorIndexErrorNumber,@VectorIndexErrorMessage);
+    END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_VectorIndexAnalysis','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
+
     IF @StatusCode = 'AVAILABLE' AND @MitSchemaDesign = 1
     BEGIN TRY
         EXEC [monitor].[USP_SchemaDesignAnalysis]
@@ -257,7 +278,7 @@ BEGIN
     END TRY BEGIN CATCH INSERT [#ObjectAnalysis_ModuleStatus] VALUES(N'USP_SchemaDesignAnalysis','ERROR_HANDLED',ERROR_NUMBER(),ERROR_MESSAGE()); SET @IsPartial=1; END CATCH;
 
     IF EXISTS(SELECT 1 FROM [#ObjectAnalysis_ModuleStatus]
-              WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
+              WHERE [StatusCode] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','NOT_ENABLED'))
     BEGIN
         SET @StatusCode = 'PARTIAL_RESULT';
         SET @IsPartial = 1;
@@ -288,6 +309,7 @@ BEGIN
             ,N',"partitions":',COALESCE(@JsonPartitions,N'null')
             ,N',"columnstore":',COALESCE(@JsonColumnstore,N'null')
             ,N',"indexPhysicalStats":',COALESCE(@JsonPhysicalStats,N'null')
+            ,N',"vectorIndexAnalysis":',COALESCE(@JsonVectorIndexes,N'null')
             ,N',"schemaDesign":',COALESCE(@JsonSchemaDesign,N'null')
             ,N'}'
         );

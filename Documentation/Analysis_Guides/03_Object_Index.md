@@ -451,7 +451,40 @@ Immer `PHYSICAL_STATS_DEEP`. `DETAILED` auf großen Datenbanken kann selbst subs
 
 ---
 
-## 10. [monitor].[USP_SchemaDesignAnalysis]
+## 10. [monitor].[USP_VectorIndexAnalysis]
+
+### Zweck
+
+Die Procedure inventarisiert sichtbare SQL-Server-2025-Vector-Indizes und
+korreliert sie mit dem aktuellen Hintergrundwartungszustand. Auf SQL Server
+2019 und 2022 liefert sie `UNAVAILABLE_VERSION`, ohne die neueren Quellen zu
+referenzieren.
+
+### Resultsets und Grenzen
+
+- `vectorIndexes` enthält Typ, Distanzmetrik und Disabled-Status.
+- `maintenance` enthält ungefähre Staleness und den letzten Hintergrundtask.
+- `sourceStatus` trennt Version, Feature, Schema, Berechtigung und Timeout.
+- `findings` erzeugt ausschließlich Reviewhinweise; kein Finding ist eine
+  automatische Rebuildempfehlung.
+- Vector-Werte und interne `build_parameters` werden nicht gelesen.
+
+### Aufruf
+
+```sql
+EXEC [monitor].[USP_VectorIndexAnalysis]
+      @DatabaseNames = N'[ExampleDatabase]',
+      @FullObjectNames = N'[ExampleSchema].[ExampleTable]',
+      @StalenessReviewPercent = 15,
+      @MaxZeilen = 100,
+      @ResultSetArt = 'RAW';
+```
+
+[Eigenständige Procedure-Seite](Procedures/USP_VectorIndexAnalysis.md)
+
+---
+
+## 11. [monitor].[USP_SchemaDesignAnalysis]
 
 ### Zweck
 
@@ -495,7 +528,7 @@ EXEC [monitor].[USP_SchemaDesignAnalysis]
 
 ---
 
-## 11. [monitor].[USP_ObjectAnalysis]
+## 12. [monitor].[USP_ObjectAnalysis]
 
 ### Zweck
 
@@ -512,7 +545,8 @@ Die Procedure orchestriert alle Objekt- und Indexmodule mit einem gemeinsamen Fi
 7. `USP_Partitions`
 8. `USP_Columnstore`
 9. `USP_IndexPhysicalStats`
-10. `USP_SchemaDesignAnalysis`
+10. `USP_VectorIndexAnalysis`
+11. `USP_SchemaDesignAnalysis`
 
 ### Modulstatus
 
@@ -535,6 +569,7 @@ EXEC [monitor].[USP_ObjectAnalysis]
       @MitStatisticsDistribution = 1,
       @MitPartitions = 1,
       @MitColumnstore = 1,
+      @MitVectorIndexes = 1,
       @ResultSetArt = 'RAW';
 ```
 
@@ -575,6 +610,7 @@ flowchart TD
 - [sys.dm_db_stats_properties](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-stats-properties-transact-sql?view=sql-server-ver17)
 - [sys.dm_db_stats_histogram](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-db-stats-histogram-transact-sql?view=sql-server-ver17)
 - [sys.dm_db_index_physical_stats](https://learn.microsoft.com/sql/relational-databases/system-dynamic-management-views/sys-dm-db-index-physical-stats-transact-sql)
+- [sys.dm_db_vector_indexes](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-vector-indexes-transact-sql?view=sql-server-ver17)
 - [Columnstore index guidance](https://learn.microsoft.com/sql/relational-databases/indexes/columnstore-indexes-overview)
 - [Partitioned tables and indexes](https://learn.microsoft.com/sql/relational-databases/partitions/partitioned-tables-and-indexes)
 - [Brent Ozar: Missing indexes](https://www.brentozar.com/blitz/missing-index/)

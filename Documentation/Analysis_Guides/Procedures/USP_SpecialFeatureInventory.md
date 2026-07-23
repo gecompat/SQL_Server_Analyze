@@ -36,7 +36,7 @@ Im Feature-Resultset identifiziert `(DatabaseName, FeatureCode)` eine Zeile. `De
 
 ## So lesen
 
-`DETECTED` bedeutet mindestens einen sichtbaren Katalogmarker; `CONFIGURED_ONLY` belegt nur eine Konfiguration; `NOT_DETECTED_VISIBLE_SCOPE` ist keine globale Abwesenheitsgarantie. `UNAVAILABLE_VERSION` und `SOURCE_UNAVAILABLE` sind Evidenzlücken, keine Nullmessungen. Berücksichtigen Sie danach `ConfigurationState`, `RecommendedModuleStatus` und besonders `EvidenceLimit`. `NOT_PLANNED` bedeutet nur, dass das Framework kein eigenes Deep-Dive-Modul anbietet.
+`DETECTED` bedeutet mindestens einen sichtbaren Katalogmarker; `CONFIGURED_ONLY` belegt nur eine Konfiguration; `NOT_DETECTED_VISIBLE_SCOPE` ist keine globale Abwesenheitsgarantie. `UNAVAILABLE_VERSION` und `SOURCE_UNAVAILABLE` sind Evidenzlücken, keine Nullmessungen. Berücksichtigen Sie danach `ConfigurationState`, `RecommendedModuleStatus` und besonders `EvidenceLimit`. `NOT_PLANNED` bedeutet nur, dass das Framework kein eigenes Deep-Dive-Modul anbietet. Die `VECTOR`-Zeile verweist bei sichtbaren nativen Vector-Spalten auf die implementierte `USP_VectorIndexAnalysis`.
 
 ## Warum kann das problematisch sein?
 
@@ -122,7 +122,7 @@ Objekt vorhanden bedeutet nicht aktiv genutzt, performant oder korrekt konfiguri
 
 ### Folgeanalyse
 
-Für die weitere Analyse gelten folgende Schritte und Quellen: Featurebezogene Deep Analysis, Query-/Dependencyanalyse und Ownerreview.
+Für die weitere Analyse gelten folgende Schritte und Quellen: Featurebezogene Deep Analysis, Query-/Dependencyanalyse und Ownerreview. Für `VECTOR` prüft `USP_VectorIndexAnalysis` sichtbare Indizes und aktuelle Hintergrundwartung, ohne Vector-Werte zu lesen.
 
 ## Primärquellen
 

@@ -1,6 +1,6 @@
 # Implementierungsstatusmodell
 
-Stand: 2026-07-22
+Stand: 2026-07-23
 
 Dieses Modell trennt Produktfunktion, automatisierte Repositoryevidenz, externe
 Laufzeitnachweise und ausdrücklich optionale Erweiterungen. Ein offener
@@ -40,9 +40,12 @@ Qualitätsregistern gültig. Sie ersetzen den Produktstatus nicht.
 ## Aktuelle Abgrenzung
 
 Die kanonischen Zuordnungen stehen in
-`Metadata/Quality/Implementation_Status.csv`. DIAG-003 bis DIAG-005 sind mit
+`Metadata/Quality/Implementation_Status.csv`. DIAG-003 bis DIAG-005 sowie SQL25-001 sind mit
 ihren kanonischen Zielresultsets, Inventaren und versionsübergreifenden
-Runtimeverträgen abgeschlossen. RUNTIME-001 ist als implementierter portabler Kern mit ausstehenden
+Runtimeverträgen abgeschlossen. SQL25-001 verweist zusätzlich auf den öffentlichen
+Vertrag `Metadata/Quality/SQL25_Vector_Index_Public_Contract.json`; reine
+Capability-Inventur gilt dort ausdrücklich nicht als Laufzeitimplementierung.
+RUNTIME-001 ist als implementierter portabler Kern mit ausstehenden
 externen Feature-Nachweisen eingestuft. Bei SC-023 bleibt der bereits
 abgenommene Performance-Counter-Slice implementiert; weitere Collector und
 Rollups sind optionaler Ausbau.

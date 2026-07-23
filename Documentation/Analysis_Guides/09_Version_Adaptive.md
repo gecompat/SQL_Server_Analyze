@@ -187,6 +187,7 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 - External Scripts enabled ohne externe Bibliothek kann Vorbereitungs- oder Altzustand sein.
 - Database Encryption Flag, Always-Encrypted-Schlüsselmetadaten und verschlüsselte Spalten sind unterschiedliche Technologien, die in einer Featuregruppe zusammengefasst werden können.
 - `@NurErkannteFeatures=1` verbessert die Lesbarkeit, entfernt aber die explizite Information über nicht erkennbare oder nicht verfügbare Featuregruppen.
+- Sichtbare native Vector-Spalten verweisen auf `USP_VectorIndexAnalysis`; erst dieses Modul prüft vorhandene Vector-Indizes und ihre aktuelle Wartungsevidenz.
 
 ### Plakative und grenzwertige Beispiele
 
@@ -200,7 +201,7 @@ EXEC [monitor].[USP_SpecialFeatureInventory]
 
 ### Folgeanalyse
 
-Verwenden Sie das angegebene `RecommendedModule`. Wenn ein Deep-Dive-Modul fehlt, müssen Quelle und Betriebsanforderung manuell geprüft werden.
+Verwenden Sie das angegebene `RecommendedModule`. Für `VECTOR` ist `USP_VectorIndexAnalysis` implementiert und versionsadaptiv; die Inventur allein ist kein Indexgesundheitsbefund. Wenn ein anderes Deep-Dive-Modul fehlt, müssen Quelle und Betriebsanforderung manuell geprüft werden.
 
 ### Kosten
 
