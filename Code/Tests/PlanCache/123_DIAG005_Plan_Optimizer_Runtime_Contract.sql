@@ -268,12 +268,16 @@ EXEC [monitor].[USP_ShowplanAnalysis]
 IF ISJSON(@ShowplanJson)<>1
    OR TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.meta.schemaVersion'))<>4
    OR JSON_QUERY(@ShowplanJson,N'$.planWarnings') IS NULL
-   OR JSON_VALUE(@ShowplanJson,N'$.planWarnings[0].StatusCode')<>N'NOT_COLLECTED'
-   OR TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.planWarnings[0].CandidateId'))<>1
+   OR COALESCE(JSON_VALUE(@ShowplanJson,N'$.planWarnings[0].StatusCode'),N'')<>N'NOT_COLLECTED'
+   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.planWarnings[0].CandidateId')),0)<>1
    OR JSON_QUERY(@ShowplanJson,N'$.optimizerContext') IS NULL
+   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.optimizerContext[0].CandidateId')),0)<>1
    OR JSON_QUERY(@ShowplanJson,N'$.runtimeFeedback') IS NULL
+   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.runtimeFeedback[0].CandidateId')),0)<>1
    OR JSON_QUERY(@ShowplanJson,N'$.queryStoreContext') IS NULL
+   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.queryStoreContext[0].CandidateId')),0)<>1
    OR JSON_QUERY(@ShowplanJson,N'$.feedbackAndVariants') IS NULL
+   OR COALESCE(TRY_CONVERT(int,JSON_VALUE(@ShowplanJson,N'$.feedbackAndVariants[0].CandidateId')),0)<>1
     THROW 53668,N'USP_ShowplanAnalysis aggregiert den DIAG-005-Statusvertrag nicht kandidatengenau.',1;
 
 DECLARE @MissingQueryStoreJson nvarchar(max),@ExampleDatabase sysname=N'DeineDatenbank';
