@@ -1,7 +1,7 @@
 # LAB-001 – Reproducible Diagnostic Lab
 
 **Status:** `PARTIAL_PRODUCT_FUNCTION`  
-**Stand:** 23. Juli 2026  
+**Stand:** 24. Juli 2026  
 **Ziel:** Ein vollständig automatisierbares, ressourcenschonendes und ausschließlich synthetisches Diagnoselabor für SQL Server 2019, 2022 und 2025.
 
 ## 1. Zweck und Architekturentscheidung
@@ -901,6 +901,8 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 
 ### Welle 2 – Container-Single und Baseline
 
+**Implementierungsstatus:** `IMPLEMENTED_ACTIONS_GATE` / `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`
+
 **Lieferumfang:**
 
 - gemeinsamer Linux-Container-Bootstrap für nativen Linux-Host und Hyper-V-Linux-VM;
@@ -916,6 +918,8 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 - zweiter Lauf startet aus sauberem Zustand;
 - Hostreserve und tatsächlicher Storageverbrauch werden geprüft;
 - derselbe Baselinevertrag läuft im nativen Linux-Modus und im Hyper-V-Linux-VM-Modus oder bleibt mit dokumentiertem `NOT_EXECUTED` sichtbar.
+
+Die Docker-, Installer-, Szenario-, Assertion-, Mess- und Cleanup-Aktionspfade sind implementiert und werden im CI statisch sowie mit PowerShell-Vertragstests geprüft. Reale Hostwerte, Secrets und Laufzeitdaten bleiben ausschließlich im ignorierten lokalen State. Die externen Gates für natives Linux und die Hyper-V-Linux-VM bleiben bis zur Ausführung auf einem freigegebenen Host mit passender Kapazität ausdrücklich `NOT_EXECUTED`.
 
 ### Welle 3 – Core-Performance-Szenarien
 

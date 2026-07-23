@@ -7,7 +7,7 @@
       "ProductFamily": "SQL_SERVER",
       "ProductVersion": "2025",
       "Platform": "LINUX_X86_64",
-      "ReadableReference": "PUBLIC_IMAGE_REFERENCE_REQUIRED",
+      "ReadableReference": "mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04",
       "Digest": "SHA256_DIGEST_REQUIRED",
       "Status": "UNRESOLVED_EXAMPLE"
     }
@@ -23,4 +23,3 @@
     }
   ]
 }
-

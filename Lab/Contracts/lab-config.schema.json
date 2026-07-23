@@ -10,6 +10,8 @@
     "AllowedExecutionModes",
     "SqlVersionPriority",
     "ContainerEngine",
+    "ContainerImageLogicalId",
+    "AcceptSqlServerEula",
     "ResourceProfile",
     "StorageRoleBindings",
     "NetworkPolicy",
@@ -60,6 +62,12 @@
         "DOCKER",
         "PODMAN"
       ]
+    },
+    "ContainerImageLogicalId": {
+      "$ref": "#/$defs/logicalReference"
+    },
+    "AcceptSqlServerEula": {
+      "const": false
     },
     "ResourceProfile": {
       "enum": [
@@ -167,4 +175,3 @@
     }
   }
 }
-
