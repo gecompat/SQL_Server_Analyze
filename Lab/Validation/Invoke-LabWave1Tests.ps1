@@ -86,7 +86,7 @@ function New-SyntheticCapability {
 $modulePath = Join-Path $RepositoryRoot (
     'Lab/Orchestration/Modules/DiagnosticLab/DiagnosticLab.psd1'
 )
-$module = Import-Module -Name $modulePath -Force -PassThru
+$module = $null
 $testRoot = Join-Path ([IO.Path]::GetTempPath()) (
     'lab001-wave1-' + [Guid]::NewGuid().ToString('N')
 )
@@ -119,6 +119,8 @@ try {
     Assert-LabTest `
         -Condition ($parseErrors.Count -eq 0) `
         -Message 'PowerShell parser reported an error.'
+
+    $module = Import-Module -Name $modulePath -Force -PassThru
 
     $runIds = @(
         & $module { New-LabRunId }

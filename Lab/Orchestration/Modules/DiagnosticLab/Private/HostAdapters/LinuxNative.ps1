@@ -69,10 +69,11 @@ function Get-LabNormalizedArchitecture {
     [OutputType([string])]
     param()
 
-    return switch ([Runtime.InteropServices.RuntimeInformation]::OSArchitecture) {
-        ([Runtime.InteropServices.Architecture]::X64) { 'X86_64' }
-        default { $_.ToString().ToUpperInvariant() }
+    $architecture = [Runtime.InteropServices.RuntimeInformation]::OSArchitecture
+    if ($architecture -eq [Runtime.InteropServices.Architecture]::X64) {
+        return 'X86_64'
     }
+    return $architecture.ToString().ToUpperInvariant()
 }
 
 function Get-LabLinuxMemory {
