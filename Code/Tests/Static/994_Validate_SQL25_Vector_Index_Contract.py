@@ -21,14 +21,22 @@ EXPECTED_RESULTS = {
 }
 EXPECTED_CASES = {
     "unavailable-version",
+    "feature-active-or-explicit-unavailable",
+    "object-analysis-routing",
+    "named-table-output",
+}
+EXPECTED_CONDITIONAL_CASES = {
     "feature-active",
     "maintenance-visible",
     "empty-filter",
     "denied-runtime",
     "bounded-output",
     "cross-database",
-    "object-analysis-routing",
-    "named-table-output",
+}
+EXPECTED_ACTIVATION_PREREQUISITES = {
+    "Compatibility level 170",
+    "PREVIEW_FEATURES enabled",
+    "sys.vector_indexes and sys.dm_db_vector_indexes exposed by the SQL Server 2025 build",
 }
 
 
@@ -60,6 +68,16 @@ def validate_contract_object(data: dict) -> list[str]:
         errors.append("contract: resultSets do not match the six frozen names")
     if set(data.get("runtimeMatrix", {}).get("requiredCases", [])) != EXPECTED_CASES:
         errors.append("contract: runtimeMatrix.requiredCases is incomplete")
+    if (
+        set(data.get("runtimeMatrix", {}).get("capabilityConditionalCases", []))
+        != EXPECTED_CONDITIONAL_CASES
+    ):
+        errors.append("contract: runtimeMatrix.capabilityConditionalCases is incomplete")
+    if (
+        set(data.get("runtimeMatrix", {}).get("activationPrerequisites", []))
+        != EXPECTED_ACTIVATION_PREREQUISITES
+    ):
+        errors.append("contract: runtimeMatrix.activationPrerequisites is incomplete")
     if data.get("runtimeMatrix", {}).get("productMajorVersions") != [15, 16, 17]:
         errors.append("contract: productMajorVersions must be [15, 16, 17]")
 
@@ -174,6 +192,7 @@ def validate_repository(root: Path) -> list[str]:
         runtime_test,
         (
             "UNAVAILABLE-VERSION",
+            "FEATURE-UNAVAILABLE-EXPLICIT",
             "FEATURE-ACTIVE",
             "MAINTENANCE-VISIBLE",
             "EMPTY-FILTER",
@@ -330,6 +349,8 @@ def run_self_test() -> None:
         "runtimeMatrix": {
             "productMajorVersions": [15, 16, 17],
             "requiredCases": sorted(EXPECTED_CASES),
+            "capabilityConditionalCases": sorted(EXPECTED_CONDITIONAL_CASES),
+            "activationPrerequisites": sorted(EXPECTED_ACTIVATION_PREREQUISITES),
         },
     }
     if validate_contract_object(valid):
