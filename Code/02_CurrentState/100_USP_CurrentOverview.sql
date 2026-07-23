@@ -330,7 +330,7 @@ BEGIN
         , [pool_id] int NOT NULL
         , [resource_semaphore_id] smallint NOT NULL
         , [target_memory_kb] bigint NOT NULL
-        , [max_target_memory_kb] bigint NOT NULL
+        , [max_target_memory_kb] bigint NULL
         , [total_memory_kb] bigint NOT NULL
         , [available_memory_kb] bigint NOT NULL
         , [granted_memory_kb] bigint NOT NULL
