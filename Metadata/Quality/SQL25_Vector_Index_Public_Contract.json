@@ -80,14 +80,22 @@
     ],
     "requiredCases": [
       "unavailable-version",
+      "feature-active-or-explicit-unavailable",
+      "object-analysis-routing",
+      "named-table-output"
+    ],
+    "capabilityConditionalCases": [
       "feature-active",
       "maintenance-visible",
       "empty-filter",
       "denied-runtime",
       "bounded-output",
-      "cross-database",
-      "object-analysis-routing",
-      "named-table-output"
+      "cross-database"
+    ],
+    "activationPrerequisites": [
+      "Compatibility level 170",
+      "PREVIEW_FEATURES enabled",
+      "sys.vector_indexes and sys.dm_db_vector_indexes exposed by the SQL Server 2025 build"
     ],
     "fixtures": "Synthetic Example* objects only"
   },
