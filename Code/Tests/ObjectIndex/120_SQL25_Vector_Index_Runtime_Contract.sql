@@ -93,23 +93,6 @@ BEGIN
 END;
 
 DECLARE @HasVectorCatalog bit=0,@HasVectorRuntime bit=0;
-SELECT @HasVectorCatalog=CONVERT(bit,CASE WHEN EXISTS
-(
-    SELECT 1
-    FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
-    INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
-    WHERE [s].[name]=N'sys' AND [o].[name]=N'vector_indexes'
-) THEN 1 ELSE 0 END);
-SELECT @HasVectorRuntime=CONVERT(bit,CASE WHEN EXISTS
-(
-    SELECT 1
-    FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
-    INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
-    WHERE [s].[name]=N'sys' AND [o].[name]=N'dm_db_vector_indexes'
-) THEN 1 ELSE 0 END);
-IF @HasVectorCatalog<>1 OR @HasVectorRuntime<>1
-    THROW 55703,N'SQL Server 2025 stellt die dokumentierten Vector-Index-Quellen nicht bereit.',1;
-
 DECLARE @OriginalCompatibilityLevel tinyint=
 (
     SELECT [compatibility_level]
@@ -132,6 +115,57 @@ BEGIN TRY
     END;
     IF COALESCE(@PreviewWasEnabled,0)=0
         EXEC [sys].[sp_executesql] N'ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES=ON;';
+
+    SELECT @HasVectorCatalog=CONVERT(bit,CASE WHEN EXISTS
+    (
+        SELECT 1
+        FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+        INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
+        WHERE [s].[name]=N'sys' AND [o].[name]=N'vector_indexes'
+    ) THEN 1 ELSE 0 END);
+    SELECT @HasVectorRuntime=CONVERT(bit,CASE WHEN EXISTS
+    (
+        SELECT 1
+        FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+        INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
+        WHERE [s].[name]=N'sys' AND [o].[name]=N'dm_db_vector_indexes'
+    ) THEN 1 ELSE 0 END);
+
+    IF @HasVectorCatalog<>1 OR @HasVectorRuntime<>1
+    BEGIN
+        SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
+        EXEC [monitor].[USP_VectorIndexAnalysis]
+              @DatabaseNames=N'[DeineDatenbank]'
+            , @ResultSetArt='NONE'
+            , @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0
+            , @StatusCodeOut=@Status OUTPUT,@IsPartialOut=@Partial OUTPUT;
+        IF ISJSON(@Json)<>1
+           OR @Status NOT IN('UNAVAILABLE_FEATURE','NOT_APPLICABLE')
+           OR COALESCE(@Partial,1)<>0
+           OR NOT EXISTS
+              (
+                  SELECT 1
+                  FROM OPENJSON(@Json,N'$.sourceStatus')
+                  WITH ([StatusCode] varchar(40) N'$.StatusCode')
+                  WHERE [StatusCode]='UNAVAILABLE_FEATURE'
+              )
+            THROW 55703,N'SQL25-001 weist einen auf diesem SQL-Server-2025-Build nicht bereitgestellten Vector-Index-Pfad nicht explizit aus.',1;
+
+        INSERT @ExecutedCases VALUES('FEATURE-UNAVAILABLE-EXPLICIT');
+        IF COALESCE(@PreviewWasEnabled,0)=0
+            EXEC [sys].[sp_executesql] N'ALTER DATABASE SCOPED CONFIGURATION SET PREVIEW_FEATURES=OFF;';
+        IF @OriginalCompatibilityLevel<170
+        BEGIN
+            SET @Sql=N'ALTER DATABASE '+QUOTENAME(@CurrentDatabaseName)+N' SET COMPATIBILITY_LEVEL='+CONVERT(nvarchar(3),@OriginalCompatibilityLevel)+N';';
+            EXEC [sys].[sp_executesql] @Sql;
+        END;
+
+        SELECT CAST(@Status AS varchar(40)) [StatusCode],CAST(0 AS bit) [IsPartial],
+               @ProductMajorVersion [ProductMajorVersion],
+               (SELECT COUNT_BIG(*) FROM @ExecutedCases) [ExecutedCases],
+               N'SQL25-001 Featuregrenze, TABLE/JSON und Orchestratorvertrag bestanden; der Build stellt den optionalen Previewpfad nicht bereit.' [Detail];
+        RETURN;
+    END;
 
     DROP TABLE IF EXISTS [dbo].[ExampleVectorRuntimeA];
     DROP TABLE IF EXISTS [dbo].[ExampleVectorRuntimeB];
