@@ -26,8 +26,8 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalAnalyzeExecutionPlan]
     , @EvidenzDatenschutzModus   varchar(24) = 'DERIVED_ONLY'
     , @IdentifierDatenschutzModus varchar(16) = 'RAW'
     , @SourceObservedAtUtc         datetime2(3) = NULL
-    , @SessionId                  smallint = NULL
-    , @RequestId                  int = NULL
+    , @ParameterEvidenceSessionId                  smallint = NULL
+    , @ParameterEvidenceRequestId                  int = NULL
     , @PlanHandle                 varbinary(64) = NULL
     , @QueryStoreDatabaseName     sysname = NULL
     , @QueryStorePlanId           bigint = NULL
@@ -442,7 +442,7 @@ BEGIN
             , [IsCurrentExecution],[IsLastKnownExecution],[IsComplete],[EvidenceLimit]
         )
         SELECT
-              @AnalysisObjectId,@SessionId,@RequestId,[st].[StatementOrdinal],[st].[StatementId]
+              @AnalysisObjectId,@ParameterEvidenceSessionId,@ParameterEvidenceRequestId,[st].[StatementOrdinal],[st].[StatementId]
             , [q].[StatementQueryHash],[q].[StatementQueryPlanHash],@PlanHandle
             , @QueryStoreDatabaseName,@QueryStorePlanId,NULL
             , 'PARAMETER'
@@ -534,7 +534,7 @@ BEGIN
         )
         VALUES
         (
-              @AnalysisObjectId,@SessionId,@RequestId,NULL,NULL,NULL,NULL,@PlanHandle
+              @AnalysisObjectId,@ParameterEvidenceSessionId,@ParameterEvidenceRequestId,NULL,NULL,NULL,NULL,@PlanHandle
             , @QueryStoreDatabaseName,@QueryStorePlanId,NULL
             , 'SOURCE_BOUNDARY',NULL,NULL,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
             , 'NOT_COLLECTED','NOT_COLLECTED','LOCAL_VARIABLE_NOT_EXPOSED'
