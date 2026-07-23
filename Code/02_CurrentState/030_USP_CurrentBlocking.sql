@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentBlocking
-Version      : 2.3.0
-Stand        : 2026-07-21
+Version      : 3.0.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Ermittelt aktuelle Blocking-Ketten, löst deren Ressourcen
                begrenzt auf Datenbank-, Objekt-, Index-, Partitions- und
@@ -42,6 +42,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentBlocking]
     , @Json                       nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen             bit             = 1
     , @Hilfe                      bit             = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -105,6 +106,8 @@ BEGIN
     DECLARE @ObjectResolutionSkippedLimitCount bigint = 0;
     DECLARE @HasMoreRows bit = 0;
     DECLARE @Message nvarchar(2048);
+    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
 
     CREATE TABLE [#CurrentBlocking_SessionFilter]
     (
@@ -262,6 +265,54 @@ BEGIN
         , [ErrorNumber]  int            NULL
         , [ErrorMessage] nvarchar(2048) NULL
     );
+    CREATE TABLE [#CurrentBlocking_SourceSessions]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [is_user_process] bit NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [login_name] nvarchar(128) NOT NULL
+        , [host_name] nvarchar(128) NULL
+        , [program_name] nvarchar(128) NULL
+        , [open_transaction_count] int NOT NULL
+        , [last_request_start_time] datetime NOT NULL
+        , [last_request_end_time] datetime NULL
+    );
+    CREATE TABLE [#CurrentBlocking_SourceRequests]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [blocking_session_id] smallint NULL
+        , [wait_type] nvarchar(60) NULL
+        , [wait_time] int NOT NULL
+        , [wait_resource] nvarchar(256) NOT NULL
+        , [sql_handle] varbinary(64) NULL
+        , [statement_start_offset] int NULL
+        , [statement_end_offset] int NULL
+        , PRIMARY KEY([session_id],[request_id])
+    );
+    CREATE TABLE [#CurrentBlocking_SourceWaitingTasks]
+    (
+          [session_id] smallint NULL
+        , [wait_duration_ms] bigint NOT NULL
+        , [wait_type] nvarchar(60) NOT NULL
+        , [blocking_session_id] smallint NULL
+        , [resource_description] nvarchar(3072) NULL
+    );
+    CREATE TABLE [#CurrentBlocking_SourceConnections]
+    (
+          [session_id] int NULL
+        , [connection_id] uniqueidentifier NOT NULL PRIMARY KEY
+        , [most_recent_sql_handle] varbinary(64) NULL
+        , [connect_time] datetime NOT NULL
+    );
+    CREATE INDEX [IX_CurrentBlocking_SourceConnections_Session]
+        ON [#CurrentBlocking_SourceConnections]([session_id]);
+    CREATE TABLE [#CurrentBlocking_SourceSqlText]
+    (
+          [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
+        , [Text] nvarchar(max) NULL
+    );
 
     IF @SessionIds IS NOT NULL
     BEGIN
@@ -329,6 +380,111 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
+        IF @ParentCurrentStateSnapshotId IS NOT NULL
+        BEGIN
+            EXEC [sys].[sp_executesql] N'
+                DECLARE @Probe int;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Connections] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
+
+            IF NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                  AND [ContractVersion]=2
+            )
+                THROW 51020,N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.',1;
+
+            INSERT [#CurrentBlocking_SourceSessions]
+            SELECT
+                  [session_id],[is_user_process],[status],[login_name],[host_name],[program_name]
+                , [open_transaction_count],[last_request_start_time],[last_request_end_time]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentBlocking_SourceRequests]
+            SELECT
+                  [session_id],[request_id],[status],[blocking_session_id],[wait_type]
+                , [wait_time],[wait_resource],[sql_handle]
+                , [statement_start_offset],[statement_end_offset]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Requests]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentBlocking_SourceWaitingTasks]
+            SELECT
+                  [session_id],[wait_duration_ms],[wait_type]
+                , [blocking_session_id],[resource_description]
+            FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentBlocking_SourceConnections]
+            SELECT [session_id],[connection_id],[most_recent_sql_handle],[connect_time]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Connections]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            IF @MitSqlText=1
+                INSERT [#CurrentBlocking_SourceSqlText]
+                SELECT [SqlHandle],[Text]
+                FROM [#CurrentOverview_CurrentStateSnapshot_SqlText]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            SELECT
+                  @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                , @IsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
+            FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+              AND [SourceCode] IN
+                  ('SESSIONS','REQUESTS','WAITING_TASKS','CONNECTIONS','SQL_TEXT');
+        END
+        ELSE
+        BEGIN
+            SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentBlocking_SourceSessions]
+            SELECT
+                  [session_id],[is_user_process],[status],[login_name],[host_name],[program_name]
+                , [open_transaction_count],[last_request_start_time],[last_request_end_time]
+            FROM [sys].[dm_exec_sessions] WITH (NOLOCK);
+
+            INSERT [#CurrentBlocking_SourceRequests]
+            SELECT
+                  [session_id],[request_id],[status],[blocking_session_id],[wait_type]
+                , [wait_time],[wait_resource],[sql_handle]
+                , [statement_start_offset],[statement_end_offset]
+            FROM [sys].[dm_exec_requests] WITH (NOLOCK);
+
+            INSERT [#CurrentBlocking_SourceWaitingTasks]
+            SELECT
+                  [session_id],[wait_duration_ms],[wait_type]
+                , [blocking_session_id],[resource_description]
+            FROM [sys].[dm_os_waiting_tasks] WITH (NOLOCK);
+
+            INSERT [#CurrentBlocking_SourceConnections]
+            SELECT [session_id],[connection_id],[most_recent_sql_handle],[connect_time]
+            FROM [sys].[dm_exec_connections] WITH (NOLOCK);
+
+            IF @MitSqlText=1
+                INSERT [#CurrentBlocking_SourceSqlText]
+                SELECT [h].[SqlHandle],[t].[text]
+                FROM
+                (
+                    SELECT [sql_handle] AS [SqlHandle]
+                    FROM [#CurrentBlocking_SourceRequests]
+                    WHERE [sql_handle] IS NOT NULL
+                    UNION
+                    SELECT [most_recent_sql_handle]
+                    FROM [#CurrentBlocking_SourceConnections]
+                    WHERE [most_recent_sql_handle] IS NOT NULL
+                ) AS [h]
+                OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle]) AS [t];
+        END;
+
         INSERT [#CurrentBlocking_Edges]
         (
               [BlockedSessionId], [BlockingSessionId], [WaitType]
@@ -341,8 +497,8 @@ BEGIN
             , MAX(CONVERT(bigint, [r].[wait_time]))
             , MAX(CONVERT(nvarchar(3072), [r].[wait_resource]))
             , 'REQUEST'
-        FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
-        INNER JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+        FROM [#CurrentBlocking_SourceRequests] AS [r]
+        INNER JOIN [#CurrentBlocking_SourceSessions] AS [s]
           ON [s].[session_id] = [r].[session_id]
         WHERE [r].[blocking_session_id] <> 0
           AND [r].[blocking_session_id] <> [r].[session_id]
@@ -362,8 +518,8 @@ BEGIN
             , MAX(CONVERT(bigint, [w].[wait_duration_ms]))
             , MAX(CONVERT(nvarchar(3072), [w].[resource_description]))
             , 'WAITING_TASK'
-        FROM [sys].[dm_os_waiting_tasks] AS [w] WITH (NOLOCK)
-        LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+        FROM [#CurrentBlocking_SourceWaitingTasks] AS [w]
+        LEFT JOIN [#CurrentBlocking_SourceSessions] AS [s]
           ON [s].[session_id] = [w].[session_id]
         WHERE [w].[blocking_session_id] <> 0
           AND [w].[blocking_session_id] <> [w].[session_id]
@@ -504,70 +660,64 @@ BEGIN
         FROM [Root] AS [r]
         INNER JOIN [#CurrentBlocking_Edges] AS [e]
           ON [e].[BlockedSessionId] = [r].[LeafSessionId]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [blockedSession] WITH (NOLOCK)
+        LEFT JOIN [#CurrentBlocking_SourceSessions] AS [blockedSession]
           ON [blockedSession].[session_id] = [e].[BlockedSessionId]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [blockerSession] WITH (NOLOCK)
+        LEFT JOIN [#CurrentBlocking_SourceSessions] AS [blockerSession]
           ON [blockerSession].[session_id] = [e].[BlockingSessionId]
-        LEFT JOIN [sys].[dm_exec_sessions] AS [rootSession] WITH (NOLOCK)
+        LEFT JOIN [#CurrentBlocking_SourceSessions] AS [rootSession]
           ON [rootSession].[session_id] = [r].[BlockingSessionId]
         OUTER APPLY
         (
             SELECT TOP (1) [request].*
-            FROM [sys].[dm_exec_requests] AS [request] WITH (NOLOCK)
+            FROM [#CurrentBlocking_SourceRequests] AS [request]
             WHERE [request].[session_id] = [e].[BlockedSessionId]
             ORDER BY [request].[request_id]
         ) AS [blockedRequest]
         OUTER APPLY
         (
             SELECT TOP (1) [request].*
-            FROM [sys].[dm_exec_requests] AS [request] WITH (NOLOCK)
+            FROM [#CurrentBlocking_SourceRequests] AS [request]
             WHERE [request].[session_id] = [e].[BlockingSessionId]
             ORDER BY [request].[request_id]
         ) AS [blockerRequest]
         OUTER APPLY
         (
             SELECT TOP (1) [request].*
-            FROM [sys].[dm_exec_requests] AS [request] WITH (NOLOCK)
+            FROM [#CurrentBlocking_SourceRequests] AS [request]
             WHERE [request].[session_id] = [r].[BlockingSessionId]
             ORDER BY [request].[request_id]
         ) AS [rootRequest]
         OUTER APPLY
         (
             SELECT TOP (1) [connection].[most_recent_sql_handle]
-            FROM [sys].[dm_exec_connections] AS [connection] WITH (NOLOCK)
+            FROM [#CurrentBlocking_SourceConnections] AS [connection]
             WHERE [connection].[session_id] = [r].[BlockingSessionId]
             ORDER BY [connection].[connect_time] DESC
         ) AS [rootConnection]
         CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([blockedSession].[program_name]) AS [blockedTool]
         CROSS APPLY [monitor].[TVF_ToolBackgroundQueryInfo]([rootSession].[program_name]) AS [rootTool]
-        OUTER APPLY [sys].[dm_exec_sql_text]
-        (
-            CASE WHEN @MitSqlText = 1 THEN [blockedRequest].[sql_handle] END
-        ) AS [blockedText]
+        LEFT JOIN [#CurrentBlocking_SourceSqlText] AS [blockedText]
+          ON [blockedText].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [blockedRequest].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [blockedText].[text]
+              [blockedText].[Text]
             , [blockedRequest].[statement_start_offset]
             , [blockedRequest].[statement_end_offset]
         ) AS [blockedStatement]
-        OUTER APPLY [sys].[dm_exec_sql_text]
-        (
-            CASE WHEN @MitSqlText = 1 THEN [blockerRequest].[sql_handle] END
-        ) AS [blockerText]
+        LEFT JOIN [#CurrentBlocking_SourceSqlText] AS [blockerText]
+          ON [blockerText].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [blockerRequest].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [blockerText].[text]
+              [blockerText].[Text]
             , [blockerRequest].[statement_start_offset]
             , [blockerRequest].[statement_end_offset]
         ) AS [blockerStatement]
-        OUTER APPLY [sys].[dm_exec_sql_text]
-        (
-            CASE WHEN @MitSqlText = 1
-                 THEN COALESCE([rootRequest].[sql_handle], [rootConnection].[most_recent_sql_handle]) END
-        ) AS [rootText]
+        LEFT JOIN [#CurrentBlocking_SourceSqlText] AS [rootText]
+          ON [rootText].[SqlHandle]=CASE WHEN @MitSqlText=1
+               THEN COALESCE([rootRequest].[sql_handle],[rootConnection].[most_recent_sql_handle]) END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
-              [rootText].[text]
+              [rootText].[Text]
             , CASE WHEN [rootRequest].[sql_handle] IS NOT NULL
                    THEN [rootRequest].[statement_start_offset] END
             , CASE WHEN [rootRequest].[sql_handle] IS NOT NULL
@@ -1458,6 +1608,8 @@ BEGIN
         SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916)
                                THEN 'DENIED_PERMISSION'
                                WHEN @ErrorNumber = 1222 THEN 'TIMEOUT'
+                               WHEN @ParentCurrentStateSnapshotId IS NOT NULL
+                                AND @ErrorNumber IN (208, 51020) THEN 'INVALID_PARENT_SNAPSHOT'
                                ELSE 'ERROR_HANDLED' END;
     END CATCH;
 
@@ -1475,6 +1627,8 @@ BEGIN
         SELECT
               N'USP_CurrentBlocking' AS [ModuleName]
             , @CollectionTimeUtc AS [CollectionTimeUtc]
+            , @EvidenceSnapshotStartedAtUtc AS [EvidenceSnapshotStartedAtUtc]
+            , @EvidenceSnapshotId AS [EvidenceSnapshotId]
             , @StatusCode AS [StatusCode]
             , @IsPartial AS [IsPartial]
             , CASE WHEN @MainCandidateCount > @EffectiveMaxZeilen
@@ -1621,6 +1775,9 @@ BEGIN
                   N'CurrentBlocking' AS [resultName]
                 , 3 AS [schemaVersion]
                 , @CollectionTimeUtc AS [generatedAtUtc]
+                , @EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc]
+                , @EvidenceSnapshotId AS [evidenceSnapshotId]
+                , @IsPartial AS [isPartial]
                 , @StatusCode AS [statusCode]
                 , @MaxZeilen AS [requestedMaxRows]
                 , CASE WHEN @MainCandidateCount > @EffectiveMaxZeilen

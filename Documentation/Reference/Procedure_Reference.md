@@ -290,6 +290,7 @@ Quelle: `Code/02_CurrentState/030_USP_CurrentBlocking.sql`
     , @Json                       nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen             bit             = 1
     , @Hilfe                      bit             = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_CurrentIO]`
@@ -314,6 +315,7 @@ Quelle: `Code/02_CurrentState/080_USP_CurrentIO.sql`
     , @Json                           nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                 bit             = 1
     , @Hilfe                          bit             = 0
+    , @ParentCurrentStateSnapshotId   uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_CurrentLog]`
@@ -356,6 +358,7 @@ Quelle: `Code/02_CurrentState/060_USP_CurrentMemoryGrants.sql`
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
     , @Hilfe                        bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_CurrentOverview]`
@@ -487,6 +490,7 @@ Quelle: `Code/02_CurrentState/070_USP_CurrentTempDB.sql`
     , @Json                       nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen             bit            = 1
     , @Hilfe                      bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_CurrentTransactions]`
@@ -507,6 +511,7 @@ Quelle: `Code/02_CurrentState/050_USP_CurrentTransactions.sql`
     , @Json                       nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen             bit            = 1
     , @Hilfe                      bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_CurrentWaits]`
@@ -534,6 +539,7 @@ Quelle: `Code/02_CurrentState/040_USP_CurrentWaits.sql`
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
     , @Hilfe                        bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 ```
 
 ## `[monitor].[USP_DatabaseCapacityAnalysis]`

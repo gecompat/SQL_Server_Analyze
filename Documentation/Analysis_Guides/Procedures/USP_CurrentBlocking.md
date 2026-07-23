@@ -48,6 +48,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `blockingChains`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Im Overview stammen Sessions, Requests, Connections, Waiting Tasks und
+deduplizierter SQL-Text aus dessen gemeinsamem Aufrufsnapshot. Lock- und
+Objektauflösung bleiben kandidatenbezogene Childquellen. Ein direkter Aufruf
+liest alle benötigten Quellen frisch.
+
 ## Eine Zeile bedeutet
 
 Im Kettenresultset beschreibt eine Zeile eine sichtbare Blockingbeziehung mit ihrem Root Blocker. `BlockingResourceName` ist die bestmögliche Übersetzung der weiterhin unverändert ausgegebenen `WaitResource`. Lockdetails besitzen eine eigene Granularität.

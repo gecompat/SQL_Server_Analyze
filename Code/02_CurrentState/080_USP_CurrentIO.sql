@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentIO
-Version      : 3.1.0
-Stand        : 2026-07-21
+Version      : 4.0.0
+Stand        : 2026-07-23
 Zweck        : Führt eine leichtgewichtige serverweite Datei-I/O-Analyse mit
                optionalem Delta-Sampling und expliziter
                Datenbankeinschränkung durch.
@@ -38,6 +38,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentIO]
     , @Json                           nvarchar(max)   = NULL OUTPUT
     , @PrintMeldungen                 bit             = 1
     , @Hilfe                          bit             = 0
+    , @ParentCurrentStateSnapshotId   uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -94,6 +95,8 @@ BEGIN
     DECLARE @HasMoreRows bit = 0;
     DECLARE @Message nvarchar(2048);
     DECLARE @Delay char(8);
+    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
 
     CREATE TABLE [#CurrentIO_ResultTableMap]
     (
@@ -208,6 +211,28 @@ BEGIN
         , [RequestCountOnScheduler] int NOT NULL
         , [IoWaitTaskCountOnScheduler] int NOT NULL
     );
+    CREATE TABLE [#CurrentIO_SourceRequests]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [scheduler_id] int NULL
+        , PRIMARY KEY([session_id],[request_id])
+    );
+    CREATE TABLE [#CurrentIO_SourceTasks]
+    (
+          [task_address] varbinary(8) NOT NULL PRIMARY KEY
+        , [scheduler_id] int NULL
+    );
+    CREATE TABLE [#CurrentIO_SourceWaitingTasks]
+    (
+          [waiting_task_address] varbinary(8) NOT NULL
+        , [wait_type] nvarchar(60) NOT NULL
+    );
+    CREATE TABLE [#CurrentIO_SourceSchedulers]
+    (
+          [scheduler_address] varbinary(8) NOT NULL PRIMARY KEY
+        , [scheduler_id] int NOT NULL
+    );
 
     CREATE TABLE [#CurrentIO_PendingResult]
     (
@@ -291,6 +316,33 @@ BEGIN
             , @StatusCode = @StatusCode OUTPUT
             , @ErrorMessage = @ErrorMessage OUTPUT
             , @ThrowOnError = 1;
+    END;
+
+    IF @StatusCode='AVAILABLE' AND @ParentCurrentStateSnapshotId IS NOT NULL
+    BEGIN
+        BEGIN TRY
+            EXEC [sys].[sp_executesql] N'
+                DECLARE @Probe int;
+                SELECT @Probe=0
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                WHERE 1=0;';
+
+            IF NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                  AND [ContractVersion]=2
+            )
+                THROW 51020,N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.',1;
+        END TRY
+        BEGIN CATCH
+            SET @StatusCode='INVALID_PARENT_SNAPSHOT';
+            SET @IsPartial=1;
+            SET @ErrorNumber=ERROR_NUMBER();
+            SET @ErrorMessage=ERROR_MESSAGE();
+        END CATCH;
     END;
 
     IF @StatusCode = 'AVAILABLE'
@@ -467,18 +519,105 @@ BEGIN
         IF @PendingIoEinbeziehen=1 AND @PendingSourceStatus='AVAILABLE'
         BEGIN
             BEGIN TRY
+                IF @ParentCurrentStateSnapshotId IS NOT NULL
+                BEGIN
+                    EXEC [sys].[sp_executesql] N'
+                        DECLARE @Probe int;
+                        SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                        SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                        SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+                        SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Tasks] WHERE 1=0;
+                        SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks] WHERE 1=0;
+                        SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Schedulers] WHERE 1=0;';
+
+                    IF NOT EXISTS
+                    (
+                        SELECT 1
+                        FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                        WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                          AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                          AND [ContractVersion]=2
+                    )
+                        THROW 51020,N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.',1;
+
+                    INSERT [#CurrentIO_SourceRequests]
+                    SELECT [session_id],[request_id],[scheduler_id]
+                    FROM [#CurrentOverview_CurrentStateSnapshot_Requests]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                    INSERT [#CurrentIO_SourceTasks]
+                    SELECT [task_address],[scheduler_id]
+                    FROM [#CurrentOverview_CurrentStateSnapshot_Tasks]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                    INSERT [#CurrentIO_SourceWaitingTasks]
+                    SELECT [waiting_task_address],[wait_type]
+                    FROM [#CurrentOverview_CurrentStateSnapshot_WaitingTasks]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                    INSERT [#CurrentIO_SourceSchedulers]
+                    SELECT [scheduler_address],[scheduler_id]
+                    FROM [#CurrentOverview_CurrentStateSnapshot_Schedulers]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+                    SELECT @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                    FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+                    WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                      AND [SourceCode] IN ('REQUESTS','TASKS','WAITING_TASKS','SCHEDULERS');
+
+                    IF EXISTS
+                    (
+                        SELECT 1
+                        FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+                        WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                          AND [SourceCode] IN ('REQUESTS','TASKS','WAITING_TASKS','SCHEDULERS')
+                          AND ([IsPartial]=1 OR [StatusCode]<>'AVAILABLE')
+                    )
+                        SET @PendingContextStatus='AVAILABLE_LIMITED';
+                END
+                ELSE
+                BEGIN
+                    SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+                    INSERT [#CurrentIO_SourceRequests]
+                    SELECT [session_id],[request_id],[scheduler_id]
+                    FROM [sys].[dm_exec_requests] WITH (NOLOCK);
+
+                    INSERT [#CurrentIO_SourceTasks]
+                    SELECT [task_address],[scheduler_id]
+                    FROM [sys].[dm_os_tasks] WITH (NOLOCK);
+
+                    INSERT [#CurrentIO_SourceWaitingTasks]
+                    SELECT [waiting_task_address],[wait_type]
+                    FROM [sys].[dm_os_waiting_tasks] WITH (NOLOCK);
+
+                    INSERT [#CurrentIO_SourceSchedulers]
+                    SELECT [scheduler_address],[scheduler_id]
+                    FROM [sys].[dm_os_schedulers] WITH (NOLOCK);
+                END;
+            END TRY
+            BEGIN CATCH
+                SELECT @PendingContextStatus=CASE
+                           WHEN ERROR_NUMBER() IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                           WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                           WHEN ERROR_NUMBER()=51020 THEN 'INVALID_PARENT_SNAPSHOT'
+                           ELSE 'ERROR_HANDLED' END,
+                       @PendingContextErrorNumber=ERROR_NUMBER(),
+                       @PendingContextErrorMessage=ERROR_MESSAGE();
+            END CATCH;
+
+            BEGIN TRY
                 ;WITH [RequestCounts] AS
                 (
                     SELECT [r].[scheduler_id],COUNT_BIG(*) AS [RequestCount]
-                    FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+                    FROM [#CurrentIO_SourceRequests] AS [r]
                     WHERE [r].[scheduler_id] IS NOT NULL AND [r].[session_id]<>@@SPID
                     GROUP BY [r].[scheduler_id]
                 ),
                 [IoWaitCounts] AS
                 (
                     SELECT [t].[scheduler_id],COUNT_BIG(*) AS [IoWaitTaskCount]
-                    FROM [sys].[dm_os_tasks] AS [t] WITH (NOLOCK)
-                    INNER JOIN [sys].[dm_os_waiting_tasks] AS [w] WITH (NOLOCK)
+                    FROM [#CurrentIO_SourceTasks] AS [t]
+                    INNER JOIN [#CurrentIO_SourceWaitingTasks] AS [w]
                       ON [w].[waiting_task_address]=[t].[task_address]
                     WHERE [w].[wait_type] LIKE N'PAGEIOLATCH[_]%'
                        OR [w].[wait_type] IN
@@ -489,10 +628,11 @@ BEGIN
                 SELECT [s].[scheduler_address],[s].[scheduler_id],
                        TRY_CONVERT(int,COALESCE([r].[RequestCount],0)),
                        TRY_CONVERT(int,COALESCE([w].[IoWaitTaskCount],0))
-                FROM [sys].[dm_os_schedulers] AS [s] WITH (NOLOCK)
+                FROM [#CurrentIO_SourceSchedulers] AS [s]
                 LEFT JOIN [RequestCounts] AS [r] ON [r].[scheduler_id]=[s].[scheduler_id]
                 LEFT JOIN [IoWaitCounts] AS [w] ON [w].[scheduler_id]=[s].[scheduler_id];
-                SET @PendingContextStatus='AVAILABLE';
+                IF @PendingContextStatus='NOT_REQUESTED'
+                    SET @PendingContextStatus='AVAILABLE';
             END TRY
             BEGIN CATCH
                 SELECT @PendingContextStatus=CASE
@@ -561,7 +701,15 @@ BEGIN
             SET @IsPartial=1;
         END;
 
-        IF @PendingIoEinbeziehen=1 AND @PendingContextStatus<>'AVAILABLE'
+        IF @PendingIoEinbeziehen=1
+           AND @PendingContextStatus='INVALID_PARENT_SNAPSHOT'
+        BEGIN
+            SET @StatusCode='INVALID_PARENT_SNAPSHOT';
+            SET @IsPartial=1;
+            SET @ErrorNumber=@PendingContextErrorNumber;
+            SET @ErrorMessage=@PendingContextErrorMessage;
+        END
+        ELSE IF @PendingIoEinbeziehen=1 AND @PendingContextStatus<>'AVAILABLE'
         BEGIN
             SET @StatusCode='AVAILABLE_LIMITED';
             SET @IsPartial=1;
@@ -706,6 +854,8 @@ BEGIN
                   N'CurrentIO' AS [resultName]
                 , 3 AS [schemaVersion]
                 , @CollectionTimeUtc AS [generatedAtUtc]
+                , @EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc]
+                , @EvidenceSnapshotId AS [evidenceSnapshotId]
                 , @StatusCode AS [statusCode]
                 , @IsPartial AS [isPartial]
                 , @MaxZeilen AS [requestedMaxRows]

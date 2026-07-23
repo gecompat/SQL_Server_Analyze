@@ -88,13 +88,14 @@ Vorgemerkte zukünftige Architekturhärtung:
   mit dem kanonischen `parameters`-Vertrag für Einplan- und
   Mehrplananalyse, beibehaltenem Legacy-Resultset und den Runtimeverträgen
   `120`/`121` als `IMPLEMENTED_ACTIONS_GATE` abgeschlossen.
-  DIAG-004 und DIAG-005 bleiben `PARTIAL_PRODUCT_FUNCTION`; ihre offenen
-  Statement-/Request- und Plan-/Optimizerverträge stehen im
+  DIAG-004 ist mit den kanonischen Request-, Source-Status- und
+  Textresultsets, Snapshot-Vertragsversion 2, acht gemeinsamen Consumern und
+  den Runtimeverträgen `122`/`199` ebenfalls als
+  `IMPLEMENTED_ACTIONS_GATE` abgeschlossen. DIAG-005 bleibt
+  `PARTIAL_PRODUCT_FUNCTION`; dessen offener Plan-/Optimizervertrag steht im
   [Zukunftsvertrag für zusätzliche Diagnoseinformationen](../Architecture/Diagnostic_Information_Enrichment_Backlog.md).
-  Der erste laufinterne Snapshot-Slice ist für `USP_CurrentSessions` und
-  `USP_CurrentRequests` umgesetzt; die übrigen Current-State-Consumer und
-  die DIAG-004-/DIAG-005-Zielresultsets bleiben offen. Der maschinenlesbare
-  Status steht in `Metadata/Quality/Future_Enhancement_Backlog.csv` sowie in
+  Der maschinenlesbare Status steht in
+  `Metadata/Quality/Future_Enhancement_Backlog.csv` sowie in
   `Metadata/Quality/Implementation_Status.csv`.
 
 - **OPS-005 bis OPS-009 und SQL25-001 bis SQL25-005 – zusätzliche
@@ -115,4 +116,8 @@ Der erste SC-023-Performance-Counter-Slice ist auf dem konkreten Implementierung
 
 1. Es bestehen keine offenen P0-, P1- oder P2-Zeilen in der Repository-Testmatrix. Als nächste Evidence-Klassen folgen Windows-/Azure-MI-Ziele mit aktivierten Features, kontrollierte Lastfälle und externe Restore-/Host-Nachweise. Für RUNTIME-001 sind R, Python, Java, C# und Custom Language Extensions sowie SQL CLR mit einer synthetischen SAFE-Assembly und getrennten Plattformgrenzen nachzuweisen.
 2. Kostenintensive opt-in Pfade separat testen: Page Details, Event-XML, Contention-Sample, Buffer-Pool-Verteilung, Schema-Design, Statistikverteilung, In-Memory-Hashketten, breite Cross-Database-Auswahl sowie RUNTIME-001-Sampling mit gültigem Delta und Resetgrenzen.
-3. `DIAG-004` und `DIAG-005` auf Basis des begonnenen laufinternen Snapshot-Slice fortsetzen und danach die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023 bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid, SC-025 eine autorisierte isolierte Ausführungsumgebung.
+3. `DIAG-005` auf Basis des abgeschlossenen laufinternen Snapshotvertrags
+   fortsetzen und danach die SQL-Server-2025-Vertiefungen umsetzen. Für SC-023
+   bleiben weitere Sammler, Rollups und getrennte Scheduler-/Exportpakete
+   offen; SC-024 benötigt einen externen Komponenten- und Isolationentscheid,
+   SC-025 eine autorisierte isolierte Ausführungsumgebung.

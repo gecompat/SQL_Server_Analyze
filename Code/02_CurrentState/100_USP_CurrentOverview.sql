@@ -4,15 +4,16 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentOverview
-Version      : 3.3.0
-Stand        : 2026-07-22
+Version      : 4.0.0
+Stand        : 2026-07-23
 Zweck        : Orchestriert jedes aktivierte Current-State-Child genau einmal,
                übernimmt dessen expliziten Status und materialisiert Daten für
                CONSOLE, JSON und benannte TABLE-Exporte ohne erneute Systemlese.
 CONSOLE      : SUMMARY ist der Default. RELEVANT und ALL ergänzen ausschließlich
                nicht leere Childdetails; Children erhalten niemals CONSOLE.
-TABLE-Namen  : moduleStatus, snapshotStatus, sessions, requests, blocking, waits,
-               transactions, memoryGrants, tempdbSessions, io, logs und warnings.
+TABLE-Namen  : moduleStatus, snapshotStatus, sessions, requests, requestContext,
+               statements, batches, inputBuffers, blocking, waits, transactions,
+               memoryGrants, tempdbSessions, io, logs und warnings.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentOverview]
@@ -67,7 +68,7 @@ BEGIN
         PRINT N'@MaxObjektAufloesungen begrenzt die Blocking-Ressourcenauflösung auf 1 bis 1000 Kandidaten.';
         PRINT N'Children werden genau einmal und nie mit CONSOLE aufgerufen.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet ausschließlich @ResultTablesJson.';
-        PRINT N'TABLE-Namen: moduleStatus, snapshotStatus, sessions, requests, blocking, waits, transactions, memoryGrants, tempdbSessions, io, logs, warnings.';
+        PRINT N'TABLE-Namen: moduleStatus, snapshotStatus, sessions, requests, requestContext, statements, batches, inputBuffers, blocking, waits, transactions, memoryGrants, tempdbSessions, io, logs, warnings.';
         RETURN;
     END;
 
@@ -90,6 +91,10 @@ BEGIN
     DECLARE @CaptureWaitingTasks bit=0;
     DECLARE @CaptureMemoryGrants bit=0;
     DECLARE @CaptureResourceGovernor bit=0;
+    DECLARE @CaptureTasks bit=0;
+    DECLARE @CaptureSchedulers bit=0;
+    DECLARE @CaptureTransactions bit=0;
+    DECLARE @CaptureTempDbUsage bit=0;
     DECLARE @CaptureSqlText bit=0;
     DECLARE @MaxSqlTextHandles int=0;
 
@@ -135,6 +140,11 @@ BEGIN
 
     CREATE TABLE [#CurrentOverview_Sessions]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_Requests]([Seed] bit NULL);
+    CREATE TABLE [#CurrentOverview_RequestContext]([Seed] bit NULL);
+    CREATE TABLE [#CurrentOverview_Statements]([Seed] bit NULL);
+    CREATE TABLE [#CurrentOverview_Batches]([Seed] bit NULL);
+    CREATE TABLE [#CurrentOverview_InputBuffers]([Seed] bit NULL);
+    CREATE TABLE [#CurrentOverview_RequestSnapshotStatus]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_Blocking]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_Waits]([Seed] bit NULL);
     CREATE TABLE [#CurrentOverview_Transactions]([Seed] bit NULL);
@@ -265,6 +275,7 @@ BEGIN
         , [protocol_type] nvarchar(40) NULL
         , [encrypt_option] nvarchar(40) NOT NULL
         , [auth_scheme] nvarchar(40) NOT NULL
+        , [connect_time] datetime NOT NULL
         , PRIMARY KEY ([SnapshotId],[connection_id])
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_WaitingTasks]
@@ -288,12 +299,45 @@ BEGIN
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [session_id] smallint NOT NULL
         , [request_id] int NOT NULL
+        , [scheduler_id] int NULL
+        , [dop] smallint NULL
+        , [request_time] datetime NULL
+        , [grant_time] datetime NULL
+        , [wait_time_ms] bigint NULL
         , [requested_memory_kb] bigint NOT NULL
+        , [required_memory_kb] bigint NULL
         , [granted_memory_kb] bigint NULL
         , [used_memory_kb] bigint NULL
+        , [max_used_memory_kb] bigint NULL
         , [ideal_memory_kb] bigint NULL
+        , [resource_semaphore_id] smallint NULL
+        , [queue_id] smallint NULL
+        , [wait_order] int NULL
+        , [is_next_candidate] bit NULL
+        , [is_small] bit NULL
+        , [plan_handle] varbinary(64) NULL
+        , [sql_handle] varbinary(64) NULL
         , [group_id] int NULL
         , [pool_id] int NULL
+        , [reserved_worker_count] bigint NULL
+        , [used_worker_count] bigint NULL
+        , [max_used_worker_count] bigint NULL
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_ResourceSemaphores]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [pool_id] int NOT NULL
+        , [resource_semaphore_id] smallint NOT NULL
+        , [target_memory_kb] bigint NOT NULL
+        , [max_target_memory_kb] bigint NULL
+        , [total_memory_kb] bigint NOT NULL
+        , [available_memory_kb] bigint NOT NULL
+        , [granted_memory_kb] bigint NOT NULL
+        , [used_memory_kb] bigint NOT NULL
+        , [grantee_count] int NOT NULL
+        , [waiter_count] int NOT NULL
+        , PRIMARY KEY ([SnapshotId],[pool_id],[resource_semaphore_id])
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
     (
@@ -302,6 +346,8 @@ BEGIN
         , [group_id] int NOT NULL
         , [name] sysname NOT NULL
         , [pool_id] int NOT NULL
+        , [request_max_memory_grant_percent_numeric] decimal(9,4) NULL
+        , [max_request_grant_memory_kb] bigint NULL
         , PRIMARY KEY ([SnapshotId],[group_id])
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_ResourcePools]
@@ -310,7 +356,109 @@ BEGIN
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [pool_id] int NOT NULL
         , [name] sysname NOT NULL
+        , [max_memory_kb] bigint NULL
+        , [target_memory_kb] bigint NULL
+        , [used_memory_kb] bigint NULL
         , PRIMARY KEY ([SnapshotId],[pool_id])
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_Tasks]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [task_address] varbinary(8) NOT NULL
+        , [task_state] nvarchar(60) NOT NULL
+        , [session_id] smallint NULL
+        , [request_id] int NULL
+        , [exec_context_id] int NULL
+        , [scheduler_id] int NULL
+        , [worker_address] varbinary(8) NULL
+        , [parent_task_address] varbinary(8) NULL
+        , PRIMARY KEY ([SnapshotId],[task_address])
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_Schedulers]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [scheduler_address] varbinary(8) NOT NULL
+        , [scheduler_id] int NOT NULL
+        , [parent_node_id] int NOT NULL
+        , [status] nvarchar(60) NOT NULL
+        , [is_online] bit NOT NULL
+        , [is_idle] bit NOT NULL
+        , [current_tasks_count] int NOT NULL
+        , [runnable_tasks_count] int NOT NULL
+        , [current_workers_count] int NOT NULL
+        , [active_workers_count] int NOT NULL
+        , [work_queue_count] bigint NOT NULL
+        , [pending_disk_io_count] int NOT NULL
+        , [load_factor] int NOT NULL
+        , PRIMARY KEY ([SnapshotId],[scheduler_id])
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_SessionTransactions]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [session_id] int NOT NULL
+        , [transaction_id] bigint NOT NULL
+        , [transaction_descriptor] binary(8) NOT NULL
+        , [enlist_count] int NOT NULL
+        , [is_user_transaction] bit NOT NULL
+        , [is_local] bit NOT NULL
+        , [is_enlisted] bit NOT NULL
+        , [is_bound] bit NOT NULL
+        , [open_transaction_count] int NOT NULL
+        , PRIMARY KEY ([SnapshotId],[session_id],[transaction_id])
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_ActiveTransactions]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [transaction_id] bigint NOT NULL
+        , [name] nvarchar(32) NOT NULL
+        , [transaction_begin_time] datetime NOT NULL
+        , [transaction_type] int NOT NULL
+        , [transaction_uow] uniqueidentifier NULL
+        , [transaction_state] int NOT NULL
+        , [transaction_status] int NOT NULL
+        , PRIMARY KEY ([SnapshotId],[transaction_id])
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_DatabaseTransactions]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [transaction_id] bigint NOT NULL
+        , [database_id] int NOT NULL
+        , [database_transaction_begin_time] datetime NULL
+        , [database_transaction_type] int NOT NULL
+        , [database_transaction_state] int NOT NULL
+        , [database_transaction_log_record_count] bigint NOT NULL
+        , [database_transaction_log_bytes_used] bigint NOT NULL
+        , [database_transaction_log_bytes_reserved] bigint NOT NULL
+        , [database_transaction_log_bytes_used_system] bigint NOT NULL
+        , [database_transaction_log_bytes_reserved_system] bigint NOT NULL
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_TempDbSessionUsage]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [session_id] smallint NOT NULL
+        , [user_objects_alloc_page_count] bigint NOT NULL
+        , [user_objects_dealloc_page_count] bigint NOT NULL
+        , [internal_objects_alloc_page_count] bigint NOT NULL
+        , [internal_objects_dealloc_page_count] bigint NOT NULL
+        , PRIMARY KEY ([SnapshotId],[session_id])
+    );
+    CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_TempDbTaskUsage]
+    (
+          [SnapshotId] uniqueidentifier NOT NULL
+        , [CapturedAtUtc] datetime2(3) NOT NULL
+        , [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [exec_context_id] int NOT NULL
+        , [user_objects_alloc_page_count] bigint NOT NULL
+        , [user_objects_dealloc_page_count] bigint NOT NULL
+        , [internal_objects_alloc_page_count] bigint NOT NULL
+        , [internal_objects_dealloc_page_count] bigint NOT NULL
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_SqlText]
     (
@@ -359,7 +507,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|blocking|waits|transactions|memoryGrants|tempdbSessions|io|logs|warnings'
+            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|io|logs|warnings'
             , @MappingTable=N'#CurrentOverview_ResultTableMap'
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
@@ -373,22 +521,34 @@ BEGIN
         GOTO BuildOutputs;
     END;
 
-    SET @CaptureSessions=CASE WHEN @MitSessions=1 OR @MitRequests=1 THEN 1 ELSE 0 END;
-    SET @CaptureRequests=CASE WHEN @MitSessions=1 OR @MitRequests=1 THEN 1 ELSE 0 END;
-    SET @CaptureConnections=CASE WHEN @MitSessions=1 OR @MitRequests=1 THEN 1 ELSE 0 END;
-    SET @CaptureWaitingTasks=CASE WHEN @MitRequests=1 THEN 1 ELSE 0 END;
-    SET @CaptureMemoryGrants=CASE WHEN @MitRequests=1 THEN 1 ELSE 0 END;
-    SET @CaptureResourceGovernor=CASE WHEN @MitRequests=1 THEN 1 ELSE 0 END;
+    SET @CaptureSessions=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1
+        OR @MitWaits=1 OR @MitTransactions=1 OR @MitMemoryGrants=1 OR @MitTempDB=1 THEN 1 ELSE 0 END;
+    SET @CaptureRequests=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1
+        OR @MitWaits=1 OR @MitTransactions=1 OR @MitMemoryGrants=1 OR @MitIO=1 THEN 1 ELSE 0 END;
+    SET @CaptureConnections=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 THEN 1 ELSE 0 END;
+    SET @CaptureWaitingTasks=CASE WHEN @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitIO=1 THEN 1 ELSE 0 END;
+    SET @CaptureMemoryGrants=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 THEN 1 ELSE 0 END;
+    SET @CaptureResourceGovernor=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 THEN 1 ELSE 0 END;
+    SET @CaptureTasks=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END;
+    SET @CaptureSchedulers=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END;
+    SET @CaptureTransactions=CASE WHEN @MitRequests=1 OR @MitTransactions=1 THEN 1 ELSE 0 END;
+    SET @CaptureTempDbUsage=CASE WHEN @MitRequests=1 OR @MitTempDB=1 THEN 1 ELSE 0 END;
     SET @CaptureSqlText=CASE
         WHEN @MitSessions=1 AND @MitSqlText=1 THEN 1
         WHEN @MitRequests=1 AND (@MitSqlText=1 OR @GesamtenSqlTextEinbeziehen=1 OR @ModulInfoEinbeziehen=1) THEN 1
+        WHEN @MitBlocking=1 AND @MitSqlText=1 THEN 1
+        WHEN @MitWaits=1 AND @MitSqlText=1 THEN 1
+        WHEN @MitTransactions=1 AND @MitSqlText=1 THEN 1
+        WHEN @MitMemoryGrants=1 AND @MitSqlText=1 THEN 1
         ELSE 0 END;
     SET @MaxSqlTextHandles=CASE
         WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 0
         WHEN @MaxZeilen>=1073741800 THEN 2147483647
         ELSE @MaxZeilen*2+32 END;
 
-    IF @CaptureSessions=1 OR @CaptureRequests=1
+    IF @CaptureSessions=1 OR @CaptureRequests=1 OR @CaptureWaitingTasks=1
+       OR @CaptureMemoryGrants=1 OR @CaptureTasks=1 OR @CaptureTransactions=1
+       OR @CaptureTempDbUsage=1
     BEGIN
         SET @CurrentStateSnapshotId=NEWID();
         BEGIN TRY
@@ -400,6 +560,10 @@ BEGIN
                 , @CaptureWaitingTasks=@CaptureWaitingTasks
                 , @CaptureMemoryGrants=@CaptureMemoryGrants
                 , @CaptureResourceGovernor=@CaptureResourceGovernor
+                , @CaptureTasks=@CaptureTasks
+                , @CaptureSchedulers=@CaptureSchedulers
+                , @CaptureTransactions=@CaptureTransactions
+                , @CaptureTempDbUsage=@CaptureTempDbUsage
                 , @CaptureSqlText=@CaptureSqlText
                 , @MaxSqlTextHandles=@MaxSqlTextHandles;
 
@@ -481,11 +645,36 @@ BEGIN
                 , @MaxSqlTextZeichen=@MaxSqlTextZeichen
                 , @MaxZeilen=@MaxZeilen
                 , @ResultSetArt='TABLE'
-                , @ResultTablesJson=N'{"requests":"#CurrentOverview_Requests"}'
+                , @ResultTablesJson=N'{
+                      "requests":"#CurrentOverview_Requests",
+                      "requestContext":"#CurrentOverview_RequestContext",
+                      "snapshotStatus":"#CurrentOverview_RequestSnapshotStatus",
+                      "statements":"#CurrentOverview_Statements",
+                      "batches":"#CurrentOverview_Batches",
+                      "inputBuffers":"#CurrentOverview_InputBuffers"
+                  }'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
                 , @PrintMeldungen=@PrintMeldungen
                 , @ParentCurrentStateSnapshotId=@SnapshotConsumerId;
+
+            INSERT [#CurrentOverview_SnapshotStatus]
+            (
+                  [SourceOrdinal],[SnapshotId],[SourceCode],[SourceObject],[CapturedAtUtc]
+                , [CompletedAtUtc],[StatusCode],[IsPartial],[CapturedRowCount]
+                , [ErrorNumber],[ErrorMessage]
+            )
+            SELECT
+                  [r].[SourceOrdinal],[r].[SnapshotId],[r].[SourceCode],[r].[SourceObject]
+                , [r].[CapturedAtUtc],[r].[CompletedAtUtc],[r].[StatusCode],[r].[IsPartial]
+                , [r].[CapturedRowCount],[r].[ErrorNumber],[r].[ErrorMessage]
+            FROM [#CurrentOverview_RequestSnapshotStatus] AS [r]
+            WHERE NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentOverview_SnapshotStatus] AS [s]
+                WHERE [s].[SourceCode]=[r].[SourceCode]
+            );
             SET @ChildDurationMs=DATEDIFF_BIG(MILLISECOND,@ChildStartedAtUtc,SYSUTCDATETIME());
             INSERT [#CurrentOverview_ModulePayload] VALUES(20,N'requests',N'USP_CurrentRequests',N'#CurrentOverview_Requests',1,1,1,@ChildDurationMs,@ChildJson,NULL);
         END TRY
@@ -515,7 +704,8 @@ BEGIN
                 , @ResultTablesJson=N'{"blockingChains":"#CurrentOverview_Blocking"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
-                , @PrintMeldungen=@PrintMeldungen;
+                , @PrintMeldungen=@PrintMeldungen
+                , @ParentCurrentStateSnapshotId=@SnapshotConsumerId;
             SET @ChildDurationMs=DATEDIFF_BIG(MILLISECOND,@ChildStartedAtUtc,SYSUTCDATETIME());
             INSERT [#CurrentOverview_ModulePayload] VALUES(30,N'blocking',N'USP_CurrentBlocking',N'#CurrentOverview_Blocking',1,1,1,@ChildDurationMs,@ChildJson,NULL);
         END TRY
@@ -543,7 +733,8 @@ BEGIN
                 , @ResultTablesJson=N'{"currentTasks":"#CurrentOverview_Waits"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
-                , @PrintMeldungen=@PrintMeldungen;
+                , @PrintMeldungen=@PrintMeldungen
+                , @ParentCurrentStateSnapshotId=@SnapshotConsumerId;
             SET @ChildDurationMs=DATEDIFF_BIG(MILLISECOND,@ChildStartedAtUtc,SYSUTCDATETIME());
             INSERT [#CurrentOverview_ModulePayload] VALUES(40,N'waits',N'USP_CurrentWaits',N'#CurrentOverview_Waits',1,1,1,@ChildDurationMs,@ChildJson,NULL);
         END TRY
@@ -569,7 +760,8 @@ BEGIN
                 , @ResultTablesJson=N'{"transactions":"#CurrentOverview_Transactions"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
-                , @PrintMeldungen=@PrintMeldungen;
+                , @PrintMeldungen=@PrintMeldungen
+                , @ParentCurrentStateSnapshotId=@SnapshotConsumerId;
             SET @ChildDurationMs=DATEDIFF_BIG(MILLISECOND,@ChildStartedAtUtc,SYSUTCDATETIME());
             INSERT [#CurrentOverview_ModulePayload] VALUES(50,N'transactions',N'USP_CurrentTransactions',N'#CurrentOverview_Transactions',1,1,1,@ChildDurationMs,@ChildJson,NULL);
         END TRY
@@ -595,7 +787,8 @@ BEGIN
                 , @ResultTablesJson=N'{"memoryGrants":"#CurrentOverview_MemoryGrants"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
-                , @PrintMeldungen=@PrintMeldungen;
+                , @PrintMeldungen=@PrintMeldungen
+                , @ParentCurrentStateSnapshotId=@SnapshotConsumerId;
             SET @ChildDurationMs=DATEDIFF_BIG(MILLISECOND,@ChildStartedAtUtc,SYSUTCDATETIME());
             INSERT [#CurrentOverview_ModulePayload] VALUES(60,N'memoryGrants',N'USP_CurrentMemoryGrants',N'#CurrentOverview_MemoryGrants',1,1,1,@ChildDurationMs,@ChildJson,NULL);
         END TRY
@@ -619,7 +812,8 @@ BEGIN
                 , @ResultTablesJson=N'{"sessions":"#CurrentOverview_TempDBSessions"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
-                , @PrintMeldungen=@PrintMeldungen;
+                , @PrintMeldungen=@PrintMeldungen
+                , @ParentCurrentStateSnapshotId=@SnapshotConsumerId;
             SET @ChildDurationMs=DATEDIFF_BIG(MILLISECOND,@ChildStartedAtUtc,SYSUTCDATETIME());
             INSERT [#CurrentOverview_ModulePayload] VALUES(70,N'tempdbSessions',N'USP_CurrentTempDB',N'#CurrentOverview_TempDBSessions',1,1,1,@ChildDurationMs,@ChildJson,NULL);
         END TRY
@@ -646,7 +840,8 @@ BEGIN
                 , @ResultTablesJson=N'{"files":"#CurrentOverview_IO"}'
                 , @JsonErzeugen=1
                 , @Json=@ChildJson OUTPUT
-                , @PrintMeldungen=@PrintMeldungen;
+                , @PrintMeldungen=@PrintMeldungen
+                , @ParentCurrentStateSnapshotId=@SnapshotConsumerId;
             SET @ChildDurationMs=DATEDIFF_BIG(MILLISECOND,@ChildStartedAtUtc,SYSUTCDATETIME());
             INSERT [#CurrentOverview_ModulePayload] VALUES(80,N'io',N'USP_CurrentIO',N'#CurrentOverview_IO',1,1,1,@ChildDurationMs,@ChildJson,NULL);
         END TRY
@@ -682,6 +877,14 @@ BEGIN
         END CATCH;
     END
     ELSE INSERT [#CurrentOverview_ModulePayload] VALUES(90,N'logs',N'USP_CurrentLog',N'#CurrentOverview_Logs',0,1,0,0,NULL,NULL);
+
+    SET @SnapshotPartial=CASE WHEN EXISTS
+    (
+        SELECT 1
+        FROM [#CurrentOverview_SnapshotStatus]
+        WHERE [IsPartial]=1
+           OR [StatusCode] NOT IN ('AVAILABLE','NOT_COLLECTED')
+    ) THEN 1 ELSE 0 END;
 
     INSERT [#CurrentOverview_ModuleStatus]
     (
@@ -738,7 +941,7 @@ BEGIN
         , [StatusCode]
         , COALESCE([ErrorMessage],CONCAT(N'Quelle ',[SourceCode],N' wurde nur teilweise materialisiert.'))
     FROM [#CurrentOverview_SnapshotStatus]
-    WHERE [IsPartial]=1 OR [StatusCode] NOT IN ('AVAILABLE');
+    WHERE [IsPartial]=1 OR [StatusCode] NOT IN ('AVAILABLE','NOT_COLLECTED');
 
     SELECT
           @FailedModules=COALESCE(SUM(CASE WHEN [StatusCode] NOT IN ('AVAILABLE','AVAILABLE_LIMITED','SKIPPED') THEN 1 ELSE 0 END),0)
@@ -819,7 +1022,7 @@ BuildOutputs:
         (
             SELECT
                   N'CurrentOverview' AS [resultName]
-                , 3 AS [schemaVersion]
+                , 4 AS [schemaVersion]
                 , @StartedAtUtc AS [generatedAtUtc]
                 , @StatusCode AS [statusCode]
                 , @CurrentStateSnapshotId AS [evidenceSnapshotId]
@@ -895,9 +1098,16 @@ BuildOutputs:
                   @ExportSourceTable=CASE
                       WHEN @ExportResultName=N'moduleStatus' THEN N'#CurrentOverview_ModuleStatus'
                       WHEN @ExportResultName=N'snapshotStatus' THEN N'#CurrentOverview_SnapshotStatus'
+                      WHEN @ExportResultName=N'requestContext' THEN N'#CurrentOverview_RequestContext'
+                      WHEN @ExportResultName=N'statements' THEN N'#CurrentOverview_Statements'
+                      WHEN @ExportResultName=N'batches' THEN N'#CurrentOverview_Batches'
+                      WHEN @ExportResultName=N'inputBuffers' THEN N'#CurrentOverview_InputBuffers'
                       WHEN @ExportResultName=N'warnings' THEN N'#CurrentOverview_Warnings'
                       ELSE NULL END
-                , @CanExport=CASE WHEN @ExportResultName IN (N'moduleStatus',N'snapshotStatus',N'warnings') THEN 1 ELSE 0 END;
+                , @CanExport=CASE WHEN @ExportResultName IN
+                    (N'moduleStatus',N'snapshotStatus',N'requestContext',
+                     N'statements',N'batches',N'inputBuffers',N'warnings')
+                    THEN 1 ELSE 0 END;
 
             IF @ExportSourceTable IS NULL
                 SELECT

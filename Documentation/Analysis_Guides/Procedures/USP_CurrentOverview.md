@@ -60,12 +60,17 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `moduleStatus`, `snapshotStatus`, `sessions`, `requests`, `blocking`, `waits`, `transactions`, `memoryGrants`, `tempdbSessions`, `io`, `logs`, `warnings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `moduleStatus`, `snapshotStatus`,
+`sessions`, `requests`, `requestContext`, `statements`, `batches`,
+`inputBuffers`, `blocking`, `waits`, `transactions`, `memoryGrants`,
+`tempdbSessions`, `io`, `logs` und `warnings`. Status, Scope und Warnings sind
+vor den Fachergebnissen zu lesen. Resultsets mit unterschiedlicher
+Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 
 ## Laufinterner Primär-Snapshot
 
-Vor den Session- und Request-Children materialisiert der Overview-Owner nur die
+Vor den acht Snapshot-fähigen Children materialisiert der Overview-Owner nur die
 dafür benötigten Primärquellen. `snapshotStatus` weist pro Quelle
 `SnapshotId`, `CapturedAtUtc`, Abschlusszeit, Status, Partialität und Zeilenzahl aus.
 SQL-Text wird nur bei einem tatsächlichen Consumer materialisiert;
@@ -73,16 +78,18 @@ SQL-Handles werden vor dem DMF-Zugriff dedupliziert und begrenzt. Input Buffer
 bleibt eine gezielte Post-Candidate-Quelle von `USP_CurrentRequests` und gehört
 noch nicht zum gemeinsamen Primär-Snapshot.
 
-`USP_CurrentSessions` und `USP_CurrentRequests` erhalten die laufinterne
-Snapshot-ID und lesen diese Primärquellen nicht erneut. Schlägt der Owner selbst
-fehl, wird der Fehler als `SNAPSHOT_OWNER` ausgewiesen und die Children fallen
-auf frische Einzelreads zurück. Die Snapshot-ID und alle Temp-Tabellen enden mit
-dem Procedure-Aufruf. Ein späterer Einzelaufruf kann sie nicht wiederverwenden.
+Sessions, Requests, Blocking, Waits, Transactions, Memory Grants, TempDB und
+I/O erhalten dieselbe laufinterne Snapshot-ID und lesen die gemeinsam
+materialisierten Quellen nicht erneut. Eigene, nicht überlappende Quellen wie
+Locks, Instanz-Wait-Stats, Datei-I/O oder TempDB-Dateikatalog bleiben im
+jeweiligen Child. Schlägt der Owner selbst fehl, wird der Fehler als
+`SNAPSHOT_OWNER` ausgewiesen und die Children fallen auf frische Einzelreads
+zurück.
 
-Blocking, Waits, Transactions, Memory Grants, TempDB und I/O sind in diesem
-ersten Slice noch nicht auf den gemeinsamen Owner migriert. Ihre
-Erfassungszeitpunkte bleiben deshalb getrennt und dürfen nicht als atomarer
-Gesamtsnapshot interpretiert werden.
+Die Snapshot-ID und alle Temp-Tabellen enden mit dem Procedure-Aufruf. Ein
+späterer Einzelaufruf kann sie nicht wiederverwenden. Die Quellzeitpunkte
+bleiben getrennt; dieselbe ID bedeutet einen gemeinsamen Aufrufvertrag, keine
+transaktionale Atomizität.
 
 ## Eine Zeile bedeutet
 

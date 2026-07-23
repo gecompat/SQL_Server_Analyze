@@ -286,7 +286,7 @@ BEGIN
                 FROM [#CurrentOverview_CurrentStateSnapshot_Context]
                 WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
                   AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
-                  AND [ContractVersion]=1
+                  AND [ContractVersion]=2
             )
             BEGIN
                 SET @StatusCode='INVALID_PARENT_SNAPSHOT';
