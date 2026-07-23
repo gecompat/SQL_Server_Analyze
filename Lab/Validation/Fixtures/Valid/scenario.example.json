@@ -1,0 +1,79 @@
+{
+  "SchemaVersion": "1.0",
+  "ScenarioId": "LAB-BASE-001",
+  "Title": "Synthetic healthy baseline",
+  "Purpose": "Verify baseline, output, and cleanup contracts without asserting exact runtime counters.",
+  "EvidenceClass": "REAL",
+  "Platforms": [
+    "CONTAINER_LINUX"
+  ],
+  "SqlVersions": [
+    2019,
+    2022,
+    2025
+  ],
+  "TopologyId": "CTR-SINGLE",
+  "ResourceProfile": "Compact",
+  "DestructiveClass": "LAB_DATA",
+  "RequiredCapabilities": [
+    "CONTAINER_ENGINE",
+    "COMPOSE_PROVIDER"
+  ],
+  "Arrange": {
+    "Action": "Create the bounded synthetic baseline database from a fixed seed.",
+    "CompletionSignal": "The synthetic database is online and registered to the lab run."
+  },
+  "Act": {
+    "Action": "Run the bounded synthetic baseline workload.",
+    "CompletionSignal": "The workload completes without an injected fault."
+  },
+  "Observe": {
+    "Analyzers": [
+      "USP_CurrentOverview"
+    ],
+    "Scope": "Only the registered synthetic database and bounded server-level evidence.",
+    "MeasurementWindowSeconds": 30
+  },
+  "ExpectedFindings": [
+    {
+      "Analyzer": "USP_CurrentOverview",
+      "ExpectationType": "BASELINE",
+      "ExpectedStatuses": [
+        "OK",
+        "NO_DATA"
+      ],
+      "ExpectedFindingCodes": [],
+      "MinimumConfidence": "NONE",
+      "AlternativeEvidence": [
+        "An empty bounded result is valid when the procedure reports an explicit no-data status."
+      ],
+      "AssertionBoundary": "Exact waits, durations, plans, and row counts are not asserted."
+    }
+  ],
+  "AlternativeEvidence": [
+    "A documented no-data status is acceptable for transient current-state groups."
+  ],
+  "Timeouts": {
+    "SetupSeconds": 300,
+    "ActSeconds": 120,
+    "ObserveSeconds": 120,
+    "CleanupSeconds": 300
+  },
+  "SafetyGuards": {
+    "RequireSyntheticDatabase": true,
+    "RequireRunId": true,
+    "RequireRegisteredObjectIds": true,
+    "AllowSystemTarget": false,
+    "AllowNameOnlyDeletion": false,
+    "RequireDestructiveApproval": false
+  },
+  "Cleanup": {
+    "Action": "Remove only objects registered to the current lab run.",
+    "CompletionSignal": "No registered database, volume, process, or network resource remains."
+  },
+  "DataClassification": "SYNTHETIC",
+  "KnownLimitations": [
+    "This planned scenario is not executable before the Welle 1 and Welle 2 runtime slices."
+  ]
+}
+

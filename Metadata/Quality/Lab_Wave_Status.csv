@@ -1,0 +1,13 @@
+WaveId,ContractStatus,RuntimeStatus,DeliveredScope,OpenScope,EvidenceReference
+LAB-001-WAVE0,IMPLEMENTED_AUTOMATED_GATE,NOT_EXECUTED,"Schemas examples resource profiles topology and scenario catalogs complete public Procedure coverage and static privacy cleanup and status validation","Runtime host detection orchestration and SQL Server execution are explicitly excluded",Lab/README.md
+LAB-001-WAVE1,PLANNED,NOT_EXECUTED,"","Preflight orchestrator state cleanup and host adapters",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE2,PLANNED,NOT_EXECUTED,"","Container single baseline and measured Compact resources",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE3,PLANNED,NOT_EXECUTED,"","Core performance scenarios and version lanes",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE4,PLANNED,NOT_EXECUTED,"","Multi-container network and infrastructure scenarios",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE5,PLANNED,NOT_EXECUTED,"","Hyper-V image pipeline",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE6,PLANNED,NOT_EXECUTED,"","Windows standalone runtime evidence",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE7,PLANNED,NOT_EXECUTED,"","WSFC availability group and FCI runtime evidence",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE8,PLANNED,NOT_EXECUTED,"","External runtime CLR and integrity runtime evidence",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE9,PLANNED,NOT_EXECUTED,"","Podman compatibility evidence",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+LAB-001-WAVE10,PLANNED,NOT_EXECUTED,"","Complete external evidence gate and operations contract",Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md
+
