@@ -375,7 +375,7 @@ ausgewiesen; ressourcenintensive Pfade besitzen ein separates Bestätigungsgate.
 
 **Beispiel:** FK ohne passenden Index ist besonders relevant, wenn Parent-Deletes/Updates blockieren oder große Childscans auslösen. Bei statischen Tabellen ohne solche Operationen kann die Priorität niedriger sein.
 
-**Nächster Schritt:** Prüfen Sie Objektinventar, Usage, Pläne und Änderungsrisiko. [Detailbeschreibung](03_Object_Index.md#10-monitorusp_schemadesignanalysis)
+**Nächster Schritt:** Prüfen Sie Objektinventar, Usage, Pläne und Änderungsrisiko. [Detailbeschreibung](03_Object_Index.md#11-monitorusp_schemadesignanalysis)
 
 ## [monitor].[USP_ObjectAnalysis]
 
