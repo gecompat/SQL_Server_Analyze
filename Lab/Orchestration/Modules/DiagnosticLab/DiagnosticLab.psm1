@@ -14,12 +14,19 @@ $privateFiles = @(
     'Private/HostAdapters/LinuxNative.ps1'
     'Private/HostAdapters/WindowsHyperV.ps1'
     'Private/HostAdapters/RemoteHost.ps1'
+    'Private/ContainerRuntime.ps1'
+    'Private/Installer.ps1'
+    'Private/ResourceMeasurement.ps1'
+    'Private/ScenarioRuntime.ps1'
 )
 
 $publicFiles = @(
     'Public/Invoke-LabPreflight.ps1'
     'Public/Get-LabStatus.ps1'
     'Public/Invoke-LabCleanup.ps1'
+    'Public/Invoke-LabUp.ps1'
+    'Public/Invoke-LabScenario.ps1'
+    'Public/Test-LabScenario.ps1'
 )
 
 foreach ($relativePath in @($privateFiles + $publicFiles)) {
@@ -30,4 +37,7 @@ Export-ModuleMember -Function @(
     'Get-LabStatus'
     'Invoke-LabCleanup'
     'Invoke-LabPreflight'
+    'Invoke-LabScenario'
+    'Invoke-LabUp'
+    'Test-LabScenario'
 )

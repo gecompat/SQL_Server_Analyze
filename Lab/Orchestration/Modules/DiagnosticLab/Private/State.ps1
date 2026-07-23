@@ -240,11 +240,11 @@ function Register-LabResource {
         [string] $LabRunId,
 
         [Parameter(Mandatory)]
-        [ValidateSet('LOCAL_FILESYSTEM')]
+        [ValidateSet('LOCAL_FILESYSTEM', 'DOCKER')]
         [string] $Provider,
 
         [Parameter(Mandatory)]
-        [ValidateSet('FILE')]
+        [ValidateSet('FILE', 'DIRECTORY', 'CONTAINER', 'NETWORK', 'VOLUME')]
         [string] $ResourceType,
 
         [Parameter(Mandatory)]
@@ -255,20 +255,72 @@ function Register-LabResource {
         [string] $ExactLocator,
 
         [Parameter()]
+        [string] $BoundaryLocator,
+
+        [Parameter()]
         [string] $StateRoot = (Get-LabDefaultStateRoot)
     )
 
-    if ([Management.Automation.WildcardPattern]::ContainsWildcardCharacters(
-            $ExactLocator
-        )) {
-        throw 'Cleanup locators must not contain wildcard characters.'
+    foreach ($locator in @($ExactLocator, $BoundaryLocator)) {
+        if (
+            -not [string]::IsNullOrWhiteSpace($locator) -and
+            [Management.Automation.WildcardPattern]::ContainsWildcardCharacters(
+                $locator
+            )
+        ) {
+            throw 'Cleanup locators must not contain wildcard characters.'
+        }
     }
 
     $paths = Initialize-LabRunState -LabRunId $LabRunId -StateRoot $StateRoot
     $stateLock = Enter-LabStateLock -LockPath $paths.LockPath
     try {
-        if (-not (Test-LabPathWithinRoot -Path $ExactLocator -Root $paths.RunDirectory)) {
-            throw 'LOCAL_FILESYSTEM resources must be located inside their run directory.'
+        $storedLocator = $ExactLocator
+        $storedBoundary = ''
+        if ($Provider -eq 'LOCAL_FILESYSTEM') {
+            if ($ResourceType -notin @('FILE', 'DIRECTORY')) {
+                throw 'LOCAL_FILESYSTEM supports only FILE and DIRECTORY resources.'
+            }
+            $storedLocator = [IO.Path]::GetFullPath($ExactLocator)
+            $storedBoundary = if ([string]::IsNullOrWhiteSpace($BoundaryLocator)) {
+                $paths.RunDirectory
+            }
+            else {
+                [IO.Path]::GetFullPath($BoundaryLocator)
+            }
+            if (
+                -not (Test-LabPathWithinRoot `
+                        -Path $storedLocator `
+                        -Root $storedBoundary)
+            ) {
+                throw 'LOCAL_FILESYSTEM resources must be inside their cleanup boundary.'
+            }
+            if (
+                $ResourceType -eq 'DIRECTORY' -and
+                [IO.Path]::GetFileName(
+                    $storedLocator.TrimEnd(
+                        [IO.Path]::DirectorySeparatorChar,
+                        [IO.Path]::AltDirectorySeparatorChar
+                    )
+                ) -ne $LabRunId
+            ) {
+                throw 'Registered cleanup directories must use the exact LabRunId leaf.'
+            }
+        }
+        elseif ($Provider -eq 'DOCKER') {
+            if ($ResourceType -in @('CONTAINER', 'NETWORK')) {
+                if ($ExactLocator -notmatch '^[a-f0-9]{64}$') {
+                    throw 'Docker container and network locators require a full object ID.'
+                }
+            }
+            elseif ($ResourceType -eq 'VOLUME') {
+                if ($ExactLocator -notmatch '^[a-z0-9][a-z0-9_.-]{0,127}$') {
+                    throw 'Docker volume locators require an exact normalized name.'
+                }
+            }
+            else {
+                throw 'DOCKER supports only CONTAINER, NETWORK, and VOLUME resources.'
+            }
         }
 
         $registry = Read-LabJsonFile -Path $paths.RegistryPath
@@ -282,7 +334,8 @@ function Register-LabResource {
             Provider = $Provider
             ResourceType = $ResourceType
             ResourceId = $ResourceId
-            ExactLocator = [System.IO.Path]::GetFullPath($ExactLocator)
+            ExactLocator = $storedLocator
+            BoundaryLocator = $storedBoundary
             RegisteredAtUtc = [DateTime]::UtcNow.ToString('o')
         }
         Write-LabJsonFile -Path $paths.RegistryPath -InputObject ([ordered] @{

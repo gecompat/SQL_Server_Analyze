@@ -72,6 +72,28 @@ function Resolve-LabConfiguration {
     if ($configuration.ContainerEngine -notin @('DOCKER', 'PODMAN')) {
         throw 'ContainerEngine contains an unsupported value.'
     }
+    $containerImageLogicalId = if (
+        $configuration.ContainsKey('ContainerImageLogicalId')
+    ) {
+        [string] $configuration.ContainerImageLogicalId
+    }
+    else {
+        'SQL_SERVER_2025_DEVELOPER_LINUX'
+    }
+    if ($containerImageLogicalId -notmatch '^[A-Z0-9_]+$') {
+        throw 'ContainerImageLogicalId must be a generic logical reference.'
+    }
+    $acceptSqlServerEula = if (
+        $configuration.ContainsKey('AcceptSqlServerEula')
+    ) {
+        if ($configuration.AcceptSqlServerEula -isnot [bool]) {
+            throw 'AcceptSqlServerEula must be a Boolean value.'
+        }
+        [bool] $configuration.AcceptSqlServerEula
+    }
+    else {
+        $false
+    }
     if ($configuration.ResourceProfile -notin @('Compact', 'Standard', 'Stress')) {
         throw 'ResourceProfile contains an unsupported value.'
     }
@@ -296,6 +318,8 @@ function Resolve-LabConfiguration {
         AllowedExecutionModes = $allowedExecutionModes
         SqlVersionPriority = $sqlVersionPriority
         ContainerEngine = [string] $configuration.ContainerEngine
+        ContainerImageLogicalId = $containerImageLogicalId
+        AcceptSqlServerEula = $acceptSqlServerEula
         ResourceProfile = [string] $configuration.ResourceProfile
         StorageTargets = $storageTargets
         StorageRoleBindings = $configuration.StorageRoleBindings

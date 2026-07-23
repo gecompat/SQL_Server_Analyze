@@ -3,135 +3,214 @@
 LAB-001 ist ein ausschließlich synthetisches und hardwareadaptives
 SQL-Server-Diagnoselabor. Welle 0 stellt die statischen Verträge, Profile,
 Kataloge und die vollständige geplante Procedure-Coverage bereit. Welle 1
-implementiert den ausführbaren, read-only Preflight und den begrenzten
-Orchestrator-Core.
+implementiert den read-only Preflight und den begrenzten Orchestrator-Core.
+Welle 2 ergänzt den ausführbaren Docker-Vertrag für eine einzelne
+SQL-Server-2025-Instanz sowie die Baselines `LAB-BASE-001` und
+`LAB-BASE-002`.
 
-Der Produktstatus ist `PARTIAL_PRODUCT_FUNCTION`. Der Preflight, die
-Ausführungsmodus-Auflösung und die sichere lokale Zustandsverwaltung sind
-nutzbar. Container, virtuelle Maschinen, SQL-Server-Topologien und Szenarien
-werden erst ab Welle 2 implementiert und durch keine Welle-1-Funktion erzeugt.
+Der Produktstatus ist `PARTIAL_PRODUCT_FUNCTION`. Der Welle-2-Code ist als
+`IMPLEMENTED_ACTIONS_GATE` verfügbar; der externe Laufzeitnachweis bleibt
+`IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`. Ein vorhandener Codepfad oder ein
+grüner statischer CI-Lauf wird nicht als realer Hostnachweis ausgegeben.
 
 ## Verzeichnisvertrag
 
 | Pfad | Inhalt |
 |---|---|
-| `Config` | Generische Beispielkonfigurationen und konservative Ressourcenprofile. |
+| `Config` | Generische Beispielkonfigurationen, Image-Lock und konservative Ressourcenprofile. |
 | `Contracts` | JSON-Schemata für Konfiguration, Hostfähigkeiten, Topologien, Szenarien, Finding-Erwartungen und veröffentlichbare Evidenz. |
-| `Orchestration` | Öffentliche CLI und PowerShell-Modul für Preflight, Status und begrenztes Cleanup. |
+| `Containers` | Portabler Compose-Core, Docker-Override und gemeinsamer Linux-Bootstrap. |
+| `Orchestration` | Öffentliche CLI und PowerShell-Modul für Preflight, Status, Welle-2-Baselines und begrenztes Cleanup. |
 | `Scenarios/Catalog` | Maschinenlesbarer Szenariokatalog und Procedure-zu-Szenario-Coverage. |
-| `Validation` | Statische, Parser-, Schema-, Hostadapter- und Cleanup-Negativprüfungen ohne SQL-Server-Workload. |
+| `Scenarios/Core` | Ausführbare, synthetische Welle-2-Szenarien. |
+| `Validation` | Schema-, Parser-, Sicherheits- und Vertragsprüfungen ohne behauptete externe Laufzeitevidenz. |
 | `.artifacts`, `.cache`, `.secrets`, `.state` | Ausschließlich lokale, ignorierte Laufzeitpfade. |
 
-Die geplante vollständige Verzeichnisstruktur ist im
-[Architekturplan](../Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md)
-festgelegt. Verzeichnisse späterer Wellen werden erst mit einem fachlich
-nutzbaren Artefakt versioniert; leere Platzhalter gelten nicht als
-Implementierung.
+Die geplante vollständige Verzeichnisstruktur steht im
+[Architekturplan](../Documentation/Architecture/Reproducible_Diagnostic_Lab_Plan.md).
+Verzeichnisse späterer Wellen werden erst mit einem fachlich nutzbaren
+Artefakt versioniert.
 
-## Preflight und Status
+## Lokale Voraussetzungen
 
-Vor dem ersten lokalen Lauf wird
-`Lab/Config/lab.config.example.psd1` nach
-`Lab/Config/lab.config.psd1` kopiert und ausschließlich lokal angepasst. Die
-lokale Datei ist ignoriert. Storage-Ziele, Remote-Endpunkte, Benutzernamen und
-lokale Pfade dürfen nicht in die Beispielkonfiguration übernommen werden.
+Für den nativen Welle-2-Lauf sind erforderlich:
+
+- x86-64-Linux mit Docker Engine und Docker Compose;
+- cgroup v2 und wirksame Containerlimits;
+- eine durch den Preflight mindestens als `HC1_COMPACT` klassifizierte
+  Hostkapazität;
+- ein ausdrücklich freigegebenes Storage-Ziel für `EPHEMERAL_DATA`;
+- eine lokale Konfiguration mit
+  `DataClassification = 'LOCAL_RUNTIME_CONFIG'`;
+- ausdrückliche lokale EULA-Bestätigung durch
+  `AcceptSqlServerEula = $true`;
+- ein lokaler, auf einen vollständigen SHA-256-Digest aufgelöster Image-Lock;
+- das logische Secret `SQL_SA_PASSWORD` über den konfigurierten Secret-Provider.
+
+Der öffentliche Image-Lock nennt die dokumentierte Microsoft-Referenz
+`mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04`, enthält aber
+absichtlich keinen vorgetäuschten Digest. Der lokale Lock muss den tatsächlich
+aufgelösten Digest mit `Status = 'LOCKED'` enthalten. `Up` lädt ausschließlich
+diese digestgebundene Referenz.
+
+Das Beispiel-Datafile wird kopiert und nur lokal angepasst:
+
+```powershell
+Copy-Item `
+    .\Lab\Config\lab.config.example.psd1 `
+    .\Lab\Config\lab.config.psd1
+```
+
+Lokale Pfade, Hostnamen, Endpunkte, Benutzernamen, Digests, Kapazitätswerte und
+Secrets dürfen nicht in die Beispieldateien oder in Git übernommen werden.
+
+## Preflight
 
 ```powershell
 .\Lab\Orchestration\Invoke-DiagnosticLab.ps1 -Action Preflight
 ```
 
-Ohne lokale Konfiguration wird der sichere Beispielvertrag ausgewertet. Das
-Ergebnis lautet dann `NOT_EXECUTABLE` mit dem Reason Code
-`LOCAL_CONFIG_REQUIRED`; es wird keine lokale Ressource ausgewählt.
+Ohne lokale Konfiguration lautet das Ergebnis `NOT_EXECUTABLE` mit dem
+Reason Code `LOCAL_CONFIG_REQUIRED`. Der Preflight ermittelt Hostklasse,
+Ressourcenreserven, Docker-/Compose-/cgroup-Fähigkeiten, Image-Lock,
+Netzkonflikte und logische Secret-Verfügbarkeit. Secretwerte werden nicht
+protokolliert.
 
-Der Preflight ermittelt:
+Die lokalen Zustandsdateien liegen unter `Lab/.state/<LabRunId>` oder unter
+einem ausdrücklich übergebenen lokalen State-Root. Sie sind ignoriert und
+keine veröffentlichbare Evidenz.
 
-- Betriebssystemfamilie, x86-64-Architektur, CPU und Speicher;
-- ausschließlich explizit freigegebene logische Storage-Ziele;
-- Hyper-V und PowerShell Direct auf Windows;
-- Docker, Podman, Compose, cgroups und `tc` auf Linux;
-- die konservative Hostklasse `HC1_COMPACT`, `HC2_STANDARD`,
-  `HC3_EXTENDED` oder `UNCLASSIFIED`;
-- verfügbare Ausführungsmodi und die deterministische `AUTO`-Auflösung;
-- gebundene Image-/Medien-Locks sowie Konflikte des lokal konfigurierten
-  privaten Labnetzes;
-- die Verfügbarkeit logisch benannter Secrets, ohne Secretwerte zu
-  protokollieren.
+## Welle 2: `Up → Run → Validate → Down`
 
-`DISTRIBUTED` wird nur aufgelöst, wenn mindestens ein Windows-Hyper-V- und ein
-Linux-Container-Host vorhanden sind, mindestens ein Host remote ist und die
-Remote-Ausführung mit `-AllowRemoteExecution` ausdrücklich freigegeben wurde.
+`Up` führt erneut einen read-only Preflight aus, prüft vor der ersten Mutation
+die Compact-Reserven, lädt das digestgebundene Image und erstellt nur
+`CTR-SINGLE`:
 
-Die Run-ID aus der Preflight-Ausgabe wird für Statusabfragen verwendet:
+```powershell
+$up = .\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
+    -Action Up `
+    -ExecutionMode LINUX_NATIVE `
+    -Engine DOCKER `
+    -Topology CTR-SINGLE `
+    -SqlVersion 2025 `
+    -ResourceProfile Compact
+
+$runId = $up.LabRunId
+```
+
+Der gemeinsame Compose-Core:
+
+- veröffentlicht keinen Host-Port;
+- verwendet ein internes Labnetz;
+- begrenzt den Container auf 3 GiB RAM und zwei logische Prozessoren;
+- begrenzt SQL Server auf 2 GiB;
+- bindet den Datenpfad ausschließlich unter dem freigegebenen
+  `EPHEMERAL_DATA`-Ziel;
+- versieht Container und Netzwerk mit der Run-ID;
+- bezieht das synthetische Secret nur aus dem bestehenden Secret-Provider.
+
+Der Orchestrator baut den eigenständigen Installer aus den kanonischen
+SQL-Dateien in den ignorierten Run-State, installiert das Framework in
+`LabAnalyze` und misst vor und nach `Up` Hostreserve, effektive Dockerlimits und
+tatsächlichen Datenverbrauch. Reale Messwerte bleiben lokal in
+`resource-measurements.json`.
+
+### Gesunde Baseline
 
 ```powershell
 .\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
-    -Action Status `
-    -LabRunId LAB-<UTC>-<ID>
+    -Action Run `
+    -LabRunId $runId `
+    -ScenarioId LAB-BASE-001
+
+.\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
+    -Action Validate `
+    -LabRunId $runId `
+    -ScenarioId LAB-BASE-001
 ```
 
-Die lokalen Dateien `run-state.json`, `host-capabilities.json`,
-`preflight-summary.json`, `resource-registry.json` und `events.jsonl` liegen
-unter `Lab/.state/<LabRunId>`. Sie werden nicht versioniert und sind keine
-veröffentlichbare Evidenz.
+`LAB-BASE-001` erstellt ausschließlich die synthetische Datenbank
+`Lab001Synthetic`, führt eine kleine deterministische Transaktion aus und
+prüft den JSON-/Modulstatusvertrag von `monitor.USP_CurrentOverview`.
+Hostabhängige Counter, Laufzeiten, Waits und Pläne sind keine exakten Asserts.
 
-## Begrenztes Cleanup
+### Eingeschränkte Metadatensicht
 
-Welle 1 führt keine Infrastrukturressourcen ein. Die Cleanup-Registry steht
-bereits als verbindlicher Sicherheitsvertrag für spätere Wellen bereit. Eine
-Ressource kann nur über Provider, Typ, exakte Objekt-ID, exakten Locator und
-übereinstimmende Owner-Run-ID registriert werden.
+```powershell
+.\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
+    -Action Run `
+    -LabRunId $runId `
+    -ScenarioId LAB-BASE-002
+
+.\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
+    -Action Validate `
+    -LabRunId $runId `
+    -ScenarioId LAB-BASE-002
+```
+
+`LAB-BASE-002` verwendet einen synthetischen Datenbankbenutzer ohne Login und
+prüft, dass `monitor.USP_CheckFrameworkCapabilities` die fehlende
+Metadatensicht strukturiert und ohne unkontrollierten Analyzerabbruch
+ausweist. Anzahl und Reihenfolge eingeschränkter Capability-Zeilen werden
+nicht fest verdrahtet.
+
+### Cleanup
 
 ```powershell
 .\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
     -Action Down `
-    -LabRunId LAB-<UTC>-<ID> `
+    -LabRunId $runId `
     -WhatIf
 
 .\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
-    -Action RecoveryCleanup `
-    -LabRunId LAB-<UTC>-<ID>
+    -Action Down `
+    -LabRunId $runId
 ```
 
-Wildcard-Locators, fremde Run-IDs, nicht unterstützte Handler und Pfade
-außerhalb der Run-Grenze werden vor der ersten Löschung abgewiesen. Cleanup
-verwendet keine rekursive oder namensbasierte Suche. Nicht registrierte Dateien
-bleiben unverändert.
+Container und Netzwerk werden ausschließlich anhand ihrer vollständigen
+registrierten Docker-ID entfernt, nachdem ihre Run-ID-Labels erneut geprüft
+wurden. Der Datenordner liegt unter dem freigegebenen Storage-Ziel, trägt einen
+Run-ID-Marker und wird erst nach den Docker-Objekten über seinen exakten
+registrierten Pfad entfernt. Wildcards, breite Prune-Operationen und
+namensbasierte Suche sind ausgeschlossen.
+
+Ein abgebrochener Lauf verwendet `RecoveryCleanup`. Nicht registrierte oder
+fremd gelabelte Ressourcen werden nicht entfernt.
+
+## Sichtbare Plattformgrenzen
+
+| Lane | Implementierungsstatus | Externer Nachweis |
+|---|---|---|
+| Docker auf nativem Linux | `IMPLEMENTED_ACTIONS_GATE` | `NOT_EXECUTED` bis zu einem Lauf auf einem freigegebenen Host |
+| Docker in einer Hyper-V-Linux-VM | gemeinsamer Vertrag vorhanden | `NOT_EXECUTED` mit `HYPERV_LINUX_RUNTIME_GATE_REQUIRED` |
+| Podman | Welle 9 | `NOT_EXECUTED` |
+
+Die Hyper-V-Linux-Lane wird nicht als erfolgreich ausgewiesen, solange keine
+isolierte kompatible VM bereitsteht. Fehlende Plattformfähigkeit ist kein
+fachlicher Szenariofehler.
 
 ## Validierung
 
-Die repositoryunabhängige Prüfung läuft mit Python:
+Repositoryunabhängige Prüfungen:
 
 ```text
 python3 Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py --repository-root .
 python3 Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py --repository-root .
+python3 Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py --repository-root .
 ```
 
-Auf Systemen mit PowerShell 7 kann zusätzlich die JSON-Schema-Prüfung ausgeführt
-werden:
+Mit PowerShell 7:
 
 ```text
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabValidation.ps1
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave1Tests.ps1
+pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave2Tests.ps1
 ```
 
-Beide Prüfungen sind read-only. Sie prüfen insbesondere:
-
-- syntaktisch gültige JSON- und CSV-Dateien;
-- Referenzen zwischen Szenarien, Topologien und Coverage;
-- genau eine Coverage-Zeile je öffentlicher Procedure aus
-  `Metadata/Inventory/Objects.csv`;
-- Beispielmanifeste gegen die zugeordneten JSON-Schemata;
-- identische kanonische Coverage-Dateien;
-- das Fehlen versionierter Laufzeitzustände, Medien, Secrets, Backups und
-  Rohartefakte;
-- Parser- und PSScriptAnalyzer-Verträge;
-- Hostklassen- und Ausführungsmodusgrenzen;
-- wiederholbaren Preflight und State Lock;
-- `-WhatIf`, Idempotenz, fremde Owner, Wildcards und nicht registrierte
-  Ressourcen als Cleanup-Negativfälle;
-- den abgegrenzten Produktstatus ohne behauptete SQL-Server- oder
-  Infrastruktur-Evidenz.
+Die PR-CI prüft zusätzlich das zusammengeführte Docker-Compose-Modell und
+PSScriptAnalyzer. Sie startet keinen unterdimensionierten SQL-Server-Container
+und überschreibt keine Mindesthostklasse. Reale `Up → Run → Validate → Down`-
+Nachweise werden ausschließlich über die externen Evidence Gates geführt.
 
 ## Datenschutz- und Sicherheitsgrenze
 
@@ -141,12 +220,14 @@ Endpunkte, IP-Adressen, Gerätebezeichnungen, Seriennummern, Pfade,
 Kapazitätsmesswerte, Zugangsdaten und Rohresultate dürfen nicht übernommen
 werden.
 
-Die Konfiguration bindet lokale Ressourcen ausschließlich über logische
-Referenzen. Geheimnisse werden nicht durch Beispieldateien modelliert.
-Laufzeitevidenz bleibt unter den ignorierten Pfaden und ist kein
-Repositoryartefakt.
+Rohartefakte können SQL-Text, Pläne, lokale Objektbezeichner oder technische
+Laufzeitwerte enthalten. Sie bleiben in ignorierten lokalen Pfaden und werden
+nicht automatisch an Commits, Pull Requests oder Workflow-Artefakte
+angehängt.
 
-Strukturierte Logs ersetzen sensitive Properties anhand ihres Schlüssels durch
-`[REDACTED]`. Remote-Fehler werden ausschließlich als Reason Codes gespeichert;
-Endpunkte und Fehlermeldungstexte werden nicht in veröffentlichbare
-Zusammenfassungen übernommen.
+## Öffentliche Produktquellen
+
+- Microsoft (2026): [Docker: Run Containers for SQL Server on Linux](https://learn.microsoft.com/en-us/sql/linux/install-upgrade/quickstart-install-docker?view=sql-server-ver17).
+- Microsoft (2026): [SQL Server container images](https://mcr.microsoft.com/product/mssql/server/about).
+- Docker (2026): [Compose file reference](https://docs.docker.com/reference/compose-file/).
+- Docker (2026): [Resource constraints](https://docs.docker.com/engine/containers/resource_constraints/).
