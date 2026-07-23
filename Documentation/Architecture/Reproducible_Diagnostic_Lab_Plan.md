@@ -132,9 +132,9 @@ Lab/
 │           ├── Public/
 │           └── Private/
 │               └── HostAdapters/
-│                   ├── WindowsHyperV.psm1
-│                   ├── LinuxNative.psm1
-│                   └── RemoteHost.psm1
+│                   ├── WindowsHyperV.ps1
+│                   ├── LinuxNative.ps1
+│                   └── RemoteHost.ps1
 ├── Containers/
 │   ├── compose.yaml
 │   ├── compose.docker.yaml

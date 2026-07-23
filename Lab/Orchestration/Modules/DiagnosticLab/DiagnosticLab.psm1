@@ -11,9 +11,9 @@ $privateFiles = @(
     'Private/State.ps1'
     'Private/HostCapability.ps1'
     'Private/SecretProvider.ps1'
-    'Private/HostAdapters/LinuxNative.psm1'
-    'Private/HostAdapters/WindowsHyperV.psm1'
-    'Private/HostAdapters/RemoteHost.psm1'
+    'Private/HostAdapters/LinuxNative.ps1'
+    'Private/HostAdapters/WindowsHyperV.ps1'
+    'Private/HostAdapters/RemoteHost.ps1'
 )
 
 $publicFiles = @(

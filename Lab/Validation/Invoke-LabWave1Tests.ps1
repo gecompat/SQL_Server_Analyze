@@ -108,6 +108,12 @@ try {
         ) | Out-Null
         foreach ($errorRecord in $errors) {
             $parseErrors.Add($errorRecord)
+            Write-Output (
+                'PowerShell parser finding: file={0}; line={1}; error={2}' -f
+                    $path.Name,
+                    $errorRecord.Extent.StartLineNumber,
+                    $errorRecord.ErrorId
+            )
         }
     }
     Assert-LabTest `

@@ -22,9 +22,9 @@ REQUIRED_FILES = (
     "Lab/Orchestration/Modules/DiagnosticLab/Private/HostCapability.ps1",
     "Lab/Orchestration/Modules/DiagnosticLab/Private/SecretProvider.ps1",
     "Lab/Orchestration/Modules/DiagnosticLab/Private/State.ps1",
-    "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/LinuxNative.psm1",
-    "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/RemoteHost.psm1",
-    "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/WindowsHyperV.psm1",
+    "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/LinuxNative.ps1",
+    "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/RemoteHost.ps1",
+    "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/WindowsHyperV.ps1",
     "Lab/Orchestration/Modules/DiagnosticLab/Public/Get-LabStatus.ps1",
     "Lab/Orchestration/Modules/DiagnosticLab/Public/Invoke-LabCleanup.ps1",
     "Lab/Orchestration/Modules/DiagnosticLab/Public/Invoke-LabPreflight.ps1",
@@ -258,7 +258,7 @@ def validate_host_and_secret_contract(repository_root: Path) -> list[Finding]:
     )
     remote_path = (
         repository_root
-        / "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/RemoteHost.psm1"
+        / "Lab/Orchestration/Modules/DiagnosticLab/Private/HostAdapters/RemoteHost.ps1"
     )
     secret_path = (
         repository_root
@@ -267,7 +267,7 @@ def validate_host_and_secret_contract(repository_root: Path) -> list[Finding]:
     preflight = read_text(preflight_path, findings)
     mode = read_text(mode_path, findings)
     remote = read_text(remote_path, findings)
-    secret = read_text(secret_path, findings)
+    secret_provider = read_text(secret_path, findings)
 
     for fragment in (
         "Get-LabWindowsHyperVHostCapability",
@@ -327,7 +327,7 @@ def validate_host_and_secret_contract(repository_root: Path) -> list[Finding]:
         "ConvertTo-SecureString",
         "LAB001_SECRET_",
     ):
-        if fragment not in secret:
+        if fragment not in secret_provider:
             findings.append(
                 Finding(
                     "SECRET_PROVIDER_CONTRACT_MISSING",

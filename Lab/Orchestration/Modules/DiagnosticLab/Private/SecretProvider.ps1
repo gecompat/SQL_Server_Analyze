@@ -112,8 +112,8 @@ function New-LabCredential {
         [pscustomobject] $SecretPolicy
     )
 
-    $secret = Get-LabSecretValue `
+    $secureValue = Get-LabSecretValue `
         -LogicalSecretName $LogicalSecretName `
         -SecretPolicy $SecretPolicy
-    return [pscredential]::new($UserName, $secret)
+    return [pscredential]::new($UserName, $secureValue)
 }
