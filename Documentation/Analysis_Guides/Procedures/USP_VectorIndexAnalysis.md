@@ -28,6 +28,11 @@ Wartungsanweisung noch ein historischer Trend.
 unterschiedliche Zustände. Ein leeres fachliches Array ersetzt diese
 Unterscheidung nicht.
 
+Der approximative Vector-Index-Pfad ist in SQL Server 2025 ein Previewfeature.
+Auch bei Product Major Version 17 können `UNAVAILABLE_FEATURE` oder
+`NOT_ENABLED` deshalb korrekt sein, wenn `PREVIEW_FEATURES` nicht aktiviert ist
+oder der konkrete Build die beiden Systemobjekte nicht bereitstellt.
+
 ## Warum kann das problematisch sein?
 
 Ein fehlgeschlagener Hintergrundtask kann dazu führen, dass Änderungen nicht
@@ -142,6 +147,7 @@ nativer Vector-Spalten.
 
 - [sys.vector_indexes](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-vector-indexes-transact-sql?view=sql-server-ver17)
 - [sys.dm_db_vector_indexes](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-vector-indexes-transact-sql?view=sql-server-ver17)
+- [CREATE VECTOR INDEX und SQL-Server-2025-Previewvoraussetzung](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../../Architecture/SQL_Server_2025_Vector_Index_Analysis.md)  
 [Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
