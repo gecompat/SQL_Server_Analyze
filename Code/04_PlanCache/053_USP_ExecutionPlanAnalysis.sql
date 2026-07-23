@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ExecutionPlanAnalysis
-Version      : 1.1.0
+Version      : 1.2.0
 Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Analysiert genau ein direkt übergebenes oder gezielt beschafftes
@@ -14,7 +14,8 @@ Evidenz      : Optional bereits strukturiertes Evidence JSON oder bereits
                erfasste SET STATISTICS IO/TIME-Meldungen. Es wird kein fremdes
                SQL ausgeführt und keine Erfassungsoption aktiviert.
 Datenschutz  : Parameter-/Histogrammwerte standardmäßig DERIVED_ONLY. SQL-Text
-               wird nur mit @MitSqlText=1 ausgegeben.
+               wird nur mit @MitSqlText=1 ausgegeben. Query-Store-Hint- und
+               Feedbackpayloads folgen demselben expliziten Datenschutzmodus.
 SQL-Version  : SQL Server 2019 oder neuer.
 ===============================================================================
 */
@@ -92,6 +93,7 @@ BEGIN
     DECLARE @TokenSalt varbinary(32)=CRYPT_GEN_RANDOM(32);
     DECLARE @EffectiveSessionId smallint=NULL;
     DECLARE @EffectiveRequestId int=@RequestId;
+    DECLARE @ServerMajorVersion int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
 
     SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
 
@@ -105,6 +107,7 @@ BEGIN
         PRINT N'@StatistikEvidenzModus NONE|PLAN_ONLY|USED|RELEVANT|OBJECT_ALL; @HistogrammModus NONE|SUMMARY|STEPS.';
         PRINT N'@EvidenzDatenschutzModus DERIVED_ONLY|TOKENIZED|STRUCTURE_ONLY|RAW; RAW benötigt @SensitiveDataConfirmed=1.';
         PRINT N'@MitSqlText=1 benötigt @SensitiveDataConfirmed=1, weil StatementText Literale enthalten kann.';
+        PRINT N'DIAG-005 liefert planWarnings, optimizerContext, runtimeFeedback, queryStoreContext und feedbackAndVariants; Query-Store-Payloads sind standardmäßig ausgelassen.';
         PRINT N'@ResultSetArt CONSOLE|RAW|TABLE|NONE; CONSOLE liefert Findings, TABLE verwendet benannte Ziele.';
         RETURN;
     END;
@@ -361,6 +364,230 @@ BEGIN
         , [IsComplete] bit NOT NULL
         , [EvidenceLimit] nvarchar(1000) NULL
     );
+    CREATE TABLE [#ExecutionPlanAnalysis_SourceContext]
+    (
+          [AnalysisObjectId] int NOT NULL
+        , [PlanHandle] varbinary(64) NULL
+        , [SourceCapturedAtUtc] datetime2(3) NOT NULL
+        , [StatusCode] varchar(40) NOT NULL
+        , [DatabaseId] int NULL
+        , [SetOptions] bigint NULL
+        , [CompileUserId] int NULL
+        , [PlanGenerationNum] bigint NULL
+        , [CacheCreationTime] datetime NULL
+        , [CacheLastExecutionTime] datetime NULL
+        , [ExecutionCount] bigint NULL
+        , [CacheObjectType] nvarchar(34) NULL
+        , [CacheObjectClass] nvarchar(16) NULL
+        , [CacheUseCounts] int NULL
+        , [CacheRefCounts] int NULL
+        , [CacheSizeBytes] bigint NULL
+        , [CachePoolId] int NULL
+        , [EvidenceLimit] nvarchar(1000) NULL
+    );
+    CREATE TABLE [#ExecutionPlanAnalysis_PlanWarnings]
+    (
+          [WarningOrdinal] bigint IDENTITY(1,1) NOT NULL
+        , [AnalysisObjectId] int NOT NULL
+        , [StatementOrdinal] int NULL
+        , [StatementId] int NULL
+        , [NodeId] int NULL
+        , [WarningCode] varchar(100) NOT NULL
+        , [WarningCategory] varchar(40) NOT NULL
+        , [Severity] varchar(16) NOT NULL
+        , [EvidenceKind] varchar(40) NOT NULL
+        , [EvidenceSource] varchar(40) NOT NULL
+        , [PlanSource] varchar(24) NULL
+        , [SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [IsCurrent] bit NULL
+        , [IsLastKnown] bit NULL
+        , [IsMeasured] bit NOT NULL
+        , [IsInferred] bit NOT NULL
+        , [MetricName] varchar(80) NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [MetricUnit] nvarchar(40) NULL
+        , [Detail] nvarchar(2000) NOT NULL
+        , [FalsePositiveGuard] nvarchar(2000) NOT NULL
+        , [StatusCode] varchar(40) NOT NULL
+        , PRIMARY KEY ([WarningOrdinal])
+    );
+    CREATE TABLE [#ExecutionPlanAnalysis_OptimizerContext]
+    (
+          [AnalysisObjectId] int NOT NULL
+        , [StatementOrdinal] int NULL
+        , [StatementId] int NULL
+        , [PlanSource] varchar(24) NULL
+        , [RuntimeCounterScope] varchar(32) NULL
+        , [SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [IsCurrent] bit NULL
+        , [IsLastKnown] bit NULL
+        , [OptimizationLevel] nvarchar(128) NULL
+        , [EarlyAbortReason] nvarchar(256) NULL
+        , [CardinalityEstimationModelVersion] int NULL
+        , [StatementSubTreeCost] decimal(38,8) NULL
+        , [StatementEstimatedRows] decimal(38,4) NULL
+        , [CompileTimeMs] bigint NULL
+        , [CompileCpuMs] bigint NULL
+        , [CompileMemoryKb] bigint NULL
+        , [RetrievedFromCache] bit NULL
+        , [NonParallelPlanReason] nvarchar(256) NULL
+        , [PlanDegreeOfParallelism] int NULL
+        , [PlanGenerationNum] bigint NULL
+        , [CacheCreationTime] datetime NULL
+        , [CacheLastExecutionTime] datetime NULL
+        , [CacheExecutionCount] bigint NULL
+        , [CacheObjectType] nvarchar(34) NULL
+        , [CacheObjectClass] nvarchar(16) NULL
+        , [CacheUseCounts] int NULL
+        , [CacheRefCounts] int NULL
+        , [CacheSizeBytes] bigint NULL
+        , [CachePoolId] int NULL
+        , [SetOptions] bigint NULL
+        , [CompileUserId] int NULL
+        , [DatabaseId] int NULL
+        , [EvidenceMeasurement] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) NOT NULL
+        , [FalsePositiveGuard] nvarchar(1000) NOT NULL
+    );
+    CREATE TABLE [#ExecutionPlanAnalysis_RuntimeFeedback]
+    (
+          [FeedbackOrdinal] bigint IDENTITY(1,1) NOT NULL
+        , [AnalysisObjectId] int NOT NULL
+        , [StatementOrdinal] int NULL
+        , [StatementId] int NULL
+        , [NodeId] int NULL
+        , [FeedbackType] varchar(40) NOT NULL
+        , [FeedbackState] nvarchar(128) NULL
+        , [MetricName] varchar(80) NULL
+        , [ObservedValue] decimal(38,4) NULL
+        , [BaselineValue] decimal(38,4) NULL
+        , [DeltaRatio] decimal(38,8) NULL
+        , [MetricUnit] nvarchar(40) NULL
+        , [RuntimeCounterScope] varchar(32) NULL
+        , [EvidenceSource] varchar(40) NOT NULL
+        , [SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [IsCurrent] bit NULL
+        , [IsLastKnown] bit NULL
+        , [IsMeasured] bit NOT NULL
+        , [IsDerived] bit NOT NULL
+        , [StatusCode] varchar(40) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , PRIMARY KEY ([FeedbackOrdinal])
+    );
+    CREATE TABLE [#ExecutionPlanAnalysis_QueryStoreContext]
+    (
+          [AnalysisObjectId] int NOT NULL
+        , [QueryStoreDatabaseName] sysname NULL
+        , [QueryStorePlanId] bigint NULL
+        , [QueryStoreQueryId] bigint NULL
+        , [PlanGroupId] bigint NULL
+        , [EngineVersion] nvarchar(32) NULL
+        , [CompatibilityLevel] smallint NULL
+        , [QueryPlanHash] binary(8) NULL
+        , [IsTrivialPlan] bit NULL
+        , [IsParallelPlan] bit NULL
+        , [IsForcedPlan] bit NULL
+        , [PlanForcingTypeDesc] nvarchar(60) NULL
+        , [ForceFailureCount] bigint NULL
+        , [LastForceFailureReason] int NULL
+        , [LastForceFailureReasonDesc] nvarchar(128) NULL
+        , [CountCompiles] bigint NULL
+        , [InitialCompileStartTime] datetimeoffset(7) NULL
+        , [LastCompileStartTime] datetimeoffset(7) NULL
+        , [LastExecutionTime] datetimeoffset(7) NULL
+        , [AvgCompileDurationUs] float NULL
+        , [LastCompileDurationUs] bigint NULL
+        , [ContextSettingsId] bigint NULL
+        , [ObjectId] bigint NULL
+        , [QueryHash] binary(8) NULL
+        , [QueryParameterizationTypeDesc] nvarchar(60) NULL
+        , [AvgOptimizeDurationUs] float NULL
+        , [AvgCompileMemoryKb] float NULL
+        , [HasCompileReplayScript] bit NULL
+        , [IsOptimizedPlanForcingDisabled] bit NULL
+        , [PlanType] int NULL
+        , [PlanTypeDesc] nvarchar(120) NULL
+        , [RuntimeExecutionCount] bigint NULL
+        , [RuntimeLastExecutionTime] datetimeoffset(7) NULL
+        , [AvgDurationUs] decimal(38,4) NULL
+        , [AvgCpuTimeUs] decimal(38,4) NULL
+        , [AvgLogicalIoReads] decimal(38,4) NULL
+        , [AvgLogicalIoWrites] decimal(38,4) NULL
+        , [QueryHintCount] int NOT NULL
+        , [QueryHintFailureCount] bigint NOT NULL
+        , [PersistedFeedbackCount] int NOT NULL
+        , [VariantRelationCount] int NOT NULL
+        , [SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [IsCurrent] bit NOT NULL
+        , [IsLastKnown] bit NOT NULL
+        , [StatusCode] varchar(40) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) NOT NULL
+    );
+    CREATE TABLE [#ExecutionPlanAnalysis_QueryStorePlanSource]
+    (
+          [AnalysisObjectId] int NOT NULL
+        , [QueryStoreDatabaseName] sysname NOT NULL
+        , [QueryStorePlanId] bigint NOT NULL
+        , [QueryStoreQueryId] bigint NOT NULL
+        , [PlanGroupId] bigint NULL
+        , [EngineVersion] nvarchar(32) NULL
+        , [CompatibilityLevel] smallint NULL
+        , [QueryPlanHash] binary(8) NULL
+        , [QueryPlanXml] xml NULL
+        , [IsTrivialPlan] bit NULL
+        , [IsParallelPlan] bit NULL
+        , [IsForcedPlan] bit NULL
+        , [PlanForcingTypeDesc] nvarchar(60) NULL
+        , [ForceFailureCount] bigint NULL
+        , [LastForceFailureReason] int NULL
+        , [LastForceFailureReasonDesc] nvarchar(128) NULL
+        , [CountCompiles] bigint NULL
+        , [InitialCompileStartTime] datetimeoffset(7) NULL
+        , [LastCompileStartTime] datetimeoffset(7) NULL
+        , [LastExecutionTime] datetimeoffset(7) NULL
+        , [AvgCompileDurationUs] float NULL
+        , [LastCompileDurationUs] bigint NULL
+        , [ContextSettingsId] bigint NULL
+        , [ObjectId] bigint NULL
+        , [QueryHash] binary(8) NULL
+        , [QueryParameterizationTypeDesc] nvarchar(60) NULL
+        , [AvgOptimizeDurationUs] float NULL
+        , [AvgCompileMemoryKb] float NULL
+        , [HasCompileReplayScript] bit NULL
+        , [IsOptimizedPlanForcingDisabled] bit NULL
+        , [PlanType] int NULL
+        , [PlanTypeDesc] nvarchar(120) NULL
+    );
+    CREATE TABLE [#ExecutionPlanAnalysis_FeedbackAndVariants]
+    (
+          [RecordOrdinal] bigint IDENTITY(1,1) NOT NULL
+        , [AnalysisObjectId] int NOT NULL
+        , [RecordType] varchar(40) NOT NULL
+        , [FeatureType] varchar(60) NOT NULL
+        , [StatementOrdinal] int NULL
+        , [StatementId] int NULL
+        , [NodeId] int NULL
+        , [QueryStorePlanId] bigint NULL
+        , [QueryStoreQueryId] bigint NULL
+        , [ParentQueryId] bigint NULL
+        , [DispatcherPlanId] bigint NULL
+        , [QueryVariantQueryId] bigint NULL
+        , [QueryVariantId] int NULL
+        , [FeatureState] nvarchar(128) NULL
+        , [FeatureData] nvarchar(max) NULL
+        , [FeatureDataToken] varbinary(32) NULL
+        , [FeatureDataLength] int NULL
+        , [DataHandlingStatus] varchar(40) NOT NULL
+        , [EvidenceSource] varchar(40) NOT NULL
+        , [SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [IsCurrent] bit NULL
+        , [IsLastKnown] bit NULL
+        , [IsMeasured] bit NOT NULL
+        , [IsDerived] bit NOT NULL
+        , [StatusCode] varchar(40) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , PRIMARY KEY ([RecordOrdinal])
+    );
     CREATE TABLE [#ExecutionPlanAnalysis_MemoryAndSpills]
     (
           [AnalysisObjectId] int NOT NULL
@@ -530,7 +757,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'moduleStatus|capabilities|planDocuments|statements|operatorTree|operatorRuntime|operatorThreadRuntime|accessPaths|statisticsUsage|parametersAndVariants|parameters|memoryAndSpills|executionEvidence|histogramSummaries|histogramSteps|predicateHistogramMappings|findings'
+            , @AllowedResultNames=N'moduleStatus|capabilities|planDocuments|statements|operatorTree|operatorRuntime|operatorThreadRuntime|accessPaths|statisticsUsage|parametersAndVariants|parameters|planWarnings|optimizerContext|runtimeFeedback|queryStoreContext|feedbackAndVariants|memoryAndSpills|executionEvidence|histogramSummaries|histogramSteps|predicateHistogramMappings|findings'
             , @MappingTable=N'#ExecutionPlanAnalysis_TableMap'
             , @ThrowOnError=1;
         SET @OutputMode='NONE';
@@ -541,6 +768,124 @@ BEGIN
                @ErrorMessageOut=N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.';
     END;
     IF @ConsoleResultRequested=1 SET @OutputMode='NONE';
+
+    /*
+      Cachekontext wird je Aufruf genau einmal materialisiert. Ein
+      USP_ShowplanAnalysis-Parent stellt seinen bereits gelesenen Kandidaten-
+      Snapshot über eine lokale Temp-Tabelle bereit; ein direkter Planhandle-
+      Aufruf verwendet einen gezielten Einzelread.
+    */
+    IF @StatusCodeOut='AVAILABLE' AND @PlanHandle IS NOT NULL
+    BEGIN
+        BEGIN TRY
+            EXEC [sys].[sp_executesql]
+                  N'INSERT [#ExecutionPlanAnalysis_SourceContext]
+                    (
+                          [AnalysisObjectId],[PlanHandle],[SourceCapturedAtUtc],[StatusCode]
+                        , [DatabaseId],[SetOptions],[CompileUserId],[PlanGenerationNum]
+                        , [CacheCreationTime],[CacheLastExecutionTime],[ExecutionCount]
+                        , [CacheObjectType],[CacheObjectClass],[CacheUseCounts],[CacheRefCounts]
+                        , [CacheSizeBytes],[CachePoolId],[EvidenceLimit]
+                    )
+                    SELECT
+                          1,[PlanHandle],[SourceCapturedAtUtc],[StatusCode]
+                        , [DatabaseId],[SetOptions],[CompileUserId],[PlanGenerationNum]
+                        , [CacheCreationTime],[CacheLastExecutionTime],[ExecutionCount]
+                        , [CacheObjectType],[CacheObjectClass],[CacheUseCounts],[CacheRefCounts]
+                        , [CacheSizeBytes],[CachePoolId],[EvidenceLimit]
+                    FROM [#ShowplanAnalysis_ExecutionPlanSourceContext]
+                    WHERE [PlanHandle]=@RequestedPlanHandle;'
+                , N'@RequestedPlanHandle varbinary(64)'
+                , @RequestedPlanHandle=@PlanHandle;
+        END TRY
+        BEGIN CATCH
+            IF ERROR_NUMBER()<>208
+            BEGIN
+                SET @IsPartialOut=1;
+                IF @ErrorMessageOut IS NULL
+                    SET @ErrorMessageOut=N'Der bereitgestellte Parent-Cachekontext konnte nicht übernommen werden.';
+            END;
+        END CATCH;
+
+        IF NOT EXISTS
+           (
+               SELECT 1
+               FROM [#ExecutionPlanAnalysis_SourceContext]
+               WHERE [PlanHandle]=@PlanHandle
+           )
+        BEGIN TRY
+            INSERT [#ExecutionPlanAnalysis_SourceContext]
+            (
+                  [AnalysisObjectId],[PlanHandle],[SourceCapturedAtUtc],[StatusCode]
+                , [DatabaseId],[SetOptions],[CompileUserId],[PlanGenerationNum]
+                , [CacheCreationTime],[CacheLastExecutionTime],[ExecutionCount]
+                , [CacheObjectType],[CacheObjectClass],[CacheUseCounts],[CacheRefCounts]
+                , [CacheSizeBytes],[CachePoolId],[EvidenceLimit]
+            )
+            SELECT
+                  1,@PlanHandle,@Now
+                , CASE WHEN [cp].[plan_handle] IS NULL THEN 'PLAN_CACHE_CONTEXT_UNAVAILABLE' ELSE 'AVAILABLE' END
+                , [pa].[DatabaseId],[pa].[SetOptions],[pa].[CompileUserId]
+                , [qs].[PlanGenerationNum],[qs].[CacheCreationTime],[qs].[CacheLastExecutionTime],[qs].[ExecutionCount]
+                , [cp].[cacheobjtype],[cp].[objtype],[cp].[usecounts],[cp].[refcounts]
+                , CONVERT(bigint,[cp].[size_in_bytes]),[cp].[pool_id]
+                , N'Cachewerte sind eine flüchtige, nicht transaktional mit dem Plan-XML atomare Momentaufnahme.'
+            FROM [sys].[dm_exec_cached_plans] AS [cp] WITH (NOLOCK)
+            OUTER APPLY
+            (
+                SELECT
+                      MAX([qs0].[plan_generation_num]) AS [PlanGenerationNum]
+                    , MIN([qs0].[creation_time]) AS [CacheCreationTime]
+                    , MAX([qs0].[last_execution_time]) AS [CacheLastExecutionTime]
+                    , SUM([qs0].[execution_count]) AS [ExecutionCount]
+                FROM [sys].[dm_exec_query_stats] AS [qs0] WITH (NOLOCK)
+                WHERE [qs0].[plan_handle]=@PlanHandle
+            ) AS [qs]
+            OUTER APPLY
+            (
+                SELECT
+                      MAX(CASE WHEN [a].[attribute]='dbid' THEN TRY_CONVERT(int,[a].[value]) END) AS [DatabaseId]
+                    , MAX(CASE WHEN [a].[attribute]='set_options' THEN TRY_CONVERT(bigint,[a].[value]) END) AS [SetOptions]
+                    , MAX(CASE WHEN [a].[attribute]='user_id' THEN TRY_CONVERT(int,[a].[value]) END) AS [CompileUserId]
+                FROM [sys].[dm_exec_plan_attributes](@PlanHandle) AS [a]
+            ) AS [pa]
+            WHERE [cp].[plan_handle]=@PlanHandle;
+
+            IF NOT EXISTS
+               (
+                   SELECT 1
+                   FROM [#ExecutionPlanAnalysis_SourceContext]
+                   WHERE [PlanHandle]=@PlanHandle
+               )
+                INSERT [#ExecutionPlanAnalysis_SourceContext]
+                (
+                      [AnalysisObjectId],[PlanHandle],[SourceCapturedAtUtc],[StatusCode]
+                    , [EvidenceLimit]
+                )
+                VALUES
+                (
+                      1,@PlanHandle,@Now,'PLAN_CACHE_CONTEXT_UNAVAILABLE'
+                    , N'Der Planhandle war beim gezielten Cachekontext-Read nicht mehr in sys.dm_exec_cached_plans sichtbar.'
+                );
+        END TRY
+        BEGIN CATCH
+            INSERT [#ExecutionPlanAnalysis_SourceContext]
+            (
+                  [AnalysisObjectId],[PlanHandle],[SourceCapturedAtUtc],[StatusCode]
+                , [EvidenceLimit]
+            )
+            VALUES
+            (
+                  1,@PlanHandle,@Now
+                , CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916)
+                       THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END
+                , N'Der gezielte Cachekontext-Read ist fehlgeschlagen; die Plan-XML-Analyse bleibt davon getrennt.'
+            );
+            SET @IsPartialOut=1;
+            IF @ErrorNumberOut IS NULL
+                SELECT @ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=ERROR_MESSAGE();
+        END CATCH;
+    END;
 
     /* Planbeschaffung. Direkt übergebenes XML bleibt vollständig standalone. */
     IF @StatusCodeOut='AVAILABLE'
@@ -597,15 +942,45 @@ BEGIN
         END
         ELSE
         BEGIN
+            DECLARE @QueryStoreVersionColumns nvarchar(max)=CASE
+                WHEN @ServerMajorVersion>=16 THEN
+                    N',[p].[has_compile_replay_script],[p].[is_optimized_plan_forcing_disabled],[p].[plan_type],[p].[plan_type_desc]'
+                ELSE
+                    N',CONVERT(bit,NULL),CONVERT(bit,NULL),CONVERT(int,NULL),CONVERT(nvarchar(120),NULL)'
+                END;
             DECLARE @QueryStoreSql nvarchar(max)=N'USE '+QUOTENAME(@QueryStoreDatabaseName)+N';
-SELECT @PlanXmlOut=CONVERT(xml,[p].[query_plan])
+INSERT [#ExecutionPlanAnalysis_QueryStorePlanSource]
+(
+      [AnalysisObjectId],[QueryStoreDatabaseName],[QueryStorePlanId],[QueryStoreQueryId]
+    , [PlanGroupId],[EngineVersion],[CompatibilityLevel],[QueryPlanHash],[QueryPlanXml]
+    , [IsTrivialPlan],[IsParallelPlan],[IsForcedPlan],[PlanForcingTypeDesc]
+    , [ForceFailureCount],[LastForceFailureReason],[LastForceFailureReasonDesc]
+    , [CountCompiles],[InitialCompileStartTime],[LastCompileStartTime],[LastExecutionTime]
+    , [AvgCompileDurationUs],[LastCompileDurationUs],[ContextSettingsId],[ObjectId]
+    , [QueryHash],[QueryParameterizationTypeDesc],[AvgOptimizeDurationUs],[AvgCompileMemoryKb]
+    , [HasCompileReplayScript],[IsOptimizedPlanForcingDisabled],[PlanType],[PlanTypeDesc]
+)
+SELECT
+      1,DB_NAME(),[p].[plan_id],[p].[query_id]
+    , [p].[plan_group_id],[p].[engine_version],[p].[compatibility_level],[p].[query_plan_hash]
+    , TRY_CONVERT(xml,[p].[query_plan])
+    , [p].[is_trivial_plan],[p].[is_parallel_plan],[p].[is_forced_plan],[p].[plan_forcing_type_desc]
+    , [p].[force_failure_count],[p].[last_force_failure_reason],[p].[last_force_failure_reason_desc]
+    , [p].[count_compiles],[p].[initial_compile_start_time],[p].[last_compile_start_time],[p].[last_execution_time]
+    , [p].[avg_compile_duration],[p].[last_compile_duration],[q].[context_settings_id],[q].[object_id]
+    , [q].[query_hash],[q].[query_parameterization_type_desc],[q].[avg_optimize_duration],[q].[avg_compile_memory_kb]'
+    +@QueryStoreVersionColumns+N'
 FROM [sys].[query_store_plan] AS [p] WITH (NOLOCK)
+JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
+  ON [q].[query_id]=[p].[query_id]
 WHERE [p].[plan_id]=@PlanId;';
             EXEC [sys].[sp_executesql]
                   @QueryStoreSql
-                , N'@PlanId bigint,@PlanXmlOut xml OUTPUT'
-                , @PlanId=@QueryStorePlanId
-                , @PlanXmlOut=@EffectivePlanXml OUTPUT;
+                , N'@PlanId bigint'
+                , @PlanId=@QueryStorePlanId;
+            SELECT @EffectivePlanXml=[QueryPlanXml]
+            FROM [#ExecutionPlanAnalysis_QueryStorePlanSource]
+            WHERE [QueryStorePlanId]=@QueryStorePlanId;
             IF @EffectivePlanXml IS NOT NULL
             BEGIN
                 SET @EffectivePlanSource='QUERY_STORE';
@@ -806,6 +1181,8 @@ WHERE [p].[plan_id]=@PlanId;';
             , @IsPartialOut=@AnalyzerPartial OUTPUT
             , @ErrorNumberOut=@AnalyzerError OUTPUT
             , @ErrorMessageOut=@AnalyzerMessage OUTPUT;
+        IF COALESCE(@AnalyzerPartial,0)=1 OR @AnalyzerStatus='PARTIAL'
+            SET @IsPartialOut=1;
         IF @AnalyzerStatus<>'AVAILABLE'
         BEGIN
             SET @StatusCodeOut=@AnalyzerStatus;
@@ -814,6 +1191,342 @@ WHERE [p].[plan_id]=@PlanId;';
             SET @ErrorMessageOut=@AnalyzerMessage;
         END;
     END;
+
+    /*
+      DIAG-005: Query Store wird nur für die ausdrücklich angeforderte
+      Query-Store-Planquelle gelesen. Plan, Query und Runtimeaggregation werden
+      gezielt materialisiert; 2022+-Feedback, Hints und Varianten bleiben
+      versionsadaptiv hinter Dynamic SQL. Querytexte werden nicht gelesen.
+    */
+    IF EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_QueryStorePlanSource])
+    BEGIN
+        BEGIN TRY
+            DECLARE @QueryStoreContextSql nvarchar(max)=N'USE '+QUOTENAME(@QueryStoreDatabaseName)+N';
+INSERT [#ExecutionPlanAnalysis_QueryStoreContext]
+(
+      [AnalysisObjectId],[QueryStoreDatabaseName],[QueryStorePlanId],[QueryStoreQueryId]
+    , [PlanGroupId],[EngineVersion],[CompatibilityLevel],[QueryPlanHash]
+    , [IsTrivialPlan],[IsParallelPlan],[IsForcedPlan],[PlanForcingTypeDesc]
+    , [ForceFailureCount],[LastForceFailureReason],[LastForceFailureReasonDesc]
+    , [CountCompiles],[InitialCompileStartTime],[LastCompileStartTime],[LastExecutionTime]
+    , [AvgCompileDurationUs],[LastCompileDurationUs],[ContextSettingsId],[ObjectId]
+    , [QueryHash],[QueryParameterizationTypeDesc],[AvgOptimizeDurationUs],[AvgCompileMemoryKb]
+    , [HasCompileReplayScript],[IsOptimizedPlanForcingDisabled],[PlanType],[PlanTypeDesc]
+    , [RuntimeExecutionCount],[RuntimeLastExecutionTime],[AvgDurationUs],[AvgCpuTimeUs]
+    , [AvgLogicalIoReads],[AvgLogicalIoWrites]
+    , [QueryHintCount],[QueryHintFailureCount],[PersistedFeedbackCount],[VariantRelationCount]
+    , [SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[StatusCode],[EvidenceLimit]
+)
+SELECT
+      [s].[AnalysisObjectId],[s].[QueryStoreDatabaseName],[s].[QueryStorePlanId],[s].[QueryStoreQueryId]
+    , [s].[PlanGroupId],[s].[EngineVersion],[s].[CompatibilityLevel],[s].[QueryPlanHash]
+    , [s].[IsTrivialPlan],[s].[IsParallelPlan],[s].[IsForcedPlan],[s].[PlanForcingTypeDesc]
+    , [s].[ForceFailureCount],[s].[LastForceFailureReason],[s].[LastForceFailureReasonDesc]
+    , [s].[CountCompiles],[s].[InitialCompileStartTime],[s].[LastCompileStartTime],[s].[LastExecutionTime]
+    , [s].[AvgCompileDurationUs],[s].[LastCompileDurationUs],[s].[ContextSettingsId],[s].[ObjectId]
+    , [s].[QueryHash],[s].[QueryParameterizationTypeDesc],[s].[AvgOptimizeDurationUs],[s].[AvgCompileMemoryKb]
+    , [s].[HasCompileReplayScript],[s].[IsOptimizedPlanForcingDisabled],[s].[PlanType],[s].[PlanTypeDesc]
+    , [r].[RuntimeExecutionCount],[r].[RuntimeLastExecutionTime]
+    , [r].[AvgDurationUs],[r].[AvgCpuTimeUs],[r].[AvgLogicalIoReads],[r].[AvgLogicalIoWrites]
+    , 0,0,0,0,@ObservedAtUtc,0,1,''AVAILABLE''
+    , N''Query-Store-Werte sind persistierte Aggregate über das vorhandene Erfassungsfenster; Intervalle, Bereinigungen und Capture-Modus begrenzen Vergleiche.''
+FROM [#ExecutionPlanAnalysis_QueryStorePlanSource] AS [s]
+OUTER APPLY
+(
+    SELECT
+          [RuntimeExecutionCount]=SUM(CONVERT(bigint,[rs].[count_executions]))
+        , [RuntimeLastExecutionTime]=MAX([rs].[last_execution_time])
+        , [AvgDurationUs]=CONVERT(decimal(38,4),
+              SUM(CONVERT(decimal(38,8),[rs].[avg_duration])*CONVERT(decimal(38,8),[rs].[count_executions]))
+              /NULLIF(SUM(CONVERT(decimal(38,8),[rs].[count_executions])),0))
+        , [AvgCpuTimeUs]=CONVERT(decimal(38,4),
+              SUM(CONVERT(decimal(38,8),[rs].[avg_cpu_time])*CONVERT(decimal(38,8),[rs].[count_executions]))
+              /NULLIF(SUM(CONVERT(decimal(38,8),[rs].[count_executions])),0))
+        , [AvgLogicalIoReads]=CONVERT(decimal(38,4),
+              SUM(CONVERT(decimal(38,8),[rs].[avg_logical_io_reads])*CONVERT(decimal(38,8),[rs].[count_executions]))
+              /NULLIF(SUM(CONVERT(decimal(38,8),[rs].[count_executions])),0))
+        , [AvgLogicalIoWrites]=CONVERT(decimal(38,4),
+              SUM(CONVERT(decimal(38,8),[rs].[avg_logical_io_writes])*CONVERT(decimal(38,8),[rs].[count_executions]))
+              /NULLIF(SUM(CONVERT(decimal(38,8),[rs].[count_executions])),0))
+    FROM [sys].[query_store_runtime_stats] AS [rs] WITH (NOLOCK)
+    WHERE [rs].[plan_id]=[s].[QueryStorePlanId]
+) AS [r];';
+            EXEC [sys].[sp_executesql]
+                  @QueryStoreContextSql
+                , N'@ObservedAtUtc datetime2(3)'
+                , @ObservedAtUtc=@Now;
+
+            INSERT [#ExecutionPlanAnalysis_RuntimeFeedback]
+            (
+                  [AnalysisObjectId],[FeedbackType],[FeedbackState],[MetricName]
+                , [ObservedValue],[BaselineValue],[MetricUnit],[RuntimeCounterScope]
+                , [EvidenceSource],[SourceObservedAtUtc],[IsCurrent],[IsLastKnown]
+                , [IsMeasured],[IsDerived],[StatusCode],[EvidenceLimit]
+            )
+            SELECT
+                  [AnalysisObjectId],'QUERY_STORE_AGGREGATE','PERSISTED_AGGREGATE'
+                , 'AVERAGE_DURATION_US',[AvgDurationUs],[AvgCpuTimeUs],'microseconds'
+                , 'QUERY_STORE_AGGREGATE','QUERY_STORE_RUNTIME_STATS',[SourceObservedAtUtc]
+                , 0,1,1,1,'AVAILABLE'
+                , N'Die gewichteten Query-Store-Mittelwerte stammen aus dem sichtbaren Retentionfenster und sind keine einzelne aktuelle Ausführung.'
+            FROM [#ExecutionPlanAnalysis_QueryStoreContext]
+            WHERE [RuntimeExecutionCount] IS NOT NULL;
+
+            IF @ServerMajorVersion>=16
+            BEGIN
+                DECLARE @QueryStoreFeedbackSql nvarchar(max)=N'USE '+QUOTENAME(@QueryStoreDatabaseName)+N';
+INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+(
+      [AnalysisObjectId],[RecordType],[FeatureType],[QueryStorePlanId],[QueryStoreQueryId]
+    , [FeatureState],[FeatureData],[FeatureDataToken],[FeatureDataLength],[DataHandlingStatus]
+    , [EvidenceSource],[SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+    , [StatusCode],[EvidenceLimit]
+)
+SELECT
+      1,''PERSISTED_FEEDBACK'',CONVERT(varchar(60),[f].[feature_desc])
+    , [f].[plan_id],[s].[QueryStoreQueryId],CONVERT(nvarchar(128),[f].[state_desc])
+    , CASE WHEN @EvidencePrivacyMode=''RAW'' AND @Confirmed=1 THEN [f].[feedback_data] END
+    , CASE WHEN @EvidencePrivacyMode=''TOKENIZED'' AND [f].[feedback_data] IS NOT NULL
+           THEN HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),[f].[feedback_data])) END
+    , DATALENGTH([f].[feedback_data])/2
+    , CASE WHEN @EvidencePrivacyMode=''RAW'' AND @Confirmed=1 THEN ''AVAILABLE_RAW''
+           WHEN @EvidencePrivacyMode=''TOKENIZED'' THEN ''TOKENIZED''
+           WHEN @EvidencePrivacyMode=''STRUCTURE_ONLY'' THEN ''OMITTED_STRUCTURE_ONLY''
+           ELSE ''OMITTED_DERIVED_ONLY'' END
+    , ''QUERY_STORE_PLAN_FEEDBACK'',@ObservedAtUtc,0,1,1,0,''AVAILABLE''
+    , N''Persistiertes Feedback ist versions-, zustands- und bereinigungsabhängig; FeatureData kann sensitive oder proprietäre Inhalte enthalten.''
+FROM [sys].[query_store_plan_feedback] AS [f] WITH (NOLOCK)
+JOIN [#ExecutionPlanAnalysis_QueryStorePlanSource] AS [s]
+  ON [s].[QueryStorePlanId]=[f].[plan_id];
+
+INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+(
+      [AnalysisObjectId],[RecordType],[FeatureType],[QueryStorePlanId],[QueryStoreQueryId]
+    , [ParentQueryId],[DispatcherPlanId],[QueryVariantQueryId]
+    , [FeatureState],[DataHandlingStatus],[EvidenceSource],[SourceObservedAtUtc]
+    , [IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived],[StatusCode],[EvidenceLimit]
+)
+SELECT
+      1,''QUERY_VARIANT_RELATION'',''PARAMETER_SENSITIVE_PLAN''
+    , [s].[QueryStorePlanId],[s].[QueryStoreQueryId]
+    , [v].[parent_query_id],[v].[dispatcher_plan_id],[v].[query_variant_query_id]
+    , N''PERSISTED_RELATION'',''NO_SENSITIVE_PAYLOAD'',''QUERY_STORE_QUERY_VARIANT'',@ObservedAtUtc
+    , 0,1,1,0,''AVAILABLE''
+    , N''Die Relation belegt Dispatcher und Queryvariante, nicht deren relative Leistungsqualität.''
+FROM [sys].[query_store_query_variant] AS [v] WITH (NOLOCK)
+JOIN [#ExecutionPlanAnalysis_QueryStorePlanSource] AS [s]
+  ON [s].[QueryStoreQueryId] IN ([v].[query_variant_query_id],[v].[parent_query_id]);
+
+INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+(
+      [AnalysisObjectId],[RecordType],[FeatureType],[QueryStorePlanId],[QueryStoreQueryId]
+    , [FeatureState],[FeatureData],[FeatureDataToken],[FeatureDataLength],[DataHandlingStatus]
+    , [EvidenceSource],[SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+    , [StatusCode],[EvidenceLimit]
+)
+SELECT
+      1,''QUERY_STORE_HINT'',''QUERY_STORE_HINT'',[s].[QueryStorePlanId],[h].[query_id]
+    , CASE WHEN COALESCE([h].[query_hint_failure_count],0)>0 THEN N''FAILURE_RECORDED'' ELSE N''CONFIGURED'' END
+    , CASE WHEN @EvidencePrivacyMode=''RAW'' AND @Confirmed=1 THEN [h].[query_hint_text] END
+    , CASE WHEN @EvidencePrivacyMode=''TOKENIZED'' AND [h].[query_hint_text] IS NOT NULL
+           THEN HASHBYTES(''SHA2_256'',CONVERT(varbinary(max),[h].[query_hint_text])) END
+    , DATALENGTH([h].[query_hint_text])/2
+    , CASE WHEN @EvidencePrivacyMode=''RAW'' AND @Confirmed=1 THEN ''AVAILABLE_RAW''
+           WHEN @EvidencePrivacyMode=''TOKENIZED'' THEN ''TOKENIZED''
+           WHEN @EvidencePrivacyMode=''STRUCTURE_ONLY'' THEN ''OMITTED_STRUCTURE_ONLY''
+           ELSE ''OMITTED_DERIVED_ONLY'' END
+    , ''QUERY_STORE_QUERY_HINTS'',@ObservedAtUtc,0,1,1,0,''AVAILABLE''
+    , N''Hinttext kann sensitive oder proprietäre Inhalte enthalten; die Zeile bewertet weder Korrektheit noch Nutzen des Hints.''
+FROM [sys].[query_store_query_hints] AS [h] WITH (NOLOCK)
+JOIN [#ExecutionPlanAnalysis_QueryStorePlanSource] AS [s]
+  ON [s].[QueryStoreQueryId]=[h].[query_id];
+
+UPDATE [q]
+SET [QueryHintFailureCount]=COALESCE([h].[QueryHintFailureCount],0)
+FROM [#ExecutionPlanAnalysis_QueryStoreContext] AS [q]
+OUTER APPLY
+(
+    SELECT
+          [QueryHintFailureCount]=SUM(CONVERT(bigint,[h0].[query_hint_failure_count]))
+    FROM [sys].[query_store_query_hints] AS [h0] WITH (NOLOCK)
+    JOIN [#ExecutionPlanAnalysis_QueryStorePlanSource] AS [s0]
+      ON [s0].[QueryStoreQueryId]=[h0].[query_id]
+    WHERE [s0].[AnalysisObjectId]=[q].[AnalysisObjectId]
+) AS [h];';
+                EXEC [sys].[sp_executesql]
+                      @QueryStoreFeedbackSql
+                    , N'@ObservedAtUtc datetime2(3),@EvidencePrivacyMode varchar(24),@Confirmed bit'
+                    , @ObservedAtUtc=@Now,@EvidencePrivacyMode=@PrivacyMode,@Confirmed=@SensitiveDataConfirmed;
+
+                IF NOT EXISTS
+                   (
+                       SELECT 1
+                       FROM [#ExecutionPlanAnalysis_FeedbackAndVariants]
+                       WHERE [EvidenceSource] IN
+                             ('QUERY_STORE_PLAN_FEEDBACK','QUERY_STORE_QUERY_HINTS','QUERY_STORE_QUERY_VARIANT')
+                   )
+                    INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+                    (
+                          [AnalysisObjectId],[RecordType],[FeatureType],[FeatureState]
+                        , [DataHandlingStatus],[EvidenceSource],[SourceObservedAtUtc]
+                        , [IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+                        , [StatusCode],[EvidenceLimit]
+                    )
+                    VALUES
+                    (
+                          1,'SOURCE_STATUS','QUERY_STORE_OPTIONAL_CONTEXT',N'NO_PERSISTED_ROWS'
+                        , 'NO_SENSITIVE_PAYLOAD','QUERY_STORE_OPTIONAL_SOURCES',@Now
+                        , 0,1,1,0,'AVAILABLE'
+                        , N'Die unterstützten Query-Store-Feedback-, Hint- und Variantenquellen wurden gezielt gelesen und enthielten für den Plan keine Zeile.'
+                    );
+            END;
+            ELSE
+                INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+                (
+                      [AnalysisObjectId],[RecordType],[FeatureType],[FeatureState]
+                    , [DataHandlingStatus],[EvidenceSource],[SourceObservedAtUtc]
+                    , [IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+                    , [StatusCode],[EvidenceLimit]
+                )
+                VALUES
+                (
+                      1,'SOURCE_STATUS','QUERY_STORE_OPTIONAL_CONTEXT',N'REQUIRES_SQL_SERVER_2022'
+                    , 'NO_SENSITIVE_PAYLOAD','QUERY_STORE_OPTIONAL_SOURCES',@Now
+                    , 0,1,0,0,'NOT_APPLICABLE'
+                    , N'Persistiertes Planfeedback, Query-Store-Hints und Queryvarianten werden erst auf SQL Server 2022 oder neuer gelesen.'
+                );
+
+            UPDATE [q]
+            SET
+                  [QueryHintCount]=[a].[QueryHintCount]
+                , [PersistedFeedbackCount]=[a].[PersistedFeedbackCount]
+                , [VariantRelationCount]=[a].[VariantRelationCount]
+            FROM [#ExecutionPlanAnalysis_QueryStoreContext] AS [q]
+            CROSS APPLY
+            (
+                SELECT
+                      [QueryHintCount]=COUNT(CASE WHEN [RecordType]='QUERY_STORE_HINT' THEN 1 END)
+                    , [PersistedFeedbackCount]=COUNT(CASE WHEN [RecordType]='PERSISTED_FEEDBACK' THEN 1 END)
+                    , [VariantRelationCount]=COUNT(CASE WHEN [RecordType]='QUERY_VARIANT_RELATION' THEN 1 END)
+                FROM [#ExecutionPlanAnalysis_FeedbackAndVariants]
+                WHERE [AnalysisObjectId]=[q].[AnalysisObjectId]
+            ) AS [a];
+        END TRY
+        BEGIN CATCH
+            SET @IsPartialOut=1;
+            UPDATE [#ExecutionPlanAnalysis_QueryStoreContext]
+            SET
+                  [StatusCode]=CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916)
+                                    THEN 'DENIED_PERMISSION' ELSE 'PARTIAL' END
+                , [EvidenceLimit]=N'Der Plan blieb analysierbar; zusätzliche Query-Store-Kontextquellen waren nicht vollständig verfügbar.'
+            WHERE [AnalysisObjectId]=1;
+
+            INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+            (
+                  [AnalysisObjectId],[RecordType],[FeatureType],[FeatureState]
+                , [DataHandlingStatus],[EvidenceSource],[SourceObservedAtUtc]
+                , [IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+                , [StatusCode],[EvidenceLimit]
+            )
+            VALUES
+            (
+                  1,'SOURCE_STATUS','QUERY_STORE_OPTIONAL_CONTEXT',N'READ_FAILED'
+                , 'NO_SENSITIVE_PAYLOAD','QUERY_STORE_OPTIONAL_SOURCES',@Now
+                , 0,1,0,0
+                , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916)
+                       THEN 'DENIED_PERMISSION' ELSE 'PARTIAL' END
+                , N'Der Plan blieb analysierbar; mindestens eine zusätzliche Query-Store-Kontextquelle war nicht vollständig verfügbar.'
+            );
+
+            INSERT [#ExecutionPlanAnalysis_QueryStoreContext]
+            (
+                  [AnalysisObjectId],[QueryStoreDatabaseName],[QueryStorePlanId]
+                , [QueryHintCount],[QueryHintFailureCount],[PersistedFeedbackCount],[VariantRelationCount]
+                , [SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[StatusCode],[EvidenceLimit]
+            )
+            SELECT
+                  1,@QueryStoreDatabaseName,@QueryStorePlanId,0,0,0,0,@Now,0,1
+                , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'PARTIAL' END
+                , N'Der Plan blieb analysierbar; zusätzliche Query-Store-Kontextquellen waren nicht vollständig verfügbar.'
+            WHERE NOT EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_QueryStoreContext]);
+            IF @ErrorNumberOut IS NULL
+                SELECT @ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=ERROR_MESSAGE();
+        END CATCH;
+    END
+    ELSE
+        INSERT [#ExecutionPlanAnalysis_QueryStoreContext]
+        (
+              [AnalysisObjectId],[QueryStoreDatabaseName],[QueryStorePlanId]
+            , [QueryHintCount],[QueryHintFailureCount],[PersistedFeedbackCount],[VariantRelationCount]
+            , [SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[StatusCode],[EvidenceLimit]
+        )
+        VALUES
+        (
+              1,@QueryStoreDatabaseName,@QueryStorePlanId,0,0,0,0,@Now,0
+            , CASE WHEN @QueryStorePlanId IS NOT NULL THEN 1 ELSE 0 END
+            , CASE WHEN @QueryStorePlanId IS NULL THEN 'NOT_APPLICABLE'
+                   WHEN @StatusCodeOut='DENIED_PERMISSION' THEN 'DENIED_PERMISSION'
+                   ELSE 'NOT_COLLECTED' END
+            , CASE WHEN @QueryStorePlanId IS NULL
+                   THEN N'Für diese Planquelle wurde kein Query-Store-Plan angefordert.'
+                   ELSE N'Die angeforderte Query-Store-Quelle lieferte keinen materialisierbaren Kontext.' END
+        );
+
+    /* Jede kanonische DIAG-005-Ausgabe besitzt auch bei Quellfehlern eine
+       eindeutige Statuszeile. */
+    IF NOT EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_PlanWarnings])
+        INSERT [#ExecutionPlanAnalysis_PlanWarnings]
+        (
+              [AnalysisObjectId],[WarningCode],[WarningCategory],[Severity],[EvidenceKind]
+            , [EvidenceSource],[PlanSource],[SourceObservedAtUtc],[IsMeasured],[IsInferred]
+            , [Detail],[FalsePositiveGuard],[StatusCode]
+        )
+        VALUES
+        (
+              1,'SOURCE_UNAVAILABLE','SOURCE_STATUS','INFO','SOURCE_STATUS'
+            , 'PLAN_SOURCE',@EffectivePlanSource,@Now,0,0
+            , N'Die Planquelle lieferte keine normalisierbare Warnungsevidenz.'
+            , N'Ein Quellfehler darf nicht als warnungsfreier Plan interpretiert werden.'
+            , CASE WHEN @StatusCodeOut='DENIED_PERMISSION' THEN 'DENIED_PERMISSION' ELSE 'NOT_COLLECTED' END
+        );
+    IF NOT EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_OptimizerContext])
+        INSERT [#ExecutionPlanAnalysis_OptimizerContext]
+        (
+              [AnalysisObjectId],[PlanSource],[RuntimeCounterScope],[SourceObservedAtUtc]
+            , [EvidenceMeasurement],[StatusCode],[FalsePositiveGuard]
+        )
+        VALUES
+        (
+              1,@EffectivePlanSource,@RuntimeScope,@Now,'NOT_MEASURED'
+            , CASE WHEN @StatusCodeOut='DENIED_PERMISSION' THEN 'DENIED_PERMISSION' ELSE 'NOT_COLLECTED' END
+            , N'Fehlender Optimizerkontext darf nicht als optimale oder triviale Kompilierung interpretiert werden.'
+        );
+    IF NOT EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_RuntimeFeedback])
+        INSERT [#ExecutionPlanAnalysis_RuntimeFeedback]
+        (
+              [AnalysisObjectId],[FeedbackType],[RuntimeCounterScope],[EvidenceSource]
+            , [SourceObservedAtUtc],[IsMeasured],[IsDerived],[StatusCode],[EvidenceLimit]
+        )
+        VALUES
+        (
+              1,'SOURCE_STATUS',@RuntimeScope,'PLAN_SOURCE',@Now,0,0
+            , CASE WHEN @StatusCodeOut='DENIED_PERMISSION' THEN 'DENIED_PERMISSION' ELSE 'NOT_COLLECTED' END
+            , N'Ohne Runtimeevidenz werden keine Laufzeitaussagen abgeleitet.'
+        );
+    IF NOT EXISTS(SELECT 1 FROM [#ExecutionPlanAnalysis_FeedbackAndVariants])
+        INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+        (
+              [AnalysisObjectId],[RecordType],[FeatureType],[FeatureState]
+            , [DataHandlingStatus],[EvidenceSource],[SourceObservedAtUtc]
+            , [IsMeasured],[IsDerived],[StatusCode],[EvidenceLimit]
+        )
+        VALUES
+        (
+              1,'SOURCE_STATUS','SOURCE_UNAVAILABLE',N'NOT_COLLECTED'
+            , 'NO_SENSITIVE_PAYLOAD','PLAN_SOURCE',@Now,0,0
+            , CASE WHEN @StatusCodeOut='DENIED_PERMISSION' THEN 'DENIED_PERMISSION' ELSE 'NOT_COLLECTED' END
+            , N'Ohne Plan- oder Katalogevidenz werden keine Feedback- oder Variantenmerkmale behauptet.'
+        );
 
     /* Current-Statistics- und Histogrammteile aus normalisierter Evidenz ergänzen. */
     IF @EvidenceForAnalysis IS NOT NULL AND ISJSON(@EvidenceForAnalysis)=1
@@ -900,6 +1613,14 @@ WHERE [p].[plan_id]=@PlanId;';
 
     IF @StatementId IS NOT NULL
     BEGIN
+        DELETE FROM [#ExecutionPlanAnalysis_PlanWarnings]
+        WHERE [StatementOrdinal] IS NOT NULL AND ([StatementId]<>@StatementId OR [StatementId] IS NULL);
+        DELETE FROM [#ExecutionPlanAnalysis_OptimizerContext]
+        WHERE [StatementOrdinal] IS NOT NULL AND ([StatementId]<>@StatementId OR [StatementId] IS NULL);
+        DELETE FROM [#ExecutionPlanAnalysis_RuntimeFeedback]
+        WHERE [StatementOrdinal] IS NOT NULL AND ([StatementId]<>@StatementId OR [StatementId] IS NULL);
+        DELETE FROM [#ExecutionPlanAnalysis_FeedbackAndVariants]
+        WHERE [StatementOrdinal] IS NOT NULL AND ([StatementId]<>@StatementId OR [StatementId] IS NULL);
         DELETE FROM [#ExecutionPlanAnalysis_Findings] WHERE [StatementId]<>@StatementId OR [StatementId] IS NULL;
         DELETE FROM [#ExecutionPlanAnalysis_ExecutionEvidence] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementId]=@StatementId);
@@ -919,6 +1640,14 @@ WHERE [p].[plan_id]=@PlanId;';
     IF @StatementQueryHash IS NOT NULL
     BEGIN
         DECLARE @QueryHashText nvarchar(130)=CONVERT(nvarchar(130),@StatementQueryHash,1);
+        DELETE FROM [#ExecutionPlanAnalysis_PlanWarnings] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_OptimizerContext] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_RuntimeFeedback] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_FeedbackAndVariants] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
         DELETE FROM [#ExecutionPlanAnalysis_Findings] WHERE [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
         DELETE FROM [#ExecutionPlanAnalysis_MemoryAndSpills] WHERE [StatementOrdinal] NOT IN
@@ -945,6 +1674,14 @@ WHERE [p].[plan_id]=@PlanId;';
     IF @StatementQueryPlanHash IS NOT NULL
     BEGIN
         DECLARE @QueryPlanHashText nvarchar(130)=CONVERT(nvarchar(130),@StatementQueryPlanHash,1);
+        DELETE FROM [#ExecutionPlanAnalysis_PlanWarnings] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_OptimizerContext] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_RuntimeFeedback] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_FeedbackAndVariants] WHERE [StatementOrdinal] IS NOT NULL AND [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
         DELETE FROM [#ExecutionPlanAnalysis_Findings] WHERE [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
         DELETE FROM [#ExecutionPlanAnalysis_MemoryAndSpills] WHERE [StatementOrdinal] NOT IN
@@ -1023,6 +1760,9 @@ WHERE [p].[plan_id]=@PlanId;';
         UPDATE [#ExecutionPlanAnalysis_ParameterEvidence]
         SET [ParameterName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ParameterName] IS NOT NULL THEN CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ParameterName])),1) END,
             [QueryStoreDatabaseName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [QueryStoreDatabaseName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[QueryStoreDatabaseName])),1)) END;
+        UPDATE [#ExecutionPlanAnalysis_QueryStoreContext]
+        SET [QueryStoreDatabaseName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [QueryStoreDatabaseName] IS NOT NULL
+            THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[QueryStoreDatabaseName])),1)) END;
     END;
 
     IF (SELECT COUNT(*) FROM [#ExecutionPlanAnalysis_Operators])>@MaxOperatoren
@@ -1096,6 +1836,36 @@ WHERE [p].[plan_id]=@PlanId;';
               AND [k].[StatementOrdinal]=[f].[StatementOrdinal]
               AND [k].[NodeId]=[f].[NodeId]
         );
+        DELETE [w]
+        FROM [#ExecutionPlanAnalysis_PlanWarnings] AS [w]
+        WHERE [w].[NodeId] IS NOT NULL
+          AND NOT EXISTS
+        (
+            SELECT 1 FROM [#ExecutionPlanAnalysis_RetainedOperators] AS [k]
+            WHERE [k].[AnalysisObjectId]=[w].[AnalysisObjectId]
+              AND [k].[StatementOrdinal]=[w].[StatementOrdinal]
+              AND [k].[NodeId]=[w].[NodeId]
+        );
+        DELETE [r]
+        FROM [#ExecutionPlanAnalysis_RuntimeFeedback] AS [r]
+        WHERE [r].[NodeId] IS NOT NULL
+          AND NOT EXISTS
+        (
+            SELECT 1 FROM [#ExecutionPlanAnalysis_RetainedOperators] AS [k]
+            WHERE [k].[AnalysisObjectId]=[r].[AnalysisObjectId]
+              AND [k].[StatementOrdinal]=[r].[StatementOrdinal]
+              AND [k].[NodeId]=[r].[NodeId]
+        );
+        DELETE [v]
+        FROM [#ExecutionPlanAnalysis_FeedbackAndVariants] AS [v]
+        WHERE [v].[NodeId] IS NOT NULL
+          AND NOT EXISTS
+        (
+            SELECT 1 FROM [#ExecutionPlanAnalysis_RetainedOperators] AS [k]
+            WHERE [k].[AnalysisObjectId]=[v].[AnalysisObjectId]
+              AND [k].[StatementOrdinal]=[v].[StatementOrdinal]
+              AND [k].[NodeId]=[v].[NodeId]
+        );
         SET @IsPartialOut=1;
         IF @StatusCodeOut='AVAILABLE' SET @StatusCodeOut='PARTIAL';
     END;
@@ -1127,7 +1897,7 @@ WHERE [p].[plan_id]=@PlanId;';
 
     IF @JsonErzeugen=1
     BEGIN
-        DECLARE @MetaJson nvarchar(max)=(SELECT N'ExecutionPlanAnalysis' [resultName],2 [schemaVersion],@Now [generatedAtUtc],@StatusCodeOut [statusCode],@IsPartialOut [isPartial],@EffectivePlanSource [planSource],@RuntimeScope [runtimeCounterScope],@Profile [workloadProfile],@PrivacyMode [evidencePrivacyMode],@IdentifierMode [identifierPrivacyMode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @MetaJson nvarchar(max)=(SELECT N'ExecutionPlanAnalysis' [resultName],3 [schemaVersion],@Now [generatedAtUtc],@StatusCodeOut [statusCode],@IsPartialOut [isPartial],@EffectivePlanSource [planSource],@RuntimeScope [runtimeCounterScope],@Profile [workloadProfile],@PrivacyMode [evidencePrivacyMode],@IdentifierMode [identifierPrivacyMode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @CapabilitiesJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Capabilities] ORDER BY [FeatureCode] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @PlanJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_PlanDocuments] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @StatementsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Statements] ORDER BY [StatementOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
@@ -1138,13 +1908,18 @@ WHERE [p].[plan_id]=@PlanId;';
         DECLARE @StatsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_StatisticsUsage] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @ParametersJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Parameters] ORDER BY [StatementOrdinal],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @ParameterEvidenceJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_ParameterEvidence] ORDER BY [CandidateId],[StatementOrdinal],[EvidenceKind],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @PlanWarningsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_PlanWarnings] ORDER BY [WarningOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @OptimizerContextJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_OptimizerContext] ORDER BY [StatementOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @RuntimeFeedbackJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_RuntimeFeedback] ORDER BY [FeedbackOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @QueryStoreContextJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_QueryStoreContext] ORDER BY [QueryStorePlanId] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @FeedbackAndVariantsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_FeedbackAndVariants] ORDER BY [RecordOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @MemoryJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_MemoryAndSpills] ORDER BY [StatementOrdinal],[NodeId],[RecordType] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @EvidenceJsonOut nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_ExecutionEvidence] ORDER BY [StatementOrdinal],[EvidenceType],[MetricName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @HistogramSummaryJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_HistogramSummaries] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @HistogramStepsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_HistogramSteps] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @MappingsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_PredicateHistogramMappings] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @FindingsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"capabilities":',COALESCE(@CapabilitiesJson,N'[]'),N',"planDocuments":',COALESCE(@PlanJson,N'[]'),N',"statements":',COALESCE(@StatementsJson,N'[]'),N',"operatorTree":',COALESCE(@OperatorsJson,N'[]'),N',"operatorRuntime":',COALESCE(@RuntimeJson,N'[]'),N',"operatorThreadRuntime":',COALESCE(@ThreadsJson,N'[]'),N',"accessPaths":',COALESCE(@AccessJson,N'[]'),N',"statisticsUsage":',COALESCE(@StatsJson,N'[]'),N',"parametersAndVariants":',COALESCE(@ParametersJson,N'[]'),N',"parameters":',COALESCE(@ParameterEvidenceJson,N'[]'),N',"memoryAndSpills":',COALESCE(@MemoryJson,N'[]'),N',"executionEvidence":',COALESCE(@EvidenceJsonOut,N'[]'),N',"histogramSummaries":',COALESCE(@HistogramSummaryJson,N'[]'),N',"histogramSteps":',COALESCE(@HistogramStepsJson,N'[]'),N',"predicateHistogramMappings":',COALESCE(@MappingsJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N'}');
+        SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"capabilities":',COALESCE(@CapabilitiesJson,N'[]'),N',"planDocuments":',COALESCE(@PlanJson,N'[]'),N',"statements":',COALESCE(@StatementsJson,N'[]'),N',"operatorTree":',COALESCE(@OperatorsJson,N'[]'),N',"operatorRuntime":',COALESCE(@RuntimeJson,N'[]'),N',"operatorThreadRuntime":',COALESCE(@ThreadsJson,N'[]'),N',"accessPaths":',COALESCE(@AccessJson,N'[]'),N',"statisticsUsage":',COALESCE(@StatsJson,N'[]'),N',"parametersAndVariants":',COALESCE(@ParametersJson,N'[]'),N',"parameters":',COALESCE(@ParameterEvidenceJson,N'[]'),N',"planWarnings":',COALESCE(@PlanWarningsJson,N'[]'),N',"optimizerContext":',COALESCE(@OptimizerContextJson,N'[]'),N',"runtimeFeedback":',COALESCE(@RuntimeFeedbackJson,N'[]'),N',"queryStoreContext":',COALESCE(@QueryStoreContextJson,N'[]'),N',"feedbackAndVariants":',COALESCE(@FeedbackAndVariantsJson,N'[]'),N',"memoryAndSpills":',COALESCE(@MemoryJson,N'[]'),N',"executionEvidence":',COALESCE(@EvidenceJsonOut,N'[]'),N',"histogramSummaries":',COALESCE(@HistogramSummaryJson,N'[]'),N',"histogramSteps":',COALESCE(@HistogramStepsJson,N'[]'),N',"predicateHistogramMappings":',COALESCE(@MappingsJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N'}');
     END;
 
     IF @OutputMode='RAW'
@@ -1160,6 +1935,11 @@ WHERE [p].[plan_id]=@PlanId;';
         SELECT * FROM [#ExecutionPlanAnalysis_StatisticsUsage] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal];
         SELECT * FROM [#ExecutionPlanAnalysis_Parameters] ORDER BY [StatementOrdinal],[ParameterName];
         SELECT * FROM [#ExecutionPlanAnalysis_ParameterEvidence] ORDER BY [CandidateId],[StatementOrdinal],[EvidenceKind],[ParameterName];
+        SELECT * FROM [#ExecutionPlanAnalysis_PlanWarnings] ORDER BY [WarningOrdinal];
+        SELECT * FROM [#ExecutionPlanAnalysis_OptimizerContext] ORDER BY [StatementOrdinal];
+        SELECT * FROM [#ExecutionPlanAnalysis_RuntimeFeedback] ORDER BY [FeedbackOrdinal];
+        SELECT * FROM [#ExecutionPlanAnalysis_QueryStoreContext] ORDER BY [QueryStorePlanId];
+        SELECT * FROM [#ExecutionPlanAnalysis_FeedbackAndVariants] ORDER BY [RecordOrdinal];
         SELECT * FROM [#ExecutionPlanAnalysis_MemoryAndSpills] ORDER BY [StatementOrdinal],[NodeId],[RecordType];
         SELECT * FROM [#ExecutionPlanAnalysis_ExecutionEvidence] ORDER BY [StatementOrdinal],[EvidenceType],[MetricName];
         SELECT * FROM [#ExecutionPlanAnalysis_HistogramSummaries];
@@ -1197,6 +1977,11 @@ WHERE [p].[plan_id]=@PlanId;';
                 WHEN N'statisticsUsage' THEN N'#ExecutionPlanAnalysis_StatisticsUsage'
                 WHEN N'parametersAndVariants' THEN N'#ExecutionPlanAnalysis_Parameters'
                 WHEN N'parameters' THEN N'#ExecutionPlanAnalysis_ParameterEvidence'
+                WHEN N'planWarnings' THEN N'#ExecutionPlanAnalysis_PlanWarnings'
+                WHEN N'optimizerContext' THEN N'#ExecutionPlanAnalysis_OptimizerContext'
+                WHEN N'runtimeFeedback' THEN N'#ExecutionPlanAnalysis_RuntimeFeedback'
+                WHEN N'queryStoreContext' THEN N'#ExecutionPlanAnalysis_QueryStoreContext'
+                WHEN N'feedbackAndVariants' THEN N'#ExecutionPlanAnalysis_FeedbackAndVariants'
                 WHEN N'memoryAndSpills' THEN N'#ExecutionPlanAnalysis_MemoryAndSpills'
                 WHEN N'executionEvidence' THEN N'#ExecutionPlanAnalysis_ExecutionEvidence'
                 WHEN N'histogramSummaries' THEN N'#ExecutionPlanAnalysis_HistogramSummaries'
