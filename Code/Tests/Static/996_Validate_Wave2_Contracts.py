@@ -154,7 +154,7 @@ def main() -> int:
     output_test = (root / "Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql").read_text(
         encoding="utf-8-sig"
     )
-    require(output_test, ("<>91", "91 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
+    require(output_test, ("<>92", "92 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
 
     print(
         "Wave-2 contracts passed: modules=4 public_procedures=91 "
