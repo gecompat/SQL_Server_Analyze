@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
-**Stand:** 22. Juli 2026
-**Abdeckung:** alle 96 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Stand:** 23. Juli 2026
+**Abdeckung:** alle 97 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -46,6 +46,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_Partitions]` | [Partitionsgrenzen, Größe und Ablage](Procedures/USP_Partitions.md) |
 | `[monitor].[USP_Columnstore]` | [Rowgroups, Deleted Rows, Segmente und Dictionaries](Procedures/USP_Columnstore.md) |
 | `[monitor].[USP_IndexPhysicalStats]` | [Fragmentierung, Seitendichte und Page Count](Procedures/USP_IndexPhysicalStats.md) |
+| `[monitor].[USP_VectorIndexAnalysis]` | [Vector-Index-Katalog und Hintergrundwartung](Procedures/USP_VectorIndexAnalysis.md) |
 | `[monitor].[USP_SchemaDesignAnalysis]` | [Constraints, FKs, Indizes und Identity-Risiken](Procedures/USP_SchemaDesignAnalysis.md) |
 | `[monitor].[USP_ObjectAnalysis]` | [Orchestrierte Objekt- und Indextiefenanalyse](Procedures/USP_ObjectAnalysis.md) |
 
@@ -160,7 +161,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 |---|---:|
 | Common | 5 |
 | Current State | 11 |
-| Object und Index | 11 |
+| Object und Index | 12 |
 | Plan Cache und Showplan | 8 |
 | Query Store | 9 |
 | Extended Events | 6 |
@@ -168,7 +169,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Server Health | 19 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
-| **Gesamt** | **96** |
+| **Gesamt** | **97** |
 
 ## Weitere Einstiege
 
