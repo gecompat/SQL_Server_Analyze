@@ -376,7 +376,7 @@ def validate_repository(root: Path) -> list[str]:
     framework = read_text(root, "Code/01_Common/077_FrameworkVersion.sql")
     require_tokens(
         framework,
-        ("1.1.0-special.17", "[ContractVersion]='1.21'", "SQL25-002"),
+        ("1.1.0-special.18", "[ContractVersion]='1.22'", "SQL25-003"),
         "version",
         errors,
     )

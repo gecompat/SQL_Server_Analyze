@@ -46,7 +46,9 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 - Memory Grants einschließlich Resource Governor und Resource Semaphores
 - exaktes aktuell ausgeführtes Statement anhand der SQL-Server-Offsets
 - vollständiger Batch-, Modul- und Input-Buffer-Kontext bei Bedarf
-- TempDB-, I/O- und Transaktionslog-Diagnose
+- TempDB-, I/O- und Transaktionslog-Diagnose einschließlich
+  SQL-Server-2025-Workload-Group-Limits, aktueller/Peak-Nutzung,
+  Verletzungszählern und Resetfenster
 - Objekt-, Index-, Statistik-, Partitionierungs- und Columnstore-Analyse einschließlich capability-adaptiver SQL-Server-2025-JSON-Index-/Pfadmetadaten
 - Plan Cache, Query Hash, Showplan und Plan-Detailanalyse
 - Query Store: Laufzeitwerte, Waits, Planwechsel, Regressionen, Forced Plans und Hints
@@ -244,6 +246,7 @@ Der aktuelle Inventory-Vertrag umfasst 97 öffentliche Procedures und 68 unterst
 - [Detaillierte Referenz aller unterstützenden Frameworkobjekte](./Documentation/Reference/Object_Reference.md)
 - [Spezialfallmodule: Evidenz, Kosten und Grenzen](./Documentation/Architecture/Special_Case_Modules.md)
 - [SQL-Server-2025-JSON-Index-Inventar](./Documentation/Architecture/SQL_Server_2025_JSON_Index_Inventory.md)
+- [SQL-Server-2025-TempDB-Resource-Governance](./Documentation/Architecture/SQL_Server_2025_TempDB_Resource_Governance.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)

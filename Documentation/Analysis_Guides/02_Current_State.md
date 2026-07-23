@@ -475,8 +475,9 @@ Die Procedure zeigt Netto-TempDB-Verbrauch je Session und optional Dateizustand.
 
 1. Status.
 2. Sessions.
-3. Dateien, wenn `@MitDateien=1`.
-4. Warnungen.
+3. TempDB-Governance je sichtbarer Workload Group.
+4. Dateien, wenn `@MitDateien=1`.
+5. Warnungen.
 
 ### Sessions
 
@@ -497,6 +498,22 @@ Die Procedure zeigt Netto-TempDB-Verbrauch je Session und optional Dateizustand.
 | `SizeMb`, `UsedMb`, `FreeMb`, `UsedPercent` | aktueller Platz |
 | `GrowthMb`, `IsPercentGrowth` | Autogrowth; bei Prozentwachstum ist GrowthMb nicht als feste Größe verwendbar |
 
+### TempDB Resource Governance (SQL Server 2025)
+
+`tempdbGovernance` trennt je Workload Group gespeichertes MB-/Prozentlimit,
+effektives Limit, aktuelle Nutzung, Peak, Verletzungszähler und
+`StatisticsStartTime`. Ein MB-Limit hat Vorrang. Ein Prozentlimit kann wegen
+der TempDB-Dateikonfiguration unwirksam sein; dann bleibt der gespeicherte Wert
+sichtbar, `EffectiveGroupMaxTempdbDataMb` aber `NULL` und
+`EffectiveLimitSource='PERCENT_NOT_EFFECTIVE'`.
+
+Kein Limit ist ein neutraler Zustand. Eine Verletzung beweist Enforcement im
+Statistikfenster, aber weder die verursachende Anweisung noch eine dauerhafte
+Störung. Version Store und TempDB-Log sind von diesem Limit nicht umfasst.
+Workload-Group-Zähler dürfen nicht zu Sessionallokationen addiert werden. Auf
+SQL Server 2019/2022 sowie bei fehlendem Quellschema oder Rechten liefern
+Status, Partialitätsflag und Aussagegrenze einen expliziten Vertrag.
+
 ### Beispiele
 
 | Fall | Bewertung |
@@ -509,7 +526,9 @@ Die Procedure zeigt Netto-TempDB-Verbrauch je Session und optional Dateizustand.
 
 ### Folgeanalyse
 
-`USP_CurrentRequests`, `USP_TempDBConfiguration`, `USP_CurrentTransactions`, bei Version Store/PVS `USP_CurrentLog` und Snapshot-Transaktionen.
+`USP_CurrentRequests`, `USP_TempDBConfiguration`, `USP_CurrentTransactions`,
+`USP_ResourceGovernorAnalysis`, bei Version Store/PVS `USP_CurrentLog` und
+Snapshot-Transaktionen.
 
 ---
 
@@ -663,7 +682,11 @@ Die Procedure orchestriert alle neun Current-State-Teilmodule fehlerisoliert. Si
 8. I/O
 9. Log
 
-Jedes Kindmodul liefert seine eigenen Status- und Fachresultsets. Im JSON-Envelope heißen die Childobjekte `sessions`, `requests`, `blocking`, `waits`, `transactions`, `memoryGrants`, `tempdb`, `io` und `log`.
+Jedes Kindmodul liefert seine eigenen Status- und Fachresultsets. Im
+JSON-Envelope heißen die Childobjekte `sessions`, `requests`, `blocking`,
+`waits`, `transactions`, `memoryGrants`, `tempdb`, `io` und `log`. Das
+benannte TABLE-Resultset `tempdbGovernance` wird bei `@MitTempDB=1` aus dem
+gemeinsamen Snapshot exportiert.
 
 ### Aufrufe
 

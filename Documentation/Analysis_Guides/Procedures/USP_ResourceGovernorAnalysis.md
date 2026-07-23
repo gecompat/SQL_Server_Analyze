@@ -25,15 +25,26 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `configuration`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `configuration`, `resourcePools`,
+`workloadGroups`, `sessions` und `tempdbGovernance`. Status, Scope und Warnings
+sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage;
+RAW und JSON erhalten den technischen Kontext, während TABLE nur die
+ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit
+unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder
+summiert werden.
 
 ## Eine Zeile bedeutet
 
-Je Resultset beschreibt eine Zeile einen Resource Pool, eine Workload Group oder eine aktuell zugeordnete Session.
+Je Resultset beschreibt eine Zeile eine Konfiguration, einen Resource Pool,
+eine Workload Group oder eine aktuell zugeordnete Session.
+`tempdbGovernance` besitzt genau eine Zeile je sichtbarer Workload Group.
 
 ## So lesen
 
-Betrachten Sie Poollimits, Group-Limits, aktuelle Nutzung, Cap-/Min-Werte und Sessionzuordnung gemeinsam.
+Betrachten Sie Poollimits, Group-Limits, aktuelle Nutzung, Cap-/Min-Werte und
+Sessionzuordnung gemeinsam. Für TempDB trennen Sie gespeichertes MB- oder
+Prozentlimit, `EffectiveLimitSource`, aktuelle und höchste Datennutzung,
+Verletzungszähler und deren `StatisticsStartTime`.
 
 ## Warum kann das problematisch sein?
 
@@ -87,7 +98,14 @@ Classifier Function ordnet neue Sessions Workload Groups zu; Groups verweisen au
 
 ### Datenkette
 
-`master.sys.objects`, `master.sys.schemas`, `sys.dm_exec_sessions`, `sys.dm_resource_governor_configuration`, `sys.dm_resource_governor_resource_pools`, `sys.dm_resource_governor_workload_groups`, `sys.resource_governor_configuration`, `sys.resource_governor_resource_pools`, `sys.resource_governor_workload_groups`.
+`master.sys.objects`, `master.sys.schemas`, `sys.dm_exec_sessions`,
+`sys.dm_resource_governor_configuration`,
+`sys.dm_resource_governor_resource_pools`,
+`sys.dm_resource_governor_workload_groups`,
+`sys.resource_governor_configuration`,
+`sys.resource_governor_resource_pools`,
+`sys.resource_governor_workload_groups` und – ausschließlich bei relevantem
+Prozentlimit – `master.sys.master_files`.
 
 ### Source Select
 
@@ -113,7 +131,11 @@ WHERE [p].[name] <> N'internal';
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung beschreibt den aktuellen Konfigurations- und Runtimezustand; die Counter sind meist seit der Aktivierung oder dem Start kumulativ. Bereits verbundene Sessions werden durch eine Classifieränderung nicht automatisch neu klassifiziert.
+Die Auswertung beschreibt den aktuellen Konfigurations- und Runtimezustand.
+TempDB-Peak und Verletzungszähler gelten seit `StatisticsStartTime`, das durch
+Serverstart oder `ALTER RESOURCE GOVERNOR RESET STATISTICS` neu gesetzt wird.
+Bereits verbundene Sessions werden durch eine Classifieränderung nicht
+automatisch neu klassifiziert.
 
 ### Bewertung und Gegenprobe
 
@@ -130,5 +152,8 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: Current Requests/
 ## Primärquellen
 
 - [Resource Governor](https://learn.microsoft.com/en-us/sql/relational-databases/resource-governor/resource-governor?view=sql-server-ver17)
+- [TempDB space resource governance](https://learn.microsoft.com/en-us/sql/relational-databases/resource-governor/tempdb-space-resource-governance?view=sql-server-ver17)
+- [sys.resource_governor_workload_groups](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-resource-governor-workload-groups-transact-sql?view=sql-server-ver17)
+- [sys.dm_resource_governor_workload_groups](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-resource-governor-workload-groups-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../07_Infrastructure.md#3-monitorusp_resourcegovernoranalysis)
