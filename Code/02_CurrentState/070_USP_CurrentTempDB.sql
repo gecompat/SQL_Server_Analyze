@@ -296,7 +296,8 @@ ORDER BY [df].[file_id];';
         SET @ErrorMessage = ERROR_MESSAGE();
         SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
                                WHEN @ErrorNumber = 1222 THEN 'TIMEOUT'
-                               WHEN @ErrorNumber = 51020 THEN 'INVALID_PARENT_SNAPSHOT'
+                               WHEN @ParentCurrentStateSnapshotId IS NOT NULL
+                                AND @ErrorNumber IN (208, 51020) THEN 'INVALID_PARENT_SNAPSHOT'
                                ELSE 'ERROR_HANDLED' END;
         INSERT [#CurrentTempDB_Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
     END CATCH;
