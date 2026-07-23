@@ -86,6 +86,8 @@ Varianten verwenden auf SQL Server 2022 und neuer versionsadaptives Dynamic
 SQL. Querytexte werden nicht gelesen. Potenziell sensitive Feedback- und
 Hintpayloads sind standardmäßig ausgelassen, im TOKENIZED-Modus gehasht und
 nur im bestätigten RAW-Modus sichtbar.
+Berechtigungsgrenzen einschließlich SQL-Server-2025-Fehler 371 werden als
+`DENIED_PERMISSION` statt als allgemeine Partialität klassifiziert.
 
 `USP_ShowplanAnalysis` aggregiert die fünf Resultsets kandidatengenau und
 reicht den bereits während der Kandidatenauswahl materialisierten
