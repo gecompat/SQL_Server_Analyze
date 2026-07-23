@@ -119,8 +119,9 @@ Nichtverfügbarkeit, JSON und benanntes TABLE auf SQL Server 2019, 2022 und
 `PREVIEW_FEATURES`; bei verfügbaren Quellen prüft er zusätzlich aktiven
 Katalog- und Wartungszustand, leere und begrenzte Ausgabe, Cross-Database und
 verweigerte Runtimeberechtigung. Stellt der konkrete Build die Previewquellen
-nicht bereit, muss er stattdessen `UNAVAILABLE_FEATURE` liefern und der Test
-behauptet keinen aktiven Pfad. SQL25-001 steht damit
+nicht bereit oder weicht ihr Pflichtschema ab, muss er stattdessen
+`UNAVAILABLE_FEATURE` beziehungsweise `UNAVAILABLE_SOURCE_SCHEMA` liefern und
+der Test behauptet keinen aktiven Pfad. SQL25-001 steht damit
 auf `IMPLEMENTED_ACTIONS_GATE`.
 
 ## RUNTIME-001 – External Runtime und SQL CLR
