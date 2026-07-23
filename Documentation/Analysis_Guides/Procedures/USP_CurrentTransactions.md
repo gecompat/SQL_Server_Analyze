@@ -33,6 +33,10 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `transactions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Im Overview werden Session-, Request-, Transaktions- und SQL-Textquellen aus
+dem gemeinsamen Snapshot übernommen. Ein direkter Aufruf materialisiert diese
+Quellen neu; eine Parent-ID aus einem anderen Aufruf wird abgelehnt.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile beschreibt die Zuordnung einer sichtbaren Transaktion zu Session- und Datenbankkontext. Mehrere technische Transaktionszeilen können zu einer Session gehören.

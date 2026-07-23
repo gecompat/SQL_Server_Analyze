@@ -5,19 +5,19 @@ Status: `PARTIAL_PRODUCT_FUNCTION`
 Backlog: `DIAG-001` bis `DIAG-007`
 
 Umgesetzt und im Release-Gate für SQL Server 2019, 2022 und 2025 verankert sind
-`DIAG-001`, `DIAG-002`, `DIAG-003`, `DIAG-006` und `DIAG-007`.
-`DIAG-004` und `DIAG-005` besitzen nutzbare Bausteine, ihre öffentlichen
-Gesamtverträge sind jedoch noch nicht abgeschlossen und werden deshalb als
+`DIAG-001`, `DIAG-002`, `DIAG-003`, `DIAG-004`, `DIAG-006` und `DIAG-007`.
+`DIAG-004` ist mit seinem öffentlichen Request-Kontextvertrag abgeschlossen.
+`DIAG-005` besitzt nutzbare Bausteine, sein öffentlicher Gesamtvertrag ist
+jedoch noch nicht abgeschlossen und wird deshalb als
 `PARTIAL_PRODUCT_FUNCTION` geführt.
 
-Der erste Slice der gemeinsamen laufinternen Evidenzbasis materialisiert
-Sessions, Requests, Connections, Waiting Tasks, Memory Grants,
-Resource-Governor-Zuordnung und begrenzten
-SQL-Text laufintern einmal. Input Buffer bleibt im ersten Slice eine gezielte
-Post-Candidate-Quelle von `USP_CurrentRequests`. `USP_CurrentSessions` und
-`USP_CurrentRequests` verwenden diese Evidenz innerhalb von
-`USP_CurrentOverview`. Die Migration der übrigen Current-State-Consumer ist
-noch offen; Einzelaufrufe lesen weiterhin frisch.
+Die gemeinsame laufinterne Evidenzbasis materialisiert Sessions, Requests,
+Connections, Waiting Tasks, Memory Grants, Resource Semaphores,
+Resource-Governor-Zuordnung, Tasks, Scheduler, Transaktionen, TempDB-Nutzung
+und begrenzten SQL-Text je aktivierter Quelle einmal. Input Buffer bleibt eine
+gezielte Post-Candidate-Quelle von `USP_CurrentRequests`. Alle überlappenden
+Current-State-Consumer innerhalb von `USP_CurrentOverview` verwenden dieselbe
+Snapshot-ID; Einzelaufrufe lesen weiterhin frisch.
 
 ## Ziel
 
@@ -157,8 +157,8 @@ Pläne, Deadlock-XML und Extended-Events-Eventdaten.
 
 ## Öffentlicher Zielvertrag für DIAG-003 bis DIAG-005
 
-Die folgenden Namen bilden die Zielverträge. DIAG-003 ist umgesetzt;
-DIAG-004 und DIAG-005 bleiben reserviert, bis Procedure, TABLE-Schema, JSON,
+Die folgenden Namen bilden die Zielverträge. DIAG-003 und DIAG-004 sind
+umgesetzt; DIAG-005 bleibt reserviert, bis Procedure, TABLE-Schema, JSON,
 Inventar und Runtimevertrag übereinstimmen.
 
 | Work Item | Kanonische Resultsets | Mindestprovenienz |
@@ -235,13 +235,23 @@ korrelierbare Tokens. Repositorytests verwenden ausschließlich synthetische
 
 ## DIAG-004: Statement- und Requestkontext
 
-Status: `PARTIAL_PRODUCT_FUNCTION`. Der gemeinsame Primär-Snapshot-Owner und
-die Consumer `USP_CurrentSessions` sowie `USP_CurrentRequests` sind
-implementiert. Blocking, Waits, Transactions, Memory Grants, TempDB und I/O
-lesen in diesem Slice noch über ihre bisherigen isolierten Pfade.
+Status: `IMPLEMENTED_ACTIONS_GATE`.
 
-Vorhandene Materialisierungen sind um eine einheitliche, quellenbezogene Sicht
-zu konsolidieren. Sinnvolle Informationen sind:
+`USP_CurrentRequests` liefert die kanonischen Resultsets `snapshotStatus`,
+`requestContext`, `statements`, `batches` und `inputBuffers` in RAW, JSON und
+über benannte TABLE-Ziele. Fehlender Text, ungültige Offsets, bewusste
+Nicht-Erhebung, Trunkierung, Berechtigungsgrenzen und ein zwischen Snapshot und
+Post-Candidate-Read beendeter Request besitzen unterscheidbare Statuswerte.
+
+`USP_CurrentSessions`, `USP_CurrentRequests`, `USP_CurrentBlocking`,
+`USP_CurrentWaits`, `USP_CurrentTransactions`,
+`USP_CurrentMemoryGrants`, `USP_CurrentTempDB` und `USP_CurrentIO`
+konsumieren in `USP_CurrentOverview` dieselbe aufruflokale Snapshot-ID.
+Quellen tragen eigene Erfassungszeitpunkte; der Vertrag behauptet keine
+transaktionale Atomizität zwischen verschiedenen DMVs. Einzelaufrufe können
+keine Parent-Daten wiederverwenden und lesen weiterhin frisch.
+
+Der abgeschlossene DIAG-004-Scope umfasst:
 
 - aktuelles Statement und vollständiger Batch mit gültigen Byte- und
   Zeichenoffsets, Zeilenbereich, Länge und Trunkierungsstatus;
@@ -253,17 +263,21 @@ zu konsolidieren. Sinnvolle Informationen sind:
 - Startzeit, Dauer, CPU, Reads, Writes, Logical Reads, Row Count,
   Percent Complete und geschätzte Restzeit;
 - Wait, Blocking, offene Transaktion, Isolation Level und Waitresource;
-- Memory Grant, tatsächliche Nutzung, Idealwert, Spill- und TempDB-Evidenz;
+- Memory Grant, tatsächliche Nutzung, Idealwert und TempDB-Evidenz;
 - DOP, Parallel Worker, Workload Group und Resource Pool;
 - Query Hash, Plan Hash, SQL Handle, Plan Handle und Statement SQL Handle;
-- Plan-Generation, Compile-/Recompile-Zeitpunkt und Cachealter;
 - Verbindungsprotokoll, Transport, Verschlüsselung und Authentisierung;
 - Client-, Host-, Programm- und Loginangaben nur in fachlich begründeten
   Detail- beziehungsweise RAW-Pfaden.
 
-Die Informationen müssen innerhalb eines Aufrufs aus demselben Snapshot
-stammen oder ihren abweichenden Erfassungszeitpunkt ausweisen. Ein Join auf
-später erneut gelesene DMVs darf keine scheinbar atomare Sicht vortäuschen.
+Die Informationen stammen innerhalb eines Overview-Aufrufs aus demselben
+aufruflokalen Snapshot oder weisen bei gezielten Post-Candidate-Quellen ihren
+abweichenden Erfassungszeitpunkt aus. Ein Join auf später erneut gelesene DMVs
+wird nicht als atomare Sicht dargestellt.
+
+Operatorbezogene Spill-Evidenz, Plan-Generation, Compile- beziehungsweise
+Recompile-Zeitpunkt und Cachealter gehören zum offenen DIAG-005-Scope und
+werden nicht als Bestandteil des Request-Kontextvertrags ausgewiesen.
 
 ## DIAG-005: Plan-, Query-Store- und Optimizerkontext
 

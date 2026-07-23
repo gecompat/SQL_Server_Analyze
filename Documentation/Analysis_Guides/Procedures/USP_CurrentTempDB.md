@@ -32,6 +32,10 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `sessions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Im Overview werden Sessions sowie Session- und Taskverbrauch in TempDB aus dem
+gemeinsamen Snapshot übernommen. Datei-, Space- und Version-Store-Sichten
+bleiben eigene TempDB-Quellen. Ein direkter Aufruf erhebt beide Gruppen frisch.
+
 ## Eine Zeile bedeutet
 
 Je Resultset beschreibt eine Zeile eine Sessionallokation, eine Verbrauchsart oder eine TempDB-Datei. Diese Granularitäten dürfen nicht addiert werden, ohne das Resultset zu beachten.

@@ -33,6 +33,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `memoryGrants`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Im Overview stammen Grants, Resource Semaphores, Sessions, Requests,
+Workload-Gruppen, Resource Pools und deduplizierter SQL-Text aus derselben
+Snapshot-ID. Der Einzelaufruf behält seinen frischen, eigenständigen
+Materialisierungspfad.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einem sichtbaren Memory-Grant-Vorgang einer Query beziehungsweise eines Requests.

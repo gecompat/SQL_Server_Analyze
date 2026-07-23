@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import sys
 from pathlib import Path
 
@@ -18,7 +19,7 @@ ALLOWED_PRODUCT_STATUS = {
 }
 REQUIRED_STATUS = {
     "DIAG-003": "IMPLEMENTED_ACTIONS_GATE",
-    "DIAG-004": "PARTIAL_PRODUCT_FUNCTION",
+    "DIAG-004": "IMPLEMENTED_ACTIONS_GATE",
     "DIAG-005": "PARTIAL_PRODUCT_FUNCTION",
     "RUNTIME-001": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
     "SC-023": "IMPLEMENTED_ACTIONS_GATE",
@@ -30,8 +31,16 @@ OWNER_SINGLE_READS = (
     "FROM [sys].[dm_exec_connections]",
     "FROM [sys].[dm_os_waiting_tasks]",
     "FROM [sys].[dm_exec_query_memory_grants]",
+    "FROM [sys].[dm_exec_query_resource_semaphores]",
     "FROM [sys].[dm_resource_governor_workload_groups]",
     "FROM [sys].[dm_resource_governor_resource_pools]",
+    "FROM [sys].[dm_os_tasks]",
+    "FROM [sys].[dm_os_schedulers]",
+    "FROM [sys].[dm_tran_session_transactions]",
+    "FROM [sys].[dm_tran_active_transactions]",
+    "FROM [sys].[dm_tran_database_transactions]",
+    "FROM [sys].[dm_db_session_space_usage]",
+    "FROM [sys].[dm_db_task_space_usage]",
     "OUTER APPLY [sys].[dm_exec_sql_text]",
 )
 
@@ -91,7 +100,7 @@ def main() -> int:
         future = {row["EnhancementId"]: row for row in csv.DictReader(handle)}
     expected_future = {
         "DIAG-003": "IMPLEMENTED_ACTIONS_GATE",
-        "DIAG-004": "PARTIAL_PRODUCT_FUNCTION",
+        "DIAG-004": "IMPLEMENTED_ACTIONS_GATE",
         "DIAG-005": "PARTIAL_PRODUCT_FUNCTION",
     }
     for work_item, expected in expected_future.items():
@@ -105,10 +114,16 @@ def main() -> int:
     ).read_text(encoding="utf-8-sig")
     for token in (
         "## DIAG-003: Parameter- und Variablenwerte",
+        "## DIAG-004: Statement-/Request-Kontext",
         "Status: `IMPLEMENTED_ACTIONS_GATE`",
         "Post-Candidate-Quelle",
         "USP_CurrentSessions",
         "USP_CurrentRequests",
+        "`requestContext`",
+        "`snapshotStatus`",
+        "`statements`",
+        "`batches`",
+        "`inputBuffers`",
     ):
         if token not in diagnostic:
             fail("DIAGNOSTIC_BACKLOG_CONTRACT", token)
@@ -157,7 +172,12 @@ def main() -> int:
     for token in (
         "#CurrentOverview_CurrentStateSnapshot_SourceStatus",
         "@CaptureSqlText",
+        "@CaptureTasks",
+        "@CaptureSchedulers",
+        "@CaptureTransactions",
+        "@CaptureTempDbUsage",
         "@MaxSqlTextHandles",
+        "SYSUTCDATETIME(),2",
         "AVAILABLE_LIMITED",
     ):
         if token not in owner:
@@ -171,8 +191,11 @@ def main() -> int:
     ).read_text(encoding="utf-8-sig")
     if overview.count("EXEC [monitor].[InternalCaptureCurrentStateSnapshot]") != 1:
         fail("OWNER_CALL_COUNT", "USP_CurrentOverview")
-    if overview.count("@ParentCurrentStateSnapshotId=@SnapshotConsumerId") != 2:
-        fail("PRIMARY_CONSUMER_COUNT", "USP_CurrentOverview")
+    if overview.count("@ParentCurrentStateSnapshotId=@SnapshotConsumerId") != 8:
+        fail(
+            "SHARED_SNAPSHOT_CONSUMER_COUNT",
+            str(overview.count("@ParentCurrentStateSnapshotId=@SnapshotConsumerId")),
+        )
     if overview.find("InternalCaptureCurrentStateSnapshot") > overview.find(
         "EXEC [monitor].[USP_CurrentSessions]"
     ):
@@ -181,19 +204,57 @@ def main() -> int:
         if token not in overview:
             fail("SNAPSHOT_STATUS_OUTPUT", token)
 
-    for relative, local_source in (
-        ("Code/02_CurrentState/010_USP_CurrentSessions.sql", "#CurrentSessions_SourceSessions"),
-        ("Code/02_CurrentState/020_USP_CurrentRequests.sql", "#CurrentRequests_SourceRequests"),
+    for relative, local_sources in (
+        (
+            "Code/02_CurrentState/010_USP_CurrentSessions.sql",
+            ("#CurrentSessions_SourceSessions",),
+        ),
+        (
+            "Code/02_CurrentState/020_USP_CurrentRequests.sql",
+            (
+                "#CurrentRequests_SourceRequests",
+                "#CurrentRequests_SourceTasks",
+                "#CurrentRequests_SourceSchedulers",
+                "#CurrentRequests_SourceSessionTransactions",
+                "#CurrentRequests_SourceTempDbTaskUsage",
+            ),
+        ),
+        (
+            "Code/02_CurrentState/030_USP_CurrentBlocking.sql",
+            ("#CurrentBlocking_SourceWaitingTasks",),
+        ),
+        (
+            "Code/02_CurrentState/040_USP_CurrentWaits.sql",
+            ("#CurrentWaits_SourceWaitingTasks",),
+        ),
+        (
+            "Code/02_CurrentState/050_USP_CurrentTransactions.sql",
+            ("#CurrentTransactions_SourceSessionTransactions",),
+        ),
+        (
+            "Code/02_CurrentState/060_USP_CurrentMemoryGrants.sql",
+            ("#CurrentMemoryGrants_SourceGrants", "#CurrentMemoryGrants_SourceSemaphores"),
+        ),
+        (
+            "Code/02_CurrentState/070_USP_CurrentTempDB.sql",
+            ("#CurrentTempDB_SourceSessionUsage",),
+        ),
+        (
+            "Code/02_CurrentState/080_USP_CurrentIO.sql",
+            ("#CurrentIO_SourceTasks", "#CurrentIO_SourceSchedulers"),
+        ),
     ):
         text = (root / relative).read_text(encoding="utf-8-sig")
         for token in (
             "@ParentCurrentStateSnapshotId",
             "INVALID_PARENT_SNAPSHOT",
             "#CurrentOverview_CurrentStateSnapshot_Context",
-            local_source,
         ):
             if token not in text:
                 fail("CONSUMER_CONTRACT_TOKEN", f"{relative}:{token}")
+        for local_source in local_sources:
+            if local_source not in text:
+                fail("CONSUMER_LOCAL_SOURCE", f"{relative}:{local_source}")
 
     requests = (
         root / "Code/02_CurrentState/020_USP_CurrentRequests.sql"
@@ -205,10 +266,26 @@ def main() -> int:
         "INSERT [#CurrentRequests_Result]"
     ):
         fail("POST_CANDIDATE_INPUT_BUFFER_ORDER", "USP_CurrentRequests")
+    for token in (
+        "4 AS [schemaVersion]",
+        "#CurrentRequests_RequestContext",
+        "#CurrentRequests_SnapshotStatus",
+        "#CurrentRequests_Statements",
+        "#CurrentRequests_Batches",
+        "#CurrentRequests_InputBuffers",
+        "'NOT_COLLECTED'",
+        "'ENCRYPTED'",
+        "'INVALID_OFFSETS'",
+        "'TEXT_UNAVAILABLE'",
+        "'TEXT_TRUNCATED'",
+        "'REQUEST_FINISHED'",
+        "Quellzeitpunkte sind nicht transaktional atomar",
+    ):
+        if token not in requests:
+            fail("REQUEST_CONTEXT_CONTRACT_TOKEN", token)
 
-    inventory = (
-        root / "Metadata/Inventory/ResultSets.csv"
-    ).read_text(encoding="utf-8-sig")
+    inventory_path = root / "Metadata/Inventory/ResultSets.csv"
+    inventory = inventory_path.read_text(encoding="utf-8-sig")
     if "USP_CurrentOverview,snapshotStatus,0,1,1" not in inventory:
         fail("RESULTSET_INVENTORY", "USP_CurrentOverview/snapshotStatus")
     snapshot_inventory_row = next(
@@ -217,6 +294,56 @@ def main() -> int:
     )
     if "[SnapshotId] uniqueidentifier NOT NULL" not in snapshot_inventory_row:
         fail("RESULTSET_SNAPSHOT_ID", "USP_CurrentOverview/snapshotStatus")
+    with inventory_path.open(encoding="utf-8-sig", newline="") as handle:
+        result_rows = list(csv.DictReader(handle))
+    result_keys = {
+        (row["ProcedureName"], row["ResultName"])
+        for row in result_rows
+    }
+    for object_name in ("USP_CurrentRequests", "USP_CurrentOverview"):
+        for result_name in (
+            "requestContext",
+            "statements",
+            "batches",
+            "inputBuffers",
+        ):
+            if (object_name, result_name) not in result_keys:
+                fail(
+                    "RESULTSET_INVENTORY",
+                    f"{object_name}/{result_name}",
+                )
+    for result_name in ("snapshotStatus", "warnings"):
+        if ("USP_CurrentRequests", result_name) not in result_keys:
+            fail("RESULTSET_INVENTORY", f"USP_CurrentRequests/{result_name}")
+
+    contract_path = (
+        root / "Metadata/Quality/CurrentRequestContext_Public_Contract.json"
+    )
+    contract = json.loads(contract_path.read_text(encoding="utf-8-sig"))
+    if (
+        contract.get("contractId") != "DIAG-004-CURRENT-REQUEST-CONTEXT"
+        or contract.get("contractVersion") != 1
+        or contract.get("snapshotContractVersion") != 2
+        or contract.get("jsonSchemaVersion") != 4
+        or contract.get("implementationStatus") != "IMPLEMENTED_ACTIONS_GATE"
+    ):
+        fail("DIAG004_PUBLIC_CONTRACT_HEADER", contract_path.name)
+    contract_results = {
+        result["resultName"] for result in contract.get("canonicalResultSets", [])
+    }
+    expected_contract_results = {
+        "requestContext",
+        "snapshotStatus",
+        "statements",
+        "batches",
+        "inputBuffers",
+        "warnings",
+    }
+    if contract_results != expected_contract_results:
+        fail("DIAG004_PUBLIC_CONTRACT_RESULTS", ",".join(sorted(contract_results)))
+    consumers = contract.get("sharedSnapshotConsumers", [])
+    if len(consumers) != 8 or len(set(consumers)) != 8:
+        fail("DIAG004_PUBLIC_CONTRACT_CONSUMERS", str(len(consumers)))
 
     installer = (root / "Code/Install/Install_All.sql").read_text(
         encoding="utf-8-sig"
@@ -233,10 +360,13 @@ def main() -> int:
         fail("RUNTIME_GATE_ENTRY", "Run_Release_Gate.sql")
     if "121_DIAG003_Parameter_Evidence_Runtime_Contract.sql" not in release_gate:
         fail("DIAG003_RUNTIME_GATE_ENTRY", "Run_Release_Gate.sql")
+    if "122_DIAG004_Request_Context_Runtime_Contract.sql" not in release_gate:
+        fail("DIAG004_RUNTIME_GATE_ENTRY", "Run_Release_Gate.sql")
 
     print(
-        "Status/snapshot contracts passed: status_rows=6 diag003=implemented external_gates=1 owner_sources=8 "
-        "primary_consumers=2 findings=0"
+        "Status/snapshot contracts passed: status_rows=6 diag003=implemented "
+        "diag004=implemented external_gates=1 owner_sources=16 "
+        "shared_consumers=8 canonical_request_results=6 findings=0"
     )
     return 0
 

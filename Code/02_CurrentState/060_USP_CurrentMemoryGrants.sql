@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_CurrentMemoryGrants
-Version      : 2.0.1
-Stand        : 2026-07-16
+Version      : 3.0.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Liefert aktuell wartende und gewährte Query Memory Grants sowie
                Resource-Governor-, Pool- und Semaphore-Grenzen.
@@ -54,6 +54,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentMemoryGrants]
     , @Json                         nvarchar(max)  = NULL OUTPUT
     , @PrintMeldungen               bit            = 1
     , @Hilfe                        bit            = 0
+    , @ParentCurrentStateSnapshotId uniqueidentifier = NULL
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -108,6 +109,8 @@ BEGIN
         CASE WHEN TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion')) >= 16
              THEN N'VIEW SERVER PERFORMANCE STATE'
              ELSE N'VIEW SERVER STATE' END;
+    DECLARE @EvidenceSnapshotId uniqueidentifier=COALESCE(@ParentCurrentStateSnapshotId,NEWID());
+    DECLARE @EvidenceSnapshotStartedAtUtc datetime2(3)=@CollectionTimeUtc;
 
     CREATE TABLE [#CurrentMemoryGrants_SessionIdFilter]
     (
@@ -205,6 +208,88 @@ BEGIN
           [WarningCode]    varchar(40)     NOT NULL
         , [WarningMessage] nvarchar(2048)  NOT NULL
     );
+    CREATE TABLE [#CurrentMemoryGrants_SourceGrants]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [scheduler_id] int NULL
+        , [dop] smallint NULL
+        , [request_time] datetime NULL
+        , [grant_time] datetime NULL
+        , [wait_time_ms] bigint NULL
+        , [requested_memory_kb] bigint NOT NULL
+        , [required_memory_kb] bigint NULL
+        , [granted_memory_kb] bigint NULL
+        , [used_memory_kb] bigint NULL
+        , [max_used_memory_kb] bigint NULL
+        , [ideal_memory_kb] bigint NULL
+        , [resource_semaphore_id] smallint NULL
+        , [queue_id] smallint NULL
+        , [wait_order] int NULL
+        , [is_small] bit NULL
+        , [sql_handle] varbinary(64) NULL
+        , [group_id] int NULL
+        , [pool_id] int NULL
+        , [reserved_worker_count] bigint NULL
+        , [used_worker_count] bigint NULL
+        , [max_used_worker_count] bigint NULL
+    );
+    CREATE TABLE [#CurrentMemoryGrants_SourceSessions]
+    (
+          [session_id] smallint NOT NULL PRIMARY KEY
+        , [login_name] nvarchar(128) NOT NULL
+        , [host_name] nvarchar(128) NULL
+        , [program_name] nvarchar(128) NULL
+    );
+    CREATE TABLE [#CurrentMemoryGrants_SourceRequests]
+    (
+          [session_id] smallint NOT NULL
+        , [request_id] int NOT NULL
+        , [database_id] smallint NOT NULL
+        , [status] nvarchar(30) NOT NULL
+        , [command] nvarchar(32) NOT NULL
+        , [total_elapsed_time] int NOT NULL
+        , [cpu_time] int NOT NULL
+        , [logical_reads] bigint NOT NULL
+        , [statement_start_offset] int NULL
+        , [statement_end_offset] int NULL
+        , PRIMARY KEY([session_id],[request_id])
+    );
+    CREATE TABLE [#CurrentMemoryGrants_SourceWorkloadGroups]
+    (
+          [group_id] int NOT NULL PRIMARY KEY
+        , [name] sysname NOT NULL
+        , [pool_id] int NOT NULL
+        , [request_max_memory_grant_percent_numeric] decimal(9,4) NULL
+        , [max_request_grant_memory_kb] bigint NULL
+    );
+    CREATE TABLE [#CurrentMemoryGrants_SourceResourcePools]
+    (
+          [pool_id] int NOT NULL PRIMARY KEY
+        , [name] sysname NOT NULL
+        , [max_memory_kb] bigint NULL
+        , [target_memory_kb] bigint NULL
+        , [used_memory_kb] bigint NULL
+    );
+    CREATE TABLE [#CurrentMemoryGrants_SourceSemaphores]
+    (
+          [pool_id] int NOT NULL
+        , [resource_semaphore_id] smallint NOT NULL
+        , [target_memory_kb] bigint NOT NULL
+        , [max_target_memory_kb] bigint NOT NULL
+        , [total_memory_kb] bigint NOT NULL
+        , [available_memory_kb] bigint NOT NULL
+        , [granted_memory_kb] bigint NOT NULL
+        , [used_memory_kb] bigint NOT NULL
+        , [grantee_count] int NOT NULL
+        , [waiter_count] int NOT NULL
+        , PRIMARY KEY([pool_id],[resource_semaphore_id])
+    );
+    CREATE TABLE [#CurrentMemoryGrants_SourceSqlText]
+    (
+          [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
+        , [Text] nvarchar(max) NULL
+    );
 
     IF @StatusCode = 'AVAILABLE'
        AND (COALESCE(@MinRequestedMb, 0) < 0
@@ -219,6 +304,141 @@ BEGIN
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
+        IF @ParentCurrentStateSnapshotId IS NOT NULL
+        BEGIN
+            EXEC [sys].[sp_executesql] N'
+                DECLARE @Probe int;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Context] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_MemoryGrants] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_ResourceSemaphores] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Sessions] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_Requests] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_ResourcePools] WHERE 1=0;
+                SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
+
+            IF NOT EXISTS
+            (
+                SELECT 1
+                FROM [#CurrentOverview_CurrentStateSnapshot_Context]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+                  AND [OwnerSessionId]=CONVERT(smallint,@@SPID)
+                  AND [ContractVersion]=2
+            )
+                THROW 51020,N'Die Parent-Snapshot-ID gehört nicht zum aktuellen Aufruf.',1;
+
+            INSERT [#CurrentMemoryGrants_SourceGrants]
+            SELECT
+                  [session_id],[request_id],[scheduler_id],[dop],[request_time],[grant_time]
+                , [wait_time_ms],[requested_memory_kb],[required_memory_kb],[granted_memory_kb]
+                , [used_memory_kb],[max_used_memory_kb],[ideal_memory_kb]
+                , [resource_semaphore_id],[queue_id],[wait_order],[is_small],[sql_handle]
+                , [group_id],[pool_id],[reserved_worker_count],[used_worker_count],[max_used_worker_count]
+            FROM [#CurrentOverview_CurrentStateSnapshot_MemoryGrants]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentMemoryGrants_SourceSemaphores]
+            SELECT
+                  [pool_id],[resource_semaphore_id],[target_memory_kb],[max_target_memory_kb]
+                , [total_memory_kb],[available_memory_kb],[granted_memory_kb],[used_memory_kb]
+                , [grantee_count],[waiter_count]
+            FROM [#CurrentOverview_CurrentStateSnapshot_ResourceSemaphores]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentMemoryGrants_SourceSessions]
+            SELECT [session_id],[login_name],[host_name],[program_name]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentMemoryGrants_SourceRequests]
+            SELECT
+                  [session_id],[request_id],[database_id],[status],[command]
+                , [total_elapsed_time],[cpu_time],[logical_reads]
+                , [statement_start_offset],[statement_end_offset]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Requests]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentMemoryGrants_SourceWorkloadGroups]
+            SELECT
+                  [group_id],[name],[pool_id],[request_max_memory_grant_percent_numeric]
+                , [max_request_grant_memory_kb]
+            FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            INSERT [#CurrentMemoryGrants_SourceResourcePools]
+            SELECT [pool_id],[name],[max_memory_kb],[target_memory_kb],[used_memory_kb]
+            FROM [#CurrentOverview_CurrentStateSnapshot_ResourcePools]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            IF @MitSqlText=1
+                INSERT [#CurrentMemoryGrants_SourceSqlText]
+                SELECT [SqlHandle],[Text]
+                FROM [#CurrentOverview_CurrentStateSnapshot_SqlText]
+                WHERE [SnapshotId]=@ParentCurrentStateSnapshotId;
+
+            SELECT
+                  @EvidenceSnapshotStartedAtUtc=MIN([CapturedAtUtc])
+                , @IsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))
+            FROM [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            WHERE [SnapshotId]=@ParentCurrentStateSnapshotId
+              AND [SourceCode] IN
+                  ('MEMORY_GRANTS','RESOURCE_SEMAPHORES','SESSIONS','REQUESTS',
+                   'WORKLOAD_GROUPS','RESOURCE_POOLS','SQL_TEXT');
+        END
+        ELSE
+        BEGIN
+            SET @EvidenceSnapshotStartedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentMemoryGrants_SourceGrants]
+            SELECT
+                  [session_id],[request_id],[scheduler_id],[dop],[request_time],[grant_time]
+                , [wait_time_ms],[requested_memory_kb],[required_memory_kb],[granted_memory_kb]
+                , [used_memory_kb],[max_used_memory_kb],[ideal_memory_kb]
+                , [resource_semaphore_id],[queue_id],[wait_order],[is_small],[sql_handle]
+                , [group_id],[pool_id],[reserved_worker_count],[used_worker_count],[max_used_worker_count]
+            FROM [sys].[dm_exec_query_memory_grants] WITH (NOLOCK);
+
+            INSERT [#CurrentMemoryGrants_SourceSemaphores]
+            SELECT
+                  [pool_id],[resource_semaphore_id],[target_memory_kb],[max_target_memory_kb]
+                , [total_memory_kb],[available_memory_kb],[granted_memory_kb],[used_memory_kb]
+                , [grantee_count],[waiter_count]
+            FROM [sys].[dm_exec_query_resource_semaphores] WITH (NOLOCK);
+
+            INSERT [#CurrentMemoryGrants_SourceSessions]
+            SELECT [session_id],[login_name],[host_name],[program_name]
+            FROM [sys].[dm_exec_sessions] WITH (NOLOCK);
+
+            INSERT [#CurrentMemoryGrants_SourceRequests]
+            SELECT
+                  [session_id],[request_id],[database_id],[status],[command]
+                , [total_elapsed_time],[cpu_time],[logical_reads]
+                , [statement_start_offset],[statement_end_offset]
+            FROM [sys].[dm_exec_requests] WITH (NOLOCK);
+
+            INSERT [#CurrentMemoryGrants_SourceWorkloadGroups]
+            SELECT
+                  [group_id],[name],[pool_id],[request_max_memory_grant_percent_numeric]
+                , [max_request_grant_memory_kb]
+            FROM [sys].[dm_resource_governor_workload_groups] WITH (NOLOCK);
+
+            INSERT [#CurrentMemoryGrants_SourceResourcePools]
+            SELECT [pool_id],[name],[max_memory_kb],[target_memory_kb],[used_memory_kb]
+            FROM [sys].[dm_resource_governor_resource_pools] WITH (NOLOCK);
+
+            IF @MitSqlText=1
+                INSERT [#CurrentMemoryGrants_SourceSqlText]
+                SELECT [h].[SqlHandle],[t].[text]
+                FROM
+                (
+                    SELECT [sql_handle] AS [SqlHandle]
+                    FROM [#CurrentMemoryGrants_SourceGrants]
+                    WHERE [sql_handle] IS NOT NULL
+                    GROUP BY [sql_handle]
+                ) AS [h]
+                OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle]) AS [t];
+        END;
+
         INSERT [#CurrentMemoryGrants_Result]
         (
               [SessionId], [RequestId], [SchedulerId], [Dop], [RequestTime], [GrantTime]
@@ -314,25 +534,23 @@ BEGIN
             , [r].[logical_reads]
             , NULL,NULL,CONVERT(bit,0)
             , CASE WHEN @MitSqlText = 1 THEN [statementText].[StatementText] END
-        FROM [sys].[dm_exec_query_memory_grants] AS [g] WITH (NOLOCK)
-        LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+        FROM [#CurrentMemoryGrants_SourceGrants] AS [g]
+        LEFT JOIN [#CurrentMemoryGrants_SourceSessions] AS [s]
           ON [s].[session_id] = [g].[session_id]
-        LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
+        LEFT JOIN [#CurrentMemoryGrants_SourceRequests] AS [r]
           ON [r].[session_id] = [g].[session_id]
          AND [r].[request_id] = [g].[request_id]
         LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
           ON [d].[database_id] = [r].[database_id]
-        LEFT JOIN [sys].[dm_resource_governor_workload_groups] AS [wg] WITH (NOLOCK)
+        LEFT JOIN [#CurrentMemoryGrants_SourceWorkloadGroups] AS [wg]
           ON [wg].[group_id] = [g].[group_id]
-        LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp] WITH (NOLOCK)
+        LEFT JOIN [#CurrentMemoryGrants_SourceResourcePools] AS [rp]
           ON [rp].[pool_id] = [g].[pool_id]
-        LEFT JOIN [sys].[dm_exec_query_resource_semaphores] AS [sem] WITH (NOLOCK)
+        LEFT JOIN [#CurrentMemoryGrants_SourceSemaphores] AS [sem]
           ON [sem].[pool_id] = [g].[pool_id]
          AND [sem].[resource_semaphore_id] = [g].[resource_semaphore_id]
-        OUTER APPLY [sys].[dm_exec_sql_text]
-        (
-            CASE WHEN @MitSqlText = 1 THEN [g].[sql_handle] END
-        ) AS [t]
+        LEFT JOIN [#CurrentMemoryGrants_SourceSqlText] AS [t]
+          ON [t].[SqlHandle]=CASE WHEN @MitSqlText=1 THEN [g].[sql_handle] END
         OUTER APPLY [monitor].[TVF_StatementText]
         (
               [t].[text]
@@ -395,6 +613,7 @@ BEGIN
         SET @Detail = CASE WHEN @RowCount = 0
                            THEN N'Aktuell keine passende Memory-Grant-Anforderung sichtbar.'
                            ELSE N'Memory Grants einschließlich Resource-Governor- und Semaphore-Kontext erfolgreich gelesen.' END;
+        IF @IsPartial=1 SET @StatusCode='AVAILABLE_LIMITED';
     END TRY
     BEGIN CATCH
         SET @ErrorNumber = ERROR_NUMBER();
@@ -402,6 +621,7 @@ BEGIN
         SET @IsPartial = 1;
         SET @StatusCode = CASE WHEN @ErrorNumber IN (229, 262, 297, 300, 371, 916) THEN 'DENIED_PERMISSION'
                                WHEN @ErrorNumber = 1222 THEN 'TIMEOUT'
+                               WHEN @ErrorNumber = 51020 THEN 'INVALID_PARENT_SNAPSHOT'
                                ELSE 'ERROR_HANDLED' END;
         SET @Detail = N'Memory-Grant-Abfrage fehlgeschlagen.';
         INSERT [#CurrentMemoryGrants_Warnings] VALUES(@StatusCode, COALESCE(@ErrorMessage, @Detail));
@@ -428,8 +648,10 @@ BEGIN
         (
             SELECT
                   N'CurrentMemoryGrants' AS [resultName]
-                , 1 AS [schemaVersion]
+                , 2 AS [schemaVersion]
                 , @CollectionTimeUtc AS [generatedAtUtc]
+                , @EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc]
+                , @EvidenceSnapshotId AS [evidenceSnapshotId]
                 , @StatusCode AS [statusCode]
                 , @IsPartial AS [isPartial]
                 , @MaxZeilen AS [requestedMaxRows]
@@ -474,6 +696,8 @@ BEGIN
         SELECT
               N'USP_CurrentMemoryGrants' AS [ModuleName]
             , @CollectionTimeUtc AS [CollectionTimeUtc]
+            , @EvidenceSnapshotStartedAtUtc AS [EvidenceSnapshotStartedAtUtc]
+            , @EvidenceSnapshotId AS [EvidenceSnapshotId]
             , @StatusCode AS [StatusCode]
             , @IsPartial AS [IsPartial]
             , @RowCount AS [RowCount]
