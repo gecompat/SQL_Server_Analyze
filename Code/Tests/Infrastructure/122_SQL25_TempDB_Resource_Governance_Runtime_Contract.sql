@@ -236,7 +236,7 @@ BEGIN TRY
             SELECT
                   @OriginalResourceGovernorEnabled=[is_enabled]
                 , @ResourceGovernorStateCaptured=1
-            FROM [sys].[dm_resource_governor_configuration] WITH (NOLOCK);
+            FROM [sys].[resource_governor_configuration] WITH (NOLOCK);
 
             IF EXISTS
                (
