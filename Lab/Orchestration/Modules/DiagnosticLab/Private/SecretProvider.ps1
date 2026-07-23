@@ -55,6 +55,23 @@ function Test-LabSecretAvailability {
     }
 }
 
+function ConvertTo-LabSecureString {
+    [CmdletBinding()]
+    [OutputType([securestring])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $InputValue
+    )
+
+    $secureValue = [securestring]::new()
+    foreach ($character in $InputValue.ToCharArray()) {
+        $secureValue.AppendChar($character)
+    }
+    $secureValue.MakeReadOnly()
+    return $secureValue
+}
+
 function Get-LabSecretValue {
     [CmdletBinding()]
     [OutputType([securestring])]
@@ -75,14 +92,18 @@ function Get-LabSecretValue {
             if ([string]::IsNullOrEmpty($value)) {
                 throw 'Required environment-backed LAB-001 secret is unavailable.'
             }
-            return ConvertTo-SecureString -String $value -AsPlainText -Force
+            $secureValue = ConvertTo-LabSecureString -InputValue $value
+            $value = $null
+            return $secureValue
         }
         'SECRET_MANAGEMENT' {
             $value = Get-Secret -Name $LogicalSecretName -ErrorAction Stop
             if ($value -is [securestring]) {
                 return $value
             }
-            return ConvertTo-SecureString -String ([string] $value) -AsPlainText -Force
+            $secureValue = ConvertTo-LabSecureString -InputValue ([string] $value)
+            $value = $null
+            return $secureValue
         }
         'INTERACTIVE' {
             if (-not $SecretPolicy.AllowInteractive) {

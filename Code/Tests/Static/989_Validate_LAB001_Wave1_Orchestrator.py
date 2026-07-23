@@ -324,7 +324,7 @@ def validate_host_and_secret_contract(repository_root: Path) -> list[Finding]:
         "ENVIRONMENT",
         "SECRET_MANAGEMENT",
         "INTERACTIVE",
-        "ConvertTo-SecureString",
+        "ConvertTo-LabSecureString",
         "LAB001_SECRET_",
     ):
         if fragment not in secret_provider:
@@ -334,6 +334,10 @@ def validate_host_and_secret_contract(repository_root: Path) -> list[Finding]:
                     f"{secret_path.as_posix()}:{fragment}",
                 )
             )
+    if "-AsPlainText" in secret_provider:
+        findings.append(
+            Finding("PLAIN_TEXT_SECURE_STRING_CONVERSION", secret_path.as_posix())
+        )
     return findings
 
 
