@@ -114,9 +114,13 @@ keines davon löst eine automatische Rebuildempfehlung aus.
 `USP_ObjectAnalysis` bindet den Pfad über `@MitVectorIndexes = 1` ein.
 `USP_SpecialFeatureInventory` empfiehlt ihn bei sichtbaren nativen Vector-Spalten.
 Der öffentliche SQL25-001-Vertrag und der synthetische Runtimevertrag decken
-Nichtverfügbarkeit, aktiven Katalog- und Wartungszustand, leere und begrenzte
-Ausgabe, Cross-Database, verweigerte Runtimeberechtigung sowie JSON und
-benanntes TABLE auf SQL Server 2019, 2022 und 2025 ab. SQL25-001 steht damit
+Nichtverfügbarkeit, JSON und benanntes TABLE auf SQL Server 2019, 2022 und
+2025 ab. Auf SQL Server 2025 aktiviert der Test Compatibility Level 170 und
+`PREVIEW_FEATURES`; bei verfügbaren Quellen prüft er zusätzlich aktiven
+Katalog- und Wartungszustand, leere und begrenzte Ausgabe, Cross-Database und
+verweigerte Runtimeberechtigung. Stellt der konkrete Build die Previewquellen
+nicht bereit, muss er stattdessen `UNAVAILABLE_FEATURE` liefern und der Test
+behauptet keinen aktiven Pfad. SQL25-001 steht damit
 auf `IMPLEMENTED_ACTIONS_GATE`.
 
 ## RUNTIME-001 – External Runtime und SQL CLR
