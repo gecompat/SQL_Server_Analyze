@@ -104,7 +104,7 @@ def main() -> int:
         "Diagnostic_Information_Enrichment_Backlog.md"
     ).read_text(encoding="utf-8-sig")
     for token in (
-        "DIAG-003: `IMPLEMENTED_ACTIONS_GATE`",
+        "## DIAG-003: Parameter- und Variablenwerte",
         "Status: `IMPLEMENTED_ACTIONS_GATE`",
         "Post-Candidate-Quelle",
         "USP_CurrentSessions",
