@@ -1773,7 +1773,7 @@ BEGIN
         (
             SELECT
                   N'CurrentBlocking' AS [resultName]
-                , 4 AS [schemaVersion]
+                , 3 AS [schemaVersion]
                 , @CollectionTimeUtc AS [generatedAtUtc]
                 , @EvidenceSnapshotStartedAtUtc AS [evidenceSnapshotStartedAtUtc]
                 , @EvidenceSnapshotId AS [evidenceSnapshotId]
