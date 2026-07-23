@@ -1,0 +1,55 @@
+name: LAB-001 contract validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/lab-contract-validation.yml'
+      - 'Lab/**'
+      - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
+      - 'Metadata/Inventory/Objects.csv'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
+      - 'Metadata/Quality/Lab_Scenario_Coverage.csv'
+      - 'Metadata/Quality/Lab_Wave_Status.csv'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/lab-contract-validation.yml'
+      - 'Lab/**'
+      - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
+      - 'Metadata/Inventory/Objects.csv'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
+      - 'Metadata/Quality/Lab_Scenario_Coverage.csv'
+      - 'Metadata/Quality/Lab_Wave_Status.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab-contract-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate LAB-001 Welle 0 contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate catalogs coverage status and privacy boundaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py \
+            --repository-root .
+
+      - name: Validate example manifests against JSON schemas
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabValidation.ps1
