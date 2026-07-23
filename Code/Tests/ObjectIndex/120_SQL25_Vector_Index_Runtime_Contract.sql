@@ -31,105 +31,12 @@ DECLARE @Json nvarchar(max),@ObjectJson nvarchar(max),@Status varchar(40),@Parti
 DECLARE @ErrorNumber int,@ErrorMessage nvarchar(2048),@Sql nvarchar(max);
 DECLARE @ExecutedCases TABLE([CaseId] varchar(64) NOT NULL PRIMARY KEY);
 
-CREATE TABLE [#SQL25VectorIndexRuntimeContract_ModuleStatus]
-(
-      [ModuleName] sysname NOT NULL
-    , [CapturedAtUtc] datetime2(3) NOT NULL
-    , [StatusCode] varchar(40) NOT NULL
-    , [IsPartial] bit NOT NULL
-    , [ProductMajorVersion] int NULL
-    , [CrossDatabaseRequested] bit NOT NULL
-    , [DatabaseCount] int NOT NULL
-    , [VectorIndexRowCount] bigint NOT NULL
-    , [MaintenanceRowCount] bigint NOT NULL
-    , [FindingRowCount] bigint NOT NULL
-    , [HasMoreVectorIndexRows] bit NOT NULL
-    , [HasMoreMaintenanceRows] bit NOT NULL
-    , [HasMoreFindingRows] bit NOT NULL
-    , [ErrorNumber] int NULL
-    , [ErrorMessage] nvarchar(2048) NULL
-);
-CREATE TABLE [#SQL25VectorIndexRuntimeContract_VectorIndexes]
-(
-      [CapturedAtUtc] datetime2(3) NOT NULL
-    , [DatabaseId] int NOT NULL
-    , [DatabaseName] sysname NOT NULL
-    , [CompatibilityLevel] tinyint NULL
-    , [PreviewFeaturesEnabled] bit NULL
-    , [SchemaName] sysname NOT NULL
-    , [ObjectId] int NOT NULL
-    , [ObjectName] sysname NOT NULL
-    , [IndexId] int NOT NULL
-    , [IndexName] sysname NOT NULL
-    , [VectorIndexType] varchar(20) NULL
-    , [DistanceMetric] varchar(20) NULL
-    , [IsDisabled] bit NOT NULL
-    , [CatalogStatusCode] varchar(40) NOT NULL
-    , [EvidenceLimit] nvarchar(1000) NOT NULL
-);
-CREATE TABLE [#SQL25VectorIndexRuntimeContract_Maintenance]
-(
-      [CapturedAtUtc] datetime2(3) NOT NULL
-    , [DatabaseId] int NOT NULL
-    , [DatabaseName] sysname NOT NULL
-    , [SchemaName] sysname NOT NULL
-    , [ObjectId] int NOT NULL
-    , [ObjectName] sysname NOT NULL
-    , [IndexId] int NOT NULL
-    , [IndexName] sysname NOT NULL
-    , [ApproximateStalenessPercent] decimal(10,2) NULL
-    , [QuantizedKeysUsedPercent] decimal(10,2) NULL
-    , [LastBackgroundTaskTime] datetime2(7) NULL
-    , [LastBackgroundTaskSucceeded] bit NULL
-    , [LastBackgroundTaskDurationSeconds] bigint NULL
-    , [LastBackgroundTaskProcessedInserts] bigint NULL
-    , [LastBackgroundTaskProcessedDeletes] bigint NULL
-    , [LastBackgroundTaskErrorMessage] nvarchar(max) NULL
-    , [StatusCode] varchar(40) NOT NULL
-    , [EvidenceLimit] nvarchar(1000) NOT NULL
-);
-CREATE TABLE [#SQL25VectorIndexRuntimeContract_Findings]
-(
-      [FindingOrdinal] bigint NOT NULL
-    , [DatabaseName] sysname NULL
-    , [SchemaName] sysname NULL
-    , [ObjectName] sysname NULL
-    , [IndexName] sysname NULL
-    , [Severity] varchar(16) NOT NULL
-    , [Confidence] varchar(16) NOT NULL
-    , [FindingCode] varchar(120) NOT NULL
-    , [MetricName] varchar(80) NOT NULL
-    , [MetricValue] decimal(38,4) NULL
-    , [ThresholdValue] decimal(38,4) NULL
-    , [Evidence] nvarchar(1000) NOT NULL
-    , [EvidenceLimit] nvarchar(1000) NOT NULL
-    , [RecommendedNextCheck] nvarchar(1000) NOT NULL
-);
-CREATE TABLE [#SQL25VectorIndexRuntimeContract_SourceStatus]
-(
-      [SourceOrdinal] int NOT NULL
-    , [DatabaseId] int NULL
-    , [DatabaseName] sysname NULL
-    , [SourceName] sysname NOT NULL
-    , [SourceObject] nvarchar(256) NOT NULL
-    , [CapturedAtUtc] datetime2(3) NOT NULL
-    , [StatusCode] varchar(40) NOT NULL
-    , [IsPartial] bit NOT NULL
-    , [ReturnedRowCount] bigint NOT NULL
-    , [RequiredPermission] nvarchar(256) NULL
-    , [ErrorNumber] int NULL
-    , [ErrorMessage] nvarchar(2048) NULL
-    , [EvidenceLimit] nvarchar(1000) NOT NULL
-);
-CREATE TABLE [#SQL25VectorIndexRuntimeContract_Warnings]
-(
-      [WarningOrdinal] int NOT NULL
-    , [DatabaseName] sysname NULL
-    , [SourceName] sysname NOT NULL
-    , [StatusCode] varchar(40) NOT NULL
-    , [ErrorNumber] int NULL
-    , [Message] nvarchar(2048) NOT NULL
-);
+CREATE TABLE [#SQL25VectorIndexRuntimeContract_ModuleStatus]([Seed] bit NULL);
+CREATE TABLE [#SQL25VectorIndexRuntimeContract_VectorIndexes]([Seed] bit NULL);
+CREATE TABLE [#SQL25VectorIndexRuntimeContract_Maintenance]([Seed] bit NULL);
+CREATE TABLE [#SQL25VectorIndexRuntimeContract_Findings]([Seed] bit NULL);
+CREATE TABLE [#SQL25VectorIndexRuntimeContract_SourceStatus]([Seed] bit NULL);
+CREATE TABLE [#SQL25VectorIndexRuntimeContract_Warnings]([Seed] bit NULL);
 
 EXEC [monitor].[USP_VectorIndexAnalysis]
       @DatabaseNames=N'[DeineDatenbank]'
