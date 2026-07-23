@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisSearchTerm
-Version      : 1.0.0
-Stand        : 2026-07-21
+Version      : 1.1.0
+Stand        : 2026-07-23
 Typ          : View
 Zweck        : Liefert deutsch- und englischsprachige Symptome, Ziele,
                Synonyme und technische Suchbegriffe für den Analysis Navigator.
@@ -83,6 +83,10 @@ AS
         , (N'USP_Columnstore',N'columnstore rowgroup dictionary segment','en',95,N'Gezielte Columnstore-Analyse.')
         , (N'USP_IndexPhysicalStats',N'Index Fragmentierung Seitendichte','de',100,N'Misst die physische Indexstruktur.')
         , (N'USP_IndexPhysicalStats',N'index fragmentation page density physical stats','en',95,N'Physischer High-Impact-Scan mit Zielscope.')
+        , (N'USP_VectorIndexAnalysis',N'Vector Index Staleness Wartung','de',100,N'Prüft sichtbare Vector-Indizes und den aktuellen Hintergrundwartungszustand.')
+        , (N'USP_VectorIndexAnalysis',N'Vector Index Hintergrundtask fehlgeschlagen','de',95,N'Ordnet Taskfehler und den konfigurierbaren Staleness-Reviewwert ein.')
+        , (N'USP_VectorIndexAnalysis',N'vector index health staleness maintenance','en',100,N'Correlates visible vector indexes with current background maintenance evidence.')
+        , (N'USP_VectorIndexAnalysis',N'vector background task failed','en',95,N'Finds the last visible maintenance failure without recommending an automatic rebuild.')
         , (N'USP_ObjectAnalysis',N'Objekt vollständig analysieren','de',100,N'Orchestrierter Einstieg für ein bekanntes Objekt.')
         , (N'USP_ObjectAnalysis',N'object index deep analysis','en',95,N'Bündelt mehrere Objekt- und Indexpfade.')
         , (N'USP_SchemaDesignAnalysis',N'Schema Design Foreign Key Constraint','de',100,N'Erzeugt Reviewfindings zu Schema- und Constraintdesign.')
