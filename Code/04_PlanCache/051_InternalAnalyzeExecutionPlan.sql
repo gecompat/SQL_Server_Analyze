@@ -4,12 +4,12 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.InternalAnalyzeExecutionPlan
-Version      : 1.1.0
+Version      : 1.2.0
 Stand        : 2026-07-23
 Typ          : Interne Stored Procedure
 Zweck        : Zerlegt genau ein Showplan-XML einmalig in statementgenaue,
-               relationale Plan-, Operator-, Runtime-, Statistik-, Parameter-
-               und Findingtabellen des Aufrufers.
+               relationale Plan-, Operator-, Runtime-, Statistik-, Parameter-,
+               Warnungs-, Optimizer-, Feedback- und Findingtabellen des Aufrufers.
 Voraussetzung: Der Aufrufer legt die lokalen #ExecutionPlanAnalysis_*-Temp-Tabellen entsprechend
                dem Resultsetinventar an. Keine Benutzertabellenzugriffe.
 ===============================================================================
@@ -82,6 +82,12 @@ BEGIN
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_StatisticsUsage];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Parameters];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_ParameterEvidence];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_SourceContext];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_PlanWarnings];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_OptimizerContext];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_RuntimeFeedback];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_QueryStoreContext];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_FeedbackAndVariants];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_MemoryAndSpills];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_ExecutionEvidence];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Findings];
@@ -1136,10 +1142,272 @@ BEGIN
         IF @MitThreadRuntime=0
             DELETE FROM [#ExecutionPlanAnalysis_OperatorThreadRuntime] WHERE [AnalysisObjectId]=@AnalysisObjectId;
 
+        /*
+          DIAG-005: Die normalisierten Resultsets werden ausschließlich aus
+          bereits materialisierter Plan-, Runtime- und Cacheevidenz abgeleitet.
+          Der Plan wird hier weder erneut beschafft noch erneut als Ganzes
+          zerlegt; die Statement-XML-Fragmente sind Teil desselben Shreddinglaufs.
+        */
+        INSERT [#ExecutionPlanAnalysis_PlanWarnings]
+        (
+              [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
+            , [WarningCode],[WarningCategory],[Severity],[EvidenceKind],[EvidenceSource]
+            , [PlanSource],[SourceObservedAtUtc],[IsCurrent],[IsLastKnown]
+            , [IsMeasured],[IsInferred],[MetricName],[MetricValue],[MetricUnit]
+            , [Detail],[FalsePositiveGuard],[StatusCode]
+        )
+        SELECT
+              @AnalysisObjectId,[f].[StatementOrdinal],[f].[StatementId],[f].[NodeId]
+            , [f].[FindingCode],[f].[Category],[f].[Severity],[f].[Confidence],[f].[EvidenceLevel]
+            , @PlanSource,@SourceObservedAtUtc
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END)
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END)
+            , CONVERT(bit,CASE WHEN [f].[Confidence]='EXPLICIT_RUNTIME_WARNING' THEN 1 ELSE 0 END)
+            , CONVERT(bit,CASE WHEN [f].[Confidence]='EXPLICIT_RUNTIME_WARNING' THEN 0 ELSE 1 END)
+            , [f].[MetricName],[f].[MetricValue],[f].[MetricUnit]
+            , [f].[Evidence],[f].[EvidenceLimit],'AVAILABLE'
+        FROM [#ExecutionPlanAnalysis_Findings] AS [f]
+        WHERE [f].[AnalysisObjectId]=@AnalysisObjectId
+          AND [f].[Confidence] IN ('COMPILE_WARNING','EXPLICIT_RUNTIME_WARNING');
+
+        IF NOT EXISTS
+           (
+               SELECT 1
+               FROM [#ExecutionPlanAnalysis_PlanWarnings]
+               WHERE [AnalysisObjectId]=@AnalysisObjectId
+           )
+            INSERT [#ExecutionPlanAnalysis_PlanWarnings]
+            (
+                  [AnalysisObjectId],[WarningCode],[WarningCategory],[Severity]
+                , [EvidenceKind],[EvidenceSource],[PlanSource],[SourceObservedAtUtc]
+                , [IsCurrent],[IsLastKnown],[IsMeasured],[IsInferred]
+                , [Detail],[FalsePositiveGuard],[StatusCode]
+            )
+            VALUES
+            (
+                  @AnalysisObjectId,'NO_EXPLICIT_WARNING','SOURCE_STATUS','INFO'
+                , 'SOURCE_STATUS','PLAN_XML',@PlanSource,@SourceObservedAtUtc
+                , CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END
+                , CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END
+                , 0,0
+                , N'Das analysierte Plan-XML enthält keine unterstützte explizite Warnung.'
+                , N'Keine Warnung bedeutet nicht, dass der Plan optimal ist; nur explizite und eng belegte Warnungsmuster werden hier normalisiert.'
+                , 'AVAILABLE'
+            );
+
+        INSERT [#ExecutionPlanAnalysis_OptimizerContext]
+        (
+              [AnalysisObjectId],[StatementOrdinal],[StatementId],[PlanSource],[RuntimeCounterScope]
+            , [SourceObservedAtUtc],[IsCurrent],[IsLastKnown]
+            , [OptimizationLevel],[EarlyAbortReason],[CardinalityEstimationModelVersion]
+            , [StatementSubTreeCost],[StatementEstimatedRows]
+            , [CompileTimeMs],[CompileCpuMs],[CompileMemoryKb]
+            , [RetrievedFromCache],[NonParallelPlanReason],[PlanDegreeOfParallelism]
+            , [PlanGenerationNum],[CacheCreationTime],[CacheLastExecutionTime],[CacheExecutionCount]
+            , [CacheObjectType],[CacheObjectClass],[CacheUseCounts],[CacheRefCounts]
+            , [CacheSizeBytes],[CachePoolId],[SetOptions],[CompileUserId],[DatabaseId]
+            , [EvidenceMeasurement],[StatusCode],[FalsePositiveGuard]
+        )
+        SELECT
+              @AnalysisObjectId,[s].[StatementOrdinal],[s].[StatementId],@PlanSource,@RuntimeCounterScope
+            , @SourceObservedAtUtc
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END)
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END)
+            , [s].[OptimizationLevel],[s].[EarlyAbortReason],[s].[CardinalityEstimationModelVersion]
+            , [s].[StatementSubTreeCost],[s].[StatementEstimatedRows]
+            , [s].[CompileTimeMs],[s].[CompileCpuMs],[s].[CompileMemoryKb]
+            , [s].[RetrievedFromCache],[s].[NonParallelPlanReason]
+            , TRY_CONVERT(int,NULLIF([x].[StatementXml].value(
+                  'string((.//*[local-name(.)="QueryPlan"]/@DegreeOfParallelism)[1])','nvarchar(100)'),N''))
+            , [c].[PlanGenerationNum],[c].[CacheCreationTime],[c].[CacheLastExecutionTime],[c].[ExecutionCount]
+            , [c].[CacheObjectType],[c].[CacheObjectClass],[c].[CacheUseCounts],[c].[CacheRefCounts]
+            , [c].[CacheSizeBytes],[c].[CachePoolId],[c].[SetOptions],[c].[CompileUserId],[c].[DatabaseId]
+            , CASE WHEN [c].[StatusCode]='AVAILABLE' THEN 'PLAN_AND_CACHE_MEASURED' ELSE 'PLAN_MEASURED' END
+            , CASE WHEN [c].[StatusCode] IS NULL THEN 'PLAN_ONLY'
+                   WHEN [c].[StatusCode]='AVAILABLE' THEN 'AVAILABLE'
+                   ELSE [c].[StatusCode] END
+            , N'Optimizer- und Cacheattribute beschreiben die beobachtete Kompilierung beziehungsweise einen flüchtigen Cachezustand; sie beweisen allein keine Regressionsursache.'
+        FROM [#ExecutionPlanAnalysis_Statements] AS [s]
+        JOIN [#InternalAnalyzeExecutionPlan_StatementXml] AS [x]
+          ON [x].[StatementOrdinal]=[s].[StatementOrdinal]
+        OUTER APPLY
+        (
+            SELECT TOP (1) *
+            FROM [#ExecutionPlanAnalysis_SourceContext]
+            WHERE [AnalysisObjectId]=@AnalysisObjectId
+            ORDER BY [SourceCapturedAtUtc] DESC
+        ) AS [c]
+        WHERE [s].[AnalysisObjectId]=@AnalysisObjectId;
+
+        INSERT [#ExecutionPlanAnalysis_RuntimeFeedback]
+        (
+              [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
+            , [FeedbackType],[FeedbackState],[MetricName],[ObservedValue],[BaselineValue]
+            , [DeltaRatio],[MetricUnit],[RuntimeCounterScope],[EvidenceSource]
+            , [SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+            , [StatusCode],[EvidenceLimit]
+        )
+        SELECT
+              @AnalysisObjectId,[r].[StatementOrdinal],[r].[StatementId],[r].[NodeId]
+            , 'CARDINALITY_OBSERVATION',[r].[RuntimeMetricStatus]
+            , 'ACTUAL_TO_ESTIMATED_ROWS',[r].[ActualRows],[r].[EstimatedRowsTotal]
+            , [r].[ActualToEstimatedRatio],'ratio',@RuntimeCounterScope,'PLAN_XML_RUNTIME'
+            , @SourceObservedAtUtc
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END)
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END)
+            , 1,1,'AVAILABLE'
+            , N'Die Abweichung gilt nur für den erfassten Runtime-Scope und wird nicht als dauerhafte Kardinalitätsregression verallgemeinert.'
+        FROM [#ExecutionPlanAnalysis_OperatorRuntime] AS [r]
+        WHERE [r].[AnalysisObjectId]=@AnalysisObjectId
+          AND [r].[RuntimeCounterCount]>0
+          AND [r].[ActualRows] IS NOT NULL
+          AND [r].[EstimatedRowsTotal] IS NOT NULL;
+
+        INSERT [#ExecutionPlanAnalysis_RuntimeFeedback]
+        (
+              [AnalysisObjectId],[StatementOrdinal],[StatementId],[NodeId]
+            , [FeedbackType],[FeedbackState],[MetricName],[ObservedValue],[BaselineValue]
+            , [DeltaRatio],[MetricUnit],[RuntimeCounterScope],[EvidenceSource]
+            , [SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+            , [StatusCode],[EvidenceLimit]
+        )
+        SELECT
+              @AnalysisObjectId,[m].[StatementOrdinal],[m].[StatementId],[m].[NodeId]
+            , CASE WHEN [m].[RecordType]='MEMORY_GRANT' THEN 'MEMORY_GRANT_OBSERVATION' ELSE 'SPILL_OBSERVATION' END
+            , COALESCE([m].[MemoryGrantFeedbackState],[m].[SpillKind])
+            , CASE WHEN [m].[RecordType]='MEMORY_GRANT' THEN 'GRANTED_MEMORY_KB' ELSE 'SPILLED_DATA_SIZE' END
+            , CONVERT(decimal(38,4),CASE WHEN [m].[RecordType]='MEMORY_GRANT' THEN [m].[GrantedMemoryKb] ELSE [m].[SpilledDataSize] END)
+            , CONVERT(decimal(38,4),CASE WHEN [m].[RecordType]='MEMORY_GRANT' THEN [m].[MaxUsedMemoryKb] END)
+            , CASE WHEN [m].[RecordType]='MEMORY_GRANT' AND COALESCE([m].[MaxUsedMemoryKb],0)>0
+                   THEN CONVERT(decimal(38,8),CONVERT(decimal(38,12),[m].[GrantedMemoryKb])
+                        /NULLIF(CONVERT(decimal(38,12),[m].[MaxUsedMemoryKb]),0)) END
+            , CASE WHEN [m].[RecordType]='MEMORY_GRANT' THEN 'KB' ELSE 'source unit' END
+            , @RuntimeCounterScope,'PLAN_XML_RUNTIME',@SourceObservedAtUtc
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END)
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END)
+            , 1,CONVERT(bit,CASE WHEN [m].[RecordType]='MEMORY_GRANT' THEN 1 ELSE 0 END)
+            , 'AVAILABLE'
+            , N'Memory-Grant- und Spillwerte gelten nur für den erfassten Plan; Wiederholung und Workloadverteilung bleiben außerhalb dieser Evidenz.'
+        FROM [#ExecutionPlanAnalysis_MemoryAndSpills] AS [m]
+        WHERE [m].[AnalysisObjectId]=@AnalysisObjectId;
+
+        IF NOT EXISTS
+           (
+               SELECT 1
+               FROM [#ExecutionPlanAnalysis_RuntimeFeedback]
+               WHERE [AnalysisObjectId]=@AnalysisObjectId
+           )
+            INSERT [#ExecutionPlanAnalysis_RuntimeFeedback]
+            (
+                  [AnalysisObjectId],[FeedbackType],[FeedbackState],[RuntimeCounterScope]
+                , [EvidenceSource],[SourceObservedAtUtc],[IsCurrent],[IsLastKnown]
+                , [IsMeasured],[IsDerived],[StatusCode],[EvidenceLimit]
+            )
+            VALUES
+            (
+                  @AnalysisObjectId,'SOURCE_STATUS','NO_RUNTIME_COUNTERS',@RuntimeCounterScope
+                , 'PLAN_XML',@SourceObservedAtUtc
+                , CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END
+                , CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END
+                , 0,0,CASE WHEN @RuntimeCounterScope='NONE' THEN 'NOT_COLLECTED' ELSE 'AVAILABLE' END
+                , N'Ohne passende Runtimecounter werden keine Laufzeitdeltas abgeleitet.'
+            );
+
+        INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+        (
+              [AnalysisObjectId],[RecordType],[FeatureType],[StatementOrdinal],[StatementId],[NodeId]
+            , [QueryVariantId],[FeatureState],[DataHandlingStatus],[EvidenceSource]
+            , [SourceObservedAtUtc],[IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived]
+            , [StatusCode],[EvidenceLimit]
+        )
+        SELECT
+              @AnalysisObjectId,'PLAN_FEATURE',[v].[FeatureType],[st].[StatementOrdinal],[st].[StatementId],[v].[NodeId]
+            , [v].[QueryVariantId],[v].[FeatureState],'NO_SENSITIVE_PAYLOAD','PLAN_XML'
+            , @SourceObservedAtUtc
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END)
+            , CONVERT(bit,CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END)
+            , 1,0,'AVAILABLE'
+            , N'Die Zeile belegt nur das im Plan sichtbare Feature beziehungsweise dessen Zustand; Wirksamkeit und Nutzen müssen über mehrere Ausführungen geprüft werden.'
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
+        CROSS APPLY
+        (
+            SELECT
+                  'PARAMETER_SENSITIVE_PLAN' AS [FeatureType]
+                , TRY_CONVERT(int,NULLIF([st].[StatementXml].value(
+                    'string((.//*[@QueryVariantID][1]/@QueryVariantID)[1])','nvarchar(100)'),N'')) AS [QueryVariantId]
+                , CONVERT(nvarchar(128),N'DISPATCHER_OR_VARIANT') AS [FeatureState]
+                , CONVERT(int,NULL) AS [NodeId]
+            WHERE [st].[StatementXml].exist('.//*[local-name(.)="ParameterSensitivePredicate" or @QueryVariantID]')=1
+            UNION ALL
+            SELECT 'MEMORY_GRANT_FEEDBACK',NULL,
+                   NULLIF([st].[StatementXml].value(
+                     'string((.//*[local-name(.)="MemoryGrantInfo"]/@IsMemoryGrantFeedbackAdjusted)[1])','nvarchar(128)'),N''),NULL
+            WHERE [st].[StatementXml].exist('.//*[local-name(.)="MemoryGrantInfo"][@IsMemoryGrantFeedbackAdjusted]')=1
+            UNION ALL
+            SELECT 'ADAPTIVE_JOIN',NULL,N'PRESENT',
+                   TRY_CONVERT(int,NULLIF([r].[n].value('string((@NodeId)[1])','nvarchar(100)'),N''))
+            FROM [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"][@PhysicalOp="Adaptive Join"]') AS [r]([n])
+            UNION ALL
+            SELECT 'BATCH_MODE',NULL,N'PRESENT',
+                   TRY_CONVERT(int,NULLIF([r].[n].value('string((@NodeId)[1])','nvarchar(100)'),N''))
+            FROM [st].[StatementXml].nodes('.//*[local-name(.)="RelOp"][@EstimatedExecutionMode="Batch" or @ActualExecutionMode="Batch"]') AS [r]([n])
+        ) AS [v];
+
+        IF NOT EXISTS
+           (
+               SELECT 1
+               FROM [#ExecutionPlanAnalysis_FeedbackAndVariants]
+               WHERE [AnalysisObjectId]=@AnalysisObjectId
+           )
+            INSERT [#ExecutionPlanAnalysis_FeedbackAndVariants]
+            (
+                  [AnalysisObjectId],[RecordType],[FeatureType],[FeatureState]
+                , [DataHandlingStatus],[EvidenceSource],[SourceObservedAtUtc]
+                , [IsCurrent],[IsLastKnown],[IsMeasured],[IsDerived],[StatusCode],[EvidenceLimit]
+            )
+            VALUES
+            (
+                  @AnalysisObjectId,'SOURCE_STATUS','NO_SUPPORTED_FEATURE',N'NOT_PRESENT'
+                , 'NO_SENSITIVE_PAYLOAD','PLAN_XML',@SourceObservedAtUtc
+                , CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END
+                , CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END
+                , 0,0,'AVAILABLE'
+                , N'Nicht vorhandene Featuremarker schließen versions- oder kontextabhängige Optimizerfunktionen außerhalb dieses Plans nicht aus.'
+            );
+
         DECLARE @MinSeverityRank int=CASE @MinSeverity WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END;
+        DELETE FROM [#ExecutionPlanAnalysis_PlanWarnings]
+        WHERE [AnalysisObjectId]=@AnalysisObjectId
+          AND [WarningCode]<>'NO_EXPLICIT_WARNING'
+          AND CASE [Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END<@MinSeverityRank;
         DELETE FROM [#ExecutionPlanAnalysis_Findings]
         WHERE [AnalysisObjectId]=@AnalysisObjectId
           AND CASE [Severity] WHEN 'CRITICAL' THEN 5 WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END<@MinSeverityRank;
+
+        IF NOT EXISTS
+           (
+               SELECT 1
+               FROM [#ExecutionPlanAnalysis_PlanWarnings]
+               WHERE [AnalysisObjectId]=@AnalysisObjectId
+           )
+            INSERT [#ExecutionPlanAnalysis_PlanWarnings]
+            (
+                  [AnalysisObjectId],[WarningCode],[WarningCategory],[Severity]
+                , [EvidenceKind],[EvidenceSource],[PlanSource],[SourceObservedAtUtc]
+                , [IsCurrent],[IsLastKnown],[IsMeasured],[IsInferred]
+                , [Detail],[FalsePositiveGuard],[StatusCode]
+            )
+            VALUES
+            (
+                  @AnalysisObjectId,'NO_WARNING_AT_OR_ABOVE_THRESHOLD','SOURCE_STATUS','INFO'
+                , 'SOURCE_STATUS','PLAN_XML',@PlanSource,@SourceObservedAtUtc
+                , CASE WHEN @RuntimeCounterScope='CURRENT_PARTIAL_EXECUTION' THEN 1 ELSE 0 END
+                , CASE WHEN @RuntimeCounterScope='LAST_COMPLETED_EXECUTION' THEN 1 ELSE 0 END
+                , 0,0
+                , CONCAT(N'Unterhalb der angeforderten Mindestschwere ',@MinSeverity,N' vorhandene Warnungen wurden nicht ausgegeben.')
+                , N'Ein gefiltertes Warnungsresultset beweist weder einen optimalen Plan noch eine fehlende Planquelle.'
+                , 'AVAILABLE'
+            );
 
         DECLARE @ShowplanVersion nvarchar(64)=NULLIF(@PlanXml.value('string((/*[local-name(.)="ShowPlanXML"]/@Version)[1])','nvarchar(64)'),N'');
         DECLARE @ShowplanBuild nvarchar(64)=NULLIF(@PlanXml.value('string((/*[local-name(.)="ShowPlanXML"]/@Build)[1])','nvarchar(64)'),N'');
