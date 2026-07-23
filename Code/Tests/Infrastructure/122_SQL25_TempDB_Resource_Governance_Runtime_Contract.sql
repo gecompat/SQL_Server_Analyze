@@ -48,19 +48,22 @@ CREATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor]([S
 CREATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_CurrentOverview]([Seed] bit NULL);
 
 BEGIN TRY
-    SET LOCK_TIMEOUT 731;
+    SET @Sql=N'    SET LOCK_TIMEOUT 731;
     EXEC [monitor].[USP_CurrentTempDB]
           @MitDateien=0
         , @MaxZeilen=50
-        , @ResultSetArt='TABLE'
+        , @ResultSetArt=''TABLE''
         , @ResultTablesJson=
-              N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB"}'
+              N''{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB"}''
         , @JsonErzeugen=1
-        , @Json=@CurrentJson OUTPUT
+        , @Json=@OutputJson OUTPUT
         , @PrintMeldungen=0;
 
     IF @@LOCK_TIMEOUT<>731
-        THROW 55820,N'SQL25-003 CurrentTempDB stellt LOCK_TIMEOUT nicht wieder her.',1;
+        THROW 55820,N''SQL25-003 CurrentTempDB stellt LOCK_TIMEOUT nicht wieder her.'',1;';
+    EXEC [sys].[sp_executesql] @Sql
+        , N'@OutputJson nvarchar(max) OUTPUT'
+        , @OutputJson=@CurrentJson OUTPUT;
     IF ISJSON(@CurrentJson)<>1
        OR JSON_QUERY(@CurrentJson,N'$.tempdbGovernance') IS NULL
        OR NOT EXISTS
@@ -73,19 +76,22 @@ BEGIN TRY
         THROW 55821,N'SQL25-003 CurrentTempDB TABLE-/JSON-Grundvertrag fehlt.',1;
     INSERT @ExecutedCases VALUES('CURRENT-TEMPDB-TABLE-JSON');
 
-    SET LOCK_TIMEOUT 733;
+    SET @Sql=N'    SET LOCK_TIMEOUT 733;
     EXEC [monitor].[USP_ResourceGovernorAnalysis]
           @MitSessions=0
         , @MaxZeilen=50
-        , @ResultSetArt='TABLE'
+        , @ResultSetArt=''TABLE''
         , @ResultTablesJson=
-              N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}'
+              N''{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}''
         , @JsonErzeugen=1
-        , @Json=@ResourceGovernorJson OUTPUT
+        , @Json=@OutputJson OUTPUT
         , @PrintMeldungen=0;
 
     IF @@LOCK_TIMEOUT<>733
-        THROW 55822,N'SQL25-003 ResourceGovernorAnalysis stellt LOCK_TIMEOUT nicht wieder her.',1;
+        THROW 55822,N''SQL25-003 ResourceGovernorAnalysis stellt LOCK_TIMEOUT nicht wieder her.'',1;';
+    EXEC [sys].[sp_executesql] @Sql
+        , N'@OutputJson nvarchar(max) OUTPUT'
+        , @OutputJson=@ResourceGovernorJson OUTPUT;
     IF ISJSON(@ResourceGovernorJson)<>1
        OR JSON_QUERY(@ResourceGovernorJson,N'$.tempdbGovernance') IS NULL
        OR NOT EXISTS
@@ -98,7 +104,7 @@ BEGIN TRY
         THROW 55823,N'SQL25-003 ResourceGovernorAnalysis TABLE-/JSON-Grundvertrag fehlt.',1;
     INSERT @ExecutedCases VALUES('RESOURCE-GOVERNOR-TABLE-JSON');
 
-    SET LOCK_TIMEOUT 735;
+    SET @Sql=N'    SET LOCK_TIMEOUT 735;
     EXEC [monitor].[USP_CurrentOverview]
           @MitSessions=0
         , @MitRequests=0
@@ -111,15 +117,18 @@ BEGIN TRY
         , @MitLog=0
         , @MitSqlText=0
         , @MaxZeilen=50
-        , @ResultSetArt='TABLE'
+        , @ResultSetArt=''TABLE''
         , @ResultTablesJson=
-              N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentOverview"}'
+              N''{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentOverview"}''
         , @JsonErzeugen=1
-        , @Json=@OverviewJson OUTPUT
+        , @Json=@OutputJson OUTPUT
         , @PrintMeldungen=0;
 
     IF @@LOCK_TIMEOUT<>735
-        THROW 55824,N'SQL25-003 CurrentOverview stellt LOCK_TIMEOUT nicht wieder her.',1;
+        THROW 55824,N''SQL25-003 CurrentOverview stellt LOCK_TIMEOUT nicht wieder her.'',1;';
+    EXEC [sys].[sp_executesql] @Sql
+        , N'@OutputJson nvarchar(max) OUTPUT'
+        , @OutputJson=@OverviewJson OUTPUT;
     IF ISJSON(@OverviewJson)<>1
        OR JSON_QUERY(@OverviewJson,N'$.tempdbSessions.tempdbGovernance') IS NULL
        OR NOT EXISTS
@@ -294,32 +303,38 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
             TRUNCATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor];
 
             SET @CurrentJson=NULL;
-            SET LOCK_TIMEOUT 737;
+            SET @Sql=N'            SET LOCK_TIMEOUT 737;
             EXEC [monitor].[USP_CurrentTempDB]
                   @MitDateien=0
                 , @MaxZeilen=100
-                , @ResultSetArt='TABLE'
+                , @ResultSetArt=''TABLE''
                 , @ResultTablesJson=
-                      N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB"}'
+                      N''{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_CurrentTempDB"}''
                 , @JsonErzeugen=1
-                , @Json=@CurrentJson OUTPUT
+                , @Json=@OutputJson OUTPUT
                 , @PrintMeldungen=0;
             IF @@LOCK_TIMEOUT<>737
-                THROW 55828,N'SQL25-003 CurrentTempDB verändert LOCK_TIMEOUT im aktiven Pfad.',1;
+                THROW 55828,N''SQL25-003 CurrentTempDB verändert LOCK_TIMEOUT im aktiven Pfad.'',1;';
+            EXEC [sys].[sp_executesql] @Sql
+                , N'@OutputJson nvarchar(max) OUTPUT'
+                , @OutputJson=@CurrentJson OUTPUT;
 
             SET @ResourceGovernorJson=NULL;
-            SET LOCK_TIMEOUT 739;
+            SET @Sql=N'            SET LOCK_TIMEOUT 739;
             EXEC [monitor].[USP_ResourceGovernorAnalysis]
                   @MitSessions=0
                 , @MaxZeilen=100
-                , @ResultSetArt='TABLE'
+                , @ResultSetArt=''TABLE''
                 , @ResultTablesJson=
-                      N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}'
+                      N''{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}''
                 , @JsonErzeugen=1
-                , @Json=@ResourceGovernorJson OUTPUT
+                , @Json=@OutputJson OUTPUT
                 , @PrintMeldungen=0;
             IF @@LOCK_TIMEOUT<>739
-                THROW 55829,N'SQL25-003 ResourceGovernorAnalysis verändert LOCK_TIMEOUT im aktiven Pfad.',1;
+                THROW 55829,N''SQL25-003 ResourceGovernorAnalysis verändert LOCK_TIMEOUT im aktiven Pfad.'',1;';
+            EXEC [sys].[sp_executesql] @Sql
+                , N'@OutputJson nvarchar(max) OUTPUT'
+                , @OutputJson=@ResourceGovernorJson OUTPUT;
 
             IF NOT EXISTS
                (
@@ -420,17 +435,18 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
                  N'ALTER RESOURCE GOVERNOR RESET STATISTICS;';
 
             TRUNCATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor];
-            SET LOCK_TIMEOUT 741;
+            SET @Sql=N'            SET LOCK_TIMEOUT 741;
             EXEC [monitor].[USP_ResourceGovernorAnalysis]
                   @MitSessions=0
                 , @MaxZeilen=100
-                , @ResultSetArt='TABLE'
+                , @ResultSetArt=''TABLE''
                 , @ResultTablesJson=
-                      N'{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}'
+                      N''{"tempdbGovernance":"#SQL25TempDBResourceGovernanceRuntimeContract_ResourceGovernor"}''
                 , @JsonErzeugen=0
                 , @PrintMeldungen=0;
             IF @@LOCK_TIMEOUT<>741
-                THROW 55835,N'SQL25-003 Resetpfad verändert LOCK_TIMEOUT.',1;
+                THROW 55835,N''SQL25-003 Resetpfad verändert LOCK_TIMEOUT.'',1;';
+            EXEC [sys].[sp_executesql] @Sql;
 
             IF NOT EXISTS
                (
@@ -501,9 +517,6 @@ ALTER RESOURCE GOVERNOR RECONFIGURE;';
         END;
     END;
 
-    SET @Sql=N'SET LOCK_TIMEOUT '
-            +CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
-    EXEC [sys].[sp_executesql] @Sql;
 END TRY
 BEGIN CATCH
     DECLARE @CatchMessage nvarchar(2048)=ERROR_MESSAGE();
@@ -558,14 +571,6 @@ BEGIN CATCH
                 EXEC [sys].[sp_executesql]
                      N'ALTER RESOURCE GOVERNOR DISABLE;';
         END;
-    END TRY
-    BEGIN CATCH
-    END CATCH;
-
-    BEGIN TRY
-        SET @Sql=N'SET LOCK_TIMEOUT '
-                +CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
-        EXEC [sys].[sp_executesql] @Sql;
     END TRY
     BEGIN CATCH
     END CATCH;

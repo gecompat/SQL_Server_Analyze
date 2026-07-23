@@ -343,7 +343,7 @@ def main() -> int:
             "StatisticsStartTime",
             "EXECUTE AS USER",
             "REVERT",
-            "@ResultSetArt='TABLE'",
+            "@ResultSetArt=''TABLE''",
             "@JsonErzeugen=1",
             "@@LOCK_TIMEOUT",
             "DROP WORKLOAD GROUP",
