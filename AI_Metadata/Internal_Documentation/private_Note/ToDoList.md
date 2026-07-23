@@ -221,5 +221,19 @@ Meine Hauptempfehlung ist damit: **Welle 0 und 1, danach DIAG-003, DIAG-004 und 
 
 In diesem Planungsschritt wurden noch keine Repositorydateien geändert.
 
+---
+
+wurden in dieser Liste jetzt zusätzlich auch alle Backlog ToDos berücksichtigt?
+
+---
+
+
+Nein. Die Liste war primär ein Abschlussplan für **teilimplementierte Funktionen**. Zusätzlich aufgenommen wurden zwar einige neue Backlog-Themen (`SQL25-001` bis `SQL25-005` und `OPS-005` bis `OPS-009`), aber **nicht sämtliche Repository-Backlog-Todos**.
+
+Beispielsweise wurden `SC-024`, `SC-025`, `COLL-001` sowie weitere Dokumentations-, Test-, Qualitäts- und technische Schulden nicht als Umsetzungswellen eingeplant.
+
+Korrekte Einordnung: **Teilimplementierungen vollständig berücksichtigt; Gesamtbacklog nur teilweise berücksichtigt.** Für einen vollständigen Gesamtplan müssten alle Backlog- und Statusdateien konsolidiert, dedupliziert und priorisiert werden.
+
+
 
 
