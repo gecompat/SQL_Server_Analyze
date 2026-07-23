@@ -9,6 +9,8 @@
     )
     SqlVersionPriority = @(2025, 2022, 2019)
     ContainerEngine = 'DOCKER'
+    ContainerImageLogicalId = 'SQL_SERVER_2025_DEVELOPER_LINUX'
+    AcceptSqlServerEula = $false
     ResourceProfile = 'Compact'
 
     StorageRoleBindings = @{
@@ -51,7 +53,7 @@
 
     SecretPolicy = @{
         Provider = 'NONE'
-        RequiredSecretNames = @()
+        RequiredSecretNames = @('SQL_SA_PASSWORD')
         AllowInteractive = $false
     }
 

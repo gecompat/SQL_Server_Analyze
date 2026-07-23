@@ -1,5 +1,7 @@
 # Local configuration and runtime state
 /Config/lab.config.psd1
+/Config/image-lock.local.json
+/Containers/.env
 /.artifacts/
 /.cache/
 /.secrets/
@@ -19,4 +21,3 @@
 /**/*.log
 /**/*.sqlplan
 /**/*.xel
-

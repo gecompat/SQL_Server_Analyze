@@ -1,7 +1,15 @@
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter(Mandatory)]
-    [ValidateSet('Preflight', 'Status', 'Down', 'RecoveryCleanup')]
+    [ValidateSet(
+        'Preflight',
+        'Status',
+        'Up',
+        'Run',
+        'Validate',
+        'Down',
+        'RecoveryCleanup'
+    )]
     [string] $Action,
 
     [Parameter()]
@@ -14,6 +22,26 @@ param(
 
     [Parameter()]
     [string] $ConfigPath,
+
+    [Parameter()]
+    [ValidateSet('DOCKER', 'PODMAN')]
+    [string] $Engine = 'DOCKER',
+
+    [Parameter()]
+    [ValidateSet('CTR-SINGLE')]
+    [string] $Topology = 'CTR-SINGLE',
+
+    [Parameter()]
+    [ValidateSet(2025)]
+    [int] $SqlVersion = 2025,
+
+    [Parameter()]
+    [ValidateSet('Compact')]
+    [string] $ResourceProfile = 'Compact',
+
+    [Parameter()]
+    [ValidateSet('LAB-BASE-001', 'LAB-BASE-002')]
+    [string] $ScenarioId,
 
     [Parameter()]
     [switch] $AllowRemoteExecution
@@ -58,6 +86,51 @@ switch ($Action) {
             throw 'Status requires -LabRunId.'
         }
         Get-LabStatus -LabRunId $LabRunId
+        break
+    }
+
+    'Up' {
+        $arguments = @{
+            ContainerEngine = $Engine
+            TopologyId = $Topology
+            SqlVersion = $SqlVersion
+            ResourceProfile = $ResourceProfile
+            AllowRemoteExecution = $AllowRemoteExecution
+            Confirm = $false
+            WhatIf = $WhatIfPreference
+        }
+        if ($PSBoundParameters.ContainsKey('LabRunId')) {
+            $arguments.LabRunId = $LabRunId
+        }
+        if ($PSBoundParameters.ContainsKey('ExecutionMode')) {
+            $arguments.ExecutionMode = $ExecutionMode
+        }
+        if ($PSBoundParameters.ContainsKey('ConfigPath')) {
+            $arguments.ConfigPath = $ConfigPath
+        }
+        Invoke-LabUp @arguments
+        break
+    }
+
+    'Run' {
+        if (
+            -not $PSBoundParameters.ContainsKey('LabRunId') -or
+            -not $PSBoundParameters.ContainsKey('ScenarioId')
+        ) {
+            throw 'Run requires -LabRunId and -ScenarioId.'
+        }
+        Invoke-LabScenario -LabRunId $LabRunId -ScenarioId $ScenarioId
+        break
+    }
+
+    'Validate' {
+        if (
+            -not $PSBoundParameters.ContainsKey('LabRunId') -or
+            -not $PSBoundParameters.ContainsKey('ScenarioId')
+        ) {
+            throw 'Validate requires -LabRunId and -ScenarioId.'
+        }
+        Test-LabScenario -LabRunId $LabRunId -ScenarioId $ScenarioId
         break
     }
 

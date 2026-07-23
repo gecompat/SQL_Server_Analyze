@@ -7,6 +7,7 @@ on:
       - 'Lab/**'
       - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
       - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
+      - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -20,6 +21,7 @@ on:
       - 'Lab/**'
       - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
       - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
+      - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -36,21 +38,23 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 Welle 0 and Welle 1
+    name: Validate LAB-001 Wellen 0 to 2
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Validate catalogs coverage status privacy and orchestration safety
+      - name: Validate catalogs status privacy and orchestration safety
         shell: bash
         run: |
           set -euo pipefail
           python3 ./Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py \
             --repository-root .
           python3 ./Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py \
+            --repository-root .
+          python3 ./Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py \
             --repository-root .
 
       - name: Validate example manifests against JSON schemas
@@ -62,6 +66,30 @@ jobs:
         shell: pwsh
         run: |
           pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave1Tests.ps1
+
+      - name: Run Welle 2 contract tests
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave2Tests.ps1
+
+      - name: Validate Docker Compose model
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_dir="$(mktemp -d)"
+          trap 'rmdir -- "$runtime_dir"' EXIT
+          LAB_COMPOSE_PROJECT=lab001-validation \
+          LAB_RUN_ID=LAB-20000101T000000Z-00000000 \
+          LAB_CONTAINER_HOSTNAME=lab-sql \
+          LAB_RUNTIME_DIR="$runtime_dir" \
+          LAB_DATA_DIR="$runtime_dir" \
+          LAB_SQL_IMAGE=mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04 \
+          LAB_SQL_SA_PASSWORD="$(openssl rand -hex 24)" \
+          docker compose \
+            --project-name lab001-validation \
+            --file ./Lab/Containers/compose.yaml \
+            --file ./Lab/Containers/compose.docker.yaml \
+            config --quiet
 
       - name: Install pinned PowerShell analyzer
         shell: pwsh

@@ -43,12 +43,6 @@ function Invoke-LabCleanup {
                 throw 'Cleanup registry contains a foreign owner.'
             }
             if (
-                $resource.Provider -ne 'LOCAL_FILESYSTEM' -or
-                $resource.ResourceType -ne 'FILE'
-            ) {
-                throw 'Cleanup registry contains an unsupported resource handler.'
-            }
-            if (
                 [string] $resource.ResourceId -notmatch
                 '^[A-Z0-9][A-Z0-9_-]{2,127}$'
             ) {
@@ -61,10 +55,50 @@ function Invoke-LabCleanup {
             ) {
                 throw 'Cleanup registry contains a wildcard locator.'
             }
-            if (-not (Test-LabPathWithinRoot `
+
+            $isLocalFile = (
+                $resource.Provider -eq 'LOCAL_FILESYSTEM' -and
+                $resource.ResourceType -in @('FILE', 'DIRECTORY')
+            )
+            $isDockerObject = (
+                $resource.Provider -eq 'DOCKER' -and
+                $resource.ResourceType -in @('CONTAINER', 'NETWORK', 'VOLUME')
+            )
+            if (-not $isLocalFile -and -not $isDockerObject) {
+                throw 'Cleanup registry contains an unsupported resource handler.'
+            }
+            if (
+                $isLocalFile -and
+                -not (Test-LabPathWithinRoot `
                         -Path $resource.ExactLocator `
-                        -Root $paths.RunDirectory)) {
+                        -Root $resource.BoundaryLocator)
+            ) {
                 throw 'Cleanup registry contains a locator outside the run boundary.'
+            }
+            if ($resource.ResourceType -eq 'DIRECTORY') {
+                $markerPath = Join-Path $resource.ExactLocator '.lab-owner'
+                if (
+                    -not (Test-Path -LiteralPath $markerPath -PathType Leaf) -or
+                    (Get-Content -LiteralPath $markerPath -Raw -Encoding utf8).Trim() -ne
+                    $LabRunId
+                ) {
+                    throw 'Cleanup directory ownership marker is invalid.'
+                }
+            }
+            if (
+                $isDockerObject -and
+                $resource.ResourceType -in @('CONTAINER', 'NETWORK') -and
+                [string] $resource.ExactLocator -notmatch '^[a-f0-9]{64}$'
+            ) {
+                throw 'Cleanup registry contains an invalid Docker object ID.'
+            }
+            if (
+                $isDockerObject -and
+                $resource.ResourceType -eq 'VOLUME' -and
+                [string] $resource.ExactLocator -notmatch
+                '^[a-z0-9][a-z0-9_.-]{2,127}$'
+            ) {
+                throw 'Cleanup registry contains an invalid Docker volume identity.'
             }
         }
 
@@ -88,10 +122,39 @@ function Invoke-LabCleanup {
 
         $remainingResources = [Collections.Generic.List[object]]::new()
         $removedResourceCount = 0
-        foreach ($resource in $resources) {
+        $orderedResources = @(
+            $resources |
+                Sort-Object {
+                    if ($_.ResourceType -eq 'CONTAINER') { 10 }
+                    elseif ($_.ResourceType -eq 'NETWORK') { 20 }
+                    elseif ($_.ResourceType -eq 'VOLUME') { 30 }
+                    elseif ($_.ResourceType -eq 'FILE') { 40 }
+                    else { 50 }
+                }
+        )
+        foreach ($resource in $orderedResources) {
             try {
-                if (Test-Path -LiteralPath $resource.ExactLocator -PathType Leaf) {
-                    Remove-Item -LiteralPath $resource.ExactLocator -Force
+                if ($resource.Provider -eq 'LOCAL_FILESYSTEM') {
+                    if ($resource.ResourceType -eq 'DIRECTORY') {
+                        if (
+                            Test-Path `
+                                -LiteralPath $resource.ExactLocator `
+                                -PathType Container
+                        ) {
+                            [IO.Directory]::Delete($resource.ExactLocator, $true)
+                        }
+                    }
+                    elseif (
+                        Test-Path -LiteralPath $resource.ExactLocator -PathType Leaf
+                    ) {
+                        Remove-Item -LiteralPath $resource.ExactLocator -Force
+                    }
+                }
+                else {
+                    Remove-LabDockerResource `
+                        -LabRunId $LabRunId `
+                        -ResourceType $resource.ResourceType `
+                        -ExactLocator $resource.ExactLocator
                 }
                 $removedResourceCount++
             }

@@ -32,6 +32,14 @@ $schemaTests = @(
         Instance = 'Lab/Validation/Fixtures/Valid/finding-expectation.example.json'
         Schema = 'Lab/Contracts/finding-expectation.schema.json'
     }
+    @{
+        Instance = 'Lab/Scenarios/Core/LAB-BASE-001/scenario.json'
+        Schema = 'Lab/Contracts/scenario.schema.json'
+    }
+    @{
+        Instance = 'Lab/Scenarios/Core/LAB-BASE-002/scenario.json'
+        Schema = 'Lab/Contracts/scenario.schema.json'
+    }
 )
 
 foreach ($test in $schemaTests) {
@@ -62,18 +70,16 @@ if ($null -eq $pythonCommand) {
     $pythonCommand = Get-Command python -ErrorAction Stop
 }
 
-$validatorPath = Join-Path $RepositoryRoot 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
-& $pythonCommand.Source $validatorPath --repository-root $RepositoryRoot
-if ($LASTEXITCODE -ne 0) {
-    throw "LAB-001 static contract validation failed with exit code $LASTEXITCODE."
-}
-
-$waveOneValidatorPath = Join-Path $RepositoryRoot (
-    'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
-)
-& $pythonCommand.Source $waveOneValidatorPath --repository-root $RepositoryRoot
-if ($LASTEXITCODE -ne 0) {
-    throw "LAB-001 Welle 1 validation failed with exit code $LASTEXITCODE."
+foreach ($validator in @(
+        'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
+        'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
+        'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
+    )) {
+    $validatorPath = Join-Path $RepositoryRoot $validator
+    & $pythonCommand.Source $validatorPath --repository-root $RepositoryRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "LAB-001 validation failed with exit code $LASTEXITCODE."
+    }
 }
 
 Write-Output 'LAB-001 PowerShell JSON-schema and static validation passed.'
