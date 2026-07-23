@@ -351,6 +351,30 @@ def main() -> int:
         RUNTIME_PATH,
         errors,
     )
+    seed_targets = set(
+        re.findall(
+            r"CREATE TABLE \[(#SQL25TempDBResourceGovernanceRuntimeContract_"
+            r"[A-Za-z0-9_]+)\]\(\[Seed\] bit NULL\);",
+            runtime,
+        )
+    )
+    mapped_targets = re.findall(
+        r'tempdbGovernance":"(#SQL25TempDBResourceGovernanceRuntimeContract_'
+        r'[A-Za-z0-9_]+)"',
+        runtime,
+    )
+    if (
+        len(seed_targets) != 6
+        or len(mapped_targets) != 6
+        or len(set(mapped_targets)) != 6
+        or set(mapped_targets) != seed_targets
+    ):
+        errors.append(
+            "runtime: every TABLE invocation must use its own canonical Seed target"
+        )
+    if "TRUNCATE TABLE [#SQL25TempDBResourceGovernanceRuntimeContract_" in runtime:
+        errors.append("runtime: materialized TABLE targets must not be reused")
+
     if re.search(r"(?i)(?:password|pwd|token|secret)\s*=", runtime):
         errors.append("runtime: credential-like assignment is forbidden")
     if re.search(r"(?i)(?:https?://|[A-Z]:\\|/(?:home|users)/)", runtime):
