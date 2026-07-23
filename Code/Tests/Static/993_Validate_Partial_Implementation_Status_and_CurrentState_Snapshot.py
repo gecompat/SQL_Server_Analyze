@@ -114,7 +114,7 @@ def main() -> int:
     ).read_text(encoding="utf-8-sig")
     for token in (
         "## DIAG-003: Parameter- und Variablenwerte",
-        "## DIAG-004: Statement-/Request-Kontext",
+        "## DIAG-004: Statement- und Requestkontext",
         "Status: `IMPLEMENTED_ACTIONS_GATE`",
         "Post-Candidate-Quelle",
         "USP_CurrentSessions",
