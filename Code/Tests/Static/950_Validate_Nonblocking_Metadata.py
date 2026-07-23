@@ -111,7 +111,26 @@ for path in sorted(CODE.rglob("*.sql")):
             text,
             re.IGNORECASE,
         )
-        if not uses_zero_timeout and not (captures_timeout and restores_timeout):
+        uses_isolated_parameter_timeout = re.search(
+            r"N'SET\s+LOCK_TIMEOUT\s+'\s*\+\s*"
+            r"CONVERT\s*\(\s*nvarchar\s*\(\s*11\s*\)\s*,\s*@LockTimeoutMs\s*\)",
+            text,
+            re.IGNORECASE,
+        )
+        asserts_unchanged_timeout = re.search(
+            r"IF\s+@@LOCK_TIMEOUT\s*<>\s*@OriginalLockTimeout",
+            text,
+            re.IGNORECASE,
+        )
+        if (
+            not uses_zero_timeout
+            and not (captures_timeout and restores_timeout)
+            and not (
+                captures_timeout
+                and uses_isolated_parameter_timeout
+                and asserts_unchanged_timeout
+            )
+        ):
             errors.append(
                 f"{relative}: Procedure setzt keinen nichtblockierenden LOCK_TIMEOUT "
                 "oder stellt den ursprünglichen Wert nicht nachweisbar wieder her"

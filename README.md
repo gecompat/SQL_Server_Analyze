@@ -49,7 +49,7 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 - TempDB-, I/O- und Transaktionslog-Diagnose einschließlich
   SQL-Server-2025-Workload-Group-Limits, aktueller/Peak-Nutzung,
   Verletzungszählern und Resetfenster
-- Objekt-, Index-, Statistik-, Partitionierungs- und Columnstore-Analyse einschließlich capability-adaptiver SQL-Server-2025-JSON-Index-/Pfadmetadaten
+- Objekt-, Index-, Statistik-, Partitionierungs- und Columnstore-Analyse einschließlich capability-adaptiver SQL-Server-2025-JSON-Index-/Pfadmetadaten sowie Statistikherkunft auf lesbaren Secondaries
 - Plan Cache, Query Hash, Showplan und Plan-Detailanalyse
 - Query Store: Laufzeitwerte, Waits, Planwechsel, Regressionen, Forced Plans und Hints
 - Extended Events: Sessions, Targets, Deadlocks und Blocked-Process-Ereignisse
