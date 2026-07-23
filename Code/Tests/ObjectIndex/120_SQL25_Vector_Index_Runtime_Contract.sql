@@ -162,7 +162,16 @@ BEGIN TRY
                     , N'; sources='
                     , COALESCE
                       (
-                          STRING_AGG(CONCAT([SourceName],N'/',[StatusCode],N'/',CONVERT(varchar(1),[IsPartial])),N','),
+                          STRING_AGG
+                          (
+                              CONCAT
+                              (
+                                    [SourceName],N'/',[StatusCode],N'/',CONVERT(varchar(1),[IsPartial])
+                                  , N'/error=',COALESCE(CONVERT(varchar(12),[ErrorNumber]),'NULL')
+                                  , N':',COALESCE(LEFT([ErrorMessage],512),N'NULL')
+                              ),
+                              N','
+                          ),
                           N'NONE'
                       )
                 )
@@ -172,6 +181,8 @@ BEGIN TRY
                       [SourceName] sysname N'$.SourceName'
                     , [StatusCode] varchar(40) N'$.StatusCode'
                     , [IsPartial] bit N'$.IsPartial'
+                    , [ErrorNumber] int N'$.ErrorNumber'
+                    , [ErrorMessage] nvarchar(2048) N'$.ErrorMessage'
                 )
             );
             THROW 55703,@CapabilityDetail,1;
