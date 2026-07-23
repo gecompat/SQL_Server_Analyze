@@ -61,3 +61,5 @@ RUNTIME-001 ist als implementierter portabler Kern mit ausstehenden
 externen Feature-Nachweisen eingestuft. Bei SC-023 bleibt der bereits
 abgenommene Performance-Counter-Slice implementiert; weitere Collector und
 Rollups sind optionaler Ausbau.
+
+LAB-001 ist nach Welle 1 als `PARTIAL_PRODUCT_FUNCTION` eingestuft. Der read-only Preflight und der begrenzte Orchestrator-Core sind nutzbar; Container-, SQL-Server- und Szenarioausführung bleiben den Wellen 2 bis 10 zugeordnet.

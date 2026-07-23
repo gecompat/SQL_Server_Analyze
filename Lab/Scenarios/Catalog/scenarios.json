@@ -1,7 +1,8 @@
 {
   "SchemaVersion": "1.0",
-  "ProductStatus": "RESEARCHED_NOT_IMPLEMENTED",
+  "ProductStatus": "PARTIAL_PRODUCT_FUNCTION",
   "Wave0ContractStatus": "IMPLEMENTED_AUTOMATED_GATE",
+  "Wave1ContractStatus": "IMPLEMENTED_AUTOMATED_GATE",
   "Scenarios": [
     {"ScenarioId":"LAB-BASE-001","Title":"Healthy bounded baseline","EvidenceClass":"REAL","PrimaryPlatform":"CONTAINER_LINUX","TopologyId":"CTR-SINGLE","PlannedWave":2,"ImplementationStatus":"PLANNED_NOT_IMPLEMENTED"},
     {"ScenarioId":"LAB-BASE-002","Title":"Restricted permission and metadata visibility","EvidenceClass":"REAL","PrimaryPlatform":"CONTAINER_LINUX","TopologyId":"CTR-SINGLE","PlannedWave":2,"ImplementationStatus":"PLANNED_NOT_IMPLEMENTED"},

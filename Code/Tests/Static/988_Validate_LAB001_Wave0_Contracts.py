@@ -90,14 +90,6 @@ FORBIDDEN_LAB_SUFFIXES = (
     ".vhdx",
     ".xel",
 )
-FORBIDDEN_WAVE0_RUNTIME_FILES = (
-    "Lab/Orchestration/Invoke-DiagnosticLab.ps1",
-    "Lab/Containers/compose.yaml",
-    "Lab/Containers/compose.docker.yaml",
-    "Lab/Containers/compose.podman.yaml",
-)
-
-
 @dataclass(frozen=True)
 class Finding:
     rule: str
@@ -402,10 +394,12 @@ def validate_catalogs(repository_root: Path) -> tuple[list[Finding], set[str]]:
 
     if len(scenario_ids) != len(set(scenario_ids)):
         findings.append(Finding("SCENARIO_ID_DUPLICATE", scenario_path.as_posix()))
-    if scenario_catalog.get("ProductStatus") != "RESEARCHED_NOT_IMPLEMENTED":
-        findings.append(Finding("LAB_PRODUCT_STATUS_OVERSTATED", scenario_path.as_posix()))
+    if scenario_catalog.get("ProductStatus") != "PARTIAL_PRODUCT_FUNCTION":
+        findings.append(Finding("LAB_PRODUCT_STATUS_INVALID", scenario_path.as_posix()))
     if scenario_catalog.get("Wave0ContractStatus") != "IMPLEMENTED_AUTOMATED_GATE":
         findings.append(Finding("WAVE0_CONTRACT_STATUS_INVALID", scenario_path.as_posix()))
+    if scenario_catalog.get("Wave1ContractStatus") != "IMPLEMENTED_AUTOMATED_GATE":
+        findings.append(Finding("WAVE1_CONTRACT_STATUS_INVALID", scenario_path.as_posix()))
 
     return findings, set(scenario_ids)
 
@@ -518,18 +512,25 @@ def validate_status_and_gates(repository_root: Path) -> list[Finding]:
     wave_zero = wave_map.get("LAB-001-WAVE0", {})
     if wave_zero.get("ContractStatus") != "IMPLEMENTED_AUTOMATED_GATE":
         findings.append(Finding("WAVE0_STATUS_INVALID", wave_path.as_posix()))
-    if any(row.get("RuntimeStatus") != "NOT_EXECUTED" for row in wave_rows):
-        findings.append(Finding("WAVE_RUNTIME_STATUS_OVERSTATED", wave_path.as_posix()))
-    for number in range(1, 11):
+    if wave_zero.get("RuntimeStatus") != "NOT_EXECUTED":
+        findings.append(Finding("WAVE0_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
+    wave_one = wave_map.get("LAB-001-WAVE1", {})
+    if wave_one.get("ContractStatus") != "IMPLEMENTED_AUTOMATED_GATE":
+        findings.append(Finding("WAVE1_STATUS_INVALID", wave_path.as_posix()))
+    if wave_one.get("RuntimeStatus") != "IMPLEMENTED_AUTOMATED_GATE":
+        findings.append(Finding("WAVE1_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
+    for number in range(2, 11):
         if wave_map.get(f"LAB-001-WAVE{number}", {}).get("ContractStatus") != "PLANNED":
             findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
+        if wave_map.get(f"LAB-001-WAVE{number}", {}).get("RuntimeStatus") != "NOT_EXECUTED":
+            findings.append(Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
 
     status_rows = load_csv(status_path, findings)
     lab_rows = [row for row in status_rows if row.get("WorkItemId") == "LAB-001"]
     if len(lab_rows) != 1:
         findings.append(Finding("IMPLEMENTATION_STATUS_ROW_INVALID", status_path.as_posix()))
-    elif lab_rows[0].get("ProductStatus") != "RESEARCHED_NOT_IMPLEMENTED":
-        findings.append(Finding("IMPLEMENTATION_STATUS_OVERSTATED", status_path.as_posix()))
+    elif lab_rows[0].get("ProductStatus") != "PARTIAL_PRODUCT_FUNCTION":
+        findings.append(Finding("IMPLEMENTATION_STATUS_INVALID", status_path.as_posix()))
 
     return findings
 
@@ -557,7 +558,7 @@ def tracked_or_present_paths(repository_root: Path) -> list[str]:
     ]
 
 
-def validate_wave0_privacy_boundary(repository_root: Path) -> list[Finding]:
+def validate_lab_privacy_boundary(repository_root: Path) -> list[Finding]:
     findings: list[Finding] = []
     paths = tracked_or_present_paths(repository_root)
     for path in paths:
@@ -567,9 +568,6 @@ def validate_wave0_privacy_boundary(repository_root: Path) -> list[Finding]:
             findings.append(Finding("LAB_RUNTIME_PATH_TRACKED", path))
         if path.startswith("Lab/") and path.lower().endswith(FORBIDDEN_LAB_SUFFIXES):
             findings.append(Finding("LAB_RUNTIME_ARTIFACT_TRACKED", path))
-    for path in FORBIDDEN_WAVE0_RUNTIME_FILES:
-        if path in paths:
-            findings.append(Finding("WAVE0_RUNTIME_FILE_UNEXPECTED", path))
     return findings
 
 
@@ -608,10 +606,9 @@ def main() -> int:
         validate_coverage(repository_root, scenario_ids, args.skip_inventory)
     )
     findings.extend(validate_status_and_gates(repository_root))
-    findings.extend(validate_wave0_privacy_boundary(repository_root))
+    findings.extend(validate_lab_privacy_boundary(repository_root))
     return report(findings)
 
 
 if __name__ == "__main__":
     sys.exit(main())
-
