@@ -149,7 +149,7 @@ def main() -> int:
                 fail("DOCUMENTATION_CONTRACT", f"{page}:{token}")
 
     version = (root / "Code/01_Common/077_FrameworkVersion.sql").read_text(encoding="utf-8-sig")
-    require(version, ("1.1.0-special.14", "ContractVersion]='1.19'"), "FrameworkVersion")
+    require(version, ("1.1.0-special.16", "ContractVersion]='1.20'"), "FrameworkVersion")
 
     output_test = (root / "Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql").read_text(
         encoding="utf-8-sig"
