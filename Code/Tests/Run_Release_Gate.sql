@@ -129,6 +129,7 @@ RAISERROR(N'RELEASE_GATE 30/34: Plan Cache',10,1) WITH NOWAIT;
 :r PlanCache/110_Test_und_Abnahme_Phase3.sql
 :r PlanCache/120_ExecutionPlanAnalysis_Runtime_Contract.sql
 :r PlanCache/121_DIAG003_Parameter_Evidence_Runtime_Contract.sql
+:r PlanCache/123_DIAG005_Plan_Optimizer_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 31/34: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql
