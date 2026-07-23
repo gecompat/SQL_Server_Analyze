@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.InternalAnalyzeExecutionPlan
-Version      : 1.0.1
-Stand        : 2026-07-21
+Version      : 1.1.0
+Stand        : 2026-07-23
 Typ          : Interne Stored Procedure
 Zweck        : Zerlegt genau ein Showplan-XML einmalig in statementgenaue,
                relationale Plan-, Operator-, Runtime-, Statistik-, Parameter-
@@ -25,6 +25,12 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalAnalyzeExecutionPlan]
     , @MitThreadRuntime          bit = 0
     , @EvidenzDatenschutzModus   varchar(24) = 'DERIVED_ONLY'
     , @IdentifierDatenschutzModus varchar(16) = 'RAW'
+    , @SourceObservedAtUtc         datetime2(3) = NULL
+    , @SessionId                  smallint = NULL
+    , @RequestId                  int = NULL
+    , @PlanHandle                 varbinary(64) = NULL
+    , @QueryStoreDatabaseName     sysname = NULL
+    , @QueryStorePlanId           bigint = NULL
     , @StatusCodeOut             varchar(40) = NULL OUTPUT
     , @IsPartialOut              bit = NULL OUTPUT
     , @ErrorNumberOut            int = NULL OUTPUT
@@ -39,6 +45,7 @@ BEGIN
         , @MinSeverity=UPPER(LTRIM(RTRIM(COALESCE(@MinSeverity,'INFO'))))
         , @EvidenzDatenschutzModus=UPPER(LTRIM(RTRIM(COALESCE(@EvidenzDatenschutzModus,'DERIVED_ONLY'))))
         , @IdentifierDatenschutzModus=UPPER(LTRIM(RTRIM(COALESCE(@IdentifierDatenschutzModus,'RAW'))))
+        , @SourceObservedAtUtc=COALESCE(@SourceObservedAtUtc,SYSUTCDATETIME())
         , @StatusCodeOut='AVAILABLE'
         , @IsPartialOut=0
         , @ErrorNumberOut=NULL
@@ -74,6 +81,7 @@ BEGIN
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_AccessPaths];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_StatisticsUsage];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Parameters];
+        SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_ParameterEvidence];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_MemoryAndSpills];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_ExecutionEvidence];
         SELECT TOP (0) * FROM [#ExecutionPlanAnalysis_Findings];
@@ -410,6 +418,144 @@ BEGIN
         FROM [monitor].[TVF_ExecutionPlanStatisticsUsage](@PlanXml,NULL);
 
         DECLARE @TokenSalt varbinary(32)=CRYPT_GEN_RANDOM(32);
+
+        /*
+          DIAG-003: Das Showplan-Parameterelement wird genau einmal zerlegt.
+          Der kanonische Vertrag bewahrt Attributpräsenz, SQL-NULL-Semantik,
+          Quellzeit und Ausführungsscope; das Legacy-Resultset wird anschließend
+          ausschließlich aus derselben Materialisierung projiziert.
+        */
+        INSERT [#ExecutionPlanAnalysis_ParameterEvidence]
+        (
+              [CandidateId],[SessionId],[RequestId],[StatementOrdinal],[StatementId]
+            , [StatementQueryHash],[StatementQueryPlanHash],[PlanHandle]
+            , [QueryStoreDatabaseName],[QueryStorePlanId],[PlanDocumentHash]
+            , [EvidenceKind],[ParameterName],[ParameterDataType]
+            , [CompiledValuePresent],[RuntimeValuePresent]
+            , [CompiledValueIsSqlNull],[RuntimeValueIsSqlNull]
+            , [CompiledValue],[RuntimeValue]
+            , [CompiledValueToken],[RuntimeValueToken]
+            , [CompiledValueLength],[RuntimeValueLength]
+            , [CompiledValueStatus],[RuntimeValueStatus],[ValueStatus]
+            , [ValueHandlingStatus],[ValueSource]
+            , [SourceObservedAtUtc],[ValueCapturedAtUtc]
+            , [IsCurrentExecution],[IsLastKnownExecution],[IsComplete],[EvidenceLimit]
+        )
+        SELECT
+              @AnalysisObjectId,@SessionId,@RequestId,[st].[StatementOrdinal],[st].[StatementId]
+            , [q].[StatementQueryHash],[q].[StatementQueryPlanHash],@PlanHandle
+            , @QueryStoreDatabaseName,@QueryStorePlanId,NULL
+            , 'PARAMETER'
+            , NULLIF([p].[n].value('string((@Column)[1])','nvarchar(256)'),N'')
+            , NULLIF([p].[n].value('string((@ParameterDataType)[1])','nvarchar(256)'),N'')
+            , [v].[CompiledValuePresent],[v].[RuntimeValuePresent]
+            , CONVERT(bit,CASE WHEN [v].[CompiledValuePresent]=1
+                                    AND UPPER(LTRIM(RTRIM(COALESCE([v].[CompiledValueText],N'')))) IN (N'NULL',N'(NULL)')
+                               THEN 1 WHEN [v].[CompiledValuePresent]=1 THEN 0 END)
+            , CONVERT(bit,CASE WHEN [v].[RuntimeValuePresent]=1
+                                    AND UPPER(LTRIM(RTRIM(COALESCE([v].[RuntimeValueText],N'')))) IN (N'NULL',N'(NULL)')
+                               THEN 1 WHEN [v].[RuntimeValuePresent]=1 THEN 0 END)
+            , CASE WHEN @EvidenzDatenschutzModus='RAW' THEN [v].[CompiledValueText] END
+            , CASE WHEN @EvidenzDatenschutzModus='RAW' THEN [v].[RuntimeValueText] END
+            , CASE WHEN @EvidenzDatenschutzModus='TOKENIZED'
+                         AND [v].[CompiledValuePresent]=1
+                         AND UPPER(LTRIM(RTRIM(COALESCE([v].[CompiledValueText],N'')))) NOT IN (N'NULL',N'(NULL)')
+                   THEN CONVERT(nvarchar(66),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([v].[CompiledValueText],N''))),1) END
+            , CASE WHEN @EvidenzDatenschutzModus='TOKENIZED'
+                         AND [v].[RuntimeValuePresent]=1
+                         AND UPPER(LTRIM(RTRIM(COALESCE([v].[RuntimeValueText],N'')))) NOT IN (N'NULL',N'(NULL)')
+                   THEN CONVERT(nvarchar(66),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),COALESCE([v].[RuntimeValueText],N''))),1) END
+            , CASE WHEN [v].[CompiledValuePresent]=1 THEN LEN([v].[CompiledValueText]) END
+            , CASE WHEN [v].[RuntimeValuePresent]=1 THEN LEN([v].[RuntimeValueText]) END
+            , CASE WHEN [v].[CompiledValuePresent]=0 THEN 'NOT_COLLECTED'
+                   WHEN UPPER(LTRIM(RTRIM(COALESCE([v].[CompiledValueText],N'')))) IN (N'NULL',N'(NULL)') THEN 'SQL_NULL'
+                   ELSE 'AVAILABLE' END
+            , CASE WHEN [v].[RuntimeValuePresent]=0 THEN 'NOT_COLLECTED'
+                   WHEN UPPER(LTRIM(RTRIM(COALESCE([v].[RuntimeValueText],N'')))) IN (N'NULL',N'(NULL)') THEN 'SQL_NULL'
+                   ELSE 'AVAILABLE' END
+            , CASE WHEN @RuntimeCounterScope IN ('CURRENT_PARTIAL_EXECUTION','LAST_COMPLETED_EXECUTION','IMPORTED_ACTUAL')
+                   THEN CASE WHEN [v].[RuntimeValuePresent]=0 THEN 'NOT_COLLECTED'
+                             WHEN UPPER(LTRIM(RTRIM(COALESCE([v].[RuntimeValueText],N'')))) IN (N'NULL',N'(NULL)') THEN 'SQL_NULL'
+                             ELSE 'AVAILABLE' END
+                   ELSE CASE WHEN [v].[CompiledValuePresent]=0 THEN 'NOT_COLLECTED'
+                             WHEN UPPER(LTRIM(RTRIM(COALESCE([v].[CompiledValueText],N'')))) IN (N'NULL',N'(NULL)') THEN 'SQL_NULL'
+                             ELSE 'AVAILABLE' END END
+            , CASE @EvidenzDatenschutzModus WHEN 'RAW' THEN 'AVAILABLE_RAW'
+                   WHEN 'TOKENIZED' THEN 'TOKENIZED_CAPTURE_LOCAL'
+                   WHEN 'STRUCTURE_ONLY' THEN 'OMITTED_STRUCTURE_ONLY'
+                   ELSE 'OMITTED_DERIVED_ONLY' END
+            , CASE @PlanSource WHEN 'COMPILE' THEN 'COMPILE_PLAN'
+                   WHEN 'CURRENT_ACTUAL' THEN 'LIVE_PLAN'
+                   WHEN 'LAST_ACTUAL' THEN 'LAST_ACTUAL_PLAN'
+                   WHEN 'QUERY_STORE' THEN 'QUERY_STORE_PLAN'
+                   ELSE 'IMPORTED_PLAN' END
+            , @SourceObservedAtUtc
+            , CASE WHEN @PlanSource='CURRENT_ACTUAL' THEN @SourceObservedAtUtc END
+            , CASE WHEN @PlanSource='CURRENT_ACTUAL' THEN CONVERT(bit,1)
+                   WHEN @PlanSource='IMPORTED' THEN CONVERT(bit,NULL) ELSE CONVERT(bit,0) END
+            , CASE WHEN @PlanSource='LAST_ACTUAL' THEN CONVERT(bit,1)
+                   WHEN @PlanSource='IMPORTED' THEN CONVERT(bit,NULL) ELSE CONVERT(bit,0) END
+            , CONVERT(bit,CASE
+                  WHEN @RuntimeCounterScope IN ('CURRENT_PARTIAL_EXECUTION','LAST_COMPLETED_EXECUTION','IMPORTED_ACTUAL')
+                      THEN [v].[RuntimeValuePresent]
+                  ELSE [v].[CompiledValuePresent] END)
+            , N'Showplan stellt nur die im gewählten Plan vorhandenen Parameterattribute bereit; lokale T-SQL-Variablenwerte sind nicht allgemein über eine DMV verfügbar.'
+        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
+        JOIN [#ExecutionPlanAnalysis_Statements] AS [q]
+          ON [q].[AnalysisObjectId]=@AnalysisObjectId
+         AND [q].[StatementOrdinal]=[st].[StatementOrdinal]
+        CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="ParameterList"]/*[local-name(.)="ColumnReference"]') AS [p]([n])
+        CROSS APPLY
+        (
+            SELECT
+                  [CompiledValuePresent]=CONVERT(bit,[p].[n].exist('@ParameterCompiledValue'))
+                , [RuntimeValuePresent]=CONVERT(bit,[p].[n].exist('@ParameterRuntimeValue'))
+                , [CompiledValueText]=CASE WHEN [p].[n].exist('@ParameterCompiledValue')=1
+                      THEN [p].[n].value('string((@ParameterCompiledValue)[1])','nvarchar(4000)') END
+                , [RuntimeValueText]=CASE WHEN [p].[n].exist('@ParameterRuntimeValue')=1
+                      THEN [p].[n].value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)') END
+        ) AS [v];
+
+        /* Dokumentierte Systemgrenze: lokale Variablen sind keine Showplan-Parameter. */
+        INSERT [#ExecutionPlanAnalysis_ParameterEvidence]
+        (
+              [CandidateId],[SessionId],[RequestId],[StatementOrdinal],[StatementId]
+            , [StatementQueryHash],[StatementQueryPlanHash],[PlanHandle]
+            , [QueryStoreDatabaseName],[QueryStorePlanId],[PlanDocumentHash]
+            , [EvidenceKind],[ParameterName],[ParameterDataType]
+            , [CompiledValuePresent],[RuntimeValuePresent]
+            , [CompiledValueIsSqlNull],[RuntimeValueIsSqlNull]
+            , [CompiledValue],[RuntimeValue],[CompiledValueToken],[RuntimeValueToken]
+            , [CompiledValueLength],[RuntimeValueLength]
+            , [CompiledValueStatus],[RuntimeValueStatus],[ValueStatus]
+            , [ValueHandlingStatus],[ValueSource]
+            , [SourceObservedAtUtc],[ValueCapturedAtUtc]
+            , [IsCurrentExecution],[IsLastKnownExecution],[IsComplete],[EvidenceLimit]
+        )
+        VALUES
+        (
+              @AnalysisObjectId,@SessionId,@RequestId,NULL,NULL,NULL,NULL,@PlanHandle
+            , @QueryStoreDatabaseName,@QueryStorePlanId,NULL
+            , 'SOURCE_BOUNDARY',NULL,NULL,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+            , 'NOT_COLLECTED','NOT_COLLECTED','LOCAL_VARIABLE_NOT_EXPOSED'
+            , CASE @EvidenzDatenschutzModus WHEN 'RAW' THEN 'AVAILABLE_RAW'
+                   WHEN 'TOKENIZED' THEN 'TOKENIZED_CAPTURE_LOCAL'
+                   WHEN 'STRUCTURE_ONLY' THEN 'OMITTED_STRUCTURE_ONLY'
+                   ELSE 'OMITTED_DERIVED_ONLY' END
+            , CASE @PlanSource WHEN 'COMPILE' THEN 'COMPILE_PLAN'
+                   WHEN 'CURRENT_ACTUAL' THEN 'LIVE_PLAN'
+                   WHEN 'LAST_ACTUAL' THEN 'LAST_ACTUAL_PLAN'
+                   WHEN 'QUERY_STORE' THEN 'QUERY_STORE_PLAN'
+                   ELSE 'IMPORTED_PLAN' END
+            , @SourceObservedAtUtc,NULL
+            , CASE WHEN @PlanSource='CURRENT_ACTUAL' THEN CONVERT(bit,1)
+                   WHEN @PlanSource='IMPORTED' THEN CONVERT(bit,NULL) ELSE CONVERT(bit,0) END
+            , CASE WHEN @PlanSource='LAST_ACTUAL' THEN CONVERT(bit,1)
+                   WHEN @PlanSource='IMPORTED' THEN CONVERT(bit,NULL) ELSE CONVERT(bit,0) END
+            , 0
+            , N'Lokale T-SQL-Variablenwerte sind über die ausgewerteten Plan- und DMV-Quellen nicht vollständig zugänglich.'
+        );
+
         INSERT [#ExecutionPlanAnalysis_Parameters]
         (
               [AnalysisObjectId],[StatementOrdinal],[StatementId]
@@ -420,25 +566,15 @@ BEGIN
             , [ValueHandlingStatus],[ValueSource]
         )
         SELECT
-              @AnalysisObjectId,[st].[StatementOrdinal],[st].[StatementId]
-            , NULLIF([p].[n].value('string((@Column)[1])','nvarchar(256)'),N'')
-            , NULLIF([p].[n].value('string((@ParameterDataType)[1])','nvarchar(256)'),N'')
-            , CASE WHEN @EvidenzDatenschutzModus='RAW' THEN NULLIF([p].[n].value('string((@ParameterCompiledValue)[1])','nvarchar(4000)'),N'') END
-            , CASE WHEN @EvidenzDatenschutzModus='RAW' THEN NULLIF([p].[n].value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)'),N'') END
-            , CASE WHEN @EvidenzDatenschutzModus='TOKENIZED' AND NULLIF([p].[n].value('string((@ParameterCompiledValue)[1])','nvarchar(4000)'),N'') IS NOT NULL
-                   THEN HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[p].[n].value('string((@ParameterCompiledValue)[1])','nvarchar(4000)'))) END
-            , CASE WHEN @EvidenzDatenschutzModus='TOKENIZED' AND NULLIF([p].[n].value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)'),N'') IS NOT NULL
-                   THEN HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[p].[n].value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)'))) END
-            , LEN(NULLIF([p].[n].value('string((@ParameterCompiledValue)[1])','nvarchar(4000)'),N''))
-            , LEN(NULLIF([p].[n].value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)'),N''))
-            , CASE @EvidenzDatenschutzModus WHEN 'RAW' THEN 'AVAILABLE_RAW'
-                   WHEN 'TOKENIZED' THEN 'TOKENIZED_CAPTURE_LOCAL'
-                   WHEN 'STRUCTURE_ONLY' THEN 'OMITTED_STRUCTURE_ONLY'
-                   ELSE 'OMITTED_DERIVED_ONLY' END
-            , CASE WHEN NULLIF([p].[n].value('string((@ParameterRuntimeValue)[1])','nvarchar(4000)'),N'') IS NOT NULL
-                   THEN 'COMPILE_AND_RUNTIME_PLAN' ELSE 'COMPILE_PLAN' END
-        FROM [#InternalAnalyzeExecutionPlan_StatementXml] AS [st]
-        CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="ParameterList"]/*[local-name(.)="ColumnReference"]') AS [p]([n]);
+              [CandidateId],[StatementOrdinal],[StatementId]
+            , [ParameterName],[ParameterDataType],[CompiledValue],[RuntimeValue]
+            , CONVERT(varbinary(32),[CompiledValueToken],1)
+            , CONVERT(varbinary(32),[RuntimeValueToken],1)
+            , [CompiledValueLength],[RuntimeValueLength],[ValueHandlingStatus]
+            , CASE WHEN [RuntimeValuePresent]=1 THEN 'COMPILE_AND_RUNTIME_PLAN' ELSE 'COMPILE_PLAN' END
+        FROM [#ExecutionPlanAnalysis_ParameterEvidence]
+        WHERE [CandidateId]=@AnalysisObjectId
+          AND [EvidenceKind]='PARAMETER';
 
         INSERT [#ExecutionPlanAnalysis_MemoryAndSpills]
         (
@@ -1013,6 +1149,10 @@ BEGIN
         DECLARE @OperatorCount int=(SELECT COUNT(*) FROM [#ExecutionPlanAnalysis_Operators] WHERE [AnalysisObjectId]=@AnalysisObjectId);
         DECLARE @CeVersion int=(SELECT MAX([CardinalityEstimationModelVersion]) FROM [#ExecutionPlanAnalysis_Statements] WHERE [AnalysisObjectId]=@AnalysisObjectId);
         DECLARE @PlanHash varbinary(32)=HASHBYTES('SHA2_256',CONVERT(varbinary(max),CONVERT(nvarchar(max),@PlanXml)));
+
+        UPDATE [#ExecutionPlanAnalysis_ParameterEvidence]
+        SET [PlanDocumentHash]=CONVERT(nvarchar(66),@PlanHash,1)
+        WHERE [CandidateId]=@AnalysisObjectId;
 
         INSERT [#ExecutionPlanAnalysis_PlanDocuments]
         (

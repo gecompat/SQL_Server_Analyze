@@ -31,15 +31,22 @@ Das Minimal-XML dient nur als synthetischer Aufrufrahmen; für fachliche Ergebni
 
 ## Resultsets und Leserichtung
 
-CONSOLE zeigt priorisierte `findings`. RAW, TABLE und JSON trennen `moduleStatus`, Capabilities, PlanDocument, Statements, Operatorbaum, Runtime, Threadruntime, Access Paths, Statistics Usage, Parameter, Memory/Spills, Execution Evidence, Histogramme, Predicate-Mappings und Findings.
+CONSOLE zeigt priorisierte `findings`. RAW, TABLE und JSON trennen `moduleStatus`, Capabilities, PlanDocument, Statements, Operatorbaum, Runtime, Threadruntime, Access Paths, Statistics Usage, das bestehende `parametersAndVariants`, die kanonische Parameterevidenz `parameters`, Memory/Spills, Execution Evidence, Histogramme, Predicate-Mappings und Findings.
 
 ## Eine Zeile bedeutet
 
-Je nach Resultset beschreibt eine Zeile einen Plan, ein Statement, einen Operator innerhalb eines Statements, einen Threadcounter, einen Access Path, eine Statistik oder ein Finding. `NodeId` ist nur zusammen mit `StatementOrdinal` eindeutig.
+Je nach Resultset beschreibt eine Zeile einen Plan, ein Statement, einen Operator innerhalb eines Statements, einen Threadcounter, einen Access Path, eine Statistik, einen Parameter, eine dokumentierte Parameterevidenzgrenze oder ein Finding. `NodeId` ist nur zusammen mit `StatementOrdinal` eindeutig. In `parameters` trennt `EvidenceKind = 'PARAMETER'` fachliche Parameterzeilen von `SOURCE_BOUNDARY` und `SOURCE_STATUS`.
 
 ## So lesen
 
-Berücksichtigen Sie zuerst die Planquelle und `RuntimeCounterScope`, danach die Statements und den Operatorbaum. Prüfen Sie absolute Zeilen- und Readmengen vor Ratios. Bewerten Sie Findings erst mit Severity, Confidence, Workloadprofil und Evidenzgrenze.
+Berücksichtigen Sie zuerst die Planquelle und `RuntimeCounterScope`, danach die
+Statements und den Operatorbaum. In `parameters` prüfen Sie anschließend
+`ValueSource`, die Presence-/SQL-NULL-Flags, `ValueStatus`,
+`SourceObservedAtUtc`, Aktualitätskennzeichen und `IsComplete`.
+`NOT_COLLECTED` ist kein SQL-`NULL`; `LAST_ACTUAL_PLAN` ist nicht der
+aktuelle Aufruf. Prüfen Sie absolute Zeilen- und Readmengen vor Ratios.
+Bewerten Sie Findings erst mit Severity, Confidence, Workloadprofil und
+Evidenzgrenze.
 
 ## Warum kann das problematisch sein?
 
@@ -82,7 +89,12 @@ Für einen aktuellen tatsächlichen Plan verwendet der alternative Pfad eine exa
 
 ### Zeit- und Scope-Modell
 
-Compile-, Last-Actual-, Current-Actual-, Query-Store- und importierte Evidenz bleiben getrennt. Ein Last-Actual-Plan ist der letzte bekannte Aufruf, nicht zwingend der aktuelle.
+Compile-, Last-Actual-, Current-Actual-, Query-Store- und importierte Evidenz
+bleiben getrennt. `SourceObservedAtUtc` bezeichnet den Zeitpunkt, zu dem die
+Quelle im Frameworkaufruf gelesen wurde. `ValueCapturedAtUtc` wird nur
+gesetzt, wenn der Zeitpunkt für den Live-Plan tatsächlich aus dem aktuellen
+Abruf ableitbar ist. Ein Last-Actual-Plan ist der letzte bekannte Aufruf, nicht
+zwingend der aktuelle.
 
 ### Bewertung und Gegenprobe
 

@@ -1,13 +1,13 @@
 # Zukunftsvertrag für zusätzliche Diagnoseinformationen
 
-Stand: 2026-07-22
+Stand: 2026-07-23
 Status: `PARTIAL_PRODUCT_FUNCTION`
 Backlog: `DIAG-001` bis `DIAG-007`
 
-Umgesetzt und auf SQL Server 2019, 2022 und 2025 nachgewiesen sind
-`DIAG-001`, `DIAG-002`, `DIAG-006` und `DIAG-007`. `DIAG-003` bis
-`DIAG-005` besitzen nutzbare Bausteine, ihre öffentlichen Gesamtverträge sind
-jedoch noch nicht abgeschlossen und werden deshalb als
+Umgesetzt und im Release-Gate für SQL Server 2019, 2022 und 2025 verankert sind
+`DIAG-001`, `DIAG-002`, `DIAG-003`, `DIAG-006` und `DIAG-007`.
+`DIAG-004` und `DIAG-005` besitzen nutzbare Bausteine, ihre öffentlichen
+Gesamtverträge sind jedoch noch nicht abgeschlossen und werden deshalb als
 `PARTIAL_PRODUCT_FUNCTION` geführt.
 
 Der erste Slice der gemeinsamen laufinternen Evidenzbasis materialisiert
@@ -21,11 +21,12 @@ noch offen; Einzelaufrufe lesen weiterhin frisch.
 
 ## Ziel
 
-Dieser Vertrag bündelt zukünftige Erweiterungen für Serverversions-, Build-,
-Statement-, Parameter-, Plan- und Laufzeitinformationen. Er ist ein
-verbindlicher To-do-Rahmen, aber noch kein Implementierungsauftrag. Neue
-Informationen müssen in den frameworkweiten Datenbank-, CONSOLE-, RAW-, JSON-
-und benannten TABLE-Vertrag integriert werden, ohne Quellen mehrfach zu lesen.
+Dieser Vertrag bündelt umgesetzte und zukünftige Erweiterungen für
+Serverversions-, Build-, Statement-, Parameter-, Plan- und
+Laufzeitinformationen. Offene Abschnitte sind ein verbindlicher
+To-do-Rahmen. Neue Informationen müssen in den frameworkweiten Datenbank-,
+CONSOLE-, RAW-, JSON- und benannten TABLE-Vertrag integriert werden, ohne
+Quellen mehrfach zu lesen.
 
 Der bestehende Kern liefert bereits viele Einzelinformationen. Insbesondere
 `USP_CurrentRequests`, `USP_QueryStats`, `USP_PlanDetails`,
@@ -156,9 +157,9 @@ Pläne, Deadlock-XML und Extended-Events-Eventdaten.
 
 ## Öffentlicher Zielvertrag für DIAG-003 bis DIAG-005
 
-Die folgenden Namen sind reservierte Zielverträge. Sie gelten erst dann als
-implementiert, wenn Procedure, TABLE-Schema, JSON, Inventar und Runtimevertrag
-übereinstimmen.
+Die folgenden Namen bilden die Zielverträge. DIAG-003 ist umgesetzt;
+DIAG-004 und DIAG-005 bleiben reserviert, bis Procedure, TABLE-Schema, JSON,
+Inventar und Runtimevertrag übereinstimmen.
 
 | Work Item | Kanonische Resultsets | Mindestprovenienz |
 |---|---|---|
@@ -173,56 +174,64 @@ nicht erhobenen Wert und nicht verfügbare Quelle unterscheidbar halten.
 
 ## DIAG-003: Parameter- und Variablenwerte
 
-Status: `PARTIAL_PRODUCT_FUNCTION`. Die Showplan-Extraktion ist vorhanden; der
-kanonische quellen-, zeit- und statusbezogene Evidenzvertrag ist offen.
+Status: `IMPLEMENTED_ACTIONS_GATE`.
+
+Das kanonische Resultset `parameters` ist in
+`USP_ExecutionPlanAnalysis` für genau einen Plan und in
+`USP_ShowplanAnalysis` kandidatengenau für mehrere Pläne umgesetzt.
+`parametersAndVariants` bleibt als additive Legacy-Ausgabe unverändert
+erhalten. Die zentrale Engine zerlegt die Showplan-`ParameterList` genau
+einmal; der Legacy-Vertrag wird aus derselben Materialisierung projiziert.
+
+Jede Parameterzeile enthält, soweit die Quelle dies bereitstellt:
+
+- Candidate-, Session-, Request-, Statement-, Query- und Planbezug;
+- Parametername und Showplan-Datentyp;
+- getrennte Presence-Flags für `ParameterCompiledValue` und
+  `ParameterRuntimeValue`;
+- eigene SQL-NULL-Kennzeichen und Status je Compile- und Runtimewert;
+- expliziten Datenschutzstatus sowie RAW-Wert oder aufruflokalen Token nur im
+  gewählten Modus;
+- `ValueSource`, `SourceObservedAtUtc` und nur bei einem Live-Plan einen
+  bekannten `ValueCapturedAtUtc`;
+- `IsCurrentExecution`, `IsLastKnownExecution`, `IsComplete` und eine
+  konkrete Evidenzgrenze.
+
+Die Quellwerte `COMPILE_PLAN`, `LIVE_PLAN`, `LAST_ACTUAL_PLAN`,
+`QUERY_STORE_PLAN`, `IMPORTED_PLAN` und `PLAN_CACHE_ATTEMPT` bewahren die
+unterschiedliche Zeitsemantik. Ein nicht mehr auflösbares Planhandle liefert
+`PLAN_EVICTED`; ein nicht mehr laufender gezielter Request liefert
+`REQUEST_FINISHED`. Fehlende Attribute bleiben `NOT_COLLECTED`; die
+lexikalische Showplan-Repräsentation `NULL` beziehungsweise `(NULL)` wird
+dagegen mit Presence-Flag und `SQL_NULL` gekennzeichnet.
 
 SQL Server stellt keine allgemeine DMV bereit, über die zu einem fremden
 laufenden Statement sämtliche aktuellen lokalen T-SQL-Variablenwerte gelesen
-werden können. Das Framework darf daher nie behaupten, eine vollständige
-Variablenliste zu liefern.
+werden können. Deshalb enthält der Vertrag zusätzlich eine
+`SOURCE_BOUNDARY`-Zeile mit `LOCAL_VARIABLE_NOT_EXPOSED`; sie ist keine
+behauptete Parameterzeile. Input Buffer bleibt eine getrennte Textquelle und
+wird nicht heuristisch als vollständige Parameterliste interpretiert.
 
-Folgende Evidenzquellen sind getrennt nutzbar:
-
-| Quelle | Mögliche Information | Grenze |
+| Quelle | Umgesetzte Information | Aussagegrenze |
 |---|---|---|
-| Input Buffer | übermittelter Batch beziehungsweise RPC-Text und Parameteranzahl; Literale oder Aufrufwerte können im Text stehen | kein strukturiertes, vollständiges Abbild lokaler Variablen |
-| kompiliertes Showplan XML | Parametername, Datentyp und `ParameterCompiledValue` | Kompilierwert ist nicht der aktuelle Laufzeitwert |
-| Live-/Actual-Showplan | falls vorhanden `ParameterRuntimeValue` | abhängig von Build, Profiling und Konfiguration; fehlend bedeutet unbekannt |
-| Last Actual Plan | letzter bekannter tatsächlicher Plan und Runtimeoperatorwerte | opt-in `LAST_QUERY_PLAN_STATS`, nicht zwingend aktueller Aufruf |
-| Extended Events | RPC-/Batch-/Statement- und Actual-Plan-Evidenz je Eventkonfiguration | zeitlich begrenzt, potenziell teuer und inhaltsreich |
-| Query Store | Querytext, Plan und aggregierte Runtimewerte | keine vollständige Liste der Parameterwerte je Ausführung |
-
-`USP_ShowplanAnalysis` extrahiert bereits `ParameterCompiledValue` und
-`ParameterRuntimeValue`. Dieser Bestand ist zu einem stabil benannten,
-TABLE-exportierbaren `parameters`-Resultset auszubauen. Jede Zeile benötigt
-mindestens:
-
-- Candidate-, Session-, Request-, Query- und Planbezug, soweit verfügbar;
-- Parametername und deklarierter Datentyp;
-- `CompiledValue` und `RuntimeValue` getrennt;
-- `ValueSource`, beispielsweise `COMPILE_PLAN`, `LIVE_PLAN`,
-  `LAST_ACTUAL_PLAN`, `INPUT_BUFFER` oder `EXTENDED_EVENT`;
-- `ValueCapturedAtUtc` beziehungsweise Quellzeit;
-- `IsCurrentExecution`, `IsLastKnownExecution` und `IsComplete`;
-- `ValueStatus`, etwa `AVAILABLE`, `NOT_COLLECTED`,
-  `UNAVAILABLE_CONFIGURATION`, `UNAVAILABLE_BUILD`, `PLAN_EVICTED`,
-  `REQUEST_FINISHED` oder `LOCAL_VARIABLE_NOT_EXPOSED`.
-
-Ein fehlendes `ParameterRuntimeValue` ist unbekannte Evidenz und niemals der
-Nachweis eines SQL-`NULL`-Werts. Werte aus Input-Buffer-Text dürfen nur als
-Textquelle ausgewiesen und nicht durch heuristisches Parsing als vollständig
-behauptet werden. Lokale Variablen können höchstens indirekt in eingebetteten
-Prädikaten, recompile-bedingten Plänen oder über externe Instrumentierung
-sichtbar werden; diese Fälle bleiben ausdrücklich inferenziell.
+| kompiliertes Showplan XML | Name, Datentyp und vorhandener Compilewert | kein aktueller Laufzeitwert |
+| Live-Showplan | vorhandener Compile- und Runtimewert mit Session-/Requestbezug | aktuelle Ausführung kann noch partiell sein |
+| Last Actual Plan | letzter bekannter Runtimewert, falls im XML vorhanden | nicht zwingend der aktuelle Aufruf; exakter Wertzeitpunkt unbekannt |
+| Query Store | kompiliertes Planattribut, falls vorhanden | keine vollständige Wertliste je Ausführung |
+| importierter Plan | vorhandene Compile-/Runtimeattribute | ursprünglicher Erfassungszeitpunkt und Aktualität können unbekannt sein |
+| Input Buffer und Extended Events | als getrennte externe Text- beziehungsweise Eventquelle möglich | nicht Bestandteil einer automatisch aktivierten Erfassung |
 
 Das Framework aktiviert weder Traceflag 2446 noch
 `FORCE_SHOWPLAN_RUNTIME_PARAMETER_COLLECTION`, `LAST_QUERY_PLAN_STATS` oder
-eine Extended-Events-Session automatisch. Solche Pfade benötigen explizite
-Aktivierung, Kostenstatus und – bei breiter oder fortlaufender Erfassung – das
-High-Impact-Gate. Parameterwerte können Zugangsdaten, Tokens, personenbezogene
-Werte oder Geschäftsdaten enthalten. Die Runtime-Ausgabe wird nicht heimlich
-maskiert; Persistenz, Export in Artefakte oder Git und externe Weitergabe
-unterliegen jedoch dem Repository-Datenschutzvertrag.
+eine Extended-Events-Session. Planbeschaffung und XML-Shredding erfolgen je
+Kandidat weiterhin einmal. `USP_ShowplanAnalysis` liest die bereits
+normalisierte Child-Ausgabe und führt keine zweite Parameter-XQuery aus.
+
+Parameterwerte können Zugangsdaten, Tokens, personenbezogene Werte oder
+Geschäftsdaten enthalten. `DERIVED_ONLY` bleibt Standard; `RAW` benötigt
+`@SensitiveDataConfirmed = 1`, `TOKENIZED` erzeugt nur aufruflokal
+korrelierbare Tokens. Repositorytests verwenden ausschließlich synthetische
+`Example*`-Werte.
 
 ## DIAG-004: Statement- und Requestkontext
 

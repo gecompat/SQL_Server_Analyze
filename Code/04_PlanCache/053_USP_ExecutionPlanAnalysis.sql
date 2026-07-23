@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ExecutionPlanAnalysis
-Version      : 1.0.2
-Stand        : 2026-07-21
+Version      : 1.1.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Analysiert genau ein direkt übergebenes oder gezielt beschafftes
                Showplan-XML. Der direkte @PlanXml-Pfad ist eigenständig nutzbar.
@@ -91,6 +91,7 @@ BEGIN
     DECLARE @Deadline datetime2(3)=DATEADD(SECOND,@MaxDurationSeconds,@Now);
     DECLARE @TokenSalt varbinary(32)=CRYPT_GEN_RANDOM(32);
     DECLARE @EffectiveSessionId smallint=NULL;
+    DECLARE @EffectiveRequestId int=@RequestId;
 
     SELECT @StatusCodeOut='AVAILABLE',@IsPartialOut=0,@ErrorNumberOut=NULL,@ErrorMessageOut=NULL;
 
@@ -322,6 +323,44 @@ BEGIN
         , [ValueHandlingStatus] varchar(40) NOT NULL
         , [ValueSource] varchar(40) NOT NULL
     );
+    CREATE TABLE [#ExecutionPlanAnalysis_ParameterEvidence]
+    (
+          [CandidateId] int NOT NULL
+        , [SessionId] smallint NULL
+        , [RequestId] int NULL
+        , [StatementOrdinal] int NULL
+        , [StatementId] int NULL
+        , [StatementQueryHash] nvarchar(130) NULL
+        , [StatementQueryPlanHash] nvarchar(130) NULL
+        , [PlanHandle] varbinary(64) NULL
+        , [QueryStoreDatabaseName] sysname NULL
+        , [QueryStorePlanId] bigint NULL
+        , [PlanDocumentHash] nvarchar(66) NULL
+        , [EvidenceKind] varchar(24) NOT NULL
+        , [ParameterName] nvarchar(256) NULL
+        , [ParameterDataType] nvarchar(256) NULL
+        , [CompiledValuePresent] bit NOT NULL
+        , [RuntimeValuePresent] bit NOT NULL
+        , [CompiledValueIsSqlNull] bit NULL
+        , [RuntimeValueIsSqlNull] bit NULL
+        , [CompiledValue] nvarchar(4000) NULL
+        , [RuntimeValue] nvarchar(4000) NULL
+        , [CompiledValueToken] nvarchar(66) NULL
+        , [RuntimeValueToken] nvarchar(66) NULL
+        , [CompiledValueLength] int NULL
+        , [RuntimeValueLength] int NULL
+        , [CompiledValueStatus] varchar(40) NOT NULL
+        , [RuntimeValueStatus] varchar(40) NOT NULL
+        , [ValueStatus] varchar(40) NOT NULL
+        , [ValueHandlingStatus] varchar(40) NOT NULL
+        , [ValueSource] varchar(40) NOT NULL
+        , [SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [ValueCapturedAtUtc] datetime2(3) NULL
+        , [IsCurrentExecution] bit NULL
+        , [IsLastKnownExecution] bit NULL
+        , [IsComplete] bit NOT NULL
+        , [EvidenceLimit] nvarchar(1000) NULL
+    );
     CREATE TABLE [#ExecutionPlanAnalysis_MemoryAndSpills]
     (
           [AnalysisObjectId] int NOT NULL
@@ -491,7 +530,7 @@ BEGIN
     BEGIN
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'moduleStatus|capabilities|planDocuments|statements|operatorTree|operatorRuntime|operatorThreadRuntime|accessPaths|statisticsUsage|parametersAndVariants|memoryAndSpills|executionEvidence|histogramSummaries|histogramSteps|predicateHistogramMappings|findings'
+            , @AllowedResultNames=N'moduleStatus|capabilities|planDocuments|statements|operatorTree|operatorRuntime|operatorThreadRuntime|accessPaths|statisticsUsage|parametersAndVariants|parameters|memoryAndSpills|executionEvidence|histogramSummaries|histogramSteps|predicateHistogramMappings|findings'
             , @MappingTable=N'#ExecutionPlanAnalysis_TableMap'
             , @ThrowOnError=1;
         SET @OutputMode='NONE';
@@ -544,7 +583,9 @@ BEGIN
             WHERE @RequestId IS NULL OR [request_id]=@RequestId;
             IF @RequestCount>1 AND @RequestId IS NULL
                 THROW 51031,N'Die Sitzung besitzt mehrere aktive Requests; @RequestId ist erforderlich.',1;
-            SELECT TOP (1) @EffectivePlanXml=[query_plan]
+            SELECT TOP (1)
+                  @EffectivePlanXml=[query_plan]
+                , @EffectiveRequestId=[request_id]
             FROM [sys].[dm_exec_query_statistics_xml](@EffectiveSessionId)
             WHERE @RequestId IS NULL OR [request_id]=@RequestId
             ORDER BY [request_id];
@@ -582,6 +623,67 @@ WHERE [p].[plan_id]=@PlanId;';
         SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                @IsPartialOut=1,@ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=ERROR_MESSAGE();
     END CATCH;
+
+    /*
+      Eine angeforderte, aber nicht mehr verfügbare Quelle erhält eine eigene
+      DIAG-003-Evidenzzeile. Dadurch bleibt PLAN_EVICTED beziehungsweise
+      REQUEST_FINISHED von SQL-NULL und einem fehlenden XML-Attribut getrennt.
+    */
+    IF @EffectivePlanXml IS NULL
+       AND @PlanSourceGroupCount=1
+       AND @StatusCodeOut IN ('UNAVAILABLE_OBJECT','DENIED_PERMISSION','ERROR_HANDLED')
+    BEGIN
+        DECLARE @UnavailableValueStatus varchar(40)=CASE
+            WHEN @StatusCodeOut='DENIED_PERMISSION' THEN 'DENIED_PERMISSION'
+            WHEN @StatusCodeOut='ERROR_HANDLED' THEN 'ERROR_HANDLED'
+            WHEN @EffectiveSessionId IS NOT NULL THEN 'REQUEST_FINISHED'
+            WHEN @PlanHandle IS NOT NULL THEN 'PLAN_EVICTED'
+            ELSE 'NOT_COLLECTED' END;
+        DECLARE @AttemptedValueSource varchar(40)=CASE
+            WHEN @EffectiveSessionId IS NOT NULL THEN 'LIVE_PLAN'
+            WHEN @QueryStorePlanId IS NOT NULL THEN 'QUERY_STORE_PLAN'
+            WHEN @PlanHandle IS NOT NULL AND @RequestedPlanSource='COMPILE' THEN 'COMPILE_PLAN'
+            WHEN @PlanHandle IS NOT NULL AND @RequestedPlanSource='LAST_ACTUAL' THEN 'LAST_ACTUAL_PLAN'
+            WHEN @PlanHandle IS NOT NULL THEN 'PLAN_CACHE_ATTEMPT'
+            ELSE 'IMPORTED_PLAN' END;
+
+        INSERT [#ExecutionPlanAnalysis_ParameterEvidence]
+        (
+              [CandidateId],[SessionId],[RequestId],[StatementOrdinal],[StatementId]
+            , [StatementQueryHash],[StatementQueryPlanHash],[PlanHandle]
+            , [QueryStoreDatabaseName],[QueryStorePlanId],[PlanDocumentHash]
+            , [EvidenceKind],[ParameterName],[ParameterDataType]
+            , [CompiledValuePresent],[RuntimeValuePresent]
+            , [CompiledValueIsSqlNull],[RuntimeValueIsSqlNull]
+            , [CompiledValue],[RuntimeValue],[CompiledValueToken],[RuntimeValueToken]
+            , [CompiledValueLength],[RuntimeValueLength]
+            , [CompiledValueStatus],[RuntimeValueStatus],[ValueStatus]
+            , [ValueHandlingStatus],[ValueSource]
+            , [SourceObservedAtUtc],[ValueCapturedAtUtc]
+            , [IsCurrentExecution],[IsLastKnownExecution],[IsComplete],[EvidenceLimit]
+        )
+        VALUES
+        (
+              1,@EffectiveSessionId,@EffectiveRequestId,NULL,NULL,NULL,NULL,@PlanHandle
+            , @QueryStoreDatabaseName,@QueryStorePlanId,NULL
+            , 'SOURCE_STATUS',NULL,NULL,0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL
+            , 'NOT_COLLECTED','NOT_COLLECTED',@UnavailableValueStatus
+            , CASE @PrivacyMode WHEN 'RAW' THEN 'AVAILABLE_RAW'
+                   WHEN 'TOKENIZED' THEN 'TOKENIZED_CAPTURE_LOCAL'
+                   WHEN 'STRUCTURE_ONLY' THEN 'OMITTED_STRUCTURE_ONLY'
+                   ELSE 'OMITTED_DERIVED_ONLY' END
+            , @AttemptedValueSource,@Now,NULL
+            , CASE WHEN @EffectiveSessionId IS NOT NULL THEN CONVERT(bit,1) END
+            , CASE WHEN @RequestedPlanSource='LAST_ACTUAL' THEN CONVERT(bit,1)
+                   WHEN @RequestedPlanSource='COMPILE' OR @EffectiveSessionId IS NOT NULL THEN CONVERT(bit,0) END
+            , 0
+            , CASE @UnavailableValueStatus
+                  WHEN 'PLAN_EVICTED' THEN N'Das angeforderte Planhandle war beim gezielten Abruf nicht mehr auflösbar.'
+                  WHEN 'REQUEST_FINISHED' THEN N'Der angeforderte Request lieferte beim gezielten Live-Plan-Abruf keine laufende Ausführung mehr.'
+                  WHEN 'DENIED_PERMISSION' THEN N'Die Planquelle war mit dem aktuellen Sicherheitskontext nicht lesbar.'
+                  ELSE N'Die angeforderte Planquelle lieferte keine auswertbare Parameterevidenz.' END
+        );
+    END;
 
     IF @StatusCodeOut='AVAILABLE'
        AND (@Depth='FULL' OR @StatisticsMode IN ('RELEVANT','OBJECT_ALL') OR @HistogramMode='STEPS')
@@ -691,6 +793,12 @@ WHERE [p].[plan_id]=@PlanId;';
             , @MitThreadRuntime=@MitThreadRuntime
             , @EvidenzDatenschutzModus=@PrivacyMode
             , @IdentifierDatenschutzModus=@IdentifierMode
+            , @SourceObservedAtUtc=@Now
+            , @SessionId=@EffectiveSessionId
+            , @RequestId=@EffectiveRequestId
+            , @PlanHandle=@PlanHandle
+            , @QueryStoreDatabaseName=@QueryStoreDatabaseName
+            , @QueryStorePlanId=@QueryStorePlanId
             , @StatusCodeOut=@AnalyzerStatus OUTPUT
             , @IsPartialOut=@AnalyzerPartial OUTPUT
             , @ErrorNumberOut=@AnalyzerError OUTPUT
@@ -794,6 +902,9 @@ WHERE [p].[plan_id]=@PlanId;';
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementId]=@StatementId);
         DELETE FROM [#ExecutionPlanAnalysis_MemoryAndSpills] WHERE [StatementId]<>@StatementId OR [StatementId] IS NULL;
         DELETE FROM [#ExecutionPlanAnalysis_Parameters] WHERE [StatementId]<>@StatementId OR [StatementId] IS NULL;
+        DELETE FROM [#ExecutionPlanAnalysis_ParameterEvidence]
+        WHERE [EvidenceKind]='PARAMETER'
+          AND ([StatementId]<>@StatementId OR [StatementId] IS NULL);
         DELETE FROM [#ExecutionPlanAnalysis_StatisticsUsage] WHERE [StatementId]<>@StatementId OR [StatementId] IS NULL;
         DELETE FROM [#ExecutionPlanAnalysis_AccessPaths] WHERE [StatementId]<>@StatementId OR [StatementId] IS NULL;
         DELETE FROM [#ExecutionPlanAnalysis_OperatorThreadRuntime] WHERE [StatementId]<>@StatementId OR [StatementId] IS NULL;
@@ -810,6 +921,10 @@ WHERE [p].[plan_id]=@PlanId;';
         DELETE FROM [#ExecutionPlanAnalysis_MemoryAndSpills] WHERE [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
         DELETE FROM [#ExecutionPlanAnalysis_Parameters] WHERE [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_ParameterEvidence]
+        WHERE [EvidenceKind]='PARAMETER'
+          AND [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
         DELETE FROM [#ExecutionPlanAnalysis_StatisticsUsage] WHERE [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryHash]=@QueryHashText);
@@ -832,6 +947,10 @@ WHERE [p].[plan_id]=@PlanId;';
         DELETE FROM [#ExecutionPlanAnalysis_MemoryAndSpills] WHERE [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
         DELETE FROM [#ExecutionPlanAnalysis_Parameters] WHERE [StatementOrdinal] NOT IN
+            (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
+        DELETE FROM [#ExecutionPlanAnalysis_ParameterEvidence]
+        WHERE [EvidenceKind]='PARAMETER'
+          AND [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
         DELETE FROM [#ExecutionPlanAnalysis_StatisticsUsage] WHERE [StatementOrdinal] NOT IN
             (SELECT [StatementOrdinal] FROM [#ExecutionPlanAnalysis_Statements] WHERE [StatementQueryPlanHash]=@QueryPlanHashText);
@@ -898,6 +1017,9 @@ WHERE [p].[plan_id]=@PlanId;';
             [StatisticsName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [StatisticsName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[StatisticsName])),1)) END;
         UPDATE [#ExecutionPlanAnalysis_Parameters]
         SET [ParameterName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ParameterName] IS NOT NULL THEN CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ParameterName])),1) END;
+        UPDATE [#ExecutionPlanAnalysis_ParameterEvidence]
+        SET [ParameterName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [ParameterName] IS NOT NULL THEN CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[ParameterName])),1) END,
+            [QueryStoreDatabaseName]=CASE WHEN @IdentifierMode='TOKENIZED' AND [QueryStoreDatabaseName] IS NOT NULL THEN CONVERT(sysname,CONVERT(nvarchar(130),HASHBYTES('SHA2_256',@TokenSalt+CONVERT(varbinary(max),[QueryStoreDatabaseName])),1)) END;
     END;
 
     IF (SELECT COUNT(*) FROM [#ExecutionPlanAnalysis_Operators])>@MaxOperatoren
@@ -1002,7 +1124,7 @@ WHERE [p].[plan_id]=@PlanId;';
 
     IF @JsonErzeugen=1
     BEGIN
-        DECLARE @MetaJson nvarchar(max)=(SELECT N'ExecutionPlanAnalysis' [resultName],1 [schemaVersion],@Now [generatedAtUtc],@StatusCodeOut [statusCode],@IsPartialOut [isPartial],@EffectivePlanSource [planSource],@RuntimeScope [runtimeCounterScope],@Profile [workloadProfile],@PrivacyMode [evidencePrivacyMode],@IdentifierMode [identifierPrivacyMode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @MetaJson nvarchar(max)=(SELECT N'ExecutionPlanAnalysis' [resultName],2 [schemaVersion],@Now [generatedAtUtc],@StatusCodeOut [statusCode],@IsPartialOut [isPartial],@EffectivePlanSource [planSource],@RuntimeScope [runtimeCounterScope],@Profile [workloadProfile],@PrivacyMode [evidencePrivacyMode],@IdentifierMode [identifierPrivacyMode] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @CapabilitiesJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Capabilities] ORDER BY [FeatureCode] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @PlanJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_PlanDocuments] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @StatementsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Statements] ORDER BY [StatementOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
@@ -1012,13 +1134,14 @@ WHERE [p].[plan_id]=@PlanId;';
         DECLARE @AccessJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_AccessPaths] ORDER BY [StatementOrdinal],[NodeId] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @StatsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_StatisticsUsage] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @ParametersJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Parameters] ORDER BY [StatementOrdinal],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @ParameterEvidenceJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_ParameterEvidence] ORDER BY [CandidateId],[StatementOrdinal],[EvidenceKind],[ParameterName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @MemoryJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_MemoryAndSpills] ORDER BY [StatementOrdinal],[NodeId],[RecordType] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @EvidenceJsonOut nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_ExecutionEvidence] ORDER BY [StatementOrdinal],[EvidenceType],[MetricName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @HistogramSummaryJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_HistogramSummaries] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @HistogramStepsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_HistogramSteps] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @MappingsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_PredicateHistogramMappings] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @FindingsJson nvarchar(max)=(SELECT * FROM [#ExecutionPlanAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END,[FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"capabilities":',COALESCE(@CapabilitiesJson,N'[]'),N',"planDocuments":',COALESCE(@PlanJson,N'[]'),N',"statements":',COALESCE(@StatementsJson,N'[]'),N',"operatorTree":',COALESCE(@OperatorsJson,N'[]'),N',"operatorRuntime":',COALESCE(@RuntimeJson,N'[]'),N',"operatorThreadRuntime":',COALESCE(@ThreadsJson,N'[]'),N',"accessPaths":',COALESCE(@AccessJson,N'[]'),N',"statisticsUsage":',COALESCE(@StatsJson,N'[]'),N',"parametersAndVariants":',COALESCE(@ParametersJson,N'[]'),N',"memoryAndSpills":',COALESCE(@MemoryJson,N'[]'),N',"executionEvidence":',COALESCE(@EvidenceJsonOut,N'[]'),N',"histogramSummaries":',COALESCE(@HistogramSummaryJson,N'[]'),N',"histogramSteps":',COALESCE(@HistogramStepsJson,N'[]'),N',"predicateHistogramMappings":',COALESCE(@MappingsJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N'}');
+        SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"capabilities":',COALESCE(@CapabilitiesJson,N'[]'),N',"planDocuments":',COALESCE(@PlanJson,N'[]'),N',"statements":',COALESCE(@StatementsJson,N'[]'),N',"operatorTree":',COALESCE(@OperatorsJson,N'[]'),N',"operatorRuntime":',COALESCE(@RuntimeJson,N'[]'),N',"operatorThreadRuntime":',COALESCE(@ThreadsJson,N'[]'),N',"accessPaths":',COALESCE(@AccessJson,N'[]'),N',"statisticsUsage":',COALESCE(@StatsJson,N'[]'),N',"parametersAndVariants":',COALESCE(@ParametersJson,N'[]'),N',"parameters":',COALESCE(@ParameterEvidenceJson,N'[]'),N',"memoryAndSpills":',COALESCE(@MemoryJson,N'[]'),N',"executionEvidence":',COALESCE(@EvidenceJsonOut,N'[]'),N',"histogramSummaries":',COALESCE(@HistogramSummaryJson,N'[]'),N',"histogramSteps":',COALESCE(@HistogramStepsJson,N'[]'),N',"predicateHistogramMappings":',COALESCE(@MappingsJson,N'[]'),N',"findings":',COALESCE(@FindingsJson,N'[]'),N'}');
     END;
 
     IF @OutputMode='RAW'
@@ -1033,6 +1156,7 @@ WHERE [p].[plan_id]=@PlanId;';
         SELECT * FROM [#ExecutionPlanAnalysis_AccessPaths] ORDER BY [StatementOrdinal],[NodeId];
         SELECT * FROM [#ExecutionPlanAnalysis_StatisticsUsage] ORDER BY [StatementOrdinal],[StatisticsUsageOrdinal];
         SELECT * FROM [#ExecutionPlanAnalysis_Parameters] ORDER BY [StatementOrdinal],[ParameterName];
+        SELECT * FROM [#ExecutionPlanAnalysis_ParameterEvidence] ORDER BY [CandidateId],[StatementOrdinal],[EvidenceKind],[ParameterName];
         SELECT * FROM [#ExecutionPlanAnalysis_MemoryAndSpills] ORDER BY [StatementOrdinal],[NodeId],[RecordType];
         SELECT * FROM [#ExecutionPlanAnalysis_ExecutionEvidence] ORDER BY [StatementOrdinal],[EvidenceType],[MetricName];
         SELECT * FROM [#ExecutionPlanAnalysis_HistogramSummaries];
@@ -1069,6 +1193,7 @@ WHERE [p].[plan_id]=@PlanId;';
                 WHEN N'accessPaths' THEN N'#ExecutionPlanAnalysis_AccessPaths'
                 WHEN N'statisticsUsage' THEN N'#ExecutionPlanAnalysis_StatisticsUsage'
                 WHEN N'parametersAndVariants' THEN N'#ExecutionPlanAnalysis_Parameters'
+                WHEN N'parameters' THEN N'#ExecutionPlanAnalysis_ParameterEvidence'
                 WHEN N'memoryAndSpills' THEN N'#ExecutionPlanAnalysis_MemoryAndSpills'
                 WHEN N'executionEvidence' THEN N'#ExecutionPlanAnalysis_ExecutionEvidence'
                 WHEN N'histogramSummaries' THEN N'#ExecutionPlanAnalysis_HistogramSummaries'

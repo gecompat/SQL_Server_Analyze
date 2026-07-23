@@ -4,8 +4,8 @@
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion | `1.1.0-special.14` |
-| Dokumentationsstand | 22. Juli 2026 |
+| Frameworkversion | `1.1.0-special.15` |
+| Dokumentationsstand | 23. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
 Der aktuelle Bestand umfasst 164 inventarisierte Objekte:
@@ -21,12 +21,28 @@ Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle
 
 ## Abschlusswelle 0/1 – Statusmodell und Current-State-Evidenzbasis
 
-Die fünf kanonischen Abschlussstatus sind in einem gemeinsamen, maschinenlesbaren Modell festgelegt. DIAG-003 bis DIAG-005 werden als `PARTIAL_PRODUCT_FUNCTION`, RUNTIME-001 als `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`, der ausgelieferte SC-023-Slice als `IMPLEMENTED_ACTIONS_GATE` und optionale Ausbaupunkte separat als `OPTIONAL_FUTURE` geführt. Das Special-Feature-Routing für Verschlüsselung verweist nun konsistent auf die bereits implementierte `USP_EncryptionAnalysis`.
+Die fünf kanonischen Abschlussstatus sind in einem gemeinsamen, maschinenlesbaren Modell festgelegt. DIAG-003 wird als `IMPLEMENTED_ACTIONS_GATE`, DIAG-004 und DIAG-005 als `PARTIAL_PRODUCT_FUNCTION`, RUNTIME-001 als `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`, der ausgelieferte SC-023-Slice als `IMPLEMENTED_ACTIONS_GATE` und optionale Ausbaupunkte separat als `OPTIONAL_FUTURE` geführt. Das Special-Feature-Routing für Verschlüsselung verweist konsistent auf die bereits implementierte `USP_EncryptionAnalysis`.
 
 Der erste Slice der gemeinsamen laufinternen Evidenzbasis ergänzt einen aufruflokalen Snapshot-Owner für Sessions, Requests, Connections, Waiting Tasks, Memory Grants, Resource Governor sowie begrenzte SQL-Text-Evidenz. `USP_CurrentOverview` liest jede aktivierte Primärquelle einmal und reicht denselben Snapshot an `USP_CurrentSessions` und `USP_CurrentRequests` weiter. Einzelaufrufe bleiben frisch und lehnen fremde oder abgelaufene Parent-IDs ab. Input Buffer bleibt bis zur späteren Konsolidierung eine begrenzte Post-Candidate-Quelle von `USP_CurrentRequests`. Das neue Resultset `snapshotStatus` weist Snapshot-ID, Quellzeit, Abschlusszeit, Zeilenzahl, Partialität und isolierte Quellenfehler aus.
 
 Dieser Slice schließt die gemeinsame Current-State-Evidenzbasis noch nicht ab. Blocking, Waits, Transaktionen, Memory Grants, TempDB, I/O und Log verwenden bis zu ihrer gezielten Migration weiterhin ihre bestehenden eigenständigen Lesewege.
 
+
+## Welle 2 – DIAG-003 Parameter-Evidenz
+
+`USP_ExecutionPlanAnalysis` liefert zusätzlich zum unveränderten
+`parametersAndVariants` das kanonische Resultset `parameters`.
+Attributpräsenz, erfasstes SQL-`NULL`, fehlende Evidenz, Cache-Eviction,
+beendete Requests und nicht allgemein zugängliche lokale Variablen bleiben
+unterscheidbar. Quelle, Quellzeit, Session-/Request-/Statement-/Query- und
+Planbezug sowie Current-/Last-known- und Vollständigkeitskennzeichen sind in
+RAW, JSON und benanntem TABLE enthalten.
+
+`USP_ShowplanAnalysis` aggregiert denselben Vertrag mit äußerer Candidate-ID
+und Planhandle. Parameter-XML wird weiterhin nur in der zentralen Child-Engine
+zerlegt. Der Runtimevertrag `120` schützt den eigenständig installierbaren
+Einplanpfad; Vertrag `121` schützt die Frameworkaggregation im
+SQL-Server-2019-/2022-/2025-Release-Gate.
 
 ## RUNTIME-001 – External Runtime und SQL CLR
 
