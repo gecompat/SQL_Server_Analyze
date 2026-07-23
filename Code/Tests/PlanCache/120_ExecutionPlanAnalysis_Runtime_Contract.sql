@@ -550,9 +550,10 @@ IF EXISTS
 )
     THROW 53644,N'Für den REQUEST_FINISHED-Vertrag konnte keine freie synthetische Session-ID bestimmt werden.',1;
 
+DECLARE @MissingSessionIdText nvarchar(10)=CONVERT(nvarchar(10),@MissingSessionId);
 SET @Diag003Json=NULL;SET @Diag003Status=NULL;SET @Diag003Partial=NULL;SET @Diag003Error=NULL;SET @Diag003Message=NULL;
 EXEC [monitor].[USP_ExecutionPlanAnalysis]
-      @SessionIds=CONVERT(nvarchar(10),@MissingSessionId)
+      @SessionIds=@MissingSessionIdText
     , @ResultSetArt='NONE'
     , @JsonErzeugen=1
     , @Json=@Diag003Json OUTPUT
