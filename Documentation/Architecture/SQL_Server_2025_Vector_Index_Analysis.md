@@ -34,6 +34,14 @@ Fehlt eine Grenze, entsteht ein expliziter Quellenstatus wie
 `UNAVAILABLE_SOURCE_SCHEMA` oder `UNAVAILABLE_PATTERN_CAPABILITY`. Ein leeres
 Array wird daher nie als Ersatz für einen Verfügbarkeitsstatus verwendet.
 
+Der approximative Vector-Index-Pfad ist in SQL Server 2025 ein Previewfeature.
+Ein aktiver Lauf benötigt Compatibility Level 170, die
+Datenbankkonfiguration `PREVIEW_FEATURES = ON` und einen Build, der beide
+Systemobjekte tatsächlich bereitstellt. Fehlt trotz aktivierter
+Voraussetzungen eine Quelle, bleibt der Produktvertrag vollständig
+auswertbar: `sourceStatus` liefert `UNAVAILABLE_FEATURE`, statt einen leeren
+Erfolg oder eine vorgetäuschte aktive Fixture zu melden.
+
 ## Einmalread- und Scopevertrag
 
 Je Zieldatenbank und Procedureaufruf wird jede der beiden fachlichen Quellen
@@ -97,12 +105,17 @@ den aktuellen Aufruf begrenzt.
 Der maschinenlesbare Vertrag liegt in
 [`SQL25_Vector_Index_Public_Contract.json`](../../Metadata/Quality/SQL25_Vector_Index_Public_Contract.json).
 Der Runtimevertrag `Code/Tests/ObjectIndex/120_SQL25_Vector_Index_Runtime_Contract.sql`
-prüft SQL Server 2019, 2022 und 2025, den aktiven Featurepfad,
-Nichtverfügbarkeit, leere und begrenzte Ausgaben, Cross-Database, verweigerte
-DMV-Berechtigung, TABLE/JSON sowie das ObjectAnalysis-Routing.
+prüft SQL Server 2019, 2022 und 2025 sowie TABLE/JSON und das
+ObjectAnalysis-Routing. Auf SQL Server 2025 aktiviert er zuerst Compatibility
+Level 170 und `PREVIEW_FEATURES`. Stellt der Build die Quellen bereit, folgen
+aktiver Katalog- und Wartungszustand, leere und begrenzte Ausgaben,
+Cross-Database sowie verweigerte DMV-Berechtigung. Andernfalls muss derselbe
+Build die fehlende Previewfähigkeit explizit als `UNAVAILABLE_FEATURE`
+ausweisen; der Test behauptet in diesem Fall keinen aktiven Featurepfad.
 
 ## Primärquellen
 
 - [sys.vector_indexes (Transact-SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-vector-indexes-transact-sql?view=sql-server-ver17)
 - [sys.dm_db_vector_indexes (Transact-SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-vector-indexes-transact-sql?view=sql-server-ver17)
 - [CREATE VECTOR INDEX (Transact-SQL)](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql?view=sql-server-ver17)
+- [Vector search and vector indexes in the SQL Database Engine](https://learn.microsoft.com/en-us/sql/sql-server/ai/vectors?view=sql-server-ver17)
