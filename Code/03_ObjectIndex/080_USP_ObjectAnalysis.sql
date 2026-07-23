@@ -4,12 +4,14 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ObjectAnalysis
-Version      : 2.3.0
+Version      : 2.4.0
 Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Orchestriert die Objekt-, Index-, Statistik-, Partition-,
-               Columnstore-, Vector-Index- und Physical-Stats-Analysen mit einem einheitlichen
-               Listen-, Pattern- und Ausgabevertrag.
+               Columnstore-, Vector-Index- und Physical-Stats-Analysen mit
+               einem einheitlichen Listen-, Pattern- und Ausgabevertrag.
+               Das ObjectInventory ergänzt capability-adaptiv sichtbare
+               SQL-Server-2025-JSON-Indizes und deren SQL/JSON-Pfade.
 SQL-Version  : SQL Server 2019 oder neuer.
 Parameter    : @DatabaseNames, @DatabaseNamePattern, @SchemaNames,
                @SchemaNamePattern, @ObjectNames, @ObjectNamePattern,
@@ -23,7 +25,11 @@ Semantik     : Exakte Listen sind bracket-aware Pipe-Listen; Pattern sind
 Ausgabe      : Aktivierte Teilmodule liefern RAW oder CONSOLE. NONE unterdrückt
                fachliche Resultsets. JSON enthält die Teilmodul-Envelopes unter
                benannten Eigenschaften und einen Orchestratorstatus.
-Änderungen   : 2.3.0 - SQL-Server-2025-Vector-Index-Laufzeitanalyse als
+Locking      : Der angeforderte LOCK_TIMEOUT gilt für den Childlauf; der
+               vorherige Sessionwert wird vor der Ausgabe wiederhergestellt.
+Änderungen   : 2.4.0 - SQL25-002-JSON-Indexmetadaten über das bestehende
+                         ObjectInventory in den Orchestratorvertrag aufgenommen.
+               2.3.0 - SQL-Server-2025-Vector-Index-Laufzeitanalyse als
                           capability-adaptives opt-in Teilmodul integriert.
                2.2.0 - Begrenzte Statistikverteilungsanalyse als opt-in
                          Teilmodul integriert.
@@ -70,8 +76,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ObjectAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @LockTimeoutSql nvarchar(64);
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
@@ -96,6 +103,7 @@ BEGIN
         PRINT N'Pattern unterstützen like:, regex:, regexi: und werden nicht an Pipe getrennt.';
         PRINT N'@Vollanalyse=0 nutzt GEZIELT; ressourcenintensive Teilmodule bleiben zusätzlich gruppengeschützt.';
         PRINT N'@MitStatisticsDistribution=1 aktiviert die begrenzte, CATALOG_DEEP-geschützte Histogramm-/Partitionsverteilung.';
+        PRINT N'@MitObjectInventory=1 ergänzt ab SQL Server 2025 sichtbare JSON-Indizes und SQL/JSON-Pfade; JSON-Dokumentwerte werden nicht gelesen.';
         PRINT N'@MitVectorIndexes=1 aktiviert die versionsadaptive Vector-Index-Katalog- und Wartungsanalyse; auf älteren Versionen bleibt der Childstatus explizit UNAVAILABLE_VERSION.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt benannte Teilmodule in @Json.';
         RETURN;
@@ -122,6 +130,12 @@ BEGIN
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'@FullObjectNames ist zu separaten Schema-/Objektfiltern gegenseitig exklusiv.';
+    END;
+
+    IF @StatusCode='AVAILABLE'
+    BEGIN
+        SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
     END;
 
     IF @StatusCode = 'AVAILABLE'
@@ -291,6 +305,9 @@ BEGIN
         SET @MonitorPrintMessage = FORMATMESSAGE(N'WARNUNG USP_ObjectAnalysis %s: %s',@StatusCode,COALESCE(@ErrorMessage,N'Mindestens ein Teilmodul lieferte kein vollständiges Ergebnis.'));
         RAISERROR(N'%s',10,1,@MonitorPrintMessage) WITH NOWAIT;
     END;
+
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
 
     IF @JsonErzeugen = 1
     BEGIN

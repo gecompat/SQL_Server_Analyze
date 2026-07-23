@@ -4,7 +4,7 @@
 
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion | `1.1.0-special.16` |
+| Frameworkversion | `1.1.0-special.17` |
 | Dokumentationsstand | 23. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
@@ -124,6 +124,39 @@ nicht bereit oder weicht ihr Pflichtschema ab, muss er stattdessen
 der Test behauptet keinen aktiven Pfad. SQL25-001 steht damit
 auf `IMPLEMENTED_ACTIONS_GATE`.
 
+## Welle 6 – SQL25-002 JSON-Index-Inventar
+
+`USP_ObjectInventory` ergänzt seinen bestehenden Objekt-/Indexvertrag auf
+SQL Server 2025 um `IsJsonIndex`, `OptimizeForArraySearch`,
+`JsonPathCount`, `JsonPaths`, `JsonIndexStatusCode` und eine explizite
+Evidenzgrenze. `databaseStatus` trennt Version, Feature-/Buildverfügbarkeit,
+Pflichtschema, leeren beziehungsweise eingeschränkt sichtbaren Scope,
+Teilquellen- und Berechtigungsfehler. Auf SQL Server 2019 und 2022 werden
+`sys.json_indexes` und `sys.json_index_paths` nicht referenziert.
+
+`USP_ServerFeatureCapabilities` ergänzt `JSON_INDEX_METADATA` und sichtbare
+`JSON`-Spezialindexzeilen mit Array-Suchoption, Pfadanzahl und
+Disabled-Status. Der Capabilitypfad gibt keine konkreten Pfadwerte aus;
+`USP_ObjectAnalysis` routet den erweiterten Vertrag über sein vorhandenes
+`objectInventory`. `USP_SpecialFeatureInventory` empfiehlt für native
+JSON-Spalten denselben implementierten Inventarpfad. Eine zusätzliche
+dedizierte Procedure war für den abgegrenzten Slice nicht erforderlich.
+
+Beide Produktpfade prüfen Systemobjekte und Pflichtspalten vor der dynamischen
+Referenz und lesen jede fachliche Quelle je Zieldatenbank und Aufruf höchstens
+einmal. Sie lesen weder JSON-Dokumentwerte noch Benutzertabellenzeilen und
+leiten aus Indexpräsenz, Pfadzahl oder Array-Suchoption keinen Health-,
+Nutzungs-, DDL- oder Rebuildbefund ab.
+
+Der öffentliche SQL25-002-Vertrag und Runtimevertrag `121` prüfen
+Versionsgrenze, TABLE/JSON, ObjectAnalysis-Routing und Capability-Inventar auf
+SQL Server 2019, 2022 und 2025. Bei verfügbarem Previewpfad folgen zwei
+synthetische JSON-Indizes, mehrere Pfade, Begrenzung, leerer Scope und
+eingeschränkte Metadata Visibility. Fehlt die konkrete Buildfähigkeit, muss
+der Status sie ausdrücklich als `UNAVAILABLE_FEATURE`,
+`UNAVAILABLE_SOURCE_SCHEMA` oder `AVAILABLE_LIMITED` ausweisen. SQL25-002
+steht damit auf `IMPLEMENTED_ACTIONS_GATE`.
+
 ## RUNTIME-001 – External Runtime und SQL CLR
 
 Der Frameworkkern enthält zwei getrennte, rein lesende Tiefenanalysen:
@@ -170,7 +203,7 @@ Die Live-Triage erfasst Sessions, Requests, Blocking, Waits, Transaktionen, Memo
 
 ### Objekte und Datenbanken
 
-Die Objekt- und Datenbankanalyse umfasst Inventar, Indexnutzung, Operational Stats, Missing Indexes, Statistiken und Histogramme, Partitionen, Columnstore, Physical Stats, SQL-Server-2025-Vector-Index-Wartung und Schemadesign. `USP_ObjectAnalysis` orchestriert die zugehörigen Einzelmodule.
+Die Objekt- und Datenbankanalyse umfasst Inventar einschließlich SQL-Server-2025-JSON-Index-/Pfadmetadaten, Indexnutzung, Operational Stats, Missing Indexes, Statistiken und Histogramme, Partitionen, Columnstore, Physical Stats, SQL-Server-2025-Vector-Index-Wartung und Schemadesign. `USP_ObjectAnalysis` orchestriert die zugehörigen Einzelmodule.
 
 ### Query und Plan
 

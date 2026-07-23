@@ -67,6 +67,8 @@ AS
 
         , (N'USP_ObjectInventory',N'Objekte Größe Indizes inventarisieren','de',95,N'Liefert Objekt-, Index-, Größen- und Partitionsinventar.')
         , (N'USP_ObjectInventory',N'object inventory index size','en',90,N'Gezielte Objektinventur.')
+        , (N'USP_ObjectInventory',N'JSON-Index Pfade inventarisieren','de',100,N'Liefert sichtbare SQL-Server-2025-JSON-Index- und SQL/JSON-Pfadmetadaten.')
+        , (N'USP_ObjectInventory',N'json index paths inventory','en',100,N'Routes visible JSON-index definitions and path metadata to the object inventory.')
         , (N'USP_IndexUsage',N'Index ungenutzt','de',100,N'Zeigt kumulative Lese- und Schreibnutzung seit Reset.')
         , (N'USP_IndexUsage',N'unused index usage statistics','en',95,N'Prüft Indexnutzung mit Resetgrenzen.')
         , (N'USP_IndexOperationalStats',N'Index Locks Latches Page Splits','de',100,N'Zeigt operative Indexzähler je Partition.')
@@ -215,6 +217,8 @@ AS
 
         , (N'USP_ServerFeatureCapabilities',N'Feature verfügbar Version Edition','de',100,N'Zeigt Capability nach Version, Edition und Plattform.')
         , (N'USP_ServerFeatureCapabilities',N'feature capability version edition platform','en',95,N'Versionsadaptive Featureprüfung.')
+        , (N'USP_ServerFeatureCapabilities',N'JSON-Index Capability Preview','de',100,N'Zeigt die versions- und buildabhängige JSON-Index-Metadatenfähigkeit.')
+        , (N'USP_ServerFeatureCapabilities',N'json index capability preview','en',100,N'Checks JSON-index catalog capability and visible structural inventory.')
         , (N'USP_ServerVersionInformation',N'SQL Server Version CU Lifecycle','de',100,N'Ordnet Build, Servicing und Lifecycle ein.')
         , (N'USP_ServerVersionInformation',N'sql server version build cu lifecycle','en',100,N'Versions- und Lifecycleinformation.')
         , (N'USP_SpecialFeatureInventory',N'welche Spezialfeatures werden verwendet','de',100,N'Leichte Inventur und Auswahl passender Tiefenmodule.')

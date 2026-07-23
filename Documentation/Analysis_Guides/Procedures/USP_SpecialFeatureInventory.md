@@ -36,7 +36,7 @@ Im Feature-Resultset identifiziert `(DatabaseName, FeatureCode)` eine Zeile. `De
 
 ## So lesen
 
-`DETECTED` bedeutet mindestens einen sichtbaren Katalogmarker; `CONFIGURED_ONLY` belegt nur eine Konfiguration; `NOT_DETECTED_VISIBLE_SCOPE` ist keine globale Abwesenheitsgarantie. `UNAVAILABLE_VERSION` und `SOURCE_UNAVAILABLE` sind Evidenzlücken, keine Nullmessungen. Berücksichtigen Sie danach `ConfigurationState`, `RecommendedModuleStatus` und besonders `EvidenceLimit`. `NOT_PLANNED` bedeutet nur, dass das Framework kein eigenes Deep-Dive-Modul anbietet. Die `VECTOR`-Zeile verweist bei sichtbaren nativen Vector-Spalten auf die implementierte `USP_VectorIndexAnalysis`.
+`DETECTED` bedeutet mindestens einen sichtbaren Katalogmarker; `CONFIGURED_ONLY` belegt nur eine Konfiguration; `NOT_DETECTED_VISIBLE_SCOPE` ist keine globale Abwesenheitsgarantie. `UNAVAILABLE_VERSION` und `SOURCE_UNAVAILABLE` sind Evidenzlücken, keine Nullmessungen. Berücksichtigen Sie danach `ConfigurationState`, `RecommendedModuleStatus` und besonders `EvidenceLimit`. `NOT_PLANNED` bedeutet nur, dass das Framework kein eigenes Deep-Dive-Modul anbietet. Die `VECTOR`-Zeile verweist bei sichtbaren nativen Vector-Spalten auf die implementierte `USP_VectorIndexAnalysis`. Die native `JSON`-Zeile verweist für sichtbare JSON-Index- und SQL/JSON-Pfadmetadaten auf das bestehende `USP_ObjectInventory`; dafür wurde bewusst keine eigene Procedure ergänzt.
 
 ## Warum kann das problematisch sein?
 
@@ -69,7 +69,7 @@ Für `USP_SpecialFeatureInventory` gilt zusätzlich: **keine Zeile** bedeutet, d
 | Skalierung | Die Quellarbeit wächst ungefähr mit Datenbankanzahl und Kataloggröße. Dynamisches SQL wird einmal je Datenbank kompiliert/ausgeführt; die kleine Ergebnismenge und ihre Sortierung sind normalerweise nicht der dominante Anteil. |
 | Ressourcen | Vor allem CPU und Katalogseiten im Buffer Pool; kleine temporäre Ergebnistabellen und wenig Ergebnistransfer. Keine XEL-Dateien, Query-Pläne, Benutzerdaten oder Featurepayloads werden materialisiert. |
 | Begrenzungswirkung | `@DatabaseNames` beziehungsweise das Datenbankpattern begrenzen die Quellarbeit vor dem Datenbankcursor. `@NurErkannteFeatures` und `@MaxZeilen` wirken erst auf die bereits vollständig erzeugte Featureinventur und reduzieren daher primär Ausgabe/JSON, nicht die Katalogzählungen. |
-| Locking und Nebenwirkungen | Rein lesende Katalogabfragen mit `NOLOCK`; keine Feature-, Daten- oder Konfigurationsänderung. Gleichzeitiges DDL kann einen zeitlich uneinheitlichen Katalogsnapshot erzeugen. |
+| Locking und Nebenwirkungen | Rein lesende Katalogabfragen mit `NOLOCK`; keine Feature-, Daten- oder Konfigurationsänderung. Gleichzeitiges DDL kann einen zeitlich uneinheitlichen Katalogsnapshot erzeugen. Der angeforderte `LOCK_TIMEOUT` wird für die Katalogpfade verwendet und anschließend auf den vorherigen Sessionwert zurückgesetzt. |
 | Schutzmechanismus | Der Kandidatenpfad verwendet absichtlich `@AnalysisClass = NULL`; es gibt kein Deep-Gate und `@HighImpactConfirmed` aktiviert hier keinen teureren Pfad. Schutz bieten der explizite Datenbankscope und `@LockTimeoutMs`, nicht die Bestätigung. |
 | Sicherer Einsatz | Mit genau einer `ExampleDatabase` beginnen. Erst wenn deren Datenbankstatus vollständig ist und die Laufzeit zur Kataloggröße passt, den Scope datenbankweise erweitern. |
 | Aussagegrenze | Katalogzählungen zeigen sichtbare Existenz oder Konfiguration, nicht Nutzung, Gesundheit oder Vollständigkeit. Outputfilter können Featurecodes ausblenden; Metadata Visibility kann trotz erfolgreichem Status zu Nullzählungen führen. |
@@ -122,10 +122,12 @@ Objekt vorhanden bedeutet nicht aktiv genutzt, performant oder korrekt konfiguri
 
 ### Folgeanalyse
 
-Für die weitere Analyse gelten folgende Schritte und Quellen: Featurebezogene Deep Analysis, Query-/Dependencyanalyse und Ownerreview. Für `VECTOR` prüft `USP_VectorIndexAnalysis` sichtbare Indizes und aktuelle Hintergrundwartung, ohne Vector-Werte zu lesen.
+Für die weitere Analyse gelten folgende Schritte und Quellen: Featurebezogene Deep Analysis, Query-/Dependencyanalyse und Ownerreview. Für `VECTOR` prüft `USP_VectorIndexAnalysis` sichtbare Indizes und aktuelle Hintergrundwartung, ohne Vector-Werte zu lesen. Für `JSON` liefert `USP_ObjectInventory` die capability-adaptiven Index- und Pfadmetadaten, ohne JSON-Dokumentwerte oder Benutzertabellenzeilen zu lesen; die Inventur ist kein Health- oder DDL-Befund.
 
 ## Primärquellen
 
 - [SQL-Server-Katalogsichten](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/catalog-views-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../09_Version_Adaptive.md#2-monitorusp_specialfeatureinventory)
+
+[SQL-Server-2025-JSON-Index-Vertrag](../../Architecture/SQL_Server_2025_JSON_Index_Inventory.md)

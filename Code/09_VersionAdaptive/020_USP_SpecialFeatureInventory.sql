@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_SpecialFeatureInventory
-Version      : 1.1.0
-Stand        : 2026-07-22
+Version      : 1.2.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Inventarisiert leichtgewichtig die im sichtbaren Metadatenscope
                genutzten oder lediglich konfigurierten SQL-Server-
@@ -21,6 +21,10 @@ Abgrenzung   : Das Ergebnis ist ein Nutzungsinventar, kein Gesundheitsurteil.
                CLR-Binaries und Moduldefinitionen werden nicht gelesen.
 Kosten       : LOW. Ausschließlich aggregierte Systemkatalogabfragen; keine
                Benutzertabellen-, Payload-, Definitions- oder Datenscans.
+Locking      : Der angeforderte LOCK_TIMEOUT gilt für die Katalogpfade; der
+               vorherige Sessionwert wird vor der Ausgabe wiederhergestellt.
+Änderungen   : 1.2.0 - Native-JSON-Erkennung auf das implementierte
+                         JSON-Indexinventar in USP_ObjectInventory geroutet.
 ===============================================================================
 */
 CREATE OR ALTER PROCEDURE [monitor].[USP_SpecialFeatureInventory]
@@ -44,8 +48,9 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_SpecialFeatureInventory]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @LockTimeoutSql nvarchar(64);
 
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
@@ -77,6 +82,7 @@ BEGIN
         PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; ein positiver Wert in @MaxZeilen begrenzt die Ausgaben, während NULL oder 0 keine Begrenzung setzt.';
         PRINT N'@ResultSetArt=CONSOLE|RAW|TABLE|NONE; TABLE verwendet @ResultTablesJson; @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         PRINT N'Keine externen Locations, Credentials, Payloads, CLR-Binaries oder Moduldefinitionen werden gelesen.';
+        PRINT N'Für native JSON-Spalten verweist das Inventar auf USP_ObjectInventory; dort werden capability-adaptiv JSON-Index- und Pfadmetadaten gelesen, jedoch keine JSON-Dokumentwerte.';
         RETURN;
     END;
 
@@ -88,6 +94,12 @@ BEGIN
     BEGIN
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,
                @ErrorMessage=N'Ungültiger Bit-, Mengen-, Lock-Timeout- oder Ausgabeparameter.';
+    END;
+
+    IF @StatusCode='AVAILABLE'
+    BEGIN
+        SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';
+        EXEC [sys].[sp_executesql] @LockTimeoutSql;
     END;
 
     BEGIN TRY
@@ -313,7 +325,7 @@ VALUES
 ((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''GRAPH'',N''Graph'',CASE WHEN @Graph>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Graph,NULL,N''sys.tables'',NULL,''NOT_PLANNED'',N''Sichtbare Node- und Edge-Tabellen werden gezählt; Daten und Graphqualität sind nicht bewertet.''),
 ((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''SPATIAL'',N''Spatial'',CASE WHEN @Spatial>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Spatial,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Sichtbare geometry-/geography-Spalten werden gezählt; räumliche Daten und Indizes sind nicht bewertet.''),
 ((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''XML'',N''XML'',CASE WHEN @Xml>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Xml,NULL,N''sys.columns|sys.types|sys.xml_indexes'',NULL,''NOT_PLANNED'',N''Sichtbare XML-Spalten und XML-Indizes werden gezählt; XML-Inhalte und Schema-Definitionen werden nicht gelesen.''),
-((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''JSON_NATIVE'',N''Native JSON'',CASE WHEN @pMajor IS NULL THEN ''SOURCE_UNAVAILABLE'' WHEN @pMajor<17 THEN ''UNAVAILABLE_VERSION'' WHEN @NativeJson>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@NativeJson,NULL,N''sys.columns|sys.types'',NULL,''NOT_PLANNED'',N''Erkannt wird nur der native JSON-Systemtyp ab SQL Server 2025; JSON in Zeichenketten oder Moduldefinitionen ist katalogseitig nicht zuverlässig inventarisierbar.''),
+((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''JSON_NATIVE'',N''Native JSON'',CASE WHEN @pMajor IS NULL THEN ''SOURCE_UNAVAILABLE'' WHEN @pMajor<17 THEN ''UNAVAILABLE_VERSION'' WHEN @NativeJson>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@NativeJson,NULL,N''sys.columns|sys.types'',N''USP_ObjectInventory'',''IMPLEMENTED'',N''Erkannt wird nur der native JSON-Systemtyp ab SQL Server 2025; JSON in Zeichenketten oder Moduldefinitionen ist katalogseitig nicht zuverlässig inventarisierbar. Sichtbare JSON-Indizes und SQL/JSON-Pfade werden im ObjectInventory getrennt inventarisiert.''),
 ((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''VECTOR'',N''Vector'',CASE WHEN @pMajor IS NULL THEN ''SOURCE_UNAVAILABLE'' WHEN @pMajor<17 THEN ''UNAVAILABLE_VERSION'' WHEN @Vector>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@Vector,NULL,N''sys.columns|sys.types'',N''USP_VectorIndexAnalysis'',''IMPLEMENTED'',N''Erkannt werden sichtbare Spalten des nativen Vector-Systemtyps; Inhalte und Indexgesundheit sind nicht bewertet. Für sichtbare Vector-Indizes steht die capability-adaptive Laufzeitanalyse bereit.''),
 ((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID()),''USER_DEFINED_TYPES'',N''User-defined Types'',CASE WHEN @UserTypes>0 THEN ''DETECTED'' ELSE ''NOT_DETECTED_VISIBLE_SCOPE'' END,@UserTypes,NULL,N''sys.types'',NULL,''NOT_PLANNED'',N''Benutzerdefinierte Typzeilen werden aggregiert; Typnamen, Definitionen, Besitzer und Assemblydetails werden nicht ausgegeben.'');';
 
@@ -380,6 +392,9 @@ VALUES
                          @StatusCode,COALESCE(@ErrorMessage,N'Teilergebnis oder Evidenzlücke.'));
         RAISERROR(N'%s',10,1,@PrintMessage) WITH NOWAIT;
     END;
+
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
 
     IF @JsonErzeugen=1
     BEGIN

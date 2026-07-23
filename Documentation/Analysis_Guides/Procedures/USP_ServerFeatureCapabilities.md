@@ -1,13 +1,13 @@
 # [monitor].[USP_ServerFeatureCapabilities]
 
 **Bereich:** Versionsadaptive Spezialanalysen<br>
-**Zweck:** Zeigt versions-, editions-, plattform- und datenbankbezogene Featurefähigkeiten.<br>
+**Zweck:** Zeigt versions-, editions-, plattform- und datenbankbezogene Featurefähigkeiten einschließlich SQL-Server-2025-JSON-Indexmetadaten.<br>
 **Beobachtungsart:** Katalogsnapshot<br>
 **Kostenklasse:** LOW–MEDIUM
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche versions-, plattform- und datenbankabhängigen Diagnosepfade kann das Framework auf dieser Instanz verwenden, und welcher Fallback gilt?** Sie prüft Capability-Metadaten für Berechtigungsnamen, ZSTD, Resource Governor, Linux-Host-DMVs, Optimized Locking, Query-Store-Replikainformation und optionale Vector-Indizes. Eine Capabilityzeile ist eine Routingentscheidung für Diagnosecode, kein Gesundheitsbefund.
+Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche versions-, plattform- und datenbankabhängigen Diagnosepfade kann das Framework auf dieser Instanz verwenden, und welcher Fallback gilt?** Sie prüft Capability-Metadaten für Berechtigungsnamen, ZSTD, Resource Governor, Linux-Host-DMVs, Optimized Locking, Query-Store-Replikainformation sowie optionale Vector- und JSON-Indizes. Eine Capabilityzeile ist eine Routingentscheidung für Diagnosecode, kein Gesundheitsbefund.
 
 ## Nicht beantwortete Fragen
 
@@ -28,6 +28,12 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 ## Resultsets und Leserichtung
 
 RAW und CONSOLE liefern Aufrufstatus, serverweite Capabilities, datenbankbezogene Capabilities, optional Spezialindizes und zuletzt Warnungen. Die Datenbankresultsets sind nicht atomar zum Serverprobe; Statuswechsel während des Datenbankcursors sind möglich. TABLE exportiert ausschließlich das registrierte Resultset `capabilities` und enthält damit weder datenbankbezogene Features noch Spezialindizes. JSON ist für die vollständige maschinelle Hülle geeigneter und enthält `meta`, `capabilities`, `databaseFeatures`, `specialIndexes` und `warnings`.
+
+SQL25-002 ergänzt `JSON_INDEX_METADATA` in `databaseFeatures` und
+`IndexFamily = JSON` in `specialIndexes`. Die Detailspalte enthält nur
+Array-Suchoption, Pfadanzahl und Disabled-Status. Konkrete SQL/JSON-Pfade
+bleiben dem enger gefilterten `USP_ObjectInventory` vorbehalten;
+JSON-Dokumentwerte werden in keinem der beiden Pfade gelesen.
 
 ## Eine Zeile bedeutet
 
@@ -63,12 +69,12 @@ Für `USP_ServerFeatureCapabilities` gilt zusätzlich: **keine Zeile** bedeutet,
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
 | Standardpfad | Eine `ExampleDatabase` mit kleinen server- und datenbankweiten Katalogprobes; standardmäßig werden Plattform, Query-Store-Replikasicht und verfügbare Spezialindexmetadaten geprüft. Es werden keine Benutzerdaten oder Historien gelesen. |
-| Teuerster Pfad | Alle sichtbaren Datenbanken mit `@MitSpezialindizes = 1`, `@MitQueryStoreReplicas = 1` und Plattformdetails. Falls `sys.vector_indexes` vorhanden ist, werden alle sichtbaren Vector-Indexzeilen im Scope materialisiert. |
-| Haupttreiber | Zahl ausgewählter Datenbanken und – auf unterstützten Builds – Zahl sichtbarer Vector-Indizes. Die übrigen Capabilityprobes lesen kleine Katalogmengen beziehungsweise zählen Query-Store-Replikagruppen. |
+| Teuerster Pfad | Alle sichtbaren Datenbanken mit `@MitSpezialindizes = 1`, `@MitQueryStoreReplicas = 1` und Plattformdetails. Falls die SQL-Server-2025-Sichten vorhanden sind, werden alle sichtbaren Vector- und JSON-Indexzeilen im Scope materialisiert. |
+| Haupttreiber | Zahl ausgewählter Datenbanken und – auf unterstützten Builds – Zahl sichtbarer Vector- und JSON-Indizes sowie JSON-Pfadzeilen. Die übrigen Capabilityprobes lesen kleine Katalogmengen beziehungsweise zählen Query-Store-Replikagruppen. |
 | Skalierung | Der dynamische Probe wird einmal je Datenbank kompiliert/ausgeführt. Laufzeit wächst annähernd mit der Datenbankanzahl; Spezialindexmaterialisierung und Ergebnistransfer wachsen zusätzlich mit der Zahl entsprechender Indizes. |
 | Ressourcen | Vor allem CPU und Katalogseiten, geringe TempDB-/Arbeitstabellenlast sowie dynamischer Compileaufwand je Datenbank. Kein Showplan-, XEL-, Payload- oder Benutzertabellenscan. |
 | Begrenzungswirkung | Datenbankliste/-pattern begrenzen den Cursor früh. `@MaxZeilen` wird erst beim Ausgeben jedes fachlichen Resultsets angewandt; es begrenzt weder die Zahl geprüfter Datenbanken noch die zuvor materialisierten Spezialindizes. |
-| Locking und Nebenwirkungen | Rein lesende `NOLOCK`-/Katalogprobes; keine Konfigurationsänderung. Parallel laufendes DDL, Upgrade oder Failover kann zwischen Server- und Datenbankprobe ein zeitlich uneinheitliches Ergebnis erzeugen. |
+| Locking und Nebenwirkungen | Rein lesende `NOLOCK`-/Katalogprobes; keine Konfigurationsänderung. Parallel laufendes DDL, Upgrade oder Failover kann zwischen Server- und Datenbankprobe ein zeitlich uneinheitliches Ergebnis erzeugen. Der vorherige Session-`LOCK_TIMEOUT` wird nach dem Aufruf wiederhergestellt. |
 | Schutzmechanismus | Der Kandidatenpfad nutzt `OBJECT_ANALYSIS_CURRENT`, dessen Katalogeintrag keine High-Impact-Bestätigung verlangt. `@HighImpactConfirmed` schaltet in dieser Procedure keinen zusätzlichen Deep-Pfad frei; der explizite Datenbankscope ist der wirksame Schutz. |
 | Sicherer Einsatz | Eine `ExampleDatabase`; bei reiner Serverroutingfrage optionale Spezialindizes und Query-Store-Replikaprobe deaktivieren. Erst nach vollständigem Status auf weitere Datenbanken erweitern. |
 | Aussagegrenze | Capability und Systemobjektexistenz sind kein Nutzungs-, Berechtigungs- oder Funktionstest. Ein Outputlimit kann relevante spätere Zeilen verbergen, obwohl alle Quellen bereits gelesen wurden. |
@@ -87,7 +93,7 @@ Die Procedure verbindet Product Major Version, Edition/Engine Edition, Compatibi
 
 ### Datenkette
 
-`master.sys.all_objects`, `sys.databases`, `sys.dm_os_host_info`, `sys.objects`, `sys.query_store_replicas`, `sys.resource_governor_configuration`, `sys.schemas`, `sys.sp_executesql`, `sys.vector_indexes`, `sys.views`.
+`master.sys.all_objects`, `sys.databases`, `sys.dm_os_host_info`, `sys.json_indexes`, `sys.json_index_paths`, `sys.objects`, `sys.query_store_replicas`, `sys.resource_governor_configuration`, `sys.schemas`, `sys.sp_executesql`, `sys.vector_indexes`, `sys.views`.
 
 ### Source Select
 
@@ -105,7 +111,7 @@ FROM [sys].[databases] AS [d] WITH (NOLOCK)
 WHERE [d].[database_id] = DB_ID();
 ```
 
-**Wichtig für die Eigenlast:** Legen Sie Datenbankscope vor Katalog-Existenz- und Probezugriffen fest. Die Spalte `is_optimized_locking_on` wird nur im SQL-Server-2025-Pfad kompiliert; versionsspezifische Sichten wie Vector Indexes und Query Store Replicas werden nur nach Versions- und Objektprüfung gelesen.
+**Wichtig für die Eigenlast:** Legen Sie Datenbankscope vor Katalog-Existenz- und Probezugriffen fest. Die Spalte `is_optimized_locking_on` wird nur im SQL-Server-2025-Pfad kompiliert; versionsspezifische Sichten wie Vector-/JSON-Indizes und Query Store Replicas werden nur nach Versions-, Objekt- und Pflichtspaltenprüfung gelesen. `sys.json_indexes` und `sys.json_index_paths` werden je Zieldatenbank und Aufruf höchstens einmal ausgeführt; die alternative Indexabfrage ohne Pfadquelle ist zum Pfadzweig gegenseitig exklusiv.
 
 ### Zeit- und Scope-Modell
 
@@ -117,7 +123,7 @@ Berücksichtigen Sie `AvailabilityStatus`, Objekt-/Viewexistenz, Plattform, Date
 
 ### Typische Fehlinterpretation
 
-Version allein reicht nicht: SQL Server 2025 mit niedriger Compatibility kann Features nicht im Querykontext aktivieren. Objekt vorhanden beweist keine nutzbare Datenlage.
+Version allein reicht nicht: SQL Server 2025 mit niedriger Compatibility kann Features nicht im Querykontext aktivieren. Objekt vorhanden beweist keine nutzbare Datenlage. Ein sichtbarer JSON-Index und seine Pfadzahl beweisen weder Nutzung noch Gesundheit, Nutzen oder Rebuildbedarf.
 
 ### Folgeanalyse
 
@@ -126,5 +132,9 @@ Verwenden Sie den betroffenen Diagnosepfad nur bei passendem `AvailabilityStatus
 ## Primärquellen
 
 - [SQL-Server-Katalogsichten](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/catalog-views-transact-sql?view=sql-server-ver17)
+- [sys.json_indexes (Transact-SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-json-indexes-transact-sql?view=sql-server-ver17)
+- [sys.json_index_paths (Transact-SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-json-index-paths-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../09_Version_Adaptive.md#1-monitorusp_serverfeaturecapabilities)
+
+[SQL-Server-2025-JSON-Index-Vertrag](../../Architecture/SQL_Server_2025_JSON_Index_Inventory.md)

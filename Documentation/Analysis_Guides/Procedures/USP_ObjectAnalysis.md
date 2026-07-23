@@ -1,7 +1,7 @@
 # [monitor].[USP_ObjectAnalysis]
 
 **Bereich:** Object und Index, Orchestrator<br>
-**Zweck:** Orchestriert Inventar, Usage, Missing Indexes und optionale Tiefenmodule einschließlich SQL-Server-2025-Vector-Indizes mit gemeinsamem Filtervertrag.<br>
+**Zweck:** Orchestriert Inventar, Usage, Missing Indexes und optionale Tiefenmodule; das bestehende Inventar enthält capability-adaptive SQL-Server-2025-JSON-Indexmetadaten.<br>
 **Beobachtungsart:** nicht atomarer Mix aus Katalog, kumulativen Zählern und optionalem physischem Scan<br>
 **Kostenklasse:** LOW–HIGH_OPT_IN
 
@@ -75,7 +75,7 @@ Für `USP_ObjectAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im si
 | Skalierung | Children laufen sequenziell und teilen keinen Katalogsnapshot. Dieselben Objekte werden für Inventar, Usage, Operational Stats, Statistics, Partitionen, Columnstore und Design jeweils neu aufgelöst; VOLL vergrößert Scope und Detailarbeit. |
 | Ressourcen | Datenbankkatalog- und DMV-CPU, Metadaten-I/O, Arbeitsspeicher/TempDB für Gruppierung sowie optional physischer Indexscan und Histogrammabruf. Kein `msdb`, XEL- oder Samplingpfad. |
 | Begrenzungswirkung | `@MaxZeilen` wird an jedes Child übergeben, ist aber kein Gesamtlimit. Je Child kann es früh Kandidaten, erst eine sortierte Ausgabe oder nur den Transfer begrenzen; besonders SchemaDesign scannt den Katalog vor dem Limit. `@LockTimeoutMs` begrenzt Wartezeit, nicht CPU, I/O oder Gesamtdauer. |
-| Locking und Nebenwirkungen | Read-only, aber Katalog- und Physical-Stats-Zugriffe können mit DDL konkurrieren. Die Children laufen nicht atomar; Objekt- oder Indexdefinitionen können sich zwischen Resultsets ändern. |
+| Locking und Nebenwirkungen | Read-only, aber Katalog- und Physical-Stats-Zugriffe können mit DDL konkurrieren. Die Children laufen nicht atomar; Objekt- oder Indexdefinitionen können sich zwischen Resultsets ändern. Der angeforderte `LOCK_TIMEOUT` gilt für den Childlauf; anschließend wird der vorherige Sessionwert wiederhergestellt. |
 | Schutzmechanismus | VOLL und ressourcenintensive Children besitzen getrennte Modulschalter und Analyseklassen; `@HighImpactConfirmed` wird an alle weitergereicht. Freigabe erlaubt den Pfad, begrenzt ihn aber nicht. Ein enger `@DatabaseNames`-/`@FullObjectNames`-Scope bleibt erforderlich. |
 | Sicherer Einsatz | Eine Datenbank, ein vollständiger Objektname, nur ein Child und `@MaxZeilen = 100`. Erst nach dessen Status gezielt Operational Stats, Histogramm oder Physical Stats mit eigenem Kostenvertrag aktivieren. |
 | Aussagegrenze | Die Resultsets kombinieren aktuelle Katalogstruktur, seit Restart kumulative DMVs und optionale physische Momentaufnahmen. Gemeinsame Namen bedeuten nicht gemeinsamen Messzeitpunkt; Limits können pro Child andere Objekte sichtbar machen. |
@@ -90,7 +90,7 @@ Welche objektbezogenen Evidenzpfade sollen für einen Scope gemeinsam ausgeführ
 
 ### Technischer Hintergrund
 
-Der Orchestrator kombiniert Definition, Usage, Operations, Missing Indexes, Statistics, Partitions, Columnstore sowie optional Physical Stats und Vector-Index-Wartung. Jedes Child behält eigene Quelle, Kosten und Resetsemantik.
+Der Orchestrator kombiniert Definition, Usage, Operations, Missing Indexes, Statistics, Partitions, Columnstore sowie optional Physical Stats und Vector-Index-Wartung. Jedes Child behält eigene Quelle, Kosten und Resetsemantik. SQL25-002 benötigt keinen neuen Schalter: Wenn `@MitObjectInventory = 1` und `@MitIndizes = 1` gelten, enthält der vorhandene Childvertrag die versions- und capability-adaptiven JSON-Index-/Pfadfelder.
 
 ### Datenkette
 
@@ -116,7 +116,7 @@ Die Zusammenfassung ist keine DDL-Liste. Ein Childfehler darf nicht als unauffä
 
 ### Folgeanalyse
 
-Führen Sie je Befund das spezialisierte Child mit engem Scope erneut aus. `@MitVectorIndexes = 1` bleibt opt-in und liefert auf älteren Versionen einen expliziten Childstatus statt eines Parserfehlers.
+Führen Sie je Befund das spezialisierte Child mit engem Scope erneut aus. `@MitVectorIndexes = 1` bleibt opt-in und liefert auf älteren Versionen einen expliziten Childstatus statt eines Parserfehlers. JSON-Indexmetadaten werden dagegen über `USP_ObjectInventory` geroutet; Indexpräsenz und Pfadzahl sind keine automatische Health- oder DDL-Empfehlung.
 
 ## Primärquellen
 
@@ -129,3 +129,5 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 - [SQL Server First Responder Kit – ergänzende, quelloffene Praxiswerkzeuge für Triage](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)
 
 [Technische Detailbeschreibung](../03_Object_Index.md#12-monitorusp_objectanalysis)
+
+[SQL-Server-2025-JSON-Index-Vertrag](../../Architecture/SQL_Server_2025_JSON_Index_Inventory.md)

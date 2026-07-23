@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_ServerFeatureCapabilities
-Version      : 3.1.0
-Stand        : 2026-07-22
+Version      : 3.2.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
 Zweck        : Erkennt zusätzliche Diagnosefunktionen versionsadaptiv für eine
                explizite Datenbankliste oder alle zulässigen Datenbanken.
@@ -19,8 +19,11 @@ Semantik     : bracket-aware Pipe-Liste; NULL/N''=alle. Pattern ist
                separat und mit exakter Liste gegenseitig exklusiv.
 Ausgabe      : RAW/CONSOLE/NONE sowie JSON mit benannten Arrays.
 Locking      : Systemkataloge READUNCOMMITTED/NOLOCK; kein OBJECT_ID-Aufruf für
-               versionsabhängige Objekterkennung.
-Änderungen   : 3.1.0 - External-Runtime- und SQL-CLR-Quellen ergänzt.
+               versionsabhängige Objekterkennung. Der vorherige LOCK_TIMEOUT
+               wird wiederhergestellt.
+Änderungen   : 3.2.0 - SQL25-002: JSON-Indizes mit Array-Option und
+                         Pfadanzahl capability-adaptiv inventarisiert.
+               3.1.0 - External-Runtime- und SQL-CLR-Quellen ergänzt.
                3.0.0 - @AlleDatenbanken entfernt; zentraler Datenbankvertrag,
                          Ausgabevertrag und katalogbasierte Featureerkennung.
                2.1.0 - Vorheriger Stand.
@@ -45,7 +48,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SET @Json = NULL;
-    SET LOCK_TIMEOUT 0;
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @LockTimeoutSql nvarchar(64);
 
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
@@ -63,9 +67,13 @@ BEGIN
         PRINT N'@DatabaseNames=N''[Db1]|[Db2]''; NULL=alle; N'''' bedeutet keine Einschränkung.';
         PRINT N'@DatabaseNamePattern unterstützt like:, regex:, regexi: und ist exklusiv zu @DatabaseNames.';
         PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt; @MaxZeilen begrenzt jedes fachliche Resultset global.';
+        PRINT N'@MitSpezialindizes=1 inventarisiert capability-adaptiv Vector- und JSON-Indizes; JSON-Dokumentwerte und SQL/JSON-Pfadwerte werden hier nicht ausgegeben.';
         PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE (case-insensitiv); @JsonErzeugen=1 erzeugt @Json OUTPUT.';
         RETURN;
     END;
+
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT 0;';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
 
     DECLARE @CollectionTimeUtc datetime2(3) = SYSUTCDATETIME();
     DECLARE @Major int = TRY_CONVERT(int, SERVERPROPERTY(N'ProductMajorVersion'));
@@ -78,6 +86,10 @@ BEGIN
     DECLARE @CrossDatabaseRequested bit = 0;
     DECLARE @Db sysname;
     DECLARE @Sql nvarchar(max);
+    DECLARE @JsonProbeSql nvarchar(max);
+    DECLARE @HasJsonIndexes bit,@HasJsonIndexPaths bit;
+    DECLARE @JsonIndexesSchemaValid bit,@JsonIndexPathsSchemaValid bit;
+    DECLARE @JsonIndexAvailability varchar(40),@JsonIndexCount bigint;
 
     BEGIN TRY
         SELECT TOP (1) @Platform = [host_platform]
@@ -273,6 +285,209 @@ END;';
                     , N'@IncludeSpecialIndexes bit,@IncludeQueryStoreReplicas bit'
                     , @IncludeSpecialIndexes = @MitSpezialindizes
                     , @IncludeQueryStoreReplicas = @MitQueryStoreReplicas;
+
+                IF @MitSpezialindizes=1
+                BEGIN
+                    SELECT
+                          @HasJsonIndexes=0
+                        , @HasJsonIndexPaths=0
+                        , @JsonIndexesSchemaValid=0
+                        , @JsonIndexPathsSchemaValid=0
+                        , @JsonIndexCount=0
+                        , @JsonIndexAvailability=CASE
+                              WHEN @Major IS NULL OR @Major<17 THEN 'UNAVAILABLE_VERSION'
+                              ELSE 'NOT_COLLECTED' END;
+
+                    IF @Major IS NULL OR @Major<17
+                    BEGIN
+                        INSERT [#ServerFeatureCapabilities_DatabaseFeatures]
+                        (
+                              [DatabaseName],[CompatibilityLevel],[StateDesc]
+                            , [FeatureName],[AvailabilityStatus],[FeatureValue]
+                            , [LogicPath],[Detail]
+                        )
+                        SELECT
+                              [DatabaseName],[CompatibilityLevel],[StateDesc]
+                            , N'JSON_INDEX_METADATA','UNAVAILABLE_VERSION',NULL
+                            , N'Fallback: allgemeines Indexinventar ohne JSON-spezifische Spalten.'
+                            , N'sys.json_indexes und sys.json_index_paths werden vor SQL Server 2025 nicht referenziert.'
+                        FROM [#ServerFeatureCapabilities_DatabaseCandidates]
+                        WHERE [DatabaseName]=@Db;
+                    END
+                    ELSE
+                    BEGIN
+                        BEGIN TRY
+                            SET @JsonProbeSql=N'USE '+QUOTENAME(@Db)+N';
+SELECT
+      @pHasJsonIndexesOut=CONVERT(bit,CASE WHEN EXISTS
+      (
+          SELECT 1
+          FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+          INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+             ON [s].[schema_id]=[o].[schema_id]
+          WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_indexes''
+      ) THEN 1 ELSE 0 END)
+    , @pHasJsonIndexPathsOut=CONVERT(bit,CASE WHEN EXISTS
+      (
+          SELECT 1
+          FROM [sys].[all_objects] AS [o] WITH (NOLOCK)
+          INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+             ON [s].[schema_id]=[o].[schema_id]
+          WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_index_paths''
+      ) THEN 1 ELSE 0 END);
+
+SELECT @pJsonIndexesSchemaValidOut=CONVERT(bit,CASE
+    WHEN @pHasJsonIndexesOut=1 AND
+         (
+             SELECT COUNT(DISTINCT [c].[name])
+             FROM [sys].[all_columns] AS [c] WITH (NOLOCK)
+             INNER JOIN [sys].[all_objects] AS [o] WITH (NOLOCK)
+                ON [o].[object_id]=[c].[object_id]
+             INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+                ON [s].[schema_id]=[o].[schema_id]
+             WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_indexes''
+               AND [c].[name] IN
+                   (N''object_id'',N''index_id'',N''name'',N''is_disabled'',N''optimize_for_array_search'')
+         )=5 THEN 1 ELSE 0 END);
+
+SELECT @pJsonIndexPathsSchemaValidOut=CONVERT(bit,CASE
+    WHEN @pHasJsonIndexPathsOut=1 AND
+         (
+             SELECT COUNT(DISTINCT [c].[name])
+             FROM [sys].[all_columns] AS [c] WITH (NOLOCK)
+             INNER JOIN [sys].[all_objects] AS [o] WITH (NOLOCK)
+                ON [o].[object_id]=[c].[object_id]
+             INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+                ON [s].[schema_id]=[o].[schema_id]
+             WHERE [s].[name]=N''sys'' AND [o].[name]=N''json_index_paths''
+               AND [c].[name] IN (N''object_id'',N''index_id'',N''path'')
+         )=3 THEN 1 ELSE 0 END);';
+                            EXEC [sys].[sp_executesql]
+                                  @JsonProbeSql
+                                , N'@pHasJsonIndexesOut bit OUTPUT,@pHasJsonIndexPathsOut bit OUTPUT,
+                                    @pJsonIndexesSchemaValidOut bit OUTPUT,@pJsonIndexPathsSchemaValidOut bit OUTPUT'
+                                , @pHasJsonIndexesOut=@HasJsonIndexes OUTPUT
+                                , @pHasJsonIndexPathsOut=@HasJsonIndexPaths OUTPUT
+                                , @pJsonIndexesSchemaValidOut=@JsonIndexesSchemaValid OUTPUT
+                                , @pJsonIndexPathsSchemaValidOut=@JsonIndexPathsSchemaValid OUTPUT;
+
+                            IF @HasJsonIndexes=0
+                                SET @JsonIndexAvailability='UNAVAILABLE_FEATURE';
+                            ELSE IF @JsonIndexesSchemaValid=0
+                                SET @JsonIndexAvailability='UNAVAILABLE_SOURCE_SCHEMA';
+                            ELSE
+                            BEGIN
+                                SET @JsonIndexAvailability=CASE
+                                    WHEN @HasJsonIndexPaths=1 AND @JsonIndexPathsSchemaValid=1
+                                    THEN 'AVAILABLE'
+                                    ELSE 'AVAILABLE_LIMITED' END;
+
+                                SET @Sql=N'USE '+QUOTENAME(@Db)+N';
+'+CASE WHEN @HasJsonIndexPaths=1 AND @JsonIndexPathsSchemaValid=1 THEN N'
+;WITH [JsonPathAgg] AS
+(
+    SELECT [p].[object_id],[p].[index_id],COUNT_BIG(*) AS [JsonPathCount]
+    FROM [sys].[json_index_paths] AS [p] WITH (NOLOCK)
+    GROUP BY [p].[object_id],[p].[index_id]
+)
+INSERT [#ServerFeatureCapabilities_SpecialIndexes]
+SELECT
+      @pDatabaseName,[s].[name],[o].[name],[j].[name],N''JSON''
+    , CONCAT
+      (
+            N''array_search='',CONVERT(nvarchar(10),[j].[optimize_for_array_search])
+          , N''; path_count='',COALESCE(CONVERT(nvarchar(30),[p].[JsonPathCount]),N''0'')
+          , N''; disabled='',CONVERT(nvarchar(10),[j].[is_disabled])
+      )
+    , N''AVAILABLE''
+FROM [sys].[json_indexes] AS [j] WITH (NOLOCK)
+INNER JOIN [sys].[objects] AS [o] WITH (NOLOCK)
+   ON [o].[object_id]=[j].[object_id]
+INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+   ON [s].[schema_id]=[o].[schema_id]
+LEFT JOIN [JsonPathAgg] AS [p]
+   ON [p].[object_id]=[j].[object_id] AND [p].[index_id]=[j].[index_id];'
+                                ELSE N'
+INSERT [#ServerFeatureCapabilities_SpecialIndexes]
+SELECT
+      @pDatabaseName,[s].[name],[o].[name],[j].[name],N''JSON''
+    , CONCAT
+      (
+            N''array_search='',CONVERT(nvarchar(10),[j].[optimize_for_array_search])
+          , N''; path_count=UNAVAILABLE''
+          , N''; disabled='',CONVERT(nvarchar(10),[j].[is_disabled])
+      )
+    , N''AVAILABLE_LIMITED''
+FROM [sys].[json_indexes] AS [j] WITH (NOLOCK)
+INNER JOIN [sys].[objects] AS [o] WITH (NOLOCK)
+   ON [o].[object_id]=[j].[object_id]
+INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+   ON [s].[schema_id]=[o].[schema_id];' END;
+
+                                EXEC [sys].[sp_executesql]
+                                      @Sql
+                                    , N'@pDatabaseName sysname'
+                                    , @pDatabaseName=@Db;
+
+                                SELECT @JsonIndexCount=COUNT_BIG(*)
+                                FROM [#ServerFeatureCapabilities_SpecialIndexes]
+                                WHERE [DatabaseName]=@Db AND [IndexFamily]=N'JSON';
+
+                                IF @JsonIndexCount=0 AND @JsonIndexAvailability='AVAILABLE'
+                                    SET @JsonIndexAvailability='AVAILABLE_EMPTY_OR_RESTRICTED';
+                            END;
+
+                            INSERT [#ServerFeatureCapabilities_DatabaseFeatures]
+                            (
+                                  [DatabaseName],[CompatibilityLevel],[StateDesc]
+                                , [FeatureName],[AvailabilityStatus],[FeatureValue]
+                                , [LogicPath],[Detail]
+                            )
+                            SELECT
+                                  [DatabaseName],[CompatibilityLevel],[StateDesc]
+                                , N'JSON_INDEX_METADATA',@JsonIndexAvailability
+                                , CASE WHEN @JsonIndexAvailability IN
+                                           ('AVAILABLE','AVAILABLE_LIMITED','AVAILABLE_EMPTY_OR_RESTRICTED')
+                                       THEN CONVERT(nvarchar(100),@JsonIndexCount) END
+                                , N'ObjectInventory liefert sichtbare Pfade; diese Capability-Ausgabe enthält nur Pfadanzahl und Indexoptionen.'
+                                , CASE
+                                      WHEN @JsonIndexAvailability='UNAVAILABLE_FEATURE'
+                                      THEN N'Der konkrete SQL-Server-2025-Build stellt sys.json_indexes nicht bereit.'
+                                      WHEN @JsonIndexAvailability='UNAVAILABLE_SOURCE_SCHEMA'
+                                      THEN N'sys.json_indexes ist vorhanden, aber das benötigte Pflichtschema weicht ab.'
+                                      WHEN @JsonIndexAvailability='AVAILABLE_LIMITED'
+                                      THEN N'JSON-Indizes sind sichtbar; sys.json_index_paths fehlt oder weicht im Pflichtschema ab.'
+                                      WHEN @JsonIndexAvailability='AVAILABLE_EMPTY_OR_RESTRICTED'
+                                      THEN N'Keine JSON-Indexzeile ist sichtbar; Metadata Visibility unterscheidet leeren Scope und verborgene Objekte nicht sicher.'
+                                      ELSE N'JSON-Indizes und Pfadanzahl sind sichtbar; JSON-Dokumentwerte und Pfadwerte werden hier nicht ausgegeben.'
+                                  END
+                            FROM [#ServerFeatureCapabilities_DatabaseCandidates]
+                            WHERE [DatabaseName]=@Db;
+                        END TRY
+                        BEGIN CATCH
+                            INSERT [#ServerFeatureCapabilities_Errors]
+                            VALUES(@Db,N'JsonIndexCapabilities',ERROR_NUMBER(),ERROR_MESSAGE());
+                            INSERT [#ServerFeatureCapabilities_DatabaseFeatures]
+                            (
+                                  [DatabaseName],[CompatibilityLevel],[StateDesc]
+                                , [FeatureName],[AvailabilityStatus],[FeatureValue]
+                                , [LogicPath],[Detail]
+                            )
+                            SELECT
+                                  [DatabaseName],[CompatibilityLevel],[StateDesc]
+                                , N'JSON_INDEX_METADATA'
+                                , CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916)
+                                       THEN 'DENIED_PERMISSION'
+                                       WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT'
+                                       ELSE 'ERROR_HANDLED' END
+                                , NULL,N'JSON-Index-Quellen sind isoliert; andere Capabilities bleiben erhalten.'
+                                , N'Die JSON-Index-Capability- oder Katalogabfrage scheiterte.'
+                            FROM [#ServerFeatureCapabilities_DatabaseCandidates]
+                            WHERE [DatabaseName]=@Db;
+                            SET @IsPartial=1;
+                        END CATCH;
+                    END;
+                END;
             END TRY
             BEGIN CATCH
                 INSERT [#ServerFeatureCapabilities_Errors] VALUES(@Db,N'DatabaseCapabilities',ERROR_NUMBER(),ERROR_MESSAGE());
@@ -300,6 +515,9 @@ END;';
         SET @MonitorPrintMessage=FORMATMESSAGE(N'WARNUNG USP_ServerFeatureCapabilities %s: %s',@StatusCode,COALESCE(@ErrorMessage,N'Teilergebnis.'));
         RAISERROR(N'%s',10,1,@MonitorPrintMessage) WITH NOWAIT;
     END;
+
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
 
     IF @JsonErzeugen = 1
     BEGIN

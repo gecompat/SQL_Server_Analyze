@@ -145,6 +145,8 @@ EXPECTED_SEARCH_CASES = {
     "AG Lag Redo Queue Send Queue": "USP_AvailabilityDeepAnalysis",
     "Deadlock": "USP_ExtendedEventsDeadlocks",
     "SQL Server Version CU Lifecycle": "USP_ServerVersionInformation",
+    "JSON-Index Pfade inventarisieren": "USP_ObjectInventory",
+    "JSON-Index Capability Preview": "USP_ServerFeatureCapabilities",
 }
 
 PUBLIC_DOCUMENTATION_FORBIDDEN = (
