@@ -620,7 +620,10 @@ WHERE [p].[plan_id]=@PlanId;';
         END;
     END TRY
     BEGIN CATCH
-        SELECT @StatusCodeOut=CASE WHEN ERROR_NUMBER() IN (229,371,262,297,300,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+        SELECT @StatusCodeOut=CASE
+                   WHEN ERROR_NUMBER()=569 AND @PlanHandle IS NOT NULL THEN 'UNAVAILABLE_OBJECT'
+                   WHEN ERROR_NUMBER() IN (229,371,262,297,300,916) THEN 'DENIED_PERMISSION'
+                   ELSE 'ERROR_HANDLED' END,
                @IsPartialOut=1,@ErrorNumberOut=ERROR_NUMBER(),@ErrorMessageOut=ERROR_MESSAGE();
     END CATCH;
 
