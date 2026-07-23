@@ -126,3 +126,9 @@ Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Tooling
 - [SQL Server First Responder Kit – ergänzende, quelloffene Praxiswerkzeuge für Triage](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)
 
 [Technische Detailbeschreibung](../04_Plan_Cache.md#6-monitorusp_plancacheanalysis)
+Wenn `MitShowplanAnalysis=1` aktiv ist, enthält die Showplan-Childanalyse
+zusätzlich die fünf DIAG-005-Ergebnisse `planWarnings`, `optimizerContext`,
+`runtimeFeedback`, `queryStoreContext` und `feedbackAndVariants`. Der
+Query-Stats-Snapshot und der daraus abgeleitete Cachekontext werden innerhalb
+des Orchestratoraufrufs wiederverwendet.
+
