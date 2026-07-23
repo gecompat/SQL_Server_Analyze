@@ -1,7 +1,7 @@
 # Backlog für zusätzliche Betriebs- und Versionsdiagnosen
 
 Stand: 2026-07-21
-Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004` sowie `SQL25-001` bis `SQL25-003` sind `IMPLEMENTED_ACTIONS_GATE`
+Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004` sowie `SQL25-001` bis `SQL25-004` sind `IMPLEMENTED_ACTIONS_GATE`
 Maschinenlesbarer Backlog: `Metadata/Quality/Future_Enhancement_Backlog.csv`
 
 ## Ziel und Abgrenzung
@@ -23,7 +23,7 @@ Eine Abweichung oder ein Einzelindikator ist grundsätzlich Evidenz für eine we
 | `SQL25-001` | P2 | Vector-Index-Laufzeit | neue Detailanalyse oder Erweiterung der Objektanalyse | Capability, Zustand und Maintenance getrennt bewerten |
 | `SQL25-002` | P2 | JSON-Index-Inventar | bestehende Objekt- und Indexinventare erweitert | versionsadaptiv; bewusst keine überdimensionierte Einzel-Procedure |
 | `SQL25-003` | P2 | TempDB Resource Governance | Resource-Governor- und TempDB-Module erweitert | gespeichertes/wirksames Limit, Nutzung, Peak, Verletzung und Resetgrenze getrennt |
-| `SQL25-004` | P2 | Statistiken auf lesbaren Secondaries | `monitor.USP_Statistics` versionsadaptiv erweitern | Replica-Rolle und Herkunft explizit erhalten |
+| `SQL25-004` | P2 | Statistiken auf lesbaren Secondaries | `monitor.USP_Statistics` versionsadaptiv erweitert | aktuelle Replica-Rolle und Statistikherkunft explizit getrennt |
 | `SQL25-005` | P2 | Query Store auf Secondary Replicas | Query-Store-Module replica-aware machen | fehlende Replica-Evidenz nicht als gesunden Zustand behandeln |
 | `OPS-005` | P2 | Linked Server | neue `monitor.USP_LinkedServerAnalysis` | Remoteverbindungstest ausschließlich opt-in |
 | `OPS-006` | P2 | Datenbankportabilität | neue `monitor.USP_DatabasePortabilityAnalysis` | Befunde sind Migrationsrisiken, keine automatische DDL-Anweisung |
@@ -85,9 +85,22 @@ Health- oder DDL-Aussage.
 
 `monitor.USP_ResourceGovernorAnalysis` und `monitor.USP_CurrentTempDB` liefern das gemeinsame benannte Resultset `tempdbGovernance`. Es trennt gespeicherte MB-/Prozentlimits, die wirksame Limitquelle, aktuelle und maximale TempDB-Datennutzung, `total_tempdb_data_limit_violation_count` und `statistics_start_time`. MB hat Vorrang; Prozentlimits werden nur bei geeigneter TempDB-Dateikonfiguration als wirksam berechnet. Der Current-State-Orchestrator materialisiert die Resource-Governor-Quellen einmal und reicht sie an `USP_CurrentTempDB` weiter. Nicht konfigurierte Governance ist kein Fehler; eine Verletzung ist ohne Workloadkontext keine Ursachenfeststellung. Version Store und TempDB-Log liegen außerhalb dieser Governance.
 
-### SQL25-004 und SQL25-005 – Replica-aware Statistics und Query Store
+### SQL25-004 – Replica-aware Statistics
 
-`monitor.USP_Statistics` soll verfügbare Replica-Rollenfelder wie `replica_role_id`, `replica_role_desc` und `replica_name` versionsadaptiv erhalten. Query-Store-Auswertungen sollen `sys.query_store_replicas` fachlich verwenden, statt dessen Existenz nur als Capability zu erkennen. Primary-, Secondary- und unvollständige Evidenz dürfen nicht vermischt werden.
+`monitor.USP_Statistics` erhält `is_temporary`, `replica_role_id`,
+`replica_role_desc` und `replica_name` versions- und capability-adaptiv. Die
+aktuelle Datenbankrolle wird davon getrennt und mit eigenem Quellenstatus
+ausgegeben. Auf SQL Server 2019/2022 werden die neuen Spalten nicht
+referenziert. Ab SQL Server 2025 wird ihr Pflichtschema vor Dynamic SQL
+geprüft. `sys.stats` wird je Datenbank einmal materialisiert; inkrementelle
+Details verwenden diese Materialisierung weiter. Herkunft ist weder aktuelle
+Rolle noch Verwendungs-, Health- oder Wartungsnachweis.
+
+### SQL25-005 – Replica-aware Query Store
+
+Query-Store-Auswertungen sollen `sys.query_store_replicas` fachlich verwenden,
+statt dessen Existenz nur als Capability zu erkennen. Primary-, Secondary- und
+unvollständige Evidenz dürfen nicht vermischt werden.
 
 ## Weitere Betriebsanalysen
 
@@ -116,8 +129,8 @@ Ein leichter Inventarpfad meldet sichtbare Benutzerobjekte in `master`, `model` 
 ## Umsetzungsreihenfolge
 
 1. Abgeschlossen: `OPS-001` bis `OPS-004` in Welle 2.
-2. Abgeschlossen: `SQL25-001` bis `SQL25-003` als erste versionsadaptive Slices.
-3. Offen: `SQL25-004` und `SQL25-005`.
+2. Abgeschlossen: `SQL25-001` bis `SQL25-004` als versionsadaptive Slices.
+3. Offen: `SQL25-005`.
 4. `OPS-005`, `OPS-006` und `OPS-008`.
 5. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
 

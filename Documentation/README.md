@@ -76,6 +76,7 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [Spezialfallmodule](Architecture/Special_Case_Modules.md)
 - [SQL-Server-2025-JSON-Index-Inventar](Architecture/SQL_Server_2025_JSON_Index_Inventory.md)
 - [SQL-Server-2025-TempDB-Resource-Governance](Architecture/SQL_Server_2025_TempDB_Resource_Governance.md)
+- [SQL-Server-2025-Statistiken auf lesbaren Secondaries](Architecture/SQL_Server_2025_Readable_Secondary_Statistics.md)
 - [RUNTIME-001: External Runtime und SQL CLR](Architecture/External_Runtime_CLR_Analysis_Plan.md)
 - [LAB-001: Reproducible Diagnostic Lab](Architecture/Reproducible_Diagnostic_Lab_Plan.md)
 - [Geplantes SubProject SSIS-001: SSIS Package- und Execution-Analyse](Architecture/SSIS_Package_and_Execution_Analysis_Plan.md)

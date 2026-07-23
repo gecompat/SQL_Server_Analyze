@@ -4,12 +4,19 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_Statistics
-Version      : 1.1.0
-Stand        : 2026-07-17
+Version      : 1.2.0
+Stand        : 2026-07-23
 Typ          : Stored Procedure
-Zweck        : Analysiert Statistikdefinitionen, letzte Aktualisierung, Stichprobe und Modification Counter; vollständige ungezielte Scans sind gruppengeschützt.
+Zweck        : Analysiert Statistikdefinitionen, letzte Aktualisierung,
+               Stichprobe, Modification Counter sowie versionsadaptiv die
+               Herkunft persistierter Statistiken auf lesbaren Replikaten;
+               vollständige ungezielte Scans sind gruppengeschützt.
 SQL-Version  : SQL Server 2019 oder neuer.
-Datenquellen : Je Datenbank sys.stats, sys.stats_columns, sys.columns, sys.objects, sys.tables, sys.schemas, sys.dm_db_stats_properties und optional sys.dm_db_incremental_stats_properties.
+Datenquellen : Je Datenbank sys.stats, sys.stats_columns, sys.columns,
+               sys.objects, sys.tables, sys.schemas,
+               sys.dm_db_stats_properties, sys.fn_hadr_is_primary_replica,
+               auf SQL Server 2025 capability-geprüfte sys.stats-Spalten sowie
+               optional sys.dm_db_incremental_stats_properties.
 Parameter    :
   @DatabaseName                  sysname        = NULL  - Zieldatenbank; bei Einzelmodus Pflicht.
   @CrossDatabaseRequestedInternal               bit            = 0     - sichtbare Online-Datenbanken analysieren.
@@ -36,7 +43,12 @@ Beispiele    :
   EXEC monitor.USP_Statistics @DatabaseNames=N'SampleDatabase', @SchemaNamePattern=N'dbo', @ObjectNamePattern=N'FactSales';
   EXEC monitor.USP_Statistics @DatabaseNames=N'SampleDatabase', @AnalyseModus='VOLL', @MinModificationPercent=10;
   EXEC monitor.USP_Statistics @Hilfe=1;
-Änderungen   : 1.1.0 - Inkrementelle Partitionsdetails werden bei aktiviertem
+Änderungen   : 1.2.0 - SQL25-004 erhält IsTemporary, aktuelle Replica-Rolle
+                         und die Herkunftsfelder replica_role_id,
+                         replica_role_desc und replica_name versionsadaptiv.
+                         Der äußere LOCK_TIMEOUT bleibt unverändert; jeder
+                         Datenbankread setzt ihn nur im isolierten Dynamic SQL.
+               1.1.0 - Inkrementelle Partitionsdetails werden bei aktiviertem
                          Schalter auch als Resultset und JSON-Array veröffentlicht.
                1.0.0 - Erstfassung Phase 2.
 ===============================================================================
@@ -68,6 +80,10 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_Statistics]
 AS
 BEGIN
  SET NOCOUNT ON;
+
+    DECLARE @OriginalLockTimeout int = @@LOCK_TIMEOUT;
+    DECLARE @ProductMajorVersion int =
+        TRY_CONVERT(int, SERVERPROPERTY('ProductMajorVersion'));
 
     SET @Json = NULL;
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
@@ -126,6 +142,7 @@ BEGIN
         PRINT N'@LockTimeoutMs int = 0: Metadatenzugriff wartet standardmäßig nicht auf Locks.';
         PRINT N'@PrintMeldungen bit = 1: strukturierte Warnungen zusätzlich in der Console.';
         PRINT N'Die Procedure liefert Statistikalter, Stichprobenumfang, Zeilenanzahl und Modification Counter.';
+        PRINT N'Ab SQL Server 2025 werden Herkunftsrolle und Replikatname aus sys.stats ausgegeben; CurrentReplicaRole bezeichnet davon getrennt die aktuelle Datenbankrolle.';
         PRINT N'@AnalyseModus = GEZIELT: Schema- oder Objektfilter ist erforderlich; VOLL prüft CATALOG_DEEP.';
         PRINT N'@StatisticsNamePattern: optionaler Statistikname-Filter.';
         PRINT N'@MinModificationPercent: 0 bis 100; nur entsprechende Statistiken.';
@@ -173,10 +190,6 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
         VALUES(@DatabaseName, @OverallStatus, 1, 0, NULL, NULL, @ErrorMessage, N'Keine Datenbankanalyse ausgeführt.');
         SET @IsPartial = 1;
     END
-    ELSE
-    BEGIN
-        SET LOCK_TIMEOUT 0;
-    END;
 
  DECLARE @CatalogAllowed bit=1;
  IF @AnalyseModus='VOLL' OR @MitIncrementellenDetails=1 SELECT @CatalogAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='CATALOG_DEEP';
@@ -185,6 +198,9 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
   [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[ObjectId] int NOT NULL,
   [StatisticsId] int NOT NULL,[StatisticsName] sysname NOT NULL,[IsIndexStatistics] bit NOT NULL,[IsAutoCreated] bit NULL,[IsUserCreated] bit NULL,
   [IsFiltered] bit NULL,[FilterDefinition] nvarchar(max) NULL,[NoRecompute] bit NULL,[IsIncremental] bit NULL,[HasPersistedSample] bit NULL,
+  [IsTemporary] bit NULL,[CurrentReplicaRole] varchar(40) NULL,[CurrentReplicaRoleStatus] varchar(40) NOT NULL,
+  [ReplicaRoleId] tinyint NULL,[ReplicaRoleDesc] nvarchar(60) NULL,
+  [ReplicaName] sysname NULL,[ReplicaMetadataStatus] varchar(40) NOT NULL,
   [StatisticsColumns] nvarchar(max) NULL,[LastUpdated] datetime2 NULL,[Rows] bigint NULL,[RowsSampled] bigint NULL,[SamplePercent] decimal(9,4) NULL,
   [Steps] int NULL,[UnfilteredRows] bigint NULL,[ModificationCounter] bigint NULL,[ModificationPercent] decimal(19,4) NULL,
   [PersistedSamplePercent] float NULL,[DaysSinceLastUpdate] int NULL,[VisibilityOrState] varchar(40) NOT NULL
@@ -203,17 +219,151 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
  BEGIN SET @OverallStatus='DENIED_GROUP'; SET @ErrorMessage=N'CATALOG_DEEP ist für VOLL bzw. inkrementelle Details nicht freigegeben.'; INSERT [#Statistics_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
  ELSE IF @OverallStatus='AVAILABLE'
  BEGIN
-  DECLARE @DbId int,@DbName sysname,@Sql nvarchar(max),@Rows bigint;
+  DECLARE
+        @DbId int
+      , @DbName sysname
+      , @Sql nvarchar(max)
+      , @Rows bigint
+      , @ReplicaMetadataColumnsAvailable bit
+      , @ReplicaMetadataCapabilityStatus varchar(40)
+      , @ReplicaProjection nvarchar(max)
+      , @ReplicaCapabilitySql nvarchar(max)
+      , @CurrentReplicaIsPrimary bit
+      , @CurrentReplicaRole varchar(40)
+      , @CurrentReplicaRoleStatus varchar(40)
+      , @CurrentReplicaSql nvarchar(max);
   DECLARE dbcur CURSOR LOCAL FAST_FORWARD FOR SELECT [DatabaseId],[DatabaseName] FROM [#Statistics_DatabaseCandidates];
   OPEN dbcur; FETCH NEXT FROM dbcur INTO @DbId,@DbName;
   WHILE @@FETCH_STATUS=0
-  BEGIN
+   BEGIN
    BEGIN TRY
+    SET @CurrentReplicaIsPrimary=NULL;
+    SET @CurrentReplicaRole=NULL;
+    SET @CurrentReplicaRoleStatus='NOT_APPLICABLE';
+
+    IF COALESCE(CONVERT(int,SERVERPROPERTY('IsHadrEnabled')),0)<>1
+        SET @CurrentReplicaRole='HADR_DISABLED';
+    ELSE
+    BEGIN
+     BEGIN TRY
+      SET @CurrentReplicaSql =
+          N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs)
+        + N'; USE ' + QUOTENAME(@DbName) + N';
+SELECT @pIsPrimary=sys.fn_hadr_is_primary_replica(@pDbName);';
+
+      EXEC [sys].[sp_executesql]
+            @CurrentReplicaSql
+          , N'@pDbName sysname,@pIsPrimary bit OUTPUT'
+          , @pDbName=@DbName
+          , @pIsPrimary=@CurrentReplicaIsPrimary OUTPUT;
+
+      SET @CurrentReplicaRole=
+          CASE
+              WHEN @CurrentReplicaIsPrimary=1 THEN 'PRIMARY'
+              WHEN @CurrentReplicaIsPrimary=0 THEN 'SECONDARY'
+              ELSE 'NOT_IN_AG_OR_UNKNOWN'
+          END;
+      SET @CurrentReplicaRoleStatus='AVAILABLE';
+     END TRY
+     BEGIN CATCH
+      SET @CurrentReplicaRole=NULL;
+      SET @CurrentReplicaRoleStatus=
+          CASE
+              WHEN ERROR_NUMBER() IN (229,262,297,300,371,916)
+                  THEN 'DENIED_PERMISSION'
+              WHEN ERROR_NUMBER()=1222
+                  THEN 'TIMEOUT'
+              ELSE 'ERROR_HANDLED'
+          END;
+     END CATCH;
+    END;
+
+    SET @ReplicaMetadataColumnsAvailable=0;
+    SET @ReplicaMetadataCapabilityStatus=
+        CASE
+            WHEN COALESCE(@ProductMajorVersion,0)<17 THEN 'UNAVAILABLE_VERSION'
+            ELSE 'UNAVAILABLE_COLUMNS'
+        END;
+
+    IF COALESCE(@ProductMajorVersion,0)>=17
+    BEGIN
+     BEGIN TRY
+      SET @ReplicaCapabilitySql =
+          N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs)
+        + N'; USE ' + QUOTENAME(@DbName) + N';
+SELECT @pAvailable =
+       CONVERT(bit,CASE WHEN COUNT_BIG(*)=3 THEN 1 ELSE 0 END)
+FROM sys.all_views AS [v] WITH (NOLOCK)
+JOIN sys.schemas AS [s] WITH (NOLOCK)
+  ON [s].[schema_id]=[v].[schema_id]
+JOIN sys.all_columns AS [c] WITH (NOLOCK)
+  ON [c].[object_id]=[v].[object_id]
+WHERE [s].[name]=N''sys''
+  AND [v].[name]=N''stats''
+  AND [c].[name] IN
+      (N''replica_role_id'',N''replica_role_desc'',N''replica_name'');';
+
+      EXEC [sys].[sp_executesql]
+            @ReplicaCapabilitySql
+          , N'@pAvailable bit OUTPUT'
+          , @pAvailable=@ReplicaMetadataColumnsAvailable OUTPUT;
+
+      SET @ReplicaMetadataCapabilityStatus=
+          CASE
+              WHEN @ReplicaMetadataColumnsAvailable=1 THEN 'AVAILABLE'
+              ELSE 'UNAVAILABLE_COLUMNS'
+          END;
+     END TRY
+     BEGIN CATCH
+      SET @ReplicaMetadataColumnsAvailable=0;
+      SET @ReplicaMetadataCapabilityStatus=
+          CASE
+              WHEN ERROR_NUMBER() IN (229,262,297,300,371,916)
+                  THEN 'DENIED_METADATA'
+              WHEN ERROR_NUMBER()=1222
+                  THEN 'TIMEOUT'
+              ELSE 'CAPABILITY_ERROR'
+          END;
+     END CATCH;
+    END;
+
+    SET @ReplicaProjection =
+        CASE
+            WHEN @ReplicaMetadataColumnsAvailable=1
+            THEN N'
+ [st].[is_temporary],
+ @pCurrentReplicaRole,@pCurrentReplicaRoleStatus,
+ [st].[replica_role_id],[st].[replica_role_desc],[st].[replica_name],
+ CASE
+      WHEN [st].[replica_role_id] IS NULL
+       AND [st].[replica_role_desc] IS NULL
+       AND [st].[replica_name] IS NULL
+          THEN ''NOT_RECORDED''
+      WHEN [st].[replica_role_id] BETWEEN 1 AND 4
+       AND [st].[replica_role_desc] COLLATE Latin1_General_100_CI_AI=
+           CASE [st].[replica_role_id]
+                WHEN 1 THEN N''Primary''
+                WHEN 2 THEN N''Secondary''
+                WHEN 3 THEN N''Geo Secondary''
+                WHEN 4 THEN N''Geo HA Secondary''
+           END
+       AND ([st].[replica_role_id]=1 OR [st].[replica_name] IS NOT NULL)
+          THEN ''AVAILABLE''
+      ELSE ''PARTIAL_METADATA''
+ END'
+            ELSE N'
+ [st].[is_temporary],
+ @pCurrentReplicaRole,@pCurrentReplicaRoleStatus,
+ CONVERT(tinyint,NULL),CONVERT(nvarchar(60),NULL),CONVERT(sysname,NULL),
+ @pReplicaMetadataStatus'
+        END;
+
     SET @Sql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs) + N'; USE ' + QUOTENAME(@DbName) + N';
 INSERT #Statistics_Result
 SELECT TOP (@pMaxRows)
  @pDbName,[sch].[name],[o].[name],[o].[object_id],[st].[stats_id],[st].[name],CONVERT(bit,CASE WHEN [ix].[index_id] IS NULL THEN 0 ELSE 1 END),
  [st].[auto_created],[st].[user_created],[st].[has_filter],[st].[filter_definition],[st].[no_recompute],[st].[is_incremental],[st].[has_persisted_sample],
+ '+@ReplicaProjection+N',
  [cols].[StatisticsColumns],[sp].[last_updated],[sp].[rows],[sp].[rows_sampled],
  CONVERT(decimal(9,4),[sp].[rows_sampled]*100.0/NULLIF([sp].[rows],0)),[sp].[steps],[sp].[unfiltered_rows],[sp].[modification_counter],
  CONVERT(decimal(19,4),[sp].[modification_counter]*100.0/NULLIF([sp].[rows],0)),[sp].[persisted_sample_percent],
@@ -245,15 +395,12 @@ IF @pWithIncremental=1
 BEGIN
  BEGIN TRY
   INSERT #Statistics_Incremental
-  SELECT TOP (@pMaxRows) @pDbName,[sch].[name],[o].[name],[st].[stats_id],[st].[name],[ip].[partition_number],[ip].[last_updated],[ip].[rows],[ip].[rows_sampled],[ip].[steps],[ip].[unfiltered_rows],[ip].[modification_counter],
+  SELECT TOP (@pMaxRows) @pDbName,[base].[SchemaName],[base].[ObjectName],[base].[StatisticsId],[base].[StatisticsName],[ip].[partition_number],[ip].[last_updated],[ip].[rows],[ip].[rows_sampled],[ip].[steps],[ip].[unfiltered_rows],[ip].[modification_counter],
          CONVERT(decimal(19,4),[ip].[modification_counter]*100.0/NULLIF([ip].[rows],0))
-  FROM sys.stats AS [st] WITH (NOLOCK)
-  JOIN sys.objects AS [o] WITH (NOLOCK) ON [o].[object_id]=[st].[object_id]
-  JOIN sys.schemas AS [sch] WITH (NOLOCK) ON [sch].[schema_id]=[o].[schema_id]
-  CROSS APPLY sys.dm_db_incremental_stats_properties([st].[object_id],[st].[stats_id]) AS [ip]
-  WHERE [st].[is_incremental]=1 AND [o].[is_ms_shipped]=0
-'+@SchemaPredicateSch+@ObjectPredicateO+REPLACE(@FullObjectPredicateSO,N'[s].[name]',N'[sch].[name]')+N'
-  '+@StatisticsPredicateSt+N'
+  FROM #Statistics_Result AS [base]
+  CROSS APPLY sys.dm_db_incremental_stats_properties([base].[ObjectId],[base].[StatisticsId]) AS [ip]
+  WHERE [base].[DatabaseName]=@pDbName
+    AND [base].[IsIncremental]=1
   ORDER BY [ip].[modification_counter]*100.0/NULLIF([ip].[rows],0) DESC;
  END TRY
  BEGIN CATCH
@@ -262,8 +409,74 @@ BEGIN
    1,0,N''SELECT auf Statistikspalten oder geeignete Rolle/Eigentum'',ERROR_NUMBER(),ERROR_MESSAGE(),N''Quelle STATS_INCREMENTAL fehlgeschlagen; Basisstatistiken bleiben erhalten.'');
  END CATCH;
 END;';
-    EXEC [sys].[sp_executesql] @Sql,N'@pDbName sysname,@pMaxRows bigint,@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256),@pStatsLike nvarchar(256),@pMinModPct decimal(9,2),@pMinAge int,@pWithIncremental bit',@pDbName=@DbName,@pMaxRows=@EffectiveMaxZeilen,@pSchemaLike=@SchemaNameLike,@pObjectLike=@ObjectNameLike,@pStatsLike=@StatisticsNameLike,@pMinModPct=@MinModificationPercent,@pMinAge=@MinAlterTage,@pWithIncremental=@MitIncrementellenDetails;
-    SET @Rows=(SELECT COUNT_BIG(*) FROM [#Statistics_Result] WHERE [DatabaseName]=@DbName); INSERT [#Statistics_DatabaseStatus] VALUES(@DbName,'AVAILABLE',0,@Rows,N'SELECT [auf] [Statistikspalten] oder [Eigentum]/[db_owner]/[db_ddladmin]/[sysadmin]',NULL,NULL,N'NULL-Werte können fehlende Sichtbarkeit oder noch nicht materialisierte Statistiken bedeuten.');
+    EXEC [sys].[sp_executesql]
+          @Sql
+        , N'@pDbName sysname,@pMaxRows bigint,@pSchemaLike nvarchar(256),@pObjectLike nvarchar(256),@pStatsLike nvarchar(256),@pMinModPct decimal(9,2),@pMinAge int,@pWithIncremental bit,@pCurrentReplicaRole varchar(40),@pCurrentReplicaRoleStatus varchar(40),@pReplicaMetadataStatus varchar(40)'
+        , @pDbName=@DbName
+        , @pMaxRows=@EffectiveMaxZeilen
+        , @pSchemaLike=@SchemaNameLike
+        , @pObjectLike=@ObjectNameLike
+        , @pStatsLike=@StatisticsNameLike
+        , @pMinModPct=@MinModificationPercent
+        , @pMinAge=@MinAlterTage
+        , @pWithIncremental=@MitIncrementellenDetails
+        , @pCurrentReplicaRole=@CurrentReplicaRole
+        , @pCurrentReplicaRoleStatus=@CurrentReplicaRoleStatus
+        , @pReplicaMetadataStatus=@ReplicaMetadataCapabilityStatus;
+
+    SET @Rows=
+        (SELECT COUNT_BIG(*)
+         FROM [#Statistics_Result]
+         WHERE [DatabaseName]=@DbName);
+
+    INSERT [#Statistics_DatabaseStatus]
+    VALUES
+    (
+          @DbName
+        , CASE
+              WHEN @Rows>0
+               AND @ReplicaMetadataCapabilityStatus IN
+                   ('AVAILABLE','UNAVAILABLE_VERSION','UNAVAILABLE_COLUMNS')
+               AND @CurrentReplicaRoleStatus IN ('AVAILABLE','NOT_APPLICABLE')
+               AND NOT EXISTS
+                   (
+                       SELECT 1
+                       FROM [#Statistics_Result]
+                       WHERE [DatabaseName]=@DbName
+                         AND [ReplicaMetadataStatus]='PARTIAL_METADATA'
+                   )
+                  THEN 'AVAILABLE'
+              ELSE 'AVAILABLE_LIMITED'
+          END
+        , CONVERT(bit,CASE
+              WHEN @Rows>0
+               AND @ReplicaMetadataCapabilityStatus IN
+                   ('AVAILABLE','UNAVAILABLE_VERSION','UNAVAILABLE_COLUMNS')
+               AND @CurrentReplicaRoleStatus IN ('AVAILABLE','NOT_APPLICABLE')
+               AND NOT EXISTS
+                   (
+                       SELECT 1
+                       FROM [#Statistics_Result]
+                       WHERE [DatabaseName]=@DbName
+                         AND [ReplicaMetadataStatus]='PARTIAL_METADATA'
+                   )
+                  THEN 0
+              ELSE 1
+          END)
+        , @Rows
+        , N'SELECT [auf] [Statistikspalten] oder [Eigentum]/[db_owner]/[db_ddladmin]/[sysadmin]'
+        , NULL
+        , NULL
+        , CONCAT
+          (
+              N'ReplicaMetadataStatus=',@ReplicaMetadataCapabilityStatus,
+              N'; CurrentReplicaRoleStatus=',@CurrentReplicaRoleStatus,
+              N'; RowScope=',CASE WHEN @Rows=0
+                                  THEN N'EMPTY_OR_RESTRICTED'
+                                  ELSE N'VISIBLE' END,
+              N'; NULL-Werte können fehlende Sichtbarkeit, nicht aufgezeichnete Herkunft oder noch nicht materialisierte Statistiken bedeuten.'
+          )
+    );
    END TRY
    BEGIN CATCH
     INSERT [#Statistics_DatabaseStatus] VALUES(@DbName,CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION' WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,1,0,N'SELECT [auf] [Statistikspalten] oder [geeignete] [Rolle]/[Eigentum]',ERROR_NUMBER(),ERROR_MESSAGE(),N'Statistikfehler isoliert.');
@@ -273,7 +486,8 @@ END;';
   IF NOT EXISTS(SELECT 1 FROM [#Statistics_DatabaseStatus]) INSERT [#Statistics_DatabaseStatus] VALUES(@DatabaseName,'DATABASE_UNAVAILABLE',1,0,NULL,NULL,N'Keine sichtbare Online-Zieldatenbank gefunden.',NULL);
  END;
 
-
+    IF @@LOCK_TIMEOUT<>@OriginalLockTimeout
+        THROW 51012,N'USP_Statistics hat den äußeren LOCK_TIMEOUT verändert.',1;
 
     IF @OverallStatus<>'AVAILABLE' SET @IsPartial=1;
 
@@ -316,7 +530,7 @@ END;
         END;
     END;
     IF @JsonErzeugen=1 BEGIN
-        DECLARE @JsonMeta nvarchar(max)=(SELECT @ModuleName [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@OverallStatus [statusCode],@IsPartial [isPartial],@TotalRows [rowCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
+        DECLARE @JsonMeta nvarchar(max)=(SELECT @ModuleName [resultName],2 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@OverallStatus [statusCode],@IsPartial [isPartial],@TotalRows [rowCount] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
         DECLARE @JsonDatabaseStatus nvarchar(max)=(SELECT * FROM [#Statistics_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @JsonData1 nvarchar(max)=(SELECT * FROM [#Statistics_Result] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @JsonIncremental nvarchar(max)=(SELECT * FROM [#Statistics_Incremental] ORDER BY [ModificationPercent] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName],[PartitionNumber] FOR JSON PATH,INCLUDE_NULL_VALUES);

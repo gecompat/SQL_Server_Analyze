@@ -289,7 +289,8 @@ VALUES
     , (N'JSON-Index Pfade inventarisieren',N'USP_ObjectInventory')
     , (N'JSON-Index Capability Preview',N'USP_ServerFeatureCapabilities')
     , (N'TempDB Workload Group Limit Verletzung',N'USP_CurrentTempDB')
-    , (N'TempDB Resource Governance Wirksamkeit',N'USP_ResourceGovernorAnalysis');
+    , (N'TempDB Resource Governance Wirksamkeit',N'USP_ResourceGovernorAnalysis')
+    , (N'lesbare Secondary Statistik Replikat Herkunft',N'USP_Statistics');
 
 DECLARE @CaseId int=1,@MaxCaseId int=(SELECT MAX([CaseId]) FROM @Cases);
 DECLARE @SearchTerm nvarchar(200),@ExpectedProcedure sysname,@ActualProcedure sysname;

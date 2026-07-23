@@ -4,7 +4,7 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisSearchTerm
-Version      : 1.1.0
+Version      : 1.2.0
 Stand        : 2026-07-23
 Typ          : View
 Zweck        : Liefert deutsch- und englischsprachige Symptome, Ziele,
@@ -79,6 +79,8 @@ AS
         , (N'USP_MissingIndexes',N'missing index suggestion','en',95,N'Optimizerhinweise ohne automatische DDL-Empfehlung.')
         , (N'USP_Statistics',N'Statistik veraltet Änderungen Sample','de',100,N'Zeigt Statistikdefinition, Sample und Modification Counter.')
         , (N'USP_Statistics',N'stale statistics sample modification counter','en',95,N'Gezielter Statistikzustand.')
+        , (N'USP_Statistics',N'lesbare Secondary Statistik Replikat Herkunft','de',100,N'Ordnet SQL-Server-2025-Statistiken ihrer gespeicherten Replica-Herkunft zu und trennt die aktuelle Datenbankrolle.')
+        , (N'USP_Statistics',N'readable secondary statistics replica origin','en',100,N'Finds SQL Server 2025 statistics origin metadata without treating it as query-usage evidence.')
         , (N'USP_StatisticsDistributionAnalysis',N'Histogramm Skew Schieflage','de',100,N'Analysiert Histogrammverteilung und dominante Schritte.')
         , (N'USP_StatisticsDistributionAnalysis',N'statistics histogram skew tail','en',95,N'Vertiefte Statistikverteilung.')
         , (N'USP_Partitions',N'Partitionen Grenzen Kompression','de',95,N'Zeigt Partitionsgrenzen, Ablage und Kompression.')

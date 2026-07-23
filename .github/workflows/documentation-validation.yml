@@ -16,6 +16,7 @@ on:
       - 'Code/Tests/Static/960_Validate_Complete_P1_Evidence.py'
       - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
+      - 'Code/Tests/Static/989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/991_Validate_SQL25_TempDB_Resource_Governance_Contract.py'
       - 'Code/Tests/Static/992_Validate_SQL25_JSON_Index_Contract.py'
@@ -37,6 +38,7 @@ on:
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
       - 'Metadata/Quality/Release_Gate_Evidence.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/SQL25_Readable_Secondary_Statistics_Public_Contract.json'
       - 'Metadata/Quality/SQL25_TempDB_Resource_Governance_Public_Contract.json'
       - 'Metadata/Quality/SQL25_JSON_Index_Public_Contract.json'
       - 'Metadata/Quality/SQL25_Vector_Index_Public_Contract.json'
@@ -64,6 +66,7 @@ on:
       - 'Code/Tests/Static/960_Validate_Complete_P1_Evidence.py'
       - 'Code/Tests/Static/970_Validate_Complete_P2_Evidence.py'
       - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
+      - 'Code/Tests/Static/989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py'
       - 'Code/Tests/Static/990_Validate_Release_Evidence.py'
       - 'Code/Tests/Static/991_Validate_SQL25_TempDB_Resource_Governance_Contract.py'
       - 'Code/Tests/Static/992_Validate_SQL25_JSON_Index_Contract.py'
@@ -85,6 +88,7 @@ on:
       - 'Metadata/Quality/Special_Case_Test_Cases.csv'
       - 'Metadata/Quality/Release_Gate_Evidence.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/SQL25_Readable_Secondary_Statistics_Public_Contract.json'
       - 'Metadata/Quality/SQL25_TempDB_Resource_Governance_Public_Contract.json'
       - 'Metadata/Quality/SQL25_JSON_Index_Public_Contract.json'
       - 'Metadata/Quality/SQL25_Vector_Index_Public_Contract.json'
@@ -199,6 +203,16 @@ jobs:
       - name: Validate canonical release evidence
         shell: bash
         run: python3 ./Code/Tests/Static/990_Validate_Release_Evidence.py --repository-root .
+
+      - name: Validate SQL25-004 readable-secondary statistics contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py \
+            --repository-root . \
+            --self-test
+          python3 ./Code/Tests/Static/989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py \
+            --repository-root .
 
       - name: Validate SQL25-003 TempDB Resource Governance contract
         shell: bash

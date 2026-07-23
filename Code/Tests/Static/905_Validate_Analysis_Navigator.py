@@ -149,6 +149,7 @@ EXPECTED_SEARCH_CASES = {
     "JSON-Index Capability Preview": "USP_ServerFeatureCapabilities",
     "TempDB Workload Group Limit Verletzung": "USP_CurrentTempDB",
     "TempDB Resource Governance Wirksamkeit": "USP_ResourceGovernorAnalysis",
+    "lesbare Secondary Statistik Replikat Herkunft": "USP_Statistics",
 }
 
 PUBLIC_DOCUMENTATION_FORBIDDEN = (
