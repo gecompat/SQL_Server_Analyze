@@ -20,7 +20,7 @@ ALLOWED_PRODUCT_STATUS = {
 REQUIRED_STATUS = {
     "DIAG-003": "IMPLEMENTED_ACTIONS_GATE",
     "DIAG-004": "IMPLEMENTED_ACTIONS_GATE",
-    "DIAG-005": "PARTIAL_PRODUCT_FUNCTION",
+    "DIAG-005": "IMPLEMENTED_ACTIONS_GATE",
     "RUNTIME-001": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
     "SC-023": "IMPLEMENTED_ACTIONS_GATE",
     "SC-023-EXPANSION": "OPTIONAL_FUTURE",
@@ -101,7 +101,7 @@ def main() -> int:
     expected_future = {
         "DIAG-003": "IMPLEMENTED_ACTIONS_GATE",
         "DIAG-004": "IMPLEMENTED_ACTIONS_GATE",
-        "DIAG-005": "PARTIAL_PRODUCT_FUNCTION",
+        "DIAG-005": "IMPLEMENTED_ACTIONS_GATE",
     }
     for work_item, expected in expected_future.items():
         if future[work_item]["ImplementationStatus"] != expected:
@@ -115,6 +115,7 @@ def main() -> int:
     for token in (
         "## DIAG-003: Parameter- und Variablenwerte",
         "## DIAG-004: Statement- und Requestkontext",
+        "## DIAG-005: Plan-, Query-Store- und Optimizerkontext",
         "Status: `IMPLEMENTED_ACTIONS_GATE`",
         "Post-Candidate-Quelle",
         "USP_CurrentSessions",
@@ -124,6 +125,11 @@ def main() -> int:
         "`statements`",
         "`batches`",
         "`inputBuffers`",
+        "`planWarnings`",
+        "`optimizerContext`",
+        "`runtimeFeedback`",
+        "`queryStoreContext`",
+        "`feedbackAndVariants`",
     ):
         if token not in diagnostic:
             fail("DIAGNOSTIC_BACKLOG_CONTRACT", token)

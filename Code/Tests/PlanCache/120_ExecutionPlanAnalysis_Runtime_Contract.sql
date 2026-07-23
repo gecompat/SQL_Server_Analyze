@@ -59,7 +59,7 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis]
 
 IF @Status NOT IN ('AVAILABLE','PARTIAL') OR ISJSON(@AnalysisJson)<>1
     THROW 53600,N'Die eigenständige Plananalyse lieferte keinen gültigen Vertrag.',1;
-IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>2
+IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>3
    OR JSON_VALUE(@AnalysisJson,N'$.meta.resultName')<>N'ExecutionPlanAnalysis'
    OR JSON_VALUE(@AnalysisJson,N'$.meta.evidencePrivacyMode')<>N'DERIVED_ONLY'
    OR JSON_VALUE(@AnalysisJson,N'$.meta.identifierPrivacyMode')<>N'RAW'
@@ -69,6 +69,11 @@ IF TRY_CONVERT(int,JSON_VALUE(@AnalysisJson,N'$.meta.schemaVersion'))<>2
    OR JSON_QUERY(@AnalysisJson,N'$.operatorTree') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.operatorRuntime') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.parameters') IS NULL
+   OR JSON_QUERY(@AnalysisJson,N'$.planWarnings') IS NULL
+   OR JSON_QUERY(@AnalysisJson,N'$.optimizerContext') IS NULL
+   OR JSON_QUERY(@AnalysisJson,N'$.runtimeFeedback') IS NULL
+   OR JSON_QUERY(@AnalysisJson,N'$.queryStoreContext') IS NULL
+   OR JSON_QUERY(@AnalysisJson,N'$.feedbackAndVariants') IS NULL
    OR JSON_QUERY(@AnalysisJson,N'$.findings') IS NULL
     THROW 53610,N'Das ExecutionPlanAnalysis-JSON verletzt den eingefrorenen Top-Level-Vertrag.',1;
 IF (SELECT COUNT(*) FROM OPENJSON(@AnalysisJson,N'$.statements'))<>2

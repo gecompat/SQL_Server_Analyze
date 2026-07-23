@@ -40,9 +40,9 @@ Qualitätsregistern gültig. Sie ersetzen den Produktstatus nicht.
 ## Aktuelle Abgrenzung
 
 Die kanonischen Zuordnungen stehen in
-`Metadata/Quality/Implementation_Status.csv`. Für DIAG-003 bis DIAG-005 ist
-der vorhandene Teilumfang ausdrücklich von den noch offenen Zielresultsets
-getrennt. RUNTIME-001 ist als implementierter portabler Kern mit ausstehenden
+`Metadata/Quality/Implementation_Status.csv`. DIAG-003 bis DIAG-005 sind mit
+ihren kanonischen Zielresultsets, Inventaren und versionsübergreifenden
+Runtimeverträgen abgeschlossen. RUNTIME-001 ist als implementierter portabler Kern mit ausstehenden
 externen Feature-Nachweisen eingestuft. Bei SC-023 bleibt der bereits
 abgenommene Performance-Counter-Slice implementiert; weitere Collector und
 Rollups sind optionaler Ausbau.

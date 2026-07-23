@@ -1,6 +1,6 @@
 {
-  "contractId": "PLAN-001-PUBLIC-V2",
-  "contractVersion": 2,
+  "contractId": "PLAN-001-PUBLIC-V3",
+  "contractVersion": 3,
   "releaseState": "IMPLEMENTED_ACTIONS_GATE",
   "minimumSqlServerMajorVersion": 15,
   "targetSqlServerMajorVersions": [15, 16, 17],
@@ -100,6 +100,11 @@
         "statisticsUsage",
         "parametersAndVariants",
         "parameters",
+        "planWarnings",
+        "optimizerContext",
+        "runtimeFeedback",
+        "queryStoreContext",
+        "feedbackAndVariants",
         "memoryAndSpills",
         "executionEvidence",
         "histogramSummaries",
@@ -107,7 +112,7 @@
         "predicateHistogramMappings",
         "findings"
       ],
-      "jsonSchemaVersion": 2,
+      "jsonSchemaVersion": 3,
       "jsonTopLevelProperties": [
         "meta",
         "capabilities",
@@ -120,6 +125,11 @@
         "statisticsUsage",
         "parametersAndVariants",
         "parameters",
+        "planWarnings",
+        "optimizerContext",
+        "runtimeFeedback",
+        "queryStoreContext",
+        "feedbackAndVariants",
         "memoryAndSpills",
         "executionEvidence",
         "histogramSummaries",
@@ -177,6 +187,53 @@
       "IsLastKnownExecution",
       "IsComplete",
       "EvidenceLimit"
+    ]
+  },
+  "diag005PlanOptimizerContext": {
+    "schemaVersion": 1,
+    "canonicalResultSets": [
+      "planWarnings",
+      "optimizerContext",
+      "runtimeFeedback",
+      "queryStoreContext",
+      "feedbackAndVariants"
+    ],
+    "evidenceStatusCodes": [
+      "AVAILABLE",
+      "PLAN_ONLY",
+      "NOT_APPLICABLE",
+      "NOT_COLLECTED",
+      "PLAN_CACHE_CONTEXT_UNAVAILABLE",
+      "DENIED_PERMISSION",
+      "PARTIAL"
+    ],
+    "evidenceSources": [
+      "PLAN_XML",
+      "PLAN_XML_RUNTIME",
+      "PLAN_CACHE",
+      "QUERY_STORE_RUNTIME_STATS",
+      "QUERY_STORE_PLAN_FEEDBACK",
+      "QUERY_STORE_QUERY_HINTS",
+      "QUERY_STORE_QUERY_VARIANT",
+      "QUERY_STORE_OPTIONAL_SOURCES"
+    ],
+    "privacyRules": {
+      "DERIVED_ONLY": "Feature and hint payloads are omitted.",
+      "STRUCTURE_ONLY": "Feature and hint payloads are omitted while structural feature rows remain.",
+      "TOKENIZED": "Feature and hint payloads are represented only by SHA-256 tokens and lengths.",
+      "RAW": "Feature and hint payloads require SensitiveDataConfirmed=1."
+    },
+    "sourceReadInvariants": [
+      "Each analyzed plan is acquired once before the shared analyzer is invoked.",
+      "Each ShowplanAnalysis candidate reuses the invocation-local cache context captured during candidate selection.",
+      "Query Store plan and query metadata are targeted by plan_id without reading query text.",
+      "SQL Server 2022 and later catalog views are referenced only in version-adaptive dynamic SQL."
+    ],
+    "falsePositiveBoundaries": [
+      "A plan warning is evidence for the captured plan, not proof of the primary workload bottleneck.",
+      "Runtime observations apply only to the declared current, last-known, imported or aggregate scope.",
+      "Optimizer and cache context do not independently prove a regression cause.",
+      "Feedback and variant presence does not independently prove that a feature improved or harmed the workload."
     ]
   },
   "frozenDefaults": {
@@ -257,6 +314,7 @@
     "Identifier TOKENIZED and OMIT are applied after local correlation to all exported histogram and predicate-mapping identifiers.",
     "RawTextHandling INCLUDE requires SensitiveDataConfirmed and RAW identifier handling.",
     "MitSqlText requires SensitiveDataConfirmed because statement text can contain literals and proprietary SQL text.",
+    "Query Store hint and plan-feedback payloads are omitted by default, tokenized only in TOKENIZED mode and emitted raw only with SensitiveDataConfirmed.",
     "Repository tests and fixtures contain synthetic generic values only."
   ],
   "standaloneObjects": [

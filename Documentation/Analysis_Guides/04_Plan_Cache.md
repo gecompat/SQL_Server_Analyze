@@ -229,7 +229,7 @@ Wichtige Attribute sind etwa `dbid`, `set_options`, `user_id`, `language_id`, `d
 
 ### Zweck
 
-Die Procedure selektiert begrenzt Plan-Cache-Kandidaten und delegiert jedes eindeutige Planhandle an die zentrale Einplananalyse. Öffentlich aggregiert sie `planStatus`, `parameters` und `findings`; das JSON enthält zusätzlich die vollständigen Child-Analysen.
+Die Procedure selektiert begrenzt Plan-Cache-Kandidaten und delegiert jedes eindeutige Planhandle an die zentrale Einplananalyse. Öffentlich aggregiert sie `planStatus`, `parameters`, `planWarnings`, `optimizerContext`, `runtimeFeedback`, `queryStoreContext`, `feedbackAndVariants` und `findings`; das JSON enthält zusätzlich die vollständigen Child-Analysen.
 
 ### Sicherheitsbudgets
 
@@ -240,8 +240,10 @@ Die Procedure selektiert begrenzt Plan-Cache-Kandidaten und delegiert jedes eind
 
 ### Resultsets und Spalten
 
-RAW liefert `moduleStatus`, `planStatus`, `parameters` und `findings`.
-TABLE akzeptiert `parameters` und `findings`; CONSOLE priorisiert Findings.
+RAW liefert `moduleStatus`, `planStatus`, `parameters`, die fünf
+DIAG-005-Resultsets und `findings`. TABLE akzeptiert `parameters`,
+`planWarnings`, `optimizerContext`, `runtimeFeedback`, `queryStoreContext`,
+`feedbackAndVariants` und `findings`; CONSOLE priorisiert Findings.
 Die weiteren unten beschriebenen Granularitäten liegen in den Child-Analysen
 des JSON-Vertrags.
 

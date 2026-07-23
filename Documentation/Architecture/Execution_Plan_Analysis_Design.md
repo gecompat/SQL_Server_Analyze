@@ -20,7 +20,7 @@ Der Kern ist sowohl Bestandteil des vollständigen Frameworks als auch eigenstä
 | Objekt | Rolle |
 |---|---|
 | `InternalCollectExecutionPlanMetadata` | sammelt Plan-, Objekt-, Statistik- und Histogrammmetadaten unter expliziten Grenzen |
-| `InternalAnalyzeExecutionPlan` | materialisiert Statements, Operatoren, Warnungen, Prädikate, Referenzen und Findings |
+| `InternalAnalyzeExecutionPlan` | materialisiert Statements, Operatoren, Warnungen, Optimizerkontext, Runtimefeedback, Planmerkmale, Prädikate, Referenzen und Findings |
 | `TVF_ParseStatisticsIoText` | zerlegt begrenzte, explizit gelieferte `SET STATISTICS IO`-Ausgabe |
 | `TVF_ParseStatisticsTimeText` | zerlegt begrenzte, explizit gelieferte `SET STATISTICS TIME`-Ausgabe |
 | `TVF_ExecutionPlanObjectReferences` | projiziert Objektbezüge aus Showplan-XML |
@@ -67,6 +67,12 @@ Ein XML-Dokument kann estimated, actual, live-derived, unvollständig oder versi
 7. Optionale Metadatenauflösung erfolgt nur für ausdrücklich erlaubte Datenbanken und Scopes.
 8. Regeln erzeugen Findings aus bereits materialisierter Evidenz.
 9. CONSOLE, RAW, TABLE und JSON verwenden dieselbe Aufrufmaterialisierung.
+
+Planhandle-Aufrufe materialisieren zusätzlich einen gezielten Cachekontext aus
+Cached Plans, Query Stats und Plan Attributes. In der Mehrplananalyse entsteht
+dieser Kontext bereits während der begrenzten Kandidatenauswahl und wird über
+eine aufruflokale Temp-Tabelle an die Einplanengine weitergereicht. Dadurch
+wird die Query-Stats-Quelle innerhalb desselben Pfads nicht erneut gelesen.
 
 ## Statementebene
 
@@ -178,6 +184,11 @@ Der native Vertrag umfasst abhängig von Quelle und aktivierten Pfaden unter and
 - `predicates`
 - `parametersAndVariants` als bestehende Legacy-Projektion
 - `parameters` als kanonischer DIAG-003-Evidenzvertrag
+- `planWarnings` als normalisierte explizite Compile-/Runtimewarnungen
+- `optimizerContext` als Statement-, Compile- und Cachekontext
+- `runtimeFeedback` als gemessene beziehungsweise abgeleitete Runtimebeobachtung
+- `queryStoreContext` als gezielter persistierter Plan-/Runtimekontext
+- `feedbackAndVariants` als Planmerkmale, persistiertes Feedback, Hints und Variantenbeziehungen
 - `histogramSummaries`
 - `histogramSteps`
 - `predicateHistogramMappings`
@@ -199,6 +210,29 @@ Variablen besitzen getrennte Statuswerte. Die Parameterliste wird pro Plan nur
 einmal zerlegt; `parametersAndVariants` wird aus derselben
 Aufrufmaterialisierung erzeugt. `USP_ShowplanAnalysis` aggregiert diese
 Child-Evidenz kandidatengenau und führt keine zweite Parameter-XQuery aus.
+
+### Plan- und Optimizerkontext
+
+Die fünf DIAG-005-Resultsets bewahren Quelle, Erfassungszeit,
+Current-/Last-known-Semantik und Messung gegenüber Ableitung. Fehlende
+Warnungen, nicht erhobene Laufzeitwerte und nicht anwendbarer Query Store sind
+unterschiedliche Statuszustände; Warnungen unterhalb von `@MinSchweregrad`
+werden als erfolgreicher Filterzustand statt als Quellfehler ausgewiesen.
+Jede fachliche Zeile enthält eine
+False-Positive- beziehungsweise Evidenzgrenze; das Vorhandensein eines
+Warnungs-, Feedback- oder Variantenmarkers ist kein automatischer
+Ursachennachweis.
+
+Bei der Query-Store-Planquelle werden Plan-/Querymetadaten und
+Runtimeaggregate gezielt über die angeforderte Plan-ID gelesen. Kataloge, die
+erst ab SQL Server 2022 verfügbar sind, stehen ausschließlich in
+versionsadaptivem Dynamic SQL. `sys.query_store_query_text` wird nicht gelesen.
+Ein erfolgreicher, aber leerer Zusatzquellen-Read, eine nicht unterstützte
+Serverversion und ein fehlgeschlagener Read besitzen getrennte Statuszeilen;
+`QueryHintFailureCount` summiert die von SQL Server gemeldeten Fehlerzählungen.
+Feedback- und Hintpayloads sind in `DERIVED_ONLY` und `STRUCTURE_ONLY`
+ausgelassen, in `TOKENIZED` nur gehasht und im RAW-Modus nur nach
+`SensitiveDataConfirmed=1` sichtbar.
 
 ## Kosten- und Schutzmodell
 
