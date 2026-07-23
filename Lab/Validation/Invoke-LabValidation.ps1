@@ -68,5 +68,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "LAB-001 static contract validation failed with exit code $LASTEXITCODE."
 }
 
-Write-Output 'LAB-001 PowerShell and JSON-schema validation passed.'
+$waveOneValidatorPath = Join-Path $RepositoryRoot (
+    'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
+)
+& $pythonCommand.Source $waveOneValidatorPath --repository-root $RepositoryRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "LAB-001 Welle 1 validation failed with exit code $LASTEXITCODE."
+}
 
+Write-Output 'LAB-001 PowerShell JSON-schema and static validation passed.'
