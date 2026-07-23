@@ -1,6 +1,6 @@
 # LAB-001 – Reproducible Diagnostic Lab
 
-**Status:** `RESEARCHED_NOT_IMPLEMENTED`  
+**Status:** `PARTIAL_PRODUCT_FUNCTION`  
 **Stand:** 23. Juli 2026  
 **Ziel:** Ein vollständig automatisierbares, ressourcenschonendes und ausschließlich synthetisches Diagnoselabor für SQL Server 2019, 2022 und 2025.
 
@@ -883,6 +883,8 @@ Die bestehende [CI-Impact-Auswahl](../Quality/CI_Impact_Selection.md) wird um La
 
 ### Welle 1 – Orchestrator-Core
 
+**Implementierungsstatus:** `IMPLEMENTED_AUTOMATED_GATE`  
+
 **Lieferumfang:**
 
 - `Preflight`, Capability-Vektor, Ausführungsmodus-Auflösung, Run-ID, State Lock, Logging und Configauflösung;
@@ -1069,7 +1071,7 @@ Vor Erfüllung dieser Kriterien bleibt LAB-001 `RESEARCHED_NOT_IMPLEMENTED` oder
 
 ## 21. Lokale Eingaben und automatische Ermittlung
 
-Die konkrete Hardwareinventur wird nicht im Repository gepflegt. Welle 0 implementiert stattdessen den read-only Preflight und ordnet jeden Host anhand der tatsächlich ermittelten Ressourcen und Fähigkeiten einer Hostkapazitätsklasse und einem Ausführungsmodus zu. Dadurch bleibt der Plan bei abweichenden oder später erweiterten Hosts gültig.
+Die konkrete Hardwareinventur wird nicht im Repository gepflegt. Welle 1 implementiert stattdessen den read-only Preflight und ordnet jeden Host anhand der tatsächlich ermittelten Ressourcen und Fähigkeiten einer Hostkapazitätsklasse und einem Ausführungsmodus zu. Dadurch bleibt der Plan bei abweichenden oder später erweiterten Hosts gültig.
 
 Lokal erforderlich beziehungsweise zu entscheiden sind:
 

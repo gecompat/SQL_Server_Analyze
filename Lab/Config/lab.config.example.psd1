@@ -18,13 +18,46 @@
         FAULT_TARGET = 'DEDICATED_BOUNDED_TARGET_REFERENCE_REQUIRED'
     }
 
+    StorageTargets = @(
+        @{
+            LogicalTargetId = 'LOCAL_TARGET_REFERENCE_REQUIRED'
+            Path = 'LOCAL_PATH_REQUIRED'
+            Roles = @(
+                'IMAGE_CACHE'
+                'ACTIVE_VM'
+                'EPHEMERAL_DATA'
+            )
+            IsSystemTarget = $false
+            IsApprovedLabTarget = $false
+        }
+        @{
+            LogicalTargetId = 'DEDICATED_BOUNDED_TARGET_REFERENCE_REQUIRED'
+            Path = 'LOCAL_FAULT_TARGET_PATH_REQUIRED'
+            Roles = @('FAULT_TARGET')
+            IsSystemTarget = $false
+            IsApprovedLabTarget = $false
+            MaximumSizeGiB = 64
+        }
+    )
+
     MediaBindings = @{
         WINDOWS_SERVER = 'LOCAL_MEDIA_REFERENCE_REQUIRED'
         SQL_SERVER = 'LOCAL_MEDIA_REFERENCE_REQUIRED'
     }
 
+    ImageLockPath = 'LOCAL_IMAGE_LOCK_PATH_REQUIRED'
+
+    RemoteHosts = @()
+
+    SecretPolicy = @{
+        Provider = 'NONE'
+        RequiredSecretNames = @()
+        AllowInteractive = $false
+    }
+
     NetworkPolicy = @{
         PrivateRangeReference = 'LOCAL_PRIVATE_RANGE_REFERENCE_REQUIRED'
+        PrivateRangeCidr = 'LOCAL_PRIVATE_CIDR_REQUIRED'
         RejectRouteCollision = $true
         AllowExternalLabDataNetwork = $false
     }
@@ -41,4 +74,3 @@
         CleanupSeconds = 900
     }
 }
-

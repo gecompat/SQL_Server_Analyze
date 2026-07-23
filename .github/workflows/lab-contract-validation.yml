@@ -6,6 +6,7 @@ on:
       - '.github/workflows/lab-contract-validation.yml'
       - 'Lab/**'
       - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
+      - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -18,6 +19,7 @@ on:
       - '.github/workflows/lab-contract-validation.yml'
       - 'Lab/**'
       - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
+      - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -34,22 +36,54 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 Welle 0 contracts
+    name: Validate LAB-001 Welle 0 and Welle 1
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Validate catalogs coverage status and privacy boundaries
+      - name: Validate catalogs coverage status privacy and orchestration safety
         shell: bash
         run: |
           set -euo pipefail
           python3 ./Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py \
+            --repository-root .
+          python3 ./Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py \
             --repository-root .
 
       - name: Validate example manifests against JSON schemas
         shell: pwsh
         run: |
           pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabValidation.ps1
+
+      - name: Run Welle 1 orchestration and negative tests
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave1Tests.ps1
+
+      - name: Install pinned PowerShell analyzer
+        shell: pwsh
+        run: |
+          Install-Module PSScriptAnalyzer `
+            -RequiredVersion 1.25.0 `
+            -Repository PSGallery `
+            -Scope CurrentUser `
+            -Force
+
+      - name: Run PowerShell analyzer
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/Orchestration `
+              -Recurse `
+              -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "PSScriptAnalyzer reported $($findings.Count) error finding(s)."
+          }

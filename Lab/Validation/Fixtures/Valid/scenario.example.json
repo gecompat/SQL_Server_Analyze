@@ -73,7 +73,6 @@
   },
   "DataClassification": "SYNTHETIC",
   "KnownLimitations": [
-    "This planned scenario is not executable before the Welle 1 and Welle 2 runtime slices."
+    "This planned scenario is not executable before the Welle 2 runtime slice."
   ]
 }
-
