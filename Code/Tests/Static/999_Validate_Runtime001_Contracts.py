@@ -174,7 +174,7 @@ def main() -> int:
     output_contract = (root / "Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql").read_text(
         encoding="utf-8-sig"
     )
-    require(output_contract, ("<>91", "91 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
+    require(output_contract, ("<>92", "92 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
 
     print("RUNTIME-001 contracts passed: modules=2 primary_resultsets=2 findings=0")
     return 0
