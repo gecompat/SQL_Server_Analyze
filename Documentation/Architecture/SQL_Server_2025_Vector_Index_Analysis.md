@@ -39,7 +39,9 @@ Ein aktiver Lauf benötigt Compatibility Level 170, die
 Datenbankkonfiguration `PREVIEW_FEATURES = ON` und einen Build, der beide
 Systemobjekte tatsächlich bereitstellt. Fehlt trotz aktivierter
 Voraussetzungen eine Quelle, bleibt der Produktvertrag vollständig
-auswertbar: `sourceStatus` liefert `UNAVAILABLE_FEATURE`, statt einen leeren
+auswertbar: `sourceStatus` liefert `UNAVAILABLE_FEATURE` oder bei abweichendem
+Pflichtschema `UNAVAILABLE_SOURCE_SCHEMA`; der Modulstatus propagiert eine
+solche partielle Schemagrenze als `AVAILABLE_LIMITED`, statt einen leeren
 Erfolg oder eine vorgetäuschte aktive Fixture zu melden.
 
 ## Einmalread- und Scopevertrag
@@ -110,8 +112,9 @@ ObjectAnalysis-Routing. Auf SQL Server 2025 aktiviert er zuerst Compatibility
 Level 170 und `PREVIEW_FEATURES`. Stellt der Build die Quellen bereit, folgen
 aktiver Katalog- und Wartungszustand, leere und begrenzte Ausgaben,
 Cross-Database sowie verweigerte DMV-Berechtigung. Andernfalls muss derselbe
-Build die fehlende Previewfähigkeit explizit als `UNAVAILABLE_FEATURE`
-ausweisen; der Test behauptet in diesem Fall keinen aktiven Featurepfad.
+Build die fehlende Previewfähigkeit beziehungsweise Schemagrenze explizit als
+`UNAVAILABLE_FEATURE` oder `UNAVAILABLE_SOURCE_SCHEMA` ausweisen; der Test
+behauptet in diesem Fall keinen aktiven Featurepfad.
 
 ## Primärquellen
 
