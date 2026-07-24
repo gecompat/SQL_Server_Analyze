@@ -10,6 +10,7 @@ on:
       - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -26,6 +27,7 @@ on:
       - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -42,7 +44,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 Wellen 0 to 4
+    name: Validate LAB-001 Wellen 0 to 5
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -83,6 +85,13 @@ jobs:
         run: |
           set -euo pipefail
           python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py \
+            --repository-root .
+
+      - name: Validate Welle 5 image-pipeline foundation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py \
             --repository-root .
 
       - name: Validate example manifests against JSON schemas
