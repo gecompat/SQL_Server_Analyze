@@ -57,6 +57,21 @@ jobs:
           python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_Lifecycle.py \
             --repository-root . 2>&1 | tee "$log_path"
 
+      - name: Report static validation findings
+        if: steps.static.outcome == 'failure' && github.ref_name == 'agent/quicktest-stop-lifecycle'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          log_path="${RUNNER_TEMP}/quicktest-lifecycle-validation.log"
+          findings="$(grep '^ERROR:' "$log_path" | head -n 20 || true)"
+          if [ -z "$findings" ]; then
+            findings='ERROR: Static lifecycle validation failed without a classified finding.'
+          fi
+          gh issue comment 70 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "$findings"
+
       - id: lifecycle
         name: Run focused lifecycle contract
         shell: pwsh
