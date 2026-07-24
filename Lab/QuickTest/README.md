@@ -1,75 +1,85 @@
-# Docker and Podman quick-test Preflight
+# Docker/Podman quick-test Preflight
 
-The quick-test interface is the read-only second delivery of
-`LAB-QUICKTEST-001`. Its contract status is `IMPLEMENTED_AUTOMATED_GATE`.
-Real Docker and Podman execution remains `NOT_EXECUTED` because no approved
-native x86-64 Linux host is currently available.
+This directory contains the read-only Preflight implementation for the
+container-only SQL Server quick-test system. It does not create directories,
+containers, networks, volumes, configuration files, or runtime state.
 
-## Entry point
+The public entrypoint is `Lab/Install-Lab.ps1`. In this delivery its only
+supported action is `Preflight`. Lifecycle actions are intentionally deferred
+to a separate implementation step.
+
+## Interactive Preflight
 
 ```powershell
 ./Lab/Install-Lab.ps1
 ```
 
-Interactive mode asks for:
+The script asks for:
 
 - Docker or Podman;
-- SQL Server 2019, 2022, and/or 2025;
+- one or more SQL Server versions from 2019, 2022, and 2025;
 - one host port per selected version;
-- the administrative SQL login;
-- a masked SQL secret;
-- `SMALL`, `MEDIUM`, or `LARGE` resource profile;
-- `PERSISTENT` or `TEMPORARY` data intent;
-- optional framework installation;
+- a generic administrative SQL login;
+- a masked SQL secret or ephemeral generated secret;
+- resource profile `SMALL`, `MEDIUM`, or `LARGE`;
+- persistence mode `PERSISTENT` or `TEMPORARY`;
+- local data root;
 - SQL Server container EULA acceptance.
 
-The default ports are 14331, 14332, and 14335. The default login is the clearly
-synthetic `ExampleSqlAdmin`.
+The secret is held only as a `SecureString` and is never written to repository
+files, Compose files, state, or console output.
 
-## Non-interactive example
-
-The secret value is supplied outside the command through `QTLAB_SQL_SECRET`.
-It must not be stored in scripts, argument lists, configuration files, or shell
-history.
+## Non-interactive Preflight
 
 ```powershell
+$secret = Read-Host 'SQL secret' -AsSecureString
 ./Lab/Install-Lab.ps1 `
-    -Runtime DOCKER `
-    -SqlVersions 2019,2022,2025 `
-    -Ports @{ 2019 = 14331; 2022 = 14332; 2025 = 14335 } `
-    -AdminLogin ExampleSqlAdmin `
-    -SecretEnvironmentVariable QTLAB_SQL_SECRET `
-    -ResourceProfile SMALL `
-    -PersistenceMode TEMPORARY `
-    -InstallFramework `
-    -AcceptEula `
-    -NonInteractive
+  -Action Preflight `
+  -Runtime DOCKER `
+  -SqlVersions 2019,2022,2025 `
+  -Ports @{ 2019 = 14331; 2022 = 14332; 2025 = 14335 } `
+  -AdminLogin ExampleSqlAdmin `
+  -AdminSecret $secret `
+  -ResourceProfile SMALL `
+  -PersistenceMode TEMPORARY `
+  -AcceptEula `
+  -NonInteractive
 ```
 
-Use `-Runtime PODMAN` for the Podman plan. `-GenerateSecret` validates the
-random-credential contract in memory; this delivery does not persist or print
-the generated value.
+For automation, a caller may provide an environment-variable name through
+`-SecretEnvironmentVariable` or request `-GenerateSecret`. The value itself is
+not returned. Generated-secret persistence belongs to the later lifecycle
+implementation and is not performed by Preflight.
 
-## Read-only checks
+## Checks
 
-Preflight evaluates:
+Preflight returns `READY` or `PREFLIGHT_FAILED` with structured reason codes.
+It checks:
 
-- native Linux and x86-64 platform boundary;
-- selected Docker or Podman executable and Compose provider;
+- native Linux and x86-64 architecture;
+- selected runtime and Compose command availability;
 - SQL Server version selection;
-- duplicate, invalid, and currently occupied host ports;
-- available RAM versus selected versions and resource profile;
-- the nearest existing parent of the configured data root;
-- SQL secret complexity without exposing the value;
+- unique, currently available host ports;
+- profile-based memory reserve;
+- an existing writable ancestor for the requested data root;
+- generic scope conflicts through read-only runtime listing;
+- SQL Server image availability unless explicitly skipped;
 - EULA acceptance;
-- Microsoft image availability through read-only manifest inspection, unless
-  explicitly skipped.
+- SQL secret complexity.
 
-The result contains `Checks`, `BlockerReasonCodes`, the effective plan,
-`MutationPerformed = false`, and
-`NextAction = INSTALL_LIFECYCLE_NOT_IMPLEMENTED`.
+The output property `MutationBoundary` is always
+`READ_ONLY_PREFLIGHT`. Runtime values may be returned to the local caller for
+diagnosis, but no such output is versioned or published automatically.
 
-This delivery does not run `compose up`, create or remove containers or
-networks, write credentials, create data directories, install the framework, or
-publish runtime evidence. Lifecycle implementation, Status, Destroy, framework
-installation, and connection summaries remain the next split delivery.
+## Current boundary
+
+The following remain unimplemented in this delivery:
+
+- Install or Up;
+- Start, Stop, Restart, and Reset;
+- framework installation and UpdateFramework;
+- Status, Down, and Destroy;
+- native Docker and Podman evidence.
+
+The Compose contract foundation is already versioned under `Lab/Containers`.
+A green static or synthetic Preflight test is not a real container-host run.
