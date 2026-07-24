@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
-    [ValidateSet('Preflight', 'Install', 'Status', 'Stop', 'Down', 'Start', 'Destroy')]
+    [ValidateSet('Preflight', 'Install', 'Status', 'Stop', 'Restart', 'Down', 'Start', 'Destroy')]
     [string] $Action = 'Preflight',
 
     [Parameter()]
@@ -177,6 +177,19 @@ if ($Action -eq 'Stop') {
         $stopArguments.WhatIf = $true
     }
     Stop-QuickTestLab @stopArguments
+    return
+}
+
+if ($Action -eq 'Restart') {
+    $restartArguments = @{
+        ScopeName = $ScopeName
+        StateRoot = $StateRoot
+        Confirm = $false
+    }
+    if ($WhatIfPreference) {
+        $restartArguments.WhatIf = $true
+    }
+    Restart-QuickTestLab @restartArguments
     return
 }
 
