@@ -32,6 +32,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: quicktest-lifecycle-validation-${{ github.workflow }}-${{ github.ref }}
@@ -138,3 +139,23 @@ jobs:
           path: ${{ runner.temp }}/quicktest-lifecycle-validation.log
           if-no-files-found: error
           retention-days: 7
+
+      - name: Report focused validation success
+        if: success() && github.ref_name == 'agent/quicktest-stop-lifecycle'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 70 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Focused Stop lifecycle validation succeeded for commit $GITHUB_SHA."
+
+      - name: Report focused validation failure
+        if: failure() && github.ref_name == 'agent/quicktest-stop-lifecycle'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 70 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Focused Stop lifecycle validation failed for commit $GITHUB_SHA."
