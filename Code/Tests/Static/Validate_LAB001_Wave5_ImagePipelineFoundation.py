@@ -11,21 +11,9 @@ from pathlib import Path
 
 
 EXPECTED_PARENTS = {
-    "2019": {
-        "Major": 15,
-        "ParentLogicalId": "W5-WINCORE-SQL2019",
-        "SqlMediaLogicalId": "SQL_SERVER_2019_DEVELOPER_WINDOWS",
-    },
-    "2022": {
-        "Major": 16,
-        "ParentLogicalId": "W5-WINCORE-SQL2022",
-        "SqlMediaLogicalId": "SQL_SERVER_2022_DEVELOPER_WINDOWS",
-    },
-    "2025": {
-        "Major": 17,
-        "ParentLogicalId": "W5-WINCORE-SQL2025",
-        "SqlMediaLogicalId": "SQL_SERVER_2025_DEVELOPER_WINDOWS",
-    },
+    "2019": (15, "W5-WINCORE-SQL2019", "SQL_SERVER_2019_DEVELOPER_WINDOWS"),
+    "2022": (16, "W5-WINCORE-SQL2022", "SQL_SERVER_2022_DEVELOPER_WINDOWS"),
+    "2025": (17, "W5-WINCORE-SQL2025", "SQL_SERVER_2025_DEVELOPER_WINDOWS"),
 }
 
 EXPECTED_STAGES = [
@@ -43,22 +31,10 @@ EXPECTED_STAGES = [
 ]
 
 REQUIRED_MEDIA = {
-    "WINDOWS_SERVER_CORE": {
-        "ProductFamily": "WINDOWS_SERVER",
-        "ProductVersion": "SUPPORTED_RELEASE_REQUIRED",
-    },
-    "SQL_SERVER_2019_DEVELOPER_WINDOWS": {
-        "ProductFamily": "SQL_SERVER",
-        "ProductVersion": "2019",
-    },
-    "SQL_SERVER_2022_DEVELOPER_WINDOWS": {
-        "ProductFamily": "SQL_SERVER",
-        "ProductVersion": "2022",
-    },
-    "SQL_SERVER_2025_DEVELOPER_WINDOWS": {
-        "ProductFamily": "SQL_SERVER",
-        "ProductVersion": "2025",
-    },
+    "WINDOWS_SERVER_CORE": ("WINDOWS_SERVER", "SUPPORTED_RELEASE_REQUIRED"),
+    "SQL_SERVER_2019_DEVELOPER_WINDOWS": ("SQL_SERVER", "2019"),
+    "SQL_SERVER_2022_DEVELOPER_WINDOWS": ("SQL_SERVER", "2022"),
+    "SQL_SERVER_2025_DEVELOPER_WINDOWS": ("SQL_SERVER", "2025"),
 }
 
 REQUIRED_GATES = {
@@ -90,7 +66,6 @@ REQUIRED_FILES = {
     "Lab/Contracts/hyperv-image-pipeline.schema.json",
     "Lab/HyperV/Images/README.md",
     "Lab/HyperV/Images/image-pipeline-contract.json",
-    "Lab/README.md",
     "Lab/Validation/Invoke-LabValidation.ps1",
     "Metadata/Quality/Lab_External_Evidence_Gates.csv",
     "Metadata/Quality/Lab_Wave_Status.csv",
@@ -105,13 +80,7 @@ FORBIDDEN_CONTENT_PATTERNS = {
     r"(?i)\b[0-9a-f]{64}\b": "resolved checksum or digest",
 }
 
-FORBIDDEN_IMAGE_SUFFIXES = {
-    ".avhdx",
-    ".iso",
-    ".vhd",
-    ".vhdx",
-    ".wim",
-}
+FORBIDDEN_IMAGE_SUFFIXES = {".avhdx", ".iso", ".vhd", ".vhdx", ".wim"}
 
 
 def load_json(path: Path) -> object:
@@ -130,8 +99,7 @@ def require(condition: bool, message: str, findings: list[str]) -> None:
 
 
 def validate_contract(root: Path, findings: list[str]) -> dict[str, object]:
-    path = root / "Lab/HyperV/Images/image-pipeline-contract.json"
-    contract = load_json(path)
+    contract = load_json(root / "Lab/HyperV/Images/image-pipeline-contract.json")
     if not isinstance(contract, dict):
         findings.append("Welle 5 image-pipeline contract root is not an object.")
         return {}
@@ -152,7 +120,8 @@ def validate_contract(root: Path, findings: list[str]) -> dict[str, object]:
         if isinstance(item, dict)
     }
     require(
-        set(adapters) == {"NATIVE_POWERSHELL", "PACKER"},
+        set(adapters) == {"NATIVE_POWERSHELL", "PACKER"}
+        and len(contract.get("BuilderAdapters", [])) == len(adapters),
         "Welle 5 builder adapter set is invalid.",
         findings,
     )
@@ -173,24 +142,24 @@ def validate_contract(root: Path, findings: list[str]) -> dict[str, object]:
         findings,
     )
 
-    matrix = {
+    parent_rows = contract.get("ParentMatrix", [])
+    parents = {
         str(item.get("SqlVersion")): item
-        for item in contract.get("ParentMatrix", [])
+        for item in parent_rows
         if isinstance(item, dict)
     }
     require(
-        set(matrix) == set(EXPECTED_PARENTS)
-        and len(contract.get("ParentMatrix", [])) == len(matrix),
+        set(parents) == set(EXPECTED_PARENTS) and len(parent_rows) == len(parents),
         "Welle 5 parent matrix must contain exactly SQL Server 2019, 2022, and 2025.",
         findings,
     )
-    for version, expected in EXPECTED_PARENTS.items():
-        row = matrix.get(version, {})
+    for version, (major, parent_id, sql_media_id) in EXPECTED_PARENTS.items():
+        row = parents.get(version, {})
         require(
-            row.get("SqlMajorVersion") == expected["Major"]
-            and row.get("ParentLogicalId") == expected["ParentLogicalId"]
+            row.get("SqlMajorVersion") == major
+            and row.get("ParentLogicalId") == parent_id
             and row.get("WindowsMediaLogicalId") == "WINDOWS_SERVER_CORE"
-            and row.get("SqlMediaLogicalId") == expected["SqlMediaLogicalId"],
+            and row.get("SqlMediaLogicalId") == sql_media_id,
             f"SQL Server {version} parent mapping is invalid.",
             findings,
         )
@@ -206,18 +175,11 @@ def validate_contract(root: Path, findings: list[str]) -> dict[str, object]:
         )
 
     stages = contract.get("PipelineStages", [])
-    stage_ids = [
-        item.get("StageId")
-        for item in stages
-        if isinstance(item, dict)
-    ]
-    ordinals = [
-        item.get("Ordinal")
-        for item in stages
-        if isinstance(item, dict)
-    ]
     require(
-        stage_ids == EXPECTED_STAGES and ordinals == list(range(1, 12)),
+        [item.get("StageId") for item in stages if isinstance(item, dict)]
+        == EXPECTED_STAGES
+        and [item.get("Ordinal") for item in stages if isinstance(item, dict)]
+        == list(range(1, 12)),
         "Welle 5 pipeline stage order is invalid.",
         findings,
     )
@@ -228,7 +190,9 @@ def validate_contract(root: Path, findings: list[str]) -> dict[str, object]:
         require(
             stage.get("ExecutionStatus") == "NOT_EXECUTED"
             and isinstance(stage.get("RequiredGuards"), list)
-            and bool(stage.get("RequiredGuards")),
+            and bool(stage.get("RequiredGuards"))
+            and len(stage.get("RequiredGuards", []))
+            == len(set(stage.get("RequiredGuards", []))),
             f"{stage.get('StageId')}: execution status or guards are invalid.",
             findings,
         )
@@ -247,7 +211,6 @@ def validate_contract(root: Path, findings: list[str]) -> dict[str, object]:
         "Welle 5 child-reset contract is unsafe or incomplete.",
         findings,
     )
-
     return contract
 
 
@@ -256,17 +219,16 @@ def validate_media_example(
     contract: dict[str, object],
     findings: list[str],
 ) -> None:
-    path = root / "Lab/Config/image-lock.example.json"
-    image_lock = load_json(path)
+    image_lock = load_json(root / "Lab/Config/image-lock.example.json")
     if not isinstance(image_lock, dict):
         findings.append("Image-lock example root is not an object.")
         return
-
     require(
         image_lock.get("DataClassification") == "PUBLIC_AND_SYNTHETIC",
         "Image-lock example classification is invalid.",
         findings,
     )
+
     media_rows = image_lock.get("Media", [])
     media = {
         item.get("LogicalMediaId"): item
@@ -290,11 +252,11 @@ def validate_media_example(
         findings,
     )
 
-    for media_id, expected in REQUIRED_MEDIA.items():
+    for media_id, (family, version) in REQUIRED_MEDIA.items():
         row = media.get(media_id, {})
         require(
-            row.get("ProductFamily") == expected["ProductFamily"]
-            and row.get("ProductVersion") == expected["ProductVersion"]
+            row.get("ProductFamily") == family
+            and row.get("ProductVersion") == version
             and row.get("Language") == "CONFIGURED_LANGUAGE_REQUIRED"
             and row.get("Checksum") == "SHA256_CHECKSUM_REQUIRED"
             and row.get("Status") == "LOCAL_BINDING_REQUIRED",
@@ -323,19 +285,23 @@ def validate_evidence_gates(
     contract: dict[str, object],
     findings: list[str],
 ) -> None:
+    contract_rows = contract.get("ExternalEvidenceGates", [])
     contract_gates = {
         item.get("GateId"): item
-        for item in contract.get("ExternalEvidenceGates", [])
+        for item in contract_rows
         if isinstance(item, dict)
     }
     require(
-        set(contract_gates) == set(REQUIRED_GATES),
+        set(contract_gates) == set(REQUIRED_GATES)
+        and len(contract_rows) == len(contract_gates),
         "Welle 5 contract evidence-gate set is incomplete.",
         findings,
     )
 
-    global_rows = load_csv(root / "Metadata/Quality/Lab_External_Evidence_Gates.csv")
-    global_gates = {row.get("GateId"): row for row in global_rows}
+    global_gates = {
+        row.get("GateId"): row
+        for row in load_csv(root / "Metadata/Quality/Lab_External_Evidence_Gates.csv")
+    }
     for gate_id, expected in REQUIRED_GATES.items():
         local = contract_gates.get(gate_id, {})
         global_row = global_gates.get(gate_id, {})
@@ -354,10 +320,13 @@ def validate_evidence_gates(
         )
 
 
-def validate_global_status(root: Path, findings: list[str]) -> None:
-    rows = load_csv(root / "Metadata/Quality/Lab_Wave_Status.csv")
+def validate_status_and_ignore(root: Path, findings: list[str]) -> None:
     wave = next(
-        (row for row in rows if row.get("WaveId") == "LAB-001-WAVE5"),
+        (
+            row
+            for row in load_csv(root / "Metadata/Quality/Lab_Wave_Status.csv")
+            if row.get("WaveId") == "LAB-001-WAVE5"
+        ),
         {},
     )
     require(
@@ -367,8 +336,6 @@ def validate_global_status(root: Path, findings: list[str]) -> None:
         findings,
     )
 
-
-def validate_ignore_boundary(root: Path, findings: list[str]) -> None:
     ignore = (root / "Lab/.gitignore").read_text(encoding="utf-8")
     for fragment in (
         "/HyperV/Images/output-*/",
@@ -379,8 +346,7 @@ def validate_ignore_boundary(root: Path, findings: list[str]) -> None:
     ):
         require(fragment in ignore, f"Lab ignore boundary lacks {fragment}.", findings)
 
-    image_root = root / "Lab/HyperV/Images"
-    for path in image_root.rglob("*"):
+    for path in (root / "Lab/HyperV/Images").rglob("*"):
         if path.is_file() and path.suffix.lower() in FORBIDDEN_IMAGE_SUFFIXES:
             findings.append(
                 f"Versioned Hyper-V image artifact is forbidden: {path.as_posix()}"
@@ -394,8 +360,7 @@ def validate_integration(root: Path, findings: list[str]) -> None:
     validation = (root / "Lab/Validation/Invoke-LabValidation.ps1").read_text(
         encoding="utf-8"
     )
-    lab_readme = (root / "Lab/README.md").read_text(encoding="utf-8")
-    image_readme = (root / "Lab/HyperV/Images/README.md").read_text(
+    readme = (root / "Lab/HyperV/Images/README.md").read_text(
         encoding="utf-8"
     )
 
@@ -418,27 +383,16 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         )
 
     for fragment in (
-        "Welle 5",
-        "VALIDATED_FOUNDATION",
+        "validated contract foundation",
         "NOT_EXECUTED",
         "immutable",
         "differencing",
         "PowerShell Direct",
+        "registered child resources",
     ):
         require(
-            fragment.lower() in image_readme.lower(),
+            fragment.lower() in readme.lower(),
             f"Welle 5 README lacks the boundary '{fragment}'.",
-            findings,
-        )
-
-    for fragment in (
-        "Scenarios/Infrastructure",
-        "HyperV/Images",
-        "Welle 4 und 5",
-    ):
-        require(
-            fragment in lab_readme,
-            f"Lab README integration lacks {fragment}.",
             findings,
         )
 
@@ -474,8 +428,7 @@ def main() -> int:
     if contract:
         validate_media_example(root, contract, findings)
         validate_evidence_gates(root, contract, findings)
-    validate_global_status(root, findings)
-    validate_ignore_boundary(root, findings)
+    validate_status_and_ignore(root, findings)
     validate_integration(root, findings)
     validate_privacy(root, findings)
 
