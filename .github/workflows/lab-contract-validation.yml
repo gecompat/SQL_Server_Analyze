@@ -9,6 +9,7 @@ on:
       - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
       - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -24,6 +25,7 @@ on:
       - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
       - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -40,7 +42,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 Wellen 0 to 3
+    name: Validate LAB-001 Wellen 0 to 4
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -59,6 +61,8 @@ jobs:
           python3 ./Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py \
             --repository-root .
           python3 ./Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py \
+            --repository-root .
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py \
             --repository-root .
 
       - name: Validate example manifests against JSON schemas
