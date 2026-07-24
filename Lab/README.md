@@ -22,7 +22,8 @@ grüner statischer CI-Lauf wird nicht als realer Hostnachweis ausgegeben.
 |---|---|
 | `Config` | Generische Beispielkonfigurationen, Image-Lock und konservative Ressourcenprofile. |
 | `Contracts` | JSON-Schemata für Konfiguration, Hostfähigkeiten, Topologien, Szenarien, Runbooks, Contract Fixtures, Finding-Erwartungen und veröffentlichbare Evidenz. |
-| `Containers` | Portabler Compose-Core, Docker-Override und gemeinsamer Linux-Bootstrap. |
+| `Containers` | Portabler Compose-Core, Docker-/Podman-Overrides und gemeinsamer Linux-Bootstrap. |
+| `QuickTest` | Gemeinsamer PowerShell-Core für das reine Docker-/Podman-Quick-Testsystem. |
 | `Orchestration` | Öffentliche CLI und PowerShell-Modul für Preflight, Status, Containeraufbau, Baselines, Welle-3-Szenarien, Versionsmatrix und begrenztes Cleanup. |
 | `Scenarios/Catalog` | Maschinenlesbarer Szenariokatalog und Procedure-zu-Szenario-Coverage. |
 | `Scenarios/Core` | Ausführbare, synthetische Welle-2-Szenarien. |
@@ -67,6 +68,126 @@ Copy-Item `
 
 Lokale Pfade, Hostnamen, Endpunkte, Benutzernamen, Digests, Kapazitätswerte und
 Secrets dürfen nicht in die Beispieldateien oder in Git übernommen werden.
+
+## Docker-/Podman-Quick-Testsystem
+
+Der Quick-Test-Vertical-Slice stellt SQL Server 2019, 2022 und 2025 ohne
+Hyper-V-Abhängigkeit über dieselbe PowerShell-7-Oberfläche bereit. Der
+Produktcode und die hostunabhängigen Verträge besitzen den Status
+`IMPLEMENTED_ACTIONS_GATE`; reale Docker- und Podman-Läufe bleiben
+`IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` beziehungsweise `NOT_EXECUTED`, bis
+ein freigegebener x86-64-Linux-Host verfügbar ist.
+
+### Voraussetzungen und Grenzen
+
+- PowerShell 7.2 oder neuer;
+- natives x86-64-Linux;
+- entweder Docker Engine mit `docker compose` oder Podman mit
+  `podman compose`;
+- ausreichender freier RAM für die gewählten Instanzen und das Profil;
+- freie Host-Ports;
+- Zugriff auf die Microsoft Container Registry;
+- ausdrückliche EULA-Bestätigung.
+
+Windows, macOS, Docker Desktop und Podman Desktop gehören nicht zum ersten
+freigegebenen Runtime-Scope. Die vollständige Podman-Kompatibilitätsmatrix aus
+Welle 9 bleibt davon getrennt; der Quick-Test-Slice stellt bereits die gemeinsame
+Bedienoberfläche und den Podman-Compose-Pfad bereit, behauptet aber noch keinen
+realen Podman-Nachweis.
+
+### Interaktiver Quick Start
+
+```powershell
+./Lab/Install-Lab.ps1
+```
+
+Das Skript fragt Runtime, SQL-Server-Versionen, Ports, administrativen
+SQL-Login, verdeckt eingegebenes Secret, Ressourcenprofil, Persistenzmodus,
+EULA-Bestätigung und optionale Framework-Installation ab. Standardports sind:
+
+| Version | Port |
+|---|---:|
+| SQL Server 2019 | 14331 |
+| SQL Server 2022 | 14332 |
+| SQL Server 2025 | 14335 |
+
+Die Profile `SMALL`, `MEDIUM` und `LARGE` begrenzen CPU, Container-RAM und
+`MSSQL_MEMORY_LIMIT_MB` je Instanz. Der Preflight lehnt doppelte oder belegte
+Ports sowie eine erkennbare RAM-Überbelegung vor der ersten Mutation ab.
+
+### Unbeaufsichtigter Docker-Aufruf
+
+Das Secret wird außerhalb des Befehls in der Prozessumgebung unter dem Namen
+`QTLAB_SQL_SECRET` bereitgestellt. Der Wert darf nicht in Skripten,
+Konfigurationsdateien oder Shell-Historien abgelegt werden.
+
+```powershell
+./Lab/Install-Lab.ps1 `
+    -Action Install `
+    -Runtime DOCKER `
+    -SqlVersions 2019,2022,2025 `
+    -Ports @{ 2019 = 14331; 2022 = 14332; 2025 = 14335 } `
+    -AdminLogin ExampleSqlAdmin `
+    -SecretEnvironmentVariable QTLAB_SQL_SECRET `
+    -ResourceProfile SMALL `
+    -PersistenceMode TEMPORARY `
+    -InstallFramework `
+    -AcceptEula `
+    -NonInteractive
+```
+
+Für Podman wird ausschließlich `-Runtime PODMAN` geändert. Beide Pfade nutzen
+`Lab/Containers/quick-test.compose.yaml`; Runtimeunterschiede liegen in
+`quick-test.compose.docker.yaml` und `quick-test.compose.podman.yaml`.
+
+### Sicher generiertes Secret
+
+Mit `-GenerateSecret` erzeugt das Skript ein zufälliges Secret und speichert es
+nur lokal unter dem ignorierten `.secrets`-Scope mit eingeschränkten
+Dateirechten. Die Konsole zeigt ausschließlich den lokalen Pfad, niemals den
+Secretwert. `Destroy` entfernt diesen Scope nach erneuter Owner-Prüfung.
+
+### Status und Destroy
+
+```powershell
+./Lab/Install-Lab.ps1 -Action Status
+
+./Lab/Install-Lab.ps1 -Action Destroy -WhatIf
+./Lab/Install-Lab.ps1 -Action Destroy -Confirm:$false
+```
+
+Alternativ:
+
+```powershell
+./Lab/Uninstall-Lab.ps1 -WhatIf
+./Lab/Uninstall-Lab.ps1 -Confirm:$false
+```
+
+`Status` prüft die gespeicherten vollständigen Container-IDs, die Run-ID-Labels,
+den Runtimezustand und den SQL-Healthstatus. `Destroy` entfernt ausschließlich
+die im lokalen State registrierten Container und das registrierte Netzwerk.
+Temporäre Daten werden standardmäßig entfernt; persistente Daten nur mit
+`-RemoveData`. Daten-, Secret- und Stateverzeichnisse benötigen einen passenden
+Owner-Marker und müssen innerhalb ihres gespeicherten Basispfads liegen.
+
+### Verbindungsinformationen
+
+Nach erfolgreicher Installation liefert das Ergebnisobjekt pro Version:
+
+- `localhost` und Host-Port;
+- administrativen Login;
+- einen `sqlcmd`-Aufruf ohne Secret;
+- eine Connection-String-Vorlage mit `<prompt>` statt eines eingebetteten
+  Secrets;
+- `LabAnalyze` als Frameworkdatenbank, sofern `-InstallFramework` aktiviert war.
+
+### Noch offene Lifecycle-Aktionen
+
+`Start`, `Stop`, `Restart`, `Reset` und ein getrenntes `UpdateFramework` sind
+bewusst als nächste Ausbaustufe dokumentiert. Der aktuelle Slice deckt
+`Preflight`, `Install`, `Status` und `Destroy` ab. Die Default-Images verwenden
+explizite Microsoft-Versionstags; eine verpflichtende Digestbindung bleibt für
+den Quick-Test-Pfad ein Folgepunkt.
 
 ## Preflight
 
@@ -114,7 +235,7 @@ Der gemeinsame Compose-Core:
 - bezieht das synthetische Secret nur aus dem bestehenden Secret-Provider.
 
 Der Orchestrator baut den eigenständigen Installer aus den kanonischen
-SQL-Dateien in den ignorierten Run-State, installiert das Framework in
+SQL-Dateien in den ignorierten Run-State, installiert daraus das Framework in
 `LabAnalyze` und misst vor und nach `Up` Hostreserve, effektive Dockerlimits und
 tatsächlichen Datenverbrauch. Reale Messwerte bleiben lokal in
 `resource-measurements.json`.
@@ -247,7 +368,9 @@ ergibt `NOT_EXECUTED`; er wird nicht als bestandener Versionsnachweis gewertet.
 | Docker auf nativem Linux | `IMPLEMENTED_ACTIONS_GATE` | `NOT_EXECUTED` bis zu einem Lauf auf einem freigegebenen Host |
 | Docker in einer Hyper-V-Linux-VM | gemeinsamer Vertrag vorhanden | `NOT_EXECUTED` mit `HYPERV_LINUX_RUNTIME_GATE_REQUIRED` |
 | Welle-3-Versionmatrix | `IMPLEMENTED_ACTIONS_GATE` | `NOT_EXECUTED` bis 2019, 2022 und 2025 sequenziell bestanden sind |
-| Podman | Welle 9 | `NOT_EXECUTED` |
+| Docker-Quick-Testsystem | `IMPLEMENTED_ACTIONS_GATE` | `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` |
+| Podman-Quick-Testsystem | `IMPLEMENTED_ACTIONS_GATE` | `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING` |
+| Vollständige Podman-Kompatibilitätsmatrix | Welle 9 | `NOT_EXECUTED` |
 
 Die Hyper-V-Linux-Lane wird nicht als erfolgreich ausgewiesen, solange keine
 isolierte kompatible VM bereitsteht. Fehlende Plattformfähigkeit ist kein
@@ -262,6 +385,7 @@ python3 Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py --repository-ro
 python3 Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py --repository-root .
 python3 Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py --repository-root .
 python3 Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py --repository-root .
+python3 Code/Tests/Static/Validate_Docker_Podman_QuickTest_VerticalSlice.py --repository-root .
 ```
 
 Mit PowerShell 7:
@@ -271,12 +395,14 @@ pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabValidation.ps1
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave1Tests.ps1
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave2Tests.ps1
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave3Tests.ps1
+pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabQuickTestTests.ps1
 ```
 
-Die PR-CI prüft zusätzlich das zusammengeführte Docker-Compose-Modell und
-PSScriptAnalyzer. Sie startet keinen unterdimensionierten SQL-Server-Container
-und überschreibt keine Mindesthostklasse. Reale `Up → Run → Validate → Down`-
-Nachweise werden ausschließlich über die externen Evidence Gates geführt.
+Die PR-CI prüft zusätzlich das zusammengeführte Docker- und Podman-Compose-
+Modell und PSScriptAnalyzer. Sie startet keinen unterdimensionierten
+SQL-Server-Container und überschreibt keine Mindesthostklasse. Reale
+`Up → Run → Validate → Down`- beziehungsweise Quick-Test-Nachweise werden
+ausschließlich über die externen Evidence Gates geführt.
 
 ## Datenschutz- und Sicherheitsgrenze
 
