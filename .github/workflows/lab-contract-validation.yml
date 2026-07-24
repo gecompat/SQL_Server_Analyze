@@ -50,7 +50,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 and Docker Podman quick-test contracts
+    name: Validate LAB-001 Wellen 0 to 5 and Docker Podman quick-test contracts
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -156,7 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           runtime_dir="$(mktemp -d)"
-          trap 'rm -rf -- "$runtime_dir"' EXIT
+          trap 'rm -r -- "$runtime_dir"' EXIT
           mkdir -p \
             "$runtime_dir/2019/data" "$runtime_dir/2019/log" "$runtime_dir/2019/backup" \
             "$runtime_dir/2022/data" "$runtime_dir/2022/log" "$runtime_dir/2022/backup" \
