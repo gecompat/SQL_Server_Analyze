@@ -155,11 +155,25 @@ if ($Action -in @('Status', 'Destroy')) {
         Get-QuickTestLabStatus -ScopeName $ScopeName
         return
     }
+    if (-not $PSCmdlet.ShouldProcess(
+            "quick-test scope $ScopeName",
+            'Destroy exact registered containers, network, and approved local scope'
+        )) {
+        [pscustomobject] @{
+            Status = if ($WhatIfPreference) {
+                'WHATIF'
+            }
+            else {
+                'DESTROY_CONFIRMATION_REQUIRED'
+            }
+            ScopeName = $ScopeName
+        }
+        return
+    }
     Remove-QuickTestLab `
         -ScopeName $ScopeName `
         -RemoveData:$RemoveData `
-        -Confirm:$false `
-        -WhatIf:$WhatIfPreference
+        -Confirm:$false
     return
 }
 
