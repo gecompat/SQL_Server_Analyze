@@ -320,8 +320,7 @@ labels before deletion. Unexpected run-labeled objects stop the operation. It
 never performs a global prune or a name-only delete.
 
 Stop and Restart preserve Runtime objects. Down preserves the complete local
-scope. Reset replaces only a temporary scope. Destroy always removes the complete
-scope, independent of `PERSISTENT` or `TEMPORARY`.
+scope. Reset replaces only a temporary scope. Destroy always removes the complete scope, independent of `PERSISTENT` or `TEMPORARY`.
 
 ## Connection information
 
