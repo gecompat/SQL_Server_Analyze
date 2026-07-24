@@ -1,8 +1,9 @@
 # Docker/Podman quick-test system
 
-This directory contains the container-only SQL Server quick-test system. Its
-binding requirements and acceptance boundaries are documented in the
-[Docker/Podman quick-test system requirements](../../Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md).
+The [canonical Docker-/Podman-Quick-Testsystem requirements](../../Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md)
+define the complete target contract. This directory documents the currently
+implemented, deliberately bounded subset.
+
 The public entrypoints are:
 
 - `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, and `Destroy`;
@@ -140,7 +141,7 @@ operation.
 Status reads the owner-bound local state and validates each stored full
 container ID. It reports runtime state, health state, port, SQL version, and
 run-label ownership. A container is `Ready` only when it is running, healthy,
-and still owned by the saved run ID.
+and still owned by the saved run ID and the generic framework-owner label.
 
 Status does not create, start, stop, or remove runtime objects.
 
@@ -173,9 +174,9 @@ For documented unattended destruction:
 ```
 
 Destroy uses the full object IDs registered in local state and verifies current
-run-label ownership before deletion. Run-labeled objects that are not registered
-in state cause Destroy to stop instead of widening its deletion scope. It never
-performs a global prune or a name-only delete.
+run-label and framework-owner labels before deletion. Run-labeled objects that
+are not registered in state cause Destroy to stop instead of widening its
+deletion scope. It never performs a global prune or a name-only delete.
 
 Local state, generated-credential, and data directories are removed only when
 their owner marker matches and their canonical path remains below the saved
