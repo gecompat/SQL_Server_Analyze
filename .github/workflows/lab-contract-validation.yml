@@ -116,9 +116,17 @@ jobs:
         shell: pwsh
         run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave3Tests.ps1
 
-      - name: Parse quick-test entrypoints
+      - name: Parse quick-test Install entrypoint
         shell: pwsh
-        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget ENTRYPOINTS
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget INSTALL_ENTRYPOINT
+
+      - name: Parse quick-test Uninstall entrypoint
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget UNINSTALL_ENTRYPOINT
+
+      - name: Parse quick-test framework wrapper
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget FRAMEWORK_WRAPPER
 
       - name: Parse quick-test common helpers
         shell: pwsh
