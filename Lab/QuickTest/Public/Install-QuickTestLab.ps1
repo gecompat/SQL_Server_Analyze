@@ -102,10 +102,12 @@ function Install-QuickTestLab {
     }
 
     $localConflicts = @(
-        $scopeStateDirectory
-        $scopeDataDirectory
-        $scopeCredentialDirectory
-    ) | Where-Object { Test-Path -LiteralPath $_ }
+        @(
+            $scopeStateDirectory
+            $scopeDataDirectory
+            $scopeCredentialDirectory
+        ) | Where-Object { Test-Path -LiteralPath $_ }
+    )
     if ($localConflicts.Count -gt 0) {
         return [pscustomobject] @{
             Status = 'PREFLIGHT_FAILED'
@@ -317,10 +319,10 @@ function Install-QuickTestLab {
                 $resources = Get-QuickTestResourcesByRunId `
                     -RuntimeInfo $runtimeInfo `
                     -RunId $runId
-                if ($resources.NetworkIds.Count -ne 1) {
+                if (@($resources.NetworkIds).Count -ne 1) {
                     throw 'The quick-test install did not resolve exactly one owned network.'
                 }
-                $networkId = [string] $resources.NetworkIds[0]
+                $networkId = [string] @($resources.NetworkIds)[0]
                 $state.NetworkId = $networkId
             }
             Write-QuickTestJson -Path $statePath -InputObject $state
@@ -404,8 +406,8 @@ function Install-QuickTestLab {
             Remove-QuickTestRuntimeResources `
                 -RuntimeInfo $runtimeInfo `
                 -RunId $runId `
-                -ContainerIds $resources.ContainerIds `
-                -NetworkIds $resources.NetworkIds
+                -ContainerIds @($resources.ContainerIds) `
+                -NetworkIds @($resources.NetworkIds)
 
             if (
                 (Test-Path -LiteralPath $scopeDataDirectory) -and
