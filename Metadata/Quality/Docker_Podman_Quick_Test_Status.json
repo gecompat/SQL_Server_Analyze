@@ -1,7 +1,8 @@
 {
   "SchemaVersion": "1.0",
   "WorkItemId": "LAB-QUICKTEST-001",
-  "ContractStatus": "VALIDATED_FOUNDATION",
+  "ContractStatus": "IMPLEMENTED_AUTOMATED_GATE",
+  "PreflightStatus": "IMPLEMENTED_AUTOMATED_GATE",
   "RuntimeStatus": "NOT_EXECUTED",
   "DataClassification": "PUBLIC_AND_SYNTHETIC",
   "DeliveredScope": [
@@ -9,22 +10,25 @@
     "Independent per-version Compose profiles and default host ports",
     "Separate Docker and Podman resource-limit overrides",
     "Runtime health check that executes a SQL query",
-    "Generic run, scope, owner, runtime, and SQL-version labels",
-    "Separate data, transaction-log, backup, and runtime bind contracts",
-    "Static Docker-based validation of both effective Compose models"
+    "Interactive and non-interactive PowerShell 7 Preflight entrypoint",
+    "Docker or Podman runtime and Compose capability detection",
+    "SQL Server version, host-port, memory, path, image, EULA, and secret-policy checks",
+    "Generic scope-conflict detection without creating or changing runtime resources",
+    "Structured READY or PREFLIGHT_FAILED result with reason codes",
+    "Synthetic positive and negative Preflight contract tests"
   ],
   "OpenScope": [
-    "Interactive and non-interactive PowerShell entrypoint",
-    "Read-only runtime, port, resource, path, and image Preflight",
     "Lifecycle execution and generated local state",
-    "Framework installation, Status, and Destroy",
+    "Container Install or Up action",
+    "Framework installation and UpdateFramework",
+    "Start, Stop, Restart, Reset, Status, Down, and Destroy",
     "Native Docker runtime evidence",
     "Native Podman runtime evidence"
   ],
   "ExternalEvidenceRequired": [
-    "Native x86-64 Linux Docker Compose execution",
-    "Native x86-64 Linux Podman Compose execution",
-    "SQL Server 2019, 2022, and 2025 readiness verification"
+    "Native x86-64 Linux Docker Preflight against an installed runtime",
+    "Native x86-64 Linux Podman Preflight against an installed runtime",
+    "Registry and SQL Server image availability checks"
   ],
   "EvidenceReference": "Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md"
 }
