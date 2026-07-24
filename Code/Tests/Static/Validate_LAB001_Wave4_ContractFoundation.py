@@ -28,6 +28,7 @@ EXPECTED_SCENARIOS = {
     "LAB-BROKER-001",
     "LAB-DTC-001",
     "LAB-LINK-001",
+    "LAB-MAINT-001",
 }
 
 EXPECTED_HEADER = (
@@ -124,7 +125,7 @@ def validate_catalog_alignment(
     }
     require(
         set(catalog_rows) == EXPECTED_SCENARIOS,
-        "Welle 4 catalog membership is not the declared 17-scenario set.",
+        "Welle 4 catalog membership is not the declared 18-scenario set.",
         findings,
     )
 
@@ -473,7 +474,7 @@ def main() -> int:
 
     print(
         "LAB-001 Welle 4 contract foundation validated: "
-        "scenarios=17 topologies=4 external_gates=2 runtime=NOT_EXECUTED."
+        "scenarios=18 topologies=4 external_gates=2 runtime=NOT_EXECUTED."
     )
     return 0
 
