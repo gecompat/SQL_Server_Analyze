@@ -42,7 +42,7 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
     preflight_scope = "\n".join((common, preflight))
 
     for fragment in (
-        "'Preflight', 'Install', 'Status', 'Stop', 'Down', 'Start', 'Destroy'",
+        "'Preflight', 'Install', 'Status', 'Stop', 'Restart', 'Down', 'Start', 'Destroy'",
         "'DOCKER', 'PODMAN'",
         "SqlVersions",
         "Ports",
@@ -193,6 +193,7 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         "2025",
         "READ_ONLY_PREFLIGHT",
         "Stop",
+        "Restart",
         "Down",
         "Start",
         "Destroy",

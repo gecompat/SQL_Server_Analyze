@@ -10,6 +10,7 @@ on:
       - 'Lab/QuickTest/**'
       - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
       - 'Lab/Validation/Invoke-LabQuickTestStopTests.ps1'
+      - 'Lab/Validation/Invoke-LabQuickTestRestartTests.ps1'
       - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -25,6 +26,7 @@ on:
       - 'Lab/QuickTest/**'
       - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
       - 'Lab/Validation/Invoke-LabQuickTestStopTests.ps1'
+      - 'Lab/Validation/Invoke-LabQuickTestRestartTests.ps1'
       - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -41,7 +43,7 @@ jobs:
   synthetic-lifecycle:
     name: Validate synthetic quick-test lifecycle
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 14
 
     steps:
       - name: Check out repository
@@ -87,6 +89,22 @@ jobs:
             throw
           }
 
+      - name: Run focused Restart lifecycle contract
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'quicktest-lifecycle-validation.log'
+          try {
+            & ./Lab/Validation/Invoke-LabQuickTestRestartTests.ps1 *>&1 |
+              Tee-Object -FilePath $logPath -Append
+            if (-not $?) {
+              throw 'Synthetic quick-test Restart contract failed.'
+            }
+          }
+          catch {
+            $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
+            throw
+          }
+
       - name: Install pinned PowerShell analyzer
         shell: pwsh
         run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Repository PSGallery -Scope CurrentUser -Force
@@ -109,6 +127,15 @@ jobs:
             throw "Stopped quick-test Start analyzer reported $($findings.Count) error finding(s)."
           }
 
+      - name: Analyze quick-test Restart lifecycle
+        shell: pwsh
+        run: |
+          $findings = @(Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/Public/Restart-QuickTestLab.ps1 -Severity Error)
+          if ($findings.Count -gt 0) {
+            $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
+            throw "Quick-test Restart analyzer reported $($findings.Count) error finding(s)."
+          }
+
       - name: Analyze quick-test Status lifecycle
         shell: pwsh
         run: |
@@ -127,7 +154,7 @@ jobs:
           )
           if ($findings.Count -gt 0) {
             $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
-            throw "Quick-test Stop integration analyzer reported $($findings.Count) error finding(s)."
+            throw "Quick-test lifecycle integration analyzer reported $($findings.Count) error finding(s)."
           }
 
       - name: Upload focused failure log

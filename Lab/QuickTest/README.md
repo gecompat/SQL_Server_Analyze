@@ -6,7 +6,7 @@ implemented, deliberately bounded subset.
 
 The public entrypoints are:
 
-- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Stop`, `Down`, `Start`, and `Destroy`;
+- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Stop`, `Restart`, `Down`, `Start`, and `Destroy`;
 - `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
 
 The first executable runtime delivery is limited to native x86-64 Linux. It
@@ -102,9 +102,10 @@ verifies that the database and `monitor` schema exist.
 The `SMALL` profile is the default. CPU and memory limits are passed to every
 selected container. Install and Start process selected versions sequentially;
 they do not start all versions concurrently. Stop processes versions in reverse
-order and waits for every container to reach a stopped state. The lifecycle
-never changes global Docker or Podman settings, never raises host limits, and
-never touches unrelated runtime objects.
+order and waits for every container to reach a stopped state. Restart composes
+that ordered Stop with the credential-free Start of the same containers. The
+lifecycle never changes global Docker or Podman settings, never raises host
+limits, and never touches unrelated runtime objects.
 
 ## Local state and ownership
 
@@ -126,8 +127,9 @@ credential. Install refuses pre-existing unmarked local scope directories; it
 does not adopt or overwrite them.
 
 Install, Stop, and both Start paths persist their transition state before the
-first Runtime mutation. Failed transitions retain explicit recovery states and
-do not widen the cleanup scope beyond owner-validated full object IDs.
+first Runtime mutation. Restart uses those existing transition contracts and
+does not add a parallel direct Runtime path. Failed transitions retain explicit
+recovery states and never widen the scope beyond owner-validated full object IDs.
 
 ## Status
 
@@ -169,6 +171,35 @@ Containers are stopped sequentially in descending SQL Server version order.
 The default Runtime timeout is 30 seconds per container. The final state is
 `STOPPED`; failures are recorded as `STOP_FAILED`. Repeating Stop for a fully
 validated stopped scope is idempotent and returns `AlreadyStopped = true`.
+
+## Restart
+
+`Restart` is allowed only for a fully verified `READY` scope. It performs one
+confirmation-bound `Stop` followed by the existing stopped-container `Start`.
+It restarts the same full container IDs without recreating containers, without
+recreating the network, and without requiring the SQL credential.
+
+```powershell
+./Lab/Install-Lab.ps1 `
+  -Action Restart `
+  -ScopeName sql-analyze-quicktest
+```
+
+Before Stop, Restart records the current run ID, network ID, and ordered container
+IDs. Stop writes `STOPPING`, preserves every Runtime object, and finishes as
+`STOPPED`. Start then writes `STARTING`, starts the same containers sequentially,
+waits for health, verifies each SQL Server major version, and checks the preserved
+framework when it was installed.
+
+After Start returns `READY`, Restart rereads the state and verifies that the
+complete runtime identity is unchanged: run ID, network ID, number of containers,
+and every ordered full container ID must match the pre-Restart state. A mismatch
+fails the action instead of silently accepting newly created resources.
+
+`-WhatIf` returns before Stop. A Stop failure is reported as
+`RESTART_STOP_FAILED`; a non-ready Start result is reported as
+`RESTART_START_FAILED`. Failures inside the shared Start recovery path retain its
+explicit `STOPPED` or `START_STOPPED_RECOVERY_FAILED` state.
 
 ## Down
 
@@ -244,13 +275,14 @@ Destroy uses full object IDs and verifies current run-label and framework-owner
 labels before deletion. Unexpected run-labeled objects stop the operation. It
 never performs a global prune or a name-only delete.
 
-Stop preserves Runtime objects. Down preserves the complete local scope.
-Destroy always removes the complete scope, independent of `PERSISTENT` or
+Stop and Restart preserve Runtime objects. Down preserves the complete local
+scope. Destroy always removes the complete scope, independent of `PERSISTENT` or
 `TEMPORARY`.
 
 ## Connection information
 
-A successful Install or Start returns one entry per SQL Server version with:
+A successful Install, Start, or Restart returns one entry per SQL Server version
+with:
 
 - `localhost` and the configured host port;
 - the generic login name;
@@ -264,7 +296,7 @@ The credential is never printed again.
 
 The following remain open after this delivery:
 
-- Restart and Reset;
+- Reset;
 - a separate UpdateFramework action;
 - native Docker and Podman execution evidence;
 - end-to-end SQL Server 2019, 2022, and 2025 host evidence.
