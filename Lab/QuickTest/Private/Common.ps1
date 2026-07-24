@@ -22,6 +22,23 @@ function ConvertFrom-QuickTestSecureString {
     }
 }
 
+function ConvertTo-QuickTestSecureString {
+    [CmdletBinding()]
+    [OutputType([securestring])]
+    param(
+        [Parameter(Mandatory)]
+        [AllowEmptyString()]
+        [string] $Value
+    )
+
+    $secureValue = [securestring]::new()
+    foreach ($character in $Value.ToCharArray()) {
+        $secureValue.AppendChar($character)
+    }
+    $secureValue.MakeReadOnly()
+    return $secureValue
+}
+
 function Test-QuickTestPassword {
     [CmdletBinding()]
     [OutputType([bool])]
@@ -82,7 +99,14 @@ function New-QuickTestPassword {
         $characters[$index] = $characters[$swapIndex]
         $characters[$swapIndex] = $temporary
     }
-    return ConvertTo-SecureString -String (-join $characters) -AsPlainText -Force
+
+    $generatedValue = -join $characters
+    try {
+        return ConvertTo-QuickTestSecureString -Value $generatedValue
+    }
+    finally {
+        $generatedValue = $null
+    }
 }
 
 function Get-QuickTestDefaultPorts {
