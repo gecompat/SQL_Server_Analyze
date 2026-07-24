@@ -13,6 +13,7 @@ on:
       - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
       - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_ComposeFoundation.py'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_Preflight.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Implementation_Status.csv'
@@ -33,6 +34,7 @@ on:
       - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
       - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_ComposeFoundation.py'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_Preflight.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Implementation_Status.csv'
@@ -50,7 +52,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 Wellen 0 to 5 and quick-test Compose foundation
+    name: Validate LAB-001 Wellen 0 to 5 and quick-test Preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -107,6 +109,13 @@ jobs:
           python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_ComposeFoundation.py \
             --repository-root .
 
+      - name: Validate Docker Podman quick-test Preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_Preflight.py \
+            --repository-root .
+
       - name: Validate example manifests against JSON schemas
         shell: pwsh
         run: |
@@ -126,6 +135,11 @@ jobs:
         shell: pwsh
         run: |
           pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave3Tests.ps1
+
+      - name: Run Docker Podman quick-test Preflight tests
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestPreflightTests.ps1
 
       - name: Validate Docker Compose model
         shell: bash
@@ -196,7 +210,7 @@ jobs:
             -Scope CurrentUser `
             -Force
 
-      - name: Run PowerShell analyzer
+      - name: Analyze existing LAB orchestration
         shell: pwsh
         run: |
           $findings = @(
@@ -209,5 +223,65 @@ jobs:
             $findings |
               Select-Object RuleName, Severity, ScriptName, Line |
               Format-Table -AutoSize
-            throw "PSScriptAnalyzer reported $($findings.Count) error finding(s)."
+            throw "Existing LAB orchestration analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test common helpers
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/QuickTest/Private/Common.ps1 `
+              -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Quick-test common analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test Preflight function
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1 `
+              -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Quick-test Preflight analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test module loader
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/QuickTest/QuickTestLab.psm1 `
+              -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Quick-test loader analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test entrypoint
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/Install-Lab.ps1 `
+              -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Quick-test entrypoint analyzer reported $($findings.Count) error finding(s)."
           }
