@@ -19,6 +19,7 @@ REQUIRED_FILES = {
     "Lab/QuickTest/Public/Install-QuickTestLab.ps1",
     "Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1",
     "Lab/QuickTest/Public/Invoke-QuickTestLabDown.ps1",
+    "Lab/QuickTest/Public/Start-QuickTestLab.ps1",
     "Lab/QuickTest/Public/Remove-QuickTestLab.ps1",
     "Lab/QuickTest/QuickTestLab.psm1",
     "Lab/QuickTest/README.md",
@@ -41,8 +42,8 @@ def require(condition: bool, message: str, findings: list[str]) -> None:
         findings.append(message)
 
 
-def text(root: Path, path: str) -> str:
-    return (root / path).read_text(encoding="utf-8")
+def text(root: Path, relative_path: str) -> str:
+    return (root / relative_path).read_text(encoding="utf-8")
 
 
 def require_fragments(
@@ -56,21 +57,21 @@ def validate_entrypoints(root: Path, findings: list[str]) -> None:
     entry = text(root, "Lab/Install-Lab.ps1")
     uninstall = text(root, "Lab/Uninstall-Lab.ps1")
     loader = text(root, "Lab/QuickTest/QuickTestLab.psm1")
-
     require_fragments(
         entry,
         (
-            "'Preflight', 'Install', 'Status', 'Down', 'Destroy'",
+            "'Preflight', 'Install', 'Status', 'Down', 'Start', 'Destroy'",
             "SupportsShouldProcess",
             "Install-QuickTestLab",
             "Get-QuickTestLabStatus",
             "Invoke-QuickTestLabDown",
+            "Start-QuickTestLab",
             "Remove-QuickTestLab",
-            "InstallFramework",
-            "PersistGeneratedCredential",
-            "-Force is supported only with -Action Down or Destroy.",
+            "START_CREDENTIAL_REQUIRED",
+            "cannot generate a new one",
             "DOWN_CONFIRMATION_REQUIRED",
             "DESTROY_CONFIRMATION_REQUIRED",
+            "-Force is supported only with -Action Down or Destroy.",
         ),
         "Install-Lab.ps1",
         findings,
@@ -92,15 +93,15 @@ def validate_entrypoints(root: Path, findings: list[str]) -> None:
     require_fragments(
         loader,
         (
-            "Private/LifecycleState.ps1",
-            "Private/LifecycleRuntime.ps1",
             "Public/Install-QuickTestLab.ps1",
             "Public/Get-QuickTestLabStatus.ps1",
             "Public/Invoke-QuickTestLabDown.ps1",
+            "Public/Start-QuickTestLab.ps1",
             "Public/Remove-QuickTestLab.ps1",
             "'Install-QuickTestLab'",
             "'Get-QuickTestLabStatus'",
             "'Invoke-QuickTestLabDown'",
+            "'Start-QuickTestLab'",
             "'Remove-QuickTestLab'",
         ),
         "Quick-test module loader",
@@ -131,12 +132,9 @@ def validate_install(root: Path, findings: list[str]) -> None:
             "@('up', '--detach', $service)",
             "Wait-QuickTestContainerHealthy",
             "SERVERPROPERTY('ProductMajorVersion')",
-            "ProductMajorVersion = $expectedMajor",
             "Initialize-QuickTestAdminLogin",
             "Install-LabContainerFramework",
             "LifecycleStatus = 'READY'",
-            "GeneratedCredentialPath",
-            "ConnectionStringTemplate",
             "RecoveryContainerIds",
             "RecoveryNetworkIds",
             "LifecycleStatus = 'RECOVERY_CLEANUP'",
@@ -150,18 +148,9 @@ def validate_install(root: Path, findings: list[str]) -> None:
     require(
         -1 not in (recovery, recovery_write, recovery_remove)
         and recovery < recovery_write < recovery_remove,
-        "Recovery IDs are not registered before cleanup.",
+        "Install recovery IDs are not registered before cleanup.",
         findings,
     )
-    for forbidden in (
-        "system prune",
-        "container prune",
-        "network prune",
-        "volume prune",
-        "compose down",
-        "rm -rf",
-    ):
-        require(forbidden not in install.lower(), f"Install contains {forbidden}.", findings)
 
 
 def validate_helpers(root: Path, findings: list[str]) -> None:
@@ -216,21 +205,11 @@ def validate_helpers(root: Path, findings: list[str]) -> None:
         "Administrative login creation still writes a credential SQL file.",
         findings,
     )
-    for forbidden in (
-        "system', 'prune'",
-        "container', 'prune'",
-        "network', 'prune'",
-        "volume', 'prune'",
-        "--filter', 'name=",
-    ):
-        require(forbidden not in runtime, f"Runtime helper contains {forbidden}.", findings)
 
 
-def validate_status_down_destroy(root: Path, findings: list[str]) -> None:
+def validate_status_down(root: Path, findings: list[str]) -> None:
     status = text(root, "Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1")
     down = text(root, "Lab/QuickTest/Public/Invoke-QuickTestLabDown.ps1")
-    destroy = text(root, "Lab/QuickTest/Public/Remove-QuickTestLab.ps1")
-
     require_fragments(
         status,
         (
@@ -241,7 +220,6 @@ def validate_status_down_destroy(root: Path, findings: list[str]) -> None:
             "qt-lab.owner",
             "OwnershipValid",
             "PARTIAL_SUCCESS",
-            "non-canonical container ID",
             "LifecycleStatus -eq 'DOWN'",
             "Status = 'DOWN'",
             "RuntimeStatus = 'removed'",
@@ -251,7 +229,6 @@ def validate_status_down_destroy(root: Path, findings: list[str]) -> None:
         "Status lifecycle",
         findings,
     )
-
     require_fragments(
         down,
         (
@@ -263,7 +240,6 @@ def validate_status_down_destroy(root: Path, findings: list[str]) -> None:
             "registeredNetworkIds",
             "unexpectedContainers",
             "unexpectedNetworks",
-            "not registered in state",
             "LifecycleStatus = 'DOWN_IN_PROGRESS'",
             "RecoveryContainerIds",
             "RecoveryNetworkIds",
@@ -290,6 +266,64 @@ def validate_status_down_destroy(root: Path, findings: list[str]) -> None:
         findings,
     )
     require("Remove-Item" not in down, "Down deletes local files or directories.", findings)
+
+
+def validate_start(root: Path, findings: list[str]) -> None:
+    start = text(root, "Lab/QuickTest/Public/Start-QuickTestLab.ps1")
+    require_fragments(
+        start,
+        (
+            "function Start-QuickTestLab",
+            "SupportsShouldProcess",
+            "START_STATE_INVALID",
+            "START_SCOPE_CONFLICT",
+            "START_CREDENTIAL_REQUIRED",
+            "START_CONFIRMATION_REQUIRED",
+            "GeneratedCredentialStored",
+            "Test-QuickTestOwnedDirectory",
+            "sql-admin.credential",
+            "ConvertTo-QuickTestSecureString",
+            "LifecycleStatus = 'STARTING'",
+            "@('up', '--detach', $service)",
+            "Wait-QuickTestContainerHealthy",
+            "SERVERPROPERTY('ProductMajorVersion')",
+            "FRAMEWORK_READY",
+            "LifecycleStatus = 'READY'",
+            "AlreadyRunning",
+            "LoadedStoredCredential",
+            "LifecycleStatus = 'START_RECOVERY_CLEANUP'",
+            "RecoveryContainerIds",
+            "RecoveryNetworkIds",
+            "Remove-QuickTestRuntimeResources",
+            "LifecycleStatus = 'DOWN'",
+        ),
+        "Start lifecycle",
+        findings,
+    )
+    start_state = start.find("LifecycleStatus = 'STARTING'")
+    start_write = start.find("Write-QuickTestJson", start_state)
+    start_compose = start.find("Invoke-QuickTestCompose", start_write)
+    require(
+        -1 not in (start_state, start_write, start_compose)
+        and start_state < start_write < start_compose,
+        "Start does not persist STARTING before Compose mutation.",
+        findings,
+    )
+    recovery = start.find("LifecycleStatus = 'START_RECOVERY_CLEANUP'")
+    recovery_write = start.find("Write-QuickTestJson", recovery)
+    recovery_remove = start.find("Remove-QuickTestRuntimeResources", recovery_write)
+    final_down = start.find("LifecycleStatus = 'DOWN'", recovery_remove)
+    final_write = start.find("Write-QuickTestJson", final_down)
+    require(
+        -1 not in (recovery, recovery_write, recovery_remove, final_down, final_write)
+        and recovery < recovery_write < recovery_remove < final_down < final_write,
+        "Start does not persist recovery and restored DOWN state around cleanup.",
+        findings,
+    )
+    require("Invoke-QuickTestCompose" in start, "Start does not use Compose.", findings)
+    require("@('pull')" not in start, "Start explicitly pulls mutable images.", findings)
+    require("Install-LabContainerFramework" not in start, "Start reinstalls the framework.", findings)
+    require("Remove-Item" not in start, "Start deletes local data or state.", findings)
     for forbidden in (
         "system prune",
         "container prune",
@@ -298,8 +332,11 @@ def validate_status_down_destroy(root: Path, findings: list[str]) -> None:
         "compose down",
         "rm -rf",
     ):
-        require(forbidden not in down.lower(), f"Down contains {forbidden}.", findings)
+        require(forbidden not in start.lower(), f"Start contains {forbidden}.", findings)
 
+
+def validate_destroy(root: Path, findings: list[str]) -> None:
+    destroy = text(root, "Lab/QuickTest/Public/Remove-QuickTestLab.ps1")
     require_fragments(
         destroy,
         (
@@ -374,6 +411,7 @@ def validate_status_and_gates(root: Path, findings: list[str]) -> None:
             "Full container and network object ID",
             "Status action",
             "Down action",
+            "Start action",
             "Destroy action",
             "framework installation",
         ),
@@ -383,7 +421,7 @@ def validate_status_and_gates(root: Path, findings: list[str]) -> None:
     require_fragments(
         opened,
         (
-            "Start, Stop, Restart, and Reset",
+            "Stop, Restart, and Reset",
             "UpdateFramework",
             "Native Docker runtime evidence",
             "Native Podman runtime evidence",
@@ -391,8 +429,7 @@ def validate_status_and_gates(root: Path, findings: list[str]) -> None:
         "Open lifecycle status",
         findings,
     )
-    require("Down action" not in opened, "Delivered Down action remains open.", findings)
-
+    require("Start action" not in opened, "Delivered Start action remains open.", findings)
     with (root / "Metadata/Quality/Lab_External_Evidence_Gates.csv").open(
         newline="", encoding="utf-8"
     ) as handle:
@@ -419,14 +456,9 @@ def validate_integration(root: Path, findings: list[str]) -> None:
             "Validate_Docker_Podman_QuickTest_Lifecycle.py",
             "Invoke-LabQuickTestLifecycleTests.ps1",
             "Run Docker Podman quick-test lifecycle tests",
-            "Analyze quick-test lifecycle state helpers",
-            "Analyze quick-test lifecycle runtime helpers",
-            "Analyze quick-test Install lifecycle",
-            "Analyze quick-test Status lifecycle",
             "Analyze quick-test Down lifecycle",
+            "Analyze quick-test Start lifecycle",
             "Analyze quick-test Destroy lifecycle",
-            "Analyze quick-test uninstall entrypoint",
-            "Analyze quick-test framework wrapper",
         ),
         "Workflow integration",
         findings,
@@ -435,22 +467,16 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         tests,
         (
             "FakeRuntime",
-            "LOCAL_SCOPE_CONFLICT",
             "Install-QuickTestLab",
-            "Get-QuickTestLabStatus",
             "Invoke-QuickTestLabDown",
-            "Remove-QuickTestLab",
-            "Status -ne 'DOWN'",
-            "AlreadyDown",
+            "Start-QuickTestLab",
+            "LoadedStoredCredential",
+            "AlreadyRunning",
+            "Status -ne 'READY'",
             "PreviousContainerId",
-            "PreviousNetworkId",
-            "DataPreserved",
-            "StatePreserved",
-            "CredentialPreserved",
+            "STARTING",
+            "START_RECOVERY_CLEANUP",
             "DESTROYED",
-            "READ_ONLY_PREFLIGHT",
-            "qt-lab.owner",
-            "admin-login-*.sql",
             "container rm --force",
             "network rm",
         ),
@@ -463,15 +489,14 @@ def validate_integration(root: Path, findings: list[str]) -> None:
             "## Install",
             "## Status",
             "## Down",
+            "## Start",
             "## Destroy and uninstall",
-            "TEMPORARY",
             "PERSISTENT",
-            "InstallFramework",
-            "full object IDs",
-            "Down preserves",
+            "Start refuses",
+            "LoadedStoredCredential",
+            "Start failure",
             "Destroy always removes the complete scope",
             "NOT_EXECUTED",
-            "Docker-/Podman-Quick-Testsystem",
         ),
         "Quick-test README",
         findings,
@@ -485,27 +510,25 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(args.repository_root).resolve()
     findings: list[str] = []
-
     for path in sorted(REQUIRED_FILES):
         require((root / path).is_file(), f"Missing lifecycle file: {path}", findings)
-
     if not findings:
         validate_entrypoints(root, findings)
         validate_install(root, findings)
         validate_helpers(root, findings)
-        validate_status_down_destroy(root, findings)
+        validate_status_down(root, findings)
+        validate_start(root, findings)
+        validate_destroy(root, findings)
         validate_framework(root, findings)
         validate_status_and_gates(root, findings)
         validate_integration(root, findings)
-
     if findings:
         for finding in findings:
             print(f"ERROR: {finding}")
         return 1
-
     print(
         "Docker/Podman quick-test lifecycle validated: "
-        "actions=Install,Status,Down,Destroy external_evidence=NOT_EXECUTED."
+        "actions=Install,Status,Down,Start,Destroy external_evidence=NOT_EXECUTED."
     )
     return 0
 

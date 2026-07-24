@@ -24,19 +24,20 @@
     "Optional generic administrative SQL login and framework installation",
     "Status action with runtime, health, ownership, and preserved DOWN-state verification",
     "Confirmation-bound Down action with exact runtime-object removal and preserved data, credentials, and state",
+    "State-bound Start action with sequential recreation, existing-credential reuse, readiness verification, and failure cleanup",
     "Confirmation-bound Destroy action with exact runtime and local-scope cleanup",
     "Synthetic positive and negative Preflight and lifecycle contract tests"
   ],
   "OpenScope": [
-    "Start, Stop, Restart, and Reset lifecycle actions",
+    "Stop, Restart, and Reset lifecycle actions",
     "Separate UpdateFramework action",
     "Native Docker runtime evidence",
     "Native Podman runtime evidence",
     "SQL Server 2019, 2022, and 2025 end-to-end readiness evidence"
   ],
   "ExternalEvidenceRequired": [
-    "Native x86-64 Linux Docker Install Status Down and Destroy execution",
-    "Native x86-64 Linux Podman Install Status Down and Destroy execution",
+    "Native x86-64 Linux Docker Install Status Down Start and Destroy execution",
+    "Native x86-64 Linux Podman Install Status Down Start and Destroy execution",
     "SQL Server 2019, 2022, and 2025 readiness and major-version verification",
     "Optional framework installation verification on each selected version"
   ],
