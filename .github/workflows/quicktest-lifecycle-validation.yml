@@ -4,21 +4,27 @@ on:
   pull_request:
     paths:
       - '.github/workflows/quicktest-lifecycle-validation.yml'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_Lifecycle.py'
       - 'Lab/Install-Lab.ps1'
       - 'Lab/Uninstall-Lab.ps1'
       - 'Lab/QuickTest/**'
       - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
       - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
+      - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
+      - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
   push:
     branches:
       - main
     paths:
       - '.github/workflows/quicktest-lifecycle-validation.yml'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_Lifecycle.py'
       - 'Lab/Install-Lab.ps1'
       - 'Lab/Uninstall-Lab.ps1'
       - 'Lab/QuickTest/**'
       - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
       - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
+      - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
+      - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
   workflow_dispatch:
 
 permissions:
@@ -38,13 +44,21 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Validate focused static lifecycle contract
+        shell: bash
+        run: |
+          set -o pipefail
+          log_path="${RUNNER_TEMP}/quicktest-lifecycle-validation.log"
+          python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_Lifecycle.py \
+            --repository-root . 2>&1 | tee "$log_path"
+
       - name: Run focused lifecycle contract
         shell: pwsh
         run: |
           $logPath = Join-Path $env:RUNNER_TEMP 'quicktest-lifecycle-validation.log'
           try {
             & ./Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1 *>&1 |
-              Tee-Object -FilePath $logPath
+              Tee-Object -FilePath $logPath -Append
             if (-not $?) {
               throw 'Synthetic quick-test lifecycle contract failed.'
             }

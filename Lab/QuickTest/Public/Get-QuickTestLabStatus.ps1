@@ -39,6 +39,43 @@ function Get-QuickTestLabStatus {
         throw 'Status refused an unowned or out-of-bound state directory.'
     }
 
+    if ([string] $state.LifecycleStatus -eq 'DOWN') {
+        $downInstances = @(
+            foreach ($container in @($state.Containers)) {
+                $previousContainerId = ''
+                if ($container.PSObject.Properties.Name -contains 'PreviousContainerId') {
+                    $previousContainerId = [string] $container.PreviousContainerId
+                }
+                [pscustomobject] @{
+                    SqlVersion = [int] $container.SqlVersion
+                    ContainerId = ''
+                    PreviousContainerId = $previousContainerId
+                    ContainerName = [string] $container.ContainerName
+                    Port = [int] $container.Port
+                    RuntimeStatus = 'removed'
+                    HealthStatus = ''
+                    OwnershipValid = $null
+                    Ready = $false
+                }
+            }
+        )
+        return [pscustomobject] @{
+            Status = 'DOWN'
+            ScopeName = $ScopeName
+            Runtime = $state.Runtime
+            LifecycleStatus = $state.LifecycleStatus
+            AdminLogin = $state.AdminLogin
+            FrameworkDatabase = $state.FrameworkDatabase
+            PersistenceMode = $state.PersistenceMode
+            DataPreserved = $true
+            StatePreserved = $true
+            CredentialPreserved = -not [string]::IsNullOrWhiteSpace(
+                [string] $state.CredentialDirectory
+            )
+            Instances = $downInstances
+        }
+    }
+
     $runtimeInfo = Resolve-QuickTestRuntime -Runtime $state.Runtime
     if (-not $runtimeInfo.IsAvailable) {
         return [pscustomobject] @{

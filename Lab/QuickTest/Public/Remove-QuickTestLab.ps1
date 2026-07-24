@@ -57,21 +57,27 @@ function Remove-QuickTestLab {
         }
     }
 
-    $registeredContainerIds = @(
-        $state.Containers |
-            ForEach-Object { [string] $_.ContainerId }
-    )
-    foreach ($containerId in $registeredContainerIds) {
+    $registeredContainerIds = [Collections.Generic.List[string]]::new()
+    foreach ($container in @($state.Containers)) {
+        $containerId = [string] $container.ContainerId
+        if ([string]::IsNullOrWhiteSpace($containerId)) {
+            if ([string] $state.LifecycleStatus -ne 'DOWN') {
+                throw 'State contains an empty container ID outside the DOWN lifecycle state.'
+            }
+            continue
+        }
         if ($containerId -notmatch '^[a-f0-9]{64}$') {
             throw 'State contains a non-canonical container ID.'
         }
+        $registeredContainerIds.Add($containerId)
     }
-    $registeredNetworkIds = @()
+
+    $registeredNetworkIds = [Collections.Generic.List[string]]::new()
     if (-not [string]::IsNullOrWhiteSpace([string] $state.NetworkId)) {
         if ([string] $state.NetworkId -notmatch '^[a-f0-9]{64}$') {
             throw 'State contains a non-canonical network ID.'
         }
-        $registeredNetworkIds = @([string] $state.NetworkId)
+        $registeredNetworkIds.Add([string] $state.NetworkId)
     }
 
     $discovered = Get-QuickTestResourcesByRunId `
@@ -79,29 +85,31 @@ function Remove-QuickTestLab {
         -RunId $state.RunId
     $unexpectedContainers = @(
         $discovered.ContainerIds |
-            Where-Object { $_ -notin $registeredContainerIds }
+            Where-Object { $_ -notin $registeredContainerIds.ToArray() }
     )
     $unexpectedNetworks = @(
         $discovered.NetworkIds |
-            Where-Object { $_ -notin $registeredNetworkIds }
+            Where-Object { $_ -notin $registeredNetworkIds.ToArray() }
     )
     if ($unexpectedContainers.Count -gt 0 -or $unexpectedNetworks.Count -gt 0) {
         throw 'Destroy found run-labeled resources that are not registered in state.'
     }
 
     $existingContainerIds = @(
-        $registeredContainerIds |
+        $registeredContainerIds.ToArray() |
             Where-Object { $_ -in $discovered.ContainerIds }
     )
     $existingNetworkIds = @(
-        $registeredNetworkIds |
+        $registeredNetworkIds.ToArray() |
             Where-Object { $_ -in $discovered.NetworkIds }
     )
-    Remove-QuickTestRuntimeResources `
-        -RuntimeInfo $runtimeInfo `
-        -RunId $state.RunId `
-        -ContainerIds $existingContainerIds `
-        -NetworkIds $existingNetworkIds
+    if ($existingContainerIds.Count -gt 0 -or $existingNetworkIds.Count -gt 0) {
+        Remove-QuickTestRuntimeResources `
+            -RuntimeInfo $runtimeInfo `
+            -RunId $state.RunId `
+            -ContainerIds $existingContainerIds `
+            -NetworkIds $existingNetworkIds
+    }
 
     if (Test-Path -LiteralPath $state.DataRoot) {
         if (-not (Test-QuickTestOwnedDirectory `

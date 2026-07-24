@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
-    [ValidateSet('Preflight', 'Install', 'Status', 'Destroy')]
+    [ValidateSet('Preflight', 'Install', 'Status', 'Down', 'Destroy')]
     [string] $Action = 'Preflight',
 
     [Parameter()]
@@ -156,14 +156,34 @@ function Read-QuickTestPorts {
     return $result
 }
 
-if ($Force -and $Action -ne 'Destroy') {
-    throw '-Force is supported only with -Action Destroy.'
+if ($Force -and $Action -notin @('Down', 'Destroy')) {
+    throw '-Force is supported only with -Action Down or Destroy.'
 }
 
 if ($Action -eq 'Status') {
     Get-QuickTestLabStatus `
         -ScopeName $ScopeName `
         -StateRoot $StateRoot
+    return
+}
+
+if ($Action -eq 'Down') {
+    if (-not $Force) {
+        if (-not $PSCmdlet.ShouldProcess(
+                "quick-test scope $ScopeName",
+                'Remove registered containers and network while preserving local state and data'
+            )) {
+            [pscustomobject] @{
+                Status = 'DOWN_CONFIRMATION_REQUIRED'
+                ScopeName = $ScopeName
+            }
+            return
+        }
+    }
+    Invoke-QuickTestLabDown `
+        -ScopeName $ScopeName `
+        -StateRoot $StateRoot `
+        -Confirm:$false
     return
 }
 

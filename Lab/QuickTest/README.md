@@ -6,7 +6,7 @@ implemented, deliberately bounded subset.
 
 The public entrypoints are:
 
-- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, and `Destroy`;
+- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Down`, and `Destroy`;
 - `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
 
 The first executable runtime delivery is limited to native x86-64 Linux. It
@@ -80,7 +80,7 @@ $adminCredential = Read-Host 'SQL credential' -AsSecureString
   -AdminLogin ExampleSqlAdmin `
   -AdminSecret $adminCredential `
   -ResourceProfile SMALL `
-  -PersistenceMode TEMPORARY `
+  -PersistenceMode PERSISTENT `
   -AcceptEula `
   -NonInteractive
 ```
@@ -138,12 +138,40 @@ operation.
   -ScopeName sql-analyze-quicktest
 ```
 
-Status reads the owner-bound local state and validates each stored full
-container ID. It reports runtime state, health state, port, SQL version, and
-run-label ownership. A container is `Ready` only when it is running, healthy,
-and still owned by the saved run ID and the generic framework-owner label.
+For an active scope, Status reads the owner-bound local state and validates each
+stored full container ID. It reports runtime state, health state, port, SQL
+version, and run-label ownership. A container is `Ready` only when it is running,
+healthy, and still owned by the saved run ID and the generic framework-owner
+label.
 
-Status does not create, start, stop, or remove runtime objects.
+After `Down`, Status returns `DOWN` directly from the preserved state. Each
+instance is reported as removed and not ready; no container start, stop, create,
+or delete operation is performed.
+
+## Down
+
+`Down` removes the registered containers and registered network while preserving
+the marked data directory, generated local credential, and state. It is intended
+for releasing CPU and memory without destroying the reusable test data.
+
+```powershell
+./Lab/Install-Lab.ps1 `
+  -Action Down `
+  -ScopeName sql-analyze-quicktest
+```
+
+The command requires confirmation unless `-Force` is supplied for a documented
+unattended run. Down preserves both `PERSISTENT` and `TEMPORARY` local data; the
+complete scope remains available for the future `Start` action or for an explicit
+`Destroy`.
+
+Before removal, `DOWN_IN_PROGRESS` and the full registered object IDs are written
+to state. Down then discovers objects only through the exact run-ID label,
+rejects unexpected objects, verifies the run-ID and framework-owner labels, and
+removes only the registered full object IDs. The final state is `DOWN`; current
+runtime IDs are cleared and the previous IDs are retained for diagnosis.
+
+A repeated Down is idempotent when no run-labeled runtime objects remain.
 
 ## Destroy and uninstall
 
@@ -182,8 +210,8 @@ Local state, generated-credential, and data directories are removed only when
 their owner marker matches and their canonical path remains below the saved
 approved root.
 
-`PERSISTENT` currently describes the intended behavior of the future `Down`
-action. It does not weaken `Destroy`: Destroy always removes the complete scope.
+Down preserves the complete local scope. Destroy always removes the complete scope,
+independent of `PERSISTENT` or `TEMPORARY`.
 
 ## Connection information
 
@@ -203,6 +231,5 @@ The following remain open after this delivery:
 
 - Start, Stop, Restart, and Reset;
 - a separate UpdateFramework action;
-- Down while preserving persistent data and state;
 - native Docker and Podman execution evidence;
 - end-to-end SQL Server 2019, 2022, and 2025 host evidence.
