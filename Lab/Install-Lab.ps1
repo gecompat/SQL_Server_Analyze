@@ -271,7 +271,7 @@ if ($GenerateSecret) {
     $AdminSecret = New-QuickTestPassword
     $generatedCredential = $true
 }
-elif ($PSBoundParameters.ContainsKey('AdminSecret')) {
+elseif ($PSBoundParameters.ContainsKey('AdminSecret')) {
     # The caller supplied a SecureString object.
 }
 else {
