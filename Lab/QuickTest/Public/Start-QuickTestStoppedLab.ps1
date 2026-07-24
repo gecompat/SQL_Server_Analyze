@@ -217,7 +217,9 @@ function Start-QuickTestStoppedLab {
         $state.RecoveryContainerIds = $startedIds.ToArray()
         Write-QuickTestJson -Path $statePath -InputObject $state
         try {
-            foreach ($containerId in @($startedIds.ToArray() | Select-Object -Reverse)) {
+            $recoveryIds = @($startedIds.ToArray())
+            [array]::Reverse($recoveryIds)
+            foreach ($containerId in $recoveryIds) {
                 $runOwner = Get-QuickTestObjectLabel `
                     -RuntimeInfo $runtimeInfo `
                     -ResourceType CONTAINER `
