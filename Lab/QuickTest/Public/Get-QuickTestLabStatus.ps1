@@ -57,7 +57,8 @@ function Get-QuickTestLabStatus {
             throw 'Status found a non-canonical container ID in state.'
         }
         $runtimeState = 'missing|missing'
-        $ownerValid = $false
+        $runOwnerValid = $false
+        $frameworkOwnerValid = $false
         try {
             $runtimeState = [string] (
                 Invoke-QuickTestExternalCommand `
@@ -71,13 +72,20 @@ function Get-QuickTestLabStatus {
                     ) |
                     Select-Object -First 1
             )
-            $ownerValid = (
+            $runOwnerValid = (
                 Get-QuickTestObjectLabel `
                     -RuntimeInfo $runtimeInfo `
                     -ResourceType CONTAINER `
                     -ExactLocator $containerId `
                     -LabelName 'qt-lab.run-id'
             ) -eq $state.RunId
+            $frameworkOwnerValid = (
+                Get-QuickTestObjectLabel `
+                    -RuntimeInfo $runtimeInfo `
+                    -ResourceType CONTAINER `
+                    -ExactLocator $containerId `
+                    -LabelName 'qt-lab.owner'
+            ) -eq 'SQL_SERVER_ANALYZE'
         }
         catch {
             $runtimeState = 'missing|missing'
@@ -85,6 +93,7 @@ function Get-QuickTestLabStatus {
         $parts = $runtimeState.Split('|')
         $runtimeStatus = $parts[0]
         $healthStatus = if ($parts.Count -gt 1) { $parts[1] } else { '' }
+        $ownershipValid = $runOwnerValid -and $frameworkOwnerValid
         $instances.Add([pscustomobject] @{
                 SqlVersion = [int] $container.SqlVersion
                 ContainerId = $containerId
@@ -92,11 +101,11 @@ function Get-QuickTestLabStatus {
                 Port = [int] $container.Port
                 RuntimeStatus = $runtimeStatus
                 HealthStatus = $healthStatus
-                OwnershipValid = $ownerValid
+                OwnershipValid = $ownershipValid
                 Ready = (
                     $runtimeStatus -eq 'running' -and
                     $healthStatus -eq 'healthy' -and
-                    $ownerValid
+                    $ownershipValid
                 )
             })
     }
