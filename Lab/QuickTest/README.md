@@ -20,26 +20,26 @@ The script asks for:
 - one or more SQL Server versions from 2019, 2022, and 2025;
 - one host port per selected version;
 - a generic administrative SQL login;
-- a masked SQL secret or ephemeral generated secret;
+- a masked SQL credential or ephemeral generated credential;
 - resource profile `SMALL`, `MEDIUM`, or `LARGE`;
 - persistence mode `PERSISTENT` or `TEMPORARY`;
 - local data root;
 - SQL Server container EULA acceptance.
 
-The secret is held only as a `SecureString` and is never written to repository
-files, Compose files, state, or console output.
+The credential is held only as a `SecureString` and is never written to
+repository files, Compose files, state, or console output.
 
 ## Non-interactive Preflight
 
 ```powershell
-$secret = Read-Host 'SQL secret' -AsSecureString
+$credentialInput = Read-Host 'SQL credential' -AsSecureString
 ./Lab/Install-Lab.ps1 `
   -Action Preflight `
   -Runtime DOCKER `
   -SqlVersions 2019,2022,2025 `
   -Ports @{ 2019 = 14331; 2022 = 14332; 2025 = 14335 } `
   -AdminLogin ExampleSqlAdmin `
-  -AdminSecret $secret `
+  -AdminSecret $credentialInput `
   -ResourceProfile SMALL `
   -PersistenceMode TEMPORARY `
   -AcceptEula `
@@ -48,7 +48,7 @@ $secret = Read-Host 'SQL secret' -AsSecureString
 
 For automation, a caller may provide an environment-variable name through
 `-SecretEnvironmentVariable` or request `-GenerateSecret`. The value itself is
-not returned. Generated-secret persistence belongs to the later lifecycle
+not returned. Generated-credential persistence belongs to the later lifecycle
 implementation and is not performed by Preflight.
 
 ## Checks
@@ -65,7 +65,7 @@ It checks:
 - generic scope conflicts through read-only runtime listing;
 - SQL Server image availability unless explicitly skipped;
 - EULA acceptance;
-- SQL secret complexity.
+- SQL credential complexity.
 
 The output property `MutationBoundary` is always
 `READ_ONLY_PREFLIGHT`. Runtime values may be returned to the local caller for
