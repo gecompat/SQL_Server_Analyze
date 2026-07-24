@@ -5,7 +5,7 @@ multi-container and network-fault wave. It does not contain executable Welle 4
 runtime actions and does not claim host evidence. The global Welle 4 status
 therefore remains `PLANNED`, and every external gate remains `NOT_EXECUTED`.
 
-The registry `wave4-contracts.csv` binds all 17 catalog scenarios to the
+The registry `wave4-contracts.csv` binds all 18 catalog scenarios to the
 existing `CTR-SINGLE`, `CTR-PAIR`, `CTR-TRIPLE`, and
 `HV-CROSS-PLATFORM` topology contracts. It defines required capabilities,
 analyzer dependencies, bounded fault classes, state prerequisites, portable
