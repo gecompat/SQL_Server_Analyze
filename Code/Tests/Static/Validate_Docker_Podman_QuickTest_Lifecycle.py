@@ -19,11 +19,13 @@ REQUIRED_FILES = {
     "Lab/QuickTest/Public/Start-QuickTestLab.ps1",
     "Lab/QuickTest/Public/Start-QuickTestStoppedLab.ps1",
     "Lab/QuickTest/Public/Stop-QuickTestLab.ps1",
+    "Lab/QuickTest/Public/Restart-QuickTestLab.ps1",
     "Lab/QuickTest/Public/Remove-QuickTestLab.ps1",
     "Lab/QuickTest/QuickTestLab.psm1",
     "Lab/QuickTest/README.md",
     "Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1",
     "Lab/Validation/Invoke-LabQuickTestStopTests.ps1",
+    "Lab/Validation/Invoke-LabQuickTestRestartTests.ps1",
     "Metadata/Quality/Docker_Podman_Quick_Test_Status.json",
     "Metadata/Quality/Lab_External_Evidence_Gates.csv",
 }
@@ -56,8 +58,9 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
     fragments(
         entry,
         (
-            "'Preflight', 'Install', 'Status', 'Stop', 'Down', 'Start', 'Destroy'",
+            "'Preflight', 'Install', 'Status', 'Stop', 'Restart', 'Down', 'Start', 'Destroy'",
             "Stop-QuickTestLab",
+            "Restart-QuickTestLab",
             "Start-QuickTestStoppedLab",
             "Start-QuickTestLab",
             "Get-QuickTestLabStatus",
@@ -67,22 +70,20 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         findings,
     )
     prompt = entry.find("if (-not $PSBoundParameters.ContainsKey('Runtime'))")
-    require(
-        0 <= entry.find("if ($Action -eq 'Stop')") < prompt,
-        "Stop is dispatched after install-time prompts.",
-        findings,
-    )
-    require(
-        0 <= entry.find("if ($Action -eq 'Start')") < prompt,
-        "Start is dispatched after install-time prompts.",
-        findings,
-    )
+    for action in ("Stop", "Restart", "Start"):
+        require(
+            0 <= entry.find(f"if ($Action -eq '{action}')") < prompt,
+            f"{action} is dispatched after install-time prompts.",
+            findings,
+        )
     fragments(
         loader,
         (
             "Public/Stop-QuickTestLab.ps1",
+            "Public/Restart-QuickTestLab.ps1",
             "Public/Start-QuickTestStoppedLab.ps1",
             "'Stop-QuickTestLab'",
+            "'Restart-QuickTestLab'",
             "'Start-QuickTestStoppedLab'",
         ),
         "Module loader",
@@ -211,6 +212,49 @@ def validate_stopped_start(root: Path, findings: list[str]) -> None:
     require("Remove-Item" not in start, "Stopped Start deletes local files.", findings)
 
 
+def validate_restart(root: Path, findings: list[str]) -> None:
+    restart = text(root, "Lab/QuickTest/Public/Restart-QuickTestLab.ps1")
+    fragments(
+        restart,
+        (
+            "function Restart-QuickTestLab",
+            "RESTART_STATE_INVALID",
+            "RESTART_STOP_FAILED",
+            "RESTART_START_FAILED",
+            "Stop-QuickTestLab",
+            "Start-QuickTestStoppedLab",
+            "RuntimeIdentityPreserved",
+            "ContainersRestarted",
+            "NetworkPreserved = $true",
+            "DataPreserved = $true",
+            "StatePreserved = $true",
+            "Restarted = $true",
+            "Status = 'WHATIF'",
+        ),
+        "Restart lifecycle",
+        findings,
+    )
+    stop_call = restart.find("Stop-QuickTestLab")
+    start_call = restart.find("Start-QuickTestStoppedLab", stop_call)
+    final_status = restart.rfind("Get-QuickTestLabStatus")
+    require(
+        -1 not in (stop_call, start_call, final_status)
+        and stop_call < start_call < final_status,
+        "Restart does not compose Stop then stopped Start then final Status.",
+        findings,
+    )
+    for forbidden in (
+        "Invoke-QuickTestExternalCommand",
+        "Invoke-QuickTestCompose",
+        "AdminSecret",
+        "MSSQL_SA_PASSWORD",
+        "Remove-Item",
+        "container', 'stop'",
+        "container', 'start'",
+    ):
+        require(forbidden not in restart, f"Restart contains direct operation {forbidden}.", findings)
+
+
 def validate_status_destroy(root: Path, findings: list[str]) -> None:
     status = text(root, "Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1")
     fragments(
@@ -255,17 +299,24 @@ def validate_metadata(root: Path, findings: list[str]) -> None:
     opened = " ".join(status.get("OpenScope", []))
     fragments(
         delivered,
-        ("Install action", "Stop action", "Down action", "Start action", "Destroy action"),
+        (
+            "Install action",
+            "Stop action",
+            "Restart action",
+            "Down action",
+            "Start action",
+            "Destroy action",
+        ),
         "Delivered scope",
         findings,
     )
     fragments(
         opened,
-        ("Restart and Reset", "UpdateFramework", "Native Docker runtime evidence", "Native Podman runtime evidence"),
+        ("Reset", "UpdateFramework", "Native Docker runtime evidence", "Native Podman runtime evidence"),
         "Open scope",
         findings,
     )
-    require("Stop action" not in opened, "Delivered Stop remains open.", findings)
+    require("Restart action" not in opened, "Delivered Restart remains open.", findings)
 
     with (root / "Metadata/Quality/Lab_External_Evidence_Gates.csv").open(
         newline="", encoding="utf-8"
@@ -285,7 +336,7 @@ def validate_metadata(root: Path, findings: list[str]) -> None:
 def validate_integration(root: Path, findings: list[str]) -> None:
     lab = text(root, ".github/workflows/lab-contract-validation.yml")
     focused = text(root, ".github/workflows/quicktest-lifecycle-validation.yml")
-    tests = text(root, "Lab/Validation/Invoke-LabQuickTestStopTests.ps1")
+    restart_tests = text(root, "Lab/Validation/Invoke-LabQuickTestRestartTests.ps1")
     readme = text(root, "Lab/QuickTest/README.md")
     require(
         "Validate_Docker_Podman_QuickTest_Lifecycle.py" in lab,
@@ -295,37 +346,35 @@ def validate_integration(root: Path, findings: list[str]) -> None:
     fragments(
         focused,
         (
-            "Invoke-LabQuickTestStopTests.ps1",
-            "Run focused Stop lifecycle contract",
-            "Analyze quick-test Stop lifecycle",
-            "Analyze stopped quick-test Start lifecycle",
+            "Invoke-LabQuickTestRestartTests.ps1",
+            "Run focused Restart lifecycle contract",
+            "Analyze quick-test Restart lifecycle",
         ),
         "Focused lifecycle workflow",
         findings,
     )
     fragments(
-        tests,
+        restart_tests,
         (
-            "LifecycleStatus\": \"STOPPING",
-            "LifecycleStatus\": \"STARTING",
-            "Stop-QuickTestLab",
-            "Start-QuickTestStoppedLab",
-            "Status -ne 'STOPPED'",
-            "RecreatedContainers",
+            "Restart-QuickTestLab",
+            "Restart WhatIf",
+            "RuntimeIdentityPreserved",
+            "ContainersRestarted",
             "container stop",
             "container start",
+            "Restart recreated the container through Compose.",
         ),
-        "Stop tests",
+        "Restart tests",
         findings,
     )
     fragments(
         readme,
         (
-            "## Stop",
-            "## Start",
-            "STOPPED",
-            "does not remove",
+            "## Restart",
+            "fully verified `READY`",
+            "without recreating",
             "without requiring the SQL credential",
+            "runtime identity",
             "Destroy always removes the complete scope",
             "NOT_EXECUTED",
         ),
@@ -347,6 +396,7 @@ def main() -> int:
         validate_install_down(root, findings)
         validate_stop(root, findings)
         validate_stopped_start(root, findings)
+        validate_restart(root, findings)
         validate_status_destroy(root, findings)
         validate_metadata(root, findings)
         validate_integration(root, findings)
@@ -356,7 +406,7 @@ def main() -> int:
         return 1
     print(
         "Docker/Podman quick-test lifecycle validated: "
-        "actions=Install,Status,Stop,Down,Start,Destroy "
+        "actions=Install,Status,Stop,Restart,Down,Start,Destroy "
         "external_evidence=NOT_EXECUTED."
     )
     return 0
