@@ -226,20 +226,49 @@ jobs:
             throw "Existing LAB orchestration analyzer reported $($findings.Count) error finding(s)."
           }
 
-      - name: Analyze quick-test module
+      - name: Analyze quick-test common helpers
         shell: pwsh
         run: |
           $findings = @(
             Invoke-ScriptAnalyzer `
-              -Path ./Lab/QuickTest `
-              -Recurse `
+              -Path ./Lab/QuickTest/Private/Common.ps1 `
               -Severity Error
           )
           if ($findings.Count -gt 0) {
             $findings |
               Select-Object RuleName, Severity, ScriptName, Line |
               Format-Table -AutoSize
-            throw "Quick-test module analyzer reported $($findings.Count) error finding(s)."
+            throw "Quick-test common analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test Preflight function
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1 `
+              -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Quick-test Preflight analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test module loader
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/QuickTest/QuickTestLab.psm1 `
+              -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Quick-test loader analyzer reported $($findings.Count) error finding(s)."
           }
 
       - name: Analyze quick-test entrypoint
