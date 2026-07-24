@@ -7,12 +7,21 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$paths = @(
-    'Lab/Install-Lab.ps1'
-    'Lab/Uninstall-Lab.ps1'
-    'Lab/QuickTest/QuickTestLab.psm1'
-    'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
-)
+$paths = [Collections.Generic.List[string]]::new()
+foreach ($relativePath in @(
+        'Lab/Install-Lab.ps1'
+        'Lab/Uninstall-Lab.ps1'
+        'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
+    )) {
+    $paths.Add($relativePath)
+}
+$quickTestRoot = Join-Path $RepositoryRoot 'Lab/QuickTest'
+foreach ($path in Get-ChildItem -LiteralPath $quickTestRoot -Recurse -File) {
+    if ($path.Extension -in @('.ps1', '.psm1')) {
+        $paths.Add($path.FullName.Substring($RepositoryRoot.Length + 1))
+    }
+}
+
 foreach ($relativePath in $paths) {
     $path = Join-Path $RepositoryRoot $relativePath
     $tokens = $null
