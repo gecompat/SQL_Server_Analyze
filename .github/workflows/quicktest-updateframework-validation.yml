@@ -1,0 +1,55 @@
+name: Quick-test UpdateFramework validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/quicktest-updateframework-validation.yml'
+      - '.github/workflows/quicktest-lifecycle-validation.yml'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_UpdateFramework.py'
+      - 'Lab/Update-Framework.ps1'
+      - 'Lab/QuickTest/Public/Update-QuickTestFramework.ps1'
+      - 'Lab/QuickTest/QuickTestLab.psm1'
+      - 'Lab/QuickTest/README.md'
+      - 'Lab/Validation/Invoke-LabQuickTestUpdateFrameworkTests.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/Private/Installer.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
+      - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
+  push:
+    branches:
+      - main
+      - 'agent/quicktest-*'
+    paths:
+      - '.github/workflows/quicktest-updateframework-validation.yml'
+      - '.github/workflows/quicktest-lifecycle-validation.yml'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_UpdateFramework.py'
+      - 'Lab/Update-Framework.ps1'
+      - 'Lab/QuickTest/Public/Update-QuickTestFramework.ps1'
+      - 'Lab/QuickTest/QuickTestLab.psm1'
+      - 'Lab/QuickTest/README.md'
+      - 'Lab/Validation/Invoke-LabQuickTestUpdateFrameworkTests.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/Private/Installer.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
+      - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quicktest-updateframework-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate quick-test UpdateFramework contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate static UpdateFramework contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_UpdateFramework.py --repository-root .
