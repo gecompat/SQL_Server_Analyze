@@ -1,0 +1,30 @@
+{
+  "SchemaVersion": "1.0",
+  "WorkItemId": "LAB-QUICKTEST-001",
+  "ContractStatus": "VALIDATED_FOUNDATION",
+  "RuntimeStatus": "NOT_EXECUTED",
+  "DataClassification": "PUBLIC_AND_SYNTHETIC",
+  "DeliveredScope": [
+    "Shared portable Compose core for SQL Server 2019, 2022, and 2025",
+    "Independent per-version Compose profiles and default host ports",
+    "Separate Docker and Podman resource-limit overrides",
+    "Runtime health check that executes a SQL query",
+    "Generic run, scope, owner, runtime, and SQL-version labels",
+    "Separate data, transaction-log, backup, and runtime bind contracts",
+    "Static Docker-based validation of both effective Compose models"
+  ],
+  "OpenScope": [
+    "Interactive and non-interactive PowerShell entrypoint",
+    "Read-only runtime, port, resource, path, and image Preflight",
+    "Lifecycle execution and generated local state",
+    "Framework installation, Status, and Destroy",
+    "Native Docker runtime evidence",
+    "Native Podman runtime evidence"
+  ],
+  "ExternalEvidenceRequired": [
+    "Native x86-64 Linux Docker Compose execution",
+    "Native x86-64 Linux Podman Compose execution",
+    "SQL Server 2019, 2022, and 2025 readiness verification"
+  ],
+  "EvidenceReference": "Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md"
+}
