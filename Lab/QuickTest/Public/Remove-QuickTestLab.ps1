@@ -103,11 +103,13 @@ function Remove-QuickTestLab {
         $registeredNetworkIds.ToArray() |
             Where-Object { $_ -in $discovered.NetworkIds }
     )
-    Remove-QuickTestRuntimeResources `
-        -RuntimeInfo $runtimeInfo `
-        -RunId $state.RunId `
-        -ContainerIds $existingContainerIds `
-        -NetworkIds $existingNetworkIds
+    if ($existingContainerIds.Count -gt 0 -or $existingNetworkIds.Count -gt 0) {
+        Remove-QuickTestRuntimeResources `
+            -RuntimeInfo $runtimeInfo `
+            -RunId $state.RunId `
+            -ContainerIds $existingContainerIds `
+            -NetworkIds $existingNetworkIds
+    }
 
     if (Test-Path -LiteralPath $state.DataRoot) {
         if (-not (Test-QuickTestOwnedDirectory `
