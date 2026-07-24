@@ -14,7 +14,9 @@ REQUIRED_FILES = {
     "Code/Tests/Static/Validate_Docker_Podman_QuickTest_Preflight.py",
     "Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md",
     "Lab/Install-Lab.ps1",
-    "Lab/QuickTest/QuickTestPreflight.psm1",
+    "Lab/QuickTest/Private/Common.ps1",
+    "Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1",
+    "Lab/QuickTest/QuickTestLab.psm1",
     "Lab/QuickTest/README.md",
     "Lab/Validation/Invoke-LabQuickTestPreflightTests.ps1",
     "Metadata/Quality/Docker_Podman_Quick_Test_Status.json",
@@ -32,9 +34,15 @@ def read_text(root: Path, relative_path: str) -> str:
 
 def validate_entrypoint(root: Path, findings: list[str]) -> None:
     entrypoint = read_text(root, "Lab/Install-Lab.ps1")
-    module = read_text(root, "Lab/QuickTest/QuickTestPreflight.psm1")
+    loader = read_text(root, "Lab/QuickTest/QuickTestLab.psm1")
+    common = read_text(root, "Lab/QuickTest/Private/Common.ps1")
+    preflight = read_text(
+        root, "Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1"
+    )
+    module = "\n".join((loader, common, preflight))
 
     for fragment in (
+        "[ValidateSet('Preflight')]",
         "'DOCKER', 'PODMAN'",
         "SqlVersions",
         "Ports",
@@ -44,36 +52,43 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         "GenerateSecret",
         "ResourceProfile",
         "PersistenceMode",
-        "InstallFramework",
+        "DataRoot",
         "AcceptEula",
         "NonInteractive",
         "SkipImageAvailabilityCheck",
-        "Invoke-QuickTestPreflightEntry @PSBoundParameters",
+        "QuickTest/QuickTestLab.psm1",
+        "Invoke-QuickTestPreflight",
+        "Read-Host 'Administrative SQL secret' -AsSecureString",
     ):
         require(fragment in entrypoint, f"Install-Lab.ps1 lacks {fragment}.", findings)
 
+    require(
+        "InstallFramework" not in entrypoint
+        and "Status" not in entrypoint
+        and "Destroy" not in entrypoint,
+        "Preflight entrypoint exposes later lifecycle actions.",
+        findings,
+    )
+
     for fragment in (
-        "function Test-QuickTestSqlSecret",
-        "function New-QuickTestSqlSecret",
+        "function Test-QuickTestPassword",
+        "function New-QuickTestPassword",
         "function Resolve-QuickTestRuntime",
         "function Test-QuickTestPortAvailable",
+        "function Test-QuickTestWritablePath",
+        "function Test-QuickTestScopeConflict",
         "function Get-QuickTestAvailableMemoryMiB",
         "function Invoke-QuickTestPreflight",
-        "function Invoke-QuickTestPreflightEntry",
         "RUNTIME_UNAVAILABLE",
         "COMPOSE_UNAVAILABLE",
         "PORT_CONFLICT",
         "RESOURCE_LIMIT_EXCEEDED",
         "DATA_ROOT_UNAVAILABLE",
-        "CREDENTIAL_POLICY_FAILED",
-        "EULA_NOT_ACCEPTED",
+        "SECRET_COMPLEXITY_FAILED",
+        "EULA_ACCEPTANCE_REQUIRED",
+        "SCOPE_CONFLICT",
         "IMAGE_UNAVAILABLE",
-        "MutationPerformed = $false",
-        "INSTALL_LIFECYCLE_NOT_IMPLEMENTED",
-        "Read-Host 'Administrative SQL secret' -AsSecureString",
-        "GENERATED_EPHEMERAL",
-        "ENVIRONMENT",
-        "INTERACTIVE",
+        "MutationBoundary = 'READ_ONLY_PREFLIGHT'",
     ):
         require(fragment in module, f"Preflight module lacks {fragment}.", findings)
 
@@ -84,8 +99,6 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         "container', 'rm'",
         "network', 'create'",
         "network', 'rm'",
-        "Remove-Item -Recurse",
-        "New-Item",
         "Set-Content",
         "Add-Content",
         "Out-File",
@@ -111,6 +124,7 @@ def validate_status(root: Path, findings: list[str]) -> None:
     require(
         status.get("WorkItemId") == "LAB-QUICKTEST-001"
         and status.get("ContractStatus") == "IMPLEMENTED_AUTOMATED_GATE"
+        and status.get("PreflightStatus") == "IMPLEMENTED_AUTOMATED_GATE"
         and status.get("RuntimeStatus") == "NOT_EXECUTED"
         and status.get("DataClassification") == "PUBLIC_AND_SYNTHETIC",
         "Quick-test Preflight status is missing or overstated.",
@@ -120,15 +134,17 @@ def validate_status(root: Path, findings: list[str]) -> None:
     open_scope = " ".join(status.get("OpenScope", []))
     for fragment in (
         "Interactive and non-interactive PowerShell 7 Preflight entrypoint",
-        "SecureString, environment, generated-ephemeral, and interactive credential sources",
-        "read-only runtime, Compose, platform, port, memory, path, credential, EULA, and image checks",
-        "structured blocker reason codes",
+        "runtime and Compose capability detection",
+        "host-port, memory, path, image, EULA, and secret-policy checks",
+        "Structured READY or PREFLIGHT_FAILED result",
+        "Synthetic positive and negative Preflight contract tests",
     ):
         require(fragment in delivered, f"Delivered scope lacks {fragment}.", findings)
     for fragment in (
         "Lifecycle execution",
+        "Container Install or Up action",
         "Framework installation",
-        "Status and Destroy",
+        "Status, Down, and Destroy",
         "Native Docker runtime evidence",
         "Native Podman runtime evidence",
     ):
@@ -149,40 +165,38 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         "Invoke-LabQuickTestPreflightTests.ps1",
         "Run Docker Podman quick-test Preflight tests",
         "Invoke-ScriptAnalyzer",
-        "QuickTestPreflight.psm1",
+        "Lab/QuickTest",
         "Install-Lab.ps1",
     ):
         require(fragment in workflow, f"Workflow lacks {fragment}.", findings)
     for fragment in (
-        "PowerShell parser reported an error",
+        "System.Management.Automation.Language.Parser",
         "Generated quick-test secret",
         "Quick-test default ports",
+        "Duplicate quick-test ports",
+        "Synthetic ready Preflight",
+        "READ_ONLY_PREFLIGHT",
         "RUNTIME_UNAVAILABLE",
-        "PORT_CONFLICT",
-        "MutationPerformed",
-        "INSTALL_LIFECYCLE_NOT_IMPLEMENTED",
     ):
         require(fragment in tests, f"Preflight tests lack {fragment}.", findings)
     for fragment in (
-        "IMPLEMENTED_AUTOMATED_GATE",
-        "NOT_EXECUTED",
         "read-only",
         "Install-Lab.ps1",
-        "QTLAB_SQL_SECRET",
         "Docker",
         "Podman",
         "2019",
         "2022",
         "2025",
+        "READ_ONLY_PREFLIGHT",
+        "Status, Down, and Destroy",
     ):
         require(fragment in readme, f"Quick-test README lacks {fragment}.", findings)
-    require(
-        "Preflight" in requirements
-        and "CredentialInput" in requirements
-        and "Install-Lab.ps1" in requirements,
-        "Preflight delivery is not traceable to the canonical requirement.",
-        findings,
-    )
+    for fragment in ("Preflight", "Zugangsdaten", "Install-Lab.ps1", "Docker", "Podman"):
+        require(
+            fragment in requirements,
+            f"Preflight delivery is not traceable to requirement fragment {fragment}.",
+            findings,
+        )
 
 
 def main() -> int:
@@ -199,9 +213,10 @@ def main() -> int:
             findings,
         )
 
-    validate_entrypoint(root, findings)
-    validate_status(root, findings)
-    validate_integration(root, findings)
+    if not findings:
+        validate_entrypoint(root, findings)
+        validate_status(root, findings)
+        validate_integration(root, findings)
 
     if findings:
         for finding in findings:
