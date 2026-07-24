@@ -1,0 +1,34 @@
+{
+  "SchemaVersion": "1.0",
+  "WorkItemId": "LAB-QUICKTEST-001",
+  "ProductStatus": "IMPLEMENTED_ACTIONS_GATE",
+  "RuntimeStatus": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
+  "DataClassification": "PUBLIC_AND_SYNTHETIC",
+  "DeliveredScope": [
+    "Interactive and non-interactive PowerShell 7 entrypoint",
+    "Docker and Podman runtime selection through one interface",
+    "Independent SQL Server 2019, 2022, and 2025 selection",
+    "Per-version host ports and bounded SMALL, MEDIUM, and LARGE profiles",
+    "Process-scoped secret transfer without generated Compose secrets",
+    "Optional generic administrative SQL login",
+    "Optional framework installation through the canonical standalone installer",
+    "Runtime health and ProductMajorVersion verification",
+    "Exact-ID and label-bound Status and Destroy actions",
+    "Docker and Podman Compose overrides with shared portable core"
+  ],
+  "ExternalEvidenceRequired": [
+    "Native x86-64 Linux Docker runtime execution",
+    "Native x86-64 Linux Podman compose runtime execution",
+    "SQL Server 2019, 2022, and 2025 single-version execution",
+    "Three-version sequential and explicitly approved parallel execution",
+    "Framework installation and repeated update execution",
+    "Persistent and temporary data cleanup behavior"
+  ],
+  "KnownLimitations": [
+    "The initial vertical slice is limited to native x86-64 Linux.",
+    "Start, Stop, Restart, Reset, and UpdateFramework are planned follow-up lifecycle actions.",
+    "Real Docker and Podman runtime evidence remains NOT_EXECUTED until an approved host is available.",
+    "Default image references use explicit Microsoft version tags; digest binding remains an optional caller-side follow-up for the quick-test lane."
+  ],
+  "EvidenceReference": "Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md"
+}
