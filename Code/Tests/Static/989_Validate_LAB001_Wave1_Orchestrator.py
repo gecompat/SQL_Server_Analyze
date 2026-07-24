@@ -386,7 +386,12 @@ def validate_status(repository_root: Path) -> list[Finding]:
         findings.append(Finding("WAVE2_CONTRACT_STATUS_INVALID", wave_path.as_posix()))
     if wave_two.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
         findings.append(Finding("WAVE2_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
-    for number in range(3, 11):
+    wave_three = wave_map.get("LAB-001-WAVE3", {})
+    if wave_three.get("ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
+        findings.append(Finding("WAVE3_CONTRACT_STATUS_INVALID", wave_path.as_posix()))
+    if wave_three.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
+        findings.append(Finding("WAVE3_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
+    for number in range(4, 11):
         row = wave_map.get(f"LAB-001-WAVE{number}", {})
         if row.get("ContractStatus") != "PLANNED":
             findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
@@ -411,6 +416,13 @@ def validate_status(repository_root: Path) -> list[Finding]:
         findings.append(Finding("SCENARIO_WAVE1_STATUS_INVALID", scenario_path.as_posix()))
     if scenario_catalog.get("Wave2ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
         findings.append(Finding("SCENARIO_WAVE2_STATUS_INVALID", scenario_path.as_posix()))
+    if scenario_catalog.get("Wave3ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
+        findings.append(Finding("SCENARIO_WAVE3_STATUS_INVALID", scenario_path.as_posix()))
+    if (
+        scenario_catalog.get("Wave3RuntimeStatus")
+        != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING"
+    ):
+        findings.append(Finding("SCENARIO_WAVE3_RUNTIME_INVALID", scenario_path.as_posix()))
     scenarios = scenario_catalog.get("Scenarios")
     if not isinstance(scenarios, list) or any(
         item.get("ImplementationStatus")
@@ -419,6 +431,8 @@ def validate_status(repository_root: Path) -> list[Finding]:
             "PLANNED_FIXTURE_NOT_IMPLEMENTED",
             "WAVE0_CONTRACT_ONLY",
             "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
+            "IMPLEMENTED_ACTIONS_GATE",
+            "IMPLEMENTED_CONTRACT_FIXTURE",
         }
         for item in scenarios
         if isinstance(item, dict)

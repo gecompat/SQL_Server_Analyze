@@ -390,6 +390,8 @@ def validate_catalogs(repository_root: Path) -> tuple[list[Finding], set[str]]:
             "PLANNED_FIXTURE_NOT_IMPLEMENTED",
             "WAVE0_CONTRACT_ONLY",
             "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
+            "IMPLEMENTED_ACTIONS_GATE",
+            "IMPLEMENTED_CONTRACT_FIXTURE",
         }:
             findings.append(Finding("SCENARIO_STATUS_INVALID", item_path))
 
@@ -403,6 +405,13 @@ def validate_catalogs(repository_root: Path) -> tuple[list[Finding], set[str]]:
         findings.append(Finding("WAVE1_CONTRACT_STATUS_INVALID", scenario_path.as_posix()))
     if scenario_catalog.get("Wave2ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
         findings.append(Finding("WAVE2_CONTRACT_STATUS_INVALID", scenario_path.as_posix()))
+    if scenario_catalog.get("Wave3ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
+        findings.append(Finding("WAVE3_CONTRACT_STATUS_INVALID", scenario_path.as_posix()))
+    if (
+        scenario_catalog.get("Wave3RuntimeStatus")
+        != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING"
+    ):
+        findings.append(Finding("WAVE3_RUNTIME_STATUS_INVALID", scenario_path.as_posix()))
 
     return findings, set(scenario_ids)
 
@@ -527,7 +536,12 @@ def validate_status_and_gates(repository_root: Path) -> list[Finding]:
         findings.append(Finding("WAVE2_STATUS_INVALID", wave_path.as_posix()))
     if wave_two.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
         findings.append(Finding("WAVE2_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
-    for number in range(3, 11):
+    wave_three = wave_map.get("LAB-001-WAVE3", {})
+    if wave_three.get("ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
+        findings.append(Finding("WAVE3_STATUS_INVALID", wave_path.as_posix()))
+    if wave_three.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
+        findings.append(Finding("WAVE3_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
+    for number in range(4, 11):
         if wave_map.get(f"LAB-001-WAVE{number}", {}).get("ContractStatus") != "PLANNED":
             findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
         if wave_map.get(f"LAB-001-WAVE{number}", {}).get("RuntimeStatus") != "NOT_EXECUTED":

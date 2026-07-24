@@ -27,6 +27,7 @@ $publicFiles = @(
     'Public/Invoke-LabUp.ps1'
     'Public/Invoke-LabScenario.ps1'
     'Public/Test-LabScenario.ps1'
+    'Public/Invoke-LabVersionMatrix.ps1'
 )
 
 foreach ($relativePath in @($privateFiles + $publicFiles)) {
@@ -39,5 +40,6 @@ Export-ModuleMember -Function @(
     'Invoke-LabPreflight'
     'Invoke-LabScenario'
     'Invoke-LabUp'
+    'Invoke-LabVersionMatrix'
     'Test-LabScenario'
 )

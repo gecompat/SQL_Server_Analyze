@@ -6,10 +6,13 @@ Kataloge und die vollständige geplante Procedure-Coverage bereit. Welle 1
 implementiert den read-only Preflight und den begrenzten Orchestrator-Core.
 Welle 2 ergänzt den ausführbaren Docker-Vertrag für eine einzelne
 SQL-Server-2025-Instanz sowie die Baselines `LAB-BASE-001` und
-`LAB-BASE-002`.
+`LAB-BASE-002`. Welle 3 erweitert denselben begrenzten Containerpfad um
+38 ausführbare Core-Performance-Szenarien, eine ausdrücklich nicht als
+Runtimenachweis ausgewiesene Contract Fixture und eine sequenzielle
+SQL-Server-2019-/2022-/2025-Lane.
 
-Der Produktstatus ist `PARTIAL_PRODUCT_FUNCTION`. Der Welle-2-Code ist als
-`IMPLEMENTED_ACTIONS_GATE` verfügbar; der externe Laufzeitnachweis bleibt
+Der Produktstatus ist `PARTIAL_PRODUCT_FUNCTION`. Die Wellen 2 und 3 sind als
+`IMPLEMENTED_ACTIONS_GATE` verfügbar; ihre externen Laufzeitnachweise bleiben
 `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`. Ein vorhandener Codepfad oder ein
 grüner statischer CI-Lauf wird nicht als realer Hostnachweis ausgegeben.
 
@@ -18,11 +21,12 @@ grüner statischer CI-Lauf wird nicht als realer Hostnachweis ausgegeben.
 | Pfad | Inhalt |
 |---|---|
 | `Config` | Generische Beispielkonfigurationen, Image-Lock und konservative Ressourcenprofile. |
-| `Contracts` | JSON-Schemata für Konfiguration, Hostfähigkeiten, Topologien, Szenarien, Finding-Erwartungen und veröffentlichbare Evidenz. |
+| `Contracts` | JSON-Schemata für Konfiguration, Hostfähigkeiten, Topologien, Szenarien, Runbooks, Contract Fixtures, Finding-Erwartungen und veröffentlichbare Evidenz. |
 | `Containers` | Portabler Compose-Core, Docker-Override und gemeinsamer Linux-Bootstrap. |
-| `Orchestration` | Öffentliche CLI und PowerShell-Modul für Preflight, Status, Welle-2-Baselines und begrenztes Cleanup. |
+| `Orchestration` | Öffentliche CLI und PowerShell-Modul für Preflight, Status, Containeraufbau, Baselines, Welle-3-Szenarien, Versionsmatrix und begrenztes Cleanup. |
 | `Scenarios/Catalog` | Maschinenlesbarer Szenariokatalog und Procedure-zu-Szenario-Coverage. |
 | `Scenarios/Core` | Ausführbare, synthetische Welle-2-Szenarien. |
+| `Scenarios/Performance` | 39 Welle-3-Verträge mit gemeinsamen, begrenzten Setup-, Worker-, Observe- und Cleanup-Skripten. |
 | `Validation` | Schema-, Parser-, Sicherheits- und Vertragsprüfungen ohne behauptete externe Laufzeitevidenz. |
 | `.artifacts`, `.cache`, `.secrets`, `.state` | Ausschließlich lokale, ignorierte Laufzeitpfade. |
 
@@ -33,7 +37,7 @@ Artefakt versioniert.
 
 ## Lokale Voraussetzungen
 
-Für den nativen Welle-2-Lauf sind erforderlich:
+Für den nativen Welle-2- oder Welle-3-Lauf sind erforderlich:
 
 - x86-64-Linux mit Docker Engine und Docker Compose;
 - cgroup v2 und wirksame Containerlimits;
@@ -47,11 +51,11 @@ Für den nativen Welle-2-Lauf sind erforderlich:
 - ein lokaler, auf einen vollständigen SHA-256-Digest aufgelöster Image-Lock;
 - das logische Secret `SQL_SA_PASSWORD` über den konfigurierten Secret-Provider.
 
-Der öffentliche Image-Lock nennt die dokumentierte Microsoft-Referenz
-`mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04`, enthält aber
-absichtlich keinen vorgetäuschten Digest. Der lokale Lock muss den tatsächlich
-aufgelösten Digest mit `Status = 'LOCKED'` enthalten. `Up` lädt ausschließlich
-diese digestgebundene Referenz.
+Der öffentliche Image-Lock nennt Microsoft-Referenzen für SQL Server 2019,
+2022 und 2025, enthält aber absichtlich keine vorgetäuschten Digests. Der
+lokale Lock muss je verwendeter Version den tatsächlich aufgelösten Digest mit
+`Status = 'LOCKED'` enthalten. `Up` löst die logische Image-ID
+versionsbezogen auf und lädt ausschließlich die digestgebundene Referenz.
 
 Das Beispiel-Datafile wird kopiert und nur lokal angepasst:
 
@@ -177,12 +181,72 @@ namensbasierte Suche sind ausgeschlossen.
 Ein abgebrochener Lauf verwendet `RecoveryCleanup`. Nicht registrierte oder
 fremd gelabelte Ressourcen werden nicht entfernt.
 
+## Welle 3: Core-Performance und Versionsmatrix
+
+Welle 3 verwendet weiterhin ausschließlich `CTR-SINGLE` und das
+Compact-Ressourcenprofil. Die Szenarien sind in folgende Gruppen gegliedert:
+
+| Gruppe | Szenarien | Assertion-Grenze |
+|---|---:|---|
+| CPU und Worker | 3 | Aktive begrenzte Worker und Analyzerstatus; keine feste CPU- oder Wait-Zahl. |
+| Memory und Resource Governor | 3 | Memory-Grant-, Buffer-Pool- oder Konfigurationsevidenz mit dokumentierter Alternative. |
+| TempDB, Log, Capacity und Recovery | 8 | Synthetischer Zustand, begrenztes Wachstum und Recovery-Rollback; kein Storage-Benchmark. |
+| Blocking und Deadlocks | 6 | Run-token-gebundene Sessions und XE-Evidenz; der nichtdeterministische Parallelism-Fall bleibt Contract Fixture. |
+| Latches | 3 | Tatsächliche Insertaktivität und Indexoptionen; keine universelle Latch-Wait-Schwelle. |
+| Plans, Query Store und Standalone-Plananalyse | 9 | Plan-, Statistik- und Query-Store-Verträge ohne feste Plan-ID oder Planform. |
+| Indexe, Columnstore und Vector | 5 | Reale synthetische Katalog-/DMV-Evidenz; Vector ausschließlich auf SQL Server 2025. |
+| Versionsvertrag | 1 | Sequenzielle, getrennte Runs für Major 15, 16 und 17. |
+| Extended Events | 1 | Eigenes synthetisches Ring-Buffer-Gate. |
+
+Jedes Runtime-Szenario verwendet den Seed `1701`, maximal acht Worker und
+explizite Setup-, Worker-, Observe- und Cleanup-Timeouts. Vor dem Setup und
+nach der Observation wird der exakte synthetische Scope zurückgesetzt. Die
+Datenbank `Lab001Wave3` trägt die aktuelle Run-ID als Marker. Cleanup beendet
+nur Sessions mit dem daraus abgeleiteten `CONTEXT_INFO`, entfernt nur exakt
+benannte Szenarioobjekte und leert ausschließlich die zu dieser synthetischen
+Datenbank beziehungsweise den markierten Batches gehörenden Pläne.
+
+Beispiel:
+
+```powershell
+.\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
+    -Action Run `
+    -LabRunId $runId `
+    -ScenarioId LAB-CONC-001
+
+.\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
+    -Action Validate `
+    -LabRunId $runId `
+    -ScenarioId LAB-CONC-001
+```
+
+`LAB-REC-001` startet ausschließlich den anhand vollständiger Docker-ID und
+Run-ID-Label geprüften Labcontainer neu. `LAB-DEAD-004` erzeugt absichtlich
+keinen vorgetäuschten Runtime-PASS; die Fixture definiert nur zulässige und
+unzulässige Evidenz für einen späteren realen Parallelism-Deadlock.
+
+Die vollständige Versionslane wird sequenziell ausgeführt. Jede Version erhält
+eine eigene Run-ID, eigene Container-/Netzwerkobjekte und ein abschließendes
+Cleanup:
+
+```powershell
+.\Lab\Orchestration\Invoke-DiagnosticLab.ps1 `
+    -Action RunVersionMatrix `
+    -ConfigPath .\Lab\Config\lab.config.psd1 `
+    -ScenarioId LAB-VERSION-001
+```
+
+Die lokale Konfiguration muss alle drei logischen Image-IDs auf vollständig
+digestgebundene Lock-Einträge abbilden. Ein fehlender Host- oder Imagevertrag
+ergibt `NOT_EXECUTED`; er wird nicht als bestandener Versionsnachweis gewertet.
+
 ## Sichtbare Plattformgrenzen
 
 | Lane | Implementierungsstatus | Externer Nachweis |
 |---|---|---|
 | Docker auf nativem Linux | `IMPLEMENTED_ACTIONS_GATE` | `NOT_EXECUTED` bis zu einem Lauf auf einem freigegebenen Host |
 | Docker in einer Hyper-V-Linux-VM | gemeinsamer Vertrag vorhanden | `NOT_EXECUTED` mit `HYPERV_LINUX_RUNTIME_GATE_REQUIRED` |
+| Welle-3-Versionmatrix | `IMPLEMENTED_ACTIONS_GATE` | `NOT_EXECUTED` bis 2019, 2022 und 2025 sequenziell bestanden sind |
 | Podman | Welle 9 | `NOT_EXECUTED` |
 
 Die Hyper-V-Linux-Lane wird nicht als erfolgreich ausgewiesen, solange keine
@@ -197,6 +261,7 @@ Repositoryunabhängige Prüfungen:
 python3 Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py --repository-root .
 python3 Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py --repository-root .
 python3 Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py --repository-root .
+python3 Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py --repository-root .
 ```
 
 Mit PowerShell 7:
@@ -205,6 +270,7 @@ Mit PowerShell 7:
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabValidation.ps1
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave1Tests.ps1
 pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave2Tests.ps1
+pwsh -NoLogo -NoProfile -File Lab/Validation/Invoke-LabWave3Tests.ps1
 ```
 
 Die PR-CI prüft zusätzlich das zusammengeführte Docker-Compose-Modell und
@@ -229,5 +295,7 @@ angehängt.
 
 - Microsoft (2026): [Docker: Run Containers for SQL Server on Linux](https://learn.microsoft.com/en-us/sql/linux/install-upgrade/quickstart-install-docker?view=sql-server-ver17).
 - Microsoft (2026): [SQL Server container images](https://mcr.microsoft.com/product/mssql/server/about).
+- Microsoft (2026): [CREATE VECTOR INDEX](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-vector-index-transact-sql?view=sql-server-ver17).
+- Microsoft (2026): [TempDB Space Resource Governance](https://learn.microsoft.com/en-us/sql/relational-databases/resource-governor/tempdb-space-resource-governance?view=sql-server-ver17).
 - Docker (2026): [Compose file reference](https://docs.docker.com/reference/compose-file/).
 - Docker (2026): [Resource constraints](https://docs.docker.com/engine/containers/resource_constraints/).
