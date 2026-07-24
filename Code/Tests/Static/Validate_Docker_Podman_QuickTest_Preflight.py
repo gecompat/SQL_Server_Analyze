@@ -171,7 +171,7 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         require(fragment in workflow, f"Workflow lacks {fragment}.", findings)
     for fragment in (
         "System.Management.Automation.Language.Parser",
-        "Generated quick-test secret",
+        "Generated quick-test credential",
         "Quick-test default ports",
         "Duplicate quick-test ports",
         "Synthetic ready Preflight",
