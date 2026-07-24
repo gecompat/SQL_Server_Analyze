@@ -29,24 +29,24 @@ x-quicktest-environment: &quicktest-environment
 services:
   sql2019:
     profiles: [sql2019]
-    image: ${QTLAB_SQL2019_IMAGE:?QTLAB_SQL2019_IMAGE is required}
-    container_name: ${QTLAB_SQL2019_CONTAINER:?QTLAB_SQL2019_CONTAINER is required}
+    image: ${QTLAB_SQL2019_IMAGE:-mcr.microsoft.com/mssql/server:2019-latest}
+    container_name: ${QTLAB_SQL2019_CONTAINER:-sql-analyze-quicktest-sql2019}
     hostname: sql2019
     environment: *quicktest-environment
     ports:
       - target: 1433
-        published: ${QTLAB_SQL2019_PORT:?QTLAB_SQL2019_PORT is required}
+        published: ${QTLAB_SQL2019_PORT:-14331}
         protocol: tcp
         mode: host
     volumes:
       - type: bind
-        source: ${QTLAB_SQL2019_DATA_DIR:?QTLAB_SQL2019_DATA_DIR is required}
+        source: ${QTLAB_SQL2019_DATA_DIR:-${QTLAB_RUNTIME_DIR}/unused/2019/data}
         target: /var/opt/mssql/data
       - type: bind
-        source: ${QTLAB_SQL2019_LOG_DIR:?QTLAB_SQL2019_LOG_DIR is required}
+        source: ${QTLAB_SQL2019_LOG_DIR:-${QTLAB_RUNTIME_DIR}/unused/2019/log}
         target: /var/opt/mssql/log
       - type: bind
-        source: ${QTLAB_SQL2019_BACKUP_DIR:?QTLAB_SQL2019_BACKUP_DIR is required}
+        source: ${QTLAB_SQL2019_BACKUP_DIR:-${QTLAB_RUNTIME_DIR}/unused/2019/backup}
         target: /var/opt/mssql/backup
       - type: bind
         source: ${QTLAB_RUNTIME_DIR:?QTLAB_RUNTIME_DIR is required}
@@ -62,24 +62,24 @@ services:
 
   sql2022:
     profiles: [sql2022]
-    image: ${QTLAB_SQL2022_IMAGE:?QTLAB_SQL2022_IMAGE is required}
-    container_name: ${QTLAB_SQL2022_CONTAINER:?QTLAB_SQL2022_CONTAINER is required}
+    image: ${QTLAB_SQL2022_IMAGE:-mcr.microsoft.com/mssql/server:2022-latest}
+    container_name: ${QTLAB_SQL2022_CONTAINER:-sql-analyze-quicktest-sql2022}
     hostname: sql2022
     environment: *quicktest-environment
     ports:
       - target: 1433
-        published: ${QTLAB_SQL2022_PORT:?QTLAB_SQL2022_PORT is required}
+        published: ${QTLAB_SQL2022_PORT:-14332}
         protocol: tcp
         mode: host
     volumes:
       - type: bind
-        source: ${QTLAB_SQL2022_DATA_DIR:?QTLAB_SQL2022_DATA_DIR is required}
+        source: ${QTLAB_SQL2022_DATA_DIR:-${QTLAB_RUNTIME_DIR}/unused/2022/data}
         target: /var/opt/mssql/data
       - type: bind
-        source: ${QTLAB_SQL2022_LOG_DIR:?QTLAB_SQL2022_LOG_DIR is required}
+        source: ${QTLAB_SQL2022_LOG_DIR:-${QTLAB_RUNTIME_DIR}/unused/2022/log}
         target: /var/opt/mssql/log
       - type: bind
-        source: ${QTLAB_SQL2022_BACKUP_DIR:?QTLAB_SQL2022_BACKUP_DIR is required}
+        source: ${QTLAB_SQL2022_BACKUP_DIR:-${QTLAB_RUNTIME_DIR}/unused/2022/backup}
         target: /var/opt/mssql/backup
       - type: bind
         source: ${QTLAB_RUNTIME_DIR:?QTLAB_RUNTIME_DIR is required}
@@ -95,24 +95,24 @@ services:
 
   sql2025:
     profiles: [sql2025]
-    image: ${QTLAB_SQL2025_IMAGE:?QTLAB_SQL2025_IMAGE is required}
-    container_name: ${QTLAB_SQL2025_CONTAINER:?QTLAB_SQL2025_CONTAINER is required}
+    image: ${QTLAB_SQL2025_IMAGE:-mcr.microsoft.com/mssql/server:2025-latest}
+    container_name: ${QTLAB_SQL2025_CONTAINER:-sql-analyze-quicktest-sql2025}
     hostname: sql2025
     environment: *quicktest-environment
     ports:
       - target: 1433
-        published: ${QTLAB_SQL2025_PORT:?QTLAB_SQL2025_PORT is required}
+        published: ${QTLAB_SQL2025_PORT:-14335}
         protocol: tcp
         mode: host
     volumes:
       - type: bind
-        source: ${QTLAB_SQL2025_DATA_DIR:?QTLAB_SQL2025_DATA_DIR is required}
+        source: ${QTLAB_SQL2025_DATA_DIR:-${QTLAB_RUNTIME_DIR}/unused/2025/data}
         target: /var/opt/mssql/data
       - type: bind
-        source: ${QTLAB_SQL2025_LOG_DIR:?QTLAB_SQL2025_LOG_DIR is required}
+        source: ${QTLAB_SQL2025_LOG_DIR:-${QTLAB_RUNTIME_DIR}/unused/2025/log}
         target: /var/opt/mssql/log
       - type: bind
-        source: ${QTLAB_SQL2025_BACKUP_DIR:?QTLAB_SQL2025_BACKUP_DIR is required}
+        source: ${QTLAB_SQL2025_BACKUP_DIR:-${QTLAB_RUNTIME_DIR}/unused/2025/backup}
         target: /var/opt/mssql/backup
       - type: bind
         source: ${QTLAB_RUNTIME_DIR:?QTLAB_RUNTIME_DIR is required}
