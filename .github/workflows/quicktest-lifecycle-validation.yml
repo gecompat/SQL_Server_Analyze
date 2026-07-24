@@ -16,6 +16,7 @@ on:
   push:
     branches:
       - main
+      - 'agent/quicktest-*'
     paths:
       - '.github/workflows/quicktest-lifecycle-validation.yml'
       - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_Lifecycle.py'
