@@ -6,7 +6,7 @@ implemented, deliberately bounded subset.
 
 The public entrypoints are:
 
-- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Stop`, `Restart`, `Down`, `Start`, and `Destroy`;
+- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Stop`, `Restart`, `Reset`, `Down`, `Start`, and `Destroy`;
 - `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
 
 The first executable runtime delivery is limited to native x86-64 Linux. It
@@ -103,8 +103,9 @@ The `SMALL` profile is the default. CPU and memory limits are passed to every
 selected container. Install and Start process selected versions sequentially;
 they do not start all versions concurrently. Stop processes versions in reverse
 order and waits for every container to reach a stopped state. Restart composes
-that ordered Stop with the credential-free Start of the same containers. The
-lifecycle never changes global Docker or Podman settings, never raises host
+that ordered Stop with the credential-free Start of the same containers. Reset
+performs a fresh Install only after the previous temporary scope has been removed.
+The lifecycle never changes global Docker or Podman settings, never raises host
 limits, and never touches unrelated runtime objects.
 
 ## Local state and ownership
@@ -128,8 +129,10 @@ does not adopt or overwrite them.
 
 Install, Stop, and both Start paths persist their transition state before the
 first Runtime mutation. Restart uses those existing transition contracts and
-does not add a parallel direct Runtime path. Failed transitions retain explicit
-recovery states and never widen the scope beyond owner-validated full object IDs.
+does not add a parallel direct Runtime path. Reset validates the complete saved
+scope before confirmation and then delegates destruction and recreation to the
+existing exact-scope Destroy and Install contracts. Failed transitions never
+widen the scope beyond owner-validated full object IDs.
 
 ## Status
 
@@ -200,6 +203,47 @@ fails the action instead of silently accepting newly created resources.
 `RESTART_STOP_FAILED`; a non-ready Start result is reported as
 `RESTART_START_FAILED`. Failures inside the shared Start recovery path retain its
 explicit `STOPPED` or `START_STOPPED_RECOVERY_FAILED` state.
+
+## Reset
+
+`Reset` reproducibly discards and recreates a complete **temporary** quick-test
+scope. It is intentionally destructive and is not an alias for Restart.
+
+```powershell
+./Lab/Install-Lab.ps1 `
+  -Action Reset `
+  -ScopeName sql-analyze-quicktest
+```
+
+Before confirmation, Reset performs `READ_ONLY_RESET_PREFLIGHT`. It validates the
+state and data path boundaries, owner marker, stable lifecycle state, Runtime,
+selected versions, ports, resource profile, existing SQL credential, and the
+exact match between saved full IDs and run-ID-discovered objects. Unexpected or
+missing objects block Reset before any mutation.
+
+Only `PersistenceMode = TEMPORARY` may be reset. A `PERSISTENT` scope returns
+`RESET_PERSISTENT_SCOPE_BLOCKED` without deleting data or Runtime objects. To
+remove a persistent scope, use the separately confirmed `Destroy` action.
+
+For a temporary scope, Reset requires the existing SQL credential. A generated
+credential previously saved by Install is loaded only after path and owner-marker
+validation. A user-supplied credential must be provided again. `-GenerateSecret`
+is rejected because existing configuration must not silently change before the
+old scope is destroyed.
+
+After confirmation, Reset delegates complete removal to `Destroy` and then calls
+fresh `Install` with the same Runtime, SQL Server versions, ports, login,
+resource profile, framework-installation choice, and temporary persistence mode.
+The previous data, credential directory, state, containers, and network are
+removed. The fresh installation creates a new run ID, new container IDs, a new
+network ID, and empty data/log/backup directories. A successful result reports
+`ResetPerformed = true` and `DataRecreated = true`.
+
+`-WhatIf` returns `RESET_CONFIRMATION_REQUIRED` without mutation. `-Force` is
+available only for a documented unattended Reset and bypasses confirmation; it
+does not bypass the persistent-scope, ownership, path, credential, or exact-ID
+checks. If the fresh Install fails after destruction, Reset reports
+`RESET_INSTALL_FAILED`; the former temporary environment is not restored.
 
 ## Down
 
@@ -276,13 +320,13 @@ labels before deletion. Unexpected run-labeled objects stop the operation. It
 never performs a global prune or a name-only delete.
 
 Stop and Restart preserve Runtime objects. Down preserves the complete local
-scope. Destroy always removes the complete scope, independent of `PERSISTENT` or
-`TEMPORARY`.
+scope. Reset replaces only a temporary scope. Destroy always removes the complete
+scope, independent of `PERSISTENT` or `TEMPORARY`.
 
 ## Connection information
 
-A successful Install, Start, or Restart returns one entry per SQL Server version
-with:
+A successful Install, Start, Restart, or Reset returns one entry per SQL Server
+version with:
 
 - `localhost` and the configured host port;
 - the generic login name;
@@ -296,7 +340,6 @@ The credential is never printed again.
 
 The following remain open after this delivery:
 
-- Reset;
 - a separate UpdateFramework action;
 - native Docker and Podman execution evidence;
 - end-to-end SQL Server 2019, 2022, and 2025 host evidence.
