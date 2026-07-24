@@ -9,14 +9,12 @@ function Remove-QuickTestLab {
         [string] $ScopeName = 'sql-analyze-quicktest',
 
         [Parameter()]
-        [string] $StateRoot = (Join-Path $script:QuickTestLabRoot '.state/quick-test'),
-
-        [Parameter()]
-        [switch] $RemoveData
+        [string] $StateRoot = (Join-Path $script:QuickTestLabRoot '.state/quick-test')
     )
 
+    $expectedStateRoot = [IO.Path]::GetFullPath($StateRoot)
     $scopeStateDirectory = [IO.Path]::GetFullPath(
-        (Join-Path $StateRoot $ScopeName)
+        (Join-Path $expectedStateRoot $ScopeName)
     )
     $statePath = Join-Path $scopeStateDirectory 'state.json'
     if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
@@ -27,21 +25,27 @@ function Remove-QuickTestLab {
     }
 
     $state = Read-QuickTestJson -Path $statePath
+    if (
+        [IO.Path]::GetFullPath([string] $state.StateBaseRoot) -ne $expectedStateRoot -or
+        [IO.Path]::GetFullPath([string] $state.StateDirectory) -ne $scopeStateDirectory
+    ) {
+        throw 'Destroy refused state paths that do not match the requested scope.'
+    }
+    if (-not (Test-QuickTestOwnedDirectory `
+            -Path $scopeStateDirectory `
+            -Root $expectedStateRoot `
+            -RunId $state.RunId)) {
+        throw 'Destroy refused an unowned or out-of-bound state directory.'
+    }
+
     if (-not $PSCmdlet.ShouldProcess(
             "quick-test scope $ScopeName",
-            'Destroy exact owned containers, network, state, and approved local data'
+            'Destroy registered containers, network, state, credentials, and local data'
         )) {
         return [pscustomobject] @{
             Status = 'DESTROY_CONFIRMATION_REQUIRED'
             ScopeName = $ScopeName
         }
-    }
-
-    if (-not (Test-QuickTestOwnedDirectory `
-            -Path $state.StateDirectory `
-            -Root $state.StateBaseRoot `
-            -RunId $state.RunId)) {
-        throw 'Destroy refused an unowned or out-of-bound state directory.'
     }
 
     $runtimeInfo = Resolve-QuickTestRuntime -Runtime $state.Runtime
@@ -53,20 +57,53 @@ function Remove-QuickTestLab {
         }
     }
 
-    $resources = Get-QuickTestResourcesByRunId `
+    $registeredContainerIds = @(
+        $state.Containers |
+            ForEach-Object { [string] $_.ContainerId }
+    )
+    foreach ($containerId in $registeredContainerIds) {
+        if ($containerId -notmatch '^[a-f0-9]{64}$') {
+            throw 'State contains a non-canonical container ID.'
+        }
+    }
+    $registeredNetworkIds = @()
+    if (-not [string]::IsNullOrWhiteSpace([string] $state.NetworkId)) {
+        if ([string] $state.NetworkId -notmatch '^[a-f0-9]{64}$') {
+            throw 'State contains a non-canonical network ID.'
+        }
+        $registeredNetworkIds = @([string] $state.NetworkId)
+    }
+
+    $discovered = Get-QuickTestResourcesByRunId `
         -RuntimeInfo $runtimeInfo `
         -RunId $state.RunId
+    $unexpectedContainers = @(
+        $discovered.ContainerIds |
+            Where-Object { $_ -notin $registeredContainerIds }
+    )
+    $unexpectedNetworks = @(
+        $discovered.NetworkIds |
+            Where-Object { $_ -notin $registeredNetworkIds }
+    )
+    if ($unexpectedContainers.Count -gt 0 -or $unexpectedNetworks.Count -gt 0) {
+        throw 'Destroy found run-labeled resources that are not registered in state.'
+    }
+
+    $existingContainerIds = @(
+        $registeredContainerIds |
+            Where-Object { $_ -in $discovered.ContainerIds }
+    )
+    $existingNetworkIds = @(
+        $registeredNetworkIds |
+            Where-Object { $_ -in $discovered.NetworkIds }
+    )
     Remove-QuickTestRuntimeResources `
         -RuntimeInfo $runtimeInfo `
         -RunId $state.RunId `
-        -ContainerIds $resources.ContainerIds `
-        -NetworkIds $resources.NetworkIds
+        -ContainerIds $existingContainerIds `
+        -NetworkIds $existingNetworkIds
 
-    $removeDataEffective = (
-        $RemoveData -or
-        $state.PersistenceMode -eq 'TEMPORARY'
-    )
-    if ($removeDataEffective -and (Test-Path -LiteralPath $state.DataRoot)) {
+    if (Test-Path -LiteralPath $state.DataRoot) {
         if (-not (Test-QuickTestOwnedDirectory `
                 -Path $state.DataRoot `
                 -Root $state.DataBaseRoot `
@@ -92,13 +129,13 @@ function Remove-QuickTestLab {
             -Force
     }
 
-    Remove-Item -LiteralPath $state.StateDirectory -Recurse -Force
+    Remove-Item -LiteralPath $scopeStateDirectory -Recurse -Force
 
     return [pscustomobject] @{
         Status = 'DESTROYED'
         ScopeName = $ScopeName
-        DataRemoved = $removeDataEffective
-        ContainersRemoved = $resources.ContainerIds.Count
-        NetworksRemoved = $resources.NetworkIds.Count
+        DataRemoved = $true
+        ContainersRemoved = $existingContainerIds.Count
+        NetworksRemoved = $existingNetworkIds.Count
     }
 }
