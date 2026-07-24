@@ -10,7 +10,9 @@ param(
     [Parameter()]
     [ValidateSet(
         'ALL',
-        'ENTRYPOINTS',
+        'INSTALL_ENTRYPOINT',
+        'UNINSTALL_ENTRYPOINT',
+        'FRAMEWORK_WRAPPER',
         'COMMON',
         'RUNTIME',
         'PREFLIGHT',
@@ -54,9 +56,9 @@ function Invoke-QuickTestParserPhase {
     )
 
     $targetPaths = @{
-        ENTRYPOINTS = @(
-            'Lab/Install-Lab.ps1'
-            'Lab/Uninstall-Lab.ps1'
+        INSTALL_ENTRYPOINT = @('Lab/Install-Lab.ps1')
+        UNINSTALL_ENTRYPOINT = @('Lab/Uninstall-Lab.ps1')
+        FRAMEWORK_WRAPPER = @(
             'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
         )
         COMMON = @('Lab/QuickTest/Private/Common.ps1')
