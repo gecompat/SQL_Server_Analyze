@@ -207,7 +207,12 @@ function Remove-QuickTestRuntimeResources {
             -ResourceType CONTAINER `
             -ExactLocator $containerId `
             -LabelName 'qt-lab.run-id'
-        if ($owner -ne $RunId) {
+        $frameworkOwner = Get-QuickTestObjectLabel `
+            -RuntimeInfo $RuntimeInfo `
+            -ResourceType CONTAINER `
+            -ExactLocator $containerId `
+            -LabelName 'qt-lab.owner'
+        if ($owner -ne $RunId -or $frameworkOwner -ne 'SQL_SERVER_ANALYZE') {
             throw 'Container ownership does not match the quick-test run.'
         }
         Invoke-QuickTestExternalCommand `
@@ -221,7 +226,12 @@ function Remove-QuickTestRuntimeResources {
             -ResourceType NETWORK `
             -ExactLocator $networkId `
             -LabelName 'qt-lab.run-id'
-        if ($owner -ne $RunId) {
+        $frameworkOwner = Get-QuickTestObjectLabel `
+            -RuntimeInfo $RuntimeInfo `
+            -ResourceType NETWORK `
+            -ExactLocator $networkId `
+            -LabelName 'qt-lab.owner'
+        if ($owner -ne $RunId -or $frameworkOwner -ne 'SQL_SERVER_ANALYZE') {
             throw 'Network ownership does not match the quick-test run.'
         }
         Invoke-QuickTestExternalCommand `
@@ -293,6 +303,44 @@ sqlcmd_path="$(command -v sqlcmd 2>/dev/null || true)"; if [ -z "$sqlcmd_path" ]
         -Arguments @('exec', $ContainerId, '/bin/bash', '-c', $shell, 'qt-sql', $Query)
 }
 
+function Invoke-QuickTestSqlInput {
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory)]
+        [pscustomobject] $RuntimeInfo,
+
+        [Parameter(Mandatory)]
+        [ValidatePattern('^[a-f0-9]{64}$')]
+        [string] $ContainerId,
+
+        [Parameter(Mandatory)]
+        [string] $SqlText
+    )
+
+    $shell = @'
+sqlcmd_path="$(command -v sqlcmd 2>/dev/null || true)"; if [ -z "$sqlcmd_path" ]; then for candidate in /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd; do if [ -x "$candidate" ]; then sqlcmd_path="$candidate"; break; fi; done; fi; test -n "$sqlcmd_path" || exit 127; export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; exec "$sqlcmd_path" -C -b -S localhost -U sa -i /dev/stdin
+'@
+    $arguments = @(
+        'exec'
+        '--interactive'
+        $ContainerId
+        '/bin/bash'
+        '-c'
+        $shell
+    )
+    $output = @(
+        $SqlText |
+            & $RuntimeInfo.Command @arguments 2>&1 |
+            ForEach-Object { [string] $_ }
+    )
+    $exitCode = $LASTEXITCODE
+    if ($exitCode -ne 0) {
+        throw "Quick-test SQL input failed with exit code $exitCode."
+    }
+    return $output
+}
+
 function Initialize-QuickTestAdminLogin {
     [CmdletBinding()]
     param(
@@ -308,18 +356,10 @@ function Initialize-QuickTestAdminLogin {
         [string] $AdminLogin,
 
         [Parameter(Mandatory)]
-        [string] $RuntimeDirectory,
-
-        [Parameter(Mandatory)]
-        [securestring] $SecureValue,
-
-        [Parameter(Mandatory)]
-        [ValidateSet(2019, 2022, 2025)]
-        [int] $SqlVersion
+        [securestring] $SecureValue
     )
 
     $plainValue = ConvertFrom-QuickTestSecureString -SecureValue $SecureValue
-    $sqlPath = Join-Path $RuntimeDirectory "admin-login-$SqlVersion.sql"
     try {
         $quotedLogin = $AdminLogin.Replace(']', ']]')
         $stringLogin = $AdminLogin.Replace("'", "''")
@@ -329,45 +369,17 @@ function Initialize-QuickTestAdminLogin {
 SET NOCOUNT ON;
 IF SUSER_ID(N'$stringLogin') IS NULL
 BEGIN
-    CREATE LOGIN [$quotedLogin] WITH $credentialKeyword = N'$stringValue', CHECK_POLICY = OFF;
+    CREATE LOGIN [$quotedLogin] WITH $credentialKeyword = N'$stringValue', CHECK_POLICY = ON;
     ALTER SERVER ROLE [sysadmin] ADD MEMBER [$quotedLogin];
 END;
 "@
-        [IO.File]::WriteAllText(
-            $sqlPath,
-            $sql,
-            [Text.UTF8Encoding]::new($false)
-        )
-        if ($IsLinux) {
-            [IO.File]::SetUnixFileMode(
-                $sqlPath,
-                (
-                    [IO.UnixFileMode]::UserRead -bor
-                    [IO.UnixFileMode]::UserWrite
-                )
-            )
-        }
-        $containerPath = "/lab/runtime/admin-login-$SqlVersion.sql"
-        $shell = @'
-sqlcmd_path="$(command -v sqlcmd 2>/dev/null || true)"; if [ -z "$sqlcmd_path" ]; then for candidate in /opt/mssql-tools18/bin/sqlcmd /opt/mssql-tools/bin/sqlcmd; do if [ -x "$candidate" ]; then sqlcmd_path="$candidate"; break; fi; done; fi; test -n "$sqlcmd_path" || exit 127; export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; exec "$sqlcmd_path" -C -b -S localhost -U sa -i "$1"
-'@
-        Invoke-QuickTestExternalCommand `
-            -FilePath $RuntimeInfo.Command `
-            -Arguments @(
-                'exec'
-                $ContainerId
-                '/bin/bash'
-                '-c'
-                $shell
-                'qt-sql-file'
-                $containerPath
-            ) |
+        Invoke-QuickTestSqlInput `
+            -RuntimeInfo $RuntimeInfo `
+            -ContainerId $ContainerId `
+            -SqlText $sql |
             Out-Null
     }
     finally {
-        if (Test-Path -LiteralPath $sqlPath -PathType Leaf) {
-            Remove-Item -LiteralPath $sqlPath -Force
-        }
         $plainValue = $null
     }
 }
@@ -387,6 +399,7 @@ function Save-QuickTestGeneratedCredential {
     )
 
     Set-QuickTestOwnerMarker -Path $CredentialDirectory -RunId $RunId
+    Set-QuickTestPrivateDirectoryPermissions -Path $CredentialDirectory
     $plainValue = ConvertFrom-QuickTestSecureString -SecureValue $SecureValue
     $credentialPath = Join-Path $CredentialDirectory 'sql-admin.credential'
     try {
