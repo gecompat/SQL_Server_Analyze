@@ -30,9 +30,9 @@ foreach ($relativePath in $paths) {
 $modulePath = Join-Path $RepositoryRoot 'Lab/QuickTest/QuickTestLab.psm1'
 Import-Module -Name $modulePath -Force -ErrorAction Stop
 
-$secret = New-QuickTestPassword -Length 24
-if (-not (Test-QuickTestPassword -SecureValue $secret)) {
-    throw 'Generated quick-test secret does not satisfy the complexity contract.'
+$credentialInput = New-QuickTestPassword -Length 24
+if (-not (Test-QuickTestPassword -SecureValue $credentialInput)) {
+    throw 'Generated quick-test credential does not satisfy the complexity contract.'
 }
 
 $ports = Get-QuickTestDefaultPorts
@@ -119,7 +119,7 @@ try {
         -SqlVersions @(2025) `
         -Ports @{ 2025 = 15451 } `
         -AdminLogin ExampleSqlAdmin `
-        -AdminSecret $secret `
+        -AdminSecret $credentialInput `
         -ResourceProfile SMALL `
         -DataRoot $dataRoot `
         -ScopeName sql-analyze-quicktest `
@@ -138,7 +138,7 @@ try {
         -SqlVersions @(2019, 2022) `
         -Ports @{ 2019 = 15461; 2022 = 15462 } `
         -AdminLogin ExampleSqlAdmin `
-        -AdminSecret $secret `
+        -AdminSecret $credentialInput `
         -ResourceProfile SMALL `
         -DataRoot $dataRoot `
         -ScopeName sql-analyze-quicktest `
