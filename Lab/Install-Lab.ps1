@@ -204,7 +204,14 @@ if ($Action -eq 'Start') {
     $currentStatus = Get-QuickTestLabStatus `
         -ScopeName $ScopeName `
         -StateRoot $StateRoot
-    if ($currentStatus.Status -eq 'STOPPED') {
+    $currentLifecycleStatus = ''
+    if ($currentStatus.PSObject.Properties.Name -contains 'LifecycleStatus') {
+        $currentLifecycleStatus = [string] $currentStatus.LifecycleStatus
+    }
+    if (
+        $currentStatus.Status -eq 'STOPPED' -or
+        $currentLifecycleStatus -eq 'STOPPED'
+    ) {
         $stoppedStartArguments = @{
             ScopeName = $ScopeName
             StateRoot = $StateRoot
