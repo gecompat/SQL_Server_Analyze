@@ -80,7 +80,7 @@ jobs:
           python3 ./Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py \
             --repository-root .
 
-      - name: Validate Welle 4 contract foundation
+      - name: Validate LAB-001 Wellen 0 to 4 contract foundation
         shell: bash
         run: |
           set -euo pipefail
