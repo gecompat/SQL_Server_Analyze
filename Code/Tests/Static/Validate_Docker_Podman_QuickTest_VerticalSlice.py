@@ -23,6 +23,12 @@ REQUIRED_FILES = {
     "Lab/Orchestration/Modules/DiagnosticLab/DiagnosticLab.psm1",
     "Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1",
     "Lab/QuickTest/QuickTestLab.psm1",
+    "Lab/QuickTest/Private/Common.ps1",
+    "Lab/QuickTest/Private/Runtime.ps1",
+    "Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1",
+    "Lab/QuickTest/Public/Install-QuickTestLab.ps1",
+    "Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1",
+    "Lab/QuickTest/Public/Remove-QuickTestLab.ps1",
     "Lab/README.md",
     "Lab/Uninstall-Lab.ps1",
     "Lab/Validation/Invoke-LabQuickTestTests.ps1",
@@ -42,6 +48,14 @@ def require(condition: bool, message: str, findings: list[str]) -> None:
 
 def text(root: Path, relative_path: str) -> str:
     return (root / relative_path).read_text(encoding="utf-8")
+
+
+def quicktest_source(root: Path) -> str:
+    module_root = root / "Lab/QuickTest"
+    source_paths = sorted(module_root.rglob("*.ps1")) + sorted(
+        module_root.rglob("*.psm1")
+    )
+    return "\n".join(path.read_text(encoding="utf-8") for path in source_paths)
 
 
 def validate_compose(root: Path, findings: list[str]) -> None:
@@ -101,7 +115,8 @@ def validate_compose(root: Path, findings: list[str]) -> None:
 def validate_powershell(root: Path, findings: list[str]) -> None:
     install = text(root, "Lab/Install-Lab.ps1")
     uninstall = text(root, "Lab/Uninstall-Lab.ps1")
-    module = text(root, "Lab/QuickTest/QuickTestLab.psm1")
+    module = quicktest_source(root)
+    root_module = text(root, "Lab/QuickTest/QuickTestLab.psm1")
     wrapper = text(
         root,
         "Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1",
@@ -112,6 +127,16 @@ def validate_powershell(root: Path, findings: list[str]) -> None:
     module_loader = text(
         root, "Lab/Orchestration/Modules/DiagnosticLab/DiagnosticLab.psm1"
     )
+
+    for relative_path in (
+        "Private/Common.ps1",
+        "Private/Runtime.ps1",
+        "Public/Invoke-QuickTestPreflight.ps1",
+        "Public/Install-QuickTestLab.ps1",
+        "Public/Get-QuickTestLabStatus.ps1",
+        "Public/Remove-QuickTestLab.ps1",
+    ):
+        require(relative_path in root_module, f"Root module lacks {relative_path}.", findings)
 
     for fragment in (
         "'Preflight', 'Install', 'Status', 'Destroy'",
@@ -146,7 +171,10 @@ def validate_powershell(root: Path, findings: list[str]) -> None:
         "function New-QuickTestPassword",
         "function Test-QuickTestPassword",
         "function Test-QuickTestPathWithinRoot",
-        "manifest', 'inspect'",
+        "function Get-QuickTestResourcesByRunId",
+        "function Remove-QuickTestRuntimeResources",
+        "manifest",
+        "inspect",
         "ProductMajorVersion",
         ".quicktest-owner",
         "qt-lab.run-id",
@@ -157,6 +185,8 @@ def validate_powershell(root: Path, findings: list[str]) -> None:
         "GeneratedSecretPath",
         "PERSISTENT",
         "TEMPORARY",
+        "SCOPE_ALREADY_EXISTS",
+        "NEW_DIFFERENCING_DISK" if False else "RunId",
     ):
         require(fragment in module, f"Quick-test module lacks {fragment}.", findings)
     for fragment in (
