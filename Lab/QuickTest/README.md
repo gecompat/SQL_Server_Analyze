@@ -195,8 +195,7 @@ are cleared and previous IDs remain for diagnosis.
 
 `Start` handles two different preserved states:
 
-1. From `STOPPED`, it starts the existing containers by their full IDs without
-   requiring the SQL credential and without recreating containers or the network.
+1. From `STOPPED`, it starts the existing containers by their full IDs without requiring the SQL credential and without recreating containers or the network.
 2. From `DOWN`, it recreates containers and the network from preserved state and
    therefore requires the original SQL Server credential.
 
