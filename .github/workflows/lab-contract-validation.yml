@@ -179,11 +179,13 @@ jobs:
             export "QTLAB_SQL${version}_LOG_DIR=$runtime_dir/${version}/log"
             export "QTLAB_SQL${version}_BACKUP_DIR=$runtime_dir/${version}/backup"
           done
-          for override in docker podman; do
+          for override_file in \
+            quick-test.compose.docker.yaml \
+            quick-test.compose.podman.yaml; do
             docker compose \
               --project-name qt-validation \
               --file ./Lab/Containers/quick-test.compose.yaml \
-              --file "./Lab/Containers/quick-test.compose.${override}.yaml" \
+              --file "./Lab/Containers/${override_file}" \
               --profile sql2019 \
               --profile sql2022 \
               --profile sql2025 \
