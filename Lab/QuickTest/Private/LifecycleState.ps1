@@ -105,6 +105,26 @@ function Set-QuickTestDirectoryPermissions {
     )
 }
 
+function Set-QuickTestPrivateDirectoryPermissions {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $Path
+    )
+
+    if (-not $IsLinux) {
+        return
+    }
+    [IO.File]::SetUnixFileMode(
+        $Path,
+        (
+            [IO.UnixFileMode]::UserRead -bor
+            [IO.UnixFileMode]::UserWrite -bor
+            [IO.UnixFileMode]::UserExecute
+        )
+    )
+}
+
 function Set-QuickTestOwnerMarker {
     [CmdletBinding()]
     param(
@@ -115,9 +135,27 @@ function Set-QuickTestOwnerMarker {
         [string] $RunId
     )
 
-    [IO.Directory]::CreateDirectory($Path) | Out-Null
+    $marker = Join-Path $Path '.quicktest-owner'
+    if (Test-Path -LiteralPath $Path) {
+        if (-not (Test-Path -LiteralPath $Path -PathType Container)) {
+            throw 'The quick-test path exists but is not a directory.'
+        }
+        if (-not (Test-Path -LiteralPath $marker -PathType Leaf)) {
+            throw 'The quick-test path already exists without an ownership marker.'
+        }
+        $existingRunId = (
+            Get-Content -LiteralPath $marker -Raw -Encoding utf8
+        ).Trim()
+        if ($existingRunId -ne $RunId) {
+            throw 'The quick-test path is owned by a different run.'
+        }
+    }
+    else {
+        [IO.Directory]::CreateDirectory($Path) | Out-Null
+    }
+
     [IO.File]::WriteAllText(
-        (Join-Path $Path '.quicktest-owner'),
+        $marker,
         $RunId + [Environment]::NewLine,
         [Text.UTF8Encoding]::new($false)
     )
