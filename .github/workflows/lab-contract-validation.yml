@@ -62,88 +62,99 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py \
-            --repository-root .
+          python3 ./Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py --repository-root .
 
       - name: Validate Welle 1 orchestration contract
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py \
-            --repository-root .
+          python3 ./Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py --repository-root .
 
       - name: Validate Welle 2 container contract
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py \
-            --repository-root .
+          python3 ./Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py --repository-root .
 
       - name: Validate Welle 3 core-performance contract
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py \
-            --repository-root .
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py --repository-root .
 
       - name: Validate LAB-001 Wellen 0 to 4 contract foundation
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py \
-            --repository-root .
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py --repository-root .
 
       - name: Validate Welle 5 image-pipeline foundation
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py \
-            --repository-root .
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py --repository-root .
 
       - name: Validate Docker Podman quick-test vertical slice
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_VerticalSlice.py \
-            --repository-root .
+          python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_VerticalSlice.py --repository-root .
 
       - name: Validate example manifests against JSON schemas
         shell: pwsh
-        run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabValidation.ps1
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabValidation.ps1
 
       - name: Run Welle 1 orchestration and negative tests
         shell: pwsh
-        run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave1Tests.ps1
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave1Tests.ps1
 
       - name: Run Welle 2 contract tests
         shell: pwsh
-        run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave2Tests.ps1
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave2Tests.ps1
 
       - name: Run Welle 3 contract tests
         shell: pwsh
-        run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave3Tests.ps1
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave3Tests.ps1
 
-      - name: Parse and import Docker Podman quick-test PowerShell
+      - name: Parse quick-test entrypoints
         shell: pwsh
-        run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 `
-            -Phase PARSER
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget ENTRYPOINTS
+
+      - name: Parse quick-test common helpers
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget COMMON
+
+      - name: Parse quick-test runtime helpers
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget RUNTIME
+
+      - name: Parse quick-test Preflight
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget PREFLIGHT
+
+      - name: Parse quick-test Install
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget INSTALL
+
+      - name: Parse quick-test Status
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget STATUS
+
+      - name: Parse quick-test Destroy
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget DESTROY
+
+      - name: Import quick-test module
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PARSER -ParserTarget MODULE
 
       - name: Validate Docker Podman quick-test helper contracts
         shell: pwsh
-        run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 `
-            -Phase HELPERS
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase HELPERS
 
       - name: Validate Docker Podman quick-test Preflight contracts
         shell: pwsh
-        run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 `
-            -Phase PREFLIGHT
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 -Phase PREFLIGHT
 
       - name: Validate Docker Compose model
         shell: bash
@@ -158,11 +169,9 @@ jobs:
           LAB_DATA_DIR="$runtime_dir" \
           LAB_SQL_IMAGE=mcr.microsoft.com/mssql/server:2025-latest \
           LAB_SQL_SA_PASSWORD="$(openssl rand -hex 24)" \
-          docker compose \
-            --project-name lab001-validation \
+          docker compose --project-name lab001-validation \
             --file ./Lab/Containers/compose.yaml \
-            --file ./Lab/Containers/compose.docker.yaml \
-            config --quiet
+            --file ./Lab/Containers/compose.docker.yaml config --quiet
 
       - name: Validate quick-test Docker and Podman Compose models
         shell: bash
@@ -192,46 +201,27 @@ jobs:
             export "QTLAB_SQL${version}_LOG_DIR=$runtime_dir/${version}/log"
             export "QTLAB_SQL${version}_BACKUP_DIR=$runtime_dir/${version}/backup"
           done
-          for override_file in \
-            quick-test.compose.docker.yaml \
-            quick-test.compose.podman.yaml; do
-            docker compose \
-              --project-name qt-validation \
+          for override_file in quick-test.compose.docker.yaml quick-test.compose.podman.yaml; do
+            docker compose --project-name qt-validation \
               --file ./Lab/Containers/quick-test.compose.yaml \
               --file "./Lab/Containers/${override_file}" \
-              --profile sql2019 \
-              --profile sql2022 \
-              --profile sql2025 \
-              config --quiet
+              --profile sql2019 --profile sql2022 --profile sql2025 config --quiet
           done
 
       - name: Install pinned PowerShell analyzer
         shell: pwsh
         run: |
-          Install-Module PSScriptAnalyzer `
-            -RequiredVersion 1.25.0 `
-            -Repository PSGallery `
-            -Scope CurrentUser `
-            -Force
+          Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 \
+            -Repository PSGallery -Scope CurrentUser -Force
 
       - name: Run PowerShell analyzer
         shell: pwsh
         run: |
           $findings = @(
-            Invoke-ScriptAnalyzer `
-              -Path ./Lab/Orchestration `
-              -Recurse `
-              -Severity Error
-            Invoke-ScriptAnalyzer `
-              -Path ./Lab/QuickTest `
-              -Recurse `
-              -Severity Error
-            Invoke-ScriptAnalyzer `
-              -Path ./Lab/Install-Lab.ps1 `
-              -Severity Error
-            Invoke-ScriptAnalyzer `
-              -Path ./Lab/Uninstall-Lab.ps1 `
-              -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Orchestration -Recurse -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/QuickTest -Recurse -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Install-Lab.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Uninstall-Lab.ps1 -Severity Error
           )
           if ($findings.Count -gt 0) {
             $findings |
