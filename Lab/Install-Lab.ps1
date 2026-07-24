@@ -150,22 +150,22 @@ function Read-QuickTestPorts {
     return $result
 }
 
-if ($Action -in @('Status', 'Destroy')) {
-    if ($Action -eq 'Status') {
-        Get-QuickTestLabStatus -ScopeName $ScopeName
-        return
-    }
+if ($Action -eq 'Status') {
+    Get-QuickTestLabStatus -ScopeName $ScopeName
+    return
+}
+
+if ($Action -eq 'Destroy') {
     if (-not $PSCmdlet.ShouldProcess(
             "quick-test scope $ScopeName",
             'Destroy exact registered containers, network, and approved local scope'
         )) {
+        $destroyStatus = 'DESTROY_CONFIRMATION_REQUIRED'
+        if ($WhatIfPreference) {
+            $destroyStatus = 'WHATIF'
+        }
         [pscustomobject] @{
-            Status = if ($WhatIfPreference) {
-                'WHATIF'
-            }
-            else {
-                'DESTROY_CONFIRMATION_REQUIRED'
-            }
+            Status = $destroyStatus
             ScopeName = $ScopeName
         }
         return
@@ -206,11 +206,11 @@ if (-not $PSBoundParameters.ContainsKey('AdminLogin')) {
     }
     else {
         $value = Read-Host 'Administrative SQL login [ExampleSqlAdmin]'
-        $AdminLogin = if ([string]::IsNullOrWhiteSpace($value)) {
-            'ExampleSqlAdmin'
+        if ([string]::IsNullOrWhiteSpace($value)) {
+            $AdminLogin = 'ExampleSqlAdmin'
         }
         else {
-            $value.Trim()
+            $AdminLogin = $value.Trim()
         }
     }
 }
@@ -267,7 +267,7 @@ if (-not (Test-QuickTestPassword -SecureValue $AdminSecret)) {
     throw 'The supplied SQL secret does not satisfy the documented complexity contract.'
 }
 
-$result = Install-QuickTestLab `
+Install-QuickTestLab `
     -Runtime $Runtime `
     -SqlVersions $SqlVersions `
     -Ports $Ports `
@@ -282,5 +282,3 @@ $result = Install-QuickTestLab `
     -SkipImageAvailabilityCheck:$SkipImageAvailabilityCheck `
     -Confirm:$false `
     -WhatIf:$WhatIfPreference
-
-$result
