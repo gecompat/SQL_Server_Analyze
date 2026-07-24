@@ -50,18 +50,38 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - name: Validate catalogs status privacy and orchestration safety
+      - name: Validate Welle 0 contracts
         shell: bash
         run: |
           set -euo pipefail
           python3 ./Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py \
             --repository-root .
+
+      - name: Validate Welle 1 orchestration contract
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 ./Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py \
             --repository-root .
+
+      - name: Validate Welle 2 container contract
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 ./Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py \
             --repository-root .
+
+      - name: Validate Welle 3 core-performance contract
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 ./Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py \
             --repository-root .
+
+      - name: Validate Welle 4 contract foundation
+        shell: bash
+        run: |
+          set -euo pipefail
           python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py \
             --repository-root .
 
