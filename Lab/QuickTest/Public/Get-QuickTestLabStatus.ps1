@@ -56,6 +56,7 @@ function Get-QuickTestLabStatus {
                     HealthStatus = ''
                     OwnershipValid = $null
                     Ready = $false
+                    Stopped = $false
                 }
             }
         )
@@ -131,6 +132,15 @@ function Get-QuickTestLabStatus {
         $runtimeStatus = $parts[0]
         $healthStatus = if ($parts.Count -gt 1) { $parts[1] } else { '' }
         $ownershipValid = $runOwnerValid -and $frameworkOwnerValid
+        $ready = (
+            $runtimeStatus -eq 'running' -and
+            $healthStatus -eq 'healthy' -and
+            $ownershipValid
+        )
+        $stopped = (
+            $runtimeStatus -in @('exited', 'stopped') -and
+            $ownershipValid
+        )
         $instances.Add([pscustomobject] @{
                 SqlVersion = [int] $container.SqlVersion
                 ContainerId = $containerId
@@ -139,21 +149,26 @@ function Get-QuickTestLabStatus {
                 RuntimeStatus = $runtimeStatus
                 HealthStatus = $healthStatus
                 OwnershipValid = $ownershipValid
-                Ready = (
-                    $runtimeStatus -eq 'running' -and
-                    $healthStatus -eq 'healthy' -and
-                    $ownershipValid
-                )
+                Ready = $ready
+                Stopped = $stopped
             })
     }
 
     $readyCount = @($instances | Where-Object { $_.Ready }).Count
+    $stoppedCount = @($instances | Where-Object { $_.Stopped }).Count
     $overallStatus = if (
         $state.LifecycleStatus -eq 'READY' -and
         $instances.Count -gt 0 -and
         $readyCount -eq $instances.Count
     ) {
         'READY'
+    }
+    elseif (
+        $state.LifecycleStatus -eq 'STOPPED' -and
+        $instances.Count -gt 0 -and
+        $stoppedCount -eq $instances.Count
+    ) {
+        'STOPPED'
     }
     else {
         'PARTIAL_SUCCESS'
@@ -167,6 +182,9 @@ function Get-QuickTestLabStatus {
         AdminLogin = $state.AdminLogin
         FrameworkDatabase = $state.FrameworkDatabase
         PersistenceMode = $state.PersistenceMode
+        DataPreserved = $true
+        StatePreserved = $true
+        NetworkPreserved = ($state.LifecycleStatus -eq 'STOPPED')
         Instances = $instances.ToArray()
     }
 }

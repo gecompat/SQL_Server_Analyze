@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
-    [ValidateSet('Preflight', 'Install', 'Status', 'Down', 'Start', 'Destroy')]
+    [ValidateSet('Preflight', 'Install', 'Status', 'Stop', 'Down', 'Start', 'Destroy')]
     [string] $Action = 'Preflight',
 
     [Parameter()]
@@ -167,6 +167,19 @@ if ($Action -eq 'Status') {
     return
 }
 
+if ($Action -eq 'Stop') {
+    $stopArguments = @{
+        ScopeName = $ScopeName
+        StateRoot = $StateRoot
+        Confirm = $false
+    }
+    if ($WhatIfPreference) {
+        $stopArguments.WhatIf = $true
+    }
+    Stop-QuickTestLab @stopArguments
+    return
+}
+
 if ($Action -eq 'Down') {
     if (-not $Force) {
         if (-not $PSCmdlet.ShouldProcess(
@@ -188,6 +201,29 @@ if ($Action -eq 'Down') {
 }
 
 if ($Action -eq 'Start') {
+    $currentStatus = Get-QuickTestLabStatus `
+        -ScopeName $ScopeName `
+        -StateRoot $StateRoot
+    $currentLifecycleStatus = ''
+    if ($currentStatus.PSObject.Properties.Name -contains 'LifecycleStatus') {
+        $currentLifecycleStatus = [string] $currentStatus.LifecycleStatus
+    }
+    if (
+        $currentStatus.Status -eq 'STOPPED' -or
+        $currentLifecycleStatus -eq 'STOPPED'
+    ) {
+        $stoppedStartArguments = @{
+            ScopeName = $ScopeName
+            StateRoot = $StateRoot
+            Confirm = $false
+        }
+        if ($WhatIfPreference) {
+            $stoppedStartArguments.WhatIf = $true
+        }
+        Start-QuickTestStoppedLab @stoppedStartArguments
+        return
+    }
+
     if ($GenerateSecret) {
         throw 'Start requires the existing SQL credential and cannot generate a new one.'
     }
