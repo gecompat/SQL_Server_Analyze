@@ -72,28 +72,6 @@ function Resolve-LabConfiguration {
     if ($configuration.ContainerEngine -notin @('DOCKER', 'PODMAN')) {
         throw 'ContainerEngine contains an unsupported value.'
     }
-    $containerImageLogicalId = if (
-        $configuration.ContainsKey('ContainerImageLogicalId')
-    ) {
-        [string] $configuration.ContainerImageLogicalId
-    }
-    else {
-        'SQL_SERVER_2025_DEVELOPER_LINUX'
-    }
-    if ($containerImageLogicalId -notmatch '^[A-Z0-9_]+$') {
-        throw 'ContainerImageLogicalId must be a generic logical reference.'
-    }
-    $acceptSqlServerEula = if (
-        $configuration.ContainsKey('AcceptSqlServerEula')
-    ) {
-        if ($configuration.AcceptSqlServerEula -isnot [bool]) {
-            throw 'AcceptSqlServerEula must be a Boolean value.'
-        }
-        [bool] $configuration.AcceptSqlServerEula
-    }
-    else {
-        $false
-    }
     if ($configuration.ResourceProfile -notin @('Compact', 'Standard', 'Stress')) {
         throw 'ResourceProfile contains an unsupported value.'
     }
@@ -104,6 +82,36 @@ function Resolve-LabConfiguration {
         @($sqlVersionPriority | Select-Object -Unique).Count -ne $sqlVersionPriority.Count
     ) {
         throw 'SqlVersionPriority must contain unique supported SQL Server versions.'
+    }
+    $containerImageLogicalIds = @{}
+    if ($configuration.ContainsKey('ContainerImageLogicalIds')) {
+        foreach ($version in @(2019, 2022, 2025)) {
+            $versionKey = [string] $version
+            if ($configuration.ContainerImageLogicalIds.ContainsKey($versionKey)) {
+                $logicalImageId = [string] (
+                    $configuration.ContainerImageLogicalIds[$versionKey]
+                )
+                if ($logicalImageId -notmatch '^[A-Z0-9_]+$') {
+                    throw 'ContainerImageLogicalIds contains an invalid logical image identifier.'
+                }
+                $containerImageLogicalIds[$versionKey] = $logicalImageId
+            }
+        }
+    }
+    elseif ($configuration.ContainsKey('ContainerImageLogicalId')) {
+        $legacyLogicalImageId = [string] $configuration.ContainerImageLogicalId
+        if ($legacyLogicalImageId -notmatch '^[A-Z0-9_]+$') {
+            throw 'ContainerImageLogicalId is invalid.'
+        }
+        $containerImageLogicalIds['2025'] = $legacyLogicalImageId
+    }
+    foreach ($version in $sqlVersionPriority) {
+        if (-not $containerImageLogicalIds.ContainsKey([string] $version)) {
+            throw "ContainerImageLogicalIds is missing SQL Server $version."
+        }
+    }
+    if (-not $configuration.ContainsKey('AcceptSqlServerEula')) {
+        throw 'AcceptSqlServerEula must be explicitly configured.'
     }
 
     $storageTargets = @()
@@ -318,8 +326,8 @@ function Resolve-LabConfiguration {
         AllowedExecutionModes = $allowedExecutionModes
         SqlVersionPriority = $sqlVersionPriority
         ContainerEngine = [string] $configuration.ContainerEngine
-        ContainerImageLogicalId = $containerImageLogicalId
-        AcceptSqlServerEula = $acceptSqlServerEula
+        ContainerImageLogicalIds = $containerImageLogicalIds
+        AcceptSqlServerEula = [bool] $configuration.AcceptSqlServerEula
         ResourceProfile = [string] $configuration.ResourceProfile
         StorageTargets = $storageTargets
         StorageRoleBindings = $configuration.StorageRoleBindings

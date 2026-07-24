@@ -3,11 +3,29 @@
   "DataClassification": "PUBLIC_AND_SYNTHETIC",
   "Images": [
     {
+      "LogicalImageId": "SQL_SERVER_2019_DEVELOPER_LINUX",
+      "ProductFamily": "SQL_SERVER",
+      "ProductVersion": "2019",
+      "Platform": "LINUX_X86_64",
+      "ReadableReference": "mcr.microsoft.com/mssql/server:2019-latest",
+      "Digest": "SHA256_DIGEST_REQUIRED",
+      "Status": "UNRESOLVED_EXAMPLE"
+    },
+    {
+      "LogicalImageId": "SQL_SERVER_2022_DEVELOPER_LINUX",
+      "ProductFamily": "SQL_SERVER",
+      "ProductVersion": "2022",
+      "Platform": "LINUX_X86_64",
+      "ReadableReference": "mcr.microsoft.com/mssql/server:2022-latest",
+      "Digest": "SHA256_DIGEST_REQUIRED",
+      "Status": "UNRESOLVED_EXAMPLE"
+    },
+    {
       "LogicalImageId": "SQL_SERVER_2025_DEVELOPER_LINUX",
       "ProductFamily": "SQL_SERVER",
       "ProductVersion": "2025",
       "Platform": "LINUX_X86_64",
-      "ReadableReference": "mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04",
+      "ReadableReference": "mcr.microsoft.com/mssql/server:2025-latest",
       "Digest": "SHA256_DIGEST_REQUIRED",
       "Status": "UNRESOLVED_EXAMPLE"
     }

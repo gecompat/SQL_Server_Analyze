@@ -84,10 +84,16 @@ function Resolve-LabSqlContainerImage {
         [pscustomobject] $Configuration,
 
         [Parameter(Mandatory)]
-        [ValidateSet(2025)]
+        [ValidateSet(2019, 2022, 2025)]
         [int] $SqlVersion
     )
 
+    $logicalImageId = [string] (
+        $Configuration.ContainerImageLogicalIds[[string] $SqlVersion]
+    )
+    if ($logicalImageId -notmatch '^[A-Z0-9_]+$') {
+        throw 'No bounded SQL Server image mapping exists for the requested version.'
+    }
     $lock = Get-Content `
         -LiteralPath $Configuration.ImageLockPath `
         -Raw `
@@ -95,7 +101,7 @@ function Resolve-LabSqlContainerImage {
         ConvertFrom-Json -Depth 100
     $image = @($lock.Images) |
         Where-Object {
-            $_.LogicalImageId -eq $Configuration.ContainerImageLogicalId -and
+            $_.LogicalImageId -eq $logicalImageId -and
             $_.ProductVersion -eq [string] $SqlVersion
         } |
         Select-Object -First 1

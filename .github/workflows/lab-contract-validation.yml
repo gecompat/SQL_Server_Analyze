@@ -8,6 +8,7 @@ on:
       - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
       - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
       - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -22,6 +23,7 @@ on:
       - 'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
       - 'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
       - 'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Implementation_Status.csv'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -38,7 +40,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 Wellen 0 to 2
+    name: Validate LAB-001 Wellen 0 to 3
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -56,6 +58,8 @@ jobs:
             --repository-root .
           python3 ./Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py \
             --repository-root .
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py \
+            --repository-root .
 
       - name: Validate example manifests against JSON schemas
         shell: pwsh
@@ -72,6 +76,11 @@ jobs:
         run: |
           pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave2Tests.ps1
 
+      - name: Run Welle 3 contract tests
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave3Tests.ps1
+
       - name: Validate Docker Compose model
         shell: bash
         run: |
@@ -83,7 +92,7 @@ jobs:
           LAB_CONTAINER_HOSTNAME=lab-sql \
           LAB_RUNTIME_DIR="$runtime_dir" \
           LAB_DATA_DIR="$runtime_dir" \
-          LAB_SQL_IMAGE=mcr.microsoft.com/mssql/server:2025-CU5-ubuntu-24.04 \
+          LAB_SQL_IMAGE=mcr.microsoft.com/mssql/server:2025-latest \
           LAB_SQL_SA_PASSWORD="$(openssl rand -hex 24)" \
           docker compose \
             --project-name lab001-validation \

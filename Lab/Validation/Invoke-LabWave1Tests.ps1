@@ -410,6 +410,12 @@ try {
     AllowedExecutionModes = @('WINDOWS_SINGLE_HOST', 'LINUX_NATIVE')
     SqlVersionPriority = @(2025, 2022, 2019)
     ContainerEngine = 'DOCKER'
+    ContainerImageLogicalIds = @{
+        '2019' = 'SQLSERVER_2019'
+        '2022' = 'SQLSERVER_2022'
+        '2025' = 'SQLSERVER_2025'
+    }
+    AcceptSqlServerEula = `$false
     ResourceProfile = 'Compact'
     StorageRoleBindings = @{
         IMAGE_CACHE = 'SYNTHETIC_TARGET_01'

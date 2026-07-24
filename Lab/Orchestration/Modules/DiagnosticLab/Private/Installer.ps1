@@ -31,6 +31,75 @@ function New-LabStandaloneInstaller {
     return $outputPath
 }
 
+function Get-LabSqlCmdDockerArguments {
+    [CmdletBinding()]
+    [OutputType([string[]])]
+    param(
+        [Parameter(Mandatory)]
+        [ValidatePattern('^[a-f0-9]{64}$')]
+        [string] $ContainerId,
+
+        [Parameter(Mandatory)]
+        [ValidatePattern('^/lab/runtime/[A-Za-z0-9_./-]+\.sql$')]
+        [string] $ContainerSqlPath,
+
+        [Parameter()]
+        [hashtable] $SqlCmdVariables = @{},
+
+        [Parameter()]
+        [ValidateRange(1, 600)]
+        [int] $QueryTimeoutSeconds = 300
+    )
+
+    $arguments = [Collections.Generic.List[string]]::new()
+    foreach ($argument in @(
+            'exec',
+            $ContainerId,
+            '/bin/bash',
+            '-c',
+            (
+                'sqlcmd_path="$(command -v sqlcmd 2>/dev/null || true)"; ' +
+                'if [ -z "$sqlcmd_path" ]; then ' +
+                'for candidate in /opt/mssql-tools18/bin/sqlcmd ' +
+                '/opt/mssql-tools/bin/sqlcmd; do ' +
+                'if [ -x "$candidate" ]; then sqlcmd_path="$candidate"; break; fi; ' +
+                'done; fi; ' +
+                'if [ -z "$sqlcmd_path" ]; then exit 127; fi; ' +
+                'export SQLCMDPASSWORD="$MSSQL_SA_PASSWORD"; ' +
+                'exec "$sqlcmd_path" "$@"'
+            ),
+            'lab-sqlcmd',
+            '-C',
+            '-b',
+            '-S',
+            'localhost',
+            '-U',
+            'sa',
+            '-h',
+            '-1',
+            '-W',
+            '-t',
+            [string] $QueryTimeoutSeconds,
+            '-i',
+            $ContainerSqlPath
+        )) {
+        $arguments.Add([string] $argument)
+    }
+
+    foreach ($name in @($SqlCmdVariables.Keys | Sort-Object)) {
+        $value = [string] $SqlCmdVariables[$name]
+        if (
+            [string] $name -notmatch '^[A-Za-z][A-Za-z0-9_]{0,63}$' -or
+            $value -notmatch '^[A-Za-z0-9_.-]{1,128}$'
+        ) {
+            throw 'A sqlcmd variable is outside the bounded LAB-001 contract.'
+        }
+        $arguments.Add('-v')
+        $arguments.Add("$name=$value")
+    }
+    return $arguments.ToArray()
+}
+
 function Invoke-LabSqlFile {
     [CmdletBinding()]
     [OutputType([string[]])]
@@ -44,17 +113,27 @@ function Invoke-LabSqlFile {
 
         [Parameter(Mandatory)]
         [ValidatePattern('^/lab/runtime/[A-Za-z0-9_./-]+\.sql$')]
-        [string] $ContainerSqlPath
+        [string] $ContainerSqlPath,
+
+        [Parameter()]
+        [hashtable] $SqlCmdVariables = @{},
+
+        [Parameter()]
+        [int[]] $AllowedExitCodes = @(0),
+
+        [Parameter()]
+        [ValidateRange(1, 600)]
+        [int] $QueryTimeoutSeconds = 300
     )
 
-    $command = (
-        'SQLCMDPASSWORD="$MSSQL_SA_PASSWORD" ' +
-        '/opt/mssql-tools18/bin/sqlcmd -C -b -S localhost -U sa ' +
-        '-h -1 -W -i "' + $ContainerSqlPath + '"'
-    )
     return Invoke-LabExternalCommand `
         -FilePath $DockerCommand `
-        -Arguments @('exec', $ContainerId, '/bin/bash', '-c', $command)
+        -Arguments (Get-LabSqlCmdDockerArguments `
+            -ContainerId $ContainerId `
+            -ContainerSqlPath $ContainerSqlPath `
+            -SqlCmdVariables $SqlCmdVariables `
+            -QueryTimeoutSeconds $QueryTimeoutSeconds) `
+        -AllowedExitCodes $AllowedExitCodes
 }
 
 function Install-LabFramework {

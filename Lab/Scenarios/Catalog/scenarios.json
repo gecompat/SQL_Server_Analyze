@@ -29,7 +29,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-CPU-002",
@@ -38,7 +38,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-CPU-003",
@@ -47,7 +47,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-MEM-001",
@@ -56,7 +56,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-MEM-002",
@@ -65,7 +65,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-MEM-003",
@@ -74,7 +74,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-TEMP-001",
@@ -83,7 +83,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-TEMP-002",
@@ -92,7 +92,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-TEMP-003",
@@ -101,7 +101,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-TEMP-004",
@@ -119,7 +119,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-IO-001",
@@ -155,7 +155,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-IO-005",
@@ -173,7 +173,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-LOG-002",
@@ -182,7 +182,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-REC-001",
@@ -191,7 +191,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-REC-002",
@@ -209,7 +209,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-CONC-002",
@@ -218,7 +218,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-DEAD-001",
@@ -227,7 +227,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-DEAD-002",
@@ -236,7 +236,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-DEAD-003",
@@ -245,7 +245,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-DEAD-004",
@@ -254,7 +254,7 @@
       "PrimaryPlatform": "FIXTURE",
       "TopologyId": "FIXTURE-ONLY",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_FIXTURE_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_CONTRACT_FIXTURE"
     },
     {
       "ScenarioId": "LAB-LATCH-001",
@@ -263,7 +263,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-LATCH-002",
@@ -272,7 +272,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-LATCH-003",
@@ -281,7 +281,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-PLAN-001",
@@ -290,7 +290,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-PLAN-002",
@@ -299,7 +299,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-PLAN-003",
@@ -308,7 +308,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-PLAN-004",
@@ -317,7 +317,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-PLAN-005",
@@ -326,7 +326,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-QS-001",
@@ -335,7 +335,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-QS-002",
@@ -344,7 +344,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-IDX-001",
@@ -353,7 +353,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-IDX-002",
@@ -362,7 +362,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-IDX-003",
@@ -371,7 +371,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-COL-001",
@@ -380,7 +380,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-AVAIL-001",
@@ -587,7 +587,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-BROKER-001",
@@ -740,7 +740,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-CLOUD-001",
@@ -794,7 +794,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-ENC-001",
@@ -821,7 +821,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-MAINT-001",
@@ -839,8 +839,10 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-SINGLE",
       "PlannedWave": 3,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     }
   ],
-  "Wave2ContractStatus": "IMPLEMENTED_ACTIONS_GATE"
+  "Wave2ContractStatus": "IMPLEMENTED_ACTIONS_GATE",
+  "Wave3ContractStatus": "IMPLEMENTED_ACTIONS_GATE",
+  "Wave3RuntimeStatus": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING"
 }

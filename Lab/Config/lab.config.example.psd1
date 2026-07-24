@@ -9,7 +9,11 @@
     )
     SqlVersionPriority = @(2025, 2022, 2019)
     ContainerEngine = 'DOCKER'
-    ContainerImageLogicalId = 'SQL_SERVER_2025_DEVELOPER_LINUX'
+    ContainerImageLogicalIds = @{
+        '2019' = 'SQL_SERVER_2019_DEVELOPER_LINUX'
+        '2022' = 'SQL_SERVER_2022_DEVELOPER_LINUX'
+        '2025' = 'SQL_SERVER_2025_DEVELOPER_LINUX'
+    }
     AcceptSqlServerEula = $false
     ResourceProfile = 'Compact'
 
