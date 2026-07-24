@@ -42,7 +42,7 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
     preflight_scope = "\n".join((common, preflight))
 
     for fragment in (
-        "'Preflight', 'Install', 'Status', 'Down', 'Destroy'",
+        "'Preflight', 'Install', 'Status', 'Down', 'Start', 'Destroy'",
         "'DOCKER', 'PODMAN'",
         "SqlVersions",
         "Ports",
@@ -193,6 +193,7 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         "2025",
         "READ_ONLY_PREFLIGHT",
         "Down",
+        "Start",
         "Destroy",
     ):
         require(fragment in readme, f"Quick-test README lacks {fragment}.", findings)
