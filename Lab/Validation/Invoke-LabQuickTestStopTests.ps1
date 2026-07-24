@@ -324,7 +324,7 @@ try {
         -LiteralPath (Join-Path $fakeRuntimeRoot 'commands.log') `
         -Raw `
         -Encoding utf8
-    if (@([regex]::Matches($commands, ' up --detach sql2025 ')).Count -ne 1) {
+    if (@([regex]::Matches($commands, 'up --detach sql2025(?:\s|$)')).Count -ne 1) {
         throw 'Stopped Start recreated the container through Compose.'
     }
 }
