@@ -12,6 +12,7 @@ foreach ($relativePath in @(
         'Public/Invoke-QuickTestPreflight.ps1'
         'Public/Install-QuickTestLab.ps1'
         'Public/Get-QuickTestLabStatus.ps1'
+        'Public/Invoke-QuickTestLabDown.ps1'
         'Public/Remove-QuickTestLab.ps1'
     )) {
     . (Join-Path $PSScriptRoot $relativePath)
@@ -23,6 +24,7 @@ Export-ModuleMember -Function @(
     'Get-QuickTestLabStatus'
     'Get-QuickTestResourceProfile'
     'Install-QuickTestLab'
+    'Invoke-QuickTestLabDown'
     'Invoke-QuickTestPreflight'
     'New-QuickTestPassword'
     'Remove-QuickTestLab'

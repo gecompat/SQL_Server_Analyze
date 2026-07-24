@@ -42,7 +42,7 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
     preflight_scope = "\n".join((common, preflight))
 
     for fragment in (
-        "'Preflight', 'Install', 'Status', 'Destroy'",
+        "'Preflight', 'Install', 'Status', 'Down', 'Destroy'",
         "'DOCKER', 'PODMAN'",
         "SqlVersions",
         "Ports",
@@ -192,6 +192,7 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         "2022",
         "2025",
         "READ_ONLY_PREFLIGHT",
+        "Down",
         "Destroy",
     ):
         require(fragment in readme, f"Quick-test README lacks {fragment}.", findings)
@@ -227,10 +228,7 @@ def main() -> int:
             print(f"ERROR: {finding}")
         return 1
 
-    print(
-        "Docker/Podman quick-test Preflight validated: "
-        "interface=implemented mutation=false external_evidence=NOT_EXECUTED."
-    )
+    print("Docker/Podman quick-test Preflight contracts passed.")
     return 0
 
 

@@ -17,6 +17,7 @@ $paths = @(
     'Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1'
     'Lab/QuickTest/Public/Install-QuickTestLab.ps1'
     'Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1'
+    'Lab/QuickTest/Public/Invoke-QuickTestLabDown.ps1'
     'Lab/QuickTest/Public/Remove-QuickTestLab.ps1'
     'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
 )
@@ -65,8 +66,10 @@ if [ "${1:-}" = 'compose' ] && [ "${2:-}" = 'version' ]; then exit 0; fi
 if [ "${1:-}" = 'compose' ]; then
   if [[ "$joined" == *' up --detach sql2025 '* ]]; then
     printf '%s' "$QTLAB_RUN_ID" > "$FAKE_RUNTIME_ROOT/run-id"
+    : > "$FAKE_RUNTIME_ROOT/container-present"
+    : > "$FAKE_RUNTIME_ROOT/network-present"
   fi
-  if [[ "$joined" == *' ps --all --quiet sql2025 '* ]]; then
+  if [[ "$joined" == *' ps --all --quiet sql2025 '* ]] && [ -f "$FAKE_RUNTIME_ROOT/container-present" ]; then
     printf '%s\n' "$container_short"
   fi
   exit 0
@@ -74,14 +77,14 @@ fi
 if [ "${1:-}" = 'manifest' ] && [ "${2:-}" = 'inspect' ]; then exit 0; fi
 if [ "${1:-}" = 'container' ] && [ "${2:-}" = 'ls' ]; then
   if [[ "$joined" == *'label=qt-lab.scope='* ]]; then exit 0; fi
-  if [[ "$joined" == *'label=qt-lab.run-id='* ]] && [ -f "$FAKE_RUNTIME_ROOT/run-id" ]; then
+  if [[ "$joined" == *'label=qt-lab.run-id='* ]] && [ -f "$FAKE_RUNTIME_ROOT/container-present" ]; then
     printf '%s\n' "$container_short"
   fi
   exit 0
 fi
 if [ "${1:-}" = 'network' ] && [ "${2:-}" = 'ls' ]; then
   if [[ "$joined" == *'label=qt-lab.scope='* ]]; then exit 0; fi
-  if [[ "$joined" == *'label=qt-lab.run-id='* ]] && [ -f "$FAKE_RUNTIME_ROOT/run-id" ]; then
+  if [[ "$joined" == *'label=qt-lab.run-id='* ]] && [ -f "$FAKE_RUNTIME_ROOT/network-present" ]; then
     printf '%s\n' "$network_short"
   fi
   exit 0
@@ -107,10 +110,12 @@ if [ "${1:-}" = 'exec' ]; then
 fi
 if [ "${1:-}" = 'container' ] && [ "${2:-}" = 'rm' ]; then
   printf 'container rm --force %s\n' "${4:-}" >> "$FAKE_RUNTIME_ROOT/removals.log"
+  rm -f "$FAKE_RUNTIME_ROOT/container-present"
   exit 0
 fi
 if [ "${1:-}" = 'network' ] && [ "${2:-}" = 'rm' ]; then
   printf 'network rm %s\n' "${3:-}" >> "$FAKE_RUNTIME_ROOT/removals.log"
+  rm -f "$FAKE_RUNTIME_ROOT/network-present"
   exit 0
 fi
 exit 3
@@ -187,7 +192,7 @@ try {
         -AdminSecret $credentialInput `
         -AdminLogin ExampleSqlAdmin `
         -ResourceProfile SMALL `
-        -PersistenceMode TEMPORARY `
+        -PersistenceMode PERSISTENT `
         -ScopeName synthetic-lifecycle `
         -PersistGeneratedCredential `
         -AcceptEula `
@@ -241,12 +246,76 @@ try {
         throw 'Synthetic Status did not validate runtime health and ownership.'
     }
 
+    $down = Invoke-QuickTestLabDown `
+        -ScopeName synthetic-lifecycle `
+        -StateRoot $stateRoot `
+        -Confirm:$false
+    if (
+        $down.Status -ne 'DOWN' -or
+        $down.AlreadyDown -or
+        -not $down.DataPreserved -or
+        -not $down.StatePreserved -or
+        -not $down.CredentialPreserved -or
+        $down.ContainersRemoved -ne 1 -or
+        $down.NetworksRemoved -ne 1
+    ) {
+        throw 'Synthetic Down did not preserve local state while removing runtime objects.'
+    }
+
+    $downState = Get-Content -LiteralPath $statePath -Raw -Encoding utf8 |
+        ConvertFrom-Json -Depth 100
+    if (
+        $downState.LifecycleStatus -ne 'DOWN' -or
+        -not [string]::IsNullOrWhiteSpace([string] $downState.Containers[0].ContainerId) -or
+        [string] $downState.Containers[0].PreviousContainerId -notmatch '^[a]{64}$' -or
+        -not [string]::IsNullOrWhiteSpace([string] $downState.NetworkId) -or
+        [string] $downState.PreviousNetworkId -notmatch '^[b]{64}$' -or
+        @($downState.RecoveryContainerIds).Count -ne 0 -or
+        @($downState.RecoveryNetworkIds).Count -ne 0
+    ) {
+        throw 'Down did not persist the expected reusable state contract.'
+    }
+    if (
+        -not (Test-Path -LiteralPath (Join-Path $dataRoot 'synthetic-lifecycle')) -or
+        -not (Test-Path -LiteralPath (Join-Path $credentialRoot 'synthetic-lifecycle')) -or
+        -not (Test-Path -LiteralPath (Join-Path $stateRoot 'synthetic-lifecycle'))
+    ) {
+        throw 'Down removed a preserved local lifecycle directory.'
+    }
+
+    $downStatus = Get-QuickTestLabStatus `
+        -ScopeName synthetic-lifecycle `
+        -StateRoot $stateRoot
+    if (
+        $downStatus.Status -ne 'DOWN' -or
+        -not $downStatus.DataPreserved -or
+        -not $downStatus.StatePreserved -or
+        $downStatus.Instances.Count -ne 1 -or
+        $downStatus.Instances[0].RuntimeStatus -ne 'removed' -or
+        $downStatus.Instances[0].Ready
+    ) {
+        throw 'Status did not report the preserved Down state.'
+    }
+
+    $downAgain = Invoke-QuickTestLabDown `
+        -ScopeName synthetic-lifecycle `
+        -StateRoot $stateRoot `
+        -Confirm:$false
+    if (
+        $downAgain.Status -ne 'DOWN' -or
+        -not $downAgain.AlreadyDown -or
+        $downAgain.ContainersRemoved -ne 0 -or
+        $downAgain.NetworksRemoved -ne 0
+    ) {
+        throw 'Down is not idempotent.'
+    }
+
     $destroy = Remove-QuickTestLab `
         -ScopeName synthetic-lifecycle `
         -StateRoot $stateRoot `
         -Confirm:$false
     if ($destroy.Status -ne 'DESTROYED' -or -not $destroy.DataRemoved) {
-        throw 'Synthetic Destroy did not remove the complete owned scope.'
+        throw 'Synthetic Destroy did not remove the complete owned scope after Down.'
     }
     if (
         (Test-Path -LiteralPath (Join-Path $stateRoot 'synthetic-lifecycle')) -or
@@ -264,7 +333,7 @@ try {
         $removalLog -notmatch 'container rm --force [a]{64}' -or
         $removalLog -notmatch 'network rm [b]{64}'
     ) {
-        throw 'Destroy did not use exact canonical runtime object IDs.'
+        throw 'Down did not use exact canonical runtime object IDs.'
     }
 }
 finally {
