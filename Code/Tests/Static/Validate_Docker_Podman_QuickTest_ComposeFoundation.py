@@ -120,7 +120,8 @@ def validate_status(root: Path, findings: list[str]) -> None:
     )
     require(
         status.get("WorkItemId") == "LAB-QUICKTEST-001"
-        and status.get("ContractStatus") == "VALIDATED_FOUNDATION"
+        and status.get("ContractStatus")
+        in {"VALIDATED_FOUNDATION", "IMPLEMENTED_AUTOMATED_GATE"}
         and status.get("RuntimeStatus") == "NOT_EXECUTED"
         and status.get("DataClassification") == "PUBLIC_AND_SYNTHETIC",
         "Quick-test Compose status is missing or overstated.",
@@ -136,10 +137,10 @@ def validate_status(root: Path, findings: list[str]) -> None:
         require(fragment in delivered, f"Delivered scope lacks {fragment}.", findings)
     open_scope = " ".join(status.get("OpenScope", []))
     for fragment in (
-        "PowerShell entrypoint",
-        "Preflight",
         "Lifecycle execution",
         "Framework installation",
+        "Native Docker runtime evidence",
+        "Native Podman runtime evidence",
     ):
         require(fragment in open_scope, f"Open scope lacks {fragment}.", findings)
 
