@@ -1,7 +1,7 @@
 Set-StrictMode -Version Latest
 
 function Install-QuickTestLab {
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Medium')]
     [OutputType([pscustomobject])]
     param(
         [Parameter(Mandatory)]
@@ -63,27 +63,62 @@ function Install-QuickTestLab {
     }
 
     $versions = @($SqlVersions | Sort-Object -Unique)
+    $resolvedPorts = Resolve-QuickTestPorts `
+        -SqlVersions $versions `
+        -Ports $Ports
+    $stateBaseRoot = [IO.Path]::GetFullPath($StateRoot)
+    $dataBaseRoot = [IO.Path]::GetFullPath($DataRoot)
+    $credentialBaseRoot = [IO.Path]::GetFullPath($CredentialRoot)
     $scopeStateDirectory = [IO.Path]::GetFullPath(
-        (Join-Path $StateRoot $ScopeName)
+        (Join-Path $stateBaseRoot $ScopeName)
     )
     $scopeDataDirectory = [IO.Path]::GetFullPath(
-        (Join-Path $DataRoot $ScopeName)
+        (Join-Path $dataBaseRoot $ScopeName)
     )
     $scopeCredentialDirectory = [IO.Path]::GetFullPath(
-        (Join-Path $CredentialRoot $ScopeName)
+        (Join-Path $credentialBaseRoot $ScopeName)
     )
     $statePath = Join-Path $scopeStateDirectory 'state.json'
+
+    foreach ($boundary in @(
+            [pscustomobject] @{ Path = $scopeStateDirectory; Root = $stateBaseRoot }
+            [pscustomobject] @{ Path = $scopeDataDirectory; Root = $dataBaseRoot }
+            [pscustomobject] @{ Path = $scopeCredentialDirectory; Root = $credentialBaseRoot }
+        )) {
+        if (
+            -not (Test-QuickTestPathWithinRoot `
+                -Path $boundary.Path `
+                -Root $boundary.Root) -or
+            $boundary.Path -eq $boundary.Root
+        ) {
+            throw 'A quick-test lifecycle path is outside its approved child scope.'
+        }
+    }
 
     if (Test-Path -LiteralPath $statePath -PathType Leaf) {
         return Get-QuickTestLabStatus `
             -ScopeName $ScopeName `
-            -StateRoot $StateRoot
+            -StateRoot $stateBaseRoot
+    }
+
+    $localConflicts = @(
+        $scopeStateDirectory
+        $scopeDataDirectory
+        $scopeCredentialDirectory
+    ) | Where-Object { Test-Path -LiteralPath $_ }
+    if ($localConflicts.Count -gt 0) {
+        return [pscustomobject] @{
+            Status = 'PREFLIGHT_FAILED'
+            ScopeName = $ScopeName
+            BlockerReasonCodes = @('LOCAL_SCOPE_CONFLICT')
+            MutationBoundary = 'READ_ONLY_PREFLIGHT'
+        }
     }
 
     $preflight = Invoke-QuickTestPreflight `
         -Runtime $Runtime `
         -SqlVersions $versions `
-        -Ports $Ports `
+        -Ports $resolvedPorts `
         -AdminLogin $AdminLogin `
         -AdminSecret $AdminSecret `
         -ResourceProfile $ResourceProfile `
@@ -108,71 +143,13 @@ function Install-QuickTestLab {
 
     $runtimeInfo = Resolve-QuickTestRuntime -Runtime $Runtime
     $profile = Get-QuickTestResourceProfile -Name $ResourceProfile
-    $resolvedPorts = Resolve-QuickTestPorts `
-        -SqlVersions $versions `
-        -Ports $Ports
     $runId = New-QuickTestRunId
     $projectName = $ScopeName
     $runtimeDirectory = Join-Path $scopeStateDirectory 'runtime'
     $containers = [Collections.Generic.List[object]]::new()
     $networkId = ''
     $credentialPath = ''
-
-    foreach ($boundary in @(
-            [pscustomobject] @{ Path = $scopeStateDirectory; Root = $StateRoot }
-            [pscustomobject] @{ Path = $scopeDataDirectory; Root = $DataRoot }
-            [pscustomobject] @{ Path = $scopeCredentialDirectory; Root = $CredentialRoot }
-        )) {
-        if (
-            -not (Test-QuickTestPathWithinRoot `
-                -Path $boundary.Path `
-                -Root $boundary.Root) -or
-            [IO.Path]::GetFullPath($boundary.Path) -eq
-                [IO.Path]::GetFullPath($boundary.Root)
-        ) {
-            throw 'A quick-test lifecycle path is outside its approved child scope.'
-        }
-    }
-
-    Set-QuickTestOwnerMarker -Path $scopeStateDirectory -RunId $runId
-    [IO.Directory]::CreateDirectory($runtimeDirectory) | Out-Null
-    Set-QuickTestOwnerMarker -Path $scopeDataDirectory -RunId $runId
-
-    $state = [ordered] @{
-        SchemaVersion = '1.0'
-        DataClassification = 'LOCAL_RUNTIME_STATE'
-        LifecycleStatus = 'INSTALLING'
-        ScopeName = $ScopeName
-        RunId = $runId
-        Runtime = $Runtime
-        ProjectName = $projectName
-        SqlVersions = $versions
-        ResourceProfile = $ResourceProfile
-        PersistenceMode = $PersistenceMode
-        InstallFramework = [bool] $InstallFramework
-        AdminLogin = $AdminLogin
-        FrameworkDatabase = ''
-        StateBaseRoot = [IO.Path]::GetFullPath($StateRoot)
-        StateDirectory = $scopeStateDirectory
-        DataBaseRoot = [IO.Path]::GetFullPath($DataRoot)
-        DataRoot = $scopeDataDirectory
-        CredentialBaseRoot = [IO.Path]::GetFullPath($CredentialRoot)
-        CredentialDirectory = ''
-        GeneratedCredentialStored = $false
-        NetworkId = ''
-        Containers = @()
-    }
-    Write-QuickTestJson -Path $statePath -InputObject $state
-
-    if ($PersistGeneratedCredential) {
-        $credentialPath = Save-QuickTestGeneratedCredential `
-            -CredentialDirectory $scopeCredentialDirectory `
-            -SecureValue $AdminSecret `
-            -RunId $runId
-        $state.CredentialDirectory = $scopeCredentialDirectory
-        $state.GeneratedCredentialStored = $true
-        Write-QuickTestJson -Path $statePath -InputObject $state
-    }
+    $baseEnvironment = $null
 
     $environmentNames = [Collections.Generic.List[string]]::new()
     foreach ($name in @(
@@ -209,6 +186,51 @@ function Install-QuickTestLab {
 
     $plainValue = ConvertFrom-QuickTestSecureString -SecureValue $AdminSecret
     try {
+        Set-QuickTestOwnerMarker -Path $scopeStateDirectory -RunId $runId
+        Set-QuickTestPrivateDirectoryPermissions -Path $scopeStateDirectory
+        [IO.Directory]::CreateDirectory($runtimeDirectory) | Out-Null
+        Set-QuickTestPrivateDirectoryPermissions -Path $runtimeDirectory
+        Set-QuickTestOwnerMarker -Path $scopeDataDirectory -RunId $runId
+        Set-QuickTestDirectoryPermissions -Path $scopeDataDirectory
+
+        $state = [ordered] @{
+            SchemaVersion = '1.0'
+            DataClassification = 'LOCAL_RUNTIME_STATE'
+            LifecycleStatus = 'INSTALLING'
+            ScopeName = $ScopeName
+            RunId = $runId
+            Runtime = $Runtime
+            ProjectName = $projectName
+            SqlVersions = $versions
+            ResourceProfile = $ResourceProfile
+            PersistenceMode = $PersistenceMode
+            InstallFramework = [bool] $InstallFramework
+            AdminLogin = $AdminLogin
+            FrameworkDatabase = ''
+            StateBaseRoot = $stateBaseRoot
+            StateDirectory = $scopeStateDirectory
+            DataBaseRoot = $dataBaseRoot
+            DataRoot = $scopeDataDirectory
+            CredentialBaseRoot = $credentialBaseRoot
+            CredentialDirectory = ''
+            GeneratedCredentialStored = $false
+            NetworkId = ''
+            Containers = @()
+        }
+        Write-QuickTestJson -Path $statePath -InputObject $state
+
+        if ($PersistGeneratedCredential) {
+            $credentialPath = Save-QuickTestGeneratedCredential `
+                -CredentialDirectory $scopeCredentialDirectory `
+                -SecureValue $AdminSecret `
+                -RunId $runId
+            Set-QuickTestPrivateDirectoryPermissions `
+                -Path $scopeCredentialDirectory
+            $state.CredentialDirectory = $scopeCredentialDirectory
+            $state.GeneratedCredentialStored = $true
+            Write-QuickTestJson -Path $statePath -InputObject $state
+        }
+
         $baseEnvironment = @{
             QTLAB_COMPOSE_PROJECT = $projectName
             QTLAB_SCOPE = $ScopeName
@@ -381,21 +403,19 @@ function Install-QuickTestLab {
                 -NetworkIds $resources.NetworkIds
 
             if (
-                $PersistenceMode -eq 'TEMPORARY' -and
                 (Test-Path -LiteralPath $scopeDataDirectory) -and
                 (Test-QuickTestOwnedDirectory `
                     -Path $scopeDataDirectory `
-                    -Root $DataRoot `
+                    -Root $dataBaseRoot `
                     -RunId $runId)
             ) {
                 Remove-Item -LiteralPath $scopeDataDirectory -Recurse -Force
             }
             if (
-                $credentialPath -and
                 (Test-Path -LiteralPath $scopeCredentialDirectory) -and
                 (Test-QuickTestOwnedDirectory `
                     -Path $scopeCredentialDirectory `
-                    -Root $CredentialRoot `
+                    -Root $credentialBaseRoot `
                     -RunId $runId)
             ) {
                 Remove-Item `
@@ -407,7 +427,7 @@ function Install-QuickTestLab {
                 (Test-Path -LiteralPath $scopeStateDirectory) -and
                 (Test-QuickTestOwnedDirectory `
                     -Path $scopeStateDirectory `
-                    -Root $StateRoot `
+                    -Root $stateBaseRoot `
                     -RunId $runId)
             ) {
                 Remove-Item -LiteralPath $scopeStateDirectory -Recurse -Force
@@ -425,6 +445,11 @@ function Install-QuickTestLab {
                 $previousEnvironment[$name],
                 [EnvironmentVariableTarget]::Process
             )
+        }
+        if ($null -ne $baseEnvironment) {
+            foreach ($name in @($baseEnvironment.Keys)) {
+                $baseEnvironment[$name] = $null
+            }
         }
         $plainValue = $null
     }
