@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
-    [ValidateSet('Preflight', 'Install', 'Status', 'Stop', 'Restart', 'Down', 'Start', 'Destroy')]
+    [ValidateSet('Preflight', 'Install', 'Status', 'Stop', 'Restart', 'Reset', 'Down', 'Start', 'Destroy')]
     [string] $Action = 'Preflight',
 
     [Parameter()]
@@ -156,8 +156,8 @@ function Read-QuickTestPorts {
     return $result
 }
 
-if ($Force -and $Action -notin @('Down', 'Destroy')) {
-    throw '-Force is supported only with -Action Down or Destroy.'
+if ($Force -and $Action -notin @('Down', 'Reset', 'Destroy')) {
+    throw '-Force is supported only with -Action Down, Reset, or Destroy.'
 }
 
 if ($Action -eq 'Status') {
@@ -190,6 +190,53 @@ if ($Action -eq 'Restart') {
         $restartArguments.WhatIf = $true
     }
     Restart-QuickTestLab @restartArguments
+    return
+}
+
+if ($Action -eq 'Reset') {
+    if ($GenerateSecret) {
+        throw 'Reset requires the existing SQL credential and cannot generate a new one.'
+    }
+    $resetSecret = $AdminSecret
+    if ($null -eq $resetSecret) {
+        $environmentCredential = ''
+        if (-not [string]::IsNullOrWhiteSpace($SecretEnvironmentVariable)) {
+            $environmentCredential = [Environment]::GetEnvironmentVariable(
+                $SecretEnvironmentVariable
+            )
+        }
+        if (-not [string]::IsNullOrWhiteSpace($environmentCredential)) {
+            $resetSecret = ConvertTo-QuickTestSecureString `
+                -Value $environmentCredential
+            $environmentCredential = $null
+        }
+    }
+
+    $resetArguments = @{
+        ScopeName = $ScopeName
+        StateRoot = $StateRoot
+        SkipImageAvailabilityCheck = $SkipImageAvailabilityCheck
+    }
+    if ($null -ne $resetSecret) {
+        $resetArguments.AdminSecret = $resetSecret
+    }
+    if ($Force) {
+        $resetArguments.Confirm = $false
+    }
+    if ($WhatIfPreference) {
+        $resetArguments.WhatIf = $true
+    }
+    $resetResult = Reset-QuickTestLab @resetArguments
+    if (
+        $resetResult.Status -eq 'RESET_CREDENTIAL_REQUIRED' -and
+        -not $NonInteractive
+    ) {
+        $resetArguments.AdminSecret = Read-Host `
+            'Existing administrative SQL credential' `
+            -AsSecureString
+        $resetResult = Reset-QuickTestLab @resetArguments
+    }
+    $resetResult
     return
 }
 
