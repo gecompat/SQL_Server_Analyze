@@ -210,7 +210,7 @@ jobs:
             -Scope CurrentUser `
             -Force
 
-      - name: Run PowerShell analyzer
+      - name: Analyze existing LAB orchestration
         shell: pwsh
         run: |
           $findings = @(
@@ -218,10 +218,34 @@ jobs:
               -Path ./Lab/Orchestration `
               -Recurse `
               -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Existing LAB orchestration analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test module
+        shell: pwsh
+        run: |
+          $findings = @(
             Invoke-ScriptAnalyzer `
               -Path ./Lab/QuickTest `
               -Recurse `
               -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "Quick-test module analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test entrypoint
+        shell: pwsh
+        run: |
+          $findings = @(
             Invoke-ScriptAnalyzer `
               -Path ./Lab/Install-Lab.ps1 `
               -Severity Error
@@ -230,5 +254,5 @@ jobs:
             $findings |
               Select-Object RuleName, Severity, ScriptName, Line |
               Format-Table -AutoSize
-            throw "PSScriptAnalyzer reported $($findings.Count) error finding(s)."
+            throw "Quick-test entrypoint analyzer reported $($findings.Count) error finding(s)."
           }
