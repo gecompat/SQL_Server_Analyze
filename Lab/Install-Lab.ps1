@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
-    [ValidateSet('Preflight', 'Install', 'Status', 'Down', 'Destroy')]
+    [ValidateSet('Preflight', 'Install', 'Status', 'Down', 'Start', 'Destroy')]
     [string] $Action = 'Preflight',
 
     [Parameter()]
@@ -184,6 +184,50 @@ if ($Action -eq 'Down') {
         -ScopeName $ScopeName `
         -StateRoot $StateRoot `
         -Confirm:$false
+    return
+}
+
+if ($Action -eq 'Start') {
+    if ($GenerateSecret) {
+        throw 'Start requires the existing SQL credential and cannot generate a new one.'
+    }
+    $startSecret = $AdminSecret
+    if ($null -eq $startSecret) {
+        $environmentCredential = ''
+        if (-not [string]::IsNullOrWhiteSpace($SecretEnvironmentVariable)) {
+            $environmentCredential = [Environment]::GetEnvironmentVariable(
+                $SecretEnvironmentVariable
+            )
+        }
+        if (-not [string]::IsNullOrWhiteSpace($environmentCredential)) {
+            $startSecret = ConvertTo-QuickTestSecureString `
+                -Value $environmentCredential
+            $environmentCredential = $null
+        }
+    }
+
+    $startArguments = @{
+        ScopeName = $ScopeName
+        StateRoot = $StateRoot
+        Confirm = $false
+    }
+    if ($null -ne $startSecret) {
+        $startArguments.AdminSecret = $startSecret
+    }
+    if ($WhatIfPreference) {
+        $startArguments.WhatIf = $true
+    }
+    $startResult = Start-QuickTestLab @startArguments
+    if (
+        $startResult.Status -eq 'START_CREDENTIAL_REQUIRED' -and
+        -not $NonInteractive
+    ) {
+        $startArguments.AdminSecret = Read-Host `
+            'Existing administrative SQL credential' `
+            -AsSecureString
+        $startResult = Start-QuickTestLab @startArguments
+    }
+    $startResult
     return
 }
 
