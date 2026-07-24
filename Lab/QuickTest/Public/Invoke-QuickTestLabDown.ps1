@@ -130,11 +130,13 @@ function Invoke-QuickTestLabDown {
     $state.RecoveryNetworkIds = $registeredNetworkIds
     Write-QuickTestJson -Path $statePath -InputObject $state
 
-    Remove-QuickTestRuntimeResources `
-        -RuntimeInfo $runtimeInfo `
-        -RunId $state.RunId `
-        -ContainerIds $existingContainerIds `
-        -NetworkIds $existingNetworkIds
+    if ($existingContainerIds.Count -gt 0 -or $existingNetworkIds.Count -gt 0) {
+        Remove-QuickTestRuntimeResources `
+            -RuntimeInfo $runtimeInfo `
+            -RunId $state.RunId `
+            -ContainerIds $existingContainerIds `
+            -NetworkIds $existingNetworkIds
+    }
 
     $updatedContainers = @(
         foreach ($container in @($state.Containers)) {
