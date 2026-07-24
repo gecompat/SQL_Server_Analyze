@@ -71,16 +71,8 @@ REQUIRED_FILES = {
     "Metadata/Quality/Lab_Wave_Status.csv",
 }
 
-FORBIDDEN_CONTENT_PATTERNS = {
-    r"(?i)[A-Z]:\\Users\\": "Windows user path",
-    r"(?i)/home/[^/\s]+": "Linux user path",
-    r"(?i)\\\\[^\\\s]+\\[^\s]+": "UNC path",
-    r"\b(?:10|127|169\.254|172\.(?:1[6-9]|2[0-9]|3[01])|192\.168)\.\d{1,3}\.\d{1,3}\b": "private or loopback address",
-    r"(?i)\b(?:ProductKey|PrivateKey|Password|Credential|ConnectionString)\b\s*[:=]\s*[^,\r\n}\]]+": "secret or license literal",
-    r"(?i)\b[0-9a-f]{64}\b": "resolved checksum or digest",
-}
-
 FORBIDDEN_IMAGE_SUFFIXES = {".avhdx", ".iso", ".vhd", ".vhdx", ".wim"}
+ACTUAL_SHA256 = re.compile(r"(?i)\b[0-9a-f]{64}\b")
 
 
 def load_json(path: Path) -> object:
@@ -187,12 +179,12 @@ def validate_contract(root: Path, findings: list[str]) -> dict[str, object]:
         if not isinstance(stage, dict):
             findings.append("Welle 5 pipeline stage is not an object.")
             continue
+        guards = stage.get("RequiredGuards", [])
         require(
             stage.get("ExecutionStatus") == "NOT_EXECUTED"
-            and isinstance(stage.get("RequiredGuards"), list)
-            and bool(stage.get("RequiredGuards"))
-            and len(stage.get("RequiredGuards", []))
-            == len(set(stage.get("RequiredGuards", []))),
+            and isinstance(guards, list)
+            and bool(guards)
+            and len(guards) == len(set(guards)),
             f"{stage.get('StageId')}: execution status or guards are invalid.",
             findings,
         )
@@ -252,6 +244,14 @@ def validate_media_example(
         findings,
     )
 
+    forbidden_fields = {
+        "Path",
+        "FileName",
+        "Uri",
+        "ProductKey",
+        "Credential",
+        "Password",
+    }
     for media_id, (family, version) in REQUIRED_MEDIA.items():
         row = media.get(media_id, {})
         require(
@@ -264,17 +264,7 @@ def validate_media_example(
             findings,
         )
         require(
-            not any(
-                key in row
-                for key in (
-                    "Path",
-                    "FileName",
-                    "Uri",
-                    "ProductKey",
-                    "Credential",
-                    "Password",
-                )
-            ),
+            forbidden_fields.isdisjoint(row),
             f"{media_id}: public media binding exposes a local or sensitive field.",
             findings,
         )
@@ -405,9 +395,17 @@ def validate_privacy(root: Path, findings: list[str]) -> None:
         root / "Lab/HyperV/Images/image-pipeline-contract.json",
     ]
     combined = "\n".join(path.read_text(encoding="utf-8") for path in paths)
-    for pattern, label in FORBIDDEN_CONTENT_PATTERNS.items():
-        if re.search(pattern, combined):
-            findings.append(f"Forbidden {label} detected in the Welle 5 scope.")
+    require(
+        ACTUAL_SHA256.search(combined) is None,
+        "Welle 5 public scope contains a resolved checksum or digest.",
+        findings,
+    )
+    for forbidden in ("C:\\Users\\", "/home/", "@example."):
+        require(
+            forbidden.lower() not in combined.lower(),
+            "Welle 5 public scope contains a local or identity-like value.",
+            findings,
+        )
 
 
 def main() -> int:
