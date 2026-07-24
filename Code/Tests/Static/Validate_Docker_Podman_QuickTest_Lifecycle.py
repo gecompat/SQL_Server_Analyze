@@ -28,7 +28,6 @@ REQUIRED_FILES = {
     "Metadata/Quality/Docker_Podman_Quick_Test_Status.json",
     "Metadata/Quality/Lab_External_Evidence_Gates.csv",
 }
-
 EXPECTED_GATES = {
     "LAB-GATE-QUICKTEST-DOCKER": "DOCKER_ENGINE",
     "LAB-GATE-QUICKTEST-PODMAN": "PODMAN_ENGINE",
@@ -55,9 +54,9 @@ def validate_entrypoints(root: Path, findings: list[str]) -> None:
         "Get-QuickTestLabStatus",
         "Remove-QuickTestLab",
         "InstallFramework",
-        "RemoveData",
         "Force",
         "PersistGeneratedCredential",
+        "Destroy all registered quick-test resources and local data",
     ):
         require(
             fragment in install_entrypoint,
@@ -65,10 +64,17 @@ def validate_entrypoints(root: Path, findings: list[str]) -> None:
             findings,
         )
     require(
-        "Remove-QuickTestLab" in uninstall_entrypoint
-        and "Confirm = $false" in uninstall_entrypoint
-        and "Confirm = $true" in uninstall_entrypoint,
-        "Uninstall-Lab.ps1 lacks explicit confirmed and forced cleanup paths.",
+        "SupportsShouldProcess" in uninstall_entrypoint
+        and "if (-not $Force)" in uninstall_entrypoint
+        and "Remove-QuickTestLab" in uninstall_entrypoint
+        and "-Confirm:$false" in uninstall_entrypoint,
+        "Uninstall-Lab.ps1 lacks confirmation-bound full-scope cleanup.",
+        findings,
+    )
+    require(
+        "RemoveData" not in install_entrypoint
+        and "RemoveData" not in uninstall_entrypoint,
+        "Destroy still exposes the obsolete partial-data cleanup switch.",
         findings,
     )
     for fragment in (
@@ -200,9 +206,13 @@ def validate_status_destroy(root: Path, findings: list[str]) -> None:
         "DESTROY_CONFIRMATION_REQUIRED",
         "Get-QuickTestResourcesByRunId",
         "Remove-QuickTestRuntimeResources",
+        "unexpectedContainers",
+        "unexpectedNetworks",
+        "registeredContainerIds",
+        "registeredNetworkIds",
         "Test-QuickTestOwnedDirectory",
-        "PersistenceMode -eq 'TEMPORARY'",
         "CredentialDirectory",
+        "DataRemoved = $true",
         "Status = 'DESTROYED'",
     ):
         require(fragment in destroy, f"Destroy lifecycle lacks {fragment}.", findings)
@@ -211,6 +221,12 @@ def validate_status_destroy(root: Path, findings: list[str]) -> None:
         and "-Recurse" in destroy
         and "Test-QuickTestOwnedDirectory" in destroy,
         "Destroy local cleanup is not marker and boundary gated.",
+        findings,
+    )
+    require(
+        "PersistenceMode -eq 'TEMPORARY'" not in destroy
+        and "RemoveData" not in destroy,
+        "Destroy does not remove the complete owned scope.",
         findings,
     )
 
@@ -230,6 +246,8 @@ def validate_framework_wrapper(root: Path, findings: list[str]) -> None:
         "function Install-LabContainerFramework",
         "'DOCKER', 'PODMAN'",
         "Install-LabFramework",
+        "Verify_Framework.sql",
+        "FRAMEWORK_READY",
         "FrameworkDatabase = 'LabAnalyze'",
     ):
         require(fragment in wrapper, f"Framework wrapper lacks {fragment}.", findings)
@@ -328,6 +346,11 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         "NOT_EXECUTED",
     ):
         require(fragment in readme, f"Quick-test README lacks {fragment}.", findings)
+    require(
+        "Destroy always removes" in readme,
+        "Quick-test README does not describe full-scope Destroy semantics.",
+        findings,
+    )
 
 
 def main() -> int:
