@@ -40,6 +40,10 @@ $schemaTests = @(
         Instance = 'Lab/Scenarios/Core/LAB-BASE-002/scenario.json'
         Schema = 'Lab/Contracts/scenario.schema.json'
     }
+    @{
+        Instance = 'Lab/Scenarios/Infrastructure/wave4-topology-profiles.json'
+        Schema = 'Lab/Contracts/wave4-topology-profile.schema.json'
+    }
 )
 
 foreach ($test in $schemaTests) {
@@ -127,6 +131,7 @@ foreach ($validator in @(
         'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
         'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
         'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
+        'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
     )) {
     $validatorPath = Join-Path $RepositoryRoot $validator
     & $pythonCommand.Source $validatorPath --repository-root $RepositoryRoot
