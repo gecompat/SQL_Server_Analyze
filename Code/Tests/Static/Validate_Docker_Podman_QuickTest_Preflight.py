@@ -39,10 +39,10 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
     preflight = read_text(
         root, "Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1"
     )
-    module = "\n".join((loader, common, preflight))
+    preflight_scope = "\n".join((common, preflight))
 
     for fragment in (
-        "[ValidateSet('Preflight')]",
+        "'Preflight', 'Install', 'Status', 'Destroy'",
         "'DOCKER', 'PODMAN'",
         "SqlVersions",
         "Ports",
@@ -61,14 +61,6 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         "Read-Host 'Administrative SQL secret' -AsSecureString",
     ):
         require(fragment in entrypoint, f"Install-Lab.ps1 lacks {fragment}.", findings)
-
-    require(
-        "InstallFramework" not in entrypoint
-        and "Status" not in entrypoint
-        and "Destroy" not in entrypoint,
-        "Preflight entrypoint exposes later lifecycle actions.",
-        findings,
-    )
 
     for fragment in (
         "function Test-QuickTestPassword",
@@ -90,7 +82,11 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         "IMAGE_UNAVAILABLE",
         "MutationBoundary = 'READ_ONLY_PREFLIGHT'",
     ):
-        require(fragment in module, f"Preflight module lacks {fragment}.", findings)
+        require(
+            fragment in preflight_scope,
+            f"Preflight implementation lacks {fragment}.",
+            findings,
+        )
 
     for forbidden in (
         "compose', 'up'",
@@ -104,7 +100,7 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         "Out-File",
     ):
         require(
-            forbidden not in module and forbidden not in entrypoint,
+            forbidden not in preflight_scope,
             f"Read-only Preflight contains mutating fragment {forbidden}.",
             findings,
         )
@@ -115,10 +111,16 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         "Write-Debug $plainValue",
     ):
         require(
-            forbidden not in module,
+            forbidden not in preflight_scope,
             f"Credential exposure output fragment detected: {forbidden}.",
             findings,
         )
+
+    require(
+        "Invoke-QuickTestPreflight" in loader,
+        "Quick-test module no longer exports Preflight.",
+        findings,
+    )
 
 
 def validate_status(root: Path, findings: list[str]) -> None:
@@ -127,9 +129,11 @@ def validate_status(root: Path, findings: list[str]) -> None:
     )
     require(
         status.get("WorkItemId") == "LAB-QUICKTEST-001"
-        and status.get("ContractStatus") == "IMPLEMENTED_AUTOMATED_GATE"
+        and status.get("ContractStatus")
+        in {"IMPLEMENTED_AUTOMATED_GATE", "IMPLEMENTED_ACTIONS_GATE"}
         and status.get("PreflightStatus") == "IMPLEMENTED_AUTOMATED_GATE"
-        and status.get("RuntimeStatus") == "NOT_EXECUTED"
+        and status.get("RuntimeStatus")
+        in {"NOT_EXECUTED", "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING"}
         and status.get("DataClassification") == "PUBLIC_AND_SYNTHETIC",
         "Quick-test Preflight status is missing or overstated.",
         findings,
@@ -139,16 +143,12 @@ def validate_status(root: Path, findings: list[str]) -> None:
     for fragment in (
         "Interactive and non-interactive PowerShell 7 Preflight entrypoint",
         "runtime and Compose capability detection",
-        "host-port, memory, path, image, EULA, and secret-policy checks",
+        "host-port, memory, path, image, EULA, and credential-policy checks",
         "Structured READY or PREFLIGHT_FAILED result",
-        "Synthetic positive and negative Preflight contract tests",
+        "Preflight and lifecycle contract tests",
     ):
         require(fragment in delivered, f"Delivered scope lacks {fragment}.", findings)
     for fragment in (
-        "Lifecycle execution",
-        "Container Install or Up action",
-        "Framework installation",
-        "Status, Down, and Destroy",
         "Native Docker runtime evidence",
         "Native Podman runtime evidence",
     ):
@@ -192,7 +192,7 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         "2022",
         "2025",
         "READ_ONLY_PREFLIGHT",
-        "Status, Down, and Destroy",
+        "Destroy",
     ):
         require(fragment in readme, f"Quick-test README lacks {fragment}.", findings)
     for fragment in ("Preflight", "Zugangsdaten", "Install-Lab.ps1", "Docker", "Podman"):
@@ -229,7 +229,7 @@ def main() -> int:
 
     print(
         "Docker/Podman quick-test Preflight validated: "
-        "interface=implemented runtime=NOT_EXECUTED mutation=false."
+        "interface=implemented mutation=false external_evidence=NOT_EXECUTED."
     )
     return 0
 
