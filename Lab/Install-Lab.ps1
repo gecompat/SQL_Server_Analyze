@@ -246,17 +246,16 @@ elseif ($PSBoundParameters.ContainsKey('AdminSecret')) {
     # The caller supplied a SecureString object.
 }
 else {
-    $environmentSecret = ''
+    $environmentCredential = ''
     if (-not [string]::IsNullOrWhiteSpace($SecretEnvironmentVariable)) {
-        $environmentSecret = [Environment]::GetEnvironmentVariable(
+        $environmentCredential = [Environment]::GetEnvironmentVariable(
             $SecretEnvironmentVariable
         )
     }
-    if (-not [string]::IsNullOrWhiteSpace($environmentSecret)) {
-        $AdminSecret = ConvertTo-SecureString `
-            -String $environmentSecret `
-            -AsPlainText `
-            -Force
+    if (-not [string]::IsNullOrWhiteSpace($environmentCredential)) {
+        $AdminSecret = ConvertTo-QuickTestSecureString `
+            -Value $environmentCredential
+        $environmentCredential = $null
     }
     elseif (-not $NonInteractive) {
         $AdminSecret = Read-Host 'Administrative SQL secret' -AsSecureString
