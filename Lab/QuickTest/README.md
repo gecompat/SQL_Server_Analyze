@@ -6,7 +6,7 @@ implemented, deliberately bounded subset.
 
 The public entrypoints are:
 
-- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Down`, and `Destroy`;
+- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Down`, `Start`, and `Destroy`;
 - `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
 
 The first executable runtime delivery is limited to native x86-64 Linux. It
@@ -101,10 +101,10 @@ verification fails the corresponding Install action.
 ## Resource and load boundary
 
 The `SMALL` profile is the default. CPU and memory limits are passed to every
-selected container. Install starts selected versions sequentially; it does not
-start all versions concurrently. The lifecycle never changes global Docker or
-Podman settings, never raises host limits, and never touches unrelated runtime
-objects.
+selected container. Install and Start process selected versions sequentially;
+they do not start all versions concurrently. The lifecycle never changes global
+Docker or Podman settings, never raises host limits, and never touches unrelated
+runtime objects.
 
 ## Local state and ownership
 
@@ -116,8 +116,8 @@ The state stores only local runtime metadata such as:
 
 - generic scope and run ID;
 - Docker or Podman;
-- selected SQL versions, ports, and resource profile;
-- full container and network object IDs;
+- selected SQL versions, ports, image references, and resource profile;
+- full current and previous container and network object IDs;
 - owner-bound local roots;
 - framework-installation status.
 
@@ -125,10 +125,10 @@ It does not contain the SQL credential or a connection string containing a
 credential. Install refuses pre-existing unmarked local scope directories; it
 does not adopt or overwrite them.
 
-If Install fails after a runtime mutation, discovered run-labeled objects are
-resolved to full IDs, recorded in the local recovery state, and removed only by
-those full IDs. Remaining objects are never selected by name or by a broad prune
-operation.
+If Install or Start fails after a runtime mutation, discovered run-labeled
+objects are resolved to full IDs and recorded in local recovery state before
+cleanup. Cleanup uses only those full IDs and returns a reusable Start failure to
+`DOWN` when it can remove all newly created runtime objects.
 
 ## Status
 
@@ -162,8 +162,7 @@ for releasing CPU and memory without destroying the reusable test data.
 
 The command requires confirmation unless `-Force` is supplied for a documented
 unattended run. Down preserves both `PERSISTENT` and `TEMPORARY` local data; the
-complete scope remains available for the future `Start` action or for an explicit
-`Destroy`.
+complete scope remains available for `Start` or for an explicit `Destroy`.
 
 Before removal, `DOWN_IN_PROGRESS` and the full registered object IDs are written
 to state. Down then discovers objects only through the exact run-ID label,
@@ -172,6 +171,37 @@ removes only the registered full object IDs. The final state is `DOWN`; current
 runtime IDs are cleared and the previous IDs are retained for diagnosis.
 
 A repeated Down is idempotent when no run-labeled runtime objects remain.
+
+## Start
+
+`Start` recreates the registered containers and network from a preserved `DOWN`
+state. It reuses the same scope, run ID, ports, image references, resource
+profile, owner-marked data directories, and framework-installation state.
+
+```powershell
+./Lab/Install-Lab.ps1 `
+  -Action Start `
+  -ScopeName sql-analyze-quicktest
+```
+
+A generated credential stored by Install is loaded only after its directory and
+owner marker pass the saved path boundary. A user-supplied credential is not
+persisted; provide the same credential again through `-AdminSecret`, the named
+process environment variable, or the interactive masked prompt. `Start` rejects
+`-GenerateSecret` because existing SQL Server system databases require the
+original credential.
+
+Start refuses any run-labeled runtime object while state says `DOWN`. It writes
+`STARTING` before the first Compose mutation, recreates selected versions
+sequentially, registers the new full object IDs, waits for health, and verifies
+the expected SQL Server major version. When the framework was installed, Start
+also verifies that `LabAnalyze` and the `monitor` schema remain present; it does
+not reinstall the framework.
+
+A successful Start restores `READY`. Calling Start for a fully verified READY
+scope is idempotent and returns `AlreadyRunning = true`. On failure, newly
+created run-labeled objects are recorded, owner-validated, removed by full ID,
+and the preserved local scope returns to `DOWN` when cleanup succeeds.
 
 ## Destroy and uninstall
 
@@ -215,7 +245,7 @@ independent of `PERSISTENT` or `TEMPORARY`.
 
 ## Connection information
 
-A successful Install returns one entry per SQL Server version with:
+A successful Install or Start returns one entry per SQL Server version with:
 
 - `localhost` and the configured host port;
 - the generic login name;
@@ -229,7 +259,7 @@ The credential is never printed again.
 
 The following remain open after this delivery:
 
-- Start, Stop, Restart, and Reset;
+- Stop, Restart, and Reset;
 - a separate UpdateFramework action;
 - native Docker and Podman execution evidence;
 - end-to-end SQL Server 2019, 2022, and 2025 host evidence.
