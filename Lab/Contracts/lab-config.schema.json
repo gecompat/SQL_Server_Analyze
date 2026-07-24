@@ -10,7 +10,7 @@
     "AllowedExecutionModes",
     "SqlVersionPriority",
     "ContainerEngine",
-    "ContainerImageLogicalId",
+    "ContainerImageLogicalIds",
     "AcceptSqlServerEula",
     "ResourceProfile",
     "StorageRoleBindings",
@@ -63,8 +63,25 @@
         "PODMAN"
       ]
     },
-    "ContainerImageLogicalId": {
-      "$ref": "#/$defs/logicalReference"
+    "ContainerImageLogicalIds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "2019",
+        "2022",
+        "2025"
+      ],
+      "properties": {
+        "2019": {
+          "$ref": "#/$defs/logicalReference"
+        },
+        "2022": {
+          "$ref": "#/$defs/logicalReference"
+        },
+        "2025": {
+          "$ref": "#/$defs/logicalReference"
+        }
+      }
     },
     "AcceptSqlServerEula": {
       "const": false

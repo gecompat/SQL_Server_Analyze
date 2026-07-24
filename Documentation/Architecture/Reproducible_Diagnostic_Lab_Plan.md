@@ -923,6 +923,8 @@ Die Docker-, Installer-, Szenario-, Assertion-, Mess- und Cleanup-Aktionspfade s
 
 ### Welle 3 – Core-Performance-Szenarien
 
+**Implementierungsstatus:** `IMPLEMENTED_ACTIONS_GATE` / `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`
+
 **Lieferumfang:**
 
 - CPU, Memory Grants, Buffer Pool, TempDB, Log, Blocking, Deadlocks, Latches, Plans, Query Store und Indexe;
@@ -935,6 +937,8 @@ Die Docker-, Installer-, Szenario-, Assertion-, Mess- und Cleanup-Aktionspfade s
 - fachliche Findings sind wiederholbar;
 - exakte Wait-Zahlen werden nicht als Assert verwendet;
 - Cleanup bleibt nach jedem Szenario grün.
+
+Alle 39 im Katalog Welle 3 zugeordneten Szenarien sind als 38 begrenzte Runtime-Aktionsverträge und ein ausdrücklich nicht als Runtime-Nachweis geltendes Contract-Fixture implementiert. Setup, Zustandsprädikate, Analyzer-Routing, alternative Evidenz, szenariobezogene Timeouts und markergebundenes Cleanup werden im CI statisch sowie mit PowerShell-Vertragstests geprüft. Die sequentielle, digestgebundene 2019-/2022-/2025-Matrix ist implementiert; ihr externer Laufzeitnachweis bleibt bis zur Ausführung auf einem freigegebenen kapazitätskonformen Host ausdrücklich `NOT_EXECUTED`.
 
 ### Welle 4 – Multi-Container und Netzwerk
 

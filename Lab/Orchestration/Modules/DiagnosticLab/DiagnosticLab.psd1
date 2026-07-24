@@ -1,10 +1,10 @@
 @{
     RootModule = 'DiagnosticLab.psm1'
-    ModuleVersion = '0.2.0'
+    ModuleVersion = '0.3.0'
     Author = 'SQL Server Analyze contributors'
     CompanyName = 'Community'
     Copyright = 'See repository license.'
-    Description = 'LAB-001 preflight, bounded orchestration, and SQL Server 2025 container baseline.'
+    Description = 'LAB-001 preflight, bounded orchestration, SQL Server container baselines, core performance scenarios, and sequential version lanes.'
     PowerShellVersion = '7.2'
     CompatiblePSEditions = @('Core')
     FunctionsToExport = @(
@@ -13,6 +13,7 @@
         'Invoke-LabPreflight'
         'Invoke-LabScenario'
         'Invoke-LabUp'
+        'Invoke-LabVersionMatrix'
         'Test-LabScenario'
     )
     CmdletsToExport = @()

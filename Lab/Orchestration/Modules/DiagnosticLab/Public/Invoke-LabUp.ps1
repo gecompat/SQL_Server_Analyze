@@ -21,7 +21,7 @@ function Invoke-LabUp {
         [string] $TopologyId = 'CTR-SINGLE',
 
         [Parameter()]
-        [ValidateSet(2025)]
+        [ValidateSet(2019, 2022, 2025)]
         [int] $SqlVersion = 2025,
 
         [Parameter()]
@@ -92,9 +92,10 @@ function Invoke-LabUp {
     if (
         -not $configuration.AcceptSqlServerEula -or
         $configuration.ContainerEngine -ne $ContainerEngine -or
-        $configuration.ResourceProfile -ne $ResourceProfile
+        $configuration.ResourceProfile -ne $ResourceProfile -or
+        $SqlVersion -notin @($configuration.SqlVersionPriority)
     ) {
-        throw 'Local configuration does not authorize the requested Welle 2 runtime.'
+        throw 'Local configuration does not authorize the requested LAB-001 runtime.'
     }
     $secretAvailability = Test-LabSecretAvailability `
         -SecretPolicy $configuration.SecretPolicy

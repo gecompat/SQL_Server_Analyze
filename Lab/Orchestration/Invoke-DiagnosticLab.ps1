@@ -7,6 +7,7 @@ param(
         'Up',
         'Run',
         'Validate',
+        'RunVersionMatrix',
         'Down',
         'RecoveryCleanup'
     )]
@@ -32,7 +33,7 @@ param(
     [string] $Topology = 'CTR-SINGLE',
 
     [Parameter()]
-    [ValidateSet(2025)]
+    [ValidateSet(2019, 2022, 2025)]
     [int] $SqlVersion = 2025,
 
     [Parameter()]
@@ -40,7 +41,7 @@ param(
     [string] $ResourceProfile = 'Compact',
 
     [Parameter()]
-    [ValidateSet('LAB-BASE-001', 'LAB-BASE-002')]
+    [ValidatePattern('^LAB-[A-Z0-9]+-[0-9]{3}$')]
     [string] $ScenarioId,
 
     [Parameter()]
@@ -131,6 +132,35 @@ switch ($Action) {
             throw 'Validate requires -LabRunId and -ScenarioId.'
         }
         Test-LabScenario -LabRunId $LabRunId -ScenarioId $ScenarioId
+        break
+    }
+
+    'RunVersionMatrix' {
+        if (-not $PSBoundParameters.ContainsKey('ConfigPath')) {
+            throw 'RunVersionMatrix requires -ConfigPath.'
+        }
+        $matrixArguments = @{
+            ConfigPath = $ConfigPath
+            ExecutionMode = if (
+                $PSBoundParameters.ContainsKey('ExecutionMode')
+            ) {
+                $ExecutionMode
+            }
+            else {
+                'AUTO'
+            }
+            ScenarioId = if (
+                $PSBoundParameters.ContainsKey('ScenarioId')
+            ) {
+                $ScenarioId
+            }
+            else {
+                'LAB-VERSION-001'
+            }
+            Confirm = $false
+            WhatIf = $WhatIfPreference
+        }
+        Invoke-LabVersionMatrix @matrixArguments
         break
     }
 

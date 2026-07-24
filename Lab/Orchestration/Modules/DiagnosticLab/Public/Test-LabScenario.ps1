@@ -6,28 +6,49 @@ function Test-LabScenario {
         [string] $LabRunId,
 
         [Parameter(Mandatory)]
-        [ValidateSet('LAB-BASE-001', 'LAB-BASE-002')]
+        [ValidatePattern('^LAB-[A-Z0-9]+-[0-9]{3}$')]
         [string] $ScenarioId,
 
         [Parameter()]
         [string] $StateRoot = (Get-LabDefaultStateRoot)
     )
 
-    $runDirectory = Get-LabRunDirectory -LabRunId $LabRunId -StateRoot $StateRoot
+    $contract = Get-LabScenarioContract -ScenarioId $ScenarioId
+    $runDirectory = Get-LabRunDirectory `
+        -LabRunId $LabRunId `
+        -StateRoot $StateRoot
     $statePath = Join-Path $runDirectory 'run-state.json'
     $resultPath = Join-Path $runDirectory "scenario-$ScenarioId.json"
     $result = Read-LabJsonFile -Path $resultPath
-    $expectedCode = if ($ScenarioId -eq 'LAB-BASE-001') {
-        'BASELINE_OUTPUT_VALID'
+    $expectation = @($contract.Definition.ExpectedFindings) |
+        Select-Object -First 1
+    if ($null -eq $expectation) {
+        throw 'The scenario has no finding expectation.'
+    }
+
+    $expectedStatuses = @($expectation.ExpectedStatuses)
+    $expectedFindingCodes = @($expectation.ExpectedFindingCodes)
+    $cleanupIsValid = if ($contract.Category -eq 'PERFORMANCE') {
+        if ($contract.Runbook.RuntimeAction -eq 'CONTRACT_FIXTURE') {
+            $result.CleanupStatus -eq 'NOT_REQUIRED'
+        }
+        else {
+            $result.CleanupStatus -eq 'PASS'
+        }
     }
     else {
-        'PERMISSION_BOUNDARY_OBSERVED'
+        $result.CleanupStatus -eq 'NOT_REQUIRED'
     }
+
     $validationStatus = if (
         $result.ScenarioId -eq $ScenarioId -and
         $result.Status -eq 'PASS' -and
-        $result.AnalyzerStatus -in @('AVAILABLE', 'AVAILABLE_LIMITED') -and
-        $expectedCode -in @($result.FindingCodes)
+        $result.AnalyzerStatus -in $expectedStatuses -and
+        @(
+            $expectedFindingCodes |
+                Where-Object { $_ -notin @($result.FindingCodes) }
+        ).Count -eq 0 -and
+        $cleanupIsValid
     ) {
         'PASS'
     }
@@ -46,6 +67,8 @@ function Test-LabScenario {
         LabRunId = $LabRunId
         ScenarioId = $ScenarioId
         ValidationStatus = $validationStatus
+        AnalyzerStatus = $result.AnalyzerStatus
         FindingCodes = @($result.FindingCodes)
+        CleanupStatus = $result.CleanupStatus
     }
 }

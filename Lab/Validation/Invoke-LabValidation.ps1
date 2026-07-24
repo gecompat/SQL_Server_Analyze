@@ -52,6 +52,58 @@ foreach ($test in $schemaTests) {
     }
 }
 
+$performanceRoot = Join-Path $RepositoryRoot 'Lab/Scenarios/Performance'
+$scenarioSchemaPath = Join-Path (
+    $RepositoryRoot
+) 'Lab/Contracts/scenario.schema.json'
+$runbookSchemaPath = Join-Path (
+    $RepositoryRoot
+) 'Lab/Contracts/scenario-runbook.schema.json'
+foreach ($directory in @(
+        Get-ChildItem `
+            -LiteralPath $performanceRoot `
+            -Directory |
+            Where-Object { $_.Name -ne '_Shared' }
+    )) {
+    foreach ($contract in @(
+            @{
+                Path = Join-Path $directory.FullName 'scenario.json'
+                Schema = $scenarioSchemaPath
+            }
+            @{
+                Path = Join-Path $directory.FullName 'runbook.json'
+                Schema = $runbookSchemaPath
+            }
+        )) {
+        $json = Get-Content `
+            -LiteralPath $contract.Path `
+            -Raw `
+            -Encoding utf8
+        if (-not (Test-Json `
+                -Json $json `
+                -SchemaFile $contract.Schema `
+                -ErrorAction Stop)) {
+            throw "LAB-001 JSON schema validation failed for $($contract.Path)."
+        }
+    }
+}
+
+$fixturePath = Join-Path (
+    $performanceRoot
+) 'LAB-DEAD-004/fixture.json'
+$fixtureSchemaPath = Join-Path (
+    $RepositoryRoot
+) 'Lab/Contracts/contract-fixture.schema.json'
+if (-not (Test-Json `
+        -Json (Get-Content `
+            -LiteralPath $fixturePath `
+            -Raw `
+            -Encoding utf8) `
+        -SchemaFile $fixtureSchemaPath `
+        -ErrorAction Stop)) {
+    throw 'LAB-001 contract fixture schema validation failed.'
+}
+
 $topologySchemaPath = Join-Path $RepositoryRoot 'Lab/Contracts/topology.schema.json'
 $topologyCatalogPath = Join-Path $RepositoryRoot 'Lab/Scenarios/Catalog/topologies.json'
 $topologyCatalog = Get-Content -LiteralPath $topologyCatalogPath -Raw -Encoding utf8 |
@@ -74,6 +126,7 @@ foreach ($validator in @(
         'Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py'
         'Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py'
         'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
+        'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
     )) {
     $validatorPath = Join-Path $RepositoryRoot $validator
     & $pythonCommand.Source $validatorPath --repository-root $RepositoryRoot
