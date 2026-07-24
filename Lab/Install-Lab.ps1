@@ -1,4 +1,4 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
     [ValidateSet('Preflight', 'Install', 'Status', 'Destroy')]
@@ -53,9 +53,6 @@ param(
 
     [Parameter()]
     [switch] $InstallFramework,
-
-    [Parameter()]
-    [switch] $RemoveData,
 
     [Parameter()]
     [switch] $Force,
@@ -113,8 +110,8 @@ function Read-QuickTestVersions {
         try {
             $versions = @(
                 $value.Split(',') |
-                ForEach-Object { [int] ($_.Trim()) } |
-                Sort-Object -Unique
+                    ForEach-Object { [int] ($_.Trim()) } |
+                    Sort-Object -Unique
             )
             $invalid = @(
                 $versions | Where-Object { $_ -notin @(2019, 2022, 2025) }
@@ -159,6 +156,10 @@ function Read-QuickTestPorts {
     return $result
 }
 
+if ($Force -and $Action -ne 'Destroy') {
+    throw '-Force is supported only with -Action Destroy.'
+}
+
 if ($Action -eq 'Status') {
     Get-QuickTestLabStatus `
         -ScopeName $ScopeName `
@@ -167,18 +168,22 @@ if ($Action -eq 'Status') {
 }
 
 if ($Action -eq 'Destroy') {
-    $destroyArguments = @{
-        ScopeName = $ScopeName
-        StateRoot = $StateRoot
-        RemoveData = $RemoveData
+    if (-not $Force) {
+        if (-not $PSCmdlet.ShouldProcess(
+                "quick-test scope $ScopeName",
+                'Destroy all registered quick-test resources and local data'
+            )) {
+            [pscustomobject] @{
+                Status = 'DESTROY_CONFIRMATION_REQUIRED'
+                ScopeName = $ScopeName
+            }
+            return
+        }
     }
-    if ($Force) {
-        $destroyArguments.Confirm = $false
-    }
-    else {
-        $destroyArguments.Confirm = $true
-    }
-    Remove-QuickTestLab @destroyArguments
+    Remove-QuickTestLab `
+        -ScopeName $ScopeName `
+        -StateRoot $StateRoot `
+        -Confirm:$false
     return
 }
 
@@ -266,7 +271,7 @@ if ($GenerateSecret) {
     $AdminSecret = New-QuickTestPassword
     $generatedCredential = $true
 }
-elseif ($PSBoundParameters.ContainsKey('AdminSecret')) {
+elif ($PSBoundParameters.ContainsKey('AdminSecret')) {
     # The caller supplied a SecureString object.
 }
 else {
@@ -309,20 +314,25 @@ if ($Action -eq 'Preflight') {
     return
 }
 
-Install-QuickTestLab `
-    -Runtime $Runtime `
-    -SqlVersions $SqlVersions `
-    -Ports $Ports `
-    -AdminSecret $AdminSecret `
-    -AdminLogin $AdminLogin `
-    -ResourceProfile $ResourceProfile `
-    -PersistenceMode $PersistenceMode `
-    -ScopeName $ScopeName `
-    -InstallFramework:$InstallFramework `
-    -PersistGeneratedCredential:$generatedCredential `
-    -AcceptEula:$AcceptEula `
-    -StateRoot $StateRoot `
-    -DataRoot $DataRoot `
-    -CredentialRoot $CredentialRoot `
-    -SkipImageAvailabilityCheck:$SkipImageAvailabilityCheck `
-    -Confirm:$false
+$installArguments = @{
+    Runtime = $Runtime
+    SqlVersions = $SqlVersions
+    Ports = $Ports
+    AdminSecret = $AdminSecret
+    AdminLogin = $AdminLogin
+    ResourceProfile = $ResourceProfile
+    PersistenceMode = $PersistenceMode
+    ScopeName = $ScopeName
+    InstallFramework = $InstallFramework
+    PersistGeneratedCredential = $generatedCredential
+    AcceptEula = $AcceptEula
+    StateRoot = $StateRoot
+    DataRoot = $DataRoot
+    CredentialRoot = $CredentialRoot
+    SkipImageAvailabilityCheck = $SkipImageAvailabilityCheck
+    Confirm = $false
+}
+if ($WhatIfPreference) {
+    $installArguments.WhatIf = $true
+}
+Install-QuickTestLab @installArguments
