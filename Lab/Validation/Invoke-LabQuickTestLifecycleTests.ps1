@@ -36,6 +36,20 @@ foreach ($relativePath in $paths) {
     }
 }
 
+$startSource = [IO.File]::ReadAllText(
+    (Join-Path $RepositoryRoot 'Lab/QuickTest/Public/Start-QuickTestLab.ps1'),
+    [Text.Encoding]::UTF8
+)
+foreach ($fragment in @(
+        "LifecycleStatus = 'STARTING'"
+        "LifecycleStatus = 'START_RECOVERY_CLEANUP'"
+        "LifecycleStatus = 'DOWN'"
+    )) {
+    if (-not $startSource.Contains($fragment, [StringComparison]::Ordinal)) {
+        throw "Start source lacks recovery state fragment $fragment."
+    }
+}
+
 $modulePath = Join-Path $RepositoryRoot 'Lab/QuickTest/QuickTestLab.psm1'
 Import-Module -Name $modulePath -Force -ErrorAction Stop
 
