@@ -13,6 +13,7 @@ on:
       - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
       - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_ComposeFoundation.py'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_Preflight.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Implementation_Status.csv'
@@ -33,6 +34,7 @@ on:
       - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
       - 'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
       - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_ComposeFoundation.py'
+      - 'Code/Tests/Static/Validate_Docker_Podman_QuickTest_Preflight.py'
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Implementation_Status.csv'
@@ -50,7 +52,7 @@ concurrency:
 
 jobs:
   validate:
-    name: Validate LAB-001 Wellen 0 to 5 and quick-test Compose foundation
+    name: Validate LAB-001 Wellen 0 to 5 and quick-test Preflight
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -107,6 +109,13 @@ jobs:
           python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_ComposeFoundation.py \
             --repository-root .
 
+      - name: Validate Docker Podman quick-test Preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_Preflight.py \
+            --repository-root .
+
       - name: Validate example manifests against JSON schemas
         shell: pwsh
         run: |
@@ -126,6 +135,11 @@ jobs:
         shell: pwsh
         run: |
           pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave3Tests.ps1
+
+      - name: Run Docker Podman quick-test Preflight tests
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestPreflightTests.ps1
 
       - name: Validate Docker Compose model
         shell: bash
@@ -203,6 +217,13 @@ jobs:
             Invoke-ScriptAnalyzer `
               -Path ./Lab/Orchestration `
               -Recurse `
+              -Severity Error
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/QuickTest `
+              -Recurse `
+              -Severity Error
+            Invoke-ScriptAnalyzer `
+              -Path ./Lab/Install-Lab.ps1 `
               -Severity Error
           )
           if ($findings.Count -gt 0) {
