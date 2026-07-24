@@ -9,6 +9,7 @@ on:
       - 'Lab/Uninstall-Lab.ps1'
       - 'Lab/QuickTest/**'
       - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
+      - 'Lab/Validation/Invoke-LabQuickTestStopTests.ps1'
       - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -22,6 +23,7 @@ on:
       - 'Lab/Uninstall-Lab.ps1'
       - 'Lab/QuickTest/**'
       - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
+      - 'Lab/Validation/Invoke-LabQuickTestStopTests.ps1'
       - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
       - 'Metadata/Quality/Docker_Podman_Quick_Test_Status.json'
       - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
@@ -61,6 +63,22 @@ jobs:
               Tee-Object -FilePath $logPath -Append
             if (-not $?) {
               throw 'Synthetic quick-test lifecycle contract failed.'
+            }
+          }
+          catch {
+            $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
+            throw
+          }
+
+      - name: Run focused Stop lifecycle contract
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'quicktest-lifecycle-validation.log'
+          try {
+            & ./Lab/Validation/Invoke-LabQuickTestStopTests.ps1 *>&1 |
+              Tee-Object -FilePath $logPath -Append
+            if (-not $?) {
+              throw 'Synthetic quick-test Stop contract failed.'
             }
           }
           catch {
