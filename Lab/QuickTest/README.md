@@ -7,6 +7,7 @@ implemented, deliberately bounded subset.
 The public entrypoints are:
 
 - `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Stop`, `Restart`, `Reset`, `Down`, `Start`, and `Destroy`;
+- `Lab/Update-Framework.ps1` for the separate `UpdateFramework` action;
 - `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
 
 The first executable runtime delivery is limited to native x86-64 Linux. It
@@ -105,8 +106,10 @@ they do not start all versions concurrently. Stop processes versions in reverse
 order and waits for every container to reach a stopped state. Restart composes
 that ordered Stop with the credential-free Start of the same containers. Reset
 performs a fresh Install only after the previous temporary scope has been removed.
-The lifecycle never changes global Docker or Podman settings, never raises host
-limits, and never touches unrelated runtime objects.
+UpdateFramework processes registered SQL Server versions sequentially and never
+starts, stops, or recreates containers. The system never changes global Docker
+or Podman settings, never raises host limits, and never touches unrelated runtime
+objects.
 
 ## Local state and ownership
 
@@ -121,7 +124,7 @@ The state stores only local runtime metadata such as:
 - selected SQL versions, ports, image references, and resource profile;
 - full current and previous container and network object IDs;
 - owner-bound local roots;
-- framework-installation status.
+- framework-installation and per-instance update status.
 
 It does not contain the SQL credential or a connection string containing a
 credential. Install refuses pre-existing unmarked local scope directories; it
@@ -131,8 +134,10 @@ Install, Stop, and both Start paths persist their transition state before the
 first Runtime mutation. Restart uses those existing transition contracts and
 does not add a parallel direct Runtime path. Reset validates the complete saved
 scope before confirmation and then delegates destruction and recreation to the
-existing exact-scope Destroy and Install contracts. Failed transitions never
-widen the scope beyond owner-validated full object IDs.
+existing exact-scope Destroy and Install contracts. UpdateFramework validates the
+complete runtime identity before recording `IN_PROGRESS`; it restores the
+container lifecycle state to `READY` and records success or failure per instance.
+Failed transitions never widen the scope beyond owner-validated full object IDs.
 
 ## Status
 
@@ -295,6 +300,46 @@ the final state is `READY`.
 
 Calling Start for a fully verified `READY` scope remains idempotent.
 
+## UpdateFramework
+
+`UpdateFramework` installs or updates the current repository framework artifacts
+on every registered SQL Server container of a fully verified `READY` scope. It
+is deliberately separate from the container lifecycle.
+
+```powershell
+./Lab/Update-Framework.ps1 `
+  -ScopeName sql-analyze-quicktest
+```
+
+Before confirmation, the action validates state and path ownership, final
+`READY` status, the exact run-ID scope, full container and network IDs, both
+owner labels, and the registered SQL Server major version for every instance.
+It does not recreate containers, change ports, alter resource limits, or change
+the run or network identity.
+
+The action does not require an externally supplied SQL credential. The canonical
+container installer uses the credential already present inside the owned SQL
+Server container environment. No credential value is returned or persisted in
+framework update state.
+
+Each instance is processed sequentially. Before installation, the canonical
+wrapper classifies the instance:
+
+- `INSTALLED` means `LabAnalyze` and the `monitor` schema were not both present;
+- `UPDATED` means an existing framework installation was found.
+
+Both paths rebuild the standalone installer from current repository artifacts,
+run the same idempotent installer, and require the final marker
+`FRAMEWORK_READY`. Per-instance results include SQL version, action status,
+verification status, and a bounded runtime error message on failure.
+
+The overall result is `READY` only when every selected instance is verified.
+One or more failed instances produce `FRAMEWORK_UPDATE_FAILED`; successful and
+failed counts plus all instance results are returned separately. The scope's
+container lifecycle remains `READY`, while `FrameworkUpdateStatus` and
+`FrameworkInstances` record the framework-specific outcome. `-WhatIf` returns
+before the first framework mutation.
+
 ## Destroy and uninstall
 
 `Destroy` means complete destruction of the selected quick-test scope. It
@@ -320,7 +365,9 @@ labels before deletion. Unexpected run-labeled objects stop the operation. It
 never performs a global prune or a name-only delete.
 
 Stop and Restart preserve Runtime objects. Down preserves the complete local
-scope. Reset replaces only a temporary scope. Destroy always removes the complete scope, independent of `PERSISTENT` or `TEMPORARY`.
+scope. Reset replaces only a temporary scope. UpdateFramework preserves the
+complete runtime identity. Destroy always removes the complete scope, independent
+of `PERSISTENT` or `TEMPORARY`.
 
 ## Connection information
 
@@ -333,12 +380,13 @@ version with:
 - a connection-string template without an embedded credential;
 - `LabAnalyze` when framework installation was requested.
 
-The credential is never printed again.
+UpdateFramework returns framework action and verification results instead of new
+connection information. The credential is never printed again.
 
 ## Current boundary
 
 The following remain open after this delivery:
 
-- a separate UpdateFramework action;
+- native UpdateFramework execution evidence;
 - native Docker and Podman execution evidence;
 - end-to-end SQL Server 2019, 2022, and 2025 host evidence.
