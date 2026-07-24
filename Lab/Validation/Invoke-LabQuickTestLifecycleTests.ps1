@@ -101,8 +101,8 @@ if [ "${1:-}" = 'network' ] && [ "${2:-}" = 'inspect' ]; then
   exit 0
 fi
 if [ "${1:-}" = 'exec' ]; then
-  if [[ "$joined" == *'ProductMajorVersion'* ]]; then printf '17\n'; fi
-  cat >/dev/null || true
+  if [[ "$joined" == *'ProductMajorVersion'* ]]; then printf '17\n'; exit 0; fi
+  if [[ "$joined" == *' --interactive '* ]]; then cat >/dev/null || true; fi
   exit 0
 fi
 if [ "${1:-}" = 'container' ] && [ "${2:-}" = 'rm' ]; then
