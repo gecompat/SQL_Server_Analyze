@@ -24,12 +24,48 @@ function Install-LabContainerFramework {
         throw 'The selected container runtime command is unavailable.'
     }
 
+    $verificationDirectory = Join-Path $RunDirectory 'runtime/installer'
+    [IO.Directory]::CreateDirectory($verificationDirectory) | Out-Null
+    $classificationPath = Join-Path $verificationDirectory 'Classify_Framework.sql'
+    $classificationSql = @'
+SET NOCOUNT ON;
+IF DB_ID(N'LabAnalyze') IS NOT NULL
+   AND EXISTS
+   (
+       SELECT 1
+       FROM [LabAnalyze].[sys].[schemas] AS s
+       WHERE s.[name] = N'monitor'
+   )
+    SELECT N'FRAMEWORK_EXISTING';
+ELSE
+    SELECT N'FRAMEWORK_MISSING';
+'@
+    [IO.File]::WriteAllText(
+        $classificationPath,
+        $classificationSql,
+        [Text.UTF8Encoding]::new($false)
+    )
+    $classification = @(
+        Invoke-LabSqlFile `
+            -DockerCommand $RuntimeCommand `
+            -ContainerId $ContainerId `
+            -ContainerSqlPath '/lab/runtime/installer/Classify_Framework.sql'
+    )
+    $actionStatus = if ('FRAMEWORK_EXISTING' -in $classification) {
+        'UPDATED'
+    }
+    elseif ('FRAMEWORK_MISSING' -in $classification) {
+        'INSTALLED'
+    }
+    else {
+        throw 'Framework installation classification did not return an expected marker.'
+    }
+
     Install-LabFramework `
         -DockerCommand $RuntimeCommand `
         -ContainerId $ContainerId `
         -RunDirectory $RunDirectory
 
-    $verificationDirectory = Join-Path $RunDirectory 'runtime/installer'
     $verificationPath = Join-Path $verificationDirectory 'Verify_Framework.sql'
     $verificationSql = @'
 SET NOCOUNT ON;
@@ -59,9 +95,10 @@ SELECT N'FRAMEWORK_READY';
     }
 
     return [pscustomobject] @{
-        Status = 'INSTALLED'
+        Status = $actionStatus
         Runtime = $Runtime
         ContainerId = $ContainerId
         FrameworkDatabase = 'LabAnalyze'
+        VerificationStatus = 'FRAMEWORK_READY'
     }
 }
