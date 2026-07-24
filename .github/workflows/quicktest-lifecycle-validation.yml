@@ -1,0 +1,64 @@
+name: Quick-test lifecycle validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/quicktest-lifecycle-validation.yml'
+      - 'Lab/Install-Lab.ps1'
+      - 'Lab/Uninstall-Lab.ps1'
+      - 'Lab/QuickTest/**'
+      - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/quicktest-lifecycle-validation.yml'
+      - 'Lab/Install-Lab.ps1'
+      - 'Lab/Uninstall-Lab.ps1'
+      - 'Lab/QuickTest/**'
+      - 'Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quicktest-lifecycle-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  synthetic-lifecycle:
+    name: Validate synthetic quick-test lifecycle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run focused lifecycle contract
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'quicktest-lifecycle-validation.log'
+          try {
+            & ./Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1 *>&1 |
+              Tee-Object -FilePath $logPath
+            if (-not $?) {
+              throw 'Synthetic quick-test lifecycle contract failed.'
+            }
+          }
+          catch {
+            $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
+            throw
+          }
+
+      - name: Upload focused failure log
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: quicktest-lifecycle-validation-log
+          path: ${{ runner.temp }}/quicktest-lifecycle-validation.log
+          if-no-files-found: error
+          retention-days: 7

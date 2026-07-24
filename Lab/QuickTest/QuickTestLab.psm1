@@ -7,7 +7,12 @@ $script:QuickTestLabRoot = [IO.Path]::GetFullPath(
 
 foreach ($relativePath in @(
         'Private/Common.ps1'
+        'Private/LifecycleState.ps1'
+        'Private/LifecycleRuntime.ps1'
         'Public/Invoke-QuickTestPreflight.ps1'
+        'Public/Install-QuickTestLab.ps1'
+        'Public/Get-QuickTestLabStatus.ps1'
+        'Public/Remove-QuickTestLab.ps1'
     )) {
     . (Join-Path $PSScriptRoot $relativePath)
 }
@@ -15,9 +20,12 @@ foreach ($relativePath in @(
 Export-ModuleMember -Function @(
     'ConvertTo-QuickTestSecureString'
     'Get-QuickTestDefaultPorts'
+    'Get-QuickTestLabStatus'
     'Get-QuickTestResourceProfile'
+    'Install-QuickTestLab'
     'Invoke-QuickTestPreflight'
     'New-QuickTestPassword'
+    'Remove-QuickTestLab'
     'Resolve-QuickTestPorts'
     'Test-QuickTestPassword'
 )

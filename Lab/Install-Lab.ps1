@@ -1,7 +1,7 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
-    [ValidateSet('Preflight')]
+    [ValidateSet('Preflight', 'Install', 'Status', 'Destroy')]
     [string] $Action = 'Preflight',
 
     [Parameter()]
@@ -36,7 +36,13 @@ param(
     [string] $PersistenceMode,
 
     [Parameter()]
-    [string] $DataRoot,
+    [string] $DataRoot = (Join-Path $PSScriptRoot '.artifacts/quick-test'),
+
+    [Parameter()]
+    [string] $StateRoot = (Join-Path $PSScriptRoot '.state/quick-test'),
+
+    [Parameter()]
+    [string] $CredentialRoot = (Join-Path $PSScriptRoot '.secrets/quick-test'),
 
     [Parameter()]
     [ValidatePattern('^[a-z][a-z0-9-]{2,31}$')]
@@ -44,6 +50,12 @@ param(
 
     [Parameter()]
     [switch] $AcceptEula,
+
+    [Parameter()]
+    [switch] $InstallFramework,
+
+    [Parameter()]
+    [switch] $Force,
 
     [Parameter()]
     [switch] $NonInteractive,
@@ -98,8 +110,8 @@ function Read-QuickTestVersions {
         try {
             $versions = @(
                 $value.Split(',') |
-                ForEach-Object { [int] ($_.Trim()) } |
-                Sort-Object -Unique
+                    ForEach-Object { [int] ($_.Trim()) } |
+                    Sort-Object -Unique
             )
             $invalid = @(
                 $versions | Where-Object { $_ -notin @(2019, 2022, 2025) }
@@ -144,9 +156,40 @@ function Read-QuickTestPorts {
     return $result
 }
 
+if ($Force -and $Action -ne 'Destroy') {
+    throw '-Force is supported only with -Action Destroy.'
+}
+
+if ($Action -eq 'Status') {
+    Get-QuickTestLabStatus `
+        -ScopeName $ScopeName `
+        -StateRoot $StateRoot
+    return
+}
+
+if ($Action -eq 'Destroy') {
+    if (-not $Force) {
+        if (-not $PSCmdlet.ShouldProcess(
+                "quick-test scope $ScopeName",
+                'Destroy all registered quick-test resources and local data'
+            )) {
+            [pscustomobject] @{
+                Status = 'DESTROY_CONFIRMATION_REQUIRED'
+                ScopeName = $ScopeName
+            }
+            return
+        }
+    }
+    Remove-QuickTestLab `
+        -ScopeName $ScopeName `
+        -StateRoot $StateRoot `
+        -Confirm:$false
+    return
+}
+
 if (-not $PSBoundParameters.ContainsKey('Runtime')) {
     if ($NonInteractive) {
-        throw 'Non-interactive Preflight requires -Runtime.'
+        throw "Non-interactive $Action requires -Runtime."
     }
     $Runtime = Read-QuickTestChoice `
         -Prompt 'Container runtime' `
@@ -156,7 +199,7 @@ if (-not $PSBoundParameters.ContainsKey('Runtime')) {
 
 if (-not $PSBoundParameters.ContainsKey('SqlVersions')) {
     if ($NonInteractive) {
-        throw 'Non-interactive Preflight requires -SqlVersions.'
+        throw "Non-interactive $Action requires -SqlVersions."
     }
     $SqlVersions = Read-QuickTestVersions
 }
@@ -212,25 +255,9 @@ if (-not $PSBoundParameters.ContainsKey('PersistenceMode')) {
     }
 }
 
-if (-not $PSBoundParameters.ContainsKey('DataRoot')) {
-    $defaultDataRoot = Join-Path $PSScriptRoot '.state/quick-test-data'
-    if ($NonInteractive) {
-        $DataRoot = $defaultDataRoot
-    }
-    else {
-        $value = Read-Host "Local data root [$defaultDataRoot]"
-        if ([string]::IsNullOrWhiteSpace($value)) {
-            $DataRoot = $defaultDataRoot
-        }
-        else {
-            $DataRoot = $value.Trim()
-        }
-    }
-}
-
 if (-not $AcceptEula) {
     if ($NonInteractive) {
-        throw 'Non-interactive Preflight requires -AcceptEula.'
+        throw "Non-interactive $Action requires -AcceptEula."
     }
     $confirmation = Read-Host 'Accept the SQL Server container EULA for this test use? [yes/no]'
     if ($confirmation.Trim().ToLowerInvariant() -ne 'yes') {
@@ -239,8 +266,10 @@ if (-not $AcceptEula) {
     $AcceptEula = $true
 }
 
+$generatedCredential = $false
 if ($GenerateSecret) {
     $AdminSecret = New-QuickTestPassword
+    $generatedCredential = $true
 }
 elseif ($PSBoundParameters.ContainsKey('AdminSecret')) {
     # The caller supplied a SecureString object.
@@ -265,19 +294,45 @@ else {
     }
 }
 
-$result = Invoke-QuickTestPreflight `
-    -Runtime $Runtime `
-    -SqlVersions $SqlVersions `
-    -Ports $Ports `
-    -AdminLogin $AdminLogin `
-    -AdminSecret $AdminSecret `
-    -ResourceProfile $ResourceProfile `
-    -DataRoot $DataRoot `
-    -ScopeName $ScopeName `
-    -AcceptEula:$AcceptEula `
-    -SkipImageAvailabilityCheck:$SkipImageAvailabilityCheck
+if ($Action -eq 'Preflight') {
+    $result = Invoke-QuickTestPreflight `
+        -Runtime $Runtime `
+        -SqlVersions $SqlVersions `
+        -Ports $Ports `
+        -AdminLogin $AdminLogin `
+        -AdminSecret $AdminSecret `
+        -ResourceProfile $ResourceProfile `
+        -DataRoot (Join-Path $DataRoot $ScopeName) `
+        -ScopeName $ScopeName `
+        -AcceptEula:$AcceptEula `
+        -SkipImageAvailabilityCheck:$SkipImageAvailabilityCheck
 
-$result | Add-Member `
-    -NotePropertyName PersistenceMode `
-    -NotePropertyValue $PersistenceMode `
-    -PassThru
+    $result | Add-Member `
+        -NotePropertyName PersistenceMode `
+        -NotePropertyValue $PersistenceMode `
+        -PassThru
+    return
+}
+
+$installArguments = @{
+    Runtime = $Runtime
+    SqlVersions = $SqlVersions
+    Ports = $Ports
+    AdminSecret = $AdminSecret
+    AdminLogin = $AdminLogin
+    ResourceProfile = $ResourceProfile
+    PersistenceMode = $PersistenceMode
+    ScopeName = $ScopeName
+    InstallFramework = $InstallFramework
+    PersistGeneratedCredential = $generatedCredential
+    AcceptEula = $AcceptEula
+    StateRoot = $StateRoot
+    DataRoot = $DataRoot
+    CredentialRoot = $CredentialRoot
+    SkipImageAvailabilityCheck = $SkipImageAvailabilityCheck
+    Confirm = $false
+}
+if ($WhatIfPreference) {
+    $installArguments.WhatIf = $true
+}
+Install-QuickTestLab @installArguments

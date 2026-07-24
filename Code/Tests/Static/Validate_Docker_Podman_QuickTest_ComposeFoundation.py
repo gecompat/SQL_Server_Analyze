@@ -12,14 +12,12 @@ from pathlib import Path
 VERSIONS = (2019, 2022, 2025)
 EXPECTED_PORTS = {2019: 14331, 2022: 14332, 2025: 14335}
 EXPECTED_GATES = {
-    "LAB-GATE-QUICKTEST-DOCKER": {
-        "RequiredCapability": "DOCKER_ENGINE",
-        "BlockingScope": "QUICKTEST_RUNTIME_NOT_IMPLEMENTED",
-    },
-    "LAB-GATE-QUICKTEST-PODMAN": {
-        "RequiredCapability": "PODMAN_ENGINE",
-        "BlockingScope": "QUICKTEST_RUNTIME_NOT_IMPLEMENTED",
-    },
+    "LAB-GATE-QUICKTEST-DOCKER": "DOCKER_ENGINE",
+    "LAB-GATE-QUICKTEST-PODMAN": "PODMAN_ENGINE",
+}
+ALLOWED_BLOCKING_SCOPES = {
+    "QUICKTEST_RUNTIME_NOT_IMPLEMENTED",
+    "QUICKTEST_EXTERNAL_EVIDENCE_PENDING",
 }
 REQUIRED_FILES = (
     ".github/workflows/lab-contract-validation.yml",
@@ -52,7 +50,7 @@ def validate_core(root: Path, findings: list[str]) -> None:
     for fragment in (
         "command -v sqlcmd",
         "SERVERPROPERTY('ProductMajorVersion')",
-        "SQLCMDPASSWORD=\"$$MSSQL_SA_PASSWORD\"",
+        'SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD"',
         "MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS",
         "MSSQL_MEMORY_LIMIT_MB=${QTLAB_SQL_MEMORY_MB",
         "qt-lab.owner: SQL_SERVER_ANALYZE",
@@ -64,11 +62,11 @@ def validate_core(root: Path, findings: list[str]) -> None:
 
     require(
         core.count("- MSSQL_SA_PASSWORD") == 1,
-        "The SQL secret must be inherited once and not embedded per service.",
+        "The SQL credential must be inherited once and not embedded per service.",
         findings,
     )
     require(
-        "restart: \"no\"" in core,
+        'restart: "no"' in core,
         "Quick-test services must not enable an unbounded restart policy.",
         findings,
     )
@@ -121,8 +119,13 @@ def validate_status(root: Path, findings: list[str]) -> None:
     require(
         status.get("WorkItemId") == "LAB-QUICKTEST-001"
         and status.get("ContractStatus")
-        in {"VALIDATED_FOUNDATION", "IMPLEMENTED_AUTOMATED_GATE"}
-        and status.get("RuntimeStatus") == "NOT_EXECUTED"
+        in {
+            "VALIDATED_FOUNDATION",
+            "IMPLEMENTED_AUTOMATED_GATE",
+            "IMPLEMENTED_ACTIONS_GATE",
+        }
+        and status.get("RuntimeStatus")
+        in {"NOT_EXECUTED", "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING"}
         and status.get("DataClassification") == "PUBLIC_AND_SYNTHETIC",
         "Quick-test Compose status is missing or overstated.",
         findings,
@@ -137,8 +140,6 @@ def validate_status(root: Path, findings: list[str]) -> None:
         require(fragment in delivered, f"Delivered scope lacks {fragment}.", findings)
     open_scope = " ".join(status.get("OpenScope", []))
     for fragment in (
-        "Lifecycle execution",
-        "Framework installation",
         "Native Docker runtime evidence",
         "Native Podman runtime evidence",
     ):
@@ -149,15 +150,16 @@ def validate_gates(root: Path, findings: list[str]) -> None:
     gate_path = root / "Metadata/Quality/Lab_External_Evidence_Gates.csv"
     with gate_path.open(newline="", encoding="utf-8") as handle:
         gates = {row["GateId"]: row for row in csv.DictReader(handle)}
-    for gate_id, expected in EXPECTED_GATES.items():
+    for gate_id, capability in EXPECTED_GATES.items():
         row = gates.get(gate_id, {})
         require(
             row.get("ScenarioGroup") == "QUICK_TEST_SYSTEM"
             and row.get("RequiredPlatform") == "CONTAINER_LINUX"
+            and row.get("RequiredCapability") == capability
             and row.get("ExecutionMode") == "LINUX_NATIVE"
             and row.get("Status") == "NOT_EXECUTED"
             and row.get("EvidencePolicy") == "SYNTHETIC_SUMMARY_ONLY"
-            and all(row.get(key) == value for key, value in expected.items()),
+            and row.get("BlockingScope") in ALLOWED_BLOCKING_SCOPES,
             f"{gate_id} is missing or overstated.",
             findings,
         )
@@ -203,7 +205,7 @@ def main() -> int:
 
     print(
         "Docker/Podman quick-test Compose foundation validated: "
-        "versions=3 runtimes=2 runtime=NOT_EXECUTED."
+        "versions=3 runtimes=2 external_evidence=NOT_EXECUTED."
     )
     return 0
 
