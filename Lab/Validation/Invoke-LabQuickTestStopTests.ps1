@@ -111,7 +111,7 @@ if [ "${1:-}" = 'network' ] && [ "${2:-}" = 'inspect' ]; then
 fi
 if [ "${1:-}" = 'container' ] && [ "${2:-}" = 'stop' ]; then
   grep -q '"LifecycleStatus": "STOPPING"' "$QTLAB_TEST_STATE_PATH"
-  printf 'container stop %s\n' "${6:-}" >> "$FAKE_RUNTIME_ROOT/stops.log"
+  printf 'container stop %s\n' "${5:-}" >> "$FAKE_RUNTIME_ROOT/stops.log"
   rm -f "$FAKE_RUNTIME_ROOT/container-running"
   exit 0
 fi
