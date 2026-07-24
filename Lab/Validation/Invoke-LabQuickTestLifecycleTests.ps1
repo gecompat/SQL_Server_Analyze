@@ -60,12 +60,8 @@ container_full="$(printf 'a%.0s' {1..64})"
 network_full="$(printf 'b%.0s' {1..64})"
 joined=" $* "
 
-if [ "${1:-}" = 'version' ]; then
-  exit 0
-fi
-if [ "${1:-}" = 'compose' ] && [ "${2:-}" = 'version' ]; then
-  exit 0
-fi
+if [ "${1:-}" = 'version' ]; then exit 0; fi
+if [ "${1:-}" = 'compose' ] && [ "${2:-}" = 'version' ]; then exit 0; fi
 if [ "${1:-}" = 'compose' ]; then
   if [[ "$joined" == *' up --detach sql2025 '* ]]; then
     printf '%s' "$QTLAB_RUN_ID" > "$FAKE_RUNTIME_ROOT/run-id"
@@ -75,22 +71,16 @@ if [ "${1:-}" = 'compose' ]; then
   fi
   exit 0
 fi
-if [ "${1:-}" = 'manifest' ] && [ "${2:-}" = 'inspect' ]; then
-  exit 0
-fi
+if [ "${1:-}" = 'manifest' ] && [ "${2:-}" = 'inspect' ]; then exit 0; fi
 if [ "${1:-}" = 'container' ] && [ "${2:-}" = 'ls' ]; then
-  if [[ "$joined" == *'label=qt-lab.scope='* ]]; then
-    exit 0
-  fi
+  if [[ "$joined" == *'label=qt-lab.scope='* ]]; then exit 0; fi
   if [[ "$joined" == *'label=qt-lab.run-id='* ]] && [ -f "$FAKE_RUNTIME_ROOT/run-id" ]; then
     printf '%s\n' "$container_short"
   fi
   exit 0
 fi
 if [ "${1:-}" = 'network' ] && [ "${2:-}" = 'ls' ]; then
-  if [[ "$joined" == *'label=qt-lab.scope='* ]]; then
-    exit 0
-  fi
+  if [[ "$joined" == *'label=qt-lab.scope='* ]]; then exit 0; fi
   if [[ "$joined" == *'label=qt-lab.run-id='* ]] && [ -f "$FAKE_RUNTIME_ROOT/run-id" ]; then
     printf '%s\n' "$network_short"
   fi
@@ -145,6 +135,31 @@ try {
     $env:PATH = $fakeBin + [IO.Path]::PathSeparator + $previousPath
     $credentialInput = New-QuickTestPassword -Length 24
 
+    $conflictScope = 'synthetic-conflict'
+    [IO.Directory]::CreateDirectory(
+        (Join-Path $dataRoot $conflictScope)
+    ) | Out-Null
+    $conflict = Install-QuickTestLab `
+        -Runtime DOCKER `
+        -SqlVersions @(2025) `
+        -Ports @{ 2025 = 15480 } `
+        -AdminSecret $credentialInput `
+        -AdminLogin sa `
+        -ResourceProfile SMALL `
+        -PersistenceMode TEMPORARY `
+        -ScopeName $conflictScope `
+        -AcceptEula `
+        -StateRoot $stateRoot `
+        -DataRoot $dataRoot `
+        -CredentialRoot $credentialRoot `
+        -Confirm:$false
+    if (
+        $conflict.Status -ne 'PREFLIGHT_FAILED' -or
+        'LOCAL_SCOPE_CONFLICT' -notin @($conflict.BlockerReasonCodes)
+    ) {
+        throw 'Install did not refuse a pre-existing unowned local scope.'
+    }
+
     $preflight = Invoke-QuickTestPreflight `
         -Runtime DOCKER `
         -SqlVersions @(2025) `
@@ -197,6 +212,9 @@ try {
     ) {
         throw 'Install did not persist canonical full runtime object IDs.'
     }
+    if ($state.PSObject.Properties.Name -contains 'AdminSecret') {
+        throw 'Runtime state contains a credential value property.'
+    }
 
     $status = Get-QuickTestLabStatus `
         -ScopeName synthetic-lifecycle `
@@ -213,10 +231,9 @@ try {
     $destroy = Remove-QuickTestLab `
         -ScopeName synthetic-lifecycle `
         -StateRoot $stateRoot `
-        -RemoveData `
         -Confirm:$false
-    if ($destroy.Status -ne 'DESTROYED') {
-        throw 'Synthetic Destroy did not return DESTROYED.'
+    if ($destroy.Status -ne 'DESTROYED' -or -not $destroy.DataRemoved) {
+        throw 'Synthetic Destroy did not remove the complete owned scope.'
     }
     if (
         (Test-Path -LiteralPath (Join-Path $stateRoot 'synthetic-lifecycle')) -or
