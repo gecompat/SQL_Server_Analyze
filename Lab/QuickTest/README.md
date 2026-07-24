@@ -4,7 +4,7 @@ This directory contains the container-only SQL Server quick-test system. The
 public entrypoints are:
 
 - `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, and `Destroy`;
-- `Lab/Uninstall-Lab.ps1` for confirmed removal of one exact quick-test scope.
+- `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
 
 The first executable runtime delivery is limited to native x86-64 Linux. It
 uses the shared Compose core for Docker or Podman and supports SQL Server 2019,
@@ -29,7 +29,7 @@ The script asks for:
 - a generic administrative SQL login;
 - a masked SQL credential or ephemeral generated credential;
 - resource profile `SMALL`, `MEDIUM`, or `LARGE`;
-- persistence mode `PERSISTENT` or `TEMPORARY`;
+- persistence intent `PERSISTENT` or `TEMPORARY`;
 - local data root;
 - SQL Server container EULA acceptance.
 
@@ -42,14 +42,14 @@ image availability, EULA acceptance, and credential complexity. The result is
 ## Non-interactive Preflight
 
 ```powershell
-$credentialInput = Read-Host 'SQL credential' -AsSecureString
+$adminCredential = Read-Host 'SQL credential' -AsSecureString
 ./Lab/Install-Lab.ps1 `
   -Action Preflight `
   -Runtime DOCKER `
   -SqlVersions 2019,2022,2025 `
   -Ports @{ 2019 = 14331; 2022 = 14332; 2025 = 14335 } `
   -AdminLogin ExampleSqlAdmin `
-  -AdminSecret $credentialInput `
+  -AdminSecret $adminCredential `
   -ResourceProfile SMALL `
   -PersistenceMode TEMPORARY `
   -AcceptEula `
@@ -68,14 +68,14 @@ container must become healthy, answer a SQL query, and report the expected
 major version before the next selected version is started.
 
 ```powershell
-$credentialInput = Read-Host 'SQL credential' -AsSecureString
+$adminCredential = Read-Host 'SQL credential' -AsSecureString
 ./Lab/Install-Lab.ps1 `
   -Action Install `
   -Runtime DOCKER `
   -SqlVersions 2022,2025 `
   -Ports @{ 2022 = 14332; 2025 = 14335 } `
   -AdminLogin ExampleSqlAdmin `
-  -AdminSecret $credentialInput `
+  -AdminSecret $adminCredential `
   -ResourceProfile SMALL `
   -PersistenceMode TEMPORARY `
   -AcceptEula `
@@ -83,16 +83,25 @@ $credentialInput = Read-Host 'SQL credential' -AsSecureString
 ```
 
 Use `-Runtime PODMAN` for the Podman lane. Both lanes use the same Compose core
-and different resource-limit overrides.
+and separate resource-limit overrides.
 
-`-GenerateSecret` creates an ephemeral credential. For `Install`, that generated
+`-GenerateSecret` creates an ephemeral generated credential. For `Install`, that
 value is stored only under the ignored local `.secrets/quick-test/<scope>` path
-with owner-only file permissions. The command returns the local file path, not
-the value. User-supplied credentials are not persisted.
+with owner-only directory and file permissions. The command returns the local
+file path, not the value. User-supplied credentials are not persisted.
 
-`-InstallFramework` invokes the existing canonical standalone framework builder
-and installs `SQL_Server_Analyze` into the synthetic database `LabAnalyze` after
-each selected SQL Server instance becomes ready.
+`-InstallFramework` invokes the existing canonical standalone framework builder,
+installs `SQL_Server_Analyze` into the synthetic database `LabAnalyze`, and
+verifies that the database and `monitor` schema exist. Failure of this
+verification fails the corresponding Install action.
+
+## Resource and load boundary
+
+The `SMALL` profile is the default. CPU and memory limits are passed to every
+selected container. Install starts selected versions sequentially; it does not
+start all versions concurrently. The lifecycle never changes global Docker or
+Podman settings, never raises host limits, and never touches unrelated runtime
+objects.
 
 ## Local state and ownership
 
@@ -110,7 +119,13 @@ The state stores only local runtime metadata such as:
 - framework-installation status.
 
 It does not contain the SQL credential or a connection string containing a
-credential.
+credential. Install refuses pre-existing unmarked local scope directories; it
+does not adopt or overwrite them.
+
+If Install fails after a runtime mutation, discovered run-labeled objects are
+resolved to full IDs, recorded in the local recovery state, and removed only by
+those full IDs. Remaining objects are never selected by name or by a broad prune
+operation.
 
 ## Status
 
@@ -120,14 +135,19 @@ credential.
   -ScopeName sql-analyze-quicktest
 ```
 
-Status reads the owner-bound local state and verifies each stored full
+Status reads the owner-bound local state and validates each stored full
 container ID. It reports runtime state, health state, port, SQL version, and
 run-label ownership. A container is `Ready` only when it is running, healthy,
 and still owned by the saved run ID.
 
+Status does not create, start, stop, or remove runtime objects.
+
 ## Destroy and uninstall
 
-Destroy requires confirmation unless `-Force` is supplied:
+`Destroy` means complete destruction of the selected quick-test scope. It
+removes its registered containers, registered network, generated local
+credential, state, and all marked local data. It requires confirmation unless
+`-Force` is supplied.
 
 ```powershell
 ./Lab/Install-Lab.ps1 `
@@ -142,24 +162,25 @@ The dedicated wrapper performs the same operation:
   -ScopeName sql-analyze-quicktest
 ```
 
-For documented unattended cleanup:
+For documented unattended destruction:
 
 ```powershell
 ./Lab/Uninstall-Lab.ps1 `
   -ScopeName sql-analyze-quicktest `
-  -RemoveData `
   -Force
 ```
 
-Cleanup discovers resources through the exact run-ID label, resolves canonical
-full object IDs, verifies ownership again, and removes only those exact
-containers and networks. It never performs a global prune or name-only delete.
+Destroy uses the full object IDs registered in local state and verifies current
+run-label ownership before deletion. Run-labeled objects that are not registered
+in state cause Destroy to stop instead of widening its deletion scope. It never
+performs a global prune or a name-only delete.
+
 Local state, generated-credential, and data directories are removed only when
 their owner marker matches and their canonical path remains below the saved
 approved root.
 
-`TEMPORARY` data is removed by Destroy. `PERSISTENT` data is retained unless
-`-RemoveData` is specified.
+`PERSISTENT` currently describes the intended behavior of the future `Down`
+action. It does not weaken `Destroy`: Destroy always removes the complete scope.
 
 ## Connection information
 
