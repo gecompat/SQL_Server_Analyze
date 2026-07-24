@@ -32,7 +32,6 @@ on:
 
 permissions:
   contents: read
-  issues: write
 
 concurrency:
   group: quicktest-lifecycle-validation-${{ github.workflow }}-${{ github.ref }}
@@ -48,8 +47,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
-      - id: static
-        name: Validate focused static lifecycle contract
+      - name: Validate focused static lifecycle contract
         shell: bash
         run: |
           set -o pipefail
@@ -57,23 +55,7 @@ jobs:
           python3 ./Code/Tests/Static/Validate_Docker_Podman_QuickTest_Lifecycle.py \
             --repository-root . 2>&1 | tee "$log_path"
 
-      - name: Report static validation findings
-        if: failure() && steps.static.outcome == 'failure' && github.ref_name == 'agent/quicktest-stop-lifecycle'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          log_path="${RUNNER_TEMP}/quicktest-lifecycle-validation.log"
-          findings="$(grep '^ERROR:' "$log_path" | head -n 20 || true)"
-          if [ -z "$findings" ]; then
-            findings='ERROR: Static lifecycle validation failed without a classified finding.'
-          fi
-          gh issue comment 70 \
-            --repo "$GITHUB_REPOSITORY" \
-            --body "$findings"
-
-      - id: lifecycle
-        name: Run focused lifecycle contract
+      - name: Run focused lifecycle contract
         shell: pwsh
         run: |
           $logPath = Join-Path $env:RUNNER_TEMP 'quicktest-lifecycle-validation.log'
@@ -89,8 +71,7 @@ jobs:
             throw
           }
 
-      - id: stop_contract
-        name: Run focused Stop lifecycle contract
+      - name: Run focused Stop lifecycle contract
         shell: pwsh
         run: |
           $logPath = Join-Path $env:RUNNER_TEMP 'quicktest-lifecycle-validation.log'
@@ -106,13 +87,11 @@ jobs:
             throw
           }
 
-      - id: analyzer_install
-        name: Install pinned PowerShell analyzer
+      - name: Install pinned PowerShell analyzer
         shell: pwsh
         run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Repository PSGallery -Scope CurrentUser -Force
 
-      - id: analyzer_stop
-        name: Analyze quick-test Stop lifecycle
+      - name: Analyze quick-test Stop lifecycle
         shell: pwsh
         run: |
           $findings = @(Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/Public/Stop-QuickTestLab.ps1 -Severity Error)
@@ -121,8 +100,7 @@ jobs:
             throw "Quick-test Stop analyzer reported $($findings.Count) error finding(s)."
           }
 
-      - id: analyzer_stopped_start
-        name: Analyze stopped quick-test Start lifecycle
+      - name: Analyze stopped quick-test Start lifecycle
         shell: pwsh
         run: |
           $findings = @(Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/Public/Start-QuickTestStoppedLab.ps1 -Severity Error)
@@ -131,8 +109,7 @@ jobs:
             throw "Stopped quick-test Start analyzer reported $($findings.Count) error finding(s)."
           }
 
-      - id: analyzer_status
-        name: Analyze quick-test Status lifecycle
+      - name: Analyze quick-test Status lifecycle
         shell: pwsh
         run: |
           $findings = @(Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1 -Severity Error)
@@ -141,8 +118,7 @@ jobs:
             throw "Quick-test Status analyzer reported $($findings.Count) error finding(s)."
           }
 
-      - id: analyzer_integration
-        name: Analyze quick-test entrypoint and module
+      - name: Analyze quick-test entrypoint and module
         shell: pwsh
         run: |
           $findings = @(
@@ -162,21 +138,3 @@ jobs:
           path: ${{ runner.temp }}/quicktest-lifecycle-validation.log
           if-no-files-found: error
           retention-days: 7
-
-      - name: Report focused validation classification
-        if: always() && github.ref_name == 'agent/quicktest-stop-lifecycle'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          STATIC_OUTCOME: ${{ steps.static.outcome }}
-          LIFECYCLE_OUTCOME: ${{ steps.lifecycle.outcome }}
-          STOP_OUTCOME: ${{ steps.stop_contract.outcome }}
-          ANALYZER_INSTALL_OUTCOME: ${{ steps.analyzer_install.outcome }}
-          ANALYZER_STOP_OUTCOME: ${{ steps.analyzer_stop.outcome }}
-          ANALYZER_START_OUTCOME: ${{ steps.analyzer_stopped_start.outcome }}
-          ANALYZER_STATUS_OUTCOME: ${{ steps.analyzer_status.outcome }}
-          ANALYZER_INTEGRATION_OUTCOME: ${{ steps.analyzer_integration.outcome }}
-        run: |
-          gh issue comment 70 \
-            --repo "$GITHUB_REPOSITORY" \
-            --body "Focused Stop validation outcomes for $GITHUB_SHA: static=$STATIC_OUTCOME; lifecycle=$LIFECYCLE_OUTCOME; stop=$STOP_OUTCOME; analyzer_install=$ANALYZER_INSTALL_OUTCOME; analyzer_stop=$ANALYZER_STOP_OUTCOME; analyzer_stopped_start=$ANALYZER_START_OUTCOME; analyzer_status=$ANALYZER_STATUS_OUTCOME; analyzer_integration=$ANALYZER_INTEGRATION_OUTCOME."
