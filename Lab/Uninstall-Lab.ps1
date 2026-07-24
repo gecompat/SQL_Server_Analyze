@@ -1,4 +1,4 @@
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
 param(
     [Parameter()]
     [ValidatePattern('^[a-z][a-z0-9-]{2,31}$')]
@@ -6,9 +6,6 @@ param(
 
     [Parameter()]
     [string] $StateRoot = (Join-Path $PSScriptRoot '.state/quick-test'),
-
-    [Parameter()]
-    [switch] $RemoveData,
 
     [Parameter()]
     [switch] $Force
@@ -20,16 +17,20 @@ Set-StrictMode -Version Latest
 $modulePath = Join-Path $PSScriptRoot 'QuickTest/QuickTestLab.psm1'
 Import-Module -Name $modulePath -Force -ErrorAction Stop
 
-$arguments = @{
-    ScopeName = $ScopeName
-    StateRoot = $StateRoot
-    RemoveData = $RemoveData
-}
-if ($Force) {
-    $arguments.Confirm = $false
-}
-else {
-    $arguments.Confirm = $true
+if (-not $Force) {
+    if (-not $PSCmdlet.ShouldProcess(
+            "quick-test scope $ScopeName",
+            'Destroy all registered quick-test resources and local data'
+        )) {
+        [pscustomobject] @{
+            Status = 'DESTROY_CONFIRMATION_REQUIRED'
+            ScopeName = $ScopeName
+        }
+        return
+    }
 }
 
-Remove-QuickTestLab @arguments
+Remove-QuickTestLab `
+    -ScopeName $ScopeName `
+    -StateRoot $StateRoot `
+    -Confirm:$false
