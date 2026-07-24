@@ -127,10 +127,23 @@ jobs:
         run: |
           pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave3Tests.ps1
 
-      - name: Run Docker Podman quick-test contract tests
+      - name: Parse and import Docker Podman quick-test PowerShell
         shell: pwsh
         run: |
-          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 `
+            -Phase PARSER
+
+      - name: Validate Docker Podman quick-test helper contracts
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 `
+            -Phase HELPERS
+
+      - name: Validate Docker Podman quick-test Preflight contracts
+        shell: pwsh
+        run: |
+          pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabQuickTestTests.ps1 `
+            -Phase PREFLIGHT
 
       - name: Validate Docker Compose model
         shell: bash
