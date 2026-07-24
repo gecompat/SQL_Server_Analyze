@@ -6,7 +6,7 @@ implemented, deliberately bounded subset.
 
 The public entrypoints are:
 
-- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Down`, `Start`, and `Destroy`;
+- `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, `Stop`, `Down`, `Start`, and `Destroy`;
 - `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
 
 The first executable runtime delivery is limited to native x86-64 Linux. It
@@ -95,16 +95,16 @@ file path, not the value. User-supplied credentials are not persisted.
 
 `-InstallFramework` invokes the existing canonical standalone framework builder,
 installs `SQL_Server_Analyze` into the synthetic database `LabAnalyze`, and
-verifies that the database and `monitor` schema exist. Failure of this
-verification fails the corresponding Install action.
+verifies that the database and `monitor` schema exist.
 
 ## Resource and load boundary
 
 The `SMALL` profile is the default. CPU and memory limits are passed to every
 selected container. Install and Start process selected versions sequentially;
-they do not start all versions concurrently. The lifecycle never changes global
-Docker or Podman settings, never raises host limits, and never touches unrelated
-runtime objects.
+they do not start all versions concurrently. Stop processes versions in reverse
+order and waits for every container to reach a stopped state. The lifecycle
+never changes global Docker or Podman settings, never raises host limits, and
+never touches unrelated runtime objects.
 
 ## Local state and ownership
 
@@ -125,10 +125,9 @@ It does not contain the SQL credential or a connection string containing a
 credential. Install refuses pre-existing unmarked local scope directories; it
 does not adopt or overwrite them.
 
-If Install or Start fails after a runtime mutation, discovered run-labeled
-objects are resolved to full IDs and recorded in local recovery state before
-cleanup. Cleanup uses only those full IDs and returns a reusable Start failure to
-`DOWN` when it can remove all newly created runtime objects.
+Install, Stop, and both Start paths persist their transition state before the
+first Runtime mutation. Failed transitions retain explicit recovery states and
+do not widen the cleanup scope beyond owner-validated full object IDs.
 
 ## Status
 
@@ -140,19 +139,42 @@ cleanup. Cleanup uses only those full IDs and returns a reusable Start failure t
 
 For an active scope, Status reads the owner-bound local state and validates each
 stored full container ID. It reports runtime state, health state, port, SQL
-version, and run-label ownership. A container is `Ready` only when it is running,
-healthy, and still owned by the saved run ID and the generic framework-owner
-label.
+version, and run-label ownership.
 
-After `Down`, Status returns `DOWN` directly from the preserved state. Each
-instance is reported as removed and not ready; no container start, stop, create,
-or delete operation is performed.
+- `READY` requires every registered container to be running, healthy, and owned.
+- `STOPPED` requires every registered container to remain present, owned, and in
+  an exited or stopped Runtime state. The registered network remains present.
+- `DOWN` means the containers and network were removed while local data and
+  state were preserved.
+
+Status performs no lifecycle mutation.
+
+## Stop
+
+`Stop` performs an ordered shutdown of the existing containers. It does not remove
+containers, the registered network, data, credentials, state, or full object IDs.
+
+```powershell
+./Lab/Install-Lab.ps1 `
+  -Action Stop `
+  -ScopeName sql-analyze-quicktest
+```
+
+Before the first `container stop`, the state is written as `STOPPING`. All
+run-ID-discovered resources must exactly match the full IDs in state. Every
+container and the network are revalidated through both the run-ID label and the
+generic `SQL_SERVER_ANALYZE` owner label.
+
+Containers are stopped sequentially in descending SQL Server version order.
+The default Runtime timeout is 30 seconds per container. The final state is
+`STOPPED`; failures are recorded as `STOP_FAILED`. Repeating Stop for a fully
+validated stopped scope is idempotent and returns `AlreadyStopped = true`.
 
 ## Down
 
 `Down` removes the registered containers and registered network while preserving
 the marked data directory, generated local credential, and state. It is intended
-for releasing CPU and memory without destroying the reusable test data.
+for releasing Runtime objects without destroying reusable test data.
 
 ```powershell
 ./Lab/Install-Lab.ps1 `
@@ -162,21 +184,20 @@ for releasing CPU and memory without destroying the reusable test data.
 
 The command requires confirmation unless `-Force` is supplied for a documented
 unattended run. Down preserves both `PERSISTENT` and `TEMPORARY` local data; the
-complete scope remains available for `Start` or for an explicit `Destroy`.
+complete local scope remains available for `Start` or for an explicit `Destroy`.
 
 Before removal, `DOWN_IN_PROGRESS` and the full registered object IDs are written
-to state. Down then discovers objects only through the exact run-ID label,
-rejects unexpected objects, verifies the run-ID and framework-owner labels, and
-removes only the registered full object IDs. The final state is `DOWN`; current
-runtime IDs are cleared and the previous IDs are retained for diagnosis.
-
-A repeated Down is idempotent when no run-labeled runtime objects remain.
+to state. Down rejects unexpected objects, verifies ownership, and removes only
+the registered full object IDs. The final state is `DOWN`; current Runtime IDs
+are cleared and previous IDs remain for diagnosis.
 
 ## Start
 
-`Start` recreates the registered containers and network from a preserved `DOWN`
-state. It reuses the same scope, run ID, ports, image references, resource
-profile, owner-marked data directories, and framework-installation state.
+`Start` handles two different preserved states:
+
+1. From `STOPPED`, it starts the existing containers by their full IDs without requiring the SQL credential and without recreating containers or the network.
+2. From `DOWN`, it recreates containers and the network from preserved state and
+   therefore requires the original SQL Server credential.
 
 ```powershell
 ./Lab/Install-Lab.ps1 `
@@ -184,30 +205,25 @@ profile, owner-marked data directories, and framework-installation state.
   -ScopeName sql-analyze-quicktest
 ```
 
-A generated credential stored by Install is loaded only after its directory and
-owner marker pass the saved path boundary. When this path is used, the result
-reports `LoadedStoredCredential = true`. A user-supplied credential is not
-persisted; provide the same credential again through `-AdminSecret`, the named
-process environment variable, or the interactive masked prompt. `Start` rejects
-`-GenerateSecret` because existing SQL Server system databases require the
-original credential.
+For `STOPPED`, Start writes `STARTING` before the first `container start`, starts
+containers sequentially in ascending SQL Server version order, waits for health,
+and verifies the expected major version. It also verifies the preserved framework
+when it was installed. Runtime IDs and network identity remain unchanged. A
+failure attempts an owner-validated reverse stop and returns to `STOPPED`; a
+rollback failure remains explicit as `START_STOPPED_RECOVERY_FAILED`.
 
-Start refuses any run-labeled runtime object while state says `DOWN`. It writes
-`STARTING` before the first Compose mutation, recreates selected versions
-sequentially, registers the new full object IDs, waits for health, and verifies
-the expected SQL Server major version. When the framework was installed, Start
-also verifies that `LabAnalyze` and the `monitor` schema remain present; it does
-not reinstall the framework.
+For `DOWN`, a generated credential stored by Install is loaded only after its
+path and owner marker are validated. A user-supplied credential must be provided
+again. `-GenerateSecret` is rejected because existing SQL Server system databases
+require the original credential. The containers are recreated sequentially and
+the final state is `READY`.
 
-A successful Start restores `READY`. Calling Start for a fully verified READY
-scope is idempotent and returns `AlreadyRunning = true`. A Start failure records
-newly created run-labeled objects, owner-validates them, removes them by full ID,
-and returns the preserved local scope to `DOWN` when cleanup succeeds.
+Calling Start for a fully verified `READY` scope remains idempotent.
 
 ## Destroy and uninstall
 
 `Destroy` means complete destruction of the selected quick-test scope. It
-removes its registered containers, registered network, generated local
+removes registered containers, the registered network, generated local
 credential, state, and all marked local data. It requires confirmation unless
 `-Force` is supplied.
 
@@ -224,25 +240,13 @@ The dedicated wrapper performs the same operation:
   -ScopeName sql-analyze-quicktest
 ```
 
-For documented unattended destruction:
+Destroy uses full object IDs and verifies current run-label and framework-owner
+labels before deletion. Unexpected run-labeled objects stop the operation. It
+never performs a global prune or a name-only delete.
 
-```powershell
-./Lab/Uninstall-Lab.ps1 `
-  -ScopeName sql-analyze-quicktest `
-  -Force
-```
-
-Destroy uses the full object IDs registered in local state and verifies current
-run-label and framework-owner labels before deletion. Run-labeled objects that
-are not registered in state cause Destroy to stop instead of widening its
-deletion scope. It never performs a global prune or a name-only delete.
-
-Local state, generated-credential, and data directories are removed only when
-their owner marker matches and their canonical path remains below the saved
-approved root.
-
-Down preserves the complete local scope. Destroy always removes the complete scope,
-independent of `PERSISTENT` or `TEMPORARY`.
+Stop preserves Runtime objects. Down preserves the complete local scope.
+Destroy always removes the complete scope, independent of `PERSISTENT` or
+`TEMPORARY`.
 
 ## Connection information
 
@@ -260,7 +264,7 @@ The credential is never printed again.
 
 The following remain open after this delivery:
 
-- Stop, Restart, and Reset;
+- Restart and Reset;
 - a separate UpdateFramework action;
 - native Docker and Podman execution evidence;
 - end-to-end SQL Server 2019, 2022, and 2025 host evidence.
