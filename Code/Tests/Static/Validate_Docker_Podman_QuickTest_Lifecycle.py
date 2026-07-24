@@ -18,6 +18,7 @@ REQUIRED_FILES = {
     "Lab/QuickTest/Private/LifecycleRuntime.ps1",
     "Lab/QuickTest/Public/Install-QuickTestLab.ps1",
     "Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1",
+    "Lab/QuickTest/Public/Invoke-QuickTestLabDown.ps1",
     "Lab/QuickTest/Public/Remove-QuickTestLab.ps1",
     "Lab/QuickTest/QuickTestLab.psm1",
     "Lab/QuickTest/README.md",
@@ -59,14 +60,16 @@ def validate_entrypoints(root: Path, findings: list[str]) -> None:
     require_fragments(
         entry,
         (
-            "'Preflight', 'Install', 'Status', 'Destroy'",
+            "'Preflight', 'Install', 'Status', 'Down', 'Destroy'",
             "SupportsShouldProcess",
             "Install-QuickTestLab",
             "Get-QuickTestLabStatus",
+            "Invoke-QuickTestLabDown",
             "Remove-QuickTestLab",
             "InstallFramework",
             "PersistGeneratedCredential",
-            "-Force is supported only with -Action Destroy.",
+            "-Force is supported only with -Action Down or Destroy.",
+            "DOWN_CONFIRMATION_REQUIRED",
             "DESTROY_CONFIRMATION_REQUIRED",
         ),
         "Install-Lab.ps1",
@@ -85,11 +88,7 @@ def validate_entrypoints(root: Path, findings: list[str]) -> None:
         "Uninstall-Lab.ps1",
         findings,
     )
-    require(
-        "RemoveData" not in uninstall,
-        "Uninstall entrypoint exposes partial Destroy.",
-        findings,
-    )
+    require("RemoveData" not in uninstall, "Uninstall exposes partial Destroy.", findings)
     require_fragments(
         loader,
         (
@@ -97,9 +96,11 @@ def validate_entrypoints(root: Path, findings: list[str]) -> None:
             "Private/LifecycleRuntime.ps1",
             "Public/Install-QuickTestLab.ps1",
             "Public/Get-QuickTestLabStatus.ps1",
+            "Public/Invoke-QuickTestLabDown.ps1",
             "Public/Remove-QuickTestLab.ps1",
             "'Install-QuickTestLab'",
             "'Get-QuickTestLabStatus'",
+            "'Invoke-QuickTestLabDown'",
             "'Remove-QuickTestLab'",
         ),
         "Quick-test module loader",
@@ -225,9 +226,11 @@ def validate_helpers(root: Path, findings: list[str]) -> None:
         require(forbidden not in runtime, f"Runtime helper contains {forbidden}.", findings)
 
 
-def validate_status_destroy(root: Path, findings: list[str]) -> None:
+def validate_status_down_destroy(root: Path, findings: list[str]) -> None:
     status = text(root, "Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1")
+    down = text(root, "Lab/QuickTest/Public/Invoke-QuickTestLabDown.ps1")
     destroy = text(root, "Lab/QuickTest/Public/Remove-QuickTestLab.ps1")
+
     require_fragments(
         status,
         (
@@ -239,10 +242,64 @@ def validate_status_destroy(root: Path, findings: list[str]) -> None:
             "OwnershipValid",
             "PARTIAL_SUCCESS",
             "non-canonical container ID",
+            "LifecycleStatus -eq 'DOWN'",
+            "Status = 'DOWN'",
+            "RuntimeStatus = 'removed'",
+            "DataPreserved = $true",
+            "StatePreserved = $true",
         ),
         "Status lifecycle",
         findings,
     )
+
+    require_fragments(
+        down,
+        (
+            "function Invoke-QuickTestLabDown",
+            "SupportsShouldProcess",
+            "DOWN_CONFIRMATION_REQUIRED",
+            "AlreadyDown",
+            "registeredContainerIds",
+            "registeredNetworkIds",
+            "unexpectedContainers",
+            "unexpectedNetworks",
+            "not registered in state",
+            "LifecycleStatus = 'DOWN_IN_PROGRESS'",
+            "RecoveryContainerIds",
+            "RecoveryNetworkIds",
+            "Remove-QuickTestRuntimeResources",
+            "PreviousContainerId",
+            "PreviousNetworkId",
+            "LifecycleStatus = 'DOWN'",
+            "DataPreserved = $true",
+            "StatePreserved = $true",
+            "CredentialPreserved",
+        ),
+        "Down lifecycle",
+        findings,
+    )
+    down_state = down.find("LifecycleStatus = 'DOWN_IN_PROGRESS'")
+    down_write = down.find("Write-QuickTestJson", down_state)
+    down_remove = down.find("Remove-QuickTestRuntimeResources", down_write)
+    final_state = down.find("LifecycleStatus = 'DOWN'", down_remove)
+    final_write = down.find("Write-QuickTestJson", final_state)
+    require(
+        -1 not in (down_state, down_write, down_remove, final_state, final_write)
+        and down_state < down_write < down_remove < final_state < final_write,
+        "Down does not persist recovery and final state around runtime removal.",
+        findings,
+    )
+    require("Remove-Item" not in down, "Down deletes local files or directories.", findings)
+    for forbidden in (
+        "system prune",
+        "container prune",
+        "network prune",
+        "volume prune",
+        "compose down",
+        "rm -rf",
+    ):
+        require(forbidden not in down.lower(), f"Down contains {forbidden}.", findings)
+
     require_fragments(
         destroy,
         (
@@ -316,6 +373,7 @@ def validate_status_and_gates(root: Path, findings: list[str]) -> None:
             "recovery state",
             "Full container and network object ID",
             "Status action",
+            "Down action",
             "Destroy action",
             "framework installation",
         ),
@@ -327,13 +385,14 @@ def validate_status_and_gates(root: Path, findings: list[str]) -> None:
         (
             "Start, Stop, Restart, and Reset",
             "UpdateFramework",
-            "Down action",
             "Native Docker runtime evidence",
             "Native Podman runtime evidence",
         ),
         "Open lifecycle status",
         findings,
     )
+    require("Down action" not in opened, "Delivered Down action remains open.", findings)
+
     with (root / "Metadata/Quality/Lab_External_Evidence_Gates.csv").open(
         newline="", encoding="utf-8"
     ) as handle:
@@ -364,6 +423,7 @@ def validate_integration(root: Path, findings: list[str]) -> None:
             "Analyze quick-test lifecycle runtime helpers",
             "Analyze quick-test Install lifecycle",
             "Analyze quick-test Status lifecycle",
+            "Analyze quick-test Down lifecycle",
             "Analyze quick-test Destroy lifecycle",
             "Analyze quick-test uninstall entrypoint",
             "Analyze quick-test framework wrapper",
@@ -378,7 +438,15 @@ def validate_integration(root: Path, findings: list[str]) -> None:
             "LOCAL_SCOPE_CONFLICT",
             "Install-QuickTestLab",
             "Get-QuickTestLabStatus",
+            "Invoke-QuickTestLabDown",
             "Remove-QuickTestLab",
+            "Status -ne 'DOWN'",
+            "AlreadyDown",
+            "PreviousContainerId",
+            "PreviousNetworkId",
+            "DataPreserved",
+            "StatePreserved",
+            "CredentialPreserved",
             "DESTROYED",
             "READ_ONLY_PREFLIGHT",
             "qt-lab.owner",
@@ -394,13 +462,14 @@ def validate_integration(root: Path, findings: list[str]) -> None:
         (
             "## Install",
             "## Status",
+            "## Down",
             "## Destroy and uninstall",
             "TEMPORARY",
             "PERSISTENT",
             "InstallFramework",
             "full object IDs",
+            "Down preserves",
             "Destroy always removes the complete scope",
-            "Down while preserving persistent data",
             "NOT_EXECUTED",
             "Docker-/Podman-Quick-Testsystem",
         ),
@@ -424,7 +493,7 @@ def main() -> int:
         validate_entrypoints(root, findings)
         validate_install(root, findings)
         validate_helpers(root, findings)
-        validate_status_destroy(root, findings)
+        validate_status_down_destroy(root, findings)
         validate_framework(root, findings)
         validate_status_and_gates(root, findings)
         validate_integration(root, findings)
@@ -436,7 +505,7 @@ def main() -> int:
 
     print(
         "Docker/Podman quick-test lifecycle validated: "
-        "actions=Install,Status,Destroy external_evidence=NOT_EXECUTED."
+        "actions=Install,Status,Down,Destroy external_evidence=NOT_EXECUTED."
     )
     return 0
 
