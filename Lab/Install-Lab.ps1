@@ -101,7 +101,7 @@ function Read-QuickTestVersions {
         try {
             $versions = @(
                 $value.Split(',') |
-                ForEach-Object { [int] $_.Trim() } |
+                ForEach-Object { [int] ($_.Trim()) } |
                 Sort-Object -Unique
             )
             if (
