@@ -90,16 +90,19 @@ if [ "${1:-}" = 'container' ] && [ "${2:-}" = 'inspect' ]; then
   if [[ "$joined" == *'{{.Id}}'* ]]; then printf '%s\n' "$container_full"; exit 0; fi
   if [[ "$joined" == *'{{.State.Status}}|{{.State.Health.Status}}'* ]]; then printf 'running|healthy\n'; exit 0; fi
   if [[ "$joined" == *'{{.State.Health.Status}}'* ]]; then printf 'healthy\n'; exit 0; fi
-  if [[ "$joined" == *'Labels'* ]]; then cat "$FAKE_RUNTIME_ROOT/run-id"; printf '\n'; exit 0; fi
+  if [[ "$joined" == *'qt-lab.owner'* ]]; then printf 'SQL_SERVER_ANALYZE\n'; exit 0; fi
+  if [[ "$joined" == *'qt-lab.run-id'* ]]; then cat "$FAKE_RUNTIME_ROOT/run-id"; printf '\n'; exit 0; fi
   exit 0
 fi
 if [ "${1:-}" = 'network' ] && [ "${2:-}" = 'inspect' ]; then
   if [[ "$joined" == *'{{.Id}}'* ]]; then printf '%s\n' "$network_full"; exit 0; fi
-  if [[ "$joined" == *'Labels'* ]]; then cat "$FAKE_RUNTIME_ROOT/run-id"; printf '\n'; exit 0; fi
+  if [[ "$joined" == *'qt-lab.owner'* ]]; then printf 'SQL_SERVER_ANALYZE\n'; exit 0; fi
+  if [[ "$joined" == *'qt-lab.run-id'* ]]; then cat "$FAKE_RUNTIME_ROOT/run-id"; printf '\n'; exit 0; fi
   exit 0
 fi
 if [ "${1:-}" = 'exec' ]; then
   if [[ "$joined" == *'ProductMajorVersion'* ]]; then printf '17\n'; fi
+  cat >/dev/null || true
   exit 0
 fi
 if [ "${1:-}" = 'container' ] && [ "${2:-}" = 'rm' ]; then
@@ -144,7 +147,7 @@ try {
         -SqlVersions @(2025) `
         -Ports @{ 2025 = 15480 } `
         -AdminSecret $credentialInput `
-        -AdminLogin sa `
+        -AdminLogin ExampleSqlAdmin `
         -ResourceProfile SMALL `
         -PersistenceMode TEMPORARY `
         -ScopeName $conflictScope `
@@ -164,7 +167,7 @@ try {
         -Runtime DOCKER `
         -SqlVersions @(2025) `
         -Ports @{ 2025 = 15481 } `
-        -AdminLogin sa `
+        -AdminLogin ExampleSqlAdmin `
         -AdminSecret $credentialInput `
         -ResourceProfile SMALL `
         -DataRoot (Join-Path $dataRoot 'synthetic-lifecycle') `
@@ -182,7 +185,7 @@ try {
         -SqlVersions @(2025) `
         -Ports @{ 2025 = 15481 } `
         -AdminSecret $credentialInput `
-        -AdminLogin sa `
+        -AdminLogin ExampleSqlAdmin `
         -ResourceProfile SMALL `
         -PersistenceMode TEMPORARY `
         -ScopeName synthetic-lifecycle `
@@ -214,6 +217,16 @@ try {
     }
     if ($state.PSObject.Properties.Name -contains 'AdminSecret') {
         throw 'Runtime state contains a credential value property.'
+    }
+    $adminSqlFiles = @(
+        Get-ChildItem `
+            -LiteralPath (Join-Path $stateRoot 'synthetic-lifecycle/runtime') `
+            -Filter 'admin-login-*.sql' `
+            -File `
+            -ErrorAction SilentlyContinue
+    )
+    if ($adminSqlFiles.Count -gt 0) {
+        throw 'Administrative login creation wrote a credential-bearing SQL file.'
     }
 
     $status = Get-QuickTestLabStatus `
