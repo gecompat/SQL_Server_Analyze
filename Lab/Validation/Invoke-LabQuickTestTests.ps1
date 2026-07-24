@@ -5,49 +5,90 @@ param(
 
     [Parameter()]
     [ValidateSet('ALL', 'PARSER', 'HELPERS', 'PREFLIGHT')]
-    [string] $Phase = 'ALL'
+    [string] $Phase = 'ALL',
+
+    [Parameter()]
+    [ValidateSet(
+        'ALL',
+        'ENTRYPOINTS',
+        'COMMON',
+        'RUNTIME',
+        'PREFLIGHT',
+        'INSTALL',
+        'STATUS',
+        'DESTROY',
+        'MODULE'
+    )]
+    [string] $ParserTarget = 'ALL'
 )
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+function Test-QuickTestPowerShellFile {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)]
+        [string] $RelativePath
+    )
+
+    $path = Join-Path $RepositoryRoot $RelativePath
+    $tokens = $null
+    $errors = $null
+    [Management.Automation.Language.Parser]::ParseFile(
+        $path,
+        [ref] $tokens,
+        [ref] $errors
+    ) | Out-Null
+    if (@($errors).Count -gt 0) {
+        $errorSummary = @($errors | ForEach-Object { $_.Message }) -join '; '
+        throw "PowerShell parser reported an error for $RelativePath: $errorSummary"
+    }
+}
+
 function Invoke-QuickTestParserPhase {
     [CmdletBinding()]
-    param()
+    param(
+        [Parameter(Mandatory)]
+        [string] $Target
+    )
 
-    $paths = [Collections.Generic.List[string]]::new()
-    foreach ($relativePath in @(
+    $targetPaths = @{
+        ENTRYPOINTS = @(
             'Lab/Install-Lab.ps1'
             'Lab/Uninstall-Lab.ps1'
             'Lab/Orchestration/Modules/DiagnosticLab/Public/Install-LabContainerFramework.ps1'
-        )) {
-        $paths.Add($relativePath)
-    }
-    $quickTestRoot = Join-Path $RepositoryRoot 'Lab/QuickTest'
-    foreach ($path in Get-ChildItem -LiteralPath $quickTestRoot -Recurse -File) {
-        if ($path.Extension -in @('.ps1', '.psm1')) {
-            $paths.Add($path.FullName.Substring($RepositoryRoot.Length + 1))
-        }
-    }
-
-    foreach ($relativePath in $paths) {
-        $path = Join-Path $RepositoryRoot $relativePath
-        $tokens = $null
-        $errors = $null
-        [Management.Automation.Language.Parser]::ParseFile(
-            $path,
-            [ref] $tokens,
-            [ref] $errors
-        ) | Out-Null
-        if (@($errors).Count -gt 0) {
-            $errorSummary = @($errors | ForEach-Object { $_.Message }) -join '; '
-            throw "PowerShell parser reported an error for $relativePath: $errorSummary"
-        }
+        )
+        COMMON = @('Lab/QuickTest/Private/Common.ps1')
+        RUNTIME = @('Lab/QuickTest/Private/Runtime.ps1')
+        PREFLIGHT = @('Lab/QuickTest/Public/Invoke-QuickTestPreflight.ps1')
+        INSTALL = @('Lab/QuickTest/Public/Install-QuickTestLab.ps1')
+        STATUS = @('Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1')
+        DESTROY = @('Lab/QuickTest/Public/Remove-QuickTestLab.ps1')
+        MODULE = @('Lab/QuickTest/QuickTestLab.psm1')
     }
 
-    $modulePath = Join-Path $RepositoryRoot 'Lab/QuickTest/QuickTestLab.psm1'
-    Import-Module -Name $modulePath -Force -ErrorAction Stop
-    Write-Output 'Docker/Podman quick-test parser and module import passed.'
+    if ($Target -eq 'ALL') {
+        foreach ($key in $targetPaths.Keys) {
+            foreach ($relativePath in $targetPaths[$key]) {
+                Test-QuickTestPowerShellFile -RelativePath $relativePath
+            }
+        }
+        $modulePath = Join-Path $RepositoryRoot 'Lab/QuickTest/QuickTestLab.psm1'
+        Import-Module -Name $modulePath -Force -ErrorAction Stop
+    }
+    elseif ($Target -eq 'MODULE') {
+        Test-QuickTestPowerShellFile `
+            -RelativePath 'Lab/QuickTest/QuickTestLab.psm1'
+        $modulePath = Join-Path $RepositoryRoot 'Lab/QuickTest/QuickTestLab.psm1'
+        Import-Module -Name $modulePath -Force -ErrorAction Stop
+    }
+    else {
+        foreach ($relativePath in $targetPaths[$Target]) {
+            Test-QuickTestPowerShellFile -RelativePath $relativePath
+        }
+    }
+    Write-Output "Docker/Podman quick-test parser contract passed: $Target."
 }
 
 function Invoke-QuickTestHelperPhase {
@@ -137,7 +178,7 @@ function Invoke-QuickTestPreflightPhase {
 }
 
 if ($Phase -in @('ALL', 'PARSER')) {
-    Invoke-QuickTestParserPhase
+    Invoke-QuickTestParserPhase -Target $ParserTarget
 }
 if ($Phase -in @('ALL', 'HELPERS')) {
     Invoke-QuickTestHelperPhase
