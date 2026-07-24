@@ -12,8 +12,9 @@ function Get-QuickTestLabStatus {
         [string] $StateRoot = (Join-Path $script:QuickTestLabRoot '.state/quick-test')
     )
 
+    $expectedStateRoot = [IO.Path]::GetFullPath($StateRoot)
     $scopeStateDirectory = [IO.Path]::GetFullPath(
-        (Join-Path $StateRoot $ScopeName)
+        (Join-Path $expectedStateRoot $ScopeName)
     )
     $statePath = Join-Path $scopeStateDirectory 'state.json'
     if (-not (Test-Path -LiteralPath $statePath -PathType Leaf)) {
@@ -25,9 +26,15 @@ function Get-QuickTestLabStatus {
     }
 
     $state = Read-QuickTestJson -Path $statePath
+    if (
+        [IO.Path]::GetFullPath([string] $state.StateBaseRoot) -ne $expectedStateRoot -or
+        [IO.Path]::GetFullPath([string] $state.StateDirectory) -ne $scopeStateDirectory
+    ) {
+        throw 'Status refused state paths that do not match the requested scope.'
+    }
     if (-not (Test-QuickTestOwnedDirectory `
-            -Path $state.StateDirectory `
-            -Root $state.StateBaseRoot `
+            -Path $scopeStateDirectory `
+            -Root $expectedStateRoot `
             -RunId $state.RunId)) {
         throw 'Status refused an unowned or out-of-bound state directory.'
     }
@@ -45,6 +52,10 @@ function Get-QuickTestLabStatus {
 
     $instances = [Collections.Generic.List[object]]::new()
     foreach ($container in $state.Containers) {
+        $containerId = [string] $container.ContainerId
+        if ($containerId -notmatch '^[a-f0-9]{64}$') {
+            throw 'Status found a non-canonical container ID in state.'
+        }
         $runtimeState = 'missing|missing'
         $ownerValid = $false
         try {
@@ -56,7 +67,7 @@ function Get-QuickTestLabStatus {
                         'inspect'
                         '--format'
                         '{{.State.Status}}|{{.State.Health.Status}}'
-                        [string] $container.ContainerId
+                        $containerId
                     ) |
                     Select-Object -First 1
             )
@@ -64,7 +75,7 @@ function Get-QuickTestLabStatus {
                 Get-QuickTestObjectLabel `
                     -RuntimeInfo $runtimeInfo `
                     -ResourceType CONTAINER `
-                    -ExactLocator ([string] $container.ContainerId) `
+                    -ExactLocator $containerId `
                     -LabelName 'qt-lab.run-id'
             ) -eq $state.RunId
         }
@@ -76,7 +87,7 @@ function Get-QuickTestLabStatus {
         $healthStatus = if ($parts.Count -gt 1) { $parts[1] } else { '' }
         $instances.Add([pscustomobject] @{
                 SqlVersion = [int] $container.SqlVersion
-                ContainerId = [string] $container.ContainerId
+                ContainerId = $containerId
                 ContainerName = [string] $container.ContainerName
                 Port = [int] $container.Port
                 RuntimeStatus = $runtimeStatus
