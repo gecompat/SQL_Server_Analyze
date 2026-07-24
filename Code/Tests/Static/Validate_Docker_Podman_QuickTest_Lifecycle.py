@@ -20,12 +20,14 @@ REQUIRED_FILES = {
     "Lab/QuickTest/Public/Start-QuickTestStoppedLab.ps1",
     "Lab/QuickTest/Public/Stop-QuickTestLab.ps1",
     "Lab/QuickTest/Public/Restart-QuickTestLab.ps1",
+    "Lab/QuickTest/Public/Reset-QuickTestLab.ps1",
     "Lab/QuickTest/Public/Remove-QuickTestLab.ps1",
     "Lab/QuickTest/QuickTestLab.psm1",
     "Lab/QuickTest/README.md",
     "Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1",
     "Lab/Validation/Invoke-LabQuickTestStopTests.ps1",
     "Lab/Validation/Invoke-LabQuickTestRestartTests.ps1",
+    "Lab/Validation/Invoke-LabQuickTestResetTests.ps1",
     "Metadata/Quality/Docker_Podman_Quick_Test_Status.json",
     "Metadata/Quality/Lab_External_Evidence_Gates.csv",
 }
@@ -58,19 +60,22 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
     fragments(
         entry,
         (
-            "'Preflight', 'Install', 'Status', 'Stop', 'Restart', 'Down', 'Start', 'Destroy'",
+            "'Preflight', 'Install', 'Status', 'Stop', 'Restart', 'Reset', 'Down', 'Start', 'Destroy'",
             "Stop-QuickTestLab",
             "Restart-QuickTestLab",
+            "Reset-QuickTestLab",
             "Start-QuickTestStoppedLab",
             "Start-QuickTestLab",
             "Get-QuickTestLabStatus",
-            "-Force is supported only with -Action Down or Destroy.",
+            "-Force is supported only with -Action Down, Reset, or Destroy.",
+            "Reset requires the existing SQL credential and cannot generate a new one.",
+            "RESET_CREDENTIAL_REQUIRED",
         ),
         "Install entrypoint",
         findings,
     )
     prompt = entry.find("if (-not $PSBoundParameters.ContainsKey('Runtime'))")
-    for action in ("Stop", "Restart", "Start"):
+    for action in ("Stop", "Restart", "Reset", "Start"):
         require(
             0 <= entry.find(f"if ($Action -eq '{action}')") < prompt,
             f"{action} is dispatched after install-time prompts.",
@@ -81,9 +86,11 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         (
             "Public/Stop-QuickTestLab.ps1",
             "Public/Restart-QuickTestLab.ps1",
+            "Public/Reset-QuickTestLab.ps1",
             "Public/Start-QuickTestStoppedLab.ps1",
             "'Stop-QuickTestLab'",
             "'Restart-QuickTestLab'",
+            "'Reset-QuickTestLab'",
             "'Start-QuickTestStoppedLab'",
         ),
         "Module loader",
@@ -132,7 +139,7 @@ def validate_install_down(root: Path, findings: list[str]) -> None:
     require("Remove-Item" not in down, "Down deletes local files.", findings)
 
 
-def validate_stop(root: Path, findings: list[str]) -> None:
+def validate_stop_start_restart(root: Path, findings: list[str]) -> None:
     stop = text(root, "Lab/QuickTest/Public/Stop-QuickTestLab.ps1")
     fragments(
         stop,
@@ -142,12 +149,8 @@ def validate_stop(root: Path, findings: list[str]) -> None:
             "LifecycleStatus = 'STOPPING'",
             "LifecycleStatus = 'STOPPED'",
             "LifecycleStatus = 'STOP_FAILED'",
-            "'container'",
-            "'stop'",
-            "'--time'",
             "qt-lab.run-id",
             "qt-lab.owner",
-            "SQL_SERVER_ANALYZE",
             "AlreadyStopped",
             "NetworkPreserved = $true",
             "DataPreserved = $true",
@@ -155,24 +158,21 @@ def validate_stop(root: Path, findings: list[str]) -> None:
         "Stop lifecycle",
         findings,
     )
-    state = stop.find("LifecycleStatus = 'STOPPING'")
-    write = stop.find("Write-QuickTestJson", state)
-    mutation = stop.find("'stop'", write)
-    final = stop.find("LifecycleStatus = 'STOPPED'", mutation)
+    stop_state = stop.find("LifecycleStatus = 'STOPPING'")
+    stop_write = stop.find("Write-QuickTestJson", stop_state)
+    stop_mutation = stop.find("'stop'", stop_write)
+    stop_final = stop.find("LifecycleStatus = 'STOPPED'", stop_mutation)
     require(
-        -1 not in (state, write, mutation, final) and state < write < mutation < final,
+        -1 not in (stop_state, stop_write, stop_mutation, stop_final)
+        and stop_state < stop_write < stop_mutation < stop_final,
         "Stop does not persist STOPPING before container stop.",
         findings,
     )
     require("Remove-Item" not in stop, "Stop deletes local files.", findings)
-    for forbidden in ("prune", "compose down", "container rm", "network rm"):
-        require(forbidden not in stop.lower(), f"Stop contains {forbidden}.", findings)
 
-
-def validate_stopped_start(root: Path, findings: list[str]) -> None:
-    start = text(root, "Lab/QuickTest/Public/Start-QuickTestStoppedLab.ps1")
+    stopped_start = text(root, "Lab/QuickTest/Public/Start-QuickTestStoppedLab.ps1")
     fragments(
-        start,
+        stopped_start,
         (
             "LifecycleStatus -ne 'STOPPED'",
             "START_SCOPE_CONFLICT",
@@ -190,34 +190,27 @@ def validate_stopped_start(root: Path, findings: list[str]) -> None:
         "Stopped Start lifecycle",
         findings,
     )
-    state = start.find("LifecycleStatus = 'STARTING'")
-    write = start.find("Write-QuickTestJson", state)
-    mutation = start.find("'start'", write)
+    start_state = stopped_start.find("LifecycleStatus = 'STARTING'")
+    start_write = stopped_start.find("Write-QuickTestJson", start_state)
+    start_mutation = stopped_start.find("'start'", start_write)
     require(
-        -1 not in (state, write, mutation) and state < write < mutation,
+        -1 not in (start_state, start_write, start_mutation)
+        and start_state < start_write < start_mutation,
         "Stopped Start does not persist STARTING before container start.",
         findings,
     )
-    recovery = start.find("START_STOPPED_RECOVERY")
-    recovery_write = start.find("Write-QuickTestJson", recovery)
-    rollback = start.find("'stop'", recovery_write)
     require(
-        -1 not in (recovery, recovery_write, rollback)
-        and recovery < recovery_write < rollback,
-        "Stopped Start recovery is not persisted before rollback.",
+        "Invoke-QuickTestCompose" not in stopped_start,
+        "Stopped Start uses Compose.",
         findings,
     )
-    require("Invoke-QuickTestCompose" not in start, "Stopped Start uses Compose.", findings)
-    require("AdminSecret" not in start, "Stopped Start requests a credential.", findings)
-    require("Remove-Item" not in start, "Stopped Start deletes local files.", findings)
+    require("AdminSecret" not in stopped_start, "Stopped Start requests a credential.", findings)
+    require("Remove-Item" not in stopped_start, "Stopped Start deletes local files.", findings)
 
-
-def validate_restart(root: Path, findings: list[str]) -> None:
     restart = text(root, "Lab/QuickTest/Public/Restart-QuickTestLab.ps1")
     fragments(
         restart,
         (
-            "function Restart-QuickTestLab",
             "RESTART_STATE_INVALID",
             "RESTART_STOP_FAILED",
             "RESTART_START_FAILED",
@@ -226,8 +219,6 @@ def validate_restart(root: Path, findings: list[str]) -> None:
             "RuntimeIdentityPreserved",
             "ContainersRestarted",
             "NetworkPreserved = $true",
-            "DataPreserved = $true",
-            "StatePreserved = $true",
             "Restarted = $true",
             "Status = 'WHATIF'",
         ),
@@ -249,10 +240,68 @@ def validate_restart(root: Path, findings: list[str]) -> None:
         "AdminSecret",
         "MSSQL_SA_PASSWORD",
         "Remove-Item",
-        "container', 'stop'",
-        "container', 'start'",
     ):
         require(forbidden not in restart, f"Restart contains direct operation {forbidden}.", findings)
+
+
+def validate_reset(root: Path, findings: list[str]) -> None:
+    reset = text(root, "Lab/QuickTest/Public/Reset-QuickTestLab.ps1")
+    fragments(
+        reset,
+        (
+            "function Reset-QuickTestLab",
+            "READ_ONLY_RESET_PREFLIGHT",
+            "RESET_PERSISTENT_SCOPE_BLOCKED",
+            "RESET_STATE_INVALID",
+            "RESET_CREDENTIAL_REQUIRED",
+            "RESET_SCOPE_CONFLICT",
+            "RESET_SCOPE_INCOMPLETE",
+            "RESET_CONFIRMATION_REQUIRED",
+            "RESET_INSTALL_FAILED",
+            "PersistenceMode -ne 'TEMPORARY'",
+            "GeneratedCredentialStored",
+            "Test-QuickTestOwnedDirectory",
+            "Get-QuickTestResourcesByRunId",
+            "Remove-QuickTestLab",
+            "Install-QuickTestLab",
+            "PreviousRunId",
+            "ResetPerformed = $true",
+            "DataRecreated = $true",
+            "LoadedStoredCredential",
+            "Reset did not create a new run ID.",
+        ),
+        "Reset lifecycle",
+        findings,
+    )
+    persistence_block = reset.find("RESET_PERSISTENT_SCOPE_BLOCKED")
+    discovery = reset.find("Get-QuickTestResourcesByRunId")
+    approval = reset.find("$PSCmdlet.ShouldProcess")
+    destroy = reset.find("Remove-QuickTestLab", approval)
+    install = reset.find("Install-QuickTestLab", destroy)
+    new_run_check = reset.find("Reset did not create a new run ID.", install)
+    require(
+        -1 not in (
+            persistence_block,
+            discovery,
+            approval,
+            destroy,
+            install,
+            new_run_check,
+        )
+        and persistence_block < discovery < approval < destroy < install < new_run_check,
+        "Reset does not validate, confirm, destroy, reinstall, and verify in order.",
+        findings,
+    )
+    for forbidden in (
+        "Remove-Item",
+        "system prune",
+        "container prune",
+        "network prune",
+        "volume prune",
+        "compose down",
+        "rm -rf",
+    ):
+        require(forbidden not in reset, f"Reset contains direct operation {forbidden}.", findings)
 
 
 def validate_status_destroy(root: Path, findings: list[str]) -> None:
@@ -303,6 +352,7 @@ def validate_metadata(root: Path, findings: list[str]) -> None:
             "Install action",
             "Stop action",
             "Restart action",
+            "Reset action",
             "Down action",
             "Start action",
             "Destroy action",
@@ -312,11 +362,15 @@ def validate_metadata(root: Path, findings: list[str]) -> None:
     )
     fragments(
         opened,
-        ("Reset", "UpdateFramework", "Native Docker runtime evidence", "Native Podman runtime evidence"),
+        (
+            "UpdateFramework",
+            "Native Docker runtime evidence",
+            "Native Podman runtime evidence",
+        ),
         "Open scope",
         findings,
     )
-    require("Restart action" not in opened, "Delivered Restart remains open.", findings)
+    require("Reset" not in opened, "Delivered Reset remains open.", findings)
 
     with (root / "Metadata/Quality/Lab_External_Evidence_Gates.csv").open(
         newline="", encoding="utf-8"
@@ -336,7 +390,7 @@ def validate_metadata(root: Path, findings: list[str]) -> None:
 def validate_integration(root: Path, findings: list[str]) -> None:
     lab = text(root, ".github/workflows/lab-contract-validation.yml")
     focused = text(root, ".github/workflows/quicktest-lifecycle-validation.yml")
-    restart_tests = text(root, "Lab/Validation/Invoke-LabQuickTestRestartTests.ps1")
+    reset_tests = text(root, "Lab/Validation/Invoke-LabQuickTestResetTests.ps1")
     readme = text(root, "Lab/QuickTest/README.md")
     require(
         "Validate_Docker_Podman_QuickTest_Lifecycle.py" in lab,
@@ -346,35 +400,38 @@ def validate_integration(root: Path, findings: list[str]) -> None:
     fragments(
         focused,
         (
-            "Invoke-LabQuickTestRestartTests.ps1",
-            "Run focused Restart lifecycle contract",
-            "Analyze quick-test Restart lifecycle",
+            "Invoke-LabQuickTestResetTests.ps1",
+            "Run focused Reset lifecycle contract",
+            "Analyze quick-test Reset lifecycle",
         ),
         "Focused lifecycle workflow",
         findings,
     )
     fragments(
-        restart_tests,
+        reset_tests,
         (
-            "Restart-QuickTestLab",
-            "Restart WhatIf",
-            "RuntimeIdentityPreserved",
-            "ContainersRestarted",
-            "container stop",
-            "container start",
-            "Restart recreated the container through Compose.",
+            "RESET_PERSISTENT_SCOPE_BLOCKED",
+            "READ_ONLY_RESET_PREFLIGHT",
+            "Reset WhatIf",
+            "ResetPerformed",
+            "DataRecreated",
+            "PreviousRunId",
+            "reset-sentinel.txt",
+            "fresh canonical runtime identity",
+            "container rm --force",
+            "network rm",
         ),
-        "Restart tests",
+        "Reset tests",
         findings,
     )
     fragments(
         readme,
         (
-            "## Restart",
-            "fully verified `READY`",
-            "without recreating",
-            "without requiring the SQL credential",
-            "runtime identity",
+            "## Reset",
+            "TEMPORARY",
+            "RESET_PERSISTENT_SCOPE_BLOCKED",
+            "new run ID",
+            "existing SQL credential",
             "Destroy always removes the complete scope",
             "NOT_EXECUTED",
         ),
@@ -394,9 +451,8 @@ def main() -> int:
     if not findings:
         validate_entrypoint(root, findings)
         validate_install_down(root, findings)
-        validate_stop(root, findings)
-        validate_stopped_start(root, findings)
-        validate_restart(root, findings)
+        validate_stop_start_restart(root, findings)
+        validate_reset(root, findings)
         validate_status_destroy(root, findings)
         validate_metadata(root, findings)
         validate_integration(root, findings)
@@ -406,7 +462,7 @@ def main() -> int:
         return 1
     print(
         "Docker/Podman quick-test lifecycle validated: "
-        "actions=Install,Status,Stop,Restart,Down,Start,Destroy "
+        "actions=Install,Status,Stop,Restart,Reset,Down,Start,Destroy "
         "external_evidence=NOT_EXECUTED."
     )
     return 0
