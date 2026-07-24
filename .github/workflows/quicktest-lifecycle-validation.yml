@@ -58,7 +58,7 @@ jobs:
             --repository-root . 2>&1 | tee "$log_path"
 
       - name: Report static validation findings
-        if: steps.static.outcome == 'failure' && github.ref_name == 'agent/quicktest-stop-lifecycle'
+        if: failure() && steps.static.outcome == 'failure' && github.ref_name == 'agent/quicktest-stop-lifecycle'
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
