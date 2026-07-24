@@ -1,0 +1,58 @@
+name: Classify quick-test Stop failure
+
+on:
+  push:
+    branches:
+      - agent/quicktest-stop-lifecycle
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  classify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Run and classify Stop contract
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'stop-diagnostic.log'
+          $output = @(
+            & ./Lab/Validation/Invoke-LabQuickTestStopTests.ps1 *>&1 |
+              ForEach-Object { [string] $_ }
+          )
+          $output | Set-Content -LiteralPath $logPath -Encoding utf8
+          if ($LASTEXITCODE -eq 0 -and $?) {
+            gh issue comment 70 --repo $env:GITHUB_REPOSITORY --body 'Stop contract diagnostic run succeeded.'
+            return
+          }
+          $patterns = @(
+            'Synthetic Stop Install did not return READY.'
+            'Stop WhatIf did not report WHATIF.'
+            'Stop did not preserve the exact installed scope.'
+            'Stop changed registered runtime object IDs.'
+            'Stop removed a preserved local scope directory.'
+            'Status did not report the STOPPED lifecycle state.'
+            'Stop is not idempotent.'
+            'Stopped Start did not resume the existing container.'
+            'Stopped Start changed the preserved runtime identity.'
+            'Status did not return READY after stopped Start.'
+            'Stop failed after stopped Start.'
+            'Down failed after Stop.'
+            'Destroy failed after Stop and Down.'
+            'Stop and stopped Start did not use the exact canonical container ID.'
+            'Stopped Start recreated the container through Compose.'
+          )
+          $classification = 'Stop contract failed without a classified assertion.'
+          foreach ($pattern in $patterns) {
+            if ($output -contains $pattern -or ($output -join "`n").Contains($pattern)) {
+              $classification = $pattern
+              break
+            }
+          }
+          gh issue comment 70 --repo $env:GITHUB_REPOSITORY --body $classification
+          throw 'Stop contract diagnostic failed.'
