@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 
 jobs:
   open-pr:
@@ -21,6 +22,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          gh issue comment 70 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Temporary PR workflow started for the bounded Stop lifecycle branch."
+
           existing="$(gh pr list \
             --repo "$GITHUB_REPOSITORY" \
             --head "$GITHUB_REF_NAME" \
@@ -28,9 +33,12 @@ jobs:
             --json number \
             --jq '.[0].number // empty')"
           if [ -n "$existing" ]; then
-            echo "Pull request already exists: $existing"
+            gh issue comment 70 \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "Pull request already exists: #$existing."
             exit 0
           fi
+
           body_file="$RUNNER_TEMP/quicktest-stop-pr.md"
           cat > "$body_file" <<'EOF'
           ## Umfang
@@ -43,10 +51,24 @@ jobs:
 
           Der Merge erfolgt nur nach vollständig grünen Repository-Gates.
           EOF
-          gh pr create \
+
+          set +e
+          result="$(gh pr create \
             --repo "$GITHUB_REPOSITORY" \
             --head "$GITHUB_REF_NAME" \
             --base main \
             --draft \
             --title 'Implement quick-test Stop lifecycle' \
-            --body-file "$body_file"
+            --body-file "$body_file" 2>&1)"
+          exit_code=$?
+          set -e
+          if [ "$exit_code" -ne 0 ]; then
+            gh issue comment 70 \
+              --repo "$GITHUB_REPOSITORY" \
+              --body "Temporary PR workflow could not open the pull request; GitHub CLI returned exit code $exit_code."
+            exit "$exit_code"
+          fi
+          gh issue comment 70 \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "Draft pull request opened successfully."
+          printf '%s\n' "$result"
