@@ -9,12 +9,14 @@ $script:QuickTestRepositoryRoot = [IO.Path]::GetFullPath(
 $privateFiles = @(
     'Private/Common.ps1'
     'Private/Runtime.ps1'
+    'Private/Interactive.ps1'
 )
 $publicFiles = @(
     'Public/Invoke-QuickTestPreflight.ps1'
     'Public/Install-QuickTestLab.ps1'
     'Public/Get-QuickTestLabStatus.ps1'
     'Public/Remove-QuickTestLab.ps1'
+    'Public/Invoke-QuickTestEntryPoint.ps1'
 )
 
 foreach ($relativePath in @($privateFiles + $publicFiles)) {
@@ -26,6 +28,7 @@ Export-ModuleMember -Function @(
     'Get-QuickTestLabStatus'
     'Get-QuickTestResourceProfile'
     'Install-QuickTestLab'
+    'Invoke-QuickTestEntryPoint'
     'Invoke-QuickTestPreflight'
     'New-QuickTestPassword'
     'Remove-QuickTestLab'
