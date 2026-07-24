@@ -34,7 +34,31 @@
     {
       "LogicalMediaId": "WINDOWS_SERVER_CORE",
       "ProductFamily": "WINDOWS_SERVER",
-      "ProductVersion": "SUPPORTED_VERSION_REQUIRED",
+      "ProductVersion": "SUPPORTED_RELEASE_REQUIRED",
+      "Language": "CONFIGURED_LANGUAGE_REQUIRED",
+      "Checksum": "SHA256_CHECKSUM_REQUIRED",
+      "Status": "LOCAL_BINDING_REQUIRED"
+    },
+    {
+      "LogicalMediaId": "SQL_SERVER_2019_DEVELOPER_WINDOWS",
+      "ProductFamily": "SQL_SERVER",
+      "ProductVersion": "2019",
+      "Language": "CONFIGURED_LANGUAGE_REQUIRED",
+      "Checksum": "SHA256_CHECKSUM_REQUIRED",
+      "Status": "LOCAL_BINDING_REQUIRED"
+    },
+    {
+      "LogicalMediaId": "SQL_SERVER_2022_DEVELOPER_WINDOWS",
+      "ProductFamily": "SQL_SERVER",
+      "ProductVersion": "2022",
+      "Language": "CONFIGURED_LANGUAGE_REQUIRED",
+      "Checksum": "SHA256_CHECKSUM_REQUIRED",
+      "Status": "LOCAL_BINDING_REQUIRED"
+    },
+    {
+      "LogicalMediaId": "SQL_SERVER_2025_DEVELOPER_WINDOWS",
+      "ProductFamily": "SQL_SERVER",
+      "ProductVersion": "2025",
       "Language": "CONFIGURED_LANGUAGE_REQUIRED",
       "Checksum": "SHA256_CHECKSUM_REQUIRED",
       "Status": "LOCAL_BINDING_REQUIRED"
