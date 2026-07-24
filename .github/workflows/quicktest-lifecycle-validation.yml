@@ -41,5 +41,24 @@ jobs:
       - name: Run focused lifecycle contract
         shell: pwsh
         run: |
-          pwsh -NoLogo -NoProfile `
-            -File ./Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1
+          $logPath = Join-Path $env:RUNNER_TEMP 'quicktest-lifecycle-validation.log'
+          try {
+            & ./Lab/Validation/Invoke-LabQuickTestLifecycleTests.ps1 *>&1 |
+              Tee-Object -FilePath $logPath
+            if (-not $?) {
+              throw 'Synthetic quick-test lifecycle contract failed.'
+            }
+          }
+          catch {
+            $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
+            throw
+          }
+
+      - name: Upload focused failure log
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: quicktest-lifecycle-validation-log
+          path: ${{ runner.temp }}/quicktest-lifecycle-validation.log
+          if-no-files-found: error
+          retention-days: 7
