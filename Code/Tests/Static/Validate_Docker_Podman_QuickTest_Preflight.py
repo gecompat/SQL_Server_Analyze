@@ -114,7 +114,11 @@ def validate_entrypoint(root: Path, findings: list[str]) -> None:
         "Write-Verbose $plainValue",
         "Write-Debug $plainValue",
     ):
-        require(forbidden not in module, f"Preflight can emit a secret: {forbidden}.", findings)
+        require(
+            forbidden not in module,
+            f"Credential exposure output fragment detected: {forbidden}.",
+            findings,
+        )
 
 
 def validate_status(root: Path, findings: list[str]) -> None:
