@@ -1,9 +1,9 @@
 {
   "SchemaVersion": "1.0",
   "WorkItemId": "LAB-QUICKTEST-001",
-  "ContractStatus": "IMPLEMENTED_AUTOMATED_GATE",
+  "ContractStatus": "IMPLEMENTED_ACTIONS_GATE",
   "PreflightStatus": "IMPLEMENTED_AUTOMATED_GATE",
-  "RuntimeStatus": "NOT_EXECUTED",
+  "RuntimeStatus": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
   "DataClassification": "PUBLIC_AND_SYNTHETIC",
   "DeliveredScope": [
     "Shared portable Compose core for SQL Server 2019, 2022, and 2025",
@@ -15,23 +15,30 @@
     "Static Docker-based validation of both effective Compose models",
     "Interactive and non-interactive PowerShell 7 Preflight entrypoint",
     "Docker or Podman runtime and Compose capability detection",
-    "SQL Server version, host-port, memory, path, image, EULA, and secret-policy checks",
+    "SQL Server version, host-port, memory, path, image, EULA, and credential-policy checks",
     "Generic scope-conflict detection without creating or changing runtime resources",
     "Structured READY or PREFLIGHT_FAILED result with reason codes",
-    "Synthetic positive and negative Preflight contract tests"
+    "Bounded Install action with sequential per-version start and readiness verification",
+    "Marker-bound local recovery state written before the first runtime mutation",
+    "Full container and network object ID registration and run-label ownership checks",
+    "Optional generic administrative SQL login and framework installation",
+    "Status action with runtime, health, and ownership verification",
+    "Confirmation-bound Destroy action with exact runtime and local-scope cleanup",
+    "Synthetic positive and negative Preflight and lifecycle contract tests"
   ],
   "OpenScope": [
-    "Lifecycle execution and generated local state",
-    "Container Install or Up action",
-    "Framework installation and UpdateFramework",
-    "Start, Stop, Restart, Reset, Status, Down, and Destroy",
+    "Start, Stop, Restart, and Reset lifecycle actions",
+    "Separate UpdateFramework action",
+    "Down action that preserves persistent data without destroying the full scope",
     "Native Docker runtime evidence",
-    "Native Podman runtime evidence"
+    "Native Podman runtime evidence",
+    "SQL Server 2019, 2022, and 2025 end-to-end readiness evidence"
   ],
   "ExternalEvidenceRequired": [
-    "Native x86-64 Linux Docker Preflight against an installed runtime",
-    "Native x86-64 Linux Podman Preflight against an installed runtime",
-    "Registry and SQL Server image availability checks"
+    "Native x86-64 Linux Docker Install Status and Destroy execution",
+    "Native x86-64 Linux Podman Install Status and Destroy execution",
+    "SQL Server 2019, 2022, and 2025 readiness and major-version verification",
+    "Optional framework installation verification on each selected version"
   ],
   "EvidenceReference": "Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md"
 }
