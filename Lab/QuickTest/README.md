@@ -185,7 +185,8 @@ profile, owner-marked data directories, and framework-installation state.
 ```
 
 A generated credential stored by Install is loaded only after its directory and
-owner marker pass the saved path boundary. A user-supplied credential is not
+owner marker pass the saved path boundary. When this path is used, the result
+reports `LoadedStoredCredential = true`. A user-supplied credential is not
 persisted; provide the same credential again through `-AdminSecret`, the named
 process environment variable, or the interactive masked prompt. `Start` rejects
 `-GenerateSecret` because existing SQL Server system databases require the
@@ -199,9 +200,9 @@ also verifies that `LabAnalyze` and the `monitor` schema remain present; it does
 not reinstall the framework.
 
 A successful Start restores `READY`. Calling Start for a fully verified READY
-scope is idempotent and returns `AlreadyRunning = true`. On failure, newly
-created run-labeled objects are recorded, owner-validated, removed by full ID,
-and the preserved local scope returns to `DOWN` when cleanup succeeds.
+scope is idempotent and returns `AlreadyRunning = true`. A Start failure records
+newly created run-labeled objects, owner-validates them, removes them by full ID,
+and returns the preserved local scope to `DOWN` when cleanup succeeds.
 
 ## Destroy and uninstall
 
