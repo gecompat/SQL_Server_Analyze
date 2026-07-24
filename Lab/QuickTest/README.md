@@ -210,8 +210,8 @@ Local state, generated-credential, and data directories are removed only when
 their owner marker matches and their canonical path remains below the saved
 approved root.
 
-Down preserves the complete local scope. Destroy always removes the complete
-scope, independent of `PERSISTENT` or `TEMPORARY`.
+Down preserves the complete local scope. Destroy always removes the complete scope,
+independent of `PERSISTENT` or `TEMPORARY`.
 
 ## Connection information
 
