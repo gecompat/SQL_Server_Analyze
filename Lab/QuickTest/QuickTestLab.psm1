@@ -13,6 +13,7 @@ foreach ($relativePath in @(
 }
 
 Export-ModuleMember -Function @(
+    'ConvertTo-QuickTestSecureString'
     'Get-QuickTestDefaultPorts'
     'Get-QuickTestResourceProfile'
     'Invoke-QuickTestPreflight'
