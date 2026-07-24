@@ -1,7 +1,9 @@
 # Docker/Podman quick-test system
 
-This directory contains the container-only SQL Server quick-test system. The
-public entrypoints are:
+This directory contains the container-only SQL Server quick-test system. Its
+binding requirements and acceptance boundaries are documented in the
+[Docker/Podman quick-test system requirements](../../Documentation/Architecture/Docker_Podman_Quick_Test_System_Requirements.md).
+The public entrypoints are:
 
 - `Lab/Install-Lab.ps1` for `Preflight`, `Install`, `Status`, and `Destroy`;
 - `Lab/Uninstall-Lab.ps1` for confirmed destruction of one exact quick-test scope.
