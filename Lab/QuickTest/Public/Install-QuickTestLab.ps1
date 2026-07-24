@@ -150,6 +150,7 @@ function Install-QuickTestLab {
     $networkId = ''
     $credentialPath = ''
     $baseEnvironment = $null
+    $state = $null
 
     $environmentNames = [Collections.Generic.List[string]]::new()
     foreach ($name in @(
@@ -189,7 +190,7 @@ function Install-QuickTestLab {
         Set-QuickTestOwnerMarker -Path $scopeStateDirectory -RunId $runId
         Set-QuickTestPrivateDirectoryPermissions -Path $scopeStateDirectory
         [IO.Directory]::CreateDirectory($runtimeDirectory) | Out-Null
-        Set-QuickTestPrivateDirectoryPermissions -Path $runtimeDirectory
+        Set-QuickTestDirectoryPermissions -Path $runtimeDirectory
         Set-QuickTestOwnerMarker -Path $scopeDataDirectory -RunId $runId
         Set-QuickTestDirectoryPermissions -Path $scopeDataDirectory
 
@@ -216,6 +217,8 @@ function Install-QuickTestLab {
             GeneratedCredentialStored = $false
             NetworkId = ''
             Containers = @()
+            RecoveryContainerIds = @()
+            RecoveryNetworkIds = @()
         }
         Write-QuickTestJson -Path $statePath -InputObject $state
 
@@ -224,8 +227,6 @@ function Install-QuickTestLab {
                 -CredentialDirectory $scopeCredentialDirectory `
                 -SecureValue $AdminSecret `
                 -RunId $runId
-            Set-QuickTestPrivateDirectoryPermissions `
-                -Path $scopeCredentialDirectory
             $state.CredentialDirectory = $scopeCredentialDirectory
             $state.GeneratedCredentialStored = $true
             Write-QuickTestJson -Path $statePath -InputObject $state
@@ -342,9 +343,7 @@ function Install-QuickTestLab {
                     -RuntimeInfo $runtimeInfo `
                     -ContainerId $containerId `
                     -AdminLogin $AdminLogin `
-                    -RuntimeDirectory $runtimeDirectory `
-                    -SecureValue $AdminSecret `
-                    -SqlVersion $version
+                    -SecureValue $AdminSecret
             }
             if ($InstallFramework) {
                 $diagnosticModulePath = Join-Path (
@@ -396,6 +395,12 @@ function Install-QuickTestLab {
             $resources = Get-QuickTestResourcesByRunId `
                 -RuntimeInfo $runtimeInfo `
                 -RunId $runId
+            if ($null -ne $state) {
+                $state.LifecycleStatus = 'RECOVERY_CLEANUP'
+                $state.RecoveryContainerIds = @($resources.ContainerIds)
+                $state.RecoveryNetworkIds = @($resources.NetworkIds)
+                Write-QuickTestJson -Path $statePath -InputObject $state
+            }
             Remove-QuickTestRuntimeResources `
                 -RuntimeInfo $runtimeInfo `
                 -RunId $runId `
