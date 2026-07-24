@@ -293,8 +293,8 @@ try {
         -LiteralPath (Join-Path $fakeRuntimeRoot 'commands.log') `
         -Raw `
         -Encoding utf8
-    if (@([regex]::Matches($commands, ' up --detach sql2025(?:\s|$)')).Count -ne 2) {
-        throw 'Reset did not perform exactly one fresh reinstall after the initial install.'
+    if (@([regex]::Matches($commands, ' up --detach sql2025(?:\s|$)')).Count -ne 3) {
+        throw 'Reset fixture did not perform the persistent install, temporary install, and one fresh reinstall.'
     }
     $removals = Get-Content `
         -LiteralPath (Join-Path $fakeRuntimeRoot 'removals.log') `
