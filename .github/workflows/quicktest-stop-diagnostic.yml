@@ -20,13 +20,17 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $logPath = Join-Path $env:RUNNER_TEMP 'stop-diagnostic.log'
-          $output = @(
+          $output = [Collections.Generic.List[string]]::new()
+          $failed = $false
+          try {
             & ./Lab/Validation/Invoke-LabQuickTestStopTests.ps1 *>&1 |
-              ForEach-Object { [string] $_ }
-          )
-          $output | Set-Content -LiteralPath $logPath -Encoding utf8
-          if ($LASTEXITCODE -eq 0 -and $?) {
+              ForEach-Object { $output.Add([string] $_) }
+          }
+          catch {
+            $failed = $true
+            $output.Add([string] $_.Exception.Message)
+          }
+          if (-not $failed) {
             gh issue comment 70 --repo $env:GITHUB_REPOSITORY --body 'Stop contract diagnostic run succeeded.'
             return
           }
@@ -48,8 +52,9 @@ jobs:
             'Stopped Start recreated the container through Compose.'
           )
           $classification = 'Stop contract failed without a classified assertion.'
+          $joined = $output -join "`n"
           foreach ($pattern in $patterns) {
-            if ($output -contains $pattern -or ($output -join "`n").Contains($pattern)) {
+            if ($joined.Contains($pattern, [StringComparison]::Ordinal)) {
               $classification = $pattern
               break
             }
