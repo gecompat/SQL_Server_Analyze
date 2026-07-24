@@ -40,7 +40,7 @@ jobs:
   synthetic-lifecycle:
     name: Validate synthetic quick-test lifecycle
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - name: Check out repository
@@ -84,6 +84,49 @@ jobs:
           catch {
             $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
             throw
+          }
+
+      - name: Install pinned PowerShell analyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Repository PSGallery -Scope CurrentUser -Force
+
+      - name: Analyze quick-test Stop lifecycle
+        shell: pwsh
+        run: |
+          $findings = @(Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/Public/Stop-QuickTestLab.ps1 -Severity Error)
+          if ($findings.Count -gt 0) {
+            $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
+            throw "Quick-test Stop analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze stopped quick-test Start lifecycle
+        shell: pwsh
+        run: |
+          $findings = @(Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/Public/Start-QuickTestStoppedLab.ps1 -Severity Error)
+          if ($findings.Count -gt 0) {
+            $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
+            throw "Stopped quick-test Start analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test Status lifecycle
+        shell: pwsh
+        run: |
+          $findings = @(Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/Public/Get-QuickTestLabStatus.ps1 -Severity Error)
+          if ($findings.Count -gt 0) {
+            $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
+            throw "Quick-test Status analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Analyze quick-test entrypoint and module
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer -Path ./Lab/Install-Lab.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/QuickTest/QuickTestLab.psm1 -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
+            throw "Quick-test Stop integration analyzer reported $($findings.Count) error finding(s)."
           }
 
       - name: Upload focused failure log
