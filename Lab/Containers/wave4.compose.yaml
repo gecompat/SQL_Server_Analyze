@@ -10,6 +10,7 @@ services:
       MSSQL_SA_PASSWORD: ${LAB_W4_SQL_SA_PASSWORD:?LAB_W4_SQL_SA_PASSWORD is required}
       MSSQL_COLLATION: SQL_Latin1_General_CP1_CS_AS
       MSSQL_MEMORY_LIMIT_MB: ${LAB_W4_MSSQL_MEMORY_LIMIT_MB:?LAB_W4_MSSQL_MEMORY_LIMIT_MB is required}
+      MSSQL_AGENT_ENABLED: "true"
     volumes:
       - type: bind
         source: ${LAB_W4_PRIMARY_DATA_DIR:?LAB_W4_PRIMARY_DATA_DIR is required}
@@ -53,6 +54,7 @@ services:
       MSSQL_SA_PASSWORD: ${LAB_W4_SQL_SA_PASSWORD:?LAB_W4_SQL_SA_PASSWORD is required}
       MSSQL_COLLATION: SQL_Latin1_General_CP1_CS_AS
       MSSQL_MEMORY_LIMIT_MB: ${LAB_W4_MSSQL_MEMORY_LIMIT_MB:?LAB_W4_MSSQL_MEMORY_LIMIT_MB is required}
+      MSSQL_AGENT_ENABLED: "true"
     volumes:
       - type: bind
         source: ${LAB_W4_SECONDARY_DATA_DIR:?LAB_W4_SECONDARY_DATA_DIR is required}
@@ -80,6 +82,7 @@ services:
       MSSQL_SA_PASSWORD: ${LAB_W4_SQL_SA_PASSWORD:?LAB_W4_SQL_SA_PASSWORD is required}
       MSSQL_COLLATION: SQL_Latin1_General_CP1_CS_AS
       MSSQL_MEMORY_LIMIT_MB: ${LAB_W4_MSSQL_MEMORY_LIMIT_MB:?LAB_W4_MSSQL_MEMORY_LIMIT_MB is required}
+      MSSQL_AGENT_ENABLED: "true"
     volumes:
       - type: bind
         source: ${LAB_W4_TERTIARY_DATA_DIR:?LAB_W4_TERTIARY_DATA_DIR is required}
