@@ -319,6 +319,60 @@ Verify BIOS virtualization support.
 
 Modern Windows versions may expose inconsistent legacy fields. Prefer build number and `DisplayVersion` over `WindowsVersion`.
 
+### Service fails to start (Win32Exception 1068)
+
+Symptom: the runner service is installed but fails to start with an error similar to:
+
+```
+System.ComponentModel.Win32Exception (0x80004005): Der Abhängigkeitsdienst oder die Abhängigkeitsgruppe konnte nicht gestartet werden.
+```
+
+Cause: In our lab a freshly installed runner service used the `NetworkService` account by default and could not start due to permission/Logon issues for dependent operations (for example access to Docker, Hyper-V or service startup privileges). When the service is started interactively via `run.cmd` the runner works, indicating the runtime itself is healthy — the issue is the Windows service account or a missing dependency.
+
+Quick checks and remediation (run in an elevated PowerShell on the runner host):
+
+```powershell
+# Inspect service configuration and dependencies
+sc.exe qc actions.runner.<YOUR_INSTANCE_NAME>
+reg query "HKLM\SYSTEM\CurrentControlSet\Services\actions.runner.<YOUR_INSTANCE_NAME>" /v DependOnService
+
+# Try starting the service (may fail if current account lacks rights)
+sc.exe start "actions.runner.<YOUR_INSTANCE_NAME>"
+
+# If start fails with access denied or dependency errors, try switching to LocalSystem to verify account problems
+sc.exe config "actions.runner.<YOUR_INSTANCE_NAME>" obj= LocalSystem
+sc.exe start "actions.runner.<YOUR_INSTANCE_NAME>"
+```
+
+If the service starts successfully as `LocalSystem`, create a dedicated service account for production usage and grant it the following:
+
+- `Log on as a service` right
+- Membership in `docker-users` if Docker access is required
+- Membership in `Hyper-V Administrators` if Hyper-V management is required
+
+Example: create and configure a dedicated account and assign rights (elevated PowerShell):
+
+```powershell
+# Create local service account (replace name and password)
+# New-LocalUser -Name RunnerSvc -Password (ConvertTo-SecureString "P@ssw0rd!" -AsPlainText -Force) -Description "GitHub Actions runner service account"
+
+# Grant 'Log on as a service' via ntrights (or local security policy / GPO)
+# ntrights.exe +r SeServiceLogonRight -u RunnerSvc
+
+# Add to docker-users and Hyper-V Administrators
+# Add-LocalGroupMember -Group "docker-users" -Member RunnerSvc
+# Add-LocalGroupMember -Group "Hyper-V Administrators" -Member RunnerSvc
+
+# Configure service to run under the dedicated account
+sc.exe config "actions.runner.<YOUR_INSTANCE_NAME>" obj= ".\\RunnerSvc" password= "<secure-password>"
+sc.exe start "actions.runner.<YOUR_INSTANCE_NAME>"
+```
+
+Notes:
+- Use a secure password and follow your organisation's account lifecycle and auditing rules.
+- If you cannot change the service account, running the runner interactively via `run.cmd` is an acceptable fallback for ad-hoc or test runs.
+- Document the chosen service account and required group memberships alongside the runner installation artifacts so future reinstallations reproduce the working configuration.
+
 ---
 
 ## References
