@@ -160,6 +160,33 @@ function Assert-RootsDoNotOverlap {
     }
 }
 
+function Get-LocalFixedDriveCandidates {
+    if (-not $script:IsWindowsHost) {
+        return @()
+    }
+
+    $candidates = [Collections.Generic.List[object]]::new()
+    foreach ($drive in [IO.DriveInfo]::GetDrives()) {
+        try {
+            if (-not $drive.IsReady -or $drive.DriveType -ne [IO.DriveType]::Fixed) {
+                continue
+            }
+            $root = $drive.RootDirectory.FullName
+            if ($root -notmatch '^[A-Za-z]:\\$') {
+                continue
+            }
+            $candidates.Add([pscustomobject]@{
+                    Root = $root
+                    Free = [long] $drive.AvailableFreeSpace
+                })
+        }
+        catch {
+            continue
+        }
+    }
+    return $candidates.ToArray()
+}
+
 function Get-DefaultLabRoot {
     if (-not $script:IsWindowsHost) {
         if (-not [string]::IsNullOrWhiteSpace($env:HOME)) {
@@ -168,17 +195,16 @@ function Get-DefaultLabRoot {
         return '/srv/sql-server-analyze-quickstart'
     }
 
-    $systemDrive = [IO.Path]::GetPathRoot($env:SystemRoot)
-    $drives = @(Get-PSDrive -PSProvider FileSystem -ErrorAction SilentlyContinue | Where-Object {
-            $_.Root -match '^[A-Za-z]:\\$' -and $_.Free -gt 20GB
-        })
-    $selected = $drives |
-        Sort-Object @{ Expression = { if ($_.Root -eq $systemDrive) { 1 } else { 0 } } }, @{ Expression = 'Free'; Descending = $true } |
+    $selected = @(Get-LocalFixedDriveCandidates) |
+        Sort-Object @{ Expression = 'Free'; Descending = $true }, @{ Expression = 'Root'; Descending = $false } |
         Select-Object -First 1
-    if ($null -eq $selected) {
-        return (Join-Path $systemDrive 'SQL_Server_Analyze_QuickStart')
+
+    if ($null -ne $selected) {
+        return (Join-Path $selected.Root 'SQL_Server_Analyze_QuickStart')
     }
-    return (Join-Path $selected.Root 'SQL_Server_Analyze_QuickStart')
+
+    $systemDrive = [IO.Path]::GetPathRoot($env:SystemRoot)
+    return (Join-Path $systemDrive 'SQL_Server_Analyze_QuickStart')
 }
 
 function Read-PathWithDefault {
