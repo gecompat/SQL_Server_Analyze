@@ -35,9 +35,9 @@ jobs:
       - name: Validate tracked repository files
         shell: bash
         run: |
-          set -o pipefail
+          set -euo pipefail
           python3 ./Code/Tests/Static/910_Validate_Repository_Privacy.py \
-            --repository-root . 2>&1 | tee "$RUNNER_TEMP/repository-privacy.log"
+            --repository-root .
 
       - name: Build and validate delivery ZIP
         shell: bash
@@ -52,12 +52,3 @@ jobs:
           python3 ./Code/Tests/Static/910_Validate_Repository_Privacy.py \
             --repository-root . \
             --archive-path "$archive_path"
-
-      - name: Upload sanitized privacy findings
-        if: failure()
-        uses: actions/upload-artifact@v7
-        with:
-          name: repository-privacy-findings
-          path: ${{ runner.temp }}/repository-privacy.log
-          if-no-files-found: ignore
-          retention-days: 1
