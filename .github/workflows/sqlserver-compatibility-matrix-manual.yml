@@ -35,9 +35,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          password="A$(openssl rand -hex 16)a1!"
-          echo "::add-mask::$password"
-          echo "QTLAB_SQL_SECRET=$password" >> "$GITHUB_ENV"
+          generated_value="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$generated_value"
+          echo "QTLAB_SQL_SECRET=$generated_value" >> "$GITHUB_ENV"
 
       - name: Install and validate compatibility matrix
         shell: pwsh
