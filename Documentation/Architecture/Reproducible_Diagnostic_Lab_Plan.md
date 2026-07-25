@@ -942,6 +942,8 @@ Alle 39 im Katalog Welle 3 zugeordneten Szenarien sind als 38 begrenzte Runtime-
 
 ### Welle 4 – Multi-Container und Netzwerk
 
+**Implementierungsstatus:** `IMPLEMENTED_ACTIONS_GATE` / `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`
+
 **Lieferumfang:**
 
 - Pair- und Triple-Topologien;
@@ -949,6 +951,12 @@ Alle 39 im Katalog Welle 3 zugeordneten Szenarien sind als 38 begrenzte Runtime-
 - Router-/Proxy-Fault-Layer;
 - `tc/netem`-Szenarien;
 - SQL Agent.
+
+Die Docker-Laufzeit für `CTR-PAIR` und `CTR-TRIPLE` sowie die begrenzte
+Log-Shipping-Aktion `LAB-LS-001` sind implementiert und durch statische und
+PowerShell-Verträge abgesichert. Der native Multi-Container-Nachweis, 17
+weitere Infrastrukturaktionen, der Network-Fault-Layer und die
+Hyper-V-Cross-Platform-Laufzeit bleiben offen.
 
 **Abnahme:**
 
@@ -958,6 +966,8 @@ Alle 39 im Katalog Welle 3 zugeordneten Szenarien sind als 38 begrenzte Runtime-
 
 ### Welle 5 – Hyper-V-Image-Pipeline
 
+**Implementierungsstatus:** Vertragsgrundlage vorhanden; Runtime `PLANNED` / `NOT_EXECUTED`
+
 **Lieferumfang:**
 
 - native PowerShell-Imagepipeline;
@@ -966,6 +976,10 @@ Alle 39 im Katalog Welle 3 zugeordneten Szenarien sind als 38 begrenzte Runtime-
 - SQL-2019-/2022-/2025-kompatible Parentmatrix;
 - Differencing-Disk-Reset;
 - PowerShell Direct.
+
+Profile, Stufen, Verträge und externe Gates der Image-Pipeline sind statisch
+festgelegt. Die Erzeugung und der Reset realer Parent- und Child-Images wurden
+noch nicht auf einem freigegebenen Hyper-V-Host ausgeführt.
 
 **Abnahme:**
 

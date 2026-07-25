@@ -18,6 +18,19 @@ Der aktuelle Bestand umfasst 165 inventarisierte Objekte:
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
 
+## Windows-Repository-Portabilitätsgate
+
+Der Self-hosted-Windows-Lauf prüft PowerShell-Parsing, zeilenendenunabhängige
+Datenschutz-Hashes, ein unter Windows erzeugtes Liefer-ZIP, die Gesamt-,
+PLAN-001- und SC-023-Installer sowie die statischen LAB-Verträge. Der Lauf ist
+commitbezogen als `WINDOWS_REPOSITORY_PORTABILITY` in der maschinenlesbaren
+Release-Evidenz verknüpft.
+
+Der Nachweis ist kein Windows-SQL-Server-Laufzeitnachweis. Die drei
+Windows-SQL-Ziele verbleiben bis zur Ausführung des Installers und der
+Runtimeverträge auf nativen SQL-Server-2019-/2022-/2025-Instanzen im Status
+`NOT_EXECUTED`.
+
 
 ## Abschlusswelle 0/1 – Statusmodell und Current-State-Evidenzbasis
 

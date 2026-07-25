@@ -1,6 +1,6 @@
 # Implementierungsstatusmodell
 
-Stand: 2026-07-23
+Stand: 2026-07-25
 
 Dieses Modell trennt Produktfunktion, automatisierte Repositoryevidenz, externe
 Laufzeitnachweise und ausdrücklich optionale Erweiterungen. Ein offener
@@ -62,4 +62,4 @@ externen Feature-Nachweisen eingestuft. Bei SC-023 bleibt der bereits
 abgenommene Performance-Counter-Slice implementiert; weitere Collector und
 Rollups sind optionaler Ausbau.
 
-LAB-001 ist nach Welle 1 als `PARTIAL_PRODUCT_FUNCTION` eingestuft. Der read-only Preflight und der begrenzte Orchestrator-Core sind nutzbar; Container-, SQL-Server- und Szenarioausführung bleiben den Wellen 2 bis 10 zugeordnet.
+LAB-001 ist als `PARTIAL_PRODUCT_FUNCTION` eingestuft. Welle 1 stellt den read-only Preflight und den begrenzten Orchestrator-Core bereit. Die Wellen 2 und 3 liefern die Single-Container-Baseline und die Core-Performance-Matrix. Welle 4 ergänzt die Multi-Container-Laufzeit und die begrenzte Log-Shipping-Aktion; 17 weitere Infrastrukturaktionen und der Network-Fault-Layer bleiben offen. Für Welle 5 ist die Image-Pipeline-Vertragsgrundlage vorhanden, die Runtime bleibt `NOT_EXECUTED`. Das Docker-/Podman-Quick-Testsystem besitzt einen vollständigen Lifecycle-Vertrag; seine nativen externen Nachweise stehen noch aus. Die Wellen 6 bis 10 bleiben geplant.

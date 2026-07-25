@@ -1,7 +1,8 @@
 # Docker-/Podman-Quick-Testsystem – verbindliche Anforderungen
 
 **Status:** `REQUIRED`  
-**Stand:** 24. Juli 2026  
+**Stand:** 25. Juli 2026
+
 **Zuordnung:** `LAB-001 – Reproducible Diagnostic Lab`
 
 ## 1. Ziel
@@ -253,15 +254,17 @@ Die Anforderung gilt erst als umgesetzt, wenn automatisiert oder dokumentiert na
 11. Docker- und Podman-Abweichungen dokumentiert und getestet sind;
 12. ein vollständiger Quick Start ohne Zugriff auf frühere Chats verständlich ausführbar ist.
 
-## 15. Priorisierung und nächster Implementierungsschritt
+## 15. Implementierungsstand und nächste Nachweise
 
-Diese Spezifikation ist ein verbindlicher Bestandteil von LAB-001. Der nächste Implementierungsschritt ist die Erstellung eines minimal nutzbaren Vertical Slice mit:
+Der verbindliche Quick-Test-Lifecycle ist als `IMPLEMENTED_ACTIONS_GATE`
+umgesetzt. Er umfasst Preflight, Installation, Status, Stop, Restart, Reset,
+Down, Start, Frameworkupdate und Destroy für die auswählbaren SQL-Server-Versionen
+2019, 2022 und 2025. Compose-Core, Docker-/Podman-Overrides, SQL-Healthcheck,
+synthetische Zugangsdaten, lokale Zustandsbindung und statische
+Datenschutzprüfungen sind Bestandteil des Vertrags.
 
-1. `Install-Lab.ps1` beziehungsweise Erweiterung von `Invoke-DiagnosticLab.ps1`;
-2. Docker-/Podman-Auswahl;
-3. interaktiver SQL-Versionen-, Login-, Passwort-, Port- und Ressourcenabfrage;
-4. Compose-Core plus Runtime-Overrides;
-5. SQL-Healthcheck;
-6. Status- und Destroy-Aktion;
-7. `Lab/README.md` mit vollständigem Quick Start;
-8. automatisierter statischer Prüfung, dass keine Secrets versioniert werden.
+Der Runtimezustand bleibt `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`. Als nächste
+Nachweise sind der vollständige Lifecycle auf nativem Docker und nativem Podman
+sowie die versionsbezogene SQL-Bereitschaft und Frameworkprüfung auszuführen.
+Diese Läufe dürfen ausschließlich zusammengefasste synthetische Evidenz ohne
+Secrets, Hostidentitäten oder lokale Pfade veröffentlichen.
