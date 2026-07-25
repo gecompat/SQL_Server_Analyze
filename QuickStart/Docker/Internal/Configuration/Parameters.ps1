@@ -58,7 +58,7 @@ function Read-AvailablePort {
     param(
         [Parameter(Mandatory)][string] $Version,
         [Parameter(Mandatory)][int] $DefaultPort,
-        [Parameter(Mandatory)][int[]] $AlreadySelected
+        [Parameter()][AllowEmptyCollection()][int[]] $AlreadySelected = @()
     )
 
     while ($true) {
