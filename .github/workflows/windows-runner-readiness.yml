@@ -1,0 +1,256 @@
+name: Windows self-hosted runner readiness
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-runner-readiness.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-runner-readiness-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  inspect:
+    name: Inspect Windows runner capabilities
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Inventory host and toolchain
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          function Get-CommandVersion {
+            param([Parameter(Mandatory)][string] $Name)
+            $command = Get-Command -Name $Name -ErrorAction SilentlyContinue
+            if ($null -eq $command) {
+              return [pscustomobject] @{ Available = $false; Path = ''; Version = '' }
+            }
+            $versionOutput = ''
+            try {
+              $versionOutput = switch ($Name) {
+                'git' { (& git --version 2>&1 | Select-Object -First 1) }
+                'python' { (& python --version 2>&1 | Select-Object -First 1) }
+                'python3' { (& python3 --version 2>&1 | Select-Object -First 1) }
+                'docker' { (& docker --version 2>&1 | Select-Object -First 1) }
+                'podman' { (& podman --version 2>&1 | Select-Object -First 1) }
+                'winget' { (& winget --version 2>&1 | Select-Object -First 1) }
+                'choco' { (& choco --version 2>&1 | Select-Object -First 1) }
+                'sqlcmd' { (& sqlcmd -? 2>&1 | Select-Object -First 1) }
+                'dotnet' { (& dotnet --version 2>&1 | Select-Object -First 1) }
+                'wsl' { (& wsl --version 2>&1 | Select-Object -First 1) }
+                default { [string] $command.Version }
+              }
+            }
+            catch {
+              $versionOutput = 'VERSION_QUERY_FAILED'
+            }
+            return [pscustomobject] @{
+              Available = $true
+              Path = [string] $command.Source
+              Version = ([string] $versionOutput).Trim()
+            }
+          }
+
+          $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+          $isAdministrator = $principal.IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator
+          )
+          $operatingSystem = Get-CimInstance Win32_OperatingSystem
+          $computerSystem = Get-CimInstance Win32_ComputerSystem
+          $processors = @(Get-CimInstance Win32_Processor)
+          $fixedDisks = @(
+            Get-CimInstance Win32_LogicalDisk -Filter "DriveType=3" |
+              Select-Object DeviceID,
+                @{ Name = 'SizeGiB'; Expression = { [math]::Round($_.Size / 1GB, 2) } },
+                @{ Name = 'FreeGiB'; Expression = { [math]::Round($_.FreeSpace / 1GB, 2) } }
+          )
+
+          $featureNames = @(
+            'Microsoft-Hyper-V-All',
+            'Containers',
+            'VirtualMachinePlatform',
+            'Microsoft-Windows-Subsystem-Linux'
+          )
+          $features = foreach ($featureName in $featureNames) {
+            try {
+              $feature = Get-WindowsOptionalFeature -Online -FeatureName $featureName
+              [pscustomobject] @{
+                Name = $featureName
+                State = [string] $feature.State
+                RestartNeeded = [string] $feature.RestartNeeded
+              }
+            }
+            catch {
+              [pscustomobject] @{
+                Name = $featureName
+                State = 'UNAVAILABLE'
+                RestartNeeded = ''
+              }
+            }
+          }
+
+          $serviceNames = @(
+            'vmms', 'vmcompute', 'hns', 'docker', 'com.docker.service',
+            'LxssManager', 'WslService'
+          )
+          $services = foreach ($serviceName in $serviceNames) {
+            $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
+            [pscustomobject] @{
+              Name = $serviceName
+              Installed = $null -ne $service
+              Status = if ($null -eq $service) { '' } else { [string] $service.Status }
+              StartType = if ($null -eq $service) { '' } else { [string] $service.StartType }
+            }
+          }
+          $sqlServices = @(
+            Get-Service -ErrorAction SilentlyContinue |
+              Where-Object {
+                $_.Name -match '^(MSSQL|SQLAgent|SQLBrowser)' -or
+                $_.DisplayName -match '^SQL Server'
+              } |
+              Select-Object Name, DisplayName, Status, StartType
+          )
+
+          $tools = [ordered] @{}
+          foreach ($toolName in @(
+              'pwsh', 'powershell', 'git', 'python', 'python3', 'winget',
+              'choco', 'docker', 'podman', 'wsl', 'sqlcmd', 'dotnet'
+            )) {
+            $tools[$toolName] = Get-CommandVersion -Name $toolName
+          }
+
+          $dockerStatus = [ordered] @{
+            ClientAvailable = [bool] $tools.docker.Available
+            ServerReachable = $false
+            Details = $null
+          }
+          if ($tools.docker.Available) {
+            try {
+              $dockerInfo = & docker info --format '{{json .}}' 2>$null |
+                ConvertFrom-Json -Depth 20
+              $dockerStatus.ServerReachable = $true
+              $dockerStatus.Details = [ordered] @{
+                ServerVersion = [string] $dockerInfo.ServerVersion
+                OSType = [string] $dockerInfo.OSType
+                Architecture = [string] $dockerInfo.Architecture
+                OperatingSystem = [string] $dockerInfo.OperatingSystem
+                Driver = [string] $dockerInfo.Driver
+                CPUs = $dockerInfo.NCPU
+                MemoryGiB = if ($null -eq $dockerInfo.MemTotal) {
+                  $null
+                }
+                else {
+                  [math]::Round([double] $dockerInfo.MemTotal / 1GB, 2)
+                }
+              }
+            }
+            catch {
+              $dockerStatus.Details = [ordered] @{
+                ErrorType = $_.Exception.GetType().FullName
+                Message = $_.Exception.Message
+              }
+            }
+          }
+
+          $wslStatus = [ordered] @{ Available = [bool] $tools.wsl.Available; Output = @() }
+          if ($tools.wsl.Available) {
+            try {
+              $wslStatus.Output = @(& wsl --status 2>&1)
+              $wslStatus.Distributions = @(& wsl --list --verbose 2>&1)
+            }
+            catch {
+              $wslStatus.Output = @($_.Exception.Message)
+            }
+          }
+
+          $hyperV = [ordered] @{
+            ModuleAvailable = [bool] (Get-Module -ListAvailable -Name Hyper-V)
+            HostQuerySucceeded = $false
+            Details = $null
+          }
+          if ($hyperV.ModuleAvailable) {
+            try {
+              $vmHost = Get-VMHost -ErrorAction Stop
+              $hyperV.HostQuerySucceeded = $true
+              $hyperV.Details = [ordered] @{
+                VirtualHardDiskPath = [string] $vmHost.VirtualHardDiskPath
+                VirtualMachinePath = [string] $vmHost.VirtualMachinePath
+                LogicalProcessorCount = $vmHost.LogicalProcessorCount
+              }
+            }
+            catch {
+              $hyperV.Details = [ordered] @{
+                ErrorType = $_.Exception.GetType().FullName
+                Message = $_.Exception.Message
+              }
+            }
+          }
+
+          $summary = [ordered] @{
+            RunnerName = [string] $env:RUNNER_NAME
+            RunnerOS = [string] $env:RUNNER_OS
+            RunnerArchitecture = [string] $env:RUNNER_ARCH
+            Account = [string] $identity.Name
+            IsAdministrator = $isAdministrator
+            OperatingSystem = [ordered] @{
+              Caption = [string] $operatingSystem.Caption
+              Version = [string] $operatingSystem.Version
+              BuildNumber = [string] $operatingSystem.BuildNumber
+              Architecture = [string] $operatingSystem.OSArchitecture
+            }
+            Computer = [ordered] @{
+              HypervisorPresent = [bool] $computerSystem.HypervisorPresent
+              TotalPhysicalMemoryGiB = [math]::Round(
+                [double] $computerSystem.TotalPhysicalMemory / 1GB,
+                2
+              )
+              LogicalProcessors = [int] $computerSystem.NumberOfLogicalProcessors
+            }
+            Processor = @(
+              $processors |
+                Select-Object Name, NumberOfCores, NumberOfLogicalProcessors,
+                  VirtualizationFirmwareEnabled,
+                  SecondLevelAddressTranslationExtensions
+            )
+            FixedDisks = $fixedDisks
+            Features = @($features)
+            Services = @($services)
+            SqlServices = $sqlServices
+            Tools = $tools
+            Docker = $dockerStatus
+            WSL = $wslStatus
+            HyperV = $hyperV
+          }
+          $summary | ConvertTo-Json -Depth 20 | Write-Output
+
+          if ($env:RUNNER_OS -ne 'Windows') {
+            throw 'The selected self-hosted runner is not Windows.'
+          }
+          if ($PSVersionTable.PSVersion.Major -lt 7) {
+            throw 'PowerShell 7 or newer is required.'
+          }
+          if (-not $tools.git.Available -or
+              (-not $tools.python.Available -and -not $tools.python3.Available)) {
+            throw 'The baseline repository toolchain is incomplete.'
+          }
+
+      - name: Validate repository on Windows
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+          & ./Lab/Validation/Invoke-LabValidation.ps1
+          if (-not $?) {
+            throw 'Repository validation failed on the Windows runner.'
+          }
