@@ -1,0 +1,36 @@
+name: Windows runner privacy diagnosis
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-runner-privacy-diagnosis.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          show-progress: false
+      - name: Report finding classifications only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import importlib.util
+          from pathlib import Path
+          module_path = Path('Code/Tests/Static/910_Validate_Repository_Privacy.py')
+          spec = importlib.util.spec_from_file_location('privacy_gate', module_path)
+          module = importlib.util.module_from_spec(spec)
+          spec.loader.exec_module(module)
+          allowlist, errors = module.load_allowlist(Path('Metadata/Quality/Repository_Privacy_Allowlist.csv'))
+          findings, _ = module.scan_repository(Path('.').resolve(), allowlist)
+          for finding in errors + findings:
+              print(f'PRIVACY_FINDING={finding.rule_code}|{finding.path}|{finding.count}')
+          print(f'PRIVACY_FINDING_COUNT={len(errors) + len(findings)}')
+          PY
