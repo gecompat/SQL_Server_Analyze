@@ -59,13 +59,26 @@ jobs:
       - name: Validate Welle 4 contracts
         shell: bash
         run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py --repository-root .
-          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_MultiContainerRuntime.py --repository-root .
+          set -o pipefail
+          log_path="${RUNNER_TEMP}/lab-wave4-runtime-validation.log"
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py --repository-root . 2>&1 | tee "$log_path"
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_MultiContainerRuntime.py --repository-root . 2>&1 | tee -a "$log_path"
 
       - name: Run Welle 4 runtime contract tests
         shell: pwsh
-        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave4RuntimeTests.ps1
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'lab-wave4-runtime-validation.log'
+          try {
+            & ./Lab/Validation/Invoke-LabWave4RuntimeTests.ps1 *>&1 |
+              Tee-Object -FilePath $logPath -Append
+            if (-not $?) {
+              throw 'Welle 4 runtime contract failed.'
+            }
+          }
+          catch {
+            $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
+            throw
+          }
 
       - name: Validate Welle 4 multi-container Compose model
         shell: bash
@@ -115,3 +128,12 @@ jobs:
             $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
             throw "Welle 4 analyzer reported $($findings.Count) error finding(s)."
           }
+
+      - name: Upload Welle 4 failure log
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: lab-wave4-runtime-validation-log
+          path: ${{ runner.temp }}/lab-wave4-runtime-validation.log
+          if-no-files-found: error
+          retention-days: 7
