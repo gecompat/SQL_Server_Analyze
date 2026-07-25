@@ -18,7 +18,7 @@ jobs:
         with:
           ref: agent/lab001-wave4-multicontainer-runtime
 
-      - name: Patch exact Welle 4 status expectation
+      - name: Fix exact Welle 0 indentation
         shell: bash
         run: |
           set -euo pipefail
@@ -26,28 +26,15 @@ jobs:
           from pathlib import Path
           path = Path('Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py')
           content = path.read_text(encoding='utf-8')
-          old = '''    for number in range(4, 11):
-                  if wave_map.get(f"LAB-001-WAVE{number}", {}).get("ContractStatus") != "PLANNED":
-                      findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
-                  if wave_map.get(f"LAB-001-WAVE{number}", {}).get("RuntimeStatus") != "NOT_EXECUTED":
-                      findings.append(Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
-          '''
-          new = '''    wave_four = wave_map.get("LAB-001-WAVE4", {})
-              if wave_four.get("ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
-                  findings.append(Finding("WAVE4_STATUS_INVALID", wave_path.as_posix()))
-              if wave_four.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
-                  findings.append(Finding("WAVE4_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
-              for number in range(5, 11):
-                  if wave_map.get(f"LAB-001-WAVE{number}", {}).get("ContractStatus") != "PLANNED":
-                      findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
-                  if wave_map.get(f"LAB-001-WAVE{number}", {}).get("RuntimeStatus") != "NOT_EXECUTED":
-                      findings.append(Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
-          '''
-          old = old.replace('              ', '')
-          new = new.replace('          ', '')
-          if old not in content:
-              raise SystemExit('Expected Welle 0 status block was not found.')
-          path.write_text(content.replace(old, new), encoding='utf-8')
+          content = content.replace(
+              '\n  findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))',
+              '\n            findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))',
+          )
+          content = content.replace(
+              '\n  findings.append(Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix()))',
+              '\n            findings.append(Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix()))',
+          )
+          path.write_text(content, encoding='utf-8')
           PY
           if git diff --quiet -- Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py; then
             exit 0
@@ -55,5 +42,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add Code/Tests/Static/988_Validate_LAB001_Wave0_Contracts.py
-          git commit -m 'Accept implemented LAB-001 Welle 4 status'
+          git commit -m 'Fix LAB-001 Welle 4 status validation'
           git push origin HEAD:agent/lab001-wave4-multicontainer-runtime
