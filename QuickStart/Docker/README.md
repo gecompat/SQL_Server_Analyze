@@ -99,6 +99,12 @@ Nicht verwendet werden:
 
 ## Speicherlayouts
 
+Unter Windows berücksichtigt die Standardpfadermittlung ausschließlich
+bereitgestellte lokale Laufwerke vom Typ `Fixed`. UNC-Pfade, gemappte
+Netzwerklaufwerke und Wechseldatenträger werden nicht vorgeschlagen. Als Standard
+wird das lokale feste Laufwerk mit dem größten aktuell verfügbaren freien
+Speicher verwendet.
+
 ### Single Root
 
 Geeignet für Systeme mit nur einem Laufwerk. Ein einziger leerer Lab-Pfad wird
@@ -134,6 +140,12 @@ projektgebundenen Docker-Volumes innerhalb der Linux-VM. Direkte Windows-Bind-
 Mounts werden für aktive SQL-Datenbankdateien nicht verwendet. Die ausgewählten
 Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups
 zuständig.
+
+Vor dem Start jeder SQL-Instanz führt der QuickStart einen kurzlebigen,
+projektgebundenen Initialisierungscontainer als Root aus. Dieser setzt auf den
+zugeordneten Daten- und Log-Volumes den Besitzer auf die SQL-Server-UID `10001`
+und stellt die erforderlichen Gruppenrechte her. Der eigentliche SQL-Server-
+Container läuft anschließend weiterhin ohne Root-Rechte.
 
 Diese Trennung verhindert, dass SQL Server seine Systemdatenbanken und `tempdb`
 über die Windows-Dateifreigabeschicht betreibt. Die Docker-Volumes tragen denselben
@@ -227,24 +239,25 @@ Der QuickStart erstellt bewusst keine Hyper-V-VM und verändert keine
 Host-Netzwerke. VM-Provisionierung und Hostadministration bleiben getrennte,
 explizite Schritte.
 
-## Fehler nach einem früheren Docker-Desktop-Bind-Mount-Start
+## Fehler nach einem früheren Docker-Desktop-Start
 
-Ein früherer QuickStart-Stand konnte SQL-Daten- und Logpfade direkt aus dem
-Windows-Dateisystem einbinden. Wenn SQL Server dabei mit Fehler 17053,
-Betriebssystemfehler 31 oder einer fehlgeschlagenen `tempdb`-Erstellung beendet
-wurde, kann die vorhandene `.env` weiterverwendet werden.
+Wenn SQL Server bei der ersten Initialisierung mit Fehler 17053,
+Betriebssystemfehler 31, `Access is denied` oder einer fehlgeschlagenen
+`tempdb`-Erstellung beendet wurde, können unvollständige Systemdatenbankdateien in
+den Docker-Volumes zurückgeblieben sein. Dieser Zustand wird nicht automatisch
+gelöscht oder überschrieben.
 
-Nach Aktualisierung des Repositorys startet folgende Aktion den Service mit den
-Docker-Desktop-Volumes neu und lässt Compose den Container bei geänderter
-Mountkonfiguration neu erstellen:
+Die betroffene Umgebung wird deshalb vollständig entfernt und anschließend neu
+erstellt:
 
 ```powershell
-./QuickStart/Docker/Setup.ps1 -Action Start
+./QuickStart/Docker/Uninstall.ps1
+./QuickStart/Docker/Setup.ps1
 ```
 
-Falls ein vollständig neuer Zustand benötigt wird, entfernt `Uninstall.ps1` nach
-zwei Bestätigungen Container, Netzwerk, zugeordnete Docker-Volumes, markierte
-Hostpfade und `.env`. Danach wird `Setup.ps1` erneut ausgeführt.
+Bei `Uninstall.ps1` müssen sowohl die Entfernung des Compose-Projekts als auch die
+Entfernung der zugeordneten Docker-Volumes und markierten Datenpfade bestätigt
+werden.
 
 ## Entfernen und Deinstallieren
 
