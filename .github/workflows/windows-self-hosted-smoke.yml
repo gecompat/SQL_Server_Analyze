@@ -1,0 +1,100 @@
+name: Windows self-hosted runner smoke
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-self-hosted-smoke.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-self-hosted-smoke-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Validate Windows self-hosted runner
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Report runner capabilities
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $capabilities = [ordered] @{
+            RunnerName = [string] $env:RUNNER_NAME
+            RunnerOS = [string] $env:RUNNER_OS
+            RunnerArchitecture = [string] $env:RUNNER_ARCH
+            PowerShellVersion = $PSVersionTable.PSVersion.ToString()
+            Git = [string] (& git --version)
+            Python = [bool] (Get-Command python -ErrorAction SilentlyContinue)
+            Python3 = [bool] (Get-Command python3 -ErrorAction SilentlyContinue)
+            Docker = [bool] (Get-Command docker -ErrorAction SilentlyContinue)
+            Podman = [bool] (Get-Command podman -ErrorAction SilentlyContinue)
+            HyperVModule = [bool] (Get-Module -ListAvailable -Name Hyper-V)
+          }
+          $capabilities | ConvertTo-Json -Compress | Write-Output
+
+          if ($env:RUNNER_OS -ne 'Windows') {
+            throw 'The selected self-hosted runner is not a Windows runner.'
+          }
+          if ($PSVersionTable.PSVersion.Major -lt 7) {
+            throw 'PowerShell 7 or newer is required.'
+          }
+          if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+            throw 'Git is unavailable on the Windows runner.'
+          }
+          if (
+            -not (Get-Command python -ErrorAction SilentlyContinue) -and
+            -not (Get-Command python3 -ErrorAction SilentlyContinue)
+          ) {
+            throw 'Python is unavailable on the Windows runner.'
+          }
+
+      - name: Parse LAB PowerShell sources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $parseErrors = [Collections.Generic.List[object]]::new()
+          foreach ($file in @(
+              Get-ChildItem -LiteralPath ./Lab -Recurse -File |
+                Where-Object { $_.Extension -in @('.ps1', '.psm1', '.psd1') }
+            )) {
+            $tokens = $null
+            $errors = $null
+            [Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName,
+              [ref] $tokens,
+              [ref] $errors
+            ) | Out-Null
+            foreach ($errorItem in @($errors)) {
+              $parseErrors.Add([pscustomobject] @{
+                RelativePath = $file.FullName.Substring($env:GITHUB_WORKSPACE.Length).TrimStart('\', '/')
+                Message = $errorItem.Message
+              })
+            }
+          }
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | Format-Table -AutoSize
+            throw "PowerShell parsing reported $($parseErrors.Count) error(s)."
+          }
+          Write-Output 'LAB PowerShell sources parsed successfully on Windows.'
+
+      - name: Run Windows-safe LAB validation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./Lab/Validation/Invoke-LabValidation.ps1
+          if (-not $?) {
+            throw 'LAB repository validation failed on the Windows runner.'
+          }
