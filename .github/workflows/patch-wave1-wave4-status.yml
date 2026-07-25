@@ -26,29 +26,31 @@ jobs:
           from pathlib import Path
           path = Path('Code/Tests/Static/989_Validate_LAB001_Wave1_Orchestrator.py')
           content = path.read_text(encoding='utf-8')
-          old = '''    for number in range(4, 11):
-              row = wave_map.get(f"LAB-001-WAVE{number}", {})
-              if row.get("ContractStatus") != "PLANNED":
-                  findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
-              if row.get("RuntimeStatus") != "NOT_EXECUTED":
-                  findings.append(
-                      Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix())
-                  )
-          '''.replace('          ', '')
-          new = '''    wave_four = wave_map.get("LAB-001-WAVE4", {})
-              if wave_four.get("ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
-                  findings.append(Finding("WAVE4_CONTRACT_STATUS_INVALID", wave_path.as_posix()))
-              if wave_four.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
-                  findings.append(Finding("WAVE4_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
-              for number in range(5, 11):
-                  row = wave_map.get(f"LAB-001-WAVE{number}", {})
-                  if row.get("ContractStatus") != "PLANNED":
-                      findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
-                  if row.get("RuntimeStatus") != "NOT_EXECUTED":
-                      findings.append(
-                          Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix())
-                      )
-          '''.replace('          ', '')
+          old = (
+              '    for number in range(4, 11):\n'
+              '        row = wave_map.get(f"LAB-001-WAVE{number}", {})\n'
+              '        if row.get("ContractStatus") != "PLANNED":\n'
+              '            findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))\n'
+              '        if row.get("RuntimeStatus") != "NOT_EXECUTED":\n'
+              '            findings.append(\n'
+              '                Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix())\n'
+              '            )\n'
+          )
+          new = (
+              '    wave_four = wave_map.get("LAB-001-WAVE4", {})\n'
+              '    if wave_four.get("ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":\n'
+              '        findings.append(Finding("WAVE4_CONTRACT_STATUS_INVALID", wave_path.as_posix()))\n'
+              '    if wave_four.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":\n'
+              '        findings.append(Finding("WAVE4_RUNTIME_STATUS_INVALID", wave_path.as_posix()))\n'
+              '    for number in range(5, 11):\n'
+              '        row = wave_map.get(f"LAB-001-WAVE{number}", {})\n'
+              '        if row.get("ContractStatus") != "PLANNED":\n'
+              '            findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))\n'
+              '        if row.get("RuntimeStatus") != "NOT_EXECUTED":\n'
+              '            findings.append(\n'
+              '                Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix())\n'
+              '            )\n'
+          )
           if old not in content:
               raise SystemExit('Expected Welle 1 status block was not found.')
           path.write_text(content.replace(old, new), encoding='utf-8')
