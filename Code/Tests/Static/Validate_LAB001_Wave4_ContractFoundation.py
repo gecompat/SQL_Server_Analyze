@@ -16,6 +16,14 @@ EXPECTED_SCENARIOS = {
     "LAB-NET-004", "LAB-AGENT-001", "LAB-BROKER-001", "LAB-DTC-001",
     "LAB-LINK-001", "LAB-MAINT-001",
 }
+EXPECTED_SCENARIO_STATUS = {
+    scenario_id: (
+        "IMPLEMENTED_ACTIONS_GATE"
+        if scenario_id == "LAB-LS-001"
+        else "PLANNED_NOT_IMPLEMENTED"
+    )
+    for scenario_id in EXPECTED_SCENARIOS
+}
 EXPECTED_PROFILES = {
     "W4-CTR-SINGLE": ("CTR-SINGLE", "IMPLEMENTED_ACTIONS_GATE", 1),
     "W4-CTR-PAIR": ("CTR-PAIR", "IMPLEMENTED_ACTIONS_GATE", 2),
@@ -29,6 +37,8 @@ REQUIRED_FILES = {
     "Lab/Scenarios/Infrastructure/README.md",
     "Lab/Scenarios/Infrastructure/wave4-contracts.csv",
     "Lab/Scenarios/Infrastructure/wave4-topology-profiles.json",
+    "Lab/Scenarios/Infrastructure/LAB-LS-001/scenario.json",
+    "Lab/Scenarios/Infrastructure/LAB-LS-001/runbook.json",
     "Lab/Scenarios/Catalog/scenarios.json",
     "Lab/Scenarios/Catalog/topologies.json",
     "Metadata/Inventory/Objects.csv",
@@ -78,8 +88,11 @@ def validate_scenarios(root: Path, findings: list[str]) -> None:
     for scenario_id in sorted(EXPECTED_SCENARIOS):
         row = contract_map[scenario_id]
         catalog_row = catalog_map[scenario_id]
-        require(row["RuntimeImplementationStatus"] == "PLANNED_NOT_IMPLEMENTED",
-                f"{scenario_id}: scenario runtime is overstated.", findings)
+        expected_status = EXPECTED_SCENARIO_STATUS[scenario_id]
+        require(row["RuntimeImplementationStatus"] == expected_status,
+                f"{scenario_id}: scenario runtime status is inconsistent.", findings)
+        require(catalog_row["ImplementationStatus"] == expected_status,
+                f"{scenario_id}: catalog status is inconsistent.", findings)
         require(row["TopologyId"] == catalog_row["TopologyId"],
                 f"{scenario_id}: topology differs from catalog.", findings)
         require(row["CleanupPolicy"] == "REGISTERED_OBJECT_IDS_ONLY",
@@ -143,6 +156,7 @@ def validate_status(root: Path, findings: list[str]) -> None:
             wave.get("RuntimeStatus") == "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING" and
             "CTR-PAIR" in wave.get("DeliveredScope", "") and
             "CTR-TRIPLE" in wave.get("DeliveredScope", "") and
+            "LAB-LS-001" in wave.get("DeliveredScope", "") and
             "network-fault" in wave.get("OpenScope", "").lower(),
             "Welle 4 global status is invalid.", findings)
 
@@ -172,7 +186,7 @@ def main() -> int:
         for finding in findings:
             print(f"ERROR: {finding}")
         return 1
-    print("LAB-001 Welle 4 contracts validated: actions=CTR-PAIR,CTR-TRIPLE evidence=NOT_EXECUTED scenarios=PLANNED.")
+    print("LAB-001 Welle 4 contracts validated: topologies=CTR-PAIR,CTR-TRIPLE scenarios=LAB-LS-001_ACTION_PLUS_17_PLANNED evidence=NOT_EXECUTED.")
     return 0
 
 
