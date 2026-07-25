@@ -96,12 +96,13 @@ function Get-LabWave4DockerLabel {
     )
 
     $noun = $ResourceType.ToLowerInvariant()
-    $format = if ($ResourceType -eq 'CONTAINER') {
-        "{{ index .Config.Labels \"$LabelName\" }}"
+    $template = if ($ResourceType -eq 'CONTAINER') {
+        '{{ index .Config.Labels "__LABEL__" }}'
     }
     else {
-        "{{ index .Labels \"$LabelName\" }}"
+        '{{ index .Labels "__LABEL__" }}'
     }
+    $format = $template.Replace('__LABEL__', $LabelName)
     return [string] (
         Invoke-LabExternalCommand `
             -FilePath $DockerCommand `
