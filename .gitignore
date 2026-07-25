@@ -3,3 +3,5 @@ __pycache__/
 .pytest_cache/
 Code/Install/generated/*.generated.sql
 *.backup
+QuickStart/Docker/.env
+QuickStart/Docker/.env.*.tmp
