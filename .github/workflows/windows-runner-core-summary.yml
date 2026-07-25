@@ -1,0 +1,35 @@
+name: Windows runner core readiness
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-runner-core-summary.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probe core Windows readiness
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 10
+
+    steps:
+      - name: Emit core markers
+        shell: pwsh
+        run: |
+          $id=[Security.Principal.WindowsIdentity]::GetCurrent(); $p=[Security.Principal.WindowsPrincipal]::new($id)
+          $os=Get-CimInstance Win32_OperatingSystem; $cs=Get-CimInstance Win32_ComputerSystem; $cpu=Get-CimInstance Win32_Processor|Select-Object -First 1
+          $disk=Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($env:SystemDrive)'"
+          "CAP_ADMIN=$($p.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))"
+          "CAP_OS=$($os.Caption)|$($os.Version)|$($os.BuildNumber)|$($os.OSArchitecture)"
+          "CAP_CPU=$($cs.NumberOfLogicalProcessors)|VirtFirmware=$($cpu.VirtualizationFirmwareEnabled)|SLAT=$($cpu.SecondLevelAddressTranslationExtensions)|Hypervisor=$($cs.HypervisorPresent)"
+          "CAP_MEMORY_GIB=$([math]::Round([double]$cs.TotalPhysicalMemory/1GB,2))"
+          "CAP_DISK_GIB=$([math]::Round([double]$disk.Size/1GB,2))|Free=$([math]::Round([double]$disk.FreeSpace/1GB,2))"
+          foreach($n in 'Microsoft-Hyper-V-All','Containers','VirtualMachinePlatform','Microsoft-Windows-Subsystem-Linux'){try{$f=Get-WindowsOptionalFeature -Online -FeatureName $n;"CAP_FEATURE_$($n.Replace('-','_'))=$($f.State)|Restart=$($f.RestartNeeded)"}catch{"CAP_FEATURE_$($n.Replace('-','_'))=UNAVAILABLE"}}
+          foreach($n in 'pwsh','git','python','winget','choco','docker','podman','wsl','sqlcmd','dotnet'){"CAP_TOOL_$($n.ToUpper())=$([bool](Get-Command $n -ErrorAction SilentlyContinue))"}
+          $dr=$false;$dt='';if(Get-Command docker -ErrorAction SilentlyContinue){try{$dt=[string](& docker info --format '{{.OSType}}' 2>$null);$dr=$LASTEXITCODE-eq 0-and$dt}catch{}};"CAP_DOCKER_SERVER=$dr|OSType=$dt"
+          $hm=[bool](Get-Module -ListAvailable Hyper-V);$hh=$false;if($hm){try{$null=Get-VMHost -ErrorAction Stop;$hh=$true}catch{}};"CAP_HYPERV=Module=$hm|Host=$hh"
+          "CAP_SQL_SERVICE_COUNT=$(@(Get-Service -ErrorAction SilentlyContinue|?{$_.Name-match'^(MSSQL|SQLAgent|SQLBrowser)'-or$_.DisplayName-match'^SQL Server'}).Count)"
+          $wr=$false;if(Get-Command wsl -ErrorAction SilentlyContinue){try{$null=& wsl --status 2>$null;$wr=$LASTEXITCODE-eq 0}catch{}};"CAP_WSL_READY=$wr"
