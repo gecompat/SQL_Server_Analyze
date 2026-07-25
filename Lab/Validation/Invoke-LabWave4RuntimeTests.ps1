@@ -103,7 +103,7 @@ try {
     )
     $stateIndex = $source.IndexOf("LifecycleStatus = 'TOPOLOGY_CREATING'", [StringComparison]::Ordinal)
     $pullIndex = $source.IndexOf("@('image', 'pull', `$imageReference)", [StringComparison]::Ordinal)
-    $loopIndex = $source.IndexOf('foreach ($node in $plan.Nodes)', [StringComparison]::Ordinal)
+    $loopIndex = $source.IndexOf('foreach ($node in $plan.Nodes)', $pullIndex, [StringComparison]::Ordinal)
     $composeIndex = $source.IndexOf('Invoke-LabWave4DockerCompose', $loopIndex, [StringComparison]::Ordinal)
     $registerIndex = $source.IndexOf('Register-LabResource', $composeIndex, [StringComparison]::Ordinal)
     $healthIndex = $source.IndexOf('Wait-LabSqlContainerHealthy', $registerIndex, [StringComparison]::Ordinal)
