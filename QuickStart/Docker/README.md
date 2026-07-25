@@ -1,11 +1,11 @@
 # Docker QuickStart
 
-Dieser Bereich stellt eine einfache, eigenständige Docker-Testumgebung für
-`SQL_Server_Analyze` bereit. Er ist für Anwender gedacht, die SQL Server 2019,
+Dieser Bereich stellt eine eigenständige Docker-Testumgebung für
+`SQL_Server_Analyze` bereit. Er ist für Anwender vorgesehen, die SQL Server 2019,
 2022 und/oder 2025 lokal starten und das Framework automatisch installieren
 möchten.
 
-Der QuickStart ist absichtlich vom umfangreicheren Verzeichnis `Lab/` getrennt:
+Der QuickStart ist vom umfangreicheren Verzeichnis `Lab/` getrennt:
 
 - keine LAB-Run-IDs oder Evidence-Gates;
 - keine Abhängigkeit von LAB-Konfigurationen;
@@ -20,9 +20,8 @@ PowerShell 7 im Repository-Root öffnen und ausführen:
 ./QuickStart/Docker/Setup.ps1
 ```
 
-`Setup.ps1` ist der einzige notwendige Einstiegspunkt. Beim ersten Aufruf führt
-es durch die Einrichtung. Bei späteren Aufrufen zeigt es ein Menü für Start,
-Status, Stop und Remove.
+`Setup.ps1` führt beim ersten Aufruf durch die Einrichtung. Bei späteren Aufrufen
+zeigt es ein Menü für Start, Status, Stop und Remove/Uninstall.
 
 Direkte Aktionen sind ebenfalls möglich:
 
@@ -32,6 +31,16 @@ Direkte Aktionen sind ebenfalls möglich:
 ./QuickStart/Docker/Setup.ps1 -Action Stop
 ./QuickStart/Docker/Setup.ps1 -Action Remove
 ```
+
+Für die vollständige Deinstallation der verwalteten QuickStart-Umgebung steht
+zusätzlich ein eigener Einstiegspunkt bereit:
+
+```powershell
+./QuickStart/Docker/Uninstall.ps1
+```
+
+`Uninstall.ps1` verwendet dieselbe marker- und scope-gebundene Remove-Logik wie
+`Setup.ps1 -Action Remove`.
 
 ## Was Setup abfragt
 
@@ -52,16 +61,17 @@ bestätigten leeren Zielpfade vor und startet die gewählten Container sequenzie
 
 ## Lokale `.env`
 
-Die erzeugte `.env` enthält das SA-Passwort im Klartext, weil das offizielle SQL
-Server Container-Image `MSSQL_SA_PASSWORD` als Environment-Variable erwartet.
-Die Datei ist durch die Repository-`.gitignore` ausgeschlossen und darf nicht
-weitergegeben oder committed werden.
+Die erzeugte `.env` enthält das SA-Passwort im Klartext, weil das SQL-Server-
+Container-Image `MSSQL_SA_PASSWORD` als Environment-Variable erwartet. Die Datei
+ist durch die Repository-`.gitignore` ausgeschlossen und darf nicht weitergegeben
+oder committed werden.
 
 `.env.example` enthält nur synthetische Platzhalter. Die Beispieldatei ist nicht
 für einen realen Start vorgesehen. Eine nachträgliche Änderung des Passworts in
 `.env` ändert nicht das Passwort bereits initialisierter SQL-Datenverzeichnisse.
-Für einen Passwortwechsel wird die Umgebung einschließlich der markierten Daten
-über `Remove` entfernt und anschließend mit `Setup` neu erstellt.
+Für einen Passwortwechsel wird die Umgebung einschließlich der zugeordneten
+Docker-Volumes und markierten Daten über `Uninstall.ps1` entfernt und anschließend
+mit `Setup.ps1` neu erstellt.
 
 ## Schutz vor Überschreiben
 
@@ -77,9 +87,8 @@ Vor jeder Mutation prüft das Setup:
 
 In jeder verwalteten Wurzel wird ein Scope-Marker angelegt. Start, Stop und
 Remove akzeptieren nur Pfade, deren Marker exakt zur lokalen `.env` passt.
-`Remove` löscht einen Datenpfad nur nach zusätzlicher Bestätigung und nur, wenn
-auf oberster Ebene ausschließlich die erwarteten QuickStart-Verzeichnisse
-vorhanden sind.
+Docker-Container, Netzwerke und Docker-Volumes werden ebenfalls über Projekt-,
+Owner- und Scope-Labels geprüft.
 
 Nicht verwendet werden:
 
@@ -104,8 +113,8 @@ gewählt; Setup erzeugt darunter:
 ```
 
 Ein Systemlaufwerk ist zulässig, solange ein dedizierter, nicht geschützter und
-leerer Unterordner verwendet wird. `C:\Windows`, `C:\Program Files`, eine
-Laufwerkswurzel oder das Repository selbst werden abgelehnt.
+leerer Unterordner verwendet wird. Betriebssystemverzeichnisse, Programm-
+verzeichnisse, Laufwerkswurzeln und das Repository selbst werden abgelehnt.
 
 ### Separate Data/Log Roots
 
@@ -117,6 +126,23 @@ Wurzeln gewählt werden:
 - Logdateien.
 
 Es werden keine bestehenden Ordnerinhalte übernommen oder überschrieben.
+
+### Docker Desktop auf Windows
+
+Bei Docker Desktop mit Linux-Containern liegen die SQL-Daten- und Logdateien in
+projektgebundenen Docker-Volumes innerhalb der Linux-VM. Direkte Windows-Bind-
+Mounts werden für aktive SQL-Datenbankdateien nicht verwendet. Die ausgewählten
+Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups
+zuständig.
+
+Diese Trennung verhindert, dass SQL Server seine Systemdatenbanken und `tempdb`
+über die Windows-Dateifreigabeschicht betreibt. Die Docker-Volumes tragen denselben
+Owner- und Scope-Marker wie Container und Netzwerk. Eine vollständige
+Deinstallation entfernt sie nur nach ausdrücklicher Bestätigung.
+
+Auf einer nativen Linux-Docker-Engine werden weiterhin die ausgewählten lokalen
+Daten- und Logpfade als Bind-Mounts verwendet. Dadurch bleibt die dedizierte
+Blockgerätezuordnung für Linux-native Slow-I/O-Tests verfügbar.
 
 ## Ressourcenprofile
 
@@ -134,7 +160,7 @@ danach mit dem Framework versehen.
 ## Slow-I/O
 
 Eine belastbare Block-I/O-Drosselung wird nicht für Docker Desktop auf Windows
-behauptet. Die Abstraktion von WSL2/Docker Desktop erlaubt keine portable,
+behauptet. Die Abstraktion von WSL2/Docker Desktop erlaubt keine portable und
 sichere Zuordnung eines Windows-Bind-Mounts zu einem Linux-Blockgerät.
 
 Slow-I/O ist deshalb nur verfügbar, wenn der QuickStart mit PowerShell 7 direkt
@@ -151,10 +177,10 @@ Compose-Erweiterung drosselt anschließend Lese- und Schreibrate über
 `blkio_config`. Für eine Hyper-V-Variante sollte das Blockgerät eine eigene
 virtuelle Disk sein, die ausschließlich diesem Lab dient.
 
-SQL Server 2019 und neuer läuft im Linux-Container standardmäßig ohne
-Root-Rechte. Deshalb muss die initiale Einrichtung unter Linux mit `sudo pwsh`
-ausgeführt werden. Setup setzt nur auf den zuvor geprüften leeren und markierten
-Lab-Wurzeln die für die Root-Gruppe erforderlichen Schreibrechte.
+SQL Server 2019 und neuer läuft im Linux-Container standardmäßig ohne Root-Rechte.
+Deshalb muss die initiale Einrichtung unter Linux mit `sudo pwsh` ausgeführt
+werden. Setup setzt nur auf den zuvor geprüften leeren und markierten Lab-Wurzeln
+die für die Root-Gruppe erforderlichen Schreibrechte.
 
 ## Netzwerk und Ports
 
@@ -188,11 +214,10 @@ Das SA-Passwort wird für die Installation nicht in Kommandoargumente geschriebe
 
 ## Hyper-V
 
-Für normale Docker-Desktop-Tests wird `Setup.ps1` direkt unter Windows
-verwendet. Für Linux-native und Slow-I/O-Varianten wird eine Linux-VM unter
-Hyper-V vorbereitet, Docker Engine und PowerShell 7 in der VM installiert und
-dasselbe Repository dort ausgecheckt. Innerhalb der VM bleibt der Einstieg
-identisch:
+Für normale Docker-Desktop-Tests wird `Setup.ps1` direkt unter Windows verwendet.
+Für Linux-native und Slow-I/O-Varianten wird eine Linux-VM unter Hyper-V
+vorbereitet, Docker Engine und PowerShell 7 in der VM installiert und dasselbe
+Repository dort ausgecheckt. Innerhalb der VM bleibt der Einstieg identisch:
 
 ```powershell
 ./QuickStart/Docker/Setup.ps1
@@ -202,13 +227,38 @@ Der QuickStart erstellt bewusst keine Hyper-V-VM und verändert keine
 Host-Netzwerke. VM-Provisionierung und Hostadministration bleiben getrennte,
 explizite Schritte.
 
-## Entfernen
+## Fehler nach einem früheren Docker-Desktop-Bind-Mount-Start
+
+Ein früherer QuickStart-Stand konnte SQL-Daten- und Logpfade direkt aus dem
+Windows-Dateisystem einbinden. Wenn SQL Server dabei mit Fehler 17053,
+Betriebssystemfehler 31 oder einer fehlgeschlagenen `tempdb`-Erstellung beendet
+wurde, kann die vorhandene `.env` weiterverwendet werden.
+
+Nach Aktualisierung des Repositorys startet folgende Aktion den Service mit den
+Docker-Desktop-Volumes neu und lässt Compose den Container bei geänderter
+Mountkonfiguration neu erstellen:
+
+```powershell
+./QuickStart/Docker/Setup.ps1 -Action Start
+```
+
+Falls ein vollständig neuer Zustand benötigt wird, entfernt `Uninstall.ps1` nach
+zwei Bestätigungen Container, Netzwerk, zugeordnete Docker-Volumes, markierte
+Hostpfade und `.env`. Danach wird `Setup.ps1` erneut ausgeführt.
+
+## Entfernen und Deinstallieren
+
+```powershell
+./QuickStart/Docker/Uninstall.ps1
+```
+
+Alternativ:
 
 ```powershell
 ./QuickStart/Docker/Setup.ps1 -Action Remove
 ```
 
-Remove entfernt nach Bestätigung nur Container und Netzwerk des in `.env`
-gespeicherten Compose-Projekts. Docker-Images und andere Projekte bleiben
-unangetastet. Die markierten Datenpfade werden nur nach einer zweiten
-Bestätigung gelöscht; danach wird auch die lokale `.env` entfernt.
+Die erste Bestätigung entfernt ausschließlich Container und Netzwerk des in
+`.env` gespeicherten Compose-Projekts. Bei der zweiten Bestätigung werden auch die
+zugeordneten Docker-Volumes, die markierten Hostpfade und die lokale `.env`
+gelöscht. Docker-Images und andere Projekte bleiben unangetastet.
