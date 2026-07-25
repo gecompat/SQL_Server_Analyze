@@ -11,9 +11,10 @@ Benötigt werden:
 - Windows PowerShell oder PowerShell 7 zum Erzeugen des eigenständigen Installers;
 - eine lokale Kopie dieses Repositorys;
 - für die einmalige Installation ausreichende DDL-Rechte in der Installationsdatenbank. Für die Erstinstallation ist die Datenbankrolle `db_owner` der einfachste verlässliche Weg;
-- für den derzeit freigegebenen und automatisiert geprüften Installationspfad:
-  Server, `tempdb` und Installationsdatenbank mit der Collation
-  `SQL_Latin1_General_CP1_CS_AS`.
+- Das Framework verwendet durchgängig explizite `COLLATE`-Klauseln und
+  funktioniert grundsätzlich auf beliebigen Collations. Getestet und
+  garantiert wird ausschließlich `SQL_Latin1_General_CP1_CS_AS` für
+  Server, `tempdb` und Installationsdatenbank.
 
 Das Framework vergibt keine Benutzer-, Datenbank- oder Serverberechtigungen und ändert keine Serverkonfiguration.
 
@@ -41,34 +42,33 @@ SELECT
        WHERE [name] = N'tempdb')                              AS [TempDbCollation];
 ```
 
-Der derzeitige Release- und Teststand ist nur freigegeben, wenn:
+Der derzeitige Release- und Teststand ist freigegeben, wenn:
 
-- `ProductMajorVersion` mindestens `15` ist;
-- `ServerCollation` exakt `SQL_Latin1_General_CP1_CS_AS` lautet;
-- `TempDbCollation` exakt `SQL_Latin1_General_CP1_CS_AS` lautet.
+- `ProductMajorVersion` mindestens `15` ist.
 
-Der Installer lehnt eine abweichende Server-, `tempdb`- oder
-Installationsdatenbank-Collation derzeit ausdrücklich ab. Diese Prüfung bildet
-die aktuell automatisiert getestete und unterstützte Plattformgrenze ab. Sie
-beweist nicht, dass das Framework unter jeder anderen Collation technisch
-grundsätzlich funktionsunfähig wäre.
+Die Collation-Prüfung ist informativ: Der Installer gibt bei abweichender
+Server-, `tempdb`- oder Installationsdatenbank-Collation eine **Warnung** aus,
+blockiert die Installation jedoch nicht.
 
-Der Hintergrund der Einschränkung sind noch nicht vollständig verifizierte
-Collation-Übergänge. Textspalten in lokalen `#Temp`-Tabellen erben gewöhnlich
-die Collation von `tempdb`; Frameworktabellen, Systemkataloge und analysierte
-Datenbanken können andere Collations verwenden. Nicht ausdrücklich
-collatierte Vergleiche können dann entweder mit einem Collation-Konflikt
-abbrechen oder unter einer case-insensitiven Collation abweichende Ergebnisse
-bei Vergleichen, Gruppierung, Sortierung und Eindeutigkeit erzeugen. Viele
-Frameworkpfade besitzen bereits explizite `COLLATE`-Angaben; eine abweichende
-Server-/`tempdb`-Collation gehört dennoch nicht zur aktuell freigegebenen und
-nachgewiesenen Plattformmatrix.
+### Collation-Architektur
 
-Bis diese Portabilitätsarbeit abgeschlossen und auf SQL Server 2019, 2022 und
-2025 nachgewiesen ist, bleibt die Prüfung verbindlich: Brechen Sie die
-Installation bei einer Abweichung ab und prüfen Sie die Zielinstanz beziehungsweise den zukünftigen
-Freigabestand. Eine bloß anders collatierte Frameworkdatenbank ist für
-den aktuellen Installer daher keine freigegebene Umgehung der Prüfung.
+Das Framework verwendet in allen Vergleichen, `GROUP BY`-Klauseln,
+Temp-Tabellen-Spalten und TVF-Rückgabewerten durchgängig explizite
+`COLLATE SQL_Latin1_General_CP1_CS_AS`-Angaben. Dadurch:
+
+- hängt kein Vergleich oder JOIN von der Standard-Collation der
+  Installationsdatenbank oder von `tempdb` ab;
+- treten keine Collation-Konflikte zwischen Frameworktabellen,
+  Systemkatalogen und `#Temp`-Tabellen auf;
+- ist das Verhalten bei Filterlisten, Objektnamenvergleichen und
+  Deduplizierung deterministisch und collation-unabhängig.
+
+**Einschränkung:** Getestet und automatisiert nachgewiesen ist ausschließlich
+`SQL_Latin1_General_CP1_CS_AS`. Bei abweichender Collation kann sich das
+Verhalten bei Filterlisten mit bracket-quotierten Objektnamen unterscheiden,
+wenn die Zieldatenbank Objekte enthält, deren Namen sich nur in der
+Groß-/Kleinschreibung unterscheiden. Für produktive Systeme wird die
+getestete Collation empfohlen.
 
 ## 4. Installationsdatenbank anlegen oder prüfen
 

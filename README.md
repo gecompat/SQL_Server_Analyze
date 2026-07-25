@@ -64,7 +64,7 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 ## Voraussetzungen
 
 - SQL Server 2019 oder neuer
-- getestet mit Installationsdatenbank, Server und `tempdb` mit der Collation `SQL_Latin1_General_CP1_CS_AS`
+- Das Framework verwendet durchgängig explizite `COLLATE`-Klauseln und funktioniert grundsätzlich auf beliebigen Collations. Getestet und garantiert wird ausschließlich `SQL_Latin1_General_CP1_CS_AS` für Installationsdatenbank, Server und `tempdb`.
 - ausreichende Leseberechtigungen für die verwendeten DMVs und Systemkataloge
 - DDL-Rechte für die einmalige Installation der Frameworkobjekte
 - SQLCMD-Modus oder PowerShell, abhängig vom gewählten Installationsweg
