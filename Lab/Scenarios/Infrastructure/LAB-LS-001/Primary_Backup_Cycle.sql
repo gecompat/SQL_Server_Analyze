@@ -1,12 +1,10 @@
 SET NOCOUNT ON;
+USE [msdb];
 
 DECLARE @CycleOrdinal int = CONVERT(int, '$(CycleOrdinal)');
-USE [LabLs001];
-INSERT [dbo].[LabLogShippingMarker] ([RunId], [CycleOrdinal])
+INSERT [LabLs001].[dbo].[LabLogShippingMarker] ([RunId], [CycleOrdinal])
 VALUES ('$(LabRunId)', @CycleOrdinal);
-CHECKPOINT;
 
-USE [msdb];
 DECLARE @JobName sysname = N'LAB_LS_001_Backup';
 DECLARE @JobId uniqueidentifier =
 (
