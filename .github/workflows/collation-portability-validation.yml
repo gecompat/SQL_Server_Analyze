@@ -1,0 +1,246 @@
+name: Collation portability validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'collation-portability/**'
+    paths:
+      - '.github/workflows/collation-portability-validation.yml'
+      - 'Code/**/*.sql'
+  pull_request:
+    paths:
+      - '.github/workflows/collation-portability-validation.yml'
+      - 'Code/**/*.sql'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collation-portability-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  collation-ci-as:
+    name: SQL Server 2022 Latin1_General_CI_AS
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Prepare isolated SQL files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R Code "$RUNNER_TEMP/Code"
+          find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
+            | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[CollationPortabilityTest]/g'
+
+      - name: Generate ephemeral SQL credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$password"
+          echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Start SQL Server 2022 with Latin1_General_CI_AS
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_reference='mcr.microsoft.com/mssql/server:2022-latest'
+          docker pull --quiet "$image_reference" >/dev/null
+          image_digest=$(docker image inspect --format='{{index .RepoDigests 0}}' "$image_reference")
+          echo "SQLSERVER_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+          docker run --name collation-test-ci-as \
+            --detach \
+            --env ACCEPT_EULA=Y \
+            --env MSSQL_PID=Developer \
+            --env MSSQL_COLLATION=Latin1_General_CI_AS \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
+            "$image_digest" >/dev/null
+
+      - name: Wait for SQL Server readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=0
+          sqlcmd_path=''
+          for attempt in $(seq 1 90); do
+            sqlcmd_path=$(docker exec collation-test-ci-as bash -lc \
+              "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
+              || true)
+            if [ -n "$sqlcmd_path" ] && docker exec \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              collation-test-ci-as \
+              "$sqlcmd_path" -S localhost -U sa -C -b -Q \
+              "SET NOCOUNT ON; SELECT 1;" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker logs --tail 40 collation-test-ci-as
+            exit 1
+          fi
+          echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+
+      - name: Verify server collation is CI_AS
+        shell: bash
+        run: |
+          set -euo pipefail
+          collation=$(docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            collation-test-ci-as \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -h -1 -W -Q \
+            "SET NOCOUNT ON; SELECT CONVERT(varchar(128),SERVERPROPERTY(N'Collation'));" \
+            | tr -d '\r' | awk 'NF { print $1; exit }')
+          if [ "$collation" != "Latin1_General_CI_AS" ]; then
+            echo "Unexpected server collation: $collation"
+            exit 1
+          fi
+          echo "Server collation confirmed: $collation"
+
+      - name: Create test database with CI_AS collation
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            collation-test-ci-as \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "CREATE DATABASE [CollationPortabilityTest] COLLATE Latin1_General_CI_AS;" >/dev/null
+
+      - name: Install framework on CI_AS database
+        shell: bash
+        run: |
+          set -euo pipefail
+          install_log="$RUNNER_TEMP/collation-install.log"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Install \
+            collation-test-ci-as \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql >"$install_log" 2>&1; then
+            echo 'Framework installation failed on CI_AS collation.'
+            grep -A 2 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 80 || true
+            exit 1
+          fi
+          echo 'Framework installation succeeded on CI_AS collation.'
+          echo 'Collation warnings (expected):'
+          grep -i 'WARNUNG\|WARNING' "$install_log" || echo '(none)'
+
+      - name: Run smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          smoke_log="$RUNNER_TEMP/collation-smoke.log"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests/Integration \
+            collation-test-ci-as \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i 110_Smoke_Test.sql >"$smoke_log" 2>&1; then
+            echo 'Smoke test failed on CI_AS collation.'
+            tail -n 80 "$smoke_log"
+            exit 1
+          fi
+          echo 'Smoke test passed on CI_AS collation.'
+
+      - name: Validate filter procedures on CI_AS
+        shell: bash
+        run: |
+          set -euo pipefail
+          filter_log="$RUNNER_TEMP/collation-filter.log"
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            collation-test-ci-as \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q "
+              USE [CollationPortabilityTest];
+
+              -- TVF_ParsePipeList: basic bracket-aware parsing
+              DECLARE @PipeResult int;
+              SELECT @PipeResult = COUNT(*)
+              FROM [monitor].[TVF_ParsePipeList](N'[Schema A]|SchemaB|[auch | komisch]');
+              IF @PipeResult <> 3
+                THROW 59001, N'TVF_ParsePipeList returned unexpected count on CI_AS.', 1;
+
+              -- TVF_ParseSqlNameList: single-part names
+              DECLARE @NameResult int;
+              SELECT @NameResult = COUNT(*)
+              FROM [monitor].[TVF_ParseSqlNameList](N'dbo|monitor|[Mixed Case]');
+              IF @NameResult <> 3
+                THROW 59002, N'TVF_ParseSqlNameList returned unexpected count on CI_AS.', 1;
+
+              -- USP_PrepareNameFilters: full filter pipeline
+              CREATE TABLE #PrepareNameFilters_Result
+              (
+                    [FilterType] varchar(20) NOT NULL
+                  , [ItemOrdinal] int NOT NULL
+                  , [NameValue] sysname NULL
+                  , [DatabaseName] sysname NULL
+                  , [SchemaName] sysname NULL
+                  , [ObjectName] sysname NULL
+              );
+              DECLARE @PNF_Status varchar(40), @PNF_Error nvarchar(2048);
+              EXEC [monitor].[USP_PrepareNameFilters]
+                    @SchemaNames = N'dbo|monitor'
+                  , @ObjectNames = N'[TestObject]'
+                  , @StatusCode = @PNF_Status OUTPUT
+                  , @ErrorMessage = @PNF_Error OUTPUT;
+              IF @PNF_Status <> 'AVAILABLE'
+              BEGIN
+                DECLARE @PNF_Msg nvarchar(2048) = CONCAT(N'PrepareNameFilters failed: ', @PNF_Status, N' - ', @PNF_Error);
+                THROW 59003, @PNF_Msg, 1;
+              END;
+
+              -- USP_AnalysisNavigator: search without crash
+              EXEC [monitor].[USP_AnalysisNavigator]
+                    @Suchbegriff = N'blocking'
+                  , @MaxZeilen = 5;
+
+              PRINT 'All filter procedure validations passed on CI_AS collation.';
+            " >"$filter_log" 2>&1
+          result=$?
+          if [ $result -ne 0 ]; then
+            echo 'Filter procedure validation failed on CI_AS collation.'
+            tail -n 60 "$filter_log"
+            exit 1
+          fi
+          echo 'Filter procedure validation passed on CI_AS collation.'
+
+      - name: Publish collation portability summary
+        if: always()
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo '## Collation portability validation'
+            echo ''
+            echo "Status: \`$JOB_STATUS\`"
+            echo ''
+            echo '- Server collation: Latin1_General_CI_AS (case-insensitive)'
+            echo '- Database collation: Latin1_General_CI_AS'
+            echo '- tempdb collation: Latin1_General_CI_AS'
+            echo '- SQL Server version: 2022'
+            echo "- Container image digest: $SQLSERVER_IMAGE_DIGEST"
+            echo ''
+            echo 'Scope: Installation (with expected warnings), smoke test,'
+            echo 'filter TVFs (ParsePipeList, ParseSqlNameList, PrepareNameFilters),'
+            echo 'and AnalysisNavigator search on a fully case-insensitive server.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload failure log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: collation-portability-error
+          path: ${{ runner.temp }}/collation-*.log
+          if-no-files-found: ignore

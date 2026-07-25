@@ -6,7 +6,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 
 ## Feste Verträge
 
-- Collation: `SQL_Latin1_General_CP1_CS_AS`; Objekt-, Parameter-, Spalten- und Aliasnamen sind case-sensitiv.
+- Collation: Das Framework verwendet durchgängig explizite `COLLATE SQL_Latin1_General_CP1_CS_AS`-Klauseln in Vergleichen, Temp-Tabellen, TVF-Rückgabewerten und GROUP-BY-Operationen. Es funktioniert grundsätzlich auf beliebigen Collations. Getestet und garantiert wird ausschließlich `SQL_Latin1_General_CP1_CS_AS`. Objekt-, Parameter-, Spalten- und Aliasnamen im Frameworkcode sind case-sensitiv.
 - Jedes SQL-Skript beginnt mit `USE [DeineDatenbank];` und `GO`.
 - Beispielaufrufe sind nur als `[monitor].[Objektname]` zu schreiben.
 - Öffentliche Procedures verwenden `@ResultSetArt = 'CONSOLE'` als Default; Steuerwerte werden intern case-insensitiv normalisiert.
