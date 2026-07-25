@@ -252,5 +252,8 @@ AS
         , (N'USP_RunSnapshotCollectionCycle',N'run snapshot collection baseline','en',95,N'Persistiert einen SC-023-Snapshotlauf.')
         , (N'USP_PurgeSnapshotData',N'Snapshot Retention löschen','de',100,N'Entfernt abgelaufene SC-023-Daten nach Policy.')
         , (N'USP_PurgeSnapshotData',N'purge expired snapshot data','en',95,N'Retentiongebundener Snapshot-Purge.')
+        , (N'USP_FrameworkUsageFromQueryStore',N'Nutzung Statistik welche Procedures aufgerufen Query Store','de',100,N'Zeigt welche Framework-Procedures tatsächlich genutzt werden.')
+        , (N'USP_FrameworkUsageFromQueryStore',N'framework usage statistics query store procedure frequency','en',95,N'Framework self-awareness from Query Store data.')
+        , (N'USP_FrameworkUsageFromQueryStore',N'meistgenutzt ungenutzt Häufigkeit Laufzeit','de',90,N'Identifiziert viel- und nie-genutzte Module.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO

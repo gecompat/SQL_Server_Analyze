@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.VW_AnalysisCatalog
-Version      : 1.2.0
-Stand        : 2026-07-23
+Version      : 1.3.0
+Stand        : 2026-07-25
 Typ          : View
 Zweck        : Katalogisiert jede öffentliche Framework-Procedure nach
                Anwenderrolle, Themenbereich, Scope, Evidenzart, Kostenprofil,
@@ -153,6 +153,7 @@ AS
         , (N'USP_ConfigureSnapshotTarget',N'Snapshotziel konfigurieren','SNAPSHOT',N'Optionales Snapshot- und Baseline-Paket','SETUP','SNAPSHOT_TARGET','CATALOG_CONFIGURATION','LOW',NULL,1,0,0,'SNAPSHOT_OPTIONAL',NULL,N'Verknüpft die Frameworkdatenbank mit einer separat installierten Snapshotdatenbank und schreibt typisierte Policies.',N'SC-023 muss separat installiert sein; Zielname, Retention, Budget und Datenschutzvertrag explizit festlegen.',N'EXEC [monitor].[USP_ConfigureSnapshotTarget] @Hilfe = 1;',N'Documentation/Analysis_Guides/Procedures/USP_ConfigureSnapshotTarget.md',NULL)
         , (N'USP_RunSnapshotCollectionCycle',N'Snapshot-Collection-Cycle','SNAPSHOT',N'Optionales Snapshot- und Baseline-Paket','TARGETED','SNAPSHOT_TARGET','PERSISTED_SNAPSHOT','LOW_MEDIUM',NULL,1,0,0,'SNAPSHOT_OPTIONAL',NULL,N'Führt einen begrenzten, schedulerneutralen Collection Cycle in das konfigurierte Snapshotziel aus.',N'SC-023 installiert, Ziel aktiv und Policy konfiguriert; schreibt reale Laufzeitevidenz in die lokale Zieldatenbank.',N'EXEC [monitor].[USP_RunSnapshotCollectionCycle] @Hilfe = 1;',N'Documentation/Analysis_Guides/Procedures/USP_RunSnapshotCollectionCycle.md',NULL)
         , (N'USP_PurgeSnapshotData',N'Abgelaufene Snapshotdaten löschen','SNAPSHOT',N'Optionales Snapshot- und Baseline-Paket','SETUP','SNAPSHOT_TARGET','PERSISTED_SNAPSHOT','LOW_MEDIUM',NULL,1,0,0,'SNAPSHOT_OPTIONAL',NULL,N'Entfernt ausschließlich abgelaufene Snapshotdaten in begrenzten Child-first-Batches.',N'Destruktiver, aber retentiongebundener SC-023-Betriebspfad; Ziel, Policy und Batchgrenzen vor Ausführung prüfen.',N'EXEC [monitor].[USP_PurgeSnapshotData] @Hilfe = 1;',N'Documentation/Analysis_Guides/Procedures/USP_PurgeSnapshotData.md',NULL)
+        , (N'USP_FrameworkUsageFromQueryStore',N'Framework-Nutzung aus Query Store','VERSION_ADAPTIVE',N'Versionsadaptive Spezialanalysen','ENTRY','CURRENT_DATABASE','QUERY_STORE_SNAPSHOT','LOW','QUERY_STORE_CURRENT',0,0,0,'CORE',NULL,N'Zeigt aus dem Query Store, welche Framework-Procedures mit welcher Häufigkeit und Laufzeit aufgerufen wurden.',N'Query Store muss in der Installationsdatenbank aktiviert sein.',N'EXEC [monitor].[USP_FrameworkUsageFromQueryStore];',N'Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md',NULL)
     ) AS [v]
     (
           [ProcedureName], [DisplayName], [PrimaryAreaCode], [PrimaryAreaName]

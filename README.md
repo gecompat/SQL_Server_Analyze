@@ -64,7 +64,7 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 ## Voraussetzungen
 
 - SQL Server 2019 oder neuer
-- Das Framework verwendet durchgängig explizite `COLLATE`-Klauseln und funktioniert grundsätzlich auf beliebigen Collations. Getestet und garantiert wird ausschließlich `SQL_Latin1_General_CP1_CS_AS` für Installationsdatenbank, Server und `tempdb`.
+- getestet mit Installationsdatenbank, Server und `tempdb` mit der Collation `SQL_Latin1_General_CP1_CS_AS`
 - ausreichende Leseberechtigungen für die verwendeten DMVs und Systemkataloge
 - DDL-Rechte für die einmalige Installation der Frameworkobjekte
 - SQLCMD-Modus oder PowerShell, abhängig vom gewählten Installationsweg
@@ -235,7 +235,7 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventory-Vertrag umfasst 97 öffentliche Procedures und 68 unterstützende Objekte: acht Views, 27 TVFs, 16 interne Procedures und 17 Tabellen. Jedes der insgesamt 165 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+Der aktuelle Inventory-Vertrag umfasst 98 öffentliche Procedures und 68 unterstützende Objekte: acht Views, 27 TVFs, 16 interne Procedures und 17 Tabellen. Jedes der insgesamt 166 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
 
 - [Hier beginnen: passende Analyse finden](./Documentation/Analysis_Guides/Start_Here.md)
 - [Analysis Navigator – vollständiger Vertrag](./Documentation/Reference/Analysis_Navigator.md)
@@ -252,10 +252,12 @@ Der aktuelle Inventory-Vertrag umfasst 97 öffentliche Procedures und 68 unterst
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
 - [Datenschutz und Laufzeitausgaben](./Documentation/Architecture/Runtime_Data_Privacy.md)
 - [Vertrag und Betrieb des optionalen Snapshot-/Baseline-Pakets](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) ([Betriebsleitfaden](./Documentation/Operations/Snapshot_Baseline_Operations.md))
+- [Scope und Grenzen des Frameworks](./Documentation/Reference/Scope_and_Limitations.md)
 - [Bekannte Einschränkungen](./Documentation/Quality/Known_Issues.md)
 - [Performance- und Risikobewertung](./Documentation/Quality/Performance_and_Risk_Assessment.md)
 - [Testmatrix und unterstützte Nachweise](./Documentation/Quality/Test_Matrix.md)
 - [Release Notes](./Documentation/Quality/Release_Notes.md)
+- [Lab-Lernpfad: Szenarien erkunden](./Lab/Scenarios/LEARNING_PATH.md)
 
 ## Qualität und Projektstatus
 
