@@ -44,6 +44,7 @@ jobs:
       - name: Parse all QuickStart PowerShell scripts
         shell: pwsh
         run: |
+          $diagnosticPath = Join-Path $env:RUNNER_TEMP 'quickstart-powershell-parser-errors.txt'
           $allErrors = [Collections.Generic.List[object]]::new()
           Get-ChildItem ./QuickStart/Docker -Filter '*.ps1' -Recurse | ForEach-Object {
             $tokens = $null
@@ -54,13 +55,30 @@ jobs:
                 [ref] $errors
             ) | Out-Null
             foreach ($errorRecord in @($errors)) {
-              $allErrors.Add([pscustomobject]@{ File = $_.FullName; Message = $errorRecord.Message })
+              $allErrors.Add([pscustomobject]@{
+                  File = $_.FullName
+                  Line = $errorRecord.Extent.StartLineNumber
+                  Column = $errorRecord.Extent.StartColumnNumber
+                  Message = $errorRecord.Message
+              })
             }
           }
           if ($allErrors.Count -gt 0) {
-            $allErrors | Format-Table -AutoSize
+            $allErrors |
+              ForEach-Object { "$($_.File):$($_.Line):$($_.Column): $($_.Message)" } |
+              Set-Content -LiteralPath $diagnosticPath -Encoding utf8
+            Get-Content -LiteralPath $diagnosticPath
             throw "QuickStart PowerShell contains $($allErrors.Count) parser error(s)."
           }
+
+      - name: Upload parser diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: quickstart-powershell-parser-errors
+          path: ${{ runner.temp }}/quickstart-powershell-parser-errors.txt
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Install pinned PowerShell analyzer
         shell: pwsh
