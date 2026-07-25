@@ -29,7 +29,7 @@ param(
     [string] $Engine = 'DOCKER',
 
     [Parameter()]
-    [ValidateSet('CTR-SINGLE')]
+    [ValidateSet('CTR-SINGLE', 'CTR-PAIR', 'CTR-TRIPLE')]
     [string] $Topology = 'CTR-SINGLE',
 
     [Parameter()]
@@ -37,7 +37,7 @@ param(
     [int] $SqlVersion = 2025,
 
     [Parameter()]
-    [ValidateSet('Compact')]
+    [ValidateSet('Compact', 'Standard')]
     [string] $ResourceProfile = 'Compact',
 
     [Parameter()]
@@ -91,6 +91,12 @@ switch ($Action) {
     }
 
     'Up' {
+        if ($Topology -eq 'CTR-SINGLE' -and $ResourceProfile -ne 'Compact') {
+            throw 'CTR-SINGLE currently requires the Compact resource profile.'
+        }
+        if ($Topology -in @('CTR-PAIR', 'CTR-TRIPLE') -and $ResourceProfile -ne 'Standard') {
+            throw 'CTR-PAIR and CTR-TRIPLE require the Standard resource profile.'
+        }
         $arguments = @{
             ContainerEngine = $Engine
             TopologyId = $Topology
@@ -109,7 +115,12 @@ switch ($Action) {
         if ($PSBoundParameters.ContainsKey('ConfigPath')) {
             $arguments.ConfigPath = $ConfigPath
         }
-        Invoke-LabUp @arguments
+        if ($Topology -eq 'CTR-SINGLE') {
+            Invoke-LabUp @arguments
+        }
+        else {
+            Invoke-LabMultiContainerUp @arguments
+        }
         break
     }
 
