@@ -155,4 +155,4 @@ foreach ($validator in @(
     }
 }
 
-Write-Output 'LAB-001 PowerShell JSON-schema and static validation passed.'
+Write-Output 'LAB-001 PowerShell JSON-schema and static validation passed including LAB-LS-001.'
