@@ -24,8 +24,7 @@ LOG ON
 );
 ALTER DATABASE [LabLs001] SET RECOVERY FULL;
 
-USE [LabLs001];
-CREATE TABLE [dbo].[LabLogShippingMarker]
+CREATE TABLE [LabLs001].[dbo].[LabLogShippingMarker]
 (
       [MarkerId] int IDENTITY(1,1) NOT NULL PRIMARY KEY
     , [RunId] varchar(40) NOT NULL
@@ -34,14 +33,13 @@ CREATE TABLE [dbo].[LabLogShippingMarker]
         CONSTRAINT [DF_LabLogShippingMarker_CreatedAtUtc]
         DEFAULT (SYSUTCDATETIME())
 );
-INSERT [dbo].[LabLogShippingMarker] ([RunId], [CycleOrdinal])
+INSERT [LabLs001].[dbo].[LabLogShippingMarker] ([RunId], [CycleOrdinal])
 VALUES ('$(LabRunId)', 0);
 
 BACKUP DATABASE [LabLs001]
 TO DISK = @InitialBackup
 WITH INIT, CHECKSUM;
 
-USE [master];
 DECLARE @BackupJobId uniqueidentifier;
 DECLARE @PrimaryId uniqueidentifier;
 EXEC [msdb].[dbo].[sp_add_log_shipping_primary_database]
