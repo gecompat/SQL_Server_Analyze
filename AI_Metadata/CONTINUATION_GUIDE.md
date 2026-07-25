@@ -31,3 +31,32 @@
 Der aktuelle Architekturstand ergänzt den frameworkweiten Datenbank-, CONSOLE- und benannten TABLE-Vertrag. `187_Table_Output_Runtime_Contract.sql`, `188_Framework_Output_Pilot_Runtime.sql` und `189_Framework_Output_Runtime_Contract.sql` prüfen den Mehrfach-Export, die Pilotmodule sowie die öffentliche Frameworkgrenze im 34-Suite-Gate auf SQL Server 2019, 2022 und 2025. P3 bleibt getrennt: SC-023 benötigt ausdrückliche Persistenzentscheidungen, SC-024 eine externe Komponente und SC-025 eine autorisierte isolierte Restore-/Hostausführung.
 
 Die priorisierte Ausbauplanung steht in `AI_Metadata/Internal_Documentation/Research/Special_Case_Gap_Analysis.md`; der maschinenlesbare Backlog steht in `Metadata/Quality/Special_Case_Gap_Backlog.csv`.
+
+## Änderungen 2026-07-25 (Collation-Portabilität und Framework-Verbesserungen)
+
+### Collation-Architektur
+
+- `Code/00_Setup/000_Preflight_und_Schema.sql` (v2.1.0): Collation-Prüfung von THROW auf RAISERROR severity 10 geändert. Die Installation wird bei abweichender Collation nicht mehr blockiert, sondern warnt.
+- Das Framework verwendet durchgängig explizite `COLLATE SQL_Latin1_General_CP1_CS_AS`-Klauseln und funktioniert grundsätzlich auf beliebigen Collations. Getestet und garantiert bleibt ausschließlich `SQL_Latin1_General_CP1_CS_AS`.
+- Dokumentation angepasst: `README.md`, `Documentation/Reference/Installation.md`, `AI_Metadata/PROJECT_CONTEXT.md`.
+
+### Neue CI-Lane
+
+- `.github/workflows/collation-portability-validation.yml`: SQL Server 2022 mit `Latin1_General_CI_AS` auf GitHub-hosted Ubuntu. Testet Installation (mit erwarteten Warnungen), Smoke Test, Filter-TVFs und Analysis Navigator. Keine Abhängigkeit zum Windows Self-Hosted Runner.
+
+### Neue Procedure
+
+- `Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql` (v1.0.0): Liest aus dem Query Store der Installationsdatenbank welche `monitor.*`-Procedures mit welcher Häufigkeit aufgerufen wurden. Zero-Footprint, read-only, keine zusätzlichen Objekte.
+
+### Neue Dokumentation
+
+- `Documentation/Reference/Scope_and_Limitations.md`: Aggregierte Übersicht was das Framework tut und ausdrücklich nicht tut. Ersetzt das Suchen in einzelnen Modulheadern.
+- `Metadata/Inventory/Module_Maturity.csv`: Maschinenlesbare Reifegrad-Matrix aller Module mit CI-Evidenz, Lab-Szenarien und Dokumentationsstand.
+- `Lab/Scenarios/LEARNING_PATH.md`: Pädagogische Lesereihenfolge für alle 39 Lab-Szenarien in 5 Stufen (Einsteiger → Spezialisten).
+
+### Offene Folgeaufgaben
+
+- `USP_FrameworkUsageFromQueryStore` in den Installer (`Install_All.sql`) und in die Referenzdokumentation aufnehmen.
+- Erste Laufzeitevidenz der Collation-Portability-Lane auf GitHub sammeln; bei Fehlern implizite Collation-Abhängigkeiten korrigieren.
+- `Module_Maturity.csv` bei neuen Modulen oder geänderten Evidenznachweisen aktualisieren.
+- Windows Self-Hosted Runner: SQL-Server-Runtime-Tests ergänzen (nach externer Vorbereitung).
