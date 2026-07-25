@@ -9,12 +9,18 @@ SQL-Server-2025-Instanz sowie die Baselines `LAB-BASE-001` und
 `LAB-BASE-002`. Welle 3 erweitert denselben begrenzten Containerpfad um
 38 ausführbare Core-Performance-Szenarien, eine ausdrücklich nicht als
 Runtimenachweis ausgewiesene Contract Fixture und eine sequenzielle
-SQL-Server-2019-/2022-/2025-Lane.
+SQL-Server-2019-/2022-/2025-Lane. Welle 4 stellt die Docker-Laufzeit für
+`CTR-PAIR` und `CTR-TRIPLE` sowie die begrenzte Log-Shipping-Aktion
+`LAB-LS-001` bereit. Für Welle 5 ist die Image-Pipeline-Vertragsgrundlage
+vorhanden. Das getrennte Docker-/Podman-Quick-Testsystem implementiert den
+Lifecycle von Preflight und Installation bis Update, Reset und Destroy.
 
-Der Produktstatus ist `PARTIAL_PRODUCT_FUNCTION`. Die Wellen 2 und 3 sind als
-`IMPLEMENTED_ACTIONS_GATE` verfügbar; ihre externen Laufzeitnachweise bleiben
-`IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`. Ein vorhandener Codepfad oder ein
-grüner statischer CI-Lauf wird nicht als realer Hostnachweis ausgegeben.
+Der Produktstatus ist `PARTIAL_PRODUCT_FUNCTION`. Die Wellen 2 bis 4 und das
+Quick-Testsystem sind als `IMPLEMENTED_ACTIONS_GATE` verfügbar; ihre externen
+Laufzeitnachweise bleiben `IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`. Die
+Welle-5-Runtime und die Wellen 6 bis 10 sind nicht implementiert. Ein
+vorhandener Codepfad oder ein grüner statischer CI-Lauf wird nicht als realer
+Hostnachweis ausgegeben.
 
 ## Verzeichnisvertrag
 
@@ -24,6 +30,7 @@ grüner statischer CI-Lauf wird nicht als realer Hostnachweis ausgegeben.
 | `Contracts` | JSON-Schemata für Konfiguration, Hostfähigkeiten, Topologien, Szenarien, Runbooks, Contract Fixtures, Finding-Erwartungen und veröffentlichbare Evidenz. |
 | `Containers` | Portabler Compose-Core, Docker-Override und gemeinsamer Linux-Bootstrap. |
 | `Orchestration` | Öffentliche CLI und PowerShell-Modul für Preflight, Status, Containeraufbau, Baselines, Welle-3-Szenarien, Versionsmatrix und begrenztes Cleanup. |
+| `QuickTest` | Docker-/Podman-Lifecycle für SQL Server 2019, 2022 und 2025 mit getrenntem lokalem Zustand. |
 | `Scenarios/Catalog` | Maschinenlesbarer Szenariokatalog und Procedure-zu-Szenario-Coverage. |
 | `Scenarios/Core` | Ausführbare, synthetische Welle-2-Szenarien. |
 | `Scenarios/Performance` | 39 Welle-3-Verträge mit gemeinsamen, begrenzten Setup-, Worker-, Observe- und Cleanup-Skripten. |

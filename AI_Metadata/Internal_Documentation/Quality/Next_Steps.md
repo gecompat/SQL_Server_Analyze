@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-Stand: 2026-07-23
+Stand: 2026-07-25
 
 Der Stand `1.1.0-special.13` besitzt für Commit `8572c02ccec7b349d104ccf72a01489733fc03a7` vollständige grüne Linux-Evidenz auf SQL Server 2019, 2022 und 2025. Der Release-Gate-Vertrag umfasst 34 Suiten, alle 17 P0-, 40 P1- und 124 P2-Fälle sowie die frameworkweiten Ausgabe-, Welle-1- und Welle-2-Verträge. Kanonische Quelle für Release, Commit, Zielversionen und Zählwerte ist `Metadata/Quality/Test_Matrix.csv`; ihre Konsistenz mit Detailmatrix, Release-Audit und Statusdokumenten wird statisch geprüft.
 
@@ -53,7 +53,7 @@ Abgeschlossen:
 41. Sechste P2-Gruppe abgeschlossen: Suite `184` prüft 25 Change-Tracking-, CDC- und Replikationsverträge ohne Change-Zeilen oder Commands.
 42. Siebte P2-Gruppe abgeschlossen: Suite `185` prüft sieben zuvor offene Encryption-Verträge ohne Schlüssel-, Medien- oder Kontoinhalte.
 43. Achte P2-Gruppe abgeschlossen: Suite `186` prüft vier zuvor offene Maintenance-Verträge ohne RESUME, ABORT, KILL oder Jobmutation.
-44. Die technische Deep-Analysis-Dokumentation ist vollständig fortgeführt: aktuell besitzen alle 96 dokumentierten öffentlichen Procedure-Seiten einschließlich der zwei gemeinsamen Vorbereitungs-APIs Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse. Das gemeinsame Execution-/Evidenzmodell ist kanonisch zentralisiert.
+44. Die technische Deep-Analysis-Dokumentation ist vollständig fortgeführt: aktuell besitzen alle 97 dokumentierten öffentlichen Procedure-Seiten einschließlich der zwei gemeinsamen Vorbereitungs-APIs Leitfrage, Enginehintergrund, Datenkette, Zeit-/Scope-Modell, Gegenprobe, Fehlinterpretationsgrenze und Folgeanalyse. Das gemeinsame Execution-/Evidenzmodell ist kanonisch zentralisiert.
 45. Die neun durch das vollständige Actions-Gate erledigten Backlogzeilen SC-002 bis SC-010 sind auf `IMPLEMENTED_ACTIONS_GATE` abgeglichen. Ein versehentlich versioniertes Python-Cacheartefakt wurde entfernt und durch Repository-Ignore-Regeln gegen Wiederholung abgesichert.
 46. Die Datenschutz-Allowlist enthält nun auch den bereits vorhandenen, zur Laufzeit synthetisch erzeugten Credential-Pfad des Statistics-Evidence-Workflows. Die Ausnahme ist wie alle übrigen Einträge an Regel, Pfad und Match-Hash gebunden.
 47. Das Deep-Analysis-Authoring-Archiv ist konsolidiert: historische Roadmaps sind abgeschlossen markiert, kanonische Draft-Verweise entfernt, eine Versions-/Primärquellenmatrix ergänzt und dauerhaft verlorene externe Links werden automatisiert erkannt.
@@ -66,6 +66,7 @@ Abgeschlossen:
 54. Welle 6 / `SQL25-002` umgesetzt: Die bestehenden Objekt- und Capability-Inventare liefern versions- und capability-adaptive JSON-Index-/Pfadmetadaten ohne JSON-Dokumentwerte oder eigene zusätzliche Procedure. Der öffentliche Vertrag und Begleittest `121` binden Versionsgrenze, sichtbaren Previewpfad, leeren oder eingeschränkt sichtbaren Scope, TABLE/JSON und Routing.
 55. Welle 7 / `SQL25-003` umgesetzt: `USP_ResourceGovernorAnalysis` und `USP_CurrentTempDB` liefern den gemeinsamen capability-adaptiven `tempdbGovernance`-Vertrag. Gespeicherte MB-/Prozentlimits, tatsächliche Wirksamkeit, Nutzung, Peak, Verletzungen und Resetgrenze bleiben getrennt; `USP_CurrentOverview` reicht die einmalige Workload-Group-Materialisierung weiter. Vertrag und Begleittest `122` decken SQL Server 2019, 2022 und 2025 ab.
 56. Welle 8 / `SQL25-004` umgesetzt: `USP_Statistics` trennt aktuelle Datenbankrolle, temporären Zustand und Herkunft beziehungsweise letzte Aktualisierungsrolle der Statistik. SQL Server 2019/2022 liefern einen typstabilen `UNAVAILABLE_VERSION`-Pfad; SQL Server 2025 verwendet die capability-geprüften `sys.stats`-Felder. Vertrag und Begleittest `123` decken TABLE/JSON, Primary- oder Not-recorded-Evidenz, synthetische Secondary-Rollencodes, Partialität, Metadata Visibility, Begrenzung und `LOCK_TIMEOUT` ab.
+57. Das Windows-Repository-Portabilitätsgate `WINDOWS_REPOSITORY_PORTABILITY` ist für Commit `ebd40e3f2625907624e59a4084510c110d6b3073` nachgewiesen. Der Self-hosted-Lauf prüft PowerShell-Parsing, Repository- und Windows-ZIP-Datenschutz, Gesamt-, PLAN-001- und SC-023-Installer sowie die statischen LAB-Verträge. Die Windows-SQL-Server-Ziele bleiben davon getrennt und weiterhin `NOT_EXECUTED`.
 
 Unmittelbar offene Repository-Qualitätsaufgaben:
 

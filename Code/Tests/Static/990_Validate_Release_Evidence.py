@@ -35,6 +35,15 @@ CURRENT_DOCUMENTS = (
 )
 WAVE1_SUITE = "WAVE1_OUTPUT_XML_VERSION_RUNTIME"
 WAVE2_SUITE = "WAVE2_OPERATIONAL_DIAGNOSTICS_RUNTIME"
+WINDOWS_REPOSITORY_TARGET = "WINDOWS-SELF-HOSTED"
+WINDOWS_REPOSITORY_SUITE = "WINDOWS_REPOSITORY_PORTABILITY"
+WINDOWS_REPOSITORY_PUBLIC_DOCUMENTS = (
+    "Documentation/Quality/Test_Matrix.md",
+    "Documentation/Quality/Release_Notes.md",
+)
+WINDOWS_REPOSITORY_INTERNAL_DOCUMENTS = (
+    "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+)
 WAVE1_ENHANCEMENTS = {
     "DIAG-001",
     "DIAG-002",
@@ -131,6 +140,51 @@ def main() -> int:
 
     detail_path = root / "Metadata/Quality/Release_Gate_Evidence.csv"
     detail = read_csv(detail_path)
+    windows_repository_rows = [
+        row
+        for row in detail
+        if row["TargetId"] == WINDOWS_REPOSITORY_TARGET
+        and row["SuiteId"] == WINDOWS_REPOSITORY_SUITE
+    ]
+    if len(windows_repository_rows) != 1:
+        fail("WINDOWS_REPOSITORY_EVIDENCE_SET", str(detail_path.relative_to(root)))
+    windows_repository = windows_repository_rows[0]
+    windows_commit = windows_repository["CommitSha"]
+    windows_reference = windows_repository["EvidenceReference"]
+    if (
+        not re.fullmatch(r"[0-9a-f]{40}", windows_commit)
+        or windows_repository["TestStatus"] != "PASS"
+        or windows_repository["EvidenceStatus"] != "INDEPENDENTLY_VERIFIED"
+        or not re.fullmatch(
+            r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z",
+            windows_repository["TestedAtUtc"],
+        )
+        or windows_repository["LimitationCode"]
+        != "WINDOWS_TOOLCHAIN_POWERSHELL_PRIVACY_INSTALLER_LAB_STATIC"
+        or not re.fullmatch(
+            r"https://github\.com/gecompat/SQL_Server_Analyze/actions/runs/[0-9]+",
+            windows_reference,
+        )
+    ):
+        fail("WINDOWS_REPOSITORY_EVIDENCE", WINDOWS_REPOSITORY_TARGET)
+
+    for relative in WINDOWS_REPOSITORY_PUBLIC_DOCUMENTS:
+        text = (root / relative).read_text(encoding="utf-8")
+        if (
+            WINDOWS_REPOSITORY_SUITE not in text
+            or "NOT_EXECUTED" not in text
+        ):
+            fail("WINDOWS_REPOSITORY_DOCUMENT", relative)
+
+    for relative in WINDOWS_REPOSITORY_INTERNAL_DOCUMENTS:
+        text = (root / relative).read_text(encoding="utf-8")
+        if (
+            WINDOWS_REPOSITORY_SUITE not in text
+            or windows_commit not in text
+            or "NOT_EXECUTED" not in text
+        ):
+            fail("WINDOWS_REPOSITORY_DOCUMENT", relative)
+
     release_rows = {
         row["TargetId"]: row
         for row in detail

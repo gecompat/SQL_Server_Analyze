@@ -19,6 +19,18 @@ Nur eine tatsächlich ausgeführte Kombination mit dokumentiertem Ergebnis ist e
 
 Die Zielcollation ist `SQL_Latin1_General_CP1_CS_AS` für Server, `tempdb` und Installationsdatenbank. Andere Collations sind derzeit nicht freigegeben.
 
+## Windows-Repository-Portabilität
+
+Der isolierte Self-hosted-Windows-Lauf hat PowerShell-Parsing, Repository- und
+ZIP-Datenschutz, die drei eigenständigen Installerverträge sowie die statischen
+LAB-Verträge bestanden. Der commitbezogene maschinenlesbare Nachweis steht als Suite
+`WINDOWS_REPOSITORY_PORTABILITY` in `Metadata/Quality/Release_Gate_Evidence.csv`.
+
+Dieser Lauf prüft Windows-Dateipfade, CRLF-Verarbeitung, Toolauflösung und
+Installererzeugung. Er führt keine Frameworkprocedure gegen eine native
+Windows-SQL-Server-Instanz aus. Die Ziele `SQL2019-WINDOWS`,
+`SQL2022-WINDOWS` und `SQL2025-WINDOWS` bleiben deshalb `NOT_EXECUTED`.
+
 ## Abgedeckte Vertragsbereiche
 
 Die Kernziele prüfen:
