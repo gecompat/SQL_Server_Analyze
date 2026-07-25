@@ -12,7 +12,7 @@ Der QuickStart ist vom umfangreicheren Verzeichnis `Lab/` getrennt:
 - keine gemeinsam verwendeten State-, Secret- oder Datenpfade;
 - nur der kanonische Frameworkinstaller unter `Code/Install` wird wiederverwendet.
 
-## Einstiegspunkt
+## Ein Einstiegspunkt
 
 PowerShell 7 im Repository-Root öffnen und ausführen:
 
