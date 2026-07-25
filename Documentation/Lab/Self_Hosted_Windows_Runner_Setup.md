@@ -1,62 +1,62 @@
-# Self-hosted Windows Runner Setup for SQL_Server_Analyze
+## Self-hosted Windows Runner Einrichtung für SQL_Server_Analyze
 
-## Purpose
+## Zweck
 
-This document describes how to prepare a dedicated Windows machine as a repository-level GitHub Actions self-hosted runner for SQL Server Analyze tests.
+Dieses Dokument beschreibt die Vorbereitung eines dedizierten Windows‑Systems als repository‑lokalen GitHub Actions Self‑Hosted Runner für SQL_Server_Analyze‑Tests.
 
-The runner is intended for controlled laboratory execution of:
+Der Runner dient dem kontrollierten Laborbetrieb für:
 
-- Docker based SQL Server test environments
-- Hyper-V based test environments
-- SQL Server version validation
-- framework installation and validation workflows
+- SQL Server Tests in Docker‑Containern
+- Tests in Hyper‑V‑basierten Umgebungen
+- Validierung von SQL Server Versionen
+- Framework‑Installation und Validierungs‑Workflows
 
-The runner must only be registered for the repository `gecompat/SQL_Server_Analyze`.
-
----
-
-## Security model
-
-A self-hosted runner executes repository workflows with the permissions of the runner service account.
-
-Recommended rules:
-
-- Use dedicated test hardware.
-- Use a dedicated Windows service account.
-- Do not store credentials in the repository.
-- Do not execute untrusted pull requests with administrator privileges.
-- Keep runner access restricted to the intended repository.
+Der Runner ist ausschließlich für das Repository `gecompat/SQL_Server_Analyze` zu registrieren.
 
 ---
 
-## Recommended Windows prerequisites
+## Sicherheitsmodell
 
-Minimum:
+Ein Self‑Hosted Runner führt Repository‑Workflows mit den Rechten des Runner‑Servicekontos aus.
 
-- Windows 11 Pro or Windows Server
-- 64-bit operating system
-- Hardware virtualization enabled in BIOS/UEFI
-- PowerShell 7 recommended
-- Git installed
-- Python installed
-- Docker Desktop or Docker Engine available
-- Optional: Hyper-V enabled
+Empfohlene Regeln:
 
-Recommended resources for SQL Server version testing:
-
-- 8+ CPU cores
-- 64 GB RAM or more
-- SSD storage
+- Dedizierte Testhardware verwenden.
+- Dediziertes Windows‑Servicekonto anlegen.
+- Keine Zugangsdaten im Repository speichern.
+- Unvertrauenswürdige Pull Requests nicht mit Administratorrechten ausführen.
+- Zugriff auf den Runner auf das vorgesehene Repository beschränken.
 
 ---
 
-## Preflight validation
+## Empfohlene Windows‑Voraussetzungen
 
-Run the following checks before installation.
+Mindestanforderungen:
 
-### Windows version
+- Windows 11 Pro oder Windows Server
+- 64‑Bit Betriebssystem
+- Hardware‑Virtualisierung im BIOS/UEFI aktiviert
+- PowerShell 7 empfohlen
+- Git installiert
+- Python installiert
+- Docker Desktop oder Docker Engine verfügbar
+- Optional: Hyper‑V aktiviert
 
-Do not rely on the legacy `WindowsVersion` property. Use the current registry values:
+Empfohlene Ressourcen für SQL‑Server‑Tests:
+
+- 8+ CPU‑Kerne
+- 64 GB RAM oder mehr
+- SSD‑Speicher
+
+---
+
+## Preflight‑Prüfungen
+
+Vor der Installation sind die folgenden Prüfungen durchzuführen.
+
+### Windows‑Version
+
+Verwenden Sie die aktuellen Registry‑Werte statt der veralteten `WindowsVersion`‑Property:
 
 ```powershell
 Get-ItemProperty `
@@ -64,22 +64,22 @@ Get-ItemProperty `
 Select-Object ProductName, DisplayVersion, CurrentBuild, UBR
 ```
 
-The build number should be compatible with Windows 11 or a supported Windows Server version.
+Die Build‑Nummer muss mit Windows 11 oder einer unterstützten Windows Server Version kompatibel sein.
 
-### CPU and virtualization
+### CPU und Virtualisierung
 
 ```powershell
 Get-CimInstance Win32_Processor |
 Select-Object Name, NumberOfCores, NumberOfLogicalProcessors, VirtualizationFirmwareEnabled
 ```
 
-### Memory
+### Arbeitsspeicher
 
 ```powershell
 "{0:N1} GB" -f ((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB)
 ```
 
-### Hyper-V feature
+### Hyper‑V Feature
 
 ```powershell
 Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V
@@ -99,7 +99,7 @@ docker info
 docker compose version
 ```
 
-Functional test:
+Funktionaler Test:
 
 ```powershell
 docker run --rm hello-world
@@ -119,11 +119,11 @@ python --version
 
 ---
 
-## Storage recommendation
+## Speicherempfehlungen
 
-Separate operating system, container data and virtual machines where possible.
+Betriebssystem, Containerdaten und virtuelle Maschinen sollten getrennt abgelegt werden.
 
-Example:
+Beispiel:
 
 ```
 C:
@@ -143,9 +143,9 @@ E:
 
 ---
 
-## Install GitHub Actions Runner
+## GitHub Actions Runner installieren
 
-In the repository:
+Im Repository unter:
 
 ```
 Settings
@@ -154,22 +154,22 @@ Settings
   -> New self-hosted runner
 ```
 
-Select:
+Auswahl:
 
 ```
 Windows
 x64
 ```
 
-Create a dedicated directory, for example:
+Erstellen Sie ein dediziertes Verzeichnis, z. B.:
 
 ```
 C:\GitHubRunner\SQL_Server_Analyze
 ```
 
-Download and configure the runner using the commands provided by GitHub.
+Laden Sie den Runner herunter und konfigurieren Sie ihn mittels der von GitHub bereitgestellten Befehle.
 
-Example registration pattern:
+Beispiel Registrierungsbefehl:
 
 ```powershell
 config.cmd `
@@ -177,9 +177,9 @@ config.cmd `
   --token <registration-token>
 ```
 
-Use repository-level registration.
+Repository‑Level Registrierung wird empfohlen.
 
-Recommended labels:
+Empfohlene Labels:
 
 ```
 self-hosted
@@ -191,9 +191,9 @@ hyperv
 
 ---
 
-## Run runner as Windows service
+## Runner als Windows‑Dienst betreiben
 
-Install:
+Installation:
 
 ```powershell
 svc install
@@ -205,25 +205,25 @@ Start:
 svc start
 ```
 
-The service should run under a dedicated service account.
+Der Dienst sollte unter einem dedizierten Servicekonto laufen.
 
-Required permissions depend on enabled test profiles:
+Benötigte Berechtigungen hängen von den aktivierten Testprofilen ab:
 
 Docker:
 
-- membership in `docker-users`
+- Mitgliedschaft in `docker-users`
 
-Hyper-V:
+Hyper‑V:
 
-- membership in `Hyper-V Administrators`
+- Mitgliedschaft in `Hyper-V Administrators`
 
-Advanced SQL Server lifecycle tests may require local administrator permissions.
+Für erweiterte SQL Server Lifecycle‑Tests sind lokale Administratorrechte möglich erforderlich.
 
 ---
 
-## Docker test profile
+## Docker Testprofil
 
-Recommended default profile:
+Empfohlenes Default‑Profil:
 
 ```
 Windows
@@ -235,21 +235,21 @@ Windows
  SQL Server containers
 ```
 
-Example SQL Server container validation:
+Beispiel‑Validierung:
 
 ```powershell
 docker run --rm hello-world
 ```
 
-SQL Server version-specific tests should use separate ports and isolated container names.
+Bei versionsspezifischen SQL‑Tests separate Ports und isolierte Containernamen verwenden.
 
 ---
 
-## Hyper-V test profile
+## Hyper‑V Testprofil
 
-Hyper-V can be enabled together with Docker Desktop.
+Hyper‑V kann zusammen mit Docker Desktop verwendet werden.
 
-Typical architecture:
+Typische Architektur:
 
 ```
 Windows Host
@@ -263,26 +263,26 @@ Windows Host
  SQL Server containers
 ```
 
-This allows comparison between:
+Damit lässt sich vergleichen:
 
-- Docker Desktop based execution
-- native VM based execution
+- Ausführung via Docker Desktop
+- Ausführung in nativen VMs
 
-Both profiles should be tested separately to keep results reproducible.
+Beide Profile separat prüfen, um reproduzierbare Ergebnisse zu gewährleisten.
 
 ---
 
-## Validation workflow
+## Validierungs‑Workflow
 
-After installation, execute a repository workflow that verifies:
+Nach Installation einen Repository‑Workflow ausführen, der prüft:
 
-- runner availability
-- Docker availability
-- SQL Server container startup
-- framework installation
-- cleanup behaviour
+- Runner‑Verfügbarkeit
+- Docker‑Verfügbarkeit
+- Start von SQL‑Server‑Containern
+- Framework‑Installation
+- Bereinigungsverhalten
 
-A successful runner setup is indicated by:
+Ein funktionierender Runner ist gekennzeichnet durch:
 
 ```
 Runner: Online
@@ -293,89 +293,89 @@ SQL Test Environment: Ready
 
 ---
 
-## Troubleshooting
+## Fehlerbehebung
 
-### Docker command not available
+### Docker Befehl nicht vorhanden
 
-Check:
+Prüfen:
 
 ```powershell
 Get-Command docker
 ```
 
-Verify the runner service account has Docker permissions.
+Stellen Sie sicher, dass das Runner‑Servicekonto Docker‑Rechte besitzt.
 
-### Hyper-V unavailable
+### Hyper‑V nicht verfügbar
 
-Check:
+Prüfen:
 
 ```powershell
 Get-WindowsOptionalFeature -Online -FeatureName Microsoft-Hyper-V
 ```
 
-Verify BIOS virtualization support.
+BIOS Virtualisierung prüfen.
 
-### Windows version detection differences
+### Unterschiede bei Windows‑Versionserkennung
 
-Modern Windows versions may expose inconsistent legacy fields. Prefer build number and `DisplayVersion` over `WindowsVersion`.
+Moderne Windows‑Versionen liefern teilweise inkonsistente Legacy‑Felder. Bevorzugen Sie die Build‑Nummer und `DisplayVersion` gegenüber `WindowsVersion`.
 
-### Service fails to start (Win32Exception 1068)
+### Dienst startet nicht (Win32Exception 1068)
 
-Symptom: the runner service is installed but fails to start with an error similar to:
+Symptom: Der Runner‑Dienst ist installiert, kann jedoch nicht starten und meldet beispielsweise:
 
 ```
 System.ComponentModel.Win32Exception (0x80004005): Der Abhängigkeitsdienst oder die Abhängigkeitsgruppe konnte nicht gestartet werden.
 ```
 
-Cause: In our lab a freshly installed runner service used the `NetworkService` account by default and could not start due to permission/Logon issues for dependent operations (for example access to Docker, Hyper-V or service startup privileges). When the service is started interactively via `run.cmd` the runner works, indicating the runtime itself is healthy — the issue is the Windows service account or a missing dependency.
+Ursache: In unserem Labor wurde der Dienst standardmäßig mit dem Konto `NetworkService` installiert und konnte aufgrund von Rechten/Logon‑Einschränkungen nicht gestartet werden (z. B. Zugriff auf Docker/Hyper‑V oder fehlende Startrechte). Läuft der Runner interaktiv per `run.cmd`, ist die Laufzeitgesundheit gegeben — die Ursache liegt in der Dienstkonfiguration oder im Service‑Konto.
 
-Quick checks and remediation (run in an elevated PowerShell on the runner host):
+Kurze Prüf‑ und Behebungs‑Schritte (als Administrator ausführen):
 
 ```powershell
-# Inspect service configuration and dependencies
+# Dienstkonfiguration und Abhängigkeiten prüfen
 sc.exe qc actions.runner.<YOUR_INSTANCE_NAME>
 reg query "HKLM\SYSTEM\CurrentControlSet\Services\actions.runner.<YOUR_INSTANCE_NAME>" /v DependOnService
 
-# Try starting the service (may fail if current account lacks rights)
+# Dienst starten (kann wegen fehlender Rechte fehlschlagen)
 sc.exe start "actions.runner.<YOUR_INSTANCE_NAME>"
 
-# If start fails with access denied or dependency errors, try switching to LocalSystem to verify account problems
+# Falls Start mit Zugriffsfehlern fehlschlägt: Testweise auf LocalSystem stellen
 sc.exe config "actions.runner.<YOUR_INSTANCE_NAME>" obj= LocalSystem
 sc.exe start "actions.runner.<YOUR_INSTANCE_NAME>"
 ```
 
-If the service starts successfully as `LocalSystem`, create a dedicated service account for production usage and grant it the following:
+Startet der Dienst als `LocalSystem`, legen Sie ein dediziertes Service‑Konto an und gewähren Sie dieses Rechte:
 
-- `Log on as a service` right
-- Membership in `docker-users` if Docker access is required
-- Membership in `Hyper-V Administrators` if Hyper-V management is required
+- `Log on as a service`
+- Mitgliedschaft in `docker-users` (falls Docker benötigt wird)
+- Mitgliedschaft in `Hyper-V Administrators` (falls Hyper‑V verwaltet werden soll)
 
-Example: create and configure a dedicated account and assign rights (elevated PowerShell):
+Beispiel (elevated PowerShell):
 
 ```powershell
-# Create local service account (replace name and password)
+# Lokales Servicekonto anlegen (Name/Passwort anpassen)
 # New-LocalUser -Name RunnerSvc -Password (ConvertTo-SecureString "P@ssw0rd!" -AsPlainText -Force) -Description "GitHub Actions runner service account"
 
-# Grant 'Log on as a service' via ntrights (or local security policy / GPO)
+# 'Log on as a service' per LSA‑Policy/GPO vergeben (z. B. ntrights)
 # ntrights.exe +r SeServiceLogonRight -u RunnerSvc
 
-# Add to docker-users and Hyper-V Administrators
+# In Gruppen aufnehmen
 # Add-LocalGroupMember -Group "docker-users" -Member RunnerSvc
 # Add-LocalGroupMember -Group "Hyper-V Administrators" -Member RunnerSvc
 
-# Configure service to run under the dedicated account
+# Dienst auf das Konto konfigurieren
 sc.exe config "actions.runner.<YOUR_INSTANCE_NAME>" obj= ".\\RunnerSvc" password= "<secure-password>"
 sc.exe start "actions.runner.<YOUR_INSTANCE_NAME>"
 ```
 
-Notes:
-- Use a secure password and follow your organisation's account lifecycle and auditing rules.
-- If you cannot change the service account, running the runner interactively via `run.cmd` is an acceptable fallback for ad-hoc or test runs.
-- Document the chosen service account and required group memberships alongside the runner installation artifacts so future reinstallations reproduce the working configuration.
+Hinweise:
+- Verwenden Sie sichere Passwörter und folgen Sie den organisatorischen Richtlinien zur Kontenverwaltung und Auditierung.
+- Kann das Servicekonto nicht angepasst werden, ist der interaktive Betrieb via `run.cmd` ein zulässiger Fallback für ad‑hoc Tests.
+- Dokumentieren Sie das verwendete Servicekonto und die erforderlichen Gruppenmitgliedschaften zusammen mit den Installationsartefakten, damit eine spätere Neuinstallation reproduzierbar ist.
 
 ---
 
-## References
+## Referenzen
 
 - GitHub Actions self-hosted runners: https://docs.github.com/actions/hosting-your-own-runners
 - Docker Desktop documentation: https://docs.docker.com/desktop/

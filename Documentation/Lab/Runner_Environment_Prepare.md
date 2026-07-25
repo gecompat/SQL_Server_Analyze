@@ -35,3 +35,39 @@ Files
 - `scripts/prepare-runner-environment.ps1` — automated preparation script (requires Administrator)
 - `Documentation/Lab/Self_Hosted_Windows_Runner_Setup.md` — main runner setup how-to (updated with service troubleshooting)
 - `Documentation/Lab/Runner_Environment_Prepare.md` — this document
+**Vorbereitung der Runner-Umgebung**
+
+Dieses Dokument erläutert Zweck und Verwendung von `scripts/prepare-runner-environment.ps1`.
+
+Ziel
+- Anlegen von Host-Verzeichnissen für Docker- und Hyper‑V-VM‑Daten
+- Aktivieren der Hyper‑V‑Funktion (falls erforderlich; Neustart nötig)
+- Konfiguration des Docker `data-root` für Docker Engine (falls vorhanden)
+- Erstellen eines internen Hyper‑V‑Switches und NAT für VM‑Netzwerke
+- Optionales Hinzufügen eines dedizierten Service‑Kontos zu `docker-users` und `Hyper-V Administrators`
+- Bereitstellen von Befehlen zur Bereinigung von Testartefakten
+
+Verwendung
+Das Skript muss als Administrator auf dem Runner‑Host ausgeführt werden:
+
+```powershell
+# Beispiel: Docker‑Daten- und VM‑Pfad setzen, Switch erstellen und Service‑Account angeben
+.\scripts\prepare-runner-environment.ps1 -DockerDataPath D:\DockerData -HyperVVMPath E:\HyperV -VMSwitchName SQLServerAnalyzeSwitch -ServiceAccount ".\\RunnerSvc"
+```
+
+Hinweise und Einschränkungen
+- Docker Desktop: Das Skript passt `C:\ProgramData\Docker\config\daemon.json` nur an, wenn auf dem System ein Windows‑Docker‑Service namens `docker` vorhanden ist (Docker Engine). Docker Desktop unter Windows verwendet WSL2; dessen Datenpfade müssen ggf. separat konfiguriert werden.
+- Die Aktivierung von Hyper‑V erfordert einen Neustart. Das Skript aktiviert die Funktion, führt aber keinen automatischen Neustart durch.
+- Für einen externen VMSwitch ist die Auswahl eines Netzwerkadapters erforderlich; das Skript legt standardmäßig einen internen Switch an und richtet ein NAT für grundlegenden Netzverkehr ein.
+- Rechte wie „Anmelden als Dienst“ (`Log on as a service`) und sichere Passwortverwaltung sind organisatorisch zu regeln; das Skript demonstriert nur Gruppenmitgliedschaften, übernimmt aber keine Rechtevergabe per Sicherheitsrichtlinie.
+- Passen Sie das Skript an Ihre Speicherstruktur und Sicherheitsvorgaben an.
+
+Empfohlene Folgeaufgaben
+- Ein dokumentiertes Service‑Konto mit `Log on as a service` anlegen und in die benötigten Gruppen aufnehmen.
+- Falls Docker Desktop mit WSL2 verwendet wird: `data-root` ggf. in Docker Desktop konfigurieren.
+- Hyper‑V‑Netzwerk prüfen, indem eine kleine Test‑VM erstellt und die NAT‑Konnektivität verifiziert wird.
+
+Dateien
+- `scripts/prepare-runner-environment.ps1` — Vorbereitungsskript (erfordert Administratorrechte)
+- `Documentation/Lab/Self_Hosted_Windows_Runner_Setup.md` — Haupt‑HowTo für Runner (mit Troubleshooting ergänzt)
+- `Documentation/Lab/Runner_Environment_Prepare.md` — dieses Dokument
