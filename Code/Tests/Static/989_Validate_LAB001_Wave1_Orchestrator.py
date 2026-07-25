@@ -391,7 +391,12 @@ def validate_status(repository_root: Path) -> list[Finding]:
         findings.append(Finding("WAVE3_CONTRACT_STATUS_INVALID", wave_path.as_posix()))
     if wave_three.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
         findings.append(Finding("WAVE3_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
-    for number in range(4, 11):
+    wave_four = wave_map.get("LAB-001-WAVE4", {})
+    if wave_four.get("ContractStatus") != "IMPLEMENTED_ACTIONS_GATE":
+        findings.append(Finding("WAVE4_CONTRACT_STATUS_INVALID", wave_path.as_posix()))
+    if wave_four.get("RuntimeStatus") != "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING":
+        findings.append(Finding("WAVE4_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
+    for number in range(5, 11):
         row = wave_map.get(f"LAB-001-WAVE{number}", {})
         if row.get("ContractStatus") != "PLANNED":
             findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))

@@ -16,7 +16,7 @@ function Get-LabCurrentResourceSnapshot {
         [int64] ([math]::Floor(([int64] $Matches[1]) / 1024))
     }
     else {
-        throw 'Welle 2 resource measurement currently requires a Linux execution host.'
+        throw 'LAB-001 container resource measurement requires a Linux execution host.'
     }
 
     $resolvedStoragePath = (Resolve-Path -LiteralPath $StoragePath).Path
@@ -31,33 +31,43 @@ function Get-LabCurrentResourceSnapshot {
     }
 }
 
-function Get-LabCompactContainerBudget {
+function Get-LabContainerBudget {
     [CmdletBinding()]
     [OutputType([pscustomobject])]
-    param()
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet('Compact', 'Standard')]
+        [string] $ResourceProfile
+    )
 
     $profilePath = Join-Path (
         $script:DiagnosticLabRoot
     ) 'Config/resource-profiles.json'
     $profiles = Get-Content -LiteralPath $profilePath -Raw -Encoding utf8 |
         ConvertFrom-Json -Depth 100
-    $compact = @($profiles.ResourceProfiles) |
-        Where-Object { $_.ResourceProfileId -eq 'Compact' } |
+    $profile = @($profiles.ResourceProfiles) |
+        Where-Object { $_.ResourceProfileId -eq $ResourceProfile } |
         Select-Object -First 1
-    if ($null -eq $compact) {
-        throw 'Compact resource profile is missing.'
+    if ($null -eq $profile) {
+        throw "The $ResourceProfile resource profile is missing."
+    }
+    $role = $profile.Roles.SQL_CONTAINER
+    foreach ($property in @(
+            'MemoryMiB'
+            'LogicalProcessors'
+            'SqlMemoryLimitMiB'
+            'MaximumStorageGiB'
+        )) {
+        if ([int] $role.$property -le 0) {
+            throw "The $ResourceProfile SQL container budget is incomplete."
+        }
     }
     return [pscustomobject] @{
-        MemoryMiB = [int] $compact.Roles.SQL_CONTAINER.MemoryMiB
-        LogicalProcessors = [int] (
-            $compact.Roles.SQL_CONTAINER.LogicalProcessors
-        )
-        SqlMemoryLimitMiB = [int] (
-            $compact.Roles.SQL_CONTAINER.SqlMemoryLimitMiB
-        )
-        MaximumStorageGiB = [int] (
-            $compact.Roles.SQL_CONTAINER.MaximumStorageGiB
-        )
+        ResourceProfile = $ResourceProfile
+        MemoryMiB = [int] $role.MemoryMiB
+        LogicalProcessors = [int] $role.LogicalProcessors
+        SqlMemoryLimitMiB = [int] $role.SqlMemoryLimitMiB
+        MaximumStorageGiB = [int] $role.MaximumStorageGiB
         MinimumHostMemoryReserveMiB = [int] (
             $profiles.HostReserve.MinimumMemoryMiB
         )
@@ -65,6 +75,14 @@ function Get-LabCompactContainerBudget {
             $profiles.HostReserve.MinimumStorageGiB
         )
     }
+}
+
+function Get-LabCompactContainerBudget {
+    [CmdletBinding()]
+    [OutputType([pscustomobject])]
+    param()
+
+    return Get-LabContainerBudget -ResourceProfile Compact
 }
 
 function Assert-LabResourceBudget {
@@ -79,23 +97,28 @@ function Assert-LabResourceBudget {
 
         [Parameter(Mandatory)]
         [ValidateSet('BEFORE_UP', 'AFTER_UP')]
-        [string] $Phase
+        [string] $Phase,
+
+        [Parameter()]
+        [ValidateRange(1, 3)]
+        [int] $InstanceCount = 1
     )
 
     $requiredMemoryMiB = $Budget.MinimumHostMemoryReserveMiB
     $requiredStorageGiB = $Budget.MinimumHostStorageReserveGiB
     if ($Phase -eq 'BEFORE_UP') {
-        $requiredMemoryMiB += $Budget.MemoryMiB
-        $requiredStorageGiB += $Budget.MaximumStorageGiB
+        $requiredMemoryMiB += ([int64] $Budget.MemoryMiB * $InstanceCount)
+        $requiredStorageGiB += ([int64] $Budget.MaximumStorageGiB * $InstanceCount)
     }
     if ($Snapshot.AvailableMemoryMiB -lt $requiredMemoryMiB) {
-        throw 'The Compact host memory reserve would be violated.'
+        throw 'The LAB host memory reserve would be violated.'
     }
     if ($Snapshot.AvailableStorageGiB -lt $requiredStorageGiB) {
-        throw 'The Compact host storage reserve would be violated.'
+        throw 'The LAB host storage reserve would be violated.'
     }
     return [pscustomobject] @{
         Phase = $Phase
+        InstanceCount = $InstanceCount
         RequiredMemoryMiB = $requiredMemoryMiB
         RequiredStorageGiB = $requiredStorageGiB
         ReserveStatus = 'PASS'
@@ -143,7 +166,7 @@ function Measure-LabContainerResources {
     }
     $measuredStorageBytes = [int64] $Matches[1]
     if ($measuredStorageBytes -gt ([int64] $Budget.MaximumStorageGiB * 1GB)) {
-        throw 'Container storage consumption exceeds the Compact budget.'
+        throw 'Container storage consumption exceeds its resource profile budget.'
     }
     if (
         [int64] $inspect.Memory -ne ([int64] $Budget.MemoryMiB * 1MB) -or
@@ -151,10 +174,11 @@ function Measure-LabContainerResources {
             [int64] $Budget.LogicalProcessors * 1000000000
         )
     ) {
-        throw 'Effective Docker limits do not match the Compact profile.'
+        throw 'Effective Docker limits do not match the selected resource profile.'
     }
     return [pscustomobject] @{
         CapturedAtUtc = [DateTime]::UtcNow.ToString('o')
+        ResourceProfile = [string] $Budget.ResourceProfile
         ContainerMemoryLimitMiB = [int64] ($inspect.Memory / 1MB)
         ContainerLogicalProcessorLimit = [decimal] (
             $inspect.NanoCpus / 1000000000

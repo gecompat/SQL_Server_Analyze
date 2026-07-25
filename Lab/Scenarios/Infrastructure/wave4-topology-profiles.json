@@ -1,8 +1,8 @@
 {
   "SchemaVersion": "1.0",
   "WaveId": "LAB-001-WAVE4",
-  "ContractStatus": "VALIDATED_FOUNDATION",
-  "RuntimeStatus": "NOT_EXECUTED",
+  "ContractStatus": "IMPLEMENTED_ACTIONS_GATE",
+  "RuntimeStatus": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING",
   "DataClassification": "SYNTHETIC",
   "TopologyProfiles": [
     {
@@ -19,7 +19,7 @@
       "ManagementPathIndependent": true,
       "MaximumSqlNodes": 1,
       "FaultLayer": "OPTIONAL",
-      "RuntimeImplementationStatus": "PLANNED_NOT_IMPLEMENTED",
+      "RuntimeImplementationStatus": "IMPLEMENTED_ACTIONS_GATE",
       "CleanupPolicy": "REGISTERED_OBJECT_IDS_ONLY"
     },
     {
@@ -37,7 +37,7 @@
       "ManagementPathIndependent": true,
       "MaximumSqlNodes": 2,
       "FaultLayer": "OPTIONAL",
-      "RuntimeImplementationStatus": "PLANNED_NOT_IMPLEMENTED",
+      "RuntimeImplementationStatus": "IMPLEMENTED_ACTIONS_GATE",
       "CleanupPolicy": "REGISTERED_OBJECT_IDS_ONLY"
     },
     {
@@ -56,7 +56,7 @@
       "ManagementPathIndependent": true,
       "MaximumSqlNodes": 3,
       "FaultLayer": "OPTIONAL",
-      "RuntimeImplementationStatus": "PLANNED_NOT_IMPLEMENTED",
+      "RuntimeImplementationStatus": "IMPLEMENTED_ACTIONS_GATE",
       "CleanupPolicy": "REGISTERED_OBJECT_IDS_ONLY"
     },
     {

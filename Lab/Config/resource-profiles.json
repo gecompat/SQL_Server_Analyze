@@ -1,6 +1,6 @@
 {
   "SchemaVersion": "1.0",
-  "Status": "WAVE2_RUNTIME_CONTRACT",
+  "Status": "WAVE4_RUNTIME_CONTRACT",
   "Units": {
     "Memory": "MiB",
     "Storage": "GiB",
@@ -74,7 +74,8 @@
         "SQL_CONTAINER": {
           "MemoryMiB": 4096,
           "LogicalProcessors": 2,
-          "SqlMemoryLimitMiB": 3072
+          "SqlMemoryLimitMiB": 3072,
+          "MaximumStorageGiB": 48
         },
         "WINDOWS_SQL_VM": {
           "MemoryMiB": 8192,
