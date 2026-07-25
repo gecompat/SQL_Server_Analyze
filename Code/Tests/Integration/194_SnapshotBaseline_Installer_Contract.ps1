@@ -297,7 +297,7 @@ try {
             throw "SC023_GENERATED_SOURCE_CLOSURE_OR_ORDER: $($part.Name)"
         }
     }
-    if (@([Text.RegularExpressions.Regex]::Matches($generatedFrameworkText, '(?im)^USE \[DeineDatenbank\];$')).Count -ne 1) {
+    if (@([Text.RegularExpressions.Regex]::Matches($generatedFrameworkText, '(?im)^USE \[DeineDatenbank\];\r?$')).Count -ne 1) {
         throw 'SC023_GENERATED_FRAMEWORK_CONTEXT_COUNT_INVALID'
     }
     if ([Text.RegularExpressions.Regex]::IsMatch($generatedTargetText, '(?im)^\s*USE\s+\[')) {
