@@ -1,0 +1,189 @@
+name: Windows self-hosted validation
+
+on:
+  push:
+    branches:
+      - main
+      - 'windows-validation/**'
+    paths:
+      - '.github/workflows/windows-self-hosted-validation.yml'
+      - 'Code/**/*.sql'
+      - 'Code/Install/*.ps1'
+      - 'Code/Tests/Integration/*Installer_Contract.ps1'
+      - 'Code/Tests/Static/910_Validate_Repository_Privacy.py'
+      - 'Code/Tests/Static/Repository_Privacy_Fixtures.json'
+      - 'Lab/**/*.ps1'
+      - 'Lab/**/*.psd1'
+      - 'Lab/**/*.psm1'
+      - 'Lab/**/*.json'
+      - 'Metadata/Quality/Repository_Privacy_Allowlist.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-self-hosted-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate repository on Windows
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - id: toolchain
+        name: Validate Windows toolchain
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          if ($env:RUNNER_OS -ne 'Windows') {
+            throw 'The selected self-hosted runner is not a Windows runner.'
+          }
+          if ($PSVersionTable.PSVersion.Major -lt 7) {
+            throw 'PowerShell 7 or newer is required.'
+          }
+          if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+            throw 'Git is unavailable on the Windows runner.'
+          }
+
+          $pythonCommand = $null
+          foreach ($candidate in 'python3', 'python') {
+            $command = Get-Command $candidate -CommandType Application -ErrorAction SilentlyContinue |
+              Select-Object -First 1
+            if ($null -eq $command) {
+              continue
+            }
+            & $command.Source --version
+            if ($LASTEXITCODE -eq 0) {
+              $pythonCommand = $command
+              break
+            }
+          }
+          if ($null -eq $pythonCommand) {
+            throw 'Python is unavailable on the Windows runner.'
+          }
+
+          "python=$($pythonCommand.Source)" >> $env:GITHUB_OUTPUT
+          Write-Output 'WINDOWS_TOOLCHAIN=READY'
+
+      - name: Parse PowerShell sources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $parseErrors = [Collections.Generic.List[object]]::new()
+          foreach ($file in @(
+              Get-ChildItem -LiteralPath ./Code/Install, ./Code/Tests/Integration, ./Lab -Recurse -File |
+                Where-Object { $_.Extension -in @('.ps1', '.psm1', '.psd1') }
+            )) {
+            $tokens = $null
+            $errors = $null
+            [Management.Automation.Language.Parser]::ParseFile(
+              $file.FullName,
+              [ref] $tokens,
+              [ref] $errors
+            ) | Out-Null
+            foreach ($errorItem in @($errors)) {
+              $parseErrors.Add([pscustomobject] @{
+                RelativePath = [IO.Path]::GetRelativePath($env:GITHUB_WORKSPACE, $file.FullName)
+                Message = $errorItem.Message
+              })
+            }
+          }
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | Format-Table -AutoSize
+            throw "PowerShell parsing reported $($parseErrors.Count) error(s)."
+          }
+          Write-Output 'POWERSHELL_PARSE=PASS'
+
+      - name: Validate repository and Windows delivery ZIP privacy
+        shell: pwsh
+        env:
+          PYTHON_COMMAND: ${{ steps.toolchain.outputs.python }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          & $env:PYTHON_COMMAND ./Code/Tests/Static/910_Validate_Repository_Privacy.py `
+            --repository-root . `
+            --self-test
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Repository privacy self-test failed.'
+          }
+
+          $archivePath = Join-Path $env:RUNNER_TEMP 'SQL_Server_Analyze.zip'
+          try {
+            & git archive `
+              --format=zip `
+              --prefix=SQL_Server_Analyze/ `
+              --output=$archivePath `
+              HEAD
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Delivery ZIP creation failed.'
+            }
+
+            & $env:PYTHON_COMMAND ./Code/Tests/Static/910_Validate_Repository_Privacy.py `
+              --repository-root . `
+              --archive-path $archivePath
+            if ($LASTEXITCODE -ne 0) {
+              throw 'Repository or Windows delivery ZIP privacy validation failed.'
+            }
+          }
+          finally {
+            if (Test-Path -LiteralPath $archivePath) {
+              Remove-Item -LiteralPath $archivePath -Force
+            }
+          }
+
+      - name: Validate standalone installer contracts
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          foreach ($contract in @(
+              './Code/Tests/Integration/191_Standalone_Installer_Contract.ps1',
+              './Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1',
+              './Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
+            )) {
+            & pwsh -NoLogo -NoProfile -File $contract
+            if ($LASTEXITCODE -ne 0) {
+              throw "Installer contract failed: $contract"
+            }
+          }
+
+      - name: Validate LAB repository contracts
+        shell: pwsh
+        env:
+          PYTHON_COMMAND: ${{ steps.toolchain.outputs.python }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./Lab/Validation/Invoke-LabValidation.ps1
+          if (-not $?) {
+            throw 'LAB repository validation failed on the Windows runner.'
+          }
+
+      - name: Publish validation summary
+        if: always()
+        shell: pwsh
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          @(
+            '## Windows self-hosted validation',
+            '',
+            "Status: ``$env:JOB_STATUS``",
+            '',
+            'Scope: Windows toolchain, PowerShell parsing, repository and ZIP privacy, installer generation, and LAB repository contracts.',
+            '',
+            'This workflow does not constitute Windows SQL Server runtime evidence.'
+          ) | Add-Content -LiteralPath $env:GITHUB_STEP_SUMMARY -Encoding utf8

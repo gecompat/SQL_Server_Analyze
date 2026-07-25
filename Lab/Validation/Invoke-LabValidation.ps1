@@ -133,9 +133,24 @@ foreach ($topology in $topologyCatalog.Topologies) {
     }
 }
 
-$pythonCommand = Get-Command python3 -ErrorAction SilentlyContinue
-if ($null -eq $pythonCommand) {
-    $pythonCommand = Get-Command python -ErrorAction Stop
+$pythonExecutable = $null
+$pythonCandidates = @($env:PYTHON_COMMAND, 'python3', 'python') |
+    Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+    Select-Object -Unique
+foreach ($candidate in $pythonCandidates) {
+    $pythonCommand = Get-Command $candidate -CommandType Application -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if ($null -eq $pythonCommand) {
+        continue
+    }
+    & $pythonCommand.Source --version *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $pythonExecutable = $pythonCommand.Source
+        break
+    }
+}
+if ($null -eq $pythonExecutable) {
+    throw 'Python is unavailable for LAB-001 validation.'
 }
 
 foreach ($validator in @(
@@ -149,7 +164,7 @@ foreach ($validator in @(
         'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
     )) {
     $validatorPath = Join-Path $RepositoryRoot $validator
-    & $pythonCommand.Source $validatorPath --repository-root $RepositoryRoot
+    & $pythonExecutable $validatorPath --repository-root $RepositoryRoot
     if ($LASTEXITCODE -ne 0) {
         throw "LAB-001 validation failed with exit code $LASTEXITCODE."
     }

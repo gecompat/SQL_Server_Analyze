@@ -92,7 +92,8 @@ class Finding:
 
 
 def match_digest(rule_code: str, path: str, value: str) -> str:
-    payload = "\0".join((rule_code, path, value)).encode("utf-8")
+    normalized_value = value.replace("\r\n", "\n").replace("\r", "\n")
+    payload = "\0".join((rule_code, path, normalized_value)).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -299,6 +300,15 @@ def run_self_test(fixtures_path: Path) -> list[Finding]:
         return [Finding("SELF_TEST_FIXTURE_CONTRACT_MISMATCH", fixtures_path.as_posix())]
 
     failures: list[Finding] = []
+    line_ending_path = "synthetic-database-context.sql"
+    line_ending_rule = "NON_GENERIC_DATABASE_CONTEXT"
+    lf_value = "\nUSE [SyntheticDatabase]"
+    crlf_value = "\r\nUSE [SyntheticDatabase]"
+    allowed_digest = match_digest(line_ending_rule, line_ending_path, lf_value)
+    allowed = {(line_ending_rule, line_ending_path, allowed_digest)}
+    if scan_text(crlf_value, line_ending_path, allowed):
+        failures.append(Finding("SELF_TEST_LINE_ENDING_NORMALIZATION_FAILED", "CRLF"))
+
     with tempfile.TemporaryDirectory(prefix="repository-privacy-self-test-") as temp_name:
         temp_root = Path(temp_name)
         repository = temp_root / "repository"

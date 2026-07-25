@@ -46,7 +46,7 @@ try {
     if ($sourceMarkers.Count -ne $includes.Count) {
         throw 'STANDALONE_GENERATED_SOURCE_COUNT_INVALID'
     }
-    if (@([Text.RegularExpressions.Regex]::Matches($generatedText, '(?im)^USE \[DeineDatenbank\];$')).Count -ne 1) {
+    if (@([Text.RegularExpressions.Regex]::Matches($generatedText, '(?im)^USE \[DeineDatenbank\];\r?$')).Count -ne 1) {
         throw 'STANDALONE_DATABASE_CONTEXT_COUNT_INVALID'
     }
 
