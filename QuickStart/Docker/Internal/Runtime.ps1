@@ -185,7 +185,7 @@ function Install-Framework {
         if ('FRAMEWORK_READY' -notin @($verification | ForEach-Object { ([string] $_).Trim() })) {
             throw "Framework-Verifikation für SQL Server $version fehlgeschlagen."
         }
-        Write-Host "SQL Server $version: FRAMEWORK_READY"
+        Write-Host "SQL Server ${version}: FRAMEWORK_READY"
     }
 }
 
