@@ -75,7 +75,7 @@ function Get-SetupConfiguration {
     }
 
     Write-Section -Text 'SQL-Versionen und Ressourcen'
-    $versions = Get-SelectedVersions
+    $versions = @(Get-SelectedVersions)
     $resource = Get-ResourceSettings -VersionCount $versions.Count
 
     Write-Section -Text 'Speicherlayout'
