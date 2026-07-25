@@ -2390,3 +2390,15 @@ Quelle: `Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql`
     , @ErrorNumberOut   int            = NULL OUTPUT
     , @ErrorMessageOut  nvarchar(2048) = NULL OUTPUT
 ```
+
+## `[monitor].[USP_FrameworkUsageFromQueryStore]`
+
+Quelle: `Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql`
+
+```sql
+@MaxZeilen        int            = 100
+    , @MinAusfuehrungen bigint         = 1
+    , @ZeitraumTage     int            = NULL
+    , @ResultSetArt     varchar(16)    = 'CONSOLE'
+    , @Json             nvarchar(max)  = NULL OUTPUT
+```
