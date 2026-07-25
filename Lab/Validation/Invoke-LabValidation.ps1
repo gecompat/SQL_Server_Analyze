@@ -45,6 +45,14 @@ $schemaTests = @(
         Schema = 'Lab/Contracts/wave4-topology-profile.schema.json'
     }
     @{
+        Instance = 'Lab/Scenarios/Infrastructure/LAB-LS-001/scenario.json'
+        Schema = 'Lab/Contracts/scenario.schema.json'
+    }
+    @{
+        Instance = 'Lab/Scenarios/Infrastructure/LAB-LS-001/runbook.json'
+        Schema = 'Lab/Contracts/scenario-runbook.schema.json'
+    }
+    @{
         Instance = 'Lab/HyperV/Images/image-pipeline-contract.json'
         Schema = 'Lab/Contracts/hyperv-image-pipeline.schema.json'
     }
@@ -137,6 +145,7 @@ foreach ($validator in @(
         'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
         'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
         'Code/Tests/Static/Validate_LAB001_Wave4_MultiContainerRuntime.py'
+        'Code/Tests/Static/Validate_LAB001_Wave4_LogShipping.py'
         'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
     )) {
     $validatorPath = Join-Path $RepositoryRoot $validator
@@ -146,4 +155,4 @@ foreach ($validator in @(
     }
 }
 
-Write-Output 'LAB-001 PowerShell JSON-schema and static validation passed.'
+Write-Output 'LAB-001 PowerShell JSON-schema and static validation passed including LAB-LS-001.'

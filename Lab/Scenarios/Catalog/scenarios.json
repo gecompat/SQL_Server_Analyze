@@ -434,7 +434,7 @@
       "PrimaryPlatform": "CONTAINER_LINUX",
       "TopologyId": "CTR-PAIR",
       "PlannedWave": 4,
-      "ImplementationStatus": "PLANNED_NOT_IMPLEMENTED"
+      "ImplementationStatus": "IMPLEMENTED_ACTIONS_GATE"
     },
     {
       "ScenarioId": "LAB-LS-002",

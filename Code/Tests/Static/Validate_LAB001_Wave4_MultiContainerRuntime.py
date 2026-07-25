@@ -51,6 +51,11 @@ def validate_compose(root: Path, findings: list[str]) -> None:
         "lab001.topology:", "lab001.owner: SQL_SERVER_ANALYZE",
         "MSSQL_COLLATION: SQL_Latin1_General_CP1_CS_AS",
     ), "Welle 4 Compose", findings)
+    require(
+        compose.count('MSSQL_AGENT_ENABLED: "true"') == 3,
+        "Welle 4 Compose does not enable SQL Agent on all nodes.",
+        findings,
+    )
     fragments(override, (
         "pull_policy: never", "LAB_W4_CONTAINER_MEMORY_LIMIT",
         "LAB_W4_CONTAINER_CPU_LIMIT", "sql-secondary:", "sql-tertiary:",
@@ -122,7 +127,7 @@ def validate_budget_and_integration(root: Path, findings: list[str]) -> None:
     ), "LAB orchestrator", findings)
     fragments(module, ("Private/MultiContainerRuntime.ps1", "Public/Invoke-LabMultiContainerUp.ps1",
                        "'Invoke-LabMultiContainerUp'"), "DiagnosticLab module", findings)
-    fragments(manifest, ("ModuleVersion = '0.5.0'", "'Invoke-LabMultiContainerUp'", "'MultiContainer'"),
+    fragments(manifest, ("ModuleVersion = '0.6.0'", "'Invoke-LabMultiContainerUp'", "'MultiContainer'"),
               "DiagnosticLab manifest", findings)
 
 
@@ -159,7 +164,7 @@ def main() -> int:
         for finding in findings:
             print(f"ERROR: {finding}")
         return 1
-    print("LAB-001 Welle 4 multi-container runtime validated: topologies=CTR-PAIR,CTR-TRIPLE external_evidence=NOT_EXECUTED.")
+    print("LAB-001 Welle 4 multi-container runtime validated: topologies=CTR-PAIR,CTR-TRIPLE sql_agent=enabled external_evidence=NOT_EXECUTED.")
     return 0
 
 
