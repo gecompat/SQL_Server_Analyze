@@ -5,12 +5,18 @@
 
 ## Ziel
 
-Der Docker-QuickStart stellt einen einfachen, anwenderorientierten Einstieg für lokale SQL-Server-Testumgebungen bereit. Er bleibt fachlich und technisch vom erweiterten Framework unter `Lab/` getrennt.
+Der Docker-QuickStart stellt einen anwenderorientierten Einstieg für lokale SQL-Server-Testumgebungen bereit. Er bleibt fachlich und technisch vom erweiterten Framework unter `Lab/` getrennt.
 
-Der Einstiegspunkt ist:
+Der primäre Einstiegspunkt ist:
 
 ```powershell
 ./QuickStart/Docker/Setup.ps1
+```
+
+Für die vollständige Entfernung der verwalteten Umgebung steht zusätzlich zur Remove-Aktion folgender Einstiegspunkt bereit:
+
+```powershell
+./QuickStart/Docker/Uninstall.ps1
 ```
 
 Das Setup kann SQL Server 2019, 2022 und 2025 einzeln oder kombiniert bereitstellen und das Framework anschließend automatisch in der synthetischen Datenbank `LabAnalyze` installieren.
@@ -55,7 +61,7 @@ Die `.env` darf beim ausdrücklich gestarteten Setup ersetzt werden. Andere Repo
 
 ### Single Root
 
-Für Systeme mit nur einem lokalen Datenträger werden Daten, Logs, Backups und Steuerungsdateien unter einer gemeinsamen, dedizierten Lab-Wurzel abgelegt:
+Für Systeme mit nur einem lokalen Datenträger werden Steuerungsdateien, Backups und die verwaltete Pfadstruktur unter einer gemeinsamen, dedizierten Lab-Wurzel abgelegt:
 
 ```text
 <LabRoot>/
@@ -67,9 +73,15 @@ Für Systeme mit nur einem lokalen Datenträger werden Daten, Logs, Backups und 
 
 ### Getrennte Wurzeln
 
-Auf Systemen mit mehreren lokalen Datenträgern können Lab-Steuerung, Datendateien und Logdateien in getrennten Wurzeln abgelegt werden.
+Auf Systemen mit mehreren lokalen Datenträgern können Lab-Steuerung, die verwaltete Datenpfadstruktur und die verwaltete Logpfadstruktur in getrennten Wurzeln abgelegt werden.
 
 Die Wurzeln dürfen weder identisch sein noch ineinander liegen.
+
+### Laufzeitabhängige Persistenz
+
+Auf einer nativen Linux-Docker-Engine werden die ausgewählten Daten- und Logpfade als Bind-Mounts verwendet. Dadurch können Linux-native Tests gezielt einem dedizierten Blockgerät zugeordnet werden.
+
+Docker Desktop auf Windows betreibt Linux-Container innerhalb einer Linux-VM. Aktive SQL-Datenbank- und Logdateien werden dort in projektgebundenen Docker-Volumes gespeichert. Direkte Windows-Bind-Mounts für `/var/opt/mssql/data` und `/var/opt/mssql/log` sind ausgeschlossen. Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups zuständig.
 
 ## Pfadsicherheit
 
@@ -83,11 +95,11 @@ Vor der ersten Mutation gelten folgende Regeln:
 - Netzwerkpfade, Junctions und symbolische Links sind unzulässig;
 - getrennte Speicherwurzeln dürfen sich nicht überlappen.
 
-Das Setup legt in jeder verwalteten Wurzel einen Owner- und Scope-Marker an. Spätere Start-, Stop- und Remove-Aktionen müssen diesen Marker vor jeder Mutation prüfen.
+Das Setup legt in jeder verwalteten Wurzel einen Owner- und Scope-Marker an. Spätere Start-, Stop-, Remove- und Uninstall-Aktionen müssen diesen Marker vor jeder Mutation prüfen.
 
 ## Docker-Scope
 
-Container und Netzwerke werden über einen eindeutigen Compose-Projektnamen sowie Owner- und Scope-Labels isoliert.
+Container, Netzwerke und Docker-Volumes werden über einen eindeutigen Compose-Projektnamen sowie Owner- und Scope-Labels isoliert.
 
 SQL-Ports werden standardmäßig ausschließlich an die lokale Loopback-Schnittstelle gebunden. Bereits belegte oder mehrfach verwendete Ports werden abgelehnt.
 
@@ -95,12 +107,14 @@ Globale Bereinigungsbefehle sind ausgeschlossen. Insbesondere dürfen weder glob
 
 ## Entfernen der Umgebung
 
-`Remove` arbeitet in zwei getrennten Schritten:
+`Remove` und `Uninstall.ps1` verwenden dieselbe sichere Logik:
 
-1. Entfernen der eindeutig zugeordneten Container und des Projektnetzwerks;
-2. optionales Löschen der markierten Datenpfade nach zusätzlicher Bestätigung.
+1. Entfernen der eindeutig zugeordneten Container und des Projektnetzwerks nach Bestätigung;
+2. optionales Entfernen der zugeordneten Docker-Volumes, der markierten Datenpfade und der lokalen `.env` nach einer zweiten Bestätigung.
 
 Vor dem Löschen eines Pfads muss geprüft werden, dass nur die erwarteten QuickStart-Einträge vorhanden sind. Unerwartete Inhalte verhindern die Löschung.
+
+Docker-Images und andere Projekte bleiben außerhalb des Löschumfangs.
 
 ## Ressourcenprofile
 
@@ -118,7 +132,7 @@ Das Setup muss die Geräte- und Mountpoint-Zuordnung prüfen und eine ausdrückl
 
 ## Unterstützte Laufzeitvarianten
 
-Der gleiche QuickStart-Einstieg unterstützt:
+Der gleiche Setup-Einstieg unterstützt:
 
 - Docker Desktop mit Linux-Containern auf Windows;
 - Docker Engine auf Linux;
