@@ -181,6 +181,10 @@ AS
         , (N'USP_ConfigureSnapshotTarget','PREPARE_WITH',N'USP_RunSnapshotCollectionCycle',1,N'Nach erfolgreicher Ziel- und Policykonfiguration kann ein begrenzter Collection Cycle geplant werden.')
         , (N'USP_RunSnapshotCollectionCycle','CONFIRM_WITH',N'USP_ConfigureSnapshotTarget',1,N'Bei Skip, Policy- oder Zielproblemen zuerst die wirksame Snapshotkonfiguration prüfen.')
         , (N'USP_PurgeSnapshotData','CONFIRM_WITH',N'USP_ConfigureSnapshotTarget',1,N'Vor dem Retentionlauf Zielbindung, Policy, Schutzschalter und Batchgrenzen verifizieren.')
+        , (N'USP_FrameworkUsageFromQueryStore','CONFIRM_WITH',N'USP_QueryStoreStatus',1,N'Bei leerem Ergebnis den Query-Store-Zustand und die Capture-Konfiguration prüfen.')
+        , (N'USP_FrameworkUsageFromQueryStore','CONFIRM_WITH',N'USP_CheckFrameworkCapabilities',2,N'Nutzungsdaten mit dem Capability-Status abgleichen: ungenutztes Modul vs. nicht verfügbar.')
+        , (N'USP_FrameworkUsageFromQueryStore','CONFIRM_WITH',N'USP_ServerVersionInformation',3,N'Versionsspezifische Nutzungsmuster mit dem verfügbaren Funktionsumfang abgleichen.')
+        , (N'USP_CheckFrameworkCapabilities','REFINE_WITH',N'USP_FrameworkUsageFromQueryStore',1,N'Nach dem Capability-Überblick die tatsächliche Nutzung aus dem Query Store verifizieren.')
     ) AS [v]
     (
           [FromProcedureName], [RelationType], [ToProcedureName]
