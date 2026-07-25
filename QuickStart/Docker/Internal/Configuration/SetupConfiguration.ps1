@@ -29,6 +29,14 @@ function Test-LinuxSlowIoConfiguration {
     $mountSource = Get-FirstOutputLine -InputObject @(
         Invoke-ExternalCommand -FilePath 'findmnt' -Arguments @('-n', '-o', 'SOURCE', '-T', $LabRoot) -Quiet
     )
+    $mountTarget = Get-FirstOutputLine -InputObject @(
+        Invoke-ExternalCommand -FilePath 'findmnt' -Arguments @('-n', '-o', 'TARGET', '-T', $LabRoot) -Quiet
+    )
+    $resolvedMountTarget = Get-CanonicalPath -Path $mountTarget
+    $resolvedLabRoot = Get-CanonicalPath -Path $LabRoot
+    if (-not $resolvedMountTarget.Equals($resolvedLabRoot, $script:PathComparison)) {
+        throw "Die Lab-Wurzel '$resolvedLabRoot' ist kein eigener Mountpoint. Slow-I/O verlangt eine ausschließlich diesem Lab zugeordnete virtuelle Disk bzw. Partition."
+    }
     $resolvedDevice = Get-FirstOutputLine -InputObject @(
         Invoke-ExternalCommand -FilePath 'readlink' -Arguments @('-f', $Device) -Quiet
     )
