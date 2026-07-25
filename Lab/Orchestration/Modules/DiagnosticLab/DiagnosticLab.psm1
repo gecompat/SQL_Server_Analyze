@@ -19,6 +19,7 @@ $privateFiles = @(
     'Private/Installer.ps1'
     'Private/ResourceMeasurement.ps1'
     'Private/ScenarioRuntime.ps1'
+    'Private/InfrastructureScenarioRuntime.ps1'
 )
 
 $publicFiles = @(
