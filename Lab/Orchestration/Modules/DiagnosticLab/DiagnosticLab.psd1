@@ -11,11 +11,13 @@
         'Get-LabStatus'
         'Install-LabContainerFramework'
         'Invoke-LabCleanup'
+        'Invoke-LabLogShippingScenario'
         'Invoke-LabMultiContainerUp'
         'Invoke-LabPreflight'
         'Invoke-LabScenario'
         'Invoke-LabUp'
         'Invoke-LabVersionMatrix'
+        'Test-LabLogShippingScenario'
         'Test-LabScenario'
     )
     CmdletsToExport = @()
