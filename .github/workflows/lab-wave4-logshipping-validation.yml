@@ -1,0 +1,130 @@
+name: LAB-001 Welle 4 Log Shipping validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/lab-wave4-logshipping-validation.yml'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_LogShipping.py'
+      - 'Lab/Run-LogShipping-Lab.ps1'
+      - 'Lab/Containers/wave4.compose.yaml'
+      - 'Lab/Contracts/scenario-runbook.schema.json'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/**'
+      - 'Lab/Scenarios/Infrastructure/LAB-LS-001/**'
+      - 'Lab/Scenarios/Infrastructure/wave4-contracts.csv'
+      - 'Lab/Scenarios/Catalog/scenarios.json'
+      - 'Lab/Validation/Invoke-LabWave4LogShippingTests.ps1'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Lab_Wave_Status.csv'
+  push:
+    branches:
+      - main
+      - 'agent/lab001-wave4-*'
+    paths:
+      - '.github/workflows/lab-wave4-logshipping-validation.yml'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_LogShipping.py'
+      - 'Lab/Run-LogShipping-Lab.ps1'
+      - 'Lab/Containers/wave4.compose.yaml'
+      - 'Lab/Contracts/scenario-runbook.schema.json'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/**'
+      - 'Lab/Scenarios/Infrastructure/LAB-LS-001/**'
+      - 'Lab/Scenarios/Infrastructure/wave4-contracts.csv'
+      - 'Lab/Scenarios/Catalog/scenarios.json'
+      - 'Lab/Validation/Invoke-LabWave4LogShippingTests.ps1'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Lab_Wave_Status.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab-wave4-logshipping-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate LAB-LS-001 Log Shipping action
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate static LAB-LS-001 contract
+        shell: bash
+        run: |
+          set -o pipefail
+          log_path="${RUNNER_TEMP}/lab-ls001-validation.log"
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_LogShipping.py \
+            --repository-root . 2>&1 | tee "$log_path"
+
+      - name: Run LAB-LS-001 PowerShell contract tests
+        shell: pwsh
+        run: |
+          $logPath = Join-Path $env:RUNNER_TEMP 'lab-ls001-validation.log'
+          try {
+            & ./Lab/Validation/Invoke-LabWave4LogShippingTests.ps1 *>&1 |
+              Tee-Object -FilePath $logPath -Append
+            if (-not $?) {
+              throw 'LAB-LS-001 PowerShell contract failed.'
+            }
+          }
+          catch {
+            $_ | Out-String | Add-Content -LiteralPath $logPath -Encoding utf8
+            throw
+          }
+
+      - name: Validate Welle 4 Compose Agent contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_dir="$(mktemp -d)"
+          trap 'rm -r -- "$runtime_dir"' EXIT
+          mkdir -p "$runtime_dir/runtime" "$runtime_dir/primary" "$runtime_dir/secondary" "$runtime_dir/tertiary"
+          export LAB_W4_COMPOSE_PROJECT=lab001-ls001-validation
+          export LAB_W4_RUN_ID=LAB-20000101T000000Z-00000041
+          export LAB_W4_TOPOLOGY_ID=CTR-PAIR
+          export LAB_W4_SQL_IMAGE=mcr.microsoft.com/mssql/server:2025-latest
+          export LAB_W4_SQL_SA_PASSWORD="$(openssl rand -hex 24)"
+          export LAB_W4_MSSQL_MEMORY_LIMIT_MB=3072
+          export LAB_W4_CONTAINER_MEMORY_LIMIT=4096m
+          export LAB_W4_CONTAINER_CPU_LIMIT=2
+          export LAB_W4_RUNTIME_DIR="$runtime_dir/runtime"
+          export LAB_W4_PRIMARY_DATA_DIR="$runtime_dir/primary"
+          export LAB_W4_SECONDARY_DATA_DIR="$runtime_dir/secondary"
+          export LAB_W4_TERTIARY_DATA_DIR="$runtime_dir/tertiary"
+          export LAB_W4_PRIMARY_HOSTNAME=lab-sql-primary
+          export LAB_W4_SECONDARY_HOSTNAME=lab-sql-secondary
+          export LAB_W4_TERTIARY_HOSTNAME=lab-sql-tertiary
+          model="$(docker compose --project-name lab001-ls001-validation \
+            --file ./Lab/Containers/wave4.compose.yaml \
+            --file ./Lab/Containers/wave4.compose.docker.yaml config)"
+          test "$(printf '%s' "$model" | grep -c 'MSSQL_AGENT_ENABLED: \"true\"')" -eq 3
+          test "$(printf '%s' "$model" | grep -c 'published:')" -eq 0
+
+      - name: Install pinned PowerShell analyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Repository PSGallery -Scope CurrentUser -Force
+
+      - name: Analyze LAB-LS-001 runtime
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer -Path ./Lab/Orchestration/Modules/DiagnosticLab/Private/InfrastructureScenarioRuntime.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Orchestration/Modules/DiagnosticLab/Public/Invoke-LabLogShippingScenario.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Run-LogShipping-Lab.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Validation/Invoke-LabWave4LogShippingTests.ps1 -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
+            throw "LAB-LS-001 analyzer reported $($findings.Count) error finding(s)."
+          }
+
+      - name: Upload LAB-LS-001 failure log
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: lab-ls001-validation-log
+          path: ${{ runner.temp }}/lab-ls001-validation.log
+          if-no-files-found: error
+          retention-days: 7

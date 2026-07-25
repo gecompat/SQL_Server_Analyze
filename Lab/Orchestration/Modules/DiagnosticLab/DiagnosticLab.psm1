@@ -19,6 +19,7 @@ $privateFiles = @(
     'Private/Installer.ps1'
     'Private/ResourceMeasurement.ps1'
     'Private/ScenarioRuntime.ps1'
+    'Private/InfrastructureScenarioRuntime.ps1'
 )
 
 $publicFiles = @(
@@ -29,6 +30,7 @@ $publicFiles = @(
     'Public/Invoke-LabUp.ps1'
     'Public/Invoke-LabScenario.ps1'
     'Public/Test-LabScenario.ps1'
+    'Public/Invoke-LabLogShippingScenario.ps1'
     'Public/Invoke-LabVersionMatrix.ps1'
     'Public/Install-LabContainerFramework.ps1'
 )
@@ -41,10 +43,12 @@ Export-ModuleMember -Function @(
     'Get-LabStatus'
     'Install-LabContainerFramework'
     'Invoke-LabCleanup'
+    'Invoke-LabLogShippingScenario'
     'Invoke-LabMultiContainerUp'
     'Invoke-LabPreflight'
     'Invoke-LabScenario'
     'Invoke-LabUp'
     'Invoke-LabVersionMatrix'
+    'Test-LabLogShippingScenario'
     'Test-LabScenario'
 )
