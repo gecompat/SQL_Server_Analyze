@@ -1,0 +1,117 @@
+name: LAB-001 Welle 4 runtime validation
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/lab-wave4-runtime-validation.yml'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_MultiContainerRuntime.py'
+      - 'Lab/Containers/wave4.compose.yaml'
+      - 'Lab/Containers/wave4.compose.docker.yaml'
+      - 'Lab/Config/resource-profiles.json'
+      - 'Lab/Contracts/wave4-topology-profile.schema.json'
+      - 'Lab/Orchestration/Invoke-DiagnosticLab.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/**'
+      - 'Lab/Scenarios/Infrastructure/**'
+      - 'Lab/Validation/Invoke-LabValidation.ps1'
+      - 'Lab/Validation/Invoke-LabWave4RuntimeTests.ps1'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
+      - 'Metadata/Quality/Lab_Wave_Status.csv'
+  push:
+    branches:
+      - main
+      - 'agent/lab001-wave4-*'
+    paths:
+      - '.github/workflows/lab-wave4-runtime-validation.yml'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
+      - 'Code/Tests/Static/Validate_LAB001_Wave4_MultiContainerRuntime.py'
+      - 'Lab/Containers/wave4.compose.yaml'
+      - 'Lab/Containers/wave4.compose.docker.yaml'
+      - 'Lab/Config/resource-profiles.json'
+      - 'Lab/Contracts/wave4-topology-profile.schema.json'
+      - 'Lab/Orchestration/Invoke-DiagnosticLab.ps1'
+      - 'Lab/Orchestration/Modules/DiagnosticLab/**'
+      - 'Lab/Scenarios/Infrastructure/**'
+      - 'Lab/Validation/Invoke-LabValidation.ps1'
+      - 'Lab/Validation/Invoke-LabWave4RuntimeTests.ps1'
+      - 'Metadata/Quality/Implementation_Status.csv'
+      - 'Metadata/Quality/Lab_External_Evidence_Gates.csv'
+      - 'Metadata/Quality/Lab_Wave_Status.csv'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lab-wave4-runtime-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Validate Welle 4 multi-container runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Validate Welle 4 contracts
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py --repository-root .
+          python3 ./Code/Tests/Static/Validate_LAB001_Wave4_MultiContainerRuntime.py --repository-root .
+
+      - name: Run Welle 4 runtime contract tests
+        shell: pwsh
+        run: pwsh -NoLogo -NoProfile -File ./Lab/Validation/Invoke-LabWave4RuntimeTests.ps1
+
+      - name: Validate Welle 4 multi-container Compose model
+        shell: bash
+        run: |
+          set -euo pipefail
+          runtime_dir="$(mktemp -d)"
+          trap 'rm -r -- "$runtime_dir"' EXIT
+          mkdir -p "$runtime_dir/runtime" "$runtime_dir/primary" "$runtime_dir/secondary" "$runtime_dir/tertiary"
+          export LAB_W4_COMPOSE_PROJECT=lab001-wave4-validation
+          export LAB_W4_RUN_ID=LAB-20000101T000000Z-00000000
+          export LAB_W4_TOPOLOGY_ID=CTR-TRIPLE
+          export LAB_W4_SQL_IMAGE=mcr.microsoft.com/mssql/server:2025-latest
+          export LAB_W4_SQL_SA_PASSWORD="$(openssl rand -hex 24)"
+          export LAB_W4_MSSQL_MEMORY_LIMIT_MB=3072
+          export LAB_W4_CONTAINER_MEMORY_LIMIT=4096m
+          export LAB_W4_CONTAINER_CPU_LIMIT=2
+          export LAB_W4_RUNTIME_DIR="$runtime_dir/runtime"
+          export LAB_W4_PRIMARY_DATA_DIR="$runtime_dir/primary"
+          export LAB_W4_SECONDARY_DATA_DIR="$runtime_dir/secondary"
+          export LAB_W4_TERTIARY_DATA_DIR="$runtime_dir/tertiary"
+          export LAB_W4_PRIMARY_HOSTNAME=lab-sql-primary
+          export LAB_W4_SECONDARY_HOSTNAME=lab-sql-secondary
+          export LAB_W4_TERTIARY_HOSTNAME=lab-sql-tertiary
+          docker compose --project-name lab001-wave4-validation \
+            --file ./Lab/Containers/wave4.compose.yaml \
+            --file ./Lab/Containers/wave4.compose.docker.yaml config --quiet
+          services="$(docker compose --project-name lab001-wave4-validation \
+            --file ./Lab/Containers/wave4.compose.yaml \
+            --file ./Lab/Containers/wave4.compose.docker.yaml config --services | sort | paste -sd, -)"
+          test "$services" = 'sql-primary,sql-secondary,sql-tertiary'
+
+      - name: Install pinned PowerShell analyzer
+        shell: pwsh
+        run: Install-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Repository PSGallery -Scope CurrentUser -Force
+
+      - name: Analyze Welle 4 multi-container runtime
+        shell: pwsh
+        run: |
+          $findings = @(
+            Invoke-ScriptAnalyzer -Path ./Lab/Orchestration/Modules/DiagnosticLab/Private/MultiContainerRuntime.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Orchestration/Modules/DiagnosticLab/Private/ResourceMeasurement.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Orchestration/Modules/DiagnosticLab/Public/Invoke-LabMultiContainerUp.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Orchestration/Invoke-DiagnosticLab.ps1 -Severity Error
+            Invoke-ScriptAnalyzer -Path ./Lab/Validation/Invoke-LabWave4RuntimeTests.ps1 -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings | Select-Object RuleName, Severity, ScriptName, Line | Format-Table -AutoSize
+            throw "Welle 4 analyzer reported $($findings.Count) error finding(s)."
+          }
