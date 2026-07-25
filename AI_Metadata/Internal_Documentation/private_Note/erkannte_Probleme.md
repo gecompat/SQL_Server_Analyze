@@ -52,3 +52,104 @@ Kein sichtbarer Mechanismus, um zu wissen, welche Procedures tatsächlich genutz
 ---
 
 **Zusammenfassung:** Das Projekt ist technisch auf einem Level, das man selten bei Solo-/Open-Community-Projekten sieht. Die Hauptrisiken sind organisatorisch (Bus-Faktor, Scope) und operativ (Installation, Upgrade), nicht technisch.
+
+
+
+
+---
+
+Danke für die Bestätigung — **SQL Server 2025 ist seit 18. November 2025 GA** (Build 17.0.1000.7). Mein früherer Punkt war also falsch — kein Preview-Risiko mehr.
+
+Weiter mit der Tiefenanalyse:
+
+*Used Manage Todo List, Read Asset By Id*
+
+Hier meine aktualisierte Tiefenanalyse mit den Korrekturen:
+
+---
+
+## Collation: Aktueller Zustand vs. Absicht
+
+**Absicht:** Code soll collation-agnostisch funktionieren, getestet nur mit `SQL_Latin1_General_CP1_CS_AS`.
+
+**Befund:** Es gibt einen **Widerspruch** im Code:
+
+| Aspekt | Ist-Zustand | Bewertung |
+| --- | --- | --- |
+| `000_Preflight_und_Schema.sql` | `THROW 50003/50004/50005` wenn Server/TempDB/DB nicht exakt CS_AS | **Blockiert** Installation auf anderen Collations |
+| TVF-Rückgabetabellen | Explizite `COLLATE SQL_Latin1_General_CP1_CS_AS` | **Gut** — macht Code collation-unabhängig |
+| Temp-Tabellen-Spalten | Explizite `COLLATE` Klauseln | **Gut** — verhindert Collation-Konflikte bei JOINs mit tempdb |
+| GROUP BY / Vergleiche | Explizite `COLLATE` in Duplikatprüfungen | **Gut** — deterministisch unabhängig von DB-Collation |
+| CI-Pipeline | Docker mit `MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS` | Nur eine Collation getestet |
+
+**Das Paradox:** Die expliziten `COLLATE`-Klauseln im Code sind *genau der richtige Ansatz* für Collation-Agnostik. Dadurch hängt kein Vergleich und kein JOIN von der Datenbank-Default-Collation ab. **Aber der Preflight blockiert die Installation**, bevor der Code überhaupt zum Einsatz kommt.
+
+**Empfehlung:**
+
+1. **Preflight ändern:** Collation-Check von THROW zu einer **Warnung** abstufen (PRINT/RAISERROR severity 10). Oder: Nur warnen, wenn die DB-Collation *case-insensitive* ist (weil das Verhalten bei Objektnamen beeinflussen kann).
+
+2. **Dokumentation präzisieren:** In README/Installation.md klar formulieren: *"Das Framework funktioniert auf beliebigen Collations. Die expliziten COLLATE-Klauseln stellen deterministische Vergleiche sicher. Getestet und garantiert wird ausschließlich auf SQL_Latin1_General_CP1_CS_AS."*
+
+3. **Zweiter CI-Test mit abweichender Collation:** Sinnvoll, aber mit begrenztem Scope:
+   * Eine CI-Lane mit `Latin1_General_CI_AS` (häufigste Produktions-Collation) wäre der wichtigste Zusatztest
+   * Nicht 10 Collations testen — eine CI-Collation reicht als Nachweis
+   * Die Lane müsste den Preflight-Check überspringen (oder der Preflight ist dann schon zur Warnung geändert)
+   * Fokus: Installation + Smoke Test + ein paar Filter-Procedures (ParsePipeList, PrepareNameFilters)
+   * **Risiko ohne diesen Test:** `sys.objects`-JOINs auf User-Tabellennamen, bei denen der Benutzer `[MyTable]` filtert aber das Objekt `[mytable]` heißt — bei CI-Collation würde das matchen, bei CS nicht. Die expliziten `COLLATE CS_AS`-Klauseln könnten hier unerwartetes Verhalten erzeugen.
+
+---
+
+## Test-Infrastruktur — Zustand
+
+**Bereits vorhanden (beeindruckend):**
+* 16 GitHub Action Workflows
+* Linux-Container-Tests auf 2019/2022/2025 mit Impact-Based CI (nur betroffene Tests laufen)
+* 39+ Lab-Szenarien (Deadlocks, TempDB, CPU, Plans, Query Store, Memory, Latch, IO, XE...)
+* Windows self-hosted Runner — aber aktuell nur für: PowerShell-Parsing, Privacy-Validierung, Installer-Contracts, Lab-Validation
+* **Kein** SQL-Server-Runtime-Test auf Windows (explizit im Workflow kommentiert)
+
+**Lücke für den Windows-Runner:**
+Der Workflow `windows-self-hosted-validation.yml` sagt am Ende: *"This workflow does not constitute Windows SQL Server runtime evidence."* — die Infrastruktur ist da, die Runtime-Tests fehlen noch.
+
+---
+
+## Scope & Lern-/Explorations-Strategie (Punkte 7 & 8 neu bewertet)
+
+**Mein früherer Punkt 7 (Scope Creep) war falsch eingeordnet.** Mit dem Ziel, ein **Explorations- und Lernframework** zu sein, ist der breite Scope *Feature, nicht Bug*. Die Kombination aus:
+
+* **Start_Here.md** → Symptom-basierter Einstieg ohne Vorwissen
+* **Beginner_Reading_Guide** → Wie man Resultsets liest (hervorragend!)
+* **10 Runbooks** → Geführte Problemlösung
+* **39+ Lab-Szenarien** → Hands-on mit synthetischen, reproduzierbaren Problemen
+* **Analysis Navigator** → Suchbare Procedure-Empfehlung nach Symptom
+
+...ist ein kohärentes Lern-Ökosystem. Aber:
+
+**Vorschlag zu Punkt 7 — Sichtbare Begrenzung:**
+* Ein explizites **"Was dieses Framework NICHT tut"**-Dokument wäre hilfreich. Aktuell steht in jedem Modul eine Aussagegrenze — aber eine aggregierte Übersicht fehlt. Das hilft Anwendern zu verstehen, wo die Grenze ist, bevor sie suchen.
+* Optional: Ein **Modul-Reifegrad** pro Bereich (z.B. "Service Broker: Inventar ja, Diagnose nein" vs. "Current State: vollständig").
+
+**Vorschlag zu Punkt 8 — Telemetrie:**
+* Statt klassischer Telemetrie (die dem read-only-Prinzip widerspricht) → **Nutzungsinventar über Query Store**: Eine Procedure `USP_FrameworkUsageFromQueryStore`, die aus dem Query Store der Installationsdatenbank die tatsächlich aufgerufenen `[monitor].*`-Procedures mit Häufigkeit/Laufzeit liest. Zero-Footprint, kein Schreiben, nutzt vorhandene Infrastruktur.
+* Das gibt dem Benutzer selbst Einblick ("Welche Module benutze ich? Welche nie?") und passt zum Diagnose-Charakter.
+
+---
+
+## Aktualisierte nächste Schritte (priorisiert)
+
+| Prio | Aufgabe | Begründung |
+| --- | --- | --- |
+| **1** | Preflight-Collation von THROW → Warnung | Beseitigt Widerspruch zur Collation-Agnostik-Absicht. Kleine Änderung, großer Effekt auf Portabilität. |
+| **2** | Dokumentation Collation präzisieren | README + Installation.md: "Funktioniert auf beliebigen Collations. Getestet nur auf CS_AS." |
+| **3** | Windows Self-Hosted Runner: SQL Runtime-Tests | Die Infrastruktur existiert — fehlt nur der SQL-Server-Install/Test-Step. Ist aber explizit als "NACH dieser Kommunikation" markiert. |
+| **4** | CI-Lane mit CI_AS-Collation | Zweiter Docker-Container mit `Latin1_General_CI_AS`. Smoke Test + Filter-Procedures. Nachweis, dass explizite COLLATE-Klauseln korrekt greifen. |
+| **5** | "Was dieses Framework nicht tut" Aggregation | Ein Dokument, das die Aussagegrenzen aller Module zusammenfasst. |
+| **6** | `USP_FrameworkUsageFromQueryStore` | Leichtgewichtiges Self-Awareness-Modul. Zeigt dem Benutzer seine eigene Framework-Nutzung. |
+| **7** | Modul-Reifegrad-Matrix | Maschinenlesbar (CSV), zeigt pro Bereich: vollständig / Inventar / geplant / nicht vorgesehen. |
+| **8** | Lab-Szenarien als geführte Tutorials | Die 39+ Szenarien existieren — aber eine *pädagogische* Lesereihenfolge/Empfehlung ("beginne hier, dann dort") fehlt. |
+
+---
+
+**Zusammenfassung:** Mein früheres Urteil war in 3 Punkten zu kritisch (SQL 2025 ist GA, Scope ist Feature, Collation-Technik ist gut). Der Haupthandlungsbedarf liegt bei: Preflight-Lock entfernen + Collation-Absicht dokumentieren + Windows-Runtime-Tests vorbereiten.
+
+Ich kann bei all diesen Aufgaben direkt helfen — T-SQL, PowerShell, GitHub Actions YAML, Dokumentation.
