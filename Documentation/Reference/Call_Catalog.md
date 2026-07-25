@@ -1,6 +1,6 @@
 # Aufrufkatalog aller dokumentierten Procedures
 
-Stand: 2026-07-23 — 97 Procedures
+Stand: 2026-07-25 — 98 Procedures
 
 Die Hilfeaufrufe führen keine fachliche Analyse aus. Weitere typische Querschnittsbeispiele stehen am Dokumentanfang.
 
@@ -589,6 +589,26 @@ EXEC [monitor].[USP_VectorIndexAnalysis] @Hilfe = 1;
 EXEC [monitor].[USP_WorkerPressureAnalysis] @Hilfe = 1;
 ```
 
+## `[monitor].[USP_FrameworkUsageFromQueryStore]`
+
+```sql
+-- Top 100 meistgenutzte Framework-Procedures
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore];
+
+-- Letzte 30 Tage, mindestens 5 Ausführungen
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @ZeitraumTage = 30
+    , @MinAusfuehrungen = 5;
+
+-- Alle Procedures mit Nutzungsdaten als JSON
+DECLARE @UsageJson nvarchar(max);
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @MaxZeilen = 0
+    , @ResultSetArt = 'NONE'
+    , @Json = @UsageJson OUTPUT;
+SELECT @UsageJson;
+```
+
 ## `[monitor].[USP_DatabaseConfigurationAnalysis]`
 
 ```sql
@@ -671,4 +691,24 @@ EXEC [monitor].[USP_ExecutionPlanAnalysis] @Hilfe = 1;
 
 ```sql
 EXEC [monitor].[USP_WorkerPressureAnalysis] @Hilfe = 1;
+```
+
+## `[monitor].[USP_FrameworkUsageFromQueryStore]`
+
+```sql
+-- Top 100 meistgenutzte Framework-Procedures
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore];
+
+-- Letzte 30 Tage, mindestens 5 Ausführungen
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @ZeitraumTage = 30
+    , @MinAusfuehrungen = 5;
+
+-- Alle Procedures mit Nutzungsdaten als JSON
+DECLARE @UsageJson nvarchar(max);
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @MaxZeilen = 0
+    , @ResultSetArt = 'NONE'
+    , @Json = @UsageJson OUTPUT;
+SELECT @UsageJson;
 ```
