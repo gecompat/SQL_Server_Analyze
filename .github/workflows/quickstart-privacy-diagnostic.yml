@@ -1,6 +1,11 @@
 name: QuickStart privacy diagnostic
 
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/quickstart-privacy-diagnostic.yml'
+      - 'QuickStart/**'
+      - 'Metadata/Quality/Repository_Privacy_Allowlist.csv'
   push:
     branches:
       - 'agent/quickstart-docker-safe-setup'
