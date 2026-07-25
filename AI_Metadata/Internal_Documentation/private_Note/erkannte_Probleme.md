@@ -153,3 +153,32 @@ Der Workflow `windows-self-hosted-validation.yml` sagt am Ende: *"This workflow 
 **Zusammenfassung:** Mein früheres Urteil war in 3 Punkten zu kritisch (SQL 2025 ist GA, Scope ist Feature, Collation-Technik ist gut). Der Haupthandlungsbedarf liegt bei: Preflight-Lock entfernen + Collation-Absicht dokumentieren + Windows-Runtime-Tests vorbereiten.
 
 Ich kann bei all diesen Aufgaben direkt helfen — T-SQL, PowerShell, GitHub Actions YAML, Dokumentation.
+
+---
+
+## Status 2026-07-25 — Erledigte Punkte
+
+| Prio | Aufgabe | Status | Commit |
+|---|---|---|---|
+| 1 | Preflight THROW → Warnung | ERLEDIGT | `feat: Collation-Portabilität` |
+| 2 | Dokumentation Collation präzisieren | ERLEDIGT | `feat: Collation-Portabilität` |
+| 3 | Windows Self-Hosted Runner: SQL Runtime | IN ARBEIT | — |
+| 4 | CI-Lane CI_AS-Collation | ERLEDIGT | `feat: Collation-Portabilität` |
+| 5 | Scope-Begrenzungsdokument | ERLEDIGT | `docs: Scope-Dokument, Modul-Reifegrad-Matrix und Lernpfad` |
+| 6 | USP_FrameworkUsageFromQueryStore | ERLEDIGT | `feat: USP_FrameworkUsageFromQueryStore v1.0.0` + Installer/Doku |
+| 7 | Modul-Reifegrad-Matrix | ERLEDIGT | `docs: Scope-Dokument, Modul-Reifegrad-Matrix und Lernpfad` |
+| 8 | Lab-Szenarien Lernpfad | ERLEDIGT | `docs: Scope-Dokument, Modul-Reifegrad-Matrix und Lernpfad` |
+
+### Korrektur der früheren Fehleinschätzungen
+
+- **Punkt 6 (SQL Server 2025):** SQL Server 2025 ist seit 18.11.2025 GA (Build 17.0.1000.7). Kein Preview-Risiko.
+- **Punkt 7 (Scope Creep):** Breiter Scope ist Feature für Lern-/Explorationsframework, nicht Bug.
+- **Punkt 3 (Installation):** Kein direkter `Install.ps1 -Server X` gewünscht. PowerShell-Builder für Standalone-Installer ist ausreichend.
+- **Punkt 2 (Collation):** Explizite COLLATE-Klauseln sind der richtige Ansatz. Preflight war das Problem, nicht der Code.
+
+### Verbleibende offene Punkte
+
+- Windows Self-Hosted Runner: SQL-Server-Runtime-Tests auf dem vorhandenen Runner
+- AnalysisCatalog-Registrierung der neuen Procedure
+- README-Links auf Scope_and_Limitations.md und LEARNING_PATH.md
+- Erste Collation-CI-Lane-Ergebnisse auswerten und ggf. fixen
