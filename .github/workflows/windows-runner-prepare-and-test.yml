@@ -1,0 +1,426 @@
+name: Windows runner prepare and test
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/windows-runner-prepare-and-test.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-runner-prepare-and-test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-user-toolchain:
+    name: Prepare user-level test toolchain
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 30
+
+    steps:
+      - name: Install PowerShell and Python test dependencies
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          if (-not (Get-PackageProvider -Name NuGet -ListAvailable -ErrorAction SilentlyContinue)) {
+            Install-PackageProvider -Name NuGet -Scope CurrentUser -Force | Out-Null
+          }
+          Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+
+          $modules = @(
+            @{ Name = 'PSScriptAnalyzer'; RequiredVersion = '1.25.0' },
+            @{ Name = 'Pester'; MinimumVersion = '5.5.0' },
+            @{ Name = 'SqlServer'; MinimumVersion = '22.0.0' }
+          )
+          foreach ($module in $modules) {
+            $installed = Get-Module -ListAvailable -Name $module.Name |
+              Sort-Object Version -Descending |
+              Select-Object -First 1
+            $needsInstall = $null -eq $installed
+            if ($module.ContainsKey('RequiredVersion')) {
+              $needsInstall = $needsInstall -or
+                $installed.Version -ne [version] $module.RequiredVersion
+            }
+            if ($module.ContainsKey('MinimumVersion')) {
+              $needsInstall = $needsInstall -or
+                $installed.Version -lt [version] $module.MinimumVersion
+            }
+            if ($needsInstall) {
+              $arguments = @{
+                Name = $module.Name
+                Scope = 'CurrentUser'
+                Repository = 'PSGallery'
+                Force = $true
+                AllowClobber = $true
+                SkipPublisherCheck = $true
+              }
+              if ($module.ContainsKey('RequiredVersion')) {
+                $arguments.RequiredVersion = $module.RequiredVersion
+              }
+              else {
+                $arguments.MinimumVersion = $module.MinimumVersion
+              }
+              Install-Module @arguments
+            }
+          }
+
+          $python = Get-Command python -ErrorAction SilentlyContinue
+          if ($null -eq $python) {
+            $python = Get-Command python3 -ErrorAction Stop
+          }
+          & $python.Source -m pip install --user --upgrade pip jsonschema pyyaml
+          if ($LASTEXITCODE -ne 0) {
+            throw 'Python dependency installation failed.'
+          }
+
+          foreach ($moduleName in 'PSScriptAnalyzer','Pester','SqlServer') {
+            $module = Get-Module -ListAvailable -Name $moduleName |
+              Sort-Object Version -Descending |
+              Select-Object -First 1
+            Write-Output "PREP_MODULE_$($moduleName.ToUpperInvariant())=$($module.Version)"
+          }
+          & $python.Source -c "import jsonschema, yaml; print('PREP_PYTHON_PACKAGES=READY')"
+
+  docker-sql-matrix:
+    name: Test Docker SQL Server 2019 2022 2025
+    needs: prepare-user-toolchain
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+
+    steps:
+      - name: Validate Docker engine and Compose
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          docker version
+          if ($LASTEXITCODE -ne 0) { throw 'Docker engine is unavailable.' }
+          docker compose version
+          if ($LASTEXITCODE -ne 0) { throw 'Docker Compose is unavailable.' }
+          $osType = [string] (docker info --format '{{.OSType}}')
+          if ($osType.Trim() -ne 'linux') {
+            throw 'Docker is not using the Linux container engine.'
+          }
+          Write-Output 'DOCKER_ENGINE=READY_LINUX'
+
+      - name: Pull and start SQL Server versions sequentially
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $matrix = @(
+            [pscustomobject] @{ Version = 2019; Major = 15; Image = 'mcr.microsoft.com/mssql/server:2019-latest' },
+            [pscustomobject] @{ Version = 2022; Major = 16; Image = 'mcr.microsoft.com/mssql/server:2022-latest' },
+            [pscustomobject] @{ Version = 2025; Major = 17; Image = 'mcr.microsoft.com/mssql/server:2025-latest' }
+          )
+          $password = 'Aq9!' + [guid]::NewGuid().ToString('N').Substring(0,20) + 'zZ7!'
+          $env:MSSQL_SA_PASSWORD = $password
+          try {
+            foreach ($entry in $matrix) {
+              Write-Output "DOCKER_SQL_PULL_BEGIN=$($entry.Version)"
+              docker pull --platform linux/amd64 $entry.Image
+              if ($LASTEXITCODE -ne 0) {
+                throw "Image pull failed for SQL Server $($entry.Version)."
+              }
+
+              $containerId = ''
+              try {
+                $containerId = [string] (docker run --detach `
+                  --platform linux/amd64 `
+                  --memory 4g `
+                  --cpus 2 `
+                  --label "sql-server-analyze.runner-readiness=$env:GITHUB_RUN_ID" `
+                  --env ACCEPT_EULA=Y `
+                  --env MSSQL_PID=Developer `
+                  --env MSSQL_SA_PASSWORD `
+                  --env MSSQL_MEMORY_LIMIT_MB=3072 `
+                  $entry.Image)
+                $containerId = $containerId.Trim()
+                if ($containerId -notmatch '^[a-f0-9]{64}$') {
+                  throw "Docker did not return a canonical container ID for SQL Server $($entry.Version)."
+                }
+
+                $deadline = [DateTime]::UtcNow.AddMinutes(8)
+                $major = $null
+                do {
+                  Start-Sleep -Seconds 5
+                  $sqlcmdPath = [string] (docker exec $containerId /bin/bash -lc "command -v sqlcmd || test -x /opt/mssql-tools18/bin/sqlcmd && echo /opt/mssql-tools18/bin/sqlcmd || test -x /opt/mssql-tools/bin/sqlcmd && echo /opt/mssql-tools/bin/sqlcmd" 2>$null)
+                  $sqlcmdPath = $sqlcmdPath.Trim()
+                  if (-not [string]::IsNullOrWhiteSpace($sqlcmdPath)) {
+                    $queryOutput = @(
+                      docker exec `
+                        --env SQLCMDPASSWORD=$password `
+                        $containerId `
+                        $sqlcmdPath `
+                        -C -b -S localhost -U sa -h -1 -W `
+                        -Q "SET NOCOUNT ON; SELECT CONVERT(int, SERVERPROPERTY('ProductMajorVersion'));" `
+                        2>$null
+                    )
+                    if ($LASTEXITCODE -eq 0) {
+                      $majorText = $queryOutput |
+                        Where-Object { $_ -match '^\s*\d+\s*$' } |
+                        Select-Object -First 1
+                      if ($null -ne $majorText) {
+                        $major = [int] ([string] $majorText).Trim()
+                      }
+                    }
+                  }
+                } while ($null -eq $major -and [DateTime]::UtcNow -lt $deadline)
+
+                if ($major -ne $entry.Major) {
+                  docker logs --tail 80 $containerId
+                  throw "SQL Server $($entry.Version) returned major version $major instead of $($entry.Major)."
+                }
+                $collation = @(
+                  docker exec `
+                    --env SQLCMDPASSWORD=$password `
+                    $containerId `
+                    $sqlcmdPath `
+                    -C -b -S localhost -U sa -h -1 -W `
+                    -Q "SET NOCOUNT ON; SELECT CONVERT(sysname, SERVERPROPERTY('Collation'));"
+                ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
+                Write-Output "DOCKER_SQL_READY=$($entry.Version)|Major=$major|Collation=$(([string]$collation).Trim())"
+              }
+              finally {
+                if ($containerId -match '^[a-f0-9]{64}$') {
+                  docker container rm --force $containerId | Out-Null
+                }
+              }
+            }
+          }
+          finally {
+            $env:MSSQL_SA_PASSWORD = $null
+            $password = $null
+          }
+
+  local-sql-instances:
+    name: Test installed Windows SQL Server instances
+    needs: prepare-user-toolchain
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 45
+
+    steps:
+      - name: Discover and test local SQL Server instances
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $registryPaths = @(
+            'HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\Instance Names\SQL',
+            'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Microsoft SQL Server\Instance Names\SQL'
+          )
+          $instances = [Collections.Generic.List[object]]::new()
+          foreach ($registryPath in $registryPaths) {
+            if (-not (Test-Path -LiteralPath $registryPath)) { continue }
+            $properties = Get-ItemProperty -LiteralPath $registryPath
+            foreach ($property in $properties.PSObject.Properties) {
+              if ($property.Name -match '^PS') { continue }
+              if (@($instances | Where-Object { $_.InstanceName -eq $property.Name }).Count -eq 0) {
+                $instances.Add([pscustomobject] @{
+                  InstanceName = [string] $property.Name
+                  InstanceId = [string] $property.Value
+                })
+              }
+            }
+          }
+          Write-Output "LOCAL_SQL_INSTANCE_COUNT=$($instances.Count)"
+          if ($instances.Count -eq 0) {
+            throw 'No installed SQL Server Database Engine instance was found.'
+          }
+
+          $failures = [Collections.Generic.List[string]]::new()
+          foreach ($instance in $instances) {
+            $endpoint = if ($instance.InstanceName -eq 'MSSQLSERVER') {
+              'localhost'
+            }
+            else {
+              "localhost\$($instance.InstanceName)"
+            }
+            $setupPath = "HKLM:\SOFTWARE\Microsoft\Microsoft SQL Server\$($instance.InstanceId)\Setup"
+            $setup = Get-ItemProperty -LiteralPath $setupPath -ErrorAction SilentlyContinue
+            $registryVersion = if ($null -eq $setup) { '' } else { [string] $setup.Version }
+            $registryEdition = if ($null -eq $setup) { '' } else { [string] $setup.Edition }
+            Write-Output "LOCAL_SQL_DISCOVERED=$($instance.InstanceName)|RegistryVersion=$registryVersion|Edition=$registryEdition"
+
+            try {
+              $query = @"
+SET NOCOUNT ON;
+SELECT CONCAT(
+    CONVERT(varchar(128), SERVERPROPERTY('ProductVersion')), '|',
+    CONVERT(varchar(10), SERVERPROPERTY('ProductMajorVersion')), '|',
+    CONVERT(varchar(128), SERVERPROPERTY('Edition')), '|',
+    CONVERT(varchar(128), SERVERPROPERTY('Collation')), '|',
+    CONVERT(varchar(10), IS_SRVROLEMEMBER('sysadmin'))
+);
+"@
+              $result = @(
+                sqlcmd -S $endpoint -E -C -b -l 15 -h -1 -W -Q $query 2>&1
+              )
+              if ($LASTEXITCODE -ne 0) {
+                throw (($result | Select-Object -Last 5) -join ' ')
+              }
+              $marker = $result |
+                Where-Object { $_ -match '^\d+\.\d+\.\d+\.\d+\|' } |
+                Select-Object -First 1
+              if ($null -eq $marker) {
+                throw 'SQL version marker was not returned.'
+              }
+              Write-Output "LOCAL_SQL_READY=$($instance.InstanceName)|$(([string]$marker).Trim())"
+
+              $parts = ([string] $marker).Split('|')
+              $isSysadmin = $parts[-1] -eq '1'
+              if ($isSysadmin) {
+                $probeDatabase = 'LabRunnerProbe'
+                $probeQuery = @"
+SET NOCOUNT ON;
+IF DB_ID(N'$probeDatabase') IS NOT NULL
+    THROW 51000, 'Synthetic runner probe database already exists.', 1;
+CREATE DATABASE [$probeDatabase] COLLATE SQL_Latin1_General_CP1_CS_AS;
+IF DB_ID(N'$probeDatabase') IS NULL
+    THROW 51000, 'Synthetic runner probe database was not created.', 1;
+ALTER DATABASE [$probeDatabase] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+DROP DATABASE [$probeDatabase];
+SELECT N'LOCAL_SQL_WRITE_PROBE=PASS';
+"@
+                $probeResult = @(
+                  sqlcmd -S $endpoint -E -C -b -l 30 -h -1 -W -Q $probeQuery 2>&1
+                )
+                if ($LASTEXITCODE -ne 0 -or 'LOCAL_SQL_WRITE_PROBE=PASS' -notin $probeResult) {
+                  throw 'Synthetic create-and-drop probe failed.'
+                }
+                Write-Output "LOCAL_SQL_WRITE_READY=$($instance.InstanceName)"
+              }
+              else {
+                Write-Output "LOCAL_SQL_WRITE_BLOCKED=$($instance.InstanceName)|Reason=NOT_SYSADMIN"
+              }
+            }
+            catch {
+              $failures.Add("$($instance.InstanceName):$($_.Exception.Message)")
+              Write-Output "LOCAL_SQL_FAILED=$($instance.InstanceName)|Type=$($_.Exception.GetType().Name)"
+            }
+          }
+          if ($failures.Count -gt 0) {
+            throw "One or more local SQL Server instances failed readiness checks: $($failures.Count)."
+          }
+
+  repository-test-sweep:
+    name: Run complete LAB test sweep on Windows
+    needs: prepare-user-toolchain
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Run aggregate LAB validation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & ./Lab/Validation/Invoke-LabValidation.ps1
+          if (-not $?) { throw 'Aggregate LAB validation failed.' }
+
+      - name: Run every LAB test script
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          Set-StrictMode -Version Latest
+
+          $failures = [Collections.Generic.List[object]]::new()
+          $tests = @(
+            Get-ChildItem -LiteralPath ./Lab/Validation -File -Filter 'Invoke-Lab*Tests.ps1' |
+              Sort-Object Name
+          )
+          Write-Output "LAB_TEST_SCRIPT_COUNT=$($tests.Count)"
+          foreach ($test in $tests) {
+            Write-Output "LAB_TEST_BEGIN=$($test.Name)"
+            try {
+              $global:LASTEXITCODE = 0
+              & $test.FullName
+              if (-not $?) {
+                throw 'The test script returned an unsuccessful invocation status.'
+              }
+              Write-Output "LAB_TEST_PASS=$($test.Name)"
+            }
+            catch {
+              $failures.Add([pscustomobject] @{
+                Name = $test.Name
+                ErrorType = $_.Exception.GetType().Name
+                Message = $_.Exception.Message
+              })
+              Write-Output "LAB_TEST_FAIL=$($test.Name)|Type=$($_.Exception.GetType().Name)"
+            }
+          }
+          if ($failures.Count -gt 0) {
+            $failures | Format-Table -AutoSize
+            throw "$($failures.Count) LAB test script(s) failed on Windows."
+          }
+
+      - name: Analyze LAB PowerShell sources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Import-Module PSScriptAnalyzer -RequiredVersion 1.25.0 -Force
+          $findings = @(
+            Invoke-ScriptAnalyzer -Path ./Lab -Recurse -Severity Error
+          )
+          if ($findings.Count -gt 0) {
+            $findings |
+              Select-Object RuleName, Severity, ScriptName, Line |
+              Format-Table -AutoSize
+            throw "PSScriptAnalyzer reported $($findings.Count) error finding(s)."
+          }
+          Write-Output 'LAB_PSSCRIPTANALYZER=PASS'
+
+  hyperv-readiness:
+    name: Assess Hyper-V administration readiness
+    needs: prepare-user-toolchain
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+
+    steps:
+      - name: Check Hyper-V access and group membership
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          Set-StrictMode -Version Latest
+
+          $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+          $principal = [Security.Principal.WindowsPrincipal]::new($identity)
+          $admin = $principal.IsInRole(
+            [Security.Principal.WindowsBuiltInRole]::Administrator
+          )
+          $hyperVModule = [bool] (Get-Module -ListAvailable -Name Hyper-V)
+          $hostReady = $false
+          $hostError = ''
+          if ($hyperVModule) {
+            try {
+              $host = Get-VMHost -ErrorAction Stop
+              $hostReady = $true
+              Write-Output "HYPERV_HOST_READY=True|LogicalProcessors=$($host.LogicalProcessorCount)"
+            }
+            catch {
+              $hostError = $_.Exception.GetType().Name
+            }
+          }
+          $groupMember = $false
+          try {
+            $members = @(Get-LocalGroupMember -Group 'Hyper-V Administrators' -ErrorAction Stop)
+            $groupMember = @(
+              $members | Where-Object { $_.Name -eq $identity.Name }
+            ).Count -gt 0
+          }
+          catch {}
+
+          Write-Output "HYPERV_ADMIN_TOKEN=$admin"
+          Write-Output "HYPERV_MODULE=$hyperVModule"
+          Write-Output "HYPERV_GROUP_MEMBER=$groupMember"
+          Write-Output "HYPERV_HOST_QUERY=$hostReady|ErrorType=$hostError"
+          if (-not $hostReady) {
+            Write-Output 'HYPERV_SETUP_REQUIRED=ADMINISTRATIVE_RUNNER_CONTEXT_OR_GROUP_PERMISSION'
+          }
