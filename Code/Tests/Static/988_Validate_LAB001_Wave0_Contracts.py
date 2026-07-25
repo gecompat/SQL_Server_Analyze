@@ -548,9 +548,9 @@ def validate_status_and_gates(repository_root: Path) -> list[Finding]:
         findings.append(Finding("WAVE4_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
     for number in range(5, 11):
         if wave_map.get(f"LAB-001-WAVE{number}", {}).get("ContractStatus") != "PLANNED":
-  findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
+            findings.append(Finding("FUTURE_WAVE_STATUS_INVALID", wave_path.as_posix()))
         if wave_map.get(f"LAB-001-WAVE{number}", {}).get("RuntimeStatus") != "NOT_EXECUTED":
-  findings.append(Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
+            findings.append(Finding("FUTURE_WAVE_RUNTIME_STATUS_INVALID", wave_path.as_posix()))
 
     status_rows = load_csv(status_path, findings)
     lab_rows = [row for row in status_rows if row.get("WorkItemId") == "LAB-001"]
