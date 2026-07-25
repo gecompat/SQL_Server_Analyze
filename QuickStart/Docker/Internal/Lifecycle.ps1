@@ -41,21 +41,29 @@ function Remove-Environment {
     Assert-ManagedRoots -Env $envValues
     Assert-DockerResourceOwnership -Env $envValues
 
-    Write-Warning 'Remove entfernt nur Container und Netzwerk dieses Compose-Projekts. Docker-Images und fremde Ressourcen bleiben unberührt.'
+    Write-Warning 'Remove/Uninstall entfernt ausschließlich Ressourcen dieses Compose-Projekts. Docker-Images und fremde Projekte bleiben unberührt.'
     if (-not (Read-YesNo -Prompt 'QuickStart-Container und Projektnetzwerk entfernen?' -Default $false)) {
-        Write-Host 'Remove wurde abgebrochen.'
+        Write-Host 'Remove/Uninstall wurde abgebrochen.'
         return
     }
 
-    Invoke-Compose -Env $envValues -Arguments @('down', '--remove-orphans', '--timeout', '60') | Out-Null
+    $deleteManagedData = Read-YesNo -Prompt 'Auch Docker-Volumes und die ausschließlich markierten Lab-Datenpfade vollständig löschen?' -Default $false
+    $downArguments = [Collections.Generic.List[string]]::new()
+    foreach ($argument in @('down', '--remove-orphans', '--timeout', '60')) {
+        $downArguments.Add($argument)
+    }
+    if ($deleteManagedData) {
+        $downArguments.Add('--volumes')
+    }
+    Invoke-Compose -Env $envValues -Arguments $downArguments.ToArray() | Out-Null
 
-    if (Read-YesNo -Prompt 'Auch die ausschließlich markierten Lab-Datenpfade vollständig löschen?' -Default $false) {
+    if ($deleteManagedData) {
         Remove-ManagedData -Env $envValues
         Remove-Item -LiteralPath $script:EnvPath -Force
-        Write-Host 'Container, Projektnetzwerk, markierte Lab-Daten und lokale .env wurden entfernt.'
+        Write-Host 'Container, Projektnetzwerk, zugeordnete Docker-Volumes, markierte Lab-Daten und lokale .env wurden entfernt.'
     }
     else {
-        Write-Host 'Container und Projektnetzwerk wurden entfernt. Lab-Daten und .env bleiben erhalten.'
+        Write-Host 'Container und Projektnetzwerk wurden entfernt. Docker-Volumes, Lab-Daten und .env bleiben für einen späteren Neustart erhalten.'
     }
 }
 
@@ -135,7 +143,7 @@ function Invoke-Menu {
         '1' = 'Start: vorhandene Umgebung starten/reparieren und Framework installieren'
         '2' = 'Status anzeigen'
         '3' = 'Stop: Container anhalten, Daten behalten'
-        '4' = 'Remove: nur den markierten QuickStart-Scope entfernen'
+        '4' = 'Remove/Uninstall: nur den markierten QuickStart-Scope entfernen'
         '0' = 'Beenden'
     } -DefaultKey '2'
 

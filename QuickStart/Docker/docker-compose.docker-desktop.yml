@@ -1,0 +1,65 @@
+services:
+  sql2019:
+    volumes:
+      - type: volume
+        source: sql2019-data
+        target: /var/opt/mssql/data
+      - type: volume
+        source: sql2019-log
+        target: /var/opt/mssql/log
+
+  sql2022:
+    volumes:
+      - type: volume
+        source: sql2022-data
+        target: /var/opt/mssql/data
+      - type: volume
+        source: sql2022-log
+        target: /var/opt/mssql/log
+
+  sql2025:
+    volumes:
+      - type: volume
+        source: sql2025-data
+        target: /var/opt/mssql/data
+      - type: volume
+        source: sql2025-log
+        target: /var/opt/mssql/log
+
+volumes:
+  sql2019-data:
+    labels:
+      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
+      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
+      quickstart.sql-version: "2019"
+      quickstart.storage-role: data
+  sql2019-log:
+    labels:
+      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
+      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
+      quickstart.sql-version: "2019"
+      quickstart.storage-role: log
+  sql2022-data:
+    labels:
+      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
+      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
+      quickstart.sql-version: "2022"
+      quickstart.storage-role: data
+  sql2022-log:
+    labels:
+      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
+      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
+      quickstart.sql-version: "2022"
+      quickstart.storage-role: log
+  sql2025-data:
+    labels:
+      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
+      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
+      quickstart.sql-version: "2025"
+      quickstart.storage-role: data
+  sql2025-log:
+    labels:
+      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
+      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
+      quickstart.sql-version: "2025"
+      quickstart.storage-role: log

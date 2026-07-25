@@ -12,6 +12,7 @@ $script:QuickStartRoot = [IO.Path]::GetFullPath($PSScriptRoot)
 $script:RepositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../..'))
 $script:EnvPath = Join-Path $PSScriptRoot '.env'
 $script:ComposePath = Join-Path $PSScriptRoot 'docker-compose.yml'
+$script:DockerDesktopComposePath = Join-Path $PSScriptRoot 'docker-compose.docker-desktop.yml'
 $script:SlowIoComposePath = Join-Path $PSScriptRoot 'docker-compose.slow-io.yml'
 $script:MarkerFileName = '.sql-server-analyze-quickstart.json'
 $script:MarkerOwner = 'SQL_SERVER_ANALYZE_QUICKSTART'

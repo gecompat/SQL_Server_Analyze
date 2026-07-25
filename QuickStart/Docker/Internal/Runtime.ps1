@@ -5,6 +5,14 @@ function Get-ComposeArguments {
     foreach ($value in @('compose', '--env-file', $script:EnvPath, '-f', $script:ComposePath)) {
         $arguments.Add([string] $value)
     }
+    if ($Env.QUICKSTART_RUNTIME_MODE -eq 'DOCKER_DESKTOP_WINDOWS') {
+        if (-not (Test-Path -LiteralPath $script:DockerDesktopComposePath -PathType Leaf)) {
+            throw 'Die Docker-Desktop-Compose-Erweiterung fehlt.'
+        }
+        foreach ($value in @('-f', $script:DockerDesktopComposePath)) {
+            $arguments.Add([string] $value)
+        }
+    }
     if ($Env.IO_PROFILE -eq 'SLOW_IO') {
         foreach ($value in @('-f', $script:SlowIoComposePath)) {
             $arguments.Add([string] $value)
@@ -73,6 +81,26 @@ function Assert-DockerResourceOwnership {
         )
         if ($labels -ne "SQL_SERVER_ANALYZE_QUICKSTART|$scopeId") {
             throw "Ein vorhandenes Netzwerk des Compose-Projekts '$projectName' trägt nicht den erwarteten QuickStart-Owner- und Scope-Marker. Es erfolgt keine Mutation."
+        }
+    }
+
+    $volumeNames = @(
+        Invoke-ExternalCommand -FilePath 'docker' -Arguments @(
+            'volume', 'ls',
+            '--filter', "label=com.docker.compose.project=$projectName",
+            '--format', '{{.Name}}'
+        ) -Quiet | Where-Object { -not [string]::IsNullOrWhiteSpace([string] $_) }
+    )
+    foreach ($volumeName in $volumeNames) {
+        $labels = Get-FirstOutputLine -InputObject @(
+            Invoke-ExternalCommand -FilePath 'docker' -Arguments @(
+                'volume', 'inspect', '--format',
+                '{{ index .Labels "quickstart.owner" }}|{{ index .Labels "quickstart.scope" }}',
+                ([string] $volumeName).Trim()
+            ) -Quiet
+        )
+        if ($labels -ne "SQL_SERVER_ANALYZE_QUICKSTART|$scopeId") {
+            throw "Ein vorhandenes Volume des Compose-Projekts '$projectName' trägt nicht den erwarteten QuickStart-Owner- und Scope-Marker. Es erfolgt keine Mutation."
         }
     }
 }
