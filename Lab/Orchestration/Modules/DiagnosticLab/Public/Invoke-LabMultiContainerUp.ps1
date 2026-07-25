@@ -6,7 +6,7 @@ function Invoke-LabMultiContainerUp {
         [string] $LabRunId = (New-LabRunId),
 
         [Parameter()]
-        [ValidateSet('AUTO', 'LINUX_NATIVE')]
+        [ValidateSet('AUTO', 'WINDOWS_SINGLE_HOST', 'LINUX_NATIVE', 'DISTRIBUTED')]
         [string] $ExecutionMode,
 
         [Parameter()]
@@ -333,6 +333,9 @@ function Invoke-LabMultiContainerUp {
                 -RuntimeCommand $dockerCommand `
                 -ContainerId $containerId `
                 -RunDirectory $runDirectory
+            if ([string] $framework.VerificationStatus -ne 'FRAMEWORK_READY') {
+                throw "SQL Server role $($node.Role) did not verify the framework."
+            }
             $measurement = Measure-LabContainerResources `
                 -DockerCommand $dockerCommand `
                 -ContainerId $containerId `
