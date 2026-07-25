@@ -136,6 +136,7 @@ foreach ($validator in @(
         'Code/Tests/Static/990_Validate_LAB001_Wave2_ContainerBaseline.py'
         'Code/Tests/Static/Validate_LAB001_Wave3_CorePerformance.py'
         'Code/Tests/Static/Validate_LAB001_Wave4_ContractFoundation.py'
+        'Code/Tests/Static/Validate_LAB001_Wave4_MultiContainerRuntime.py'
         'Code/Tests/Static/Validate_LAB001_Wave5_ImagePipelineFoundation.py'
     )) {
     $validatorPath = Join-Path $RepositoryRoot $validator
