@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "LAB-001 Welle 4 topology contract foundation",
+  "title": "LAB-001 Welle 4 topology runtime contract",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,10 +20,10 @@
       "const": "LAB-001-WAVE4"
     },
     "ContractStatus": {
-      "const": "VALIDATED_FOUNDATION"
+      "const": "IMPLEMENTED_ACTIONS_GATE"
     },
     "RuntimeStatus": {
-      "const": "NOT_EXECUTED"
+      "const": "IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING"
     },
     "DataClassification": {
       "const": "SYNTHETIC"
@@ -109,7 +109,10 @@
           ]
         },
         "RuntimeImplementationStatus": {
-          "const": "PLANNED_NOT_IMPLEMENTED"
+          "enum": [
+            "IMPLEMENTED_ACTIONS_GATE",
+            "PLANNED_NOT_IMPLEMENTED"
+          ]
         },
         "CleanupPolicy": {
           "const": "REGISTERED_OBJECT_IDS_ONLY"
