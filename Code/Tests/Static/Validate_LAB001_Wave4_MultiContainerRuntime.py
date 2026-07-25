@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 
 REQUIRED_FILES = {
-    ".github/workflows/lab-contract-validation.yml",
+    ".github/workflows/lab-wave4-runtime-validation.yml",
     "Lab/Containers/wave4.compose.yaml",
     "Lab/Containers/wave4.compose.docker.yaml",
     "Lab/Config/resource-profiles.json",
@@ -128,18 +128,18 @@ def validate_budget_and_integration(root: Path, findings: list[str]) -> None:
 
 def validate_tests_and_workflow(root: Path, findings: list[str]) -> None:
     tests = text(root, "Lab/Validation/Invoke-LabWave4RuntimeTests.ps1")
-    workflow = text(root, ".github/workflows/lab-contract-validation.yml")
+    workflow = text(root, ".github/workflows/lab-wave4-runtime-validation.yml")
     fragments(tests, (
         "Get-LabWave4TopologyPlan", "CTR-PAIR", "CTR-TRIPLE",
         "Get-LabContainerBudget", "TOPOLOGY_CREATING", "Invoke-LabWave4DockerCompose",
-        "System.Management.Automation.Language.Parser",
+        "Management.Automation.Language.Parser",
     ), "Welle 4 runtime tests", findings)
     fragments(workflow, (
         "Validate_LAB001_Wave4_MultiContainerRuntime.py",
         "Invoke-LabWave4RuntimeTests.ps1",
         "Validate Welle 4 multi-container Compose model",
         "Analyze Welle 4 multi-container runtime",
-    ), "LAB workflow", findings)
+    ), "Welle 4 workflow", findings)
 
 
 def main() -> int:
