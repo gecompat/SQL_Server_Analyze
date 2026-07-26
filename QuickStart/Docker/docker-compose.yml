@@ -11,13 +11,13 @@ x-sql-healthcheck: &sql-healthcheck
       fi;
       test -n "$$sqlcmd_path" &&
       SQLCMDPASSWORD="$$MSSQL_SA_PASSWORD" "$$sqlcmd_path" -C -b
-      -S localhost -U sa -Q
+      -S "tcp:127.0.0.1,1433" -U sa -l 15 -t 15 -Q
       "SET NOCOUNT ON; SELECT CONVERT(int, SERVERPROPERTY('ProductMajorVersion'));"
       >/dev/null 2>&1
-  interval: 5s
-  timeout: 5s
-  retries: 120
-  start_period: 20s
+  interval: 10s
+  timeout: 20s
+  retries: 30
+  start_period: 30s
 
 x-sql-environment: &sql-environment
   ACCEPT_EULA: "Y"

@@ -135,21 +135,23 @@ Es werden keine bestehenden Ordnerinhalte übernommen oder überschrieben.
 
 ### Docker Desktop auf Windows
 
-Bei Docker Desktop mit Linux-Containern liegen die SQL-Daten- und Logdateien in
-projektgebundenen Docker-Volumes innerhalb der Linux-VM. Direkte Windows-Bind-
-Mounts werden für aktive SQL-Datenbankdateien nicht verwendet. Die ausgewählten
-Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups
-zuständig.
+Docker Desktop betreibt Linux-Container innerhalb einer Linux-VM. Für jede
+SQL-Version wird deshalb genau ein projektgebundenes Docker-Volume auf das
+vollständige Verzeichnis `/var/opt/mssql` gemountet. Damit bleiben Daten,
+Transaktionslogs, Systemmetadaten und der SQL-Secrets-Bereich gemeinsam erhalten.
+Direkte Windows-Bind-Mounts werden für aktive SQL-Dateien nicht verwendet.
 
-Die lokalen SQL-Testcontainer laufen im Docker-Desktop-Kompatibilitätsmodus als
-Root innerhalb des Containers. Die Container bleiben unprivilegiert. Diese
-Variante ist ausschließlich für die lokale Testumgebung vorgesehen; native
-Linux-Docker-Varianten laufen weiterhin ohne Root-Rechte.
+Ein neues leeres Docker-Volume wird beim ersten Mount mit dem vorhandenen Inhalt
+und den Besitzinformationen des Image-Verzeichnisses befüllt. Dadurch können die
+SQL-Container wieder mit dem vom Microsoft-Image vorgesehenen Non-root-Benutzer
+laufen. Der frühere Docker-Desktop-Kompatibilitätsmodus mit Root-Benutzer und
+getrennten Data-/Log-Volumes wird nicht mehr verwendet.
 
-Diese Trennung verhindert, dass SQL Server seine Systemdatenbanken und `tempdb`
-über die Windows-Dateifreigabeschicht betreibt. Die Docker-Volumes tragen denselben
-Owner- und Scope-Marker wie Container und Netzwerk. Eine vollständige
-Deinstallation entfernt sie nur nach ausdrücklicher Bestätigung.
+Die ausgewählten Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer
+und Backups zuständig. Die Instanz-Volumes tragen denselben Owner- und Scope-Marker
+wie Container und Netzwerk. Eine vollständige Deinstallation entfernt nach
+Bestätigung alle Volumes dieses Scopes, einschließlich Volumes aus einem älteren
+getrennten Data-/Log-Modell.
 
 Auf einer nativen Linux-Docker-Engine werden weiterhin die ausgewählten lokalen
 Daten- und Logpfade als Bind-Mounts verwendet. Dadurch bleibt die dedizierte
@@ -203,14 +205,14 @@ Die SQL-Ports werden standardmäßig nur an `127.0.0.1` gebunden:
 
 Belegte Ports werden abgelehnt und können während Setup ersetzt werden. Das
 projektgebundene Compose-Netzwerk verwendet einen normalen Bridge-Treiber und
-trägt den QuickStart-Scope als Label. Es darf nicht als ausschließlich internes
-Docker-Netzwerk angelegt werden, weil ein Netzwerk ohne Host-Konnektivität die
-gewollte Loopback-Portveröffentlichung verhindert. Die Erreichbarkeit bleibt
-durch die explizite Bindung an `127.0.0.1` auf den lokalen Host begrenzt.
+trägt den QuickStart-Scope als Label. Die Erreichbarkeit bleibt durch die
+explizite Bindung an `127.0.0.1` auf den lokalen Host begrenzt.
 
-Nach dem Start prüft der QuickStart sowohl die tatsächlich erzeugte Docker-
-Portbindung als auch eine TCP-Verbindung vom Host. Ein Container gilt erst danach
-als von SSMS erreichbar.
+Der Healthcheck verwendet eine explizite TCP-Verbindung auf
+`tcp:127.0.0.1,1433`, einen definierten Login- und Abfragetimeout und das im Image
+vorhandene `sqlcmd`. Nach dem Healthcheck prüft der QuickStart sowohl die
+Docker-Portbindung als auch eine TCP-Verbindung vom Host. Ein Container gilt erst
+danach als von SSMS erreichbar.
 
 ## Frameworkinstallation
 
@@ -246,16 +248,15 @@ Der QuickStart erstellt bewusst keine Hyper-V-VM und verändert keine
 Host-Netzwerke. VM-Provisionierung und Hostadministration bleiben getrennte,
 explizite Schritte.
 
-## Fehler nach einem früheren Docker-Desktop-Start
+## Wechsel vom früheren Docker-Desktop-Speichermodell
 
-Wenn SQL Server bei der ersten Initialisierung mit Fehler 17053,
-Betriebssystemfehler 31, `Access is denied` oder einer fehlgeschlagenen
-`tempdb`-Erstellung beendet wurde, können unvollständige Systemdatenbankdateien in
-den Docker-Volumes zurückgeblieben sein. Dieser Zustand wird nicht automatisch
-gelöscht oder überschrieben.
+Frühere QuickStart-Stände verwendeten unter Docker Desktop getrennte Volumes für
+`/var/opt/mssql/data` und `/var/opt/mssql/log` und starteten die Container als
+Root. Diese Volumes dürfen nicht in das neue vollständige Instanz-Volume
+übernommen werden.
 
-Die betroffene Umgebung wird deshalb vollständig entfernt und anschließend neu
-erstellt:
+Vor dem ersten Start mit dem neuen Modell ist die bisherige Umgebung vollständig
+zu entfernen:
 
 ```powershell
 ./QuickStart/Docker/Uninstall.ps1
@@ -263,8 +264,10 @@ erstellt:
 ```
 
 Bei `Uninstall.ps1` müssen sowohl die Entfernung des Compose-Projekts als auch die
-Entfernung der zugeordneten Docker-Volumes und markierten Datenpfade bestätigt
-werden.
+Entfernung der Docker-Volumes und markierten Datenpfade bestätigt werden. Die
+Deinstallation ermittelt alle Owner- und Scope-geprüften Volumes des Projekts und
+entfernt dadurch auch ältere getrennte Data-/Log-Volumes. Docker-Images und fremde
+Projekte bleiben unangetastet.
 
 ## Entfernen und Deinstallieren
 
@@ -279,6 +282,7 @@ Alternativ:
 ```
 
 Die erste Bestätigung entfernt ausschließlich Container und Netzwerk des in
-`.env` gespeicherten Compose-Projekts. Bei der zweiten Bestätigung werden auch die
-zugeordneten Docker-Volumes, die markierten Hostpfade und die lokale `.env`
-gelöscht. Docker-Images und andere Projekte bleiben unangetastet.
+`.env` gespeicherten Compose-Projekts. Bei der zweiten Bestätigung werden alle
+Owner- und Scope-geprüften Docker-Volumes des Projekts, die markierten Hostpfade
+und die lokale `.env` gelöscht. Docker-Images und andere Projekte bleiben
+unangetastet.
