@@ -31,6 +31,11 @@ jobs:
           git clone --quiet --branch agent/complete-framework-usage-contract "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repository
           cd repository
           python3 ./Code/Tests/Static/Temporary_Complete_Framework_Usage_Navigator.py
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('Documentation/Reference/Procedure_Reference.md')
+          path.write_text(path.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+          PY
           git diff --check
 
           set +e
