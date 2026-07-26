@@ -55,7 +55,7 @@ jobs:
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code/01_Common/021_VW_AnalysisCatalog.sql Code/Tests/Static/905_Validate_Analysis_Navigator.py Metadata/Inventory/Parameters.csv Documentation/Reference/Procedure_Reference.md Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md Documentation/Analysis_Guides/Procedures/README.md Documentation/Analysis_Guides/Object_Index.md Documentation/README.md Metadata/Quality/Analysis_Documentation_Review.csv
+          git add Code/01_Common/021_VW_AnalysisCatalog.sql Code/Tests/Static/905_Validate_Analysis_Navigator.py Metadata/Inventory/Parameters.csv Documentation/Reference/Procedure_Reference.md Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md Documentation/Analysis_Guides/Procedures/README.md Documentation/Analysis_Guides/Object_Index.md Documentation/README.md Metadata/Quality/Analysis_Documentation_Review.csv Documentation/Lab/GitHub_Runner_Service_Removal.md
           if git diff --cached --quiet; then
             echo 'Framework usage metadata is already complete.'
           else
