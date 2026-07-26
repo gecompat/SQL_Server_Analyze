@@ -95,14 +95,6 @@ Die priorisierte Ausbauplanung steht in `AI_Metadata/Internal_Documentation/Rese
 
 ## Änderungen 2026-07-26
 
-### Repository-Umstrukturierung (extern)
-
-- Produkt-/CI-Trennung: CI-Workflows nach `ci-ops` Branch verschoben.
-- Entfernt aus `main`: `windows-self-hosted-validation.yml`, `collation-portability-validation.yml`, `sqlserver-2019-linux-release-gate.yml`, `sqlserver-2025-linux-release-gate.yml`.
-- Neu in `main`: `collect-statistics-release-evidence.yml`, `repository-privacy-validation.yml`, `commit-message-validation.yml`, `lab-contract-validation.yml`, `documentation-validation.yml`, `quickstart-docker-validation.yml`, `sqlserver-compatibility-matrix-manual.yml`.
-- Docker-QuickStart (`QuickStart/Docker/`) komplett hinzugefügt (extern).
-- `AI_Metadata/Internal_Documentation/Architecture/Repository_Branching_and_Boundaries.md` und `Branch_Separation_Execution_Plan.md` dokumentieren die Trennung.
-
 ### Hyper-V QuickStart: Dual-OS-Architektur (3 Commits)
 
 **Commit 1:** `feat: Hyper-V QuickStart – Dual-OS-Architektur und Netzwerksimulation`

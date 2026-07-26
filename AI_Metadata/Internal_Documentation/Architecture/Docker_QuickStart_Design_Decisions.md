@@ -27,8 +27,6 @@ Der QuickStart verwendet keine Lab-Run-IDs, Evidence-Gates, Lab-State-Dateien, I
 
 Gemeinsam genutzt wird ausschließlich der kanonische Frameworkinstaller unter `Code/Install/`.
 
-Der QuickStart gehört als nutzerorientierte Repro-Umgebung zur Produktlinie. Workflows, Contract-Validatoren und andere Qualitätssicherungsartefakte gehören in die Operations-/Validation-Linie.
-
 ## Interaktive Konfiguration
 
 `Setup.ps1` fragt mindestens folgende Werte ab:

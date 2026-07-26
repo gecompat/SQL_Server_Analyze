@@ -1,6 +1,6 @@
 # Repository- und ZIP-Datenschutzgate
 
-**Stand:** 18. Juli 2026  
+**Stand:** 26. Juli 2026  
 **Backlog:** SC-001 / RQ-001  
 **Status:** IMPLEMENTED_AUTOMATED_GATE  
 **Prüfskript:** `Code/Tests/Static/910_Validate_Repository_Privacy.py`  
@@ -41,6 +41,10 @@ Das ZIP muss ausschließlich den Root `SQL_Server_Analyze/` enthalten. Git-Metad
 - verdächtige Secret-Zuweisungen;
 - nicht generische statische `USE`-Datenbankkontexte;
 - binäre oder nicht UTF-8-dekodierbare versionierte Inhalte.
+
+Private IPv4-Adressen dürfen für generische Lab-, Test- und Architekturbeispiele übernommen werden, nachdem sie technisch als RFC-1918-Adresse verifiziert wurden. Solche Werte werden weiterhin pfad- und wertgebunden mit dem Reason Code `GENERIC_PRIVATE_LAB_NETWORK` freigegeben, damit eine spätere versehentliche Änderung erneut geprüft wird.
+
+Öffentliche und sonstige nicht als privat verifizierte IPv4-Adressen bleiben ohne ausdrückliche Genehmigung blockiert. Eine Genehmigung muss sich auf den konkreten Wert und Verwendungszweck beziehen; sie führt zu einem pfad- und wertgebundenen Allowlist-Eintrag und hebt keine anderen Datenschutzregeln auf.
 
 Die Datei `Metadata/Quality/Repository_Privacy_Allowlist.csv` darf nur technisch notwendige, geprüfte öffentliche oder synthetische Ausnahmen anhand eines pfadgebundenen SHA-256-Matchwerts enthalten. Blockier-Sentinels und ZIP-Strukturfehler sind niemals erlaubnisfähig. Ein neuer Allowlist-Eintrag benötigt weiterhin eine manuelle fachliche und datenschutzbezogene Review.
 
