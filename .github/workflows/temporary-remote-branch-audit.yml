@@ -14,18 +14,19 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Audit and remove fully contained branches
+      - name: Remove contained branches and self-delete
         shell: bash
         run: |
           set -euo pipefail
 
           repository="${GITHUB_REPOSITORY}"
           audit_branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+          review_required=0
 
           mapfile -t branches < <(gh api --paginate "repos/${repository}/branches?per_page=100" --jq '.[].name')
 
-          echo "BRANCH_AUDIT_BEGIN"
-          echo "BRANCH_COUNT|${#branches[@]}"
+          echo "FINAL_BRANCH_AUDIT_BEGIN"
+          echo "INITIAL_BRANCH_COUNT|${#branches[@]}"
 
           for branch in "${branches[@]}"; do
             if [[ "$branch" == "main" || "$branch" == "$audit_branch" ]]; then
@@ -38,15 +39,34 @@ jobs:
             ahead_by="$(jq -r '.ahead_by' <<<"$compare_json")"
             behind_by="$(jq -r '.behind_by' <<<"$compare_json")"
             status="$(jq -r '.status' <<<"$compare_json")"
-            changed_files="$(jq -r '.files | length' <<<"$compare_json")"
 
             if [[ "$ahead_by" == "0" ]]; then
               gh api --method DELETE "repos/${repository}/git/refs/heads/${encoded_branch}"
               echo "DELETED_CONTAINED|$branch|ahead=${ahead_by}|behind=${behind_by}|status=${status}"
             else
-              echo "REVIEW_REQUIRED|$branch|ahead=${ahead_by}|behind=${behind_by}|status=${status}|files=${changed_files}"
-              jq -r '.files[0:25][]?.filename | "REVIEW_FILE|" + .' <<<"$compare_json"
+              echo "REVIEW_REQUIRED|$branch|ahead=${ahead_by}|behind=${behind_by}|status=${status}"
+              review_required=1
             fi
           done
 
-          echo "BRANCH_AUDIT_END"
+          if [[ "$review_required" -ne 0 ]]; then
+            echo "FINAL_BRANCH_AUDIT_BLOCKED"
+            exit 1
+          fi
+
+          mapfile -t remaining < <(gh api --paginate "repos/${repository}/branches?per_page=100" --jq '.[].name')
+          printf 'REMAINING_BEFORE_SELF_DELETE|%s\n' "${remaining[*]}"
+
+          if [[ "${#remaining[@]}" -ne 2 ]]; then
+            echo "UNEXPECTED_REMAINING_BRANCH_COUNT|${#remaining[@]}"
+            exit 1
+          fi
+          if [[ ! " ${remaining[*]} " =~ " main " || ! " ${remaining[*]} " =~ " ${audit_branch} " ]]; then
+            echo "UNEXPECTED_REMAINING_BRANCH_SET"
+            exit 1
+          fi
+
+          encoded_audit_branch="$(jq -rn --arg value "$audit_branch" '$value|@uri')"
+          gh api --method DELETE "repos/${repository}/git/refs/heads/${encoded_audit_branch}"
+          echo "DELETED_AUDIT_BRANCH|$audit_branch"
+          echo "FINAL_BRANCH_AUDIT_END"
