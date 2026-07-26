@@ -54,7 +54,7 @@ services:
     hostname: sql2019
     ports:
       - target: 1433
-        published: ${SQL2019_PORT:-14331}
+        published: "${SQL2019_PORT:-14331}"
         host_ip: ${BIND_ADDRESS:-127.0.0.1}
         protocol: tcp
     volumes:
@@ -83,7 +83,7 @@ services:
     hostname: sql2022
     ports:
       - target: 1433
-        published: ${SQL2022_PORT:-14332}
+        published: "${SQL2022_PORT:-14332}"
         host_ip: ${BIND_ADDRESS:-127.0.0.1}
         protocol: tcp
     volumes:
@@ -112,7 +112,7 @@ services:
     hostname: sql2025
     ports:
       - target: 1433
-        published: ${SQL2025_PORT:-14335}
+        published: "${SQL2025_PORT:-14335}"
         host_ip: ${BIND_ADDRESS:-127.0.0.1}
         protocol: tcp
     volumes:
@@ -136,7 +136,9 @@ services:
 
 networks:
   quickstart-data:
-    internal: true
+    # Do not set `internal: true`: an internal-only bridge has no host-facing
+    # connectivity, while this QuickStart deliberately publishes loopback ports.
+    driver: bridge
     labels:
       quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
       quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
