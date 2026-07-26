@@ -16,10 +16,10 @@ function Read-YesNo {
         if ([string]::IsNullOrWhiteSpace($answer)) {
             return $Default
         }
-        if ($answer -match '^(j|ja|y|yes)) {
+        if ($answer -match '^(j|ja|y|yes)$') {
             return $true
         }
-        if ($answer -match '^(n|nein|no)) {
+        if ($answer -match '^(n|nein|no)$') {
             return $false
         }
         Write-Warning 'Bitte J oder N eingeben.'
