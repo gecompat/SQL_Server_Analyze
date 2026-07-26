@@ -1,7 +1,7 @@
 services:
   sql2019:
     user: "0:0"
-    ports:
+    ports: !override
       - "${BIND_ADDRESS:?BIND_ADDRESS is required}:${SQL2019_PORT:-14331}:1433/tcp"
     volumes:
       - type: volume
@@ -13,7 +13,7 @@ services:
 
   sql2022:
     user: "0:0"
-    ports:
+    ports: !override
       - "${BIND_ADDRESS:?BIND_ADDRESS is required}:${SQL2022_PORT:-14332}:1433/tcp"
     volumes:
       - type: volume
@@ -25,7 +25,7 @@ services:
 
   sql2025:
     user: "0:0"
-    ports:
+    ports: !override
       - "${BIND_ADDRESS:?BIND_ADDRESS is required}:${SQL2025_PORT:-14335}:1433/tcp"
     volumes:
       - type: volume
