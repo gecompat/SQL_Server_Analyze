@@ -1,0 +1,52 @@
+name: Temporary remote branch audit
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Audit and remove fully contained branches
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          repository="${GITHUB_REPOSITORY}"
+          audit_branch="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+
+          mapfile -t branches < <(gh api --paginate "repos/${repository}/branches?per_page=100" --jq '.[].name')
+
+          echo "BRANCH_AUDIT_BEGIN"
+          echo "BRANCH_COUNT|${#branches[@]}"
+
+          for branch in "${branches[@]}"; do
+            if [[ "$branch" == "main" || "$branch" == "$audit_branch" ]]; then
+              echo "SKIPPED_PROTECTED|$branch"
+              continue
+            fi
+
+            encoded_branch="$(jq -rn --arg value "$branch" '$value|@uri')"
+            compare_json="$(gh api "repos/${repository}/compare/main...${encoded_branch}")"
+            ahead_by="$(jq -r '.ahead_by' <<<"$compare_json")"
+            behind_by="$(jq -r '.behind_by' <<<"$compare_json")"
+            status="$(jq -r '.status' <<<"$compare_json")"
+            changed_files="$(jq -r '.files | length' <<<"$compare_json")"
+
+            if [[ "$ahead_by" == "0" ]]; then
+              gh api --method DELETE "repos/${repository}/git/refs/heads/${encoded_branch}"
+              echo "DELETED_CONTAINED|$branch|ahead=${ahead_by}|behind=${behind_by}|status=${status}"
+            else
+              echo "REVIEW_REQUIRED|$branch|ahead=${ahead_by}|behind=${behind_by}|status=${status}|files=${changed_files}"
+              jq -r '.files[0:25][]?.filename | "REVIEW_FILE|" + .' <<<"$compare_json"
+            fi
+          done
+
+          echo "BRANCH_AUDIT_END"
