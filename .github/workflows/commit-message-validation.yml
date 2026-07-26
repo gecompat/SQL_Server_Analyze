@@ -34,7 +34,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          cp Metadata/Inventory/Objects.csv Metadata/Inventory/ObjectInventory.csv
           python3 ./Code/Tests/Static/Temporary_Complete_Framework_Usage.py
+          mv Metadata/Inventory/ObjectInventory.csv Metadata/Inventory/Objects.csv
           git diff --check
           if git diff --quiet; then
             echo 'Framework usage integration is already complete.'
@@ -46,7 +48,7 @@ jobs:
               Code/Tests/QueryStore/120_Framework_Usage_Runtime_Contract.sql \
               Code/Tests/QueryStore/110_Test_und_Abnahme_Phase4.sql \
               Code/Tests/Run_Release_Gate.sql \
-              Metadata/Inventory/ObjectInventory.csv \
+              Metadata/Inventory/Objects.csv \
               Metadata/Inventory/ResultSets.csv \
               Metadata/Inventory/Module_Maturity.csv \
               Metadata/Quality/Implementation_Status.csv \
