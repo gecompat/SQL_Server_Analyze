@@ -17,7 +17,8 @@ expliziten Deinstallationsaufruf entfernt:
 Die vollständige Anleitung steht unter
 [`Docker/README.md`](./Docker/README.md).
 
-Für eine native Windows-SQL-Server-Testumgebung via Hyper-V:
+Für eine native SQL-Server-Testumgebung via Hyper-V (Windows- und/oder Linux-VMs
+mit Netzwerk-/I/O-Simulation):
 
 ```powershell
 ./QuickStart/HyperV/Setup.ps1

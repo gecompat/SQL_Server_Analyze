@@ -166,3 +166,203 @@ function Set-VmStaticIp {
         Set-DnsClientServerAddress -InterfaceIndex $adapter.ifIndex -ServerAddresses @('8.8.8.8', '1.1.1.1')
     } -ArgumentList @($IpAddress, $script:GatewayAddress, $script:PrefixLength)
 }
+
+# ============================================================
+# Linux-VM-Provisioning
+# ============================================================
+
+function Get-LinuxCloudImage {
+    param(
+        [Parameter(Mandatory)][string] $DestinationPath
+    )
+
+    # Ubuntu 24.04 LTS Cloud Image (VHDX fuer Hyper-V)
+    $imageUrl = 'https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-amd64-hyperv.vhdx.zip'
+    $zipPath = "$DestinationPath.zip"
+
+    Write-Section 'Ubuntu Cloud-Image herunterladen'
+    Write-Host "  URL: $imageUrl"
+    Write-Host "  Ziel: $DestinationPath"
+
+    $destDir = [IO.Path]::GetDirectoryName($DestinationPath)
+    if (-not (Test-Path -LiteralPath $destDir)) {
+        New-Item -Path $destDir -ItemType Directory -Force | Out-Null
+    }
+
+    $ProgressPreference = 'SilentlyContinue'
+    Invoke-WebRequest -Uri $imageUrl -OutFile $zipPath -UseBasicParsing
+    $ProgressPreference = 'Continue'
+
+    Write-Host '  Entpacke VHDX...'
+    Expand-Archive -Path $zipPath -DestinationPath $destDir -Force
+    $extractedVhdx = Get-ChildItem -Path $destDir -Filter '*.vhdx' |
+        Where-Object { $_.Name -ne (Split-Path $DestinationPath -Leaf) } |
+        Select-Object -First 1
+    if ($extractedVhdx) {
+        Move-Item -LiteralPath $extractedVhdx.FullName -Destination $DestinationPath -Force
+    }
+    Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
+
+    # VHDX auf mindestens 30 GB vergroessern (Cloud-Image ist minimal)
+    $vhd = Get-VHD -Path $DestinationPath
+    if ($vhd.Size -lt 30GB) {
+        Resize-VHD -Path $DestinationPath -SizeBytes 30GB
+    }
+
+    Write-Host '  Cloud-Image bereit.'
+}
+
+function New-LabDataDisk {
+    param(
+        [Parameter(Mandatory)][string] $Path,
+        [Parameter(Mandatory)][int] $SizeGB
+    )
+
+    if (Test-Path -LiteralPath $Path) {
+        Write-Host "Data-Disk existiert bereits: $Path"
+        return
+    }
+
+    $diskDir = [IO.Path]::GetDirectoryName($Path)
+    if (-not (Test-Path -LiteralPath $diskDir)) {
+        New-Item -Path $diskDir -ItemType Directory -Force | Out-Null
+    }
+
+    Write-Host "Erstelle Data-Disk: $Path (${SizeGB}GB)"
+    New-VHD -Path $Path -SizeBytes ($SizeGB * 1GB) -Dynamic | Out-Null
+}
+
+function New-CloudInitIso {
+    param(
+        [Parameter(Mandatory)][string] $DestinationPath,
+        [Parameter(Mandatory)][string] $Hostname,
+        [Parameter(Mandatory)][string] $IpAddress,
+        [Parameter(Mandatory)][string] $Gateway,
+        [Parameter(Mandatory)][string] $SshPubKey,
+        [string] $User = 'labadmin'
+    )
+
+    Write-Host "Erstelle cloud-init ISO: $DestinationPath"
+
+    $metaData = @"
+instance-id: $Hostname
+local-hostname: $Hostname
+"@
+
+    $userData = @"
+#cloud-config
+users:
+  - name: $User
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - $SshPubKey
+    lock_passwd: true
+
+package_update: true
+packages:
+  - iproute2
+  - curl
+  - apt-transport-https
+
+runcmd:
+  - systemctl enable ssh
+  - systemctl start ssh
+"@
+
+    $networkConfig = @"
+network:
+  version: 2
+  ethernets:
+    eth0:
+      addresses:
+        - $IpAddress/24
+      routes:
+        - to: default
+          via: $Gateway
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+"@
+
+    # ISO erstellen via oscdimg (Windows ADK) oder Fallback
+    $isoDir = Join-Path ([IO.Path]::GetTempPath()) "cloudinit-$Hostname"
+    if (Test-Path -LiteralPath $isoDir) { Remove-Item -LiteralPath $isoDir -Recurse -Force }
+    New-Item -Path $isoDir -ItemType Directory -Force | Out-Null
+
+    Set-Content -Path (Join-Path $isoDir 'meta-data') -Value $metaData -Encoding utf8NoBOM
+    Set-Content -Path (Join-Path $isoDir 'user-data') -Value $userData -Encoding utf8NoBOM
+    Set-Content -Path (Join-Path $isoDir 'network-config') -Value $networkConfig -Encoding utf8NoBOM
+
+    # Versuche oscdimg.exe (Windows ADK)
+    $oscdimg = Get-Command oscdimg.exe -ErrorAction SilentlyContinue
+    if ($null -eq $oscdimg) {
+        $adkPath = 'C:\Program Files (x86)\Windows Kits\10\Assessment and Deployment Kit\Deployment Tools\amd64\Oscdimg\oscdimg.exe'
+        if (Test-Path -LiteralPath $adkPath) {
+            $oscdimg = Get-Item $adkPath
+        }
+    }
+
+    if ($null -ne $oscdimg) {
+        & $oscdimg.FullName -j2 -lCIDATA $isoDir $DestinationPath | Out-Null
+    }
+    else {
+        Write-Warning 'oscdimg.exe nicht gefunden. Windows ADK erforderlich fuer cloud-init ISO.'
+        throw 'cloud-init ISO-Erstellung erfordert oscdimg.exe aus dem Windows ADK.'
+    }
+
+    Remove-Item -LiteralPath $isoDir -Recurse -Force -ErrorAction SilentlyContinue
+}
+
+function New-LabLinuxVm {
+    param(
+        [Parameter(Mandatory)][string] $VmName,
+        [Parameter(Mandatory)][string] $OsDisk,
+        [Parameter(Mandatory)][string] $DataDisk,
+        [Parameter(Mandatory)][string] $LogDisk,
+        [Parameter(Mandatory)][string] $CloudInitIso,
+        [Parameter(Mandatory)][hashtable] $Profile,
+        [Parameter(Mandatory)][string] $SwitchName
+    )
+
+    $existing = Get-VM -Name $VmName -ErrorAction SilentlyContinue
+    if ($existing) {
+        Write-Host "VM '$VmName' existiert bereits."
+        return
+    }
+
+    Write-Section "Erstelle Linux-VM: $VmName"
+
+    $vm = New-VM -Name $VmName `
+        -Generation 2 `
+        -MemoryStartupBytes $Profile.MinMemory `
+        -VHDPath $OsDisk `
+        -SwitchName $SwitchName
+
+    # Dynamischer Speicher
+    Set-VMMemory -VM $vm -DynamicMemoryEnabled $true `
+        -MinimumBytes ($Profile.MinMemory / 2) `
+        -MaximumBytes $Profile.MaxMemory
+
+    Set-VMProcessor -VM $vm -Count $Profile.vCPUs
+
+    # Secure Boot deaktivieren (Linux-Kompatibilitaet)
+    Set-VMFirmware -VM $vm -EnableSecureBoot Off
+
+    # Checkpoints deaktivieren
+    Set-VM -VM $vm -CheckpointType Disabled
+
+    # Zusaetzliche Disks anhaengen (Data + Log fuer I/O-Simulation)
+    Add-VMHardDiskDrive -VM $vm -Path $DataDisk
+    Add-VMHardDiskDrive -VM $vm -Path $LogDisk
+
+    # cloud-init ISO als DVD
+    Add-VMDvdDrive -VM $vm -Path $CloudInitIso
+
+    # Boot-Reihenfolge: Festplatte zuerst
+    $bootDisk = Get-VMHardDiskDrive -VM $vm | Select-Object -First 1
+    Set-VMFirmware -VM $vm -FirstBootDevice $bootDisk
+
+    Write-Host "Linux-VM '$VmName' erstellt ($(($Profile.MinMemory / 1GB))GB RAM, $($Profile.vCPUs) vCPUs, Data+Log Disks)."
+}

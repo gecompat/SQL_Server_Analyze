@@ -9,17 +9,25 @@ function Remove-Environment {
     $labRoot = $config['LAB_ROOT']
     $scopeId = $config['SCOPE_ID']
     $versions = $config['SQL_VERSIONS'] -split ','
+    $osMode = $config['OS_MODE']
 
-    # Scope-Marker prüfen
+    # Scope-Marker pruefen
     if (-not [string]::IsNullOrWhiteSpace($labRoot) -and (Test-Path -LiteralPath $labRoot)) {
         if (-not (Test-ScopeMarker -Path $labRoot -ScopeId $scopeId)) {
-            throw "Scope-Marker in '$labRoot' stimmt nicht mit der aktuellen Konfiguration überein. Entfernung abgebrochen."
+            throw "Scope-Marker in '$labRoot' stimmt nicht mit der aktuellen Konfiguration ueberein. Entfernung abgebrochen."
         }
     }
 
-    Write-Host 'Folgende Ressourcen werden entfernt:'
+    # VM-Liste zusammenstellen
+    $vmNames = @()
     foreach ($version in $versions) {
-        Write-Host "  - VM: $($script:VmNames[$version])"
+        if ($osMode -in @('Windows', 'Mixed')) { $vmNames += "SQL_Analyze_Win_$version" }
+        if ($osMode -in @('Linux', 'Mixed')) { $vmNames += "SQL_Analyze_Linux_$version" }
+    }
+
+    Write-Host 'Folgende Ressourcen werden entfernt:'
+    foreach ($name in $vmNames) {
+        Write-Host "  - VM: $name"
     }
     Write-Host "  - Switch: $($script:SwitchName)"
     Write-Host "  - NAT: $($script:NatName)"
@@ -32,8 +40,7 @@ function Remove-Environment {
     }
 
     # VMs stoppen und entfernen
-    foreach ($version in $versions) {
-        $vmName = $script:VmNames[$version]
+    foreach ($vmName in $vmNames) {
         $vm = Get-VM -Name $vmName -ErrorAction SilentlyContinue
         if ($null -eq $vm) { continue }
 
@@ -49,24 +56,33 @@ function Remove-Environment {
     # Netzwerk entfernen
     Remove-LabSwitch
 
-    # Daten entfernen (zweite Bestätigung für destruktive Aktion)
+    # Daten entfernen (zweite Bestaetigung fuer destruktive Aktion)
     if (Test-Path -LiteralPath $labRoot) {
         Write-Host ''
-        if (Read-YesNo -Prompt "Datenpfad '$labRoot' vollständig löschen? (UNWIDERRUFLICH)") {
-            # Nochmals Scope-Marker prüfen vor Löschung
+        if (Read-YesNo -Prompt "Datenpfad '$labRoot' vollstaendig loeschen? (UNWIDERRUFLICH)") {
+            # Nochmals Scope-Marker pruefen vor Loeschung
             if (Test-ScopeMarker -Path $labRoot -ScopeId $scopeId) {
-                # ReadOnly-Flag vom Base-VHD entfernen
-                $baseVhd = Join-Path $labRoot 'base\windows-server-base.vhdx'
-                if (Test-Path -LiteralPath $baseVhd) {
-                    Set-ItemProperty -LiteralPath $baseVhd -Name IsReadOnly -Value $false -ErrorAction SilentlyContinue
+                # ReadOnly-Flag von Base-VHDs entfernen
+                $baseDir = Join-Path $labRoot 'base'
+                if (Test-Path -LiteralPath $baseDir) {
+                    Get-ChildItem -Path $baseDir -Filter '*.vhdx' | ForEach-Object {
+                        Set-ItemProperty -LiteralPath $_.FullName -Name IsReadOnly -Value $false -ErrorAction SilentlyContinue
+                    }
                 }
                 Remove-Item -LiteralPath $labRoot -Recurse -Force
                 Write-Host "Pfad '$labRoot' entfernt."
             }
             else {
-                Write-Warning 'Scope-Marker nicht mehr gültig. Manuelle Bereinigung erforderlich.'
+                Write-Warning 'Scope-Marker nicht mehr gueltig. Manuelle Bereinigung erforderlich.'
             }
         }
+    }
+
+    # SSH-Keys entfernen
+    $sshDir = Join-Path $PSScriptRoot '.ssh'
+    if (Test-Path -LiteralPath $sshDir) {
+        Remove-Item -LiteralPath $sshDir -Recurse -Force
+        Write-Host 'SSH-Schluessel entfernt.'
     }
 
     # .env entfernen
@@ -76,5 +92,5 @@ function Remove-Environment {
     }
 
     Write-Host ''
-    Write-Host 'Hyper-V QuickStart vollständig entfernt.'
+    Write-Host 'Hyper-V QuickStart vollstaendig entfernt.'
 }
