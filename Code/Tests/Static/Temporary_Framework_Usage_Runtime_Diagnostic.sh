@@ -49,7 +49,7 @@ docker exec -e SQLCMDPASSWORD="${credential}" "${container_name}" bash -lc '
   exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i Install_All.sql
 ' >"${work_root}/install.log" 2>&1 || {
   echo 'INSTALL_FAILURE_BEGIN'
-  grep -E 'Msg [0-9]+|HResult|Level 16|Invalid|ungültig|fehlt|nicht|FAIL|ERROR' "${work_root}/install.log" | tail -n 120 || true
+  grep -E '^(Msg [0-9]+|HResult)|(_MISSING|_INVALID|_FAILED)( |$)' "${work_root}/install.log" | tail -n 120 || true
   echo 'INSTALL_FAILURE_END'
   exit 1
 }
@@ -63,7 +63,7 @@ status=$?
 set -e
 if [ "${status}" -ne 0 ]; then
   echo 'RELEASE_GATE_FAILURE_BEGIN'
-  grep -E 'RELEASE_GATE [0-9]+/34|FRAMEWORK_USAGE|Msg [0-9]+|HResult|Level 16|Invalid|ungültig|fehlt|muss|nicht|FAIL|ERROR|_MISSING|_INVALID|_FAILED' "${work_root}/release.log" | tail -n 180 || true
+  grep -E '^(RELEASE_GATE [0-9]+/34|Msg [0-9]+|HResult)|FRAMEWORK_USAGE|(_MISSING|_INVALID|_FAILED)( |$)' "${work_root}/release.log" | tail -n 180 || true
   echo 'RELEASE_GATE_FAILURE_END'
   exit "${status}"
 fi
