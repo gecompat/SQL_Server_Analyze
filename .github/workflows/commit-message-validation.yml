@@ -33,8 +33,28 @@ jobs:
           python3 ./Code/Tests/Static/Temporary_Complete_Framework_Usage_Navigator.py
           python3 - <<'PY'
           from pathlib import Path
-          path = Path('Documentation/Reference/Procedure_Reference.md')
-          path.write_text(path.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+
+          reference = Path('Documentation/Reference/Procedure_Reference.md')
+          reference.write_text(reference.read_text(encoding='utf-8').rstrip() + '\n', encoding='utf-8')
+
+          index = Path('Documentation/Analysis_Guides/Procedures/README.md')
+          text = index.read_text(encoding='utf-8')
+          text = text.replace('**Strukturelle Abdeckung:** 97 Procedures<br>', '**Strukturelle Abdeckung:** 98 Procedures<br>', 1)
+          text = text.replace('**Tief geprüfte Seiten:** 91 Procedures', '**Tief geprüfte Seiten:** 92 Procedures', 1)
+          text = text.replace('91 Procedures besitzen eine am aktuellen T-SQL geprüfte', '92 Procedures besitzen eine am aktuellen T-SQL geprüfte', 1)
+          anchor = '- [USP_QueryStoreAnalysis](USP_QueryStoreAnalysis.md)\n'
+          addition = anchor + '- [USP_FrameworkUsageFromQueryStore](USP_FrameworkUsageFromQueryStore.md)\n'
+          if 'USP_FrameworkUsageFromQueryStore](USP_FrameworkUsageFromQueryStore.md)' not in text:
+              if anchor not in text:
+                  raise SystemExit('Procedure index Query Store anchor not found')
+              text = text.replace(anchor, addition, 1)
+          index.write_text(text, encoding='utf-8')
+
+          documentation = Path('Documentation/README.md')
+          text = documentation.read_text(encoding='utf-8')
+          text = text.replace('alle 97 öffentlichen Procedures', 'alle 98 öffentlichen Procedures', 1)
+          text = text.replace('Der Inventarvertrag umfasst 165 Objekte: 97 öffentliche Procedures', 'Der Inventarvertrag umfasst 166 Objekte: 98 öffentliche Procedures', 1)
+          documentation.write_text(text, encoding='utf-8')
           PY
           git diff --check
 
@@ -48,18 +68,19 @@ jobs:
             echo 'NAVIGATOR_VALIDATION_FAILURE_BEGIN'
             tail -n 40 "$RUNNER_TEMP/navigator.log"
             echo 'NAVIGATOR_VALIDATION_FAILURE_END'
-            exit "$navigator_status"
           fi
           if [ "$documentation_status" -ne 0 ]; then
             echo 'DOCUMENTATION_VALIDATION_FAILURE_BEGIN'
             tail -n 60 "$RUNNER_TEMP/documentation.log"
             echo 'DOCUMENTATION_VALIDATION_FAILURE_END'
-            exit "$documentation_status"
+          fi
+          if [ "$navigator_status" -ne 0 ] || [ "$documentation_status" -ne 0 ]; then
+            exit 1
           fi
 
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code/01_Common/021_VW_AnalysisCatalog.sql Code/Tests/Static/905_Validate_Analysis_Navigator.py Metadata/Inventory/Parameters.csv Documentation/Reference/Procedure_Reference.md Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md
+          git add Code/01_Common/021_VW_AnalysisCatalog.sql Code/Tests/Static/905_Validate_Analysis_Navigator.py Metadata/Inventory/Parameters.csv Documentation/Reference/Procedure_Reference.md Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md Documentation/Analysis_Guides/Procedures/README.md Documentation/README.md
           if git diff --cached --quiet; then
             echo 'Framework usage navigator metadata is already complete.'
           else
