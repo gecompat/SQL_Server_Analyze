@@ -53,11 +53,7 @@ services:
     image: ${SQL2019_IMAGE:-mcr.microsoft.com/mssql/server:2019-latest}
     hostname: sql2019
     ports:
-      - target: 1433
-        published: ${SQL2019_PORT:-14331}
-        host_ip: ${BIND_ADDRESS:-127.0.0.1}
-        protocol: tcp
-        mode: host
+      - "${BIND_ADDRESS:?BIND_ADDRESS is required}:${SQL2019_PORT:-14331}:1433/tcp"
     volumes:
       - type: bind
         source: ${SQL2019_DATA_DIR:?SQL2019_DATA_DIR is required}
@@ -83,11 +79,7 @@ services:
     image: ${SQL2022_IMAGE:-mcr.microsoft.com/mssql/server:2022-latest}
     hostname: sql2022
     ports:
-      - target: 1433
-        published: ${SQL2022_PORT:-14332}
-        host_ip: ${BIND_ADDRESS:-127.0.0.1}
-        protocol: tcp
-        mode: host
+      - "${BIND_ADDRESS:?BIND_ADDRESS is required}:${SQL2022_PORT:-14332}:1433/tcp"
     volumes:
       - type: bind
         source: ${SQL2022_DATA_DIR:?SQL2022_DATA_DIR is required}
@@ -113,11 +105,7 @@ services:
     image: ${SQL2025_IMAGE:-mcr.microsoft.com/mssql/server:2025-latest}
     hostname: sql2025
     ports:
-      - target: 1433
-        published: ${SQL2025_PORT:-14335}
-        host_ip: ${BIND_ADDRESS:-127.0.0.1}
-        protocol: tcp
-        mode: host
+      - "${BIND_ADDRESS:?BIND_ADDRESS is required}:${SQL2025_PORT:-14335}:1433/tcp"
     volumes:
       - type: bind
         source: ${SQL2025_DATA_DIR:?SQL2025_DATA_DIR is required}
