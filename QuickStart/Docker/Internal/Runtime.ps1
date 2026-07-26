@@ -230,7 +230,7 @@ function Start-Environment {
     }
 
     if ($envValues.QUICKSTART_RUNTIME_MODE -eq 'DOCKER_DESKTOP_WINDOWS') {
-        Write-Warning 'Docker Desktop startet die lokalen SQL-Testcontainer als root innerhalb des Containers. Die Container bleiben unprivilegiert, Ports sind an 127.0.0.1 gebunden und aktive SQL-Dateien liegen in projektgebundenen Docker-Volumes.'
+        Write-Warning 'Docker Desktop startet die lokalen SQL-Testcontainer als root innerhalb des Containers. Die Container bleiben unprivilegiert, binden SQL ausschließlich an die lokale Loopback-Schnittstelle und speichern aktive SQL-Dateien in projektgebundenen Docker-Volumes.'
     }
 
     foreach ($version in $versions) {
