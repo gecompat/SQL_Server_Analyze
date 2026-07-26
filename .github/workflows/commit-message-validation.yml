@@ -2,132 +2,48 @@ name: Commit message validation
 
 on:
   pull_request:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: framework-usage-permission-evidence-${{ github.ref }}
+  group: commit-message-validation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  permission:
-    name: SQL Server ${{ matrix.year }} permission evidence
+  validate:
+    name: Validate direct Git commit messages
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - year: 2019
-            image: mcr.microsoft.com/mssql/server:2019-latest
-            compatibility: 150
-            permission_test: Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql
-          - year: 2022
-            image: mcr.microsoft.com/mssql/server:2022-latest
-            compatibility: 160
-            permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
-          - year: 2025
-            image: mcr.microsoft.com/mssql/server:2025-latest
-            compatibility: 170
-            permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+    timeout-minutes: 10
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
     steps:
-      - name: Run isolated permission matrix
+      - name: Check out repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run commit-message validator self-tests
         shell: bash
-        env:
-          SQL_YEAR: ${{ matrix.year }}
-          SQL_IMAGE: ${{ matrix.image }}
-          SQL_COMPATIBILITY: ${{ matrix.compatibility }}
-          SQL_PERMISSION_TEST: ${{ matrix.permission_test }}
         run: |
           set -euo pipefail
-          git clone --quiet --depth 1 --branch agent/complete-framework-usage-contract "https://github.com/${GITHUB_REPOSITORY}.git" repository
-          work_root="$RUNNER_TEMP/permission-${SQL_YEAR}"
-          mkdir -p "$work_root/repository"
-          cd repository
-          git archive HEAD | tar -x -C "$work_root/repository"
-          cd ..
-          find "$work_root/repository/Code" -type f -name '*.sql' -print0 | xargs -0 sed -i 's/\[DeineDatenbank\]/[FrameworkContract]/g'
+          python3 ./Code/Tests/Static/930_Validate_Commit_Message.py \
+            --repository-root . \
+            --delivery-mode DIRECT_GIT \
+            --self-test
 
-          sa_password="Synthet1c_$(openssl rand -hex 16)"
-          matrix_password="Matrix_$(openssl rand -hex 16)"
-          echo "::add-mask::$sa_password"
-          echo "::add-mask::$matrix_password"
-          container="framework-permission-${SQL_YEAR}"
-          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
-          docker pull --quiet "$SQL_IMAGE" >/dev/null
-
-          sqlcmd_query() {
-            local query="$1"
-            docker exec -e SQLCMDPASSWORD="$sa_password" "$container" bash -s -- "$query" <<'INNER'
+      - name: Validate newly introduced commits
+        shell: bash
+        run: |
           set -euo pipefail
-          query="$1"
-          if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
-            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -l 15 -b -Q "$query"
+          arguments=(--repository-root . --delivery-mode DIRECT_GIT --head-sha "$HEAD_SHA")
+          if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ ! "$BASE_SHA" =~ ^0{40}$ ]]; then
+            arguments+=(--base-sha "$BASE_SHA")
           fi
-          exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -l 15 -b -Q "$query"
-          INNER
-          }
-
-          ready=0
-          for container_attempt in 1 2 3; do
-            docker rm -f "$container" >/dev/null 2>&1 || true
-            docker run -d --name "$container" --memory 4g --cpus 2 \
-              -e ACCEPT_EULA=Y -e MSSQL_PID=Developer \
-              -e MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
-              -e MSSQL_SA_PASSWORD="$sa_password" \
-              -v "$work_root/repository:/workspace:ro" \
-              "$SQL_IMAGE" >/dev/null
-            for attempt in $(seq 1 120); do
-              if sqlcmd_query 'SET NOCOUNT ON; SELECT 1;' >/dev/null 2>&1; then ready=1; break; fi
-              sleep 2
-            done
-            if [ "$ready" -eq 1 ]; then break; fi
-          done
-          if [ "$ready" -ne 1 ]; then
-            echo "SQL_${SQL_YEAR}_READINESS_FAILED"
-            docker logs --tail 80 "$container" || true
-            exit 1
-          fi
-
-          sqlcmd_query "CREATE DATABASE [FrameworkContract] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [FrameworkContract] SET COMPATIBILITY_LEVEL = ${SQL_COMPATIBILITY}; ALTER DATABASE [FrameworkContract] SET QUERY_STORE = ON; ALTER DATABASE [FrameworkContract] SET QUERY_STORE (OPERATION_MODE = READ_WRITE);" >/dev/null
-
-          set +e
-          docker exec -e SQLCMDPASSWORD="$sa_password" "$container" bash -s <<'INNER' >"$work_root/install.log" 2>&1
-          set -euo pipefail
-          if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
-            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i /workspace/Code/Install/Install_All.sql
-          fi
-          exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -i /workspace/Code/Install/Install_All.sql
-          INNER
-          install_status=$?
-          set -e
-          if [ "$install_status" -ne 0 ]; then
-            echo "SQL_${SQL_YEAR}_INSTALL_FAILURE_BEGIN"
-            grep -E '^(Msg [0-9]+|HResult)|(_MISSING|_INVALID|_FAILED)( |$)' "$work_root/install.log" | tail -n 120 || true
-            echo "SQL_${SQL_YEAR}_INSTALL_FAILURE_END"
-            exit "$install_status"
-          fi
-
-          set +e
-          docker exec \
-            -e SQLCMDPASSWORD="$sa_password" \
-            -e PERMISSION_MATRIX_PASSWORD="$matrix_password" \
-            "$container" bash -s -- "/workspace/${SQL_PERMISSION_TEST}" <<'INNER' >"$work_root/permission.log" 2>&1
-          set -euo pipefail
-          file="$1"
-          if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
-            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -v "PermissionMatrixPassword=$PERMISSION_MATRIX_PASSWORD" -i "$file"
-          fi
-          exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -v "PermissionMatrixPassword=$PERMISSION_MATRIX_PASSWORD" -i "$file"
-          INNER
-          permission_status=$?
-          set -e
-          if [ "$permission_status" -ne 0 ]; then
-            echo "SQL_${SQL_YEAR}_PERMISSION_FAILURE_BEGIN"
-            grep -E '^(Msg [0-9]+|HResult)|PERMISSION|(_MISSING|_INVALID|_FAILED)( |$)' "$work_root/permission.log" | tail -n 160 || true
-            echo "SQL_${SQL_YEAR}_PERMISSION_FAILURE_END"
-            exit "$permission_status"
-          fi
-          echo "FRAMEWORK_USAGE_SQL_${SQL_YEAR}_PERMISSION PASS"
+          python3 ./Code/Tests/Static/930_Validate_Commit_Message.py "${arguments[@]}"
