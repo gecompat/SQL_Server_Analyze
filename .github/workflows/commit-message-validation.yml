@@ -19,7 +19,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Test bounded output-contract fixes
+      - name: Test bounded contract fixes
         shell: bash
         run: |
           set -euo pipefail
@@ -33,16 +33,26 @@ jobs:
           text = text.replace('@ConsoleRequested', '@ConsoleResultRequested')
           procedure.write_text(text, encoding='utf-8')
 
-          contract = Path('Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql')
-          text = contract.read_text(encoding='utf-8')
+          output_contract = Path('Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql')
+          text = output_contract.read_text(encoding='utf-8')
           text = text.replace('<>92', '<>93', 1)
           text = text.replace('genau 92 Vertragsobjekte', 'genau 93 Vertragsobjekte', 1)
-          contract.write_text(text, encoding='utf-8')
+          output_contract.write_text(text, encoding='utf-8')
+
+          navigator_contract = Path('Code/Tests/Integration/196_Analysis_Navigator_Runtime_Contract.sql')
+          text = navigator_contract.read_text(encoding='utf-8')
+          text = text.replace('<> 97', '<> 98', 1)
+          text = text.replace('genau 97 öffentliche Procedures', 'genau 98 öffentliche Procedures', 1)
+          text = text.replace("CAST(97 AS int) AS [CatalogProcedureCount]", "CAST(98 AS int) AS [CatalogProcedureCount]", 1)
+          navigator_contract.write_text(text, encoding='utf-8')
           PY
           git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql
-          git commit -m 'Align framework usage with output contract'
+          git add \
+            Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql \
+            Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql \
+            Code/Tests/Integration/196_Analysis_Navigator_Runtime_Contract.sql
+          git commit -m 'Align framework usage with output and navigator contracts'
           bash ./Code/Tests/Static/Temporary_Framework_Usage_Runtime_Diagnostic.sh
           git push --quiet origin HEAD:agent/complete-framework-usage-contract
