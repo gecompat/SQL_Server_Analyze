@@ -19,7 +19,22 @@ $script:NatName = 'SQL_Server_Analyze_Lab_NAT'
 $script:SubnetPrefix = '172.30.0'
 $script:SubnetCIDR = '172.30.0.0/24'
 $script:GatewayIP = '172.30.0.1'
+$script:GatewayAddress = '172.30.0.1'
+$script:PrefixLength = 24
+$script:NatSubnet = '172.30.0.0/24'
 $script:PathComparison = [StringComparison]::OrdinalIgnoreCase
+
+# VM name mapping (legacy compatibility)
+$script:VmNames = @{
+    '2019' = 'SQL_Analyze_Win_2019'
+    '2022' = 'SQL_Analyze_Win_2022'
+    '2025' = 'SQL_Analyze_Win_2025'
+}
+$script:VmIpAddresses = @{
+    '2019' = '172.30.0.19'
+    '2022' = '172.30.0.22'
+    '2025' = '172.30.0.25'
+}
 
 # VM IP assignments
 $script:VmIpMap = @{
