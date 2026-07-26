@@ -1,9 +1,9 @@
 name: Apply private IPv4 privacy policy
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/remove-ci-ops-references
+      - main
     paths:
       - .github/workflows/update-private-ip-policy.yml
 
