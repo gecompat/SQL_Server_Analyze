@@ -134,9 +134,9 @@ IF EXISTS
     SELECT 1
     FROM [monitor].[VW_AnalysisRelation] AS [r]
     LEFT JOIN [monitor].[VW_AnalysisCatalog] AS [source]
-      ON [source].[ProcedureName] = [r].[SourceProcedure]
+      ON [source].[ProcedureName] = [r].[FromProcedureName]
     LEFT JOIN [monitor].[VW_AnalysisCatalog] AS [target]
-      ON [target].[ProcedureName] = [r].[TargetProcedure]
+      ON [target].[ProcedureName] = [r].[ToProcedureName]
     WHERE [source].[ProcedureName] IS NULL
        OR [target].[ProcedureName] IS NULL
 )
