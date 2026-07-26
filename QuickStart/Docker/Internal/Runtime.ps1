@@ -128,7 +128,7 @@ function Assert-ServicePublishedPort {
         [Parameter(Mandatory)][ValidateRange(1024, 65535)][int] $ExpectedPort
     )
 
-    $expectedEndpoint = "127.0.0.1:$ExpectedPort"
+    $expectedEndpoint = "$([string] $Env.BIND_ADDRESS):$ExpectedPort"
     $actualEndpoint = Get-PublishedSqlEndpoint -Env $Env -Service $Service
     if ($actualEndpoint -ne $expectedEndpoint) {
         throw "Service '$Service' veröffentlicht TCP 1433 unter '$actualEndpoint' statt unter '$expectedEndpoint'."
@@ -288,7 +288,7 @@ function Start-Environment {
         Invoke-Compose -Env $envValues -Arguments @('pull', $service) | Out-Null
         Start-ServiceWithPublishedPort -Env $envValues -Service $service -ExpectedPort $publishedPort
         Wait-ServiceHealthy -Env $envValues -Service $service
-        Write-Host "SQL Server $version ist healthy und unter 127.0.0.1:$publishedPort veröffentlicht."
+        Write-Host "SQL Server $version ist healthy und unter $($envValues.BIND_ADDRESS):$publishedPort veröffentlicht."
     }
 
     if ($envValues.INSTALL_FRAMEWORK -eq 'true') {
@@ -298,7 +298,7 @@ function Start-Environment {
 
     Write-Section -Text 'Bereit'
     foreach ($version in $versions) {
-        Write-Host ("SQL Server {0} für SSMS: 127.0.0.1,{1}" -f $version, $envValues["SQL${version}_PORT"])
+        Write-Host ("SQL Server {0} für SSMS: {1},{2}" -f $version, $envValues.BIND_ADDRESS, $envValues["SQL${version}_PORT"])
     }
     Write-Host 'Frameworkdatenbank: LabAnalyze'
 }
