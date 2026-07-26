@@ -26,7 +26,7 @@ OUTPUT       : Suiten 187 bis 190 prüfen Strukturadaption, Pilotvertrag, den
                frameworkweiten CONSOLE-/TABLE-Vertrag sowie die Welle-1-
                Verträge. Suite 191 ergänzt die Welle-2-Betriebsdiagnosen;
                Suite 196 prüft den Analysis Navigator.
-               Suiten 120, 121, 122, 123, 190, 191, 196, 198 und 199 sind
+               Suiten 120, 121, 122, 123, QueryStore/120, 190, 191, 196, 198 und 199 sind
                Begleittests; die kanonische Anzahl der Release-Suiten bleibt
                deshalb 34.
 ===============================================================================
@@ -136,6 +136,7 @@ RAISERROR(N'RELEASE_GATE 30/34: Plan Cache',10,1) WITH NOWAIT;
 
 RAISERROR(N'RELEASE_GATE 31/34: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql
+:r QueryStore/120_Framework_Usage_Runtime_Contract.sql
 
 RAISERROR(N'RELEASE_GATE 32/34: Extended Events',10,1) WITH NOWAIT;
 :r ExtendedEvents/110_Test_und_Abnahme_Phase5.sql

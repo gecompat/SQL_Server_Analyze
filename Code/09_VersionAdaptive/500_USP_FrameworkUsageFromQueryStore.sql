@@ -158,7 +158,7 @@ BEGIN
     IF @MaxZeilen<0
        OR @MinAusfuehrungen IS NULL OR @MinAusfuehrungen<1
        OR @ZeitraumTage<0 OR @ZeitraumTage>365000
-       OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+       OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
        OR @OutputMode NOT IN('CONSOLE','RAW','TABLE','NONE')
        OR (@OutputMode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)

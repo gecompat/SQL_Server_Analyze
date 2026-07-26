@@ -1,42 +1,22 @@
 # [monitor].[USP_FrameworkUsageFromQueryStore]
 
-**Bereich:** Versionsadaptive Spezialanalysen<br>
-**Zweck:** Zeigt, welche Framework-Procedures tatsächlich aufgerufen wurden.<br>
-**Beobachtungsart:** Query-Store-Katalogsnapshot<br>
-**Kostenklasse:** LOW
+**Bereich:** Versionsadaptive Spezialanalysen
+**Zweck:** Aggregiert die sichtbare Nutzung installierter `monitor`-Procedures aus dem Query Store der Frameworkdatenbank.
+**Beobachtungsart:** begrenzter Query-Store-Katalogsnapshot
+**Kostenklasse:** LOW_TO_MEDIUM
 
 ## Entscheidungsfrage und Einsatz
 
-Diese Procedure ist passend, wenn die konkrete Betriebsfrage lautet: **Welche
-meiner installierten Framework-Procedures verwende ich tatsächlich, wie oft
-und mit welcher Laufzeit?** Sie liefert ein Nutzungsinventar aus dem Query
-Store der Installationsdatenbank ohne eigene Datenerfassung. Sie ist hilfreich
-bei:
+Die Procedure beantwortet die Frage: **Welche Framework-Procedures wurden im sichtbaren Query-Store-Zeitraum ausgeführt, wie häufig und mit welcher aggregierten Last?**
 
-- Einarbeitung: Welche Procedures nutzt das Team bereits?
-- Kapazität: Welche Procedures erzeugen die meiste Last?
-- Aufräumen: Welche Procedures wurden nie aufgerufen?
-- Vergleich: Wie hat sich die Nutzung über die Zeit verändert?
-
-## Nicht beantwortete Fragen
-
-- Kein Nutzungsdaten-Schreiben: Die Procedure liest ausschließlich aus
-  bestehenden Query-Store-Daten. Ist der Query Store deaktiviert oder frisch
-  bereinigt, erscheint kein Ergebnis.
-- Keine Benutzer-Attribution: Es ist nicht erkennbar, wer eine Procedure
-  aufgerufen hat.
-- Kein Erfolgs-/Fehlerstatus: Nur Ausführungen werden gezählt, nicht ob
-  diese erfolgreich waren.
-- Keine externen Aufrufe: Nur Ausführungen innerhalb der
-  Installationsdatenbank sind sichtbar.
+Sie eignet sich für Nutzungsinventur, Schulungs- und Dokumentationspriorisierung sowie eine erste Eigenlastprüfung des Frameworks. Sie erzeugt keine eigene Historie und ändert keine Query-Store-Einstellung.
 
 ## Voraussetzungen
 
-- Query Store muss in der Installationsdatenbank aktiviert sein
-  (`ALTER DATABASE ... SET QUERY_STORE = ON`).
-- Mindestens READ-Berechtigung auf die Query-Store-Systemsichten.
-- Je nach Retention-Einstellung sind ältere Aufrufe möglicherweise
-  nicht mehr enthalten.
+- SQL Server 2019 oder neuer.
+- Query Store ist in der Frameworkdatenbank lesbar aktiv.
+- Der Aufrufer besitzt ausreichende Metadatensichtbarkeit für die Query-Store-Systemviews.
+- Retention, Capture Mode, Cleanup und Flushzeitpunkt bestimmen, welche Ausführungen sichtbar sind.
 
 ## Sicherer Einstieg
 
@@ -44,104 +24,115 @@ bei:
 EXEC [monitor].[USP_FrameworkUsageFromQueryStore];
 ```
 
-Dieser Aufruf zeigt die Top 100 meistgenutzten Procedures.
+Der Standardaufruf liefert höchstens 100 Procedures mit mindestens einer sichtbaren Ausführung.
 
 ## Parameter
 
 | Parameter | Typ | Default | Bedeutung |
 |---|---|---|---|
-| `@MaxZeilen` | int | 100 | Maximale Ergebniszeilen. 0/NULL = alle. Negativ = ungültig. |
-| `@MinAusfuehrungen` | bigint | 1 | Mindestanzahl Ausführungen für die Aufnahme ins Ergebnis. |
-| `@ZeitraumTage` | int | NULL | Einschränkung auf die letzten N Tage. NULL = gesamter QS-Inhalt. |
-| `@ResultSetArt` | varchar(16) | CONSOLE | CONSOLE, RAW, NONE. |
-| `@Json` | nvarchar(max) OUTPUT | NULL | Optionale JSON-Ausgabe. |
+| `@MaxZeilen` | int | 100 | Positive Werte begrenzen. `NULL` oder `0` bedeutet unbegrenzt. Negativ ist ungültig. |
+| `@MinAusfuehrungen` | bigint | 1 | Mindestanzahl sichtbarer Ausführungen je Procedure. Muss mindestens 1 sein. |
+| `@ZeitraumTage` | int | NULL | `NULL` oder `0` verwendet den gesamten sichtbaren Query-Store-Zeitraum. |
+| `@LockTimeoutMs` | int | 0 | Lokaler Lock-Timeout für die Katalogzugriffe; 0 bis 60000. Der ursprüngliche Wert wird wiederhergestellt. |
+| `@ResultSetArt` | varchar(16) | CONSOLE | `CONSOLE`, `RAW`, `TABLE` oder `NONE`. |
+| `@ResultTablesJson` | nvarchar(max) | NULL | Benannte TABLE-Ziele: `moduleStatus`, `usage`, `sourceStatus`, `warnings`. |
+| `@JsonErzeugen` | bit | 0 | Erzeugt bei 1 das versionierte JSON-Dokument. |
+| `@Json` | nvarchar(max) OUTPUT | NULL | JSON-Ausgabe mit `meta`, `usage`, `sourceStatus` und `warnings`. |
+| `@PrintMeldungen` | bit | 1 | Gibt kontrollierte Statusmeldungen mit Severity 10 aus. |
+| `@Hilfe` | bit | 0 | Gibt die Hilfe aus und beendet den fachlichen Pfad. |
+| `@StatusCodeOut` | varchar(40) OUTPUT | NULL | Gesamtstatus. |
+| `@IsPartialOut` | bit OUTPUT | NULL | Kennzeichnet unvollständige Fehler- oder Berechtigungspfade. |
+| `@ErrorNumberOut` | int OUTPUT | NULL | Kontrolliert abgefangene Fehlernummer. |
+| `@ErrorMessageOut` | nvarchar(2048) OUTPUT | NULL | Kontrolliert abgefangene Fehlermeldung. |
 
-## Resultset und Leserichtung
+## Resultsets
+
+### `moduleStatus`
+
+Enthält Erfassungszeit, Query-Store-Zustand, Zeitraum, Mindestanzahl, Zeilenanzahl, `HasMoreRows` sowie den Gesamtstatus.
+
+### `usage`
 
 | Spalte | Bedeutung |
 |---|---|
-| `ProcedureName` | Name der Framework-Procedure (ohne Schema). |
-| `ExecutionCount` | Gesamtzahl der Ausführungen im gewählten Zeitraum. |
-| `LastExecutionTime` | Letzter Ausführungszeitpunkt (UTC). |
-| `AvgDurationMs` | Durchschnittliche Laufzeit in Millisekunden. |
-| `AvgCpuMs` | Durchschnittliche CPU-Zeit in Millisekunden. |
-| `AvgLogicalReads` | Durchschnittliche logische Reads. |
-| `AvgMemoryGrantKB` | Durchschnittlicher Memory Grant in KB. |
-| `PlanCount` | Anzahl verschiedener Ausführungspläne. |
-| `QueryCount` | Anzahl verschiedener Queries (Statements). |
-| `FirstSeen` | Erste erfasste Ausführung. |
-| `LastSeen` | Letzte erfasste Ausführung. |
+| `ProcedureName` | Sichtbare Procedure im Schema `monitor`. |
+| `ExecutionCount` | Summe der Query-Store-Ausführungsanzahlen aller erfassten Statements der Procedure. |
+| `LastExecutionTime` | Letzter sichtbarer Ausführungszeitpunkt. |
+| `AvgDurationMs` | Nach `count_executions` gewichtete durchschnittliche Dauer in Millisekunden. |
+| `AvgCpuMs` | Nach `count_executions` gewichtete durchschnittliche CPU-Zeit in Millisekunden. |
+| `AvgLogicalReads` | Gewichtete durchschnittliche logische Reads. |
+| `AvgMemoryGrantKB` | Gewichteter durchschnittlicher maximal verwendeter Query-Speicher in KB. |
+| `PlanCount` | Anzahl unterschiedlicher sichtbarer Query-Store-Pläne. |
+| `QueryCount` | Anzahl unterschiedlicher sichtbarer Query-Store-Queries. |
+| `FirstSeen` / `LastSeen` | Sichtbare zeitliche Evidenzgrenze. |
 
-## So lesen
+### `sourceStatus`
 
-1. **ExecutionCount:** Hohe Werte zeigen die Kern-Procedures des Teams.
-2. **PlanCount > 1:** Deutet auf Parameter-Sensitivität oder Recompiles hin.
-3. **AvgDurationMs vs. AvgCpuMs:** Große Differenz deutet auf Wartezeiten.
-4. **LastSeen weit zurück:** Procedure wird möglicherweise nicht mehr benötigt.
-5. **Fehlende Procedure:** Wurde im gewählten Zeitraum nicht aufgerufen.
+Trennt die Zustandsprüfung des Query Store von der eigentlichen Laufzeitaggregation. Ein fehlgeschlagener Quellenpfad wird nicht als leere Nutzung ausgegeben.
 
-## Warum kann das problematisch sein?
+### `warnings`
 
-Eine nie genutzte Procedure kann auf ungenügende Einarbeitung, fehlenden
-Bedarf oder ein unbekanntes Feature hinweisen. Eine extrem häufig genutzte
-Procedure mit hoher Laufzeit kann ein Kandidat für Optimierung sein.
+Enthält kontrollierte Berechtigungs-, Feature- und Lesefehler. Freie Query-Texte und Benutzeridentitäten werden nicht gelesen.
 
-## Wann ist es kein Problem?
+## Leserichtung
 
-Viele Procedures werden nur situativ benötigt (z.B. Deadlock-Analyse).
-Eine geringe Nutzung ist bei Spezialmodulen normal und kein Defekt.
+1. Zuerst `moduleStatus.StatusCode` und `QueryStoreActualStateDesc` prüfen.
+2. `HasMoreRows=1` bedeutet ausschließlich, dass `@MaxZeilen` die Projektion begrenzt hat.
+3. `ExecutionCount` ist eine Statement-Aggregation je Procedure und keine Anzahl äußerer `EXEC`-Aufrufe.
+4. Dauer, CPU, Reads und Speicher sind gewichtete Query-Store-Intervallaggregate und keine einzelnen Laufzeitmessungen.
+5. Mehrere Pläne sind ein Prüfhinweis, aber kein automatischer Nachweis für Parameter-Sensitivität oder Regression.
+
+## Aussagegrenzen und Fehlinterpretationen
+
+- Eine fehlende Procedure beweist nicht, dass sie nie ausgeführt wurde. Capture Mode, Retention, Cleanup, Query-Store-Reset und Metadatensichtbarkeit können Evidenz entfernen oder verhindern.
+- Query Store liefert keine Benutzerattribution und keinen verlässlichen Erfolgs- oder Fehlerstatus des äußeren Procedure-Aufrufs.
+- Hohe Nutzung oder hohe Durchschnittswerte sind keine automatische Fehlerklassifikation.
+- `READ_ONLY` kann weiterhin lesbare Historie liefern; es sagt nichts über die Vollständigkeit zukünftiger Erfassung aus.
+- Die Procedure führt kein Flush, Cleanup, `ALTER DATABASE` oder sonstige Schreiboperation aus.
 
 ## Beispielaufrufe
 
 ```sql
--- Top 10 meistgenutzte Procedures der letzten 30 Tage
 EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
-      @ZeitraumTage = 30
-    , @MaxZeilen = 10;
+      @ZeitraumTage=30
+    , @MaxZeilen=10;
 
--- Alle Procedures mit mindestens 50 Ausführungen
 EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
-      @MinAusfuehrungen = 50
-    , @MaxZeilen = 0;
+      @MaxZeilen=0
+    , @ResultSetArt='RAW';
 
--- Nutzung der letzten 7 Tage als JSON
 DECLARE @UsageJson nvarchar(max);
 EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
-      @ZeitraumTage = 7
-    , @ResultSetArt = 'NONE'
-    , @Json = @UsageJson OUTPUT;
+      @ZeitraumTage=7
+    , @ResultSetArt='NONE'
+    , @JsonErzeugen=1
+    , @Json=@UsageJson OUTPUT;
 SELECT @UsageJson;
+
+CREATE TABLE #ModuleStatus([Seed] bit NULL);
+CREATE TABLE #Usage([Seed] bit NULL);
+CREATE TABLE #SourceStatus([Seed] bit NULL);
+CREATE TABLE #Warnings([Seed] bit NULL);
+
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @ResultSetArt='TABLE'
+    , @ResultTablesJson=N'{
+        "moduleStatus":"#ModuleStatus",
+        "usage":"#Usage",
+        "sourceStatus":"#SourceStatus",
+        "warnings":"#Warnings"
+      }';
 ```
 
-## Leere oder partielle Ausgabe
+## Nächste Gegenprüfungen
 
-Ein leeres Ergebnis kann bedeuten:
-
-- Query Store ist deaktiviert (`UNAVAILABLE_FEATURE`).
-- Keine Framework-Procedure wurde im gewählten Zeitraum ausgeführt.
-- `@MinAusfuehrungen` ist höher als die tatsächliche Nutzung.
-- Query Store Retention hat ältere Daten bereits bereinigt.
-
-Prüfen Sie zuerst `StatusCode` und den Query-Store-Zustand mit
-`USP_QueryStoreStatus` oder
-`SELECT * FROM sys.database_query_store_options`.
-
-## Zeit- und Scope-Modell
-
-Die Daten stammen aus dem Query Store der Installationsdatenbank. Der
-sichtbare Zeitraum hängt von der Retention-Konfiguration und dem
-Capture-Modus ab. Nach einem `ALTER DATABASE ... CLEAR PROCEDURE_CACHE`
-oder `sp_query_store_flush_db` kann sich der sichtbare Stand ändern.
-
-## Nächster Schritt
-
-Verwenden Sie `USP_CheckFrameworkCapabilities` um festzustellen, welche
-Module auf der aktuellen Instanz überhaupt nutzbar sind. Kombinieren Sie
-die Nutzungsdaten mit dem Capability-Status, um blinde Flecken zu
-identifizieren.
+- `USP_QueryStoreStatus` für Zustand, Größe, Retention und Capture Mode.
+- `USP_QueryStoreAnalysis` für detaillierte Query-Store-Evidenz.
+- `USP_ServerVersionInformation` für Versions- und Buildkontext.
+- `USP_CheckFrameworkCapabilities` für Berechtigungs- und Capability-Grenzen.
 
 ## Weiterführend
 
-- [Versionsadaptive Analysen](../09_Version_Adaptive.md)
+- [Query Store](../05_Query_Store.md)
 - [Scope und Grenzen](../../Reference/Scope_and_Limitations.md)
-- [Query Store Leitfaden](../05_Query_Store.md)
+- [TABLE-Ausgabevertrag](../../Architecture/Database_Console_Table_Contract.md)

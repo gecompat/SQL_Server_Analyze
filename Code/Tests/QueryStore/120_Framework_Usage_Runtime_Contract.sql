@@ -58,7 +58,8 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_FrameworkUsageSyntheticProbe]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SELECT COUNT_BIG(*) AS [SyntheticObjectCount]
+    DECLARE @SyntheticObjectCount bigint;
+    SELECT @SyntheticObjectCount=COUNT_BIG(*)
     FROM [sys].[objects] WITH (NOLOCK);
 END;');
 
@@ -157,7 +158,8 @@ IF NOT EXISTS
     IF @ActualState=2
         EXEC(N'DROP PROCEDURE IF EXISTS [monitor].[USP_FrameworkUsageSyntheticProbe];');
 
-    SET LOCK_TIMEOUT @OriginalLockTimeout;
+    DECLARE @SuccessRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @SuccessRestoreSql;
     RAISERROR(N'FRAMEWORK_USAGE_RUNTIME_CONTRACT PASS',10,1) WITH NOWAIT;
 END TRY
 BEGIN CATCH

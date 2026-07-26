@@ -23,19 +23,11 @@ Die Statusquellen besitzen unterschiedliche Aufgaben und dürfen nicht gegeneina
 
 Ein grüner statischer Vertrag oder ein vorhandener SQL-Quellpfad ist kein Ersatz für einen dokumentierten Laufzeitnachweis.
 
-## 3. Unmittelbar offene Konsistenz- und Produktaufgabe
+## 3. Abgeschlossene Konsistenz- und Produktwelle
 
 ### FRAMEWORK-USAGE-001 – Frameworknutzung aus Query Store
 
-`monitor.USP_FrameworkUsageFromQueryStore` ist als SQL-Datei vorhanden, wird vom Gesamtinstaller referenziert und besitzt eine ausführliche Procedure-Seite. Der aktuelle Stand ist dennoch nur eine partielle Produktfunktion:
-
-- das Objekt fehlt im kanonischen Objektinventar;
-- `@Hilfe` fehlt;
-- der dokumentierte JSON-Ausgabepfad wird nicht erzeugt;
-- TABLE- und NONE-Verträge sind nicht frameworkkonform abgeschlossen;
-- ein benanntes Resultsetinventar und eine Drei-Versionen-Laufzeitmatrix fehlen.
-
-Diese Lücke ist vor einer neuen funktionalen Erweiterung zu schließen, weil bereits ein öffentlich sichtbares und installierbares Objekt betroffen ist.
+`monitor.USP_FrameworkUsageFromQueryStore` besitzt nun den vollständigen öffentlichen Frameworkvertrag: kanonisches Objekt- und Resultsetinventar, `@Hilfe`, gewichtete Query-Store-Aggregation, sichtbare Quellenlage, CONSOLE, RAW, TABLE, NONE, JSON, Status-OUTPUT-Parameter und Wiederherstellung von `LOCK_TIMEOUT`. Der Begleitvertrag `Code/Tests/QueryStore/120_Framework_Usage_Runtime_Contract.sql` prüft den Vertrag auf SQL Server 2019, 2022 und 2025.
 
 ## 4. Priorisierte funktionale Erweiterungen
 
@@ -85,10 +77,9 @@ Fleet-Korrelation benötigt eine externe Komponente mit Mandanten-, Transport-, 
 
 ## 7. Empfohlene Verarbeitungsreihenfolge
 
-1. `FRAMEWORK-USAGE-001` frameworkkonform abschließen.
-2. `SQL25-005` implementieren und dreiversionig testen.
-3. RUNTIME-001-, Windows- und weitere Feature-Evidenz nachziehen.
-4. `OPS-005`, `OPS-006` und `OPS-008` umsetzen.
-5. SSIS-001 Phase 0 abschließen.
-6. `COLL-001` als eigene Querschnittswelle planen und umsetzen.
-7. P3-Erweiterungen nur nach den jeweils erforderlichen externen Entscheidungen ausführen.
+1. `SQL25-005` implementieren und dreiversionig testen.
+2. RUNTIME-001-, Windows- und weitere Feature-Evidenz nachziehen.
+3. `OPS-005`, `OPS-006` und `OPS-008` umsetzen.
+4. SSIS-001 Phase 0 abschließen.
+5. `COLL-001` als eigene Querschnittswelle planen und umsetzen.
+6. P3-Erweiterungen nur nach den jeweils erforderlichen externen Entscheidungen ausführen.
