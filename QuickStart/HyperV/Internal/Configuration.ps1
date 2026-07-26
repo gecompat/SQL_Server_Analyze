@@ -273,10 +273,10 @@ function Initialize-VmEnvironment {
     Write-Host 'Verbindung via SSMS/ADS/sqlcmd:'
     foreach ($version in $versions) {
         if ($osMode -in @('Windows', 'Mixed')) {
-            Write-Host "  Windows SQL $version: $($script:VmIpMap['win-' + $version]),1433 (sa)"
+            Write-Host "  Windows SQL ${version}: $($script:VmIpMap['win-' + $version]),1433 (sa)"
         }
         if ($osMode -in @('Linux', 'Mixed')) {
-            Write-Host "  Linux   SQL $version: $($script:VmIpMap['linux-' + $version]),1433 (sa)"
+            Write-Host "  Linux   SQL ${version}: $($script:VmIpMap['linux-' + $version]),1433 (sa)"
         }
     }
 }
