@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: commit-message-validation-${{ github.workflow }}-${{ github.ref }}
@@ -18,58 +18,32 @@ jobs:
   validate:
     name: Validate direct Git commit messages
     runs-on: ubuntu-24.04
-    timeout-minutes: 15
+    timeout-minutes: 10
     env:
       BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-      GH_TOKEN: ${{ github.token }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Complete framework usage metadata
+      - name: Check out repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Run commit-message validator self-tests
         shell: bash
         run: |
           set -euo pipefail
-          git clone --quiet --branch agent/complete-framework-usage-contract "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repository
-          cd repository
-          python3 ./Code/Tests/Static/Temporary_Complete_Framework_Usage_Navigator.py
-          python3 ./Code/Tests/Static/Temporary_Complete_Framework_Usage_Docs.py
-          git diff --check
+          python3 ./Code/Tests/Static/930_Validate_Commit_Message.py \
+            --repository-root . \
+            --delivery-mode DIRECT_GIT \
+            --self-test
 
-          set +e
-          python3 ./Code/Tests/Static/905_Validate_Analysis_Navigator.py --repository-root . >"$RUNNER_TEMP/navigator.log" 2>&1
-          navigator_status=$?
-          pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 >"$RUNNER_TEMP/documentation.log" 2>&1
-          documentation_status=$?
-          set -e
-
-          if [ "$navigator_status" -ne 0 ]; then
-            echo 'NAVIGATOR_VALIDATION_FAILURE_BEGIN'
-            cat "$RUNNER_TEMP/navigator.log"
-            echo 'NAVIGATOR_VALIDATION_FAILURE_END'
-          fi
-          if [ "$documentation_status" -ne 0 ]; then
-            echo 'DOCUMENTATION_VALIDATION_FAILURE_BEGIN'
-            cat "$RUNNER_TEMP/documentation.log"
-            echo 'DOCUMENTATION_VALIDATION_FAILURE_END'
-          fi
-          if [ "$navigator_status" -ne 0 ] || [ "$documentation_status" -ne 0 ]; then exit 1; fi
-
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code/01_Common/021_VW_AnalysisCatalog.sql Code/Tests/Static/905_Validate_Analysis_Navigator.py Metadata/Inventory/Parameters.csv Documentation/Reference/Procedure_Reference.md Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md Documentation/Analysis_Guides/Procedures/README.md Documentation/Analysis_Guides/Object_Index.md Documentation/README.md Metadata/Quality/Analysis_Documentation_Review.csv Documentation/Lab/GitHub_Runner_Service_Removal.md
-          if git diff --cached --quiet; then
-            echo 'Framework usage metadata is already complete.'
-          else
-            git commit -m 'Complete framework usage navigator metadata'
-            git push --quiet origin HEAD:agent/complete-framework-usage-contract
-          fi
-
-      - name: Validate commit messages
+      - name: Validate newly introduced commits
         shell: bash
         run: |
           set -euo pipefail
-          cd repository
-          python3 ./Code/Tests/Static/930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test
-          current_head="$(git rev-parse HEAD)"
-          arguments=(--repository-root . --delivery-mode DIRECT_GIT --head-sha "$current_head")
-          if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ ! "$BASE_SHA" =~ ^0{40}$ ]]; then arguments+=(--base-sha "$BASE_SHA"); fi
+          arguments=(--repository-root . --delivery-mode DIRECT_GIT --head-sha "$HEAD_SHA")
+          if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ ! "$BASE_SHA" =~ ^0{40}$ ]]; then
+            arguments+=(--base-sha "$BASE_SHA")
+          fi
           python3 ./Code/Tests/Static/930_Validate_Commit_Message.py "${arguments[@]}"
