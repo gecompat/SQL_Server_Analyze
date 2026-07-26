@@ -1,0 +1,70 @@
+name: Validate ci-ops cleanup and remove obsolete branch
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - AGENTS.md
+      - AI_Metadata/PROJECT_CONTEXT.md
+      - AI_Metadata/Internal_Documentation/Architecture/Repository_Branching_and_Boundaries.md
+      - .github/workflows/remove-obsolete-branches-and-validate-ci-ops.yml
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-clean:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out pull request tree
+        uses: actions/checkout@v6
+
+      - name: Verify obsolete policy references are absent
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git grep -n -I -E 'ci-ops|CI/Operations-Linie|Operations-/Validation-Linie|Produktlinie vs\. CI/Operations-Linie|Repository-Abgrenzung und Branch-Strategie' -- . ':!.github/workflows/remove-obsolete-branches-and-validate-ci-ops.yml'; then
+            echo 'Obsolete ci-ops repository-policy reference remains.' >&2
+            exit 1
+          fi
+
+      - name: Remove fully merged obsolete branch
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ['GH_TOKEN']
+          repo = os.environ['REPOSITORY']
+          branch = 'agent/quickstart-single-version-validation'
+          encoded = urllib.parse.quote(branch, safe='')
+          request = urllib.request.Request(
+              f'https://api.github.com/repos/{repo}/git/refs/heads/{encoded}',
+              method='DELETE',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f'Bearer {token}',
+                  'X-GitHub-Api-Version': '2022-11-28',
+                  'User-Agent': 'obsolete-branch-cleanup',
+              },
+          )
+          try:
+              with urllib.request.urlopen(request) as response:
+                  if response.status != 204:
+                      raise SystemExit(f'Unexpected deletion status: {response.status}')
+              print('Obsolete fully merged branch deleted.')
+          except urllib.error.HTTPError as exc:
+              if exc.code == 422:
+                  print('Obsolete branch was already absent.')
+              else:
+                  raise
+          PY
