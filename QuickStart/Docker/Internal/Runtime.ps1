@@ -105,20 +105,57 @@ function Assert-DockerResourceOwnership {
     }
 }
 
+function Get-ServiceContainerId {
+    param(
+        [Parameter(Mandatory)][hashtable] $Env,
+        [Parameter(Mandatory)][string] $Service
+    )
+
+    $containerIds = @(
+        Invoke-Compose -Env $Env -Arguments @('ps', '-q', $Service) -Quiet |
+            Where-Object { -not [string]::IsNullOrWhiteSpace([string] $_) }
+    )
+    if ($containerIds.Count -ne 1) {
+        throw "Service '$Service' besitzt keinen eindeutigen Container."
+    }
+    return ([string] $containerIds[0]).Trim()
+}
+
 function Get-PublishedSqlEndpoint {
     param(
         [Parameter(Mandatory)][hashtable] $Env,
         [Parameter(Mandatory)][string] $Service
     )
 
-    $bindings = @(
-        Invoke-Compose -Env $Env -Arguments @('port', $Service, '1433') -Quiet |
-            Where-Object { -not [string]::IsNullOrWhiteSpace([string] $_) }
-    )
-    if ($bindings.Count -ne 1) {
+    $containerId = Get-ServiceContainerId -Env $Env -Service $Service
+    $inspectText = @(
+        Invoke-ExternalCommand -FilePath 'docker' -Arguments @('inspect', $containerId) -Quiet
+    ) -join [Environment]::NewLine
+    if ([string]::IsNullOrWhiteSpace($inspectText)) {
+        throw "Docker lieferte keine Inspect-Daten für Service '$Service'."
+    }
+
+    try {
+        $inspect = @($inspectText | ConvertFrom-Json -ErrorAction Stop)
+    }
+    catch {
+        throw "Die Docker-Inspect-Daten für Service '$Service' konnten nicht ausgewertet werden."
+    }
+    if ($inspect.Count -ne 1) {
+        throw "Docker lieferte keine eindeutigen Inspect-Daten für Service '$Service'."
+    }
+
+    $bindings = @($inspect[0].NetworkSettings.Ports.'1433/tcp')
+    if ($bindings.Count -ne 1 -or $null -eq $bindings[0]) {
         throw "Service '$Service' besitzt keine eindeutige veröffentlichte Host-Portbindung für TCP 1433."
     }
-    return ([string] $bindings[0]).Trim()
+
+    $hostIp = [string] $bindings[0].HostIp
+    $hostPort = [string] $bindings[0].HostPort
+    if ([string]::IsNullOrWhiteSpace($hostIp) -or [string]::IsNullOrWhiteSpace($hostPort)) {
+        throw "Service '$Service' besitzt eine unvollständige Host-Portbindung für TCP 1433."
+    }
+    return "$hostIp`:$hostPort"
 }
 
 function Assert-ServicePublishedPort {
@@ -150,6 +187,25 @@ function Start-ServiceWithPublishedPort {
         Write-Warning "Die erwartete Host-Portbindung für '$Service' fehlt. Der Container wird mit der aktuellen Compose-Konfiguration neu erstellt."
         Invoke-Compose -Env $Env -Arguments @('up', '-d', '--no-deps', '--force-recreate', $Service) | Out-Null
         Assert-ServicePublishedPort -Env $Env -Service $Service -ExpectedPort $ExpectedPort
+    }
+}
+
+function Assert-TcpEndpointReachable {
+    param(
+        [Parameter(Mandatory)][string] $Address,
+        [Parameter(Mandatory)][ValidateRange(1024, 65535)][int] $Port,
+        [ValidateRange(1, 30)][int] $TimeoutSeconds = 5
+    )
+
+    $client = [Net.Sockets.TcpClient]::new()
+    try {
+        $connectTask = $client.ConnectAsync($Address, $Port)
+        if (-not $connectTask.Wait([TimeSpan]::FromSeconds($TimeoutSeconds)) -or -not $client.Connected) {
+            throw "TCP-Endpunkt '$Address`:$Port' ist vom Host nicht erreichbar."
+        }
+    }
+    finally {
+        $client.Dispose()
     }
 }
 
@@ -288,7 +344,8 @@ function Start-Environment {
         Invoke-Compose -Env $envValues -Arguments @('pull', $service) | Out-Null
         Start-ServiceWithPublishedPort -Env $envValues -Service $service -ExpectedPort $publishedPort
         Wait-ServiceHealthy -Env $envValues -Service $service
-        Write-Host "SQL Server $version ist healthy und unter $($envValues.BIND_ADDRESS):$publishedPort veröffentlicht."
+        Assert-TcpEndpointReachable -Address ([string] $envValues.BIND_ADDRESS) -Port $publishedPort
+        Write-Host "SQL Server $version ist healthy und unter $($envValues.BIND_ADDRESS):$publishedPort vom Host erreichbar."
     }
 
     if ($envValues.INSTALL_FRAMEWORK -eq 'true') {
