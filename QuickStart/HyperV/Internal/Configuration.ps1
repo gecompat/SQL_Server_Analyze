@@ -12,6 +12,14 @@ function Invoke-Setup {
     $config = @{}
     $config['SCOPE_ID'] = [guid]::NewGuid().ToString('N')
 
+    # Betriebsmodus
+    Write-Section 'Betriebsmodus'
+    $osChoice = Read-MenuChoice -Prompt 'VM-Betriebssystem' `
+        -Choices @{ '1' = 'Windows (native SQL Server)'; '2' = 'Linux (SQL on Linux + Simulation)'; '3' = 'Gemischt (beide)' } `
+        -DefaultKey '1'
+    $osMode = switch ($osChoice) { '1' { 'Windows' } '2' { 'Linux' } '3' { 'Mixed' } }
+    $config['OS_MODE'] = $osMode
+
     # SQL-Server-Versionen
     Write-Section 'SQL-Server-Versionen'
     $versions = @()
