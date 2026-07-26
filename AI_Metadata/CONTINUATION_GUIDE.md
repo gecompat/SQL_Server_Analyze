@@ -70,9 +70,67 @@ Die priorisierte Ausbauplanung steht in `AI_Metadata/Internal_Documentation/Rese
 - Stale Branches gelöscht: `agent/windows-runner-readiness`, `windows-validation/repository-portability` (identisch mit main).
 - `private_Note/erkannte_Probleme.md`: Status-Nachtrag der erledigten Punkte.
 
-### Offene Folgeaufgaben
+### Offene Folgeaufgaben (Status 2026-07-26)
 
 - Erste Laufzeitevidenz der Collation-Portability-Lane und des Windows-Runner `sql-runtime`-Jobs auswerten.
 - `Module_Maturity.csv` bei neuen Modulen oder geänderten Evidenznachweisen aktualisieren.
-- `Procedure_Reference.md`: Technische Signatur der neuen Procedure ergänzen.
-- `VW_AnalysisRelation`: Neue Procedure mit verwandten Modulen verknüpfen.
+- ~~`Procedure_Reference.md`: Technische Signatur der neuen Procedure ergänzen.~~ ERLEDIGT (2026-07-25)
+- ~~`VW_AnalysisRelation`: Neue Procedure mit verwandten Modulen verknüpfen.~~ ERLEDIGT (2026-07-25, 4 Relationen)
+
+## Änderungen 2026-07-26
+
+### Repository-Umstrukturierung (extern)
+
+- Produkt-/CI-Trennung: CI-Workflows nach `ci-ops` Branch verschoben.
+- Entfernt aus `main`: `windows-self-hosted-validation.yml`, `collation-portability-validation.yml`, `sqlserver-2019-linux-release-gate.yml`, `sqlserver-2025-linux-release-gate.yml`.
+- Neu in `main`: `collect-statistics-release-evidence.yml`, `repository-privacy-validation.yml`, `commit-message-validation.yml`, `lab-contract-validation.yml`, `documentation-validation.yml`, `quickstart-docker-validation.yml`, `sqlserver-compatibility-matrix-manual.yml`.
+- Docker-QuickStart (`QuickStart/Docker/`) komplett hinzugefügt (extern).
+- `AI_Metadata/Internal_Documentation/Architecture/Repository_Branching_and_Boundaries.md` und `Branch_Separation_Execution_Plan.md` dokumentieren die Trennung.
+
+### Hyper-V QuickStart: Dual-OS-Architektur (3 Commits)
+
+**Commit 1:** `feat: Hyper-V QuickStart – Dual-OS-Architektur und Netzwerksimulation`
+
+- `AI_Metadata/Internal_Documentation/Architecture/HyperV_QuickStart_Design_Decisions.md`: Vollständiges Design-Dokument mit Windows- und Linux-VM-Support, Netzwerk-/IO-Simulation, Base-Image-Strategie, Ressourcenprofile.
+- `QuickStart/HyperV/Setup.ps1`: Dual-OS fähig (VmIpMap Win+Linux, NetworkProfiles, IoProfiles, lädt NetworkSimulation.ps1).
+- `QuickStart/HyperV/Internal/NetworkSimulation.ps1` (NEU): SSH-basierte Steuerung der Linux-VMs, tc/netem (Latenz, Bandbreite, Paketverlust), cgroups v2 io.max (IOPS, Durchsatz), Laufzeitänderung ohne VM-Neustart.
+
+**Commit 2:** `feat: Hyper-V QuickStart – Linux-VM-Support und Dual-OS-Betrieb`
+
+- `Configuration.ps1`: OS-Modus-Abfrage (Windows/Linux/Gemischt), Linux Base-Image (lokal oder Ubuntu Cloud-Image Auto-Download), Netzwerk-/IO-Profil-Auswahl, SSH-Key-Generierung (ed25519), Dual-OS Initialize-VmEnvironment.
+- `VmProvisioning.ps1` (168→368 Zeilen): `Get-LinuxCloudImage` (Ubuntu 24.04 VHDX), `New-LabDataDisk`, `New-CloudInitIso` (via oscdimg), `New-LabLinuxVm` (Gen2 + Data/Log Disks + cloud-init DVD).
+- `SqlInstall.ps1` (167→327 Zeilen): `Install-SqlServerOnLinux` (APT, mssql-conf, dedizierte Partitionen), `Install-FrameworkOnLinux` (SCP + sqlcmd).
+- `Runtime.ps1` (neu geschrieben): Dual-OS VM-Verwaltung, SSH-Bereitschaftsprüfung, SimulationStatus-Integration.
+- `Lifecycle.ps1` (neu geschrieben): Dual-OS Remove, SSH-Key-Bereinigung, ReadOnly-Flag für beide Base-Images.
+- `README.md` (neu geschrieben, 172 Zeilen): Betriebsmodi-Tabelle, Netzwerk-/IO-Profiltabellen, Architektur mit Data/Log-Disks.
+- `QuickStart/README.md`: Hyper-V-Beschreibung aktualisiert.
+
+### Hyper-V QuickStart – Architekturübersicht
+
+```text
+QuickStart/HyperV/
+├── Setup.ps1              (Haupteinstieg, Dual-OS)
+├── Uninstall.ps1          (Wrapper → Remove)
+├── README.md              (Vollständige Anleitung)
+├── .env.example           (Synthetische Platzhalter)
+└── Internal/
+    ├── Common.ps1         (Write-Section, Read-YesNo, Read-MenuChoice)
+    ├── PathSafety.ps1     (Pfadvalidierung, Scope-Marker)
+    ├── Configuration.ps1  (Setup-Dialog, OS-Modus, Initialize)
+    ├── VmProvisioning.ps1 (Switch/NAT, Disks, Win+Linux VMs)
+    ├── SqlInstall.ps1     (Unattended Win + APT Linux)
+    ├── NetworkSimulation.ps1 (tc/netem + cgroups v2)
+    ├── Runtime.ps1        (Start/Stop/Status)
+    └── Lifecycle.ps1      (Remove/Uninstall)
+```
+
+Netzwerk: Interner Switch `SQL_Server_Analyze_Lab` + NAT (172.30.0.0/24). Windows: .19/.22/.25, Linux: .119/.122/.125.
+
+### Offene Folgeaufgaben
+
+- Hyper-V QuickStart auf realem Windows-Host testen (erster End-to-End-Lauf).
+- Windows ADK-Abhängigkeit für cloud-init ISO evaluieren (Alternative: PowerShell-native ISO-Erstellung).
+- Download-Modus für Windows Base-Image implementieren (ISO → VHDX Konvertierung).
+- `Module_Maturity.csv` mit Hyper-V QuickStart ergänzen.
+- Collation-Portability-Evidenz auswerten (wenn CI-Lane läuft).
+- `CONTINUATION_GUIDE.md` nach nächsten Änderungen fortschreiben.
