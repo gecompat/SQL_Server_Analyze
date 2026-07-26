@@ -36,7 +36,7 @@ function Invoke-Setup {
     # Hostressourcen prüfen
     $hostMemoryGB = [math]::Round((Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB, 1)
     $profileDef = $script:ResourceProfiles[$profileName]
-    $totalVmMemoryGB = [math]::Round(($profileDef.MaximumBytes / 1GB) * $versions.Count, 1)
+    $totalVmMemoryGB = [math]::Round(($profileDef.MaxMemory / 1GB) * $versions.Count, 1)
     if ($totalVmMemoryGB -gt ($hostMemoryGB * 0.7)) {
         Write-Warning "Gewähltes Profil benötigt bis zu ${totalVmMemoryGB}GB bei ${hostMemoryGB}GB Host-RAM."
         if (-not (Read-YesNo -Prompt 'Trotzdem fortfahren?')) {
