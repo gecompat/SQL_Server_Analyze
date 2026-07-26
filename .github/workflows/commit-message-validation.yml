@@ -33,22 +33,25 @@ jobs:
           python3 ./Code/Tests/Static/930_Validate_Commit_Message.py "${arguments[@]}"
 
   runtime:
-    name: SQL Server ${{ matrix.major }} full release gate
+    name: SQL Server ${{ matrix.year }} full release gate
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
         include:
-          - major: 2019
+          - year: 2019
+            product_major: 15
             image: mcr.microsoft.com/mssql/server:2019-latest
             compatibility: 150
             permission_test: Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql
-          - major: 2022
+          - year: 2022
+            product_major: 16
             image: mcr.microsoft.com/mssql/server:2022-latest
             compatibility: 160
             permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
-          - major: 2025
+          - year: 2025
+            product_major: 17
             image: mcr.microsoft.com/mssql/server:2025-latest
             compatibility: 170
             permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
@@ -63,7 +66,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test_root="$RUNNER_TEMP/framework-usage-${{ matrix.major }}"
+          test_root="$RUNNER_TEMP/framework-usage-${{ matrix.year }}"
           mkdir -p "$test_root/repository"
           git archive HEAD | tar -x -C "$test_root/repository"
           find "$test_root/repository/Code" -type f -name '*.sql' -print0 \
@@ -78,7 +81,7 @@ jobs:
           echo "::add-mask::$credential"
           printf '%s' "$credential" > "$RUNNER_TEMP/sql-credential"
           chmod 600 "$RUNNER_TEMP/sql-credential"
-          container_name="framework-usage-sql-${{ matrix.major }}"
+          container_name="framework-usage-sql-${{ matrix.year }}"
           echo "CONTAINER_NAME=$container_name" >> "$GITHUB_ENV"
           docker pull --quiet '${{ matrix.image }}'
           docker run -d \
@@ -119,7 +122,7 @@ jobs:
             exit 1
           fi
           sqlcmd_exec "CREATE DATABASE [FrameworkContract] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [FrameworkContract] SET COMPATIBILITY_LEVEL = ${{ matrix.compatibility }}; ALTER DATABASE [FrameworkContract] SET QUERY_STORE = ON; ALTER DATABASE [FrameworkContract] SET QUERY_STORE (OPERATION_MODE = READ_WRITE);"
-          sqlcmd_exec "IF CONVERT(int,SERVERPROPERTY('ProductMajorVersion')) <> ${{ matrix.major }} THROW 51000, 'UNEXPECTED_PRODUCT_MAJOR_VERSION', 1; IF CONVERT(sysname,SERVERPROPERTY('Collation')) <> N'SQL_Latin1_General_CP1_CS_AS' THROW 51000, 'UNEXPECTED_SERVER_COLLATION', 1; IF CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation')) <> N'SQL_Latin1_General_CP1_CS_AS' THROW 51000, 'UNEXPECTED_TEMPDB_COLLATION', 1;"
+          sqlcmd_exec "IF CONVERT(int,SERVERPROPERTY('ProductMajorVersion')) <> ${{ matrix.product_major }} THROW 51000, 'UNEXPECTED_PRODUCT_MAJOR_VERSION', 1; IF CONVERT(sysname,SERVERPROPERTY('Collation')) <> N'SQL_Latin1_General_CP1_CS_AS' THROW 51000, 'UNEXPECTED_SERVER_COLLATION', 1; IF CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation')) <> N'SQL_Latin1_General_CP1_CS_AS' THROW 51000, 'UNEXPECTED_TEMPDB_COLLATION', 1;"
 
       - name: Install complete framework
         shell: bash
@@ -133,12 +136,12 @@ jobs:
               exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i Install_All.sql
             fi
             exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -i Install_All.sql
-          ' >"$RUNNER_TEMP/install-${{ matrix.major }}.log" 2>&1
+          ' >"$RUNNER_TEMP/install-${{ matrix.year }}.log" 2>&1
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
             echo 'INSTALL_FAILURE_BEGIN'
-            tail -n 120 "$RUNNER_TEMP/install-${{ matrix.major }}.log"
+            tail -n 120 "$RUNNER_TEMP/install-${{ matrix.year }}.log"
             echo 'INSTALL_FAILURE_END'
             exit "$status"
           fi
@@ -155,16 +158,16 @@ jobs:
               exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i Run_Release_Gate.sql
             fi
             exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -i Run_Release_Gate.sql
-          ' >"$RUNNER_TEMP/release-${{ matrix.major }}.log" 2>&1
+          ' >"$RUNNER_TEMP/release-${{ matrix.year }}.log" 2>&1
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
             echo 'RELEASE_GATE_FAILURE_BEGIN'
-            tail -n 160 "$RUNNER_TEMP/release-${{ matrix.major }}.log"
+            tail -n 160 "$RUNNER_TEMP/release-${{ matrix.year }}.log"
             echo 'RELEASE_GATE_FAILURE_END'
             exit "$status"
           fi
-          grep -q 'FRAMEWORK_USAGE_RUNTIME_CONTRACT PASS' "$RUNNER_TEMP/release-${{ matrix.major }}.log"
+          grep -q 'FRAMEWORK_USAGE_RUNTIME_CONTRACT PASS' "$RUNNER_TEMP/release-${{ matrix.year }}.log"
 
       - name: Run permission matrix
         shell: bash
@@ -178,12 +181,12 @@ jobs:
               exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i "$1"
             fi
             exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -i "$1"
-          ' bash "$permission_file" >"$RUNNER_TEMP/permission-${{ matrix.major }}.log" 2>&1
+          ' bash "$permission_file" >"$RUNNER_TEMP/permission-${{ matrix.year }}.log" 2>&1
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
             echo 'PERMISSION_MATRIX_FAILURE_BEGIN'
-            tail -n 120 "$RUNNER_TEMP/permission-${{ matrix.major }}.log"
+            tail -n 120 "$RUNNER_TEMP/permission-${{ matrix.year }}.log"
             echo 'PERMISSION_MATRIX_FAILURE_END'
             exit "$status"
           fi
