@@ -65,8 +65,8 @@ SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,Des
 Persistenz (SC-023),Persistenzschicht,PLANNED,NO,NO,NO,,NONE,P3 - erfordert Designentscheidung
 Externe Komponente (SC-024),Externe Integration,PLANNED,NO,NO,NO,,NONE,P3 - erfordert externe Abhaengigkeit
 Isolierter Restore (SC-025),Restore-Host-Pruefung,PLANNED,NO,NO,NO,,NONE,P3 - erfordert isolierte Ausfuehrung
-QuickStart Docker,Docker Compose Umgebung,COMPLETE,NO,YES,NO,,FULL,Extern erstellt. SQL 2019/2022/2025 Container.
-QuickStart HyperV (Windows),Native Windows VMs,NEW,NO,NO,NO,,FULL,Windows-VMs mit nativem SQL Server. Ungetestet.
-QuickStart HyperV (Linux),Linux VMs + Simulation,NEW,NO,NO,NO,,FULL,"Netzwerk-/IO-Simulation (tc/netem, cgroups v2). Ungetestet."
-QuickStart HyperV (NetworkSim),Netzwerk-/IO-Profile,NEW,NO,NO,NO,,FULL,"LAN/WAN/Schlecht/AG + SSD/HDD/Stressed/LogBottleneck. Laufzeitaenderbar."
+QuickStart Docker,Docker Compose Umgebung,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
+QuickStart HyperV (Windows),Native Windows VMs,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
+QuickStart HyperV (Linux),Linux VMs + Simulation,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
+QuickStart HyperV (NetworkSim),Netzwerk-/IO-Profile,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
 
