@@ -1,0 +1,135 @@
+name: Audit branches and remove ci-ops
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/audit-delete-ci-ops.yml
+
+permissions:
+  contents: write
+  pull-requests: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out audit branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Find active ci-ops references
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'REFERENCE_AUDIT_BEGIN'
+          git grep -n -I -E 'ci-ops|CI/Operations-Linie|Operations-/Validation-Linie|Produktlinie vs\. CI/Operations-Linie|Repository-Abgrenzung und Branch-Strategie' -- . ':!.github/workflows/audit-delete-ci-ops.yml' || true
+          echo 'REFERENCE_AUDIT_END'
+
+      - name: Audit remote branches and remove ci-ops
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          OWNER: ${{ github.repository_owner }}
+          AUDIT_BRANCH: agent/audit-delete-ci-ops
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ['GH_TOKEN']
+          repo = os.environ['REPOSITORY']
+          owner = os.environ['OWNER']
+          audit_branch = os.environ['AUDIT_BRANCH']
+          api = 'https://api.github.com'
+          headers = {
+              'Accept': 'application/vnd.github+json',
+              'Authorization': f'Bearer {token}',
+              'X-GitHub-Api-Version': '2022-11-28',
+              'User-Agent': 'branch-audit',
+          }
+
+          def request(path, method='GET'):
+              req = urllib.request.Request(api + path, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(req) as response:
+                      body = response.read().decode('utf-8')
+                      return response.status, json.loads(body) if body else None
+              except urllib.error.HTTPError as exc:
+                  body = exc.read().decode('utf-8', errors='replace')
+                  try:
+                      payload = json.loads(body) if body else None
+                  except json.JSONDecodeError:
+                      payload = body
+                  return exc.code, payload
+
+          branches = []
+          page = 1
+          while True:
+              status, payload = request(f'/repos/{repo}/branches?per_page=100&page={page}')
+              if status != 200:
+                  raise SystemExit(f'Branch listing failed: HTTP {status}')
+              if not payload:
+                  break
+              branches.extend(payload)
+              if len(payload) < 100:
+                  break
+              page += 1
+
+          print('BRANCH_AUDIT_BEGIN')
+          for entry in sorted(branches, key=lambda item: item['name'].lower()):
+              name = entry['name']
+              encoded = urllib.parse.quote(name, safe='')
+              status, comparison = request(f'/repos/{repo}/compare/main...{encoded}')
+              if status == 200:
+                  ahead = comparison.get('ahead_by')
+                  behind = comparison.get('behind_by')
+                  compare_status = comparison.get('status')
+              else:
+                  ahead = behind = None
+                  compare_status = f'HTTP_{status}'
+
+              head_filter = urllib.parse.quote(f'{owner}:{name}', safe='')
+              status, pulls = request(f'/repos/{repo}/pulls?state=all&head={head_filter}&per_page=20')
+              open_prs = []
+              closed_prs = []
+              if status == 200:
+                  for pr in pulls:
+                      target = open_prs if pr['state'] == 'open' else closed_prs
+                      target.append(str(pr['number']))
+
+              print(
+                  'BRANCH_AUDIT '
+                  f'name={json.dumps(name)} '
+                  f'protected={str(entry.get("protected", False)).lower()} '
+                  f'ahead={ahead} behind={behind} status={compare_status} '
+                  f'open_prs={json.dumps(open_prs)} closed_prs={json.dumps(closed_prs)}'
+              )
+          print('BRANCH_AUDIT_END')
+
+          for branch in ('ci-ops',):
+              encoded = urllib.parse.quote(branch, safe='')
+              status, payload = request(f'/repos/{repo}/git/refs/heads/{encoded}', method='DELETE')
+              if status == 204:
+                  print(f'BRANCH_DELETE name={json.dumps(branch)} result=deleted')
+              elif status == 422:
+                  print(f'BRANCH_DELETE name={json.dumps(branch)} result=not_found')
+              else:
+                  raise SystemExit(f'Could not delete {branch}: HTTP {status}: {payload}')
+
+          # Remove the one-time audit branch after the workflow has obtained all data.
+          encoded = urllib.parse.quote(audit_branch, safe='')
+          status, payload = request(f'/repos/{repo}/git/refs/heads/{encoded}', method='DELETE')
+          if status == 204:
+              print(f'BRANCH_DELETE name={json.dumps(audit_branch)} result=deleted')
+          else:
+              raise SystemExit(f'Could not delete audit branch: HTTP {status}: {payload}')
+          PY
