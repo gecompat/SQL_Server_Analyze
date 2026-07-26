@@ -45,14 +45,6 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Aus diesem Branch wird ein Draft-PR gegen den neu geprüften Stand von `main` erstellt.
 - Ist der freigegebene Umfang auf `AI_Metadata/` beschränkt, dürfen ausschließlich Pfade unterhalb dieses Ordners enthalten sein. Sobald eine Änderung außerhalb von `AI_Metadata/` vorhanden ist oder nicht sicher ausgeschlossen werden kann, darf weder veröffentlicht noch ein PR erstellt werden; die Verarbeitung wird mit einer Scope-Meldung beendet.
 
-## Verbindliche Repository-Abgrenzung: Produktlinie vs. CI/Operations-Linie
-
-- Die Hauptlinie ist der Produktzweig und enthält Installations-, Dokumentations-, Beispiel- und Lab-/Repro-artefakte des Frameworks.
-- Die Operations-/Validation-Linie enthält GitHub-Actions, Runner, Tests, Release-Gates, Qualitätsnachweise und verwandte Automatisierungsartefakte.
-- Änderungen an Framework-Objekten, Installern, Beispielen und Dokumentation gehören in die Produktlinie.
-- Änderungen an `.github/workflows/`, Runner-Skripten, Test-Assets und Release-/Quality-Mechanik gehören in die Operations-/Validation-Linie.
-- Eine Vermischung beider Ebenen ist ab sofort nicht mehr die Standard-Strategie; bei Bedarf sind getrennte Änderungen oder getrennte Branches zu verwenden.
-
 ## Datenschutz und Portabilität
 
 - Das Datenschutz-Liefergate gilt ausschließlich für Repository-, GitHub- und Downloadartefakte. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE- und JSON-Ausgaben werden deshalb weder anonymisiert noch fachlich reduziert.
