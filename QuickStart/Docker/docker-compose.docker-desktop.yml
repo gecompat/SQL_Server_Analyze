@@ -1,74 +1,6 @@
-x-storage-init-common: &storage-init-common
-  user: "0:0"
-  entrypoint:
-    - /bin/bash
-    - -c
-  command: >-
-    set -euo pipefail;
-    for target in /var/opt/mssql/data /var/opt/mssql/log;
-    do
-      chown -R 10001:0 "$$target";
-      chmod -R g=u "$$target";
-      touch "$$target/.sql-server-analyze-permissions-v1";
-      chown 10001:0 "$$target/.sql-server-analyze-permissions-v1";
-      chmod 0660 "$$target/.sql-server-analyze-permissions-v1";
-    done
-  network_mode: none
-  restart: "no"
-
 services:
-  sql2019-storage-init:
-    <<: *storage-init-common
-    profiles: [sql2019]
-    image: ${SQL2019_IMAGE:-mcr.microsoft.com/mssql/server:2019-latest}
-    volumes:
-      - type: volume
-        source: sql2019-data
-        target: /var/opt/mssql/data
-      - type: volume
-        source: sql2019-log
-        target: /var/opt/mssql/log
-    labels:
-      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
-      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
-      quickstart.sql-version: "2019"
-      quickstart.role: storage-init
-
-  sql2022-storage-init:
-    <<: *storage-init-common
-    profiles: [sql2022]
-    image: ${SQL2022_IMAGE:-mcr.microsoft.com/mssql/server:2022-latest}
-    volumes:
-      - type: volume
-        source: sql2022-data
-        target: /var/opt/mssql/data
-      - type: volume
-        source: sql2022-log
-        target: /var/opt/mssql/log
-    labels:
-      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
-      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
-      quickstart.sql-version: "2022"
-      quickstart.role: storage-init
-
-  sql2025-storage-init:
-    <<: *storage-init-common
-    profiles: [sql2025]
-    image: ${SQL2025_IMAGE:-mcr.microsoft.com/mssql/server:2025-latest}
-    volumes:
-      - type: volume
-        source: sql2025-data
-        target: /var/opt/mssql/data
-      - type: volume
-        source: sql2025-log
-        target: /var/opt/mssql/log
-    labels:
-      quickstart.owner: SQL_SERVER_ANALYZE_QUICKSTART
-      quickstart.scope: ${QUICKSTART_SCOPE_ID:?QUICKSTART_SCOPE_ID is required}
-      quickstart.sql-version: "2025"
-      quickstart.role: storage-init
-
   sql2019:
+    user: "0:0"
     volumes:
       - type: volume
         source: sql2019-data
@@ -78,6 +10,7 @@ services:
         target: /var/opt/mssql/log
 
   sql2022:
+    user: "0:0"
     volumes:
       - type: volume
         source: sql2022-data
@@ -87,6 +20,7 @@ services:
         target: /var/opt/mssql/log
 
   sql2025:
+    user: "0:0"
     volumes:
       - type: volume
         source: sql2025-data
