@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: commit-message-validation-${{ github.workflow }}-${{ github.ref }}
@@ -21,47 +21,29 @@ jobs:
     timeout-minutes: 10
     env:
       BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
-      GH_TOKEN: ${{ github.token }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Apply bounded framework usage integration patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git clone --quiet --branch agent/complete-framework-usage-contract "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repository
-          cd repository
-          script='./Code/Tests/Static/Temporary_Complete_Framework_Usage.py'
-          sed -i 's#Metadata/Inventory/ObjectInventory.csv#Metadata/Inventory/Objects.csv#g' "$script"
-          sed -i 's/[[:space:]]\+$//' "$script"
-          set +e
-          python3 "$script" >"$RUNNER_TEMP/framework-usage-patch.log" 2>&1
-          patch_status=$?
-          set -e
-          git checkout -- "$script"
-          if [ "$patch_status" -ne 0 ]; then
-            echo 'FRAMEWORK_USAGE_PATCH_FAILURE_BEGIN'
-            tail -n 20 "$RUNNER_TEMP/framework-usage-patch.log"
-            echo 'FRAMEWORK_USAGE_PATCH_FAILURE_END'
-            exit "$patch_status"
-          fi
-          git diff --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql Code/Tests/QueryStore/120_Framework_Usage_Runtime_Contract.sql Code/Tests/QueryStore/110_Test_und_Abnahme_Phase4.sql Code/Tests/Run_Release_Gate.sql Metadata/Inventory/Objects.csv Metadata/Inventory/ResultSets.csv Metadata/Inventory/Module_Maturity.csv Metadata/Quality/Implementation_Status.csv AI_Metadata/Internal_Documentation/Quality/Next_Steps.md Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md Documentation/Reference/Procedure_Reference.md
-          if git diff --cached --quiet; then
-            echo 'Framework usage integration is already complete.'
-          else
-            git commit -m 'Complete framework usage contract integration'
-            git push --quiet origin HEAD:agent/complete-framework-usage-contract
-          fi
+      - name: Check out repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
-      - name: Validate commit messages
+      - name: Run commit-message validator self-tests
         shell: bash
         run: |
           set -euo pipefail
-          cd repository
-          python3 ./Code/Tests/Static/930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test
-          current_head="$(git rev-parse HEAD)"
-          arguments=(--repository-root . --delivery-mode DIRECT_GIT --head-sha "$current_head")
-          if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ ! "$BASE_SHA" =~ ^0{40}$ ]]; then arguments+=(--base-sha "$BASE_SHA"); fi
+          python3 ./Code/Tests/Static/930_Validate_Commit_Message.py \
+            --repository-root . \
+            --delivery-mode DIRECT_GIT \
+            --self-test
+
+      - name: Validate newly introduced commits
+        shell: bash
+        run: |
+          set -euo pipefail
+          arguments=(--repository-root . --delivery-mode DIRECT_GIT --head-sha "$HEAD_SHA")
+          if [[ "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] && [[ ! "$BASE_SHA" =~ ^0{40}$ ]]; then
+            arguments+=(--base-sha "$BASE_SHA")
+          fi
           python3 ./Code/Tests/Static/930_Validate_Commit_Message.py "${arguments[@]}"
