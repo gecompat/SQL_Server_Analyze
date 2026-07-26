@@ -166,6 +166,7 @@ END
     Write-Host 'FRAMEWORK_READY.'
 }
 
+
 # ============================================================
 # Linux SQL Server Installation (APT-basiert)
 # ============================================================
@@ -173,7 +174,6 @@ END
 function Get-MssqlRepoUrl {
     param([Parameter(Mandatory)][string] $Version)
 
-    # Microsoft APT Repository URLs fuer SQL Server on Linux
     switch ($Version) {
         '2019' { return 'https://packages.microsoft.com/config/ubuntu/22.04/mssql-server-2019.list' }
         '2022' { return 'https://packages.microsoft.com/config/ubuntu/22.04/mssql-server-2022.list' }
@@ -197,14 +197,15 @@ function Install-SqlServerOnLinux {
     $user = 'labadmin'
     $repoUrl = Get-MssqlRepoUrl -Version $Version
 
-    # Microsoft GPG-Key und Repository hinzufuegen
-    $setupCmd = @"
+    # Single-quoted here-string: PowerShell interpoliert NICHTS.
+    # Platzhalter werden danach per .Replace() ersetzt.
+    $setupCmd = @'
 set -e
 echo '--- Microsoft GPG-Key importieren ---'
 curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | sudo gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg 2>/dev/null || true
 
 echo '--- SQL Server Repository hinzufuegen ---'
-curl -fsSL $repoUrl | sudo tee /etc/apt/sources.list.d/mssql-server.list > /dev/null
+curl -fsSL __REPO_URL__ | sudo tee /etc/apt/sources.list.d/mssql-server.list > /dev/null
 
 echo '--- APT aktualisieren ---'
 sudo apt-get update -qq
@@ -213,7 +214,7 @@ echo '--- SQL Server installieren ---'
 sudo ACCEPT_EULA=Y DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mssql-server
 
 echo '--- SQL Server konfigurieren ---'
-sudo MSSQL_SA_PASSWORD='$SaPassword' \
+sudo MSSQL_SA_PASSWORD='__SA_PASSWORD__' \
      MSSQL_PID='Developer' \
      MSSQL_COLLATION='SQL_Latin1_General_CP1_CS_AS' \
      MSSQL_TCP_PORT=1433 \
@@ -225,28 +226,26 @@ sudo apt-get update -qq
 sudo ACCEPT_EULA=Y DEBIAN_FRONTEND=noninteractive apt-get install -y -qq mssql-tools18 unixodbc-dev
 
 echo '--- PATH ergaenzen ---'
-echo 'export PATH="\$PATH:/opt/mssql-tools18/bin"' | sudo tee /etc/profile.d/mssql-tools.sh > /dev/null
+echo 'export PATH="$PATH:/opt/mssql-tools18/bin"' | sudo tee /etc/profile.d/mssql-tools.sh > /dev/null
 
 echo '--- Data/Log-Verzeichnisse auf dedizierte Disks ---'
-# Warte bis Disks verfuegbar sind
 sleep 2
-DATA_DISK=\$(lsblk -dno NAME,SIZE | grep -v '^sda' | sort -k2 -h | tail -2 | head -1 | awk '{print "/dev/" \$1}')
-LOG_DISK=\$(lsblk -dno NAME,SIZE | grep -v '^sda' | sort -k2 -h | tail -1 | awk '{print "/dev/" \$1}')
+DATA_DISK=$(lsblk -dno NAME,SIZE | grep -v '^sda' | sort -k2 -h | tail -2 | head -1 | awk '{print "/dev/" $1}')
+LOG_DISK=$(lsblk -dno NAME,SIZE | grep -v '^sda' | sort -k2 -h | tail -1 | awk '{print "/dev/" $1}')
 
-if [ -b "\$DATA_DISK" ] && [ -b "\$LOG_DISK" ]; then
-    echo "  Data-Disk: \$DATA_DISK"
-    echo "  Log-Disk: \$LOG_DISK"
+if [ -b "$DATA_DISK" ] && [ -b "$LOG_DISK" ]; then
+    echo "  Data-Disk: $DATA_DISK"
+    echo "  Log-Disk: $LOG_DISK"
 
-    sudo mkfs.ext4 -q -F \$DATA_DISK 2>/dev/null || true
-    sudo mkfs.ext4 -q -F \$LOG_DISK 2>/dev/null || true
+    sudo mkfs.ext4 -q -F $DATA_DISK 2>/dev/null || true
+    sudo mkfs.ext4 -q -F $LOG_DISK 2>/dev/null || true
 
     sudo mkdir -p /var/opt/mssql/data /var/opt/mssql/log
-    sudo mount \$DATA_DISK /var/opt/mssql/data
-    sudo mount \$LOG_DISK /var/opt/mssql/log
+    sudo mount $DATA_DISK /var/opt/mssql/data
+    sudo mount $LOG_DISK /var/opt/mssql/log
 
-    # fstab fuer Persistenz
-    echo "\$DATA_DISK /var/opt/mssql/data ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab > /dev/null
-    echo "\$LOG_DISK /var/opt/mssql/log ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab > /dev/null
+    echo "$DATA_DISK /var/opt/mssql/data ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab > /dev/null
+    echo "$LOG_DISK /var/opt/mssql/log ext4 defaults,nofail 0 2" | sudo tee -a /etc/fstab > /dev/null
 
     sudo chown -R mssql:mssql /var/opt/mssql/data /var/opt/mssql/log
     sudo /opt/mssql/bin/mssql-conf set filelocation.defaultdatadir /var/opt/mssql/data
@@ -258,17 +257,17 @@ sudo systemctl restart mssql-server
 sleep 5
 
 echo '--- Verbindungstest ---'
-/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '$SaPassword' -C -Q "SELECT @@VERSION;" -h -1 | head -1
+/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '__SA_PASSWORD__' -C -Q "SELECT @@VERSION;" -h -1 | head -1
 
 echo '--- Query Store aktivieren ---'
-/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '$SaPassword' -C -Q "
+/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '__SA_PASSWORD__' -C -Q "
 IF DB_ID(N'LabAnalyze') IS NULL CREATE DATABASE [LabAnalyze] COLLATE SQL_Latin1_General_CP1_CS_AS;
 ALTER DATABASE [LabAnalyze] SET QUERY_STORE = ON;
 ALTER DATABASE [LabAnalyze] SET QUERY_STORE (OPERATION_MODE = READ_WRITE, MAX_STORAGE_SIZE_MB = 200);
 "
 
-echo '=== SQL Server $Version Installation abgeschlossen ==='
-"@
+echo '=== SQL Server Installation abgeschlossen ==='
+'@.Replace('__SA_PASSWORD__', $SaPassword).Replace('__REPO_URL__', $repoUrl)
 
     # Kommando via SSH ausfuehren
     $result = & ssh $sshOpts.Split(' ') "$user@$IpAddress" $setupCmd 2>&1
@@ -290,32 +289,29 @@ function Install-FrameworkOnLinux {
 
     Write-Section "Framework auf Linux-VM '$VmName' installieren"
 
-    # Installer-SQL aus Repository generieren
     $installerSource = Join-Path $script:RepositoryRoot 'Code' 'Install' 'Install_All.sql'
     if (-not (Test-Path -LiteralPath $installerSource)) {
         throw "Installer nicht gefunden: $installerSource"
     }
 
-    # Installer in die VM kopieren
     $sshOpts = "-i $SshKeyPath -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
     $user = 'labadmin'
     $remoteInstaller = '/tmp/Install_All.sql'
 
-    & scp $sshOpts.Split(' ') $installerSource "$user@${IpAddress}:$remoteInstaller" 2>&1 | Out-Null
+    & scp $sshOpts.Split(' ') $installerSource "${user}@${IpAddress}:${remoteInstaller}" 2>&1 | Out-Null
 
-    # Installer ausfuehren
-    $installCmd = @"
+    $installCmd = @'
 set -e
 echo '--- Framework installieren ---'
-/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '$SaPassword' -C -d LabAnalyze -i $remoteInstaller
+/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '__SA_PASSWORD__' -C -d LabAnalyze -i /tmp/Install_All.sql
 
 echo '--- Verifizierung ---'
-OBJ_COUNT=\$(/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '$SaPassword' -C -d LabAnalyze -h -1 -Q "SELECT COUNT(*) FROM sys.objects WHERE schema_id = SCHEMA_ID(N'monitor');")
-echo "Framework-Objekte: \$OBJ_COUNT"
+OBJ_COUNT=$(/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '__SA_PASSWORD__' -C -d LabAnalyze -h -1 -Q "SELECT COUNT(*) FROM sys.objects WHERE schema_id = SCHEMA_ID(N'monitor');")
+echo "Framework-Objekte: $OBJ_COUNT"
 
-rm -f $remoteInstaller
+rm -f /tmp/Install_All.sql
 echo '=== FRAMEWORK_READY ==='
-"@
+'@.Replace('__SA_PASSWORD__', $SaPassword)
 
     $result = & ssh $sshOpts.Split(' ') "$user@$IpAddress" $installCmd 2>&1
     $result | ForEach-Object { Write-Host "  $_" }
