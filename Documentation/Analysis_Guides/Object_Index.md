@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 23. Juli 2026
-**Abdeckung:** alle 97 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Abdeckung:** alle 98 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -77,6 +77,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_QueryStoreHints]` | [Hints, Fehler und Governance](Procedures/USP_QueryStoreHints.md) |
 | `[monitor].[USP_IntelligentQueryProcessingAnalysis]` | [IQP-Eignung, Konfiguration und Signale](Procedures/USP_IntelligentQueryProcessingAnalysis.md) |
 | `[monitor].[USP_QueryStoreAnalysis]` | [Orchestrierte Query-Store-Analyse](Procedures/USP_QueryStoreAnalysis.md) |
+| `[monitor].[USP_FrameworkUsageFromQueryStore]` | [Framework-Nutzung und aggregierte Eigenlast aus Query Store](Procedures/USP_FrameworkUsageFromQueryStore.md) |
 
 ## Extended Events
 

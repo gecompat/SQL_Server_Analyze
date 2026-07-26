@@ -58,7 +58,7 @@ Encryption,USP_EncryptionAnalysis,COMPLETE,YES,YES,YES,,FULL,
 External Runtime,USP_ExternalRuntimeAnalysis,COMPLETE,YES,YES,YES,,FULL,Portable Kernfunktion komplett; aktive Feature-Matrix offen
 SQL CLR,USP_ClrAnalysis,COMPLETE,YES,YES,YES,,FULL,Portable Kernfunktion komplett; SAFE-Assembly-Evidenz offen
 Analysis Navigator,USP_AnalysisNavigator,COMPLETE,YES,YES,YES,,FULL,Zentraler Einstiegspunkt
-Framework Usage,USP_FrameworkUsageFromQueryStore,NEW,NO,NO,NO,,FULL,SQL und Guide vorhanden; Inventar Hilfe Outputvertrag und Drei-Versionen-Evidenz offen
+Framework Usage,USP_FrameworkUsageFromQueryStore,COMPLETE,YES,YES,YES,,FULL,FRAMEWORK-USAGE-001 mit Hilfe RAW CONSOLE TABLE NONE JSON und Query-Store-Laufzeitvertrag
 Snapshot Baseline,USP_RunSnapshotCollectionCycle,COMPLETE,YES,YES,YES,,FULL,Implementierter Performance-Counter-Baseline-Slice
 Vector Index (2025),USP_VectorIndexAnalysis,COMPLETE,YES,YES,YES,,FULL,SQL25-001 dreiversionig abgenommen
 Secondary Replica Query Store,Query Store modules,PLANNED,NO,NO,NO,,ARCHITECTURE,SQL25-005 recherchiert und nicht implementiert
