@@ -1,123 +1,14 @@
-name: Apply private IPv4 privacy policy
+name: Disabled temporary workflow
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/update-private-ip-policy.yml
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  update:
+  disabled:
+    if: ${{ false }}
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
     steps:
-      - name: Check out cleanup branch
-        uses: actions/checkout@v6
-        with:
-          ref: agent/remove-ci-ops-references
-
-      - name: Update validator and contracts
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          validator_path = Path('Code/Tests/Static/910_Validate_Repository_Privacy.py')
-          validator = validator_path.read_text(encoding='utf-8')
-
-          old_candidate = 'IPV4_CANDIDATE = re.compile(r"(?<![\\d.])(?:\\d{1,3}\\.){3}\\d{1,3}(?![\\d.])")\nDATABASE_CONTEXT'
-          new_candidate = '''IPV4_CANDIDATE = re.compile(r"(?<![\\d.])(?:\\d{1,3}\\.){3}\\d{1,3}(?![\\d.])")
-RFC1918_NETWORKS = tuple(
-    ipaddress.ip_network(value)
-    for value in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
-)
-DATABASE_CONTEXT'''
-          if old_candidate not in validator:
-              raise SystemExit('IPv4 candidate anchor not found.')
-          validator = validator.replace(old_candidate, new_candidate, 1)
-
-          old_rule = '''        if address.version == 4:
-            yield "IPV4_ADDRESS", candidate'''
-          new_rule = '''        if address.version == 4 and not any(
-            address in network for network in RFC1918_NETWORKS
-        ):
-            yield "IPV4_ADDRESS", candidate'''
-          if old_rule not in validator:
-              raise SystemExit('IPv4 rule anchor not found.')
-          validator = validator.replace(old_rule, new_rule, 1)
-
-          old_test = '''    if scan_text(crlf_value, line_ending_path, allowed):
-        failures.append(Finding("SELF_TEST_LINE_ENDING_NORMALIZATION_FAILED", "CRLF"))
-
-    with tempfile.TemporaryDirectory'''
-          new_test = '''    if scan_text(crlf_value, line_ending_path, allowed):
-        failures.append(Finding("SELF_TEST_LINE_ENDING_NORMALIZATION_FAILED", "CRLF"))
-
-    private_ipv4_text = "\\n".join(("10.0.0.1", "172.30.0.1", "192.168.1.1"))
-    if any(
-        item.rule_code == "IPV4_ADDRESS"
-        for item in scan_text(private_ipv4_text, "synthetic-private-ipv4.txt", set())
-    ):
-        failures.append(Finding("SELF_TEST_PRIVATE_IPV4_BLOCKED", "RFC1918"))
-
-    non_private_ipv4 = ".".join(str(part) for part in (198, 51, 100, 42))
-    if not any(
-        item.rule_code == "IPV4_ADDRESS"
-        for item in scan_text(non_private_ipv4, "synthetic-non-private-ipv4.txt", set())
-    ):
-        failures.append(Finding("SELF_TEST_NON_PRIVATE_IPV4_ALLOWED", "NON_RFC1918"))
-
-    with tempfile.TemporaryDirectory'''
-          if old_test not in validator:
-              raise SystemExit('Self-test anchor not found.')
-          validator = validator.replace(old_test, new_test, 1)
-          validator_path.write_text(validator, encoding='utf-8')
-
-          quality_path = Path('AI_Metadata/Internal_Documentation/Quality/Repository_Privacy_Validation.md')
-          quality = quality_path.read_text(encoding='utf-8')
-          quality = quality.replace(
-              '- IPv4-Adressen;',
-              '- IPv4-Adressen außerhalb der privaten RFC-1918-Netze `10.0.0.0/8`, `172.16.0.0/12` und `192.168.0.0/16`;',
-              1,
-          )
-          allowlist_paragraph = 'Die Datei `Metadata/Quality/Repository_Privacy_Allowlist.csv` darf nur technisch notwendige, geprüfte öffentliche oder synthetische Ausnahmen anhand eines pfadgebundenen SHA-256-Matchwerts enthalten. Blockier-Sentinels und ZIP-Strukturfehler sind niemals erlaubnisfähig. Ein neuer Allowlist-Eintrag benötigt weiterhin eine manuelle fachliche und datenschutzbezogene Review.'
-          replacement_paragraph = allowlist_paragraph + '\n\nPrivate IPv4-Adressen aus den drei RFC-1918-Netzen dürfen in generischer Architektur-, Test- und Lab-Dokumentation verwendet werden. Jede IPv4-Adresse außerhalb dieser Bereiche bleibt blockiert und darf nur nach ausdrücklicher Genehmigung sowie pfad- und wertgebundener Allowlist-Freigabe aufgenommen werden.'
-          if allowlist_paragraph not in quality:
-              raise SystemExit('Quality documentation anchor not found.')
-          quality = quality.replace(allowlist_paragraph, replacement_paragraph, 1)
-          quality_path.write_text(quality, encoding='utf-8')
-
-          requirements_path = Path('AI_Metadata/Internal_Documentation/Requirements/Requirements_and_Decisions.md')
-          requirements = requirements_path.read_text(encoding='utf-8')
-          requirements_anchor = '- Technische Systembezeichner und API-Namen wie `login_name`, `session_id` oder `database_id` dürfen im Quellcode stehen. Beispiele verwenden ausschließlich eindeutig synthetische, generische Werte und bilden keine reale interne Struktur nach.'
-          requirements_replacement = requirements_anchor + '\n- Private IPv4-Adressen aus `10.0.0.0/8`, `172.16.0.0/12` und `192.168.0.0/16` sind für generische Architektur-, Test- und Lab-Netze zulässig. Jede IPv4-Adresse außerhalb dieser privaten Bereiche bleibt ohne ausdrückliche Genehmigung für Repository- und Lieferartefakte verboten.'
-          if requirements_anchor not in requirements:
-              raise SystemExit('Requirements anchor not found.')
-          requirements = requirements.replace(requirements_anchor, requirements_replacement, 1)
-          requirements_path.write_text(requirements, encoding='utf-8')
-          PY
-
-          python3 Code/Tests/Static/910_Validate_Repository_Privacy.py \
-            --repository-root . \
-            --self-test
-          python3 Code/Tests/Static/910_Validate_Repository_Privacy.py \
-            --repository-root .
-
-      - name: Commit policy update
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            Code/Tests/Static/910_Validate_Repository_Privacy.py \
-            AI_Metadata/Internal_Documentation/Quality/Repository_Privacy_Validation.md \
-            AI_Metadata/Internal_Documentation/Requirements/Requirements_and_Decisions.md
-          git diff --cached --check
-          git commit -m 'Allow private RFC1918 addresses in repository artifacts'
-          git push origin HEAD:agent/remove-ci-ops-references
+      - run: echo disabled
