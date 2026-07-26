@@ -143,17 +143,17 @@ IF EXISTS
     THROW 54027,N'Der Analysis-Relationskatalog enthält eine unbekannte Procedure.',1;
 
 EXEC [monitor].[USP_AnalysisNavigator]
-      @Suchtext = N'blocking locks'
+      @Suchbegriff = N'blocking locks'
     , @MaxZeilen = 5
     , @ResultSetArt = 'RAW';
 
 EXEC [monitor].[USP_AnalysisNavigator]
-      @SymptomCode = 'BLOCKING'
+      @Suchbegriff = N'blocking'
     , @MaxZeilen = 5
     , @ResultSetArt = 'RAW';
 
 EXEC [monitor].[USP_AnalysisNavigator]
-      @ProcedureName = N'USP_CurrentBlocking'
+      @Suchbegriff = N'USP_CurrentBlocking'
     , @MaxZeilen = 5
     , @ResultSetArt = 'RAW';
 
