@@ -17,5 +17,20 @@ expliziten Deinstallationsaufruf entfernt:
 Die vollständige Anleitung steht unter
 [`Docker/README.md`](./Docker/README.md).
 
-Dieser QuickStart ist vom erweiterten Diagnose-Lab unter `Lab/` getrennt und
-verwendet keine LAB-Konfigurationen, Evidence-Gates oder Laufzeitpfade.
+Für eine native Windows-SQL-Server-Testumgebung via Hyper-V:
+
+```powershell
+./QuickStart/HyperV/Setup.ps1
+```
+
+Deinstallation der Hyper-V-Umgebung:
+
+```powershell
+./QuickStart/HyperV/Uninstall.ps1
+```
+
+Die vollständige Anleitung steht unter
+[`HyperV/README.md`](./HyperV/README.md).
+
+Beide QuickStarts sind vom erweiterten Diagnose-Lab unter `Lab/` getrennt und
+verwenden keine LAB-Konfigurationen, Evidence-Gates oder Laufzeitpfade.
