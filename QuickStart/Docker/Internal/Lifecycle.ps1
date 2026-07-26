@@ -11,6 +11,35 @@ function Assert-OnlyExpectedTopLevelEntries {
     }
 }
 
+function Get-OwnedProjectVolumeNames {
+    param([Parameter(Mandatory)][hashtable] $Env)
+
+    $projectName = [string] $Env.COMPOSE_PROJECT_NAME
+    $scopeId = [string] $Env.QUICKSTART_SCOPE_ID
+    $volumeNames = @(
+        Invoke-ExternalCommand -FilePath 'docker' -Arguments @(
+            'volume', 'ls',
+            '--filter', "label=com.docker.compose.project=$projectName",
+            '--format', '{{.Name}}'
+        ) -Quiet | Where-Object { -not [string]::IsNullOrWhiteSpace([string] $_) }
+    )
+
+    foreach ($volumeName in $volumeNames) {
+        $name = ([string] $volumeName).Trim()
+        $labels = Get-FirstOutputLine -InputObject @(
+            Invoke-ExternalCommand -FilePath 'docker' -Arguments @(
+                'volume', 'inspect', '--format',
+                '{{ index .Labels "quickstart.owner" }}|{{ index .Labels "quickstart.scope" }}',
+                $name
+            ) -Quiet
+        )
+        if ($labels -ne "SQL_SERVER_ANALYZE_QUICKSTART|$scopeId") {
+            throw "Volume '$name' trägt nicht den erwarteten QuickStart-Owner- und Scope-Marker. Es erfolgt keine Löschung."
+        }
+        $name
+    }
+}
+
 function Remove-ManagedData {
     param([Parameter(Mandatory)][hashtable] $Env)
 
@@ -48,19 +77,22 @@ function Remove-Environment {
     }
 
     $deleteManagedData = Read-YesNo -Prompt 'Auch Docker-Volumes und die ausschließlich markierten Lab-Datenpfade vollständig löschen?' -Default $false
-    $downArguments = [Collections.Generic.List[string]]::new()
-    foreach ($argument in @('down', '--remove-orphans', '--timeout', '60')) {
-        $downArguments.Add($argument)
+    $managedVolumeNames = if ($deleteManagedData) {
+        @(Get-OwnedProjectVolumeNames -Env $envValues)
     }
-    if ($deleteManagedData) {
-        $downArguments.Add('--volumes')
+    else {
+        @()
     }
-    Invoke-Compose -Env $envValues -Arguments $downArguments.ToArray() | Out-Null
+
+    Invoke-Compose -Env $envValues -Arguments @('down', '--remove-orphans', '--timeout', '60') | Out-Null
 
     if ($deleteManagedData) {
+        foreach ($volumeName in $managedVolumeNames) {
+            Invoke-ExternalCommand -FilePath 'docker' -Arguments @('volume', 'rm', ([string] $volumeName)) -Quiet | Out-Null
+        }
         Remove-ManagedData -Env $envValues
         Remove-Item -LiteralPath $script:EnvPath -Force
-        Write-Host 'Container, Projektnetzwerk, zugeordnete Docker-Volumes, markierte Lab-Daten und lokale .env wurden entfernt.'
+        Write-Host 'Container, Projektnetzwerk, alle scopegebundenen Docker-Volumes, markierte Lab-Daten und lokale .env wurden entfernt.'
     }
     else {
         Write-Host 'Container und Projektnetzwerk wurden entfernt. Docker-Volumes, Lab-Daten und .env bleiben für einen späteren Neustart erhalten.'
