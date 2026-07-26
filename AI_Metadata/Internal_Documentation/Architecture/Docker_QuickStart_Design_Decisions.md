@@ -107,7 +107,7 @@ SQL-Ports werden standardmäßig ausschließlich an die lokale Loopback-Schnitts
 
 Das projektgebundene Compose-Netzwerk verwendet einen normalen Bridge-Treiber. Die Erreichbarkeit bleibt durch die Hostbindung an die Loopback-Adresse lokal begrenzt.
 
-Der Healthcheck verwendet eine explizite TCP-Verbindung zu `127.0.0.1:1433` sowie definierte Login- und Abfragetimeouts. Nach dem Start werden sowohl die tatsächlich erzeugte Docker-Portbindung als auch die TCP-Erreichbarkeit vom Host geprüft. Ein Container gilt erst danach als für lokale Clients erreichbar.
+Der Healthcheck verwendet eine explizite TCP-Verbindung zur internen Loopback-Adresse auf Port 1433 sowie definierte Login- und Abfragetimeouts. Nach dem Start werden sowohl die tatsächlich erzeugte Docker-Portbindung als auch die TCP-Erreichbarkeit vom Host geprüft. Ein Container gilt erst danach als für lokale Clients erreichbar.
 
 Globale Bereinigungsbefehle sind ausgeschlossen. Insbesondere dürfen weder globale Docker-Prune-Operationen noch Wildcard-Löschungen oder die Entfernung fremder Container, Netzwerke, Volumes oder Images verwendet werden.
 
