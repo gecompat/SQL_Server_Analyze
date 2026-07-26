@@ -5,47 +5,55 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  repair:
-    name: Restore complete smoke test scope
+  runtime:
+    name: SQL Server 2022 restored smoke release gate
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 60
     steps:
-      - name: Restore main file and apply three targeted changes
+      - name: Run complete SQL Server 2022 release gate
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          git clone --quiet --branch agent/complete-framework-usage-contract "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repository
+          git clone --quiet --depth 1 --branch agent/complete-framework-usage-contract "https://github.com/${GITHUB_REPOSITORY}.git" repository
+          work_root="$RUNNER_TEMP/restored-smoke"
+          mkdir -p "$work_root/repository"
           cd repository
-          git fetch --quiet origin main
-          git show origin/main:Code/Tests/Integration/110_Smoke_Test.sql > Code/Tests/Integration/110_Smoke_Test.sql
-          python3 - <<'PY'
-          from pathlib import Path
-          path = Path('Code/Tests/Integration/110_Smoke_Test.sql')
-          text = path.read_text(encoding='utf-8')
-          object_anchor = "(N'monitor.USP_QueryStoreAnalysis','P'),\n"
-          object_addition = object_anchor + "(N'monitor.USP_FrameworkUsageFromQueryStore','P'),\n"
-          if "USP_FrameworkUsageFromQueryStore','P'" not in text:
-              if object_anchor not in text:
-                  raise SystemExit('Query Store object anchor not found')
-              text = text.replace(object_anchor, object_addition, 1)
-          text = text.replace('<> 97', '<> 98', 1)
-          text = text.replace('genau alle 97 öffentlichen Procedures', 'genau alle 98 öffentlichen Procedures', 1)
-          help_anchor = 'EXEC [monitor].[USP_AnalysisNavigator] @Hilfe=1;\n'
-          help_addition = help_anchor + 'EXEC [monitor].[USP_FrameworkUsageFromQueryStore] @Hilfe=1;\n'
-          if 'USP_FrameworkUsageFromQueryStore] @Hilfe=1' not in text:
-              if help_anchor not in text:
-                  raise SystemExit('Navigator help anchor not found')
-              text = text.replace(help_anchor, help_addition, 1)
-          path.write_text(text, encoding='utf-8')
-          PY
-          git diff --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add Code/Tests/Integration/110_Smoke_Test.sql
-          git commit -m 'Restore complete smoke test scope'
-          git push --quiet origin HEAD:agent/complete-framework-usage-contract
+          git archive HEAD | tar -x -C "$work_root/repository"
+          cd ..
+          find "$work_root/repository/Code" -type f -name '*.sql' -print0 | xargs -0 sed -i 's/\[DeineDatenbank\]/[FrameworkContract]/g'
+          credential="Synthet1c_$(openssl rand -hex 16)"
+          echo "::add-mask::$credential"
+          container='framework-restored-smoke-2022'
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          docker pull --quiet mcr.microsoft.com/mssql/server:2022-latest >/dev/null
+          ready=0
+          for container_attempt in 1 2 3; do
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            docker run -d --name "$container" --memory 4g --cpus 2 \
+              -e ACCEPT_EULA=Y -e MSSQL_PID=Developer \
+              -e MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
+              -e MSSQL_SA_PASSWORD="$credential" \
+              -v "$work_root/repository:/workspace:ro" \
+              mcr.microsoft.com/mssql/server:2022-latest >/dev/null
+            for attempt in $(seq 1 120); do
+              if docker exec -e SQLCMDPASSWORD="$credential" "$container" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -l 15 -b -Q 'SET NOCOUNT ON; SELECT 1;' >/dev/null 2>&1; then ready=1; break; fi
+              sleep 2
+            done
+            if [ "$ready" -eq 1 ]; then break; fi
+          done
+          if [ "$ready" -ne 1 ]; then echo 'RESTORED_SMOKE_READINESS_FAILED'; exit 1; fi
+          docker exec -e SQLCMDPASSWORD="$credential" "$container" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -Q "CREATE DATABASE [FrameworkContract] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [FrameworkContract] SET COMPATIBILITY_LEVEL=160; ALTER DATABASE [FrameworkContract] SET QUERY_STORE=ON; ALTER DATABASE [FrameworkContract] SET QUERY_STORE (OPERATION_MODE=READ_WRITE);" >/dev/null
+          docker exec -e SQLCMDPASSWORD="$credential" "$container" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i /workspace/Code/Install/Install_All.sql >"$work_root/install.log" 2>&1 || { grep -E '^(Msg [0-9]+|HResult)' "$work_root/install.log" | tail -n 80 || true; exit 1; }
+          set +e
+          docker exec -e SQLCMDPASSWORD="$credential" "$container" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i /workspace/Code/Tests/Run_Release_Gate.sql >"$work_root/release.log" 2>&1
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            grep -E '^(RELEASE_GATE [0-9]+/34|Msg [0-9]+|HResult)|FRAMEWORK_USAGE|(_MISSING|_INVALID|_FAILED)( |$)' "$work_root/release.log" | tail -n 180 || true
+            exit "$status"
+          fi
+          grep -q 'FRAMEWORK_USAGE_RUNTIME_CONTRACT PASS' "$work_root/release.log"
+          echo 'RESTORED_SMOKE_SQL2022_RELEASE_GATE PASS'
