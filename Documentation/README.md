@@ -8,10 +8,10 @@ SQL Server Analyze ist ein T-SQL-Diagnoseframework für SQL Server 2019 oder neu
 2. [`USP_AnalysisNavigator`](Reference/Analysis_Navigator.md) – Suche direkt in SSMS, Rollen, Ranking, Kosten, Pakete und Folgebeziehungen.
 3. [Einsteiger-Leseleitfaden](Analysis_Guides/Beginner_Reading_Guide.md) – Status, Scope, Zeitbezug, Nenner, Partialität und Gegenprobe.
 4. [Runbooks](Analysis_Guides/Runbooks/README.md) – konkrete Abläufe für zehn häufige Störungssituationen.
-5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 97 öffentlichen Procedures.
+5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 98 öffentlichen Procedures.
 6. [Objektreferenz](Reference/Object_Reference.md) – jede unterstützende View, TVF, interne Procedure und Tabelle.
 
-Der Inventarvertrag umfasst 165 Objekte: 97 öffentliche Procedures, acht Views, 27 Table-Valued Functions, 16 interne Procedures und 17 Tabellen. Scalar-Valued Functions sind derzeit nicht vorhanden.
+Der Inventarvertrag umfasst 166 Objekte: 98 öffentliche Procedures, acht Views, 27 Table-Valued Functions, 16 interne Procedures und 17 Tabellen. Scalar-Valued Functions sind derzeit nicht vorhanden.
 
 ## Installation und erster Betrieb
 
@@ -78,8 +78,6 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [SQL-Server-2025-TempDB-Resource-Governance](Architecture/SQL_Server_2025_TempDB_Resource_Governance.md)
 - [SQL-Server-2025-Statistiken auf lesbaren Secondaries](Architecture/SQL_Server_2025_Readable_Secondary_Statistics.md)
 - [RUNTIME-001: External Runtime und SQL CLR](Architecture/External_Runtime_CLR_Analysis_Plan.md)
-- [LAB-001: Reproducible Diagnostic Lab](Architecture/Reproducible_Diagnostic_Lab_Plan.md)
-- [LAB-001: Docker-/Podman-Quick-Testsystem](Architecture/Docker_Podman_Quick_Test_System_Requirements.md)
 - [Geplantes SubProject SSIS-001: SSIS Package- und Execution-Analyse](Architecture/SSIS_Package_and_Execution_Analysis_Plan.md)
 - [Datenschutz und Laufzeitausgaben](Architecture/Runtime_Data_Privacy.md)
 - [Execution-Plan-Analyse](Architecture/Execution_Plan_Analysis_Design.md)

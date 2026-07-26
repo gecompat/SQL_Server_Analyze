@@ -1,138 +1,150 @@
 # [monitor].[USP_FrameworkUsageFromQueryStore]
 
-**Bereich:** Versionsadaptive Spezialanalysen
-**Zweck:** Aggregiert die sichtbare Nutzung installierter `monitor`-Procedures aus dem Query Store der Frameworkdatenbank.
-**Beobachtungsart:** begrenzter Query-Store-Katalogsnapshot
-**Kostenklasse:** LOW_TO_MEDIUM
+**Bereich:** Query Store<br>
+**Zweck:** Aggregiert die sichtbare Nutzung installierter `monitor`-Procedures aus dem Query Store der Frameworkdatenbank.<br>
+**Beobachtungsart:** begrenzter persistierter Laufzeitsnapshot<br>
+**Kostenklasse:** LOW_MEDIUM
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Frage: **Welche Framework-Procedures wurden im sichtbaren Query-Store-Zeitraum ausgeführt, wie häufig und mit welcher aggregierten Last?**
+Die Procedure beantwortet die Betriebsfrage: **Welche Framework-Procedures wurden im sichtbaren Query-Store-Zeitraum ausgeführt, wie häufig und mit welcher aggregierten Last?** Sie unterstützt Nutzungsinventur, Schulungs- und Dokumentationspriorisierung sowie eine erste Eigenlastbewertung des Frameworks.
 
-Sie eignet sich für Nutzungsinventur, Schulungs- und Dokumentationspriorisierung sowie eine erste Eigenlastprüfung des Frameworks. Sie erzeugt keine eigene Historie und ändert keine Query-Store-Einstellung.
+## Nicht beantwortete Fragen
 
-## Voraussetzungen
-
-- SQL Server 2019 oder neuer.
-- Query Store ist in der Frameworkdatenbank lesbar aktiv.
-- Der Aufrufer besitzt ausreichende Metadatensichtbarkeit für die Query-Store-Systemviews.
-- Retention, Capture Mode, Cleanup und Flushzeitpunkt bestimmen, welche Ausführungen sichtbar sind.
+Die Procedure zeigt weder den aufrufenden Benutzer noch den Erfolg des äußeren Procedure-Aufrufs. Sie beweist nicht, dass eine fehlende Procedure nie ausgeführt wurde. Capture Mode, Retention, Cleanup, Query-Store-Reset, Read-only-Zustand und Metadatensichtbarkeit können Evidenz begrenzen oder entfernen.
 
 ## Sicherer Einstieg
 
 ```sql
-EXEC [monitor].[USP_FrameworkUsageFromQueryStore];
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
+      @MaxZeilen = 100,
+      @ResultSetArt = 'CONSOLE';
 ```
 
-Der Standardaufruf liefert höchstens 100 Procedures mit mindestens einer sichtbaren Ausführung.
+Der Standardpfad liest keine Query-Texte, Pläne als XML oder Benutzeridentitäten und ändert keine Query-Store-Einstellung.
 
-## Parameter
+## Resultsets und Leserichtung
 
-| Parameter | Typ | Default | Bedeutung |
-|---|---|---|---|
-| `@MaxZeilen` | int | 100 | Positive Werte begrenzen. `NULL` oder `0` bedeutet unbegrenzt. Negativ ist ungültig. |
-| `@MinAusfuehrungen` | bigint | 1 | Mindestanzahl sichtbarer Ausführungen je Procedure. Muss mindestens 1 sein. |
-| `@ZeitraumTage` | int | NULL | `NULL` oder `0` verwendet den gesamten sichtbaren Query-Store-Zeitraum. |
-| `@LockTimeoutMs` | int | 0 | Lokaler Lock-Timeout für die Katalogzugriffe; 0 bis 60000. Der ursprüngliche Wert wird wiederhergestellt. |
-| `@ResultSetArt` | varchar(16) | CONSOLE | `CONSOLE`, `RAW`, `TABLE` oder `NONE`. |
-| `@ResultTablesJson` | nvarchar(max) | NULL | Benannte TABLE-Ziele: `moduleStatus`, `usage`, `sourceStatus`, `warnings`. |
-| `@JsonErzeugen` | bit | 0 | Erzeugt bei 1 das versionierte JSON-Dokument. |
-| `@Json` | nvarchar(max) OUTPUT | NULL | JSON-Ausgabe mit `meta`, `usage`, `sourceStatus` und `warnings`. |
-| `@PrintMeldungen` | bit | 1 | Gibt kontrollierte Statusmeldungen mit Severity 10 aus. |
-| `@Hilfe` | bit | 0 | Gibt die Hilfe aus und beendet den fachlichen Pfad. |
-| `@StatusCodeOut` | varchar(40) OUTPUT | NULL | Gesamtstatus. |
-| `@IsPartialOut` | bit OUTPUT | NULL | Kennzeichnet unvollständige Fehler- oder Berechtigungspfade. |
-| `@ErrorNumberOut` | int OUTPUT | NULL | Kontrolliert abgefangene Fehlernummer. |
-| `@ErrorMessageOut` | nvarchar(2048) OUTPUT | NULL | Kontrolliert abgefangene Fehlermeldung. |
+Der technische Vertrag besteht aus `moduleStatus`, `usage`, `sourceStatus` und `warnings`. Zuerst sind Status und Quellenlage zu prüfen. CONSOLE zeigt nur das fachliche `usage`-Resultset; RAW gibt alle vier Resultsets aus. TABLE schreibt ausschließlich benannte lokale `#Temp`-Ziele. NONE unterdrückt fachliche Resultsets, kann aber JSON und OUTPUT-Parameter liefern.
 
-## Resultsets
+## Eine Zeile bedeutet
 
-### `moduleStatus`
+Eine `usage`-Zeile entspricht einer sichtbaren Procedure im Schema `monitor`. Die Werte aggregieren alle sichtbaren Query-Store-Queries und Pläne, deren `object_id` auf diese Procedure verweist. Eine Zeile ist daher keine einzelne Ausführung und keine einzelne Query-Store-Query.
 
-Enthält Erfassungszeit, Query-Store-Zustand, Zeitraum, Mindestanzahl, Zeilenanzahl, `HasMoreRows` sowie den Gesamtstatus.
+## So lesen
 
-### `usage`
+1. Prüfen Sie `moduleStatus.StatusCode`, `QueryStoreActualStateDesc` und `IsPartial`.
+2. Prüfen Sie `sourceStatus`, bevor ein leeres `usage`-Resultset interpretiert wird.
+3. `ExecutionCount` ist die Summe der erfassten Statementausführungen je Procedure.
+4. Dauer, CPU, Reads und Speicher sind nach `count_executions` gewichtete Query-Store-Intervallaggregate.
+5. `HasMoreRows = 1` bedeutet ausschließlich, dass `@MaxZeilen` die Projektion begrenzt hat.
+6. Mehrere Pläne oder Queries sind ein Vertiefungshinweis, aber keine automatische Regression oder Parameter-Sensitivität.
 
-| Spalte | Bedeutung |
+## Warum kann das problematisch sein?
+
+Eine häufig genutzte Procedure mit dauerhaft hoher CPU-, I/O- oder Laufzeitevidenz kann relevante Eigenlast erzeugen. Eine erwartete Kernanalyse ohne sichtbare Nutzung kann auf fehlende Schulung, fehlende Berechtigung, deaktivierte Capability oder eine Query-Store-Evidenzlücke hinweisen. Erst Status, Scope und eine unabhängige Gegenprüfung entscheiden, welche Erklärung zutrifft.
+
+## Wann ist es kein Problem?
+
+Spezialanalysen werden absichtlich selten ausgeführt. Mehrere Pläne können durch Schemaänderungen, Recompile, unterschiedliche SET-Optionen oder legitime Varianten entstehen. Hohe Nutzung ist bei einer bewusst regelmäßig aufgerufenen leichten Procedure erwartbar und allein kein Optimierungsauftrag.
+
+## Beispiele und Gegenbeispiele
+
+**Synthetischer Problemfall (`Example*`):** `USP_ExampleHeavyAnalysis` besitzt im gewählten Fenster viele Ausführungen, hohe gewichtete CPU und Reads. Prüfen Sie danach Query-Store-Details, Waits und Aufrufrhythmus; ändern Sie die Procedure nicht allein aufgrund dieser Aggregation.
+
+**Ähnlich aussehender Gegenfall:** `USP_ExampleHealthCheck` wird häufig aufgerufen, bleibt aber kurz und verursacht geringe Reads. Die hohe Ausführungsanzahl beschreibt dann den Betriebsrhythmus und keinen Defekt.
+
+## Leere oder partielle Ausgabe
+
+`AVAILABLE_EMPTY` bedeutet, dass der Query Store lesbar war, aber im gewählten Zeitraum und Mindestfilter keine ausgabefähige Procedure entstand. `UNAVAILABLE_FEATURE` bedeutet, dass Query Store nicht lesbar aktiv war. `DENIED_PERMISSION` oder `ERROR_HANDLED` kennzeichnen einen kontrolliert fehlgeschlagenen Quellenpfad. `NULL` in einer Kennzahl bedeutet fehlende oder nicht ableitbare Evidenz und ist nicht mit dem gemessenen Wert 0 gleichzusetzen.
+
+## Eigenlast und Grenzen
+
+| Dimension | Aussage für diese Procedure |
 |---|---|
-| `ProcedureName` | Sichtbare Procedure im Schema `monitor`. |
-| `ExecutionCount` | Summe der Query-Store-Ausführungsanzahlen aller erfassten Statements der Procedure. |
-| `LastExecutionTime` | Letzter sichtbarer Ausführungszeitpunkt. |
-| `AvgDurationMs` | Nach `count_executions` gewichtete durchschnittliche Dauer in Millisekunden. |
-| `AvgCpuMs` | Nach `count_executions` gewichtete durchschnittliche CPU-Zeit in Millisekunden. |
-| `AvgLogicalReads` | Gewichtete durchschnittliche logische Reads. |
-| `AvgMemoryGrantKB` | Gewichteter durchschnittlicher maximal verwendeter Query-Speicher in KB. |
-| `PlanCount` | Anzahl unterschiedlicher sichtbarer Query-Store-Pläne. |
-| `QueryCount` | Anzahl unterschiedlicher sichtbarer Query-Store-Queries. |
-| `FirstSeen` / `LastSeen` | Sichtbare zeitliche Evidenzgrenze. |
+| Kostenklasse | LOW_MEDIUM |
+| Standardpfad | Query-Store-Zustand lesen und höchstens 100 sichtbare Procedures projizieren. |
+| Teuerster Pfad | Unbegrenztes Zeitfenster bei großem Query Store und `@MaxZeilen = 0`; die Aggregation muss alle passenden Runtime-Stats-Intervalle und Pläne gruppieren. |
+| Haupttreiber | Anzahl passender Query-Store-Queries, Pläne, Runtime-Stats-Intervalle und Länge des sichtbaren Retentionsfensters. |
+| Skalierung | Die Aggregationskosten wachsen mit dem gespeicherten Query-Store-Volumen, nicht nur mit der Anzahl ausgegebener Procedures. |
+| Ressourcen | Katalog-I/O, CPU für Gruppierung und eine kleine lokale TempDB-Projektion; keine Plan-XML- oder Query-Text-Verarbeitung. |
+| Begrenzungswirkung | `@ZeitraumTage` begrenzt Runtime-Stats-Intervalle; `@MinAusfuehrungen` filtert nach der Aggregation; `@MaxZeilen` begrenzt die sortierte Projektion und setzt `HasMoreRows`. |
+| Locking und Nebenwirkungen | Read-only mit `NOLOCK` auf den verwendeten Katalogviews und lokalem `LOCK_TIMEOUT`; keine Query-Store-Konfigurationsänderung, kein Flush und kein Cleanup. |
+| Schutzmechanismus | Parameterprüfung vor dem fachlichen Zugriff, isolierte TRY/CATCH-Quellen, sichtbare Quellenstatus und Wiederherstellung des ursprünglichen `LOCK_TIMEOUT`. |
+| Sicherer Einsatz | Mit kurzem Zeitraum und begrenzter Ausgabe beginnen; bei großem Query Store erst danach das Fenster erweitern. |
+| Aussagegrenze | Query Store ist eine persistierte, aber konfigurations- und retentionabhängige Evidenzquelle. Fehlende Daten sind keine Nutzungs- oder Gesundheitsgarantie. |
 
-### `sourceStatus`
+## Technische Vertiefung
 
-Trennt die Zustandsprüfung des Query Store von der eigentlichen Laufzeitaggregation. Ein fehlgeschlagener Quellenpfad wird nicht als leere Nutzung ausgegeben.
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
 
-### `warnings`
+### Leitfrage
 
-Enthält kontrollierte Berechtigungs-, Feature- und Lesefehler. Freie Query-Texte und Benutzeridentitäten werden nicht gelesen.
+Welche `monitor`-Procedures besitzen im sichtbaren Query-Store-Scope belastbare Nutzungs- und Lastindikatoren?
 
-## Leserichtung
+### Technischer Hintergrund
 
-1. Zuerst `moduleStatus.StatusCode` und `QueryStoreActualStateDesc` prüfen.
-2. `HasMoreRows=1` bedeutet ausschließlich, dass `@MaxZeilen` die Projektion begrenzt hat.
-3. `ExecutionCount` ist eine Statement-Aggregation je Procedure und keine Anzahl äußerer `EXEC`-Aufrufe.
-4. Dauer, CPU, Reads und Speicher sind gewichtete Query-Store-Intervallaggregate und keine einzelnen Laufzeitmessungen.
-5. Mehrere Pläne sind ein Prüfhinweis, aber kein automatischer Nachweis für Parameter-Sensitivität oder Regression.
+`sys.query_store_query.object_id` ordnet erfasste Statements einem Datenbankobjekt zu. Die Procedure verbindet diese Zuordnung mit `sys.objects` und `sys.schemas`, beschränkt auf Procedures im Schema `monitor`, und aggregiert anschließend Pläne und Runtime-Stats-Intervalle. Die Mittelwerte werden mit `count_executions` gewichtet, damit Intervalle mit wenigen und vielen Ausführungen nicht gleich stark zählen.
 
-## Aussagegrenzen und Fehlinterpretationen
+### Datenkette
 
-- Eine fehlende Procedure beweist nicht, dass sie nie ausgeführt wurde. Capture Mode, Retention, Cleanup, Query-Store-Reset und Metadatensichtbarkeit können Evidenz entfernen oder verhindern.
-- Query Store liefert keine Benutzerattribution und keinen verlässlichen Erfolgs- oder Fehlerstatus des äußeren Procedure-Aufrufs.
-- Hohe Nutzung oder hohe Durchschnittswerte sind keine automatische Fehlerklassifikation.
-- `READ_ONLY` kann weiterhin lesbare Historie liefern; es sagt nichts über die Vollständigkeit zukünftiger Erfassung aus.
-- Die Procedure führt kein Flush, Cleanup, `ALTER DATABASE` oder sonstige Schreiboperation aus.
+`sys.database_query_store_options` → `sys.query_store_query` → `sys.query_store_plan` → `sys.query_store_runtime_stats`; Objektfilter über `sys.objects` und `sys.schemas`; begrenzte Projektion in lokale Temp-Tabellen.
 
-## Beispielaufrufe
+### Source Select
+
+Der Kernzugriff verwendet ausschließlich Katalog- und Query-Store-Metadaten:
 
 ```sql
-EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
-      @ZeitraumTage=30
-    , @MaxZeilen=10;
-
-EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
-      @MaxZeilen=0
-    , @ResultSetArt='RAW';
-
-DECLARE @UsageJson nvarchar(max);
-EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
-      @ZeitraumTage=7
-    , @ResultSetArt='NONE'
-    , @JsonErzeugen=1
-    , @Json=@UsageJson OUTPUT;
-SELECT @UsageJson;
-
-CREATE TABLE #ModuleStatus([Seed] bit NULL);
-CREATE TABLE #Usage([Seed] bit NULL);
-CREATE TABLE #SourceStatus([Seed] bit NULL);
-CREATE TABLE #Warnings([Seed] bit NULL);
-
-EXEC [monitor].[USP_FrameworkUsageFromQueryStore]
-      @ResultSetArt='TABLE'
-    , @ResultTablesJson=N'{
-        "moduleStatus":"#ModuleStatus",
-        "usage":"#Usage",
-        "sourceStatus":"#SourceStatus",
-        "warnings":"#Warnings"
-      }';
+SELECT
+      [o].[name]
+    , [q].[query_id]
+    , [p].[plan_id]
+    , [rs].[count_executions]
+    , [rs].[avg_duration]
+    , [rs].[avg_cpu_time]
+    , [rs].[avg_logical_io_reads]
+FROM [sys].[query_store_query] AS [q] WITH (NOLOCK)
+INNER JOIN [sys].[objects] AS [o] WITH (NOLOCK)
+    ON [o].[object_id] = [q].[object_id]
+INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
+    ON [s].[schema_id] = [o].[schema_id]
+INNER JOIN [sys].[query_store_plan] AS [p] WITH (NOLOCK)
+    ON [p].[query_id] = [q].[query_id]
+INNER JOIN [sys].[query_store_runtime_stats] AS [rs] WITH (NOLOCK)
+    ON [rs].[plan_id] = [p].[plan_id]
+WHERE [s].[name] = N'monitor';
 ```
 
-## Nächste Gegenprüfungen
+Query-Store-Texte, Parameterwerte, Plan-XML, Benutzeridentitäten und freie Payloads werden nicht gelesen.
 
-- `USP_QueryStoreStatus` für Zustand, Größe, Retention und Capture Mode.
-- `USP_QueryStoreAnalysis` für detaillierte Query-Store-Evidenz.
-- `USP_ServerVersionInformation` für Versions- und Buildkontext.
-- `USP_CheckFrameworkCapabilities` für Berechtigungs- und Capability-Grenzen.
+**Wichtig für die Eigenlast:** Der Ressourcenscope bleibt auf die aktuelle Frameworkdatenbank und deren Query-Store-Katalog beschränkt. Es gibt keinen Cross-Database- oder Server-Wildcard-Zugriff; das Retentionsvolumen der aktuellen Datenbank bestimmt dennoch die Aggregationskosten.
 
-## Weiterführend
+### Zeit- und Scope-Modell
 
-- [Query Store](../05_Query_Store.md)
-- [Scope und Grenzen](../../Reference/Scope_and_Limitations.md)
-- [TABLE-Ausgabevertrag](../../Architecture/Database_Console_Table_Contract.md)
+Der Scope ist die Frameworkdatenbank, in der die Procedure ausgeführt wird. `@ZeitraumTage` begrenzt anhand des letzten Ausführungszeitpunkts der Runtime-Stats-Intervalle. Die zeitliche Genauigkeit bleibt durch Query-Store-Intervalle, Flushzeitpunkt, Retention und Cleanup begrenzt.
+
+### Bewertung und Gegenprobe
+
+Vergleichen Sie Nutzung und Last mit `USP_QueryStoreStatus`, detaillierten Query-Store-Analysen, Current Requests und der dokumentierten Capability. Für eine Lastbewertung sind mindestens Zeitfenster, Ausführungsanzahl, CPU, Reads und unabhängige aktuelle oder historische Evidenz gemeinsam zu betrachten.
+
+### Typische Fehlinterpretation
+
+`PlanCount > 1` beweist keine Regression. `ExecutionCount` entspricht nicht zwingend der Anzahl äußerer `EXEC`-Aufrufe, weil eine Procedure mehrere erfasste Statements besitzen kann. Eine nicht sichtbare Procedure ist nicht automatisch ungenutzt.
+
+### Folgeanalyse
+
+Prüfen Sie zunächst Query-Store-Zustand und Retention. Vertiefen Sie auffällige Procedures anschließend über `USP_QueryStoreAnalysis`, `USP_QueryStoreRegressions`, `USP_CurrentRequests` und `USP_PlanDetails`.
+
+## Primärquellen
+
+- [Query Store: Überwachung und Auswertung](https://learn.microsoft.com/en-us/sql/relational-databases/performance/monitoring-performance-by-using-the-query-store?view=sql-server-ver17)
+- [Query-Store-Katalogsichten](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/query-store-catalog-views-transact-sql?view=sql-server-ver17)
+- [sys.query_store_runtime_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-query-store-runtime-stats-transact-sql?view=sql-server-ver17)
+
+## Weiterführende Vertiefung
+
+Die folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Toolingperspektiven. Sie sind keine Grundlage für versions-, Berechtigungs- oder Engineaussagen dieser Seite.
+
+- [SQL Server First Responder Kit – ergänzende quelloffene Praxiswerkzeuge für Triage](https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)
+
+[Technische Detailbeschreibung](../05_Query_Store.md)

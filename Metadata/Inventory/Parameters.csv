@@ -1060,7 +1060,7 @@ USP_MaintenanceOperations,ErrorNumberOut,int,NULL OUTPUT
 USP_MaintenanceOperations,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_ErrorLogAnalysis,AgentEinbeziehen,bit,0
 USP_ErrorLogAnalysis,MaxArchivNummer,tinyint,0
-USP_ErrorLogAnalysis,SeitServerlokalzeit,"datetime2(3)",NULL
+USP_ErrorLogAnalysis,SeitServerlokalzeit,datetime2(3),NULL
 USP_ErrorLogAnalysis,Suchtext1,nvarchar(4000),NULL
 USP_ErrorLogAnalysis,Suchtext2,nvarchar(4000),NULL
 USP_ErrorLogAnalysis,MeldungstextEinbeziehen,bit,0
@@ -1767,3 +1767,17 @@ USP_PurgeSnapshotData,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_PurgeSnapshotData,IsPartialOut,bit,NULL OUTPUT
 USP_PurgeSnapshotData,ErrorNumberOut,int,NULL OUTPUT
 USP_PurgeSnapshotData,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_FrameworkUsageFromQueryStore,MaxZeilen,int,100
+USP_FrameworkUsageFromQueryStore,MinAusfuehrungen,bigint,1
+USP_FrameworkUsageFromQueryStore,ZeitraumTage,int,NULL
+USP_FrameworkUsageFromQueryStore,LockTimeoutMs,int,0
+USP_FrameworkUsageFromQueryStore,ResultSetArt,varchar(16),'CONSOLE'
+USP_FrameworkUsageFromQueryStore,ResultTablesJson,nvarchar(max),NULL
+USP_FrameworkUsageFromQueryStore,JsonErzeugen,bit,0
+USP_FrameworkUsageFromQueryStore,Json,nvarchar(max),NULL OUTPUT
+USP_FrameworkUsageFromQueryStore,PrintMeldungen,bit,1
+USP_FrameworkUsageFromQueryStore,Hilfe,bit,0
+USP_FrameworkUsageFromQueryStore,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_FrameworkUsageFromQueryStore,IsPartialOut,bit,NULL OUTPUT
+USP_FrameworkUsageFromQueryStore,ErrorNumberOut,int,NULL OUTPUT
+USP_FrameworkUsageFromQueryStore,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
