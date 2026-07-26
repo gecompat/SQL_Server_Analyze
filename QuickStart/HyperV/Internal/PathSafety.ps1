@@ -45,13 +45,13 @@ function Get-ProtectedPaths {
             $protected += @{ Path = $drive.Root; Reason = 'Laufwerkswurzel'; ExactOnly = $true }
         }
     }
-    $protected += @{ Path = $env:SystemRoot; Reason = 'Windows-Systemverzeichnis' }
-    $protected += @{ Path = $env:ProgramFiles; Reason = 'Program Files' }
-    $protected += @{ Path = ${env:ProgramFiles(x86)}; Reason = 'Program Files (x86)' }
-    $protected += @{ Path = $env:ProgramData; Reason = 'ProgramData' }
+    $protected += @{ Path = $env:SystemRoot; Reason = 'Windows-Systemverzeichnis'; ExactOnly = $false }
+    $protected += @{ Path = $env:ProgramFiles; Reason = 'Program Files'; ExactOnly = $false }
+    $protected += @{ Path = ${env:ProgramFiles(x86)}; Reason = 'Program Files (x86)'; ExactOnly = $false }
+    $protected += @{ Path = $env:ProgramData; Reason = 'ProgramData'; ExactOnly = $false }
     $protected += @{ Path = $env:USERPROFILE; Reason = 'Benutzerprofilwurzel'; ExactOnly = $true }
-    $protected += @{ Path = $script:RepositoryRoot; Reason = 'Repository' }
-    $protected += @{ Path = $script:QuickStartRoot; Reason = 'QuickStart-Quellverzeichnis' }
+    $protected += @{ Path = $script:RepositoryRoot; Reason = 'Repository'; ExactOnly = $false }
+    $protected += @{ Path = $script:QuickStartRoot; Reason = 'QuickStart-Quellverzeichnis'; ExactOnly = $false }
     return $protected
 }
 
