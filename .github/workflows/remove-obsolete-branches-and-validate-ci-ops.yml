@@ -18,17 +18,41 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Check out pull request tree
-        uses: actions/checkout@v6
+      - name: Download pull request head tree
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir repository
+          curl -fsSL \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$REPOSITORY/tarball/$HEAD_SHA" \
+            | tar -xz --strip-components=1 -C repository
 
-      - name: Verify obsolete policy references are absent
+      - name: Report obsolete policy references
         shell: bash
         run: |
           set -euo pipefail
-          if git grep -n -I -E 'ci-ops|CI/Operations-Linie|Operations-/Validation-Linie|Produktlinie vs\. CI/Operations-Linie|Repository-Abgrenzung und Branch-Strategie' -- . ':!.github/workflows/remove-obsolete-branches-and-validate-ci-ops.yml'; then
-            echo 'Obsolete ci-ops repository-policy reference remains.' >&2
+          cd repository
+          matches="$({
+            find . -type f \
+              ! -path './.github/workflows/remove-obsolete-branches-and-validate-ci-ops.yml' \
+              -print0 \
+              | xargs -0 grep -n -I -E \
+                  'ci-ops|CI/Operations-Linie|Operations-/Validation-Linie|Produktlinie vs\. CI/Operations-Linie|Repository-Abgrenzung und Branch-Strategie'
+          } || true)"
+          if [[ -n "$matches" ]]; then
+            echo 'REFERENCE_AUDIT_BEGIN'
+            printf '%s\n' "$matches"
+            echo 'REFERENCE_AUDIT_END'
             exit 1
           fi
+          echo 'No obsolete ci-ops policy references remain.'
 
       - name: Remove fully merged obsolete branch
         shell: bash
