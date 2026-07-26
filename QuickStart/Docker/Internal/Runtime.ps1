@@ -105,23 +105,6 @@ function Assert-DockerResourceOwnership {
     }
 }
 
-function Initialize-DockerDesktopStorage {
-    param(
-        [Parameter(Mandatory)][hashtable] $Env,
-        [Parameter(Mandatory)][string] $Service
-    )
-
-    if ($Env.QUICKSTART_RUNTIME_MODE -ne 'DOCKER_DESKTOP_WINDOWS') {
-        return
-    }
-
-    $initService = "$Service-storage-init"
-    Write-Host "Initialisiere Schreibrechte der Docker-Volumes für $Service ..."
-    Invoke-Compose -Env $Env -Arguments @(
-        'run', '--rm', '--no-deps', '--no-TTY', $initService
-    ) | Out-Null
-}
-
 function Wait-ServiceHealthy {
     param(
         [Parameter(Mandatory)][hashtable] $Env,
@@ -246,11 +229,14 @@ function Start-Environment {
         throw 'Die .env-Datei enthält keine unterstützte SQL-Version.'
     }
 
+    if ($envValues.QUICKSTART_RUNTIME_MODE -eq 'DOCKER_DESKTOP_WINDOWS') {
+        Write-Warning 'Docker Desktop startet die lokalen SQL-Testcontainer als root innerhalb des Containers. Die Container bleiben unprivilegiert, Ports sind an 127.0.0.1 gebunden und aktive SQL-Dateien liegen in projektgebundenen Docker-Volumes.'
+    }
+
     foreach ($version in $versions) {
         $service = "sql$version"
         Write-Section -Text "SQL Server $version"
         Invoke-Compose -Env $envValues -Arguments @('pull', $service) | Out-Null
-        Initialize-DockerDesktopStorage -Env $envValues -Service $service
         Invoke-Compose -Env $envValues -Arguments @('up', '-d', '--no-deps', $service) | Out-Null
         Wait-ServiceHealthy -Env $envValues -Service $service
         Write-Host "SQL Server $version ist healthy."
