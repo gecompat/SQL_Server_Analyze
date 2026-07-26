@@ -51,6 +51,7 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Reale personen-, benutzer-, kunden-, firmen-, organisations-, betriebs- oder umgebungsbezogene Informationen dürfen niemals in Code, Kommentaren, Dokumentation, Beispielen, Tests, Fixtures, Audits, Metadaten, Screenshots oder Downloads stehen.
 - Das Verbot umfasst interne Datenbankstrukturen, Namenskonventionen und proprietäres Metadatenwissen aus Screenshots, Hardcopys, Chats, Uploads, bestehenden Skripten, Logs und Diagnoseausgaben.
 - Technische Systemspalten und generische API-Namen sind zulässig; Beispiele verwenden ausschließlich eindeutig synthetische, generische Werte und bilden keine reale interne Struktur nach.
+- Private IPv4-Adressen dürfen nach technischer Verifikation als RFC-1918-Adresse für generische Lab-, Test- und Architekturbeispiele pfad- und wertgebunden freigegeben werden. Öffentliche oder sonstige nicht als privat verifizierte IPv4-Adressen bleiben ohne ausdrückliche Genehmigung verboten.
 - Öffentliche Quellen-, Lizenz- und Urheberangaben sind beabsichtigte Attribution und werden nicht als versehentliche Umgebungsdaten behandelt.
 - Eine Zustimmung oder vorhandener Zugriff hebt das Repositoryverbot nicht auf.
 - Bei uneindeutigen Datenfunden muss vor dem Schreiben oder Verpacken angehalten und nach einer nicht sensitiven Alternative gefragt werden.
