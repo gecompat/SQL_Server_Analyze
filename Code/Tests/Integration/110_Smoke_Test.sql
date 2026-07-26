@@ -42,6 +42,7 @@ VALUES
 (N'monitor.USP_VectorIndexAnalysis','P'),
 (N'monitor.USP_PlanCacheAnalysis','P'),
 (N'monitor.USP_QueryStoreAnalysis','P'),
+(N'monitor.USP_FrameworkUsageFromQueryStore','P'),
 (N'monitor.USP_ExtendedEventsAnalysis','P'),
 (N'monitor.USP_InfrastructureAnalysis','P'),
 (N'monitor.USP_ServerHealthAnalysis','P'),
@@ -104,8 +105,8 @@ IF NOT EXISTS
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 97
-    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 97 öffentlichen Procedures.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 98
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 98 öffentlichen Procedures.',1;
 
 IF EXISTS
 (
@@ -279,6 +280,7 @@ IF COALESCE(ISJSON(@AnalysisNavigatorJson),0)<>1
     THROW 54028,N'Der Analysis Navigator hat für die synthetische Blockingsuche keinen gültigen priorisierten JSON-Treffer geliefert.',1;
 
 EXEC [monitor].[USP_AnalysisNavigator] @Hilfe=1;
+EXEC [monitor].[USP_FrameworkUsageFromQueryStore] @Hilfe=1;
 EXEC [monitor].[USP_CheckAnalyseAccess] @Hilfe=1;
 EXEC [monitor].[USP_CheckFrameworkCapabilities] @Hilfe=1;
 EXEC [monitor].[USP_CurrentOverview] @Hilfe=1;

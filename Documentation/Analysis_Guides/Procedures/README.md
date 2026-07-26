@@ -1,8 +1,8 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 97 Procedures<br>
-**Tief geprüfte Seiten:** 91 Procedures
+**Strukturelle Abdeckung:** 98 Procedures<br>
+**Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
 
@@ -17,7 +17,7 @@ Die vollständigen technischen Spaltentabellen bleiben in den verlinkten Bereich
 
 ## Reifegrad richtig lesen
 
-91 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001-, drei SC-023- und die SQL25-001-Seite stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
+92 Procedures besitzen eine am aktuellen T-SQL geprüfte `DEEP_REVIEWED`-Seite. Die zwei PLAN-001-, drei SC-023- und die SQL25-001-Seite stehen als vollständig strukturierte `BASELINE` bereit. Beide Stufen enthalten Zweck, sichere Aufrufe, Resultset-Leserichtung, Grenzen, Kostenprofil und technische Quellen; `DEEP_REVIEWED` kennzeichnet zusätzlich den vollständig abgeglichenen technischen Vertiefungsvertrag.
 
 Als fachliche Kalibrierungsfälle für unterschiedliche Beobachtungs- und Kostenmodelle dienen:
 
@@ -86,6 +86,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_QueryStoreHints](USP_QueryStoreHints.md)
 - [USP_IntelligentQueryProcessingAnalysis](USP_IntelligentQueryProcessingAnalysis.md)
 - [USP_QueryStoreAnalysis](USP_QueryStoreAnalysis.md)
+- [USP_FrameworkUsageFromQueryStore](USP_FrameworkUsageFromQueryStore.md)
 
 ## Extended Events
 

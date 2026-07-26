@@ -2396,9 +2396,18 @@ Quelle: `Code/10_SnapshotBaseline/100_USP_PurgeSnapshotData.sql`
 Quelle: `Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql`
 
 ```sql
-@MaxZeilen        int            = 100
-    , @MinAusfuehrungen bigint         = 1
-    , @ZeitraumTage     int            = NULL
-    , @ResultSetArt     varchar(16)    = 'CONSOLE'
-    , @Json             nvarchar(max)  = NULL OUTPUT
+@MaxZeilen          int            = 100
+    , @MinAusfuehrungen   bigint         = 1
+    , @ZeitraumTage       int            = NULL
+    , @LockTimeoutMs      int            = 0
+    , @ResultSetArt       varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson   nvarchar(max)  = NULL
+    , @JsonErzeugen       bit            = 0
+    , @Json               nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen     bit            = 1
+    , @Hilfe              bit            = 0
+    , @StatusCodeOut      varchar(40)    = NULL OUTPUT
+    , @IsPartialOut       bit            = NULL OUTPUT
+    , @ErrorNumberOut     int            = NULL OUTPUT
+    , @ErrorMessageOut    nvarchar(2048) = NULL OUTPUT
 ```
