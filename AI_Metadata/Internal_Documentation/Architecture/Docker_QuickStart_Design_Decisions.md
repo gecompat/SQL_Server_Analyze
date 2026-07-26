@@ -81,7 +81,9 @@ Die Wurzeln dürfen weder identisch sein noch ineinander liegen.
 
 Auf einer nativen Linux-Docker-Engine werden die ausgewählten Daten- und Logpfade als Bind-Mounts verwendet. Dadurch können Linux-native Tests gezielt einem dedizierten Blockgerät zugeordnet werden.
 
-Docker Desktop auf Windows betreibt Linux-Container innerhalb einer Linux-VM. Aktive SQL-Datenbank- und Logdateien werden dort in projektgebundenen Docker-Volumes gespeichert. Direkte Windows-Bind-Mounts für `/var/opt/mssql/data` und `/var/opt/mssql/log` sind ausgeschlossen. Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups zuständig.
+Docker Desktop auf Windows betreibt Linux-Container innerhalb einer Linux-VM. Pro SQL-Version wird genau ein projektgebundenes Docker-Volume auf `/var/opt/mssql` gemountet. Daten, Logs, Systemmetadaten und der SQL-Secrets-Bereich bleiben dadurch in einer gemeinsamen Persistenzeinheit. Direkte Windows-Bind-Mounts für aktive SQL-Dateien sind ausgeschlossen. Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups zuständig.
+
+Ein neues leeres Volume übernimmt beim ersten Mount den vorhandenen Inhalt und die Besitzinformationen des Image-Verzeichnisses. Die Container verwenden daher auch unter Docker Desktop den vom Microsoft-Image vorgesehenen Non-root-Benutzer. Ein Root-Kompatibilitätsmodus oder getrennte Data-/Log-Volumes sind für Docker Desktop nicht zulässig.
 
 ## Pfadsicherheit
 
@@ -103,9 +105,9 @@ Container, Netzwerke und Docker-Volumes werden über einen eindeutigen Compose-P
 
 SQL-Ports werden standardmäßig ausschließlich an die lokale Loopback-Schnittstelle gebunden. Bereits belegte oder mehrfach verwendete Ports werden abgelehnt.
 
-Das projektgebundene Compose-Netzwerk verwendet einen normalen Bridge-Treiber. Es darf nicht ausschließlich als `internal` angelegt werden, weil ein Netzwerk ohne Host-Konnektivität die ausdrücklich gewünschte Loopback-Portveröffentlichung verhindert. Die Erreichbarkeit bleibt durch die Hostbindung an die Loopback-Adresse lokal begrenzt.
+Das projektgebundene Compose-Netzwerk verwendet einen normalen Bridge-Treiber. Die Erreichbarkeit bleibt durch die Hostbindung an die Loopback-Adresse lokal begrenzt.
 
-Nach dem Start werden sowohl die tatsächlich erzeugte Docker-Portbindung als auch die TCP-Erreichbarkeit vom Host geprüft. Ein Container gilt erst danach als für lokale Clients erreichbar.
+Der Healthcheck verwendet eine explizite TCP-Verbindung zu `127.0.0.1:1433` sowie definierte Login- und Abfragetimeouts. Nach dem Start werden sowohl die tatsächlich erzeugte Docker-Portbindung als auch die TCP-Erreichbarkeit vom Host geprüft. Ein Container gilt erst danach als für lokale Clients erreichbar.
 
 Globale Bereinigungsbefehle sind ausgeschlossen. Insbesondere dürfen weder globale Docker-Prune-Operationen noch Wildcard-Löschungen oder die Entfernung fremder Container, Netzwerke, Volumes oder Images verwendet werden.
 
@@ -114,7 +116,9 @@ Globale Bereinigungsbefehle sind ausgeschlossen. Insbesondere dürfen weder glob
 `Remove` und `Uninstall.ps1` verwenden dieselbe sichere Logik:
 
 1. Entfernen der eindeutig zugeordneten Container und des Projektnetzwerks nach Bestätigung;
-2. optionales Entfernen der zugeordneten Docker-Volumes, der markierten Datenpfade und der lokalen `.env` nach einer zweiten Bestätigung.
+2. optionales Entfernen aller Owner- und Scope-geprüften Docker-Volumes des Projekts, der markierten Datenpfade und der lokalen `.env` nach einer zweiten Bestätigung.
+
+Die Volume-Ermittlung ist nicht auf die aktuell deklarierte Compose-Datei beschränkt. Dadurch können auch Volumes eines älteren QuickStart-Speichermodells sicher entfernt werden.
 
 Vor dem Löschen eines Pfads muss geprüft werden, dass nur die erwarteten QuickStart-Einträge vorhanden sind. Unerwartete Inhalte verhindern die Löschung.
 
