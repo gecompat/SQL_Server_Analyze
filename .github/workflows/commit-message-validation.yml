@@ -46,9 +46,15 @@ jobs:
           done
           if [ "$ready" -ne 1 ]; then echo 'RESTORED_SMOKE_READINESS_FAILED'; exit 1; fi
           docker exec -e SQLCMDPASSWORD="$credential" "$container" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -b -Q "CREATE DATABASE [FrameworkContract] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [FrameworkContract] SET COMPATIBILITY_LEVEL=160; ALTER DATABASE [FrameworkContract] SET QUERY_STORE=ON; ALTER DATABASE [FrameworkContract] SET QUERY_STORE (OPERATION_MODE=READ_WRITE);" >/dev/null
-          docker exec -e SQLCMDPASSWORD="$credential" "$container" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i /workspace/Code/Install/Install_All.sql >"$work_root/install.log" 2>&1 || { grep -E '^(Msg [0-9]+|HResult)' "$work_root/install.log" | tail -n 80 || true; exit 1; }
+          docker exec -e SQLCMDPASSWORD="$credential" "$container" bash -lc '
+            cd /workspace/Code/Install
+            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i Install_All.sql
+          ' >"$work_root/install.log" 2>&1 || { grep -E '^(Msg [0-9]+|HResult)|Sqlcmd:' "$work_root/install.log" | tail -n 80 || true; exit 1; }
           set +e
-          docker exec -e SQLCMDPASSWORD="$credential" "$container" /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i /workspace/Code/Tests/Run_Release_Gate.sql >"$work_root/release.log" 2>&1
+          docker exec -e SQLCMDPASSWORD="$credential" "$container" bash -lc '
+            cd /workspace/Code/Tests
+            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i Run_Release_Gate.sql
+          ' >"$work_root/release.log" 2>&1
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
