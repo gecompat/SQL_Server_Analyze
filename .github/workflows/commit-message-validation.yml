@@ -32,6 +32,7 @@ jobs:
           cd repository
           script='./Code/Tests/Static/Temporary_Complete_Framework_Usage.py'
           sed -i 's#Metadata/Inventory/ObjectInventory.csv#Metadata/Inventory/Objects.csv#g' "$script"
+          sed -i 's/[[:space:]]\+$//' "$script"
           set +e
           python3 "$script" >"$RUNNER_TEMP/framework-usage-patch.log" 2>&1
           patch_status=$?
