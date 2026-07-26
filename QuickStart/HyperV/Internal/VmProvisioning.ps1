@@ -79,16 +79,16 @@ function New-LabVm {
 
     $vm = New-VM -Name $vmName `
         -Generation 2 `
-        -MemoryStartupBytes $Profile.StartupBytes `
+        -MemoryStartupBytes $Profile.MinMemory `
         -VHDPath $VhdPath `
         -SwitchName $script:SwitchName
 
     # Konfiguration
     Set-VMMemory -VM $vm -DynamicMemoryEnabled $true `
-        -MinimumBytes $Profile.MinimumBytes `
-        -MaximumBytes $Profile.MaximumBytes
+        -MinimumBytes ($Profile.MinMemory / 2) `
+        -MaximumBytes $Profile.MaxMemory
 
-    Set-VMProcessor -VM $vm -Count $Profile.ProcessorCount
+    Set-VMProcessor -VM $vm -Count $Profile.vCPUs
 
     # Secure Boot deaktivieren (Flexibilität)
     Set-VMFirmware -VM $vm -EnableSecureBoot Off
@@ -99,7 +99,7 @@ function New-LabVm {
     # Integration Services
     Enable-VMIntegrationService -VM $vm -Name 'Guest Service Interface' -ErrorAction SilentlyContinue
 
-    Write-Host "VM '$vmName' erstellt ($(($Profile.StartupBytes / 1GB))GB RAM, $($Profile.ProcessorCount) vCPUs)."
+    Write-Host "VM '$vmName' erstellt ($(($Profile.MinMemory / 1GB))GB RAM, $($Profile.vCPUs) vCPUs)."
 }
 
 function Wait-VmReady {
