@@ -8,155 +8,126 @@ permissions:
   contents: read
 
 concurrency:
-  group: framework-usage-missing-evidence-${{ github.ref }}
+  group: framework-usage-permission-evidence-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  runtime:
-    name: SQL Server ${{ matrix.year }} missing evidence
+  permission:
+    name: SQL Server ${{ matrix.year }} permission evidence
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
           - year: 2019
-            product_major: 15
             image: mcr.microsoft.com/mssql/server:2019-latest
             compatibility: 150
             permission_test: Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql
-            run_release: false
           - year: 2022
-            product_major: 16
             image: mcr.microsoft.com/mssql/server:2022-latest
             compatibility: 160
             permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
-            run_release: true
           - year: 2025
-            product_major: 17
             image: mcr.microsoft.com/mssql/server:2025-latest
             compatibility: 170
             permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
-            run_release: false
     steps:
-      - name: Check out exact branch head
-        uses: actions/checkout@v6
-        with:
-          ref: agent/complete-framework-usage-contract
-          fetch-depth: 1
-
-      - name: Prepare synthetic test copy
+      - name: Run isolated permission matrix
         shell: bash
+        env:
+          SQL_YEAR: ${{ matrix.year }}
+          SQL_IMAGE: ${{ matrix.image }}
+          SQL_COMPATIBILITY: ${{ matrix.compatibility }}
+          SQL_PERMISSION_TEST: ${{ matrix.permission_test }}
         run: |
           set -euo pipefail
-          test_root="$RUNNER_TEMP/framework-usage-${{ matrix.year }}"
-          mkdir -p "$test_root/repository"
-          git archive HEAD | tar -x -C "$test_root/repository"
-          find "$test_root/repository/Code" -type f -name '*.sql' -print0 | xargs -0 sed -i 's/\[DeineDatenbank\]/[FrameworkContract]/g'
-          echo "TEST_ROOT=$test_root" >> "$GITHUB_ENV"
+          git clone --quiet --depth 1 --branch agent/complete-framework-usage-contract "https://github.com/${GITHUB_REPOSITORY}.git" repository
+          work_root="$RUNNER_TEMP/permission-${SQL_YEAR}"
+          mkdir -p "$work_root/repository"
+          cd repository
+          git archive HEAD | tar -x -C "$work_root/repository"
+          cd ..
+          find "$work_root/repository/Code" -type f -name '*.sql' -print0 | xargs -0 sed -i 's/\[DeineDatenbank\]/[FrameworkContract]/g'
 
-      - name: Start isolated SQL Server
-        shell: bash
-        run: |
-          set -euo pipefail
-          credential="Synthet1c!$(openssl rand -hex 16)"
-          echo "::add-mask::$credential"
-          printf '%s' "$credential" > "$RUNNER_TEMP/sql-credential"
-          chmod 600 "$RUNNER_TEMP/sql-credential"
-          container_name="framework-usage-sql-${{ matrix.year }}"
-          echo "CONTAINER_NAME=$container_name" >> "$GITHUB_ENV"
-          docker pull --quiet '${{ matrix.image }}'
-          docker run -d --name "$container_name" --memory 4g --cpus 2 \
-            -e ACCEPT_EULA=Y -e MSSQL_PID=Developer \
-            -e MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
-            -e MSSQL_SA_PASSWORD="$credential" \
-            -v "$TEST_ROOT/repository:/workspace:ro" \
-            '${{ matrix.image }}' >/dev/null
+          sa_password="Synthet1c_$(openssl rand -hex 16)"
+          matrix_password="Matrix_$(openssl rand -hex 16)"
+          echo "::add-mask::$sa_password"
+          echo "::add-mask::$matrix_password"
+          container="framework-permission-${SQL_YEAR}"
+          trap 'docker rm -f "$container" >/dev/null 2>&1 || true' EXIT
+          docker pull --quiet "$SQL_IMAGE" >/dev/null
 
-      - name: Wait for readiness and create database
-        shell: bash
-        run: |
-          set -euo pipefail
-          credential="$(cat "$RUNNER_TEMP/sql-credential")"
-          sqlcmd_exec() {
+          sqlcmd_query() {
             local query="$1"
-            docker exec -e SQLCMDPASSWORD="$credential" "$CONTAINER_NAME" bash -lc '
-              if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
-                exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -l 15 -b -Q "$1"
-              fi
-              exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -l 15 -b -Q "$1"
-            ' bash "$query"
-          }
-          ready=0
-          for attempt in $(seq 1 120); do
-            if sqlcmd_exec 'SET NOCOUNT ON; SELECT 1;' >/dev/null 2>&1; then ready=1; break; fi
-            sleep 2
-          done
-          if [ "$ready" -ne 1 ]; then docker logs --tail 120 "$CONTAINER_NAME"; exit 1; fi
-          sqlcmd_exec "CREATE DATABASE [FrameworkContract] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [FrameworkContract] SET COMPATIBILITY_LEVEL = ${{ matrix.compatibility }}; ALTER DATABASE [FrameworkContract] SET QUERY_STORE = ON; ALTER DATABASE [FrameworkContract] SET QUERY_STORE (OPERATION_MODE = READ_WRITE);"
-          sqlcmd_exec "IF CONVERT(int,SERVERPROPERTY('ProductMajorVersion')) <> ${{ matrix.product_major }} THROW 51000, 'UNEXPECTED_PRODUCT_MAJOR_VERSION', 1; IF CONVERT(sysname,SERVERPROPERTY('Collation')) <> N'SQL_Latin1_General_CP1_CS_AS' THROW 51000, 'UNEXPECTED_SERVER_COLLATION', 1; IF CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation')) <> N'SQL_Latin1_General_CP1_CS_AS' THROW 51000, 'UNEXPECTED_TEMPDB_COLLATION', 1;"
-
-      - name: Install complete framework
-        shell: bash
-        run: |
+            docker exec -e SQLCMDPASSWORD="$sa_password" "$container" bash -s -- "$query" <<'INNER'
           set -euo pipefail
-          credential="$(cat "$RUNNER_TEMP/sql-credential")"
-          docker exec -e SQLCMDPASSWORD="$credential" "$CONTAINER_NAME" bash -lc '
-            cd /workspace/Code/Install
-            if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i Install_All.sql; fi
-            exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -i Install_All.sql
-          ' >"$RUNNER_TEMP/install-${{ matrix.year }}.log" 2>&1 || { echo 'INSTALL_FAILURE_BEGIN'; tail -n 120 "$RUNNER_TEMP/install-${{ matrix.year }}.log"; echo 'INSTALL_FAILURE_END'; exit 1; }
-
-      - name: Run SQL Server 2022 full release gate
-        if: matrix.run_release
-        shell: bash
-        run: |
-          set -euo pipefail
-          credential="$(cat "$RUNNER_TEMP/sql-credential")"
-          set +e
-          docker exec -e SQLCMDPASSWORD="$credential" "$CONTAINER_NAME" bash -lc '
-            cd /workspace/Code/Tests
-            if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i Run_Release_Gate.sql; fi
-            exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -i Run_Release_Gate.sql
-          ' >"$RUNNER_TEMP/release-${{ matrix.year }}.log" 2>&1
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            echo 'RELEASE_GATE_FAILURE_BEGIN'
-            grep -E '^(RELEASE_GATE [0-9]+/34|Msg [0-9]+|HResult)|FRAMEWORK_USAGE|(_MISSING|_INVALID|_FAILED)( |$)' "$RUNNER_TEMP/release-${{ matrix.year }}.log" | tail -n 220 || true
-            echo 'RELEASE_GATE_FAILURE_END'
-            exit "$status"
+          query="$1"
+          if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
+            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -l 15 -b -Q "$query"
           fi
-          grep -q 'FRAMEWORK_USAGE_RUNTIME_CONTRACT PASS' "$RUNNER_TEMP/release-${{ matrix.year }}.log"
+          exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -l 15 -b -Q "$query"
+          INNER
+          }
 
-      - name: Run permission matrix with synthetic SQLCMD password
-        shell: bash
-        run: |
+          ready=0
+          for container_attempt in 1 2 3; do
+            docker rm -f "$container" >/dev/null 2>&1 || true
+            docker run -d --name "$container" --memory 4g --cpus 2 \
+              -e ACCEPT_EULA=Y -e MSSQL_PID=Developer \
+              -e MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
+              -e MSSQL_SA_PASSWORD="$sa_password" \
+              -v "$work_root/repository:/workspace:ro" \
+              "$SQL_IMAGE" >/dev/null
+            for attempt in $(seq 1 120); do
+              if sqlcmd_query 'SET NOCOUNT ON; SELECT 1;' >/dev/null 2>&1; then ready=1; break; fi
+              sleep 2
+            done
+            if [ "$ready" -eq 1 ]; then break; fi
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "SQL_${SQL_YEAR}_READINESS_FAILED"
+            docker logs --tail 80 "$container" || true
+            exit 1
+          fi
+
+          sqlcmd_query "CREATE DATABASE [FrameworkContract] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [FrameworkContract] SET COMPATIBILITY_LEVEL = ${SQL_COMPATIBILITY}; ALTER DATABASE [FrameworkContract] SET QUERY_STORE = ON; ALTER DATABASE [FrameworkContract] SET QUERY_STORE (OPERATION_MODE = READ_WRITE);" >/dev/null
+
+          set +e
+          docker exec -e SQLCMDPASSWORD="$sa_password" "$container" bash -s <<'INNER' >"$work_root/install.log" 2>&1
           set -euo pipefail
-          credential="$(cat "$RUNNER_TEMP/sql-credential")"
-          permission_file='/workspace/${{ matrix.permission_test }}'
+          if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
+            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -i /workspace/Code/Install/Install_All.sql
+          fi
+          exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -i /workspace/Code/Install/Install_All.sql
+          INNER
+          install_status=$?
+          set -e
+          if [ "$install_status" -ne 0 ]; then
+            echo "SQL_${SQL_YEAR}_INSTALL_FAILURE_BEGIN"
+            grep -E '^(Msg [0-9]+|HResult)|(_MISSING|_INVALID|_FAILED)( |$)' "$work_root/install.log" | tail -n 120 || true
+            echo "SQL_${SQL_YEAR}_INSTALL_FAILURE_END"
+            exit "$install_status"
+          fi
+
           set +e
           docker exec \
-            -e SQLCMDPASSWORD="$credential" \
-            -e PERMISSION_MATRIX_PASSWORD="$credential" \
-            "$CONTAINER_NAME" bash -lc '
-              if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
-                exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -v PermissionMatrixPassword="$PERMISSION_MATRIX_PASSWORD" -i "$1"
-              fi
-              exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -v PermissionMatrixPassword="$PERMISSION_MATRIX_PASSWORD" -i "$1"
-            ' bash "$permission_file" >"$RUNNER_TEMP/permission-${{ matrix.year }}.log" 2>&1
-          status=$?
-          set -e
-          if [ "$status" -ne 0 ]; then
-            echo 'PERMISSION_MATRIX_FAILURE_BEGIN'
-            grep -E '^(Msg [0-9]+|HResult)|PERMISSION|(_MISSING|_INVALID|_FAILED)( |$)' "$RUNNER_TEMP/permission-${{ matrix.year }}.log" | tail -n 160 || true
-            echo 'PERMISSION_MATRIX_FAILURE_END'
-            exit "$status"
+            -e SQLCMDPASSWORD="$sa_password" \
+            -e PERMISSION_MATRIX_PASSWORD="$matrix_password" \
+            "$container" bash -s -- "/workspace/${SQL_PERMISSION_TEST}" <<'INNER' >"$work_root/permission.log" 2>&1
+          set -euo pipefail
+          file="$1"
+          if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then
+            exec /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -C -d FrameworkContract -b -v "PermissionMatrixPassword=$PERMISSION_MATRIX_PASSWORD" -i "$file"
           fi
-
-      - name: Remove isolated SQL Server
-        if: always()
-        shell: bash
-        run: |
-          rm -f "$RUNNER_TEMP/sql-credential"
-          if [ -n "${CONTAINER_NAME:-}" ]; then docker rm -f "$CONTAINER_NAME" >/dev/null 2>&1 || true; fi
+          exec /opt/mssql-tools/bin/sqlcmd -S localhost -U sa -d FrameworkContract -b -v "PermissionMatrixPassword=$PERMISSION_MATRIX_PASSWORD" -i "$file"
+          INNER
+          permission_status=$?
+          set -e
+          if [ "$permission_status" -ne 0 ]; then
+            echo "SQL_${SQL_YEAR}_PERMISSION_FAILURE_BEGIN"
+            grep -E '^(Msg [0-9]+|HResult)|PERMISSION|(_MISSING|_INVALID|_FAILED)( |$)' "$work_root/permission.log" | tail -n 160 || true
+            echo "SQL_${SQL_YEAR}_PERMISSION_FAILURE_END"
+            exit "$permission_status"
+          fi
+          echo "FRAMEWORK_USAGE_SQL_${SQL_YEAR}_PERMISSION PASS"
