@@ -1,0 +1,45 @@
+name: Compact privacy diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/compact-privacy-diagnostic.yml
+      - AGENTS.md
+      - AI_Metadata/**
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Download pull request head tree
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          mkdir repository
+          curl -fsSL \
+            -H 'Accept: application/vnd.github+json' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H 'X-GitHub-Api-Version: 2022-11-28' \
+            "https://api.github.com/repos/$REPOSITORY/tarball/$HEAD_SHA" \
+            | tar -xz --strip-components=1 -C repository
+
+      - name: Run repository privacy validator
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd repository
+          python3 Code/Tests/Static/910_Validate_Repository_Privacy.py \
+            --repository-root . \
+            --self-test
+          python3 Code/Tests/Static/910_Validate_Repository_Privacy.py \
+            --repository-root .
