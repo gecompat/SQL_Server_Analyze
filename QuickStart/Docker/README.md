@@ -141,16 +141,17 @@ Mounts werden für aktive SQL-Datenbankdateien nicht verwendet. Die ausgewählte
 Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups
 zuständig.
 
-Vor dem Start jeder SQL-Instanz führt der QuickStart einen kurzlebigen,
-projektgebundenen Initialisierungscontainer als Root aus. Dieser setzt auf den
-zugeordneten Daten- und Log-Volumes den Besitzer auf die SQL-Server-UID `10001`
-und stellt die erforderlichen Gruppenrechte her. Der eigentliche SQL-Server-
-Container läuft anschließend weiterhin ohne Root-Rechte.
+Für diesen lokalen Docker-Desktop-Testpfad wird der SQL-Server-Prozess innerhalb
+des Containers ausdrücklich als `root` gestartet. Der Container bleibt
+unprivilegiert, verwendet kein Host-Netzwerk, bindet SQL ausschließlich an
+`127.0.0.1` und erhält nur die vorgesehenen QuickStart-Mounts. Diese
+Kompatibilitätsvariante verhindert die wiederholt beobachteten Zugriffsfehler beim
+Initialisieren der Systemdatenbanken auf Docker-Desktop-Volumes. Sie ist nicht als
+Produktionskonfiguration vorgesehen.
 
-Diese Trennung verhindert, dass SQL Server seine Systemdatenbanken und `tempdb`
-über die Windows-Dateifreigabeschicht betreibt. Die Docker-Volumes tragen denselben
-Owner- und Scope-Marker wie Container und Netzwerk. Eine vollständige
-Deinstallation entfernt sie nur nach ausdrücklicher Bestätigung.
+Die Docker-Volumes tragen denselben Owner- und Scope-Marker wie Container und
+Netzwerk. Eine vollständige Deinstallation entfernt sie nur nach ausdrücklicher
+Bestätigung.
 
 Auf einer nativen Linux-Docker-Engine werden weiterhin die ausgewählten lokalen
 Daten- und Logpfade als Bind-Mounts verwendet. Dadurch bleibt die dedizierte
@@ -189,10 +190,10 @@ Compose-Erweiterung drosselt anschließend Lese- und Schreibrate über
 `blkio_config`. Für eine Hyper-V-Variante sollte das Blockgerät eine eigene
 virtuelle Disk sein, die ausschließlich diesem Lab dient.
 
-SQL Server 2019 und neuer läuft im Linux-Container standardmäßig ohne Root-Rechte.
-Deshalb muss die initiale Einrichtung unter Linux mit `sudo pwsh` ausgeführt
-werden. Setup setzt nur auf den zuvor geprüften leeren und markierten Lab-Wurzeln
-die für die Root-Gruppe erforderlichen Schreibrechte.
+Auf einer nativen Linux-Docker-Engine läuft SQL Server 2019 und neuer weiterhin
+standardmäßig ohne Root-Rechte. Deshalb muss die initiale Linux-Einrichtung mit
+`sudo pwsh` ausgeführt werden. Setup setzt nur auf den zuvor geprüften leeren und
+markierten Lab-Wurzeln die für die Root-Gruppe erforderlichen Schreibrechte.
 
 ## Netzwerk und Ports
 
