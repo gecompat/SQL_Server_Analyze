@@ -45,7 +45,7 @@ BEGIN
 
     DECLARE @CapturedAtUtc datetime2(3) = SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @ConsoleRequested bit = CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @StatusCode varchar(40) = 'AVAILABLE';
     DECLARE @IsPartial bit = 0;
     DECLARE @ErrorNumber int = NULL;
@@ -481,7 +481,7 @@ Finalize:
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
     EXEC [sys].[sp_executesql] @LockTimeoutSql;
 
-    IF @ConsoleRequested=1
+    IF @ConsoleResultRequested=1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
               @SourceTable=N'#FrameworkUsage_Usage'

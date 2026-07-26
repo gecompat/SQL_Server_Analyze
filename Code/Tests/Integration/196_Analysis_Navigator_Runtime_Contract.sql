@@ -21,9 +21,9 @@ CREATE TABLE [#AnalysisNavigatorRuntimeContract_Failure]
     , [Detail] nvarchar(2048) NOT NULL
 );
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 97
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 98
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
-    VALUES(N'CATALOG_COUNT',N'Der fachliche Katalog enthält nicht genau 97 öffentliche Procedures.');
+    VALUES(N'CATALOG_COUNT',N'Der fachliche Katalog enthält nicht genau 98 öffentliche Procedures.');
 
 IF EXISTS
 (
@@ -507,7 +507,7 @@ END;
 SELECT
       CAST('AVAILABLE' AS varchar(40)) AS [StatusCode]
     , CAST(0 AS bit) AS [IsPartial]
-    , CAST(97 AS int) AS [CatalogProcedureCount]
+    , CAST(98 AS int) AS [CatalogProcedureCount]
     , (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisSearchTerm]) AS [SearchTermCount]
     , (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisRelation]) AS [RelationCount]
     , CAST(N'Analysis Catalog, DE/EN-Suche, Beziehungen, Filter, Paketstatus, TABLE und JSON sind konsistent.' AS nvarchar(1000)) AS [Detail];
