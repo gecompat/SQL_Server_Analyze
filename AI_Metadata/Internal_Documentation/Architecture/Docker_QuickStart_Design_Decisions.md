@@ -83,6 +83,10 @@ Auf einer nativen Linux-Docker-Engine werden die ausgewählten Daten- und Logpfa
 
 Docker Desktop auf Windows betreibt Linux-Container innerhalb einer Linux-VM. Aktive SQL-Datenbank- und Logdateien werden dort in projektgebundenen Docker-Volumes gespeichert. Direkte Windows-Bind-Mounts für `/var/opt/mssql/data` und `/var/opt/mssql/log` sind ausgeschlossen. Hostpfade bleiben für Scope-Marker, Steuerungsdateien, Installer und Backups zuständig.
 
+Für den lokalen Docker-Desktop-Testpfad werden die SQL-Server-Container mit `user: "0:0"` gestartet. Die Container bleiben unprivilegiert, verwenden kein Host-Netzwerk, binden SQL ausschließlich an die Loopback-Schnittstelle und erhalten nur die vorgesehenen QuickStart-Mounts. Dieser Kompatibilitätsmodus ist auf den lokalen Testbetrieb begrenzt und nicht als Produktionskonfiguration vorgesehen.
+
+Auf nativen Linux-Docker-Engines bleibt der Standardbetrieb ohne Root-Rechte erhalten.
+
 ## Pfadsicherheit
 
 Vor der ersten Mutation gelten folgende Regeln:
