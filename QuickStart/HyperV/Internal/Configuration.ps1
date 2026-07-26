@@ -129,76 +129,155 @@ function Initialize-VmEnvironment {
     $profileDef = $script:ResourceProfiles[$Config['RESOURCE_PROFILE']]
     $versions = $Config['SQL_VERSIONS'] -split ','
     $saPassword = $Config['SA_PASSWORD']
+    $osMode = $Config['OS_MODE']
 
-    # Base-VHD vorbereiten
+    # Base-Verzeichnis
     if (-not (Test-Path -LiteralPath $baseDir)) {
         New-Item -Path $baseDir -ItemType Directory -Force | Out-Null
     }
 
-    $baseVhdx = Join-Path $baseDir 'windows-server-base.vhdx'
-    if ($Config['BASE_IMAGE_SOURCE'] -eq 'Local') {
-        if (-not (Test-Path -LiteralPath $baseVhdx)) {
-            Write-Host 'Kopiere Base-VHDX...'
-            Copy-Item -LiteralPath $Config['BASE_VHDX_PATH'] -Destination $baseVhdx
+    # --- Windows Base-Image ---
+    if ($osMode -in @('Windows', 'Mixed')) {
+        $winBaseVhdx = Join-Path $baseDir 'windows-server-base.vhdx'
+        if ($Config['WIN_BASE_IMAGE_SOURCE'] -eq 'Local') {
+            if (-not (Test-Path -LiteralPath $winBaseVhdx)) {
+                Write-Host 'Kopiere Windows Base-VHDX...'
+                Copy-Item -LiteralPath $Config['WIN_BASE_VHDX_PATH'] -Destination $winBaseVhdx
+            }
         }
-    }
-    else {
-        if (-not (Test-Path -LiteralPath $baseVhdx)) {
-            throw 'Download-Modus für Base-Image noch nicht implementiert. Bitte lokales VHDX bereitstellen.'
+        else {
+            if (-not (Test-Path -LiteralPath $winBaseVhdx)) {
+                throw 'Download-Modus fuer Windows Base-Image noch nicht implementiert. Bitte lokales VHDX bereitstellen.'
+            }
         }
-    }
-
-    # Base-VHD auf ReadOnly setzen
-    Set-ItemProperty -LiteralPath $baseVhdx -Name IsReadOnly -Value $true
-
-    # Credential für VM-Zugriff
-    $securePass = ConvertTo-SecureString -String 'P@ssw0rd' -AsPlainText -Force
-    $credential = [pscredential]::new('Administrator', $securePass)
-
-    foreach ($version in $versions) {
-        $vmDir = Join-Path $labRoot "vm-$version"
-        $diffVhd = Join-Path $vmDir "sql${version}-diff.vhdx"
-
-        # Differencing Disk
-        New-DifferencingDisk -ParentPath $baseVhdx -DiffPath $diffVhd
-
-        # VM erstellen
-        New-LabVm -Version $version -VhdPath $diffVhd -Profile $profileDef
-
-        # VM starten
-        $vmName = $script:VmNames[$version]
-        Start-VM -Name $vmName
-        Wait-VmReady -VmName $vmName -TimeoutSeconds 600
-
-        # IP konfigurieren
-        Set-VmStaticIp -VmName $vmName -IpAddress $script:VmIpAddresses[$version] -Credential $credential
-
-        # SQL Server installieren
-        $mediaPath = $Config["SQL_${version}_MEDIA"]
-        if ($mediaPath -eq 'Download') {
-            throw "Download-Modus für SQL Server $version Medien noch nicht implementiert. Bitte ISO bereitstellen."
-        }
-
-        # ISO in VM kopieren
-        $vmIsoPath = "C:\Temp\sql_server_$version.iso"
-        Copy-VMFile -Name $vmName -SourcePath $mediaPath -DestinationPath $vmIsoPath `
-            -FileSource Host -CreateFullPath -Force
-
-        Install-SqlServerInVm -VmName $vmName -Version $version -MediaPath $vmIsoPath `
-            -SaPassword $saPassword -Credential $credential
-
-        # Framework installieren
-        if ($Config['INSTALL_FRAMEWORK'] -eq 'true') {
-            Install-FrameworkInVm -VmName $vmName -SaPassword $saPassword -Credential $credential
-        }
-
-        Write-Host "SQL Server $version bereit: $($script:VmIpAddresses[$version]),1433"
+        Set-ItemProperty -LiteralPath $winBaseVhdx -Name IsReadOnly -Value $true
     }
 
+    # --- Linux Base-Image ---
+    if ($osMode -in @('Linux', 'Mixed')) {
+        $linuxBaseVhdx = Join-Path $baseDir 'ubuntu-cloud-base.vhdx'
+        if ($Config['LINUX_BASE_IMAGE_SOURCE'] -eq 'Local') {
+            if (-not (Test-Path -LiteralPath $linuxBaseVhdx)) {
+                Write-Host 'Kopiere Linux Base-VHDX...'
+                Copy-Item -LiteralPath $Config['LINUX_BASE_VHDX_PATH'] -Destination $linuxBaseVhdx
+            }
+        }
+        else {
+            if (-not (Test-Path -LiteralPath $linuxBaseVhdx)) {
+                Get-LinuxCloudImage -DestinationPath $linuxBaseVhdx
+            }
+        }
+        Set-ItemProperty -LiteralPath $linuxBaseVhdx -Name IsReadOnly -Value $true
+    }
+
+    # --- Windows VMs erstellen ---
+    if ($osMode -in @('Windows', 'Mixed')) {
+        Write-Section 'Windows-VMs erstellen'
+        $securePass = ConvertTo-SecureString -String 'P@ssw0rd' -AsPlainText -Force
+        $credential = [pscredential]::new('Administrator', $securePass)
+
+        foreach ($version in $versions) {
+            $vmDir = Join-Path $labRoot "vm-win-$version"
+            $diffVhd = Join-Path $vmDir "sql${version}-diff.vhdx"
+            $vmKey = "win-$version"
+            $vmName = "SQL_Analyze_Win_$version"
+
+            New-DifferencingDisk -ParentPath $winBaseVhdx -DiffPath $diffVhd
+            New-LabVm -VmName $vmName -VhdPath $diffVhd -Profile $profileDef -SwitchName $script:SwitchName
+
+            Start-VM -Name $vmName
+            Wait-VmReady -VmName $vmName -TimeoutSeconds 600
+            Set-VmStaticIp -VmName $vmName -IpAddress $script:VmIpMap[$vmKey] -Credential $credential
+
+            # SQL Server installieren
+            $mediaPath = $Config["SQL_${version}_MEDIA"]
+            if ($mediaPath -eq 'Download') {
+                throw "Download-Modus fuer SQL Server $version Medien noch nicht implementiert. Bitte ISO bereitstellen."
+            }
+            $vmIsoPath = "C:\Temp\sql_server_$version.iso"
+            Copy-VMFile -Name $vmName -SourcePath $mediaPath -DestinationPath $vmIsoPath `
+                -FileSource Host -CreateFullPath -Force
+            Install-SqlServerInVm -VmName $vmName -Version $version -MediaPath $vmIsoPath `
+                -SaPassword $saPassword -Credential $credential
+
+            if ($Config['INSTALL_FRAMEWORK'] -eq 'true') {
+                Install-FrameworkInVm -VmName $vmName -SaPassword $saPassword -Credential $credential
+            }
+            Write-Host "  Windows SQL $version bereit: $($script:VmIpMap[$vmKey]),1433"
+        }
+    }
+
+    # --- Linux VMs erstellen ---
+    if ($osMode -in @('Linux', 'Mixed')) {
+        Write-Section 'Linux-VMs erstellen'
+        $sshKeyPath = $Config['SSH_KEY_PATH']
+        $sshPubKey = $Config['SSH_PUB_KEY']
+
+        foreach ($version in $versions) {
+            $vmDir = Join-Path $labRoot "vm-linux-$version"
+            $diffVhd = Join-Path $vmDir "sql${version}-diff.vhdx"
+            $dataVhd = Join-Path $vmDir 'data.vhdx'
+            $logVhd = Join-Path $vmDir 'log.vhdx'
+            $vmKey = "linux-$version"
+            $vmName = "SQL_Analyze_Linux_$version"
+            $ipAddress = $script:VmIpMap[$vmKey]
+
+            # Differencing Disk + dedizierte Data/Log-Disks
+            New-DifferencingDisk -ParentPath $linuxBaseVhdx -DiffPath $diffVhd
+            New-LabDataDisk -Path $dataVhd -SizeGB 20
+            New-LabDataDisk -Path $logVhd -SizeGB 10
+
+            # cloud-init ISO erstellen (User, SSH-Key, Netzwerk)
+            $ciIso = Join-Path $vmDir 'cloud-init.iso'
+            New-CloudInitIso -DestinationPath $ciIso `
+                -Hostname $vmName `
+                -IpAddress $ipAddress `
+                -Gateway $script:GatewayIP `
+                -SshPubKey $sshPubKey `
+                -User 'labadmin'
+
+            # VM erstellen
+            New-LabLinuxVm -VmName $vmName -OsDisk $diffVhd -DataDisk $dataVhd `
+                -LogDisk $logVhd -CloudInitIso $ciIso -Profile $profileDef -SwitchName $script:SwitchName
+
+            Start-VM -Name $vmName
+            Write-Host "  Warte auf SSH ($ipAddress)..."
+            Get-SshSession -VmName $vmName -IpAddress $ipAddress
+
+            # SQL Server installieren (APT)
+            Install-SqlServerOnLinux -VmName $vmName -IpAddress $ipAddress `
+                -Version $version -SaPassword $saPassword -SshKeyPath $sshKeyPath
+
+            # Framework installieren
+            if ($Config['INSTALL_FRAMEWORK'] -eq 'true') {
+                Install-FrameworkOnLinux -VmName $vmName -IpAddress $ipAddress `
+                    -SaPassword $saPassword -SshKeyPath $sshKeyPath
+            }
+
+            # Initiales Netzwerk-/IO-Profil setzen
+            $netProfile = $Config['LINUX_NETWORK_PROFILE']
+            if ($netProfile -and $netProfile -ne 'LAN') {
+                Set-NetworkProfile -VmName $vmName -IpAddress $ipAddress -ProfileName $netProfile
+            }
+            $ioProfile = $Config['LINUX_IO_PROFILE']
+            if ($ioProfile -and $ioProfile -ne 'SSD') {
+                Set-IoProfile -VmName $vmName -IpAddress $ipAddress -ProfileName $ioProfile
+            }
+
+            Write-Host "  Linux SQL $version bereit: $ipAddress,1433"
+        }
+    }
+
+    # --- Zusammenfassung ---
     Write-Section 'Setup abgeschlossen'
-    Write-Host 'Verbindung via SSMS/ADS:'
+    Write-Host 'Verbindung via SSMS/ADS/sqlcmd:'
     foreach ($version in $versions) {
-        Write-Host "  SQL Server $version: $($script:VmIpAddresses[$version]),1433 (sa / <Passwort>)"
+        if ($osMode -in @('Windows', 'Mixed')) {
+            Write-Host "  Windows SQL $version: $($script:VmIpMap["win-$version"]),1433 (sa)"
+        }
+        if ($osMode -in @('Linux', 'Mixed')) {
+            Write-Host "  Linux   SQL $version: $($script:VmIpMap["linux-$version"]),1433 (sa)"
+        }
     }
 }
 
