@@ -5,54 +5,47 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: framework-usage-diagnostic-${{ github.ref }}
+  group: framework-usage-runtime-matrix-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  diagnose:
-    name: Diagnose SQL Server 2022 release gate
+  runtime:
+    name: SQL Server ${{ matrix.year }} framework usage matrix
     runs-on: ubuntu-24.04
     timeout-minutes: 60
-    env:
-      GH_TOKEN: ${{ github.token }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - year: 2019
+            product_major: 15
+            image: mcr.microsoft.com/mssql/server:2019-latest
+            compatibility: 150
+            permission_test: Code/Tests/Permissions/110_SQL_Server_2019_Permission_Matrix.sql
+          - year: 2022
+            product_major: 16
+            image: mcr.microsoft.com/mssql/server:2022-latest
+            compatibility: 160
+            permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
+          - year: 2025
+            product_major: 17
+            image: mcr.microsoft.com/mssql/server:2025-latest
+            compatibility: 170
+            permission_test: Code/Tests/Permissions/110_SQL_Server_2022_Permission_Matrix.sql
     steps:
-      - name: Test bounded contract fixes
+      - name: Run isolated full release and permission matrix
         shell: bash
+        env:
+          SQL_YEAR: ${{ matrix.year }}
+          SQL_PRODUCT_MAJOR: ${{ matrix.product_major }}
+          SQL_IMAGE: ${{ matrix.image }}
+          SQL_COMPATIBILITY: ${{ matrix.compatibility }}
+          SQL_PERMISSION_TEST: ${{ matrix.permission_test }}
         run: |
           set -euo pipefail
-          git clone --quiet --depth 1 --branch agent/complete-framework-usage-contract "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repository
+          git clone --quiet --depth 1 --branch agent/complete-framework-usage-contract "https://github.com/${GITHUB_REPOSITORY}.git" repository
           cd repository
-          python3 - <<'PY'
-          from pathlib import Path
-
-          procedure = Path('Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql')
-          text = procedure.read_text(encoding='utf-8')
-          text = text.replace('@ConsoleRequested', '@ConsoleResultRequested')
-          procedure.write_text(text, encoding='utf-8')
-
-          output_contract = Path('Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql')
-          text = output_contract.read_text(encoding='utf-8')
-          text = text.replace('<>92', '<>93', 1)
-          text = text.replace('genau 92 Vertragsobjekte', 'genau 93 Vertragsobjekte', 1)
-          output_contract.write_text(text, encoding='utf-8')
-
-          navigator_contract = Path('Code/Tests/Integration/196_Analysis_Navigator_Runtime_Contract.sql')
-          text = navigator_contract.read_text(encoding='utf-8')
-          text = text.replace('<> 97', '<> 98', 1)
-          text = text.replace('genau 97 öffentliche Procedures', 'genau 98 öffentliche Procedures', 1)
-          text = text.replace("CAST(97 AS int) AS [CatalogProcedureCount]", "CAST(98 AS int) AS [CatalogProcedureCount]", 1)
-          navigator_contract.write_text(text, encoding='utf-8')
-          PY
-          git diff --check
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql \
-            Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql \
-            Code/Tests/Integration/196_Analysis_Navigator_Runtime_Contract.sql
-          git commit -m 'Align framework usage with output and navigator contracts'
           bash ./Code/Tests/Static/Temporary_Framework_Usage_Runtime_Diagnostic.sh
-          git push --quiet origin HEAD:agent/complete-framework-usage-contract
