@@ -45,20 +45,13 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - Aus diesem Branch wird ein Draft-PR gegen den neu geprüften Stand von `main` erstellt.
 - Ist der freigegebene Umfang auf `AI_Metadata/` beschränkt, dürfen ausschließlich Pfade unterhalb dieses Ordners enthalten sein. Sobald eine Änderung außerhalb von `AI_Metadata/` vorhanden ist oder nicht sicher ausgeschlossen werden kann, darf weder veröffentlicht noch ein PR erstellt werden; die Verarbeitung wird mit einer Scope-Meldung beendet.
 
-## Verbindliche Repository-Abgrenzung: Produktlinie vs. CI/Operations-Linie
-
-- Die Hauptlinie ist der Produktzweig und enthält Installations-, Dokumentations-, Beispiel- und Lab-/Repro-artefakte des Frameworks.
-- Die Operations-/Validation-Linie enthält GitHub-Actions, Runner, Tests, Release-Gates, Qualitätsnachweise und verwandte Automatisierungsartefakte.
-- Änderungen an Framework-Objekten, Installern, Beispielen und Dokumentation gehören in die Produktlinie.
-- Änderungen an `.github/workflows/`, Runner-Skripten, Test-Assets und Release-/Quality-Mechanik gehören in die Operations-/Validation-Linie.
-- Eine Vermischung beider Ebenen ist ab sofort nicht mehr die Standard-Strategie; bei Bedarf sind getrennte Änderungen oder getrennte Branches zu verwenden.
-
 ## Datenschutz und Portabilität
 
 - Das Datenschutz-Liefergate gilt ausschließlich für Repository-, GitHub- und Downloadartefakte. Resultsets, OUTPUT-Parameter sowie RAW-, CONSOLE- und JSON-Ausgaben werden deshalb weder anonymisiert noch fachlich reduziert.
 - Reale personen-, benutzer-, kunden-, firmen-, organisations-, betriebs- oder umgebungsbezogene Informationen dürfen niemals in Code, Kommentaren, Dokumentation, Beispielen, Tests, Fixtures, Audits, Metadaten, Screenshots oder Downloads stehen.
 - Das Verbot umfasst interne Datenbankstrukturen, Namenskonventionen und proprietäres Metadatenwissen aus Screenshots, Hardcopys, Chats, Uploads, bestehenden Skripten, Logs und Diagnoseausgaben.
 - Technische Systemspalten und generische API-Namen sind zulässig; Beispiele verwenden ausschließlich eindeutig synthetische, generische Werte und bilden keine reale interne Struktur nach.
+- Private IPv4-Adressen dürfen nach technischer Verifikation als RFC-1918-Adresse für generische Lab-, Test- und Architekturbeispiele pfad- und wertgebunden freigegeben werden. Öffentliche oder sonstige nicht als privat verifizierte IPv4-Adressen bleiben ohne ausdrückliche Genehmigung verboten.
 - Öffentliche Quellen-, Lizenz- und Urheberangaben sind beabsichtigte Attribution und werden nicht als versehentliche Umgebungsdaten behandelt.
 - Eine Zustimmung oder vorhandener Zugriff hebt das Repositoryverbot nicht auf.
 - Bei uneindeutigen Datenfunden muss vor dem Schreiben oder Verpacken angehalten und nach einer nicht sensitiven Alternative gefragt werden.
