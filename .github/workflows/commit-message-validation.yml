@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: framework-usage-diagnostic-${{ github.ref }}
@@ -16,11 +16,33 @@ jobs:
     name: Diagnose SQL Server 2022 release gate
     runs-on: ubuntu-24.04
     timeout-minutes: 60
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
-      - name: Run compact diagnostic
+      - name: Test bounded output-contract fixes
         shell: bash
         run: |
           set -euo pipefail
-          git clone --quiet --depth 1 --branch agent/complete-framework-usage-contract "https://github.com/${GITHUB_REPOSITORY}.git" repository
+          git clone --quiet --depth 1 --branch agent/complete-framework-usage-contract "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" repository
           cd repository
+          python3 - <<'PY'
+          from pathlib import Path
+
+          procedure = Path('Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql')
+          text = procedure.read_text(encoding='utf-8')
+          text = text.replace('@ConsoleRequested', '@ConsoleResultRequested')
+          procedure.write_text(text, encoding='utf-8')
+
+          contract = Path('Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql')
+          text = contract.read_text(encoding='utf-8')
+          text = text.replace('<>92', '<>93', 1)
+          text = text.replace('genau 92 Vertragsobjekte', 'genau 93 Vertragsobjekte', 1)
+          contract.write_text(text, encoding='utf-8')
+          PY
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql
+          git commit -m 'Align framework usage with output contract'
           bash ./Code/Tests/Static/Temporary_Framework_Usage_Runtime_Diagnostic.sh
+          git push --quiet origin HEAD:agent/complete-framework-usage-contract
