@@ -105,6 +105,54 @@ function Assert-DockerResourceOwnership {
     }
 }
 
+function Get-PublishedSqlEndpoint {
+    param(
+        [Parameter(Mandatory)][hashtable] $Env,
+        [Parameter(Mandatory)][string] $Service
+    )
+
+    $bindings = @(
+        Invoke-Compose -Env $Env -Arguments @('port', $Service, '1433') -Quiet |
+            Where-Object { -not [string]::IsNullOrWhiteSpace([string] $_) }
+    )
+    if ($bindings.Count -ne 1) {
+        throw "Service '$Service' besitzt keine eindeutige veröffentlichte Host-Portbindung für TCP 1433."
+    }
+    return ([string] $bindings[0]).Trim()
+}
+
+function Assert-ServicePublishedPort {
+    param(
+        [Parameter(Mandatory)][hashtable] $Env,
+        [Parameter(Mandatory)][string] $Service,
+        [Parameter(Mandatory)][ValidateRange(1024, 65535)][int] $ExpectedPort
+    )
+
+    $expectedEndpoint = "$([string] $Env.BIND_ADDRESS):$ExpectedPort"
+    $actualEndpoint = Get-PublishedSqlEndpoint -Env $Env -Service $Service
+    if ($actualEndpoint -ne $expectedEndpoint) {
+        throw "Service '$Service' veröffentlicht TCP 1433 unter '$actualEndpoint' statt unter '$expectedEndpoint'."
+    }
+}
+
+function Start-ServiceWithPublishedPort {
+    param(
+        [Parameter(Mandatory)][hashtable] $Env,
+        [Parameter(Mandatory)][string] $Service,
+        [Parameter(Mandatory)][ValidateRange(1024, 65535)][int] $ExpectedPort
+    )
+
+    Invoke-Compose -Env $Env -Arguments @('up', '-d', '--no-deps', $Service) | Out-Null
+    try {
+        Assert-ServicePublishedPort -Env $Env -Service $Service -ExpectedPort $ExpectedPort
+    }
+    catch {
+        Write-Warning "Die erwartete Host-Portbindung für '$Service' fehlt. Der Container wird mit der aktuellen Compose-Konfiguration neu erstellt."
+        Invoke-Compose -Env $Env -Arguments @('up', '-d', '--no-deps', '--force-recreate', $Service) | Out-Null
+        Assert-ServicePublishedPort -Env $Env -Service $Service -ExpectedPort $ExpectedPort
+    }
+}
+
 function Wait-ServiceHealthy {
     param(
         [Parameter(Mandatory)][hashtable] $Env,
@@ -235,11 +283,12 @@ function Start-Environment {
 
     foreach ($version in $versions) {
         $service = "sql$version"
+        $publishedPort = [int] $envValues["SQL${version}_PORT"]
         Write-Section -Text "SQL Server $version"
         Invoke-Compose -Env $envValues -Arguments @('pull', $service) | Out-Null
-        Invoke-Compose -Env $envValues -Arguments @('up', '-d', '--no-deps', $service) | Out-Null
+        Start-ServiceWithPublishedPort -Env $envValues -Service $service -ExpectedPort $publishedPort
         Wait-ServiceHealthy -Env $envValues -Service $service
-        Write-Host "SQL Server $version ist healthy."
+        Write-Host "SQL Server $version ist healthy und unter $($envValues.BIND_ADDRESS):$publishedPort veröffentlicht."
     }
 
     if ($envValues.INSTALL_FRAMEWORK -eq 'true') {
@@ -249,7 +298,7 @@ function Start-Environment {
 
     Write-Section -Text 'Bereit'
     foreach ($version in $versions) {
-        Write-Host ("SQL Server {0}: localhost,{1}" -f $version, $envValues["SQL${version}_PORT"])
+        Write-Host ("SQL Server {0} für SSMS: {1},{2}" -f $version, $envValues.BIND_ADDRESS, $envValues["SQL${version}_PORT"])
     }
     Write-Host 'Frameworkdatenbank: LabAnalyze'
 }
