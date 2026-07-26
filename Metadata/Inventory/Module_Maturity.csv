@@ -11,26 +11,26 @@ Current Log,USP_CurrentLog,COMPLETE,YES,YES,YES,LAB-LOG-001;LAB-LOG-002,FULL,
 Current Overview,USP_CurrentOverview,COMPLETE,YES,YES,YES,LAB-BASE-001,FULL,Aggregiert Current-State-Module
 Object Analysis,USP_ObjectAnalysis,COMPLETE,YES,YES,YES,LAB-IDX-001;LAB-IDX-002;LAB-IDX-003,FULL,
 Index Usage,USP_IndexUsage,COMPLETE,YES,YES,YES,LAB-IDX-001,FULL,
-Missing Indexes,USP_MissingIndexAnalysis,COMPLETE,YES,YES,YES,LAB-IDX-002,FULL,
-Statistics,USP_StatisticsAnalysis,COMPLETE,YES,YES,YES,LAB-IDX-003,FULL,
-Columnstore,USP_ColumnstoreAnalysis,COMPLETE,YES,YES,YES,LAB-COL-001,FULL,
+Missing Indexes,USP_MissingIndexes,COMPLETE,YES,YES,YES,LAB-IDX-002,FULL,
+Statistics,USP_Statistics,COMPLETE,YES,YES,YES,LAB-IDX-003,FULL,
+Columnstore,USP_Columnstore,COMPLETE,YES,YES,YES,LAB-COL-001,FULL,
 Query Stats,USP_QueryStats,COMPLETE,YES,YES,YES,LAB-PLAN-001;LAB-PLAN-002,FULL,
 Plan Cache,USP_PlanCacheAnalysis,COMPLETE,YES,YES,YES,LAB-PLAN-003;LAB-PLAN-004;LAB-PLAN-005,FULL,
 Execution Plan Analysis,USP_ExecutionPlanAnalysis,COMPLETE,YES,YES,YES,LAB-EXECPLAN-001,FULL,
 Showplan,USP_ShowplanAnalysis,COMPLETE,YES,YES,YES,LAB-PLAN-004,FULL,
-Query Store Runtime,USP_QueryStoreRuntime,COMPLETE,YES,YES,YES,LAB-QS-001;LAB-QS-002,FULL,
+Query Store Runtime,USP_QueryStoreRuntimeStats,COMPLETE,YES,YES,YES,LAB-QS-001;LAB-QS-002,FULL,
 Query Store Regressions,USP_QueryStoreRegressions,COMPLETE,YES,YES,YES,LAB-QS-001,FULL,
 Query Store Plan Changes,USP_QueryStorePlanChanges,COMPLETE,YES,YES,YES,LAB-QS-002,FULL,
-Extended Events Sessions,USP_ExtendedEventsAnalysis,COMPLETE,YES,YES,YES,LAB-XE-001,FULL,
+Extended Events Sessions,USP_ExtendedEventsSessions,COMPLETE,YES,YES,YES,LAB-XE-001,FULL,
 Extended Events Deadlocks,USP_ExtendedEventsDeadlocks,COMPLETE,YES,YES,YES,LAB-DEAD-001;LAB-DEAD-002;LAB-DEAD-003;LAB-DEAD-004,FULL,
 SQL Agent,USP_AgentJobs,COMPLETE,YES,YES,YES,,FULL,
 Resource Governor,USP_ResourceGovernorAnalysis,COMPLETE,YES,YES,YES,,FULL,
 HA/DR Availability,USP_AvailabilityDeepAnalysis,COMPLETE,YES,YES,YES,,FULL,Erfordert AG-Topologie
 Backup Recovery,USP_BackupRecovery,COMPLETE,YES,YES,YES,,FULL,
-Log Shipping,USP_LogShippingAnalysis,COMPLETE,YES,YES,YES,LAB-LS-001,FULL,
+Log Shipping,USP_LogShippingStatus,COMPLETE,YES,YES,YES,LAB-LS-001,FULL,
 Server Health,USP_ServerHealthAnalysis,COMPLETE,YES,YES,YES,,FULL,
-Server Configuration,USP_ServerConfigurationAnalysis,COMPLETE,YES,YES,YES,,FULL,
-Security Configuration,USP_SecurityConfigurationAnalysis,COMPLETE,YES,YES,YES,,FULL,
+Server Configuration,USP_ServerConfiguration,COMPLETE,YES,YES,YES,,FULL,
+Security Configuration,USP_ServerSecurityConfiguration,COMPLETE,YES,YES,YES,,FULL,
 Database Integrity,USP_DatabaseIntegrityAnalysis,COMPLETE,YES,YES,YES,,FULL,
 Database Capacity,USP_DatabaseCapacityAnalysis,COMPLETE,YES,YES,YES,LAB-CAP-001,FULL,
 Performance Counters,USP_PerformanceCounters,COMPLETE,YES,YES,YES,,FULL,
@@ -55,18 +55,24 @@ Service Broker,USP_ServiceBrokerAnalysis,COMPLETE,YES,YES,YES,,FULL,
 Full-Text Search,USP_FullTextAnalysis,COMPLETE,YES,YES,YES,,FULL,
 Data Capture (CDC/CT),USP_DataCaptureDeepAnalysis,COMPLETE,YES,YES,YES,,FULL,
 Encryption,USP_EncryptionAnalysis,COMPLETE,YES,YES,YES,,FULL,
-External Runtime,USP_ExternalRuntimeAnalysis,COMPLETE,YES,YES,YES,,FULL,Erfordert Windows fuer R/Python
-SQL CLR,USP_ClrAnalysis,COMPLETE,YES,YES,YES,,FULL,
+External Runtime,USP_ExternalRuntimeAnalysis,COMPLETE,YES,YES,YES,,FULL,Portable Kernfunktion komplett; aktive Feature-Matrix offen
+SQL CLR,USP_ClrAnalysis,COMPLETE,YES,YES,YES,,FULL,Portable Kernfunktion komplett; SAFE-Assembly-Evidenz offen
 Analysis Navigator,USP_AnalysisNavigator,COMPLETE,YES,YES,YES,,FULL,Zentraler Einstiegspunkt
-Framework Usage,USP_FrameworkUsageFromQueryStore,NEW,NO,NO,NO,,MINIMAL,Neu erstellt 2026-07-25
-Snapshot Baseline,USP_SnapshotBaselineCollect,COMPLETE,YES,YES,YES,,FULL,Optionales Paket
-Vector Index (2025),SQL Server 2025 Vector Index,PLANNED,NO,NO,NO,,ARCHITECTURE,Architekturplan vorhanden
-SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,Designdokument vorhanden
-Persistenz (SC-023),Persistenzschicht,PLANNED,NO,NO,NO,,NONE,P3 - erfordert Designentscheidung
-Externe Komponente (SC-024),Externe Integration,PLANNED,NO,NO,NO,,NONE,P3 - erfordert externe Abhaengigkeit
-Isolierter Restore (SC-025),Restore-Host-Pruefung,PLANNED,NO,NO,NO,,NONE,P3 - erfordert isolierte Ausfuehrung
-QuickStart Docker,Docker Compose Umgebung,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
-QuickStart HyperV (Windows),Native Windows VMs,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
-QuickStart HyperV (Linux),Linux VMs + Simulation,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
-QuickStart HyperV (NetworkSim),Netzwerk-/IO-Profile,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab. Entfernt 2026-07-26.
-
+Framework Usage,USP_FrameworkUsageFromQueryStore,NEW,NO,NO,NO,,FULL,SQL und Guide vorhanden; Inventar Hilfe Outputvertrag und Drei-Versionen-Evidenz offen
+Snapshot Baseline,USP_RunSnapshotCollectionCycle,COMPLETE,YES,YES,YES,,FULL,Implementierter Performance-Counter-Baseline-Slice
+Vector Index (2025),USP_VectorIndexAnalysis,COMPLETE,YES,YES,YES,,FULL,SQL25-001 dreiversionig abgenommen
+Secondary Replica Query Store,Query Store modules,PLANNED,NO,NO,NO,,ARCHITECTURE,SQL25-005 recherchiert und nicht implementiert
+Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-005 recherchiert und nicht implementiert
+Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-006 recherchiert und nicht implementiert
+Cursor Diagnostics,USP_CurrentSessions,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-007 recherchiert und nicht implementiert
+msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-008 recherchiert und nicht implementiert
+System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-009 recherchiert und nicht implementiert
+Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 erfordert gemischte Drei-Versionen-Matrix
+SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,SSIS-001 Phase 0 offen
+Snapshot Baseline Expansion (SC-023),USP_RunSnapshotCollectionCycle,PLANNED,NO,NO,NO,,ARCHITECTURE,Optionale Collector Rollups Scheduler und Exportpakete
+Externe Komponente (SC-024),Externe Integration,PLANNED,NO,NO,NO,,NONE,P3 erfordert externe Abhaengigkeit
+Isolierter Restore (SC-025),Restore-Host-Pruefung,PLANNED,NO,NO,NO,,NONE,P3 erfordert isolierte Ausfuehrung
+QuickStart Docker,Docker Compose Umgebung,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab und entfernt am 2026-07-26
+QuickStart HyperV (Windows),Native Windows VMs,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab und entfernt am 2026-07-26
+QuickStart HyperV (Linux),Linux VMs + Simulation,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab und entfernt am 2026-07-26
+QuickStart HyperV (NetworkSim),Netzwerk-/IO-Profile,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab und entfernt am 2026-07-26
