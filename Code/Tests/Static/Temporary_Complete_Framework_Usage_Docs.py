@@ -32,6 +32,16 @@ text = text.replace(
     "Der Inventarvertrag umfasst 166 Objekte: 98 öffentliche Procedures",
     1,
 )
+text = text.replace(
+    "- [LAB-001: Reproducible Diagnostic Lab](Architecture/Reproducible_Diagnostic_Lab_Plan.md)\n",
+    "",
+    1,
+)
+text = text.replace(
+    "- [LAB-001: Docker-/Podman-Quick-Testsystem](Architecture/Docker_Podman_Quick_Test_System_Requirements.md)\n",
+    "",
+    1,
+)
 documentation.write_text(text, encoding="utf-8")
 
 object_index = Path("Documentation/Analysis_Guides/Object_Index.md")
@@ -52,3 +62,47 @@ rows.append(["USP_FrameworkUsageFromQueryStore", "DEEP_REVIEWED", "2026-07-26", 
 output = io.StringIO(newline="")
 csv.writer(output, lineterminator="\n").writerows(rows)
 review_path.write_text(output.getvalue(), encoding="utf-8")
+
+guide_path = Path("Documentation/Analysis_Guides/Procedures/USP_FrameworkUsageFromQueryStore.md")
+text = guide_path.read_text(encoding="utf-8")
+source_anchor = "Query-Store-Texte, Parameterwerte, Plan-XML, Benutzeridentitäten und freie Payloads werden nicht gelesen.\n"
+resource_note = (
+    source_anchor
+    + "\n**Wichtig für die Eigenlast:** Der Ressourcenscope bleibt auf die aktuelle Frameworkdatenbank "
+    + "und deren Query-Store-Katalog beschränkt. Es gibt keinen Cross-Database- oder Server-Wildcard-Zugriff; "
+    + "das Retentionsvolumen der aktuellen Datenbank bestimmt dennoch die Aggregationskosten.\n"
+)
+if "**Wichtig für die Eigenlast:**" not in text:
+    if source_anchor not in text:
+        raise SystemExit("Framework usage Source Select anchor not found")
+    text = text.replace(source_anchor, resource_note, 1)
+
+technical_link = "[Technische Detailbeschreibung](../05_Query_Store.md)"
+if technical_link not in text:
+    text = text.rstrip() + "\n\n" + technical_link + "\n"
+
+external_heading = "## Weiterführende Vertiefung\n"
+external_body = (
+    external_heading
+    + "\nDie folgenden Quellen ergänzen die Produktspezifikation um Praxis- oder Toolingperspektiven. "
+    + "Sie sind keine Grundlage für versions-, Berechtigungs- oder Engineaussagen dieser Seite.\n\n"
+    + "- [SQL Server First Responder Kit – ergänzende quelloffene Praxiswerkzeuge für Triage]"
+    + "(https://github.com/BrentOzarULTD/SQL-Server-First-Responder-Kit)\n\n"
+)
+if external_heading in text:
+    start = text.index(external_heading)
+    detail = text.find("[Technische Detailbeschreibung]", start)
+    if detail < 0:
+        detail = len(text)
+    text = text[:start] + external_body + text[detail:]
+else:
+    detail = text.find("[Technische Detailbeschreibung]")
+    if detail < 0:
+        text = text.rstrip() + "\n\n" + external_body
+    else:
+        text = text[:detail] + external_body + text[detail:]
+guide_path.write_text(text.rstrip() + "\n", encoding="utf-8")
+
+runner_doc = Path("Documentation/Lab/GitHub_Runner_Service_Removal.md")
+if runner_doc.exists():
+    runner_doc.unlink()
