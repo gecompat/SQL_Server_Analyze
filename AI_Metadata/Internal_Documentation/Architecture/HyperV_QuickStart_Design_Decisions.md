@@ -5,7 +5,7 @@
 
 ## Ziel
 
-Der Hyper-V QuickStart stellt eine eigenständige Windows-basierte SQL-Server-Testumgebung mit nativen Hyper-V-VMs bereit. Er ermöglicht das Testen des Frameworks gegen eine produktionsnahe Windows-SQL-Server-Installation ohne Docker-Abhängigkeit.
+Der Hyper-V QuickStart stellt eine eigenständige, lokal isolierte SQL-Server-Testumgebung auf Basis von Hyper-V bereit. Er unterstützt sowohl Windows- als auch Linux-VMs und ermöglicht damit neben der reinen Framework-Nutzung auch die Simulation von Netzwerk-, I/O- und Ressourcenbedingungen, die in Docker-Containern nicht belastbar abbildbar sind.
 
 Der primäre Einstiegspunkt ist:
 
@@ -25,39 +25,81 @@ Das Setup kann SQL Server 2019, 2022 und 2025 einzeln oder kombiniert in getrenn
 
 ### Zum Docker-QuickStart
 
-Der Hyper-V QuickStart liefert **native Windows-SQL-Server-Instanzen** in vollständigen VMs. Das ermöglicht:
+Docker bietet den schnellsten Einstieg (Pull → Start → fertig). Der Hyper-V QuickStart bietet zusätzlich:
 
-- Windows Authentication;
-- Windows-native Dateisystemverhaltung;
-- vollständige SQL Server Agent Funktionalität;
-- productionsnahe Speicherkonfiguration;
-- Tests gegen Windows-spezifische DMVs und OS-Metriken.
+- Echte Netzwerk-Simulation (Bandbreitenlimits, Latenz-Injection auf Hypervisor-Ebene)
+- Echte I/O-Drosselung (Storage QoS, IOPS-Limits pro VHDX)
+- Native Windows-SQL-Server-Installation (der häufigste Produktionsfall)
+- Multi-VM-Szenarien (AG-Simulation, Replikation, Cross-Instanz-Queries)
+- CPU- und Memory-Pressure-Simulation (Capping, dynamischer Speicher)
+- Vollständige Betriebssystem-Isolation (kein gemeinsamer Kernel)
+- Linux-VMs mit SQL Server on Linux + tc/netem für Paket-Level-Simulation
 
-Docker liefert hingegen leichtgewichtige Linux-Container. Beide QuickStarts nutzen denselben kanonischen Frameworkinstaller.
+Beide QuickStarts nutzen denselben kanonischen Frameworkinstaller.
 
 ### Zum erweiterten Lab
 
 Keine LAB-Run-IDs, Evidence-Gates, Lab-State-Dateien oder Szenariokataloge aus `Lab/`. Gemeinsam genutzt wird ausschließlich der Frameworkinstaller.
 
+Der Hyper-V QuickStart gehört als nutzerorientierte Repro-Umgebung zur Produktlinie.
+
+## Unterstützte VM-Typen
+
+### Windows VM (Native SQL Server)
+
+- **Zweck:** Produktionsnaher Test mit Windows-nativem SQL Server
+- **Image-Quelle:** Bereitgestelltes Windows Server VHD/VHDX oder Evaluation-Download
+- **SQL-Installation:** Unattended Setup über ConfigurationFile.ini via PowerShell Remoting
+- **Authentifizierung:** Mixed Mode (SA + Windows Auth)
+- **Vorteil:** Identisches Verhalten wie Produktionsserver (Windows-Dienste, Event Log, Perfmon, Agent)
+
+### Linux VM (SQL Server on Linux)
+
+- **Zweck:** Leichtgewichtigere VM + Netzwerk-/IO-Simulation auf Hypervisor-Ebene
+- **Image-Quelle:** Ubuntu Server 22.04/24.04 Cloud-Image (VHDX-Format, kein ISO-Install nötig)
+- **SQL-Installation:** Microsoft-Paketrepository + `mssql-conf setup` via SSH
+- **Authentifizierung:** Mixed Mode (SA)
+- **Vorteil:** Schnelleres Provisioning, geringerer Ressourcenbedarf, tc/netem für Paket-Level-Netzwerksimulation
+
+### Kombinierter Betrieb
+
+Beide VM-Typen können gleichzeitig laufen:
+
+- Windows-Primary + Linux-Secondary (AG-Simulation)
+- Mehrere Linux-VMs mit verschiedenen SQL-Versionen und Netzwerk-Constraints
+- Eine Windows-VM als Referenz + Linux-VMs unter Last/Drosselung
+- Cross-Plattform-Vergleich desselben Frameworks auf Windows vs. Linux
+
 ## Base-Image-Strategie
 
 ### Option 1: Bereitgestelltes VHD/VHDX (bevorzugt)
 
-Der Benutzer stellt ein vorbereitetes Windows Server VHDX bereit. Anforderungen:
+Der Benutzer stellt ein vorbereitetes VHDX bereit:
 
-- Windows Server 2019, 2022 oder 2025 (Core oder Desktop Experience);
-- Sysprep-generalisiert (OOBE-Phase beim ersten Start);
-- Generation-2-kompatibel (UEFI, GPT-Partitionierung);
-- Mindestens 40 GB Basegröße.
+**Windows:**
+- Windows Server 2019, 2022 oder 2025 (Core oder Desktop Experience)
+- Sysprep-generalisiert (OOBE-Phase beim ersten Start)
+- Generation-2-kompatibel (UEFI, GPT-Partitionierung)
+- Mindestens 40 GB Basegröße
+
+**Linux:**
+- Ubuntu Server 22.04 oder 24.04 Cloud-Image (VHDX)
+- Alternativ: Jede von Hyper-V unterstützte Linux-Distribution mit systemd
+- Generation-2-kompatibel
 
 ### Option 2: Automatischer Download (Fallback)
 
-Setup kann eine Windows Server Evaluation ISO von Microsoft herunterladen und daraus automatisch ein Base-VHDX erzeugen:
+**Windows:**
+- Windows Server 2022 Evaluation ISO von Microsoft (ca. 5 GB)
+- Automatische VHD-Erstellung via `Convert-WindowsImage` oder DISM
+- 180-Tage-Evaluationslizenz
 
-- ISO-Download von offiziellen Microsoft Evaluation Center URLs;
-- Automatische VHD-Erstellung via `Convert-WindowsImage` oder `DISM`;
-- ISO- und Base-VHD-Cache im konfigurierten Speicherpfad;
-- 180-Tage-Evaluationslizenz (ausreichend für Testumgebungen).
+**Linux:**
+- Ubuntu Server Cloud-Image im VHDX-Format (ca. 600 MB)
+- Direkter Download, kein ISO-Install nötig
+- cloud-init für automatische Erstkonfiguration (User, SSH-Key, Netzwerk)
+
+Downloads werden im lokalen Cache gespeichert. SHA256-Prüfsummen nach Download validiert.
 
 ### Differencing Disks
 
@@ -84,43 +126,113 @@ Vorteil: Schnelle Bereitstellung, minimaler Speicherverbrauch, unabhängige VM-Z
 
 ## Netzwerk
 
-Setup erstellt einen dedizierten internen Hyper-V Switch:
+Setup erstellt dedizierte Hyper-V Switches:
+
+### Management-Switch (Internal)
+
+- Name: `SQL_Server_Analyze_Mgmt`
+- Typ: Internal
+- NAT-Netzwerk für Internet-Zugang (SQL Server Setup, Paket-Downloads)
+- Statische IP-Adressierung (kein DHCP):
+  - Host-Gateway: `172.30.0.1/24`
+  - VM SQL 2019 (Windows): `172.30.0.19`
+  - VM SQL 2022 (Windows): `172.30.0.22`
+  - VM SQL 2025 (Windows): `172.30.0.25`
+  - VM SQL 2019 (Linux): `172.30.0.119`
+  - VM SQL 2022 (Linux): `172.30.0.122`
+  - VM SQL 2025 (Linux): `172.30.0.125`
+- SQL-Port: Standard 1433 (in jeder VM)
+- Host-Verbindung via IP oder optional `hosts`-Eintrag
+
+### Lab-Switch (Private, optional)
 
 - Name: `SQL_Server_Analyze_Lab`
-- Typ: Internal
-- NAT-Netzwerk für Internet-Zugang (SQL Server Setup, Windows Update)
-- Statische IP-Adressierung der VMs (kein DHCP):
-  - Host-Gateway: `172.30.0.1/24`
-  - VM SQL 2019: `172.30.0.19`
-  - VM SQL 2022: `172.30.0.22`
-  - VM SQL 2025: `172.30.0.25`
-- SQL-Port: Standard 1433 (in jeder VM)
-- Host-Verbindung via IP-Adresse oder konfigurierbarem Hostnamen in `hosts`-Datei
+- Typ: Private (kein Host-Zugang, nur VM ↔ VM)
+- Subnetz: `172.30.1.0/24`
+- Zweck: Multi-VM-Szenarien (AG, Replikation) und Netzwerk-Isolation
+- Nur erstellt, wenn Multi-VM oder Netzwerksimulation gewählt
+
+## Netzwerk-Simulation
+
+Hyper-V ermöglicht auf Adapter-Ebene:
+
+| Simulation | Hyper-V Mechanismus | Docker-Äquivalent |
+|---|---|---|
+| Bandbreitenlimit | `Set-VMNetworkAdapter -MaximumBandwidth` | Nicht verfügbar |
+| Minimum-Bandbreite | `Set-VMNetworkAdapter -MinimumBandwidthAbsolute` | Nicht verfügbar |
+| Latenz / Paketloss | tc/netem in Linux-VM (auf Lab-NIC) | Nur in Linux-Container |
+| Isolierte Subnetze | Private Switch pro Szenario | Bridge-Netzwerk |
+| Multi-Subnet | Mehrere NICs pro VM | Mehrere Networks |
+
+### Netzwerk-Profile
+
+| Profil | Bandbreite | Latenz | Paketloss |
+|---|---:|---:|---:|
+| Unbegrenzt | ∞ | 0 ms | 0% |
+| WAN-Simulation | 100 Mbit/s | 20 ms | 0.1% |
+| Langsames Netz | 10 Mbit/s | 50 ms | 1% |
+| Benutzerdefiniert | konfigurierbar | konfigurierbar | konfigurierbar |
+
+Latenz und Paketloss werden innerhalb der Linux-VM via `tc qdisc add dev eth1 root netem` gesetzt. Windows-VMs unterstützen nur Bandbreitenlimits auf Hypervisor-Ebene.
+
+## I/O-Simulation
+
+| Simulation | Hyper-V Mechanismus |
+|---|---|
+| IOPS-Limit | `Set-VMHardDiskDrive -MaximumIOPS` |
+| Minimum-IOPS | `Set-VMHardDiskDrive -MinimumIOPS` (Storage QoS) |
+| Langsame Disk | Separates VHDX mit IOPS-Cap für Data-Files |
+| Schnelle TempDB | Eigenes VHDX ohne Limit |
+
+### I/O-Profile
+
+| Profil | Data IOPS | Log IOPS | TempDB IOPS |
+|---|---:|---:|---:|
+| Unbegrenzt | ∞ | ∞ | ∞ |
+| Gedrosselt | 500 | 1000 | ∞ |
+| Asymmetrisch | 200 | 500 | 5000 |
+| Benutzerdefiniert | konfigurierbar | konfigurierbar | konfigurierbar |
+
+## Ressourcen-Simulation
+
+| Simulation | Hyper-V Mechanismus |
+|---|---|
+| Memory Pressure | Dynamischer Speicher mit niedrigem Maximum |
+| CPU Throttling | `Set-VMProcessor -Maximum` (Prozent-Cap) |
+| CPU Overcommit | Mehr vCPUs als physische Kerne |
+| NUMA-Awareness | VM-NUMA-Konfiguration |
 
 ## SQL Server Installation
 
-### Unattended Setup
+### Windows VM: Unattended Setup
 
 SQL Server wird via `setup.exe /ConfigurationFile=...` installiert:
 
 - **Edition:** Developer (kostenfrei, voller Funktionsumfang)
 - **Authentifizierung:** Mixed Mode (SA + Windows Auth)
-- **SA-Passwort:** Aus `.env` (identisch zum Docker-QuickStart-Pattern)
+- **SA-Passwort:** Aus `.env`
 - **Features:** SQLENGINE, FULLTEXT, CONN
 - **Collation:** `SQL_Latin1_General_CP1_CS_AS`
 - **Instanzname:** MSSQLSERVER (Default)
 - **Query Store:** Aktiviert nach Installation
 - **SQL Agent:** Aktiviert und gestartet
+- **TempDB:** Auf eigenem VHDX (wenn I/O-Profile aktiv)
+- **Data/Log-Trennung:** Separate VHDX wenn gewählt
+
+### Linux VM: Paket-Installation
+
+1. Microsoft-Paketrepository hinzufügen (via SSH/cloud-init)
+2. `mssql-server` + `mssql-tools18` installieren
+3. `mssql-conf setup` mit SA-Passwort, Collation und Speicherlimit
+4. Optional: `mssql-server-agent` für Agent-Tests
+5. Query Store aktivieren
+6. tc/netem konfigurieren wenn Netzwerk-Profil gewählt
 
 ### SQL Server Media
 
-Setup unterstützt:
+**Windows:** Lokales ISO oder automatischer Download der Developer Edition. Cache im Speicherpfad.
 
-1. Lokales ISO-Image (vom Benutzer bereitgestellt)
-2. Automatischer Download der Developer Edition von Microsoft
-3. Cache der Installationsmedien im konfigurierten Speicherpfad
-
-Pro SQL-Server-Version wird ein eigenes Installationsmedium erwartet.
+**Linux:** Automatisch via Paketmanager aus Microsoft-Repository. Kein ISO nötig.
 
 ## Speicherlayouts
 
@@ -186,17 +298,28 @@ Enthält SA-Passwort, VM-Konfiguration, Pfade. Durch `.gitignore` ausgeschlossen
 
 ## Voraussetzungen auf dem Host
 
-- Windows 10/11 Pro oder Windows Server mit Hyper-V-Rolle;
-- PowerShell 7+;
-- Administrationsberechtigung (Hyper-V-Cmdlets erfordern Elevation);
-- Mindestens 20 GB freier Speicher pro VM;
-- Optional: Internet für ISO/SQL-Media-Download.
+- Windows 10/11 Pro oder Windows Server mit aktivierter Hyper-V-Rolle
+- PowerShell 7+
+- Administrationsberechtigung (Hyper-V-Cmdlets erfordern Elevation)
+- Mindestens 20 GB freier Speicher pro VM (Windows) bzw. 10 GB pro VM (Linux)
+- Für Windows-VMs: Windows Server ISO/VHD oder Internetzugang
+- Für Linux-VMs: Internetzugang für Cloud-Image und Paket-Download
+- Optional: SSH-Client (für Linux-VM-Verwaltung; in Windows 10+ integriert)
 
 ## Unterstützte Laufzeitvarianten
 
-- Windows 10/11 Pro mit Hyper-V;
-- Windows Server 2019/2022/2025 mit Hyper-V-Rolle;
-- Nested Virtualization in einer Azure/Hyper-V VM (mit aktivierter ExposeVirtualizationExtensions).
+- Windows 10/11 Pro mit Hyper-V
+- Windows Server 2019/2022/2025 mit Hyper-V-Rolle
+- Nested Virtualization in einer Azure/Hyper-V VM (mit ExposeVirtualizationExtensions)
+
+## Nicht im Scope
+
+- Domain-Join oder Active-Directory-Integration
+- Cluster-Konfiguration (Failover Clustering)
+- Externe Netzwerkfreigabe der VMs über den Host hinaus
+- Produktiver Betrieb (nur synthetische Testumgebung)
+- Automatische OS-Updates innerhalb der VMs
+- Provisionierung des Hyper-V-Hosts selbst (Rolle muss aktiviert sein)
 
 ## Frameworkinstallation
 
