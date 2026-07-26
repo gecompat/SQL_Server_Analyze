@@ -1,5 +1,21 @@
 # Fortsetzungshinweise
 
+### Lab-Zentralisierung (2026-07-26)
+
+Allgemeine Lab-Provisionierung (QuickStart/Docker, QuickStart/HyperV, Lab/QuickTest, Lab/Containers, Lab/Config, Lab/HyperV) wurde aus diesem Repository entfernt und liegt jetzt in:
+
+**https://github.com/gecompat/SQL_Server_Lab**
+
+Verbleibende Lab-Inhalte in diesem Repository sind ausschliesslich analyserspezifisch:
+- `Lab/Orchestration/` (DiagnosticLab-Modul)
+- `Lab/Contracts/` (Szenario-, Finding-, Evidenz-Schemas)
+- `Lab/Scenarios/` (Core, Performance, Infrastructure-Szenarien)
+- `Lab/Validation/` (Wave-Tests)
+
+Historische Pfadreferenzen in aelteren Abschnitten dieses Dokuments (QuickStart/*, Lab/QuickTest/*, etc.) beschreiben den Stand vor der Migration.
+
+
+
 ## Vor jeder Änderung
 
 - Prüfen Sie repositoryweit die case-sensitive Namenskonsistenz.

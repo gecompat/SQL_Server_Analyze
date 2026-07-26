@@ -1,5 +1,10 @@
 ## Manueller Test: Hyper-V QuickStart
 
+> **Hinweis (2026-07-26):** Der QuickStart wurde aus diesem Repository entfernt und
+> nach [SQL_Server_Lab](https://github.com/gecompat/SQL_Server_Lab) migriert.
+> Die nachfolgende Anleitung beschreibt den historischen Stand und dient als
+> Referenz fuer die Wiederaufnahme in SQL_Server_Lab.
+
 ### Voraussetzungen prüfen
 
 **Auf dem Windows-System (Key18):**
