@@ -29,14 +29,25 @@ jobs:
         with:
           ref: agent/complete-framework-usage-contract
           fetch-depth: 0
+          show-progress: false
 
       - name: Apply bounded framework usage integration patch
         shell: bash
         run: |
           set -euo pipefail
-          cp Metadata/Inventory/Objects.csv Metadata/Inventory/ObjectInventory.csv
-          python3 ./Code/Tests/Static/Temporary_Complete_Framework_Usage.py
-          mv Metadata/Inventory/ObjectInventory.csv Metadata/Inventory/Objects.csv
+          script='./Code/Tests/Static/Temporary_Complete_Framework_Usage.py'
+          sed -i 's#Metadata/Inventory/ObjectInventory.csv#Metadata/Inventory/Objects.csv#g' "$script"
+          set +e
+          python3 "$script" >"$RUNNER_TEMP/framework-usage-patch.log" 2>&1
+          patch_status=$?
+          set -e
+          git checkout -- "$script"
+          if [ "$patch_status" -ne 0 ]; then
+            echo 'FRAMEWORK_USAGE_PATCH_FAILURE_BEGIN'
+            tail -n 20 "$RUNNER_TEMP/framework-usage-patch.log"
+            echo 'FRAMEWORK_USAGE_PATCH_FAILURE_END'
+            exit "$patch_status"
+          fi
           git diff --check
           if git diff --quiet; then
             echo 'Framework usage integration is already complete.'
