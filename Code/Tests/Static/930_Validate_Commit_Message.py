@@ -48,6 +48,8 @@ def validate_message(
         return [Finding("COMMIT_MESSAGE_EMPTY", commit_id)]
     if delivery_mode == MANUAL_ZIP and ("\n" in logical_text or "\r" in logical_text):
         return [Finding("COMMIT_MESSAGE_NOT_SINGLE_LINE", commit_id)]
+    if delivery_mode == DIRECT_GIT and not logical_text.startswith("AI:"):
+        return [Finding("COMMIT_MESSAGE_MISSING_AI_PREFIX", commit_id)]
     return []
 
 
@@ -128,8 +130,9 @@ def run_self_test() -> list[Finding]:
         "MANUAL_TRAILING_BLANK_LINE": (MANUAL_ZIP, b"docs: update contract\n\n", 1),
         "MANUAL_EMBEDDED_CARRIAGE_RETURN": (MANUAL_ZIP, b"docs: update\rcontract\n", 1),
         "MANUAL_NON_UTF8_MESSAGE": (MANUAL_ZIP, b"docs: update \xff\n", 1),
-        "DIRECT_SINGLE_LINE": (DIRECT_GIT, b"docs: update contract\n", 0),
-        "DIRECT_MESSAGE_BODY": (DIRECT_GIT, b"docs: update contract\n\nAdditional detail.\n", 0),
+        "DIRECT_SINGLE_LINE_WITH_AI_PREFIX": (DIRECT_GIT, b"AI: docs: update contract\n", 0),
+        "DIRECT_MESSAGE_BODY_WITH_AI_PREFIX": (DIRECT_GIT, b"AI: docs: update contract\n\nAdditional detail.\n", 0),
+        "DIRECT_SINGLE_LINE_MISSING_AI_PREFIX": (DIRECT_GIT, b"docs: update contract\n", 1),
         "DIRECT_EMPTY_MESSAGE": (DIRECT_GIT, b"\n", 1),
         "DIRECT_NON_UTF8_MESSAGE": (DIRECT_GIT, b"docs: update \xff\n", 1),
     }
@@ -172,7 +175,7 @@ def parse_args() -> argparse.Namespace:
         "--delivery-mode",
         choices=DELIVERY_MODES,
         default=DIRECT_GIT,
-        help="DIRECT_GIT permits a message body; MANUAL_ZIP requires exactly one line.",
+        help="DIRECT_GIT requires an 'AI:' prefix and permits a message body; MANUAL_ZIP requires exactly one line.",
     )
     parser.add_argument("--self-test", action="store_true")
     return parser.parse_args()
@@ -181,7 +184,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     if args.self_test:
-        return report(run_self_test(), "SELF_TEST", 12)
+        return report(run_self_test(), "SELF_TEST", 13)
     if args.head_sha is None:
         return report([Finding("HEAD_SHA_MISSING", "HEAD")], "REPOSITORY", 0)
     findings, commit_count = scan_repository(

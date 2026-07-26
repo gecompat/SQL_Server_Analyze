@@ -7,3 +7,7 @@ Diese Vorgabe gilt auch für README-Dateien, technische Beschreibungen in SQL-Da
 ## Geschützter Lizenzblock der Root-README
 
 Bei jeder Änderung der Root-`README.md` ist der dort vorhandene englische und deutsche Lizenzblock entsprechend [`AGENTS.md`](../AGENTS.md) vollständig und unverändert zu erhalten. Ein allgemeiner Auftrag zur README-, Dokumentations-, Formatierungs- oder Stiländerung erlaubt keine Bearbeitung dieses Blocks. GitHub Copilot darf ihn nur ändern, wenn der Benutzer ausdrücklich und unmittelbar die Änderung des Lizenzblocks verlangt; maßgeblich ist dann der aktuelle Stand im Zielbranch.
+
+## Commit-Message-Präfix für KI im direkten Git-Pfad
+
+Im Delivery-Mode `DIRECT_GIT` beginnen KI-generierte Commit-Messages mit dem Präfix `AI:`.
