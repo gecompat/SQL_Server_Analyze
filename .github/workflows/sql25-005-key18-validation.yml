@@ -26,87 +26,38 @@ jobs:
           fetch-depth: 1
 
       - name: Inspect available test tooling
-        shell: powershell
+        shell: cmd
+        continue-on-error: true
         run: |
-          $ErrorActionPreference = 'Continue'
+          @echo off
+          ver
+          where sqlcmd >nul 2>nul && echo TOOL sqlcmd: AVAILABLE || echo TOOL sqlcmd: NOT_FOUND
+          where docker >nul 2>nul && echo TOOL docker: AVAILABLE || echo TOOL docker: NOT_FOUND
+          where podman >nul 2>nul && echo TOOL podman: AVAILABLE || echo TOOL podman: NOT_FOUND
+          where python >nul 2>nul && echo TOOL python: AVAILABLE || echo TOOL python: NOT_FOUND
+          where py >nul 2>nul && echo TOOL py: AVAILABLE || echo TOOL py: NOT_FOUND
+          where pwsh >nul 2>nul && echo TOOL pwsh: AVAILABLE || echo TOOL pwsh: NOT_FOUND
+          where powershell >nul 2>nul && echo TOOL powershell: AVAILABLE || echo TOOL powershell: NOT_FOUND
 
-          Write-Host "PowerShell: $($PSVersionTable.PSVersion)"
+          where docker >nul 2>nul && docker version --format "DOCKER_SERVER {{.Server.Version}}" 2>nul || echo DOCKER_DAEMON: UNAVAILABLE
+          where docker >nul 2>nul && docker ps --format "DOCKER_CONTAINER {{.Image}}^|{{.Ports}}" 2>nul || echo DOCKER_LIST: UNAVAILABLE
 
-          foreach ($commandName in @('sqlcmd', 'docker', 'podman', 'python', 'py', 'pwsh', 'powershell')) {
-              $command = Get-Command $commandName -ErrorAction SilentlyContinue
-              if ($null -eq $command) {
-                  Write-Host "TOOL $commandName: NOT_FOUND"
-              }
-              else {
-                  Write-Host "TOOL $commandName: AVAILABLE"
-              }
-          }
+          where podman >nul 2>nul && podman version --format "PODMAN_VERSION {{.Version}}" 2>nul || echo PODMAN_RUNTIME: UNAVAILABLE
+          where podman >nul 2>nul && podman ps --format "PODMAN_CONTAINER {{.Image}}^|{{.Ports}}" 2>nul || echo PODMAN_LIST: UNAVAILABLE
 
-          if (Get-Command docker -ErrorAction SilentlyContinue) {
-              try {
-                  $dockerVersion = docker version --format 'DOCKER_SERVER {{.Server.Version}}' 2>$null
-                  if ($LASTEXITCODE -eq 0) { Write-Host $dockerVersion }
-                  else { Write-Host 'DOCKER_DAEMON: UNAVAILABLE' }
-              }
-              catch { Write-Host 'DOCKER_DAEMON: UNAVAILABLE' }
-
-              try {
-                  $containers = docker ps --format 'DOCKER_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
-                  if ($LASTEXITCODE -eq 0) {
-                      if ($containers) { $containers | ForEach-Object { Write-Host $_ } }
-                      else { Write-Host 'DOCKER_CONTAINER: NONE_RUNNING' }
-                  }
-                  else { Write-Host 'DOCKER_LIST: UNAVAILABLE' }
-              }
-              catch { Write-Host 'DOCKER_LIST: UNAVAILABLE' }
-          }
-
-          if (Get-Command podman -ErrorAction SilentlyContinue) {
-              try {
-                  $podmanVersion = podman version --format 'PODMAN_VERSION {{.Version}}' 2>$null
-                  if ($LASTEXITCODE -eq 0) { Write-Host $podmanVersion }
-                  else { Write-Host 'PODMAN_RUNTIME: UNAVAILABLE' }
-              }
-              catch { Write-Host 'PODMAN_RUNTIME: UNAVAILABLE' }
-
-              try {
-                  $containers = podman ps --format 'PODMAN_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
-                  if ($LASTEXITCODE -eq 0) {
-                      if ($containers) { $containers | ForEach-Object { Write-Host $_ } }
-                      else { Write-Host 'PODMAN_CONTAINER: NONE_RUNNING' }
-                  }
-                  else { Write-Host 'PODMAN_LIST: UNAVAILABLE' }
-              }
-              catch { Write-Host 'PODMAN_LIST: UNAVAILABLE' }
-          }
-
-          foreach ($port in 14331..14339) {
-              try {
-                  $client = New-Object System.Net.Sockets.TcpClient
-                  $async = $client.BeginConnect('127.0.0.1', $port, $null, $null)
-                  $reachable = $async.AsyncWaitHandle.WaitOne(1000, $false)
-                  if ($reachable) { $client.EndConnect($async) }
-                  $client.Close()
-                  Write-Host "TCP 127.0.0.1:${port} = $reachable"
-              }
-              catch {
-                  Write-Host "TCP 127.0.0.1:${port} = False"
-              }
-          }
-
-          $global:LASTEXITCODE = 0
-          exit 0
+          powershell -NoProfile -NonInteractive -Command "$ports=14331..14339; foreach($p in $ports){$c=New-Object Net.Sockets.TcpClient; try{$a=$c.BeginConnect('127.0.0.1',$p,$null,$null); $r=$a.AsyncWaitHandle.WaitOne(1000,$false); if($r){$c.EndConnect($a)}}catch{$r=$false}finally{$c.Close()}; Write-Host ('TCP 127.0.0.1:{0} = {1}' -f $p,$r)}"
+          exit /b 0
 
       - name: Validate repository-only SQL25-005 contracts
-        shell: powershell
+        shell: cmd
         run: |
-          $ErrorActionPreference = 'Stop'
-          $python = Get-Command python -ErrorAction SilentlyContinue
-          if ($null -eq $python) {
-              $python = Get-Command py -ErrorAction SilentlyContinue
-          }
-          if ($null -eq $python) {
-              throw 'Python is required for repository static validation on KEY18.'
-          }
-          & $python.Source .\Code\Tests\Static\905_Validate_Analysis_Navigator.py --repository-root .
-          & $python.Source .\Code\Tests\Static\930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test
+          @echo off
+          set "PYTHON_CMD="
+          where python >nul 2>nul && set "PYTHON_CMD=python"
+          if not defined PYTHON_CMD where py >nul 2>nul && set "PYTHON_CMD=py"
+          if not defined PYTHON_CMD (
+            echo Python is required for repository static validation on KEY18.
+            exit /b 1
+          )
+          %PYTHON_CMD% .\Code\Tests\Static\905_Validate_Analysis_Navigator.py --repository-root . || exit /b 1
+          %PYTHON_CMD% .\Code\Tests\Static\930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test || exit /b 1
