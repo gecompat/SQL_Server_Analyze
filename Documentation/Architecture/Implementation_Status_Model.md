@@ -1,6 +1,6 @@
 # Implementierungsstatusmodell
 
-Stand: 2026-07-25
+Stand: 27. Juli 2026
 
 Dieses Modell trennt Produktfunktion, automatisierte Repositoryevidenz, externe
 Laufzeitnachweise und ausdrücklich optionale Erweiterungen. Ein offener
@@ -62,4 +62,6 @@ externen Feature-Nachweisen eingestuft. Bei SC-023 bleibt der bereits
 abgenommene Performance-Counter-Slice implementiert; weitere Collector und
 Rollups sind optionaler Ausbau.
 
-LAB-001 ist als `PARTIAL_PRODUCT_FUNCTION` eingestuft. Welle 1 stellt den read-only Preflight und den begrenzten Orchestrator-Core bereit. Die Wellen 2 und 3 liefern die Single-Container-Baseline und die Core-Performance-Matrix. Welle 4 ergänzt die Multi-Container-Laufzeit und die begrenzte Log-Shipping-Aktion; 17 weitere Infrastrukturaktionen und der Network-Fault-Layer bleiben offen. Für Welle 5 ist die Image-Pipeline-Vertragsgrundlage vorhanden, die Runtime bleibt `NOT_EXECUTED`. Das Docker-/Podman-Quick-Testsystem besitzt einen vollständigen Lifecycle-Vertrag; seine nativen externen Nachweise stehen noch aus. Die Wellen 6 bis 10 bleiben geplant.
+Die frühere allgemeine LAB-001-Provisionierung ist kein neuer Ausbaupfad dieses Repositorys. Provider-, Ressourcen-, Lifecycle-, State- und Cleanup-Verantwortung liegen bei `gecompat/SQL_Server_Lab`. Historische Analyze-seitige Lab-Verträge und synthetische Szenariokenntnis bleiben lediglich als Migrations- und Wiederverwendungsquelle sichtbar.
+
+`ANALYZE-LAB-001` ist davon getrennt und als `RESEARCHED_NOT_IMPLEMENTED` eingestuft. Der dokumentierte Zielumfang ist ein benutzerorientierter Beispielkatalog in `SQL_Server_Analyze`, der vorhandene öffentliche Lab-Schnittstellen verwendet. Der erste geplante Produkt-Slice ist `BLOCKING-001` mit getrenntem Interactive- und Verify-Modus. Änderungen an `SQL_Server_Lab` sind kein impliziter Teil dieses Arbeitspakets und benötigen bei einer nachgewiesenen allgemeinen Plattformlücke eine vorherige ausdrückliche Freigabe.
