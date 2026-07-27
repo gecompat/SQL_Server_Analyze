@@ -28,11 +28,11 @@ jobs:
       - name: Inspect available test tooling
         shell: powershell
         run: |
-          $ErrorActionPreference = 'Stop'
+          $ErrorActionPreference = 'Continue'
 
           Write-Host "PowerShell: $($PSVersionTable.PSVersion)"
 
-          foreach ($commandName in @('sqlcmd', 'docker', 'podman', 'pwsh', 'powershell')) {
+          foreach ($commandName in @('sqlcmd', 'docker', 'podman', 'python', 'py', 'pwsh', 'powershell')) {
               $command = Get-Command $commandName -ErrorAction SilentlyContinue
               if ($null -eq $command) {
                   Write-Host "TOOL $commandName: NOT_FOUND"
@@ -43,23 +43,65 @@ jobs:
           }
 
           if (Get-Command docker -ErrorAction SilentlyContinue) {
-              docker version --format 'DOCKER_SERVER {{.Server.Version}}' 2>$null
-              docker ps --format 'DOCKER_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
+              try {
+                  $dockerVersion = docker version --format 'DOCKER_SERVER {{.Server.Version}}' 2>$null
+                  if ($LASTEXITCODE -eq 0) { Write-Host $dockerVersion }
+                  else { Write-Host 'DOCKER_DAEMON: UNAVAILABLE' }
+              }
+              catch { Write-Host 'DOCKER_DAEMON: UNAVAILABLE' }
+
+              try {
+                  $containers = docker ps --format 'DOCKER_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
+                  if ($LASTEXITCODE -eq 0) {
+                      if ($containers) { $containers | ForEach-Object { Write-Host $_ } }
+                      else { Write-Host 'DOCKER_CONTAINER: NONE_RUNNING' }
+                  }
+              }
+              catch { Write-Host 'DOCKER_LIST: UNAVAILABLE' }
           }
 
           if (Get-Command podman -ErrorAction SilentlyContinue) {
-              podman version --format 'PODMAN_VERSION {{.Version}}' 2>$null
-              podman ps --format 'PODMAN_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
+              try {
+                  $podmanVersion = podman version --format 'PODMAN_VERSION {{.Version}}' 2>$null
+                  if ($LASTEXITCODE -eq 0) { Write-Host $podmanVersion }
+                  else { Write-Host 'PODMAN_RUNTIME: UNAVAILABLE' }
+              }
+              catch { Write-Host 'PODMAN_RUNTIME: UNAVAILABLE' }
+
+              try {
+                  $containers = podman ps --format 'PODMAN_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
+                  if ($LASTEXITCODE -eq 0) {
+                      if ($containers) { $containers | ForEach-Object { Write-Host $_ } }
+                      else { Write-Host 'PODMAN_CONTAINER: NONE_RUNNING' }
+                  }
+              }
+              catch { Write-Host 'PODMAN_LIST: UNAVAILABLE' }
           }
 
           foreach ($port in 14331..14339) {
-              $reachable = Test-NetConnection -ComputerName 127.0.0.1 -Port $port -InformationLevel Quiet -WarningAction SilentlyContinue
-              Write-Host "TCP 127.0.0.1:$port = $reachable"
+              try {
+                  $client = New-Object System.Net.Sockets.TcpClient
+                  $async = $client.BeginConnect('127.0.0.1', $port, $null, $null)
+                  $reachable = $async.AsyncWaitHandle.WaitOne(1000, $false)
+                  if ($reachable) { $client.EndConnect($async) }
+                  $client.Close()
+                  Write-Host "TCP 127.0.0.1:$port = $reachable"
+              }
+              catch {
+                  Write-Host "TCP 127.0.0.1:$port = False"
+              }
           }
 
       - name: Validate repository-only SQL25-005 contracts
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          python .\Code\Tests\Static\905_Validate_Analysis_Navigator.py --repository-root .
-          python .\Code\Tests\Static\930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test
+          $python = Get-Command python -ErrorAction SilentlyContinue
+          if ($null -eq $python) {
+              $python = Get-Command py -ErrorAction SilentlyContinue
+          }
+          if ($null -eq $python) {
+              throw 'Python is required for repository static validation on KEY18.'
+          }
+          & $python.Source .\Code\Tests\Static\905_Validate_Analysis_Navigator.py --repository-root .
+          & $python.Source .\Code\Tests\Static\930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test
