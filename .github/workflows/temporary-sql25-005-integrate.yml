@@ -26,12 +26,15 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
-      - name: Apply pending builder repair
+      - name: Apply pending builder repairs
         shell: bash
         run: |
           set -euo pipefail
           if grep -q 'AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitIQP = 0' ./Code/Tests/Static/Temporary_SQL25_005_Integrate.py; then
             python3 ./Code/Tests/Static/Temporary_SQL25_005_Repair.py
+          fi
+          if grep -q 'insert_before(text, marker, terms, path)' ./Code/Tests/Static/Temporary_SQL25_005_Integrate.py; then
+            python3 ./Code/Tests/Static/Temporary_SQL25_005_Repair2.py
           fi
 
       - name: Apply deterministic integration
