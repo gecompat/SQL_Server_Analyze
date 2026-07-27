@@ -1,0 +1,37 @@
+name: Temporary SQL25-005 static diagnostic
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/implement-sql25-005'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: agent/implement-sql25-005
+          fetch-depth: 1
+          show-progress: false
+      - name: Run static validator and persist generic findings
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          python3 ./Code/Tests/Static/905_Validate_Analysis_Navigator.py --repository-root . > ./Code/Tests/Static/Temporary_SQL25_005_Static_Findings.txt 2>&1
+          status=$?
+          set -e
+          sed -i -E 's#/home/runner/[^ :]+#<runtime-path>#g' ./Code/Tests/Static/Temporary_SQL25_005_Static_Findings.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ./Code/Tests/Static/Temporary_SQL25_005_Static_Findings.txt
+          git commit -m 'Record sanitized SQL25-005 static findings'
+          git push origin HEAD:agent/implement-sql25-005
+          exit "$status"
