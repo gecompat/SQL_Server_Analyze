@@ -79,6 +79,7 @@ Kostenklasse, High-Impact-Bestätigung und SQL-Server-Berechtigung sind getrennt
 - [SQL-Server-2025-Statistiken auf lesbaren Secondaries](Architecture/SQL_Server_2025_Readable_Secondary_Statistics.md)
 - [RUNTIME-001: External Runtime und SQL CLR](Architecture/External_Runtime_CLR_Analysis_Plan.md)
 - [Geplantes SubProject SSIS-001: SSIS Package- und Execution-Analyse](Architecture/SSIS_Package_and_Execution_Analysis_Plan.md)
+- [ANALYZE-LAB-001: spielbare Analyze-Beispiele mit SQL_Server_Lab](Architecture/SQL_Server_Lab_Example_Integration_Plan.md)
 - [Datenschutz und Laufzeitausgaben](Architecture/Runtime_Data_Privacy.md)
 - [Execution-Plan-Analyse](Architecture/Execution_Plan_Analysis_Design.md)
 - [Eigenständiges PLAN-001-Paket](Architecture/Execution_Plan_Analysis_Installation_Contract.md)
