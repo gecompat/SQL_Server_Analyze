@@ -56,6 +56,7 @@ jobs:
                       if ($containers) { $containers | ForEach-Object { Write-Host $_ } }
                       else { Write-Host 'DOCKER_CONTAINER: NONE_RUNNING' }
                   }
+                  else { Write-Host 'DOCKER_LIST: UNAVAILABLE' }
               }
               catch { Write-Host 'DOCKER_LIST: UNAVAILABLE' }
           }
@@ -74,6 +75,7 @@ jobs:
                       if ($containers) { $containers | ForEach-Object { Write-Host $_ } }
                       else { Write-Host 'PODMAN_CONTAINER: NONE_RUNNING' }
                   }
+                  else { Write-Host 'PODMAN_LIST: UNAVAILABLE' }
               }
               catch { Write-Host 'PODMAN_LIST: UNAVAILABLE' }
           }
@@ -91,6 +93,9 @@ jobs:
                   Write-Host "TCP 127.0.0.1:$port = False"
               }
           }
+
+          $global:LASTEXITCODE = 0
+          exit 0
 
       - name: Validate repository-only SQL25-005 contracts
         shell: powershell
