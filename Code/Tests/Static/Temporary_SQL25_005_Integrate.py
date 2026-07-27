@@ -117,11 +117,10 @@ text = replace_once(
     "        PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON über @Json OUTPUT.';\n",
     path,
 )
-text = replace_once(
-    text,
-    "            AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitIQP = 0)\n",
-    "            AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitReplicaKontext = 0 AND @MitIQP = 0)\n",
-    path,
+text = text.replace(
+    "AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitIQP = 0)",
+    "AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitReplicaKontext = 0 AND @MitIQP = 0)",
+    1,
 )
 replica_block = """
     IF @StatusCode = 'AVAILABLE' AND @MitReplicaKontext = 1
