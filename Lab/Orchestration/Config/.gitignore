@@ -1,0 +1,10 @@
+# Local LAB configuration may contain environment-specific paths, endpoints or secret references.
+lab.config.psd1
+
+# Local resolved image locks are runtime configuration; example contracts remain versioned.
+image-lock.json
+image-lock.local.json
+
+# Temporary files created while replacing local configuration.
+*.tmp
+*.bak

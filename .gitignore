@@ -1,7 +1,24 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
-Code/Install/generated/*.generated.sql
 *.backup
+
+# Generated installer output (directory-local guard exists as well).
+Code/Install/generated/*.generated.sql
+
+# QuickStart local runtime configuration.
 QuickStart/Docker/.env
 QuickStart/Docker/.env.*.tmp
+QuickStart/Docker/*.log
+QuickStart/Docker/docker-compose.override.yml
+QuickStart/Docker/compose.override.yml
+
+# LAB local runtime state and machine-specific configuration.
+Lab/Orchestration/.state/*
+!Lab/Orchestration/.state/.gitignore
+!Lab/Orchestration/.state/README.md
+Lab/Orchestration/Config/lab.config.psd1
+Lab/Orchestration/Config/image-lock.json
+Lab/Orchestration/Config/image-lock.local.json
+Lab/Orchestration/Config/*.tmp
+Lab/Orchestration/Config/*.bak
