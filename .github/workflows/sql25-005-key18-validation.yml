@@ -87,10 +87,10 @@ jobs:
                   $reachable = $async.AsyncWaitHandle.WaitOne(1000, $false)
                   if ($reachable) { $client.EndConnect($async) }
                   $client.Close()
-                  Write-Host "TCP 127.0.0.1:$port = $reachable"
+                  Write-Host "TCP 127.0.0.1:${port} = $reachable"
               }
               catch {
-                  Write-Host "TCP 127.0.0.1:$port = False"
+                  Write-Host "TCP 127.0.0.1:${port} = False"
               }
           }
 
