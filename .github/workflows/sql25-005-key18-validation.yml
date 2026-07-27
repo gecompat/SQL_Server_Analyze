@@ -16,7 +16,7 @@ concurrency:
 jobs:
   discover:
     name: Discover remote SQL test capabilities
-    runs-on: [self-hosted, Windows, X64, key18, sql-test, docker]
+    runs-on: [self-hosted, sql-test]
     timeout-minutes: 15
 
     steps:
@@ -40,7 +40,7 @@ jobs:
   static:
     name: Validate SQL25-005 repository contracts remotely
     needs: discover
-    runs-on: [self-hosted, Windows, X64, key18, sql-test, docker]
+    runs-on: [self-hosted, sql-test]
     timeout-minutes: 20
 
     steps:
@@ -59,7 +59,7 @@ jobs:
   runtime:
     name: Validate SQL Server 2019 2022 2025 remotely
     needs: static
-    runs-on: [self-hosted, Windows, X64, key18, sql-test, docker]
+    runs-on: [self-hosted, sql-test]
     timeout-minutes: 240
 
     steps:
