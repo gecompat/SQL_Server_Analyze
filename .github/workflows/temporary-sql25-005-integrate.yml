@@ -1,0 +1,48 @@
+name: Temporary SQL25-005 integration builder
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: temporary-sql25-005-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  integrate:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'agent/implement-sql25-005'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out SQL25-005 branch
+        uses: actions/checkout@v6
+        with:
+          ref: agent/implement-sql25-005
+          fetch-depth: 0
+
+      - name: Apply deterministic integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/Temporary_SQL25_005_Integrate.py
+          python3 -m py_compile ./Code/Tests/Static/905_Validate_Analysis_Navigator.py
+          git diff --check
+
+      - name: Commit generated integration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo 'No integration changes required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          git commit -m 'Integrate SQL25-005 across framework contracts'
+          git push origin HEAD:agent/implement-sql25-005
