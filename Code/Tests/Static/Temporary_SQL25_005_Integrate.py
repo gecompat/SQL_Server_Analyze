@@ -185,7 +185,7 @@ terms = (
     "        , (N'USP_QueryStoreReplicaAnalysis',N'query store readable secondary replica role','en',100,N'Replica-aware Query Store runtime, waits and forcing context.')\n"
 )
 marker = "        , (N'USP_QueryStoreStatus'"
-text = insert_before(text, marker, terms, path)
+text = text.replace(marker, terms + marker, 1)
 write(path, text)
 
 path = "Code/01_Common/023_VW_AnalysisRelation.sql"
@@ -196,7 +196,7 @@ relations = (
     "        , (N'USP_QueryStoreReplicaAnalysis','CONFIRM_WITH',N'USP_QueryStoreWaitStats',2,N'Rollengetrennte Waitaggregate mit der querybezogenen Waitsicht abgleichen.')\n"
     "        , (N'USP_QueryStoreAnalysis','REFINE_WITH',N'USP_QueryStoreReplicaAnalysis',3,N'Bei SQL Server 2025 Query-Store-Evidenz nach beobachteter Replica-Rolle trennen.')\n"
 )
-text = insert_before(text, "        , (N'USP_QueryStoreRuntimeStats'", relations, path)
+text = text.replace("        , (N'USP_QueryStoreRuntimeStats'", relations + "        , (N'USP_QueryStoreRuntimeStats'", 1)
 write(path, text)
 
 

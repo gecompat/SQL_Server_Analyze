@@ -48,6 +48,8 @@ BEGIN
     DECLARE @CapturedAtUtc datetime2(3)=SYSUTCDATETIME();
     DECLARE @ProductMajorVersion int=TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'));
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
+    DECLARE @ConsoleResultRequested bit=CONVERT(bit,CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END);
+    IF @ConsoleResultRequested=1 SET @OutputMode='NONE';
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
     DECLARE @ErrorNumber int=NULL;
@@ -814,7 +816,14 @@ OPTION (MAXDOP 1,RECOMPILE);';
                          N',"warnings":',COALESCE(@WarningsJson,N'[]'),N'}');
     END;
 
-    IF @OutputMode='RAW'
+    IF @ConsoleResultRequested=1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#QueryStoreReplicaAnalysis_ModuleStatus'
+            , @ResultLabel=N'QueryStoreReplicaAnalysis'
+            , @EmptyMessage=N'Keine Query-Store-Replica-Evidenz im sichtbaren Scope';
+    END
+    ELSE IF @OutputMode='RAW'
     BEGIN
         SELECT * FROM [#QueryStoreReplicaAnalysis_ModuleStatus];
         SELECT * FROM [#QueryStoreReplicaAnalysis_Replicas] ORDER BY [DatabaseId],[ReplicaGroupId],[RoleType];
@@ -823,45 +832,6 @@ OPTION (MAXDOP 1,RECOMPILE);';
         SELECT * FROM [#QueryStoreReplicaAnalysis_ForcingByReplica] ORDER BY [ForcingLocationCount] DESC,[DatabaseId],[ReplicaGroupId];
         SELECT * FROM [#QueryStoreReplicaAnalysis_SourceStatus] ORDER BY [SourceOrdinal];
         SELECT * FROM [#QueryStoreReplicaAnalysis_Warnings] ORDER BY [WarningOrdinal];
-    END
-    ELSE IF @OutputMode='CONSOLE'
-    BEGIN
-        SELECT N'Query Store Replica Analysis' AS [Ergebnis],@CapturedAtUtc AS [Stand_UTC],
-               @StatusCode AS [Status],@IsPartial AS [Partiell],@VonUtc AS [Von_UTC],@BisUtc AS [Bis_UTC],
-               (SELECT COUNT_BIG(*) FROM [#QueryStoreReplicaAnalysis_Replicas]) AS [Beobachtete_Rollen],
-               (SELECT COUNT_BIG(*) FROM [#QueryStoreReplicaAnalysis_RuntimeByReplica]) AS [Runtime_Gruppen],
-               (SELECT COUNT_BIG(*) FROM [#QueryStoreReplicaAnalysis_WaitsByReplica]) AS [Wait_Gruppen],
-               (SELECT COUNT_BIG(*) FROM [#QueryStoreReplicaAnalysis_ForcingByReplica]) AS [Forcing_Gruppen];
-
-        SELECT N'Beobachtete Query-Store-Rolle' AS [Ergebnis],[DatabaseName] AS [Datenbank],
-               [ReplicaGroupId] AS [Replica_Group_ID],[RoleTypeDesc] AS [Beobachtete_Rolle],
-               [RoleClass] AS [Rollenklasse],[CurrentConnectionRoleDesc] AS [Aktuelle_Verbindungsrolle],
-               [ReplicaName] AS [Replica_Name],[StatusCode] AS [Status]
-        FROM [#QueryStoreReplicaAnalysis_Replicas]
-        ORDER BY [DatabaseId],[ReplicaGroupId],[RoleType];
-
-        SELECT N'Runtime nach Replica-Rolle' AS [Ergebnis],[DatabaseName] AS [Datenbank],
-               [ReplicaGroupId] AS [Replica_Group_ID],[RoleTypeDesc] AS [Rolle],
-               [ExecutionCount] AS [Ausführungen],CONCAT(CONVERT(varchar(50),[TotalCpuMs]),N' ms') AS [CPU_gesamt],
-               CONCAT(CONVERT(varchar(50),[TotalDurationMs]),N' ms') AS [Dauer_gesamt],
-               [TotalLogicalReads] AS [Logical_Reads],[LastExecutionTimeUtc] AS [Letzte_Ausführung_UTC],
-               [MappingStatusCode] AS [Zuordnung]
-        FROM [#QueryStoreReplicaAnalysis_RuntimeByReplica]
-        ORDER BY [TotalCpuMs] DESC,[LastExecutionTimeUtc] DESC;
-
-        SELECT N'Waits nach Replica-Rolle' AS [Ergebnis],[DatabaseName] AS [Datenbank],
-               [ReplicaGroupId] AS [Replica_Group_ID],[RoleTypeDesc] AS [Rolle],
-               [WaitCategoryDesc] AS [Wait_Kategorie],[ExecutionTypeDesc] AS [Ausführungstyp],
-               CONCAT(CONVERT(varchar(50),CONVERT(decimal(38,3),[TotalQueryWaitTimeMs]/1000.0)),N' s') AS [Wait_gesamt],
-               [MappingStatusCode] AS [Zuordnung]
-        FROM [#QueryStoreReplicaAnalysis_WaitsByReplica]
-        ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC;
-
-        SELECT N'Query-Store-Quellenstatus' AS [Ergebnis],[DatabaseName] AS [Datenbank],
-               [SourceName] AS [Quelle],[StatusCode] AS [Status],[ReturnedRowCount] AS [Zeilen],
-               [ErrorMessage] AS [Fehler],[EvidenceLimit] AS [Aussagegrenze]
-        FROM [#QueryStoreReplicaAnalysis_SourceStatus]
-        ORDER BY [SourceOrdinal];
     END
     ELSE IF @OutputMode='TABLE'
     BEGIN

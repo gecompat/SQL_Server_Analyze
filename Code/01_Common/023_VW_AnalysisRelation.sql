@@ -86,6 +86,10 @@ AS
         , (N'USP_ExecutionPlanAnalysis','ALTERNATIVE_TO',N'USP_ShowplanAnalysis',1,N'Für einen bereits in SQL Server verfügbaren Planhandle kann der integrierte Showplanpfad geeigneter sein.')
 
         , (N'USP_QueryStoreStatus','REFINE_WITH',N'USP_QueryStoreAnalysis',1,N'Bei verfügbarem und lesbarem Query Store die konsolidierte Analyse ausführen.')
+        , (N'USP_QueryStoreStatus','REFINE_WITH',N'USP_QueryStoreReplicaAnalysis',2,N'Ab SQL Server 2025 Query-Store-Zustand um beobachtete Primary-, Secondary- und Named-Replica-Evidenz ergänzen.')
+        , (N'USP_QueryStoreReplicaAnalysis','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Rollengetrennte Aggregate gegen Query- und Plan-Details im gleichen Zeitraum prüfen.')
+        , (N'USP_QueryStoreReplicaAnalysis','CONFIRM_WITH',N'USP_QueryStoreWaitStats',2,N'Rollengetrennte Waitaggregate mit der querybezogenen Waitsicht abgleichen.')
+        , (N'USP_QueryStoreAnalysis','REFINE_WITH',N'USP_QueryStoreReplicaAnalysis',3,N'Bei SQL Server 2025 Query-Store-Evidenz nach beobachteter Replica-Rolle trennen.')
         , (N'USP_QueryStoreRuntimeStats','CONFIRM_WITH',N'USP_QueryStoreWaitStats',1,N'Laufzeitabweichungen mit den zugehörigen Query-Store-Waitkategorien gegenprüfen.')
         , (N'USP_QueryStoreWaitStats','CONFIRM_WITH',N'USP_QueryStoreRuntimeStats',1,N'Waitverschiebungen nur zusammen mit Ausführungszahl, Dauer, CPU und Reads bewerten.')
         , (N'USP_QueryStorePlanChanges','REFINE_WITH',N'USP_ExecutionPlanAnalysis',1,N'Relevante alte und neue Plan-XMLs einzeln strukturell analysieren.')
