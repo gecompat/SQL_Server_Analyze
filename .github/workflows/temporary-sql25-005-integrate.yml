@@ -24,6 +24,7 @@ jobs:
         with:
           ref: agent/implement-sql25-005
           fetch-depth: 0
+          show-progress: false
 
       - name: Apply deterministic integration
         shell: bash
@@ -33,10 +34,16 @@ jobs:
           output="$(python3 ./Code/Tests/Static/Temporary_SQL25_005_Integrate.py 2>&1)"
           status=$?
           set -e
-          printf '%s\n' "$output" | tail -n 80
           if [[ "$status" -ne 0 ]]; then
+            printf '%s\n' "$output" | tail -n 80 > ./Code/Tests/Static/Temporary_SQL25_005_Builder_Error.txt
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add ./Code/Tests/Static/Temporary_SQL25_005_Builder_Error.txt
+            git commit -m 'Record SQL25-005 builder diagnostic'
+            git push origin HEAD:agent/implement-sql25-005
             exit "$status"
           fi
+          rm -f ./Code/Tests/Static/Temporary_SQL25_005_Builder_Error.txt
           python3 -m py_compile ./Code/Tests/Static/905_Validate_Analysis_Navigator.py
           git diff --check
 
