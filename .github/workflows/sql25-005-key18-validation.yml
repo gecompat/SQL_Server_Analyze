@@ -20,11 +20,6 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Check out clean SQL25-005 branch
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-
       - name: Inspect available test tooling
         shell: cmd
         continue-on-error: true
@@ -48,16 +43,28 @@ jobs:
           powershell -NoProfile -NonInteractive -Command "$ports=14331..14339; foreach($p in $ports){$c=New-Object Net.Sockets.TcpClient; try{$a=$c.BeginConnect('127.0.0.1',$p,$null,$null); $r=$a.AsyncWaitHandle.WaitOne(1000,$false); if($r){$c.EndConnect($a)}}catch{$r=$false}finally{$c.Close()}; Write-Host ('TCP 127.0.0.1:{0} = {1}' -f $p,$r)}"
           exit /b 0
 
+  static:
+    name: Validate SQL25-005 repository contracts on KEY18
+    needs: discover
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out clean SQL25-005 branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Install isolated Python runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: Code/Tests/Static/*.py
+
       - name: Validate repository-only SQL25-005 contracts
         shell: cmd
         run: |
           @echo off
-          set "PYTHON_CMD="
-          where python >nul 2>nul && set "PYTHON_CMD=python"
-          if not defined PYTHON_CMD where py >nul 2>nul && set "PYTHON_CMD=py"
-          if not defined PYTHON_CMD (
-            echo Python is required for repository static validation on KEY18.
-            exit /b 1
-          )
-          %PYTHON_CMD% .\Code\Tests\Static\905_Validate_Analysis_Navigator.py --repository-root . || exit /b 1
-          %PYTHON_CMD% .\Code\Tests\Static\930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test || exit /b 1
+          python .\Code\Tests\Static\905_Validate_Analysis_Navigator.py --repository-root . || exit /b 1
+          python .\Code\Tests\Static\930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test || exit /b 1
