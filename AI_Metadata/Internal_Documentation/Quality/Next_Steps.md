@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 26. Juli 2026  
+**Stand:** 27. Juli 2026  
 **Zweck:** aktueller, priorisierter Arbeitsstand für `gecompat/SQL_Server_Analyze`
 
 ## 1. Aktueller Produktstand
@@ -9,7 +9,7 @@ Der portable Framework-Kern ist für SQL Server 2019, 2022 und 2025 implementier
 
 Für die Repository-Qualität bestehen keine offenen RQ-Aufgaben. `RQ-001` bis `RQ-006`, die Dokumentationsprüfung, das Repository- und ZIP-Datenschutzgate sowie der Commit-Message-Vertrag sind umgesetzt.
 
-Die allgemeine Lab-Provisionierung und die QuickStart-Laufzeitumgebungen wurden nach `gecompat/SQL_Server_Lab` verlagert. In diesem Repository verbleiben ausschließlich Frameworkcode, Frameworkdokumentation, analyserbezogene Lab-Verträge und deren fachliche Szenarien.
+Die allgemeine Lab-Provisionierung und die QuickStart-Laufzeitumgebungen wurden nach `gecompat/SQL_Server_Lab` verlagert. `SQL_Server_Lab` stellt Docker- und Podman-Umgebungen bereit. In diesem Repository verbleiben Frameworkcode, Frameworkdokumentation, analyserbezogene Szenarien und künftig deren benutzerorientierte Beispielsteuerung.
 
 ## 2. Verbindliche Statusquellen
 
@@ -29,7 +29,27 @@ Ein grüner statischer Vertrag oder ein vorhandener SQL-Quellpfad ist kein Ersat
 
 `monitor.USP_FrameworkUsageFromQueryStore` besitzt nun den vollständigen öffentlichen Frameworkvertrag: kanonisches Objekt- und Resultsetinventar, `@Hilfe`, gewichtete Query-Store-Aggregation, sichtbare Quellenlage, CONSOLE, RAW, TABLE, NONE, JSON, Status-OUTPUT-Parameter und Wiederherstellung von `LOCK_TIMEOUT`. Der Begleitvertrag `Code/Tests/QueryStore/120_Framework_Usage_Runtime_Contract.sql` prüft den Vertrag auf SQL Server 2019, 2022 und 2025.
 
-## 4. Priorisierte funktionale Erweiterungen
+## 4. ANALYZE-LAB-001 – spielbare Analyze-Beispiele
+
+Die Zielarchitektur ist in `Documentation/Architecture/SQL_Server_Lab_Example_Integration_Plan.md` verbindlich festgelegt.
+
+`SQL_Server_Lab` verantwortet ausschließlich die allgemeine SQL-Server-Testumgebung, Provider, Ressourcen, Readiness, State und Cleanup. `SQL_Server_Analyze` verantwortet Beispielkatalog, Auswahl, Frameworkinstallation, synthetische Fixtures, Workloads, interaktive Sessionabläufe, Analyzer-Aufrufe, Assertions, projektspezifisches Cleanup und Anleitungen.
+
+Die Planungsphase ist dokumentiert, die Realisierung ist noch nicht begonnen. Der erste vollständige Vertical Slice ist `BLOCKING-001` mit getrenntem Interactive- und Verify-Modus für Docker, Podman sowie SQL Server 2019, 2022 und 2025.
+
+Vor jeder möglichen Änderung an `SQL_Server_Lab` muss eine konkrete Funktionslücke mit Schnittstelle, Auswirkungen und Begründung vorgelegt und ausdrücklich freigegeben werden. Ohne Freigabe wird ausschließlich in `SQL_Server_Analyze` gearbeitet.
+
+Interne Verarbeitungsreihenfolge:
+
+1. vorhandene Beispiele, Fixtures und Special-Case-Fälle inventarisieren;
+2. Beispielkatalog und JSON-Schema festlegen;
+3. statischen Katalogvalidator implementieren;
+4. `BLOCKING-001` vollständig umsetzen;
+5. native Docker- und Podman-Läufe auf 2019, 2022 und 2025 durchführen;
+6. bestätigte Lab-Gaps nur nach ausdrücklicher Freigabe bearbeiten;
+7. weitere Beispiele in kleinen fachlichen Wellen übernehmen.
+
+## 5. Priorisierte funktionale Erweiterungen
 
 ### Priorität 1 – SQL25-005
 
@@ -47,7 +67,7 @@ Query-Store-Auswertungen sollen replica-aware werden und `sys.query_store_replic
 
 Vor der T-SQL-Implementierung ist Phase 0 abzuschließen. Festzulegen sind insbesondere Resultsetnamen, Schemaversionen, unterstützte DTSX-Versionen, Expression-Grenzen, Komponentenprofile, Statuscodes, Lookup-Prüflimits, Datenschutzgrenzen, Installerstruktur und die Abgrenzung eines optionalen Datei- oder ISPAC-Adapters.
 
-## 5. Ausstehende externe und plattformspezifische Evidenz
+## 6. Ausstehende externe und plattformspezifische Evidenz
 
 ### RUNTIME-001
 
@@ -61,7 +81,7 @@ Die Windows-Ziele in `Test_Matrix.csv` bleiben `NOT_EXECUTED`. Erforderlich sind
 
 Separat nachzuweisen sind Page Details, Event-XML, Contention-Sampling, Buffer-Pool-Verteilung, Statistikverteilung, In-Memory-Hashketten, breite Cross-Database-Auswahl und RUNTIME-001-Sampling mit gültigem Delta und Resetgrenzen.
 
-## 6. Größere zukünftige Architekturhärtung
+## 7. Größere zukünftige Architekturhärtung
 
 ### COLL-001 – Collation-Portabilität
 
@@ -75,11 +95,12 @@ Der erste restart-sichere Performance-Counter-Baseline-Slice ist implementiert. 
 
 Fleet-Korrelation benötigt eine externe Komponente mit Mandanten-, Transport-, Aufbewahrungs- und Löschvertrag. Restore- und Hostnachweise benötigen eine ausdrücklich autorisierte isolierte Ausführungsumgebung. Diese Punkte sind keine fehlenden Funktionen des portablen T-SQL-Kerns.
 
-## 7. Empfohlene Verarbeitungsreihenfolge
+## 8. Empfohlene Verarbeitungsreihenfolge
 
 1. `SQL25-005` implementieren und dreiversionig testen.
-2. RUNTIME-001-, Windows- und weitere Feature-Evidenz nachziehen.
-3. `OPS-005`, `OPS-006` und `OPS-008` umsetzen.
-4. SSIS-001 Phase 0 abschließen.
-5. `COLL-001` als eigene Querschnittswelle planen und umsetzen.
-6. P3-Erweiterungen nur nach den jeweils erforderlichen externen Entscheidungen ausführen.
+2. `ANALYZE-LAB-001` mit Inventar, Beispielkatalog und `BLOCKING-001` beginnen.
+3. RUNTIME-001-, Windows- und weitere Feature-Evidenz nachziehen.
+4. `OPS-005`, `OPS-006` und `OPS-008` umsetzen.
+5. SSIS-001 Phase 0 abschließen.
+6. `COLL-001` als eigene Querschnittswelle planen und umsetzen.
+7. P3-Erweiterungen nur nach den jeweils erforderlichen externen Entscheidungen ausführen.
