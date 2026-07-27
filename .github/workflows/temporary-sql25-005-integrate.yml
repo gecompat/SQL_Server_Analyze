@@ -29,7 +29,14 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/Temporary_SQL25_005_Integrate.py
+          set +e
+          output="$(python3 ./Code/Tests/Static/Temporary_SQL25_005_Integrate.py 2>&1)"
+          status=$?
+          set -e
+          printf '%s\n' "$output" | tail -n 80
+          if [[ "$status" -ne 0 ]]; then
+            exit "$status"
+          fi
           python3 -m py_compile ./Code/Tests/Static/905_Validate_Analysis_Navigator.py
           git diff --check
 
