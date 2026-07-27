@@ -1,0 +1,6 @@
+# Generated installer artifacts are reproducible build output.
+*
+
+# Keep only the directory contract and this guard.
+!.gitignore
+!README.md
