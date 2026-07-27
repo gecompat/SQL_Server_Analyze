@@ -61,3 +61,21 @@ jobs:
           @echo off
           docker run --rm -v "%CD%:/workspace" -w /workspace python:3.12-slim python ./Code/Tests/Static/905_Validate_Analysis_Navigator.py --repository-root . || exit /b 1
           docker run --rm -v "%CD%:/workspace" -w /workspace python:3.12-slim python ./Code/Tests/Static/930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test || exit /b 1
+
+  runtime:
+    name: Validate SQL Server 2019 2022 2025 on KEY18
+    needs: static
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 240
+
+    steps:
+      - name: Check out clean SQL25-005 branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Run controlled Docker release matrix
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & .\Code\Tests\Automation\Invoke-Sql25ReplicaMatrix.ps1
