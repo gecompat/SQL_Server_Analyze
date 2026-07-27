@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  actions: read
   contents: read
 
 concurrency:
@@ -15,29 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  runners:
-    name: List available self-hosted runners
-    runs-on: ubuntu-24.04
-    timeout-minutes: 5
-
-    steps:
-      - name: Read registered runner metadata
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          response="$(curl --fail-with-body --silent --show-error \
-            -H "Authorization: Bearer $GH_TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: 2022-11-28" \
-            "$GITHUB_API_URL/repos/$GITHUB_REPOSITORY/actions/runners")"
-          printf '%s' "$response" | jq -r '.runners[] | "RUNNER name=\(.name) status=\(.status) busy=\(.busy) labels=\([.labels[].name] | join(","))"'
-
   discover:
     name: Discover remote SQL test capabilities
-    needs: runners
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, key18, sql-test, docker]
     timeout-minutes: 15
 
     steps:
@@ -61,7 +40,7 @@ jobs:
   static:
     name: Validate SQL25-005 repository contracts remotely
     needs: discover
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, key18, sql-test, docker]
     timeout-minutes: 20
 
     steps:
@@ -80,7 +59,7 @@ jobs:
   runtime:
     name: Validate SQL Server 2019 2022 2025 remotely
     needs: static
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, key18, sql-test, docker]
     timeout-minutes: 240
 
     steps:
