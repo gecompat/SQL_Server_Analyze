@@ -15,8 +15,8 @@ concurrency:
 
 jobs:
   discover:
-    name: Discover remote SQL test capabilities
-    runs-on: [self-hosted, sql-test]
+    name: Discover SQL_Analyze runner capabilities
+    runs-on: [self-hosted, SQL_Analyze]
     timeout-minutes: 15
 
     steps:
@@ -38,9 +38,9 @@ jobs:
           exit /b 0
 
   static:
-    name: Validate SQL25-005 repository contracts remotely
+    name: Validate SQL25-005 repository contracts on SQL_Analyze
     needs: discover
-    runs-on: [self-hosted, sql-test]
+    runs-on: [self-hosted, SQL_Analyze]
     timeout-minutes: 20
 
     steps:
@@ -48,6 +48,25 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
+
+      - name: Enforce SQL_Analyze label for self-hosted workflows
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $violations = Get-ChildItem -LiteralPath .github/workflows -Filter '*.yml' -File |
+              ForEach-Object {
+                  $path = $_.FullName
+                  $lines = Get-Content -LiteralPath $path -Encoding UTF8
+                  for ($index = 0; $index -lt $lines.Count; $index++) {
+                      if ($lines[$index] -match 'runs-on:.*self-hosted' -and $lines[$index] -notmatch 'SQL_Analyze') {
+                          [pscustomobject]@{ Path = $_.Name; Line = $index + 1 }
+                      }
+                  }
+              }
+          if ($violations) {
+              $violations | Format-Table -AutoSize
+              throw 'Self-hosted workflow without required SQL_Analyze label.'
+          }
 
       - name: Validate repository-only SQL25-005 contracts in Python container
         shell: cmd
@@ -57,9 +76,9 @@ jobs:
           docker run --rm -v "%CD%:/workspace" -w /workspace python:3.12-slim python ./Code/Tests/Static/930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test || exit /b 1
 
   runtime:
-    name: Validate SQL Server 2019 2022 2025 remotely
+    name: Validate SQL Server 2019 2022 2025 on SQL_Analyze
     needs: static
-    runs-on: [self-hosted, sql-test]
+    runs-on: [self-hosted, SQL_Analyze]
     timeout-minutes: 240
 
     steps:
