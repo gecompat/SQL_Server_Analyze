@@ -1,0 +1,65 @@
+name: SQL25-005 KEY18 validation
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sql25-005-key18-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  discover:
+    name: Discover KEY18 SQL test capabilities
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out clean SQL25-005 branch
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Inspect available test tooling
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Write-Host "PowerShell: $($PSVersionTable.PSVersion)"
+
+          foreach ($commandName in @('sqlcmd', 'docker', 'podman', 'pwsh', 'powershell')) {
+              $command = Get-Command $commandName -ErrorAction SilentlyContinue
+              if ($null -eq $command) {
+                  Write-Host "TOOL $commandName: NOT_FOUND"
+              }
+              else {
+                  Write-Host "TOOL $commandName: AVAILABLE"
+              }
+          }
+
+          if (Get-Command docker -ErrorAction SilentlyContinue) {
+              docker version --format 'DOCKER_SERVER {{.Server.Version}}' 2>$null
+              docker ps --format 'DOCKER_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
+          }
+
+          if (Get-Command podman -ErrorAction SilentlyContinue) {
+              podman version --format 'PODMAN_VERSION {{.Version}}' 2>$null
+              podman ps --format 'PODMAN_CONTAINER {{.Image}}|{{.Ports}}' 2>$null
+          }
+
+          foreach ($port in 14331..14339) {
+              $reachable = Test-NetConnection -ComputerName 127.0.0.1 -Port $port -InformationLevel Quiet -WarningAction SilentlyContinue
+              Write-Host "TCP 127.0.0.1:$port = $reachable"
+          }
+
+      - name: Validate repository-only SQL25-005 contracts
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python .\Code\Tests\Static\905_Validate_Analysis_Navigator.py --repository-root .
+          python .\Code\Tests\Static\930_Validate_Commit_Message.py --repository-root . --delivery-mode DIRECT_GIT --self-test
