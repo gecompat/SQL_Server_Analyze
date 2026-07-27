@@ -92,12 +92,11 @@ path = "Code/05_QueryStore/080_USP_QueryStoreAnalysis.sql"
 text = read(path)
 text = text.replace("Version      : 2.1.0", "Version      : 2.2.0", 1)
 text = text.replace("Stand        : 2026-07-17", "Stand        : 2026-07-27", 1)
-text = replace_once(
-    text,
-    "                2.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert.\n",
-    "                2.2.0 - SQL25-005 Replica-Kontext als versionsadaptives Standardteilmodul.\n"
-    "                2.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert.\n",
-    path,
+text = text.replace(
+    "Änderungen   : 2.1.0 - IQP-Evidenz als kostenbewusstes opt-in Teilmodul.",
+    "Änderungen   : 2.2.0 - SQL25-005 Replica-Kontext als versionsadaptives Standardteilmodul.\n"
+    "                2.1.0 - IQP-Evidenz als kostenbewusstes opt-in Teilmodul.",
+    1,
 )
 text = replace_once(
     text,
