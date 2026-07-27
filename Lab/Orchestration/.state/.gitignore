@@ -1,0 +1,6 @@
+# Ignore every local runtime artifact in this directory.
+*
+
+# Keep only the directory contract and this guard.
+!.gitignore
+!README.md

@@ -1,0 +1,8 @@
+# Local environment and transient replacement files.
+.env
+.env.*.tmp
+
+# Runtime logs and local compose overrides must not be committed.
+*.log
+docker-compose.override.yml
+compose.override.yml
