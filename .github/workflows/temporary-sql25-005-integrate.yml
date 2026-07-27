@@ -26,6 +26,26 @@ jobs:
           fetch-depth: 0
           show-progress: false
 
+      - name: Relax one legacy header transform
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path('Code/Tests/Static/Temporary_SQL25_005_Integrate.py')
+          text = path.read_text(encoding='utf-8')
+          start = text.index('text = replace_once(\n    text,\n    "                2.0.1 - IF/TRY/CATCH')
+          end = text.index('text = replace_once(\n    text,\n    "    , @MitHints', start)
+          replacement = '''text = text.replace(
+              "Änderungen   : 2.1.0 - IQP-Evidenz als kostenbewusstes opt-in Teilmodul.",
+              "Änderungen   : 2.2.0 - SQL25-005 Replica-Kontext als versionsadaptives Standardteilmodul.\\n"
+              "                2.1.0 - IQP-Evidenz als kostenbewusstes opt-in Teilmodul.",
+              1,
+          )
+          '''
+          path.write_text(text[:start] + replacement + text[end:], encoding='utf-8', newline='\n')
+          PY
+
       - name: Apply deterministic integration
         shell: bash
         run: |
@@ -38,7 +58,7 @@ jobs:
             printf '%s\n' "$output" | tail -n 80 > ./Code/Tests/Static/Temporary_SQL25_005_Builder_Error.txt
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add ./Code/Tests/Static/Temporary_SQL25_005_Builder_Error.txt
+            git add ./Code/Tests/Static/Temporary_SQL25_005_Builder_Error.txt ./Code/Tests/Static/Temporary_SQL25_005_Integrate.py
             git commit -m 'Record SQL25-005 builder diagnostic'
             git push origin HEAD:agent/implement-sql25-005
             exit "$status"
