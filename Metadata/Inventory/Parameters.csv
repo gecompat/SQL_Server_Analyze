@@ -1781,3 +1781,21 @@ USP_FrameworkUsageFromQueryStore,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_FrameworkUsageFromQueryStore,IsPartialOut,bit,NULL OUTPUT
 USP_FrameworkUsageFromQueryStore,ErrorNumberOut,int,NULL OUTPUT
 USP_FrameworkUsageFromQueryStore,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_QueryStoreReplicaAnalysis,QueryStoreDatabaseNames,nvarchar(max),NULL
+USP_QueryStoreReplicaAnalysis,QueryStoreDatabaseNamePattern,nvarchar(4000),NULL
+USP_QueryStoreReplicaAnalysis,HighImpactConfirmed,bit,0
+USP_QueryStoreReplicaAnalysis,ReplicaGroupIds,nvarchar(max),NULL
+USP_QueryStoreReplicaAnalysis,VonUtc,datetime2(7),NULL
+USP_QueryStoreReplicaAnalysis,BisUtc,datetime2(7),NULL
+USP_QueryStoreReplicaAnalysis,MaxZeilen,int,200
+USP_QueryStoreReplicaAnalysis,LockTimeoutMs,int,0
+USP_QueryStoreReplicaAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_QueryStoreReplicaAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_QueryStoreReplicaAnalysis,JsonErzeugen,bit,0
+USP_QueryStoreReplicaAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_QueryStoreReplicaAnalysis,PrintMeldungen,bit,1
+USP_QueryStoreReplicaAnalysis,Hilfe,bit,0
+USP_QueryStoreReplicaAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_QueryStoreReplicaAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_QueryStoreReplicaAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_QueryStoreReplicaAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT

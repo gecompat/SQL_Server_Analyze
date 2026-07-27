@@ -270,7 +270,7 @@ Der neue Beispielkatalog ist die Quelle für spielbare Szenarien. Er ersetzt nic
 
 ## 13. Mögliche Lab-Gaps, die zuerst nur zu bewerten sind
 
-Die erste Implementierungswelle muss prüfen, ob die vorhandenen Lab-Schnittstellen ausreichen. Mögliche, aber noch nicht genehmigte Erweiterungskandidaten sind:
+Die erste Umsetzungsabschnitt muss prüfen, ob die vorhandenen Lab-Schnittstellen ausreichen. Mögliche, aber noch nicht genehmigte Erweiterungskandidaten sind:
 
 - explizites Arbeitsverzeichnis für SQLCMD-`:r`-Includes;
 - SQLCMD-Variablen als strukturierter Parameter;

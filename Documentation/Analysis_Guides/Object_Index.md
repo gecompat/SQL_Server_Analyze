@@ -182,3 +182,5 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 - [Gemeinsame Verträge](Common_Contracts.md)
 - [Technische Signaturen](../Reference/Procedure_Reference.md)
 - [Unterstützende Frameworkobjekte](../Reference/Object_Reference.md)
+
+- [USP_QueryStoreReplicaAnalysis](Procedures/USP_QueryStoreReplicaAnalysis.md) – Query-Store-Evidenz nach beobachteter Replica-Rolle.

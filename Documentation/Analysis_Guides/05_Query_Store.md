@@ -542,3 +542,13 @@ flowchart TD
 - [Query Store hints](https://learn.microsoft.com/sql/relational-databases/performance/query-store-hints)
 - [Intelligent Query Processing](https://learn.microsoft.com/sql/relational-databases/performance/intelligent-query-processing)
 - [Parameter Sensitive Plan optimization](https://learn.microsoft.com/sql/relational-databases/performance/parameter-sensitive-plan-optimization)
+
+
+## Replica-aware Query Store ab SQL Server 2025
+
+`USP_QueryStoreReplicaAnalysis` trennt Runtime-, Wait- und Plan-Forcing-Evidenz
+nach `replica_group_id`. Der Query-Store-Orchestrator aktiviert diesen Kontext
+standardmäßig. Vor SQL Server 2025 liefert das Modul kontrolliert
+`UNAVAILABLE_VERSION`, ohne neuere Kataloge zu referenzieren. Historische
+Query-Store-Rollen sind von der aktuellen AG-Rolle und von Health- oder
+Synchronitätsaussagen zu trennen.

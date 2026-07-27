@@ -1,6 +1,6 @@
 # Referenzhandbuch der öffentlichen Procedures
 
-Stand: 2026-07-23
+Stand: 2026-07-27
 
 `@ResultSetArt` verwendet frameworkweit `CONSOLE` als Default. Technische Verbraucher setzen `RAW` oder die benannte Mehrfachzuordnung `TABLE` mit `@ResultTablesJson`; JSON-only verwendet `NONE` mit `@JsonErzeugen = 1`. Die Signaturen werden aus dem kanonischen Codebestand abgeleitet.
 
@@ -2410,4 +2410,30 @@ Quelle: `Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql`
     , @IsPartialOut       bit            = NULL OUTPUT
     , @ErrorNumberOut     int            = NULL OUTPUT
     , @ErrorMessageOut    nvarchar(2048) = NULL OUTPUT
+```
+
+
+## `[monitor].[USP_QueryStoreReplicaAnalysis]`
+
+Quelle: `Code/05_QueryStore/100_USP_QueryStoreReplicaAnalysis.sql`
+
+```sql
+@QueryStoreDatabaseNames          nvarchar(max)  = NULL
+    , @QueryStoreDatabaseNamePattern    nvarchar(4000) = NULL
+    , @HighImpactConfirmed              bit            = 0
+    , @ReplicaGroupIds                  nvarchar(max)  = NULL
+    , @VonUtc                           datetime2(7)   = NULL
+    , @BisUtc                           datetime2(7)   = NULL
+    , @MaxZeilen                        int            = 200
+    , @LockTimeoutMs                    int            = 0
+    , @ResultSetArt                     varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson                 nvarchar(max)  = NULL
+    , @JsonErzeugen                     bit            = 0
+    , @Json                             nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen                   bit            = 1
+    , @Hilfe                            bit            = 0
+    , @StatusCodeOut                    varchar(40)    = NULL OUTPUT
+    , @IsPartialOut                     bit            = NULL OUTPUT
+    , @ErrorNumberOut                   int            = NULL OUTPUT
+    , @ErrorMessageOut                  nvarchar(2048) = NULL OUTPUT
 ```
