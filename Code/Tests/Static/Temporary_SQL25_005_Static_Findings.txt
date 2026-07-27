@@ -1,4 +1,0 @@
-ERROR: Supporting-object reference does not mention TVF_QueryStoreReplicaRoleInfo.
-ERROR: Public documentation boundary violated in Documentation/Architecture/SQL_Server_Lab_Example_Integration_Plan.md:273: Implementierungswelle
-ERROR: README.md is missing discovery/inventory marker: 99
-ERROR: README.md is missing discovery/inventory marker: 168
