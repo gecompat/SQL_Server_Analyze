@@ -72,7 +72,7 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | [`TVF_ExecutionPlanStatisticsUsage`](#monitortvf_executionplanstatisticsusage) | `monitor` | `Code/04_PlanCache/047_TVF_ExecutionPlanStatisticsUsage.sql` |
 | [`TVF_ExecutionPlanColumnReferences`](#monitortvf_executionplancolumnreferences) | `monitor` | `Code/04_PlanCache/048_TVF_ExecutionPlanColumnReferences.sql` |
 
-## `[monitor].[TVF_QueryStoreReplicaRoleInfo]`
+### `[monitor].[TVF_QueryStoreReplicaRoleInfo]`
 
 Quelle: `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql`
 
