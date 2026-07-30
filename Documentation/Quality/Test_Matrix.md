@@ -1,9 +1,15 @@
-# Unterstützte Plattform- und Nachweismatrix
+# Historische Plattform- und Nachweismatrix
 
 **Stand:** 21. Juli 2026
 **Kanonischer nachgewiesener Frameworkstand:** `1.1.0-special.13`
 **Aktueller RUNTIME-001-Vertragsstand:** `1.1.0-special.14`
 **Maschinenlesbare Detailmatrix:** `Metadata/Quality/Test_Matrix.csv`
+
+**Einordnung:** Dieses Dokument und die maschinenlesbare Detailmatrix enthalten ausschließlich historische Laufzeitnachweise. Sie steuern keine aktuelle CI-Ausführung. Die verbindliche aktive Policy steht in [Verbindliche CI-Teststrategie](CI_Test_Strategy.md) und in `Metadata/Quality/CI_Test_Policy.csv`.
+
+## Abgrenzung zur aktiven CI
+
+Eine historische Matrixzeile verpflichtet nicht dazu, dieselbe Kombination bei jeder Änderung erneut auszuführen. Automatische funktionale Tests folgen dem 1+0+N-Modell. Native SQL-Server-Versionen werden gezielt bei Versionsrisiko oder manuell für einen Release Candidate geprüft.
 
 ## Nachweisregel
 
@@ -103,6 +109,9 @@ Die interne Gruppenpolicy und SQL-Server-Rechte werden getrennt geprüft. Keine 
 | `NOT_EXECUTED` | kein Laufzeitnachweis |
 
 ## Verwandte Dokumente
+
+- [Verbindliche CI-Teststrategie](CI_Test_Strategy.md)
+- [CI-Impact-Auswahl](CI_Impact_Selection.md)
 
 - [Bekannte Einschränkungen](Known_Issues.md)
 - [Performance- und Risikobewertung](Performance_and_Risk_Assessment.md)
