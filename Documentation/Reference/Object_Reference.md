@@ -1,6 +1,6 @@
 # Referenz der unterstützenden Frameworkobjekte
 
-Stand: 2026-07-21
+Stand: 2026-07-27
 
 Diese Referenz ergänzt die [Procedure-Referenz](Procedure_Reference.md). Sie
 beschreibt alle inventarisierten Framework- und optionalen Paketobjekte, die
@@ -19,7 +19,7 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | Objektklasse | Inventarisiert | Dokumentationsumfang |
 |---|---:|---|
 | Views | 8 | ein Abschnitt je View |
-| Table-Valued Functions (TVFs) | 27 | ein Abschnitt je TVF |
+| Table-Valued Functions (TVFs) | 28 | ein Abschnitt je TVF |
 | Scalar-Valued Functions (SVFs) | 0 | derzeit keine SVF installiert |
 | Interne Procedures | 16 | ein Abschnitt je Procedure |
 | Tabellen | 17 | ein Abschnitt je Tabelle |
@@ -46,6 +46,7 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | [`TVF_WaitTypeInfo`](#monitortvf_waittypeinfo) | `monitor` | `Code/01_Common/075_TVF_WaitTypeInfo.sql` |
 | [`TVF_WaitTypeSources`](#monitortvf_waittypesources) | `monitor` | `Code/01_Common/075a_TVF_WaitTypeSources.sql` |
 | [`TVF_QueryStoreWaitCategoryInfo`](#monitortvf_querystorewaitcategoryinfo) | `monitor` | `Code/01_Common/076_TVF_QueryStoreWaitCategoryInfo.sql` |
+| [`TVF_QueryStoreReplicaRoleInfo`](#monitortvf_querystorereplicaroleinfo) | `monitor` | `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql` |
 | [`TVF_ParsePipeList`](#monitortvf_parsepipelist) | `monitor` | `Code/01_Common/078_TVF_ParsePipeList.sql` |
 | [`TVF_ParsePattern`](#monitortvf_parsepattern) | `monitor` | `Code/01_Common/079_TVF_ParsePattern.sql` |
 | [`TVF_ParseSqlNameList`](#monitortvf_parsesqlnamelist) | `monitor` | `Code/01_Common/080_TVF_ParseSqlNameList.sql` |
@@ -71,7 +72,19 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | [`TVF_ExecutionPlanStatisticsUsage`](#monitortvf_executionplanstatisticsusage) | `monitor` | `Code/04_PlanCache/047_TVF_ExecutionPlanStatisticsUsage.sql` |
 | [`TVF_ExecutionPlanColumnReferences`](#monitortvf_executionplancolumnreferences) | `monitor` | `Code/04_PlanCache/048_TVF_ExecutionPlanColumnReferences.sql` |
 
-### Interne Procedures
+#### `[monitor].[TVF_QueryStoreReplicaRoleInfo]`
+
+Quelle: `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Ordnet den von SQL Server 2025 gelieferten `role_type` einer stabilen Query-Store-Rollen- und Scopeklasse zu. |
+| Schnittstelle | Inline TVF; Eingabe: `@RoleType tinyint`. Die Funktion liefert Rollenbezeichnung, Rollenklasse, Primary-/Secondary-/Named-Replica-Flags und eine feste Aussagegrenze. |
+| Verwendung | `USP_QueryStoreReplicaAnalysis` verwendet die Funktion nach der capability-adaptiven Katalogprüfung. Ein Direktaufruf eignet sich nur für Entwicklung und Vertragstests. |
+| Last und Sperren | Konstante Projektion ohne Katalog-, DMV- oder Tabellenzugriff. Die Funktion erzeugt weder I/O noch Sperren auf Benutzerdaten. |
+| Vertrag | Unterstützende TVF. Die Rollenabbildung beschreibt beobachtete Query-Store-Evidenz und ist keine aktuelle Availability-Group-, Synchronitäts- oder Healthaussage. |
+
+## Interne Procedures
 
 | Objekt | Schema | Quelle |
 |---|---|---|
