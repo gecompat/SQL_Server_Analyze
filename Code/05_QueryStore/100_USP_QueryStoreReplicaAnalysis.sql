@@ -240,7 +240,7 @@ BEGIN
     IF @ReplicaGroupIds IS NOT NULL
     BEGIN
         INSERT [#QueryStoreReplicaAnalysis_ReplicaFilter]([ItemOrdinal],[ReplicaGroupId],[IsValid])
-        SELECT [ItemOrdinal],[ValueBigint],[IsValid]
+        SELECT [ItemOrdinal],[NumberValue],[IsValid]
         FROM [monitor].[TVF_ParseBigintList](@ReplicaGroupIds);
     END;
 
