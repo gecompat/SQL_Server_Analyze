@@ -225,34 +225,46 @@ jobs:
             fi
 
             if [ "$compatibility_level" = '170' ] && [ "$RUN_PERMISSION_MATRIX" = 'true' ]; then
-              docker exec \
+              if ! docker exec \
                 --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
                 --workdir /work/Code/Tests \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b \
                 -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_CREDENTIAL" ExpectedMajorVersion=17 \
                 -i Permissions/110_SQL_Server_2022_Permission_Matrix.sql \
-                >"${log_prefix}-permissions.log" 2>&1
+                >"${log_prefix}-permissions.log" 2>&1; then
+                echo 'Permission matrix failed for SQL Server 2025.'
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-permissions.log" | tail -n 160 || true
+                exit 1
+              fi
             fi
 
             if [ "$compatibility_level" = '170' ] && [ "$RUN_REGEX_MATRIX" = 'true' ]; then
-              docker exec \
+              if ! docker exec \
                 --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
                 --workdir /work/Code/Tests \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b \
                 -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql \
-                >"${log_prefix}-regex.log" 2>&1
+                >"${log_prefix}-regex.log" 2>&1; then
+                echo 'Regex matrix failed for SQL Server 2025.'
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-regex.log" | tail -n 160 || true
+                exit 1
+              fi
             fi
 
             if [ "$compatibility_level" = '170' ] && [ "$RUN_PLAN_STANDALONE" = 'true' ]; then
-              docker exec \
+              if ! docker exec \
                 --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
                 --workdir /work/Code/Tests \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b \
                 -i Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
-                >"${log_prefix}-standalone.log" 2>&1
+                >"${log_prefix}-standalone.log" 2>&1; then
+                echo 'Execution Plan standalone contract failed for SQL Server 2025.'
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-standalone.log" | tail -n 160 || true
+                exit 1
+              fi
             fi
           done
 
