@@ -120,9 +120,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          password="A$(openssl rand -hex 16)a1!"
-          echo "::add-mask::$password"
-          echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
+          credential="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$credential"
+          echo "MSSQL_EPHEMERAL_CREDENTIAL=$credential" >> "$GITHUB_ENV"
 
       - name: Start SQL Server 2025 Linux
         shell: bash
@@ -142,7 +142,7 @@ jobs:
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
             --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
-            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
             "$image_digest" >/dev/null
 
@@ -158,7 +158,7 @@ jobs:
               "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
               || true)
             if [ -n "$sqlcmd_path" ] && docker exec \
-              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
               sqlserver-analyze-impact-2025 \
               "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
               ready=1
@@ -194,14 +194,14 @@ jobs:
           for compatibility_level in "${levels[@]}"; do
             log_prefix="$RUNNER_TEMP/sqlserver-analyze-cl-${compatibility_level}"
             docker exec \
-              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
               sqlserver-analyze-impact-2025 \
               "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
               "IF DB_ID(N'SQLServerAnalyzeTest') IS NOT NULL BEGIN ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; END; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = ${compatibility_level};" \
               >"${log_prefix}-database.log" 2>&1
 
             if ! docker exec \
-              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
               --workdir /work/Code/Install \
               sqlserver-analyze-impact-2025 \
               "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql \
@@ -213,7 +213,7 @@ jobs:
 
             if [ "$RUN_RELEASE_TESTS" = 'true' ]; then
               if ! docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
                 --workdir /work/Code/Tests \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Impact_Gate.sql \
@@ -226,18 +226,18 @@ jobs:
 
             if [ "$compatibility_level" = '170' ] && [ "$RUN_PERMISSION_MATRIX" = 'true' ]; then
               docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
                 --workdir /work/Code/Tests \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b \
-                -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_PASSWORD" ExpectedMajorVersion=17 \
+                -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_CREDENTIAL" ExpectedMajorVersion=17 \
                 -i Permissions/110_SQL_Server_2022_Permission_Matrix.sql \
                 >"${log_prefix}-permissions.log" 2>&1
             fi
 
             if [ "$compatibility_level" = '170' ] && [ "$RUN_REGEX_MATRIX" = 'true' ]; then
               docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
                 --workdir /work/Code/Tests \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b \
@@ -247,7 +247,7 @@ jobs:
 
             if [ "$compatibility_level" = '170' ] && [ "$RUN_PLAN_STANDALONE" = 'true' ]; then
               docker exec \
-                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
                 --workdir /work/Code/Tests \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b \
