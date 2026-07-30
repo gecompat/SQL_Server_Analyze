@@ -1411,6 +1411,7 @@ Quelle: `Code/05_QueryStore/080_USP_QueryStoreAnalysis.sql`
     , @MitRegressionen                  bit            = 0
     , @MitForcedPlans                   bit            = 0
     , @MitHints                         bit            = 0
+    , @MitReplicaKontext                bit            = 1
     , @MitIQP                           bit            = 0
     , @MaxZeilen                        int            = 100
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
