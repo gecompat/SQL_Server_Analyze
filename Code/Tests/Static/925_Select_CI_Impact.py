@@ -28,12 +28,13 @@ DEFINITION_PATTERN = re.compile(
 
 IMPACT_SCRIPT = "Code/Tests/Static/925_Select_CI_Impact.py"
 CORE_WORKFLOWS = {
-    ".github/workflows/framework-output-pilot.yml",
-    ".github/workflows/sqlserver-2019-linux-release-gate.yml",
-    ".github/workflows/sqlserver-2022-linux-release-gate.yml",
-    ".github/workflows/sqlserver-2025-linux-release-gate.yml",
+    ".github/workflows/ci-functional-impact.yml",
+    ".github/workflows/release-native-matrix.yml",
 }
-SNAPSHOT_WORKFLOW = ".github/workflows/snapshot-baseline-release-gate.yml"
+COMPATIBILITY_MARKER_PATTERN = re.compile(
+    r"CI:\s*COMPATIBILITY_LEVELS\s*=\s*150\s*,\s*160\s*,\s*170",
+    re.IGNORECASE,
+)
 
 CORE_AREA_TESTS = {
     "00_Setup": ("Integration/110_Smoke_Test.sql",),
@@ -77,6 +78,7 @@ class Plan:
     plan_standalone: bool = False
     snapshot_runtime: bool = False
     snapshot_concurrency: bool = False
+    compatibility_matrix: bool = False
     reasons: list[str] = field(default_factory=list)
 
     @property
@@ -98,6 +100,7 @@ class Plan:
             "plan_standalone": self.plan_standalone,
             "snapshot_runtime": self.snapshot_runtime,
             "snapshot_concurrency": self.snapshot_concurrency,
+            "compatibility_matrix": self.compatibility_matrix,
             "reasons": self.reasons,
         }
 
@@ -330,9 +333,7 @@ def force_full_path(path: str, scope: str) -> bool:
     if path == IMPACT_SCRIPT:
         return True
     if scope == "snapshot":
-        return path == SNAPSHOT_WORKFLOW or (
-            path.startswith("Code/Install/") and "SnapshotBaseline" in path
-        )
+        return path.startswith("Code/Install/") and "SnapshotBaseline" in path
     return (
         path in CORE_WORKFLOWS
         or path == "Code/Install/Install_All.sql"
@@ -346,6 +347,19 @@ def direct_test_name(path: str) -> str | None:
     if path.startswith(prefix) and path.endswith(".sql"):
         return path[len(prefix) :]
     return None
+
+
+def requires_compatibility_matrix(change: Change) -> bool:
+    if change.path == IMPACT_SCRIPT:
+        return False
+    if change.path.startswith("Code/09_VersionAdaptive/"):
+        return True
+    if change.path.startswith("Code/Tests/VersionAdaptive/"):
+        return True
+    return any(
+        COMPATIBILITY_MARKER_PATTERN.search(text or "") is not None
+        for text in (change.old_text, change.new_text)
+    )
 
 
 def plan_changes(
@@ -370,6 +384,9 @@ def plan_changes(
 
     plan.executable_paths = sorted(change.path for change in executable)
     plan.documentation_only_sql_paths.sort()
+    plan.compatibility_matrix = scope == "core" and any(
+        requires_compatibility_matrix(change) for change in executable
+    )
     if not executable:
         plan.reasons.append("No executable SQL or runtime infrastructure changed.")
         return plan
@@ -493,6 +510,7 @@ def write_github_output(path: pathlib.Path, plan: Plan) -> None:
         "plan_standalone": str(plan.plan_standalone).lower(),
         "snapshot_runtime": str(plan.snapshot_runtime).lower(),
         "snapshot_concurrency": str(plan.snapshot_concurrency).lower(),
+        "compatibility_matrix": str(plan.compatibility_matrix).lower(),
         "selected_test_count": str(len(plan.selected_tests)),
     }
     with path.open("a", encoding="utf-8") as output:
@@ -550,6 +568,26 @@ def run_self_test() -> None:
     assert is_snapshot_runtime_path("Code/10_SnapshotBaseline/010_Config.sql")
     assert force_full_path("Code/Install/Install_All.sql", "core")
     assert not force_full_path("Documentation/README.md", "core")
+    assert requires_compatibility_matrix(
+        Change("Code/09_VersionAdaptive/010_Example.sql", "SELECT 1;", "SELECT 2;")
+    )
+    assert requires_compatibility_matrix(
+        Change(
+            "Code/01_Common/010_Example.sql",
+            "SELECT 1;",
+            "-- CI: COMPATIBILITY_LEVELS=150,160,170\nSELECT 2;",
+        )
+    )
+    assert not requires_compatibility_matrix(
+        Change("Code/01_Common/010_Example.sql", "SELECT 1;", "SELECT 2;")
+    )
+    assert not requires_compatibility_matrix(
+        Change(
+            IMPACT_SCRIPT,
+            "",
+            'COMPATIBILITY_MARKER_PATTERN = re.compile("CI: COMPATIBILITY_LEVELS=150,160,170")',
+        )
+    )
 
     with tempfile.TemporaryDirectory() as temporary_directory:
         root = pathlib.Path(temporary_directory)

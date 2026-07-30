@@ -255,13 +255,14 @@ Der aktuelle Inventory-Vertrag umfasst 98 öffentliche Procedures und 68 unterst
 - [Scope und Grenzen des Frameworks](./Documentation/Reference/Scope_and_Limitations.md)
 - [Bekannte Einschränkungen](./Documentation/Quality/Known_Issues.md)
 - [Performance- und Risikobewertung](./Documentation/Quality/Performance_and_Risk_Assessment.md)
+- [Verbindliche CI-Teststrategie](./Documentation/Quality/CI_Test_Strategy.md)
 - [Testmatrix und unterstützte Nachweise](./Documentation/Quality/Test_Matrix.md)
 - [Release Notes](./Documentation/Quality/Release_Notes.md)
 - [Lab-Lernpfad: Szenarien erkunden](./Lab/Scenarios/LEARNING_PATH.md)
 
 ## Qualität und Projektstatus
 
-Der veröffentlichte Bestand besitzt reproduzierbare statische API-, Installer-, Inventar- und Dokumentationsprüfungen. Die fachlichen Laufzeitnachweise und unterstützten Kombinationen stehen in der [Testmatrix](./Documentation/Quality/Test_Matrix.md); `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
+Der veröffentlichte Bestand besitzt reproduzierbare statische API-, Installer-, Inventar- und Dokumentationsprüfungen. Der Umfang automatischer und manueller Prüfungen folgt der [verbindlichen CI-Teststrategie](./Documentation/Quality/CI_Test_Strategy.md). Die [Testmatrix](./Documentation/Quality/Test_Matrix.md) enthält historische Laufzeitnachweise; `NOT_EXECUTED` ist ausdrücklich kein Testnachweis und keine aktive CI-Anweisung.
 
 Der frameworkweite Ausgabe-Vertrag 2.0 verarbeitet ohne expliziten Filter alle
 sichtbaren Online-Benutzerdatenbanken, fordert eine Bestätigung nur für den

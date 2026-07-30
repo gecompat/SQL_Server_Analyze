@@ -34,8 +34,8 @@ Entwicklung eines performanten, read-only orientierten SQL-Server-Diagnoseframew
 - `monitor.USP_DataCaptureDeepAnalysis` bewertet CT-Verlust nur mit Consumer-Wasserstand, isoliert CDC- und lokale Replikationsquellen und behandelt Remote-Topologie als Evidenzlücke; Change-Zeilen, Commands, Fehlertexte, Credentials und DDL bleiben ausgeschlossen.
 - `monitor.USP_EncryptionAnalysis` trennt TDE von expliziter Backupverschlüsselung und liest keine Schlüssel-, Medien-, Konto- oder geschützten Inhaltsdaten; externe Schlüsselkopie und Restore bleiben außerhalb des Beweisumfangs.
 - `monitor.USP_MaintenanceOperations` liest Jobaktivität nur bei explizitem Filter und führt keine Resume-, Abort-, Kill-, Cleanup- oder Jobaktion aus; SQL-/Jobinhalte und Identitäts-/Clientdaten bleiben ausgeschlossen.
-- Actions führen Installer, 34-Suite-Release-Gate und synthetische Berechtigungsmatrix versionshart auf SQL Server 2019, 2022 und 2025 aus.
-- Maßgebliche Runtime-Evidenz wird commitbezogen in `Metadata/Quality/Test_Matrix.csv` und `Metadata/Quality/Release_Gate_Evidence.csv` verknüpft.
+- Für Testauswahl, CI-Umfang, Compatibility-Level-Läufe und native Versionsprüfungen gilt ausschließlich `Documentation/Quality/CI_Test_Strategy.md`. Der automatische Standard ist SQL Server 2025 mit impact-basiertem funktionalem Umfang; zusätzliche native Versionen werden nur bei konkretem Versionsrisiko oder für einen Release Candidate ausgeführt.
+- `Metadata/Quality/CI_Test_Policy.csv` beschreibt die aktive Policy maschinenlesbar. `Metadata/Quality/Test_Matrix.csv` und `Metadata/Quality/Release_Gate_Evidence.csv` sind historische, commitbezogene Laufzeitnachweise und keine CI-Anweisungen.
 
 ## GitHub-Veröffentlichung aus ChatGPT-Laufzeiten
 
