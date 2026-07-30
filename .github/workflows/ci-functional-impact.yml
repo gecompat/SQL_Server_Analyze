@@ -254,12 +254,18 @@ jobs:
             fi
 
             if [ "$compatibility_level" = '170' ] && [ "$RUN_PLAN_STANDALONE" = 'true' ]; then
+              docker exec \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+                sqlserver-analyze-impact-2025 \
+                "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+                "ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" \
+                >"${log_prefix}-standalone-database.log" 2>&1
               if ! docker exec \
                 --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
-                --workdir /work/Code/Tests \
+                --workdir /work/Code/Install \
                 sqlserver-analyze-impact-2025 \
                 "$SQLCMD_PATH" -S localhost -U sa -C -b \
-                -i Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
+                -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
                 >"${log_prefix}-standalone.log" 2>&1; then
                 echo 'Execution Plan standalone contract failed for SQL Server 2025.'
                 grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-standalone.log" | tail -n 160 || true
