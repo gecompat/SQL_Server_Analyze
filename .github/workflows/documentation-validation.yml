@@ -4,7 +4,10 @@ on:
   pull_request:
     paths:
       - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
       - 'README.md'
+      - 'AI_Metadata/CONTINUATION_GUIDE.md'
+      - 'AI_Metadata/PROJECT_CONTEXT.md'
       - 'Code/**/*.sql'
       - 'Code/Install/*.ps1'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
@@ -20,13 +23,17 @@ on:
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Inventory/Parameters.csv'
       - 'Metadata/Inventory/ResultSets.csv'
+      - 'Metadata/Quality/CI_Test_Policy.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
   push:
     branches:
       - main
     paths:
       - '.github/workflows/documentation-validation.yml'
+      - 'AGENTS.md'
       - 'README.md'
+      - 'AI_Metadata/CONTINUATION_GUIDE.md'
+      - 'AI_Metadata/PROJECT_CONTEXT.md'
       - 'Code/**/*.sql'
       - 'Code/Install/*.ps1'
       - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
@@ -42,6 +49,7 @@ on:
       - 'Metadata/Inventory/Objects.csv'
       - 'Metadata/Inventory/Parameters.csv'
       - 'Metadata/Inventory/ResultSets.csv'
+      - 'Metadata/Quality/CI_Test_Policy.csv'
       - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
   workflow_dispatch:
 
@@ -97,7 +105,7 @@ jobs:
             echo "$name=$value" >> "$GITHUB_OUTPUT"
           }
 
-          set_flag docs '^(README\.md|Documentation/.*\.md|AI_Metadata/Internal_Documentation/.*\.md|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$'
+          set_flag docs '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$'
           set_flag navigator '^(Code/01_Common/(020_VW_AnalyseClassCatalog|021_VW_AnalysisCatalog|022_VW_AnalysisSearchTerm|023_VW_AnalysisRelation|100_USP_AnalysisNavigator)\.sql|Code/Install/Install_(All|ExecutionPlanAnalysis)\.sql|Code/Tests/Static/905_Validate_Analysis_Navigator\.py|Metadata/Inventory/(Objects|Parameters|ResultSets)\.csv|Documentation/Analysis_Guides/Start_Here\.md|Documentation/Reference/Analysis_Navigator\.md|Documentation/Analysis_Guides/Procedures/USP_AnalysisNavigator\.md)$'
           set_flag waits '^(Code/01_Common/07[45].*WaitType.*\.sql|Code/Tests/Static/940_Validate_Wait_Type_Catalog\.py|Documentation/Operations/Wait_Type_Catalog\.md|AI_Metadata/Internal_Documentation/Quality/Wait_Type_Curation\.md|Metadata/Quality/Wait_Type_Curation_Evidence\.json)$'
           set_flag procedures '^(Code/.*\.sql|Documentation/Analysis_Guides/Procedures/.*\.md|Code/Tests/Static/900_Validate_Analysis_Documentation\.ps1)$'
@@ -120,7 +128,7 @@ jobs:
           {
             echo '## Documentation validation impact'
             echo ''
-            echo "- Documentation/style: $(grep -Eq '^(README\.md|Documentation/.*\.md|AI_Metadata/Internal_Documentation/.*\.md|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
+            echo "- Documentation/style: $(grep -Eq '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
             echo "- Full contract suite: $manual_full"
           } >> "$GITHUB_STEP_SUMMARY"
 

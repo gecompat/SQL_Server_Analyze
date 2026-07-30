@@ -1,0 +1,318 @@
+name: Functional impact CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+      - labeled
+      - unlabeled
+    paths:
+      - '.github/workflows/ci-functional-impact.yml'
+      - 'Code/Tests/Static/925_Select_CI_Impact.py'
+      - 'Code/**/*.sql'
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/ci-functional-impact.yml'
+      - 'Code/Tests/Static/925_Select_CI_Impact.py'
+      - 'Code/**/*.sql'
+  workflow_dispatch:
+    inputs:
+      compatibility_matrix:
+        description: 'Run impacted tests with compatibility levels 150, 160 and 170'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: functional-impact-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  impact:
+    name: Select functional impact
+    runs-on: ubuntu-24.04
+    outputs:
+      run_runtime: ${{ steps.select.outputs.run_runtime }}
+      full_suite: ${{ steps.select.outputs.full_suite }}
+      run_release_tests: ${{ steps.select.outputs.run_release_tests }}
+      permission_matrix: ${{ steps.select.outputs.permission_matrix }}
+      regex_matrix: ${{ steps.select.outputs.regex_matrix }}
+      plan_standalone: ${{ steps.select.outputs.plan_standalone }}
+      compatibility_matrix: ${{ steps.select.outputs.compatibility_matrix }}
+
+    steps:
+      - name: Check out repository history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          show-progress: false
+
+      - id: select
+        name: Select executable SQL impact
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py --self-test
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
+            --repository-root . \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --scope core \
+            --github-output "$GITHUB_OUTPUT" \
+            --plan-json "$RUNNER_TEMP/ci-impact.json"
+          {
+            echo '## Functional impact selection'
+            echo '```json'
+            cat "$RUNNER_TEMP/ci-impact.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  runtime:
+    if: needs.impact.outputs.run_runtime == 'true'
+    needs: impact
+    name: SQL Server 2025 impacted runtime
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          show-progress: false
+
+      - name: Prepare isolated SQL files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R Code "$RUNNER_TEMP/Code"
+          find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
+            | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
+
+      - name: Build impact-selected SQLCMD runner
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
+            --repository-root . \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --scope core \
+            --write-runner "$RUNNER_TEMP/Code/Tests/Run_Impact_Gate.sql"
+
+      - name: Generate ephemeral SQL credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          credential="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$credential"
+          echo "MSSQL_EPHEMERAL_CREDENTIAL=$credential" >> "$GITHUB_ENV"
+
+      - name: Start SQL Server 2025 Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          image_reference='mcr.microsoft.com/mssql/server:2025-latest'
+          docker pull --quiet "$image_reference" >/dev/null
+          image_digest=$(docker image inspect --format='{{index .RepoDigests 0}}' "$image_reference")
+          if [[ ! "$image_digest" =~ ^mcr\.microsoft\.com/mssql/server@sha256:[0-9a-f]{64}$ ]]; then
+            echo 'SQL Server container image digest validation failed.'
+            exit 1
+          fi
+          echo "SQLSERVER_IMAGE_REFERENCE=$image_reference" >> "$GITHUB_ENV"
+          echo "SQLSERVER_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+          docker run --name sqlserver-analyze-impact-2025 \
+            --detach \
+            --env ACCEPT_EULA=Y \
+            --env MSSQL_PID=Developer \
+            --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
+            "$image_digest" >/dev/null
+
+      - name: Wait for SQL Server readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          sqlcmd_path=''
+          ready=0
+          readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>17 THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;"
+          for attempt in $(seq 1 120); do
+            sqlcmd_path=$(docker exec sqlserver-analyze-impact-2025 bash -lc \
+              "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
+              || true)
+            if [ -n "$sqlcmd_path" ] && docker exec \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+              sqlserver-analyze-impact-2025 \
+              "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker logs --tail 40 sqlserver-analyze-impact-2025
+            exit 1
+          fi
+          echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+
+      - name: Run impacted contracts
+        shell: bash
+        env:
+          AUTO_COMPATIBILITY_MATRIX: ${{ needs.impact.outputs.compatibility_matrix }}
+          MANUAL_COMPATIBILITY_MATRIX: ${{ github.event_name == 'workflow_dispatch' && inputs.compatibility_matrix }}
+          LABELED_COMPATIBILITY_MATRIX: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'ci:compatibility-matrix') }}
+          RUN_RELEASE_TESTS: ${{ needs.impact.outputs.run_release_tests }}
+          RUN_PERMISSION_MATRIX: ${{ needs.impact.outputs.permission_matrix }}
+          RUN_REGEX_MATRIX: ${{ needs.impact.outputs.regex_matrix }}
+          RUN_PLAN_STANDALONE: ${{ needs.impact.outputs.plan_standalone }}
+        run: |
+          set -euo pipefail
+          levels=(170)
+          if [ "$AUTO_COMPATIBILITY_MATRIX" = 'true' ] || \
+             [ "$MANUAL_COMPATIBILITY_MATRIX" = 'true' ] || \
+             [ "$LABELED_COMPATIBILITY_MATRIX" = 'true' ]; then
+            levels=(150 160 170)
+          fi
+
+          for compatibility_level in "${levels[@]}"; do
+            log_prefix="$RUNNER_TEMP/sqlserver-analyze-cl-${compatibility_level}"
+            docker exec \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+              sqlserver-analyze-impact-2025 \
+              "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+              "IF DB_ID(N'SQLServerAnalyzeTest') IS NOT NULL BEGIN ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; END; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = ${compatibility_level};" \
+              >"${log_prefix}-database.log" 2>&1
+
+            if ! docker exec \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+              --workdir /work/Code/Install \
+              sqlserver-analyze-impact-2025 \
+              "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql \
+              >"${log_prefix}-install.log" 2>&1; then
+              echo "Framework installation failed for compatibility level ${compatibility_level}."
+              grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-install.log" | tail -n 120 || true
+              exit 1
+            fi
+
+            if [ "$RUN_RELEASE_TESTS" = 'true' ]; then
+              if ! docker exec \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+                --workdir /work/Code/Tests \
+                sqlserver-analyze-impact-2025 \
+                "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Impact_Gate.sql \
+                >"${log_prefix}-impact.log" 2>&1; then
+                echo "Impact gate failed for compatibility level ${compatibility_level}."
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-impact.log" | tail -n 160 || true
+                exit 1
+              fi
+            fi
+
+            if [ "$compatibility_level" = '170' ] && [ "$RUN_PERMISSION_MATRIX" = 'true' ]; then
+              if ! docker exec \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+                --workdir /work/Code/Tests \
+                sqlserver-analyze-impact-2025 \
+                "$SQLCMD_PATH" -S localhost -U sa -C -b \
+                -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_CREDENTIAL" ExpectedMajorVersion=17 \
+                -i Permissions/110_SQL_Server_2022_Permission_Matrix.sql \
+                >"${log_prefix}-permissions.log" 2>&1; then
+                echo 'Permission matrix failed for SQL Server 2025.'
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-permissions.log" | tail -n 160 || true
+                exit 1
+              fi
+            fi
+
+            if [ "$compatibility_level" = '170' ] && [ "$RUN_REGEX_MATRIX" = 'true' ]; then
+              if ! docker exec \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+                --workdir /work/Code/Tests \
+                sqlserver-analyze-impact-2025 \
+                "$SQLCMD_PATH" -S localhost -U sa -C -b \
+                -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql \
+                >"${log_prefix}-regex.log" 2>&1; then
+                echo 'Regex matrix failed for SQL Server 2025.'
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-regex.log" | tail -n 160 || true
+                exit 1
+              fi
+            fi
+
+            if [ "$compatibility_level" = '170' ] && [ "$RUN_PLAN_STANDALONE" = 'true' ]; then
+              docker exec \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+                sqlserver-analyze-impact-2025 \
+                "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+                "ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" \
+                >"${log_prefix}-standalone-database.log" 2>&1
+              if ! docker exec \
+                --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+                --workdir /work/Code/Install \
+                sqlserver-analyze-impact-2025 \
+                "$SQLCMD_PATH" -S localhost -U sa -C -b \
+                -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql \
+                >"${log_prefix}-standalone.log" 2>&1; then
+                echo 'Execution Plan standalone contract failed for SQL Server 2025.'
+                grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "${log_prefix}-standalone.log" | tail -n 160 || true
+                exit 1
+              fi
+            fi
+          done
+
+          {
+            echo '## Functional runtime'
+            echo '- Engine: SQL Server 2025 Developer on Linux'
+            echo "- Compatibility levels: ${levels[*]}"
+            echo '- Scope: impact-selected tests plus required special contracts'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop synthetic SQL Server
+        if: always()
+        shell: bash
+        run: docker rm --force sqlserver-analyze-impact-2025 >/dev/null 2>&1 || true
+
+  gate:
+    if: always()
+    needs:
+      - impact
+      - runtime
+    name: Functional impact gate
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Confirm selected gate result
+        shell: bash
+        env:
+          IMPACT_RESULT: ${{ needs.impact.result }}
+          RUNTIME_REQUIRED: ${{ needs.impact.outputs.run_runtime }}
+          RUNTIME_RESULT: ${{ needs.runtime.result }}
+        run: |
+          set -euo pipefail
+          if [ "$IMPACT_RESULT" != 'success' ]; then
+            echo 'CI impact selection failed.'
+            exit 1
+          fi
+          if [ "$RUNTIME_REQUIRED" = 'true' ] && [ "$RUNTIME_RESULT" != 'success' ]; then
+            echo 'Required SQL Server runtime checks did not pass.'
+            exit 1
+          fi
+          if [ "$RUNTIME_REQUIRED" != 'true' ] && [ "$RUNTIME_RESULT" != 'skipped' ]; then
+            echo 'SQL Server runtime was expected to be skipped.'
+            exit 1
+          fi
+          echo 'Relevant functional checks passed; unrelated runtime checks were skipped.'
