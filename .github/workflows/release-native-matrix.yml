@@ -217,6 +217,26 @@ jobs:
             "$SQLCMD_PATH" -S localhost -U sa -C -b \
             -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql >/dev/null
 
+      - name: Run SQL Server 2025 standalone plan analysis contract
+        if: matrix.regex == true
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; ALTER DATABASE [SQLServerAnalyzeTest] SET QUERY_STORE = OFF;" \
+            >/dev/null
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            --workdir /work/Code/Install \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i ../Tests/Integration/193_ExecutionPlanAnalysis_Standalone_Runtime_Contract.sql >/dev/null
+
       - name: Record execution scope
         if: success()
         shell: bash
