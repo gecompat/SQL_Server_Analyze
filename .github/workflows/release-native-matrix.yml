@@ -22,37 +22,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  select:
+    name: Select native targets
+    runs-on: ubuntu-24.04
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - id: matrix
+        name: Build requested target matrix
+        shell: bash
+        run: |
+          set -euo pipefail
+          case '${{ inputs.target }}' in
+            all)
+              matrix='{"include":[{"version":"2019","major":"15","compatibility":"150","image":"mcr.microsoft.com/mssql/server:2019-latest","container":"sqlserver-analyze-native-2019","permission_test":"Permissions/110_SQL_Server_2019_Permission_Matrix.sql","regex":false},{"version":"2022","major":"16","compatibility":"160","image":"mcr.microsoft.com/mssql/server:2022-latest","container":"sqlserver-analyze-native-2022","permission_test":"Permissions/110_SQL_Server_2022_Permission_Matrix.sql","regex":false},{"version":"2025","major":"17","compatibility":"170","image":"mcr.microsoft.com/mssql/server:2025-latest","container":"sqlserver-analyze-native-2025","permission_test":"Permissions/110_SQL_Server_2022_Permission_Matrix.sql","regex":true}]}'
+              ;;
+            2019)
+              matrix='{"include":[{"version":"2019","major":"15","compatibility":"150","image":"mcr.microsoft.com/mssql/server:2019-latest","container":"sqlserver-analyze-native-2019","permission_test":"Permissions/110_SQL_Server_2019_Permission_Matrix.sql","regex":false}]}'
+              ;;
+            2022)
+              matrix='{"include":[{"version":"2022","major":"16","compatibility":"160","image":"mcr.microsoft.com/mssql/server:2022-latest","container":"sqlserver-analyze-native-2022","permission_test":"Permissions/110_SQL_Server_2022_Permission_Matrix.sql","regex":false}]}'
+              ;;
+            2025)
+              matrix='{"include":[{"version":"2025","major":"17","compatibility":"170","image":"mcr.microsoft.com/mssql/server:2025-latest","container":"sqlserver-analyze-native-2025","permission_test":"Permissions/110_SQL_Server_2022_Permission_Matrix.sql","regex":true}]}'
+              ;;
+            *)
+              echo 'Unsupported native target.'
+              exit 1
+              ;;
+          esac
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+
   native:
-    if: inputs.target == 'all' || inputs.target == matrix.version
+    needs: select
     name: SQL Server ${{ matrix.version }} native release gate
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     strategy:
       fail-fast: false
       max-parallel: 1
-      matrix:
-        include:
-          - version: '2019'
-            major: '15'
-            compatibility: '150'
-            image: 'mcr.microsoft.com/mssql/server:2019-latest'
-            container: 'sqlserver-analyze-native-2019'
-            permission_test: 'Permissions/110_SQL_Server_2019_Permission_Matrix.sql'
-            regex: false
-          - version: '2022'
-            major: '16'
-            compatibility: '160'
-            image: 'mcr.microsoft.com/mssql/server:2022-latest'
-            container: 'sqlserver-analyze-native-2022'
-            permission_test: 'Permissions/110_SQL_Server_2022_Permission_Matrix.sql'
-            regex: false
-          - version: '2025'
-            major: '17'
-            compatibility: '170'
-            image: 'mcr.microsoft.com/mssql/server:2025-latest'
-            container: 'sqlserver-analyze-native-2025'
-            permission_test: 'Permissions/110_SQL_Server_2022_Permission_Matrix.sql'
-            regex: true
+      matrix: ${{ fromJSON(needs.select.outputs.matrix) }}
 
     steps:
       - name: Check out repository
