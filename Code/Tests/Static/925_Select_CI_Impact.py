@@ -350,6 +350,8 @@ def direct_test_name(path: str) -> str | None:
 
 
 def requires_compatibility_matrix(change: Change) -> bool:
+    if change.path == IMPACT_SCRIPT:
+        return False
     if change.path.startswith("Code/09_VersionAdaptive/"):
         return True
     if change.path.startswith("Code/Tests/VersionAdaptive/"):
@@ -578,6 +580,13 @@ def run_self_test() -> None:
     )
     assert not requires_compatibility_matrix(
         Change("Code/01_Common/010_Example.sql", "SELECT 1;", "SELECT 2;")
+    )
+    assert not requires_compatibility_matrix(
+        Change(
+            IMPACT_SCRIPT,
+            "",
+            'COMPATIBILITY_MARKER_PATTERN = re.compile("CI: COMPATIBILITY_LEVELS=150,160,170")',
+        )
     )
 
     with tempfile.TemporaryDirectory() as temporary_directory:
