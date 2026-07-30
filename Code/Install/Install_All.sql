@@ -105,6 +105,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../04_PlanCache/053_USP_ExecutionPlanAnalysis.sql
 :r ../04_PlanCache/050_USP_ShowplanAnalysis.sql
 :r ../04_PlanCache/060_USP_PlanCacheAnalysis.sql
+:r ../05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql
 :r ../05_QueryStore/010_USP_QueryStoreStatus.sql
 :r ../05_QueryStore/020_USP_QueryStoreRuntimeStats.sql
 :r ../05_QueryStore/030_USP_QueryStoreWaitStats.sql
@@ -113,6 +114,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../05_QueryStore/060_USP_QueryStoreForcedPlans.sql
 :r ../05_QueryStore/070_USP_QueryStoreHints.sql
 :r ../05_QueryStore/090_USP_IntelligentQueryProcessingAnalysis.sql
+:r ../05_QueryStore/100_USP_QueryStoreReplicaAnalysis.sql
 :r ../05_QueryStore/080_USP_QueryStoreAnalysis.sql
 :r ../06_ExtendedEvents/010_USP_ExtendedEventsSessions.sql
 :r ../06_ExtendedEvents/020_USP_ExtendedEventsReadEvents.sql
