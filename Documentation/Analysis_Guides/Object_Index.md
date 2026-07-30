@@ -1,7 +1,7 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 23. Juli 2026
-**Abdeckung:** alle 98 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Abdeckung:** alle 99 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
@@ -69,6 +69,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Objekt | Eigenständige Beschreibung |
 |---|---|
 | `[monitor].[USP_QueryStoreStatus]` | [Zustand, Capture, Retention und Speicher](Procedures/USP_QueryStoreStatus.md) |
+| `[monitor].[USP_QueryStoreReplicaAnalysis]` | [Replica-Rollen, Runtime-, Wait- und Forcing-Evidenz](Procedures/USP_QueryStoreReplicaAnalysis.md) |
 | `[monitor].[USP_QueryStoreRuntimeStats]` | [Historische Query-/Plan-Aggregate](Procedures/USP_QueryStoreRuntimeStats.md) |
 | `[monitor].[USP_QueryStoreWaitStats]` | [Historische Waitkategorien](Procedures/USP_QueryStoreWaitStats.md) |
 | `[monitor].[USP_QueryStorePlanChanges]` | [Planwechsel und Compilekontext](Procedures/USP_QueryStorePlanChanges.md) |
@@ -164,13 +165,13 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Current State | 11 |
 | Object und Index | 12 |
 | Plan Cache und Showplan | 8 |
-| Query Store | 9 |
+| Query Store | 10 |
 | Extended Events | 6 |
 | Infrastruktur | 13 |
 | Server Health | 19 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
-| **Gesamt** | **97** |
+| **Gesamt** | **98** |
 
 ## Weitere Einstiege
 
