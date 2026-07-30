@@ -235,7 +235,7 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventory-Vertrag umfasst 98 öffentliche Procedures und 68 unterstützende Objekte: acht Views, 27 TVFs, 16 interne Procedures und 17 Tabellen. Jedes der insgesamt 166 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+Der aktuelle Inventory-Vertrag umfasst 99 öffentliche Procedures und 69 unterstützende Objekte: acht Views, 28 TVFs, 16 interne Procedures und 17 Tabellen. Jedes der insgesamt 168 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
 
 - [Hier beginnen: passende Analyse finden](./Documentation/Analysis_Guides/Start_Here.md)
 - [Analysis Navigator – vollständiger Vertrag](./Documentation/Reference/Analysis_Navigator.md)
@@ -249,20 +249,20 @@ Der aktuelle Inventory-Vertrag umfasst 98 öffentliche Procedures und 68 unterst
 - [SQL-Server-2025-TempDB-Resource-Governance](./Documentation/Architecture/SQL_Server_2025_TempDB_Resource_Governance.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
+- [T-SQL-Szenarien orchestrieren](./Documentation/Architecture/TSQL_SCENARIO_ORCHESTRATION.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
 - [Datenschutz und Laufzeitausgaben](./Documentation/Architecture/Runtime_Data_Privacy.md)
 - [Vertrag und Betrieb des optionalen Snapshot-/Baseline-Pakets](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) ([Betriebsleitfaden](./Documentation/Operations/Snapshot_Baseline_Operations.md))
 - [Scope und Grenzen des Frameworks](./Documentation/Reference/Scope_and_Limitations.md)
 - [Bekannte Einschränkungen](./Documentation/Quality/Known_Issues.md)
 - [Performance- und Risikobewertung](./Documentation/Quality/Performance_and_Risk_Assessment.md)
-- [Verbindliche CI-Teststrategie](./Documentation/Quality/CI_Test_Strategy.md)
 - [Testmatrix und unterstützte Nachweise](./Documentation/Quality/Test_Matrix.md)
 - [Release Notes](./Documentation/Quality/Release_Notes.md)
 - [Lab-Lernpfad: Szenarien erkunden](./Lab/Scenarios/LEARNING_PATH.md)
 
 ## Qualität und Projektstatus
 
-Der veröffentlichte Bestand besitzt reproduzierbare statische API-, Installer-, Inventar- und Dokumentationsprüfungen. Der Umfang automatischer und manueller Prüfungen folgt der [verbindlichen CI-Teststrategie](./Documentation/Quality/CI_Test_Strategy.md). Die [Testmatrix](./Documentation/Quality/Test_Matrix.md) enthält historische Laufzeitnachweise; `NOT_EXECUTED` ist ausdrücklich kein Testnachweis und keine aktive CI-Anweisung.
+Der veröffentlichte Bestand besitzt reproduzierbare statische API-, Installer-, Inventar- und Dokumentationsprüfungen. Die fachlichen Laufzeitnachweise und unterstützten Kombinationen stehen in der [Testmatrix](./Documentation/Quality/Test_Matrix.md); `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 
 Der frameworkweite Ausgabe-Vertrag 2.0 verarbeitet ohne expliziten Filter alle
 sichtbaren Online-Benutzerdatenbanken, fordert eine Bestätigung nur für den
