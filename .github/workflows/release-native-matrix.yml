@@ -1,0 +1,228 @@
+name: Native SQL Server release matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Native SQL Server version or complete release-candidate matrix'
+        required: true
+        type: choice
+        default: all
+        options:
+          - all
+          - '2019'
+          - '2022'
+          - '2025'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-release-matrix-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native:
+    if: inputs.target == 'all' || inputs.target == matrix.version
+    name: SQL Server ${{ matrix.version }} native release gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        include:
+          - version: '2019'
+            major: '15'
+            compatibility: '150'
+            image: 'mcr.microsoft.com/mssql/server:2019-latest'
+            container: 'sqlserver-analyze-native-2019'
+            permission_test: 'Permissions/110_SQL_Server_2019_Permission_Matrix.sql'
+            regex: false
+          - version: '2022'
+            major: '16'
+            compatibility: '160'
+            image: 'mcr.microsoft.com/mssql/server:2022-latest'
+            container: 'sqlserver-analyze-native-2022'
+            permission_test: 'Permissions/110_SQL_Server_2022_Permission_Matrix.sql'
+            regex: false
+          - version: '2025'
+            major: '17'
+            compatibility: '170'
+            image: 'mcr.microsoft.com/mssql/server:2025-latest'
+            container: 'sqlserver-analyze-native-2025'
+            permission_test: 'Permissions/110_SQL_Server_2022_Permission_Matrix.sql'
+            regex: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Prepare isolated SQL files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp -R Code "$RUNNER_TEMP/Code"
+          find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
+            | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
+
+      - name: Generate ephemeral SQL credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          password="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$password"
+          echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
+
+      - name: Start native SQL Server target
+        shell: bash
+        env:
+          SQLSERVER_IMAGE: ${{ matrix.image }}
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          docker pull --quiet "$SQLSERVER_IMAGE" >/dev/null
+          image_digest=$(docker image inspect --format='{{index .RepoDigests 0}}' "$SQLSERVER_IMAGE")
+          if [[ ! "$image_digest" =~ ^mcr\.microsoft\.com/mssql/server@sha256:[0-9a-f]{64}$ ]]; then
+            echo 'SQL Server container image digest validation failed.'
+            exit 1
+          fi
+          echo "SQLSERVER_IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+          docker run --name "$SQLSERVER_CONTAINER" \
+            --detach \
+            --env ACCEPT_EULA=Y \
+            --env MSSQL_PID=Developer \
+            --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
+            "$image_digest" >/dev/null
+
+      - name: Wait for SQL Server readiness
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+          SQLSERVER_MAJOR: ${{ matrix.major }}
+        run: |
+          set -euo pipefail
+          sqlcmd_path=''
+          ready=0
+          readiness_query="SET NOCOUNT ON; IF TRY_CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))<>$SQLSERVER_MAJOR THROW 50000,N'VERSION_NOT_READY',1; IF CONVERT(sysname,SERVERPROPERTY(N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' OR CONVERT(sysname,DATABASEPROPERTYEX(N'tempdb',N'Collation'))<>N'SQL_Latin1_General_CP1_CS_AS' THROW 50001,N'COLLATION_NOT_READY',1; SELECT 1;"
+          for attempt in $(seq 1 120); do
+            sqlcmd_path=$(docker exec "$SQLSERVER_CONTAINER" bash -lc \
+              "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
+              || true)
+            if [ -n "$sqlcmd_path" ] && docker exec \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              "$SQLSERVER_CONTAINER" \
+              "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
+              ready=1
+              break
+            fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then
+            docker logs --tail 40 "$SQLSERVER_CONTAINER"
+            exit 1
+          fi
+          echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+
+      - name: Create synthetic test database
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+          SQLSERVER_COMPATIBILITY: ${{ matrix.compatibility }}
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
+            "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = $SQLSERVER_COMPATIBILITY;" \
+            >/dev/null
+
+      - name: Install framework
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          install_log="$RUNNER_TEMP/native-${{ matrix.version }}-install.log"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Install \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql \
+            >"$install_log" 2>&1; then
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$install_log" | tail -n 120 || true
+            exit 1
+          fi
+
+      - name: Run full release gate
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          release_log="$RUNNER_TEMP/native-${{ matrix.version }}-release.log"
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql \
+            >"$release_log" 2>&1; then
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$release_log" | tail -n 160 || true
+            exit 1
+          fi
+
+      - name: Run native permission matrix
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+          PERMISSION_TEST: ${{ matrix.permission_test }}
+          EXPECTED_MAJOR: ${{ matrix.major }}
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_PASSWORD" ExpectedMajorVersion="$EXPECTED_MAJOR" \
+            -i "$PERMISSION_TEST" >/dev/null
+
+      - name: Run SQL Server 2025 regex matrix
+        if: matrix.regex == true
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: |
+          set -euo pipefail
+          docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --workdir /work/Code/Tests \
+            "$SQLSERVER_CONTAINER" \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i VersionAdaptive/120_SQL_Server_2025_Regex_Matrix.sql >/dev/null
+
+      - name: Record execution scope
+        if: success()
+        shell: bash
+        run: |
+          {
+            echo '## Native release gate'
+            echo '- SQL Server version: ${{ matrix.version }}'
+            echo '- Compatibility level: ${{ matrix.compatibility }}'
+            echo "- Container image digest: $SQLSERVER_IMAGE_DIGEST"
+            echo '- Full release gate: passed'
+            echo '- Native permission matrix: passed'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop synthetic SQL Server
+        if: always()
+        shell: bash
+        env:
+          SQLSERVER_CONTAINER: ${{ matrix.container }}
+        run: docker rm --force "$SQLSERVER_CONTAINER" >/dev/null 2>&1 || true
