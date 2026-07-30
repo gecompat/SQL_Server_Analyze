@@ -66,6 +66,8 @@ Ersteinstieg nicht empfohlen.
 
 ## Technische Vertiefung
 
+[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
+
 ### Leitfrage
 
 Welche Query-Store-Evidenz wurde auf welcher beobachteten Replica-Rolle
@@ -143,5 +145,3 @@ Replica-, Routing- und Datenbewegungsevidenz.
 - [sys.query_store_runtime_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-query-store-runtime-stats-transact-sql?view=sql-server-ver17)
 - [sys.query_store_wait_stats](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-query-store-wait-stats-transact-sql?view=sql-server-ver17)
 - [sys.query_store_plan_forcing_locations](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-query-store-plan-forcing-locations-transact-sql?view=sql-server-ver17)
-
-[Gemeinsames Execution-, Zeit- und Evidenzmodell](../Technical_Foundations.md)
