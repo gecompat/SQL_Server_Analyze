@@ -83,9 +83,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          password="A$(openssl rand -hex 16)a1!"
-          echo "::add-mask::$password"
-          echo "MSSQL_EPHEMERAL_PASSWORD=$password" >> "$GITHUB_ENV"
+          credential="A$(openssl rand -hex 16)a1!"
+          echo "::add-mask::$credential"
+          echo "MSSQL_EPHEMERAL_CREDENTIAL=$credential" >> "$GITHUB_ENV"
 
       - name: Start native SQL Server target
         shell: bash
@@ -106,7 +106,7 @@ jobs:
             --env ACCEPT_EULA=Y \
             --env MSSQL_PID=Developer \
             --env MSSQL_COLLATION=SQL_Latin1_General_CP1_CS_AS \
-            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --env MSSQL_SA_PASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             --volume "$RUNNER_TEMP/Code:/work/Code:ro" \
             "$image_digest" >/dev/null
 
@@ -125,7 +125,7 @@ jobs:
               "if [ -x /opt/mssql-tools18/bin/sqlcmd ]; then echo /opt/mssql-tools18/bin/sqlcmd; elif [ -x /opt/mssql-tools/bin/sqlcmd ]; then echo /opt/mssql-tools/bin/sqlcmd; fi" \
               || true)
             if [ -n "$sqlcmd_path" ] && docker exec \
-              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+              --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
               "$SQLSERVER_CONTAINER" \
               "$sqlcmd_path" -S localhost -U sa -C -b -Q "$readiness_query" >/dev/null 2>&1; then
               ready=1
@@ -147,7 +147,7 @@ jobs:
         run: |
           set -euo pipefail
           docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             "$SQLSERVER_CONTAINER" \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -Q \
             "CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = $SQLSERVER_COMPATIBILITY;" \
@@ -161,7 +161,7 @@ jobs:
           set -euo pipefail
           install_log="$RUNNER_TEMP/native-${{ matrix.version }}-install.log"
           if ! docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             --workdir /work/Code/Install \
             "$SQLSERVER_CONTAINER" \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Install_All.sql \
@@ -178,7 +178,7 @@ jobs:
           set -euo pipefail
           release_log="$RUNNER_TEMP/native-${{ matrix.version }}-release.log"
           if ! docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             --workdir /work/Code/Tests \
             "$SQLSERVER_CONTAINER" \
             "$SQLCMD_PATH" -S localhost -U sa -C -b -i Run_Release_Gate.sql \
@@ -196,11 +196,11 @@ jobs:
         run: |
           set -euo pipefail
           docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             --workdir /work/Code/Tests \
             "$SQLSERVER_CONTAINER" \
             "$SQLCMD_PATH" -S localhost -U sa -C -b \
-            -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_PASSWORD" ExpectedMajorVersion="$EXPECTED_MAJOR" \
+            -v PermissionMatrixPassword="$MSSQL_EPHEMERAL_CREDENTIAL" ExpectedMajorVersion="$EXPECTED_MAJOR" \
             -i "$PERMISSION_TEST" >/dev/null
 
       - name: Run SQL Server 2025 regex matrix
@@ -211,7 +211,7 @@ jobs:
         run: |
           set -euo pipefail
           docker exec \
-            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_PASSWORD" \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
             --workdir /work/Code/Tests \
             "$SQLSERVER_CONTAINER" \
             "$SQLCMD_PATH" -S localhost -U sa -C -b \
