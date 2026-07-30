@@ -1,7 +1,7 @@
 # Backlog für zusätzliche Betriebs- und Versionsdiagnosen
 
 Stand: 2026-07-21
-Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004` sowie `SQL25-001` bis `SQL25-004` sind `IMPLEMENTED_ACTIONS_GATE`
+Status: `PARTIALLY_IMPLEMENTED` – `OPS-001` bis `OPS-004` sowie `SQL25-001` bis `SQL25-005` sind `IMPLEMENTED_ACTIONS_GATE`
 Maschinenlesbarer Backlog: `Metadata/Quality/Future_Enhancement_Backlog.csv`
 
 ## Ziel und Abgrenzung
@@ -24,7 +24,7 @@ Eine Abweichung oder ein Einzelindikator ist grundsätzlich Evidenz für eine we
 | `SQL25-002` | P2 | JSON-Index-Inventar | bestehende Objekt- und Indexinventare erweitert | versionsadaptiv; bewusst keine überdimensionierte Einzel-Procedure |
 | `SQL25-003` | P2 | TempDB Resource Governance | Resource-Governor- und TempDB-Module erweitert | gespeichertes/wirksames Limit, Nutzung, Peak, Verletzung und Resetgrenze getrennt |
 | `SQL25-004` | P2 | Statistiken auf lesbaren Secondaries | `monitor.USP_Statistics` versionsadaptiv erweitert | aktuelle Replica-Rolle und Statistikherkunft explizit getrennt |
-| `SQL25-005` | P2 | Query Store auf Secondary Replicas | Query-Store-Module replica-aware machen | fehlende Replica-Evidenz nicht als gesunden Zustand behandeln |
+| `SQL25-005` | P2 | Query Store auf Secondary Replicas | implementiert: `monitor.USP_QueryStoreReplicaAnalysis` und Orchestratorintegration | fehlende Replica-Evidenz nicht als gesunden Zustand behandeln |
 | `OPS-005` | P2 | Linked Server | neue `monitor.USP_LinkedServerAnalysis` | Remoteverbindungstest ausschließlich opt-in |
 | `OPS-006` | P2 | Datenbankportabilität | neue `monitor.USP_DatabasePortabilityAnalysis` | Befunde sind Migrationsrisiken, keine automatische DDL-Anweisung |
 | `OPS-007` | P3 | aktive und dormante Cursor | opt-in Ergänzung der Sessionanalyse | begrenzter, aktueller Session-Scope statt Servervollscan |
@@ -98,9 +98,7 @@ Rolle noch Verwendungs-, Health- oder Wartungsnachweis.
 
 ### SQL25-005 – Replica-aware Query Store
 
-Query-Store-Auswertungen sollen `sys.query_store_replicas` fachlich verwenden,
-statt dessen Existenz nur als Capability zu erkennen. Primary-, Secondary- und
-unvollständige Evidenz dürfen nicht vermischt werden.
+`monitor.USP_QueryStoreReplicaAnalysis` verwendet `sys.query_store_replicas`, die Replica-Spalten der Runtime- und Waitquellen sowie `sys.query_store_plan_forcing_locations` capability-adaptiv. Der Orchestrator aktiviert den Replica-Kontext standardmäßig. Primary-, Secondary-, Geo- und Named-Replica-Rollen bleiben getrennt; fehlende Metadaten erzeugen einen Partialstatus statt einer stillen Primary-Zuschreibung. Querytexte, Pläne und Mutationen sind ausgeschlossen.
 
 ## Weitere Betriebsanalysen
 
@@ -130,8 +128,8 @@ Ein leichter Inventarpfad meldet sichtbare Benutzerobjekte in `master`, `model` 
 
 1. Abgeschlossen: `OPS-001` bis `OPS-004` in Welle 2.
 2. Abgeschlossen: `SQL25-001` bis `SQL25-004` als versionsadaptive Slices.
-3. Offen: `SQL25-005`.
-4. `OPS-005`, `OPS-006` und `OPS-008`.
+3. Abgeschlossen: `SQL25-005`.
+4. Offen: `OPS-005`, `OPS-006` und `OPS-008`.
 5. `OPS-007` und `OPS-009` als kleine opt-in beziehungsweise Inventarmodule.
 
 Wenn Historie, Trends und Maintenance-Wirkung wichtiger sind als weitere Momentaufnahmen, ist die alternative nächste Welle der Ausbau des bereits abgenommenen ersten SC-023-Slice um zusätzliche Sammler und Rollups. Dieser Ausbau hat höheren Zeitreihennutzen und benötigt weiterhin einen expliziten Persistenz-, Retention-, Scheduler-, Größenbudget- und Berechtigungsbetrieb.

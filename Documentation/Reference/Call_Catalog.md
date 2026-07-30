@@ -647,6 +647,15 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle] @Hilfe = 1;
 EXEC [monitor].[USP_PurgeSnapshotData] @Hilfe = 1;
 ```
 
+## `[monitor].[USP_QueryStoreReplicaAnalysis]`
+
+```sql
+EXEC [monitor].[USP_QueryStoreReplicaAnalysis]
+      @QueryStoreDatabaseNames = N'[ExampleDatabase]'
+    , @MaxZeilen = 100
+    , @ResultSetArt = 'CONSOLE';
+```
+
 ## Eigenständige Execution-Plan-Analyse
 
 ```sql

@@ -4,11 +4,12 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_QueryStoreAnalysis
-Version      : 2.1.0
-Stand        : 2026-07-17
+Version      : 2.2.0
+Stand        : 2026-07-27
 Zweck        : Orchestriert Query-Store-Module mit einheitlichem Quell- und
                Referenzdatenbankvertrag. JSON enthält benannte Modulobjekte.
-Änderungen   : 2.1.0 - IQP-Evidenz als kostenbewusstes opt-in Teilmodul.
+Änderungen   : 2.2.0 - SQL25-005 Replica-Kontext als versionsadaptives Standardteilmodul.
+                2.1.0 - IQP-Evidenz als kostenbewusstes opt-in Teilmodul.
                2.0.1 - IF/TRY/CATCH-Blöcke syntaktisch eindeutig strukturiert.
 ===============================================================================
 */
@@ -27,6 +28,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
     , @MitRegressionen                  bit            = 0
     , @MitForcedPlans                   bit            = 0
     , @MitHints                         bit            = 0
+    , @MitReplicaKontext                bit            = 1
     , @MitIQP                           bit            = 0
     , @MaxZeilen                        int            = 100
     , @ResultSetArt                     varchar(16)    = 'CONSOLE'
@@ -57,6 +59,11 @@ BEGIN
     DECLARE @RegressionJson nvarchar(max);
     DECLARE @ForcedJson nvarchar(max);
     DECLARE @HintsJson nvarchar(max);
+    DECLARE @ReplicaJson nvarchar(max);
+    DECLARE @ReplicaStatus varchar(40)=NULL;
+    DECLARE @ReplicaPartial bit=NULL;
+    DECLARE @ReplicaErrorNumber int=NULL;
+    DECLARE @ReplicaErrorMessage nvarchar(2048)=NULL;
     DECLARE @IqpJson nvarchar(max);
     DECLARE @IqpStatus varchar(40) = NULL;
     DECLARE @IqpPartial bit = NULL;
@@ -77,6 +84,7 @@ BEGIN
         PRINT N'monitor.USP_QueryStoreAnalysis';
         PRINT N'@QueryStoreDatabaseNames/Pattern bestimmen Query-Store-Quellen.';
         PRINT N'@ReferencedDatabaseNames/Pattern filtern in Showplans verwendete Datenbanken.';
+        PRINT N'@MitReplicaKontext=1 ergänzt SQL25-005 mit rollengetrennter Query-Store-Evidenz; vor SQL Server 2025 kontrolliert UNAVAILABLE_VERSION.';
         PRINT N'@ResultSetArt = RAW, CONSOLE, TABLE oder NONE; optional JSON über @Json OUTPUT.';
         RETURN;
     END;
@@ -86,7 +94,7 @@ BEGIN
        OR (@VonUtc IS NOT NULL AND @BisUtc IS NOT NULL AND @VonUtc > @BisUtc)
        OR (@MitStatus = 0 AND @MitRuntimeStats = 0 AND @MitWaitStats = 0
            AND @MitPlanChanges = 0 AND @MitRegressionen = 0
-           AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitIQP = 0)
+           AND @MitForcedPlans = 0 AND @MitHints = 0 AND @MitReplicaKontext = 0 AND @MitIQP = 0)
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
     END;
@@ -247,6 +255,34 @@ BEGIN
         END CATCH;
     END;
 
+
+    IF @StatusCode = 'AVAILABLE' AND @MitReplicaKontext = 1
+    BEGIN
+        BEGIN TRY
+            EXEC [monitor].[USP_QueryStoreReplicaAnalysis]
+                  @QueryStoreDatabaseNames = @QueryStoreDatabaseNames
+                , @QueryStoreDatabaseNamePattern = @QueryStoreDatabaseNamePattern
+                , @HighImpactConfirmed = @HighImpactConfirmed
+                , @VonUtc = @VonUtc
+                , @BisUtc = @BisUtc
+                , @MaxZeilen = @MaxZeilen
+                , @ResultSetArt = @OutputMode
+                , @JsonErzeugen = @JsonErzeugen
+                , @Json = @ReplicaJson OUTPUT
+                , @PrintMeldungen = @PrintMeldungen
+                , @StatusCodeOut = @ReplicaStatus OUTPUT
+                , @IsPartialOut = @ReplicaPartial OUTPUT
+                , @ErrorNumberOut = @ReplicaErrorNumber OUTPUT
+                , @ErrorMessageOut = @ReplicaErrorMessage OUTPUT;
+
+            INSERT @ModuleStatus VALUES
+            (8, N'USP_QueryStoreReplicaAnalysis', COALESCE(@ReplicaStatus, 'ERROR_HANDLED'), @ReplicaErrorNumber, @ReplicaErrorMessage);
+        END TRY
+        BEGIN CATCH
+            INSERT @ModuleStatus VALUES (8, N'USP_QueryStoreReplicaAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+        END CATCH;
+    END;
+
     IF @StatusCode = 'AVAILABLE' AND @MitIQP = 1
     BEGIN
         BEGIN TRY
@@ -265,15 +301,15 @@ BEGIN
                 , @ErrorMessageOut = @IqpErrorMessage OUTPUT;
 
             INSERT @ModuleStatus VALUES
-            (8, N'USP_IntelligentQueryProcessingAnalysis', COALESCE(@IqpStatus, 'ERROR_HANDLED'), @IqpErrorNumber, @IqpErrorMessage);
+            (9, N'USP_IntelligentQueryProcessingAnalysis', COALESCE(@IqpStatus, 'ERROR_HANDLED'), @IqpErrorNumber, @IqpErrorMessage);
         END TRY
         BEGIN CATCH
-            INSERT @ModuleStatus VALUES (8, N'USP_IntelligentQueryProcessingAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
+            INSERT @ModuleStatus VALUES (9, N'USP_IntelligentQueryProcessingAnalysis', 'ERROR_HANDLED', ERROR_NUMBER(), ERROR_MESSAGE());
         END CATCH;
     END;
 
     IF EXISTS (SELECT 1 FROM @ModuleStatus
-               WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE'))
+               WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','FEATURE_DISABLED'))
        AND @StatusCode = 'AVAILABLE'
     BEGIN
         SET @StatusCode = 'AVAILABLE_LIMITED';
@@ -290,7 +326,7 @@ BEGIN
             , @StatusCode              AS [StatusCode]
             , CONVERT(bit, CASE WHEN @StatusCode IN ('AVAILABLE','AVAILABLE_WITH_FINDING') THEN 0 ELSE 1 END) AS [IsPartial]
             , (SELECT COUNT_BIG(*) FROM @ModuleStatus
-               WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE')) AS [ErrorCount]
+               WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','FEATURE_DISABLED')) AS [ErrorCount]
             , N'Orchestrator; Teilmodule liefern eigene benannte Resultsets.' AS [Detail];
 
         IF @OutputMode = 'RAW'
@@ -319,7 +355,7 @@ BEGIN
         (
             SELECT *
             FROM @ModuleStatus
-            WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE')
+            WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','FEATURE_DISABLED')
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -344,6 +380,7 @@ BEGIN
             , N',"regressions":', COALESCE(JSON_QUERY(@RegressionJson), N'null')
             , N',"forcedPlans":', COALESCE(JSON_QUERY(@ForcedJson), N'null')
             , N',"queryHints":', COALESCE(JSON_QUERY(@HintsJson), N'null')
+            , N',"replicaContext":', COALESCE(JSON_QUERY(@ReplicaJson), N'null')
             , N',"intelligentQueryProcessing":', COALESCE(JSON_QUERY(@IqpJson), N'null')
             , N',"warnings":', COALESCE(@Warnings, N'[]')
             , N'}'

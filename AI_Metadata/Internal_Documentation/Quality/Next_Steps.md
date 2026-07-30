@@ -51,11 +51,11 @@ Interne Verarbeitungsreihenfolge:
 
 ## 5. Priorisierte funktionale Erweiterungen
 
-### Priorität 1 – SQL25-005
+### Abgeschlossen – SQL25-005
 
-Query-Store-Auswertungen sollen replica-aware werden und `sys.query_store_replicas` nicht nur als Capability erkennen. Erforderlich sind getrennte Primary-, Secondary-, deaktivierte, nicht unterstützte, eingeschränkt sichtbare und partielle Evidenzpfade.
+`USP_QueryStoreReplicaAnalysis` und der Query-Store-Orchestrator trennen SQL-Server-2025-Runtime-, Wait- und Plan-Forcing-Evidenz nach beobachteter Replica-Rolle. SQL Server 2019 und 2022 liefern versionssicher `UNAVAILABLE_VERSION`.
 
-### Priorität 2 – zusätzliche Betriebsdiagnosen
+### Priorität 1 – zusätzliche Betriebsdiagnosen
 
 1. `OPS-005`: Linked-Server-Inventar mit standardmäßig deaktiviertem Remotezugriff und optional begrenztem Verbindungstest.
 2. `OPS-006`: Datenbankportabilität über persistierte Edition Features und uncontained dependencies.
@@ -63,7 +63,7 @@ Query-Store-Auswertungen sollen replica-aware werden und `sys.query_store_replic
 4. `OPS-007`: begrenzte opt-in Cursor-Diagnostik.
 5. `OPS-009`: sichtbare Benutzerobjekte in Systemdatenbanken ohne DDL-Aktion.
 
-### Priorität 3 – SSIS-001
+### Priorität 2 – SSIS-001
 
 Vor der T-SQL-Implementierung ist Phase 0 abzuschließen. Festzulegen sind insbesondere Resultsetnamen, Schemaversionen, unterstützte DTSX-Versionen, Expression-Grenzen, Komponentenprofile, Statuscodes, Lookup-Prüflimits, Datenschutzgrenzen, Installerstruktur und die Abgrenzung eines optionalen Datei- oder ISPAC-Adapters.
 
@@ -97,10 +97,9 @@ Fleet-Korrelation benötigt eine externe Komponente mit Mandanten-, Transport-, 
 
 ## 8. Empfohlene Verarbeitungsreihenfolge
 
-1. `SQL25-005` implementieren und dreiversionig testen.
-2. `ANALYZE-LAB-001` mit Inventar, Beispielkatalog und `BLOCKING-001` beginnen.
-3. RUNTIME-001-, Windows- und weitere Feature-Evidenz nachziehen.
-4. `OPS-005`, `OPS-006` und `OPS-008` umsetzen.
-5. SSIS-001 Phase 0 abschließen.
-6. `COLL-001` als eigene Querschnittswelle planen und umsetzen.
-7. P3-Erweiterungen nur nach den jeweils erforderlichen externen Entscheidungen ausführen.
+1. `ANALYZE-LAB-001` mit Inventar, Beispielkatalog und `BLOCKING-001` beginnen.
+2. RUNTIME-001-, Windows- und weitere Feature-Evidenz nachziehen.
+3. `OPS-005`, `OPS-006` und `OPS-008` umsetzen.
+4. SSIS-001 Phase 0 abschließen.
+5. `COLL-001` als eigene Querschnittswelle planen und umsetzen.
+6. P3-Erweiterungen nur nach den jeweils erforderlichen externen Entscheidungen ausführen.

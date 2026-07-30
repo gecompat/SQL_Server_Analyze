@@ -6,7 +6,7 @@
 
 ## Maßgeblichkeit
 
-Dieses Dokument ist die einzige normative Quelle für den Umfang automatischer Tests. Zusammenfassungen in `AGENTS.md`, `AI_Metadata/PROJECT_CONTEXT.md` und `AI_Metadata/CONTINUATION_GUIDE.md` verweisen auf diese Strategie und dürfen keinen abweichenden Testumfang festlegen.
+Dieses Dokument ist die einzige normative Quelle für den Umfang automatischer Tests. Projektanweisungen und interne Arbeitskontexte verweisen auf diese Strategie und dürfen keinen abweichenden Testumfang festlegen.
 
 `Documentation/Quality/Test_Matrix.md`, `Metadata/Quality/Test_Matrix.csv` und `Metadata/Quality/Release_Gate_Evidence.csv` dokumentieren historische Ausführungsnachweise. Ein historischer Nachweis aktiviert keine CI-Matrix und verpflichtet nicht dazu, dieselbe Kombination bei jeder Änderung erneut auszuführen.
 

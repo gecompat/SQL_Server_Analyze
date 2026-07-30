@@ -116,6 +116,8 @@ AS
         , (N'USP_ExecutionPlanAnalysis',N'langsame Query mit Plan','de',90,N'Analysiert Statements, Operatoren, Kardinalität, Spills und Grants.')
         , (N'USP_ExecutionPlanAnalysis',N'execution plan xml analyze actual plan','en',100,N'Eigenständige statement- und operatorbezogene Plananalyse.')
 
+        , (N'USP_QueryStoreReplicaAnalysis',N'Query Store Secondary Replica Rolle','de',100,N'Trennt Query-Store-Laufzeit- und Wait-Evidenz nach beobachteter Replica-Rolle.')
+        , (N'USP_QueryStoreReplicaAnalysis',N'query store readable secondary replica role','en',100,N'Replica-aware Query Store runtime, waits and forcing context.')
         , (N'USP_QueryStoreStatus',N'Query Store Status Read Only voll','de',100,N'Prüft Capture, Retention, Speicher und Cleanup vor Detailanalysen.')
         , (N'USP_QueryStoreStatus',N'query store status read only cleanup','en',95,N'Query-Store-Voraussetzungsprüfung.')
         , (N'USP_QueryStoreRuntimeStats',N'Query Historie Laufzeit CPU Reads','de',100,N'Aggregiert historische Query- und Planmetriken.')

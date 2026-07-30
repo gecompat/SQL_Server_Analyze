@@ -76,3 +76,4 @@ QuickStart Docker,Docker Compose Umgebung,REMOVED,NO,NO,NO,,FULL,Migriert nach S
 QuickStart HyperV (Windows),Native Windows VMs,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab und entfernt am 2026-07-26
 QuickStart HyperV (Linux),Linux VMs + Simulation,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab und entfernt am 2026-07-26
 QuickStart HyperV (NetworkSim),Netzwerk-/IO-Profile,REMOVED,NO,NO,NO,,FULL,Migriert nach SQL_Server_Lab und entfernt am 2026-07-26
+Secondary Replica Query Store,USP_QueryStoreReplicaAnalysis,COMPLETE,YES,YES,YES,,FULL,"SQL25-005 mit versionsadaptiver Replica-Rollen-, Runtime-, Wait- und Forcing-Evidenz"

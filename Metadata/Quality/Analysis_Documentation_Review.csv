@@ -97,3 +97,4 @@ USP_RunSnapshotCollectionCycle,BASELINE,,1
 USP_PurgeSnapshotData,BASELINE,,1
 USP_VectorIndexAnalysis,BASELINE,,1
 USP_FrameworkUsageFromQueryStore,DEEP_REVIEWED,2026-07-26,3
+USP_QueryStoreReplicaAnalysis,BASELINE,,1

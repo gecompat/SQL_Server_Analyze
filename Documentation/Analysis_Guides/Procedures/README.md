@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 98 Procedures<br>
+**Strukturelle Abdeckung:** 99 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -77,6 +77,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 
 ## Query Store
 
+- [USP_QueryStoreReplicaAnalysis](USP_QueryStoreReplicaAnalysis.md)
 - [USP_QueryStoreStatus](USP_QueryStoreStatus.md)
 - [USP_QueryStoreRuntimeStats](USP_QueryStoreRuntimeStats.md)
 - [USP_QueryStoreWaitStats](USP_QueryStoreWaitStats.md)

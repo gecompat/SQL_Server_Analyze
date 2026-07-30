@@ -138,6 +138,8 @@ RAISERROR(N'RELEASE_GATE 31/34: Query Store',10,1) WITH NOWAIT;
 :r QueryStore/110_Test_und_Abnahme_Phase4.sql
 :r QueryStore/120_Framework_Usage_Runtime_Contract.sql
 
+:r QueryStore/121_SQL25_Replica_Query_Store_Runtime_Contract.sql
+
 RAISERROR(N'RELEASE_GATE 32/34: Extended Events',10,1) WITH NOWAIT;
 :r ExtendedEvents/110_Test_und_Abnahme_Phase5.sql
 

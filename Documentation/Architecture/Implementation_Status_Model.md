@@ -40,9 +40,9 @@ Qualitätsregistern gültig. Sie ersetzen den Produktstatus nicht.
 ## Aktuelle Abgrenzung
 
 Die kanonischen Zuordnungen stehen in
-`Metadata/Quality/Implementation_Status.csv`. DIAG-003 bis DIAG-005 sowie SQL25-001 bis SQL25-004 sind mit
+`Metadata/Quality/Implementation_Status.csv`. DIAG-003 bis DIAG-005 sowie SQL25-001 bis SQL25-005 sind mit
 ihren kanonischen Zielresultsets, Inventaren und versionsübergreifenden
-Runtimeverträgen abgeschlossen. SQL25-001 bis SQL25-004 verweisen zusätzlich
+Runtimeverträgen abgeschlossen. SQL25-001 bis SQL25-005 verweisen zusätzlich
 auf die öffentlichen Verträge
 `Metadata/Quality/SQL25_Vector_Index_Public_Contract.json` und
 `Metadata/Quality/SQL25_JSON_Index_Public_Contract.json` und
@@ -65,3 +65,5 @@ Rollups sind optionaler Ausbau.
 Die frühere allgemeine LAB-001-Provisionierung ist kein neuer Ausbaupfad dieses Repositorys. Provider-, Ressourcen-, Lifecycle-, State- und Cleanup-Verantwortung liegen bei `gecompat/SQL_Server_Lab`. Historische Analyze-seitige Lab-Verträge und synthetische Szenariokenntnis bleiben lediglich als Migrations- und Wiederverwendungsquelle sichtbar.
 
 `ANALYZE-LAB-001` ist davon getrennt und als `RESEARCHED_NOT_IMPLEMENTED` eingestuft. Der dokumentierte Zielumfang ist ein benutzerorientierter Beispielkatalog in `SQL_Server_Analyze`, der vorhandene öffentliche Lab-Schnittstellen verwendet. Der erste geplante Produkt-Slice ist `BLOCKING-001` mit getrenntem Interactive- und Verify-Modus. Änderungen an `SQL_Server_Lab` sind kein impliziter Teil dieses Arbeitspakets und benötigen bei einer nachgewiesenen allgemeinen Plattformlücke eine vorherige ausdrückliche Freigabe.
+
+SQL25-005 ergänzt den Query-Store-Orchestrator um eine eigenständige, versionsadaptive Replica-Analyse. Rollen-, Runtime-, Wait- und Plan-Forcing-Evidenz werden nach `replica_group_id` getrennt, ohne Querytexte oder Planpayloads zu lesen.

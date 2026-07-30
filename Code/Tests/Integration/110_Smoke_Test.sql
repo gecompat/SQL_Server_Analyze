@@ -41,6 +41,8 @@ VALUES
 (N'monitor.USP_ObjectAnalysis','P'),
 (N'monitor.USP_VectorIndexAnalysis','P'),
 (N'monitor.USP_PlanCacheAnalysis','P'),
+(N'monitor.TVF_QueryStoreReplicaRoleInfo','IF'),
+(N'monitor.USP_QueryStoreReplicaAnalysis','P'),
 (N'monitor.USP_QueryStoreAnalysis','P'),
 (N'monitor.USP_FrameworkUsageFromQueryStore','P'),
 (N'monitor.USP_ExtendedEventsAnalysis','P'),
@@ -101,12 +103,12 @@ IF NOT EXISTS
     SELECT 1
     FROM [monitor].[FrameworkVersion] WITH (NOLOCK)
     WHERE [FrameworkName]=N'SQLServerMonitoringFramework'
-      AND [FrameworkVersion]='1.1.0-special.19'
+      AND [FrameworkVersion]='1.1.0-special.20'
 )
     THROW 54001,N'FrameworkVersion fehlt oder entspricht nicht dem Spezialfall-Release.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 98
-    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 98 öffentlichen Procedures.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 99
+    THROW 54025,N'Der Analysis Catalog enthält nicht genau alle 99 öffentlichen Procedures.',1;
 
 IF EXISTS
 (

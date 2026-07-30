@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.FrameworkVersion
-Version      : 1.1.0-special.19
-Stand        : 2026-07-23
+Version      : 1.1.0-special.20
+Stand        : 2026-07-27
 Zweck        : Liefert eine kompakte Versionsinformation für das installierte
                Ad-hoc-Analysepaket. Die Tabelle bildet weder eine
                Installationshistorie noch ein Deployment-Framework ab.
@@ -34,12 +34,12 @@ END;
 GO
 
 UPDATE [monitor].[FrameworkVersion]
-SET [FrameworkVersion]='1.1.0-special.19',
-    [ReleaseDate]='20260723',
+SET [FrameworkVersion]='1.1.0-special.20',
+    [ReleaseDate]='20260727',
     [MinimumProductMajorVersion]=15,
-    [ContractVersion]='1.23',
+    [ContractVersion]='1.24',
     [LastInstalledUtc]=SYSUTCDATETIME(),
-    [ReleaseNotes]=N'API 1.23: SQL25-004 ergänzt Statistikdefinitionen um capability-adaptive Herkunfts- und Replikatmetadaten für lesbare Secondaries.'
+    [ReleaseNotes]=N'API 1.24: SQL25-005 ergänzt Query Store um capability-adaptive Replica-Rollen-, Runtime-, Wait- und Plan-Forcing-Evidenz.'
 WHERE [FrameworkName]=N'SQLServerMonitoringFramework';
 
 IF @@ROWCOUNT=0
@@ -51,9 +51,9 @@ BEGIN
     )
     VALUES
     (
-        N'SQLServerMonitoringFramework','1.1.0-special.19','20260723',15,
-        '1.23',SYSUTCDATETIME(),
-        N'API 1.23: SQL25-004 ergänzt Statistikdefinitionen um capability-adaptive Herkunfts- und Replikatmetadaten für lesbare Secondaries.'
+        N'SQLServerMonitoringFramework','1.1.0-special.20','20260727',15,
+        '1.24',SYSUTCDATETIME(),
+        N'API 1.24: SQL25-005 ergänzt Query Store um capability-adaptive Replica-Rollen-, Runtime-, Wait- und Plan-Forcing-Evidenz.'
     );
 END;
 GO
