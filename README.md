@@ -249,6 +249,7 @@ Der aktuelle Inventory-Vertrag umfasst 99 öffentliche Procedures und 69 unterst
 - [SQL-Server-2025-TempDB-Resource-Governance](./Documentation/Architecture/SQL_Server_2025_TempDB_Resource_Governance.md)
 - [Resultset-Konventionen](./Documentation/Reference/Resultset_Conventions.md)
 - [RAW-, CONSOLE-, TABLE- und JSON-Architektur](./Documentation/Architecture/Output_RAW_CONSOLE_JSON.md)
+- [T-SQL-Szenarien orchestrieren](./Documentation/Architecture/TSQL_SCENARIO_ORCHESTRATION.md)
 - [SQL-Text-, Statement-, Batch- und Modulkontext](./Documentation/Architecture/SQL_Text_Statement_Batch_Module.md)
 - [Datenschutz und Laufzeitausgaben](./Documentation/Architecture/Runtime_Data_Privacy.md)
 - [Vertrag und Betrieb des optionalen Snapshot-/Baseline-Pakets](./Documentation/Architecture/Snapshot_Baseline_Package_Contract.md) ([Betriebsleitfaden](./Documentation/Operations/Snapshot_Baseline_Operations.md))
