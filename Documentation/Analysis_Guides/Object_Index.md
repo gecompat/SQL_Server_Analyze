@@ -1,11 +1,11 @@
 # Objektindex der eigenständigen Analysebeschreibungen
 
 **Stand:** 23. Juli 2026
-**Abdeckung:** alle 99 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
+**Abdeckung:** alle 104 inventarisierten `USP_*`-Procedures des Frameworks einschließlich der optionalen Pakete
 
 Jeder Link führt zu einer in sich geschlossenen Procedure-Seite. Dort stehen sicherer Einstieg, Zeilengranularität, Leserichtung, technische Problembegründung, unkritischer Gegenkontext, synthetisches Beispiel, Folgeanalyse und der Link zur vollständigen technischen Spaltenreferenz.
 
-Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Start_Here.md) oder den installierten `USP_AnalysisNavigator`. Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [detaillierte Referenz der 68 unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) führt jede View, TVF, interne Procedure und Tabelle einzeln auf und beschreibt Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten sowie Stabilitätsgrenze. Scalar-Valued Functions (SVFs) sind im aktuellen Inventory nicht vorhanden.
+Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Start_Here.md) oder den installierten `USP_AnalysisNavigator`. Unbekannte Begriffe erklärt das [Glossar](Glossary.md). Die ergänzende [detaillierte Referenz der 69 unterstützenden Frameworkobjekte](../Reference/Object_Reference.md) führt jede View, TVF, interne Procedure und Tabelle einzeln auf und beschreibt Aufgabe, Schnittstelle, Verwendung, Last-/Sperrverhalten sowie Stabilitätsgrenze. Scalar-Valued Functions (SVFs) sind im aktuellen Inventory nicht vorhanden.
 
 ## Common
 
@@ -32,6 +32,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_ErrorLogAnalysis]` | [Begrenzte Errorlog-Kategorien und Quellenstatus](Procedures/USP_ErrorLogAnalysis.md) |
 | `[monitor].[USP_CurrentLog]` | [Logauslastung und Wiederverwendungsgrund](Procedures/USP_CurrentLog.md) |
 | `[monitor].[USP_CurrentOverview]` | [Orchestrierter Live-Überblick](Procedures/USP_CurrentOverview.md) |
+| `[monitor].[USP_CurrentCursorAnalysis]` | [Aktive Cursor und begrenzte Sessiondetails](Procedures/USP_CurrentCursorAnalysis.md) |
 
 ## Object und Index
 
@@ -108,6 +109,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_AvailabilityDeepAnalysis]` | [Send-/Redo-Queues und Lag](Procedures/USP_AvailabilityDeepAnalysis.md) |
 | `[monitor].[USP_AgentMonitoringAnalysis]` | [Jobs, Alerts, Operatoren und Mailpfad](Procedures/USP_AgentMonitoringAnalysis.md) |
 | `[monitor].[USP_MaintenanceOperations]` | [Laufende, pausierte und versionsadaptive Wartungsoperationen](Procedures/USP_MaintenanceOperations.md) |
+| `[monitor].[USP_MsdbHealthAnalysis]` | [msdb-Größe und Historienquellen](Procedures/USP_MsdbHealthAnalysis.md) |
+| `[monitor].[USP_LinkedServerAnalysis]` | [Linked-Server-Inventar und opt-in Verbindungstest](Procedures/USP_LinkedServerAnalysis.md) |
 
 ## Server Health
 
@@ -132,6 +135,8 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_DiagnosticFindings]` | [Severity, Confidence und SourceModule](Procedures/USP_DiagnosticFindings.md) |
 | `[monitor].[USP_WorkerPressureAnalysis]` | [Worker- und Scheduler-Druck](Procedures/USP_WorkerPressureAnalysis.md) |
 | `[monitor].[USP_DatabaseConfigurationAnalysis]` | [Datenbankkonfiguration und explizite Driftprofile](Procedures/USP_DatabaseConfigurationAnalysis.md) |
+| `[monitor].[USP_DatabasePortabilityAnalysis]` | [Edition-Features und uncontained dependencies](Procedures/USP_DatabasePortabilityAnalysis.md) |
+| `[monitor].[USP_SystemDatabaseObjectInventory]` | [Benutzerobjekte in Systemdatenbanken](Procedures/USP_SystemDatabaseObjectInventory.md) |
 
 ## Versionsadaptive Spezialanalysen
 
@@ -162,16 +167,16 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | Bereich | Anzahl |
 |---|---:|
 | Common | 5 |
-| Current State | 11 |
+| Current State | 12 |
 | Object und Index | 12 |
 | Plan Cache und Showplan | 8 |
-| Query Store | 10 |
+| Query Store | 11 |
 | Extended Events | 6 |
-| Infrastruktur | 13 |
-| Server Health | 19 |
+| Infrastruktur | 15 |
+| Server Health | 21 |
 | Versionsadaptive Spezialanalysen | 11 |
 | Snapshot und Baseline | 3 |
-| **Gesamt** | **98** |
+| **Gesamt** | **104** |
 
 ## Weitere Einstiege
 

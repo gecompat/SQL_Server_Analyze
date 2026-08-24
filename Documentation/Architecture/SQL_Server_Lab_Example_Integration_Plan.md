@@ -151,7 +151,7 @@ Ein Beispielmanifest soll nur projektspezifische Informationen enthalten:
   "title": "Einfache Blocking Chain",
   "sqlVersions": ["2019", "2022", "2025"],
   "providers": ["docker", "podman"],
-  "resourceProfile": "compact",
+  "resourceProfile": "standard",
   "database": "AnalyzeExample",
   "mode": "interactive",
   "setup": ["Setup.sql"],
@@ -302,6 +302,8 @@ Die Planungsphase ist abgeschlossen, wenn:
 - Abbruch und `KeepOnFailure` keine fremden Ressourcen verändern;
 - statische Dokumentations-, Datenschutz- und Commit-Verträge grün sind;
 - die Laufzeitevidenz ausschließlich generische Zusammenfassungen enthält.
+
+Stand 24. August 2026 sind diese Kriterien erfüllt: Verify wurde unter Docker auf SQL Server 2019, 2022 und 2025 sowie unter Podman auf SQL Server 2022 erfolgreich ausgeführt. Der getrennte Interactive-Pfad wurde unter Podman 2022 bis zur Ausgabe der zwei Session-Skripte, des Analyse- und des Cleanup-Skripts geprüft. Alle Abnahmeläufe endeten mit scopegebundenem `CLEANUP_SUCCEEDED`.
 
 ## 16. Verarbeitungsreihenfolge
 

@@ -389,7 +389,7 @@ def main() -> int:
     framework = read_text(root, "Code/01_Common/077_FrameworkVersion.sql")
     require_tokens(
         framework,
-        ["1.1.0-special.19", "[ContractVersion]='1.23'", "SQL25-004"],
+        ["1.1.0-special.20", "[ContractVersion]='1.24'", "SQL25-005"],
         "framework version",
         errors,
     )
@@ -491,24 +491,19 @@ def main() -> int:
     )
     require_tokens(
         doc_workflow,
-        [
-            "991_Validate_SQL25_TempDB_Resource_Governance_Contract.py",
-            "SQL25_TempDB_Resource_Governance_Public_Contract.json",
-        ],
+        ["Invoke-StaticContractSuite.ps1", "Metadata/**"],
         "documentation workflow",
         errors,
     )
-    output_workflow = read_text(
-        root, ".github/workflows/framework-output-pilot.yml"
+    static_runner = read_text(
+        root, "Code/Tests/Static/Invoke-StaticContractSuite.ps1"
     )
-    for token in (
-        "005_InternalCaptureCurrentStateSnapshot.sql",
-        "070_USP_CurrentTempDB.sql",
-        "100_USP_CurrentOverview.sql",
-        "030_USP_ResourceGovernorAnalysis.sql",
-        "122_SQL25_TempDB_Resource_Governance_Runtime_Contract.sql",
-    ):
-        require_tokens(output_workflow, [token], "output pilot workflow", errors)
+    require_tokens(
+        static_runner,
+        ["991_Validate_SQL25_TempDB_Resource_Governance_Contract.py"],
+        "static contract runner",
+        errors,
+    )
 
     if errors:
         for error in errors:

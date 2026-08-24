@@ -149,12 +149,12 @@ def main() -> int:
                 fail("DOCUMENTATION_CONTRACT", f"{page}:{token}")
 
     version = (root / "Code/01_Common/077_FrameworkVersion.sql").read_text(encoding="utf-8-sig")
-    require(version, ("1.1.0-special.19", "ContractVersion]='1.23'"), "FrameworkVersion")
+    require(version, ("1.1.0-special.20", "ContractVersion]='1.24'"), "FrameworkVersion")
 
     output_test = (root / "Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql").read_text(
         encoding="utf-8-sig"
     )
-    require(output_test, ("<>92", "92 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
+    require(output_test, ("<>94", "94 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
 
     print(
         "Wave-2 contracts passed: modules=4 public_procedures=91 "

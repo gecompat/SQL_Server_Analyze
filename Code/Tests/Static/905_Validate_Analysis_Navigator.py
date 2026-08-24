@@ -337,8 +337,8 @@ def validate(repository_root: Path) -> list[str]:
     catalog_names = [str(row["ProcedureName"]) for row in catalog_rows]
     catalog_procedures = set(catalog_names)
 
-    if len(public_rows) != 99:
-        errors.append(f"Public procedure inventory has {len(public_rows)} rows; expected 99.")
+    if len(public_rows) != 104:
+        errors.append(f"Public procedure inventory has {len(public_rows)} rows; expected 104.")
     if len(catalog_rows) != len(public_rows):
         errors.append(
             f"Analysis catalog has {len(catalog_rows)} rows; public inventory has {len(public_rows)}."
@@ -752,7 +752,9 @@ def validate(repository_root: Path) -> list[str]:
         document
         for document in repository_root.rglob("*.md")
         if "AI_Metadata" not in document.relative_to(repository_root).parts
+        and ".ai" not in document.relative_to(repository_root).parts
         and ".git" not in document.relative_to(repository_root).parts
+        and document.name != "AGENTS.md"
     )
     stale_count = re.compile(
         r"\b(?:85|88|90|93|94)\s+(?:(?:öffentliche|inventarisierte|dokumentierte)\s+)?Procedures\b",

@@ -28,7 +28,6 @@ COUNTS = {
     "P2CaseCount": "124",
 }
 CURRENT_DOCUMENTS = (
-    "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
     "AI_Metadata/Internal_Documentation/Quality/Known_Issues_History.md",
     "AI_Metadata/Internal_Documentation/Quality/Release_Notes_History.md",
     "AI_Metadata/Internal_Documentation/Quality/Test_Matrix_History.md",
@@ -41,9 +40,10 @@ WINDOWS_REPOSITORY_PUBLIC_DOCUMENTS = (
     "Documentation/Quality/Test_Matrix.md",
     "Documentation/Quality/Release_Notes.md",
 )
-WINDOWS_REPOSITORY_INTERNAL_DOCUMENTS = (
-    "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
-)
+# Current roadmap documents intentionally summarize state without duplicating
+# commit-bound historical evidence. The canonical Windows proof remains in the
+# machine-readable release evidence and its public evidence pages.
+WINDOWS_REPOSITORY_INTERNAL_DOCUMENTS: tuple[str, ...] = ()
 WAVE1_ENHANCEMENTS = {
     "DIAG-001",
     "DIAG-002",

@@ -377,9 +377,9 @@ def validate_repository(root: Path) -> list[str]:
     require_tokens(
         framework,
         (
-            "1.1.0-special.19",
-            "[ContractVersion]='1.23'",
-            "SQL25-004",
+            "1.1.0-special.20",
+            "[ContractVersion]='1.24'",
+            "SQL25-005",
         ),
         "version",
         errors,
@@ -411,24 +411,17 @@ def validate_repository(root: Path) -> list[str]:
     workflow = read_text(root, ".github/workflows/documentation-validation.yml")
     require_tokens(
         workflow,
-        (
-            "989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py",
-            "SQL25_Readable_Secondary_Statistics_Public_Contract.json",
-            "Validate SQL25-004 readable-secondary statistics contract",
-        ),
+        ("Invoke-StaticContractSuite.ps1", "Metadata/**"),
         "documentation workflow",
         errors,
     )
-    output_pilot = read_text(
-        root, ".github/workflows/framework-output-pilot.yml"
+    static_runner = read_text(
+        root, "Code/Tests/Static/Invoke-StaticContractSuite.ps1"
     )
     require_tokens(
-        output_pilot,
-        (
-            "Code/03_ObjectIndex/040_USP_Statistics.sql",
-            "123_SQL25_Readable_Secondary_Statistics_Runtime_Contract.sql",
-        ),
-        "output-pilot workflow",
+        static_runner,
+        ("989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py",),
+        "static contract runner",
         errors,
     )
     return errors
