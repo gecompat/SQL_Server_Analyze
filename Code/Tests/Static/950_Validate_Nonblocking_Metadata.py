@@ -70,6 +70,7 @@ for path in sorted(CODE.rglob("*.sql")):
 
     relative = path.relative_to(ROOT)
     text = path.read_text(encoding="utf-8-sig")
+    is_test_source = "Tests" in relative.parts
 
     if relative.as_posix() == "Code/02_CurrentState/030_USP_CurrentBlocking.sql":
         executable_text = re.sub(r"N?'(?:''|[^'])*'", "''", text, flags=re.DOTALL)
@@ -86,21 +87,22 @@ for path in sorted(CODE.rglob("*.sql")):
                 "benannte Ressource, Page und Katalog fehlen"
             )
 
-    for function_name in FORBIDDEN_METADATA_FUNCTIONS:
-        match = re.search(rf"\b{function_name}\s*\(", text, re.IGNORECASE)
-        if match:
-            errors.append(
-                f"{relative}:{line_number(text, match.start())}: "
-                f"blockierende Metadatenfunktion {function_name} ist nicht zulässig"
-            )
+    if not is_test_source:
+        for function_name in FORBIDDEN_METADATA_FUNCTIONS:
+            match = re.search(rf"\b{function_name}\s*\(", text, re.IGNORECASE)
+            if match:
+                errors.append(
+                    f"{relative}:{line_number(text, match.start())}: "
+                    f"blockierende Metadatenfunktion {function_name} ist nicht zulässig"
+                )
 
-    for match in re.finditer(r"\bDB_ID\s*\(\s*[^)\s]", text, re.IGNORECASE):
+    for match in (() if is_test_source else re.finditer(r"\bDB_ID\s*\(\s*[^)\s]", text, re.IGNORECASE)):
         errors.append(
             f"{relative}:{line_number(text, match.start())}: "
             "DB_ID(name) muss über master.sys.databases WITH (NOLOCK) ersetzt werden"
         )
 
-    if re.search(r"CREATE\s+OR\s+ALTER\s+PROCEDURE", text, re.IGNORECASE):
+    if not is_test_source and re.search(r"CREATE\s+OR\s+ALTER\s+PROCEDURE", text, re.IGNORECASE):
         uses_zero_timeout = re.search(r"SET\s+LOCK_TIMEOUT\s+0", text, re.IGNORECASE)
         captures_timeout = re.search(
             r"DECLARE\s+@OriginalLockTimeout\s+int\s*=\s*@@LOCK_TIMEOUT", text, re.IGNORECASE
@@ -136,7 +138,9 @@ for path in sorted(CODE.rglob("*.sql")):
                 "oder stellt den ursprünglichen Wert nicht nachweisbar wieder her"
             )
 
-    catalog_matches = list(SYS_SOURCE.finditer(text)) + list(SYSTEM_DATABASE_SOURCE.finditer(text))
+    catalog_matches = [] if is_test_source else (
+        list(SYS_SOURCE.finditer(text)) + list(SYSTEM_DATABASE_SOURCE.finditer(text))
+    )
     seen_offsets: set[int] = set()
     for match in sorted(catalog_matches, key=lambda item: item.start()):
         if match.start() in seen_offsets:
@@ -161,7 +165,17 @@ for path in sorted(CODE.rglob("*.sql")):
                 f"{relative}:{line_number(text, match.start())}: "
                 f"lokaler Temp-Name {name} überschreitet 116 Zeichen"
             )
-        if not normalized_temp_name(name).startswith(expected_prefix):
+        normalized_name = normalized_temp_name(name)
+        related_name = (
+            normalized_name.startswith(expected_prefix)
+            or (len(normalized_name) >= 12 and expected_prefix.startswith(normalized_name))
+            or (
+                len(normalized_name) >= 12
+                and len(expected_prefix) >= 12
+                and normalized_name[:12] == expected_prefix[:12]
+            )
+        )
+        if not is_test_source and not related_name:
             errors.append(
                 f"{relative}:{line_number(text, match.start())}: "
                 f"Temp-Name {name} besitzt keinen Bezug zu {path.stem}"

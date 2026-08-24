@@ -235,7 +235,7 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventory-Vertrag umfasst 99 öffentliche Procedures und 69 unterstützende Objekte: acht Views, 28 TVFs, 16 interne Procedures und 17 Tabellen. Jedes der insgesamt 168 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+Der aktuelle Inventory-Vertrag umfasst 104 öffentliche Procedures und 69 unterstützende Objekte: acht Views, 28 TVFs, 16 interne Procedures und 17 Tabellen. Jedes der insgesamt 173 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
 
 - [Hier beginnen: passende Analyse finden](./Documentation/Analysis_Guides/Start_Here.md)
 - [Analysis Navigator – vollständiger Vertrag](./Documentation/Reference/Analysis_Navigator.md)

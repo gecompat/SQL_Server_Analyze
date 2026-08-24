@@ -75,6 +75,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../02_CurrentState/080_USP_CurrentIO.sql
 :r ../02_CurrentState/090_USP_CurrentLog.sql
 :r ../02_CurrentState/100_USP_CurrentOverview.sql
+:r ../02_CurrentState/110_USP_CurrentCursorAnalysis.sql
 :r ../03_ObjectIndex/010_USP_ObjectInventory.sql
 :r ../03_ObjectIndex/020_USP_IndexUsage.sql
 :r ../03_ObjectIndex/025_USP_IndexOperationalStats.sql
@@ -154,6 +155,10 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../08_ServerHealth/170_USP_DiagnosticFindings.sql
 :r ../08_ServerHealth/180_USP_WorkerPressureAnalysis.sql
 :r ../08_ServerHealth/190_USP_DatabaseConfigurationAnalysis.sql
+:r ../08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql
+:r ../08_ServerHealth/210_USP_MsdbHealthAnalysis.sql
+:r ../08_ServerHealth/220_USP_LinkedServerAnalysis.sql
+:r ../08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql
 :r ../08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 :r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
 :r ../09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql

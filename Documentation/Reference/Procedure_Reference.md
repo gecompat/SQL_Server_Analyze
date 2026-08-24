@@ -2414,6 +2414,101 @@ Quelle: `Code/09_VersionAdaptive/500_USP_FrameworkUsageFromQueryStore.sql`
 ```
 
 
+## `[monitor].[USP_CurrentCursorAnalysis]`
+
+Quelle: `Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql`
+
+```sql
+@IncludeCursorDetails bit = 0
+    , @SessionIds nvarchar(max) = NULL
+    , @MaxZeilen int = 200
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_DatabasePortabilityAnalysis]`
+
+Quelle: `Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max) = NULL
+    , @MaxZeilen int = 2000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_MsdbHealthAnalysis]`
+
+Quelle: `Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql`
+
+```sql
+@MaxZeilen int = 2000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_LinkedServerAnalysis]`
+
+Quelle: `Code/08_ServerHealth/220_USP_LinkedServerAnalysis.sql`
+
+```sql
+@ConnectivityTestEnabled bit = 0
+    , @HighImpactConfirmed bit = 0
+    , @MaxZeilen int = 2000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
+## `[monitor].[USP_SystemDatabaseObjectInventory]`
+
+Quelle: `Code/08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql`
+
+```sql
+@MaxZeilen int = 2000
+    , @ResultSetArt varchar(16) = 'CONSOLE'
+    , @ResultTablesJson nvarchar(max) = NULL
+    , @JsonErzeugen bit = 0
+    , @Json nvarchar(max) = NULL OUTPUT
+    , @PrintMeldungen bit = 1
+    , @Hilfe bit = 0
+    , @StatusCodeOut varchar(40) = NULL OUTPUT
+    , @IsPartialOut bit = NULL OUTPUT
+    , @ErrorNumberOut int = NULL OUTPUT
+    , @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_QueryStoreReplicaAnalysis]`
 
 Quelle: `Code/05_QueryStore/100_USP_QueryStoreReplicaAnalysis.sql`

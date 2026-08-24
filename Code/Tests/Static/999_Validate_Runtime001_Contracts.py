@@ -169,12 +169,12 @@ def main() -> int:
         fail("RELEASE_GATE_ENTRY", "Code/Tests/Run_Release_Gate.sql")
 
     version = (root / "Code/01_Common/077_FrameworkVersion.sql").read_text(encoding="utf-8-sig")
-    require(version, ("1.1.0-special.19", "ContractVersion]='1.23'"), "FrameworkVersion")
+    require(version, ("1.1.0-special.20", "ContractVersion]='1.24'"), "FrameworkVersion")
 
     output_contract = (root / "Code/Tests/Integration/189_Framework_Output_Runtime_Contract.sql").read_text(
         encoding="utf-8-sig"
     )
-    require(output_contract, ("<>92", "92 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
+    require(output_contract, ("<>99", "99 Vertragsobjekte"), "FrameworkOutputRuntimeContract")
 
     print("RUNTIME-001 contracts passed: modules=2 primary_resultsets=2 findings=0")
     return 0

@@ -8,10 +8,12 @@ SQL Server Analyze ist ein T-SQL-Diagnoseframework für SQL Server 2019 oder neu
 2. [`USP_AnalysisNavigator`](Reference/Analysis_Navigator.md) – Suche direkt in SSMS, Rollen, Ranking, Kosten, Pakete und Folgebeziehungen.
 3. [Einsteiger-Leseleitfaden](Analysis_Guides/Beginner_Reading_Guide.md) – Status, Scope, Zeitbezug, Nenner, Partialität und Gegenprobe.
 4. [Runbooks](Analysis_Guides/Runbooks/README.md) – konkrete Abläufe für zehn häufige Störungssituationen.
-5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 99 öffentlichen Procedures.
+5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 104 öffentlichen Procedures.
 6. [Objektreferenz](Reference/Object_Reference.md) – jede unterstützende View, TVF, interne Procedure und Tabelle.
 
-Der Inventarvertrag umfasst 168 Objekte: 99 öffentliche Procedures, acht Views, 28 Table-Valued Functions, 16 interne Procedures und 17 Tabellen. Scalar-Valued Functions sind derzeit nicht vorhanden.
+Der Inventarvertrag umfasst 173 Objekte: 104 öffentliche Procedures, acht Views, 28 Table-Valued Functions, 16 interne Procedures und 17 Tabellen. Scalar-Valued Functions sind derzeit nicht vorhanden.
+
+Der öffentliche [SSIS-Phase-0-Vertrag](Architecture/SSIS_001_Phase0_Public_Contract.md) grenzt den noch nicht implementierten Paket-Analysepfad ab.
 
 ## Installation und erster Betrieb
 
