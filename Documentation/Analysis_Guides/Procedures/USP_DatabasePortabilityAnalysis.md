@@ -3,7 +3,7 @@
 Inventarisiert sichtbare persistierte Edition-Features und uncontained dependencies je Benutzerdatenbank.
 
 ```sql
-EXEC [monitor].[USP_DatabasePortabilityAnalysis] @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
+EXEC [monitor].[USP_DatabasePortabilityAnalysis] @DatabaseNames = N'[DeineDatenbank]', @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
 ```
 
 ## Eine Zeile bedeutet
@@ -45,7 +45,7 @@ SELECT [feature_name] FROM [sys].[dm_db_persisted_sku_features] WITH (NOLOCK);
 SELECT [class_desc], [statement_type], [feature_name] FROM [sys].[dm_db_uncontained_entities] WITH (NOLOCK);
 ```
 
-**Wichtig für die Eigenlast:** Filtern Sie Datenbanken vor dem Kontextwechsel; Nutzdaten werden nicht gescannt.
+**Wichtig für die Eigenlast:** Filtern Sie Datenbanken mit der bracket-aware Pipe-Liste `@DatabaseNames` vor dem Kontextwechsel; Nutzdaten werden nicht gescannt.
 
 ### Zeit- und Scope-Modell
 

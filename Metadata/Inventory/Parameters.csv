@@ -1800,7 +1800,7 @@ USP_QueryStoreReplicaAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_QueryStoreReplicaAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_QueryStoreReplicaAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_CurrentCursorAnalysis,IncludeCursorDetails,bit,0
-USP_CurrentCursorAnalysis,SessionId,int,NULL
+USP_CurrentCursorAnalysis,SessionIds,nvarchar(max),NULL
 USP_CurrentCursorAnalysis,MaxZeilen,int,200
 USP_CurrentCursorAnalysis,ResultSetArt,varchar(16),'CONSOLE'
 USP_CurrentCursorAnalysis,ResultTablesJson,nvarchar(max),NULL
@@ -1812,7 +1812,7 @@ USP_CurrentCursorAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_CurrentCursorAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_CurrentCursorAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_CurrentCursorAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
-USP_DatabasePortabilityAnalysis,DatabaseName,sysname,NULL
+USP_DatabasePortabilityAnalysis,DatabaseNames,nvarchar(max),NULL
 USP_DatabasePortabilityAnalysis,MaxZeilen,int,2000
 USP_DatabasePortabilityAnalysis,ResultSetArt,varchar(16),'CONSOLE'
 USP_DatabasePortabilityAnalysis,ResultTablesJson,nvarchar(max),NULL
