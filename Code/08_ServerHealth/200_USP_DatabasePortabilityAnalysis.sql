@@ -152,8 +152,8 @@ FROM ' + QUOTENAME(@Db) + N'.[sys].[dm_db_uncontained_entities];';
     END;
 
     IF @JsonErzeugen=1
-        SELECT @Json=(SELECT TOP (CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END) *
-                      FROM [#DatabasePortabilityAnalysis_Portability] ORDER BY [DatabaseName],[EvidenceType],[FeatureName] FOR JSON PATH);
+        SELECT @Json=COALESCE((SELECT TOP (CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END) *
+                      FROM [#DatabasePortabilityAnalysis_Portability] ORDER BY [DatabaseName],[EvidenceType],[FeatureName] FOR JSON PATH),N'[]');
     IF @Mode IN('CONSOLE','RAW')
     BEGIN
         SELECT @Status AS [StatusCode],@Partial AS [IsPartial],COUNT_BIG(*) AS [EvidenceRows],

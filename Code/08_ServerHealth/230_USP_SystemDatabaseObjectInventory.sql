@@ -26,7 +26,7 @@ BEGIN
    BEGIN CATCH INSERT [#SystemDatabaseObjectInventory_Objects] VALUES(@Db,NULL,NULL,NULL,NULL,NULL,'SOURCE_UNAVAILABLE',CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800))); SET @Partial=1; END CATCH;
    FETCH NEXT FROM [d] INTO @Db; END; CLOSE [d]; DEALLOCATE [d]; IF NOT EXISTS(SELECT 1 FROM [#SystemDatabaseObjectInventory_Objects]) SET @Status='AVAILABLE_EMPTY'; ELSE IF @Partial=1 SET @Status='AVAILABLE_LIMITED';
  END;
- IF @JsonErzeugen=1 SELECT @Json=(SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#SystemDatabaseObjectInventory_Objects] ORDER BY [DatabaseName],[SchemaName],[ObjectName] FOR JSON PATH);
+ IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#SystemDatabaseObjectInventory_Objects] ORDER BY [DatabaseName],[SchemaName],[ObjectName] FOR JSON PATH),N'[]');
  IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],COUNT_BIG(*) [ObjectCount],@ErrorMessage [ErrorMessage] FROM [#SystemDatabaseObjectInventory_Objects]; SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#SystemDatabaseObjectInventory_Objects] ORDER BY [DatabaseName],[SchemaName],[ObjectName]; END;
  IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
  IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#SystemDatabaseObjectInventory_Objects',@TargetTable=@TableTarget,@ThrowOnError=1;

@@ -56,7 +56,7 @@ BEGIN
       END;
       IF NOT EXISTS(SELECT 1 FROM [#LinkedServerAnalysis_Linked]) SET @Status='AVAILABLE_EMPTY'; ELSE IF @Partial=1 AND @Status='AVAILABLE' SET @Status='AVAILABLE_LIMITED';
     END;
-    IF @JsonErzeugen=1 SELECT @Json=(SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#LinkedServerAnalysis_Linked] ORDER BY [ServerName] FOR JSON PATH);
+    IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#LinkedServerAnalysis_Linked] ORDER BY [ServerName] FOR JSON PATH),N'[]');
     IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],COUNT_BIG(*) [LinkedServerCount],@ErrorMessage [ErrorMessage] FROM [#LinkedServerAnalysis_Linked]; SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#LinkedServerAnalysis_Linked] ORDER BY [ServerName]; SELECT [wait_type],[waiting_tasks_count],[wait_time_ms] FROM [sys].[dm_os_wait_stats] WITH (NOLOCK) WHERE [wait_type] LIKE 'OLEDB%' OR [wait_type] LIKE 'REMOTE%' ORDER BY [wait_time_ms] DESC; END;
     IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
     IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#LinkedServerAnalysis_Linked',@TargetTable=@TableTarget,@ThrowOnError=1;
