@@ -98,3 +98,8 @@ USP_PurgeSnapshotData,BASELINE,,1
 USP_VectorIndexAnalysis,BASELINE,,1
 USP_FrameworkUsageFromQueryStore,DEEP_REVIEWED,2026-07-26,3
 USP_QueryStoreReplicaAnalysis,BASELINE,,1
+USP_CurrentCursorAnalysis,BASELINE,,1
+USP_DatabasePortabilityAnalysis,BASELINE,,1
+USP_MsdbHealthAnalysis,BASELINE,,1
+USP_LinkedServerAnalysis,BASELINE,,1
+USP_SystemDatabaseObjectInventory,BASELINE,,1

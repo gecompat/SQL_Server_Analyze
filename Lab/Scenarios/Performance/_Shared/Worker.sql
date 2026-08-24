@@ -50,7 +50,7 @@ BEGIN
         CROSS JOIN [Lab001Wave3].[dbo].[Workload] AS [b]
         WHERE [a].[SyntheticId] <= 256
           AND [b].[SyntheticId] <= 512
-        OPTION (MAXDOP 2, HASH JOIN);
+        OPTION (MAXDOP 2);
     END;
 END;
 

@@ -61,14 +61,13 @@ Analysis Navigator,USP_AnalysisNavigator,COMPLETE,YES,YES,YES,,FULL,Zentraler Ei
 Framework Usage,USP_FrameworkUsageFromQueryStore,COMPLETE,YES,YES,YES,,FULL,FRAMEWORK-USAGE-001 mit Hilfe RAW CONSOLE TABLE NONE JSON und Query-Store-Laufzeitvertrag
 Snapshot Baseline,USP_RunSnapshotCollectionCycle,COMPLETE,YES,YES,YES,,FULL,Implementierter Performance-Counter-Baseline-Slice
 Vector Index (2025),USP_VectorIndexAnalysis,COMPLETE,YES,YES,YES,,FULL,SQL25-001 dreiversionig abgenommen
-Secondary Replica Query Store,Query Store modules,PLANNED,NO,NO,NO,,ARCHITECTURE,SQL25-005 recherchiert und nicht implementiert
-Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-005 recherchiert und nicht implementiert
-Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-006 recherchiert und nicht implementiert
-Cursor Diagnostics,USP_CurrentSessions,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-007 recherchiert und nicht implementiert
-msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-008 recherchiert und nicht implementiert
-System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,ARCHITECTURE,OPS-009 recherchiert und nicht implementiert
-Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 erfordert gemischte Drei-Versionen-Matrix
-SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,SSIS-001 Phase 0 offen
+Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-005 read-only Kern implementiert; Drei-Versionen- und opt-in Remote-Evidenz offen
+Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-006 read-only Kern implementiert; Drei-Versionen-Evidenz offen
+Cursor Diagnostics,USP_CurrentCursorAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-007 opt-in Kern implementiert; Drei-Versionen-Evidenz offen
+msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-008 read-only Kern implementiert; Drei-Versionen-Evidenz offen
+System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,FULL,OPS-009 read-only Kern implementiert; Drei-Versionen-Evidenz offen
+Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 Boundary-Inventar vorhanden; Härtung und gemischte Drei-Versionen-Matrix offen
+SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,SSIS-001 Phase 0 abgeschlossen; Phase 1 Implementierung offen
 Snapshot Baseline Expansion (SC-023),USP_RunSnapshotCollectionCycle,PLANNED,NO,NO,NO,,ARCHITECTURE,Optionale Collector Rollups Scheduler und Exportpakete
 Externe Komponente (SC-024),Externe Integration,PLANNED,NO,NO,NO,,NONE,P3 erfordert externe Abhaengigkeit
 Isolierter Restore (SC-025),Restore-Host-Pruefung,PLANNED,NO,NO,NO,,NONE,P3 erfordert isolierte Ausfuehrung

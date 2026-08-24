@@ -154,6 +154,11 @@ AS
         , (N'USP_WorkerPressureAnalysis','REFINE_WITH',N'USP_CurrentRequests',1,N'Worker- oder Runnable-Signale auf verursachende Requests und Blocking eingrenzen.')
         , (N'USP_WorkerPressureAnalysis','CONFIRM_WITH',N'USP_ServerCpuTopology',1,N'Schedulerdruck gegen CPU-, Socket- und Soft-NUMA-Topologie prüfen.')
         , (N'USP_DatabaseConfigurationAnalysis','CONFIRM_WITH',N'USP_ServerConfiguration',1,N'Datenbankoptionen und Drift im Kontext der Instanzkonfiguration bewerten.')
+        , (N'USP_CurrentCursorAnalysis','CONFIRM_WITH',N'USP_CurrentRequests',1,N'Cursoraktivität mit Request-, Wait- und Laufzeitevidenz abgleichen.')
+        , (N'USP_DatabasePortabilityAnalysis','CONFIRM_WITH',N'USP_ServerFeatureCapabilities',1,N'Portabilitätshinweise gegen Zielversion, Edition und Capability-Vertrag prüfen.')
+        , (N'USP_MsdbHealthAnalysis','CONFIRM_WITH',N'USP_AgentMonitoringAnalysis',1,N'msdb-Historien und Größe mit Agent- und Monitoringnutzung einordnen.')
+        , (N'USP_LinkedServerAnalysis','CONFIRM_WITH',N'USP_CurrentWaits',1,N'Linked-Server-Inventar und Remote-Waits im aktuellen Waitkontext bewerten.')
+        , (N'USP_SystemDatabaseObjectInventory','CONFIRM_WITH',N'USP_ServerSecurityConfiguration',1,N'Benutzerobjekte in Systemdatenbanken mit Eigentümer- und Sicherheitskontext prüfen.')
 
         , (N'USP_ServerFeatureCapabilities','REFINE_WITH',N'USP_SpecialFeatureInventory',1,N'Technische Featurefähigkeit gegen tatsächlich sichtbare Featureverwendung prüfen.')
         , (N'USP_ServerVersionInformation','REFINE_WITH',N'USP_ServerFeatureCapabilities',1,N'Version, Edition und Plattform auf konkrete Framework- und Datenbankfähigkeiten abbilden.')

@@ -376,7 +376,7 @@ def validate_repository(root: Path) -> list[str]:
     framework = read_text(root, "Code/01_Common/077_FrameworkVersion.sql")
     require_tokens(
         framework,
-        ("1.1.0-special.19", "[ContractVersion]='1.23'", "SQL25-004"),
+        ("1.1.0-special.20", "[ContractVersion]='1.24'", "SQL25-005"),
         "version",
         errors,
     )
@@ -401,12 +401,17 @@ def validate_repository(root: Path) -> list[str]:
     workflow = read_text(root, ".github/workflows/documentation-validation.yml")
     require_tokens(
         workflow,
-        (
-            "992_Validate_SQL25_JSON_Index_Contract.py",
-            "SQL25_JSON_Index_Public_Contract.json",
-            "Validate SQL25-002 JSON-index contract",
-        ),
+        ("Invoke-StaticContractSuite.ps1", "Metadata/**"),
         "documentation workflow",
+        errors,
+    )
+    static_runner = read_text(
+        root, "Code/Tests/Static/Invoke-StaticContractSuite.ps1"
+    )
+    require_tokens(
+        static_runner,
+        ("992_Validate_SQL25_JSON_Index_Contract.py",),
+        "static contract runner",
         errors,
     )
     return errors

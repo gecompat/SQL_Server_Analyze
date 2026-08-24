@@ -615,6 +615,36 @@ SELECT @UsageJson;
 EXEC [monitor].[USP_DatabaseConfigurationAnalysis] @Hilfe = 1;
 ```
 
+## `[monitor].[USP_CurrentCursorAnalysis]`
+
+```sql
+EXEC [monitor].[USP_CurrentCursorAnalysis] @IncludeCursorDetails = 0, @ResultSetArt = 'CONSOLE';
+```
+
+## `[monitor].[USP_DatabasePortabilityAnalysis]`
+
+```sql
+EXEC [monitor].[USP_DatabasePortabilityAnalysis] @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
+```
+
+## `[monitor].[USP_MsdbHealthAnalysis]`
+
+```sql
+EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
+```
+
+## `[monitor].[USP_LinkedServerAnalysis]`
+
+```sql
+EXEC [monitor].[USP_LinkedServerAnalysis] @ConnectivityTestEnabled = 0, @ResultSetArt = 'CONSOLE';
+```
+
+## `[monitor].[USP_SystemDatabaseObjectInventory]`
+
+```sql
+EXEC [monitor].[USP_SystemDatabaseObjectInventory] @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
+```
+
 ## `[monitor].[USP_CreateExecutionEvidenceJson]`
 
 ```sql

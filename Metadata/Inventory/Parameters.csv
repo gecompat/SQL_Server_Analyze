@@ -1799,3 +1799,63 @@ USP_QueryStoreReplicaAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_QueryStoreReplicaAnalysis,IsPartialOut,bit,NULL OUTPUT
 USP_QueryStoreReplicaAnalysis,ErrorNumberOut,int,NULL OUTPUT
 USP_QueryStoreReplicaAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_CurrentCursorAnalysis,IncludeCursorDetails,bit,0
+USP_CurrentCursorAnalysis,SessionId,int,NULL
+USP_CurrentCursorAnalysis,MaxZeilen,int,200
+USP_CurrentCursorAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_CurrentCursorAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_CurrentCursorAnalysis,JsonErzeugen,bit,0
+USP_CurrentCursorAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_CurrentCursorAnalysis,PrintMeldungen,bit,1
+USP_CurrentCursorAnalysis,Hilfe,bit,0
+USP_CurrentCursorAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_CurrentCursorAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_CurrentCursorAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_CurrentCursorAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_DatabasePortabilityAnalysis,DatabaseName,sysname,NULL
+USP_DatabasePortabilityAnalysis,MaxZeilen,int,2000
+USP_DatabasePortabilityAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_DatabasePortabilityAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_DatabasePortabilityAnalysis,JsonErzeugen,bit,0
+USP_DatabasePortabilityAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_DatabasePortabilityAnalysis,PrintMeldungen,bit,1
+USP_DatabasePortabilityAnalysis,Hilfe,bit,0
+USP_DatabasePortabilityAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_DatabasePortabilityAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_DatabasePortabilityAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_DatabasePortabilityAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_MsdbHealthAnalysis,MaxZeilen,int,2000
+USP_MsdbHealthAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_MsdbHealthAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_MsdbHealthAnalysis,JsonErzeugen,bit,0
+USP_MsdbHealthAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_MsdbHealthAnalysis,PrintMeldungen,bit,1
+USP_MsdbHealthAnalysis,Hilfe,bit,0
+USP_MsdbHealthAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_MsdbHealthAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_MsdbHealthAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_MsdbHealthAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_LinkedServerAnalysis,ConnectivityTestEnabled,bit,0
+USP_LinkedServerAnalysis,HighImpactConfirmed,bit,0
+USP_LinkedServerAnalysis,MaxZeilen,int,2000
+USP_LinkedServerAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_LinkedServerAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_LinkedServerAnalysis,JsonErzeugen,bit,0
+USP_LinkedServerAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_LinkedServerAnalysis,PrintMeldungen,bit,1
+USP_LinkedServerAnalysis,Hilfe,bit,0
+USP_LinkedServerAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_LinkedServerAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_LinkedServerAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_LinkedServerAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_SystemDatabaseObjectInventory,MaxZeilen,int,2000
+USP_SystemDatabaseObjectInventory,ResultSetArt,varchar(16),'CONSOLE'
+USP_SystemDatabaseObjectInventory,ResultTablesJson,nvarchar(max),NULL
+USP_SystemDatabaseObjectInventory,JsonErzeugen,bit,0
+USP_SystemDatabaseObjectInventory,Json,nvarchar(max),NULL OUTPUT
+USP_SystemDatabaseObjectInventory,PrintMeldungen,bit,1
+USP_SystemDatabaseObjectInventory,Hilfe,bit,0
+USP_SystemDatabaseObjectInventory,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_SystemDatabaseObjectInventory,IsPartialOut,bit,NULL OUTPUT
+USP_SystemDatabaseObjectInventory,ErrorNumberOut,int,NULL OUTPUT
+USP_SystemDatabaseObjectInventory,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
