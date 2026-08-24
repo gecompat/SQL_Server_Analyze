@@ -2420,7 +2420,7 @@ Quelle: `Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql`
 
 ```sql
 @IncludeCursorDetails bit = 0
-    , @SessionId int = NULL
+    , @SessionIds nvarchar(max) = NULL
     , @MaxZeilen int = 200
     , @ResultSetArt varchar(16) = 'CONSOLE'
     , @ResultTablesJson nvarchar(max) = NULL
@@ -2439,7 +2439,7 @@ Quelle: `Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql`
 Quelle: `Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql`
 
 ```sql
-@DatabaseName sysname = NULL
+@DatabaseNames nvarchar(max) = NULL
     , @MaxZeilen int = 2000
     , @ResultSetArt varchar(16) = 'CONSOLE'
     , @ResultTablesJson nvarchar(max) = NULL

@@ -3,7 +3,7 @@
 Inventarisiert aktive Cursor; Details werden nur für eine ausdrücklich angegebene Session aktiviert.
 
 ```sql
-EXEC [monitor].[USP_CurrentCursorAnalysis] @IncludeCursorDetails = 0, @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
+EXEC [monitor].[USP_CurrentCursorAnalysis] @SessionIds = N'57', @IncludeCursorDetails = 1, @MaxZeilen = 200, @ResultSetArt = 'CONSOLE';
 ```
 
 ## Eine Zeile bedeutet
@@ -47,7 +47,7 @@ WHERE [session_id] > 0
 ORDER BY [worker_time] DESC;
 ```
 
-**Wichtig für die Eigenlast:** Begrenzen Sie Details auf eine bekannte Session und die Ausgabe mit `@MaxZeilen`.
+**Wichtig für die Eigenlast:** `@SessionIds` akzeptiert in diesem bewusst begrenzten Analysepfad genau eine bekannte Session-ID. Begrenzen Sie zusätzlich die Ausgabe mit `@MaxZeilen`.
 
 ### Zeit- und Scope-Modell
 

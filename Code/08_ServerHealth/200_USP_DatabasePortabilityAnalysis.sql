@@ -3,7 +3,7 @@ GO
 
 /* OPS-006: read-only portability evidence; no automatic DDL. */
 CREATE OR ALTER PROCEDURE [monitor].[USP_DatabasePortabilityAnalysis]
-      @DatabaseName    sysname        = NULL
+      @DatabaseNames   nvarchar(max)  = NULL
     , @MaxZeilen       int            = 2000
     , @ResultSetArt    varchar(16)    = 'CONSOLE'
     , @ResultTablesJson nvarchar(max) = NULL
@@ -47,20 +47,61 @@ BEGIN
         , [EvidenceLimit] nvarchar(1000) NOT NULL
     );
 
+    DECLARE @EffectiveDatabaseNames nvarchar(max)=
+        CASE WHEN NULLIF(LTRIM(RTRIM(COALESCE(@DatabaseNames,N''))),N'') IS NULL THEN NULL ELSE @DatabaseNames END;
+    DECLARE @RequestedDatabaseCount int=0,@UnavailableDatabaseCount int=0;
+    CREATE TABLE [#DatabasePortabilityAnalysis_Requested]
+    (
+          [NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IsValid] bit NOT NULL
+    );
+    IF @EffectiveDatabaseNames IS NOT NULL
+        INSERT [#DatabasePortabilityAnalysis_Requested]([NameValue],[IsValid])
+        SELECT [NameValue],[IsValid] FROM [monitor].[TVF_ParseSqlNameList](@EffectiveDatabaseNames);
+    SELECT @RequestedDatabaseCount=COUNT(*)
+    FROM [#DatabasePortabilityAnalysis_Requested]
+    WHERE [IsValid]=1;
+
     IF @MaxZeilen < 0 OR @Mode NOT IN ('CONSOLE','RAW','NONE')
         SELECT @Status='INVALID_PARAMETER', @Partial=1,
                @ErrorMessage=N'Ungültiger Zeilen- oder Ausgabeparameter.';
+    ELSE IF @EffectiveDatabaseNames IS NOT NULL
+         AND
+         (
+             @RequestedDatabaseCount=0
+             OR EXISTS(SELECT 1 FROM [#DatabasePortabilityAnalysis_Requested] WHERE [IsValid]=0)
+             OR EXISTS
+                (
+                    SELECT [NameValue]
+                    FROM [#DatabasePortabilityAnalysis_Requested]
+                    WHERE [IsValid]=1
+                    GROUP BY [NameValue]
+                    HAVING COUNT_BIG(*)>1
+                )
+         )
+        SELECT @Status='INVALID_PARAMETER',@Partial=1,
+               @ErrorMessage=N'@DatabaseNames enthält ungültige oder doppelte einteilige Datenbanknamen.';
 
     IF @Status = 'AVAILABLE'
     BEGIN
         DECLARE @Db sysname, @Sql nvarchar(max);
         DECLARE [dbs] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [name]
-            FROM [sys].[databases] WITH (NOLOCK)
-            WHERE [state] = 0 AND [database_id] > 4
-              AND HAS_DBACCESS([name]) = 1
-              AND (@DatabaseName IS NULL OR [name] = @DatabaseName)
-            ORDER BY [name];
+            FROM [sys].[databases] AS [d] WITH (NOLOCK)
+            WHERE [d].[state] = 0 AND [d].[database_id] > 4
+              AND HAS_DBACCESS([d].[name]) = 1
+              AND
+              (
+                  @EffectiveDatabaseNames IS NULL
+                  OR EXISTS
+                     (
+                         SELECT 1
+                         FROM [#DatabasePortabilityAnalysis_Requested] AS [r]
+                         WHERE [r].[IsValid]=1
+                           AND [r].[NameValue]=[d].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
+                     )
+              )
+            ORDER BY [d].[name];
         OPEN [dbs]; FETCH NEXT FROM [dbs] INTO @Db;
         WHILE @@FETCH_STATUS = 0
         BEGIN
@@ -88,8 +129,23 @@ FROM ' + QUOTENAME(@Db) + N'.[sys].[dm_db_uncontained_entities];';
             FETCH NEXT FROM [dbs] INTO @Db;
         END;
         CLOSE [dbs]; DEALLOCATE [dbs];
-        IF @DatabaseName IS NOT NULL AND NOT EXISTS(SELECT 1 FROM [sys].[databases] WITH (NOLOCK) WHERE [name]=@DatabaseName)
-            SELECT @Status='NOT_FOUND', @Partial=1, @ErrorMessage=N'Datenbank nicht gefunden.';
+        IF @EffectiveDatabaseNames IS NOT NULL
+            SELECT @UnavailableDatabaseCount=COUNT(*)
+            FROM [#DatabasePortabilityAnalysis_Requested] AS [r]
+            WHERE [r].[IsValid]=1
+              AND NOT EXISTS
+                  (
+                      SELECT 1
+                      FROM [sys].[databases] AS [d] WITH (NOLOCK)
+                      WHERE [d].[state]=0
+                        AND [d].[database_id]>4
+                        AND HAS_DBACCESS([d].[name])=1
+                        AND [d].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[r].[NameValue]
+                  );
+        IF @UnavailableDatabaseCount=@RequestedDatabaseCount AND @RequestedDatabaseCount>0
+            SELECT @Status='NOT_FOUND', @Partial=1, @ErrorMessage=N'Keine angeforderte Benutzerdatenbank ist online und sichtbar.';
+        ELSE IF @UnavailableDatabaseCount>0
+            SELECT @Status='AVAILABLE_LIMITED',@Partial=1,@ErrorMessage=N'Mindestens eine angeforderte Benutzerdatenbank ist nicht online oder nicht sichtbar.';
         ELSE IF NOT EXISTS(SELECT 1 FROM [#DatabasePortabilityAnalysis_Portability])
             SET @Status='AVAILABLE_EMPTY';
         ELSE IF @Partial=1 SET @Status='AVAILABLE_LIMITED';
