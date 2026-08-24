@@ -43,7 +43,7 @@ BEGIN
    INSERT [#CurrentCursorAnalysis_Cursors] SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END) [session_id],[cursor_id],[name],[properties],[creation_time],[is_open],[fetch_status],[worker_time],[reads],[writes],[dormant_duration],CASE WHEN [is_open]=1 AND ([worker_time]>0 OR [reads]>0 OR [writes]>0) THEN 'RESOURCE_CONTEXT' WHEN [dormant_duration]>60000 THEN 'DORMANT_CONTEXT' ELSE 'INVENTORY_ONLY' END FROM [sys].[dm_exec_cursors](@TargetSessionId) ORDER BY [worker_time] DESC,[reads] DESC,[cursor_id];
    SET @Status=CASE WHEN EXISTS(SELECT 1 FROM [#CurrentCursorAnalysis_Cursors]) THEN 'AVAILABLE' ELSE 'AVAILABLE_EMPTY' END;
  END TRY BEGIN CATCH SELECT @Status='SOURCE_UNAVAILABLE',@Partial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(); END CATCH;
- IF @JsonErzeugen=1 SELECT @Json=(SELECT * FROM [#CurrentCursorAnalysis_Cursors] ORDER BY [WorkerTime] DESC,[CursorId] FOR JSON PATH);
+ IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT * FROM [#CurrentCursorAnalysis_Cursors] ORDER BY [WorkerTime] DESC,[CursorId] FOR JSON PATH),N'[]');
  IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],@TargetSessionId [SessionId],COUNT_BIG(*) [CursorCount],@ErrorMessage [ErrorMessage] FROM [#CurrentCursorAnalysis_Cursors]; IF @IncludeCursorDetails=1 SELECT * FROM [#CurrentCursorAnalysis_Cursors] ORDER BY [WorkerTime] DESC,[CursorId]; END;
  IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
  IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#CurrentCursorAnalysis_Cursors',@TargetTable=@TableTarget,@ThrowOnError=1;

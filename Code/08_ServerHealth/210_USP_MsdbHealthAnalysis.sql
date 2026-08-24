@@ -74,7 +74,7 @@ BEGIN
         END; CLOSE [d]; DEALLOCATE [d];
         IF @Partial=1 SET @Status='AVAILABLE_LIMITED';
     END;
-    IF @JsonErzeugen=1 SELECT @Json=(SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area] FOR JSON PATH);
+    IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area] FOR JSON PATH),N'[]');
     IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],COUNT_BIG(*) [EvidenceRows],@ErrorMessage [ErrorMessage] FROM [#MsdbHealthAnalysis_Health]; SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area]; END;
     IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
     IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#MsdbHealthAnalysis_Health',@TargetTable=@TableTarget,@ThrowOnError=1;
