@@ -34,13 +34,13 @@ ersten Wiederherstellung interner Systemdatenbank-Indizes annehmen können.
 ## Blocking interaktiv untersuchen
 
 ```powershell
-$password = Read-Host 'Temporäres SA-Passwort' -AsSecureString
+$saCredential = Read-Host 'Temporäres SA-Passwort' -AsSecureString
 $example = & ./TestLab/Start-AnalyzeExample.ps1 `
   -Example BLOCKING-001 `
   -Version 2022 `
   -Provider podman `
   -Mode Interactive `
-  -SaPassword $password
+  -SaPassword $saCredential
 $example
 ```
 

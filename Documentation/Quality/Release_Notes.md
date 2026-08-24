@@ -5,14 +5,14 @@
 | Merkmal | Stand |
 |---|---|
 | Frameworkversion | `1.1.0-special.19` |
-| Dokumentationsstand | 23. Juli 2026 |
+| Dokumentationsstand | 24. August 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Bestand umfasst 165 inventarisierte Objekte:
+Der aktuelle Bestand umfasst 173 inventarisierte Objekte:
 
-- 97 öffentliche Procedures;
+- 104 öffentliche Procedures;
 - acht Views;
-- 27 Table-Valued Functions;
+- 28 Table-Valued Functions;
 - 16 interne Procedures;
 - 17 Tabellen.
 
@@ -263,7 +263,7 @@ Der Einstieg beginnt bei Symptom und Ziel:
 - [Hier beginnen](../Analysis_Guides/Start_Here.md)
 - [Analysis-Navigator-Vertrag](../Reference/Analysis_Navigator.md)
 - [Runbooks](../Analysis_Guides/Runbooks/README.md)
-- [97 Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
+- [104 Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
 - [vollständige Objektreferenz](../Reference/Object_Reference.md)
 
 Anwenderdokumentation beschreibt ausschließlich Nutzung, Architektur, Laufzeitverträge, Betrieb, Qualität und Komponenten.

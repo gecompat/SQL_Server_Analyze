@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 99 Procedures<br>
+**Strukturelle Abdeckung:** 104 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:

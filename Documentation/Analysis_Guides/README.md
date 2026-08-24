@@ -1,7 +1,7 @@
 # Analysehandbuch für SQL_Server_Analyze
 
-**Stand:** 23. Juli 2026
-**Geltungsbereich:** 97 öffentliche Procedures
+**Stand:** 24. August 2026
+**Geltungsbereich:** 104 öffentliche Procedures
 **Zielgruppe:** Analyseanfänger, Datenbankentwickler und SQL-Server-Administratoren
 
 ## Empfohlener Einstieg
@@ -15,7 +15,7 @@
 
 Das gemeinsame [Execution-, Zeit- und Evidenzmodell](Technical_Foundations.md) gilt für alle Procedure-Seiten.
 
-Alle 97 Procedure-Seiten sind strukturell vollständig. 91 Seiten besitzen den tief geprüften Status `DEEP_REVIEWED`; die zwei eigenständig installierbaren PLAN-001-, drei optionalen SC-023- und die SQL25-001-Seite stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md), [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) und [USP_AnalysisNavigator](Procedures/USP_AnalysisNavigator.md) zeigen die unterschiedlichen Verträge von Live-Snapshot, physischem Scan, Datei-/XML-Analyse und reiner Metadatennavigation.
+Alle 104 Procedure-Seiten sind strukturell vollständig. 92 Seiten besitzen den tief geprüften Status `DEEP_REVIEWED`; die übrigen Seiten stehen auf `BASELINE`. [USP_CurrentRequests](Procedures/USP_CurrentRequests.md), [USP_IndexPhysicalStats](Procedures/USP_IndexPhysicalStats.md), [USP_ExtendedEventsReadEvents](Procedures/USP_ExtendedEventsReadEvents.md) und [USP_AnalysisNavigator](Procedures/USP_AnalysisNavigator.md) zeigen die unterschiedlichen Verträge von Live-Snapshot, physischem Scan, Datei-/XML-Analyse und reiner Metadatennavigation.
 
 ## Feste Leserichtung
 
@@ -50,17 +50,17 @@ Alle 97 Procedure-Seiten sind strukturell vollständig. 91 Seiten besitzen den t
 | Bereich | Dokument | Procedures |
 |---|---|---:|
 | Common und Navigation | [01_Common.md](01_Common.md) | 5 |
-| Current State | [02_Current_State.md](02_Current_State.md) | 11 |
+| Current State | [02_Current_State.md](02_Current_State.md) | 12 |
 | Object und Index | [03_Object_Index.md](03_Object_Index.md) | 12 |
 | Plan Cache | [04_Plan_Cache.md](04_Plan_Cache.md) | 8 |
-| Query Store | [05_Query_Store.md](05_Query_Store.md) | 9 |
+| Query Store | [05_Query_Store.md](05_Query_Store.md) | 11 |
 | Extended Events | [06_Extended_Events.md](06_Extended_Events.md) | 6 |
-| Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 13 |
-| Server Health | [08_Server_Health.md](08_Server_Health.md) | 19 |
+| Infrastruktur | [07_Infrastructure.md](07_Infrastructure.md) | 15 |
+| Server Health | [08_Server_Health.md](08_Server_Health.md) | 21 |
 | Versionsadaptive Spezialanalysen | [09_Version_Adaptive.md](09_Version_Adaptive.md) | 11 |
-| **Integriertes Framework gesamt** | | **93** |
+| **Integriertes Framework gesamt** | | **101** |
 
-Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher. Der vollständige Dokumentationsbestand umfasst damit 97 Procedures.
+Die zwei PLAN-001-Procedures sind zusätzlich eigenständig installierbar, gehören aber auch zum Gesamtinstaller. Die drei SC-023-Procedures bleiben vollständig optional und außerhalb von `Install_All.sql`; beide Pakete besitzen separate Architektur- und Betriebshandbücher. Der vollständige Dokumentationsbestand umfasst damit 104 Procedures.
 
 ## Schnellwahl nach Symptom
 
@@ -92,4 +92,4 @@ Kein einzelnes Resultset rechtfertigt automatisch `KILL`, DDL, Rebuild, Plan For
 
 ## Vollständigkeit
 
-Der [Objektindex](Object_Index.md) enthält alle 97 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 67 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
+Der [Objektindex](Object_Index.md) enthält alle 104 öffentlichen Procedures. Die [Objektreferenz](../Reference/Object_Reference.md) dokumentiert zusätzlich alle 69 unterstützenden Views, TVFs, internen Procedures und Tabellen. Der [Navigator-Vertrag](../Reference/Analysis_Navigator.md) erklärt die fachliche Zuordnung, Suchbegriffe, Rollen und Beziehungen.
