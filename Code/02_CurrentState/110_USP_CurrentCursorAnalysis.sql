@@ -23,9 +23,10 @@ BEGIN
  DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@TargetSessionId int=@@SPID;
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_CurrentCursorAnalysis'; PRINT N'Cursor-Details sind opt-in und auf genau eine Session sowie @MaxZeilen begrenzt.'; RETURN; END;
  DECLARE @PreviousLockTimeout int=@@LOCK_TIMEOUT,@RestoreLockTimeoutSql nvarchar(100); SET LOCK_TIMEOUT 0;
- DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
+ DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
  IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
- IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'cursors',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; SET @Mode='NONE'; END;
+ IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'cursors',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; END;
+ IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
  CREATE TABLE [#CurrentCursorAnalysis_Cursors]([SessionId]int,[CursorId]int,[CursorName]nvarchar(256),[Properties]nvarchar(256),[CreationTime]datetime,[IsOpen]bit,[FetchStatus]int,[WorkerTime]bigint,[Reads]bigint,[Writes]bigint,[DormantDuration]bigint,[FindingContext]varchar(40));
  IF NULLIF(LTRIM(RTRIM(COALESCE(@SessionIds,N''))),N'') IS NOT NULL
  BEGIN
@@ -46,6 +47,7 @@ BEGIN
  IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT * FROM [#CurrentCursorAnalysis_Cursors] ORDER BY [WorkerTime] DESC,[CursorId] FOR JSON PATH),N'[]');
  IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],@TargetSessionId [SessionId],COUNT_BIG(*) [CursorCount],@ErrorMessage [ErrorMessage] FROM [#CurrentCursorAnalysis_Cursors]; IF @IncludeCursorDetails=1 SELECT * FROM [#CurrentCursorAnalysis_Cursors] ORDER BY [WorkerTime] DESC,[CursorId]; END;
  IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
+ IF @ConsoleResultRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#CurrentCursorAnalysis_Cursors',@ResultLabel=N'cursors',@EmptyMessage=N'Keine sichtbaren Cursor im gewählten Scope';
  IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#CurrentCursorAnalysis_Cursors',@TargetTable=@TableTarget,@ThrowOnError=1;
  SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';'; EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql; SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
 END;
