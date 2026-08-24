@@ -35,7 +35,7 @@ Die Zielarchitektur ist in `Documentation/Architecture/SQL_Server_Lab_Example_In
 
 `SQL_Server_Lab` verantwortet ausschließlich die allgemeine SQL-Server-Testumgebung, Provider, Ressourcen, Readiness, State und Cleanup. `SQL_Server_Analyze` verantwortet Beispielkatalog, Auswahl, Frameworkinstallation, synthetische Fixtures, Workloads, interaktive Sessionabläufe, Analyzer-Aufrufe, Assertions, projektspezifisches Cleanup und Anleitungen.
 
-Die Planungsphase ist dokumentiert, die Realisierung ist noch nicht begonnen. Der erste vollständige Vertical Slice ist `BLOCKING-001` mit getrenntem Interactive- und Verify-Modus für Docker, Podman sowie SQL Server 2019, 2022 und 2025.
+Die Realisierung bleibt insgesamt `PARTIAL_PRODUCT_FUNCTION`, der erste Slice `BLOCKING-001` ist jedoch vollständig abgenommen. Katalog, JSON-Schema, statischer Validator sowie Interactive-/Verify-Runner sind implementiert. Native Verify-Läufe haben unter Docker SQL Server 2019, 2022 und 2025 sowie unter Podman SQL Server 2022 jeweils Frameworkinstallation, Blocking-Invariante, Analyzer und Cleanup bestanden. Der getrennte Interactive-Pfad wurde unter Podman 2022 bis zur Rückgabe der Session-, Analyse- und Cleanup-Skripte geprüft und anschließend scopegebunden bereinigt. Sechs weitere Beispiele sind katalogisiert, aber noch nicht als vollständige Runtime-Slices freigegeben.
 
 Vor jeder möglichen Änderung an `SQL_Server_Lab` muss eine konkrete Funktionslücke mit Schnittstelle, Auswirkungen und Begründung vorgelegt und ausdrücklich freigegeben werden. Ohne Freigabe wird ausschließlich in `SQL_Server_Analyze` gearbeitet.
 
@@ -44,10 +44,10 @@ Interne Verarbeitungsreihenfolge:
 1. vorhandene Beispiele, Fixtures und Special-Case-Fälle inventarisieren;
 2. Beispielkatalog und JSON-Schema festlegen;
 3. statischen Katalogvalidator implementieren;
-4. `BLOCKING-001` vollständig umsetzen;
-5. native Docker- und Podman-Läufe auf 2019, 2022 und 2025 durchführen;
-6. bestätigte Lab-Gaps nur nach ausdrücklicher Freigabe bearbeiten;
-7. weitere Beispiele in kleinen fachlichen Wellen übernehmen.
+4. `BLOCKING-001` vollständig umsetzen – abgeschlossen;
+5. Docker auf 2019, 2022 und 2025 sowie Podman auf mindestens einer unterstützten Version nativ abnehmen – abgeschlossen;
+6. bestätigte Lab-Gaps nur nach ausdrücklicher Freigabe bearbeiten – Podman-Windows-Hostauflösung im Lab ergänzt;
+7. die sechs weiteren katalogisierten Beispiele in kleinen fachlichen Wellen als Runtime-Slices übernehmen.
 
 ## 5. Priorisierte funktionale Erweiterungen
 
@@ -65,7 +65,7 @@ Interne Verarbeitungsreihenfolge:
 
 ### Priorität 2 – SSIS-001
 
-Vor der T-SQL-Implementierung ist Phase 0 abzuschließen. Festzulegen sind insbesondere Resultsetnamen, Schemaversionen, unterstützte DTSX-Versionen, Expression-Grenzen, Komponentenprofile, Statuscodes, Lookup-Prüflimits, Datenschutzgrenzen, Installerstruktur und die Abgrenzung eines optionalen Datei- oder ISPAC-Adapters.
+Phase 0 ist in `Documentation/Architecture/SSIS_001_Phase0_Public_Contract.md` abgeschlossen. Resultsetnamen, Schemaversionen, DTSX-Version 2, Expression-Grenzen, Komponentenprofile, Statuscodes, Lookup-Prüflimits, Datenschutzgrenzen, Installerstruktur und die separate Datei-/ISPAC-Adaptergrenze sind verbindlich festgelegt. Phase 1, der statische Parser, ist noch nicht implementiert.
 
 ## 6. Ausstehende externe und plattformspezifische Evidenz
 
@@ -85,7 +85,7 @@ Separat nachzuweisen sind Page Details, Event-XML, Contention-Sampling, Buffer-P
 
 ### COLL-001 – Collation-Portabilität
 
-Vor einer Erweiterung der freigegebenen Plattformgrenze sind sämtliche Collation-Grenzen zu inventarisieren und fachlich zu klassifizieren. Danach ist eine gemischte Laufzeitmatrix auf SQL Server 2019, 2022 und 2025 erforderlich. Bis dahin bleibt `SQL_Latin1_General_CP1_CS_AS` die garantierte Testgrenze.
+Die Boundary-Klassen sind in `Metadata/Quality/Collation_Boundary_Inventory.csv` inventarisiert und klassifiziert. Per-Datei-Härtung und die gemischte Laufzeitmatrix auf SQL Server 2019, 2022 und 2025 bleiben offen. Bis dahin bleibt `SQL_Latin1_General_CP1_CS_AS` die garantierte Testgrenze.
 
 ### SC-023-Erweiterung
 

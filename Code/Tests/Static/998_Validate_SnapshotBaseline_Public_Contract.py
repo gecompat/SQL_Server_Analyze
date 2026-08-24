@@ -306,6 +306,22 @@ def combined_text(installer_path: pathlib.Path, includes: list[pathlib.Path]) ->
     return "\n".join(parts)
 
 
+def repository_relative(path: pathlib.Path, repository_root: pathlib.Path) -> str:
+    """Return a stable relative path even when Windows uses an 8.3 root alias."""
+    current = path
+    parts: list[str] = []
+    while True:
+        try:
+            if current.samefile(repository_root):
+                return pathlib.PurePosixPath(*reversed(parts)).as_posix()
+        except OSError:
+            pass
+        if current.parent == current:
+            raise ValueError(f"{path!s} is outside repository root {repository_root!s}")
+        parts.append(current.name)
+        current = current.parent
+
+
 def validate_repository(repository_root: pathlib.Path) -> list[str]:
     errors: list[str] = []
     framework_path = repository_root / FRAMEWORK_INSTALLER
@@ -364,10 +380,10 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
         errors.append("INSTALLER_CLOSURES_OVERLAP")
 
     observed_framework_includes = tuple(
-        path.relative_to(repository_root).as_posix() for path in framework_includes
+        repository_relative(path, repository_root) for path in framework_includes
     )
     observed_target_includes = tuple(
-        path.relative_to(repository_root).as_posix() for path in target_includes
+        repository_relative(path, repository_root) for path in target_includes
     )
     if observed_framework_includes != EXPECTED_FRAMEWORK_INCLUDES:
         errors.append("FRAMEWORK_INSTALLER_CLOSURE_OR_ORDER")
@@ -387,13 +403,19 @@ def validate_repository(repository_root: pathlib.Path) -> list[str]:
     ):
         errors.append("OPTIONAL_PACKAGE_PRESENT_IN_INSTALL_ALL")
 
-    snapshot_sources = set(source_root.rglob("*.sql")) if source_root.is_dir() else set()
+    snapshot_sources = (
+        {repository_relative(path, repository_root) for path in source_root.rglob("*.sql")}
+        if source_root.is_dir()
+        else set()
+    )
     if not snapshot_sources:
         errors.append("SNAPSHOT_SOURCE_SET_MISSING")
     included_snapshot_sources = {
-        path
+        relative
         for path in framework_includes + target_includes
-        if source_root in path.parents
+        if (relative := repository_relative(path, repository_root)).startswith(
+            "Code/10_SnapshotBaseline/"
+        )
     }
     if snapshot_sources - included_snapshot_sources:
         errors.append("SOURCE_NOT_IN_INSTALLER_CLOSURE")

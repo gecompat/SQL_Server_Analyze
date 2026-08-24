@@ -369,7 +369,7 @@ BEGIN
     (
           OPERATION_MODE = READ_WRITE
         , QUERY_CAPTURE_MODE = ALL
-        , DATA_FLUSH_INTERVAL_SECONDS = 1
+        , DATA_FLUSH_INTERVAL_SECONDS = 60
         , INTERVAL_LENGTH_MINUTES = 1
         , MAX_STORAGE_SIZE_MB = 64
         , CLEANUP_POLICY = (STALE_QUERY_THRESHOLD_DAYS = 1)
@@ -492,10 +492,13 @@ BEGIN
     IF @ProductMajorVersion < 16
         THROW 55303, N'LAB-PLAN-005 requires SQL Server 2022 or newer.', 1;
 
-    IF @ProductMajorVersion >= 17
-        ALTER DATABASE [Lab001Wave3] SET COMPATIBILITY_LEVEL = 170;
-    ELSE
-        ALTER DATABASE [Lab001Wave3] SET COMPATIBILITY_LEVEL = 160;
+    DECLARE @CompatibilitySql nvarchar(max) =
+        CASE
+            WHEN @ProductMajorVersion >= 17
+                THEN N'ALTER DATABASE [Lab001Wave3] SET COMPATIBILITY_LEVEL = 170;'
+            ELSE N'ALTER DATABASE [Lab001Wave3] SET COMPATIBILITY_LEVEL = 160;'
+        END;
+    EXEC [sys].[sp_executesql] @CompatibilitySql;
 
     EXEC [Lab001Wave3].[sys].[sp_executesql]
         N'

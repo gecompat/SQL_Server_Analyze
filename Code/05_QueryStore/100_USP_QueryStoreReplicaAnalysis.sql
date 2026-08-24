@@ -344,7 +344,7 @@ SELECT TOP(1)
        @pWaitStatsCaptureMode=[wait_stats_capture_mode]
 FROM [sys].[database_query_store_options] WITH (NOLOCK);
 
-SELECT @pCurrentIsPrimaryReplica=TRY_CONVERT(int,[sys].[fn_hadr_is_primary_replica](DB_NAME()));
+SELECT @pCurrentIsPrimaryReplica=TRY_CONVERT(int,[sys].[fn_hadr_is_primary_replica](@pDatabaseName));
 
 SELECT @pHasReplicaCatalog=CONVERT(bit,CASE WHEN EXISTS
 (
@@ -393,7 +393,8 @@ WHERE [s].[name]=N''sys'' AND [o].[name]=N''query_store_plan_forcing_locations''
                 BEGIN TRY
                     EXEC [sys].[sp_executesql]
                           @ProbeSql
-                        , N'@pActualState smallint OUTPUT,@pActualStateDesc nvarchar(60) OUTPUT,@pWaitStatsCaptureMode smallint OUTPUT,@pCurrentIsPrimaryReplica int OUTPUT,@pHasReplicaCatalog bit OUTPUT,@pReplicaCatalogSchemaValid bit OUTPUT,@pRuntimeReplicaColumnValid bit OUTPUT,@pWaitReplicaColumnValid bit OUTPUT,@pHasForcingLocations bit OUTPUT,@pForcingSchemaValid bit OUTPUT'
+                        , N'@pDatabaseName sysname,@pActualState smallint OUTPUT,@pActualStateDesc nvarchar(60) OUTPUT,@pWaitStatsCaptureMode smallint OUTPUT,@pCurrentIsPrimaryReplica int OUTPUT,@pHasReplicaCatalog bit OUTPUT,@pReplicaCatalogSchemaValid bit OUTPUT,@pRuntimeReplicaColumnValid bit OUTPUT,@pWaitReplicaColumnValid bit OUTPUT,@pHasForcingLocations bit OUTPUT,@pForcingSchemaValid bit OUTPUT'
+                        , @pDatabaseName=@DatabaseName
                         , @pActualState=@ActualState OUTPUT
                         , @pActualStateDesc=@ActualStateDesc OUTPUT
                         , @pWaitStatsCaptureMode=@WaitStatsCaptureMode OUTPUT

@@ -5,52 +5,34 @@ on:
     paths:
       - '.github/workflows/documentation-validation.yml'
       - 'AGENTS.md'
+      - '.ai/**'
       - 'README.md'
-      - 'AI_Metadata/CONTINUATION_GUIDE.md'
-      - 'AI_Metadata/PROJECT_CONTEXT.md'
+      - 'AI_Metadata/**/*.md'
       - 'Code/**/*.sql'
       - 'Code/Install/*.ps1'
-      - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
-      - 'Code/Tests/Static/905_Validate_Analysis_Navigator.py'
-      - 'Code/Tests/Static/915_Validate_Documentation_Style.py'
-      - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
-      - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
+      - 'Code/Tests/Static/**'
       - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
-      - 'AI_Metadata/Internal_Documentation/**/*.md'
-      - 'Metadata/Inventory/Objects.csv'
-      - 'Metadata/Inventory/Parameters.csv'
-      - 'Metadata/Inventory/ResultSets.csv'
-      - 'Metadata/Quality/CI_Test_Policy.csv'
-      - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
+      - 'Metadata/**'
   push:
     branches:
       - main
     paths:
       - '.github/workflows/documentation-validation.yml'
       - 'AGENTS.md'
+      - '.ai/**'
       - 'README.md'
-      - 'AI_Metadata/CONTINUATION_GUIDE.md'
-      - 'AI_Metadata/PROJECT_CONTEXT.md'
+      - 'AI_Metadata/**/*.md'
       - 'Code/**/*.sql'
       - 'Code/Install/*.ps1'
-      - 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1'
-      - 'Code/Tests/Static/905_Validate_Analysis_Navigator.py'
-      - 'Code/Tests/Static/915_Validate_Documentation_Style.py'
-      - 'Code/Tests/Static/940_Validate_Wait_Type_Catalog.py'
-      - 'Code/Tests/Static/980_Validate_External_Documentation_Links.py'
+      - 'Code/Tests/Static/**'
       - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
       - 'Documentation/**/*.md'
-      - 'AI_Metadata/Internal_Documentation/**/*.md'
-      - 'Metadata/Inventory/Objects.csv'
-      - 'Metadata/Inventory/Parameters.csv'
-      - 'Metadata/Inventory/ResultSets.csv'
-      - 'Metadata/Quality/CI_Test_Policy.csv'
-      - 'Metadata/Quality/Wait_Type_Curation_Evidence.json'
+      - 'Metadata/**'
   workflow_dispatch:
 
 permissions:
@@ -132,36 +114,11 @@ jobs:
             echo "- Full contract suite: $manual_full"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Validate documentation style
-        if: steps.impact.outputs.docs == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/915_Validate_Documentation_Style.py --repository-root . --self-test
-          python3 ./Code/Tests/Static/915_Validate_Documentation_Style.py --repository-root .
-
-      - name: Validate Analysis Navigator contract
-        if: steps.impact.outputs.navigator == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/905_Validate_Analysis_Navigator.py --repository-root . --self-test
-          python3 ./Code/Tests/Static/905_Validate_Analysis_Navigator.py --repository-root .
-
-      - name: Validate Wait Type catalog
-        if: steps.impact.outputs.waits == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 ./Code/Tests/Static/940_Validate_Wait_Type_Catalog.py --repository-root . --self-test
-          python3 ./Code/Tests/Static/940_Validate_Wait_Type_Catalog.py --repository-root .
-
-      - name: Validate procedure documentation
-        if: steps.impact.outputs.procedures == 'true'
+      - name: Run repository static contract suite
         shell: pwsh
         run: |
           $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
-          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 *>&1 |
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 *>&1 |
               Tee-Object -FilePath $logPath
           exit $LASTEXITCODE
 
@@ -190,35 +147,6 @@ jobs:
             --repository-root . \
             --self-test \
             --check-network
-
-      - name: Run full documentation and evidence contract suite
-        if: steps.impact.outputs.manual_full == 'true'
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          self_test_validators=(
-            920_Validate_SQL_Server_2025_Regex.py
-            989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py
-            991_Validate_SQL25_TempDB_Resource_Governance_Contract.py
-            992_Validate_SQL25_JSON_Index_Contract.py
-            993_Validate_Partial_Implementation_Status_and_CurrentState_Snapshot.py
-            994_Validate_SQL25_Vector_Index_Contract.py
-            995_Validate_Wave1_Contracts.py
-            996_Validate_Wave2_Contracts.py
-            997_Validate_ExecutionPlanAnalysis_Public_Contract.py
-            998_Validate_SnapshotBaseline_Public_Contract.py
-            999_Validate_Runtime001_Contracts.py
-          )
-          for validator in "${self_test_validators[@]}"; do
-            python3 "./Code/Tests/Static/$validator" --repository-root . --self-test
-            python3 "./Code/Tests/Static/$validator" --repository-root .
-          done
-
-          python3 ./Code/Tests/Static/950_Validate_Nonblocking_Metadata.py
-          python3 ./Code/Tests/Static/960_Validate_Complete_P1_Evidence.py --repository-root .
-          python3 ./Code/Tests/Static/970_Validate_Complete_P2_Evidence.py --repository-root .
-          python3 ./Code/Tests/Static/990_Validate_Release_Evidence.py --repository-root .
 
       - name: Upload failed documentation log
         if: failure()
