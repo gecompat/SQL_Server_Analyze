@@ -25,6 +25,7 @@ Die Foundation ergänzt die projektspezifischen Regeln, ersetzt sie aber nicht. 
 - [`AI_Metadata/PROJECT_CONTEXT.md`](AI_Metadata/PROJECT_CONTEXT.md) für feste Produkt- und Datenschutzverträge sowie den projektspezifischen GitHub-Veröffentlichungsweg;
 - [`AI_Metadata/CONTINUATION_GUIDE.md`](AI_Metadata/CONTINUATION_GUIDE.md) für die verbindliche Fortsetzungs-, Änderungs- und Validierungsreihenfolge;
 - [`AI_Metadata/ARCHITECTURE_DECISIONS.md`](AI_Metadata/ARCHITECTURE_DECISIONS.md) für dauerhafte Architekturentscheidungen;
+- [`AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md`](AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md) für dauerhafte Artefaktkennungen, Arbeitselemente, Wellen und deren Vergabe;
 - die nachfolgend direkt referenzierten Qualitätsrichtlinien für Dokumentationsstil und CI-Testauswahl.
 
 Historische, als Entwurf gekennzeichnete oder ausdrücklich abgelöste Inhalte sind keine aktive Governance.
