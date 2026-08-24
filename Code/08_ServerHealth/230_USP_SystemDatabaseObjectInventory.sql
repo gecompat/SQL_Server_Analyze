@@ -14,9 +14,10 @@ BEGIN
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_SystemDatabaseObjectInventory'; PRINT N'Inventarisiert sichtbare Benutzerobjekte in master, model und msdb; keine DDL-Aktion.'; RETURN; END;
  DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
  SET LOCK_TIMEOUT 0;
- DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
+ DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
  IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
- IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'systemDatabaseObjects',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; SET @Mode='NONE'; END;
+ IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'systemDatabaseObjects',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; END;
+ IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
  CREATE TABLE [#SystemDatabaseObjectInventory_Objects]([DatabaseName]sysname,[SchemaName]sysname,[ObjectName]sysname,[ObjectType]nvarchar(60),[CreateDate]datetime,[ModifyDate]datetime,[StatusCode]varchar(40),[EvidenceLimit]nvarchar(1000));
  IF @MaxZeilen<0 OR @Mode NOT IN('CONSOLE','RAW','NONE') SELECT @Status='INVALID_PARAMETER',@Partial=1,@ErrorMessage=N'Ungültiger Parameter.';
  IF @Status='AVAILABLE' BEGIN
@@ -29,6 +30,7 @@ BEGIN
  IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#SystemDatabaseObjectInventory_Objects] ORDER BY [DatabaseName],[SchemaName],[ObjectName] FOR JSON PATH),N'[]');
  IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],COUNT_BIG(*) [ObjectCount],@ErrorMessage [ErrorMessage] FROM [#SystemDatabaseObjectInventory_Objects]; SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#SystemDatabaseObjectInventory_Objects] ORDER BY [DatabaseName],[SchemaName],[ObjectName]; END;
  IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
+ IF @ConsoleResultRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#SystemDatabaseObjectInventory_Objects',@ResultLabel=N'systemDatabaseObjects',@EmptyMessage=N'Keine sichtbaren Benutzerobjekte in Systemdatenbanken';
  IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#SystemDatabaseObjectInventory_Objects',@TargetTable=@TableTarget,@ThrowOnError=1;
  SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
  SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';'; EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;

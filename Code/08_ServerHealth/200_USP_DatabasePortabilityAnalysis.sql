@@ -31,9 +31,10 @@ BEGIN
         RETURN;
     END;
     DECLARE @PreviousLockTimeout int=@@LOCK_TIMEOUT,@RestoreLockTimeoutSql nvarchar(100); SET LOCK_TIMEOUT 0;
-    DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
+    DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'portability',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; SET @Mode='NONE'; END;
+    IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'portability',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; END;
+    IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
 
     CREATE TABLE [#DatabasePortabilityAnalysis_Portability]
     (
@@ -162,6 +163,7 @@ FROM ' + QUOTENAME(@Db) + N'.[sys].[dm_db_uncontained_entities];';
         FROM [#DatabasePortabilityAnalysis_Portability] ORDER BY [DatabaseName],[EvidenceType],[FeatureName];
     END;
     IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
+    IF @ConsoleResultRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#DatabasePortabilityAnalysis_Portability',@ResultLabel=N'portability',@EmptyMessage=N'Keine Portabilitätsevidenz im sichtbaren Scope';
     IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#DatabasePortabilityAnalysis_Portability',@TargetTable=@TableTarget,@ThrowOnError=1;
     SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';'; EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql; SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
 END;

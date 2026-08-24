@@ -22,9 +22,10 @@ BEGIN
     IF @Hilfe=1 BEGIN PRINT N'monitor.USP_MsdbHealthAnalysis'; PRINT N'Inventarisiert msdb-Größe und sichtbare Historien; führt keine Bereinigung aus.'; RETURN; END;
     DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
     SET LOCK_TIMEOUT 0;
-    DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
+    DECLARE @TableResultRequested bit=CASE WHEN @Mode='TABLE' THEN 1 ELSE 0 END,@ConsoleResultRequested bit=CASE WHEN @Mode='CONSOLE' THEN 1 ELSE 0 END,@TableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'msdbHealth',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; SET @Mode='NONE'; END;
+    IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'msdbHealth',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; END;
+    IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
     CREATE TABLE [#MsdbHealthAnalysis_Health]
     (
           [Area] varchar(40) NOT NULL,[SourceObject] nvarchar(256) NOT NULL
@@ -77,6 +78,7 @@ BEGIN
     IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area] FOR JSON PATH),N'[]');
     IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],COUNT_BIG(*) [EvidenceRows],@ErrorMessage [ErrorMessage] FROM [#MsdbHealthAnalysis_Health]; SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area]; END;
     IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
+    IF @ConsoleResultRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#MsdbHealthAnalysis_Health',@ResultLabel=N'msdbHealth',@EmptyMessage=N'Keine msdb-Health-Evidenz im sichtbaren Scope';
     IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#MsdbHealthAnalysis_Health',@TargetTable=@TableTarget,@ThrowOnError=1;
     SELECT @StatusCodeOut=@Status,@IsPartialOut=@Partial,@ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
     SET @RestoreLockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@PreviousLockTimeout)+N';';
