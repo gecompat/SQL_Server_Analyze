@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Datei        : 187_Table_Output_Runtime_Contract.sql
-Zweck        : Prüft Strukturadaption, typisierten Insert, Append, kontrollierte
-               Schemaabweichung und die öffentliche TABLE-Ausgabe ausschließlich
+Zweck        : Prüft Strukturadaption, Collationübernahme, typisierten Insert,
+               Append, kontrollierte Schemaabweichung und die öffentliche TABLE-Ausgabe ausschließlich
                mit synthetischen lokalen #Temp-Tabellen.
 Datenschutz  : Keine realen Laufzeitwerte werden persistiert oder ausgegeben.
 ===============================================================================
@@ -76,8 +76,9 @@ OR NOT EXISTS
     WHERE [t].[name] LIKE N'#TableOutputRuntimeContract_AdaptTarget%'
       AND [c].[name]=N'Name'
       AND [c].[max_length]=80
+      AND [c].[collation_name]=N'Latin1_General_100_CI_AS'
 )
-    INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'NATIVE_COLUMN_SHAPE',N'Beliebige Dummy-Spalte oder native int-/nvarchar-Struktur stimmt nach der Adaption nicht.');
+    INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'NATIVE_COLUMN_SHAPE',N'Beliebige Dummy-Spalte oder native int-/nvarchar-Struktur einschließlich Collation stimmt nach der Adaption nicht.');
 
 IF NOT EXISTS
 (
@@ -203,6 +204,38 @@ IF @Status<>'TARGET_SCHEMA_MISMATCH'
             AND [c].[name]=N'AnyTextColumn'
       )
     INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'NONEMPTY_DUMMY_SAFE',N'Eine gefüllte Ein-Spalten-Tabelle wurde nicht kontrolliert und unverändert abgelehnt.');
+
+CREATE TABLE [#TableOutputRuntimeContract_CollationMismatch]
+(
+      [Id] int NOT NULL
+    , [Name] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [Amount] decimal(19,4) NULL
+    , [CapturedUtc] datetime2(3) NOT NULL
+);
+INSERT [#TableOutputRuntimeContract_CollationMismatch]
+VALUES(99,N'keep',NULL,CONVERT(datetime2(3),'2026-01-03T00:00:00.000'));
+SET @Rows=NULL;SET @Status=NULL;SET @ErrorNumber=NULL;SET @ErrorMessage=NULL;
+EXEC [monitor].[InternalWriteResultTable]
+      @SourceTable=N'#TableOutputRuntimeContract_Source'
+    , @TargetTable=N'#TableOutputRuntimeContract_CollationMismatch'
+    , @InsertedRows=@Rows OUTPUT
+    , @StatusCode=@Status OUTPUT
+    , @ErrorNumber=@ErrorNumber OUTPUT
+    , @ErrorMessage=@ErrorMessage OUTPUT;
+
+IF @Status<>'TARGET_SCHEMA_MISMATCH'
+   OR (SELECT COUNT_BIG(*) FROM [#TableOutputRuntimeContract_CollationMismatch])<>1
+   OR NOT EXISTS
+      (
+          SELECT 1
+          FROM [tempdb].[sys].[columns] AS [c] WITH (NOLOCK)
+          JOIN [tempdb].[sys].[tables] AS [t] WITH (NOLOCK)
+            ON [t].[object_id]=[c].[object_id]
+          WHERE [t].[name] LIKE N'#TableOutputRuntimeContract_CollationMismatch%'
+            AND [c].[name]=N'Name'
+            AND [c].[collation_name]=N'SQL_Latin1_General_CP1_CS_AS'
+      )
+    INSERT [#TableOutputRuntimeContract_Failure] VALUES(N'COLLATION_MISMATCH_SAFE',N'Eine gefüllte Zieltabelle mit abweichender Collation wurde nicht kontrolliert und unverändert abgelehnt.');
 
 SET @Status=NULL;SET @ErrorMessage=NULL;
 EXEC [monitor].[InternalWriteResultTable]

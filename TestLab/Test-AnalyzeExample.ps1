@@ -2,13 +2,16 @@
 param(
     [switch] $RunRuntime,
 
+    [ValidatePattern('^[A-Z][A-Z0-9-]{2,39}$')]
+    [string] $Example = 'BLOCKING-001',
+
     [ValidateSet('2019', '2022', '2025')]
     [string] $Version = '2022',
 
     [ValidateSet('docker', 'podman')]
     [string] $Provider = 'docker',
 
-    [string] $StateRoot = 'C:\rep\tmp\SQL_Server_Analyze\lab-state',
+    [string] $StateRoot,
 
     [string] $LabRepositoryRoot
 )
@@ -31,13 +34,13 @@ if ($duplicateIds.Count -gt 0) {
 }
 
 $repositoryRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-foreach ($example in $catalog.examples) {
+foreach ($definition in $catalog.examples) {
     $scenarioRoot = Join-Path `
         $repositoryRoot `
-        "Lab/Scenarios/Performance/$($example.scenarioId)"
+        "Lab/Scenarios/Performance/$($definition.scenarioId)"
     foreach ($name in @('scenario.json', 'runbook.json')) {
         if (-not (Test-Path -LiteralPath (Join-Path $scenarioRoot $name) -PathType Leaf)) {
-            throw "Kanonischer Szenariovertrag fehlt: $($example.scenarioId)/$name"
+            throw "Kanonischer Szenariovertrag fehlt: $($definition.scenarioId)/$name"
         }
     }
     $runbook = Get-Content `
@@ -45,11 +48,21 @@ foreach ($example in $catalog.examples) {
         -Raw `
         -Encoding utf8 | ConvertFrom-Json -Depth 20
     if (
-        $runbook.PrimaryAnalyzer -ne $example.primaryAnalyzer -or
-        $runbook.FindingCode -ne $example.findingCode -or
-        [int]$runbook.WorkerCount -ne [int]$example.workerCount
+        $runbook.PrimaryAnalyzer -ne $definition.primaryAnalyzer -or
+        $runbook.FindingCode -ne $definition.findingCode -or
+        [int]$runbook.WorkerCount -ne [int]$definition.workerCount
     ) {
-        throw "Katalog und Runbook sind für $($example.id) inkonsistent."
+        throw "Katalog und Runbook sind für $($definition.id) inkonsistent."
+    }
+
+    $documentationDirectory = if ($definition.id -eq 'BLOCKING-001') {
+        Join-Path $PSScriptRoot 'Examples/Blocking'
+    }
+    else {
+        Join-Path $PSScriptRoot "Examples/$($definition.id)"
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $documentationDirectory 'README.md') -PathType Leaf)) {
+        throw "Bedienseite fehlt für Analyze-Beispiel $($definition.id)."
     }
 }
 
@@ -57,7 +70,7 @@ Write-Host "Analyze-Beispielkatalog erfolgreich validiert: $($catalog.examples.C
 
 if ($RunRuntime) {
     & (Join-Path $PSScriptRoot 'Start-AnalyzeExample.ps1') `
-        -Example 'BLOCKING-001' `
+        -Example $Example `
         -Version $Version `
         -Provider $Provider `
         -Mode Verify `

@@ -535,10 +535,12 @@ EXEC [sys].[sp_executesql]
       END;'';
 
 DECLARE @i int = 1;
+DECLARE @GroupId int;
 WHILE @i <= 20
 BEGIN
+    SET @GroupId = CASE WHEN @i % 2 = 0 THEN 1 ELSE 97 END;
     EXEC [dbo].[LabQueryStoreProcedure]
-          @GroupId = CASE WHEN @i % 2 = 0 THEN 1 ELSE 97 END;
+          @GroupId = @GroupId;
     SET @i += 1;
 END;
 EXEC [sys].[sp_query_store_flush_db];';

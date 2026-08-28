@@ -15,7 +15,7 @@ param(
 
     [switch] $KeepOnFailure,
 
-    [string] $StateRoot = 'C:\rep\tmp\SQL_Server_Analyze\lab-state',
+    [string] $StateRoot,
 
     [string] $LabRepositoryRoot,
 
@@ -27,8 +27,14 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'AnalyzeExample.Common.ps1')
 
 $repositoryRoot = Get-AnalyzeRepositoryRoot
-$null = Assert-AnalyzePathUnderRoot -Path $repositoryRoot -AllowedRoot 'C:\rep\pu'
-$StateRoot = Assert-AnalyzePathUnderRoot -Path $StateRoot -AllowedRoot 'C:\rep\tmp'
+$workspaceRoot = Split-Path $repositoryRoot -Parent
+$null = Assert-AnalyzePathUnderRoot -Path $repositoryRoot -AllowedRoot $workspaceRoot
+$systemTempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+$localRuntimeRoot = Join-Path $systemTempRoot 'SQL_Server_Analyze'
+if ([string]::IsNullOrWhiteSpace($StateRoot)) {
+    $StateRoot = Join-Path $localRuntimeRoot 'lab-state'
+}
+$StateRoot = Assert-AnalyzePathUnderRoot -Path $StateRoot -AllowedRoot $systemTempRoot
 $labRoot = Resolve-SqlServerLabRepositoryRoot -LabRepositoryRoot $LabRepositoryRoot
 $definition = Resolve-AnalyzeExample `
     -Example $Example `
@@ -50,8 +56,8 @@ if (-not $SaPassword) {
 $originalTemp = $env:TEMP
 $originalTmp = $env:TMP
 $processTempRoot = Assert-AnalyzePathUnderRoot `
-    -Path 'C:\rep\tmp\SQL_Server_Analyze\process-temp' `
-    -AllowedRoot 'C:\rep\tmp'
+    -Path (Join-Path $localRuntimeRoot 'process-temp') `
+    -AllowedRoot $systemTempRoot
 [IO.Directory]::CreateDirectory($processTempRoot) | Out-Null
 $env:TEMP = $processTempRoot
 $env:TMP = $processTempRoot
@@ -71,8 +77,8 @@ if ($Provider -eq 'docker') {
         throw "Docker-Endpunkt für Kontext $activeDockerContext konnte nicht aufgelöst werden."
     }
     $dockerConfigRoot = Assert-AnalyzePathUnderRoot `
-        -Path 'C:\rep\cache\SQL_Server_Analyze\docker-config' `
-        -AllowedRoot 'C:\rep\cache'
+        -Path (Join-Path $localRuntimeRoot 'docker-config') `
+        -AllowedRoot $systemTempRoot
     [IO.Directory]::CreateDirectory($dockerConfigRoot) | Out-Null
     $dockerConfigPath = Join-Path $dockerConfigRoot 'config.json'
     if (-not (Test-Path -LiteralPath $dockerConfigPath -PathType Leaf)) {
@@ -104,8 +110,8 @@ try {
         -NonInteractive
 
     $runDirectory = Assert-AnalyzePathUnderRoot `
-        -Path (Join-Path 'C:\rep\tmp\SQL_Server_Analyze\example-runs' $lab.RunId) `
-        -AllowedRoot 'C:\rep\tmp'
+        -Path (Join-Path (Join-Path $localRuntimeRoot 'example-runs') $lab.RunId) `
+        -AllowedRoot $systemTempRoot
     [IO.Directory]::CreateDirectory($runDirectory) | Out-Null
 
     # SQL Server container images can accept logins while first-start system
@@ -232,7 +238,7 @@ finally {
     }
 
     $preserve = $failed -and $KeepOnFailure
-    if ($lab -and $Mode -eq 'Verify' -and -not $preserve) {
+    if ($lab -and ($Mode -eq 'Verify' -or $failed) -and -not $preserve) {
         if ($scripts -and (Test-Path -LiteralPath $scripts.Cleanup -PathType Leaf)) {
             try {
                 Invoke-AnalyzeLabScript `

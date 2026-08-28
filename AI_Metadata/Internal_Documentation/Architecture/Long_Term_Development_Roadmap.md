@@ -2,7 +2,7 @@
 
 **Referenz:** `WI-0001`
 **Status:** `ACTIVE`
-**Stand:** 28. August 2026
+**Stand:** 29. August 2026
 **Geltungsbereich:** SQL Server 2019 und neuer auf On-Premises-, VM- und Containerplattformen
 
 ## Zweck und Maßgeblichkeit
@@ -13,7 +13,7 @@ Der aktuelle ausführbare Schwerpunkt steht in [Nächste Arbeitsschritte](../Qua
 
 ## Ausgangslage
 
-Der Frameworkkern umfasst 104 dokumentierte Procedures. Davon besitzen 92 Procedure-Seiten den Status `DEEP_REVIEWED`; zwölf Seiten erfüllen den Baselinevertrag. Die P0-, P1- und P2-Spezialfallmatrix ist umgesetzt. Die wesentlichen offenen Arbeiten bestehen aus:
+Der Frameworkkern umfasst 104 dokumentierte Procedures. Alle 104 Procedure-Seiten besitzen den Status `DEEP_REVIEWED` nach Reviewvertrag 3. Die P0-, P1- und P2-Spezialfallmatrix ist umgesetzt. Die wesentlichen offenen Arbeiten bestehen aus:
 
 - fehlender Runtime- und Reifegradevidenz für bereits nutzbare Teilfunktionen;
 - der Collation-Härtung außerhalb der garantierten Testgrenze;
@@ -108,11 +108,11 @@ Die vorhandene Boundary-Inventur wird in eine per-Datei-Härtung und eine gemisc
 
 ### `ANALYZE-LAB-001`
 
-Die sechs katalogisierten, noch nicht abgenommenen Beispiele werden als getrennte Runtime-Slices umgesetzt. SQL Server Analyze verantwortet Beispielkatalog, synthetische Fixtures, Workloads, Analyzer-Aufrufe, Assertions und projektspezifisches Cleanup. Provider-, Ressourcen-, Lifecycle- und allgemeine Laufzeitverantwortung verbleiben in `SQL_Server_Lab`.
+Der definierte Sieben-Beispiele-Umfang ist umgesetzt. `BLOCKING-001` besitzt die bestehende Mehrversions- und Provider-Evidenz; die sechs weiteren Beispiele besitzen getrennte SQL-Server-2025-Runtime-Slices über den primären Docker-Provider. SQL Server Analyze verantwortet Beispielkatalog, synthetische Fixtures, Workloads, Analyzer-Aufrufe, Assertions und projektspezifisches Cleanup. Provider-, Ressourcen-, Lifecycle- und allgemeine Laufzeitverantwortung verbleiben in `SQL_Server_Lab`.
 
 ### Dokumentationsreife
 
-Die zwölf als `BASELINE` geführten Procedure-Seiten werden auf den aktuellen Deep-Review-Vertrag geprüft. Der Status wird nur nach inhaltlicher Prüfung von Entscheidungsfrage, sicherem Einstieg, Leserichtung, Eigenlast, Quellen und Aussagegrenzen geändert.
+Die zwölf zuvor als `BASELINE` geführten Procedure-Seiten wurden am 28. August 2026 nach dem aktuellen Deep-Review-Vertrag geprüft. Entscheidungsfrage, sicherer Einstieg, Leserichtung, Eigenlast, Quellen, Aussagegrenzen und Folgeanalyse sind in den Seiten sowie im Reviewinventar nachgeführt. Die Dokumentationsreife dieses Wellenanteils ist damit abgeschlossen; die noch offene Laufzeitevidenz der betreffenden Funktionen bleibt davon getrennt.
 
 ## Welle 2: SQL-Server-2025-Erweiterungen
 
