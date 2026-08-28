@@ -1,0 +1,61 @@
+name: Artifact Registry Integrity
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  registry-integrity:
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY_PATH: ${{ vars.ARTIFACT_REGISTRY_PATH || 'Metadata/Governance/Artifact_Registry.json' }}
+      REGISTRY_TOOL: .ai/foundation/artifact_registry_github/registry_semantic.py
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate registry head
+        run: python "$REGISTRY_TOOL" validate --registry "$REGISTRY_PATH"
+      - name: Early cross-PR identity preflight
+        run: >-
+          python "$REGISTRY_TOOL" preflight-github
+          --repo "${{ github.repository }}"
+          --pr "${{ github.event.pull_request.number }}"
+          --registry-path "$REGISTRY_PATH"
+      - name: Compute object-level three-way merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin "${GITHUB_BASE_REF}"
+          BASE_SHA="$(git merge-base HEAD "origin/${GITHUB_BASE_REF}")"
+          git show "${BASE_SHA}:${REGISTRY_PATH}" > /tmp/registry-base.json
+          git show "origin/${GITHUB_BASE_REF}:${REGISTRY_PATH}" > /tmp/registry-main.json
+          cp "$REGISTRY_PATH" /tmp/registry-head.json
+          python "$REGISTRY_TOOL" merge \
+            --base /tmp/registry-base.json \
+            --main /tmp/registry-main.json \
+            --head /tmp/registry-head.json \
+            --output /tmp/registry-expected.json
+      - name: Verify Git text merge equals semantic merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          set +e
+          git merge-file -p /tmp/registry-main.json /tmp/registry-base.json /tmp/registry-head.json > /tmp/registry-git-merged.json
+          merge_rc=$?
+          set -e
+          if [ "$merge_rc" -ne 0 ]; then
+            echo "[BLOCK] Git reports a textual registry merge conflict"
+            exit 1
+          fi
+          python "$REGISTRY_TOOL" compare \
+            --expected /tmp/registry-expected.json \
+            --actual /tmp/registry-git-merged.json

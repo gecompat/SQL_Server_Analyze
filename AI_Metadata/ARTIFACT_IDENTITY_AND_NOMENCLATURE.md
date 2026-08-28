@@ -45,21 +45,21 @@ Parent/Child, Abhängigkeit, Implementierung, Verifikation, Blockierung, Governa
 
 ## Registration Authority
 
-[`Metadata/Governance/Artifact_Registry.json`](../Metadata/Governance/Artifact_Registry.json) ist die projektweite Registration Authority für die in dieser Richtlinie definierten neuen Präfixe. Die dort hinterlegte `registry_revision`, das Präfixregister und die Zuordnung von Referenz zu Maschinenkennung sind die maßgebliche Vergabeinformation.
+[`Metadata/Governance/Artifact_Registry.json`](../Metadata/Governance/Artifact_Registry.json) ist die projektweite Registration Authority für die in dieser Richtlinie definierten neuen Präfixe. Sie verwendet das Profil `foundation-artifact-registry/v2`. Das Präfixregister und die vollständigen Datensätze unter `artifacts` sind die maßgebliche Vergabeinformation. Der kanonische Human-Reference-Wert ist jeweils der Objektschlüssel und wird nicht als veränderbares Feld im Datensatz wiederholt.
 
 Der Maintainer, der eine Registry-Änderung nach `main` übernimmt, führt die finale Vergabe aus. Menschen und KI-Systeme dürfen keine finale Sequenz allein aus Markdown, Dateinamen, Git-Historie oder einer Unterhaltung ableiten.
 
-- `DIRECT` ist nur zulässig, wenn die Registry-Änderung auf der erwarteten `registry_revision` basiert, die nächste Sequenz fortschreibt, die Zuordnung speichert und serialisiert nach `main` übernommen wird.
+- `DIRECT` ist nur zulässig, wenn die Registry-Änderung auf dem aktuellen Git-Commit- beziehungsweise Blobstand basiert, die nächste freie Sequenz als Maximum der vorhandenen kanonischen Referenzen plus eins ableitet, den vollständigen Artefaktdatensatz speichert und serialisiert nach `main` übernommen wird.
 - Für parallele Branches, Offline-Arbeit oder nicht atomare Vergabe ist `DEFERRED` der Standard. Das Artefakt erhält seine UUID, aber noch keine finale lesbare Referenz.
 - Bei einem Registry-Konflikt wird kein Wert wiederverwendet. Die anfragende Änderung wird gegen die aktuelle Registry aktualisiert und erhält durch die Authority eine neue, freie Referenz.
-- Die optionalen Foundation-Referenzclients sind nicht installiert. Eine spätere Automatisierung muss dieselbe Registry und diesen Vertrag verwenden oder als neue Registration Authority ausdrücklich beschlossen werden.
+- Die optionale Capability `artifact-registry-github` ist installiert. Ihr Workflow prüft Registrystruktur, Kennungs- und Relationsintegrität, parallele Pull-Request-Kollisionen, den semantischen Drei-Wege-Merge und die Übereinstimmung mit dem tatsächlichen Git-Merge-Ergebnis. Die optionalen v1-Referenzclients bleiben nicht installiert.
 
 ## Anwendung in vorhandenen Registern
 
 Bestehende Felder wie `WorkItemId`, `EnhancementId`, `GapId` oder `BacklogId` bleiben aus Kompatibilitätsgründen unverändert. Sie bezeichnen die dort jeweils verwendete historische lesbare Referenz und bilden kein neues, konkurrierendes ID-System.
 
-Neue strukturierte Artefakte verwenden die Foundation-Schemas unter `.ai/foundation/schemas/`. Sie speichern mindestens `artifact_uid`, `human_ref`, `kind`, `title` und `registration_state`; Status, Welle und Beziehungen bleiben getrennte Metadaten.
+Neue registrierte Artefakte verwenden das v2-Schema unter `.ai/foundation/schemas/artifact-registry-v2.schema.json`. Der Objektschlüssel unter `artifacts` ist die kanonische lesbare Referenz. Der Datensatz speichert mindestens `artifact_uid`, `kind`, `title` und `registration_state`; Status, Welle und Beziehungen bleiben getrennte Metadaten.
 
 ## Validierung
 
-Die Foundation-Prüfung validiert nur die bereitgestellten Richtlinien und Schemas (`FOUNDATION_INTEGRITY`). Für diese Projektrichtlinie gilt zusätzlich `PROJECT_SEMANTIC`: Präfixe dürfen nicht neu definiert, finale Referenzen nicht doppelt vergeben und historische Referenzen nicht wiederverwendet werden. Eine künftige Automatisierung der Registry muss diese Eigenschaften vor der Vergabe prüfen.
+Die Foundation-Prüfung validiert nur die bereitgestellten Richtlinien und Schemas (`FOUNDATION_INTEGRITY`). Für diese Projektrichtlinie gilt zusätzlich `PROJECT_SEMANTIC`: Präfixe dürfen nicht neu definiert, finale Referenzen und Maschinenkennungen nicht doppelt vergeben und registrierte oder stillgelegte Referenzen nicht entfernt oder wiederverwendet werden. `parent`- und `depends_on`-Relationen dürfen keine Zyklen bilden. Der Workflow `.github/workflows/artifact-registry-integrity.yml` prüft diese Eigenschaften für Pull Requests. Seine Installation macht den Check nicht automatisch zu einem verpflichtenden GitHub-Statuscheck; diese Repositoryadministration bleibt eine getrennte Entscheidung.
