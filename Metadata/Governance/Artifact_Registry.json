@@ -13,5 +13,140 @@
     "REL": {"kind": "release", "width": 4},
     "TEST": {"kind": "test", "width": 4}
   },
-  "artifacts": {}
+  "artifacts": {
+    "WI-0001": {
+      "artifact_uid": "urn:uuid:01a049e4-7266-722c-a2b8-39eea507b8bd",
+      "kind": "work_item",
+      "title": "Langfristige Weiterentwicklungsroadmap",
+      "registration_state": "REGISTERED",
+      "status": "ACTIVE",
+      "priority": "P1",
+      "acceptance_criteria": "Die Roadmap ordnet bestehende und neue Entwicklungen in Wellen, definiert Abhängigkeiten und Exit-Kriterien und verpflichtet jedes Thema zu Analyse, Spezifikation, vertikaler Implementierung und evidenzbasiertem Statuswechsel.",
+      "aliases": [],
+      "relations": [],
+      "wave": "ROADMAP",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md"
+    },
+    "WI-0002": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-7487-a003-2d9ef388895e",
+      "kind": "work_item",
+      "title": "TempDB-ADR- und PVS-Diagnostik",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P2",
+      "acceptance_criteria": "Traditioneller Version Store und TempDB-PVS werden versionsadaptiv mit getrenntem Größen-, Cleanup-, Reset- und Quellenstatus analysiert, ohne ADR oder eine Kapazitätsursache automatisch zu empfehlen.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "WAVE_2",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0002-tempdb-adr--und-pvs-diagnostik"
+    },
+    "WI-0003": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-7de0-ba97-0fee41e01688",
+      "kind": "work_item",
+      "title": "Backup-Kompressionsalgorithmus- und ZSTD-Evidenz",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P2",
+      "acceptance_criteria": "Serverdefault, tatsächlich dokumentierter Backupalgorithmus und versionsabhängige Capability werden getrennt dargestellt; ZSTD, MS_XPRESS und QAT werden nicht aus einem allgemeinen Kompressionsstatus abgeleitet.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "WAVE_2",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0003-backup-kompressionsalgorithmus--und-zstd-evidenz"
+    },
+    "WI-0004": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-7ddb-a0ba-ed87bf9bc44c",
+      "kind": "work_item",
+      "title": "Geordnete Columnstore-Diagnostik",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P2",
+      "acceptance_criteria": "Geordnete gruppierte und nicht gruppierte Columnstore-Indizes werden versionsadaptiv inventarisiert; eine optionale Segmentüberlappungsanalyse ist begrenzt und erzeugt kein automatisches DDL-Urteil.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "WAVE_2",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0004-geordnete-columnstore-diagnostik"
+    },
+    "WI-0005": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-7338-8936-78585de8b498",
+      "kind": "work_item",
+      "title": "Zeitbegrenzte Extended-Events-Sessions",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P2",
+      "acceptance_criteria": "MAX_DURATION und Runtimezustand werden versionsadaptiv analysiert; das Framework erstellt, startet, stoppt oder verändert keine Extended-Events-Session.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "WAVE_2",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0005-zeitbegrenzte-extended-events-sessions"
+    },
+    "WI-0006": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-71d9-b7ea-7aa605f1ba77",
+      "kind": "work_item",
+      "title": "OPTIMIZED_SP_EXECUTESQL und Compile-Kontext",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P2",
+      "acceptance_criteria": "Capability und Konfiguration werden mit begrenzter Compile-Evidenz korreliert; der Konfigurationszustand allein erzeugt kein Finding und erforderliches Sampling bleibt explizit.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "WAVE_2",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0006-optimized_spexecutesql-und-compile-kontext"
+    },
+    "WI-0007": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-7140-aacf-f4f4d02e7f37",
+      "kind": "work_item",
+      "title": "External-Model-Inventur",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P2",
+      "acceptance_criteria": "External Models werden aggregiert und versionsadaptiv erkannt; Locations, Parameter, Modellnamen und Credentialbezüge bleiben aus der leichten Featureinventur ausgeschlossen.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "WAVE_2",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0007-external-model-inventur"
+    },
+    "WI-0008": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-782f-b46c-be8e011b96a1",
+      "kind": "work_item",
+      "title": "SQL-Audit-Konfigurationsanalyse",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P1",
+      "acceptance_criteria": "Eine read-only Analyse trennt Auditkonfiguration, Server- und Datenbankspezifikationen, Runtimezustand und Quellenstatus, ohne Auditlog-Payloads zu lesen oder Auditobjekte zu verändern.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "WAVE_4",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0008-sql-audit-konfigurationsanalyse"
+    },
+    "WI-0009": {
+      "artifact_uid": "urn:uuid:01a049e4-726a-7c67-b2b1-f8a5acb21873",
+      "kind": "work_item",
+      "title": "External-Data-Analyse",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P2",
+      "acceptance_criteria": "Eine lokale Kataloganalyse trennt externe Datenquellen, Dateiformate, Tabellen und Modelle; der Standardpfad führt keinen Remotezugriff aus und liest keine Secrets oder externen Payloads.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"},
+        {"type": "depends_on", "target": "WI-0007"}
+      ],
+      "wave": "WAVE_4",
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0009-external-data-analyse"
+    }
+  }
 }
