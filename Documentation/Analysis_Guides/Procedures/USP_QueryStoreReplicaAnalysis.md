@@ -6,6 +6,23 @@ Plan-Forcing-Evidenz nach `replica_group_id` und ordnet sie den in
 Server 2019 und 2022 installierbar, referenziert dort aber keine
 SQL-Server-2025-Kataloge und liefert kontrolliert `UNAVAILABLE_VERSION`.
 
+**Bereich:** Query Store und SQL Server 2025
+**Zweck:** Trennt Query-Store-Runtime-, Wait- und Forcingevidenz nach beobachteter Replica-Gruppe und Rollenmetadaten.
+**Beobachtungsart:** versionsadaptiver historischer Query-Store-Aggregationssnapshot
+**Kostenklasse:** MEDIUM
+
+## Entscheidungsfrage und Einsatz
+
+Die Procedure wird eingesetzt, wenn Query-Store-Messwerte eines begrenzten Zeitfensters nicht über Primary-, Secondary- und andere beobachtete Rollen vermischt werden sollen. Sie liefert die Rollenabbildung als eigene Evidenz und eignet sich vor einem Vergleich von Runtime- oder Waitaggregaten zwischen Replicas.
+
+## Nicht beantwortete Fragen
+
+Die Analyse prüft keine aktuelle AG-Synchronität, kein Routing und keine Hardwaregleichheit. Sie liest keine Querytexte, Plan-XMLs oder Hint-Payloads. Unterschiedliche Rollenaggregate beweisen deshalb weder Regression noch fehlerhafte Lastverteilung. Fehlende Replica-Metadaten machen eine Messung nicht wertlos, begrenzen aber ihre Rollenzuschreibung.
+
+## Resultsets und Leserichtung
+
+RAW, TABLE und JSON trennen `moduleStatus`, `sourceStatus`, `replicas`, `runtimeByReplica`, `waitsByReplica` und `forcingByReplica`. CONSOLE priorisiert den fachlichen Einstieg. Lesen Sie Datenbank-, Versions- und Query-Store-Status vor Rollen und Aggregaten. Vergleichen Sie nur identische Zeitfenster und berücksichtigen Sie `MappingStatusCode`.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile in `replicas` beschreibt eine vom Query Store beobachtete Rolle einer
@@ -25,6 +42,30 @@ Zeitfenster aggregierten Runtimeintervalle einer `replica_group_id`.
 
 Mehrere beobachtete Rollen können nach Failover korrekt sein. Die aktuelle
 Verbindungsrolle und die historische Query-Store-Rolle sind bewusst getrennt.
+
+## Beispiele und Gegenbeispiele
+
+Ein geeigneter Example-Fall verwendet ein synthetisches Query-Store-Workloadfenster und prüft auf SQL Server 2025, ob Runtimezeilen eine explizite oder als fehlend markierte Rollenzuordnung besitzen. Ein Gegenbeispiel ist die pauschale Zuordnung jeder nicht gemappten Zeile zum Primary. Ebenso ist ein höherer Mittelwert auf einer Secondary ohne Ausführungszahl, Zeitraum und Hardwarekontext keine Regression.
+
+## Leere oder partielle Ausgabe
+
+`UNAVAILABLE_VERSION` ist auf SQL Server 2019 und 2022 der vorgesehene Fallback. Ein deaktivierter oder leerer Query Store erzeugt keine künstlichen Runtimezeilen. Fehlt eine einzelne 2025-Quelle oder Berechtigung, bleiben andere Quellen erhalten und `sourceStatus` beschreibt die Partialität. `NOT_RECORDED` und fehlende Metadaten sind keine erfundene Rollenidentität.
+
+## Eigenlast und Grenzen
+
+| Dimension | Einordnung |
+|---|---|
+| Kostenklasse | `MEDIUM` |
+| Standardpfad | Begrenztes Zeitfenster in einer explizit ausgewählten Datenbank |
+| Teuerster Pfad | Breites Zeitfenster und mehrere Query-Store-Datenbanken |
+| Haupttreiber | Runtimeintervalle, Pläne, Waitzeilen und Replica-Gruppen |
+| Skalierung | Sequenziell je Datenbank; Aggregation innerhalb des Zeitfensters |
+| Ressourcen | Query-Store-Katalog-I/O, CPU für gewichtete Aggregate und lokale Sortierung |
+| Begrenzungswirkung | Datenbank-, Zeit-, Replica- und Zeilengrenzen |
+| Locking und Nebenwirkungen | Read-only; kein Planforcing, Hint oder Query-Store-Flush |
+| Schutzmechanismus | Versions-/Spaltenprobes und getrennte Quellenstatus |
+| Sicherer Einsatz | Kleine Datenbankmenge und enges UTC-Zeitfenster |
+| Aussagegrenze | Rollenaggregate sind keine AG-Health- oder Regressionsentscheidung |
 
 ## Warum kann das problematisch sein?
 

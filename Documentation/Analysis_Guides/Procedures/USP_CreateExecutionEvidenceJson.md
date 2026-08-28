@@ -31,6 +31,30 @@ EXEC [monitor].[USP_CreateExecutionEvidenceJson]
 
 `captureStatus` beschreibt Umfang, Partialität und Datenschutzmodus. Danach folgen `statisticsIo`, `statisticsTime`, `planStatisticsUsage`, `objectReferences`, optionale aktuelle Statistiken und Histogramme, Predicate-Mappings, Collection-Status und Warnings. TABLE exportiert ausschließlich ausdrücklich benannte Ziele.
 
+## Beispiele und Gegenbeispiele
+
+Ein passender Example-Aufruf kombiniert einen bekannten Showplan mit den im selben Messfenster erfassten STATISTICS-IO- und STATISTICS-TIME-Blöcken und kennzeichnet die Zuordnung trotzdem nur mit der tatsächlich belegten `SameExecutionConfidence`. Ein Gegenbeispiel ist das Zusammenführen eines gecachten Plans mit einem später kopierten Meldungsblock ohne Quellenhinweis. Ebenso darf ein aktuelles Histogramm nicht als historischer Compilezustand ausgegeben werden.
+
+## Leere oder partielle Ausgabe
+
+Fehlende optionale Eingaben erzeugen leere benannte Arrays oder explizite Collection-Statuszeilen. Ein partiell geparster Meldungsblock bleibt als partiell sichtbar; unbekannte Formate werden nicht in erfundene Nullwerte umgedeutet. Wenn eine angeforderte aktuelle Statistikquelle nicht lesbar ist, bleiben bereits normalisierte Plan- und Meldungsevidenz erhalten. TABLE und RAW erzeugen keine künstliche fachliche Datenzeile für einen Leerfall.
+
+## Eigenlast und Grenzen
+
+| Dimension | Einordnung |
+|---|---|
+| Kostenklasse | `LOW` bis `HIGH_OPT_IN` |
+| Standardpfad | Parsing bereits übergebener Texte und eines begrenzten Plan-XML |
+| Teuerster Pfad | Gezielte aktuelle Statistik- und Histogrammabfragen |
+| Haupttreiber | XML-Größe, Meldungsumfang, Statistikzahl und Histogrammschritte |
+| Skalierung | Statement-, Statistik- und Schrittgrenzen wirken vor teuren Vertiefungen |
+| Ressourcen | CPU und Speicher für XML/JSON; optional datenbanklokale Katalog-I/O |
+| Begrenzungswirkung | `@StatementId`, `@MaxStatistiken` und `@MaxHistogrammSchritte` begrenzen Arbeit |
+| Locking und Nebenwirkungen | Read-only; die analysierte Query wird nicht ausgeführt |
+| Schutzmechanismus | Datenschutzmodi, Bestätigung für Rohdaten und begrenzte Quellmengen |
+| Sicherer Einsatz | Mit eindeutig zugeordneten importierten Belegen und `DERIVED_ONLY` beginnen |
+| Aussagegrenze | Normalisierung stellt keine fehlende Same-Execution-Beziehung her |
+
 ## Eine Zeile bedeutet
 
 Die Granularität hängt vom Resultset ab: eine Capture-Zusammenfassung, eine IO-Objektzeile, ein TIME-Block, eine verwendete Statistik, eine Objektreferenz, ein Histogrammschritt oder eine Mappingbeziehung. Diese Zeilen dürfen nicht ohne Statement- und Quellenbezug zusammengeführt werden.

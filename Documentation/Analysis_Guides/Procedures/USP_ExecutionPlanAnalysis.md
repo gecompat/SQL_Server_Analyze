@@ -33,6 +33,30 @@ Das Minimal-XML dient nur als synthetischer Aufrufrahmen; für fachliche Ergebni
 
 CONSOLE zeigt priorisierte `findings`. RAW, TABLE und JSON trennen `moduleStatus`, Capabilities, PlanDocument, Statements, Operatorbaum, Runtime, Threadruntime, Access Paths, Statistics Usage, das bestehende `parametersAndVariants`, die kanonische Parameterevidenz `parameters`, `planWarnings`, `optimizerContext`, `runtimeFeedback`, `queryStoreContext`, `feedbackAndVariants`, Memory/Spills, Execution Evidence, Histogramme, Predicate-Mappings und Findings.
 
+## Beispiele und Gegenbeispiele
+
+Ein geeigneter Example-Fall übergibt genau ein vollständiges synthetisches Showplan-XML und beginnt mit `STANDARD`, begrenzten Operatoren sowie `DERIVED_ONLY`. Ein zweiter kontrollierter Fall kann einen gezielten Planhandle oder eine Query-Store-Identität verwenden und muss die abweichende Planquelle beibehalten. Ein Gegenbeispiel ist die Behandlung eines Estimated Plans als aktuelle Ausführung oder die direkte Umsetzung eines Missing-Index-Fragments als DDL. Ebenso dürfen Operatoren verschiedener Statements nicht allein über `NodeId` zusammengeführt werden.
+
+## Leere oder partielle Ausgabe
+
+Ein syntaktisch gültiger Plan kann keine Findings oder keine Runtime-Counter enthalten. Das ist kein Parsererfolg mit gemessener Laufzeit, sondern ein planquellenabhängiger Leer- beziehungsweise Nicht-verfügbar-Zustand. Erreicht die Analyse ein Operator-, Finding- oder Zeitlimit, bleiben `moduleStatus`, Collection-Status und bereits materialisierte Resultsets konsistent partiell. Eine nicht angeforderte Query-Store-Vertiefung erscheint als `NOT_APPLICABLE`, nicht als leeres Gesundheitsurteil.
+
+## Eigenlast und Grenzen
+
+| Dimension | Einordnung |
+|---|---|
+| Kostenklasse | `MEDIUM` bis `HIGH_OPT_IN` |
+| Standardpfad | Genau ein Plan mit begrenzter Statement- und Operatoranalyse |
+| Teuerster Pfad | `FULL` mit Statistik-, Histogramm- und zusätzlicher Evidenzvertiefung |
+| Haupttreiber | XML-Größe, Operatorzahl, Statementzahl und aktivierte Quellen |
+| Skalierung | Grenzen wirken je Plan; breite Plansuche gehört nicht in diese Procedure |
+| Ressourcen | XML-CPU und Speicher; optional Katalog- und Query-Store-I/O |
+| Begrenzungswirkung | `@StatementId`, `@MaxOperatoren`, `@MaxFindings` und Zeitlimit |
+| Locking und Nebenwirkungen | Read-only; keine Planausführung, kein Forcing und keine DDL |
+| Schutzmechanismus | Eindeutige Planquelle, High-Impact-Gate und Datenschutzmodi |
+| Sicherer Einsatz | Direkter Plan, `STANDARD`, kleine Grenzen und `DERIVED_ONLY` |
+| Aussagegrenze | Plan- und Runtimeevidenz ersetzt keine Workload- und Wirkungsprüfung |
+
 ## Eine Zeile bedeutet
 
 Je nach Resultset beschreibt eine Zeile einen Plan, ein Statement, einen Operator innerhalb eines Statements, einen Threadcounter, einen Access Path, eine Statistik, einen Parameter, eine dokumentierte Parameterevidenzgrenze oder ein Finding. `NodeId` ist nur zusammen mit `StatementOrdinal` eindeutig. In `parameters` trennt `EvidenceKind = 'PARAMETER'` fachliche Parameterzeilen von `SOURCE_BOUNDARY` und `SOURCE_STATUS`.
