@@ -26,3 +26,8 @@ Die öffentliche Dokumentation muss ohne diesen Pfad vollständig nutzbar sein. 
 ## Trennungsregel
 
 Neue Hinweise zur Erzeugung, Redaktion, automatisierten Bearbeitung, KI-Nutzung, internen Roadmap oder Delivery gehören ausschließlich hierher. Fachlich notwendige Informationen über das Verhalten eines ausgelieferten Objekts gehören in die passende öffentliche Ist-Dokumentation unter `Documentation/`.
+
+## Kanonische Planungsquellen
+
+- Die [langfristige Weiterentwicklungsroadmap](Architecture/Long_Term_Development_Roadmap.md) ordnet Entwicklungsrichtungen, Abhängigkeiten, Wellen und Exit-Kriterien.
+- [Nächste Arbeitsschritte](Quality/Next_Steps.md) enthält ausschließlich die aktuelle ausführbare Welle und verweist für spätere Arbeit auf die langfristige Roadmap.
