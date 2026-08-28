@@ -1,18 +1,17 @@
 {
-  "schema_version": 1,
-  "profile": "foundation-artifact-registry/v1",
-  "registry_revision": 0,
+  "schema_version": 2,
+  "profile": "foundation-artifact-registry/v2",
   "prefixes": {
-    "CAP": {"kind": "capability", "next_sequence": 1, "width": 4},
-    "REQ": {"kind": "requirement", "next_sequence": 1, "width": 4},
-    "WI": {"kind": "work_item", "next_sequence": 1, "width": 4},
-    "DEC": {"kind": "decision", "next_sequence": 1, "width": 4},
-    "GATE": {"kind": "gate", "next_sequence": 1, "width": 4},
-    "RISK": {"kind": "risk", "next_sequence": 1, "width": 4},
-    "EXP": {"kind": "experiment", "next_sequence": 1, "width": 4},
-    "INC": {"kind": "incident", "next_sequence": 1, "width": 4},
-    "REL": {"kind": "release", "next_sequence": 1, "width": 4},
-    "TEST": {"kind": "test", "next_sequence": 1, "width": 4}
+    "CAP": {"kind": "capability", "width": 4},
+    "REQ": {"kind": "requirement", "width": 4},
+    "WI": {"kind": "work_item", "width": 4},
+    "DEC": {"kind": "decision", "width": 4},
+    "GATE": {"kind": "gate", "width": 4},
+    "RISK": {"kind": "risk", "width": 4},
+    "EXP": {"kind": "experiment", "width": 4},
+    "INC": {"kind": "incident", "width": 4},
+    "REL": {"kind": "release", "width": 4},
+    "TEST": {"kind": "test", "width": 4}
   },
-  "allocations": {}
+  "artifacts": {}
 }
