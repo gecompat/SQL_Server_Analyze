@@ -27,7 +27,21 @@ BEGIN
  IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
  IF @TableResultRequested=1 BEGIN EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'cursors',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1; END;
  IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
- CREATE TABLE [#CurrentCursorAnalysis_Cursors]([SessionId]int,[CursorId]int,[CursorName]nvarchar(256),[Properties]nvarchar(256),[CreationTime]datetime,[IsOpen]bit,[FetchStatus]int,[WorkerTime]bigint,[Reads]bigint,[Writes]bigint,[DormantDuration]bigint,[FindingContext]varchar(40));
+ CREATE TABLE [#CurrentCursorAnalysis_Cursors]
+ (
+      [SessionId] int
+    , [CursorId] int
+    , [CursorName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS
+    , [Properties] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS
+    , [CreationTime] datetime
+    , [IsOpen] bit
+    , [FetchStatus] int
+    , [WorkerTime] bigint
+    , [Reads] bigint
+    , [Writes] bigint
+    , [DormantDuration] bigint
+    , [FindingContext] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS
+ );
  IF NULLIF(LTRIM(RTRIM(COALESCE(@SessionIds,N''))),N'') IS NOT NULL
  BEGIN
    DECLARE @SessionSelection TABLE([NumberValue] bigint NULL,[IsValid] bit NOT NULL);

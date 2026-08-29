@@ -2,6 +2,18 @@
 
 **Bereich:** Optionales Snapshot-/Baseline-Paket SC-023
 **Zweck:** Führt denselben begrenzten Collection Cycle für MANUAL, EXTERNAL und SQL_AGENT aus.
+**Beobachtungsart:** persistierender, restartbezogener Messzyklus
+**Kostenklasse:** MEDIUM bis HIGH_OPT_IN
+
+## Entscheidungsfrage und Einsatz
+
+Die Procedure wird eingesetzt, wenn die konfigurierte Snapshot-Datenbank einen neuen, zeitlich und resetbezogen interpretierbaren Performance-Counter-Messpunkt erhalten soll. Alle Schedulerarten verwenden denselben Procedurevertrag. Der Scheduler bestimmt nur den Aufrufzeitpunkt; Due-, Parallelitäts-, Budget- und Collectionentscheidungen bleiben innerhalb des Frameworkvertrags.
+
+## Nicht beantwortete Fragen
+
+Ein einzelner Messpunkt ist kein Trend und liefert keine automatische Kapazitäts- oder Konfigurationsempfehlung. Der aktuelle Slice sammelt nur Performance Counter. Er beweist weder kontinuierliche Schedulerverfügbarkeit noch Vollständigkeit externer Monitoringdaten. Reset-Epochen, Countertypen und Basiseinheiten müssen vor jeder Delta- oder Ratenbildung kompatibel sein.
+
+## Sicherer Einstieg
 
 Im ersten Slice wird ausschließlich `monitor.USP_PerformanceCounters` mit `@SampleSeconds=0` gelesen. `Install_All.sql` installiert diese Persistenzfunktion bewusst nicht.
 
@@ -11,6 +23,34 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
      @RunEvenIfNotDue = 0,
      @ResultSetArt = 'CONSOLE';
 ```
+
+## Resultsets und Leserichtung
+
+CONSOLE zeigt den priorisierten Laufstatus. RAW, TABLE und JSON trennen `run` und `modules`; persistierte Metrics werden nicht als zusätzliches Defaultresultset kopiert. Lesen Sie zuerst Status, Start, Ende, Schedulerart und `ResetEpochId`. Ordnen Sie danach den Modulstatus und dessen Partialität ein. `SKIPPED_NOT_DUE` und ein No-wait-Concurrency-Skip sind kontrollierte Zustände, keine erfolgreichen Messpunkte.
+
+## Beispiele und Gegenbeispiele
+
+Ein passender Example-Lauf verwendet `MANUAL`, eine aktivierte synthetische Zielkonfiguration und ein kleines `MaxRows`-Budget. Zwei aufeinanderfolgende Läufe innerhalb derselben Reset-Epoche können später verglichen werden. Ein Gegenbeispiel ist die Berechnung einer Rate über einen SQL-Server-Neustart oder die Deutung eines partiellen Moduls als vollständigen Snapshot.
+
+## Leere oder partielle Ausgabe
+
+Eine deaktivierte Konfiguration, ein nicht fälliger Lauf oder eine bereits gehaltene Applock-Ressource kann den Cycle ohne Metrics beenden. Ein Quellfehler bleibt im Modulstatus sichtbar und darf bereits geschriebene Statuszeilen nicht in einen erfolgreichen Vollcapture umdeuten. Payload kann bewusst deaktiviert sein, ohne dass typisierte Metrics fehlen.
+
+## Eigenlast und Grenzen
+
+| Dimension | Einordnung |
+|---|---|
+| Kostenklasse | `MEDIUM` bis `HIGH_OPT_IN` |
+| Standardpfad | Due-Prüfung und ein begrenzter Performance-Counter-Snapshot |
+| Teuerster Pfad | Purge plus Collection und optionale komprimierte Payloadpersistenz |
+| Haupttreiber | Counterzahl, Retentionrückstand, Zeilenbudget und Ziel-I/O |
+| Skalierung | Ein Cycle je lokaler Zielbeziehung; parallele Ausführung wird übersprungen |
+| Ressourcen | DMV-Lesezugriff, JSON-Verarbeitung und typisierte Zielwrites |
+| Begrenzungswirkung | Policy, `MaxRows`, Intervall, Budget und No-wait-Applock |
+| Locking und Nebenwirkungen | Persistierende Inserts und begrenzter Purge im Ziel |
+| Schutzmechanismus | Konfigurationsgate, Due-Check, Reset-Epoche und Abschlussstatus |
+| Sicherer Einsatz | Manueller Einzelcycle mit kleinem Budget vor Scheduleraktivierung |
+| Aussagegrenze | Ein erfolgreicher Cycle ist kein Trend- oder Schedulernachweis |
 
 ## Eine Zeile bedeutet
 
@@ -79,5 +119,10 @@ Fehlendes Sample ist weder Nullwert noch gesunder Zustand. `PARTIAL` darf nicht 
 ### Folgeanalyse
 
 Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_PerformanceCounters`, `USP_PurgeSnapshotData` sowie passende Current-State- und Server-Health-Module.
+
+## Primärquellen
+
+- [sys.dm_os_performance_counters](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-os-performance-counters-transact-sql?view=sql-server-ver17)
+- [sp_getapplock](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-getapplock-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../../Operations/Snapshot_Baseline_Operations.md)

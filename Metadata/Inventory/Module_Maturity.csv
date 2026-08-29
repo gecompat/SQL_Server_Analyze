@@ -66,7 +66,7 @@ Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-
 Cursor Diagnostics,USP_CurrentCursorAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-007 opt-in Kern implementiert; Drei-Versionen-Evidenz offen
 msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-008 read-only Kern implementiert; Drei-Versionen-Evidenz offen
 System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,FULL,OPS-009 read-only Kern implementiert; Drei-Versionen-Evidenz offen
-Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 Boundary-Inventar vorhanden; Härtung und gemischte Drei-Versionen-Matrix offen
+Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 Boundary-Inventar sowie erster Fünf-OPS- CurrentOverview- und TABLE-Ziel-Slice vorhanden; weitere Härtung und gemischte Drei-Versionen-Matrix offen
 SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,SSIS-001 Phase 0 abgeschlossen; Phase 1 Implementierung offen
 Snapshot Baseline Expansion (SC-023),USP_RunSnapshotCollectionCycle,PLANNED,NO,NO,NO,,ARCHITECTURE,Optionale Collector Rollups Scheduler und Exportpakete
 Externe Komponente (SC-024),Externe Integration,PLANNED,NO,NO,NO,,NONE,P3 erfordert externe Abhaengigkeit

@@ -6,6 +6,23 @@ Hintergrundwartung. Auf SQL Server 2019 und 2022 bleibt dieselbe Procedure
 installierbar und liefert `UNAVAILABLE_VERSION`, ohne die neueren Systemobjekte
 zu referenzieren.
 
+**Bereich:** SQL Server 2025 und Objekt-/Indexanalyse
+**Zweck:** Trennt Vector-Index-Katalog, aktuelle Hintergrundwartung, Quellenstatus und begrenzte Reviewhinweise.
+**Beobachtungsart:** versionsadaptiver Katalog- und Runtime-Snapshot
+**Kostenklasse:** LOW bis MEDIUM
+
+## Entscheidungsfrage und Einsatz
+
+Die Procedure wird eingesetzt, wenn sichtbare Vector-Indizes und ihre aktuelle Wartungsevidenz für eine ausdrücklich ausgewählte Datenbank oder ein Objekt inventarisiert werden sollen. Sie eignet sich nach der leichten Featureinventur und vor einer workloadbezogenen Recall- oder Performanceprüfung.
+
+## Nicht beantwortete Fragen
+
+Die Procedure misst keinen Recall, keine Suchqualität und keinen geschäftlichen Nutzen. Sie liest weder Vektorinhalte noch interne Buildparameter. Ein aktueller Wartungsstatus erklärt keine historische Entwicklung. Auch ein Preview-Featurestatus auf Product Major Version 17 garantiert nicht, dass alle Systemobjekte im konkreten Build vorhanden oder aktiviert sind.
+
+## Resultsets und Leserichtung
+
+RAW, TABLE und JSON trennen `moduleStatus`, `sourceStatus`, `vectorIndexes`, `maintenance` und `findings`; CONSOLE priorisiert die fachlichen Reviewhinweise. Lesen Sie Version und Quelle vor Katalog- oder Runtimewerten. TABLE verwendet nur die im Resultsetinventar benannten Ziele und erhält dieselben nativen Spaltentypen.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile in `vectorIndexes` beschreibt genau einen für den aktuellen
@@ -32,6 +49,30 @@ Der approximative Vector-Index-Pfad ist in SQL Server 2025 ein Previewfeature.
 Auch bei Product Major Version 17 können `UNAVAILABLE_FEATURE` oder
 `NOT_ENABLED` deshalb korrekt sein, wenn `PREVIEW_FEATURES` nicht aktiviert ist
 oder der konkrete Build die beiden Systemobjekte nicht bereitstellt.
+
+## Beispiele und Gegenbeispiele
+
+Ein passender Example-Fall verwendet eine synthetische Tabelle mit einem kontrollierten Vector-Index auf SQL Server 2025 und prüft getrennt Katalog- und DMV-Status. Ein Gegenbeispiel ist die automatische Rebuild-Empfehlung aus einer einzelnen Stalenessmessung. Ebenso darf `UNAVAILABLE_VERSION` auf SQL Server 2022 nicht als Installationsfehler interpretiert werden.
+
+## Leere oder partielle Ausgabe
+
+`AVAILABLE_EMPTY` bedeutet, dass im sichtbaren Scope kein Vector-Index gefunden wurde. `NOT_ENABLED` und `UNAVAILABLE_FEATURE` trennen Konfiguration und Capability. Ein verweigerter Runtimezugriff darf sichtbare Katalogzeilen nicht entfernen; stattdessen bleibt die Runtimequelle partiell und der Katalogbestand erhalten.
+
+## Eigenlast und Grenzen
+
+| Dimension | Einordnung |
+|---|---|
+| Kostenklasse | `LOW` bis `MEDIUM` |
+| Standardpfad | Capabilityprüfung und gefiltertes Kataloginventar |
+| Teuerster Pfad | Katalog plus Runtime-DMV für viele sichtbare Indizes |
+| Haupttreiber | Datenbank-, Objekt- und Indexanzahl |
+| Skalierung | Sequenziell je ausgewählter Datenbank |
+| Ressourcen | Katalog- und DMV-I/O sowie lokale Korrelation |
+| Begrenzungswirkung | Datenbank-/Objektfilter und `@MaxZeilen` |
+| Locking und Nebenwirkungen | Read-only; kein Build, Rebuild oder DDL |
+| Schutzmechanismus | Versions-, Objekt- und Spaltenprobes vor dynamischen Zugriffen |
+| Sicherer Einsatz | Kleine explizite Datenbank- und Objektmenge |
+| Aussagegrenze | Wartungssnapshot ist keine Suchqualitätsbewertung |
 
 ## Warum kann das problematisch sein?
 

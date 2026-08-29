@@ -28,10 +28,10 @@ BEGIN
     IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
     CREATE TABLE [#MsdbHealthAnalysis_Health]
     (
-          [Area] varchar(40) NOT NULL,[SourceObject] nvarchar(256) NOT NULL
+          [Area] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [RowCount] bigint NULL,[OldestUtc] datetime2(3) NULL,[NewestUtc] datetime2(3) NULL
-        , [SizeMb] decimal(19,2) NULL,[StatusCode] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [SizeMb] decimal(19,2) NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     IF @MaxZeilen<0 OR @Mode NOT IN('CONSOLE','RAW','NONE') SELECT @Status='INVALID_PARAMETER',@Partial=1,@ErrorMessage=N'Ungültiger Parameter.';
     IF @Status='AVAILABLE' AND NOT EXISTS (SELECT 1 FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id]=4)
@@ -43,7 +43,12 @@ BEGIN
                CONVERT(decimal(19,2),SUM(CONVERT(bigint,[size]))*8.0/1024.0),'AVAILABLE',
                N'Aktuelle Dateigröße; kein Wachstums- oder freier Speicherplatznachweis.'
         FROM [sys].[master_files] WITH (NOLOCK) WHERE [database_id]=4;
-        DECLARE @Defs TABLE([Area] varchar(40),[ObjectName] sysname,[DateColumn] sysname NULL);
+        DECLARE @Defs TABLE
+        (
+              [Area] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [DateColumn] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        );
         INSERT @Defs VALUES
           ('BACKUP_HISTORY','backupset','backup_finish_date'),('RESTORE_HISTORY','restorehistory','restore_date'),
           ('AGENT_HISTORY','sysjobhistory',NULL),('DATABASE_MAIL','sysmail_allitems','send_request_date'),
@@ -58,7 +63,9 @@ BEGIN
                 SELECT 1
                 FROM [msdb].[sys].[objects] AS [o] WITH (NOLOCK)
                 INNER JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
-                WHERE [s].[name]=N'dbo' AND [o].[name]=@Obj AND [o].[type]=N'U'
+                WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'dbo'
+                  AND [o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=@Obj COLLATE SQL_Latin1_General_CP1_CS_AS
+                  AND [o].[type] COLLATE SQL_Latin1_General_CP1_CS_AS=N'U'
             )
                 INSERT [#MsdbHealthAnalysis_Health] VALUES(@Area,N'msdb.dbo.'+@Obj,NULL,NULL,NULL,NULL,'UNSUPPORTED',N'Quelle ist auf dieser Instanz nicht vorhanden.');
             ELSE BEGIN TRY

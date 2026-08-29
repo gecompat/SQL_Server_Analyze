@@ -30,9 +30,9 @@ BEGIN
     IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
     CREATE TABLE [#LinkedServerAnalysis_Linked]
     (
-      [ServerName] sysname NOT NULL,[Product] nvarchar(128) NULL,[Provider] nvarchar(128) NULL,
+      [ServerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Product] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Provider] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
       [IsDataAccessEnabled] bit NULL,[IsRpcOutEnabled] bit NULL,[IsCollationCompatible] bit NULL,
-      [ConnectivityStatus] varchar(40) NOT NULL,[StatusCode] varchar(40) NOT NULL,[EvidenceLimit] nvarchar(1000) NOT NULL
+      [ConnectivityStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     IF @MaxZeilen<0 OR @Mode NOT IN('CONSOLE','RAW','NONE') OR @ConnectivityTestEnabled IS NULL OR @HighImpactConfirmed IS NULL
       SELECT @Status='INVALID_PARAMETER',@Partial=1,@ErrorMessage=N'Ungültiger Parameter.';
@@ -50,8 +50,8 @@ BEGIN
         DECLARE [s] CURSOR LOCAL FAST_FORWARD FOR SELECT [ServerName] FROM [#LinkedServerAnalysis_Linked];
         OPEN [s]; FETCH NEXT FROM [s] INTO @Server;
         WHILE @@FETCH_STATUS=0 BEGIN
-          BEGIN TRY EXEC [master].[dbo].[sp_testlinkedserver] @servername=@Server; UPDATE [#LinkedServerAnalysis_Linked] SET [ConnectivityStatus]='SUCCEEDED' WHERE [ServerName]=@Server; END TRY
-          BEGIN CATCH UPDATE [#LinkedServerAnalysis_Linked] SET [ConnectivityStatus]='FAILED',[StatusCode]='SOURCE_UNAVAILABLE',[EvidenceLimit]=CONCAT(N'Remote-Testfehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)) WHERE [ServerName]=@Server; SET @Partial=1; END CATCH;
+          BEGIN TRY EXEC [master].[dbo].[sp_testlinkedserver] @servername=@Server; UPDATE [#LinkedServerAnalysis_Linked] SET [ConnectivityStatus]='SUCCEEDED' WHERE [ServerName]=@Server COLLATE SQL_Latin1_General_CP1_CS_AS; END TRY
+          BEGIN CATCH UPDATE [#LinkedServerAnalysis_Linked] SET [ConnectivityStatus]='FAILED',[StatusCode]='SOURCE_UNAVAILABLE',[EvidenceLimit]=CONCAT(N'Remote-Testfehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)) WHERE [ServerName]=@Server COLLATE SQL_Latin1_General_CP1_CS_AS; SET @Partial=1; END CATCH;
           FETCH NEXT FROM [s] INTO @Server;
         END; CLOSE [s]; DEALLOCATE [s];
       END;

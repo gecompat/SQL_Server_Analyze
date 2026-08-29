@@ -21,6 +21,7 @@ DECLARE @AlternativeEvidenceUsed bit = 0;
 DECLARE @AnalyzerJson nvarchar(max) = NULL;
 DECLARE @AnalyzerStatus varchar(40) = NULL;
 DECLARE @AnalyzerPartial bit = NULL;
+DECLARE @AnalyzerErrorMessage nvarchar(2048) = NULL;
 DECLARE @ReturnCode int = NULL;
 
 IF DB_ID(N'Lab001Wave3') IS NULL
@@ -87,15 +88,33 @@ END;
 IF @ScenarioId = 'LAB-TEMP-001'
 BEGIN
     SELECT @ObservedValue = COUNT_BIG(*)
-    FROM [sys].[dm_db_session_space_usage] AS [su]
-    INNER JOIN [sys].[dm_exec_sessions] AS [s]
-        ON [s].[session_id] = [su].[session_id]
+    FROM [sys].[dm_exec_sessions] AS [s]
     WHERE [s].[context_info] = @ContextToken
       AND
       (
-          [su].[user_objects_alloc_page_count] +
-          [su].[internal_objects_alloc_page_count]
-      ) > 0;
+          EXISTS
+          (
+              SELECT 1
+              FROM [tempdb].[sys].[dm_db_session_space_usage] AS [su]
+              WHERE [su].[session_id] = [s].[session_id]
+                AND
+                (
+                    [su].[user_objects_alloc_page_count] +
+                    [su].[internal_objects_alloc_page_count]
+                ) > 0
+          )
+          OR EXISTS
+          (
+              SELECT 1
+              FROM [tempdb].[sys].[dm_db_task_space_usage] AS [tu]
+              WHERE [tu].[session_id] = [s].[session_id]
+                AND
+                (
+                    [tu].[user_objects_alloc_page_count] +
+                    [tu].[internal_objects_alloc_page_count]
+                ) > 0
+          )
+      );
 
     SET @PredicateSatisfied = CASE WHEN @ObservedValue >= 1 THEN 1 ELSE 0 END;
 END;
@@ -581,7 +600,6 @@ BEGIN
 
     EXEC [LabAnalyze].[monitor].[USP_ExecutionPlanAnalysis]
           @PlanXml = @PlanXml
-        , @PlanQuelle = 'IMPORTED'
         , @AnalyseTiefe = 'STANDARD'
         , @EvidenzDatenschutzModus = 'DERIVED_ONLY'
         , @IdentifierDatenschutzModus = 'OMIT'
@@ -593,7 +611,8 @@ BEGIN
         , @Json = @AnalyzerJson OUTPUT
         , @PrintMeldungen = 0
         , @StatusCodeOut = @AnalyzerStatus OUTPUT
-        , @IsPartialOut = @AnalyzerPartial OUTPUT;
+        , @IsPartialOut = @AnalyzerPartial OUTPUT
+        , @ErrorMessageOut = @AnalyzerErrorMessage OUTPUT;
 
     SET @ObservedValue = 1;
     SET @PredicateSatisfied = 1;
@@ -896,8 +915,17 @@ BEGIN
     SET @AnalyzerStatus = COALESCE(@AnalyzerStatus, 'AVAILABLE');
 END;
 
-IF @AnalyzerStatus NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED')
-    THROW 55345, N'The analyzer returned an unsupported scenario status.', 1;
+IF @AnalyzerStatus NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED', 'PARTIAL')
+BEGIN
+    DECLARE @UnsupportedStatusMessage nvarchar(2048) = CONCAT
+    (
+          N'The analyzer returned unsupported scenario status '
+        , COALESCE(@AnalyzerStatus, N'NULL')
+        , N': '
+        , COALESCE(@AnalyzerErrorMessage, N'no error detail')
+    );
+    THROW 55345, @UnsupportedStatusMessage, 1;
+END;
 
 SELECT CONCAT
 (

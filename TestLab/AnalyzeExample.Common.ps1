@@ -75,9 +75,11 @@ function Resolve-SqlServerLabRepositoryRoot {
         $analyzeRoot = Get-AnalyzeRepositoryRoot
         $LabRepositoryRoot = Join-Path (Split-Path $analyzeRoot -Parent) 'SQL_Server_Lab'
     }
+    $analyzeRoot = Get-AnalyzeRepositoryRoot
+    $workspaceRoot = Split-Path $analyzeRoot -Parent
     $resolved = Assert-AnalyzePathUnderRoot `
         -Path $LabRepositoryRoot `
-        -AllowedRoot 'C:\rep\pu'
+        -AllowedRoot $workspaceRoot
     $manifest = Join-Path $resolved 'SqlServerLab.psd1'
     if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
         throw "SQL_Server_Lab-Modul nicht gefunden: $manifest"

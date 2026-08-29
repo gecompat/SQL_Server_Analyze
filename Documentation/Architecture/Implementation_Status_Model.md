@@ -1,6 +1,6 @@
 # Implementierungsstatusmodell
 
-Stand: 27. Juli 2026
+Stand: 29. August 2026
 
 Dieses Modell trennt Produktfunktion, automatisierte Repositoryevidenz, externe
 Laufzeitnachweise und ausdrücklich optionale Erweiterungen. Ein offener
@@ -64,6 +64,6 @@ Rollups sind optionaler Ausbau.
 
 Die frühere allgemeine LAB-001-Provisionierung ist kein neuer Ausbaupfad dieses Repositorys. Provider-, Ressourcen-, Lifecycle-, State- und Cleanup-Verantwortung liegen bei `gecompat/SQL_Server_Lab`. Historische Analyze-seitige Lab-Verträge und synthetische Szenariokenntnis bleiben lediglich als Migrations- und Wiederverwendungsquelle sichtbar.
 
-`ANALYZE-LAB-001` ist davon getrennt und als `RESEARCHED_NOT_IMPLEMENTED` eingestuft. Der dokumentierte Zielumfang ist ein benutzerorientierter Beispielkatalog in `SQL_Server_Analyze`, der vorhandene öffentliche Lab-Schnittstellen verwendet. Der erste geplante Produkt-Slice ist `BLOCKING-001` mit getrenntem Interactive- und Verify-Modus. Änderungen an `SQL_Server_Lab` sind kein impliziter Teil dieses Arbeitspakets und benötigen bei einer nachgewiesenen allgemeinen Plattformlücke eine vorherige ausdrückliche Freigabe.
+`ANALYZE-LAB-001` ist davon getrennt und für den definierten Sieben-Beispiele-Umfang als `IMPLEMENTED_ACTIONS_GATE` eingestuft. Der benutzerorientierte Beispielkatalog in `SQL_Server_Analyze` verwendet vorhandene öffentliche Lab-Schnittstellen. `BLOCKING-001` besitzt die bestehende native Mehrversions- und Provider-Evidenz; die sechs weiteren Beispiele sind katalogisiert, dokumentiert, über den gemeinsamen Interactive-/Verify-Runner auswählbar und auf SQL Server 2025 mit dem primären Docker-Provider runtimegeprüft. Änderungen an `SQL_Server_Lab` sind kein impliziter Teil dieses Arbeitspakets und benötigen bei einer nachgewiesenen allgemeinen Plattformlücke eine vorherige ausdrückliche Freigabe.
 
 SQL25-005 ergänzt den Query-Store-Orchestrator um eine eigenständige, versionsadaptive Replica-Analyse. Rollen-, Runtime-, Wait- und Plan-Forcing-Evidenz werden nach `replica_group_id` getrennt, ohne Querytexte oder Planpayloads zu lesen.
