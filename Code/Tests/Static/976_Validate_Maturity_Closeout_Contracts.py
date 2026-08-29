@@ -165,9 +165,9 @@ def validate_repository(root: Path) -> list[str]:
     table_output_contract = (
         root / "Code/Tests/Integration/187_Table_Output_Runtime_Contract.sql"
     ).read_text(encoding="utf-8-sig")
-    for token in ("COLLATION_MISMATCH_SAFE", "[c].[collation_name]"):
-        if token not in table_output_contract:
-            errors.append(f"TABLE collation contract missing token: {token}")
+    for marker in ("COLLATION_MISMATCH_SAFE", "[c].[collation_name]"):
+        if marker not in table_output_contract:
+            errors.append(f"TABLE collation contract marker missing: {marker}")
     return sorted(set(errors))
 
 
