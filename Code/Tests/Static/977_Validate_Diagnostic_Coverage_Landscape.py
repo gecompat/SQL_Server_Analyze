@@ -150,7 +150,7 @@ def validate_repository(root: Path) -> list[str]:
         errors.append("coverage landscape documentation is missing")
     else:
         document = document_path.read_text(encoding="utf-8-sig")
-        for token in (
+        for required_marker in (
             "**Referenz:** `WI-0010`",
             "106 fachliche Bereiche",
             "### Priorität P1",
@@ -159,8 +159,10 @@ def validate_repository(root: Path) -> list[str]:
             "## Bewusste Grenzen",
             "Microsoft SQL Assessment DefaultRuleset",
         ):
-            if token not in document:
-                errors.append(f"coverage documentation missing token: {token}")
+            if required_marker not in document:
+                errors.append(
+                    f"coverage documentation missing required marker: {required_marker}"
+                )
 
     registry_path = root / "Metadata/Governance/Artifact_Registry.json"
     registry = json.loads(registry_path.read_text(encoding="utf-8-sig"))
