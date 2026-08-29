@@ -2,7 +2,7 @@
 
 **Referenz:** `WI-0001`
 **Status:** `ACTIVE`
-**Stand:** 28. August 2026
+**Stand:** 29. August 2026
 **Geltungsbereich:** SQL Server 2019 und neuer auf On-Premises-, VM- und Containerplattformen
 
 ## Zweck und Maßgeblichkeit
@@ -13,7 +13,7 @@ Der aktuelle ausführbare Schwerpunkt steht in [Nächste Arbeitsschritte](../Qua
 
 ## Ausgangslage
 
-Der Frameworkkern umfasst 104 dokumentierte Procedures. Davon besitzen 92 Procedure-Seiten den Status `DEEP_REVIEWED`; zwölf Seiten erfüllen den Baselinevertrag. Die P0-, P1- und P2-Spezialfallmatrix ist umgesetzt. Die wesentlichen offenen Arbeiten bestehen aus:
+Der Frameworkkern umfasst 104 dokumentierte Procedures. Alle 104 Procedure-Seiten besitzen den Status `DEEP_REVIEWED` nach Reviewvertrag 3. Die P0-, P1- und P2-Spezialfallmatrix ist umgesetzt. Die wesentlichen offenen Arbeiten bestehen aus:
 
 - fehlender Runtime- und Reifegradevidenz für bereits nutzbare Teilfunktionen;
 - der Collation-Härtung außerhalb der garantierten Testgrenze;
@@ -67,6 +67,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | `WI-0007` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Model-Inventur |
 | `WI-0008` | `P1` | `RESEARCHED_NOT_IMPLEMENTED` | SQL-Audit-Konfigurationsanalyse |
 | `WI-0009` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Data-Analyse |
+| `WI-0010` | `P1` | `RESEARCHED_NOT_IMPLEMENTED` | kontinuierliche Diagnoseabdeckung und Gap-Intake |
 
 ## Wellenübersicht
 
@@ -77,6 +78,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | 3 | Historische lokale Diagnose erweitert | `SC-023-EXPANSION` | aktuelle Collector- und Retentionverträge sind stabil | Wait-, I/O- und Kapazitätsverläufe sind reset-sicher erfassbar; Rollups und Scheduler bleiben getrennt aktivierbar |
 | 4 | Neue Diagnosebereiche verfügbar | `WI-0008`, `WI-0009` | Wellen 1 und 2 sind abgeschlossen; Snapshotarbeit blockiert keine gemeinsame Infrastruktur | Audit und externe Datenobjekte besitzen jeweils einen abgegrenzten read-only Vertrag und kontrollierte Positiv-/Negativfälle |
 | 5 | Strategische Pakete und externe Evidenz | `SSIS-001`, `RUNTIME-001`, `SC-024`, `SC-025` | erforderliche Plattformen, Zuständigkeiten und Sicherheitsgrenzen sind freigegeben | der jeweils abgegrenzte Produkt- oder externe Evidence-Vertrag ist nachweislich erfüllt |
+| kontinuierlicher Intake | Abdeckungslücken sichtbar und priorisierbar | `WI-0010` | aktuelle Inventare und offizielle Primärquellen sind verfügbar | Kandidaten sind als bestehend, partiell, geplant, extern oder ausgeschlossen klassifiziert und werden erst nach eigener Registrierung in eine Entwicklungswelle übernommen |
 
 ## Welle 1: Reifeabschluss vorhandener Funktionen
 
@@ -108,11 +110,11 @@ Die vorhandene Boundary-Inventur wird in eine per-Datei-Härtung und eine gemisc
 
 ### `ANALYZE-LAB-001`
 
-Die sechs katalogisierten, noch nicht abgenommenen Beispiele werden als getrennte Runtime-Slices umgesetzt. SQL Server Analyze verantwortet Beispielkatalog, synthetische Fixtures, Workloads, Analyzer-Aufrufe, Assertions und projektspezifisches Cleanup. Provider-, Ressourcen-, Lifecycle- und allgemeine Laufzeitverantwortung verbleiben in `SQL_Server_Lab`.
+Der definierte Sieben-Beispiele-Umfang ist umgesetzt. `BLOCKING-001` besitzt die bestehende Mehrversions- und Provider-Evidenz; die sechs weiteren Beispiele besitzen getrennte SQL-Server-2025-Runtime-Slices über den primären Docker-Provider. SQL Server Analyze verantwortet Beispielkatalog, synthetische Fixtures, Workloads, Analyzer-Aufrufe, Assertions und projektspezifisches Cleanup. Provider-, Ressourcen-, Lifecycle- und allgemeine Laufzeitverantwortung verbleiben in `SQL_Server_Lab`.
 
 ### Dokumentationsreife
 
-Die zwölf als `BASELINE` geführten Procedure-Seiten werden auf den aktuellen Deep-Review-Vertrag geprüft. Der Status wird nur nach inhaltlicher Prüfung von Entscheidungsfrage, sicherem Einstieg, Leserichtung, Eigenlast, Quellen und Aussagegrenzen geändert.
+Die zwölf zuvor als `BASELINE` geführten Procedure-Seiten wurden am 28. August 2026 nach dem aktuellen Deep-Review-Vertrag geprüft. Entscheidungsfrage, sicherer Einstieg, Leserichtung, Eigenlast, Quellen, Aussagegrenzen und Folgeanalyse sind in den Seiten sowie im Reviewinventar nachgeführt. Die Dokumentationsreife dieses Wellenanteils ist damit abgeschlossen; die noch offene Laufzeitevidenz der betreffenden Funktionen bleibt davon getrennt.
 
 ## Welle 2: SQL-Server-2025-Erweiterungen
 
@@ -172,7 +174,7 @@ Vorgesehen ist eine neue `USP_ExternalDataAnalysis` für lokale Kataloge externe
 
 Primärquelle: [External operations catalog views](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/external-operations-catalog-views-transact-sql?view=sql-server-ver17).
 
-Graph, Spatial, XML, FILESTREAM und benutzerdefinierte Typen bleiben zunächst in Inventar-, Objekt- und Indexpfaden. Ein eigenes Deep-Modul wird nur nach einem konkreten Nutzungsszenario und einem neuen registrierten Arbeitselement bewertet.
+Graph, Spatial, XML, FILESTREAM und benutzerdefinierte Typen bleiben zunächst in Inventar-, Objekt- und Indexpfaden. Ein eigenes Deep-Modul wird nur nach einem konkreten Nutzungsszenario und einem neuen registrierten Arbeitselement bewertet. Die vollständige Einordnung steht in der [Diagnoseabdeckung und Gap-Intake](../Research/SQL_Server_Diagnostic_Coverage_Landscape.md).
 
 ## Welle 5: Strategische und externe Arbeiten
 
@@ -192,6 +194,14 @@ Fleet-Korrelation bleibt eine externe Komponente mit eigenem Mandanten-, Transpo
 
 Restore-, Storage- und Hostnachweise werden nur in einer ausdrücklich autorisierten isolierten Umgebung ausgeführt. Das Dossier trennt Runbook, Testdaten, Berechtigungen, Cleanup, Ergebnisartefakte und Aussagegrenzen von der portablen Frameworkvalidierung.
 
+## Kontinuierlicher Intake: `WI-0010`
+
+Die [SQL-Server-Diagnoseabdeckung](../Research/SQL_Server_Diagnostic_Coverage_Landscape.md) führt 106 fachliche Bereiche mit stabilen Matrixschlüsseln. Sie unterscheidet vertiefte und grundlegende Implementierung, partielle Produktfunktion, registrierte Planung, neue Dossierkandidaten, externe Evidenz und bewussten Produktausschluss.
+
+Bestätigte neue P1-Kandidaten betreffen insbesondere Principals und Berechtigungen, Authentisierungs- und Login-Lifecycle, TLS und Endpoints, Upgrade- und Deprecation-Evidenz, Legacy-Datenbankspiegelung, MSDTC, Linux-/Container-Ressourcengrenzen sowie Row-Level Security und Dynamic Data Masking. P2- und P3-Kandidaten umfassen unter anderem Database Snapshots, Policy-Based Management, Sensitivity Classification, Ledger-Verifikation, FILESTREAM, Plan Guides, Agent-Proxies, Change Event Streaming, Fabric Mirroring, External REST, Hybrid Buffer Pool sowie bedingte Graph-, Spatial-, XML- und JSON-Vertiefungen.
+
+`WI-0010` ändert weder die Reihenfolge laufender Wellen noch öffentliche Schnittstellen. Ein Matrixschlüssel wird erst nach Priorisierungsentscheidung, Überschneidungsprüfung und finaler Registryvergabe zu einem eigenen Arbeitselement. So bleibt die Themenbreite dauerhaft sichtbar, ohne ungeprüfte API- oder Lieferzusagen zu erzeugen.
+
 ## Abhängigkeiten
 
 - Welle 2 hängt vom Reifeabschluss der gemeinsam verwendeten Ausgabe-, Capability-, Dokumentations- und Versionsverträge aus Welle 1 ab.
@@ -199,6 +209,7 @@ Restore-, Storage- und Hostnachweise werden nur in einer ausdrücklich autorisie
 - `SC-023-EXPANSION` verwendet ausschließlich bereits definierte Metrik-, Scope-, Retention-, Budget- und Resetverträge des Snapshotpakets.
 - `WI-0008` und `WI-0009` dürfen neue öffentliche Procedures erst nach abgeschlossenem API- und Kostenreview einführen.
 - `SSIS-001`, `RUNTIME-001`, `SC-024` und `SC-025` benötigen ihre dokumentierten Plattform- beziehungsweise externen Voraussetzungen; sie blockieren den portablen Kern nicht.
+- `WI-0010` läuft als Intake parallel, darf aber kein bereits registriertes Dossier und kein Wellengate überspringen.
 
 ## Ausschlüsse
 

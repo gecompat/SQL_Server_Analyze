@@ -38,14 +38,14 @@ BEGIN
 
     CREATE TABLE [#DatabasePortabilityAnalysis_Portability]
     (
-          [DatabaseName] sysname NOT NULL
-        , [EvidenceType] varchar(40) NOT NULL
-        , [FeatureName] nvarchar(256) NULL
-        , [FeatureType] nvarchar(256) NULL
-        , [StatementType] nvarchar(256) NULL
-        , [SourceObject] nvarchar(256) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FeatureType] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatementType] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     DECLARE @EffectiveDatabaseNames nvarchar(max)=

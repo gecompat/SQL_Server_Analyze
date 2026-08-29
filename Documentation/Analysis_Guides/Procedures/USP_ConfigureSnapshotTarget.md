@@ -2,6 +2,18 @@
 
 **Bereich:** Optionales Snapshot-/Baseline-Paket SC-023
 **Zweck:** Verknüpft die Frameworkdatenbank mit einer separat installierten Snapshot-Datenbank und schreibt Collector-, Retention- und Budgetpolicy typisiert.
+**Beobachtungsart:** expliziter lokaler Konfigurations-Schreibvorgang
+**Kostenklasse:** LOW
+
+## Entscheidungsfrage und Einsatz
+
+Die Procedure wird eingesetzt, wenn eine bereits installierte Frameworkdatenbank genau einer bereits installierten lokalen Snapshot-Datenbank zugeordnet werden soll. Sie schreibt Aktivierung, Schedulerart, Collectorgrenzen, Retention und Softbudget in die dafür vorgesehenen typisierten Konfigurationsobjekte. Der Aufruf ist keine allgemeine Zielsuche und kein Deploymentmechanismus.
+
+## Nicht beantwortete Fragen
+
+Eine erfolgreiche Konfiguration beweist weder spätere DMV-Leserechte noch ausreichenden Speicher, Backup, Recovery oder Schedulerbetrieb. Die Procedure entscheidet nicht, welcher Retentionswert fachlich angemessen ist, und prüft keine Fleet-, Transport- oder Mandantengrenzen. Ein deaktivierter Collector sagt nichts über bereits gespeicherte Historie aus.
+
+## Sicherer Einstieg
 
 Die Procedure erstellt weder Datenbanken noch Rechte oder Schedulerobjekte. Der Aufruf ist erst nach beiden SC-023-Installern sinnvoll. Alle Beispielnamen sind synthetisch.
 
@@ -12,6 +24,34 @@ EXEC [monitor].[USP_ConfigureSnapshotTarget]
      @SchedulerType = 'EXTERNAL',
      @PayloadEnabled = 0;
 ```
+
+## Resultsets und Leserichtung
+
+Die Procedure besitzt kein fachliches Resultset. Lesen Sie `@StatusCodeOut`, `@IsPartialOut`, Fehlernummer und Fehlermeldung als Ergebnis genau dieses Konfigurationsversuchs. Prüfen Sie danach die persistierte Framework-Singletonzeile und die Zielpolicy getrennt. Ein `AVAILABLE`-Status bezieht sich auf die atomare Konfigurationsänderung, nicht auf einen Collection Cycle.
+
+## Beispiele und Gegenbeispiele
+
+Ein zulässiger Example-Fall verknüpft eine isolierte `ExampleSnapshotDatabase`, setzt `SchedulerType = 'EXTERNAL'` und lässt Payloads deaktiviert. Ein Gegenbeispiel ist die Verwendung der Procedure zur Datenbankerstellung oder Rechtevergabe. Ebenso darf `IsEnabled = 1` nicht als Nachweis eines laufenden Schedulers interpretiert werden.
+
+## Leere oder partielle Ausgabe
+
+Da kein fachliches Resultset existiert, ist eine leere Tabellenausgabe normal. `TARGET_UNAVAILABLE` bezeichnet ein fehlendes, nicht online befindliches, schreibgeschütztes oder vertraglich unpassendes Ziel. `DENIED_PERMISSION` trennt fehlende Rechte. Ein Fehler darf keine halb aktualisierte Framework-/Zielkonfiguration als erfolgreich darstellen.
+
+## Eigenlast und Grenzen
+
+| Dimension | Einordnung |
+|---|---|
+| Kostenklasse | `LOW` |
+| Standardpfad | Validierung einer Zieldatenbank und zweier typisierter Policybereiche |
+| Teuerster Pfad | Kurze transaktionale Aktualisierung in Framework- und Zieldatenbank |
+| Haupttreiber | Zielerreichbarkeit, Berechtigungen und konkurrierende Konfigurationszugriffe |
+| Skalierung | Singletonbeziehung; kein Fleet- oder Mehrzielpfad |
+| Ressourcen | Geringe Katalog-I/O und wenige Konfigurationswrites |
+| Begrenzungswirkung | Typisierte Grenzwerte werden vor dem Schreiben validiert |
+| Locking und Nebenwirkungen | Kurze Schreibtransaktion; keine Datenbank-, Rechte- oder Schedulererstellung |
+| Schutzmechanismus | Expliziter Zielname, Zielvertrag und atomare Reihenfolge |
+| Sicherer Einsatz | Zuerst deaktiviert mit synthetischem Ziel konfigurieren und gegenprüfen |
+| Aussagegrenze | Konfiguration ist keine Collection- oder Betriebsberechtigungsevidenz |
 
 ## Eine Zeile bedeutet
 
@@ -79,5 +119,10 @@ Prüfen Sie nach dem Aufruf Zielname, Aktivierungsstatus und Policy in beiden Da
 ### Folgeanalyse
 
 Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_RunSnapshotCollectionCycle`, `USP_PurgeSnapshotData` und der Betriebsleitfaden.
+
+## Primärquellen
+
+- [Transactions](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/transactions-transact-sql?view=sql-server-ver17)
+- [sys.databases](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-databases-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../../Operations/Snapshot_Baseline_Operations.md)

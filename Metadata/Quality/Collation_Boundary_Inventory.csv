@@ -1,9 +1,9 @@
 BoundaryId,BoundaryClass,Scope,RequiredPolicy,CurrentStatus,NextEvidence
 COLL-B001,Server and framework database,SERVERPROPERTY and target database,SQL_Latin1_General_CP1_CS_AS remains guaranteed baseline,BOUNDARY_DOCUMENTED,Mixed server and framework database matrix
-COLL-B002,tempdb and temporary tables,All procedures creating local temp tables,Character comparison columns require explicit framework collation,INVENTORY_REQUIRED,Static per-column inventory and CI enforcement
+COLL-B002,tempdb and temporary tables,All procedures creating local temp tables,Character comparison columns require explicit framework collation,HARDENING_PARTIAL,Five OPS objects are statically enforced; remaining per-file inventory and native mixed-collation evidence
 COLL-B003,Cross-database catalog access,Dynamic three-part sys catalog queries,Join and filter operands require explicit compatible collation,HARDENING_PARTIAL,2019 2022 2025 mixed target database tests
 COLL-B004,Dynamic SQL parameters,sp_executesql cross-database batches,Parameters remain typed and comparisons declare intended collation,HARDENING_PARTIAL,Denied and case-sensitive identifier fixtures
 COLL-B005,JSON and parser outputs,OPENJSON XML and text parsers,Materialized identifiers use explicit framework collation,HARDENING_PARTIAL,Unicode case accent and supplementary-character fixtures
-COLL-B006,TABLE outputs,Result target validation and inserts,Target contract must reject incompatible schemas before insert,BOUNDARY_DOCUMENTED,Mixed target-table collation tests
+COLL-B006,TABLE outputs,Result target validation and inserts,Target contract must reject incompatible schemas before insert,HARDENING_PARTIAL,Adaptation preserves source collation and nonempty mismatch contract is present; native mixed-target execution remains
 COLL-B007,Filter lists and object identifiers,DatabaseNames FullObjectNames and patterns,Bracket parsing and equality preserve documented case-sensitive semantics,HARDENING_PARTIAL,Case-only duplicate and accent fixtures
 COLL-B008,TestLab server tempdb framework and scenario databases,SQL_Server_Lab examples,Matrix records each resolved collation independently,IMPLEMENTED_PARTIAL,Docker and Podman 2019 2022 2025 mixed-collation evidence

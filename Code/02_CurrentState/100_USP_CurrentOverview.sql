@@ -112,34 +112,34 @@ BEGIN
     (
           [ModuleOrdinal] int NOT NULL PRIMARY KEY
         , [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ModuleName] sysname NOT NULL
-        , [SourceTable] sysname NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsEnabled] bit NOT NULL
         , [IsRelevant] bit NOT NULL
         , [IsMaterialized] bit NOT NULL
         , [DurationMs] bigint NOT NULL
-        , [JsonValue] nvarchar(max) NULL
-        , [ExecutionError] nvarchar(2048) NULL
+        , [JsonValue] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ExecutionError] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentOverview_ModuleStatus]
     (
           [ModuleOrdinal] int NOT NULL
         , [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ModuleName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
         , [DurationMs] bigint NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , PRIMARY KEY ([ModuleOrdinal])
     );
 
     CREATE TABLE [#CurrentOverview_Warnings]
     (
-          [ModuleName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [Message] nvarchar(2048) NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentOverview_Sessions]([Seed] bit NULL);
@@ -162,15 +162,15 @@ BEGIN
     (
           [SourceOrdinal] int NOT NULL
         , [SnapshotId] uniqueidentifier NOT NULL
-        , [SourceCode] varchar(40) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [SourceCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [CompletedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [CapturedRowCount] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , PRIMARY KEY ([SourceOrdinal])
     );
 
@@ -1082,8 +1082,15 @@ BuildOutputs:
         (
             SELECT STRING_AGG
             (
-                CONVERT(nvarchar(max),CONCAT(N'"',STRING_ESCAPE([ResultName],'json'),N'":',
-                    CASE WHEN ISJSON([JsonValue])=1 THEN [JsonValue] ELSE N'null' END)),
+                CONVERT(nvarchar(max),CONCAT
+                (
+                      N'"'
+                    , STRING_ESCAPE([ResultName] COLLATE SQL_Latin1_General_CP1_CS_AS,'json')
+                    , N'":'
+                    , CASE WHEN ISJSON([JsonValue])=1
+                           THEN [JsonValue] COLLATE SQL_Latin1_General_CP1_CS_AS
+                           ELSE N'null' END
+                )) COLLATE SQL_Latin1_General_CP1_CS_AS,
                 N','
             ) WITHIN GROUP (ORDER BY [ModuleOrdinal])
             FROM [#CurrentOverview_ModulePayload]

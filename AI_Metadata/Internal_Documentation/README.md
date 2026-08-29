@@ -31,3 +31,4 @@ Neue Hinweise zur Erzeugung, Redaktion, automatisierten Bearbeitung, KI-Nutzung,
 
 - Die [langfristige Weiterentwicklungsroadmap](Architecture/Long_Term_Development_Roadmap.md) ordnet Entwicklungsrichtungen, Abhängigkeiten, Wellen und Exit-Kriterien.
 - [Nächste Arbeitsschritte](Quality/Next_Steps.md) enthält ausschließlich die aktuelle ausführbare Welle und verweist für spätere Arbeit auf die langfristige Roadmap.
+- Die [SQL-Server-Diagnoseabdeckung](Research/SQL_Server_Diagnostic_Coverage_Landscape.md) hält implementierte, partielle, geplante, externe und bewusst ausgeschlossene Themen als kontinuierlichen Gap-Intake fest.
