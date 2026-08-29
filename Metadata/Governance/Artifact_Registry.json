@@ -147,6 +147,21 @@
       ],
       "wave": "WAVE_4",
       "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0009-external-data-analyse"
+    },
+    "WI-0010": {
+      "artifact_uid": "urn:uuid:01a04f38-f7be-7ec4-a2e7-c89f0725a5ad",
+      "kind": "work_item",
+      "title": "SQL-Server-Diagnoseabdeckung und Gap-Intake",
+      "registration_state": "REGISTERED",
+      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "priority": "P1",
+      "acceptance_criteria": "Eine quellenbasierte Coverage-Landkarte benennt implementierte partielle geplante externe und ausgeschlossene SQL-Server-Diagnosebereiche; jeder spätere Kandidat durchläuft vor einer öffentlichen Änderung ein eigenes registriertes Dossier.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "CONTINUOUS_INTAKE",
+      "locator": "AI_Metadata/Internal_Documentation/Research/SQL_Server_Diagnostic_Coverage_Landscape.md"
     }
   }
 }

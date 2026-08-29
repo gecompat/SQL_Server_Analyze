@@ -28,6 +28,7 @@ $selfTestValidators = @(
     '940_Validate_Wait_Type_Catalog.py'
     '975_Validate_Roadmap_Status.py'
     '976_Validate_Maturity_Closeout_Contracts.py'
+    '977_Validate_Diagnostic_Coverage_Landscape.py'
     '989_Validate_SQL25_Readable_Secondary_Statistics_Contract.py'
     '991_Validate_SQL25_TempDB_Resource_Governance_Contract.py'
     '992_Validate_SQL25_JSON_Index_Contract.py'
