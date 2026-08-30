@@ -84,6 +84,11 @@ try {
         $failures.Add('Test-AnalyzeExample.ps1 catalog')
     }
 
+    & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeProjectAdapter.ps1
+    if ($LASTEXITCODE -ne 0) {
+        $failures.Add('Test-AnalyzeProjectAdapter.ps1 project adapter')
+    }
+
     if ($IncludeNetwork) {
         & $pythonCommand ./Code/Tests/Static/980_Validate_External_Documentation_Links.py `
             --repository-root . --self-test --check-network
@@ -100,4 +105,4 @@ if ($failures.Count -gt 0) {
     throw "Statische Vertragssuite fehlgeschlagen: $($failures -join '; ')"
 }
 
-Write-Host "Statische Vertragssuite erfolgreich: $($selfTestValidators.Count + $repositoryOnlyValidators.Count + 2) Prüfungen."
+Write-Host "Statische Vertragssuite erfolgreich: $($selfTestValidators.Count + $repositoryOnlyValidators.Count + 3) Prüfungen."

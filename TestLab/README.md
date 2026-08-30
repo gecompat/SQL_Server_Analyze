@@ -55,6 +55,29 @@ entfernt.
 lokalen Diagnose. Der normale Erfolgs- und Fehlerpfad bereinigt den exakten
 Lab-Run; globale Docker- oder Podman-Bereinigungen werden nicht ausgeführt.
 
+## Project Adapter prüfen und ausführen
+
+Der Adapter `EXECUTION-PLAN-001` liefert einen eigenständigen, synthetischen
+Quick-Slice für den Project-Adapter-Vertrag von `SQL_Server_Lab`. Er installiert
+den für die Execution-Plan-Analyse benötigten Frameworkteil, erzeugt einen
+synthetischen Plan, prüft `USP_ExecutionPlanAnalysis` und entfernt anschließend
+nur seine markergebundenen Datenbanken und den zugehörigen Lab-Run.
+
+```powershell
+pwsh -File ./TestLab/Test-AnalyzeProjectAdapter.ps1 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+
+pwsh -File ./TestLab/Invoke-AnalyzeAdapterQuickScenario.ps1 `
+  -Provider podman `
+  -Version 2025 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Der identische Quick-Slice wurde am 30. August 2026 mit SQL Server 2025 unter
+Docker und Podman erfolgreich ausgeführt. Beide Läufe endeten nach erfolgreicher
+Installation, Aktualisierung, Validierung und Adapterbereinigung mit dem
+scopegebundenen Entfernen ihrer Container- und Volume-Ressourcen.
+
 ## Katalogisierte Beispiele
 
 | Beispiel | Primärer Analyzer | Bedienseite |

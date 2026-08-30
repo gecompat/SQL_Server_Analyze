@@ -1,7 +1,7 @@
 # ANALYZE-LAB-001 – Spielbare Analyze-Beispiele mit SQL_Server_Lab
 
-**Stand:** 27. Juli 2026  
-**Status:** `RESEARCHED_NOT_IMPLEMENTED`  
+**Stand:** 30. August 2026
+**Status:** `IMPLEMENTED_ACTIONS_GATE`
 **Zielrepository:** `gecompat/SQL_Server_Analyze`  
 **Infrastrukturprovider:** `gecompat/SQL_Server_Lab`
 
@@ -305,7 +305,28 @@ Die Planungsphase ist abgeschlossen, wenn:
 
 Stand 24. August 2026 sind diese Kriterien erfüllt: Verify wurde unter Docker auf SQL Server 2019, 2022 und 2025 sowie unter Podman auf SQL Server 2022 erfolgreich ausgeführt. Der getrennte Interactive-Pfad wurde unter Podman 2022 bis zur Ausgabe der zwei Session-Skripte, des Analyse- und des Cleanup-Skripts geprüft. Alle Abnahmeläufe endeten mit scopegebundenem `CLEANUP_SUCCEEDED`.
 
-## 16. Verarbeitungsreihenfolge
+## 16. Project-Adapter-Vertical-Slice
+
+Der zusätzliche Adapter `TestLab/Adapters/EXECUTION-PLAN-001/adapter.json`
+bildet den Project-Adapter-Vertrag von `SQL_Server_Lab` in einem kleinen,
+eigenständig prüfbaren Slice ab. Die fünf Adapterphasen sind klar getrennt:
+
+1. `preflight.sql` prüft Version, Berechtigung und isolierten Lab-Kontext;
+2. `install.sql` installiert deterministisch den eigenständigen
+   Execution-Plan-Analyse-Frameworkteil;
+3. `update.sql` erzeugt ausschließlich synthetische Plan-Evidenz;
+4. `validate.sql` prüft den Plan und `USP_ExecutionPlanAnalysis`;
+5. `cleanup.sql` entfernt nur markergebundene Adapterdatenbanken.
+
+`Invoke-AnalyzeAdapterQuickScenario.ps1` verwendet für Provisionierung,
+SQL-Ausführung und Removal ausschließlich öffentliche `SQL_Server_Lab`-APIs.
+Am 30. August 2026 bestand der Slice unter SQL Server 2025 sowohl mit Docker
+als auch mit Podman. Beide Läufe schlossen Installation, Update, Validierung,
+Adapter-Cleanup und das scopegebundene Entfernen von Container und Volume
+erfolgreich ab. Damit ist ADP-004 erfüllt; die breitere Versionsmatrix bleibt
+impact-basierte Analyze-Evidenz und wird nicht als Lab-Kernvertrag dupliziert.
+
+## 17. Verarbeitungsreihenfolge
 
 1. vorhandene Beispiele, Fixtures und Special-Case-Fälle inventarisieren;
 2. Beispielkatalog und JSON-Schema festlegen;
