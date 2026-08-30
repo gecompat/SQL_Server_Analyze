@@ -1,0 +1,30 @@
+{
+  "$schema": "https://github.com/gecompat/SQL_Server_Lab/raw/main/Schemas/project-adapter.schema.json",
+  "adapterContractVersion": "0.1",
+  "projectId": "sql-server-analyze-execution-plan-001",
+  "displayName": "SQL Server Analyze – EXECUTION-PLAN-001",
+  "description": "Installiert den eigenständig nutzbaren Execution-Plan-Frameworkumfang, erzeugt ein synthetisches Quick-Szenario und validiert den Analyzer-Vertrag.",
+  "supportedLabCoreVersions": ["0.x"],
+  "requiredCapabilities": ["container-linux", "sqlcmd"],
+  "supportedSqlVersions": ["2019", "2022", "2025"],
+  "entrypoints": {
+    "preflight": "sql/preflight.sql",
+    "install": "sql/install.sql",
+    "update": "sql/update.sql",
+    "validate": "sql/validate.sql",
+    "cleanup": "sql/cleanup.sql"
+  },
+  "targetDatabase": "master",
+  "secretInputs": [],
+  "producedLocalArtifacts": [
+    "Markergebundene Frameworkdatenbank LabAnalyze",
+    "Markergebundene Szenariodatenbank AnalyzeAdapterPlan"
+  ],
+  "dataClassification": "SYNTHETIC",
+  "privacyExportPolicy": "SANITIZED_SUMMARY_ONLY",
+  "licenseNotice": "Synthetischer Repository-Inhalt; es gilt LICENSE.md im Repository-Root.",
+  "knownLimitations": [
+    "Der Pilot installiert ausschließlich den eigenständig unterstützten Execution-Plan-Frameworkumfang und nicht das vollständige Analyze-Framework.",
+    "Der Adapter unterstützt im Vertragsstand 0.1 ausschließlich Linux-Container über Docker oder Podman."
+  ]
+}
