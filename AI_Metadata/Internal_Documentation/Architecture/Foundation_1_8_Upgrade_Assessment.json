@@ -1,0 +1,25 @@
+{
+  "$schema": "../../../.ai/foundation/schemas/upgrade-assessment.schema.json",
+  "schema_version": 1,
+  "installed_version": "1.7.0",
+  "source_version": "1.8.0",
+  "source_ref": "AI_Repository_Foundation@9a0f949ee0cdba73c8309e9dbb75c077ca21ab06",
+  "assessments": [
+    {
+      "feature_id": "rule-context-cache",
+      "candidate_reasons": [
+        "introduced_in 1.8.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "The repository contains a large transitive governance set rooted at AGENTS.md.",
+        "Repository work is commonly organized into multiple implementation and validation waves.",
+        "The working tree may contain staged, unstaged, or untracked rule changes that must invalidate stale analysis."
+      ],
+      "rationale": "The fail-closed cache contract can reduce repeated semantic analysis while preserving native instruction discovery and the repository files as the source of truth. The policy and schema are applicable without changing project-specific governance.",
+      "recommendation": "Adopt the Foundation 1.8.0 policy and schema. Keep semantic analysis session-local and use the normal full-read path unless an exact validated cache hit is available.",
+      "decision_required": null,
+      "selected_capabilities": []
+    }
+  ]
+}
