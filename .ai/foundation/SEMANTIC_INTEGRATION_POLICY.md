@@ -119,4 +119,5 @@ Semantic integration is complete only when:
 - any identifier adoption mode is explicit and historical references remain resolvable;
 - the Registration Authority is discoverable when final project references are created or allocated;
 - optional Foundation reference clients have not displaced a compatible project allocator without an explicit decision;
+- installed provenance records every selected baseline or intentional override with portable source/installed hashes and a specific reason for each override; missing or stale provenance remains `UNKNOWN_DRIFT` rather than implied approval;
 - `FOUNDATION_INTEGRITY` validation remains separated from `PROJECT_SEMANTIC` and `RUNTIME_EMPIRICAL` validation.

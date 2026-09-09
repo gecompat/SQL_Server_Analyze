@@ -426,7 +426,7 @@ def backlog_text(registry: dict[str, Any]) -> str:
         )
     lines += [
         "",
-        "Existing-repository AI transfer evidence is recorded in `Documentation/Quality/EXISTING_REPOSITORY_AI_TRANSFER_EVIDENCE.md`; the fresh-agent continuation criterion remains tracked by WI-0001.",
+        "Existing-repository AI transfer evidence is recorded in `Documentation/Quality/EXISTING_REPOSITORY_AI_TRANSFER_EVIDENCE.md`; the completed fresh-agent continuation criterion is recorded in `Documentation/Quality/MANUAL_VALIDATION_FRESH_AI_TRANSFER.md` and WI-0001.",
         "",
         "Allowed work-item statuses are project-governed values such as `proposed`, `ready`, `in_progress`, `blocked`, and `done`.",
         "",

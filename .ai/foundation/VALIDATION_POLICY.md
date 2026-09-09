@@ -30,6 +30,19 @@ The normalization is deliberately narrow:
 
 Do not create, replace, or modify a target repository's `.gitattributes` merely to make Foundation validation green when the only difference is LF versus CRLF. Preserve existing target line-ending governance. A target project may independently choose a namespaced `eol=lf` policy or stronger byte-stability rule when its own build/runtime/repository semantics require one; that choice belongs to `PROJECT_SEMANTIC`/repository administration rather than the Foundation integrity floor.
 
+## Installed provenance and drift classification
+
+Every manifest transfer row carries a portable SHA-256 computed with the same LF/CRLF rule. A completed deterministic installation or direct semantic transfer records `.ai/foundation/installation-provenance.json` using `foundation-installation-provenance/v1`. The receipt identifies the exact ruleset, source repository, source commit when available, source-manifest hash, selected modules, and the source/installed hash of every selected target.
+
+Classify installed content as exactly one of:
+
+- `UNCHANGED_CURRENT_BASELINE`: content equals the current manifest source hash;
+- `INTENTIONAL_OVERRIDE`: content differs from the current source but equals a current-version receipt that explicitly records the target, installed hash, and non-empty semantic-merge reason;
+- `PREVIOUS_FOUNDATION_VERSION`: content equals its internally consistent receipt and that receipt identifies an older ruleset;
+- `UNKNOWN_DRIFT`: content, receipt, version, manifest hash, or file metadata cannot be reconciled with the other classifications.
+
+Missing or malformed provenance never upgrades a difference into an intentional override. A receipt is content provenance, not semantic approval, authority, a signature, or proof that project validation passed. Record an override only after the semantic merge is complete; a later unrecorded edit becomes `UNKNOWN_DRIFT`. Never include prompts, responses, credentials, host paths, or private runtime state in the receipt.
+
 ## Validation infrastructure availability
 
 A required validation service can fail independently of the project being validated. Repository protection should therefore distinguish validation outcome from validation infrastructure availability according to `REPOSITORY_CONTINUITY_POLICY.md`.
