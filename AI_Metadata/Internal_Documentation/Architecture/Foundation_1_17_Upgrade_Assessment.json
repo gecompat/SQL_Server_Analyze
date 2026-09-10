@@ -1,0 +1,128 @@
+{
+  "$schema": "../../../.ai/foundation/schemas/upgrade-assessment.schema.json",
+  "schema_version": 1,
+  "installed_version": "1.8.0",
+  "source_version": "1.17.2",
+  "source_ref": "AI_Repository_Foundation@36d2cb20c2880b7cfaa6428db3716e6768e23964",
+  "assessments": [
+    {
+      "feature_id": "installed-foundation-provenance",
+      "candidate_reasons": [
+        "introduced_in 1.15.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        "The target is upgrading Foundation material from 1.8.0.",
+        "The current source manifest provides portable hashes for every selected transfer row."
+      ],
+      "rationale": "A content-minimized installation receipt improves deterministic drift classification without changing project governance.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "model-routing-interoperability",
+      "candidate_reasons": [
+        "material changes in 1.9.0, 1.11.0, 1.14.0, and 1.17.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "AGENTS.md contains a provider-neutral cost and quality policy.",
+        "No repository-local live provider catalog, credential reference, or external router state is configured."
+      ],
+      "rationale": "The upgraded core contracts preserve the existing policy. The optional router requires a separate project decision about runtime state, remote processing, and credentials.",
+      "recommendation": "Keep the core routing contracts. Select the optional model-router only after authorizing its external runtime state and provider boundaries.",
+      "decision_required": "Selecting a concrete runtime state, provider credentials, or remote model access remains a project decision.",
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "central-artifact-registry",
+      "candidate_reasons": [
+        "material change in 1.17.1"
+      ],
+      "classification": "ALREADY_EQUIVALENT",
+      "evidence": [
+        "Metadata/Governance/Artifact_Registry.json is the project Registration Authority.",
+        "The selected artifact-registry-github capability and its semantic merge workflow are already present."
+      ],
+      "rationale": "The project already uses the v2 registry contract. The workflow action generations were updated while preserving the project-specific registry path.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": [
+        "artifact-registry-github"
+      ]
+    },
+    {
+      "feature_id": "ai-work-orchestration",
+      "candidate_reasons": [
+        "introduced_in 1.10.0; material changes in 1.12.0, 1.13.0, 1.14.0, and 1.17.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "The repository is maintained through AI-assisted development and contains strict privacy, authorization, and validation rules.",
+        "No project-selected AI work planner or runtime control-plane state exists."
+      ],
+      "rationale": "The runtime-neutral policy and schemas can coexist with the project rules. Optional planner and execution components remain unselected.",
+      "recommendation": "Use the installed core contracts as governance only; select a reference planner only when a bounded project need and an external state location are approved.",
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-runtime-adapters",
+      "candidate_reasons": [
+        "introduced_in 1.11.0; material change in 1.16.0"
+      ],
+      "classification": "NOT_APPLICABLE",
+      "evidence": [
+        "No repository-configured local or remote AI runtime endpoint, named connection, or adapter protocol is present."
+      ],
+      "rationale": "The core schemas are installed, but an executable runtime adapter is not needed for the current repository workflow.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-work-execution",
+      "candidate_reasons": [
+        "introduced_in 1.12.0"
+      ],
+      "classification": "NOT_APPLICABLE",
+      "evidence": [
+        "The repository has no project-selected resumable AI executor, approval-receipt store, or checkpoint location."
+      ],
+      "rationale": "Selecting the optional executor would require independent decisions about external effects, approvals, and runtime state.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-host-preparation",
+      "candidate_reasons": [
+        "introduced_in 1.13.0"
+      ],
+      "classification": "NOT_APPLICABLE",
+      "evidence": [
+        "The task does not require model downloads, runtime installation, or host provisioning."
+      ],
+      "rationale": "The optional provisioner is deliberately not installed because it would require explicit source, host-path, network, and spending authority.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-client-integration",
+      "candidate_reasons": [
+        "introduced_in 1.14.0; material change in 1.16.0"
+      ],
+      "classification": "NOT_APPLICABLE",
+      "evidence": [
+        "No repository-owned client configuration or local adapter synthesis workflow is configured.",
+        "The current task does not authorize client configuration writes."
+      ],
+      "rationale": "The core client-integration schemas are available, but the optional integration implementation requires separate client and configuration authority.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    }
+  ]
+}
