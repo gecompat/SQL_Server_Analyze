@@ -6,8 +6,9 @@ GO
 Datei        : 120_OPS005_Linked_Server_Runtime_Contract.sql
 Zweck        : Prüft lokales Inventar, sicheren Default und doppeltes Opt-in.
 Datenschutz  : Ausschließlich feste synthetische Objekt- und Zielnamen.
-Nebenwirkung : Ein synthetischer Linked Server wird im Fehler- und Erfolgsfall
-               wieder entfernt. Ein Remotezugriff wird nicht ausgeführt.
+ Nebenwirkung : Synthetische Linked Server und ein synthetischer Benutzer werden
+                im Fehler- und Erfolgsfall wieder entfernt. Der Test prüft einen
+                absichtlich nicht erreichbaren, synthetischen Remote-Endpunkt.
 ===============================================================================
 */
 SET NOCOUNT ON;
@@ -20,21 +21,11 @@ DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
 
 IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
-    EXEC [master].[dbo].[sp_dropserver]
-          @server = @ServerName
-        , @droplogins = 'droplogins';
-IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
-    EXEC [master].[dbo].[sp_dropserver]
-          @server = @TimeoutServerName
-        , @droplogins = 'droplogins';
-IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @ServerName)
-    EXEC (N'DROP LOGIN ' + QUOTENAME(@ServerName));
-IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @TimeoutServerName)
-    EXEC (N'DROP LOGIN ' + QUOTENAME(@TimeoutServerName));
-DROP USER IF EXISTS [ExampleOps005RestrictedUser];
-
-IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
     THROW 54850, N'Der synthetische Linked-Server-Name ist bereits belegt.', 1;
+IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
+    THROW 54854, N'Der synthetische Timeout-Linked-Server-Name ist bereits belegt.', 1;
+IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
+    THROW 54863, N'Der synthetische Linked-Server-Benutzername ist bereits belegt.', 1;
 
 BEGIN TRY
     EXEC [master].[dbo].[sp_addlinkedserver]
@@ -100,9 +91,6 @@ BEGIN TRY
                 AND [j].[ConnectivityStatus] = 'AUTHORIZATION_REQUIRED'
            )
         THROW 54852, N'Das doppelte Linked-Server-Opt-in ist verletzt.', 1;
-
-    IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
-        THROW 54854, N'Der synthetische Timeout-Linked-Server-Name ist bereits belegt.', 1;
 
     EXEC [master].[dbo].[sp_addlinkedserver]
           @server = @TimeoutServerName
@@ -206,17 +194,8 @@ BEGIN TRY
     EXEC [master].[dbo].[sp_dropserver]
           @server = @ServerName
         , @droplogins = 'droplogins';
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @ServerName)
-        EXEC (N'DROP LOGIN ' + QUOTENAME(@ServerName));
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @TimeoutServerName)
-        EXEC (N'DROP LOGIN ' + QUOTENAME(@TimeoutServerName));
-
     IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
         THROW 54859, N'Der synthetic Linked-Server ''ExampleOps005Linked'' konnte trotz erfolgreichem Lauf nicht bereinigt werden.', 1;
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @ServerName)
-        THROW 54860, N'Der synthetic Linked-Server-Login ''ExampleOps005Linked'' konnte trotz erfolgreichem Lauf nicht bereinigt werden.', 1;
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @TimeoutServerName)
-        THROW 54862, N'Der synthetic Timeout-Linked-Server-Login ''ExampleOps005TimeoutLinked'' konnte trotz erfolgreichem Lauf nicht bereinigt werden.', 1;
     IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
         THROW 54861, N'Der synthetic Benutzer ''ExampleOps005RestrictedUser'' konnte trotz erfolgreichem Lauf nicht bereinigt werden.', 1;
 END TRY
@@ -241,19 +220,11 @@ BEGIN CATCH
         EXEC [master].[dbo].[sp_dropserver]
               @server = @TimeoutServerName
             , @droplogins = 'droplogins';
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @ServerName)
-        EXEC (N'DROP LOGIN ' + QUOTENAME(@ServerName));
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @TimeoutServerName)
-        EXEC (N'DROP LOGIN ' + QUOTENAME(@TimeoutServerName));
     DROP USER IF EXISTS [ExampleOps005RestrictedUser];
     IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
         THROW 54856, N'Der synthetic Linked-Server ''ExampleOps005Linked'' ist nach Fehlern nicht bereinigt.', 1;
     IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
         THROW 54857, N'Der synthetic Timeout-Linked-Server ''ExampleOps005TimeoutLinked'' ist nach Fehlern nicht bereinigt.', 1;
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @ServerName)
-        THROW 54860, N'Der synthetic Linked-Server-Login ''ExampleOps005Linked'' ist nach Fehlern nicht bereinigt.', 1;
-    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = @TimeoutServerName)
-        THROW 54862, N'Der synthetic Timeout-Linked-Server-Login ''ExampleOps005TimeoutLinked'' ist nach Fehlern nicht bereinigt.', 1;
     IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
         THROW 54858, N'Der synthetic Benutzer ''ExampleOps005RestrictedUser'' ist nach Fehlern nicht bereinigt.', 1;
     THROW;
