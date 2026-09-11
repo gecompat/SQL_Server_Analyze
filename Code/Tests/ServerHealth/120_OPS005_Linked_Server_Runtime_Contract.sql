@@ -199,14 +199,16 @@ BEGIN TRY
         DROP USER IF EXISTS [ExampleOps005RestrictedUser];
         EXEC [master].[sys].[sp_executesql]
             N'DROP USER IF EXISTS [ExampleOps005RestrictedUser];';
-        DROP LOGIN IF EXISTS [ExampleOps005RestrictedLogin];
+        IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = N'ExampleOps005RestrictedLogin')
+            DROP LOGIN [ExampleOps005RestrictedLogin];
         THROW;
     END CATCH;
 
     DROP USER IF EXISTS [ExampleOps005RestrictedUser];
     EXEC [master].[sys].[sp_executesql]
         N'DROP USER IF EXISTS [ExampleOps005RestrictedUser];';
-    DROP LOGIN IF EXISTS [ExampleOps005RestrictedLogin];
+    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = N'ExampleOps005RestrictedLogin')
+        DROP LOGIN [ExampleOps005RestrictedLogin];
 
     EXEC [master].[dbo].[sp_dropserver]
           @server = @ServerName
@@ -240,7 +242,8 @@ BEGIN CATCH
     DROP USER IF EXISTS [ExampleOps005RestrictedUser];
     EXEC [master].[sys].[sp_executesql]
         N'DROP USER IF EXISTS [ExampleOps005RestrictedUser];';
-    DROP LOGIN IF EXISTS [ExampleOps005RestrictedLogin];
+    IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = N'ExampleOps005RestrictedLogin')
+        DROP LOGIN [ExampleOps005RestrictedLogin];
     IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
         THROW 54856, N'Der synthetic Linked-Server ''ExampleOps005Linked'' ist nach Fehlern nicht bereinigt.', 1;
     IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
