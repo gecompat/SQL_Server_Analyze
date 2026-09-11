@@ -20,7 +20,7 @@ AS
 BEGIN
     SET NOCOUNT ON; SET @Json=NULL;
     DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
-    DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
+    DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@ServerStatusCode varchar(40)=N'SOURCE_UNAVAILABLE';
     IF @Hilfe=1 BEGIN PRINT N'monitor.USP_LinkedServerAnalysis'; PRINT N'Default ist lokales Inventar. Remote-Test nur mit @ConnectivityTestEnabled=1 und @HighImpactConfirmed=1.'; RETURN; END;
     DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
     SET LOCK_TIMEOUT 0;
@@ -50,8 +50,26 @@ BEGIN
         DECLARE [s] CURSOR LOCAL FAST_FORWARD FOR SELECT [ServerName] FROM [#LinkedServerAnalysis_Linked];
         OPEN [s]; FETCH NEXT FROM [s] INTO @Server;
         WHILE @@FETCH_STATUS=0 BEGIN
-          BEGIN TRY EXEC [master].[dbo].[sp_testlinkedserver] @servername=@Server; UPDATE [#LinkedServerAnalysis_Linked] SET [ConnectivityStatus]='SUCCEEDED' WHERE [ServerName]=@Server COLLATE SQL_Latin1_General_CP1_CS_AS; END TRY
-          BEGIN CATCH UPDATE [#LinkedServerAnalysis_Linked] SET [ConnectivityStatus]='FAILED',[StatusCode]='SOURCE_UNAVAILABLE',[EvidenceLimit]=CONCAT(N'Remote-Testfehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)) WHERE [ServerName]=@Server COLLATE SQL_Latin1_General_CP1_CS_AS; SET @Partial=1; END CATCH;
+          BEGIN TRY
+            EXEC [master].[dbo].[sp_testlinkedserver] @servername=@Server;
+            UPDATE [#LinkedServerAnalysis_Linked]
+               SET [ConnectivityStatus]='SUCCEEDED'
+             WHERE [ServerName]=@Server COLLATE SQL_Latin1_General_CP1_CS_AS;
+          END TRY
+          BEGIN CATCH
+            SET @ErrorNumber=ERROR_NUMBER();
+            SET @ErrorMessage=ERROR_MESSAGE();
+            IF @ErrorNumber=229
+                SET @ServerStatusCode=N'DENIED_PERMISSION';
+            ELSE IF @ErrorNumber IN(-2,1222) OR @ErrorMessage LIKE N'%Timeout%' OR @ErrorMessage LIKE N'%timeout%'
+                SET @ServerStatusCode=N'SOURCE_TIMEOUT';
+            ELSE
+                SET @ServerStatusCode=N'SOURCE_UNAVAILABLE';
+            UPDATE [#LinkedServerAnalysis_Linked]
+               SET [ConnectivityStatus]='FAILED',[StatusCode]=@ServerStatusCode,[EvidenceLimit]=CONCAT(N'Remote-Testfehler ',@ErrorNumber,N': ',LEFT(@ErrorMessage,800))
+             WHERE [ServerName]=@Server COLLATE SQL_Latin1_General_CP1_CS_AS;
+            SET @Partial=1;
+          END CATCH;
           FETCH NEXT FROM [s] INTO @Server;
         END; CLOSE [s]; DEALLOCATE [s];
       END;
