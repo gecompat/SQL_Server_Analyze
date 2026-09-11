@@ -19,6 +19,10 @@ DECLARE @TimeoutServerName sysname = N'ExampleOps005TimeoutLinked';
 DECLARE @Json nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
+DECLARE @RestrictedLoginPassword nvarchar(128) = N'A!a' + CONVERT(nvarchar(36), NEWID());
+DECLARE @RestrictedLoginSql nvarchar(max) =
+    N'CREATE LOGIN [ExampleOps005RestrictedLogin] WITH PASSWORD = N''' +
+    REPLACE(@RestrictedLoginPassword, N'''', N'''''') + N''';';
 
 IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
     THROW 54850, N'Der synthetische Linked-Server-Name ist bereits belegt.', 1;
@@ -144,8 +148,7 @@ BEGIN TRY
           @server = @TimeoutServerName
         , @droplogins = 'droplogins';
 
-    CREATE LOGIN [ExampleOps005RestrictedLogin]
-        WITH PASSWORD = N'ExampleOps005TestOnly!2026';
+    EXEC (@RestrictedLoginSql);
     EXEC [master].[sys].[sp_executesql]
         N'CREATE USER [ExampleOps005RestrictedUser] FOR LOGIN [ExampleOps005RestrictedLogin];';
     EXEC [master].[sys].[sp_executesql]
