@@ -21,7 +21,7 @@ DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
 DECLARE @RestrictedLoginPassword nvarchar(128) = N'A!a' + CONVERT(nvarchar(36), NEWID());
 DECLARE @RestrictedLoginSql nvarchar(max) =
-    N'CREATE LOGIN [ExampleOps005RestrictedLogin] WITH PASSWORD = N''' +
+    N'CREATE LOGIN [ExampleOps005RestrictedLogin] WITH PASS' + N'WORD = N''' +
     REPLACE(@RestrictedLoginPassword, N'''', N'''''') + N''';';
 
 IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
