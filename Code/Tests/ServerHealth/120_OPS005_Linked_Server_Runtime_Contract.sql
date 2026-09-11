@@ -108,7 +108,7 @@ BEGIN TRY
           @server = @TimeoutServerName
         , @srvproduct = N'ExampleSyntheticTimeoutProduct'
         , @provider = N'MSOLEDBSQL'
-        , @datasrc = N'198.51.100.1,65535';
+        , @datasrc = N'example-timeout.invalid:65535';
 
     SET @Json = NULL;
     SET @Status = NULL;
