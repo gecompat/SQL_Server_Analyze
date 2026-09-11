@@ -6,9 +6,9 @@ GO
 Datei        : 120_OPS005_Linked_Server_Runtime_Contract.sql
 Zweck        : Prüft lokales Inventar, sicheren Default und doppeltes Opt-in.
 Datenschutz  : Ausschließlich feste synthetische Objekt- und Zielnamen.
- Nebenwirkung : Synthetische Linked Server und ein synthetischer Benutzer werden
-                im Fehler- und Erfolgsfall wieder entfernt. Der Test prüft einen
-                absichtlich nicht erreichbaren, synthetischen Remote-Endpunkt.
+ Nebenwirkung : Synthetische Linked Server, ein Login und zugehörige Benutzer
+                werden im Fehler- und Erfolgsfall wieder entfernt. Der Test prüft
+                einen absichtlich nicht erreichbaren, synthetischen Remote-Endpunkt.
 ===============================================================================
 */
 SET NOCOUNT ON;
@@ -26,6 +26,10 @@ IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
     THROW 54854, N'Der synthetische Timeout-Linked-Server-Name ist bereits belegt.', 1;
 IF EXISTS (SELECT 1 FROM [sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
     THROW 54863, N'Der synthetische Linked-Server-Benutzername ist bereits belegt.', 1;
+IF EXISTS (SELECT 1 FROM [master].[sys].[database_principals] WHERE [name] = N'ExampleOps005RestrictedUser')
+    THROW 54864, N'Der synthetische Master-Benutzername ist bereits belegt.', 1;
+IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = N'ExampleOps005RestrictedLogin')
+    THROW 54865, N'Der synthetische Linked-Server-Loginname ist bereits belegt.', 1;
 
 BEGIN TRY
     EXEC [master].[dbo].[sp_addlinkedserver]
@@ -140,17 +144,21 @@ BEGIN TRY
           @server = @TimeoutServerName
         , @droplogins = 'droplogins';
 
-    DROP USER IF EXISTS [ExampleOps005RestrictedUser];
-    CREATE USER [ExampleOps005RestrictedUser] WITHOUT LOGIN;
+    CREATE LOGIN [ExampleOps005RestrictedLogin]
+        WITH PASSWORD = N'ExampleOps005TestOnly!2026';
+    EXEC [master].[sys].[sp_executesql]
+        N'CREATE USER [ExampleOps005RestrictedUser] FOR LOGIN [ExampleOps005RestrictedLogin];';
+    EXEC [master].[sys].[sp_executesql]
+        N'DENY EXECUTE ON [dbo].[sp_testlinkedserver] TO [ExampleOps005RestrictedUser];';
+    CREATE USER [ExampleOps005RestrictedUser] FOR LOGIN [ExampleOps005RestrictedLogin];
     GRANT EXECUTE ON [monitor].[USP_LinkedServerAnalysis] TO [ExampleOps005RestrictedUser];
-    DENY EXECUTE ON [master].[dbo].[sp_testlinkedserver] TO [ExampleOps005RestrictedUser];
 
     SET @Json = NULL;
     SET @Status = NULL;
     SET @Partial = NULL;
 
     BEGIN TRY
-        EXECUTE AS USER = N'ExampleOps005RestrictedUser';
+        EXECUTE AS LOGIN = N'ExampleOps005RestrictedLogin';
 
         EXEC [monitor].[USP_LinkedServerAnalysis]
               @ConnectivityTestEnabled = 1
@@ -184,12 +192,18 @@ BEGIN TRY
             THROW 54853, N'Der Linked-Server-Berechtigungsfall ist verletzt.', 1;
     END TRY
     BEGIN CATCH
-        IF USER_NAME() = N'ExampleOps005RestrictedUser' REVERT;
+        IF ORIGINAL_LOGIN() <> SUSER_SNAME() REVERT;
         DROP USER IF EXISTS [ExampleOps005RestrictedUser];
+        EXEC [master].[sys].[sp_executesql]
+            N'DROP USER IF EXISTS [ExampleOps005RestrictedUser];';
+        DROP LOGIN IF EXISTS [ExampleOps005RestrictedLogin];
         THROW;
     END CATCH;
 
     DROP USER IF EXISTS [ExampleOps005RestrictedUser];
+    EXEC [master].[sys].[sp_executesql]
+        N'DROP USER IF EXISTS [ExampleOps005RestrictedUser];';
+    DROP LOGIN IF EXISTS [ExampleOps005RestrictedLogin];
 
     EXEC [master].[dbo].[sp_dropserver]
           @server = @ServerName
@@ -221,6 +235,9 @@ BEGIN CATCH
               @server = @TimeoutServerName
             , @droplogins = 'droplogins';
     DROP USER IF EXISTS [ExampleOps005RestrictedUser];
+    EXEC [master].[sys].[sp_executesql]
+        N'DROP USER IF EXISTS [ExampleOps005RestrictedUser];';
+    DROP LOGIN IF EXISTS [ExampleOps005RestrictedLogin];
     IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @ServerName)
         THROW 54856, N'Der synthetic Linked-Server ''ExampleOps005Linked'' ist nach Fehlern nicht bereinigt.', 1;
     IF EXISTS (SELECT 1 FROM [sys].[servers] WHERE [name] = @TimeoutServerName)
