@@ -33,7 +33,7 @@ Eine leere synthetische Lab-Instanz kann `AVAILABLE_EMPTY` liefern. Drei explizi
 
 ## Leere oder partielle Ausgabe
 
-`AVAILABLE_EMPTY` bedeutet nur, dass im aktuellen Sicherheitskontext keine passenden Objekte sichtbar waren. Es beweist nicht, dass die Systemdatenbanken objektfrei sind. Eine Datenbank wird nur verarbeitet, wenn sie online und für den Aufrufer zugänglich ist. Scheitert ein datenbanklokaler Katalogzugriff, bleibt die Quellgrenze als `SOURCE_UNAVAILABLE` erhalten und der Gesamtstatus kann `AVAILABLE_LIMITED` werden.
+`AVAILABLE_EMPTY` bedeutet nur, dass im aktuellen Sicherheitskontext keine passenden Objekte sichtbar waren. Es beweist nicht, dass die Systemdatenbanken objektfrei sind. Eine nicht zugängliche Systemdatenbank bleibt als `DENIED_PERMISSION` sichtbar. Scheitert ein datenbanklokaler Katalogzugriff aus einem anderen Grund, bleibt die Quellgrenze als `SOURCE_UNAVAILABLE` erhalten; beide Fälle können `AVAILABLE_LIMITED` auslösen.
 
 Für einen kontrollierten Positivtest werden feste Example-Namen vor der Erstellung auf Kollision geprüft. Das Cleanup entfernt nur genau diese leeren synthetischen Tabellen. Bereits vorhandene oder nicht eindeutig zuordenbare Objekte führen zum Abbruch und werden nicht überschrieben.
 

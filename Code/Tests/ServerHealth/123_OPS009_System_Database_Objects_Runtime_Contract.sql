@@ -52,15 +52,25 @@ BEGIN TRY
     GRANT EXECUTE ON [monitor].[USP_SystemDatabaseObjectInventory] TO [ExampleOps009RestrictedUser];
     EXECUTE AS USER = N'ExampleOps009RestrictedUser';
     SET @Json = NULL;
+    SET @Status = NULL;
     EXEC [monitor].[USP_SystemDatabaseObjectInventory]
           @MaxZeilen = 20
         , @ResultSetArt = 'NONE'
         , @JsonErzeugen = 1
         , @Json = @Json OUTPUT
-        , @PrintMeldungen = 0;
+        , @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT;
     REVERT;
     IF COALESCE(ISJSON(@Json), 0) <> 1
-        THROW 54893, N'Der eingeschränkte Inventarpfad lieferte kein gültiges JSON.', 1;
+       OR @Status <> 'AVAILABLE_LIMITED'
+       OR NOT EXISTS
+          (
+              SELECT 1
+              FROM OPENJSON(@Json)
+              WITH ([StatusCode] varchar(40) '$.StatusCode') AS [j]
+              WHERE [j].[StatusCode] = 'DENIED_PERMISSION'
+          )
+        THROW 54893, N'Der eingeschränkte Inventarpfad weist keine partielle Metadatensichtbarkeit aus.', 1;
 
     DROP USER [ExampleOps009RestrictedUser];
     EXEC [master].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
