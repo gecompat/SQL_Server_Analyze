@@ -24,6 +24,9 @@ OPS_RUNTIME_CONTRACTS = {
     "Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql": (
         "USP_MsdbHealthAnalysis",
         "DATABASE_SIZE",
+        "BACKUP_HISTORY",
+        "MAINTENANCE_PLAN",
+        "SOURCE_UNAVAILABLE",
         "EXECUTE AS USER",
     ),
     "Code/Tests/CurrentState/120_OPS007_Current_Cursor_Runtime_Contract.sql": (
