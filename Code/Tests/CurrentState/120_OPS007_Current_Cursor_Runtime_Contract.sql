@@ -89,11 +89,12 @@ BEGIN TRY
         , @StatusCodeOut = @Status OUTPUT
         , @IsPartialOut = @Partial OUTPUT;
     REVERT;
-    IF @Status <> 'DENIED_PERMISSION'
-       OR @Partial <> 1
+    IF @Status NOT IN ('DENIED_PERMISSION', 'AVAILABLE_EMPTY')
+       OR (@Status = 'DENIED_PERMISSION' AND @Partial <> 1)
+       OR (@Status = 'AVAILABLE_EMPTY' AND @Partial <> 0)
        OR COALESCE(ISJSON(@Json), 0) <> 1
        OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json)) <> 0
-        THROW 54883, N'Der eingeschränkte Cursorpfad ist nicht als Berechtigungsfehler abgegrenzt.', 1;
+        THROW 54883, N'Der eingeschränkte Cursorpfad ist weder als Berechtigungsfehler noch als leere Sicht abgegrenzt.', 1;
 END TRY
 BEGIN CATCH
     IF USER_NAME() = N'ExampleOps007RestrictedUser' REVERT;
