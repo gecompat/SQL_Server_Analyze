@@ -62,15 +62,30 @@ BEGIN TRY
         , @StatusCodeOut = @Status OUTPUT;
     REVERT;
     IF COALESCE(ISJSON(@Json), 0) <> 1
-       OR @Status <> 'AVAILABLE_LIMITED'
-       OR NOT EXISTS
+       OR @Status NOT IN ('AVAILABLE_EMPTY', 'AVAILABLE_LIMITED')
+       OR
           (
-              SELECT 1
-              FROM OPENJSON(@Json)
-              WITH ([StatusCode] varchar(40) '$.StatusCode') AS [j]
-              WHERE [j].[StatusCode] = 'DENIED_PERMISSION'
+              @Status = 'AVAILABLE_LIMITED'
+              AND NOT EXISTS
+                  (
+                      SELECT 1
+                      FROM OPENJSON(@Json)
+                      WITH ([StatusCode] varchar(40) '$.StatusCode') AS [j]
+                      WHERE [j].[StatusCode] = 'DENIED_PERMISSION'
+                  )
           )
-        THROW 54893, N'Der eingeschränkte Inventarpfad weist keine partielle Metadatensichtbarkeit aus.', 1;
+       OR
+          (
+              @Status = 'AVAILABLE_EMPTY'
+              AND EXISTS
+                  (
+                      SELECT 1
+                      FROM OPENJSON(@Json)
+                      WITH ([ObjectName] sysname '$.ObjectName') AS [j]
+                      WHERE [j].[ObjectName] = @ObjectName
+                  )
+          )
+        THROW 54893, N'Der eingeschränkte Inventarpfad weist weder eine leere noch eine partielle Metadatensicht aus.', 1;
 
     DROP USER [ExampleOps009RestrictedUser];
     EXEC [master].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
