@@ -39,6 +39,16 @@ OPS_RUNTIME_CONTRACTS = {
     ),
 }
 
+OPS_SOURCE_CONTRACTS = {
+    "Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql": (
+        "DENIED_PERMISSION",
+        "UNSUPPORTED_SOURCE",
+        "LOCK_TIMEOUT",
+        "sys.dm_db_persisted_sku_features",
+        "sys.dm_db_uncontained_entities",
+    ),
+}
+
 DEEP_REVIEWED_PROCEDURES = {
     "USP_CreateExecutionEvidenceJson",
     "USP_ExecutionPlanAnalysis",
@@ -95,6 +105,15 @@ def validate_repository(root: Path) -> list[str]:
             errors.append(f"OPS runtime contract missing {token}: {relative_path}")
         if Path(relative_path).name not in release_gate:
             errors.append(f"release gate does not include {relative_path}")
+
+    for relative_path, tokens in OPS_SOURCE_CONTRACTS.items():
+        path = root / relative_path
+        if not path.is_file():
+            errors.append(f"missing OPS source contract: {relative_path}")
+            continue
+        text = path.read_text(encoding="utf-8-sig")
+        for token in missing_tokens(text, tokens):
+            errors.append(f"OPS source contract missing {token}: {relative_path}")
 
     review_path = root / "Metadata/Quality/Analysis_Documentation_Review.csv"
     with review_path.open(encoding="utf-8-sig", newline="") as handle:
