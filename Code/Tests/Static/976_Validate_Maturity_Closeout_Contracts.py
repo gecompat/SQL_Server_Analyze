@@ -29,6 +29,7 @@ OPS_RUNTIME_CONTRACTS = {
     "Code/Tests/CurrentState/120_OPS007_Current_Cursor_Runtime_Contract.sql": (
         "NOT_EXECUTED",
         "INVALID_PARAMETER",
+        "DENIED_PERMISSION",
         "DECLARE [ExampleOps007Cursor] CURSOR",
     ),
     "Code/Tests/ServerHealth/123_OPS009_System_Database_Objects_Runtime_Contract.sql": (

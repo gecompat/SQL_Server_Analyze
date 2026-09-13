@@ -70,4 +70,35 @@ BEGIN CATCH
     IF CURSOR_STATUS('local', 'ExampleOps007Cursor') > -3 DEALLOCATE [ExampleOps007Cursor];
     THROW;
 END CATCH;
+
+DROP USER IF EXISTS [ExampleOps007RestrictedUser];
+CREATE USER [ExampleOps007RestrictedUser] WITHOUT LOGIN;
+GRANT EXECUTE ON [monitor].[USP_CurrentCursorAnalysis] TO [ExampleOps007RestrictedUser];
+BEGIN TRY
+    EXECUTE AS USER = N'ExampleOps007RestrictedUser';
+    SET @Json = NULL;
+    SET @Status = NULL;
+    SET @Partial = NULL;
+    EXEC [monitor].[USP_CurrentCursorAnalysis]
+          @IncludeCursorDetails = 1
+        , @SessionIds = N'1'
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @Json OUTPUT
+        , @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT
+        , @IsPartialOut = @Partial OUTPUT;
+    REVERT;
+    IF @Status <> 'DENIED_PERMISSION'
+       OR @Partial <> 1
+       OR COALESCE(ISJSON(@Json), 0) <> 1
+       OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json)) <> 0
+        THROW 54883, N'Der eingeschränkte Cursorpfad ist nicht als Berechtigungsfehler abgegrenzt.', 1;
+END TRY
+BEGIN CATCH
+    IF USER_NAME() = N'ExampleOps007RestrictedUser' REVERT;
+    DROP USER IF EXISTS [ExampleOps007RestrictedUser];
+    THROW;
+END CATCH;
+DROP USER [ExampleOps007RestrictedUser];
 GO
