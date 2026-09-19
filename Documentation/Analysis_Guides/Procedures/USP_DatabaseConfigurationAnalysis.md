@@ -21,7 +21,7 @@ Unsichtbare, offline befindliche oder berechtigungsbedingt ausgelassene Datenban
 
 ```sql
 EXEC [monitor].[USP_DatabaseConfigurationAnalysis]
-      @DatabaseNames = N'[ExampleDatabaseA],[ExampleDatabaseB]',
+      @DatabaseNames = N'[ExampleDatabaseA]|[ExampleDatabaseB]',
       @MaxZeilen = 200,
       @ResultSetArt = 'CONSOLE';
 ```
