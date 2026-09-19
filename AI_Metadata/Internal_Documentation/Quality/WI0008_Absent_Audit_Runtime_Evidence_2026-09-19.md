@@ -10,4 +10,6 @@ Der Test erstellt, startet, stoppt, aendert oder loescht kein Auditobjekt. Er li
 
 Der eingeschraenkte Pfad verwendet einen temporaeren loginlosen Datenbankbenutzer mit ausschliesslich `EXECUTE` auf der Procedure. Er belegt valides JSON, `AVAILABLE_LIMITED` und mindestens eine Quellenstatuszeile `DENIED_PERMISSION`. Der Benutzer wird im Erfolgs- und Fehlerpfad entfernt.
 
-Der Nachweis deckt keine deaktivierte Auditkonfiguration und keinen auffaelligen Runtimezustand ab.
+Der deaktivierte Pfad erstellt ein synthetisches Serveraudit unter seinem reservierten Namen mit dynamisch ermitteltem Standarddatenpfad. Er belegt `AVAILABLE_WITH_FINDING`, `AUDIT_DISABLED` und `MEDIUM`, ohne einen Zielpfad auszugeben. Das Audit bleibt deaktiviert und wird im Erfolgs- und Fehlerpfad entfernt.
+
+Der Nachweis deckt keinen auffaelligen Runtimezustand ab.
