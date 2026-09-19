@@ -110,9 +110,9 @@ BEGIN
 
     CREATE TABLE [#ExtendedEventsDeadlocks_Raw]
     (
-        [SourceType] varchar(20) NOT NULL,
+        [SourceType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [TimestampUtc] datetime2(7) NULL,
-        [FileName] nvarchar(260) NULL,
+        [FileName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [FileOffset] bigint NULL,
         [EventXml] xml NULL
     );
@@ -120,9 +120,9 @@ BEGIN
     CREATE TABLE [#ExtendedEventsDeadlocks_Deadlocks]
     (
         [DeadlockId] int IDENTITY(1,1) NOT NULL PRIMARY KEY,
-        [SourceType] varchar(20) NOT NULL,
+        [SourceType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [DeadlockTimeUtc] datetime2(7) NULL,
-        [FileName] nvarchar(260) NULL,
+        [FileName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [FileOffset] bigint NULL,
         [DeadlockXml] xml NULL
     );
@@ -131,19 +131,19 @@ BEGIN
     (
         [DeadlockId] int NOT NULL,
         [DeadlockTimeUtc] datetime2(7) NULL,
-        [VictimProcessId] nvarchar(256) NOT NULL,
+        [VictimProcessId] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         PRIMARY KEY(DeadlockId, VictimProcessId)
     );
 
     CREATE TABLE [#ExtendedEventsDeadlocks_SourceStatus]
     (
-        [SourceType] varchar(20) NULL,
-        [SessionName] sysname NULL,
-        [ResolvedPath] nvarchar(4000) NULL,
-        [StatusCode] varchar(40) NOT NULL,
+        [SourceType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ResolvedPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [ErrorNumber] int NULL,
-        [ErrorMessage] nvarchar(2048) NULL,
-        [Detail] nvarchar(1000) NULL
+        [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @ResolvedSourceExtendedEventSessionName IS NULL BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'@SourceExtendedEventSessionName muss genau einen gültigen, optional geklammerten sysname enthalten.';END;
@@ -291,9 +291,9 @@ BEGIN
     RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
 END;
 
-    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockSummary]([DeadlockId] int,[SourceType] varchar(20),[DeadlockTimeUtc] datetime2(7),[FileName] nvarchar(260),[FileOffset] bigint,[VictimCount] int,[ProcessCount] int,[ResourceCount] int,[FirstDatabaseId] int NULL,[DeadlockXml] xml NULL);
-    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockProcesses]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ProcessId] nvarchar(256),[IsVictim] bit,[SessionId] int NULL,[ExecutionContextId] int NULL,[ProcessStatus] nvarchar(128),[WaitResource] nvarchar(1024),[WaitTimeMs] bigint NULL,[LockMode] nvarchar(64),[TransactionName] nvarchar(256),[IsolationLevel] nvarchar(256),[DatabaseId] int NULL,[ClientApplication] nvarchar(512),[HostName] nvarchar(512),[LoginName] nvarchar(512),[HostProcessId] int NULL,[TransactionCount] int NULL,[LogUsed] bigint NULL,[InputBuffer] nvarchar(4000),[ProcessXml] xml NULL);
-    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockResources]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ResourceType] sysname,[DatabaseId] int NULL,[ObjectId] bigint NULL,[IndexId] bigint NULL,[AssociatedObjectId] bigint NULL,[ResourceId] nvarchar(512),[ResourceMode] nvarchar(64),[OwnerListXml] xml NULL,[WaiterListXml] xml NULL,[ResourceXml] xml NULL);
+    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockSummary]([DeadlockId] int,[SourceType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS,[DeadlockTimeUtc] datetime2(7),[FileName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS,[FileOffset] bigint,[VictimCount] int,[ProcessCount] int,[ResourceCount] int,[FirstDatabaseId] int NULL,[DeadlockXml] xml NULL);
+    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockProcesses]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ProcessId] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsVictim] bit,[SessionId] int NULL,[ExecutionContextId] int NULL,[ProcessStatus] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[WaitResource] nvarchar(1024) COLLATE SQL_Latin1_General_CP1_CS_AS,[WaitTimeMs] bigint NULL,[LockMode] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS,[TransactionName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsolationLevel] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,[DatabaseId] int NULL,[ClientApplication] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS,[HostName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS,[LoginName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS,[HostProcessId] int NULL,[TransactionCount] int NULL,[LogUsed] bigint NULL,[InputBuffer] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS,[ProcessXml] xml NULL);
+    CREATE TABLE [#ExtendedEventsDeadlocks_DeadlockResources]([DeadlockId] int,[DeadlockTimeUtc] datetime2(7),[ResourceType] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[DatabaseId] int NULL,[ObjectId] bigint NULL,[IndexId] bigint NULL,[AssociatedObjectId] bigint NULL,[ResourceId] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS,[ResourceMode] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS,[OwnerListXml] xml NULL,[WaiterListXml] xml NULL,[ResourceXml] xml NULL);
     INSERT [#ExtendedEventsDeadlocks_DeadlockSummary] SELECT [d].[DeadlockId],[d].[SourceType],[d].[DeadlockTimeUtc],[d].[FileName],[d].[FileOffset],[d].[DeadlockXml].value('count(/deadlock/victim-list/victimProcess)','int'),[d].[DeadlockXml].value('count(/deadlock/process-list/process)','int'),[d].[DeadlockXml].value('count(/deadlock/resource-list/*)','int'),TRY_CONVERT(int,[d].[DeadlockXml].value('(/deadlock/process-list/process[1]/@currentdb)[1]','nvarchar(32)')),CASE WHEN @MitDeadlockXml=1 THEN [d].[DeadlockXml] END FROM [#ExtendedEventsDeadlocks_Deadlocks] [d];
     IF @MitProcessDetails=1 INSERT [#ExtendedEventsDeadlocks_DeadlockProcesses] SELECT [d].[DeadlockId],[d].[DeadlockTimeUtc],[p].[n].value('(@id)[1]','nvarchar(256)'),CONVERT(bit,CASE WHEN [v].[VictimProcessId] IS NOT NULL THEN 1 ELSE 0 END),TRY_CONVERT(int,[p].[n].value('(@spid)[1]','nvarchar(32)')),TRY_CONVERT(int,[p].[n].value('(@ecid)[1]','nvarchar(32)')),[p].[n].value('(@status)[1]','nvarchar(128)'),[p].[n].value('(@waitresource)[1]','nvarchar(1024)'),TRY_CONVERT(bigint,[p].[n].value('(@waittime)[1]','nvarchar(64)')),[p].[n].value('(@lockMode)[1]','nvarchar(64)'),[p].[n].value('(@transactionname)[1]','nvarchar(256)'),[p].[n].value('(@isolationlevel)[1]','nvarchar(256)'),TRY_CONVERT(int,[p].[n].value('(@currentdb)[1]','nvarchar(32)')),[p].[n].value('(@clientapp)[1]','nvarchar(512)'),[p].[n].value('(@hostname)[1]','nvarchar(512)'),[p].[n].value('(@loginname)[1]','nvarchar(512)'),TRY_CONVERT(int,[p].[n].value('(@hostpid)[1]','nvarchar(32)')),TRY_CONVERT(int,[p].[n].value('(@trancount)[1]','nvarchar(32)')),TRY_CONVERT(bigint,[p].[n].value('(@logused)[1]','nvarchar(64)')),[p].[n].value('(inputbuf/text())[1]','nvarchar(4000)'),[p].[n].query('.') FROM [#ExtendedEventsDeadlocks_Deadlocks] [d] CROSS APPLY [d].[DeadlockXml].nodes('/deadlock/process-list/process') [p]([n]) LEFT JOIN [#ExtendedEventsDeadlocks_Victims] [v] ON [v].[DeadlockId]=[d].[DeadlockId] AND [v].[VictimProcessId]=[p].[n].value('(@id)[1]','nvarchar(256)');
     IF @MitResourceDetails=1 INSERT [#ExtendedEventsDeadlocks_DeadlockResources] SELECT [d].[DeadlockId],[d].[DeadlockTimeUtc],[r].[n].value('local-name(.)','sysname'),TRY_CONVERT(int,[r].[n].value('(@dbid)[1]','nvarchar(32)')),TRY_CONVERT(bigint,[r].[n].value('(@objectid)[1]','nvarchar(64)')),TRY_CONVERT(bigint,[r].[n].value('(@indexid)[1]','nvarchar(64)')),TRY_CONVERT(bigint,[r].[n].value('(@associatedObjectId)[1]','nvarchar(64)')),[r].[n].value('(@id)[1]','nvarchar(512)'),[r].[n].value('(@mode)[1]','nvarchar(64)'),[r].[n].query('(owner-list)[1]'),[r].[n].query('(waiter-list)[1]'),[r].[n].query('.') FROM [#ExtendedEventsDeadlocks_Deadlocks] [d] CROSS APPLY [d].[DeadlockXml].nodes('/deadlock/resource-list/*') [r]([n]);
