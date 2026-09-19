@@ -87,14 +87,14 @@ BEGIN
     );
     CREATE TABLE [#AuditConfigurationAnalysis_ServerSpecifications]
     (
-        [SpecificationId] uniqueidentifier NOT NULL PRIMARY KEY,[SpecificationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [SpecificationId] int NOT NULL PRIMARY KEY,[SpecificationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [AuditId] uniqueidentifier NULL,[AuditName] sysname NULL,[IsEnabled] bit NULL,[ActionCount] bigint NULL,
         [HasAllServerScope] bit NULL,[FindingCode] varchar(64) NOT NULL,[FindingSeverity] varchar(16) NOT NULL,[EvidenceLimit] nvarchar(1000) NOT NULL
     );
     CREATE TABLE [#AuditConfigurationAnalysis_DatabaseSpecifications]
     (
         [DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [SpecificationId] uniqueidentifier NOT NULL,[SpecificationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [SpecificationId] int NOT NULL,[SpecificationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [AuditId] uniqueidentifier NULL,[AuditName] sysname NULL,[IsEnabled] bit NULL,[ActionCount] bigint NULL,
         [HasAllDatabaseScope] bit NULL,[FindingCode] varchar(64) NOT NULL,[FindingSeverity] varchar(16) NOT NULL,[EvidenceLimit] nvarchar(1000) NOT NULL,
         PRIMARY KEY([DatabaseId],[SpecificationId])
@@ -143,7 +143,7 @@ BEGIN
                    CASE WHEN [a].[is_state_enabled]=0 THEN 'MEDIUM' WHEN [r].[status_desc] IS NOT NULL AND [r].[status_desc] NOT IN(N'STARTED',N'RUNNING') THEN 'MEDIUM' ELSE 'INFO' END,
                    N'Auditziele, Dateipfade und Auditereignisse werden nicht gelesen oder ausgegeben.'
             FROM [sys].[server_audits] [a] WITH(NOLOCK)
-            LEFT JOIN [sys].[dm_server_audit_status] [r] WITH(NOLOCK) ON [r].[audit_id]=[a].[audit_guid]
+            LEFT JOIN [sys].[dm_server_audit_status] [r] WITH(NOLOCK) ON [r].[audit_id]=[a].[audit_id]
             WHERE (@AuditNames IS NULL OR EXISTS(SELECT 1 FROM [#AuditConfigurationAnalysis_AuditFilter] [f] WHERE [f].[NameValue]=[a].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
               AND (@AuditPatternMode IN('NONE','REGEX','REGEXI') OR [a].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @AuditPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS);
             INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audits + sys.dm_server_audit_status','AVAILABLE',0,@@ROWCOUNT,N'Konfiguration und sichtbarer Runtimezustand; keine Auditpayloads oder Pfade.');
@@ -156,16 +156,16 @@ BEGIN
         BEGIN TRY
             INSERT [#AuditConfigurationAnalysis_ServerSpecifications]
             ([SpecificationId],[SpecificationName],[AuditId],[AuditName],[IsEnabled],[ActionCount],[HasAllServerScope],[FindingCode],[FindingSeverity],[EvidenceLimit])
-            SELECT [s].[audit_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled],COUNT_BIG([d].[audit_action_id]),
+            SELECT [s].[server_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled],COUNT_BIG([d].[audit_action_id]),
                    CONVERT(bit,MAX(CASE WHEN [d].[audit_action_name] LIKE N'%ALL SERVER%' THEN 1 ELSE 0 END)),
                    CASE WHEN [s].[is_state_enabled]=0 THEN 'SERVER_SPECIFICATION_DISABLED' WHEN COUNT_BIG([d].[audit_action_id])=0 THEN 'SERVER_SPECIFICATION_WITHOUT_ACTION' ELSE 'SERVER_SPECIFICATION_CONFIGURED' END,
                    CASE WHEN [s].[is_state_enabled]=0 OR COUNT_BIG([d].[audit_action_id])=0 THEN 'MEDIUM' ELSE 'INFO' END,
                    N'Nur Aktionsanzahl und Scopehinweis; keine Auditereignisse oder ueberwachten Nutzdaten.'
             FROM [sys].[server_audit_specifications] [s] WITH(NOLOCK)
             LEFT JOIN [sys].[server_audits] [a] WITH(NOLOCK) ON [a].[audit_guid]=[s].[audit_guid]
-            LEFT JOIN [sys].[server_audit_specification_details] [d] WITH(NOLOCK) ON [d].[audit_specification_id]=[s].[audit_specification_id]
+            LEFT JOIN [sys].[server_audit_specification_details] [d] WITH(NOLOCK) ON [d].[server_specification_id]=[s].[server_specification_id]
             WHERE @AuditNames IS NULL OR EXISTS(SELECT 1 FROM [#AuditConfigurationAnalysis_AuditFilter] [f] WHERE [f].[NameValue]=[a].[name] COLLATE SQL_Latin1_General_CP1_CS_AS)
-            GROUP BY [s].[audit_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled];
+            GROUP BY [s].[server_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled];
             INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audit_specifications + sys.server_audit_specification_details','AVAILABLE',0,@@ROWCOUNT,N'Serverseitige Spezifikationsmetadaten werden aggregiert; Detailaktionen werden nicht ausgegeben.');
         END TRY
         BEGIN CATCH
@@ -181,14 +181,14 @@ BEGIN
         BEGIN
             BEGIN TRY
                 SET @Sql=N'INSERT [#AuditConfigurationAnalysis_DatabaseSpecifications]([DatabaseId],[DatabaseName],[SpecificationId],[SpecificationName],[AuditId],[AuditName],[IsEnabled],[ActionCount],[HasAllDatabaseScope],[FindingCode],[FindingSeverity],[EvidenceLimit])
-                SELECT @pDatabaseId,@pDatabaseName,[s].[audit_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled],COUNT_BIG([d].[audit_action_id]),CONVERT(bit,MAX(CASE WHEN [d].[audit_action_name] LIKE N''%ALL DATABASE%'' THEN 1 ELSE 0 END)),
+                SELECT @pDatabaseId,@pDatabaseName,[s].[database_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled],COUNT_BIG([d].[audit_action_id]),CONVERT(bit,MAX(CASE WHEN [d].[audit_action_name] LIKE N''%ALL DATABASE%'' THEN 1 ELSE 0 END)),
                 CASE WHEN [s].[is_state_enabled]=0 THEN ''DATABASE_SPECIFICATION_DISABLED'' WHEN COUNT_BIG([d].[audit_action_id])=0 THEN ''DATABASE_SPECIFICATION_WITHOUT_ACTION'' ELSE ''DATABASE_SPECIFICATION_CONFIGURED'' END,
                 CASE WHEN [s].[is_state_enabled]=0 OR COUNT_BIG([d].[audit_action_id])=0 THEN ''MEDIUM'' ELSE ''INFO'' END,N''Nur Aktionsanzahl und Scopehinweis; keine Auditereignisse oder ueberwachten Nutzdaten.''
                 FROM '+QUOTENAME(@DatabaseName)+N'.[sys].[database_audit_specifications] [s] WITH(NOLOCK)
                 LEFT JOIN [sys].[server_audits] [a] WITH(NOLOCK) ON [a].[audit_guid]=[s].[audit_guid]
-                LEFT JOIN '+QUOTENAME(@DatabaseName)+N'.[sys].[database_audit_specification_details] [d] WITH(NOLOCK) ON [d].[audit_specification_id]=[s].[audit_specification_id]
+                LEFT JOIN '+QUOTENAME(@DatabaseName)+N'.[sys].[database_audit_specification_details] [d] WITH(NOLOCK) ON [d].[database_specification_id]=[s].[database_specification_id]
                 WHERE (@pAuditNames=0 OR EXISTS(SELECT 1 FROM [#AuditConfigurationAnalysis_AuditFilter] [f] WHERE [f].[NameValue]=[a].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
-                GROUP BY [s].[audit_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled];';
+                GROUP BY [s].[database_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled];';
                 EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseId int,@pDatabaseName sysname,@pAuditNames bit',@pDatabaseId=@DatabaseId,@pDatabaseName=@DatabaseName,@pAuditNames=@HasAuditNames;
             END TRY
             BEGIN CATCH
