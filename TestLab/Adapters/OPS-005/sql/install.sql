@@ -16818,12 +16818,12 @@ BEGIN
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
@@ -16831,40 +16831,40 @@ BEGIN
     CREATE TABLE [#CurrentLog_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#CurrentLog_Result]
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [RecoveryModel] nvarchar(60) NULL
-        , [LogReuseWaitDesc] nvarchar(60) NULL
+        , [RecoveryModel] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LogReuseWaitDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [TotalLogSizeMb] decimal(19,2) NULL
         , [UsedLogSizeMb] decimal(19,2) NULL
         , [UsedLogPercent] decimal(19,4) NULL
         , [LogSinceLastBackupMb] decimal(19,2) NULL
         , [ActiveVlfCount] bigint NULL
         , [TotalVlfCount] bigint NULL
-        , [LogTruncationHoldupReason] nvarchar(60) NULL
+        , [LogTruncationHoldupReason] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LogBackupTime] datetime NULL
         , [LogRecoverySizeMb] decimal(19,2) NULL
         , [IsAdrEnabled] bit NULL
         , [PersistentVersionStoreMb] decimal(19,2) NULL
-        , [SpaceStatus] varchar(40) NOT NULL
-        , [StatsStatus] varchar(40) NOT NULL
-        , [VlfStatus] varchar(40) NOT NULL
-        , [PvsStatus] varchar(40) NOT NULL
+        , [SpaceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatsStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [VlfStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PvsStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#CurrentLog_Errors]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [SubModule] varchar(40) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [SubModule] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen < 0
