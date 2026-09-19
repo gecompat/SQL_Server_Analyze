@@ -93,42 +93,42 @@ BEGIN
 
     CREATE TABLE [#CurrentWaits_Tasks]
     (
-        [SessionId] smallint NULL,[ExecContextId] int NULL,[WaitDurationMs] bigint NULL,[WaitType] nvarchar(120) NULL,[BlockingSessionId] smallint NULL,[ResourceDescription] nvarchar(3072) NULL,[SessionStatus] nvarchar(30) NULL,[RequestStatus] nvarchar(30) NULL,[LoginName] nvarchar(128) NULL,[HostName] nvarchar(128) NULL,[ProgramName] nvarchar(128) NULL,[IsToolBackgroundQuery] bit NOT NULL,[ToolBackgroundRuleCode] varchar(64) NULL,[ToolBackgroundCategory] varchar(40) NULL,[ToolBackgroundDetection] varchar(40) NULL,[ToolBackgroundConfidence] varchar(16) NULL,[DatabaseId] smallint NULL,[Command] nvarchar(32) NULL,[CurrentStatementCharacters] bigint NULL,[CurrentStatementBytes] bigint NULL,[CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0),[CurrentStatement] nvarchar(max) NULL,[WaitGroup] nvarchar(64) NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) NULL,[WaitTypicalOccurrence] nvarchar(1200) NULL,[HighWaitImpact] nvarchar(1200) NULL,[RecommendedChecks] nvarchar(1500) NULL,[WaitHelpUrl] nvarchar(500) NULL,[DescriptionSource] varchar(40) NULL,[DescriptionQuality] varchar(40) NULL,[CatalogMatchType] varchar(20) NULL
+        [SessionId] smallint NULL,[ExecContextId] int NULL,[WaitDurationMs] bigint NULL,[WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[BlockingSessionId] smallint NULL,[ResourceDescription] nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SessionStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[LoginName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsToolBackgroundQuery] bit NOT NULL,[ToolBackgroundRuleCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundDetection] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ToolBackgroundConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseId] smallint NULL,[Command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CurrentStatementCharacters] bigint NULL,[CurrentStatementBytes] bigint NULL,[CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0),[CurrentStatement] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitGroup] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitTypicalOccurrence] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HighWaitImpact] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecommendedChecks] nvarchar(1500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitHelpUrl] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionQuality] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CatalogMatchType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
-    CREATE TABLE [#CurrentWaits_A]([WaitType] nvarchar(120) PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
-    CREATE TABLE [#CurrentWaits_B]([WaitType] nvarchar(120) PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
-    CREATE TABLE [#CurrentWaits_RawInstance]([WaitType] nvarchar(120) NOT NULL,[WaitingTasksCount] bigint NULL,[WaitTimeMs] bigint NULL,[SignalWaitTimeMs] bigint NULL,[ResourceWaitTimeMs] bigint NULL,[SampleSeconds] int NULL,[MeasurementType] varchar(30) NOT NULL);
+    CREATE TABLE [#CurrentWaits_A]([WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
+    CREATE TABLE [#CurrentWaits_B]([WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS PRIMARY KEY,[WaitingTasksCount] bigint,[WaitTimeMs] bigint,[SignalWaitTimeMs] bigint);
+    CREATE TABLE [#CurrentWaits_RawInstance]([WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[WaitingTasksCount] bigint NULL,[WaitTimeMs] bigint NULL,[SignalWaitTimeMs] bigint NULL,[ResourceWaitTimeMs] bigint NULL,[SampleSeconds] int NULL,[MeasurementType] varchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     CREATE TABLE [#CurrentWaits_Instance]
     (
-        [WaitType] nvarchar(120) NOT NULL,[WaitingTasksCount] bigint NULL,[WaitTimeMs] bigint NULL,[SignalWaitTimeMs] bigint NULL,[ResourceWaitTimeMs] bigint NULL,[SampleSeconds] int NULL,[MeasurementType] varchar(30) NOT NULL,[WaitGroup] nvarchar(64) NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) NULL,[WaitTypicalOccurrence] nvarchar(1200) NULL,[HighWaitImpact] nvarchar(1200) NULL,[RecommendedChecks] nvarchar(1500) NULL,[WaitHelpUrl] nvarchar(500) NULL,[DescriptionSource] varchar(40) NULL,[DescriptionQuality] varchar(40) NULL,[CatalogMatchType] varchar(20) NULL,[WaitPercentage] decimal(9,4) NULL,[CumulativePercentage] decimal(9,4) NULL,[AverageWaitMs] decimal(19,4) NULL,[AverageResourceWaitMs] decimal(19,4) NULL,[AverageSignalWaitMs] decimal(19,4) NULL
+        [WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[WaitingTasksCount] bigint NULL,[WaitTimeMs] bigint NULL,[SignalWaitTimeMs] bigint NULL,[ResourceWaitTimeMs] bigint NULL,[SampleSeconds] int NULL,[MeasurementType] varchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[WaitGroup] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitSeverity] tinyint NULL,[IsGenerallyBenign] bit NULL,[WaitMeaning] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitTypicalOccurrence] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HighWaitImpact] nvarchar(1200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecommendedChecks] nvarchar(1500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitHelpUrl] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DescriptionQuality] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CatalogMatchType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitPercentage] decimal(9,4) NULL,[CumulativePercentage] decimal(9,4) NULL,[AverageWaitMs] decimal(19,4) NULL,[AverageResourceWaitMs] decimal(19,4) NULL,[AverageSignalWaitMs] decimal(19,4) NULL
     );
-    CREATE TABLE [#CurrentWaits_Warnings]([WarningCode] varchar(40) NOT NULL,[WarningMessage] nvarchar(2048) NOT NULL);
+    CREATE TABLE [#CurrentWaits_Warnings]([WarningCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[WarningMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     CREATE TABLE [#CurrentWaits_SourceWaitingTasks]
     (
           [waiting_task_address] varbinary(8) NOT NULL
         , [session_id] smallint NULL
         , [exec_context_id] int NULL
         , [wait_duration_ms] bigint NOT NULL
-        , [wait_type] nvarchar(60) NOT NULL
+        , [wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [blocking_session_id] smallint NULL
-        , [resource_description] nvarchar(3072) NULL
+        , [resource_description] nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentWaits_SourceSessions]
     (
           [session_id] smallint NOT NULL PRIMARY KEY
         , [is_user_process] bit NOT NULL
-        , [status] nvarchar(30) NOT NULL
-        , [login_name] nvarchar(128) NOT NULL
-        , [host_name] nvarchar(128) NULL
-        , [program_name] nvarchar(128) NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [host_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [program_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentWaits_SourceRequests]
     (
           [session_id] smallint NOT NULL
         , [request_id] int NOT NULL
-        , [status] nvarchar(30) NOT NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [database_id] smallint NOT NULL
-        , [command] nvarchar(32) NOT NULL
+        , [command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [sql_handle] varbinary(64) NULL
         , [statement_start_offset] int NULL
         , [statement_end_offset] int NULL
@@ -137,7 +137,7 @@ BEGIN
     CREATE TABLE [#CurrentWaits_SourceSqlText]
     (
           [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
-        , [Text] nvarchar(max) NULL
+        , [Text] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     SET @CandidateMaxZeilen=CASE WHEN @HasRegex=1 OR @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen)+1 END;
 
