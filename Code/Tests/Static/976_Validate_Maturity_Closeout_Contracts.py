@@ -45,6 +45,7 @@ OPS_RUNTIME_CONTRACTS = {
         "model",
         "msdb",
         "DENIED_PERMISSION",
+        "AVAILABLE_EMPTY",
     ),
 }
 
