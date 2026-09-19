@@ -24141,21 +24141,21 @@ BEGIN
     CREATE TABLE [#QueryStats_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#QueryStats_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#QueryStats_Result]
     (
@@ -24167,16 +24167,16 @@ BEGIN
         , [StatementEndOffset] int NOT NULL
         , [PlanGenerationNumber] bigint NOT NULL
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectId] int NULL
         , [StatementTextCharacters] bigint NULL
         , [StatementTextBytes] bigint NULL
         , [StatementTextIsTruncated] bit NOT NULL DEFAULT(0)
-        , [StatementText] nvarchar(max) NULL
+        , [StatementText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [BatchTextCharacters] bigint NULL
         , [BatchTextBytes] bigint NULL
         , [BatchTextIsTruncated] bit NOT NULL DEFAULT(0)
-        , [BatchText] nvarchar(max) NULL
+        , [BatchText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CreationTime] datetime NOT NULL
         , [LastExecutionTime] datetime NOT NULL
         , [ExecutionCount] bigint NOT NULL
@@ -24211,8 +24211,8 @@ BEGIN
         , [LastIdealGrantKb] bigint NOT NULL
         , [TotalSpilledPages] bigint NOT NULL
         , [LastSpilledPages] bigint NOT NULL
-        , [CacheObjectType] nvarchar(60) NULL
-        , [ObjectType] nvarchar(60) NULL
+        , [CacheObjectType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [PlanUseCounts] int NULL
         , [PlanSizeBytes] bigint NULL
         , [ResourcePoolId] int NULL
