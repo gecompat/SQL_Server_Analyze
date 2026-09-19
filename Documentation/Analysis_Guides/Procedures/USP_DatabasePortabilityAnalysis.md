@@ -33,7 +33,7 @@ Eine neue synthetische Datenbank `ExamplePortableDatabase` ohne Zeilen in beiden
 
 ## Leere oder partielle Ausgabe
 
-`AVAILABLE_EMPTY` bedeutet nur, dass die beiden sichtbaren Quellen im gewählten Scope keine Zeilen lieferten. Eine Datenbank, die während der sequenziellen Verarbeitung offline, unsichtbar oder nicht lesbar ist, erzeugt eine `SOURCE_STATUS`-Zeile und kann `AVAILABLE_LIMITED` auslösen. Sind alle explizit angeforderten Datenbanken nicht verfügbar, bleibt die Abgrenzung als `NOT_FOUND` sichtbar.
+`AVAILABLE_EMPTY` bedeutet nur, dass die beiden sichtbaren Quellen im gewählten Scope keine Zeilen lieferten. Fehler bleiben je Quelle als `SOURCE_STATUS`-Zeile mit `DENIED_PERMISSION`, `UNSUPPORTED_SOURCE`, `LOCK_TIMEOUT` oder `SOURCE_UNAVAILABLE` sichtbar und können `AVAILABLE_LIMITED` auslösen. Sind alle explizit angeforderten Datenbanken nicht verfügbar, bleibt die Abgrenzung als `NOT_FOUND` sichtbar.
 
 Die Berechtigungsanforderung der SKU-Feature-DMV unterscheidet sich zwischen den Versionen. Ein fehlender Befund unter einem eingeschränkten Konto darf deshalb nicht mit dem administrativen Positiv- oder Leerfall zusammengeführt werden. Runtimeevidenz zeichnet Engineversion und Berechtigungsprofil getrennt auf.
 
@@ -81,7 +81,7 @@ Welche Merkmale benötigen vor einer Migration einen Zielplattformtest?
 
 ### Technischer Hintergrund
 
-Die Procedure liest zwei datenbanklokale Katalogsichten; Fehler einer Datenbank bleiben als partielle Quelle sichtbar.
+Die Procedure liest zwei datenbanklokale Katalogsichten getrennt; ein Fehler einer Quelle unterdrückt die andere Quelle derselben Datenbank nicht.
 
 ### Datenkette
 
