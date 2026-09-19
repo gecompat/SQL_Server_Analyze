@@ -14816,10 +14816,10 @@ BEGIN
     CREATE TABLE [#CurrentTempDB_Sessions]
     (
           [SessionId] smallint NOT NULL
-        , [LoginName] nvarchar(128) NULL
-        , [HostName] nvarchar(128) NULL
-        , [ProgramName] nvarchar(128) NULL
-        , [SessionStatus] nvarchar(30) NULL
+        , [LoginName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SessionStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [UserObjectsAllocatedMb] decimal(19,2) NOT NULL
         , [UserObjectsDeallocatedMb] decimal(19,2) NOT NULL
         , [UserObjectsNetMb] decimal(19,2) NOT NULL
@@ -14832,9 +14832,9 @@ BEGIN
     CREATE TABLE [#CurrentTempDB_Files]
     (
           [FileId] int NOT NULL
-        , [LogicalName] sysname NOT NULL
-        , [PhysicalName] nvarchar(260) NOT NULL
-        , [FileTypeDesc] nvarchar(60) NOT NULL
+        , [LogicalName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PhysicalName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FileTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SizeMb] decimal(19,2) NOT NULL
         , [UsedMb] decimal(19,2) NULL
         , [FreeMb] decimal(19,2) NULL
@@ -14846,14 +14846,14 @@ BEGIN
     CREATE TABLE [#CurrentTempDB_TempdbGovernance]
     (
           [GroupId] int NULL
-        , [GroupName] sysname NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [PoolId] int NULL
-        , [PoolName] sysname NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ConfiguredGroupMaxTempdbDataMb] decimal(19,2) NULL
         , [ConfiguredGroupMaxTempdbDataPercent] decimal(9,4) NULL
         , [TempdbMaximumSizeMb] decimal(19,2) NULL
         , [EffectiveGroupMaxTempdbDataMb] decimal(19,2) NULL
-        , [EffectiveLimitSource] varchar(40) NOT NULL
+        , [EffectiveLimitSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPercentLimitEffective] bit NULL
         , [TempdbDataSpaceMb] decimal(19,2) NULL
         , [PeakTempdbDataSpaceMb] decimal(19,2) NULL
@@ -14863,26 +14863,26 @@ BEGIN
         , [StatisticsStartTime] datetime NULL
         , [IsResourceGovernorEnabled] bit NULL
         , [ReconfigurationPending] bit NULL
-        , [SourceStatusCode] varchar(40) NOT NULL
+        , [SourceStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentTempDB_Warnings]
     (
-          [StatusCode] varchar(40) NOT NULL
+          [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentTempDB_SourceSessions]
     (
           [session_id] smallint NOT NULL PRIMARY KEY
         , [is_user_process] bit NOT NULL
-        , [status] nvarchar(30) NOT NULL
-        , [login_name] nvarchar(128) NOT NULL
-        , [host_name] nvarchar(128) NULL
-        , [program_name] nvarchar(128) NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [host_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [program_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentTempDB_SourceSessionUsage]
@@ -14897,7 +14897,7 @@ BEGIN
     CREATE TABLE [#CurrentTempDB_SourceGroupCatalog]
     (
           [GroupId] int NOT NULL PRIMARY KEY
-        , [GroupName] sysname NOT NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PoolId] int NOT NULL
         , [ConfiguredGroupMaxTempdbDataMb] decimal(19,2) NULL
         , [ConfiguredGroupMaxTempdbDataPercent] decimal(9,4) NULL
@@ -14906,7 +14906,7 @@ BEGIN
     CREATE TABLE [#CurrentTempDB_SourceGroupRuntime]
     (
           [GroupId] int NOT NULL PRIMARY KEY
-        , [GroupName] sysname NOT NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PoolId] int NOT NULL
         , [StatisticsStartTime] datetime NULL
         , [TempdbDataSpaceKb] bigint NULL
@@ -14917,7 +14917,7 @@ BEGIN
     CREATE TABLE [#CurrentTempDB_SourcePools]
     (
           [PoolId] int NOT NULL PRIMARY KEY
-        , [PoolName] sysname NOT NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#CurrentTempDB_TempdbConfigFiles]
