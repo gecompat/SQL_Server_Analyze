@@ -33,7 +33,7 @@ Ein synthetischer `ExampleCursor` mit einem erfolgten Fetch kann als sichtbarer 
 
 ## Leere oder partielle Ausgabe
 
-`AVAILABLE_EMPTY` bedeutet, dass für die ausgewählte Session beim Lesezeitpunkt kein Cursor sichtbar war. Der Cursor kann kurz zuvor geschlossen worden sein. `SOURCE_UNAVAILABLE` trennt einen Berechtigungs- oder DMV-Fehler vom fachlichen Leerfall. Wenn die Session zwischen Auswahl und DMV-Zugriff endet, ist eine leere Momentaufnahme zulässig und muss mit Requests und Sessionstatus gegengeprüft werden.
+`AVAILABLE_EMPTY` bedeutet, dass für die ausgewählte Session beim Lesezeitpunkt kein Cursor sichtbar war. Der Cursor kann kurz zuvor geschlossen worden sein. `DENIED_PERMISSION` trennt fehlende DMV-Berechtigungen von `SOURCE_UNAVAILABLE` für sonstige Quellenfehler. Wenn die Session zwischen Auswahl und DMV-Zugriff endet, ist eine leere Momentaufnahme zulässig und muss mit Requests und Sessionstatus gegengeprüft werden.
 
 Bei einem Berechtigungsvergleich ist zu beachten, dass SQL Server 2019 `VIEW SERVER STATE` und SQL Server 2022 oder neuer `VIEW SERVER PERFORMANCE STATE` für die serverweite DMV vorsieht. Der tatsächliche Teststatus muss deshalb zusammen mit Product Major Version und Berechtigungsprofil dokumentiert werden.
 
