@@ -19,6 +19,7 @@ REQUIRED = (
     "audits|serverSpecifications|databaseSpecifications|sourceStatus|warnings",
     "Auditlog-Payloads",
     "Auditobjekte erstellt, gestartet",
+    "15562",
 )
 FORBIDDEN = ("fn_get_audit_file", "ALTER SERVER AUDIT", "CREATE SERVER AUDIT", "DROP SERVER AUDIT")
 
