@@ -24,11 +24,15 @@ OPS_RUNTIME_CONTRACTS = {
     "Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql": (
         "USP_MsdbHealthAnalysis",
         "DATABASE_SIZE",
+        "BACKUP_HISTORY",
+        "MAINTENANCE_PLAN",
+        "SOURCE_UNAVAILABLE",
         "EXECUTE AS USER",
     ),
     "Code/Tests/CurrentState/120_OPS007_Current_Cursor_Runtime_Contract.sql": (
         "NOT_EXECUTED",
         "INVALID_PARAMETER",
+        "DENIED_PERMISSION",
         "DECLARE [ExampleOps007Cursor] CURSOR",
     ),
     "Code/Tests/ServerHealth/123_OPS009_System_Database_Objects_Runtime_Contract.sql": (
@@ -37,6 +41,16 @@ OPS_RUNTIME_CONTRACTS = {
         "model",
         "msdb",
         "DENIED_PERMISSION",
+    ),
+}
+
+OPS_SOURCE_CONTRACTS = {
+    "Code/08_ServerHealth/200_USP_DatabasePortabilityAnalysis.sql": (
+        "DENIED_PERMISSION",
+        "UNSUPPORTED_SOURCE",
+        "LOCK_TIMEOUT",
+        "sys.dm_db_persisted_sku_features",
+        "sys.dm_db_uncontained_entities",
     ),
 }
 
@@ -96,6 +110,15 @@ def validate_repository(root: Path) -> list[str]:
             errors.append(f"OPS runtime contract missing {token}: {relative_path}")
         if Path(relative_path).name not in release_gate:
             errors.append(f"release gate does not include {relative_path}")
+
+    for relative_path, tokens in OPS_SOURCE_CONTRACTS.items():
+        path = root / relative_path
+        if not path.is_file():
+            errors.append(f"missing OPS source contract: {relative_path}")
+            continue
+        text = path.read_text(encoding="utf-8-sig")
+        for token in missing_tokens(text, tokens):
+            errors.append(f"OPS source contract missing {token}: {relative_path}")
 
     review_path = root / "Metadata/Quality/Analysis_Documentation_Review.csv"
     with review_path.open(encoding="utf-8-sig", newline="") as handle:
