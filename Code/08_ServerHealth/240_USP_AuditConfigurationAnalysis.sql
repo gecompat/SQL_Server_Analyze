@@ -47,7 +47,7 @@ BEGIN
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableRequested bit=CASE WHEN @OutputMode='TABLE' THEN 1 ELSE 0 END;
-    DECLARE @ConsoleRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit=CASE WHEN @OutputMode='CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     DECLARE @AuditPatternMode varchar(8),@AuditPatternValue nvarchar(4000),@AuditPatternFlags varchar(8),@AuditPatternValid bit;
@@ -67,7 +67,7 @@ BEGIN
         EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
              @AllowedResultNames=N'audits|serverSpecifications|databaseSpecifications|sourceStatus|warnings',
              @MappingTable=N'#AuditConfigurationAnalysis_ResultTables',@ThrowOnError=1;
-    IF @TableRequested=1 OR @ConsoleRequested=1 SET @OutputMode='NONE';
+    IF @TableRequested=1 OR @ConsoleResultRequested=1 SET @OutputMode='NONE';
 
     CREATE TABLE [#AuditConfigurationAnalysis_DatabaseCandidates]
     (
@@ -237,7 +237,7 @@ BEGIN
         SELECT N'Quellenstatus' [Ergebnis],[SourceName] [Quelle],[StatusCode] [Status],[IsPartial] [Teilweise],[Detail] [Hinweis] FROM [#AuditConfigurationAnalysis_SourceStatus] ORDER BY [SourceName];
         SELECT N'Warnung' [Ergebnis],[WarningScope] [Scope],[DatabaseName] [Datenbank],[AuditName] [Audit],[WarningCode] [Code],[WarningSeverity] [Prioritaet],[Detail] [Hinweis] FROM [#AuditConfigurationAnalysis_Warnings] ORDER BY [WarningScope],[DatabaseName],[AuditName];
     END;
-    IF @ConsoleRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#AuditConfigurationAnalysis_Audits',@ResultLabel=N'AuditConfigurationAnalysis',@EmptyMessage=N'Keine sichtbaren Auditkonfigurationen';
+    IF @ConsoleResultRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#AuditConfigurationAnalysis_Audits',@ResultLabel=N'AuditConfigurationAnalysis',@EmptyMessage=N'Keine sichtbaren Auditkonfigurationen';
     IF @TableRequested=1
     BEGIN
         DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;

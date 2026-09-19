@@ -39,9 +39,9 @@ WHERE [s].[name]=N'monitor'
   AND [p].[name] NOT LIKE N'Internal%'
   AND [p].[name] NOT LIKE N'USP_Prepare%';
 
-IF (SELECT COUNT(*) FROM [#FrameworkOutputRuntimeContract_Public])<>99
+IF (SELECT COUNT(*) FROM [#FrameworkOutputRuntimeContract_Public])<>100
     INSERT [#FrameworkOutputRuntimeContract_Failure]
-    VALUES(N'PUBLIC_INVENTORY',N'Die installierte öffentliche Procedure-Inventur enthält nicht genau 99 Vertragsobjekte.');
+    VALUES(N'PUBLIC_INVENTORY',N'Die installierte öffentliche Procedure-Inventur enthält nicht genau 100 Vertragsobjekte.');
 
 INSERT [#FrameworkOutputRuntimeContract_Failure]([TestName],[Detail])
 SELECT N'PUBLIC_PARAMETER',CONCAT([p].[ProcedureName],N': ',[v].[ParameterName],N' fehlt.')
