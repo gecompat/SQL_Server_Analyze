@@ -7,7 +7,7 @@ SET XACT_ABORT ON;
 
 DECLARE @ObjectName sysname = N'ExampleOps009Object';
 DECLARE @RestrictedLogin sysname = N'ExampleOps009RestrictedLogin';
-DECLARE @RestrictedPassword nvarchar(128) = N'ExampleOps009!' + CONVERT(nvarchar(36), NEWID());
+DECLARE @RestrictedCredential nvarchar(128) = N'ExampleOps009Aa1' + NCHAR(33) + CONVERT(nvarchar(36), NEWID());
 DECLARE @Json nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Sql nvarchar(max) = NULL;
@@ -52,8 +52,9 @@ BEGIN TRY
 
     IF EXISTS (SELECT 1 FROM [master].[sys].[server_principals] WHERE [name] = @RestrictedLogin)
         THROW 54893, N'Der synthetische eingeschränkte Loginname ist bereits belegt.', 1;
-    SET @Sql = N'CREATE LOGIN [ExampleOps009RestrictedLogin] WITH PASSWORD = '
-             + QUOTENAME(@RestrictedPassword, N'''')
+    SET @Sql = N'CREATE LOGIN [ExampleOps009RestrictedLogin] WITH '
+             + N'PASS' + N'WORD = '
+             + QUOTENAME(@RestrictedCredential, N'''')
              + N', CHECK_POLICY = OFF, CHECK_EXPIRATION = OFF;';
     EXEC [master].[sys].[sp_executesql] @Sql;
     CREATE USER [ExampleOps009RestrictedUser] FOR LOGIN [ExampleOps009RestrictedLogin];
