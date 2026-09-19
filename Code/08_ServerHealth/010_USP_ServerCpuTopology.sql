@@ -29,9 +29,9 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE'; IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ServerCpuTopology';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
- CREATE TABLE [#ServerCpuTopology_I]([cpu_count] int,[scheduler_count] int,[hyperthread_ratio] int,[socket_count] int,[cores_per_socket] int,[numa_node_count] int,[softnuma_configuration_desc] nvarchar(60),[sqlserver_start_time] datetime,[affinity_type_desc] nvarchar(60));
- CREATE TABLE [#ServerCpuTopology_Sch]([parent_node_id] int,[status] nvarchar(60),[SchedulerCount] bigint,[VisibleOnlineSchedulers] bigint,[OnlineSchedulers] bigint,[CurrentTasks] bigint,[RunnableTasks] bigint,[ActiveWorkers] bigint,[LoadFactor] bigint,[Finding] varchar(40));
- CREATE TABLE [#ServerCpuTopology_N]([node_id] int,[node_state_desc] nvarchar(60),[memory_node_id] int,[online_scheduler_count] int,[idle_scheduler_count] int,[active_worker_count] int,[avg_load_balance] bigint);
+ CREATE TABLE [#ServerCpuTopology_I]([cpu_count] int,[scheduler_count] int,[hyperthread_ratio] int,[socket_count] int,[cores_per_socket] int,[numa_node_count] int,[softnuma_configuration_desc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[sqlserver_start_time] datetime,[affinity_type_desc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS);
+ CREATE TABLE [#ServerCpuTopology_Sch]([parent_node_id] int,[status] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[SchedulerCount] bigint,[VisibleOnlineSchedulers] bigint,[OnlineSchedulers] bigint,[CurrentTasks] bigint,[RunnableTasks] bigint,[ActiveWorkers] bigint,[LoadFactor] bigint,[Finding] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS);
+ CREATE TABLE [#ServerCpuTopology_N]([node_id] int,[node_state_desc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[memory_node_id] int,[online_scheduler_count] int,[idle_scheduler_count] int,[active_worker_count] int,[avg_load_balance] bigint);
  SET LOCK_TIMEOUT 0;
  BEGIN TRY
   INSERT [#ServerCpuTopology_I] SELECT [cpu_count],[scheduler_count],[hyperthread_ratio],[socket_count],[cores_per_socket],[numa_node_count],[softnuma_configuration_desc],[sqlserver_start_time],[affinity_type_desc] FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
