@@ -12,4 +12,6 @@ Der eingeschraenkte Pfad verwendet einen temporaeren loginlosen Datenbankbenutze
 
 Der deaktivierte Pfad erstellt ein synthetisches Serveraudit unter seinem reservierten Namen mit dynamisch ermitteltem Standarddatenpfad. Er belegt `AVAILABLE_WITH_FINDING`, `AUDIT_DISABLED` und `MEDIUM`, ohne einen Zielpfad auszugeben. Das Audit bleibt deaktiviert und wird im Erfolgs- und Fehlerpfad entfernt.
 
-Der Nachweis deckt keinen auffaelligen Runtimezustand ab.
+Der aktive Pfad erstellt ein zweites synthetisches Serveraudit mit demselben dynamischen Datenschutzrahmen, aktiviert es kurz und belegt `AVAILABLE`, `STARTED` oder `RUNNING`, `AUDIT_CONFIGURED` und `INFO`. Das Audit wird vor dem Ende des Tests wieder deaktiviert und entfernt. Lokale Dateiartefakte mit dem reservierten Testnamen werden außerhalb des Repositorys bereinigt.
+
+Die kontrollierten Fälle fehlend, eingeschraenkt, deaktiviert und aktiv sind damit nachgewiesen. Der Produktstatus ist `IMPLEMENTED_ACTIONS_GATE`.
