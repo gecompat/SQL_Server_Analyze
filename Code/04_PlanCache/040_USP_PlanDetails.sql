@@ -111,8 +111,8 @@ BEGIN
         [SqlHandle] varbinary(64) NULL,[QueryHash] binary(8) NULL,[QueryPlanHash] binary(8) NULL,[StatementStartOffset] int NULL,
         [StatementEndOffset] int NULL,[CreationTime] datetime NULL,[LastExecutionTime] datetime NULL,[ExecutionCount] bigint NULL
     );
-    CREATE TABLE [#PlanDetails_Attributes]([CandidateId] int,[AttributeName] varchar(128),[AttributeValue] nvarchar(4000),[IsCacheKey] bit);
-    CREATE TABLE [#PlanDetails_Plans]([CandidateId] int,[SourceType] varchar(24),[StatusCode] varchar(40),[DatabaseId] int NULL,[ObjectId] int NULL,[IsEncrypted] bit NULL,[QueryPlanXml] xml NULL,[QueryPlanText] nvarchar(max) NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL);
+    CREATE TABLE [#PlanDetails_Attributes]([CandidateId] int,[AttributeName] varchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[AttributeValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsCacheKey] bit);
+    CREATE TABLE [#PlanDetails_Plans]([CandidateId] int,[SourceType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,[DatabaseId] int NULL,[ObjectId] int NULL,[IsEncrypted] bit NULL,[QueryPlanXml] xml NULL,[QueryPlanText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
 
     SET LOCK_TIMEOUT 0;
 
@@ -201,9 +201,9 @@ END;
           [CandidateId] int,[SessionId] smallint NULL,[RequestId] int NULL,[PlanHandle] varbinary(64) NULL,[SqlHandle] varbinary(64) NULL
         , [QueryHash] binary(8) NULL,[QueryPlanHash] binary(8) NULL,[StatementStartOffset] int NULL,[StatementEndOffset] int NULL
         , [CreationTime] datetime NULL,[LastExecutionTime] datetime NULL,[ExecutionCount] bigint NULL
-        , [StatementTextCharacters] bigint NULL,[StatementTextBytes] bigint NULL,[StatementTextIsTruncated] bit NOT NULL DEFAULT(0),[StatementText] nvarchar(max) NULL
-        , [BatchTextCharacters] bigint NULL,[BatchTextBytes] bigint NULL,[BatchTextIsTruncated] bit NOT NULL DEFAULT(0),[BatchText] nvarchar(max) NULL
-        , [SqlTextDatabaseId] int NULL,[SqlTextDatabaseName] sysname NULL,[SqlTextObjectId] int NULL
+        , [StatementTextCharacters] bigint NULL,[StatementTextBytes] bigint NULL,[StatementTextIsTruncated] bit NOT NULL DEFAULT(0),[StatementText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BatchTextCharacters] bigint NULL,[BatchTextBytes] bigint NULL,[BatchTextIsTruncated] bit NOT NULL DEFAULT(0),[BatchText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SqlTextDatabaseId] int NULL,[SqlTextDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SqlTextObjectId] int NULL
     );
     INSERT [#PlanDetails_CandidatesOutput]
     SELECT [c].[CandidateId],[c].[SessionId],[c].[RequestId],[c].[PlanHandle],[c].[SqlHandle],[c].[QueryHash],[c].[QueryPlanHash],[c].[StatementStartOffset],[c].[StatementEndOffset],[c].[CreationTime],[c].[LastExecutionTime],[c].[ExecutionCount],
