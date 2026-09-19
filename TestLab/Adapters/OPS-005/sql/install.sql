@@ -43333,8 +43333,8 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_TempDBConfiguration';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
- CREATE TABLE [#TempDBConfiguration_F]([file_id] int,[name] sysname,[type_desc] nvarchar(60),[physical_name] nvarchar(260),[SizeMb] decimal(19,2),[GrowthValue] decimal(19,2),[GrowthType] varchar(10),[max_size] int,[is_percent_growth] bit);
- CREATE TABLE [#TempDBConfiguration_Cfg]([name] nvarchar(128),[value_in_use] sql_variant);
+ CREATE TABLE [#TempDBConfiguration_F]([file_id] int,[name] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[type_desc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[physical_name] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS,[SizeMb] decimal(19,2),[GrowthValue] decimal(19,2),[GrowthType] varchar(10) COLLATE SQL_Latin1_General_CP1_CS_AS,[max_size] int,[is_percent_growth] bit);
+ CREATE TABLE [#TempDBConfiguration_Cfg]([name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[value_in_use] sql_variant);
  SET LOCK_TIMEOUT 0;BEGIN TRY
   INSERT [#TempDBConfiguration_F] SELECT [file_id],[name],[type_desc],[physical_name],CONVERT(decimal(19,2),[size]*8.0/1024),CONVERT(decimal(19,2),CASE WHEN [is_percent_growth]=1 THEN [growth] ELSE [growth]*8.0/1024 END),CASE WHEN [is_percent_growth]=1 THEN'PERCENT'ELSE'MB'END,[max_size],[is_percent_growth] FROM [tempdb].[sys].[database_files] WITH (NOLOCK);
   INSERT [#TempDBConfiguration_Cfg] SELECT [name],[value_in_use] FROM [sys].[configurations] WITH (NOLOCK) WHERE [name] IN('tempdb metadata memory-optimized','tempdb deferred drop','mixed page allocation');
