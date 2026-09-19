@@ -99,7 +99,7 @@ Die Procedure ist read-only. Sie erstellt, startet, stoppt, ändert und löscht 
 
 Eine sichtbare Konfiguration beweist weder die Vollständigkeit der Auditabdeckung noch die Zustellung, Aufbewahrung oder Auswertbarkeit von Auditereignissen. Eine nicht sichtbare Zeile beweist nicht, dass ein Audit oder eine Spezifikation fehlt. Prüfen Sie auffällige Befunde mit dem verantwortlichen Security- oder Complianceprozess und, falls autorisiert, getrennt mit den zugelassenen Auditbetriebsnachweisen.
 
-Kontrollierte Laufzeitnachweise für eine Leerinventur mit einem nicht vorhandenen Auditnamen, für verweigerte Servermetadaten und für eine deaktivierte Auditkonfiguration liegen vor. Nachweise für auffaellige Runtimezustände stehen für diesen Slice noch aus. Der Produktstatus ist deshalb `PARTIAL_PRODUCT_FUNCTION`.
+Kontrollierte Laufzeitnachweise für eine Leerinventur mit einem nicht vorhandenen Auditnamen, für verweigerte Servermetadaten, für eine deaktivierte Auditkonfiguration und für einen aktiven Runtimezustand liegen vor. Der Produktstatus ist `IMPLEMENTED_ACTIONS_GATE`.
 
 ## Primärquellen
 

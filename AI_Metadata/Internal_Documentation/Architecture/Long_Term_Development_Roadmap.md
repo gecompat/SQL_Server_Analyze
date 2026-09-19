@@ -65,7 +65,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | `WI-0005` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | zeitbegrenzte Extended-Events-Sessions |
 | `WI-0006` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
 | `WI-0007` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Model-Inventur |
-| `WI-0008` | `P1` | `PARTIAL_PRODUCT_FUNCTION` | SQL-Audit-Konfigurationsanalyse |
+| `WI-0008` | `P1` | `IMPLEMENTED_ACTIONS_GATE` | SQL-Audit-Konfigurationsanalyse |
 | `WI-0009` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | External-Data-Analyse |
 | `WI-0010` | `P1` | `RESEARCHED_NOT_IMPLEMENTED` | kontinuierliche Diagnoseabdeckung und Gap-Intake |
 
@@ -164,7 +164,7 @@ Payloads, Export und Fleet-Transport bleiben standardmäßig deaktiviert. Collec
 
 ### `WI-0008`: SQL-Audit-Konfigurationsanalyse
 
-`USP_AuditConfigurationAnalysis` liefert getrennte Resultsets für Audits, Server- und Datenbankspezifikationen, Quellenstatus und Warnungen. Die Procedure liest ausschließlich Konfigurations- und Runtimezustände. Auditlog-Payloads, Dateiinhalte, Zielpfade und Änderungen an Auditobjekten bleiben ausgeschlossen. Kontrollierte Nachweise fuer einen nicht vorhandenen Auditnamen, verweigerte Servermetadaten und ein deaktiviertes Audit liegen vor. Nachweise fuer Runtimezustaende stehen noch aus; der Eintrag bleibt deshalb `PARTIAL_PRODUCT_FUNCTION`.
+`USP_AuditConfigurationAnalysis` liefert getrennte Resultsets für Audits, Server- und Datenbankspezifikationen, Quellenstatus und Warnungen. Die Procedure liest ausschließlich Konfigurations- und Runtimezustände. Auditlog-Payloads, Dateiinhalte, Zielpfade und Änderungen an Auditobjekten bleiben ausgeschlossen. Kontrollierte Nachweise fuer einen nicht vorhandenen Auditnamen, verweigerte Servermetadaten, ein deaktiviertes Audit und einen aktiven Runtimezustand liegen vor. Der Eintrag ist `IMPLEMENTED_ACTIONS_GATE`.
 
 Primärquelle: [SQL Server Audit](https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-database-engine?view=sql-server-ver17).
 

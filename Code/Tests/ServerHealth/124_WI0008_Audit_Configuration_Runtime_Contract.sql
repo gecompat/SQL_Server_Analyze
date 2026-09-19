@@ -133,4 +133,73 @@ BEGIN CATCH
         EXEC [master].[sys].[sp_executesql] @DropAuditSql;
     THROW;
 END CATCH;
+
+DECLARE @RunningAuditName sysname = N'ExampleWi0008RunningAudit';
+DECLARE @RunningAuditJson nvarchar(max) = NULL;
+DECLARE @RunningAuditStatus varchar(40) = NULL;
+DECLARE @StartRunningAuditSql nvarchar(max) = N'ALTER SERVER AUDIT ' + QUOTENAME(@RunningAuditName) + N' WITH (STATE = ON);';
+DECLARE @StopRunningAuditSql nvarchar(max) = N'ALTER SERVER AUDIT ' + QUOTENAME(@RunningAuditName) + N' WITH (STATE = OFF);';
+DECLARE @DropRunningAuditSql nvarchar(max) = N'DROP SERVER AUDIT ' + QUOTENAME(@RunningAuditName) + N';';
+
+IF EXISTS (SELECT 1 FROM [sys].[server_audits] WHERE [name] = @RunningAuditName)
+    THROW 54915, N'Der synthetische aktive Auditname ist bereits belegt.', 1;
+
+BEGIN TRY
+    DECLARE @RunningAuditPath nvarchar(4000) = CONVERT(nvarchar(4000), SERVERPROPERTY(N'InstanceDefaultDataPath'));
+    IF NULLIF(@RunningAuditPath, N'') IS NULL
+        THROW 54916, N'Der Standarddatenpfad fuer das aktive synthetische Audit ist nicht verfuegbar.', 1;
+
+    DECLARE @CreateRunningAuditSql nvarchar(max) = N'CREATE SERVER AUDIT ' + QUOTENAME(@RunningAuditName)
+        + N' TO FILE (FILEPATH = N''' + REPLACE(@RunningAuditPath, N'''', N'''''') + N''') WITH (ON_FAILURE = CONTINUE);';
+    EXEC [master].[sys].[sp_executesql] @CreateRunningAuditSql;
+    EXEC [master].[sys].[sp_executesql] @StopRunningAuditSql;
+    EXEC [master].[sys].[sp_executesql] @StartRunningAuditSql;
+
+    WAITFOR DELAY '00:00:01';
+    EXEC [monitor].[USP_AuditConfigurationAnalysis]
+          @DatabaseNames = N'DeineDatenbank'
+        , @AuditNames = @RunningAuditName
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @RunningAuditJson OUTPUT
+        , @PrintMeldungen = 0
+        , @StatusCodeOut = @RunningAuditStatus OUTPUT;
+
+    IF @RunningAuditStatus <> 'AVAILABLE'
+       OR COALESCE(ISJSON(@RunningAuditJson), 0) <> 1
+       OR NOT EXISTS
+          (
+              SELECT 1
+              FROM OPENJSON(@RunningAuditJson, '$.audits')
+              WITH
+              (
+                    [AuditName] sysname '$.AuditName'
+                  , [IsEnabled] bit '$.IsEnabled'
+                  , [RuntimeStatus] nvarchar(60) '$.RuntimeStatus'
+                  , [FindingCode] varchar(64) '$.FindingCode'
+                  , [FindingSeverity] varchar(16) '$.FindingSeverity'
+              ) AS [a]
+              WHERE [a].[AuditName] = @RunningAuditName
+                AND [a].[IsEnabled] = 1
+                AND [a].[RuntimeStatus] IN (N'STARTED', N'RUNNING')
+                AND [a].[FindingCode] = 'AUDIT_CONFIGURED'
+                AND [a].[FindingSeverity] = 'INFO'
+          )
+        THROW 54917, N'Der WI-0008-Vertrag fuer den aktiven Audit-Runtimezustand ist verletzt.', 1;
+
+    EXEC [master].[sys].[sp_executesql] @StopRunningAuditSql;
+    EXEC [master].[sys].[sp_executesql] @DropRunningAuditSql;
+END TRY
+BEGIN CATCH
+    IF EXISTS (SELECT 1 FROM [sys].[server_audits] WHERE [name] = @RunningAuditName)
+    BEGIN
+        BEGIN TRY
+            EXEC [master].[sys].[sp_executesql] @StopRunningAuditSql;
+        END TRY
+        BEGIN CATCH
+        END CATCH;
+        EXEC [master].[sys].[sp_executesql] @DropRunningAuditSql;
+    END;
+    THROW;
+END CATCH;
 GO
