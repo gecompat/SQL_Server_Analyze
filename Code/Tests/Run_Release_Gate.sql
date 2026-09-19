@@ -148,12 +148,13 @@ RAISERROR(N'RELEASE_GATE 33/34: Infrastructure',10,1) WITH NOWAIT;
 :r Infrastructure/110_Test_und_Abnahme_Phase6.sql
 :r Infrastructure/122_SQL25_TempDB_Resource_Governance_Runtime_Contract.sql
 
-RAISERROR(N'RELEASE_GATE 34/34: Server Health',10,1) WITH NOWAIT;
+RAISERROR(N'RELEASE_GATE 35/35: Server Health',10,1) WITH NOWAIT;
 :r ServerHealth/110_Test_und_Abnahme_Phase7.sql
 :r ServerHealth/120_OPS005_Linked_Server_Runtime_Contract.sql
 :r ServerHealth/121_OPS006_Database_Portability_Runtime_Contract.sql
 :r ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql
 :r ServerHealth/123_OPS009_System_Database_Objects_Runtime_Contract.sql
+:r ServerHealth/124_WI0008_Audit_Configuration_Runtime_Contract.sql
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],
        CAST(0 AS bit) AS [IsPartial],

@@ -164,7 +164,7 @@ Payloads, Export und Fleet-Transport bleiben standardmäßig deaktiviert. Collec
 
 ### `WI-0008`: SQL-Audit-Konfigurationsanalyse
 
-`USP_AuditConfigurationAnalysis` liefert getrennte Resultsets für Audits, Server- und Datenbankspezifikationen, Quellenstatus und Warnungen. Die Procedure liest ausschließlich Konfigurations- und Runtimezustände. Auditlog-Payloads, Dateiinhalte, Zielpfade und Änderungen an Auditobjekten bleiben ausgeschlossen. Kontrollierte SQL-Server-Laufzeitnachweise für abwesende, deaktivierte, partielle und verweigerte Quellen sowie Runtimezustände stehen noch aus; der Eintrag bleibt deshalb `PARTIAL_PRODUCT_FUNCTION`.
+`USP_AuditConfigurationAnalysis` liefert getrennte Resultsets für Audits, Server- und Datenbankspezifikationen, Quellenstatus und Warnungen. Die Procedure liest ausschließlich Konfigurations- und Runtimezustände. Auditlog-Payloads, Dateiinhalte, Zielpfade und Änderungen an Auditobjekten bleiben ausgeschlossen. Ein kontrollierter Leerinventarnachweis fuer einen nicht vorhandenen Auditnamen liegt vor. Nachweise fuer deaktivierte, partielle und verweigerte Quellen sowie Runtimezustaende stehen noch aus; der Eintrag bleibt deshalb `PARTIAL_PRODUCT_FUNCTION`.
 
 Primärquelle: [SQL Server Audit](https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-database-engine?view=sql-server-ver17).
 
