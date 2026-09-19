@@ -88,17 +88,17 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#ShowplanAnalysis_TableMap]([ResultName] sysname NOT NULL,[TargetTable] sysname NOT NULL);
+    CREATE TABLE [#ShowplanAnalysis_TableMap]([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     CREATE TABLE [#ShowplanAnalysis_DatabaseCandidates]
     (
-          [DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL,[UserAccessDesc] nvarchar(60) NULL,[IsReadOnly] bit NULL
-        , [CompatibilityLevel] tinyint NULL,[CollationName] sysname NULL,[RecoveryModelDesc] nvarchar(60) NULL
+          [DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsReadOnly] bit NULL
+        , [CompatibilityLevel] tinyint NULL,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL,[RequestedOrdinal] int NULL
     );
     CREATE TABLE [#ShowplanAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ShowplanAnalysis_Candidates]
     (
@@ -109,38 +109,38 @@ BEGIN
         , [LastExecutionTime] datetime NULL
         , [DatabaseId] int NULL,[SetOptions] bigint NULL,[CompileUserId] int NULL
         , [PlanGenerationNum] bigint NULL,[CacheCreationTime] datetime NULL,[CacheLastExecutionTime] datetime NULL
-        , [CacheObjectType] nvarchar(34) NULL,[CacheObjectClass] nvarchar(16) NULL
+        , [CacheObjectType] nvarchar(34) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CacheObjectClass] nvarchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CacheUseCounts] int NULL,[CacheRefCounts] int NULL,[CacheSizeBytes] bigint NULL,[CachePoolId] int NULL
     );
     CREATE TABLE [#ShowplanAnalysis_ExecutionPlanSourceContext]
     (
           [PlanHandle] varbinary(64) NOT NULL
         , [SourceCapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [DatabaseId] int NULL,[SetOptions] bigint NULL,[CompileUserId] int NULL
         , [PlanGenerationNum] bigint NULL,[CacheCreationTime] datetime NULL,[CacheLastExecutionTime] datetime NULL
-        , [ExecutionCount] bigint NULL,[CacheObjectType] nvarchar(34) NULL,[CacheObjectClass] nvarchar(16) NULL
+        , [ExecutionCount] bigint NULL,[CacheObjectType] nvarchar(34) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CacheObjectClass] nvarchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CacheUseCounts] int NULL,[CacheRefCounts] int NULL,[CacheSizeBytes] bigint NULL,[CachePoolId] int NULL
-        , [EvidenceLimit] nvarchar(1000) NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , PRIMARY KEY ([PlanHandle])
     );
     CREATE TABLE [#ShowplanAnalysis_PlanStatus]
     (
-          [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[StatusCode] varchar(40) NOT NULL
-        , [IsPartial] bit NOT NULL,[PlanSource] varchar(24) NULL,[RuntimeCounterScope] varchar(32) NULL
-        , [FindingCount] int NOT NULL,[ParseDurationMs] bigint NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
+          [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IsPartial] bit NOT NULL,[PlanSource] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RuntimeCounterScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingCount] int NOT NULL,[ParseDurationMs] bigint NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ShowplanAnalysis_Findings]
     (
           [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[FindingOrdinal] bigint NOT NULL
-        , [FindingCode] varchar(100) NOT NULL,[Category] varchar(40) NOT NULL,[Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(32) NOT NULL,[EvidenceLevel] varchar(40) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Category] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLevel] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StatementOrdinal] int NULL,[StatementId] int NULL,[NodeId] int NULL
-        , [PhysicalOp] nvarchar(128) NULL,[LogicalOp] nvarchar(128) NULL
-        , [MetricName] varchar(80) NULL,[MetricValue] decimal(38,4) NULL,[MetricUnit] nvarchar(40) NULL
-        , [ThresholdValue] decimal(38,4) NULL,[ThresholdSource] varchar(80) NULL,[WorkloadProfile] varchar(32) NOT NULL
-        , [Summary] nvarchar(1000) NOT NULL,[Evidence] nvarchar(2000) NOT NULL,[EvidenceLimit] nvarchar(2000) NOT NULL
-        , [CounterEvidence] nvarchar(1000) NULL,[RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [PhysicalOp] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[LogicalOp] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[MetricValue] decimal(38,4) NULL,[MetricUnit] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ThresholdValue] decimal(38,4) NULL,[ThresholdSource] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WorkloadProfile] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Summary] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Evidence] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLimit] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CounterEvidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ShowplanAnalysis_Parameters]
     (
@@ -150,120 +150,120 @@ BEGIN
         , [RequestId] int NULL
         , [StatementOrdinal] int NULL
         , [StatementId] int NULL
-        , [StatementQueryHash] nvarchar(130) NULL
-        , [StatementQueryPlanHash] nvarchar(130) NULL
-        , [QueryStoreDatabaseName] sysname NULL
+        , [StatementQueryHash] nvarchar(130) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatementQueryPlanHash] nvarchar(130) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QueryStoreDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [QueryStorePlanId] bigint NULL
-        , [PlanDocumentHash] nvarchar(66) NULL
-        , [EvidenceKind] varchar(24) NOT NULL
-        , [ParameterName] nvarchar(256) NULL
-        , [ParameterDataType] nvarchar(256) NULL
+        , [PlanDocumentHash] nvarchar(66) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceKind] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ParameterName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ParameterDataType] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CompiledValuePresent] bit NOT NULL
         , [RuntimeValuePresent] bit NOT NULL
         , [CompiledValueIsSqlNull] bit NULL
         , [RuntimeValueIsSqlNull] bit NULL
-        , [CompiledValue] nvarchar(4000) NULL
-        , [RuntimeValue] nvarchar(4000) NULL
-        , [CompiledValueToken] nvarchar(66) NULL
-        , [RuntimeValueToken] nvarchar(66) NULL
+        , [CompiledValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RuntimeValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CompiledValueToken] nvarchar(66) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RuntimeValueToken] nvarchar(66) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CompiledValueLength] int NULL
         , [RuntimeValueLength] int NULL
-        , [CompiledValueStatus] varchar(40) NOT NULL
-        , [RuntimeValueStatus] varchar(40) NOT NULL
-        , [ValueStatus] varchar(40) NOT NULL
-        , [ValueHandlingStatus] varchar(40) NOT NULL
-        , [ValueSource] varchar(40) NOT NULL
+        , [CompiledValueStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RuntimeValueStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ValueStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ValueHandlingStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ValueSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SourceObservedAtUtc] datetime2(3) NOT NULL
         , [ValueCapturedAtUtc] datetime2(3) NULL
         , [IsCurrentExecution] bit NULL
         , [IsLastKnownExecution] bit NULL
         , [IsComplete] bit NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ShowplanAnalysis_PlanWarnings]
     (
           [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[WarningOrdinal] bigint NOT NULL
         , [AnalysisObjectId] int NOT NULL,[StatementOrdinal] int NULL,[StatementId] int NULL,[NodeId] int NULL
-        , [WarningCode] varchar(100) NOT NULL,[WarningCategory] varchar(40) NOT NULL,[Severity] varchar(16) NOT NULL
-        , [EvidenceKind] varchar(40) NOT NULL,[EvidenceSource] varchar(40) NOT NULL,[PlanSource] varchar(24) NULL
+        , [WarningCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[WarningCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[PlanSource] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SourceObservedAtUtc] datetime2(3) NOT NULL,[IsCurrent] bit NULL,[IsLastKnown] bit NULL
-        , [IsMeasured] bit NOT NULL,[IsInferred] bit NOT NULL,[MetricName] varchar(80) NULL
-        , [MetricValue] decimal(38,4) NULL,[MetricUnit] nvarchar(40) NULL,[Detail] nvarchar(2000) NOT NULL
-        , [FalsePositiveGuard] nvarchar(2000) NOT NULL,[StatusCode] varchar(40) NOT NULL
+        , [IsMeasured] bit NOT NULL,[IsInferred] bit NOT NULL,[MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MetricValue] decimal(38,4) NULL,[MetricUnit] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FalsePositiveGuard] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ShowplanAnalysis_OptimizerContext]
     (
           [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[AnalysisObjectId] int NOT NULL
-        , [StatementOrdinal] int NULL,[StatementId] int NULL,[PlanSource] varchar(24) NULL
-        , [RuntimeCounterScope] varchar(32) NULL,[SourceObservedAtUtc] datetime2(3) NOT NULL
-        , [IsCurrent] bit NULL,[IsLastKnown] bit NULL,[OptimizationLevel] nvarchar(128) NULL
-        , [EarlyAbortReason] nvarchar(256) NULL,[CardinalityEstimationModelVersion] int NULL
+        , [StatementOrdinal] int NULL,[StatementId] int NULL,[PlanSource] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RuntimeCounterScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceObservedAtUtc] datetime2(3) NOT NULL
+        , [IsCurrent] bit NULL,[IsLastKnown] bit NULL,[OptimizationLevel] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EarlyAbortReason] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CardinalityEstimationModelVersion] int NULL
         , [StatementSubTreeCost] decimal(38,8) NULL,[StatementEstimatedRows] decimal(38,4) NULL
         , [CompileTimeMs] bigint NULL,[CompileCpuMs] bigint NULL,[CompileMemoryKb] bigint NULL
-        , [RetrievedFromCache] bit NULL,[NonParallelPlanReason] nvarchar(256) NULL,[PlanDegreeOfParallelism] int NULL
+        , [RetrievedFromCache] bit NULL,[NonParallelPlanReason] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PlanDegreeOfParallelism] int NULL
         , [PlanGenerationNum] bigint NULL,[CacheCreationTime] datetime NULL,[CacheLastExecutionTime] datetime NULL
-        , [CacheExecutionCount] bigint NULL,[CacheObjectType] nvarchar(34) NULL,[CacheObjectClass] nvarchar(16) NULL
+        , [CacheExecutionCount] bigint NULL,[CacheObjectType] nvarchar(34) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CacheObjectClass] nvarchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CacheUseCounts] int NULL,[CacheRefCounts] int NULL,[CacheSizeBytes] bigint NULL,[CachePoolId] int NULL
         , [SetOptions] bigint NULL,[CompileUserId] int NULL,[DatabaseId] int NULL
-        , [EvidenceMeasurement] varchar(40) NOT NULL,[StatusCode] varchar(40) NOT NULL
-        , [FalsePositiveGuard] nvarchar(1000) NOT NULL
+        , [EvidenceMeasurement] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FalsePositiveGuard] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ShowplanAnalysis_RuntimeFeedback]
     (
           [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[FeedbackOrdinal] bigint NOT NULL
         , [AnalysisObjectId] int NOT NULL,[StatementOrdinal] int NULL,[StatementId] int NULL,[NodeId] int NULL
-        , [FeedbackType] varchar(40) NOT NULL,[FeedbackState] nvarchar(128) NULL,[MetricName] varchar(80) NULL
+        , [FeedbackType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FeedbackState] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObservedValue] decimal(38,4) NULL,[BaselineValue] decimal(38,4) NULL,[DeltaRatio] decimal(38,8) NULL
-        , [MetricUnit] nvarchar(40) NULL,[RuntimeCounterScope] varchar(32) NULL,[EvidenceSource] varchar(40) NOT NULL
+        , [MetricUnit] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RuntimeCounterScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[EvidenceSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SourceObservedAtUtc] datetime2(3) NOT NULL,[IsCurrent] bit NULL,[IsLastKnown] bit NULL
-        , [IsMeasured] bit NOT NULL,[IsDerived] bit NOT NULL,[StatusCode] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [IsMeasured] bit NOT NULL,[IsDerived] bit NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ShowplanAnalysis_QueryStoreContext]
     (
           [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[AnalysisObjectId] int NOT NULL
-        , [QueryStoreDatabaseName] sysname NULL,[QueryStorePlanId] bigint NULL,[QueryStoreQueryId] bigint NULL
-        , [PlanGroupId] bigint NULL,[EngineVersion] nvarchar(32) NULL,[CompatibilityLevel] smallint NULL
+        , [QueryStoreDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[QueryStorePlanId] bigint NULL,[QueryStoreQueryId] bigint NULL
+        , [PlanGroupId] bigint NULL,[EngineVersion] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CompatibilityLevel] smallint NULL
         , [QueryPlanHash] binary(8) NULL,[IsTrivialPlan] bit NULL,[IsParallelPlan] bit NULL,[IsForcedPlan] bit NULL
-        , [PlanForcingTypeDesc] nvarchar(60) NULL,[ForceFailureCount] bigint NULL
-        , [LastForceFailureReason] int NULL,[LastForceFailureReasonDesc] nvarchar(128) NULL
+        , [PlanForcingTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ForceFailureCount] bigint NULL
+        , [LastForceFailureReason] int NULL,[LastForceFailureReasonDesc] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CountCompiles] bigint NULL,[InitialCompileStartTime] datetimeoffset(7) NULL
         , [LastCompileStartTime] datetimeoffset(7) NULL,[LastExecutionTime] datetimeoffset(7) NULL
         , [AvgCompileDurationUs] float NULL,[LastCompileDurationUs] bigint NULL,[ContextSettingsId] bigint NULL
-        , [ObjectId] bigint NULL,[QueryHash] binary(8) NULL,[QueryParameterizationTypeDesc] nvarchar(60) NULL
+        , [ObjectId] bigint NULL,[QueryHash] binary(8) NULL,[QueryParameterizationTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [AvgOptimizeDurationUs] float NULL,[AvgCompileMemoryKb] float NULL,[HasCompileReplayScript] bit NULL
-        , [IsOptimizedPlanForcingDisabled] bit NULL,[PlanType] int NULL,[PlanTypeDesc] nvarchar(120) NULL
+        , [IsOptimizedPlanForcingDisabled] bit NULL,[PlanType] int NULL,[PlanTypeDesc] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RuntimeExecutionCount] bigint NULL,[RuntimeLastExecutionTime] datetimeoffset(7) NULL
         , [AvgDurationUs] decimal(38,4) NULL,[AvgCpuTimeUs] decimal(38,4) NULL
         , [AvgLogicalIoReads] decimal(38,4) NULL,[AvgLogicalIoWrites] decimal(38,4) NULL
         , [QueryHintCount] int NOT NULL,[QueryHintFailureCount] bigint NOT NULL
         , [PersistedFeedbackCount] int NOT NULL,[VariantRelationCount] int NOT NULL
         , [SourceObservedAtUtc] datetime2(3) NOT NULL,[IsCurrent] bit NOT NULL,[IsLastKnown] bit NOT NULL
-        , [StatusCode] varchar(40) NOT NULL,[EvidenceLimit] nvarchar(1000) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ShowplanAnalysis_FeedbackAndVariants]
     (
           [CandidateId] int NOT NULL,[PlanHandle] varbinary(64) NOT NULL,[RecordOrdinal] bigint NOT NULL
-        , [AnalysisObjectId] int NOT NULL,[RecordType] varchar(40) NOT NULL,[FeatureType] varchar(60) NOT NULL
+        , [AnalysisObjectId] int NOT NULL,[RecordType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FeatureType] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StatementOrdinal] int NULL,[StatementId] int NULL,[NodeId] int NULL
         , [QueryStorePlanId] bigint NULL,[QueryStoreQueryId] bigint NULL,[ParentQueryId] bigint NULL
         , [DispatcherPlanId] bigint NULL,[QueryVariantQueryId] bigint NULL,[QueryVariantId] int NULL
-        , [FeatureState] nvarchar(128) NULL,[FeatureData] nvarchar(max) NULL,[FeatureDataToken] varbinary(32) NULL
-        , [FeatureDataLength] int NULL,[DataHandlingStatus] varchar(40) NOT NULL,[EvidenceSource] varchar(40) NOT NULL
+        , [FeatureState] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[FeatureData] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[FeatureDataToken] varbinary(32) NULL
+        , [FeatureDataLength] int NULL,[DataHandlingStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SourceObservedAtUtc] datetime2(3) NOT NULL,[IsCurrent] bit NULL,[IsLastKnown] bit NULL
-        , [IsMeasured] bit NOT NULL,[IsDerived] bit NOT NULL,[StatusCode] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [IsMeasured] bit NOT NULL,[IsDerived] bit NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ShowplanAnalysis_Analyses]
     (
           [CandidateId] int NOT NULL PRIMARY KEY
-        , [AnalysisJson] nvarchar(max) NULL
+        , [AnalysisJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ShowplanAnalysis_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL,[CollectionTimeUtc] datetime2(3) NOT NULL,[StatusCode] varchar(40) NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[CollectionTimeUtc] datetime2(3) NOT NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL,[CandidateCount] int NOT NULL,[ProcessedPlanCount] int NOT NULL
-        , [FindingCount] bigint NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
+        , [FindingCount] bigint NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
