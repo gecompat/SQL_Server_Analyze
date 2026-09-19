@@ -39,6 +39,8 @@ IF @Status <> 'INVALID_PARAMETER'
 
 DECLARE [ExampleOps007Cursor] CURSOR LOCAL STATIC FOR
     SELECT [SyntheticId] FROM @Synthetic ORDER BY [SyntheticId];
+DECLARE [ExampleOps007DormantCursor] CURSOR LOCAL STATIC FOR
+    SELECT [SyntheticId] FROM @Synthetic ORDER BY [SyntheticId];
 BEGIN TRY
     OPEN [ExampleOps007Cursor];
     FETCH NEXT FROM [ExampleOps007Cursor];
@@ -64,10 +66,41 @@ BEGIN TRY
         THROW 54882, N'Der begrenzte aktive Cursorvertrag ist verletzt.', 1;
     CLOSE [ExampleOps007Cursor];
     DEALLOCATE [ExampleOps007Cursor];
+
+    OPEN [ExampleOps007DormantCursor];
+    WAITFOR DELAY '00:01:01';
+    SET @Json = NULL;
+    SET @Status = NULL;
+    EXEC [monitor].[USP_CurrentCursorAnalysis]
+          @IncludeCursorDetails = 1
+        , @SessionIds = @SessionId
+        , @MaxZeilen = 10
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @Json OUTPUT
+        , @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT;
+    IF @Status NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED')
+       OR NOT EXISTS
+          (
+              SELECT 1 FROM OPENJSON(@Json)
+              WITH
+              (
+                    [CursorName] nvarchar(256) '$.CursorName'
+                  , [FindingContext] varchar(40) '$.FindingContext'
+              ) AS [j]
+              WHERE [j].[CursorName] = N'ExampleOps007DormantCursor'
+                AND [j].[FindingContext] = 'DORMANT_CONTEXT'
+          )
+        THROW 54884, N'Der ruhende Cursorvertrag ist verletzt.', 1;
+    CLOSE [ExampleOps007DormantCursor];
+    DEALLOCATE [ExampleOps007DormantCursor];
 END TRY
 BEGIN CATCH
     IF CURSOR_STATUS('local', 'ExampleOps007Cursor') >= 0 CLOSE [ExampleOps007Cursor];
     IF CURSOR_STATUS('local', 'ExampleOps007Cursor') > -3 DEALLOCATE [ExampleOps007Cursor];
+    IF CURSOR_STATUS('local', 'ExampleOps007DormantCursor') >= 0 CLOSE [ExampleOps007DormantCursor];
+    IF CURSOR_STATUS('local', 'ExampleOps007DormantCursor') > -3 DEALLOCATE [ExampleOps007DormantCursor];
     THROW;
 END CATCH;
 
