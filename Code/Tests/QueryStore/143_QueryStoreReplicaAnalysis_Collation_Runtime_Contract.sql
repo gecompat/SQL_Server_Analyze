@@ -17,8 +17,13 @@ EXEC [monitor].[USP_QueryStoreReplicaAnalysis]
 IF ISJSON(@Json) <> 1
     THROW 55000, N'USP_QueryStoreReplicaAnalysis did not return valid JSON.', 1;
 
-IF JSON_VALUE(@Json, N'$.meta.statusCode') <> N'UNAVAILABLE_VERSION'
-    THROW 55000, N'USP_QueryStoreReplicaAnalysis did not report the SQL Server 2019 version boundary.', 1;
+IF TRY_CONVERT(int, JSON_VALUE(@Json, N'$.meta.productMajorVersion')) < 17
+   AND JSON_VALUE(@Json, N'$.meta.statusCode') <> N'UNAVAILABLE_VERSION'
+    THROW 55000, N'USP_QueryStoreReplicaAnalysis did not report the pre-2025 version boundary.', 1;
+
+IF TRY_CONVERT(int, JSON_VALUE(@Json, N'$.meta.productMajorVersion')) >= 17
+   AND JSON_VALUE(@Json, N'$.meta.statusCode') NOT IN (N'AVAILABLE', N'AVAILABLE_LIMITED', N'NOT_APPLICABLE')
+    THROW 55000, N'USP_QueryStoreReplicaAnalysis returned an unexpected SQL Server 2025 status.', 1;
 
 IF JSON_QUERY(@Json, N'$.moduleStatus') IS NULL OR JSON_QUERY(@Json, N'$.sourceStatus') IS NULL
     THROW 55000, N'USP_QueryStoreReplicaAnalysis JSON does not contain required status arrays.', 1;
