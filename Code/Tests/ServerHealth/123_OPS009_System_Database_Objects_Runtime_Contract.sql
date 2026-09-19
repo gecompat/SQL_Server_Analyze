@@ -91,6 +91,20 @@ BEGIN TRY
     EXEC [master].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
     EXEC [model].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
     EXEC [msdb].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
+
+    SET @Json = NULL;
+    SET @Status = NULL;
+    EXEC [monitor].[USP_SystemDatabaseObjectInventory]
+          @MaxZeilen = 20
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @Json OUTPUT
+        , @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT;
+    IF @Status <> 'AVAILABLE_EMPTY'
+       OR COALESCE(ISJSON(@Json), 0) <> 1
+       OR EXISTS (SELECT 1 FROM OPENJSON(@Json))
+        THROW 54894, N'Der leere Systemdatenbank-Inventarvertrag ist verletzt.', 1;
 END TRY
 BEGIN CATCH
     IF USER_NAME() = N'ExampleOps009RestrictedUser' REVERT;
