@@ -31,10 +31,11 @@ BEGIN
  );
  IF @MaxZeilen<0 OR @Mode NOT IN('CONSOLE','RAW','NONE') SELECT @Status='INVALID_PARAMETER',@Partial=1,@ErrorMessage=N'Ungültiger Parameter.';
  IF @Status='AVAILABLE' BEGIN
-  DECLARE @Db sysname,@Sql nvarchar(max); DECLARE [d] CURSOR LOCAL FAST_FORWARD FOR SELECT [name] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id] IN(1,3,4) AND [state]=0 AND HAS_DBACCESS([name])=1;
+  DECLARE @Db sysname,@Sql nvarchar(max); DECLARE [d] CURSOR LOCAL FAST_FORWARD FOR SELECT [name] FROM [sys].[databases] WITH (NOLOCK) WHERE [database_id] IN(1,3,4) AND [state]=0;
   OPEN [d]; FETCH NEXT FROM [d] INTO @Db; WHILE @@FETCH_STATUS=0 BEGIN
-   BEGIN TRY SET @Sql=N'INSERT [#SystemDatabaseObjectInventory_Objects] SELECT @Db,[s].[name],[o].[name],[o].[type_desc],[o].[create_date],[o].[modify_date],''AVAILABLE'',N''Sichtbares Inventar; Bewertung benötigt Objektverantwortung und Betriebszweck.'' FROM '+QUOTENAME(@Db)+N'.[sys].[objects] [o] WITH (NOLOCK) JOIN '+QUOTENAME(@Db)+N'.[sys].[schemas] [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id] WHERE [o].[is_ms_shipped]=0 AND [o].[type] NOT IN(''S'',''IT'');'; EXEC [sys].[sp_executesql] @Sql,N'@Db sysname',@Db; END TRY
-   BEGIN CATCH INSERT [#SystemDatabaseObjectInventory_Objects] VALUES(@Db,NULL,NULL,NULL,NULL,NULL,'SOURCE_UNAVAILABLE',CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800))); SET @Partial=1; END CATCH;
+   IF COALESCE(HAS_DBACCESS(@Db),0)<>1 BEGIN INSERT [#SystemDatabaseObjectInventory_Objects] VALUES(@Db,NULL,NULL,NULL,NULL,NULL,'DENIED_PERMISSION',N'Die Systemdatenbank ist für den aktuellen Sicherheitskontext nicht zugänglich.'); SET @Partial=1; END
+   ELSE BEGIN TRY SET @Sql=N'INSERT [#SystemDatabaseObjectInventory_Objects] SELECT @Db,[s].[name],[o].[name],[o].[type_desc],[o].[create_date],[o].[modify_date],''AVAILABLE'',N''Sichtbares Inventar; Bewertung benötigt Objektverantwortung und Betriebszweck.'' FROM '+QUOTENAME(@Db)+N'.[sys].[objects] [o] WITH (NOLOCK) JOIN '+QUOTENAME(@Db)+N'.[sys].[schemas] [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id] WHERE [o].[is_ms_shipped]=0 AND [o].[type] NOT IN(''S'',''IT'');'; EXEC [sys].[sp_executesql] @Sql,N'@Db sysname',@Db; END TRY
+   BEGIN CATCH INSERT [#SystemDatabaseObjectInventory_Objects] VALUES(@Db,NULL,NULL,NULL,NULL,NULL,CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'SOURCE_UNAVAILABLE' END,CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800))); SET @Partial=1; END CATCH;
    FETCH NEXT FROM [d] INTO @Db; END; CLOSE [d]; DEALLOCATE [d]; IF NOT EXISTS(SELECT 1 FROM [#SystemDatabaseObjectInventory_Objects]) SET @Status='AVAILABLE_EMPTY'; ELSE IF @Partial=1 SET @Status='AVAILABLE_LIMITED';
  END;
  IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#SystemDatabaseObjectInventory_Objects] ORDER BY [DatabaseName],[SchemaName],[ObjectName] FOR JSON PATH),N'[]');

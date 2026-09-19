@@ -40,6 +40,7 @@ OPS_RUNTIME_CONTRACTS = {
         "master",
         "model",
         "msdb",
+        "DENIED_PERMISSION",
     ),
 }
 
