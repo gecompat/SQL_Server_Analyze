@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 104 Procedures<br>
+**Strukturelle Abdeckung:** 105 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -125,6 +125,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_StartupParameters](USP_StartupParameters.md)
 - [USP_OSInformation](USP_OSInformation.md)
 - [USP_ServerSecurityConfiguration](USP_ServerSecurityConfiguration.md)
+- [USP_AuditConfigurationAnalysis](USP_AuditConfigurationAnalysis.md)
 - [USP_ServerHealthAnalysis](USP_ServerHealthAnalysis.md)
 - [USP_DatabaseIntegrityAnalysis](USP_DatabaseIntegrityAnalysis.md)
 - [USP_DatabaseCapacityAnalysis](USP_DatabaseCapacityAnalysis.md)

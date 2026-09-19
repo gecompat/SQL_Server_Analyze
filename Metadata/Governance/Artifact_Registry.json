@@ -122,7 +122,7 @@
       "kind": "work_item",
       "title": "SQL-Audit-Konfigurationsanalyse",
       "registration_state": "REGISTERED",
-      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "status": "PARTIAL_PRODUCT_FUNCTION",
       "priority": "P1",
       "acceptance_criteria": "Eine read-only Analyse trennt Auditkonfiguration, Server- und Datenbankspezifikationen, Runtimezustand und Quellenstatus, ohne Auditlog-Payloads zu lesen oder Auditobjekte zu verändern.",
       "aliases": [],
@@ -130,7 +130,7 @@
         {"type": "parent", "target": "WI-0001"}
       ],
       "wave": "WAVE_4",
-      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0008-sql-audit-konfigurationsanalyse"
+      "locator": "Documentation/Analysis_Guides/Procedures/USP_AuditConfigurationAnalysis.md"
     },
     "WI-0009": {
       "artifact_uid": "urn:uuid:01a049e4-726a-7c67-b2b1-f8a5acb21873",

@@ -267,5 +267,7 @@ AS
         , (N'USP_FrameworkUsageFromQueryStore',N'Nutzung Statistik welche Procedures aufgerufen Query Store','de',100,N'Zeigt welche Framework-Procedures tatsächlich genutzt werden.')
         , (N'USP_FrameworkUsageFromQueryStore',N'framework usage statistics query store procedure frequency','en',95,N'Framework self-awareness from Query Store data.')
         , (N'USP_FrameworkUsageFromQueryStore',N'meistgenutzt ungenutzt Häufigkeit Laufzeit','de',90,N'Identifiziert viel- und nie-genutzte Module.')
+        , (N'USP_AuditConfigurationAnalysis',N'SQL Audit Konfiguration deaktiviert','de',100,N'Prüft sichtbare Audit- und Spezifikationszustände ohne Ereignispayloads.')
+        , (N'USP_AuditConfigurationAnalysis',N'SQL audit configuration runtime status','en',95,N'Inventarisiert Auditkonfiguration und verfügbaren Runtimezustand.')
     ) AS [v]([ProcedureName],[SearchTerm],[LanguageCode],[SearchWeight],[MatchReason]);
 GO
