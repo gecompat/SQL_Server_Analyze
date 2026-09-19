@@ -48165,14 +48165,14 @@ BEGIN
  IF @TableResultRequested=1 OR @ConsoleResultRequested=1 SET @Mode='NONE';
  CREATE TABLE [#SystemDatabaseObjectInventory_Objects]
  (
-      [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
-    , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
-    , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
-    , [ObjectType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
-    , [CreateDate] datetime
-    , [ModifyDate] datetime
-    , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS
-    , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS
+      [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [ObjectType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [CreateDate] datetime NULL
+    , [ModifyDate] datetime NULL
+    , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
  );
  IF @MaxZeilen<0 OR @Mode NOT IN('CONSOLE','RAW','NONE') SELECT @Status='INVALID_PARAMETER',@Partial=1,@ErrorMessage=N'Ungültiger Parameter.';
  IF @Status='AVAILABLE' BEGIN
