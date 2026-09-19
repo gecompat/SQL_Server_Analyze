@@ -6,8 +6,11 @@ SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
 DECLARE @ObjectName sysname = N'ExampleOps009Object';
+DECLARE @RestrictedLogin sysname = N'ExampleOps009RestrictedLogin';
+DECLARE @RestrictedPassword nvarchar(128) = N'ExampleOps009!' + CONVERT(nvarchar(36), NEWID());
 DECLARE @Json nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
+DECLARE @Sql nvarchar(max) = NULL;
 
 IF OBJECT_ID(N'master.dbo.ExampleOps009Object', N'U') IS NOT NULL
    OR OBJECT_ID(N'model.dbo.ExampleOps009Object', N'U') IS NOT NULL
@@ -47,10 +50,15 @@ BEGIN TRY
     IF (SELECT COUNT_BIG(*) FROM OPENJSON(@Json)) > 1
         THROW 54892, N'Die Begrenzung des Systemdatenbank-Inventars ist verletzt.', 1;
 
-    DROP USER IF EXISTS [ExampleOps009RestrictedUser];
-    CREATE USER [ExampleOps009RestrictedUser] WITHOUT LOGIN;
+    IF EXISTS (SELECT 1 FROM [master].[sys].[server_principals] WHERE [name] = @RestrictedLogin)
+        THROW 54893, N'Der synthetische eingeschränkte Loginname ist bereits belegt.', 1;
+    SET @Sql = N'CREATE LOGIN [ExampleOps009RestrictedLogin] WITH PASSWORD = '
+             + QUOTENAME(@RestrictedPassword, N'''')
+             + N', CHECK_POLICY = OFF, CHECK_EXPIRATION = OFF;';
+    EXEC [master].[sys].[sp_executesql] @Sql;
+    CREATE USER [ExampleOps009RestrictedUser] FOR LOGIN [ExampleOps009RestrictedLogin];
     GRANT EXECUTE ON [monitor].[USP_SystemDatabaseObjectInventory] TO [ExampleOps009RestrictedUser];
-    EXECUTE AS USER = N'ExampleOps009RestrictedUser';
+    EXECUTE AS LOGIN = N'ExampleOps009RestrictedLogin';
     SET @Json = NULL;
     SET @Status = NULL;
     EXEC [monitor].[USP_SystemDatabaseObjectInventory]
@@ -62,32 +70,18 @@ BEGIN TRY
         , @StatusCodeOut = @Status OUTPUT;
     REVERT;
     IF COALESCE(ISJSON(@Json), 0) <> 1
-       OR @Status NOT IN ('AVAILABLE_EMPTY', 'AVAILABLE_LIMITED')
-       OR
+       OR @Status <> 'AVAILABLE_LIMITED'
+       OR NOT EXISTS
           (
-              @Status = 'AVAILABLE_LIMITED'
-              AND NOT EXISTS
-                  (
-                      SELECT 1
-                      FROM OPENJSON(@Json)
-                      WITH ([StatusCode] varchar(40) '$.StatusCode') AS [j]
-                      WHERE [j].[StatusCode] = 'DENIED_PERMISSION'
-                  )
+              SELECT 1
+              FROM OPENJSON(@Json)
+              WITH ([StatusCode] varchar(40) '$.StatusCode') AS [j]
+              WHERE [j].[StatusCode] = 'DENIED_PERMISSION'
           )
-       OR
-          (
-              @Status = 'AVAILABLE_EMPTY'
-              AND EXISTS
-                  (
-                      SELECT 1
-                      FROM OPENJSON(@Json)
-                      WITH ([ObjectName] sysname '$.ObjectName') AS [j]
-                      WHERE [j].[ObjectName] = @ObjectName
-                  )
-          )
-        THROW 54893, N'Der eingeschränkte Inventarpfad weist weder eine leere noch eine partielle Metadatensicht aus.', 1;
+        THROW 54894, N'Der eingeschränkte Loginpfad weist keine partielle Metadatensicht aus.', 1;
 
     DROP USER [ExampleOps009RestrictedUser];
+    EXEC [master].[sys].[sp_executesql] N'DROP LOGIN [ExampleOps009RestrictedLogin];';
     EXEC [master].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
     EXEC [model].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
     EXEC [msdb].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
@@ -107,8 +101,10 @@ BEGIN TRY
         THROW 54894, N'Der leere Systemdatenbank-Inventarvertrag ist verletzt.', 1;
 END TRY
 BEGIN CATCH
-    IF USER_NAME() = N'ExampleOps009RestrictedUser' REVERT;
+    IF SUSER_SNAME() = N'ExampleOps009RestrictedLogin' REVERT;
     DROP USER IF EXISTS [ExampleOps009RestrictedUser];
+    IF EXISTS (SELECT 1 FROM [master].[sys].[server_principals] WHERE [name] = @RestrictedLogin)
+        EXEC [master].[sys].[sp_executesql] N'DROP LOGIN [ExampleOps009RestrictedLogin];';
     IF OBJECT_ID(N'master.dbo.ExampleOps009Object', N'U') IS NOT NULL EXEC [master].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
     IF OBJECT_ID(N'model.dbo.ExampleOps009Object', N'U') IS NOT NULL EXEC [model].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
     IF OBJECT_ID(N'msdb.dbo.ExampleOps009Object', N'U') IS NOT NULL EXEC [msdb].[sys].[sp_executesql] N'DROP TABLE [dbo].[ExampleOps009Object];';
