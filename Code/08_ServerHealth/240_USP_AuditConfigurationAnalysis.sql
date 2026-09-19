@@ -173,7 +173,7 @@ BEGIN
             SELECT @IsPartial=1,@ErrorNumber=COALESCE(@ErrorNumber,ERROR_NUMBER()),@ErrorMessage=COALESCE(@ErrorMessage,ERROR_MESSAGE());
         END CATCH;
 
-        DECLARE @DatabaseId int,@DatabaseName sysname,@Sql nvarchar(max);
+        DECLARE @DatabaseId int,@DatabaseName sysname,@Sql nvarchar(max),@HasAuditNames bit=CASE WHEN @AuditNames IS NULL THEN 0 ELSE 1 END;
         DECLARE [audit_database_cursor] CURSOR LOCAL FAST_FORWARD FOR
             SELECT [DatabaseId],[DatabaseName] FROM [#AuditConfigurationAnalysis_DatabaseCandidates] WHERE [StateDesc]=N'ONLINE' ORDER BY [DatabaseId];
         OPEN [audit_database_cursor]; FETCH NEXT FROM [audit_database_cursor] INTO @DatabaseId,@DatabaseName;
@@ -189,7 +189,7 @@ BEGIN
                 LEFT JOIN '+QUOTENAME(@DatabaseName)+N'.[sys].[database_audit_specification_details] [d] WITH(NOLOCK) ON [d].[audit_specification_id]=[s].[audit_specification_id]
                 WHERE (@pAuditNames=0 OR EXISTS(SELECT 1 FROM [#AuditConfigurationAnalysis_AuditFilter] [f] WHERE [f].[NameValue]=[a].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
                 GROUP BY [s].[audit_specification_id],[s].[name],[s].[audit_guid],[a].[name],[s].[is_state_enabled];';
-                EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseId int,@pDatabaseName sysname,@pAuditNames bit',@pDatabaseId=@DatabaseId,@pDatabaseName=@DatabaseName,@pAuditNames=CASE WHEN @AuditNames IS NULL THEN 0 ELSE 1 END;
+                EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseId int,@pDatabaseName sysname,@pAuditNames bit',@pDatabaseId=@DatabaseId,@pDatabaseName=@DatabaseName,@pAuditNames=@HasAuditNames;
             END TRY
             BEGIN CATCH
                 SET @IsPartial=1;
@@ -240,12 +240,13 @@ BEGIN
     IF @ConsoleRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#AuditConfigurationAnalysis_Audits',@ResultLabel=N'AuditConfigurationAnalysis',@EmptyMessage=N'Keine sichtbaren Auditkonfigurationen';
     IF @TableRequested=1
     BEGIN
-        DECLARE @ResultName sysname,@TargetTable sysname;
+        DECLARE @ResultName sysname,@TargetTable sysname,@SourceTable sysname;
         DECLARE [audit_table_cursor] CURSOR LOCAL FAST_FORWARD FOR SELECT [ResultName],[TargetTable] FROM [#AuditConfigurationAnalysis_ResultTables] ORDER BY [ResultName];
         OPEN [audit_table_cursor]; FETCH NEXT FROM [audit_table_cursor] INTO @ResultName,@TargetTable;
         WHILE @@FETCH_STATUS=0
         BEGIN
-            EXEC [monitor].[InternalWriteResultTable] @SourceTable=CASE @ResultName WHEN N'audits' THEN N'#AuditConfigurationAnalysis_Audits' WHEN N'serverSpecifications' THEN N'#AuditConfigurationAnalysis_ServerSpecifications' WHEN N'databaseSpecifications' THEN N'#AuditConfigurationAnalysis_DatabaseSpecifications' WHEN N'sourceStatus' THEN N'#AuditConfigurationAnalysis_SourceStatus' ELSE N'#AuditConfigurationAnalysis_Warnings' END,@TargetTable=@TargetTable,@ThrowOnError=1;
+            SET @SourceTable=CASE @ResultName WHEN N'audits' THEN N'#AuditConfigurationAnalysis_Audits' WHEN N'serverSpecifications' THEN N'#AuditConfigurationAnalysis_ServerSpecifications' WHEN N'databaseSpecifications' THEN N'#AuditConfigurationAnalysis_DatabaseSpecifications' WHEN N'sourceStatus' THEN N'#AuditConfigurationAnalysis_SourceStatus' ELSE N'#AuditConfigurationAnalysis_Warnings' END;
+            EXEC [monitor].[InternalWriteResultTable] @SourceTable=@SourceTable,@TargetTable=@TargetTable,@ThrowOnError=1;
             FETCH NEXT FROM [audit_table_cursor] INTO @ResultName,@TargetTable;
         END;
         CLOSE [audit_table_cursor]; DEALLOCATE [audit_table_cursor];
