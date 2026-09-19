@@ -7,18 +7,23 @@ SET XACT_ABORT ON;
 
 DECLARE @PortableDatabase sysname = N'ExampleOps006Portable';
 DECLARE @UncontainedDatabase sysname = N'ExampleOps006Uncontained';
+DECLARE @FeatureDatabase sysname = N'ExampleOps006Feature';
 DECLARE @Json nvarchar(max) = NULL;
 DECLARE @Status varchar(40) = NULL;
 DECLARE @Partial bit = NULL;
 DECLARE @Sql nvarchar(max);
 
-IF DB_ID(@PortableDatabase) IS NOT NULL OR DB_ID(@UncontainedDatabase) IS NOT NULL
+IF DB_ID(@PortableDatabase) IS NOT NULL
+   OR DB_ID(@UncontainedDatabase) IS NOT NULL
+   OR DB_ID(@FeatureDatabase) IS NOT NULL
     THROW 54860, N'Ein synthetischer Portabilitäts-Datenbankname ist bereits belegt.', 1;
 
 BEGIN TRY
     SET @Sql = N'CREATE DATABASE ' + QUOTENAME(@PortableDatabase) + N' COLLATE SQL_Latin1_General_CP1_CS_AS;';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Sql = N'CREATE DATABASE ' + QUOTENAME(@UncontainedDatabase) + N' COLLATE SQL_Latin1_General_CP1_CS_AS;';
+    EXEC [sys].[sp_executesql] @Sql;
+    SET @Sql = N'CREATE DATABASE ' + QUOTENAME(@FeatureDatabase) + N' COLLATE SQL_Latin1_General_CP1_CS_AS;';
     EXEC [sys].[sp_executesql] @Sql;
 
     SET @Sql = N'USE ' + QUOTENAME(@UncontainedDatabase) + N';
@@ -66,6 +71,41 @@ END;'');';
           )
         THROW 54862, N'Die synthetische uncontained dependency fehlt.', 1;
 
+    SET @Sql = N'USE ' + QUOTENAME(@FeatureDatabase) + N';
+CREATE TABLE [dbo].[ExampleOps006Compressed]
+(
+      [Id] int NOT NULL
+    , [Payload] char(200) NOT NULL
+);
+CREATE CLUSTERED INDEX [CX_ExampleOps006Compressed]
+    ON [dbo].[ExampleOps006Compressed]([Id])
+    WITH (DATA_COMPRESSION = PAGE);
+INSERT [dbo].[ExampleOps006Compressed]([Id],[Payload]) VALUES (1,''SyntheticFeatureEvidence'');';
+    EXEC [sys].[sp_executesql] @Sql;
+
+    SET @Json = NULL;
+    SET @Status = NULL;
+    SET @Partial = NULL;
+
+    EXEC [monitor].[USP_DatabasePortabilityAnalysis]
+          @DatabaseNames = N'[ExampleOps006Feature]'
+        , @MaxZeilen = 100
+        , @ResultSetArt = 'NONE'
+        , @JsonErzeugen = 1
+        , @Json = @Json OUTPUT
+        , @PrintMeldungen = 0
+        , @StatusCodeOut = @Status OUTPUT
+        , @IsPartialOut = @Partial OUTPUT;
+
+    IF @Status NOT IN ('AVAILABLE', 'AVAILABLE_LIMITED')
+       OR NOT EXISTS
+          (
+              SELECT 1 FROM OPENJSON(@Json)
+              WITH ([EvidenceType] varchar(40) '$.EvidenceType') AS [j]
+              WHERE [j].[EvidenceType] = 'PERSISTED_SKU_FEATURE'
+          )
+        THROW 54865, N'Die synthetische persistierte SKU-Feature-Evidenz fehlt.', 1;
+
     SET @Json = NULL;
     SET @Status = NULL;
     EXEC [monitor].[USP_DatabasePortabilityAnalysis]
@@ -94,6 +134,8 @@ END;'');';
         THROW 54864, N'Der eingeschränkte Portabilitätspfad warf den Vertrag ab.', 1;
 
     DROP USER [ExampleOps006RestrictedUser];
+    SET @Sql = N'DROP DATABASE ' + QUOTENAME(@FeatureDatabase) + N';';
+    EXEC [sys].[sp_executesql] @Sql;
     SET @Sql = N'DROP DATABASE ' + QUOTENAME(@UncontainedDatabase) + N';';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Sql = N'DROP DATABASE ' + QUOTENAME(@PortableDatabase) + N';';
@@ -102,6 +144,11 @@ END TRY
 BEGIN CATCH
     IF USER_NAME() = N'ExampleOps006RestrictedUser' REVERT;
     DROP USER IF EXISTS [ExampleOps006RestrictedUser];
+    IF DB_ID(@FeatureDatabase) IS NOT NULL
+    BEGIN
+        SET @Sql = N'ALTER DATABASE ' + QUOTENAME(@FeatureDatabase) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE ' + QUOTENAME(@FeatureDatabase) + N';';
+        EXEC [sys].[sp_executesql] @Sql;
+    END;
     IF DB_ID(@UncontainedDatabase) IS NOT NULL
     BEGIN
         SET @Sql = N'ALTER DATABASE ' + QUOTENAME(@UncontainedDatabase) + N' SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE ' + QUOTENAME(@UncontainedDatabase) + N';';

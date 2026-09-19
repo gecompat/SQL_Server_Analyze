@@ -37,7 +37,7 @@ Alle 104 Procedure-Seiten besitzen den Status `DEEP_REVIEWED` nach Reviewvertrag
 Die nächste Welle erweitert keine öffentliche Diagnosefläche. Sie schließt die bereits implementierten Teilfunktionen und zugehörigen Reifeverträge ab.
 
 1. `OPS-005` erhält einen getrennt autorisierten, kontrollierten Remote-Erfolgsnachweis und providerübergreifende Evidenz. Der TestLab-Adapter deckt bereits die Drei-Versionen-, Berechtigungs- und Timeoutfälle ohne realen Remotezugriff ab.
-2. `OPS-006` erhält portable, featuregebundene, nicht unterstützte, unberechtigte und versionsübergreifende Evidenz.
+2. `OPS-006` schließt die verbleibende nicht unterstützte, unberechtigte und versionsübergreifende Evidenz nach dem kontrollierten Feature-Nachweis.
 3. `OPS-008` erhält Leer-, Retention-, Wachstum-, Berechtigungs- und Begrenzungsfälle für die sichtbaren `msdb`-Historien.
 4. `OPS-007` und `OPS-009` folgen als kleinere, getrennt validierbare Slices.
 5. `COLL-001` setzt die begonnene objektbezogene Härtung fort. Die fünf OPS-Objekte, die Child-JSON-Aggregation von `USP_CurrentOverview` und der TABLE-Zielvertrag bilden den ersten statisch sowie auf der garantierten Collation nativ abgesicherten Slice. Gemischte Server-, `tempdb`-, Framework- und Ziel-Collations bleiben offen.
