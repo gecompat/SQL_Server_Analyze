@@ -1,0 +1,30 @@
+{
+  "$schema": "https://github.com/gecompat/SQL_Server_Lab/raw/main/Schemas/project-adapter.schema.json",
+  "adapterContractVersion": "0.1",
+  "projectId": "sql-server-analyze-ops-005-linked-server",
+  "displayName": "SQL Server Analyze – OPS-005 Linked Server",
+  "description": "Installiert den vollständigen Analyze-Frameworkstand in eine markergebundene Labdatenbank und führt den synthetischen OPS-005-Laufzeitvertrag aus.",
+  "supportedLabCoreVersions": ["0.x"],
+  "requiredCapabilities": ["container-linux", "sqlcmd"],
+  "supportedSqlVersions": ["2019", "2022", "2025"],
+  "entrypoints": {
+    "preflight": "sql/preflight.sql",
+    "install": "sql/install.sql",
+    "update": "sql/update.sql",
+    "validate": "sql/validate.sql",
+    "cleanup": "sql/cleanup.sql"
+  },
+  "targetDatabase": "master",
+  "secretInputs": [],
+  "producedLocalArtifacts": [
+    "Markergebundene Frameworkdatenbank LabAnalyzeOps005",
+    "Ausschließlich flüchtige synthetische Linked-Server-, Login- und Benutzerfixtures"
+  ],
+  "dataClassification": "SYNTHETIC",
+  "privacyExportPolicy": "SANITIZED_SUMMARY_ONLY",
+  "licenseNotice": "Synthetischer Repository-Inhalt; es gilt LICENSE.md im Repository-Root.",
+  "knownLimitations": [
+    "Der Adapter verwendet absichtlich keinen realen externen Linked Server; der kontrollierte Endpunkt ist synthetisch und nicht erreichbar.",
+    "Der Adapter prüft den vorhandenen MSOLEDBSQL-basierten Runtimevertrag, aber keine providerübergreifende Konnektivität."
+  ]
+}

@@ -89,6 +89,30 @@ entfernt den gesamten Run nach dem Test.
 pwsh -File ./TestLab/Invoke-Ops005LinkedServerScenario.ps1 -Provider docker -Version 2022
 ```
 
+Der Adapter `OPS-005` führt den vorhandenen Linked-Server-Runtimevertrag auf
+einem pro Zielversion neu erzeugten Docker-Lab aus. Er installiert den
+kanonischen Frameworkbestand in die markergebundene Datenbank
+`LabAnalyzeOps005`, verwendet ausschließlich die synthetischen Fixtures des
+Runtimevertrags und entfernt danach zuerst die Adapterobjekte und anschließend
+den exakten Lab-Run. Der Runner verwendet die vom Labkatalog freigegebene
+Collation `Latin1_General_100_CS_AS`. Das zufällige SA-Passwort bleibt im
+Arbeitsspeicher; weder Passwort, Containername, Port noch Run-State werden als
+Repositoryevidenz gespeichert.
+
+```powershell
+pwsh -File ./TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+
+pwsh -File ./TestLab/Invoke-AnalyzeOps005LinkedServerMatrix.ps1 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Die Matrix verarbeitet SQL Server 2019, 2022 und 2025 sequenziell. Sie bindet
+keine bestehenden Container, Volumes oder Remoteziele ein. Ein fehlgeschlagener
+Adapter- oder Infrastruktur-Cleanup behält ausschließlich den zugehörigen
+temporären State für die Recovery; ein erfolgreicher Lauf entfernt auch diesen
+State-Root.
+
 ## Katalogisierte Beispiele
 
 | Beispiel | Primärer Analyzer | Bedienseite |
