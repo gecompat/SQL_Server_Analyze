@@ -112,8 +112,21 @@ INSERT [#DatabasePortabilityAnalysis_Portability]
 SELECT @Db, ''PERSISTED_SKU_FEATURE'', [feature_name], NULL, NULL,
        N''sys.dm_db_persisted_sku_features'', ''AVAILABLE'',
        N''Persistiertes Feature ist ein Migrationshinweis; Zielunterstützung separat prüfen.''
-FROM ' + QUOTENAME(@Db) + N'.[sys].[dm_db_persisted_sku_features];
-
+FROM ' + QUOTENAME(@Db) + N'.[sys].[dm_db_persisted_sku_features];';
+                EXEC [sys].[sp_executesql] @Sql, N'@Db sysname', @Db=@Db;
+            END TRY
+            BEGIN CATCH
+                INSERT [#DatabasePortabilityAnalysis_Portability]
+                VALUES (@Db,'SOURCE_STATUS',NULL,NULL,NULL,N'sys.dm_db_persisted_sku_features',
+                        CASE WHEN ERROR_NUMBER() IN (229,371) THEN 'DENIED_PERMISSION'
+                             WHEN ERROR_NUMBER() IN (207,208) THEN 'UNSUPPORTED_SOURCE'
+                             WHEN ERROR_NUMBER()=1222 THEN 'LOCK_TIMEOUT'
+                             ELSE 'SOURCE_UNAVAILABLE' END,
+                        CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)));
+                SET @Partial=1;
+            END CATCH;
+            BEGIN TRY
+                SET @Sql = N'
 INSERT [#DatabasePortabilityAnalysis_Portability]
 SELECT @Db, ''UNCONTAINED_ENTITY'', [feature_name], [feature_type_name], [statement_type],
        N''sys.dm_db_uncontained_entities'', ''AVAILABLE'',
@@ -123,7 +136,11 @@ FROM ' + QUOTENAME(@Db) + N'.[sys].[dm_db_uncontained_entities];';
             END TRY
             BEGIN CATCH
                 INSERT [#DatabasePortabilityAnalysis_Portability]
-                VALUES (@Db,'SOURCE_STATUS',NULL,NULL,NULL,N'sys.dm_db_*','SOURCE_UNAVAILABLE',
+                VALUES (@Db,'SOURCE_STATUS',NULL,NULL,NULL,N'sys.dm_db_uncontained_entities',
+                        CASE WHEN ERROR_NUMBER() IN (229,371) THEN 'DENIED_PERMISSION'
+                             WHEN ERROR_NUMBER() IN (207,208) THEN 'UNSUPPORTED_SOURCE'
+                             WHEN ERROR_NUMBER()=1222 THEN 'LOCK_TIMEOUT'
+                             ELSE 'SOURCE_UNAVAILABLE' END,
                         CONCAT(N'Fehler ',ERROR_NUMBER(),N': ',LEFT(ERROR_MESSAGE(),800)));
                 SET @Partial=1;
             END CATCH;
