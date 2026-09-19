@@ -21,9 +21,9 @@ CREATE TABLE [#AnalysisNavigatorRuntimeContract_Failure]
     , [Detail] nvarchar(2048) NOT NULL
 );
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 104
+IF (SELECT COUNT_BIG(*) FROM [monitor].[VW_AnalysisCatalog]) <> 105
     INSERT [#AnalysisNavigatorRuntimeContract_Failure]
-    VALUES(N'CATALOG_COUNT',N'Der fachliche Katalog enthält nicht genau 104 öffentliche Procedures.');
+    VALUES(N'CATALOG_COUNT',N'Der fachliche Katalog enthält nicht genau 105 öffentliche Procedures.');
 
 IF EXISTS
 (
