@@ -61,7 +61,7 @@ Analysis Navigator,USP_AnalysisNavigator,COMPLETE,YES,YES,YES,,FULL,Zentraler Ei
 Framework Usage,USP_FrameworkUsageFromQueryStore,COMPLETE,YES,YES,YES,,FULL,FRAMEWORK-USAGE-001 mit Hilfe RAW CONSOLE TABLE NONE JSON und Query-Store-Laufzeitvertrag
 Snapshot Baseline,USP_RunSnapshotCollectionCycle,COMPLETE,YES,YES,YES,,FULL,Implementierter Performance-Counter-Baseline-Slice
 Vector Index (2025),USP_VectorIndexAnalysis,COMPLETE,YES,YES,YES,,FULL,SQL25-001 dreiversionig abgenommen
-Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-005 read-only Kern implementiert; Drei-Versionen- und opt-in Remote-Evidenz offen
+Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,OPS-005,FULL,OPS-005 read-only Kern und Double-opt-in Runtime-Vertrag in frischen Linux-Docker-Labs auf SQL Server 2019 2022 und 2025 bestanden; kontrollierte Remote-Evidenz offen
 Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-006 read-only Kern implementiert; Drei-Versionen-Evidenz offen
 Cursor Diagnostics,USP_CurrentCursorAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-007 opt-in Kern implementiert; Drei-Versionen-Evidenz offen
 msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-008 read-only Kern implementiert; Drei-Versionen-Evidenz offen

@@ -78,6 +78,17 @@ Docker und Podman erfolgreich ausgeführt. Beide Läufe endeten nach erfolgreich
 Installation, Aktualisierung, Validierung und Adapterbereinigung mit dem
 scopegebundenen Entfernen ihrer Container- und Volume-Ressourcen.
 
+## OPS-005 Linked Server
+
+Der Runner `Invoke-Ops005LinkedServerScenario.ps1` erzeugt einen frischen,
+wegwerfbaren Lab-Run, installiert das Framework und führt den bestehenden
+Linked-Server-Runtime-Vertrag aus. Er verwendet keine vorhandenen Container und
+entfernt den gesamten Run nach dem Test.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops005LinkedServerScenario.ps1 -Provider docker -Version 2022
+```
+
 ## Katalogisierte Beispiele
 
 | Beispiel | Primärer Analyzer | Bedienseite |
