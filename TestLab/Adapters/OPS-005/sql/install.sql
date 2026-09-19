@@ -14097,9 +14097,9 @@ BEGIN
         , [MaxUsedMemoryMb]                        decimal(19,2)  NULL
         , [IdealMemoryMb]                          decimal(19,2)  NULL
         , [GroupId]                                int            NULL
-        , [WorkloadGroupName]                      sysname        NULL
+        , [WorkloadGroupName]                      sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [PoolId]                                 int            NULL
-        , [PoolName]                               sysname        NULL
+        , [PoolName]                               sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ResourceSemaphoreId]                    smallint       NULL
         , [RequestMaxMemoryGrantPercent]           decimal(9,4)   NULL
         , [PoolMaxWorkspaceMemoryMb]               decimal(19,2)  NULL
@@ -14130,26 +14130,26 @@ BEGIN
         , [MaxUsedWorkerCount]                     bigint         NULL
         , [QueueId]                                smallint       NULL
         , [WaitOrder]                              int            NULL
-        , [LoginName]                              nvarchar(128)  NULL
-        , [HostName]                               nvarchar(128)  NULL
-        , [ProgramName]                            nvarchar(128)  NULL
+        , [LoginName]                              nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName]                               nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProgramName]                            nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [DatabaseId]                             smallint       NULL
-        , [DatabaseName]                           sysname        NULL
-        , [RequestStatus]                          nvarchar(30)   NULL
-        , [Command]                                nvarchar(32)   NULL
+        , [DatabaseName]                           sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RequestStatus]                          nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Command]                                nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ElapsedMs]                              int            NULL
         , [CpuMs]                                  int            NULL
         , [LogicalReads]                           bigint         NULL
         , [CurrentStatementCharacters]             bigint         NULL
         , [CurrentStatementBytes]                  bigint         NULL
         , [CurrentStatementIsTruncated]            bit            NOT NULL DEFAULT(0)
-        , [CurrentStatement]                       nvarchar(max)  NULL
+        , [CurrentStatement]                       nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentMemoryGrants_Warnings]
     (
-          [WarningCode]    varchar(40)     NOT NULL
-        , [WarningMessage] nvarchar(2048)  NOT NULL
+          [WarningCode]    varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [WarningMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CurrentMemoryGrants_SourceGrants]
     (
@@ -14180,17 +14180,17 @@ BEGIN
     CREATE TABLE [#CurrentMemoryGrants_SourceSessions]
     (
           [session_id] smallint NOT NULL PRIMARY KEY
-        , [login_name] nvarchar(128) NOT NULL
-        , [host_name] nvarchar(128) NULL
-        , [program_name] nvarchar(128) NULL
+        , [login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [host_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [program_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentMemoryGrants_SourceRequests]
     (
           [session_id] smallint NOT NULL
         , [request_id] int NOT NULL
         , [database_id] smallint NOT NULL
-        , [status] nvarchar(30) NOT NULL
-        , [command] nvarchar(32) NOT NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [total_elapsed_time] int NOT NULL
         , [cpu_time] int NOT NULL
         , [logical_reads] bigint NOT NULL
@@ -14201,7 +14201,7 @@ BEGIN
     CREATE TABLE [#CurrentMemoryGrants_SourceWorkloadGroups]
     (
           [group_id] int NOT NULL PRIMARY KEY
-        , [name] sysname NOT NULL
+        , [name] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [pool_id] int NOT NULL
         , [request_max_memory_grant_percent_numeric] decimal(9,4) NULL
         , [max_request_grant_memory_kb] bigint NULL
@@ -14209,7 +14209,7 @@ BEGIN
     CREATE TABLE [#CurrentMemoryGrants_SourceResourcePools]
     (
           [pool_id] int NOT NULL PRIMARY KEY
-        , [name] sysname NOT NULL
+        , [name] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [max_memory_kb] bigint NULL
         , [target_memory_kb] bigint NULL
         , [used_memory_kb] bigint NULL
@@ -14231,7 +14231,7 @@ BEGIN
     CREATE TABLE [#CurrentMemoryGrants_SourceSqlText]
     (
           [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
-        , [Text] nvarchar(max) NULL
+        , [Text] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @StatusCode = 'AVAILABLE'
