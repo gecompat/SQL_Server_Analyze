@@ -77,9 +77,13 @@ function Resolve-SqlServerLabRepositoryRoot {
     }
     $analyzeRoot = Get-AnalyzeRepositoryRoot
     $workspaceRoot = Split-Path $analyzeRoot -Parent
+    # Eine explizite Lab-Referenz darf ein separates Worktree-Verzeichnis
+    # verwenden. Sie bleibt dennoch auf den gemeinsamen lokalen Worktree-Root
+    # begrenzt und kann keine beliebige Modulquelle importieren.
+    $allowedRoot = Split-Path $workspaceRoot -Parent
     $resolved = Assert-AnalyzePathUnderRoot `
         -Path $LabRepositoryRoot `
-        -AllowedRoot $workspaceRoot
+        -AllowedRoot $allowedRoot
     $manifest = Join-Path $resolved 'SqlServerLab.psd1'
     if (-not (Test-Path -LiteralPath $manifest -PathType Leaf)) {
         throw "SQL_Server_Lab-Modul nicht gefunden: $manifest"

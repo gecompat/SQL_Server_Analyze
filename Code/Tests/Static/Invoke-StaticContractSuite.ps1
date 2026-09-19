@@ -90,6 +90,11 @@ try {
         $failures.Add('Test-AnalyzeProjectAdapter.ps1 project adapter')
     }
 
+    & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1
+    if ($LASTEXITCODE -ne 0) {
+        $failures.Add('Test-AnalyzeOps005LinkedServerAdapter.ps1 OPS-005 adapter')
+    }
+
     if ($IncludeNetwork) {
         & $pythonCommand ./Code/Tests/Static/980_Validate_External_Documentation_Links.py `
             --repository-root . --self-test --check-network
