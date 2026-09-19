@@ -16,7 +16,7 @@ IF EXISTS
     SELECT 1
     FROM [sys].[databases]
     WHERE [database_id] > 4
-      AND [name] <> N'LabAnalyzeOps005'
+      AND [name] <> N'DeineDatenbank'
 )
     THROW 55501, N'ADAPTER_ISOLATION_REQUIRED: Die Instanz enthält eine fremde Benutzerdatenbank.', 1;
 

@@ -14,7 +14,7 @@ $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = Get-AnalyzeRepositoryRoot
 $labRoot = Resolve-SqlServerLabRepositoryRoot -LabRepositoryRoot $LabRepositoryRoot
-$adapterPath = Join-Path $repositoryRoot 'TestLab/Adapters/OPS-005'
+$adapterSourcePath = Join-Path $repositoryRoot 'TestLab/Adapters/OPS-005'
 $systemTempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 if ([string]::IsNullOrWhiteSpace($StateRoot)) {
     $StateRoot = Join-Path `
@@ -24,9 +24,9 @@ if ([string]::IsNullOrWhiteSpace($StateRoot)) {
 $StateRoot = Assert-AnalyzePathUnderRoot -Path $StateRoot -AllowedRoot $systemTempRoot
 
 foreach ($requiredPath in @(
-        (Join-Path $adapterPath 'adapter.json'),
-        (Join-Path $adapterPath 'sql/install.sql'),
-        (Join-Path $adapterPath 'sql/update.sql'),
+        (Join-Path $adapterSourcePath 'adapter.json'),
+        (Join-Path $adapterSourcePath 'sql/install.sql'),
+        (Join-Path $adapterSourcePath 'sql/update.sql'),
         (Join-Path $labRoot 'SqlServerLab.psd1'),
         (Join-Path $labRoot 'Tools/Initialize-SqlServerLabHostTools.ps1')
     )) {
@@ -36,6 +36,13 @@ foreach ($requiredPath in @(
 }
 
 [IO.Directory]::CreateDirectory($StateRoot) | Out-Null
+$adapterPath = Join-Path $StateRoot 'adapter'
+Copy-Item -LiteralPath $adapterSourcePath -Destination $adapterPath -Recurse -Force
+Get-ChildItem -LiteralPath $adapterPath -Recurse -File | ForEach-Object {
+    $content = [IO.File]::ReadAllText($_.FullName, [Text.Encoding]::UTF8)
+    $content = $content.Replace('DeineDatenbank', 'LabAnalyze')
+    [IO.File]::WriteAllText($_.FullName, $content, [Text.UTF8Encoding]::new($false))
+}
 
 # Die Host-Auflösung ist pro Runnerprozess verpflichtend. Der Adapter führt
 # keine Docker-Kommandos direkt aus; die Labplattform besitzt den Provider.

@@ -92,7 +92,7 @@ pwsh -File ./TestLab/Invoke-Ops005LinkedServerScenario.ps1 -Provider docker -Ver
 Der Adapter `OPS-005` führt den vorhandenen Linked-Server-Runtimevertrag auf
 einem pro Zielversion neu erzeugten Docker-Lab aus. Er installiert den
 kanonischen Frameworkbestand in die markergebundene Datenbank
-`LabAnalyzeOps005`, verwendet ausschließlich die synthetischen Fixtures des
+`LabAnalyze`, verwendet ausschließlich die synthetischen Fixtures des
 Runtimevertrags und entfernt danach zuerst die Adapterobjekte und anschließend
 den exakten Lab-Run. Der Runner verwendet die vom Labkatalog freigegebene
 Collation `Latin1_General_100_CS_AS`. Das zufällige SA-Passwort bleibt im

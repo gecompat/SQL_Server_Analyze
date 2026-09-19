@@ -31,19 +31,19 @@ EXEC [master].[sys].[sp_executesql] N'DROP USER IF EXISTS [ExampleOps005Restrict
 IF EXISTS (SELECT 1 FROM [sys].[server_principals] WHERE [name] = N'ExampleOps005RestrictedLogin')
     DROP LOGIN [ExampleOps005RestrictedLogin];
 
-IF DB_ID(N'LabAnalyzeOps005') IS NOT NULL
+IF DB_ID(N'DeineDatenbank') IS NOT NULL
 BEGIN
     SELECT
           @ExistingProject = MAX(CASE WHEN [name] = N'SQLANALYZE.AdapterProject' THEN CONVERT(nvarchar(128), [value]) END)
         , @ExistingContract = MAX(CASE WHEN [name] = N'SQLANALYZE.AdapterContractVersion' THEN CONVERT(nvarchar(32), [value]) END)
-    FROM [LabAnalyzeOps005].[sys].[extended_properties]
+    FROM [DeineDatenbank].[sys].[extended_properties]
     WHERE [class] = 0 AND [major_id] = 0 AND [minor_id] = 0;
 
     IF @ExistingProject <> @ProjectId OR @ExistingContract <> @ContractVersion
         THROW 55504, N'PROJECT_CLEANUP_FAILED: Die Frameworkdatenbank besitzt nicht die erwarteten Adaptermarker.', 1;
 
-    ALTER DATABASE [LabAnalyzeOps005] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-    DROP DATABASE [LabAnalyzeOps005];
+    ALTER DATABASE [DeineDatenbank] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE [DeineDatenbank];
 END;
 
 SELECT

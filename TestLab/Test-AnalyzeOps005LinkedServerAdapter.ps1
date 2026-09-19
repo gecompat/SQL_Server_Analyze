@@ -82,7 +82,7 @@ $updateText = [IO.File]::ReadAllText($generatedUpdatePath, [Text.Encoding]::UTF8
 $validateText = [IO.File]::ReadAllText((Join-Path $adapterRoot 'sql/validate.sql'), [Text.Encoding]::UTF8)
 $cleanupText = [IO.File]::ReadAllText((Join-Path $adapterRoot 'sql/cleanup.sql'), [Text.Encoding]::UTF8)
 foreach ($fragment in @(
-        'LabAnalyzeOps005',
+        'DeineDatenbank',
         'monitor].[USP_LinkedServerAnalysis',
         'SQLANALYZE.AdapterProject',
         'ADAPTER_ISOLATION_REQUIRED'
@@ -101,7 +101,7 @@ foreach ($fragment in @(
         throw "Der OPS-005-Runtimevertrag enthält den erforderlichen Nachweis nicht: $fragment"
     }
 }
-if ($updateText.Contains('[DeineDatenbank]') -or
+if (-not $updateText.Contains('[DeineDatenbank]') -or
     $validateText.Contains('ExampleOps005Linked') -and -not $validateText.Contains('PROJECT_ASSERTION_FAILED') -or
     -not $cleanupText.Contains('PROJECT_CLEANUP_FAILED')) {
     throw 'Der OPS-005-Adapter verletzt den Datenbankplatzhalter- oder Cleanupvertrag.'

@@ -7,10 +7,10 @@ GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_ID(N'LabAnalyzeOps005') IS NULL
+    IF DB_ID(N'DeineDatenbank') IS NULL
     THROW 55502, N'ADAPTER_STATE_CONFLICT: Die Frameworkdatenbank fehlt.', 1;
 GO
-USE [LabAnalyzeOps005];
+USE [DeineDatenbank];
 GO
 
 /*
@@ -265,7 +265,7 @@ BEGIN CATCH
     THROW;
 END CATCH;
 GO
-USE [LabAnalyzeOps005];
+USE [DeineDatenbank];
 GO
 IF EXISTS
 (

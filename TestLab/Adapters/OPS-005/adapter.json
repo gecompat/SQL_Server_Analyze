@@ -17,7 +17,7 @@
   "targetDatabase": "master",
   "secretInputs": [],
   "producedLocalArtifacts": [
-    "Markergebundene Frameworkdatenbank LabAnalyzeOps005",
+    "Markergebundene Frameworkdatenbank LabAnalyze",
     "Ausschließlich flüchtige synthetische Linked-Server-, Login- und Benutzerfixtures"
   ],
   "dataClassification": "SYNTHETIC",

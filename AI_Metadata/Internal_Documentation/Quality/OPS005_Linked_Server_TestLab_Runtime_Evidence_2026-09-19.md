@@ -8,7 +8,7 @@
 
 Der Adapter `TestLab/Adapters/OPS-005` erzeugte je Zielversion einen neuen,
 scopegebundenen Docker-Lab-Run. Er installierte den kanonischen
-SQL_Server_Analyze-Frameworkbestand in `LabAnalyzeOps005`, führte den
+SQL_Server_Analyze-Frameworkbestand in `LabAnalyze`, führte den
 kanonischen Runtimevertrag `120_OPS005_Linked_Server_Runtime_Contract.sql`
 aus, validierte dessen Marker und entfernte anschließend die
 Adapterdatenbank sowie den zugehörigen Container und das zugehörige Volume.

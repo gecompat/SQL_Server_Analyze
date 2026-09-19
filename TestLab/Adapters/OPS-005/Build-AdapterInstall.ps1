@@ -63,7 +63,7 @@ GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-DECLARE @FrameworkDatabase sysname = N'LabAnalyzeOps005';
+DECLARE @FrameworkDatabase sysname = N'DeineDatenbank';
 DECLARE @ProjectId nvarchar(128) = N'sql-server-analyze-ops-005-linked-server';
 DECLARE @ContractVersion nvarchar(32) = N'0.1';
 DECLARE @Created bit = 0;
@@ -82,17 +82,17 @@ IF EXISTS
 
 IF DB_ID(@FrameworkDatabase) IS NULL
 BEGIN
-    SET @Sql = N'CREATE DATABASE [LabAnalyzeOps005] COLLATE SQL_Latin1_General_CP1_CS_AS;';
+    SET @Sql = N'CREATE DATABASE [DeineDatenbank] COLLATE SQL_Latin1_General_CP1_CS_AS;';
     EXEC [sys].[sp_executesql] @Sql;
     SET @Created = 1;
 END;
 
 IF @Created = 1
 BEGIN
-    EXEC [LabAnalyzeOps005].[sys].[sp_addextendedproperty]
+    EXEC [DeineDatenbank].[sys].[sp_addextendedproperty]
           @name = N'SQLANALYZE.AdapterProject'
         , @value = @ProjectId;
-    EXEC [LabAnalyzeOps005].[sys].[sp_addextendedproperty]
+    EXEC [DeineDatenbank].[sys].[sp_addextendedproperty]
           @name = N'SQLANALYZE.AdapterContractVersion'
         , @value = @ContractVersion;
 END;
@@ -101,14 +101,14 @@ BEGIN
     SELECT
           @ExistingProject = MAX(CASE WHEN [name] = N'SQLANALYZE.AdapterProject' THEN CONVERT(nvarchar(128), [value]) END)
         , @ExistingContract = MAX(CASE WHEN [name] = N'SQLANALYZE.AdapterContractVersion' THEN CONVERT(nvarchar(32), [value]) END)
-    FROM [LabAnalyzeOps005].[sys].[extended_properties]
+    FROM [DeineDatenbank].[sys].[extended_properties]
     WHERE [class] = 0 AND [major_id] = 0 AND [minor_id] = 0;
 
     IF @ExistingProject <> @ProjectId OR @ExistingContract <> @ContractVersion
-        THROW 55502, N'ADAPTER_STATE_CONFLICT: LabAnalyzeOps005 besitzt nicht die erwarteten Adaptermarker.', 1;
+        THROW 55502, N'ADAPTER_STATE_CONFLICT: Die Frameworkdatenbank besitzt nicht die erwarteten Adaptermarker.', 1;
 END;
 GO
-USE [LabAnalyzeOps005];
+USE [DeineDatenbank];
 GO
 '@
 
@@ -125,10 +125,10 @@ GO
     $runtimeContract = [IO.File]::ReadAllText($runtimeContractPath, [Text.Encoding]::UTF8)
     $runtimeContract = $runtimeContract.Replace(
         'USE [DeineDatenbank];',
-        'USE [LabAnalyzeOps005];'
+        'USE [DeineDatenbank];'
     )
-    if ($runtimeContract.Contains('[DeineDatenbank]')) {
-        throw 'Der OPS-005-Runtimevertrag enthält nach der Adaptertransformation einen Datenbankplatzhalter.'
+    if (-not $runtimeContract.Contains('[DeineDatenbank]')) {
+        throw 'Der OPS-005-Runtimevertrag enthält nicht den erwarteten Datenbankplatzhalter.'
     }
     $updateHeader = @'
 /*
@@ -140,13 +140,13 @@ GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 
-IF DB_ID(N'LabAnalyzeOps005') IS NULL
+    IF DB_ID(N'DeineDatenbank') IS NULL
     THROW 55502, N'ADAPTER_STATE_CONFLICT: Die Frameworkdatenbank fehlt.', 1;
 GO
 '@
 $updateFooter = @'
 
-USE [LabAnalyzeOps005];
+USE [DeineDatenbank];
 GO
 IF EXISTS
 (
