@@ -159,6 +159,7 @@ Der Installer beendet die Verarbeitung beim ersten SQL-Fehler.
 :r ../08_ServerHealth/210_USP_MsdbHealthAnalysis.sql
 :r ../08_ServerHealth/220_USP_LinkedServerAnalysis.sql
 :r ../08_ServerHealth/230_USP_SystemDatabaseObjectInventory.sql
+:r ../08_ServerHealth/240_USP_AuditConfigurationAnalysis.sql
 :r ../08_ServerHealth/100_USP_ServerHealthAnalysis.sql
 :r ../09_VersionAdaptive/005_Deprecated_Object_Cleanup.sql
 :r ../09_VersionAdaptive/010_USP_ServerFeatureCapabilities.sql

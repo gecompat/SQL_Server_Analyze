@@ -829,3 +829,29 @@ versionsabhängige Optionen werden nur bei vorhandener Katalogspalte gelesen.
 - [sys.databases](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-databases-transact-sql?view=sql-server-ver17)
 - [sys.database_scoped_configurations](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-scoped-configurations-transact-sql?view=sql-server-ver17)
 - [sys.database_query_store_options](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-query-store-options-transact-sql?view=sql-server-ver17)
+
+---
+
+## 20. [monitor].[USP_AuditConfigurationAnalysis]
+
+### Audit configuration analysis
+
+### Zweck
+
+Die Procedure inventarisiert sichtbare SQL-Audits, Server- und Datenbankspezifikationen sowie den verfügbaren Runtimezustand. Sie liest nur Katalog- und Runtime-Metadaten.
+
+### Leserichtung
+
+1. Prüfen Sie `sourceStatus` auf fehlende oder partielle Sicht.
+2. Prüfen Sie in `audits` Aktivierung und Runtimezustand.
+3. Lesen Sie Server- und Datenbankspezifikationen als getrennte Konfigurationsscopes.
+4. Bewerten Sie Warnungen nur gegen die freigegebene Auditpolicy.
+
+### Grenzen
+
+Auditlog-Payloads, Ereignisinhalte, Dateien und Zielpfade werden nicht gelesen. Eine sichtbare Konfiguration belegt weder die Vollständigkeit der Erfassung noch Aufbewahrung oder Auswertbarkeit von Ereignissen.
+
+### Primärquellen
+
+- [SQL Server Audit](https://learn.microsoft.com/en-us/sql/relational-databases/security/auditing/sql-server-audit-database-engine?view=sql-server-ver17)
+- [sys.server_audits](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-server-audits-transact-sql?view=sql-server-ver17)

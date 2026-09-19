@@ -140,6 +140,7 @@ AS
         , (N'USP_StartupParameters','CONFIRM_WITH',N'USP_TraceFlags',1,N'Startkonfiguration gegen zur Laufzeit aktive globale und Session-Trace-Flags abgleichen.')
         , (N'USP_OSInformation','CONFIRM_WITH',N'USP_ServerCpuTopology',1,N'Betriebssystem-, Virtualisierungs- und Hosthinweise mit SQL-CPU-Topologie abgleichen.')
         , (N'USP_ServerSecurityConfiguration','CONFIRM_WITH',N'USP_EncryptionAnalysis',1,N'Instanznahe Sicherheitskonfiguration durch Datenbank- und Backupverschlüsselungsstatus ergänzen.')
+        , (N'USP_AuditConfigurationAnalysis','CONFIRM_WITH',N'USP_ServerSecurityConfiguration',1,N'Auditkonfiguration mit den sichtbaren instanznahen Sicherheitsoptionen und dem verantwortlichen Sicherheitsprozess abgleichen.')
         , (N'USP_ServerHealthAnalysis','REFINE_WITH',N'USP_ServerMemory',1,N'Memorysignale im spezialisierten Server-Memory-Pfad vertiefen.')
         , (N'USP_ServerHealthAnalysis','REFINE_WITH',N'USP_WorkerPressureAnalysis',2,N'CPU-, Scheduler- oder THREADPOOL-Signale mit einem kurzen Delta untersuchen.')
         , (N'USP_ServerHealthAnalysis','CONFIRM_WITH',N'USP_DiagnosticFindings',1,N'Healthresultsets in normalisierte, priorisierte Findings mit Aussagegrenzen überführen.')

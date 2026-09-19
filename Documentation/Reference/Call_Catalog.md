@@ -493,6 +493,12 @@ EXEC [monitor].[USP_ServerNuma] @Hilfe = 1;
 EXEC [monitor].[USP_ServerSecurityConfiguration] @Hilfe = 1;
 ```
 
+## `[monitor].[USP_AuditConfigurationAnalysis]`
+
+```sql
+EXEC [monitor].[USP_AuditConfigurationAnalysis] @Hilfe = 1;
+```
+
 ## `[monitor].[USP_ShowplanAnalysis]`
 
 ```sql

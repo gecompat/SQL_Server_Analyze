@@ -103,3 +103,4 @@ USP_DatabasePortabilityAnalysis,DEEP_REVIEWED,2026-08-28,3
 USP_MsdbHealthAnalysis,DEEP_REVIEWED,2026-08-28,3
 USP_LinkedServerAnalysis,DEEP_REVIEWED,2026-08-28,3
 USP_SystemDatabaseObjectInventory,DEEP_REVIEWED,2026-08-28,3
+USP_AuditConfigurationAnalysis,BASELINE,,1

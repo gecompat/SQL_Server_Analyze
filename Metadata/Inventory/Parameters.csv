@@ -1169,6 +1169,25 @@ USP_ServerSecurityConfiguration,StatusCodeOut,varchar(40),NULL OUTPUT
 USP_ServerSecurityConfiguration,IsPartialOut,bit,NULL OUTPUT
 USP_ServerSecurityConfiguration,ErrorNumberOut,int,NULL OUTPUT
 USP_ServerSecurityConfiguration,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
+USP_AuditConfigurationAnalysis,DatabaseNames,nvarchar(max),NULL
+USP_AuditConfigurationAnalysis,SystemdatenbankenEinbeziehen,bit,0
+USP_AuditConfigurationAnalysis,DatabaseNamePattern,nvarchar(4000),NULL
+USP_AuditConfigurationAnalysis,HighImpactConfirmed,bit,0
+USP_AuditConfigurationAnalysis,AuditNames,nvarchar(max),NULL
+USP_AuditConfigurationAnalysis,AuditNamePattern,nvarchar(4000),NULL
+USP_AuditConfigurationAnalysis,NurProblematisch,bit,0
+USP_AuditConfigurationAnalysis,MaxZeilen,int,1000
+USP_AuditConfigurationAnalysis,LockTimeoutMs,int,0
+USP_AuditConfigurationAnalysis,ResultSetArt,varchar(16),'CONSOLE'
+USP_AuditConfigurationAnalysis,ResultTablesJson,nvarchar(max),NULL
+USP_AuditConfigurationAnalysis,JsonErzeugen,bit,0
+USP_AuditConfigurationAnalysis,Json,nvarchar(max),NULL OUTPUT
+USP_AuditConfigurationAnalysis,PrintMeldungen,bit,1
+USP_AuditConfigurationAnalysis,Hilfe,bit,0
+USP_AuditConfigurationAnalysis,StatusCodeOut,varchar(40),NULL OUTPUT
+USP_AuditConfigurationAnalysis,IsPartialOut,bit,NULL OUTPUT
+USP_AuditConfigurationAnalysis,ErrorNumberOut,int,NULL OUTPUT
+USP_AuditConfigurationAnalysis,ErrorMessageOut,nvarchar(2048),NULL OUTPUT
 USP_ServerHealthAnalysis,MitCpu,bit,1
 USP_ServerHealthAnalysis,MitNuma,bit,1
 USP_ServerHealthAnalysis,MitMemory,bit,1

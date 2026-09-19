@@ -39,6 +39,7 @@ $selfTestValidators = @(
     '997_Validate_ExecutionPlanAnalysis_Public_Contract.py'
     '998_Validate_SnapshotBaseline_Public_Contract.py'
     '999_Validate_Runtime001_Contracts.py'
+    '1000_Validate_Audit_Configuration_Contract.py'
 )
 $repositoryOnlyValidators = @(
     '950_Validate_Nonblocking_Metadata.py'

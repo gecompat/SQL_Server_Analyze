@@ -1778,6 +1778,21 @@ Quelle: `Code/08_ServerHealth/090_USP_ServerSecurityConfiguration.sql`
     @ErrorMessageOut nvarchar(2048) = NULL OUTPUT
 ```
 
+## `[monitor].[USP_AuditConfigurationAnalysis]`
+
+Quelle: `Code/08_ServerHealth/240_USP_AuditConfigurationAnalysis.sql`
+
+```sql
+@DatabaseNames nvarchar(max)=NULL,@SystemdatenbankenEinbeziehen bit=0,
+@DatabaseNamePattern nvarchar(4000)=NULL,@HighImpactConfirmed bit=0,
+@AuditNames nvarchar(max)=NULL,@AuditNamePattern nvarchar(4000)=NULL,
+@NurProblematisch bit=0,@MaxZeilen int=1000,@LockTimeoutMs int=0,
+@ResultSetArt varchar(16)='CONSOLE',@ResultTablesJson nvarchar(max)=NULL,
+@JsonErzeugen bit=0,@Json nvarchar(max)=NULL OUTPUT,@PrintMeldungen bit=1,@Hilfe bit=0,
+@StatusCodeOut varchar(40)=NULL OUTPUT,@IsPartialOut bit=NULL OUTPUT,
+@ErrorNumberOut int=NULL OUTPUT,@ErrorMessageOut nvarchar(2048)=NULL OUTPUT
+```
+
 ## `[monitor].[USP_CreateExecutionEvidenceJson]`
 
 Quelle: `Code/04_PlanCache/052_USP_CreateExecutionEvidenceJson.sql`

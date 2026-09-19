@@ -125,6 +125,7 @@ Für einen Einstieg nach beobachtetem Problem verwenden Sie [Hier beginnen](Star
 | `[monitor].[USP_StartupParameters]` | [Startparameter, Pfade und persistente Flags](Procedures/USP_StartupParameters.md) |
 | `[monitor].[USP_OSInformation]` | [OS, Virtualisierung, Speicher und Uptime](Procedures/USP_OSInformation.md) |
 | `[monitor].[USP_ServerSecurityConfiguration]` | [Sicherheitsrelevante Konfiguration](Procedures/USP_ServerSecurityConfiguration.md) |
+| `[monitor].[USP_AuditConfigurationAnalysis]` | [SQL-Auditkonfiguration und Runtimezustand](Procedures/USP_AuditConfigurationAnalysis.md) |
 | `[monitor].[USP_ServerHealthAnalysis]` | [Orchestrierter Server-Health-Überblick](Procedures/USP_ServerHealthAnalysis.md) |
 | `[monitor].[USP_DatabaseIntegrityAnalysis]` | [Integritätsevidenz und Aussagegrenzen](Procedures/USP_DatabaseIntegrityAnalysis.md) |
 | `[monitor].[USP_DatabaseCapacityAnalysis]` | [Datei-, Volume- und Wachstumsrisiko](Procedures/USP_DatabaseCapacityAnalysis.md) |
