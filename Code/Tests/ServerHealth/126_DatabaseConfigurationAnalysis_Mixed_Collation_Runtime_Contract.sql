@@ -18,7 +18,11 @@ SET XACT_ABORT ON;
 DECLARE @Json nvarchar(max) = NULL;
 DECLARE @StatusCode varchar(60) = NULL;
 DECLARE @IsPartial bit = NULL;
+DECLARE @FrameworkDatabase sysname = DB_NAME();
 DECLARE @TargetDatabase sysname = N'ExampleCollationTarget';
+DECLARE @DatabaseNames nvarchar(max);
+
+SET @DatabaseNames = QUOTENAME(@FrameworkDatabase) + N'|[ExampleCollationTarget]';
 
 IF DB_ID(@TargetDatabase) IS NOT NULL
     THROW 54760,N'Die synthetische Zieldatenbank ExampleCollationTarget ist bereits vorhanden.',1;
@@ -27,7 +31,7 @@ BEGIN TRY
     EXEC(N'CREATE DATABASE [ExampleCollationTarget] COLLATE Latin1_General_100_CI_AS;');
 
     EXEC [monitor].[USP_DatabaseConfigurationAnalysis]
-          @DatabaseNames = N'[DeineDatenbank]|[ExampleCollationTarget]'
+          @DatabaseNames = @DatabaseNames
         , @ResultSetArt = 'NONE'
         , @JsonErzeugen = 1
         , @Json = @Json OUTPUT
@@ -44,7 +48,7 @@ BEGIN TRY
         SELECT 1
         FROM OPENJSON(@Json,N'$.settings')
              WITH ([DatabaseName] sysname N'$.DatabaseName') AS [s]
-        WHERE [s].[DatabaseName] = N'DeineDatenbank'
+        WHERE [s].[DatabaseName] = @FrameworkDatabase
     )
         THROW 54763,N'Die Frameworkdatenbank fehlt im Einstellungsinventar.',1;
     IF NOT EXISTS
