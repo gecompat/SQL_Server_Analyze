@@ -31,7 +31,8 @@ BEGIN
     -- rein internen Arbeitsbereich mit Fehler 1222 abbrechen lässt.
     CREATE TABLE [#InternalPrepareResultTables_Allowed]
     (
-        [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY
     );
 
     CREATE TABLE [#InternalPrepareResultTables_Parsed]
@@ -74,8 +75,10 @@ BEGIN
         GOTO PreflightFailed;
     END;
 
-    INSERT [#InternalPrepareResultTables_Allowed]([ResultName])
-    SELECT CONVERT(sysname, LTRIM(RTRIM([value])))
+    INSERT [#InternalPrepareResultTables_Allowed]([ResultName],[ResultNameBinary])
+    SELECT
+          CONVERT(sysname, LTRIM(RTRIM([value])))
+        , CONVERT(varbinary(256), CONVERT(sysname, LTRIM(RTRIM([value]))))
     FROM STRING_SPLIT(COALESCE(@AllowedResultNames,N''),N'|')
     WHERE NULLIF(LTRIM(RTRIM([value])),N'') IS NOT NULL;
 
@@ -106,7 +109,7 @@ BEGIN
           (
               SELECT 1
               FROM [#InternalPrepareResultTables_Parsed]
-              GROUP BY [ResultName] COLLATE SQL_Latin1_General_CP1_CS_AS
+              GROUP BY CONVERT(varbinary(256),[ResultName])
               HAVING COUNT(*) > 1
           )
        OR EXISTS
@@ -124,8 +127,7 @@ BEGIN
                     (
                         SELECT 1
                         FROM [#InternalPrepareResultTables_Allowed] AS [a]
-                        WHERE [a].[ResultName] = [p].[ResultName]
-                              COLLATE SQL_Latin1_General_CP1_CS_AS
+                        WHERE [a].[ResultNameBinary] = CONVERT(varbinary(256),[p].[ResultName])
                     )
           )
        OR EXISTS

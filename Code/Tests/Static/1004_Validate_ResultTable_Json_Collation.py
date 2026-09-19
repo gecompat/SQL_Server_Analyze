@@ -9,9 +9,12 @@ PROCEDURE = "Code/01_Common/096_USP_InternalPrepareResultTables.sql"
 REQUIRED = (
     "[ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL",
     "[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL",
+    "[ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY",
     "FROM OPENJSON(@ResultTablesJson);",
     "CONVERT(sysname,[key])",
     "CONVERT(sysname,[value])",
+    "GROUP BY CONVERT(varbinary(256),[ResultName])",
+    "[a].[ResultNameBinary] = CONVERT(varbinary(256),[p].[ResultName])",
 )
 
 def main() -> int:
@@ -20,7 +23,7 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        assert len(REQUIRED) == 5 and all(REQUIRED)
+        assert len(REQUIRED) == 8 and all(REQUIRED)
         print("Result-table JSON collation validator self-test passed.")
         return 0
     source = (args.repository_root.resolve() / PROCEDURE).read_text(encoding="utf-8-sig")
