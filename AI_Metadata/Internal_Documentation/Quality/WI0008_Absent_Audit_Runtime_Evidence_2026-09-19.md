@@ -8,4 +8,6 @@ Der fokussierte WI-0008-Runtimevertrag ruft `USP_AuditConfigurationAnalysis` mit
 
 Der Test erstellt, startet, stoppt, aendert oder loescht kein Auditobjekt. Er liest weder Auditdateien noch Zielpfade, Payloads oder Ereignisinhalte. Nach dem Framework-Testlauf wird die temporaere Testdatenbank entfernt.
 
-Der Nachweis deckt keine deaktivierte Auditkonfiguration, keine partielle oder verweigerte Metadatensicht und keinen auffaelligen Runtimezustand ab.
+Der eingeschraenkte Pfad verwendet einen temporaeren loginlosen Datenbankbenutzer mit ausschliesslich `EXECUTE` auf der Procedure. Er belegt valides JSON, `AVAILABLE_LIMITED` und mindestens eine Quellenstatuszeile `DENIED_PERMISSION`. Der Benutzer wird im Erfolgs- und Fehlerpfad entfernt.
+
+Der Nachweis deckt keine deaktivierte Auditkonfiguration und keinen auffaelligen Runtimezustand ab.

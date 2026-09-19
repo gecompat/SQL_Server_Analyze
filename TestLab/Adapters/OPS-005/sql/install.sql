@@ -48343,7 +48343,7 @@ BEGIN
             INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audits + sys.dm_server_audit_status','AVAILABLE',0,@@ROWCOUNT,N'Konfiguration und sichtbarer Runtimezustand; keine Auditpayloads oder Pfade.');
         END TRY
         BEGIN CATCH
-            INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audits + sys.dm_server_audit_status',CASE WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,NULL,N'Auditkonfiguration oder Runtimezustand war nicht vollstaendig lesbar.');
+            INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audits + sys.dm_server_audit_status',CASE WHEN ERROR_NUMBER() IN(229,297,300,371,15562) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,NULL,N'Auditkonfiguration oder Runtimezustand war nicht vollstaendig lesbar.');
             SELECT @IsPartial=1,@ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE();
         END CATCH;
 
@@ -48363,7 +48363,7 @@ BEGIN
             INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audit_specifications + sys.server_audit_specification_details','AVAILABLE',0,@@ROWCOUNT,N'Serverseitige Spezifikationsmetadaten werden aggregiert; Detailaktionen werden nicht ausgegeben.');
         END TRY
         BEGIN CATCH
-            INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audit_specifications + sys.server_audit_specification_details',CASE WHEN ERROR_NUMBER() IN(229,297,300,371) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,NULL,N'Serverseitige Spezifikationsmetadaten waren nicht vollstaendig lesbar.');
+            INSERT [#AuditConfigurationAnalysis_SourceStatus] VALUES(N'sys.server_audit_specifications + sys.server_audit_specification_details',CASE WHEN ERROR_NUMBER() IN(229,297,300,371,15562) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,1,NULL,N'Serverseitige Spezifikationsmetadaten waren nicht vollstaendig lesbar.');
             SELECT @IsPartial=1,@ErrorNumber=COALESCE(@ErrorNumber,ERROR_NUMBER()),@ErrorMessage=COALESCE(@ErrorMessage,ERROR_MESSAGE());
         END CATCH;
 
@@ -48387,7 +48387,7 @@ BEGIN
             END TRY
             BEGIN CATCH
                 SET @IsPartial=1;
-                INSERT [#AuditConfigurationAnalysis_DatabaseWarnings] VALUES(@DatabaseName,CASE WHEN ERROR_NUMBER() IN(229,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,N'Datenbank-Auditspezifikationen waren fuer diese Datenbank nicht lesbar.');
+                INSERT [#AuditConfigurationAnalysis_DatabaseWarnings] VALUES(@DatabaseName,CASE WHEN ERROR_NUMBER() IN(229,297,300,371,916,15562) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,N'Datenbank-Auditspezifikationen waren fuer diese Datenbank nicht lesbar.');
             END CATCH;
             FETCH NEXT FROM [audit_database_cursor] INTO @DatabaseId,@DatabaseName;
         END;
