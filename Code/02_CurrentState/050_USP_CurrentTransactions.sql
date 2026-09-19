@@ -75,25 +75,25 @@ BEGIN
         , [TransactionType]          int            NULL
         , [TransactionState]         int            NULL
         , [OpenTransactionCount]     int            NULL
-        , [LoginName]                nvarchar(128)  NULL
-        , [HostName]                 nvarchar(128)  NULL
-        , [ProgramName]              nvarchar(128)  NULL
-        , [SessionStatus]            nvarchar(30)   NULL
-        , [RequestStatus]            nvarchar(30)   NULL
+        , [LoginName]                nvarchar(128)  COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName]                 nvarchar(128)  COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProgramName]              nvarchar(128)  COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SessionStatus]            nvarchar(30)   COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RequestStatus]            nvarchar(30)   COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [DatabaseId]               int            NULL
-        , [DatabaseName]             sysname        NULL
+        , [DatabaseName]             sysname        COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LogBytesUsed]             bigint         NULL
         , [LogBytesReserved]         bigint         NULL
         , [StatementTextCharacters]  bigint         NULL
         , [StatementTextBytes]       bigint         NULL
         , [StatementTextIsTruncated] bit            NOT NULL DEFAULT(0)
-        , [StatementText]            nvarchar(max)  NULL
+        , [StatementText]            nvarchar(max)  COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentTransactions_Warnings]
     (
-          [StatusCode] varchar(40) NOT NULL
+          [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentTransactions_SourceSessionTransactions]
     (
@@ -119,17 +119,17 @@ BEGIN
     (
           [session_id] smallint NOT NULL PRIMARY KEY
         , [is_user_process] bit NOT NULL
-        , [status] nvarchar(30) NOT NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [open_transaction_count] int NOT NULL
-        , [login_name] nvarchar(128) NOT NULL
-        , [host_name] nvarchar(128) NULL
-        , [program_name] nvarchar(128) NULL
+        , [login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [host_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [program_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentTransactions_SourceRequests]
     (
           [session_id] smallint NOT NULL
         , [request_id] int NOT NULL
-        , [status] nvarchar(30) NOT NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [database_id] smallint NOT NULL
         , [sql_handle] varbinary(64) NULL
         , [statement_start_offset] int NULL
@@ -139,7 +139,7 @@ BEGIN
     CREATE TABLE [#CurrentTransactions_SourceSqlText]
     (
           [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
-        , [Text] nvarchar(max) NULL
+        , [Text] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @SessionIds IS NOT NULL
