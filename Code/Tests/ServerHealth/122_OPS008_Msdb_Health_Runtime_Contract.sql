@@ -41,6 +41,53 @@ IF NOT EXISTS
 )
     THROW 54871, N'Die msdb-Größen- oder Quellenstatusevidenz fehlt.', 1;
 
+IF EXISTS
+(
+    SELECT [ExpectedArea]
+    FROM (VALUES
+        ('BACKUP_HISTORY'),
+        ('RESTORE_HISTORY'),
+        ('AGENT_HISTORY'),
+        ('DATABASE_MAIL'),
+        ('MAINTENANCE_PLAN')
+    ) AS [e]([ExpectedArea])
+    WHERE NOT EXISTS
+    (
+        SELECT 1
+        FROM OPENJSON(@Json)
+        WITH
+        (
+              [Area] varchar(40) '$.Area'
+            , [RowCount] bigint '$.RowCount'
+            , [StatusCode] varchar(40) '$.StatusCode'
+        ) AS [j]
+        WHERE [j].[Area] = [e].[ExpectedArea]
+    )
+)
+    THROW 54873, N'Eine erwartete msdb-Historienquelle fehlt im Resultset.', 1;
+
+IF EXISTS
+(
+    SELECT 1
+    FROM OPENJSON(@Json)
+    WITH
+    (
+          [Area] varchar(40) '$.Area'
+        , [RowCount] bigint '$.RowCount'
+        , [StatusCode] varchar(40) '$.StatusCode'
+    ) AS [j]
+    WHERE [j].[Area] IN
+          ('BACKUP_HISTORY','RESTORE_HISTORY','AGENT_HISTORY','DATABASE_MAIL','MAINTENANCE_PLAN')
+      AND
+      (
+          [j].[StatusCode] NOT IN ('AVAILABLE','UNSUPPORTED','SOURCE_UNAVAILABLE')
+          OR ([j].[StatusCode] = 'AVAILABLE' AND [j].[RowCount] IS NULL)
+          OR ([j].[StatusCode] = 'UNSUPPORTED' AND [j].[RowCount] IS NOT NULL)
+          OR ([j].[StatusCode] = 'SOURCE_UNAVAILABLE' AND [j].[RowCount] IS NOT NULL)
+      )
+)
+    THROW 54874, N'Der msdb-Historienquellenstatus ist nicht konsistent.', 1;
+
 DROP USER IF EXISTS [ExampleOps008RestrictedUser];
 CREATE USER [ExampleOps008RestrictedUser] WITHOUT LOGIN;
 GRANT EXECUTE ON [monitor].[USP_MsdbHealthAnalysis] TO [ExampleOps008RestrictedUser];
