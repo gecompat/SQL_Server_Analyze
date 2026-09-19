@@ -18,7 +18,9 @@ OPS_RUNTIME_CONTRACTS = {
     "Code/Tests/ServerHealth/121_OPS006_Database_Portability_Runtime_Contract.sql": (
         "ExampleOps006Portable",
         "ExampleOps006Uncontained",
+        "ExampleOps006Feature",
         "UNCONTAINED_ENTITY",
+        "PERSISTED_SKU_FEATURE",
         "EXEC(N''CREATE OR ALTER PROCEDURE",
     ),
     "Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql": (
