@@ -71,9 +71,9 @@ BEGIN
     DECLARE @CollectionTimeUtc datetime2(3)=SYSUTCDATETIME(),@StatusCode varchar(40)='AVAILABLE',@IsPartial bit=0,@RowCount bigint=0,
             @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@Detail nvarchar(2000)=NULL,@Allowed bit=1,
             @RequiredPermission nvarchar(256)=CASE WHEN TRY_CONVERT([int],SERVERPROPERTY(N'ProductMajorVersion'))>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
-    CREATE TABLE [#PlanCacheHealth_Summary]([CacheObjectType] nvarchar(34),[ObjectType] nvarchar(16),[PlanCount] bigint,[TotalSizeBytes] bigint,[SingleUsePlanCount] bigint,[SingleUseSizeBytes] bigint,[TotalUseCounts] bigint,[AverageUseCount] decimal(19,4));
-    CREATE TABLE [#PlanCacheHealth_Db]([DatabaseId] int NULL,[DatabaseName] sysname NULL,[PlanCount] bigint,[TotalSizeBytes] bigint,[SingleUsePlanCount] bigint);
-    CREATE TABLE [#PlanCacheHealth_Single]([PlanHandle] varbinary(64),[CacheObjectType] nvarchar(34),[ObjectType] nvarchar(16),[UseCounts] int,[SizeBytes] int,[DatabaseId] int NULL,[DatabaseName] sysname NULL,[SqlTextCharacters] bigint NULL,[SqlTextBytes] bigint NULL,[SqlTextIsTruncated] bit NOT NULL DEFAULT(0),[SqlText] nvarchar(max));
+    CREATE TABLE [#PlanCacheHealth_Summary]([CacheObjectType] nvarchar(34) COLLATE SQL_Latin1_General_CP1_CS_AS,[ObjectType] nvarchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS,[PlanCount] bigint,[TotalSizeBytes] bigint,[SingleUsePlanCount] bigint,[SingleUseSizeBytes] bigint,[TotalUseCounts] bigint,[AverageUseCount] decimal(19,4));
+    CREATE TABLE [#PlanCacheHealth_Db]([DatabaseId] int NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PlanCount] bigint,[TotalSizeBytes] bigint,[SingleUsePlanCount] bigint);
+    CREATE TABLE [#PlanCacheHealth_Single]([PlanHandle] varbinary(64),[CacheObjectType] nvarchar(34) COLLATE SQL_Latin1_General_CP1_CS_AS,[ObjectType] nvarchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS,[UseCounts] int,[SizeBytes] int,[DatabaseId] int NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SqlTextCharacters] bigint NULL,[SqlTextBytes] bigint NULL,[SqlTextIsTruncated] bit NOT NULL DEFAULT(0),[SqlText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS);
 
     IF @AnalyseModus NOT IN('SUMMARY','VOLL') OR @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') OR @MaxSqlTextZeichen < 0
     BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'Ungültiger Parameterwert.';END;

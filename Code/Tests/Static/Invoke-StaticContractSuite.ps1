@@ -56,6 +56,7 @@ $selfTestValidators = @(
     '1014_Validate_StartupParameters_Tempdb_Collation.py'
     '1015_Validate_CurrentTransactions_Tempdb_Collation.py'
     '1016_Validate_OSInformation_Tempdb_Collation.py'
+    '1017_Validate_PlanCacheHealth_Tempdb_Collation.py'
   )
 $repositoryOnlyValidators = @(
     '950_Validate_Nonblocking_Metadata.py'
