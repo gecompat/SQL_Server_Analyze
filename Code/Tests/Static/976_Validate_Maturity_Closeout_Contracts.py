@@ -36,6 +36,8 @@ OPS_RUNTIME_CONTRACTS = {
         "INVALID_PARAMETER",
         "DENIED_PERMISSION",
         "DECLARE [ExampleOps007Cursor] CURSOR",
+        "ExampleOps007DormantCursor",
+        "DORMANT_CONTEXT",
     ),
     "Code/Tests/ServerHealth/123_OPS009_System_Database_Objects_Runtime_Contract.sql": (
         "ExampleOps009Object",
