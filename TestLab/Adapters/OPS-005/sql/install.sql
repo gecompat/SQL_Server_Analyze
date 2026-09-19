@@ -43389,7 +43389,7 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_ServerConfiguration';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL,@Schedulers int=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
- CREATE TABLE [#ServerConfiguration_C]([configuration_id] int,[name] nvarchar(128),[minimum] sql_variant,[maximum] sql_variant,[ConfiguredValue] sql_variant,[RunningValue] sql_variant,[is_dynamic] bit,[is_advanced] bit,[Finding] varchar(60),[Interpretation] nvarchar(1000));
+ CREATE TABLE [#ServerConfiguration_C]([configuration_id] int,[name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[minimum] sql_variant,[maximum] sql_variant,[ConfiguredValue] sql_variant,[RunningValue] sql_variant,[is_dynamic] bit,[is_advanced] bit,[Finding] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[Interpretation] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS);
  SET LOCK_TIMEOUT 0;BEGIN TRY
   SELECT @Schedulers=[scheduler_count] FROM [sys].[dm_os_sys_info] WITH (NOLOCK);
   INSERT [#ServerConfiguration_C] SELECT [configuration_id],[name],[minimum],[maximum],[value],[value_in_use],[is_dynamic],[is_advanced],
