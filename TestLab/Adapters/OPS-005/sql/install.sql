@@ -1205,36 +1205,36 @@ BEGIN
 
     CREATE TABLE [#CheckAnalyseAccess_Access]
     (
-          [AnalysisClass] varchar(64) NOT NULL
-        , [AnalysisLevel] varchar(16) NOT NULL
+          [AnalysisClass] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AnalysisLevel] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [RequiresGroupGate] bit NOT NULL
-        , [OriginalLoginName] sysname NULL
-        , [EffectiveLoginName] sysname NULL
+        , [OriginalLoginName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EffectiveLoginName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSysadmin] bit NULL
         , [ActivePolicyCount] bigint NULL
         , [RelevantPolicyCount] bigint NULL
         , [IsAllowed] bit NOT NULL
-        , [AccessReason] varchar(20) NULL
+        , [AccessReason] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MatchedGroupCount] bigint NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#CheckAnalyseAccess_Policies]
     (
-          [AnalysisClass] varchar(64) NOT NULL
-        , [ADGroupName] nvarchar(256) NOT NULL
+          [AnalysisClass] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ADGroupName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [Priority] int NOT NULL
         , [ValidFromUtc] datetime2(3) NULL
         , [ValidToUtc] datetime2(3) NULL
         , [MatchesLoginToken] bit NOT NULL
         , [MatchesIsMember] bit NOT NULL
-        , [Comment] nvarchar(1000) NULL
+        , [Comment] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CheckAnalyseAccess_Warnings]
     (
-          [WarningCode] varchar(40) NOT NULL
-        , [WarningMessage] nvarchar(2048) NOT NULL
+          [WarningCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [WarningMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
