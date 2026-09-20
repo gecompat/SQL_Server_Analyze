@@ -15858,12 +15858,12 @@ BEGIN
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
@@ -15871,8 +15871,8 @@ BEGIN
     CREATE TABLE [#CurrentIO_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentIO_Before]
@@ -15912,9 +15912,9 @@ BEGIN
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [FileId] int NOT NULL
-        , [LogicalName] sysname NULL
-        , [PhysicalName] nvarchar(260) NULL
-        , [FileTypeDesc] nvarchar(60) NULL
+        , [LogicalName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PhysicalName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FileTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SampleSeconds] int NOT NULL
         , [Reads] bigint NOT NULL
         , [ReadBytes] bigint NOT NULL
@@ -15933,25 +15933,25 @@ BEGIN
     CREATE TABLE [#CurrentIO_PendingBefore]
     (
           [RequestAddress] varbinary(8) NOT NULL PRIMARY KEY
-        , [IoType] nvarchar(60) NOT NULL
+        , [IoType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PendingDurationMs] bigint NOT NULL
         , [IoPending] int NOT NULL
         , [SchedulerAddress] varbinary(8) NOT NULL
         , [IoHandle] varbinary(8) NULL
         , [IoOffset] bigint NOT NULL
-        , [IoHandlePath] nvarchar(256) NULL
+        , [IoHandlePath] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentIO_PendingAfter]
     (
           [RequestAddress] varbinary(8) NOT NULL PRIMARY KEY
-        , [IoType] nvarchar(60) NOT NULL
+        , [IoType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PendingDurationMs] bigint NOT NULL
         , [IoPending] int NOT NULL
         , [SchedulerAddress] varbinary(8) NOT NULL
         , [IoHandle] varbinary(8) NULL
         , [IoOffset] bigint NOT NULL
-        , [IoHandlePath] nvarchar(256) NULL
+        , [IoHandlePath] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentIO_SchedulerContext]
@@ -15976,7 +15976,7 @@ BEGIN
     CREATE TABLE [#CurrentIO_SourceWaitingTasks]
     (
           [waiting_task_address] varbinary(8) NOT NULL
-        , [wait_type] nvarchar(60) NOT NULL
+        , [wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CurrentIO_SourceSchedulers]
     (
@@ -15989,13 +15989,13 @@ BEGIN
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [RequestAddress] varbinary(8) NOT NULL
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FileId] int NULL
-        , [LogicalName] sysname NULL
-        , [FileTypeDesc] nvarchar(60) NULL
-        , [PhysicalPath] nvarchar(256) NULL
-        , [IoType] nvarchar(60) NOT NULL
-        , [PendingLayer] varchar(32) NOT NULL
+        , [LogicalName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FileTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PhysicalPath] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IoType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PendingLayer] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PendingDurationMs] bigint NOT NULL
         , [SchedulerId] int NULL
         , [RequestCountOnScheduler] int NULL
@@ -16004,29 +16004,29 @@ BEGIN
         , [ObservationCount] tinyint NOT NULL
         , [FirstSamplePendingMs] bigint NULL
         , [IoOffset] bigint NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [CorrelationScope] nvarchar(256) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CorrelationScope] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#CurrentIO_SourceStatus]
     (
           [SourceOrdinal] int NOT NULL PRIMARY KEY
-        , [SourceName] sysname NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#CurrentIO_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CollectionTimeUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
         , [HasMoreRows] bit NOT NULL
@@ -16036,7 +16036,7 @@ BEGIN
         , [PendingIoRowCount] bigint NOT NULL
         , [PendingIoHasMoreRows] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     /* TempDB-DDL bleibt außerhalb des bewussten No-Wait-Quellzugriffs. */
