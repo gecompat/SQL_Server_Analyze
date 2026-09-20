@@ -93,14 +93,14 @@ BEGIN
 
     CREATE TABLE [#CreateExecutionEvidenceJson_TableMap]
     (
-          [ResultName] sysname NOT NULL
-        , [TargetTable] sysname NOT NULL
+          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_CaptureStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [GeneratedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [SchemaVersion] int NOT NULL
         , [StatisticsIoRowCount] bigint NOT NULL
@@ -109,89 +109,89 @@ BEGIN
         , [CurrentStatisticsCount] bigint NOT NULL
         , [HistogramStepCount] bigint NOT NULL
         , [PredicateMappingCount] bigint NOT NULL
-        , [EvidencePrivacyMode] varchar(24) NOT NULL
-        , [IdentifierPrivacyMode] varchar(16) NOT NULL
-        , [SameExecutionConfidence] varchar(40) NOT NULL
+        , [EvidencePrivacyMode] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IdentifierPrivacyMode] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SameExecutionConfidence] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_StatisticsIo]
     (
           [StatementOrdinal] int NULL,[MessageOrdinal] int NOT NULL,[ObjectOrdinal] int NOT NULL
-        , [ObjectDisplayName] nvarchar(512) NULL,[ScanCount] bigint NULL,[LogicalReads] bigint NULL
+        , [ObjectDisplayName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ScanCount] bigint NULL,[LogicalReads] bigint NULL
         , [PhysicalReads] bigint NULL,[PageServerReads] bigint NULL,[ReadAheadReads] bigint NULL
         , [PageServerReadAheadReads] bigint NULL,[LobLogicalReads] bigint NULL,[LobPhysicalReads] bigint NULL
         , [LobPageServerReads] bigint NULL,[LobReadAheadReads] bigint NULL,[LobPageServerReadAheadReads] bigint NULL
-        , [LanguageDetected] varchar(16) NOT NULL,[ParseStatus] varchar(40) NOT NULL,[RawLine] nvarchar(4000) NULL
+        , [LanguageDetected] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[RawLine] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_StatisticsTime]
     (
-          [StatementOrdinal] int NULL,[MessageOrdinal] int NOT NULL,[TimeCategory] varchar(24) NOT NULL
-        , [CpuMs] bigint NULL,[ElapsedMs] bigint NULL,[LanguageDetected] varchar(16) NOT NULL
-        , [ParseStatus] varchar(40) NOT NULL,[RawLine] nvarchar(4000) NULL
+          [StatementOrdinal] int NULL,[MessageOrdinal] int NOT NULL,[TimeCategory] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CpuMs] bigint NULL,[ElapsedMs] bigint NULL,[LanguageDetected] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[RawLine] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_PlanStatisticsUsage]
     (
           [StatisticsUsageOrdinal] bigint NOT NULL,[StatementOrdinal] int NOT NULL
         , [StatementId] int NULL,[StatementCompId] int NULL
-        , [DatabaseName] sysname NULL,[SchemaName] sysname NULL,[ObjectName] sysname NULL,[StatisticsName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LastUpdateAtCompile] datetime2(7) NULL,[ModificationCountAtCompile] bigint NULL
-        , [SamplingPercentAtCompile] decimal(19,6) NULL,[SourceElement] nvarchar(128) NOT NULL,[ParseStatus] varchar(40) NOT NULL
+        , [SamplingPercentAtCompile] decimal(19,6) NULL,[SourceElement] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ParseStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_ObjectReferences]
     (
           [ReferenceOrdinal] bigint NOT NULL,[StatementOrdinal] int NOT NULL,[StatementId] int NULL,[StatementCompId] int NULL
-        , [NodeId] int NULL,[ReferenceType] varchar(40) NOT NULL,[ReferenceSource] varchar(40) NOT NULL
-        , [DatabaseName] sysname NULL,[SchemaName] sysname NULL,[ObjectName] sysname NULL,[IndexName] sysname NULL
-        , [AliasName] sysname NULL,[StorageType] nvarchar(128) NULL,[PlanObjectId] int NULL,[PlanIndexId] int NULL
+        , [NodeId] int NULL,[ReferenceType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ReferenceSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AliasName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StorageType] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PlanObjectId] int NULL,[PlanIndexId] int NULL
         , [IsTemporaryObject] bit NOT NULL,[IsTableVariable] bit NOT NULL,[IsRemoteObject] bit NOT NULL,[IsDmlTarget] bit NOT NULL
-        , [ResolutionCapability] varchar(40) NOT NULL,[SourceElement] nvarchar(128) NOT NULL
+        , [ResolutionCapability] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SourceElement] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_StatisticsCurrent]
     (
-          [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[ObjectId] int NOT NULL
-        , [StatisticsName] sysname NOT NULL,[StatisticsId] int NOT NULL,[IsIndexStatistics] bit NOT NULL
-        , [IsAutoCreated] bit NULL,[IsUserCreated] bit NULL,[IsFiltered] bit NULL,[FilterDefinition] nvarchar(max) NULL
-        , [NoRecompute] bit NULL,[IsIncremental] bit NULL,[HasPersistedSample] bit NULL,[LeadingColumnName] sysname NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectId] int NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatisticsId] int NOT NULL,[IsIndexStatistics] bit NOT NULL
+        , [IsAutoCreated] bit NULL,[IsUserCreated] bit NULL,[IsFiltered] bit NULL,[FilterDefinition] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [NoRecompute] bit NULL,[IsIncremental] bit NULL,[HasPersistedSample] bit NULL,[LeadingColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LastUpdated] datetime2(7) NULL,[Rows] bigint NULL,[RowsSampled] bigint NULL,[SamplePercent] decimal(19,6) NULL
         , [Steps] int NULL,[UnfilteredRows] bigint NULL,[ModificationCounter] bigint NULL,[ModificationPercent] decimal(19,6) NULL
-        , [PersistedSamplePercent] float NULL,[CollectionStatus] varchar(40) NOT NULL
+        , [PersistedSamplePercent] float NULL,[CollectionStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_HistogramSteps]
     (
-          [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL
-        , [StatisticsName] sysname NOT NULL,[StatisticsId] int NOT NULL,[LeadingColumnName] sysname NULL
-        , [StepOrdinal] int NOT NULL,[RangeHighKeyRaw] nvarchar(4000) NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatisticsId] int NOT NULL,[LeadingColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StepOrdinal] int NOT NULL,[RangeHighKeyRaw] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RangeRows] float NULL,[EqualRows] float NULL,[DistinctRangeRows] bigint NULL,[AverageRangeRows] float NULL
         , [IsPredicateTarget] bit NULL,[PredicateMatchCount] int NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_HistogramSummary]
     (
-          [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL
-        , [StatisticsName] sysname NOT NULL,[StatisticsId] int NOT NULL,[LeadingColumnName] sysname NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StatisticsId] int NOT NULL,[LeadingColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [HistogramSteps] int NOT NULL,[HistogramEstimatedRows] float NULL,[MaxEqualRows] float NULL
         , [MaxRangeRows] float NULL,[MaxStepRows] float NULL,[DominantStepPercent] decimal(19,6) NULL
-        , [TailStepRows] float NULL,[TailStepPercent] decimal(19,6) NULL,[CollectionStatus] varchar(40) NOT NULL
+        , [TailStepRows] float NULL,[TailStepPercent] decimal(19,6) NULL,[CollectionStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_PredicateHistogramMappings]
     (
           [PredicateReferenceId] bigint NOT NULL,[StatementOrdinal] int NOT NULL,[NodeId] int NULL
-        , [DatabaseName] sysname NULL,[SchemaName] sysname NULL,[ObjectName] sysname NULL,[ColumnName] sysname NULL
-        , [StatisticsName] sysname NULL,[PredicateKind] varchar(40) NULL,[ValueSource] varchar(32) NOT NULL
-        , [MappingStatus] varchar(48) NOT NULL,[MappingConfidence] varchar(16) NOT NULL,[MatchedStepOrdinal] int NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PredicateKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ValueSource] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MappingStatus] varchar(48) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[MappingConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[MatchedStepOrdinal] int NULL
         , [MatchesRangeHighKey] bit NOT NULL,[IsBelowHistogram] bit NOT NULL,[IsAboveHistogram] bit NOT NULL
-        , [SensitiveValueStatus] varchar(40) NOT NULL
+        , [SensitiveValueStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_CollectionStatus]
     (
-          [DatabaseName] sysname NULL,[SchemaName] sysname NULL,[ObjectName] sysname NULL,[StatisticsName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ErrorNumber] int NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CreateExecutionEvidenceJson_Warnings]
     (
-          [WarningCode] varchar(80) NOT NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Detail] nvarchar(2048) NOT NULL
+          [WarningCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Detail] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @OutputMode NOT IN ('CONSOLE','RAW','TABLE','NONE')
