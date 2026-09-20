@@ -18467,6 +18467,11 @@ GO
 -- END SOURCE: Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql
 
 -- BEGIN SOURCE: Code/03_ObjectIndex/010_USP_ObjectInventory.sql
+SET ANSI_NULLS ON;
+GO
+SET QUOTED_IDENTIFIER ON;
+GO
+
 /*
 ===============================================================================
 Objekt       : monitor.USP_ObjectInventory
