@@ -175,43 +175,43 @@ BEGIN
     CREATE TABLE [#CurrentSessions_Result]
     (
           [SessionId] smallint NOT NULL, [RequestId] int NULL, [IsUserProcess] bit NOT NULL
-        , [SessionStatus] nvarchar(30) NULL, [RequestStatus] nvarchar(30) NULL
-        , [LoginName] nvarchar(128) NULL, [OriginalLoginName] nvarchar(128) NULL
-        , [HostName] nvarchar(128) NULL, [ProgramName] nvarchar(128) NULL
+        , [SessionStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [RequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LoginName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [OriginalLoginName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsToolBackgroundQuery] bit NOT NULL
-        , [ToolBackgroundRuleCode] varchar(64) NULL
-        , [ToolBackgroundCategory] varchar(40) NULL
-        , [ToolBackgroundDetection] varchar(40) NULL
-        , [ToolBackgroundConfidence] varchar(16) NULL
-        , [ClientInterfaceName] nvarchar(32) NULL, [LoginTime] datetime NULL
+        , [ToolBackgroundRuleCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ToolBackgroundCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ToolBackgroundDetection] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ToolBackgroundConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ClientInterfaceName] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [LoginTime] datetime NULL
         , [LastRequestStartTime] datetime NULL, [LastRequestEndTime] datetime NULL
-        , [DatabaseId] smallint NULL, [DatabaseName] sysname NULL
-        , [OpenTransactionCount] int NULL, [TransactionIsolationLevel] nvarchar(40) NULL
+        , [DatabaseId] smallint NULL, [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [OpenTransactionCount] int NULL, [TransactionIsolationLevel] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SessionCpuMs] int NULL, [SessionReads] bigint NULL, [SessionWrites] bigint NULL
         , [SessionLogicalReads] bigint NULL, [SessionMemoryMb] decimal(19,2) NULL
         , [SessionRowCount] bigint NULL, [RequestCpuMs] int NULL, [RequestElapsedMs] int NULL
         , [RequestLogicalReads] bigint NULL, [RequestReads] bigint NULL, [RequestWrites] bigint NULL
-        , [BlockingSessionId] smallint NULL, [WaitType] nvarchar(120) NULL, [WaitTimeMs] int NULL
-        , [WaitResource] nvarchar(256) NULL, [PercentComplete] real NULL
-        , [ClientNetAddress] varchar(48) NULL, [NetTransport] nvarchar(40) NULL
-        , [ProtocolType] nvarchar(40) NULL, [EncryptOption] nvarchar(40) NULL
-        , [AuthScheme] nvarchar(40) NULL
+        , [BlockingSessionId] smallint NULL, [WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [WaitTimeMs] int NULL
+        , [WaitResource] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [PercentComplete] real NULL
+        , [ClientNetAddress] varchar(48) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [NetTransport] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProtocolType] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [EncryptOption] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AuthScheme] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CurrentStatementCharacters] bigint NULL, [CurrentStatementBytes] bigint NULL
-        , [CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0), [CurrentStatement] nvarchar(max) NULL
+        , [CurrentStatementIsTruncated] bit NOT NULL DEFAULT(0), [CurrentStatement] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [BatchTextCharacters] bigint NULL, [BatchTextBytes] bigint NULL
-        , [BatchTextIsTruncated] bit NOT NULL DEFAULT(0), [BatchText] nvarchar(max) NULL
+        , [BatchTextIsTruncated] bit NOT NULL DEFAULT(0), [BatchText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentSessions_SourceSessions]
     (
           [session_id] smallint NOT NULL PRIMARY KEY
         , [is_user_process] bit NOT NULL
-        , [status] nvarchar(30) NOT NULL
-        , [login_name] nvarchar(128) NOT NULL
-        , [original_login_name] nvarchar(128) NOT NULL
-        , [host_name] nvarchar(128) NULL
-        , [program_name] nvarchar(128) NULL
-        , [client_interface_name] nvarchar(32) NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [original_login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [host_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [program_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [client_interface_name] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [login_time] datetime NOT NULL
         , [last_request_start_time] datetime NOT NULL
         , [last_request_end_time] datetime NULL
@@ -228,7 +228,7 @@ BEGIN
     (
           [session_id] smallint NOT NULL
         , [request_id] int NOT NULL
-        , [status] nvarchar(30) NOT NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [database_id] smallint NOT NULL
         , [cpu_time] int NOT NULL
         , [total_elapsed_time] int NOT NULL
@@ -236,9 +236,9 @@ BEGIN
         , [reads] bigint NOT NULL
         , [writes] bigint NOT NULL
         , [blocking_session_id] smallint NULL
-        , [wait_type] nvarchar(60) NULL
+        , [wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [wait_time] int NOT NULL
-        , [wait_resource] nvarchar(256) NOT NULL
+        , [wait_resource] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [percent_complete] real NOT NULL
         , [sql_handle] varbinary(64) NULL
         , [statement_start_offset] int NULL
@@ -250,18 +250,18 @@ BEGIN
           [session_id] int NULL
         , [connection_id] uniqueidentifier NOT NULL PRIMARY KEY
         , [most_recent_sql_handle] varbinary(64) NULL
-        , [client_net_address] varchar(48) NULL
-        , [net_transport] nvarchar(40) NOT NULL
-        , [protocol_type] nvarchar(40) NULL
-        , [encrypt_option] nvarchar(40) NOT NULL
-        , [auth_scheme] nvarchar(40) NOT NULL
+        , [client_net_address] varchar(48) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [net_transport] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [protocol_type] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [encrypt_option] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [auth_scheme] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE INDEX [IX_CurrentSessions_SourceConnections_SessionId]
         ON [#CurrentSessions_SourceConnections]([session_id]);
     CREATE TABLE [#CurrentSessions_SourceSqlText]
     (
           [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
-        , [text] nvarchar(max) NULL
+        , [text] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [dbid] int NULL
         , [objectid] int NULL
         , [number] smallint NULL
@@ -550,3 +550,4 @@ BEGIN
     END;
 END;
 GO
+
