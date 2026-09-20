@@ -28,9 +28,10 @@ CREATE TABLE [#PrepareDatabaseCandidates_Warnings]
 DECLARE @StatusCode varchar(40);
 DECLARE @ErrorMessage nvarchar(2048);
 DECLARE @CrossDatabaseRequested bit;
+DECLARE @DatabaseName sysname = DB_NAME();
 
 EXEC [monitor].[USP_PrepareDatabaseCandidates]
-      @DatabaseNames = N'DeineDatenbank'
+      @DatabaseNames = @DatabaseName
     , @StatusCode = @StatusCode OUTPUT
     , @ErrorMessage = @ErrorMessage OUTPUT
     , @CrossDatabaseRequested = @CrossDatabaseRequested OUTPUT
