@@ -127,31 +127,31 @@ BEGIN
     (
           [Rank]                              int             NOT NULL
         , [RelevanceScore]                    int             NOT NULL
-        , [ProcedureName]                     sysname         NOT NULL
-        , [DisplayName]                       nvarchar(160)   NOT NULL
-        , [NavigationRole]                    varchar(24)     NOT NULL
-        , [PrimaryAreaCode]                   varchar(40)     NOT NULL
-        , [PrimaryAreaName]                   nvarchar(160)   NOT NULL
-        , [ScopeCode]                         varchar(40)     NOT NULL
-        , [EvidenceType]                      varchar(40)     NOT NULL
-        , [CostRangeCode]                     varchar(32)     NOT NULL
-        , [RepresentativeAnalysisClass]       varchar(64)     NULL
-        , [AnalysisLevel]                     varchar(16)     NULL
+        , [ProcedureName]                     sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DisplayName]                       nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [NavigationRole]                    varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PrimaryAreaCode]                   varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PrimaryAreaName]                   nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeCode]                         varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceType]                      varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CostRangeCode]                     varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RepresentativeAnalysisClass]       varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AnalysisLevel]                     varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RequiresGroupGate]                 bit             NULL
-        , [WhyMatched]                        nvarchar(500)   NOT NULL
-        , [Purpose]                           nvarchar(1000)  NOT NULL
-        , [PrerequisiteSummary]               nvarchar(1000)  NOT NULL
+        , [WhyMatched]                        nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Purpose]                           nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PrerequisiteSummary]               nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [RequiresKnownTarget]               bit             NOT NULL
         , [RequiresHighImpactForSafeStart]    bit             NOT NULL
         , [HighImpactPathAvailable]           bit             NOT NULL
-        , [PackageCode]                       varchar(32)     NOT NULL
+        , [PackageCode]                       varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsInstalled]                       bit             NOT NULL
-        , [SafeCall]                          nvarchar(2000)  NOT NULL
-        , [NextProcedureName]                 sysname         NULL
-        , [RelationType]                      varchar(24)     NULL
-        , [NextStep]                          nvarchar(700)   NULL
-        , [RunbookPath]                       nvarchar(400)   NULL
-        , [DocumentationPath]                 nvarchar(400)   NOT NULL
+        , [SafeCall]                          nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [NextProcedureName]                 sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RelationType]                      varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [NextStep]                          nvarchar(700) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RunbookPath]                       nvarchar(400) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [DocumentationPath]                 nvarchar(400) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
