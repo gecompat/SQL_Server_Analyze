@@ -17415,15 +17415,15 @@ BEGIN
     (
           [SnapshotId] uniqueidentifier NOT NULL
         , [SourceOrdinal] int NOT NULL
-        , [SourceCode] varchar(40) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [SourceCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [CompletedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [CapturedRowCount] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , PRIMARY KEY ([SnapshotId],[SourceCode])
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_Sessions]
@@ -17432,12 +17432,12 @@ BEGIN
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [session_id] smallint NOT NULL
         , [is_user_process] bit NOT NULL
-        , [status] nvarchar(30) NOT NULL
-        , [login_name] nvarchar(128) NOT NULL
-        , [original_login_name] nvarchar(128) NOT NULL
-        , [host_name] nvarchar(128) NULL
-        , [program_name] nvarchar(128) NULL
-        , [client_interface_name] nvarchar(32) NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [original_login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [host_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [program_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [client_interface_name] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [login_time] datetime NOT NULL
         , [last_request_start_time] datetime NOT NULL
         , [last_request_end_time] datetime NULL
@@ -17457,8 +17457,8 @@ BEGIN
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [session_id] smallint NOT NULL
         , [request_id] int NOT NULL
-        , [status] nvarchar(30) NOT NULL
-        , [command] nvarchar(32) NOT NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [start_time] datetime NOT NULL
         , [sql_handle] varbinary(64) NULL
         , [statement_start_offset] int NULL
@@ -17467,10 +17467,10 @@ BEGIN
         , [database_id] smallint NOT NULL
         , [connection_id] uniqueidentifier NULL
         , [blocking_session_id] smallint NULL
-        , [wait_type] nvarchar(60) NULL
+        , [wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [wait_time] int NOT NULL
-        , [last_wait_type] nvarchar(60) NOT NULL
-        , [wait_resource] nvarchar(256) NOT NULL
+        , [last_wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [wait_resource] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [open_transaction_count] int NOT NULL
         , [open_resultset_count] int NOT NULL
         , [transaction_id] bigint NOT NULL
@@ -17505,11 +17505,11 @@ BEGIN
         , [session_id] int NULL
         , [connection_id] uniqueidentifier NOT NULL
         , [most_recent_sql_handle] varbinary(64) NULL
-        , [client_net_address] varchar(48) NULL
-        , [net_transport] nvarchar(40) NOT NULL
-        , [protocol_type] nvarchar(40) NULL
-        , [encrypt_option] nvarchar(40) NOT NULL
-        , [auth_scheme] nvarchar(40) NOT NULL
+        , [client_net_address] varchar(48) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [net_transport] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [protocol_type] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [encrypt_option] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [auth_scheme] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [connect_time] datetime NOT NULL
         , PRIMARY KEY ([SnapshotId],[connection_id])
     );
@@ -17521,12 +17521,12 @@ BEGIN
         , [session_id] smallint NULL
         , [exec_context_id] int NULL
         , [wait_duration_ms] bigint NOT NULL
-        , [wait_type] nvarchar(60) NOT NULL
+        , [wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [resource_address] varbinary(8) NULL
         , [blocking_task_address] varbinary(8) NULL
         , [blocking_session_id] smallint NULL
         , [blocking_exec_context_id] int NULL
-        , [resource_description] nvarchar(3072) NULL
+        , [resource_description] nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_MemoryGrants]
     (
@@ -17579,7 +17579,7 @@ BEGIN
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [group_id] int NOT NULL
-        , [name] sysname NOT NULL
+        , [name] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [pool_id] int NOT NULL
         , [request_max_memory_grant_percent_numeric] decimal(9,4) NULL
         , [max_request_grant_memory_kb] bigint NULL
@@ -17587,7 +17587,7 @@ BEGIN
         , [configured_group_max_tempdb_data_percent] decimal(9,4) NULL
         , [tempdb_maximum_size_mb] decimal(19,2) NULL
         , [effective_group_max_tempdb_data_mb] decimal(19,2) NULL
-        , [effective_limit_source] varchar(40) NOT NULL
+        , [effective_limit_source] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [is_percent_limit_effective] bit NULL
         , [tempdb_data_space_mb] decimal(19,2) NULL
         , [peak_tempdb_data_space_mb] decimal(19,2) NULL
@@ -17597,9 +17597,9 @@ BEGIN
         , [statistics_start_time] datetime NULL
         , [is_resource_governor_enabled] bit NULL
         , [reconfiguration_pending] bit NULL
-        , [tempdb_governance_status_code] varchar(40) NOT NULL
+        , [tempdb_governance_status_code] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [tempdb_governance_is_partial] bit NOT NULL
-        , [tempdb_governance_evidence_limit] nvarchar(1000) NULL
+        , [tempdb_governance_evidence_limit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , PRIMARY KEY ([SnapshotId],[group_id])
     );
     CREATE TABLE [#CurrentOverview_CurrentStateSnapshot_ResourcePools]
@@ -17607,7 +17607,7 @@ BEGIN
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [pool_id] int NOT NULL
-        , [name] sysname NOT NULL
+        , [name] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [max_memory_kb] bigint NULL
         , [target_memory_kb] bigint NULL
         , [used_memory_kb] bigint NULL
@@ -17618,7 +17618,7 @@ BEGIN
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [task_address] varbinary(8) NOT NULL
-        , [task_state] nvarchar(60) NOT NULL
+        , [task_state] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [session_id] smallint NULL
         , [request_id] int NULL
         , [exec_context_id] int NULL
@@ -17634,7 +17634,7 @@ BEGIN
         , [scheduler_address] varbinary(8) NOT NULL
         , [scheduler_id] int NOT NULL
         , [parent_node_id] int NOT NULL
-        , [status] nvarchar(60) NOT NULL
+        , [status] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [is_online] bit NOT NULL
         , [is_idle] bit NOT NULL
         , [current_tasks_count] int NOT NULL
@@ -17666,7 +17666,7 @@ BEGIN
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [transaction_id] bigint NOT NULL
-        , [name] nvarchar(32) NOT NULL
+        , [name] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [transaction_begin_time] datetime NOT NULL
         , [transaction_type] int NOT NULL
         , [transaction_uow] uniqueidentifier NULL
@@ -17717,12 +17717,12 @@ BEGIN
           [SnapshotId] uniqueidentifier NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [SqlHandle] varbinary(64) NOT NULL
-        , [Text] nvarchar(max) NULL
+        , [Text] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [DatabaseId] int NULL
         , [ObjectId] int NULL
         , [ObjectNumber] smallint NULL
         , [IsEncrypted] bit NULL
-        , [EvidenceStatus] varchar(40) NOT NULL
+        , [EvidenceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([SnapshotId],[SqlHandle])
     );
     IF @OutputMode NOT IN ('RAW','CONSOLE','TABLE','NONE')
