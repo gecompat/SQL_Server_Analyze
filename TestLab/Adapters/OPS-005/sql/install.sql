@@ -18467,6 +18467,11 @@ GO
 -- END SOURCE: Code/02_CurrentState/110_USP_CurrentCursorAnalysis.sql
 
 -- BEGIN SOURCE: Code/03_ObjectIndex/010_USP_ObjectInventory.sql
+SET ANSI_NULLS ON;
+GO
+SET QUOTED_IDENTIFIER ON;
+GO
+
 /*
 ===============================================================================
 Objekt       : monitor.USP_ObjectInventory
@@ -18567,7 +18572,7 @@ BEGIN
     SET @CrossDatabaseRequestedInternal=CONVERT(bit,CASE WHEN @DatabaseNames IS NULL OR @DatabaseNamePattern IS NOT NULL OR @DatabaseListCount>1 THEN 1 ELSE 0 END);
     SELECT @DatenbankNameLike=CASE WHEN [PatternMode]='LIKE' THEN [PatternValue] END FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
     CREATE TABLE [#ObjectInventory_NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
-    CREATE TABLE [#ObjectInventory_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
+    CREATE TABLE [#ObjectInventory_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=NULL,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#ObjectInventory_NameFilters';
     IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='OBJECT_ANALYSIS_CURRENT',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#ObjectInventory_DatabaseCandidates';
@@ -18623,20 +18628,20 @@ BEGIN
 
     CREATE TABLE [#ObjectInventory_DatabaseStatus]
     (
-          [DatabaseName]       sysname        NULL
-        , [StatusCode]         varchar(40)    NOT NULL
+          [DatabaseName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode]         varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial]          bit            NOT NULL
         , [RowCount]           bigint         NOT NULL
-        , [RequiredPermission] nvarchar(256)  NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber]        int            NULL
-        , [ErrorMessage]       nvarchar(2048) NULL
-        , [Detail]             nvarchar(2000) NULL
-        , [JsonIndexStatusCode] varchar(40)   NOT NULL
+        , [ErrorMessage]       nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail]             nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [JsonIndexStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [JsonIndexRowCount]  bigint         NOT NULL
         , [JsonPathRowCount]   bigint         NOT NULL
         , [JsonIndexErrorNumber] int          NULL
-        , [JsonIndexErrorMessage] nvarchar(2048) NULL
-        , [JsonIndexEvidenceLimit] nvarchar(1000) NOT NULL
+        , [JsonIndexErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [JsonIndexEvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
@@ -18681,50 +18686,50 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
 
     CREATE TABLE [#ObjectInventory_Result]
     (
-          [DatabaseName]                sysname         NOT NULL
-        , [SchemaName]                  sysname         NOT NULL
-        , [ObjectName]                  sysname         NOT NULL
-        , [ObjectType]                  varchar(20)     NOT NULL
+          [DatabaseName]                sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName]                  sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName]                  sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectType]                  varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ObjectId]                    int             NOT NULL
         , [IsMsShipped]                 bit             NOT NULL
         , [IsMemoryOptimized]           bit             NULL
-        , [TemporalTypeDesc]            nvarchar(60)    NULL
-        , [DurabilityDesc]              nvarchar(60)    NULL
+        , [TemporalTypeDesc]            nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [DurabilityDesc]              nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CreateDate]                  datetime        NULL
         , [ModifyDate]                  datetime        NULL
         , [ObjectRowCount]              bigint          NULL
         , [ObjectReservedMb]            decimal(19,2)   NULL
         , [ObjectUsedMb]                decimal(19,2)   NULL
         , [IndexId]                     int             NULL
-        , [IndexName]                   sysname         NULL
-        , [IndexTypeDesc]               nvarchar(60)    NULL
+        , [IndexName]                   sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IndexTypeDesc]               nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsUnique]                    bit             NULL
         , [IsPrimaryKey]                bit             NULL
         , [IsUniqueConstraint]          bit             NULL
         , [IsDisabled]                  bit             NULL
         , [IsHypothetical]              bit             NULL
         , [HasFilter]                   bit             NULL
-        , [FilterDefinition]            nvarchar(max)   NULL
+        , [FilterDefinition]            nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FillFactor]                  tinyint         NULL
         , [AllowRowLocks]               bit             NULL
         , [AllowPageLocks]              bit             NULL
         , [OptimizeForSequentialKey]    bit             NULL
-        , [DataSpaceName]               sysname         NULL
+        , [DataSpaceName]               sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [PartitionCount]              int             NULL
         , [IndexRowCount]               bigint          NULL
         , [IndexReservedMb]             decimal(19,2)   NULL
         , [IndexUsedMb]                 decimal(19,2)   NULL
-        , [MinCompressionDesc]          nvarchar(60)    NULL
-        , [MaxCompressionDesc]          nvarchar(60)    NULL
+        , [MinCompressionDesc]          nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MaxCompressionDesc]          nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [HasMixedCompression]         bit             NULL
-        , [KeyColumns]                  nvarchar(max)   NULL
-        , [IncludedColumns]             nvarchar(max)   NULL
+        , [KeyColumns]                  nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IncludedColumns]             nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsJsonIndex]                 bit             NULL
         , [OptimizeForArraySearch]      bit             NULL
         , [JsonPathCount]               bigint          NULL
-        , [JsonPaths]                   nvarchar(max)   NULL
-        , [JsonIndexStatusCode]         varchar(40)     NULL
-        , [JsonIndexEvidenceLimit]      nvarchar(1000)  NULL
+        , [JsonPaths]                   nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [JsonIndexStatusCode]         varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [JsonIndexEvidenceLimit]      nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#ObjectInventory_JsonIndexes]
@@ -18742,7 +18747,7 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
         , [ObjectId]     int NOT NULL
         , [IndexId]      int NOT NULL
         , [JsonPathCount] bigint NOT NULL
-        , [JsonPaths]    nvarchar(max) NULL
+        , [JsonPaths]    nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , PRIMARY KEY ([DatabaseName],[ObjectId],[IndexId])
     );
 
