@@ -78,6 +78,7 @@ $selfTestValidators = @(
     '1036_Validate_QueryHashAnalysis_Tempdb_Collation.py'
     '1037_Validate_CurrentIO_Tempdb_Collation.py'
     '1038_Validate_CurrentSessions_Tempdb_Collation.py'
+    '1039_Validate_CurrentRequests_Tempdb_Collation.py'
   )
 $repositoryOnlyValidators = @(
     '950_Validate_Nonblocking_Metadata.py'
@@ -150,5 +151,6 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host "Statische Vertragssuite erfolgreich: $($selfTestValidators.Count + $repositoryOnlyValidators.Count + 3) Prüfungen."
+
 
 
