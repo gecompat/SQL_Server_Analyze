@@ -59,50 +59,50 @@ BEGIN
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NOT NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#CheckFrameworkCapabilities_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#CheckFrameworkCapabilities_Capabilities]
     (
           [FeatureOrdinal] smallint NOT NULL
-        , [FeatureCode] varchar(64) NOT NULL
-        , [FeatureName] nvarchar(200) NOT NULL
-        , [ScopeType] varchar(16) NOT NULL
-        , [AnalysisClass] varchar(64) NOT NULL
-        , [AnalysisLevel] varchar(16) NOT NULL
+        , [FeatureCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureName] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeType] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AnalysisClass] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AnalysisLevel] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsResourceIntensive] bit NOT NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ServerMajorVersion] int NULL
-        , [ServerProductVersion] nvarchar(128) NULL
+        , [ServerProductVersion] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MinimumMajorVersion] tinyint NOT NULL
         , [VersionSupported] bit NOT NULL
         , [GroupCheckApplied] bit NOT NULL
         , [GroupAccessAllowed] bit NULL
-        , [AccessReason] varchar(20) NULL
-        , [RequiredPermissionScope] varchar(16) NOT NULL
-        , [PermissionCheckType] varchar(24) NOT NULL
-        , [RequiredPermission] sysname NULL
-        , [PermissionDisplayText] nvarchar(128) NULL
+        , [AccessReason] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RequiredPermissionScope] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PermissionCheckType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RequiredPermission] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PermissionDisplayText] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [HasRequiredPermission] bit NULL
         , [IsQueryable] bit NOT NULL
         , [IsFeatureEnabled] bit NULL
         , [IsUsable] bit NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Description] nvarchar(1000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Description] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
