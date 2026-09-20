@@ -118,10 +118,10 @@ BEGIN
     (
           [BlockedSessionId]  smallint      NOT NULL
         , [BlockingSessionId] smallint      NOT NULL
-        , [WaitType]          nvarchar(120) NULL
+        , [WaitType]          nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WaitTimeMs]        bigint        NULL
-        , [WaitResource]      nvarchar(3072) NULL
-        , [SourceCode]        varchar(24)   NOT NULL
+        , [WaitResource]      nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode]        varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS   NOT NULL
         , PRIMARY KEY ([BlockedSessionId], [BlockingSessionId])
     );
 
@@ -131,69 +131,69 @@ BEGIN
         , [BlockedSessionId]      smallint       NOT NULL
         , [BlockingSessionId]     smallint       NOT NULL
         , [RootBlockingSessionId] smallint       NULL
-        , [BlockingOwnerType]     varchar(40)    NULL
-        , [BlockingOwnerDescription] nvarchar(512) NULL
-        , [BlockingChain]          nvarchar(4000) NULL
+        , [BlockingOwnerType]     varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NULL
+        , [BlockingOwnerDescription] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BlockingChain]          nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ChainDepth]            int            NOT NULL
         , [IsCycle]               bit            NOT NULL
-        , [WaitType]              nvarchar(120)  NULL
+        , [WaitType]              nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
         , [WaitTimeMs]            bigint         NULL
-        , [WaitResource]          nvarchar(3072) NULL
-        , [BlockingResourceType]             nvarchar(60)   NULL
+        , [WaitResource]          nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BlockingResourceType]             nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
         , [BlockingResourceDatabaseId]       int            NULL
-        , [BlockingResourceDatabaseName]     sysname        NULL
-        , [BlockingResourceSchemaName]       sysname        NULL
+        , [BlockingResourceDatabaseName]     sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
+        , [BlockingResourceSchemaName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
         , [BlockingResourceObjectId]         int            NULL
-        , [BlockingResourceObjectName]       sysname        NULL
+        , [BlockingResourceObjectName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
         , [BlockingResourceIndexId]          int            NULL
-        , [BlockingResourceIndexName]        sysname        NULL
+        , [BlockingResourceIndexName]        sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
         , [BlockingResourcePartitionId]      bigint         NULL
         , [BlockingResourcePartitionNumber]  int            NULL
         , [BlockingResourceFileId]           int            NULL
         , [BlockingResourcePageId]           bigint         NULL
         , [BlockingResourceRowId]            int            NULL
-        , [BlockingResourceMetadataSubtype]  nvarchar(60)   NULL
-        , [BlockingResourceMetadataName]     sysname        NULL
-        , [BlockingResourcePageTypeDesc]     nvarchar(60)   NULL
-        , [BlockingResourceName]             nvarchar(1024) NULL
-        , [BlockingResourceResolutionStatus] varchar(40)    NULL
-        , [BlockedLoginName]      nvarchar(128)  NULL
-        , [BlockedHostName]       nvarchar(128)  NULL
-        , [BlockedProgramName]    nvarchar(128)  NULL
+        , [BlockingResourceMetadataSubtype]  nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
+        , [BlockingResourceMetadataName]     sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
+        , [BlockingResourcePageTypeDesc]     nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
+        , [BlockingResourceName]             nvarchar(1024) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BlockingResourceResolutionStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NULL
+        , [BlockedLoginName]      nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [BlockedHostName]       nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [BlockedProgramName]    nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
         , [BlockedIsToolBackgroundQuery] bit      NOT NULL
-        , [BlockedToolBackgroundRuleCode] varchar(64) NULL
-        , [BlockedToolBackgroundCategory] varchar(40) NULL
-        , [BlockedToolBackgroundDetection] varchar(40) NULL
-        , [BlockedToolBackgroundConfidence] varchar(16) NULL
-        , [BlockerLoginName]      nvarchar(128)  NULL
-        , [BlockerHostName]       nvarchar(128)  NULL
-        , [BlockerProgramName]    nvarchar(128)  NULL
-        , [RootBlockerLoginName]  nvarchar(128)  NULL
-        , [RootBlockerHostName]   nvarchar(128)  NULL
-        , [RootBlockerProgramName] nvarchar(128) NULL
-        , [RootBlockerSessionStatus] nvarchar(30) NULL
-        , [RootBlockerRequestStatus] nvarchar(30) NULL
+        , [BlockedToolBackgroundRuleCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BlockedToolBackgroundCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BlockedToolBackgroundDetection] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BlockedToolBackgroundConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BlockerLoginName]      nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [BlockerHostName]       nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [BlockerProgramName]    nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [RootBlockerLoginName]  nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [RootBlockerHostName]   nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [RootBlockerProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RootBlockerSessionStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RootBlockerRequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RootBlockerOpenTransactionCount] int NULL
         , [RootBlockerLastRequestStartTime] datetime NULL
         , [RootBlockerLastRequestEndTime] datetime NULL
         , [RootIsToolBackgroundQuery] bit NOT NULL
-        , [RootToolBackgroundRuleCode] varchar(64) NULL
-        , [RootToolBackgroundCategory] varchar(40) NULL
-        , [RootToolBackgroundDetection] varchar(40) NULL
-        , [RootToolBackgroundConfidence] varchar(16) NULL
+        , [RootToolBackgroundRuleCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RootToolBackgroundCategory] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RootToolBackgroundDetection] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RootToolBackgroundConfidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [BlockedStatementCharacters] bigint NULL
         , [BlockedStatementBytes] bigint NULL
         , [BlockedStatementIsTruncated] bit NOT NULL DEFAULT(0)
-        , [BlockedStatement]      nvarchar(max)  NULL
+        , [BlockedStatement]      nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
         , [BlockerStatementCharacters] bigint NULL
         , [BlockerStatementBytes] bigint NULL
         , [BlockerStatementIsTruncated] bit NOT NULL DEFAULT(0)
-        , [BlockerStatement]      nvarchar(max)  NULL
-        , [RootBlockerStatementSource] varchar(32) NULL
+        , [BlockerStatement]      nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [RootBlockerStatementSource] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RootBlockerStatementCharacters] bigint NULL
         , [RootBlockerStatementBytes] bigint NULL
         , [RootBlockerStatementIsTruncated] bit NOT NULL DEFAULT(0)
-        , [RootBlockerStatement]  nvarchar(max)  NULL
+        , [RootBlockerStatement]  nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
     );
 
     CREATE TABLE [#CurrentBlocking_RetainedSessions]
@@ -204,75 +204,75 @@ BEGIN
     CREATE TABLE [#CurrentBlocking_Locks]
     (
           [SessionId]             smallint       NULL
-        , [ResourceType]          nvarchar(60)   NULL
+        , [ResourceType]          nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
         , [ResourceDatabaseId]    int            NULL
-        , [ResourceDatabaseName]  sysname        NULL
-        , [ResourceDescription]   nvarchar(256)  NULL
-        , [ResourceSubtype]       nvarchar(60)   NULL
+        , [ResourceDatabaseName]  sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
+        , [ResourceDescription]   nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [ResourceSubtype]       nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
         , [ResourceAssociatedEntityId] bigint    NULL
         , [ResourceLockPartition] int            NULL
-        , [RequestMode]           nvarchar(60)   NULL
-        , [RequestStatus]         nvarchar(60)   NULL
-        , [RequestOwnerType]      nvarchar(60)   NULL
+        , [RequestMode]           nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
+        , [RequestStatus]         nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
+        , [RequestOwnerType]      nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
         , [RequestReferenceCount] smallint       NULL
         , [LockOwnerAddress]      varbinary(8)   NULL
-        , [ResolvedResourceType]  nvarchar(60)   NULL
-        , [ResolvedSchemaName]    sysname        NULL
+        , [ResolvedResourceType]  nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
+        , [ResolvedSchemaName]    sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
         , [ResolvedObjectId]      int            NULL
-        , [ResolvedObjectName]    sysname        NULL
+        , [ResolvedObjectName]    sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
         , [ResolvedIndexId]       int            NULL
-        , [ResolvedIndexName]     sysname        NULL
+        , [ResolvedIndexName]     sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
         , [ResolvedPartitionId]   bigint         NULL
         , [ResolvedPartitionNumber] int          NULL
-        , [ResolvedResourceName]  nvarchar(1024) NULL
-        , [ResourceResolutionStatus] varchar(40) NULL
+        , [ResolvedResourceName]  nvarchar(1024) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ResourceResolutionStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#CurrentBlocking_ResourceResolution]
     (
           [CandidateId]       int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [SourceCode]        varchar(24)       NOT NULL
-        , [WaitResource]      nvarchar(3072)    NULL
-        , [ResourceType]      nvarchar(60)      NULL
-        , [FormatCode]        varchar(40)       NOT NULL
+        , [SourceCode]        varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS       NOT NULL
+        , [WaitResource]      nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS    NULL
+        , [ResourceType]      nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS      NULL
+        , [FormatCode]        varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS       NOT NULL
         , [DatabaseId]        int               NULL
-        , [DatabaseName]      sysname           NULL
+        , [DatabaseName]      sysname COLLATE SQL_Latin1_General_CP1_CS_AS           NULL
         , [EntityId]          bigint            NULL
         , [SubEntityId]       bigint            NULL
         , [FileId]            int               NULL
-        , [FileName]          sysname           NULL
+        , [FileName]          sysname COLLATE SQL_Latin1_General_CP1_CS_AS           NULL
         , [PageId]            bigint            NULL
         , [RowId]             int               NULL
-        , [MetadataSubtype]   nvarchar(60)      NULL
-        , [MetadataName]      sysname           NULL
-        , [ResourceQualifier] nvarchar(512)     NULL
-        , [SchemaName]        sysname           NULL
+        , [MetadataSubtype]   nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS      NULL
+        , [MetadataName]      sysname COLLATE SQL_Latin1_General_CP1_CS_AS           NULL
+        , [ResourceQualifier] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS     NULL
+        , [SchemaName]        sysname COLLATE SQL_Latin1_General_CP1_CS_AS           NULL
         , [ObjectId]          int               NULL
-        , [ObjectName]        sysname           NULL
+        , [ObjectName]        sysname COLLATE SQL_Latin1_General_CP1_CS_AS           NULL
         , [IndexId]           int               NULL
-        , [IndexName]         sysname           NULL
+        , [IndexName]         sysname COLLATE SQL_Latin1_General_CP1_CS_AS           NULL
         , [PartitionId]       bigint            NULL
         , [PartitionNumber]   int               NULL
-        , [PageTypeDesc]      nvarchar(60)      NULL
-        , [ResourceName]      nvarchar(1024)    NULL
-        , [ResolutionStatus]  varchar(40)       NOT NULL
+        , [PageTypeDesc]      nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS      NULL
+        , [ResourceName]      nvarchar(1024) COLLATE SQL_Latin1_General_CP1_CS_AS    NULL
+        , [ResolutionStatus]  varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS       NOT NULL
     );
 
     CREATE TABLE [#CurrentBlocking_Warnings]
     (
-          [ScopeName]    nvarchar(128)  NULL
-        , [StatusCode]   varchar(40)    NOT NULL
+          [ScopeName]    nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [StatusCode]   varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [ErrorNumber]  int            NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentBlocking_SourceSessions]
     (
           [session_id] smallint NOT NULL PRIMARY KEY
         , [is_user_process] bit NOT NULL
-        , [status] nvarchar(30) NOT NULL
-        , [login_name] nvarchar(128) NOT NULL
-        , [host_name] nvarchar(128) NULL
-        , [program_name] nvarchar(128) NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [login_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [host_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [program_name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [open_transaction_count] int NOT NULL
         , [last_request_start_time] datetime NOT NULL
         , [last_request_end_time] datetime NULL
@@ -281,11 +281,11 @@ BEGIN
     (
           [session_id] smallint NOT NULL
         , [request_id] int NOT NULL
-        , [status] nvarchar(30) NOT NULL
+        , [status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [blocking_session_id] smallint NULL
-        , [wait_type] nvarchar(60) NULL
+        , [wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [wait_time] int NOT NULL
-        , [wait_resource] nvarchar(256) NOT NULL
+        , [wait_resource] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [sql_handle] varbinary(64) NULL
         , [statement_start_offset] int NULL
         , [statement_end_offset] int NULL
@@ -295,9 +295,9 @@ BEGIN
     (
           [session_id] smallint NULL
         , [wait_duration_ms] bigint NOT NULL
-        , [wait_type] nvarchar(60) NOT NULL
+        , [wait_type] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [blocking_session_id] smallint NULL
-        , [resource_description] nvarchar(3072) NULL
+        , [resource_description] nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#CurrentBlocking_SourceConnections]
     (
@@ -311,7 +311,7 @@ BEGIN
     CREATE TABLE [#CurrentBlocking_SourceSqlText]
     (
           [SqlHandle] varbinary(64) NOT NULL PRIMARY KEY
-        , [Text] nvarchar(max) NULL
+        , [Text] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @SessionIds IS NOT NULL
@@ -1846,3 +1846,4 @@ BEGIN
     END;
 END;
 GO
+
