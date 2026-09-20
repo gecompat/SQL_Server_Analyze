@@ -118,27 +118,27 @@ BEGIN
     BEGIN TRY
     CREATE TABLE [#InternalCollectExecutionPlanMetadata_ObjectReferences]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseName],[SchemaName],[ObjectName])
     );
     CREATE TABLE [#InternalCollectExecutionPlanMetadata_RelevantColumns]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
-        , [ColumnName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseName],[SchemaName],[ObjectName],[ColumnName])
     );
     CREATE TABLE [#InternalCollectExecutionPlanMetadata_CandidateStatistics]
     (
           [CandidateId] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
-        , [StatisticsName] sysname NOT NULL
-        , [CandidateSource] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CandidateSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , UNIQUE ([DatabaseName],[SchemaName],[ObjectName],[StatisticsName])
     );
     CREATE TABLE [#InternalCollectExecutionPlanMetadata_PredicateValues]
@@ -146,16 +146,16 @@ BEGIN
           [PredicateReferenceId] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [StatementOrdinal] int NOT NULL
         , [NodeId] int NULL
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [ColumnName] sysname NULL
-        , [PredicateKind] varchar(40) NULL
-        , [ParameterName] nvarchar(256) NULL
-        , [CompiledValueRaw] nvarchar(4000) NULL
-        , [RuntimeValueRaw] nvarchar(4000) NULL
-        , [CompiledValueNormalized] nvarchar(4000) NULL
-        , [RuntimeValueNormalized] nvarchar(4000) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PredicateKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ParameterName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CompiledValueRaw] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RuntimeValueRaw] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CompiledValueNormalized] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RuntimeValueNormalized] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     INSERT [#InternalCollectExecutionPlanMetadata_ObjectReferences]([DatabaseName],[SchemaName],[ObjectName])
