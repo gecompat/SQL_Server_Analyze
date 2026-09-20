@@ -24816,7 +24816,7 @@ END;
         , [SampleStatementTextCharacters] bigint NULL
         , [SampleStatementTextBytes] bigint NULL
         , [SampleStatementTextIsTruncated] bit NOT NULL DEFAULT(0)
-        , [SampleStatementText] nvarchar(max) NULL
+        , [SampleStatementText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     INSERT [#QueryHashAnalysis_Output]
