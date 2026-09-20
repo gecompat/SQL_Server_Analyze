@@ -5207,13 +5207,13 @@ BEGIN
     CREATE TABLE [#InternalWriteResultTable_SourceSchema]
     (
           [ColumnId] int NOT NULL
-        , [ColumnName] sysname NOT NULL
-        , [TypeName] sysname NOT NULL
+        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SystemTypeId] tinyint NOT NULL
         , [MaxLength] smallint NOT NULL
         , [Precision] tinyint NOT NULL
         , [Scale] tinyint NOT NULL
-        , [CollationName] sysname NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsNullable] bit NOT NULL
         , [IsIdentity] bit NOT NULL
         , [IsComputed] bit NOT NULL
@@ -5225,13 +5225,13 @@ BEGIN
     CREATE TABLE [#InternalWriteResultTable_TargetSchema]
     (
           [ColumnId] int NOT NULL
-        , [ColumnName] sysname NOT NULL
-        , [TypeName] sysname NOT NULL
+        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SystemTypeId] tinyint NOT NULL
         , [MaxLength] smallint NOT NULL
         , [Precision] tinyint NOT NULL
         , [Scale] tinyint NOT NULL
-        , [CollationName] sysname NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsNullable] bit NOT NULL
         , [IsIdentity] bit NOT NULL
         , [IsComputed] bit NOT NULL
