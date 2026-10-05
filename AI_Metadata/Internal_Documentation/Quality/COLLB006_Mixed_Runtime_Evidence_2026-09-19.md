@@ -759,3 +759,48 @@ Die eigenen CT-Datenbanken wurden auch bei Baselinefehlern über eigene
 Erzeugungsflags und Datenbankkennungen entfernt. Dieser Vertrag belegt keine
 positive CDC-Erhebung, Change-Zeilenauslieferung, Consumer-Wasserstände,
 Cleanup-Wirksamkeit oder zusätzliche Berechtigungs- und Hochlastvariante.
+
+## Agent Monitoring: 5. Oktober 2026
+
+`Code/Tests/Common/148_AgentMonitoring_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte die fremde Exportcollation (`55971`).
+Alle 15 lokalen Textspalten verwenden jetzt die Frameworkcollation; sieben
+Textspalten des Findings-TABLE-Exports wurden nativ geprüft. Ein kontrollierter
+Stand mit korrigierter Collation, aber ohne gemeinsame Findingsbegrenzung
+reproduzierte anschließend getrennt `55972`. Die vollständige Erhebung bestimmt
+den Modulstatus vor der gemeinsamen Ausgabegrenze; der vorhandene Prioritäts-,
+Kategorie- und Scoperang bleibt erhalten.
+
+Der Test erzeugte nach einem Preflight auf leere Job-, Alert-, Notification-
+und Mailbestände zwei eigene synthetische Unicode-Jobdefinitionen. Eine war
+aktiviert, die andere deaktiviert. Beide besaßen keine Schritte, Zeitpläne
+oder Historie und wurden nicht gestartet. Native Metadaten bestätigten die
+beiden Jobzustände und die fehlende Abdeckung der zehn erforderlichen Alerts.
+
+Vier Aufrufe mit Limit null, eins und NULL sowie deaktiviertem Job- und
+Mailpfad bestätigten `AVAILABLE_WITH_FINDING` ohne Teilstatus oder Fehler.
+Die Findingsmenge enthielt je nach Aufruf elf, eine oder zehn Zeilen; das
+Job-JSON enthielt zwei, eine oder keine Zeile gemäß seinem eigenen Namensrang.
+Die sechs fachlichen Findingfelder wurden gegen native Metadaten geprüft;
+alle acht TABLE-/JSON-Findingfelder stimmen als typisierte Multimengen überein.
+Alle zehn Jobfelder und fünf Servicefelder wurden gegen native Metadaten
+geprüft. Mailstatus blieb obligatorisch leer. Evidenz und Aussagegrenze jeder
+exportierten Findingzeile waren gefüllt.
+
+Der erste Versuch scheiterte an einer ungültigen variablen LOCK_TIMEOUT-
+Wiederherstellung im Test. Nach deren Korrektur bestand die abschließende
+kanonische Testdatei mit beiden getrennten Baselinereproduktionen.
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Beide eigenen Container, Volumes und temporären Lab-States wurden entfernt;
+die eigenen Jobdefinitionen wurden auch bei erwarteten Baselinefehlern anhand
+ihrer zurückgegebenen Kennungen gelöscht. Die 75 lokalen statischen Verträge,
+der erneuerte Adaptervertrag sowie der unabhängige Source- und Testreview
+bestanden. Dieser Vertrag belegt keine Jobausführung, positive Jobhistorie,
+Alertzustellung, Operatorerreichbarkeit, Mailzustellung oder zusätzliche
+Berechtigungs- und Hochlastvariante.
