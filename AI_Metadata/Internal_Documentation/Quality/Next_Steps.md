@@ -51,6 +51,34 @@ Der Fortsetzungsrhythmus ist keine Wartefrist für laufende autorisierte
 Entwicklung. Sobald ein unabhängiger ausführbarer Schritt feststeht, beginnt
 er unmittelbar nach den erforderlichen Vorprüfungen.
 
+## Sessionwechsel bei langer autonomer Entwicklung
+
+Die logische Entwicklungsrolle bleibt über Sessionwechsel erhalten. Aktueller
+Repositorystand, Arbeitselemente, Entscheidungen und Validierungsevidenz sind
+die Fortsetzungsquellen. Ein Wechsel wird an einer natürlichen Arbeitsgrenze
+oder auf ausdrücklichen Benutzerauftrag vorbereitet; er beendet die
+beauftragte Entwicklungswelle nicht.
+
+Entscheidungen verwenden ausschließlich verfügbare deterministische
+Kontextmetadaten. Unbekannte Tokenzahlen und Kontextgrenzen bleiben unbekannt.
+Dieses Projekt legt derzeit keine numerischen Soft-/Hard- oder
+Checkpointschwellen fest und aktiviert keinen automatischen Lifecycle-Planner.
+Antwortlatenz und wiederkehrende semantische Analyse des gesamten Chats sind
+keine automatischen Wechseltrigger.
+
+Bei einem tatsächlich gewählten Checkpoint werden geänderte bestätigte Fakten
+in die kanonischen Projektquellen aufgenommen. Eine Fortsetzung erhält deren
+Referenzen und höchstens einen autorisierten externen Delta-Handoff seit dem
+vorherigen Checkpoint. Runtime-Sessionkennungen, vollständige Chats und
+Handoffinhalte werden nicht ins Repository übernommen. Ein Nachfolger lädt
+die native Anweisungskette und prüft den aktuellen Repositorystand erneut.
+
+Die automatische Erzeugung einer Nachfolgesession ist nicht aktiviert.
+Ohne ausdrücklich autorisierte und bestätigte Clientfunktion bleibt die
+Erzeugung manuell; eine Empfehlung gilt nicht als tatsächlich ausgeführter
+Sessionwechsel. Unabhängige autorisierte Entwicklung wird während einer
+optionalen offenen Lifecycle-Auswahl fortgesetzt.
+
 ## Aktueller Produktstand
 
 Der portable Frameworkkern ist für SQL Server 2019, 2022 und 2025 implementiert. Die allgemeine Lab-Provisionierung und deren Lifecycleverantwortung liegen in `gecompat/SQL_Server_Lab`. SQL Server Analyze enthält weiterhin Frameworkcode, Dokumentation, analyserspezifische Szenarien und die benutzerorientierte Beispielsteuerung.

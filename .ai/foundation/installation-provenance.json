@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "contract": "foundation-installation-provenance/v1",
-  "ruleset_version": "1.17.2",
+  "ruleset_version": "1.19.0",
   "source_repository": "https://github.com/gecompat/AI_Repository_Foundation",
-  "source_commit": null,
-  "source_manifest_sha256": "45a20a17a9dfe0317111be8a658c14599fc7266c371bc006e70e2032ddfb3b86",
-  "recorded_at": "2026-09-09T16:14:05Z",
+  "source_commit": "4aafd20442275d0fdedf291fc6e12e8fe1f683cc",
+  "source_manifest_sha256": "5fae12cf28f454c2f99b591e86c3f4018e32b30288f0e8021acde0af3c9865b4",
+  "recorded_at": "2026-10-05T17:58:10Z",
   "selection": {
     "adapters": [
       "claude-code",
@@ -32,8 +32,8 @@
       "target": ".ai/foundation/AI_WORK_ORCHESTRATION_POLICY.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "07e7969484eeb2accda19277b9eb9fc0f23de4f4f8b01b9b550b9325f4e4fea0",
-      "installed_sha256": "07e7969484eeb2accda19277b9eb9fc0f23de4f4f8b01b9b550b9325f4e4fea0",
+      "source_sha256": "8351e7c8aad363598b4a801eaf5aa9c7e9f29e647d0f745c4bfba84de6a0b7ba",
+      "installed_sha256": "8351e7c8aad363598b4a801eaf5aa9c7e9f29e647d0f745c4bfba84de6a0b7ba",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -92,8 +92,8 @@
       "target": ".ai/foundation/FOUNDATION_RULESET.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "5a39e0fee31246ec67a7052b82083af0b642a7ec67fdf3546f7bbb8f064798ab",
-      "installed_sha256": "5a39e0fee31246ec67a7052b82083af0b642a7ec67fdf3546f7bbb8f064798ab",
+      "source_sha256": "c019cb5e52cb49eec3afe7764cabec8129af5431fd0f4b8ea44a084cfa22af2a",
+      "installed_sha256": "c019cb5e52cb49eec3afe7764cabec8129af5431fd0f4b8ea44a084cfa22af2a",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -132,8 +132,8 @@
       "target": ".ai/foundation/REPOSITORY_CONTINUITY_POLICY.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "14ce40adbc929b7d21c1c12429ca6038204197450f582972ee4ffa38fbd19687",
-      "installed_sha256": "14ce40adbc929b7d21c1c12429ca6038204197450f582972ee4ffa38fbd19687",
+      "source_sha256": "e1526c6339f4383c24c80c181a3d46efecf53b6ba1da2890ca1fdc477772c6f1",
+      "installed_sha256": "e1526c6339f4383c24c80c181a3d46efecf53b6ba1da2890ca1fdc477772c6f1",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -162,8 +162,8 @@
       "target": ".ai/foundation/SEMANTIC_INTEGRATION_POLICY.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "281bfaae334bd069a337192dcc7b108d3819ff0a9fe9249765d3c882ae809530",
-      "installed_sha256": "281bfaae334bd069a337192dcc7b108d3819ff0a9fe9249765d3c882ae809530",
+      "source_sha256": "9f563131f16bf390528a49a114dc2b31b7ec580a4a78f29a3c484abe85fdcc3c",
+      "installed_sha256": "9f563131f16bf390528a49a114dc2b31b7ec580a4a78f29a3c484abe85fdcc3c",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -232,8 +232,8 @@
       "target": ".ai/foundation/feature_catalog.json",
       "kind": "feature-catalog",
       "merge": "review_if_exists",
-      "source_sha256": "cc7810c99bf492e5c0371163a70d1d3db9b652d9fadacf499e704d4fe4b5937b",
-      "installed_sha256": "cc7810c99bf492e5c0371163a70d1d3db9b652d9fadacf499e704d4fe4b5937b",
+      "source_sha256": "7ed0798907beb994138b9b233f7f341b3489f31cc3b8bde219b6283207cdcab9",
+      "installed_sha256": "7ed0798907beb994138b9b233f7f341b3489f31cc3b8bde219b6283207cdcab9",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -242,8 +242,8 @@
       "target": ".ai/foundation/repo_map.yaml",
       "kind": "rule-index",
       "merge": "review_if_exists",
-      "source_sha256": "5aeba73833126629931f8ba95513878a9ba820079beb34f5dafb038401bfec6c",
-      "installed_sha256": "5aeba73833126629931f8ba95513878a9ba820079beb34f5dafb038401bfec6c",
+      "source_sha256": "a5aa4c116b5b1020f5e080e9aef650dcc317a28c4f0b5b91cd6a97690b89eb64",
+      "installed_sha256": "a5aa4c116b5b1020f5e080e9aef650dcc317a28c4f0b5b91cd6a97690b89eb64",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -638,6 +638,36 @@
       "reason": null
     },
     {
+      "source": "foundation/schemas/session-handoff.schema.json",
+      "target": ".ai/foundation/schemas/session-handoff.schema.json",
+      "kind": "schema",
+      "merge": "review_if_exists",
+      "source_sha256": "c66536ec74e29ca6eee0944b8e9fc0219bff6743a67fbfc012f8e74b5f184dba",
+      "installed_sha256": "c66536ec74e29ca6eee0944b8e9fc0219bff6743a67fbfc012f8e74b5f184dba",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
+      "source": "foundation/schemas/session-lifecycle-decision.schema.json",
+      "target": ".ai/foundation/schemas/session-lifecycle-decision.schema.json",
+      "kind": "schema",
+      "merge": "review_if_exists",
+      "source_sha256": "f1384b705115365b03a9928d168ca2c782eaa052f3fc0e5ec18aed268f561583",
+      "installed_sha256": "f1384b705115365b03a9928d168ca2c782eaa052f3fc0e5ec18aed268f561583",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
+      "source": "foundation/schemas/session-lifecycle-request.schema.json",
+      "target": ".ai/foundation/schemas/session-lifecycle-request.schema.json",
+      "kind": "schema",
+      "merge": "review_if_exists",
+      "source_sha256": "aeb916f46f5b8b49de50e8ad0e59e1a3e50eb379c396049f741e8f39c788ba9a",
+      "installed_sha256": "aeb916f46f5b8b49de50e8ad0e59e1a3e50eb379c396049f741e8f39c788ba9a",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
       "source": "foundation/schemas/upgrade-assessment.schema.json",
       "target": ".ai/foundation/schemas/upgrade-assessment.schema.json",
       "kind": "schema",
@@ -685,7 +715,7 @@
       "source_sha256": "a0d5a82c2b67304472506e84c872d28d7ab54335c43a6861e1ad89ed5048fa11",
       "installed_sha256": "2014efbc05a3f6f9b110a69a992e38af17a83e8531281b55bf318e4232835b4f",
       "integration_state": "INTENTIONAL_OVERRIDE",
-      "reason": "Preserved the project Registration Authority default path while updating supported action versions."
+      "reason": "Preserved the project Registration Authority path Metadata/Governance/Artifact_Registry.json."
     },
     {
       "source": "foundation/AGENTS.template.md",
@@ -693,9 +723,9 @@
       "kind": "entrypoint",
       "merge": "ai_merge_if_exists",
       "source_sha256": "c0ca57c32ad6d69f69b802caf96e5c75e19a17dbd0f5f7671066cb3d51792b22",
-      "installed_sha256": "abd596753ede62d9e588ce4fb47a3633d49db3ff6ad0c91ce3d228bab394f170",
+      "installed_sha256": "7ac82c56c860d76dc9e091e11ab748fbfde57c538f61457a8b553ab0ad06bae1",
       "integration_state": "INTENTIONAL_OVERRIDE",
-      "reason": "Preserved project-specific governance outside the managed Foundation block."
+      "reason": "Preserved project-specific governance and added discovery of the complete Foundation 1.19 assessment and registered decision."
     },
     {
       "source": "CLAUDE.md",

@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "installed_version": "1.17.2",
+  "source_version": "1.19.0",
+  "source_ref": "AI_Repository_Foundation@4aafd20442275d0fdedf291fc6e12e8fe1f683cc",
+  "assessments": [
+    {
+      "feature_id": "ci-supersession-and-integration-queue",
+      "candidate_reasons": [
+        "introduced_in:1.18.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        ".github/workflows/ci-functional-impact.yml",
+        "Documentation/Quality/CI_Test_Strategy.md",
+        "Metadata/Governance/Artifact_Registry.json#artifacts/DEC-0001"
+      ],
+      "rationale": "Der Benutzer hat die Integration am 5. Oktober 2026 mit vollständiger Ausführung laufender SQL-CI-Tests gewählt. Die funktionale CI behält laufende mutierende Validierungen; erfolgreiche Checks bleiben an den exakten PR-Head gebunden.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "session-lifecycle-management",
+      "candidate_reasons": [
+        "introduced_in:1.19.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+        "AGENTS.md",
+        "Metadata/Governance/Artifact_Registry.json#artifacts/DEC-0001"
+      ],
+      "rationale": "Die langlaufende autonome Entwicklungswelle verwendet dauerhafte Repositoryquellen. Die neuen Core-Policies und Schemas ergänzen diese Fortsetzung; der optionale Lifecycle-Planner und automatische Nachfolgesessions bleiben ungewählt.",
+      "recommendation": "Ereignisbezogene Checkpoints an natürlichen Arbeitsgrenzen verwenden und ausschließlich ein externes Delta über den dauerhaften Repositoryreferenzen übergeben. Unbekannte Metriken bleiben unbekannt; vollständige Chats und Runtimezustand bleiben außerhalb des Repositorys.",
+      "decision_required": "Konkrete numerische Kontext- und Checkpointschwellen sowie ein optionaler Planner benötigen eine spätere projektbezogene Auswahl. Sie sind für diese Regelnintegration nicht aktiviert.",
+      "selected_capabilities": []
+    }
+  ]
+}
