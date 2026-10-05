@@ -712,3 +712,50 @@ damit sind auch ihre eigenen Backupdateien entfernt. Die 75 lokalen statischen
 Verträge und der unabhängige Source- und Testreview bestanden. Dieser Vertrag
 belegt keinen Restore, keine Wiederherstellbarkeit, Logbackupkette, Snapshot-
 oder zusätzliche Berechtigungs- und Hochlastvariante.
+
+## Data Capture Status: 5. Oktober 2026
+
+`Code/Tests/Common/147_DataCapture_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte die fremde Exportcollation (`55961`).
+Alle 30 lokalen Textspalten verwenden jetzt die Frameworkcollation; fünf
+Textspalten des Datenbankexports wurden nativ geprüft. Die erste Erhebung
+scheiterte zusätzlich an einem vorhandenen Syntaxfehler im dynamischen
+CDC-Batch. Die private Diagnose bestätigte Fehler 156 auch ohne aktiviertes
+CDC: Der Funktionsausdruck im verschachtelten EXEC-Argument verhinderte die
+Kompilierung des gesamten Datenbankbatches. Der CDC-Aufruf verwendet jetzt
+`sys.sp_executesql` mit einem gebundenen Zeilenparameter. Ein kontrollierter
+Stand mit korrigierter Collation und Syntax, aber ohne gemeinsame
+Datenbankbegrenzung reproduzierte anschließend getrennt `55962`.
+
+Der Test erzeugte nach Namenspreflight zwei eigene synthetische
+Unicode-Datenbanken mit abweichender Quelldatenbankcollation. Beide erhielten
+Change Tracking mit zwei Tagen Retention und automatischem Cleanup sowie je
+zwei eigene Tabellen. Die Aufzeichnung von Spaltenänderungen war bei einer
+Tabelle pro Datenbank aktiviert. Native Metadaten bestätigten zwei CT-Datenbanken,
+vier CT-Tabellen und positive aktuelle Versionen.
+
+Vier Aufrufe mit Limit null, eins und NULL sowie einer zusätzlich angeforderten
+nicht vorhandenen Datenbank bestätigten die fünf Exportcollations. Alle zehn
+Datenbankfelder wurden gegen native Metadaten und zwischen TABLE und JSON
+als typisierte Multimengen geprüft. Alle acht CT-Tabellenfelder wurden gegen
+native Metadaten geprüft. Bei Limit eins lieferten Datenbank- und CT-Ausgabe
+je eine Zeile gemäß ihrer eigenen Namenssortierung. Die zusätzliche fehlende
+Datenbank blieb trotz begrenzter Ausgabe als `DATABASE_SELECTION`-Warning
+mit `DATABASE_UNAVAILABLE` und im Modulstatus `PARTIAL_RESULT` sichtbar.
+Die übrigen Fälle blieben `AVAILABLE`; CDC-Tabellen und CDC-Jobs waren leer.
+
+Frameworkinstallation, Smoke-Test, abschließender Laufzeitvertrag und alle
+75 lokalen statischen Verträge bestanden. Vier eigene Container, Volumes und
+temporäre Lab-States wurden nach erfolgreichen oder fehlgeschlagenen Läufen
+entfernt. Ein privater Diagnoselauf hatte zunächst einen Syntaxfehler in der
+Diagnoseausgabe; nach dessen Korrektur wurde der Produktfehler nachgewiesen.
+Die eigenen CT-Datenbanken wurden auch bei Baselinefehlern über eigene
+Erzeugungsflags und Datenbankkennungen entfernt. Dieser Vertrag belegt keine
+positive CDC-Erhebung, Change-Zeilenauslieferung, Consumer-Wasserstände,
+Cleanup-Wirksamkeit oder zusätzliche Berechtigungs- und Hochlastvariante.

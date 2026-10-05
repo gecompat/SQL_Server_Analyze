@@ -89,6 +89,18 @@ CDC liest Transaction Log asynchron in Change Tables und räumt per Cleanupjob a
 
 `master.sys.databases`, `msdb.dbo.agent_datetime`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `sys.change_tracking_databases`, `sys.change_tracking_tables`, `sys.databases`, `sys.schemas`, `sys.sp_executesql`, `sys.tables`.
 
+### Collation und Ausgabegrenzen
+
+Die fünf Textspalten des `databases`-TABLE-Exports verwenden die
+Frameworkcollation `SQL_Latin1_General_CP1_CS_AS`. TABLE und JSON verwenden
+dieselbe materialisierte Datenbankmenge. Alle ausgewählten Datenbanken werden
+vor der Ausgabegrenze erhoben; Modulstatus und Warnings berücksichtigen die
+vollständige Erhebung. Ein positives `@MaxZeilen` begrenzt die Datenbankausgabe
+nach Datenbankname. CDC-Tabellen, CT-Tabellen und Jobs besitzen jeweils eine
+separate globale Grenze nach ihren vorhandenen Namenssortierungen. Null und
+NULL sind unbegrenzt. Die Ausgabe ist kein atomarer Snapshot verschiedener
+Aufrufe und beweist keinen Consumerfortschritt.
+
 ### Source Select
 
 Der Basisstatus verbindet die Datenbankoption mit den Change-Tracking-Tabellen der ausgewählten Datenbank:
@@ -117,7 +129,7 @@ JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
 WHERE [t].[is_ms_shipped] = 0;
 ```
 
-**Wichtig für die Eigenlast:** Die Datenbankauswahl erfolgt vor dem dynamischen datenbanklokalen Katalogzugriff. Ergänzen Sie Jobhistorie nur für tatsächlich aktivierte CDC-Datenbanken und mit Zeitfenster.
+**Wichtig für die Eigenlast:** Die Datenbankauswahl erfolgt vor dem dynamischen datenbanklokalen Katalogzugriff. Die Procedure sucht passende CDC-Jobnamen für jede ausgewählte Datenbank und liest je Job nur die letzte Outcome-Zeile. Sie bietet keinen Historyzeitfilter und liest keine Change-Zeilen.
 
 ### Zeit- und Scope-Modell
 
