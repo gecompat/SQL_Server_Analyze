@@ -333,3 +333,44 @@ Die pfad- und matchgebundene Datenschutz-Ausnahme betrifft ausschließlich
 den geprüften synthetischen USE-Kontext der eigenen Testdatenbank.
 Der Vertrag belegt keine reale Dateivergrößerung, Storage-Hochlast,
 Wachstumsrate oder Zeit-bis-voll-Prognose.
+
+## Critical Engine Events: 5. Oktober 2026
+
+`Code/Tests/Common/139_CriticalEngineEvents_Collation_Runtime_Contract.sql`
+bestand abschließend auf einem neuen lokalen SQL-Server-2025-Docker-Container
+mit `Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte die fremde Exportcollation (`55881`).
+Alle zwölf Textspalten der lokalen Ereignis-, Diagnostics- und
+Quellenstatustabellen verwenden jetzt die Frameworkcollation. Der Vertrag
+bestätigte sie für die fünf Textspalten des Ereignis-TABLE-Exports.
+
+Die Fixture erzeugte eine eigene XE-Session mit Kollisionsprüfung und
+zwei abgefangene synthetische Fehlerereignisse der Severity 16. Der
+Dateipfad wurde nur im Speicher aus dem nativen Standardpfad und einer
+eigenen Laufzeitkennung gebildet. Nach Flush und Sessionstopp bestätigte
+der native Dateileser beide Ereignisse. Drei Aufrufe mit `@MaxZeilen=0`,
+`1` und `NULL` lieferten zwei, eine und zwei Ereigniszeilen. TABLE und JSON
+enthielten dieselben Ergebnisse einschließlich Zeilenhäufigkeiten; beide
+unbegrenzten Fälle wurden zusätzlich als Multiset gegen die native
+Ereignismenge geprüft. Zeit, Ereignisname, Fehlernummer, Severity,
+optionale Komponentenfelder und Meldung wurden gegengeprüft. Der Opt-in
+lieferte das native Ereignis-XML; ohne Opt-in blieb die XML-Spalte `NULL`.
+Der begrenzte Fall enthielt das jüngste Ereignis.
+
+Die ersten zwei Läufe scheiterten vor der Collationreproduktion: `1934`
+wies auf das fehlende `QUOTED_IDENTIFIER ON` im XML-Test hin; `515`
+zeigte eine unzulässig nicht nullable `sysname`-Spalte für ein optionales
+XE-Feld. Der finale Test setzt die XML-Voraussetzung und deklariert die
+nativen Vergleichsspalten explizit nullable. Die Produktänderung blieb
+auf die zwölf Collationangaben beschränkt.
+
+Frameworkinstallation, Smoke-Test und finaler Laufzeitvertrag bestanden.
+Alle drei eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
+Der neue Vertrag belegt keinen realen schweren Enginefehler, keinen
+Ringbufferzugriff und keinen positiven Diagnostics-One-Shot. Er ändert
+weder den vorhandenen Kandidatenlimit- noch den nachfolgenden Severityfilter.

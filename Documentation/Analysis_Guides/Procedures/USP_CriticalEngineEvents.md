@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Welche kritischen Engineereignisse sind in system_health, Ring Buffers oder Diagnostikquellen erhalten?** Sie unterstützt die Entscheidung, ob eine Instanzressource oder Konfiguration als belastbare Spur zum Symptom passt und welche unabhängige OS-, Verlaufs- oder Workloadevidenz fehlt.
+Die Procedure beantwortet die Betriebsfrage: **Welche kritischen Engineereignisse sind in den ausgewählten XE-Dateien erhalten und welche Komponenten meldet der optionale Diagnostics-One-Shot?** Sie unterstützt die Entscheidung, ob eine Instanzressource oder Konfiguration als belastbare Spur zum Symptom passt und welche unabhängige OS-, Verlaufs- oder Workloadevidenz fehlt.
 
 ## Nicht beantwortete Fragen
 
@@ -30,6 +30,16 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `events`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+
+Die zwölf Textspalten der lokalen Ereignis-, Diagnostics- und
+Quellenstatustabellen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`.
+Die fünf Textspalten des Ereignis-TABLE-Exports behalten diese
+Frameworkcollation auch bei einer abweichenden Server- oder
+`tempdb`-Collation. Das vorhandene Zeilenlimit gilt bereits im XE-Kandidatenset
+vor dem nachfolgenden Severityfilter. TABLE und JSON verwenden dieselben
+materialisierten Ereignisse. `@MitEventXml=0` liefert für die XML-Spalte `NULL`;
+der Opt-in überträgt das gelesene Ereignis-XML. Ringbuffer sind keine Quelle
+dieser Procedure.
 
 ## Eine Zeile bedeutet
 
@@ -83,11 +93,11 @@ Für `USP_CriticalEngineEvents` gilt zusätzlich: **keine Zeile** bedeutet, dass
 
 ### Leitfrage
 
-Welche kritischen Engineereignisse sind in system_health, Ring Buffers oder Diagnostikquellen erhalten?
+Welche kritischen Engineereignisse sind in den ausgewählten XE-Dateien erhalten und welche Komponenten meldet der optionale Diagnostics-One-Shot?
 
 ### Technischer Hintergrund
 
-`system_health` erfasst ausgewählte Errors, Scheduler-/Memory-/Connectivity-/Deadlock- und Diagnoseereignisse. Ring Buffers/`sp_server_diagnostics` liefern Component States und begrenzte Historie. Event XML/Datafelder sind versionsabhängig.
+`system_health` erfasst ausgewählte Errors, Scheduler-/Memory-/Connectivity-/Deadlock- und Diagnoseereignisse. Die Procedure liest vorhandene XE-Dateien; `sp_server_diagnostics` liefert optional einen separaten aktuellen Komponentenstatus. Event-XML und Datenfelder sind versionsabhängig.
 
 ### Datenkette
 
