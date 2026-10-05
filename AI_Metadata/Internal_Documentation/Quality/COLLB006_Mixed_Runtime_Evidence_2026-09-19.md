@@ -38,3 +38,32 @@ Smoke-Test und der abschließende Vertrag bestanden; alle drei eigenen
 Container, Volumes und temporären Lab-States wurden entfernt. Die 75 lokalen
 statischen Verträge bestanden nach der Korrektur ebenfalls. Der neue
 Laufzeitvertrag belegt keine Rate-, Fraction-, Reset- oder Hochlastvariante.
+
+## Buffer Pool: 5. Oktober 2026
+
+`Code/Tests/Common/131_BufferPool_Collation_Runtime_Contract.sql` bestand in
+einem neuen lokalen SQL-Server-2025-Docker-Container mit denselben abweichenden
+Server-/`tempdb`- und Frameworkcollations. Die Bereitschaftsprüfung bestätigte
+Majorversion 17; die konkrete ProductVersion wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte mit demselben Vertrag die fremde
+Memory-Exportcollation (`55801`). Die korrigierte Quelle versieht alle sechs
+lokalen Textspalten einschließlich der Datenbanknamen mit der Frameworkcollation.
+Der abschließende TABLE-Export bestätigte diese Collation für alle vier
+Memory-Textspalten. Prozess- und Systemspeicher waren positiv; der
+Verfügbarkeitsprozentsatz entsprach der Formel aus derselben Momentaufnahme,
+und TABLE sowie JSON enthielten denselben Prozessspeicherwert.
+
+Der Standardaufruf lieferte keine Buffer-Pool-Verteilung. Der explizite Opt-in
+lieferte eine positive Verteilung mit höchstens zehn Einträgen einschließlich
+mindestens einer über den nativen Datenbankkatalog auflösbaren Identität und
+konsistenter Cache-MB-Berechnung. Semaphore- und Clerk-Arrays waren positiv und
+hielten die jeweiligen Ausgabelimits ein. Alle geprüften Hüllen waren gültig
+und nicht partiell. Ein erster Test mit nur einem Verteilungseintrag scheiterte
+an der kombinierten Verteilungsassertion (`55804`); der abschließende Vertrag verlangt
+innerhalb des begrenzten Arrays einen nativ auflösbaren Eintrag.
+
+Frameworkinstallation, Smoke-Test und Laufzeitvertrag bestanden. Beide eigenen
+Container, Volumes und temporären Lab-States wurden entfernt. Die 75 lokalen
+statischen Verträge bestanden ebenfalls. Der Nachweis belegt weder Hochlast
+noch vollständige native Werteparität der Semaphore-, Clerk- oder Cachewerte.

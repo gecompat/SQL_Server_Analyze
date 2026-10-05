@@ -45877,10 +45877,10 @@ BEGIN
         , [TotalPhysicalMemoryKb] bigint NULL
         , [AvailablePhysicalMemoryKb] bigint NULL
         , [AvailablePhysicalMemoryPercent] decimal(9,2) NULL
-        , [SystemMemoryStateDesc] nvarchar(256) NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [FindingSeverity] varchar(16) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [SystemMemoryStateDesc] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#BufferPoolAnalysis_ResourceSemaphores]
     (
@@ -45897,7 +45897,7 @@ BEGIN
     );
     CREATE TABLE [#BufferPoolAnalysis_MemoryClerks]
     (
-          [ClerkType] nvarchar(60) NOT NULL
+          [ClerkType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PagesKb] bigint NULL
         , [VirtualMemoryReservedKb] bigint NULL
         , [VirtualMemoryCommittedKb] bigint NULL
@@ -45907,7 +45907,7 @@ BEGIN
     CREATE TABLE [#BufferPoolAnalysis_BufferPool]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CachedPages] bigint NOT NULL
         , [CachedSizeMb] decimal(19,2) NOT NULL
         , [DirtyPages] bigint NOT NULL
