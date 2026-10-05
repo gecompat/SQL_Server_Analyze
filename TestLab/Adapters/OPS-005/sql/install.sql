@@ -45136,33 +45136,33 @@ BEGIN
     CREATE TABLE [#CriticalEngineEvents_Events]
     (
           [TimestampUtc] datetime2(7) NULL
-        , [EventName] sysname NULL
+        , [EventName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
         , [Severity] int NULL
-        , [ComponentName] sysname NULL
-        , [StateDesc] sysname NULL
-        , [MessageText] nvarchar(4000) NULL
-        , [FindingCode] varchar(100) NOT NULL
+        , [ComponentName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StateDesc] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MessageText] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [EventXml] xml NULL
     );
 
     CREATE TABLE [#CriticalEngineEvents_Diagnostics]
     (
           [CreateTime] datetime NULL
-        , [ComponentType] sysname NULL
-        , [ComponentName] sysname NULL
+        , [ComponentType] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ComponentName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [State] int NULL
-        , [StateDesc] sysname NULL
+        , [StateDesc] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [Data] xml NULL
     );
 
     CREATE TABLE [#CriticalEngineEvents_SourceStatus]
     (
-          [SourceName] nvarchar(128) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [SourceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(1000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @SessionName IS NULL
