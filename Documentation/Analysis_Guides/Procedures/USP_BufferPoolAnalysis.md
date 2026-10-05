@@ -28,6 +28,13 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `memory`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die sechs Textspalten der lokalen Arbeitstabellen verwenden explizit
+`SQL_Latin1_General_CP1_CS_AS`. Der TABLE-Export `memory` übernimmt diese
+Frameworkcollation für seine vier Textspalten auch bei abweichender
+Server- oder `tempdb`-Collation. Die optionale JSON-Verteilung bleibt nach
+Datenbankkennungen gruppiert; ein in `master.sys.databases` nicht auflösbarer
+Name bleibt `NULL`.
+
 ## Eine Zeile bedeutet
 
 Je Resultset beschreibt eine Zeile eine Memoryzusammenfassung, einen Clerk oder eine Datenbank-/Page-Verteilung.
