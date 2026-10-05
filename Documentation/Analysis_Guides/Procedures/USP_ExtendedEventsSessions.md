@@ -36,6 +36,12 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `sessions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Alle 26 lokalen Textspalten einschließlich der Namensfilter verwenden die
+Frameworkcollation `SQL_Latin1_General_CP1_CS_AS`. Die sechs Textspalten des
+Session-TABLE-Exports behalten diese Collation auch bei abweichender
+`tempdb`-Collation. Die nativen Sessionnamenvergleiche einschließlich des
+dynamischen Targetmemory-Joins verwenden dieselbe explizite Vergleichsgrenze.
+
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einer Session, einem Event, einer Action, einem Target oder einem konfigurierten Feld.
@@ -107,10 +113,10 @@ SELECT
       [ses].[name] AS [SessionName]
     , [dxs].[create_time]
     , [ev].[name] AS [EventName]
-    , [t].[target_name]
+    , [t].[name] AS [TargetName]
 FROM [sys].[server_event_sessions] AS [ses] WITH (NOLOCK)
 LEFT JOIN [sys].[dm_xe_sessions] AS [dxs] WITH (NOLOCK)
-  ON [dxs].[name] = [ses].[name]
+  ON [dxs].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = [ses].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
 LEFT JOIN [sys].[server_event_session_events] AS [ev] WITH (NOLOCK)
   ON [ev].[event_session_id] = [ses].[event_session_id]
 LEFT JOIN [sys].[server_event_session_targets] AS [t] WITH (NOLOCK)
@@ -123,6 +129,13 @@ WHERE [ses].[name] = N'ExampleXeSession';
 ### Zeit- und Scope-Modell
 
 Die Auswertung beschreibt die aktuelle Konfiguration und den Runtimezustand; Server- und Sessionstart beeinflussen den Targetinhalt.
+
+Mit `@MitLaufzeitstatus=0` bleiben die Runtimefelder NULL und `IsRunning`
+ist `0`. In Kombination mit `@NurLaufend=1` ist das Sessionresultset deshalb
+leer. Aktivierte Detailinventare prüfen laufende Sessions weiterhin direkt
+über die native DMV und können in dieser Kombination Zeilen enthalten.
+Dieser vorhandene Vertrag trennt die optionale Sessionprojektion von den
+separaten Detailabfragen; Status und Zeilenzahl beziehen sich auf Sessions.
 
 ### Bewertung und Gegenprobe
 

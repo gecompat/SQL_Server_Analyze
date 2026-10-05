@@ -97,9 +97,9 @@ BEGIN
         @ErrorMessage nvarchar(2048) = NULL,
         @RowCount bigint = 0;
 
-    CREATE TABLE [#ExtendedEventsSessions_SessionNameFilter]([NameValue] sysname NOT NULL PRIMARY KEY);
-    CREATE TABLE [#ExtendedEventsSessions_EventNameFilter]([NameValue] sysname NOT NULL PRIMARY KEY);
-    CREATE TABLE [#ExtendedEventsSessions_TargetNameFilter]([NameValue] sysname NOT NULL PRIMARY KEY);
+    CREATE TABLE [#ExtendedEventsSessions_SessionNameFilter]([NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
+    CREATE TABLE [#ExtendedEventsSessions_EventNameFilter]([NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
+    CREATE TABLE [#ExtendedEventsSessions_TargetNameFilter]([NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
     SELECT @SessionPatternMode=[PatternMode],@SessionPatternValue=[PatternValue],@SessionPatternFlags=[RegexFlags],@SessionPatternValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@ExtendedEventSessionNamePattern);
     SELECT @EventPatternMode=[PatternMode],@EventPatternValue=[PatternValue],@EventPatternFlags=[RegexFlags],@EventPatternValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@EventNamePattern);
     SELECT @TargetPatternMode=[PatternMode],@TargetPatternValue=[PatternValue],@TargetPatternFlags=[RegexFlags],@TargetPatternValid=[IsValid] FROM [monitor].[TVF_ParsePattern](@TargetNamePattern);
@@ -116,16 +116,16 @@ BEGIN
     CREATE TABLE [#ExtendedEventsSessions_Sessions]
     (
         [EventSessionId] int NOT NULL,
-        [SessionName] sysname NOT NULL,
+        [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [IsRunning] bit NOT NULL,
         [StartupState] bit NULL,
-        [EventRetentionMode] nchar(1) NULL,
-        [EventRetentionModeDesc] nvarchar(60) NULL,
+        [EventRetentionMode] nchar(1) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [EventRetentionModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [MaxDispatchLatencyMilliseconds] int NULL,
         [MaxMemoryKb] int NULL,
         [MaxEventSizeKb] int NULL,
-        [MemoryPartitionMode] nchar(1) NULL,
-        [MemoryPartitionModeDesc] nvarchar(60) NULL,
+        [MemoryPartitionMode] nchar(1) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [MemoryPartitionModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [TrackCausality] bit NULL,
         [RunningSince] datetime NULL,
         [PendingBuffers] int NULL,
@@ -134,7 +134,7 @@ BEGIN
         [TotalLargeBuffers] int NULL,
         [LargeBufferSizeBytes] bigint NULL,
         [TotalBufferSizeBytes] bigint NULL,
-        [BufferPolicyDesc] nvarchar(256) NULL,
+        [BufferPolicyDesc] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [DroppedEventCount] int NULL,
         [DroppedBufferCount] int NULL,
         [BlockedEventFireTimeMilliseconds] int NULL,
@@ -152,29 +152,29 @@ BEGIN
 
     CREATE TABLE [#ExtendedEventsSessions_Events]
     (
-        [SessionName] sysname NOT NULL,
+        [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [EventId] int NOT NULL,
-        [PackageName] sysname NOT NULL,
-        [EventName] sysname NOT NULL,
-        [Predicate] nvarchar(max) NULL
+        [PackageName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EventName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [Predicate] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#ExtendedEventsSessions_Actions]
     (
-        [SessionName] sysname NOT NULL,
-        [EventName] sysname NOT NULL,
+        [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EventName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [ActionOrdinal] int NOT NULL,
-        [PackageName] sysname NOT NULL,
-        [ActionName] sysname NOT NULL
+        [PackageName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [ActionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#ExtendedEventsSessions_Targets]
     (
-        [SessionName] sysname NOT NULL,
+        [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [TargetId] int NOT NULL,
-        [PackageName] sysname NOT NULL,
-        [TargetName] sysname NOT NULL,
-        [ConfiguredFileName] nvarchar(4000) NULL,
+        [PackageName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [TargetName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [ConfiguredFileName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [MaxFileSizeMb] bigint NULL,
         [MaxRolloverFiles] int NULL,
         [MaxMemoryKb] bigint NULL
@@ -182,12 +182,12 @@ BEGIN
 
     CREATE TABLE [#ExtendedEventsSessions_Fields]
     (
-        [SessionName] sysname NOT NULL,
-        [ObjectType] varchar(16) NOT NULL,
+        [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [ObjectType] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [ObjectId] int NOT NULL,
-        [ObjectName] sysname NULL,
-        [FieldName] sysname NOT NULL,
-        [FieldValue] nvarchar(4000) NULL
+        [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [FieldName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [FieldValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen<0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE')
@@ -252,7 +252,7 @@ BEGIN
             FROM [sys].[server_event_sessions] AS s WITH (NOLOCK)
             LEFT JOIN [sys].[dm_xe_sessions] AS r WITH (NOLOCK)
               ON @MitLaufzeitstatus = 1
-             AND [r].[name] = [s].[name]
+             AND [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS
             OUTER APPLY
             (
                 SELECT
@@ -297,7 +297,7 @@ UPDATE [s]
 SET [TotalTargetMemoryBytes]=[r].[total_target_memory]
 FROM [#ExtendedEventsSessions_Sessions] AS [s]
 INNER JOIN [sys].[dm_xe_sessions] AS [r] WITH (NOLOCK)
-    ON [r].[name]=[s].[SessionName];';
+    ON [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[SessionName] COLLATE SQL_Latin1_General_CP1_CS_AS;';
                 EXEC [sys].[sp_executesql] @TargetMemorySql;
             END;
 
@@ -328,7 +328,7 @@ INNER JOIN [sys].[dm_xe_sessions] AS [r] WITH (NOLOCK)
             JOIN [sys].[server_event_sessions] AS s WITH (NOLOCK)
               ON [s].[event_session_id] = [e].[event_session_id]
             WHERE ((@ExtendedEventSessionNames IS NULL OR EXISTS(SELECT 1 FROM [#ExtendedEventsSessions_SessionNameFilter] [f] WHERE [f].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@SessionPatternMode IN('NONE','REGEX','REGEXI') OR [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @SessionPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS))
-              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] = [s].[name]))
+              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
             ORDER BY [s].[name], [e].[event_id];
         END TRY
         BEGIN CATCH
@@ -358,7 +358,7 @@ END;
               ON [e].[event_session_id] = [a].[event_session_id]
              AND [e].[event_id] = [a].[event_id]
             WHERE ((@ExtendedEventSessionNames IS NULL OR EXISTS(SELECT 1 FROM [#ExtendedEventsSessions_SessionNameFilter] [f] WHERE [f].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@SessionPatternMode IN('NONE','REGEX','REGEXI') OR [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @SessionPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS))
-              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] = [s].[name]))
+              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
             ORDER BY [s].[name], [e].[name], [a].[package], [a].[name];
         END TRY
         BEGIN CATCH
@@ -395,7 +395,7 @@ END;
               ON [f].[event_session_id] = [t].[event_session_id]
              AND [f].[object_id] = [t].[target_id]
             WHERE ((@ExtendedEventSessionNames IS NULL OR EXISTS(SELECT 1 FROM [#ExtendedEventsSessions_SessionNameFilter] [f] WHERE [f].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@SessionPatternMode IN('NONE','REGEX','REGEXI') OR [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @SessionPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS))
-              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] = [s].[name]))
+              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
             GROUP BY [s].[name], [t].[target_id], [t].[package], [t].[name]
             ORDER BY [s].[name], [t].[target_id];
         END TRY
@@ -432,7 +432,7 @@ END;
               ON [t].[event_session_id] = [f].[event_session_id]
              AND [t].[target_id] = [f].[object_id]
             WHERE ((@ExtendedEventSessionNames IS NULL OR EXISTS(SELECT 1 FROM [#ExtendedEventsSessions_SessionNameFilter] [f] WHERE [f].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS=[s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS)) AND (@SessionPatternMode IN('NONE','REGEX','REGEXI') OR [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS LIKE @SessionPatternValue COLLATE SQL_Latin1_General_CP1_CS_AS))
-              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] = [s].[name]))
+              AND (@NurLaufend = 0 OR EXISTS (SELECT 1 FROM [sys].[dm_xe_sessions] AS r WITH (NOLOCK) WHERE [r].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS))
             ORDER BY
                 [s].[name],
                 CASE WHEN [e].[event_id] IS NOT NULL THEN 1
