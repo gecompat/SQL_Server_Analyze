@@ -85,3 +85,32 @@ gilt ausschließlich für den beschriebenen lokalen Vertragsumfang.
 Kontrollierte kurze und lange Historien, Wachstum und fehlende optionale
 Quellen bleiben offen. Ein vollständiges Release-Gate und weitere native
 Versionen wurden in dieser Gegenprobe nicht ausgeführt.
+
+## Ergänzende OPS-008-Historiengegenprobe vom 5. Oktober 2026
+
+`TestLab/Invoke-Ops008MsdbHistoryScenario.ps1` bestand in einem neuen
+SQL-Server-2025-Linux-Docker-Container mit vollständiger Frameworkinstallation,
+Smoke-Test und dem bestehenden Runtimevertrag `122`. Der zusätzliche Vertrag
+`TestLab/Scenarios/OPS-008/history-window.sql` verlangte fünf leere
+Historienquellen mit `AVAILABLE`, `RowCount = 0` und leeren Zeitgrenzen.
+
+Drei native Backups einer eigenen synthetischen Datenbank erzeugten
+kontrollierte Backupdatensätze. Nur deren Datumsfelder wurden auf festgelegte
+Fixturewerte gesetzt. Die Analyzer-Aufrufe lieferten nacheinander eine,
+zwei und drei Zeilen in der Backuphistorie sowie die exakten kurzen und
+langen Zeitgrenzen. Eine begrenzte Erweiterung der `msdb`-Datendatei um
+mindestens 8 MB wurde in `SizeMb` sichtbar und mit `sys.master_files`
+abgeglichen. Der Analyzer veränderte die kontrollierte Historienanzahl nicht.
+
+Die Instanz verwendete `Latin1_General_100_CS_AS`, die Frameworkdatenbank
+`SQL_Latin1_General_CP1_CS_AS`. Das Lab verifizierte Engine-Major-Version 17;
+die genaue ProductVersion wurde in diesem Lauf nicht erfasst. Container,
+Volume einschließlich Backupdatei und temporärer State wurden entfernt.
+Secrets und konkrete Runtimeidentitäten sind nicht Teil dieser Evidenz.
+
+Der Nachweis gilt für kontrollierte Leerfälle aller fünf Quellen,
+Backupanzahl und Backupzeitfenster sowie aktuelle Dateigröße nach einer
+kontrollierten Erweiterung. Er belegt keine Retentionpolicy, Wachstumsrate,
+Restorefähigkeit oder nicht leere Zeitfenster der vier weiteren Quellen.
+Tatsächlich fehlende optionale Quellen bleiben offen. Der Lauf ist kein
+vollständiges Release-Gate und kein Nachweis einer weiteren nativen Engine.

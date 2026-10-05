@@ -164,6 +164,32 @@ Recovery erhalten. Der Test erzeugt keinen Nachweis für eine auf dieser
 Engine tatsächlich nicht verfügbare Systemquelle und keine allgemeine
 Migrationsfreigabe.
 
+## OPS-008 Kontrollierte Historien und Dateiwachstum
+
+Der Runner `Invoke-Ops008MsdbHistoryScenario.ps1` erzeugt einen neuen
+SQL-Server-2025-Docker-Container und verlangt fünf leere Historienquellen
+vor Fixtureänderungen. Er führt Smoke-Test und bestehenden `msdb`-Vertrag
+aus. Anschließend erzeugt er drei Backups einer eigenen synthetischen
+Datenbank und setzt ausschließlich deren Historienzeitstempel auf
+kontrollierte Werte. Der Analyzer muss die Zeilenanzahl sowie kurze und
+lange Backupzeitfenster exakt ausgeben. Eine zusätzliche Dateierweiterung
+von mindestens 8 MB prüft die aktuelle Größenangabe; die Fixture begrenzt
+die betroffene Datendatei auf höchstens 128 MB.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Der Runner akzeptiert keinen bestehenden Run. Passwörter bleiben im
+Arbeitsspeicher; die Bereinigung entfernt den eigenen Container samt
+Volume, Backupdatei, Historienfixtures und temporärem State. Bei Fehlern
+bleibt ausschließlich der eigene Recovery-State erhalten. Der Test belegt
+sichtbare Zeitfenster und Größenänderungen, keine Aufbewahrungsregel,
+Wachstumsrate oder Restorefähigkeit. Die vier weiteren Historienquellen
+werden als kontrollierte Leerfälle geprüft; ihre nicht leeren Zeitfenster
+und tatsächlich fehlende optionale Quellen bleiben separat offen.
+
 ## Katalogisierte Beispiele
 
 | Beispiel | Primärer Analyzer | Bedienseite |
