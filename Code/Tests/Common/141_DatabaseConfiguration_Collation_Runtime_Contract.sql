@@ -178,7 +178,8 @@ BEGIN
     IF @Case<>1 AND
        ((SELECT COUNT(*) FROM [#ExampleConfigurationDrift] WHERE [DriftType]='PROFILE_MISMATCH')<>4
         OR EXISTS(SELECT 1 FROM [#ExampleConfigurationDrift] WHERE [DriftType]='PROFILE_MISMATCH' GROUP BY [DatabaseId],[SettingName] HAVING COUNT_BIG(*)<>1)
-        OR NOT EXISTS(SELECT 1 FROM [#ExampleConfigurationDrift] WHERE [DriftType]='LOCAL_VARIATION' AND [SettingName]=N'COLLATION')
+        OR (SELECT COUNT_BIG(*) FROM [#ExampleConfigurationDrift] WHERE [DriftType]='LOCAL_VARIATION' AND [SettingName]=N'COLLATION')
+           <>CASE WHEN (SELECT COUNT(DISTINCT [ActualValue]) FROM [#ExampleConfigurationNative] WHERE [SettingScope]='DATABASE' AND [SettingName]=N'COLLATION')>1 THEN 1 ELSE 0 END
         OR EXISTS(SELECT 1 FROM [#ExampleConfigurationDrift] AS [d] LEFT JOIN [#ExampleConfigurationNative] AS [n]
           ON [n].[DatabaseId]=[d].[DatabaseId] AND [n].[SettingScope]=[d].[SettingScope] AND [n].[SettingName]=[d].[SettingName]
           WHERE [d].[DriftType]='PROFILE_MISMATCH' AND

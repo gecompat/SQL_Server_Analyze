@@ -456,8 +456,17 @@ Warnungsexporte. Bei Limit eins entspricht die erste Driftzeile der nativen
 Optionsvariation. Fünf JSON-Arrays stimmen als typisierte Multimengen mit
 TABLE überein; das Profil wird zusätzlich gegen das Eingabearray geprüft.
 
+Die erste Head-CI scheiterte mit `55905`, weil der Test eine Collationvariation
+auch bei identischen nativen Quelldatenbankcollations verlangte. Die
+Erwartung wird jetzt aus den nativen Werten abgeleitet. Ein weiterer eigener
+Misch-Collation-Lauf bestätigte den positiven Fall. Eine zusätzliche eigene
+synthetische Quelldatenbank mit derselben Collation wie `master` bestätigte
+den Fall ohne Collationdrift; der Aufruf verwendete die vollständig
+qualifizierte Frameworkprocedure. Beide Gegenproben bestanden mit derselben
+kanonischen Testdatei und unverändertem Produktcode.
+
 Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
-Alle fünf eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Alle sieben eigenen Container, Volumes und temporären Lab-States wurden entfernt.
 Die 75 lokalen statischen Verträge und der unabhängige Source-/Testreview
 bestanden. Dieser Vertrag belegt keine Berechtigungsverweigerung, Sperrlast,
 atomare datenbankübergreifende Momentaufnahme oder weitere native Engineversion.
