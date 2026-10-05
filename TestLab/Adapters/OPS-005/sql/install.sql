@@ -46845,7 +46845,7 @@ BEGIN
         , [SchedulerId] int NOT NULL
         , [ParentNodeId] int NOT NULL
         , [CpuId] smallint NOT NULL
-        , [Status] nvarchar(60) NOT NULL
+        , [Status] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CurrentTasks] int NOT NULL
         , [RunnableTasks] int NOT NULL
         , [CurrentWorkers] int NOT NULL
@@ -46866,7 +46866,7 @@ BEGIN
         , [SchedulerId] int NOT NULL
         , [ParentNodeId] int NOT NULL
         , [CpuId] smallint NOT NULL
-        , [Status] nvarchar(60) NOT NULL
+        , [Status] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CurrentTasks] int NOT NULL
         , [RunnableTasks] int NOT NULL
         , [CurrentWorkers] int NOT NULL
@@ -46897,7 +46897,7 @@ BEGIN
           [SchedulerId] int NOT NULL
         , [ParentNodeId] int NOT NULL
         , [CpuId] smallint NOT NULL
-        , [Status] nvarchar(60) NOT NULL
+        , [Status] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SampleSeconds] decimal(19,6) NOT NULL
         , [CurrentTasks] int NOT NULL
         , [RunnableTasks] int NOT NULL
@@ -46922,17 +46922,17 @@ BEGIN
         , [CounterResetDetected] bit NOT NULL
         , [FailedToCreateWorker] bit NULL
         , [IdealWorkersLimit] int NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#WorkerPressureAnalysis_Waits]
     (
-          [WaitType] nvarchar(60) NOT NULL
+          [WaitType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [WaitingTaskCount] bigint NOT NULL
         , [MaxWaitDurationMs] bigint NOT NULL
         , [BlockedTaskCount] bigint NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#WorkerPressureAnalysis_Requests]
@@ -46940,8 +46940,8 @@ BEGIN
           [SessionId] smallint NOT NULL
         , [RequestId] int NOT NULL
         , [SchedulerId] int NULL
-        , [RequestStatus] nvarchar(30) NOT NULL
-        , [Command] nvarchar(32) NOT NULL
+        , [RequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ElapsedMs] int NOT NULL
         , [CpuMs] int NOT NULL
         , [LogicalReads] bigint NOT NULL
@@ -46949,9 +46949,9 @@ BEGIN
         , [Writes] bigint NOT NULL
         , [Dop] smallint NULL
         , [BlockingSessionId] smallint NULL
-        , [WaitType] nvarchar(60) NULL
+        , [WaitType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WaitTimeMs] int NOT NULL
-        , [ContextReason] varchar(80) NOT NULL
+        , [ContextReason] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY([SessionId],[RequestId])
     );
 
@@ -46975,45 +46975,45 @@ BEGIN
         , [BlockingRequestCount] bigint NULL
         , [LongRequestCount] bigint NULL
         , [FailedToCreateWorkerSchedulers] int NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [Interpretation] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Interpretation] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#WorkerPressureAnalysis_SourceStatus]
     (
           [SourceOrdinal] int NOT NULL PRIMARY KEY
-        , [SourceName] sysname NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#WorkerPressureAnalysis_Warnings]
     (
           [WarningOrdinal] int IDENTITY(1,1) NOT NULL
-        , [SourceName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [Message] nvarchar(2048) NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#WorkerPressureAnalysis_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [SampleSeconds] tinyint NOT NULL
         , [ReturnedSchedulerRows] bigint NOT NULL
         , [ReturnedRequestRows] bigint NOT NULL
         , [HasMoreRequestRows] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @SampleSeconds IS NULL OR @SampleSeconds>60
@@ -47232,6 +47232,18 @@ BEGIN
            CASE WHEN @RequestRows>@Limit THEN @Limit ELSE @RequestRows END,
            CONVERT(bit,CASE WHEN @Limit<9223372036854775807 AND @RequestRows>@Limit THEN 1 ELSE 0 END),
            @ErrorNumber,@ErrorMessage);
+
+    IF @RequestRows>@Limit
+    BEGIN
+        ;WITH [RankedRequests] AS
+        (
+            SELECT *,ROW_NUMBER() OVER
+                (ORDER BY CASE [ContextReason] WHEN 'THREADPOOL' THEN 0 WHEN 'BLOCKED_REQUEST' THEN 1 ELSE 2 END,
+                          [ElapsedMs] DESC,[SessionId],[RequestId]) AS [OutputOrdinal]
+            FROM [#WorkerPressureAnalysis_Requests]
+        )
+        DELETE FROM [RankedRequests] WHERE [OutputOrdinal]>@Limit;
+    END;
 
     IF @JsonErzeugen=1
     BEGIN

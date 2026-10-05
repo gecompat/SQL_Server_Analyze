@@ -167,3 +167,39 @@ Beide eigenen Container, Volumes und temporären Lab-States wurden entfernt.
 Die 75 lokalen statischen Verträge bestanden ebenfalls. Der neue Vertrag
 belegt keinen vollständigen Default- oder Opt-in-Gesamtumfang, keine Hochlast
 und keine vollständige native Werteparität sämtlicher Childresultate.
+
+## Worker Pressure: 5. Oktober 2026
+
+`Code/Tests/Common/135_WorkerPressure_Collation_Runtime_Contract.sql`
+bestand abschließend in einem neuen lokalen SQL-Server-2025-Docker-Container
+mit `Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte die fremde Exportcollation (`55841`).
+Die zusätzlichen 24 Textspalten der lokalen Snapshot-, Ergebnis- und
+Statustabellen verwenden jetzt die Frameworkcollation. Der Vertrag prüft
+alle 22 Textspalten der sieben TABLE-Exporte, vier verfügbare Quellen,
+den nicht partiellen Modulstatus und leere Warnings. Snapshot und
+Ein-Sekunden-Sample besitzen positive native Scheduleridentitäten und
+Workerwerte; Kapazität und Belegungsanteil werden gegen die Rechenformeln
+geprüft. Sechs Ergebnisarrays werden einschließlich Zeilenhäufigkeiten
+zwischen TABLE und JSON abgeglichen.
+
+Ein vorheriger Lauf scheiterte mit `55840`. Die kontrollierte Diagnose mit
+zwei eigenen blockierten Requests bestätigte zwei TABLE-Zeilen trotz
+`ReturnedRequestRows=1` und `HasMoreRequestRows=1`. Die Requesttabelle wird
+jetzt nach Materialisierung der Kandidatenaggregate und des Modulstatus
+mit derselben Prioritätsreihenfolge wie RAW und JSON begrenzt. Der
+abschließende Lauf verwendete erneut zwei eigene blockierte Requests und
+zusätzliche Assertions: Beide Messarten lieferten genau eine Ausgabezeile,
+zwei Quellenkandidaten und `HasMoreRequestRows=1`. Diese kontrollierte
+Fixture ergänzt den kanonischen Vertrag und wird nicht durch dessen
+alleinigen Aufruf erzeugt.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Alle vier eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
+Der neue Nachweis belegt keinen positiven THREADPOOL-Wait, keinen tatsächlichen
+Zählerreset, keine Hochlast und keine zusätzlichen Berechtigungsfehler.

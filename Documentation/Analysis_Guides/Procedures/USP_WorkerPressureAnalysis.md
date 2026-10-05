@@ -33,6 +33,16 @@ Für einen synthetisch leeren Requestkontext kann `@MinRequestElapsedMs = 214748
 
 Der typisierte Vertrag umfasst `moduleStatus`, `summary`, `schedulers`, `waits`, `requests`, `sourceStatus` und `warnings`. Berücksichtigen Sie zuerst `moduleStatus` und `sourceStatus`. Das Scheduler-Resultset ist die Primärevidenz; Worker, Waits und Requests sind unabhängig isolierte Kontextquellen. Prüfen Sie danach `summary`, anschließend auffällige Scheduler und zuletzt den begrenzten Requestkontext. Ein partieller Worker-Scan macht Scheduler-Queues nicht null, begrenzt aber Workerbelegung und Zustandsverteilung.
 
+Die bereits collatierte TABLE-Zuordnung und alle weiteren 24 Textspalten der
+lokalen Snapshot-, Ergebnis- und Statustabellen verwenden explizit
+`SQL_Latin1_General_CP1_CS_AS`. Die sieben TABLE-Exporte übernehmen diese
+Frameworkcollation für ihre insgesamt 22 Textspalten auch bei abweichender
+Server- oder `tempdb`-Collation. Numerische Scheduler- und Workerwerte bleiben
+unverändert. `@MaxZeilen` begrenzt die Requestausgabe in RAW, TABLE und JSON
+einheitlich. Summary und Quellenstatus berücksichtigen weiterhin den zusätzlich
+gelesenen Kandidaten zur Begrenzungsprüfung; `HasMoreRequestRows` zeigt ihn an,
+während `ReturnedRequestRows` die tatsächlich ausgegebene Zeilenzahl nennt.
+
 ## Eine Zeile bedeutet
 
 In `summary` bedeutet eine Zeile den gesamten Aufruf. In `schedulers` ist eine Zeile ein sichtbarer Online-Scheduler am zweiten Messpunkt samt optionalem Delta. In `waits` ist eine Zeile ein aggregierter `THREADPOOL`-Waittyp. In `requests` ist eine Zeile ein aktuell sichtbarer Request, der `THREADPOOL`, Blocking oder die Mindestlaufzeit erfüllt. Die Zeilen besitzen verschiedene Granularität und dürfen nicht additiv verbunden werden.
