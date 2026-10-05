@@ -26,6 +26,13 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `agentStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die drei Textspalten der lokalen Agentstatustabelle und ihres TABLE-Exports
+verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Eine abweichende Server-
+oder `tempdb`-Collation verändert den Exportvertrag nicht. TABLE und JSON
+enthalten denselben Dienstsnapshot. `LastStartupTime` ist der letzte in
+`msdb.dbo.syssessions` sichtbare Agentstart; die Spalte verwendet nicht den
+Dienststartzeitpunkt aus `sys.dm_server_services`.
+
 ## Eine Zeile bedeutet
 
 Je Resultset beschreibt eine Zeile einen Dienst-, Plattform- oder Konfigurationsaspekt des SQL Agents.

@@ -60,9 +60,9 @@ BEGIN
 
     CREATE TABLE [#AgentStatus_AgentStatus]
     (
-          [ServiceName]        nvarchar(256) NULL
-        , [StartupTypeDesc]    nvarchar(60)  NULL
-        , [StatusDesc]         nvarchar(60)  NULL
+          [ServiceName]        nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StartupTypeDesc]    nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+        , [StatusDesc]         nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
         , [ProcessId]          int           NULL
         , [LastStartupTime]    datetime2(3)  NULL
         , [AgentSessionId]     int           NULL

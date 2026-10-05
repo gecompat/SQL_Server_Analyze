@@ -565,3 +565,48 @@ damit sind auch ihre eigenen Backupdateien entfernt. Die 75 lokalen
 statischen Verträge und der unabhängige Review bestanden. Dieser Vertrag
 belegt keinen Restore, keine Wiederherstellbarkeit, Logkettenlücke,
 Beschädigung, Copy-only-Variante oder zusätzliche Berechtigungssituation.
+## Agent- und Infrastrukturstatus: 5. Oktober 2026
+
+`Code/Tests/Common/144_Infrastructure_Status_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprünglichen Prozeduren reproduzierten ihre fremde Exportcollation
+getrennt mit `55931` für Agentstatus und `55933` für Infrastruktur-Modulstatus.
+Alle sechs betroffenen TABLE-Textspalten verwenden jetzt die Frameworkcollation.
+Die vorhandenen Ausgabe-, Status- und Auswahlverträge bleiben erhalten.
+
+Der Test legte nach Namenspreflight zwei eigene Jobdefinitionen mit
+Unicode-Namen an, eine aktiviert und eine deaktiviert. Er legte keine Schritte
+oder Zeitpläne an und startete keine Jobs. Native Jobzähler und die acht
+Agentstatusfelder wurden gegen den TABLE-Export geprüft; TABLE und JSON
+wurden als typisierte Multimengen verglichen. Die native Abfrage lieferte
+bei der getrennten Parent-Baselineprüfung eine Agentservicezeile.
+`LastStartupTime` stammt weiterhin aus dem maximalen Agentstartdatum in
+`msdb.dbo.syssessions`.
+
+Vier Parent-Aufrufe prüften deaktivierte Children, Agent allein, Agent mit
+BackupChain sowie einen ungültigen negativen Zeilenparameter. Die elf
+Child-JSON-Schlüssel enthalten für deaktivierte Children explizit NULL.
+Agentdaten und dessen Statusmetadaten stimmen mit dem direkten Child-Aufruf
+überein. Der Legacy-Modulstatus `EXECUTED` bleibt von dessen fachlichem
+Child-Status getrennt. BackupChain bestätigte die fehlende Full-Evidenz der
+eigenen Frameworkdatenbank; dafür wurde kein Backup erzeugt. Native Jobzähler
+wurden nach Entfernung ausschließlich der eigenen Jobkennungen wiederhergestellt.
+
+Der erste Lauf bestand den SQL-Vertrag. Anschließend scheiterte die private
+Hilfsrunner-Auswertung, weil die öffentliche Lab-API bei Erfolg keine rohe
+SQL-Ausgabe in ihrer Erfolgsmeldung zurückgibt. Die korrigierte Auswertung
+liest die Servicezeilenbeobachtung aus der erwarteten Parent-Baselinefehlermeldung;
+der zweite Lauf bestand auch den Hilfsrunner. Produktcode und kanonischer
+SQL-Test blieben zwischen beiden Läufen unverändert.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Beide eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden. Dieser Vertrag belegt keinen
+Joblauf, keine Jobhistorie, keinen positiven Agentstartzeitpunkt und keine
+zusätzliche Berechtigungs- oder Hochlastvariante. Er ändert weder
+Agentservicekonfiguration noch Startzustand.

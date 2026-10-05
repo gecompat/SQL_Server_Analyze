@@ -30,6 +30,15 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die drei Textspalten des lokalen Modulstatus und seines TABLE-Exports
+verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Deaktivierte Children
+bleiben im JSON als NULL erhalten. Für die bisherigen Standardchildren
+bedeutet `EXECUTED`, dass der Aufruf ohne äußeren Fehler beendet wurde;
+der fachliche Status bleibt im Child-JSON zu prüfen. Ein Agent-Child mit
+`UNAVAILABLE_FEATURE` ändert diese bestehende Ausführungssemantik nicht.
+Die drei optionalen Vertiefungen übernehmen dagegen ihren fachlichen
+Status in den Modulstatus. Einzelne Childzeitpunkte sind nicht atomar.
+
 ## Eine Zeile bedeutet
 
 Die Granularität hängt vom Child ab: Dienst, Job, Pool, Replica, Datenbank, Backup, Log-Shipping-Paar, Replikationsobjekt oder Capturefeature.
