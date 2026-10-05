@@ -183,8 +183,9 @@ pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
 
 Der Runner akzeptiert keinen bestehenden Run. Passwörter bleiben im
 Arbeitsspeicher; die Bereinigung entfernt den eigenen Container samt
-Volume, Backupdatei, Historienfixtures und temporärem State. Bei Fehlern
-bleibt ausschließlich der eigene Recovery-State erhalten. Der Test belegt
+Volume, Backupdatei, Historienfixtures und temporärem State. Bei unvollständiger
+Provisionierung oder fehlgeschlagenem Cleanup bleibt ausschließlich der
+eigene Recovery-State erhalten. Der Test belegt
 sichtbare Zeitfenster und Größenänderungen, keine Aufbewahrungsregel,
 Wachstumsrate oder Restorefähigkeit. Die vier weiteren Historienquellen
 werden als kontrollierte Leerfälle geprüft; ihre nicht leeren Zeitfenster
