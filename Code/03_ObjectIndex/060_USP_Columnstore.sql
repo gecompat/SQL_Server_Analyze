@@ -93,7 +93,7 @@ BEGIN
     SET @CrossDatabaseRequestedInternal=CONVERT(bit,CASE WHEN @DatabaseNames IS NULL OR @DatabaseNamePattern IS NOT NULL OR @DatabaseListCount>1 THEN 1 ELSE 0 END);
     SELECT @DatenbankNameLike=CASE WHEN [PatternMode]='LIKE' THEN [PatternValue] END FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
     CREATE TABLE [#Columnstore_NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
-    CREATE TABLE [#Columnstore_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
+    CREATE TABLE [#Columnstore_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=NULL,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#Columnstore_NameFilters';
     IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='COLUMNSTORE_CURRENT',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#Columnstore_DatabaseCandidates';
@@ -145,14 +145,14 @@ BEGIN
 
     CREATE TABLE [#Columnstore_DatabaseStatus]
     (
-          [DatabaseName]       sysname        NULL
-        , [StatusCode]         varchar(40)    NOT NULL
+          [DatabaseName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
+        , [StatusCode]         varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [IsPartial]          bit            NOT NULL
         , [RowCount]           bigint         NOT NULL
-        , [RequiredPermission] nvarchar(256)  NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
         , [ErrorNumber]        int            NULL
-        , [ErrorMessage]       nvarchar(2048) NULL
-        , [Detail]             nvarchar(2000) NULL
+        , [ErrorMessage]       nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail]             nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
@@ -182,28 +182,28 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
  IF @MitPhysicalStats=1 OR @MitSegmenten=1 OR @MitDictionaries=1 SELECT @ColumnstoreDeepAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='COLUMNSTORE_DEEP';
  CREATE TABLE [#Columnstore_Result]
  (
-  [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname NULL,[IndexTypeDesc] nvarchar(60) NULL,
-  [PartitionNumber] int NOT NULL,[RowGroupId] int NOT NULL,[StateDesc] nvarchar(60) NULL,[TotalRows] bigint NULL,[DeletedRows] bigint NULL,[ActiveRows] bigint NULL,
+  [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [PartitionNumber] int NOT NULL,[RowGroupId] int NOT NULL,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[TotalRows] bigint NULL,[DeletedRows] bigint NULL,[ActiveRows] bigint NULL,
   [DeletedPercent] decimal(9,4) NULL,[FullnessPercent] decimal(9,4) NULL,[SizeMb] decimal(19,2) NULL,[DeltaStoreHobtId] bigint NULL,
-  [TrimReasonDesc] nvarchar(60) NULL,[TransitionToCompressedStateDesc] nvarchar(60) NULL,[HasVertipaqOptimization] bit NULL,[Generation] bigint NULL,[CreatedTime] datetime2 NULL,[ClosedTime] datetime2 NULL,
-  [Assessment] varchar(60) NOT NULL
+  [TrimReasonDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[TransitionToCompressedStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HasVertipaqOptimization] bit NULL,[Generation] bigint NULL,[CreatedTime] datetime2 NULL,[ClosedTime] datetime2 NULL,
+  [Assessment] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
  );
  CREATE TABLE [#Columnstore_Physical]
  (
-  [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname NULL,[IndexTypeDesc] nvarchar(60) NULL,
-  [PartitionNumber] int NOT NULL,[RowGroupId] int NOT NULL,[StateDesc] nvarchar(60) NULL,[TotalRows] bigint NULL,[DeletedRows] bigint NULL,[ActiveRows] bigint NULL,
-  [DeletedPercent] decimal(9,4) NULL,[SizeMb] decimal(19,2) NULL,[DeltaStoreHobtId] bigint NULL,[TrimReasonDesc] nvarchar(60) NULL,
-  [TransitionToCompressedStateDesc] nvarchar(60) NULL,[HasVertipaqOptimization] bit NULL,[Generation] bigint NULL,[CreatedTime] datetime2 NULL,[ClosedTime] datetime2 NULL,[Assessment] varchar(60) NOT NULL
+  [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [PartitionNumber] int NOT NULL,[RowGroupId] int NOT NULL,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[TotalRows] bigint NULL,[DeletedRows] bigint NULL,[ActiveRows] bigint NULL,
+  [DeletedPercent] decimal(9,4) NULL,[SizeMb] decimal(19,2) NULL,[DeltaStoreHobtId] bigint NULL,[TrimReasonDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [TransitionToCompressedStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[HasVertipaqOptimization] bit NULL,[Generation] bigint NULL,[CreatedTime] datetime2 NULL,[ClosedTime] datetime2 NULL,[Assessment] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
  );
  CREATE TABLE [#Columnstore_Segments]
  (
-  [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[IndexId] int NOT NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,[ColumnName] sysname NULL,
-  [RowGroupId] int NOT NULL,[EncodingType] int NULL,[EncodingTypeDesc] varchar(40) NULL,[RowCount] int NULL,[HasNulls] int NULL,[PrimaryDictionaryId] int NULL,[SecondaryDictionaryId] int NULL,[OnDiskSizeMb] decimal(19,4) NULL
+  [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IndexId] int NOT NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [RowGroupId] int NOT NULL,[EncodingType] int NULL,[EncodingTypeDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RowCount] int NULL,[HasNulls] int NULL,[PrimaryDictionaryId] int NULL,[SecondaryDictionaryId] int NULL,[OnDiskSizeMb] decimal(19,4) NULL
  );
  CREATE TABLE [#Columnstore_Dictionaries]
  (
-  [DatabaseName] sysname NOT NULL,[SchemaName] sysname NOT NULL,[ObjectName] sysname NOT NULL,[IndexId] int NOT NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,[ColumnName] sysname NULL,
-  [DictionaryId] int NOT NULL,[DictionaryType] int NULL,[DictionaryTypeDesc] varchar(40) NULL,[EntryCount] bigint NULL,[OnDiskSizeMb] decimal(19,4) NULL
+  [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IndexId] int NOT NULL,[PartitionNumber] int NOT NULL,[ColumnId] int NOT NULL,[ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [DictionaryId] int NOT NULL,[DictionaryType] int NULL,[DictionaryTypeDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[EntryCount] bigint NULL,[OnDiskSizeMb] decimal(19,4) NULL
  );
  IF @OverallStatus='AVAILABLE' AND (@MinDeletedPercent<0 OR @MinDeletedPercent>100)
  BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'@MinDeletedPercent muss zwischen 0 und 100 liegen.'; INSERT [#Columnstore_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END

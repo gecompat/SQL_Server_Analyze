@@ -71,42 +71,42 @@ BEGIN
     CREATE TABLE [#SchemaDesignAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#SchemaDesignAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#SchemaDesignAnalysis_Findings]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [FindingCode] varchar(100) NOT NULL
-        , [Severity] varchar(16) NOT NULL
-        , [ObjectType] nvarchar(60) NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [RelatedObjectName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RelatedObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MetricValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#SchemaDesignAnalysis_Errors]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen < 0

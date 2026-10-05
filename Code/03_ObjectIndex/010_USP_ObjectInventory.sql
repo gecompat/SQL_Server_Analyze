@@ -540,7 +540,7 @@ SELECT
         WITHIN GROUP (ORDER BY [jp].[path])
 FROM [sys].[json_index_paths] AS [jp] WITH (NOLOCK)
 INNER JOIN [#ObjectInventory_JsonIndexes] AS [ji]
-   ON [ji].[DatabaseName]=@pDatabaseName
+   ON [ji].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS
   AND [ji].[ObjectId]=[jp].[object_id]
   AND [ji].[IndexId]=[jp].[index_id]
 GROUP BY [jp].[object_id],[jp].[index_id];';
@@ -638,20 +638,20 @@ SELECT TOP (@pMaxRows)
        CASE WHEN @pMitIndizes=1 THEN [ji].[OptimizeForArraySearch] END,
        CASE
            WHEN @pMitIndizes=1 AND [ji].[ObjectId] IS NOT NULL
-                AND @pJsonIndexStatusCode=''AVAILABLE''
+                AND @pJsonIndexStatusCode COLLATE SQL_Latin1_General_CP1_CS_AS=''AVAILABLE''
            THEN COALESCE([jp].[JsonPathCount],CONVERT(bigint,0))
            WHEN @pMitIndizes=1 THEN [jp].[JsonPathCount]
        END,
        CASE WHEN @pMitIndizes=1 THEN [jp].[JsonPaths] END,
        CASE
            WHEN @pMitIndizes=0 THEN NULL
-           WHEN [ji].[ObjectId] IS NOT NULL AND @pJsonIndexStatusCode=''AVAILABLE_EMPTY_OR_RESTRICTED'' THEN ''AVAILABLE''
-           WHEN [ji].[ObjectId] IS NOT NULL THEN @pJsonIndexStatusCode
-           WHEN @pJsonIndexStatusCode IN
+           WHEN [ji].[ObjectId] IS NOT NULL AND @pJsonIndexStatusCode COLLATE SQL_Latin1_General_CP1_CS_AS=''AVAILABLE_EMPTY_OR_RESTRICTED'' THEN ''AVAILABLE''
+           WHEN [ji].[ObjectId] IS NOT NULL THEN @pJsonIndexStatusCode COLLATE SQL_Latin1_General_CP1_CS_AS
+           WHEN @pJsonIndexStatusCode COLLATE SQL_Latin1_General_CP1_CS_AS IN
                 (''AVAILABLE'',''AVAILABLE_LIMITED'',''AVAILABLE_EMPTY_OR_RESTRICTED'')
            THEN ''NOT_APPLICABLE''
-           ELSE @pJsonIndexStatusCode
-       END,
+           ELSE @pJsonIndexStatusCode COLLATE SQL_Latin1_General_CP1_CS_AS
+       END COLLATE SQL_Latin1_General_CP1_CS_AS,
        CASE WHEN @pMitIndizes=1 THEN @pJsonIndexEvidenceLimit END
 FROM sys.objects AS [o] WITH (NOLOCK)
 JOIN sys.schemas AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
@@ -661,11 +661,11 @@ LEFT JOIN sys.indexes AS [i] WITH (NOLOCK) ON [i].[object_id]=[o].[object_id] AN
 LEFT JOIN IndexAgg AS [ia] ON [ia].[object_id]=[i].[object_id] AND [ia].[index_id]=[i].[index_id]
 LEFT JOIN sys.data_spaces AS [ds] WITH (NOLOCK) ON [ds].[data_space_id]=[i].[data_space_id]
 LEFT JOIN [#ObjectInventory_JsonIndexes] AS [ji]
-  ON [ji].[DatabaseName]=@pDatabaseName
+  ON [ji].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS
  AND [ji].[ObjectId]=[i].[object_id]
  AND [ji].[IndexId]=[i].[index_id]
 LEFT JOIN [#ObjectInventory_JsonPathAgg] AS [jp]
-  ON [jp].[DatabaseName]=@pDatabaseName
+  ON [jp].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS
  AND [jp].[ObjectId]=[i].[object_id]
  AND [jp].[IndexId]=[i].[index_id]
 OUTER APPLY
@@ -685,7 +685,7 @@ OUTER APPLY
                   ORDER BY [ic2].[index_column_id] FOR XML PATH(''''),TYPE).value(''.'',''nvarchar(max)''),1,2,N'''') AS [IncludedColumns]
 ) AS [ic]
 WHERE [o].[type] IN (''U'',''V'')
-  AND (@pObjectType=''ALLE'' OR (@pObjectType=''TABLE'' AND [o].[type]=''U'') OR (@pObjectType=''VIEW'' AND [o].[type]=''V''))
+  AND (@pObjectType COLLATE SQL_Latin1_General_CP1_CS_AS=''ALLE'' OR (@pObjectType COLLATE SQL_Latin1_General_CP1_CS_AS=''TABLE'' AND [o].[type]=''U'') OR (@pObjectType COLLATE SQL_Latin1_General_CP1_CS_AS=''VIEW'' AND [o].[type]=''V''))
 '+@SchemaPredicateS+@ObjectPredicateO+@FullObjectPredicateSO+N'
   AND (@pMitIndizes=0 OR [o].[type]=''V'' OR [i].[index_id] IS NOT NULL)
 ORDER BY [oa].[ReservedPages] DESC,[o].[object_id],[i].[index_id]

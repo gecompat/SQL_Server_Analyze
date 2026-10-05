@@ -86,7 +86,7 @@ BEGIN
     SET @CrossDatabaseRequestedInternal=CONVERT(bit,CASE WHEN @DatabaseNames IS NULL OR @DatabaseNamePattern IS NOT NULL OR @DatabaseListCount>1 THEN 1 ELSE 0 END);
     SELECT @DatenbankNameLike=CASE WHEN [PatternMode]='LIKE' THEN [PatternValue] END FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
     CREATE TABLE [#MissingIndexes_NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
-    CREATE TABLE [#MissingIndexes_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
+    CREATE TABLE [#MissingIndexes_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=NULL,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#MissingIndexes_NameFilters';
     IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='MISSING_INDEX_CURRENT',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#MissingIndexes_DatabaseCandidates';
@@ -134,14 +134,14 @@ BEGIN
 
     CREATE TABLE [#MissingIndexes_DatabaseStatus]
     (
-          [DatabaseName]       sysname        NULL
-        , [StatusCode]         varchar(40)    NOT NULL
+          [DatabaseName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
+        , [StatusCode]         varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [IsPartial]          bit            NOT NULL
         , [RowCount]           bigint         NOT NULL
-        , [RequiredPermission] nvarchar(256)  NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
         , [ErrorNumber]        int            NULL
-        , [ErrorMessage]       nvarchar(2048) NULL
-        , [Detail]             nvarchar(2000) NULL
+        , [ErrorMessage]       nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail]             nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
@@ -167,13 +167,13 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
 
  CREATE TABLE [#MissingIndexes_Result]
  (
-   [DatabaseName] sysname NOT NULL, [SchemaName] sysname NULL, [ObjectName] sysname NULL, [ObjectId] int NULL,
+   [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL, [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [ObjectId] int NULL,
    [IndexHandle] int NOT NULL, [IndexGroupHandle] int NOT NULL, [UniqueCompiles] bigint NULL,
    [UserSeeks] bigint NULL, [UserScans] bigint NULL, [TotalUserReads] bigint NULL, [LastUserSeek] datetime NULL, [LastUserScan] datetime NULL,
    [AvgTotalUserCost] float NULL, [AvgUserImpact] float NULL, [ImprovementMeasure] decimal(28,2) NULL,
-   [EqualityColumns] nvarchar(4000) NULL, [InequalityColumns] nvarchar(4000) NULL, [IncludedColumns] nvarchar(4000) NULL,
-   [StatementName] nvarchar(4000) NULL, [ProposedIndexName] sysname NULL, [ProposedCreateIndex] nvarchar(max) NULL,
-   [WarningText] nvarchar(1000) NOT NULL
+   [EqualityColumns] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [InequalityColumns] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [IncludedColumns] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+   [StatementName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [ProposedIndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL, [ProposedCreateIndex] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+   [WarningText] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
  );
  IF @OverallStatus='AVAILABLE' AND (@MinUserReads<0 OR @MinAvgUserImpact<0 OR @MinAvgUserImpact>100 OR @MinImprovementMeasure<0)
  BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'Ungültiger Mindestfilter.'; INSERT [#MissingIndexes_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
