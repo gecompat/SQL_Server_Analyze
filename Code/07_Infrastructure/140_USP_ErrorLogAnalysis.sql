@@ -76,95 +76,95 @@ BEGIN
     (
           [RuleOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [ProductCode] int NOT NULL
-        , [RuleCategory] varchar(80) NOT NULL
-        , [SearchText1] nvarchar(4000) NULL
-        , [SearchText2] nvarchar(4000) NULL
+        , [RuleCategory] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SearchText1] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SearchText2] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ErrorLogAnalysis_ReadBuffer]
     (
           [LogDate] datetime NULL
-        , [ProcessInfo] nvarchar(50) NULL
-        , [MessageText] nvarchar(max) NULL
+        , [ProcessInfo] nvarchar(50) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ErrorLogAnalysis_Events]
     (
           [EventOrdinal] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [ProductCode] int NOT NULL
-        , [ProductName] varchar(32) NOT NULL
+        , [ProductName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ArchiveNumber] int NOT NULL
-        , [RuleCategory] varchar(80) NOT NULL
+        , [RuleCategory] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [LogDateServerLocal] datetime NOT NULL
-        , [ProcessInfo] nvarchar(50) NULL
-        , [MessageText] nvarchar(max) NOT NULL
+        , [ProcessInfo] nvarchar(50) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MessageHash] binary(32) NOT NULL
     );
     CREATE INDEX [IX_ErrorLog_Events_Time] ON [#ErrorLogAnalysis_Events]([LogDateServerLocal],[ProductCode],[ArchiveNumber]);
     CREATE TABLE [#ErrorLogAnalysis_SourceStatus]
     (
           [SourceOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [ProductName] varchar(32) NOT NULL
+        , [ProductName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ArchiveNumber] int NOT NULL
-        , [RuleCategory] varchar(80) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [RuleCategory] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReadRowCount] bigint NOT NULL
         , [AcceptedRowCount] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ErrorLogAnalysis_Classified]
     (
           [EventOrdinal] bigint NOT NULL PRIMARY KEY
-        , [ProductName] varchar(32) NOT NULL
+        , [ProductName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ArchiveNumber] int NOT NULL
-        , [Category] varchar(80) NOT NULL
+        , [Category] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [LogDateServerLocal] datetime NOT NULL
-        , [ProcessInfo] nvarchar(50) NULL
-        , [MessageText] nvarchar(max) NOT NULL
+        , [ProcessInfo] nvarchar(50) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ErrorLogAnalysis_Summary]
     (
-          [ProductName] varchar(32) NOT NULL
-        , [Category] varchar(80) NOT NULL
+          [ProductName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Category] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [EventCount] bigint NOT NULL
         , [FirstOccurrenceServerLocal] datetime NOT NULL
         , [LastOccurrenceServerLocal] datetime NOT NULL
         , [ArchiveCount] int NOT NULL
         , [HighestArchiveNumber] int NOT NULL
-        , [TimeSemantics] varchar(64) NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [TimeSemantics] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ErrorLogAnalysis_Details]
     (
-          [ProductName] varchar(32) NOT NULL
+          [ProductName] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ArchiveNumber] int NOT NULL
-        , [Category] varchar(80) NOT NULL
+        , [Category] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [LogDateServerLocal] datetime NOT NULL
-        , [TimeSemantics] varchar(64) NOT NULL
-        , [ProcessInfo] nvarchar(50) NULL
+        , [TimeSemantics] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ProcessInfo] nvarchar(50) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MessageCharacters] bigint NULL
         , [MessageBytes] bigint NULL
         , [MessageIsTruncated] bit NOT NULL
-        , [MessageText] nvarchar(max) NULL
+        , [MessageText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ErrorLogAnalysis_Warnings]
     (
           [WarningOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [SourceName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [Message] nvarchar(2048) NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ErrorLogAnalysis_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
         , [SinceServerLocalTime] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [AgentRequested] bit NOT NULL
         , [HighestArchiveRequested] tinyint NOT NULL
@@ -175,7 +175,7 @@ BEGIN
         , [HasMoreSourceRows] bit NOT NULL
         , [HasMoreDetailRows] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @AgentEinbeziehen IS NULL OR @MeldungstextEinbeziehen IS NULL OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
@@ -352,6 +352,17 @@ BEGIN
            CONVERT(bit,CASE WHEN @Limit<9223372036854775807 AND @DetailRows>@Limit THEN 1 ELSE 0 END),
            @ErrorNumber,@ErrorMessage);
 
+    DECLARE @TruncatedCount bigint=(SELECT COUNT_BIG(*) FROM [#ErrorLogAnalysis_Details] WHERE [MessageIsTruncated]=1);
+    DECLARE @LargestRequired bigint=(SELECT MAX([MessageCharacters]) FROM [#ErrorLogAnalysis_Details] WHERE [MessageIsTruncated]=1);
+    ;WITH [RankedDetails] AS
+    (
+        SELECT *,ROW_NUMBER() OVER
+        (
+            ORDER BY [LogDateServerLocal] DESC,[ProductName],[ArchiveNumber],[Category]
+        ) AS [OutputOrdinal]
+        FROM [#ErrorLogAnalysis_Details]
+    )
+    DELETE FROM [RankedDetails] WHERE [OutputOrdinal]>@Limit;
     IF @JsonErzeugen=1
     BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT N'ErrorLogAnalysis' [resultName],1 [schemaVersion],@CapturedAtUtc [generatedAtUtc],@EffectiveSince [sinceServerLocalTime],N'SERVER_LOCAL_TIME_FROM_ERRORLOG' [timeSemantics],@StatusCode [statusCode],@IsPartial [isPartial],@MeldungstextEinbeziehen [messageTextIncluded],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
@@ -388,8 +399,8 @@ BEGIN
 
     IF @MeldungstextEinbeziehen=1
     BEGIN
-        DECLARE @TruncatedCount bigint=(SELECT COUNT_BIG(*) FROM [#ErrorLogAnalysis_Details] WHERE [MessageIsTruncated]=1);
-        DECLARE @LargestRequired bigint=(SELECT MAX([MessageCharacters]) FROM [#ErrorLogAnalysis_Details] WHERE [MessageIsTruncated]=1);
+
+
         EXEC [monitor].[InternalEmitTruncationWarning] @TruncatedValueCount=@TruncatedCount,@ParameterName=N'@MaxMeldungszeichen',@ParameterValue=@MaxMeldungszeichen,@LargestRequiredCharacters=@LargestRequired,@PrintMeldungen=@PrintMeldungen;
     END;
 
