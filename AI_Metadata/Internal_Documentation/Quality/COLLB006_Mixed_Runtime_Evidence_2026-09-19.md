@@ -804,3 +804,49 @@ der erneuerte Adaptervertrag sowie der unabhängige Source- und Testreview
 bestanden. Dieser Vertrag belegt keine Jobausführung, positive Jobhistorie,
 Alertzustellung, Operatorerreichbarkeit, Mailzustellung oder zusätzliche
 Berechtigungs- und Hochlastvariante.
+
+## Extended Events Target Runtime: 5. Oktober 2026
+
+`Code/Tests/Common/149_XETargetRuntime_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben. Der ursprüngliche Stand reproduzierte die fremde
+Exportcollation (`55981`). Alle acht Textspalten des Targetexports einschließlich
+des optionalen MAX-Textdokuments verwenden jetzt die Frameworkcollation.
+
+Der Test erzeugte nach Namenspreflight zwei eigene synthetische Unicode-
+XE-Sessions mit Ringbuffer. Beide erfassten ausschließlich Fehlernummer 50000
+mit Schweregrad 16 aus der eigenen Testsession. Zwei abgefangene synthetische
+Fehler wurden in beiden nativen Targetdokumenten bestätigt. Bestehende
+XE-Sessions und Targets wurden nicht verändert.
+
+Sieben Aufrufe prüften beide Targets ohne Textdaten, mit fünf Zeichen und
+unbegrenztem Text, die exakte Auswahl einer eigenen Session, einen fehlenden
+Targetnamen sowie die fehlende Flush- und High-Impact-Bestätigung. Die
+vorhandenen Statuswerte und Partialitätsflags blieben erhalten; deaktivierte
+und bestätigungspflichtige Aufrufe lieferten keine Targetzeile. Die acht
+Exportcollations und alle 18 TABLE-/JSON-Felder wurden geprüft. Die drei
+nativen Zähler lagen in den Vorher-/Nachher-Intervallen. Sessionadressen blieben
+zwischen den Gegenproben identisch; Erhebungszeit und feste Evidenzfelder
+wurden getrennt geprüft. Textopt-out blieb NULL, fünf Zeichen erzeugten eine
+gemeinsame maschinenlesbare Kürzungswarning, und unbegrenzter Text behielt
+seine ursprüngliche Zeichen- und Bytezahl.
+
+Der erste Lauf scheiterte an der angenommenen exakten Gleichheit der nativen
+Sessionstartzeit. Ein separater privater Diagnoselauf zeigte eine Variation
+der nativen `create_time` um einen `datetime`-Tick zwischen Reads; die Ursache
+ist nicht belegt. Der abschließende Test verlangt deshalb stabile native
+Sessionadressen und höchstens zehn Millisekunden Abweichung zu jeder der
+beiden Zeitgegenproben. Die Zählerintervalle bleiben streng; Produktcode und
+öffentlicher Zeittyp wurden nicht geändert. Der unabhängige Review ergänzte
+außerdem explizite NULL-Prüfungen für angeforderte Payloadmetriken.
+
+Frameworkinstallation, Smoke-Test, abschließender Laufzeitvertrag, 75 lokale
+statische Verträge und unabhängiger Source- und Testreview bestanden. Alle
+drei eigenen Container, Volumes und temporären Lab-States wurden entfernt;
+die eigenen XE-Sessions wurden auch bei Baselinefehlern über Erzeugungsflags
+gelöscht. Dieser Vertrag belegt keine Event-File-Ausgabe, Retention, Verlust-
+oder Dropped-Event-Bewertung, Regexfilter, zusätzliche Berechtigungsprofile
+oder Hochlastvariante.

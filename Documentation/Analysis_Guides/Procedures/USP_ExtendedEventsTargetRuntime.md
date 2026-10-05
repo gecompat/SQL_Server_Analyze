@@ -93,6 +93,13 @@ Runtime-DMVs liefern Targettyp/-daten, Buffer-/Memory-/Eventcounter und je Versi
 
 `master.sys.databases`, `sys.dm_xe_session_targets`, `sys.dm_xe_sessions`, `sys.sp_executesql`.
 
+Die acht Textspalten des `targets`-TABLE-Exports einschließlich des optionalen
+Targetdokuments verwenden `SQL_Latin1_General_CP1_CS_AS`. TABLE und JSON
+übernehmen dieselbe Materialisierung einschließlich der nativen Zähler und
+der Kennzeichnung gekürzter Targetdaten. Die Ausgabe besitzt keine Zeilengrenze;
+Session- und Targetfilter bestimmen den Scope, `@MaxTargetDataZeichen` begrenzt
+ausschließlich die optionale Textprojektion.
+
 ### Source Select
 
 Runtime-Targetdaten werden über die Address der laufenden XE-Session mit der Session verbunden:
