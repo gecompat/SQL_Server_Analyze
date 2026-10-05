@@ -35,34 +35,34 @@ BEGIN
     CREATE TABLE [#RunSnapshotCollectionCycle_Run]
     (
           [CaptureRunId] bigint NULL
-        , [TargetDatabaseName] sysname NULL
-        , [CollectorCode] varchar(64) NULL
-        , [SchedulerType] varchar(16) NULL
+        , [TargetDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CollectorCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchedulerType] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StartedAtUtc] datetime2(3) NULL
         , [EndedAtUtc] datetime2(3) NULL
         , [SqlServerStartTimeUtc] datetime2(3) NULL
         , [ResetEpochId] uniqueidentifier NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [MetricSampleCount] bigint NOT NULL
         , [PayloadCount] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#RunSnapshotCollectionCycle_Modules]
     (
           [ModuleStatusId] bigint NULL
         , [CaptureRunId] bigint NULL
-        , [ModuleName] sysname NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CollectionTimeUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#RunSnapshotCollectionCycle_TableMap]
-    ([ResultName] sysname NOT NULL,[TargetTable] sysname NOT NULL);
+    ([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
 
     SET @Json=NULL;
     SELECT @CaptureRunIdOut=NULL,@StatusCodeOut='AVAILABLE',@IsPartialOut=0,

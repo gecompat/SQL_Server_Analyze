@@ -26,6 +26,11 @@ EXEC [monitor].[USP_PurgeSnapshotData]
 
 CONSOLE priorisiert das benannte Resultset `purge`. RAW, TABLE und JSON verwenden dieselbe technische Laufzusammenfassung. Lesen Sie Status, Batchzahl, gelöschte Zeilen je Objektklasse, Budgetstatus und Fehlergrenze gemeinsam. `AVAILABLE_LIMITED` kann einen erfolgreichen, aber durch `@MaxBatches` begrenzten Fortschritt bezeichnen.
 
+Die fünf lokalen Textspalten einschließlich der TABLE-Zuordnung verwenden
+`SQL_Latin1_General_CP1_CS_AS`. Die drei Textspalten von `purge` behalten
+die Frameworkcollation auch bei abweichender `tempdb`-Collation. Ablauf-
+und Budgetgrenzen sowie bestehende persistente Zieltabellen bleiben erhalten.
+
 ## Beispiele und Gegenbeispiele
 
 Ein geeigneter Example-Test erzeugt alte und neue synthetische CaptureRuns, führt einen kleinen Purgebatch aus und weist nach, dass der neue Run erhalten bleibt. Ein Gegenbeispiel ist die Erwartung, dass ein logischer Delete die MDF-Datei sofort verkleinert. Ebenso darf `@Force = 1` nicht als Erlaubnis verstanden werden, nicht abgelaufene Daten zu entfernen.

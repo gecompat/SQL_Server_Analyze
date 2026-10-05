@@ -947,3 +947,60 @@ Testreview bestanden. Die eigenen XE-Sessions wurden auch bei Baselinefehlern
 Lab-State wurden entfernt. Dieser Vertrag belegt keine Ereigniserfassung,
 Targetpayloads, Runtimezählerparität, Verlustbewertung, Regexfilter,
 zusätzliche Berechtigungsprofile oder Hochlastvariante.
+
+## Snapshot Baseline: 5. Oktober 2026
+
+Der erweiterte `Code/Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb`,
+`SQL_Latin1_General_CP1_CS_AS` für die eigene Frameworkdatenbank und
+`Latin1_General_100_CI_AS` für das eigene Snapshotziel. Die Bereitschaftsprüfung
+bestätigte Majorversion 17; die konkrete ProductVersion wurde nicht erhoben.
+Die kanonischen optionalen Installer wurden für die privaten Aufrufe expandiert;
+ihre bestehenden SQLCMD-Einstiegspunkte bleiben erhalten.
+
+Der ursprüngliche Stand reproduzierte die fremde Collation der Collection-
+Exporte (`53744`). Ein kontrollierter Stand mit korrigierter Collection und
+ursprünglichem Purgeexport reproduzierte anschließend getrennt `53746`.
+Jede Phase verwendete neu angelegte eigene Framework- und Zieldatenbanken.
+Die sechs transienten Countertextspalten, elf lokalen Collectiontextspalten
+und fünf lokalen Purgetextspalten verwenden jetzt die Frameworkcollation.
+Bestehende persistente Zieltabellen wurden nicht geändert.
+
+Die erste tatsächliche Sammlung exportierte `run` und `modules` gleichzeitig
+nach TABLE und JSON. Die fünf beziehungsweise vier Textcollations wurden
+nativ geprüft. Alle 14 Runfelder und neun Modulstatusfelder stimmen in ihrer
+kanonischen JSON-Repräsentation mit den persistierten nativen Zielzeilen
+überein. Schedulerarten MANUAL, EXTERNAL und SQL_AGENT, Due-Skip, Reset-Epoche,
+Payloadverlustfreiheit und Reinstallation mit erhaltener eigener Policy und
+Zielkonfiguration blieben Teil des vorhandenen Laufzeitvertrags.
+
+Ein zusätzlicher eigener CaptureRun erhielt zwei synthetische Unicode-Counter,
+deren Namen sich nur durch Groß-/Kleinschreibung unterscheiden. Der interne
+Counterabschluss persistierte zwei getrennte gehashte Scopes und vier Samples
+mit den exakten Rohwerten 17 und 29 sowie interpretierten Werten 1,25 und 2,5.
+Countertyp, Einheit, Objekt- und Instanzname, Qualitätscode, Partialität,
+Scopehash und gemeinsame Reset-Epoche wurden geprüft. Das komprimierte
+Rohpayload stimmt nach Dekompression mit dem ursprünglichen synthetischen
+JSON und dessen SHA-256 überein.
+
+Der erzwungene positive Purge exportierte drei collatierte Textspalten und
+alle 17 Felder nach TABLE und JSON; die Zusammenfassung stimmt mit dem nativen
+PurgeRun überein. Der alte synthetische Run wurde entfernt, der frische Run
+blieb erhalten. Der nachfolgende nicht fällige Purge liefert gemäß bestehendem
+Vertrag keine persistierte Laufkennung, sondern eine TABLE-/JSON-Fallbackzeile
+mit Status `SKIPPED_NOT_DUE` und null gelöschten Zeilen. Der Budgetstop sammelte
+keine Metrics; die deaktivierte Zielkonfiguration blieb `DISABLED`.
+
+Der Review ergänzte NULL-sichere Unicode-Status- und Identitätsprüfungen.
+Der endgültige kanonische Teststand wurde danach separat in einem zweiten
+frischen Container ausgeführt und bestand. Beide Container, Volumes und
+temporären Lab-States sowie sämtliche eigenen Testdatenbanken wurden entfernt.
+Frameworkinstallation, Smoke-Test und optionaler Installervertrag bestanden.
+Die statische Suite bestand 74 Prüfungen; ihr Adapter-Bytevergleich scheiterte
+zunächst an der Checkoutdarstellung des generierten Installers. Nach erneuter
+kanonischer Generierung bestand auch dieser Adaptervertrag ohne semantischen
+Repositorydiff. Datenschutz-, Dokumentations- und Statusprüfungen sowie der
+unabhängige Source- und Testreview bestanden. Dieser Vertrag belegt keine
+Schedulerverfügbarkeit, zusätzliche Berechtigungsprofile, Concurrency-
+Gegenprobe, Hochlastvariante oder vollständige persistente Collationmigration.
