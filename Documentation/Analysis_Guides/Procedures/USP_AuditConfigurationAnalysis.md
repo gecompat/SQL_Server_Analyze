@@ -22,6 +22,16 @@ EXEC [monitor].[USP_AuditConfigurationAnalysis]
 
 `RAW` liefert zunächst den Modulstatus und danach `audits`, `serverSpecifications`, `databaseSpecifications`, `sourceStatus` und `warnings`. `TABLE` schreibt ausschließlich die in `@ResultTablesJson` benannten Resultsets. JSON verwendet dieselben benannten Arrays. `CONSOLE` zeigt die interaktive Zusammenfassung; bei keiner sichtbaren Auditkonfiguration erscheint eine verständliche Leerzeile.
 
+Die bisher nicht collatierten 32 Textspalten der lokalen Zuordnungs-, Kandidaten-, Ergebnis- und
+Statustabellen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Die fünf
+TABLE-Exporte übernehmen diese Frameworkcollation auch bei abweichender
+Server- oder `tempdb`-Collation. `SpecificationId` ist in beiden
+Spezifikationsresultsets ein `int`; `AuditId` bleibt ein `uniqueidentifier`.
+
+RAW, TABLE und JSON verwenden dieselbe nach `@NurProblematisch` und
+`@MaxZeilen` ausgewählte fachliche Datenbasis. Quellenzähler und Warnings
+beziehen sich weiterhin auf die vor dieser Auswahl erfasste Konfiguration.
+
 Lesen Sie zuerst `sourceStatus` und `warnings`. Ein deaktiviertes Audit oder eine deaktivierte Spezifikation ist ein Reviewhinweis, aber kein Nachweis für eine fehlerhafte fachliche Vorgabe. Ein fehlender Runtimezustand kann durch Berechtigungen, Metadatensichtbarkeit oder einen nicht verfügbaren DMV-Zugriff bedingt sein.
 
 ## Eine Zeile bedeutet
@@ -66,7 +76,7 @@ SELECT
     , [r].[status_desc]
 FROM [sys].[server_audits] AS [a] WITH (NOLOCK)
 LEFT JOIN [sys].[dm_server_audit_status] AS [r] WITH (NOLOCK)
-  ON [r].[audit_id] = [a].[audit_guid];
+  ON [r].[audit_id] = [a].[audit_id];
 ```
 
 Der Select liest keine Auditdatei, keinen Zielpfad und keine Auditereignisse.

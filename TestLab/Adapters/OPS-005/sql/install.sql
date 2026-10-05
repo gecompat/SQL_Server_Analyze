@@ -48281,7 +48281,7 @@ BEGIN
         RETURN;
     END;
 
-    CREATE TABLE [#AuditConfigurationAnalysis_ResultTables]([ResultName] sysname NOT NULL,[TargetTable] sysname NOT NULL);
+    CREATE TABLE [#AuditConfigurationAnalysis_ResultTables]([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     IF @TableRequested=1
         EXEC [monitor].[InternalPrepareResultTables] @ResultTablesJson=@ResultTablesJson,
              @AllowedResultNames=N'audits|serverSpecifications|databaseSpecifications|sourceStatus|warnings',
@@ -48291,42 +48291,42 @@ BEGIN
     CREATE TABLE [#AuditConfigurationAnalysis_DatabaseCandidates]
     (
         [DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [StateDesc] nvarchar(60) NULL,[UserAccessDesc] nvarchar(60) NULL,[IsReadOnly] bit NULL,[CompatibilityLevel] tinyint NULL,
-        [CollationName] sysname NULL,[RecoveryModelDesc] nvarchar(60) NULL,[IsSystemDatabase] bit NULL,[RequestedOrdinal] int NULL
+        [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsReadOnly] bit NULL,[CompatibilityLevel] tinyint NULL,
+        [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsSystemDatabase] bit NULL,[RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#AuditConfigurationAnalysis_DatabaseWarnings]([RequestedName] sysname NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NULL);
+    CREATE TABLE [#AuditConfigurationAnalysis_DatabaseWarnings]([RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
     CREATE TABLE [#AuditConfigurationAnalysis_AuditFilter]([NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY);
     CREATE TABLE [#AuditConfigurationAnalysis_Audits]
     (
         [AuditId] uniqueidentifier NOT NULL PRIMARY KEY,[AuditName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [AuditTargetType] nvarchar(60) NULL,[OnFailure] nvarchar(60) NULL,[QueueDelayMilliseconds] int NULL,
-        [IsEnabled] bit NULL,[RuntimeStatus] nvarchar(60) NULL,[RuntimeStatusTime] datetime NULL,
-        [ServerSpecificationCount] bigint NULL,[DatabaseSpecificationCount] bigint NULL,[FindingCode] varchar(64) NOT NULL,[FindingSeverity] varchar(16) NOT NULL,
-        [EvidenceLimit] nvarchar(1000) NOT NULL
+        [AuditTargetType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[OnFailure] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[QueueDelayMilliseconds] int NULL,
+        [IsEnabled] bit NULL,[RuntimeStatus] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RuntimeStatusTime] datetime NULL,
+        [ServerSpecificationCount] bigint NULL,[DatabaseSpecificationCount] bigint NULL,[FindingCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AuditConfigurationAnalysis_ServerSpecifications]
     (
         [SpecificationId] int NOT NULL PRIMARY KEY,[SpecificationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [AuditId] uniqueidentifier NULL,[AuditName] sysname NULL,[IsEnabled] bit NULL,[ActionCount] bigint NULL,
-        [HasAllServerScope] bit NULL,[FindingCode] varchar(64) NOT NULL,[FindingSeverity] varchar(16) NOT NULL,[EvidenceLimit] nvarchar(1000) NOT NULL
+        [AuditId] uniqueidentifier NULL,[AuditName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsEnabled] bit NULL,[ActionCount] bigint NULL,
+        [HasAllServerScope] bit NULL,[FindingCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AuditConfigurationAnalysis_DatabaseSpecifications]
     (
         [DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [SpecificationId] int NOT NULL,[SpecificationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
-        [AuditId] uniqueidentifier NULL,[AuditName] sysname NULL,[IsEnabled] bit NULL,[ActionCount] bigint NULL,
-        [HasAllDatabaseScope] bit NULL,[FindingCode] varchar(64) NOT NULL,[FindingSeverity] varchar(16) NOT NULL,[EvidenceLimit] nvarchar(1000) NOT NULL,
+        [AuditId] uniqueidentifier NULL,[AuditName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsEnabled] bit NULL,[ActionCount] bigint NULL,
+        [HasAllDatabaseScope] bit NULL,[FindingCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         PRIMARY KEY([DatabaseId],[SpecificationId])
     );
     CREATE TABLE [#AuditConfigurationAnalysis_SourceStatus]
     (
-        [SourceName] nvarchar(160) NOT NULL PRIMARY KEY,[StatusCode] varchar(40) NOT NULL,[IsPartial] bit NOT NULL,
-        [ReturnedRowCount] bigint NULL,[Detail] nvarchar(1000) NOT NULL
+        [SourceName] nvarchar(160) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[IsPartial] bit NOT NULL,
+        [ReturnedRowCount] bigint NULL,[Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AuditConfigurationAnalysis_Warnings]
     (
-        [WarningScope] varchar(32) NOT NULL,[DatabaseName] sysname NULL,[AuditName] sysname NULL,
-        [WarningCode] varchar(64) NOT NULL,[WarningSeverity] varchar(16) NOT NULL,[Detail] nvarchar(1000) NOT NULL
+        [WarningScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[AuditName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [WarningCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[WarningSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     SELECT @AuditPatternMode=[PatternMode],@AuditPatternValue=[PatternValue],@AuditPatternFlags=[RegexFlags],@AuditPatternValid=[IsValid]
@@ -48432,6 +48432,29 @@ BEGIN
         IF EXISTS(SELECT 1 FROM [#AuditConfigurationAnalysis_SourceStatus] WHERE [IsPartial]=1) SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
         ELSE IF EXISTS(SELECT 1 FROM [#AuditConfigurationAnalysis_Warnings] WHERE [WarningSeverity]='MEDIUM') SET @StatusCode='AVAILABLE_WITH_FINDING';
     END;
+
+    DELETE FROM [#AuditConfigurationAnalysis_Audits] WHERE (@NurProblematisch=1 OR @NurProblematisch IS NULL) AND [FindingSeverity]='INFO';
+    DELETE FROM [#AuditConfigurationAnalysis_ServerSpecifications] WHERE (@NurProblematisch=1 OR @NurProblematisch IS NULL) AND [FindingSeverity]='INFO';
+    DELETE FROM [#AuditConfigurationAnalysis_DatabaseSpecifications] WHERE (@NurProblematisch=1 OR @NurProblematisch IS NULL) AND [FindingSeverity]='INFO';
+
+    ;WITH [RankedAudits] AS
+    (
+        SELECT *,ROW_NUMBER() OVER (ORDER BY [AuditName],[AuditId]) AS [OutputOrdinal]
+        FROM [#AuditConfigurationAnalysis_Audits]
+    )
+    DELETE FROM [RankedAudits] WHERE [OutputOrdinal]>@Limit;
+    ;WITH [RankedServerSpecifications] AS
+    (
+        SELECT *,ROW_NUMBER() OVER (ORDER BY [SpecificationName],[SpecificationId]) AS [OutputOrdinal]
+        FROM [#AuditConfigurationAnalysis_ServerSpecifications]
+    )
+    DELETE FROM [RankedServerSpecifications] WHERE [OutputOrdinal]>@Limit;
+    ;WITH [RankedDatabaseSpecifications] AS
+    (
+        SELECT *,ROW_NUMBER() OVER (ORDER BY [DatabaseName],[SpecificationName],[DatabaseId],[SpecificationId]) AS [OutputOrdinal]
+        FROM [#AuditConfigurationAnalysis_DatabaseSpecifications]
+    )
+    DELETE FROM [RankedDatabaseSpecifications] WHERE [OutputOrdinal]>@Limit;
 
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,@ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
     IF @JsonErzeugen=1
