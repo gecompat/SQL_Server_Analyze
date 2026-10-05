@@ -44752,9 +44752,9 @@ BEGIN
 
     CREATE TABLE [#PerformanceCounters_Before]
     (
-          [ObjectName] nvarchar(128) NOT NULL
-        , [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+          [ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterValue] bigint NOT NULL
         , [CounterType] int NOT NULL
         , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName], [CounterType])
@@ -44762,9 +44762,9 @@ BEGIN
 
     CREATE TABLE [#PerformanceCounters_After]
     (
-          [ObjectName] nvarchar(128) NOT NULL
-        , [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+          [ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterValue] bigint NOT NULL
         , [CounterType] int NOT NULL
         , PRIMARY KEY ([ObjectName], [CounterName], [InstanceName], [CounterType])
@@ -44772,13 +44772,13 @@ BEGIN
 
     CREATE TABLE [#PerformanceCounters_Result]
     (
-          [ObjectName] nvarchar(128) NOT NULL
-        , [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+          [ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterType] int NOT NULL
-        , [Interpretation] varchar(40) NOT NULL
+        , [Interpretation] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,6) NULL
-        , [MetricUnit] varchar(40) NOT NULL
+        , [MetricUnit] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [BeforeValue] bigint NULL
         , [AfterValue] bigint NOT NULL
         , [BaseBeforeValue] bigint NULL
@@ -44787,7 +44787,7 @@ BEGIN
         , [BaseDeltaValue] bigint NULL
         , [SampleSeconds] decimal(19,6) NULL
         , [SqlServerStartTime] datetime2(3) NULL
-        , [FindingCode] varchar(80) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @MaxZeilen < 0
@@ -44860,9 +44860,9 @@ BEGIN
                [p].[cntr_value], [p].[cntr_type]
         FROM [sys].[dm_os_performance_counters] AS [p] WITH (NOLOCK)
         JOIN [#PerformanceCounters_Before] AS [b]
-         ON [b].[ObjectName] = [p].[object_name]
-         AND [b].[CounterName] = [p].[counter_name]
-         AND [b].[InstanceName] = [p].[instance_name]
+         ON [b].[ObjectName] = [p].[object_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+         AND [b].[CounterName] = [p].[counter_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+         AND [b].[InstanceName] = [p].[instance_name] COLLATE SQL_Latin1_General_CP1_CS_AS
          AND [b].[CounterType] = [p].[cntr_type];
 
         INSERT [#PerformanceCounters_Result]

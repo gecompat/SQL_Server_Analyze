@@ -40,6 +40,12 @@ Objektname, Countername und Instanzname allein sind nicht die vollständige tech
 
 Die reine Funktion `monitor.TVF_InterpretPerformanceCounter` kapselt denselben Rechenpfad. Sie ermöglicht einen deterministischen Resetnachweis mit fallendem Vorher-/Nachher-Wert, ohne einen Serverneustart während einer laufenden Procedure zu simulieren.
 
+Die Textspalten beider Counter-Snapshots und der Ergebnisarbeitstabelle verwenden
+`SQL_Latin1_General_CP1_CS_AS`. Dieselbe Collation gilt am Join zum zweiten
+DMV-Snapshot und für die sechs Textspalten des TABLE-Exports, auch bei abweichender
+Server- oder `tempdb`-Collation. Objekt- und Counterfilter bleiben exakt; die
+Zuordnung ergänzender `base`-Counter bleibt ausdrücklich case-insensitive.
+
 Unterscheiden Sie Countertyp, Raw Value, Base, Delta, Samplezeit und normalisierten Wert.
 
 ## Warum kann das problematisch sein?
