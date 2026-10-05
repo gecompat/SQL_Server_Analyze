@@ -203,3 +203,43 @@ Alle vier eigenen Container, Volumes und temporären Lab-States wurden entfernt.
 Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
 Der neue Nachweis belegt keinen positiven THREADPOOL-Wait, keinen tatsächlichen
 Zählerreset, keine Hochlast und keine zusätzlichen Berechtigungsfehler.
+
+## Audit Configuration: 5. Oktober 2026
+
+`Code/Tests/Common/136_AuditConfiguration_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte die fremde Exportcollation (`55851`).
+Die zusätzlichen 32 Textspalten der lokalen Zuordnungs-, Kandidaten-,
+Ergebnis- und Statustabellen verwenden jetzt die Frameworkcollation. Der
+Vertrag bestätigte sie für alle 27 Textspalten der fünf TABLE-Exporte.
+
+Zwei synthetische, deaktivierte Audits besaßen jeweils eine Server- und
+eine Datenbankspezifikation. Eine Spezifikation je Ebene war aktiviert,
+die andere deaktiviert; beide Auditziele blieben deaktiviert. Vier Aufrufe
+prüften unbegrenzte Fachausgabe, Limit eins, ausschließlich problematische
+Konfigurationen und den bestehenden Filtervertrag bei
+`@NurProblematisch=NULL`. TABLE und JSON enthielten in allen Fällen dieselben
+fünf Ergebnisarrays einschließlich Zeilenhäufigkeiten. Die Quellen meldeten
+weiterhin jeweils zwei Konfigurationen und Warnings vier Befunde; Auswahl
+und Limit veränderten ausschließlich die Fachausgabe.
+
+Auditidentität, Zieltyp, Fehlerverhalten, Queueverzögerung, zugeordnete
+Spezifikationsanzahlen sowie Spezifikationsidentität, Aktivierungszustand
+und Aktionsanzahl wurden gegen native Metadaten geprüft. Die beiden
+exportierten `SpecificationId`-Spalten waren `int`; das Resultsetinventar
+und der fehlerhafte Auditstatus-Beispieljoin wurden entsprechend berichtigt.
+
+Frameworkinstallation, Smoke-Test, neuer Vertrag und bestehender
+Audit-Laufzeitvertrag `124` bestanden. Ein vorheriger Versuch scheiterte
+mit `33074`, weil die neue Fixture ihr Serveraudit im Datenbankkontext
+löschen wollte; alle Server-DDL-Aufrufe verwenden jetzt `master`. Beide
+eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Der bestehende Vertrag bestätigte zusätzlich Leerinventur, verweigerte
+Metadaten, deaktiviertes Audit und aktiven Runtimezustand. Der neue Vertrag
+belegt keine Auditpayloads, Ereigniszustellung, Aufbewahrung oder Hochlast.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
