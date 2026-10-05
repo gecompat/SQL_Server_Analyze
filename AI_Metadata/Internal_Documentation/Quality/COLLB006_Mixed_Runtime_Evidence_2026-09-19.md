@@ -660,3 +660,55 @@ dem Main-Abgleich bestanden auch die beiden zunächst fehlgeschlagenen Gates
 in gezielten Wiederholungen. Der unabhängige Source- und Testreview bestand.
 Dieser Vertrag belegt keine aktive TempDB-Begrenzung, Limitverletzung,
 Drosselungsursache oder zusätzliche Berechtigungs- und Hochlastvariante.
+
+## Backup Recovery: 5. Oktober 2026
+
+`Code/Tests/Common/146_BackupRecovery_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte die fremde Exportcollation (`55951`).
+Alle 20 lokalen Textspalten verwenden jetzt die Frameworkcollation;
+der Vertrag bestätigte die vier Textspalten des Freshness-TABLE-Exports.
+Ein zweiter kontrollierter Stand mit behobener Collation, aber unveränderter
+Freshnessbegrenzung reproduzierte die ignorierte positive Ausgabegrenze
+getrennt (`55952`). Freshness wird jetzt nach vollständiger Bewertung gemeinsam
+für RAW, TABLE und JSON begrenzt. Der vorhandene Status- und Namensrang bleibt
+maßgeblich; Backup- und Restorehistorie behalten ihre separaten Grenzen.
+
+Der Test erzeugte nach Namens- und Historienpreflight zwei eigene synthetische
+Datenbanken mit SIMPLE Recovery und abweichender Quelldatenbankcollation.
+Eine Quelle blieb ohne Backup. Die andere erhielt ein normales Full, ein
+Differential und danach ein Copy-only Full, jeweils mit Prüfsumme. Native
+Metadaten bestätigten genau diese drei unbeschädigten Backupsets. Die letzte
+normale Fullzeit und die spätere Copy-only-Fullzeit wurden getrennt geprüft.
+
+Vier Aufrufe mit Limit null, eins und NULL sowie aktiviertem und deaktiviertem
+Restorepfad bestätigten den vorhandenen Modulstatus `AVAILABLE` ohne Teilstatus.
+Die Quelle ohne Full blieb `NO_FULL_BACKUP`, die gesicherte SIMPLE-Quelle `OK`.
+Bei Limit eins blieb die Quelle ohne Full im Freshnessresultat; das Backup-JSON
+enthielt unabhängig davon das jüngste Copy-only Full. Acht Freshnessfelder
+wurden gegen native Metadaten geprüft; die drei Altersfelder lagen in den
+nativen Vorher-/Nachher-Minutenintervallen oder blieben bei fehlender Quelle
+NULL. Alle elf TABLE-/JSON-Freshnessfelder stimmen als typisierte Multimengen
+überein. Alle 13 Backupfelder wurden gegen die eigenen Backup- und
+Medienmetadaten geprüft; `IsSnapshot` bleibt gemäß bestehender Projektion NULL.
+Restore- und Warningarrays waren obligatorisch leer.
+
+Der erste Lauf bestand vor der Verlängerung der Zwischenbackup-Pausen von
+250 Millisekunden auf eine Sekunde. Der zweite Lauf bestätigte die abschließende
+kanonische Testdatei und die getrennte Limitreproduktion. Die Pausen sichern
+unterschiedliche Full- und Copy-only-Zeitstempel; der Produktcode blieb unverändert.
+Eigene Datenbanken und deren Historie wurden auch nach den erwarteten
+Baselinefehlern ausschließlich über eigene Erzeugungsflags und Datenbankkennungen
+entfernt. Konkrete Backupgeräte blieben im Speicher.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Beide eigenen Container, Volumes und temporären Lab-States wurden entfernt;
+damit sind auch ihre eigenen Backupdateien entfernt. Die 75 lokalen statischen
+Verträge und der unabhängige Source- und Testreview bestanden. Dieser Vertrag
+belegt keinen Restore, keine Wiederherstellbarkeit, Logbackupkette, Snapshot-
+oder zusätzliche Berechtigungs- und Hochlastvariante.
