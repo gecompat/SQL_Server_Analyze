@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 30. August 2026
+**Stand:** 5. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 ## Maßgeblichkeit
@@ -15,6 +15,35 @@ Die Statusquellen besitzen getrennte Aufgaben:
 - `Metadata/Quality/Future_Enhancement_Backlog.csv` enthält priorisierte noch nicht implementierte oder unvollständige Erweiterungen.
 
 Ein vorhandener SQL-Quellpfad oder ein grüner statischer Vertrag ersetzt keinen dokumentierten Laufzeitnachweis.
+
+## Auftrag zur autonomen Fortsetzung
+
+Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
+die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
+Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
+die vorhandene Roadmap und Statusquellen. Jeder kohärente Schritt umfasst
+die betroffenen Verträge, Implementierung, Dokumentation und Tests. Es gibt
+genau einen Implementierer je Schritt; ein unabhängiger Review prüft den
+stabilen Stand. Vor der Fortsetzung werden `origin/main`, offene Pull Requests,
+Regelkontext und vorhandene Evidenz abgeglichen. Geprüfte Schritte werden
+über einen Pull Request mit erfolgreicher erforderlicher Head-CI integriert;
+danach folgen Synchronisierung und ausschließlich eigener Cleanup.
+
+Die bestehenden Produkt-, Datenschutz- und Testregeln dieses Repositorys
+bleiben maßgeblich. Neue öffentliche Funktionsverträge werden vor ihrer
+Implementierung konkretisiert und funktionsbezogen freigegeben. Bestehende
+konkrete Freigaben werden nicht erneut abgefragt. Linked-Server-Verbindungen
+zwischen ausschließlich neu erzeugten lokalen Testcontainern sind ausdrücklich
+freigegeben. Bestehende, gemeinsam verwendete und produktive Systeme sind
+nicht Teil dieser Freigabe. Secrets und konkrete Runtimeidentitäten bleiben
+außerhalb der Repositoryartefakte.
+
+Ein abgeschlossener Schritt oder ein zusätzlicher Benutzerauftrag beendet
+die Gesamtwelle nicht. Unabhängige autorisierte Arbeit wird bei einem
+isolierten Blocker fortgesetzt. Die automatische Fortsetzung dieses Chats
+unterstützt die Entwicklung bis zum ausdrücklichen Benutzerstopp, regulären
+Gesamtabschluss oder tatsächlichen Eingabebedarf; unveränderte,
+nicht handlungsfähige Zustände erzeugen keine Statusmeldungen.
 
 ## Aktueller Produktstand
 
@@ -36,8 +65,8 @@ Alle 104 Procedure-Seiten besitzen den Status `DEEP_REVIEWED` nach Reviewvertrag
 
 Die nächste Welle erweitert keine öffentliche Diagnosefläche. Sie schließt die bereits implementierten Teilfunktionen und zugehörigen Reifeverträge ab.
 
-1. `OPS-005` erhält einen getrennt autorisierten, kontrollierten Remote-Erfolgsnachweis und providerübergreifende Evidenz. Der TestLab-Adapter deckt bereits die Drei-Versionen-, Berechtigungs- und Timeoutfälle ohne realen Remotezugriff ab.
-2. `OPS-006` schließt die verbleibende nicht unterstützte, unberechtigte und versionsübergreifende Evidenz nach dem kontrollierten Feature-Nachweis.
+1. `OPS-005` ergänzt die noch offene Providervarianz. Der kontrollierte MSOLEDBSQL-Verbindungserfolg zwischen zwei neuen lokalen SQL-Server-2025-Containern ist seit dem 5. Oktober 2026 belegt. Der synthetische TestLab-Adapter deckt bereits die Drei-Versionen-, Berechtigungs- und Timeoutfälle ab; zusätzliche native Erfolgsläufe folgen nur bei konkretem Versionsrisiko oder erforderlichem Release-Nachweis.
+2. `OPS-006` schließt die verbleibende Evidenz einer tatsächlich nicht unterstützten Systemquelle. Der kontrollierte Feature-Nachweis auf nativen SQL Server 2019, 2022 und 2025 sowie die vorhandenen Berechtigungspfade werden nicht erneut als offene Arbeit geführt.
 3. `OPS-008` erhält Leer-, Retention-, Wachstum-, Berechtigungs- und Begrenzungsfälle für die sichtbaren `msdb`-Historien.
 4. `OPS-007` und `OPS-009` folgen als kleinere, getrennt validierbare Slices.
 5. `COLL-001` setzt die begonnene objektbezogene Härtung fort. Die fünf OPS-Objekte, die Child-JSON-Aggregation von `USP_CurrentOverview` und der TABLE-Zielvertrag bilden den ersten statisch sowie auf der garantierten Collation nativ abgesicherten Slice. Gemischte Server-, `tempdb`-, Framework- und Ziel-Collations bleiben offen.
