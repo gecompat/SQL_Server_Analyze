@@ -107,6 +107,18 @@ Classifier Function ordnet neue Sessions Workload Groups zu; Groups verweisen au
 `sys.resource_governor_workload_groups` und – ausschließlich bei relevantem
 Prozentlimit – `master.sys.master_files`.
 
+### Collation und Ausgabegrenzen
+
+Die 16 Textspalten der fünf TABLE-Exports verwenden die Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS`; Server- und `tempdb`-Collation bestimmen den
+Exportvertrag damit nicht. TABLE und JSON verwenden dieselben materialisierten
+Ergebnisse. `@MaxZeilen = 0` und NULL sind unbegrenzt; ein positives Limit gilt
+separat für Pools, Gruppen, TempDB-Governance und Sessions. Die einzelne
+Konfigurationszeile bleibt erhalten. Pools und Gruppen werden nach ihrer
+Kennung begrenzt, Sessions nach CPU-Zeit absteigend und Sessionkennung.
+`@MitSessions = 0` erzeugt ein leeres Sessionarray und einen leeren Sessionexport.
+Livezähler verschiedener Aufrufe bilden keine atomare Vergleichsmessung.
+
 ### Source Select
 
 Konfiguration und kumulative Runtime werden über `pool_id` verbunden:
@@ -117,8 +129,8 @@ SELECT
     , [p].[name] AS [PoolName]
     , [p].[max_cpu_percent]
     , [p].[max_memory_percent]
-    , [rp].[active_session_count]
-    , [rp].[active_request_count]
+    , [rp].[active_memgrant_count]
+    , [rp].[memgrant_waiter_count]
     , [rp].[used_memory_kb]
     , [rp].[out_of_memory_count]
 FROM [sys].[resource_governor_resource_pools] AS [p] WITH (NOLOCK)
@@ -127,7 +139,7 @@ LEFT JOIN [sys].[dm_resource_governor_resource_pools] AS [rp] WITH (NOLOCK)
 WHERE [p].[name] <> N'internal';
 ```
 
-**Wichtig für die Eigenlast:** Filtern Sie Pool oder Workload Group vor der Sessionzuordnung. Runtimezähler sind klein und kumulativ; SQL-Text und Requests werden nicht breit aufgelöst.
+**Wichtig für die Eigenlast:** Die Procedure bietet keinen Pool- oder Gruppenfilter. `@MitSessions = 0` unterdrückt den Sessionpfad; `@MaxZeilen` begrenzt dessen Auswahl vor der Zuordnung. SQL-Texte und Requests werden nicht zusätzlich aufgelöst. Das obige Gegenprüfungsbeispiel filtert den internen Pool, während die Procedure ihn einbezieht.
 
 ### Zeit- und Scope-Modell
 
