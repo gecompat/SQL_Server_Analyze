@@ -30,16 +30,16 @@ BEGIN
 
     CREATE TABLE [#InternalCompletePerformanceCounterCycle_Counters]
     (
-          [ObjectName] nvarchar(128) NOT NULL
-        , [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+          [ObjectName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterType] int NOT NULL
         , [MetricValue] decimal(38,6) NULL
-        , [MetricUnit] varchar(40) NULL
+        , [MetricUnit] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [AfterValue] bigint NULL
-        , [FindingCode] varchar(80) NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ScopeKeyHash] varbinary(32) NULL
-        , [ScopeIdentityJson] nvarchar(max) NULL
+        , [ScopeIdentityJson] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     BEGIN TRY

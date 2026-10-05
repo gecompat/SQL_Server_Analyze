@@ -27,6 +27,17 @@ Bei ausführbaren Änderungen führt der Selector folgende Schritte aus:
 
 Kann eine Produktionsänderung nicht sicher zugeordnet werden oder betrifft sie Setup, zentralen Installer, Impact-Selector oder funktionale Workflow-Infrastruktur, verwendet der Selector das vollständige funktionale Gate auf der primären SQL-Server-2025-Engine.
 
+Der funktionale Workflow wertet die Scopes `core` und `snapshot` getrennt aus.
+Bereits ein erforderlicher Lauf in einem der beiden Scopes startet die
+SQL-Server-2025-Runtime. Für Snapshot-Impact erstellt der Workflow nach dem
+Core-Lauf eine frische Framework- und Snapshot-Zieldatenbank, installiert den
+Core und führt dessen Smoke-Test sowie den ausgewählten Snapshot-Vertrag aus.
+Der Concurrency-Vertrag startet einen eigenen Lockhalter und prüft vor der
+zweiten Session, dass die Anwendungssperre tatsächlich gehalten wird. Das
+abschließende Gate verlangt auch für reinen Snapshot-Impact einen erfolgreichen
+Runtimejob. Die Datenbanken verbleiben ausschließlich im Testcontainer; dessen
+Cleanup läuft über den vorhandenen `always()`-Schritt.
+
 ## Compatibility-Level-Auswahl
 
 Der Selector aktiviert die Compatibility-Level-Matrix, wenn ausführbarer Code unter `Code/09_VersionAdaptive/`, ein Test unter `Code/Tests/VersionAdaptive/` oder ein expliziter Marker `CI: COMPATIBILITY_LEVELS=150,160,170` betroffen ist.

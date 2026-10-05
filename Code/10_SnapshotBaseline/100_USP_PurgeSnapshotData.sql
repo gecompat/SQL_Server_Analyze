@@ -24,10 +24,10 @@ BEGIN
     CREATE TABLE [#PurgeSnapshotData_Result]
     (
           [PurgeRunId] bigint NULL
-        , [TargetDatabaseName] sysname NULL
+        , [TargetDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StartedAtUtc] datetime2(3) NULL
         , [EndedAtUtc] datetime2(3) NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [BatchesExecuted] int NOT NULL
         , [MetricRowsDeleted] bigint NOT NULL
         , [PayloadRowsDeleted] bigint NOT NULL
@@ -39,10 +39,10 @@ BEGIN
         , [SoftBudgetMb] bigint NULL
         , [BudgetExceeded] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#PurgeSnapshotData_TableMap]
-    ([ResultName] sysname NOT NULL,[TargetTable] sysname NOT NULL);
+    ([ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
 
     SET @Json=NULL;
     SELECT @PurgeRunIdOut=NULL,@StatusCodeOut='AVAILABLE',@IsPartialOut=0,

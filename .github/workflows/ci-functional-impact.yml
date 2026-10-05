@@ -12,6 +12,7 @@ on:
     paths:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
+      - 'Code/Install/Build-SnapshotBaselineInstallers.ps1'
       - 'Code/**/*.sql'
   push:
     branches:
@@ -19,6 +20,7 @@ on:
     paths:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
+      - 'Code/Install/Build-SnapshotBaselineInstallers.ps1'
       - 'Code/**/*.sql'
   workflow_dispatch:
     inputs:
@@ -47,6 +49,9 @@ jobs:
       regex_matrix: ${{ steps.select.outputs.regex_matrix }}
       plan_standalone: ${{ steps.select.outputs.plan_standalone }}
       compatibility_matrix: ${{ steps.select.outputs.compatibility_matrix }}
+      snapshot_required: ${{ steps.snapshot.outputs.run_runtime }}
+      snapshot_runtime: ${{ steps.snapshot.outputs.snapshot_runtime }}
+      snapshot_concurrency: ${{ steps.snapshot.outputs.snapshot_concurrency }}
 
     steps:
       - name: Check out repository history
@@ -79,8 +84,30 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - id: snapshot
+        name: Select optional Snapshot impact
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before || '' }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
+            --repository-root . \
+            --base-sha "$BASE_SHA" \
+            --head-sha "$HEAD_SHA" \
+            --scope snapshot \
+            --github-output "$GITHUB_OUTPUT" \
+            --plan-json "$RUNNER_TEMP/snapshot-impact.json"
+          {
+            echo '## Snapshot impact selection'
+            echo '```json'
+            cat "$RUNNER_TEMP/snapshot-impact.json"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
   runtime:
-    if: needs.impact.outputs.run_runtime == 'true'
+    if: needs.impact.outputs.run_runtime == 'true' || needs.impact.outputs.snapshot_required == 'true'
     needs: impact
     name: SQL Server 2025 impacted runtime
     runs-on: ubuntu-24.04
@@ -281,6 +308,67 @@ jobs:
             echo '- Scope: impact-selected tests plus required special contracts'
           } >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Run selected Snapshot contracts
+        if: needs.impact.outputs.snapshot_required == 'true'
+        shell: bash
+        env:
+          RUN_SNAPSHOT_RUNTIME: ${{ needs.impact.outputs.snapshot_runtime }}
+          RUN_SNAPSHOT_CONCURRENCY: ${{ needs.impact.outputs.snapshot_concurrency }}
+        run: |
+          set -euo pipefail
+          log_prefix="$RUNNER_TEMP/sqlserver-analyze-snapshot"
+          sql_exec() {
+            docker exec --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+              --workdir /work/Code/Install sqlserver-analyze-impact-2025 \
+              "$SQLCMD_PATH" -S localhost -U sa -C -b "$@"
+          }
+          report_failure() {
+            echo "Snapshot contract failed: $1"
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$2" | tail -n 120 || true
+            exit 1
+          }
+          sql_exec -Q "IF DB_ID(N'SQLServerAnalyzeTest') IS NOT NULL BEGIN ALTER DATABASE [SQLServerAnalyzeTest] SET SINGLE_USER WITH ROLLBACK IMMEDIATE; DROP DATABASE [SQLServerAnalyzeTest]; END; CREATE DATABASE [SQLServerAnalyzeTest] COLLATE SQL_Latin1_General_CP1_CS_AS; ALTER DATABASE [SQLServerAnalyzeTest] SET COMPATIBILITY_LEVEL = 170; CREATE DATABASE [SQLServerAnalyzeSnapshotTest] COLLATE Latin1_General_100_CI_AS; ALTER DATABASE [SQLServerAnalyzeSnapshotTest] SET COMPATIBILITY_LEVEL = 170;" \
+            >"${log_prefix}-database.log" 2>&1
+          sql_exec -i Install_All.sql >"${log_prefix}-install.log" 2>&1 \
+            || report_failure 'core installation' "${log_prefix}-install.log"
+          sql_exec -i ../Tests/Integration/110_Smoke_Test.sql >"${log_prefix}-smoke.log" 2>&1 \
+            || report_failure 'core smoke' "${log_prefix}-smoke.log"
+          if [ "$RUN_SNAPSHOT_RUNTIME" = 'true' ] || [ "$RUN_SNAPSHOT_CONCURRENCY" = 'true' ]; then
+            sql_exec -i ../Tests/Integration/195_SnapshotBaseline_Runtime_Contract.sql \
+              >"${log_prefix}-runtime.log" 2>&1 \
+              || report_failure 'runtime' "${log_prefix}-runtime.log"
+          fi
+          if [ "$RUN_SNAPSHOT_CONCURRENCY" = 'true' ]; then
+            sql_exec -i ../Tests/Integration/196_SnapshotBaseline_Concurrency_Holder.sql \
+              >"${log_prefix}-holder.log" 2>&1 &
+            holder_pid=$!
+            lock_ready=0
+            for attempt in $(seq 1 30); do
+              if sql_exec -d SQLServerAnalyzeTest -Q "IF APPLOCK_TEST(N'public',N'SQL_Server_Analyze.SC023.CollectionCycle',N'Exclusive',N'Session')<>0 THROW 53740,N'SC023_LOCK_NOT_READY',1;" >/dev/null 2>&1; then
+                lock_ready=1
+                break
+              fi
+              if ! kill -0 "$holder_pid" 2>/dev/null; then break; fi
+              sleep 0.2
+            done
+            if [ "$lock_ready" != '1' ]; then
+              wait "$holder_pid" || true
+              report_failure 'concurrency holder readiness' "${log_prefix}-holder.log"
+            fi
+            assert_result=0
+            sql_exec -i ../Tests/Integration/197_SnapshotBaseline_Concurrency_Assert.sql \
+              >"${log_prefix}-concurrency.log" 2>&1 || assert_result=$?
+            wait "$holder_pid" || report_failure 'concurrency holder' "${log_prefix}-holder.log"
+            if [ "$assert_result" != '0' ]; then
+              report_failure 'concurrency assertion' "${log_prefix}-concurrency.log"
+            fi
+          fi
+          {
+            echo '## Snapshot runtime'
+            echo '- Engine: SQL Server 2025 Developer on Linux; compatibility level 170'
+            echo '- Scope: selected Snapshot runtime and concurrency contracts'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Stop synthetic SQL Server
         if: always()
         shell: bash
@@ -300,6 +388,7 @@ jobs:
         env:
           IMPACT_RESULT: ${{ needs.impact.result }}
           RUNTIME_REQUIRED: ${{ needs.impact.outputs.run_runtime }}
+          SNAPSHOT_REQUIRED: ${{ needs.impact.outputs.snapshot_required }}
           RUNTIME_RESULT: ${{ needs.runtime.result }}
         run: |
           set -euo pipefail
@@ -307,11 +396,11 @@ jobs:
             echo 'CI impact selection failed.'
             exit 1
           fi
-          if [ "$RUNTIME_REQUIRED" = 'true' ] && [ "$RUNTIME_RESULT" != 'success' ]; then
+          if { [ "$RUNTIME_REQUIRED" = 'true' ] || [ "$SNAPSHOT_REQUIRED" = 'true' ]; } && [ "$RUNTIME_RESULT" != 'success' ]; then
             echo 'Required SQL Server runtime checks did not pass.'
             exit 1
           fi
-          if [ "$RUNTIME_REQUIRED" != 'true' ] && [ "$RUNTIME_RESULT" != 'skipped' ]; then
+          if [ "$RUNTIME_REQUIRED" != 'true' ] && [ "$SNAPSHOT_REQUIRED" != 'true' ] && [ "$RUNTIME_RESULT" != 'skipped' ]; then
             echo 'SQL Server runtime was expected to be skipped.'
             exit 1
           fi

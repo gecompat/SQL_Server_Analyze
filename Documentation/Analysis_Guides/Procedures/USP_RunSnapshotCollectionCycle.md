@@ -28,6 +28,13 @@ EXEC [monitor].[USP_RunSnapshotCollectionCycle]
 
 CONSOLE zeigt den priorisierten Laufstatus. RAW, TABLE und JSON trennen `run` und `modules`; persistierte Metrics werden nicht als zusätzliches Defaultresultset kopiert. Lesen Sie zuerst Status, Start, Ende, Schedulerart und `ResetEpochId`. Ordnen Sie danach den Modulstatus und dessen Partialität ein. `SKIPPED_NOT_DUE` und ein No-wait-Concurrency-Skip sind kontrollierte Zustände, keine erfolgreichen Messpunkte.
 
+Die elf lokalen Textspalten einschließlich der TABLE-Zuordnung verwenden
+`SQL_Latin1_General_CP1_CS_AS`. Die fünf Textspalten von `run` und vier
+Textspalten von `modules` behalten die Frameworkcollation auch bei
+abweichender `tempdb`-Collation. Der interne Counterabschluss verwendet
+dieselbe Collation für seine sechs transienten Textspalten. Bestehende
+persistente Zieltabellen und deren Collation werden dabei nicht geändert.
+
 ## Beispiele und Gegenbeispiele
 
 Ein passender Example-Lauf verwendet `MANUAL`, eine aktivierte synthetische Zielkonfiguration und ein kleines `MaxRows`-Budget. Zwei aufeinanderfolgende Läufe innerhalb derselben Reset-Epoche können später verglichen werden. Ein Gegenbeispiel ist die Berechnung einer Rate über einen SQL-Server-Neustart oder die Deutung eines partiellen Moduls als vollständigen Snapshot.
