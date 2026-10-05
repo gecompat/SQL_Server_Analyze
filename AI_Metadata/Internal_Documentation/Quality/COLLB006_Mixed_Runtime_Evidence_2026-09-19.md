@@ -1065,3 +1065,49 @@ Installation und Smoke-Test bestanden; eigene Quelldatenbanken, Container,
 Volume und temporärer Lab-State wurden entfernt. Der Vertrag prüft keine
 positiven Vector-/JSON-Indizes, Replikagruppenzähler, zusätzliche
 Berechtigungsprofile oder Funktionsfähigkeit externer Runtimes.
+
+## Server Version Information: 5. Oktober 2026
+
+`Code/Tests/Common/153_ServerVersionInformation_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb`,
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank und zwei jeweils
+neu erzeugten synthetischen Unicode-Quelldatenbanken mit
+`Latin1_General_100_CI_AS` beziehungsweise der Frameworkcollation.
+Majorversion 17 wurde bei Bereitschaft geprüft; die konkrete ProductVersion
+wurde gegen den nativen Wert geprüft, aber nicht in dieses Artefakt übernommen.
+
+Der ursprüngliche Stand reproduzierte Fehler `468` beim Vergleich der
+materialisierten Instanzbuildnummer mit dem Offline-Katalog. Die 80 bisher
+nicht explizit collatierten Textspalten der elf lokalen Tabellen verwenden
+jetzt die Frameworkcollation. Auch der Buildvergleich benennt die Collation
+auf beiden Seiten ausdrücklich. Katalogseed, Lifecyclebewertung und
+öffentliche Ausgabeformen wurden nicht geändert.
+
+Vier Fälle exportieren alle sieben Resultsets gleichzeitig nach TABLE und
+JSON. Die 64 TABLE-Textspalten und die vollständigen kanonischen
+JSON-Repräsentationen aller Exportfelder wurden geprüft, einschließlich
+leerer Datenbankmengen. Instanzbuild, Hauptversion, Server- und
+`tempdb`-Collation stimmen mit `SERVERPROPERTY` beziehungsweise dem nativen
+Datenbankkatalog überein. Alle neun Featureidentitäten und deren Werte
+werden gegen `SERVERPROPERTY` geprüft. Die fünf Referenzzeilen sowie die
+Instanz-, Build- und Lifecyclezeilen bleiben bei einem Datenbanklimit erhalten.
+
+Der vollständige Datenbankfall verlangt genau die beiden eigenen
+Unicode-Quelldatenbanken. Datenbank-ID, Name, Compatibility Level, Collation
+und StateDesc werden gegen den nativen Katalog geprüft. Die eigene erste
+Quelle verwendet Compatibility Level 150, die zweite 160. Ein Ein-Zeilen-Limit
+erhält die zuerst angeforderte Quelle. Die gültige Quelle zusammen mit einer
+fehlenden Auswahl liefert `AVAILABLE_LIMITED` und genau eine partielle
+Auswahlwarnung mit dem bestehenden generischen `DATABASE_UNAVAILABLE`-Vertrag.
+
+Der erste Testentwurf setzte irrtümlich einen Datenbanknamen im Warnungstext
+voraus. Die Prüfung wurde an den vorhandenen generischen Vertrag angepasst;
+der unabhängige Review ergänzte außerdem die exakte eigene Datenbankmenge.
+Der endgültige Stand bestand danach separat mit Compatibility Level 150,
+160 und 170 der Frameworkdatenbank auf derselben SQL-Server-2025-Engine.
+Diese Läufe sind keine nativen 2019- oder 2022-Nachweise. Installation und
+Smoke-Test bestanden. Alle eigenen Testdatenbanken, Container, Volumes und
+temporären Lab-States wurden auch nach den früheren Testfehlern entfernt.
+Der Vertrag belegt keine aktuelle Patchfreigabe, Online-Katalogaktualität,
+Vulnerability-, Lizenz-, Neustart- oder zusätzliche Berechtigungsprüfung.

@@ -37,6 +37,16 @@ EXEC [monitor].[USP_ServerVersionInformation]
 
 Die sieben stabilen Resultsetnamen lauten `serverVersion`, `buildAssessment`, `lifecycle`, `instanceFeatures`, `databaseCompatibility`, `references` und `warnings`. CONSOLE verdichtet Build- und Lifecyclebewertung zu genau einem Grid. RAW liefert alle sieben Resultsets in dieser Reihenfolge. TABLE akzeptiert eine beliebige eindeutige Teilmenge der sieben Namen; JSON verwendet gleichnamige Arrays unter einer gemeinsamen `meta`-Hülle.
 
+Die 64 Textspalten der sieben TABLE-Exporte und die übrigen lokalen
+Textspalten verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Der Vergleich
+der Instanzbuildnummer mit dem Offline-Katalog verwendet diese Collation
+ebenfalls ausdrücklich. Eine abweichende Server- oder `tempdb`-Collation
+verändert dadurch den Buildvergleich und die Exportcollations nicht.
+Das vorhandene Zeilenlimit betrifft weiterhin ausschließlich
+`databaseCompatibility`; bei einer exakten Liste erfolgt dessen Auswahl
+zuerst nach der angeforderten Reihenfolge. Instanz-, Feature-, Referenz-
+und Warnungszeilen werden durch dieses Datenbanklimit nicht entfernt.
+
 Berücksichtigen Sie zuerst `warnings`, Modulstatus und `buildAssessment`. Prüfen Sie danach `lifecycle`, die technischen `serverVersion`-Eigenschaften und bei Bedarf `instanceFeatures`. `references` enthält ausschließlich öffentliche Microsoft-URLs und den Katalogstand.
 
 ## Eine Zeile bedeutet

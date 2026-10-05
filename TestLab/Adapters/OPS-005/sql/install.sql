@@ -50014,50 +50014,50 @@ BEGIN
     CREATE TABLE [#ServerVersionInformation_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#ServerVersionInformation_CandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_ServerVersion]
     (
-          [SourceType] varchar(32) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+          [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [EvidenceScope] varchar(40) NOT NULL
+        , [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsCurrent] bit NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ProductVersion] varchar(32) NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ProductVersion] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ProductMajorVersion] int NULL
         , [ProductMinorVersion] int NULL
         , [ProductBuild] int NULL
         , [ProductRevision] int NULL
-        , [ProductLevel] nvarchar(128) NULL
-        , [ProductUpdateLevel] nvarchar(128) NULL
-        , [ProductUpdateReference] nvarchar(128) NULL
-        , [ProductBuildType] nvarchar(128) NULL
-        , [ResourceVersion] nvarchar(128) NULL
+        , [ProductLevel] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProductUpdateLevel] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProductUpdateReference] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProductBuildType] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ResourceVersion] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ResourceLastUpdateDateTime] datetime NULL
-        , [BuildClrVersion] nvarchar(128) NULL
-        , [Edition] nvarchar(128) NULL
+        , [BuildClrVersion] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Edition] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [EditionId] bigint NULL
         , [EngineEdition] int NULL
-        , [EngineClass] varchar(40) NULL
-        , [HostPlatform] nvarchar(256) NULL
-        , [HostDistribution] nvarchar(256) NULL
-        , [HostRelease] nvarchar(256) NULL
-        , [HostServicePackLevel] nvarchar(256) NULL
+        , [EngineClass] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostPlatform] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostDistribution] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostRelease] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostServicePackLevel] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [HostSku] int NULL
         , [OsLanguageVersion] int NULL
         , [SqlServerStartTimeUtc] datetime NULL
@@ -50067,109 +50067,109 @@ BEGIN
         , [IsHadrEnabled] bit NULL
         , [HadrManagerStatus] int NULL
         , [IsLocalDb] bit NULL
-        , [ServerCollation] sysname NULL
-        , [TempDbCollation] sysname NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ServerCollation] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [TempDbCollation] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_BuildAssessment]
     (
-          [SourceType] varchar(32) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+          [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [EvidenceScope] varchar(40) NOT NULL
-        , [AssessmentStatus] varchar(40) NOT NULL
-        , [CatalogFreshnessStatus] varchar(40) NOT NULL
-        , [ProductVersion] varchar(32) NULL
-        , [KnownReleaseName] nvarchar(64) NULL
-        , [ServicingBranch] varchar(16) NULL
-        , [KnowledgeBaseNumber] varchar(16) NULL
+        , [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AssessmentStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CatalogFreshnessStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ProductVersion] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [KnownReleaseName] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ServicingBranch] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [KnowledgeBaseNumber] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ReleaseDate] date NULL
         , [IsSecurityRelease] bit NULL
-        , [LatestKnownBuildInBranch] varchar(32) NULL
-        , [LatestKnownBuildForMajor] varchar(32) NULL
+        , [LatestKnownBuildInBranch] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LatestKnownBuildForMajor] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CatalogAsOfDate] date NULL
-        , [BuildOverviewUrl] nvarchar(512) NULL
-        , [KnowledgeBaseUrl] nvarchar(512) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [BuildOverviewUrl] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [KnowledgeBaseUrl] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_Lifecycle]
     (
-          [SourceType] varchar(32) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+          [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [EvidenceScope] varchar(40) NOT NULL
-        , [LifecycleStatus] varchar(40) NOT NULL
+        , [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [LifecycleStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ProductMajorVersion] int NULL
-        , [ProductName] nvarchar(64) NULL
+        , [ProductName] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StartDate] date NULL
         , [MainstreamEndDate] date NULL
         , [ExtendedEndDate] date NULL
-        , [LifecyclePolicy] varchar(32) NULL
+        , [LifecyclePolicy] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CatalogAsOfDate] date NULL
-        , [LifecycleUrl] nvarchar(512) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [LifecycleUrl] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_InstanceFeatures]
     (
-          [SourceType] varchar(32) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+          [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [EvidenceScope] varchar(40) NOT NULL
-        , [FeatureName] sysname NOT NULL
+        , [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [FeatureValue] int NULL
-        , [ValueStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ValueStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_DatabaseCompatibility]
     (
-          [SourceType] varchar(32) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+          [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [EvidenceScope] varchar(40) NOT NULL
+        , [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsCurrent] bit NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [StateDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [IsSystemDatabase] bit NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_References]
     (
-          [ReferenceType] varchar(40) NOT NULL
+          [ReferenceType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ProductMajorVersion] int NULL
-        , [Title] nvarchar(256) NOT NULL
-        , [Url] nvarchar(512) NOT NULL
+        , [Title] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Url] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CatalogAsOfDate] date NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_Warnings]
     (
           [WarningOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [SourceType] varchar(32) NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [Message] nvarchar(2048) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerVersionInformation_Console]
     (
-          [Build] varchar(32) NULL
-        , [Release] nvarchar(64) NULL
-        , [ServicingBranch] varchar(16) NULL
-        , [BuildStatus] varchar(40) NULL
-        , [CatalogStatus] varchar(40) NULL
-        , [LifecycleStatus] varchar(40) NULL
+          [Build] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Release] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ServicingBranch] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BuildStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CatalogStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LifecycleStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MainstreamEndDate] date NULL
         , [ExtendedEndDate] date NULL
-        , [LatestKnownBuildInBranch] varchar(32) NULL
-        , [BuildOverviewUrl] nvarchar(512) NULL
-        , [ModuleStatus] varchar(40) NOT NULL
+        , [LatestKnownBuildInBranch] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BuildOverviewUrl] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ModuleStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
     );
 
@@ -50277,7 +50277,7 @@ BEGIN
             , N'Offline-Einordnung nach exakter Buildnummer und dokumentiertem Servicing-Zweig; kein Vulnerability-, Patchvollständigkeits-, Neustart- oder Freigabenachweis.'
         FROM [#ServerVersionInformation_ServerVersion] AS [v]
         LEFT JOIN [monitor].[SqlServerBuildCatalog] AS [exact] WITH (NOLOCK)
-          ON [exact].[BuildVersion]=[v].[ProductVersion]
+          ON [exact].[BuildVersion] COLLATE SQL_Latin1_General_CP1_CS_AS=[v].[ProductVersion] COLLATE SQL_Latin1_General_CP1_CS_AS
         OUTER APPLY
         (
             SELECT TOP(1) [c].[BuildVersion],[c].[BuildNumber],[c].[RevisionNumber],[c].[BuildOverviewUrl]
