@@ -218,6 +218,31 @@ akzeptiert keinen bestehenden Run und entfernt ausschließlich den eigenen
 Container, dessen Volume und temporären State. Bei fehlgeschlagener
 Provisionierung oder Bereinigung bleiben die eigenen Recoverydaten erhalten.
 
+## OPS-009 Systemdatenbankinventar
+
+`Invoke-Ops009SystemInventoryScenario.ps1` installiert das Framework in einem
+neuen SQL-Server-2025-Docker-Lab und führt Smoke-Test sowie Inventarvertrag
+aus. Der Vertrag prüft eigene synthetische Objekte in `master`, `model` und
+`msdb`, exakt eine begrenzte Ergebniszeile, den eingeschränkten Loginpfad und
+das leere Inventar nach Fixturebereinigung.
+Ein zusätzliches selektives Berechtigungsprofil zeigt genau die eigene
+Masterfixture, keine Fixture aus `model` oder `msdb` und den verweigerten
+Zugriff auf `model`. Die Vorprüfung erfasst auch
+Namenskollisionen mit anderen Objektarten. Getrennte Erzeugungsmarker
+schützen bereits vorhandene Login-, Benutzer- und Objektfixtures im Fehlerpfad.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops009SystemInventoryScenario.ps1 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Der Runner akzeptiert keinen bestehenden Run. Passwörter bleiben im
+Arbeitsspeicher. Er entfernt den eigenen Container samt Volume und temporärem
+State; bei fehlgeschlagener Provisionierung oder Bereinigung bleiben eigene
+Recoverydaten erhalten. Ein erfolgreicher Lauf belegt ausschließlich die
+ausgeführte SQL-Server-2025-Kombination und die beschriebenen
+Berechtigungsprofile.
+
 ## Katalogisierte Beispiele
 
 | Beispiel | Primärer Analyzer | Bedienseite |

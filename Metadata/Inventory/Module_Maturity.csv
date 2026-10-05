@@ -65,7 +65,7 @@ Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,OPS-005,FULL,OPS-005 re
 Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-006 read-only Kern implementiert; Drei-Versionen-Featureevidenz vorhanden; nicht unterstützte Quelle offen
 Cursor Diagnostics,USP_CurrentCursorAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-007 opt-in Kern und eigene ressourcenpositive zweite Session sowie expliziter Berechtigungsfehler auf SQL Server 2025 belegt; Hochlast-Evidenz offen
 msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-008 mit nativer Drei-Versionen-Basisevidenz; fünf leere Quellen Backup- und Restorezeitfenster sowie Dateiwachstum auf SQL2025 belegt; übrige nicht leere Historien und fehlende Quellen offen
-System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,FULL,OPS-009 read-only Kern implementiert; Drei-Versionen-Evidenz offen
+System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,FULL,OPS-009 positives Inventar exakte Begrenzung eingeschränkte und selektive Metadatensicht sowie Leerfall auf SQL Server 2025 belegt; nativer SQL-Server-2022-Release-Nachweis offen
 Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 Boundary-Inventar sowie erster Fünf-OPS- CurrentOverview- und TABLE-Ziel-Slice vorhanden; weitere Härtung und gemischte Drei-Versionen-Matrix offen
 SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,SSIS-001 Phase 0 abgeschlossen; Phase 1 Implementierung offen
 Snapshot Baseline Expansion (SC-023),USP_RunSnapshotCollectionCycle,PLANNED,NO,NO,NO,,ARCHITECTURE,Optionale Collector Rollups Scheduler und Exportpakete
