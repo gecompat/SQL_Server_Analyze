@@ -135,7 +135,7 @@ Der Nachweis ist lokale Worktree-Evidenz und kein Actions- oder Release-Gate.
 Die Engine-Major-Version 17 wurde vom Lab verifiziert; die genaue
 `ProductVersion` wurde für diesen Lauf nicht erfasst. Die neue Featureassertion
 wurde auf SQL Server 2019 und 2022 nicht ausgeführt. Die
-[historischen Basisnachweise](../../../AI_Metadata/Internal_Documentation/Quality/Maturity_Closeout_Runtime_Evidence_2026-08-29.md)
+historischen Basisnachweise
 bleiben davon getrennt. Eine auf der jeweiligen Engine tatsächlich nicht
 verfügbare Systemquelle bleibt offen; der Status von `OPS-006` bleibt deshalb
 `PARTIAL_PRODUCT_FUNCTION`.
