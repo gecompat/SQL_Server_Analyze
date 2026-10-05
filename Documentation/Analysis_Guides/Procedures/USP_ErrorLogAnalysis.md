@@ -34,6 +34,17 @@ Für einen synthetischen Filter kann beispielsweise `@Suchtext1 = N'ExampleWave2
 
 Der typisierte Vertrag registriert `moduleStatus`, `summary`, `details`, `sourceStatus` und `warnings`. Lesen Sie zuerst `moduleStatus` und `sourceStatus`: `HasMoreSourceRows`, `AVAILABLE_LIMITED`, verweigerte Archive und die Serverlokalzeit bestimmen die Aussagegrenze. Werten Sie danach `summary` nach Produkt und Kategorie aus. `details` bleibt im Standard leer und enthält nur bei einem ausdrücklichen Opt-in den Unicode-sicher projizierten Meldungstext. `warnings` fasst Quelllücken und das globale Quelllimit zusammen.
 
+Alle 37 lokalen Textspalten verwenden die Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS`; 35 davon wurden zusätzlich annotiert.
+Die fünf TABLE-Exporte enthalten zusammen 22 Textspalten. Ein Export
+übernimmt damit keine abweichende `tempdb`-Collation.
+
+`@MaxZeilen` begrenzt ausschließlich die materialisierten Details nach
+derselben Sortierung in RAW, TABLE und JSON. Summary, Quellenstatus,
+Quellzähler und Warnungen bleiben von diesem Detailausgabelimit ungekürzt.
+Auch die Meldungskürzungswarnung bezieht sich weiterhin auf die vollständige
+Detailmenge vor der Zeilenauswahl. CONSOLE zeigt ausschließlich die Summary.
+
 ## Eine Zeile bedeutet
 
 In `summary` bedeutet eine Zeile eine Kombination aus Produkt (`SQL_SERVER` oder `SQL_AGENT`) und Kategorie im gewählten Scope. `EventCount` ist die Anzahl deduplizierter Treffer, nicht die Zahl unterschiedlicher Ursachen. In `details` ist eine Zeile ein einzelner sichtbarer Logeintrag. In `sourceStatus` ist eine Zeile ein konkreter Leseversuch für Produkt, Archiv und Suchregel.
@@ -103,13 +114,10 @@ EXEC [master].[sys].[sp_readerrorlog]
       @p1 = 0,
       @p2 = 1,
       @p3 = N'Error',
-      @p4 = NULL,
-      @p5 = @VonUtc,
-      @p6 = @BisUtc,
-      @p7 = N'desc';
+      @p4 = NULL;
 ```
 
-**Wichtig für die Eigenlast:** Archivnummer, Suchbegriffe und Zeitfenster an `sp_readerrorlog` übergeben. Eine spätere Textklassifikation oder `@MaxZeilen`-Begrenzung spart keinen bereits erfolgten Logdateizugriff.
+**Wichtig für die Eigenlast:** Archivnummer, Produkt und Suchbegriffe werden an `sp_readerrorlog` übergeben. Die Serverlokalzeitgrenze wirkt erst auf die zurückgegebenen Treffer. Eine spätere Textklassifikation oder `@MaxZeilen`-Begrenzung spart keinen bereits erfolgten Logdateizugriff.
 
 ### Zeit- und Scope-Modell
 

@@ -470,3 +470,51 @@ Alle sieben eigenen Container, Volumes und temporären Lab-States wurden entfern
 Die 75 lokalen statischen Verträge und der unabhängige Source-/Testreview
 bestanden. Dieser Vertrag belegt keine Berechtigungsverweigerung, Sperrlast,
 atomare datenbankübergreifende Momentaufnahme oder weitere native Engineversion.
+
+## Error Log: 5. Oktober 2026
+
+`Code/Tests/Common/142_ErrorLog_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte die fremde Exportcollation (`55911`).
+Die 35 zusätzlich annotierten lokalen Textspalten verwenden jetzt die
+Frameworkcollation; mit den zwei vorhandenen Mappingtextspalten sind es
+37 lokale Textspalten. Der abschließende Lauf bestätigte die Collation
+aller 22 Textspalten der fünf TABLE-Exporte.
+
+Zwei eigene synthetische Unicode-Meldungen wurden mit `RAISERROR WITH LOG`
+erzeugt und über einen nur im Speicher geführten eindeutigen Marker aus
+`master.sys.sp_readerrorlog` gelesen. Der native Vergleich bestätigte genau
+zwei getrennte Zeitpunkte sowie die Umlaute Ä und Ü. Fünf Aufrufe prüften
+Summary ohne Detailtext, vollständige Details, Detaillimit eins, NULL-Limit
+mit zwölf Zeichen Textprojektion und Quelllimit eins. Summary, native
+Detailfelder und Unicode-Längen stimmen mit dem Export überein. Die vier
+JSON-Arrays stimmen als typisierte Multimengen einschließlich
+Zeilenhäufigkeiten mit TABLE überein.
+
+Das gemeinsame Detaillimit greift nach vollständigen Modul-, Summary- und
+Quellenzählern. Limit eins erhält die zwei akzeptierten Quellzeilen und den
+Summaryzähler; TABLE und JSON enthalten dieselbe jüngste Detailzeile und
+`HasMoreDetailRows=1`. Quelllimit eins akzeptiert nur die jüngste Zeile,
+behält den nativen Lesezähler zwei und liefert `AVAILABLE_LIMITED` sowie
+beide bestehenden Quelllimitwarnungen. Die Kürzungswarnung verwendet
+weiterhin den vor der Detailbegrenzung gesicherten vollständigen Zähler.
+
+Die ersten zwei Läufe scheiterten nach der Baselinereproduktion mit
+`55913`. Der diagnostische zweite Lauf grenzte den Vergleich auf eine
+skalare leere `FOR JSON`-Subquery im neuen Test ein: Ohne Details war deren
+Wert NULL, während das Modularray korrekt `[]` enthielt. Nur diese native
+Vergleichsseite wird jetzt auf das leere Array normalisiert; die vier
+Modularrays bleiben obligatorisch. Der Produktcode wurde dadurch nicht
+verändert.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Alle drei eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
+Der neue Vertrag belegt keinen realen Enginefehler, keinen Agent- oder
+Archivpfad und keine zusätzliche Berechtigungs- oder Hochlastvariante.
+Er rotiert keine Logs und ändert keine Logkonfiguration.
