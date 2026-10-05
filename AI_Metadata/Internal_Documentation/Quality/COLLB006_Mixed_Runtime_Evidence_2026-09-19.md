@@ -374,3 +374,42 @@ Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
 Der neue Vertrag belegt keinen realen schweren Enginefehler, keinen
 Ringbufferzugriff und keinen positiven Diagnostics-One-Shot. Er ändert
 weder den vorhandenen Kandidatenlimit- noch den nachfolgenden Severityfilter.
+
+## Diagnostic Findings: 5. Oktober 2026
+
+`Code/Tests/Common/140_DiagnosticFindings_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte die fremde Exportcollation (`55891`).
+Die zehn Textspalten der lokalen Befundtabelle und die vier Textspalten der
+Modulstatusvariable verwenden jetzt explizit die Frameworkcollation. Der
+Vertrag bestätigte die zehn Textspalten des Befund-TABLE-Exports.
+Die gemeinsame Prioritätsfilterung und Zeilenbegrenzung erfolgen nach
+Befunderzeugung, Statusermittlung und Sicherung der bisherigen Zähler.
+
+Drei synthetische Parent-Ergebnisse lieferten vier kontrollierte HIGH-,
+MEDIUM- und LOW-Befunde. Fünf Aufrufe prüften vollständige Ausgabe, Limit eins,
+MEDIUM-Auswahl, HIGH-Auswahl mit NULL-Limit und partielle Parent-Evidenz.
+Die erwarteten zwölf Befundfelder einschließlich Ordinal, Unicode-Scope,
+Messwert, Aussagegrenze und nächster Prüfung wurden als Multiset mit dem
+TABLE-Export verglichen. TABLE und JSON enthielten dieselben Ergebnisse
+einschließlich Zeilenhäufigkeiten. Die drei Modulstatuszeilen belegten
+`REUSED_PARENT_RESULT`; der partielle Parent blieb als `AVAILABLE_LIMITED`
+sichtbar. Bei Limit eins blieb `returnedFindingCount=4`, während das
+Findingarray und TABLE eine Zeile enthielten; die bisherige Zählersemantik
+wurde beibehalten.
+
+Ein getrennt ausgeführter Integritäts-Child-Aufruf ohne Parent-Ergebnis
+bestätigte `EXECUTED`, den eigenen nativen Datenbankscope und den LOW-Befund
+zur nicht verfügbaren CHECKDB-Zeitevidenz. Die synthetischen Parent-Felder
+belegen keine reale Beschädigung oder tatsächlichen Speicherdruck.
+
+Frameworkinstallation, Smoke-Test und Laufzeitvertrag bestanden. Der eigene
+Container, sein Volume und der temporäre Lab-State wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
+Der neue Vertrag belegt keine atomare Childerhebung und keine zusätzliche
+Opt-in-, Berechtigungs- oder Hochlastvariante.
