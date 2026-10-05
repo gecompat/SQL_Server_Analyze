@@ -40472,12 +40472,12 @@ BEGIN
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
@@ -40485,35 +40485,35 @@ BEGIN
     CREATE TABLE [#DataCaptureStatus_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#DataCaptureStatus_Db]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsCdcEnabled] bit NULL
         , [IsChangeTrackingEnabled] bit NULL
         , [RetentionPeriod] bigint NULL
-        , [RetentionPeriodUnitsDesc] nvarchar(60) NULL
+        , [RetentionPeriodUnitsDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsAutoCleanupOn] bit NULL
         , [CurrentCtVersion] bigint NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#DataCaptureStatus_Cdc]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [CaptureInstance] sysname NULL
-        , [SourceSchema] sysname NULL
-        , [SourceTable] sysname NULL
+        , [CaptureInstance] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceSchema] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectId] int NULL
         , [StartLsn] binary(10) NULL
         , [SupportsNetChanges] bit NULL
-        , [RoleName] sysname NULL
-        , [IndexName] sysname NULL
+        , [RoleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CreateDate] datetime NULL
         , [PartitionSwitch] bit NULL
     );
@@ -40521,8 +40521,8 @@ BEGIN
     CREATE TABLE [#DataCaptureStatus_Ct]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SchemaName] sysname NULL
-        , [TableName] sysname NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectId] int NULL
         , [IsTrackColumnsUpdatedOn] bit NULL
         , [BeginVersion] bigint NULL
@@ -40533,21 +40533,21 @@ BEGIN
     CREATE TABLE [#DataCaptureStatus_Jobs]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [JobType] nvarchar(20) NULL
-        , [JobName] sysname NULL
+        , [JobType] nvarchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [Enabled] bit NULL
         , [LastRunOutcome] int NULL
         , [LastRunDateTime] datetime NULL
-        , [LastMessage] nvarchar(4000) NULL
+        , [LastMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#DataCaptureStatus_Warnings]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [SourceName] varchar(40) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [SourceName] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')
@@ -40615,8 +40615,8 @@ IF EXISTS
     WHERE [s].[name] = N''cdc'' AND [t].[name] = N''change_tables''
 )
 BEGIN
-    EXEC(N''INSERT [#DataCaptureStatus_Cdc]
-    SELECT TOP('' + CONVERT(nvarchar(30), @LocalRows) + N'')
+    EXEC [sys].[sp_executesql] N''INSERT [#DataCaptureStatus_Cdc]
+    SELECT TOP (@CdcRows)
           (SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())
         , [ct].[capture_instance]
         , [s].[name]
@@ -40633,7 +40633,7 @@ BEGIN
       ON [t].[object_id] = [ct].[source_object_id]
     LEFT JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
       ON [s].[schema_id] = [t].[schema_id]
-    ORDER BY [ct].[capture_instance];'');
+    ORDER BY [ct].[capture_instance];'', N''@CdcRows bigint'', @CdcRows=@LocalRows;
 END;
 
 INSERT [#DataCaptureStatus_Ct]
@@ -40706,6 +40706,13 @@ ORDER BY [s].[name], [t].[name];';
             SET @IsPartial = 1;
         END;
     END;
+
+    ;WITH [RankedDatabases] AS
+    (
+        SELECT *,ROW_NUMBER() OVER (ORDER BY [DatabaseName]) AS [OutputOrdinal]
+        FROM [#DataCaptureStatus_Db]
+    )
+    DELETE FROM [RankedDatabases] WHERE [OutputOrdinal]>@EffectiveMaxZeilen;
 
     IF @StatusCode <> 'AVAILABLE' AND @PrintMeldungen = 1
     BEGIN
