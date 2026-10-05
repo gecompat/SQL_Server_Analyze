@@ -39848,29 +39848,29 @@ BEGIN
     CREATE TABLE [#BackupRecovery_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
 
     CREATE TABLE [#BackupRecovery_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#BackupRecovery_Fresh]
     (
-          [DatabaseName] sysname
-        , [StateDesc] nvarchar(60)
-        , [RecoveryModelDesc] nvarchar(60)
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
         , [LastFullFinish] datetime
         , [FullAgeMinutes] int
         , [LastDiffFinish] datetime
@@ -39878,14 +39878,14 @@ BEGIN
         , [LastLogFinish] datetime
         , [LogAgeMinutes] int
         , [LastCopyOnlyFullFinish] datetime
-        , [BackupStatus] varchar(100)
+        , [BackupStatus] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS
     );
 
     CREATE TABLE [#BackupRecovery_Backups]
     (
-          [DatabaseName] sysname
-        , [BackupType] char(1)
-        , [BackupTypeDesc] nvarchar(60)
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [BackupType] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [BackupTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
         , [BackupStartDate] datetime
         , [BackupFinishDate] datetime
         , [DurationSeconds] int
@@ -39895,19 +39895,19 @@ BEGIN
         , [IsSnapshot] bit
         , [HasBackupChecksums] bit
         , [IsDamaged] bit
-        , [MediaPath] nvarchar(4000)
+        , [MediaPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS
     );
 
     CREATE TABLE [#BackupRecovery_Restores]
     (
-          [DestinationDatabaseName] sysname
+          [DestinationDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
         , [RestoreDate] datetime
-        , [UserName] sysname
-        , [RestoreType] char(1)
+        , [UserName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [RestoreType] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS
         , [Replace] bit
         , [Recovery] bit
         , [Restart] bit
-        , [SourceDatabaseName] sysname
+        , [SourceDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
         , [BackupFinishDate] datetime
     );
 
@@ -40049,6 +40049,14 @@ BEGIN
         IF @PrintMeldungen = 1
             RAISERROR(N'Backup-/Restore-Historie konnte nicht vollständig gelesen werden: %s', 10, 1, @ErrorMessage) WITH NOWAIT;
     END CATCH;
+
+    ;WITH [RankedFreshness] AS
+    (
+        SELECT *,ROW_NUMBER() OVER
+            (ORDER BY CASE WHEN [BackupStatus]='OK' THEN 1 ELSE 0 END,[DatabaseName]) AS [OutputOrdinal]
+        FROM [#BackupRecovery_Fresh]
+    )
+    DELETE FROM [RankedFreshness] WHERE [OutputOrdinal]>@EffectiveMaxZeilen;
 
     IF @ResultSetArtNormalisiert <> 'NONE'
     BEGIN

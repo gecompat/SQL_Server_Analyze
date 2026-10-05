@@ -65,7 +65,7 @@ Für `USP_BackupRecovery` gilt zusätzlich: **keine Zeile** bedeutet, dass im si
 | Haupttreiber | Zahl ausgewählter Datenbanken sowie Backupset-, Medien- und Restore-Historyzeilen im Lookback. Lange Aufbewahrung und häufige Logbackups vergrößern die msdb-Quellen deutlich stärker als die aktuelle Datenbankzahl allein. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_BackupRecovery ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU und I/O auf Katalogen beziehungsweise msdb-Historie; TempDB für Korrelation und Transfer bei langen Meldungen. |
-| Begrenzungswirkung | Datenbankliste/-pattern begrenzen alle msdb-Joins. `@MitRestoreHistory = 0` lässt diesen Pfad aus. `@MaxZeilen` wird auf Backup- und Restoreausgabe angewandt; die Freshnessaggregation über Backupset kann zuvor mehr Zeilen prüfen. Warnstunden/-minuten verändern nur Klassifikation. |
+| Begrenzungswirkung | Datenbankliste/-pattern begrenzen alle msdb-Joins. `@MitRestoreHistory = 0` lässt diesen Pfad aus. `@MaxZeilen` begrenzt Freshness, Backup- und Restoreausgabe jeweils separat; die Freshnessaggregation über Backupset kann zuvor mehr Zeilen prüfen. Warnstunden/-minuten verändern nur Klassifikation. |
 | Locking und Nebenwirkungen | Read-only; kurze Schema-Stability-Zugriffe auf msdb/Systemkataloge. Jobs, Backups oder Wartung laufen parallel weiter, daher ist das Ergebnis nicht atomar. |
 | Schutzmechanismus | `@AnalysisClass = NULL`; `@HighImpactConfirmed` schaltet keinen Deep-Pfad frei. Die wirksamen Grenzen sind Datenbankscope, endliches Zeilenlimit und der Restorehistory-Schalter. |
 | Sicherer Einsatz | Eine `ExampleDatabase`, endliches Limit und nur benötigte Restorehistory. Auf msdb mit langer Retention zunächst Freshness/Summary lesen, bevor Detailmengen erweitert werden. |
@@ -87,6 +87,18 @@ Existieren im sichtbaren Fenster die erwarteten Full-, Differential- und Logback
 
 `msdb.dbo.backupmediafamily`, `msdb.dbo.backupset`, `msdb.dbo.restorehistory`.
 
+### Collation und Ausgabegrenzen
+
+Die vier Textspalten des `freshness`-TABLE-Exports verwenden die Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS`; eine abweichende Server- oder `tempdb`-Collation
+bestimmt den Exportvertrag nicht. TABLE und JSON verwenden dieselbe
+materialisierte Freshnessmenge. Ein positives `@MaxZeilen` begrenzt sie nach
+vollständiger Bewertung: Datenbanken mit einem Status ungleich `OK` stehen vor
+`OK`, danach folgt der Datenbankname. Backup- und Restorehistorie werden separat
+nach ihren jüngsten Ereignissen begrenzt. Null und NULL sind unbegrenzt.
+Das letzte normale Full und das letzte Copy-only Full bleiben getrennt.
+`IsSnapshot` ist im vorhandenen Backupresultset NULL und kein gemessener Nullwert.
+
 ### Source Select
 
 Backupsets werden über `media_set_id` mit den physischen Medien und optional über `backup_set_id` mit Restores verbunden:
@@ -107,7 +119,7 @@ WHERE [bs].[database_name] = N'ExampleDatabase'
   AND [bs].[backup_finish_date] >= DATEADD(DAY, -30, GETDATE());
 ```
 
-**Wichtig für die Eigenlast:** Begrenzen Sie zuerst `backupset` nach Datenbank und Zeit. Binden Sie Medien- und Restorezeilen erst anschließend an; ein Backupset kann mehrere Media-Family-Zeilen besitzen.
+**Wichtig für die Eigenlast:** Der Zeitfilter des Gegenprüfungsbeispiels ist kein Parameter der Procedure. Die Procedure verarbeitet die vorhandene Historie der ausgewählten Datenbanken; Warnschwellen begrenzen diese Quellmenge nicht. Binden Sie Medien- und Restorezeilen in eigenen Gegenprüfungen nach dem gewählten Datenbank- und Zeitscope an; ein Backupset kann mehrere Media-Family-Zeilen besitzen.
 
 ### Zeit- und Scope-Modell
 
