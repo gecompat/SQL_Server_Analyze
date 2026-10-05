@@ -112,24 +112,24 @@ BEGIN
 
     CREATE TABLE [#ExtendedEventsReadEvents_Raw]
     (
-        [SourceType] varchar(20) NOT NULL,
-        [EventName] sysname NULL,
+        [SourceType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [EventName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [TimestampUtc] datetime2(7) NULL,
-        [FileName] nvarchar(260) NULL,
+        [FileName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [FileOffset] bigint NULL,
         [EventXml] xml NULL
     );
 
     CREATE TABLE [#ExtendedEventsReadEvents_SourceStatus]
     (
-        [SourceType] varchar(20) NULL,
-        [SessionName] sysname NULL,
-        [TargetName] sysname NULL,
-        [ResolvedPath] nvarchar(4000) NULL,
-        [StatusCode] varchar(40) NOT NULL,
+        [SourceType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [SessionName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [TargetName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ResolvedPath] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [ErrorNumber] int NULL,
-        [ErrorMessage] nvarchar(2048) NULL,
-        [Detail] nvarchar(1000) NULL
+        [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @ResolvedSourceExtendedEventSessionName IS NULL BEGIN SET @StatusCode='INVALID_PARAMETER';SET @ErrorMessage=N'@SourceExtendedEventSessionName muss genau einen gültigen, optional geklammerten sysname enthalten.';END;
@@ -169,7 +169,7 @@ BEGIN
               ON [f].[event_session_id] = [t].[event_session_id]
              AND [f].[object_id] = [t].[target_id]
              AND [f].[name] = N'filename'
-            WHERE [s].[name] = @ResolvedSourceExtendedEventSessionName;
+            WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = @ResolvedSourceExtendedEventSessionName COLLATE SQL_Latin1_General_CP1_CS_AS;
         END TRY
         BEGIN CATCH
             SET @IsPartial = 1;
@@ -259,7 +259,7 @@ BEGIN
                 FROM [sys].[dm_xe_session_targets] AS t WITH (NOLOCK)
                 JOIN [sys].[dm_xe_sessions] AS s WITH (NOLOCK)
                   ON [s].[address] = [t].[event_session_address]
-                WHERE [s].[name] = @ResolvedSourceExtendedEventSessionName
+                WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS = @ResolvedSourceExtendedEventSessionName COLLATE SQL_Latin1_General_CP1_CS_AS
                   AND [t].[target_name] = N'ring_buffer';
 
                 IF @TargetData IS NULL
