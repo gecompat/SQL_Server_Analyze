@@ -243,3 +243,50 @@ Der bestehende Vertrag bestätigte zusätzlich Leerinventur, verweigerte
 Metadaten, deaktiviertes Audit und aktiven Runtimezustand. Der neue Vertrag
 belegt keine Auditpayloads, Ereigniszustellung, Aufbewahrung oder Hochlast.
 Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
+
+## Database Integrity: 5. Oktober 2026
+
+`Code/Tests/Common/137_DatabaseIntegrity_Collation_Runtime_Contract.sql`
+bestand abschließend auf einem neuen lokalen SQL-Server-2025-Docker-Container
+mit `Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte die fremde Exportcollation (`55861`).
+Alle 15 Textspalten der lokalen Kandidaten-, Warnungs-, Integritäts- und
+Seitendetailtabellen verwenden jetzt die Frameworkcollation. Der Vertrag
+bestätigte sie für die fünf Textspalten des Integritäts-TABLE-Exports.
+
+Der kontrollierte Scope umfasste die eigene Frameworkdatenbank und die
+Systemdatenbank `master` im neu erzeugten Container. Ein synthetischer
+`msdb.dbo.suspect_pages`-Eintrag für die Frameworkdatenbank blieb
+transaktional und wurde zurückgerollt. Drei Aufrufe mit `@MaxZeilen=0`, `1` und `NULL` lieferten die erwarteten zwei, eine und zwei
+Integritätszeilen. TABLE und JSON enthielten dieselben Ergebnisse
+einschließlich Zeilenhäufigkeiten. Native Datenbankidentität, Status,
+PAGE_VERIFY und Suspect-Page-Anzahl wurden gegengeprüft; CHECKDB-Zeit und
+Nachweisalter blieben unbekannt.
+
+Der erste Lauf und die zusätzliche numerische Diagnose scheiterten mit
+`55864`: Die Seitendetailzeile und ihre native Gegenzeile waren vorhanden,
+aber der Test verglich zwei unbekannte Seitenbeschreibungen mit Gleichheit.
+`LIMITED` liefert Beschreibungsspalten als `NULL`. Der korrigierte Vertrag
+verlangt dieses Ergebnis ausdrücklich und prüft Objekt-, Index-, Partitions-
+und Allocation-Unit-Headerwerte NULL-sicher gegen `sys.dm_db_page_info`.
+Der Produktmodus wurde nicht verändert. Ohne Opt-in blieb das Detailarray leer.
+
+Die erste Head-CI scheiterte mit `55860`, weil der Test beim Ein-Zeilen-Limit
+die Frameworkdatenbank unabhängig von ihrem Namen als erste Zeile erwartete.
+Bei gleicher Befundpriorität entscheidet jedoch die bestehende Sortierung
+nach Datenbankname und Datenbank-ID. Der korrigierte Vertrag ermittelt diese
+Reihenfolge nativ und verlangt den positiven Suspect-Page-Indikator in beiden
+unbegrenzten Fällen. Eine zusätzliche Gegenprüfung mit einer synthetischen
+Frameworkdatenbank, die nach `master` sortiert, reproduzierte den ursprünglichen
+Collationfehler und bestand mit der korrigierten Quelle und dem finalen Vertrag.
+Die Produktsortierung wurde nicht verändert.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Alle vier eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
+Der synthetische Indikator belegt keine reale Beschädigung, keinen erfolgreichen
+CHECKDB, keine HADR-Reparatur und keine positiven beschädigten Backupmetadaten.

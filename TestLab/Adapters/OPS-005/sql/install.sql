@@ -43978,22 +43978,22 @@ BEGIN
     CREATE TABLE [#DatabaseIntegrityAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
 
     CREATE TABLE [#DatabaseIntegrityAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#DatabaseIntegrityAnalysis_Suspect]
@@ -44019,9 +44019,9 @@ BEGIN
     CREATE TABLE [#DatabaseIntegrityAnalysis_Integrity]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [PageVerifyOptionDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PageVerifyOptionDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LastGoodCheckDbTime] datetime2(3) NULL
         , [CheckdbAgeHours] bigint NULL
         , [SuspectPageCount] bigint NOT NULL
@@ -44030,13 +44030,13 @@ BEGIN
         , [BackupWithoutChecksumCount] bigint NOT NULL
         , [HadrPageRepairCount] bigint NOT NULL
         , [HadrPageRepairPendingCount] bigint NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#DatabaseIntegrityAnalysis_PageDetails]
     (
-          [DatabaseName] sysname NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FileId] int NULL
         , [PageId] bigint NULL
         , [EventType] int NULL
@@ -44044,7 +44044,7 @@ BEGIN
         , [ObjectId] int NULL
         , [IndexId] int NULL
         , [PartitionId] bigint NULL
-        , [PageTypeDesc] nvarchar(64) NULL
+        , [PageTypeDesc] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [AllocUnitId] bigint NULL
     );
 
@@ -44240,6 +44240,15 @@ BEGIN
     ELSE IF @StatusCode = 'AVAILABLE'
         AND EXISTS (SELECT 1 FROM [#DatabaseIntegrityAnalysis_Integrity] WHERE [FindingCode] <> 'NO_INDICATOR_FOUND')
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
+
+    ;WITH [RankedIntegrity] AS
+    (
+        SELECT *,ROW_NUMBER() OVER
+            (ORDER BY CASE WHEN [FindingCode]='NO_INDICATOR_FOUND' THEN 1 ELSE 0 END,
+                      [DatabaseName],[DatabaseId]) AS [OutputOrdinal]
+        FROM [#DatabaseIntegrityAnalysis_Integrity]
+    )
+    DELETE FROM [RankedIntegrity] WHERE [OutputOrdinal]>@Limit;
 
     SELECT @StatusCodeOut = @StatusCode,
            @IsPartialOut = @IsPartial,
