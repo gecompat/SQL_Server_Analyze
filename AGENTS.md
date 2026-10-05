@@ -35,6 +35,7 @@ Die Foundation ergänzt die projektspezifischen Regeln, ersetzt sie aber nicht. 
 - [`AI_Metadata/ARCHITECTURE_DECISIONS.md`](AI_Metadata/ARCHITECTURE_DECISIONS.md) für dauerhafte Architekturentscheidungen;
 - [`AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md`](AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md) für dauerhafte Artefaktkennungen, Arbeitselemente, Wellen und deren Vergabe;
 - [`AI_Metadata/Internal_Documentation/Quality/Next_Steps.md`](AI_Metadata/Internal_Documentation/Quality/Next_Steps.md) für den aktuellen autonomen Entwicklungsauftrag, dessen Grenzen und die ausführbare Entwicklungswelle;
+- [`AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json`](AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json) für die vollständige Foundation-Upgradebewertung und die unter `DEC-0001` festgehaltenen Integrationsentscheidungen;
 - die nachfolgend direkt referenzierten Qualitätsrichtlinien für Dokumentationsstil und CI-Testauswahl.
 
 Historische, als Entwurf gekennzeichnete oder ausdrücklich abgelöste Inhalte sind keine aktive Governance.

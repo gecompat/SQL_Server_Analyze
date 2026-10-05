@@ -162,6 +162,17 @@
       ],
       "wave": "CONTINUOUS_INTAKE",
       "locator": "AI_Metadata/Internal_Documentation/Research/SQL_Server_Diagnostic_Coverage_Landscape.md"
+    },
+    "DEC-0001": {
+      "artifact_uid": "urn:uuid:01a10d36-bbba-7ae0-afe1-c530de54d626",
+      "kind": "decision",
+      "title": "Foundation 1.19 und vollständige laufende SQL-Validierung",
+      "registration_state": "REGISTERED",
+      "status": "ACTIVE",
+      "aliases": [],
+      "relations": [],
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json",
+      "decision": "Foundation 1.19.0 wird unter Erhaltung der Projektgovernance und bisherigen Capability-Auswahl integriert. Laufende SQL-CI-Validierungen werden nicht durch neuere Commits automatisch abgebrochen; automatische Nachfolgesessions und numerische Lifecycle-Schwellen bleiben ungewählt."
     }
   }
 }

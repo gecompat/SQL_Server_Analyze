@@ -88,3 +88,28 @@ Gelöschte historische Workflows sind keine gültigen CI-Ziele und dürfen weder
 ## Evidenz und Aussagegrenze
 
 Ein erfolgreicher Lauf belegt nur die tatsächlich ausgeführte Kombination und den ausgewählten Vertragsumfang. `NOT_EXECUTED` ist kein Nachweis. Compatibility-Level-Läufe dürfen nicht als native Engine-Nachweise verbucht werden. Neue Release-Evidenz muss Commit, Engine, ProductVersion, Compatibility Level, Plattform, Testumfang und Ergebnis eindeutig trennen.
+
+## Ablösung und Abbruch von CI-Läufen
+
+Die funktionale Impact-CI und die manuelle native Matrix verwenden
+`cancel-in-progress: false`. Ein neuer Commit desselben Pull Requests beendet
+keine laufende SQL-Validierung. Die Runtime erzeugt synthetische Datenbanken
+und weitere Testressourcen in ihrem eigenen Container auf einem
+GitHub-gehosteten Runner. Der vorhandene `always()`-Cleanup bleibt erhalten;
+seine Wirksamkeit nach einer harten Unterbrechung wird nicht vorausgesetzt.
+Lokale native Labs behalten ihren eigenen scopegebundenen Cleanup und werden
+von dieser GitHub-Concurrency-Einstellung nicht gesteuert.
+
+Die rein statischen Dokumentations-, Commit- und Datenschutzworkflows dürfen
+ältere Läufe derselben Workflow-/Ref-Gruppe weiterhin automatisch ablösen.
+Sie verändern keine persistenten SQL- oder externen Betriebsressourcen.
+Abgebrochene, abgelöste und nicht gestartete Läufe sind keine erfolgreiche
+Validierung. Vor Integration sind erfolgreiche erforderliche Checks am
+exakten PR-Head zu prüfen. Eine Merge-Queue oder ein gemeinsamer getesteter
+Integrationskandidat wird durch diese Strategie nicht aktiviert.
+
+Ein expliziter Benutzerabbruch oder Infrastrukturverlust kann dennoch eine
+laufende Prüfung beenden. In diesem Fall werden Cleanup und verbliebene
+Ressourcen geprüft; der betroffene Lauf bleibt ohne Erfolgsnachweis.
+Erforderliche CI wird nach Wiederherstellung auf dem maßgeblichen Head erneut
+ausgeführt. Ein Ergebnisfehler wird nicht als Infrastrukturfehler umgedeutet.
