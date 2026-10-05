@@ -76,46 +76,46 @@ BEGIN
     CREATE TABLE [#DatabaseCapacityAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
 
     CREATE TABLE [#DatabaseCapacityAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#DatabaseCapacityAnalysis_Capacity]
     (
           [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FileId] int NULL
-        , [LogicalFileName] sysname NULL
-        , [FileTypeDesc] nvarchar(60) NULL
-        , [PhysicalName] nvarchar(260) NULL
+        , [LogicalFileName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FileTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PhysicalName] nvarchar(260) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FileSizeMb] decimal(19,2) NULL
         , [UsedInFileMb] decimal(19,2) NULL
         , [FreeInFileMb] decimal(19,2) NULL
         , [FreeInFilePercent] decimal(9,2) NULL
-        , [GrowthDescription] nvarchar(80) NULL
+        , [GrowthDescription] nvarchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [NextGrowthMb] decimal(19,2) NULL
         , [MaxSizeMb] decimal(19,2) NULL
-        , [VolumeMountPoint] nvarchar(512) NULL
-        , [LogicalVolumeName] nvarchar(512) NULL
+        , [VolumeMountPoint] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LogicalVolumeName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [VolumeTotalMb] decimal(19,2) NULL
         , [VolumeAvailableMb] decimal(19,2) NULL
         , [VolumeFreePercent] decimal(9,2) NULL
-        , [FindingCode] varchar(80) NULL
-        , [EvidenceLimit] nvarchar(500) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(500) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @MaxZeilen < 0
@@ -243,6 +243,21 @@ OUTER APPLY [sys].[dm_os_volume_stats](DB_ID(), [f].[file_id]) AS [v];';
     ELSE IF @StatusCode = 'AVAILABLE'
         AND EXISTS (SELECT 1 FROM [#DatabaseCapacityAnalysis_Capacity] WHERE [FindingCode] <> 'NO_CAPACITY_INDICATOR')
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
+
+    IF @NurProblematisch = 1 OR @NurProblematisch IS NULL
+        DELETE FROM [#DatabaseCapacityAnalysis_Capacity]
+        WHERE [FindingCode] IS NULL OR [FindingCode] = 'NO_CAPACITY_INDICATOR';
+
+    ;WITH [RankedCapacity] AS
+    (
+        SELECT *, ROW_NUMBER() OVER
+        (
+            ORDER BY CASE WHEN [FindingCode] = 'NO_CAPACITY_INDICATOR' THEN 1 ELSE 0 END,
+                     [VolumeFreePercent], [DatabaseName], [FileId], [DatabaseId]
+        ) AS [OutputOrdinal]
+        FROM [#DatabaseCapacityAnalysis_Capacity]
+    )
+    DELETE FROM [RankedCapacity] WHERE [OutputOrdinal] > @Limit;
 
     SELECT @StatusCodeOut = @StatusCode,
            @IsPartialOut = @IsPartial,
