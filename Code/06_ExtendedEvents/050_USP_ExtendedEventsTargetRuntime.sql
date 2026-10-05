@@ -79,15 +79,15 @@ BEGIN
     IF @SessionValid=0 OR @TargetValid=0 OR (@ExtendedEventSessionNames IS NOT NULL AND @ExtendedEventSessionNamePattern IS NOT NULL) OR (@TargetNames IS NOT NULL AND @TargetNamePattern IS NOT NULL) OR (@ExtendedEventSessionNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@ExtendedEventSessionNames) WHERE [IsValid]=0)) OR (@TargetNames IS NOT NULL AND EXISTS(SELECT 1 FROM [monitor].[TVF_ParseSqlNameList](@TargetNames) WHERE [IsValid]=0)) SET @StatusCode='INVALID_PARAMETER';
     CREATE TABLE [#ExtendedEventsTargetRuntime_Result]
     (
-        [SourceType] varchar(32) NOT NULL,
-        [SourceObject] nvarchar(256) NOT NULL,
+        [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [CapturedAtUtc] datetime2(3) NOT NULL,
-        [EvidenceScope] varchar(40) NOT NULL,
+        [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [IsCurrent] bit NOT NULL,
         [IsCumulative] bit NOT NULL,
-        [ValueStatus] varchar(40) NOT NULL,
-        [SessionName] nvarchar(256) NOT NULL,
-        [TargetName] nvarchar(60) NOT NULL,
+        [ValueStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [SessionName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [TargetName] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [SessionCreateTime] datetime NULL,
         [ExecutionCount] bigint NOT NULL,
         [ExecutionDurationMs] bigint NOT NULL,
@@ -95,8 +95,8 @@ BEGIN
         [TargetDataCharacters] bigint NULL,
         [TargetDataBytes] bigint NULL,
         [TargetDataIsTruncated] bit NOT NULL,
-        [TargetDataStatus] varchar(40) NOT NULL,
-        [TargetData] nvarchar(max) NULL
+        [TargetDataStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+        [TargetData] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxTargetDataZeichen < 0 OR @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE')
