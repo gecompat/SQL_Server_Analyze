@@ -70,21 +70,21 @@ BEGIN
 
     CREATE TABLE [#InternalContentionAnalysis_LatchStart]
     (
-          [LatchClass] nvarchar(120) NOT NULL
+          [LatchClass] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [WaitingRequestsCount] bigint NOT NULL
         , [WaitTimeMs] bigint NOT NULL
         , [MaxWaitTimeMs] bigint NOT NULL
     );
     CREATE TABLE [#InternalContentionAnalysis_LatchEnd]
     (
-          [LatchClass] nvarchar(120) NOT NULL
+          [LatchClass] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [WaitingRequestsCount] bigint NOT NULL
         , [WaitTimeMs] bigint NOT NULL
         , [MaxWaitTimeMs] bigint NOT NULL
     );
     CREATE TABLE [#InternalContentionAnalysis_SpinStart]
     (
-          [SpinlockName] nvarchar(256) NOT NULL
+          [SpinlockName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [Collisions] bigint NOT NULL
         , [Spins] bigint NOT NULL
         , [SleepTime] bigint NOT NULL
@@ -92,7 +92,7 @@ BEGIN
     );
     CREATE TABLE [#InternalContentionAnalysis_SpinEnd]
     (
-          [SpinlockName] nvarchar(256) NOT NULL
+          [SpinlockName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [Collisions] bigint NOT NULL
         , [Spins] bigint NOT NULL
         , [SleepTime] bigint NOT NULL
@@ -100,8 +100,8 @@ BEGIN
     );
     CREATE TABLE [#InternalContentionAnalysis_LatchResult]
     (
-          [LatchClass] nvarchar(120) NOT NULL
-        , [MeasurementKind] varchar(30) NOT NULL
+          [LatchClass] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MeasurementKind] varchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [WaitingRequests] bigint NULL
         , [WaitTimeMs] bigint NULL
         , [MaxObservedWaitTimeMs] bigint NULL
@@ -111,8 +111,8 @@ BEGIN
     );
     CREATE TABLE [#InternalContentionAnalysis_SpinResult]
     (
-          [SpinlockName] nvarchar(256) NOT NULL
-        , [MeasurementKind] varchar(30) NOT NULL
+          [SpinlockName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MeasurementKind] varchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [Collisions] bigint NULL
         , [Spins] bigint NULL
         , [SleepTime] bigint NULL
@@ -125,13 +125,13 @@ BEGIN
     (
           [SessionId] smallint NOT NULL
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
-        , [WaitType] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [WaitType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WaitTimeMs] int NULL
-        , [WaitResource] nvarchar(256) NULL
+        , [WaitResource] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FileId] int NULL
         , [PageId] bigint NULL
-        , [PageTypeDesc] nvarchar(64) NULL
+        , [PageTypeDesc] nvarchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ObjectId] int NULL
         , [IndexId] int NULL
     );
