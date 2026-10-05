@@ -18,6 +18,7 @@ Die Procedure beantwortet keinen Geschäftsnutzen einer Strukturänderung, keine
 ```sql
 EXEC [monitor].[USP_Partitions]
       @DatabaseNames = N'[ExampleDatabase]',
+      @FullObjectNames = N'[ExampleSchema].[ExampleTable]',
       @ResultSetArt = 'CONSOLE';
 ```
 
@@ -30,6 +31,14 @@ Der typisierte TABLE-Vertrag registriert `partitions`. Status, Scope und Warning
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einer Partition eines Indexes oder Heaps. Ein Objekt mit mehreren Indizes besitzt entsprechend mehrere Zeilen je Partitionsnummer.
+
+Die lokalen Kandidaten-, Status- und Ergebnistabellen verwenden für
+Textspalten explizit `SQL_Latin1_General_CP1_CS_AS`. Der TABLE-Export erhält
+dadurch die Frameworkcollation auch bei abweichender `tempdb`-Collation.
+Ein kontrollierter SQL-Server-2025-Vertrag prüft drei RANGE-RIGHT-Partitionen
+mit gemischter Kompression, Grenzinklusion, nativen Zeilen-/Kompressionswerten,
+Zeilenlimit und case-sensitivem Objektfilter. Dieser Nachweis belegt keinen
+VOLL-Pfad und keine allgemeine Collation- oder Storagegarantie.
 
 ## So lesen
 

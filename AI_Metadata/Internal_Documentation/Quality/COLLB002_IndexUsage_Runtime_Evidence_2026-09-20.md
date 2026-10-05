@@ -32,3 +32,30 @@ stimmten mit der direkten nativen DMF-Abfrage für die kontrollierte einzelne
 Indexpartition überein. Der Test belegt keine allgemeine Lastbedingung,
 keine umfassende Splitklassifikation und keinen VOLL-Pfad. Eigener Container,
 Volume, Fixturetabelle und temporärer Lab-State wurden vollständig entfernt.
+
+## Ergänzung: Partitionsexport vom 5. Oktober 2026
+
+`Code/Tests/Common/128_Partitions_Collation_Runtime_Contract.sql` bestand in
+einem weiteren neuen SQL-Server-2025-Docker-Lab mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für das Framework. Die vollständige Buildnummer
+wurde nicht erfasst; der Lab-Readinesspfad bestätigte Engine-Major-Version `17`.
+Vollinstallation und Smoke-Test waren erfolgreich.
+
+Die unveränderte bisherige `USP_Partitions`-Definition reproduzierte im
+gleichen Lab den neuen Fehler `55772`: Die 13 Textspalten des TABLE-Exports
+übernahmen die fremde `tempdb`-Collation. Nach Installation der korrigierten
+kanonischen Procedure bestand derselbe Vertrag. Alle 23 bislang nicht
+annotierten Textspalten der Kandidaten-, Status- und Ergebnistabellen
+verwenden jetzt die explizite Frameworkcollation. Der versionierte
+OPS-005-Vollinstaller wurde regeneriert; dessen Inhaltsprüfung bestand.
+
+Die eigene Unicode-Objektfixture verwendete RANGE RIGHT mit drei Partitionen
+und je einer synthetischen Zeile. Die zweite Partition erhielt
+PAGE-Kompression. JSON und TABLE enthielten exakt drei Partitionen mit
+korrekten Grenzen, Inklusivität und gemischter Kompression. Zeilen- und
+Kompressionswerte stimmten mit `sys.partitions` überein. Ein weiterer Aufruf
+lieferte exakt zwei Zeilen; der abweichend geschriebene exakte Objektfilter
+lieferte leeres JSON. Der Nachweis belegt keine RANGE-LEFT-, VOLL- oder
+weitere Storagevariante. Eigene Tabelle, Partition Scheme, Partition Function,
+Container, Volume und temporärer Lab-State wurden vollständig entfernt.
