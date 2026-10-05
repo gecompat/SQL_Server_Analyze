@@ -112,6 +112,34 @@ Bestätigen Sie Befunde mit Zielversion, Restoretest und Anwendungstest.
 
 Nutzen Sie Feature-Capabilities, Konfigurationsanalyse und einen isolierten Migrationstest.
 
+## Laufzeitnachweis und offener Umfang
+
+Am 5. Oktober 2026 bestand der erweiterte Vertrag
+`121_OPS006_Database_Portability_Runtime_Contract.sql` zusammen mit dem
+Framework-Smoke-Test in einem neu erzeugten SQL-Server-2025-Linux-Container
+über Docker. Der Runner
+`TestLab/Invoke-Ops006DatabasePortabilityScenario.ps1` installierte den
+vollständigen Frameworkstand und entfernte anschließend seinen Container,
+sein Volume und den temporären State. Die Instanz verwendete
+`Latin1_General_100_CS_AS`; Framework- und Fixture-Datenbanken verwendeten
+`SQL_Latin1_General_CP1_CS_AS`.
+
+Eine synthetische Tabelle mit PAGE-Kompression lieferte `Compression` in
+`sys.dm_db_persisted_sku_features`. Der Test verlangte anschließend dieselbe
+Featureevidenz mit Datenbank, Quellname und `AVAILABLE`-Status im Analyzer-JSON.
+Die vorhandenen Leer-, uncontained-, fehlenden und eingeschränkten Pfade
+bestanden ebenfalls. Der ausgeführte SQL-Test hatte den SHA-256-Wert
+`44dc7a165b92fffd2c990eea5f465fba052a974603de4cec60132cf69a9d5924`.
+
+Der Nachweis ist lokale Worktree-Evidenz und kein Actions- oder Release-Gate.
+Die Engine-Major-Version 17 wurde vom Lab verifiziert; die genaue
+`ProductVersion` wurde für diesen Lauf nicht erfasst. Die neue Featureassertion
+wurde auf SQL Server 2019 und 2022 nicht ausgeführt. Die
+[historischen Basisnachweise](../../../AI_Metadata/Internal_Documentation/Quality/Maturity_Closeout_Runtime_Evidence_2026-08-29.md)
+bleiben davon getrennt. Eine auf der jeweiligen Engine tatsächlich nicht
+verfügbare Systemquelle bleibt offen; der Status von `OPS-006` bleibt deshalb
+`PARTIAL_PRODUCT_FUNCTION`.
+
 ## Primärquellen
 
 - [sys.dm_db_persisted_sku_features](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-persisted-sku-features-transact-sql?view=sql-server-ver17)

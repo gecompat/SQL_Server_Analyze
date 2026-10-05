@@ -113,6 +113,35 @@ Adapter- oder Infrastruktur-Cleanup behält ausschließlich den zugehörigen
 temporären State für die Recovery; ein erfolgreicher Lauf entfernt auch diesen
 State-Root.
 
+## OPS-006 Datenbankportabilität
+
+Der Runner `Invoke-Ops006DatabasePortabilityScenario.ps1` installiert den
+Frameworkbestand in einem neuen, wegwerfbaren Docker-Lab und führt den
+Framework-Smoke-Test sowie den Portabilitätsvertrag aus. Der Vertrag prüft
+eine leere Datenbank, ein tatsächlich persistiertes `Compression`-Feature,
+eine synthetische uncontained dependency, eine fehlende Datenbank und den
+eingeschränkten Zugriff. Die Featureprüfung liest zuerst die Originalquelle
+und verlangt anschließend die zugehörige Evidenz im Analyzer-JSON.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops006DatabasePortabilityScenario.ps1 `
+  -Version 2025 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Der Standardlauf verwendet ausschließlich SQL Server 2025. Die optionalen
+Versionen 2019 und 2022 werden nur bei einem konkreten Versionsrisiko oder
+für den erforderlichen Release-Nachweis ausgewählt. Der aktuelle Labkatalog
+gibt `Latin1_General_100_CS_AS` für die Instanz frei; die Framework- und
+Fixture-Datenbanken verwenden `SQL_Latin1_General_CP1_CS_AS`. Ein erfolgreicher
+Lauf belegt genau diese Kombination und keine vollständige Collationmatrix.
+Das zufällige SA-Passwort bleibt im Arbeitsspeicher. Der Runner entfernt
+abschließend ausschließlich den eigenen Lab-Run und dessen temporären State.
+Bei fehlgeschlagener Provisionierung oder Bereinigung bleibt der State für
+Recovery erhalten. Der Test erzeugt keinen Nachweis für eine auf dieser
+Engine tatsächlich nicht verfügbare Systemquelle und keine allgemeine
+Migrationsfreigabe.
+
 ## Katalogisierte Beispiele
 
 | Beispiel | Primärer Analyzer | Bedienseite |
