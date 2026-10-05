@@ -29,6 +29,13 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die drei Textspalten der lokalen Modulstatustabelle verwenden explizit
+`SQL_Latin1_General_CP1_CS_AS`. Der TABLE-Export `moduleStatus` übernimmt diese
+Frameworkcollation für Modulname, Statuscode und Fehlertext auch bei
+abweichender Server- oder `tempdb`-Collation. Das exportierte Resultset enthält
+eine Zeile je tatsächlich aufgerufenem Childmodul; dessen fachliche JSON-Ausgabe
+bleibt als benanntes Modulobjekt eingebettet.
+
 ## Eine Zeile bedeutet
 
 Die Granularität hängt vom Child ab: CPU, Scheduler, Node, Memory, Datei, Konfiguration, Ereignis oder Finding.
@@ -91,7 +98,7 @@ Die Datenkette besteht aus frameworkinterner Orchestrierung; die Quellen liegen 
 
 ### Source Select
 
-Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert CPU-, NUMA-, Memory-, TempDB-, Konfigurations-, Trace-Flag-, Startup-, OS-, Security-, Integrity-, Capacity-, Counter-, Engine-Event-, Contention-, Buffer-Pool-, Finding- und Worker-Pressure-Module.
+Kein einzelnes Grundselect wird verwendet. Die Procedure orchestriert CPU-, NUMA-, Memory-, TempDB-, Konfigurations-, Trace-Flag-, Startup-, OS-, Security-, Integrity-, Capacity-, Counter-, Engine-Event-, Contention-, Buffer-Pool- und Finding-Module.
 
 **Wichtig für die Eigenlast:** Verwenden Sie zuerst die leichten Server-Snapshots und aktivieren Sie optionale Historien-, XEL-, Buffer-Descriptor- oder datenbankübergreifende Module gezielt. Childstatus und Scope bleiben getrennt; ein finales Zeilenlimit spart deren Quellarbeit nicht.
 
