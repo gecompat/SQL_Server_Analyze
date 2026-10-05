@@ -131,3 +131,39 @@ Container, sein Volume und der temporäre Lab-State wurden entfernt. Die
 keine vollständige native Werteparität der Dienst- oder Servereigenschaften
 und keine zusätzlichen Berechtigungs- oder Fehlerfälle. Es wurde keine
 Serverkonfiguration verändert.
+
+## Server Health Orchestrator: 5. Oktober 2026
+
+`Code/Tests/Common/134_ServerHealth_Collation_Runtime_Contract.sql`
+bestand in einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte mit demselben Vertrag die fremde
+Modulstatusexportcollation (`55831`). Die drei Textspalten der lokalen
+Modulstatustabelle verwenden jetzt die Frameworkcollation; der TABLE-Export
+bestätigte sie für Modulname, Statuscode und Fehlertext.
+
+Der gezielte Aufruf nur mit Security lieferte genau das erwartete Modul.
+Der erweiterte Aufruf lieferte zusätzlich Performance Counters, Internal
+Contention und Buffer Pool mit den festgelegten Modulordinals und Namen.
+Alle exportierten Childstatuses waren verfügbar und nicht partiell; der
+Wrapper meldete `AVAILABLE` ohne Warnings. Die aktivierten JSON-Children
+enthielten positive Konfiguration, begrenzte Counter, eine Memoryzeile und
+ein Contention-Sample mit fünf angeforderten sowie positiven tatsächlichen
+Messsekunden. Die Buffer-Pool-Verteilung blieb deaktiviert.
+
+Der unabhängige Review ergänzte die Prüfung deaktivierter Children:
+Alle erwarteten Schlüssel müssen vorhanden sein und JSON-Typ `null` haben;
+fehlende Schlüssel und unerwartete skalare Werte werden damit abgelehnt.
+Die korrigierte kanonische Fassung bestand die abschließende native Gegenprobe.
+Das irrtümlich genannte Worker-Pressure-Modul wurde aus der
+Source-Select-Beschreibung entfernt; der Orchestrator ruft es nicht auf.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Beide eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge bestanden ebenfalls. Der neue Vertrag
+belegt keinen vollständigen Default- oder Opt-in-Gesamtumfang, keine Hochlast
+und keine vollständige native Werteparität sämtlicher Childresultate.
