@@ -132,12 +132,12 @@ BEGIN
 
     CREATE TABLE [#StatisticsDistributionAnalysis_Candidates]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ObjectId] int NOT NULL
         , [StatisticsId] int NOT NULL
-        , [StatisticsName] sysname NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [Rows] bigint NULL
         , [RowsSampled] bigint NULL
         , [SamplePercent] decimal(9,4) NULL
@@ -153,11 +153,11 @@ BEGIN
     );
     CREATE TABLE [#StatisticsDistributionAnalysis_Incremental]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StatisticsId] int NOT NULL
-        , [StatisticsName] sysname NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PartitionNumber] int NOT NULL
         , [Rows] bigint NULL
         , [RowsSampled] bigint NULL
@@ -166,27 +166,27 @@ BEGIN
     );
     CREATE TABLE [#StatisticsDistributionAnalysis_DistributionDatabaseStatus]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [CandidateCount] bigint NOT NULL
         , [HistogramVisibleCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#StatisticsDistributionAnalysis_Distribution]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ObjectId] int NOT NULL
         , [StatisticsId] int NOT NULL
-        , [StatisticsName] sysname NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CandidateOrdinal] int NOT NULL
-        , [LeadingColumnName] sysname NULL
-        , [LeadingTypeName] sysname NULL
+        , [LeadingColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LeadingTypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [Rows] bigint NULL
         , [RowsSampled] bigint NULL
         , [SamplePercent] decimal(9,4) NULL
@@ -208,16 +208,16 @@ BEGIN
         , [TailStepRows] decimal(38,4) NULL
         , [TailStepPercent] decimal(19,4) NULL
         , [TailVsAverageStepRatio] decimal(19,4) NULL
-        , [AnalysisState] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AnalysisState] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#StatisticsDistributionAnalysis_PartitionVariation]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [StatisticsId] int NOT NULL
-        , [StatisticsName] sysname NOT NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PartitionCount] int NOT NULL
         , [PartitionsWithRows] int NOT NULL
         , [TotalRows] bigint NULL
@@ -230,19 +230,19 @@ BEGIN
     CREATE TABLE [#StatisticsDistributionAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [StatisticsName] sysname NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     DECLARE @StatisticsJson nvarchar(max)=NULL;

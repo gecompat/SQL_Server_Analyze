@@ -99,7 +99,7 @@ BEGIN
     SET @CrossDatabaseRequestedInternal=CONVERT(bit,CASE WHEN @DatabaseNames IS NULL OR @DatabaseNamePattern IS NOT NULL OR @DatabaseListCount>1 THEN 1 ELSE 0 END);
     SELECT @DatenbankNameLike=CASE WHEN [PatternMode]='LIKE' THEN [PatternValue] END FROM [monitor].[TVF_ParsePattern](@DatabaseNamePattern);
     CREATE TABLE [#IndexPhysicalStats_NameFilters]([FilterType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ItemOrdinal] int NOT NULL,[NameValue] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
-    CREATE TABLE [#IndexPhysicalStats_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60),[UserAccessDesc] nvarchar(60),[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname,[RecoveryModelDesc] nvarchar(60),[IsSystemDatabase] bit,[RequestedOrdinal] int);
+    CREATE TABLE [#IndexPhysicalStats_DatabaseCandidates]([DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsReadOnly] bit,[CompatibilityLevel] tinyint,[CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,[IsSystemDatabase] bit,[RequestedOrdinal] int);
     DECLARE @FilterStatus varchar(40)='AVAILABLE',@FilterError nvarchar(2048)=NULL,@CrossDatabaseRequested bit=0;
     EXEC [monitor].[USP_PrepareNameFilters] @SchemaNames=@SchemaNames,@ObjectNames=@ObjectNames,@FullObjectNames=@FullObjectNames,@IndexNames=@IndexNames,@StatisticsNames=NULL,@ColumnNames=NULL,@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@FilterTable=N'#IndexPhysicalStats_NameFilters';
     IF @FilterStatus='AVAILABLE' EXEC [monitor].[USP_PrepareDatabaseCandidates] @DatabaseNames=@DatabaseNames,@SystemdatenbankenEinbeziehen=@SystemdatenbankenEinbeziehen,@DatabaseNamePattern=@DatabaseNamePattern,@HighImpactConfirmed=@HighImpactConfirmed,@AnalysisClass='PHYSICAL_STATS_DEEP',@StatusCode=@FilterStatus OUTPUT,@ErrorMessage=@FilterError OUTPUT,@CrossDatabaseRequested=@CrossDatabaseRequested OUTPUT,@CandidateTable=N'#IndexPhysicalStats_DatabaseCandidates';
@@ -152,14 +152,14 @@ BEGIN
 
     CREATE TABLE [#IndexPhysicalStats_DatabaseStatus]
     (
-          [DatabaseName]       sysname        NULL
-        , [StatusCode]         varchar(40)    NOT NULL
+          [DatabaseName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NULL
+        , [StatusCode]         varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [IsPartial]          bit            NOT NULL
         , [RowCount]           bigint         NOT NULL
-        , [RequiredPermission] nvarchar(256)  NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
         , [ErrorNumber]        int            NULL
-        , [ErrorMessage]       nvarchar(2048) NULL
-        , [Detail]             nvarchar(2000) NULL
+        , [ErrorMessage]       nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail]             nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @FilterStatus<>'AVAILABLE' BEGIN SET @OverallStatus=@FilterStatus;SET @ErrorMessage=@FilterError;END;
@@ -186,11 +186,11 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
  DECLARE @PhysicalAllowed bit=0; SELECT @PhysicalAllowed=COALESCE(MAX(CONVERT(tinyint,[IsAllowed])),0) FROM [monitor].[VW_AnalyseAccessCurrent] WHERE [AnalysisClass]='PHYSICAL_STATS_DEEP';
  CREATE TABLE [#IndexPhysicalStats_Result]
  (
-  [DatabaseName] sysname NOT NULL,[SchemaName] sysname NULL,[ObjectName] sysname NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname NULL,[IndexTypeDesc] nvarchar(60) NULL,
-  [PartitionNumber] int NULL,[IndexLevel] tinyint NULL,[AllocationUnitTypeDesc] nvarchar(60) NULL,[IndexDepth] tinyint NULL,[IndexTypeDescPhysical] nvarchar(60) NULL,
+  [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ObjectId] int NOT NULL,[IndexId] int NOT NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [PartitionNumber] int NULL,[IndexLevel] tinyint NULL,[AllocationUnitTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexDepth] tinyint NULL,[IndexTypeDescPhysical] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
   [AvgFragmentationPercent] float NULL,[FragmentCount] bigint NULL,[AvgFragmentSizePages] float NULL,[PageCount] bigint NULL,[AvgPageSpaceUsedPercent] float NULL,
   [RecordCount] bigint NULL,[GhostRecordCount] bigint NULL,[VersionGhostRecordCount] bigint NULL,[MinRecordSizeBytes] int NULL,[MaxRecordSizeBytes] int NULL,[AvgRecordSizeBytes] float NULL,
-  [ForwardedRecordCount] bigint NULL,[CompressedPageCount] bigint NULL,[ScanMode] varchar(16) NOT NULL
+  [ForwardedRecordCount] bigint NULL,[CompressedPageCount] bigint NULL,[ScanMode] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
  );
  IF @OverallStatus='AVAILABLE' AND (@AnalyseModus NOT IN ('GEZIELT','VOLL') OR @ScanMode NOT IN ('LIMITED','SAMPLED','DETAILED') OR @MinPageCount<0 OR @MinFragmentationPercent<0 OR @MinFragmentationPercent>100 OR (@IndexId IS NOT NULL AND @IndexId<0) OR (@PartitionNumber IS NOT NULL AND @PartitionNumber<1))
  BEGIN SET @OverallStatus='INVALID_PARAMETER'; SET @ErrorMessage=N'Ungültige Physical-Stats-Parameter.'; INSERT [#IndexPhysicalStats_DatabaseStatus] VALUES(@DatabaseName,@OverallStatus,1,0,NULL,NULL,@ErrorMessage,NULL); END
@@ -208,7 +208,7 @@ IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
    BEGIN TRY
     SET @Sql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(11), @LockTimeoutMs) + N'; USE ' + QUOTENAME(@DbName) + N';
 DECLARE @ObjectIdFilter int=NULL;
-IF @pMode=''GEZIELT''
+IF @pMode COLLATE SQL_Latin1_General_CP1_CS_AS=''GEZIELT''
 BEGIN
  SELECT @ObjectIdFilter=[o].[object_id]
  FROM sys.objects AS [o] WITH (NOLOCK)

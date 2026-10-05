@@ -12,6 +12,16 @@
 4. Statistikalter ist weniger wichtig als Datenänderung, Sample, Verteilung und betroffene Query.
 5. Breite `VOLL`-, Physical-, Histogramm-, Segment- und Dictionarypfade sind gruppengeschützt.
 
+## Collationgrenzen
+
+Die Textspalten der lokalen Arbeitstabellen verwenden explizit
+`SQL_Latin1_General_CP1_CS_AS`. Der TABLE-Export erhält diese
+Frameworkcollation auch bei abweichender Server- oder `tempdb`-Collation.
+`USP_ObjectInventory` und `USP_IndexPhysicalStats` vergleichen ihre
+textuellen Steuerwerte nach einem dynamischen Datenbankwechsel ebenfalls
+mit der expliziten Frameworkcollation. Exakte Objektfilter behalten die
+case-sensitive Frameworksemantik unabhängig von der Quelldatenbankcollation.
+
 ---
 
 ## 1. [monitor].[USP_ObjectInventory]

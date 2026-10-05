@@ -85,20 +85,20 @@ BEGIN
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#VectorIndexAnalysis_CandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#VectorIndexAnalysis_NameFilters]
     (
@@ -113,19 +113,19 @@ BEGIN
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CompatibilityLevel] tinyint NULL
         , [PreviewFeaturesEnabled] bit NULL
-        , [SchemaName] sysname NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ObjectId] int NOT NULL
-        , [ObjectName] sysname NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IndexId] int NOT NULL
-        , [IndexName] sysname NOT NULL
-        , [VectorIndexType] varchar(20) NULL
-        , [DistanceMetric] varchar(20) NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [VectorIndexType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [DistanceMetric] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsDisabled] bit NOT NULL
-        , [CatalogStatusCode] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [CatalogStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseId],[ObjectId],[IndexId])
     );
     CREATE TABLE [#VectorIndexAnalysis_RuntimeRaw]
@@ -140,19 +140,19 @@ BEGIN
         , [LastBackgroundTaskDurationSeconds] bigint NULL
         , [LastBackgroundTaskProcessedInserts] bigint NULL
         , [LastBackgroundTaskProcessedDeletes] bigint NULL
-        , [LastBackgroundTaskErrorMessage] nvarchar(max) NULL
+        , [LastBackgroundTaskErrorMessage] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , PRIMARY KEY ([DatabaseId],[ObjectId],[IndexId])
     );
     CREATE TABLE [#VectorIndexAnalysis_Maintenance]
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ObjectId] int NOT NULL
-        , [ObjectName] sysname NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IndexId] int NOT NULL
-        , [IndexName] sysname NOT NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ApproximateStalenessPercent] decimal(10,2) NULL
         , [QuantizedKeysUsedPercent] decimal(10,2) NULL
         , [LastBackgroundTaskTime] datetime2(7) NULL
@@ -160,58 +160,58 @@ BEGIN
         , [LastBackgroundTaskDurationSeconds] bigint NULL
         , [LastBackgroundTaskProcessedInserts] bigint NULL
         , [LastBackgroundTaskProcessedDeletes] bigint NULL
-        , [LastBackgroundTaskErrorMessage] nvarchar(max) NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [LastBackgroundTaskErrorMessage] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseId],[ObjectId],[IndexId])
     );
     CREATE TABLE [#VectorIndexAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [IndexName] sysname NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#VectorIndexAnalysis_SourceStatus]
     (
           [SourceOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
-        , [SourceName] sysname NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#VectorIndexAnalysis_Warnings]
     (
           [WarningOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NULL
-        , [SourceName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [Message] nvarchar(2048) NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#VectorIndexAnalysis_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ProductMajorVersion] int NULL
         , [CrossDatabaseRequested] bit NOT NULL
@@ -223,7 +223,7 @@ BEGIN
         , [HasMoreMaintenanceRows] bit NOT NULL
         , [HasMoreFindingRows] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     DECLARE
