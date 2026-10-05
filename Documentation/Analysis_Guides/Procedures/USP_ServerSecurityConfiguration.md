@@ -26,6 +26,13 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `configuration`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Alle vierzehn Textspalten der lokalen Quellenstatus-, Konfigurations-, Dienst-
+und Eigenschaftstabellen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`.
+Der TABLE-Export `configuration` übernimmt diese Frameworkcollation für
+Optionsname und Befund auch bei abweichender Server- oder `tempdb`-Collation.
+Die konfigurierten und aktiven Optionswerte bleiben als `sql_variant` erhalten;
+JSON stellt dieselben Werte als Text dar.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einer Sicherheitskonfiguration oder einem normalisierten Reviewfinding.
@@ -98,10 +105,8 @@ SELECT
     , [c].[is_dynamic]
 FROM [sys].[configurations] AS [c] WITH (NOLOCK)
 WHERE [c].[name] IN
-      (N'show advanced options',
-       N'xp_cmdshell',
+      (N'xp_cmdshell',
        N'Ole Automation Procedures',
-       N'Ad Hoc Distributed Queries',
        N'clr enabled',
        N'clr strict security',
        N'external scripts enabled',

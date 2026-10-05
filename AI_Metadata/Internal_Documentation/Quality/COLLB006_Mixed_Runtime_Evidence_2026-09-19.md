@@ -100,3 +100,34 @@ Die 75 lokalen statischen Verträge bestanden ebenfalls. Der neue Vertrag
 belegt keinen tatsächlichen Zählerreset, keinen positiven Hot-Page-Fall und
 keine Hochlast; Spinlocks wurden aktiviert und auf gültige begrenzte Arrays
 geprüft, jedoch nicht vollständig gegen native Zählerwerte abgeglichen.
+
+## Server Security Configuration: 5. Oktober 2026
+
+`Code/Tests/Common/133_ServerSecurity_Collation_Runtime_Contract.sql`
+bestand in einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte mit demselben Vertrag die fremde
+Konfigurationsexportcollation (`55821`). Alle vierzehn Textspalten der lokalen
+Quellenstatus-, Konfigurations-, Dienst- und Eigenschaftstabellen verwenden
+jetzt die Frameworkcollation. Der abschließende TABLE-Export bestätigte diese
+Collation für Optionsname und Befund. Die konfigurierten und aktiven Werte
+blieben als `sql_variant` erhalten; TABLE und JSON enthielten dieselben
+Optionsnamen, Werte und Befunde.
+
+Der positive Export enthielt `xp_cmdshell` und `clr strict security`. Seine
+Optionsnamen und Werte stimmten in beide Richtungen mit der festen
+Sieben-Optionen-Auswahl aus `sys.configurations` überein. Der JSON-Vertrag
+meldete drei verfügbare Quellen, nicht partiellen Status und eine
+Servereigenschaftszeile. Die dokumentierte Source-Select-Auswahl wurde auf die
+sieben tatsächlich gelesenen Optionen berichtigt.
+
+Frameworkinstallation, Smoke-Test und Laufzeitvertrag bestanden. Der eigene
+Container, sein Volume und der temporäre Lab-State wurden entfernt. Die
+75 lokalen statischen Verträge bestanden ebenfalls. Der Nachweis belegt
+keine vollständige native Werteparität der Dienst- oder Servereigenschaften
+und keine zusätzlichen Berechtigungs- oder Fehlerfälle. Es wurde keine
+Serverkonfiguration verändert.

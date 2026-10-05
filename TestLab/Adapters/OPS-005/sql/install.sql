@@ -43654,35 +43654,35 @@ BEGIN
 
     CREATE TABLE [#ServerSecurityConfiguration_SourceStatus]
     (
-        [SourceName]   sysname        NOT NULL,
-        [StatusCode]   varchar(40)    NOT NULL,
+        [SourceName]   sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NOT NULL,
+        [StatusCode]   varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL,
         [ErrorNumber]  int            NULL,
-        [ErrorMessage] nvarchar(2048) NULL
+        [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#ServerSecurityConfiguration_Configuration]
     (
-        [ConfigurationName] nvarchar(128) NOT NULL,
+        [ConfigurationName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
         [ConfiguredValue]   sql_variant   NULL,
         [RunningValue]      sql_variant   NULL,
-        [Finding]           varchar(60)   NOT NULL
+        [Finding]           varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NOT NULL
     );
 
     CREATE TABLE [#ServerSecurityConfiguration_Services]
     (
-        [ServiceName]                      nvarchar(256) NULL,
-        [ServiceAccount]                   nvarchar(256) NULL,
-        [StartupTypeDescription]           nvarchar(60)  NULL,
-        [StatusDescription]                nvarchar(60)  NULL,
-        [InstantFileInitializationEnabled] nvarchar(10)  NULL,
-        [InstantFileInitializationFinding] varchar(40)   NOT NULL
+        [ServiceName]                      nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [ServiceAccount]                   nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+        [StartupTypeDescription]           nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL,
+        [StatusDescription]                nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL,
+        [InstantFileInitializationEnabled] nvarchar(10) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL,
+        [InstantFileInitializationFinding] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS   NOT NULL
     );
 
     CREATE TABLE [#ServerSecurityConfiguration_Properties]
     (
-        [MachineName]                 sysname       NULL,
-        [ServerName]                  sysname       NULL,
-        [Edition]                     nvarchar(128) NULL,
+        [MachineName]                 sysname COLLATE SQL_Latin1_General_CP1_CS_AS       NULL,
+        [ServerName]                  sysname COLLATE SQL_Latin1_General_CP1_CS_AS       NULL,
+        [Edition]                     nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
         [IsWindowsAuthenticationOnly] int           NULL,
         [CallerIsSysadmin]            int           NULL
     );
