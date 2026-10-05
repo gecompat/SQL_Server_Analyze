@@ -76,10 +76,10 @@ BEGIN
 
     CREATE TABLE [#InfrastructureAnalysis_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     DECLARE @AgentJson nvarchar(max) = NULL;
