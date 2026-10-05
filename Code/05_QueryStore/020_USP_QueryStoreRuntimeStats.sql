@@ -137,13 +137,13 @@ BEGIN
     CREATE TABLE [#QueryStoreRuntimeStats_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
@@ -151,14 +151,14 @@ BEGIN
     CREATE TABLE [#QueryStoreRuntimeStats_Result]
     (
           [QueryStoreDatabaseId] int NULL
-        , [QueryStoreDatabaseName] sysname NOT NULL
+        , [QueryStoreDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [QueryId] bigint NOT NULL
         , [PlanId] bigint NOT NULL
         , [QueryHash] binary(8) NULL
         , [QueryPlanHash] binary(8) NULL
         , [ObjectId] bigint NULL
-        , [ObjectName] nvarchar(517) NULL
-        , [ExecutionTypeDesc] nvarchar(60) NULL
+        , [ObjectName] nvarchar(517) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ExecutionTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FirstExecutionTimeUtc] datetimeoffset NULL
         , [LastExecutionTimeUtc] datetimeoffset NULL
         , [ExecutionCount] bigint NULL
@@ -176,28 +176,28 @@ BEGIN
         , [TotalRowCount] decimal(38,3) NULL
         , [TotalLogBytes] decimal(38,3) NULL
         , [TotalTempdbKb] decimal(38,3) NULL
-        , [SourceType] varchar(32) NULL
-        , [SourceObject] nvarchar(256) NULL
+        , [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CapturedAtUtc] datetime2(3) NULL
-        , [EvidenceScope] varchar(40) NULL
+        , [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [QuerySqlTextCharacters] bigint NULL
         , [QuerySqlTextBytes] bigint NULL
         , [QuerySqlTextIsTruncated] bit NULL
-        , [QuerySqlText] nvarchar(max) NULL
-        , [QueryPlanStatus] varchar(40) NULL
+        , [QuerySqlText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QueryPlanStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [QueryPlanCharacters] bigint NULL
         , [QueryPlanBytes] bigint NULL
         , [QueryPlan] xml NULL
-        , [QueryPlanTextFallback] nvarchar(max) NULL
-        , [EvidenceLimit] nvarchar(1000) NULL
+        , [QueryPlanTextFallback] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#QueryStoreRuntimeStats_Errors]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     SET @Order = CASE @Sortierung

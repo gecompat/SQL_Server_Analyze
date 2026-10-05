@@ -29,7 +29,7 @@ CONSOLE zeigt das benannte Resultset `cursors`; RAW trennt den Modulstatus von d
 
 ## Beispiele und Gegenbeispiele
 
-Ein synthetischer `ExampleCursor` mit einem erfolgten Fetch kann als sichtbarer Positivfall dienen. Ein offener Cursor mit Reads oder Worker Time erhält `RESOURCE_CONTEXT`; eine ausreichend lange Dormanz kann `DORMANT_CONTEXT` ergeben. Ein Gegenbeispiel ist die Behauptung, ein hoher kumulativer Wert belege aktuelle CPU-Last. Ebenso ist ein lokaler administrativer Cursor nicht allein aufgrund seiner Existenz ein Defekt.
+Ein synthetischer `ExampleCursor` mit einem erfolgten Fetch kann als sichtbarer Positivfall dienen. Ein offener Cursor mit einer Dormanz über 60 Sekunden erhält `DORMANT_CONTEXT` vor kumulativen Reads oder Worker Time; andere offene Cursor mit solchen Arbeitswerten erhalten `RESOURCE_CONTEXT`. Ein Gegenbeispiel ist die Behauptung, ein hoher kumulativer Wert belege aktuelle CPU-Last. Ebenso ist ein lokaler administrativer Cursor nicht allein aufgrund seiner Existenz ein Defekt.
 
 ## Leere oder partielle Ausgabe
 

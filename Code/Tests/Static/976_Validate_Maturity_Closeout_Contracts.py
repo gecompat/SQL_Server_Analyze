@@ -18,7 +18,9 @@ OPS_RUNTIME_CONTRACTS = {
     "Code/Tests/ServerHealth/121_OPS006_Database_Portability_Runtime_Contract.sql": (
         "ExampleOps006Portable",
         "ExampleOps006Uncontained",
+        "ExampleOps006Feature",
         "UNCONTAINED_ENTITY",
+        "PERSISTED_SKU_FEATURE",
         "EXEC(N''CREATE OR ALTER PROCEDURE",
     ),
     "Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql": (
@@ -34,6 +36,8 @@ OPS_RUNTIME_CONTRACTS = {
         "INVALID_PARAMETER",
         "DENIED_PERMISSION",
         "DECLARE [ExampleOps007Cursor] CURSOR",
+        "ExampleOps007DormantCursor",
+        "DORMANT_CONTEXT",
     ),
     "Code/Tests/ServerHealth/123_OPS009_System_Database_Objects_Runtime_Contract.sql": (
         "ExampleOps009Object",
@@ -41,6 +45,7 @@ OPS_RUNTIME_CONTRACTS = {
         "model",
         "msdb",
         "DENIED_PERMISSION",
+        "AVAILABLE_EMPTY",
     ),
 }
 

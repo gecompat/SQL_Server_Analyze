@@ -93,13 +93,13 @@ BEGIN
     CREATE TABLE [#QueryStoreStatus_DatabaseCandidates]
     (
           [DatabaseId]         int            NOT NULL
-        , [DatabaseName]       sysname        NOT NULL
-        , [StateDesc]          nvarchar(60)   NULL
-        , [UserAccessDesc]     nvarchar(60)   NULL
+        , [DatabaseName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc]          nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc]     nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly]         bit            NULL
         , [CompatibilityLevel] tinyint        NULL
-        , [CollationName]      sysname        NULL
-        , [RecoveryModelDesc]  nvarchar(60)   NULL
+        , [CollationName]      sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc]  nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase]   bit            NULL
         , [RequestedOrdinal]   int            NULL
     );
@@ -107,11 +107,11 @@ BEGIN
     CREATE TABLE [#QueryStoreStatus_Result]
     (
           [DatabaseId] int NULL
-        , [DatabaseName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [DesiredState] smallint NULL
-        , [DesiredStateDesc] nvarchar(60) NULL
+        , [DesiredStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ActualState] smallint NULL
-        , [ActualStateDesc] nvarchar(60) NULL
+        , [ActualStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ReadonlyReason] int NULL
         , [CurrentStorageSizeMb] bigint NULL
         , [MaxStorageSizeMb] bigint NULL
@@ -121,26 +121,26 @@ BEGIN
         , [StaleQueryThresholdDays] bigint NULL
         , [MaxPlansPerQuery] bigint NULL
         , [QueryCaptureMode] smallint NULL
-        , [QueryCaptureModeDesc] nvarchar(60) NULL
+        , [QueryCaptureModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SizeBasedCleanupMode] smallint NULL
-        , [SizeBasedCleanupModeDesc] nvarchar(60) NULL
+        , [SizeBasedCleanupModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WaitStatsCaptureMode] smallint NULL
-        , [WaitStatsCaptureModeDesc] nvarchar(60) NULL
+        , [WaitStatsCaptureModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CapturePolicyExecutionCount] int NULL
         , [CapturePolicyTotalCompileCpuTimeMs] bigint NULL
         , [CapturePolicyTotalExecutionCpuTimeMs] bigint NULL
         , [CapturePolicyStaleThresholdHours] int NULL
         , [IsEnabled] bit NULL
         , [IsWritable] bit NULL
-        , [StatusHint] nvarchar(1000) NULL
+        , [StatusHint] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#QueryStoreStatus_Errors]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @ResultSetArtNormalisiert NOT IN ('RAW', 'CONSOLE', 'NONE')

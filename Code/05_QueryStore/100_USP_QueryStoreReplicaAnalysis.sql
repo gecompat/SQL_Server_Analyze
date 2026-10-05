@@ -88,20 +88,20 @@ BEGIN
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_CandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_ReplicaFilter]
     (
@@ -114,32 +114,32 @@ BEGIN
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [CurrentQueryStoreStateDesc] nvarchar(60) NULL
-        , [CurrentConnectionRoleDesc] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentQueryStoreStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CurrentConnectionRoleDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReplicaGroupId] bigint NOT NULL
         , [RoleType] tinyint NULL
-        , [RoleTypeDesc] varchar(40) NOT NULL
-        , [RoleClass] varchar(24) NOT NULL
-        , [ReplicaName] nvarchar(4000) NULL
+        , [RoleTypeDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RoleClass] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ReplicaName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsPrimaryRole] bit NOT NULL
         , [IsSecondaryRole] bit NOT NULL
         , [IsNamedReplica] bit NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_RuntimeByReplica]
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [CurrentConnectionRoleDesc] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentConnectionRoleDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReplicaGroupId] bigint NULL
         , [RoleType] tinyint NULL
-        , [RoleTypeDesc] varchar(40) NOT NULL
-        , [RoleClass] varchar(24) NOT NULL
-        , [ReplicaName] nvarchar(4000) NULL
-        , [MappingStatusCode] varchar(40) NOT NULL
+        , [RoleTypeDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RoleClass] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ReplicaName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MappingStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [RecordedRows] bigint NOT NULL
         , [QueryCount] bigint NOT NULL
         , [PlanCount] bigint NOT NULL
@@ -150,77 +150,77 @@ BEGIN
         , [TotalCpuMs] decimal(38,3) NULL
         , [TotalLogicalReads] decimal(38,3) NULL
         , [TotalLogicalWrites] decimal(38,3) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_WaitsByReplica]
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [CurrentConnectionRoleDesc] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentConnectionRoleDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReplicaGroupId] bigint NULL
         , [RoleType] tinyint NULL
-        , [RoleTypeDesc] varchar(40) NOT NULL
-        , [RoleClass] varchar(24) NOT NULL
-        , [ReplicaName] nvarchar(4000) NULL
-        , [MappingStatusCode] varchar(40) NOT NULL
-        , [ExecutionTypeDesc] nvarchar(128) NULL
+        , [RoleTypeDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RoleClass] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ReplicaName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MappingStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ExecutionTypeDesc] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WaitCategory] tinyint NULL
-        , [WaitCategoryDesc] nvarchar(128) NULL
+        , [WaitCategoryDesc] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RecordedRows] bigint NOT NULL
         , [FirstIntervalStartUtc] datetimeoffset NULL
         , [LastIntervalEndUtc] datetimeoffset NULL
         , [TotalQueryWaitTimeMs] bigint NULL
         , [MaxQueryWaitTimeMs] bigint NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_ForcingByReplica]
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [CurrentConnectionRoleDesc] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentConnectionRoleDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReplicaGroupId] bigint NULL
         , [RoleType] tinyint NULL
-        , [RoleTypeDesc] varchar(40) NOT NULL
-        , [RoleClass] varchar(24) NOT NULL
-        , [ReplicaName] nvarchar(4000) NULL
-        , [MappingStatusCode] varchar(40) NOT NULL
+        , [RoleTypeDesc] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RoleClass] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ReplicaName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MappingStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ForcingLocationCount] bigint NOT NULL
         , [ForcedQueryCount] bigint NOT NULL
         , [ForcedPlanCount] bigint NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_SourceStatus]
     (
           [SourceOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
-        , [SourceName] sysname NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_Warnings]
     (
           [WarningOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NULL
-        , [SourceName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [Message] nvarchar(2048) NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#QueryStoreReplicaAnalysis_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ProductMajorVersion] int NULL
         , [CrossDatabaseRequested] bit NOT NULL
@@ -234,7 +234,7 @@ BEGIN
         , [HasMoreWaitRows] bit NOT NULL
         , [HasMoreForcingRows] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @ReplicaGroupIds IS NOT NULL

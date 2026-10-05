@@ -40,7 +40,55 @@ $selfTestValidators = @(
     '998_Validate_SnapshotBaseline_Public_Contract.py'
     '999_Validate_Runtime001_Contracts.py'
     '1000_Validate_Audit_Configuration_Contract.py'
-)
+    '1001_Validate_ExtendedEvents_BlockedProcess_Collation.py'
+    '1002_Validate_ExtendedEvents_Deadlocks_Collation.py'
+    '1003_Validate_DatabaseCandidates_Dynamic_Parameters.py'
+    '1004_Validate_ResultTable_Json_Collation.py'
+    '1005_Validate_QueryStoreHints_Tempdb_Collation.py'
+    '1006_Validate_LogShipping_Tempdb_Collation.py'
+    '1007_Validate_Replication_Tempdb_Collation.py'
+    '1008_Validate_ServerConfiguration_Tempdb_Collation.py'
+    '1009_Validate_AvailabilityGroups_Tempdb_Collation.py'
+    '1010_Validate_ServerCpuTopology_Tempdb_Collation.py'
+    '1011_Validate_ServerNuma_Tempdb_Collation.py'
+    '1012_Validate_ServerMemory_Tempdb_Collation.py'
+    '1013_Validate_TempDBConfiguration_Tempdb_Collation.py'
+    '1014_Validate_StartupParameters_Tempdb_Collation.py'
+    '1015_Validate_CurrentTransactions_Tempdb_Collation.py'
+    '1016_Validate_OSInformation_Tempdb_Collation.py'
+    '1017_Validate_PlanCacheHealth_Tempdb_Collation.py'
+    '1018_Validate_CurrentWaits_Tempdb_Collation.py'
+    '1019_Validate_QueryStoreWaitStats_Tempdb_Collation.py'
+    '1020_Validate_QueryStorePlanChanges_Tempdb_Collation.py'
+    '1021_Validate_QueryStoreRegressions_Tempdb_Collation.py'
+    '1022_Validate_QueryStoreForcedPlans_Tempdb_Collation.py'
+    '1023_Validate_QueryStoreRuntimeStats_Tempdb_Collation.py'
+    '1024_Validate_QueryStoreStatus_Tempdb_Collation.py'
+    '1025_Validate_IntelligentQueryProcessingAnalysis_Tempdb_Collation.py'
+    '1026_Validate_CurrentMemoryGrants_Tempdb_Collation.py'
+    '1027_Validate_CurrentTempDB_Tempdb_Collation.py'
+    '1028_Validate_CurrentLog_Tempdb_Collation.py'
+    '1029_Validate_QueryStats_Tempdb_Collation.py'
+    '1030_Validate_QueryStoreReplicaAnalysis_Tempdb_Collation.py'
+    '1031_Validate_PlanDetails_Tempdb_Collation.py'
+    '1032_Validate_ShowplanAnalysis_Tempdb_Collation.py'
+    '1033_Validate_ExecutionPlanAnalysis_Tempdb_Collation.py'
+    '1034_Validate_CreateExecutionEvidenceJson_Tempdb_Collation.py'
+    '1035_Validate_InternalCollectExecutionPlanMetadata_Tempdb_Collation.py'
+    '1036_Validate_QueryHashAnalysis_Tempdb_Collation.py'
+    '1037_Validate_CurrentIO_Tempdb_Collation.py'
+    '1038_Validate_CurrentSessions_Tempdb_Collation.py'
+    '1039_Validate_CurrentRequests_Tempdb_Collation.py'
+    '1040_Validate_CurrentBlocking_Tempdb_Collation.py'
+    '1041_Validate_CurrentOverview_Tempdb_Collation.py'
+    '1042_Validate_CheckAnalyseAccess_Tempdb_Collation.py'
+    '1043_Validate_CheckFrameworkCapabilities_Tempdb_Collation.py'
+    '1044_Validate_PrepareDatabaseCandidates_Tempdb_Collation.py'
+    '1045_Validate_InternalWriteResultTable_Tempdb_Collation.py'
+    '1046_Validate_AnalysisNavigator_Tempdb_Collation.py'
+    '1047_Validate_ObjectInventory_Tempdb_Collation.py'
+    '1048_Validate_IndexUsage_Tempdb_Collation.py'
+  )
 $repositoryOnlyValidators = @(
     '950_Validate_Nonblocking_Metadata.py'
     '960_Validate_Complete_P1_Evidence.py'
@@ -112,3 +160,9 @@ if ($failures.Count -gt 0) {
 }
 
 Write-Host "Statische Vertragssuite erfolgreich: $($selfTestValidators.Count + $repositoryOnlyValidators.Count + 3) Prüfungen."
+
+
+
+
+
+

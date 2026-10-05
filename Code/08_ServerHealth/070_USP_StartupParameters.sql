@@ -29,7 +29,13 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';IF @Hilfe=1 BEGIN PRINT N'monitor.USP_StartupParameters';RETURN;END;
  DECLARE @T datetime2(3)=SYSUTCDATETIME(),@S varchar(40)='AVAILABLE',@P bit=0,@E int=NULL,@M nvarchar(2048)=NULL,@Platform nvarchar(60)=NULL;
  IF @ResultSetArtNormalisiert NOT IN('RAW','CONSOLE','NONE') SELECT @S='INVALID_PARAMETER',@P=1,@M=N'@ResultSetArt muss CONSOLE, RAW, TABLE oder NONE enthalten.';
- CREATE TABLE [#StartupParameters_X]([registry_key] nvarchar(512),[value_name] nvarchar(256),[value_data] nvarchar(2048),[ParameterType] varchar(40));
+CREATE TABLE [#StartupParameters_X]
+(
+    [registry_key] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS,
+    [value_name] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS,
+    [value_data] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS,
+    [ParameterType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS
+);
  BEGIN TRY SELECT TOP(1)@Platform=[host_platform] FROM [sys].[dm_os_host_info] WITH (NOLOCK);END TRY BEGIN CATCH END CATCH;
  IF NOT EXISTS(SELECT 1 FROM [master].[sys].[all_objects] AS [o] WITH (NOLOCK) JOIN [master].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id] WHERE [s].[name]=N'sys' AND [o].[name]=N'dm_server_registry') SELECT @S=CASE WHEN @Platform=N'Linux'THEN'UNAVAILABLE_PLATFORM'ELSE'UNAVAILABLE_OBJECT'END,@P=1,@M=N'sys.dm_server_registry ist nicht verfügbar; Startparameter können auf dieser Plattform/Version nicht über diese Quelle gelesen werden.';
  ELSE BEGIN SET LOCK_TIMEOUT 0;BEGIN TRY INSERT [#StartupParameters_X] SELECT [registry_key],[value_name],CONVERT(nvarchar(2048),[value_data]),CASE WHEN CONVERT(nvarchar(2048),[value_data])LIKE'-T%'OR CONVERT(nvarchar(2048),[value_data])LIKE'-t%'THEN'TRACE_FLAG'WHEN CONVERT(nvarchar(2048),[value_data])LIKE'-d%'THEN'MASTER_DATA_PATH'WHEN CONVERT(nvarchar(2048),[value_data])LIKE'-l%'THEN'MASTER_LOG_PATH'WHEN CONVERT(nvarchar(2048),[value_data])LIKE'-e%'THEN'ERRORLOG_PATH'ELSE'OTHER'END FROM [sys].[dm_server_registry] WITH (NOLOCK) WHERE [value_name] LIKE'SQLArg%'OR [value_name] IN('ImagePath','ObjectName');END TRY BEGIN CATCH SELECT @S=CASE WHEN ERROR_NUMBER()IN(229,297,300,371)THEN'DENIED_PERMISSION'ELSE'ERROR_HANDLED'END,@P=1,@E=ERROR_NUMBER(),@M=ERROR_MESSAGE();END CATCH;END;

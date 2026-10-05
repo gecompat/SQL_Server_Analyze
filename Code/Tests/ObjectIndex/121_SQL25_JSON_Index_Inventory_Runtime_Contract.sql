@@ -17,6 +17,8 @@ Nebenwirkung : Auf SQL Server 2025 werden PREVIEW_FEATURES und gegebenenfalls
                im Fehlerpfad zurückgesetzt.
 ===============================================================================
 */
+SET ANSI_NULLS ON;
+SET QUOTED_IDENTIFIER ON;
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 

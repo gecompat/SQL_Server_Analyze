@@ -75,74 +75,74 @@ BEGIN
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
 
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_DatabaseState]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CompatibilityLevel] tinyint NULL
-        , [QueryStoreActualStateDesc] nvarchar(60) NULL
-        , [QueryStoreDesiredStateDesc] nvarchar(60) NULL
+        , [QueryStoreActualStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QueryStoreDesiredStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [QueryStoreReadonlyReason] bigint NULL
         , [PspEligible] bit NOT NULL
         , [OppoEligible] bit NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [FindingSeverity] varchar(16) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_Configuration]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [ConfigurationName] sysname NOT NULL
-        , [ConfigurationValue] nvarchar(4000) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ConfigurationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ConfigurationValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsValueDefault] bit NULL
     );
 
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_AutomaticTuning]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [OptionName] nvarchar(60) NOT NULL
-        , [DesiredStateDesc] nvarchar(60) NULL
-        , [ActualStateDesc] nvarchar(60) NULL
-        , [ReasonDesc] nvarchar(120) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [OptionName] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DesiredStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ActualStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ReasonDesc] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_Signals]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [SignalCode] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SignalCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsSourceAvailable] bit NOT NULL
         , [EvidenceCount] bigint NULL
-        , [Interpretation] nvarchar(1000) NOT NULL
+        , [Interpretation] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_Errors]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen < 0
