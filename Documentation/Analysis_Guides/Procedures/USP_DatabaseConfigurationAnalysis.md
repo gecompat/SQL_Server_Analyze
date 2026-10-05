@@ -42,6 +42,18 @@ Versionieren und genehmigen Sie das Profil vor der produktiven Nutzung. Überneh
 
 Der typisierte Vertrag umfasst `moduleStatus`, `settings`, `drift`, `profile`, `sourceStatus` und `warnings`. Prüfen Sie zuerst Modul- und Quellstatus. Verifizieren Sie danach `profile`, sofern es geliefert wurde. `settings` ist das Rohinventar je Datenbank und Scope. `drift` enthält lokale Variation und explizite Profilabweichung. `warnings` zeigt nicht sichtbare Profileinträge, verweigerte Datenbanken oder Teilquellen.
 
+Alle 42 lokalen Textspalten verwenden die Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS`. Die sechs TABLE-Exporte enthalten zusammen
+32 Textspalten. Damit übernimmt ein Export keine abweichende `tempdb`-Collation.
+Die bewusst case-insensitiven Vergleiche von Profilnamen und Einstellungswerten
+behalten ihre bisherige Bedeutung.
+
+`@MaxZeilen` begrenzt `settings` und `drift` nach derselben Sortierung in RAW,
+TABLE, CONSOLE und JSON. Die vollständige Inventur, Driftberechnung und
+Quellenstatus entstehen vor dieser Auswahl. `SettingRowCount` und
+`DriftRowCount` im Modulstatus zählen die ausgewählten Zeilen; die zugehörigen
+`HasMore*`-Kennzeichen zeigen weitere materialisierte Zeilen an. Profil,
+Quellenstatus und Warnungen werden durch dieses Ausgabelimit nicht gekürzt.
 ## Eine Zeile bedeutet
 
 In `settings` bedeutet eine Zeile eine Einstellung einer Datenbank aus genau einer Quellgruppe. In `drift` ist eine Zeile eine Datenbank-Einstellung, die vom lokalen Referenzwert oder expliziten Profilwert abweicht. `MatchingDatabaseCount` beschreibt beim lokalen Vergleich die Zahl sichtbarer Datenbanken mit dem aktuellen Wert; `ComparedDatabaseCount` ist der Nenner dieser Einstellung. In `sourceStatus` ist eine Zeile eine Datenbank-Quellkombination.
@@ -96,7 +108,7 @@ Welche sichtbaren Einstellungen variieren, und welche weichen von einem autorisi
 
 ### Technischer Hintergrund
 
-`master.sys.databases` liefert gemeinsame Datenbankoptionen. `sys.database_scoped_configurations` und `sys.database_query_store_options` werden je Kandidat in isolierten dynamischen Batches gelesen. Eine versionsabhängige Option wie Optimized Locking wird nur projiziert, wenn die Katalogspalte sichtbar vorhanden ist. Das Profil ist ein JSON-Array eindeutiger Scope-/Name-Paare.
+`master.sys.databases` liefert gemeinsame Datenbankoptionen. `sys.database_scoped_configurations` und `sys.database_query_store_options` werden je Kandidat in isolierten dynamischen Batches gelesen. Die dynamische Zeichenfolge wird bereits bei der Verkettung als `nvarchar(max)` aufgebaut, damit beide lokalen Katalogabfragen erhalten bleiben. Eine versionsabhängige Option wie Optimized Locking wird nur projiziert, wenn die Katalogspalte sichtbar vorhanden ist. Das Profil ist ein JSON-Array eindeutiger Scope-/Name-Paare.
 
 ### Datenkette
 
@@ -142,6 +154,7 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: Query Store, Stat
 
 ## Primärquellen
 
+- [Zeichenfolgenverkettung und große Datentypen](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/string-concatenation-transact-sql?view=sql-server-ver17)
 - [sys.databases](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-databases-transact-sql?view=sql-server-ver17)
 - [sys.database_scoped_configurations](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-scoped-configurations-transact-sql?view=sql-server-ver17)
 - [sys.database_query_store_options](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-database-query-store-options-transact-sql?view=sql-server-ver17)

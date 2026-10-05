@@ -47405,88 +47405,88 @@ BEGIN
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#DatabaseConfigurationAnalysis_CandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#DatabaseConfigurationAnalysis_Profile]
     (
           [ProfileOrdinal] int NOT NULL PRIMARY KEY
-        , [SettingScope] varchar(32) NOT NULL
-        , [SettingName] nvarchar(128) NOT NULL
-        , [ExpectedValue] nvarchar(4000) NOT NULL
+        , [SettingScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SettingName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ExpectedValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DatabaseConfigurationAnalysis_Settings]
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
         , [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [SettingScope] varchar(32) NOT NULL
-        , [SettingName] nvarchar(128) NOT NULL
-        , [ActualValue] nvarchar(4000) NULL
-        , [SecondaryValue] nvarchar(4000) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SettingScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SettingName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ActualValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SecondaryValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsDefault] bit NULL
-        , [SourceObject] nvarchar(256) NOT NULL
-        , [SourceStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE INDEX [IX_DatabaseConfiguration_Settings]
       ON [#DatabaseConfigurationAnalysis_Settings]([SettingScope],[SettingName],[DatabaseId]);
     CREATE TABLE [#DatabaseConfigurationAnalysis_Drift]
     (
           [CapturedAtUtc] datetime2(3) NOT NULL
-        , [DriftType] varchar(32) NOT NULL
+        , [DriftType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
-        , [SettingScope] varchar(32) NOT NULL
-        , [SettingName] nvarchar(128) NOT NULL
-        , [ActualValue] nvarchar(4000) NULL
-        , [ReferenceValue] nvarchar(4000) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SettingScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SettingName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ActualValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ReferenceValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MatchingDatabaseCount] int NULL
         , [ComparedDatabaseCount] int NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DatabaseConfigurationAnalysis_SourceStatus]
     (
           [SourceOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
-        , [SourceName] sysname NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DatabaseConfigurationAnalysis_Warnings]
     (
           [WarningOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NULL
-        , [SourceName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [Message] nvarchar(2048) NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DatabaseConfigurationAnalysis_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [CrossDatabaseRequested] bit NOT NULL
         , [DatabaseCount] int NOT NULL
@@ -47496,7 +47496,7 @@ BEGIN
         , [HasMoreSettingRows] bit NOT NULL
         , [HasMoreDriftRows] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen<0 OR @SystemdatenbankenEinbeziehen IS NULL OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
@@ -47647,7 +47647,7 @@ BEGIN
         OPEN [DatabaseCursor]; FETCH NEXT FROM [DatabaseCursor] INTO @DatabaseId,@DatabaseName;
         WHILE @@FETCH_STATUS=0
         BEGIN
-            SET @Sql=N'
+            SET @Sql=CONVERT(nvarchar(max),N'')+N'
             BEGIN TRY
                 INSERT [#DatabaseConfigurationAnalysis_Settings]
                 SELECT @CapturedAtUtc,@DatabaseId,@DatabaseName,''SCOPED'',CONVERT(nvarchar(128),[name]),
@@ -47799,6 +47799,18 @@ BEGIN
            CONVERT(bit,CASE WHEN @Limit<9223372036854775807 AND @DriftRows>@Limit THEN 1 ELSE 0 END),
            @ErrorNumber,@ErrorMessage);
 
+    ;WITH [RankedSettings] AS
+    (
+        SELECT *,ROW_NUMBER() OVER(ORDER BY [DatabaseName],[SettingScope],[SettingName]) AS [OutputOrdinal]
+        FROM [#DatabaseConfigurationAnalysis_Settings]
+    )
+    DELETE FROM [RankedSettings] WHERE [OutputOrdinal]>@Limit;
+    ;WITH [RankedDrift] AS
+    (
+        SELECT *,ROW_NUMBER() OVER(ORDER BY [DriftType],[SettingScope],[SettingName],[DatabaseName]) AS [OutputOrdinal]
+        FROM [#DatabaseConfigurationAnalysis_Drift]
+    )
+    DELETE FROM [RankedDrift] WHERE [OutputOrdinal]>@Limit;
     IF @JsonErzeugen=1
     BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT N'DatabaseConfigurationAnalysis' [resultName],1 [schemaVersion],@CapturedAtUtc [generatedAtUtc],@StatusCode [statusCode],@IsPartial [isPartial],CASE WHEN @ProfileJson IS NULL THEN 'LOCAL_COMPARISON' ELSE 'LOCAL_AND_EXPLICIT_PROFILE' END [comparisonMode],@ErrorNumber [errorNumber],@ErrorMessage [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);

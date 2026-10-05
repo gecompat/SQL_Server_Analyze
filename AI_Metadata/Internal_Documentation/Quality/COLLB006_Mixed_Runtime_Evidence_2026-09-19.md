@@ -413,3 +413,51 @@ Container, sein Volume und der temporäre Lab-State wurden entfernt.
 Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
 Der neue Vertrag belegt keine atomare Childerhebung und keine zusätzliche
 Opt-in-, Berechtigungs- oder Hochlastvariante.
+
+## Database Configuration: 5. Oktober 2026
+
+`Code/Tests/Common/141_DatabaseConfiguration_Collation_Runtime_Contract.sql`
+bestand in einem neu erzeugten lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Der ursprüngliche Procedure-Stand reproduzierte die fremde Exportcollation
+(`55901`). Die 38 zusätzlich annotierten lokalen Textspalten verwenden jetzt
+die Frameworkcollation; mit den vier bereits annotierten Spalten sind es
+42 lokale Textspalten. Der abschließende Lauf bestätigte diese Collation für
+alle 32 Textspalten der sechs TABLE-Exporte.
+
+Ein vorheriger Testlauf scheiterte vor der Baseline mit `102`, weil der Test
+einen Funktionsaufruf direkt als EXEC-Argument verwendete. Nach der Korrektur
+reproduzierte die Baseline `55901`; der korrigierte Export scheiterte an der
+Statusprüfung (`55902`). Zwei zusätzliche Diagnosen grenzten die fehlenden
+lokalen Kataloge auf die dynamische Zeichenfolge ein. Deren Zwischenkürzung
+führte zu `137` mit einem abgeschnittenen Variablennamen und zu `102`.
+Der Ausdruck beginnt jetzt mit einem `nvarchar(max)`-Operanden. Der
+abschließende Lauf bestätigte beide datenbanklokalen Quellen ohne Teilstatus.
+
+Der Vertrag prüft die Frameworkdatenbank und `master` mit explizitem
+Systemdatenbank-Opt-in. Native Datenbankoptionen, Scoped Configurations samt
+Secondary-Wert und Defaultstatus sowie feste Query-Store-Optionen stimmen mit
+dem Export überein. Flüchtiger Query-Store-Zustand wird auf zulässige Werte
+und numerische Plausibilität geprüft; eine zeitübergreifende exakte Parität
+wird dafür nicht behauptet. Alle sechs erwarteten Datenbank-/Quellenpaare
+sind eindeutig und verfügbar. Der bisherige 14er-Quellenzähler für
+Datenbankoptionen vor der optionalen Optimized-Locking-Zeile bleibt erhalten.
+
+Vier synthetische Profileinträge liefern vier native Profilabweichungen,
+einen passenden AUTO_CLOSE-Wert und eine Warnung für einen nicht sichtbaren
+Profileintrag. Die native Collationvariation ist positiv. Die Läufe mit
+`@MaxZeilen=0`, `1` und `NULL` bestätigen die gemeinsamen Settings-/Driftlimits,
+Modulzähler, HasMore-Kennzeichen und ungekürzten Profil-, Quellen- und
+Warnungsexporte. Bei Limit eins entspricht die erste Driftzeile der nativen
+Optionsvariation. Fünf JSON-Arrays stimmen als typisierte Multimengen mit
+TABLE überein; das Profil wird zusätzlich gegen das Eingabearray geprüft.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Alle fünf eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Source-/Testreview
+bestanden. Dieser Vertrag belegt keine Berechtigungsverweigerung, Sperrlast,
+atomare datenbankübergreifende Momentaufnahme oder weitere native Engineversion.
