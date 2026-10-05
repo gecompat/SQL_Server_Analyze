@@ -49281,54 +49281,54 @@ BEGIN
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
-    CREATE TABLE [#ServerFeatureCapabilities_DatabaseCandidateWarnings]([RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NOT NULL);
+    CREATE TABLE [#ServerFeatureCapabilities_DatabaseCandidateWarnings]([RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL);
     CREATE TABLE [#ServerFeatureCapabilities_Capabilities]
     (
-          [ScopeName] nvarchar(128) NOT NULL
-        , [FeatureName] nvarchar(128) NOT NULL
-        , [AvailabilityStatus] varchar(40) NOT NULL
-        , [LogicPath] nvarchar(256) NULL
+          [ScopeName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AvailabilityStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [LogicPath] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MinimumKnownMajorVersion] int NULL
-        , [SourceObject] nvarchar(512) NULL
-        , [Detail] nvarchar(2000) NULL
-        , [RequiredPermission] nvarchar(512) NULL
+        , [SourceObject] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RequiredPermission] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ServerFeatureCapabilities_DatabaseFeatures]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CompatibilityLevel] tinyint NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [FeatureName] nvarchar(128) NOT NULL
-        , [AvailabilityStatus] varchar(40) NOT NULL
-        , [FeatureValue] nvarchar(4000) NULL
-        , [LogicPath] nvarchar(256) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FeatureName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AvailabilityStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureValue] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LogicPath] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ServerFeatureCapabilities_SpecialIndexes]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [IndexName] sysname NULL
-        , [IndexFamily] nvarchar(60) NULL
-        , [IndexDetails] nvarchar(2000) NULL
-        , [AvailabilityStatus] varchar(40) NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IndexFamily] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IndexDetails] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AvailabilityStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServerFeatureCapabilities_Errors]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [ModuleName] sysname NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen < 0 OR @ResultSetArtNormalisiert NOT IN ('RAW','CONSOLE','NONE')
@@ -49696,6 +49696,13 @@ INNER JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
 
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
     EXEC [sys].[sp_executesql] @LockTimeoutSql;
+
+    ;WITH [RankedCapabilities] AS
+    (
+        SELECT *,ROW_NUMBER() OVER(ORDER BY [ScopeName],[FeatureName]) AS [ExportOrdinal]
+        FROM [#ServerFeatureCapabilities_Capabilities]
+    )
+    DELETE FROM [RankedCapabilities] WHERE [ExportOrdinal]>@EffectiveMaxZeilen;
 
     IF @JsonErzeugen = 1
     BEGIN

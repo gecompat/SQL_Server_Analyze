@@ -1004,3 +1004,64 @@ Repositorydiff. Datenschutz-, Dokumentations- und Statusprüfungen sowie der
 unabhängige Source- und Testreview bestanden. Dieser Vertrag belegt keine
 Schedulerverfügbarkeit, zusätzliche Berechtigungsprofile, Concurrency-
 Gegenprobe, Hochlastvariante oder vollständige persistente Collationmigration.
+
+### Ergänzende Snapshot-Concurrency und CI-Anbindung
+
+Ein weiterer neuer lokaler SQL-Server-2025-Docker-Container verwendete dieselbe
+gemischte Collationkombination und führte den unveränderten endgültigen
+Snapshot-Laufzeitvertrag erneut erfolgreich aus. Anschließend hielt eine
+eigene Session die kanonische Anwendungssperre aus Vertrag `196`. Die zweite
+Session wurde erst nach einer erfolgreichen `APPLOCK_TEST`-Gegenprobe
+gestartet; Vertrag `197` bestätigte `SKIPPED_CONCURRENT` ohne CaptureRunId.
+Der Lockhalter endete erfolgreich nach seinem vorhandenen Zwölf-Sekunden-
+Intervall. Eigene Testdatenbanken, Container, Volume und Lab-State wurden
+entfernt. Dieser Nachweis aktiviert keinen Scheduler und prüft keine Hochlast.
+
+Der funktionale Workflow wertet seit PR `221` auch den Snapshot-Scope aus.
+Sein vorheriger Core-Scope übersprang reine Snapshotänderungen, obwohl der
+Selector deren Laufzeit- und Concurrency-Impact erkannte. Die ergänzte
+Anbindung verlangt einen erfolgreichen Runtimejob, prüft die tatsächliche
+Lockbereitschaft und berücksichtigt den optionalen Installer-Builder im
+Workflowtrigger. Zehn Bashblöcke bestanden die lokale Syntaxprüfung und
+32 Zustandsfälle das tatsächlich ausgeführte Bash-Abschlussgate. Alle
+75 statischen Verträge und der unabhängige Workflowreview bestanden. Der
+GitHub-Lauf `37362107664` bestand am exakten PR-Head einschließlich des
+vollständigen funktionalen 2025-Gates und der Snapshotverträge; anschließend
+wurde PR `221` integriert.
+
+## Server Feature Capabilities: 5. Oktober 2026
+
+`Code/Tests/Common/152_FeatureCapabilities_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb`,
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank und
+`Latin1_General_100_CI_AS` für die jeweils neu erzeugte synthetische
+Unicode-Quelldatenbank. Majorversion 17 wurde bei der Bereitschaft geprüft;
+die konkrete ProductVersion wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte die fremde TABLE-Textcollation
+(`56031`). Ein kontrollierter Stand mit korrigierten Textcollations und
+ursprünglichem Exportlimit reproduzierte getrennt `56032`. Die 27 bisher
+nicht explizit collatierten lokalen Textspalten verwenden jetzt die
+Frameworkcollation. Die Capabilitymenge wird nach vollständiger
+Statusbewertung einheitlich nach `(ScopeName, FeatureName)` begrenzt.
+
+Sechs Fälle prüfen die sieben TABLE-Textspalten, alle acht Exportfelder
+gegen ihre typisierte JSON-Repräsentation, neun allgemeine und vier
+optionale Linux-Capabilityidentitäten sowie deren Mindesthauptversion.
+Die Linux-Verfügbarkeit und Quellenidentität werden gegen den nativen
+Systemkatalog geprüft. `NULL`, `0` und das Ein-Zeilen-Limit erhalten die
+erwarteten Mengen und Reihenfolgen. Eine fehlende Auswahl zusammen mit
+der gültigen Quelle liefert `PARTIAL_RESULT`; ausschließlich fehlende
+Auswahl liefert `ERROR_HANDLED`, erhält aber die Servercapabilities.
+Warnings, native Datenbankidentität, Compatibility Level und StateDesc
+sowie die Wiederherstellung des vorherigen `LOCK_TIMEOUT` werden geprüft.
+
+Alle sechs Fälle bestanden nacheinander mit Compatibility Level 150, 160
+und 170 auf derselben SQL-Server-2025-Engine. Auch die jeweilige eigene
+Quelldatenbank verwendete das geprüfte Compatibility Level. Diese Läufe
+sind keine nativen SQL-Server-2019- oder SQL-Server-2022-Nachweise.
+Installation und Smoke-Test bestanden; eigene Quelldatenbanken, Container,
+Volume und temporärer Lab-State wurden entfernt. Der Vertrag prüft keine
+positiven Vector-/JSON-Indizes, Replikagruppenzähler, zusätzliche
+Berechtigungsprofile oder Funktionsfähigkeit externer Runtimes.
