@@ -114,3 +114,28 @@ kontrollierten Erweiterung. Er belegt keine Retentionpolicy, Wachstumsrate,
 Restorefähigkeit oder nicht leere Zeitfenster der vier weiteren Quellen.
 Tatsächlich fehlende optionale Quellen bleiben offen. Der Lauf ist kein
 vollständiges Release-Gate und kein Nachweis einer weiteren nativen Engine.
+
+## Ergänzende OPS-008-Restoregegenprobe vom 5. Oktober 2026
+
+Der erweiterte Runner bestand erneut mit Frameworkinstallation, Smoke-Test,
+Runtimevertrag `122`, Backupzeitfenstern und Dateiwachstum. Zusätzlich
+bestand `TestLab/Scenarios/OPS-008/restore-window.sql` auf einem neuen
+SQL-Server-2025-Linux-Docker-Lab. Drei native Restores verwendeten
+ausschließlich die eigene Fixture-Backupdatei und eine zu Beginn nicht
+vorhandene Zieldatenbank. Die Historienzeitstempel der drei eigenen
+Restoredatensätze wurden kontrolliert gesetzt. Der Analyzer lieferte die
+exakten Anzahlen und kurzen beziehungsweise langen Restorezeitfenster.
+Container, Volume und temporärer State wurden entfernt.
+
+Ein vorangehender separater Versuch zur optionalen Quellenabwesenheit
+scheiterte bei der Umbenennung von `msdb.dbo.sysmail_allitems` mit Fehler
+`15001`. Auch dessen eigener Container, Volume und State wurden entfernt.
+Dieser Abwesenheitsversuch wird nicht als bestanden gewertet und ist kein
+Teil des reproduzierbaren Restorevertrags. Der Quellenabwesenheitsnachweis
+bleibt offen.
+
+Die Instanz- und Frameworkcollations entsprechen der vorangehenden
+Historiengegenprobe. Das Lab verifizierte Major-Version 17; ProductVersion
+wurde nicht erfasst. Der Lauf ist lokale Vertrags- und Fixtureevidenz,
+kein vollständiger Release-Gate-Lauf oder Nachweis für fremde Backups.
+Nicht leere Agent-, Mail- und Maintenance-Historien bleiben ebenfalls offen.
