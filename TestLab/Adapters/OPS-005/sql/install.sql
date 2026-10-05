@@ -38810,13 +38810,13 @@ BEGIN
           [ClassifierFunctionId] int NULL
         , [IsEnabled] bit NULL
         , [ReconfigurationPending] bit NULL
-        , [ClassifierFunctionName] nvarchar(517) NULL
+        , [ClassifierFunctionName] nvarchar(517) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#ResourceGovernorAnalysis_SourcePoolCatalog]
     (
           [PoolId] int NOT NULL PRIMARY KEY
-        , [PoolName] sysname NOT NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MinCpuPercent] int NULL
         , [MaxCpuPercent] int NULL
         , [MinMemoryPercent] int NULL
@@ -38843,9 +38843,9 @@ BEGIN
     CREATE TABLE [#ResourceGovernorAnalysis_SourceGroupCatalog]
     (
           [GroupId] int NOT NULL PRIMARY KEY
-        , [GroupName] sysname NOT NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PoolId] int NULL
-        , [Importance] nvarchar(60) NULL
+        , [Importance] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RequestMaxMemoryGrantPercent] decimal(9,4) NULL
         , [RequestMaxCpuTimeSec] int NULL
         , [RequestMemoryGrantTimeoutSec] int NULL
@@ -38858,7 +38858,7 @@ BEGIN
     CREATE TABLE [#ResourceGovernorAnalysis_SourceGroupRuntime]
     (
           [GroupId] int NOT NULL PRIMARY KEY
-        , [GroupName] sysname NOT NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PoolId] int NULL
         , [StatisticsStartTime] datetime NULL
         , [EffectiveMaxDop] int NULL
@@ -38879,11 +38879,11 @@ BEGIN
     CREATE TABLE [#ResourceGovernorAnalysis_SourceSessions]
     (
           [SessionId] int NOT NULL PRIMARY KEY
-        , [LoginName] sysname NULL
-        , [HostName] nvarchar(128) NULL
-        , [ProgramName] nvarchar(128) NULL
+        , [LoginName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [GroupId] int NULL
-        , [Status] nvarchar(60) NULL
+        , [Status] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CpuTimeMs] int NULL
         , [MemoryUsagePages] int NULL
         , [Reads] bigint NULL
@@ -38903,7 +38903,7 @@ BEGIN
     CREATE TABLE [#ResourceGovernorAnalysis_Pools]
     (
           [PoolId] int NOT NULL
-        , [PoolName] sysname NOT NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MinCpuPercent] int NULL
         , [MaxCpuPercent] int NULL
         , [MinMemoryPercent] int NULL
@@ -38927,10 +38927,10 @@ BEGIN
     CREATE TABLE [#ResourceGovernorAnalysis_Groups]
     (
           [GroupId] int NOT NULL
-        , [GroupName] sysname NOT NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PoolId] int NULL
-        , [PoolName] sysname NULL
-        , [Importance] nvarchar(60) NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Importance] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RequestMaxMemoryGrantPercent] decimal(9,4) NULL
         , [ConfiguredRequestMaxGrantMemoryMb] decimal(19,2) NULL
         , [TargetRequestMaxGrantMemoryMb] decimal(19,2) NULL
@@ -38953,13 +38953,13 @@ BEGIN
     CREATE TABLE [#ResourceGovernorAnalysis_Sessions]
     (
           [SessionId] int NOT NULL
-        , [LoginName] sysname NULL
-        , [HostName] nvarchar(128) NULL
-        , [ProgramName] nvarchar(128) NULL
+        , [LoginName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [GroupId] int NULL
-        , [GroupName] sysname NULL
-        , [PoolName] sysname NULL
-        , [Status] nvarchar(60) NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Status] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CpuTimeMs] int NULL
         , [MemoryUsagePages] int NULL
         , [MemoryUsageMb] decimal(19,2) NULL
@@ -38971,14 +38971,14 @@ BEGIN
     CREATE TABLE [#ResourceGovernorAnalysis_TempdbGovernance]
     (
           [GroupId] int NULL
-        , [GroupName] sysname NULL
+        , [GroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [PoolId] int NULL
-        , [PoolName] sysname NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ConfiguredGroupMaxTempdbDataMb] decimal(19,2) NULL
         , [ConfiguredGroupMaxTempdbDataPercent] decimal(9,4) NULL
         , [TempdbMaximumSizeMb] decimal(19,2) NULL
         , [EffectiveGroupMaxTempdbDataMb] decimal(19,2) NULL
-        , [EffectiveLimitSource] varchar(40) NOT NULL
+        , [EffectiveLimitSource] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPercentLimitEffective] bit NULL
         , [TempdbDataSpaceMb] decimal(19,2) NULL
         , [PeakTempdbDataSpaceMb] decimal(19,2) NULL
@@ -38988,16 +38988,16 @@ BEGIN
         , [StatisticsStartTime] datetime NULL
         , [IsResourceGovernorEnabled] bit NULL
         , [ReconfigurationPending] bit NULL
-        , [SourceStatusCode] varchar(40) NOT NULL
+        , [SourceStatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#ResourceGovernorAnalysis_Warnings]
     (
-          [WarningCode] varchar(40) NOT NULL
+          [WarningCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [WarningMessage] nvarchar(2048) NOT NULL
+        , [WarningMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @MaxZeilen<0

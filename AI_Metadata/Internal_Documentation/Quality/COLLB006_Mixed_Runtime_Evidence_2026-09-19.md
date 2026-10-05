@@ -610,3 +610,53 @@ Die 75 lokalen statischen Verträge und der unabhängige Review bestanden. Diese
 Joblauf, keine Jobhistorie, keinen positiven Agentstartzeitpunkt und keine
 zusätzliche Berechtigungs- oder Hochlastvariante. Er ändert weder
 Agentservicekonfiguration noch Startzustand.
+
+## Resource Governor: 5. Oktober 2026
+
+`Code/Tests/Common/145_ResourceGovernor_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte die fremde Exportcollation (`55941`).
+Weitere 26 lokale Textspalten verwenden jetzt die Frameworkcollation;
+damit sind alle 28 lokalen Textspalten explizit collatiert. Der Vertrag
+bestätigte die 16 Textspalten der fünf TABLE-Exports. Die vorhandene gemeinsame
+Materialisierung und ihre Ausgabegrenzen bleiben unverändert.
+
+Vier Aufrufe mit Limit null, eins und NULL sowie deaktiviertem Sessionpfad
+bestätigten `AVAILABLE` ohne Teilstatus und mit leerem Warningarray. Native
+Konfiguration, Poolinventar, Gruppeninventar und gespeicherte TempDB-Limits
+wurden mit vier, neun, zehn beziehungsweise sechs Feldern geprüft. Bei
+Limit eins wurden jeweils der erste Pool und die erste Gruppe nach Kennung
+sowie genau eine Session ausgegeben; die Konfigurationszeile blieb erhalten.
+Die unbegrenzten Sessionfälle enthielten die eigene Benutzersession.
+Gruppen- und Poolzuordnung sowie die Umrechnung von Speicherseiten in MB
+wurden geprüft. Der deaktivierte Sessionpfad lieferte ein leeres Array.
+Alle fünf TABLE-/JSON-Arrays stimmen als typisierte Multimengen überein;
+der vorherige `LOCK_TIMEOUT` wurde wiederhergestellt.
+
+Die vorhandenen nativen Gruppen besaßen keine TempDB-Limits. Die Ausgabe
+bestätigte `NO_LIMIT_CONFIGURED`, NULL für Wirksamkeit und Auslastung sowie
+verfügbare nichtnegative Nutzungs-, Peak- und Verletzungswerte. Kumulative
+Livezähler wurden nicht zwischen verschiedenen Aufrufen als identischer
+Snapshot ausgegeben. Es wurden weder Pools oder Gruppen verändert noch
+Resource Governor rekonfiguriert oder Statistiken zurückgesetzt.
+
+Die ersten zwei Läufe scheiterten nach Baselinereproduktion mit `55944`.
+Der private diagnostische Lauf grenzte den Unterschied auf die native
+JSON-Zahl `0` gegenüber dem öffentlichen `bit`-Wert false für
+`ReconfigurationPending` ein. Die native Vergleichsseite konvertiert jetzt
+explizit in den bestehenden Exporttyp. Der dritte Lauf bestätigte die
+abschließende kanonische Testdatei; der Produktcode blieb unverändert.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Alle drei eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 statischen Verträge wurden ausgeführt. Nach Wiederherstellung des
+vorgeschriebenen Dokumentationsmarkers und erneuter Installergenerierung nach
+dem Main-Abgleich bestanden auch die beiden zunächst fehlgeschlagenen Gates
+in gezielten Wiederholungen. Der unabhängige Source- und Testreview bestand.
+Dieser Vertrag belegt keine aktive TempDB-Begrenzung, Limitverletzung,
+Drosselungsursache oder zusätzliche Berechtigungs- und Hochlastvariante.
