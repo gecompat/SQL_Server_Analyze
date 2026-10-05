@@ -40828,28 +40828,28 @@ BEGIN
     CREATE TABLE [#BackupChainAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#BackupChainAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#BackupChainAnalysis_Backups]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [BackupSetId] int NOT NULL
-        , [BackupType] char(1) NOT NULL
-        , [BackupTypeDesc] nvarchar(40) NOT NULL
+        , [BackupType] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [BackupTypeDesc] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [BackupStartDate] datetime NULL
         , [BackupFinishDate] datetime NULL
         , [FirstLsn] numeric(25,0) NULL
@@ -40869,8 +40869,8 @@ BEGIN
     CREATE TABLE [#BackupChainAnalysis_Summary]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LatestFullFinish] datetime NULL
         , [LatestMatchingDifferentialFinish] datetime NULL
         , [LatestLogFinish] datetime NULL
@@ -40880,9 +40880,9 @@ BEGIN
         , [DamagedBackupCount] bigint NOT NULL
         , [BackupWithoutChecksumCount] bigint NOT NULL
         , [LatestRestoreDate] datetime NULL
-        , [FindingCode] varchar(100) NOT NULL
-        , [FindingSeverity] varchar(16) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @HistoryDays < 1 OR @HistoryDays > 3650
@@ -41074,6 +41074,22 @@ BEGIN
                    @IsPartial = 1, @ErrorNumber = ERROR_NUMBER(), @ErrorMessage = ERROR_MESSAGE();
         END CATCH;
     END;
+
+    ;WITH [RankedSummary] AS
+    (
+        SELECT *,ROW_NUMBER() OVER(ORDER BY [DatabaseId]) AS [OutputOrdinal]
+        FROM [#BackupChainAnalysis_Summary]
+    )
+    DELETE FROM [RankedSummary] WHERE [OutputOrdinal]>@Limit;
+    ;WITH [RankedBackups] AS
+    (
+        SELECT *,ROW_NUMBER() OVER
+        (
+            ORDER BY [BackupFinishDate] DESC,[BackupSetId] DESC
+        ) AS [OutputOrdinal]
+        FROM [#BackupChainAnalysis_Backups]
+    )
+    DELETE FROM [RankedBackups] WHERE [OutputOrdinal]>@Limit;
 
     SELECT @StatusCodeOut = @StatusCode, @IsPartialOut = @IsPartial,
            @ErrorNumberOut = @ErrorNumber, @ErrorMessageOut = @ErrorMessage;

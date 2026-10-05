@@ -29,6 +29,18 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `summary`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die 16 lokalen Textspalten verwenden explizit die Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS`; dies gilt auch für die fünf Textspalten des
+Summary-TABLE-Exports. Eine abweichende Server- oder `tempdb`-Collation
+ändert dessen Textvertrag nicht.
+
+`@MaxZeilen` wird nach vollständiger Kettenberechnung und Statusermittlung
+auf die gemeinsame Summary- und Backupauswahl angewendet. TABLE, RAW und
+JSON verwenden denselben Summaryausschnitt nach `DatabaseId`; die
+Backupausgabe wird nach Abschlusszeit und Backupsetkennung absteigend
+begrenzt. Warnungen bleiben ungekürzt. Die Begrenzung reduziert weder den
+vorherigen msdb-Zugriff noch die vollständigen Summaryzähler.
+
 ## Eine Zeile bedeutet
 
 Je Resultset beschreibt eine Zeile ein Backup, eine Kettenbeziehung, ein LSN-Segment, Restoreevidenz oder ein Finding.
@@ -91,7 +103,7 @@ Fullbackups definieren Database Backup LSN/Checkpoint; Differentials basieren au
 
 ### Source Select
 
-Die Kette beginnt bei `backupset`; Restorehistorie wird über `backup_set_id` korreliert:
+Die Kette beginnt bei `backupset`. Der Restorepfad ermittelt den letzten Restorezeitpunkt getrennt nach `destination_database_name`; er beweist keine Wiederherstellung eines bestimmten Backupsets. Der folgende Überblick ordnet die sichtbare Restorehistorie nach Datenbank zu:
 
 ```sql
 SELECT
@@ -103,7 +115,8 @@ SELECT
     , [rh].[restore_date]
 FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
 LEFT JOIN [msdb].[dbo].[restorehistory] AS [rh] WITH (NOLOCK)
-  ON [rh].[backup_set_id] = [bs].[backup_set_id]
+  ON [rh].[destination_database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+   = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
 WHERE [bs].[database_name] = N'ExampleDatabase'
   AND [bs].[backup_finish_date] >= DATEADD(DAY, -30, GETDATE());
 ```

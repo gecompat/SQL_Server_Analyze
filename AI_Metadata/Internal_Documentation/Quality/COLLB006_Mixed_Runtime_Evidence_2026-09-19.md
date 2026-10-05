@@ -518,3 +518,50 @@ Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
 Der neue Vertrag belegt keinen realen Enginefehler, keinen Agent- oder
 Archivpfad und keine zusätzliche Berechtigungs- oder Hochlastvariante.
 Er rotiert keine Logs und ändert keine Logkonfiguration.
+
+## Backup Chain: 5. Oktober 2026
+
+`Code/Tests/Common/143_BackupChain_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte die fremde Exportcollation (`55921`).
+Alle 16 lokalen Textspalten verwenden jetzt die Frameworkcollation.
+Der Vertrag bestätigte die fünf Textspalten des Summary-TABLE-Exports.
+Summary und Backups werden erst nach vollständiger Kettenberechnung und
+Statusermittlung gemeinsam für TABLE und JSON begrenzt.
+
+Der Test erzeugte nach Namens- und Historienpreflight zwei eigene synthetische
+Datenbanken mit SIMPLE Recovery und abweichender Quelldatenbankcollation.
+Eine Quelle blieb ohne Backup. Für die andere wurden ein Full ohne
+Prüfsumme, ein zweites Full mit Prüfsumme und danach ein Differential mit
+Prüfsumme erstellt. Die native Differentialbasis entsprach dem Checkpoint-LSN
+des zweiten Full. Native Flags bestätigten normale unbeschädigte und
+unverschlüsselte Backupsets; der positive Ohne-Prüfsumme-Zähler war eins.
+
+Vier Aufrufe mit Limit null, eins und NULL sowie eingeschalteter und
+ausgeschalteter Restoreevidenz bestätigten `AVAILABLE_WITH_FINDING` ohne
+Teilstatus. Die fehlende Full-Evidenz blieb HIGH; das Backup ohne Prüfsumme
+blieb MEDIUM. Die 15 Summaryfelder wurden gegen native Datenbank- und
+Backupmetadaten geprüft; TABLE und JSON stimmen als typisierte Multimengen
+überein. Alle 19 Backupfelder einschließlich LSNs, Forkkennungen, Flags und
+Datumswerten wurden gegen die drei nativen Backupsets geprüft. Bei Limit
+eins blieb der vollständige Ohne-Prüfsumme-Zähler eins erhalten, obwohl das
+Backup-JSON nur das jüngste checksummierte Differential enthielt.
+
+Der unabhängige Review ergänzte strengere NULL-Prüfungen für das
+obligatorische leere Warningarray und native Backupflags. Der erste native
+Lauf bestand vor diesen Ergänzungen; der zweite Lauf bestätigte die
+abschließende kanonische Testdatei. Der Produktcode blieb unverändert.
+Eigene Datenbanken und deren msdb-Historie wurden auch beim erwarteten
+Baselinefehler bereinigt. Die Backupgeräte wurden nur im Speicher geführt.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Beide eigenen Container, Volumes und temporären Lab-States wurden entfernt;
+damit sind auch ihre eigenen Backupdateien entfernt. Die 75 lokalen
+statischen Verträge und der unabhängige Review bestanden. Dieser Vertrag
+belegt keinen Restore, keine Wiederherstellbarkeit, Logkettenlücke,
+Beschädigung, Copy-only-Variante oder zusätzliche Berechtigungssituation.
