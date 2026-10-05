@@ -1162,3 +1162,31 @@ Quelldatenbanken, Container, Volumes und temporären Lab-States wurden entfernt.
 Der Vertrag prüft keine Featuregesundheit, tatsächliche Laufzeitnutzung,
 positiven JSON-/Vector-Spalten, zusätzlichen Berechtigungsprofile oder
 eigenständigen CONSOLE-Resultsetmitschnitt.
+
+## Gemeinsame Regression der drei Versionsadaptiv-Slices: 5. Oktober 2026
+
+Der unveränderte Kandidat `82efbcddc5355cd1f5d6f9a5f378a0fd72ac67bf`
+enthält die Capability-, Serverversions- und Spezialfeature-Korrekturen.
+Der kanonische Impact-Selector wählte gegenüber
+`94136ff3eca0703b72600756a5c6b8b4c0e14383` elf Laufzeittestdateien:
+Common `124`, `152`, `153` und `154`, Integration `110`, `168`, `179`, `190`,
+`196` und `198` sowie ObjectIndex `121`. Zusätzliche native Engines,
+Berechtigungs-, Regex- und Snapshotmatrizen wurden nicht ausgewählt.
+
+Alle elf Dateien bestanden nacheinander bei Compatibility Level 150, 160
+und 170 der Frameworkdatenbank auf einer neuen eigenen SQL-Server-2025-
+Docker-Instanz. Die 33 erfolgreichen Dateiläufe ergänzen die gezielten
+Reproduktionen und prüfen die direkt und transitiv betroffenen Verträge,
+einschließlich der bestehenden Spezialfeature-, Wave-1-, Navigator-,
+External-Runtime-/CLR- und JSON-Index-Verträge. Server und `tempdb` verwenden
+`Latin1_General_100_CS_AS`, die Frameworkdatenbank die Frameworkcollation.
+Installation und vorgelagerter Smoke-Test bestanden; eigener Container,
+Volume und temporärer State wurden entfernt. Diese lokale Regression ersetzt
+keine erforderliche erfolgreiche GitHub-CI am maßgeblichen PR-Head und keinen
+nativen 2019- oder 2022-Nachweis.
+
+Ein vorangegangener Start wurde beim Laufzeitkontextwechsel unterbrochen
+und liefert keinen Erfolgsnachweis. Sein eigener Container und sein Volume
+wurden separat entfernt. Ein temporärer lokaler Wiederherstellungsstate blieb
+wegen einer abgelehnten rekursiven Dateibereinigung erhalten; er gehört nicht
+zu Repository- oder GitHub-Artefakten.
