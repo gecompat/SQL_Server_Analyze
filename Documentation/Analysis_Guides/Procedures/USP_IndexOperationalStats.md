@@ -37,6 +37,15 @@ Der typisierte TABLE-Vertrag registriert `indexOperationalStats`. Status, Scope 
 
 Eine Zeile entspricht einem Index oder Heap **und einer Partition**. Werte verschiedener Partitionen dürfen nur bewusst aggregiert werden.
 
+Die Textspalten der lokalen Kandidaten-, Status- und Ergebnistabellen
+verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Der TABLE-Export übernimmt
+diese Frameworkcollation unabhängig von der `tempdb`-Collation. Ein
+kontrollierter SQL-Server-2025-Lauf mit abweichender Server- und
+`tempdb`-Collation prüft die gezielte JSON-/TABLE-Ausgabe und die Übereinstimmung
+der Insert-, Allocation-, Page-Latch- und Tree-Page-Latch-Zähler mit der
+nativen Quelle für eine einzelne Fixturepartition. Dieser Nachweis erweitert
+keine allgemeine Collation- oder Lastgarantie.
+
 ## So lesen
 
 Vergleichen Sie DML, Allocations, Locks, Latches und Scans. Normalisieren Sie absolute Zähler pro Aktivität, Wait oder Beobachtungszeit.
