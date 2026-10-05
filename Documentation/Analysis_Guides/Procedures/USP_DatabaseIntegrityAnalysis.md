@@ -1,13 +1,13 @@
 # [monitor].[USP_DatabaseIntegrityAnalysis]
 
 **Bereich:** Server Health<br>
-**Zweck:** Korrelierte Integritätsevidenz aus Datenbankstatus, CHECKDB-Historie, suspect pages, Backups und HADR.<br>
+**Zweck:** Korrelierte Integritätsindikatoren aus Datenbankstatus, suspect pages, Backupmetadaten und HADR mit ausdrücklich unbekannter CHECKDB-Zeit.<br>
 **Beobachtungsart:** Snapshot + retentionbegrenzte Metadatenhistorie<br>
 **Kostenklasse:** LOW–MEDIUM
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Welche Metadaten weisen auf Integritätsrisiko, veralteten CHECKDB-Nachweis, suspect pages, beschädigte Backups oder offene HADR-Seitenreparatur hin?** Sie unterstützt die Entscheidung, ob eine Instanzressource oder Konfiguration als belastbare Spur zum Symptom passt und welche unabhängige OS-, Verlaufs- oder Workloadevidenz fehlt.
+Die Procedure beantwortet die Betriebsfrage: **Welche sichtbaren Metadaten weisen auf suspect pages, beschädigte Backups oder offene HADR-Seitenreparatur hin und welche Integritätsevidenz bleibt unbekannt?** Sie unterstützt die Entscheidung, ob eine Instanzressource oder Konfiguration als belastbare Spur zum Symptom passt und welche unabhängige OS-, Verlaufs- oder Workloadevidenz fehlt.
 
 ## Nicht beantwortete Fragen
 
@@ -30,13 +30,31 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `integrity`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die 15 Textspalten der lokalen Kandidaten-, Warnungs-, Integritäts- und
+Seitendetailtabellen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`.
+Der TABLE-Export übernimmt diese Frameworkcollation für seine fünf Textspalten
+auch bei abweichender Server- oder `tempdb`-Collation. `@MaxZeilen` begrenzt
+die gemeinsame Integritätsausgabe in RAW, TABLE und JSON; die Seitendetails
+besitzen weiterhin ihr eigenes Limit. Die Quellenaggregation erfolgt vor
+der Ausgabebegrenzung.
+
+`LastGoodCheckDbTime` und `CheckdbAgeHours` bleiben ausdrücklich unbekannt.
+Die Procedure liest keine CHECKDB-Historie über `DATABASEPROPERTYEX` zurück
+und führt keinen DBCC-Lauf aus. Das Backupzeitfenster begrenzt ausschließlich
+Backupmetadaten.
+
+Die optionale Seitenauflösung verwendet `sys.dm_db_page_info` im Modus
+`LIMITED`. Dessen Beschreibungsspalten bleiben laut [Microsoft-Dokumentation](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-db-page-info-transact-sql?view=sql-server-ver17)
+`NULL`; dies gilt deshalb auch für `PageTypeDesc`. Numerische Headerfelder
+können weiterhin native Objekt-, Index- und Zuordnungsmetadaten liefern.
+
 ## Eine Zeile bedeutet
 
-Je Resultset entspricht eine Zeile einer Datenbank, einer suspect page, Backup-/CHECKDB-Evidenz, HADR-Reparatur oder einem Finding.
+Eine Zeile in `integrity` entspricht einer ausgewählten Datenbank mit aggregierten Indikatoren. Eine Zeile in `pageDetails` entspricht einer verdächtigen Seite mit optional auflösbaren Metadaten; eine Warnungszeile betrifft einen Datenbankkandidaten.
 
 ## So lesen
 
-Berücksichtigen Sie Datenbankstatus, PAGE_VERIFY, Alter letzter Integritätsprüfung, suspect pages, Backupchecksums und HADR-Reparaturen gemeinsam.
+Berücksichtigen Sie Datenbankstatus, PAGE_VERIFY, suspect pages, Backupchecksums und HADR-Reparaturen gemeinsam. Die letzte erfolgreiche Integritätsprüfung bleibt in dieser Procedure unbekannt.
 
 ## Warum kann das problematisch sein?
 
@@ -63,9 +81,9 @@ Für `USP_DatabaseIntegrityAnalysis` gilt zusätzlich: **keine Zeile** bedeutet,
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Eine `ExampleDatabase`, 35 Tage Backup-/CHECKDB-Metadaten, suspect pages und HADR-Auto-Page-Repair ohne Seitenauflösung. Kein DBCC-Lauf. |
+| Standardpfad | Sichtbare Online-Benutzerdatenbanken, 35 Tage Backupmetadaten, suspect pages und HADR-Auto-Page-Repair ohne Seitenauflösung. Kein DBCC-Lauf. |
 | Teuerster Pfad | Alle sichtbaren Datenbanken, langer Backup-Lookback, `@MitPageDetails = 1` und unbegrenzte Ausgabe bei vielen suspect/repair-Seiten; jede sichtbare Seite wird gezielt über `sys.dm_db_page_info` aufgelöst. |
-| Haupttreiber | Zahl gewählter Datenbanken, Backup-/CHECKDB-Metadaten im Lookback sowie suspect- und HADR-Auto-Page-Repair-Zeilen. `@MitPageDetails = 1` fügt für jede sichtbare Seite einen eigenen `sys.dm_db_page_info`-Aufruf hinzu. |
+| Haupttreiber | Zahl gewählter Datenbanken, Backupmetadaten im Lookback sowie suspect- und HADR-Auto-Page-Repair-Zeilen. `@MitPageDetails = 1` fügt für jede sichtbare Seite einen eigenen `sys.dm_db_page_info`-Aufruf hinzu. |
 | Skalierung | Metadatenpfad wächst mit Datenbanken und relevanter msdb-Retention. Der optionale Seitenpfad wächst mit suspect-/repair-Seiten und kann zusätzliche Buffer-/Storage-I/O verursachen. |
 | Ressourcen | CPU und Katalog-/msdb-I/O für Status, Backupset und suspect pages; optional gezielte Page-Metadaten-I/O über `sys.dm_db_page_info`; kleine temporäre Evidenztabellen. |
 | Begrenzungswirkung | Datenbankscope und `@BackupHistoryDays` begrenzen relevante Quellen. `@MaxZeilen` wirkt auf fertige Evidenz; es schützt nicht sicher vor allen Backupaggregationen oder jedem bereits ausgewählten Seitenprobe. `@MitPageDetails = 0` ist die wichtigste Lastgrenze. |
@@ -80,7 +98,7 @@ Für `USP_DatabaseIntegrityAnalysis` gilt zusätzlich: **keine Zeile** bedeutet,
 
 ### Leitfrage
 
-Welche Metadaten weisen auf Integritätsrisiko, veralteten CHECKDB-Nachweis, suspect pages, beschädigte Backups oder offene HADR-Seitenreparatur hin?
+Welche sichtbaren Metadaten weisen auf suspect pages, beschädigte Backups oder offene HADR-Seitenreparatur hin und welche Integritätsevidenz bleibt unbekannt?
 
 ### Technischer Hintergrund
 
