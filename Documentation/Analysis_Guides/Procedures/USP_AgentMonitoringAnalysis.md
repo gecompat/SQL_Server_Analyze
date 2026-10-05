@@ -62,12 +62,12 @@ Für `USP_AgentMonitoringAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, d
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | 24 Stunden lokale msdb-Evidenz mit Jobstatus und aggregiertem Database-Mail-Status, dazu aktuelle Service-/Alert-/Operator-/Schedulekonfiguration. |
+| Standardpfad | Aktueller Service-/Alert-/Operator-/Schedulezustand, der letzte Job-Outcome und 24 Stunden Alertaktivität beziehungsweise aggregierter Database-Mail-Status. |
 | Teuerster Pfad | `@HistoryHours = 8760`, beide optionalen Pfade aktiv und unbegrenzte Ausgabe auf einer msdb mit umfangreicher Job- und Mailhistorie. Einen Datenbank- oder Jobfilter besitzt die Procedure nicht. |
-| Haupttreiber | Zahl der Jobs, Alerts, Operatoren und Schedules sowie Job- und Database-Mail-Historyzeilen innerhalb `@HistoryHours`. Das spätere Findingslimit verkleinert diese vorgelagerte msdb-Aggregation nicht. |
+| Haupttreiber | Zahl der Jobs, Alerts, Operatoren und Schedules, die gesamte sichtbare Job-Outcome-Historie sowie Database-Mail-Zeilen innerhalb `@HistoryHours`. Das spätere Findingslimit verkleinert diese vorgelagerte msdb-Aggregation nicht. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_AgentMonitoringAnalysis ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU und I/O auf Katalogen beziehungsweise msdb-Historie; TempDB für Korrelation und Transfer bei langen Meldungen. |
-| Begrenzungswirkung | `@HistoryHours` begrenzt Jobhistory und Mailzeilen zeitlich. `@MitJobStatus`/`@MitDatabaseMail` können ganze Pfade auslassen. `@MaxZeilen` wirkt erst auf fertige Findings/Jobs und begrenzt die vorherige Konfigurations- und Historyaggregation nicht. |
+| Begrenzungswirkung | `@HistoryHours` begrenzt Alertaktivität und Mailzeilen zeitlich; Jobhistory wird für den letzten Outcome ohne Zeitfilter gelesen und danach zeitlich klassifiziert. `@MitJobStatus`/`@MitDatabaseMail` können ganze Pfade auslassen. `@MaxZeilen` wirkt erst auf fertige Findings/Jobs und begrenzt die vorherige Konfigurations- und Historyaggregation nicht. |
 | Locking und Nebenwirkungen | Read-only; kurze Schema-Stability-Zugriffe auf msdb/Systemkataloge. Jobs, Backups oder Wartung laufen parallel weiter, daher ist das Ergebnis nicht atomar. |
 | Schutzmechanismus | Kein High-Impact-Gate. `@HistoryHours` ist auf höchstens 8760 begrenzt; `@MitJobStatus` und `@MitDatabaseMail` lassen die beiden variablen Historypfade vollständig aus. `@MaxZeilen` schützt dagegen nur die fertige Ausgabe, nicht die vorherige Aggregation. |
 | Sicherer Einsatz | Mit 24 Stunden und nur dem aktuell benötigten optionalen Pfad beginnen. Da kein Jobfilter existiert, lange Lookbacks auf großen msdb-Beständen außerhalb der Lastspitze ausführen. |
@@ -89,6 +89,18 @@ Die Procedure verbindet Job-/Step-/Schedule-/Historyanalyse mit Alerts, Operator
 
 `msdb.dbo.agent_datetime`, `msdb.dbo.sysalerts`, `msdb.dbo.sysjobhistory`, `msdb.dbo.sysjobs`, `msdb.dbo.sysjobschedules`, `msdb.dbo.sysmail_allitems`, `msdb.dbo.sysnotifications`, `msdb.dbo.sysoperators`, `msdb.dbo.sysschedules`, `sys.dm_server_services`.
 
+### Collation und Ausgabegrenzen
+
+Die sieben Textspalten des `findings`-TABLE-Exports verwenden die
+Frameworkcollation `SQL_Latin1_General_CP1_CS_AS`. RAW, CONSOLE, TABLE und
+JSON verwenden dieselbe begrenzte Findingsmenge. Ein positives `@MaxZeilen`
+begrenzt diese Menge nach dem bestehenden Rang HIGH, MEDIUM und anschließend
+INFO, danach nach Kategorie und Scope-Name. Job-JSON besitzt eine eigene
+Namensgrenze. Null und NULL sind unbegrenzt. Der Modulstatus wird vor der
+Ausgabegrenze auf der vollständigen Erhebung bestimmt; eine ausgeblendete
+Befundzeile ändert den Status nicht. Service- und Mailstatus bleiben getrennte
+Kontextarrays.
+
 ### Source Select
 
 Die Procedure besitzt mehrere fachlich getrennte Quellen. Der folgende Kernpfad zeigt die Beziehung für Alert-Routing; Jobzustand und Database Mail werden in separaten Zweigen gelesen:
@@ -107,11 +119,11 @@ LEFT JOIN [msdb].[dbo].[sysoperators] AS [o] WITH (NOLOCK)
 WHERE [a].[enabled] = 1;
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie Alert- und Jobfilter früh. Lesen Sie Jobhistorie und `sysmail_allitems` erst danach und mit einem engen Zeitfenster; diese beiden Historientabellen bestimmen typischerweise die Kosten.
+**Wichtig für die Eigenlast:** Die Procedure besitzt keine Alert- oder Jobfilter. Der Jobpfad liest die gesamte sichtbare Outcome-Historie für den letzten Lauf je Job; `@HistoryHours` steuert dessen zeitliche Klassifikation. Der Mailpfad liest dagegen nur Zeilen innerhalb dieses Zeitfensters. Die beiden Opt-in-Schalter können die jeweiligen Pfade auslassen; das Findingslimit verkleinert diese vorgelagerten Zugriffe nicht.
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung kombiniert einen Konfigurationssnapshot mit einer begrenzten Ausführungshistorie.
+Die Auswertung kombiniert aktuelle Konfiguration mit dem letzten sichtbaren Job-Outcome sowie zeitlich begrenzter Alertaktivität und Mailhistorie. Fehlende Jobhistory bleibt NULL; die Procedure liefert keine vollständige Ausführungsreihe und keine Laufzeitbaseline.
 
 ### Bewertung und Gegenprobe
 

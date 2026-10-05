@@ -41628,39 +41628,39 @@ BEGIN
 
     CREATE TABLE [#AgentMonitoringAnalysis_Services]
     (
-          [ServiceName] nvarchar(256) NULL
-        , [StatusDesc] nvarchar(60) NULL
-        , [StartupTypeDesc] nvarchar(60) NULL
+          [ServiceName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StartupTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LastStartupTime] datetimeoffset(7) NULL
-        , [FindingCode] varchar(80) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AgentMonitoringAnalysis_Findings]
     (
-          [Category] varchar(40) NOT NULL
-        , [FindingCode] varchar(100) NOT NULL
-        , [Severity] varchar(16) NOT NULL
-        , [ScopeType] nvarchar(40) NOT NULL
-        , [ScopeName] nvarchar(256) NULL
+          [Category] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeType] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MetricValue] bigint NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AgentMonitoringAnalysis_Jobs]
     (
           [JobId] uniqueidentifier NOT NULL
-        , [JobName] sysname NOT NULL
+        , [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsEnabled] tinyint NOT NULL
         , [LatestRunDateTime] datetime NULL
         , [LatestRunStatus] int NULL
         , [LatestRunDuration] int NULL
         , [ScheduleCount] bigint NOT NULL
         , [EnabledScheduleCount] bigint NOT NULL
-        , [FindingCode] varchar(100) NOT NULL
-        , [FindingSeverity] varchar(16) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AgentMonitoringAnalysis_Mail]
     (
-          [SentStatus] varchar(8) NULL
+          [SentStatus] varchar(8) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ItemCount] bigint NOT NULL
         , [OldestRequestDate] datetime NULL
         , [NewestRequestDate] datetime NULL
@@ -41855,6 +41855,15 @@ BEGIN
 
     SELECT @StatusCodeOut = @StatusCode, @IsPartialOut = @IsPartial,
            @ErrorNumberOut = @ErrorNumber, @ErrorMessageOut = @ErrorMessage;
+
+    ;WITH [RankedFindings] AS
+    (
+        SELECT *,ROW_NUMBER() OVER
+        (ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
+                  [Category],[ScopeName]) AS [OutputOrdinal]
+        FROM [#AgentMonitoringAnalysis_Findings]
+    )
+    DELETE FROM [RankedFindings] WHERE [OutputOrdinal]>CASE WHEN @Limit<0 THEN 0 ELSE @Limit END;
 
     IF @JsonErzeugen = 1
     BEGIN
