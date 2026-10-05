@@ -29,6 +29,20 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die zehn Textspalten der lokalen Befundtabelle und die vier Textspalten der
+Modulstatusvariable verwenden explizit `SQL_Latin1_General_CP1_CS_AS`.
+Der TABLE-Export behält diese Frameworkcollation auch bei einer abweichenden
+Server- oder `tempdb`-Collation. Nach Befunderzeugung und Statusermittlung wird
+die gemeinsame Ausgabemenge nach `@NurAbPrioritaet` gefiltert und nach
+`@MaxZeilen` begrenzt. RAW, CONSOLE, TABLE und JSON verwenden dieselben Befunde.
+
+Die vorhandenen Zähler werden vor der Ausgabekürzung ermittelt:
+`totalFindingCount` sowie die RAW- und CONSOLE-Gesamtzahl zählen alle erzeugten
+Befunde. Das bisherige JSON-Feld `returnedFindingCount` zählt die Befunde nach
+Prioritätsfilter, aber vor dem Zeilenlimit. Bei vier passenden Befunden und
+`@MaxZeilen=1` beträgt dieser Zähler weiterhin vier; das Findingarray und der
+TABLE-Export enthalten jeweils eine Zeile.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einem normalisierten Finding aus einem SourceModule. Modulstatuszeilen sind getrennt zu lesen.

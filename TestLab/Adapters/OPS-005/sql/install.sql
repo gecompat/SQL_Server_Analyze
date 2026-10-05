@@ -46238,27 +46238,27 @@ BEGIN
     DECLARE @ModuleStatus TABLE
     (
           [ExecutionOrdinal] tinyint NOT NULL
-        , [ModuleName] sysname NOT NULL
-        , [InvocationStatus] varchar(40) NOT NULL
-        , [EvidenceStatus] varchar(40) NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsPartial] bit NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#DiagnosticFindings_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [SourceModule] sysname NOT NULL
-        , [Category] varchar(60) NOT NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [ScopeType] nvarchar(60) NOT NULL
-        , [ScopeName] nvarchar(512) NULL
-        , [FindingCode] varchar(120) NOT NULL
+        , [SourceModule] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Category] varchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [EvidenceMetric] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @MaxZeilen < 0 OR @ContentionSampleSeconds > 60
@@ -46719,6 +46719,27 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
             SET @StatusCode = 'AVAILABLE_WITH_FINDING';
     END;
 
+    DECLARE @TotalFindingCount bigint = (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]);
+    DECLARE @PriorityFindingCount bigint =
+    (
+        SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]
+        WHERE CASE [Severity] WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
+              >= CASE @MinimumSeverity WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
+    );
+    DELETE FROM [#DiagnosticFindings_Findings]
+    WHERE CASE [Severity] WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
+          < CASE @MinimumSeverity WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END;
+    ;WITH [RankedFindings] AS
+    (
+        SELECT *, ROW_NUMBER() OVER
+        (
+            ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,
+                     [FindingOrdinal]
+        ) AS [OutputOrdinal]
+        FROM [#DiagnosticFindings_Findings]
+    )
+    DELETE FROM [RankedFindings] WHERE [OutputOrdinal] > @Limit;
+
     SELECT @StatusCodeOut = @StatusCode, @IsPartialOut = @IsPartial,
            @ErrorNumberOut = @ErrorNumber, @ErrorMessageOut = @ErrorMessage;
 
@@ -46727,10 +46748,8 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
         DECLARE @MetaJson nvarchar(max) =
             (SELECT N'DiagnosticFindings' AS [resultName], 1 AS [schemaVersion], @Now AS [generatedAtUtc],
                     @StatusCode AS [statusCode], @IsPartial AS [isPartial], @MinimumSeverity AS [minimumSeverity],
-                    (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]) AS [totalFindingCount],
-                    (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]
-                     WHERE CASE [Severity] WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END
-                           >= CASE @MinimumSeverity WHEN 'HIGH' THEN 4 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 2 ELSE 1 END)
+                    @TotalFindingCount AS [totalFindingCount],
+                    @PriorityFindingCount
                     AS [returnedFindingCount]
              FOR JSON PATH, WITHOUT_ARRAY_WRAPPER);
         DECLARE @FindingsJson nvarchar(max) =
@@ -46750,7 +46769,7 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
     BEGIN
         SELECT N'USP_DiagnosticFindings' AS [ModuleName], @Now AS [CollectionTimeUtc],
                @StatusCode AS [StatusCode], @IsPartial AS [IsPartial],
-               (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]) AS [FindingCount],
+               @TotalFindingCount AS [FindingCount],
                @ErrorNumber AS [ErrorNumber], @ErrorMessage AS [ErrorMessage],
                N'Normalisierte Triage über Kindmodul-Evidenz; keine automatische Ursachenfeststellung.' AS [Detail];
         SELECT TOP (@Limit) * FROM [#DiagnosticFindings_Findings]
@@ -46763,7 +46782,7 @@ WHERE [WaitTimeMs] >= @ContentionMinWaitMs;';
     ELSE IF @OutputMode = 'CONSOLE'
     BEGIN
         SELECT N'Diagnostische Befunde' AS [Ergebnis], @Now AS [Stand_UTC], @StatusCode AS [Status],
-               @MinimumSeverity AS [Mindestprioritaet], (SELECT COUNT_BIG(*) FROM [#DiagnosticFindings_Findings]) AS [Befunde_gesamt],
+               @MinimumSeverity AS [Mindestprioritaet], @TotalFindingCount AS [Befunde_gesamt],
                @ErrorMessage AS [Hinweis];
         SELECT TOP (@Limit) N'Diagnostischer Befund' AS [Ergebnis], [Severity] AS [Prioritaet],
                [Confidence] AS [Konfidenz], [Category] AS [Kategorie], [ScopeType] AS [Bereichstyp],
