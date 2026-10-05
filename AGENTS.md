@@ -34,6 +34,7 @@ Die Foundation ergänzt die projektspezifischen Regeln, ersetzt sie aber nicht. 
 - [`AI_Metadata/CONTINUATION_GUIDE.md`](AI_Metadata/CONTINUATION_GUIDE.md) für die verbindliche Fortsetzungs-, Änderungs- und Validierungsreihenfolge;
 - [`AI_Metadata/ARCHITECTURE_DECISIONS.md`](AI_Metadata/ARCHITECTURE_DECISIONS.md) für dauerhafte Architekturentscheidungen;
 - [`AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md`](AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md) für dauerhafte Artefaktkennungen, Arbeitselemente, Wellen und deren Vergabe;
+- [`AI_Metadata/Internal_Documentation/Quality/Next_Steps.md`](AI_Metadata/Internal_Documentation/Quality/Next_Steps.md) für den aktuellen autonomen Entwicklungsauftrag, dessen Grenzen und die ausführbare Entwicklungswelle;
 - die nachfolgend direkt referenzierten Qualitätsrichtlinien für Dokumentationsstil und CI-Testauswahl.
 
 Historische, als Entwurf gekennzeichnete oder ausdrücklich abgelöste Inhalte sind keine aktive Governance.

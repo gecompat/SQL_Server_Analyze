@@ -113,6 +113,28 @@ Adapter- oder Infrastruktur-Cleanup behält ausschließlich den zugehörigen
 temporären State für die Recovery; ein erfolgreicher Lauf entfernt auch diesen
 State-Root.
 
+Der zusätzliche Runner `Invoke-Ops005LinkedServerSuccessScenario.ps1` prüft
+einen tatsächlichen Verbindungsaufbau zwischen zwei ausschließlich für diesen
+Test neu erzeugten SQL-Server-2025-Containern unter Docker Desktop. Er richtet
+einen synthetischen Linked Server mit `MSOLEDBSQL` und einem eigenen Remote-Login
+ein. Der Test verlangt `NOT_EXECUTED` im Standardpfad,
+`AUTHORIZATION_REQUIRED` ohne zweite Bestätigung und `SUCCEEDED` mit beiden
+Schaltern. Die verschlüsselte Testverbindung vertraut dem Containerzertifikat.
+Dieser Lauf erfordert die ausdrückliche Freigabe für Verbindungen zwischen den
+neuen lokalen Testcontainern und gehört nicht zum synthetischen Standardadapter.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops005LinkedServerSuccessScenario.ps1 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Der Runner hält erzeugte Passwörter ausschließlich im Arbeitsspeicher und
+entfernt beide eigenen Lab-Runs samt Volumes. Bei einem Cleanupfehler bleiben
+die temporären Recoverydaten erhalten; eine Warnung nennt den gezielten
+Recoveryaufruf. Der Lauf vom 5. Oktober 2026 bestand auf SQL Server
+`17.0.4075.5` einschließlich Cleanup. Er belegt ausschließlich diese
+MSOLEDBSQL-Kombination und keinen weiteren Provider oder Remote-Workload.
+
 ## OPS-006 Datenbankportabilität
 
 Der Runner `Invoke-Ops006DatabasePortabilityScenario.ps1` installiert den
@@ -120,8 +142,8 @@ Frameworkbestand in einem neuen, wegwerfbaren Docker-Lab und führt den
 Framework-Smoke-Test sowie den Portabilitätsvertrag aus. Der Vertrag prüft
 eine leere Datenbank, ein tatsächlich persistiertes `Compression`-Feature,
 eine synthetische uncontained dependency, eine fehlende Datenbank und den
-eingeschränkten Zugriff. Die Featureprüfung liest zuerst die Originalquelle
-und verlangt anschließend die zugehörige Evidenz im Analyzer-JSON.
+eingeschränkten Zugriff. Die Featureprüfung verlangt
+`PERSISTED_SKU_FEATURE` im Analyzer-JSON.
 
 ```powershell
 pwsh -File ./TestLab/Invoke-Ops006DatabasePortabilityScenario.ps1 `
