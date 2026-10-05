@@ -29,9 +29,21 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `capacity`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die 17 Textspalten der lokalen Kandidaten-, Warnungs- und Kapazitätstabellen
+verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Die neun Textspalten des
+Kapazitäts-TABLE-Exports behalten diese Frameworkcollation auch bei einer
+abweichenden Server- oder `tempdb`-Collation. Nach Quellenaggregation und
+Statusermittlung wird die gemeinsame Ausgabemenge nach `@NurProblematisch`
+gefiltert und nach `@MaxZeilen` begrenzt. RAW, CONSOLE, TABLE und JSON verwenden
+dieselbe Menge; ein positives Limit reduziert weder Quellenarbeit noch
+Statusumfang. `NULL` und `0` bedeuten für `@MaxZeilen` unbegrenzte Ausgabe.
+
 ## Eine Zeile bedeutet
 
-Je Resultset entspricht eine Zeile einer Datenbankdatei, einem Volume, einer Datenbankaggregation oder einem Finding.
+Eine Kapazitätszeile entspricht einer Datei in einer ausgewählten Datenbank.
+Volumeinformationen werden für jede zugehörige Datei wiederholt. Freiraum und
+Gesamtgröße eines mehrfach vorkommenden Volumes dürfen deshalb nicht über
+Dateizeilen summiert werden.
 
 ## So lesen
 
@@ -62,7 +74,7 @@ Für `USP_DatabaseCapacityAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, 
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Eine `ExampleDatabase`; pro Datei werden Kataloggröße, `FILEPROPERTY(...,'SpaceUsed')`, Volume-Freiraum und der nächste Autogrowth-Schritt als Snapshot bewertet. |
+| Standardpfad | Alle sichtbaren, online befindlichen Benutzerdatenbanken; pro Datei werden Kataloggröße, `FILEPROPERTY(...,'SpaceUsed')`, Volume-Freiraum und der nächste Autogrowth-Schritt als Snapshot bewertet. Exakte Namen und Pattern schränken den Scope ein. |
 | Teuerster Pfad | Alle sichtbaren Datenbanken, unbegrenzte Ausgabe und viele Daten-/Logdateien auf zahlreichen Volumes. Es gibt keinen History-, Growth- oder Benutzerdatenscan. |
 | Haupttreiber | Zahl gewählter Datenbanken und ihrer Daten-/Logdateien; für jede Datei werden Kataloggröße, belegte Seiten und Volumeinformationen korreliert. Dateigröße verändert die Werte, nicht proportional die Metadatenarbeit. |
 | Skalierung | Aufwand wächst ungefähr mit Datenbanken und Dateien. Volumeabfragen können je Datei wiederholt werden; Sortierung und Resultat bleiben im Verhältnis zur Dateimenge klein. |

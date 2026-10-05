@@ -290,3 +290,46 @@ Alle vier eigenen Container, Volumes und temporären Lab-States wurden entfernt.
 Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
 Der synthetische Indikator belegt keine reale Beschädigung, keinen erfolgreichen
 CHECKDB, keine HADR-Reparatur und keine positiven beschädigten Backupmetadaten.
+
+## Database Capacity: 5. Oktober 2026
+
+`Code/Tests/Common/138_DatabaseCapacity_Collation_Runtime_Contract.sql`
+bestand abschließend auf einem neuen lokalen SQL-Server-2025-Docker-Container
+mit `Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Die ursprüngliche Quelle reproduzierte die fremde Exportcollation (`55871`).
+Alle 17 Textspalten der lokalen Kandidaten-, Warnungs- und Kapazitätstabellen
+verwenden jetzt die Frameworkcollation. Der Vertrag bestätigte sie für die
+neun Textspalten des Kapazitäts-TABLE-Exports. Die gemeinsame Ausgabemenge
+berücksichtigt den vorhandenen Problemfilter und das Zeilenlimit erst nach
+Quellenaggregation und Statusermittlung.
+
+Der erste Lauf und die zusätzliche numerische Diagnose scheiterten mit
+`55872`. Die Diagnose zeigte eine abweichende Dateibelegung zwischen
+Procedure und Gegenprüfung; Identitäts-, Wachstums- und Volumeindikatoren
+stimmten überein. Die finale Fixture erzeugt deshalb eine eigene Quelldatenbank,
+deaktiviert das Wachstum ihrer Datendatei und setzt sie vor den Aufrufen
+schreibgeschützt. Bestehende Datenbanken werden bei Namenskollision nicht
+verwendet. Die eigene Quelldatenbank wird im Erfolgs- und Fehlerpfad entfernt.
+Der exakte native Vergleich wurde beibehalten.
+
+Vier Aufrufe prüften unbegrenzte Ausgabe, Limit eins, Problemfilter eins und
+den bestehenden NULL-Problemfilter mit unbegrenztem NULL-Limit. Native
+Datenbank- und Dateiidentität, Größe, Belegung, Freiraum, MaxSize,
+Wachstumsbeschreibung, nächster Wachstumsschritt und Befund wurden
+gegengerechnet. Der kontrollierte `GROWTH_DISABLED`-Befund blieb in allen
+unbegrenzten Fällen erhalten. TABLE und JSON enthielten dieselben Ergebnisse
+einschließlich Zeilenhäufigkeiten. Volumegröße, verfügbarer Platz und
+Freiraumprozent wurden auf Plausibilität geprüft; eine exakte zeitgleiche
+Volumeparität wird nicht behauptet.
+
+Frameworkinstallation, Smoke-Test und finaler Laufzeitvertrag bestanden.
+Alle drei eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
+Die pfad- und matchgebundene Datenschutz-Ausnahme betrifft ausschließlich
+den geprüften synthetischen USE-Kontext der eigenen Testdatenbank.
+Der Vertrag belegt keine reale Dateivergrößerung, Storage-Hochlast,
+Wachstumsrate oder Zeit-bis-voll-Prognose.
