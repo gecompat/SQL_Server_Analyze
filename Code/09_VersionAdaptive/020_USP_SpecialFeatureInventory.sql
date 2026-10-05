@@ -116,44 +116,44 @@ BEGIN
     (
           [DatabaseId] int NOT NULL
         , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#SpecialFeatureInventory_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#SpecialFeatureInventory_DatabaseStatus]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [FeatureRows] bigint NOT NULL
         , [DetectedFeatureRows] bigint NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(1000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#SpecialFeatureInventory_FeatureInventory]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [FeatureCode] varchar(64) NOT NULL
-        , [FeatureFamily] nvarchar(120) NOT NULL
-        , [DetectionStatus] varchar(40) NOT NULL
+        , [FeatureCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureFamily] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DetectionStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [DetectedItemCount] bigint NULL
-        , [ConfigurationState] nvarchar(120) NULL
-        , [SourceObjects] nvarchar(1000) NOT NULL
-        , [RecommendedModule] sysname NULL
-        , [RecommendedModuleStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ConfigurationState] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceObjects] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedModule] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecommendedModuleStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     DECLARE @CrossDatabaseRequested bit=0;
@@ -396,6 +396,12 @@ VALUES
     SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
     EXEC [sys].[sp_executesql] @LockTimeoutSql;
 
+    SELECT TOP (@Limit) *
+    INTO [#SpecialFeatureInventory_Export]
+    FROM [#SpecialFeatureInventory_FeatureInventory]
+    WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
+    ORDER BY [DatabaseName],[FeatureCode];
+
     IF @JsonErzeugen=1
     BEGIN
         DECLARE @MetaJson nvarchar(max)=
@@ -409,9 +415,8 @@ VALUES
         DECLARE @DatabaseJson nvarchar(max)=
             (SELECT * FROM [#SpecialFeatureInventory_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @FeatureJson nvarchar(max)=
-            (SELECT TOP (@Limit) *
-             FROM [#SpecialFeatureInventory_FeatureInventory]
-             WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
+            (SELECT *
+             FROM [#SpecialFeatureInventory_Export]
              ORDER BY [DatabaseName],[FeatureCode]
              FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),
@@ -429,9 +434,8 @@ VALUES
                @ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],
                N'Nutzungsinventar sichtbarer Metadaten; kein Gesundheitsurteil.' [Detail];
         SELECT * FROM [#SpecialFeatureInventory_DatabaseStatus] ORDER BY [DatabaseName];
-        SELECT TOP (@Limit) *
-        FROM [#SpecialFeatureInventory_FeatureInventory]
-        WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
+        SELECT *
+        FROM [#SpecialFeatureInventory_Export]
         ORDER BY [DatabaseName],[FeatureCode];
     END
     ELSE IF @OutputMode='CONSOLE'
@@ -446,26 +450,25 @@ VALUES
                [DetectedFeatureRows] [Erkannt],[IsPartial] [Teilweise],[Detail] [Hinweis]
         FROM [#SpecialFeatureInventory_DatabaseStatus]
         ORDER BY [DatabaseName];
-        SELECT TOP (@Limit) N'Spezialfeature' [Ergebnis],
+        SELECT N'Spezialfeature' [Ergebnis],
                [DatabaseName] [Datenbank],[FeatureCode] [Featurecode],[FeatureFamily] [Featurefamilie],
                [DetectionStatus] [Erkennungsstatus],[DetectedItemCount] [Erkannte_Elemente],
                [ConfigurationState] [Konfiguration],[RecommendedModule] [Empfohlenes_Modul],
                [RecommendedModuleStatus] [Modulstatus],[EvidenceLimit] [Aussagegrenze]
-        FROM [#SpecialFeatureInventory_FeatureInventory]
-        WHERE @NurErkannteFeatures=0 OR [DetectionStatus] IN ('DETECTED','CONFIGURED_ONLY')
+        FROM [#SpecialFeatureInventory_Export]
         ORDER BY [DatabaseName],[FeatureCode];
     END;
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#SpecialFeatureInventory_FeatureInventory'
+              @SourceTable=N'#SpecialFeatureInventory_Export'
             , @ResultLabel=N'SpecialFeatureInventory'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#SpecialFeatureInventory_FeatureInventory'
+              @SourceTable = N'#SpecialFeatureInventory_Export'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
