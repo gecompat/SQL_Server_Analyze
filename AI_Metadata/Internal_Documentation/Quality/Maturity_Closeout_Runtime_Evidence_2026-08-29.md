@@ -60,3 +60,28 @@ Die folgenden Fälle wurden nicht als bestanden verbucht:
 - Podman-Läufe für die sechs neuen Analyze-Beispiele.
 
 Diese Grenzen halten `OPS-005` bis `OPS-009` und `COLL-001` im Status `PARTIAL_PRODUCT_FUNCTION`. Sie erweitern die öffentliche Collationgarantie nicht.
+
+## Ergänzende OPS-008-Viewgegenprobe vom 5. Oktober 2026
+
+Ein neu erzeugter SQL-Server-2025-Linux-Container über Docker führte die
+vollständige Frameworkinstallation und den erweiterten Runtimevertrag
+`122_OPS008_Msdb_Health_Runtime_Contract.sql` aus. Die Instanz verwendete
+`Latin1_General_100_CS_AS`, die Frameworkdatenbank
+`SQL_Latin1_General_CP1_CS_AS`. Der Test veränderte keine `msdb`-Historie
+und versendete keine Nachricht.
+
+Die Baseline-Procedure erkannte ausschließlich Tabellen und klassifizierte
+die vorhandene View `msdb.dbo.sysmail_allitems` als `UNSUPPORTED`.
+Der neue Test reproduzierte diese Abweichung mit Fehler `54875`. Nach der
+Korrektur auf Tabellen und Views bestand derselbe Vertrag im selben
+isolierten Container. Der Test verlangte `AVAILABLE` für die Mailquelle
+und verglich Zeilenanzahl sowie beide Zeitgrenzen mit der direkten View.
+Die übrigen Quellenstatus-, Begrenzungs- und eingeschränkten Pfade
+bestanden ebenfalls. Container, Volume und temporärer State wurden entfernt.
+
+Die Engine-Major-Version 17 wurde vom Lab verifiziert; die genaue
+ProductVersion wurde für diese Gegenprobe nicht erfasst. Der Nachweis
+gilt ausschließlich für den beschriebenen lokalen Vertragsumfang.
+Kontrollierte kurze und lange Historien, Wachstum und fehlende optionale
+Quellen bleiben offen. Ein vollständiges Release-Gate und weitere native
+Versionen wurden in dieser Gegenprobe nicht ausgeführt.

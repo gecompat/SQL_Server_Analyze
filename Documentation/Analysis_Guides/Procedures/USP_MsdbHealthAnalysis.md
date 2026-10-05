@@ -9,7 +9,7 @@ Inventarisiert msdb-Dateigröße und sichtbare Zeitbereiche ausgewählter Betrie
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure zeigt, welche `msdb`-Quelle gegen eine festgelegte Aufbewahrungs-, Kapazitäts- oder Betriebsregel geprüft werden sollte. Sie aggregiert Datenbankdateien sowie vorhandene Backup-, Restore-, SQL-Agent-, Database-Mail- und Maintenance-Plan-Tabellen. Das Ergebnis ist eine Bestands- und Zeitfensterevidenz. Die Procedure führt keine Bereinigung, keinen Shrink und keine Agentaktion aus.
+Die Procedure zeigt, welche `msdb`-Quelle gegen eine festgelegte Aufbewahrungs-, Kapazitäts- oder Betriebsregel geprüft werden sollte. Sie aggregiert Datenbankdateien sowie vorhandene Backup-, Restore-, SQL-Agent- und Maintenance-Plan-Tabellen und die Database-Mail-View `msdb.dbo.sysmail_allitems`. Tabellen und Views werden als lesbare Quellen erkannt. Das Ergebnis ist eine Bestands- und Zeitfensterevidenz. Die Procedure führt keine Bereinigung, keinen Shrink und keine Agentaktion aus.
 
 ## Nicht beantwortete Fragen
 
@@ -114,5 +114,6 @@ Prüfen Sie Agentjobs, Backupkette und Dateiwachstum vor einer separat freigegeb
 
 - [Backup- und Restore-Systemtabellen](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backup-and-restore-tables-transact-sql?view=sql-server-ver17)
 - [dbo.sysjobhistory](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/dbo-sysjobhistory-transact-sql?view=sql-server-ver17)
+- [Database-Mail-Objekte](https://learn.microsoft.com/en-us/sql/relational-databases/database-mail/database-mail-messaging-objects?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../../../Code/08_ServerHealth/210_USP_MsdbHealthAnalysis.sql)

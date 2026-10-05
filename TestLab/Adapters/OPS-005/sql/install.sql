@@ -48042,7 +48042,7 @@ BEGIN
                 INNER JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
                 WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'dbo'
                   AND [o].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=@Obj COLLATE SQL_Latin1_General_CP1_CS_AS
-                  AND [o].[type] COLLATE SQL_Latin1_General_CP1_CS_AS=N'U'
+                  AND [o].[type] COLLATE SQL_Latin1_General_CP1_CS_AS IN (N'U', N'V')
             )
                 INSERT [#MsdbHealthAnalysis_Health] VALUES(@Area,N'msdb.dbo.'+@Obj,NULL,NULL,NULL,NULL,'UNSUPPORTED',N'Quelle ist auf dieser Instanz nicht vorhanden.');
             ELSE BEGIN TRY
