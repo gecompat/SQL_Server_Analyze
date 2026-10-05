@@ -3,7 +3,10 @@ GO
 SET NOCOUNT ON;
 SET XACT_ABORT ON;
 DECLARE @Database sysname=DB_NAME(),@Names nvarchar(max)=QUOTENAME(DB_NAME())+N'|[master]',
-        @Json nvarchar(max),@Status varchar(40),@Partial bit,@Case tinyint=0,@Limit int,@Details bit,@Expected int;
+        @Json nvarchar(max),@Status varchar(40),@Partial bit,@Case tinyint=0,@Limit int,@Details bit,@Expected int,@FirstDatabaseId int;
+SELECT TOP(1) @FirstDatabaseId=[database_id] FROM [master].[sys].[databases]
+WHERE [database_id] IN(DB_ID(),DB_ID(N'master'))
+ORDER BY [name] COLLATE SQL_Latin1_General_CP1_CS_AS,[database_id];
 DECLARE @Parity TABLE([TableJson] nvarchar(max),[ModuleJson] nvarchar(max));
 IF EXISTS(SELECT 1 FROM [msdb].[dbo].[suspect_pages] WHERE [database_id]=DB_ID() AND [file_id]=1 AND [page_id]=1)
     THROW 55869,N'Der eigene synthetische Suspect-Page-Schlüssel ist bereits belegt.',1;
@@ -33,9 +36,10 @@ BEGIN TRY
            OR JSON_VALUE(@Json,N'$.meta.errorNumber') IS NOT NULL OR JSON_VALUE(@Json,N'$.meta.errorMessage') IS NOT NULL
            OR (SELECT COUNT_BIG(*) FROM [#ExampleIntegrity])<>@Expected
            OR COALESCE(JSON_QUERY(@Json,N'$.warnings'),N'')<>N'[]'
-           OR NOT EXISTS(SELECT 1 FROM [#ExampleIntegrity]
+           OR (@Case=1 AND NOT EXISTS(SELECT 1 FROM [#ExampleIntegrity] WHERE [DatabaseId]=@FirstDatabaseId))
+           OR (@Case<>1 AND NOT EXISTS(SELECT 1 FROM [#ExampleIntegrity]
                          WHERE [DatabaseId]=DB_ID() AND [DatabaseName]=@Database COLLATE SQL_Latin1_General_CP1_CS_AS
-                           AND [FindingCode]='SUSPECT_PAGES_PRESENT' AND [SuspectPageCount]=1)
+                           AND [FindingCode]='SUSPECT_PAGES_PRESENT' AND [SuspectPageCount]=1))
             THROW 55860,N'Der positive DatabaseIntegrity-Status- oder Limitvertrag ist verletzt.',1;
         IF EXISTS(SELECT 1 FROM [#ExampleIntegrity] AS [e]
                   WHERE [e].[LastGoodCheckDbTime] IS NOT NULL OR [e].[CheckdbAgeHours] IS NOT NULL

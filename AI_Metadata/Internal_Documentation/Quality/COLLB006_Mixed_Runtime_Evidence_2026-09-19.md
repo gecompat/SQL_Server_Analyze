@@ -275,8 +275,18 @@ verlangt dieses Ergebnis ausdrücklich und prüft Objekt-, Index-, Partitions-
 und Allocation-Unit-Headerwerte NULL-sicher gegen `sys.dm_db_page_info`.
 Der Produktmodus wurde nicht verändert. Ohne Opt-in blieb das Detailarray leer.
 
+Die erste Head-CI scheiterte mit `55860`, weil der Test beim Ein-Zeilen-Limit
+die Frameworkdatenbank unabhängig von ihrem Namen als erste Zeile erwartete.
+Bei gleicher Befundpriorität entscheidet jedoch die bestehende Sortierung
+nach Datenbankname und Datenbank-ID. Der korrigierte Vertrag ermittelt diese
+Reihenfolge nativ und verlangt den positiven Suspect-Page-Indikator in beiden
+unbegrenzten Fällen. Eine zusätzliche Gegenprüfung mit einer synthetischen
+Frameworkdatenbank, die nach `master` sortiert, reproduzierte den ursprünglichen
+Collationfehler und bestand mit der korrigierten Quelle und dem finalen Vertrag.
+Die Produktsortierung wurde nicht verändert.
+
 Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
-Alle drei eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Alle vier eigenen Container, Volumes und temporären Lab-States wurden entfernt.
 Die 75 lokalen statischen Verträge und der unabhängige Review bestanden.
 Der synthetische Indikator belegt keine reale Beschädigung, keinen erfolgreichen
 CHECKDB, keine HADR-Reparatur und keine positiven beschädigten Backupmetadaten.
