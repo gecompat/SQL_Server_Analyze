@@ -188,8 +188,13 @@ Provisionierung oder fehlgeschlagenem Cleanup bleibt ausschließlich der
 eigene Recovery-State erhalten. Der Test belegt
 sichtbare Zeitfenster und Größenänderungen, keine Aufbewahrungsregel,
 Wachstumsrate oder Restorefähigkeit. Die vier weiteren Historienquellen
-werden als kontrollierte Leerfälle geprüft; ihre nicht leeren Zeitfenster
-und tatsächlich fehlende optionale Quellen bleiben separat offen.
+werden zunächst als kontrollierte Leerfälle geprüft. Der zusätzliche
+Restorevertrag stellt die eigene Backupdatei dreimal in eine zunächst
+nicht vorhandene Fixture-Datenbank wieder her. Weitere Restores ersetzen
+ausschließlich diese eigene Datenbank. Nur die zugehörigen Historienzeitstempel
+werden angepasst; Anzahl und kurze beziehungsweise lange Restorezeitfenster
+müssen exakt ausgegeben werden. Nicht leere Agent-, Mail- und Maintenance-
+Historien sowie tatsächlich fehlende optionale Quellen bleiben separat offen.
 
 ## Katalogisierte Beispiele
 

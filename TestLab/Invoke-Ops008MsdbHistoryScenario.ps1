@@ -34,7 +34,8 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
     $null = Invoke-AnalyzeLabScript -ScriptPath $markerFile -RunId $lab.RunId -StateRoot $stateRoot -SaPassword $saPassword
     foreach ($relative in @('Code/Tests/Integration/110_Smoke_Test.sql',
             'Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql',
-            'TestLab/Scenarios/OPS-008/history-window.sql')) {
+            'TestLab/Scenarios/OPS-008/history-window.sql',
+            'TestLab/Scenarios/OPS-008/restore-window.sql')) {
         $rendered = Join-Path $stateRoot ([IO.Path]::GetFileName($relative))
         $content = [IO.File]::ReadAllText((Join-Path $repositoryRoot $relative), [Text.Encoding]::UTF8)
         [IO.File]::WriteAllText($rendered, $content.Replace('[DeineDatenbank]', '[LabAnalyze]'), [Text.UTF8Encoding]::new($false))
