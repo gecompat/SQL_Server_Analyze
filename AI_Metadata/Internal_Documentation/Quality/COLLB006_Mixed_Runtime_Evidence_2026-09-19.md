@@ -67,3 +67,36 @@ Frameworkinstallation, Smoke-Test und Laufzeitvertrag bestanden. Beide eigenen
 Container, Volumes und temporären Lab-States wurden entfernt. Die 75 lokalen
 statischen Verträge bestanden ebenfalls. Der Nachweis belegt weder Hochlast
 noch vollständige native Werteparität der Semaphore-, Clerk- oder Cachewerte.
+
+## Internal Contention: 5. Oktober 2026
+
+`Code/Tests/Common/132_InternalContention_Collation_Runtime_Contract.sql`
+bestand in einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben.
+
+Der ursprüngliche Procedure-Stand reproduzierte mit demselben Vertrag die
+fremde Latchexportcollation (`55811`). Alle zwölf Textspalten der lokalen
+Latch-, Spinlock- und Hot-Page-Arbeitstabellen verwenden jetzt die
+Frameworkcollation. Der abschließende TABLE-Export bestätigte diese Collation
+für beide Textspalten. TABLE und JSON enthielten dieselben Latchklassen,
+Messarten, Warteanforderungen und Wartezeiten. Der kumulative Aufruf lieferte
+positive Wartezeiten, nativ auflösbare Klassen und keine Raten.
+
+Die Sampleprüfung verlangt die angeforderte Sekunde und eine positive
+tatsächliche Messdauer. Ein vorheriger Lauf scheiterte mit `55813`; die
+anschließende numerische Diagnose zeigte 0,996 Sekunden bei korrekter Messart
+und Ratenformel. Die zusätzliche Mindestdauerforderung des Tests wurde
+korrigiert. Eine feste Gegenprobe der vorhandenen Rechenfunktion bestätigt
+für ein Delta von 10 bei 0,996 Sekunden die Rate 10,0402. Emittierte
+Nichtresetwerte werden gegen die tatsächliche Messdauer geprüft; ein leeres
+Samplearray bleibt zulässig. Die Produktberechnung wurde nicht geändert.
+
+Frameworkinstallation, Smoke-Test und abschließender Laufzeitvertrag bestanden.
+Alle vier eigenen Container, Volumes und temporären Lab-States wurden entfernt.
+Die 75 lokalen statischen Verträge bestanden ebenfalls. Der neue Vertrag
+belegt keinen tatsächlichen Zählerreset, keinen positiven Hot-Page-Fall und
+keine Hochlast; Spinlocks wurden aktiviert und auf gültige begrenzte Arrays
+geprüft, jedoch nicht vollständig gegen native Zählerwerte abgeglichen.

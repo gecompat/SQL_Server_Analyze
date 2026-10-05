@@ -29,6 +29,12 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `latches`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Alle zwölf Textspalten der lokalen Latch-, Spinlock- und Hot-Page-Arbeitstabellen
+verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Der TABLE-Export `latches`
+übernimmt diese Frameworkcollation für Klassenname und Messart auch bei
+abweichender Server- oder `tempdb`-Collation. Ein Intervall ohne veränderte
+Latchzähler liefert weiterhin ein leeres Latcharray statt erfundener Aktivität.
+
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einer Spinlockklasse, einem Latch-/Hot-Page-Kandidaten, Page Detail oder Finding.
