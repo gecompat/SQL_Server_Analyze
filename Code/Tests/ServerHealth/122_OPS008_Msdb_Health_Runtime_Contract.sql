@@ -88,6 +88,31 @@ IF EXISTS
 )
     THROW 54874, N'Der msdb-Historienquellenstatus ist nicht konsistent.', 1;
 
+/* Die vorhandene Database-Mail-View muss als lesbare Quelle erkannt werden. */
+IF OBJECT_ID(N'msdb.dbo.sysmail_allitems', N'V') IS NOT NULL
+   AND EXISTS
+   (
+       SELECT COUNT_BIG(*), CONVERT(datetime2(3), MIN([send_request_date])),
+              CONVERT(datetime2(3), MAX([send_request_date]))
+       FROM [msdb].[dbo].[sysmail_allitems] WITH (NOLOCK)
+       EXCEPT
+       SELECT [j].[RowCount], [j].[OldestUtc], [j].[NewestUtc]
+       FROM OPENJSON(@Json)
+       WITH
+       (
+             [Area] varchar(40) '$.Area'
+           , [SourceObject] nvarchar(256) '$.SourceObject'
+           , [RowCount] bigint '$.RowCount'
+           , [OldestUtc] datetime2(3) '$.OldestUtc'
+           , [NewestUtc] datetime2(3) '$.NewestUtc'
+           , [StatusCode] varchar(40) '$.StatusCode'
+       ) AS [j]
+       WHERE [j].[Area] = 'DATABASE_MAIL'
+         AND [j].[SourceObject] = N'msdb.dbo.sysmail_allitems'
+         AND [j].[StatusCode] = 'AVAILABLE'
+   )
+    THROW 54875, N'Die vorhandene Database-Mail-View fehlt als verfügbare Aggregatquelle.', 1;
+
 DROP USER IF EXISTS [ExampleOps008RestrictedUser];
 CREATE USER [ExampleOps008RestrictedUser] WITHOUT LOGIN;
 GRANT EXECUTE ON [monitor].[USP_MsdbHealthAnalysis] TO [ExampleOps008RestrictedUser];

@@ -64,7 +64,7 @@ Vector Index (2025),USP_VectorIndexAnalysis,COMPLETE,YES,YES,YES,,FULL,SQL25-001
 Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,OPS-005,FULL,OPS-005 read-only Kern und Double-opt-in Runtime-Vertrag auf nativen 2019 2022 und 2025 bestanden; MSOLEDBSQL-Verbindungserfolg zwischen neuen SQL2025-Docker-Containern belegt; Providervarianz offen
 Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-006 read-only Kern implementiert; Drei-Versionen-Featureevidenz vorhanden; nicht unterstützte Quelle offen
 Cursor Diagnostics,USP_CurrentCursorAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-007 opt-in Kern implementiert; Drei-Versionen-Evidenz offen
-msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-008 read-only Kern implementiert; Drei-Versionen-Evidenz offen
+msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-008 read-only Kern mit nativer Drei-Versionen-Basisevidenz; Mail-Viewgegenprobe auf SQL2025 bestanden; kontrollierte Historien und fehlende Quellen offen
 System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,FULL,OPS-009 read-only Kern implementiert; Drei-Versionen-Evidenz offen
 Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 Boundary-Inventar sowie erster Fünf-OPS- CurrentOverview- und TABLE-Ziel-Slice vorhanden; weitere Härtung und gemischte Drei-Versionen-Matrix offen
 SSIS Package Analysis,SSIS Execution Analysis,PLANNED,NO,NO,NO,,ARCHITECTURE,SSIS-001 Phase 0 abgeschlossen; Phase 1 Implementierung offen

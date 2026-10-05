@@ -67,7 +67,7 @@ Die nächste Welle erweitert keine öffentliche Diagnosefläche. Sie schließt d
 
 1. `OPS-005` ergänzt die noch offene Providervarianz. Der kontrollierte MSOLEDBSQL-Verbindungserfolg zwischen zwei neuen lokalen SQL-Server-2025-Containern ist seit dem 5. Oktober 2026 belegt. Der synthetische TestLab-Adapter deckt bereits die Drei-Versionen-, Berechtigungs- und Timeoutfälle ab; zusätzliche native Erfolgsläufe folgen nur bei konkretem Versionsrisiko oder erforderlichem Release-Nachweis.
 2. `OPS-006` schließt die verbleibende Evidenz einer tatsächlich nicht unterstützten Systemquelle. Der kontrollierte Feature-Nachweis auf nativen SQL Server 2019, 2022 und 2025 sowie die vorhandenen Berechtigungspfade werden nicht erneut als offene Arbeit geführt.
-3. `OPS-008` erhält Leer-, Retention-, Wachstum-, Berechtigungs- und Begrenzungsfälle für die sichtbaren `msdb`-Historien.
+3. `OPS-008` ergänzt kontrollierte Leer-, Retention-, Wachstum- und fehlende optionale Quellenfälle. Die vorhandenen Berechtigungs- und Begrenzungsfälle sowie die am 5. Oktober 2026 korrigierte Erkennung der Database-Mail-View mit direkter Aggregatgegenprobe sind belegt.
 4. `OPS-007` und `OPS-009` folgen als kleinere, getrennt validierbare Slices.
 5. `COLL-001` setzt die begonnene objektbezogene Härtung fort. Die fünf OPS-Objekte, die Child-JSON-Aggregation von `USP_CurrentOverview` und der TABLE-Zielvertrag bilden den ersten statisch sowie auf der garantierten Collation nativ abgesicherten Slice. Gemischte Server-, `tempdb`-, Framework- und Ziel-Collations bleiben offen.
 
