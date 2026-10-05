@@ -63,7 +63,7 @@ Snapshot Baseline,USP_RunSnapshotCollectionCycle,COMPLETE,YES,YES,YES,,FULL,Impl
 Vector Index (2025),USP_VectorIndexAnalysis,COMPLETE,YES,YES,YES,,FULL,SQL25-001 dreiversionig abgenommen
 Linked Servers,USP_LinkedServerAnalysis,PLANNED,NO,NO,NO,OPS-005,FULL,OPS-005 read-only Kern und Double-opt-in Runtime-Vertrag auf nativen 2019 2022 und 2025 bestanden; MSOLEDBSQL-Verbindungserfolg zwischen neuen SQL2025-Docker-Containern belegt; Providervarianz offen
 Database Portability,USP_DatabasePortabilityAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-006 read-only Kern implementiert; Drei-Versionen-Featureevidenz vorhanden; nicht unterstützte Quelle offen
-Cursor Diagnostics,USP_CurrentCursorAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-007 opt-in Kern implementiert; Drei-Versionen-Evidenz offen
+Cursor Diagnostics,USP_CurrentCursorAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-007 opt-in Kern und eigene ressourcenpositive zweite Session sowie expliziter Berechtigungsfehler auf SQL Server 2025 belegt; Hochlast-Evidenz offen
 msdb Health,USP_MsdbHealthAnalysis,PLANNED,NO,NO,NO,,FULL,OPS-008 mit nativer Drei-Versionen-Basisevidenz; fünf leere Quellen Backup- und Restorezeitfenster sowie Dateiwachstum auf SQL2025 belegt; übrige nicht leere Historien und fehlende Quellen offen
 System Database User Objects,USP_SystemDatabaseObjectInventory,PLANNED,NO,NO,NO,,FULL,OPS-009 read-only Kern implementiert; Drei-Versionen-Evidenz offen
 Collation Portability,Framework-wide,PLANNED,NO,NO,NO,,ARCHITECTURE,COLL-001 Boundary-Inventar sowie erster Fünf-OPS- CurrentOverview- und TABLE-Ziel-Slice vorhanden; weitere Härtung und gemischte Drei-Versionen-Matrix offen

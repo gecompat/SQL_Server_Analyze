@@ -196,6 +196,28 @@ werden angepasst; Anzahl und kurze beziehungsweise lange Restorezeitfenster
 müssen exakt ausgegeben werden. Nicht leere Agent-, Mail- und Maintenance-
 Historien sowie tatsächlich fehlende optionale Quellen bleiben separat offen.
 
+## OPS-007 Zweite Session und verweigerter DMV-Zugriff
+
+`Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
+Docker-Lab, installiert das Framework und führt Smoke-Test sowie Cursorvertrag
+aus. Eine eigene zweite Verbindung hält einen statischen Cursor über 10.000
+synthetische Zeilen offen. Der Analyzer muss diesen Cursor bei einer Begrenzung
+auf eine Ergebniszeile als `RESOURCE_CONTEXT` ausgeben und dessen Öffnungs- und
+Fetchzustand erhalten. Positive Ressourcenzähler belegen keine Hochlast.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops007ForeignCursorScenario.ps1 `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Eine ausschließlich eigene Login- und Benutzerfixture erhält Ausführungsrecht
+auf den Analyzer. Gezielte Verweigerungen im `master`-Kontext müssen
+`DENIED_PERMISSION`, einen Partialstatus, eine Berechtigungsfehlernummer und
+leeres JSON ergeben. Erzeugte Passwörter bleiben im Arbeitsspeicher. Der Runner
+akzeptiert keinen bestehenden Run und entfernt ausschließlich den eigenen
+Container, dessen Volume und temporären State. Bei fehlgeschlagener
+Provisionierung oder Bereinigung bleiben die eigenen Recoverydaten erhalten.
+
 ## Katalogisierte Beispiele
 
 | Beispiel | Primärer Analyzer | Bedienseite |
