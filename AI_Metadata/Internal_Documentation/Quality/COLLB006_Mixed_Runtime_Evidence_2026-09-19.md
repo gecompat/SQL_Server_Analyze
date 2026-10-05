@@ -896,3 +896,54 @@ die eigene XE-Session wurde auch bei Baselinefehlern über ihr Erzeugungsflag
 gelöscht. Eigene Eventdateien wurden mit dem eigenen Container-Volume entfernt.
 Dieser Vertrag belegt keine Regexfilter, Rollover- oder Retentionbewertung,
 Dropped-Event-Bewertung, zusätzliche Berechtigungsprofile oder Hochlastvariante.
+
+## Extended Events Sessions: 5. Oktober 2026
+
+`Code/Tests/Common/151_XESessions_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben. Der ursprüngliche Stand reproduzierte die fremde
+Exportcollation (`56001`). Alle 26 lokalen Textspalten einschließlich der
+drei Namensfilter verwenden jetzt die Frameworkcollation; die sechs
+Textspalten des TABLE-Exports wurden nativ geprüft.
+
+Ein kontrollierter Stand mit korrigierten Textspalten, aber dem ursprünglichen
+dynamischen Targetmemory-Join reproduzierte getrennt `56002`. Alle sechs
+nativen Sessionnamenvergleiche sind jetzt explizit collatiert. Die vorhandene
+Spaltenverfügbarkeitsprüfung für `total_target_memory` bleibt erhalten.
+
+Der Test erzeugte nach Namenspreflight zwei eigene synthetische Unicode-
+XE-Sessions. Beide konfigurierten `error_reported` mit Fehlernummer 50000
+und eigener Sessionkennung als Predicate, die Action `session_id` sowie
+einen Ringbuffer mit explizit 128 KB Targetmemory. Nur eine Session wurde
+gestartet; Ereignisse wurden nicht ausgelöst und Targetdaten nicht gelesen.
+Native Kataloge bestätigten die beiden Definitionen, Events, Actions und
+konfigurierten Felder sowie den getrennten Laufzustand.
+
+Neun Aufrufe prüften gemeinsame und einzelne Sessionauswahl, Limits null,
+eins und NULL, deaktivierte Details, fehlende Event- und Targetnamen sowie
+Laufzeit-Opt-out und Nur-laufend-Auswahl. Die 16 Konfigurations- und
+Inventarfelder wurden gegen native Kataloge und bestätigte Fixturezähler
+geprüft; alle 33 Session-TABLE-/JSON-Felder stimmen als typisierte Multimengen
+überein. Die vier Detailarrays entsprechen ihren nativen Katalogprojektionen.
+Runtime-Opt-out und gestoppte Sessions liefern NULL-Runtimefelder. Der
+Laufstatus und die Startzeit der eigenen laufenden Session wurden mit
+stabiler nativer Adresse und höchstens zehn Millisekunden Abweichung zu
+beiden Zeitgegenproben geprüft. Dieser empirische Zeitrahmen ist keine
+allgemeine Genauigkeitsgarantie.
+
+Der vorhandene asymmetrische Vertrag bleibt erhalten: Ohne Runtimeprojektion
+und mit Nur-laufend-Auswahl ist das Sessionarray leer, während aktivierte
+Detailabfragen das laufende native Inventar liefern können. Status und
+Zeilenzahl beziehen sich weiterhin auf Sessions; öffentliche Arrays müssen
+auch bei leeren Ergebnissen vorhanden sein.
+
+Frameworkinstallation, Smoke-Test, beide Baselinereproduktionen, abschließender
+Laufzeitvertrag, 75 lokale statische Verträge und unabhängiger Source- und
+Testreview bestanden. Die eigenen XE-Sessions wurden auch bei Baselinefehlern
+über Erzeugungsflags gelöscht; eigener Container, Volume und temporärer
+Lab-State wurden entfernt. Dieser Vertrag belegt keine Ereigniserfassung,
+Targetpayloads, Runtimezählerparität, Verlustbewertung, Regexfilter,
+zusätzliche Berechtigungsprofile oder Hochlastvariante.
