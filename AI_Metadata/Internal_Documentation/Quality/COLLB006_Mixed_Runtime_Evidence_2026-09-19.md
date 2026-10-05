@@ -850,3 +850,49 @@ die eigenen XE-Sessions wurden auch bei Baselinefehlern über Erzeugungsflags
 gelöscht. Dieser Vertrag belegt keine Event-File-Ausgabe, Retention, Verlust-
 oder Dropped-Event-Bewertung, Regexfilter, zusätzliche Berechtigungsprofile
 oder Hochlastvariante.
+
+## Extended Events Reader: 5. Oktober 2026
+
+`Code/Tests/Common/150_XEReader_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Die
+Bereitschaftsprüfung bestätigte Majorversion 17; die konkrete ProductVersion
+wurde nicht erhoben. Der ursprüngliche Stand reproduzierte die fremde
+Exportcollation (`55991`). Alle zehn lokalen Textspalten verwenden jetzt die
+Frameworkcollation; die drei Textspalten des TABLE-Exports wurden nativ
+geprüft. Beide nativen Sessionnamenvergleiche sind explizit collatiert.
+
+Der Test erzeugte nach Namenspreflight eine eigene synthetische Unicode-
+XE-Session mit Ringbuffer und Event-File-Target. Sie erfasste ausschließlich
+Fehlernummer 50000 mit Schweregrad 16 aus der eigenen Testsession. Zwei
+abgefangene synthetische Fehler wurden in beiden nativen Quellen bestätigt.
+Die Session wurde nur für die eigene Dateigegenprobe gestoppt. Der Dateipfad
+wurde im Testcontainer aus dem nativen Logverzeichnis und einer neuen
+generischen Kennung gebildet; private Pfadwerte wurden nicht übernommen.
+
+Dreizehn Aufrufe prüften Ringbuffer, Eventdatei und automatische Dateiauswahl,
+bare und geklammerte Sessionnamen, Limits null, eins und NULL, einen fehlenden
+Eventnamen, UTC-Unter- und exklusive Obergrenzen sowie fehlende Flush- und
+High-Impact-Bestätigung. Status, Partialitätsflags, Quellenstatus, Fehlernummer,
+Schweregrad und Zeilenzahlen wurden geprüft. Die sechs rohen TABLE-Felder
+und die entsprechende JSON-Kernprojektion stimmen als typisierte Multimengen
+mit den nativen Ereignissen überein. Der vorhandene XML-Vertrag bleibt
+erhalten: `@MitEventXml=0` entfernt XML aus JSON, während TABLE das rohe
+Eventdokument weiterhin enthält. Das öffentliche JSON-Eventarray muss auch
+bei leeren Ergebnissen vorhanden sein.
+
+Der erste Lauf scheiterte am Vergleich leerer JSON-Unterabfragen, die NULL
+statt eines Arrays liefern. Ein eigener Diagnoselauf grenzte den Fehler auf
+den Testvergleich ein. Die abschließende Testdatei normalisiert ausschließlich
+die erzeugten Vergleichsprojektionen auf leere Arrays und verlangt vorher
+das öffentliche Eventarray sowie die erwarteten Zeilenzahlen. Produktcode
+und öffentlicher Ausgabevertrag wurden deswegen nicht geändert.
+
+Frameworkinstallation, Smoke-Test, abschließender Laufzeitvertrag, 75 lokale
+statische Verträge und unabhängiger Source- und Testreview bestanden. Alle
+drei eigenen Container, Volumes und temporären Lab-States wurden entfernt;
+die eigene XE-Session wurde auch bei Baselinefehlern über ihr Erzeugungsflag
+gelöscht. Eigene Eventdateien wurden mit dem eigenen Container-Volume entfernt.
+Dieser Vertrag belegt keine Regexfilter, Rollover- oder Retentionbewertung,
+Dropped-Event-Bewertung, zusätzliche Berechtigungsprofile oder Hochlastvariante.

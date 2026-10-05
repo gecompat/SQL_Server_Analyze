@@ -55,6 +55,13 @@ Keinen realen `@FilePath` in ungeschützte Dokumentation oder Tickets kopieren. 
 - `TABLE` exportiert ausschließlich das Primärergebnis `events` aus derselben Rohmenge in die über `@ResultTablesJson` zugeordnete lokale Temp-Tabelle. SourceStatus wird nicht mitexportiert.
 - JSON trennt `meta`, angereicherte `events`, `sources` und `warnings`.
 
+Die drei Textspalten des TABLE-Primärergebnisses verwenden die
+Frameworkcollation `SQL_Latin1_General_CP1_CS_AS`. Die SourceStatus-Arbeitstabelle
+und die Vergleiche zwischen dem nativen Sessionkatalog und dem aufgelösten
+Sessionnamen verwenden ebenfalls explizite Frameworkgrenzen. Die sechs
+TABLE-Felder bleiben eine Rohprojektion; JSON besitzt zusätzlich die
+angereicherten Ereignisfelder.
+
 Wichtige Implementierungsgrenze: `@MitEventXml = 0` unterdrückt das vollständige XML in der RAW- und JSON-Projektion, nicht aber seine vorherige Konvertierung und Feldextraktion. CONSOLE und TABLE arbeiten aktuell direkt auf der Rohmenge und enthalten deshalb weiterhin `EventXml`. Verwenden Sie `RAW` mit `@MitEventXml = 0`, wenn der XML-Transfer vermieden werden soll. TABLE ist nicht als XML-freier Export zu interpretieren.
 
 ## Eine Zeile bedeutet
