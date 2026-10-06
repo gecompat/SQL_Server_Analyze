@@ -1833,3 +1833,129 @@ entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
 `CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
 Secretwert wurde danach entfernt. Private Prüfzustände bleiben außerhalb
 von Git. Die zwei zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
+
+## Encryption-Export und positive Backup-Erwartungsfilter am 6./7. Oktober 2026
+
+Der Slice härtet bestehende Verträge von
+`Code/09_VersionAdaptive/080_USP_EncryptionAnalysis.sql`. 22 zuvor implizite
+Textspalten und elf Textspalten des neuen Exports verwenden explizit
+`SQL_Latin1_General_CP1_CS_AS`. Die Exporttabelle entsteht vor dem NOWAIT-
+Quellabschnitt. Nach vollständiger Bewertung versorgt eine gemeinsame
+gefilterte und begrenzte Menge RAW, CONSOLE, TABLE und JSON mit unveränderten
+26 Feldern. NULL und 0 bleiben unbegrenzt; negative Limits bleiben ungültig
+und werden intern ohne negativen TOP-Wert behandelt. Auswahlwarnings setzen
+die Modulpartialität erst nach der Quellenbewertung. Die lokale
+Aggregationsquelle führt ihre Partialität unabhängig von anderen Quellen.
+
+### Native Runtime und Baseline
+
+Ein eigenes Docker-Lab verwendete SQL Server 2025 unter Linux, Major 17,
+ProductVersion `17.0.4075.5`. Server und `tempdb` verwendeten
+`Latin1_General_100_CS_AS`, das Framework `SQL_Latin1_General_CP1_CS_AS`
+und die eigenen Testquellen `Latin1_General_100_CI_AS`. Die Werte wurden
+nativ erfasst; konkrete Runtimeidentitäten bleiben außerhalb des Repositorys.
+Die Baseline lief am 6. Oktober; der fokussierte Lauf endete nach dem
+Datumswechsel am 7. Oktober 2026 in der Projektzeitzone Europe/Vienna.
+
+Die unveränderte Procedure aus Basisrevision
+`554be2c7b8a90b253df2934147e33fb549fc9a2d` wurde getrennt installiert.
+Zwei eigene normale unverschlüsselte Datenbanken enthielten keine eigenen
+TDE-Schlüssel oder Backupfixtures. Framework und beide Baselinequellen
+verwendeten explizit Compatibility Level 170. Sechs ausgeführte
+Charakterisierungen zeigten:
+
+| Vorhandener Vertrag | Beobachtete Ausgabe der Basis |
+|---|---|
+| NULL-Limit mit erwarteter Backupverschlüsselung | TABLE und JSON lieferten je zwei MEDIUM-Findings. |
+| Limit 1 mit erwarteter Backupverschlüsselung | TABLE lieferte zwei Findings, JSON eines. |
+| Problemscope ohne Schutzvorgabe | TABLE lieferte zwei INFO-Zeilen, JSON keine. |
+| Gültige plus fehlende Datenbankauswahl | Modulstatus `AVAILABLE`, Partialität 0 und eine erhaltene Auswahlwarning. |
+| Ausschließlich fehlende Datenbankauswahl | Modulstatus `AVAILABLE`, Partialität 0, leere Fachergebnisse und eine Auswahlwarning. |
+| Negatives Limit mit JSON-Erzeugung | Fehler 127 verließ den Aufruf; OUTPUT-Statuswerte wurden nicht verlässlich zurückgegeben. |
+
+Alle fünf TABLE-Exporte besaßen elf Textspalten mit der abweichenden
+`tempdb`-Collation. In den Auswahlwarningfällen blieben die drei Quellen
+unpartiell. Beide eigenen Baselinequellen wurden anschließend entfernt.
+
+### Finale Nachweise
+
+Der kanonische Gesamtinstaller mit 166 Quellen und
+`Integration/110_Smoke_Test.sql` bestanden. Anschließend bestanden
+`Common/160_EncryptionAnalysis_Collation_Runtime_Contract.sql` und der
+unveränderte `Integration/185_P2_Encryption_Runtime_Contract.sql` jeweils
+mit Framework-Compatibility-Level 150, 160 und 170: sechs erfolgreiche
+Dateiläufe beim ersten Versuch. Common160 setzt alle drei eigenen Quellen
+explizit auf denselben Level und prüft Framework- und Sourcelevels getrennt.
+Integration185 besitzt keine separate Drei-Sourcelevel-Fixture.
+
+Common160 prüft pro Level 22 TABLE-/JSON-Fälle. Unabhängige native Abfragen
+bestätigen drei Datenbankidentitäten, `is_encrypted = 0`, fehlende eigene
+Encryption-Key-DMV-Zeilen und fehlende Full-Backupmetadaten im Lookback.
+Eigene Column-Master-Key-, Column-Encryption-Key-, verschlüsselte-Spalten-
+und Ledger-Anzahlen werden unabhängig mit 0 bestätigt. Die vorhandene
+Backupverschlüsselungserwartung erzeugt pro Datenbank
+`FULL_BACKUP_EVIDENCE_MISSING` mit Priorität MEDIUM. NULL und 0 liefern
+drei Zeilen; Limit 1 liefert genau die erste nach Datenbank-ID. Ohne diese
+Erwartung entstehen INFO-Zeilen, die der Problemscope entfernt. Exakte
+Unicode- und case-sensitive Auswahlen, umgekehrte Auswahlreihenfolge,
+fehlende Auswahl sowie ungültige Parameter werden getrennt geprüft.
+
+Der Test vergleicht alle 26 Felder einschließlich JSON-Feldnamen,
+NULL-Eigenschaften und Multimengenhäufigkeiten gegen unabhängige native
+Erwartungen und zwischen TABLE und JSON. Elf Exporttextspalten verwenden
+die Frameworkcollation. Drei Quellenstatus bilden die unabhängige Sollmenge.
+Auswahlwarnings bleiben erhalten; erfolgreiche Quellen bleiben
+`AVAILABLE` mit Partialität 0 bei Modulstatus `AVAILABLE_LIMITED` und
+Partialität 1. Eine leere oder begrenzte Ausgabe verändert die vollständige
+Bewertung und deren Status nicht. Vier zusätzliche RAW-/CONSOLE-Aufrufe
+prüfen positive und negative Limits über Status und JSON-Zeilenanzahl.
+Ihre ausgegebenen Zeilen werden nicht separat abgefangen oder verglichen.
+
+Integration185 enthält vier synthetische Zustandsmodellfälle, zwei echte
+Procedure-Aufrufe für Backup-Erwartung und Berechtigungsfehler sowie einen
+AE-Definitionsvertrag. Die separate Privacy-Prüfung bestand ebenfalls.
+Diese sieben Fälle belegen keine sieben positiven nativen Schutzfeatures.
+Der unabhängige stabile SQL-/Harnessreview meldete keine offenen Befunde.
+
+Die ausgeführten kanonischen Quellen besitzen folgende UTF-8/LF-SHA-256:
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 | `F5C17DC84CF16E26AD6446B16A9158AD371CB4D1FE90843AA8356DB21E395F8F` |
+| Common160 | `467E5B2B12309779B761B776CD45A87BB9611F5041F408046903DAB22FCEEC1A` |
+
+Der native installierte Proceduretext wurde vom qualifizierten Objektnamen
+bis zum abschließenden END gegen die kanonische Quelle verglichen. Nach
+LF-Normalisierung und Entfernen äußerer Batchmarker stimmen die UTF-16-
+Bodyhashes mit
+`E36F3E3A37F1DFA69942BA7E65FC1664EB4E2D29D946A014E0E335253E52DFE4`
+überein. Der private Runner ersetzte ausschließlich den
+Installationsplatzhalter. Der OPS-005-Vollinstaller wurde kanonisch
+regeneriert; sein semantischer Diff entspricht dem betroffenen Objekt.
+
+### Aussagegrenze und Cleanup
+
+Aktive TDE-, Zertifikat-, verschlüsselte Backup-, AE- und Ledgerzustände
+sowie externe Schlüsselkopien und Restore bleiben für diesen Slice
+unbelegt. Viele Verschlüsselungsfelder sind deshalb ausschließlich als
+NULL oder Nullmengen geprüft. Common160 aktiviert keine Schutzfeatures,
+erstellt keine Backups und liest keine Schlüssel- oder Medieninhalte.
+Der Major-vor-16-Ledger-NULL-Zweig des Tests wurde nicht nativ ausgeführt.
+Das Produktdelta ändert keine Engine-Majorzweige, Berechtigungen oder
+Katalogschemas; ein zusätzliches natives Versionsrisiko wurde nicht
+festgestellt. CL150/160 auf SQL Server 2025 sind keine nativen
+2019-/2022-Nachweise. COLL-001 bleibt partiell.
+
+Das eigene Lab wurde über `Remove-SqlServerLab -Force -Confirm:$false`
+entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
+`CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
+Secretwert wurde danach entfernt. Private Prüfzustände bleiben außerhalb
+von Git. Die zwei zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Darin bestanden Privacy
+mit 1.043 Repositorydateien und null Findings, Schreibstil mit 700
+Repositorydateien und null Findings, Roadmap-, Maturity- und
+Partialitätsverträge, der NOWAIT-Metadatenvertrag mit 904 Temp-Namen sowie
+beide Adapterprüfungen. Nach diesem Ergebnis wurden ausschließlich diese
+Gateergebnisse ergänzt.

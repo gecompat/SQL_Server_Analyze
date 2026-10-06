@@ -56330,7 +56330,8 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                                THEN CONVERT(bigint,9223372036854775807)
-                               ELSE CONVERT(bigint,@MaxZeilen) END;
+                               WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen)
+                               ELSE CONVERT(bigint,0) END;
     DECLARE @Major int=TRY_CONVERT(int,SERVERPROPERTY('ProductMajorVersion'));
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
@@ -56350,57 +56351,86 @@ BEGIN
     CREATE TABLE [#EncryptionAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#EncryptionAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#EncryptionAnalysis_SourceStatus]
     (
-          [SourceName] nvarchar(128) NOT NULL PRIMARY KEY
-        , [StatusCode] varchar(40) NOT NULL
+          [SourceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
-        , [Detail] nvarchar(1000) NOT NULL
+        , [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#EncryptionAnalysis_Encryption]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsEncrypted] bit NULL
         , [EncryptionState] int NULL
-        , [EncryptionStateDesc] nvarchar(60) NULL
+        , [EncryptionStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [PercentComplete] real NULL
         , [EncryptionScanState] int NULL
-        , [EncryptionScanStateDesc] nvarchar(60) NULL
+        , [EncryptionScanStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [EncryptionScanModifyDate] datetime NULL
-        , [KeyAlgorithm] nvarchar(32) NULL
+        , [KeyAlgorithm] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [KeyLength] int NULL
-        , [EncryptorType] nvarchar(32) NULL
-        , [ProtectorName] sysname NULL
+        , [EncryptorType] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProtectorName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ProtectorExpiryDate] datetime NULL
         , [ProtectorPrivateKeyLastBackupDate] datetime NULL
         , [LatestFullBackupFinishDate] datetime NULL
         , [LatestFullBackupExplicitlyEncrypted] bit NULL
-        , [LatestFullBackupAlgorithm] nvarchar(32) NULL
-        , [LatestFullBackupEncryptorType] nvarchar(32) NULL
+        , [LatestFullBackupAlgorithm] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LatestFullBackupEncryptorType] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ColumnMasterKeyCount] bigint NULL
         , [ColumnEncryptionKeyCount] bigint NULL
         , [EncryptedColumnCount] bigint NULL
         , [LedgerTableCount] bigint NULL
-        , [FindingCode] varchar(100) NULL
-        , [FindingSeverity] varchar(16) NULL
-        , [EvidenceLimit] nvarchar(1000) NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+    CREATE TABLE [#EncryptionAnalysis_Export]
+    (
+          [DatabaseId] int NOT NULL PRIMARY KEY
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IsEncrypted] bit NULL
+        , [EncryptionState] int NULL
+        , [EncryptionStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PercentComplete] real NULL
+        , [EncryptionScanState] int NULL
+        , [EncryptionScanStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EncryptionScanModifyDate] datetime NULL
+        , [KeyAlgorithm] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [KeyLength] int NULL
+        , [EncryptorType] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProtectorName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProtectorExpiryDate] datetime NULL
+        , [ProtectorPrivateKeyLastBackupDate] datetime NULL
+        , [LatestFullBackupFinishDate] datetime NULL
+        , [LatestFullBackupExplicitlyEncrypted] bit NULL
+        , [LatestFullBackupAlgorithm] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [LatestFullBackupEncryptorType] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ColumnMasterKeyCount] bigint NULL
+        , [ColumnEncryptionKeyCount] bigint NULL
+        , [EncryptedColumnCount] bigint NULL
+        , [LedgerTableCount] bigint NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @MaxZeilen<0 OR @LockTimeoutMs<0
@@ -56510,7 +56540,7 @@ BEGIN
         END CATCH;
 
         BEGIN TRY
-            DECLARE @DatabaseId int,@DatabaseName sysname,@Sql nvarchar(max);
+            DECLARE @DatabaseId int,@DatabaseName sysname,@Sql nvarchar(max),@LocalAggregatePartial bit=0;
             DECLARE [database_cursor] CURSOR LOCAL FAST_FORWARD FOR
                 SELECT [DatabaseId],[DatabaseName] FROM [#EncryptionAnalysis_DatabaseCandidates]
                 WHERE [StateDesc]=N'ONLINE' AND [DatabaseId]<>2 ORDER BY [DatabaseId];
@@ -56530,7 +56560,7 @@ BEGIN
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseId int',@pDatabaseId=@DatabaseId;
                 END TRY
                 BEGIN CATCH
-                    SET @IsPartial=1;
+                    SELECT @IsPartial=1,@LocalAggregatePartial=1;
                     IF NOT EXISTS(SELECT 1 FROM [#EncryptionAnalysis_DatabaseCandidateWarnings] WHERE [RequestedName]=@DatabaseName)
                         INSERT [#EncryptionAnalysis_DatabaseCandidateWarnings] VALUES
                         (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
@@ -56542,7 +56572,7 @@ BEGIN
             DEALLOCATE [database_cursor];
 
             INSERT [#EncryptionAnalysis_SourceStatus] VALUES
-            (N'sys.column_master_keys + sys.column_encryption_keys + sys.columns + sys.tables','AVAILABLE',@IsPartial,
+            (N'sys.column_master_keys + sys.column_encryption_keys + sys.columns + sys.tables','AVAILABLE',@LocalAggregatePartial,
              CASE WHEN @Major>=16 THEN N'Nur aggregierte Objektanzahlen; keine Schluesselpfade, Signaturen, Werte oder Objektnamen.'
                   ELSE N'Nur aggregierte Always-Encrypted-Anzahlen; Ledger ist vor SQL Server 2022 nicht verfuegbar.' END);
         END TRY
@@ -56598,6 +56628,30 @@ BEGIN
             SET @StatusCode='AVAILABLE_WITH_FINDING';
     END;
 
+    IF @StatusCode NOT IN('AVAILABLE','AVAILABLE_WITH_FINDING') SET @IsPartial=1;
+    IF EXISTS(SELECT 1 FROM [#EncryptionAnalysis_DatabaseCandidateWarnings])
+    BEGIN
+        SET @IsPartial=1;
+        IF @StatusCode IN('AVAILABLE','AVAILABLE_WITH_FINDING') SET @StatusCode='AVAILABLE_LIMITED';
+    END;
+
+    INSERT [#EncryptionAnalysis_Export]
+    ([DatabaseId],[DatabaseName],[IsEncrypted],[EncryptionState],[EncryptionStateDesc],
+     [PercentComplete],[EncryptionScanState],[EncryptionScanStateDesc],[EncryptionScanModifyDate],[KeyAlgorithm],
+     [KeyLength],[EncryptorType],[ProtectorName],[ProtectorExpiryDate],[ProtectorPrivateKeyLastBackupDate],
+     [LatestFullBackupFinishDate],[LatestFullBackupExplicitlyEncrypted],[LatestFullBackupAlgorithm],[LatestFullBackupEncryptorType],[ColumnMasterKeyCount],
+     [ColumnEncryptionKeyCount],[EncryptedColumnCount],[LedgerTableCount],[FindingCode],[FindingSeverity],
+     [EvidenceLimit])
+    SELECT TOP(@Limit) [DatabaseId],[DatabaseName],[IsEncrypted],[EncryptionState],[EncryptionStateDesc],
+     [PercentComplete],[EncryptionScanState],[EncryptionScanStateDesc],[EncryptionScanModifyDate],[KeyAlgorithm],
+     [KeyLength],[EncryptorType],[ProtectorName],[ProtectorExpiryDate],[ProtectorPrivateKeyLastBackupDate],
+     [LatestFullBackupFinishDate],[LatestFullBackupExplicitlyEncrypted],[LatestFullBackupAlgorithm],[LatestFullBackupEncryptorType],[ColumnMasterKeyCount],
+     [ColumnEncryptionKeyCount],[EncryptedColumnCount],[LedgerTableCount],[FindingCode],[FindingSeverity],
+     [EvidenceLimit]
+    FROM [#EncryptionAnalysis_Encryption]
+    WHERE @NurProblematisch=0 OR [FindingSeverity] IN('HIGH','MEDIUM')
+    ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId];
+
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
            @ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
 
@@ -56606,8 +56660,7 @@ BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT N'EncryptionAnalysis' AS [resultName],1 AS [schemaVersion],
             @Now AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@Major AS [productMajorVersion]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-        DECLARE @DataJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#EncryptionAnalysis_Encryption]
-            WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
+        DECLARE @DataJson nvarchar(max)=(SELECT * FROM [#EncryptionAnalysis_Export]
             ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @SourceJson nvarchar(max)=(SELECT * FROM [#EncryptionAnalysis_SourceStatus] ORDER BY [SourceName]
@@ -56622,8 +56675,7 @@ BEGIN
     BEGIN
         SELECT N'USP_EncryptionAnalysis' AS [ModuleName],@Now AS [CollectionTimeUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@Major AS [ProductMajorVersion],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];
-        SELECT TOP (@Limit) * FROM [#EncryptionAnalysis_Encryption]
-        WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
+        SELECT * FROM [#EncryptionAnalysis_Export]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId];
         SELECT * FROM [#EncryptionAnalysis_SourceStatus] ORDER BY [SourceName];
         SELECT * FROM [#EncryptionAnalysis_DatabaseCandidateWarnings] ORDER BY [RequestedName];
@@ -56632,7 +56684,7 @@ BEGIN
     BEGIN
         SELECT N'Verschluesselungsanalyse' AS [Ergebnis],@Now AS [Stand_UTC],@StatusCode AS [Status],
                @IsPartial AS [Teilweise],@ErrorMessage AS [Hinweis];
-        SELECT TOP (@Limit) N'Verschluesselung' AS [Ergebnis],[DatabaseName] AS [Datenbank],
+        SELECT N'Verschluesselung' AS [Ergebnis],[DatabaseName] AS [Datenbank],
                [IsEncrypted] AS [TDE_Aktiv],[EncryptionStateDesc] AS [TDE_Status],
                [EncryptionScanStateDesc] AS [Scan_Status],[PercentComplete] AS [Fortschritt_Prozent],
                [ProtectorName] AS [Schutzobjekt],[ProtectorExpiryDate] AS [Ablaufdatum],
@@ -56641,8 +56693,7 @@ BEGIN
                [ColumnMasterKeyCount] AS [Column_Master_Keys],[ColumnEncryptionKeyCount] AS [Column_Encryption_Keys],
                [EncryptedColumnCount] AS [Verschluesselte_Spalten],[LedgerTableCount] AS [Ledger_Tabellen],
                [FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#EncryptionAnalysis_Encryption]
-        WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
+        FROM [#EncryptionAnalysis_Export]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId];
         SELECT N'Quellenstatus' AS [Ergebnis],[SourceName] AS [Quelle],[StatusCode] AS [Status],[Detail] AS [Hinweis]
         FROM [#EncryptionAnalysis_SourceStatus] ORDER BY [SourceName];
@@ -56652,14 +56703,14 @@ BEGIN
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#EncryptionAnalysis_Encryption'
+              @SourceTable=N'#EncryptionAnalysis_Export'
             , @ResultLabel=N'EncryptionAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#EncryptionAnalysis_Encryption'
+              @SourceTable = N'#EncryptionAnalysis_Export'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
