@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 5. Oktober 2026
+**Stand:** 6. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 ## Maßgeblichkeit
@@ -73,11 +73,24 @@ vorherigen Checkpoint. Runtime-Sessionkennungen, vollständige Chats und
 Handoffinhalte werden nicht ins Repository übernommen. Ein Nachfolger lädt
 die native Anweisungskette und prüft den aktuellen Repositorystand erneut.
 
-Die automatische Erzeugung einer Nachfolgesession ist nicht aktiviert.
-Ohne ausdrücklich autorisierte und bestätigte Clientfunktion bleibt die
-Erzeugung manuell; eine Empfehlung gilt nicht als tatsächlich ausgeführter
-Sessionwechsel. Unabhängige autorisierte Entwicklung wird während einer
-optionalen offenen Lifecycle-Auswahl fortgesetzt.
+Der Benutzer hat am 6. Oktober 2026 die aufgabenbezogene Erzeugung neuer
+Orchestrator-Chats freigegeben, wenn ein Wechsel angebracht ist. Ein Wechsel
+wird an einer natürlichen Arbeitsgrenze vorbereitet und verwendet eine
+verfügbare Clientfunktion. Erst ein vom Client als verfügbar bestätigter
+Nachfolger mit tatsächlicher `threadId` belegt die Erzeugung; eine vorgemerkte
+Einrichtung bleibt ausstehend.
+Ohne verfügbare Clientfunktion bleibt die Erzeugung manuell. Eine Empfehlung
+oder ein Handoff allein gilt nicht als ausgeführter Sessionwechsel.
+
+Der Nachfolger übernimmt die logische Entwicklungsrolle und lädt die aktuelle
+native Anweisungskette sowie die kanonischen Projektquellen erneut. Eine kurze
+Übergabe verweist auf den bestätigten Projektstand, aktuelle Arbeit und offene
+Punkte; Sessionkennungen und Handoffinhalte bleiben außerhalb von Git. Bei
+einem tatsächlichen Wechsel wird die bestehende automatische Fortsetzung erst
+nach dieser Bereitschaftsbestätigung dem Nachfolger zugeordnet, damit nur ein
+Orchestrator die autonome Arbeit steuert.
+Es werden keine zusätzliche periodische Rotation und keine numerischen
+Kontextschwellen aktiviert.
 
 ## Aktueller Produktstand
 
