@@ -27,6 +27,8 @@ Der Standardpfad liest keine Query-Texte, Pläne als XML oder Benutzeridentität
 
 Der technische Vertrag besteht aus `moduleStatus`, `usage`, `sourceStatus` und `warnings`. Zuerst sind Status und Quellenlage zu prüfen. CONSOLE zeigt nur das fachliche `usage`-Resultset; RAW gibt alle vier Resultsets aus. TABLE schreibt ausschließlich benannte lokale `#Temp`-Ziele. NONE unterdrückt fachliche Resultsets, kann aber JSON und OUTPUT-Parameter liefern.
 
+Die vier TABLE-Schemas besitzen unverändert 12/11/11/5 Felder. Ihre 14 Textfelder verwenden explizit `SQL_Latin1_General_CP1_CS_AS`; auch die lokalen Zwischenmengen sind explizit collatiert. Gültige TABLE-Zuordnungen werden vor der fachlichen Parameterprüfung vorbereitet. Ungültige Fachparameter liefern daher die vollständigen Schemas mit `INVALID_PARAMETER`, einer Modulstatus- und einer Parameterquellenzeile sowie leeren Nutzungs- und Warningmengen. Ungültige Zuordnungen werden durch den bestehenden TABLE-Preflight abgelehnt.
+
 ## Eine Zeile bedeutet
 
 Eine `usage`-Zeile entspricht einer sichtbaren Procedure im Schema `monitor`. Die Werte aggregieren alle sichtbaren Query-Store-Queries und Pläne, deren `object_id` auf diese Procedure verweist. Eine Zeile ist daher keine einzelne Ausführung und keine einzelne Query-Store-Query.
@@ -37,7 +39,7 @@ Eine `usage`-Zeile entspricht einer sichtbaren Procedure im Schema `monitor`. Di
 2. Prüfen Sie `sourceStatus`, bevor ein leeres `usage`-Resultset interpretiert wird.
 3. `ExecutionCount` ist die Summe der erfassten Statementausführungen je Procedure.
 4. Dauer, CPU, Reads und Speicher sind nach `count_executions` gewichtete Query-Store-Intervallaggregate.
-5. `HasMoreRows = 1` bedeutet ausschließlich, dass `@MaxZeilen` die Projektion begrenzt hat.
+5. `HasMoreRows = 1` bedeutet ausschließlich, dass `@MaxZeilen` die Projektion begrenzt hat. `NULL` und 0 lassen die Menge unbegrenzt; ein zusätzlicher interner Kandidat erkennt die Trunkierung. TABLE, RAW, CONSOLE und JSON verwenden dieselbe materialisierte Nutzungsmenge.
 6. Mehrere Pläne oder Queries sind ein Vertiefungshinweis, aber keine automatische Regression oder Parameter-Sensitivität.
 
 ## Warum kann das problematisch sein?

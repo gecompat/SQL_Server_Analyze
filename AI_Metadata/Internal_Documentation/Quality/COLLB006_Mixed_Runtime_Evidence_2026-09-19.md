@@ -2607,3 +2607,139 @@ mit 953 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
 Nach diesem Ergebnis wurde ausschließlich dieser Gateabsatz ergänzt;
 SQL, Tests und ihre Quellidentitäten blieben unverändert. Das unabhängige
 abschließende Review hatte keine offenen Findings.
+
+## Framework-Nutzung aus Query Store: 7. Oktober 2026
+
+### Nativer Ausgangsstand
+
+Die unveränderte Source `500_USP_FrameworkUsageFromQueryStore.sql` aus
+`d07b8ce819c6474874825adff1fd8a6e8abbe6e3` wurde aus 166 kanonischen
+Dateien in einem eigenen SQL-Server-2025-Docker-Lab installiert.
+Installation und Smoke110 bestanden. ProductVersion `17.0.4075.5`,
+Major 17, Linux und Framework-Compatibility-Level 170 wurden nativ
+bestätigt. Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`,
+das Framework `SQL_Latin1_General_CP1_CS_AS`.
+
+Drei Charakterisierungsfälle bestanden ohne Harnessfehler. Ein gültiger
+TABLE-Aufruf mit allen vier Resultsetzuordnungen und unbegrenztem Limit 0
+lieferte `AVAILABLE` in JSON und OUTPUT, alle 39 öffentlichen Spalten
+sowie 14 von der Frameworkcollation abweichende Textcollations.
+Ein negatives Limit und ein NULL-Mindestwert lieferten jeweils
+`INVALID_PARAMETER` in JSON und OUTPUT. Beide TABLE-Aufrufe ließen aber
+alle vier Caller-Ziele mit jeweils einer Dummyspalte unverändert.
+Die semantische Parameterablehnung übersprang die spätere TABLE-Zuordnung;
+Status und Quellenkontext wurden deshalb nicht in diese gültig
+zugeordneten Ziele projiziert.
+
+Die UTF-8/LF-Identität der tatsächlich installierten Ausgangssource lautet
+`9DE392932BD0AC099F58EC47D78CF45D111F059455A73F174478767039550DD8`.
+
+### Änderung und positive native Gegenprobe
+
+Die 15 bisher impliziten Textfelder in fünf lokalen Mengen verwenden jetzt
+explizit `SQL_Latin1_General_CP1_CS_AS`. Der vorhandene TABLE-Preflight läuft
+vor der fachlichen Parameterprüfung. Die vier öffentlichen Schemas behalten
+12/11/11/5 Felder, zusammen 39 Felder mit 14 Textfeldern. Fachlich ungültige
+Parameter projizieren damit `INVALID_PARAMETER` und Quellenkontext auch in
+gültig zugeordnete TABLE-Ziele. Abgelehnte Zuordnungen bleiben beim bestehenden
+Fehler 51011. Quellenabfragen, gewichtete Aggregate, Mindestfilter,
+NULL-/0-Limits, zusätzlicher Kandidat für `HasMoreRows`, JSON und OUTPUT sowie
+LOCK_TIMEOUT-Restore bleiben fachlich unverändert.
+
+Für die Gegenprobe bereitete der Labbetreiber ausschließlich in der eigenen
+temporären Labdatenbank zwei synthetische Unicode-Procedures vor, deren Namen sich in der
+Großschreibung unterscheiden. Capture Mode ALL, 100 beziehungsweise 200
+Ausführungen und ein eigener Flush erzeugten je eine Query und einen Plan.
+Danach wurden tatsächlicher und gewünschter Query-Store-Zustand auf READ_ONLY
+stabilisiert. Die nativen Statementsummen betrugen 100 und 200. Diese Zahlen
+sind Fixturebeobachtungen; der Repositorytest leitet Schwellen und Identitäten
+aus nativen Metadaten ab. Das Produkt und Common166 verändern weder Query Store
+noch Probeobjekte und führen keinen Flush aus.
+
+Die abschließende Installation aus 166 kanonischen Dateien und Smoke110
+bestanden. Common166 bestand auf SQL Server 2025 nacheinander auf den
+Framework-Compatibility-Levels 150, 160 und 170. Je Level liefen 19 TABLE-
+und drei weitere Consumerfälle, vier frühe Mappingablehnungen sowie drei
+leere CONSOLE-Captures. Alle TABLE-Schemas wurden vollständig nach relativer
+Feldposition, Namen, Typen, Längen, Precision, Scale, NULL-Zulässigkeit,
+Collation und öffentlichem Identitymerkmal geprüft. Alle 14 Textfelder besitzen
+die Frameworkcollation. JSON prüft vier Top-Level-Schlüssel, alle 13 Metafelder
+einschließlich NULL-Eigenschaften und vollständige Usage-, Source- und
+Warningparität; Modulstatus und OUTPUT werden ebenfalls verglichen.
+
+Die vorhandene READ_ONLY-Fixture aktivierte zusätzlich je Level acht
+unabhängige native Gegenproben für sämtliche elf Usage-Felder, gewichtete
+Mittelwerte, case-sensitive Identitäten, Mindestfilter, Limits und
+`HasMoreRows`. Drei positive CONSOLE-Captures vergleichen jeweils zwölf Felder
+mit JSON als ungeordnete Menge. Die Procedure garantiert keine CONSOLE-
+Sortierung. Die Fensterfälle prüfen Parameterakzeptanz und native Parität;
+mit diesen frischen Statistiken ist keine positive Ausschlusswirkung alter
+Intervalle nachgewiesen. Ohne passende READ_ONLY-Fixture führt Common166 die
+allgemeinen Fälle weiter aus und meldet ausschließlich den positiven Block
+als `NOT_EXECUTED`. Diese Möglichkeit ersetzt die hier ausgeführten positiven
+Gegenproben nicht.
+
+READ_ONLY/READ_ONLY/ALL und die unveränderten nativen Probeaggregate wurden
+nach den drei Läufen bestätigt. Die UTF-8/LF-Quellidentitäten lauten:
+
+| Quelle | SHA-256 |
+|---|---|
+| Source500 | `26506A4CF8C108DC04F2A7AF12EA8CF193BD8CEC4C6CCEEBEBB130280BB09857` |
+| Common166 | `1C64A181192899F096EF1118EC3CE912A672214548900316462A920475B51121` |
+| QueryStore120 | `8878303F139A060DF5EA8B848D6C18C7AB9F6A6733747B49950A0BD3CB3E387B` |
+
+Der native Body besitzt nach LF-Normalisierung ab dem qualifizierten
+Objektnamen und Entfernen äußerer Leerzeichen und Zeilenumbrüche die
+UTF-16/LF-Identität
+`1899BCD9DFD2ED7B55AB148C402B7784DADAA5390D8E05E99443C2FDE71402B9`.
+Sie stimmt mit dem kanonischen Body überein. Der erste private Hashvergleich
+entfernte abschließende Zeilenumbrüche noch nicht und brach vor weiteren
+Fixtureänderungen ab. Die korrigierte Normalisierung bestand. Die SQL-
+Stringliteralmenge der Source bleibt gegenüber dem Ausgangsstand identisch.
+
+QueryStore120 verwendet für seine eigene Probe jetzt eine Abwesenheitsprüfung,
+CREATE und eine erfasste Objekt-ID als Cleanupvorbehalt in beiden Pfaden.
+Ein eigener nativer Gegenversuch mit bereits vorhandener Probe erhielt die
+geplante Ablehnung `FRAMEWORK_USAGE_PROBE_ALREADY_EXISTS`; Objekt-ID und
+Bodyhash blieben unverändert. Der Labbetreiber entfernte danach diese eigene
+Guard-Probe. Die 20 regulären Testausführungen und ihr Flush schreiben eigene
+Laufzeitdaten, ändern aber keine Query-Store-Konfiguration und bereinigen
+keine vorhandenen Daten.
+
+Der erste Impactlauf auf CL150 bestand QueryStore120. Integration189 lehnte
+danach die zwei noch vorhandenen Unicode-Fixtures ab, weil sie das feste
+Inventar öffentlicher Framework-Procedures erweiterten. Dies war kein
+bestandener Impactlauf. Nach Prüfung der eigenen Objekt-IDs wurden beide
+Fixtures entfernt und der ursprüngliche Zustand READ_WRITE/READ_WRITE/AUTO
+wiederhergestellt. Die Produkt- und Repositorytestquellen wurden dafür nicht
+geändert.
+
+Der bereinigte Impactlauf bestand danach auf CL150, CL160 und CL170 jeweils
+QueryStore120, Integration189, Integration196, Integration198 und Common124.
+Die reguläre Probe von QueryStore120 wurde in diesen READ_WRITE-Läufen vom
+Test erzeugt, ausgeführt und entfernt. Abschließend waren alle drei eigenen
+Probenamen abwesend; der ursprüngliche Query-Store-Zustand war weiterhin
+READ_WRITE/READ_WRITE/AUTO.
+
+Vollständige positive RAW-Zeilenparität, DENIED_PERMISSION und ERROR_HANDLED
+bleiben unbelegt. Der Nachweis umfasst dieselbe Frameworkdatenbank und keine
+zusätzliche Quelldatenbank oder ältere native Engine. `COLL-001` bleibt
+partiell; bestehende Maturityflags und `RUNTIME-001` bleiben unverändert.
+Das unabhängige Review von Produkt, Tests, Inventar, Installer und
+Procedure-Dokumentation hatte keine offenen Findings.
+
+Das eigene Lab wurde vollständig entfernt: Container und Volume, zwei
+Cleanupschritte, null Fehler, `CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene
+verschlüsselte temporäre Secretwert wurde danach entfernt. Private
+Laufzeitdaten und Prüfzustände bleiben außerhalb von Git; andere Labs und
+die zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.048
+Repositorydateien ohne Findings, Schreibstil 706 und Regex 338.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 967 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurden dieser Gateabsatz und die abschließende
+redaktionelle Begriffskorrektur aus dem unabhängigen Review übernommen.
+SQL, Tests und ihre Quellidentitäten blieben unverändert. Das abschließende
+unabhängige Review hatte danach keine offenen Findings.
