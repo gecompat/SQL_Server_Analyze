@@ -1190,3 +1190,56 @@ und liefert keinen Erfolgsnachweis. Sein eigener Container und sein Volume
 wurden separat entfernt. Ein temporärer lokaler Wiederherstellungsstate blieb
 wegen einer abgelehnten rekursiven Dateibereinigung erhalten; er gehört nicht
 zu Repository- oder GitHub-Artefakten.
+
+
+## In-Memory-OLTP-Findings und Quellenstatus – 6. Oktober 2026
+
+Die lokale Prüfung verwendet einen neu erzeugten eigenen SQL-Server-2025-Container
+mit Instanz- und tempdb-Collation `Latin1_General_100_CS_AS`, einer Frameworkdatenbank
+mit `SQL_Latin1_General_CP1_CS_AS` und einer synthetischen Quelldatenbank mit
+`Latin1_General_100_CI_AS`. Zwei kleine SCHEMA_ONLY-Tabellen enthalten je vier
+Integerzeilen und konfigurierte Hash-Bucketzahlen 8 beziehungsweise 16. Ein
+speicheroptimierter Tabellentyp und eine eigene MEMORY_OPTIMIZED_DATA-Dateigruppe
+vervollständigen die Fixture. Konkrete Laufzeitpfade und Secrets bleiben außerhalb
+des Repositorys.
+
+Der finale Testvertrag
+`Code/Tests/Common/155_InMemoryOltpAnalysis_Collation_Runtime_Contract.sql` hat den
+SHA-256 `B04BACA94786666025100B078CB74103E531D711A87D9499E8EFAB1EFE594131`.
+Der tatsächlich ausgeführte dritte lokale Lauf bestand mit Exitcode 0 bei
+Compatibility Level 150, 160 und 170. Jeder Level führte acht Fälle aus:
+ungefilterte Ausgabe ohne Limit, Limit 1, ausschließlich problematische Findings
+mit NULL-Limit, Hashstatistik opt-in, problematische Hashfindings mit Limit 1,
+unbegrenzte problematische Hashfindings, enger Objektfilter und gültige plus
+nicht vorhandene explizite Datenbankauswahl.
+
+Die Prüfung vergleicht alle 14 Findingsfelder zwischen TABLE und JSON und die
+Frameworkcollation der elf TABLE-Textspalten. Native eigene Tabellen- und
+Hashindexidentitäten, konfigurierte Bucketzahlen, Hasharithmetik sowie unabhängige
+Findingcodes, Metriknamen und Schwellenwerte werden geprüft. Vollständige
+Datenbank- und Quellenzähler bleiben trotz Findingsfilter und Ausgabelimit erhalten.
+Die fehlende explizite Datenbank behält `DATABASE_UNAVAILABLE`, Partialwert und
+Fehlerzähler. Acht erwartete Quellenstatus werden vollständig geprüft; der
+Hashstatistikpfad bleibt ohne Opt-in `NOT_REQUESTED`.
+
+Vier Vorstände reproduzierten getrennte Fehler: Die unveränderte Quelle scheitert
+am TABLE-Textcollationvertrag oder am nativen Poolnamenjoin; der ausschließlich
+collationgehärtete Temp-Tabellenstand reproduzierte Fehler 468 am Poolnamenjoin.
+Nach dessen Korrektur scheiterte der gemeinsame Findingsfilter-/Limitvertrag;
+nach Exportkorrektur scheiterte der Statusvertrag der nicht vorhandenen Datenbank.
+Die finale Quelle korrigiert 65 bisher implizite Textcollations, den beidseitig
+collierten Poolnamenvergleich, die gemeinsame Findingsauswahl und die
+Statusaktualisierung bereits erfasster Auswahlwarnings.
+
+Die eigene Quelldatenbank, der Container, das Volume und der lokale Labzustand
+wurden entfernt. Frühere fehlgeschlagene Versuche sind kein Erfolgsnachweis;
+auch ihre eigenen Ressourcen wurden entfernt. Der Test stellt seinen eigenen
+ursprünglichen LOCK_TIMEOUT wieder her. Die bestehende Produktsemantik dieses
+Sessionwertes wurde nicht geändert und ist kein neuer Restaurationsnachweis.
+
+Die Evidenz gilt für diese kleine synthetische Fixture auf SQL Server 2025.
+Sie belegt keine native ältere Engine, zusätzliche Berechtigungen, Last- oder
+Speicherknappheit, dauerhafte Checkpointprobleme, Transaktionsdruck oder eine
+separate CONSOLE-Erfassung. Flüchtige Speicherwerte werden nicht zwischen
+verschiedenen Momentaufnahmen als identisch vorausgesetzt. Die lokale Prüfung
+ersetzt die erforderliche erfolgreiche GitHub-CI am exakten PR-Head nicht.
