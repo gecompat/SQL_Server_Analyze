@@ -553,6 +553,14 @@ flowchart TD
 
 Die Procedure erstellt eine korrelierte, ausschließlich lesende Sicht auf vier getrennte Evidenzbereiche: resumierbare Indexoperationen je gewählter Datenbank, laufende technische Wartungsrequests, ADR/PVS-Momentaufnahmen sowie ausschließlich explizit nach Namen oder Pattern ausgewählte Agent-Jobs.
 
+### Ausgabegrenzen
+
+TABLE exportiert ausschließlich `resumableOperations` mit 15 Feldern und acht explizit collatierten Textfeldern. Das aktive CONSOLE verwendet dieselbe Menge. RAW und JSON führen zusätzlich Requests, ADR/PVS und ausgewählte Jobs. Auswahlwarnings bleiben im vorhandenen RAW-Pfad; die öffentliche JSON-Struktur bleibt unverändert.
+
+Die vier fachlichen Mengen werden nach vollständiger Befundbewertung jeweils einmal gefiltert und begrenzt. Alle Ausgaben verwenden anschließend diese gemeinsame Auswahl. `NULL` und `0` sind unbegrenzt, positive Werte begrenzen jede Menge und negative Werte liefern sicher `INVALID_PARAMETER`. Auswahlwarnings begrenzen den Modulstatus, während erfolgreiche Quellenstatus unabhängig erhalten bleiben. Ein Problemfilter oder Limit entfernt keinen bereits ermittelten Befund aus der Modulbewertung.
+
+Der begrenzte Runtimevertrag Common 161 verwendet native PVS-Messungen vor und nach dem Aufruf als Zahlenintervall für die veränderliche PVS-Größe. Die übrigen acht PVS-Felder bleiben exakt geprüft. Eigene Datenbanken ohne Nutzdaten können interne ADR-Allokationen besitzen; dieser Schwellwertvertrag belegt keine Hochlast oder Bereinigungsstörung und keine positive resumierbare Operation.
+
 ### Leserichtung
 
 1. Prüfen Sie `SourceStatus`. Auf SQL Server 2019 ist der ausführliche PVS-Vertrag bewusst `UNAVAILABLE_VERSION`; der ADR-Konfigurationskontext bleibt erhalten.

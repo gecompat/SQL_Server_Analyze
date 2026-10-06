@@ -54,10 +54,11 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                                THEN CONVERT(bigint,9223372036854775807)
-                               ELSE CONVERT(bigint,@MaxZeilen) END;
+                               WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen) ELSE CONVERT(bigint,0) END;
     DECLARE @Major int=TRY_CONVERT(int,SERVERPROPERTY('ProductMajorVersion'));
     DECLARE @StatusCode varchar(40)='AVAILABLE';
     DECLARE @IsPartial bit=0;
+    DECLARE @ResumablePartial bit=0;
     DECLARE @ErrorNumber int=NULL;
     DECLARE @ErrorMessage nvarchar(2048)=NULL;
     DECLARE @CrossDatabaseRequested bit=0;
@@ -79,52 +80,87 @@ BEGIN
 
     CREATE TABLE [#MaintenanceOperations_DatabaseCandidates]
     (
-          [DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname NOT NULL,[StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL,[IsReadOnly] bit NULL,[CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL,[RecoveryModelDesc] nvarchar(60) NULL,[IsSystemDatabase] bit NULL
+          [DatabaseId] int NOT NULL PRIMARY KEY,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsReadOnly] bit NULL,[CompatibilityLevel] tinyint NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#MaintenanceOperations_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL,[StatusCode] varchar(40) NOT NULL,[ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#MaintenanceOperations_SourceStatus]
     (
-          [SourceName] nvarchar(128) NOT NULL PRIMARY KEY,[StatusCode] varchar(40) NOT NULL
-        , [IsPartial] bit NOT NULL,[Detail] nvarchar(1000) NOT NULL
+          [SourceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY,[StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IsPartial] bit NOT NULL,[Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#MaintenanceOperations_Resumable]
     (
-          [DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[SchemaName] sysname NULL
-        , [ObjectName] sysname NULL,[IndexName] sysname NULL,[PartitionNumber] int NULL
-        , [StateDesc] nvarchar(60) NULL,[StartTime] datetime NULL,[LastPauseTime] datetime NULL
+          [DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PartitionNumber] int NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StartTime] datetime NULL,[LastPauseTime] datetime NULL
         , [TotalExecutionTimeMinutes] bigint NULL,[PercentComplete] real NULL,[PageCount] bigint NULL
-        , [FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#MaintenanceOperations_Requests]
     (
-          [SessionId] smallint NOT NULL,[RequestId] int NOT NULL,[DatabaseId] int NULL,[DatabaseName] sysname NULL
-        , [Command] nvarchar(60) NULL,[Status] nvarchar(30) NULL,[StartTime] datetime NULL
+          [SessionId] smallint NOT NULL,[RequestId] int NOT NULL,[DatabaseId] int NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Command] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StartTime] datetime NULL
         , [ElapsedMs] int NULL,[PercentComplete] real NULL,[EstimatedCompletionMs] bigint NULL
-        , [BlockingSessionId] smallint NULL,[WaitType] nvarchar(120) NULL,[WaitTimeMs] int NULL
+        , [BlockingSessionId] smallint NULL,[WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitTimeMs] int NULL
         , [Reads] bigint NULL,[Writes] bigint NULL,[IsResumable] bit NULL
-        , [FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#MaintenanceOperations_Pvs]
     (
-          [DatabaseId] int NOT NULL,[DatabaseName] sysname NOT NULL,[AdrEnabled] bit NOT NULL
+          [DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[AdrEnabled] bit NOT NULL
         , [PvsSizeMb] decimal(19,2) NULL,[OnlineIndexPvsSizeMb] decimal(19,2) NULL
         , [CurrentAbortedTransactionCount] bigint NULL
-        , [FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#MaintenanceOperations_Jobs]
     (
-          [JobName] sysname NOT NULL,[StartExecutionDate] datetime NULL,[StopExecutionDate] datetime NULL
-        , [IsRunning] bit NOT NULL,[FindingCode] varchar(100) NOT NULL,[FindingSeverity] varchar(16) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+          [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StartExecutionDate] datetime NULL,[StopExecutionDate] datetime NULL
+        , [IsRunning] bit NOT NULL,[FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+
+    /* Eigene Exporttabellen entstehen vor dem Kandidatenhelper und dessen NOWAIT. */
+    CREATE TABLE [#MaintenanceOperations_Resumable_Export]
+    (
+          [DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[PartitionNumber] int NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StartTime] datetime NULL,[LastPauseTime] datetime NULL
+        , [TotalExecutionTimeMinutes] bigint NULL,[PercentComplete] real NULL,[PageCount] bigint NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#MaintenanceOperations_Requests_Export]
+    (
+          [SessionId] smallint NOT NULL,[RequestId] int NOT NULL,[DatabaseId] int NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Command] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[Status] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[StartTime] datetime NULL
+        , [ElapsedMs] int NULL,[PercentComplete] real NULL,[EstimatedCompletionMs] bigint NULL
+        , [BlockingSessionId] smallint NULL,[WaitType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[WaitTimeMs] int NULL
+        , [Reads] bigint NULL,[Writes] bigint NULL,[IsResumable] bit NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#MaintenanceOperations_Pvs_Export]
+    (
+          [DatabaseId] int NOT NULL,[DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[AdrEnabled] bit NOT NULL
+        , [PvsSizeMb] decimal(19,2) NULL,[OnlineIndexPvsSizeMb] decimal(19,2) NULL
+        , [CurrentAbortedTransactionCount] bigint NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+    CREATE TABLE [#MaintenanceOperations_Jobs_Export]
+    (
+          [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[StartExecutionDate] datetime NULL,[StopExecutionDate] datetime NULL
+        , [IsRunning] bit NOT NULL,[FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @MaxZeilen<0 OR @LockTimeoutMs<0
@@ -194,7 +230,7 @@ BEGIN
                          @pDatabaseId=@DatabaseId,@pDatabaseName=@DatabaseName,@pWarnMinutes=@ResumablePausedWarnMinutes;
                 END TRY
                 BEGIN CATCH
-                    SET @IsPartial=1;
+                    SELECT @IsPartial=1,@ResumablePartial=1;
                     INSERT [#MaintenanceOperations_DatabaseCandidateWarnings] VALUES
                     (@DatabaseName,CASE WHEN ERROR_NUMBER() IN (229,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
                      N'Resumierbare Indexoperationen waren fuer diese Datenbank nicht lesbar.');
@@ -204,7 +240,7 @@ BEGIN
             CLOSE [database_cursor];
             DEALLOCATE [database_cursor];
             INSERT [#MaintenanceOperations_SourceStatus] VALUES
-            (N'sys.index_resumable_operations','AVAILABLE',@IsPartial,
+            (N'sys.index_resumable_operations','AVAILABLE',@ResumablePartial,
              N'Resumierbare Indexoperationen ohne SQL-Text; pausierte Operationen werden niemals automatisch veraendert.');
         END TRY
         BEGIN CATCH
@@ -348,6 +384,33 @@ BEGIN
             SET @StatusCode='AVAILABLE_WITH_FINDING';
     END;
 
+    /* Auswahlfehler und Warnings begrenzen das Modul, nicht erfolgreiche Einzelquellen. */
+    IF @StatusCode NOT IN ('AVAILABLE','AVAILABLE_WITH_FINDING','AVAILABLE_LIMITED') SET @IsPartial=1;
+    IF EXISTS(SELECT 1 FROM [#MaintenanceOperations_DatabaseCandidateWarnings])
+    BEGIN
+        SET @IsPartial=1;
+        IF @StatusCode IN ('AVAILABLE','AVAILABLE_WITH_FINDING') SET @StatusCode='AVAILABLE_LIMITED';
+    END;
+
+    /* Die Befundbewertung bleibt auf der vollstaendigen Quelle; Filter und Limits
+       werden danach einmal je bestehendem fachlichen Resultset materialisiert. */
+    INSERT [#MaintenanceOperations_Resumable_Export]
+    SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Resumable]
+    WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
+    ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId],[StartTime],[SchemaName],[ObjectName],[IndexName],[PartitionNumber];
+    INSERT [#MaintenanceOperations_Requests_Export]
+    SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Requests]
+    WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
+    ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[ElapsedMs] DESC,[SessionId],[RequestId];
+    INSERT [#MaintenanceOperations_Pvs_Export]
+    SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Pvs]
+    WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
+    ORDER BY [DatabaseId];
+    INSERT [#MaintenanceOperations_Jobs_Export]
+    SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Jobs]
+    WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
+    ORDER BY [JobName];
+
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
            @ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
 
@@ -356,19 +419,17 @@ BEGIN
         DECLARE @MetaJson nvarchar(max)=(SELECT N'MaintenanceOperations' AS [resultName],1 AS [schemaVersion],
             @Now AS [generatedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@Major AS [productMajorVersion]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
-        DECLARE @ResumableJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Resumable]
-            WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
-            ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId],[StartTime]
+        DECLARE @ResumableJson nvarchar(max)=(SELECT * FROM [#MaintenanceOperations_Resumable_Export]
+            ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId],[StartTime],[SchemaName],[ObjectName],[IndexName],[PartitionNumber]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @RequestJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Requests]
-            WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM')
-            ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[ElapsedMs] DESC
+        DECLARE @RequestJson nvarchar(max)=(SELECT * FROM [#MaintenanceOperations_Requests_Export]
+            ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[ElapsedMs] DESC,[SessionId],[RequestId]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @PvsJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Pvs]
-            WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM') ORDER BY [DatabaseId]
+        DECLARE @PvsJson nvarchar(max)=(SELECT * FROM [#MaintenanceOperations_Pvs_Export]
+            ORDER BY [DatabaseId]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @JobJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Jobs]
-            WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM') ORDER BY [JobName]
+        DECLARE @JobJson nvarchar(max)=(SELECT * FROM [#MaintenanceOperations_Jobs_Export]
+            ORDER BY [JobName]
             FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @SourceJson nvarchar(max)=(SELECT * FROM [#MaintenanceOperations_SourceStatus] ORDER BY [SourceName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"resumableOperations":',COALESCE(@ResumableJson,N'[]'),
@@ -380,10 +441,10 @@ BEGIN
     BEGIN
         SELECT N'USP_MaintenanceOperations' AS [ModuleName],@Now AS [CollectionTimeUtc],@StatusCode AS [StatusCode],
                @IsPartial AS [IsPartial],@Major AS [ProductMajorVersion],@ErrorNumber AS [ErrorNumber],@ErrorMessage AS [ErrorMessage];
-        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Resumable] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Requests] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Pvs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) * FROM [#MaintenanceOperations_Jobs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        SELECT * FROM [#MaintenanceOperations_Resumable_Export] ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId],[StartTime],[SchemaName],[ObjectName],[IndexName],[PartitionNumber];
+        SELECT * FROM [#MaintenanceOperations_Requests_Export] ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[ElapsedMs] DESC,[SessionId],[RequestId];
+        SELECT * FROM [#MaintenanceOperations_Pvs_Export] ORDER BY [DatabaseId];
+        SELECT * FROM [#MaintenanceOperations_Jobs_Export] ORDER BY [JobName];
         SELECT * FROM [#MaintenanceOperations_SourceStatus] ORDER BY [SourceName];
         SELECT * FROM [#MaintenanceOperations_DatabaseCandidateWarnings] ORDER BY [RequestedName];
     END
@@ -391,39 +452,39 @@ BEGIN
     BEGIN
         SELECT N'Wartungsoperationen' AS [Ergebnis],@Now AS [Stand_UTC],@StatusCode AS [Status],
                @IsPartial AS [Teilweise],@ErrorMessage AS [Hinweis];
-        SELECT TOP (@Limit) N'Resumierbare Indexoperation' AS [Ergebnis],[DatabaseName] AS [Datenbank],
+        SELECT N'Resumierbare Indexoperation' AS [Ergebnis],[DatabaseName] AS [Datenbank],
                [SchemaName] AS [Schema],[ObjectName] AS [Objekt],[IndexName] AS [Index],[StateDesc] AS [Status],
                [PercentComplete] AS [Fortschritt_Prozent],[LastPauseTime] AS [Letzte_Pause],
                [FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#MaintenanceOperations_Resumable] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) N'Laufender Wartungsrequest' AS [Ergebnis],[SessionId] AS [Session_ID],
+        FROM [#MaintenanceOperations_Resumable_Export] ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[DatabaseId],[StartTime],[SchemaName],[ObjectName],[IndexName],[PartitionNumber];
+        SELECT N'Laufender Wartungsrequest' AS [Ergebnis],[SessionId] AS [Session_ID],
                [DatabaseName] AS [Datenbank],[Command] AS [Operation],[Status],[ElapsedMs] AS [Dauer_ms],
                [PercentComplete] AS [Fortschritt_Prozent],[BlockingSessionId] AS [Blockiert_durch],
                [WaitType] AS [Wait_Typ],[FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet]
-        FROM [#MaintenanceOperations_Requests] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) N'ADR und PVS' AS [Ergebnis],[DatabaseName] AS [Datenbank],[AdrEnabled] AS [ADR_Aktiv],
+        FROM [#MaintenanceOperations_Requests_Export] ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,[ElapsedMs] DESC,[SessionId],[RequestId];
+        SELECT N'ADR und PVS' AS [Ergebnis],[DatabaseName] AS [Datenbank],[AdrEnabled] AS [ADR_Aktiv],
                [PvsSizeMb] AS [PVS_MB],[OnlineIndexPvsSizeMb] AS [Online_Index_PVS_MB],
                [CurrentAbortedTransactionCount] AS [Abgebrochene_Transaktionen],
                [FindingCode] AS [Befund],[FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#MaintenanceOperations_Pvs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
-        SELECT TOP (@Limit) N'Explizit gewaehlter Job' AS [Ergebnis],[JobName] AS [Job],
+        FROM [#MaintenanceOperations_Pvs_Export] ORDER BY [DatabaseId];
+        SELECT N'Explizit gewaehlter Job' AS [Ergebnis],[JobName] AS [Job],
                [StartExecutionDate] AS [Start],[IsRunning] AS [Laeuft],[FindingCode] AS [Befund],
                [FindingSeverity] AS [Prioritaet],[EvidenceLimit] AS [Evidenzgrenze]
-        FROM [#MaintenanceOperations_Jobs] WHERE @NurProblematisch=0 OR [FindingSeverity] IN ('HIGH','MEDIUM');
+        FROM [#MaintenanceOperations_Jobs_Export] ORDER BY [JobName];
         SELECT N'Quellenstatus' AS [Ergebnis],[SourceName] AS [Quelle],[StatusCode] AS [Status],[Detail] AS [Hinweis]
         FROM [#MaintenanceOperations_SourceStatus] ORDER BY [SourceName];
     END;
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#MaintenanceOperations_Resumable'
+              @SourceTable=N'#MaintenanceOperations_Resumable_Export'
             , @ResultLabel=N'MaintenanceOperations'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#MaintenanceOperations_Resumable'
+              @SourceTable = N'#MaintenanceOperations_Resumable_Export'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

@@ -1959,3 +1959,130 @@ Repositorydateien und null Findings, Roadmap-, Maturity- und
 Partialitätsverträge, der NOWAIT-Metadatenvertrag mit 904 Temp-Namen sowie
 beide Adapterprüfungen. Nach diesem Ergebnis wurden ausschließlich diese
 Gateergebnisse ergänzt.
+
+## MaintenanceOperations: gemischter Collation- und Exportvertrag vom 7. Oktober 2026
+
+Der Slice betrifft `Code/07_Infrastructure/130_USP_MaintenanceOperations.sql`
+und Common161. Die öffentliche TABLE-Fläche bleibt auf
+`resumableOperations` begrenzt. Positive resumierbare Operationen, laufende
+Wartungsrequests, ausgewählte Agent-Jobs und Hochlast sind mit diesem Slice
+nicht belegt. Der unveränderte Integration186-Vertrag ergänzt drei
+synthetische Zustandsprüfungen, einen echten eingeschränkten Procedureaufruf
+und einen separaten Read-only-Definitionscheck.
+
+### Baseline und Produktdelta
+
+Die kanonische Baseline stammt aus
+`66b136482eef10abfe95c931e426b76311062ee2`. Sechs private kontrollierte
+Aufrufe verwendeten zwei eigene Unicode-Datenbanken ohne Nutzdaten und
+einen tatsächlich nicht vorhandenen synthetischen Namen. Die fünf gültigen
+TABLE-Aufrufe lieferten einen leeren Resumable-Scope mit acht falsch
+collatierten Textspalten. Die PVS-JSON-Mengen hatten mit unbegrenzter
+Auswahl zwei Zeilen, mit Limit 1 eine und im Problemscope keine Zeile.
+Bei gültiger und fehlender Auswahl sowie bei ausschließlich fehlender
+Auswahl blieb der Modulstatus fälschlich `AVAILABLE/IsPartial=0`.
+Der negative Mengenparameter ließ Fehler 127 entweichen; die vorher
+zurückgesetzten OUTPUT-Statuswerte blieben NULL. Die Leermenge belegt
+keine positive Resumable-Filter- oder Limitabweichung.
+
+Eine anschließende native Probe aktivierte ADR in den beiden eigenen
+Datenbanken ohne DML. Tatsächlich vorhandene DMV-Zeilen lieferten zu
+diesem Zeitpunkt Nullzähler. Der vorhandene Schwellwert 0 erzeugte einen
+`PVS_SIZE_THRESHOLD_REACHED`-Hinweis mit Priorität MEDIUM und
+`AVAILABLE_WITH_FINDING/IsPartial=0`. Die Probe belegt einen kontrollierten
+Schwellwertfall, keine Hochlast oder Bereinigungsstörung. Ihre eigenen
+Datenbanken wurden anhand der gespeicherten Identitäten entfernt.
+
+Das Produktdelta versieht 57 lokale Textspalten mit
+`SQL_Latin1_General_CP1_CS_AS`. Vier typgleiche Exporte mit 15, 19, 9 und
+7 Feldern werden vor dem Kandidatenhelper angelegt und nach vollständiger
+Befundbewertung gemeinsam gefiltert und begrenzt. TABLE und aktives CONSOLE
+verwenden ausschließlich den Resumable-Export. RAW und JSON verwenden
+zusätzlich die bestehenden Request-, PVS- und Jobmengen. Die öffentliche
+JSON-Struktur besitzt weiterhin sechs Top-Level-Properties und kein
+Warning-Array. Auswahlwarnings begrenzen den Modulstatus, während
+erfolgreiche Quellenstatus unabhängig erhalten bleiben. Negative Limits
+verwenden intern eine sichere Nullgrenze und liefern `INVALID_PARAMETER`.
+
+### Tatsächlich ausgeführter Runtimeumfang
+
+Das eigene Linux-Lab verwendete SQL Server 2025, ProductVersion
+`17.0.4075.5`, Server- und `tempdb`-Collation
+`Latin1_General_100_CS_AS` sowie die Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS`. Das Framework und alle drei eigenen
+Unicode-Quellen mit `Latin1_General_100_CI_AS` wurden separat auf
+Compatibility Level 170 bestätigt. Es wurden keine zusätzlichen
+Compatibility Levels oder älteren nativen Engines ausgeführt.
+
+Die Installation aus 166 kanonischen Dateien und Smoke110 bestanden.
+Der abschließende fokussierte Lauf bestand Common161 mit 24
+TABLE-/JSON-Fällen und sechs RAW-/CONSOLE-Statusfällen sowie Integration186.
+Die TABLE-Prüfung vergleicht die relative Reihenfolge, Namen, Typen,
+Längen, Precision, Scale, Nullbarkeit und Collation aller 15 Felder.
+Alle acht Textspalten besitzen die garantierte Collation; der eigene
+Resumable-Scope bleibt leer.
+
+Eine Quelle bleibt ADR-OFF, zwei Quellen aktivieren ADR ohne Nutzdaten
+oder DML. Die PVS-Auswahl prüft native Identitäten, ADR-Schalter,
+Online-Index- und Aborted-Zähler sowie die bestehende Schwellwertbewertung.
+Die veränderliche PVS-Größe wird mit nativen Messungen vor und unmittelbar
+nach dem TABLE-Aufruf eingeschlossen. Ihr einzelner JSON-Knoten muss den
+nativen NULL-Vertrag beziehungsweise Zahlentyp und die gemessenen Grenzen
+einhalten. Erst danach wird ausschließlich dieser validierte Größenwert
+für den Neun-Feld-Multimengenvergleich normalisiert. Die übrigen acht
+Felder, Properties, Typen und Häufigkeiten werden exakt verglichen. Dieser
+Zeitvertrag ist keine atomare Zeitpunktparität; ein Zwischenwert außerhalb
+beider Endpunkte wäre zunächst zeitlich unbestimmt.
+
+Geprüft sind positive Unicode-/Case-Auswahl, NULL-/0-/positive Limits,
+gemischte INFO-/MEDIUM-Mengen, Problemfilter, die Modulbewertung vor dem
+Limit, fehlende Auswahl und ungültige Parameter. Vier Quellenidentitäten
+werden unabhängig gegengeprüft: drei erfolgreiche Quellen und die nicht
+angeforderte Jobquelle. RAW und CONSOLE prüfen ausschließlich OUTPUT-Status
+und begleitende JSON-Zeilenanzahl. Ausgegebene RAW-Zeilen und Warnings
+werden damit nicht als native Zeilenparität behauptet.
+
+Drei vorangegangene Harnessläufe schlugen fehl. Die Diagnosen belegten
+interne ADR-Allokation trotz fehlender Nutzdaten, Lücken in absoluten
+Spaltenkennungen nach entfernten Hilfsspalten und eine zeitlich veränderte
+PVS-Größe. Die Testkorrekturen akzeptieren vorhandene nichtnegative
+PVS-Werte, vergleichen relative Spaltenordinals und prüfen das native
+Vorher-/Nachher-Intervall. Der Produktstand wurde dabei nicht verändert.
+Erst der abschließende unveränderte fokussierte Lauf war erfolgreich.
+
+### Quellidentität, Aussagegrenze und Cleanup
+
+Die UTF-8/LF-Hashes betragen für die kanonische Procedure
+`D5C496736BA9717943996579282222B34A9F060787C116E34715962E2404FF54`
+und für Common161
+`16025FC2726F2AB7BB3E690935ABA581CD6907336449AE2BCC28E766551AEB24`.
+Der native installierte Body ab dem qualifizierten Objektnamen stimmt
+nach LF-Normalisierung und Entfernen äußerer Batchmarker mit der
+kanonischen UTF-16-Identität
+`66E65F6C322727AF9C1CE4622D2BE92C0D6603A0DA35427EFFECA145B1E395B6`
+überein. Der private Runner ersetzte ausschließlich den
+Installationsplatzhalter. Der OPS-005-Installer wurde kanonisch regeneriert.
+
+Positive Resumable-, Request- und Jobmengen, Aborted-Transaktionen,
+PVS-Hochlast und Bereinigungsstörungen bleiben für diesen Slice unbelegt.
+Der Major-vor-16-Skip von Common161 wurde nicht nativ ausgeführt.
+Framework und Quellen dürfen im Harness 150, 160 oder 170 verwenden;
+dieser Lauf belegt ausschließlich 170 auf SQL Server 2025. Das Produktdelta
+ändert keine Engine-Majorzweige, Berechtigungen oder Katalogschemas.
+Ein zusätzliches natives Versionsrisiko wurde nicht festgestellt.
+COLL-001 bleibt partiell.
+
+Nach dem erfolgreichen Lauf waren keine eigenen Fixture-Datenbanken
+vorhanden. Das eigene Lab wurde mit
+`Remove-SqlServerLab -Force -Confirm:$false` entfernt: Container und Volume,
+zwei Cleanupschritte, null Fehler, `CLEANUP_SUCCEEDED` und `REMOVED`.
+Der eigene verschlüsselte temporäre Secretwert wurde danach entfernt.
+Private Prüfzustände bleiben außerhalb von Git; die zuvor gesperrten
+Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.044
+Repositorydateien ohne Findings, Schreibstil 701 und Regex 333.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 914 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt.
