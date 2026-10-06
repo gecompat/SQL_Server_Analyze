@@ -29,6 +29,16 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 RAW und CONSOLE liefern Aufrufstatus, serverweite Capabilities, datenbankbezogene Capabilities, optional Spezialindizes und zuletzt Warnungen. Die Datenbankresultsets sind nicht atomar zum Serverprobe; Statuswechsel während des Datenbankcursors sind möglich. TABLE exportiert ausschließlich das registrierte Resultset `capabilities` und enthält damit weder datenbankbezogene Features noch Spezialindizes. JSON ist für die vollständige maschinelle Hülle geeigneter und enthält `meta`, `capabilities`, `databaseFeatures`, `specialIndexes` und `warnings`.
 
+Die sieben Textspalten des TABLE-Exports verwenden die Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS`. Auch die übrigen lokalen Textspalten der
+Kandidaten-, Warnungs-, Feature- und Indexmengen sind explizit collatiert.
+Das serverweite Capabilitylimit wird nach der Erhebung und Statusbewertung
+einheitlich in der Reihenfolge `(ScopeName, FeatureName)` angewandt.
+TABLE, RAW, CONSOLE und JSON verwenden dadurch dieselbe begrenzte
+Capabilitymenge. `NULL` und `0` liefern die vollständige Menge; Warnungen
+werden durch ein positives Capabilitylimit nicht entfernt. Das Ausgabelimit
+verringert die zuvor ausgeführten Katalogprobes nicht.
+
 SQL25-002 ergänzt `JSON_INDEX_METADATA` in `databaseFeatures` und
 `IndexFamily = JSON` in `specialIndexes`. Die Detailspalte enthält nur
 Array-Suchoption, Pfadanzahl und Disabled-Status. Konkrete SQL/JSON-Pfade
