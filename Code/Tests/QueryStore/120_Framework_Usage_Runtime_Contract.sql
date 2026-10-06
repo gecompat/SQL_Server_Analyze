@@ -8,8 +8,10 @@ Zweck        : Prüft den vollständigen FRAMEWORK-USAGE-001-Vertrag auf dem
                installierten SQL Server 2019, 2022 oder 2025.
 Nebenwirkung : Erzeugt ausschließlich eine synthetische monitor-Procedure in der
                Testdatenbank, führt sie aus und entfernt sie im Erfolgs- und
-               Fehlerpfad. Query-Store-Konfiguration und Daten werden nicht
-               geändert oder bereinigt.
+               Fehlerpfad. Die 20 Ausführungen erzeugen eigene Query-Store-
+               Laufzeitdaten; ein Flush schreibt sie in den Query Store. Die
+               Konfiguration wird nicht geändert; vorhandene Daten werden nicht
+               bereinigt.
 ===============================================================================
 */
 
@@ -22,6 +24,7 @@ DECLARE @ActualState smallint=
     SELECT TOP(1) TRY_CONVERT(smallint,[actual_state])
     FROM [sys].[database_query_store_options] WITH (NOLOCK)
 );
+DECLARE @OwnedProbeId int=NULL;
 DECLARE @Json nvarchar(max)=NULL;
 DECLARE @StatusCode varchar(40)=NULL;
 DECLARE @IsPartial bit=NULL;
@@ -53,8 +56,10 @@ BEGIN TRY
 
     IF @ActualState=2
     BEGIN
+        IF OBJECT_ID(N'[monitor].[USP_FrameworkUsageSyntheticProbe]') IS NOT NULL
+            THROW 51000,N'FRAMEWORK_USAGE_PROBE_ALREADY_EXISTS',1;
         EXEC(N'
-CREATE OR ALTER PROCEDURE [monitor].[USP_FrameworkUsageSyntheticProbe]
+CREATE PROCEDURE [monitor].[USP_FrameworkUsageSyntheticProbe]
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -62,6 +67,7 @@ BEGIN
     SELECT @SyntheticObjectCount=COUNT_BIG(*)
     FROM [sys].[objects] WITH (NOLOCK);
 END;');
+        SET @OwnedProbeId=OBJECT_ID(N'[monitor].[USP_FrameworkUsageSyntheticProbe]',N'P');
 
         DECLARE @ProbeIteration int=0;
         WHILE @ProbeIteration<20
@@ -155,8 +161,9 @@ IF NOT EXISTS
         , @ResultSetArt='RAW'
         , @PrintMeldungen=0;
 
-    IF @ActualState=2
-        EXEC(N'DROP PROCEDURE IF EXISTS [monitor].[USP_FrameworkUsageSyntheticProbe];');
+    IF @OwnedProbeId IS NOT NULL
+       AND OBJECT_ID(N'[monitor].[USP_FrameworkUsageSyntheticProbe]',N'P')=@OwnedProbeId
+        EXEC(N'DROP PROCEDURE [monitor].[USP_FrameworkUsageSyntheticProbe];');
 
     DECLARE @SuccessRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
     EXEC [sys].[sp_executesql] @SuccessRestoreSql;
@@ -164,7 +171,9 @@ IF NOT EXISTS
 END TRY
 BEGIN CATCH
     BEGIN TRY
-        EXEC(N'DROP PROCEDURE IF EXISTS [monitor].[USP_FrameworkUsageSyntheticProbe];');
+        IF @OwnedProbeId IS NOT NULL
+           AND OBJECT_ID(N'[monitor].[USP_FrameworkUsageSyntheticProbe]',N'P')=@OwnedProbeId
+            EXEC(N'DROP PROCEDURE [monitor].[USP_FrameworkUsageSyntheticProbe];');
     END TRY
     BEGIN CATCH
     END CATCH;

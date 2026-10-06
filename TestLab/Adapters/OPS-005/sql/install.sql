@@ -58943,24 +58943,24 @@ BEGIN
 
     CREATE TABLE [#FrameworkUsage_ModuleStatus]
     (
-          [ModuleName] sysname NOT NULL
+          [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
-        , [QueryStoreActualStateDesc] nvarchar(60) NULL
+        , [QueryStoreActualStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [QueryStoreReadonlyReason] bigint NULL
         , [RequestedWindowDays] int NULL
         , [MinimumExecutions] bigint NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
         , [HasMoreRows] bit NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     CREATE TABLE [#FrameworkUsage_UsageCandidates]
     (
           [RowOrdinal] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [ProcedureName] sysname NOT NULL
+        , [ProcedureName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ExecutionCount] bigint NOT NULL
         , [LastExecutionTime] datetimeoffset(7) NULL
         , [AvgDurationMs] decimal(19,3) NULL
@@ -58975,7 +58975,7 @@ BEGIN
 
     CREATE TABLE [#FrameworkUsage_Usage]
     (
-          [ProcedureName] sysname NOT NULL
+          [ProcedureName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ExecutionCount] bigint NOT NULL
         , [LastExecutionTime] datetimeoffset(7) NULL
         , [AvgDurationMs] decimal(19,3) NULL
@@ -58992,26 +58992,35 @@ BEGIN
     CREATE TABLE [#FrameworkUsage_SourceStatus]
     (
           [SourceOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [SourceName] sysname NOT NULL
-        , [SourceObject] nvarchar(256) NOT NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CapturedAtUtc] datetime2(3) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [ReturnedRowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     CREATE TABLE [#FrameworkUsage_Warnings]
     (
           [WarningOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [SourceName] sysname NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [SourceName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
-        , [Message] nvarchar(2048) NOT NULL
+        , [Message] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+
+    IF @OutputMode='TABLE'
+    BEGIN
+        EXEC [monitor].[InternalPrepareResultTables]
+              @ResultTablesJson=@ResultTablesJson
+            , @AllowedResultNames=N'moduleStatus|usage|sourceStatus|warnings'
+            , @MappingTable=N'#FrameworkUsage_ResultTableMap'
+            , @ThrowOnError=1;
+    END;
 
     IF @MaxZeilen<0
        OR @MinAusfuehrungen IS NULL OR @MinAusfuehrungen<1
@@ -59037,15 +59046,6 @@ BEGIN
             0,NULL,NULL,@ErrorMessage,N'Es wurde keine fachliche Query-Store-Quelle gelesen.'
         );
         GOTO Finalize;
-    END;
-
-    IF @OutputMode='TABLE'
-    BEGIN
-        EXEC [monitor].[InternalPrepareResultTables]
-              @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'moduleStatus|usage|sourceStatus|warnings'
-            , @MappingTable=N'#FrameworkUsage_ResultTableMap'
-            , @ThrowOnError=1;
     END;
 
     SET @FetchLimit = CASE
