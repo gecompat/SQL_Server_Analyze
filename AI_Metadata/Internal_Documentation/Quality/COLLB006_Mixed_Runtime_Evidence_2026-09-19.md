@@ -2456,3 +2456,154 @@ Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
 mit 943 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
 Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse
 ergänzt; SQL, Tests und ihre Quellidentitäten blieben unverändert.
+
+## Bereichsorchestratoren: 7. Oktober 2026
+
+### Nativer Ausgangsstand
+
+Die drei unveränderten Bereichsorchestratoren aus dem Literalcommit
+`eff604c624daaac1743417022924acfeaddfef5e` wurden in einem eigenen
+SQL-Server-2025-Docker-Lab mit ProductVersion `17.0.4075.5`, Major 17,
+Linux und Framework-Compatibility-Level 170 installiert. Server und
+`tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Installation aus 166 kanonischen Dateien
+und Smoke110 bestanden.
+
+Der Ausgangsstand reproduzierte neun Charakterisierungsfälle ohne
+Harnessfehler. Für `USP_PlanCacheAnalysis`, `USP_QueryStoreAnalysis` und
+`USP_ExtendedEventsAnalysis` scheiterten jeweils der leere CONSOLE-Pfad
+mit allen Childschaltern 0 und ein CONSOLE-Pfad mit einem tatsächlich
+ausgeführten Child an Fehler 208. Die Exportquelle wurde ausschließlich
+im späteren TABLE-Zweig erzeugt und fehlte beim Console-Renderer.
+Die tatsächlichen Childs waren Plan Cache Health, Query Store Status
+für die eigene Frameworkdatenbank und das XE-Sessioninventar mit einem
+synthetischen nicht vorhandenen Unicode-Sessionfilter. Dieselben drei
+TABLE-Aufrufe bestanden jeweils mit einer vollständigen Modulstatuszeile
+und null abweichenden Textcollations. Die Tablevariablen erbten bereits
+die Frameworkcollation; fremde TABLE-Textcollations waren somit kein
+nachgewiesener Baselinefehler dieses Slice.
+
+Die UTF-8/LF-Hashes der tatsächlich installierten Ausgangsquellen
+betrugen für PlanCacheAnalysis
+`C63F0F396D5380121BC94599F50A2646A9169F6936FA15C4F4ABC5728A2AC7C3`,
+für QueryStoreAnalysis
+`A4073958BEBE9940A8181DCCF4DEA6AFCAA6C682664498D33B890EEFF3485A8A`
+und für ExtendedEventsAnalysis
+`76241D806297C4F1D08DAB0C1ABE003F8D5FDFC5A3A7044A02F3035566A47116`.
+
+### Korrigierte Exporte und native Prüfung
+
+Die drei Sources erzeugen den fünfteiligen Modulstatusexport jetzt vor
+Helpern und Childausgaben. Je Procedure sind drei Texte im Collector
+und drei im Export explizit `SQL_Latin1_General_CP1_CS_AS` collatiert.
+Die vollständige Modulstatusmenge wird nach der bisherigen
+Statusbewertung eingefügt und gemeinsam von TABLE, CONSOLE, RAW und
+den bestehenden JSON-Projektionen gelesen. Ursprüngliche Ordinale,
+Childaufrufe, Statusregeln, Warnungen und öffentliche Schemas bleiben
+erhalten. Nur Plan Cache besitzt das JSON-Array `modules`; Query Store
+und Extended Events behalten ihre benannten Childobjekte.
+`@MaxZeilen` begrenzt weiterhin die dafür vorgesehenen Children und
+nicht die Modulstatusmenge. Die bestehenden SQL-Literalsequenzen
+stimmen einschließlich Unicode exakt mit dem Ausgangsstand überein.
+
+Die korrigierte Installation aus 166 kanonischen Dateien und Smoke110
+bestanden. Common165 bestand auf derselben gemischten
+Collation-Kombination bei Framework-Compatibility-Level 170:
+
+- 24 TABLE-Fälle mit unabhängiger Prüfung aller fünf Felder,
+  Datentypen, Textcollations, NULL-Fähigkeit und fehlender Identity;
+- zwölf tatsächlich per SQL erfasste positive CONSOLE-Fälle mit sechs
+  Feldern und neun erfasste leere CONSOLE-Fälle mit drei Feldern;
+- drei direkte positive CONSOLE-Aufrufe mit geprüftem JSON-Vertrag;
+- drei RAW-Leerscopeaufrufe mit `INVALID_PARAMETER` im JSON;
+- zwölf Mapping-Preflights mit dem bestehenden Fehler 51011.
+
+NULL-/0-/positive Limits, sichere negative Ablehnung, alle ausgeschalteten
+Children sowie ungültiger Analysemodus, Zeitraum oder Quellenmodus
+sind geprüft. Modulnamen, ursprüngliche Ordinale, Invocationstatus und
+Fehlerwerte stimmen mit der unabhängigen Childauswahl überein.
+Vollständige Modulstatusmengen bleiben auch bei Childlimit 1 erhalten.
+Die Metafelder, Topkeys, Childidentitäten und Warningprojektionen
+entsprechen den drei unterschiedlichen JSON-Verträgen. Query Store
+liefert die native Identität der eigenen Frameworkdatenbank. Der
+synthetische Plan-Hash ist unabhängig leer; die synthetische
+Unicode-XE-Session ist unabhängig nicht vorhanden. Die
+Snapshotwiederverwendung besitzt damit Status- und Metadatenevidenz,
+aber keine positive Plan-XML-Evidenz.
+
+Ein separater direkter `SqlClient`-Reader bestand sämtliche 24
+CONSOLE-Aufrufe: 15 nichtleere Sechs-Felder-Ausgaben und neun leere
+Drei-Felder-Ausgaben. Geprüft wurden tatsächliche Spaltennamen,
+native Datentypen, Textlängen und jede Modulzeile einschließlich
+Reihenfolge, Label, Invocationstatus und NULL-Fehlerwerten. Beim Plan
+Cache stimmt zusätzlich jede Modulzeile mit `modules` überein; die
+Query-Store-Replica-/IQP-Statusübernahme stimmt mit den jeweiligen
+Childmetadaten überein. Der Reader beobachtete außerdem fünf zusätzliche
+leere dreifeldrige Warning-Proberesultsets: zwei beim vollständigen
+Plan-Cache-Aufruf, eines beim Plan-Cache-Paar und zwei beim
+vollständigen Query-Store-Aufruf. Diese vorhandenen Helperresultsets
+bleiben unverändert. Die drei betroffenen SQL-Testfälle werden direkt
+ausgeführt; deren tatsächliche CONSOLE-Zeilenparität ist ausschließlich
+durch den separaten Client nachgewiesen.
+
+Der erste Common165-Versuch scheiterte an einer unzulässigen variablen
+`SET LOCK_TIMEOUT`-Syntax im Test. Nach numerischem dynamischem Restore
+scheiterte der zweite Versuch beim SQL-Resultset-Capture des vollständigen
+Plan-Cache-Aufrufs mit Fehler 3930. Der stabile Test trennt daraufhin
+die drei direkten Aufrufe von den SQL-Captures. Eine verschachtelte
+`INSERT EXEC`-Ursache wurde nicht nachgewiesen. Der private Client wurde
+vor seiner vollständigen Abnahme wegen Connection-Builder-Zugriff,
+einer Singleton-Count-Annahme und ausgelassener optionaler
+JSON-Fehlerproperties korrigiert. Diese Harnessfehler sind keine
+Produktfehler; nur der abschließende vollständige Lauf gilt als PASS.
+Eine vor dem nativen Lauf erkannte Zeichensatzbeschädigung wurde
+gezielt zurückgenommen und der Installer anschließend neu erzeugt.
+
+Die sechs weiteren fokussierten Tests bestanden auf CL170:
+PlanCache110, QueryStore110, QueryStore121, ExtendedEvents110,
+Integration189 und Integration196. Childqueries, Versionsgates und
+Berechtigungslogik wurden nicht geändert; ein zusätzlicher
+Compatibility-Level- oder nativer älterer Engine-Lauf war gemäß der
+kanonischen Teststrategie für diesen Slice nicht erforderlich.
+
+### Quellidentität, Grenzen und Cleanup
+
+| Quelle | UTF-8/LF-SHA-256 | Installierter Body, UTF-16/LF-SHA-256 |
+|---|---|---|
+| PlanCacheAnalysis | `D17DD891CF99053A1D2C2D0D5E43928C92087FDA382B904947BC00CAF94EC539` | `4ECFF877DFAE0950BC5277D5AF2037809C54BDFC93DA4F3C62C508821D93ABAF` |
+| QueryStoreAnalysis | `C58BF986F6C792E9A9D4FFA411D1C1006951C54C4C01691E017300D28649930D` | `B15BA6E386C8F8C2BF7B00FACCBEA8C6D22458BF39BE8D14F1518A8690F8C27D` |
+| ExtendedEventsAnalysis | `63D571683ACBD2B34CDF5C531E67168F9EFE95349BDEEAAA74C8CA02A7FB027D` | `BE687059230A59D56FB715B6914C05C98E9C3B2A2EEEC942FE2E90DA2EB201A6` |
+
+Alle drei nativen Bodyhashes stimmen nach LF-Normalisierung ab dem
+qualifizierten Objektnamen und Entfernen äußerer Batchmarker mit den
+kanonischen Bodies überein. Common165 besitzt die tatsächlich ausgeführte
+UTF-8/LF-Identität
+`A593EA5289F7BD8064DA05908CBA76F79D6F45BE448A6DD076F5276548248991`.
+Der private direkte Client besitzt die UTF-8/LF-Identität
+`3B140F71C799512F7AA6366E442A460591B52484CCF5DCCCF71E9CE0A5883D89`.
+Der SQL-Test ersetzte nur den Installationsplatzhalter; der Client
+verwendete dieselben kanonischen Aufrufformen ohne SQL-INSERT-Capture.
+
+Positive fachliche Ereignisse, Plan-XML-Daten, `ERROR_HANDLED`- und
+zusätzliche Berechtigungspfade sowie vollständige positive
+RAW-Mehrfachresultset-Parität bleiben unbelegt. Childquellen sind keine
+atomare gemeinsame Messung. Es wurden keine XE-Fixtures erzeugt und
+kein Target-Flush ausgeführt. Der Slice liefert keine neuen Nachweise
+für CL150/160 oder ältere native Engines. `COLL-001` bleibt partiell;
+bestehende Maturityflags und `RUNTIME-001` bleiben unverändert.
+
+Das eigene Lab wurde nach den erfolgreichen Prüfungen vollständig
+entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
+`CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
+Secretwert wurde danach entfernt. Private Laufzeitdaten und
+Prüfzustände bleiben außerhalb von Git; andere Labs und die zuvor
+gesperrten Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.047
+Repositorydateien ohne Findings, Schreibstil 705 und Regex 337.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 953 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurde ausschließlich dieser Gateabsatz ergänzt;
+SQL, Tests und ihre Quellidentitäten blieben unverändert. Das unabhängige
+abschließende Review hatte keine offenen Findings.

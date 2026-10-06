@@ -40,8 +40,18 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
+
+    CREATE TABLE [#QueryStoreAnalysis_MonitorTableResult]
+    (
+          [ExecutionOrdinal] tinyint NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
@@ -73,10 +83,10 @@ BEGIN
     DECLARE @ModuleStatus TABLE
     (
           [ExecutionOrdinal] tinyint        NOT NULL
-        , [ModuleName]       sysname        NOT NULL
-        , [InvocationStatus] varchar(40)    NOT NULL
+        , [ModuleName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [ErrorNumber]      int            NULL
-        , [ErrorMessage]     nvarchar(2048) NULL
+        , [ErrorMessage]     nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @Hilfe = 1
@@ -318,6 +328,11 @@ BEGIN
          AND @StatusCode = 'AVAILABLE'
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
+    INSERT [#QueryStoreAnalysis_MonitorTableResult]
+        ([ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage])
+    SELECT [ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage]
+    FROM @ModuleStatus;
+
     IF @OutputMode <> 'NONE'
     BEGIN
         SELECT
@@ -325,13 +340,13 @@ BEGIN
             , @Now                     AS [CollectionTimeUtc]
             , @StatusCode              AS [StatusCode]
             , CONVERT(bit, CASE WHEN @StatusCode IN ('AVAILABLE','AVAILABLE_WITH_FINDING') THEN 0 ELSE 1 END) AS [IsPartial]
-            , (SELECT COUNT_BIG(*) FROM @ModuleStatus
+            , (SELECT COUNT_BIG(*) FROM [#QueryStoreAnalysis_MonitorTableResult]
                WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','FEATURE_DISABLED')) AS [ErrorCount]
             , N'Orchestrator; Teilmodule liefern eigene benannte Resultsets.' AS [Detail];
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM @ModuleStatus ORDER BY [ExecutionOrdinal];
+            SELECT * FROM [#QueryStoreAnalysis_MonitorTableResult] ORDER BY [ExecutionOrdinal];
         END
         ELSE
         BEGIN
@@ -341,7 +356,7 @@ BEGIN
                 , [ModuleName]             AS [Modul]
                 , [InvocationStatus]       AS [Status]
                 , [ErrorMessage]           AS [Fehler]
-            FROM @ModuleStatus
+            FROM [#QueryStoreAnalysis_MonitorTableResult]
             ORDER BY [ExecutionOrdinal];
         END;
     END;
@@ -354,7 +369,7 @@ BEGIN
         SELECT @Warnings =
         (
             SELECT *
-            FROM @ModuleStatus
+            FROM [#QueryStoreAnalysis_MonitorTableResult]
             WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','FEATURE_DISABLED')
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -395,7 +410,6 @@ BEGIN
     END;
     IF @TableResultRequested = 1
     BEGIN
-        SELECT * INTO [#QueryStoreAnalysis_MonitorTableResult] FROM @ModuleStatus;
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryStoreAnalysis_MonitorTableResult'
             , @TargetTable=@TableTarget

@@ -342,6 +342,10 @@ Standardmäßig wird nur das Sessioninventar ausgeführt.
 - RAW-Modulstatus: `ExecutionOrdinal`, `ModuleName`, `InvocationStatus`, `ErrorNumber`, `ErrorMessage`.
 - JSON mit `inventory`, `targetRuntime`, `events`, `deadlocks`, `blockedProcesses`.
 
+TABLE schreibt das benannte Resultset `moduleStatus`; CONSOLE liest dieselbe vollständige fünfteilige Modulstatusmenge und ergänzt die Ergebnisbeschriftung. Bei leerer Menge bleibt die dreifeldrige CONSOLE-Leeranzeige erhalten. Alle drei Textfelder sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. `@MaxZeilen` gilt für die entsprechenden Childresultate, nicht für Modulstatuszeilen; NULL/0 bleiben unbegrenzt und negative Werte werden vor Childaufrufen abgelehnt.
+
+JSON behält benannte Childobjekte und die vorhandene `warnings`-Projektion; es besitzt kein `modules`-Array.
+
 ### Aufrufe
 
 ```sql

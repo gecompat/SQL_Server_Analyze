@@ -32351,8 +32351,18 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanCacheAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
+
+    CREATE TABLE [#PlanCacheAnalysis_MonitorTableResult]
+    (
+          [ExecutionOrdinal] tinyint NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
@@ -32383,10 +32393,10 @@ BEGIN
     DECLARE @Errors TABLE
     (
           [ExecutionOrdinal] tinyint        NOT NULL
-        , [ModuleName]       sysname        NOT NULL
-        , [InvocationStatus] varchar(40)    NOT NULL
+        , [ModuleName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [ErrorNumber]      int            NULL
-        , [ErrorMessage]     nvarchar(2048) NULL
+        , [ErrorMessage]     nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#PlanCacheAnalysis_QueryStatsSnapshot]
     (
@@ -32610,6 +32620,11 @@ BEGIN
         SET @StatusCode = 'AVAILABLE_LIMITED';
     END;
 
+    INSERT [#PlanCacheAnalysis_MonitorTableResult]
+        ([ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage])
+    SELECT [ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage]
+    FROM @Errors;
+
     IF @OutputMode <> 'NONE'
     BEGIN
         SELECT
@@ -32621,7 +32636,7 @@ BEGIN
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM @Errors ORDER BY [ExecutionOrdinal];
+            SELECT * FROM [#PlanCacheAnalysis_MonitorTableResult] ORDER BY [ExecutionOrdinal];
         END
         ELSE
         BEGIN
@@ -32631,7 +32646,7 @@ BEGIN
                 , [ModuleName]            AS [Modul]
                 , [InvocationStatus]      AS [Status]
                 , [ErrorMessage]          AS [Fehler]
-            FROM @Errors
+            FROM [#PlanCacheAnalysis_MonitorTableResult]
             ORDER BY [ExecutionOrdinal];
         END;
     END;
@@ -32655,7 +32670,7 @@ BEGIN
         SELECT @Modules =
         (
             SELECT *
-            FROM @Errors
+            FROM [#PlanCacheAnalysis_MonitorTableResult]
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -32663,7 +32678,7 @@ BEGIN
         SELECT @Warnings =
         (
             SELECT *
-            FROM @Errors
+            FROM [#PlanCacheAnalysis_MonitorTableResult]
             WHERE [InvocationStatus] NOT IN ('EXECUTED','REUSED_PARENT_SNAPSHOT')
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -32690,7 +32705,6 @@ BEGIN
     END;
     IF @TableResultRequested = 1
     BEGIN
-        SELECT * INTO [#PlanCacheAnalysis_MonitorTableResult] FROM @Errors;
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#PlanCacheAnalysis_MonitorTableResult'
             , @TargetTable=@TableTarget
@@ -35782,8 +35796,18 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
+
+    CREATE TABLE [#QueryStoreAnalysis_MonitorTableResult]
+    (
+          [ExecutionOrdinal] tinyint NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
@@ -35815,10 +35839,10 @@ BEGIN
     DECLARE @ModuleStatus TABLE
     (
           [ExecutionOrdinal] tinyint        NOT NULL
-        , [ModuleName]       sysname        NOT NULL
-        , [InvocationStatus] varchar(40)    NOT NULL
+        , [ModuleName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [ErrorNumber]      int            NULL
-        , [ErrorMessage]     nvarchar(2048) NULL
+        , [ErrorMessage]     nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @Hilfe = 1
@@ -36060,6 +36084,11 @@ BEGIN
          AND @StatusCode = 'AVAILABLE'
         SET @StatusCode = 'AVAILABLE_WITH_FINDING';
 
+    INSERT [#QueryStoreAnalysis_MonitorTableResult]
+        ([ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage])
+    SELECT [ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage]
+    FROM @ModuleStatus;
+
     IF @OutputMode <> 'NONE'
     BEGIN
         SELECT
@@ -36067,13 +36096,13 @@ BEGIN
             , @Now                     AS [CollectionTimeUtc]
             , @StatusCode              AS [StatusCode]
             , CONVERT(bit, CASE WHEN @StatusCode IN ('AVAILABLE','AVAILABLE_WITH_FINDING') THEN 0 ELSE 1 END) AS [IsPartial]
-            , (SELECT COUNT_BIG(*) FROM @ModuleStatus
+            , (SELECT COUNT_BIG(*) FROM [#QueryStoreAnalysis_MonitorTableResult]
                WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','FEATURE_DISABLED')) AS [ErrorCount]
             , N'Orchestrator; Teilmodule liefern eigene benannte Resultsets.' AS [Detail];
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM @ModuleStatus ORDER BY [ExecutionOrdinal];
+            SELECT * FROM [#QueryStoreAnalysis_MonitorTableResult] ORDER BY [ExecutionOrdinal];
         END
         ELSE
         BEGIN
@@ -36083,7 +36112,7 @@ BEGIN
                 , [ModuleName]             AS [Modul]
                 , [InvocationStatus]       AS [Status]
                 , [ErrorMessage]           AS [Fehler]
-            FROM @ModuleStatus
+            FROM [#QueryStoreAnalysis_MonitorTableResult]
             ORDER BY [ExecutionOrdinal];
         END;
     END;
@@ -36096,7 +36125,7 @@ BEGIN
         SELECT @Warnings =
         (
             SELECT *
-            FROM @ModuleStatus
+            FROM [#QueryStoreAnalysis_MonitorTableResult]
             WHERE [InvocationStatus] NOT IN ('EXECUTED','AVAILABLE','AVAILABLE_WITH_FINDING','NOT_APPLICABLE','UNAVAILABLE_VERSION','UNAVAILABLE_FEATURE','FEATURE_DISABLED')
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -36137,7 +36166,6 @@ BEGIN
     END;
     IF @TableResultRequested = 1
     BEGIN
-        SELECT * INTO [#QueryStoreAnalysis_MonitorTableResult] FROM @ModuleStatus;
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#QueryStoreAnalysis_MonitorTableResult'
             , @TargetTable=@TableTarget
@@ -37884,8 +37912,18 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExtendedEventsAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
+
+    CREATE TABLE [#ExtendedEventsAnalysis_MonitorTableResult]
+    (
+          [ExecutionOrdinal] tinyint NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
@@ -37906,10 +37944,10 @@ BEGIN
     DECLARE @ModuleStatus TABLE
     (
           [ExecutionOrdinal] tinyint        NOT NULL
-        , [ModuleName]       sysname        NOT NULL
-        , [InvocationStatus] varchar(40)    NOT NULL
+        , [ModuleName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [ErrorNumber]      int            NULL
-        , [ErrorMessage]     nvarchar(2048) NULL
+        , [ErrorMessage]     nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     IF @Hilfe = 1
@@ -38055,6 +38093,11 @@ BEGIN
         SET @StatusCode = 'AVAILABLE_LIMITED';
     END;
 
+    INSERT [#ExtendedEventsAnalysis_MonitorTableResult]
+        ([ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage])
+    SELECT [ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage]
+    FROM @ModuleStatus;
+
     IF @OutputMode <> 'NONE'
     BEGIN
         SELECT
@@ -38062,11 +38105,11 @@ BEGIN
             , @Now                         AS [CollectionTimeUtc]
             , @StatusCode                  AS [StatusCode]
             , CONVERT(bit, CASE WHEN @StatusCode = 'AVAILABLE' THEN 0 ELSE 1 END) AS [IsPartial]
-            , (SELECT COUNT_BIG(*) FROM @ModuleStatus) AS [ModuleCount];
+            , (SELECT COUNT_BIG(*) FROM [#ExtendedEventsAnalysis_MonitorTableResult]) AS [ModuleCount];
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM @ModuleStatus ORDER BY [ExecutionOrdinal];
+            SELECT * FROM [#ExtendedEventsAnalysis_MonitorTableResult] ORDER BY [ExecutionOrdinal];
         END
         ELSE
         BEGIN
@@ -38076,7 +38119,7 @@ BEGIN
                 , [ModuleName]                 AS [Modul]
                 , [InvocationStatus]           AS [Status]
                 , [ErrorMessage]               AS [Fehler]
-            FROM @ModuleStatus
+            FROM [#ExtendedEventsAnalysis_MonitorTableResult]
             ORDER BY [ExecutionOrdinal];
         END;
     END;
@@ -38099,7 +38142,7 @@ BEGIN
         SELECT @Warnings =
         (
             SELECT *
-            FROM @ModuleStatus
+            FROM [#ExtendedEventsAnalysis_MonitorTableResult]
             WHERE [InvocationStatus] <> 'EXECUTED'
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -38126,7 +38169,6 @@ BEGIN
     END;
     IF @TableResultRequested = 1
     BEGIN
-        SELECT * INTO [#ExtendedEventsAnalysis_MonitorTableResult] FROM @ModuleStatus;
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#ExtendedEventsAnalysis_MonitorTableResult'
             , @TargetTable=@TableTarget

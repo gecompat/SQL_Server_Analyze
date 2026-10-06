@@ -469,7 +469,8 @@ Die Procedure orchestriert alle Query-Store-Module. Standardmäßig sind Status 
 5. `USP_QueryStoreRegressions`
 6. `USP_QueryStoreForcedPlans`
 7. `USP_QueryStoreHints`
-8. `USP_IntelligentQueryProcessingAnalysis`
+8. `USP_QueryStoreReplicaAnalysis`
+9. `USP_IntelligentQueryProcessingAnalysis`
 
 ### Orchestratorresultsets
 
@@ -477,6 +478,10 @@ Die Procedure orchestriert alle Query-Store-Module. Standardmäßig sind Status 
 - Metaresultset.
 - RAW-Modulstatus: `ExecutionOrdinal`, `ModuleName`, `InvocationStatus`, `ErrorNumber`, `ErrorMessage`.
 - JSON mit benannten Childobjekten.
+
+TABLE schreibt das benannte Resultset `moduleStatus`; CONSOLE liest dieselbe vollständige fünfteilige Modulstatusmenge und ergänzt die Ergebnisbeschriftung. Bei leerer Menge bleibt die dreifeldrige CONSOLE-Leeranzeige erhalten. Alle drei Textfelder sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. `@MaxZeilen` gilt für die entsprechenden Childresultate, nicht für Modulstatuszeilen; NULL/0 bleiben unbegrenzt und negative Werte werden vor Childaufrufen abgelehnt.
+
+JSON behält benannte Childobjekte und die vorhandene `warnings`-Projektion; es besitzt kein `modules`-Array.
 
 ### Aufrufe
 
