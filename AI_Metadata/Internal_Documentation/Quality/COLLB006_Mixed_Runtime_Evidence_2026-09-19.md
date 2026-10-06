@@ -1360,11 +1360,14 @@ Diese lokale Evidenz ergänzt keinen versionsgenauen Release-Matrixeintrag.
 
 Der ausgeführte SQL-Quellstand hat SHA-256
 `86D439DF5BDF5888D90B6D826C01C567CC2C7FFFE18EEC8D72AA9397FEDD0147`.
-Der neue Vertrag
-`Code/Tests/Common/156_TemporalAnalysis_Collation_Runtime_Contract.sql` hat SHA-256
+Die vom Runner gelesene UTF-8-Datei des neuen Vertrags
+`Code/Tests/Common/156_TemporalAnalysis_Collation_Runtime_Contract.sql` besaß mit
+CRLF-Zeilenenden den Bytehash SHA-256
 `632B2EB7AD0A01EE9CCC7D38BDC7960D01CE34FDB92C574322B24E40A09F6D28`.
-Beide Hashes beziehen sich auf die kanonischen UTF-8-Quellen mit LF;
-der Runner ersetzte ausschließlich den Installationsplatzhalter und ergänzte
+Nach ausschließlicher CRLF-zu-LF-Normalisierung besitzt dieselbe Quelle SHA-256
+`41091FC85F37CFCB3531A02F2A99ABFBC29E6C89586D18FAF183B48129983D4C`;
+dies entspricht dem kanonischen Gitblob. Der Procedurehash bezieht sich auf
+deren UTF-8-Quelle mit LF. Der Runner ersetzte den Installationsplatzhalter und ergänzte
 eine lokale Case-Ausgabe. Der installierte finale Proceduretext wurde nach
 Rückersetzung des Platzhalters gegen diese kanonische Quelle verglichen.
 
@@ -1374,10 +1377,13 @@ Der Runner verwendete `New-SqlServerLab -Version 2025 -Provider docker
 Der aus 166 kanonischen Dateien erzeugte Gesamtinstaller und
 `Integration/110_Smoke_Test.sql` bestanden. Anschließend wurden mit
 `ALTER DATABASE [LabAnalyze] SET COMPATIBILITY_LEVEL` nacheinander 150, 160 und
-170 aktiviert. `Common/156` und der unveränderte
+170 ausschließlich für die Frameworkdatenbank aktiviert. Die von `Common/156`
+neu erzeugte Quelldatenbank erhielt keinen expliziten Compatibility Level;
+ihr Instanzdefault wurde im Lauf nicht erfasst. `Common/156` und der unveränderte
 `Integration/181_P2_Temporal_Runtime_Contract.sql` bestanden je Level mit
 Exitcode 0: sechs erfolgreiche Dateiläufe, acht neue Fälle und 13 bestehende
-Temporal-Fälle pro Level. Ein breiter lokaler Impact-Lauf und die erforderliche
+Temporal-Fälle pro Frameworklevel. Die Matrix belegt keinen Wechsel des
+Compatibility Levels dieser Quelldatenbank. Ein breiter lokaler Impact-Lauf und die erforderliche
 exakte GitHub-Head-CI sind dadurch nicht ersetzt.
 
 Die leere Fixture besitzt zwei aktive Current-/History-Paare, einmal versteckte
@@ -1433,7 +1439,8 @@ Die privaten Zustandsverzeichnisse bleiben zur lokalen Nachprüfung außerhalb
 von Git erhalten. Die zuvor gesperrten fremden Cleanup-Pfade wurden nicht berührt.
 
 Diese Evidenz gilt ausschließlich für die kleine synthetische Linux-Fixture
-und die angegebenen Compatibility Levels auf SQL Server 2025. Sie belegt keine
+und die angegebenen Framework-Compatibility-Levels auf SQL Server 2025 bei
+nicht erfasstem Quelldatenbankdefault. Sie belegt keine
 native ältere Engine, zusätzliche Berechtigungsprofile, große Historybestände,
 Zeilenkonsistenz, Cleanup-Ausführung oder separate RAW-/CONSOLE-Erfassung.
 Der Test stellt seinen ursprünglichen LOCK_TIMEOUT wieder her; die bestehende
