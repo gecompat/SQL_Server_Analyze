@@ -1217,18 +1217,18 @@ Die Prüfung vergleicht alle 14 Findingsfelder zwischen TABLE und JSON und die
 Frameworkcollation der elf TABLE-Textspalten. Native eigene Tabellen- und
 Hashindexidentitäten, konfigurierte Bucketzahlen, Hasharithmetik sowie unabhängige
 Findingcodes, Metriknamen und Schwellenwerte werden geprüft. Vollständige
-Datenbank- und Quellenzähler bleiben trotz Findingsfilter und Ausgabelimit erhalten.
+Datenbankzähler und Quellenstatus bleiben trotz Findingsfilter und Ausgabelimit erhalten.
 Die fehlende explizite Datenbank behält `DATABASE_UNAVAILABLE`, Partialwert und
 Fehlerzähler. Acht erwartete Quellenstatus werden vollständig geprüft; der
 Hashstatistikpfad bleibt ohne Opt-in `NOT_REQUESTED`.
 
 Vier Vorstände reproduzierten getrennte Fehler: Die unveränderte Quelle scheitert
-am TABLE-Textcollationvertrag oder am nativen Poolnamenjoin; der ausschließlich
-collationgehärtete Temp-Tabellenstand reproduzierte Fehler 468 am Poolnamenjoin.
+am TABLE-Textcollationvertrag oder am nativen Datenbanknamenvergleich im Resource-Pool-Pfad; der ausschließlich
+collationgehärtete Temp-Tabellenstand reproduzierte Fehler 468 am Datenbanknamenvergleich im Resource-Pool-Pfad.
 Nach dessen Korrektur scheiterte der gemeinsame Findingsfilter-/Limitvertrag;
 nach Exportkorrektur scheiterte der Statusvertrag der nicht vorhandenen Datenbank.
 Die finale Quelle korrigiert 65 bisher implizite Textcollations, den beidseitig
-collierten Poolnamenvergleich, die gemeinsame Findingsauswahl und die
+collierten Datenbanknamenvergleich im Resource-Pool-Pfad, die gemeinsame Findingsauswahl und die
 Statusaktualisierung bereits erfasster Auswahlwarnings.
 
 Die eigene Quelldatenbank, der Container, das Volume und der lokale Labzustand
