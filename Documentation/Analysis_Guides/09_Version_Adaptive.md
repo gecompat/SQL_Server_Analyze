@@ -670,6 +670,8 @@ flowchart TD
 
 Die Procedure verbindet TDE-Zustand und Scanfortschritt, sichtbaren Zertifikatlebenszyklus, den Verschlüsselungsstatus des letzten sichtbaren nicht-copy-only Full-Backups und aggregierte Always-Encrypted-/Ledger-Metadaten. Jede Quelle besitzt eine eigene Fehlergrenze.
 
+Der benannte Export `databases` besitzt 26 Felder und elf explizit mit `SQL_Latin1_General_CP1_CS_AS` collatierte Textfelder. RAW, CONSOLE, TABLE und JSON verwenden innerhalb eines Aufrufs dieselbe Exportmenge. `@NurProblematisch = 1` wählt HIGH-/MEDIUM-Zeilen; das Limit folgt nach Priorität und `DatabaseId`. NULL und 0 bedeuten unbegrenzt; negative Limits bleiben `INVALID_PARAMETER` und erzeugen eine leere Exportmenge. Quellenstatus und Auswahlwarnings werden nicht durch dieses Limit oder den Problemscope verkürzt. Auswahlwarnings setzen die Modulpartialität nach der Quellenbewertung; erfolgreiche Quellen bleiben unabhängig davon erfolgreich. Der Modulstatus wird vor der Ausgabeauswahl bestimmt.
+
 ### Wichtige Trennungen
 
 - TDE schützt Datenbankdateien; explizite Backupverschlüsselung ist ein eigener Mechanismus. Sie wird nur bei `@ExpliziteBackupverschluesselungErwartet=1` als Soll geprüft.

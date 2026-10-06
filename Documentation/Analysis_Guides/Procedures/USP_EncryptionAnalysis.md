@@ -28,6 +28,8 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `databases`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+RAW, CONSOLE, TABLE und JSON verwenden innerhalb eines Aufrufs dieselbe Exportmenge mit 26 Feldern. `@NurProblematisch = 1` wählt Priorität HIGH oder MEDIUM; `@MaxZeilen` begrenzt danach nach Priorität und `DatabaseId`. NULL und 0 bedeuten unbegrenzt; negative Werte werden als `INVALID_PARAMETER` mit leerer Exportmenge zurückgegeben. Die elf Textfelder verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Quellenstatus und Auswahlwarnings bleiben unabhängig vom fachlichen Ausgabefilter und Limit erhalten.
+
 ## Eine Zeile bedeutet
 
 Eine Datenbankzeile verbindet TDE-Zustand, sichtbaren Schutzobjekt-Lebenszyklus, den letzten sichtbaren Full-Backup-Verschlüsselungsstatus und ausschließlich aggregierte Featureanzahlen. Quellenstatus und Datenbankwarnungen sind eigene Zeilentypen.
@@ -55,6 +57,8 @@ Eine unverschlüsselte Datenbank ist ohne entsprechende Schutzvorgabe kein Fehle
 Nicht installiert, nicht aktiviert, in der gewählten Datenbank nicht verwendet und nicht abfragbar sind vier verschiedene Zustände.
 
 Für `USP_EncryptionAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+
+Ein Auswahlwarning führt bei sonst auswertbarem Aufruf zu `AVAILABLE_LIMITED` und `IsPartial = 1`; eine erfolgreiche Teilquelle behält ihren eigenen Status. Modulstatus und Partialität werden vor dem Ausgabefilter und Limit bestimmt. Eine leere Problemscope-Ausgabe entfernt deshalb weder den Auswahlwarning noch die Aussagegrenze des Moduls.
 
 ## Eigenlast und Grenzen
 
