@@ -1304,3 +1304,44 @@ temporären Zustands mit „blocked by policy“ ab. Dieses lokale Verzeichnis b
 erhalten und gehört zu keinem Repository- oder GitHub-Artefakt. Der fehlgeschlagene
 GitHub-Lauf bleibt fehlgeschlagen; die erweiterte CI am neuen exakten Head ist
 weiterhin erforderlich.
+
+### Native Identitäten der CriticalEngineEvents-Fixture
+
+Die erweiterte GitHub-CI am Head
+`8e96e04e5ae55827f640077f6e445c4ad7505935` bestand die vorausgegangenen
+TABLE-Verträge, scheiterte aber bei Compatibility Level 150 im ausgewählten
+Vertrag `Common/139` mit Fehler 55889. Dessen zwei eigene Ereignisse wurden
+nach dem zusätzlichen Wall-Clock-Filter nicht nativ bestätigt. Die konkrete
+Ursache dieses Ergebnisses ist nicht belegt. Ein frisches eigenes lokales
+SQL-Server-2025-Lab bestand den bisherigen Vertrag bei Level 150; zusätzliche
+Diagnoseausgaben änderten dessen Assertions nicht.
+
+Der Testcommit `fe34171633771815aa388e1dbeb8c83c337f2171` begrenzt die eigene
+XE-Session zusätzlich auf die aktuelle Verbindung. Die eigene eindeutige
+Eventdatei muss genau zwei Ereignisse mit Fehler 50000, Severity 16, jeweils
+einer der zwei exakten synthetischen Meldungen und vorhandenen Zeitstempeln
+enthalten. Das Modulzeitfenster wird aus den nativen MIN/MAX-Zeitstempeln
+abgeleitet; die exklusive Obergrenze liegt eine Mikrosekunde über MAX.
+Die bisherigen Status-, Limit-, XML-, Feld- und Multisetprüfungen bleiben
+erhalten. Ein Zusammenhang des CI-Fehlers mit den getrennten Zeitquellen
+oder der Zustellung ist damit nicht bewiesen.
+
+Ein weiteres frisches eigenes SQL-Server-2025-Lab bestand den geänderten
+Vertrag bei Compatibility Level 150, 160 und 170 mit Exitcode 0. Beide lokalen
+Labs einschließlich ihrer Container, Volumes und Zustandsverzeichnisse wurden
+entfernt. Der unabhängige Review des Testdeltas ergab keine Befunde.
+Der anschließend gestartete gemischte lokale Impact-Lauf bestand 69 Dateien
+bei Level 150, darunter den geänderten Vertrag 139. Er scheiterte danach im
+unveränderten Vertrag `Integration/181` mit Fehler 55503 bei der Temporal-
+Mapping-, Hidden-, Retention- oder Indexprüfung. Das Lab einschließlich
+Container, Volume und Zustand wurde entfernt. Dieser Lauf ist fehlgeschlagen;
+er belegt keinen abgeschlossenen Impact-Umfang. Der Temporal-Collation-Umfang
+bleibt separat offen. Die lokale Lab-API lehnte die CI-Instanzcollation
+`SQL_Latin1_General_CP1_CS_AS` vor der Containeranlage als nicht katalogisiert
+ab; dieser Start enthält keinen Testnachweis. Ein weiterer lokaler Lauf mit
+`SQL_Latin1_General_CP1_CI_AS` ist keine Nachbildung der CI-Collation. Er bestand
+34 Dateien bei Level 150 und scheiterte im Vertrag `Common/154` mit Fehler 1801
+an den nur durch Groß-/Kleinschreibung getrennten synthetischen Datenbanknamen.
+Das Lab einschließlich Container, Volume und Zustand wurde entfernt. Dieser
+Lauf ist fehlgeschlagen und kein Nachweis für die case-sensitive CI-Instanz.
+Die erforderliche CI am neuen exakten Head ist noch ausstehend.
