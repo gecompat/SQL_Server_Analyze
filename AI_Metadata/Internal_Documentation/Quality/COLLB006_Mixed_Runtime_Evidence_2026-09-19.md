@@ -1111,3 +1111,82 @@ Smoke-Test bestanden. Alle eigenen Testdatenbanken, Container, Volumes und
 temporären Lab-States wurden auch nach den früheren Testfehlern entfernt.
 Der Vertrag belegt keine aktuelle Patchfreigabe, Online-Katalogaktualität,
 Vulnerability-, Lizenz-, Neustart- oder zusätzliche Berechtigungsprüfung.
+
+## Special Feature Inventory: 5. Oktober 2026
+
+`Code/Tests/Common/154_SpecialFeatureInventory_Collation_Runtime_Contract.sql`
+bestand auf einem neuen lokalen SQL-Server-2025-Docker-Container mit
+`Latin1_General_100_CS_AS` für Server und `tempdb` sowie
+`SQL_Latin1_General_CP1_CS_AS` für die Frameworkdatenbank. Zwei eigene
+synthetische Unicode-Quelldatenbanken verwenden `Latin1_General_100_CI_AS`
+beziehungsweise die Frameworkcollation. Ihre Namen unterscheiden sich nur
+in der Groß-/Kleinschreibung des Unicode-Zeichens. Majorversion 17 wurde
+bei Bereitschaft geprüft; die konkrete ProductVersion wurde nicht erhoben.
+
+Der ursprüngliche Stand reproduzierte die fremde TABLE-Textcollation
+(`56051`). Ein kontrollierter Stand mit korrigierten Textcollations und
+ursprünglicher Ausgabesteuerung reproduzierte getrennt `56052`. Die 17 bisher
+nicht explizit collatierten Textspalten verwenden jetzt die Frameworkcollation.
+Eine zusätzliche Exportmaterialisierung wendet Featurefilter und Zeilenlimit
+gemeinsam auf die bereits vollständige Inventur an. Die vollständige
+Quellmaterialisierung bleibt für Aufrufmetadaten und Datenbankstatus erhalten.
+
+Sechs Fälle prüfen die neun TABLE-Textspalten und die vollständige kanonische
+JSON-Repräsentation aller zehn Featurefelder. Die vollständige Auswahl enthält
+genau 18 Featurecodes je eigener Quelldatenbank. Je Quelle wurden ein eigener
+Aliasdatentyp und eine leere Tabelle mit XML- und Spatial-Spalte angelegt;
+deren drei positive Katalogzähler betragen jeweils eins. Native JSON- und
+Vector-Spalten sind in diesen Fixtures nicht vorhanden und werden mit null
+erkannten Objekten ausgewiesen. Die vollständigen erkannten Gesamt- und
+Datenbankzähler werden aus dem vollständigen ersten Ergebnis gesichert und
+über die gefilterten und begrenzten Folgefälle unverändert verlangt; dieser
+Vergleich ist eine Zählererhaltungsprüfung, keine unabhängige native Gesamtzählung.
+
+Die Fälle decken `@NurErkannteFeatures` mit beiden Bitwerten sowie `NULL`, `0`
+und ein Ein-Zeilen-Limit ab. Die erste ungefilterte Limitzeile wird unabhängig
+aus der eigenen Datenbankmenge und den festen Featurecodes unter
+Frameworkcollation bestimmt. Die gültigen Quellen zusammen mit einer fehlenden
+Auswahl liefern `AVAILABLE_LIMITED`; ausschließlich fehlende Auswahl liefert
+`DATABASE_UNAVAILABLE` mit leerem Featureexport. Die exakte Datenbankstatusmenge,
+NULL-sichere Statusfelder, vollständige Zähler und Wiederherstellung des
+vorherigen `LOCK_TIMEOUT` werden geprüft. Die Bereinigung entfernt ausschließlich
+die nach erfolgreicher Anlage gesicherten eigenen Datenbankidentitäten.
+
+Der unabhängige Review ergänzte Ownership-Bereinigung, NULL-sichere Status- und
+Identitätsprüfungen, die exakte Statusmenge sowie die unabhängige Limitreihenfolge
+und den Erhalt der erkannten Datenbankzähler. Der endgültige Vertrag bestand
+danach mit Compatibility Level 150, 160 und 170 der Frameworkdatenbank auf
+derselben SQL-Server-2025-Engine. Diese Läufe sind keine nativen 2019- oder
+2022-Nachweise. Installation und Smoke-Test bestanden; sämtliche eigenen
+Quelldatenbanken, Container, Volumes und temporären Lab-States wurden entfernt.
+Der Vertrag prüft keine Featuregesundheit, tatsächliche Laufzeitnutzung,
+positiven JSON-/Vector-Spalten, zusätzlichen Berechtigungsprofile oder
+eigenständigen CONSOLE-Resultsetmitschnitt.
+
+## Gemeinsame Regression der drei Versionsadaptiv-Slices: 5. Oktober 2026
+
+Der unveränderte Kandidat `82efbcddc5355cd1f5d6f9a5f378a0fd72ac67bf`
+enthält die Capability-, Serverversions- und Spezialfeature-Korrekturen.
+Der kanonische Impact-Selector wählte gegenüber
+`94136ff3eca0703b72600756a5c6b8b4c0e14383` elf Laufzeittestdateien:
+Common `124`, `152`, `153` und `154`, Integration `110`, `168`, `179`, `190`,
+`196` und `198` sowie ObjectIndex `121`. Zusätzliche native Engines,
+Berechtigungs-, Regex- und Snapshotmatrizen wurden nicht ausgewählt.
+
+Alle elf Dateien bestanden nacheinander bei Compatibility Level 150, 160
+und 170 der Frameworkdatenbank auf einer neuen eigenen SQL-Server-2025-
+Docker-Instanz. Die 33 erfolgreichen Dateiläufe ergänzen die gezielten
+Reproduktionen und prüfen die direkt und transitiv betroffenen Verträge,
+einschließlich der bestehenden Spezialfeature-, Wave-1-, Navigator-,
+External-Runtime-/CLR- und JSON-Index-Verträge. Server und `tempdb` verwenden
+`Latin1_General_100_CS_AS`, die Frameworkdatenbank die Frameworkcollation.
+Installation und vorgelagerter Smoke-Test bestanden; eigener Container,
+Volume und temporärer State wurden entfernt. Diese lokale Regression ersetzt
+keine erforderliche erfolgreiche GitHub-CI am maßgeblichen PR-Head und keinen
+nativen 2019- oder 2022-Nachweis.
+
+Ein vorangegangener Start wurde beim Laufzeitkontextwechsel unterbrochen
+und liefert keinen Erfolgsnachweis. Sein eigener Container und sein Volume
+wurden separat entfernt. Ein temporärer lokaler Wiederherstellungsstate blieb
+wegen einer abgelehnten rekursiven Dateibereinigung erhalten; er gehört nicht
+zu Repository- oder GitHub-Artefakten.

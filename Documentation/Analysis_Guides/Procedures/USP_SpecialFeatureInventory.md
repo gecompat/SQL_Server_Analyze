@@ -28,7 +28,16 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-CONSOLE liefert zuerst den Aufrufstatus, danach genau eine Datenbankstatuszeile je ausgewählter oder explizit angeforderter Datenbank und zuletzt die Featurezeilen. RAW enthält dieselbe Reihenfolge mit technischen Spalten. TABLE exportiert ausschließlich das registrierte Resultset `features`; Datenbankstatus und Aufrufstatus müssen bei automatisierter Verarbeitung über OUTPUT-Parameter beziehungsweise einen separaten Kontrolllauf gesichert werden. JSON enthält dagegen `meta`, `databaseStatus` und `features` gemeinsam. Berücksichtigen Sie immer zuerst `StatusCode`, `IsPartial`, Datenbankstatus und erst danach `DetectionStatus`.
+CONSOLE liefert genau ein fachliches Feature-Resultset; eine leere Auswahl erhält die zentrale Console-Leerzeile. RAW liefert zuerst den Aufrufstatus, danach die Datenbankstatuszeilen und zuletzt die Featurezeilen mit technischen Spalten. TABLE exportiert ausschließlich das registrierte Resultset `features`; Datenbankstatus und Aufrufstatus müssen bei automatisierter Verarbeitung über OUTPUT-Parameter beziehungsweise einen separaten Kontrolllauf gesichert werden. JSON enthält dagegen `meta`, `databaseStatus` und `features` gemeinsam. Berücksichtigen Sie immer zuerst `StatusCode`, `IsPartial`, Datenbankstatus und erst danach `DetectionStatus`.
+
+TABLE, CONSOLE, RAW und das JSON-Array `features` verwenden dieselbe nach
+`(DatabaseName, FeatureCode)` sortierte Auswahl. `@NurErkannteFeatures = 1`
+erhält nur `DETECTED` und `CONFIGURED_ONLY`; ein positiver Wert in
+`@MaxZeilen` begrenzt anschließend diese Auswahl. `NULL` und `0` setzen kein
+Zeilenlimit. Die Aufrufmetadaten und Datenbankstatuszähler beschreiben weiterhin
+die vollständige Inventur vor dem Ausgabefilter. Die 21 Textspalten der vier
+lokalen Quelltabellen und die neun TABLE-Textspalten verwenden ausdrücklich
+`SQL_Latin1_General_CP1_CS_AS`; die öffentliche Feldstruktur bleibt erhalten.
 
 ## Eine Zeile bedeutet
 
