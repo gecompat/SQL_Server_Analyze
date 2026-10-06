@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Warum werden Service-Broker-Nachrichten nicht verarbeitet oder übertragen, und welche Queue-/Conversationzustände existieren?** Sie unterstützt die Entscheidung, ob das Spezialfeature vorhanden und in einem auffälligen Zustand ist und welches featureeigene Diagnoseverfahren als Nächstes gebraucht wird.
+Die Procedure beantwortet die Betriebsfrage: **Welche Queue-, Aktivierungs-, Transmission- und Conversation-Metadaten sind sichtbar, und welche konfigurierten Prüfhinweise ergeben sich daraus?** Sie unterstützt die Auswahl einer weiteren Prüfung. Die Momentaufnahme beweist keine Ursache für fehlende Verarbeitung oder Übertragung.
 
 ## Nicht beantwortete Fragen
 
@@ -30,6 +30,8 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 ## Resultsets und Leserichtung
 
 Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+
+Die Findingsausgabe verwendet in allen vier Ausgabearten dieselbe gefilterte und begrenzte Quelle. `@NurProblematisch = 1` beschränkt Findings auf `WARN`; positive Werte von `@MaxZeilen` begrenzen den Ausschnitt, `0` und `NULL` geben alle gefilterten Findings aus. Datenbank- und Quellenzähler werden vor diesen Ausgabegrenzen gebildet. Explizite Auswahlwarnings bleiben im Datenbankstatus erhalten. Die zehn Textspalten des TABLE-Exports verwenden die Frameworkcollation.
 
 ## Eine Zeile bedeutet
 
@@ -85,7 +87,7 @@ MEDIUM: sichtbare Kataloge, aggregierte Broker-Laufzeitmetadaten und approximati
 
 ### Leitfrage
 
-Warum werden Service-Broker-Nachrichten nicht verarbeitet oder übertragen, und welche Queue-/Conversationzustände existieren?
+Welche Queue-, Aktivierungs-, Transmission- und Conversation-Metadaten sind sichtbar, und welche konfigurierten Prüfhinweise ergeben sich daraus?
 
 ### Technischer Hintergrund
 

@@ -57,7 +57,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ServiceBrokerAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -98,7 +97,7 @@ BEGIN
        OR @ActivationSilenceWarnMinutes IS NULL OR @ActivationSilenceWarnMinutes<0
        OR @ConversationRowsWarn IS NULL OR @ConversationRowsWarn<0
 
-       OR @MaxZeilen IS NULL OR @MaxZeilen<0
+       OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
     BEGIN
@@ -142,33 +141,33 @@ BEGIN
     CREATE TABLE [#ServiceBrokerAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#ServiceBrokerAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServiceBrokerAnalysis_FeatureScope]
     (
-          [DatabaseName] sysname NOT NULL PRIMARY KEY
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
         , [IsBrokerEnabled] bit NOT NULL
         , [UserQueueCount] bigint NOT NULL
         , [UserServiceCount] bigint NOT NULL
     );
     CREATE TABLE [#ServiceBrokerAnalysis_DatabaseStatus]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [IsBrokerEnabled] bit NULL
         , [UserQueueCount] bigint NOT NULL
@@ -177,28 +176,28 @@ BEGIN
         , [ConversationEndpointCount] bigint NOT NULL
         , [SourceFailureCount] int NOT NULL
         , [FindingCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ServiceBrokerAnalysis_SourceStatus]
     (
-          [DatabaseName] sysname NULL
-        , [SourceCode] varchar(64) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [RowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ServiceBrokerAnalysis_Queue]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [QueueName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [QueueName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [QueueObjectId] int NOT NULL
         , [ServiceCount] int NOT NULL
         , [IsBrokerEnabled] bit NOT NULL
@@ -208,66 +207,85 @@ BEGIN
         , [IsRetentionEnabled] bit NOT NULL
         , [IsPoisonMessageHandlingEnabled] bit NOT NULL
         , [MaxReaders] smallint NULL
-        , [ActivationProcedure] nvarchar(776) NULL
+        , [ActivationProcedure] nvarchar(776) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ExecuteAsPrincipalId] int NULL
         , [QueueRowsApprox] bigint NULL
         , [QueueReservedMb] decimal(19,2) NULL
         , [QueueUsedMb] decimal(19,2) NULL
-        , [QueueMonitorState] nvarchar(32) NULL
+        , [QueueMonitorState] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LastEmptyRowsetTime] datetime NULL
         , [LastActivatedTime] datetime NULL
         , [TasksWaiting] int NULL
         , [ActivatedTaskCount] int NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseName],[QueueObjectId])
     );
     CREATE TABLE [#ServiceBrokerAnalysis_TransmissionGroup]
     (
-          [DatabaseName] sysname NOT NULL
-        , [FromServiceName] nvarchar(256) NULL
-        , [ToServiceName] nvarchar(256) NULL
-        , [ToBrokerInstance] nvarchar(128) NULL
-        , [ServiceContractName] nvarchar(256) NULL
-        , [MessageTypeName] nvarchar(256) NULL
-        , [TransmissionStatus] nvarchar(4000) NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FromServiceName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ToServiceName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ToBrokerInstance] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ServiceContractName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MessageTypeName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [TransmissionStatus] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MessageCount] bigint NOT NULL
         , [ConversationErrorMessageCount] bigint NOT NULL
         , [EndDialogMessageCount] bigint NOT NULL
         , [OldestEnqueueTimeUtc] datetime NULL
         , [NewestEnqueueTimeUtc] datetime NULL
         , [OldestAgeMinutes] bigint NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServiceBrokerAnalysis_ConversationState]
     (
-          [DatabaseName] sysname NOT NULL
-        , [StateCode] char(2) NOT NULL
-        , [StateDescription] nvarchar(60) NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateCode] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDescription] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsInitiator] bit NOT NULL
         , [IsSystem] bit NOT NULL
         , [EndpointCount] bigint NOT NULL
         , [ExpiredLifetimeCount] bigint NOT NULL
         , [EarliestLifetimeUtc] datetime NULL
         , [EarliestSecurityTimestampUtc] datetime NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ServiceBrokerAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+    CREATE TABLE [#ServiceBrokerAnalysis_FindingsExport]
+    (
+          [FindingOrdinal] bigint NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [ThresholdValue] decimal(38,4) NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+
+    /* Eigene lokale Arbeitstabellen werden vor dem NOWAIT-Quellabschnitt angelegt. */
+    SET LOCK_TIMEOUT 0;
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -515,7 +533,7 @@ OUTER APPLY
     FROM [sys].[dm_db_partition_stats] WITH (NOLOCK)
     WHERE [object_id]=[q].[QueueObjectId]
 ) [p]
-WHERE [q].[DatabaseName]=@pDatabaseName;
+WHERE [q].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS;
 SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
@@ -547,7 +565,7 @@ OUTER APPLY
     FROM [sys].[dm_broker_queue_monitors] WITH (NOLOCK)
     WHERE [database_id]=DB_ID() AND [queue_id]=[q].[QueueObjectId]
 ) [m]
-WHERE [q].[DatabaseName]=@pDatabaseName;
+WHERE [q].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS;
 SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
@@ -575,7 +593,7 @@ OUTER APPLY
     FROM [sys].[dm_broker_activated_tasks] WITH (NOLOCK)
     WHERE [database_id]=DB_ID() AND [queue_id]=[q].[QueueObjectId]
 ) [a]
-WHERE [q].[DatabaseName]=@pDatabaseName;
+WHERE [q].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS;
 SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
@@ -606,7 +624,7 @@ SELECT @pDatabaseName,[x].[from_service_name],[x].[to_service_name],[x].[to_brok
        DATEDIFF_BIG(MINUTE,MIN([x].[enqueue_time]),SYSUTCDATETIME()),
        N''Transmission-Einträge können auch während normaler Zustellung oder Retention sichtbar sein; Alter und Status beweisen allein keinen dauerhaften Fehler.''
 FROM [sys].[transmission_queue] [x] WITH (NOLOCK)
-LEFT JOIN [sys].[services] [svc] WITH (NOLOCK) ON [svc].[name]=[x].[from_service_name]
+LEFT JOIN [sys].[services] [svc] WITH (NOLOCK) ON [svc].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[x].[from_service_name] COLLATE SQL_Latin1_General_CP1_CS_AS
 LEFT JOIN [sys].[service_queues] [t] WITH (NOLOCK) ON [t].[object_id]=[svc].[service_queue_id]
 LEFT JOIN [sys].[schemas] [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id]
 WHERE 1=1'+@SchemaPredicate+@ObjectPredicate+@FullObjectPredicate+N'
@@ -888,7 +906,12 @@ SET @pRows=@@ROWCOUNT;';
                COALESCE(SUM(CASE WHEN [ff].[Severity]='WARN' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0) AS [WarnCount]
         FROM [#ServiceBrokerAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
-    ) [f];
+    ) [f]
+    WHERE NOT EXISTS
+    (
+        SELECT 1 FROM [#ServiceBrokerAnalysis_DatabaseCandidateWarnings] [w]
+        WHERE [w].[RequestedName]=[ds].[DatabaseName]
+    );
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -907,6 +930,16 @@ SET @pRows=@@ROWCOUNT;';
     FROM [#ServiceBrokerAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
+    /* Ausgabegrenzen werden nach der vollständigen Zählerbildung einmal angewandt. */
+    INSERT [#ServiceBrokerAnalysis_FindingsExport]
+    ([FindingOrdinal],[DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],
+     [FindingCode],[MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+    SELECT TOP(@Limit) [FindingOrdinal],[DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],
+           [FindingCode],[MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck]
+    FROM [#ServiceBrokerAnalysis_Findings]
+    WHERE @NurProblematisch=0 OR [Severity]='WARN'
+    ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+
     IF @JsonErzeugen=1
     BEGIN
         SELECT @Json=(
@@ -914,7 +947,7 @@ SET @pRows=@@ROWCOUNT;';
                 JSON_QUERY((SELECT N'USP_ServiceBrokerAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
                 JSON_QUERY(COALESCE((SELECT * FROM [#ServiceBrokerAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
                 JSON_QUERY(COALESCE((SELECT * FROM [#ServiceBrokerAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT * FROM [#ServiceBrokerAnalysis_FindingsExport] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Queue] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[QueueRowsApprox] DESC,[DatabaseName],[SchemaName],[QueueName] FOR JSON PATH),N'[]')) AS [queues],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_TransmissionGroup] WHERE @NurProblematisch=0 OR [TransmissionStatus] IS NOT NULL OR [OldestAgeMinutes]>=@TransmissionAgeWarnMinutes ORDER BY [OldestAgeMinutes] DESC,[MessageCount] DESC,[DatabaseName] FOR JSON PATH),N'[]')) AS [transmissionGroups],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_ConversationState] WHERE @NurProblematisch=0 OR [StateCode]='ER' OR [ExpiredLifetimeCount]>0 OR [EndpointCount]>=@ConversationRowsWarn ORDER BY [EndpointCount] DESC,[DatabaseName],[StateCode] FOR JSON PATH),N'[]')) AS [conversationStates]
@@ -928,8 +961,7 @@ SET @pRows=@@ROWCOUNT;';
                N'Read-only Broker-Metadatenaufnahme; keine Queue-Nutzdaten, Nachrichtenkörper, RECEIVE-, DDL- oder Conversation-Änderung.' AS [Detail];
         SELECT * FROM [#ServiceBrokerAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
         SELECT * FROM [#ServiceBrokerAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Findings]
-        WHERE @NurProblematisch=0 OR [Severity]='WARN'
+        SELECT * FROM [#ServiceBrokerAnalysis_FindingsExport]
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
         SELECT TOP(@Limit) * FROM [#ServiceBrokerAnalysis_Queue]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
@@ -954,14 +986,14 @@ SET @pRows=@@ROWCOUNT;';
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#ServiceBrokerAnalysis_Findings'
+              @SourceTable=N'#ServiceBrokerAnalysis_FindingsExport'
             , @ResultLabel=N'ServiceBrokerAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#ServiceBrokerAnalysis_Findings'
+              @SourceTable = N'#ServiceBrokerAnalysis_FindingsExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
