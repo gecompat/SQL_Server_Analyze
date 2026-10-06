@@ -575,6 +575,8 @@ Alle Zeit-, Latenz- und Mengenwerte außer dem CT-Minimumvergleich sind Priorisi
 
 Schema- und Objektfilter gelten nur für CT-/CDC-Quelltabellen. Das Feature-Gate bleibt unfiltriert. Replikationsrollen und Agenten besitzen keinen zuverlässigen gemeinsamen Schema-/Tabellenschlüssel und werden deshalb nur über den Datenbankscope begrenzt.
 
+RAW, CONSOLE, TABLE und JSON verwenden innerhalb eines Aufrufs dieselbe gefilterte und begrenzte Findings-Exportmenge mit 13 Feldern. `@NurProblematisch = 1` wählt WARN-Findings; `@MaxZeilen` begrenzt danach nach Warnpriorität und `FindingOrdinal`. NULL und 0 bedeuten unbegrenzt, negative Werte sind ungültig. Die zehn Textfelder sind explizit mit `SQL_Latin1_General_CP1_CS_AS` collatiert. `FindingCount` bleibt der Zähler vor Ausgabefilter und Limit; `CtTableCount` bleibt der native Zähler des unfiltrierten Feature-Gates. Auswahlwarnings und vor der Quellenlesung gesetzte ungültige Datenbankstatus bleiben bei der abschließenden Aggregation erhalten.
+
 ### Change Tracking
 
 - `MinValidVersion` ist tabellenspezifisch.

@@ -43,6 +43,8 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Die 13 Findings-Felder stammen bei RAW, CONSOLE, TABLE und JSON innerhalb eines Aufrufs aus derselben Exportmenge. `@NurProblematisch = 1` wählt WARN-Findings; `@MaxZeilen` begrenzt diese Auswahl nach Warnpriorität und `FindingOrdinal`. NULL und 0 bedeuten unbegrenzt; negative Werte sind ungültig. Die zehn Textfelder verwenden `SQL_Latin1_General_CP1_CS_AS`, auch wenn Quelle oder TempDB eine andere Collation besitzen. `FindingCount` wird vor dem Ausgabefilter und Limit bestimmt. `CtTableCount` stammt aus dem unfiltrierten Feature-Gate; Schema- und Objektfilter können die ausgegebenen CT-Tabellen und die darauf bezogenen Findings weiter einschränken.
+
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einem Datenbankstatus, isolierten Quellenstatus, Finding, einer Change-Tracking-Tabelle, CDC-Capture-Instanz, CDC-Scan-Sitzung, aggregierten CDC-Fehlergruppe, CDC-Jobkonfiguration, lokal sichtbaren Replikationsagenten oder aggregierten Replikationsfehlergruppe.
@@ -78,6 +80,8 @@ Nicht installiert, nicht aktiviert, in der gewählten Datenbank nicht verwendet 
 Für `USP_DataCaptureDeepAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
 Eine leere CDC-Scan-DMV kann nach Neustart/Failover oder auf einer AG-Sekundärreplik auftreten. Alle in `msdb` sichtbaren lokalen Distributionsdatenbanken werden getrennt gelesen und in Agent- und Fehlerzeilen ausgewiesen; lokale Distributionstabellen zeigen dennoch keinen Remote Distributor. Fehlende Rechte werden pro Quelle als `AVAILABLE_LIMITED` erhalten; zugängliche andere Evidenz bleibt gültig.
+
+Eine nicht verfügbare explizit gewählte Datenbank behält ihren Auswahlwarning samt Partialität und Fehlerzählung. Ein Consumer-Wasserstand für mehrere auswertbare Datenbanken bleibt `INVALID_PARAMETER`, auch in deren Datenbankstatus. Objektfilter entfernen das datenbankweite INFO zu deaktiviertem Auto-Cleanup nicht; der Problemscope blendet es bei der Ausgabe aus.
 
 ## Eigenlast und Grenzen
 
