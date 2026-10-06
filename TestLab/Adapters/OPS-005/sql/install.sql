@@ -5181,7 +5181,8 @@ Zweck        : Kopiert genau ein bereits materialisiertes Analyseergebnis in
 Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
                und permanente Tabellen sind bewusst nicht zugelassen.
 Locking      : Katalogauflösung ausschließlich über tempdb.sys.* WITH (NOLOCK)
-               und LOCK_TIMEOUT 0; keine blockierenden Metadatenfunktionen.
+               und LOCK_TIMEOUT 0 für fremde Tabellen. Eigene lokale Temp-DDL
+               erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms.
 ===============================================================================
 */
 SET ANSI_NULLS ON;
@@ -5201,44 +5202,53 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Diese lokalen Tabellen entstehen vor LOCK_TIMEOUT 0. Der No-Wait-
-    -- Vertrag gilt für die fremden Quell-/Ziel-Temp-Tabellen, nicht für die
-    -- eigene tempdb-Metadatenanlage des Writers.
-    CREATE TABLE [#InternalWriteResultTable_SourceSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
+    -- Ein geerbter NOWAIT-Wert darf die eigene TempDB-Metadatenanlage
+    -- nicht wegen einer kurzzeitigen Kollision abbrechen. Nur diese lokale
+    -- Anlage erhält bei eingehendem Timeout 0 ein Zeitbudget von 1000 ms.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlOriginalLockTimeout=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalWriteResultTable_SourceSchema]
+        (
+              [ColumnId] int NOT NULL
+            , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [SystemTypeId] tinyint NOT NULL
+            , [MaxLength] smallint NOT NULL
+            , [Precision] tinyint NOT NULL
+            , [Scale] tinyint NOT NULL
+            , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [IsNullable] bit NOT NULL
+            , [IsIdentity] bit NOT NULL
+            , [IsComputed] bit NOT NULL
+            , [IsUserDefined] bit NOT NULL
+            , [IsAssemblyType] bit NOT NULL
+            , [XmlCollectionId] int NOT NULL
+        );
 
-    CREATE TABLE [#InternalWriteResultTable_TargetSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
+        CREATE TABLE [#InternalWriteResultTable_TargetSchema]
+        (
+              [ColumnId] int NOT NULL
+            , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [SystemTypeId] tinyint NOT NULL
+            , [MaxLength] smallint NOT NULL
+            , [Precision] tinyint NOT NULL
+            , [Scale] tinyint NOT NULL
+            , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [IsNullable] bit NOT NULL
+            , [IsIdentity] bit NOT NULL
+            , [IsComputed] bit NOT NULL
+            , [IsUserDefined] bit NOT NULL
+            , [IsAssemblyType] bit NOT NULL
+            , [XmlCollectionId] int NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
 
     SET LOCK_TIMEOUT 0;
 
@@ -5733,21 +5743,29 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Lokale Metadatenobjekte werden vor dem bewussten No-Wait-Vertrag
-    -- angelegt, damit eine kurzzeitige tempdb-DDL-Kollision nicht schon den
-    -- rein internen Arbeitsbereich mit Fehler 1222 abbrechen lässt.
-    CREATE TABLE [#InternalPrepareResultTables_Allowed]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY
-    );
+    -- Eigene Temp-DDL erhält bei geerbtem NOWAIT ein Zeitbudget von
+    -- 1000 ms je Anlage. Fremde Zieltabellen bleiben anschließend NOWAIT.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlOriginalLockTimeout=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalPrepareResultTables_Allowed]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY
+        );
 
-    CREATE TABLE [#InternalPrepareResultTables_Parsed]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [JsonType] int NOT NULL
-    );
+        CREATE TABLE [#InternalPrepareResultTables_Parsed]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [JsonType] int NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
 
     SET LOCK_TIMEOUT 0;
 
@@ -5990,14 +6008,28 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalPrepareSingleResultTable]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @TargetTable=NULL;
 
-    CREATE TABLE [#InternalPrepareSingleResultTable_Map]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
-    );
+    -- Ein geerbter NOWAIT-Wert darf die eigene TempDB-Metadatenanlage
+    -- nicht wegen einer kurzzeitigen Kollision abbrechen. Nur diese lokale
+    -- Anlage erhält ein Zeitbudget von 1000 ms; die nachfolgende
+    -- Auflösung fremder Tabellen bleibt bei LOCK_TIMEOUT 0.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalPrepareSingleResultTable_Map]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+            , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @StatusCode varchar(40),@ErrorMessage nvarchar(2048);
     EXEC [monitor].[InternalPrepareResultTables]
