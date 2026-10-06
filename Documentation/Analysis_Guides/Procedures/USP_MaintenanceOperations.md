@@ -26,7 +26,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `resumableOperations`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert ausschließlich `resumableOperations` mit 15 Feldern. Das aktive CONSOLE zeigt dieselbe fachliche Menge. RAW und JSON enthalten zusätzlich Requests, ADR/PVS und ausdrücklich ausgewählte Jobs sowie Quellenstatus; Auswahlwarnings bleiben im vorhandenen RAW-Resultset. JSON besitzt kein zusätzliches Warning-Array. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+
+Jede der vier fachlichen Mengen wird nach der vollständigen Befundbewertung einmal nach `@NurProblematisch` und `@MaxZeilen` ausgewählt. Die jeweilige Auswahl ist für alle Ausgabepfade identisch. Positive Limits wirken je fachlicher Menge; `NULL` und `0` bedeuten unbegrenzt. Negative Limits liefern `INVALID_PARAMETER` mit partieller, leerer Fachausgabe. Die acht Textfelder des TABLE-Exports verwenden explizit `SQL_Latin1_General_CP1_CS_AS`.
+
+Quellenstatus und Modulstatus gelten für den vollständigen ausgewählten Quellenscope vor dem Ausgabelimit. Eine fehlende ausdrücklich gewählte Datenbank begrenzt das Modul zu `AVAILABLE_LIMITED/IsPartial=1`; erfolgreich gelesene Einzelquellen bleiben unabhängig davon erfolgreich.
 
 ## Eine Zeile bedeutet
 
@@ -123,6 +127,8 @@ WHERE [r].[session_id] <> @@SPID
 ### Zeit- und Scope-Modell
 
 Die Auswertung beschreibt den aktuellen Requestsnapshot sowie den persistierten Zustand resumierbarer Operationen.
+
+Der Collation-Runtimevertrag Common 161 verwendet eigene Datenbanken ohne Nutzdaten und vergleicht die PVS-Ausgabe mit unabhängigen nativen Metadaten. Interne ADR-Allokationen können die PVS-Größe zwischen Abfragen verändern. Der Vertrag prüft deshalb deren JSON-Zahlenwert innerhalb der Messgrenzen vor und unmittelbar nach dem Aufruf; die übrigen acht PVS-Felder, Properties, Typen und Häufigkeiten werden exakt verglichen. Ein fehlender oder nicht numerischer Größenknoten wird abgelehnt; NULL ist nur bei zwei nativen NULL-Messwerten zulässig. Der leere Resumable-Scope prüft Schema und Collation, liefert jedoch keine positive Resumable-Filter- oder Limitevidenz.
 
 ### Bewertung und Gegenprobe
 
