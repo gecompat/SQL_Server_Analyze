@@ -31,6 +31,8 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+RAW, CONSOLE, TABLE und das JSON-Array `findings` verwenden dieselbe materialisierte Findings-Auswahl. `@NurProblematisch = 1` beschränkt diese Auswahl auf `Severity = WARN`; ein positives `@MaxZeilen` begrenzt sie nach Warnpriorität und `FindingOrdinal`. `NULL` und `0` liefern die Auswahl ohne Zeilenlimit. Negative Werte führen zu `INVALID_PARAMETER`. Der TABLE-Export behält seine 13 Felder; seine zehn Textspalten verwenden explizit `SQL_Latin1_General_CP1_CS_AS`.
+
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einem Datenbankstatus, isolierten Quellenstatus, Finding, Katalog, Full-Text-Index, einer aktuell laufenden Population, einer aggregierten Batchgruppe, einer semantischen Population, einem Speicherpool oder einer FDHost-Typgruppe.
@@ -61,6 +63,8 @@ Für `USP_FullTextAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im 
 
 Eine leere Population-DMV ist weder Abschlussnachweis noch Historie. Fehlende DMV-Rechte lassen zugängliche Katalog- und Fragmentevidenz gültig; die Procedure kennzeichnet die Lücke über `IsPartial` und `SourceStatus`. `NOT_APPLICABLE_VISIBLE_SCOPE` beweist bei eingeschränkter Metadatensichtbarkeit keine vollständige Abwesenheit.
 
+`DatabaseStatus.FindingCount` und die Quellenzähler werden vor der Findings-Auswahl berechnet und bleiben bei Ausgabegrenzen erhalten. Warnings für ausdrücklich angeforderte, nicht auswertbare Datenbanken behalten ihren Status und ihre Partialität bei der späteren Statusaggregation. Ein solcher Auswahlwarning macht auch einen ansonsten leeren Feature-Scope partiell.
+
 ## Eigenlast und Grenzen
 
 MEDIUM: sichtbare Kataloge, Fragmente und aggregierte Full-Text-DMVs. Es werden keine Tabellenzeilen, Keywords, Stopwords, Parser-Eingaben, Schlüsselwerte, Crawl-Logs oder Pfade gelesen und kein `ALTER FULLTEXT` ausgeführt.
@@ -73,11 +77,13 @@ MEDIUM: sichtbare Kataloge, Fragmente und aggregierte Full-Text-DMVs. Es werden 
 | Haupttreiber | Zahl gewählter Datenbanken, Full-Text-Kataloge/-Indizes und aktueller Population-, FDHost- und Memory-Pool-Zeilen. Indizierte Dokumente, Suchbegriffe und Crawl-Logs liegen außerhalb des Pfads und skalieren die Abfrage nicht direkt. |
 | Skalierung | Quellarbeit wächst mit Full-Text-Objekten, Fragmenten und aktuellen Population-/Batchzeilen. Serverweite Memory-Pool-/FDHost-Quellen bleiben meist klein; Ausgabe und Sortierung wachsen mit allen materialisierten Detailtabellen. |
 | Ressourcen | CPU, Katalog-/Full-Text-DMV-I/O, dynamisches SQL je Datenbank und TempDB/Arbeitsspeicher für isolierte Detailtabellen und Findings. Keine indizierten Inhalte oder Crawl-Logs. |
-| Begrenzungswirkung | Datenbank-/Objektfilter begrenzen Katalog- und datenbankbezogene DMV-Arbeit. `@NurProblematisch` und `@MaxZeilen` werden erst bei der Ausgabe jedes Resultsets angewandt; sie verhindern das vorherige Lesen/Aggregieren der Full-Text-Quellen nicht. |
+| Begrenzungswirkung | Datenbankfilter begrenzen den Quellenscope; Objektfilter beschränken Indexzuordnung und davon abhängige DMV-Arbeit. Kataloge werden im sichtbaren Datenbankscope gelesen. `@NurProblematisch` und `@MaxZeilen` begrenzen die Ausgabe nach dem Lesen und Aggregieren der Quellen; Findings werden dafür einmal gemeinsam materialisiert. |
 | Locking und Nebenwirkungen | Read-only ohne `ALTER FULLTEXT`; Kataloge und flüchtige Runtime-DMVs werden nicht atomar gelesen. Eine laufende Population kann ihren Status zwischen Teilquellen ändern. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `CATALOG_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Eine bekannte `ExampleDatabase`, Problemscope und möglichst Objektfilter. Erst Quellenstatus, dann Katalog/Index, Populationen und Batches lesen; serverweite Kapazität zuletzt korrelieren. |
 | Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „Runtime- und Katalogsnapshot“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
+
+Der Laufzeitvertrag `Code/Tests/Common/158_FullTextAnalysis_Collation_Runtime_Contract.sql` verwendet eine eigene leere Quelldatenbank mit abweichender Collation und prüft Exporttextcollation, negative Feature-Gates, Auswahlwarnings sowie gültige und ungültige Parameter. Framework- und Source-Compatibility-Level werden getrennt bestätigt. Ohne positive Full-Text-Objekte belegt dieser Vertrag keine nichtleeren Findingsfilter oder Limits und keine gegateten Full-Text-DMV-Pfade.
 
 ## Technische Vertiefung
 

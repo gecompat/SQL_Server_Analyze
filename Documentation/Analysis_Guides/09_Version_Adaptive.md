@@ -499,6 +499,8 @@ Alle fünf Werte sind Priorisierungs- oder Kapazitätsheuristiken. Microsoft dok
 
 Feature-Gate, Katalog-/Indexmapping, Fragmente, normale Population, Batches und semantische Population werden je Datenbank isoliert. Memory Pools und FDHosts werden einmal serverweit gelesen. SQL Server 2019 benötigt für die Laufzeit-DMVs `VIEW SERVER STATE`, SQL Server 2022 oder neuer `VIEW SERVER PERFORMANCE STATE`.
 
+Auswahlwarnings für nicht auswertbare angeforderte Datenbanken bleiben in `DatabaseStatus` erhalten und bestimmen die Modulpartialität mit. Findings- und Quellenzähler werden vor Ausgabegrenzen gebildet. RAW, CONSOLE, TABLE und JSON verwenden dieselbe Findings-Auswahl: `@NurProblematisch = 1` erhält Warnungen, ein positives `@MaxZeilen` begrenzt nach Warnpriorität und `FindingOrdinal`, `NULL` oder `0` bedeutet unbegrenzt. Negative Limits sind ungültig. Der Export `findings` behält 13 Felder und collatiert alle zehn Textspalten explizit mit `SQL_Latin1_General_CP1_CS_AS`.
+
 ### Kataloge und FullTextIndexes
 
 Kataloge liefern Namen, Default-/Accent-Sensitivity-Kontext, sichtbare Indexanzahl sowie aggregierte Fragmentgröße. Indizes liefern Tabelle, Katalog, Enablement, Status des eindeutigen Schlüsselindex, Change-Tracking- und Crawl-Kontext, Spalten-/Semantikanzahl sowie zugeordnete Fragment-, Population- und Batchzahlen.
@@ -538,6 +540,8 @@ Memory Pools sind serverweit gemeinsam genutzter Gatherer-Kontext. FDHosts werde
 - Eine leere Laufzeit-DMV ist keine Historie.
 - Alter, Batchzahl und Fragmentzahl sind ohne Zeitreihe und Workload kein Ursachenbeweis.
 - Das Modul führt kein `ALTER FULLTEXT`, keine Population und keine Reorganisation aus.
+
+Der gemischte Collation-Vertrag `158` erzeugt ausschließlich eine eigene leere Quelldatenbank. Er prüft den negativen Feature-Scope, Exportcollation, Auswahlwarnings und Parameter bei getrennt bestätigten Framework-/Source-Compatibility-Levels. Nichtleere Findingsfilter, positive Limitwirkung und gegatete Full-Text-Quellen benötigen weiterhin einen separaten Feature-Positivnachweis.
 
 ### Folgeanalyse
 
