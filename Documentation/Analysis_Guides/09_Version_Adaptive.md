@@ -736,6 +736,10 @@ Host-, Instanz-, Konto- oder Pfadidentität.
 
 Die Procedure trennt External-Runtime-Konfiguration, datenbankbezogene Language-/Libraryregistrierungen, aktive Requests, External Resource Pools, registrierte Execution Stats und Performance Counter. Sie führt keinen externen Code aus und erzeugt deshalb keinen End-to-End-Funktionsnachweis.
 
+Der gemeinsame Findings-Export erhält 13 Felder einschließlich des ursprünglichen Findingordinals und zehn explizit collatierte Textspalten. Nach vollständiger Bewertung teilen TABLE, CONSOLE, RAW und JSON denselben WARN-Filter und dasselbe Limit. `NULL` und `0` bedeuten unbegrenzt; negative Limits bleiben `INVALID_PARAMETER` und verhindern die JSON-Erzeugung nicht. Auswahlpartialität wird spät aggregiert, ohne erfolgreiche Quellenstatus oder vollständige Datenbankzähler zu überschreiben. Die bestehende JSON-Auslassung von NULL-Properties bleibt erhalten.
+
+Common 163 verwendet zwei eigene Unicode-Datenbanken und erfasst vorhandene Standardregistrierungen nativ, ohne Languages oder Libraries anzulegen oder externe Prozesse zu starten. Der begrenzte Vertrag prüft Schema, TABLE-/JSON-Parität, native Konfiguration und Quellkataloge, Poolkonfiguration und Counteridentitäten sowie Auswahl- und Parameterverträge. Positive Findingsfälle hängen von den tatsächlich sichtbaren Standardregistrierungen ab; leere Filter belegen nur Leerakzeptanz. RAW und CONSOLE sind auf Status und begleitendes JSON begrenzt. Sampling, Startfähigkeit und weitere Berechtigungspfade sind damit nicht belegt.
+
 ### Resultsets
 
 | Resultset | Zeilengranularität und Aussage |
