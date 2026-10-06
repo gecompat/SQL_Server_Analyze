@@ -52,7 +52,7 @@ Special Feature Inventory,USP_SpecialFeatureInventory,COMPLETE,YES,YES,YES,,FULL
 In-Memory OLTP,USP_InMemoryOltpAnalysis,COMPLETE,YES,YES,YES,,FULL,
 Temporal Tables,USP_TemporalAnalysis,COMPLETE,YES,YES,YES,,FULL,
 Service Broker,USP_ServiceBrokerAnalysis,COMPLETE,YES,YES,YES,,FULL,
-Full-Text Search,USP_FullTextAnalysis,COMPLETE,YES,YES,YES,,FULL,
+Full-Text Search,USP_FullTextAnalysis,COMPLETE,YES,YES,YES,,FULL,COLL-001 eigener leerer Katalogscope acht unabhängige Quellcodes zehn collatierte TABLE-Textspalten gültige NULL-/0-/positive Mengenparameter ungültige Parameter und erhaltene Auswahlwarnings auf gemischtem SQL Server 2025 mit expliziten Framework- und Source-Compatibility-Levels 150 160 und 170 geprüft; nichtleere Findings positive Filter-/Limitwirkung und gegatete Full-Text-Laufzeitquellen bleiben für diesen Slice unbelegt
 Data Capture (CDC/CT),USP_DataCaptureDeepAnalysis,COMPLETE,YES,YES,YES,,FULL,
 Encryption,USP_EncryptionAnalysis,COMPLETE,YES,YES,YES,,FULL,
 External Runtime,USP_ExternalRuntimeAnalysis,COMPLETE,YES,YES,YES,,FULL,Portable Kernfunktion komplett; aktive Feature-Matrix offen

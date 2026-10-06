@@ -53807,7 +53807,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_FullTextAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -53825,7 +53824,7 @@ BEGIN
     DECLARE @ErrorNumber int=NULL;
     DECLARE @ErrorMessage nvarchar(2048)=NULL;
     DECLARE @PrintMessage nvarchar(2048)=NULL;
-    DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
+    DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen<=0
                                THEN CONVERT(bigint,9223372036854775807)
                                ELSE CONVERT(bigint,@MaxZeilen) END;
 
@@ -53849,7 +53848,7 @@ BEGIN
        OR @FailedDocumentWarn IS NULL OR @FailedDocumentWarn<0
        OR @CatalogSizeWarnMb IS NULL OR @CatalogSizeWarnMb<0
 
-       OR @MaxZeilen IS NULL OR @MaxZeilen<0
+       OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
     BEGIN
@@ -53893,25 +53892,25 @@ BEGIN
     CREATE TABLE [#FullTextAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#FullTextAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#FullTextAnalysis_FeatureScope]
     (
-          [DatabaseName] sysname NOT NULL PRIMARY KEY
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
         , [IsFullTextInstalled] bit NOT NULL
         , [CatalogCount] bigint NOT NULL
         , [FullTextIndexCount] bigint NOT NULL
@@ -53919,8 +53918,8 @@ BEGIN
     );
     CREATE TABLE [#FullTextAnalysis_DatabaseStatus]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [IsFullTextInstalled] bit NULL
         , [CatalogCount] bigint NOT NULL
@@ -53929,54 +53928,54 @@ BEGIN
         , [OutstandingBatchCount] bigint NOT NULL
         , [FindingCount] bigint NOT NULL
         , [SourceFailureCount] int NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#FullTextAnalysis_SourceStatus]
     (
-          [DatabaseName] sysname NULL
-        , [SourceCode] varchar(64) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [RowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#FullTextAnalysis_Catalog]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [FullTextCatalogId] int NOT NULL
-        , [CatalogName] sysname NOT NULL
+        , [CatalogName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsDefault] bit NOT NULL
         , [IsAccentSensitivityOn] bit NOT NULL
         , [IndexCount] bigint NOT NULL
         , [EnabledIndexCount] bigint NOT NULL
         , [QueryableFragmentCount] bigint NULL
         , [LogicalSizeMb] decimal(19,2) NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseName],[FullTextCatalogId])
     );
     CREATE TABLE [#FullTextAnalysis_FullTextIndex]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [TableName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [TableObjectId] int NOT NULL
         , [CatalogId] int NOT NULL
-        , [CatalogName] sysname NOT NULL
+        , [CatalogName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [UniqueIndexId] int NOT NULL
         , [IsEnabled] bit NOT NULL
         , [IsKeyIndexDisabled] bit NOT NULL
-        , [ChangeTrackingState] char(1) NULL
-        , [ChangeTrackingStateDesc] nvarchar(60) NULL
+        , [ChangeTrackingState] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ChangeTrackingStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [HasCrawlCompleted] bit NOT NULL
-        , [CrawlType] char(1) NULL
-        , [CrawlTypeDesc] nvarchar(60) NULL
+        , [CrawlType] char(1) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CrawlTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CrawlStartDate] datetime NULL
         , [CrawlEndDate] datetime NULL
         , [IndexedColumnCount] bigint NOT NULL
@@ -53988,63 +53987,63 @@ BEGIN
         , [OldestPopulationStartTime] datetime NULL
         , [OutstandingBatchCount] bigint NOT NULL
         , [FailedDocumentCount] bigint NOT NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseName],[TableObjectId])
     );
     CREATE TABLE [#FullTextAnalysis_Population]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [TableName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [TableObjectId] int NOT NULL
         , [CatalogId] int NOT NULL
         , [PopulationType] int NULL
-        , [PopulationTypeDescription] nvarchar(120) NULL
+        , [PopulationTypeDescription] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [Status] int NULL
-        , [StatusDescription] nvarchar(120) NULL
+        , [StatusDescription] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [CompletionType] int NULL
-        , [CompletionTypeDescription] nvarchar(120) NULL
+        , [CompletionTypeDescription] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsClusteredIndexScan] bit NULL
         , [RangeCount] int NULL
         , [CompletedRangeCount] int NULL
         , [OutstandingBatchCount] int NULL
-        , [QueuedPopulationTypeDescription] nvarchar(120) NULL
+        , [QueuedPopulationTypeDescription] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StartTime] datetime NULL
         , [AgeMinutes] bigint NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#FullTextAnalysis_BatchGroup]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [TableName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [TableObjectId] int NOT NULL
         , [CatalogId] int NOT NULL
         , [BatchErrorCode] int NULL
         , [IsRetryBatch] bit NOT NULL
-        , [RetryHintsDescription] nvarchar(120) NULL
+        , [RetryHintsDescription] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [BatchCount] bigint NOT NULL
         , [FailedDocumentCount] bigint NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#FullTextAnalysis_SemanticPopulation]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [TableName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [TableObjectId] int NOT NULL
         , [CatalogId] int NOT NULL
         , [DocumentCount] bigint NULL
         , [DocumentProcessedCount] bigint NULL
         , [CompletionType] int NULL
-        , [CompletionTypeDescription] nvarchar(120) NULL
+        , [CompletionTypeDescription] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [Status] int NULL
-        , [StatusDescription] nvarchar(120) NULL
+        , [StatusDescription] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WorkerCount] int NULL
         , [StartTime] datetime NULL
         , [AgeMinutes] bigint NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#FullTextAnalysis_MemoryPool]
     (
@@ -54054,32 +54053,52 @@ BEGIN
         , [MaxBufferLimit] bigint NULL
         , [BufferCount] bigint NULL
         , [AllocatedMb] decimal(19,2) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#FullTextAnalysis_FdHost]
     (
-          [FdHostType] nvarchar(120) NULL
+          [FdHostType] nvarchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [HostCount] bigint NOT NULL
         , [MaxThreadCount] bigint NULL
         , [BatchCount] bigint NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#FullTextAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+
+    CREATE TABLE [#FullTextAnalysis_FindingsExport]
+    (
+          [FindingOrdinal] bigint NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [ThresholdValue] decimal(38,4) NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+
+    /* Eigene lokale Arbeitstabellen werden vor dem NOWAIT-Quellabschnitt angelegt. */
+    SET LOCK_TIMEOUT 0;
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -54335,7 +54354,7 @@ OUTER APPLY
     FROM [sys].[fulltext_index_fragments] [x] WITH (NOLOCK)
     WHERE [x].[table_id]=[fi].[TableObjectId]
 ) [fr]
-WHERE [fi].[DatabaseName]=@pDatabaseName;
+WHERE [fi].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS;
 SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
                     EXEC [sys].[sp_executesql] @Sql,N'@pDatabaseName sysname,@pRows bigint OUTPUT',
@@ -54368,7 +54387,7 @@ SELECT @pDatabaseName,[fi].[SchemaName],[fi].[TableName],[fi].[TableObjectId],[p
        N''Die DMV zeigt ausschliesslich aktuell laufende Populationen und semantische Extraktionen; Nullzeilen sind weder Abschlussnachweis noch Historie.''
 FROM [sys].[dm_fts_index_population] [p] WITH (NOLOCK)
 JOIN [#FullTextAnalysis_FullTextIndex] [fi]
-  ON [fi].[DatabaseName]=@pDatabaseName AND [fi].[TableObjectId]=[p].[table_id]
+  ON [fi].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS AND [fi].[TableObjectId]=[p].[table_id]
 WHERE [p].[database_id]=DB_ID();
 SET @pRows=@@ROWCOUNT;';
                     SET @Rows=0;
@@ -54398,7 +54417,7 @@ SELECT @pDatabaseName,[fi].[SchemaName],[fi].[TableName],[fi].[TableObjectId],[b
        N''Batches sind aktuelle interne Arbeitseinheiten; Fehlercodes und Retry-Metadaten werden aggregiert, Inhalte, Batch-IDs und Speicheradressen bleiben ausgeschlossen.''
 FROM [sys].[dm_fts_outstanding_batches] [b] WITH (NOLOCK)
 JOIN [#FullTextAnalysis_FullTextIndex] [fi]
-  ON [fi].[DatabaseName]=@pDatabaseName AND [fi].[TableObjectId]=[b].[table_id]
+  ON [fi].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS AND [fi].[TableObjectId]=[b].[table_id]
 WHERE [b].[database_id]=DB_ID()
 GROUP BY [fi].[SchemaName],[fi].[TableName],[fi].[TableObjectId],[b].[catalog_id],
          [b].[hr_batch],[b].[is_retry_batch],[b].[retry_hints_description];
@@ -54437,7 +54456,7 @@ SELECT @pDatabaseName,[fi].[SchemaName],[fi].[TableName],[fi].[TableObjectId],[p
        N''Die semantische DMV zeigt nur die aktuelle Aehnlichkeitspopulation; sie beweist weder Vollstaendigkeit indizierter Inhalte noch eine Historie.''
 FROM [sys].[dm_fts_semantic_similarity_population] [p] WITH (NOLOCK)
 JOIN [#FullTextAnalysis_FullTextIndex] [fi]
-  ON [fi].[DatabaseName]=@pDatabaseName AND [fi].[TableObjectId]=[p].[table_id]
+  ON [fi].[DatabaseName]=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS AND [fi].[TableObjectId]=[p].[table_id]
 WHERE [p].[database_id]=DB_ID();
 SET @pRows=@@ROWCOUNT;';
                         SET @Rows=0;
@@ -54827,7 +54846,12 @@ SET @pRows=@@ROWCOUNT;';
         FROM [#FullTextAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
            OR ([ff].[DatabaseName] IS NULL AND ([ds].[CatalogCount]>0 OR [ds].[FullTextIndexCount]>0))
-    ) [f];
+    ) [f]
+    WHERE NOT EXISTS
+    (
+        SELECT 1 FROM [#FullTextAnalysis_DatabaseCandidateWarnings] [w]
+        WHERE [w].[RequestedName]=[ds].[DatabaseName]
+    );
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -54845,6 +54869,16 @@ SET @pRows=@@ROWCOUNT;';
     FROM [#FullTextAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
+    /* Ausgabegrenzen werden nach der vollständigen Zählerbildung einmal angewandt. */
+    INSERT [#FullTextAnalysis_FindingsExport]
+    ([FindingOrdinal],[DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],
+     [FindingCode],[MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+    SELECT TOP(@Limit) [FindingOrdinal],[DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],
+           [FindingCode],[MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck]
+    FROM [#FullTextAnalysis_Findings]
+    WHERE @NurProblematisch=0 OR [Severity]='WARN'
+    ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+
     IF @JsonErzeugen=1
     BEGIN
         SELECT @Json=(
@@ -54852,7 +54886,7 @@ SET @pRows=@@ROWCOUNT;';
                 JSON_QUERY((SELECT N'USP_FullTextAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
                 JSON_QUERY(COALESCE((SELECT * FROM [#FullTextAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
                 JSON_QUERY(COALESCE((SELECT * FROM [#FullTextAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#FullTextAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT * FROM [#FullTextAnalysis_FindingsExport] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#FullTextAnalysis_Catalog] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[LogicalSizeMb] DESC,[DatabaseName],[CatalogName] FOR JSON PATH),N'[]')) AS [catalogs],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#FullTextAnalysis_FullTextIndex] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[QueryableFragmentCount] DESC,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [fullTextIndexes],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#FullTextAnalysis_Population] WHERE @NurProblematisch=0 OR [AgeMinutes]>=@PopulationAgeWarnMinutes OR [Status]=11 ORDER BY [AgeMinutes] DESC,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [populations],
@@ -54870,8 +54904,7 @@ SET @pRows=@@ROWCOUNT;';
                N'Read-only Full-Text-Metadatenaufnahme; keine Tabelleninhalte, Suchbegriffe, Crawl-Logs, Pfade, Schluesselwerte oder DDL.' AS [Detail];
         SELECT * FROM [#FullTextAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
         SELECT * FROM [#FullTextAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#FullTextAnalysis_Findings]
-        WHERE @NurProblematisch=0 OR [Severity]='WARN'
+        SELECT * FROM [#FullTextAnalysis_FindingsExport]
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
         SELECT TOP(@Limit) * FROM [#FullTextAnalysis_Catalog]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
@@ -54905,14 +54938,14 @@ SET @pRows=@@ROWCOUNT;';
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#FullTextAnalysis_Findings'
+              @SourceTable=N'#FullTextAnalysis_FindingsExport'
             , @ResultLabel=N'FullTextAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#FullTextAnalysis_Findings'
+              @SourceTable = N'#FullTextAnalysis_FindingsExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

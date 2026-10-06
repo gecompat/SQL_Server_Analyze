@@ -1599,3 +1599,116 @@ Partialitätsverträge, der NOWAIT-Metadatenvertrag sowie beide Adapterprüfunge
 Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt;
 die abschließenden Privacy- und Schreibstilprüfungen bestanden mit denselben
 Dateizahlen und null Findings.
+
+## Full-Text-Leerscope und Exportgrenzen am 6. Oktober 2026
+
+Der Slice härtet ausschließlich bestehende Verträge von
+`Code/09_VersionAdaptive/060_USP_FullTextAnalysis.sql`. 65 zuvor implizite
+Textspalten erhalten die Frameworkcollation. Zusammen mit sechs bereits
+collatierten Filterspalten und zehn Textspalten des neuen Findingsexports
+besitzen alle 81 lokalen Textdeklarationen eine explizite Collation.
+Vier dynamische Vergleiche zwischen Temp-Tabellen und Datenbankparametern
+verwenden die Frameworkcollation. Der gemeinsame Findingsausschnitt wird
+nach vollständiger Zählerbildung gefiltert und begrenzt; seine typisierte
+Temp-Tabelle entsteht vor dem NOWAIT-Quellabschnitt. RAW, CONSOLE, TABLE und
+JSON verwenden diesen Ausschnitt bei unveränderten 13 Findingsfeldern.
+`NULL` und `0` bleiben unbegrenzt. Negative Limits liefern den bestehenden
+Parameterfehler ohne zusätzliches negatives TOP. Auswahlwarnings werden
+von der späteren Datenbankstatusneuberechnung ausgenommen.
+
+### Native Runtime und Baselines
+
+Ein eigenes Docker-Lab verwendete SQL Server 2025 unter Linux, Major 17,
+ProductVersion `17.0.4075.5`. Server und `tempdb` verwendeten
+`Latin1_General_100_CS_AS`, das Framework `SQL_Latin1_General_CP1_CS_AS`
+und die eigene leere Testquelle `Latin1_General_100_CI_AS`.
+`SERVERPROPERTY(IsFullTextInstalled)` lieferte 0. Die Werte wurden über eine
+begrenzte native Metadatenabfrage erfasst; konkrete Runtimeidentitäten
+bleiben außerhalb des Repositorys.
+
+Die unveränderte Procedure aus Basisrevision
+`b09cf4d81666d831fab80a99d1c8a9d817ea99b9` wurde getrennt installiert.
+Vier tatsächlich ausgeführte Baselines zeigten:
+
+| Vorhandener Vertrag | Beobachtete Abweichung der Basis |
+|---|---|
+| TABLE-Textcollation | Alle zehn Textspalten verwendeten die abweichende tempdb-Collation. |
+| `@MaxZeilen = NULL` | `INVALID_PARAMETER` und Partialität 1. |
+| Gültige plus fehlende Datenbankauswahl | `NOT_APPLICABLE`, Partialität 0 und keine erhaltene `DATABASE_UNAVAILABLE`-Warning. |
+| Negatives Limit mit JSON | SQL-Fehler 127; der OUTPUT-Status blieb NULL. |
+
+Die Baselinequelle war eine eigene leere Datenbank ohne Full-Text-DDL.
+Ihr Compatibility Level wurde nicht separat erfasst. Diese Baselines sind
+kein Nachweis positiver Full-Text-Katalog-, Index- oder Populationpfade.
+
+### Finale Nachweise und Harnesskorrekturen
+
+Der kanonische Gesamtinstaller mit 166 Quellen und
+`Integration/110_Smoke_Test.sql` bestanden. Anschließend bestanden
+`Common/158_FullTextAnalysis_Collation_Runtime_Contract.sql` und der
+unveränderte `Integration/183_P2_FullText_Runtime_Contract.sql` jeweils
+mit Framework-Compatibility-Level 150, 160 und 170: sechs erfolgreiche
+Dateiläufe. Common158 setzt den Level seiner eigenen Quelle jeweils
+explizit auf denselben Wert und prüft Framework- und Sourcelevel getrennt.
+
+Common158 prüft pro Level zehn Leer- und Negativfälle sowie zusätzliche
+RAW- und CONSOLE-Leeraufrufe. Native Katalogabfragen bestätigen den leeren
+Scope. Assertions prüfen die unabhängige Achtmenge von Quellcodes, Status,
+Partialität und Zeilenzählern, den 13-Felder-Export mit zehn explizit
+collatierten Textspalten, NULL-/0-/positive und negative Mengenparameter,
+weitere ungültige Parameter sowie die erhaltene Auswahlwarning.
+Leere Findings- und Detailarrays belegen keine positive Filter- oder
+Limitwirkung. Integration183 enthält drei Runtimeaufrufe, zwölf
+Definitionsprüfungen und eine Privacy-/Read-only-Prüfung; diese 16 Fälle
+werden nicht als 16 positive Featurepfade ausgewiesen.
+
+Der erste Common158-Versuch scheiterte vor dem Produktaufruf mit 51011,
+weil die Dummy-Zieltabelle fehlte. Nach ihrer Ergänzung scheiterte Case 0
+mit 56214 im Quellenmengenvergleich. Eine begrenzte Gegenprobe bestätigte
+alle acht korrekten Produktzeilen. Ein nativer Minimaltest verglich
+SQL-NULL mit einer fehlenden JSON-Eigenschaft: Die OPENJSON-Projektion
+`sysname` lieferte in diesem EXCEPT-Vergleich eine Differenzzeile,
+`nvarchar(128)` keine. Beide tatsächlichen globalen Datenbankwerte waren
+SQL-NULL. Die beiden nullable SourceStatus-Projektionen verwenden deshalb
+im finalen Test `nvarchar(128)`. Beide fehlgeschlagenen Harnessläufe bleiben
+fehlgeschlagen; sie belegen keinen Produktquellenfehler. Der unabhängige
+Review prüfte den Produktstand und beide Testkorrekturen ohne offene Befunde.
+
+Die ausgeführten kanonischen Quellen besitzen folgende UTF-8/LF-SHA-256:
+
+| Quelle | SHA-256 |
+|---|---|
+| FullText060 | `9DA68A87C4CBFF613AE9D278B5F940096732B0DF3772239163A5C6B19C0E4804` |
+| Common158 | `C1D561C0AA91679D6A84919AF75B94AD99B740A58502A2545818EBF240A9D7A4` |
+
+Der native installierte Proceduretext wurde vom qualifizierten Objektnamen
+bis zum abschließenden END gegen die kanonische Quelle verglichen. Nach
+LF-Normalisierung und Entfernen äußerer Batchmarker stimmen die UTF-16-
+Bodyhashes mit
+`29D9FF0D3EEAB7EA5A895ED2F6E511E947A1DD652DD061CCB0E0614DE6F6B0DC`
+überein. Die privaten Runner ersetzten den Installationsplatzhalter;
+zusätzliche Diagnosemarker gehörten ausschließlich zu getrennten
+Fehlergegenproben und nicht zum final bestandenen Common158-Quellstand.
+
+### Aussagegrenze und Cleanup
+
+Nichtleere Kataloge, Indizes, Findings, Populationen, Batches, semantische
+Populationen, Memory Pools und FDHosts bleiben für diesen Slice unbelegt.
+Es wurde keine Full-Text-DDL, keine Inhaltsabfrage und keine neue
+Berechtigungsvariante ausgeführt. CL150/160 auf SQL Server 2025 sind keine
+nativen 2019-/2022-Nachweise. Das Delta ändert keine Engine-Majorzweige,
+Berechtigungen oder Katalogschemas; ein zusätzliches natives Versionsrisiko
+wurde nicht festgestellt. COLL-001 bleibt partiell.
+
+Das eigene Lab wurde über `Remove-SqlServerLab -Force -Confirm:$false`
+entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
+`CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
+Secretwert wurde danach entfernt. Private Prüfzustände bleiben außerhalb
+von Git. Die zwei zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Darin bestanden Privacy
+mit 1.041 Repositorydateien und null Findings, Schreibstil mit 698
+Repositorydateien und null Findings, Roadmap-, Maturity- und
+Partialitätsverträge, der NOWAIT-Metadatenvertrag sowie beide Adapterprüfungen.
+Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt.
