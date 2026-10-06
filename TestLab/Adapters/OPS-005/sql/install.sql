@@ -41251,6 +41251,21 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_AvailabilityDeepAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    /* Eigener schemaidentischer Export entsteht vor NOWAIT und Ausgabehelpern. */
+    CREATE TABLE [#AvailabilityDeepAnalysis_ReplicasExport]
+    (
+          [AvailabilityGroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ReplicaServerName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IsLocal] bit NULL
+        , [RoleDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [OperationalStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ConnectedStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SynchronizationHealthDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AvailabilityModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FailoverModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SeedingModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
     SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
@@ -41263,7 +41278,8 @@ BEGIN
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @OutputMode = 'NONE';
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
                                  THEN CONVERT(bigint, 9223372036854775807)
-                                 ELSE CONVERT(bigint, @MaxZeilen) END;
+                                 WHEN @MaxZeilen > 0 THEN CONVERT(bigint, @MaxZeilen)
+                                 ELSE CONVERT(bigint, 0) END;
 
     IF @Hilfe = 1
     BEGIN
@@ -41283,65 +41299,65 @@ BEGIN
 
     CREATE TABLE [#AvailabilityDeepAnalysis_Cluster]
     (
-          [ClusterName] nvarchar(128) NULL
-        , [QuorumTypeDesc] nvarchar(60) NULL
-        , [QuorumStateDesc] nvarchar(60) NULL
-        , [FindingCode] varchar(80) NOT NULL
+          [ClusterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QuorumTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QuorumStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AvailabilityDeepAnalysis_Members]
     (
-          [MemberName] nvarchar(256) NULL
-        , [MemberTypeDesc] nvarchar(60) NULL
-        , [MemberStateDesc] nvarchar(60) NULL
+          [MemberName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MemberTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MemberStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [NumberOfQuorumVotes] int NULL
     );
     CREATE TABLE [#AvailabilityDeepAnalysis_Networks]
     (
-          [MemberName] nvarchar(128) NULL
-        , [NetworkSubnetIp] nvarchar(48) NULL
+          [MemberName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [NetworkSubnetIp] nvarchar(48) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [NetworkSubnetPrefixLength] int NULL
         , [IsPublic] bit NULL
         , [IsIpv4] bit NULL
     );
     CREATE TABLE [#AvailabilityDeepAnalysis_Replicas]
     (
-          [AvailabilityGroupName] sysname NULL
-        , [ReplicaServerName] nvarchar(256) NULL
+          [AvailabilityGroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ReplicaServerName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsLocal] bit NULL
-        , [RoleDesc] nvarchar(60) NULL
-        , [OperationalStateDesc] nvarchar(60) NULL
-        , [ConnectedStateDesc] nvarchar(60) NULL
-        , [SynchronizationHealthDesc] nvarchar(60) NULL
-        , [AvailabilityModeDesc] nvarchar(60) NULL
-        , [FailoverModeDesc] nvarchar(60) NULL
-        , [SeedingModeDesc] nvarchar(60) NULL
-        , [FindingCode] varchar(80) NOT NULL
+        , [RoleDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [OperationalStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ConnectedStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SynchronizationHealthDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AvailabilityModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FailoverModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SeedingModeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AvailabilityDeepAnalysis_Databases]
     (
-          [AvailabilityGroupName] sysname NULL
-        , [ReplicaServerName] nvarchar(256) NULL
+          [AvailabilityGroupName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ReplicaServerName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsLocal] bit NULL
-        , [SynchronizationStateDesc] nvarchar(60) NULL
-        , [SynchronizationHealthDesc] nvarchar(60) NULL
-        , [DatabaseStateDesc] nvarchar(60) NULL
+        , [SynchronizationStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SynchronizationHealthDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [DatabaseStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSuspended] bit NULL
-        , [SuspendReasonDesc] nvarchar(60) NULL
+        , [SuspendReasonDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [LogSendQueueSizeKb] bigint NULL
         , [RedoQueueSizeKb] bigint NULL
         , [SecondaryLagSeconds] bigint NULL
         , [LastCommitTime] datetime NULL
-        , [FindingCode] varchar(100) NOT NULL
-        , [FindingSeverity] varchar(16) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AvailabilityDeepAnalysis_Seeding]
     (
-          [RemoteMachineName] nvarchar(256) NULL
-        , [RoleDesc] nvarchar(60) NULL
-        , [DatabaseName] sysname NULL
-        , [CurrentStateDesc] nvarchar(60) NULL
+          [RemoteMachineName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RoleDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CurrentStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FailureCode] int NULL
         , [TransferredSizeBytes] bigint NULL
         , [DatabaseSizeBytes] bigint NULL
@@ -41351,19 +41367,19 @@ BEGIN
         , [EstimateTimeCompleteUtc] datetime NULL
         , [ProgressPercent] decimal(9,4) NULL
         , [RemainingBytes] bigint NULL
-        , [FindingCode] varchar(100) NOT NULL
-        , [FindingSeverity] varchar(16) NOT NULL
+        , [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#AvailabilityDeepAnalysis_PageRepair]
     (
           [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FileId] int NULL
         , [PageId] bigint NULL
         , [ErrorType] int NULL
         , [PageStatus] int NULL
         , [ModificationTime] datetime NULL
-        , [FindingCode] varchar(80) NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @QueueWarnMb IS NULL OR @SecondaryLagWarnSeconds IS NULL
@@ -41485,6 +41501,11 @@ BEGIN
         END CATCH;
     END;
 
+    /* Status und Befunde gelten für den vollständigen Scope vor dem Ausgabelimit. */
+    INSERT [#AvailabilityDeepAnalysis_ReplicasExport]
+    SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Replicas]
+    ORDER BY [AvailabilityGroupName], [ReplicaServerName];
+
     SELECT @StatusCodeOut = @StatusCode, @IsPartialOut = @IsPartial,
            @ErrorNumberOut = @ErrorNumber, @ErrorMessageOut = @ErrorMessage;
 
@@ -41502,7 +41523,7 @@ BEGIN
         DECLARE @NetworkJson nvarchar(max) =
             (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Networks] ORDER BY [MemberName], [NetworkSubnetIp] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @ReplicaJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Replicas] ORDER BY [AvailabilityGroupName], [ReplicaServerName]
+            (SELECT * FROM [#AvailabilityDeepAnalysis_ReplicasExport] ORDER BY [AvailabilityGroupName], [ReplicaServerName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @DatabaseJson nvarchar(max) =
             (SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Databases]
@@ -41535,7 +41556,7 @@ BEGIN
         SELECT * FROM [#AvailabilityDeepAnalysis_Cluster];
         SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Members] ORDER BY [MemberName];
         SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Networks] ORDER BY [MemberName], [NetworkSubnetIp];
-        SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Replicas] ORDER BY [AvailabilityGroupName], [ReplicaServerName];
+        SELECT * FROM [#AvailabilityDeepAnalysis_ReplicasExport] ORDER BY [AvailabilityGroupName], [ReplicaServerName];
         SELECT TOP (@Limit) * FROM [#AvailabilityDeepAnalysis_Databases]
         ORDER BY CASE [FindingSeverity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 ELSE 3 END,
                  [AvailabilityGroupName], [DatabaseName];
@@ -41574,14 +41595,14 @@ BEGIN
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#AvailabilityDeepAnalysis_Replicas'
+              @SourceTable=N'#AvailabilityDeepAnalysis_ReplicasExport'
             , @ResultLabel=N'AvailabilityDeepAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#AvailabilityDeepAnalysis_Replicas'
+              @SourceTable = N'#AvailabilityDeepAnalysis_ReplicasExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

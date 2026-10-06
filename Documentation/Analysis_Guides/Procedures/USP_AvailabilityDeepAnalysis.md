@@ -25,7 +25,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `replicas`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert ausschließlich `replicas` mit elf Feldern und zehn explizit mit `SQL_Latin1_General_CP1_CS_AS` collatierten Textspalten. Das aktive CONSOLE verwendet dieselbe Replikamenge. RAW und JSON führen zusätzlich Cluster, Mitglieder, optionale Netzwerke, Datenbankzustände, Seeding und Seitenreparatur. JSON enthält `meta` und sieben fachliche Arrays; separate Quellenstatus- oder Warning-Arrays gehören nicht zu diesem Vertrag. Modulstatus und Partialität sind vor den Fachergebnissen zu lesen. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+
+Nach vollständiger Statusbewertung wird die Replikamenge einmal nach AG- und Replikaservername geordnet und durch `@MaxZeilen` ausgewählt. TABLE, CONSOLE, RAW und JSON verwenden anschließend dieselbe Auswahl. `NULL` und `0` sind unbegrenzt; positive Werte begrenzen. Negative Limits liefern sicher `INVALID_PARAMETER` und leere Fachmengen. Die übrigen RAW-/JSON-Limits bleiben je fachlicher Menge erhalten; Cluster ist weiterhin ohne Zeilenlimit.
 
 ## Eine Zeile bedeutet
 
@@ -51,7 +53,7 @@ Ein kurzer Peak nach großer Transaktion kann sich normal abbauen.
 
 ## Leere oder partielle Ausgabe
 
-Eine leere Deep-Sicht kann bedeuten, dass keine AG konfiguriert ist oder dass lokale Rolle, Plattform, Version beziehungsweise Berechtigung Cluster-, Seeding- oder Reparatur-DMVs nicht verfügbar machen. SourceStatus und Partialität sind deshalb Teil des Ergebnisses.
+Eine leere Deep-Sicht kann bedeuten, dass keine AG konfiguriert ist oder dass lokale Rolle, Plattform, Version beziehungsweise Berechtigung Cluster-, Seeding- oder Reparatur-DMVs nicht verfügbar machen. Der Modulstatus und seine Partialität kennzeichnen deshalb die Aussagegrenze; ein separater Quellenstatus wird nicht ausgegeben.
 
 Für `USP_AvailabilityDeepAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
@@ -65,9 +67,9 @@ Für `USP_AvailabilityDeepAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, 
 | Haupttreiber | Zahl lokaler AGs, Replicas und Availability-Datenbanken sowie Seeding-, Auto-Page-Repair-, Cluster- und optional Netzwerkzeilen. Ohne AG-/Datenbankfilter wird dieser lokale Gesamtbestand vor den Resultsetlimits erhoben. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_AvailabilityDeepAnalysis ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | Geringe bis mittlere CPU für lokale HADR-/Cluster-DMVs und Temp-Tabellen; kein Remotequery, Nutzdaten-, Log- oder Storage-Scan. |
-| Begrenzungswirkung | MaxZeilen begrenzt Resultsets, aber nicht zwingend alle vorab gelesenen HADR-/Clusterzeilen und nie die zeitliche Nicht-Atomarität der Teilquellen. |
+| Begrenzungswirkung | `@MaxZeilen` begrenzt Replikas, Mitglieder, Netzwerke, Datenbankzustände, Seeding und Seitenreparatur bei der Ausgabe. Cluster bleibt ohne Mengenlimit. Die Quellen werden vor den Ausgabelimits erhoben; die zeitliche Nicht-Atomarität bleibt bestehen. |
 | Locking und Nebenwirkungen | Read-only. Zustände ändern sich während der verteilten Erfassung; nicht erreichbare Komponenten liefern partielle Evidenz statt eines konsistenten Gesamtsnapshots. |
-| Schutzmechanismus | Kein High-Impact-Gate. `@MitClusterNetzwerken = 0` lässt die optionale Netzwerksicht aus, Schwellen priorisieren Findings und `@MaxZeilen` begrenzt jedes Resultset. Da weder Datenbank- noch AG-Filter existieren, schützt das Limit nicht vor dem vollständigen lokalen HADR-/Cluster-Snapshot. |
+| Schutzmechanismus | Kein High-Impact-Gate. `@MitClusterNetzwerken = 0` lässt die optionale Netzwerksicht aus, Schwellen priorisieren Findings und `@MaxZeilen` begrenzt die fachlichen Mengen mit Ausnahme von Cluster. Da weder Datenbank- noch AG-Filter existieren, schützt das Limit nicht vor dem vollständigen lokalen HADR-/Cluster-Snapshot. |
 | Sicherer Einsatz | Mit `@MitClusterNetzwerken = 0` und Standardlimit beginnen; lokale Rolle dokumentieren und Netzwerkdetails nur bei passender Clusterhypothese aktivieren. |
 | Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „verteilter, nicht atomarer Snapshot“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
 
@@ -118,6 +120,8 @@ WHERE [ag].[name] = N'ExampleAvailabilityGroup';
 ### Zeit- und Scope-Modell
 
 Die Auswertung beschreibt den aktuellen verteilungsabhängigen Snapshot; einige Daten sind nur auf dem Primary oder der lokalen Replica verfügbar.
+
+Common 162 prüft den Leerscope nur bei nativ bestätigtem `IsHadrEnabled=0`. Der Vertrag kontrolliert das Elf-Felder-TABLE-Schema, zehn Textcollations, die acht JSON-Topkeys, Metadaten und leere Arrays sowie die Akzeptanz oder Ablehnung von Parametern. Bei aktiviertem oder unbekanntem HADR meldet er `NOT_EXECUTED`. Leere Mengen liefern keine positive AG-, Replika-, Queue-, Cluster-, Seeding-, Seitenreparatur-, Berechtigungs- oder Limitwirkung. RAW und CONSOLE werden nur über Status und begleitende JSON-Mengen geprüft.
 
 ### Bewertung und Gegenprobe
 

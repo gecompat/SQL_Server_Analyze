@@ -429,6 +429,10 @@ Diese Werte dienen als Sichtungsgrenzen und stellen keine universellen Service L
 | Seeding | Remote Machine, Rolle, DB, Zustand, FailureCode, Transfer-/DB-Größe, Rate, Start/End |
 | PageRepair | DB/File/Page, ErrorType, PageStatus, ModificationTime, `FindingCode` |
 
+TABLE und das aktive CONSOLE verwenden ausschließlich die Replikamenge mit elf Feldern und zehn explizit collatierten Textspalten. Nach vollständiger Statusbewertung wird diese Menge einmal geordnet und begrenzt; RAW und JSON übernehmen dieselbe Auswahl. Die übrigen RAW-/JSON-Mengen behalten ihre Limits, während Cluster ohne Mengenlimit bleibt. `NULL` und `0` bedeuten unbegrenzt; negative Limits liefern sicher `INVALID_PARAMETER`. JSON enthält Metadaten und sieben fachliche Arrays ohne zusätzliche Quellenstatus- oder Warning-Arrays.
+
+Der begrenzte Common-162-Vertrag prüft ausschließlich den nativ bestätigten HADR-deaktivierten Leerscope mit Schema, Collations, JSON-Struktur und Parametern. Bei aktiviertem oder unbekanntem HADR meldet er `NOT_EXECUTED`. Die Akzeptanz positiver Limits in leeren Mengen belegt keine positive Replikabegrenzung oder andere HADR-Featurewirkung.
+
 ### Interpretation
 
 - Quorumabweichung ist Clusterkontext; kein automatischer Failoverauftrag.

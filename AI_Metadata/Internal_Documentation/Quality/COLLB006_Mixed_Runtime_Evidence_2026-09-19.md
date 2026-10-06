@@ -2086,3 +2086,118 @@ Repositorydateien ohne Findings, Schreibstil 701 und Regex 333.
 Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
 mit 914 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
 Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt.
+
+## AvailabilityDeepAnalysis: HADR-deaktivierter Exportvertrag vom 7. Oktober 2026
+
+Der Slice betrifft
+`Code/07_Infrastructure/110_USP_AvailabilityDeepAnalysis.sql` und Common162.
+Die öffentliche TABLE-Fläche bleibt auf `replicas` begrenzt. Der native
+Nachweis umfasst ausschließlich das tatsächlich deaktivierte HADR,
+Leermengen, Schemas, Collations, JSON-Struktur und Parameterverhalten.
+Eine aktive AG-Topologie oder positive Replikabegrenzung wird nicht behauptet.
+
+### Baseline und Produktdelta
+
+Die Baseline stammt aus
+`696c9e9835f5ea8d9e58f779ddc7a05057212ec1` und wurde im eigenen Lab
+nach kanonischer Installation und Smoke110 separat installiert. Sechs
+kontrollierte Aufrufe verwendeten keine Quelldatenbanken oder Clusterobjekte.
+Die gültigen NULL-/0-/Limit-1-Aufrufe lieferten
+`NOT_APPLICABLE/IsPartial=0`, einen leeren Replikaexport und zehn falsch
+collatierte TABLE-Textspalten. NULL für die Queuegrenze und eine negative
+Laggrenze lieferten bereits korrekt `INVALID_PARAMETER/IsPartial=1`,
+ebenfalls mit zehn falsch collatierten TABLE-Textspalten. Ein negativer
+Mengenparameter im NONE-/JSON-Pfad ließ dagegen Fehler 127 entweichen;
+die zuvor zurückgesetzten OUTPUT-Statuswerte blieben NULL. Die Leermengen
+belegen keine positive Replika-Limitabweichung.
+
+Die sieben bestehenden Arbeitstabellen besitzen 36 explizit collatierte
+Textspalten. Ein typgleicher Replikaexport ergänzt zehn Textspalten und
+entsteht vor den Ausgabehelpern. Nach vollständiger Statusbewertung wird
+die Replikamenge einmal geordnet und begrenzt. TABLE, aktives CONSOLE,
+RAW und JSON verwenden diese gemeinsame Auswahl. Die übrigen
+RAW-/JSON-Limits bleiben erhalten; Cluster bleibt ohne Mengenlimit.
+NULL und 0 sind unbegrenzt, positive Werte begrenzen und negative Werte
+verwenden intern eine sichere Nullgrenze bei `INVALID_PARAMETER`.
+
+Die öffentliche JSON-Struktur bleibt bei `meta` und sieben Arrays.
+Separate Quellenstatus- oder Warning-Arrays werden nicht eingeführt.
+Die betroffenen Dokumente präzisieren den vorhandenen Modulstatus sowie
+die bestehende Cluster-Ausnahme. HADR-Sammlung, Interpretationsfunktionen,
+Berechtigungen, Versionszweige und Katalogschemas bleiben unverändert.
+
+### Tatsächlich ausgeführter Runtimeumfang
+
+Das eigene Linux-Lab verwendete SQL Server 2025, ProductVersion
+`17.0.4075.5`, mit nativ bestätigtem `IsHadrEnabled=0`. Server und `tempdb`
+verwendeten `Latin1_General_100_CS_AS`; das Framework verwendete
+`SQL_Latin1_General_CP1_CS_AS` und separat bestätigtes Compatibility
+Level 170. Es wurden keine Quelldatenbanken, Availability Groups,
+Clusterobjekte, Netzwerkpfade oder Seedingzustände erzeugt.
+
+Die Installation aus 166 kanonischen Dateien und Smoke110 bestanden.
+Der fokussierte Common162-Lauf bestand im ersten Versuch zehn
+TABLE-/JSON-Fälle, vier RAW-/CONSOLE-Statusfälle und zwei zusätzliche
+JSON-Consumerfälle. Der TABLE-Schemavergleich prüft relative Ordinals,
+Namen, Typen, Längen, Precision, Scale, Nullbarkeit und Collation aller
+elf Felder. Alle zehn Textspalten besitzen die garantierte Collation.
+Die JSON-Prüfung vergleicht acht Top-Level-Properties, acht Metafelder
+mit ursprünglichen Typen, tatsächliche Majorversion und zeitlich
+eingeschlossene Erfassungszeit. Alle sieben Arrays bleiben leer.
+
+Gültige Aufrufe erwarten `NOT_APPLICABLE/IsPartial=0`; ungültige Queue-,
+Lag-, Mengen- und Ausgabeparameter erwarten `INVALID_PARAMETER/IsPartial=1`.
+NULL-/0-/positive Mengenwerte und die Netzwerkoption sind im Leerscope
+auf Akzeptanz geprüft. Die Netzwerkoption aktiviert damit keine echte
+Netzwerkquelle. RAW und CONSOLE werden ausschließlich über OUTPUT-Status
+und begleitende JSON-Mengen geprüft; ihre ausgegebenen Zeilen werden
+nicht separat abgefangen. Die zwei zusätzlichen JSON-Consumerfälle
+verwenden eine NULL-Queuegrenze und eine ungültige Ausgabeart.
+
+Integration176 bestand bei CL170 mit einem echten AG-NONE-Aufruf und
+drei synthetischen Interpretationsfällen für Suspend, Queue und Seeding.
+Die synthetischen TVF-Eingaben sind keine native AG-, Queue- oder
+Seedingevidenz. Auf dem Lab wurde keine operative HADR-Aktion ausgeführt.
+
+### Quellidentität, Aussagegrenze und Cleanup
+
+Die UTF-8/LF-Hashes betragen für die kanonische Procedure
+`88207C88EBE4C7F5DBB90AE856A186FE4CE836F2A0C6FE95C849FE1764FA9089`
+und für den tatsächlich ausgeführten Common162-Stand
+`4A3B0663C703619F300F279472994CFC49E9954B6BFBEE9C917CBAAC5D117A2F`.
+Nach dem Lauf wurde ausschließlich ein Kommentar zu den beiden zusätzlichen
+JSON-Verbraucher-Aufrufen korrigiert. Der finale Common162-Stand besitzt
+den UTF-8/LF-Hash
+`C47AD774B7F184286D93F8215BD80EF707C677F4ADCC22D7BF19F89E67B75AED`.
+Der Vergleich mit `normalize_executable_sql` aus Validator925 bestätigt
+die identische ausführbare SQL nach Rücksetzen des Installationsplatzhalters.
+Der erfolgreiche native Lauf wurde für diese Kommentarkorrektur nicht wiederholt.
+Der native installierte Body ab dem qualifizierten Objektnamen stimmt
+nach LF-Normalisierung und Entfernen äußerer Batchmarker mit der
+kanonischen UTF-16-Identität
+`8CA30B12168DA103F27325788F53CC0D74FEE4ACC1D6704F1C8C2449AA98C15B`
+überein. Der private Runner ersetzte ausschließlich den
+Installationsplatzhalter. Der OPS-005-Installer wurde kanonisch regeneriert.
+
+Positive AG-, Replika-, Queue-, Cluster-, Netzwerk-, Seeding-,
+Seitenreparatur-, Berechtigungs- und Limitnachweise bleiben für diesen
+Slice unbelegt. Common162 meldet bei aktiviertem oder unbekanntem HADR
+vor den Testfällen `NOT_EXECUTED`; dieser Zweig wurde nicht nativ
+ausgeführt. Der Harness akzeptiert Frameworklevels 150, 160 und 170;
+der aktuelle Lauf belegt ausschließlich 170 auf SQL Server 2025.
+Zusätzliche Compatibility Levels und ältere native Engines wurden nicht
+ausgeführt. Ein zusätzliches natives Versionsrisiko wurde nicht
+festgestellt. COLL-001 bleibt partiell.
+
+Das eigene Lab wurde mit `Remove-SqlServerLab -Force -Confirm:$false`
+entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
+`CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
+Secretwert wurde danach entfernt. Private Prüfzustände bleiben außerhalb
+von Git; die zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.044
+Repositorydateien ohne Findings, Schreibstil 702 und Regex 334.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 919 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt.
