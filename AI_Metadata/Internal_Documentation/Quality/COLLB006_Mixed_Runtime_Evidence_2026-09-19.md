@@ -1243,3 +1243,23 @@ Speicherknappheit, dauerhafte Checkpointprobleme, Transaktionsdruck oder eine
 separate CONSOLE-Erfassung. Flüchtige Speicherwerte werden nicht zwischen
 verschiedenen Momentaufnahmen als identisch vorausgesetzt. Die lokale Prüfung
 ersetzt die erforderliche erfolgreiche GitHub-CI am exakten PR-Head nicht.
+
+
+### Ausgewählte In-Memory-Regressionskombinationen
+
+Der Impact-Selector wählte acht Tests für den ausführbaren Kandidaten
+`0fd4d256290cb9844cab9211e24fac7cf97ba93a`. Der erste eigene gemischte SQL-Server-2025-Lauf
+bestand alle acht Tests bei Level 150 und sechs bei Level 160. Im bestehenden
+Navigator-Vertrag trat danach Fehler 1222 in `InternalPrepareSingleResultTable`
+auf; der gesamte Lauf blieb fehlgeschlagen. Nach Entfernung dieses eigenen Labs
+bestand ein frisches Lab gezielt die beiden noch offenen Tests bei Level 160
+und alle acht bei Level 170 mit Exitcode 0. Dieser Wiederholungskandidat
+`5444d16b6604a9e147cd9086131c23382197ad31` unterscheidet sich ausschließlich durch
+Evidenzpräzisierungen; SQL und Testvertrag sind identisch.
+
+Damit liegen erfolgreiche Ergebnisse für alle 24 ausgewählten Kombinationen
+vor, verteilt auf zwei Läufe. Der beobachtete Lock-Timeout wird dadurch nicht
+zu einem erfolgreichen ersten Lauf umgedeutet; eine konkrete Lockursache wurde
+nicht erfasst. Der begrenzte Frischlabnachweis belegt die erfolgreiche
+Wiederholung. Beide eigenen Container, Volumes und lokalen Labzustände wurden
+entfernt. Die erforderliche exakte GitHub-Head-CI bleibt ein gesondertes Gate.
