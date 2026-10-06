@@ -1263,3 +1263,44 @@ zu einem erfolgreichen ersten Lauf umgedeutet; eine konkrete Lockursache wurde
 nicht erfasst. Der begrenzte Frischlabnachweis belegt die erfolgreiche
 Wiederholung. Beide eigenen Container, Volumes und lokalen Labzustände wurden
 entfernt. Die erforderliche exakte GitHub-Head-CI bleibt ein gesondertes Gate.
+
+
+### Geerbtes NOWAIT bei eigener TABLE-Metadatenanlage
+
+Die erforderliche GitHub-SQL-CI am Head
+`9a9d4376ce20938fe839998036ca0cebbeea9e9c` scheiterte bei Compatibility Level 150
+mit Fehler 1222 in `InternalWriteResultTable` an der eigenen lokalen
+Metadatenanlage. Der synthetische CI-Container wurde durch den vorhandenen
+Cleanup beendet. Zusammen mit dem zuvor lokal beobachteten Fehler in
+`InternalPrepareSingleResultTable` zeigt dies einen zu engen NOWAIT-Pfad für
+eigene Temp-DDL; eine konkrete konkurrierende Sperrquelle wurde nicht erfasst.
+
+Der ausführbare Korrekturcommit
+`94e542ef925d67ea4172d3438cfadcaa0b1d4af5` schützt die eigene Metadatenanlage
+in Writer und Mehrfach-Preflight bei eingehendem Timeout 0 mit bis zu 1000 ms
+je CREATE. Andere Eingangswerte bleiben für diese Anlage erhalten. Der
+Single-Preflight verwendet für seine eigene Mappinganlage bis zu 1000 ms,
+auch bei anderen Eingangswerten; zuvor war diese Anlage stets NOWAIT.
+Unmittelbar danach bleiben fremde Quell-, Ziel- und Mappingoperationen bei
+`LOCK_TIMEOUT 0`. Ein Fehler während der eigenen Anlage stellt den gesicherten
+Eingangswert wieder her und wird unverändert weitergeworfen.
+
+Ein frisches eigenes gemischtes SQL-Server-2025-Lab bestand die Verträge
+`Common/123`, `Common/155`, `Integration/188` und `Integration/196` bei
+Compatibility Level 150, 160 und 170: zwölf erfolgreiche Dateiläufe mit Exitcode 0.
+Der erweiterte Vertrag 123 hat SHA-256
+`4E141414CFFD553DF8AB00480889A1F6FFFB3745B42F7A7124FB0709E608957F`.
+Je Level prüfen 50 Single-Preflights und 50 Writer-Appends eingehende Timeoutwerte
+0 und 731, die Quell-/Zielidentität, insgesamt 51 geschriebene Zeilen und zwei
+abgelehnte globale Zielnamen. Der Timeout des Aufrufers bleibt nach den
+geprüften Erfolgs- und Fehleraufrufen erhalten. Wiederholungen beweisen die
+getesteten Aufrufe, keine bestimmte Lockursache oder garantierte Fehlerfreiheit.
+
+Container, Volume und Zustand dieses erfolgreichen Labs wurden entfernt.
+Ein vorausgegangener unterbrochener Start besitzt keinen Testerfolgsnachweis;
+sein eigener Container und sein Volume wurden über die Lab-API entfernt.
+Die automatische Freigabeprüfung lehnte das rekursive Entfernen seines privaten
+temporären Zustands mit „blocked by policy“ ab. Dieses lokale Verzeichnis bleibt
+erhalten und gehört zu keinem Repository- oder GitHub-Artefakt. Der fehlgeschlagene
+GitHub-Lauf bleibt fehlgeschlagen; die erweiterte CI am neuen exakten Head ist
+weiterhin erforderlich.
