@@ -57896,6 +57896,24 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ClrAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+
+    CREATE TABLE [#ClrAnalysis_Findings]
+    (
+          [FindingOrdinal] bigint NOT NULL PRIMARY KEY
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [ThresholdValue] decimal(38,4) NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+
     SET @Json=NULL;
 
     DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
@@ -57913,6 +57931,7 @@ BEGIN
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@PrintMessage nvarchar(2048)=NULL;
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                                THEN CONVERT(bigint,9223372036854775807)
+                               WHEN @MaxZeilen<0 THEN CONVERT(bigint,0)
                                ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @RequiredPerformancePermission nvarchar(128)=CASE WHEN COALESCE(@Major,0)>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
 
@@ -57946,28 +57965,28 @@ BEGIN
             OR @MitSitzungskontext IS NULL OR @NurProblematisch IS NULL
             OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
             OR @SampleSeconds IS NULL OR @SampleSeconds>60
-            OR @MaxZeilen IS NULL OR @MaxZeilen<0
+            OR @MaxZeilen<0
             OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000)
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'Ungültiger Bit-, Sample-, Zeilen- oder Lock-Timeout-Parameter.';
 
     CREATE TABLE [#ClrAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#ClrAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ClrAnalysis_AssemblyFilters]
     (
@@ -57979,7 +57998,7 @@ BEGIN
     (
           [CollectedAtUtc] datetime2(3) NOT NULL
         , [ProductMajorVersion] int NULL
-        , [HostPlatform] nvarchar(60) NULL
+        , [HostPlatform] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ClrEnabledConfiguredValue] int NULL
         , [ClrEnabledValueInUse] int NULL
         , [ClrStrictSecurityConfiguredValue] int NULL
@@ -57987,15 +58006,15 @@ BEGIN
         , [LightweightPoolingConfiguredValue] int NULL
         , [LightweightPoolingValueInUse] int NULL
         , [TrustedAssemblyCount] bigint NULL
-        , [TrustedAssemblyStatus] varchar(40) NOT NULL
-        , [RequiredPerformancePermission] nvarchar(128) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [TrustedAssemblyStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RequiredPerformancePermission] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_DatabaseStatus]
     (
           [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [IsTrustworthyOn] bit NULL
         , [AssemblyCount] bigint NOT NULL
@@ -58003,68 +58022,68 @@ BEGIN
         , [ModuleCount] bigint NOT NULL
         , [SourceFailureCount] int NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_SourceStatus]
     (
-          [DatabaseName] sysname NULL
-        , [SourceCode] varchar(80) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [RowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ReadAtUtc] datetime2(3) NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_Assemblies]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [AssemblyId] int NOT NULL
-        , [AssemblyName] sysname NOT NULL
-        , [ClrName] nvarchar(4000) NULL
-        , [PermissionSetDesc] nvarchar(60) NULL
+        , [AssemblyName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ClrName] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PermissionSetDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsVisible] bit NULL
         , [CreateDate] datetime NULL
         , [ModifyDate] datetime NULL
-        , [OwnerName] sysname NULL
+        , [OwnerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsLoaded] bit NOT NULL
         , [LastVisibleLoadTime] datetime NULL
-        , [TrustVerificationStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [TrustVerificationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_AssemblyModules]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [ObjectName] sysname NOT NULL
-        , [ObjectType] char(2) NOT NULL
-        , [ObjectTypeDesc] nvarchar(60) NULL
-        , [AssemblyName] sysname NOT NULL
-        , [AssemblyClass] sysname NULL
-        , [AssemblyMethod] sysname NULL
-        , [ExecuteAsPrincipal] sysname NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectType] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AssemblyName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AssemblyClass] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AssemblyMethod] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ExecuteAsPrincipal] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_AssemblyDependencies]
     (
-          [DatabaseName] sysname NOT NULL
-        , [DependencyKind] varchar(40) NOT NULL
-        , [AssemblyName] sysname NOT NULL
-        , [ReferencedAssemblyName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [TypeName] sysname NULL
-        , [AssemblyClass] sysname NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DependencyKind] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AssemblyName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ReferencedAssemblyName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AssemblyClass] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_Properties]
     (
-          [PropertyName] nvarchar(128) NOT NULL
-        , [PropertyValue] nvarchar(128) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+          [PropertyName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PropertyValue] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_AppDomains]
     (
@@ -58072,8 +58091,8 @@ BEGIN
         , [AppDomainId] int NULL
         , [CreationTime] datetime NULL
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
-        , [State] nvarchar(128) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [State] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [StrongRefCount] int NULL
         , [WeakRefCount] int NULL
         , [Cost] int NULL
@@ -58081,7 +58100,7 @@ BEGIN
         , [TotalProcessorTimeMs] bigint NULL
         , [TotalAllocatedMemoryKb] bigint NULL
         , [SurvivedMemoryKb] bigint NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_LoadedAssemblies]
     (
@@ -58089,102 +58108,102 @@ BEGIN
         , [AssemblyId] int NOT NULL
         , [LoadTime] datetime NULL
         , [DatabaseId] int NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [AppDomainId] int NULL
-        , [AssemblyName] sysname NULL
-        , [MappingStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssemblyName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MappingStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_Tasks]
     (
           [TaskAddress] varbinary(8) NOT NULL
         , [SosTaskAddress] varbinary(8) NULL
         , [AppDomainAddress] varbinary(8) NULL
-        , [DatabaseName] sysname NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [AppDomainId] int NULL
-        , [TaskState] nvarchar(128) NULL
-        , [AbortState] nvarchar(128) NULL
-        , [TaskType] nvarchar(128) NULL
+        , [TaskState] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [AbortState] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [TaskType] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [AffinityCount] int NULL
         , [ForcedYieldCount] int NULL
         , [SessionId] smallint NULL
         , [RequestId] int NULL
-        , [MappingStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [MappingStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_ActiveRequests]
     (
           [SessionId] smallint NOT NULL
         , [RequestId] int NOT NULL
-        , [DatabaseName] sysname NULL
-        , [RequestStatus] nvarchar(30) NULL
-        , [Command] nvarchar(32) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [BlockingSessionId] smallint NULL
-        , [WaitType] nvarchar(60) NULL
+        , [WaitType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WaitTimeMs] int NULL
         , [ElapsedTimeMs] int NULL
         , [CpuTimeMs] int NULL
         , [Reads] bigint NULL
         , [LogicalReads] bigint NULL
         , [Writes] bigint NULL
-        , [LoginName] sysname NULL
-        , [HostName] nvarchar(128) NULL
-        , [ProgramName] nvarchar(128) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [LoginName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_Memory]
     (
-          [MemoryClerkType] nvarchar(60) NOT NULL
+          [MemoryClerkType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ClerkCount] bigint NOT NULL
         , [PagesKb] bigint NULL
         , [VirtualMemoryReservedKb] bigint NULL
         , [VirtualMemoryCommittedKb] bigint NULL
         , [SharedMemoryReservedKb] bigint NULL
         , [SharedMemoryCommittedKb] bigint NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_CounterSamples]
     (
-          [SamplePoint] char(2) NOT NULL
+          [SamplePoint] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReadAtUtc] datetime2(3) NOT NULL
-        , [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+        , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterType] int NOT NULL
         , [CounterValue] bigint NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_PerformanceCounters]
     (
-          [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+          [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterType] int NOT NULL
         , [CounterValue] bigint NOT NULL
-        , [Interpretation] varchar(40) NOT NULL
+        , [Interpretation] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,6) NULL
-        , [MetricUnit] varchar(40) NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [MetricUnit] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
-    CREATE TABLE [#ClrAnalysis_Findings]
+    CREATE TABLE [#ClrAnalysis_FindingsCollected]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NULL
-        , [ObjectType] varchar(40) NOT NULL
-        , [ObjectName] nvarchar(512) NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ClrAnalysis_Warnings]
     (
-          [WarningCode] varchar(120) NOT NULL
-        , [Detail] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+          [WarningCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     BEGIN TRY
@@ -58579,7 +58598,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         ) [i]
         WHERE [a].[SamplePoint]='T1';
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         ([DatabaseName],[ObjectType],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
         SELECT NULL,'SERVER_CONFIGURATION',NULL,'WARN','HIGH','CLR_STRICT_SECURITY_DISABLED',
                'ClrStrictSecurityValueInUse',[ClrStrictSecurityValueInUse],1,
@@ -58589,7 +58608,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ClrAnalysis_Configuration]
         WHERE COALESCE([ClrStrictSecurityValueInUse],0)=0;
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT NULL,'SERVER_CONFIGURATION',NULL,'WARN','HIGH','CLR_LIGHTWEIGHT_POOLING_CONFLICT',
                'LightweightPoolingValueInUse',[LightweightPoolingValueInUse],0,
                N'clr enabled und lightweight pooling sind gleichzeitig aktiv.',
@@ -58598,7 +58617,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ClrAnalysis_Configuration]
         WHERE [ClrEnabledValueInUse]=1 AND [LightweightPoolingValueInUse]=1;
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT [a].[DatabaseName],'ASSEMBLY',[a].[AssemblyName],'WARN','HIGH','USER_ASSEMBLY_WHILE_CLR_DISABLED',
                'ClrEnabledValueInUse',[c].[ClrEnabledValueInUse],1,
                N'Eine benutzerdefinierte Assembly ist sichtbar, während clr enabled nicht aktiv ist.',
@@ -58608,7 +58627,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         CROSS JOIN [#ClrAnalysis_Configuration] [c]
         WHERE COALESCE([c].[ClrEnabledValueInUse],0)=0;
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT [DatabaseName],'ASSEMBLY',[AssemblyName],'WARN','HIGH','UNSUPPORTED_CLR_PERMISSION_SET_ON_LINUX',
                'PermissionSet',CASE [PermissionSetDesc] WHEN N'EXTERNAL_ACCESS' THEN 2 WHEN N'UNSAFE_ACCESS' THEN 3 END,1,
                CONCAT(N'Die Assembly verwendet ',[PermissionSetDesc],N' auf SQL Server unter Linux.'),
@@ -58617,7 +58636,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ClrAnalysis_Assemblies]
         WHERE UPPER(COALESCE(@HostPlatform,N''))='LINUX' AND [PermissionSetDesc] IN(N'EXTERNAL_ACCESS',N'UNSAFE_ACCESS');
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT [a].[DatabaseName],'ASSEMBLY',[a].[AssemblyName],'WARN','HIGH','TRUSTWORTHY_DATABASE_WITH_HIGH_PERMISSION_ASSEMBLY',
                'IsTrustworthyOn',[ds].[IsTrustworthyOn],0,
                CONCAT(N'Die Datenbank ist TRUSTWORTHY ON und enthält eine Assembly mit Permission Set ',[a].[PermissionSetDesc],N'.'),
@@ -58627,7 +58646,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         JOIN [#ClrAnalysis_DatabaseStatus] [ds] ON [ds].[DatabaseName]=[a].[DatabaseName]
         WHERE [ds].[IsTrustworthyOn]=1 AND [a].[PermissionSetDesc] IN(N'EXTERNAL_ACCESS',N'UNSAFE_ACCESS');
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT [DatabaseName],'ASSEMBLY',[AssemblyName],'INFO','HIGH','ASSEMBLY_TRUST_MAPPING_NOT_VERIFIED',
                NULL,NULL,NULL,
                N'Die exakte Zuordnung dieser Assembly zur serverweiten Trust List wurde nicht geprüft.',
@@ -58636,7 +58655,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ClrAnalysis_Assemblies]
         WHERE [PermissionSetDesc] IN(N'EXTERNAL_ACCESS',N'UNSAFE_ACCESS');
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT NULL,'CLR_HOST',N'state','WARN','HIGH','CLR_HOST_INITIALIZATION_FAILED',
                NULL,NULL,NULL,
                CONCAT(N'Der CLR Host meldet den Zustand ',[PropertyValue],N'.'),
@@ -58645,7 +58664,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ClrAnalysis_Properties]
         WHERE [PropertyName]=N'state' AND [PropertyValue] LIKE N'%permanently failed%';
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT [DatabaseName],'ACTIVE_REQUEST',CONCAT(CONVERT(nvarchar(20),[SessionId]),N':',CONVERT(nvarchar(20),[RequestId])),
                'WARN','HIGH','ACTIVE_MANAGED_CODE_REQUEST_BLOCKED','BlockingSessionId',[BlockingSessionId],0,
                CONCAT(N'Der aktive Managed-Code-Request ist durch Session ',CONVERT(nvarchar(20),[BlockingSessionId]),N' geblockt.'),
@@ -58654,7 +58673,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ClrAnalysis_ActiveRequests]
         WHERE COALESCE([BlockingSessionId],0)>0;
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT [DatabaseName],'CLR_TASK',CONVERT(nvarchar(34),[TaskAddress],1),'INFO','MEDIUM','CLR_TASK_REQUEST_UNMAPPED',
                'ForcedYieldCount',[ForcedYieldCount],NULL,
                N'Ein aktueller CLR Task konnte nicht zu einem sichtbaren sys.dm_os_tasks-Request gemappt werden.',
@@ -58663,7 +58682,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ClrAnalysis_Tasks]
         WHERE [MappingStatus]='REQUEST_UNMAPPED';
 
-        INSERT [#ClrAnalysis_Findings]
+        INSERT [#ClrAnalysis_FindingsCollected]
         SELECT [DatabaseName],'LOADED_ASSEMBLY',CONVERT(nvarchar(20),[AssemblyId]),'INFO','LOW','LOADED_ASSEMBLY_CATALOG_UNMAPPED',
                NULL,NULL,NULL,
                N'Eine geladene Assembly-DMV-Zeile konnte keiner sichtbaren benutzerdefinierten Assembly im AppDomain-Datenbankkontext zugeordnet werden.',
@@ -58689,8 +58708,10 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
         IF @StatusCode='AVAILABLE'
         BEGIN
             IF EXISTS(SELECT 1 FROM [#ClrAnalysis_SourceStatus] WHERE [IsPartial]=1)
+               OR EXISTS(SELECT 1 FROM [#ClrAnalysis_DatabaseStatus] WHERE [IsPartial]=1)
+               OR EXISTS(SELECT 1 FROM [#ClrAnalysis_DatabaseCandidateWarnings])
                 SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-            ELSE IF EXISTS(SELECT 1 FROM [#ClrAnalysis_Findings] WHERE [Severity]='WARN')
+            ELSE IF EXISTS(SELECT 1 FROM [#ClrAnalysis_FindingsCollected] WHERE [Severity]='WARN')
                 SET @StatusCode='AVAILABLE_WITH_FINDING';
             ELSE IF EXISTS(SELECT 1 FROM [#ClrAnalysis_Configuration] WHERE COALESCE([ClrEnabledValueInUse],0)=0)
                  AND NOT EXISTS(SELECT 1 FROM [#ClrAnalysis_Assemblies])
@@ -58704,7 +58725,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
 
         IF @MaxZeilen>0 AND
            (
-               (SELECT COUNT_BIG(*) FROM [#ClrAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN')>@Limit
+               (SELECT COUNT_BIG(*) FROM [#ClrAnalysis_FindingsCollected] WHERE @NurProblematisch=0 OR [Severity]='WARN')>@Limit
             OR (SELECT COUNT_BIG(*) FROM [#ClrAnalysis_Assemblies])>@Limit
             OR (SELECT COUNT_BIG(*) FROM [#ClrAnalysis_AssemblyModules])>@Limit
             OR (SELECT COUNT_BIG(*) FROM [#ClrAnalysis_AssemblyDependencies])>@Limit
@@ -58718,6 +58739,12 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
             IF @PrintMeldungen=1 RAISERROR(N'RESULTSET_TRUNCATED: Verwenden Sie @MaxZeilen=0 oder einen höheren Wert für die vollständige Ausgabe.',10,1) WITH NOWAIT;
         END;
 
+        INSERT [#ClrAnalysis_Findings]
+        SELECT TOP(@Limit) *
+        FROM [#ClrAnalysis_FindingsCollected]
+        WHERE @NurProblematisch=0 OR [Severity]='WARN'
+        ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+
         IF @JsonErzeugen=1
         BEGIN
             SELECT @Json=(
@@ -58726,7 +58753,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
                     JSON_QUERY(COALESCE((SELECT * FROM [#ClrAnalysis_Configuration] FOR JSON PATH),N'[]')) AS [configuration],
                     JSON_QUERY(COALESCE((SELECT * FROM [#ClrAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
                     JSON_QUERY(COALESCE((SELECT * FROM [#ClrAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode],[ReadAtUtc] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                    JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ClrAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                    JSON_QUERY(COALESCE((SELECT * FROM [#ClrAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
                     JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ClrAnalysis_Assemblies] ORDER BY [DatabaseName],[AssemblyName] FOR JSON PATH),N'[]')) AS [assemblies],
                     JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ClrAnalysis_AssemblyModules] ORDER BY [DatabaseName],[SchemaName],[ObjectName] FOR JSON PATH),N'[]')) AS [assemblyModules],
                     JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ClrAnalysis_AssemblyDependencies] ORDER BY [DatabaseName],[AssemblyName],[DependencyKind] FOR JSON PATH),N'[]')) AS [assemblyDependencies],
@@ -58747,7 +58774,7 @@ WHERE [a].[is_user_defined]=1 '+@AssemblyPredicate+N'; SET @pRows=@@ROWCOUNT;';
             SELECT * FROM [#ClrAnalysis_Configuration];
             SELECT * FROM [#ClrAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
             SELECT * FROM [#ClrAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode],[ReadAtUtc];
-            SELECT TOP(@Limit) * FROM [#ClrAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+            SELECT * FROM [#ClrAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
             SELECT TOP(@Limit) * FROM [#ClrAnalysis_Assemblies] ORDER BY [DatabaseName],[AssemblyName];
             SELECT TOP(@Limit) * FROM [#ClrAnalysis_AssemblyModules] ORDER BY [DatabaseName],[SchemaName],[ObjectName];
             SELECT TOP(@Limit) * FROM [#ClrAnalysis_AssemblyDependencies] ORDER BY [DatabaseName],[AssemblyName],[DependencyKind];

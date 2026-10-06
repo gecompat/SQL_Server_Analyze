@@ -795,6 +795,10 @@ Die Procedure analysiert SQL-CLR-Konfiguration und sichtbare benutzerdefinierte 
 | `activeRequests`, `memory`, `performanceCounters` | Flüchtige Requests, aktuelle Clerkaggregate und kumulative beziehungsweise gesampelte Counter. |
 | `findings` | Priorisierte Sicherheits-, Plattform-, Konfigurations- und Livehinweise. |
 
+Der öffentliche Findingsvertrag umfasst unverändert 13 Felder und zehn explizit collatierte Textspalten. TABLE, CONSOLE, RAW und JSON verwenden dieselbe nach vollständiger Modulbewertung materialisierte Problemfilter-/Limitmenge und erhalten die ursprünglichen Findingordinalen. NULL oder 0 bei `@MaxZeilen` bedeutet unbegrenzt; negative Werte werden mit `INVALID_PARAMETER` und sicherem JSON-/Exportpfad abgelehnt. Andere Arrays behalten ihre bisherigen Limits beziehungsweise unbegrenzten Ausgabewege. Auswahlwarnings wirken auf die späte Modulpartialität, ohne erfolgreiche Quellenstatus oder vollständige Zähler zu überschreiben.
+
+Common 164 prüft eigene leere case-unterschiedliche Unicode-CI_AS-Datenbanken ohne Assemblyregistrierung, CLR-Ausführung oder Konfigurations-/Truständerung. Native Konfiguration, Hostproperties, Quellenanzahlen und Identitäten sowie Sample-0-Counterinterpretation werden unabhängig geprüft. Variable Speicher- und Counterwerte bilden keinen atomaren Punktvergleich. Der leere Findingscope belegt Schema, Parität und Parameterakzeptanz; positive Findingsfilter-/Limitwirkung und aktive Featurepfade bleiben unbelegt. RAW/CONSOLE werden nur über Status und begleitendes JSON geprüft.
+
 ### Sicherheits- und Korrelationsvertrag
 
 `assembly_id` ist nur innerhalb einer Datenbank eindeutig. Geladene Assemblies werden deshalb zuerst einem AppDomain und dessen Datenbank zugeordnet und erst danach gegen `sys.assemblies` korreliert. Ein serverweiter Join allein über `assembly_id` ist unzulässig.
