@@ -1345,3 +1345,119 @@ an den nur durch Groß-/Kleinschreibung getrennten synthetischen Datenbanknamen.
 Das Lab einschließlich Container, Volume und Zustand wurde entfernt. Dieser
 Lauf ist fehlgeschlagen und kein Nachweis für die case-sensitive CI-Instanz.
 Die erforderliche CI am neuen exakten Head ist noch ausstehend.
+
+## Temporal-Findings und native Periodenmetadaten – 6. Oktober 2026
+
+Ein frisches eigenes SQL-Server-2025-Lab unter Docker bestand den gezielten
+Temporal-Vertrag mit Instanz- und tempdb-Collation `Latin1_General_100_CS_AS`,
+Frameworkcollation `SQL_Latin1_General_CP1_CS_AS` und einer eigenen synthetischen
+Quelldatenbank mit `Latin1_General_100_CI_AS`. Die Lab-Readiness bestätigte Major
+17 und die Collation-Verifikation den angeforderten Instanzwert. Eine separate
+Metadatenabfrage wurde ausgeführt; die verwendete Lab-Skript-API gab bei Erfolg
+jedoch ausschließlich Status und Laufzeit zurück. Die konkrete ProductVersion
+wurde daher nicht erfasst und wird nicht aus einem anderen Lauf übernommen.
+Diese lokale Evidenz ergänzt keinen versionsgenauen Release-Matrixeintrag.
+
+Der ausgeführte SQL-Quellstand hat SHA-256
+`86D439DF5BDF5888D90B6D826C01C567CC2C7FFFE18EEC8D72AA9397FEDD0147`.
+Der neue Vertrag
+`Code/Tests/Common/156_TemporalAnalysis_Collation_Runtime_Contract.sql` hat SHA-256
+`632B2EB7AD0A01EE9CCC7D38BDC7960D01CE34FDB92C574322B24E40A09F6D28`.
+Beide Hashes beziehen sich auf die kanonischen UTF-8-Quellen mit LF;
+der Runner ersetzte ausschließlich den Installationsplatzhalter und ergänzte
+eine lokale Case-Ausgabe. Der installierte finale Proceduretext wurde nach
+Rückersetzung des Platzhalters gegen diese kanonische Quelle verglichen.
+
+Der Runner verwendete `New-SqlServerLab -Version 2025 -Provider docker
+-Profile standard -Collation Latin1_General_100_CS_AS -NonInteractive`,
+`New-AnalyzeFrameworkInstaller` und `Invoke-SqlServerLabScript -KeepConnection`.
+Der aus 166 kanonischen Dateien erzeugte Gesamtinstaller und
+`Integration/110_Smoke_Test.sql` bestanden. Anschließend wurden mit
+`ALTER DATABASE [LabAnalyze] SET COMPATIBILITY_LEVEL` nacheinander 150, 160 und
+170 aktiviert. `Common/156` und der unveränderte
+`Integration/181_P2_Temporal_Runtime_Contract.sql` bestanden je Level mit
+Exitcode 0: sechs erfolgreiche Dateiläufe, acht neue Fälle und 13 bestehende
+Temporal-Fälle pro Level. Ein breiter lokaler Impact-Lauf und die erforderliche
+exakte GitHub-Head-CI sind dadurch nicht ersetzt.
+
+Die leere Fixture besitzt zwei aktive Current-/History-Paare, einmal versteckte
+und einmal sichtbare Periodenspalten, endliche beziehungsweise unendliche
+Retention und genau je einen führenden beziehungsweise umgekehrt geordneten
+History-Index. Der datenbankweite Retention-Schalter ist zunächst deaktiviert.
+Die acht Fälle prüfen unbegrenzte Ausgabe mit `0`, Limit 1, problematische
+Findings ohne Limit, problematische Findings mit Limit 1, das bestehende
+`NULL`-Limit, einen exakten Unicode-Objektfilter, eine gültige plus fehlende
+explizite Datenbank sowie einen leeren Problemscope nach Aktivierung des
+Retention-Schalters für das korrekt indizierte Paar.
+
+TABLE und JSON stimmen für alle 15 Findingsfelder einschließlich NULL-Werten
+als Feldmultisets überein; alle zwölf TABLE-Textspalten besitzen Frameworkcollation.
+Zusätzlich werden die genaue Vierermenge unterschiedlicher SourceCodes,
+native Current-/History- und Periodenidentitäten, Hiddenflags, Retentionwerte,
+History-Indexreihenfolge und leere approximative Zeilenzähler unabhängig
+gegen die eigene Fixture geprüft. Eigenständige erwartete Findingcodes,
+Severity, Confidence, Metrikwerte und Schwellen verhindern, dass identisch
+falsche TABLE-/JSON-Ausgaben allein als Erfolg gelten. Das Limit 1 erhält
+gezielt die erste Retentionwarnung. Inventur- und Findingzähler bleiben trotz
+Ausgabefilter und Limit vollständig; die fehlende Datenbank erhält weiterhin
+`DATABASE_UNAVAILABLE` und Partialität.
+
+Fünf aufeinander aufbauende Vorstände reproduzierten getrennte Abweichungen:
+Der mit `main` verglichene unveränderte Stand und die nur lokal collatierte
+Variante scheiterten in Fall 0 mit Modulstatusfehler 56090. Nach Härtung des
+dynamischen History-Indexvergleichs scheiterte Fall 1 mit Exportlimitfehler
+56082. Die gemeinsame Exportauswahl scheiterte anschließend in Fall 4 am
+NULL-Limit; nach dessen Korrektur scheiterte Fall 6 am Modulstatus der fehlenden
+Datenbank. Beide letzten Abnahmen lieferten 56090. Der frühere private Harness
+hatte den erst später geprüften Datenbankstatusfehler 56086 erwartet; dieser
+Erwartungsfehler ist kein Nachweis einer final bestandenen Variante.
+
+Die finale Quelle collatiert 53 zuvor implizite Textspalten und zwölf zusätzliche
+Exportspalten; zusammen mit sechs bereits collatierten Filterspalten ergeben
+sich 71 lokale Textdeklarationen mit expliziter Frameworkcollation. Der
+dynamische Vergleich der führenden History-Indexspalten ist beidseitig collatiert.
+Die gemeinsame Findingsauswahl wird erst nach Berechnung der vollständigen
+Zähler eingefügt; ihre typisierte Temp-Struktur entsteht vor dem bestehenden
+NOWAIT-Abschnitt. NULL-Limits werden akzeptiert und bereits materialisierte
+Datenbankauswahlwarnungen nicht durch die spätere Statusaggregation überschrieben.
+Es wurden keine Engine-Majorzweige, Berechtigungen oder Katalogschemas geändert;
+ein zusätzlicher nativer 2019-/2022-Nachweis war für dieses Delta nicht erforderlich.
+
+Ein erster neuer Runnerlauf scheiterte vor der Baselineauswertung an einem
+Klammerfehler in der ergänzten Testassertion mit Fehler 102. Nach dessen
+Korrektur erfolgte die oben beschriebene frische Abnahme. Der fehlgeschlagene
+Lauf bleibt fehlgeschlagen. Die eigenen Container und Volumes beider Läufe
+wurden jeweils über `Remove-SqlServerLab -Force -Confirm:$false` entfernt;
+der erfolgreiche Lauf meldete `CLEANUP_SUCCEEDED` für zwei Schritte ohne Fehler.
+Die privaten Zustandsverzeichnisse bleiben zur lokalen Nachprüfung außerhalb
+von Git erhalten. Die zuvor gesperrten fremden Cleanup-Pfade wurden nicht berührt.
+
+Diese Evidenz gilt ausschließlich für die kleine synthetische Linux-Fixture
+und die angegebenen Compatibility Levels auf SQL Server 2025. Sie belegt keine
+native ältere Engine, zusätzliche Berechtigungsprofile, große Historybestände,
+Zeilenkonsistenz, Cleanup-Ausführung oder separate RAW-/CONSOLE-Erfassung.
+Der Test stellt seinen ursprünglichen LOCK_TIMEOUT wieder her; die bestehende
+Produktsemantik dieses Sessionwertes wurde nicht geändert.
+
+### Statische Abschlussprüfung und generierter Adapterinstaller
+
+Die fokussierten Privacy-, Dokumentationsstil-, Roadmap-, Reife- und
+Statusvalidatoren bestanden einschließlich ihrer Selftests; die
+Dokumentationsprüfung 900 und der Metadatenvalidator 950 bestanden ebenfalls.
+Nach Ergänzung des COLL-001-Backlogs bestanden die betroffenen
+Repositoryprüfungen 975, 976 und 993 erneut für dieses neue CSV-Delta.
+Die einmalige vollständige `Invoke-StaticContractSuite.ps1` bestand alle
+weiteren enthaltenen Prüfungen, meldete jedoch zwei Adapter-Hashabweichungen
+und bleibt als gesamter Lauf fehlgeschlagen.
+
+Der erwartete Execution-Plan-Adapterinstaller war nach ausschließlicher
+LF/CRLF-Normalisierung inhaltlich unverändert; dessen Bytevergleich reagierte
+auf die Windows-Checkout-/Builderrepräsentation. Die kanonische Neuausgabe
+änderte deshalb keinen Git-Inhalt dieses Artefakts. Im OPS-005-Vollinstaller
+wich ausschließlich der eingebettete Temporal-Quellblock ab. Dieser versionierte
+Installer wurde über den vorhandenen kanonischen Builder synchronisiert;
+der separate OPS-005-Updatevertrag war bereits inhaltlich unverändert.
+`TestLab/Test-AnalyzeProjectAdapter.ps1` und
+`TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1` bestanden anschließend
+gezielt mit Exitcode 0. Builder, Testverträge und Labfunktionen wurden nicht
+geändert; die unveränderte vollständige Suite wurde nicht wiederholt.

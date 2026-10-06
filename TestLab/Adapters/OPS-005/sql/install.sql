@@ -52008,7 +52008,7 @@ BEGIN
        OR @HistoryToCurrentRatioWarn IS NULL OR @HistoryToCurrentRatioWarn<=0
        OR @MinHistoryMbForRatioWarn IS NULL OR @MinHistoryMbForRatioWarn<0
 
-       OR @MaxZeilen IS NULL OR @MaxZeilen<0
+       OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
     BEGIN
@@ -52052,73 +52052,73 @@ BEGIN
     CREATE TABLE [#TemporalAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#TemporalAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#TemporalAnalysis_FeatureScope]
     (
-          [DatabaseName] sysname NOT NULL PRIMARY KEY
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
         , [TemporalTableCount] bigint NOT NULL
         , [HistoryTableCount] bigint NOT NULL
     );
     CREATE TABLE [#TemporalAnalysis_DatabaseStatus]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [TemporalTableCount] bigint NOT NULL
         , [HistoryTableCount] bigint NOT NULL
         , [SourceFailureCount] int NOT NULL
         , [FindingCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#TemporalAnalysis_SourceStatus]
     (
-          [DatabaseName] sysname NULL
-        , [SourceCode] varchar(64) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [RowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#TemporalAnalysis_TemporalTable]
     (
-          [DatabaseName] sysname NOT NULL
-        , [CurrentSchemaName] sysname NOT NULL
-        , [CurrentTableName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentSchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentTableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CurrentObjectId] int NOT NULL
-        , [HistorySchemaName] sysname NULL
-        , [HistoryTableName] sysname NULL
+        , [HistorySchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HistoryTableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [HistoryObjectId] int NULL
-        , [PeriodStartColumnName] sysname NULL
-        , [PeriodEndColumnName] sysname NULL
+        , [PeriodStartColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PeriodEndColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [PeriodStartIsHidden] bit NULL
         , [PeriodEndIsHidden] bit NULL
         , [CurrentIsMemoryOptimized] bit NOT NULL
-        , [CurrentDurabilityDesc] nvarchar(60) NULL
+        , [CurrentDurabilityDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [DatabaseRetentionEnabled] bit NULL
         , [HistoryRetentionPeriod] int NULL
-        , [HistoryRetentionUnitDesc] nvarchar(10) NULL
-        , [RetentionMode] varchar(16) NOT NULL
+        , [HistoryRetentionUnitDesc] nvarchar(10) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RetentionMode] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CurrentRowsApprox] bigint NULL
         , [HistoryRowsApprox] bigint NULL
         , [CurrentReservedMb] decimal(19,2) NULL
@@ -52128,44 +52128,63 @@ BEGIN
         , [HistoryToCurrentRowRatio] decimal(19,4) NULL
         , [HistoryIndexCount] int NULL
         , [HasPeriodLeadingHistoryIndex] bit NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY ([DatabaseName],[CurrentObjectId])
     );
     CREATE TABLE [#TemporalAnalysis_HistoryIndex]
     (
-          [DatabaseName] sysname NOT NULL
-        , [CurrentSchemaName] sysname NOT NULL
-        , [CurrentTableName] sysname NOT NULL
-        , [HistorySchemaName] sysname NOT NULL
-        , [HistoryTableName] sysname NOT NULL
-        , [IndexName] sysname NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentSchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CurrentTableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [HistorySchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [HistoryTableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IndexId] int NOT NULL
-        , [IndexTypeDesc] nvarchar(60) NOT NULL
+        , [IndexTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsUnique] bit NOT NULL
         , [IsDisabled] bit NOT NULL
-        , [FirstKeyColumnName] sysname NULL
-        , [SecondKeyColumnName] sysname NULL
+        , [FirstKeyColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SecondKeyColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsPeriodLeadingIndex] bit NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#TemporalAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [HistorySchemaName] sysname NULL
-        , [HistoryTableName] sysname NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HistorySchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HistoryTableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+
+    CREATE TABLE [#TemporalAnalysis_FindingsExport]
+    (
+          [FindingOrdinal] bigint NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HistorySchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HistoryTableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [ThresholdValue] decimal(38,4) NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     -- Lokale TempDB-DDL soll nicht an einer flüchtigen Metadatenkollision mit
@@ -52445,8 +52464,8 @@ SELECT [tt].[DatabaseName],[tt].[CurrentSchemaName],[tt].[CurrentTableName],
        [tt].[HistorySchemaName],[tt].[HistoryTableName],[i].[name],[i].[index_id],[i].[type_desc],
        [i].[is_unique],[i].[is_disabled],[k].[FirstKeyColumnName],[k].[SecondKeyColumnName],
        CONVERT(bit,CASE WHEN [i].[type] IN(1,2) AND [i].[is_disabled]=0
-                            AND [k].[FirstKeyColumnName]=[tt].[PeriodEndColumnName]
-                            AND [k].[SecondKeyColumnName]=[tt].[PeriodStartColumnName]
+                            AND [k].[FirstKeyColumnName] COLLATE SQL_Latin1_General_CP1_CS_AS=[tt].[PeriodEndColumnName] COLLATE SQL_Latin1_General_CP1_CS_AS
+                            AND [k].[SecondKeyColumnName] COLLATE SQL_Latin1_General_CP1_CS_AS=[tt].[PeriodStartColumnName] COLLATE SQL_Latin1_General_CP1_CS_AS
                         THEN 1 ELSE 0 END),
        N''Bewertet nur die dokumentierte führende Schlüsselreihenfolge Periodenende/Periodenstart; keine Workload-, Selektivitäts- oder Plananalyse.''
 FROM [#TemporalAnalysis_TemporalTable] [tt]
@@ -52639,7 +52658,12 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
                COALESCE(SUM(CASE WHEN [ff].[Severity]='WARN' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0) AS [WarnCount]
         FROM [#TemporalAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
-    ) [f];
+    ) [f]
+    WHERE NOT EXISTS
+    (
+        SELECT 1 FROM [#TemporalAnalysis_DatabaseCandidateWarnings] [w]
+        WHERE [w].[RequestedName]=[ds].[DatabaseName]
+    );
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -52656,6 +52680,12 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
     FROM [#TemporalAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
+    INSERT [#TemporalAnalysis_FindingsExport]
+    SELECT TOP(@Limit) *
+    FROM [#TemporalAnalysis_Findings]
+    WHERE @NurProblematisch=0 OR [Severity]='WARN'
+    ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+
     IF @JsonErzeugen=1
     BEGIN
         SELECT @Json=(
@@ -52663,7 +52693,7 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
                 JSON_QUERY((SELECT N'USP_TemporalAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
                 JSON_QUERY(COALESCE((SELECT * FROM [#TemporalAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
                 JSON_QUERY(COALESCE((SELECT * FROM [#TemporalAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#TemporalAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT * FROM [#TemporalAnalysis_FindingsExport] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#TemporalAnalysis_TemporalTable] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[HistoryReservedMb] DESC,[DatabaseName],[CurrentSchemaName],[CurrentTableName] FOR JSON PATH),N'[]')) AS [temporalTables],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) [hi].* FROM [#TemporalAnalysis_HistoryIndex] [hi] WHERE @NurProblematisch=0 OR EXISTS(SELECT 1 FROM [#TemporalAnalysis_TemporalTable] [tt] WHERE [tt].[DatabaseName]=[hi].[DatabaseName] AND [tt].[CurrentSchemaName]=[hi].[CurrentSchemaName] AND [tt].[CurrentTableName]=[hi].[CurrentTableName] AND [tt].[AssessmentStatus]='REVIEW') ORDER BY [hi].[DatabaseName],[hi].[CurrentSchemaName],[hi].[CurrentTableName],[hi].[IndexId] FOR JSON PATH),N'[]')) AS [historyIndexes]
             FOR JSON PATH,WITHOUT_ARRAY_WRAPPER);
@@ -52676,8 +52706,7 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
                N'Read-only Metadatenaufnahme; keine Benutzertabellenzeilen, DBCC-, Cleanup- oder DDL-Ausführung.' AS [Detail];
         SELECT * FROM [#TemporalAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
         SELECT * FROM [#TemporalAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#TemporalAnalysis_Findings]
-        WHERE @NurProblematisch=0 OR [Severity]='WARN'
+        SELECT * FROM [#TemporalAnalysis_FindingsExport]
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
         SELECT TOP(@Limit) * FROM [#TemporalAnalysis_TemporalTable]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
@@ -52704,14 +52733,14 @@ WHERE [tt].[DatabaseName]=@pDatabaseName;';
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#TemporalAnalysis_Findings'
+              @SourceTable=N'#TemporalAnalysis_FindingsExport'
             , @ResultLabel=N'TemporalAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#TemporalAnalysis_Findings'
+              @SourceTable = N'#TemporalAnalysis_FindingsExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

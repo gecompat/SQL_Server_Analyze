@@ -1,7 +1,7 @@
 # [monitor].[USP_TemporalAnalysis]
 
 **Bereich:** Versionsadaptive Spezialanalysen<br>
-**Zweck:** Analysiert Temporal-Current-/History-Beziehungen, Retention, Größe, Indizes und Konsistenz.<br>
+**Zweck:** Analysiert sichtbare Temporal-Current-/History-Beziehungen, Periodenmetadaten, Retention-Konfiguration, approximative Größe und History-Indizes.<br>
 **Beobachtungsart:** Katalogsnapshot + aktueller Kapazitätszustand<br>
 **Kostenklasse:** MEDIUM–HIGH_OPT_IN
 
@@ -30,13 +30,15 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+Findings verwenden in RAW, CONSOLE, TABLE und JSON dieselbe gefilterte und begrenzte Auswahl. `@NurProblematisch=1` erhält ausschließlich WARN-Findings; ein positives `@MaxZeilen` begrenzt die nach Severity und FindingOrdinal geordnete Ausgabe. `NULL` und `0` liefern die gesamte Auswahl. Datenbank- und Quellenstatus sowie die vor der Ausgabe berechneten Inventur- und Findingzähler bleiben erhalten. Die zwölf Textspalten des TABLE-Exports verwenden die Frameworkcollation `SQL_Latin1_General_CP1_CS_AS`.
+
 ## Eine Zeile bedeutet
 
 Je Resultset entspricht eine Zeile einer Temporal-Tabelle, History-Beziehung, Retention-/Cleanup-Evidenz, Index-/Kapazitätsinformation oder einem Finding.
 
 ## So lesen
 
-Vergleichen Sie Current-/History-Zuordnung, Historygröße, Retention, Konsistenzstatus, Indexierung und Wachstum.
+Vergleichen Sie Current-/History-Zuordnung, sichtbare Periodenspalten, approximative Historygröße, Retention-Konfiguration und die führenden History-Indexspalten. Die Procedure prüft keine Zeilenkonsistenz und keinen Cleanup-Fortschritt; Wachstum erfordert wiederholte Messungen.
 
 ## Warum kann das problematisch sein?
 
@@ -48,7 +50,7 @@ Große History kann fachlich erforderlich und durch Partitionierung oder Archivi
 
 ## Beispiele und Gegenbeispiele
 
-**Synthetischer Problemfall (`Example*`):** History wächst monatlich stark, Retention ist konfiguriert, Cleanup zeigt aber keine Wirkung: konkreter Betriebsbefund. Prüfen Sie Kapazität, Partitionierung, Cleanup und Pläne.
+**Synthetischer Problemfall (`Example*`):** Eine endliche History-Retention ist konfiguriert, während der datenbankweite Retention-Schalter deaktiviert ist. Das entsprechende Finding belegt diese Konfiguration; Cleanup-Ausführung und Wachstum benötigen zusätzliche Laufzeitevidenz.
 
 **Ähnlich aussehender Gegenfall:** Große History kann fachlich erforderlich und durch Partitionierung oder Archivierung kontrolliert sein. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
 
@@ -121,11 +123,11 @@ WHERE [t].[temporal_type] <> 0
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung beschreibt den aktuellen Schemastand sowie die angesammelten Historydaten innerhalb der fachlichen und technischen Retention.
+Die Auswertung beschreibt den sichtbaren aktuellen Katalogstand, die Retention-Konfiguration und approximative Zeilen- und Seitenzähler. Sie liest keine Current- oder Historyzeilen und bestimmt weder deren Alter noch eine tatsächlich durchgesetzte Retention.
 
 ### Bewertung und Gegenprobe
 
-Berücksichtigen Sie Current und History Table, Period Columns, Retention, Größe und Zeilenanzahl der History Table, Indexierung, Partitionierung und Cleanupstatus. Die Schreibrate und typische Zeitprädikate bestimmen das Design.
+Berücksichtigen Sie Current und History Table, Period Columns, Retention-Konfiguration, approximative Größe und Zeilenanzahl sowie die sichtbare Indexierung. Die Indexbaseline bewertet ausschließlich die führende Schlüsselreihenfolge Periodenende/Periodenstart. Workload-Eignung, Partitionierung und Cleanup-Fortschritt erfordern gesonderte Gegenproben.
 
 ### Typische Fehlinterpretation
 
