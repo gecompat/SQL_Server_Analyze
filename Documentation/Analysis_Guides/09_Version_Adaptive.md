@@ -366,6 +366,8 @@ Ein Period-leading History-Index wird anhand der erwarteten Reihenfolge **Period
 
 `FindingOrdinal`, Current-/History-Scope, `Severity`, `Confidence`, `FindingCode`, `MetricName`, `MetricValue`, `ThresholdValue`, `Evidence`, `EvidenceLimit`, `RecommendedNextCheck`.
 
+RAW, CONSOLE, TABLE und JSON verwenden dieselbe Findingsauswahl. `@NurProblematisch=1` erhält WARN-Findings; ein positives `@MaxZeilen` begrenzt die nach Severity und FindingOrdinal geordnete Auswahl, während `NULL` und `0` sie vollständig ausgeben. Die zwölf TABLE-Textspalten besitzen explizite Frameworkcollation. Statusarrays, Inventurzähler und der vor der Ausgabebegrenzung berechnete `FindingCount` bleiben erhalten, ebenso Status und Partialität nicht auswertbarer expliziter Datenbanken.
+
 ### Interpretation
 
 | Konstellation | Bewertung |
