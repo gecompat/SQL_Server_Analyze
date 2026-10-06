@@ -2334,3 +2334,125 @@ mit 932 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
 Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse und
 die beiden im Evidenzreview präzisierten Sample-/Ownerformulierungen
 ergänzt; SQL, Tests und ihre Quellidentitäten blieben unverändert.
+
+## SQL CLR: 7. Oktober 2026
+
+### Ausgangsstand und Änderung
+
+Die unveränderte Procedure aus dem Literalcommit
+`75081e4e697da2ea40acbcc5b6a2154573a141f7` wurde vor der Änderung
+nativ installiert. Ihr UTF-8/LF-Hash betrug
+`D55F74A94099EB93EA88120BA6CE85FFD680A8CBC7C4A211A7B65B3389DA055C`.
+Sechs Charakterisierungsfälle bestätigten zehn abweichende
+TABLE-Textcollations. NULL als Zeilenlimit wurde als
+`INVALID_PARAMETER` abgelehnt; ein negatives Limit führte zu
+`ERROR_HANDLED`, Fehler 127 und fehlendem JSON. Die Limits 0 und 1
+sowie der Problemfilter lieferten bei leerer Assemblyauswahl
+`NOT_APPLICABLE`. Auch eine ausschließlich fehlende Datenbankauswahl
+lieferte diesen Gesamtstatus ohne Partialität, obwohl ihr
+Datenbankstatus partiell war. Der Charakterisierungslauf hatte keinen
+Harnessfehler.
+
+`monitor.USP_ClrAnalysis` verwendet jetzt für alle 106 lokalen
+Textspalten ausdrücklich `SQL_Latin1_General_CP1_CS_AS`. Die Zahl
+enthält die zehn Texte der gemeinsamen Exporttabelle. Diese Tabelle
+besteht vor Helperaufrufen und NOWAIT-Meldungen. Sie besitzt die
+bisherigen 13 Findingfelder ohne Identity; ursprüngliche Ordinale
+werden aus der privaten Identity-Sammlung übernommen. Namen, Typen,
+Längen, Nullbarkeit und SchemaVersion 1 bleiben erhalten. Die
+Inventarzeile beschreibt genau diese Exportquelle.
+
+NULL und 0 erlauben eine unbegrenzte Ausgabe. Negative Limits werden
+als `INVALID_PARAMETER` abgelehnt und intern auf einen sicheren
+TOP-Wert begrenzt. JSON, RAW, TABLE und CONSOLE verwenden dieselbe
+gefilterte und begrenzte Findingmenge. WARN-Bewertung, Quellen- und
+Datenbankzähler sowie bestehende Truncationbedingungen werden vor
+Ausgabeauswahl auf der vollständigen Sammlung bewertet. Der späte
+Gesamtstatus berücksichtigt zusätzlich partielle Datenbankstatus und
+Auswahlwarnungen. Quellenqueries, Versionszweige, Berechtigungen und
+Opt-ins wurden fachlich nicht erweitert.
+
+### Nativer Lauf und unabhängige Gegenprüfungen
+
+Ein eigenes SQL-Server-2025-Docker-Lab bestätigte ProductVersion
+`17.0.4075.5`, Major 17 und Linux. Server und `tempdb` verwendeten
+`Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Installation aus 166 kanonischen Dateien
+und Smoke110 bestanden. Common164 und Integration198 bestanden
+anschließend auf Frameworklevels 150, 160 und 170 ohne Laufzeitfehler.
+
+Common164 erzeugte je Level zwei eigene leere Unicode-Datenbanken mit
+nur in der Großschreibung abweichenden Namen und
+`Latin1_General_100_CI_AS`. Beide Quellenlevels wurden ausdrücklich
+auf den Frameworklevel gesetzt und getrennt bestätigt. Je Level
+bestanden 24 TABLE-/JSON-Fälle und vier RAW-/CONSOLE-Aufrufe. Der
+TABLE-Vertrag prüft alle 13 Felder, relative Ordinals, Namen, Typen,
+Längen, Precision, Scale, Nullbarkeit, Identityeigenschaft und zehn
+Textcollations. Leere Findingmengen wurden in TABLE und JSON verglichen.
+Die bestehenden 16 JSON-Top-Level-Properties und die Auslassung von
+NULL-Properties bleiben erhalten.
+
+Geprüft sind NULL-/0-/positive und negative Limits, Problemfilter,
+exakte Unicode-Datenbankauswahl, fehlende und in der Großschreibung
+abweichende Auswahl, leere exakte und LIKE-Assemblyfilter,
+Modulzuordnungsoption sowie ungültige Sample-, Timeout-, Filter- und
+Optionsparameter. Alle gültigen Common164-Aufrufe verwenden
+`@SampleSeconds=0`; NULL und 61 prüfen ausschließlich die Ablehnung.
+RAW und CONSOLE werden über OUTPUT-Status und begleitende JSON-Mengen
+geprüft; ihre ausgegebenen Zeilen werden nicht separat abgefangen.
+
+Die Quellenstatus werden gegen acht unabhängige serverweite Quellen
+und die sichtbaren Katalogquellen je Datenbank geprüft. Konfiguration,
+CLR-Properties, Datenbankidentitäten, TRUSTWORTHY-Flags, Katalogzähler,
+Memory-Clerk-Identitäten und Counteridentitäten werden unabhängig
+gegengelesen. Der native Host meldete Version `v4.0.30319` und Zustand
+`CLR is initialized`; zwei Memory-Clerk-Gruppen sowie ein Counter des
+Typs 65792 waren vorhanden. Positive Memory-Ausgabebegrenzung und
+Sample-0-Counterinterpretation sind geprüft. Veränderliche Speicher-
+und Counterwerte besitzen keinen behaupteten atomaren
+Gegenprüfungszeitpunkt. Vollständige Warnungen und Zähler werden
+getrennt von Ausgabelimits geprüft. Integration198 prüft außerdem die
+Installations-, Discovery-, JSON-, TABLE- und LOCK_TIMEOUT-Verträge
+beider RUNTIME-001-Procedures ohne externe oder CLR-Ausführung.
+
+### Quellidentität, Aussagegrenze und Cleanup
+
+Die tatsächlich ausgeführten UTF-8/LF-Hashes betragen für die
+kanonische Procedure
+`862693D9293E51AF2B87E0193A4C09B37517950B18D46343F4DB18F1768B5F41`
+und für Common164
+`7693261E2FA4B3A6D1E5695E1EDE8CB1CE9521FF0346957325F6A402AEB58C90`.
+Der native installierte Body ab dem qualifizierten Objektnamen stimmt
+nach LF-Normalisierung und Entfernen äußerer Batchmarker mit der
+kanonischen UTF-16-Identität
+`F6421CA24373C2786B2178A11DD9EF7B6B35DF1232BD4532A3D349D18B07F433`
+überein. Der private Runner ersetzte ausschließlich den
+Installationsplatzhalter. Der OPS-005-Installer wurde kanonisch regeneriert.
+
+CLR blieb deaktiviert und Strict Security aktiviert. Neue Assemblies,
+CLR-Ausführung, TRUSTWORTHY- oder globale Konfigurationsänderungen
+fanden nicht statt. Positive Assembly-, Modul-, Dependency-,
+AppDomain-, Loaded-Assembly-, Task- und Requestquellen sowie positive
+Findingfilter-/Limitwirkung bleiben unbelegt. Leere Assemblyfilter
+belegen keine positive Assemblyfilterwirkung. Zeitbezogene Samples,
+Berechtigungs- und Sitzungskontextoptionen bleiben für diesen Slice
+unbelegt. Neue Nachweise für ältere native Engines wurden nicht
+ausgeführt; ein zusätzliches natives Versionsrisiko wurde nicht
+festgestellt. `RUNTIME-001` bleibt
+`IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`; `COLL-001` bleibt partiell.
+
+Nach dem erfolgreichen Lauf waren beide Fixtureidentitäten nativ
+nicht mehr vorhanden. Das eigene Lab wurde mit
+`Remove-SqlServerLab -Force -Confirm:$false` entfernt: Container und
+Volume, zwei Cleanupschritte, null Fehler, `CLEANUP_SUCCEEDED` und
+`REMOVED`. Der eigene verschlüsselte temporäre Secretwert wurde danach
+entfernt. Private Prüfzustände bleiben außerhalb von Git; die zuvor
+gesperrten Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.047
+Repositorydateien ohne Findings, Schreibstil 704 und Regex 336.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 943 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse
+ergänzt; SQL, Tests und ihre Quellidentitäten blieben unverändert.
