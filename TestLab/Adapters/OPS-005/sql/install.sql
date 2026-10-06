@@ -56860,6 +56860,23 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_ExternalRuntimeAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    /* Der öffentliche Findings-Export entsteht vor Ausgabehelpern und NOWAIT. */
+    CREATE TABLE [#ExternalRuntimeAnalysis_Findings]
+    (
+          [FindingOrdinal] bigint NOT NULL PRIMARY KEY
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [ThresholdValue] decimal(38,4) NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
     SET @Json=NULL;
 
     DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
@@ -56877,7 +56894,8 @@ BEGIN
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@PrintMessage nvarchar(2048)=NULL;
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                                THEN CONVERT(bigint,9223372036854775807)
-                               ELSE CONVERT(bigint,@MaxZeilen) END;
+                               WHEN @MaxZeilen>0 THEN CONVERT(bigint,@MaxZeilen)
+                               ELSE CONVERT(bigint,0) END;
     DECLARE @RequiredPerformancePermission nvarchar(128)=CASE WHEN COALESCE(@Major,0)>=16 THEN N'VIEW SERVER PERFORMANCE STATE' ELSE N'VIEW SERVER STATE' END;
     DECLARE @RequiredServicePermission nvarchar(128)=CASE WHEN COALESCE(@Major,0)>=16 THEN N'VIEW SERVER SECURITY STATE' ELSE N'VIEW SERVER STATE' END;
 
@@ -56911,28 +56929,28 @@ BEGIN
             OR @MitSitzungskontext IS NULL OR @NurProblematisch IS NULL
             OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
             OR @SampleSeconds IS NULL OR @SampleSeconds>60
-            OR @MaxZeilen IS NULL OR @MaxZeilen<0
+            OR @MaxZeilen<0
             OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000)
         SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,@ErrorMessage=N'Ungültiger Bit-, Sample-, Zeilen- oder Lock-Timeout-Parameter.';
 
     CREATE TABLE [#ExternalRuntimeAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_DatabaseCandidateWarnings]
     (
-          [RequestedName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NULL
+          [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_LanguageFilters]
     (
@@ -56944,98 +56962,98 @@ BEGIN
     (
           [CollectedAtUtc] datetime2(3) NOT NULL
         , [ProductMajorVersion] int NULL
-        , [HostPlatform] nvarchar(60) NULL
+        , [HostPlatform] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsAdvancedAnalyticsInstalled] int NULL
         , [ExternalScriptsConfiguredValue] int NULL
         , [ExternalScriptsValueInUse] int NULL
         , [LaunchpadServiceCount] int NULL
         , [LaunchpadRunningCount] int NULL
-        , [LaunchpadStatus] varchar(40) NOT NULL
-        , [RequiredPerformancePermission] nvarchar(128) NOT NULL
-        , [RequiredServicePermission] nvarchar(128) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [LaunchpadStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RequiredPerformancePermission] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RequiredServicePermission] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_DatabaseStatus]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [LanguageCount] bigint NOT NULL
         , [LibraryCount] bigint NOT NULL
         , [SourceFailureCount] int NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_SourceStatus]
     (
-          [DatabaseName] sysname NULL
-        , [SourceCode] varchar(80) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [RowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ReadAtUtc] datetime2(3) NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_Languages]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ExternalLanguageId] int NOT NULL
-        , [LanguageName] sysname NOT NULL
+        , [LanguageName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CreateDate] datetime2 NULL
-        , [OwnerName] sysname NULL
-        , [FileName] sysname NULL
-        , [FilePlatformDesc] nvarchar(60) NULL
-        , [FileMetadataStatus] varchar(40) NOT NULL
-        , [AssessmentStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [OwnerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FileName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FilePlatformDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FileMetadataStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AssessmentStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_Libraries]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ExternalLibraryId] int NOT NULL
-        , [LibraryName] sysname NOT NULL
-        , [LanguageName] sysname NULL
-        , [ScopeDesc] varchar(7) NULL
-        , [OwnerName] sysname NULL
-        , [FilePlatformDesc] nvarchar(60) NULL
-        , [FileMetadataStatus] varchar(40) NOT NULL
-        , [AssessmentStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [LibraryName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [LanguageName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ScopeDesc] varchar(7) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [OwnerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FilePlatformDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FileMetadataStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AssessmentStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_ActiveRequests]
     (
           [ExternalScriptRequestId] uniqueidentifier NOT NULL
-        , [LanguageName] nvarchar(128) NULL
+        , [LanguageName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [DegreeOfParallelism] int NULL
         , [SessionId] smallint NULL
         , [RequestId] int NULL
-        , [DatabaseName] sysname NULL
-        , [RequestStatus] nvarchar(30) NULL
-        , [Command] nvarchar(32) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RequestStatus] nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Command] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [BlockingSessionId] smallint NULL
-        , [WaitType] nvarchar(60) NULL
+        , [WaitType] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [WaitTimeMs] int NULL
         , [ElapsedTimeMs] int NULL
         , [EngineCpuTimeMs] int NULL
         , [Reads] bigint NULL
         , [LogicalReads] bigint NULL
         , [Writes] bigint NULL
-        , [LoginName] sysname NULL
-        , [HostName] nvarchar(128) NULL
-        , [ProgramName] nvarchar(128) NULL
-        , [ExternalWorkerAccount] nvarchar(256) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [LoginName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HostName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProgramName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ExternalWorkerAccount] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_PoolSamples]
     (
-          [SamplePoint] char(2) NOT NULL
+          [SamplePoint] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReadAtUtc] datetime2(3) NOT NULL
         , [ExternalPoolId] int NOT NULL
-        , [PoolName] sysname NOT NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [PoolVersion] int NULL
         , [MaxCpuPercent] int NULL
         , [MaxProcesses] int NULL
@@ -57051,7 +57069,7 @@ BEGIN
     CREATE TABLE [#ExternalRuntimeAnalysis_ExternalPools]
     (
           [ExternalPoolId] int NOT NULL
-        , [PoolName] sysname NOT NULL
+        , [PoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MaxCpuPercent] int NULL
         , [MaxProcesses] int NULL
         , [MaxMemoryPercent] int NULL
@@ -57063,70 +57081,70 @@ BEGIN
         , [CpuUserDelta] bigint NULL
         , [ReadIoDelta] bigint NULL
         , [WriteIoDelta] bigint NULL
-        , [DeltaStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [DeltaStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_ExecutionStatSamples]
     (
-          [SamplePoint] char(2) NOT NULL
+          [SamplePoint] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReadAtUtc] datetime2(3) NOT NULL
-        , [LanguageName] nvarchar(128) NOT NULL
-        , [CounterName] nvarchar(256) NOT NULL
+        , [LanguageName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CounterName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterValue] bigint NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_ExecutionStats]
     (
-          [LanguageName] nvarchar(128) NOT NULL
-        , [CounterName] nvarchar(256) NOT NULL
+          [LanguageName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CounterName] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterValue] bigint NOT NULL
         , [CounterDelta] bigint NULL
-        , [DeltaStatus] varchar(40) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [DeltaStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_CounterSamples]
     (
-          [SamplePoint] char(2) NOT NULL
+          [SamplePoint] char(2) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ReadAtUtc] datetime2(3) NOT NULL
-        , [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+        , [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterType] int NOT NULL
         , [CounterValue] bigint NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_PerformanceCounters]
     (
-          [CounterName] nvarchar(128) NOT NULL
-        , [InstanceName] nvarchar(128) NOT NULL
+          [CounterName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InstanceName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [CounterType] int NOT NULL
         , [CounterValue] bigint NOT NULL
         , [CounterDelta] bigint NULL
-        , [DeltaStatus] varchar(40) NOT NULL
-        , [Interpretation] varchar(40) NOT NULL
+        , [DeltaStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Interpretation] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,6) NULL
-        , [MetricUnit] varchar(40) NOT NULL
-        , [FindingCode] varchar(80) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [MetricUnit] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
-    CREATE TABLE [#ExternalRuntimeAnalysis_Findings]
+    CREATE TABLE [#ExternalRuntimeAnalysis_FindingsCollected]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [DatabaseName] sysname NULL
-        , [ObjectType] varchar(40) NOT NULL
-        , [ObjectName] nvarchar(512) NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectType] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ObjectName] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#ExternalRuntimeAnalysis_Warnings]
     (
-          [WarningCode] varchar(120) NOT NULL
-        , [Detail] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+          [WarningCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Detail] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     BEGIN TRY
@@ -57616,7 +57634,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         ) [i]
         WHERE [a].[SamplePoint]='T1';
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         ([DatabaseName],[ObjectType],[ObjectName],[Severity],[Confidence],[FindingCode],[MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
         SELECT NULL,'SERVER_CONFIGURATION',NULL,'WARN','HIGH','EXTERNAL_SCRIPTS_ENABLED_WITHOUT_INSTALLED_FEATURE_EVIDENCE',
                'IsAdvancedAnalyticsInstalled',[IsAdvancedAnalyticsInstalled],1,
@@ -57626,7 +57644,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ExternalRuntimeAnalysis_Configuration]
         WHERE [ExternalScriptsValueInUse]=1 AND COALESCE([IsAdvancedAnalyticsInstalled],0)<>1;
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         SELECT NULL,'LAUNCHPAD',NULL,'WARN','HIGH','LAUNCHPAD_NOT_RUNNING',
                'LaunchpadRunningCount',[LaunchpadRunningCount],[LaunchpadServiceCount],
                N'External Scripts ist aktiv, aber keine sichtbare Launchpad-Servicezeile ist im Status Running.',
@@ -57635,7 +57653,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ExternalRuntimeAnalysis_Configuration]
         WHERE [ExternalScriptsValueInUse]=1 AND [LaunchpadStatus] IN('NOT_VISIBLE','STOPPED','PARTIALLY_RUNNING');
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         SELECT [x].[DatabaseName],'DATABASE_REGISTRATION',NULL,'WARN','HIGH','REGISTERED_RUNTIME_WHILE_EXTERNAL_SCRIPTS_DISABLED',
                'RegisteredObjectCount',[x].[RegisteredObjectCount],1,
                N'Mindestens eine External Language oder Library ist sichtbar, während external scripts enabled nicht aktiv ist.',
@@ -57657,7 +57675,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         CROSS JOIN [#ExternalRuntimeAnalysis_Configuration] [c]
         WHERE COALESCE([c].[ExternalScriptsValueInUse],0)=0;
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         SELECT [DatabaseName],'EXTERNAL_LANGUAGE',[LanguageName],'WARN','HIGH','LANGUAGE_FILE_PLATFORM_MISMATCH',
                'PlatformMismatch',1,0,
                CONCAT(N'Die registrierte Dateiplattform ',[FilePlatformDesc],N' stimmt nicht mit HostPlatform ',COALESCE(@HostPlatform,N'<unbekannt>'),N' überein.'),
@@ -57667,7 +57685,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         WHERE [FileMetadataStatus]='AVAILABLE' AND [FilePlatformDesc] IS NOT NULL
           AND UPPER([FilePlatformDesc])<>UPPER(COALESCE(@HostPlatform,N''));
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         SELECT [DatabaseName],'ACTIVE_REQUEST',CONVERT(nvarchar(36),[ExternalScriptRequestId]),'WARN','HIGH','ACTIVE_EXTERNAL_REQUEST_BLOCKED',
                'BlockingSessionId',[BlockingSessionId],0,
                CONCAT(N'Der aktive External-Script-Request ist durch Session ',CONVERT(nvarchar(20),[BlockingSessionId]),N' geblockt.'),
@@ -57676,7 +57694,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ExternalRuntimeAnalysis_ActiveRequests]
         WHERE COALESCE([BlockingSessionId],0)>0;
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         SELECT NULL,'EXTERNAL_POOL',[PoolName],'WARN','HIGH','EXTERNAL_POOL_PROCESS_LIMIT_REACHED',
                'ActiveProcessesCount',[ActiveProcessesCount],[MaxProcesses],
                N'Die aktive Prozesszahl erreicht oder überschreitet das konfigurierte, von null verschiedene max_processes.',
@@ -57685,7 +57703,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         FROM [#ExternalRuntimeAnalysis_ExternalPools]
         WHERE COALESCE([MaxProcesses],0)>0 AND [ActiveProcessesCount]>=[MaxProcesses];
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         SELECT NULL,'PERFORMANCE_COUNTER',[CounterName],'WARN','HIGH','EXTERNAL_SCRIPT_EXECUTION_ERRORS_IN_SAMPLE',
                'CounterDelta',[CounterDelta],0,
                N'Der Counter Execution Errors ist im gültigen Samplefenster gestiegen.',
@@ -57695,7 +57713,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         WHERE [CounterName]=N'Execution Errors' AND [CounterDelta]>0
           AND [DeltaStatus]='DELTA_AVAILABLE';
 
-        INSERT [#ExternalRuntimeAnalysis_Findings]
+        INSERT [#ExternalRuntimeAnalysis_FindingsCollected]
         SELECT [DatabaseName],'EXTERNAL_LANGUAGE',[LanguageName],'INFO','MEDIUM','REGISTERED_RUNTIME_STARTABILITY_UNVERIFIED',
                NULL,NULL,NULL,
                N'Die Language Extension ist im Datenbankkatalog registriert.',
@@ -57721,8 +57739,10 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
         IF @StatusCode='AVAILABLE'
         BEGIN
             IF EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_SourceStatus] WHERE [IsPartial]=1)
+               OR EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_DatabaseStatus] WHERE [IsPartial]=1)
+               OR EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_DatabaseCandidateWarnings])
                 SELECT @StatusCode='AVAILABLE_LIMITED',@IsPartial=1;
-            ELSE IF EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_Findings] WHERE [Severity]='WARN')
+            ELSE IF EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_FindingsCollected] WHERE [Severity]='WARN')
                 SET @StatusCode='AVAILABLE_WITH_FINDING';
             ELSE IF EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_Configuration] WHERE COALESCE([ExternalScriptsValueInUse],0)=0)
                 SET @StatusCode=CASE WHEN EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_Languages]) OR EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_Libraries]) OR EXISTS(SELECT 1 FROM [#ExternalRuntimeAnalysis_ExecutionStats]) THEN 'FEATURE_DISABLED' ELSE 'NOT_APPLICABLE' END;
@@ -57733,7 +57753,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
 
         IF @MaxZeilen>0 AND
            (
-               (SELECT COUNT_BIG(*) FROM [#ExternalRuntimeAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN')>@Limit
+               (SELECT COUNT_BIG(*) FROM [#ExternalRuntimeAnalysis_FindingsCollected] WHERE @NurProblematisch=0 OR [Severity]='WARN')>@Limit
             OR (SELECT COUNT_BIG(*) FROM [#ExternalRuntimeAnalysis_Languages])>@Limit
             OR (SELECT COUNT_BIG(*) FROM [#ExternalRuntimeAnalysis_Libraries])>@Limit
             OR (SELECT COUNT_BIG(*) FROM [#ExternalRuntimeAnalysis_ActiveRequests])>@Limit
@@ -57746,6 +57766,12 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
             IF @PrintMeldungen=1 RAISERROR(N'RESULTSET_TRUNCATED: Verwenden Sie @MaxZeilen=0 oder einen höheren Wert für die vollständige Ausgabe.',10,1) WITH NOWAIT;
         END;
 
+        /* Status und Truncation bewerten die volle Sammlung; alle Ausgaben teilen diese Auswahl. */
+        INSERT [#ExternalRuntimeAnalysis_Findings]
+        SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_FindingsCollected]
+        WHERE @NurProblematisch=0 OR [Severity]='WARN'
+        ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+
         IF @JsonErzeugen=1
         BEGIN
             SELECT @Json=(
@@ -57754,7 +57780,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
                     JSON_QUERY(COALESCE((SELECT * FROM [#ExternalRuntimeAnalysis_Configuration] FOR JSON PATH),N'[]')) AS [configuration],
                     JSON_QUERY(COALESCE((SELECT * FROM [#ExternalRuntimeAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
                     JSON_QUERY(COALESCE((SELECT * FROM [#ExternalRuntimeAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode],[ReadAtUtc] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                    JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                    JSON_QUERY(COALESCE((SELECT * FROM [#ExternalRuntimeAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
                     JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_Languages] ORDER BY [DatabaseName],[LanguageName],[FileName] FOR JSON PATH),N'[]')) AS [languages],
                     JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_Libraries] ORDER BY [DatabaseName],[LanguageName],[LibraryName] FOR JSON PATH),N'[]')) AS [libraries],
                     JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_ActiveRequests] ORDER BY [WaitTimeMs] DESC,[SessionId] FOR JSON PATH),N'[]')) AS [activeRequests],
@@ -57771,7 +57797,7 @@ WHERE 1=1 '+@StatsLanguagePredicate+N'; SET @pRows=@@ROWCOUNT;';
             SELECT * FROM [#ExternalRuntimeAnalysis_Configuration];
             SELECT * FROM [#ExternalRuntimeAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
             SELECT * FROM [#ExternalRuntimeAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode],[ReadAtUtc];
-            SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+            SELECT * FROM [#ExternalRuntimeAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
             SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_Languages] ORDER BY [DatabaseName],[LanguageName],[FileName];
             SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_Libraries] ORDER BY [DatabaseName],[LanguageName],[LibraryName];
             SELECT TOP(@Limit) * FROM [#ExternalRuntimeAnalysis_ActiveRequests] ORDER BY [WaitTimeMs] DESC,[SessionId];

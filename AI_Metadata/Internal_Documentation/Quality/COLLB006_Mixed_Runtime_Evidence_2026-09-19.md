@@ -2201,3 +2201,136 @@ Repositorydateien ohne Findings, Schreibstil 702 und Regex 334.
 Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
 mit 919 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
 Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt.
+
+## External Runtime: 7. Oktober 2026
+
+### Ausgangsstand und Produktänderung
+
+Der unveränderte Stand aus `5d8c3437013342067d2c3556c995f139d43928d0`
+wurde auf SQL Server 2025 mit Frameworklevel 170 separat installiert.
+Sechs abschließende Charakterisierungsfälle bestätigten zehn fremd
+kollatierte TABLE-Textspalten. NULL als Mengenwert ergab
+`INVALID_PARAMETER/IsPartial=1`; 0 lieferte drei Findings. Limit 1
+lieferte weiterhin drei TABLE-Zeilen, aber nur eine JSON-Zeile.
+Der Problemfilter lieferte ebenfalls drei TABLE-Zeilen gegenüber einer
+JSON-Zeile. Ein negativer Mengenwert wurde mit Fehler 127 als
+`ERROR_HANDLED/IsPartial=1` behandelt; JSON blieb NULL. Eine ausschließlich
+fehlende Datenbankauswahl meldete trotz partiellem Datenbankstatus
+`NOT_APPLICABLE/IsPartial=0` auf Modulebene.
+
+Der private Baselineaufbau benötigte zuvor zwei Korrekturen: den
+geklammerten Alias `[RowCount]` und eine neue TABLE-Zieltabelle je Aufruf.
+Diese Aufbaufehler sind keine zusätzlichen Produktfehler.
+
+Die Procedure besitzt jetzt 96 explizit collatierte lokale Textfelder.
+Ein früher, nicht identitätsgenerierender Findings-Export übernimmt die
+13 vorhandenen Felder und die ursprünglich gesammelten Findingordinale.
+TABLE, CONSOLE, RAW und JSON verwenden dieselbe Problemfilter- und
+Limitentscheidung. NULL und 0 sind unbegrenzt; negative Werte werden
+mit einer sicheren internen Nullgrenze als `INVALID_PARAMETER` abgewiesen.
+Modulstatus und Truncation bewerten zuvor die vollständige Sammlung.
+Fehlende Datenbankauswahl fließt in die späte Modulpartialität ein;
+erfolgreiche Quellenstatus und vollständige Zähler bleiben erhalten.
+
+Die einzige Inventaränderung beschreibt die tatsächliche Exportquelle:
+zehn explizite Textcollations und kein IDENTITY-Merkmal. Feldnamen,
+Typen, Nullbarkeit, Versionskennung und der bestehende nicht
+identitätsgenerierende TABLE-Zielvertrag bleiben erhalten. Die
+Dokumentation beschreibt außerdem das bereits vorhandene Owner-Gate
+für `@MitBerechtigungsanalyse` und den davon unabhängigen Opt-in
+`@MitDateimetadaten`. Ein neues Gate wurde nicht eingeführt.
+
+### Tatsächlich ausgeführter Runtimeumfang
+
+Das eigene Linux-Lab verwendete SQL Server 2025, ProductVersion
+`17.0.4075.5`. Server und `tempdb` verwendeten
+`Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Installation aus 166 kanonischen Dateien
+und Smoke110 bestanden. Common163 und Integration198 bestanden
+anschließend auf Frameworklevels 150, 160 und 170.
+
+Common163 erzeugte jeweils zwei eigene leere Unicode-Datenbanken mit
+nur in der Großschreibung abweichenden Namen und
+`Latin1_General_100_CI_AS`. Die beiden Quellenlevels wurden ausdrücklich
+auf den jeweiligen Frameworklevel gesetzt und getrennt bestätigt.
+Die vorhandenen nativen R-/Python-Registrierungen wurden unabhängig
+gelesen. Bei deaktivierten externen Scripts liefern solche
+Registrierungen vorhandene WARN-/INFO-Findings für positive Filter-
+und Limitprüfungen. Neue Language- oder Libraryregistrierungen und
+externe Ausführung fanden nicht statt.
+
+Je Level bestanden 22 TABLE-/JSON-Fälle und vier RAW-/CONSOLE-Aufrufe.
+Der TABLE-Vertrag prüft alle 13 Felder, relative Ordinals, Namen, Typen,
+Längen, Precision, Scale, Nullbarkeit und zehn Textcollations.
+Der vollständige JSON-Repräsentationsvergleich erhält die bestehende
+Auslassung von NULL-Properties. Zwölf Top-Level-Properties sowie
+native Quellenstatus, Katalogidentitäten, Zähler, Konfiguration,
+Poolmetadaten und Counteridentitäten werden unabhängig gegengeprüft.
+Nichtleere Pool-/Counterquellen werden dabei ebenso geprüft wie leere.
+Veränderliche Counterwerte besitzen keinen behaupteten atomaren
+Gegenprüfungszeitpunkt.
+
+Geprüft sind NULL-/0-/positive Limits, Problemfilter, exakte
+Unicode-Datenbankauswahl, fehlende und in der Großschreibung abweichende
+Auswahl, leere exakte und LIKE-Sprachfilter sowie ungültige Mengen-,
+Sample-, Timeout-, Filter- und Optionsparameter. Vollständige
+Quellen-/Datenbankzähler und Warnungen werden vor Ausgabelimits geprüft.
+RAW und CONSOLE werden ausschließlich über OUTPUT-Status und
+begleitende JSON-Mengen geprüft; ihre ausgegebenen Zeilen werden
+nicht separat abgefangen. Alle gültigen Common163-Analyseaufrufe verwenden
+`@SampleSeconds=0`; NULL und 61 prüfen ausschließlich die
+Parameterablehnung ohne Sampling.
+Integration198 prüft zusätzlich die vorhandenen Installations-,
+Discovery-, JSON-, TABLE- und LOCK_TIMEOUT-Verträge beider
+RUNTIME-001-Procedures ohne externe oder CLR-Ausführung.
+
+Der erste Common163-Aufbau scheiterte mit 5170/1802 an den automatisch
+abgeleiteten Dateinamen der case-only Datenbanken. Getrennte synthetische
+Upper-/Lower-Dateinamen mit UUID-Suffix aus den nativen Standardpfaden
+beheben diese Aufbaukollision. Ein weiterer CL150-Versuch erreichte
+den leeren Sprachfilter und scheiterte mit 56710: Der skalare TABLE-
+JSON-Ausdruck lieferte NULL gegenüber dem korrekten Produktarray `[]`.
+Der Harness normalisiert ausschließlich diese leere Darstellung auf
+`[]`; nichtleere Parität und die Ablehnung fehlenden Produkt-JSON bleiben
+unverändert. Nach beiden Korrekturen bestand der abschließende Lauf
+auf allen drei Levels. Die Fehlerpfade entfernten ihre eigenen
+Fixturedatenbanken; auch nach dem erfolgreichen Lauf waren beide
+Fixtureidentitäten nativ nicht mehr vorhanden.
+
+### Quellidentität, Aussagegrenze und Cleanup
+
+Die tatsächlich ausgeführten UTF-8/LF-Hashes betragen für die
+kanonische Procedure
+`455913C2E5B6FB95F8DD004DB4B3B78540823A58F206C358F7CEDEC697C0F1DF`
+und für Common163
+`F7576FFEA6F2D0D632C75344C27D5DD2A51CB6AB985BB3C50BA5E1730105164D`.
+Der native installierte Body ab dem qualifizierten Objektnamen stimmt
+nach LF-Normalisierung und Entfernen äußerer Batchmarker mit der
+kanonischen UTF-16-Identität
+`23B0E565ABCFC01AAA0FC24DBECB04865BFD4E2F1B86B9C5FBE4232C594D77B2`
+überein. Der private Runner ersetzte ausschließlich den
+Installationsplatzhalter. Der OPS-005-Installer wurde kanonisch regeneriert.
+
+Aktivierte Runtimefeatures, externe Ausführung oder Startfähigkeit,
+positive Library-/Requestquellen, zeitbezogene Samples,
+Berechtigungs-/Sitzungskontext- und Dateimetadatenoptionen bleiben für
+diesen Slice unbelegt. Leere Sprachfilter belegen keine positive
+Sprachfilterwirkung. Neue Nachweise für ältere native Engines wurden
+nicht ausgeführt; ein zusätzliches natives Versionsrisiko wurde nicht
+festgestellt. `RUNTIME-001` bleibt
+`IMPLEMENTED_EXTERNAL_EVIDENCE_PENDING`; `COLL-001` bleibt partiell.
+
+Das eigene Lab wurde mit `Remove-SqlServerLab -Force -Confirm:$false`
+entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
+`CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
+Secretwert wurde danach entfernt. Private Prüfzustände bleiben außerhalb
+von Git; die zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.046
+Repositorydateien ohne Findings, Schreibstil 703 und Regex 335.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 932 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse und
+die beiden im Evidenzreview präzisierten Sample-/Ownerformulierungen
+ergänzt; SQL, Tests und ihre Quellidentitäten blieben unverändert.

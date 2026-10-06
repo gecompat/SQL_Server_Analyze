@@ -35,6 +35,8 @@ Alle `Example*`-Werte im Aufruf sind synthetisch. Beginnen Sie ohne Sampling und
 
 Der typisierte TABLE-Vertrag registriert `findings`. CONSOLE rendert dieselbe priorisierte Findingstruktur. RAW und JSON liefern zusätzlich `configuration`, `databaseStatus`, `sourceStatus`, `languages`, `libraries`, `activeRequests`, `externalPools`, `executionStats`, `performanceCounters` und `warnings`.
 
+Der gemeinsame Findings-Export besitzt 13 unveränderte Felder einschließlich `FindingOrdinal` und zehn explizit mit `SQL_Latin1_General_CP1_CS_AS` collatierte Textspalten. Nach vollständiger Sammlung und Statusbewertung werden zuerst WARNs bei `@NurProblematisch = 1` ausgewählt und anschließend nach Severity und ursprünglichem Findingordinal begrenzt. TABLE, CONSOLE, RAW und JSON verwenden dieselbe Auswahl. `NULL` und `0` sind unbegrenzt; negative Limits liefern sicher `INVALID_PARAMETER` mit weiterhin verfügbarem JSON. JSON behält die bestehende Auslassung von NULL-Properties. Quellenstatus, Datenbankzähler und Auswahlhinweise bleiben außerhalb des Findingsfilters und seines Limits.
+
 Lesen Sie zuerst `sourceStatus`. Ein fachlich leeres Resultset ist nur belastbar, wenn seine Quelle `AVAILABLE` meldet. Lesen Sie danach `configuration` und `databaseStatus`, dann Registrierungen und erst anschließend Live- beziehungsweise Sampleevidenz. `findings` enthält Triageentscheidungen, ersetzt aber nicht die zugrunde liegenden Resultsets.
 
 ## Eine Zeile bedeutet
@@ -63,7 +65,7 @@ Eine registrierte, aber momentan inaktive Runtime kann als bewusst bereitgestell
 
 ## Leere oder partielle Ausgabe
 
-`NOT_APPLICABLE` bedeutet, dass External Scripts deaktiviert ist und im sichtbaren Scope weder Registrierungen noch Runtimeevidenz gefunden wurden. `FEATURE_DISABLED` bedeutet, dass die Option deaktiviert ist, aber Katalog- oder Zählerevidenz sichtbar bleibt. `AVAILABLE_LIMITED` bedeutet, dass mindestens eine isolierte Quelle nicht gelesen werden konnte. `DENIED_PERMISSION`, `SOURCE_UNAVAILABLE` und `LOCK_TIMEOUT` bleiben je Quelle sichtbar; zugängliche Teilresultate werden nicht verworfen.
+`NOT_APPLICABLE` bedeutet, dass External Scripts deaktiviert ist und im sichtbaren Scope weder Registrierungen noch Runtimeevidenz gefunden wurden. `FEATURE_DISABLED` bedeutet, dass die Option deaktiviert ist, aber Katalog- oder Zählerevidenz sichtbar bleibt. `AVAILABLE_LIMITED` bedeutet, dass mindestens eine isolierte Quelle nicht gelesen werden konnte oder eine explizit angeforderte Datenbank nicht auswertbar war. Auswahlpartialität ändert keinen erfolgreich erhobenen Quellenstatus. `DENIED_PERMISSION`, `SOURCE_UNAVAILABLE` und `LOCK_TIMEOUT` bleiben je Quelle sichtbar; zugängliche Teilresultate werden nicht verworfen.
 
 Eine leere `activeRequests`-Liste ist ein gültiger Momentaufnahmebefund, keine Historie. Null Registrierungen gelten nur im sichtbaren Metadatenscope. `NULL` bei Konfiguration, Service oder Metrik bedeutet unbekannt oder nicht ableitbar, nicht automatisch null. Ein positives `@MaxZeilen` begrenzt die Ausgabe erst nach der Materialisierung und reduziert daher nicht die Quellarbeit.
 
@@ -79,7 +81,7 @@ Eine leere `activeRequests`-Liste ist ein gültiger Momentaufnahmebefund, keine 
 | Ressourcen | Temporäre Tabellen, dynamisches SQL je Datenbank und eine optionale `WAITFOR`-Dauer. Es werden keine Benutzertabellen oder externen Prozesse gestartet. |
 | Begrenzungswirkung | Datenbank- und Languagefilter reduzieren Katalog- und Runtimezeilen. `@MaxZeilen` begrenzt Resultsets, aber nicht die vorgelagerte Quellmaterialisierung. |
 | Locking und Nebenwirkungen | Rein lesend mit konfigurierbarem `LOCK_TIMEOUT`; kein DDL, kein Resource-Governor-Change und keine Runtimeausführung. Live-DMVs sind nicht atomar. |
-| Schutzmechanismus | `EXTERNAL_RUNTIME_CURRENT` steuert den Basispfad. Datei-/Ownerkontext verwendet zusätzlich `CATALOG_DEEP` und verlangt je Policy `@HighImpactConfirmed = 1`. |
+| Schutzmechanismus | `EXTERNAL_RUNTIME_CURRENT` steuert den Basispfad. Ownerkontext mit `@MitBerechtigungsanalyse = 1` verwendet zusätzlich `CATALOG_DEEP` und verlangt je Policy `@HighImpactConfirmed = 1`. Der Datei-Opt-in aktiviert diesen Gatepfad nicht. |
 | Sicherer Einsatz | Starten Sie mit einer synthetisch dokumentierten `ExampleDatabase`, Sample 0 und allen Privacy-Opt-ins aus. Vertiefen Sie nur eine konkrete Quelle. |
 | Aussagegrenze | Registrierung, Dienststatus, Requestsnapshot und Counterdeltas sind getrennte Evidenz. Keine Kombination beweist ohne kontrollierte externe Funktionsprobe die End-to-End-Verfügbarkeit. |
 
@@ -123,6 +125,8 @@ Die Katalogprojektionen referenzieren niemals `content`, `parameters` oder `envi
 ### Zeit- und Scope-Modell
 
 Konfiguration und Kataloge sind Current State. Active Requests sind eine flüchtige Momentaufnahme. Execution Stats und Performance Counter sind kumulativ; bei `@SampleSeconds > 0` wird nur ein resetgeprüftes Delta des gemeinsamen Intervalls ausgewiesen. Das Finding zu `Execution Errors` verwendet dieses eigene Sampledelta und nicht den aktuellen Gesamtwert. Poolwerte gelten seit `statistics_start_time`; ein Versions- oder Resetwechsel invalidiert das Delta. Linux-Poolwerte besitzen herstellerdokumentierte plattformspezifische Einheiten.
+
+Common 163 erfasst die nativen Katalogidentitäten zweier eigener Unicode-Datenbanken ohne neue Language-/Libraryregistrierung oder externe Ausführung. Bereits vorhandene Standardsprachen können die bestehenden Registrierungs-WARNs und Startfähigkeits-INFOs für positive Findingsfilter- und Limitfälle liefern; ein leerer Languagefilter belegt nur Leerakzeptanz. Der Vertrag prüft das TABLE-Schema, alle 13 TABLE-/JSON-Felder einschließlich NULL-Auslassung, Konfiguration, Servicezustand, Quellenstatus, vollständige Datenbankzähler, Poolkonfiguration sowie Counteridentitäten, Typen und Quellanzahlen. Veränderliche kumulative Werte werden nicht als atomarer Punktvergleich behauptet. RAW und CONSOLE werden nur über Status und begleitendes JSON geprüft. Sampling, externe Prozesse, Startfähigkeit und zusätzliche Berechtigungspfade bleiben außerhalb dieses begrenzten Vertrags.
 
 ### Bewertung und Gegenprobe
 
