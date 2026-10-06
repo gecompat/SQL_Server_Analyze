@@ -33,9 +33,13 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+TABLE und CONSOLE verwenden dieselbe vollständig materialisierte Modulstatusmenge mit fünf Feldern. Die drei Textfelder besitzen explizit `SQL_Latin1_General_CP1_CS_AS`. CONSOLE ergänzt bei vorhandenen Modulzeilen die Ergebnisbeschriftung; bei leerer Menge liefert es genau die bestehende dreifeldrige Leeranzeige. Der Parentstatus steht im RAW-Metaresultset beziehungsweise in `meta.statusCode` des JSON.
+
+Das JSON-Array `modules` verwendet dieselbe Modulstatusmenge. `REUSED_PARENT_SNAPSHOT` beschreibt die laufinterne Wiederverwendung des Query-Stats-Snapshots.
+
 ## Eine Zeile bedeutet
 
-Die Granularität hängt vom Child ab: Cachezeile, Query-Hash-Gruppe, Cacheaggregation oder Planbestandteil.
+In TABLE und CONSOLE bedeutet eine Modulstatuszeile einen tatsächlich aufgerufenen Childpfad mit seiner Aufrufreihenfolge und seinem Invocationstatus. Die fachlichen RAW- und JSON-Childresultate behalten ihre jeweils eigene Granularität.
 
 ## So lesen
 
@@ -60,6 +64,8 @@ Nicht aktivierte Children fehlen absichtlich; der Default ist bewusst leichtgewi
 Im Plan Cache kann leer bedeuten: evicted, nie gecacht, recompile, falscher Datenbank-/Hashfilter oder fehlender Text-/Planzugriff.
 
 Für `USP_PlanCacheAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+
+`@MaxZeilen` wird an die dafür vorgesehenen Children weitergereicht; NULL und 0 bleiben ohne Zeilenlimit. Die Modulstatusmenge wird dadurch nicht gekürzt. Ein negativer Wert wird vor der Childausführung als `INVALID_PARAMETER` abgelehnt und lässt die Modulstatusmenge leer. Ein `EXECUTED`-Eintrag bestätigt den abgeschlossenen Childaufruf; dessen fachlicher Status ist zusätzlich im Child-JSON zu lesen.
 
 ## Eigenlast und Grenzen
 

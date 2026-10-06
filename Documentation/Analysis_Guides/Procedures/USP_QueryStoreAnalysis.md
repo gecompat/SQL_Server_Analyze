@@ -1,7 +1,7 @@
 # [monitor].[USP_QueryStoreAnalysis]
 
 **Bereich:** Query Store, Orchestrator<br>
-**Zweck:** Orchestriert Status, Runtime, Waits, Planwechsel, Regressionen, Forced Plans, Hints und IQP.<br>
+**Zweck:** Orchestriert Status, Runtime, Waits, Planwechsel, Regressionen, Forced Plans, Hints, Replica-Kontext und IQP.<br>
 **Beobachtungsart:** nicht atomare Folge persistierter Query-Store-Historien<br>
 **Kostenklasse:** LOW–HIGH_OPT_IN
 
@@ -39,9 +39,13 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `moduleStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+TABLE und CONSOLE verwenden dieselbe vollständig materialisierte Modulstatusmenge mit fünf Feldern. Die drei Textfelder besitzen explizit `SQL_Latin1_General_CP1_CS_AS`. CONSOLE ergänzt bei vorhandenen Modulzeilen die Ergebnisbeschriftung; bei leerer Menge liefert es genau die bestehende dreifeldrige Leeranzeige. Der Parentstatus steht im RAW-Metaresultset beziehungsweise in `meta.statusCode` des JSON.
+
+JSON enthält weiterhin benannte Childobjekte und `warnings`; ein `modules`-Array gehört nicht zu diesem Vertrag.
+
 ## Eine Zeile bedeutet
 
-Die Granularität hängt vom Child ab: Datenbank, Query/Plan-Aggregat, Waitkategorie, Plan, Hint oder IQP-Signal.
+In TABLE und CONSOLE bedeutet eine Modulstatuszeile einen tatsächlich aufgerufenen Childpfad mit seiner Aufrufreihenfolge und seinem Invocationstatus. Die fachlichen RAW- und JSON-Childresultate behalten ihre jeweils eigene Granularität.
 
 ## So lesen
 
@@ -66,6 +70,8 @@ Deaktivierte Children fehlen absichtlich.
 Query Store kann nutzbar sein, obwohl das gewählte Fenster leer ist. Prüfen Sie zuerst Capturemodus, Read-only-Status, Retention und UTC-Fenster.
 
 Für `USP_QueryStoreAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+
+`@MaxZeilen` wird an die dafür vorgesehenen Children weitergereicht; NULL und 0 bleiben ohne Zeilenlimit. Die Modulstatusmenge wird dadurch nicht gekürzt. Ein negativer Wert wird vor der Childausführung als `INVALID_PARAMETER` abgelehnt und lässt die Modulstatusmenge leer. Ein `EXECUTED`-Eintrag bestätigt den abgeschlossenen Childaufruf; dessen fachlicher Status ist zusätzlich im Child-JSON zu lesen.
 
 ## Eigenlast und Grenzen
 

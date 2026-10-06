@@ -344,6 +344,10 @@ Standardmäßig wird nur Query Stats ausgeführt. Die übrigen Module müssen au
 - davor bzw. dazwischen die Childresultsets in Aufrufreihenfolge.
 - JSON `modules`: derselbe Modulstatus; `REUSED_PARENT_SNAPSHOT` kennzeichnet die laufinterne Wiederverwendung von `dm_exec_query_stats`.
 
+TABLE schreibt das benannte Resultset `moduleStatus`; CONSOLE liest dieselbe vollständige fünfteilige Modulstatusmenge und ergänzt die Ergebnisbeschriftung. Bei leerer Menge bleibt die dreifeldrige CONSOLE-Leeranzeige erhalten. Alle drei Textfelder sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. `@MaxZeilen` gilt für die entsprechenden Childresultate, nicht für Modulstatuszeilen; NULL/0 bleiben unbegrenzt und negative Werte werden vor Childaufrufen abgelehnt.
+
+Das JSON-Array `modules` liest dieselbe Materialisierung in `ExecutionOrdinal`-Reihenfolge.
+
 ### Aufrufe
 
 ```sql

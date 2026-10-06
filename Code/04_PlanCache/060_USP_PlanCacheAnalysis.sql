@@ -40,8 +40,18 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_PlanCacheAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
+
+    CREATE TABLE [#PlanCacheAnalysis_MonitorTableResult]
+    (
+          [ExecutionOrdinal] tinyint NOT NULL
+        , [ModuleName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
@@ -72,10 +82,10 @@ BEGIN
     DECLARE @Errors TABLE
     (
           [ExecutionOrdinal] tinyint        NOT NULL
-        , [ModuleName]       sysname        NOT NULL
-        , [InvocationStatus] varchar(40)    NOT NULL
+        , [ModuleName]       sysname COLLATE SQL_Latin1_General_CP1_CS_AS        NOT NULL
+        , [InvocationStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
         , [ErrorNumber]      int            NULL
-        , [ErrorMessage]     nvarchar(2048) NULL
+        , [ErrorMessage]     nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#PlanCacheAnalysis_QueryStatsSnapshot]
     (
@@ -299,6 +309,11 @@ BEGIN
         SET @StatusCode = 'AVAILABLE_LIMITED';
     END;
 
+    INSERT [#PlanCacheAnalysis_MonitorTableResult]
+        ([ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage])
+    SELECT [ExecutionOrdinal],[ModuleName],[InvocationStatus],[ErrorNumber],[ErrorMessage]
+    FROM @Errors;
+
     IF @OutputMode <> 'NONE'
     BEGIN
         SELECT
@@ -310,7 +325,7 @@ BEGIN
 
         IF @OutputMode = 'RAW'
         BEGIN
-            SELECT * FROM @Errors ORDER BY [ExecutionOrdinal];
+            SELECT * FROM [#PlanCacheAnalysis_MonitorTableResult] ORDER BY [ExecutionOrdinal];
         END
         ELSE
         BEGIN
@@ -320,7 +335,7 @@ BEGIN
                 , [ModuleName]            AS [Modul]
                 , [InvocationStatus]      AS [Status]
                 , [ErrorMessage]          AS [Fehler]
-            FROM @Errors
+            FROM [#PlanCacheAnalysis_MonitorTableResult]
             ORDER BY [ExecutionOrdinal];
         END;
     END;
@@ -344,7 +359,7 @@ BEGIN
         SELECT @Modules =
         (
             SELECT *
-            FROM @Errors
+            FROM [#PlanCacheAnalysis_MonitorTableResult]
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
@@ -352,7 +367,7 @@ BEGIN
         SELECT @Warnings =
         (
             SELECT *
-            FROM @Errors
+            FROM [#PlanCacheAnalysis_MonitorTableResult]
             WHERE [InvocationStatus] NOT IN ('EXECUTED','REUSED_PARENT_SNAPSHOT')
             ORDER BY [ExecutionOrdinal]
             FOR JSON PATH, INCLUDE_NULL_VALUES
@@ -379,7 +394,6 @@ BEGIN
     END;
     IF @TableResultRequested = 1
     BEGIN
-        SELECT * INTO [#PlanCacheAnalysis_MonitorTableResult] FROM @Errors;
         EXEC [monitor].[InternalWriteResultTable]
               @SourceTable = N'#PlanCacheAnalysis_MonitorTableResult'
             , @TargetTable=@TableTarget
