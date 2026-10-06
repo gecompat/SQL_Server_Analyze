@@ -1468,3 +1468,134 @@ der separate OPS-005-Updatevertrag war bereits inhaltlich unverändert.
 `TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1` bestanden anschließend
 gezielt mit Exitcode 0. Builder, Testverträge und Labfunktionen wurden nicht
 geändert; die unveränderte vollständige Suite wurde nicht wiederholt.
+## Service-Broker-Findings auf gemischten Collations am 6. Oktober 2026
+
+Der Slice härtet ausschließlich bestehende Verträge von
+`Code/09_VersionAdaptive/050_USP_ServiceBrokerAnalysis.sql`.
+48 zuvor implizite lokale Textspalten erhalten die Frameworkcollation;
+sechs waren bereits explizit collatiert. Der vor dem NOWAIT-Quellabschnitt
+angelegte Findingsexport ergänzt zehn Textspalten. Damit sind 64 lokale
+Textdeklarationen explizit collatiert. Vier dynamische Textvergleiche werden
+beidseitig collatiert. Die fachlichen Quelltimeouts bleiben erhalten.
+
+JSON, RAW, CONSOLE und TABLE verwenden nach der vollständigen Zählerbildung
+denselben gefilterten und begrenzten Findingsausschnitt. `NULL` erfüllt den
+bestehenden unbegrenzten Mengenvertrag. Auswahlwarnings bleiben bei der
+späteren Datenbankaggregation erhalten. Der öffentliche Findingsvertrag
+behält seine 13 Spalten und zehn Textspalten. Es entstehen keine neuen
+Parameter, Resultsetnamen, Quellen oder Diagnosefunktionen.
+
+### Runtime und begrenzte Metadatenaufnahme
+
+Die eigenen Docker-Labs verwendeten SQL Server 2025 unter Linux.
+Der bestehende interne `Invoke-SqlQuery`-Helfer von SQL_Server_Lab lieferte
+die Zeilenausgabe einer begrenzten Metadatenabfrage zurück. Ausgegeben wurden
+ausschließlich ProductVersion, Major, Collations, Compatibility Levels und
+aggregierte NULL-Zähler mit festen Rollenlabels. Es gab keine Lab-API-Änderung.
+
+| Merkmal | Tatsächlich beobachteter Wert |
+|---|---|
+| Basisrevision | `dcb0b659aaf3b587ec5f89e739b037c9f16de4ae` |
+| Native Engine | SQL Server 2025, Major 17 |
+| ProductVersion | `17.0.4075.5` |
+| Server und `tempdb` | `Latin1_General_100_CS_AS` |
+| Framework | `SQL_Latin1_General_CP1_CS_AS` |
+| Eigene Brokerquelle | `Latin1_General_100_CI_AS` |
+| Common157 Framework und Quelle | Jeweils explizit 150, 160 und 170 gesetzt und getrennt geprüft |
+| Integration182 | Frameworklevel 150, 160 und 170; die unveränderten eigenen Quelldatenbanken verwenden einen nicht separat erfassten Defaultlevel |
+
+Der finale Common157-Lauf bei CL150 bestand im zweiten eigenen Lab. Danach
+scheiterte ausschließlich das private Schreiben der Metadatenliste an einer
+PowerShell-Überladung. Die SQL-Abfrage war bereits erfolgreich abgeschlossen;
+Framework- und Sourcelevel standen in der begrenzten Ausgabe. Das dritte eigene
+Lab führte die noch fehlenden Common157-Läufe bei CL160/170 und Integration182
+bei allen drei Frameworklevels aus. Die bereits bestandene CL150-Prüfung und
+die vier bestätigten Baselines wurden nicht wiederholt.
+
+### Konkrete Baselines
+
+Die erste Variante stammt unverändert aus dem Git-Blob der Basisrevision.
+Die übrigen Varianten waren private Zwischenstände. Alle vier Fehler wurden
+auf derselben zweiten eigenen Runtime mit Framework- und Sourcelevel 170
+reproduziert. Die früheren Findingsprüfungen werden nicht als Nachweis einer
+späteren, noch nicht erreichten Assertion ausgegeben.
+
+| Private Variante | Erreichter Fall | Tatsächlicher Fehler |
+|---|---:|---|
+| Unveränderte Basis | 0 | `56112`: TABLE-Textcollation |
+| Lokale Textcollations und vier dynamische Vergleiche | 1 | `56111`: Findingslimit im TABLE-Export |
+| Gemeinsamer Export mit alter NULL-Abweisung | 4 | `56110`: Modulstatus beim NULL-Limit |
+| NULL-fähiger Export mit alter Warningaggregation | 6 | `56110`: Modulstatus beim fehlenden Datenbanknamen |
+
+Der erste eigene Labversuch erreichte keinen Produktaufruf. Seine Fixture
+erwartete fälschlich einen verfügbaren Queue-Partitionswert von 0 und scheiterte
+mit `56102`. Der finale Vertrag erhält stattdessen native NULL-Werte und
+prüft deren Parität. Dieser Versuch ist kein Baseline- oder Erfolgsnachweis.
+
+### Finale funktionale Nachweise und Grenzen
+
+`Code/Tests/Common/157_ServiceBrokerAnalysis_Collation_Runtime_Contract.sql`
+bestand neun Fälle auf jedem expliziten Framework-/Sourcelevel 150, 160 und
+170. Geprüft wurden unbegrenzte, begrenzte und NULL-Mengen, WARN-Auswahl,
+ein exakter Unicode-Queuename, abweichende Groß-/Kleinschreibung, ein fehlender
+Datenbankname und ein leerer WARN-Ausschnitt. Der Vertrag vergleicht alle 13
+Findingsfelder einschließlich NULL als beidseitige Multisets. Unabhängige
+Erwartungen prüfen Findingidentitäten, Severity, Confidence, Metriken und
+Schwellen gegen die eigenen nativen Queue-Schalter. Sieben unterschiedliche
+Quellcodes besitzen den erwarteten Status und vollständige Zeilenzähler;
+Datenbankzähler bleiben vor Ausgabegrenzen erhalten.
+
+Native Queue-IDs, Namen, Serviceanzahlen, Queue-/Poison-/Retention-Schalter,
+Aktivierungskonfiguration und die vorhandenen Partitionsfelder wurden
+gegengeprüft. Bei CL160 und CL170 lieferte die begrenzte Gegenprobe für beide
+Queues jeweils NULL bei `QueueRowsApprox`, `QueueReservedMb` und `QueueUsedMb`.
+Die Parität belegt diese Abfragegrenze; sie belegt weder eine positive noch
+eine Nullwert-Kapazitätsmessung. Die DDL-Fixture allein ist dafür kein Nachweis.
+
+Die Queues blieben ohne Nachrichten, Dialoge oder Aktivierungsausführung.
+Transmission und Conversation-Quellen wurden mit leerem Ergebnis geprüft.
+Nichtleere Payload-/Dialogfälle, tatsächliche Aktivierungsfortschritte,
+positive Kapazitätswerte und neue Berechtigungsvarianten gehören nicht zu
+diesem Nachweis. Die unveränderte Integration182 bestand alle 15 registrierten
+Fälle auf jedem Frameworklevel. Acht davon sind Runtimefälle, sechs sind
+Definitionsprüfungen und einer ist das Payload-Gate; diese Unterscheidung
+bleibt erhalten.
+
+Der kanonische Installer mit 166 Quellen und Integration110-Smoke bestanden
+in den eigenen Runtimes. Alle drei eigenen Container und Volumes wurden über
+den Run-gebundenen Lab-Cleanup entfernt: jeweils zwei Schritte, null Fehler,
+`REMOVED`. Private Zustände bleiben für Review erhalten. Die zwei früher
+gesperrten Cleanup-Pfade wurden nicht angefasst; kein rekursiver Cleanup
+wurde erneut versucht.
+
+`Native additional risk: NO`: Der Diff verändert weder Katalogschemas noch
+Major-Zweige, Berechtigungen, Featureverfügbarkeit oder ältere Installerzweige.
+CL150/160 auf der nativen 2025-Engine sind keine nativen 2019-/2022-Nachweise.
+
+### Quellen, Adapter und statische Prüfung
+
+Der ausgeführte Productsource-Stand hatte den UTF-8/LF-SHA-256
+`49DA4124E0E30002929CF3D270184965A8C46FC7404A6C1F285F7896C344BFD4`.
+Common157 hatte den UTF-8/LF-SHA-256
+`33E2BC28B211FDE0F60C0513238BD57C3D376F45B1428CBA0CBC5B4996099D5F`.
+Die Raw-Workingtree-Hashes und LF-normalisierten Sourcehashes waren bei
+Ausführung identisch. Der private Querylauf ersetzte den Installationsplatzhalter,
+entfernte SQLCMD-Batchtrenner und ergänzte ausschließlich Fall- und
+Metadatenmarker; diese Instrumentierung ist von den Sourcehashes getrennt.
+
+`pwsh -NoProfile -File TestLab/Adapters/OPS-005/Build-AdapterInstall.ps1`
+regenerierte den betroffenen versionierten Vollinstaller aus kanonischen
+Quellen. Sein semantischer Diff entspricht ausschließlich dem Brokerobjekt.
+Der ExecutionPlan-Installer enthält dieses Objekt nicht. Die beiden
+Procedure-Dokumente und die vier kanonischen COLL-001-Statusquellen sind
+synchronisiert; COLL-001 bleibt partiell.
+
+Die Privacy-Selbstprüfung bestand mit fünf Fixtures und null Findings.
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Darin bestanden unter
+anderem Privacy mit 1.039 Repositorydateien und null Findings, Schreibstil
+mit 697 Repositorydateien und null Findings, Roadmap-, Maturity- und
+Partialitätsverträge, der NOWAIT-Metadatenvertrag sowie beide Adapterprüfungen.
+Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt;
+die abschließenden Privacy- und Schreibstilprüfungen bestanden mit denselben
+Dateizahlen und null Findings.

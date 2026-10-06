@@ -443,6 +443,8 @@ Conversation Endpoints werden nach Zustand, Initiator-/Systemflag und Lifetime a
 
 Wichtige Reviewcodes sind deaktivierte Queue-Schalter, Aktivierungsstillstand bei sichtbarem Rückstand, Transmission-Status oder -Alter, Conversation-Errorzustand, abgelaufene Lifetime und isolierte Evidenzlücken.
 
+JSON, RAW, CONSOLE und TABLE verwenden denselben Findingsausschnitt mit `WARN` vor `INFO` und anschließendem `FindingOrdinal`. `@NurProblematisch = 1` gibt ausschließlich `WARN` aus; `@MaxZeilen` begrenzt positive Mengen, während `0` und `NULL` unbegrenzt sind. Die vollständigen Datenbank- und Quellenzähler bleiben vor der Ausgabeauswahl erhalten. TABLE enthält die bestehenden 13 Findingsspalten mit zehn explizit collatierten Textspalten. Auswahlwarnings werden durch die spätere Quellenaggregation nicht überschrieben.
+
 ### Interpretation
 
 | Konstellation | Bewertung |
