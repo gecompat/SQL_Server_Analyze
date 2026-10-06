@@ -22,14 +22,13 @@ CREATE TABLE [#ExampleCriticalNative]
 );
 BEGIN TRY
     SET @Sql=N'CREATE EVENT SESSION [ExampleCommonCriticalEvents] ON SERVER
-        ADD EVENT [sqlserver].[error_reported](WHERE ([error_number]=(50000) AND [severity]=(16)))
+        ADD EVENT [sqlserver].[error_reported](WHERE ([error_number]=(50000) AND [severity]=(16)
+            AND [sqlserver].[session_id]=('+CONVERT(nvarchar(20),@@SPID)+N')))
         ADD TARGET [package0].[event_file](SET filename=N'''+REPLACE(@Path,N'''',N'''''')+N''',max_file_size=(5),max_rollover_files=(1))
         WITH(MAX_DISPATCH_LATENCY=1 SECONDS,STARTUP_STATE=OFF);';
     EXEC [master].[sys].[sp_executesql] @Sql;
     SET @Created=1;
     ALTER EVENT SESSION [ExampleCommonCriticalEvents] ON SERVER STATE=START;
-    SET @Start=SYSUTCDATETIME();
-    SET @End=DATEADD(MINUTE,5,@Start);
     BEGIN TRY RAISERROR(N'Example common critical event one.',16,1); END TRY BEGIN CATCH END CATCH;
     WAITFOR DELAY '00:00:00.250';
     BEGIN TRY RAISERROR(N'Example common critical event two.',16,1); END TRY BEGIN CATCH END CATCH;
@@ -40,7 +39,7 @@ BEGIN TRY
     (
         SELECT [timestamp_utc],[object_name],CONVERT(xml,[event_data]) AS [EventXml]
         FROM [sys].[fn_xe_file_target_read_file](@Pattern,NULL,NULL,NULL)
-        WHERE [object_name]=N'error_reported' AND [timestamp_utc]>=@Start AND [timestamp_utc]<@End
+        WHERE [object_name]=N'error_reported'
     )
     INSERT [#ExampleCriticalNative]
     SELECT [timestamp_utc],[object_name],
@@ -51,7 +50,16 @@ BEGIN TRY
            [EventXml].value('(event/data[@name="message"]/value/text())[1]','nvarchar(4000)'),[EventXml]
     FROM [Events];
     IF (SELECT COUNT_BIG(*) FROM [#ExampleCriticalNative])<>2
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleCriticalNative]
+           WHERE [ErrorNumber]=50000 AND [Severity]=16
+             AND [MessageText]=N'Example common critical event one.')<>1
+       OR (SELECT COUNT_BIG(*) FROM [#ExampleCriticalNative]
+           WHERE [ErrorNumber]=50000 AND [Severity]=16
+             AND [MessageText]=N'Example common critical event two.')<>1
+       OR EXISTS(SELECT 1 FROM [#ExampleCriticalNative] WHERE [TimestampUtc] IS NULL)
         THROW 55889,N'Die zwei eigenen Ereignisse wurden nicht nativ bestätigt.',1;
+    SELECT @Start=MIN([TimestampUtc]),@End=DATEADD(MICROSECOND,1,MAX([TimestampUtc]))
+    FROM [#ExampleCriticalNative];
     WHILE @Case<3
     BEGIN
         SELECT @Limit=CASE WHEN @Case=1 THEN 1 WHEN @Case=2 THEN NULL ELSE 0 END,

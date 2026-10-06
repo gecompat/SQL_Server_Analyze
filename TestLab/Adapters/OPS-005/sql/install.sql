@@ -5181,7 +5181,8 @@ Zweck        : Kopiert genau ein bereits materialisiertes Analyseergebnis in
 Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
                und permanente Tabellen sind bewusst nicht zugelassen.
 Locking      : Katalogauflösung ausschließlich über tempdb.sys.* WITH (NOLOCK)
-               und LOCK_TIMEOUT 0; keine blockierenden Metadatenfunktionen.
+               und LOCK_TIMEOUT 0 für fremde Tabellen. Eigene lokale Temp-DDL
+               erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms.
 ===============================================================================
 */
 SET ANSI_NULLS ON;
@@ -5201,44 +5202,53 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Diese lokalen Tabellen entstehen vor LOCK_TIMEOUT 0. Der No-Wait-
-    -- Vertrag gilt für die fremden Quell-/Ziel-Temp-Tabellen, nicht für die
-    -- eigene tempdb-Metadatenanlage des Writers.
-    CREATE TABLE [#InternalWriteResultTable_SourceSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
+    -- Ein geerbter NOWAIT-Wert darf die eigene TempDB-Metadatenanlage
+    -- nicht wegen einer kurzzeitigen Kollision abbrechen. Nur diese lokale
+    -- Anlage erhält bei eingehendem Timeout 0 ein Zeitbudget von 1000 ms.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlOriginalLockTimeout=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalWriteResultTable_SourceSchema]
+        (
+              [ColumnId] int NOT NULL
+            , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [SystemTypeId] tinyint NOT NULL
+            , [MaxLength] smallint NOT NULL
+            , [Precision] tinyint NOT NULL
+            , [Scale] tinyint NOT NULL
+            , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [IsNullable] bit NOT NULL
+            , [IsIdentity] bit NOT NULL
+            , [IsComputed] bit NOT NULL
+            , [IsUserDefined] bit NOT NULL
+            , [IsAssemblyType] bit NOT NULL
+            , [XmlCollectionId] int NOT NULL
+        );
 
-    CREATE TABLE [#InternalWriteResultTable_TargetSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
+        CREATE TABLE [#InternalWriteResultTable_TargetSchema]
+        (
+              [ColumnId] int NOT NULL
+            , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [SystemTypeId] tinyint NOT NULL
+            , [MaxLength] smallint NOT NULL
+            , [Precision] tinyint NOT NULL
+            , [Scale] tinyint NOT NULL
+            , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [IsNullable] bit NOT NULL
+            , [IsIdentity] bit NOT NULL
+            , [IsComputed] bit NOT NULL
+            , [IsUserDefined] bit NOT NULL
+            , [IsAssemblyType] bit NOT NULL
+            , [XmlCollectionId] int NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
 
     SET LOCK_TIMEOUT 0;
 
@@ -5733,21 +5743,29 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Lokale Metadatenobjekte werden vor dem bewussten No-Wait-Vertrag
-    -- angelegt, damit eine kurzzeitige tempdb-DDL-Kollision nicht schon den
-    -- rein internen Arbeitsbereich mit Fehler 1222 abbrechen lässt.
-    CREATE TABLE [#InternalPrepareResultTables_Allowed]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY
-    );
+    -- Eigene Temp-DDL erhält bei geerbtem NOWAIT ein Zeitbudget von
+    -- 1000 ms je Anlage. Fremde Zieltabellen bleiben anschließend NOWAIT.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlOriginalLockTimeout=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalPrepareResultTables_Allowed]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY
+        );
 
-    CREATE TABLE [#InternalPrepareResultTables_Parsed]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [JsonType] int NOT NULL
-    );
+        CREATE TABLE [#InternalPrepareResultTables_Parsed]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [JsonType] int NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
 
     SET LOCK_TIMEOUT 0;
 
@@ -5990,14 +6008,28 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalPrepareSingleResultTable]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @TargetTable=NULL;
 
-    CREATE TABLE [#InternalPrepareSingleResultTable_Map]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
-    );
+    -- Ein geerbter NOWAIT-Wert darf die eigene TempDB-Metadatenanlage
+    -- nicht wegen einer kurzzeitigen Kollision abbrechen. Nur diese lokale
+    -- Anlage erhält ein Zeitbudget von 1000 ms; die nachfolgende
+    -- Auflösung fremder Tabellen bleibt bei LOCK_TIMEOUT 0.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalPrepareSingleResultTable_Map]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+            , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @StatusCode varchar(40),@ErrorMessage nvarchar(2048);
     EXEC [monitor].[InternalPrepareResultTables]
@@ -51102,63 +51134,63 @@ BEGIN
     CREATE TABLE [#InMemoryOltpAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_FeatureScope]
     (
-          [DatabaseName] sysname NOT NULL PRIMARY KEY
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
         , [MemoryOptimizedTableCount] bigint NOT NULL
         , [MemoryOptimizedTableTypeCount] bigint NOT NULL
         , [MemoryOptimizedFilegroupCount] bigint NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_DatabaseStatus]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [MemoryOptimizedTableCount] bigint NOT NULL
         , [MemoryOptimizedTableTypeCount] bigint NOT NULL
         , [MemoryOptimizedFilegroupCount] bigint NOT NULL
         , [SourceFailureCount] int NOT NULL
         , [FindingCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_SourceStatus]
     (
-          [DatabaseName] sysname NULL
-        , [SourceCode] varchar(64) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [RowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_TableMemory]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [TableName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ObjectId] int NOT NULL
-        , [DurabilityDesc] nvarchar(60) NULL
+        , [DurabilityDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [TableAllocatedMb] decimal(19,2) NULL
         , [TableUsedMb] decimal(19,2) NULL
         , [IndexAllocatedMb] decimal(19,2) NULL
@@ -51166,16 +51198,16 @@ BEGIN
         , [TotalAllocatedMb] decimal(19,2) NULL
         , [TotalUsedMb] decimal(19,2) NULL
         , [UsedPercent] decimal(9,4) NULL
-        , [Severity] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_HashIndex]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [TableName] sysname NOT NULL
-        , [IndexName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ObjectId] int NOT NULL
         , [IndexId] int NOT NULL
         , [ConfiguredBucketCount] bigint NULL
@@ -51184,54 +51216,54 @@ BEGIN
         , [EmptyBucketPercent] decimal(9,4) NULL
         , [AverageChainLength] decimal(19,4) NULL
         , [MaxChainLength] bigint NULL
-        , [RuntimeStatsStatus] varchar(40) NOT NULL
-        , [Severity] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [RuntimeStatsStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_MemoryConsumer]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MemoryConsumerType] int NULL
-        , [MemoryConsumerDesc] nvarchar(256) NULL
+        , [MemoryConsumerDesc] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ConsumerCount] bigint NOT NULL
         , [AllocationCount] bigint NULL
         , [AllocatedMb] decimal(19,2) NULL
         , [UsedMb] decimal(19,2) NULL
         , [UsedPercent] decimal(9,4) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_Checkpoint]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [FileType] int NULL
-        , [FileTypeDesc] nvarchar(60) NULL
+        , [FileTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [State] int NULL
-        , [StateDesc] nvarchar(60) NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [FileCount] bigint NOT NULL
         , [FileSizeMb] decimal(19,2) NULL
         , [FileUsedMb] decimal(19,2) NULL
         , [LogicalRowCount] bigint NULL
-        , [Severity] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_Transaction]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [TransactionState] int NULL
-        , [TransactionStateDesc] nvarchar(60) NOT NULL
-        , [ResultDesc] nvarchar(256) NULL
+        , [TransactionStateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ResultDesc] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [TransactionCount] bigint NOT NULL
-        , [Severity] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_ResourcePool]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ResourcePoolId] int NULL
-        , [ResourcePoolName] sysname NULL
+        , [ResourcePoolName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsDefaultOrUnbound] bit NOT NULL
         , [DatabasesUsingPool] bigint NULL
         , [MinMemoryPercent] int NULL
@@ -51241,26 +51273,26 @@ BEGIN
         , [UsedMemoryMb] decimal(19,2) NULL
         , [UsedPercentOfTarget] decimal(9,4) NULL
         , [OutOfMemoryCount] bigint NULL
-        , [Severity] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#InMemoryOltpAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [IndexName] sysname NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [IndexName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     IF @StatusCode='AVAILABLE'
@@ -51649,7 +51681,7 @@ SET @pRows=@@ROWCOUNT;';
                         ELSE 'RESOURCE_POOL_CONTEXT' END,
                    N'Poolwerte sind eine Servermomentaufnahme. Der Defaultpool erlaubt keine belastbare Datenbankzuordnung; auch benannte Pools können von mehreren Datenbanken geteilt werden.'
             FROM [#InMemoryOltpAnalysis_FeatureScope] [fs]
-            JOIN [sys].[databases] [d] WITH (NOLOCK) ON [d].[name]=[fs].[DatabaseName]
+            JOIN [sys].[databases] [d] WITH (NOLOCK) ON [d].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[fs].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
             LEFT JOIN [sys].[dm_resource_governor_resource_pools] [p] WITH (NOLOCK) ON [p].[pool_id]=COALESCE([d].[resource_pool_id],2)
             LEFT JOIN [PoolUse] [u] ON [u].[resource_pool_id]=[d].[resource_pool_id]
             WHERE [fs].[MemoryOptimizedTableCount]+[fs].[MemoryOptimizedTableTypeCount]+[fs].[MemoryOptimizedFilegroupCount]>0;
@@ -51778,7 +51810,12 @@ SET @pRows=@@ROWCOUNT;';
                COALESCE(SUM(CASE WHEN [ff].[Severity]='WARN' THEN CONVERT(bigint,1) ELSE CONVERT(bigint,0) END),0) AS [WarnCount]
         FROM [#InMemoryOltpAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
-    ) [f];
+    ) [f]
+    WHERE NOT EXISTS
+    (
+        SELECT 1 FROM [#InMemoryOltpAnalysis_DatabaseCandidateWarnings] [w]
+        WHERE [w].[RequestedName]=[ds].[DatabaseName]
+    );
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -51799,6 +51836,12 @@ SET @pRows=@@ROWCOUNT;';
     FROM [#InMemoryOltpAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
+    SELECT TOP(@Limit) *
+    INTO [#InMemoryOltpAnalysis_FindingsExport]
+    FROM [#InMemoryOltpAnalysis_Findings]
+    WHERE @NurProblematisch=0 OR [Severity]='WARN'
+    ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+
     IF @JsonErzeugen=1
     BEGIN
         SELECT @Json=(
@@ -51806,7 +51849,7 @@ SET @pRows=@@ROWCOUNT;';
                 JSON_QUERY((SELECT N'USP_InMemoryOltpAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
                 JSON_QUERY(COALESCE((SELECT * FROM [#InMemoryOltpAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
                 JSON_QUERY(COALESCE((SELECT * FROM [#InMemoryOltpAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT * FROM [#InMemoryOltpAnalysis_FindingsExport] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_TableMemory] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY [TotalUsedMb] DESC,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [tableMemory],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_HashIndex] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName],[IndexName] FOR JSON PATH),N'[]')) AS [hashIndexes],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_MemoryConsumer] WHERE @NurProblematisch=0 ORDER BY [UsedMb] DESC,[DatabaseName] FOR JSON PATH),N'[]')) AS [memoryConsumers],
@@ -51823,8 +51866,7 @@ SET @pRows=@@ROWCOUNT;';
                N'Momentaufnahme und Prüfhinweise; keine automatische DDL-, Daten- oder Gesundheitsentscheidung.' AS [Detail];
         SELECT * FROM [#InMemoryOltpAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
         SELECT * FROM [#InMemoryOltpAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_Findings]
-        WHERE @NurProblematisch=0 OR [Severity]='WARN'
+        SELECT * FROM [#InMemoryOltpAnalysis_FindingsExport]
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
         SELECT TOP(@Limit) * FROM [#InMemoryOltpAnalysis_TableMemory]
         WHERE @NurProblematisch=0 OR [Severity]='WARN'
@@ -51857,14 +51899,14 @@ SET @pRows=@@ROWCOUNT;';
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#InMemoryOltpAnalysis_Findings'
+              @SourceTable=N'#InMemoryOltpAnalysis_FindingsExport'
             , @ResultLabel=N'InMemoryOltpAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#InMemoryOltpAnalysis_Findings'
+              @SourceTable = N'#InMemoryOltpAnalysis_FindingsExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

@@ -26,21 +26,29 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Lokale Metadatenobjekte werden vor dem bewussten No-Wait-Vertrag
-    -- angelegt, damit eine kurzzeitige tempdb-DDL-Kollision nicht schon den
-    -- rein internen Arbeitsbereich mit Fehler 1222 abbrechen lässt.
-    CREATE TABLE [#InternalPrepareResultTables_Allowed]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY
-    );
+    -- Eigene Temp-DDL erhält bei geerbtem NOWAIT ein Zeitbudget von
+    -- 1000 ms je Anlage. Fremde Zieltabellen bleiben anschließend NOWAIT.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlOriginalLockTimeout=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalPrepareResultTables_Allowed]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [ResultNameBinary] varbinary(256) NOT NULL PRIMARY KEY
+        );
 
-    CREATE TABLE [#InternalPrepareResultTables_Parsed]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [JsonType] int NOT NULL
-    );
+        CREATE TABLE [#InternalPrepareResultTables_Parsed]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [JsonType] int NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
 
     SET LOCK_TIMEOUT 0;
 

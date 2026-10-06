@@ -20,14 +20,28 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalPrepareSingleResultTable]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @TargetTable=NULL;
 
-    CREATE TABLE [#InternalPrepareSingleResultTable_Map]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
-    );
+    -- Ein geerbter NOWAIT-Wert darf die eigene TempDB-Metadatenanlage
+    -- nicht wegen einer kurzzeitigen Kollision abbrechen. Nur diese lokale
+    -- Anlage erhält ein Zeitbudget von 1000 ms; die nachfolgende
+    -- Auflösung fremder Tabellen bleibt bei LOCK_TIMEOUT 0.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalPrepareSingleResultTable_Map]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+            , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
+
+    SET LOCK_TIMEOUT 0;
 
     DECLARE @StatusCode varchar(40),@ErrorMessage nvarchar(2048);
     EXEC [monitor].[InternalPrepareResultTables]

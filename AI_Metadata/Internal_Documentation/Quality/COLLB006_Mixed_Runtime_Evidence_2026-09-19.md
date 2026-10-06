@@ -1190,3 +1190,158 @@ und liefert keinen Erfolgsnachweis. Sein eigener Container und sein Volume
 wurden separat entfernt. Ein temporärer lokaler Wiederherstellungsstate blieb
 wegen einer abgelehnten rekursiven Dateibereinigung erhalten; er gehört nicht
 zu Repository- oder GitHub-Artefakten.
+
+
+## In-Memory-OLTP-Findings und Quellenstatus – 6. Oktober 2026
+
+Die lokale Prüfung verwendet einen neu erzeugten eigenen SQL-Server-2025-Container
+mit Instanz- und tempdb-Collation `Latin1_General_100_CS_AS`, einer Frameworkdatenbank
+mit `SQL_Latin1_General_CP1_CS_AS` und einer synthetischen Quelldatenbank mit
+`Latin1_General_100_CI_AS`. Zwei kleine SCHEMA_ONLY-Tabellen enthalten je vier
+Integerzeilen und konfigurierte Hash-Bucketzahlen 8 beziehungsweise 16. Ein
+speicheroptimierter Tabellentyp und eine eigene MEMORY_OPTIMIZED_DATA-Dateigruppe
+vervollständigen die Fixture. Konkrete Laufzeitpfade und Secrets bleiben außerhalb
+des Repositorys.
+
+Der finale Testvertrag
+`Code/Tests/Common/155_InMemoryOltpAnalysis_Collation_Runtime_Contract.sql` hat den
+SHA-256 `B04BACA94786666025100B078CB74103E531D711A87D9499E8EFAB1EFE594131`.
+Der tatsächlich ausgeführte dritte lokale Lauf bestand mit Exitcode 0 bei
+Compatibility Level 150, 160 und 170. Jeder Level führte acht Fälle aus:
+ungefilterte Ausgabe ohne Limit, Limit 1, ausschließlich problematische Findings
+mit NULL-Limit, Hashstatistik opt-in, problematische Hashfindings mit Limit 1,
+unbegrenzte problematische Hashfindings, enger Objektfilter und gültige plus
+nicht vorhandene explizite Datenbankauswahl.
+
+Die Prüfung vergleicht alle 14 Findingsfelder zwischen TABLE und JSON und die
+Frameworkcollation der elf TABLE-Textspalten. Native eigene Tabellen- und
+Hashindexidentitäten, konfigurierte Bucketzahlen, Hasharithmetik sowie unabhängige
+Findingcodes, Metriknamen und Schwellenwerte werden geprüft. Vollständige
+Datenbankzähler und Quellenstatus bleiben trotz Findingsfilter und Ausgabelimit erhalten.
+Die fehlende explizite Datenbank behält `DATABASE_UNAVAILABLE`, Partialwert und
+Fehlerzähler. Acht erwartete Quellenstatus werden vollständig geprüft; der
+Hashstatistikpfad bleibt ohne Opt-in `NOT_REQUESTED`.
+
+Vier Vorstände reproduzierten getrennte Fehler: Die unveränderte Quelle scheitert
+am TABLE-Textcollationvertrag oder am nativen Datenbanknamenvergleich im Resource-Pool-Pfad; der ausschließlich
+collationgehärtete Temp-Tabellenstand reproduzierte Fehler 468 am Datenbanknamenvergleich im Resource-Pool-Pfad.
+Nach dessen Korrektur scheiterte der gemeinsame Findingsfilter-/Limitvertrag;
+nach Exportkorrektur scheiterte der Statusvertrag der nicht vorhandenen Datenbank.
+Die finale Quelle korrigiert 65 bisher implizite Textcollations, den beidseitig
+collierten Datenbanknamenvergleich im Resource-Pool-Pfad, die gemeinsame Findingsauswahl und die
+Statusaktualisierung bereits erfasster Auswahlwarnings.
+
+Die eigene Quelldatenbank, der Container, das Volume und der lokale Labzustand
+wurden entfernt. Frühere fehlgeschlagene Versuche sind kein Erfolgsnachweis;
+auch ihre eigenen Ressourcen wurden entfernt. Der Test stellt seinen eigenen
+ursprünglichen LOCK_TIMEOUT wieder her. Die bestehende Produktsemantik dieses
+Sessionwertes wurde nicht geändert und ist kein neuer Restaurationsnachweis.
+
+Die Evidenz gilt für diese kleine synthetische Fixture auf SQL Server 2025.
+Sie belegt keine native ältere Engine, zusätzliche Berechtigungen, Last- oder
+Speicherknappheit, dauerhafte Checkpointprobleme, Transaktionsdruck oder eine
+separate CONSOLE-Erfassung. Flüchtige Speicherwerte werden nicht zwischen
+verschiedenen Momentaufnahmen als identisch vorausgesetzt. Die lokale Prüfung
+ersetzt die erforderliche erfolgreiche GitHub-CI am exakten PR-Head nicht.
+
+
+### Ausgewählte In-Memory-Regressionskombinationen
+
+Der Impact-Selector wählte acht Tests für den ausführbaren Kandidaten
+`0fd4d256290cb9844cab9211e24fac7cf97ba93a`. Der erste eigene gemischte SQL-Server-2025-Lauf
+bestand alle acht Tests bei Level 150 und sechs bei Level 160. Im bestehenden
+Navigator-Vertrag trat danach Fehler 1222 in `InternalPrepareSingleResultTable`
+auf; der gesamte Lauf blieb fehlgeschlagen. Nach Entfernung dieses eigenen Labs
+bestand ein frisches Lab gezielt die beiden noch offenen Tests bei Level 160
+und alle acht bei Level 170 mit Exitcode 0. Dieser Wiederholungskandidat
+`5444d16b6604a9e147cd9086131c23382197ad31` unterscheidet sich ausschließlich durch
+Evidenzpräzisierungen; SQL und Testvertrag sind identisch.
+
+Damit liegen erfolgreiche Ergebnisse für alle 24 ausgewählten Kombinationen
+vor, verteilt auf zwei Läufe. Der beobachtete Lock-Timeout wird dadurch nicht
+zu einem erfolgreichen ersten Lauf umgedeutet; eine konkrete Lockursache wurde
+nicht erfasst. Der begrenzte Frischlabnachweis belegt die erfolgreiche
+Wiederholung. Beide eigenen Container, Volumes und lokalen Labzustände wurden
+entfernt. Die erforderliche exakte GitHub-Head-CI bleibt ein gesondertes Gate.
+
+
+### Geerbtes NOWAIT bei eigener TABLE-Metadatenanlage
+
+Die erforderliche GitHub-SQL-CI am Head
+`9a9d4376ce20938fe839998036ca0cebbeea9e9c` scheiterte bei Compatibility Level 150
+mit Fehler 1222 in `InternalWriteResultTable` an der eigenen lokalen
+Metadatenanlage. Der synthetische CI-Container wurde durch den vorhandenen
+Cleanup beendet. Zusammen mit dem zuvor lokal beobachteten Fehler in
+`InternalPrepareSingleResultTable` zeigt dies einen zu engen NOWAIT-Pfad für
+eigene Temp-DDL; eine konkrete konkurrierende Sperrquelle wurde nicht erfasst.
+
+Der ausführbare Korrekturcommit
+`94e542ef925d67ea4172d3438cfadcaa0b1d4af5` schützt die eigene Metadatenanlage
+in Writer und Mehrfach-Preflight bei eingehendem Timeout 0 mit bis zu 1000 ms
+je CREATE. Andere Eingangswerte bleiben für diese Anlage erhalten. Der
+Single-Preflight verwendet für seine eigene Mappinganlage bis zu 1000 ms,
+auch bei anderen Eingangswerten; zuvor war diese Anlage stets NOWAIT.
+Unmittelbar danach bleiben fremde Quell-, Ziel- und Mappingoperationen bei
+`LOCK_TIMEOUT 0`. Ein Fehler während der eigenen Anlage stellt den gesicherten
+Eingangswert wieder her und wird unverändert weitergeworfen.
+
+Ein frisches eigenes gemischtes SQL-Server-2025-Lab bestand die Verträge
+`Common/123`, `Common/155`, `Integration/188` und `Integration/196` bei
+Compatibility Level 150, 160 und 170: zwölf erfolgreiche Dateiläufe mit Exitcode 0.
+Der erweiterte Vertrag 123 hat SHA-256
+`4E141414CFFD553DF8AB00480889A1F6FFFB3745B42F7A7124FB0709E608957F`.
+Je Level prüfen 50 Single-Preflights und 50 Writer-Appends eingehende Timeoutwerte
+0 und 731, die Quell-/Zielidentität, insgesamt 51 geschriebene Zeilen und zwei
+abgelehnte globale Zielnamen. Der Timeout des Aufrufers bleibt nach den
+geprüften Erfolgs- und Fehleraufrufen erhalten. Wiederholungen beweisen die
+getesteten Aufrufe, keine bestimmte Lockursache oder garantierte Fehlerfreiheit.
+
+Container, Volume und Zustand dieses erfolgreichen Labs wurden entfernt.
+Ein vorausgegangener unterbrochener Start besitzt keinen Testerfolgsnachweis;
+sein eigener Container und sein Volume wurden über die Lab-API entfernt.
+Die automatische Freigabeprüfung lehnte das rekursive Entfernen seines privaten
+temporären Zustands mit „blocked by policy“ ab. Dieses lokale Verzeichnis bleibt
+erhalten und gehört zu keinem Repository- oder GitHub-Artefakt. Der fehlgeschlagene
+GitHub-Lauf bleibt fehlgeschlagen; die erweiterte CI am neuen exakten Head ist
+weiterhin erforderlich.
+
+### Native Identitäten der CriticalEngineEvents-Fixture
+
+Die erweiterte GitHub-CI am Head
+`8e96e04e5ae55827f640077f6e445c4ad7505935` bestand die vorausgegangenen
+TABLE-Verträge, scheiterte aber bei Compatibility Level 150 im ausgewählten
+Vertrag `Common/139` mit Fehler 55889. Dessen zwei eigene Ereignisse wurden
+nach dem zusätzlichen Wall-Clock-Filter nicht nativ bestätigt. Die konkrete
+Ursache dieses Ergebnisses ist nicht belegt. Ein frisches eigenes lokales
+SQL-Server-2025-Lab bestand den bisherigen Vertrag bei Level 150; zusätzliche
+Diagnoseausgaben änderten dessen Assertions nicht.
+
+Der Testcommit `fe34171633771815aa388e1dbeb8c83c337f2171` begrenzt die eigene
+XE-Session zusätzlich auf die aktuelle Verbindung. Die eigene eindeutige
+Eventdatei muss genau zwei Ereignisse mit Fehler 50000, Severity 16, jeweils
+einer der zwei exakten synthetischen Meldungen und vorhandenen Zeitstempeln
+enthalten. Das Modulzeitfenster wird aus den nativen MIN/MAX-Zeitstempeln
+abgeleitet; die exklusive Obergrenze liegt eine Mikrosekunde über MAX.
+Die bisherigen Status-, Limit-, XML-, Feld- und Multisetprüfungen bleiben
+erhalten. Ein Zusammenhang des CI-Fehlers mit den getrennten Zeitquellen
+oder der Zustellung ist damit nicht bewiesen.
+
+Ein weiteres frisches eigenes SQL-Server-2025-Lab bestand den geänderten
+Vertrag bei Compatibility Level 150, 160 und 170 mit Exitcode 0. Beide lokalen
+Labs einschließlich ihrer Container, Volumes und Zustandsverzeichnisse wurden
+entfernt. Der unabhängige Review des Testdeltas ergab keine Befunde.
+Der anschließend gestartete gemischte lokale Impact-Lauf bestand 69 Dateien
+bei Level 150, darunter den geänderten Vertrag 139. Er scheiterte danach im
+unveränderten Vertrag `Integration/181` mit Fehler 55503 bei der Temporal-
+Mapping-, Hidden-, Retention- oder Indexprüfung. Das Lab einschließlich
+Container, Volume und Zustand wurde entfernt. Dieser Lauf ist fehlgeschlagen;
+er belegt keinen abgeschlossenen Impact-Umfang. Der Temporal-Collation-Umfang
+bleibt separat offen. Die lokale Lab-API lehnte die CI-Instanzcollation
+`SQL_Latin1_General_CP1_CS_AS` vor der Containeranlage als nicht katalogisiert
+ab; dieser Start enthält keinen Testnachweis. Ein weiterer lokaler Lauf mit
+`SQL_Latin1_General_CP1_CI_AS` ist keine Nachbildung der CI-Collation. Er bestand
+34 Dateien bei Level 150 und scheiterte im Vertrag `Common/154` mit Fehler 1801
+an den nur durch Groß-/Kleinschreibung getrennten synthetischen Datenbanknamen.
+Das Lab einschließlich Container, Volume und Zustand wurde entfernt. Dieser
+Lauf ist fehlgeschlagen und kein Nachweis für die case-sensitive CI-Instanz.
+Die erforderliche CI am neuen exakten Head ist noch ausstehend.

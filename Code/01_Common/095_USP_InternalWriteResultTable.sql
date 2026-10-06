@@ -15,7 +15,8 @@ Zweck        : Kopiert genau ein bereits materialisiertes Analyseergebnis in
 Sicherheit   : Ausschließlich lokale #Temp-Tabellen. Globale ##Temp-Tabellen
                und permanente Tabellen sind bewusst nicht zugelassen.
 Locking      : Katalogauflösung ausschließlich über tempdb.sys.* WITH (NOLOCK)
-               und LOCK_TIMEOUT 0; keine blockierenden Metadatenfunktionen.
+               und LOCK_TIMEOUT 0 für fremde Tabellen. Eigene lokale Temp-DDL
+               erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms.
 ===============================================================================
 */
 SET ANSI_NULLS ON;
@@ -35,44 +36,53 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Diese lokalen Tabellen entstehen vor LOCK_TIMEOUT 0. Der No-Wait-
-    -- Vertrag gilt für die fremden Quell-/Ziel-Temp-Tabellen, nicht für die
-    -- eigene tempdb-Metadatenanlage des Writers.
-    CREATE TABLE [#InternalWriteResultTable_SourceSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
+    -- Ein geerbter NOWAIT-Wert darf die eigene TempDB-Metadatenanlage
+    -- nicht wegen einer kurzzeitigen Kollision abbrechen. Nur diese lokale
+    -- Anlage erhält bei eingehendem Timeout 0 ein Zeitbudget von 1000 ms.
+    DECLARE @OwnDdlOriginalLockTimeout int=@@LOCK_TIMEOUT;
+    BEGIN TRY
+        IF @OwnDdlOriginalLockTimeout=0 SET LOCK_TIMEOUT 1000;
+        CREATE TABLE [#InternalWriteResultTable_SourceSchema]
+        (
+              [ColumnId] int NOT NULL
+            , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [SystemTypeId] tinyint NOT NULL
+            , [MaxLength] smallint NOT NULL
+            , [Precision] tinyint NOT NULL
+            , [Scale] tinyint NOT NULL
+            , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [IsNullable] bit NOT NULL
+            , [IsIdentity] bit NOT NULL
+            , [IsComputed] bit NOT NULL
+            , [IsUserDefined] bit NOT NULL
+            , [IsAssemblyType] bit NOT NULL
+            , [XmlCollectionId] int NOT NULL
+        );
 
-    CREATE TABLE [#InternalWriteResultTable_TargetSchema]
-    (
-          [ColumnId] int NOT NULL
-        , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , [SystemTypeId] tinyint NOT NULL
-        , [MaxLength] smallint NOT NULL
-        , [Precision] tinyint NOT NULL
-        , [Scale] tinyint NOT NULL
-        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [IsNullable] bit NOT NULL
-        , [IsIdentity] bit NOT NULL
-        , [IsComputed] bit NOT NULL
-        , [IsUserDefined] bit NOT NULL
-        , [IsAssemblyType] bit NOT NULL
-        , [XmlCollectionId] int NOT NULL
-    );
+        CREATE TABLE [#InternalWriteResultTable_TargetSchema]
+        (
+              [ColumnId] int NOT NULL
+            , [ColumnName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [TypeName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+            , [SystemTypeId] tinyint NOT NULL
+            , [MaxLength] smallint NOT NULL
+            , [Precision] tinyint NOT NULL
+            , [Scale] tinyint NOT NULL
+            , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+            , [IsNullable] bit NOT NULL
+            , [IsIdentity] bit NOT NULL
+            , [IsComputed] bit NOT NULL
+            , [IsUserDefined] bit NOT NULL
+            , [IsAssemblyType] bit NOT NULL
+            , [XmlCollectionId] int NOT NULL
+        );
+    END TRY
+    BEGIN CATCH
+        DECLARE @OwnDdlRestoreSql nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OwnDdlOriginalLockTimeout)+N';';
+        EXEC [sys].[sp_executesql] @OwnDdlRestoreSql;
+        THROW;
+    END CATCH;
 
     SET LOCK_TIMEOUT 0;
 

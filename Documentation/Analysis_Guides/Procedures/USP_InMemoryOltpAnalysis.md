@@ -26,7 +26,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `findings`. Die elf Textspalten verwenden die Frameworkcollation. TABLE, CONSOLE, RAW und JSON verwenden denselben Findingsausschnitt: `@NurProblematisch = 1` wählt WARN-Zeilen; `@MaxZeilen` begrenzt anschließend in der Reihenfolge WARN vor INFO und `FindingOrdinal`. Die vollständigen Datenbank- und Quellenstatus sowie Findingszähler bleiben vor dieser Ausgabeauswahl erhalten. Nicht auswertbare explizite Datenbanknamen behalten ihren Warnstatus und Partialwert. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
@@ -66,7 +66,7 @@ Für `USP_InMemoryOltpAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass
 | Haupttreiber | Zahl gewählter Datenbanken, speicheroptimierter Tabellen/Indizes, XTP-Memory-Consumer, Checkpointdateien und aktueller XTP-Transaktionszeilen. Nutzdatenzeilen werden nicht gelesen, doch große Checkpoint-/Consumerinventare verbreitern den Runtimepfad. |
 | Skalierung | Basispfad wächst mit In-Memory-Tabellen, Speicherconsumern, Checkpointdateien und aktiven XTP-Transaktionen. Der opt-in Hashpfad wächst zusätzlich mit den zu scannenden Tabellen-/Indexstrukturen und kann dominant werden. |
 | Ressourcen | CPU und Speicher für XTP-DMVs, Katalog-/Checkpointmetadaten, dynamisches SQL und temporäre Resultate; der Hashpfad kann erhebliche CPU-/Speicherzugriffe in In-Memory-Tabellen verursachen. |
-| Begrenzungswirkung | Datenbank-/Objektfilter begrenzen viele Katalog- und Basispfade. `@MaxZeilen` wird erst je fertigem Resultset angewandt. Insbesondere begrenzt es den Tabellenvollscan von `sys.dm_db_xtp_hash_index_stats` nicht. |
+| Begrenzungswirkung | Datenbankfilter begrenzen die ausgewählten Quellen. Objektfilter begrenzen Tabellenmemory und Hashindexkataloge; Memory-Consumer, Checkpointdateien und Transaktionen werden weiterhin datenbankweit aggregiert. `@MaxZeilen` wird erst je fertigem Resultset angewandt. Insbesondere begrenzt es den Tabellenvollscan von `sys.dm_db_xtp_hash_index_stats` nicht. |
 | Locking und Nebenwirkungen | Rein lesend; keine XTP-DDL oder Datenänderung. Runtime-DMVs sind flüchtig und nicht atomar. Der Hashindexscan kann trotz fehlender Benutzerlocks spürbare Konkurrenz um CPU/Speicher erzeugen. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `CATALOG_DEEP`, `OBJECT_ANALYSIS_CURRENT`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Eine bekannte `ExampleDatabase`, enger Objektfilter und Hashstatistik aus. Den Hashpfad erst nach Baseline, außerhalb der Lastspitze und mit `@HighImpactConfirmed = 1` aktivieren. |
@@ -110,7 +110,7 @@ WHERE [t].[is_memory_optimized] = 1
   AND [t].[name] = N'ExampleObject';
 ```
 
-**Wichtig für die Eigenlast:** Objekt vor Hash-Index-, Checkpoint-File- und Transaction-DMVs bestimmen. Der breite Checkpoint- und Consumerpfad ist nur bei bestätigtem XTP-Symptom erforderlich.
+**Wichtig für die Eigenlast:** Ein enger Objektfilter reduziert den Tabellen- und Hashindexausschnitt. Nach positivem Feature-Gate werden Consumer-, Checkpoint- und Transaktionsquellen unabhängig davon datenbankweit gelesen. Der Hashindex-Laufzeitpfad bleibt opt-in; der Objektfilter begrenzt den möglichen DMV-Tabellenscan nicht zuverlässig.
 
 ### Zeit- und Scope-Modell
 

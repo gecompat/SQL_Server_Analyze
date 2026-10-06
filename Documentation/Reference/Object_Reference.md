@@ -591,7 +591,7 @@ Quelle: `Code/01_Common/095_USP_InternalWriteResultTable.sql`
 | Aufgabe | Schreibt eine kanonische Ergebnismenge in eine bereits vorbereitete lokale Ergebnistabelle. |
 | Schnittstelle | Interne Stored Procedure; Parameter: `@SourceTable sysname`; `@TargetTable sysname`; `@InsertedRows bigint = NULL OUTPUT`; `@StatusCode varchar(40) = NULL OUTPUT`; `@ErrorNumber int = NULL OUTPUT`; `@ErrorMessage nvarchar(2048) = NULL OUTPUT`; `@ThrowOnError bit = 0`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
+| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms; positive beziehungsweise unbegrenzte Eingangswerte bleiben für diese Anlage erhalten. Fremde Tabellenoperationen bleiben NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
 
 ### `[monitor].[InternalPrepareResultTables]`
@@ -603,7 +603,7 @@ Quelle: `Code/01_Common/096_USP_InternalPrepareResultTables.sql`
 | Aufgabe | Bereitet alle im TABLE-Vertrag angeforderten lokalen Ergebnistabellen vor. |
 | Schnittstelle | Interne Stored Procedure; Parameter: `@ResultTablesJson nvarchar(max)`; `@AllowedResultNames nvarchar(max)`; `@MappingTable sysname`; `@StatusCode varchar(40) = NULL OUTPUT`; `@ErrorMessage nvarchar(2048) = NULL OUTPUT`; `@ThrowOnError bit = 0`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
+| Last und Sperren | Die Procedure schreibt nur in die ausdrücklich vorgesehenen Framework-, Snapshot- oder lokalen Ergebnisspeicher und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Eigene lokale Temp-DDL erhält bei eingehendem Timeout 0 je Anlage bis zu 1000 ms; positive beziehungsweise unbegrenzte Eingangswerte bleiben für diese Anlage erhalten. Fremde Tabellenoperationen bleiben NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
 
 ### `[monitor].[InternalPrepareSingleResultTable]`
@@ -615,7 +615,7 @@ Quelle: `Code/01_Common/097_USP_InternalPrepareSingleResultTable.sql`
 | Aufgabe | Validiert und richtet eine einzelne lokale Ergebnistabelle des TABLE-Vertrags ein. |
 | Schnittstelle | Interne Stored Procedure; Parameter: `@ResultTablesJson nvarchar(max)`; `@ResultName sysname`; `@TargetTable sysname OUTPUT`; `@ThrowOnError bit = 1`. Status-, Fehler- und weitere OUTPUT-Parameter werden ausschließlich zwischen Frameworkbausteinen weitergereicht. |
 | Verwendung | Öffentliche Procedures im Schema `monitor` rufen diesen Baustein zur Orchestrierung auf. Anwendungen sollen ihn weder direkt ausführen noch von seiner Parameterreihenfolge oder seinen temporären Zwischenstrukturen abhängen. |
-| Last und Sperren | Die Procedure koordiniert interne Verarbeitung ohne fachliche Persistenz und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
+| Last und Sperren | Die Procedure koordiniert interne Verarbeitung ohne fachliche Persistenz und kann lokale Temp-Tabellen materialisieren, unter `LOCK_TIMEOUT 0`. Eigene lokale Mapping-DDL erhält je Anlage bis zu 1000 ms. Fremde Tabellenauflösung bleibt NOWAIT. Sie darf nur über den zugehörigen öffentlichen Einstieg ausgeführt werden. |
 | Vertrag | Nicht öffentlicher Vertrag. Fehlerbehandlung, OUTPUT-Parameter und Seiteneffekte sind nur für den versiongleichen internen Aufrufer zugesichert. |
 
 ### `[monitor].[InternalEmitConsoleResult]`
