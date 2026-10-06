@@ -55012,7 +55012,6 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_DataCaptureDeepAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
-    SET LOCK_TIMEOUT 0;
     SET @Json=NULL;
 
     DECLARE @Now datetime2(3)=SYSUTCDATETIME();
@@ -55056,7 +55055,7 @@ BEGIN
        OR @ReplicationPendingCommandWarn IS NULL OR @ReplicationPendingCommandWarn<0
        OR @ReplicationAgentStaleWarnMinutes IS NULL OR @ReplicationAgentStaleWarnMinutes NOT BETWEEN 0 AND 52560000
 
-       OR @MaxZeilen IS NULL OR @MaxZeilen<0
+       OR @MaxZeilen<0
        OR @LockTimeoutMs IS NULL OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
        OR @OutputMode NOT IN('CONSOLE','RAW','NONE')
     BEGIN
@@ -55100,29 +55099,29 @@ BEGIN
     CREATE TABLE [#DataCaptureDeepAnalysis_DatabaseCandidates]
     (
           [DatabaseId] int NOT NULL
-        , [DatabaseName] sysname NOT NULL
-        , [StateDesc] nvarchar(60) NULL
-        , [UserAccessDesc] nvarchar(60) NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StateDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [UserAccessDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsReadOnly] bit NULL
         , [CompatibilityLevel] tinyint NULL
-        , [CollationName] sysname NULL
-        , [RecoveryModelDesc] nvarchar(60) NULL
+        , [CollationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RecoveryModelDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsSystemDatabase] bit NULL
         , [RequestedOrdinal] int NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_DatabaseCandidateWarnings]
     (
           [RequestedName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [StatusCode] varchar(40) NOT NULL
-        , [ErrorMessage] nvarchar(2048) NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_FeatureScope]
     (
-          [DatabaseName] sysname NOT NULL PRIMARY KEY
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
         , [IsChangeTrackingEnabled] bit NOT NULL
         , [CurrentCtVersion] bigint NULL
         , [CtRetentionPeriod] bigint NULL
-        , [CtRetentionUnit] nvarchar(60) NULL
+        , [CtRetentionUnit] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [IsCtAutoCleanupOn] bit NULL
         , [CtTableCount] bigint NOT NULL
         , [IsCdcEnabled] bit NOT NULL
@@ -55134,8 +55133,8 @@ BEGIN
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_DatabaseStatus]
     (
-          [DatabaseName] sysname NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [IsChangeTrackingEnabled] bit NULL
         , [CtTableCount] bigint NOT NULL
@@ -55145,30 +55144,30 @@ BEGIN
         , [FindingCount] bigint NOT NULL
         , [SourceFailureCount] int NOT NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_SourceStatus]
     (
-          [DatabaseName] sysname NULL
-        , [SourceCode] varchar(64) NOT NULL
-        , [StatusCode] varchar(40) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsPartial] bit NOT NULL
         , [RowCount] bigint NOT NULL
-        , [RequiredPermission] nvarchar(256) NULL
+        , [RequiredPermission] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorNumber] int NULL
-        , [ErrorMessage] nvarchar(2048) NULL
-        , [Detail] nvarchar(2000) NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Detail] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_DistributionDatabase]
     (
-          [DatabaseName] sysname NOT NULL PRIMARY KEY
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_ChangeTrackingTable]
     (
-          [DatabaseName] sysname NOT NULL
-        , [SchemaName] sysname NOT NULL
-        , [TableName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [TableName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [TableObjectId] int NOT NULL
         , [IsTrackColumnsUpdatedOn] bit NOT NULL
         , [BeginVersion] bigint NULL
@@ -55176,16 +55175,16 @@ BEGIN
         , [MinValidVersion] bigint NULL
         , [CurrentVersion] bigint NULL
         , [ClientVersion] bigint NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY([DatabaseName],[TableObjectId])
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_CdcCaptureInstance]
     (
-          [DatabaseName] sysname NOT NULL
-        , [CaptureInstance] sysname NOT NULL
-        , [SourceSchema] sysname NULL
-        , [SourceTable] sysname NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [CaptureInstance] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SourceSchema] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [SourceObjectId] int NOT NULL
         , [SupportsNetChanges] bit NOT NULL
         , [HasDropPending] bit NOT NULL
@@ -55193,41 +55192,41 @@ BEGIN
         , [OldestAvailableTimeUtc] datetime NULL
         , [OldestAvailableAgeMinutes] bigint NULL
         , [CleanupRetentionMinutes] bigint NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , PRIMARY KEY([DatabaseName],[CaptureInstance])
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_CdcScanSession]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [SessionId] int NOT NULL
         , [StartTimeUtc] datetime NULL
         , [EndTimeUtc] datetime NULL
-        , [ScanPhase] nvarchar(200) NULL
+        , [ScanPhase] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [ErrorCount] int NULL
         , [LastCommitTimeUtc] datetime NULL
         , [LastCommitCdcTimeUtc] datetime NULL
         , [LatencySeconds] bigint NULL
         , [EmptyScanCount] int NULL
         , [FailedSessionsCount] int NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_CdcErrorGroup]
     (
-          [DatabaseName] sysname NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorNumber] int NULL
         , [ErrorSeverity] int NULL
         , [PhaseNumber] int NULL
         , [ErrorCount] bigint NOT NULL
         , [FirstErrorTimeUtc] datetime NULL
         , [LastErrorTimeUtc] datetime NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_CdcJob]
     (
-          [DatabaseName] sysname NOT NULL
-        , [JobType] nvarchar(20) NOT NULL
+          [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [JobType] nvarchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsEnabled] bit NULL
         , [LastRunOutcome] int NULL
         , [LastRunTimeUtc] datetime NULL
@@ -55237,18 +55236,18 @@ BEGIN
         , [PollingIntervalSeconds] bigint NULL
         , [RetentionMinutes] bigint NULL
         , [DeleteThreshold] bigint NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_ReplicationAgent]
     (
-          [AgentType] varchar(20) NOT NULL
-        , [DistributionDatabase] sysname NOT NULL
+          [AgentType] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DistributionDatabase] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [AgentId] int NOT NULL
-        , [PublisherDatabase] sysname NULL
-        , [PublicationName] sysname NULL
-        , [SubscriberName] sysname NULL
-        , [SubscriberDatabase] sysname NULL
+        , [PublisherDatabase] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PublicationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SubscriberName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SubscriberDatabase] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
         , [RunStatus] int NULL
         , [LastHistoryTimeUtc] datetime NULL
         , [DurationSeconds] bigint NULL
@@ -55259,34 +55258,52 @@ BEGIN
         , [ConflictCount] bigint NULL
         , [RetryCount] bigint NULL
         , [LastHistoryAgeMinutes] bigint NULL
-        , [AssessmentStatus] varchar(32) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [AssessmentStatus] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_ReplicationErrorGroup]
     (
-          [DistributionDatabase] sysname NOT NULL
+          [DistributionDatabase] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorCode] int NULL
         , [ErrorCount] bigint NOT NULL
         , [FirstErrorTimeUtc] datetime NULL
         , [LastErrorTimeUtc] datetime NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
     CREATE TABLE [#DataCaptureDeepAnalysis_Findings]
     (
           [FindingOrdinal] bigint IDENTITY(1,1) NOT NULL
-        , [DatabaseName] sysname NULL
-        , [SchemaName] sysname NULL
-        , [ObjectName] sysname NULL
-        , [Severity] varchar(16) NOT NULL
-        , [Confidence] varchar(16) NOT NULL
-        , [FindingCode] varchar(120) NOT NULL
-        , [MetricName] varchar(80) NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [MetricValue] decimal(38,4) NULL
         , [ThresholdValue] decimal(38,4) NULL
-        , [Evidence] nvarchar(1000) NOT NULL
-        , [EvidenceLimit] nvarchar(1000) NOT NULL
-        , [RecommendedNextCheck] nvarchar(1000) NOT NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+    CREATE TABLE [#DataCaptureDeepAnalysis_FindingsExport]
+    (
+          [FindingOrdinal] bigint NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [ThresholdValue] decimal(38,4) NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+
+    SET LOCK_TIMEOUT 0;
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -55402,7 +55419,7 @@ FROM [sys].[databases] [d] WITH (NOLOCK)
 LEFT JOIN [sys].[change_tracking_databases] [ctd] WITH (NOLOCK)
   ON [ctd].[database_id]=[d].[database_id]
 WHERE [d].[database_id]=DB_ID();
-SELECT @pHasCdcCatalog=CONVERT(bit,CASE WHEN EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''cdc'' AND [t].[name]=N''change_tables'') THEN 1 ELSE 0 END);
+SELECT @pHasCdcCatalog=CONVERT(bit,CASE WHEN EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''cdc'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''change_tables'') THEN 1 ELSE 0 END);
 SET @pRows=@@ROWCOUNT;';
                 SELECT @Rows=0,@HasCdcCatalog=0;
                 EXEC [sys].[sp_executesql] @Sql,
@@ -55570,7 +55587,7 @@ SET @pRows=@@ROWCOUNT;';
                 BEGIN TRY
                     SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N';
 SELECT @pRows=0;
-IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t] WITH (NOLOCK) JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name]=N''cdc_jobs'')
+IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t] WITH (NOLOCK) JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''dbo'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''cdc_jobs'')
 BEGIN
     INSERT [#DataCaptureDeepAnalysis_CdcJob]
     ([DatabaseName],[JobType],[IsEnabled],[LastRunOutcome],[LastRunTimeUtc],
@@ -55590,7 +55607,7 @@ BEGIN
         WHERE [x].[job_id]=[cj].[job_id] AND [x].[step_id]=0
         ORDER BY [x].[instance_id] DESC
     ) [h]
-    WHERE [cj].[database_id]=(SELECT [database_id] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [name]=@pDatabaseName);
+    WHERE [cj].[database_id]=(SELECT [database_id] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS=@pDatabaseName COLLATE SQL_Latin1_General_CP1_CS_AS);
     SET @pRows=@@ROWCOUNT;
 END;
 ';
@@ -55650,11 +55667,11 @@ END;
                    N'Die Topologie bleibt unbeobachtet; dies ist kein gesunder Befund.');
         ELSE
         BEGIN TRY
-                IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t] WITH (NOLOCK) JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N'dbo' AND [t].[name]=N'MSdistributiondbs')
+                IF EXISTS(SELECT 1 FROM [msdb].[sys].[tables] AS [t] WITH (NOLOCK) JOIN [msdb].[sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'dbo' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N'MSdistributiondbs')
                     INSERT [#DataCaptureDeepAnalysis_DistributionDatabase]([DatabaseName])
                     SELECT DISTINCT [name]
                     FROM [msdb].[dbo].[MSdistributiondbs] WITH (NOLOCK)
-                    WHERE EXISTS(SELECT 1 FROM [master].[sys].[databases] AS [d] WITH (NOLOCK) WHERE [d].[name]=[MSdistributiondbs].[name]);
+                    WHERE EXISTS(SELECT 1 FROM [master].[sys].[databases] AS [d] WITH (NOLOCK) WHERE [d].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=[MSdistributiondbs].[name] COLLATE SQL_Latin1_General_CP1_CS_AS);
             INSERT [#DataCaptureDeepAnalysis_SourceStatus]
             VALUES(NULL,'REPLICATION_DISTRIBUTOR_DISCOVERY','AVAILABLE',0,
                    (SELECT COUNT_BIG(*) FROM [#DataCaptureDeepAnalysis_DistributionDatabase]),
@@ -55687,7 +55704,7 @@ END;
         BEGIN
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name] IN (N''MSdistribution_agents'',N''MSdistribution_history'',N''MSdistribution_status'',N''MSsubscriptions''))<>4
+IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''dbo'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS IN (N''MSdistribution_agents'',N''MSdistribution_history'',N''MSdistribution_status'',N''MSsubscriptions''))<>4
     ;THROW 54020,N''Erforderliche lokale Distribution-Metadaten fehlen.'',1;
 INSERT [#DataCaptureDeepAnalysis_ReplicationAgent]
 ([AgentType],[DistributionDatabase],[AgentId],[PublisherDatabase],[PublicationName],[SubscriberName],
@@ -55742,7 +55759,7 @@ SET @pRows=@@ROWCOUNT;';
 
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name] IN (N''MSlogreader_agents'',N''MSlogreader_history''))<>2
+IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''dbo'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS IN (N''MSlogreader_agents'',N''MSlogreader_history''))<>2
     ;THROW 54021,N''Erforderliche lokale Log-Reader-Metadaten fehlen.'',1;
 INSERT [#DataCaptureDeepAnalysis_ReplicationAgent]
 ([AgentType],[DistributionDatabase],[AgentId],[PublisherDatabase],[PublicationName],[RunStatus],
@@ -55782,7 +55799,7 @@ SET @pRows=@@ROWCOUNT;';
 
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name] IN (N''MSmerge_agents'',N''MSmerge_sessions''))<>2
+IF (SELECT COUNT(*) FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''dbo'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS IN (N''MSmerge_agents'',N''MSmerge_sessions''))<>2
     ;THROW 54022,N''Erforderliche lokale Merge-Metadaten fehlen.'',1;
 INSERT [#DataCaptureDeepAnalysis_ReplicationAgent]
 ([AgentType],[DistributionDatabase],[AgentId],[PublisherDatabase],[PublicationName],[SubscriberName],
@@ -55826,7 +55843,7 @@ SET @pRows=@@ROWCOUNT;';
 
         BEGIN TRY
             SET @Sql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(11),@LockTimeoutMs)+N'; USE '+QUOTENAME(@DistributionDatabase)+N';
-IF NOT EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name]=N''dbo'' AND [t].[name]=N''MSrepl_errors'')
+IF NOT EXISTS(SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK) JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id] WHERE [s].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''dbo'' AND [t].[name] COLLATE SQL_Latin1_General_CP1_CS_AS=N''MSrepl_errors'')
     ;THROW 54023,N''Lokale Replikationsfehlertabelle fehlt.'',1;
 INSERT [#DataCaptureDeepAnalysis_ReplicationErrorGroup]
 ([DistributionDatabase],[ErrorCode],[ErrorCount],[FirstErrorTimeUtc],[LastErrorTimeUtc],[EvidenceLimit])
@@ -56159,7 +56176,11 @@ SET @pRows=@@ROWCOUNT;';
         FROM [#DataCaptureDeepAnalysis_Findings] [ff]
         WHERE [ff].[DatabaseName]=[ds].[DatabaseName]
            OR ([ff].[DatabaseName] IS NULL AND [ds].[HasReplicationRole]=1)
-    ) [f];
+    ) [f]
+    WHERE [ds].[StatusCode] IN('PENDING','UNAVAILABLE_FEATURE','ERROR_HANDLED')
+      AND NOT EXISTS
+          (SELECT 1 FROM [#DataCaptureDeepAnalysis_DatabaseCandidateWarnings] [w]
+           WHERE [w].[RequestedName]=[ds].[DatabaseName]);
 
     IF @StatusCode='AVAILABLE'
     BEGIN
@@ -56179,6 +56200,16 @@ SET @pRows=@@ROWCOUNT;';
     FROM [#DataCaptureDeepAnalysis_SourceStatus]
     WHERE [IsPartial]=1;
 
+    INSERT [#DataCaptureDeepAnalysis_FindingsExport]
+    ([FindingOrdinal],[DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],
+     [MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck])
+    SELECT TOP(@Limit)
+           [FindingOrdinal],[DatabaseName],[SchemaName],[ObjectName],[Severity],[Confidence],[FindingCode],
+           [MetricName],[MetricValue],[ThresholdValue],[Evidence],[EvidenceLimit],[RecommendedNextCheck]
+    FROM [#DataCaptureDeepAnalysis_Findings]
+    WHERE @NurProblematisch=0 OR [Severity]='WARN'
+    ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
+
     IF @JsonErzeugen=1
     BEGIN
         SELECT @Json=(
@@ -56186,7 +56217,7 @@ SET @pRows=@@ROWCOUNT;';
                 JSON_QUERY((SELECT N'USP_DataCaptureDeepAnalysis' AS [module],@Now AS [collectedAtUtc],@StatusCode AS [statusCode],@IsPartial AS [isPartial],@ErrorNumber AS [errorNumber],@ErrorMessage AS [errorMessage] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER)) AS [meta],
                 JSON_QUERY(COALESCE((SELECT * FROM [#DataCaptureDeepAnalysis_DatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH),N'[]')) AS [databaseStatus],
                 JSON_QUERY(COALESCE((SELECT * FROM [#DataCaptureDeepAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode] FOR JSON PATH),N'[]')) AS [sourceStatus],
-                JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_Findings] WHERE @NurProblematisch=0 OR [Severity]='WARN' ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
+                JSON_QUERY(COALESCE((SELECT * FROM [#DataCaptureDeepAnalysis_FindingsExport] ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal] FOR JSON PATH),N'[]')) AS [findings],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ChangeTrackingTable] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[SchemaName],[TableName] FOR JSON PATH),N'[]')) AS [changeTrackingTables],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcCaptureInstance] WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW' ORDER BY CASE [AssessmentStatus] WHEN 'REVIEW' THEN 1 ELSE 2 END,[DatabaseName],[CaptureInstance] FOR JSON PATH),N'[]')) AS [cdcCaptureInstances],
                 JSON_QUERY(COALESCE((SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_CdcScanSession] ORDER BY [DatabaseName],[SessionId] FOR JSON PATH),N'[]')) AS [cdcScanSessions],
@@ -56204,8 +56235,7 @@ SET @pRows=@@ROWCOUNT;';
                N'Read-only Metadatenaufnahme; keine Change-Zeilen, Replikationsbefehle, Credentials, Agent-Commands oder Aenderungen.' AS [Detail];
         SELECT * FROM [#DataCaptureDeepAnalysis_DatabaseStatus] ORDER BY [DatabaseName];
         SELECT * FROM [#DataCaptureDeepAnalysis_SourceStatus] ORDER BY [DatabaseName],[SourceCode];
-        SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_Findings]
-        WHERE @NurProblematisch=0 OR [Severity]='WARN'
+        SELECT * FROM [#DataCaptureDeepAnalysis_FindingsExport]
         ORDER BY CASE [Severity] WHEN 'WARN' THEN 1 ELSE 2 END,[FindingOrdinal];
         SELECT TOP(@Limit) * FROM [#DataCaptureDeepAnalysis_ChangeTrackingTable]
         WHERE @NurProblematisch=0 OR [AssessmentStatus]='REVIEW'
@@ -56233,14 +56263,14 @@ SET @pRows=@@ROWCOUNT;';
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#DataCaptureDeepAnalysis_Findings'
+              @SourceTable=N'#DataCaptureDeepAnalysis_FindingsExport'
             , @ResultLabel=N'DataCaptureDeepAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#DataCaptureDeepAnalysis_Findings'
+              @SourceTable = N'#DataCaptureDeepAnalysis_FindingsExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

@@ -1712,3 +1712,124 @@ mit 1.041 Repositorydateien und null Findings, Schreibstil mit 698
 Repositorydateien und null Findings, Roadmap-, Maturity- und
 Partialitätsverträge, der NOWAIT-Metadatenvertrag sowie beide Adapterprüfungen.
 Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt.
+
+## Data-Capture-Tiefenanalyse und positive CT-Exportgrenzen am 6. Oktober 2026
+
+Der Slice härtet bestehende Verträge von
+`Code/09_VersionAdaptive/070_USP_DataCaptureDeepAnalysis.sql`. 61 zuvor
+implizite Textspalten erhalten die Frameworkcollation. Zusammen mit sechs
+bereits collatierten Filterspalten und zehn Textspalten des neuen
+Findingsexports besitzen alle 77 lokalen Textdeklarationen eine explizite
+Collation. Katalognamenprüfungen sowie Datenbankvergleiche für CDC-Jobs und
+Distributorermittlung verwenden die Frameworkcollation. Die eigene
+Exporttabelle entsteht vor dem NOWAIT-Quellabschnitt. Nach vollständiger
+Zählerbildung versorgt eine gefilterte und begrenzte Findingsmenge RAW,
+CONSOLE, TABLE und JSON mit unveränderten 13 Feldern. NULL und 0 bleiben
+unbegrenzt, negative Mengen ungültig. Auswahlwarnings und vor der
+Quellenlesung gesetzte ungültige Datenbankstatus bleiben erhalten.
+
+### Native Runtime und Baselines
+
+Ein eigenes Docker-Lab verwendete SQL Server 2025 unter Linux, Major 17,
+ProductVersion `17.0.4075.5`. Server und `tempdb` verwendeten
+`Latin1_General_100_CS_AS`, das Framework `SQL_Latin1_General_CP1_CS_AS`
+und die eigenen Testquellen `Latin1_General_100_CI_AS`. Die Werte wurden
+nativ erfasst; konkrete Runtimeidentitäten bleiben außerhalb des Repositorys.
+
+Die unveränderte Procedure aus Basisrevision
+`b09cf4d81666d831fab80a99d1c8a9d817ea99b9` wurde getrennt installiert.
+Ihre Quelle entspricht dem Stand am neuen Checkpoint
+`959ff80b6a73e514c0d8e6660e5bb2de2553d33c`; beide Revisionen besitzen für
+das Objekt den Git-Blob `824d3bcc219b90535cfdbd78441ae9f8e3802783`.
+Die eigene Baselinequelle enthielt zwei leere CT-Tabellen und deaktiviertes
+Auto-Cleanup. Ein synthetischer Wasserstand oberhalb der nativ gelesenen
+aktuellen Version erzeugte zwei WARN-Findings und ein Cleanup-INFO.
+Fünf tatsächlich ausgeführte Baselines zeigten:
+
+| Vorhandener Vertrag | Beobachtete Abweichung der Basis |
+|---|---|
+| `@MaxZeilen = NULL` | `INVALID_PARAMETER` und Partialität 1. |
+| Findingslimit 1 | TABLE lieferte drei Findings, JSON eines. |
+| Problemscope | TABLE lieferte drei Findings, JSON zwei. |
+| Gültige plus fehlende Datenbankauswahl | Modulstatus `AVAILABLE`, Partialität 0 und keine erhaltene `DATABASE_UNAVAILABLE`-Warning. |
+| Zwei gültige Datenbanken plus Consumer-Wasserstand | Der Modulstatus blieb `INVALID_PARAMETER`; keine Datenbankstatuszeile trug diesen Status. |
+
+Alle fünf TABLE-Exporte besaßen zehn Textspalten mit der abweichenden
+tempdb-Collation. Der Frameworklevel der Baseline war 170; die Levels der
+Baselinequellen wurden nicht separat erfasst.
+
+### Finale Nachweise
+
+Der kanonische Gesamtinstaller mit 166 Quellen und
+`Integration/110_Smoke_Test.sql` bestanden. Anschließend bestanden
+`Common/159_DataCaptureDeepAnalysis_Collation_Runtime_Contract.sql` und der
+unveränderte `Integration/184_P2_Data_Capture_Runtime_Contract.sql` jeweils
+mit Framework-Compatibility-Level 150, 160 und 170: sechs erfolgreiche
+Dateiläufe. Common159 setzt beide eigenen Quellen explizit auf denselben
+Level und prüft Framework- und beide Sourcelevel getrennt. Diese separate
+Sourcelevelbestätigung gilt für Common159, nicht für die historischen
+Fixtures von Integration184.
+
+Common159 prüft pro Level 18 TABLE-/JSON-Fälle. Zwei leere Unicode-Tabellen
+besitzen unterschiedliche native CT-Identitäten und unterschiedliche
+Tracked-Columns-Schalter. Unabhängige Abfragen bestätigen Versionsmetadaten,
+den aktuellen Wasserstand, deaktiviertes Auto-Cleanup und fehlende CDC- und
+Replikationsrollen. Der künftige synthetische Wasserstand erzeugt zwei
+objektbezogene WARNs mit passenden Versionswerten; das Cleanup-INFO bleibt
+datenbankbezogen. NULL und 0 liefern drei Findings, der Problemscope zwei
+WARNs, Limit 1 genau einen WARN. Die vollständigen Zähler bleiben erhalten.
+Eine Gegenprobe mit dem aktuellen Wasserstand liefert keine Future- oder
+Reinitialisierungswarning. Schema-, Objekt-, qualifizierte Unicode- und
+case-sensitive Filter, fehlende Datenbankauswahl, Mehrdatenbank-Wasserstand
+und ungültige Parameter werden getrennt geprüft.
+
+Der Test vergleicht die Findings über alle 13 Felder und
+Multimengenhäufigkeiten zwischen TABLE und JSON. Zehn Exporttextspalten
+verwenden die Frameworkcollation. Native CT-Metadaten werden unabhängig
+gegen die ausgegebenen Identitäten und Versionswerte geprüft; elf
+Quellenstatus bilden die unabhängige Sollmenge. RAW und CONSOLE werden
+zusätzlich positiv aufgerufen und über Status und JSON-Zeilenanzahl geprüft.
+Ihre ausgegebenen Zeilen werden nicht separat abgefangen oder verglichen.
+Integration184 enthält acht Runtimefälle, 16 Definitionsprüfungen und eine
+Privacy-/Read-only-Prüfung; die 25 Fälle werden nicht als 25 positive
+Featurepfade ausgewiesen. Der unabhängige stabile Diffreview meldete keine
+offenen Befunde.
+
+Die ausgeführten kanonischen Quellen besitzen folgende UTF-8/LF-SHA-256:
+
+| Quelle | SHA-256 |
+|---|---|
+| DataCaptureDeep070 | `0EC424D84DDEAF846B5238EA677A6B860DCF0414979595654EF8480748B93324` |
+| Common159 | `B8241C0EAF7CC58A947CA7C37EF06C09AB3BB2EC02FD1604D1AC842BF03D9CA9` |
+
+Der native installierte Proceduretext wurde vom qualifizierten Objektnamen
+bis zum abschließenden END gegen die kanonische Quelle verglichen. Nach
+LF-Normalisierung und Entfernen äußerer Batchmarker stimmen die UTF-16-
+Bodyhashes mit
+`B17DD12E6F7452B0FCDAB229D3A0C138A3EF8500CD291F654F0F3892A7A038FB`
+überein. Der private Runner ersetzte ausschließlich den
+Installationsplatzhalter. Der OPS-005-Vollinstaller wurde kanonisch
+regeneriert; sein semantischer Diff entspricht dem betroffenen Objekt.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Darin bestanden Privacy
+mit 1.042 Repositorydateien und null Findings, Schreibstil mit 699
+Repositorydateien und null Findings, Roadmap-, Maturity- und
+Partialitätsverträge, der NOWAIT-Metadatenvertrag sowie beide Adapterprüfungen.
+Nach diesem Ergebnis wurden ausschließlich diese Gateergebnisse ergänzt.
+
+### Aussagegrenze und Cleanup
+
+CT-Retentionverlust, positive CDC- und Replikationsquellen sowie neue
+Berechtigungsvarianten bleiben für diesen Slice unbelegt. Change-Zeilen,
+Replikationscommands und geschützte Inhalte wurden nicht gelesen. Das Delta
+ändert keine Engine-Majorzweige, Berechtigungen oder Katalogschemas; ein
+zusätzliches natives Versionsrisiko wurde nicht festgestellt. CL150/160 auf
+SQL Server 2025 sind keine nativen 2019-/2022-Nachweise. COLL-001 bleibt
+partiell.
+
+Das eigene Lab wurde über `Remove-SqlServerLab -Force -Confirm:$false`
+entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
+`CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
+Secretwert wurde danach entfernt. Private Prüfzustände bleiben außerhalb
+von Git. Die zwei zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
