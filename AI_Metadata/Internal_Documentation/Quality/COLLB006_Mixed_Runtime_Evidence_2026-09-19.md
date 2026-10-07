@@ -5258,3 +5258,115 @@ bleiben unverändert. Normalisierte SHA256: Source040
 `de0ce6d84df06034ee9abf5474d9b452b7d87e3f075da2f923c64710706702af`, Common187
 `6d12943ba231aab30055c9d4cb9a0126796875946f12a2f17d3a2972b694d501`, Static1018
 `357383300adf82bbb2423b6e1a3399455f5cd20518da0a3b14abaa37502167f6`.
+
+
+## Current Transactions: einheitliche bestehende Ausgabeverträge
+
+Der begrenzte Nachweis vom 7. Oktober 2026 verwendet ein eigenes
+SQL-Server-2025-Dockerlab mit gemessenem Build 17.0.4075.5 und CL170.
+Server und tempdb verwenden Latin1_General_100_CS_AS, das Framework
+SQL_Latin1_General_CP1_CS_AS. Kanonische Installation aus 166 Quellen und
+Smoke bestehen. Vier eigene Verbindungen halten Transaktionen an drei
+eigenen Unicodeobjekten; eine Root-Session schläft, drei Requests warten
+mit LCK_M_X. Native Identitäten, Captures und Secretwerte bleiben außerhalb
+Git. Eine private Harnessregel wird nicht zur Toolklassifikation verwendet;
+Source050 besitzt keinen solchen Filter.
+
+Die ursprünglichen neun lokalen Tabellen umfassen 50 Felder und 15 explizite
+Frameworktextcollations. Der gemeinsame Transaktionsexport besitzt 20
+Felder, sieben Textcollations, drei NOT-NULL-Felder und keine Identity.
+RAW ergänzt zehn Statusfelder und drei Warningfelder. JSON besitzt drei
+Hauptschlüssel und zehn Metafelder einschließlich NULL-Werten. Aktive
+CONSOLE ergänzt die Beschriftung Ergebnis; die leere Ausgabe besitzt drei
+Hinweisfelder. TABLE exportiert ausschließlich transactions. Die 14
+Parameter, Sourceversion 3.0.0, JSON- und Inventarschema 2,
+Modulordinal 50 und Snapshotvertrag 2 bleiben unverändert.
+
+Je Original- und Abschlussstand bestehen 123 unterschiedliche Fälle:
+96 Consumer-, Filter-, Limit- und Textfälle, 19 negative beziehungsweise
+Mappingfälle und acht tatsächliche Overview-Aufrufe. Die unabhängigen
+Orakel umfassen 17.445 beziehungsweise 17.125 Wert-, Typ-, Struktur- und
+Facettenprüfungen. 320 unterschiedliche physische Facetten verteilen sich
+auf je 160 SQL- und SqlClient-Schemafacetten. Alle 20 Fachwerte werden aus
+vier privat eingefrorenen nativen Joinzeilen unabhängig erwartet.
+Transaktionsalter besitzt 252 beziehungsweise 244 native GETDATE-Klammern;
+andere Quellwerte bleiben eingefroren. Die private Parent-DDL enthält 18
+Quelltabellen und erzeugt keinen neuen Repository-Snapshotowner.
+
+Alle vier Ausgabemodi, NULL-/0-/1-/2-/INT_MAX-Zeilenlimits, Textopt-out,
+Sleeping- und Systemfilter, vier einzelne Sessionfilter sowie Mindestalter
+werden geprüft. Die tatsächliche SC-Zeichenposition 41 von 🔬 im laufenden
+Statement wird an den Grenzen 40 und 41 geprüft. Statementextraktion wird
+unabhängig über native Byteoffsets erwartet; Zeichen- und Bytezähler
+behalten den ungekürzten Textumfang. Das Original überschreitet TABLE und
+CONSOLE bei Limits 1/2 um jeweils eine Zeile. Weitere fünf Originalfälle
+bestätigen die Überschreitung im tatsächlichen Parent-TABLE.
+
+Zehn zusätzliche Sourcezeilen begrenzen die gemeinsame Fachmenge nach
+Unicodeprojektion, Textwarnung, N+1-Zählerabnahme und Fehlerbehandlung.
+HasMoreRows, Kandidatenmetadaten, ursprüngliche Filter und Rangordnung
+bleiben erhalten. Die Begrenzung gilt für alle Verbraucher; finale native
+Fälle besitzen keine Limitabweichung. Mehrere Datenbankbindungen werden
+nicht aggregiert. Der ausgegebene Begin-Datetimewert bleibt ohne
+UTC-Konvertierung; das Alter verwendet GETDATE.
+
+Elf semantisch ungültige, fehlende Parent- oder leere Aufrufe exportieren
+das vollständige leere TABLE-Schema. Sechs ungültige Maps scheitern vor
+Semantik und Parentzugriff mit 51011 und erhalten eigene Seeds. Ungültiger
+Ausgabemodus und JsonErzeugen=NULL werden zusätzlich mit Status geprüft.
+NULL-Mindestalter und Sessionduplikate bleiben ungültig. Alle acht
+Overview-Aufrufe am Abschlussstand bestätigen vollständige gemeinsame 20-Feld-TABLE-/JSON-
+Werte innerhalb desselben Aufrufs, das Schema, Modulordinal 50, fünf
+beziehungsweise sechs Quellenflags, Snapshotbezug und Caller-LOCK_TIMEOUT
+137. Die vollständigen unabhängigen Werte eines separat aufgenommenen
+Parent-Snapshots bleiben unbelegt; kein atomarer Cross-call-Vergleich wird
+behauptet.
+
+Common188 besteht 18 allgemeine und 18 native TABLE-/JSON-Fälle, sechs
+gezielte NULL-Mutationsablehnungen, vier Consumerfälle, sechs Preflights,
+vier synthetische Unicodefälle, drei leere SQL-CONSOLE-Captures und drei
+positive direkte CONSOLE-Aufrufe. Ohne passende eigene Fixture meldet der
+positive Block NOT_EXECUTED. Das Literal-Schematemplate prüft 20 Felder,
+Alias, NULL-, Identity- und Collationfacetten. Native Fachwerte außer Alter
+müssen im eigenen Vorher-/Nachherfenster stabil bleiben; Alter wird
+begrenzt. Die drei zusätzlich abgefangenen positiven CONSOLE-Ausgaben
+besitzen alle 21 Felder und die Zeilenzahlen 4/1/2. Vollständige RAW- und
+CONSOLE-Fachwerte stammen aus dem privaten Consumerorakel. Mit dem
+Original weist Common188 die positive Fixture nativ mit 59013
+TRANSACTIONS_TABLE_JSON zurück; danach wird die finale Definition exakt
+wiederhergestellt und Smoke bestätigt.
+
+Static1015 besteht 251 tatsächliche Mutationen für lokale DDL, ABI,
+Parentisolation und die späte Limitposition. Static950 behält die bisherigen
+Snapshotowner. Inventar und zwei betroffene Dokumente präzisieren die
+bestehenden Collations, Defaults, Joins, Zeit- und Verbraucherverträge.
+Alle 75 statischen Prüfungen bestehen am eingefrorenen funktionalen Stand.
+Die zehn kanonisch impact-selektierten SQL-Dateien bestehen in 30 Batches
+mit 27 Resultgrids. Der unabhängige funktionale Review besitzt keine
+offenen Befunde.
+
+Private Captureannahmen werden präzisiert: Unicodepositionen beziehen sich
+auf das laufende Statement statt den Batch; JsonErzeugen=NULL wird im
+RAW-Modus mit Status erfasst. Eine private Patchanwendung wird vor jeder
+Dateiänderung zurückgewiesen und mit einer einzelnen Updateoperation
+korrigiert. Keine dieser Harnessgrenzen begründet eine weitere
+Produktänderung.
+
+OPS-005 wird kanonisch synchronisiert; Collector, Parent, OPS-Update und
+beide PLAN-Installer bleiben normalisiert unverändert. Die native
+Abschlussprüfung meldet null eigene Sessions, Tabellen und Regeln; die
+installierte Definition entspricht der finalen Source. Eigenes Lab und
+Secretdatei sind entfernt. Eine unbenutzte privat erzeugte kanonische
+OPS-Updatedatei bleibt außerhalb Git erhalten, nachdem die automatische
+Freigabeprüfung ihre Löschung mit blocked by policy abweist. Der Zugriff
+wird nicht über einen anderen Löschweg wiederholt. Abschließende Dokumentations-, Schreibstil- und
+Privacyprüfungen gehören zum Liefergate.
+
+MARS, gebundene Transaktionen, mehrere Datenbankbindungen, isolierte
+Rangties, positive Systemtransaktionen, eingeschränkte Berechtigungen,
+systematische Timeoutfälle, ältere native Engines und CL150/160 bleiben
+unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
+Maturityflags bleiben unverändert. Normalisierte SHA256: Source050
+`a9a101391025f68a071c99cf1493f8a81b327ccf952975caa8fad15049c22ee1`, Common188
+`8779eb12302162aef732fc71302a469a5caa486d05b444976dbc3ab1a18b26a6`, Static1015
+`f88050c959f9f4a9f58775f4cf0e08946d699824fff02033f64ceb2fc73f81f9`.

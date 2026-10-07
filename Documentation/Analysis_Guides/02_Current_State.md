@@ -398,6 +398,14 @@ EXEC [monitor].[USP_CurrentTransactions]
       @ResultSetArt = 'RAW';
 ```
 
+### Ausgabevertrag und Grenzen
+
+Der gemeinsame Transaktionsexport enthält 20 Felder und sieben Frameworktextcollations ohne Identity. RAW liefert Status, Fachmenge und Warnings; JSON enthält dieselben Fachwerte einschließlich NULLs. TABLE exportiert `transactions`; die aktive CONSOLE ergänzt die Fachfelder um `Ergebnis`, die leere CONSOLE liefert drei Hinweisfelder. Status und Warnings werden dort über das optionale JSON gelesen.
+
+Das Standardmindestalter ist 0 Sekunden, SQL-Text ist eingeschaltet und auf 3000 SC-Zeichen begrenzt. Positive Zeilenlimits werden nach Unicodeprojektion, Textwarnung und N+1-Zählerbewertung gemeinsam angewendet; NULL oder 0 bleibt unbegrenzt. Die Auswahl verwendet Alter absteigend, SessionId und TransactionId. Helperausgaben versprechen keine eigene Sortierung. Die gültige TABLE-Zuordnung wird vor semantischer Parameterablehnung geprüft.
+
+Sessiontransaktionen werden mit aktiven Transaktionen und Sessions per INNER JOIN sowie Requests und Datenbanktransaktionen per LEFT JOIN verbunden. Logbytes werden nicht aggregiert; mehrere Bindungen können mehrere Fachzeilen erzeugen. Ein Requestdatenbankkontext hat Vorrang vor der jeweiligen Datenbanktransaktionsidentität. `TransactionBeginTimeUtc` übernimmt den DMV-Wert ohne UTC-Konvertierung, das Alter verwendet `GETDATE()`. Schlafende Sessions ohne Request besitzen regelmäßig keinen Statementtext; ein Input Buffer wird nicht gelesen. Im Overview verwendet das Modul auf Ordinal 50 die gemeinsame Snapshot-ID und Quellenpartialität.
+
 ### Spalten
 
 | Spalte | Bedeutung |
