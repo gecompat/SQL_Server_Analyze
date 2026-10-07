@@ -24864,6 +24864,7 @@ WHERE @QueryHash IS NULL OR [query_hash]=@QueryHash;',
                     WHEN 'SPILLS_TOTAL' THEN [TotalSpills] END DESC,[LastExecutionTime] DESC) AS [rn]
             FROM [G]
             WHERE @Sortierung IN('CPU_TOTAL','ELAPSED_TOTAL','READS_TOTAL','WRITES_TOTAL','EXECUTIONS','PLAN_VARIANTS','SPILLS_TOTAL')
+            ORDER BY [rn]
         )
         INSERT [#QueryHashAnalysis_Hash]
         SELECT [r].[query_hash],[r].[PlanVariantCount],[r].[PlanHandleCount],[r].[CompilationCount],[r].[ExecutionCount],[r].[TotalCpuUs],[r].[TotalElapsedUs],
@@ -24927,6 +24928,7 @@ END;
     ) AS [statementText];
 
     DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+    IF @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen >= 0
     EXEC [monitor].[InternalProjectUnicodeTextColumn]
           @SourceTable=N'#QueryHashAnalysis_Output',@TextColumn=N'SampleStatementText'
         , @CharactersColumn=N'SampleStatementTextCharacters',@BytesColumn=N'SampleStatementTextBytes'

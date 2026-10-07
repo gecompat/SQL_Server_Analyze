@@ -31,6 +31,10 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `queryHashes`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+RAW liefert den neunfeldrigen Modulstatus und die 20 Hashfelder. TABLE schreibt ausschließlich `queryHashes`; die aktive CONSOLE ergänzt diese 20 Felder um `Ergebnis` und liefert bei leerer Menge die bestehende dreifeldrige Leeranzeige. JSON besitzt `meta` mit neun Feldern, `queryHashes` und das vorhandene leere `warnings`-Array. Alle vier Fachausgaben verwenden dieselbe materialisierte Menge. `SampleStatementText` ist explizit `SQL_Latin1_General_CP1_CS_AS` collatiert; der Export besitzt keine Identity.
+
+Die Auswahl verwendet den angeforderten Ressourcenrang absteigend und danach `LastExecutionTime` absteigend. Vollständig gleiche Sortschlüssel erhalten keinen zusätzlichen Tiebreaker. RAW und JSON sortieren die gewählte Menge ausdrücklich; TABLE und die aktive CONSOLE garantieren keine Anzeigeordnung. `@MaxZeilen` NULL oder 0 ist unbegrenzt. Negative Zeilen- oder Textlimits liefern `INVALID_PARAMETER`; der Unicode-Projektionshelper wird bei negativem Textlimit nicht aufgerufen.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einer Query-Hash-Gruppe über die aktuell sichtbaren Cachezeilen. Historisch evictete Varianten fehlen.
@@ -66,12 +70,12 @@ Für `USP_QueryHashAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Ein konkreter `@QueryHash`, TOP 100 und auf 4000 Zeichen gekürzter SQL-Text; Text wird erst für die ausgewählten Hashgruppen geladen. |
+| Standardpfad | Ohne expliziten Hashfilter wird der sichtbare Cache im Modus TOP mit Limit 100 und höchstens 4000 Textzeichen ausgewertet; dieser Defaultscope prüft `PLAN_CACHE_DEEP`. Ein konkreter Hash ist eine gezielte Einstiegswahl, kein Parameterdefault. |
 | Teuerster Pfad | Kein QueryHash, `VOLL` beziehungsweise unbegrenzte/hohe Ausgabe und ungekürzte Texte: der gesamte `sys.dm_exec_query_stats`-Bestand wird nach Hash gruppiert und gerankt. |
-| Haupttreiber | Zahl aktueller `dm_exec_query_stats`-Einträge, ihre Gruppierung je Query Hash und optional aufgelöster SQL-Text. Ohne Hash-/Datenbankfilter muss der aktuelle Cache vor Ranking und Limit breit aggregiert werden. |
+| Haupttreiber | Zahl aktueller `dm_exec_query_stats`-Einträge, ihre Gruppierung je Query Hash und optional aufgelöster SQL-Text. Ohne Hashfilter wird der aktuelle Cache vor Ranking und Limit breit aggregiert. Die Procedure besitzt keinen Datenbankfilter. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_QueryHashAnalysis ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU und Speicher für Cache-DMV-Scan, Textauflösung, Gruppierung und Sortierung; Ergebnistransfer bei langen Texten. |
-| Begrenzungswirkung | TOP begrenzt die Rückgabe, doch Ranking, Hashaggregation oder Cachekategorie kann zuvor viele Cachezeilen lesen. Früh wirkende Datenbank-/Hashfilter sind wertvoller. |
+| Begrenzungswirkung | TOP begrenzt die gewählten Hashgruppen nach Ranking, nicht den vorherigen Snapshotread. Der exakte Hashfilter wirkt bereits vor der Aggregation. |
 | Locking und Nebenwirkungen | Keine Nutzdatenlocks. Cacheeinträge können während des Lesens evicted oder neu kompiliert werden; Text-/Attributauflösung ist daher nicht atomar. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `PLAN_CACHE_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Einen konkreten synthetisch dargestellten QueryHash und kleines Limit verwenden. Der dokumentierte unselektierte TOP-Einstieg benötigt bereits `PLAN_CACHE_DEEP`; `VOLL`/unbegrenzt erst nach Cachegrößenprüfung. |
@@ -100,21 +104,24 @@ Ein exakter Query Hash begrenzt die Query-Stats-Kandidaten vor Textprojektion un
 ```sql
 SELECT
       [qs].[query_hash]
-    , [qs].[query_plan_hash]
-    , COUNT_BIG(*) AS [CacheEntryCount]
+    , COUNT(DISTINCT [qs].[query_plan_hash]) AS [PlanVariantCount]
+    , COUNT(DISTINCT [qs].[plan_handle]) AS [PlanHandleCount]
+    , COUNT_BIG(*) AS [CompilationCount]
     , SUM([qs].[execution_count]) AS [ExecutionCount]
     , SUM([qs].[total_worker_time]) AS [TotalWorkerTime]
     , SUM([qs].[total_logical_reads]) AS [TotalLogicalReads]
 FROM [sys].[dm_exec_query_stats] AS [qs] WITH (NOLOCK)
 WHERE [qs].[query_hash] = @QueryHash
-GROUP BY [qs].[query_hash], [qs].[query_plan_hash];
+GROUP BY [qs].[query_hash];
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie `@QueryHash`, `@SqlHandle` oder `@PlanHandle` vor `dm_exec_sql_text`. Ohne Zielschlüssel muss die Procedure den breiten Plan-Cache-Snapshot gruppieren; ein finales `TOP` spart diesen Scan nicht.
+**Wichtig für die Eigenlast:** Setzen Sie den öffentlichen `@QueryHash`, um die Erhebung zu begrenzen. `@SqlHandle` und `@PlanHandle` sind keine Parameter dieser Procedure. Ohne Hashfilter wird der breite Plan-Cache-Snapshot gruppiert; ein finales `TOP` spart diesen Scan nicht. `CompilationCount` zählt sichtbare Cachezeilen, keine historisch vollständig erfassten Recompiles.
 
 ### Zeit- und Scope-Modell
 
 Die Auswertung berücksichtigt nur aktuell gecachte Einträge; deren Creation Times und Evictions können voneinander abweichen.
+
+`@ParentQueryStatsSnapshot=1` ist der laufinterne Wiederverwendungspfad des Plan-Cache-Orchestrators. Er liest dessen lokale `#PlanCacheAnalysis_QueryStatsSnapshot` statt die DMV erneut abzufragen. Der Parent verwendet den Snapshot bei mindestens zwei geeigneten Consumern; ein einzelner Consumer liest frisch. Ein fehlender Parent-Snapshot liefert den bestehenden `ERROR_HANDLED`-Status. Die Datenbankauswahl des Parents ist kein zusätzlicher Datenbankfilter für diesen Hashchild.
 
 ### Bewertung und Gegenprobe
 

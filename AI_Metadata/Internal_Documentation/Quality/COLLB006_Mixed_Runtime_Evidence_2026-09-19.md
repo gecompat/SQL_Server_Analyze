@@ -4401,3 +4401,116 @@ Eingefrorene normalisierte SHA256-Werte: Source100
 `724194A1F02A38EF6EECB4EFD37491FAE341EDB7E4F442498EC0381A926A8F9A`, Common180
 `3F303E144103825C30E94C121A8DE343F7B52319D5BAA28EE971D79570BD0AC6`, Static1030
 `7C156F844E3889B84753A0869F5EFE050EE6E77487CF44A4EB018E0A48777586`.
+
+## Query-Hash-Analyse: Ressourcenrang und kontrollierte negative Textlimits
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und die eigene
+Unicode-CI_AS-Quelle besitzen gemessene Compatibility Levels 170. HADR ist
+nativ deaktiviert; Query Store bleibt in der Quelle ausgeschaltet. Eine
+synthetische Tabelle enthält vier Zeilen. Drei eigene Procedures werden
+zwei-, drei- und viermal ausgeführt und liefern drei getrennte Cachezeilen.
+Jede besitzt einen Hash, eine Planvariante und einen Handle. Das belegt keine
+historische Planvielfalt oder positive native Write-/Spillwerte.
+
+Das Original besitzt bereits drei lokale Tabellen mit 16/15/20 Feldern.
+Die gemeinsame Ausgabe hat zehn NOT-NULL-Felder, einen explizit Framework-CS
+collatierten Text und keine Identity. RAW, TABLE, aktive CONSOLE und JSON
+verwenden diese vorhandene Menge. Die 15 Parameter, Sourceversion 2.1.0 und
+SchemaVersion 1 bleiben unverändert; es entsteht kein neuer Export.
+
+Zwei native Originalfehler werden gezielt korrigiert. TOP begrenzt die
+Hashaggregation vor einer ausdrücklich geordneten Auswahl und kann dadurch
+eine andere Menge als den angeforderten Ressourcenrang wählen. Drei
+synthetische und vierzehn native Originalfälle zeigen falsche Rangmengen.
+ORDER BY rn begrenzt nun nach dem vorhandenen Ressourcenwert und
+LastExecutionTime. Vollständig gleiche Sortschlüssel erhalten keinen neuen
+Tiebreaker. RAW und JSON sortieren die gewählte Menge ausdrücklich; TABLE
+und aktive CONSOLE garantieren keine Anzeigeordnung.
+
+Negative Textlimits werden bereits als INVALID_PARAMETER erkannt, rufen im
+Original anschließend aber den Unicode-Helper mit negativem Grenzwert auf.
+Vier Originalfälle je Suite werfen 51021. Ein einzelner Projektionsguard
+erhält den kontrollierten leeren Status und die vollständigen TABLE-Schemas.
+NULL/0-Limits bleiben unbegrenzt. Aggregationen, ganzzahlige Zwischenrechnung
+der CPU-/Elapsed-Durchschnitte, Mindestfilter, Hashfilter, Sampleauswahl,
+Gatepolitik und Snapshotpfade bleiben unverändert.
+
+Je dreißig synthetische und native Fälle vergleichen Original und Finalstand.
+Die synthetische Originalsuite ergibt 31 Batches und 99 private Grids, die
+native 31 Batches und 100 Grids. Final ergeben sie 31/102 beziehungsweise
+31/103 Batches/Grids. Ein unabhängiger Client prüft sämtliche 20 Werte und
+Typfacetten einschließlich Größen, Präzision, Skalen, Nullability und Identity.
+RAW besitzt neun Statusfelder, positive CONSOLE 21 Felder mit Label und die
+leere CONSOLE drei bestehende Felder. TABLE-Katalogfacetten, alle sieben
+Ressourcenränge, NULL/0/1/2-Limits und beide negativen Limits werden geprüft.
+JSON behält drei Hauptschlüssel, neun Metafelder, vollständige NULL-Properties
+und das leere Warningsarray; doppelte Schlüssel werden zurückgewiesen.
+
+Vierzig Zusatzfälle ergeben 42 Batches und 125 Grids. Exakte Hashauswahl,
+Mindestfilter, ungültige Parameter, sechs Mappingablehnungen mit 51011 und
+unveränderten Sentinelzielen sowie der tatsächlich fehlende Snapshot mit 208
+werden geprüft. Zwei positive Parentaufrufe bestätigen Child-Parität auf
+Ordinal 2: ein einzelner Hashchild liest frisch, QueryStats zusammen mit
+Hashanalyse verwendet REUSED_PARENT_SNAPSHOT. Acht separate Unicode-
+Grenzfälle ergeben neun Batches und 25 Grids. Unabhängige UTF-16-Byteoffsets
+und Codepointzählung bestätigen den 66 Zeichen und 134 Bytes langen eigenen
+SUM-Text; Limits 30/31 liegen vor beziehungsweise einschließlich des Emoji.
+Weitere acht Gatefälle in neun Batches und 33 Grids bestätigen fünf blockierte,
+zwei erlaubte und einen ungültigen Pfad mit vollständiger RAW-/JSON-Parität.
+Caller-LOCK_TIMEOUT 137 bleibt in den Zusatz-, Parent-, Unicode- und Gatefällen.
+
+Private Prüfharnessfehler werden ohne Produktänderung korrigiert. Ein eigener
+15-Feld-Snapshot kollidiert beim tatsächlichen Parentaufruf mit dessen
+37-Feld-Snapshot und führt zu 213; die eigene Temp-Tabelle wird vorher entfernt.
+Ein wörtlicher GO-Split übersieht eingerückte Trenner und erzeugt doppelte
+Temp-Tabellen; der private Split verwendet danach vollständige GO-Zeilen.
+Die Annahmen zu TABLE-Anzeigeordnung und leerer CONSOLE werden anhand der
+vorhandenen Verträge korrigiert. Anschließend bestehen die vollständigen
+Sollwertprüfungen; keine Rangabweichung des Originals wird als Erfolg gewertet.
+
+Common181 besteht 27 allgemeine und 20 bedingte native Fälle, drei Consumer,
+sechs Preflights und drei SQL-captured leere CONSOLE-Fälle. Sein unabhängiges
+Schema- und Vollzeilenorakel prüft alle 20 Felder, BIN2-Häufigkeitsparität und
+zulässige bestehende Sortties. Der native Block liest nur eigene vorhandene
+Cachezeilen und erzeugt keinen Workload. Der positive Lauf ergibt drei Batches
+und drei Grids. Acht impact-basierte Testdateien bestehen auf CL170 in
+25 Batches und 15,6 Sekunden mit explizitem QI-/ANSI-ON-Einstieg.
+
+Alle 90 Felder und Schemafacetten der drei eigenen Cachezeilen bleiben vor
+und nach direkten Prüfungen sowie nach dem Impactlauf exakt gleich. Auch
+Datenbankidentität, Optionen und vier Tabellenwerte bleiben gleich. Nach
+identitätsgesichertem Fixture-Cleanup besteht Common181 in drei Batches und
+drei Grids mit 27 allgemeinen Fällen; der native Block meldet NOT_EXECUTED
+mit null Fällen und ohne gemessenen Source-Compatibility-Level.
+
+Alle 75 statischen Prüfungen bestehen am stabilen funktionalen Stand.
+Static1036 besteht 173 echte Mutationen über feldbezogene DDL-, Rang-,
+Projektions-, Snapshot- und Consumergrenzen. Der erste vollständige Lauf
+meldet in Static950 den kontrollierten Test-Snapshot als zweiten Erzeuger.
+Eine Ausnahme ausschließlich für Source060/Common181 verlangt Fremdtabellenschutz
+vor Anlage sowie eigenes Erfolgs-/CATCH-Cleanup; gewöhnliche Namenskollisionen
+bleiben Fehler. Neun Ownershipmutationen und acht Kollisionsfälle bestehen.
+Eine anfängliche Windows-Pfadabweichung im lokalen Validatorlauf wird vor
+dem erfolgreichen Wiederholungslauf korrigiert. Source und Common bleiben
+unverändert. Unabhängiger Source-, Sieben-Dateien- und ergänzender Validator-
+Review besitzen keine offenen Befunde. OPS-005 ist aus
+166 kanonischen Quellen synchronisiert; sein Update und beide PLAN-Artefakte
+bleiben normalisiert unverändert. Eine Inventarzeile ergänzt ausschließlich
+die bereits vorhandene Textcollation. Container und Volume des eigenen Labs
+sind in zwei Schritten ohne Fehler entfernt; der eigene verschlüsselte
+temporäre Secretwert ist entfernt.
+
+Die abschließenden begrenzten Dokumentations-, Schreibstil- und Privacyprüfungen
+bestehen am Lieferstand. Mehrere tatsächliche native Varianten je Hash,
+positive native Writes/Spills, allgemeine Rundungs- und Sorttiegrenzen,
+Cache-Eviction, Berechtigungen, Timeout, ältere native Engines und CL150/160
+bleiben unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
+Maturityflags bleiben unverändert. Private Captures, Runtimeidentitäten und
+Umgebungsdaten verbleiben außerhalb des Repositorys.
+
+Eingefrorene normalisierte SHA256-Werte: Source020
+`E45385E1A65FDDDF2CCB110E4B0F6B043E486D4802A0AEC9DFB295B06EA3978B`, Common181
+`1C4DF97A58AF561181431C4D79D9F1B53C084CBD24FEA23E1BD5D53FBC7D2D42`, Static1036
+`4404AC73FCF20ECD4D629014289C8EF24AA46AFFF8518F428AB8E2E51DE3982E`.
