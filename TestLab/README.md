@@ -272,6 +272,32 @@ Der Nachweis betrifft einen erfolgreichen minimalen lokalen Job auf
 SQL Server 2025 mit Docker. Retention, Jobdatums- oder Dauerinterpretation,
 Mail-/Maintenance-Ausführung und andere Provider bleiben separat offen.
 
+Mit `-Scenario AgentRetention` prüft eine getrennte Fixture die gezielte
+native Historienbereinigung eines eigenen Jobs nach zwei erfolgreichen
+Ausführungen desselben `SELECT 1`-Schritts. Die Startfelder der vier nativen
+Historyzeilen bestimmen eine Grenze zwischen beiden Ausführungen.
+`sp_purge_jobhistory` erhält ausschließlich die eigene Job-ID und eine
+explizite Datumsgrenze. Nach der ersten Bereinigung müssen beide älteren
+Zeilen fehlen und sämtliche Werte der beiden jüngeren Zeilen erhalten sein.
+Eine zweite gezielte Bereinigung entfernt die verbleibenden eigenen
+Historyzeilen, während Job und Schritt bestehen bleiben.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario AgentRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Je Phase mit vier, zwei und null Historyzeilen prüfen NONE, TABLE und
+CONSOLE den nativen Count, Status und die unveränderten NULL-Zeitgrenzen.
+TABLE und CONSOLE müssen innerhalb desselben Aufrufs alle acht Fachfelder
+mit JSON teilen. Sämtliche Quellwerte, Callertransaktion und `LOCK_TIMEOUT`
+werden vor und nach jedem Analyzeraufruf verglichen. Die abschließende
+Joblöschung und das äußere Labcleanup bleiben identitätsgebunden.
+Der Analyzer führt keine Bereinigung aus. Diese Gegenprobe prüft einen
+manuellen datumsgebundenen Eingriff; automatische Agent-Aufbewahrung,
+Mail-/Maintenance-Retention und Dauerinterpretation bleiben separat offen.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-

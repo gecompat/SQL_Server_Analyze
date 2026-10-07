@@ -297,3 +297,66 @@ injizierte Agent-Fixture und die Registry bleiben unverändert; die neue
 Fixture ist ein OPS-008-Testbestandteil ohne eigene Artefaktreferenz.
 OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; Maturityflags und historische
 Release-Matrix bleiben unverändert.
+
+## Ergänzende native OPS-008-Agent-Historienretention vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario AgentRetention` bestand auf einem neuen
+eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation, den Smoke-Test,
+Runtimevertrag `122` und die
+[Agent-Retentionfixture](../../../../TestLab/Scenarios/OPS-008/agent-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Das Original nach PR #273 blieb unverändert;
+ein Produktfehler wurde nicht beobachtet und keine Produktkorrektur vorgenommen.
+
+Die Fixture verlangte leere Agent-Historie und einen freien eigenen Jobnamen.
+Ein eigener lokaler Job führte denselben minimalen T-SQL-Schritt `SELECT 1`
+zweimal erfolgreich aus, ohne Zeitplan, Retry oder Benachrichtigung. Jede
+Ausführung benötigte zwei getrennte erfolgreiche Historyidentitäten sowie
+einen beendeten Aktivitätsrecord mit passender Summaryidentität. Je Ausführung
+war der Wartepfad auf 120 Einsekundenpolls begrenzt. Die vier nativen
+Historyzeilen wurden nicht direkt injiziert oder geändert. Der Job wurde
+anschließend deaktiviert und die vollständige Historie nach zwei Sekunden
+als stabil bestätigt.
+
+Die nativen Ganzzahlfelder `run_date` und `run_time` wurden ausschließlich in
+der Fixture in lokale Startzeitwerte umgerechnet. Zwei Sekunden nach der
+spätesten ersten Startzeit bildeten die erste Retentiongrenze; beide jüngeren
+Startzeiten mussten strikt danach liegen. Ein Abstand von vier Sekunden
+zwischen den Ausführungen schuf die kontrollierte Trennung. Die native
+Prozedur [`sp_purge_jobhistory`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-purge-jobhistory-transact-sql?view=sql-server-ver17)
+erhielt die eigene Job-ID und diese explizite Datumsgrenze. Beide älteren
+Historyzeilen wurden entfernt; sämtliche Spalten der beiden jüngeren Zeilen
+blieben nach Sortierung und `INCLUDE_NULL_VALUES` NULL-sicher identisch.
+Eine zweite, spätere Grenze entfernte die beiden verbleibenden eigenen
+Historyzeilen. Job und Schritt blieben vor den Analyzerprüfungen vorhanden,
+der Job deaktiviert und seine Aktivität beendet.
+
+In jeder Phase mit vier, zwei und null Historyzeilen bestätigten NONE, TABLE
+und CONSOLE `AVAILABLE`, sechs Quellenzeilen und den unabhängigen nativen
+Count. Die bestehenden Agent-Zeitgrenzen blieben NULL und die Evidenzgrenze
+vorhanden. TABLE und CONSOLE besaßen innerhalb desselben Aufrufs vollständige
+Parität aller acht Fachfelder mit JSON. Alle Historyspalten blieben vor und
+nach jedem der neun Analyzeraufrufe unverändert. Die eigene Callertransaktion
+blieb committable mit `@@TRANCOUNT=1`; `LOCK_TIMEOUT=137` blieb erhalten und
+wurde nach jeder Phase auf den Eintrittswert zurückgesetzt. Der Analyzer
+löschte keine Historie.
+
+Die abschließende identitätsgebundene Joblöschung bestätigte die Abwesenheit
+aller eigenen Job-, Schritt-, Server-, Schedule- und Aktivitätsrecords sowie
+der zuvor leeren Gesamthistorie. Der öffentliche Lauf endete mit `PASS` und
+`REMOVED`; eigener Container, Volume und temporärer State wurden entfernt.
+Runtimeidentitäten, native Zeitwerte, Secrets und Rohlogs bleiben außerhalb
+von Git. Der unabhängige Review der funktionalen Fixture und Runnererweiterung
+besitzt keine offenen Befunde.
+
+Der Nachweis gilt ausschließlich für diese manuelle datumsgebundene native
+Agent-Historienbereinigung. Automatische Agent-Aufbewahrung, Retention anderer
+Historien, fremde Jobs, RAW-Capture, empirische Fehlercleanup-/Stop-Timeoutpfade,
+Jobdauerinterpretation und ein Produktvertrag für Jobdatumsfelder sind damit
+nicht belegt. Die Testumrechnung begründet keine UTC-Aussage. Tatsächliche
+Mail-/Maintenance-Ausführung, Quellenabwesenheit, Windows, weitere Provider
+und zusätzliche native Engines bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; Produkt-SQL, TEST-0001, Registry, Maturityflags und
+historische Release-Matrix bleiben unverändert. Die neue Fixture ist ein
+Bestandteil von OPS-008 ohne eigene Artefaktreferenz.
