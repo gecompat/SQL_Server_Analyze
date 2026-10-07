@@ -3380,7 +3380,8 @@ Die geprüften UTF-8/LF-Quellidentitäten lauten:
 | `046_TVF_ExecutionPlanObjectReferences.sql` | `6921F59659E38D66C80CABE449E6A319A474BDD2D35D02FBC8E5B3CFF58FA662` |
 | `047_TVF_ExecutionPlanStatisticsUsage.sql` | `EB5FBBD4CC784953529B6DD9D90C3257A8A0C6CA7D56485BD543736AB0D81AF8` |
 | `048_TVF_ExecutionPlanColumnReferences.sql` | `DB4DA37CB0DE034E171348298F44DCC6583553A2C0CEC6B5E4B9AA9CFA4DE02D` |
-| `171_Showplan_References_Collation_Runtime_Contract.sql` | `7ECDD92E8F14917FB277371F3EC2AD2EBD2B250EAA9F98644E1E78CE29ABF48A` |
+| Common171, ursprünglicher nativer Capturestand vor der QI-Korrektur | `7ECDD92E8F14917FB277371F3EC2AD2EBD2B250EAA9F98644E1E78CE29ABF48A` |
+| `171_Showplan_References_Collation_Runtime_Contract.sql`, QI-korrigierter Stand | `288497A26DFEA638D20BF7D3D90978881248694D617FCF8662B43493F99AF9B8` |
 
 Das eigene Lab wurde entfernt: Container und Volume, zwei Schritte,
 null Fehler, REMOVED. Der eigene verschlüsselte temporäre Secretwert
@@ -3395,7 +3396,43 @@ RUNTIME-001, bestehende Maturityflags und Registry bleiben unverändert.
 
 Die vollständige statische Suite
 `pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
-bestand alle 75 Prüfungen mit Exitcode 0. Dieser Lauf ging der begrenzten
-Evidenz-/Statusfortschreibung voraus. Abschließende Dokumentations-,
+bestand am damaligen Teststand alle 75 Prüfungen mit Exitcode 0. Dieser
+historische Lauf ging der begrenzten Evidenz-/Statusfortschreibung und
+der nachfolgenden QI-Korrektur voraus. Abschließende Dokumentations-,
 Schreibstil- und Privacyprüfungen folgen getrennt; sie werden hier noch
-nicht als bestanden behauptet. SQL und Tests blieben unverändert.
+nicht als bestanden behauptet. Bei der damaligen Evidenzfortschreibung
+blieben SQL und Tests unverändert.
+
+### Common171-Einstiegsbatch nach erstem PR242-CI-Fehler
+
+Der erste PR242-CI-Lauf scheiterte in Impactstufe 3 von 14 an Common171
+mit Msg 1934: QUOTED_IDENTIFIER war für XML-Methoden nicht korrekt
+gesetzt. Der Standalonevertrag 193 wurde in diesem Lauf nicht erreicht.
+Der Test hatte den callerabhängigen SET-Zustand bisher nicht selbst
+hergestellt. Die einzige Reparatur ergänzt `SET QUOTED_IDENTIFIER ON`
+in einem eigenen Einstiegsbatch vor den XML-methodenhaltigen dynamischen
+TVF-Aufrufen. Sources und Builder bleiben unverändert.
+
+Ein frisches eigenes Mixed-SQL-Server-2025-Lab mit Version 17.0.4075.5,
+abweichender CS-Server-/tempdb-Collation und garantierter Framework-CS-
+Collation auf CL170 bestätigte kanonische Installation aus 166 Quellen
+und Smoke. Der korrigierte Common171 bestand im Standardaufruf in drei
+Batches. Ein unabhängiger SqlClient setzte QUOTED_IDENTIFIER zuvor
+explizit OFF: Der ursprüngliche PR-Test scheiterte reproduzierbar,
+der korrigierte Test bestand in fünf Batches mit zwei Ergebnisgrids.
+Der Vertrag meldete erneut PASS mit 51 Fällen, 70 Literalzeilen,
+53 Feldern und 23 Textcollations; eine unabhängige Gegenprobe bestätigte
+`SESSIONPROPERTY('QUOTED_IDENTIFIER')=1`.
+
+Das eigene Reparaturlab wurde entfernt: Container und Volume, zwei
+Schritte, null Fehler, REMOVED. Der eigene verschlüsselte temporäre
+Secretwert wurde gelöscht. Der oben genannte 75-PASS-Lauf bleibt ein
+historischer Nachweis des vorherigen Teststands.
+
+Die neue vollständige statische Suite
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand am QI-korrigierten stabilen Stand alle 75 Prüfungen mit Exitcode 0.
+Dieser Nachweis ist vom historischen Lauf vor der Testkorrektur getrennt.
+Abschließende begrenzte Dokumentations-, Schreibstil- und Privacyprüfungen
+folgen nach diesem Gateabsatz; sie werden hier noch nicht als bestanden
+behauptet. Source und Test bleiben unverändert.

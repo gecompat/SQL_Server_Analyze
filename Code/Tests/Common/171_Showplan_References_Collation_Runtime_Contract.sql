@@ -1,5 +1,7 @@
 USE [DeineDatenbank];
 GO
+SET QUOTED_IDENTIFIER ON;
+GO
 
 /*
 P3: Synthetischer Vollzeilen- und Metadatenvertrag für drei Showplan-Referenz-TVFs.
