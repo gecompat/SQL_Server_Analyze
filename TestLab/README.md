@@ -324,6 +324,28 @@ Run. Der Analyzer führt keine Bereinigung aus. Automatische Aufbewahrung,
 physische Backupaufbewahrung und die Retention weiterer Historien bleiben
 eigenständige Nachweise.
 
+Mit `-Scenario MailRetention` injiziert eine getrennte Fixture drei eigene
+Mailzeilen mit kontrollierten Zeitstempeln und Status `failed` in die zuvor
+leeren Mailquellen. Konfigurierte und effektive Mail-XPs müssen deaktiviert
+bleiben; die Fixture richtet weder Profil noch Versand oder Queueverarbeitung
+ein. Die Statusmarkierung ist kein Nachweis eines tatsächlichen Versandfehlers.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Zwei Datumsgrenzen der nativen `sysmail_delete_mailitems_sp` müssen zuerst
+die beiden älteren Zeilen und danach die jüngere Zeile entfernen. Sämtliche
+Spalten der jüngeren Zeile müssen nach dem ersten Eingriff NULL-sicher gleich
+bleiben. NONE, TABLE und CONSOLE prüfen je Phase native Counts und Zeitgrenzen,
+JSON-Parität, Quellerhaltung und Callerzustand. Ein abschließendes Rollback
+entfernt die injizierte Fixture; das äußere Labcleanup bleibt erforderlich.
+Der Analyzer führt keine Bereinigung aus. Tatsächliche Mailausführung,
+automatische Aufbewahrung, weitere Mailstatus, Anlagen- und Logretention sowie
+Maintenance-Retention bleiben eigenständige Nachweise.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
