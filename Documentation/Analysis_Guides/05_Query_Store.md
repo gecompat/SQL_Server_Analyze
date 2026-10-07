@@ -341,6 +341,12 @@ Die Procedure inventarisiert erzwungene Query-Store-Pläne und priorisiert Force
 
 `QueryStoreDatabaseId`, `QueryStoreDatabaseName`, `QueryId`, `PlanId`, `QueryHash`, `QueryPlanHash`, `ObjectId`, `ObjectName`, `IsForcedPlan`, `PlanForcingTypeDesc`, `ForceFailureCount`, `LastForceFailureReason`, `LastForceFailureReasonDesc`, `CountCompiles`, `LastCompileStartTimeUtc`, `LastExecutionTimeUtc`, `EngineVersion`, `CompatibilityLevel`, `QuerySqlText`, optional `QueryPlan`.
 
+### Ausgabegrenze
+
+Die 32 Felder von `forcedPlans` werden nach vollständiger Sammlung und Bewertung einmal global begrenzt. RAW, CONSOLE, TABLE und JSON lesen diese gemeinsame Exportmenge. NULL und 0 bei `@MaxZeilen` bleiben unbegrenzt; negative Werte werden abgelehnt. Die zwölf Textspalten sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. `QueryStoreDatabaseName` ist NOT NULL, die übrigen 31 Felder sind nullable; der Export besitzt keine Identity.
+
+Die vorhandene Sortierung priorisiert `LastForceFailureReason <> 0` und danach die letzte Ausführung absteigend. Gleiche Sortwerte ergeben keine eindeutige Auswahl. Status, `hasMoreRows` und Truncationwarnungen entstehen vor der Ausgabe aus der lokal mit N+1 gesammelten Menge. Eine fehlende Datenbank erhält weiterhin keine zusätzliche Auswahlwarning. Die Procedure verändert keine Planbindung oder Query-Store-Konfiguration.
+
 ### Interpretation
 
 - `IsForcedPlan=1` beweist nicht, dass der Plan aktuell optimal ist.
