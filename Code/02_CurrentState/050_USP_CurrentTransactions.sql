@@ -386,6 +386,16 @@ BEGIN
         INSERT [#CurrentTransactions_Warnings] VALUES (@StatusCode, @ErrorNumber, @ErrorMessage);
     END CATCH;
 
+    IF @MaxZeilen IS NOT NULL AND @MaxZeilen>0
+    BEGIN
+        ;WITH [R] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [TransactionAgeSeconds] DESC,[SessionId],[TransactionId]) AS [rn]
+            FROM [#CurrentTransactions_Result]
+        )
+        DELETE FROM [R] WHERE [rn]>@Limit;
+    END;
+
     IF @PrintMeldungen = 1 AND @StatusCode <> 'AVAILABLE'
     BEGIN
         SET @Message = FORMATMESSAGE(N'WARNUNG USP_CurrentTransactions [%s]: %s', @StatusCode, COALESCE(@ErrorMessage, N'Unbekannter Fehler.'));

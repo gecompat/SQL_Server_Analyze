@@ -31,7 +31,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `transactions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der TABLE-Vertrag `transactions` enthält 20 Felder, sieben explizite Frameworktextcollations und drei NOT-NULL-Felder ohne Identity. RAW liefert zuerst zehn Statusfelder, danach dieselben 20 Transaktionsfelder und drei Warningfelder. JSON enthält `meta`, `transactions` und `warnings` einschließlich NULL-Werten. Die aktive CONSOLE liefert die 20 Fachfelder mit der zusätzlichen Beschriftung `Ergebnis`; bei leerer Menge liefert sie `Ergebnis`, `Status` und `Hinweis`. Status und Warnings stehen für CONSOLE im optionalen JSON zur Verfügung; ein RAW-Metaresultset wird dort nicht ausgegeben.
+
+Alle vier Ausgabeformen verwenden dieselbe spät begrenzte Fachmenge. Ein positives `@MaxZeilen` begrenzt sie nach der bestehenden Ordnung aus Alter absteigend, SessionId und TransactionId; NULL oder 0 bleibt unbegrenzt. N+1-Kandidaten, `HasMoreRows` und Textwarnungen werden davor bewertet. TABLE- und CONSOLE-Helper garantieren keine zusätzliche Zeilenordnung. Gültige TABLE-Zuordnungen werden vor der semantischen Parameterprüfung validiert; bei ungültigen Parametern wird das vollständige leere Fachschema exportiert.
 
 Im Overview werden Session-, Request-, Transaktions- und SQL-Textquellen aus
 dem gemeinsamen Snapshot übernommen. Ein direkter Aufruf materialisiert diese
@@ -70,12 +72,12 @@ Für `USP_CurrentTransactions` gilt zusätzlich: **keine Zeile** bedeutet, dass 
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Aktive User-Transaktionen ab 60 Sekunden, höchstens 1000 Kandidaten plus eine Überlaufzeile; SQL-Text ist auf 3000 Zeichen gekürzt. |
+| Standardpfad | Aktive User-Transaktionsbindungen ab 0 Sekunden; höchstens 1000 ausgegebene Zeilen und eine zusätzliche materialisierte Kandidatenzeile. SQL-Text ist eingeschaltet und auf 3000 SC-Zeichen begrenzt. |
 | Teuerster Pfad | `@MaxZeilen = 0`, kein Alters-/Sessionfilter, System-Sessions einbezogen und vollständiger SQL-Text bei sehr vielen aktiven Transaktionsbindungen. |
 | Haupttreiber | Zahl aktiver Transaktionen und Session-/Datenbankbindungen, die für Alter und Logverbrauch korreliert werden. Ein breiter Sessionscope sowie vollständiger SQL-Text erhöhen Sortier-, Speicher- und Transferbedarf je Kandidat. |
 | Skalierung | Join- und Sortierarbeit wächst mit aktiven Transaktionen und ihren Session-/Datenbankbindungen. SQL-Textbreite erhöht Cachezugriff, Speicher und Transfer; Locks werden nicht materialisiert. |
 | Ressourcen | CPU und Arbeitsspeicher für Transaktions-/Session-/Request-DMV-Joins und Sortierung; optional Plan-Cache-/Textzugriff. Keine Benutzerobjektscans. |
-| Begrenzungswirkung | Session-, Mindestalter-, Sleeping- und Systemfilter wirken in der Quellabfrage. `TOP (@MaxZeilen + 1)` begrenzt die materialisierten Kandidaten; die DMVs und Joins können zur Filterung/Sortierung dennoch breiter gelesen werden. Das Zeichenlimit reduziert nur Textbreite. |
+| Begrenzungswirkung | Session-, Mindestalter-, Sleeping- und Systemfilter wirken in der Quellabfrage. Die sichere N+1-Grenze begrenzt die materialisierten Kandidaten. Nach Unicodeprojektion, Textwarnung und Zählerbewertung wird die gemeinsame Ausgabemenge zugeschnitten; weitere DMV-, Join-, Filter-, Sortier- und Extraktionsarbeit bleibt möglich. Das Zeichenlimit begrenzt den bereits materialisierten Text, nicht dessen ursprüngliche Ermittlung. |
 | Locking und Nebenwirkungen | Read-only gegenüber Nutzdaten. Flüchtige DMVs werden nacheinander gelesen; Katalog-/SQL-Textauflösung kann kurze interne Synchronisation verursachen, erzeugt aber keinen atomaren Snapshot. |
 | Schutzmechanismus | Kein High-Impact-Gate. Früh wirkende Session-/Altersfilter, der standardmäßige Systemscope, `@MaxZeilen` und das SQL-Text-Zeichenbudget schützen den Kandidatenpfad; `@MitSqlText = 0` spart die Textauflösung vollständig. |
 | Sicherer Einsatz | Ein sinnvolles Mindestalter, User-Scope und endliches Limit; SQL-Text bei erster Triage ausschalten oder gekürzt lassen und nur für auffällige Sessions vertiefen. |
@@ -114,20 +116,20 @@ SELECT
 FROM [sys].[dm_tran_session_transactions] AS [st] WITH (NOLOCK)
 JOIN [sys].[dm_tran_active_transactions] AS [at] WITH (NOLOCK)
   ON [at].[transaction_id] = [st].[transaction_id]
-LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+INNER JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
   ON [s].[session_id] = [st].[session_id]
 LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
   ON [r].[session_id] = [st].[session_id]
 LEFT JOIN [sys].[dm_tran_database_transactions] AS [dt] WITH (NOLOCK)
   ON [dt].[transaction_id] = [at].[transaction_id]
-WHERE [at].[transaction_begin_time] <= DATEADD(SECOND, -@MinAlterSekunden, GETDATE());
+WHERE DATEDIFF_BIG(SECOND, [at].[transaction_begin_time], GETDATE()) >= @MinAlterSekunden;
 ```
 
-**Wichtig für die Eigenlast:** Begrenzen Sie Alter und Session-ID vor SQL-Textauflösung. Eine Transaktion kann mehrere Datenbankzeilen besitzen; deshalb erst auf Transaktionsebene filtern und danach Logverbrauch summieren.
+**Wichtig für die Eigenlast:** Die Systemquellen werden vor der gefilterten Kandidatenabfrage materialisiert; bei eingeschaltetem SQL-Text werden unterschiedliche Requesthandles bereits dort aufgelöst. Session- und Altersfilter begrenzen anschließend die Fachkandidaten. Die Procedure aggregiert Logbytes nicht. Mehrere Datenbankbindungen und Requests können mehrere Zeilen derselben Session-/Transaktionszuordnung erzeugen; ein Requestdatenbankkontext hat bei der ausgegebenen Datenbankidentität Vorrang vor der jeweiligen Datenbanktransaktionszeile. Eine Summierung erfordert deshalb eine eigene Prüfung der Granularität.
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung beschreibt den aktuellen offenen Zustand und das Alter seit dem Transaktionsbeginn. Logbytes und Locks können während der Abfrage weiter wachsen.
+Die Auswertung beschreibt den aktuellen offenen Zustand. `TransactionBeginTimeUtc` übernimmt den DMV-Datetimewert ohne UTC-Konvertierung; `TransactionAgeSeconds` wird mit `DATEDIFF_BIG` und `GETDATE()` ermittelt. Erfassungsmetadaten verwenden dagegen `SYSUTCDATETIME()`. Die nacheinander materialisierten Quellen bilden keinen atomaren Snapshot; Logbytes und andere Zustandswerte können sich zwischen Aufrufen ändern.
 
 ### Bewertung und Gegenprobe
 
