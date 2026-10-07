@@ -36,7 +36,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `sessions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `sessions` mit 51 Feldern, 22 expliziten Framework-Textcollations und fünf nicht-nullbaren Feldern. Aktive CONSOLE-Ausgaben ergänzen das Feld `Ergebnis`; eine leere Ausgabe besitzt `Ergebnis`, `Status` und `Hinweis`. RAW ergänzt zehn Wait-Felder und stellt ein Statusresultset voran. JSON ergänzt die drei Felder `waitGroup`, `waitSeverity` und `waitMeaning` und enthält `meta`, `sessions` und `warnings`. Status und Scope sind vor den Fachwerten zu lesen. Ein Warning kann auch den Detailtext eines erfolgreichen Aufrufs enthalten.
+
+Alle vier Ausgaben verwenden dieselbe bereits begrenzte Sessionmenge. `@MaxZeilen = NULL` oder `0` liefert sie ohne Zeilenlimit; ein positives Limit setzt bei weiteren Kandidaten `hasMoreRows`. Die Auswahl richtet sich nach `@Sortierung` und `SessionId`. RAW sortiert seine Ausgabe nach diesen Schlüsseln, JSON nach `SessionId`; TABLE und der aktive CONSOLE-Helper garantieren keine Zeilenreihenfolge.
 
 
 ## Snapshot-Verhalten
@@ -46,11 +48,11 @@ Ein direkter Aufruf liest die Systemquellen immer frisch.
 `USP_CurrentOverview`; Anwender sollen ihn nicht setzen. Innerhalb des
 Overview-Aufrufs werden Sessions, Requests, Connections und bei Bedarf
 deduplizierter SQL-Text aus demselben laufinternen Primär-Snapshot verwendet.
-RAW und JSON weisen den Startzeitpunkt sowie die Snapshot-ID aus.
+RAW und JSON weisen den Startzeitpunkt sowie die Snapshot-ID aus. Der Overview-Consumer reicht `@AktuelleSessionEinbeziehen` nicht weiter; die aufrufende Session bleibt dort nach dem Childdefault ausgeschlossen.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile beschreibt eine aktuell sichtbare Session; ein Request kann fehlen, wenn die Session gerade inaktiv ist.
+Eine Zeile beschreibt eine aktuell sichtbare Session mit ihrem korrelierten Verbindungskontext. Der aktuelle Request wird über die kleinste sichtbare `request_id` ausgewählt; bei einer inaktiven Session kann er fehlen. Mehrere sichtbare Connections können die Zeilengranularität beeinflussen.
 
 ## So lesen
 
@@ -83,12 +85,12 @@ Ein eingeschränkter Berechtigungsscope kann fremde Sessions ausblenden. Prüfen
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Maximal 500 sichtbare User-Sessions einschließlich inaktiver Sessions, ohne SQL-Text. Pro Session wird höchstens ein aktueller Request korreliert. |
+| Standardpfad | Maximal 500 Ergebniszeilen aus sichtbaren User-Sessions einschließlich inaktiver Sessions, ohne SQL-Text. Die aufrufende Session und erkannte Tool-Hintergrundsessions sind standardmäßig ausgeschlossen. Pro Session wird höchstens ein aktueller Request korreliert. |
 | Teuerster Pfad | `@MaxZeilen = 0`, System- und inaktive Sessions, `@MitSqlText = 1` ohne Zeichenlimit sowie mehrere Regexfilter. Regex wird nach der unbeschränkten Kandidatenmaterialisierung angewandt. |
 | Haupttreiber | Zahl sichtbarer Sessions und korrelierter Connections/Requests. System-/Inaktivscope, SQL-Textbreite und späte Regexfilter bestimmen, ob nur eine frühe N+1-Kandidatenmenge oder alle vorgefilterten Sessions materialisiert werden. |
-| Skalierung | Ohne Regex wird die Kandidatenmenge auf `@MaxZeilen + 1` begrenzt. Mit Regex wachsen Materialisierung und dynamische Nachfilterung mit allen vorgefilterten Sessions; SQL-Textbreite erhöht zusätzlich Speicher und Transfer. |
+| Skalierung | Ohne Regex und bei positivem Limit werden höchstens `@MaxZeilen + 1` Kandidaten materialisiert. Mit Regex entfällt dieses frühe TOP. Die Quellenreads, Joins, Filter, Sortierung und optionale SQL-Textauflösung sind damit nicht auf N+1 beschränkt. |
 | Ressourcen | CPU und Arbeitsspeicher für Session-/Connection-/Request-Joins, Sortierung und optional Regex; bei SQL-Text zusätzlicher Cachezugriff und Ergebnistransfer. |
-| Begrenzungswirkung | Exakte Listen und LIKE-Prädikate wirken in der DMV-Abfrage. Regex wird erst nach Materialisierung per `DELETE` angewandt, weshalb das frühe TOP bewusst entfällt. Das spätere `@MaxZeilen` reduziert dann nur das behaltene Resultset. |
+| Begrenzungswirkung | Die DMV-Quellen werden zunächst in lokale Arbeitstabellen gelesen. Exakte Listen und LIKE-Prädikate filtern den anschließenden Join vor der Kandidatenmaterialisierung. Regex filtert erst danach per `DELETE`. Das gemeinsame Zeilenlimit wirkt vor der anschließenden Unicodeprojektion der behaltenen Texte. |
 | Locking und Nebenwirkungen | Read-only gegenüber Nutzdaten. Flüchtige DMVs werden nacheinander gelesen; Katalog-/SQL-Textauflösung kann kurze interne Synchronisation verursachen, erzeugt aber keinen atomaren Snapshot. |
 | Schutzmechanismus | Es gibt kein Deep-Gate. `@HighImpactConfirmed` ist in der aktuellen Implementierung nur Signaturkompatibilität und wird nach der Deklaration nicht ausgewertet; wirksame Schutzgrenzen sind Sessionfilter, Defaultlimit 500 und `@MitSqlText = 0`. |
 | Sicherer Einsatz | Mit User-Scope, endlichem Limit, SQL-Text aus und möglichst exakten/LIKE-Filtern beginnen. Regex und ungekürzten Text erst nach Abschätzung der sichtbaren Sessionmenge aktivieren. |
@@ -127,13 +129,18 @@ SELECT
 FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
 LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK)
   ON [c].[session_id] = [s].[session_id]
-LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
-  ON [r].[session_id] = [s].[session_id]
+OUTER APPLY
+(
+    SELECT TOP (1) [rr].*
+    FROM [sys].[dm_exec_requests] AS [rr] WITH (NOLOCK)
+    WHERE [rr].[session_id] = [s].[session_id]
+    ORDER BY [rr].[request_id]
+) AS [r]
 WHERE [s].[session_id] <> @@SPID
   AND [s].[is_user_process] = 1;
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie User-/Session-/Statusfilter vor SQL-Textauflösung. Eine Session kann inaktiv sein und deshalb keine Requestzeile besitzen; SQL-Text ist ein optionaler N+1-artiger Detailpfad.
+**Wichtig für die Eigenlast:** Bei `@MitSqlText = 1` werden zunächst die eindeutigen Handles der sichtbaren Request- und Connectionquellen aufgelöst. Die Sessionfilter und das Kandidaten-TOP folgen danach. Ein kleines Ergebnislimit begrenzt deshalb weder diesen Cachezugriff noch die physische Statementextraktion. Die anschließende Unicodeprojektion bearbeitet nur die behaltenen Ergebniszeilen. Eine inaktive Session kann Text über den letzten Connectionhandle besitzen, obwohl ihre Requestfelder einschließlich `DatabaseName` NULL bleiben.
 
 ### Zeit- und Scope-Modell
 

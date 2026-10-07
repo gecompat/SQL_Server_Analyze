@@ -4844,3 +4844,97 @@ Eingefrorene normalisierte SHA256-Werte: Source005
 `256607B77C023CB12F6B2AB770C0F5ECA25ED07A0DAC807C2122DD605E1D2E56`, Integration199
 `5079B0957905A4E9A11520C7EB5F133FCF4963C7607B007AC8A67DF1D7A647A4`, Static993
 `9C39A47A91C75B57B60AA459FD19D995ACDC777F7B5705772A168213FB0BDB22`.
+
+
+## Current Sessions: vollständiger gemeinsamer Ausgabevertrag
+
+Der begrenzte Nachweis vom 7. Oktober 2026 verwendet ein eigenes gemischtes
+SQL-Server-2025-Dockerlab mit gemessenem Build 17.0.4075.5 und CL170.
+Server und tempdb verwenden Latin1_General_100_CS_AS, das Framework
+SQL_Latin1_General_CP1_CS_AS. Die kanonische Installation aus 166 Quellen und
+Smoke bestehen. Drei eigene Verbindungen besitzen case-unterschiedliche
+Unicode-App-/Hostwerte: eine inaktive Session ohne Transaktion, eine inaktive
+Session mit eigener Temp-Tabellen-Transaktion und eine aktive WAITFOR-Session.
+Es wird keine permanente Quelldatenbankfixture benötigt. Runtimeidentitäten,
+Captures und Secretwerte bleiben außerhalb Git.
+
+Das vollständig geprüfte Original besitzt bereits eine gemeinsame Ergebnistabelle
+mit 51 Feldern, 22 Frameworktextcollations, fünf NOT-NULL-Feldern und ohne
+Identity. TABLE verwendet diese 51 Felder, aktive CONSOLE ergänzt Ergebnis,
+JSON drei Wait-Felder und RAW zehn Wait-Felder sowie einen 13-feldrigen Status.
+Die 26 Parameter, Sourceversion 2.2.0, JSON-SchemaVersion 3 und Snapshotvertrag 2
+bleiben erhalten. Ein N+1-Kandidat wird bereits vor Unicodeprojektion und allen
+Ausgaben entfernt; eine Produktkorrektur ist für diesen Umfang nicht begründet.
+Source, Collector, Parent und beide OPS-/PLAN-Installerpaare bleiben normalisiert
+exakt gegenüber der Basis unverändert.
+
+Ein unabhängig implementiertes 51-Feld-Orakel verwendet einen tatsächlich nativ
+erfassten, privat eingefrorenen Stand der drei eigenen Sessions. 168 Fälle
+prüfen alle fünf Sortierungen, NULL-/0-/1-/2-Limits, Text an/aus und vier
+Ausgabeformen sowie Zeichenlimits 17/18. Sie vergleichen sämtliche Sessionwerte,
+die drei JSON- und zehn RAW-Waitwerte, Counts, HasMoreRows und erhaltene Warnungen.
+Ein gesondertes Literalorakel bestätigt 357 native Schemafacetten einschließlich
+Typ, Größe, Präzision, Scale, Collation, Nullability und Identity. Die 51 nativen
+Feldfacetten bleiben zwischen TABLE, RAW und aktiver CONSOLE konsistent.
+
+Die ersten Limits 17/18 schneiden die native Fixture nicht an einem Surrogate.
+Weitere 16 Fälle prüfen deshalb tatsächlich die SC-Zeichengrenzen 20/21 und
+26/27 vor beziehungsweise auf dem Surrogate-Paar mit allen vier Ausgabeformen.
+Siebzehn zusätzliche eingefrorene Fälle prüfen exakte Unicode-/Case-Host- und
+Programmfilter, bracket-aware Duplikate, LIKE, REGEX/REGEXI, Login-Case,
+Datenbankfilter und Inaktiv-/Transaktions-/Eigenmodus. Die vier erfassten
+Session-, Request-, Connection- und SQL-Texttabellen bleiben nach diesen
+Aufrufen mit allen gespeicherten Werten erhalten.
+
+Sieben positive und ein leerer tatsächlicher Overview-Aufruf verwenden Limits
+0/1/2, SQL-Text an/aus und einmal zusätzlich Requests. Alle 51 Childwerte
+stimmen innerhalb desselben Aufrufs zwischen TABLE und JSON überein;
+Snapshotzuordnung, Modulordinal 10 und vollständige elf-Feld-SourceStatus-Parität
+einschließlich NULLs bleiben erhalten. Caller-LOCK_TIMEOUT 137 wird
+wiederhergestellt. Die aufrufende Session bleibt nach dem vorhandenen
+Childdefault ausgeschlossen; die positive Fixture verwendet andere eigene
+Verbindungen. Die privaten Orakel vergleichen insgesamt 42.912 Fachwerte.
+Die eingefrorenen Quellen belegen keinen atomaren Livezustand zwischen Aufrufen.
+
+Common184 besteht 20 allgemeine TABLE-Fälle ohne positive Fixture und meldet
+für deren Block NOT_EXECUTED. Mit der eigenen Fixture bestehen zusätzlich
+21 native TABLE-Fälle, drei Consumer, sechs Mappingablehnungen, drei leere
+SQL-CONSOLE-Captures und drei direkte positive CONSOLE-Status-/JSON-Aufrufe.
+51-Feld-TABLE-/JSON-Parität, alle 54 JSON-Feldschlüssel, drei Topkeys,
+zwölf Metafelder und zweifeldrige Warnungen werden einschließlich NULLs und
+JSON-Typen geprüft. Dreizehn native Identitäts-/Verbindungsfelder und acht
+unabhängig abgeleitete Text-/Trunkierungswerte werden separat geprüft.
+Bewegliche Livezähler erhalten keinen Cross-call-Vollparitätsanspruch.
+Der unabhängige Review ergänzt vor dem Freeze ausschließlich den fehlenden
+Upper-idle-Guard des Tests; der finale funktionale Review hat keine offenen Befunde.
+
+Static1038 schützt sieben Arbeitstabellen mit 104 Spalten und 39 lokalen
+Textcollations sowie gemeinsame Limit-, Consumer- und Snapshotgrenzen;
+380 echte Mutationen bestehen. Das Inventar ergänzt die bereits vorhandenen
+22 Resultcollations. Zwei betroffene Dokumente präzisieren Quellreads vor
+Filtern, deduplizierte SQL-Textauflösung vor der Ergebnisauswahl, Requestkontext,
+Ausgabeformen und fehlende TABLE-/CONSOLE-Reihenfolgegarantien.
+Es entsteht kein neuer Snapshotowner und keine Static950-Ausnahme.
+
+CurrentState110/131 und Integration189/199 bestehen auf CL170 in 14 Batches.
+Die kanonische Impact-Auswahl umfasst Common184; ihr Lauf besteht in fünf
+Batches. Alle 75 statischen Prüfungen bestehen am stabilen funktionalen Stand.
+Ein erster Volllauf scheitert am lokalen OPS-Installer-Bytevergleich nach
+Windowscheckout; kanonische Neugenerierung erhält alle normalisierten Inhalte
+und behebt die lokale Zeilenendenrepräsentation. Ein wiederholtes CREATE eines
+privaten Captureziels und eine SQLCMD-Direktive im privaten SqlClient-Runner
+werden ausschließlich im Harness korrigiert. Daraus entstehen keine Produktedits.
+
+Vor Cleanup sind keine eigenen Fixturesessions mehr sichtbar. Das eigene Lab
+wird mit zwei Cleanupschritten ohne Fehler entfernt; Secretwert und eigene
+Verbindungen sind entfernt. Die anschließenden begrenzten Dokumentations-,
+Schreibstil- und Privacyprüfungen bestehen am Lieferstand. MARS, isolierte
+Ranking-/Rundungsgrenzen, eingeschränkte Berechtigungen, echte Timeouts,
+weitere Tool-Klassifikationen, ältere native Engines und CL150/160 bleiben
+für diesen Slice unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001
+und bestehende Maturityflags bleiben unverändert.
+
+Eingefrorene normalisierte SHA256-Werte: Source010
+`45C39B49981F701DAFFADB2BA67941E5328CC8C7D122C04B711CBEE4A6EBFC8C`, Common184
+`743369046DE6FE350EE2E6E18930E8BC554D54CF38084D3CB50A5DEE96A978EA`, Static1038
+`A51A8D9C05A215AEE4D0A100242626A838C4B95566D7C75262B672A6A16D9178`.

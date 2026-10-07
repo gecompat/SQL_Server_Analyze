@@ -49,8 +49,12 @@ EXEC [monitor].[USP_CurrentSessions]
 
 ### RAW-Resultsets
 
-1. Statusresultset.
-2. Sessionsresultset.
+1. Statusresultset mit 13 Feldern.
+2. Sessionsresultset mit 51 Sessionfeldern und zehn zusätzlichen Wait-Feldern.
+
+TABLE schreibt die 51 Sessionfelder; aktive CONSOLE-Ausgaben ergänzen `Ergebnis`. JSON enthält dieselben 51 Werte und die drei Wait-Felder `waitGroup`, `waitSeverity` und `waitMeaning`. Alle Ausgaben verwenden dieselbe gefilterte und begrenzte Menge. `NULL` und `0` als Zeilenlimit sind unbegrenzt; bei positivem Limit bleibt `hasMoreRows` der Hinweis auf weitere Kandidaten. TABLE und CONSOLE garantieren keine Zeilenreihenfolge.
+
+Die aufrufende Session ist standardmäßig ausgeschlossen. Für einen direkten Aufruf kann `@AktuelleSessionEinbeziehen = 1` sie aufnehmen; `USP_CurrentOverview` reicht diesen Parameter nicht an den Child weiter.
 
 ### Sessionspalten
 
@@ -61,7 +65,7 @@ EXEC [monitor].[USP_CurrentSessions]
 | Identität | `LoginName`, `OriginalLoginName`, `HostName`, `ProgramName`, `ClientInterfaceName` | Clientwerte sind nützlich, aber vom Client geliefert und nicht manipulationssicher. Original-/Effektivlogin bei Impersonation unterscheiden. |
 | Tool-Klassifikation | `IsToolBackgroundQuery`, `ToolBackgroundRuleCode`, `ToolBackgroundCategory`, `ToolBackgroundDetection`, `ToolBackgroundConfidence` | Diagnoseheuristik aus einer aktivierten `LIKE`-Regel; niemals als Sicherheitsmerkmal verwenden. |
 | Zeit | `LoginTime`, `LastRequestStartTime`, `LastRequestEndTime` | Lange Login-Dauer ist bei Connection Pools normal. Entscheidend sind Aktivität und Transaktionszustand. |
-| Datenbank/Transaktion | `DatabaseId`, `DatabaseName`, `OpenTransactionCount`, `TransactionIsolationLevel` | Sleeping + offene Transaktion ist besonders relevant. Datenbank ist der aktuelle Kontext, nicht zwingend jedes referenzierte Objekt. |
+| Datenbank/Transaktion | `DatabaseId`, `DatabaseName`, `OpenTransactionCount`, `TransactionIsolationLevel` | Sleeping + offene Transaktion ist besonders relevant. Die Datenbankfelder stammen vom ausgewählten Request und können bei einer inaktiven Session NULL sein; sie beschreiben nicht jedes referenzierte Objekt. |
 | Sessionkumulierung | `SessionCpuMs`, `SessionReads`, `SessionWrites`, `SessionLogicalReads`, `SessionMemoryMb`, `SessionRowCount` | Werte gelten seit Sessionbeginn und sind zwischen Sessions unterschiedlicher Lebensdauer nicht direkt vergleichbar. |
 | aktueller Request | `RequestCpuMs`, `RequestElapsedMs`, `RequestLogicalReads`, `RequestReads`, `RequestWrites`, `BlockingSessionId`, `WaitType`, `WaitTimeMs`, `WaitResource`, `PercentComplete` | Momentaufnahme; für tiefe Analyse `USP_CurrentRequests`. |
 | Verbindung | `ClientNetAddress`, `NetTransport`, `ProtocolType`, `EncryptOption`, `AuthScheme` | `EncryptOption` und `AuthScheme` beschreiben diese Verbindung, nicht die gesamte Instanzpolicy. |
@@ -86,7 +90,7 @@ EXEC [monitor].[USP_CurrentSessions]
 
 ### Kosten und Grenzen
 
-LOW. Optionaler SQL-Text erhöht CPU und Ausgabegröße. Ohne serverweite Performanceberechtigung ist nur ein begrenzter Scope sichtbar.
+LOW. Die Session-, Request- und Connectionquellen werden vor der Ergebnisfilterung gelesen. Optionaler SQL-Text löst deduplizierte Handles dieser Quellen vor dem Sessionfilter auf; ein Ergebnislimit begrenzt diese Arbeit nicht. Ohne Regex begrenzt ein positives Limit die materialisierten Kandidaten auf N+1. Ohne serverweite Performanceberechtigung ist nur ein begrenzter Scope sichtbar.
 
 ---
 
