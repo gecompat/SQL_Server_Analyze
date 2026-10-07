@@ -5548,3 +5548,25 @@ Die zusätzlich berücksichtigte Security-Cloud-Abfrage liefert keine registrier
 Positive Live-Pläne, eingeschränkte Rollen, systematische Timeout- und weitere Quellenfehler sowie zusätzliche native Engines und CL150/160 bleiben unbelegt. Die beobachtete Last-Actual-Quelle wird anhand ihrer nativen Daten verglichen; die deaktivierte Datenbankoption allein beweist weder einen positiven tatsächlichen Plan noch dessen Abwesenheit. Der Slice schließt die charakterisierte Handle-569-Grenze, keine anderen Reifeverträge. COLL-001 und bestehende Maturityflags bleiben unverändert. Abschließende Dokumentations-, Schreibstil-, Privacy- und Commitprüfungen sowie erfolgreiche CI am tatsächlich gelieferten Head bleiben Liefergates.
 
 Normalisierte SHA256: Source040 `771748480acb5839d01dfa742ec3f1f96fc4412b50f80c52d3b1f97a4349096c`; Common194 `193402dd94e05ba3f792debb06eb5816830c5580d079079b7e46f9f421c9ff29`; Static1031 `f3005f23aefe1828e634dba1b2011b12c6dddc2f802c1cd6a4db784288386346d`.
+
+
+## PlanCacheHealth: bestehende Ausgabe- und Mengenverträge am 7. Oktober 2026
+
+Diese Fortsetzung von COLL-001 verstärkt bestehende Regressionstests und berichtigt die betroffenen Schema- und Datenkettenbeschreibungen. Ein Produktdefekt wurde nicht belegt. USP_PlanCacheHealth und USP_PlanCacheAnalysis bleiben vollständig unverändert. TABLE overview umfasst die acht Kategorienfelder und entspricht JSON.categories; RAW overview besitzt sieben Gesamtfelder, JSON.overview sechs. CONSOLE liefert Kategorien mit Ergebnisbeschriftung oder die drei leeren Ergebnisfelder. Nur Single-use-Details besitzen eine Zeilenbegrenzung. Die drei lokalen Fachschemata besitzen 24 Felder, sieben explizite Textcollations und ein NOT-NULL-Feld ohne Identity.
+
+Die native Originalprüfung auf SQL Server 2025 mit CL170 und unterschiedlicher Framework-/TempDB-Collation umfasst 64 Aufrufe, 175 Resultgrids und 12.157 unabhängige Assertions. Literal definierte Clientfacetten, gleichaufrufbezogene Fachparität, aus materialisierten Kategorien abgeleitete Gesamtkennzahlen, tatsächlicher Konfigurationswert, Ausgabeformen, Status-/Gatepriorität sowie acht Health-only-Parentaufrufe bestehen. Dreizehn tatsächlich veränderte Captures werden vom selben Prüfer abgewiesen. Ein separat gekennzeichneter privater Clone mit geprüften Quellsubstitutionen besteht zwölf Fälle, 72 Grids und 4.758 Assertions gegen festgelegte synthetische Eingaben. Er belegt alle 24 Fachwerte, Aggregation, Datenbankzuordnung, Auswahl sowie Unicode mit Emoji und abschließenden Leerzeichen. Diese vollständigen Werteformeln sind kein frischer DMV-Nachweis und keine atomare globale Cachebeobachtung.
+
+Runtime134 besteht am endgültigen Freeze 20 TABLE-/JSON-Fälle, sieben Detailflagfälle, drei direkte Consumerstatusfälle, acht Mappingvorprüfungen, vier Parentfälle, drei echte NULL-Mutationsablehnungen und je eine positive und leere SQL-CONSOLE-Probe. Der erste neue Testlauf scheiterte mit 51011 an der Wiederverwendung eines bereits transformierten Parent-Testziels; jeder TABLE-Aufruf erhält jetzt ein neues Seedziel. Die einzige impact-selektierte SQL-Datei besteht über die Lab-API in vier Batches. Static1017 besteht 210 tatsächliche Mutationen; die vollständige statische Suite besteht alle 76 Prüfungen. Ein anfänglicher lokaler OPS-Installervergleich scheiterte ausschließlich an Zeilenenden. Kanonische Neuerzeugung und erneute Prüfung bestehen; normalisierte Installer und Quellen bleiben basegleich.
+
+Der unabhängige funktionale Review besitzt keine offenen Befunde. Finale native Prüfungen bestätigen beide vollständigen Definitionen, zwölf Health-Parameter, QI/ANSI, Konfiguration, Caller-LOCK_TIMEOUT 137, deaktivierte JSON-Ausgabe und die Abwesenheit des privaten Clones sowie anderer Frameworkanfragen. Eigenes Lab, Container, Volume und Secretdatei sind entfernt. Eingeschränkte Rollen, systematische Quellenfehler und Timeouts, ein tatsächlich leerer nativer Cache sowie zusätzliche Engines/Compatibility Levels bleiben unbelegt. COLL-001 und übrige Reifegradflags bleiben unverändert. Ein erfolgreicher Security-Cloud-Nachweis für den aktuellen Lieferstand bleibt weiterhin offen.
+
+Die folgenden normalisierten UTF-8/LF-Hashes binden den funktionalen Review:
+
+| Datei | SHA256 |
+|---|---|
+| Code/Tests/Static/1017_Validate_PlanCacheHealth_Tempdb_Collation.py | 69F959AC79BA5C894FEDEF1FDCA2747E9D463310B698BFC5E6714A07A35D7DCB |
+| Code/Tests/PlanCache/134_PlanCacheHealth_Collation_Runtime_Contract.sql | 7D98F1F7842063A23C19133E5D778A6B1FE91DDB74FC8D1C39CCBF6AFAAFCC2B |
+| Metadata/Inventory/ResultSets.csv | 6B2CD0CF13456D49277D0B4C9C50381F1AEC34668CE63F3A9C1F680834D9FA78 |
+| Documentation/Analysis_Guides/Procedures/USP_PlanCacheHealth.md | C231F362D07BB8250A60357E2AED023E8C0D8126B3AABE6CDBA9C48BA592D900 |
+| Documentation/Analysis_Guides/04_Plan_Cache.md | C05B5E61FA517C366A16E4AAA26C3EBFC88240608BDC012BF8AEAD7A64CDF8D1 |
+| Documentation/Analysis_Guides/Procedures/USP_PlanCacheAnalysis.md | 6077E7220707872AF5DAE94BFA4C81A4E9BB135995D2803566C586B5DFBE0506 |
