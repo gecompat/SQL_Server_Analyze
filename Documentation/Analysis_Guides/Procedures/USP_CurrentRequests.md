@@ -20,7 +20,7 @@ Das Ergebnis soll noch keine Änderung auslösen. Es trennt zunächst vier Arbei
 
 Die Procedure zeigt keine beendeten Requests und keine verlässliche Historie. Ein Request, der zwischen zwei Aufrufen startet und endet, bleibt unsichtbar. Sie beweist weder die Root Cause eines Waits noch die Qualität eines Ausführungsplans, die Geschäftsauswirkung oder das übliche Lastniveau.
 
-`BlockingSessionId` zeigt den unmittelbaren Blocker, nicht zwingend den Root Blocker. `SqlText`, Handles und Query Hashes liefern Korrelationsschlüssel, aber keinen Planinhalt. Für Trends oder bereits abgeschlossene Ausführungen sind Query Store, Extended Events oder eine geplante Stichprobe geeigneter.
+`BlockingSessionId` zeigt den unmittelbaren Blocker, nicht zwingend den Root Blocker. `CurrentStatement`, `BatchText`, Handles und Query Hashes liefern Korrelationsschlüssel, aber keinen Planinhalt. Für Trends oder bereits abgeschlossene Ausführungen sind Query Store, Extended Events oder eine geplante Stichprobe geeigneter.
 
 ## Sicherer Einstieg
 
@@ -73,7 +73,7 @@ Der vollständige [Current-Request-Context-Vertrag](../../Architecture/Current_R
 dokumentiert Resultsets, Provenienz, Zeitsemantik und Nichtverfügbarkeitsstatus.
 
 Ein direkter Aufruf liest Sessions, Requests, Connections, Waiting Tasks,
-Memory Grants, Resource Semaphores, Resource-Governor-Zuordnung, Tasks,
+Memory Grants, Resource-Governor-Zuordnung, Tasks,
 Scheduler, Transaktionen, TempDB-Verbrauch und angeforderte Textquellen frisch.
 `@ParentCurrentStateSnapshotId` ist ausschließlich der interne
 Consumervertrag von `USP_CurrentOverview`; Anwender sollen ihn nicht setzen.
@@ -87,8 +87,10 @@ Snapshot-ID, Quellzeitpunkte, Abschlusszeit, Zeilenzahl und Quellenstatus aus.
 
 - `CONSOLE` liefert genau ein fachliches Resultset aus der materialisierten Requestmenge. Es eignet sich für die erste Sichtung.
 - `RAW` liefert Modulstatus, das kompatible Legacy-Resultset `requests`, danach `requestContext`, `snapshotStatus`, `statements`, `batches`, `inputBuffers` und `warnings`.
-- `TABLE` exportiert jeden dieser stabilen Namen gezielt über `@ResultTablesJson`; nicht benannte Ziele werden nicht geschrieben.
+- `TABLE` exportiert jeden dieser stabilen Namen gezielt über `@ResultTablesJson`; nicht benannte Ziele werden nicht geschrieben. Die sieben Schemata besitzen 93/73/11/19/15/13/6 Felder und zusammen 66 explizite Framework-Textcollations. `requests` enthält 93 Felder; RAW ergänzt zwölf Wait-Katalogfelder, JSON verwendet eine eigene 52-Feldprojektion. CONSOLE ergänzt der materialisierten 93-Feldmenge das Ergebnislabel.
 - `@JsonErzeugen = 1` verwendet dieselben Materialisierungen und ergänzt das Schema 4 additiv um `requestContext` und `snapshotStatus`.
+
+Gültige TABLE-Zuordnungen werden vor der semantischen Parameterprüfung vorbereitet. Auch eine anschließend abgelehnte Zeilen-, Text-, CPU- oder Sessionangabe erfüllt die angeforderten vollständigen Zielschema-Verträge. Request-, Kontext- und Textmengen bleiben leer; vorhandene Status- und Warnungsevidenz bleibt erhalten. Nicht angeforderte Ziele bleiben unberührt. Der Sekundenvergleich konvertiert vor der Multiplikation nach bigint; auch der größte gültige int-Sekundenwert verursacht dadurch keinen Multiplikationsüberlauf.
 
 Eine Zeile in `requestContext` bündelt die zum Request korrelierbaren
 Connection-, Wait-, Task-, Scheduler-, Transaktions-, Memory-, TempDB- und
@@ -185,7 +187,7 @@ Die Quellen werden nicht in einem transaktional konsistenten Snapshot eingefrore
 
 ### Source Select
 
-Das zentrale Live-Select verbindet laufende Requests mit Session und Connection; optionale Quellen werden erst später ergänzt:
+Das zentrale Select verbindet zuvor materialisierte Requests mit Session und Connection. SQL-Text wird bei Bedarf vor den Consumerfiltern für deduplizierte Handles gelesen; Modulauflösung und Input Buffer folgen erst nach dem Ergebnislimit:
 
 ```sql
 SELECT
@@ -200,17 +202,17 @@ SELECT
     , [r].[blocking_session_id]
     , [s].[program_name]
     , [c].[client_net_address]
-FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
-JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+FROM [#CurrentRequests_SourceRequests] AS [r]
+JOIN [#CurrentRequests_SourceSessions] AS [s]
   ON [s].[session_id] = [r].[session_id]
-LEFT JOIN [sys].[dm_exec_connections] AS [c] WITH (NOLOCK)
+LEFT JOIN [#CurrentRequests_SourceConnections] AS [c]
   ON [c].[session_id] = [r].[session_id]
 WHERE [r].[session_id] <> @@SPID
   AND [s].[is_user_process] = 1
-  AND [r].[total_elapsed_time] >= @MinDauerMs;
+  AND (@MinLaufzeitSekunden IS NULL OR CONVERT(bigint, [r].[total_elapsed_time]) >= CONVERT(bigint, @MinLaufzeitSekunden) * 1000);
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie exakte Session-, Datenbank- und Dauerfilter vor Waiting-Task-, Grant-, SQL-Text-, Modul- und Input-Buffer-Anreicherung. Regex wirkt erst nach Materialisierung und spart daher keine DMV-Quellarbeit.
+**Wichtig für die Eigenlast:** Exakte Session-, Datenbank- und Dauerfilter begrenzen die Consumerkandidaten, aber nicht die vorherige DMV-Materialisierung oder die SQL-Textlesung für deduplizierte Requesthandles. Modulauflösung, Input Buffer und die anschließende Unicodeprojektion betreffen nur die behaltene Menge. Regex wirkt nach der Kandidatenmaterialisierung; zusätzliche Join-, Filter-, Sortier- und Statementextraktionsarbeit ist dadurch nicht auf N+1 begrenzt.
 
 ### Zeit- und Scope-Modell
 

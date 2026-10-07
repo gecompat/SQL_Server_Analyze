@@ -100,6 +100,8 @@ LOW. Die Session-, Request- und Connectionquellen werden vor der Ergebnisfilteru
 
 Die Procedure ist die zentrale Live-Analyse aktuell ausgeführter Requests. Sie korreliert Laufzeit, CPU, I/O, Blocking, Task-Waits, Memory Grants, Parallelität, Transaktion, Resource Governor, Query-/Planidentität sowie Statement-, Batch-, Modul- und Input-Buffer-Kontext.
 
+Die gemeinsame Requestmenge wird vor Modulauflösung, Input Buffer und Evidenzmaterialisierung begrenzt. NULL oder 0 als Zeilenlimit liefert diese Menge unbegrenzt; ein positives Limit gilt gleichermaßen für alle Ausgabeformen. Die sieben TABLE-Namen `requests`, `requestContext`, `snapshotStatus`, `statements`, `batches`, `inputBuffers` und `warnings` besitzen 93/73/11/19/15/13/6 Felder. Alle 66 Textspalten sind explizit Framework-CS-collatiert. RAW ergänzt der Legacy-Menge zwölf Waitfelder; JSON verwendet eine eigene 52-Feld-Requestprojektion. Quellzähler und Quellzeitpunkte beschreiben die erfassten Quellen, keine atomare Live-Gesamtsicht. Consumerfilter begrenzen nicht die vorherige DMV- oder deduplizierte SQL-Textlesung. Gültige TABLE-Zuordnungen werden vor einer semantischen Parameterablehnung vorbereitet; angeforderte Ziele erfüllen dann die vollständigen Zielschema-Verträge. Request-, Kontext- und Textmengen bleiben leer; vorhandene Status- und Warnungsevidenz bleibt erhalten. Der Sekundenvergleich verwendet bigint vor der Multiplikation mit 1000.
+
 Tool-Hintergrundrequests sind standardmäßig ausgeblendet. Setzen Sie für eine bewusste
 Vollansicht `@ToolHintergrundabfragenEinbeziehen = 1`.
 
