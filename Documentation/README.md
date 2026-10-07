@@ -11,7 +11,12 @@ SQL Server Analyze ist ein T-SQL-Diagnoseframework für SQL Server 2019 oder neu
 5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 105 öffentlichen Procedures.
 6. [Objektreferenz](Reference/Object_Reference.md) – jede unterstützende View, TVF, interne Procedure und Tabelle.
 
-Der Inventarvertrag umfasst 177 Objekte: 105 öffentliche Procedures, acht Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen. Scalar-Valued Functions sind derzeit nicht vorhanden.
+Der aktuelle Inventarvertrag umfasst 177 Objekte: 105 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+
+Der Frameworkkern umfasst 158 Objekte mit 102 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+
+Die Bestandszahlen beschreiben das Repositoryinventar; der installierte Umfang
+hängt vom gewählten Paket ab. Scalar-Valued Functions sind derzeit nicht vorhanden.
 
 Der öffentliche [SSIS-Phase-0-Vertrag](Architecture/SSIS_001_Phase0_Public_Contract.md) grenzt den noch nicht implementierten Paket-Analysepfad ab.
 
@@ -112,7 +117,7 @@ Die maschinenlesbaren Verträge liegen unter `Metadata/Inventory` und `Metadata/
 
 - [Verbindlicher Schreibstil für Dokumentation](Quality/Documentation_Writing_Style.md)
 - [Bestandsprüfung des Dokumentationsstils](Quality/Documentation_Style_Review.md)
-- [Testmatrix](Quality/Test_Matrix.md)
+- [Nachweisübersicht und historische Testmatrix](Quality/Test_Matrix.md)
 - [CI-Impact-Auswahl](Quality/CI_Impact_Selection.md)
 - [Performance- und Risikobewertung](Quality/Performance_and_Risk_Assessment.md)
 - [Bekannte Einschränkungen](Quality/Known_Issues.md)

@@ -43,6 +43,21 @@ Optionen wie Plan-XML, Event-XML, Lockdetails, Histogramme, Segmente, Dictionari
 
 Vollständiger SQL-Text, Batchtext und Input Buffer können große und sensible Laufzeitinhalte liefern. Zeigen Sie diese Inhalte nur für die erforderliche Diagnose an und exportieren oder übertragen Sie sie nicht ungeprüft.
 
+| Option | Daten- und Transferwirkung |
+|---|---|
+| `@MitSqlText = 1` | Bereits das aktuelle Statement kann Literale, Kommentare oder Anwendungsstruktur enthalten. Für eine erste ressourcenbezogene Sicht kann der Text ausgeschaltet bleiben. |
+| `@GesamtenSqlTextEinbeziehen = 1` | Vollständiger Batch- oder Modulkontext kann Informationen außerhalb des aktuell ausgeführten Statements enthalten. |
+| `@InputBufferEinbeziehen = 1` | Der ursprüngliche Clientaufruf kann zusätzliche Parameterwerte und Kontext enthalten. |
+| `@MaxSqlTextZeichen = 0` oder `NULL` | Der Text wird nicht begrenzt. Ein positives Limit reduziert Transfer, anonymisiert aber keine Inhalte. |
+| Plan-XML oder Event-Payload | Parameterdarstellungen, Ressourcen und Prozessattribute können mehrere Sessions oder Objekte verbinden; die konkrete Option steht in der Procedure-Seite. |
+| JSON oder TABLE | Die gleiche fachliche Materialisierung wird weiterverarbeitbar. TABLE bleibt lokal in `#Temp`-Tabellen, Folgeexporte können den Empfängerkreis dennoch erweitern. |
+
+Prüfen Sie vor Export oder Ticketkopie Datenumfang, Empfänger und Aufbewahrung.
+`@HighImpactConfirmed` ist eine Ressourcenbestätigung und keine
+Datenschutzfreigabe. Der [Datenschutzvertrag](../Architecture/Runtime_Data_Privacy.md)
+gilt für alle Ausgabearten; die Optionen existieren jeweils nur nach der
+konkreten Signatur des aufgerufenen Moduls.
+
 ## 7. Schwellenwerte
 
 Jeden Schwellwert klassifizieren:

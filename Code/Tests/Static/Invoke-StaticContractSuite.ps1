@@ -125,6 +125,10 @@ try {
         }
     }
 
+    & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 -SelfTest
+    if ($LASTEXITCODE -ne 0) {
+        $failures.Add('900_Validate_Analysis_Documentation.ps1 self-test')
+    }
     & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
     if ($LASTEXITCODE -ne 0) {
         $failures.Add('900_Validate_Analysis_Documentation.ps1 repository')

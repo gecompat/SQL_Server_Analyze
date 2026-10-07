@@ -7,6 +7,7 @@ Diese Liste beschreibt fachliche und betriebliche Aussagegrenzen des aktuellen F
 ## Plattform und Kompatibilität
 
 - Freigegeben ist SQL Server 2019 oder neuer innerhalb der dokumentierten Collationgrenze. Abweichende Server-/`tempdb`-Collations sind nicht Teil der unterstützten Matrix.
+- Neuere fokussierte Tests mit abweichenden Collations stehen in der [Nachweisübersicht](Test_Matrix.md). Sie schließen einzelne Grenzen, ersetzen aber keine vollständige Freigabe einer anderen Plattform- oder Collationkombination.
 - Die nachgewiesenen synthetischen Linuxpfade ersetzen keine vollständigen Windows-, Azure-MI-, kundenspezifischen Last- oder Feature-Positivtests.
 - Full-Text-, Availability-, Replikations-, In-Memory-, Agent- und weitere optionale Features können plattform- oder editionsabhängig fehlen. Das Framework liefert dafür Capability- oder Teilstatus.
 - Der Offline-Build- und Lifecyclekatalog von `USP_ServerVersionInformation` besitzt den Stand 21. Juli 2026. Ein neuerer unbekannter Build führt zu einer Evidenzlücke, nicht automatisch zur Aussage „veraltet“.

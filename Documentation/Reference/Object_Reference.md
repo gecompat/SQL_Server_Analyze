@@ -32,6 +32,20 @@ Die persistenten Corekataloge `FrameworkVersion`, `WaitTypeCatalog` und `WaitTyp
 
 Quelle: `Code/01_Common/077_FrameworkVersion.sql`
 
+`FrameworkVersion` und `ContractVersion` sind die bei Installation oder Upgrade
+geschriebenen Werte dieses Katalogs. `ReleaseDate` ist das darin hinterlegte
+Releasedatum und kein Datum des letzten Git-Commits. `LastInstalledUtc`
+bezeichnet die konkrete Installation. Das optionale Zielpaket verwendet
+zusätzlich seinen eigenen Versionskatalog `snapshot.PackageVersion`.
+
+Die `Version`-Angaben in SQL-Objektheadern bezeichnen dagegen den jeweiligen
+dokumentierten Objektstand. Sie müssen nicht mit der Frameworkversion
+übereinstimmen. Eine allgemeine verbindliche Regel für semantische
+Major-/Minor-/Patch-Erhöhungen dieser Header ist derzeit nicht dokumentiert.
+Für einen reproduzierbaren Vergleich bleiben Git-Commit, kanonische Quelle
+und der tatsächliche Testumfang erforderlich. Diese Erläuterung ändert keine
+vorhandene Versionsnummer oder historische Zuordnung.
+
 | Dimension | Beschreibung |
 |---|---|
 | Aufgabe | Die Tabelle dokumentiert den installierten Frameworkstand pro Frameworkname. Sie hält Versionswerte, Installationszeitpunkte, Mindestversion und Installationshinweise als persistente Katalogdaten. |

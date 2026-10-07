@@ -23,7 +23,18 @@ zusätzlich in den jeweiligen Procedure-Headern und in
 
 ## Was das Framework NICHT tut
 
-### Keine schreibenden Aktionen
+### Diagnosekern, Installation und optionales Paket
+
+Die Ausschlüsse der folgenden Tabelle gelten für fachliche Diagnoseaktionen
+gegen die untersuchten Systeme. Der Diagnosekern verändert keine analysierten
+Anwendungsdaten oder deren Konfiguration. Er materialisiert jedoch lokale
+Arbeitstabellen; die Ausgabeart TABLE kann leere lokale Zieltabellen des
+Aufrufers anpassen und Ergebnisse darin ergänzen.
+
+Die einmalige Installation und das Gesamtdeployment erstellen oder migrieren
+Frameworkobjekte. Das optionale Snapshotpaket schreibt nach expliziter
+Zielbindung eigene Evidenz und entfernt abgelaufene eigene Evidenz nach seiner
+Retentionpolicy. Diese Operationen gehören nicht zum lesenden Diagnosekern.
 
 | Aktion | Ausschluss |
 |---|---|
@@ -34,9 +45,15 @@ zusätzlich in den jeweiligen Procedure-Headern und in
 | Konfiguration ändern | Kein `sp_configure`, kein `ALTER DATABASE`. |
 | Failover | Kein AG-Failover oder Restart. |
 | Repair | Kein `DBCC CHECKDB ... REPAIR`. |
-| DDL | Keine Objekte außerhalb des Schemas `[monitor]`. |
+| DDL | Die Diagnosepfade ändern keine Anwendungsobjekte. Installation und Deployment verwenden `[monitor]`, das optionale Zielpaket auch `[snapshot]`; TABLE kann lokale `#Temp`-Tabellen anpassen. |
 | Berechtigungen | Keine GRANTs, keine Loginverwaltung. |
-| Cleanup/Purge | Kein Löschen von Daten, Logs oder Backups. |
+| Cleanup/Purge | Keine Löschung analysierter Anwendungsdaten, Logs oder Backups. Das optionale Paket löscht ausschließlich eigene abgelaufene Snapshotdaten. |
+
+Der Corebestand umfasst 158 Objekte, das optionale Paket weitere 19.
+`Install_All.sql` installiert ausschließlich den Core. Das Gesamtdeployment
+kann das Paket ausdrücklich einschließen. Voraussetzungen, Archivierung und
+Transaktionsverhalten stehen in der [Deploymentreferenz](Deployment.md);
+Sammlung und Purge im [Snapshotvertrag](../Architecture/Snapshot_Baseline_Package_Contract.md).
 
 ### Keine automatischen Urteile
 
@@ -61,6 +78,12 @@ zusätzlich in den jeweiligen Procedure-Headern und in
 - Keine Change-Data-Zeilen (CDC/CT).
 - Keine Assembly-Binärdaten.
 - Keine Script-Parameter oder Runtime-Inhalte (External Runtime).
+
+Diese Grenzen schließen sensible Inhalte in SQL-Text, Input Buffer,
+Plan-XML oder Event-Payload nicht aus. Solche Diagnoseoptionen können
+Literale und Anwendungskontext offenlegen; der
+[Parameterleitfaden](../Analysis_Guides/Parameter_Reading_Guide.md) beschreibt
+die erforderliche Prüfung vor Export oder Weitergabe.
 
 ### Keine Vollständigkeitsgarantie
 
