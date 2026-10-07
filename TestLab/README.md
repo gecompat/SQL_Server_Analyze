@@ -193,8 +193,9 @@ Restorevertrag stellt die eigene Backupdatei dreimal in eine zunächst
 nicht vorhandene Fixture-Datenbank wieder her. Weitere Restores ersetzen
 ausschließlich diese eigene Datenbank. Nur die zugehörigen Historienzeitstempel
 werden angepasst; Anzahl und kurze beziehungsweise lange Restorezeitfenster
-müssen exakt ausgegeben werden. Nicht leere Agent-, Mail- und Maintenance-
-Historien sowie tatsächlich fehlende optionale Quellen bleiben separat offen.
+müssen exakt ausgegeben werden. Die getrennten injizierten Agent-, Mail- und
+Maintenance-Aggregate sind nachfolgend beschrieben. Tatsächliche Ausführung,
+Retention und fehlende optionale Quellen bleiben separat offen.
 
 Mit `-Scenario AgentHistory` wird ausschließlich der Agent-Aggregatvertrag
 zusätzlich zu Installation, Smoke-Test und Runtimevertrag `122` geprüft.
@@ -212,10 +213,35 @@ eine, zwei und drei synthetische Job- und Stepzeilen in `sysjobhistory`.
 Der Analyzer muss die vollständige Zeilenanzahl mit `AVAILABLE` und leeren
 Zeitgrenzen liefern und alle Quellwerte erhalten. Die Fixture wird vollständig
 zurückgerollt. Sie führt keinen Agent-Job aus und belegt keine Datums-, Dauer-
-oder Retentionsinterpretation. Mail- und Maintenance-Historien sowie tatsächlich
-fehlende optionale Quellen bleiben offen. Der Runner initialisiert für seinen
+oder Retentionsinterpretation. Der Runner initialisiert für seinen
 frischen State die testgebundene Ownership-Lane von `SQL_Server_Lab` und
 serialisiert eigene Runtime-Tests über die gemeinsame Host-Testlane.
+
+Mit `-Scenario MailMaintenance` prüft der Runner nach Installation, Smoke-Test
+und Runtimevertrag `122` die [Mail-/Maintenance-Fixture](Scenarios/OPS-008/mail-maintenance.sql).
+Sie verlangt leere Quellen und deaktivierte Database-Mail-XPs. Eine eigene
+Transaktion injiziert nacheinander eine, zwei und drei synthetische Zeilen in
+`sysmail_mailitems` und `sysmaintplan_log`. Der Empfängerwert ist ein generischer
+Text ohne Mailadresse. Es werden keine Profile, Accounts, Queueeinträge,
+Maintenance-Pläne oder Jobbindungen angelegt.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailMaintenance `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Die neun Analyzeraufrufe prüfen die kontrollierten Counts und MIN-/MAX-Werte
+gegen feste Erwartungen und die nativen Quellen. TABLE und CONSOLE müssen alle
+acht Fachfelder desselben JSON-Aufrufs erhalten. Die vollständigen Tabellenwerte
+werden vor und nach jedem Aufruf NULL-sicher verglichen; Callertransaktion und
+`LOCK_TIMEOUT` bleiben erhalten. Die injizierten Zeilen werden zurückgerollt;
+der eigene Lab-Run wird anschließend entfernt. Der Runner erfasst zusätzlich
+die tatsächliche `ProductVersion` und das Compatibility Level der
+Frameworkdatenbank. Die Zeitfelder übernehmen native `send_request_date`- und
+`start_time`-Werte ohne UTC-Konvertierung. Die Fixture belegt keine tatsächliche
+Mail- oder Maintenance-Ausführung, keine Queueverarbeitung und keine Retention.
+Die vorhandene Agent-Fixture und deren Referenz TEST-0001 bleiben unverändert.
 
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 

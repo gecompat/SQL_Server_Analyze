@@ -188,3 +188,56 @@ Interpretation der Datums- oder Dauerfelder und keine Retentionpolicy.
 Nicht leere Mail- und Maintenance-Historien, tatsächlich fehlende optionale
 Quellen, weitere Plattformen und zusätzliche native Engines bleiben offen.
 Der Lauf ist ein lokaler begrenzter Reifenachweis und kein Release-Gate.
+
+## Ergänzende OPS-008-Mail-/Maintenance-Gegenprobe vom 8. Oktober 2026
+
+Eine neue eigene SQL-Server-2025-Linux-Docker-Instanz bestand die vollständige
+Coreinstallation, den Smoke-Test, Runtimevertrag `122` und die
+[Mail-/Maintenance-Fixture](../../../../TestLab/Scenarios/OPS-008/mail-maintenance.sql)
+am unveränderten Analyzerstand nach PR #271. Die Fixture verlangte leere
+`sysmail_mailitems`-, `sysmail_allitems`- und `sysmaintplan_log`-Quellen sowie
+deaktivierte Database-Mail-XPs. Sie injizierte innerhalb einer eigenen
+Transaktion nacheinander eine, zwei und drei synthetische Zeilen je Tabelle.
+Die Mailzeilen besaßen einen generischen Empfängertext ohne Adresse und
+keine Profil-, Account- oder Queuebindung. Die Maintenancezeilen waren reine
+Logzeilen ohne Plan-, Subplan- oder Jobbindung. Es wurde weder eine Nachricht
+gesendet noch ein Maintenance- oder Agent-Job ausgeführt.
+
+Die drei Zeitstufen wurden absichtlich außerhalb der Zeitreihenfolge
+eingefügt. Je Stufe prüften NONE, TABLE und CONSOLE die vollständige Anzahl,
+`MIN(send_request_date)` beziehungsweise `MIN(start_time)` und die
+entsprechenden MAX-Werte gegen feste Erwartungen und native Aggregate.
+Die neun Aufrufe bestätigten `AVAILABLE`, sechs Quellenzeilen und die
+bestehenden Evidenzgrenzen. TABLE und CONSOLE besaßen vollständige Parität
+aller acht Fachfelder mit JSON innerhalb desselben Aufrufs. Alle Quellspalten
+wurden vor und nach jedem Aufruf mit stabiler Sortierung und
+`INCLUDE_NULL_VALUES` NULL-sicher verglichen. Die Callertransaktion blieb
+committable mit `@@TRANCOUNT=1`; `LOCK_TIMEOUT=137` blieb erhalten.
+Der Rollback entfernte sämtliche injizierten Zeilen. Identitätszähler werden
+durch einen Tabellenrollback nicht als zurückgesetzt behauptet; der eigene
+Container samt Volume wurde anschließend entfernt.
+
+Die native Schema- und FK-Vorprobe erfasste `ProductVersion=17.0.4075.5` und
+Compatibility Level 170 der Frameworkdatenbank. Server und `tempdb` verwendeten
+`Latin1_General_100_CS_AS`, die Frameworkdatenbank
+`SQL_Latin1_General_CP1_CS_AS`. Die endgültige Runnerfassung erfasst Build und
+Compatibility Level zusätzlich vor ihrem Cleanup. Runtimeidentitäten,
+Secrets und Rohdaten bleiben außerhalb des Repositorys.
+
+Ein erster Fixtureversuch scheiterte mit `242`, weil ein kompakter Datumstext
+mit `T` an `datetime` übergeben wurde. Die Testliterale wurden auf
+`yyyy-MM-ddTHH:mm:ss` mit Style 126 korrigiert; die Produktquellen blieben
+unverändert. Auch der fehlgeschlagene eigene Run wurde vollständig entfernt.
+Die anschließende Originalcharakterisierung über den öffentlichen Runner
+mit `-Scenario MailMaintenance` bestand einschließlich `REMOVED`-Cleanup.
+Die Testkomponente erhält keine eigenständige Artefaktreferenz; TEST-0001 und
+die zugehörige Agent-Fixture bleiben unverändert.
+
+Der Nachweis betrifft injizierte nicht leere native Quellen und bestehende
+Analyseverträge. Die Feldnamen `OldestUtc` und `NewestUtc` ändern den nativen
+Zeitbezug nicht; eine UTC-Konvertierung ist nicht belegt. Tatsächliche
+Mail-/Maintenance-Ausführung, Queueverarbeitung, Agent-Ausführung,
+Retentionpolicy, tatsächlich fehlende optionale Quellen, Windows und
+zusätzliche native Engines bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; die Maturityflags und die historische
+Release-Matrix bleiben unverändert.
