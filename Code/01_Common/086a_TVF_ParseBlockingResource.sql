@@ -22,18 +22,18 @@ CREATE OR ALTER FUNCTION [monitor].[TVF_ParseBlockingResource]
 )
 RETURNS @Result TABLE
 (
-      [RawResource]       nvarchar(3072) NULL
-    , [ResourceType]      nvarchar(60)   NULL
-    , [FormatCode]        varchar(40)    NOT NULL
+      [RawResource]       nvarchar(3072) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    , [ResourceType]      nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
+    , [FormatCode]        varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
     , [DatabaseId]        int            NULL
     , [EntityId]          bigint         NULL
     , [SubEntityId]       bigint         NULL
     , [FileId]            int            NULL
     , [PageId]            bigint         NULL
     , [RowId]             int            NULL
-    , [MetadataSubtype]   nvarchar(60)   NULL
-    , [ResourceQualifier] nvarchar(512)  NULL
-    , [ParseStatus]       varchar(40)    NOT NULL
+    , [MetadataSubtype]   nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS   NULL
+    , [ResourceQualifier] nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
+    , [ParseStatus]       varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS    NOT NULL
 )
 AS
 BEGIN
@@ -160,7 +160,7 @@ BEGIN
             DECLARE @Parts TABLE
             (
                   [Ordinal] int NOT NULL PRIMARY KEY
-                , [Value] nvarchar(128) NULL
+                , [Value] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
             );
             DECLARE @Ordinal int = 1;
             DECLARE @Colon int;

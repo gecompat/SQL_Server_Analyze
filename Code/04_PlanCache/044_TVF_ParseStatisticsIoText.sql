@@ -26,7 +26,7 @@ RETURNS @Result TABLE
       [StatementOrdinal]             int            NULL
     , [MessageOrdinal]               int            NOT NULL
     , [ObjectOrdinal]                int            NOT NULL
-    , [ObjectDisplayName]            nvarchar(512)  NULL
+    , [ObjectDisplayName]            nvarchar(512) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
     , [ScanCount]                    bigint         NULL
     , [LogicalReads]                 bigint         NULL
     , [PhysicalReads]                bigint         NULL
@@ -38,9 +38,9 @@ RETURNS @Result TABLE
     , [LobPageServerReads]           bigint         NULL
     , [LobReadAheadReads]            bigint         NULL
     , [LobPageServerReadAheadReads]  bigint         NULL
-    , [LanguageDetected]             varchar(16)     NOT NULL
-    , [ParseStatus]                  varchar(40)     NOT NULL
-    , [RawLine]                      nvarchar(4000)  NULL
+    , [LanguageDetected]             varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS     NOT NULL
+    , [ParseStatus]                  varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS     NOT NULL
+    , [RawLine]                      nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS  NULL
 )
 AS
 BEGIN
@@ -53,8 +53,8 @@ BEGIN
     DECLARE @Labels TABLE
     (
           [LabelOrdinal] int IDENTITY(1,1) NOT NULL PRIMARY KEY
-        , [MetricCode] varchar(40) NOT NULL
-        , [LabelText] nvarchar(100) NOT NULL
+        , [MetricCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [LabelText] nvarchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
     INSERT @Labels([MetricCode],[LabelText])

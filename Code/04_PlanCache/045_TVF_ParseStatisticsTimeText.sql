@@ -22,12 +22,12 @@ RETURNS @Result TABLE
 (
       [StatementOrdinal] int           NULL
     , [MessageOrdinal]   int           NOT NULL
-    , [TimeCategory]     varchar(24)   NOT NULL
+    , [TimeCategory]     varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS   NOT NULL
     , [CpuMs]            bigint        NULL
     , [ElapsedMs]        bigint        NULL
-    , [LanguageDetected] varchar(16)   NOT NULL
-    , [ParseStatus]      varchar(40)   NOT NULL
-    , [RawLine]          nvarchar(4000) NULL
+    , [LanguageDetected] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS   NOT NULL
+    , [ParseStatus]      varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS   NOT NULL
+    , [RawLine]          nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
 )
 AS
 BEGIN
