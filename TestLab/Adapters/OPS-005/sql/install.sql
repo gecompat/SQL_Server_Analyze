@@ -38389,7 +38389,8 @@ Zweck        : Analysiert Agent-Jobs, Laufzeitstatus, letzte Ausführung, Fehler
 SQL-Version  : SQL Server 2019 oder neuer.
 Filter       : @JobNames als bracket-aware Pipe-Liste oder alternativ
                @JobNamePattern mit LIKE/regex/regexi.
-Resultsets   : RAW oder CONSOLE: Modulstatus, Jobs, Jobsteps. NONE: keine.
+Resultsets   : RAW: Modulstatus, Jobs, Jobsteps. CONSOLE/TABLE: Jobs.
+               NONE: keine fachlichen Resultsets.
 JSON         : meta, jobs, steps.
 Änderungen   : 2.0.0 - Mehrfachfilter, Patternvertrag und Ausgabeadapter.
                1.0.0 - Erstfassung Phase 6.
@@ -38463,44 +38464,45 @@ BEGIN
     CREATE TABLE [#AgentJobs_Jobs]
     (
           [JobId] uniqueidentifier
-        , [JobName] sysname
+        , [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
         , [Enabled] bit
-        , [OwnerName] sysname
-        , [CategoryName] sysname
+        , [OwnerName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [CategoryName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
         , [IsRunning] bit
         , [RunStart] datetime
         , [RunningMinutes] int
         , [LastRunDateTime] datetime
         , [LastRunStatus] int
-        , [LastRunStatusDesc] nvarchar(60)
+        , [LastRunStatusDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
         , [LastRunDurationSeconds] int
-        , [LastMessage] nvarchar(4000)
+        , [LastMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS
         , [ScheduleCount] int
         , [EnabledScheduleCount] int
         , [StepCount] int
-        , [ProblemCode] varchar(100)
+        , [ProblemCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS
     );
 
     CREATE TABLE [#AgentJobs_Steps]
     (
-          [JobName] sysname
+          [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
         , [StepId] int
-        , [StepName] sysname
-        , [Subsystem] nvarchar(40)
+        , [StepName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS
+        , [Subsystem] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS
         , [LastRunOutcome] int
-        , [LastRunOutcomeDesc] nvarchar(60)
+        , [LastRunOutcomeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS
         , [LastRunDateTime] datetime
         , [LastRunDurationSeconds] int
         , [LastRunRetries] int
-        , [LastRunMessage] nvarchar(4000)
+        , [LastRunMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS
     );
 
     IF @JobNames IS NOT NULL
     BEGIN
         INSERT [#AgentJobs_JobNameFilter]([ItemOrdinal], [JobName])
-        SELECT [ItemOrdinal], [NameValue]
+        SELECT MIN([ItemOrdinal]), [NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM [monitor].[TVF_ParseSqlNameList](@JobNames)
-        WHERE [IsValid] = 1;
+        WHERE [IsValid] = 1
+        GROUP BY [NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS;
     END;
 
     IF @MaxZeilen < 0
