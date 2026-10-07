@@ -34484,6 +34484,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_QueryStoreHints]
 AS
 BEGIN
  SET NOCOUNT ON;SET @Json=NULL;DECLARE @Out varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,'')))),@Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen>0 THEN @MaxZeilen ELSE 0 END,@Local bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN CONVERT(bigint,9223372036854775807) WHEN @MaxZeilen<2147483647 THEN CONVERT(bigint,@MaxZeilen)+1 ELSE @MaxZeilen END;
+ CREATE TABLE [#QueryStoreHints_Export]([QueryStoreDatabaseId] int,[QueryStoreDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS,[QueryHintId] bigint,[QueryId] bigint,[ReplicaGroupId] bigint,[QueryHash] binary(8),[QueryHintText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS,[LastQueryHintFailureReason] int,[LastQueryHintFailureReasonDesc] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[QueryHintFailureCount] bigint,[Source] int,[SourceDesc] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[QuerySqlText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS,[SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CapturedAtUtc] datetime2(3) NULL,[EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsCurrent] bit NULL,[QuerySqlTextCharacters] bigint NULL,[QuerySqlTextBytes] bigint NULL,[QuerySqlTextIsTruncated] bit NOT NULL DEFAULT(0),[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
     DECLARE @TableResultRequested bit = CASE WHEN @Out = 'TABLE' THEN 1 ELSE 0 END;
     DECLARE @ConsoleResultRequested bit = CASE WHEN @Out = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @TableTarget sysname=NULL;
@@ -34506,22 +34507,24 @@ BEGIN
      [CapturedAtUtc]=@Now,[EvidenceScope]='DATABASE_QUERY_HINT',[IsCurrent]=1,
      [EvidenceLimit]=N'Aktueller gespeicherter Query-Store-Hintstatus; keine Aussage über die Wirksamkeit jeder zukünftigen Ausführung.';
  DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+ IF @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen>=0
  EXEC [monitor].[InternalProjectUnicodeTextColumn] @SourceTable=N'#QueryStoreHints_Result',@TextColumn=N'QuerySqlText',@CharactersColumn=N'QuerySqlTextCharacters',@BytesColumn=N'QuerySqlTextBytes',@IsTruncatedColumn=N'QuerySqlTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen,@TruncatedValueCount=@TruncatedValueCount OUTPUT,@LargestRequiredCharacters=@LargestRequiredCharacters OUTPUT;
  EXEC [monitor].[InternalEmitTruncationWarning] @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen',@ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters,@PrintMeldungen=@PrintMeldungen;
  SELECT @Count=COUNT_BIG(*) FROM [#QueryStoreHints_Result];SET @HasMore=CONVERT(bit,CASE WHEN @Limit<9223372036854775807 AND @Count>@Limit THEN 1 ELSE 0 END);IF @Partial=1 AND @Status='AVAILABLE' SET @Status='AVAILABLE_LIMITED';
- IF @Out<>'NONE' BEGIN SELECT N'USP_QueryStoreHints' [ModuleName],@Now [CollectionTimeUtc],@Status [StatusCode],@Partial [IsPartial],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [ReturnedRowCount],@HasMore [HasMoreRows],@Error [ErrorMessage];IF @Out='RAW' SELECT TOP(@Limit) * FROM [#QueryStoreHints_Result] ORDER BY CASE WHEN [LastQueryHintFailureReason]<>0 THEN 0 ELSE 1 END,[QueryHintFailureCount] DESC,[QueryHintId];ELSE SELECT TOP(@Limit) N'Query-Store Hint' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[QueryHintText] [Hint],[LastQueryHintFailureReasonDesc] [letzter Fehler],[QueryHintFailureCount] [Fehleranzahl],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text] FROM [#QueryStoreHints_Result] ORDER BY CASE WHEN [LastQueryHintFailureReason]<>0 THEN 0 ELSE 1 END,[QueryHintFailureCount] DESC,[QueryHintId];SELECT * FROM [#QueryStoreHints_Errors] ORDER BY [DatabaseName];END;
- IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'QueryStoreHints' [resultName],1 [schemaVersion],@Now [generatedAtUtc],@Status [statusCode],@MaxZeilen [requestedMaxRows],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [returnedRows],@HasMore [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT TOP(@Limit) * FROM [#QueryStoreHints_Result] ORDER BY CASE WHEN [LastQueryHintFailureReason]<>0 THEN 0 ELSE 1 END,[QueryHintFailureCount] DESC,[QueryHintId] FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT * FROM [#QueryStoreHints_Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"queryHints":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');END;
+ INSERT [#QueryStoreHints_Export] SELECT TOP(@Limit) * FROM [#QueryStoreHints_Result] ORDER BY CASE WHEN [LastQueryHintFailureReason]<>0 THEN 0 ELSE 1 END,[QueryHintFailureCount] DESC,[QueryHintId];
+ IF @Out<>'NONE' BEGIN SELECT N'USP_QueryStoreHints' [ModuleName],@Now [CollectionTimeUtc],@Status [StatusCode],@Partial [IsPartial],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [ReturnedRowCount],@HasMore [HasMoreRows],@Error [ErrorMessage];IF @Out='RAW' SELECT * FROM [#QueryStoreHints_Export] ORDER BY CASE WHEN [LastQueryHintFailureReason]<>0 THEN 0 ELSE 1 END,[QueryHintFailureCount] DESC,[QueryHintId];ELSE SELECT N'Query-Store Hint' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[QueryHintText] [Hint],[LastQueryHintFailureReasonDesc] [letzter Fehler],[QueryHintFailureCount] [Fehleranzahl],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text] FROM [#QueryStoreHints_Export] ORDER BY CASE WHEN [LastQueryHintFailureReason]<>0 THEN 0 ELSE 1 END,[QueryHintFailureCount] DESC,[QueryHintId];SELECT * FROM [#QueryStoreHints_Errors] ORDER BY [DatabaseName];END;
+ IF @JsonErzeugen=1 BEGIN DECLARE @Meta nvarchar(max)=(SELECT N'QueryStoreHints' [resultName],1 [schemaVersion],@Now [generatedAtUtc],@Status [statusCode],@MaxZeilen [requestedMaxRows],CASE WHEN @Count>@Limit THEN @Limit ELSE @Count END [returnedRows],@HasMore [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES),@Data nvarchar(max)=(SELECT * FROM [#QueryStoreHints_Export] ORDER BY CASE WHEN [LastQueryHintFailureReason]<>0 THEN 0 ELSE 1 END,[QueryHintFailureCount] DESC,[QueryHintId] FOR JSON PATH,INCLUDE_NULL_VALUES),@Warnings nvarchar(max)=(SELECT * FROM [#QueryStoreHints_Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"queryHints":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');END;
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#QueryStoreHints_Result'
+              @SourceTable=N'#QueryStoreHints_Export'
             , @ResultLabel=N'QueryStoreHints'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#QueryStoreHints_Result'
+              @SourceTable = N'#QueryStoreHints_Export'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

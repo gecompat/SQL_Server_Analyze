@@ -3642,3 +3642,102 @@ Engines und CL150/160 bleiben unbelegt. Der bestehende unqualifizierte
 Referenzlistenhelper bleibt außerhalb dieses Slices; der 208-Pfad besitzt
 hier keinen neuen positiven Nachweis. COLL-001 bleibt partiell; Registry,
 RUNTIME-001 und bestehende Maturityflags bleiben unverändert.
+
+## Query-Store-Hints: gemeinsame Ausgabegrenze bei datenbanklokalen Ranggleichheiten
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und beide
+case-unterschiedlichen Unicode-CI_AS-Quellen besitzen getrennt gemessene
+Compatibility Levels 170. Jede Quelle enthält eine eigene synthetische
+Tabelle mit vier Zeilen und zwei eigene Procedures. Zwei erfasste Queries
+erhalten jeweils OPTION(MAXDOP 1) und werden erneut ausgeführt. Danach wird
+Query Store mit Capture NONE auf READ_ONLY eingefroren. Native Kataloge
+bestätigen vier gespeicherte Hints, Failure Reason und Failure Count jeweils
+0 sowie Source 0 mit SourceDesc User. Die beiden Hint-IDs wiederholen sich
+tatsächlich über die Datenbankgrenze; die vorhandene Sortierung enthält
+keinen zusätzlichen Datenbank-Tiebreaker.
+
+Das unveränderte Original liefert bei Limit 1 oder 2 vier TABLE- und
+CONSOLE-Zeilen, während RAW und JSON die verlangte Menge liefern. Der
+Produktfix materialisiert früh einen typgleichen Export mit 22 Feldern
+und begrenzt ihn einmal nach vollständiger Sammlung, Unicodeprojektion,
+Truncationwarnungen und Zählern. Alle Ausgabeconsumer lesen dieselbe Menge.
+Die neun Textcollations waren bereits Framework-CS und bleiben erhalten.
+Datenbankname und Truncationflag bleiben NOT NULL, die übrigen 20 Felder
+nullable; keine Spalte besitzt eine Identity.
+
+Dreizehn gepaarte Clientfälle umfassen je vollständiger Original-/Candidate-
+Suite 14 Batches und 37 Ergebnisgrids. Sie bestätigen die korrigierten
+TABLE-/CONSOLE-Limits, erhaltene RAW-/JSON-Werte,
+NULL-/0-Ausgabegrenzen, leere Fehlerfilter und negative Zeilenlimits.
+Ein unabhängiges 22-Feld-Orakel verwendet native Hint-, Query-, Text- und
+Datenbankwerte sowie eigene Unicodezeichen-, UTF16-Byte-, Kürzungs- und
+Provenienzableitungen. Alle nativen Feldfacetten bleiben unverändert.
+Capturezeiten liegen zwischen getrennten datetime2(3)-Messgrenzen. Innerhalb
+jedes Aufrufs werden vollständige Consumer-/JSON-Multisets verglichen;
+zwischen getrennten Aufrufen werden native Werte, Schlüssel und strikte
+Ranggrenzen geprüft. Gleiche Sortwerte erlauben unterschiedliche gültige
+Auswahlen und werden nicht als stabile Auswahlidentität ausgegeben.
+
+Der erste Common174-Lauf scheitert am negativen Textlimit. Eine getrennte
+native Gegenprobe bestätigt Fehler 51021 und NULL-JSON sowohl im
+unveränderten Original als auch im ersten Exportstand: Trotz gesetztem
+INVALID_PARAMETER erreicht der negative Wert den Unicodehelper. Der
+zusätzliche minimale Guard überspringt ausschließlich diesen Helper bei
+negativem Textlimit. Die finale Gegenprobe liefert ohne Ausnahme
+INVALID_PARAMETER, leere Arrays und erhaltenen caller-LOCK_TIMEOUT 137.
+Alle dreizehn gepaarten Clientfälle werden am korrigierten Stand erneut
+ausgeführt und bestehen. NULL-Textlimits bleiben unverändert zulässig.
+
+Common174 besteht mit elf allgemeinen TABLE-/JSON-Fällen, 15 bedingten
+nativen Vollfeld-/Rangfällen, drei Verbrauchern, sechs Mappingablehnungen,
+drei leeren SQL-CONSOLE-Captures und drei direkten positiven CONSOLE-/JSON-
+Statusprüfungen. Der unabhängige Client bestätigt zusätzlich die vollständigen
+nativen Werte und Facetten aller drei positiven 23-feldrigen CONSOLE-Mengen
+mit 1/2/4 Zeilen. Exakte Unicode-/Case-Auswahl, LIKE, QueryId, NULL-/0-/positive
+Limits, Textgrenzen und die bestehende gesunde NurMitFehler-1-/NULL-Leermenge
+sind geprüft. Ohne Fixture bestehen elf allgemeine Fälle; der native Block
+meldet NOT_EXECUTED mit null Fällen und wird nicht als PASS gezählt.
+
+Ein direkter QueryStoreAnalysis-Aufruf ausschließlich mit Hints bestätigt
+RAW und Child-JSON mit vollständigen 22 Feldern, einer Zeile, hasMoreRows,
+EXECUTED auf Ordinal 7 und caller-LOCK_TIMEOUT 137. Native Datenbank-,
+Query-Store-, Hint-, Querytext-, Hash- und Modulmetadaten bleiben vor und nach
+den finalen positiven Verträgen exakt erhalten. Beide Quellen bestätigen
+READ_ONLY 1/1, Capturemode 3 sowie QI/ANSI_NULLS true. Die ursprüngliche
+Procedure erhält den Caller-Timeout bereits nativ; eine zusätzliche
+Timeoutreparatur ist nicht Bestandteil dieses Slices.
+
+Nach identitätsgeprüftem Cleanup beider eigenen Quellen besteht die
+vorhergesagte Auswahl aus Common124/165/174, Integration110/196/198 und
+QueryStore110/121/122 in 25 Batches auf CL170. Die endgültige Auswahl wird
+zusätzlich gegen konkrete Commit-SHAs geprüft. Alle 75 statischen Prüfungen
+bestehen am stabilen funktionalen Stand mit Exitcode 0. OPS-005 ist aus
+166 kanonischen Quellen synchronisiert; sein Update und PLAN-001 bleiben
+semantisch unverändert. Die anschließenden begrenzten Dokumentations-,
+Schreibstil- und Privacyprüfungen bestehen: 900 sowie die Selbst- und
+Repositoryprüfungen 910/915 melden keine Befunde. UTF-8-, Hash- und
+Diffprüfungen werden vor dem Commit gesondert geprüft.
+
+Private Harnesskorrekturen betreffen ausschließlich die Vorbereitung:
+Der zweite case-unterschiedliche Datenbankname benötigt im eigenen Lab
+einen getrennten physischen Dateinamen. Der Parentchecker liest den
+Modulstatus aus dem tatsächlich vorhandenen RAW-Grid; ein modules-JSON-Array
+gehört nicht zum bestehenden QueryStoreAnalysis-Vertrag. Keiner dieser
+beiden Fälle begründet eine zusätzliche Produktänderung.
+
+Die UTF-8/LF-Quellidentitäten des geprüften Stands lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source070 | C6B075A87091D47A50BBC2BC7EFBD087520BE0BFD135C9C9129F630D87601044 |
+| Common174 | 95729F22132A2692C00B105C5E001C40649641EBC8F5C44AEB2B8DEA63B235E6 |
+
+Container und Volume des eigenen Labs sind entfernt: zwei Schritte,
+null Fehler, REMOVED. Der eigene verschlüsselte temporäre Secretwert ist
+entfernt. Private Captures und konkrete Runtimeidentitäten bleiben
+außerhalb von Git. Positive Hintfehler und Fehlerpriorisierung, QS_OFF,
+Berechtigungen, Timeout, ältere native Engines und CL150/160 bleiben
+unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
+Maturityflags bleiben unverändert.

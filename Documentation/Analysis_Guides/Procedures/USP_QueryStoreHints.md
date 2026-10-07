@@ -27,6 +27,10 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `queryHints`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+RAW, CONSOLE, TABLE und JSON verwenden denselben global begrenzten Export mit 22 Feldern und neun expliziten Frameworktextcollations. `QueryStoreDatabaseName` und `QuerySqlTextIsTruncated` sind NOT NULL; die übrigen Felder sind nullable, keine Spalte ist eine Identity. NULL und 0 bei `@MaxZeilen` bleiben unbegrenzt; negative Zeilen- oder Textlimits liefern kontrolliert `INVALID_PARAMETER` mit leerem Export. NULL und 0 bei `@MaxSqlTextZeichen` erhalten den ungekürzten Querytext. Die Auswahl priorisiert einen Fehlergrund ungleich 0, danach `QueryHintFailureCount` absteigend und `QueryHintId` aufsteigend. Hint-IDs sind datenbanklokal; gleiche Sortwerte zwischen Datenbanken erlauben unterschiedliche gültige Auswahlen in getrennten Aufrufen. Innerhalb eines Aufrufs bleibt die exportierte Menge für alle Ausgabearten identisch.
+
+Status, `hasMoreRows` und Truncationwarnungen entstehen vor der globalen Ausgabegrenze aus der lokal mit N+1 gesammelten Menge. Der Fehlerfilter bleibt unverändert: 0 umfasst alle Hints; 1 oder NULL behält nur positive Failurecounts oder einen Fehlergrund ungleich 0.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einem Query Store Hint für eine Query und gegebenenfalls Replica-Gruppe.
@@ -60,9 +64,9 @@ Für `USP_QueryStoreHints` gilt zusätzlich: **keine Zeile** bedeutet, dass im s
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Eine `ExampleDatabase`, TOP 100 und auf 4000 Zeichen gekürzter Querytext. Die Procedure liest Hinttext und Anwendungsfehler, aber weder Zeitfenster noch Plan XML. |
+| Standardpfad | Alle sichtbaren online befindlichen Benutzerdatenbanken, TOP 100 und auf 4000 Zeichen gekürzter Querytext. Eine explizite `ExampleDatabase` begrenzt diesen Standardscope. Die Procedure liest Hinttext und Anwendungsfehler, aber weder Zeitfenster noch Plan XML. |
 | Teuerster Pfad | Viele Datenbanken, unbegrenztes/hohes Limit und ungekürzte Hint-/Querytexte bei sehr vielen gespeicherten Query Store Hints. |
-| Haupttreiber | Zahl gewählter Query Stores und vorhandener Hintzeilen samt zugehörigem Querytext. Volltext und Regex erhöhen Breite beziehungsweise späte Filterarbeit; Runtimeintervalle und Plan-XML werden in diesem Inventarpfad nicht gelesen. |
+| Haupttreiber | Zahl gewählter Query Stores und vorhandener Hintzeilen samt zugehörigem Querytext. Ungekürzte Texte erhöhen die Ausgabebreite; Datenbankpattern begrenzen die ausgewählten Quellen; Runtimeintervalle und Plan-XML werden in diesem Inventarpfad nicht gelesen. |
 | Skalierung | Aufwand wächst mit Hintzeilen, Query-/Textjoins und Datenbanken; ungekürzte Hint- und Querytexte erhöhen Arbeitsspeicher und Ergebnistransfer. |
 | Ressourcen | Geringe bis mittlere Query-Store-I/O-/CPU-Last für Hint-/Query-/Textjoin und Ranking; keine Intervallaggregation oder XML-Verarbeitung. |
 | Begrenzungswirkung | QueryId und Fehlerfilter wirken vor dem lokalen TOP N+1; danach wird global begrenzt. Das Zeichenlimit reduziert nur Querytextbreite, nicht Hinttext oder Quelllesung. |
@@ -89,7 +93,7 @@ Query Store Hints hängen an QueryId und injizieren unterstützte Queryoptionen 
 
 ### Source Select
 
-Query Store Hints werden über `query_id` mit Query- und Textkatalog verbunden:
+Query Store Hints werden über `query_id` mit Query- und Textkatalog verbunden. LEFT JOIN erhält sichtbare Hintzeilen auch bei fehlendem Query- oder Textkontext; die zugehörigen Werte bleiben dann NULL:
 
 ```sql
 SELECT
@@ -99,14 +103,14 @@ SELECT
     , [q].[object_id]
     , [qt].[query_sql_text]
 FROM [sys].[query_store_query_hints] AS [h] WITH (NOLOCK)
-JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
+LEFT JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
   ON [q].[query_id] = [h].[query_id]
-JOIN [sys].[query_store_query_text] AS [qt] WITH (NOLOCK)
+LEFT JOIN [sys].[query_store_query_text] AS [qt] WITH (NOLOCK)
   ON [qt].[query_text_id] = [q].[query_text_id]
 WHERE @QueryId IS NULL OR [h].[query_id] = @QueryId;
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie Wenn bekannt, `query_id` vor Textprojektion. Query Store Hints sind ab SQL Server 2022 verfügbar; fehlende Sicht oder Version wird als Status behandelt, nicht durch einen Ersatzscan kompensiert.
+**Wichtig für die Eigenlast:** Setzen Sie eine bekannte `query_id` vor der Textprojektion. Query Store Hints sind ab SQL Server 2022 verfügbar; fehlende Sicht oder Version wird als Status behandelt, nicht durch einen Ersatzscan kompensiert.
 
 ### Zeit- und Scope-Modell
 
