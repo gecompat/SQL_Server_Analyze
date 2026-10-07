@@ -2887,3 +2887,142 @@ Nach diesem Ergebnis wurde ausschließlich dieser Gateabsatz ergänzt;
 SQL, Tests, Statusnotizen und ihre Quellidentitäten blieben unverändert.
 Das abschließende unabhängige Evidenz- und Statusreview hatte nach der
 Präzisierung des allgemeinen Invalidfalls keine offenen Findings.
+## Framework-Capabilities: 7. Oktober 2026
+
+### Nativer Ausgangsstand
+
+Source070 aus `db943ade38f48c6c2b5e5921f8b0b8011eda3e1d` wurde aus
+166 kanonischen Dateien im eigenen SQL-Server-2025-Docker-Lab installiert.
+Installation und Smoke110 bestanden. Nativ bestätigt wurden ProductVersion
+`17.0.4075.5`, Major 17, Linux und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Die UTF-8/LF-Identität der installierten
+Ausgangssource lautet
+`1ECD84A79C985C75D7B6ECF8B0E0C5765CAC38F972EBC9B11C88102395A90636`.
+
+Der erste private Fixtureaufbau scheiterte bei der zweiten Datenbank mit
+5170/1802: automatisch erzeugte Dateinamen kollidierten bei zwei nur in der
+Großschreibung unterschiedlichen Datenbanknamen. Dieser Lauf zählt nicht
+als bestandener Ausgangsnachweis. Nach Prüfung der eigenen ersten
+Datenbankidentität wurde ausschließlich die fehlende eigene zweite
+Datenbank mit eindeutigen logischen und physischen Dateinamen angelegt.
+Keine vorhandene Datei oder fremde Datenbank wurde entfernt oder ersetzt.
+
+Die wiederholte Ausgangsmessung bestand mit zwei eigenen case-unterschiedlichen
+Unicode-Datenbanken einschließlich Apostroph im Namen. Beide verwendeten
+`Latin1_General_100_CI_AS` und separat bestätigtes CL170. Die erste hatte
+Query Store im tatsächlichen Zustand 2, die zweite im Zustand 0; beide
+meldeten `wait_stats_capture_mode=1`. Die fünf QUERY_STORE_CURRENT-Features
+je Quelle erzeugten zehn vollständige Capabilities, sieben davon nutzbar.
+Der Filter 0 lieferte zehn Zeilen in JSON und TABLE; Filter 1 lieferte drei
+JSON-Zeilen, jedoch weiterhin zehn TABLE-Zeilen. Beide Aufrufe behielten
+`AVAILABLE_LIMITED` und zwei vollständige Summaryzeilen. Die 27 TABLE-Felder
+und ihre 15 Textcollations waren bereits korrekt; ein fehlerhafter öffentlicher
+Collation-Ausgangsstand wird nicht behauptet.
+
+Ein direkter privater SqlClient erfasste zusätzlich neun RAW- und neun
+CONSOLE-Aufrufe: beide Quellen, exakte Case-Einzelauswahl, Filter 0/1/NULL,
+invaliden Analyseklassennamen und fehlende Quelle. RAW und JSON stimmten in
+allen 27 Capabilityfeldern einschließlich NULLs sowie Summary und Warnings
+überein. Die bestehenden Metadatenprobes wurden separat als leere Grids
+erfasst: elf für beide Quellen, sechs für eine Quelle, null bei invalider
+Analyseklasse und eines bei fehlender Quelle. Vier gefilterte CONSOLE-Fälle
+enthielten gegenüber JSON noch die volle Fachmenge. Der private Client
+benötigte zunächst eine Korrektur seiner Dictionary-Sortierung; die danach
+bestandenen Inhaltsvergleiche erzeugen keine neue CONSOLE-Ordnungszusage.
+Vollständige unmaskierte Captures und native Fixtureidentitäten bleiben privat.
+
+### Begrenzter Endnachweis
+
+Vierzehn bislang implizite Textfelder der internen Feature-Tabellenvariablen
+verwenden nun explizit die Frameworkcollation. Eine typgleiche vollständige
+Sammlung bleibt getrennt vom bestehenden registrierten Exportnamen.
+Beide 27-Feld-Arbeitstabellen mit 15 Textspalten werden vor den Probes und
+dem eigenen `SET LOCK_TIMEOUT 0` angelegt. Nach vollständiger Bewertung wird
+das bestehende Prädikat `@NurNichtVerfuegbar=0 OR IsUsable=0` genau einmal
+materialisiert. RAW, JSON, TABLE und CONSOLE verwenden diesen Export;
+Summary, Gesamtstatus und Meldungsentscheidung verwenden die Vollsammlung.
+Ein NULL-Filter erhält deshalb seine bisherige Unavailable-only-Semantik.
+Öffentliche Feldreihenfolge, Typen, Textgrößen, Nullability und fehlende
+Identity bleiben erhalten. Das Inventar dokumentiert die 15 schon zuvor
+korrekten öffentlichen Textcollations. Permission-, Versions-, Probe- und
+Warninglogik, Procedureversion und Parameter bleiben unverändert.
+
+Installation aus 166 kanonischen Dateien und Smoke110 bestanden mit der
+geänderten Source. Common168 bestand auf SQL Server 2025 bei separat
+bestätigtem Framework- und beiden Quelllevels 170. Die native Ergebniszeile
+meldete elf allgemeine TABLE-/JSON-Fälle, zwei Consumerfälle, sechs
+Preflightablehnungen, `PositiveFixtureStatus=PASS`, elf positive native
+TABLE-/JSON-Gegenproben, drei leere SQL-CONSOLE-Captures und drei direkte
+CONSOLE-Aufrufe. Eine getrennte private Erfassung der Ergebniszeile
+bestätigte diese Werte. Der Test erzeugt oder verändert keine Fixture;
+ohne beide vorbereiteten Quellen bleibt der positive Block `NOT_EXECUTED`.
+
+Die positiven Gegenproben vergleichen alle 27 Capabilityfelder mit fünf
+unabhängig bezeichneten Featurecodes und ihren nativen Options-, Permission-
+und erfolgreichen Katalogprobes je Quelle. Die Hints-Capability behält
+`IsFeatureEnabled=NULL`; WaitCapture wird separat vom Query-Store-Zustand
+bewertet. Identitäten, Quelllevels und Optionen werden vor jedem nativen
+Fall erneut geprüft. Exakte Case- und LIKE-Auswahl, umgekehrte Listenreihenfolge,
+Filter 0/1/NULL, vollzählige Summary und erhaltene Auswahlwarnings bestehen.
+Doppelte exakte Datenbanknamen bleiben im bestehenden Kandidatenvertrag
+ungültig. Der Test charakterisiert weiterhin den unveränderten Overallstatus
+`AVAILABLE` einer ausschließlich fehlenden Quelle; deren Warning bleibt
+separat. Die direkten SQL-CONSOLE-Aufrufe prüfen den JSON-Consumer, nicht
+die fachlichen Zeilen eines positiven SQL-Captures.
+
+Der unabhängige private Client bestand neun RAW- und neun CONSOLE-Aufrufe.
+RAW bestätigt die vier öffentlichen Schemas mit 6/27/4/3 Feldern für
+Modulstatus, Capabilities, Summary und Warnings. Alle 27 Fachfelder wurden
+auf native Namen, Reihenfolge, Typen, Textgrößen und Nullability sowie
+vollständig einschließlich NULLs gegen JSON geprüft. Status, Module- und
+JSON-Identität, Zeitstempel und Partialität stimmen überein. Sechs
+CONSOLE-Aufrufe lieferten die positive 28-Feld-Fachansicht und drei das
+leere dreifeldrige Hinweisschema. Positive CONSOLE-Inhalte wurden nach
+case-sensitiver Sortierung der Vergleichsmengen geprüft; eine neue
+Ausgabeordnung wird nicht zugesagt. Die zuvor beobachteten Probegrids
+blieben separat leer und mengenmäßig unverändert. JSON-Fachinhalte,
+Summary, Warnings und Gesamtstatus entsprechen in allen neun Fällen dem
+Ausgangsstand; die vier CONSOLE-Filterabweichungen sind behoben.
+
+Die geprüften UTF-8/LF-SHA256-Identitäten lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source070 | `114090513C5FF9E702C513FB9DE2FE09A38F9700760C394A6F303DEA30599F26` |
+| Common168 | `4E48DE33000EB6ECB69C8C6D9AF6755030AF2E7192DBBBC765ECEED1E056F42F` |
+| Privater direkter RAW-/CONSOLE-Client | `ABC372A7D5DE9BBFE10F17425764447323855C7C2AB7DCC95F86234D351D7464` |
+
+Die native und kanonische Procedure stimmen von der PROCEDURE-Deklaration
+bis zum letzten END nach LF-Normalisierung und Entfernen äußerer
+Leerzeichen überein. Ihre UTF-16/LF-Identität lautet
+`CCDAB79AB7754D98CA81DEA87A31BF8D2E9CE58CD335B24CBEAD02722E66BF99`.
+
+Nach Prüfung der erfassten eigenen Datenbankidentitäten, unveränderten
+Query-Store-Zustände und abwesender eigener Benutzertabellen wurden beide
+Fixture-Datenbanken entfernt. Die abschließende native Prüfung bestätigte
+ihre Abwesenheit. Danach bestanden Common121 und Integration189, 196 und
+198 gemeinsam auf Framework-CL170. Das eigene Lab wurde vollständig
+entfernt: Container und Volume, zwei Cleanupschritte, null Fehler,
+`CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene verschlüsselte temporäre
+Secretwert wurde entfernt; private Captures und Prüfdaten bleiben außerhalb
+von Git. Andere Labs und zuvor gesperrte Cleanup-Pfade wurden nicht berührt.
+
+Der Nachweis umfasst keine positive eingeschränkte Berechtigungs- oder
+Gruppenpolicy, keine `ERROR_HANDLED`-Probe und keine neuen nativen älteren
+Engines oder CL150/160. Query-Store-Nutzungsdaten oder Hintausführung
+wurden nicht erzeugt; geprüft wurden die vorhandenen Metadatenprobes.
+`COLL-001` bleibt partiell und `RUNTIME-001` unverändert. Das unabhängige
+Review des stabilen Produkt-, Test-, Inventar-, Installer- und
+Dokumentationsstands hatte keine offenen Findings.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.050
+Repositorydateien ohne Findings, Schreibstil 708 und Regex 340.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 988 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurde ausschließlich dieser Gateabsatz ergänzt;
+SQL, Tests, Statusnotizen und Quellidentitäten blieben unverändert.
+Das abschließende unabhängige Evidenz- und Statusreview hatte nach einer
+Präzisierung der Filter-0-Beschreibung in beiden CSV-Notizen keine offenen
+Findings.

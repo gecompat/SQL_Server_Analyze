@@ -263,7 +263,9 @@ EXEC [monitor].[USP_CheckFrameworkCapabilities]
 | `ErrorNumber`, `ErrorMessage` | behandelte technische Details |
 | `Description` | fachliche Kurzbeschreibung |
 
-Weitere RAW-Resultsets enthalten eine Zusammenfassung, Datenbankstatus und Warnungen. Die Zusammenfassung ist zur Triage geeignet; für Ursachen immer die Capabilities-Zeile verwenden.
+Weitere RAW-Resultsets enthalten eine Zusammenfassung und Auswahlwarnungen; ein eigenes Datenbankstatus-Resultset wird nicht ausgegeben. JSON enthält `meta`, `capabilities`, `summary` und `warnings`. Die Zusammenfassung ist zur Triage geeignet; für Ursachen immer die Capabilities-Zeile verwenden.
+
+RAW, CONSOLE, TABLE und JSON verwenden dieselbe materialisierte Capability-Auswahl mit 27 Feldern und 15 explizit collatierten Textspalten. `@NurNichtVerfuegbar=1` und das bestehende NULL-Prädikat zeigen nur Zeilen mit `IsUsable=0`. Summary und Gesamtstatus beruhen weiterhin auf allen geprüften Zeilen; der Filter reduziert weder Probeanzahl noch Mengen über ein Limit. Einen `@MaxZeilen`-Parameter besitzt diese Procedure nicht.
 
 ### Entscheidende Kombinationen
 
@@ -289,10 +291,7 @@ Führen Sie die konkrete Procedure nur für Zeilen mit `IsUsable=1` aus. Begrenz
 
 ### Kosten
 
-Die Kosten liegen zwischen LOW und MEDIUM. Viele kleine Probes können sich bei zahlreichen Datenbanken
-kumulieren. Für tatsächlich aktivierte ressourcenintensive Pfade ist deshalb
-`@HighImpactConfirmed=1` erforderlich; die Kandidatenmenge selbst wird nicht
-willkürlich vorab gekürzt.
+Die Kosten liegen zwischen LOW und MEDIUM. Viele kleine Probes können sich bei zahlreichen Datenbanken kumulieren. Die Capability-Prüfung führt ausschließlich leichte Metadatenprobes aus und übergibt dem Kandidatenhelper keine Analyseklasse; sie aktiviert deshalb kein Deep-Gate. Die Kandidatenmenge wird nicht willkürlich vorab gekürzt. Die High-Impact-Bestätigung für eine spätere ressourcenintensive Fachanalyse bleibt deren eigenem Aufruf vorbehalten.
 
 ---
 
