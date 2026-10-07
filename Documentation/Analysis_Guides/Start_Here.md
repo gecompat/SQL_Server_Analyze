@@ -2,6 +2,25 @@
 
 Diese Seite ist der kürzeste sichere Einstieg in SQL Server Analyze. Sie beginnt bei einer Beobachtung und führt zu einer geeigneten ersten Procedure. Ein technischer Objektname muss dafür nicht bekannt sein.
 
+## Fragestellung und verfügbare Evidenz
+
+Für einen gegenwärtigen Engpass verbinden die Current-State-Verfahren
+Sessions, Requests, Blocking, Waits und Ressourcen mit ihrem Quellenstatus.
+Für einen Verlauf sind Query Store oder bereits vorhandene Extended Events
+erforderlich; ein Live-Aufruf rekonstruiert keine frühere Ursache.
+Die Objekt-, Plan- und Spezialfeatureverfahren eignen sich zur gezielten
+Vertiefung eines bekannten Befunds. Ein Finding bezeichnet einen Prüfauftrag
+und benötigt eine passende Gegenprobe.
+
+Beginnen Sie nach [Installation und Smoke-Test](../Reference/Installation.md)
+mit dem Navigator. Er benötigt keine fachlichen DMV-Reads. Die anschließende
+Analyse benötigt dagegen die in ihrer Procedure-Seite genannten Rechte und
+kann eigene CPU-, Speicher- und I/O-Last erzeugen. Verwenden Sie dessen
+begrenzten `SafeCall`, prüfen Sie Status und Partialität und aktivieren Sie
+Text- oder Deep-Pfade erst für die verbleibende Frage. Die
+[Nachweisübersicht](../Quality/Test_Matrix.md) beschreibt, welche
+Plattformkombination und welcher Testumfang tatsächlich dokumentiert sind.
+
 ## Direkt im installierten Framework suchen
 
 Der Analysis Navigator durchsucht deutsch- und englischsprachige Symptome, Ziele, Fachbegriffe und Procedurenamen. Er liest ausschließlich statische Frameworkmetadaten und führt keine gefundene Analyse aus.

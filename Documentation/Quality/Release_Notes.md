@@ -2,21 +2,35 @@
 
 ## Aktueller Stand
 
+Der aktuelle Bestand folgt dem [Objektinventar](../../Metadata/Inventory/Objects.csv)
+und dem kanonischen [Versionskatalog](../../Code/01_Common/077_FrameworkVersion.sql).
+Die nachstehenden historischen Funktionsbeschreibungen ersetzen keinen aktuellen
+commitbezogenen Laufzeitnachweis.
+
 | Merkmal | Stand |
 |---|---|
-| Frameworkversion | `1.1.0-special.19` |
-| Dokumentationsstand | 24. August 2026 |
+| Frameworkversion im Installationskatalog | `1.1.0-special.20` |
+| ContractVersion im Installationskatalog | `1.24` |
+| ReleaseDate im Installationskatalog | 27. Juli 2026 |
 | Mindestversion | SQL Server 2019 |
 
-Der aktuelle Bestand umfasst 173 inventarisierte Objekte:
+Der aktuelle Inventarvertrag umfasst 177 Objekte: 105 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
 
-- 104 öffentliche Procedures;
-- acht Views;
-- 28 Table-Valued Functions;
-- 16 interne Procedures;
-- 17 Tabellen.
+Der Frameworkkern umfasst 158 Objekte mit 102 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+
+Die [Paketgrenzen](../Reference/Scope_and_Limitations.md) unterscheiden
+Diagnose, Installation, lokale TABLE-Ausgabe und persistente Sammlung.
 
 Alle öffentlichen Procedures besitzen eine eigenständige Procedure-Seite. Alle unterstützenden Objekte besitzen einen Detailabschnitt in der Objektreferenz.
+
+## Historischer Beschreibungsstand vom 24. August 2026
+
+Die damalige Übersicht nannte Frameworkversion `1.1.0-special.19` und
+173 Objekte: 104 öffentliche Procedures, acht Views, 28 Table-Valued Functions,
+16 interne Procedures und 17 Tabellen. Diese Werte bleiben als damalige
+Dokumentationsangaben erhalten und beschreiben weder das heutige Inventar noch
+eine vollständige getestete Releasekombination. Die folgenden Abschnitte
+bewahren die Funktions- und Nachweisbeschreibung dieses Dokuments.
 
 ## Windows-Repository-Portabilitätsgate
 
@@ -263,7 +277,7 @@ Der Einstieg beginnt bei Symptom und Ziel:
 - [Hier beginnen](../Analysis_Guides/Start_Here.md)
 - [Analysis-Navigator-Vertrag](../Reference/Analysis_Navigator.md)
 - [Runbooks](../Analysis_Guides/Runbooks/README.md)
-- [104 Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
+- [Procedure-Seiten](../Analysis_Guides/Procedures/README.md)
 - [vollständige Objektreferenz](../Reference/Object_Reference.md)
 
 Anwenderdokumentation beschreibt ausschließlich Nutzung, Architektur, Laufzeitverträge, Betrieb, Qualität und Komponenten.
@@ -319,7 +333,7 @@ Die versionsadaptiven Module untersuchen Featurecapabilities, Build und Lifecycl
 |---|---:|---:|
 | Frameworkkern | ja | vollständiger Installer |
 | PLAN-001 Execution-Plan-Analyse | ja | ja |
-| SC-023 Snapshot-/Baseline | nein | ja, separate Framework- und Zielinstallation |
+| SC-023 Snapshot-/Baseline | opt-in im Gesamtdeployment; nicht in `Install_All.sql` | ja, separate Framework- und Zielinstallation |
 
 Der Analysis Navigator gehört zum vollständigen Framework. PLAN-001 bleibt ohne Navigator funktionsfähig. Das Snapshotpaket richtet keinen Scheduler ein und persistiert nur nach expliziter Ziel- und Policykonfiguration.
 

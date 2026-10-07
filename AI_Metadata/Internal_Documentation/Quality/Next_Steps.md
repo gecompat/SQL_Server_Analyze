@@ -34,6 +34,11 @@ Diagnosefläche und zusätzliche Snapshotowner sind nicht Teil dieser Pause.
 
 ## Maßgeblichkeit
 
+Der begrenzte Benutzerauftrag zur Dokumentations- und Nachweisklarheit vom
+7. Oktober 2026 ist in der
+[zugehörigen Bewertung](Repository_Clarity_Assessment.md) dokumentiert.
+Er nimmt die oben beschriebene autonome Entwicklungswelle nicht wieder auf.
+
 Die [langfristige Weiterentwicklungsroadmap](../Architecture/Long_Term_Development_Roadmap.md) ordnet alle späteren Entwicklungsrichtungen, Abhängigkeiten und Exit-Kriterien. Dieses Dokument enthält ausschließlich den aktuellen Produktstand und die nächste ausführbare Welle.
 
 Die Statusquellen besitzen getrennte Aufgaben:

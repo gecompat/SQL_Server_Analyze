@@ -38,6 +38,9 @@ Die Foundation ergänzt die projektspezifischen Regeln, ersetzt sie aber nicht. 
 - [`AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json`](AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json) für die vollständige Foundation-Upgradebewertung und die unter `DEC-0001` festgehaltenen Integrationsentscheidungen;
 - die nachfolgend direkt referenzierten Qualitätsrichtlinien für Dokumentationsstil und CI-Testauswahl.
 
+Der öffentliche Fehlerberichts-, Beitrags- und Reviewweg steht in
+[`CONTRIBUTING.md`](CONTRIBUTING.md). Er ergänzt diese Regeln für externe Beiträge.
+
 Historische, als Entwurf gekennzeichnete oder ausdrücklich abgelöste Inhalte sind keine aktive Governance.
 
 ## Verbindlicher Dokumentationsstil

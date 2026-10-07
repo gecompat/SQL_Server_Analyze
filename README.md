@@ -38,6 +38,13 @@ SQL Server Analyze ist ein T-SQL-basiertes Diagnoseframework für SQL Server ab 
 
 Das Framework wird in einer frei wählbaren Datenbank im Schema `[monitor]` installiert.
 
+Für einen aktuellen Engpass beginnen Sie mit dem Analysis Navigator und einer
+begrenzten Live-Analyse. Für einen historischen Verlauf verwenden Sie die
+Query-Store- oder Extended-Events-Pfade nur bei vorhandener Capture-Evidenz.
+Die [Schnellwahl nach Beobachtung](./Documentation/Analysis_Guides/Start_Here.md)
+ordnet Fragestellung, ersten Aufruf und Gegenprobe zu. Status, Zeitbezug und
+Eigenlast bestimmen, welche Aussage der jeweilige Befund erlaubt.
+
 ## Schwerpunkte
 
 Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
@@ -70,6 +77,11 @@ Der Funktionsumfang umfasst insbesondere folgende Analysebereiche:
 - SQLCMD-Modus oder PowerShell, abhängig vom gewählten Installationsweg
 
 Das Framework vergibt selbst keine Benutzer- oder Serverberechtigungen.
+
+Die garantierte Collationgrenze und neuere fokussierte Prüfungen mit abweichenden
+Collations stehen getrennt in der [Nachweisübersicht](./Documentation/Quality/Test_Matrix.md).
+Eine abweichende Collation ist keine automatische Installationssperre; ein
+bestandener Teiltest ist keine Freigabe aller Procedures dieser Kombination.
 
 ## Schnellstart
 
@@ -126,6 +138,13 @@ Für die vollständige Aufrufsammlung siehe:
 - [`Code/Examples/040_Schnellreferenz_Aufrufe.sql`](./Code/Examples/040_Schnellreferenz_Aufrufe.sql)
 - [`Code/Examples/041_Beispielaufrufe_Alle_Funktionalitaeten.sql`](./Code/Examples/041_Beispielaufrufe_Alle_Funktionalitaeten.sql)
 - [`Documentation/Reference/Call_Catalog.md`](./Documentation/Reference/Call_Catalog.md)
+
+`@GesamtenSqlTextEinbeziehen = 1` und `@InputBufferEinbeziehen = 1` können
+Literale, Kommentare und Clientkontext offenlegen. `@MaxSqlTextZeichen = 0`
+verzichtet auf die Textbegrenzung und ist keine Anonymisierung. Prüfen Sie
+Empfänger, Ablage und Aufbewahrung vor dem Kopieren oder Exportieren; die
+[Parameter-Lesehilfe](./Documentation/Analysis_Guides/Parameter_Reading_Guide.md)
+beschreibt die einzelnen Text- und Exportoptionen.
 
 ## Ausgabearten
 
@@ -198,6 +217,7 @@ Code/
 ├── 07_Infrastructure/
 ├── 08_ServerHealth/
 ├── 09_VersionAdaptive/
+├── 10_SnapshotBaseline/
 ├── Examples/
 ├── Install/
 └── Tests/
@@ -235,7 +255,15 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventory-Vertrag umfasst 105 öffentliche Procedures und 72 unterstützende Objekte: acht Views, 28 TVFs, 16 interne Procedures und 20 Tabellen. Jedes der insgesamt 177 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+Der aktuelle Inventarvertrag umfasst 177 Objekte: 105 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+
+Der Frameworkkern umfasst 158 Objekte mit 102 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+
+Der Coreinstaller installiert die 102 öffentlichen Core-Procedures;
+die drei Snapshot-Procedures und deren
+Unterstützungsobjekte benötigen die separate Paketinstallation oder das
+entsprechende Opt-in im Gesamtdeployment. Jedes inventarisierte Objekt besitzt
+einen Referenzpfad. Scalar-Valued Functions sind derzeit nicht installiert.
 
 - [Hier beginnen: passende Analyse finden](./Documentation/Analysis_Guides/Start_Here.md)
 - [Analysis Navigator – vollständiger Vertrag](./Documentation/Reference/Analysis_Navigator.md)
@@ -261,6 +289,10 @@ Der aktuelle Inventory-Vertrag umfasst 105 öffentliche Procedures und 72 unters
 - [Lab-Lernpfad: Szenarien erkunden](./Lab/Scenarios/LEARNING_PATH.md)
 
 ## Qualität und Projektstatus
+
+Fehlerberichte und Pull Requests sind vorgesehen. Der
+[Beitragsleitfaden](./CONTRIBUTING.md) beschreibt nachvollziehbare Meldungen,
+Datenschutz, Testauswahl und den Reviewweg.
 
 Der veröffentlichte Bestand besitzt reproduzierbare statische API-, Installer-, Inventar- und Dokumentationsprüfungen. Die fachlichen Laufzeitnachweise und unterstützten Kombinationen stehen in der [Testmatrix](./Documentation/Quality/Test_Matrix.md); `NOT_EXECUTED` ist ausdrücklich kein Testnachweis.
 

@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$RepositoryRoot
+    [string]$RepositoryRoot,
+    [switch]$SelfTest
 )
 
 Set-StrictMode -Version Latest
@@ -94,6 +95,92 @@ $supportingMinimumWordCount = 90
 
 $errors = [System.Collections.Generic.List[string]]::new()
 $markdownAnchorCache = @{}
+
+function Get-InventorySummaryFindings {
+    param([string]$Text, [object[]]$Rows)
+
+    $pattern = 'Der aktuelle Inventarvertrag umfasst (?<Total>\d+) Objekte: (?<PROCEDURE>\d+) öffentliche Procedures, (?<VIEW>\d+) Views, (?<FUNCTION>\d+) Table-Valued Functions, (?<INTERNAL_PROCEDURE>\d+) interne Procedures und (?<TABLE>\d+) Tabellen\.'
+    $summaries = [regex]::Matches($Text, $pattern)
+    if ($summaries.Count -ne 1) {
+        return 'CURRENT_INVENTORY_SUMMARY_MISSING_OR_DUPLICATED'
+    }
+    $summary = $summaries[0]
+    if ([int]$summary.Groups['Total'].Value -ne $Rows.Count) {
+        'CURRENT_INVENTORY_TOTAL_MISMATCH'
+    }
+    foreach ($type in @('PROCEDURE', 'VIEW', 'FUNCTION', 'INTERNAL_PROCEDURE', 'TABLE')) {
+        $expected = @($Rows | Where-Object { $_.ObjectType -eq $type }).Count
+        if ([int]$summary.Groups[$type].Value -ne $expected) {
+            "CURRENT_INVENTORY_TYPE_MISMATCH:$type"
+        }
+    }
+    $packagePattern = 'Der Frameworkkern umfasst (?<CoreTotal>\d+) Objekte mit (?<CoreProcedures>\d+) öffentlichen Procedures und (?<CoreTables>\d+) Tabellen\. Das optionale Snapshotpaket umfasst (?<SnapshotTotal>\d+) Objekte mit (?<SnapshotProcedures>\d+) öffentlichen Procedures und (?<SnapshotTables>\d+) Tabellen\.'
+    $packages = [regex]::Matches($Text, $packagePattern)
+    if ($packages.Count -ne 1) {
+        'CURRENT_PACKAGE_SUMMARY_MISSING_OR_DUPLICATED'
+        return
+    }
+    foreach ($package in @('Core', 'Snapshot')) {
+        $selected = @($Rows | Where-Object {
+            $isSnapshot = $_.SourcePath.StartsWith('Code/10_SnapshotBaseline/', [StringComparison]::Ordinal)
+            if ($package -eq 'Snapshot') { $isSnapshot } else { -not $isSnapshot }
+        })
+        $expected = @{
+            Total = $selected.Count
+            Procedures = @($selected | Where-Object { $_.ObjectType -eq 'PROCEDURE' }).Count
+            Tables = @($selected | Where-Object { $_.ObjectType -eq 'TABLE' }).Count
+        }
+        foreach ($field in @('Total', 'Procedures', 'Tables')) {
+            if ([int]$packages[0].Groups["$package$field"].Value -ne $expected[$field]) {
+                "CURRENT_PACKAGE_COUNT_MISMATCH:$package$field"
+            }
+        }
+    }
+}
+
+function Invoke-InventorySummarySelfTest {
+    $rows = @(
+        [pscustomobject]@{ObjectType='PROCEDURE'; SourcePath='Code/02_CurrentState/Example.sql'}
+        [pscustomobject]@{ObjectType='VIEW'; SourcePath='Code/01_Common/Example.sql'}
+        [pscustomobject]@{ObjectType='FUNCTION'; SourcePath='Code/01_Common/Example.sql'}
+        [pscustomobject]@{ObjectType='INTERNAL_PROCEDURE'; SourcePath='Code/01_Common/Example.sql'}
+        [pscustomobject]@{ObjectType='TABLE'; SourcePath='Code/01_Common/Example.sql'}
+        [pscustomobject]@{ObjectType='PROCEDURE'; SourcePath='Code/10_SnapshotBaseline/Example.sql'}
+    )
+    $summary = 'Der aktuelle Inventarvertrag umfasst 6 Objekte: 2 öffentliche Procedures, 1 Views, 1 Table-Valued Functions, 1 interne Procedures und 1 Tabellen.'
+    $package = 'Der Frameworkkern umfasst 5 Objekte mit 1 öffentlichen Procedures und 1 Tabellen. Das optionale Snapshotpaket umfasst 1 Objekte mit 1 öffentlichen Procedures und 0 Tabellen.'
+    $valid = "$summary`n$package"
+    if (@(Get-InventorySummaryFindings -Text $valid -Rows $rows).Count -ne 0) {
+        throw 'Inventory-summary self-test rejected the independent fixture.'
+    }
+    $mutations = @(
+        $valid.Replace('6 Objekte:', '7 Objekte:')
+        $valid.Replace('2 öffentliche Procedures', '3 öffentliche Procedures')
+        $valid.Replace('1 Views', '0 Views')
+        $valid.Replace('1 Table-Valued Functions', '0 Table-Valued Functions')
+        $valid.Replace('1 interne Procedures', '0 interne Procedures')
+        $valid.Replace('1 Tabellen.', '2 Tabellen.')
+        $valid.Replace('5 Objekte mit', '4 Objekte mit')
+        $valid.Replace('1 öffentlichen Procedures', '2 öffentlichen Procedures')
+        $valid.Replace('0 Tabellen.', '1 Tabellen.')
+        "$valid`n$summary"
+        "$valid`n$package"
+        $summary
+        $package
+        ''
+    )
+    foreach ($mutation in $mutations) {
+        if (@(Get-InventorySummaryFindings -Text $mutation -Rows $rows).Count -eq 0) {
+            throw 'Inventory-summary self-test accepted stale, incomplete or duplicate documentation.'
+        }
+    }
+    Write-Host "Inventory-summary self-test passed: 1 positive and $($mutations.Count) negative cases."
+}
+
+if ($SelfTest) {
+    Invoke-InventorySummarySelfTest
+    exit 0
+}
 
 function ConvertTo-CanonicalParameterDeclarations {
     param([AllowEmptyString()][string]$Text)
@@ -196,6 +283,22 @@ $objectIndexText = Get-Content -LiteralPath $objectIndexPath -Raw -Encoding UTF8
 $objectReferenceText = Get-Content -LiteralPath $objectReferencePath -Raw -Encoding UTF8
 $callCatalogText = Get-Content -LiteralPath $callCatalogPath -Raw -Encoding UTF8
 $objectInventoryRows = @(Import-Csv -LiteralPath $objectInventoryPath -Encoding UTF8)
+foreach ($summaryPath in @($rootReadmePath, $documentationReadmePath, (Join-Path $RepositoryRoot 'Documentation/Quality/Release_Notes.md'))) {
+    $summaryText = Get-Content -LiteralPath $summaryPath -Raw -Encoding UTF8
+    foreach ($finding in @(Get-InventorySummaryFindings -Text $summaryText -Rows $objectInventoryRows)) {
+        $errors.Add("$finding in $summaryPath")
+    }
+}
+$frameworkSource = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'Code/01_Common/077_FrameworkVersion.sql') -Raw -Encoding UTF8
+$releaseText = Get-Content -LiteralPath (Join-Path $RepositoryRoot 'Documentation/Quality/Release_Notes.md') -Raw -Encoding UTF8
+foreach ($field in @('FrameworkVersion', 'ContractVersion')) {
+    $value = [regex]::Match($frameworkSource, '\[' + $field + '\]\s*=\s*''([^'']+)''')
+    $label = if ($field -eq 'FrameworkVersion') { 'Frameworkversion' } else { 'ContractVersion' }
+    $documented = [regex]::Match($releaseText, '(?m)^\| ' + $label + ' im Installationskatalog \| `([^`]+)` \|\r?$')
+    if (-not $value.Success -or -not $documented.Success -or $value.Groups[1].Value -cne $documented.Groups[1].Value) {
+        $errors.Add("Current release $field does not match the canonical installation catalog.")
+    }
+}
 $expectedProcedureNames = @(
     $objectInventoryRows |
         Where-Object { $_.ObjectType -eq 'PROCEDURE' -and $_.ObjectName -match '^USP_' } |

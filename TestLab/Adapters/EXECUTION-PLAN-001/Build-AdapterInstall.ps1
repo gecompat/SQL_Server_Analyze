@@ -109,7 +109,7 @@ USE [LabAnalyze];
 GO
 '@
 
-    $generated = $adapterHeader.TrimEnd() + "`n" +
+    $generated = $adapterHeader.TrimEnd() + [Environment]::NewLine +
         $standalone.Substring($sourceHeaderMatch.Length).TrimStart("`r", "`n")
     $generated = [Text.RegularExpressions.Regex]::Replace(
         $generated,

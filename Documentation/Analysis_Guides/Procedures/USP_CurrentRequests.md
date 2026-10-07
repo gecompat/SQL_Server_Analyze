@@ -24,6 +24,13 @@ Die Procedure zeigt keine beendeten Requests und keine verlässliche Historie. E
 
 ## Sicherer Einstieg
 
+`@MitSqlText`, `@GesamtenSqlTextEinbeziehen` und `@InputBufferEinbeziehen`
+können SQL-Literale, Modulkontext und Clientaufrufe offenlegen. Der folgende
+erste Aufruf deaktiviert diese Textpfade. Vor einer Erweiterung oder einem
+Export sind Empfänger und Aufbewahrung gemäß dem
+[Datenschutzvertrag](../../Architecture/Runtime_Data_Privacy.md) festzulegen;
+`@MaxSqlTextZeichen` ist eine Transfergrenze und keine Anonymisierung.
+
 Der erste Lauf reduziert Text-, Modul- und Input-Buffer-Arbeit und begrenzt die Ergebnismenge:
 
 ```sql

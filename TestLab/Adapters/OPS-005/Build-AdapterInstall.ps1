@@ -112,7 +112,7 @@ USE [DeineDatenbank];
 GO
 '@
 
-    $installer = $installHeader.TrimEnd() + "`n" +
+    $installer = $installHeader.TrimEnd() + [Environment]::NewLine +
         $standalone.Substring($sourceHeaderMatch.Length).TrimStart("`r", "`n")
     $installer = [Text.RegularExpressions.Regex]::Replace(
         $installer,
