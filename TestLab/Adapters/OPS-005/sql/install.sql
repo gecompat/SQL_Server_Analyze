@@ -25462,17 +25462,18 @@ END;
 
     DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
     DECLARE @ColumnTruncatedCount bigint=0,@ColumnLargestCharacters bigint=NULL;
+    DECLARE @ProjectionMaxCharacters int=CASE WHEN @MaxSqlTextZeichen<0 THEN 0 ELSE @MaxSqlTextZeichen END;
     EXEC [monitor].[InternalProjectUnicodeTextColumn]
           @SourceTable=N'#PlanDetails_CandidatesOutput',@TextColumn=N'StatementText'
         , @CharactersColumn=N'StatementTextCharacters',@BytesColumn=N'StatementTextBytes'
-        , @IsTruncatedColumn=N'StatementTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+        , @IsTruncatedColumn=N'StatementTextIsTruncated',@MaxCharacters=@ProjectionMaxCharacters
         , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
     SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
            @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
     EXEC [monitor].[InternalProjectUnicodeTextColumn]
           @SourceTable=N'#PlanDetails_CandidatesOutput',@TextColumn=N'BatchText'
         , @CharactersColumn=N'BatchTextCharacters',@BytesColumn=N'BatchTextBytes'
-        , @IsTruncatedColumn=N'BatchTextIsTruncated',@MaxCharacters=@MaxSqlTextZeichen
+        , @IsTruncatedColumn=N'BatchTextIsTruncated',@MaxCharacters=@ProjectionMaxCharacters
         , @TruncatedValueCount=@ColumnTruncatedCount OUTPUT,@LargestRequiredCharacters=@ColumnLargestCharacters OUTPUT;
     SELECT @TruncatedValueCount=@TruncatedValueCount+@ColumnTruncatedCount,
            @LargestRequiredCharacters=CASE WHEN @LargestRequiredCharacters IS NULL OR @ColumnLargestCharacters>@LargestRequiredCharacters THEN @ColumnLargestCharacters ELSE @LargestRequiredCharacters END;
