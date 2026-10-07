@@ -196,6 +196,27 @@ werden angepasst; Anzahl und kurze beziehungsweise lange Restorezeitfenster
 müssen exakt ausgegeben werden. Nicht leere Agent-, Mail- und Maintenance-
 Historien sowie tatsächlich fehlende optionale Quellen bleiben separat offen.
 
+Mit `-Scenario AgentHistory` wird ausschließlich der Agent-Aggregatvertrag
+zusätzlich zu Installation, Smoke-Test und Runtimevertrag `122` geprüft.
+Der Standard `HistoryRestore` behält die Backup-, Restore- und Größenfälle.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario AgentHistory `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Die Agent-Fixture [TEST-0001](Scenarios/OPS-008/agent-history.sql) legt in einer
+eigenen Transaktion einen deaktivierten Job an und injiziert nacheinander
+eine, zwei und drei synthetische Job- und Stepzeilen in `sysjobhistory`.
+Der Analyzer muss die vollständige Zeilenanzahl mit `AVAILABLE` und leeren
+Zeitgrenzen liefern und alle Quellwerte erhalten. Die Fixture wird vollständig
+zurückgerollt. Sie führt keinen Agent-Job aus und belegt keine Datums-, Dauer-
+oder Retentionsinterpretation. Mail- und Maintenance-Historien sowie tatsächlich
+fehlende optionale Quellen bleiben offen. Der Runner initialisiert für seinen
+frischen State die testgebundene Ownership-Lane von `SQL_Server_Lab` und
+serialisiert eigene Runtime-Tests über die gemeinsame Host-Testlane.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-

@@ -139,3 +139,52 @@ Historiengegenprobe. Das Lab verifizierte Major-Version 17; ProductVersion
 wurde nicht erfasst. Der Lauf ist lokale Vertrags- und Fixtureevidenz,
 kein vollständiger Release-Gate-Lauf oder Nachweis für fremde Backups.
 Nicht leere Agent-, Mail- und Maintenance-Historien bleiben ebenfalls offen.
+
+## Ergänzende OPS-008-Agent-Aggregatgegenprobe vom 8. Oktober 2026
+
+Eine neue eigene SQL-Server-2025-Linux-Docker-Instanz bestand die vollständige
+Coreinstallation, den Smoke-Test, Runtimevertrag `122` und die synthetische
+Agent-Fixture [TEST-0001](../../../../TestLab/Scenarios/OPS-008/agent-history.sql).
+Die Fixture erzeugte einen deaktivierten eigenen Job und injizierte in einer
+eigenen Transaktion nacheinander eine, zwei und drei native `sysjobhistory`-
+Zeilen einschließlich Job- und Stepzeilen. Der Analyzer lieferte jeweils die
+exakte Anzahl, `AVAILABLE` und NULL für beide Zeitgrenzen. Der vollständige
+Quellbestand einschließlich Identität, Meldung, Datum, Uhrzeit und Dauer blieb
+unverändert. Die Fixturetransaktion wurde zurückgerollt; Job und Historyzeilen
+waren danach nicht mehr vorhanden.
+
+Die Gegenprobe am Original bestätigte drei bestehende Mengenlimitfehler:
+NULL löste Fehler `1014` aus, ein negatives Limit im JSON-Pfad Fehler `127`.
+Mit Limit 1 enthielten TABLE und CONSOLE jeweils sechs Quellenzeilen,
+JSON dagegen eine. Die gezielte Korrektur normalisiert NULL auf 0 und begrenzt
+den gemeinsamen temporären Ergebnisbestand vor der Ausgabe. Negative Werte
+liefern `INVALID_PARAMETER` mit leeren fachlichen Ergebnissen. Die Quelltabellen
+werden durch diese Begrenzung nicht verändert.
+
+Runtimevertrag `122` prüft die vollständige TABLE-/CONSOLE-/JSON-Werteparität
+für NULL, 0 und 1. Eine zusätzliche lokale DataReader-Gegenprobe bestand für
+RAW und JSON mit NULL, 0, 1 und einem negativen Limit. Sie prüfte beide
+RAW-Resultsets, die Feldreihenfolge, alle acht fachlichen Werte und den
+Modulstatus. `EvidenceRows` erhält die Anzahl sämtlicher ermittelter Quellen
+vor dem Ausgabelimit; dieser bestehende RAW-Vertrag bleibt erhalten.
+
+Die Instanz verwendete `Latin1_General_100_CS_AS`, die Frameworkdatenbank
+`SQL_Latin1_General_CP1_CS_AS`. Das Lab verifizierte Engine-Major-Version 17;
+ProductVersion und Compatibility Level wurden nicht separat erfasst. Der eigene Run
+und sein Volume wurden entfernt, die temporäre Secretdatei gelöscht und
+sämtliche zuvor vorhandenen Hostressourcen unverändert wiedergefunden.
+Runtimeidentitäten und Rohdaten bleiben außerhalb des Repositorys.
+
+Der öffentliche Runner bestand danach mit `-Scenario AgentHistory` in einem
+weiteren eigenen frischen SQL-2025-Lab einschließlich endgültigem Vertrag
+`122`, positiver Fixture und `REMOVED`-Cleanup. Der Standardpfad für Backup
+und Restore wurde in diesem Schritt nicht erneut ausgeführt. Ein lokaler
+Fehlerpfadtest des tatsächlichen Runner-`finally` mit simuliert scheiternder
+State-Löschung bestätigte die garantierte Mutexfreigabe und -entsorgung;
+dieser Test ist Mockevidenz und startet keine native Runtime.
+
+Diese injizierte Tabellenfixture belegt keine Agent-Ausführung, keine
+Interpretation der Datums- oder Dauerfelder und keine Retentionpolicy.
+Nicht leere Mail- und Maintenance-Historien, tatsächlich fehlende optionale
+Quellen, weitere Plattformen und zusätzliche native Engines bleiben offen.
+Der Lauf ist ein lokaler begrenzter Reifenachweis und kein Release-Gate.

@@ -27,6 +27,17 @@ Führen Sie die erste Inventur in einem geeigneten Betriebsfenster aus. Die einz
 
 CONSOLE zeigt `msdbHealth`. RAW liefert zuerst den Modulstatus und danach die Quellenzeilen. TABLE exportiert ausschließlich das benannte Resultset; JSON verwendet dieselbe lokale Materialisierung. Lesen Sie zuerst `Area`, `SourceObject` und `StatusCode`. Ordnen Sie `RowCount`, `OldestUtc`, `NewestUtc` und `SizeMb` danach gegen die dokumentierte Aufbewahrungsregel ein. Nicht vorhandene optionale Tabellen erscheinen als `UNSUPPORTED`, Quellfehler als `SOURCE_UNAVAILABLE`.
 
+`@MaxZeilen = NULL` und `0` liefern alle Quellenzeilen. Positive Werte begrenzen
+CONSOLE, RAW, TABLE und JSON auf denselben nach `Area` ausgewählten Bestand.
+Der RAW-Modulstatus zählt mit `EvidenceRows` weiterhin sämtliche ermittelten
+Quellenzeilen vor der Ausgabebegrenzung. Negative Werte ergeben
+`INVALID_PARAMETER` und keine fachlichen Ergebniszeilen.
+
+Für `AGENT_HISTORY` zählt `RowCount` sämtliche sichtbaren Job- und Stepzeilen
+aus `msdb.dbo.sysjobhistory`. Beide Zeitgrenzen bleiben NULL; das Modul
+interpretiert weder `run_date`, `run_time` noch `run_duration`. Die Anzahl
+belegt keine Zahl ausgeführter Jobs und keine bestimmte Aufbewahrungsdauer.
+
 ## Beispiele und Gegenbeispiele
 
 Eine frische synthetische Example-Lab-Instanz kann für mehrere Historien `RowCount = 0` liefern; dies ist ein zulässiger Leerfall. Ein kontrolliert erzeugtes synthetisches Backup kann ein kurzes sichtbares Zeitfenster belegen, ohne damit Restorefähigkeit nachzuweisen. Ein Gegenbeispiel ist die Empfehlung, alle alten Backupzeilen allein aufgrund von `OldestUtc` zu löschen. Auch eine große `msdb` rechtfertigt keinen automatischen Shrink.
