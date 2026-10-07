@@ -168,8 +168,7 @@ VALUES
 
 UPDATE [r]
 SET
-      [r].[IsEnabled]=1
-    , [r].[MinRatio]=[d].[MinRatio]
+      [r].[MinRatio]=[d].[MinRatio]
     , [r].[MaxRatio]=[d].[MaxRatio]
     , [r].[MinAbsoluteRows]=[d].[MinAbsoluteRows]
     , [r].[MinRowsRead]=[d].[MinRowsRead]

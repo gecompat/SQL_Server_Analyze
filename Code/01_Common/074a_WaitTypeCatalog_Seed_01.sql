@@ -2,6 +2,43 @@ USE [DeineDatenbank];
 GO
 
 /* Wait-Type-Katalog: kuratierter Seed-Teil 01 von 04. */
+-- DEPLOYMENT_PREFLIGHT_BEGIN
+IF EXISTS
+(
+    SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id]
+    WHERE [s].[name]=N'monitor' AND [t].[name]=N'WaitTypeCatalogSource'
+)
+BEGIN
+    EXEC [sys].[sp_executesql] N'
+IF EXISTS
+(
+    SELECT 1
+    FROM [monitor].[WaitTypeCatalogSource] AS [s]
+    JOIN [monitor].[WaitTypeCatalog] AS [c] ON [c].[WaitType]=[s].[WaitType]
+    WHERE [c].[IsFrameworkDefault]=1 AND [s].[IsFrameworkDefault]=0
+      AND [c].[WaitType] IN
+      (
+        N''CURSOR'',N''DBTABLE'',N''IDES'',N''LCK_MSCH_M'',N''LCK_M_RI_NL'',N''LCK_M_RI_S'',N''LCK_M_RI_U'',N''LCK_M_RI_X'',
+        N''NETWORKIO'',N''PAGESUPP'',N''PARALLEL_PAGE_SUPPLIER'',N''PSS_CHILD'',N''SLEEP'',N''UMSTHREAD''
+      )
+)
+    THROW 53930,N''A custom source references a retired framework Wait Type.'',1;';
+END;
+-- DEPLOYMENT_PREFLIGHT_END
+
+/* Frameworkquellen werden vor ihren retirierenden Eltern behandelt.
+   Der Gesamtdeploymentweg sichert beide Vorzustände vor diesem Batch. */
+DELETE [s]
+FROM [monitor].[WaitTypeCatalogSource] AS [s]
+JOIN [monitor].[WaitTypeCatalog] AS [c] ON [c].[WaitType]=[s].[WaitType]
+WHERE [c].[IsFrameworkDefault]=1 AND [s].[IsFrameworkDefault]=1
+  AND [c].[WaitType] IN
+  (
+      N'CURSOR',N'DBTABLE',N'IDES',N'LCK_MSCH_M',N'LCK_M_RI_NL',N'LCK_M_RI_S',N'LCK_M_RI_U',N'LCK_M_RI_X',
+      N'NETWORKIO',N'PAGESUPP',N'PARALLEL_PAGE_SUPPLIER',N'PSS_CHILD',N'SLEEP',N'UMSTHREAD'
+  );
+
 DELETE FROM [monitor].[WaitTypeCatalog]
 WHERE [IsFrameworkDefault]=1
   AND [WaitType] IN

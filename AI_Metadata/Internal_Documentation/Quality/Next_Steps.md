@@ -3,6 +3,35 @@
 **Stand:** 7. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
+## Entwicklungspause und Wiedereinstieg
+
+Der Benutzer hat am 7. Oktober 2026 die Pause nach Abschluss von WI-0011
+einschließlich PR-Merge nach `origin/main` angeordnet. Die automatische
+Fortsetzung ist pausiert. Nach dieser Lieferung beginnt keine weitere
+Entwicklungsrunde ohne erneuten Benutzerauftrag; die folgenden früheren
+Autonomieanweisungen gelten erst nach einer ausdrücklichen Wiederaufnahme.
+
+Bei der Wiederaufnahme werden zuerst die aktuelle Anweisungskette,
+`origin/main`, offene PRs und die kanonischen Statusquellen abgeglichen.
+Der Deploymentstand und seine Grenzen stehen unter
+[EXP-0001](WI0011_Deployment_Runtime_Evidence_2026-10-07.md).
+Für den nächsten COLL-001-Schritt werden die verbleibenden gemeinsamen
+Ausgabe-, Auswahl- und Reifeverträge anhand der kanonischen Statusquellen
+und Exit-Kriterien eingegrenzt. PlanCacheHealth ist im dokumentierten
+Teilumfang bereits geprüft. Vor einer Änderung sind Original, Fachwerte,
+Ausgabeformen, Filter, Mengenlimits und Parentverbraucher zu prüfen. Die
+nachstehende Reifeabschlussreihenfolge für OPS-005, OPS-006, OPS-008,
+OPS-007 und COLL-001 bleibt maßgeblich. Frühere erfolgreiche Nachweise
+werden nur bei neuer sachlicher Unsicherheit wiederholt.
+
+Aktuelle erfolgreiche Security-Cloud-Evidenz bleibt offen. Für Deployment
+sind weitere native Engines, Windows, Produktionsvolumen und Commitantwort-
+verlust nicht belegt; zusätzliche Läufe folgen ausschließlich aus einem
+konkreten Versionsrisiko oder freigegebenen weiteren Nachweisumfang.
+Unbekannte Strukturmigrationen benötigen zuerst einen eigenen Vertrag.
+Die übrigen offenen Reifeverträge und Statusflags bleiben erhalten; neue
+Diagnosefläche und zusätzliche Snapshotowner sind nicht Teil dieser Pause.
+
 ## Maßgeblichkeit
 
 Die [langfristige Weiterentwicklungsroadmap](../Architecture/Long_Term_Development_Roadmap.md) ordnet alle späteren Entwicklungsrichtungen, Abhängigkeiten und Exit-Kriterien. Dieses Dokument enthält ausschließlich den aktuellen Produktstand und die nächste ausführbare Welle.
@@ -230,4 +259,17 @@ Die weitere autonome Fortsetzung ordnet verbleibende gemeinsame Auswahl-, Ausgab
 
 PlanCacheHealth besitzt jetzt stärkere Nachweise für seine bestehenden Ausgabe- und Detailmengenverträge. Produktionsquellen, zwölf Parameter, Versionen und Statusflags bleiben unverändert. Die native Originalmatrix besteht 64 Aufrufe, 175 Grids und 12.157 Assertions; dreizehn tatsächliche Capturemutationen werden abgewiesen. Vollständige unabhängige Werteformeln für alle 24 Fachfelder bestehen zusätzlich in zwölf separat gekennzeichneten synthetischen Clonefällen mit 4.758 Assertions, nicht als atomarer DMV-Nachweis. Runtime134 besteht 20 Kernfälle, sieben Detailflagfälle, drei Consumerstatusfälle, acht Vorprüfungen, vier Parentfälle, drei NULL-Mutationsablehnungen und positive/leere SQL-CONSOLE-Proben. Static1017 besteht 210 Mutationen, die vollständige statische Suite alle 76 Prüfungen und die einzige impact-selektierte SQL-Datei den nativen Lauf. Der unabhängige Review besitzt keine offenen Befunde; finale Definitionen, ABI und eigener Cleanup sind bestätigt. Die begrenzte Evidenz steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md). Rollen, systematische Quellenfehler/Timeouts, ein tatsächlich leerer nativer Cache, weitere Engines/Compatibility Levels und erfolgreiche aktuelle Security-Cloud-Evidenz bleiben offen; COLL-001 bleibt partiell.
 
-Der zusätzliche Benutzerauftrag vom 7. Oktober 2026 verlangt einen aus aktuellen kanonischen Quellen erzeugten, vollständigen und wiederholbaren Deploymentweg ohne Verlust bestehender Tabelleninhalte. Die nächste Fortsetzung konkretisiert deshalb zuerst den bestehenden Gesamtinstaller, die getrennten Snapshot-Datenbankkontexte, die Tabellen- und Seedverträge sowie Verlustfreiheit bei Strukturänderungen. Vorhandene DROP-/DELETE-Pfade dürfen nicht als allgemeine Migrationsgarantie gelten. Nicht verlustfrei umsetzbare Änderungen müssen vor einer destruktiven Wirkung abbrechen; Hilfstabellen sind nur eine mögliche Umsetzung. Die Erweiterung ist noch nicht implementiert. Maßgebliche Backlogs, Registrierungsregeln und vorhandene Produktverträge bleiben erhalten; keine zweite Backlogwahrheit wird angelegt. Anschließend wird die übrige autonome Reifewelle fortgesetzt. Exakte Head-CI, Integration, Synchronisierung und eigener Git-Cleanup bleiben für jede Lieferung erforderlich.
+Der zusätzliche Benutzerauftrag vom 7. Oktober 2026 ist im Arbeitselement
+`WI-0011` implementiert. Der [Deploymentvertrag](../../../Documentation/Architecture/Lossless_Deployment_Contract.md)
+und die [Bedienungsreferenz](../../../Documentation/Reference/Deployment.md)
+beschreiben den aus kanonischen Quellen erzeugten Core- und optionalen
+Snapshotumfang. Customdaten, lokale Policy und Legacytabellen bleiben
+erhalten; erlaubte Default- und Versionsänderungen erhalten typgetreue
+Vorzustände. Die zwölf Wait-Ergänzungen sind als bekannte additive Migration
+unterstützt. Unbekannte Strukturen und Ownershipkonflikte führen vorab zum
+Abbruch. Native Erstinstallations-, Wiederholungs-, Erhaltungs-, Kontext-,
+Rechte-, Konkurrenz- und Rollbackgegenproben sind unter
+[EXP-0001](WI0011_Deployment_Runtime_Evidence_2026-10-07.md) dokumentiert.
+Erforderliche erfolgreiche Head-CI, Integration, Synchronisierung und eigener
+Cleanup bleiben Liefergates. Anschließend gilt die oben dokumentierte
+Benutzerpause; die übrige Reifewelle wird erst nach Wiederaufnahme fortgesetzt.

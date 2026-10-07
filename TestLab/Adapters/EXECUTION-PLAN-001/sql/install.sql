@@ -1715,7 +1715,6 @@ UPDATE [p]
 SET
       [p].[Description]=[d].[Description]
     , [p].[Priority]=[d].[Priority]
-    , [p].[IsEnabled]=1
     , [p].[SeedVersion]=@SeedVersion
     , [p].[LastUpdatedUtc]=SYSUTCDATETIME()
 FROM [monitor].[PlanAnalysisProfile] AS [p]
@@ -1908,8 +1907,7 @@ VALUES
 
 UPDATE [r]
 SET
-      [r].[IsEnabled]=1
-    , [r].[MinRatio]=[d].[MinRatio]
+      [r].[MinRatio]=[d].[MinRatio]
     , [r].[MaxRatio]=[d].[MaxRatio]
     , [r].[MinAbsoluteRows]=[d].[MinAbsoluteRows]
     , [r].[MinRowsRead]=[d].[MinRowsRead]

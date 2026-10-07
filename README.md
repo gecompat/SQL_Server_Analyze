@@ -77,10 +77,10 @@ Das Framework vergibt selbst keine Benutzer- oder Serverberechtigungen.
 
 ```powershell
 Set-Location ./Code/Install
-./Build-StandaloneInstaller.ps1
+./Build-DeploymentInstaller.ps1
 ```
 
-Dadurch entsteht `Code/Install/generated/Install_All.generated.sql`. In dieser Datei muss der Platzhalter `[DeineDatenbank]` nur einmal am Anfang ersetzt werden. Generierte Build-Artefakte werden nicht versioniert.
+Der Build benötigt PowerShell und Python 3.10 oder neuer und erzeugt `Code/Install/generated/Deploy_All.generated.sql`. In dieser Datei wird der Datenwert `@FrameworkDatabase` am Anfang explizit gesetzt. Mit `-IncludeSnapshotBaseline` wird auch `@SnapshotDatabase` gesetzt. Der Gesamtdeploymentweg erhält Tabelleninhalte und archiviert ursprüngliche Frameworkdefaults vor ihrer Migration. Voraussetzungen und Abschlussprüfung beschreibt die [Deploymentanleitung](./Documentation/Reference/Deployment.md). Generierte Build-Artefakte werden nicht versioniert.
 
 Führen Sie die generierte Datei anschließend vollständig in SSMS aus und prüfen Sie die Installation mit
 `Code/Tests/Integration/110_Smoke_Test.sql`. Eine vollständige Anleitung
@@ -235,7 +235,7 @@ Das Framework folgt den folgenden Betriebs- und Schutzregeln:
 
 ## Dokumentation
 
-Der aktuelle Inventory-Vertrag umfasst 105 öffentliche Procedures und 69 unterstützende Objekte: acht Views, 28 TVFs, 16 interne Procedures und 17 Tabellen. Jedes der insgesamt 174 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
+Der aktuelle Inventory-Vertrag umfasst 105 öffentliche Procedures und 72 unterstützende Objekte: acht Views, 28 TVFs, 16 interne Procedures und 20 Tabellen. Jedes der insgesamt 177 Objekte besitzt einen eindeutigen Referenzpfad. Scalar-Valued Functions (SVFs) sind derzeit nicht installiert.
 
 - [Hier beginnen: passende Analyse finden](./Documentation/Analysis_Guides/Start_Here.md)
 - [Analysis Navigator – vollständiger Vertrag](./Documentation/Reference/Analysis_Navigator.md)

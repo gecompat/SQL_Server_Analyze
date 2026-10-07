@@ -145,8 +145,11 @@ IF EXISTS
 )
     THROW 54027,N'Der Analysis Relationskatalog enthält einen ungültigen Endpunkt.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK) WHERE [IsFrameworkDefault]=1) < 347
-    THROW 54002,N'Der Framework-Wait-Katalog ist unvollständig.',1;
+IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK)) < 347
+    THROW 54002,N'Der Wait-Katalog unterschreitet den erwarteten Mindestumfang.',1;
+
+-- Der Zähltest prüft den Mindestumfang. Die namensbezogene Vollständigkeit
+-- prüft der Gesamtdeploymentweg gegen die aus Quellen erzeugten Seedkeys.
 
 IF EXISTS
 (
@@ -192,7 +195,9 @@ IF EXISTS
 )
     THROW 54022,N'Für mindestens einen Framework-Wait fehlen die vier verpflichtenden Quellenrollen.',1;
 
-IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalogSource] WITH (NOLOCK) WHERE [IsFrameworkDefault]=1)<>1396
+IF (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK) WHERE [IsFrameworkDefault]=1)=347
+   AND (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalog] WITH (NOLOCK))=347
+   AND (SELECT COUNT_BIG(*) FROM [monitor].[WaitTypeCatalogSource] WITH (NOLOCK) WHERE [IsFrameworkDefault]=1)<>1396
     THROW 54023,N'Der Framework-Quellkatalog entspricht nicht dem erwarteten Stand.',1;
 
 IF EXISTS
@@ -222,21 +227,8 @@ IF EXISTS
 )
     THROW 54020,N'Der Framework-Wait-Katalog enthält abgelöste Alt- oder Fehlnamen.',1;
 
-IF EXISTS
-(
-    SELECT 1
-    FROM [sys].[objects] AS [o] WITH (NOLOCK)
-    JOIN [sys].[schemas] AS [s] WITH (NOLOCK)
-      ON [s].[schema_id]=[o].[schema_id]
-    WHERE [s].[name]=N'monitor'
-      AND
-      (
-           ([o].[type]=N'U' AND [o].[name] IN
-              (N'FrameworkInstallationHistory',N'FrameworkExpectedObject',N'FrameworkProcedureContract'))
-        OR ([o].[type]=N'P' AND [o].[name]=N'USP_FrameworkSelfTest')
-      )
-)
-    THROW 54004,N'Veraltete Production-Hardening-Objekte sind noch vorhanden.',1;
+-- Legacyobjekte können als erhaltene Altbestände bestehen bleiben; sie gehören
+-- nicht zum aktiven Objektvertrag des Frameworks.
 
 -- Zentrale Offsetlogik mit einem deterministischen Batch prüfen.
 DECLARE @ExtractedStatement nvarchar(max);

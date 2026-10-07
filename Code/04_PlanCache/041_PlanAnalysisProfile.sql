@@ -64,7 +64,6 @@ UPDATE [p]
 SET
       [p].[Description]=[d].[Description]
     , [p].[Priority]=[d].[Priority]
-    , [p].[IsEnabled]=1
     , [p].[SeedVersion]=@SeedVersion
     , [p].[LastUpdatedUtc]=SYSUTCDATETIME()
 FROM [monitor].[PlanAnalysisProfile] AS [p]

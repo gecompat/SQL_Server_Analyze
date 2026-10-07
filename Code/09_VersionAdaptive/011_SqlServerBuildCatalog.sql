@@ -27,21 +27,21 @@ BEGIN
     EXEC(N'
 CREATE TABLE [monitor].[SqlServerBuildCatalog]
 (
-      [BuildVersion] varchar(32) NOT NULL
+      [BuildVersion] varchar(32) COLLATE DATABASE_DEFAULT NOT NULL
     , [ProductMajorVersion] int NOT NULL
     , [BuildNumber] int NOT NULL
     , [RevisionNumber] int NOT NULL
-    , [ReleaseName] nvarchar(64) NOT NULL
-    , [ServicingBranch] varchar(16) NOT NULL
-    , [KnowledgeBaseNumber] varchar(16) NULL
+    , [ReleaseName] nvarchar(64) COLLATE DATABASE_DEFAULT NOT NULL
+    , [ServicingBranch] varchar(16) COLLATE DATABASE_DEFAULT NOT NULL
+    , [KnowledgeBaseNumber] varchar(16) COLLATE DATABASE_DEFAULT NULL
     , [ReleaseDate] date NOT NULL
-    , [PlatformScope] varchar(32) NOT NULL
+    , [PlatformScope] varchar(32) COLLATE DATABASE_DEFAULT NOT NULL
     , [IsSecurityRelease] bit NOT NULL
     , [IsLatestInBranch] bit NOT NULL
-    , [BuildOverviewUrl] nvarchar(512) NOT NULL
-    , [KnowledgeBaseUrl] nvarchar(512) NULL
+    , [BuildOverviewUrl] nvarchar(512) COLLATE DATABASE_DEFAULT NOT NULL
+    , [KnowledgeBaseUrl] nvarchar(512) COLLATE DATABASE_DEFAULT NULL
     , [CatalogAsOfDate] date NOT NULL
-    , [PrimarySourceUrl] nvarchar(512) NOT NULL
+    , [PrimarySourceUrl] nvarchar(512) COLLATE DATABASE_DEFAULT NOT NULL
     , [SourceRetrievedAtUtc] datetime2(0) NOT NULL
     , CONSTRAINT [PK_SqlServerBuildCatalog] PRIMARY KEY ([BuildVersion])
     , CONSTRAINT [CK_SqlServerBuildCatalog_Branch]
@@ -50,27 +50,28 @@ CREATE TABLE [monitor].[SqlServerBuildCatalog]
 END;
 GO
 
-DECLARE @Seed TABLE
+-- DEPLOYMENT_PREFLIGHT_BEGIN
+CREATE TABLE #SqlServerBuildCatalog_Seed
 (
-      [BuildVersion] varchar(32) NOT NULL PRIMARY KEY
+      [BuildVersion] varchar(32) COLLATE DATABASE_DEFAULT NOT NULL PRIMARY KEY
     , [ProductMajorVersion] int NOT NULL
     , [BuildNumber] int NOT NULL
     , [RevisionNumber] int NOT NULL
-    , [ReleaseName] nvarchar(64) NOT NULL
-    , [ServicingBranch] varchar(16) NOT NULL
-    , [KnowledgeBaseNumber] varchar(16) NULL
+    , [ReleaseName] nvarchar(64) COLLATE DATABASE_DEFAULT NOT NULL
+    , [ServicingBranch] varchar(16) COLLATE DATABASE_DEFAULT NOT NULL
+    , [KnowledgeBaseNumber] varchar(16) COLLATE DATABASE_DEFAULT NULL
     , [ReleaseDate] date NOT NULL
-    , [PlatformScope] varchar(32) NOT NULL
+    , [PlatformScope] varchar(32) COLLATE DATABASE_DEFAULT NOT NULL
     , [IsSecurityRelease] bit NOT NULL
     , [IsLatestInBranch] bit NOT NULL
-    , [BuildOverviewUrl] nvarchar(512) NOT NULL
-    , [KnowledgeBaseUrl] nvarchar(512) NULL
+    , [BuildOverviewUrl] nvarchar(512) COLLATE DATABASE_DEFAULT NOT NULL
+    , [KnowledgeBaseUrl] nvarchar(512) COLLATE DATABASE_DEFAULT NULL
     , [CatalogAsOfDate] date NOT NULL
-    , [PrimarySourceUrl] nvarchar(512) NOT NULL
+    , [PrimarySourceUrl] nvarchar(512) COLLATE DATABASE_DEFAULT NOT NULL
     , [SourceRetrievedAtUtc] datetime2(0) NOT NULL
 );
 
-INSERT @Seed
+INSERT #SqlServerBuildCatalog_Seed
 VALUES
  ('15.0.2000.5',15,2000,5,N'RTM','RTM',NULL,'2019-11-04','WINDOWS_LINUX',0,1,N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2019/build-versions',NULL,'2026-07-21',N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2019/build-versions','2026-07-21T06:30:00')
 ,('15.0.4430.1',15,4430,1,N'CU32','CU','KB5054833','2025-02-27','WINDOWS_LINUX',0,1,N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2019/build-versions',N'https://support.microsoft.com/help/5054833','2026-07-21',N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2019/build-versions','2026-07-21T06:30:00')
@@ -85,31 +86,56 @@ VALUES
 ,('17.0.4060.2',17,4060,2,N'CU6 + GDR','CU_GDR','KB5101346','2026-07-14','WINDOWS_LINUX',1,1,N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2025/build-versions',N'https://support.microsoft.com/help/5101346','2026-07-21',N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2025/build-versions','2026-07-21T06:30:00')
 ,('17.0.1125.2',17,1125,2,N'GDR','GDR','KB5102333','2026-07-14','WINDOWS_LINUX',1,1,N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2025/build-versions',N'https://support.microsoft.com/help/5102333','2026-07-21',N'https://learn.microsoft.com/en-us/troubleshoot/sql/releases/sqlserver-2025/build-versions','2026-07-21T06:30:00');
 
-UPDATE [target]
-SET [ProductMajorVersion]=[source].[ProductMajorVersion],
-    [BuildNumber]=[source].[BuildNumber],
-    [RevisionNumber]=[source].[RevisionNumber],
-    [ReleaseName]=[source].[ReleaseName],
-    [ServicingBranch]=[source].[ServicingBranch],
-    [KnowledgeBaseNumber]=[source].[KnowledgeBaseNumber],
-    [ReleaseDate]=[source].[ReleaseDate],
-    [PlatformScope]=[source].[PlatformScope],
-    [IsSecurityRelease]=[source].[IsSecurityRelease],
-    [IsLatestInBranch]=[source].[IsLatestInBranch],
-    [BuildOverviewUrl]=[source].[BuildOverviewUrl],
-    [KnowledgeBaseUrl]=[source].[KnowledgeBaseUrl],
-    [CatalogAsOfDate]=[source].[CatalogAsOfDate],
-    [PrimarySourceUrl]=[source].[PrimarySourceUrl],
-    [SourceRetrievedAtUtc]=[source].[SourceRetrievedAtUtc]
-FROM [monitor].[SqlServerBuildCatalog] AS [target]
-JOIN @Seed AS [source] ON [source].[BuildVersion]=[target].[BuildVersion];
+/* Markerlose Abweichungen werden nicht als Frameworkeigentum interpretiert. */
+IF EXISTS
+(
+    SELECT 1 FROM [sys].[tables] AS [t] WITH (NOLOCK)
+    JOIN [sys].[schemas] AS [s] WITH (NOLOCK) ON [s].[schema_id]=[t].[schema_id]
+    WHERE [s].[name]=N'monitor' AND [t].[name]=N'SqlServerBuildCatalog'
+)
+BEGIN
+    EXEC [sys].[sp_executesql] N'
+IF EXISTS
+(
+ SELECT 1
+ FROM [monitor].[SqlServerBuildCatalog] AS [target]
+ JOIN #SqlServerBuildCatalog_Seed AS [source] ON [source].[BuildVersion]=[target].[BuildVersion]
+ WHERE EXISTS
+ (
+  SELECT CONVERT(varbinary(max),[target].[BuildVersion]),CONVERT(varbinary(max),[target].[ProductMajorVersion]),
+         CONVERT(varbinary(max),[target].[BuildNumber]),CONVERT(varbinary(max),[target].[RevisionNumber]),
+         CONVERT(varbinary(max),[target].[ReleaseName]),CONVERT(varbinary(max),[target].[ServicingBranch]),
+         CONVERT(varbinary(max),[target].[KnowledgeBaseNumber]),CONVERT(varbinary(max),[target].[ReleaseDate]),
+         CONVERT(varbinary(max),[target].[PlatformScope]),CONVERT(varbinary(max),[target].[IsSecurityRelease]),
+         CONVERT(varbinary(max),[target].[IsLatestInBranch]),CONVERT(varbinary(max),[target].[BuildOverviewUrl]),
+         CONVERT(varbinary(max),[target].[KnowledgeBaseUrl]),CONVERT(varbinary(max),[target].[CatalogAsOfDate]),
+         CONVERT(varbinary(max),[target].[PrimarySourceUrl]),CONVERT(varbinary(max),[target].[SourceRetrievedAtUtc])
+  EXCEPT
+  SELECT CONVERT(varbinary(max),[source].[BuildVersion]),CONVERT(varbinary(max),[source].[ProductMajorVersion]),
+         CONVERT(varbinary(max),[source].[BuildNumber]),CONVERT(varbinary(max),[source].[RevisionNumber]),
+         CONVERT(varbinary(max),[source].[ReleaseName]),CONVERT(varbinary(max),[source].[ServicingBranch]),
+         CONVERT(varbinary(max),[source].[KnowledgeBaseNumber]),CONVERT(varbinary(max),[source].[ReleaseDate]),
+         CONVERT(varbinary(max),[source].[PlatformScope]),CONVERT(varbinary(max),[source].[IsSecurityRelease]),
+         CONVERT(varbinary(max),[source].[IsLatestInBranch]),CONVERT(varbinary(max),[source].[BuildOverviewUrl]),
+         CONVERT(varbinary(max),[source].[KnowledgeBaseUrl]),CONVERT(varbinary(max),[source].[CatalogAsOfDate]),
+         CONVERT(varbinary(max),[source].[PrimarySourceUrl]),CONVERT(varbinary(max),[source].[SourceRetrievedAtUtc])
+ )
+)
+ THROW 53931,N''Markerless build catalog conflict.'',1;';
+END;
+-- DEPLOYMENT_PREFLIGHT_END
 
 INSERT [monitor].[SqlServerBuildCatalog]
+([BuildVersion],[ProductMajorVersion],[BuildNumber],[RevisionNumber],[ReleaseName],
+ [ServicingBranch],[KnowledgeBaseNumber],[ReleaseDate],[PlatformScope],[IsSecurityRelease],
+ [IsLatestInBranch],[BuildOverviewUrl],[KnowledgeBaseUrl],[CatalogAsOfDate],
+ [PrimarySourceUrl],[SourceRetrievedAtUtc])
 SELECT [source].*
-FROM @Seed AS [source]
+FROM #SqlServerBuildCatalog_Seed AS [source]
 WHERE NOT EXISTS
 (
     SELECT 1 FROM [monitor].[SqlServerBuildCatalog] AS [target]
     WHERE [target].[BuildVersion]=[source].[BuildVersion]
 );
+DROP TABLE #SqlServerBuildCatalog_Seed;
 GO
