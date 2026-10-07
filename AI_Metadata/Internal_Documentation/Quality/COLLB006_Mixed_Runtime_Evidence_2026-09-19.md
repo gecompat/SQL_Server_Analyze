@@ -3741,3 +3741,108 @@ außerhalb von Git. Positive Hintfehler und Fehlerpriorisierung, QS_OFF,
 Berechtigungen, Timeout, ältere native Engines und CL150/160 bleiben
 unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
 Maturityflags bleiben unverändert.
+
+## Query-Store-Regressionen: gemeinsamer Export mit getrennten nativen Intervallen
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und beide
+case-unterschiedlichen Unicode-CI_AS-Quellen besitzen getrennt gemessene
+Compatibility Levels 170. Jede Quelle enthält eine eigene synthetische
+Vierzeilentabelle und zwei eigene Procedures. Zwei tatsächlich getrennte,
+direkt aufeinanderfolgende Ein-Minuten-Intervalle erfassen je Query zuerst
+zwei und danach acht beziehungsweise vier Ausführungen. Native Kataloge
+liefern die exakten Fenstergrenzen. Query Store wird anschließend mit
+Capture NONE auf READ_ONLY eingefroren; beide Quellen bestätigen 1/1 und
+Capturemode 3. Die EXECUTIONS-Metrik ergibt über beide Datenbanken echte
+Ranggleichheiten bei 300 Prozent mit absoluter Änderung 6 sowie 100 Prozent
+mit Änderung 2.
+
+Das unveränderte Original liefert bei Limit 1 oder 2 jeweils vier TABLE-
+und CONSOLE-Zeilen; RAW und JSON liefern die verlangte Menge. Ein früher
+typgleicher Export mit unveränderten 25 Feldern wird nach vollständiger
+Sammlung, Unicodeprojektion, Truncationwarnungen und Zählern einmal global
+begrenzt. Alle vier Ausgabeconsumer lesen diese Menge. Die sieben
+Textcollations waren bereits Framework-CS. Datenbankname und Truncationbit
+bleiben NOT NULL, die übrigen 23 Felder nullable; keine Spalte besitzt
+eine Identity. Parameter, Intervallaggregation, Floatfilter, bestehende
+Sortierung, Gates, lokale N+1-Grenze und Statusbewertung bleiben erhalten.
+
+Zweiundzwanzig gepaarte Clientfälle umfassen je vollständiger Original-/
+Candidate-Suite 23 Batches und 64 Ergebnisgrids. Ein unabhängiges natives
+25-Feld-Orakel bestätigt sämtliche Werte und Feldfacetten, sieben
+Textcollations, NULL-/0-/positive Limits, Textgrenzen, Mindestexecutions,
+NULL-Schwellwerte, Prozentgrenzen 100/100.01/300/300.01, QueryId und Hash
+sowie exakte Unicode-/Case-Auswahl. Capturezeiten liegen zwischen getrennten
+datetime2(3)-Messgrenzen. Vollständige Consumer-/JSON-Multisets werden innerhalb
+eines Aufrufs verglichen. Zwischen getrennten Aufrufen werden native Werte,
+eindeutige Datenbank-/Queryschlüssel und strikt bessere Ranggrenzen geprüft;
+gleiche Sortwerte verlangen keine identische Auswahl. Alle acht Metafelder
+außer der Erzeugungszeit und die nativen Ausgabeschemas bleiben zwischen
+Original und Candidate gleich. Caller-LOCK_TIMEOUT 137 bleibt in allen
+22 Fällen erhalten.
+
+Eine getrennte native Originalgegenprobe bestätigt Fehler 51021 mit NULL-
+JSON beim negativen Textlimit: Der Unicodehelper wird trotz bereits
+gesetztem INVALID_PARAMETER aufgerufen. Ein minimaler Guard überspringt
+ausschließlich diese Projektion bei negativem Textlimit. Der finale Stand
+liefert ohne Ausnahme INVALID_PARAMETER mit leeren Arrays und erhaltenem
+Caller-Timeout. NULL-Textlimits bleiben unverändert zulässig.
+
+Common175 besteht mit 14 allgemeinen TABLE-/JSON-Fällen, 20 bedingten
+nativen Vollfeld-/Rangfällen, drei Verbrauchern, sechs Mappingablehnungen,
+drei leeren SQL-CONSOLE-Captures und drei direkten positiven CONSOLE-/JSON-
+Statusprüfungen. Der positive Block leitet Fenster und Sollwerte aus nativen
+Intervall-, Runtime-, Plan-, Query-, Objekt- und Textkatalogen ab und verändert
+keine Fixture. Positive Referenz-LIKE- und gemischte vorhandene/fehlende
+Auswahlfälle bestehen. Ein unabhängiger Client bestätigt zusätzlich alle
+25 nativen Werte und 26 CONSOLE-Feldfacetten der drei positiven Mengen mit
+1/2/4 Zeilen. Ohne Fixture bestehen 14 allgemeine Fälle; der native Block
+meldet NOT_EXECUTED mit null Fällen und wird nicht als positiver PASS gezählt.
+
+Ein direkter QueryStoreAnalysis-Aufruf ausschließlich mit Regressionen
+verwendet die Parentdefaults DURATION_AVG und 20 Prozent sowie die aus dem
+Vergleichsfenster abgeleitete Baseline. Die unabhängig gemessenen Dauerwerte
+aller vier Queries sinken; der Parent liefert daher korrekt null Regressionen,
+AVAILABLE, ein leeres 25-feldriges RAW-Schema und Child-JSON sowie EXECUTED
+auf Ordinal 5. Dieser Lauf belegt keine positive Parent-Regression. Native
+Datenbank-, Query-Store-, Querytext-, Hash-, Runtime-, Intervall- und
+Modulmetadaten bleiben vor und nach den positiven Verträgen unverändert.
+QI und ANSI_NULLS bleiben true. Der Caller-Timeout bleibt auch im Parent
+137; eine zusätzliche Timeoutreparatur ist nicht Bestandteil dieses Slices.
+
+Nach identitätsgeprüftem Cleanup beider eigenen Quellen besteht die
+vorhergesagte Auswahl aus Common124/165/175, Integration110/165/196/198
+und QueryStore110/121/138 in 28 Batches auf CL170. Die endgültige Auswahl
+wird zusätzlich gegen konkrete Commit-SHAs geprüft. Alle 75 statischen
+Prüfungen bestehen am stabilen funktionalen Stand mit Exitcode 0. OPS-005
+ist aus 166 kanonischen Quellen synchronisiert; sein Update und PLAN-001
+bleiben semantisch unverändert. Die anschließenden begrenzten Dokumentations-,
+Schreibstil- und Privacyprüfungen bestehen ebenfalls. UTF-8-, Quellhash-,
+Lieferumfang- und Diffprüfungen werden vor dem Commit gesondert geprüft.
+
+Der erste private Fixture-Aufbau erfasst beide Ausführungsgruppen noch im
+selben Intervall und erfüllt den geplanten Zeitnachweis nicht. Ausschließlich
+die beiden eigenen Testquellen werden zurückgesetzt; nach ausdrücklichem
+Warten auf die gemessene Grenze bestätigt der neue native Aufbau zwei
+getrennte Intervalle. Erst dieser Stand wird für die gepaarten Produktfälle
+verwendet. Weitere private Harnesskorrekturen normalisieren äquivalente
+Client-/SQL-JSON-Zeit- und Zahlendarstellungen vor dem Multisetvergleich.
+Keine dieser Korrekturen begründet eine zusätzliche Produktänderung.
+
+Die UTF-8/LF-Quellidentitäten des geprüften Stands lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source050 | 27AD530CD55325E29655B409BC035E657EF6DECEFBD46C92A855948605D876EB |
+| Common175 | 13C4AD104BADB7378973961A05E8BC27C6823F768B1A4DBCED460479A2A41AC7 |
+
+Container und Volume des eigenen Labs sind entfernt: zwei Schritte,
+null Fehler, REMOVED. Der eigene verschlüsselte temporäre Secretwert ist
+entfernt. Private Captures und konkrete Runtimeidentitäten bleiben außerhalb
+von Git. Positive gewichtete Metriken, allgemeine Float-/Rundungsgrenzen,
+QS_OFF, Berechtigungen, Timeout, exakte Cross-DB-Referenzlisten, ältere native
+Engines und CL150/160 bleiben unbelegt. Der bestehende unqualifizierte
+Referenzlistenhelper bleibt außerhalb dieses Slices; dessen 208-Pfad erhält
+hier keinen neuen positiven Nachweis. COLL-001 bleibt partiell; Registry,
+RUNTIME-001 und bestehende Maturityflags bleiben unverändert.
