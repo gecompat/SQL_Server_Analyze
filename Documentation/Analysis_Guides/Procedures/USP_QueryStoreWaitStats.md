@@ -31,11 +31,13 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `waitStats`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `waitStats` mit 25 Feldern und acht explizit Framework-collatierten Textspalten. `QueryStoreDatabaseName` und `QuerySqlTextIsTruncated` sind NOT NULL; der Export besitzt keine Identity-Spalte. RAW, CONSOLE, TABLE und JSON lesen dieselbe spät materialisierte Menge. Ein positives `@MaxZeilen` begrenzt diese Menge global nach `TotalQueryWaitTimeMs DESC, LastIntervalEndUtc DESC`; NULL und 0 bleiben unbegrenzt. Bei gleichen Sortwerten ist keine bestimmte Auswahl zwischen mehreren Aufrufen zugesichert.
+
+Zähler, `hasMoreRows`, Status und Truncationwarnung werden vorher aus allen gesammelten lokalen N+1-Kandidaten berechnet. Negative Zeilen- oder Textlimits ergeben `INVALID_PARAMETER` mit leerer Fachmenge; die Unicodeprojektion wird bei negativem Textlimit übersprungen. NULL und 0 als Textlimit erhalten den vollständigen Text. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile entspricht einer Query-/Plan-/Waitkategorie-Aggregation über gespeicherte Intervalle. `RecordedRows` ist nicht die Zahl einzelner Waits oder Ausführungen.
+Eine Zeile entspricht einer Query-/Plan-/Waitkategorie-/Ausführungstyp-Aggregation über gespeicherte Intervalle. `RecordedRows` ist nicht die Zahl einzelner Waits oder Ausführungen.
 
 ## So lesen
 
@@ -66,7 +68,7 @@ Für `USP_QueryStoreWaitStats` gilt zusätzlich: **keine Zeile** bedeutet, dass 
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Eine `ExampleDatabase`, das standardmäßige einstündige UTC-Fenster und globales TOP 100 ohne Referenzdatenbankfilter. |
+| Standardpfad | Ohne expliziten Datenbankfilter werden alle sichtbaren, geeigneten Online-Benutzerdatenbanken betrachtet; das UTC-Fenster umfasst eine Stunde und das globale TOP 100 gilt ohne Referenzdatenbankfilter. Das Einstiegsbeispiel begrenzt diesen Scope ausdrücklich auf `ExampleDatabase`. |
 | Teuerster Pfad | Viele Datenbanken, `VOLL`/unbegrenztes Limit, mehr als 24 Stunden und Referenzdatenbankfilter; letzterer lädt und zerlegt gespeicherte Showplan-XML, obwohl kein Plan-XML ausgegeben wird. |
 | Haupttreiber | Zahl gewählter Query Stores, überlappender Intervalle, Query-/Plan-Kombinationen und Wait-Stats-Zeilen im UTC-Fenster. Referenzdatenbankfilter lädt zusätzlich gespeicherte Showplan-XML; das abschließende TOP spart diese Vorarbeit nicht. |
 | Skalierung | Aufwand wächst mit Wait-Stat-Zeilen in überlappenden Intervallen, Plänen, Waitkategorien und Datenbanken. Referenzfilter addieren Showplan-XML-Parsing; SQL-Textbreite erhöht Transfer. |
@@ -87,7 +89,7 @@ Welche groben Waitkategorien dominierten historisch je Query-Store-Plan?
 
 ### Technischer Hintergrund
 
-Query Store ordnet konkrete Waittypen Kategorien zu und speichert Total/Avg/Min/Max je Plan, Intervall und Execution Type. Es erfasst Waits während Queryausführung, nicht Compile-Waits. Der Frameworkcode mittelt gespeicherte Intervallmittelwerte ungewichtet und summiert vollständig einbezogene Überlappungsintervalle.
+Query Store ordnet konkrete Waittypen Kategorien zu und speichert Total/Avg/Min/Max je Plan, Intervall und Execution Type. Es erfasst Waits während Queryausführung, nicht Compile-Waits. Der Frameworkcode mittelt die gespeicherten Record-Durchschnittswerte ungewichtet und summiert vollständig einbezogene Überlappungsintervalle. Ein Intervall wird mit `end_time > @VonUtc AND start_time < @BisUtc` ausgewählt; seine Werte und Grenzen werden vollständig übernommen, ohne zeitanteilige Kürzung.
 
 ### Datenkette
 
@@ -121,7 +123,9 @@ WHERE [i].[end_time] > @VonUtc
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung verwendet persistierte Waitkategorien innerhalb der Retention und bei aktivem Wait Capture; die Werte sind datenbank- und planbezogen.
+Die Auswertung verwendet persistierte Waitkategorien innerhalb der Retention und bei aktivem Wait Capture; die Werte sind datenbank- und planbezogen. Der Beschreibungsarm von `@WaitCategory` behält die native Vergleichscollation von `wait_category_desc`. Der numerische Arm vergleicht die konvertierte Kategorienummer auf beiden Seiten mit `SQL_Latin1_General_CP1_CS_AS`, damit unterschiedliche Quell- und Frameworkcollations keinen Konflikt erzeugen. Eine führende Null ist kein numerisch normalisierter Kategorienfilter: `N'03'` ist nicht `N'3'`.
+
+Der synthetische Vertrag Common176 liest ausschließlich eine extern vorbereitete Fixture. Ein Record pro Gruppe belegt die Feldwerte und Aggregation dieses Scopes, aber keine Wirkung unterschiedlicher Recordgewichtung. Exakte Cross-DB-Referenzlisten, Regex, Berechtigungsfehler und eine vollständige Wait-Timeline gehören nicht zu diesem positiven Fixturevertrag.
 
 ### Bewertung und Gegenprobe
 

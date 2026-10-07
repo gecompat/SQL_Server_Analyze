@@ -34031,6 +34031,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
     SET @Json = NULL;
+    CREATE TABLE [#QueryStoreWaitStats_Export]([QueryStoreDatabaseId] int,[QueryStoreDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[QueryId] bigint,[PlanId] bigint,[QueryHash] binary(8),[QueryPlanHash] binary(8),[WaitCategory] tinyint,[WaitCategoryDesc] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[ExecutionTypeDesc] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,[FirstIntervalStartUtc] datetimeoffset,[LastIntervalEndUtc] datetimeoffset,[RecordedRows] bigint,[TotalQueryWaitTimeMs] bigint,[AverageRecordedQueryWaitTimeMs] decimal(38,3),[MaxQueryWaitTimeMs] bigint,[QuerySqlText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS,[SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[CapturedAtUtc] datetime2(3) NULL,[EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[IsAggregated] bit NULL,[QuerySqlTextCharacters] bigint NULL,[QuerySqlTextBytes] bigint NULL,[QuerySqlTextIsTruncated] bit NOT NULL DEFAULT(0),[EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
     SET @AnalyseModus = UPPER(LTRIM(RTRIM(COALESCE(@AnalyseModus, 'TOP'))));
     DECLARE @ResultSetArtNormalisiert varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
@@ -34080,7 +34081,7 @@ BEGIN
 (
  SELECT [ws].[plan_id],[ws].[execution_type_desc],[ws].[wait_category],[ws].[wait_category_desc],MIN([i].[start_time]) [FirstStart],MAX([i].[end_time]) [LastEnd],COUNT_BIG(*) [RecordedRows],SUM([ws].[total_query_wait_time_ms]) [TotalWait],AVG(CONVERT(float,[ws].[avg_query_wait_time_ms])) [AverageWait],MAX([ws].[max_query_wait_time_ms]) [MaxWait]
  FROM [sys].[query_store_wait_stats] [ws] WITH (NOLOCK) JOIN [sys].[query_store_runtime_stats_interval] [i] WITH (NOLOCK) ON [i].[runtime_stats_interval_id]=[ws].[runtime_stats_interval_id]
- WHERE [i].[end_time]>@FromUtc AND [i].[start_time]<@ToUtc AND (@WaitCategory IS NULL OR [ws].[wait_category_desc]=@WaitCategory OR CONVERT(nvarchar(10),[ws].[wait_category])=@WaitCategory)
+ WHERE [i].[end_time]>@FromUtc AND [i].[start_time]<@ToUtc AND (@WaitCategory IS NULL OR [ws].[wait_category_desc]=@WaitCategory OR CONVERT(nvarchar(10),[ws].[wait_category]) COLLATE SQL_Latin1_General_CP1_CS_AS=@WaitCategory COLLATE SQL_Latin1_General_CP1_CS_AS)
  GROUP BY [ws].[plan_id],[ws].[execution_type_desc],[ws].[wait_category],[ws].[wait_category_desc]
 )
 INSERT [#QueryStoreWaitStats_Result]([QueryStoreDatabaseId],[QueryStoreDatabaseName],[QueryId],[PlanId],[QueryHash],[QueryPlanHash],[WaitCategory],[WaitCategoryDesc],[ExecutionTypeDesc],[FirstIntervalStartUtc],[LastIntervalEndUtc],[RecordedRows],[TotalQueryWaitTimeMs],[AverageRecordedQueryWaitTimeMs],[MaxQueryWaitTimeMs],[QuerySqlText])
@@ -34099,6 +34100,7 @@ END;';
         [CapturedAtUtc]=@CollectionTimeUtc,[EvidenceScope]='DATABASE_QUERY_PLAN_INTERVAL',[IsAggregated]=1,
         [EvidenceLimit]=N'Query-Store-Intervalaggregate; keine aktuelle Einzelausführung und keine vollständige Wait-Timeline.';
     DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
+    IF @MaxSqlTextZeichen IS NULL OR @MaxSqlTextZeichen>=0
     EXEC [monitor].[InternalProjectUnicodeTextColumn]
           @SourceTable=N'#QueryStoreWaitStats_Result',@TextColumn=N'QuerySqlText'
         , @CharactersColumn=N'QuerySqlTextCharacters',@BytesColumn=N'QuerySqlTextBytes'
@@ -34109,31 +34111,32 @@ END;';
         , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
         , @PrintMeldungen=@PrintMeldungen;
     SELECT @RowCount=COUNT_BIG(*) FROM [#QueryStoreWaitStats_Result];SET @HasMoreRows=CONVERT(bit,CASE WHEN @EffectiveMaxZeilen<9223372036854775807 AND @RowCount>@EffectiveMaxZeilen THEN 1 ELSE 0 END);IF @IsPartial=1 AND @StatusCode='AVAILABLE' SET @StatusCode='AVAILABLE_LIMITED';
+    INSERT [#QueryStoreWaitStats_Export] SELECT TOP(@EffectiveMaxZeilen) * FROM [#QueryStoreWaitStats_Result] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC;
     IF @ResultSetArtNormalisiert<>'NONE'
     BEGIN
       SELECT N'USP_QueryStoreWaitStats' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],CASE WHEN @RowCount>@EffectiveMaxZeilen THEN @EffectiveMaxZeilen ELSE @RowCount END [ReturnedRowCount],@HasMoreRows [HasMoreRows],@ErrorMessage [ErrorMessage];
-      IF @ResultSetArtNormalisiert='RAW' SELECT TOP(@EffectiveMaxZeilen) * FROM [#QueryStoreWaitStats_Result] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC;
-      ELSE SELECT TOP(@EffectiveMaxZeilen) N'Query-Store Wait' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[PlanId] [Plan],[WaitCategoryDesc] [Wait-Kategorie],CONCAT(CONVERT(varchar(30),CONVERT(decimal(19,2),[TotalQueryWaitTimeMs]/1000.0)),N' s') [Gesamte Wartezeit],[RecordedRows] [Messpunkte],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text] FROM [#QueryStoreWaitStats_Result] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC;
+      IF @ResultSetArtNormalisiert='RAW' SELECT * FROM [#QueryStoreWaitStats_Export] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC;
+      ELSE SELECT N'Query-Store Wait' [Ergebnis],[QueryStoreDatabaseName] [Query-Store-Datenbank],[QueryId] [Query],[PlanId] [Plan],[WaitCategoryDesc] [Wait-Kategorie],CONCAT(CONVERT(varchar(30),CONVERT(decimal(19,2),[TotalQueryWaitTimeMs]/1000.0)),N' s') [Gesamte Wartezeit],[RecordedRows] [Messpunkte],[QueryStoreDatabaseName] [Quelle],[QuerySqlText] [SQL-Text] FROM [#QueryStoreWaitStats_Export] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC;
       SELECT * FROM [#QueryStoreWaitStats_Errors] ORDER BY [DatabaseName];
     END;
     IF @JsonErzeugen=1
     BEGIN
       DECLARE @Meta nvarchar(max)=(SELECT N'QueryStoreWaitStats' [resultName],1 [schemaVersion],@CollectionTimeUtc [generatedAtUtc],@StatusCode [statusCode],@MaxZeilen [requestedMaxRows],CASE WHEN @RowCount>@EffectiveMaxZeilen THEN @EffectiveMaxZeilen ELSE @RowCount END [returnedRows],@HasMoreRows [hasMoreRows] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES);
-      DECLARE @Data nvarchar(max)=(SELECT TOP(@EffectiveMaxZeilen) * FROM [#QueryStoreWaitStats_Result] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
+      DECLARE @Data nvarchar(max)=(SELECT * FROM [#QueryStoreWaitStats_Export] ORDER BY [TotalQueryWaitTimeMs] DESC,[LastIntervalEndUtc] DESC FOR JSON PATH,INCLUDE_NULL_VALUES);
       DECLARE @Warnings nvarchar(max)=(SELECT * FROM [#QueryStoreWaitStats_Errors] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
       SET @Json=CONCAT(N'{"meta":',COALESCE(@Meta,N'{}'),N',"waitStats":',COALESCE(@Data,N'[]'),N',"warnings":',COALESCE(@Warnings,N'[]'),N'}');
     END;
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#QueryStoreWaitStats_Result'
+              @SourceTable=N'#QueryStoreWaitStats_Export'
             , @ResultLabel=N'QueryStoreWaitStats'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#QueryStoreWaitStats_Result'
+              @SourceTable = N'#QueryStoreWaitStats_Export'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;

@@ -200,15 +200,21 @@ Die Procedure aggregiert Query-Store-Waitkategorien je Plan und Ausführungstyp 
 | `FirstIntervalStartUtc`, `LastIntervalEndUtc` | sichtbare Intervallspanne |
 | `RecordedRows` | Zahl aggregierter Query-Store-Waitzeilen, nicht Zahl einzelner Waitevents |
 | `TotalQueryWaitTimeMs` | Summe der aufgezeichneten Query-Waitzeit |
-| `AverageRecordedQueryWaitTimeMs` | Mittel der gespeicherten Intervall-Durchschnittswerte; nicht strikt nach Ausführungen gewichtet |
+| `AverageRecordedQueryWaitTimeMs` | Ungewichtetes Mittel der gespeicherten Record-Durchschnittswerte; nicht nach Ausführungen gewichtet |
 | `MaxQueryWaitTimeMs` | größter gespeicherter Maximalwert |
 | `QuerySqlText` | optional gekürzter Text |
+
+### Ausgabe und Grenzen
+
+Die gemeinsame 25-Feld-Exportmenge versorgt RAW, CONSOLE, TABLE und JSON. Ihre acht Textspalten sind explizit mit `SQL_Latin1_General_CP1_CS_AS` collatiert; Datenbankname und Truncationflag sind NOT NULL, alle Spalten ohne Identity. Ein positives `@MaxZeilen` begrenzt global nach Totalzeit und letztem Intervallende absteigend; NULL und 0 sind unbegrenzt. Status, Zähler, `hasMoreRows` und Truncationwarnung entstehen aus den vollständigen lokalen N+1-Kandidaten vor dem Export. Sortties begründen keine feste Auswahl zwischen Aufrufen.
+
+Überlappende Intervalle werden vollständig übernommen, einschließlich ihrer nativen Grenzen; es erfolgt keine zeitanteilige Kürzung. Der Beschreibungskategorienfilter behält seinen nativen Vergleich. Nur der konvertierte numerische Kategorienarm wird beidseitig Framework-collatiert; führende Nullen werden nicht normalisiert. Negative Zeilen- und Textlimits liefern kontrolliert `INVALID_PARAMETER` und eine leere Menge; NULL und 0 als Textlimit behalten den vollständigen Text.
 
 ### Interpretation
 
 - Kategorien sind gröber als Live-Waittypen.
 - `TotalQueryWaitTimeMs` priorisiert Gesamtwirkung.
-- `AverageRecordedQueryWaitTimeMs` ist kein exakter Durchschnitt pro Ausführung, weil der Code Intervallmittelwerte mittelt.
+- `AverageRecordedQueryWaitTimeMs` ist kein exakter Durchschnitt pro Ausführung, weil der Code gespeicherte Record-Durchschnittswerte ungewichtet mittelt.
 - `RecordedRows` misst Messpunkte; mehr Messpunkte bedeuten nicht automatisch mehr Ausführungen.
 - Wait Capture muss aktiviert gewesen sein.
 
