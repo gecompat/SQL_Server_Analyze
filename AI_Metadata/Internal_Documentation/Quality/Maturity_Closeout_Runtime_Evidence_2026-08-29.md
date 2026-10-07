@@ -241,3 +241,59 @@ Retentionpolicy, tatsächlich fehlende optionale Quellen, Windows und
 zusätzliche native Engines bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; die Maturityflags und die historische
 Release-Matrix bleiben unverändert.
+
+## Ergänzende tatsächliche OPS-008-Agent-Ausführung vom 8. Oktober 2026
+
+Der öffentliche Runner `Invoke-Ops008MsdbHistoryScenario.ps1` mit
+`-Scenario AgentExecution` bestand auf einer neuen eigenen
+SQL-Server-2025-Linux-Docker-Instanz die Coreinstallation, den Smoke-Test,
+Runtimevertrag `122` und die
+[Agent-Ausführungsfixture](../../../../TestLab/Scenarios/OPS-008/agent-execution.sql).
+Der unveränderte Analyzerstand nach PR #272 wurde zuerst charakterisiert;
+ein Produktfehler wurde nicht beobachtet und keine Produktkorrektur vorgenommen.
+Der Runner erfasste tatsächlich `ProductVersion=17.0.4075.5` und
+Compatibility Level 170 der Frameworkdatenbank.
+
+Die Fixture verlangte eine leere Agent-Historie und einen freien eigenen
+Jobnamen. Sie erstellte über die nativen Agent-Prozeduren einen eigenen
+lokalen Job mit einem T-SQL-Schritt `SELECT 1`, ohne Zeitplan,
+Wiederholungsversuch oder Benachrichtigung. `sp_start_job` löste seine
+tatsächliche Ausführung aus. Ein auf 120 Polls mit jeweils einer Sekunde
+Abstand begrenzter Wartepfad verlangte erfolgreiche native Step-0- und
+Step-1-Historyrecords sowie einen gestarteten und beendeten Aktivitätsrecord
+mit passender Historyidentität. Job-ID, Schritt-UID und getrennte
+Historyidentitäten wurden unabhängig geprüft. Genau zwei native
+Historyzeilen gehörten zum eigenen Job; zusätzliche oder erfolglose
+Zeilen waren nicht zulässig. Nach dem Abschluss wurde der Job deaktiviert
+und die vollständige Historie mit einem weiteren Abstand von zwei Sekunden
+als stabil bestätigt. Es wurden keine Historyzeilen direkt injiziert.
+
+NONE, TABLE und CONSOLE bestätigten danach `AVAILABLE`, sechs Quellenzeilen
+und die Parität des Agent-Counts mit dem nativen `COUNT_BIG(*)`. Die
+bestehenden Agent-Zeitgrenzen `OldestUtc` und `NewestUtc` blieben NULL.
+TABLE und CONSOLE besaßen vollständige Parität aller acht Fachfelder mit
+JSON innerhalb desselben Aufrufs. Alle Historyspalten wurden vor und nach
+jedem Aufruf nach `instance_id` sortiert und mit `INCLUDE_NULL_VALUES`
+NULL-sicher verglichen. Die eigene Callertransaktion blieb committable
+mit `@@TRANCOUNT=1`; `LOCK_TIMEOUT=137` blieb erhalten.
+
+Nach dem Analyzervergleich wurde die Callertransaktion zurückgerollt.
+`sp_delete_job` entfernte ausschließlich den eigenen Job anhand seiner
+Job-ID. Die Fixture bestätigte die Abwesenheit seiner Job-, Schritt-,
+Server-, Schedule- und Aktivitätsrecords sowie der gesamten zuvor leeren
+Historie. Der Fehlerpfad besitzt denselben identitätsgebundenen Cleanup
+mit begrenztem Stop-Warten; sein tatsächlicher Fehlerlauf ist durch diesen
+Erfolgsnachweis nicht belegt. Das äußere Labcleanup bleibt unabhängig vom
+Szenarioergebnis erforderlich. Der native Lauf endete mit `PASS` und
+`REMOVED`; Container und Volume wurden entfernt. Runtimeidentitäten,
+native Zeitwerte, Secrets und Rohlogs bleiben außerhalb des Repositorys.
+
+Der Nachweis betrifft einen erfolgreichen minimalen lokalen Agent-Job auf
+SQL Server 2025 mit Docker. Er schließt weder Retention noch Jobdatums- oder
+Dauerinterpretation ab. Tatsächliche Mail-/Maintenance-Ausführung,
+Queueverarbeitung, fehlende optionale Quellen, Windows und weitere
+Provider oder native Engines bleiben separat offen. TEST-0001, die
+injizierte Agent-Fixture und die Registry bleiben unverändert; die neue
+Fixture ist ein OPS-008-Testbestandteil ohne eigene Artefaktreferenz.
+OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; Maturityflags und historische
+Release-Matrix bleiben unverändert.
