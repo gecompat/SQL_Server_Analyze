@@ -147,6 +147,12 @@ Der Referenzdatenbankfilter parst Showplan-XML und ist ein Deep-Pfad.
 
 `CPU_TOTAL`, `DURATION_TOTAL`, `READS_TOTAL`, `WRITES_TOTAL`, `EXECUTIONS`, `MEMORY_MAX`, `TEMPDB_TOTAL`, `LOG_BYTES_TOTAL`, `LAST_EXECUTION`.
 
+### Ausgabe und Mengenvertrag
+
+RAW, CONSOLE, TABLE und JSON verwenden einen gemeinsamen Export mit 40 Feldern und zehn expliziten Frameworktextcollations. Datenbankname, QueryId und PlanId sind NOT NULL, alle übrigen Felder nullable und alle Spalten ohne Identity. Ein positives `@MaxZeilen` begrenzt einmal global nach der gewählten Sortierung und den bestehenden Secondarykeys. NULL und 0 sind unbegrenzt; Status, Kandidatenzähler, `hasMoreRows`, Textwarnung und Planstatus werden vorher aus allen lokalen N+1-Kandidaten berechnet.
+
+Die dynamische Projektion verwendet eindeutiges `A.object_id` und Aliase für die neun bestehenden Rankausdrücke. `LAST_EXECUTION` verwendet den lokalen Zeit-Sortausdruck einmal; weitere Sorttie-Schlüssel werden nicht ergänzt. Ungültige Zeilen- und Textlimits liefern über die bestehende Statusprüfung eine leere `INVALID_PARAMETER`-Menge. NULL und 0 als Textlimit erhalten den vollständigen Text. Plan-XML bleibt nativ typisiert in RAW und TABLE; JSON serialisiert seinen XML-Wert als Text.
+
 ### Interpretation
 
 | Konstellation | Bewertung |
@@ -171,7 +177,7 @@ Der Referenzdatenbankfilter parst Showplan-XML und ist ein Deep-Pfad.
 
 ### Aussagegrenzen
 
-- Runtimewerte sind intervallaggregiert.
+- Runtimewerte werden je Plan, Intervall und Ausführungstyp gesammelt; die gespeicherten Durchschnittswerte werden mit Ausführungszahlen gewichtet und anschließend zusammengeführt.
 - Randintervalle werden vollständig einbezogen, wenn sie das Fenster schneiden.
 - Durchschnittswerte können multimodale Verteilungen verdecken.
 - `Total*` ist nur innerhalb des gewählten Fensters und sichtbaren Retentionsbereichs vergleichbar.

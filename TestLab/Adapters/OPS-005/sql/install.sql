@@ -33273,6 +33273,50 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json = NULL;
 
+    CREATE TABLE [#QueryStoreRuntimeStats_Export]
+    (
+          [QueryStoreDatabaseId] int NULL
+        , [QueryStoreDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [QueryId] bigint NOT NULL
+        , [PlanId] bigint NOT NULL
+        , [QueryHash] binary(8) NULL
+        , [QueryPlanHash] binary(8) NULL
+        , [ObjectId] bigint NULL
+        , [ObjectName] nvarchar(517) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ExecutionTypeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [FirstExecutionTimeUtc] datetimeoffset NULL
+        , [LastExecutionTimeUtc] datetimeoffset NULL
+        , [ExecutionCount] bigint NULL
+        , [TotalDurationMs] decimal(38,3) NULL
+        , [AverageDurationMs] decimal(38,3) NULL
+        , [TotalCpuMs] decimal(38,3) NULL
+        , [AverageCpuMs] decimal(38,3) NULL
+        , [TotalLogicalReads] decimal(38,3) NULL
+        , [AverageLogicalReads] decimal(38,3) NULL
+        , [TotalLogicalWrites] decimal(38,3) NULL
+        , [AverageLogicalWrites] decimal(38,3) NULL
+        , [TotalPhysicalReads] decimal(38,3) NULL
+        , [TotalMemoryGrantKb] decimal(38,3) NULL
+        , [MaxMemoryGrantKb] decimal(38,3) NULL
+        , [TotalRowCount] decimal(38,3) NULL
+        , [TotalLogBytes] decimal(38,3) NULL
+        , [TotalTempdbKb] decimal(38,3) NULL
+        , [SourceType] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceObject] nvarchar(256) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CapturedAtUtc] datetime2(3) NULL
+        , [EvidenceScope] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QuerySqlTextCharacters] bigint NULL
+        , [QuerySqlTextBytes] bigint NULL
+        , [QuerySqlTextIsTruncated] bit NULL
+        , [QuerySqlText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QueryPlanStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [QueryPlanCharacters] bigint NULL
+        , [QueryPlanBytes] bigint NULL
+        , [QueryPlan] xml NULL
+        , [QueryPlanTextFallback] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
+
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
              THEN CONVERT(bigint, 9223372036854775807)
@@ -33652,27 +33696,27 @@ BEGIN
         , [plan_id]
         , [query_hash]
         , [query_plan_hash]
-        , [object_id]
+        , [A].[object_id]
         , CASE WHEN [A].[object_id] > 0
                THEN QUOTENAME([os].[name]) + N''.'' + QUOTENAME([oo].[name]) END
         , [execution_type_desc]
         , [first_execution_time]
-        , [last_execution_time]
-        , [executions]
-        , CONVERT(decimal(38,3), [duration_weighted] / 1000.0)
+        , [last_execution_time] AS [LastExecutionTimeUtc]
+        , [executions] AS [ExecutionCount]
+        , CONVERT(decimal(38,3), [duration_weighted] / 1000.0) AS [TotalDurationMs]
         , CONVERT(decimal(38,3), [duration_weighted] / NULLIF([executions], 0) / 1000.0)
-        , CONVERT(decimal(38,3), [cpu_weighted] / 1000.0)
+        , CONVERT(decimal(38,3), [cpu_weighted] / 1000.0) AS [TotalCpuMs]
         , CONVERT(decimal(38,3), [cpu_weighted] / NULLIF([executions], 0) / 1000.0)
-        , CONVERT(decimal(38,3), [reads_weighted])
+        , CONVERT(decimal(38,3), [reads_weighted]) AS [TotalLogicalReads]
         , CONVERT(decimal(38,3), [reads_weighted] / NULLIF([executions], 0))
-        , CONVERT(decimal(38,3), [writes_weighted])
+        , CONVERT(decimal(38,3), [writes_weighted]) AS [TotalLogicalWrites]
         , CONVERT(decimal(38,3), [writes_weighted] / NULLIF([executions], 0))
         , CONVERT(decimal(38,3), [physical_weighted])
         , CONVERT(decimal(38,3), [memory_weighted] * 8.0)
-        , CONVERT(decimal(38,3), [max_memory_pages] * 8.0)
+        , CONVERT(decimal(38,3), [max_memory_pages] * 8.0) AS [MaxMemoryGrantKb]
         , CONVERT(decimal(38,3), [rows_weighted])
-        , CONVERT(decimal(38,3), [log_weighted])
-        , CONVERT(decimal(38,3), [tempdb_weighted] * 8.0)
+        , CONVERT(decimal(38,3), [log_weighted]) AS [TotalLogBytes]
+        , CONVERT(decimal(38,3), [tempdb_weighted] * 8.0) AS [TotalTempdbKb]
         , [query_sql_text]
         , CASE WHEN @IncludePlan = 1 THEN [query_plan] END
     FROM [A]
@@ -33680,7 +33724,7 @@ BEGIN
       ON [oo].[object_id] = [A].[object_id]
     LEFT JOIN [sys].[schemas] AS [os] WITH (NOLOCK)
       ON [os].[schema_id] = [oo].[schema_id]
-    ORDER BY ' + QUOTENAME(@Order) + N' DESC, [last_execution_time] DESC;
+    ORDER BY ' + QUOTENAME(@Order) + N' DESC' + CASE WHEN @Order=N'LastExecutionTimeUtc' THEN N'' ELSE N', [last_execution_time] DESC' END + N';
 END;';
 
                 EXEC [sys].[sp_executesql]
@@ -33807,6 +33851,24 @@ END;';
             SET @StatusCode = 'AVAILABLE_LIMITED';
     END;
 
+    INSERT [#QueryStoreRuntimeStats_Export]
+    SELECT TOP (@EffectiveMaxZeilen) [r].*
+        FROM [#QueryStoreRuntimeStats_Result] AS [r]
+        ORDER BY
+              CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
+            , CASE WHEN @Sortierung = 'CPU_TOTAL' THEN [TotalCpuMs]
+                   WHEN @Sortierung = 'DURATION_TOTAL' THEN [TotalDurationMs]
+                   WHEN @Sortierung = 'READS_TOTAL' THEN [TotalLogicalReads]
+                   WHEN @Sortierung = 'WRITES_TOTAL' THEN [TotalLogicalWrites]
+                   WHEN @Sortierung = 'EXECUTIONS' THEN [ExecutionCount]
+                   WHEN @Sortierung = 'MEMORY_MAX' THEN [MaxMemoryGrantKb]
+                   WHEN @Sortierung = 'TEMPDB_TOTAL' THEN [TotalTempdbKb]
+                   WHEN @Sortierung = 'LOG_BYTES_TOTAL' THEN [TotalLogBytes] END DESC
+            , [LastExecutionTimeUtc] DESC
+            , [QueryStoreDatabaseName]
+            , [QueryId]
+            , [PlanId];
+
     IF @JsonErzeugen = 1
     BEGIN
         DECLARE @MetaJson nvarchar(max) =
@@ -33830,10 +33892,7 @@ END;';
         );
         DECLARE @DataJson nvarchar(max) =
         (
-            SELECT *
-            FROM
-            (
-                SELECT TOP (@EffectiveMaxZeilen)
+                SELECT
                       [r].[QueryStoreDatabaseId],[r].[QueryStoreDatabaseName],[r].[QueryId],[r].[PlanId]
                     , [r].[QueryHash],[r].[QueryPlanHash],[r].[ObjectId],[r].[ObjectName]
                     , [r].[ExecutionTypeDesc],[r].[FirstExecutionTimeUtc],[r].[LastExecutionTimeUtc]
@@ -33847,7 +33906,7 @@ END;';
                     , [r].[QueryPlanStatus],[r].[QueryPlanCharacters],[r].[QueryPlanBytes]
                     , CONVERT(nvarchar(max),[r].[QueryPlan]) AS [QueryPlan]
                     , [r].[QueryPlanTextFallback],[r].[EvidenceLimit]
-                FROM [#QueryStoreRuntimeStats_Result] AS [r]
+                FROM [#QueryStoreRuntimeStats_Export] AS [r]
                 ORDER BY
                       CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
                     , CASE WHEN @Sortierung = 'CPU_TOTAL' THEN [TotalCpuMs]
@@ -33862,7 +33921,6 @@ END;';
                     , [QueryStoreDatabaseName]
                     , [QueryId]
                     , [PlanId]
-            ) AS [x]
             FOR JSON PATH, INCLUDE_NULL_VALUES
         );
         DECLARE @WarningsJson nvarchar(max) =
@@ -33898,8 +33956,8 @@ END;';
                      N' bis ', CONVERT(nvarchar(30), @BisUtc, 126),
                      N'; Deep=', @Deep) AS [Detail];
 
-        SELECT TOP (@EffectiveMaxZeilen) [r].*
-        FROM [#QueryStoreRuntimeStats_Result] AS [r]
+        SELECT [r].*
+        FROM [#QueryStoreRuntimeStats_Export] AS [r]
         ORDER BY
               CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
             , CASE WHEN @Sortierung = 'CPU_TOTAL' THEN [TotalCpuMs]
@@ -33929,7 +33987,7 @@ END;';
             , @BisUtc AS [Bis_UTC]
             , @ErrorMessage AS [Hinweis];
 
-        SELECT TOP (@EffectiveMaxZeilen)
+        SELECT
               N'Query-Store-Abfrage' AS [Ergebnis]
             , [r].[QueryStoreDatabaseName] AS [QueryStore_Datenbank]
             , [r].[QueryId] AS [Query_ID]
@@ -33950,7 +34008,7 @@ END;';
             , [r].[LastExecutionTimeUtc] AS [Letzte_Ausführung_UTC]
             , [r].[QuerySqlText] AS [SQL_Text]
             , [r].[QueryPlan] AS [Query_Plan]
-        FROM [#QueryStoreRuntimeStats_Result] AS [r]
+        FROM [#QueryStoreRuntimeStats_Export] AS [r]
         ORDER BY
               CASE WHEN @Sortierung = 'LAST_EXECUTION' THEN [LastExecutionTimeUtc] END DESC
             , CASE WHEN @Sortierung = 'CPU_TOTAL' THEN [TotalCpuMs]
@@ -33978,14 +34036,14 @@ END;';
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#QueryStoreRuntimeStats_Result'
+              @SourceTable=N'#QueryStoreRuntimeStats_Export'
             , @ResultLabel=N'QueryStoreRuntimeStats'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#QueryStoreRuntimeStats_Result'
+              @SourceTable = N'#QueryStoreRuntimeStats_Export'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
