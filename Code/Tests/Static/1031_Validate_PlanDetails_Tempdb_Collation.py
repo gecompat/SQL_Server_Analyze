@@ -33,13 +33,13 @@ def findings(s: str) -> list[str]:
         "@AnalysisClass='PLAN_CACHE_DEEP'", "GROUP BY [NumberValue]",
         "SELECT @RowCount=COUNT_BIG(*) FROM [#PlanDetails_Candidate]",
         "ORDER BY [qs].[total_worker_time] DESC", "ORDER BY [CandidateId]",
-        "IF @StatusCode='AVAILABLE' AND @MitPlanAttributes=1",
-        "IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitCompilePlan=1",
-        "IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitTextPlan=1",
-        "IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLastActualPlan=1",
+        "IF @ResolveCandidateDetails=1 AND @MitPlanAttributes=1",
+        "IF @ResolveCandidateDetails=1 AND @MitCompilePlan=1",
+        "IF @ResolveCandidateDetails=1 AND @MitTextPlan=1",
+        "IF @ResolveCandidateDetails=1 AND @MitLastActualPlan=1",
         "IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=1",
         "IF @SingleSessionId IS NULL", "sys.dm_exec_query_plan_stats", "dm_exec_query_statistics_xml",
-        "COALESCE([c].[StatementStartOffset],0),COALESCE([c].[StatementEndOffset],-1)",
+        "COALESCE(@SourceStartOffset,0),COALESCE(@SourceEndOffset,-1)",
         "OUTER APPLY [monitor].[TVF_StatementText]", "INCLUDE_NULL_VALUES", "N'PlanDetails' [resultName],1 [schemaVersion]",
         "WHEN N'candidates' THEN N'#PlanDetails_CandidatesOutput'",
         "WHEN N'attributes' THEN N'#PlanDetails_Attributes'", "WHEN N'plans' THEN N'#PlanDetails_Plans'",
@@ -56,6 +56,34 @@ def findings(s: str) -> list[str]:
     if len(re.findall(r"SELECT \* FROM \[#PlanDetails_CandidatesOutput\]",s))!=2: errors.append("CANDIDATES_SHARED")
     if len(re.findall(r"SELECT \* FROM \[#PlanDetails_Attributes\]",s))!=2: errors.append("ATTRIBUTES_SHARED")
     if "CONVERT(nvarchar(max),[QueryPlanXml]) [QueryPlanXml]" not in s: errors.append("XML_JSON")
+    isolation=s[s.find("    OPEN [CandidateSourceCursor]"):s.find("    IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=1")]
+    catches=re.findall(r"BEGIN TRY(.*?)END TRY BEGIN CATCH(.*?)END CATCH;",isolation,re.S)
+    sources=("dm_exec_plan_attributes(@SourcePlanHandle)","dm_exec_query_plan(@SourcePlanHandle)",
+             "dm_exec_text_query_plan(@SourcePlanHandle,COALESCE(@SourceStartOffset,0),COALESCE(@SourceEndOffset,-1))",
+             "dm_exec_query_plan_stats(@SourcePlanHandle)","dm_exec_sql_text](COALESCE(@SourceSqlHandle,@SourcePlanHandle))")
+    first="SET @IsPartial=1;IF @StatusCode IN('AVAILABLE','PARTIAL') SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;"
+    if len(catches)!=5: errors.append("ISOLATED_SOURCE_COUNT")
+    for i,(body,catch) in enumerate(catches):
+        if i>=5 or norm(sources[i]) not in norm(body): errors.append("ISOLATED_SOURCE:"+str(i))
+        key="WHERE [o].[CandidateId]=@SourceCandidateId;" if i==4 else "WHERE [c].[CandidateId]=@SourceCandidateId;"
+        if norm(key) not in norm(body) or norm(first) not in norm(catch): errors.append("ISOLATED_KEY_FIRST_ERROR:"+str(i))
+        if i in(1,2,3):
+            source=("COMPILE_XML","COMPILE_TEXT","LAST_ACTUAL_XML")[i-1]
+            value="VALUES(@SourceCandidateId,'"+source+"','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE());"
+            if norm(value) not in norm(catch): errors.append("ISOLATED_ERROR_ROW:"+source)
+        elif "INSERT [#PlanDetails_Plans]" in catch or "DELETE" in catch: errors.append("ISOLATED_FAILURE_PRESERVATION")
+    raw=s.find("    INSERT [#PlanDetails_CandidatesOutput]")
+    cursor=s.find("    DECLARE [CandidateSourceCursor]")
+    text=s.find("        UPDATE [o]")
+    warning=s.find("    IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE')")
+    if not(0<raw<cursor<text<s.find("InternalEmitTruncationWarning")<warning<s.find("    IF @ResultSetArtNormalisiert<>'NONE'")): errors.append("RAW_FIRST_WARNING_LAST")
+    if "FROM [#PlanDetails_Candidate];" not in s[raw:cursor] or "[StatementText]" in s[raw:cursor]: errors.append("RAW_CANDIDATE_PRESERVATION")
+    for token in ("@ResolveCandidateDetails bit=CASE WHEN @StatusCode IN('AVAILABLE','PARTIAL') THEN 1 ELSE 0 END",
+                  "SELECT [CandidateId],[PlanHandle],[SqlHandle],[StatementStartOffset],[StatementEndOffset]",
+                  "INTO @SourceCandidateId,@SourcePlanHandle,@SourceSqlHandle,@SourceStartOffset,@SourceEndOffset;",
+                  "CLOSE [CandidateSourceCursor];DEALLOCATE [CandidateSourceCursor];"):
+        if norm(token) not in norm(s): errors.append("CURSOR:"+token)
+    if re.search(r"(?:DATALENGTH|LEN)\s*\([^)]*(?:PlanHandle|SqlHandle)",s,re.I): errors.append("HANDLE_LENGTH_WHITELIST")
     return errors
 
 def self_test(s: str) -> int:
@@ -83,8 +111,8 @@ def self_test(s: str) -> int:
         ("@ParameterValue=@MaxSqlTextZeichen","@ParameterValue=@ProjectionMaxCharacters"),
         ("@AllowedResultNames=N'candidates|attributes|plans'","@AllowedResultNames=N'candidates'"),
         ("@AnalysisClass='PLAN_CACHE_DEEP'","@AnalysisClass='BROKEN'"),
-        ("IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitCompilePlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitCompilePlan=0"),("IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitTextPlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitTextPlan=0"),
-        ("IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLastActualPlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLastActualPlan=0"),("IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=0"),
+        ("IF @ResolveCandidateDetails=1 AND @MitCompilePlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitCompilePlan=0"),("IF @ResolveCandidateDetails=1 AND @MitTextPlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitTextPlan=0"),
+        ("IF @ResolveCandidateDetails=1 AND @MitLastActualPlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLastActualPlan=0"),("IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=1","IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=0"),
         ("IF @SingleSessionId IS NULL","IF 1=0"),
         ("WHEN @MaxAnalyseobjekte IS NULL OR @MaxAnalyseobjekte=0","WHEN @MaxAnalyseobjekte=0"),
         ("GROUP BY [NumberValue]","GROUP BY [IsValid]"),
@@ -97,6 +125,32 @@ def self_test(s: str) -> int:
         mutations.append(s[:m.start()]+"@MaxCharacters=@MaxSqlTextZeichen"+s[m.end():])
     for m in re.finditer(r"SELECT \* FROM \[#PlanDetails_(?:CandidatesOutput|Attributes)\]",s):
         mutations.append(s[:m.start()]+m.group(0).replace("#PlanDetails_","#Broken_")+s[m.end():])
+    isolated=s[s.index("    OPEN [CandidateSourceCursor]"):s.index("    IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=1")]
+    for m in re.finditer(r"BEGIN TRY(.*?)END TRY BEGIN CATCH(.*?)END CATCH;",isolated,re.S):
+        for old,new in (("BEGIN TRY","BEGIN"),("IF @ErrorMessage IS NULL","IF 1=1"),
+                        ("SET @StatusCode='PARTIAL'","SET @StatusCode='ERROR_HANDLED'"),
+                        ("@SourceCandidateId;","@SourceCandidateId+1;")):
+            block=m.group(0);changed=block.replace(old,new,1)
+            if changed==block: raise AssertionError("Isolation mutation target: "+old)
+            mutations.append(s.replace(block,changed,1))
+        block=m.group(0)
+        if "VALUES(@SourceCandidateId," in block: mutations.append(s.replace(block,block.replace("VALUES(@SourceCandidateId,","VALUES(NULL,",1),1))
+    for old,new in (("@ResolveCandidateDetails bit=CASE WHEN @StatusCode IN('AVAILABLE','PARTIAL') THEN 1 ELSE 0 END","@ResolveCandidateDetails bit=1"),
+                    ("dm_exec_plan_attributes(@SourcePlanHandle)","dm_exec_plan_attributes(@PlanHandle)"),
+                    ("dm_exec_query_plan(@SourcePlanHandle)","dm_exec_query_plan(@PlanHandle)"),
+                    ("dm_exec_query_plan_stats(@SourcePlanHandle)","dm_exec_query_plan_stats(@PlanHandle)"),
+                    ("COALESCE(@SourceSqlHandle,@SourcePlanHandle)","@SourceSqlHandle"),
+                    ("CLOSE [CandidateSourceCursor];DEALLOCATE [CandidateSourceCursor];","CLOSE [CandidateSourceCursor];")):
+        mutations.append(s.replace(old,new,1))
+    warning_start=s.index("    IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE')")
+    warning_end=s.index("    IF @ResultSetArtNormalisiert<>'NONE'",warning_start)
+    warning=s[warning_start:warning_end]
+    moved=s[:warning_start]+s[warning_end:]
+    mutations.append(moved.replace("    BEGIN TRY\n        UPDATE [o]",warning+"    BEGIN TRY\n        UPDATE [o]",1))
+    raw_start=s.index("    INSERT [#PlanDetails_CandidatesOutput]")
+    raw_end=s.index("    DECLARE @ResolveCandidateDetails",raw_start)
+    raw=s[raw_start:raw_end];moved=s[:raw_start]+s[raw_end:]
+    mutations.append(moved.replace("    DECLARE @TruncatedValueCount",raw+"    DECLARE @TruncatedValueCount",1))
     for index,altered in enumerate(mutations):
         if altered==s or not findings(altered): raise AssertionError("Undetected mutation: "+str(index))
     return len(mutations)

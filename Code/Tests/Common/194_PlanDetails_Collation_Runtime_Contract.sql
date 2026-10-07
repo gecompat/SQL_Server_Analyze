@@ -7,6 +7,9 @@ GO
 Prüft die drei PlanDetails-Exporte mit 37 unabhängigen Literal-Schemafeldern
 und neun Frameworktextcollations. Allgemeine Fälle prüfen Parameter, frühe
 TABLE-Vorprüfung und vollständige gleichaufrufbezogene TABLE-/JSON-Parität.
+Acht synthetische Handlevarianten prüfen echte native Quellenfehler und
+leere native Quellen. Ihre Länge entscheidet nicht über die Gültigkeit.
+Gemischte Fälle bewahren gültige Nachbarkandidaten und ihre Detailquellen.
 Der optionale native Block liest ausschließlich den über SESSION_CONTEXT
 übergebenen eigenen Example*-Cacheplan. Er erzeugt keinen Workload und ändert
 keine Profiling-, Last-Actual-, Live- oder Datenbankoptionen. Ohne geeigneten
@@ -82,7 +85,8 @@ INSERT #ExamplePlanDetailsCases VALUES
 (8,3,0,20,8000,0,0,0,0,0,'INVALID_PARAMETER'),(9,1,0,-1,0,0,0,0,0,0,'INVALID_PARAMETER'),
 (10,1,0,1,-1,0,0,0,0,0,'INVALID_PARAMETER'),(11,1,0,1,-5,0,0,0,0,0,'INVALID_PARAMETER'),
 (12,4,0,1,0,0,0,0,0,0,'AVAILABLE'),(13,1,0,1,0,NULL,NULL,NULL,NULL,NULL,'AVAILABLE'),
-(14,5,0,1,0,0,0,0,0,0,'AVAILABLE'),(15,1,0,21,0,0,0,0,0,0,'AVAILABLE');
+(14,5,0,1,0,0,0,0,0,0,'AVAILABLE'),(15,1,0,21,0,0,0,0,0,0,'AVAILABLE'),
+(16,1,7,1,0,1,1,1,0,0,'AVAILABLE');
 DECLARE @FixtureHandle varbinary(64)=TRY_CONVERT(varbinary(64),SESSION_CONTEXT(N'ExamplePlanDetailsFixturePlanHandle')),
  @FixtureDatabase sysname=TRY_CONVERT(sysname,SESSION_CONTEXT(N'ExamplePlanDetailsFixtureDatabase')),
  @FixtureStatus varchar(40)='NOT_EXECUTED',@FixtureDbId int,@NativeCases int=0,@CoreCases int=0,@NullMutations int=0;
@@ -114,100 +118,64 @@ BEGIN
   (110,0,1,1,0,0,0,0,0,1,'AVAILABLE'),(111,0,4,2,0,1,1,1,0,0,'AVAILABLE');
  END;
 END;
-DECLARE @OwnSessions nvarchar(max)=CONVERT(nvarchar(12),@@SPID),@MissingSession smallint;
-SELECT TOP(1) @MissingSession=CONVERT(smallint,v.n) FROM (VALUES(32767),(32766),(32765))v(n)
- WHERE NOT EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id=v.n);
-IF @MissingSession IS NULL THROW 59700,N'PLAN_DETAILS_EMPTY_SESSION_GUARD',1;
-DECLARE @Case int=-1,@SessionKind int,@SelectorKind int,@Max int,@Limit int,@Attrs bit,@Compile bit,@Text bit,@Actual bit,@Live bit,
- @Expected varchar(40),@Sessions nvarchar(max),@Plan varbinary(64),@SqlHandle varbinary(64),@Hash binary(8),@Json nvarchar(max),
- @Before datetime2(3),@After datetime2(3),@Map nvarchar(max)=N'{"candidates":"#ExamplePlanDetailsCandidates","attributes":"#ExamplePlanDetailsAttributes","plans":"#ExamplePlanDetailsPlans"}',
- @Arrays nvarchar(max),@Sql nvarchar(max),@ObjectId int,@ExpectedObjectId int,@ArrayName sysname,@Target sysname,@Template sysname,@Count int;
-CREATE TABLE #ExamplePlanDetailsArrayCheck (ArrayName sysname COLLATE SQL_Latin1_General_CP1_CS_AS,TableJson nvarchar(max) COLLATE Latin1_General_100_BIN2,JsonArray nvarchar(max) COLLATE Latin1_General_100_BIN2);
-BEGIN TRY
-WHILE EXISTS(SELECT 1 FROM #ExamplePlanDetailsCases WHERE CaseNumber>@Case)
+CREATE TABLE #ExamplePlanDetailsHandles
+(HandleIndex int NOT NULL PRIMARY KEY,HandleValue varbinary(64) NOT NULL);
+INSERT #ExamplePlanDetailsHandles VALUES(0,0x),(1,0x00),(2,0x01),(3,0x0100),
+(4,CONVERT(varbinary(64),REPLICATE(CHAR(255),44))),(5,CONVERT(varbinary(64),REPLICATE(CHAR(255),64))),
+(6,CONVERT(varbinary(64),REPLICATE(CHAR(0),44))),(7,CONVERT(varbinary(64),REPLICATE(CHAR(0),64)));
+CREATE TABLE #ExamplePlanDetailsHandleSources
+(HandleIndex int NOT NULL,SourceName varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+ ErrorNumber int NULL,ErrorMessage nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,NativeRowCount int NULL,
+ PRIMARY KEY(HandleIndex,SourceName));
+DECLARE @ProbeHandle varbinary(64),@ProbeIndex int=0,@ProbeSource int,@ProbeCount int,@ProbeNumber int,@ProbeMessage nvarchar(2048);
+WHILE @ProbeIndex<8
 BEGIN
- SELECT TOP(1) @Case=CaseNumber,@SessionKind=SessionKind,@SelectorKind=SelectorKind,@Max=MaxObjects,@Limit=TextLimit,
- @Attrs=AttributesFlag,@Compile=CompileFlag,@Text=TextFlag,@Actual=ActualFlag,@Live=LiveFlag,@Expected=ExpectedStatus
- FROM #ExamplePlanDetailsCases WHERE CaseNumber>@Case ORDER BY CaseNumber;
- SET @Sessions=CASE @SessionKind WHEN 1 THEN @OwnSessions WHEN 2 THEN N'not-a-number' WHEN 3 THEN N'32768'
- WHEN 4 THEN @OwnSessions+N'|'+@OwnSessions WHEN 5 THEN CONVERT(nvarchar(12),@MissingSession) END;
- SET @Plan=CASE WHEN @SelectorKind IN(1,4) THEN @FixtureHandle END;
- SET @SqlHandle=CASE WHEN @SelectorKind IN(2,4) THEN (SELECT MIN(SqlHandle) FROM #ExamplePlanDetailsNative) END;
- SET @Hash=CASE WHEN @SelectorKind=3 THEN (SELECT MIN(QueryHash) FROM #ExamplePlanDetailsNative) END;
- CREATE TABLE #ExamplePlanDetailsCandidates(Seed int NULL);
- CREATE TABLE #ExamplePlanDetailsAttributes(Seed int NULL);
- CREATE TABLE #ExamplePlanDetailsPlans(Seed int NULL);
- SET @Before=SYSUTCDATETIME();
- EXEC monitor.USP_PlanDetails @SessionIds=@Sessions,@PlanHandle=@Plan,@SqlHandle=@SqlHandle,@QueryHash=@Hash,
- @MaxAnalyseobjekte=@Max,@HighImpactConfirmed=1,@MaxSqlTextZeichen=@Limit,@MitPlanAttributes=@Attrs,@MitCompilePlan=@Compile,
- @MitTextPlan=@Text,@MitLastActualPlan=@Actual,@MitLivePlan=@Live,@ResultSetArt='TABLE',@ResultTablesJson=@Map,
- @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
- SET @After=SYSUTCDATETIME();
- IF @@LOCK_TIMEOUT<>137 THROW 59701,N'PLAN_DETAILS_CALLER_TIMEOUT',1;
- IF ISNULL(ISJSON(@Json),0)<>1 OR ISNULL(JSON_VALUE(@Json,'$.meta.statusCode'),N'')<>@Expected
- OR JSON_VALUE(@Json,'$.meta.isPartial')<>N'false' THROW 59702,N'PLAN_DETAILS_STATUS',1;
- IF (SELECT COUNT(*) FROM OPENJSON(@Json))<>5 OR EXISTS(SELECT 1 FROM OPENJSON(@Json) GROUP BY [key] HAVING COUNT(*)<>1)
- OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json)
- EXCEPT SELECT n,t FROM (VALUES(N'meta',5),(N'candidates',4),(N'attributes',4),(N'plans',4),(N'warnings',4))v(n,t))
- OR JSON_QUERY(@Json,'$.warnings')<>N'[]' THROW 59703,N'PLAN_DETAILS_JSON_TOP',1;
- IF (SELECT COUNT(*) FROM OPENJSON(@Json,'$.meta'))<>8 OR EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.meta') GROUP BY [key] HAVING COUNT(*)<>1)
- OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json,'$.meta') EXCEPT
- SELECT n,t FROM (VALUES(N'resultName',1),(N'schemaVersion',2),(N'generatedAtUtc',1),(N'statusCode',1),(N'isPartial',3),
- (N'candidateCount',2),(N'errorNumber',0),(N'errorMessage',CASE WHEN @Expected='INVALID_PARAMETER' THEN 1 ELSE 0 END))v(n,t))
- OR JSON_VALUE(@Json,'$.meta.resultName')<>N'PlanDetails' OR ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,'$.meta.schemaVersion')),0)<>1
- OR TRY_CONVERT(datetime2(3),JSON_VALUE(@Json,'$.meta.generatedAtUtc')) IS NULL
- OR TRY_CONVERT(datetime2(3),JSON_VALUE(@Json,'$.meta.generatedAtUtc')) NOT BETWEEN @Before AND @After THROW 59704,N'PLAN_DETAILS_JSON_META',1;
- DELETE #ExamplePlanDetailsArrayCheck;
- DECLARE ArrayCursor CURSOR LOCAL FAST_FORWARD FOR SELECT n,t,s FROM (VALUES
- (N'candidates',N'#ExamplePlanDetailsCandidates',N'#ExamplePlanDetailsSchema_candidates'),
- (N'attributes',N'#ExamplePlanDetailsAttributes',N'#ExamplePlanDetailsSchema_attributes'),
- (N'plans',N'#ExamplePlanDetailsPlans',N'#ExamplePlanDetailsSchema_plans'))v(n,t,s);
- OPEN ArrayCursor;FETCH NEXT FROM ArrayCursor INTO @ArrayName,@Target,@Template;
- WHILE @@FETCH_STATUS=0
+ SELECT @ProbeHandle=HandleValue FROM #ExamplePlanDetailsHandles WHERE HandleIndex=@ProbeIndex;
+ SET @ProbeSource=0;
+ WHILE @ProbeSource<5
  BEGIN
- SET @ObjectId=OBJECT_ID(N'tempdb..'+@Target);SET @ExpectedObjectId=OBJECT_ID(N'tempdb..'+@Template);
- IF EXISTS(SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
- FROM tempdb.sys.columns WHERE object_id=@ObjectId EXCEPT
- SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
- FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId)
- OR EXISTS(SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
- FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId EXCEPT
- SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
- FROM tempdb.sys.columns WHERE object_id=@ObjectId) THROW 59705,N'PLAN_DETAILS_SCHEMA',1;
- DECLARE @TableJson nvarchar(max),@Projection nvarchar(max)=CASE WHEN @ArrayName=N'plans' THEN
- N'[CandidateId],[SourceType],[StatusCode],[DatabaseId],[ObjectId],[IsEncrypted],CONVERT(nvarchar(max),[QueryPlanXml]) AS [QueryPlanXml],[QueryPlanText],[ErrorNumber],[ErrorMessage]' ELSE N'*' END;
- SET @Sql=N'SELECT @j=(SELECT '+@Projection+N' FROM '+QUOTENAME(@Target)+N' FOR JSON PATH,INCLUDE_NULL_VALUES),@c=COUNT(*) FROM '+QUOTENAME(@Target)+N';';
- EXEC sys.sp_executesql @Sql,N'@j nvarchar(max) OUTPUT,@c int OUTPUT',@j=@TableJson OUTPUT,@c=@Count OUTPUT;
- INSERT #ExamplePlanDetailsArrayCheck VALUES(@ArrayName,COALESCE(@TableJson,N'[]'),JSON_QUERY(@Json,N'$.'+@ArrayName));
- IF EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.'+@ArrayName)a WHERE
- (SELECT COUNT(*) FROM OPENJSON(a.value))<>(SELECT COUNT(*) FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId)
- OR EXISTS(SELECT 1 FROM OPENJSON(a.value) GROUP BY [key] HAVING COUNT(*)<>1)
- OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2 FROM OPENJSON(a.value) EXCEPT SELECT name COLLATE Latin1_General_100_BIN2 FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId)) THROW 59706,N'PLAN_DETAILS_FIELDS',1;
- IF @ArrayName=N'candidates' AND ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,'$.meta.candidateCount')),-1)<>@Count THROW 59707,N'PLAN_DETAILS_COUNT',1;
- FETCH NEXT FROM ArrayCursor INTO @ArrayName,@Target,@Template;
+  SELECT @ProbeCount=NULL,@ProbeNumber=NULL,@ProbeMessage=NULL;
+  BEGIN TRY
+   IF @ProbeSource=0 SELECT @ProbeCount=COUNT(*) FROM sys.dm_exec_plan_attributes(@ProbeHandle);
+   IF @ProbeSource=1 SELECT @ProbeCount=COUNT(*) FROM sys.dm_exec_query_plan(@ProbeHandle);
+   IF @ProbeSource=2 SELECT @ProbeCount=COUNT(*) FROM sys.dm_exec_text_query_plan(@ProbeHandle,0,-1);
+   IF @ProbeSource=3 SELECT @ProbeCount=COUNT(*) FROM sys.dm_exec_query_plan_stats(@ProbeHandle);
+   IF @ProbeSource=4 SELECT @ProbeCount=COUNT(*) FROM sys.dm_exec_sql_text(@ProbeHandle);
+  END TRY BEGIN CATCH SELECT @ProbeNumber=ERROR_NUMBER(),@ProbeMessage=ERROR_MESSAGE();END CATCH;
+  INSERT #ExamplePlanDetailsHandleSources VALUES(@ProbeIndex,CASE @ProbeSource WHEN 0 THEN 'ATTRIBUTES' WHEN 1 THEN 'COMPILE_XML'
+   WHEN 2 THEN 'COMPILE_TEXT' WHEN 3 THEN 'LAST_ACTUAL_XML' ELSE 'SQL_TEXT' END,@ProbeNumber,@ProbeMessage,@ProbeCount);
+  SET @ProbeSource+=1;
  END;
- CLOSE ArrayCursor;DEALLOCATE ArrayCursor;
- IF EXISTS(SELECT 1 FROM #ExamplePlanDetailsArrayCheck q WHERE
- EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.TableJson) GROUP BY value COLLATE Latin1_General_100_BIN2
- EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.JsonArray) GROUP BY value COLLATE Latin1_General_100_BIN2)
- OR EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.JsonArray) GROUP BY value COLLATE Latin1_General_100_BIN2
- EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.TableJson) GROUP BY value COLLATE Latin1_General_100_BIN2)) THROW 59708,N'PLAN_DETAILS_FULL_PARITY',1;
- IF @Expected='INVALID_PARAMETER' AND EXISTS(SELECT 1 FROM #ExamplePlanDetailsArrayCheck WHERE TableJson<>N'[]') THROW 59709,N'PLAN_DETAILS_INVALID_EMPTY',1;
- IF EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.candidates')a WHERE ISNULL(TRY_CONVERT(int,JSON_VALUE(a.value,'$.CandidateId')),-1)<>CONVERT(int,a.[key])+1) THROW 59710,N'PLAN_DETAILS_CANDIDATE_ORDINALS',1;
- IF @Case<100 AND @SessionKind IN(1,4) AND @Expected='AVAILABLE'
- AND (SELECT COUNT(*) FROM OPENJSON(@Json,'$.candidates'))<>1 THROW 59710,N'PLAN_DETAILS_OWN_REQUEST',1;
- IF @Case=5 AND (NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.attributes')) OR (SELECT COUNT(*) FROM OPENJSON(@Json,'$.plans'))<>2) THROW 59710,N'PLAN_DETAILS_OWN_DETAILS',1;
-
- IF @Case>=100
- BEGIN
-  DECLARE @ExpectedCandidateCount int=CASE WHEN @SelectorKind IN(1,3) THEN 1 WHEN @Max=1 THEN 1 ELSE 2 END;
-  IF (SELECT COUNT(*) FROM OPENJSON(@Json,'$.candidates'))<>@ExpectedCandidateCount THROW 59711,N'PLAN_DETAILS_NATIVE_SELECTION',1;
-  IF EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.candidates')a WHERE
-   NOT EXISTS(SELECT 1 FROM #ExamplePlanDetailsNative n WHERE JSON_VALUE(a.value,'$.PlanHandle') COLLATE Latin1_General_100_BIN2=JSON_VALUE((SELECT n.PlanHandle AS PlanHandle FOR JSON PATH,WITHOUT_ARRAY_WRAPPER),'$.PlanHandle') COLLATE Latin1_General_100_BIN2)) THROW 59711,N'PLAN_DETAILS_NATIVE_HANDLE',1;
-  DECLARE @ExpectedNativeJson nvarchar(max),@ExpectedAttributes nvarchar(max),@ExpectedPlans nvarchar(max);
-  -- Candidate ordinals are local identifiers; selector fields are compared to
-  -- independent native inputs, not inferred from the other JSON consumer.
-  SET @Sql=N'
+ SET @ProbeIndex+=1;
+END;
+IF EXISTS(SELECT 1 FROM #ExamplePlanDetailsHandleSources WHERE
+ (HandleIndex<6 AND (ISNULL(ErrorNumber,0)<>569 OR ErrorMessage IS NULL OR NativeRowCount IS NOT NULL))
+ OR (HandleIndex>=6 AND (ErrorNumber IS NOT NULL OR ErrorMessage IS NOT NULL OR ISNULL(NativeRowCount,-1)<>0)))
+ THROW 59722,N'PLAN_DETAILS_NATIVE_HANDLE_PROBES',1;
+CREATE TABLE #ExamplePlanDetailsHandleCases
+(CaseNumber int NOT NULL PRIMARY KEY,HandleIndex int NOT NULL,Mixed bit NOT NULL,Details bit NULL);
+INSERT #ExamplePlanDetailsHandleCases SELECT 200+h.HandleIndex*2+d.n,h.HandleIndex,0,d.n
+ FROM #ExamplePlanDetailsHandles h CROSS JOIN(VALUES(0),(1))d(n);
+IF @FixtureStatus='PENDING'
+ INSERT #ExamplePlanDetailsHandleCases SELECT 300+h.HandleIndex*10+d.n*5+m.n,h.HandleIndex,1,d.n
+ FROM #ExamplePlanDetailsHandles h CROSS JOIN(VALUES(0),(1))d(n) CROSS JOIN(VALUES(0),(1),(2),(3),(4))m(n);
+INSERT #ExamplePlanDetailsHandleCases VALUES(216,4,0,NULL),(217,4,0,1),(218,4,0,1),(219,4,0,1),(220,4,0,1);
+INSERT #ExamplePlanDetailsCases
+ SELECT c.CaseNumber,0,CASE WHEN c.Mixed=1 THEN 6 ELSE 5 END,
+ CASE WHEN c.Mixed=0 THEN 3 ELSE CASE (c.CaseNumber-300)%5 WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 3 WHEN 3 THEN 0 ELSE NULL END END,
+ 0,c.Details,c.Details,c.Details,c.Details,0,CASE WHEN c.HandleIndex<6 THEN 'PARTIAL' ELSE 'AVAILABLE' END
+ FROM #ExamplePlanDetailsHandleCases c;
+UPDATE #ExamplePlanDetailsCases SET AttributesFlag=CASE WHEN CaseNumber=217 THEN 1 ELSE 0 END,
+ CompileFlag=CASE WHEN CaseNumber=218 THEN 1 ELSE 0 END,TextFlag=CASE WHEN CaseNumber=219 THEN 1 ELSE 0 END,
+ ActualFlag=CASE WHEN CaseNumber=220 THEN 1 ELSE 0 END WHERE CaseNumber BETWEEN 217 AND 220;
+CREATE TABLE #ExamplePlanDetailsHandleContracts
+(HandleIndex int NOT NULL,Details bit NOT NULL,ExpectedJson nvarchar(max) COLLATE Latin1_General_100_BIN2 NOT NULL,
+ PRIMARY KEY(HandleIndex,Details));
+DECLARE @HandleCases int=0,@MixedHandleCases int=0,@HandleConsumerCases int=0,
+ @HandleIndex int,@HandleDetails bit,@HandleError int,@HandleMessage nvarchar(2048),@ExpectedBadCandidates nvarchar(max),
+ @ExpectedNativeJson nvarchar(max),@ExpectedAttributes nvarchar(max),@ExpectedPlans nvarchar(max),
+ @ExpectedBadPlans nvarchar(max),@HandleActual nvarchar(max),@HandleExpected nvarchar(max);
+DECLARE @HealthyOracleSql nvarchar(max)=N'
   DECLARE @cap bigint=CASE WHEN @mx IS NULL OR @mx=0 THEN CONVERT(bigint,9223372036854775807) ELSE CONVERT(bigint,@mx) END;
   DECLARE @sqlCap bigint=CASE WHEN @sel=4 THEN @cap-1 ELSE @cap END;
   IF EXISTS(SELECT 1 FROM #ExamplePlanDetailsCandidates c WHERE c.SqlHandle IS NOT NULL
@@ -260,22 +228,130 @@ BEGIN
     ((CASE WHEN n.EndOffset=-1 THEN DATALENGTH(n.BatchText) ELSE n.EndOffset END)-n.StartOffset)/2+1) END AS StatementText)st
   FOR JSON PATH,INCLUDE_NULL_VALUES);
   SELECT @a=(SELECT c.CandidateId,CONVERT(varchar(128),pa.attribute) AS AttributeName,CONVERT(nvarchar(4000),pa.value) AS AttributeValue,pa.is_cache_key AS IsCacheKey
-   FROM #ExamplePlanDetailsCandidates c CROSS APPLY sys.dm_exec_plan_attributes(c.PlanHandle)pa
-   WHERE @attrs=1 FOR JSON PATH,INCLUDE_NULL_VALUES);
+   FROM #ExamplePlanDetailsCandidates c CROSS APPLY sys.dm_exec_plan_attributes(@ph)pa
+   WHERE @attrs=1 AND c.PlanHandle=@ph FOR JSON PATH,INCLUDE_NULL_VALUES);
   SELECT @p=(SELECT * FROM (SELECT c.CandidateId,N''COMPILE_XML'' AS SourceType,
    CASE WHEN qp.query_plan IS NULL THEN N''UNAVAILABLE_OBJECT'' ELSE N''AVAILABLE'' END AS StatusCode,
    qp.dbid AS DatabaseId,qp.objectid AS ObjectId,qp.encrypted AS IsEncrypted,
    CONVERT(nvarchar(max),qp.query_plan) AS QueryPlanXml,CONVERT(nvarchar(max),NULL) AS QueryPlanText,CONVERT(int,NULL) AS ErrorNumber,
    CASE WHEN qp.query_plan IS NULL THEN N''Plan nicht mehr im Cache oder XML-Tiefenlimit erreicht.'' END AS ErrorMessage
-   FROM #ExamplePlanDetailsCandidates c OUTER APPLY sys.dm_exec_query_plan(c.PlanHandle)qp WHERE @compile=1
+   FROM #ExamplePlanDetailsCandidates c OUTER APPLY sys.dm_exec_query_plan(@ph)qp WHERE @compile=1 AND c.PlanHandle=@ph
    UNION ALL
    SELECT c.CandidateId,N''COMPILE_TEXT'',CASE WHEN tp.query_plan IS NULL THEN N''UNAVAILABLE_OBJECT'' ELSE N''AVAILABLE'' END,
    tp.dbid,tp.objectid,tp.encrypted,CONVERT(nvarchar(max),NULL),tp.query_plan,CONVERT(int,NULL),
    CASE WHEN tp.query_plan IS NULL THEN N''Textplan nicht verfügbar.'' END
-   FROM #ExamplePlanDetailsCandidates c OUTER APPLY sys.dm_exec_text_query_plan(c.PlanHandle,COALESCE(c.StatementStartOffset,0),COALESCE(c.StatementEndOffset,-1))tp WHERE @text=1) AS NativePlans
+   FROM #ExamplePlanDetailsCandidates c OUTER APPLY sys.dm_exec_text_query_plan(@ph,COALESCE(c.StatementStartOffset,0),COALESCE(c.StatementEndOffset,-1))tp WHERE @text=1 AND c.PlanHandle=@ph
+   UNION ALL
+   SELECT c.CandidateId,N''LAST_ACTUAL_XML'',CASE WHEN qp.query_plan IS NULL THEN N''AVAILABLE_DISABLED'' ELSE N''AVAILABLE'' END,
+   qp.dbid,qp.objectid,qp.encrypted,CONVERT(nvarchar(max),qp.query_plan),CONVERT(nvarchar(max),NULL),CONVERT(int,NULL),
+   CASE WHEN qp.query_plan IS NULL THEN N''LAST_QUERY_PLAN_STATS nicht aktiviert, Plan nicht geeignet, nicht cachebar oder bereits evictet.'' END
+   FROM #ExamplePlanDetailsCandidates c OUTER APPLY sys.dm_exec_query_plan_stats(@ph)qp WHERE @actual=1 AND c.PlanHandle=@ph) AS NativePlans
    FOR JSON PATH,INCLUDE_NULL_VALUES);';
-  EXEC sys.sp_executesql @Sql,N'@lim int,@db sysname,@attrs bit,@compile bit,@text bit,@sel int,@qh binary(8),@mx int,@j nvarchar(max) OUTPUT,@a nvarchar(max) OUTPUT,@p nvarchar(max) OUTPUT',
-   @lim=@Limit,@db=@FixtureDatabase,@attrs=@Attrs,@compile=@Compile,@text=@Text,@sel=@SelectorKind,@qh=@Hash,@mx=@Max,@j=@ExpectedNativeJson OUTPUT,@a=@ExpectedAttributes OUTPUT,@p=@ExpectedPlans OUTPUT;
+DECLARE @OwnSessions nvarchar(max)=CONVERT(nvarchar(12),@@SPID),@MissingSession smallint;
+SELECT TOP(1) @MissingSession=CONVERT(smallint,v.n) FROM (VALUES(32767),(32766),(32765))v(n)
+ WHERE NOT EXISTS(SELECT 1 FROM sys.dm_exec_sessions WHERE session_id=v.n);
+IF @MissingSession IS NULL THROW 59700,N'PLAN_DETAILS_EMPTY_SESSION_GUARD',1;
+DECLARE @Case int=-1,@SessionKind int,@SelectorKind int,@Max int,@Limit int,@Attrs bit,@Compile bit,@Text bit,@Actual bit,@Live bit,
+ @Expected varchar(40),@Sessions nvarchar(max),@Plan varbinary(64),@SqlHandle varbinary(64),@Hash binary(8),@Json nvarchar(max),
+ @Before datetime2(3),@After datetime2(3),@Map nvarchar(max)=N'{"candidates":"#ExamplePlanDetailsCandidates","attributes":"#ExamplePlanDetailsAttributes","plans":"#ExamplePlanDetailsPlans"}',
+ @Arrays nvarchar(max),@Sql nvarchar(max),@ObjectId int,@ExpectedObjectId int,@ArrayName sysname,@Target sysname,@Template sysname,@Count int;
+CREATE TABLE #ExamplePlanDetailsArrayCheck (ArrayName sysname COLLATE SQL_Latin1_General_CP1_CS_AS,TableJson nvarchar(max) COLLATE Latin1_General_100_BIN2,JsonArray nvarchar(max) COLLATE Latin1_General_100_BIN2);
+BEGIN TRY
+WHILE EXISTS(SELECT 1 FROM #ExamplePlanDetailsCases WHERE CaseNumber>@Case)
+BEGIN
+ SELECT TOP(1) @Case=CaseNumber,@SessionKind=SessionKind,@SelectorKind=SelectorKind,@Max=MaxObjects,@Limit=TextLimit,
+ @Attrs=AttributesFlag,@Compile=CompileFlag,@Text=TextFlag,@Actual=ActualFlag,@Live=LiveFlag,@Expected=ExpectedStatus
+ FROM #ExamplePlanDetailsCases WHERE CaseNumber>@Case ORDER BY CaseNumber;
+ SET @Sessions=CASE @SessionKind WHEN 1 THEN @OwnSessions WHEN 2 THEN N'not-a-number' WHEN 3 THEN N'32768'
+ WHEN 4 THEN @OwnSessions+N'|'+@OwnSessions WHEN 5 THEN CONVERT(nvarchar(12),@MissingSession) END;
+ SET @Plan=CASE WHEN @SelectorKind IN(1,4) THEN @FixtureHandle WHEN @SelectorKind=7 THEN 0x END;
+ SET @SqlHandle=CASE WHEN @SelectorKind IN(2,4) THEN (SELECT MIN(SqlHandle) FROM #ExamplePlanDetailsNative) END;
+ SET @Hash=CASE WHEN @SelectorKind=3 THEN (SELECT MIN(QueryHash) FROM #ExamplePlanDetailsNative) END;
+ IF @SelectorKind IN(5,6)
+ BEGIN
+  SELECT @HandleIndex=HandleIndex,@HandleDetails=Details FROM #ExamplePlanDetailsHandleCases WHERE CaseNumber=@Case;
+  SELECT @Plan=HandleValue FROM #ExamplePlanDetailsHandles WHERE HandleIndex=@HandleIndex;
+  SET @SqlHandle=CASE WHEN @SelectorKind=6 THEN (SELECT MIN(SqlHandle) FROM #ExamplePlanDetailsNative) END;
+  SELECT @HandleError=ErrorNumber,@HandleMessage=ErrorMessage FROM #ExamplePlanDetailsHandleSources
+   WHERE HandleIndex=@HandleIndex AND SourceName=CASE WHEN @Attrs=1 THEN 'ATTRIBUTES' WHEN @Compile=1 THEN 'COMPILE_XML' WHEN @Text=1 THEN 'COMPILE_TEXT' WHEN @Actual=1 THEN 'LAST_ACTUAL_XML' ELSE 'SQL_TEXT' END;
+ END;
+
+ CREATE TABLE #ExamplePlanDetailsCandidates(Seed int NULL);
+ CREATE TABLE #ExamplePlanDetailsAttributes(Seed int NULL);
+ CREATE TABLE #ExamplePlanDetailsPlans(Seed int NULL);
+ SET @Before=SYSUTCDATETIME();
+ EXEC monitor.USP_PlanDetails @SessionIds=@Sessions,@PlanHandle=@Plan,@SqlHandle=@SqlHandle,@QueryHash=@Hash,
+ @MaxAnalyseobjekte=@Max,@HighImpactConfirmed=1,@MaxSqlTextZeichen=@Limit,@MitPlanAttributes=@Attrs,@MitCompilePlan=@Compile,
+ @MitTextPlan=@Text,@MitLastActualPlan=@Actual,@MitLivePlan=@Live,@ResultSetArt='TABLE',@ResultTablesJson=@Map,
+ @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+ SET @After=SYSUTCDATETIME();
+ IF @@LOCK_TIMEOUT<>137 THROW 59701,N'PLAN_DETAILS_CALLER_TIMEOUT',1;
+ IF ISNULL(ISJSON(@Json),0)<>1 OR ISNULL(JSON_VALUE(@Json,'$.meta.statusCode'),N'')<>@Expected
+ OR ISNULL(JSON_VALUE(@Json,'$.meta.isPartial'),N'')<>CASE WHEN @Expected='PARTIAL' THEN N'true' ELSE N'false' END THROW 59702,N'PLAN_DETAILS_STATUS',1;
+ IF (SELECT COUNT(*) FROM OPENJSON(@Json))<>5 OR EXISTS(SELECT 1 FROM OPENJSON(@Json) GROUP BY [key] HAVING COUNT(*)<>1)
+ OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json)
+ EXCEPT SELECT n,t FROM (VALUES(N'meta',5),(N'candidates',4),(N'attributes',4),(N'plans',4),(N'warnings',4))v(n,t))
+ OR JSON_QUERY(@Json,'$.warnings')<>N'[]' THROW 59703,N'PLAN_DETAILS_JSON_TOP',1;
+ IF (SELECT COUNT(*) FROM OPENJSON(@Json,'$.meta'))<>8 OR EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.meta') GROUP BY [key] HAVING COUNT(*)<>1)
+ OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json,'$.meta') EXCEPT
+ SELECT n,t FROM (VALUES(N'resultName',1),(N'schemaVersion',2),(N'generatedAtUtc',1),(N'statusCode',1),(N'isPartial',3),
+ (N'candidateCount',2),(N'errorNumber',CASE WHEN @Expected='PARTIAL' THEN 2 ELSE 0 END),(N'errorMessage',CASE WHEN @Expected IN('INVALID_PARAMETER','PARTIAL') THEN 1 ELSE 0 END))v(n,t))
+ OR JSON_VALUE(@Json,'$.meta.resultName')<>N'PlanDetails' OR ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,'$.meta.schemaVersion')),0)<>1
+ OR TRY_CONVERT(datetime2(3),JSON_VALUE(@Json,'$.meta.generatedAtUtc')) IS NULL
+ OR TRY_CONVERT(datetime2(3),JSON_VALUE(@Json,'$.meta.generatedAtUtc')) NOT BETWEEN @Before AND @After THROW 59704,N'PLAN_DETAILS_JSON_META',1;
+ DELETE #ExamplePlanDetailsArrayCheck;
+ DECLARE ArrayCursor CURSOR LOCAL FAST_FORWARD FOR SELECT n,t,s FROM (VALUES
+ (N'candidates',N'#ExamplePlanDetailsCandidates',N'#ExamplePlanDetailsSchema_candidates'),
+ (N'attributes',N'#ExamplePlanDetailsAttributes',N'#ExamplePlanDetailsSchema_attributes'),
+ (N'plans',N'#ExamplePlanDetailsPlans',N'#ExamplePlanDetailsSchema_plans'))v(n,t,s);
+ OPEN ArrayCursor;FETCH NEXT FROM ArrayCursor INTO @ArrayName,@Target,@Template;
+ WHILE @@FETCH_STATUS=0
+ BEGIN
+ SET @ObjectId=OBJECT_ID(N'tempdb..'+@Target);SET @ExpectedObjectId=OBJECT_ID(N'tempdb..'+@Template);
+ IF EXISTS(SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
+ FROM tempdb.sys.columns WHERE object_id=@ObjectId EXCEPT
+ SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
+ FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId)
+ OR EXISTS(SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
+ FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId EXCEPT
+ SELECT ROW_NUMBER()OVER(ORDER BY column_id),name COLLATE Latin1_General_100_BIN2,system_type_id,user_type_id,max_length,precision,scale,collation_name COLLATE Latin1_General_100_BIN2,is_nullable,is_identity
+ FROM tempdb.sys.columns WHERE object_id=@ObjectId) THROW 59705,N'PLAN_DETAILS_SCHEMA',1;
+ DECLARE @TableJson nvarchar(max),@Projection nvarchar(max)=CASE WHEN @ArrayName=N'plans' THEN
+ N'[CandidateId],[SourceType],[StatusCode],[DatabaseId],[ObjectId],[IsEncrypted],CONVERT(nvarchar(max),[QueryPlanXml]) AS [QueryPlanXml],[QueryPlanText],[ErrorNumber],[ErrorMessage]' ELSE N'*' END;
+ SET @Sql=N'SELECT @j=(SELECT '+@Projection+N' FROM '+QUOTENAME(@Target)+N' FOR JSON PATH,INCLUDE_NULL_VALUES),@c=COUNT(*) FROM '+QUOTENAME(@Target)+N';';
+ EXEC sys.sp_executesql @Sql,N'@j nvarchar(max) OUTPUT,@c int OUTPUT',@j=@TableJson OUTPUT,@c=@Count OUTPUT;
+ INSERT #ExamplePlanDetailsArrayCheck VALUES(@ArrayName,COALESCE(@TableJson,N'[]'),JSON_QUERY(@Json,N'$.'+@ArrayName));
+ IF EXISTS(SELECT 1 FROM OPENJSON(@Json,N'$.'+@ArrayName)a WHERE
+ (SELECT COUNT(*) FROM OPENJSON(a.value))<>(SELECT COUNT(*) FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId)
+ OR EXISTS(SELECT 1 FROM OPENJSON(a.value) GROUP BY [key] HAVING COUNT(*)<>1)
+ OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2 FROM OPENJSON(a.value) EXCEPT SELECT name COLLATE Latin1_General_100_BIN2 FROM tempdb.sys.columns WHERE object_id=@ExpectedObjectId)) THROW 59706,N'PLAN_DETAILS_FIELDS',1;
+ IF @ArrayName=N'candidates' AND ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,'$.meta.candidateCount')),-1)<>@Count THROW 59707,N'PLAN_DETAILS_COUNT',1;
+ FETCH NEXT FROM ArrayCursor INTO @ArrayName,@Target,@Template;
+ END;
+ CLOSE ArrayCursor;DEALLOCATE ArrayCursor;
+ IF EXISTS(SELECT 1 FROM #ExamplePlanDetailsArrayCheck q WHERE
+ EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.TableJson) GROUP BY value COLLATE Latin1_General_100_BIN2
+ EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.JsonArray) GROUP BY value COLLATE Latin1_General_100_BIN2)
+ OR EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.JsonArray) GROUP BY value COLLATE Latin1_General_100_BIN2
+ EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(q.TableJson) GROUP BY value COLLATE Latin1_General_100_BIN2)) THROW 59708,N'PLAN_DETAILS_FULL_PARITY',1;
+ IF @Expected='INVALID_PARAMETER' AND EXISTS(SELECT 1 FROM #ExamplePlanDetailsArrayCheck WHERE TableJson<>N'[]') THROW 59709,N'PLAN_DETAILS_INVALID_EMPTY',1;
+ IF EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.candidates')a WHERE ISNULL(TRY_CONVERT(int,JSON_VALUE(a.value,'$.CandidateId')),-1)<>CONVERT(int,a.[key])+1) THROW 59710,N'PLAN_DETAILS_CANDIDATE_ORDINALS',1;
+ IF @Case<100 AND @SessionKind IN(1,4) AND @Expected='AVAILABLE'
+ AND (SELECT COUNT(*) FROM OPENJSON(@Json,'$.candidates'))<>1 THROW 59710,N'PLAN_DETAILS_OWN_REQUEST',1;
+ IF @Case=5 AND (NOT EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.attributes')) OR (SELECT COUNT(*) FROM OPENJSON(@Json,'$.plans'))<>2) THROW 59710,N'PLAN_DETAILS_OWN_DETAILS',1;
+
+ IF @Case BETWEEN 100 AND 111
+ BEGIN
+  DECLARE @ExpectedCandidateCount int=CASE WHEN @SelectorKind IN(1,3) THEN 1 WHEN @Max=1 THEN 1 ELSE 2 END;
+  IF (SELECT COUNT(*) FROM OPENJSON(@Json,'$.candidates'))<>@ExpectedCandidateCount THROW 59711,N'PLAN_DETAILS_NATIVE_SELECTION',1;
+  IF EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.candidates')a WHERE
+   NOT EXISTS(SELECT 1 FROM #ExamplePlanDetailsNative n WHERE JSON_VALUE(a.value,'$.PlanHandle') COLLATE Latin1_General_100_BIN2=JSON_VALUE((SELECT n.PlanHandle AS PlanHandle FOR JSON PATH,WITHOUT_ARRAY_WRAPPER),'$.PlanHandle') COLLATE Latin1_General_100_BIN2)) THROW 59711,N'PLAN_DETAILS_NATIVE_HANDLE',1;
+
+  -- Candidate ordinals are local identifiers; selector fields are compared to
+  -- independent native inputs, not inferred from the other JSON consumer.
+  SET @Sql=@HealthyOracleSql;
+  EXEC sys.sp_executesql @Sql,N'@lim int,@db sysname,@attrs bit,@compile bit,@text bit,@actual bit,@sel int,@qh binary(8),@mx int,@ph varbinary(64),@j nvarchar(max) OUTPUT,@a nvarchar(max) OUTPUT,@p nvarchar(max) OUTPUT',
+   @lim=@Limit,@db=@FixtureDatabase,@attrs=@Attrs,@compile=@Compile,@text=@Text,@actual=@Actual,@sel=@SelectorKind,@qh=@Hash,@mx=@Max,@ph=@FixtureHandle,@j=@ExpectedNativeJson OUTPUT,@a=@ExpectedAttributes OUTPUT,@p=@ExpectedPlans OUTPUT;
   DECLARE @NativeActual nvarchar(max)=JSON_QUERY(@Json,'$.candidates');
   IF EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(COALESCE(@ExpectedNativeJson,N'[]')) GROUP BY value COLLATE Latin1_General_100_BIN2
    EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@NativeActual) GROUP BY value COLLATE Latin1_General_100_BIN2)
@@ -312,12 +388,136 @@ BEGIN
    CLOSE MutationCursor;DEALLOCATE MutationCursor;
   END;
   SET @NativeCases+=1;
+ END
+ ELSE IF @SelectorKind IN(5,6)
+ BEGIN
+  IF ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,'$.meta.errorNumber')),-1)<>ISNULL(@HandleError,-1)
+   OR (@HandleMessage IS NOT NULL AND (JSON_VALUE(@Json,'$.meta.errorMessage') IS NULL
+     OR JSON_VALUE(@Json,'$.meta.errorMessage') COLLATE Latin1_General_100_BIN2<>@HandleMessage COLLATE Latin1_General_100_BIN2))
+   OR (@HandleMessage IS NULL AND JSON_VALUE(@Json,'$.meta.errorMessage') IS NOT NULL)
+   THROW 59723,N'PLAN_DETAILS_HANDLE_FIRST_ERROR',1;
+  DECLARE @HandleWanted int=CASE WHEN @SelectorKind=5 OR @Max=1 THEN 1 WHEN @Max=2 THEN 2 ELSE 3 END;
+  IF (SELECT COUNT(*) FROM OPENJSON(@Json,'$.candidates'))<>@HandleWanted
+   OR NOT EXISTS(SELECT 1 FROM #ExamplePlanDetailsCandidates WHERE CandidateId=1 AND PlanHandle=@Plan AND SqlHandle IS NULL)
+   THROW 59724,N'PLAN_DETAILS_HANDLE_SELECTION',1;
+  SET @ExpectedBadCandidates=(SELECT
+   CONVERT(int,1) AS [CandidateId],
+   CONVERT(smallint,NULL) AS [SessionId],
+   CONVERT(int,NULL) AS [RequestId],
+   @Plan AS [PlanHandle],
+   CONVERT(varbinary(64),NULL) AS [SqlHandle],
+   CONVERT(binary(8),NULL) AS [QueryHash],
+   CONVERT(binary(8),NULL) AS [QueryPlanHash],
+   CONVERT(int,NULL) AS [StatementStartOffset],
+   CONVERT(int,NULL) AS [StatementEndOffset],
+   CONVERT(datetime,NULL) AS [CreationTime],
+   CONVERT(datetime,NULL) AS [LastExecutionTime],
+   CONVERT(bigint,NULL) AS [ExecutionCount],
+   CONVERT(bigint,NULL) AS [StatementTextCharacters],
+   CONVERT(bigint,NULL) AS [StatementTextBytes],
+   CONVERT(bit,0) AS [StatementTextIsTruncated],
+   CONVERT(nvarchar(max),NULL) AS [StatementText],
+   CONVERT(bigint,NULL) AS [BatchTextCharacters],
+   CONVERT(bigint,NULL) AS [BatchTextBytes],
+   CONVERT(bit,0) AS [BatchTextIsTruncated],
+   CONVERT(nvarchar(max),NULL) AS [BatchText],
+   CONVERT(int,NULL) AS [SqlTextDatabaseId],
+   CONVERT(sysname,NULL) AS [SqlTextDatabaseName],
+   CONVERT(int,NULL) AS [SqlTextObjectId]
+   FOR JSON PATH,INCLUDE_NULL_VALUES);
+  SET @ExpectedBadPlans=(SELECT CONVERT(int,1) AS CandidateId,CONVERT(varchar(24),e.SourceName) AS SourceType,
+   CONVERT(varchar(40),CASE WHEN e.ErrorNumber IS NOT NULL THEN 'ERROR_HANDLED' WHEN e.SourceName='LAST_ACTUAL_XML' THEN 'AVAILABLE_DISABLED' ELSE 'UNAVAILABLE_OBJECT' END) AS StatusCode,
+   CONVERT(int,NULL) AS DatabaseId,CONVERT(int,NULL) AS ObjectId,CONVERT(bit,NULL) AS IsEncrypted,
+   CONVERT(nvarchar(max),NULL) AS QueryPlanXml,CONVERT(nvarchar(max),NULL) AS QueryPlanText,e.ErrorNumber,
+   CONVERT(nvarchar(2048),CASE WHEN e.ErrorNumber IS NOT NULL THEN e.ErrorMessage WHEN e.SourceName='COMPILE_XML' THEN N'Plan nicht mehr im Cache oder XML-Tiefenlimit erreicht.'
+    WHEN e.SourceName='COMPILE_TEXT' THEN N'Textplan nicht verfügbar.' ELSE N'LAST_QUERY_PLAN_STATS nicht aktiviert, Plan nicht geeignet, nicht cachebar oder bereits evictet.' END) AS ErrorMessage
+   FROM #ExamplePlanDetailsHandleSources e WHERE e.HandleIndex=@HandleIndex AND e.SourceName IN('COMPILE_XML','COMPILE_TEXT','LAST_ACTUAL_XML')
+   AND ((e.SourceName='COMPILE_XML' AND @Compile=1) OR (e.SourceName='COMPILE_TEXT' AND @Text=1) OR (e.SourceName='LAST_ACTUAL_XML' AND @Actual=1)) ORDER BY e.SourceName FOR JSON PATH,INCLUDE_NULL_VALUES);
+  SELECT @ExpectedNativeJson=N'[]',@ExpectedAttributes=N'[]',@ExpectedPlans=N'[]';
+  IF @SelectorKind=6
+  BEGIN
+   EXEC sys.sp_executesql @HealthyOracleSql,N'@lim int,@db sysname,@attrs bit,@compile bit,@text bit,@actual bit,@sel int,@qh binary(8),@mx int,@ph varbinary(64),@j nvarchar(max) OUTPUT,@a nvarchar(max) OUTPUT,@p nvarchar(max) OUTPUT',
+    @lim=@Limit,@db=@FixtureDatabase,@attrs=@Attrs,@compile=@Compile,@text=@Text,@actual=@Actual,@sel=4,@qh=NULL,@mx=@Max,@ph=@FixtureHandle,
+    @j=@ExpectedNativeJson OUTPUT,@a=@ExpectedAttributes OUTPUT,@p=@ExpectedPlans OUTPUT;
+  END;
+  SET @HandleExpected=N'['+SUBSTRING(@ExpectedBadCandidates,2,LEN(@ExpectedBadCandidates)-2)
+   +CASE WHEN COALESCE(@ExpectedNativeJson,N'[]')<>N'[]' THEN N','+SUBSTRING(@ExpectedNativeJson,2,LEN(@ExpectedNativeJson)-2) ELSE N'' END+N']';
+  SET @HandleActual=JSON_QUERY(@Json,'$.candidates');
+  IF EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@HandleExpected) GROUP BY value COLLATE Latin1_General_100_BIN2
+   EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@HandleActual) GROUP BY value COLLATE Latin1_General_100_BIN2)
+   OR EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@HandleActual) GROUP BY value COLLATE Latin1_General_100_BIN2
+   EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@HandleExpected) GROUP BY value COLLATE Latin1_General_100_BIN2)
+   THROW 59725,N'PLAN_DETAILS_HANDLE_FULL_CANDIDATES',1;
+  SET @HandleExpected=CASE WHEN COALESCE(@ExpectedBadPlans,N'[]')=N'[]' THEN COALESCE(@ExpectedPlans,N'[]')
+   WHEN COALESCE(@ExpectedPlans,N'[]')=N'[]' THEN @ExpectedBadPlans
+   ELSE LEFT(@ExpectedBadPlans,LEN(@ExpectedBadPlans)-1)+N','+SUBSTRING(@ExpectedPlans,2,LEN(@ExpectedPlans)-1) END;
+  IF EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@HandleExpected) GROUP BY value COLLATE Latin1_General_100_BIN2
+   EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@Json,'$.plans') GROUP BY value COLLATE Latin1_General_100_BIN2)
+   OR EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@Json,'$.plans') GROUP BY value COLLATE Latin1_General_100_BIN2
+   EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@HandleExpected) GROUP BY value COLLATE Latin1_General_100_BIN2)
+   OR EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(COALESCE(@ExpectedAttributes,N'[]')) GROUP BY value COLLATE Latin1_General_100_BIN2
+   EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@Json,'$.attributes') GROUP BY value COLLATE Latin1_General_100_BIN2)
+   OR EXISTS(SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(@Json,'$.attributes') GROUP BY value COLLATE Latin1_General_100_BIN2
+   EXCEPT SELECT value COLLATE Latin1_General_100_BIN2,COUNT(*) FROM OPENJSON(COALESCE(@ExpectedAttributes,N'[]')) GROUP BY value COLLATE Latin1_General_100_BIN2)
+   THROW 59726,N'PLAN_DETAILS_HANDLE_FULL_DETAILS',1;
+  IF @SelectorKind=5
+  BEGIN
+   IF @Case BETWEEN 200 AND 215 INSERT #ExamplePlanDetailsHandleContracts VALUES(@HandleIndex,@HandleDetails,@Json);
+   SET @HandleCases+=1;
+  END ELSE SET @MixedHandleCases+=1;
  END ELSE SET @CoreCases+=1;
+
  DROP TABLE #ExamplePlanDetailsCandidates;
  DROP TABLE #ExamplePlanDetailsAttributes;
  DROP TABLE #ExamplePlanDetailsPlans;
 END;
 IF @FixtureStatus='PENDING' SET @FixtureStatus='PASS';
+DECLARE @HandleContract nvarchar(max),@HandleMode varchar(16),@HandleModeIndex int;
+SET @HandleIndex=0;
+WHILE @HandleIndex<8
+BEGIN
+ SET @ProbeSource=0;
+ WHILE @ProbeSource<2
+ BEGIN
+  SET @HandleDetails=CONVERT(bit,@ProbeSource);
+  SELECT @Plan=HandleValue FROM #ExamplePlanDetailsHandles WHERE HandleIndex=@HandleIndex;
+  SELECT @HandleContract=ExpectedJson FROM #ExamplePlanDetailsHandleContracts WHERE HandleIndex=@HandleIndex AND Details=@HandleDetails;
+  SET @HandleModeIndex=0;
+  WHILE @HandleModeIndex<3
+  BEGIN
+   SET @HandleMode=CASE @HandleModeIndex WHEN 0 THEN 'NONE' WHEN 1 THEN 'RAW' ELSE 'CONSOLE' END;
+   SET @Before=SYSUTCDATETIME();
+   EXEC monitor.USP_PlanDetails @PlanHandle=@Plan,@MitPlanAttributes=@HandleDetails,@MitCompilePlan=@HandleDetails,
+    @MitTextPlan=@HandleDetails,@MitLastActualPlan=@HandleDetails,@MaxSqlTextZeichen=0,@ResultSetArt=@HandleMode,
+    @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0;
+   SET @After=SYSUTCDATETIME();
+   IF ISNULL(ISJSON(@Json),0)<>1 OR @@LOCK_TIMEOUT<>137
+    OR (SELECT COUNT(*) FROM OPENJSON(@Json))<>5 OR EXISTS(SELECT 1 FROM OPENJSON(@Json) GROUP BY [key] HAVING COUNT(*)<>1)
+    OR (SELECT COUNT(*) FROM OPENJSON(@Json,'$.meta'))<>8 OR EXISTS(SELECT 1 FROM OPENJSON(@Json,'$.meta') GROUP BY [key] HAVING COUNT(*)<>1)
+    OR TRY_CONVERT(datetime2(3),JSON_VALUE(@Json,'$.meta.generatedAtUtc')) IS NULL
+    OR TRY_CONVERT(datetime2(3),JSON_VALUE(@Json,'$.meta.generatedAtUtc')) NOT BETWEEN @Before AND @After
+    OR JSON_VALUE(@Json,'$.meta.statusCode')<>JSON_VALUE(@HandleContract,'$.meta.statusCode')
+    OR JSON_VALUE(@Json,'$.meta.isPartial')<>JSON_VALUE(@HandleContract,'$.meta.isPartial')
+    OR ISNULL(TRY_CONVERT(int,JSON_VALUE(@Json,'$.meta.errorNumber')),-1)<>ISNULL(TRY_CONVERT(int,JSON_VALUE(@HandleContract,'$.meta.errorNumber')),-1)
+    THROW 59727,N'PLAN_DETAILS_HANDLE_CONSUMER_STATUS',1;
+   IF EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json,'$.meta') WHERE [key]<>N'generatedAtUtc'
+    EXCEPT SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@HandleContract,'$.meta') WHERE [key]<>N'generatedAtUtc')
+    OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@HandleContract,'$.meta') WHERE [key]<>N'generatedAtUtc'
+    EXCEPT SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json,'$.meta') WHERE [key]<>N'generatedAtUtc')
+    THROW 59727,N'PLAN_DETAILS_HANDLE_CONSUMER_META',1;
+
+   IF EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json)
+    WHERE [key]<>N'meta' EXCEPT SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@HandleContract) WHERE [key]<>N'meta')
+    OR EXISTS(SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@HandleContract)
+    WHERE [key]<>N'meta' EXCEPT SELECT [key] COLLATE Latin1_General_100_BIN2,value COLLATE Latin1_General_100_BIN2,[type] FROM OPENJSON(@Json) WHERE [key]<>N'meta')
+    THROW 59728,N'PLAN_DETAILS_HANDLE_CONSUMER_FULL_PARITY',1;
+   SET @HandleConsumerCases+=1;SET @HandleModeIndex+=1;
+  END;
+  SET @ProbeSource+=1;
+ END;
+ SET @HandleIndex+=1;
+END;
+
 -- All four public consumer modes must preserve controlled negative rejection.
 DECLARE @Consumer int=0,@Mode varchar(16),@Consumers int=0;
 WHILE @Consumer<4
@@ -366,6 +566,7 @@ DECLARE @Restore nvarchar(64)=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@Origina
 EXEC sys.sp_executesql @Restore;
 SELECT N'PASS' AS ContractStatus,@FrameworkLevel AS FrameworkCompatibilityLevel,37 AS SchemaFields,9 AS TextCollations,
  @CoreCases AS CoreCases,@FixtureStatus AS PositiveFixtureStatus,@NativeCases AS NativeCases,@NullMutations AS NativeNullMutations,
+ @HandleCases AS HandleTableCases,@MixedHandleCases AS MixedHandleTableCases,@HandleConsumerCases AS HandleConsumerCases,
  @Consumers AS ConsumerCases,@Preflights AS PreflightCases,@EmptyConsole AS EmptySqlConsoleCases;
 END TRY
 BEGIN CATCH

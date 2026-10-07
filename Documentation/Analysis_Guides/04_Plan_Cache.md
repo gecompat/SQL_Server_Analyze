@@ -198,6 +198,8 @@ TABLE akzeptiert `candidates`, `attributes` und `plans` mit 23, vier und zehn Fe
 
 Das bestehende Kandidatenlimit gilt vor der Detailauflösung. NULL und 0 bedeuten unbegrenzt und prüfen ebenso wie Werte über 20 den Pfad `PLAN_CACHE_DEEP`; Attribute und Planquellen besitzen keine zusätzliche gemeinsame Zeilengrenze. Negative Kandidaten- oder Textlimits liefern `INVALID_PARAMETER` mit leeren Fachmengen und vollständigen angeforderten TABLE-Schemas. Nur das interne Argument der Unicodeprojektion wird für diesen Ablehnungspfad auf 0 gesetzt; der öffentliche Textparameter und gültige NULL-/0-/positive Werte bleiben erhalten. Das Framework aktiviert weder Last-Actual-Erfassung noch Live-Profiling.
 
+Die Rohkandidaten werden vor der Detailauflösung materialisiert. Attribute, Compile-XML, Textplan, Last-Actual-XML und SQL-Text besitzen anschließend getrennte Fehlergrenzen je Kandidat. Ein nativer Handlefehler liefert `PARTIAL` mit dem ersten tatsächlichen Modulfehler; fehlerhafte Planquellen erhalten eigene `ERROR_HANDLED`-Zeilen, während gültige Nachbarkandidaten und Quellen weiter gelesen werden. Bei fehlgeschlagener SQL-Textauflösung bleiben Text, Textmetriken und Textidentität NULL sowie beide Truncationbits false. Die abschließende Modulwarnung berücksichtigt auch diesen Fehler. Es gibt keine feste Längen-Whitelist für gültige Handles.
+
 ### Kandidatenresultset
 
 | Spalten | Bedeutung |
@@ -231,7 +233,7 @@ Wichtige Attribute sind etwa `dbid`, `set_options`, `user_id`, `language_id`, `d
 
 - Compile XML: Schätzplan; XML kann wegen Tiefe nicht verfügbar sein.
 - Compile Text: weniger reichhaltig, aber bei XML-Limit hilfreich.
-- Last Actual: benötigt `LAST_QUERY_PLAN_STATS`/entsprechende Funktionalität; zeigt letzte beobachtete Ausführung, nicht jede.
+- Last Actual: liest das tatsächliche Ergebnis von `sys.dm_exec_query_plan_stats`; NULL führt zum bestehenden `AVAILABLE_DISABLED`. Ein Konfigurationsschalter allein bestimmt die zurückgegebenen Planwerte nicht. Die Quelle zeigt die letzte verfügbare Beobachtung, nicht jede Ausführung.
 - Live XML: genau eine aktive Session; Request kann während Analyse enden.
 
 ### Folgeanalyse
