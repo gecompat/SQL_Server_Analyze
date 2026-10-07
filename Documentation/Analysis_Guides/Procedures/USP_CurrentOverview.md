@@ -25,8 +25,8 @@ EXEC [monitor].[USP_CurrentOverview]
 
 Der Default `@Detailgrad = 'SUMMARY'` liefert genau ein konsolidiertes
 Modul-Summary. `RELEVANT` ergänzt nicht leere diagnostisch relevante Details;
-`ALL` ergänzt alle nicht leeren aktivierten Childdetails. Sampling und
-Aktivieren Sie vollständige SQL-Texte nur gezielt.
+`ALL` ergänzt alle nicht leeren aktivierten Childdetails. Aktivieren Sie Sampling
+und vollständige SQL-Texte nur gezielt.
 
 `@ToolHintergrundabfragenEinbeziehen = 0` wird an Sessions, Requests, Blocking
 und aktuelle Waiting Tasks weitergegeben. Mit Wert `1` werden erkannte
@@ -69,6 +69,23 @@ Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden. Im
 Overview-JSON liegt die Governance innerhalb des einmal erzeugten TempDB-Childs
 unter `$.tempdbSessions.tempdbGovernance`.
 
+
+RAW und CONSOLE zeigen sechs Summaryfelder je Modul. TABLE `moduleStatus`
+besitzt zusätzlich Modulordinal und Resultname, insgesamt acht Felder; JSON
+`moduleStatus` enthält sieben Felder ohne Ordinal. `snapshotStatus` besitzt elf
+und `warnings` drei Felder. Die Summary enthält auch deaktivierte Module mit
+`SKIPPED`; deren Childobjekte fehlen im JSON.
+
+TABLE-Zuordnungen werden vor Hilfe und semantischer Parameterprüfung validiert,
+wenn TABLE oder eine nichtleere Zuordnung angefordert ist. Fehlerhafte Zuordnungen
+werfen 51011. Bei gültiger TABLE-Zuordnung und `INVALID_PARAMETER` werden die
+angeforderten Parentstatus-Schemata ausgegeben; JSON weist diese Ablehnung ebenfalls
+als partiell aus. Hilfe führt keine Childanalyse und keinen Zieleintrag aus.
+Deaktivierte primäre Childziele bleiben ungeschrieben. Die angeforderten
+Requestkontext- und Textziele können ohne Requestchild ihre Seed-Form behalten;
+`tempdbGovernance` wird nur mit aktiviertem TempDB-Child exportiert. Dieser
+bedingte Vertrag erzeugt keine vollständigen leeren Childschemata für deaktivierte
+Module.
 
 ## Laufinterner Primär-Snapshot
 
@@ -117,13 +134,13 @@ Ein Überblick verdichtet unterschiedliche Evidenzarten. Ein auffälliger Einzel
 
 ## Wann ist es kein Problem?
 
-Nicht aktivierte Children fehlen absichtlich. Ein leeres Child ist nur bei erfolgreichem Status als „aktuell nichts sichtbar“ interpretierbar.
+Nicht aktivierte Childobjekte fehlen im JSON; die Summary zeigt sie als `SKIPPED`. Ein leeres Child ist nur bei erfolgreichem Status als „aktuell nichts sichtbar“ interpretierbar.
 
 ## Beispiele und Gegenbeispiele
 
 **Synthetischer Problemfall (`Example*`):** Blocking und hohe Logauslastung können dieselbe alte Transaktion als Ursache haben. Mit Blocking- und Transaktionsprocedure fokussiert nachprüfen.
 
-**Ähnlich aussehender Gegenfall:** Nicht aktivierte Children fehlen absichtlich. Ein leeres Child ist nur bei erfolgreichem Status als „aktuell nichts sichtbar“ interpretierbar. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
+**Ähnlich aussehender Gegenfall:** Nicht aktivierte Childobjekte fehlen im JSON; die Summary zeigt sie als `SKIPPED`. Ein leeres Child ist nur bei erfolgreichem Status als „aktuell nichts sichtbar“ interpretierbar. Der gleiche Einzelwert kann deshalb bei `ExampleDb` ohne Nutzerauswirkung unkritisch sein, während er bei zeitgleicher SLA-Verletzung eine Vertiefung rechtfertigt.
 
 ## Leere oder partielle Ausgabe
 
@@ -139,11 +156,11 @@ Für `USP_CurrentOverview` gilt zusätzlich: **keine Zeile** bedeutet, dass im s
 | Standardpfad | Der Default ruft alle neun Current-State-Children einmal auf, materialisiert deren TABLE-Ergebnisse und erzeugt Childstatus/JSON. `@Detailgrad = 'SUMMARY'` verkürzt nur die sichtbare Ausgabe; er spart die Erhebung nicht ein. Mit `@SampleSeconds = 0` gibt es kein WAITFOR. |
 | Teuerster Pfad | Breiter Datenbank- und Sessionscope, SQL-Text an und `@SampleSeconds = 60`: `USP_CurrentWaits` und `USP_CurrentIO` sampeln nacheinander, sodass allein die beiden WAITFOR-Intervalle den Parent um ungefähr 120 Sekunden verlängern können. |
 | Haupttreiber | Zahl sichtbarer Sessions, Requests, Blockingkanten, Transaktionen, Grants und TempDB-Verbraucher sowie Datenbanken/Dateien für I/O und Log. SQL-Text verbreitert mehrere Childresultate. |
-| Skalierung | Jedes Child liest seinen eigenen Zeitpunkt und schreibt in eine Parent-Temp-Tabelle. Kosten addieren sich sequenziell; derselbe Request kann in mehreren Children erneut gelesen werden. Mehr Detailausgabe erhöht Transfer, ändert aber nicht die bereits angefallene Childarbeit. |
+| Skalierung | Acht Children verwenden die gemeinsam materialisierten Primärquellen; Log und ergänzende Childquellen werden separat gelesen. Die Arbeit läuft sequenziell. Mehr Detailausgabe erhöht den Transfer, ändert aber nicht die bereits angefallene Childarbeit. |
 | Ressourcen | Live-DMV- und Datenbankmetadatenzugriffe, Temp-Tabellen/JSON und optional zwei wartende Samplephasen. Es gibt in diesem Parent keinen XEL-, Plan-XML-, `msdb`- oder Benutzerdatenscan. |
 | Begrenzungswirkung | `@MaxZeilen` wird je Child weitergereicht und ist kein globales Budget. Einige Children nutzen ein frühes Kandidatenlimit, andere begrenzen erst sortierte/aggregierte Resultate; die Quellen für Instanzwaits und Datei-I/O werden dadurch nicht vollständig vermieden. `SUMMARY` ist ausdrücklich kein Kostenlimit. |
 | Locking und Nebenwirkungen | Read-only ohne absichtlich gehaltene Nutzdatenlocks. Sampling hält die aufrufende Session während jedes WAITFOR; die Children laufen nacheinander und bilden daher keinen atomaren Zustand. |
-| Schutzmechanismus | `@HighImpactConfirmed` wird an datenbankbezogene Children weitergereicht und wirkt nur, wenn deren konkrete Analyseklasse ein Gate verlangt. Der Parent aktiviert keine VLF-, Datei-, XML- oder sonstige Deep-Option; der Schalter begrenzt weder Laufzeit noch Ergebnisgröße. |
+| Schutzmechanismus | `@HighImpactConfirmed` wird an datenbankbezogene Children weitergereicht und wirkt nur, wenn deren konkrete Analyseklasse ein Gate verlangt. Der Parent reicht die explizite Blocking-DEEP-Option samt Gate weiter; VLF-, PVS- und Plan-XML-Optionen aktiviert er nicht. Der Schalter begrenzt weder Laufzeit noch Ergebnisgröße. |
 | Sicherer Einsatz | SQL-Text und Sampling zunächst aus, `@MaxZeilen = 100`, nicht benötigte Children abschalten und Datenbanken/Sessions eingrenzen. Nach dem Summary genau das Child separat wiederholen, das zum Symptom passt. |
 | Aussagegrenze | Ein Child kann zwischen den sequenziellen Abfragen verschwinden oder neu entstehen. Ein Parentlimit kann Ranglisten abschneiden, und ein erfolgreicher Summarystatus macht die unterschiedlichen Messzeitpunkte nicht konsistent; „leer“ bedeutet nur im jeweiligen Childmoment nicht sichtbar. |
 
@@ -165,13 +182,13 @@ diese Materialisierung weiter. Das Ausbleiben eines SQL-Fehlers wird nicht als
 als `STATUS_UNAVAILABLE` partiell ausgewiesen.
 
 TABLE verwendet ausschließlich `@ResultTablesJson`. Exportierbar sind
-`moduleStatus`, `sessions`, `requests`, `blocking`, `waits`, `transactions`,
-`memoryGrants`, `tempdbSessions`, `tempdbGovernance`, `io`, `logs` und
-`warnings`.
+`moduleStatus`, `snapshotStatus`, `sessions`, `requests`, `requestContext`,
+`statements`, `batches`, `inputBuffers`, `blocking`, `waits`, `transactions`,
+`memoryGrants`, `tempdbSessions`, `tempdbGovernance`, `io`, `logs` und `warnings`.
 
 ### Datenkette
 
-Die Datenkette besteht aus frameworkinterner Orchestrierung und Filterlogik; die Procedure besitzt keine eigenständige Systemquelle.
+Der Orchestrator lässt die benötigten Primärquellen durch `InternalCaptureCurrentStateSnapshot` materialisieren. Die Children verwenden diese Quellen und ergänzen ihre jeweils eigenen Detailquellen.
 
 ### Source Select
 

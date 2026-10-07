@@ -737,9 +737,9 @@ Die Procedure orchestriert alle neun Current-State-Teilmodule fehlerisoliert. Si
 
 Jedes Kindmodul liefert seine eigenen Status- und Fachresultsets. Im
 JSON-Envelope heißen die Childobjekte `sessions`, `requests`, `blocking`,
-`waits`, `transactions`, `memoryGrants`, `tempdb`, `io` und `log`. Das
+`waits`, `transactions`, `memoryGrants`, `tempdbSessions`, `io` und `logs`. Das
 benannte TABLE-Resultset `tempdbGovernance` wird bei `@MitTempDB=1` aus dem
-gemeinsamen Snapshot exportiert.
+einmal materialisierten TempDB-Child exportiert, der den gemeinsamen Snapshot verwendet.
 
 ### Aufrufe
 
@@ -774,15 +774,29 @@ EXEC [monitor].[USP_CurrentOverview]
 SELECT JSON_QUERY(@OverviewJson, '$.blocking.locks') AS BlockingLocks;
 ```
 
-### Metaresultset
+### Status- und Exportverträge
 
-| Spalte | Bedeutung |
-|---|---|
-| `ModuleName`, `CollectionTimeUtc` | Orchestrator und Startzeit |
-| `StatusCode`, `IsPartial` | Orchestratorstatus |
-| `ExecutedModules` | aktivierte/aufgerufene Kindmodule |
-| `FailedModules` | durch TRY/CATCH isolierte Fehler |
-| `ErrorMessage` oder `Detail` | Gesamtinformation |
+RAW zeigt sechs Summaryfelder je Modul sowie `snapshotStatus` mit elf und
+`warnings` mit drei Feldern. CONSOLE zeigt dieselbe Summary; RELEVANT und ALL
+ergänzen positive primäre Childdetails in Modulreihenfolge. Die Detailzeilen
+innerhalb eines Grids sind nicht geordnet zugesichert. TABLE `moduleStatus`
+besitzt acht Felder, JSON `moduleStatus` sieben ohne Modulordinal. JSON `meta`
+hat zehn Felder einschließlich Gesamtstatus, Partialität und Modulzählern.
+
+Die 17 TABLE-Namen umfassen Parentstatus und die bedingt materialisierten
+Childmengen einschließlich Requestkontext und Text. Gültige Zuordnungen werden
+vor Hilfe und semantischer Prüfung vorbereitet; fehlerhafte Zuordnungen werfen
+51011. Bei Parameterablehnung bleiben angeforderte Parentstatus-Schemata verfügbar
+und JSON `isPartial` ist true. Hilfe exportiert nichts. Deaktivierte primäre
+Childziele bleiben ungeschrieben; Requestkontext-/Textziele können Seed-Schemata
+behalten. Deaktivierte Module erscheinen in der Summary als `SKIPPED` und fehlen
+als Childobjekte im JSON.
+
+`@MaxZeilen` gilt je Child, nicht für die vollständige Modulsummary.
+`FailedModules` zählt Status außerhalb `AVAILABLE`, `AVAILABLE_LIMITED` und
+`SKIPPED`; `PartialModules` zählt die partiellen Modulzeilen. Die acht gemeinsamen
+Consumer teilen eine aufrufinterne Snapshot-ID, ohne atomare Zeitgleichheit der
+nacheinander gelesenen Quellen. Log liest seine Quellen separat.
 
 ### Wichtige Grenzen
 

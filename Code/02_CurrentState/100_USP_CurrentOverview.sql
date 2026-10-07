@@ -60,6 +60,26 @@ BEGIN
     DECLARE @DetailMode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@Detailgrad,N''))));
     DECLARE @BlockingObjectDepth varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@BlockingObjektTiefe,N''))));
 
+    DECLARE @StatusCode varchar(40)='AVAILABLE';
+    DECLARE @ErrorMessage nvarchar(2048)=NULL;
+
+    CREATE TABLE [#CurrentOverview_ResultTableMap]
+    (
+          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
+    );
+
+    IF @OutputMode='TABLE' OR NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL
+    BEGIN
+        EXEC [monitor].[InternalPrepareResultTables]
+              @ResultTablesJson=@ResultTablesJson
+            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|tempdbGovernance|io|logs|warnings'
+            , @MappingTable=N'#CurrentOverview_ResultTableMap'
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT
+            , @ThrowOnError=1;
+    END;
+
     IF @Hilfe = 1
     BEGIN
         PRINT N'monitor.USP_CurrentOverview';
@@ -77,8 +97,6 @@ BEGIN
     END;
 
     DECLARE @StartedAtUtc datetime2(3)=SYSUTCDATETIME();
-    DECLARE @StatusCode varchar(40)='AVAILABLE';
-    DECLARE @ErrorMessage nvarchar(2048)=NULL;
     DECLARE @ExecutedModules int=0;
     DECLARE @FailedModules int=0;
     DECLARE @PartialModules int=0;
@@ -101,12 +119,6 @@ BEGIN
     DECLARE @CaptureTempDbUsage bit=0;
     DECLARE @CaptureSqlText bit=0;
     DECLARE @MaxSqlTextHandles int=0;
-
-    CREATE TABLE [#CurrentOverview_ResultTableMap]
-    (
-          [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
-        , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
-    );
 
     CREATE TABLE [#CurrentOverview_ModulePayload]
     (
@@ -523,17 +535,6 @@ BEGIN
     BEGIN
         SET @StatusCode='INVALID_PARAMETER';
         SET @ErrorMessage=N'Mindestens ein Parameter besitzt einen ungültigen Wert.';
-    END;
-
-    IF @StatusCode='AVAILABLE' AND @OutputMode='TABLE'
-    BEGIN
-        EXEC [monitor].[InternalPrepareResultTables]
-              @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|tempdbGovernance|io|logs|warnings'
-            , @MappingTable=N'#CurrentOverview_ResultTableMap'
-            , @StatusCode=@StatusCode OUTPUT
-            , @ErrorMessage=@ErrorMessage OUTPUT
-            , @ThrowOnError=1;
     END;
 
     IF @StatusCode<>'AVAILABLE'
@@ -1048,7 +1049,7 @@ BuildOutputs:
                 , @StartedAtUtc AS [generatedAtUtc]
                 , @StatusCode AS [statusCode]
                 , @CurrentStateSnapshotId AS [evidenceSnapshotId]
-                , CONVERT(bit,CASE WHEN @PartialModules>0 OR @FailedModules>0 OR @SnapshotPartial=1 THEN 1 ELSE 0 END) AS [isPartial]
+                , CONVERT(bit,CASE WHEN @StatusCode='INVALID_PARAMETER' OR @PartialModules>0 OR @FailedModules>0 OR @SnapshotPartial=1 THEN 1 ELSE 0 END) AS [isPartial]
                 , @ExecutedModules AS [executedModules]
                 , @FailedModules AS [failedModules]
                 , @PartialModules AS [partialModules]
