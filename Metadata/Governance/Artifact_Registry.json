@@ -190,6 +190,16 @@
       ],
       "locator": "AI_Metadata/Internal_Documentation/Quality/WI0011_Deployment_Runtime_Evidence_2026-10-07.md"
     },
+    "TEST-0001": {
+      "artifact_uid": "urn:uuid:01a11869-3795-7377-92c2-c38b2ddd57ff",
+      "kind": "test",
+      "title": "Synthetische native Agent-Historienaggregate für OPS-008",
+      "registration_state": "REGISTERED",
+      "status": "ACTIVE",
+      "aliases": [],
+      "relations": [],
+      "locator": "TestLab/Scenarios/OPS-008/agent-history.sql"
+    },
     "DEC-0001": {
       "artifact_uid": "urn:uuid:01a10d36-bbba-7ae0-afe1-c530de54d626",
       "kind": "decision",

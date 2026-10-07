@@ -1,5 +1,9 @@
 [CmdletBinding()]
-param([string] $LabRepositoryRoot)
+param(
+    [string] $LabRepositoryRoot,
+    [ValidateSet('HistoryRestore', 'AgentHistory')]
+    [string] $Scenario = 'HistoryRestore'
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -7,16 +11,26 @@ $ErrorActionPreference = 'Stop'
 $repositoryRoot = Get-AnalyzeRepositoryRoot
 $labRoot = Resolve-SqlServerLabRepositoryRoot -LabRepositoryRoot $LabRepositoryRoot
 $null = & (Join-Path $labRoot 'Tools/Initialize-SqlServerLabHostTools.ps1') -Name docker
-Import-Module (Join-Path $labRoot 'SqlServerLab.psd1') -Force
+$labModule = Import-Module (Join-Path $labRoot 'SqlServerLab.psd1') -Force -PassThru
+. (Join-Path $labRoot 'Tests/Common/OwnedHostTestScope.ps1')
 $systemTempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $stateRoot = Assert-AnalyzePathUnderRoot `
     -Path (Join-Path $systemTempRoot ('SQL_Server_Analyze/ops008-history-' + [guid]::NewGuid().ToString('N'))) `
     -AllowedRoot $systemTempRoot
-[IO.Directory]::CreateDirectory($stateRoot) | Out-Null
 $saPassword = New-AnalyzeExampleSecret
 $lab = $null
 $cleanupCompleted = $false
+$mutex = [Threading.Mutex]::new($false, 'Global\SQL_Server_Lab_Runtime_Smoke')
+$mutexHeld = $false
 try {
+    try { $mutexHeld = $mutex.WaitOne([TimeSpan]::FromSeconds(45)) }
+    catch [Threading.AbandonedMutexException] {
+        $mutexHeld = $true
+        throw 'OPS-008: Vorheriger Runtime-Test endete ohne Freigabe der Hostlane.'
+    }
+    if (-not $mutexHeld) { throw 'OPS-008: Eigene Runtime-Testlane ist belegt.' }
+    $null = Initialize-OwnedHostTestRoot -Module $labModule -StateRoot $stateRoot `
+        -Providers @('docker') -ParentOperationId ([guid]::NewGuid().ToString('N'))
     $lab = New-SqlServerLab -Version 2025 -Provider docker -Profile standard `
         -Collation 'Latin1_General_100_CS_AS' -SaPassword $saPassword `
         -StateRoot $stateRoot -LabName 'analyze-ops008-history' -NonInteractive
@@ -32,10 +46,16 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
 '@
     [IO.File]::WriteAllText($markerFile, $markerSql.Replace('[DeineDatenbank]', '[LabAnalyze]'), [Text.UTF8Encoding]::new($false))
     $null = Invoke-AnalyzeLabScript -ScriptPath $markerFile -RunId $lab.RunId -StateRoot $stateRoot -SaPassword $saPassword
-    foreach ($relative in @('Code/Tests/Integration/110_Smoke_Test.sql',
-            'Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql',
-            'TestLab/Scenarios/OPS-008/history-window.sql',
-            'TestLab/Scenarios/OPS-008/restore-window.sql')) {
+    $scripts = @('Code/Tests/Integration/110_Smoke_Test.sql',
+        'Code/Tests/ServerHealth/122_OPS008_Msdb_Health_Runtime_Contract.sql')
+    if ($Scenario -eq 'AgentHistory') {
+        $scripts += 'TestLab/Scenarios/OPS-008/agent-history.sql'
+    }
+    else {
+        $scripts += @('TestLab/Scenarios/OPS-008/history-window.sql',
+            'TestLab/Scenarios/OPS-008/restore-window.sql')
+    }
+    foreach ($relative in $scripts) {
         $rendered = Join-Path $stateRoot ([IO.Path]::GetFileName($relative))
         $content = [IO.File]::ReadAllText((Join-Path $repositoryRoot $relative), [Text.Encoding]::UTF8)
         [IO.File]::WriteAllText($rendered, $content.Replace('[DeineDatenbank]', '[LabAnalyze]'), [Text.UTF8Encoding]::new($false))
@@ -43,21 +63,27 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
     }
 }
 finally {
-    if ($lab) {
-        try {
-            $cleanup = Remove-SqlServerLab -RunId $lab.RunId -StateRoot $stateRoot -Force -Confirm:$false
-            $cleanupCompleted = $cleanup.Status -eq 'REMOVED'
+    try {
+        if ($lab) {
+            try {
+                $cleanup = Remove-SqlServerLab -RunId $lab.RunId -StateRoot $stateRoot -Force -Confirm:$false
+                $cleanupCompleted = $cleanup.Status -eq 'REMOVED'
+            }
+            catch { Write-Warning "OPS-008-Cleanup fehlgeschlagen ($($_.Exception.GetType().Name))." }
+            if (-not $cleanupCompleted) {
+                Write-Warning "Recovery: Remove-SqlServerLab -RunId '$($lab.RunId)' -StateRoot '$stateRoot' -Force -Confirm:`$false"
+            }
         }
-        catch { Write-Warning "OPS-008-Cleanup fehlgeschlagen ($($_.Exception.GetType().Name))." }
-        if (-not $cleanupCompleted) {
-            Write-Warning "Recovery: Remove-SqlServerLab -RunId '$($lab.RunId)' -StateRoot '$stateRoot' -Force -Confirm:`$false"
+        else { Write-Warning "Provisionierung unvollständig. Eigener Recovery-State: '$stateRoot'. Get-SqlServerLab -StateRoot '$stateRoot' prüfen." }
+        if ($cleanupCompleted) {
+            $verifiedRoot = Assert-AnalyzePathUnderRoot -Path $stateRoot -AllowedRoot $systemTempRoot
+            Remove-Item -LiteralPath $verifiedRoot -Recurse -Force
         }
     }
-    else { Write-Warning "Provisionierung unvollständig. Eigener Recovery-State: '$stateRoot'. Get-SqlServerLab -StateRoot '$stateRoot' prüfen." }
-    if ($cleanupCompleted) {
-        $verifiedRoot = Assert-AnalyzePathUnderRoot -Path $stateRoot -AllowedRoot $systemTempRoot
-        Remove-Item -LiteralPath $verifiedRoot -Recurse -Force
+    finally {
+        try { if ($mutexHeld) { $mutex.ReleaseMutex() } }
+        finally { $mutex.Dispose() }
     }
 }
 if (-not $cleanupCompleted) { throw 'OPS-008-Cleanup nicht vollständig; eigenen Recovery-State erhalten.' }
-[PSCustomObject]@{ WorkItem = 'OPS-008'; Status = 'PASS'; SqlVersion = '2025'; Provider = 'docker'; Cleanup = 'REMOVED' }
+[PSCustomObject]@{ WorkItem = 'OPS-008'; Scenario = $Scenario; Status = 'PASS'; SqlVersion = '2025'; Provider = 'docker'; Cleanup = 'REMOVED' }

@@ -17,6 +17,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_MsdbHealthAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON; SET @Json=NULL;
+    SET @MaxZeilen=COALESCE(@MaxZeilen,0);
     DECLARE @Status varchar(40)='AVAILABLE',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL;
     IF @Hilfe=1 BEGIN PRINT N'monitor.USP_MsdbHealthAnalysis'; PRINT N'Inventarisiert msdb-Größe und sichtbare Historien; führt keine Bereinigung aus.'; RETURN; END;
@@ -82,8 +83,18 @@ BEGIN
         END; CLOSE [d]; DEALLOCATE [d];
         IF @Partial=1 SET @Status='AVAILABLE_LIMITED';
     END;
-    IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area] FOR JSON PATH),N'[]');
-    IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],COUNT_BIG(*) [EvidenceRows],@ErrorMessage [ErrorMessage] FROM [#MsdbHealthAnalysis_Health]; SELECT TOP(CASE WHEN @MaxZeilen=0 THEN 2147483647 ELSE @MaxZeilen END)* FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area]; END;
+    DECLARE @EvidenceRows bigint=(SELECT COUNT_BIG(*) FROM [#MsdbHealthAnalysis_Health]);
+    IF @MaxZeilen>0
+    BEGIN
+        ;WITH [LimitedRows] AS
+        (
+            SELECT ROW_NUMBER() OVER (ORDER BY [Area]) AS [Ordinal]
+            FROM [#MsdbHealthAnalysis_Health]
+        )
+        DELETE FROM [LimitedRows] WHERE [Ordinal]>@MaxZeilen;
+    END;
+    IF @JsonErzeugen=1 SELECT @Json=COALESCE((SELECT * FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area] FOR JSON PATH),N'[]');
+    IF @Mode IN('CONSOLE','RAW') BEGIN SELECT @Status [StatusCode],@Partial [IsPartial],@EvidenceRows [EvidenceRows],@ErrorMessage [ErrorMessage]; SELECT * FROM [#MsdbHealthAnalysis_Health] ORDER BY [Area]; END;
     IF @PrintMeldungen=1 AND @Mode='NONE' PRINT CONCAT(N'Status: ',@Status);
     IF @ConsoleResultRequested=1 EXEC [monitor].[InternalEmitConsoleResult] @SourceTable=N'#MsdbHealthAnalysis_Health',@ResultLabel=N'msdbHealth',@EmptyMessage=N'Keine msdb-Health-Evidenz im sichtbaren Scope';
     IF @TableResultRequested=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#MsdbHealthAnalysis_Health',@TargetTable=@TableTarget,@ThrowOnError=1;
