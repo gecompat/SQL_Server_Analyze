@@ -34,7 +34,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Im typisierten TABLE-Vertrag sind `moduleStatus`, `sourceStatus`, `files`, `pendingIo` und `warnings` registriert. `files` enthält kumulative oder gesampelte Dateiwerte. `pendingIo` enthält den flüchtigen Pending-I/O-Snapshot beziehungsweise bei einem Sample die zweite Beobachtung; `ObservationCount=2` bedeutet, dass dieselbe Requestadresse an beiden Messpunkten sichtbar war. Schedulerwerte sind nur gleichzeitiger Kontext und keine kausale Requestzuordnung. Physische Pfade erscheinen dort nur bei `@PhysischePfadeEinbeziehen=1`. Bei CONSOLE zuerst Status/Vollständigkeit und Scope lesen, danach Datei- und Pending-Evidenz. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung bestimmt; JSON übernimmt die fachliche Hüllensemantik.
+Im typisierten TABLE-Vertrag sind `moduleStatus`, `sourceStatus`, `files`, `pendingIo` und `warnings` registriert. `files` enthält kumulative oder gesampelte Dateiwerte. `pendingIo` enthält den flüchtigen Pending-I/O-Snapshot beziehungsweise bei einem Sample die zweite Beobachtung; `ObservationCount=2` bedeutet, dass dieselbe Requestadresse an beiden Messpunkten eines Samples sichtbar war. Bei `@SampleSeconds=0` wird die erste Beobachtung kopiert; `WasPresentInFirstSample=1` und `ObservationCount=1` belegen dabei keine zweite Messung. Schedulerwerte sind nur gleichzeitiger Kontext und keine kausale Requestzuordnung. Physische Pfade erscheinen in `pendingIo` nur bei `@PhysischePfadeEinbeziehen=1`; `files.PhysicalName` ist davon unabhängig. CONSOLE enthält eine gemeinsame lesbare Menge aus Pending-I/O und Dateien. Status und Vollständigkeit stehen in RAW, den typisierten Statuszielen und JSON. RAW ist für vollständige technische Korrelation gedacht. TABLE ist für SQL-interne, typisierte Weiterverarbeitung bestimmt; JSON übernimmt die fachliche Hüllensemantik.
 
 ## Eine Zeile bedeutet
 
@@ -74,8 +74,8 @@ Für `USP_CurrentIO` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtba
 | Haupttreiber | Anzahl Dateien, Pending Requests und Schedulerkontext sowie ein oder zwei instanzweite Beobachtungen. |
 | Skalierung | Snapshotkosten wachsen annähernd mit der Dateizahl. Das Delta benötigt zwei vollständige Messpunkte; Sortierung nach Latenz erfolgt danach. Transferkosten hängen vom Limit ab, die DMV-Aufrufe selbst nicht im selben Maß. |
 | Ressourcen | SQLOS-DMV-CPU, kleine Temp-Tabellen, Join auf `master.sys.master_files` und bei Sampling eine wartende Verbindung. Kein Dateiinhalt und keine Nutzdatentabelle werden gelesen. |
-| Begrenzungswirkung | Datenbankscope filtert die behaltenen DMV-Zeilen, ändert aber nicht die Funktionssignatur `dm_io_virtual_file_stats(NULL,NULL)`. `@MaxZeilen` greift erst beim sortierten Kandidatenset als N+1-Limit; es reduziert weder den ersten noch den zweiten Messpunkt. |
-| Locking und Nebenwirkungen | Read-only; WAITFOR hält die Session, aber die Procedure hält keine Nutzdatenlocks absichtlich über das Intervall. Ein SQL-Server-Restart oder Counterreset zwischen den Messpunkten macht das Delta ungültig und wird als Statuskontext behandelt. |
+| Begrenzungswirkung | Datenbankscope filtert die behaltenen DMV-Zeilen, ändert aber nicht die Funktionssignatur `dm_io_virtual_file_stats(NULL,NULL)`. `@MaxZeilen` begrenzt zunächst die sortierten Kandidaten auf N+1. Nach Zählern und Statusbewertung werden Datei- und Pending-Menge mit ihrer bestehenden Sortierung auf N begrenzt. RAW, TABLE und JSON verwenden diese Mengen; CONSOLE wendet zusätzlich ein gemeinsames TOP mit Pending-I/O vor Dateien an. NULL und 0 bedeuten unbegrenzt. Die Quelle wird dadurch nicht auf N Zeilen beschränkt. |
+| Locking und Nebenwirkungen | Read-only; WAITFOR hält die Session, aber die Procedure hält keine Nutzdatenlocks absichtlich über das Intervall. Ein Restart oder Counterreset zwischen den Messpunkten kann Differenzen unbrauchbar machen; die Procedure besitzt dafür keinen eigenen Reset-Guard. |
 | Schutzmechanismus | Scope, maximal 60 Sekunden, Zeilenlimit, getrennte Quellstatus und opt-in physische Pfade. `@NurWiederholtPending=1` verlangt ein Sample. |
 | Sicherer Einsatz | Eine `ExampleDatabase`, fünf Sekunden, `@MaxZeilen = 100` und nur ein Sampler. Für Baselinefragen mehrere getrennte Intervalle statt vieler paralleler Aufrufe erfassen. |
 | Aussagegrenze | Kumulative Latenz ist ein Lebenszeitmittel und kann aktuelle Probleme verdünnen; ein kurzes Delta kann einzelne Bursts überbetonen. Nicht ausgewählte Datenbanken fehlen, und Top-N nach Latenz kann stark ausgelastete, aber schnellere Dateien verdrängen. |
@@ -94,10 +94,11 @@ Wie viele I/O-Operationen und Bytes wurden pro Datei verarbeitet, und wie lange 
 
 ### Ausgabe
 
-CONSOLE liefert ohne separates technisches Meta-Grid genau die lesbare
-Dateiansicht. Bei leerem Ergebnis erscheint eine einzelne verständliche Zeile.
-TABLE verwendet `@ResultTablesJson` mit den stabilen Namen `moduleStatus`,
-`files` und `warnings`; alle Ziele stammen aus derselben Messung.
+CONSOLE liefert ohne separates Meta-Grid eine gemeinsame zehnspaltige Ansicht aus Pending-I/O und Dateien. Das gemeinsame Zeilenlimit bevorzugt Pending-I/O; die Ansicht entspricht deshalb nicht der Summe beider JSON-Arrays. Bei leerer Ausgabe erscheint eine Zeile mit `Ergebnis`, `Status` und `Hinweis`.
+
+TABLE verwendet `@ResultTablesJson` mit `moduleStatus` (13 Felder), `sourceStatus` (10), `files` (19), `pendingIo` (20) und `warnings` (3). Alle 23 Textfelder dieser Exporte besitzen die Framework-Collation. Einzelne Zuordnungen sind zulässig; nicht zugeordnete Ziele werden nicht verändert. Gültige Zuordnungen werden vor der semantischen Parameterprüfung vorbereitet. Ungültige Zuordnungen werfen weiterhin 51011. Bei semantischer Ablehnung gelten die vollständigen angeforderten Schemata und `INVALID_PARAMETER`; Datei- und Pending-Mengen bleiben leer, Status- und Warnungsevidenz wird weiter ausgegeben. NULL für Sample oder Pending wird nur im nichtnullfähigen `moduleStatus` als 0 dargestellt; JSON behält die übergebenen NULL-Argumente.
+
+Die Quellstatuszähler beschreiben die N+1-Vorauswahl beziehungsweise den Schedulerkontext. Sie sind keine Zähler eines unbegrenzten Instanzbestands. Der Kontextzugriff findet auch bei einer erfolgreich gelesenen, leeren Pending-Quelle statt; Quellfehler müssen im Quellstatus geprüft werden und erscheinen nicht automatisch als Datenbankwarning.
 
 ### Datenkette
 

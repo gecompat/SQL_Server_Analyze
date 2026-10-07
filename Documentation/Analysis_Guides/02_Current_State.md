@@ -605,7 +605,13 @@ EXEC [monitor].[USP_CurrentIO]
 `pendingIo` ergänzt Requestadresse, Dateiabbildung, SQL-/OS-Pending-Layer,
 Pending-Dauer und die Zahl der Beobachtungen. `io_pending_ms_ticks` ist eine
 informational/internal Engineangabe. Schedulerzahlen sind gleichzeitiger
-Kontext und keine kausale Zuordnung. Physische Pfade bleiben opt-in.
+Kontext und keine kausale Zuordnung. Nur `pendingIo.PhysicalPath` bleibt opt-in; `files.PhysicalName` wird unabhängig davon ausgegeben.
+
+TABLE besitzt die fünf selektiv zuordenbaren Exporte `moduleStatus` (13 Felder), `sourceStatus` (10), `files` (19), `pendingIo` (20) und `warnings` (3); alle 23 Textfelder sind explizit frameworkcollatiert. Gültige Zuordnungen werden vor semantischer Parameterablehnung vorbereitet, ungültige Zuordnungen werfen 51011. Bei `INVALID_PARAMETER` bleiben Datei-/Pending-Mengen leer und vorhandene Status-/Warnungsevidenz erhalten. Die nichtnullfähigen Modulstatusfelder stellen NULL-Sample-/Pending-Argumente als 0 dar; JSON behält diese NULL-Argumente.
+
+`@MaxZeilen` begrenzt die Kandidaten zunächst auf N+1 und die gemeinsame Datei-/Pending-Ausgabe danach auf N, nach Zählern und Statusbewertung. NULL und 0 sind unbegrenzt. CONSOLE besitzt ein zusätzliches gemeinsames TOP über Pending-I/O und Dateien, mit Pending-I/O zuerst; ihre zehn Felder sind keine vollständige Vereinigung beider JSON-Arrays. Quellstatuszahlen behalten die Kandidaten- beziehungsweise Schedulergrenze bei. Die DMV-Beobachtungen werden nicht auf das Ausgabelimit eingeschränkt.
+
+Bei Sample 0 wird Pending-Before kopiert: `WasPresentInFirstSample=1`, `ObservationCount=1` und `POINT_IN_TIME_PENDING_IO` belegen keine wiederholte Beobachtung. Erst ein positives Sample kann dieselbe Adresse an zwei Messpunkten zeigen. Counterresets besitzen keinen gesonderten Reset-Statusvertrag.
 
 ### Interpretation
 
