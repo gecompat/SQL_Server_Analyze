@@ -446,6 +446,12 @@ EXEC [monitor].[USP_CurrentMemoryGrants]
 | Worker/Queue | `ReservedWorkerCount`, `UsedWorkerCount`, `MaxUsedWorkerCount`, `QueueId`, `WaitOrder` |
 | Kontext | Login/Host/Program, Datenbank, Requeststatus, Command, Laufzeit, CPU, Reads, Statement |
 
+### Ausgabe- und Mengenvertrag
+
+`memoryGrants` besitzt 63 Felder und neun explizite Frameworktextcollations. Nur `IsWaiting` und `CurrentStatementIsTruncated` sind NOT NULL; die Exportquelle besitzt keine Identity. RAW und TABLE enthalten dieselben Fachfelder, aktive CONSOLE zusätzlich ein Label. JSON erhält sämtliche NULL-Properties sowie Status, Snapshotidentität und Warnungen.
+
+NULL oder 0 als Zeilenlimit bleibt unbegrenzt. Positive Limits schneiden die gemeinsame Fachmenge für alle vier Ausgabeformen nach der N+1- und `HasMoreRows`-Bewertung zu. Die Auswahl erfolgt nach Wartestatus, angefordertem Speicher, Wartezeit, Session und Request; RAW und JSON sortieren sie ausdrücklich. Die Helperausgaben garantieren keine Darstellungsreihenfolge. Negative Zeilen- und Textgrenzen bleiben kontrolliert `INVALID_PARAMETER`.
+
 ### Interpretation
 
 | Konstellation | Bedeutung |

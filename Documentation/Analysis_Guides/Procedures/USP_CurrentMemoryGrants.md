@@ -31,7 +31,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `memoryGrants`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `memoryGrants` mit 63 Feldern, neun expliziten Frameworktextcollations und ohne Identity. Nur `IsWaiting` und `CurrentStatementIsTruncated` sind NOT NULL. RAW liefert einen zwölfspaltigen Modulstatus und dieselben 63 Fachfelder; aktive CONSOLE ergänzt die Fachfelder um `Ergebnis` und besitzt damit 64 Felder. Eine leere CONSOLE liefert `Ergebnis`, `Status` und `Hinweis`. JSON enthält `meta` mit 15 Feldern, `memoryGrants` und `warnings`; NULL-Properties bleiben erhalten. Status und Warnungen sind im RAW-Modulstatus beziehungsweise JSON zu prüfen.
+
+NULL oder 0 als `@MaxZeilen` liefert die vollständige gefilterte Menge. Ein positives Limit begrenzt RAW, CONSOLE, TABLE und JSON gemeinsam. Die Auswahl erfolgt nach `IsWaiting DESC`, `RequestedMemoryMb DESC`, `WaitTimeMs DESC`, `SessionId` und `RequestId`; RAW und JSON sortieren die ausgewählte Menge ausdrücklich. TABLE und der CONSOLE-Helper garantieren keine Darstellungsreihenfolge. `HasMoreRows`, `ResultLimited` und die Textwarnung werden vor dem gemeinsamen Zuschnitt aus den N+1-Kandidaten bestimmt. Ungültige negative Zeilen- oder Textgrenzen liefern weiterhin kontrolliert `INVALID_PARAMETER`.
 
 Im Overview stammen Grants, Resource Semaphores, Sessions, Requests,
 Workload-Gruppen, Resource Pools und deduplizierter SQL-Text aus derselben
@@ -75,14 +77,14 @@ Für `USP_CurrentMemoryGrants` gilt zusätzlich: **keine Zeile** bedeutet, dass 
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Ein Snapshot der aktuell vorhandenen Memory Grants mit Defaultlimit 1000. SQL-Text ist standardmäßig aktiv, wird aber nur für die begrenzte Kandidatenmenge aufgelöst und auf 3000 Zeichen gekürzt. |
+| Standardpfad | Ein Snapshot der aktuell vorhandenen Memory Grants mit Defaultlimit 1000. SQL-Text ist standardmäßig aktiv. Im direkten Pfad wird er für alle unterschiedlichen Handles der erfassten Grants gelesen. Höchstens N+1 extrahierte Statements werden materialisiert und anschließend mit dem Unicodehelper projiziert; zusätzliche Extraktionsarbeit während Join, Filter und Sortierung ist damit nicht ausgeschlossen. Das Textbudget beträgt 3000 Zeichen. |
 | Teuerster Pfad | `@MaxZeilen = 0`, keine Session-/Größenfilter und ungekürzter SQL-Text während sehr vieler gleichzeitig wartender oder gewährter Grants. Zusätzlich werden Workload-Group-, Pool- und Semaphorekontext je Grant korreliert. |
-| Haupttreiber | Zahl gleichzeitig wartender/gewährter Grants und ihrer Request-, Semaphore-, Workload-Group- und Poolkorrelationen. Ungekürzter SQL-Text verbreitert jeden behaltenen Kandidaten; Filter und N+1-Limit reduzieren ihn vor der Textauflösung. |
+| Haupttreiber | Zahl gleichzeitig wartender/gewährter Grants und ihrer Request-, Semaphore-, Workload-Group- und Poolkorrelationen. Im direkten Pfad bestimmt die gesamte erfasste Grantmenge die Zahl unterschiedlicher Text-Handles. Filter und N+1-Limit begrenzen die Zahl materialisierter Statements und deren anschließende Unicodeprojektion; zusätzliche Join-, Filter-, Sortier- und Extraktionsarbeit kann weitere Quellzeilen betreffen. Ungekürzter Text verbreitert jeden behaltenen Kandidaten. |
 | Skalierung | Die normalerweise kleine DMV-Menge bestimmt die Join- und Sortierarbeit. Breite oder ungekürzte Batchtexte erhöhen Speicher und Transfer; die Procedure liest keine Pläne und keine Benutzertabellen. |
 | Ressourcen | CPU und Arbeitsspeicher für Live-DMV-Joins und Sortierung; bei `@MitSqlText = 1` zusätzlicher Plan-Cache-/Textzugriff und Ergebnistransfer. |
 | Begrenzungswirkung | Session-, Waiting- und MB-Filter stehen in der Quellabfrage. Intern werden höchstens `@MaxZeilen + 1` Kandidaten materialisiert, um `HasMoreRows` zu bestimmen. Der DMV-/Joinpfad kann für Filter und Sortierung dennoch mehr Quellzeilen untersuchen; `@MaxSqlTextZeichen` begrenzt nur Textbreite. |
 | Locking und Nebenwirkungen | Read-only gegenüber Nutzdaten. Flüchtige DMVs werden nacheinander gelesen; Katalog-/SQL-Textauflösung kann kurze interne Synchronisation verursachen, erzeugt aber keinen atomaren Snapshot. |
-| Schutzmechanismus | Kein High-Impact-Gate. Session-, Waiting- und Größenfilter sowie das N+1-Kandidatenlimit wirken vor der Textauflösung; `@MitSqlText = 0` und das Zeichenbudget sparen Breite. Das Sortieren/Filtern der sichtbaren Grantquelle bleibt notwendig. |
+| Schutzmechanismus | Kein High-Impact-Gate. Session-, Waiting- und Größenfilter sowie das N+1-Kandidatenlimit begrenzen die materialisierte Statementmenge und deren anschließende Unicodeprojektion; `@MitSqlText = 0` und das Zeichenbudget sparen Breite. Das Sortieren/Filtern der sichtbaren Grantquelle bleibt notwendig. |
 | Sicherer Einsatz | Bei akuter Grantwartefrage mit `@NurWartende = 1`, endlichem Limit und zunächst `@MitSqlText = 0` beginnen; Text nur für identifizierte Sessions ergänzen. |
 | Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „Snapshot“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
 
@@ -116,7 +118,7 @@ SELECT
     , [r].[wait_type]
     , [d].[name] AS [DatabaseName]
 FROM [sys].[dm_exec_query_memory_grants] AS [mg] WITH (NOLOCK)
-JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
+LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
   ON [s].[session_id] = [mg].[session_id]
 LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
   ON [r].[session_id] = [mg].[session_id]
@@ -126,7 +128,7 @@ LEFT JOIN [sys].[databases] AS [d] WITH (NOLOCK)
 WHERE [mg].[grant_time] IS NULL;
 ```
 
-**Wichtig für die Eigenlast:** `NurWartende` beziehungsweise Sessionfilter vor SQL-Text und Statementextraktion anwenden. Resource-Governor- und Semaphorezeilen sind kleine Zusatzquellen, SQL-Text ist der vermeidbare breite Pfad.
+**Wichtig für die Eigenlast:** `NurWartende`, Sessionfilter und TOP begrenzen die materialisierte Statementmenge. Die TVF-Extraktion steht im SELECT-/OUTER-APPLY-Pfad; daraus folgt ohne Ausführungsplannachweis keine entsprechende Grenze für ihre physische Auswertung. Der direkte Pfad materialisiert Grants, Sessions, Requests und Resource-Governor-Kontext vorher getrennt; bei `@MitSqlText = 1` liest er Text für alle unterschiedlichen Grant-Handles. `@MitSqlText = 0` vermeidet diesen zusätzlichen Textzugriff.
 
 ### Zeit- und Scope-Modell
 
