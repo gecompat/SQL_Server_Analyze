@@ -75,6 +75,10 @@ unter `$.tempdbSessions.tempdbGovernance`.
 Vor den acht Snapshot-fähigen Children materialisiert der Overview-Owner nur die
 dafür benötigten Primärquellen. `snapshotStatus` weist pro Quelle
 `SnapshotId`, `CapturedAtUtc`, Abschlusszeit, Status, Partialität und Zeilenzahl aus.
+`CapturedRowCount` zählt die für diese Quelle und Snapshot-ID materialisierten
+Zeilen vor den Childfiltern und Ausgabelimits. Insbesondere zählt `SESSIONS`
+die Sessiontabelle, unabhängig davon, ob Workload Groups angefordert wurden.
+Der Quellenzähler kann deshalb größer als die sichtbare Sessionmenge sein.
 SQL-Text wird nur bei einem tatsächlichen Consumer materialisiert;
 SQL-Handles werden vor dem DMF-Zugriff dedupliziert und begrenzt. Input Buffer
 bleibt eine gezielte Post-Candidate-Quelle von `USP_CurrentRequests` und gehört
