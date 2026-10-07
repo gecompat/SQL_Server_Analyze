@@ -20,6 +20,7 @@ else {
 }
 
 $selfTestValidators = @(
+    'Validate_Deployment_Contract.py'
     '905_Validate_Analysis_Navigator.py'
     '910_Validate_Repository_Privacy.py'
     '915_Validate_Documentation_Style.py'

@@ -1,6 +1,6 @@
 # Architekturentscheidungen
 
-1. Installationsdatenbank wird über den Platzhalter `[DeineDatenbank]` in jedem SQL-Skript explizit gewählt.
+1. Installationsdatenbank wird über den Platzhalter `[DeineDatenbank]` in jedem SQL-Skript explizit gewählt. Ausschließlich `Code/Install/generated/Deploy_All.generated.sql` verwendet geprüfte Datenwerte `@FrameworkDatabase` und optional `@SnapshotDatabase` ohne einen getrennten `USE`-Batch; der Kontext wird innerhalb des dynamischen Ausführungsrahmens gewählt. Einzelquellen und bisherige Installer behalten ihren `USE`-Vertrag.
 2. Das Schema lautet `[monitor]`.
 3. Öffentliche API-Namen und Resultsetspalten sind exakt case-sensitiv.
 4. Steuerwerte werden getrimmt und in eine kanonische Großschreibung überführt.
@@ -15,7 +15,7 @@
 13. Memory Grants werden mit Workload Group, Resource Pool, Resource Semaphore und fachlich benannten Prozentkennzahlen korreliert.
 14. Historische, umgebungsspezifische Quellen werden nicht im Repository archiviert.
 15. Git ist die maßgebliche Versions- und Integritätsquelle; ein zusätzliches per-Datei-Hash-Manifest wird nicht gepflegt.
-16. Der Platzhalter `[DeineDatenbank]` darf nur als einleitender `USE`-Kontext oder in ausdrücklich gekennzeichneten Beispielen vorkommen, nie als ausführbares internes Stringliteral.
+16. Der Platzhalter `[DeineDatenbank]` darf nur als einleitender `USE`-Kontext oder in ausdrücklich gekennzeichneten Beispielen vorkommen, nie als ausführbares internes Stringliteral. In `Deploy_All.generated.sql` dient `@FrameworkDatabase=N'DeineDatenbank'` ausschließlich als vor jeder Änderung abgelehnter Eingabeplatzhalter gemäß Entscheidung 1.
 17. Historische Quellenanalysen werden ausschließlich abstrahiert als Systemquellen-, Capability-, Abhängigkeits- und Risikokatalog migriert.
 18. Tool-Hintergrundabfragen werden ausschließlich diagnostisch über priorisierte, aktivierbare `LIKE`-Regeln in `monitor.ToolBackgroundQueryPattern` klassifiziert. Default ist Ausblenden; Opt-in zeigt Regel und Konfidenz. Blocking filtert nur erkannte Tool-Blätter und erhält Tool-Zwischen-/Root-Blocker normaler Ketten.
 19. `USP_CurrentBlocking` materialisiert vollständige sichtbare Ketten vor Session- und Toolfilterung und liefert neben direktem Blocker die lesbare Kette sowie Status-, Identitäts-, Transaktions- und Statementkontext des äußersten Root Blockers.

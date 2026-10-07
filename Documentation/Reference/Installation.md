@@ -2,6 +2,8 @@
 
 Diese Anleitung beschreibt die vollständige Erstinstallation und die anschließende Funktionsprüfung. Der empfohlene Weg erzeugt zunächst einen eigenständigen Installer und führt danach nur eine SQL-Datei in SSMS aus.
 
+Für Wiederholungen und Migrationen mit erhaltener Datenhistorie gilt die [Anleitung zum Gesamtdeployment](Deployment.md). Der dort beschriebene Builder erfordert zusätzlich Python 3.10 oder neuer und verwendet explizite Datenbankwerte sowie persistente Vorzustandskopien. Die nachstehenden bisherigen Installer behalten ihren Erstinstallationsablauf.
+
 ## 1. Voraussetzungen prüfen
 
 Benötigt werden:

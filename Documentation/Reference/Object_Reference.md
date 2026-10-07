@@ -22,9 +22,47 @@ Analyseendpunkt. Anwendungen verwenden grundsätzlich die
 | Table-Valued Functions (TVFs) | 28 | ein Abschnitt je TVF |
 | Scalar-Valued Functions (SVFs) | 0 | derzeit keine SVF installiert |
 | Interne Procedures | 16 | ein Abschnitt je Procedure |
-| Tabellen | 17 | ein Abschnitt je Tabelle |
+| Tabellen | 20 | ein Abschnitt je Tabelle |
 
 ## Direktnavigation
+
+Die persistenten Corekataloge `FrameworkVersion`, `WaitTypeCatalog` und `WaitTypeCatalogSource` sind ebenfalls Teil des Tabelleninventars. Ihre Aufgabe und Erhaltung sind in den folgenden Abschnitten beschrieben.
+
+### `[monitor].[FrameworkVersion]`
+
+Quelle: `Code/01_Common/077_FrameworkVersion.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Die Tabelle dokumentiert den installierten Frameworkstand pro Frameworkname. Sie hält Versionswerte, Installationszeitpunkte, Mindestversion und Installationshinweise als persistente Katalogdaten. |
+| Schnittstelle | Der Frameworkname ist der eindeutige Schlüssel. Der kanonische Installer schreibt den Schlüssel `SQLServerMonitoringFramework`; zusätzliche vorhandene Frameworkschlüssel werden nicht als eigene Seedwerte interpretiert. |
+| Verwendung | Installation und Wiederholung aktualisieren den eigenen Versionsschlüssel. `Deploy_All.generated.sql` erhält davor die gesamte Tabelle typgetreu im Deploymentarchiv, einschließlich zusätzlicher Frameworkzeilen und ursprünglicher Zeitwerte. |
+| Last und Sperren | Installationen sperren die Tabelle während des gemeinsamen Deploymentlaufs. Die Vorzustandskopie benötigt zusätzlichen Speicher und Transaktionslog; normale Laufzeitanalysen schreiben diesen Versionskatalog nicht fort. |
+| Vertrag | Ein Versionswert allein belegt weder die Vollständigkeit der übrigen Objekte noch einen erfolgreichen fachlichen Laufzeittest. Der erfolgreiche Gesamtabschluss wird anhand von Receipt, Quellhash und Objektgestalt geprüft. |
+
+### `[monitor].[WaitTypeCatalog]`
+
+Quelle: `Code/01_Common/074_WaitTypeCatalog.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Die Tabelle enthält kuratierte und lokale Wait-Beschreibungen sowie Analysefelder für Bedeutung, Messung, Ursachen, Gegenbelege und geeignete weitere Prüfung. Die Beschreibungen ersetzen keine aktive Wait- oder Lastmessung. |
+| Schnittstelle | Der Waitname ist der eindeutige Schlüssel. `IsFrameworkDefault` trennt Frameworkseeds von Customzeilen. Die zugehörigen Wait-Funktionen veröffentlichen den diagnostischen Katalog für aktuelle Wait- und Query-Store-Analysen. |
+| Verwendung | Die Quellen ergänzen fehlende bekannte Einträge und aktualisieren eigene Defaultwerte. Customwerte bleiben erhalten. Die zwölf bekannten additiven Spalten werden nach ihren Namen und Facetten geprüft; ihre physische Spaltenreihenfolge muss nicht der Erstinstallation entsprechen. |
+| Last und Sperren | Der Gesamtdeploymentweg sperrt die Tabelle und erhält vor Änderungen ihren ursprünglichen Stand. Die Kopie benötigt Speicher und Transaktionslog proportional zum vorhandenen Tabelleninhalt. |
+| Vertrag | Retirierte Frameworknamen dürfen erst nach Vorzustandserhaltung entfernt werden. Bestehende Customverweise verhindern diese Migration. Installation und analytische Nutzung besitzen unterschiedliche Schreib- und Sperrverträge. |
+
+### `[monitor].[WaitTypeCatalogSource]`
+
+Quelle: `Code/01_Common/074_WaitTypeCatalog.sql`
+
+| Dimension | Beschreibung |
+|---|---|
+| Aufgabe | Die Tabelle ordnet einem Wait dokumentierte Quellenrollen zu. Sie hält unter anderem Titel, URL, unterstützte Analysefelder, Evidenzgrenze und Prüfzeitpunkt für die nachvollziehbare Herkunft der Katalogbeschreibungen. |
+| Schnittstelle | Waitname und Quellenordinal bilden gemeinsam den eindeutigen Schlüssel. Der Fremdschlüssel verweist auf `WaitTypeCatalog`; `IsFrameworkDefault` kennzeichnet die vom Framework verwalteten Quellenzeilen. |
+| Verwendung | Bei der Migration retirierter Frameworknamen werden erhaltene Frameworkquellen vor ihrem Elternwait aus der aktiven Menge entfernt. Customquellen bleiben erhalten. Die Wait-Quellenfunktion bietet den lesenden Zugriff für Analyse und Prüfung. |
+| Last und Sperren | Der Gesamtdeploymentweg sperrt die Tabelle und kopiert ihren ursprünglichen Inhalt in das persistente Vorzustandsarchiv. Nullwerte und abschließende Leerzeichen bleiben dort erhalten. Das Archiv besitzt keine automatische Löschfrist. |
+| Vertrag | Customverweise auf retirierende Eltern und Überschneidungen mit erforderlichen Frameworkschlüsseln führen vor Änderungen zum Abbruch. Eine Quellenbeschreibung allein belegt keine aktuelle Ursache in der untersuchten Last. |
 
 ### Views
 
@@ -109,6 +147,9 @@ Quelle: `Code/05_QueryStore/005_TVF_QueryStoreReplicaRoleInfo.sql`
 
 | Objekt | Schema | Quelle |
 |---|---|---|
+| [`FrameworkVersion`](#monitorframeworkversion) | `monitor` | `Code/01_Common/077_FrameworkVersion.sql` |
+| [`WaitTypeCatalog`](#monitorwaittypecatalog) | `monitor` | `Code/01_Common/074_WaitTypeCatalog.sql` |
+| [`WaitTypeCatalogSource`](#monitorwaittypecatalogsource) | `monitor` | `Code/01_Common/074_WaitTypeCatalog.sql` |
 | [`ToolBackgroundQueryPattern`](#monitortoolbackgroundquerypattern) | `monitor` | `Code/01_Common/087a_ToolBackgroundQueryPattern.sql` |
 | [`SqlServerBuildCatalog`](#monitorsqlserverbuildcatalog) | `monitor` | `Code/09_VersionAdaptive/011_SqlServerBuildCatalog.sql` |
 | [`SqlServerLifecycleCatalog`](#monitorsqlserverlifecyclecatalog) | `monitor` | `Code/09_VersionAdaptive/012_SqlServerLifecycleCatalog.sql` |

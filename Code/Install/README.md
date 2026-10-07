@@ -1,5 +1,7 @@
 # Installation
 
+Für ein wiederholbares Gesamtdeployment einschließlich Migration und Vorzustandserhaltung erzeugt `Build-DeploymentInstaller.ps1` die Datei `generated/Deploy_All.generated.sql`. Mit `-IncludeSnapshotBaseline` werden beide expliziten Datenbankkontexte in denselben Lauf aufgenommen. Voraussetzungen, Datenbankwerte, Receipt und Fehlerbehandlung beschreibt die [Deploymentanleitung](../../Documentation/Reference/Deployment.md).
+
 Für eine vollständige Schritt-für-Schritt-Installation in SSMS siehe
 [`Documentation/Reference/Installation.md`](../../Documentation/Reference/Installation.md).
 

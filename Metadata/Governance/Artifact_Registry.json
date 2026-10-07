@@ -163,6 +163,33 @@
       "wave": "CONTINUOUS_INTAKE",
       "locator": "AI_Metadata/Internal_Documentation/Research/SQL_Server_Diagnostic_Coverage_Landscape.md"
     },
+    "WI-0011": {
+      "artifact_uid": "urn:uuid:01a11756-4102-75f8-8058-b7226909c502",
+      "kind": "work_item",
+      "title": "Wiederholbarer verlustfreier Gesamtdeploymentweg",
+      "registration_state": "REGISTERED",
+      "status": "IMPLEMENTED_ACTIONS_GATE",
+      "priority": "P1",
+      "acceptance_criteria": "Der aus aktuellen kanonischen Quellen erzeugte Deploymentweg legt alle gewählten Objekte an oder altert sie; erhält Customdaten, lokale Policy und Legacytabellen; migriert erlaubte Default- und Versionsänderungen typgetreu; prüft bekannte Strukturformen vor Änderungen und besteht native Wiederholungs-, Migrations-, Kontext-, Konkurrenz- und Rollbackgegenproben.",
+      "aliases": [],
+      "relations": [
+        {"type": "parent", "target": "WI-0001"}
+      ],
+      "wave": "DEPLOYMENT_CLOSEOUT",
+      "locator": "Documentation/Architecture/Lossless_Deployment_Contract.md"
+    },
+    "EXP-0001": {
+      "artifact_uid": "urn:uuid:01a117c4-6d91-7788-8753-39ba1da0bcdf",
+      "kind": "experiment",
+      "title": "Native Abnahme des verlustfreien Gesamtdeployments",
+      "registration_state": "REGISTERED",
+      "status": "COMPLETED",
+      "aliases": [],
+      "relations": [
+        {"type": "verifies", "target": "WI-0011"}
+      ],
+      "locator": "AI_Metadata/Internal_Documentation/Quality/WI0011_Deployment_Runtime_Evidence_2026-10-07.md"
+    },
     "DEC-0001": {
       "artifact_uid": "urn:uuid:01a10d36-bbba-7ae0-afe1-c530de54d626",
       "kind": "decision",

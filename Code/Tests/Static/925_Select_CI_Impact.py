@@ -330,6 +330,10 @@ def test_sql_paths(repository_root: pathlib.Path, head_sha: str, scope: str) -> 
 
 
 def force_full_path(path: str, scope: str) -> bool:
+    if path.startswith("Code/Tests/Integration/Deployment_"):
+        return True
+    if path.startswith("Code/Install/") and path.endswith((".ps1", ".py")):
+        return True
     if path == IMPACT_SCRIPT:
         return True
     if scope == "snapshot":
@@ -567,6 +571,9 @@ def run_self_test() -> None:
     assert not is_core_sql_path("Code/10_SnapshotBaseline/010_Config.sql")
     assert is_snapshot_runtime_path("Code/10_SnapshotBaseline/010_Config.sql")
     assert force_full_path("Code/Install/Install_All.sql", "core")
+    assert force_full_path("Code/Install/Build-DeploymentInstaller.ps1", "core")
+    assert force_full_path("Code/Install/deployment_generator.py", "core")
+    assert force_full_path("Code/Install/deployment_generator.py", "snapshot")
     assert not force_full_path("Documentation/README.md", "core")
     assert requires_compatibility_matrix(
         Change("Code/09_VersionAdaptive/010_Example.sql", "SELECT 1;", "SELECT 2;")

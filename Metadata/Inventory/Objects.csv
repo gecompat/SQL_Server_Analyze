@@ -1,4 +1,7 @@
 ObjectType,ObjectName,SourcePath
+TABLE,FrameworkVersion,Code/01_Common/077_FrameworkVersion.sql
+TABLE,WaitTypeCatalog,Code/01_Common/074_WaitTypeCatalog.sql
+TABLE,WaitTypeCatalogSource,Code/01_Common/074_WaitTypeCatalog.sql
 VIEW,VW_ModuleStatusCatalog,Code/01_Common/010_VW_ModuleStatusCatalog.sql
 VIEW,VW_AnalyseClassCatalog,Code/01_Common/020_VW_AnalyseClassCatalog.sql
 VIEW,VW_AnalysisCatalog,Code/01_Common/021_VW_AnalysisCatalog.sql

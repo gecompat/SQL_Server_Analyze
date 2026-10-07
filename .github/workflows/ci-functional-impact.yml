@@ -12,7 +12,9 @@ on:
     paths:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
-      - 'Code/Install/Build-SnapshotBaselineInstallers.ps1'
+      - 'Code/Install/**/*.ps1'
+      - 'Code/Install/**/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
       - 'Code/**/*.sql'
   push:
     branches:
@@ -20,7 +22,9 @@ on:
     paths:
       - '.github/workflows/ci-functional-impact.yml'
       - 'Code/Tests/Static/925_Select_CI_Impact.py'
-      - 'Code/Install/Build-SnapshotBaselineInstallers.ps1'
+      - 'Code/Install/**/*.ps1'
+      - 'Code/Install/**/*.py'
+      - 'Code/Tests/Integration/Deployment_*.py'
       - 'Code/**/*.sql'
   workflow_dispatch:
     inputs:
@@ -128,6 +132,8 @@ jobs:
           cp -R Code "$RUNNER_TEMP/Code"
           find "$RUNNER_TEMP/Code" -type f -name '*.sql' -print0 \
             | xargs -0 perl -pi -e 's/\[DeineDatenbank\]/[SQLServerAnalyzeTest]/g'
+          python3 ./Code/Tests/Integration/Deployment_Prepare_Runtime.py \
+            --output "$RUNNER_TEMP/Code/Install/generated/Deployment_Runtime.generated.sql"
 
       - name: Build impact-selected SQLCMD runner
         shell: bash
@@ -198,6 +204,22 @@ jobs:
             exit 1
           fi
           echo "SQLCMD_PATH=$sqlcmd_path" >> "$GITHUB_ENV"
+
+      - name: Run native deployment regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! docker exec \
+            --env SQLCMDPASSWORD="$MSSQL_EPHEMERAL_CREDENTIAL" \
+            --workdir /work/Code/Install/generated \
+            sqlserver-analyze-impact-2025 \
+            "$SQLCMD_PATH" -S localhost -U sa -C -b \
+            -i Deployment_Runtime.generated.sql \
+            >"$RUNNER_TEMP/sqlserver-analyze-deployment-runtime.log" 2>&1; then
+            echo 'Native deployment regression failed.'
+            grep -B 2 -A 4 -E 'Msg [0-9]+|Sqlcmd: Error|Error:' "$RUNNER_TEMP/sqlserver-analyze-deployment-runtime.log" | tail -n 160 || true
+            exit 1
+          fi
 
       - name: Run impacted contracts
         shell: bash
