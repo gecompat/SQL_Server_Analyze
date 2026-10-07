@@ -136,6 +136,17 @@ BEGIN
         , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
     );
 
+    IF @StatusCode='AVAILABLE' AND @TableResultRequested=1
+    BEGIN
+        EXEC [monitor].[InternalPrepareResultTables]
+              @ResultTablesJson=@ResultTablesJson
+            , @AllowedResultNames=N'requests|requestContext|snapshotStatus|statements|batches|inputBuffers|warnings'
+            , @MappingTable=N'#CurrentRequests_ResultTableMap'
+            , @StatusCode=@StatusCode OUTPUT
+            , @ErrorMessage=@ErrorMessage OUTPUT
+            , @ThrowOnError=1;
+    END;
+
     CREATE TABLE [#CurrentRequests_SessionIdFilter]
     (
         [SessionId] smallint NOT NULL PRIMARY KEY
@@ -313,17 +324,6 @@ BEGIN
     IF @StatusCode = 'INVALID_PARAMETER'
     BEGIN
         SET @ErrorMessage = COALESCE(@ErrorMessage, N'Ungültige Liste, Kombination, Pattern- oder Steuerangabe.');
-    END;
-
-    IF @StatusCode='AVAILABLE' AND @TableResultRequested=1
-    BEGIN
-        EXEC [monitor].[InternalPrepareResultTables]
-              @ResultTablesJson=@ResultTablesJson
-            , @AllowedResultNames=N'requests|requestContext|snapshotStatus|statements|batches|inputBuffers|warnings'
-            , @MappingTable=N'#CurrentRequests_ResultTableMap'
-            , @StatusCode=@StatusCode OUTPUT
-            , @ErrorMessage=@ErrorMessage OUTPUT
-            , @ThrowOnError=1;
     END;
 
     CREATE TABLE [#CurrentRequests_Result]
@@ -1378,7 +1378,7 @@ BEGIN
           )
           AND (@NurBlockierte = 0 OR [r].[blocking_session_id] <> 0)
           AND (@NurMitWait = 0 OR [r].[wait_type] IS NOT NULL OR [wt].[WaitingTaskCount] > 0)
-          AND (@MinLaufzeitSekunden IS NULL OR [r].[total_elapsed_time] >= @MinLaufzeitSekunden * 1000)
+          AND (@MinLaufzeitSekunden IS NULL OR CONVERT(bigint, [r].[total_elapsed_time]) >= CONVERT(bigint, @MinLaufzeitSekunden) * 1000)
           AND (@MinCpuMs IS NULL OR [r].[cpu_time] >= @MinCpuMs)
           AND (@MinLogicalReads IS NULL OR [r].[logical_reads] >= @MinLogicalReads)
           AND

@@ -4938,3 +4938,100 @@ Eingefrorene normalisierte SHA256-Werte: Source010
 `45C39B49981F701DAFFADB2BA67941E5328CC8C7D122C04B711CBEE4A6EBFC8C`, Common184
 `743369046DE6FE350EE2E6E18930E8BC554D54CF38084D3CB50A5DEE96A978EA`, Static1038
 `A51A8D9C05A215AEE4D0A100242626A838C4B95566D7C75262B672A6A16D9178`.
+
+
+## Current Requests: gemeinsame Ausgaben und Laufzeitgrenzen
+
+Der begrenzte Nachweis vom 7. Oktober 2026 verwendet ein eigenes gemischtes
+SQL-Server-2025-Dockerlab mit gemessenem Build 17.0.4075.5 und CL170.
+Server und tempdb verwenden Latin1_General_100_CS_AS, das Framework
+SQL_Latin1_General_CP1_CS_AS. Kanonische Installation aus 166 Quellen und
+Smoke bestehen. Drei eigene aktive WAITFOR-Verbindungen besitzen
+case-unterschiedliche Unicode-App-/Hostwerte. Eine hält eine eigene
+Temp-Tabellen-Transaktion, eine führt ein eigenes Unicode-Modul aus.
+Runtimeidentitäten, vollständige native Captures und Secretwerte bleiben außerhalb Git.
+
+Die sieben bestehenden TABLE-Exporte enthalten 93/73/11/19/15/13/6 Felder,
+zusammen 230 Felder mit 66 expliziten Frameworktextcollations und ohne Identity.
+Der Legacyexport besitzt 93 Felder, aktive CONSOLE ergänzt Ergebnis,
+RAW zwölf Wait-Felder sowie einen separaten 13-Feld-Status. JSON-Legacy enthält
+52 Felder: 50 Resultwerte und zwei Wait-Werte. Die acht JSON-Hauptschlüssel,
+16 Metafelder, 34 Parameter, Sourceversion 4.0.0, JSON-SchemaVersion 4 und
+Snapshotvertrag 2 bleiben erhalten. Die gemeinsame N+1-Begrenzung liegt bereits
+vor Modul-/Inputbufferauflösung, Unicodeprojektion und Ausgabe.
+
+Vier native Originalfälle mit gültigen Maps und semantisch ungültigen Parametern
+lassen alle 28 TABLE-Ziele als Seedspalte stehen. Das frühe vorhandene Prepare
+stellt im Abschlussstand alle 28 vollständigen Schemas bereit. Ein nativer
+INT_MAX-Sekundenfilter meldet im Original ERROR_HANDLED mit Fehler 8115.
+Der bigint-Vergleich meldet anschließend AVAILABLE mit leerer Menge.
+Diese zwei eng begrenzten Korrekturen verändern keine ABI, Rangfolge,
+Filtersemantik oder Versionsgrenze. Collector und Parent bleiben unverändert.
+OPS-005 wird kanonisch synchronisiert; sein Update und beide PLAN-Installer
+bleiben normalisiert gegenüber der Basis unverändert.
+
+Ein unabhängiges Literalorakel prüft sämtliche 93 Legacywerte, 73 Kontextwerte,
+elf Statuswerte und die drei vollständigen Textarrays aus tatsächlich nativ
+erfassten, privat eingefrorenen Quellen. Je 160 Original- und Abschlussfälle
+prüfen fünf Sortierungen, NULL-/0-/1-/2-Limits, alle 16 Kombinationen der vier
+Textoptionen und TABLE/RAW/CONSOLE/NONE. Je 26 weitere Fälle prüfen exakte
+Unicode-/Case-Host-, Programm-, Login- und Datenbankfilter, bracket-aware
+Duplikate, LIKE, REGEX/REGEXI, Eigenmodus, Wait-/Blocking- und Mindestfilter.
+Je 32 weitere Fälle schneiden tatsächliche Surrogate-Grenzen bei
+20/21, 38/39, 50/51 und 97/98 Zeichen in allen vier Ausgabeformen.
+Ein gesondertes Literalorakel bestätigt je 1.610 native Schemafacetten.
+Alle 18 erfassten Quellentabellen bleiben mit ihren gespeicherten Werten erhalten.
+Original und Abschluss verwenden jeweils eigene eingefrorene native Captures;
+daraus wird kein atomarer Livezustand oder identischer Quellenstand abgeleitet.
+
+Je sechs positive tatsächliche Overview-Aufrufe verwenden Limits 0/1/2 und
+SQL-Text an/aus. Innerhalb desselben Aufrufs stimmen die 50 gemeinsamen
+Legacywerte sowie vollständiger Kontext, Status und Textarrays zwischen TABLE
+und JSON überein. Die übrigen 43 Legacywerte besitzen den unabhängigen
+Childnachweis; vollständige Parentwerteparität dieser Felder bleibt unbelegt.
+Modulordinal 20, neun Modulstatuszeilen, Child-/Parent-Quellenzuordnung und
+Caller-LOCK_TIMEOUT 137 bleiben erhalten. Die positive Fixture verwendet
+andere eigene Verbindungen; der vorhandene Parentdefault schließt den Caller aus.
+Die Orakel prüfen je Original- und Abschlussstand insgesamt 234.358 Fachwerte.
+
+Common185 besteht 21 allgemeine TABLE-Fälle, neun selektive Maps, drei Consumer,
+sechs Mappingablehnungen und drei leere SQL-CONSOLE-Captures. Ohne Fixture
+bleibt der native Block NOT_EXECUTED. Mit der eigenen Fixture bestehen
+20 zusätzliche native Fälle und drei direkte positive CONSOLE-Status-/JSON-Aufrufe.
+Der Vertrag prüft alle sieben Schemas, vollständige gleiche JSON-Feldmengen
+und Typen, 52 Legacyfelder, 73 Kontextfelder, Textarrays, Warnungen und Status.
+Elf stabile native Identitätsfelder, unabhängig abgeleitete UTF16-/SC-Textwerte
+und die vorhandenen Wait-Katalogwerte erhalten zusätzliche Gegenproben.
+Bewegliche Livezähler erhalten keinen Cross-call-Vollparitätsanspruch.
+Static1039 schützt 27 lokale Tabellen, 99 lokale Textcollations, alle 230
+Exportfelder und die beiden korrigierten Grenzen; 1.279 echte Mutationen bestehen.
+Inventar und zwei betroffene Dokumente präzisieren die bestehenden Verträge.
+Es entsteht kein neuer Snapshotowner und keine Static950-Ausnahme.
+
+Die kanonische Impact-Auswahl umfasst 13 SQL-Testdateien; ihr nativer Lauf
+besteht in 39 Batches. Alle 75 statischen Prüfungen bestehen am stabilen
+funktionalen Stand. Ein wiederholtes CREATE eines privaten Captureziels und
+mehrere private Typ-/Spaltenordnungsannahmen werden im Harness korrigiert.
+Ein ursprünglicher Unicodecapture scheitert einmal mit Lock-Timeout 1222;
+die einmalige Wiederholung besteht, die Ursache bleibt offen. Ein doppeltes
+Setup im Common-Test wird vor Freeze entfernt. Der lokale Shellwrapper
+meldet nach erfolgreichem Suiteschluss einen Exitquotingfehler; die vollständige
+Suiteabschlusszeile und alle 75 Ergebnisse liegen vor. Daraus entsteht keine
+zusätzliche Sourceänderung. Ein Reviewbefund präzisiert ausschließlich die
+Dokumentation vollständiger INVALID_PARAMETER-Schemas bei erhaltener Status-
+und Warnungsevidenz. Der unabhängige funktionale Review hat keine
+offenen Befunde.
+
+Vor Cleanup sind keine eigenen Fixture-Verbindungen oder Module mehr sichtbar.
+Das eigene Lab wird mit zwei Cleanupschritten ohne Fehler entfernt; Secretwert
+und eigene Verbindungen sind entfernt. Die anschließenden begrenzten
+Dokumentations-, Schreibstil- und Privacyprüfungen bestehen am Lieferstand.
+MARS, isolierte Rangties, eingeschränkte Berechtigungen, systematische Timeout-
+und weitere Tool-Regeln, ältere native Engines und CL150/160 bleiben unbelegt.
+COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende Maturityflags
+bleiben unverändert.
+
+Eingefrorene normalisierte SHA256-Werte: Source020
+`be089c09f89197ba144944d0fb320d5ba1d2eef11bb07537bc4a7368253457e5`, Common185
+`5c9bddd788faf9ec3453cf35ccaf856134b8fc83268d42c5dfdcdd64e5ab6cb7`, Static1039
+`4f2731fcfa728cbd96cc7c48e164504036e010a8a7ed607bd7115252157ab9b4`.
