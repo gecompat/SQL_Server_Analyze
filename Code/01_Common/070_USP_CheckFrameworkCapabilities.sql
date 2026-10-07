@@ -9,7 +9,7 @@ Stand        : 2026-07-16
 Zweck        : Prüft Framework-Capabilities serverweit und je ausgewählter DB.
 Datenbanken  : @DatabaseNames bracket-aware Pipe-Liste; NULL/N''=alle.
 Ausgabe      : RAW, CONSOLE, TABLE oder NONE; optional JSON mit capabilities, summary,
-               databaseStatus und warnings.
+               warnings.
 Änderungen   : 2.0.1 - SQL-Literal-Escaping für Datenbanknamen korrigiert.
 ===============================================================================
 */
@@ -74,6 +74,36 @@ BEGIN
         , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
+    CREATE TABLE [#CheckFrameworkCapabilities_Collected]
+    (
+          [FeatureOrdinal] smallint NOT NULL
+        , [FeatureCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureName] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeType] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AnalysisClass] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AnalysisLevel] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IsResourceIntensive] bit NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ServerMajorVersion] int NULL
+        , [ServerProductVersion] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [MinimumMajorVersion] tinyint NOT NULL
+        , [VersionSupported] bit NOT NULL
+        , [GroupCheckApplied] bit NOT NULL
+        , [GroupAccessAllowed] bit NULL
+        , [AccessReason] varchar(20) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [RequiredPermissionScope] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PermissionCheckType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RequiredPermission] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PermissionDisplayText] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [HasRequiredPermission] bit NULL
+        , [IsQueryable] bit NOT NULL
+        , [IsFeatureEnabled] bit NULL
+        , [IsUsable] bit NOT NULL
+        , [StatusCode] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Description] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+    );
     CREATE TABLE [#CheckFrameworkCapabilities_Capabilities]
     (
           [FeatureOrdinal] smallint NOT NULL
@@ -134,22 +164,22 @@ BEGIN
     (
           [RowNo] int IDENTITY(1,1) NOT NULL PRIMARY KEY
         , [FeatureOrdinal] smallint NOT NULL
-        , [FeatureCode] varchar(64) NOT NULL
-        , [FeatureName] nvarchar(200) NOT NULL
-        , [ScopeType] varchar(16) NOT NULL
-        , [AnalysisClass] varchar(64) NOT NULL
-        , [AnalysisLevel] varchar(16) NOT NULL
+        , [FeatureCode] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FeatureName] nvarchar(200) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ScopeType] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AnalysisClass] varchar(64) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [AnalysisLevel] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
         , [IsResourceIntensive] bit NOT NULL
         , [MinimumMajorVersion] tinyint NOT NULL
-        , [RequiredPermissionScope] varchar(16) NOT NULL
-        , [PermissionCheckType] varchar(24) NOT NULL
-        , [RequiredPermission] sysname NULL
-        , [PermissionDisplayText] nvarchar(128) NULL
-        , [ExpectedWithoutPermission] varchar(32) NULL
-        , [ProbeSqlTemplate] nvarchar(2000) NOT NULL
-        , [EnablementSqlTemplate] nvarchar(2000) NULL
-        , [Description] nvarchar(1000) NULL
-        , [DatabaseName] sysname NULL
+        , [RequiredPermissionScope] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [PermissionCheckType] varchar(24) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RequiredPermission] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [PermissionDisplayText] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ExpectedWithoutPermission] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ProbeSqlTemplate] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EnablementSqlTemplate] nvarchar(2000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Description] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
     );
 
     /* Eigene tempdb-/Tabellenvariablen-DDL bleibt außerhalb des No-Wait-Vertrags. */
@@ -315,7 +345,7 @@ BEGIN
             END CATCH;
         END;
 
-        INSERT [#CheckFrameworkCapabilities_Capabilities]
+        INSERT [#CheckFrameworkCapabilities_Collected]
         (
               [FeatureOrdinal], [FeatureCode], [FeatureName], [ScopeType]
             , [AnalysisClass], [AnalysisLevel], [IsResourceIntensive]
@@ -341,10 +371,14 @@ BEGIN
     END;
 
     IF @OverallStatus = 'AVAILABLE'
-       AND EXISTS (SELECT 1 FROM [#CheckFrameworkCapabilities_Capabilities] WHERE [IsUsable] = 0)
+       AND EXISTS (SELECT 1 FROM [#CheckFrameworkCapabilities_Collected] WHERE [IsUsable] = 0)
         SET @OverallStatus = 'AVAILABLE_LIMITED';
 
-    IF @PrintMeldungen = 1 AND (@OverallError IS NOT NULL OR EXISTS (SELECT 1 FROM [#CheckFrameworkCapabilities_Capabilities] WHERE [IsUsable] = 0))
+    INSERT [#CheckFrameworkCapabilities_Capabilities]
+    SELECT * FROM [#CheckFrameworkCapabilities_Collected]
+    WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0;
+
+    IF @PrintMeldungen = 1 AND (@OverallError IS NOT NULL OR EXISTS (SELECT 1 FROM [#CheckFrameworkCapabilities_Collected] WHERE [IsUsable] = 0))
     BEGIN
         DECLARE @PrintMessage nvarchar(2048) = COALESCE(@OverallError, N'Mindestens eine Capability ist nicht vollständig nutzbar.');
         RAISERROR(N'%s', 10, 1, @PrintMessage) WITH NOWAIT;
@@ -363,10 +397,9 @@ BEGIN
         IF @ResultSetArtNormalisiert = 'RAW'
         BEGIN
             SELECT * FROM [#CheckFrameworkCapabilities_Capabilities]
-            WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0
             ORDER BY [FeatureOrdinal], [DatabaseName];
             SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount]
-            FROM [#CheckFrameworkCapabilities_Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode];
+            FROM [#CheckFrameworkCapabilities_Collected] GROUP BY [StatusCode] ORDER BY [StatusCode];
             SELECT * FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName];
         END;
         ELSE
@@ -380,11 +413,10 @@ BEGIN
                 , [PermissionDisplayText] AS [Berechtigung]
                 , [ErrorMessage] AS [Hinweis]
             FROM [#CheckFrameworkCapabilities_Capabilities]
-            WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0
             ORDER BY [FeatureOrdinal], [DatabaseName];
 
             SELECT N'Capability-Status' AS [Ergebnis], [StatusCode] AS [Status], COUNT_BIG(*) AS [Anzahl]
-            FROM [#CheckFrameworkCapabilities_Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode];
+            FROM [#CheckFrameworkCapabilities_Collected] GROUP BY [StatusCode] ORDER BY [StatusCode];
 
             SELECT N'Datenbankwarnung' AS [Ergebnis], [RequestedName] AS [Datenbank], [StatusCode] AS [Status], [ErrorMessage] AS [Meldung]
             FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName];
@@ -394,8 +426,8 @@ BEGIN
     IF @JsonErzeugen = 1
     BEGIN
         DECLARE @MetaJson nvarchar(max) = (SELECT N'CheckFrameworkCapabilities' AS [resultName], 1 AS [schemaVersion], @CollectionTimeUtc AS [generatedAtUtc], @OverallStatus AS [statusCode], @OverallError AS [errorMessage] FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-        DECLARE @CapabilitiesJson nvarchar(max) = (SELECT * FROM [#CheckFrameworkCapabilities_Capabilities] WHERE @NurNichtVerfuegbar = 0 OR [IsUsable] = 0 ORDER BY [FeatureOrdinal], [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
-        DECLARE @SummaryJson nvarchar(max) = (SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount] FROM [#CheckFrameworkCapabilities_Capabilities] GROUP BY [StatusCode] ORDER BY [StatusCode] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @CapabilitiesJson nvarchar(max) = (SELECT * FROM [#CheckFrameworkCapabilities_Capabilities] ORDER BY [FeatureOrdinal], [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @SummaryJson nvarchar(max) = (SELECT [StatusCode], COUNT_BIG(*) AS [FeatureCount], SUM(CONVERT(bigint,[IsQueryable])) AS [QueryableCount], SUM(CONVERT(bigint,[IsUsable])) AS [UsableCount] FROM [#CheckFrameworkCapabilities_Collected] GROUP BY [StatusCode] ORDER BY [StatusCode] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) = (SELECT * FROM [#CheckFrameworkCapabilities_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         SET @Json = CONCAT(N'{"meta":', COALESCE(@MetaJson,N'{}'), N',"capabilities":', COALESCE(@CapabilitiesJson,N'[]'), N',"summary":', COALESCE(@SummaryJson,N'[]'), N',"warnings":', COALESCE(@WarningsJson,N'[]'), N'}');
     END;

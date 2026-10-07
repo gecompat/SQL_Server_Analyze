@@ -27,6 +27,8 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `capabilities`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+RAW, CONSOLE, TABLE und das JSON-Array `capabilities` verwenden denselben nach der vollständigen Prüfung materialisierten Export mit 27 Feldern und 15 explizit collatierten Textspalten. `@NurNichtVerfuegbar=1` beschränkt ihn auf `IsUsable=0`; auch ein NULL-Wert dieses Parameters erhält das bestehende Prädikat und zeigt nur diese Zeilen. Die Zusammenfassung und der Gesamtstatus bewerten weiterhin alle geprüften Capabilities. JSON enthält `meta`, `capabilities`, `summary` und `warnings`; ein zusätzliches Datenbankstatus-Array wird nicht ausgegeben.
+
 ## Eine Zeile bedeutet
 
 Eine Capability-Zeile bewertet ein Feature in einem Server- oder Datenbank-Scope. Dieselbe Fähigkeit kann deshalb je Datenbank unterschiedlich ausfallen.
@@ -53,7 +55,7 @@ Ein deaktiviertes Feature ist kein Serverfehler, wenn es nicht benötigt wird. E
 
 Bei Hilfsprocedures kann eine leere interne Zieltabelle aus bewusst leerem Filter, ungültiger Eingabe oder fehlender Policy entstehen; diese Fälle dürfen nicht zu einem ungefilterten Parentlauf zusammenfallen.
 
-Für `USP_CheckFrameworkCapabilities` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+Für `USP_CheckFrameworkCapabilities` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. Der Gesamtstatus `AVAILABLE_LIMITED` bezeichnet mindestens eine geprüfte Capability mit `IsUsable=0`. Eine Auswahlwarning bleibt separat sichtbar und verändert diesen Gesamtstatus nicht selbst. Der Ausgabefilter kann ausschließlich nutzbare Capabilities ausblenden; ein Mengenlimit besitzt die Procedure nicht.
 
 Fehlende Capability-Zeilen können durch eine explizite Datenbankauswahl, Rechte
 oder nicht verfügbare Datenbanken entstehen. Status und Warnings gehören
