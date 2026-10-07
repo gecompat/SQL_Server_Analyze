@@ -194,6 +194,10 @@ Die Procedure bewertet Cachegröße und Single-Use-Anteil. Im Vollmodus zeigt si
 
 Die Procedure löst gezielt Plan-Kandidaten über Session, Plan Handle, SQL Handle oder Query Hash auf und liefert Planattribute sowie Compile-, Text-, Last-Actual- oder Live-Plan.
 
+TABLE akzeptiert `candidates`, `attributes` und `plans` mit 23, vier und zehn Feldern. RAW liefert davor den neunfeldrigen Modulstatus und zeigt die angeforderten Detailresultsets; die aktive CONSOLE zeigt ausschließlich den generischen Kandidatenexport mit Label oder die vorhandene dreifeldrige Leerzeile. JSON enthält die drei vollständigen Arrays einschließlich NULL-Feldern und ein leeres Warningsarray. PlanDetails wird nicht als Child von `USP_PlanCacheAnalysis` aufgerufen.
+
+Das bestehende Kandidatenlimit gilt vor der Detailauflösung. NULL und 0 bedeuten unbegrenzt und prüfen ebenso wie Werte über 20 den Pfad `PLAN_CACHE_DEEP`; Attribute und Planquellen besitzen keine zusätzliche gemeinsame Zeilengrenze. Negative Kandidaten- oder Textlimits liefern `INVALID_PARAMETER` mit leeren Fachmengen und vollständigen angeforderten TABLE-Schemas. Nur das interne Argument der Unicodeprojektion wird für diesen Ablehnungspfad auf 0 gesetzt; der öffentliche Textparameter und gültige NULL-/0-/positive Werte bleiben erhalten. Das Framework aktiviert weder Last-Actual-Erfassung noch Live-Profiling.
+
 ### Kandidatenresultset
 
 | Spalten | Bedeutung |

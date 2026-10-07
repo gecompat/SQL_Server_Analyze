@@ -32,7 +32,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `candidates`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+TABLE registriert `candidates`, `attributes` und `plans` mit 23, vier und zehn Feldern. Die neun Textfelder sind explizit mit der Frameworkcollation versehen; keines dieser Exportschemas erzeugt Identitywerte. RAW liefert zuerst neun Modulstatusfelder, danach Kandidaten und die angeforderten Attribut-/Planresultsets. Die aktive CONSOLE zeigt ausschließlich den generischen Kandidatenexport mit 24 Feldern einschließlich Label oder eine dreifeldrige Leerzeile. JSON enthält `meta`, die drei Arrays und das bestehende leere `warnings`-Array; alle Fachfelder einschließlich NULL-Werten bleiben enthalten. Unterschiedliche Zeilengranularitäten dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
@@ -58,9 +58,9 @@ Compile-Pläne enthalten nur Schätzungen. Fehlende Actualwerte sind daher kein 
 
 ## Leere oder partielle Ausgabe
 
-Im Plan Cache kann leer bedeuten: evicted, nie gecacht, recompile, falscher Datenbank-/Hashfilter oder fehlender Text-/Planzugriff.
+Im Plan Cache kann leer bedeuten: evicted, nie gecacht, recompile, nicht passender Session-/Handle-/Hashselektor oder fehlender Text-/Planzugriff. Diese Procedure besitzt keinen Datenbankfilter.
 
-Für `USP_PlanDetails` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+Für `USP_PlanDetails` bedeutet **keine Kandidatenzeile**, dass kein passender Request oder Cachekandidat sichtbar war. Ein direkt angegebenes Planhandle kann dagegen als Kandidat bestehen bleiben, obwohl sein Text oder Plan nicht mehr auflösbar ist. **NULL** bezeichnet nicht verfügbare Werte; Quellenstatus und isolierte Fehler stehen in den Planzeilen beziehungsweise im Modulstatus. Das JSON-Warningsarray bleibt leer. Negative Kandidaten- oder Textlimits liefern `INVALID_PARAMETER` und leere Fachmengen; gültige TABLE-Zuordnungen erhalten dabei ihre vollständigen angeforderten Schemas. Die frühere Ablehnung des negativen Textlimits durch den internen Projektionshelper wird verhindert, ohne den öffentlichen Parameterwert zu verändern.
 
 ## Eigenlast und Grenzen
 
@@ -74,7 +74,7 @@ Für `USP_PlanDetails` gilt zusätzlich: **keine Zeile** bedeutet, dass im sicht
 | Haupttreiber | Kandidatenzahl und Größe der angeforderten Planrepräsentationen. Sessionfilter liest aktive Requests, PlanHandle ist direkt, SQL-/QueryHash filtern `sys.dm_exec_query_stats`; danach entstehen planweise Attribute, Text und XML. |
 | Skalierung | Detailaufrufe wachsen ungefähr mit Kandidaten × aktivierten Planquellen. Planattribute und SQL-Text werden je Candidate separat aufgelöst; große XML-Pläne erhöhen Speicher und Netzwerk, werden hier aber nicht in Operatorzeilen geschreddert. |
 | Ressourcen | CPU und Speicher für Kandidaten-/Handleauflösung, Planattribute und optionale Compile-, Text-, Last-Actual- oder Live-Plan-XML; großer Transfer bei breiten Plänen. Die Procedure führt kein fachliches XML-Shredding in Operatorresultsets aus. |
-| Begrenzungswirkung | `@MaxAnalyseobjekte` begrenzt Kandidaten vor der planweisen Detailauflösung; 0 bedeutet unbegrenzt. Das SQL-Textzeichenlimit begrenzt nur Textbreite. Einen separaten Ergebniszeilen- oder Deadlineparameter besitzt diese Procedure nicht. |
+| Begrenzungswirkung | `@MaxAnalyseobjekte` begrenzt Kandidaten vor der planweisen Detailauflösung; NULL und 0 bedeuten unbegrenzt und prüfen wie Werte über 20 `PLAN_CACHE_DEEP`. Attribute und aktivierte Planquellen bleiben je behaltenem Kandidat vollständig; das Kandidatenlimit ist keine gemeinsame Zeilengrenze dieser Detailarrays. Das SQL-Textzeichenlimit begrenzt Statement- und Batchtext; NULL und 0 erhalten beide vollständig. Einen separaten Ergebniszeilen- oder Deadlineparameter besitzt diese Procedure nicht. |
 | Locking und Nebenwirkungen | Keine Nutzdatenänderung; Live-Plan-Zugriff beobachtet aktive Requests und Cachehandles können verschwinden. XML-Auswertung kann Schedulerzeit verbrauchen. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `PLAN_CACHE_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Genau einen `ExampleQueryHash`/PlanHandle oder eine synthetische Session, maximal fünf Candidates und zunächst nur Compile-Plan. Last-Actual/Live separat und bewusst anfordern; einen `VOLL`-Modus gibt es nicht. |
