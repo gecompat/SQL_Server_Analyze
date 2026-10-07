@@ -16847,14 +16847,14 @@ Parameter    : @DatabaseNames, @DatabaseNamePattern,
                @MaxZeilen, @ResultSetArt,
                @JsonErzeugen, @Json OUTPUT, @PrintMeldungen, @Hilfe.
 Semantik     : @DatabaseNames enthält eine bracket-aware Pipe-Liste exakter
-               Namen. NULL bedeutet alle zulässigen Datenbanken; N'' ist
-               absichtlich ungültig. Exakte Liste und Pattern sind exklusiv.
+               Namen. NULL, N'' und Leerzeichen bedeuten alle zulässigen
+               Datenbanken. Exakte Liste und Pattern sind exklusiv.
 Ausgabe      : RAW = stabiler technischer Vertrag; CONSOLE = formatierte
                Darstellung; NONE = kein Resultset. JSON enthält meta, logs,
                databaseStatus und warnings als benannte Arrays.
 Berechtigung : Je Datenquelle VIEW SERVER STATE/VIEW SERVER PERFORMANCE STATE
                bzw. VIEW DATABASE PERFORMANCE STATE ab SQL Server 2022.
-Gruppengate  : Cross-Database über CROSS_DATABASE_DEEP; VLF über LOG_VLF_DEEP.
+Gruppengate  : Datenbankauswahl über STANDARD_CURRENT; VLF über LOG_VLF_DEEP.
 Eigenlast    : Standard moderat; automatische Datenbankauswahl ist durch
                keine Datenbank-Vorabbegrenzung.
 Locking      : Datenbankliste READUNCOMMITTED; System-DMVs je Datenbank.
@@ -17216,6 +17216,16 @@ SELECT @Cnt = COUNT_BIG(*) FROM [sys].[dm_db_log_info](DB_ID());';
             , N'; VLF=', CASE WHEN @MitVlfInformationen = 0 THEN N'aus' ELSE @VlfStatus END
             , N'.'
         );
+    END;
+
+    IF @MaxZeilen IS NOT NULL AND @MaxZeilen > 0
+    BEGIN
+        ;WITH [R] AS
+        (
+            SELECT *, ROW_NUMBER() OVER (ORDER BY [UsedLogPercent] DESC, [DatabaseName]) AS [rn]
+            FROM [#CurrentLog_Result]
+        )
+        DELETE FROM [R] WHERE [rn] > @EffectiveMaxZeilen;
     END;
 
     IF @StatusCode <> 'AVAILABLE' AND @PrintMeldungen = 1

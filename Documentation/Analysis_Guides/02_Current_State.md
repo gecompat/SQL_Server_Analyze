@@ -650,7 +650,7 @@ Die Procedure analysiert aktuellen Logplatz, Wiederverwendungshindernisse, Logst
 
 ### Besonderheit der Auswahl
 
-Im Procedureheader ist `@DatabaseNames=N''` dokumentiert, die Hilfe erklärt jedoch `N''` als ungültig. Verwenden Sie für produktive Aufrufe deshalb eine explizite Datenbankliste, `NULL` oder ein Pattern und prüfen Sie das Statusresultset.
+`NULL`, `N''` und Leerzeichen wählen ohne weitere Einschränkung alle sichtbaren, zugreifbaren und online befindlichen Benutzerdatenbanken. Systemdatenbanken benötigen Opt-in. Exakte bracket-aware Pipe-Liste und Pattern sind exklusiv; exakte Namen werden case-sensitive verglichen, doppelte Namen abgewiesen. Der Standardpfad prüft `STANDARD_CURRENT`.
 
 ### Aufrufe
 
@@ -685,13 +685,19 @@ VLF-Details benötigen `LOG_VLF_DEEP`.
 | `LogReuseWaitDesc` | aktueller Wiederverwendungsgrund aus `sys.databases` |
 | `TotalLogSizeMb`, `UsedLogSizeMb`, `UsedLogPercent` | aktueller Platz |
 | `LogSinceLastBackupMb` | seit letztem Logbackup erzeugte Logmenge |
-| `ActiveVlfCount`, `TotalVlfCount` | optional VLF-Struktur |
+| `ActiveVlfCount`, `TotalVlfCount` | VLF-Anzahlen aus der standardmäßig gelesenen Logstatistik; optionaler `dm_db_log_info`-Count ergänzt nur eine fehlende Gesamtanzahl |
 | `LogTruncationHoldupReason` | detaillierter Hold-up-Grund |
 | `LogBackupTime` | letzter in der DMV sichtbarer Logbackupzeitpunkt |
 | `LogRecoverySizeMb` | geschätzter Recoverybedarf |
 | `IsAdrEnabled` | Accelerated Database Recovery |
 | `PersistentVersionStoreMb` | optional PVS-Größe |
 | `SpaceStatus`, `StatsStatus`, `VlfStatus`, `PvsStatus` | Verfügbarkeit der Teilquellen |
+
+Eine Logzeile beschreibt eine Datenbank. TABLE enthält 19 Felder mit acht Frameworktextcollations und sechs NOT-NULL-Feldern ohne Identity; die aktive CONSOLE ergänzt eine Beschriftung. RAW zeigt Modulstatus, Logzeilen und Teilquellenfehler. JSON enthält zusätzlich Auswahlwarnings; `databaseStatus` ist die Teilquellenfehlermenge. Einzelne Logdateien, VLFs und PVS-Zeilen werden nicht exportiert.
+
+Ein positives Zeilenlimit begrenzt die gemeinsame Logmenge erst nach vollständiger Sammlung, Prozentfilter, Zähler- und Statusbewertung. `NULL` oder `0` bedeutet unbegrenzt, ein negatives Limit `INVALID_PARAMETER`. Die Auswahl erfolgt nach `UsedLogPercent DESC, DatabaseName`; RAW und JSON sortieren sie ausdrücklich. Ein Limit reduziert die vorherige Datenbankarbeit nicht. VLF- und PVS-Details sind standardmäßig deaktiviert; ein NULL-VLF-Schalter bleibt `SKIPPED`, ein NULL-PVS-Schalter `PENDING` ohne PVS-Abfrage. PVS bei deaktiviertem ADR ist mit aktivierter Option `NOT_APPLICABLE`.
+
+Die MB-Projektion übernimmt Bytewerte geteilt durch 1.048.576, der Prozentwert stammt direkt aus der nativen Logspacequelle. `LogBackupTime` wird ohne zusätzliche UTC-Konvertierung übernommen. Die getrennten Quellenabfragen liefern keine atomare Momentaufnahme aller Logwerte.
 
 ### Bewertung
 
