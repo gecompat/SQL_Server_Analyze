@@ -3436,3 +3436,105 @@ Dieser Nachweis ist vom historischen Lauf vor der Testkorrektur getrennt.
 Abschließende begrenzte Dokumentations-, Schreibstil- und Privacyprüfungen
 folgen nach diesem Gateabsatz; sie werden hier noch nicht als bestanden
 behauptet. Source und Test bleiben unverändert.
+
+## Query-Store-Forced-Plans: gemeinsame Ausgabe und zwölf Textcollations
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und beide
+case-unterschiedlichen Unicode-Quelldatenbanken besitzen separat gemessene
+Compatibility Levels 170. Jede eigene Quelle enthält zwei synthetische
+Procedures, eine Tabelle mit acht Zeilen und zwei fehlerfrei erzwungene
+Pläne. Query Store wurde nach der Vorbereitung auf READ_ONLY eingefroren.
+Die vier letzten Ausführungszeiten unterscheiden sich; diese Fixture
+belegt keine Auswahl zwischen unterschiedlichen Zeilen mit Sortties.
+
+Sieben identische Baseline- und Candidate-Aufrufe bestätigen den Fehler
+und seine Korrektur. Bei Limit 1 lieferten TABLE und CONSOLE ursprünglich
+je vier Zeilen, RAW und JSON je eine. Der gemeinsame Export begrenzt jetzt
+auch TABLE und CONSOLE auf eine Zeile; der XML-/Textkürzungsfall mit Limit 2
+liefert zwei statt vier Zeilen. Unbegrenzte Ausgabe, exakte Upper-DB-Auswahl
+und der leere NULL-Fehlerfilter behalten ihre Werte und Mengen.
+
+Der unabhängige SqlClient bestätigt alle 32 nativen Feldfacetten und die
+vollständige native/JSON-Zeilenparität. Nur fünf TABLE-Textcollations ändern
+sich von tempdb-CS auf Framework-CS; alle zwölf Textspalten sind nun
+explizit collatiert. QueryStoreDatabaseName bleibt NOT NULL, die übrigen
+31 Felder bleiben nullable und alle Spalten ohne Identity. Ein getrenntes
+32-Feld-Orakel verbindet native Query-Store-, Objekt-, Schema- und
+Datenbankwerte mit unabhängigen Unicode-/UTF16-, Kürzungs-, Provenienz-
+und XML-Ableitungen. Die Capturezeit wird zwischen unabhängigen Vorher-
+und Nachhermessungen begrenzt. XML wird als XML-Wert verglichen: SqlClient
+und SQL-CONVERT unterscheiden die Schreibweise leerer Elemente, ohne
+unterschiedlichen Textinhalt. Byteparität der XML-Serialisierung wird
+nicht behauptet. Die ursprünglichen 17 nativen Planproperties einschließlich
+RawPlan bleiben für alle vier Pläne exakt erhalten; beide QS-Zustände
+bleiben 1/1.
+
+Common172 besteht in drei Batches mit neun Ergebnisgrids: zwölf allgemeine
+und 14 bedingte native TABLE-/JSON-Fälle, drei Verbraucherfälle, fünf
+Mappingablehnungen, drei leere SQL-CONSOLE-Captures und zwei direkte
+positive CONSOLE-/JSON-Aufrufe. Der unabhängige Client bestätigt zusätzlich
+die beiden positiven CONSOLE-Mengen mit einer beziehungsweise zwei Zeilen
+und je 33 Feldern. Die nativen Fälle prüfen NULL-/0-/positive Limits,
+Unicode-/Case-/LIKE-Auswahl, QueryId, Fehlerfilter, Textkürzung und den
+Referenz-LIKE-Filter. Die vollständigen JSON-Zeilenvergleiche verwenden
+BIN2; fachliche Filter behalten Framework-CS. Ohne die eigene Fixture
+bestehen die allgemeinen Fälle und der positive Block meldet ausdrücklich
+NOT_EXECUTED mit null nativen Fällen.
+
+Der erste Common172-Lauf scheiterte an einer falschen Leer-Scope-Annahme:
+N'' bedeutet keine Datenbankeinschränkung. Die Leerfälle verwenden jetzt
+einen vorher nachweislich fehlenden Namen. Ein weiterer Lauf scheiterte
+bei einer exakten Cross-DB-Referenzliste mit 208, weil der bestehende
+Quellbatch monitor.TVF_ParseSqlNameList in der Quelldatenbank sucht. Dieser
+Pfad bleibt unverändert und ist kein positiver Nachweis; der positive
+Referenzfall verwendet das öffentliche LIKE-Pattern. Danach fiel der
+bereits zuvor vom privaten Individualinstaller erzeugte, von der Baseline
+abweichende Module-QI-OFF-Stand durch 1934 auf. Ein expliziter QI-/ANSI-ON-Einstiegsbatch korrigiert
+nur diesen privaten Harness. Die sieben finalen Gegenprüfungen und
+Common172 bestehen mit Module-QI/ANSI_NULLS jeweils true. Eine zwischenzeitliche
+identitätsgeprüfte QI-Optionvariation der beiden eigenen Quellen wurde
+zurückgenommen; native Planmetadaten und READ_ONLY blieben unverändert.
+
+Die erste Vorbereitung der zweiten case-unterschiedlichen Quelle scheiterte
+an kollidierenden physischen Dateinamen. Nach nativer Abwesenheits- und
+Ownershipprüfung wurde ausschließlich diese Quelle mit eigenen eindeutigen
+Dateinamen erzeugt. Ein privater NativeOracle-Leseversuch verwendete zunächst
+cp1252 statt UTF-8 und scheiterte beim USE; die explizite UTF-8-Wiederholung
+bestand. Beide Fälle sind Harnessfehler und begründen keine Produktänderung.
+
+Ein direkter QueryStoreAnalysis-Aufruf nur mit ForcedPlans besteht mit
+RAW, Child-JSON, genau einer Planzeile, erhaltenem hasMoreRows und einem
+EXECUTED-Modulstatus. QueryStore139/110/121 sowie Integration190/165 bestehen
+am korrigierten Installationsstand. Nach identitätsgeprüftem Cleanup beider
+eigenen Quellen besteht die vorhergesagte impact-basierte Auswahl aus
+Common124/165/172, Integration110/190/196/198 und QueryStore110/121/139 in
+37 Batches auf CL170. Die endgültige Auswahl wird zusätzlich gegen die
+konkreten Commit-SHAs geprüft.
+
+OPS-005 wurde kanonisch regeneriert. Die erste vollständige statische Suite
+scheiterte ausschließlich am PLAN-001-Bytevergleich: Nach dem Checkout
+war ein CR-Byte am Headerübergang hinzugekommen. Kanonische Regeneration
+entfernt ausschließlich dieses Byte; nach CRLF-Normalisierung sind die
+Inhalte identisch. Der fokussierte Adaptervertrag besteht. Die neue
+vollständige statische Suite besteht am stabilen Source-/Teststand alle
+75 Prüfungen mit Exitcode 0. Die anschließenden begrenzten Dokumentations-,
+Schreibstil- und Privacyprüfungen bestehen: Dokumentation 900 sowie die
+Selbst- und Repositoryprüfungen 910/915 melden keine Befunde. UTF-8-,
+Quellhash- und Diffprüfungen bestehen ebenfalls.
+
+Die UTF-8/LF-Quellidentitäten des geprüften Stands lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source060 | B31D09B85774C6D5971D12CB9FAD72A9621AC727C6400B6544ADFD7A4F8A42C3 |
+| Common172 | 7AB20C8E5F6CBE133CA4DBA181A64C3DAFBDA2353FE8A30064FE20F76000DC86 |
+
+Container und Volume des eigenen Labs wurden entfernt: zwei Schritte,
+null Fehler, REMOVED. Der eigene verschlüsselte temporäre Secretwert ist
+entfernt. Private Captures und konkrete Runtimeidentitäten bleiben
+außerhalb von Git. Positive Forcingfehler, QS_OFF, Berechtigungs- und
+Timeoutpfade, exakte Cross-DB-Referenzlisten sowie ältere native Engines
+und CL150/160 bleiben unbelegt. COLL-001 bleibt partiell; Registry,
+RUNTIME-001 und bestehende Maturityflags bleiben unverändert.

@@ -10,7 +10,8 @@ PROCEDURE_PATH = Path("Code/05_QueryStore/060_USP_QueryStoreForcedPlans.sql")
 COLLATION = "COLLATE SQL_Latin1_General_CP1_CS_AS"
 TABLE_REQUIREMENTS = {
     "#QueryStoreForcedPlans_DatabaseCandidates": 5,
-    "#QueryStoreForcedPlans_Result": 7,
+    "#QueryStoreForcedPlans_Result": 12,
+    "#QueryStoreForcedPlans_Export": 12,
     "#QueryStoreForcedPlans_Errors": 3,
 }
 

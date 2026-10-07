@@ -28,6 +28,10 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `forcedPlans`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+RAW, CONSOLE, TABLE und JSON verwenden dieselbe global begrenzte `forcedPlans`-Menge mit 32 Feldern und zwölf explizit `SQL_Latin1_General_CP1_CS_AS` collatierten Textspalten. `QueryStoreDatabaseName` bleibt NOT NULL; die übrigen 31 Felder sind nullable, keine Spalte ist eine Identity. `@MaxZeilen` mit NULL oder 0 bedeutet unbegrenzt. Die Reihenfolge priorisiert einen von null verschiedenen `LastForceFailureReason` und danach `LastExecutionTimeUtc` absteigend; bei gleichen Sortwerten ist die Auswahl nicht eindeutig.
+
+Die Sammlung wird weiterhin lokal mit TOP N+1 begrenzt und vor der globalen Ausgabe bewertet. `hasMoreRows`, Gesamtstatus und Truncationwarnungen beziehen sich auf diese vollständige Sammlung, nicht nur auf den ausgegebenen Ausschnitt. Die Procedure erzeugt keine zusätzliche Auswahlwarning für eine fehlende Datenbank. Bestehende Analyseklassen und deren Freigaben gelten auch für NULL/0-Limits und Plan-XML.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einem Query-Store-Plan mit Forcingmetadaten.
@@ -66,7 +70,7 @@ Für `USP_QueryStoreForcedPlans` gilt zusätzlich: **keine Zeile** bedeutet, das
 | Haupttreiber | Zahl gewählter Query Stores und aktuell forced markierter Pläne samt Querytext. Volltext, Plan-XML, Regex und Referenzdatenbankfilter verbreitern beziehungsweise verteuern jeden Kandidaten; ein Zeitfenster existiert nicht. |
 | Skalierung | Aufwand wächst mit Query-Store-Plan-/Queryzeilen und ausgewählten Datenbanken; Plan-/Textbreite sowie Referenz-XML-Parsing können CPU, Speicher und Transfer dominieren. |
 | Ressourcen | Query-Store-I/O und CPU für Plan-/Query-/Textjoin und Ranking; optional Plan-XML-Materialisierung beziehungsweise XML-Shredding. Keine Fensteraggregation. |
-| Begrenzungswirkung | QueryId und `@NurMitFehler` wirken vor dem lokalen TOP N+1. Das Limit ist lokal und anschließend global, verhindert aber Referenz-XML-Prüfung der zu betrachtenden Forced-Plan-Zeilen nicht zuverlässig. Textzeichen begrenzen nur Ausgabegröße. |
+| Begrenzungswirkung | QueryId und `@NurMitFehler` wirken vor dem lokalen TOP N+1. Das Limit ist lokal mit N+1 und anschließend global für alle vier Ausgabearten, verhindert aber Referenz-XML-Prüfung der zu betrachtenden Forced-Plan-Zeilen nicht zuverlässig. Textzeichen begrenzen nur Ausgabegröße. |
 | Locking und Nebenwirkungen | Read-only gegenüber Query Store; normale interne Synchronisation/Schema-Stability ist möglich. Die Procedure erzwingt, entfernt oder bereinigt keine Pläne/Hints. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `QUERY_STORE_CURRENT`, `QUERY_STORE_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Eine `ExampleDatabase`, `@NurMitFehler = 1`, TOP 100 und kein Plan XML. Plan XML, Referenzfilter oder >1000/unbegrenzt nur nach `QUERY_STORE_DEEP`. |
