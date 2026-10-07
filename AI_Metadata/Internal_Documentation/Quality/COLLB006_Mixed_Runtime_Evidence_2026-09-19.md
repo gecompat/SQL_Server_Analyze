@@ -4745,3 +4745,102 @@ Eingefrorene normalisierte SHA256-Werte: Source060
 `81DBCE2295A1A2D8C2738A10187971938B6F1F335AD94E97639397FC6756D010`, Common183
 `EAA263C8D0241F84792234E9B7006ED8787160E385B15C0B5DDEC6E0121164AB`, Static1026
 `D51522702A5B64D3026A7B0801059EEB96292F952121CE8AFAF4BC5CE182F3DB`.
+
+
+## Current-State-Snapshot: korrekter Sessions-Quellenzähler
+
+Der begrenzte Nachweis vom 7. Oktober 2026 verwendet ein eigenes gemischtes
+SQL-Server-2025-Dockerlab mit gemessenem Build 17.0.4075.5 und CL170.
+Server und tempdb verwenden Latin1_General_100_CS_AS, das Framework
+SQL_Latin1_General_CP1_CS_AS. Die kanonische Installation umfasst 166 Quellen;
+Installation und Smoke bestehen. Es wird keine permanente Quelldatenbankfixture
+benötigt. Runtimeidentitäten, Captures und Secretwerte bleiben außerhalb Git.
+
+Das unveränderte InternalCaptureCurrentStateSnapshot zählt für SESSIONS
+die WorkloadGroups-Tabelle vor deren möglicher Erfassung. Acht Originalaufrufe
+ergeben 19 Grids und 67 Vergleiche zwischen CapturedRowCount und einer
+unabhängigen COUNT_BIG-Ermittlung aus der jeweiligen materialisierten Tabelle
+mit derselben Snapshot-ID. Fünf Sessions-Captures melden 0 statt 82 bis 84
+Zeilen. Die übrigen 62 Vergleiche stimmen, einschließlich der dynamischen
+WorkloadGroups-Erfassung. Der zunächst untersuchte EXEC-/@@ROWCOUNT-Verdacht
+ist damit kein weiterer bestätigter Fehler und führt zu keiner Änderung.
+
+Genau ein Tabellenname im Sessions-Zähler wird korrigiert. Der Snapshot-ID-Filter,
+die 13 Helperparameter, Sourceversion 2.1.0, Snapshotvertrag 2 und alle anderen
+Capture-, Quellen-, Ordinal-, Status-, Partialitäts- und Fehlerpfade bleiben
+erhalten. SourceStatus und öffentlicher snapshotStatus behalten elf Felder,
+vier Frameworktextcollations und neun NOT-NULL-Felder. Die Finalgegenprobe
+bestätigt dieselben acht Aufrufe, 19 Grids und sämtliche 67 Mengenvergleiche
+ohne Abweichung sowie erhaltene native Schemafacetten und Helperparameter.
+Die Aufnahmen sind nacheinander erfasste Quellen und kein atomarer Serverzustand.
+
+Die Fälle umfassen deaktivierte Quellen, Sessions allein, Resource Governor
+allein, deren Kombination, zwei vollständige Captures mit unterschiedlichen
+IDs in denselben Tabellen, angeforderte abhängige Quellen ohne Session-/Request-
+Erfassung und SQL-Text mit Handlelimit 1. Deaktivierte Quellen erzeugen im
+Collector keine Statuszeile; acht leere abhängige Mengen bleiben AVAILABLE
+mit Count 0. SQL_TEXT zählt bei Limit 1 eine behaltene Zeile und meldet
+AVAILABLE_LIMITED samt bestehendem Mengenhinweis. Ein separater Vorher-/Nachher-
+Vergleich sämtlicher 18 Tabellen bestätigt pro Original- beziehungsweise
+Finalsuite alle gespeicherten Werte und fachlichen Schemafacetten des älteren
+Snapshots nach einem weiteren vollständigen Capture unverändert.
+
+Je Original- und Finalsuite bestehen 15 Vorprüfungen für NULL-ID, wiederverwendete
+ID, negative beziehungsweise NULL-Handlegrenze und elf NULL-Captureflags mit
+51020. Contextmenge 1 und leere SourceStatusmenge bleiben erhalten.
+Eine eigene lokale Temp-Tabellen-Transaktion liefert zusätzlich vier positive
+Mengenrouten; drei Transaktionszähler stimmen bereits im Original, der
+Sessions-Zähler erst im Finalstand. Eine lokale CHECK-Bedingung erzwingt
+Insertfehler 547: SESSIONS bleibt ERROR_HANDLED, partiell und Count 0,
+während REQUESTS anschließend erfolgreich und mengenrichtig erfasst wird.
+Ein danach fehlender Temp-Table-Vertrag liefert 51020 vor einem weiteren Context.
+Diese Fehlerprobe ist kein Berechtigungs- oder Timeoutnachweis.
+
+Je Original- und Finalsuite bestehen drei Parentfälle mit ausgeschlossener
+eigener Session und drei zusätzliche positive Parentfälle mit einer eigenen
+zweiten Verbindung. Die Parentfälle verwenden Limits 0/1 sowie einmal zusätzlich
+Requests. Sämtliche elf snapshotStatus-Werte einschließlich NULL-Properties
+stimmen innerhalb desselben Aufrufs zwischen TABLE und JSON überein; native
+TABLE-Schemafacetten bleiben gegenüber dem Original erhalten. Die positive
+Verbindung liefert jeweils eine Session-Childzeile. Deren Anzahl ist kein
+Quellenzählorakel und belegt keine vollständige 51-Feld-Werteparität des Childs.
+Caller-LOCK_TIMEOUT 137 wird wiederhergestellt. Guid-Schreibweisen werden
+typisiert verglichen. Die aktuelle Session bleibt durch den bestehenden
+Childdefault ausgeschlossen; dafür wird keine Parent-API ergänzt.
+
+Integration199 erhält die positive Sessions-Mengenassertion im bestehenden
+All-Child-Aufruf und zwei Sessions-only-Parentfälle mit Max0/1, vollständiger
+elf-Feld-Statusparität und getrennten Snapshot-Identitäten. Die acht bisherigen
+Fremd-ID-Consumerprüfungen bleiben erhalten. Das neue Gate weist den separat
+im eigenen Lab wieder installierten Originalcollector tatsächlich mit 52199
+an der Sessions-Assertion zurück und besteht mit dem Finalcollector.
+Es entsteht kein weiterer Snapshotowner und keine Static950-Ausnahme.
+Ein zunächst doppelt angelegtes Testziel wird nach einem Static950-Befund
+in zwei getrennte einmalige Ziele geändert. Private Prüferannahmen zu
+Metadatengridposition, Labelgröße, aktueller Session und Guid-Schreibweise
+sowie die Fehleraufnahme nach NextResult werden ausschließlich im Harness
+korrigiert; daraus entsteht keine weitere Produktänderung.
+
+Static993 schützt 17 Quellen-/Mengenrouten und besteht zwei bestehende
+Statusfälle sowie 69 echte Count-, Source-, Snapshotfilter- und
+Zählerabnahmemutationen. Ein unabhängiger P2-Reviewbefund ergänzt die unmittelbare
+@@ROWCOUNT-Abnahme einschließlich 13 SET-Unterbrechungsmutationen.
+Der finale funktionale Review besitzt keine offenen Befunde.
+Acht impact-basierte SQL-Testdateien bestehen auf CL170 in 25 Batches.
+Alle 75 statischen Prüfungen bestehen am eingefrorenen funktionalen Stand.
+
+OPS-005 enthält die kanonische Ein-Tabellennamen-Korrektur; sein Update und
+beide PLAN-Artefakte bleiben normalisiert unverändert. Zwei betroffene
+Dokumente präzisieren die Quellenzählung vor Childfiltern und Ausgabelimits.
+Das eigene Lab wird mit zwei Cleanupschritten ohne Fehler entfernt;
+der temporäre Secretwert und sämtliche eigenen Verbindungen sind entfernt.
+Die abschließenden begrenzten Dokumentations-, Schreibstil- und Privacyprüfungen
+bestanden am Lieferstand. Eingeschränkte Berechtigungen, echte Timeouts,
+konfigurierte Resource-Governor-Varianten, ältere native Engines und CL150/160
+bleiben für diesen Slice unbelegt. COLL-001 bleibt partiell; Registry,
+RUNTIME-001 und bestehende Maturityflags bleiben unverändert.
+
+Eingefrorene normalisierte SHA256-Werte: Source005
+`256607B77C023CB12F6B2AB770C0F5ECA25ED07A0DAC807C2122DD605E1D2E56`, Integration199
+`5079B0957905A4E9A11520C7EB5F133FCF4963C7607B007AC8A67DF1D7A647A4`, Static993
+`9C39A47A91C75B57B60AA459FD19D995ACDC777F7B5705772A168213FB0BDB22`.

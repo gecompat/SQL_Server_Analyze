@@ -31,6 +31,8 @@ The snapshot owner uses contract version 2. It materializes only the source grou
 
 Standalone procedure calls always read fresh local sources. A parent snapshot is accepted only when its ID, owner session and contract version match the current invocation.
 
+For a successful capture, `CapturedRowCount` describes the rows materialized for that source and `SnapshotId`, before consumer filters and output limits. The `SESSIONS` count belongs to the session table and is independent of Workload-Group capture. A filtered child can therefore return fewer rows than its source count. These counts describe the recorded source scope; they are not a comparison with a later live DMV reading.
+
 ## Text boundaries
 
 - Statement text is derived only when SQL text was requested and the recorded byte offsets are valid.

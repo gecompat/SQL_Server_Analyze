@@ -137,7 +137,7 @@ BEGIN
             FROM [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK);
 
             SELECT @RowCount=COUNT_BIG(*)
-            FROM [#CurrentOverview_CurrentStateSnapshot_WorkloadGroups]
+            FROM [#CurrentOverview_CurrentStateSnapshot_Sessions]
             WHERE [SnapshotId]=@SnapshotId;
             SET @CompletedAtUtc=SYSUTCDATETIME();
             INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]

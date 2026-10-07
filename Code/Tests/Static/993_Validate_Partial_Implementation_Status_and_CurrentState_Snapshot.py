@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -48,6 +49,77 @@ OWNER_SINGLE_READS = (
     "OUTER APPLY [sys].[dm_exec_sql_text]",
 )
 
+# Expected source-to-materialization/count relationships, independent of the SQL.
+OWNER_COUNTS = (
+    ("SESSIONS", 10, "Sessions", "count"),
+    ("REQUESTS", 20, "Requests", "rowcount"),
+    ("CONNECTIONS", 30, "Connections", "rowcount"),
+    ("WAITING_TASKS", 40, "WaitingTasks", "rowcount"),
+    ("MEMORY_GRANTS", 50, "MemoryGrants", "rowcount"),
+    ("RESOURCE_SEMAPHORES", 55, "ResourceSemaphores", "rowcount"),
+    ("WORKLOAD_GROUPS", 60, "WorkloadGroups", "rowcount"),
+    ("RESOURCE_POOLS", 70, "ResourcePools", "rowcount"),
+    ("SQL_TEXT", 80, "SqlText", "rowcount"),
+    ("TASKS", 90, "Tasks", "rowcount"),
+    ("SCHEDULERS", 100, "Schedulers", "rowcount"),
+    ("SESSION_TRANSACTIONS", 110, "SessionTransactions", "rowcount"),
+    ("ACTIVE_TRANSACTIONS", 120, "ActiveTransactions", "rowcount"),
+    ("DATABASE_TRANSACTIONS", 130, "DatabaseTransactions", "rowcount"),
+    ("TEMPDB_SESSION_USAGE", 140, "TempDbSessionUsage", "count"),
+    ("TEMPDB_TASK_USAGE", 150, "TempDbTaskUsage", "count"),
+)
+
+
+def owner_count_findings(owner: str) -> list[str]:
+    findings = []
+    for code, ordinal, suffix, method in OWNER_COUNTS:
+        table = f"#CurrentOverview_CurrentStateSnapshot_{suffix}"
+        start = owner.find(f"INSERT [{table}]")
+        end = owner.find("END TRY", start)
+        if start < 0 or end < 0:
+            findings.append(f"{code}:CAPTURE_BLOCK")
+            continue
+        block = owner[start:end]
+        count = (
+            rf"(?:SELECT\s+@RowCount\s*=|SET\s+@RowCount\s*=\s*\(SELECT)"
+            rf"\s*COUNT_BIG\(\*\)\s+FROM\s+\[{re.escape(table)}\]"
+            rf"\s+WHERE\s+\[SnapshotId\]\s*=\s*@SnapshotId\s*\)?\s*;"
+            if method == "count" else r"SET\s+@RowCount\s*=\s*@@ROWCOUNT\s*;"
+        )
+        if len(re.findall(count, block)) != 1:
+            findings.append(f"{code}:COUNT_SOURCE")
+        if method == "rowcount":
+            # Workload Groups reads the count immediately after its existing
+            # dynamic EXEC; ordinary routes read it immediately after INSERT.
+            producer = (
+                r"EXEC\s+\[sys\]\.\[sp_executesql\]\s+@ResourceGovernorSql\b[^;]*;"
+                if code == "WORKLOAD_GROUPS" else
+                rf"\AINSERT\s+\[{re.escape(table)}\][^;]*;"
+            )
+            if not re.search(
+                producer + r"\s*SET\s+@RowCount\s*=\s*@@ROWCOUNT\s*;", block
+            ):
+                findings.append(f"{code}:COUNT_IMMEDIATE")
+        if len(re.findall(r"(?:SELECT|SET)\s+@RowCount\s*=", block)) != 1:
+            findings.append(f"{code}:COUNT_ASSIGNMENT")
+        if not re.search(
+            rf"@SnapshotId\s*,\s*{ordinal}\s*,\s*'{code}'\s*,", block
+        ) or not re.search(r"@RowCount\s*,\s*NULL\s*,", block):
+            findings.append(f"{code}:STATUS_COUNT")
+        if not re.search(r"SELECT\s+@SnapshotId\s*,\s*@CapturedAtUtc", block):
+            findings.append(f"{code}:INSERT_SNAPSHOT")
+    governance = re.search(
+        r"SELECT\s+@RowCount\s*=\s*COUNT_BIG\(\*\)\s+FROM\s+"
+        r"\[#CurrentOverview_CurrentStateSnapshot_WorkloadGroups\]\s+"
+        r"WHERE\s+\[SnapshotId\]\s*=\s*@SnapshotId\s*;\s*"
+        r"DECLARE\s+@TempdbSnapshotStatus\b.*?"
+        r"@SnapshotId\s*,\s*61\s*,\s*'TEMPDB_GOVERNANCE'.*?"
+        r",\s*@RowCount\s*,", owner, re.S,
+    )
+    if governance is None:
+        findings.append("TEMPDB_GOVERNANCE:COUNT_SOURCE")
+    return findings
+
 
 def fail(code: str, location: str) -> None:
     print(
@@ -58,12 +130,53 @@ def fail(code: str, location: str) -> None:
     raise SystemExit(1)
 
 
-def self_test() -> None:
+def self_test(root: Path) -> None:
     if len(ALLOWED_PRODUCT_STATUS) != 5:
         fail("SELF_TEST_STATUS_COUNT", "ALLOWED_PRODUCT_STATUS")
     if REQUIRED_STATUS["RUNTIME-001"] not in ALLOWED_PRODUCT_STATUS:
         fail("SELF_TEST_RUNTIME_STATUS", "REQUIRED_STATUS")
-    print("Status/snapshot validator self-test passed: cases=2 findings=0")
+    owner = (root / "Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql").read_text(encoding="utf-8-sig")
+    if owner_count_findings(owner):
+        fail("SELF_TEST_OWNER_BASELINE", "source-counts")
+    mutations = 0
+    for code, ordinal, suffix, method in OWNER_COUNTS:
+        start = owner.index(f"INSERT [#CurrentOverview_CurrentStateSnapshot_{suffix}]")
+        end = owner.index("END TRY", start)
+        block = owner[start:end]
+        variants = [
+            block.replace(f"@SnapshotId,{ordinal},'{code}'", f"@SnapshotId,{ordinal},'WRONG_SOURCE'", 1),
+            re.sub(r"SELECT\s+@SnapshotId,", "SELECT NULL,", block, count=1),
+        ]
+        if method == "count":
+            variants += [
+                block.replace(f"FROM [#CurrentOverview_CurrentStateSnapshot_{suffix}]", "FROM [#ExampleWrongCount]", 1),
+                block.replace("WHERE [SnapshotId]=@SnapshotId", "WHERE 1=1", 1),
+                block.replace("WHERE [SnapshotId]=@SnapshotId", "WHERE [SnapshotId]=NEWID()", 1),
+            ]
+        else:
+            variants += [
+                block.replace("SET @RowCount=@@ROWCOUNT;", "SET @RowCount=0;", 1),
+                block.replace(
+                    "SET @RowCount=@@ROWCOUNT;",
+                    "SET @CompletedAtUtc=SYSUTCDATETIME();\nSET @RowCount=@@ROWCOUNT;", 1,
+                ),
+            ]
+        for variant in variants:
+            if variant == block or not owner_count_findings(owner[:start] + variant + owner[end:]):
+                fail("SELF_TEST_OWNER_MUTATION", code)
+            mutations += 1
+    governance_start = owner.index("DECLARE @TempdbSnapshotStatus")
+    count_start = owner.rfind("SELECT @RowCount=COUNT_BIG(*)", 0, governance_start)
+    block = owner[count_start:governance_start]
+    for old, new in (
+        ("WorkloadGroups", "Sessions"),
+        ("WHERE [SnapshotId]=@SnapshotId", "WHERE 1=1"),
+    ):
+        variant = block.replace(old, new, 1)
+        if variant == block or not owner_count_findings(owner[:count_start] + variant + owner[governance_start:]):
+            fail("SELF_TEST_GOVERNANCE_MUTATION", "TEMPDB_GOVERNANCE")
+        mutations += 1
+    print(f"Status/snapshot validator self-test passed: status_cases=2 count_mutations={mutations} findings=0")
 
 
 def main() -> int:
@@ -72,11 +185,11 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
 
+    root = Path(args.repository_root).resolve()
     if args.self_test:
-        self_test()
+        self_test(root)
         return 0
 
-    root = Path(args.repository_root).resolve()
     status_path = root / "Metadata/Quality/Implementation_Status.csv"
     with status_path.open(encoding="utf-8", newline="") as handle:
         rows = list(csv.DictReader(handle))
@@ -180,6 +293,9 @@ def main() -> int:
 
     owner_path = root / "Code/02_CurrentState/005_InternalCaptureCurrentStateSnapshot.sql"
     owner = owner_path.read_text(encoding="utf-8-sig")
+    count_findings = owner_count_findings(owner)
+    if count_findings:
+        fail("OWNER_SOURCE_COUNT", ",".join(count_findings))
     for token in OWNER_SINGLE_READS:
         if owner.count(token) != 1:
             fail("OWNER_SOURCE_READ_COUNT", f"{token}:{owner.count(token)}")
