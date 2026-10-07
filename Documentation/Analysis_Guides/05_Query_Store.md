@@ -478,6 +478,10 @@ Die Procedure dokumentiert versionsadaptive IQP-Voraussetzungen und aggregierte 
 | `EvidenceCount` | aggregierte Zahl sichtbarer Evidenzzeilen |
 | `Interpretation` | explizite Aussagegrenze |
 
+TABLE schreibt ausschließlich `signals` mit sechs Feldern; CONSOLE ergänzt die Ergebnisbeschriftung. Alle drei Signaltexte sind explizit Framework-CS collatiert, `EvidenceCount` ist das einzige nullable Feld und die Exportquelle besitzt keine Identity. Die einmal nach vollständiger Bewertung ausgewählten Signale gelten identisch für TABLE, CONSOLE, RAW und JSON. Die Auswahl erfolgt nach `DatabaseId, SignalCode`; RAW und JSON sortieren diese Menge ausdrücklich.
+
+`@MaxZeilen` gilt getrennt für Datenbankzustand, Konfiguration, Automatic Tuning und Signale; NULL/0 sind unbegrenzt. Negative Werte liefern `INVALID_PARAMETER`/`IsPartial=1` und leere Fachmengen. Warnungen bleiben unbegrenzt, Modulstatus und Partialität berücksichtigen die vollständige Sammlung. Ohne Datenbankliste oder Pattern werden alle sichtbaren online befindlichen Benutzerdatenbanken ausgewählt. Der Pfad verlangt die bestehende `CATALOG_DEEP`-Freigabe; ein Zeitfenster oder Problemfilter existiert nicht. Die Zustandsvergleiche im dynamischen Datenbankkontext sind explizit Framework-CS collatiert; Eligibility und Evidenzzähler bleiben getrennte Aussagen.
+
 ### Interpretation
 
 - `PspEligible=1` bedeutet nur, dass Version/Compatibility passen.

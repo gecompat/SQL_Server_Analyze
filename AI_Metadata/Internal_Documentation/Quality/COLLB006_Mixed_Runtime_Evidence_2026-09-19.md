@@ -4179,3 +4179,107 @@ READ_ONLY bei gewünschtem READ_WRITE, ERROR, positive Speicherwarnschwellen,
 Berechtigungen, Timeout, Regex, ältere native Engines und CL150/160 bleiben
 unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
 Maturityflags bleiben unverändert.
+
+## Intelligent Query Processing: Zustandsvergleiche und gemeinsamer Signalexport
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und zwei
+getrennt identifizierte Unicode-CI_AS-Quellen besitzen gemessene Compatibility
+Levels 170. Die Quellen enthalten weder Benutzerobjekte noch Query-Store-
+Queries: eine Quelle verwendet READ_WRITE mit Capture NONE, die andere OFF.
+Für die Fixture wird kein synthetischer Workload ausgeführt oder IQP-Feature gezielt aktiviert.
+
+Das Original liefert bei ausschließlich ausgewählten CI-Quellen ERROR_HANDLED
+mit Fehler 4191, DATABASE_UNAVAILABLE und leere Fachmengen. Die drei
+Originaldefaultfälle erhalten dagegen Frameworkmengen mit 1/11/1/3 Zeilen,
+AVAILABLE_LIMITED und zwei Warnungen zum Kollationsfehler. Achtundzwanzig Auswahl- und
+Consumerfälle ergeben 29 Batches und 115 private Grids. Die isolierte native
+Diagnose lokalisiert den Fehler im ersten OFF-Vergleich der Zustandsbewertung.
+Explizite Framework-CS-Operanden in den sechs Vergleichen auf OFF, READ_ONLY
+und READ_WRITE stellen die vier Fachmengen wieder her; ein unabhängiges
+natives Orakel bestätigt alle 28 Werte und Typfacetten. Die numerisch
+ermittelten Zustände bestimmen Finding und Severity, nicht Produkt-JSON.
+Konfigurationsfilter, Versionsgates und Eligibilitylogik bleiben unverändert.
+
+Sechzehn zusätzliche Originalfälle auf der Frameworkquelle ergeben
+17 Batches und 68 Grids. Die vollständige native Gegenprobe bestätigt den
+Mengenfehler: TABLE und CONSOLE liefern drei Signale, während RAW und JSON
+bei Limits 1/2 nur eine beziehungsweise zwei Signalzeilen enthalten. Vier
+negative Originalaufrufe mit JSON werfen Fehler 127; der Caller behält
+LOCK_TIMEOUT 137, aber die Exception liefert keine gesetzten OUTPUT-Werte.
+
+Die frühe SignalsExport besitzt sechs Felder, drei explizite Textcollations,
+fünf NOT-NULL-Felder und keine Identity. EvidenceCount bleibt nullable.
+Einmaliges TOP nach DatabaseId und SignalCode wählt die Signale erst nach
+vollständiger Status- und Warningbewertung aus. TABLE, aktives CONSOLE, RAW
+und JSON verwenden diese Menge. Die drei übrigen RAW-/JSON-Facharrays behalten
+ihre unabhängigen Limits; Warnungen bleiben unbegrenzt. Negative Limits
+werden ausschließlich im INVALID_PARAMETER-Zweig intern auf null Zeilen
+normalisiert. NULL/0 bedeuten weiterhin unbegrenzt. Signatur mit 15 Parametern,
+SchemaVersion, Sourceversion, Zeitmodell und registrierter Ergebnisname
+signals bleiben unverändert; es gibt kein zusätzliches öffentliches Resultset.
+
+Die 28 Finalfälle ergeben ebenfalls 29 Batches und 115 Grids. Alle vier
+Facharrays mit 11/5/6/6 Feldern stimmen vollständig mit nativen Optionen,
+elf Konfigurationen je eigener Quelle, einer Automatic-Tuning-Option je
+Quelle und drei unabhängig gemessenen Evidenzzählern überein. Alle sechs
+Quellsignale sind verfügbar und besitzen EvidenceCount 0; dies belegt weder
+aktive PSP-/OPPO-/Feedbacknutzung noch Wirksamkeit. Die Exportfacetten
+prüfen relative Ordinale, sysname, Größen, Präzision, Skalen, Nullability,
+Identity und alle drei Frameworktextcollations. Positives CONSOLE besitzt
+sieben geprüfte Felder, RAW acht Metafelder sowie vier Fachmengen und vier
+Warningfelder. JSON erhält sechs Hauptschlüssel und fünf Metafelder; doppelte
+Schlüssel werden erkannt. RAW und JSON sind ausdrücklich sortiert, während
+TABLE und CONSOLE nur dieselbe geordnet ausgewählte Menge verwenden.
+Das vorhandene leere dreifeldrige Helpergrid bleibt erhalten.
+
+NULL, leerer String und Leerzeichen wählen im eigenen Lab alle drei sichtbaren
+Online-Benutzerdatenbanken einschließlich Framework aus. Exakte Case- und
+Unicodeauswahl, umgekehrte Listen, getrennte LIKE-Scopes, fehlende Namen,
+gemischte Auswahl und das High-Impact-Gate bleiben erhalten. Ein OFF-Befund
+außerhalb des sichtbaren Ausschnitts erhält AVAILABLE_WITH_FINDING; gemischte
+Auswahl liefert AVAILABLE_LIMITED mit Partialität. Acht negative Finalfälle
+mit beziehungsweise ohne JSON liefern INVALID_PARAMETER/IsPartial=1 ohne
+Fehler 127. Dreizehn weitere Consumerfälle ergeben 14 Batches und 42 Grids.
+Zwei positive IQP-only-Parentaufrufe ergeben drei Batches und 20 Grids;
+Ordinal 9 übernimmt AVAILABLE_WITH_FINDING, die vier Childarrays und RAW
+stimmen bei Limits 1/2 vollständig mit der nativen Auswahl überein.
+Caller-LOCK_TIMEOUT 137 bleibt in allen geprüften Aufrufen erhalten.
+
+Common179 besteht 14 allgemeine und 18 bedingte native Fälle, drei Consumer,
+sechs Mappingablehnungen und vier leere SQL-CONSOLE-Captures. Ein zusätzlicher
+Client prüft die drei direkten positiven CONSOLE-Mengen mit 1/2/6 Zeilen
+vollständig einschließlich der Metadaten aller sieben Felder; der positive Commonlauf
+liefert fünf Batches und 46 Grids. Der öffentliche native Block erzeugt
+weder Quellen noch Benutzerobjekte und verändert keine Datenbankoptionen.
+Nach identitätsgesicherter Entfernung der beiden Quellen bestehen 14
+allgemeine Fälle; native Fälle und direkte positive CONSOLE-Aufrufe melden
+NOT_EXECUTED mit null Fällen. Dieser Lauf liefert fünf Batches und 22 Grids.
+
+Identitäten, native Optionen, Konfigurationen, Tuningoptionen und Zähler
+aller drei Datenbanken bleiben vor und nach den direkten positiven Verträgen
+gleich. Nach dem Impactlauf bleiben alle zehn Grids der eigenen Quellen
+exakt gleich. Im Framework ändern sich aggregiertes PlanFeedback von 3 auf 4
+und TuningRecommendations von 0 auf 4; die übrigen nativen Grids bleiben
+unverändert. Diese Engineevidenz wird nicht als Quellmutation oder
+Wirksamkeitsbeweis ausgegeben. Die 14 impact-basiert ausgewählten Testdateien
+bestehen in 36 Batches auf CL170 in 22,4 Sekunden. Der private Lauf setzt
+QUOTED_IDENTIFIER und ANSI_NULLS ausdrücklich; das installierte Modul besitzt
+beide Optionen. Alle 75 statischen Prüfungen bestehen am stabilen funktionalen
+Stand. Static1025 besteht 58 echte Mutationen. Ein Reviewbefund präzisiert
+nur die dokumentierte Auswahlordnung. OPS-005 ist aus 166 kanonischen Quellen
+synchronisiert; sein Update und beide PLAN-Artefakte bleiben normalisiert
+unverändert. Eigene Quellen, Lab und Secretwert sind entfernt.
+
+Die abschließenden Dokumentations-, Schreibstil- und Privacyprüfungen bestehen
+am Lieferstand. Aktive IQP-Wirkung, positive Varianten-/Feedbackzähler der eigenen
+Quellen, unerwartetes READ_ONLY, Berechtigungen, Timeout, ältere native Engines
+und CL150/160 bleiben unbelegt. Der begrenzte Nachweis schließt weder COLL-001
+noch einen Maturity- oder bestehenden Statusflag. Private Captures, lokale
+Runtimeidentitäten und Umgebungsdaten verbleiben außerhalb des Repositorys.
+
+Eingefrorene normalisierte SHA256-Werte: Source090
+`960BBA39990925119E94CD93708663F0EA0D251B529E1E08F07570078153EF22`, Common179
+`7E93E4B20235B0496A7F8BBD09161D9D22E6C5593CD756E0AC575F7D5D2C5DD3`, Static1025
+`88C52AE46FFCF9D5B329C84BB8FC5881E8597B7C2D2549D902B762361A8D7C99`.
