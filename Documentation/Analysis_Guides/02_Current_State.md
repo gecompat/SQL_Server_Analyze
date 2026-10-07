@@ -230,6 +230,10 @@ EXEC [monitor].[USP_CurrentBlocking]
 | `BlockedStatement`, `BlockerStatement` | aktuelle Statements von Blatt und direktem Blocker, sofern sichtbar |
 | `RootBlockerStatementSource`, `RootBlockerStatement` | aktives Root-Statement oder bei einer schlafenden Root-Session das zuletzt bekannte Verbindungsbatch; die Quelle verhindert eine Verwechslung beider Semantiken |
 
+Die Kettenmenge umfasst 67 Felder mit 38 explizit collatierten Textfeldern. RAW, JSON, TABLE und CONSOLE verwenden dieselbe abschließend begrenzte Menge. Die Auswahl erfolgt nach `WaitTimeMs DESC, BlockedSessionId`; RAW und JSON sortieren ausdrücklich. `NULL` oder `0` als `@MaxZeilen` lässt die Kettenmenge unbegrenzt. Die Begrenzung liegt nach Ressourcenanreicherung, Unicodeprojektion, Truncationwarnung und deren Fehlerbehandlung. Die zuvor berechneten N+1-Kandidaten-/HasMore-Zähler, behaltenen Locksessions und Auflösungskandidaten bleiben erhalten; auch eine materialisierte partielle Fehlerausgabe wird begrenzt. Der Inventarvertrag behält Version `4`, JSON Version `3`.
+
+Requestkanten haben Vorrang vor Waiting-Task-Kanten desselben Sessionpaars. SQL-Text wird mit den Ketten vor den Ausgabeconsumern materialisiert; Input Buffer wird nicht gelesen. Ein kleines Zeilenlimit belegt keine entsprechende Obergrenze für physische DMV-, Join-, Sortier- oder Statementextraktionsarbeit.
+
 Die Toolfilterung ist kettenbewahrend: Nur ein erkanntes Tool als blockiertes
 Blatt wird standardmäßig unterdrückt. Ist ein Tool Zwischen- oder Root-Blocker
 einer normalen Abfrage, bleibt die gesamte normale Kette sichtbar.

@@ -5035,3 +5035,119 @@ Eingefrorene normalisierte SHA256-Werte: Source020
 `be089c09f89197ba144944d0fb320d5ba1d2eef11bb07537bc4a7368253457e5`, Common185
 `5c9bddd788faf9ec3453cf35ccaf856134b8fc83268d42c5dfdcdd64e5ab6cb7`, Static1039
 `4f2731fcfa728cbd96cc7c48e164504036e010a8a7ed607bd7115252157ab9b4`.
+
+
+## Current Blocking: gemeinsame Mengenlimits und vollständige Ausgabeverträge
+
+Der begrenzte Nachweis vom 7. Oktober 2026 verwendet ein eigenes
+SQL-Server-2025-Dockerlab mit gemessenem Build 17.0.4075.5 und CL170.
+Server und tempdb verwenden Latin1_General_100_CS_AS, das Framework
+SQL_Latin1_General_CP1_CS_AS. Kanonische Installation aus 166 Quellen und
+Smoke bestehen. Vier eigene Verbindungen und drei eigene Unicodeobjekte
+erzeugen eine Root-, Middle- und zwei Leaf-Situationen mit case-unterschiedlichen
+App-/Hostwerten. Eine eigene Tool-Regel unterscheidet den Tool-Leaf.
+Runtimeidentitäten, native Captures und Secretwerte bleiben außerhalb Git.
+
+Source030 besitzt zwölf lokale Tabellen mit 158 Feldern und 82 Textcollations.
+Der gemeinsame Kettenexport umfasst 67 Felder mit 38 Frameworktextcollations,
+zehn NOT-NULL-Feldern und ohne Identity. RAW ergänzt bei Bedarf 23 Lockfelder,
+vier Warnungsfelder und 25 Metafelder. JSON besitzt vier Hauptschlüssel und
+24 Metafelder; aktive CONSOLE ergänzt Ergebnis zu den 67 Kettenfeldern.
+18 Parameter, Sourceversion 3.0.0, JSON-SchemaVersion 3, Inventarversion 4,
+Modulordinal 30 und Snapshotvertrag 2 bleiben unverändert.
+
+Das Original liefert bei positiven Limits über TABLE und generische CONSOLE
+eine zusätzliche N+1-Kette. RAW und JSON begrenzen bereits auf N.
+Zehn zusätzliche Sourcezeilen begrenzen ausschließlich die gemeinsame
+Kettentabelle nach dem Enrichment-CATCH und der Unicodewarnung, vor
+Partialaggregation und Verbrauchern. MainCandidateCount, HasMore, beteiligte
+Sessions, Lockmengen, Objektauflösung und Textprojektion behalten ihre vorherige
+N+1-Verarbeitung. Parent-TABLE verwendet anschließend dieselbe Begrenzung.
+Collector, Parent, API, Reihenfolge und Filter bleiben erhalten. OPS-005 wird
+kanonisch synchronisiert; sein Update und beide PLAN-Installer bleiben
+normalisiert gegenüber der Basis unverändert.
+
+Je Original- und Abschlussstand prüft ein unabhängiges Literalorakel 160
+unterschiedliche native Fälle: 90 Consumer-/Filter-/Unicodefälle, 48 Lock- und
+Auflösungsfälle, sechs tatsächliche Overview-Aufrufe und 16 negative Fälle.
+Die Originalprüfung umfasst 106.289, die Abschlussprüfung 104.919 Prüfungen
+von Werten, Strukturen und Schemafacetten. Alle 67 Kettenfelder und 23
+Lockfelder erhalten vollständige Wertgegenproben aus eigenen eingefrorenen
+nativen Quellen. 536 physische Kettenschemafacetten, alle 18 ABI-Parameter
+und 18 unveränderte Quellen werden gesondert geprüft. Die zwei Phasen
+verwenden jeweils eigene Captures; daraus entsteht kein atomarer Cross-call-
+Livezustand. Vier direkte, 16 Lock-/Auflösungs- und vier Parent-TABLE-Fälle
+belegen den ursprünglichen Mengenfehler; im Abschluss bestehen alle Limits.
+
+Die Fälle prüfen NULL-/0-/1-/2-Limits, TABLE/RAW/CONSOLE/NONE, SQL-Text und
+Toolfilter, Root-/Middle-/Leaf-Sessionpfade, Mindestwartezeit sowie den
+Request-Prioritäts- und WaitingTask-Fallback. Tatsächliche Surrogate liegen
+bei 18, 37 und 69 UTF16-Einheiten; 24 Fälle prüfen die jeweiligen Schnitte
+vor und an der Grenze in allen vier Ausgabeformen. STANDARD/NONE,
+DEEP und optionale Locks erhalten native Gegenproben. 151 native Locks
+bleiben als Multimenge vor und nach dem Capture stabil. Bei 16 begrenzten
+Lockfällen bestehen nicht eindeutige Sortierties; das Orakel akzeptiert nur
+die nativ belegten Grenzressourcen, ohne eine zusätzliche Ordnung zu erfinden.
+Vorhandene PARTIAL-Metadaten bleiben erhalten. Negative Fälle prüfen
+semantische Ablehnungen, bigint-Maximum, fehlende Parentquelle sowie sechs
+Mappingablehnungen vor Semantik und Quellenzugriff bei unveränderten Seeds.
+
+Sechs tatsächliche Overview-Aufrufe prüfen Limits 0/1/2 und SQL-Text an/aus.
+Innerhalb desselben Parentaufrufs stimmen sämtliche 67 TABLE-/JSON-Kettenwerte
+für die behaltenen Zeilen überein. Vollständige native TABLE-Schemafacetten,
+neun Modulstatuszeilen, Quellenflags und Caller-LOCK_TIMEOUT 137 bleiben
+erhalten. Der unabhängige Childnachweis verwendet eingefrorene native Quellen;
+eine zusätzliche vollständige Parent-Snapshot-Wertparität wird nicht behauptet.
+
+Common186 besteht 18 allgemeine TABLE-Fälle, vier Consumer, sechs
+Mappingablehnungen, vier synthetische Unicodefälle und drei leere
+SQL-CONSOLE-Captures. Ohne Fixture bleibt der native Block NOT_EXECUTED.
+Mit eigener Fixture bestehen 18 native TABLE-Fälle, sechs echte
+JSON-NULL-Mutationen und drei direkte CONSOLE-Status-/JSON-Aufrufe.
+Ein unabhängiger Reviewbefund schließt die zuvor NULL-tolerante Gegenprobe
+der sechs nullable Kettentexte. Der korrigierte Test prüft Feldmenge, JSON-Typ,
+beide NULL-Asymmetrien und BIN2-Werte. Beide nativen Commonläufe bestehen
+nach der Korrektur; der unabhängige funktionale Review hat keine offenen Befunde.
+
+Static1040 schützt sämtliche lokalen und gemeinsamen Felder, ABI,
+Prepare-Reihenfolge, Parentownership und die späte reine Kettenbegrenzung.
+661 echte Mutationen bestehen. Static950 behält genau zwei Parentowner;
+es entstehen weder ein weiterer Owner noch eine Ausnahme. Inventar und zwei
+betroffene Dokumente präzisieren die bestehenden Verträge. Alle 75 statischen
+Prüfungen bestehen vor der ausschließlich Common betreffenden Reviewkorrektur.
+Danach bestehen die betroffenen Prüfungen 950, 900, 915 und 910 erneut.
+Die kanonische Impact-Auswahl umfasst elf SQL-Testdateien; ihr tatsächlicher
+nativer Abschlusslauf besteht in 34 Batches mit 430 Resultgrids.
+
+Die private Zweiobjekt-Fixture erzeugt zunächst eine unerwartete Leaf-Wartekante;
+ein Pooling-Cleanup-Timeout verdeckt einmal den primären Bereitschaftsfehler.
+Eigene zurückgebliebene Objekte und Regel werden anhand nativer Identitäten
+gezielt bereinigt. Drei unabhängige Lockressourcen und Verbindungen ohne
+Pooling liefern danach die verlangte Situation. Ein privater Encodingfehler
+und wiederholtes CREATE desselben Captureziels scheitern vor Ausführung und
+werden im Harness korrigiert. Ein doppelter privater Cleanup-Parameter führt
+einmal nach erfolgreichem Capture zum Prozessfehler; native Identitäts- und
+Wertprüfungen ermöglichen die gezielte Bereinigung. Alle anschließenden
+Original-, Abschluss- und korrigierten Commonläufe enden erfolgreich.
+Diese Harnessfehler begründen keine zusätzliche Produktänderung.
+
+Die native Abschlussprüfung meldet null eigene Sessions, Objekte und Regeln.
+Die installierte Definition stimmt einschließlich Kommentar vollständig mit
+der eingefrorenen Source überein, abgesehen vom mechanisch gespeicherten
+CREATE-Prozedurkopf. Das eigene Lab wird mit zwei Cleanupschritten ohne
+Fehler entfernt; die Secretdatei ist entfernt. Ein unbenutztes, außerhalb Git
+erzeugtes OPS-Update bleibt erhalten: Die automatische Freigabeprüfung weist
+seine Löschung mit blocked by policy zurück und nennt keinen genaueren Grund.
+Der Inhalt entspricht normalisiert exakt dem kanonischen OPS-Update und
+enthält keine Runtimeidentitäten oder Secrets. Die begrenzten abschließenden
+Dokumentations-, Schreibstil- und Privacyprüfungen gehören zum Liefergate.
+
+MARS, eingeschränkte Berechtigungen, systematische Timeout- und zusätzliche
+Tool-Regeln, ältere native Engines und CL150/160 bleiben unbelegt.
+COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende Maturityflags
+bleiben unverändert.
+
+Eingefrorene normalisierte SHA256-Werte: Source030
+`d3198e0643f4e962c82a0c91d1fa729a7aa052e04f56ddec297f13da799636b3`, Common186
+`44f8edf786e90530f11a0ecbb8b4cc06138266fda2d6ac7413eaa4ce599a844d`, Static1040
+`598ed07dbe967f69e67b134d81b68c69c754c57a60c9ff243280ce0f2836bd0f`.

@@ -12935,6 +12935,16 @@ BEGIN
                                ELSE 'ERROR_HANDLED' END;
     END CATCH;
 
+    IF @MaxZeilen IS NOT NULL AND @MaxZeilen>0
+    BEGIN
+        ;WITH [R] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [WaitTimeMs] DESC,[BlockedSessionId]) AS [rn]
+            FROM [#CurrentBlocking_BlockingChains]
+        )
+        DELETE FROM [R] WHERE [rn]>@EffectiveMaxZeilen;
+    END;
+
     IF @IsPartial = 1 AND @StatusCode = 'AVAILABLE'
         SET @StatusCode = 'AVAILABLE_LIMITED';
 
