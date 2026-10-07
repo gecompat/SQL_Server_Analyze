@@ -430,3 +430,63 @@ native Engines bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
 TEST-0001, Registry, Maturityflags und historische Release-Matrix bleiben
 unverändert. Die neue Fixture ist ein Bestandteil von OPS-008 ohne eigene
 Artefaktreferenz.
+
+## Ergänzende native OPS-008-Retention injizierter Mailhistorie vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MailRetention` bestand auf einem neuen
+eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation, den Smoke-Test,
+Runtimevertrag `122` und die
+[Mailretention-Fixture](../../../../TestLab/Scenarios/OPS-008/mail-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert; eine
+Produktkorrektur war nicht erforderlich.
+
+Die zugrunde liegende Mailitemtabelle, `sysmail_allitems` und die Anlagenview
+mussten zu Beginn leer sein. Konfigurierte und effektive Mail-XPs waren
+deaktiviert und blieben während der Analyzerprüfungen deaktiviert. Die
+Fixture injizierte drei eigene Zeilen mit kontrollierten synthetischen
+`send_request_date`- und `sent_date`-Werten und Statusmarkierung `failed`.
+Die Markierung belegt keinen tatsächlich ausgelösten Versandfehler. Die
+Einfügereihenfolge unterschied sich von der Zeitreihenfolge. Weder
+Mailprofil, SMTP-Verbindung, Versand noch Queueverarbeitung wurden eingerichtet
+oder ausgeführt; die Anlagenview blieb leer.
+
+Die native Prozedur
+[`sysmail_delete_mailitems_sp`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sysmail-delete-mailitems-sp-transact-sql?view=sql-server-ver17)
+erhielt zwei explizite Datumsgrenzen und jeweils `@sent_status='failed'`.
+Beide Aufrufe lieferten Rückgabewert `0`. Der erste Eingriff entfernte die
+beiden älteren eigenen Zeilen; sämtliche Spalten der jüngeren Zeile blieben
+nach Sortierung über `mailitem_id` und `INCLUDE_NULL_VALUES` NULL-sicher
+gleich. Der zweite Eingriff entfernte die jüngere Zeile. Native Tabellen-
+und Viewcounts bestätigten drei, eine und null Zeilen; MIN und MAX der
+Requestzeitstempel entsprachen zusätzlich den kontrollierten Sollwerten
+beziehungsweise NULL bei leerer Quelle.
+
+In jeder Phase bestätigten NONE, TABLE und CONSOLE `AVAILABLE`, sechs
+Quellenzeilen, die unabhängigen nativen Mailaggregate und eine vorhandene
+Evidenzgrenze. TABLE und CONSOLE besaßen innerhalb desselben Aufrufs
+Parität aller acht Fachfelder mit JSON. Sämtliche Spalten der Mailitemtabelle
+blieben vor und nach jedem der neun Analyzeraufrufe NULL-sicher identisch.
+Die gemeinsame Callertransaktion blieb committable mit `@@TRANCOUNT=1`;
+`LOCK_TIMEOUT=137` blieb auch nach den nativen Purges erhalten. Der Analyzer
+bereinigte keine Historie.
+
+Ein abschließendes Rollback bestätigte die leeren Mailitem-, Allitems- und
+Anlagenquellen sowie `@@TRANCOUNT=0`; `LOCK_TIMEOUT` wurde auf den Eintrittswert
+zurückgesetzt. Der öffentliche Lauf endete mit `PASS` und `REMOVED`.
+Eigener Container, Volume und temporärer State wurden entfernt.
+Runtimeidentitäten, Secrets und Rohlogs bleiben außerhalb von Git. Der
+unabhängige funktionale Review besitzt keine offenen Befunde.
+
+Der Nachweis gilt ausschließlich für den manuellen nativen Purge der
+injizierten Failed-Historie mit kontrollierten Zeitstempeln. Tatsächlicher
+Mailversand oder Versandfehler, Profil-/SMTP-/Queueverhalten, andere
+Mailstatus, automatische Aufbewahrung, Anlagen- und Logretention,
+authentisches Alter oder UTC-Bezug, fremde Quellen und empirisches
+Fehlercleanup sind damit nicht belegt. Maintenance-Ausführung und
+Retention sowie fehlende optionale Quellen, Windows, weitere Provider und
+zusätzliche native Engines bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
+Release-Matrix bleiben unverändert. Die neue Fixture ist ein Bestandteil
+von OPS-008 ohne eigene Artefaktreferenz.
