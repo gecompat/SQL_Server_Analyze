@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string] $LabRepositoryRoot,
-    [ValidateSet('HistoryRestore', 'AgentHistory')]
+    [ValidateSet('HistoryRestore', 'AgentHistory', 'MailMaintenance')]
     [string] $Scenario = 'HistoryRestore'
 )
 
@@ -19,6 +19,7 @@ $stateRoot = Assert-AnalyzePathUnderRoot `
     -AllowedRoot $systemTempRoot
 $saPassword = New-AnalyzeExampleSecret
 $lab = $null
+$runtimeMetadata = $null
 $cleanupCompleted = $false
 $mutex = [Threading.Mutex]::new($false, 'Global\SQL_Server_Lab_Runtime_Smoke')
 $mutexHeld = $false
@@ -51,6 +52,9 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
     if ($Scenario -eq 'AgentHistory') {
         $scripts += 'TestLab/Scenarios/OPS-008/agent-history.sql'
     }
+    elseif ($Scenario -eq 'MailMaintenance') {
+        $scripts += 'TestLab/Scenarios/OPS-008/mail-maintenance.sql'
+    }
     else {
         $scripts += @('TestLab/Scenarios/OPS-008/history-window.sql',
             'TestLab/Scenarios/OPS-008/restore-window.sql')
@@ -60,6 +64,39 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
         $content = [IO.File]::ReadAllText((Join-Path $repositoryRoot $relative), [Text.Encoding]::UTF8)
         [IO.File]::WriteAllText($rendered, $content.Replace('[DeineDatenbank]', '[LabAnalyze]'), [Text.UTF8Encoding]::new($false))
         $null = Invoke-AnalyzeLabScript -ScriptPath $rendered -RunId $lab.RunId -StateRoot $stateRoot -SaPassword $saPassword
+    }
+    $endpoint = Get-AnalyzeLabConnection -RunId $lab.RunId -StateRoot $stateRoot
+    $credentialPassword = $saPassword.Copy()
+    $credentialPassword.MakeReadOnly()
+    $connection = $null
+    try {
+        $builder = [System.Data.SqlClient.SqlConnectionStringBuilder]::new()
+        $builder['Data Source'] = "tcp:$($endpoint.host),$($endpoint.port)"
+        $builder['Initial Catalog'] = 'LabAnalyze'
+        $builder['Encrypt'] = $true
+        $builder['TrustServerCertificate'] = $true
+        $builder['Connect Timeout'] = 30
+        $credential = [System.Data.SqlClient.SqlCredential]::new('sa', $credentialPassword)
+        $connection = [System.Data.SqlClient.SqlConnection]::new($builder.ConnectionString, $credential)
+        $connection.Open()
+        $command = $connection.CreateCommand()
+        $command.CommandTimeout = 30
+        $command.CommandText = @'
+SELECT CONVERT(varchar(30), SERVERPROPERTY('ProductVersion')) AS [ProductVersion],
+    [compatibility_level] AS [CompatibilityLevel]
+FROM [sys].[databases] WHERE [database_id] = DB_ID()
+FOR JSON PATH, WITHOUT_ARRAY_WRAPPER;
+'@
+        try { $runtimeMetadata = [string]$command.ExecuteScalar() | ConvertFrom-Json }
+        finally { $command.Dispose() }
+        if ($runtimeMetadata.ProductVersion -notmatch '^17\.\d+\.\d+\.\d+$' -or
+            $runtimeMetadata.CompatibilityLevel -ne 170) {
+            throw 'OPS-008: Die tatsächliche SQL-2025-/CL170-Kombination ist nicht bestätigt.'
+        }
+    }
+    finally {
+        try { if ($connection) { $connection.Dispose() } }
+        finally { $credentialPassword.Dispose() }
     }
 }
 finally {
@@ -86,4 +123,9 @@ finally {
     }
 }
 if (-not $cleanupCompleted) { throw 'OPS-008-Cleanup nicht vollständig; eigenen Recovery-State erhalten.' }
-[PSCustomObject]@{ WorkItem = 'OPS-008'; Scenario = $Scenario; Status = 'PASS'; SqlVersion = '2025'; Provider = 'docker'; Cleanup = 'REMOVED' }
+[PSCustomObject]@{
+    WorkItem = 'OPS-008'; Scenario = $Scenario; Status = 'PASS'; SqlVersion = '2025'
+    ProductVersion = $runtimeMetadata.ProductVersion
+    CompatibilityLevel = $runtimeMetadata.CompatibilityLevel
+    Provider = 'docker'; Cleanup = 'REMOVED'
+}
