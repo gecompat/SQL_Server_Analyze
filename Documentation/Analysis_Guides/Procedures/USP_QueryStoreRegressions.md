@@ -29,6 +29,10 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 Der typisierte TABLE-Vertrag registriert `regressions`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
+RAW, CONSOLE, TABLE und JSON lesen dieselbe spät materialisierte Exportmenge mit 25 Feldern und sieben expliziten Textcollations `SQL_Latin1_General_CP1_CS_AS`. `QueryStoreDatabaseName` und `QuerySqlTextIsTruncated` sind NOT NULL; die übrigen 23 Felder sind nullable. Der Export besitzt keine Identity. Das globale Limit wird einmal nach SQL-Textprojektion, Truncationwarnung, N+1-Zählung und Statusbewertung angewandt. NULL und 0 bei `@MaxZeilen` bleiben unbegrenzt. Die bestehende Sortierung verwendet `RegressionPercent DESC, AbsoluteChange DESC`; gleiche Sortwerte legen keine eindeutige Auswahl zwischen getrennten Aufrufen fest.
+
+Status, `hasMoreRows` und Truncationwarnungen stammen weiterhin aus der vollständig lokal mit N+1 gesammelten Menge. Die Ausgabegrenze verändert diese Bewertung nicht. Negative Zeilen- oder Textlimits liefern kontrolliert `INVALID_PARAMETER` mit leerem Export. NULL und 0 beim Textlimit lassen den Text vollständig; NULL bei einem Mindestfilter liefert nach dem bestehenden SQL-Prädikat eine leere fachliche Menge, ohne daraus einen Parameterfehler abzuleiten. Die vorhandene Auswahl- und Quellenfehlerbehandlung bleibt erhalten; eine fehlende Auswahl erhält keine zusätzliche Warningzeile.
+
 ## Eine Zeile bedeutet
 
 Eine Zeile entspricht einer Query mit aggregierter Baseline und aggregiertem Vergleichsfenster. Sie ist kein Vergleich zweier Einzelaufrufe.
@@ -64,7 +68,7 @@ Für `USP_QueryStoreRegressions` gilt zusätzlich: **keine Zeile** bedeutet, das
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Eine `ExampleDatabase`, zwei kurze nicht überlappende Vergleichsfenster, TOP 100 und kein Referenzdatenbankfilter. |
+| Standardpfad | Ohne exakten Datenbankfilter werden alle sichtbaren geeigneten Online-Benutzerdatenbanken geprüft; zwei aufeinanderfolgende Stunden, TOP 100 und kein Referenzdatenbankfilter. Der sichere Beispielaufruf begrenzt diese Auswahl ausdrücklich auf `ExampleDatabase`. |
 | Teuerster Pfad | Viele Datenbanken, `VOLL`/unbegrenztes Limit, Gesamtspanne über 24 Stunden und Referenzdatenbank-/Regexfilter; dafür wird gespeichertes Showplan-XML intern zerlegt. |
 | Haupttreiber | Zahl gewählter Query Stores, Runtimeintervalle und Query-/Plan-Kombinationen in beiden Vergleichsfenstern. Ein Referenzdatenbankfilter kann zusätzlich gespeicherte Showplan-XML laden und zerlegen, bevor die Regressionen rangiert werden. |
 | Skalierung | Zwei Fenster müssen je Query/Plan aggregiert und verglichen werden; Aufwand wächst mit Intervallen, Queries, Datenbanken und Gesamtspanne. Referenzfilter addieren Plan-XML-Parsing. |
@@ -112,15 +116,19 @@ JOIN [sys].[query_store_plan] AS [p] WITH (NOLOCK)
   ON [p].[plan_id] = [rs].[plan_id]
 JOIN [sys].[query_store_query] AS [q] WITH (NOLOCK)
   ON [q].[query_id] = [p].[query_id]
-WHERE [i].[end_time] > @BaselineVonUtc
-  AND [i].[start_time] < @ProblemBisUtc;
+WHERE ([i].[end_time] > @BaselineVonUtc AND [i].[start_time] < @BaselineBisUtc)
+   OR ([i].[end_time] > @VergleichVonUtc AND [i].[start_time] < @VergleichBisUtc);
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie Baseline- und Problemfenster sowie Datenbank vor Aggregation, Ranking und SQL-Text. `@MaxZeilen` wirkt erst nach dem Vergleich und spart die Interval-Joins nicht.
+Der tatsächliche Quellpfad verbindet zusätzlich `sys.query_store_query_text`. Nach der Fensteraggregation wird der Modulbezug über `LEFT JOIN sys.objects` und `LEFT JOIN sys.schemas` aufgelöst; ein nicht auflösbarer Objektname bleibt NULL.
+
+**Wichtig für die Eigenlast:** Setzen Sie Baseline- und Vergleichsfenster sowie Datenbank vor Aggregation, Ranking und SQL-Text. `@MaxZeilen` wirkt erst nach dem Vergleich und spart die Interval-Joins nicht.
 
 ### Zeit- und Scope-Modell
 
 Die Auswertung vergleicht zwei persistierte Query-Store-Fenster innerhalb der Retention; der Standardvergleich und die abgeleitete Baseline müssen im Wrapperkontext dokumentiert sein.
+
+Ein Runtimeintervall wird anhand seiner Start-/Endgrenzen jedem überlappenden Fenster zugeordnet. Die enthaltenen Ausführungen werden nicht anteilig auf scharfe Fenstergrenzen umgerechnet. Ausführungszahlen und gewichtete Messwerte werden je Query/Fenster summiert; Duration und CPU werden anschließend von Mikrosekunden in Millisekunden umgerechnet. Plananzahlen zählen unterschiedliche PlanIds im jeweiligen Fenster. Ein Zeitfilter auf `last_execution_time` ersetzt dieses Intervallmodell nicht.
 
 ### Bewertung und Gegenprobe
 

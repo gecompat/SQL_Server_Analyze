@@ -323,6 +323,14 @@ Die Procedure vergleicht zwei nicht überlappende Zeitfenster. Standardmäßig g
 | CPU stabil, Duration steigt | Wait-/Blocking-/I/O-Änderung möglich |
 | Executions steigt, Avg stabil | Lastanstieg, keine Queryeffizienzregression |
 
+### Ausgabegrenze und Zeitvertrag
+
+Die 25 Felder von `regressions` werden nach vollständiger lokaler N+1-Sammlung, SQL-Textprojektion und Statusbewertung einmal global begrenzt. RAW, CONSOLE, TABLE und JSON lesen diese gemeinsame Exportmenge. Die sieben Textspalten sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. Datenbankname und Truncationbit sind NOT NULL, die übrigen 23 Felder nullable; der Export besitzt keine Identity. Die vorhandene Sortierung nach Regressionprozent und absoluter Änderung absteigend lässt bei gleichen Werten unterschiedliche Auswahlen zwischen Aufrufen zu.
+
+NULL und 0 bei `@MaxZeilen` bleiben unbegrenzt, negative Zeilen- und Textlimits liefern `INVALID_PARAMETER` ohne Projektionsausnahme. NULL und 0 beim Textlimit bleiben unbegrenzt; NULL-Mindestfilter ergeben nach dem bestehenden SQL-Prädikat eine leere Menge. Status, `hasMoreRows` und Truncationwarnungen werden vor dem Ausgabelimit bestimmt. Die vorhandene Auswahlwarninggrenze wird nicht erweitert.
+
+Die Fensterzuordnung verwendet jeweils `end_time > VonUtc AND start_time < BisUtc`. Überlappende Intervalle werden mit ihren gesamten Ausführungen und gewichteten Messwerten berücksichtigt, ohne anteilige Zerlegung. Query Store, Fensteraggregation und LEFT-JOIN-Modulauflösung bleiben read-only. Ohne Datenbankfilter gilt die vorhandene Auswahl sichtbarer geeigneter Online-Benutzerdatenbanken; der sichere Beispielscope ist davon getrennt.
+
 ### Wichtige Grenzen
 
 - Workloadmix, Parameter und Datenvolumen können zwischen Fenstern unterschiedlich sein.
