@@ -298,6 +298,32 @@ Der Analyzer führt keine Bereinigung aus. Diese Gegenprobe prüft einen
 manuellen datumsgebundenen Eingriff; automatische Agent-Aufbewahrung,
 Mail-/Maintenance-Retention und Dauerinterpretation bleiben separat offen.
 
+Mit `-Scenario BackupRestoreRetention` erzeugt eine weitere getrennte Fixture
+drei tatsächliche Backups einer eigenen leeren Datenbank in getrennten
+Medien und stellt jedes Backup in dieselbe eigene Restore-Datenbank wieder
+her. Nur die eigenen Backup- und Restorezeitstempel werden auf kontrollierte
+Werte gesetzt. Alle acht von `sp_delete_backuphistory` betroffenen
+Historientabellen müssen zu Beginn leer sein. Der Test verwendet ausschließlich
+einen neuen Wegwerf-Run, weil diese native Prozedur einen globalen Datumsfilter
+und keinen Datenbankfilter besitzt.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario BackupRestoreRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Zwei explizite Datumsgrenzen müssen zuerst die zwei älteren Paare und danach
+das verbleibende Paar entfernen. Sämtliche Werte der jüngeren Zeilen in den
+acht Historientabellen werden nach dem ersten Eingriff NULL-sicher verglichen.
+NONE, TABLE und CONSOLE prüfen je Phase native Counts und MIN-/MAX-Zeitwerte,
+JSON-Parität, Quellerhaltung und Callerzustand. Datenbankidentitäten und
+geprüfte Optionen müssen bis zur eigenen Datenbankbereinigung erhalten bleiben.
+Das äußere Labcleanup entfernt zusätzlich die eigenen Backupdateien und den
+Run. Der Analyzer führt keine Bereinigung aus. Automatische Aufbewahrung,
+physische Backupaufbewahrung und die Retention weiterer Historien bleiben
+eigenständige Nachweise.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-

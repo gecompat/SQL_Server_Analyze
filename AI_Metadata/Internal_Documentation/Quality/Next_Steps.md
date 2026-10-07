@@ -15,7 +15,10 @@ dokumentierten Teilumfang geprüft. Der anschließende begrenzte Reifeschritt
 belegt injizierte nicht leere Mail- und Maintenance-Aggregate mit erhaltenen
 Quellwerten und Callerzustand. Tatsächliche eigene Agent-Ausführung sowie
 eine getrennte native datumsgebundene Agent-Historienbereinigung sind ebenfalls
-belegt; Mail-/Maintenance-Ausführung und weitere Retentiongrenzen bleiben offen.
+belegt. Eine getrennte native Backup-/Restore-Historienbereinigung bestätigt
+drei, ein und null eigene Paare mit kontrollierten Zeitstempeln und erhaltenen
+jüngeren Historienwerten. Mail-/Maintenance-Ausführung, automatische
+Aufbewahrung und weitere Retentiongrenzen bleiben offen.
 
 Bei der Wiederaufnahme werden zuerst die aktuelle Anweisungskette,
 `origin/main`, offene PRs und die kanonischen Statusquellen abgeglichen.
