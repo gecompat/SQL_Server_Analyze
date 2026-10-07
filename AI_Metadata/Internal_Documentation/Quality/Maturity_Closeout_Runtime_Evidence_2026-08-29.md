@@ -490,3 +490,67 @@ zusätzliche native Engines bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert. Die neue Fixture ist ein Bestandteil
 von OPS-008 ohne eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Retention injizierter Maintenancehistorie vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MaintenanceRetention` bestand auf einem
+neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation, den
+Smoke-Test, Runtimevertrag `122` und die
+[Maintenanceretention-Fixture](../../../../TestLab/Scenarios/OPS-008/maintenance-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Tabellen `sysmaintplan_log`, `sysmaintplan_logdetail`, `sysmaintplan_plans`
+und `sysmaintplan_subplans` mussten zu Beginn leer sein. Die Fixture prüfte
+in der installierten nativen Metadatenquelle die benötigten Parameternamen,
+Typen und Längen von `sp_maintplan_delete_log`: `@plan_id` und `@subplan_id`
+als `uniqueidentifier` sowie `@oldest_time` als `datetime`. Die Microsoft-
+[Dokumentation zur Historienbereinigung](https://learn.microsoft.com/en-us/sql/relational-databases/maintenance-plans/use-the-maintenance-plan-wizard?view=sql-server-ver17)
+nennt diese Prozedur; die konkrete Signatur wird hier durch den nativen
+Preflight und die tatsächlichen Aufrufe belegt.
+
+Die Fixture injizierte drei eigene Elternzeilen in `sysmaintplan_log` mit
+jeweils eigener GUID, synthetischen Namen und kontrollierten Start- und
+Endzeitstempeln. Die Erfolgsmarkierung belegt keine tatsächlich ausgeführte
+Maintenance. Die Einfügereihenfolge unterschied sich von der Zeitreihenfolge.
+Plans, Subplans und Detailhistorie blieben leer; Pläne, Jobs und SSIS-Aufgaben
+wurden weder eingerichtet noch ausgeführt.
+
+Die native Prozedur erhielt zwei explizite Datumsgrenzen sowie NULL für
+beide Planfilter und lieferte jeweils Rückgabewert `0`. Diese globale
+Datumsbereinigung ist ausschließlich durch das neue eigene leere Lab
+begrenzt. Der erste Eingriff entfernte die beiden älteren eigenen Zeilen;
+sämtliche Spalten der jüngeren Zeile blieben nach Sortierung über
+`task_detail_id` und `INCLUDE_NULL_VALUES` NULL-sicher gleich. Der zweite
+Eingriff entfernte die jüngere Zeile. Native Counts und MIN-/MAX-Startzeiten
+bestätigten drei, eine und null Zeilen sowie die kontrollierten Zeitgrenzen
+beziehungsweise NULL bei leerer Quelle.
+
+In jeder Phase bestätigten NONE, TABLE und CONSOLE `AVAILABLE`, sechs
+Quellenzeilen, die unabhängigen nativen Maintenanceaggregate und eine
+vorhandene Evidenzgrenze. TABLE und CONSOLE besaßen innerhalb desselben
+Aufrufs Parität aller acht Fachfelder mit JSON. Sämtliche Spalten der
+Elternhistorie blieben vor und nach jedem der neun Analyzeraufrufe NULL-sicher
+identisch. Die gemeinsame Callertransaktion blieb committable mit
+`@@TRANCOUNT=1`; `LOCK_TIMEOUT=137` blieb auch nach den nativen Purges erhalten.
+Der Analyzer bereinigte keine Historie.
+
+Ein abschließendes Rollback bestätigte alle vier leeren Maintenancequellen
+und `@@TRANCOUNT=0`; `LOCK_TIMEOUT` wurde auf den Eintrittswert zurückgesetzt.
+Der öffentliche Lauf endete mit `PASS` und `REMOVED`. Eigener Container,
+Volume und temporärer State wurden entfernt. Runtimeidentitäten, Secrets
+und Rohlogs bleiben außerhalb von Git. Der unabhängige funktionale Review
+besitzt keine offenen Befunde.
+
+Der Nachweis gilt ausschließlich für die manuelle native Datumsbereinigung
+injizierter Elternhistorie. Tatsächliche Maintenance-Ausführung,
+SSIS-/Jobverhalten, positive Detailhistorienbereinigung, selektive
+Plan-/Subplanfilter, automatische Aufbewahrung, authentisches Alter oder
+UTC-Bezug, fremde Quellen und empirisches Fehlercleanup sind damit nicht
+belegt. Tatsächliche Mailausführung, weitere Mailstatus, Anlagen- und
+Logretention sowie fehlende optionale Quellen, Windows, weitere Provider
+und zusätzliche native Engines bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
+Release-Matrix bleiben unverändert. Die neue Fixture ist ein Bestandteil
+von OPS-008 ohne eigene Artefaktreferenz.
