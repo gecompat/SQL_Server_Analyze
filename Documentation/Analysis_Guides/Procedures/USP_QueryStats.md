@@ -26,7 +26,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `queries`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `queries` mit 60 Feldern, fünf expliziten Frameworktextcollations und ohne Identity. RAW und JSON projizieren 59 Felder ohne `SortValue`; die aktive CONSOLE ergänzt die 60 Felder um `Ergebnis` und liefert damit 61 Felder. Eine leere CONSOLE verwendet den bestehenden Dreifeldvertrag `Ergebnis`, `Status`, `Hinweis`. RAW liefert außerdem den neunfeldrigen Modulstatus und die dreifeldrigen Auswahlwarnings; JSON enthält `meta`, `queries` und `warnings` mit zehn Metafeldern einschließlich NULL-Werten. Zusätzliche Helperproben können davor leere Resultsets liefern.
+
+Alle vier Fachausgaben verwenden dieselbe begrenzte Resultmenge. Die Auswahl erfolgt nach `SortValue DESC, LastExecutionTime DESC`; RAW und JSON sortieren diese Menge ausdrücklich. TABLE und der aktive CONSOLE-Helper versprechen keine Ausgabeordnung. Vollständig gleiche Sortschlüssel erhalten keinen zusätzlichen Tie-Breaker und können zwischen Aufrufen verschieden ausgewählt werden. `NULL` oder 0 als Zeilenlimit bleibt unbegrenzt und prüft den bestehenden `PLAN_CACHE_DEEP`-Pfad.
+
+Der begrenzte Pfad sammelt bis zu Limit plus eins, projektiert Statement- und Batchtext und bewertet anschließend `HasMoreRows`, bevor er den zusätzlichen Kandidaten aus der gemeinsamen Ausgabe entfernt. Metadaten und Trunkierungswarnings behalten diese vorangehende Bewertung; sie behaupten keine vollständige Zählung des gesamten Plan Cache. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen.
 
 ## Eine Zeile bedeutet
 
@@ -63,7 +67,7 @@ Der Plan Cache ist flüchtig. Recompile, Eviction oder Restart können relevante
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | TOP 50 aus `sys.dm_exec_query_stats`, nach CPU sortiert und mit auf 4000 Zeichen gekürztem SQL-Text; optionaler Datenbank-/Hashfilter kann den Kandidatenscope weiter eingrenzen. |
+| Standardpfad | TOP 100 aus `sys.dm_exec_query_stats`, nach CPU sortiert und mit auf 4000 Zeichen gekürztem SQL-Text; optionaler Datenbank-/Hashfilter kann den Kandidatenscope weiter eingrenzen. |
 | Teuerster Pfad | `VOLL` beziehungsweise >1000/unbegrenzt, kein Query-/Datenbankfilter, ungekürzte Texte und Regex über einen sehr großen Plan Cache. Dieser Pfad prüft `PLAN_CACHE_DEEP`. |
 | Haupttreiber | Zahl aktueller Cache-Statementzeilen, gewählte Rangiermetrik sowie Planattribut- und SQL-Textauflösung. Datenbank-/Hashfilter können Kandidaten verkleinern; Regex, Volltext und unbegrenztes Ranking verlagern Arbeit auf den breiten Cachepfad. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_QueryStats ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
@@ -116,7 +120,7 @@ WHERE [qs].[execution_count] >= @MinExecutionCount
   AND (@QueryHash IS NULL OR [qs].[query_hash] = @QueryHash);
 ```
 
-**Wichtig für die Eigenlast:** Hash, Handle, Ausführungsanzahl und Zeit wirken vor Sortierung. Datenbank- und Textfilter benötigen erst Handle-/Textauflösung; Regex wirkt nach Materialisierung. `@MaxZeilen` begrenzt nicht automatisch den Cache-Scan.
+**Wichtig für die Eigenlast:** Hash, Handle, Ausführungsanzahl und Zeit wirken vor Sortierung. Datenbank- und Textfilter benötigen erst Handle-/Textauflösung; Regex wirkt im dynamischen Quellselect vor Materialisierung und TOP-Auswahl. `@MaxZeilen` begrenzt nicht automatisch den Cache-Scan.
 
 ### Zeit- und Scope-Modell
 

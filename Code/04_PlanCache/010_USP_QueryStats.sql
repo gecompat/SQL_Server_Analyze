@@ -417,6 +417,12 @@ OPTION (RECOMPILE, MAXDOP 1);';
 
         SELECT @RowCount = COUNT_BIG(*) FROM [#QueryStats_Result];
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @Limit < 9223372036854775807 AND @RowCount > @Limit THEN 1 ELSE 0 END);
+        ;WITH [Selection] AS
+        (
+            SELECT ROW_NUMBER() OVER (ORDER BY [SortValue] DESC, [LastExecutionTime] DESC) AS [SelectionOrdinal]
+            FROM [#QueryStats_Result]
+        )
+        DELETE FROM [Selection] WHERE [SelectionOrdinal] > @Limit;
     END TRY
     BEGIN CATCH
         SET @ErrorNumber = ERROR_NUMBER();

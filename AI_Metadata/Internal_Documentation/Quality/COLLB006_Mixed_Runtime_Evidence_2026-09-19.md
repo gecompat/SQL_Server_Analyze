@@ -4514,3 +4514,117 @@ Eingefrorene normalisierte SHA256-Werte: Source020
 `E45385E1A65FDDDF2CCB110E4B0F6B043E486D4802A0AEC9DFB295B06EA3978B`, Common181
 `1C4DF97A58AF561181431C4D79D9F1B53C084CBD24FEA23E1BD5D53FBC7D2D42`, Static1036
 `4404AC73FCF20ECD4D629014289C8EF24AA46AFFF8518F428AB8E2E51DE3982E`.
+
+## QueryStats: gemeinsames Zeilenlimit und vollständiger Feldvertrag
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5. Server und tempdb besitzen Latin1_General_100_CS_AS,
+das Framework SQL_Latin1_General_CP1_CS_AS. Framework und eigene Unicode-
+CI_AS-Quelle besitzen gemessene Compatibility Levels 170. HADR ist deaktiviert,
+Query Store bleibt in der Quelle ausgeschaltet. Die eigene Tabelle enthält
+vier Werte; drei eigene Procedures werden zwei-, drei- und viermal ausgeführt.
+Die Ausgangsmessung enthält drei Procedurezeilen und drei Ad-hoc-Zeilen auf
+fünf Plänen. Bei den Ad-hoc-Zeilen ist die Text-Datenbank-ID NULL; das vorhandene
+Planattribut löst die Quelldatenbank auf.
+
+USP_QueryStats besitzt bereits drei lokale Tabellen mit 10/3/60 Feldern.
+Der gemeinsame Resultvertrag hat fünf explizite Frameworktextcollations,
+29 NOT-NULL-Felder und keine Identity. RAW und JSON projizieren 59 Fachfelder
+ohne SortValue. Aktive positive CONSOLE liefert 61 Felder mit Ergebnislabel,
+leere CONSOLE den bestehenden Dreifeldvertrag. TABLE enthält 60 Felder.
+Die 22 Parameter, Sourceversion 2.1.0, TABLE-SchemaVersion 2 und JSON-
+SchemaVersion 1 bleiben unverändert. Es entsteht kein zusätzlicher Export.
+
+Das Original sammelt bei positivem Limit bis zu Limit plus eins. RAW und JSON
+begrenzen danach ausdrücklich; TABLE und aktive CONSOLE liefern dagegen die
+zusätzliche Zeile. Vier Originalfälle belegen bei Limits 1/2 jeweils 2/3
+TABLE-/CONSOLE-Zeilen gegenüber 1/2 RAW-/JSON-Zeilen. Sechs neue Sourcezeilen
+begrenzen die gemeinsame Tabelle nach SortValue DESC und LastExecutionTime DESC.
+Textprojektion, Trunkierungswarning, RowCount und HasMoreRows werden davor
+bewertet. N+1-Zähler, dreizehn Rangmetriken, Rundung, Filter und Gatepolitik
+bleiben erhalten. Vollständig gleiche Sortschlüssel erhalten keinen neuen
+Tiebreaker; TABLE und aktive CONSOLE versprechen keine Anzeigeordnung.
+Negative Text- und Zeilenlimits liefern bereits kontrolliert INVALID_PARAMETER.
+
+36 unveränderte Originalfälle ergeben 37 Batches und 136 private Grids.
+Ein unabhängiger Client vergleicht sämtliche 59 öffentlichen Werte gegen
+sechs aufgelöste native Cachezeilen, SQL-/ADO-Facetten für TABLE und CONSOLE,
+dreizehn Ränge, NULL/0/1/2-Limits und negative Parameter. RAW behält neun
+Statusfelder, JSON drei Hauptschlüssel, zehn Metafelder, vollständige
+NULL-Properties und leere Warnings. Doppelte JSON-Schlüssel werden abgelehnt.
+
+Smoke- und Beobachtungsabfragen vergrößern den flüchtigen Cache. Deshalb
+verwenden zusätzliche gepaarte Original-/Finalmessungen einen stabilen
+Batchtextscope über genau die drei eigenen Procedures. Je 36 native Fälle
+ergeben 37 Batches und 136 Grids. Sämtliche Werte und Facetten bestehen;
+die vier Original-Limitabweichungen fehlen im Finalstand. Ergänzend liefern
+private 37-Feld-Snapshots drei synthetische Zeilen mit unterschiedlichen
+CPU-, Elapsed-, Read-, Write-, Grant-, Spill- und Rowwerten sowie null
+Ausführungen. Je 36 Original-/Finalfälle ergeben 38 Batches und 136 Grids.
+Das bestätigt insbesondere ganzzahlige CPU-/Elapsed-Zwischenrechnung,
+NULL-Durchschnitte und Ranggrenzen. Live-Text-, Cache- und Attributauflösung
+bleibt getrennt; diese Mischung belegt keine atomare Snapshotmetadatenmessung.
+
+59 Zusatzfälle ergeben 60 Batches und 186 Grids. Alle vier Consumer bestätigen
+Textlimits NULL/0/30/31 und exakte QueryHash-, QueryPlanHash-, SqlHandle- und
+PlanHandlefilter. Der eigene SUM-Text besitzt 66 Codepoints und 134 Bytes;
+30/31 liegen vor beziehungsweise einschließlich des Emoji. Unabhängige
+UTF-16-Byteoffsets erhalten den Unterschied zwischen Statement- und Batchtext.
+Mindest-, Zeit-, case-sensitive LIKE- und Regexfilter, ungültige Parameter,
+fehlende Datenbanken und vollständige Auswahlwarnings bestehen. Sechs
+Mappingablehnungen werfen 51011 und erhalten Sentinelziele. Zwei echte
+Parentaufrufe bestätigen Child-Parität auf Ordinal 1 mit EXECUTED und
+REUSED_PARENT_SNAPSHOT. Ein tatsächlich fehlender Snapshot liefert kontrolliert
+208. Acht Gatefälle ergeben neun Batches und 39 Grids: vier Deep-Pfade
+blockieren, drei Current-Pfade sind erlaubt und ein NULL-Bestätigungsflag ist
+ungültig. Caller-LOCK_TIMEOUT 137 bleibt in diesen Prüfungen erhalten.
+
+Common182 besteht 29 allgemeine und 28 native Fälle, drei Consumer, sechs
+Preflights, drei leere SQL-CONSOLE-Captures und drei direkte native CONSOLE-
+Aufrufe. Die Clientmessung bestätigt dabei 61 Felder und 1/2/3 Zeilen.
+Der native Test liest ausschließlich die vorbereitete eigene Fixture.
+Eine überzählige Klammer im neuen Test wird nach dem ersten Parsefehler
+entfernt. Der escaped CREATE-Prefix verhindert, dass Beobachterliteraltexte
+den Produktfilter selbst treffen. Ein zusätzlicher Guard zählt ohne
+ObjectId-Vorfilter genau drei passende Cachezeilen. Es entsteht kein weiterer
+Parent-Snapshot-Erzeuger und keine Erweiterung der Static950-Ausnahme.
+
+Acht impact-basierte Testdateien bestehen auf SQL Server 2025 und CL170
+in 25 Batches. Ein erster Lauf scheitert an Common165-Metadatenprüfung 56904.
+Eine private Gegenprobe ergänzt ausschließlich Diagnoseausgaben und besteht
+alle 48 Orchestratorfälle bei aktiven Assertions. Der vollständige unveränderte
+Impactlauf besteht anschließend. Für den ersten Fehler ist keine Ursache
+nachgewiesen; eine allgemeine Aussage über seine Wiederholbarkeit entfällt.
+Alle 75 statischen Prüfungen bestehen am stabilen funktionalen Stand;
+Static1029 besteht 274 echte DDL-, Rang-, Auswahl- und Consumermutationen.
+Der unabhängige funktionale Review besitzt keine offenen Befunde.
+
+Die sechs ursprünglich aufgelösten Zeilen bleiben nach den Prüfungen in allen
+92 nativen Feldern exakt erhalten. Dasselbe gilt für die fünf Cacheplanzeilen
+mit sechs Feldern, 18 Planattribute, Datenbankidentität und vier Tabellenwerte.
+Die drei Procedurezeilen stimmen zusätzlich mit allen 90 Feldern der ersten
+Fixturemessung überein. Weitere Analysecachezeilen werden als Beobachtungs-
+aktivität erfasst und nicht als unveränderlicher Gesamtsnapshot behauptet.
+Nach identitätsgeprüftem Fixture-Cleanup besteht Common182 in drei Batches
+und 27 Grids mit 29 allgemeinen Fällen. Der native Block meldet NOT_EXECUTED,
+null native Fälle und keinen gemessenen Source-Compatibility-Level.
+Eigener Container und Volume werden in zwei Schritten ohne Fehler entfernt;
+der verschlüsselte temporäre Secretwert ist entfernt.
+
+OPS-005 ist aus 166 kanonischen Quellen synchronisiert. Sein Update und beide
+PLAN-Artefakte bleiben normalisiert unverändert. Eine bestehende Inventarzeile
+ergänzt ausschließlich die fünf bereits vorhandenen Textcollations. Die
+Procedure- und Bereichsdokumentation präzisiert den tatsächlichen TOP-100-
+Default und Regex vor Materialisierung sowie die bestehenden Feldunterschiede.
+Die abschließenden begrenzten Dokumentations-, Schreibstil- und Privacyprüfungen
+bestehen am Lieferstand. Allgemeine Rundungs-/Sorttiegrenzen, Eviction,
+positive native Writes/Spills/Grants im stabilen Procedurescope, Berechtigungen,
+Timeout, ältere native Engines und CL150/160 bleiben unbelegt. COLL-001 bleibt
+partiell; Registry, RUNTIME-001 und bestehende Maturityflags bleiben unverändert.
+Private Captures, Runtimeidentitäten und Umgebungsdaten liegen außerhalb des
+Repositorys.
+
+Eingefrorene normalisierte SHA256-Werte: Source010
+`92A188803DCECF928FF6FD6673D3E74E6FCCA48558BAC522B24B618F71E33F53`, Common182
+`F44B9E20C4C493CF2F304A1147B47BF3CF2495641EE0A18632B6417F56BB80CE`, Static1029
+`ADA0E754C3611BA22364CF11E51A4DE0B8CBE726E6DF9EFEB5B0448D6549E6B4`.

@@ -54,7 +54,12 @@ EXEC [monitor].[USP_QueryStats]
 | Spills | `TotalSpilledPages`, `LastSpilledPages` | TempDB-Spill-Evidenz |
 | Cache | `CacheObjectType`, `ObjectType`, `PlanUseCounts`, `PlanSizeBytes`, `ResourcePoolId` | Cacheobjekt und Speicherumfang |
 | Compilekontext | `SetOptions`, `CompileUserId` | mögliche Ursache mehrerer Cachevarianten |
-| Sortierung | `SortValue` | normalisierte gewählte Rankingmetrik |
+
+`SortValue` ist die zusätzliche Rankingmetrik des 60-feldrigen TABLE-Vertrags und der aktiven 61-feldrigen CONSOLE-Ausgabe. RAW und JSON enthalten 59 Fachfelder ohne `SortValue`; alle fünf Textspalten sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. Die registrierte TABLE-SchemaVersion 2 und JSON-Meta-SchemaVersion 1 bleiben getrennte bestehende Verträge.
+
+Die vier Fachausgaben verwenden dieselbe begrenzte Resultmenge. Die Auswahl erfolgt nach `SortValue DESC, LastExecutionTime DESC`; RAW und JSON sortieren diese Menge ausdrücklich. TABLE und der CONSOLE-Helper garantieren keine Ausgabeordnung. Gleiche Rangschlüssel erlauben verschiedene Auswahlen zwischen Aufrufen. Der Standard ist TOP 100 ohne exakten Datenbankfilter über sichtbare zulässige Benutzerdatenbanken. Der obige TOP-50-Aufruf ist eine bewusst begrenzte Einstiegsauswahl.
+
+`NULL` und 0 als Zeilenlimit bleiben unbegrenzt und respektieren `PLAN_CACHE_DEEP`. Bei positivem Limit sammelt der Quellselect bis zu Limit plus eins. Textprojektion, Trunkierungswarning und `HasMoreRows` werden vor dem gemeinsamen Zuschnitt bewertet; ReturnedRows beschreibt die begrenzte Ausgabe, keine vollständige Cachezählung. Negative Limits und negative Textgrenzen liefern den bestehenden kontrollierten `INVALID_PARAMETER`-Vertrag.
 
 ### Interpretation
 
