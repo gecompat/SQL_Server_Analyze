@@ -36,7 +36,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `currentTasks`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+TABLE schreibt die 33 Felder von `currentTasks`; CONSOLE zeigt dieselbe Taskmenge mit einer zusätzlichen Beschriftung oder bei leerer Menge eine Hinweiszeile. Status, instanzweite Waits und Warnings stehen in RAW beziehungsweise JSON. Diese Evidenz ist vor der Taskausgabe zu prüfen. Die 23 Instanzfelder haben eine andere Zeilengranularität und dürfen nicht mit Taskwerten summiert werden. Alle 22 Task- und elf Instanztextfelder verwenden die Framework-Collation. NULL oder 0 als `@MaxZeilen` bedeutet unbegrenzt; eine positive Grenze kürzt beide Fachmengen vor den Verbrauchern. Die Zeilenzähler beschreiben die ausgegebenen Mengen.
 
 Im Overview konsumiert der aktuelle Taskpfad Waiting Tasks, Sessions, Requests
 und deduplizierten SQL-Text aus derselben Snapshot-ID. Die instanzweiten
@@ -45,7 +45,7 @@ Standalone-Aufruf verwendet ausschließlich frische Quellen.
 
 ## Eine Zeile bedeutet
 
-Je Resultset beschreibt eine Zeile einen sichtbaren Wait beziehungsweise eine Aggregation nach Session, Request, Waittyp oder Gruppe. Im Samplemodus ist das Delta maßgeblich.
+Eine Taskzeile beschreibt eine sichtbare wartende Task mit Session- und Requestkontext. Mehrere Tasks einer Session sind möglich. Eine Instanzzeile beschreibt einen Waittyp im kumulativen Scope oder im Sampledelta.
 
 ## So lesen
 
@@ -114,7 +114,6 @@ SELECT
     , [wt].[wait_type]
     , [wt].[wait_duration_ms]
     , [wt].[blocking_session_id]
-    , [r].[request_id]
     , [r].[database_id]
     , [s].[status] AS [SessionStatus]
 FROM [sys].[dm_os_waiting_tasks] AS [wt] WITH (NOLOCK)
@@ -122,11 +121,10 @@ LEFT JOIN [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
   ON [r].[session_id] = [wt].[session_id]
 LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
   ON [s].[session_id] = [wt].[session_id]
-WHERE [wt].[session_id] <> @@SPID
-  AND [wt].[wait_duration_ms] >= @MinWaitMs;
+WHERE [wt].[wait_duration_ms] >= @MinWaitMs;
 ```
 
-**Wichtig für die Eigenlast:** Filtern Sie Waittyp, Mindestdauer und Session vor der SQL-Textauflösung. Der optionale Delta-Pfad liest `sys.dm_os_wait_stats` zweimal; `@SampleSeconds` verursacht bewusst Wartezeit, aber keine Nutzdatenlocks.
+**Wichtig für die Eigenlast:** Die Procedure materialisiert die Quell-Sessions, Requests und Waiting Tasks sowie bei `@MitSqlText = 1` deduplizierten SQL-Text vor der fachlichen Taskauswahl. Ein Sessionfilter vermeidet diesen Quellzugriff nicht. Die anschließende Unicodeprojektion betrifft die bereits begrenzte Taskmenge. Weitere Join-, Filter-, Sortier- und Statementextraktionsarbeit ist damit nicht physisch auf das Ausgabelimit begrenzt. Der Delta-Pfad liest `sys.dm_os_wait_stats` zweimal; `@SampleSeconds` verursacht Wartezeit, aber keine Nutzdatenlocks.
 
 ### Zeit- und Scope-Modell
 
