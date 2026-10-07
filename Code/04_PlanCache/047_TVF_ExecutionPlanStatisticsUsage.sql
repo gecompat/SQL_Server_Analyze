@@ -27,7 +27,7 @@ RETURN
               [StatementXml]=[s].[n].query('.')
             , [StatementId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementId)[1])','nvarchar(50)'),N''))
             , [StatementCompId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementCompId)[1])','nvarchar(50)'),N''))
-            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'')
+            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM @PlanXml.nodes('//*[local-name(.)="StmtSimple"]') AS [s]([n])
     ),
     [Statements] AS
@@ -43,10 +43,10 @@ RETURN
     (
         SELECT
               [st].[StatementOrdinal],[st].[StatementId],[st].[StatementCompId]
-            , [DatabaseRaw]=NULLIF([i].[n].value('string((@Database)[1])','nvarchar(256)'),N'')
-            , [SchemaRaw]=NULLIF([i].[n].value('string((@Schema)[1])','nvarchar(256)'),N'')
-            , [ObjectRaw]=NULLIF([i].[n].value('string((@Table)[1])','nvarchar(256)'),N'')
-            , [StatisticsRaw]=NULLIF([i].[n].value('string((@Statistics)[1])','nvarchar(256)'),N'')
+            , [DatabaseRaw]=NULLIF([i].[n].value('string((@Database)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [SchemaRaw]=NULLIF([i].[n].value('string((@Schema)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [ObjectRaw]=NULLIF([i].[n].value('string((@Table)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [StatisticsRaw]=NULLIF([i].[n].value('string((@Statistics)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
             , [LastUpdateAtCompile]=TRY_CONVERT(datetime2(7),NULLIF([i].[n].value('string((@LastUpdate)[1])','nvarchar(100)'),N''))
             , [ModificationCountAtCompile]=TRY_CONVERT(bigint,NULLIF([i].[n].value('string((@ModificationCount)[1])','nvarchar(100)'),N''))
             , [SamplingPercentAtCompile]=TRY_CONVERT(decimal(19,6),NULLIF([i].[n].value('string((@SamplingPercent)[1])','nvarchar(100)'),N''))
@@ -66,10 +66,10 @@ RETURN
         , [StatisticsName]=CASE WHEN LEFT([StatisticsRaw],1)=N'[' AND RIGHT([StatisticsRaw],1)=N']'
                                 THEN REPLACE(SUBSTRING([StatisticsRaw],2,LEN([StatisticsRaw])-2),N']]',N']') ELSE [StatisticsRaw] END
         , [LastUpdateAtCompile],[ModificationCountAtCompile],[SamplingPercentAtCompile]
-        , [SourceElement]=CONVERT(nvarchar(128),N'OptimizerStatsUsage/StatisticsInfo')
+        , [SourceElement]=CONVERT(nvarchar(128),N'OptimizerStatsUsage/StatisticsInfo') COLLATE SQL_Latin1_General_CP1_CS_AS
         , [ParseStatus]=CONVERT(varchar(40),CASE
               WHEN [ObjectRaw] IS NOT NULL AND [StatisticsRaw] IS NOT NULL THEN 'AVAILABLE'
-              ELSE 'INCOMPLETE_REFERENCE' END)
+              ELSE 'INCOMPLETE_REFERENCE' END) COLLATE SQL_Latin1_General_CP1_CS_AS
     FROM [Raw]
 );
 GO

@@ -3287,3 +3287,152 @@ Das unabhängige Produkt-, Test-, Installer-, Dokumentations-, Evidenz-
 und Statusreview hatte keine offenen Findings. Nach dem erfolgreichen
 Vollgate wurde ausschließlich dieser Gateabsatz ergänzt; SQL, Tests,
 Statusnotizen und die angegebenen Quellidentitäten blieben unverändert.
+
+## Showplan-Referenzprojektionen und RelOp-Spaltenrollen am 7. Oktober 2026
+
+Der begrenzte Slice betrifft `TVF_ExecutionPlanObjectReferences`,
+`TVF_ExecutionPlanStatisticsUsage` und `TVF_ExecutionPlanColumnReferences`.
+Dreißig gezielte Textprojektionen verwenden jetzt explizit
+`SQL_Latin1_General_CP1_CS_AS`. Die ursprünglichen 53 Rückgabefelder und
+23 Textcollations waren durch Frameworkvererbung bereits korrekt.
+Es wird deshalb keine vorherige falsche Rückgabecollation behauptet.
+Numerische Parsingcasts, Statementfilter, Ordinalbildung und vorhandene
+Mehrfachzeilen bleiben erhalten. Die Statementauswahl erfolgt weiterhin
+vor der Ordinalbildung.
+
+Zusätzlich korrigiert der Slice einen bestehenden Spaltenrollenfehler:
+Das materialisierte XML beginnt mit einem `RelOp`-Element; die sechs
+bisherigen relativen Rollenpfade übersprangen diese Dokumentwurzel nicht
+korrekt. Sechs gezielte Rootschritte lesen nun SEEK, RESIDUAL, JOIN,
+ORDER_BY, GROUP_BY und OUTPUT am jeweiligen Operator. Verschachtelte
+Parent- und Child-Operatoren behalten getrennte Node-Kontexte. Ein
+fehlender Spaltenname wird weiterhin ausgeschlossen; ein fehlender
+Objektname bei vorhandenem Spaltennamen darf als NULL erhalten bleiben.
+
+Das eigene SQL-Server-2025-Lab verwendete Version 17.0.4075.5 auf Linux,
+Server-/tempdb-Collation `Latin1_General_100_CS_AS`, Frameworkcollation
+`SQL_Latin1_General_CP1_CS_AS` und Framework-CL170. Kanonische Installation
+und Smoke bestanden vor und nach der Änderung. OPS-005 und PLAN-001
+wurden aus den kanonischen Quellen regeneriert.
+
+Ein unabhängiger SqlClient erfasste die ursprünglichen 36 gepaarten
+nativen/JSON-Fälle in 108 Grids und fünf zusätzliche gemeinsame
+XML-Varianten als 15 gepaarte Fälle in 45 Grids. Baseline und Candidate
+führen jeweils 102 TVF-Ausführungen für diese 51 gepaarten Fälle aus.
+Object liefert 27 und Statistics 19 vollständige Zeilen: Alle Werte,
+NULLs, Ordinale und nativen Schemafacets stimmen exakt mit der Baseline
+und den unabhängig vorab festgelegten Literalorakeln überein.
+Column liefert in der Baseline null Zeilen; der Candidate liefert die
+24 unabhängig erwarteten vollständigen Spaltenrollenzeilen.
+Die ursprüngliche leere Columnmenge wird ausdrücklich nicht als
+positiver Rollenvertrag gewertet. Alle 53 sys.columns-Facets und die
+nativen SqlClient-Schemas einschließlich 23 Textcollations bleiben exakt
+zur Baseline erhalten.
+
+Common171 bestand nativ in zwei Batches mit einem Ergebnisgrid:
+`ContractStatus=PASS`, CL170, 51 synthetische Fälle, 70 Literalzeilen,
+53 Metadatenfelder und 23 Textcollations. Die 17 XML-/Statementvarianten
+prüfen vollständige Zeilen einschließlich NULLs, Namespaces,
+Unicode-/Bracketnamen, Statementauswahl, Rollen, fehlende und leere Namen,
+ungültige numerische Attribute sowie getrennte Parent-/Child-NodeIds.
+Der bidirektionale Multisetvergleich prüft zusätzlich Häufigkeiten;
+der einzige Fall mit vollständigen Sortties enthält identische Nutzdaten.
+Das Metadatenorakel prüft Namen, Ordinale, Typen, Größen, Precision, Scale,
+Nullability, Collation und fehlende Identity.
+
+Eine zusätzliche eigene RELEVANT-Consumerfixture mit acht synthetischen
+Zeilen, zwei Spalten und zwei eingefrorenen FULLSCAN-Statistiken verwendete
+separat bestätigtes Source-CL170. Der Consumer blieb AVAILABLE und nicht
+partiell. Seine Snapshotanzahl wechselte von null auf genau eine relevante
+Seek-Statistik; die andere Statistik blieb ausgeschlossen. Acht native
+Statistikproperties und die eigene ObjectId wurden exakt gegengeprüft;
+das ist kein vollständiger Nachweis aller 26 Snapshotfelder. Beide nativen
+Statistiken blieben unverändert. Der private Comparator wählte zuerst ein
+leeres Metadatenprobegrid über StatisticsId; die eindeutige NativeRows-
+Zuordnung korrigierte diesen Harnessfehler und bestand. Die eigene
+Fixture wurde nach Identitätsprüfung entfernt.
+
+PlanCache120/123/127/128/129 bestanden zusammen in 15 Batches mit 177
+Grids auf CL170. Integration192 bestand mit den kanonischen Standalone-
+Quellen und einem geprüften eigenen temporären Cleanup-Ziel.
+Bei Integration193 scheiterte zuerst ein privater Regex-Capture an einem
+GO-Token in einem bestehenden Policykommentar. Der korrekt zerlegende
+Single-Connection-Labrunner scheiterte anschließend an Gate 53633 für
+die XE-Konfigurationschecksumme. Das eigene partielle Testziel wurde
+nach ID-/Datumguards zurückgesetzt; ein erster kulturabhängiger
+Datumsvergleich scheiterte, der korrigierte Vergleich bestand.
+Ein diagnostischer Lauf von 193 in einer weiteren eigenen Datenbank
+mit unverändertem Gate und zusätzlichen lesenden Proben bestand laut
+Runner in 74 Batches und 6,2 Sekunden. Die native Probeausgabe wurde dabei
+nicht erfasst. Die Ursache des vorherigen Fehlers 53633 bleibt unbekannt;
+der spätere PASS ersetzt oder erklärt diesen fehlgeschlagenen Lauf nicht.
+
+Die fokussierten statischen Verträge 997, 1034 und 1035 sowie die
+UTF-8/LF-, XML- und Literalorakelkonsistenz bestanden. Die ersten
+Aufrufe von 1034/1035 fehlten ausschließlich wegen des erforderlichen
+CLI-Arguments `--repository-root`; die korrekt aufgerufenen Prüfungen
+bestanden. Vollständige statische Gates sind noch nicht behauptet.
+
+Die geprüften UTF-8/LF-Quellidentitäten lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| `046_TVF_ExecutionPlanObjectReferences.sql` | `6921F59659E38D66C80CABE449E6A319A474BDD2D35D02FBC8E5B3CFF58FA662` |
+| `047_TVF_ExecutionPlanStatisticsUsage.sql` | `EB5FBBD4CC784953529B6DD9D90C3257A8A0C6CA7D56485BD543736AB0D81AF8` |
+| `048_TVF_ExecutionPlanColumnReferences.sql` | `DB4DA37CB0DE034E171348298F44DCC6583553A2C0CEC6B5E4B9AA9CFA4DE02D` |
+| Common171, ursprünglicher nativer Capturestand vor der QI-Korrektur | `7ECDD92E8F14917FB277371F3EC2AD2EBD2B250EAA9F98644E1E78CE29ABF48A` |
+| `171_Showplan_References_Collation_Runtime_Contract.sql`, QI-korrigierter Stand | `288497A26DFEA638D20BF7D3D90978881248694D617FCF8662B43493F99AF9B8` |
+
+Das eigene Lab wurde entfernt: Container und Volume, zwei Schritte,
+null Fehler, REMOVED. Der eigene verschlüsselte temporäre Secretwert
+wurde entfernt; private Captures bleiben außerhalb von Git.
+
+Die Belege betreffen synthetisches Showplan-XML und die eng begrenzte
+Metadatenfixture. Zusätzliche Insert-/Delete-/MergeJoin-Varianten,
+isolierte case-only Sortschlüssel, tatsächliche Workloadmessung und
+Metadaten-Berechtigungsfehler bleiben unbelegt. Ältere native Engines
+und CL150/160 wurden nicht ausgeführt. COLL-001 bleibt partiell;
+RUNTIME-001, bestehende Maturityflags und Registry bleiben unverändert.
+
+Die vollständige statische Suite
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand am damaligen Teststand alle 75 Prüfungen mit Exitcode 0. Dieser
+historische Lauf ging der begrenzten Evidenz-/Statusfortschreibung und
+der nachfolgenden QI-Korrektur voraus. Abschließende Dokumentations-,
+Schreibstil- und Privacyprüfungen folgen getrennt; sie werden hier noch
+nicht als bestanden behauptet. Bei der damaligen Evidenzfortschreibung
+blieben SQL und Tests unverändert.
+
+### Common171-Einstiegsbatch nach erstem PR242-CI-Fehler
+
+Der erste PR242-CI-Lauf scheiterte in Impactstufe 3 von 14 an Common171
+mit Msg 1934: QUOTED_IDENTIFIER war für XML-Methoden nicht korrekt
+gesetzt. Der Standalonevertrag 193 wurde in diesem Lauf nicht erreicht.
+Der Test hatte den callerabhängigen SET-Zustand bisher nicht selbst
+hergestellt. Die einzige Reparatur ergänzt `SET QUOTED_IDENTIFIER ON`
+in einem eigenen Einstiegsbatch vor den XML-methodenhaltigen dynamischen
+TVF-Aufrufen. Sources und Builder bleiben unverändert.
+
+Ein frisches eigenes Mixed-SQL-Server-2025-Lab mit Version 17.0.4075.5,
+abweichender CS-Server-/tempdb-Collation und garantierter Framework-CS-
+Collation auf CL170 bestätigte kanonische Installation aus 166 Quellen
+und Smoke. Der korrigierte Common171 bestand im Standardaufruf in drei
+Batches. Ein unabhängiger SqlClient setzte QUOTED_IDENTIFIER zuvor
+explizit OFF: Der ursprüngliche PR-Test scheiterte reproduzierbar,
+der korrigierte Test bestand in fünf Batches mit zwei Ergebnisgrids.
+Der Vertrag meldete erneut PASS mit 51 Fällen, 70 Literalzeilen,
+53 Feldern und 23 Textcollations; eine unabhängige Gegenprobe bestätigte
+`SESSIONPROPERTY('QUOTED_IDENTIFIER')=1`.
+
+Das eigene Reparaturlab wurde entfernt: Container und Volume, zwei
+Schritte, null Fehler, REMOVED. Der eigene verschlüsselte temporäre
+Secretwert wurde gelöscht. Der oben genannte 75-PASS-Lauf bleibt ein
+historischer Nachweis des vorherigen Teststands.
+
+Die neue vollständige statische Suite
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand am QI-korrigierten stabilen Stand alle 75 Prüfungen mit Exitcode 0.
+Dieser Nachweis ist vom historischen Lauf vor der Testkorrektur getrennt.
+Abschließende begrenzte Dokumentations-, Schreibstil- und Privacyprüfungen
+folgen nach diesem Gateabsatz; sie werden hier noch nicht als bestanden
+behauptet. Source und Test bleiben unverändert.

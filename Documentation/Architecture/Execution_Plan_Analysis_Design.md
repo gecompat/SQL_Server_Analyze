@@ -123,6 +123,8 @@ Ein Spill beweist keine allgemeine Speicherkonfigurationsstörung. Kardinalität
 
 Objektreferenzen werden nach Datenbank, Schema, Objekt, Index und Alias getrennt. Spaltenreferenzen behalten Statement- und Node-Kontext. Statistikverwendung enthält Name, Aktualitäts- und Modifikationsinformationen nur dann, wenn sie im Plan oder über den ausdrücklich freigegebenen Metadatenpfad verfügbar sind.
 
+Die drei Referenz-TVFs collatieren ihre Textprojektionen explizit mit `SQL_Latin1_General_CP1_CS_AS`. Der Statementfilter wird vor der Ordinalbildung angewendet. Die Spaltenrollen `SEEK`, `RESIDUAL`, `JOIN`, `ORDER_BY`, `GROUP_BY` und `OUTPUT` werden vom materialisierten `RelOp`-Element aus gelesen; Parent- und Child-Operatoren behalten getrennte Node-Kontexte. Ein fehlender Spaltenname erzeugt keine Spaltenreferenz. Ein vorhandener Spaltenname kann dagegen auch ohne Objektname als Zeile mit `ObjectName=NULL` erhalten bleiben.
+
 Prädikate werden strukturell klassifiziert, beispielsweise Seek-, Residual-, Join-, Filter- oder Probe-Prädikat. Wertdarstellungen unterliegen dem gewählten Datenschutzmodus. Ein Prädikat allein beweist weder Selektivität noch SARGability; Operatorform, Konvertierung, Statistik und tatsächliche Zeilen sind die Gegenprobe.
 
 ## Histogrammkorrelation

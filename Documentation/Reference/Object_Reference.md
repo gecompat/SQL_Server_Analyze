@@ -542,7 +542,7 @@ Quelle: `Code/04_PlanCache/046_TVF_ExecutionPlanObjectReferences.sql`
 | Schnittstelle | Inline TVF; Eingaben: `@PlanXml xml`; `@StatementId int = NULL`. Die Funktion liefert eine relationale Zeile oder Zeilenmenge und verändert keine persistenten Daten. |
 | Verwendung | Die Funktion wird innerhalb öffentlicher Analysen per `JOIN`, `APPLY` oder direktem `SELECT` verwendet. Ein Direktaufruf eignet sich nur für Entwicklung und Tests, nicht als stabiler Integrationsvertrag. |
 | Last und Sperren | XML-Shredding skaliert mit Anzahl und Größe der übergebenen Planelemente; die Funktion führt keine persistenten Schreiboperationen aus. Der aufrufende öffentliche Analysepfad bestimmt die Gesamtlast. |
-| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
+| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. Die Textprojektionen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`; der Statementfilter greift vor der Ordinalbildung. Objekt- und Indexnamen werden aus XML-Attributen entklammert, ohne Katalogauflösung. |
 
 ### `[monitor].[TVF_ExecutionPlanStatisticsUsage]`
 
@@ -554,7 +554,7 @@ Quelle: `Code/04_PlanCache/047_TVF_ExecutionPlanStatisticsUsage.sql`
 | Schnittstelle | Inline TVF; Eingaben: `@PlanXml xml`; `@StatementId int = NULL`. Die Funktion liefert eine relationale Zeile oder Zeilenmenge und verändert keine persistenten Daten. |
 | Verwendung | Die Funktion wird innerhalb öffentlicher Analysen per `JOIN`, `APPLY` oder direktem `SELECT` verwendet. Ein Direktaufruf eignet sich nur für Entwicklung und Tests, nicht als stabiler Integrationsvertrag. |
 | Last und Sperren | XML-Shredding skaliert mit Anzahl und Größe der übergebenen Planelemente; die Funktion führt keine persistenten Schreiboperationen aus. Der aufrufende öffentliche Analysepfad bestimmt die Gesamtlast. |
-| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
+| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. Die Textprojektionen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`; der Statementfilter greift vor der Ordinalbildung. Compilezeitwerte werden weiterhin mit `TRY_CONVERT` gelesen; unvollständige Namensreferenzen bleiben als Zeilen mit `ParseStatus` erhalten. |
 
 ### `[monitor].[TVF_ExecutionPlanColumnReferences]`
 
@@ -566,7 +566,7 @@ Quelle: `Code/04_PlanCache/048_TVF_ExecutionPlanColumnReferences.sql`
 | Schnittstelle | Inline TVF; Eingaben: `@PlanXml xml`; `@StatementId int = NULL`. Die Funktion liefert eine relationale Zeile oder Zeilenmenge und verändert keine persistenten Daten. |
 | Verwendung | Die Funktion wird innerhalb öffentlicher Analysen per `JOIN`, `APPLY` oder direktem `SELECT` verwendet. Ein Direktaufruf eignet sich nur für Entwicklung und Tests, nicht als stabiler Integrationsvertrag. |
 | Last und Sperren | XML-Shredding skaliert mit Anzahl und Größe der übergebenen Planelemente; die Funktion führt keine persistenten Schreiboperationen aus. Der aufrufende öffentliche Analysepfad bestimmt die Gesamtlast. |
-| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
+| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. Die Textprojektionen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Die sechs Rollenpfade beginnen am materialisierten `RelOp`-Element; verschachtelte Operatoren behalten ihre eigenen `NodeId`-Werte. Nur ein fehlender oder tatsächlich leerer Spaltenname schließt die Zeile aus; ein fehlender Objektname bleibt `NULL`. |
 
 ## Interne Procedures
 
