@@ -46,7 +46,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `blockingChains`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `blockingChains` mit 67 Feldern, darunter 38 explizit collatierte Textfelder. RAW, JSON, TABLE und CONSOLE verwenden dieselbe abschließend begrenzte Kettenmenge. Die Auswahl erfolgt nach `WaitTimeMs DESC, BlockedSessionId`; RAW und JSON sortieren diese Menge ausdrücklich. `@MaxZeilen = NULL` oder `0` lässt die Kettenmenge unbegrenzt. Die Inventarversion `4` und die JSON-Version `3` bleiben eigenständige Verträge. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 Im Overview stammen Sessions, Requests, Connections, Waiting Tasks und
 deduplizierter SQL-Text aus dessen gemeinsamem Aufrufsnapshot. Lock- und
@@ -57,7 +57,7 @@ liest alle benötigten Quellen frisch.
 
 Im Kettenresultset beschreibt eine Zeile eine sichtbare Blockingbeziehung mit ihrem Root Blocker. `BlockingResourceName` ist die bestmögliche Übersetzung der weiterhin unverändert ausgegebenen `WaitResource`. Lockdetails besitzen eine eigene Granularität.
 
-Das additive Ketten- und JSON-Schema trägt Version `3`. `BlockingChain` zeigt
+Das JSON-Schema trägt Version `3`; der typisierte Inventarvertrag trägt Version `4`. `BlockingChain` zeigt
 die komplette Leserichtung bis zum äußersten Blocker. Die `RootBlocker*`-
 Spalten ergänzen Login, Host, Programm, Session-/Requeststatus, offene
 Transaktionen und letzte Requestzeiten. `RootBlockerStatementSource` zeigt, ob
@@ -109,12 +109,12 @@ Für `USP_CurrentBlocking` gilt zusätzlich: **keine Zeile** bedeutet, dass im s
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Gefilterter CONSOLE-Snapshot ohne breite Text- oder Lockdetails; gewöhnlich kurze Laufzeit. |
+| Standardpfad | CONSOLE-Snapshot mit SQL-Text bis standardmäßig 3000 Zeichen und ohne Lockdetails; Namensauflösung mit `STANDARD`. |
 | Teuerster Pfad | `@MitLockDetails = 1` bei vielen beteiligten Sessions; erst dann wird `sys.dm_tran_locks` für den Kettenscope gelesen. |
-| Haupttreiber | Zahl aktuell blockierter Requests/Waiting Tasks und die daraus rekonstruierten Kanten/Ketten. Sessionfilter und Mindestwait verkleinern Kandidaten; SQL-Text-/Input-Buffer-Auflösung verbreitert jede behaltene Session. |
+| Haupttreiber | Zahl aktuell blockierter Requests/Waiting Tasks und die daraus rekonstruierten Kanten/Ketten. Mindestwait verkleinert die Kantenmenge; Session- und Toolfilter begrenzen die daraus rekonstruierten Ketten. SQL-Text und zusätzliche Lock-/Katalogdaten verbreitern die materialisierten Kandidaten; Input Buffer wird nicht gelesen. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_CurrentBlocking ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU und Arbeitsspeicher für DMV-Korrelation und Sortierung; optional TempDB und Ergebnistransfer für Text-/Detailspalten. |
-| Begrenzungswirkung | Filter reduzieren die Kandidaten früh, TOP/Zeilenlimits können aber erst nach DMV-Lesung, Join oder Aggregation wirken und begrenzen dann primär die Ausgabe. |
+| Begrenzungswirkung | Die Kettenkandidaten werden mit einer zusätzlichen N+1-Zeile materialisiert. Ressourcenanreicherung und Unicodeprojektion erfolgen vor der gemeinsamen Ausgabebegrenzung; deren Kosten werden durch ein kleines Resultset nicht ausgeschlossen. |
 | Locking und Nebenwirkungen | Read-only gegenüber Nutzdaten. Flüchtige DMVs werden nacheinander gelesen; Katalog-/SQL-Textauflösung kann kurze interne Synchronisation verursachen, erzeugt aber keinen atomaren Snapshot. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `LOCKS_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Mit `@MitLockDetails = 0` beginnen; LOCKS_DEEP erst für eine bereits sichtbare Blockingkette und möglichst wenige Sessions freigeben. |
@@ -142,29 +142,26 @@ Im tiefen Pfad kommen `DATABASE`, `FILE`, `OBJECT`, `PAGE`, `KEY`, `RID`, `HOBT`
 
 ### Source Select
 
-Das Live-Grundselect verbindet Requests, Sessions und aktuell wartende Tasks; nur echte Blockingkandidaten werden behalten:
+Die Procedure materialisiert Requests und Waiting Tasks getrennt. Requestkanten haben Vorrang; eine Waiting-Task-Kante ergänzt nur ein noch nicht vorhandenes Paar aus blockierter Session und direktem Blocker. Der Mindestwait wird je Quelle vor der Kettenrekonstruktion geprüft. Der ergänzende Pfad verwendet:
 
 ```sql
-SELECT
-      [r].[session_id]
-    , [r].[request_id]
-    , [r].[blocking_session_id]
-    , [r].[wait_type]
-    , [r].[wait_resource]
-    , [wt].[wait_duration_ms]
-    , [s].[status] AS [SessionStatus]
-FROM [sys].[dm_exec_requests] AS [r] WITH (NOLOCK)
-JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
-  ON [s].[session_id] = [r].[session_id]
-LEFT JOIN [sys].[dm_os_waiting_tasks] AS [wt] WITH (NOLOCK)
-  ON [wt].[session_id] = [r].[session_id]
-WHERE [r].[session_id] <> @@SPID
-  AND (NULLIF([r].[blocking_session_id], 0) IS NOT NULL
-       OR NULLIF([wt].[blocking_session_id], 0) IS NOT NULL)
-  AND COALESCE([wt].[wait_duration_ms], [r].[wait_time], 0) >= @MinWaitMs;
+SELECT [w].[session_id], [w].[blocking_session_id],
+       MAX([w].[wait_type]), MAX(CONVERT(bigint, [w].[wait_duration_ms]))
+FROM [#CurrentBlocking_SourceWaitingTasks] AS [w]
+LEFT JOIN [#CurrentBlocking_SourceSessions] AS [s]
+  ON [s].[session_id] = [w].[session_id]
+WHERE [w].[blocking_session_id] <> 0
+  AND [w].[blocking_session_id] <> [w].[session_id]
+  AND COALESCE([w].[wait_duration_ms], 0) >= @MinWaitMs
+  AND (@SystemSessionsEinbeziehen = 1 OR COALESCE([s].[is_user_process], 1) = 1)
+  AND NOT EXISTS
+      (SELECT 1 FROM [#CurrentBlocking_Edges] AS [e]
+       WHERE [e].[BlockedSessionId] = [w].[session_id]
+         AND [e].[BlockingSessionId] = [w].[blocking_session_id])
+GROUP BY [w].[session_id], [w].[blocking_session_id];
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie Session-/Waitfilter vor SQL-Text, Lock- und Katalogauflösung. `sys.dm_tran_locks`, `sys.dm_db_page_info` und datenbanklokale Objektauflösung gehören nur in den gezielt bestätigten Detailpfad.
+**Wichtig für die Eigenlast:** Die Ketten einschließlich SQL-Text werden vor den Ausgabeconsumern materialisiert. Die physische Arbeit für DMV-Lesung, Joins, Sortierung und Statementextraktion ist damit nicht auf die schließlich ausgegebenen Zeilen begrenzt. Lock- und Katalogauflösung bleiben an die vorher behaltenen Kandidaten gebunden.
 
 ### Zeit- und Scope-Modell
 
@@ -180,6 +177,7 @@ Filterreihenfolge.
 - `STANDARD` liest `sys.dm_tran_locks` nicht zusätzlich. Parsing erfolgt im Speicher; Katalog- und Page-Zugriffe sind dedupliziert und standardmäßig auf 100 Ressourcen begrenzt.
 - `DEEP` liest Lockzeilen nur für Sessions der bereits erkannten Ketten. Der Pfad kann bei vielen Locks merkliche CPU- und DMV-Kosten verursachen und verlangt deshalb Freigabe und `@HighImpactConfirmed=1`.
 - `@MaxObjektAufloesungen` akzeptiert 1 bis 1000. Bei Erreichen des Limits bleiben alle Rohressourcen sichtbar und der Status wird `SKIPPED_LIMIT` beziehungsweise `AVAILABLE_LIMITED`.
+- Die gemeinsame Kettenbegrenzung erfolgt nach Ressourcenanreicherung, Unicodeprojektion und Truncationwarnung sowie nach deren Fehlerbehandlung. Die vorher berechneten N+1-Kandidaten-/HasMore-Zähler, behaltenen Locksessions und Auflösungskandidaten bleiben erhalten. Auch eine materialisierte partielle Fehlerausgabe wird begrenzt.
 - `@MaxZeilen` begrenzt auch die erfassten Lockzeilen. Wer in einem kontrollierten Einzelaufruf wirklich jeden aktuell beobachteten nativen Locktyp sehen muss, kann `@MaxZeilen = 0` verwenden; die Namensauflösung bleibt trotzdem auf höchstens 1000 deduplizierte Kandidaten begrenzt.
 - Der Blocking-/Wait-Snapshot wird zuerst in lokalen Temp-Tabellen materialisiert. Erst danach läuft jede deduplizierte Datenbank-, Datei-, Page- oder Kataloganreicherung in einem eigenen Batch mit `LOCK_TIMEOUT 0`. Timeout, fehlende Berechtigung oder Fehler markieren nur diesen Kandidaten; alle weiteren Kandidaten werden trotzdem verarbeitet.
 - Die Meta-Zähler `ObjectResolutionResolvedCount`, `ObjectResolutionPartialCount`, `ObjectResolutionRawOnlyCount`, `ObjectResolutionTimeoutCount`, `ObjectResolutionDeniedCount`, `ObjectResolutionErrorCount` und `ObjectResolutionSkippedLimitCount` machen sichtbar, ob einzelne Anreicherungen fehlen. Rohressource und native IDs bleiben in jedem Fall erhalten.
