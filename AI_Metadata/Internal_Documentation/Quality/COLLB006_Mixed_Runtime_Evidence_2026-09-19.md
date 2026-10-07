@@ -3538,3 +3538,107 @@ außerhalb von Git. Positive Forcingfehler, QS_OFF, Berechtigungs- und
 Timeoutpfade, exakte Cross-DB-Referenzlisten sowie ältere native Engines
 und CL150/160 bleiben unbelegt. COLL-001 bleibt partiell; Registry,
 RUNTIME-001 und bestehende Maturityflags bleiben unverändert.
+
+## Query-Store-PlanChanges: gemeinsame Queryauswahl und vollständige Planzuordnung
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und beide
+case-unterschiedlichen Unicode-CI_AS-Quellen besitzen separat gemessene
+Compatibility Levels 170. Jede Quelle enthält eine synthetische Tabelle
+mit 4096 Zeilen und drei eigene Procedures. Zwei unveränderte Querytexte
+wurden vor und nach einem eigenen Indexaufbau mit Recompile ausgeführt.
+Native Kataloge bestätigen je zwei PlanIds derselben QueryId mit zwei
+unterschiedlichen Planhashes; die dritte Query besitzt genau einen Plan.
+Nach Bereinigung ausschließlich eigener zusätzlicher Capturezeilen wurde
+Query Store mit deaktiviertem Capture auf READ_ONLY eingefroren. Die
+Fixture enthält insgesamt sechs Queries und zehn Pläne. Ihre Rangwerte
+unterscheiden sich; eine positive Auswahl zwischen Sortties ist unbelegt.
+
+Das unveränderte Original scheitert im positiven Scope mit behandeltem
+Fehler 209: Die object_id-Projektion ist nach dem Join auf sys.objects
+mehrdeutig. Diese originale leere AVAILABLE_LIMITED-Ausgabe bleibt von
+der privaten Vorstufe getrennt. Ausschließlich die Qualifikation
+[Q].[object_id] ermöglicht deren positive Limitgegenprobe. Bei Limit 1
+liefert diese Vorstufe vier TABLE-/CONSOLE-Queries, JSON und RAW je eine
+mit zwei zugehörigen Plänen. Bei Limit 2 liefern TABLE und CONSOLE weiter
+vier statt zwei Queries. Der Produktfix enthält die notwendige einzelne
+Qualifikation und einen frühen typgleichen gemeinsamen Summaryexport.
+Dessen globale Auswahl erfolgt einmal nach Bewertung und Zählern; Plans
+werden anhand der tatsächlich exportierten Datenbank-/Querykeys beschnitten.
+
+Neun gepaarte Clientfälle der ausdrücklich qualifizierten Vorstufe und
+des Candidate bestätigen die korrigierte TABLE-/CONSOLE-Grenze sowie
+erhaltene RAW-/JSON-Werte, unbegrenzte Ausgabe, Mehrplan-NULL-Semantik,
+XML und Textkürzung. Alle nativen Facetten der 22 Query- und 28 Planfelder
+bleiben unverändert. Die sieben beziehungsweise neun Textcollations waren
+bereits Framework-CS und bleiben erhalten; beide Datenbanknamenspalten
+bleiben NOT NULL, die übrigen Felder nullable und alle ohne Identity.
+Ein getrenntes 50-Feld-Orakel aggregiert native Query-, Text-, Plan-,
+Objekt-, Schema- und Datenbankwerte und ergänzt unabhängige Unicodecodepoint-,
+UTF16-Byte-, Kürzungs-, Provenienz- und XML-Ableitungen. Capturezeiten werden
+zwischen getrennten Vorher-/Nachhermessungen mit datetime2(3) begrenzt.
+XML wird textinhaltserhaltend als XML-Wert verglichen; eine bytegleiche
+Serialisierung wird nicht behauptet. Native Query-Store-Metadaten bleiben
+vor und nach allen positiven Verträgen exakt erhalten, beide QS-Zustände
+1/1, Module-QI/ANSI_NULLS true und caller-LOCK_TIMEOUT 137.
+
+Common173 besteht in drei Batches mit zwölf Ergebnisgrids: elf allgemeine
+und 16 bedingte native TABLE-/JSON-Fälle, drei Verbraucherfälle, sechs
+Mappingablehnungen, drei leere SQL-CONSOLE-Captures und drei direkte
+positive CONSOLE-/JSON-Aufrufe. Die nativen Fälle prüfen NULL-/0-/positive
+Limits, QueryId/-Hash, exakte Case-/LIKE-Auswahl, Mehrplan-0-/1-/NULL,
+Textgrenzen, XML, UTC-Grenzen und Referenz-LIKE. Der gezielte Zeitfall
+bestätigt tatsächlich PlanCount 1 in der gefilterten Summary und zwei
+vollständige Detailpläne derselben Query. Vollzeilenvergleiche verwenden
+BIN2; fachliche Filter behalten Framework-CS. Der unabhängige Client
+bestätigt zusätzlich alle drei positiven CONSOLE-Mengen mit 1/2/3 Zeilen,
+je 23 Feldern und vollständigen nativen Werten sowie beide positiven
+TABLE-Teilmappings queries-only und plans-only. Ohne eigene Fixture besteht
+der allgemeine Vertrag in drei Batches mit neun Grids; der positive Block
+meldet NOT_EXECUTED mit null nativen Fällen. Er wird nicht als PASS gezählt.
+
+Ein direkter QueryStoreAnalysis-Aufruf nur mit PlanChanges bestätigt RAW,
+Child-JSON, eine Query mit zwei Plänen, hasMoreRows und EXECUTED auf
+Ordinal 4. QueryStore137/110/121 und Integration190/165 bestehen. Nach
+identitätsgeprüftem Cleanup beider eigenen Quellen besteht die vorhergesagte
+Auswahl aus Common124/165/173, Integration110/190/196/198 und
+QueryStore110/121/137 in 28 Batches auf CL170. Die endgültige Auswahl wird
+zusätzlich gegen konkrete Commit-SHAs geprüft.
+
+Private Harnesskorrekturen betreffen ausschließlich die Vorbereitung:
+TABLE-Ziele benötigen zunächst eine Seedspalte statt vorab erzeugter
+Vollschemas; exakte Namenlisten verwenden Pipe statt Komma. Der erste
+positive Originalaufruf belegt danach den Produktfehler 209. Das erste
+Zeitgate verglich siebenstellige Vorherwerte mit gerundeten dreistelligen
+Capturezeiten; beide Messgrenzen verwenden jetzt dieselbe native Präzision.
+Eine anfänglich angenommene Capturemode-Zahl wurde durch den tatsächlich
+beobachteten Wert 3 ersetzt. Der erste Impactaufruf fand relative :r-Dateien
+nicht und startete keine ausgewählten SQL-Tests. Die private Expansion der
+zehn unveränderten Includes ermöglicht den erfolgreichen Lauf. Keiner
+dieser Harnessfälle begründet eine weitere Produktänderung.
+
+OPS-005 ist kanonisch synchronisiert. PLAN-001 wurde vorsorglich kanonisch
+regeneriert; daraus entsteht keine semantische Gitänderung. Die vollständige
+statische Suite besteht am stabilen Source-/Teststand alle 75 Prüfungen
+mit Exitcode 0. Die anschließenden begrenzten Dokumentations-, Schreibstil-
+und Privacyprüfungen bestehen: 900 sowie die Selbst- und Repositoryprüfungen
+910/915 melden keine Befunde. UTF-8-, Quellhash- und Diffprüfungen werden
+vor dem Commit gesondert geprüft.
+
+Die UTF-8/LF-Quellidentitäten des geprüften Stands lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source040 | 3B8214FD142C95D37AB09099665254B2C0F70556B4D7444F47BAA5D9E1293919 |
+| Common173 | 4D129C40ED1B2894ECB7555E5AAA4EA380DB107EC1F44160F312E9839B0413F4 |
+
+Container und Volume des eigenen Labs sind entfernt: zwei Schritte,
+null Fehler, REMOVED. Der eigene verschlüsselte temporäre Secretwert ist
+entfernt. Private Captures und konkrete Runtimeidentitäten bleiben
+außerhalb von Git. Positive Sortties, Compile-Rundungsgrenzen, QS_OFF,
+Berechtigungen, Timeout, exakte Cross-DB-Referenzlisten, ältere native
+Engines und CL150/160 bleiben unbelegt. Der bestehende unqualifizierte
+Referenzlistenhelper bleibt außerhalb dieses Slices; der 208-Pfad besitzt
+hier keinen neuen positiven Nachweis. COLL-001 bleibt partiell; Registry,
+RUNTIME-001 und bestehende Maturityflags bleiben unverändert.

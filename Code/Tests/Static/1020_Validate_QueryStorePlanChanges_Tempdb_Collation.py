@@ -7,7 +7,7 @@ from pathlib import Path
 
 PROCEDURE = "Code/05_QueryStore/040_USP_QueryStorePlanChanges.sql"
 COLLATION = "COLLATE SQL_Latin1_General_CP1_CS_AS"
-REQUIRED = {"#QueryStorePlanChanges_DatabaseCandidates": 5, "#QueryStorePlanChanges_Summary": 7, "#QueryStorePlanChanges_Plans": 9, "#QueryStorePlanChanges_Errors": 3}
+REQUIRED = {"#QueryStorePlanChanges_DatabaseCandidates": 5, "#QueryStorePlanChanges_Summary": 7, "#QueryStorePlanChanges_SummaryExport": 7, "#QueryStorePlanChanges_Plans": 9, "#QueryStorePlanChanges_Errors": 3}
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -15,7 +15,7 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        assert sum(REQUIRED.values()) == 24
+        assert sum(REQUIRED.values()) == 31
         print("Query Store Plan Changes tempdb-collation validator self-test passed.")
         return 0
     source = (args.repository_root / PROCEDURE).read_text(encoding="utf-8-sig")
