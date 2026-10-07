@@ -7,11 +7,11 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Welche IQP-Funktionen sind technisch möglich, konfiguriert und durch sichtbare Query-/Planfeedbacksignale belegt?** Sie unterstützt die Entscheidung, ob persistierte Query-Store-Evidenz eine zeitlich belastbare Abweichung zeigt und welcher Query-/Plan-Scope danach gezielt geprüft wird.
+Die Procedure beantwortet die Betriebsfrage: **Welche IQP-Funktionen sind technisch möglich, konfiguriert und durch sichtbare Query-/Planfeedbacksignale belegt?** Sie unterstützt die Entscheidung, welche Konfiguration und welche aggregierte Evidenz anschließend mit einer konkreten Query-/Plananalyse geprüft werden sollen.
 
 ## Nicht beantwortete Fragen
 
-Die Procedure beantwortet keine Ausführungen außerhalb Capture und Retention sowie keinen Beweis, dass ein beobachteter Planwechsel allein die Auswirkung verursacht hat. Der Zeitvertrag ist im Abschnitt „Zeit- und Scope-Modell“ konkretisiert. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
+Die Procedure bewertet weder einzelne Ausführungen noch die Wirksamkeit eines Features. Sie besitzt kein Zeitfenster und liest keine Query-Texte oder Showplans. Ein Einzelwert gilt daher nur für diesen Scope und Zeitpunkt; er belegt weder eine Ursache noch eine Entwicklung.
 
 ## Sicherer Einstieg
 
@@ -28,7 +28,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `signals`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert ausschließlich `signals`: `DatabaseId`, `DatabaseName`, `SignalCode`, `IsSourceAvailable`, `EvidenceCount`, `Interpretation`. Nur `EvidenceCount` ist nullable; die drei Textspalten sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. Die Exportquelle besitzt keine Identity. TABLE, CONSOLE, RAW und JSON verwenden dieselbe begrenzte Signalauswahl nach `DatabaseId, SignalCode`. CONSOLE ergänzt die Ergebnisbeschriftung; bei leerer Menge bleibt die dreifeldrige Leeranzeige erhalten. RAW liefert zusätzlich Meta, Datenbankzustand, Konfiguration, Automatic Tuning und Warnungen. JSON enthält `meta`, die vier Facharrays und `warnings`. Modulstatus und Partialität stammen aus der vollständigen Sammlung, einschließlich nicht ausgegebener Datenbankbefunde und Auswahlwarnings. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
@@ -54,7 +54,7 @@ Ein Feature kann versionsseitig geeignet, aber deaktiviert sein. Query Store OFF
 
 ## Leere oder partielle Ausgabe
 
-Query Store kann nutzbar sein, obwohl das gewählte Fenster leer ist. Prüfen Sie zuerst Capturemodus, Read-only-Status, Retention und UTC-Fenster.
+Query Store kann nutzbar sein, obwohl Varianten-, Feedback- oder Empfehlungszähler null ergeben. Prüfen Sie Version, Compatibility Level, Capturemodus und Zustand; der Aufruf besitzt kein UTC-Fenster.
 
 Für `USP_IntelligentQueryProcessingAnalysis` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
 
@@ -63,12 +63,12 @@ Für `USP_IntelligentQueryProcessingAnalysis` gilt zusätzlich: **keine Zeile** 
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Eine `ExampleDatabase` mit endlichem Limit; gelesen werden IQP-/Query-Store-/Automatic-Tuning-Konfiguration und aggregierte Varianten-/Feedbacksignale, ohne Query-Text oder Showplan. |
+| Standardpfad | Ohne explizite Datenbankauswahl alle sichtbaren online befindlichen Benutzerdatenbanken und ein Ausgabelimit von 1000; gelesen werden IQP-/Query-Store-/Automatic-Tuning-Konfiguration und aggregierte Varianten-/Feedbacksignale, ohne Query-Text oder Showplan. |
 | Teuerster Pfad | Alle sichtbaren Datenbanken und `@MaxZeilen = 0` bei sehr vielen Query-Store-Varianten, Plan-Feedbackzeilen und Tuningempfehlungen. Ein Zeitfenster- oder XML-Pfad existiert nicht. |
 | Haupttreiber | Zahl gewählter Datenbanken sowie Query-Store-Varianten, Plan-Feedback- und Automatic-Tuning-Empfehlungszeilen. Konfigurationsquellen sind klein; unbegrenzte Feedback-/Variantenbestände dominieren, obwohl weder Querytext noch Showplan gelesen wird. |
 | Skalierung | Feste Konfigurationszeilen bleiben klein; Aufwand wächst mit ausgewählten Datenbanken und sichtbaren Query-Variant-/Plan-Feedback-/Tuningzeilen. Keine Text-, Plan-XML- oder Intervallaggregation. |
 | Ressourcen | CPU und Katalog-/Query-Store-Metadaten-I/O sowie dynamisches SQL/temporäre Signalresultate; Ergebnistransfer wächst mit der Signalmenge. |
-| Begrenzungswirkung | Der Datenbankscope begrenzt Quellarbeit. `@MaxZeilen` wird erst auf die vollständig gesammelten Signale angewandt und begrenzt weder Datenbankcursor noch vorgelagerte Feedbackabfragen. |
+| Begrenzungswirkung | Der Datenbankscope begrenzt Quellarbeit. `@MaxZeilen` begrenzt nach vollständiger Sammlung jedes der vier Fachresultsets getrennt. Für Signale wird die Menge einmal materialisiert und von allen Ausgabearten verwendet. NULL/0 bedeuten unbegrenzt; negative Werte liefern `INVALID_PARAMETER` mit `IsPartial=1` und leeren Fachmengen. Warnungen bleiben unbegrenzt. Das Limit begrenzt weder Datenbankcursor noch vorgelagerte Feedbackabfragen. |
 | Locking und Nebenwirkungen | Read-only gegenüber Query Store; normale interne Synchronisation/Schema-Stability ist möglich. Die Procedure erzwingt, entfernt oder bereinigt keine Pläne/Hints. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `CATALOG_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Eine `ExampleDatabase`, Standardlimit und CONSOLE. Die zwingende `CATALOG_DEEP`-Bestätigung nicht mit einer Freigabe für alle Datenbanken verwechseln; zunächst Status-/Versionspfad lesen. |
@@ -92,22 +92,23 @@ IQP umfasst unter anderem PSP, OPPO, Memory Grant Feedback, DOP/CE Feedback, Ada
 
 ### Source Select
 
-Der leichte Basispfad liest nur relevante datenbankweite Konfigurationswerte:
+Der Konfigurationspfad liest die ausgewählten IQP-Optionen im bestätigten Datenbankscope:
 
 ```sql
-SELECT
-      [c].[name]
-    , [c].[value]
-    , [c].[value_for_secondary]
-FROM [sys].[database_scoped_configurations] AS [c] WITH (NOLOCK)
-WHERE [c].[name] IN
-      (N'LEGACY_CARDINALITY_ESTIMATION',
-       N'PARAMETER_SNIFFING',
-       N'QUERY_OPTIMIZER_HOTFIXES',
-       N'MAXDOP');
+SELECT [name], CONVERT(nvarchar(4000), [value]) AS [ConfigurationValue],
+       [is_value_default]
+FROM [sys].[database_scoped_configurations] WITH (NOLOCK)
+WHERE [name] IN
+      (N'PARAMETER_SENSITIVE_PLAN_OPTIMIZATION', N'OPTIONAL_PARAMETER_OPTIMIZATION',
+       N'MEMORY_GRANT_FEEDBACK_PERSISTENCE', N'MEMORY_GRANT_FEEDBACK_PERCENTILE_GRANT',
+       N'DOP_FEEDBACK', N'CE_FEEDBACK', N'BATCH_MODE_MEMORY_GRANT_FEEDBACK',
+       N'ROW_MODE_MEMORY_GRANT_FEEDBACK', N'BATCH_MODE_ADAPTIVE_JOINS',
+       N'INTERLEAVED_EXECUTION_TVF', N'DEFERRED_COMPILATION_TV');
 ```
 
-**Wichtig für die Eigenlast:** Wählen Sie Datenbank vor Query-Store-Variant-, Plan-Feedback- und Tuning-Recommendation-Pfaden aus. Diese versionsabhängigen Detailquellen nur lesen, wenn Query Store und das jeweilige Feature verfügbar sind.
+Version 16+ liest zusätzlich die Varianten- und Feedbackkataloge; ältere Engines liefern dafür `IsSourceAvailable=0` und `EvidenceCount=NULL`. Automatic-Tuning-Optionen und die Zahl aktueller Empfehlungen werden getrennt erfasst. Diese Abfragen sind nicht durch einen Query-Store-ON-Gate begrenzt. Die sechs Zustandsvergleiche auf OFF, READ_ONLY und READ_WRITE verwenden explizit Framework-CS, damit ein dynamischer Datenbankwechsel die Bewertung nicht durch kollidierende Kollationen verhindert.
+
+**Wichtig für die Eigenlast:** Der Datenbankscope begrenzt die Quellarbeit. Das Ausgabelimit wird erst nach den vollständigen Varianten-, Feedback- und Empfehlungszählungen angewandt.
 
 ### Zeit- und Scope-Modell
 

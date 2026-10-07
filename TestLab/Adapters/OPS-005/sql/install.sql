@@ -34733,6 +34733,16 @@ BEGIN
         , [Interpretation] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
     );
 
+    CREATE TABLE [#IntelligentQueryProcessingAnalysis_SignalsExport]
+    (
+          [DatabaseId] int NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [SignalCode] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [IsSourceAvailable] bit NOT NULL
+        , [EvidenceCount] bigint NULL
+        , [Interpretation] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
+
     CREATE TABLE [#IntelligentQueryProcessingAnalysis_Errors]
     (
           [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
@@ -34747,6 +34757,7 @@ BEGIN
         SELECT @StatusCode = 'INVALID_PARAMETER',
                @IsPartial = 1,
                @ErrorMessage = N'Ungültiger Datenbank-, Zeilen- oder Ausgabeparameter.';
+        IF @MaxZeilen < 0 SET @Limit = 0;
     END;
 
     IF @StatusCode = 'AVAILABLE'
@@ -34804,12 +34815,12 @@ SELECT
     , @ActualStateDesc, @DesiredStateDesc, @ReadonlyReason
     , CONVERT(bit, CASE WHEN @ProductMajorVersion >= 16 AND @CompatibilityLevel >= 160 THEN 1 ELSE 0 END)
     , CONVERT(bit, CASE WHEN @ProductMajorVersion >= 17 AND @CompatibilityLevel >= 170 THEN 1 ELSE 0 END)
-    , CASE WHEN COALESCE(@ActualStateDesc, N''OFF'') = N''OFF'' THEN ''QUERY_STORE_OFF''
-           WHEN @ActualStateDesc = N''READ_ONLY'' AND @DesiredStateDesc = N''READ_WRITE'' THEN ''QUERY_STORE_READ_ONLY''
+    , CASE WHEN COALESCE(@ActualStateDesc, N''OFF'') COLLATE SQL_Latin1_General_CP1_CS_AS = N''OFF'' COLLATE SQL_Latin1_General_CP1_CS_AS THEN ''QUERY_STORE_OFF''
+           WHEN @ActualStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS = N''READ_ONLY'' COLLATE SQL_Latin1_General_CP1_CS_AS AND @DesiredStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS = N''READ_WRITE'' COLLATE SQL_Latin1_General_CP1_CS_AS THEN ''QUERY_STORE_READ_ONLY''
            WHEN @CompatibilityLevel < 150 THEN ''IQP_COMPATIBILITY_BELOW_150''
            ELSE ''IQP_EVIDENCE_AVAILABLE'' END
-    , CASE WHEN COALESCE(@ActualStateDesc, N''OFF'') = N''OFF'' THEN ''HIGH''
-           WHEN @ActualStateDesc = N''READ_ONLY'' AND @DesiredStateDesc = N''READ_WRITE'' THEN ''MEDIUM''
+    , CASE WHEN COALESCE(@ActualStateDesc, N''OFF'') COLLATE SQL_Latin1_General_CP1_CS_AS = N''OFF'' COLLATE SQL_Latin1_General_CP1_CS_AS THEN ''HIGH''
+           WHEN @ActualStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS = N''READ_ONLY'' COLLATE SQL_Latin1_General_CP1_CS_AS AND @DesiredStateDesc COLLATE SQL_Latin1_General_CP1_CS_AS = N''READ_WRITE'' COLLATE SQL_Latin1_General_CP1_CS_AS THEN ''MEDIUM''
            ELSE ''INFO'' END
     , N''Feature-Eignung folgt Version und Compatibility Level; Evidenzmengen allein bewerten keine Wirksamkeit.'';
 
@@ -34920,6 +34931,11 @@ INSERT [#IntelligentQueryProcessingAnalysis_Signals] VALUES
             SET @StatusCode = 'AVAILABLE_WITH_FINDING';
     END;
 
+    INSERT [#IntelligentQueryProcessingAnalysis_SignalsExport]
+    SELECT TOP (@Limit) *
+    FROM [#IntelligentQueryProcessingAnalysis_Signals]
+    ORDER BY [DatabaseId], [SignalCode];
+
     SELECT @StatusCodeOut = @StatusCode,
            @IsPartialOut = @IsPartial,
            @ErrorNumberOut = @ErrorNumber,
@@ -34946,7 +34962,7 @@ INSERT [#IntelligentQueryProcessingAnalysis_Signals] VALUES
              ORDER BY [DatabaseId], [OptionName]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @SignalsJson nvarchar(max) =
-            (SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_Signals]
+            (SELECT * FROM [#IntelligentQueryProcessingAnalysis_SignalsExport]
              ORDER BY [DatabaseId], [SignalCode]
              FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
@@ -34974,7 +34990,7 @@ INSERT [#IntelligentQueryProcessingAnalysis_Signals] VALUES
         SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_DatabaseState] ORDER BY [DatabaseId];
         SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_Configuration] ORDER BY [DatabaseId], [ConfigurationName];
         SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_AutomaticTuning] ORDER BY [DatabaseId], [OptionName];
-        SELECT TOP (@Limit) * FROM [#IntelligentQueryProcessingAnalysis_Signals] ORDER BY [DatabaseId], [SignalCode];
+        SELECT * FROM [#IntelligentQueryProcessingAnalysis_SignalsExport] ORDER BY [DatabaseId], [SignalCode];
         SELECT * FROM [#IntelligentQueryProcessingAnalysis_Errors] ORDER BY [DatabaseName];
     END
     ELSE IF @OutputMode = 'CONSOLE'
@@ -34994,11 +35010,11 @@ INSERT [#IntelligentQueryProcessingAnalysis_Signals] VALUES
         FROM [#IntelligentQueryProcessingAnalysis_DatabaseState]
         ORDER BY [DatabaseId];
 
-        SELECT TOP (@Limit)
+        SELECT
                N'IQP-Signal' AS [Ergebnis], [DatabaseName] AS [Datenbank],
                [SignalCode] AS [Signal], [IsSourceAvailable] AS [Quelle_verfuegbar],
                [EvidenceCount] AS [Anzahl], [Interpretation]
-        FROM [#IntelligentQueryProcessingAnalysis_Signals]
+        FROM [#IntelligentQueryProcessingAnalysis_SignalsExport]
         ORDER BY [DatabaseId], [SignalCode];
 
         SELECT N'IQP-Warnung' AS [Ergebnis], [DatabaseName] AS [Datenbank],
@@ -35010,14 +35026,14 @@ INSERT [#IntelligentQueryProcessingAnalysis_Signals] VALUES
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#IntelligentQueryProcessingAnalysis_Signals'
+              @SourceTable=N'#IntelligentQueryProcessingAnalysis_SignalsExport'
             , @ResultLabel=N'IntelligentQueryProcessingAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#IntelligentQueryProcessingAnalysis_Signals'
+              @SourceTable = N'#IntelligentQueryProcessingAnalysis_SignalsExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
