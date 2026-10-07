@@ -292,6 +292,17 @@ BEGIN
     /* TempDB-DDL bleibt außerhalb des bewussten No-Wait-Quellzugriffs. */
     SET LOCK_TIMEOUT 0;
 
+    IF @StatusCode = 'AVAILABLE' AND @OutputMode = 'TABLE'
+    BEGIN
+        EXEC [monitor].[InternalPrepareResultTables]
+              @ResultTablesJson = @ResultTablesJson
+            , @AllowedResultNames = N'moduleStatus|sourceStatus|files|pendingIo|warnings'
+            , @MappingTable = N'#CurrentIO_ResultTableMap'
+            , @StatusCode = @StatusCode OUTPUT
+            , @ErrorMessage = @ErrorMessage OUTPUT
+            , @ThrowOnError = 1;
+    END;
+
     IF @MaxZeilen < 0
        OR @MinLatencyMs IS NULL OR @MinLatencyMs < 0
        OR @SampleSeconds IS NULL OR @SampleSeconds > 60
@@ -305,17 +316,6 @@ BEGIN
     BEGIN
         SET @StatusCode = 'INVALID_PARAMETER';
         SET @ErrorMessage = N'Mindestens ein Parameter besitzt einen ungültigen Wert.';
-    END;
-
-    IF @StatusCode = 'AVAILABLE' AND @OutputMode = 'TABLE'
-    BEGIN
-        EXEC [monitor].[InternalPrepareResultTables]
-              @ResultTablesJson = @ResultTablesJson
-            , @AllowedResultNames = N'moduleStatus|sourceStatus|files|pendingIo|warnings'
-            , @MappingTable = N'#CurrentIO_ResultTableMap'
-            , @StatusCode = @StatusCode OUTPUT
-            , @ErrorMessage = @ErrorMessage OUTPUT
-            , @ThrowOnError = 1;
     END;
 
     IF @StatusCode='AVAILABLE' AND @ParentCurrentStateSnapshotId IS NOT NULL
@@ -728,6 +728,23 @@ BEGIN
         SET @FileSourceErrorMessage=@ErrorMessage;
     END CATCH;
 
+    IF @Limit<9223372036854775807
+    BEGIN
+        ;WITH [R] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [OverallLatencyMs] DESC,[DatabaseName],[FileId]) AS [rn]
+            FROM [#CurrentIO_Result]
+        )
+        DELETE FROM [R] WHERE [rn]>@Limit;
+
+        ;WITH [R] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [PendingDurationMs] DESC,[DatabaseName],[FileId],[IoOffset]) AS [rn]
+            FROM [#CurrentIO_PendingResult]
+        )
+        DELETE FROM [R] WHERE [rn]>@Limit;
+    END;
+
     IF @StatusCode <> 'AVAILABLE' AND @StatusCode <> 'AVAILABLE_LIMITED'
         SET @IsPartial = 1;
 
@@ -768,7 +785,7 @@ BEGIN
     (
           N'USP_CurrentIO',@CollectionTimeUtc,@StatusCode,@IsPartial
         , CASE WHEN @RowCount>@Limit THEN @Limit ELSE @RowCount END
-        , @HasMoreRows,@CrossDatabaseRequested,@SampleSeconds,@PendingIoEinbeziehen
+        , @HasMoreRows,@CrossDatabaseRequested,COALESCE(@SampleSeconds,CONVERT(tinyint,0)),COALESCE(@PendingIoEinbeziehen,CONVERT(bit,0))
         , CASE WHEN @PendingRowCount>@Limit THEN @Limit ELSE @PendingRowCount END
         , @PendingHasMoreRows,@ErrorNumber,@ErrorMessage
     );
