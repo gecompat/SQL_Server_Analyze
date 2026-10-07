@@ -194,8 +194,9 @@ nicht vorhandene Fixture-Datenbank wieder her. Weitere Restores ersetzen
 ausschließlich diese eigene Datenbank. Nur die zugehörigen Historienzeitstempel
 werden angepasst; Anzahl und kurze beziehungsweise lange Restorezeitfenster
 müssen exakt ausgegeben werden. Die getrennten injizierten Agent-, Mail- und
-Maintenance-Aggregate sind nachfolgend beschrieben. Tatsächliche Ausführung,
-Retention und fehlende optionale Quellen bleiben separat offen.
+Maintenance-Aggregate sowie der getrennte tatsächliche Agent-Joblauf sind
+nachfolgend beschrieben. Mail-/Maintenance-Ausführung, Retention und fehlende
+optionale Quellen bleiben separat offen.
 
 Mit `-Scenario AgentHistory` wird ausschließlich der Agent-Aggregatvertrag
 zusätzlich zu Installation, Smoke-Test und Runtimevertrag `122` geprüft.
@@ -242,6 +243,34 @@ Frameworkdatenbank. Die Zeitfelder übernehmen native `send_request_date`- und
 `start_time`-Werte ohne UTC-Konvertierung. Die Fixture belegt keine tatsächliche
 Mail- oder Maintenance-Ausführung, keine Queueverarbeitung und keine Retention.
 Die vorhandene Agent-Fixture und deren Referenz TEST-0001 bleiben unverändert.
+
+Mit `-Scenario AgentExecution` prüft der Runner nach Installation, Smoke-Test
+und Runtimevertrag `122` die [Agent-Ausführungsfixture](Scenarios/OPS-008/agent-execution.sql).
+Sie verlangt eine leere Agent-Historie und erstellt einen eigenen lokalen Job
+mit genau einem T-SQL-Schritt `SELECT 1`, ohne Zeitplan, Wiederholung oder
+Benachrichtigung. Sie startet diesen Job über `sp_start_job` und wartet
+höchstens 120 Polls mit jeweils einer Sekunde Abstand auf den erfolgreichen
+Job- und Schrittabschluss sowie den beendeten nativen Aktivitätsrecord.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario AgentExecution `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Getrennte Job-, Schritt- und Historyidentitäten sowie genau zwei erfolgreiche
+native Historyzeilen belegen die Ausführung. Nach einem zusätzlichen
+Stabilitätsvergleich prüfen NONE, TABLE und CONSOLE den nativen Count und
+die unveränderten NULL-Zeitgrenzen des Agent-Vertrags. TABLE und CONSOLE
+besitzen vollständige Parität mit JSON. Vollständige Historienwerte,
+Callertransaktion und `LOCK_TIMEOUT` bleiben bei jedem Analyzeraufruf erhalten.
+Die Fixture entfernt ausschließlich den eigenen Job anhand seiner Job-ID
+einschließlich seiner Historie; bei Fehlern versucht sie denselben Cleanup
+nach einem begrenzten Stop-Wartepfad. Das äußere Labcleanup erfolgt unabhängig
+vom Szenarioergebnis. Es werden keine Historyzeilen direkt injiziert.
+Der Nachweis betrifft einen erfolgreichen minimalen lokalen Job auf
+SQL Server 2025 mit Docker. Retention, Jobdatums- oder Dauerinterpretation,
+Mail-/Maintenance-Ausführung und andere Provider bleiben separat offen.
 
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
