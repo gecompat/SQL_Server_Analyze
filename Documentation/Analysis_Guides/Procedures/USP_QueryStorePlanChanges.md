@@ -117,6 +117,8 @@ HAVING COUNT_BIG(*) > 1;
 
 ### Zeit- und Scope-Modell
 
+Exakte `@ReferencedDatabaseNames` werden mit dem Parser der Frameworkdatenbank geprüft und in den dynamischen Quellabfragen über dessen dreigliedrigen Namen aufgelöst. Der Frameworkname wird vor `USE` aus `master.sys.databases` mit `NOLOCK` gelesen und mit `QUOTENAME` geschützt. Die Liste filtert Datenbankreferenzen im Showplan, nicht die Query-Store-Quelldatenbanken. `NULL` lässt diesen Referenzfilter weg; eine leere oder nur aus Leerzeichen bestehende Liste ist ungültig. Gültige doppelte Namen bleiben erlaubt und vervielfachen wegen `EXISTS` keine Zeilen. Die dekodierten XML-Namen werden weiterhin mit der expliziten Framework-CS-Collation verglichen; LIKE- und Regexpfade behalten ihre bisherigen Verträge.
+
 Die Auswertung berücksichtigt den persistierten Planbestand innerhalb der Query-Store-Retention. `@VonUtc` behält Planzeilen, deren letzte Kompilierung oder letzte Ausführung die untere Grenze erreicht; Referenzfilter wirken ebenfalls vor der Summaryaggregation. Für die ausgewählten Querykeys enthält `plans` anschließend alle gespeicherten Planzeilen. Deshalb kann die ausgegebene Plananzahl bei Zeit- oder Referenzfiltern von `PlanCount` abweichen. Last Execution zeigt Aktivität, aber keine dauerhafte Gültigkeit.
 
 ### Bewertung und Gegenprobe

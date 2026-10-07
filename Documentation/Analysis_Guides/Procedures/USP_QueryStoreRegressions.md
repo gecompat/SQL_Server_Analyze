@@ -126,6 +126,8 @@ Der tatsächliche Quellpfad verbindet zusätzlich `sys.query_store_query_text`. 
 
 ### Zeit- und Scope-Modell
 
+Exakte `@ReferencedDatabaseNames` werden mit dem Parser der Frameworkdatenbank geprüft und in den dynamischen Quellabfragen über dessen dreigliedrigen Namen aufgelöst. Der Frameworkname wird vor `USE` aus `master.sys.databases` mit `NOLOCK` gelesen und mit `QUOTENAME` geschützt. Die Liste filtert Datenbankreferenzen im Showplan, nicht die Query-Store-Quelldatenbanken. `NULL` lässt diesen Referenzfilter weg; eine leere oder nur aus Leerzeichen bestehende Liste ist ungültig. Gültige doppelte Namen bleiben erlaubt und vervielfachen wegen `EXISTS` keine Zeilen. Die dekodierten XML-Namen werden weiterhin mit der expliziten Framework-CS-Collation verglichen; LIKE- und Regexpfade behalten ihre bisherigen Verträge.
+
 Die Auswertung vergleicht zwei persistierte Query-Store-Fenster innerhalb der Retention; der Standardvergleich und die abgeleitete Baseline müssen im Wrapperkontext dokumentiert sein.
 
 Ein Runtimeintervall wird anhand seiner Start-/Endgrenzen jedem überlappenden Fenster zugeordnet. Die enthaltenen Ausführungen werden nicht anteilig auf scharfe Fenstergrenzen umgerechnet. Ausführungszahlen und gewichtete Messwerte werden je Query/Fenster summiert; Duration und CPU werden anschließend von Mikrosekunden in Millisekunden umgerechnet. Plananzahlen zählen unterschiedliche PlanIds im jeweiligen Fenster. Ein Zeitfilter auf `last_execution_time` ersetzt dieses Intervallmodell nicht.

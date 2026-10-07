@@ -123,6 +123,8 @@ WHERE [i].[end_time] > @VonUtc
 
 ### Zeit- und Scope-Modell
 
+Exakte `@ReferencedDatabaseNames` werden mit dem Parser der Frameworkdatenbank geprüft und in den dynamischen Quellabfragen über dessen dreigliedrigen Namen aufgelöst. Der Frameworkname wird vor `USE` aus `master.sys.databases` mit `NOLOCK` gelesen und mit `QUOTENAME` geschützt. Die Liste filtert Datenbankreferenzen im Showplan, nicht die Query-Store-Quelldatenbanken. `NULL` lässt diesen Referenzfilter weg; eine leere oder nur aus Leerzeichen bestehende Liste ist ungültig. Gültige doppelte Namen bleiben erlaubt und vervielfachen wegen `EXISTS` keine Zeilen. Die dekodierten XML-Namen werden weiterhin mit der expliziten Framework-CS-Collation verglichen; LIKE- und Regexpfade behalten ihre bisherigen Verträge.
+
 Die Auswertung verwendet persistierte Waitkategorien innerhalb der Retention und bei aktivem Wait Capture; die Werte sind datenbank- und planbezogen. Der Beschreibungsarm von `@WaitCategory` behält die native Vergleichscollation von `wait_category_desc`. Der numerische Arm vergleicht die konvertierte Kategorienummer auf beiden Seiten mit `SQL_Latin1_General_CP1_CS_AS`, damit unterschiedliche Quell- und Frameworkcollations keinen Konflikt erzeugen. Eine führende Null ist kein numerisch normalisierter Kategorienfilter: `N'03'` ist nicht `N'3'`.
 
 Der synthetische Vertrag Common176 liest ausschließlich eine extern vorbereitete Fixture. Ein Record pro Gruppe belegt die Feldwerte und Aggregation dieses Scopes, aber keine Wirkung unterschiedlicher Recordgewichtung. Exakte Cross-DB-Referenzlisten, Regex, Berechtigungsfehler und eine vollständige Wait-Timeline gehören nicht zu diesem positiven Fixturevertrag.

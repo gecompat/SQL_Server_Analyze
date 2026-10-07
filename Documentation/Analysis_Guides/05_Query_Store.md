@@ -128,6 +128,8 @@ EXEC [monitor].[USP_QueryStoreRuntimeStats]
 
 Der Referenzdatenbankfilter parst Showplan-XML und ist ein Deep-Pfad.
 
+RuntimeStats, WaitStats, PlanChanges, Regressions und ForcedPlans lösen den Parser exakter Referenzlisten in der Frameworkdatenbank auf, auch wenn die dynamische Abfrage bereits in einer anderen Quelldatenbank läuft. Der vor `USE` über den NOLOCK-Katalog gelesene und mit `QUOTENAME` geschützte Frameworkname bildet den dreigliedrigen Helpernamen. `NULL` bedeutet keinen Referenzlistenfilter; leere Listen sind ungültig. Gültige doppelte Namen bleiben erlaubt. Die explizite CS-Namensprüfung und die getrennten LIKE-/Regexpfade bleiben erhalten. Bei PlanChanges betrifft der Referenzfilter die Summaryaggregation; die Plandetails ausgewählter Querykeys bleiben vollständig.
+
 ### Hauptspalten
 
 | Gruppe | Spalten | Bedeutung |

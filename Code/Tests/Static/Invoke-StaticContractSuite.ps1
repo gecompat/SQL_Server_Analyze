@@ -88,6 +88,7 @@ $selfTestValidators = @(
     '1046_Validate_AnalysisNavigator_Tempdb_Collation.py'
     '1047_Validate_ObjectInventory_Tempdb_Collation.py'
     '1048_Validate_IndexUsage_Tempdb_Collation.py'
+    '1049_Validate_QueryStore_ReferenceLists_Contract.py'
   )
 $repositoryOnlyValidators = @(
     '950_Validate_Nonblocking_Metadata.py'
