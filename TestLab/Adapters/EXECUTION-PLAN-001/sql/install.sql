@@ -2394,7 +2394,7 @@ RETURN
               [StatementXml]=[s].[n].query('.')
             , [StatementId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementId)[1])','nvarchar(50)'),N''))
             , [StatementCompId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementCompId)[1])','nvarchar(50)'),N''))
-            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'')
+            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM @PlanXml.nodes('//*[local-name(.)="StmtSimple"]') AS [s]([n])
     ),
     [Statements] AS
@@ -2415,13 +2415,13 @@ RETURN
             , [st].[StatementId]
             , [st].[StatementCompId]
             , [NodeId]=TRY_CONVERT(int,NULLIF([r].[n].value('string((@NodeId)[1])','nvarchar(50)'),N''))
-            , [PhysicalOp]=NULLIF([r].[n].value('string((@PhysicalOp)[1])','nvarchar(128)'),N'')
-            , [DatabaseRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Database)[1])','nvarchar(256)'),N'')
-            , [SchemaRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Schema)[1])','nvarchar(256)'),N'')
-            , [ObjectRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Table)[1])','nvarchar(256)'),N'')
-            , [IndexRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Index)[1])','nvarchar(256)'),N'')
-            , [AliasRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Alias)[1])','nvarchar(256)'),N'')
-            , [StorageType]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Storage)[1])','nvarchar(128)'),N'')
+            , [PhysicalOp]=NULLIF([r].[n].value('string((@PhysicalOp)[1])','nvarchar(128)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [DatabaseRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Database)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [SchemaRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Schema)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [ObjectRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Table)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [IndexRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Index)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [AliasRaw]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Alias)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [StorageType]=NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@Storage)[1])','nvarchar(128)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
             , [PlanObjectId]=TRY_CONVERT(int,NULLIF([r].[n].value('string((./*/*[local-name(.)="Object"]/@ObjectId)[1])','nvarchar(50)'),N''))
             , [PlanIndexId]=CONVERT(int,NULL)
         FROM [Statements] AS [st]
@@ -2451,9 +2451,9 @@ RETURN
               [st].[StatementOrdinal]
             , [st].[StatementId]
             , [st].[StatementCompId]
-            , [DatabaseRaw]=NULLIF([m].[n].value('string((@Database)[1])','nvarchar(256)'),N'')
-            , [SchemaRaw]=NULLIF([m].[n].value('string((@Schema)[1])','nvarchar(256)'),N'')
-            , [ObjectRaw]=NULLIF([m].[n].value('string((@Table)[1])','nvarchar(256)'),N'')
+            , [DatabaseRaw]=NULLIF([m].[n].value('string((@Database)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [SchemaRaw]=NULLIF([m].[n].value('string((@Schema)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [ObjectRaw]=NULLIF([m].[n].value('string((@Table)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM [Statements] AS [st]
         CROSS APPLY [st].[StatementXml].nodes('.//*[local-name(.)="MissingIndex"]') AS [m]([n])
     ),
@@ -2477,11 +2477,11 @@ RETURN
                   WHEN [ObjectName] LIKE N'#%' THEN 'TEMPORARY_OBJECT'
                   WHEN [ObjectName] LIKE N'@%' THEN 'TABLE_VARIABLE'
                   WHEN [IndexName] IS NOT NULL THEN 'INDEX'
-                  ELSE 'TABLE' END)
+                  ELSE 'TABLE' END) COLLATE SQL_Latin1_General_CP1_CS_AS
             , [ReferenceSource]=CONVERT(varchar(40),CASE
                   WHEN [PhysicalOp] LIKE N'%Update%' OR [PhysicalOp] LIKE N'%Insert%'
                     OR [PhysicalOp] LIKE N'%Delete%' OR [PhysicalOp]=N'Merge'
-                    THEN 'DML_TARGET' ELSE 'ACCESS_PATH' END)
+                    THEN 'DML_TARGET' ELSE 'ACCESS_PATH' END) COLLATE SQL_Latin1_General_CP1_CS_AS
             , [DatabaseName],[SchemaName],[ObjectName],[IndexName],[AliasName],[StorageType]
             , [PlanObjectId],[PlanIndexId]
             , [IsTemporaryObject]=CONVERT(bit,CASE WHEN [ObjectName] LIKE N'#%' OR [DatabaseName]=N'tempdb' THEN 1 ELSE 0 END)
@@ -2495,8 +2495,8 @@ RETURN
                   WHEN [ObjectName] LIKE N'#%' THEN 'TEMP_OBJECT_CONTEXT_REQUIRED'
                   WHEN [ObjectName] LIKE N'@%' THEN 'PLAN_ONLY'
                   WHEN [DatabaseName] IS NULL OR [SchemaName] IS NULL OR [ObjectName] IS NULL THEN 'INCOMPLETE_REFERENCE'
-                  ELSE 'CATALOG_RESOLVABLE' END)
-            , [SourceElement]=CONVERT(nvarchar(128),N'Object')
+                  ELSE 'CATALOG_RESOLVABLE' END) COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [SourceElement]=CONVERT(nvarchar(128),N'Object') COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM [AccessObjects]
         WHERE [ObjectName] IS NOT NULL
 
@@ -2552,7 +2552,7 @@ RETURN
               [StatementXml]=[s].[n].query('.')
             , [StatementId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementId)[1])','nvarchar(50)'),N''))
             , [StatementCompId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementCompId)[1])','nvarchar(50)'),N''))
-            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'')
+            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM @PlanXml.nodes('//*[local-name(.)="StmtSimple"]') AS [s]([n])
     ),
     [Statements] AS
@@ -2568,10 +2568,10 @@ RETURN
     (
         SELECT
               [st].[StatementOrdinal],[st].[StatementId],[st].[StatementCompId]
-            , [DatabaseRaw]=NULLIF([i].[n].value('string((@Database)[1])','nvarchar(256)'),N'')
-            , [SchemaRaw]=NULLIF([i].[n].value('string((@Schema)[1])','nvarchar(256)'),N'')
-            , [ObjectRaw]=NULLIF([i].[n].value('string((@Table)[1])','nvarchar(256)'),N'')
-            , [StatisticsRaw]=NULLIF([i].[n].value('string((@Statistics)[1])','nvarchar(256)'),N'')
+            , [DatabaseRaw]=NULLIF([i].[n].value('string((@Database)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [SchemaRaw]=NULLIF([i].[n].value('string((@Schema)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [ObjectRaw]=NULLIF([i].[n].value('string((@Table)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [StatisticsRaw]=NULLIF([i].[n].value('string((@Statistics)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
             , [LastUpdateAtCompile]=TRY_CONVERT(datetime2(7),NULLIF([i].[n].value('string((@LastUpdate)[1])','nvarchar(100)'),N''))
             , [ModificationCountAtCompile]=TRY_CONVERT(bigint,NULLIF([i].[n].value('string((@ModificationCount)[1])','nvarchar(100)'),N''))
             , [SamplingPercentAtCompile]=TRY_CONVERT(decimal(19,6),NULLIF([i].[n].value('string((@SamplingPercent)[1])','nvarchar(100)'),N''))
@@ -2591,10 +2591,10 @@ RETURN
         , [StatisticsName]=CASE WHEN LEFT([StatisticsRaw],1)=N'[' AND RIGHT([StatisticsRaw],1)=N']'
                                 THEN REPLACE(SUBSTRING([StatisticsRaw],2,LEN([StatisticsRaw])-2),N']]',N']') ELSE [StatisticsRaw] END
         , [LastUpdateAtCompile],[ModificationCountAtCompile],[SamplingPercentAtCompile]
-        , [SourceElement]=CONVERT(nvarchar(128),N'OptimizerStatsUsage/StatisticsInfo')
+        , [SourceElement]=CONVERT(nvarchar(128),N'OptimizerStatsUsage/StatisticsInfo') COLLATE SQL_Latin1_General_CP1_CS_AS
         , [ParseStatus]=CONVERT(varchar(40),CASE
               WHEN [ObjectRaw] IS NOT NULL AND [StatisticsRaw] IS NOT NULL THEN 'AVAILABLE'
-              ELSE 'INCOMPLETE_REFERENCE' END)
+              ELSE 'INCOMPLETE_REFERENCE' END) COLLATE SQL_Latin1_General_CP1_CS_AS
     FROM [Raw]
 );
 GO
@@ -2627,7 +2627,7 @@ RETURN
               [StatementXml]=[s].[n].query('.')
             , [StatementId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementId)[1])','nvarchar(50)'),N''))
             , [StatementCompId]=TRY_CONVERT(int,NULLIF([s].[n].value('string((@StatementCompId)[1])','nvarchar(50)'),N''))
-            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'')
+            , [StatementText]=NULLIF([s].[n].value('string((@StatementText)[1])','nvarchar(4000)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM @PlanXml.nodes('//*[local-name(.)="StmtSimple"]') AS [s]([n])
     ),
     [Statements] AS
@@ -2651,51 +2651,51 @@ RETURN
     [Roles] AS
     (
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
-               CONVERT(varchar(40),'SEEK') [ColumnUsage],CONVERT(varchar(80),'SEEK_PREDICATE') [ExpressionContext],
+               CONVERT(varchar(40),'SEEK') COLLATE SQL_Latin1_General_CP1_CS_AS [ColumnUsage],CONVERT(varchar(80),'SEEK_PREDICATE') COLLATE SQL_Latin1_General_CP1_CS_AS [ExpressionContext],
                [ColumnReferenceXml]=[c].[n].query('.')
         FROM [RelOps]
-        CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="SeekPredicates"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
+        CROSS APPLY [RelOpXml].nodes('/*[local-name(.)="RelOp"]/*/*[local-name(.)="SeekPredicates"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
                'RESIDUAL','PREDICATE',[c].[n].query('.')
         FROM [RelOps]
-        CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="Predicate"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
+        CROSS APPLY [RelOpXml].nodes('/*[local-name(.)="RelOp"]/*/*[local-name(.)="Predicate"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
                'JOIN','JOIN_KEY_OR_PREDICATE',[c].[n].query('.')
         FROM [RelOps]
-        CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="HashKeysBuild" or local-name(.)="HashKeysProbe" or local-name(.)="InnerSideJoinColumns" or local-name(.)="OuterSideJoinColumns" or local-name(.)="OuterReferences"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
+        CROSS APPLY [RelOpXml].nodes('/*[local-name(.)="RelOp"]/*/*[local-name(.)="HashKeysBuild" or local-name(.)="HashKeysProbe" or local-name(.)="InnerSideJoinColumns" or local-name(.)="OuterSideJoinColumns" or local-name(.)="OuterReferences"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
                'ORDER_BY','ORDER_REQUIREMENT',[c].[n].query('.')
         FROM [RelOps]
-        CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="OrderBy" or local-name(.)="SortKeys"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
+        CROSS APPLY [RelOpXml].nodes('/*[local-name(.)="RelOp"]/*/*[local-name(.)="OrderBy" or local-name(.)="SortKeys"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
                'GROUP_BY','GROUP_REQUIREMENT',[c].[n].query('.')
         FROM [RelOps]
-        CROSS APPLY [RelOpXml].nodes('./*/*[local-name(.)="GroupBy"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
+        CROSS APPLY [RelOpXml].nodes('/*[local-name(.)="RelOp"]/*/*[local-name(.)="GroupBy"]//*[local-name(.)="ColumnReference"]') AS [c]([n])
 
         UNION ALL
         SELECT [StatementOrdinal],[StatementId],[StatementCompId],[NodeId],
                'OUTPUT','OUTPUT_LIST',[c].[n].query('.')
         FROM [RelOps]
-        CROSS APPLY [RelOpXml].nodes('./*[local-name(.)="OutputList"]/*[local-name(.)="ColumnReference"]') AS [c]([n])
+        CROSS APPLY [RelOpXml].nodes('/*[local-name(.)="RelOp"]/*[local-name(.)="OutputList"]/*[local-name(.)="ColumnReference"]') AS [c]([n])
     ),
     [Raw] AS
     (
         SELECT
               [StatementOrdinal],[StatementId],[StatementCompId],[NodeId]
             , [ColumnUsage],[ExpressionContext]
-            , [DatabaseRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Database)[1])','nvarchar(256)'),N'')
-            , [SchemaRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Schema)[1])','nvarchar(256)'),N'')
-            , [ObjectRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Table)[1])','nvarchar(256)'),N'')
-            , [AliasRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Alias)[1])','nvarchar(256)'),N'')
-            , [ColumnRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Column)[1])','nvarchar(256)'),N'')
+            , [DatabaseRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Database)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [SchemaRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Schema)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [ObjectRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Table)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [AliasRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Alias)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
+            , [ColumnRaw]=NULLIF([ColumnReferenceXml].value('string((/*/@Column)[1])','nvarchar(256)'),N'') COLLATE SQL_Latin1_General_CP1_CS_AS
         FROM [Roles]
     )
     SELECT
