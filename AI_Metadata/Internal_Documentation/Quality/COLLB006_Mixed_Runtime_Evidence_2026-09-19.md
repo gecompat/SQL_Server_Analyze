@@ -3956,3 +3956,127 @@ CL150/160 bleiben unbelegt. Der unqualifizierte Referenzlistenhelper bleibt
 außerhalb dieses Slices; dessen 208-Pfad erhält hier keinen neuen positiven
 Nachweis. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
 Maturityflags bleiben unverändert.
+
+## Query-Store-Runtime: gemeinsamer Export und native Sortprojektion
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und beide
+case-unterschiedlichen Unicode-CI_AS-Quellen besitzen getrennt gemessene
+Compatibility Levels 170. Jede Quelle enthält eine synthetische
+Vierzeilentabelle und zwei eigene Procedures. Zwei tatsächlich angrenzende
+Ein-Minuten-Intervalle erfassen je Quelle 2→8 beziehungsweise 2→4 Ausführungen
+mit unterschiedlichen gespeicherten CPU- und Dauerdurchschnittswerten.
+Ausschließlich eigene vorbereitende Query-Store-Queries werden entfernt.
+Der verbliebene Katalog enthält zwei eigene Query-/Planidentitäten je Quelle
+mit Regular-Ausführungstyp. Capture NONE und READ_ONLY frieren die Daten ein;
+beide Quellen bestätigen Actual-/Desiredstate 1/1 und Capturemode 3.
+
+Das unveränderte Original scheitert auf beiden CI-Quellen mit Fehler 209
+am unqualifizierten SELECT-Feld object_id. Eine getrennte private Vorstufe
+qualifiziert ausschließlich dieses Feld; sie zeigt anschließend Fehler 207
+für TotalCpuMs. Neun Aliase benennen ausschließlich die bereits bestehenden
+lokalen Sortprojektionen einschließlich ihrer decimal(38,3)-Konvertierungen.
+Der positive Neun-Sortierungen-Lauf zeigt danach bei LAST_EXECUTION Fehler
+169 wegen derselben Expression im primären und sekundären ORDER BY.
+Ausschließlich dort entfällt der redundante zweite lokale Sortausdruck.
+Alle anderen Sortschlüssel bleiben erhalten. Diese drei gezielten Reparaturen
+werden vom eigentlichen Exportvergleich getrennt betrachtet.
+
+Eine private positive Vorstufe enthält genau diese Reparaturen und weiterhin
+den ursprünglichen Ausgabepfad. Sie liefert bei Limit 1 oder 2 jeweils vier
+TABLE- und CONSOLE-Zeilen, während RAW und JSON begrenzt sind. Der finale
+Produktstand verwendet einen frühen typgleichen Export mit unveränderten
+40 Feldern und zehn bereits korrekten expliziten Frameworktextcollations.
+QueryStoreDatabaseName, QueryId und PlanId bleiben NOT NULL, die übrigen
+37 Felder nullable und alle Felder ohne Identity. Ein einziges globales TOP
+materialisiert den Export nach Textprojektion, vollständigem Plan-XML-Parsing,
+Truncationwarnung, Kandidatenzählern und Status. Alle vier Consumer lesen ihn.
+Parameter, lokale N+1-Grenze, Gates, Status, Sortierung und Aggregation bleiben
+erhalten. Die vorhandene Statusprüfung überspringt bereits die Projektion
+bei negativen Textlimits; dafür entsteht kein zusätzlicher Produktguard.
+
+Vierunddreißig gepaarte Fälle umfassen je vollständiger privater Vorstufen-/
+Finalsuite 35 Batches und 101 Ergebnisgrids. Das unabhängige native Orakel
+prüft alle 40 Werte und Schemafacetten, zehn Textcollations, drei NOT-NULL-
+Felder, alle neun Sortierungen, NULL-/0-/positive Limits, QueryId, Hash,
+exakte Unicode-/Case-Auswahl, Quell-LIKE und Referenz-LIKE. Fehlende Quellen,
+ein fehlender Case-Name sowie negative Zeilen- und Textlimits werden getrennt
+bewertet. Der Mixed-Missing-Fall erhält die erfolgreiche eigene Quelle;
+die bestehenden Warnungs- und Statusverträge werden unverändert geprüft.
+Capturezeiten liegen zwischen getrennten datetime2(3)-Messgrenzen.
+Vollständige Consumer-/JSON-Multisets stimmen innerhalb eines Aufrufs überein;
+Datenbank-/Plan-/Ausführungstypkeys und bessere globale Ranggrenzen werden
+unabhängig geprüft. Alle 14 Metafelder außer der Erzeugungszeit und die
+nativen Ausgabeschemas bleiben zwischen Vorstufe und Finalstand gleich.
+Caller-LOCK_TIMEOUT 137 bleibt in allen Fällen erhalten.
+
+Das Orakel gewichtet native Durchschnittsrecords mit ihrer Ausführungszahl,
+prüft Totals und globale Averages sowie Mikrosekunden→Millisekunden und
+Seiten→KB. Die tatsächlich verschiedenen gespeicherten CPU-/Dauerwerte
+und 2→8-/2→4-Gewichte unterscheiden gewichtete von ungewichteten Ergebnissen.
+Python-Dezimalrundung eines serialisierten Floats weicht an einer gemessenen
+Halbgrenze um 0,001 ab; ein unabhängiger nativer SQL-Aggregations-/Konvertierungs-
+beobachter prüft deshalb alle 14 numeric-Ausgabewerte exakt. Die Produktquelle
+wird dafür nicht verändert. Allgemeine Float-/Rundungsgrenzen sind damit
+nicht vollständig belegt. Fenster innerhalb des ersten Intervalls enthalten
+dessen ganze Records; ein angrenzendes Fenster enthält nur das zweite und
+ein anschließendes Fenster keine Records. Erste und letzte Ausführungszeiten
+bleiben native Recordzeiten, ohne zeitanteilige Kürzung.
+
+Plan-Opt-in bestätigt AVAILABLE, ursprüngliche vollständige SC-Zeichen-/
+UTF-16-Bytezahlen, natives XML und NULL-Fallback. Ohne Opt-in bleiben
+NOT_REQUESTED und sämtliche Planwerte NULL. XML wird für den unabhängigen
+Vergleich ohne Entfernen von Textknoten kanonisiert: SqlClient und SQL-
+nvarchar verwenden unterschiedliche Leerzeichen vor selbstschließenden
+Elementen. Semantische XML-Parität und exakte ursprüngliche Textgrößen sind
+belegt; eine allgemeine Serialisierungsbyteparität wird nicht behauptet.
+
+Common177 besteht 14 allgemeine TABLE-/JSON-Fälle, 24 bedingte native
+Vollfeld-/Rangfälle, drei Verbraucher, sechs Mappingablehnungen, drei leere
+SQL-CONSOLE-Captures und drei direkte positive CONSOLE-/JSON-Statusprüfungen.
+Der unabhängige Client bestätigt alle 40 Werte und 41 CONSOLE-Feldfacetten
+der positiven Mengen mit 1/2/4 Zeilen. Die Fixtureguard prüft eigene Namen,
+Katalogumfang, Tabelle, QI/ANSI, CI-Collation, Optionszustand und die beiden
+angrenzenden Intervalle mit ihren Ausführungszahlen. Ohne eigene Fixture
+bestehen 14 allgemeine Fälle; der native Block meldet NOT_EXECUTED mit null
+Fällen und wird nicht als positiver PASS gezählt.
+
+Zwei positive QueryStoreAnalysis-Aufrufe ausschließlich mit RuntimeStats
+bestätigen Limits 1/2, weitergeleitete Fenster, die vollständigen 40 RAW-
+Felder, Child-JSON-Parität und EXECUTED auf Ordinal 2. Parent und Child liefern
+AVAILABLE mit leeren Warnungsarrays und erhaltenem Caller-Timeout 137.
+Alle erfassten nativen Katalog-, Text-, Plan-, Intervall- und Modulwerte bleiben
+vor und nach sämtlichen positiven Verträgen und dem Impactlauf exakt gleich.
+
+Die vorhergesagte Auswahl aus Common124/165/177, Integration110/190/196/198
+und QueryStore110/121/140 besteht auf CL170 in 29 Batches. Ein erster lokaler
+Lauf scheitert unter QI-OFF beim XE-Teil von Common165 mit Fehler 3930.
+Der unveränderte Einzeltest besteht mit explizitem QI-/ANSI-ON-Einstieg;
+danach besteht die vollständige Auswahl mit demselben privaten Einstieg.
+Keine öffentliche Common165-Änderung folgt daraus. Die endgültige Auswahl
+wird zusätzlich gegen konkrete Commit-SHAs geprüft. Alle 75 statischen
+Prüfungen bestehen am stabilen funktionalen Stand mit Exitcode 0.
+Ein unabhängiger Reviewbefund schärft vorher ausschließlich Static1023:
+Der Guard prüft die konkrete object_id-SELECT-Projektion; eine Mutation
+lässt die CASE-Qualifikation stehen und muss dennoch abgelehnt werden.
+OPS-005 ist aus 166 kanonischen Quellen synchronisiert; sein Update und
+PLAN-001 bleiben semantisch unverändert. Die anschließenden begrenzten
+Dokumentations-, Schreibstil- und Privacyprüfungen bestehen am Lieferstand.
+
+Die UTF-8/LF-Quellidentitäten des geprüften Stands lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source020 | 885470A9920D2747BF29263682681B122291E1B85A8861057913F72A5DAD796E |
+| Common177 | 1F1D81A9A44F23B59A2BF3C847E69F0CDCA6D5C14C41676EBC1164ED0DBA08EB |
+
+Beide eigenen Quellen sind identitätsgeprüft entfernt. Container und Volume
+des eigenen Labs sind entfernt: zwei Schritte, null Fehler, REMOVED.
+Der eigene verschlüsselte temporäre Secretwert ist entfernt. Private Captures
+und konkrete Runtimeidentitäten bleiben außerhalb von Git. Mehrere Records
+innerhalb desselben Intervalls, weitere Execution Types, mehr als N+1 lokale
+vollständige Sortties, positive Memory-/TempDB-/Logwerte, ungültiges Plan-XML,
+QS_OFF, Berechtigungen, Timeout, exakte Cross-DB-Referenzlisten, Regex,
+ältere native Engines und CL150/160 bleiben unbelegt. COLL-001 bleibt partiell;
+Registry, RUNTIME-001 und bestehende Maturityflags bleiben unverändert.

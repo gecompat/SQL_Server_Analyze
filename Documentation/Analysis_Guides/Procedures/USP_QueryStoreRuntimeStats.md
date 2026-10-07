@@ -32,7 +32,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `runtimeStats`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `runtimeStats` mit 40 Feldern und zehn explizit Framework-collatierten Textspalten. `QueryStoreDatabaseName`, `QueryId` und `PlanId` sind NOT NULL; alle übrigen Felder sind nullable, alle Spalten ohne Identity. RAW, CONSOLE, TABLE und JSON lesen dieselbe spät materialisierte Exportmenge. Ein positives `@MaxZeilen` begrenzt diese Menge einmal global nach der gewählten Sortierung und den bestehenden Secondarykeys; NULL und 0 bleiben unbegrenzt.
+
+Textprojektion, Plan-XML-Parsing, Truncationwarnung, Kandidatenzähler, Status und `hasMoreRows` entstehen vorher aus allen gesammelten lokalen N+1-Kandidaten. Ungültige Zeilen- oder Textlimits ergeben `INVALID_PARAMETER` mit leerer Fachmenge; die bereits vorhandene Statusprüfung überspringt dann die Projektion. NULL und 0 als Textlimit erhalten den vollständigen Text. Die lokale dynamische Projektion qualifiziert `A.object_id` eindeutig und benennt die neun vorhandenen Rankausdrücke. Bei `LAST_EXECUTION` wird dieselbe lokale Sortexpression einmal verwendet; die übrigen lokalen und globalen Sortschlüssel bleiben erhalten. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
@@ -69,7 +71,7 @@ Randintervalle können Messanteile außerhalb des exakten Fensters enthalten.
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Eine `ExampleDatabase`, kurzes UTC-Fenster, TOP 100, kein Plan XML und keine Referenzdatenbankauflösung. Lokal werden höchstens N+1 gerankte Kandidaten übernommen. |
+| Standardpfad | Ohne expliziten Datenbankfilter werden alle sichtbaren, geeigneten Online-Benutzerdatenbanken betrachtet, mit einstündigem UTC-Fenster, TOP 100, ohne Plan XML und Referenzdatenbankauflösung. Lokal werden höchstens N+1 gerankte Kandidaten übernommen. Das Einstiegsbeispiel wählt ausdrücklich `ExampleDatabase`. |
 | Teuerster Pfad | Viele Datenbanken, `VOLL` beziehungsweise unbegrenztes/hohes Limit, langer Zeitraum, Plan XML und Referenzdatenbank-/Regexfilter. Aggregation und XML-Prüfung können große Retentionsbestände berühren. |
 | Haupttreiber | Zahl der gewählten Query Stores, überlappenden Runtimeintervalle, Query-/Plan-Kombinationen und Ausführungsstatistikzeilen. Ohne enges UTC-Fenster wächst die Aggregation mit der gesamten aufbewahrten Historie; Referenzfilter können Plan-XML ergänzen. |
 | Skalierung | Quellarbeit wächst mit überlappenden Runtimeintervallen, Queries/Plänen und Datenbanken. Plan-XML-/Referenzfilter erhöhen CPU und Speicher; Text-/Planbreite erhöht Transfer. |
@@ -90,7 +92,7 @@ Welche Query-/Plan-Kombinationen verursachten im gewählten historischen Fenster
 
 ### Technischer Hintergrund
 
-Runtime Stats speichern aggregierte Messwerte je Plan, Intervall und Execution Type. Totalwerte entstehen aus Intervallsummen; globale Averagewerte müssen nach Ausführungszahl gewichtet werden, wenn der Code nicht bereits gewichtete Totals verwendet. Query, Plan und Text werden über IDs verbunden, die nur innerhalb der Query-Store-Datenbank eindeutig sind.
+Runtime Stats speichern aggregierte Messwerte je Plan, Intervall und Execution Type. Der Code gewichtet die gespeicherten Durchschnittswerte mit `count_executions`, summiert zuerst je Intervall und anschließend je Query, Plan und Ausführungstyp und dividiert die gewichteten Totals für Averagewerte durch die gesamte Ausführungszahl. Dauer und CPU werden von Mikrosekunden in Millisekunden, Memory- und TempDB-Seiten mit Faktor 8 in KB umgerechnet. Der Memory-Maxwert verwendet `max_query_max_used_memory`. Query, Plan und Text werden über IDs verbunden, die nur innerhalb der Query-Store-Datenbank eindeutig sind.
 
 ### Datenkette
 
@@ -125,7 +127,11 @@ WHERE [i].[end_time] > @VonUtc
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung verwendet eine persistierte, nach Intervallen aggregierte Historie innerhalb der Retention. Überlappende Randintervalle können vollständig einbezogen sein.
+Die Auswertung verwendet eine persistierte, nach Intervallen aggregierte Historie innerhalb der Retention. Intervalle mit `end_time > @VonUtc AND start_time < @BisUtc` werden vollständig einbezogen, ohne zeitanteilige Kürzung. Die ausgegebenen ersten und letzten Ausführungszeiten stammen aus den Runtime-Records und können außerhalb eines schmalen Fensters liegen.
+
+Die neun Sortierungen bleiben `CPU_TOTAL`, `DURATION_TOTAL`, `READS_TOTAL`, `WRITES_TOTAL`, `EXECUTIONS`, `MEMORY_MAX`, `TEMPDB_TOTAL`, `LOG_BYTES_TOTAL` und `LAST_EXECUTION`. Global folgen das letzte Ausführungsdatum absteigend, der Query-Store-Datenbankname, QueryId und PlanId; zusätzliche Sorttie-Schlüssel werden nicht eingeführt. Eine feste Auswahl zwischen getrennten Aufrufen bei vollständigen Sortties wird nicht zugesichert.
+
+Common177 prüft bedingt eine extern vorbereitete, schreibgeschützte synthetische Fixture. Der positive Block liest native Runtime-Records, Katalogidentitäten, Texte und gespeicherte Pläne; ohne passende Fixture meldet er `NOT_EXECUTED`, während allgemeine Verträge weiterlaufen. XML wird als Wert verglichen; native SqlClient- und SQL-Serialisierungen müssen keine identischen Textbytes besitzen. Exakte Cross-DB-Referenzlisten, Regex, Berechtigungsfehler und ältere native Engines sind nicht Bestandteil dieses positiven Fixturevertrags.
 
 ### Bewertung und Gegenprobe
 
