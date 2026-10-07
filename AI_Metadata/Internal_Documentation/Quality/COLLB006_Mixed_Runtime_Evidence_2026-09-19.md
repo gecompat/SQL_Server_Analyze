@@ -5151,3 +5151,110 @@ Eingefrorene normalisierte SHA256-Werte: Source030
 `d3198e0643f4e962c82a0c91d1fa729a7aa052e04f56ddec297f13da799636b3`, Common186
 `44f8edf786e90530f11a0ecbb8b4cc06138266fda2d6ac7413eaa4ce599a844d`, Static1040
 `598ed07dbe967f69e67b134d81b68c69c754c57a60c9ff243280ce0f2836bd0f`.
+
+
+## Current Waits: vollständige bestehende Ausgabeverträge
+
+Der begrenzte Nachweis vom 7. Oktober 2026 verwendet ein eigenes
+SQL-Server-2025-Dockerlab mit gemessenem Build 17.0.4075.5 und CL170.
+Server und tempdb verwenden Latin1_General_100_CS_AS, das Framework
+SQL_Latin1_General_CP1_CS_AS. Kanonische Installation aus 166 Quellen und
+Smoke bestehen. Vier eigene Verbindungen, drei eigene Unicodeobjekte und
+eine eigene Tool-Regel erzeugen drei LCK_M_X-Tasks mit einer schlafenden
+Root-, einer Middle- und zwei Leaf-Sessions. Runtimeidentitäten, native
+Captures und Secretwerte bleiben außerhalb Git.
+
+Source040 besitzt 13 lokale Tabellen mit 99 Feldern und 50 expliziten
+Frameworktextcollations. Der gemeinsame Taskexport umfasst 33 Felder mit
+22 Textcollations; instanzweite Waits umfassen 23 Felder mit elf
+Textcollations. Beide besitzen keine Identity. RAW ergänzt 19 Status- und
+zwei Warnungsfelder. JSON besitzt vier Hauptschlüssel und 13 Metafelder.
+Aktive CONSOLE ergänzt eine Beschriftung zu den 33 Taskfeldern; die leere
+Ausgabe besitzt drei Hinweisfelder. TABLE exportiert ausschließlich Tasks.
+21 Parameter, Sourceversion 4.0.0, JSON- und Inventarschema 3,
+Modulordinal 40 und Snapshotvertrag 2 bleiben unverändert.
+
+143 unterschiedliche Originalfälle bestehen: 102 Consumer-, Filter-,
+Limit- und Messfälle, acht tatsächliche Unicodegrenzfälle, 24 negative
+beziehungsweise Mappingfälle und neun tatsächliche Overview-Aufrufe.
+Das unabhängige Literalorakel umfasst 164.887 Wert-, Struktur- und
+Facettenprüfungen sowie 448 unterschiedliche physische Schemafacetten.
+Alle 33 Taskwerte werden aus eingefrorenen nativen Quellen geprüft.
+Die private Parent-DDL besitzt 18 Quelltabellen; sie erzeugt keinen
+zusätzlichen Repository-Snapshotowner. Katalogwerte und der bestehende
+Family-Fallback werden unabhängig erwartet. Alle 23 Instanzfelder erhalten
+native beziehungsweise daraus unabhängig abgeleitete Sollwerte.
+14.079 native Zählergrenzen, 13.581 Gleichheiten stabiler Zähler und
+4.689 Prozentgrenzen verwenden Vorher-/Nachhermessungen. Ein einzelner
+WAITFOR-Waittyp besitzt exakt 100 Prozent, auch bei vier Einsekundensamples.
+Mehrtypige Sample-Prozentnenner besitzen keinen unabhängigen Grenznachweis.
+Ein atomarer Gleichheitsvergleich beweglicher Werte über getrennte
+Aufrufe wird nicht behauptet.
+
+Listen, Duplikate, Groß-/Kleinschreibung, LIKE, Regex und Regex-i, Waitgruppen,
+Tool-Einbezug, Mindestdauer, Benignfilter, Textopt-out, positive Limits sowie
+NULL und 0 als unbegrenzte Limits werden geprüft. Die native SC-Zeichenposition
+34 des Supplementary Characters wird mit Grenzen 33 und 34 geprüft.
+Der bestehende Prozentnenner entsteht nach Benign-, Listen- und LIKE-Auswahl;
+späte Regexfilter normalisieren ihn nicht erneut. Die kumulative Summe
+verwendet gerundete Einzelanteile. Quelltext wird vor Taskfiltern gelesen;
+Unicodeprojektion und Verbraucher verwenden danach die begrenzte Taskmenge.
+Die originalen Mengenlimits und frühen Mappingprüfungen bestehen bereits.
+Es wird keine Produktabweichung belegt und keine Produktkorrektur eingeführt.
+
+Alle 18 semantischen beziehungsweise leeren Negativfälle behalten das
+vollständige leere TABLE-Schema. Sechs fehlerhafte Maps scheitern vor der
+Semantik mit 51011 und erhalten eigene Seeds. NULL als Mindestdauer und
+doppelte Sessionwerte bleiben im bestehenden akzeptierten Verhalten.
+Alle neun Overview-Aufrufe bestätigen die vollständigen 33 TABLE-/JSON-Werte
+innerhalb desselben Aufrufs, das physische Schema, Modulordinal 40,
+Quellenflags, Snapshotbezug und Caller-LOCK_TIMEOUT 137. Vollständige
+unabhängige Werte eines separaten Parent-Snapshots bleiben unbelegt.
+Instanzmessungen behalten ihre eigenen Messpunkte.
+
+Common187 besteht 18 allgemeine und 18 native TABLE-/JSON-Fälle, sechs echte
+NULL-Mutationsablehnungen, vier Consumerfälle, sechs Mappingpreflights,
+vier synthetische Unicodefälle, drei leere SQL-CONSOLE-Captures und drei
+positive CONSOLE-Status-/JSON-Aufrufe. Ohne geeignete identitätsgeprüfte
+Fixture bleibt der positive Block NOT_EXECUTED. Native Taskidentitäten und
+Texte sind exakt; Waitdauer und kumulative Zähler werden begrenzt.
+RAW und positive CONSOLE besitzen hier keine vollständige testinterne
+Clientcapture; deren vollständiger Nachweis stammt aus dem privaten Orakel.
+Static1018 schützt alle lokalen Felder, die ABI und bestehende Reihenfolgen;
+493 echte Mutationen bestehen. Static950 behält die zwei bisherigen Owner.
+Inventar und die beiden betroffenen Dokumente präzisieren die bestehenden
+Verträge. Der unabhängige funktionale Review besitzt keine offenen Befunde.
+
+Die vollständige statische Suite scheitert zunächst ausschließlich am
+OPS-005-Bytevergleich: Ein Windows-Checkout ersetzt einen kanonischen
+LF-Headerübergang durch CRLF. Normalisierte Inhalte bleiben identisch.
+Nach Wiederherstellung der kanonischen Checkoutbytes besteht der betroffene
+Adaptertest; die übrigen erfolgreichen Prüfungen werden nicht wiederholt.
+Damit bestehen alle 75 statischen Prüfungen. Die kanonische Impact-Auswahl
+umfasst ausschließlich Common187; der tatsächliche native Runner besteht
+in fünf Batches mit sechs Resultgrids.
+
+Ein privater EXEC-Ausdruck scheitert vor der Ausführung und wird durch eine
+vorherige Variablenzuweisung ersetzt. Eine private Katalogannahme übersieht
+den bestehenden Family-Fallback und wird im Orakel korrigiert. Ein nativer
+Commonlauf weist einen Vorher-/Nachher-Rangwechsel nahezu gleichzeitig
+gestarteter Waiter ab. Ein privater Startabstand von 150 Millisekunden macht
+die Rangfolge eindeutig; der unveränderte Vertrag besteht danach. Ein
+Shellwrapper scheitert vor der Suiteausführung. Keine dieser Harness- oder
+Checkoutgrenzen begründet eine Produktänderung.
+
+Source, Collector, Parent, OPS-005- und PLAN-Installer bleiben normalisiert
+gegenüber der Basis unverändert. Die native Abschlussprüfung meldet null
+eigene Sessions, Tabellen und Regeln. Die installierte Definition entspricht
+der Source einschließlich Kommentar, abgesehen vom mechanisch gespeicherten
+CREATE-Kopf und den kanonischen Installer-Grenzkommentaren. Eigenes Lab und
+Secretdatei sind entfernt. Die abschließenden Dokumentations-, Schreibstil-
+und Privacyprüfungen gehören zum Liefergate.
+
+MARS, Reset, eingeschränkte Berechtigungen, systematische Timeout- und
+weitere Tool-Regeln, ältere native Engines und CL150/160 bleiben unbelegt.
+COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende Maturityflags
+bleiben unverändert. Normalisierte SHA256: Source040
+`de0ce6d84df06034ee9abf5474d9b452b7d87e3f075da2f923c64710706702af`, Common187
+`6d12943ba231aab30055c9d4cb9a0126796875946f12a2f17d3a2972b694d501`, Static1018
+`357383300adf82bbb2423b6e1a3399455f5cd20518da0a3b14abaa37502167f6`.

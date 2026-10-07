@@ -319,12 +319,17 @@ EXEC [monitor].[USP_CurrentWaits]
       @ResultSetArt = 'RAW';
 ```
 
+TABLE und aktives CONSOLE verwenden dieselbe begrenzte Taskmenge. TABLE exportiert 33 Felder; CONSOLE ergänzt eine Beschriftung und liefert bei leerer Menge eine dreispaltige Hinweiszeile. Status, die 23 Instanzfelder und Warnings bleiben RAW beziehungsweise JSON vorbehalten. Die Task- und Instanztexte sind explizit frameworkcollatiert. NULL oder 0 als Zeilenlimit ist unbegrenzt; eine positive Grenze gilt für beide Fachmengen nach deren bestehender Auswahlordnung. Task- und Instanzzähler geben die ausgegebenen Mengen an.
+
+Im Overview stammen Waiting Tasks, Sessions, Requests und optional SQL-Text aus derselben Snapshot-ID. Instanzwerte werden gesondert gemessen; ein Sampledelta beschreibt keinen zweiten Tasksnapshot. Quelltext wird vor der fachlichen Taskauswahl materialisiert, die Unicodeprojektion danach auf die begrenzten Tasks angewandt. Ein enger Ausgabefilter vermeidet daher nicht sämtliche Quell-, Join-, Sortier- oder Extraktionsarbeit.
+
 ### CurrentTasks-Spalten
 
 | Gruppe | Spalten |
 |---|---|
 | Task | `SessionId`, `ExecContextId`, `WaitDurationMs`, `WaitType`, `BlockingSessionId`, `ResourceDescription` |
 | Kontext | `SessionStatus`, `RequestStatus`, `LoginName`, `HostName`, `ProgramName`, `DatabaseId`, `Command`, `CurrentStatement` |
+| Textmessung | `CurrentStatementCharacters`, `CurrentStatementBytes`, `CurrentStatementIsTruncated` |
 | Tool-Klassifikation | `IsToolBackgroundQuery`, `ToolBackgroundRuleCode`, `ToolBackgroundCategory`, `ToolBackgroundDetection`, `ToolBackgroundConfidence` |
 | Katalog | `WaitGroup`, `WaitSeverity`, `IsGenerallyBenign`, `WaitMeaning`, `WaitTypicalOccurrence`, `HighWaitImpact`, `RecommendedChecks`, `WaitHelpUrl`, `DescriptionSource`, `DescriptionQuality`, `CatalogMatchType` |
 
@@ -340,7 +345,7 @@ EXEC [monitor].[USP_CurrentWaits]
 | `SampleSeconds` | 0/NULL bei kumulativem Kontext, Intervall bei Delta |
 | `MeasurementType` | `INSTANCE_CUMULATIVE` oder Delta |
 | Katalogspalten | wie bei CurrentTasks |
-| `WaitPercentage`, `CumulativePercentage` | Anteil und kumulierter Anteil der gefilterten Waitzeit |
+| `WaitPercentage`, `CumulativePercentage` | Anteil und kumulierter Anteil nach Benign-, Listen- und LIKE-Auswahl; Regex entfernt erst danach Zeilen und normalisiert den Nenner nicht erneut |
 | `AverageWaitMs`, `AverageResourceWaitMs`, `AverageSignalWaitMs` | Durchschnitt je Waitabschluss |
 
 ### Interpretation
@@ -349,7 +354,7 @@ EXEC [monitor].[USP_CurrentWaits]
 - **Delta:** zeigt das Messintervall, kann aber kurze Peaks über- oder unterrepräsentieren.
 - **Signalanteil hoch:** CPU-Schedulingdruck ist möglich; prüfen Sie jedoch auch Workload und Scheduler.
 - **Resourceanteil hoch:** externe oder interne Ressource; Waitgruppe bestimmt nächsten Schritt.
-- **Top 95 %:** reduziert Rauschen; Prozentanteile beziehen sich auf den gefilterten Scope.
+- **Top 95 %:** reduziert Rauschen. Der Prozentnenner entsteht nach Benign-, Listen- und LIKE-Filtern; späte Regexfilter normalisieren ihn nicht erneut. Die kumulative Summe verwendet die bereits gerundeten Einzelanteile.
 
 ### Beispiele
 
