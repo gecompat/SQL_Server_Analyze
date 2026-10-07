@@ -3145,3 +3145,145 @@ Nach diesem Ergebnis wurde ausschließlich dieser Gateabsatz ergänzt;
 SQL, Tests, Statusnotizen und Quellidentitäten blieben unverändert.
 Das abschließende unabhängige Evidenz- und Statusreview hatte keine offenen
 Findings.
+
+## Gemeinsamer StatisticsDistribution-Export am 7. Oktober 2026
+
+Der Slice korrigiert die bestehende Begrenzung von
+`USP_StatisticsDistributionAnalysis`. Die sechs ursprünglichen lokalen
+Tabellen besitzen bereits 36 explizite Textcollations. Der öffentliche
+TABLE-Vertrag hat 14 Felder und elf Texte; seine native Collation und
+fehlende Identity waren schon vor der Änderung korrekt. Die neue frühe
+Exporttabelle besitzt dieselbe Form und elf explizite Frameworkcollations.
+Die vollständige Sammlung bleibt für Status und Zähler erhalten; erst
+danach entsteht die gemeinsame Findingsauswahl für TABLE, CONSOLE, RAW
+und JSON. Histogrammzugriff, Kandidatenauswahl, Schwellen und
+Datenbankstatus bleiben unverändert.
+
+Ein eigenes SQL-Server-2025-Lab verwendete Version 17.0.4075.5 auf Linux,
+abweichende Server-/tempdb-Collation `Latin1_General_100_CS_AS`, die
+garantierte Frameworkcollation `SQL_Latin1_General_CP1_CS_AS` und
+Framework-CL170. Eine neue eigene synthetische Quelldatenbank verwendete
+`Latin1_General_100_CI_AS` und separat gemessenes CL170. Zwei Unicodeobjekte
+enthielten je 110 synthetische Zeilen in einer int-Spalte: hundert gleiche
+Werte und zehn weitere Werte. Zwei explizite FULLSCAN-Statistiken mit
+case-unterschiedlichen Unicode-/Apostrophnamen blieben nach der Erstellung
+unverändert. Die Gegenprobe las native Statistikproperties und ausschließlich
+numerische Histogrammfelder; Histogrammgrenzwerte wurden nicht erfasst.
+Die kanonische Installation mit 166 Quellen bestand in 187 Batches;
+der Smoke-Test bestand ebenfalls.
+
+Die Baseline lieferte acht Findings und zwei Verteilungen. Bei
+`@MaxZeilen=0/1/2` schrieb TABLE immer acht Zeilen, JSON dagegen acht,
+eine und zwei. CONSOLE lieferte bei Limit 1 ebenfalls acht Findings.
+Negative Limits warfen in NONE mit JSON, RAW ohne JSON und TABLE mit
+JSON jeweils SQL-Fehler 127; der äußere Statusoutput blieb NULL.
+Zwei private positive Captureversuche scheiterten an wiederverwendeten
+TABLE-Zielen: Ein geleertes vollständiges Ziel erfüllt den Seedvertrag
+nicht. Neue eigene Seedziele ermöglichten den vollständigen Capture.
+Diese Harnessfehler sind keine zusätzlichen Produktfehler.
+
+Nach Installation der geänderten Procedure bestand Smoke erneut.
+TABLE und JSON lieferten bei 0/1/2 exakt acht/eine/zwei Findings;
+`AVAILABLE_WITH_FINDING`, `IsPartial=0` und die vollständigen Zähler
+acht/zwei blieben erhalten. Alle drei negativen Ausgabewege lieferten
+`INVALID_PARAMETER` ohne SQL-Ausnahme.
+
+Ein unabhängiger SqlClient erfasste acht direkte Aufrufe: RAW und
+CONSOLE jeweils mit NULL/0/1/2. Insgesamt 42 Grids enthalten native
+Feldnamen, Typen, Größen, Precision, Scale, Nullability und vollständige
+Zeilen sowie ungekürzte JSON-Payloads mit NULL-Werten. Vier RAW-Aufrufe
+bestätigen die fünf Schemas mit 9/9/32/13/14 Feldern und vollständige
+JSON-Parität der vier Facharrays. Vier positive CONSOLE-Aufrufe bestätigen
+15 Felder und acht/acht/eine/zwei Findings einschließlich JSON-Parität.
+Separate leere sechs-feldrige Filterprobe-Grids wurden erhalten.
+Alle Fachwerte stimmen mit der Baseline überein; Erhebungszeitpunkte
+wurden beim Baselinevergleich ausgenommen. Bei `FindingOrdinal` ändert
+sich das native RAW-/positive-CONSOLE-Merkmal `IsIdentity` ausdrücklich
+von True auf False. Der Client prüft genau diese Ausnahme; ursprüngliche
+Ordinalwerte und alle übrigen Metadaten bleiben erhalten. TABLE war
+bereits ohne Identity. Beide Produktdokumente nennen die Anpassung.
+
+Integration175 bestand alle acht synthetischen Statistikfälle einschließlich
+gefilterter und inkrementeller Statistiken, Kandidatenbegrenzung und
+Gruppensperre. Eine vorgeschaltete Guardprüfung bestätigte, dass alle
+benannten Fixtureobjekte und Principals im eigenen Lab vorher fehlten.
+Danach wurden ihre vollständige Entfernung und die unveränderte Definition
+der transaktional angepassten Access-Policy nativ geprüft.
+Zwei direkte ObjectAnalysis-Aufrufe mit ausschließlich aktiviertem
+StatisticsDistribution-Child bestanden bei 0/1: volle zwei Verteilungen,
+Ausgabe zwei/eine, Child- und Parentstatus AVAILABLE. Die bestehende
+Mindestzeilenzahl lässt ihre Findings leer. ObjectIndex110 und
+Integration178/196 bestanden gemeinsam in sieben Batches auf CL170;
+Integration178 setzte seinen eigenen Restricted-User und das temporäre
+CL120 vollständig zurück.
+
+Der neue Common-Test wurde vor seinem gültigen Lauf korrigiert:
+Ein falscher Parametername wurde beim Lesen entdeckt, ein unquotierter
+SQL-Bezeichner und eine erfundene gemischte Auswahlwarning scheiterten
+im nativen Lauf. Isolierte Gegenproben bestätigen: Ein ausschließlich
+fehlender Datenbankname liefert DATABASE_UNAVAILABLE; eine gemischte
+Auswahl enthält nur den Status der vorhandenen Datenbank. Der positive
+gemischte Scope liefert AVAILABLE_WITH_FINDING mit IsPartial=0.
+Diese bestehende Einschränkung bleibt erhalten und wird nicht als
+positive Warningisolation dargestellt.
+
+Common170 bestand auf dem gemischten Lab mit separat gemessenem
+Framework- und Source-CL170: elf allgemeine TABLE-Fälle, zehn bedingte
+native TABLE-Fälle, zwei negative NONE-/RAW-Consumer, fünf Preflightfälle,
+drei leere dreifeldrige SQL-CONSOLE-Captures und drei direkte positive
+CONSOLE-Statusaufrufe. Alle 32 Distributionfelder werden gegen native
+Properties, Katalogflags, numerische Histogrammaggregate und unabhängig
+bestimmte Rankings geprüft. Vollständige Findingtexte, Metriken, NULLs,
+ursprüngliche Ordinale und die 14-feldrige TABLE-/JSON-Parität gehören
+zum Vertrag. Die Fixture erzeugt nur MEDIUM-Findings; sie beweist keine
+zusätzliche HIGH-/LOW-Sortierung.
+
+Nach identitätsgeprüftem Entfernen der eigenen Quelldatenbank bestand
+Common170 erneut ohne Fixture: elf allgemeine Fälle, zwei negative
+Consumer, fünf Preflightfälle und drei leere CONSOLE-Captures. Der
+positive Block meldete ausdrücklich NOT_EXECUTED und null native Fälle.
+OPS-005 ist mit den kanonischen Quellen synchronisiert. PLAN-001 enthält
+keine StatisticsDistribution-Abhängigkeit und blieb unverändert.
+Die native Proceduredefinition stimmt nach LF-Normalisierung von der
+PROCEDURE-Deklaration bis zum letzten END mit der kanonischen Quelle
+überein.
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source045, UTF-8/LF | `E42281870290941118479FEBCB52AEE6361691C67051950B53D2E85AAF8D6607` |
+| Common170, UTF-8/LF | `2A4170E631DCCAEF5235217EC86387524187256B8F2B3BFD00E86AF7CD66AEBD` |
+| Privater vollständiger Clientcapture, UTF-8/LF | `563114C90F7EF71BC1F885895DF8C88E2BF81BB2476AE22838664BEAACD7D329` |
+| Privater Baseline-/JSON-Vergleich, UTF-8/LF | `B2DC2E4C8BC9C57C7F2DEB8743D889F3B9BD11D4227586632291D5CBBC6BA6C5` |
+| Nativer Procedurebody, UTF-16/LF | `A17B7329F18035B305629DB9914535F3E55FC765E4B79E6A5069B5E3D6AD0BD8` |
+
+Das eigene Lab wurde vollständig entfernt: Container und Volume,
+zwei Cleanupschritte, null Fehler, CLEANUP_SUCCEEDED und REMOVED.
+Der eigene verschlüsselte temporäre Secretwert ist entfernt.
+Private Captures bleiben außerhalb von Git. Andere Labs und zuvor
+gesperrte Cleanup-Pfade wurden nicht berührt.
+
+Die fokussierte Evidenz belegt keine zusätzliche Histogrammabwesenheit,
+native Histogrammpermission, Timeout-, HIGH-/LOW-Finding- oder positive
+Partitionsvariation unter gemischter Sourcecollation. Integration175
+liefert den bestehenden synthetischen inkrementellen Nachweis im
+Frameworkscope; er wird nicht auf die gemischte Sourcefixture übertragen.
+Ältere native Engines und zusätzliche CL150/160-Läufe waren ohne
+konkretes Versionsrisiko nicht erforderlich und wurden nicht ausgeführt.
+COLL-001 bleibt partiell; RUNTIME-001 und die bestehenden Maturityflags
+bleiben unverändert. Vollständige statische Gates sind durch diesen
+Fokusnachweis noch nicht behauptet.
+
+Die vollständige statische Suite scheiterte zuerst ausschließlich am
+Rawbytevergleich des PLAN-Adapters. Erneute kanonische Generierung
+korrigierte seine Byte-/Zeilenendenrepräsentation bei logisch unverändertem
+Inhalt; sie erzeugte keinen inhaltlichen Git-Diff. Der gezielte
+Adaptervertrag bestand danach. Der anschließende vollständige Lauf von
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand alle 75 Prüfungen mit Exitcode 0. Der fehlgeschlagene erste Lauf
+wird nicht als PASS gewertet. Privacy prüfte 1.052 Dateien ohne Findings,
+Schreibstil 710 und Regex 342. Roadmap-, Maturity- und Partialitätsverträge,
+NOWAIT mit 998 Temp-Namen sowie beide Adapterverträge bestanden.
+Das unabhängige Produkt-, Test-, Installer-, Dokumentations-, Evidenz-
+und Statusreview hatte keine offenen Findings. Nach dem erfolgreichen
+Vollgate wurde ausschließlich dieser Gateabsatz ergänzt; SQL, Tests,
+Statusnotizen und die angegebenen Quellidentitäten blieben unverändert.

@@ -344,6 +344,10 @@ Die Procedure begrenzt ausgewählte Statistiken und wertet Histogrammverteilung,
 
 `FindingOrdinal`, Scope, `Severity`, `Confidence`, `FindingCode`, `MetricName`, `MetricValue`, `ThresholdValue`, `Evidence`, `EvidenceLimit`, `RecommendedNextCheck`.
 
+TABLE, CONSOLE, RAW und JSON verwenden dieselbe mit `@MaxZeilen` begrenzte Findingsmenge. NULL und 0 bedeuten unbegrenzt. Modulstatus und Findingszähler bewerten die vollständige Sammlung; Datenbankstatus bleibt unbegrenzt. RAW und JSON begrenzen außerdem die Distribution- und PartitionVariation-Zeilen. Die Begrenzung verändert weder die Kandidatenauswahl noch die Histogrammschritte.
+
+`FindingOrdinal` behält die ursprünglichen Werte der vollständigen Sammlung. Die gemeinsame Exportquelle besitzt keine Identity; RAW und positive CONSOLE melden für das Feld nativ `IsIdentity=False`. TABLE war bereits ohne Identity. Die übrigen Feldmetadaten und SchemaVersion 1 bleiben erhalten.
+
 ### Grenzen
 
 - Histogramm maximal 200 Schritte.

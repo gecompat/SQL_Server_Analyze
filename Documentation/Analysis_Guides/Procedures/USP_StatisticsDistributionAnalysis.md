@@ -31,7 +31,9 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `findings`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `findings`. TABLE und CONSOLE verwenden dieselbe begrenzte Findingsmenge wie RAW und JSON. RAW und JSON enthalten zusätzlich Modul- und Datenbankstatus sowie Histogramm- und Partitionskennzahlen; JSON besitzt kein separates Warnings-Array. Status und Scope sind vor der Bewertung der Findings zu lesen. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+
+Die gemeinsame Exportquelle enthält keine Identity-Spalte. `FindingOrdinal` übernimmt die ursprünglichen Werte aus der vollständigen Findingsammlung. RAW und positive CONSOLE melden für dieses Feld deshalb nativ `IsIdentity=False`; TABLE war bereits ohne Identity. Die übrigen Feldmetadaten und SchemaVersion 1 bleiben erhalten.
 
 ## Eine Zeile bedeutet
 
@@ -71,7 +73,7 @@ Für `USP_StatisticsDistributionAnalysis` gilt zusätzlich: **keine Zeile** bede
 | Haupttreiber | Zahl gewählter Datenbanken/Objekte, ausgewählter Statistiken und Partitionen. Für jede Kandidatenstatistik werden die vorhandenen Histogramm-Steps – höchstens 200 je Histogramm – gelesen und numerisch verdichtet. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_StatisticsDistributionAnalysis ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU und Statistik-/Histogramm-Metadaten-I/O sowie Arbeitsspeicher für höchstens 200 Steps je ausgewähltem Histogramm; keine Segment-, Dictionary-, Benutzerdaten- oder XML-Ausgabe. |
-| Begrenzungswirkung | Objekt-/Statistikfilter und `@MaxVerteilungsStatistiken` begrenzen Kandidaten vor dem Histogrammzugriff. `@MaxZeilen` wirkt erst auf fertige Findings und begrenzt nicht die Histogrammschritte. |
+| Begrenzungswirkung | Objekt-/Statistikfilter und `@MaxVerteilungsStatistiken` begrenzen Kandidaten vor dem Histogrammzugriff. `@MaxZeilen` begrenzt die fertigen Findings in allen vier Ausgaben sowie die Histogramm- und Partitionszeilen in RAW und JSON. NULL und 0 sind unbegrenzt. Datenbankstatus, vollständige Zähler und Modulstatus bleiben vom Ausgabelimit unabhängig; Histogrammschritte werden dadurch nicht begrenzt. |
 | Locking und Nebenwirkungen | Read-only mit Katalog-/Strukturzugriffen; parallele DDL-, Load- oder Wartungsaktivität kann kurz kollidieren und inkonsistente Momentbilder erzeugen. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `CATALOG_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Eine ExampleDb, ein ExampleObject und wenige Statistiken; erst danach weitere Histogramme oder Partitionen aufnehmen. |

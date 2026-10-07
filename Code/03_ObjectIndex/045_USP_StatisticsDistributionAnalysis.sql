@@ -61,6 +61,23 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_StatisticsDistributionAnalysis]
 AS
 BEGIN
     SET NOCOUNT ON;
+    CREATE TABLE [#StatisticsDistributionAnalysis_FindingsExport]
+    (
+          [FindingOrdinal] bigint NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SchemaName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ObjectName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [StatisticsName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [Severity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [Confidence] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [FindingCode] varchar(120) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricName] varchar(80) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [MetricValue] decimal(38,4) NULL
+        , [ThresholdValue] decimal(38,4) NULL
+        , [Evidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [RecommendedNextCheck] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+    );
     SET LOCK_TIMEOUT 0;
     SET @Json = NULL;
 
@@ -80,6 +97,7 @@ BEGIN
     DECLARE @PrintMessage nvarchar(2048);
     DECLARE @Limit bigint=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0
                                THEN CONVERT(bigint,9223372036854775807)
+                               WHEN @MaxZeilen<0 THEN CONVERT(bigint,0)
                                ELSE CONVERT(bigint,@MaxZeilen) END;
     DECLARE @CandidatePoolRows int=CASE WHEN @MaxVerteilungsStatistiken BETWEEN 1 AND 250
                                         THEN @MaxVerteilungsStatistiken*4 ELSE 1000 END;
@@ -529,6 +547,10 @@ WHERE [c].[DatabaseName]=@pDbName;';
         INSERT [#StatisticsDistributionAnalysis_DistributionDatabaseStatus]
         VALUES(NULL,@StatusCode,1,0,0,N'CATALOG_DEEP und Statistik-Metadatensichtbarkeit',@ErrorNumber,@ErrorMessage,N'Keine Verteilungsanalyse ausgeführt.');
 
+    INSERT [#StatisticsDistributionAnalysis_FindingsExport]
+    SELECT TOP (@Limit) * FROM [#StatisticsDistributionAnalysis_Findings]
+    ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal];
+
     SELECT @StatusCodeOut=@StatusCode,@IsPartialOut=@IsPartial,
            @ErrorNumberOut=@ErrorNumber,@ErrorMessageOut=@ErrorMessage;
 
@@ -550,7 +572,7 @@ WHERE [c].[DatabaseName]=@pDbName;';
         DECLARE @DatabaseJson nvarchar(max)=(SELECT * FROM [#StatisticsDistributionAnalysis_DistributionDatabaseStatus] ORDER BY [DatabaseName] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @DistributionJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#StatisticsDistributionAnalysis_Distribution] ORDER BY [DatabaseName],[CandidateOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         DECLARE @PartitionJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#StatisticsDistributionAnalysis_PartitionVariation] ORDER BY [ModificationSpreadPercentPoints] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName] FOR JSON PATH,INCLUDE_NULL_VALUES);
-        DECLARE @FindingsJson nvarchar(max)=(SELECT TOP (@Limit) * FROM [#StatisticsDistributionAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
+        DECLARE @FindingsJson nvarchar(max)=(SELECT * FROM [#StatisticsDistributionAnalysis_FindingsExport] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES);
         SET @Json=CONCAT(N'{"meta":',COALESCE(@MetaJson,N'{}'),N',"databaseStatus":',COALESCE(@DatabaseJson,N'[]'),
                          N',"distribution":',COALESCE(@DistributionJson,N'[]'),N',"partitionVariation":',COALESCE(@PartitionJson,N'[]'),
                          N',"findings":',COALESCE(@FindingsJson,N'[]'),N'}');
@@ -565,7 +587,7 @@ WHERE [c].[DatabaseName]=@pDbName;';
         SELECT * FROM [#StatisticsDistributionAnalysis_DistributionDatabaseStatus] ORDER BY [DatabaseName];
         SELECT TOP (@Limit) * FROM [#StatisticsDistributionAnalysis_Distribution] ORDER BY [DatabaseName],[CandidateOrdinal];
         SELECT TOP (@Limit) * FROM [#StatisticsDistributionAnalysis_PartitionVariation] ORDER BY [ModificationSpreadPercentPoints] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
-        SELECT TOP (@Limit) * FROM [#StatisticsDistributionAnalysis_Findings] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal];
+        SELECT * FROM [#StatisticsDistributionAnalysis_FindingsExport] ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal];
     END
     ELSE IF @OutputMode='CONSOLE'
     BEGIN
@@ -577,20 +599,20 @@ WHERE [c].[DatabaseName]=@pDbName;';
         SELECT TOP (@Limit) N'Histogrammverteilung' [Ergebnis],[d].* FROM [#StatisticsDistributionAnalysis_Distribution] [d] ORDER BY [DatabaseName],[CandidateOrdinal];
         SELECT TOP (@Limit) N'Inkrementelle Partitionsvariation' [Ergebnis],[p].* FROM [#StatisticsDistributionAnalysis_PartitionVariation] [p]
         ORDER BY [ModificationSpreadPercentPoints] DESC,[DatabaseName],[SchemaName],[ObjectName],[StatisticsName];
-        SELECT TOP (@Limit) N'Statistikverteilungsbefund' [Ergebnis],[f].* FROM [#StatisticsDistributionAnalysis_Findings] [f]
+        SELECT N'Statistikverteilungsbefund' [Ergebnis],[f].* FROM [#StatisticsDistributionAnalysis_FindingsExport] [f]
         ORDER BY CASE [Severity] WHEN 'HIGH' THEN 1 WHEN 'MEDIUM' THEN 2 WHEN 'LOW' THEN 3 ELSE 4 END,[FindingOrdinal];
     END;
     IF @ConsoleResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalEmitConsoleResult]
-              @SourceTable=N'#StatisticsDistributionAnalysis_Findings'
+              @SourceTable=N'#StatisticsDistributionAnalysis_FindingsExport'
             , @ResultLabel=N'StatisticsDistributionAnalysis'
             , @EmptyMessage=N'Keine fachlichen Ergebnisse';
     END;
     IF @TableResultRequested = 1
     BEGIN
         EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#StatisticsDistributionAnalysis_Findings'
+              @SourceTable = N'#StatisticsDistributionAnalysis_FindingsExport'
             , @TargetTable=@TableTarget
             , @ThrowOnError = 1;
     END;
