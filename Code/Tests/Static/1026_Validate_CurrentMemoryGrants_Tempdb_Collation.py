@@ -1,46 +1,59 @@
 #!/usr/bin/env python3
-"""Validate explicit temp-table collation in Current Memory Grants."""
+"""Validate the literal Memory Grants ABI, late shared cap, and snapshot boundaries."""
 from __future__ import annotations
-
 import argparse
 import re
 from pathlib import Path
-
-PROCEDURE_PATH = Path("Code/02_CurrentState/060_USP_CurrentMemoryGrants.sql")
-COLLATION = "COLLATE SQL_Latin1_General_CP1_CS_AS"
-TABLE_REQUIREMENTS = {
-    "#CurrentMemoryGrants_Result": 9,
-    "#CurrentMemoryGrants_Warnings": 2,
-    "#CurrentMemoryGrants_SourceSessions": 3,
-    "#CurrentMemoryGrants_SourceRequests": 2,
-    "#CurrentMemoryGrants_SourceWorkloadGroups": 1,
-    "#CurrentMemoryGrants_SourceResourcePools": 1,
-    "#CurrentMemoryGrants_SourceSqlText": 1,
-}
-
-
-def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--repository-root", type=Path)
-    parser.add_argument("--self-test", action="store_true")
-    args = parser.parse_args()
-    if args.self_test:
-        print("Current Memory Grants tempdb-collation validator self-test passed.")
-        return 0
-    if args.repository_root is None:
-        parser.error("--repository-root is required unless --self-test is used")
-    source = (args.repository_root / PROCEDURE_PATH).read_text(encoding="utf-8-sig")
-    failures = []
-    for name, required_count in TABLE_REQUIREMENTS.items():
-        match = re.search(rf"CREATE TABLE \[{re.escape(name)}\](.*?);", source, re.DOTALL)
-        if match is None or match.group(1).count(COLLATION) < required_count:
-            failures.append(name)
-    if failures:
-        print("Current Memory Grants tempdb-collation validation failed: " + ", ".join(failures))
-        return 1
-    print("Current Memory Grants tempdb-collation validation passed.")
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+PROCEDURE_PATH=Path("Code/02_CurrentState/060_USP_CurrentMemoryGrants.sql")
+TABLES={'#CurrentMemoryGrants_SessionIdFilter': [('SessionId', 'smallint NOT NULL PRIMARY KEY')], '#CurrentMemoryGrants_Result': [('SessionId', 'smallint NULL'), ('RequestId', 'int NULL'), ('SchedulerId', 'int NULL'), ('Dop', 'smallint NULL'), ('RequestTime', 'datetime NULL'), ('GrantTime', 'datetime NULL'), ('WaitTimeMs', 'bigint NULL'), ('IsWaiting', 'bit NOT NULL'), ('IsSmall', 'bit NULL'), ('RequestedMemoryMb', 'decimal(19,2) NULL'), ('RequiredMemoryMb', 'decimal(19,2) NULL'), ('GrantedMemoryMb', 'decimal(19,2) NULL'), ('UsedMemoryMb', 'decimal(19,2) NULL'), ('MaxUsedMemoryMb', 'decimal(19,2) NULL'), ('IdealMemoryMb', 'decimal(19,2) NULL'), ('GroupId', 'int NULL'), ('WorkloadGroupName', 'sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('PoolId', 'int NULL'), ('PoolName', 'sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('ResourceSemaphoreId', 'smallint NULL'), ('RequestMaxMemoryGrantPercent', 'decimal(9,4) NULL'), ('PoolMaxWorkspaceMemoryMb', 'decimal(19,2) NULL'), ('PoolTargetWorkspaceMemoryMb', 'decimal(19,2) NULL'), ('PoolUsedWorkspaceMemoryMb', 'decimal(19,2) NULL'), ('ConfiguredRequestMaxGrantMemoryMb', 'decimal(19,2) NULL'), ('TargetRequestMaxGrantMemoryMb', 'decimal(19,2) NULL'), ('HistoricalMaxRequestGrantMemoryMb', 'decimal(19,2) NULL'), ('RequestedOfRequestMaxPercent', 'decimal(9,2) NULL'), ('GrantedOfRequestMaxPercent', 'decimal(9,2) NULL'), ('UsedOfRequestMaxPercent', 'decimal(9,2) NULL'), ('MaxUsedOfRequestMaxPercent', 'decimal(9,2) NULL'), ('IdealOfRequestMaxPercent', 'decimal(9,2) NULL'), ('RequestedOfTargetMaxPercent', 'decimal(9,2) NULL'), ('GrantedOfTargetMaxPercent', 'decimal(9,2) NULL'), ('UsedOfGrantedPercent', 'decimal(9,2) NULL'), ('MaxUsedOfGrantedPercent', 'decimal(9,2) NULL'), ('SemaphoreTargetMemoryMb', 'decimal(19,2) NULL'), ('SemaphoreMaxTargetMemoryMb', 'decimal(19,2) NULL'), ('SemaphoreTotalMemoryMb', 'decimal(19,2) NULL'), ('SemaphoreAvailableMemoryMb', 'decimal(19,2) NULL'), ('SemaphoreGrantedMemoryMb', 'decimal(19,2) NULL'), ('SemaphoreUsedMemoryMb', 'decimal(19,2) NULL'), ('SemaphoreGranteeCount', 'int NULL'), ('SemaphoreWaiterCount', 'int NULL'), ('ReservedWorkerCount', 'bigint NULL'), ('UsedWorkerCount', 'bigint NULL'), ('MaxUsedWorkerCount', 'bigint NULL'), ('QueueId', 'smallint NULL'), ('WaitOrder', 'int NULL'), ('LoginName', 'nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('HostName', 'nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('ProgramName', 'nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('DatabaseId', 'smallint NULL'), ('DatabaseName', 'sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('RequestStatus', 'nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('Command', 'nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('ElapsedMs', 'int NULL'), ('CpuMs', 'int NULL'), ('LogicalReads', 'bigint NULL'), ('CurrentStatementCharacters', 'bigint NULL'), ('CurrentStatementBytes', 'bigint NULL'), ('CurrentStatementIsTruncated', 'bit NOT NULL DEFAULT(0)'), ('CurrentStatement', 'nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL')], '#CurrentMemoryGrants_Warnings': [('WarningCode', 'varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'), ('WarningMessage', 'nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL')], '#CurrentMemoryGrants_SourceGrants': [('session_id', 'smallint NOT NULL'), ('request_id', 'int NOT NULL'), ('scheduler_id', 'int NULL'), ('dop', 'smallint NULL'), ('request_time', 'datetime NULL'), ('grant_time', 'datetime NULL'), ('wait_time_ms', 'bigint NULL'), ('requested_memory_kb', 'bigint NOT NULL'), ('required_memory_kb', 'bigint NULL'), ('granted_memory_kb', 'bigint NULL'), ('used_memory_kb', 'bigint NULL'), ('max_used_memory_kb', 'bigint NULL'), ('ideal_memory_kb', 'bigint NULL'), ('resource_semaphore_id', 'smallint NULL'), ('queue_id', 'smallint NULL'), ('wait_order', 'int NULL'), ('is_small', 'bit NULL'), ('sql_handle', 'varbinary(64) NULL'), ('group_id', 'int NULL'), ('pool_id', 'int NULL'), ('reserved_worker_count', 'bigint NULL'), ('used_worker_count', 'bigint NULL'), ('max_used_worker_count', 'bigint NULL')], '#CurrentMemoryGrants_SourceSessions': [('session_id', 'smallint NOT NULL PRIMARY KEY'), ('login_name', 'nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'), ('host_name', 'nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL'), ('program_name', 'nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL')], '#CurrentMemoryGrants_SourceRequests': [('session_id', 'smallint NOT NULL'), ('request_id', 'int NOT NULL'), ('database_id', 'smallint NOT NULL'), ('status', 'nvarchar(30) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'), ('command', 'nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'), ('total_elapsed_time', 'int NOT NULL'), ('cpu_time', 'int NOT NULL'), ('logical_reads', 'bigint NOT NULL'), ('statement_start_offset', 'int NULL'), ('statement_end_offset', 'int NULL')], '#CurrentMemoryGrants_SourceWorkloadGroups': [('group_id', 'int NOT NULL PRIMARY KEY'), ('name', 'sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'), ('pool_id', 'int NOT NULL'), ('request_max_memory_grant_percent_numeric', 'decimal(9,4) NULL'), ('max_request_grant_memory_kb', 'bigint NULL')], '#CurrentMemoryGrants_SourceResourcePools': [('pool_id', 'int NOT NULL PRIMARY KEY'), ('name', 'sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL'), ('max_memory_kb', 'bigint NULL'), ('target_memory_kb', 'bigint NULL'), ('used_memory_kb', 'bigint NULL')], '#CurrentMemoryGrants_SourceSemaphores': [('pool_id', 'int NOT NULL'), ('resource_semaphore_id', 'smallint NOT NULL'), ('target_memory_kb', 'bigint NOT NULL'), ('max_target_memory_kb', 'bigint NULL'), ('total_memory_kb', 'bigint NOT NULL'), ('available_memory_kb', 'bigint NOT NULL'), ('granted_memory_kb', 'bigint NOT NULL'), ('used_memory_kb', 'bigint NOT NULL'), ('grantee_count', 'int NOT NULL'), ('waiter_count', 'int NOT NULL')], '#CurrentMemoryGrants_SourceSqlText': [('SqlHandle', 'varbinary(64) NOT NULL PRIMARY KEY'), ('Text', 'nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL')]}
+TOKEN_COUNTS={'Version      : 3.0.0': 1, 'Stand        : 2026-07-23': 1, 'SET LOCK_TIMEOUT 0;': 1, '@CandidateMaxZeilen': 2, 'THEN CONVERT(bigint, @MaxZeilen) + 1': 1, '@MaxZeilen > 0 AND @MaxZeilen < 2147483647': 1, '@MaxZeilen IS NULL OR @MaxZeilen = 0': 2, '@MaxZeilen < 0': 1, '@MaxSqlTextZeichen < 0': 1, 'COALESCE(@MinRequestedMb, 0) < 0': 1, 'COALESCE(@MinGrantedMb, 0) < 0': 1, '@TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable]': 1, "@ResultName=N'memoryGrants'": 1, '@ThrowOnError=1': 1, '@ParentCurrentStateSnapshotId IS NOT NULL': 2, '[OwnerSessionId]=CONVERT(smallint,@@SPID)': 1, '[ContractVersion]=2': 1, 'THROW 51020': 1, "'INVALID_PARENT_SNAPSHOT'": 1, '[SourceCode] IN': 1, '@IsPartial=CONVERT(bit,MAX(CONVERT(int,[IsPartial])))': 1, "IF @IsPartial=1 SET @StatusCode='AVAILABLE_LIMITED';": 1, '@MitSqlText=1': 4, 'GROUP BY [sql_handle]': 1, 'OUTER APPLY [sys].[dm_exec_sql_text]([h].[SqlHandle])': 1, 'OUTER APPLY [monitor].[TVF_StatementText]': 1, '@TruncatedValueCount=@TruncatedValueCount OUTPUT': 1, 'EXEC [monitor].[InternalEmitTruncationWarning]': 1, 'SELECT @CandidateRowCount = COUNT_BIG(*) FROM [#CurrentMemoryGrants_Result];': 1, '@CandidateRowCount > @EffectiveMaxZeilen': 2, 'THEN @EffectiveMaxZeilen ELSE @CandidateRowCount END': 1, 'SELECT TOP (@CandidateMaxZeilen)': 1, 'SELECT TOP (@EffectiveMaxZeilen)': 3, 'FOR JSON PATH, INCLUDE_NULL_VALUES': 2, '2 AS [schemaVersion]': 1, '@RowCount AS [returnedRows]': 1, '@HasMoreRows AS [hasMoreRows]': 1, '@HasMoreRows AS [resultLimited]': 1, '@HasMoreRows AS [ResultLimited]': 1, '@EvidenceSnapshotId AS [EvidenceSnapshotId]': 1, "@SourceTable=N'#CurrentMemoryGrants_Result'": 2, "@SourceTable = N'#CurrentMemoryGrants_Result'": 1, '[g].[requested_memory_kb] >= @MinRequestedMb * 1024.0': 1, '[g].[granted_memory_kb] >= @MinGrantedMb * 1024.0': 1, '@NurWartende = 0 OR [g].[grant_time] IS NULL': 1, '@AktuelleSessionEinbeziehen = 1 OR [g].[session_id] <> @@SPID': 1, '[PoolId]': 2, '[RequestMaxMemoryGrantPercent]': 5, 'NULLIF([calc].[ConfiguredRequestMaxGrantMemoryKb], 0)': 5, 'NULLIF([calc].[TargetRequestMaxGrantMemoryKb], 0)': 2, 'NULLIF([g].[granted_memory_kb], 0)': 2, '#CurrentOverview_CurrentStateSnapshot_MemoryGrants': 2, '#CurrentOverview_CurrentStateSnapshot_ResourceSemaphores': 2, '#CurrentOverview_CurrentStateSnapshot_Sessions': 2, '#CurrentOverview_CurrentStateSnapshot_Requests': 2, '#CurrentOverview_CurrentStateSnapshot_WorkloadGroups': 2, '#CurrentOverview_CurrentStateSnapshot_ResourcePools': 2, '#CurrentOverview_CurrentStateSnapshot_SqlText': 2}
+SELECTION=re.compile(r";WITH\s+\[Selection\]\s+AS\s*\(\s*SELECT\s+ROW_NUMBER\(\)\s+OVER\s*\(ORDER BY\s+\[IsWaiting\]\s+DESC,\s*\[RequestedMemoryMb\]\s+DESC,\s*\[WaitTimeMs\]\s+DESC,\s*\[SessionId\],\s*\[RequestId\]\)\s+AS\s+\[SelectionOrdinal\]\s+FROM\s+\[#CurrentMemoryGrants_Result\]\s*\)\s*DELETE FROM\s+\[Selection\]\s+WHERE\s+\[SelectionOrdinal\]\s*>\s*@EffectiveMaxZeilen\s*;",re.S)
+def validate(source:str)->list[str]:
+ errors=[]
+ found=re.findall(r"CREATE TABLE \[(#[^]]+)\]",source)
+ if found!=list(TABLES):errors.append("TABLE_ORDER")
+ for name,fields in TABLES.items():
+  m=re.search(r"CREATE TABLE \["+re.escape(name)+r"\]\s*\((.*?)\n    \);",source,re.S)
+  actual=[] if m is None else [(n,re.sub(r"\s+"," ",t).strip().rstrip(",")) for n,t in re.findall(r"^\s*,?\s*\[([^]]+)\]\s+(.+)$",m[1],re.M)]
+  if actual!=fields:errors.append("DDL:"+name)
+ for token,count in TOKEN_COUNTS.items():
+  if source.count(token)!=count:errors.append("BOUNDARY:"+token)
+ m=SELECTION.search(source)
+ if m is None:errors.append("SHARED_SELECTION")
+ else:
+  positions=[source.find("EXEC [monitor].[InternalProjectUnicodeTextColumn]"),source.find("EXEC [monitor].[InternalEmitTruncationWarning]"),source.find("SELECT @CandidateRowCount"),source.find("SET @HasMoreRows"),source.find("SET @RowCount"),m.start(),source.find("SET @Detail = CASE WHEN @RowCount"),source.find("IF @JsonErzeugen = 1")]
+  if any(p<0 for p in positions) or positions!=sorted(positions):errors.append("LATE_SELECTION_ORDER")
+  if not(source.find("IF @StatusCode = 'AVAILABLE'\n    BEGIN TRY")<m.start()<source.find("    END TRY",m.start())):errors.append("SELECTION_GATE")
+ params=re.findall(r"^\s*,?\s*(@\w+)\s+",source[source.index("CREATE OR ALTER"):source.index("\nAS\n")],re.M)
+ if params!=['@SessionIds','@AktuelleSessionEinbeziehen','@NurWartende','@MinRequestedMb','@MinGrantedMb','@MitSqlText','@MaxSqlTextZeichen','@MaxZeilen','@ResultSetArt','@ResultTablesJson','@JsonErzeugen','@Json','@PrintMeldungen','@Hilfe','@ParentCurrentStateSnapshotId']:errors.append("PARAMETERS")
+ return errors
+def self_test(source:str)->int:
+ assert not validate(source),validate(source)
+ mutations=[]
+ for table,fields in TABLES.items():
+  start=source.index("CREATE TABLE ["+table+"]");end=source.index("\n    );",start)
+  block=source[start:end]
+  for name,definition in fields:
+   original=re.search(r"\["+re.escape(name)+r"\]\s+[^\n]+",block)[0]
+   replacements=[original.replace("["+name+"]","[ExampleWrong]",1),original.replace(definition.split()[0],"sql_variant",1)]
+   if 'COLLATE ' in original:replacements.append(original.replace('COLLATE SQL_Latin1_General_CP1_CS_AS','COLLATE Latin1_General_100_CI_AS'))
+   if 'NOT NULL' in original:replacements.append(original.replace('NOT NULL','NULL'))
+   else:replacements.append(re.sub(r'\bNULL\b','NOT NULL',original,count=1))
+   for replacement in replacements:mutations.append(source[:start]+block.replace(original,replacement,1)+source[end:])
+ for token in TOKEN_COUNTS:mutations.append(source.replace(token,'EXAMPLE_REMOVED',1))
+ selection=SELECTION.search(source)[0]
+ for old,new in [('DESC','ASC'),('> @EffectiveMaxZeilen','>= @EffectiveMaxZeilen'),('[SessionId], [RequestId]','[RequestId], [SessionId]')]:
+  mutations.append(source.replace(selection,selection.replace(old,new,1),1))
+ mutations.append(source.replace(selection,'',1))
+ mutations.append(source.replace(selection,'',1).replace('SELECT @CandidateRowCount',selection+'\n        SELECT @CandidateRowCount',1))
+ for i,mutation in enumerate(mutations):assert validate(mutation),f'undetected mutation {i}'
+ return len(mutations)
+def main()->int:
+ parser=argparse.ArgumentParser();parser.add_argument('--repository-root',type=Path,default=Path('.'));parser.add_argument('--self-test',action='store_true');args=parser.parse_args()
+ source=(args.repository_root/PROCEDURE_PATH).read_text(encoding='utf-8-sig')
+ if args.self_test:
+  n=self_test(source);print(f'Current Memory Grants self-test passed: mutations={n} findings=0');return 0
+ errors=validate(source)
+ if errors:print('Current Memory Grants contract failed: '+', '.join(errors));return 1
+ print('Current Memory Grants contract passed: tables=10 fields=125 text_collations=19 public_fields=63 findings=0');return 0
+if __name__=='__main__':raise SystemExit(main())

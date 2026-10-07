@@ -4628,3 +4628,120 @@ Eingefrorene normalisierte SHA256-Werte: Source010
 `92A188803DCECF928FF6FD6673D3E74E6FCCA48558BAC522B24B618F71E33F53`, Common182
 `F44B9E20C4C493CF2F304A1147B47BF3CF2495641EE0A18632B6417F56BB80CE`, Static1029
 `ADA0E754C3611BA22364CF11E51A4DE0B8CBE726E6DF9EFEB5B0448D6549E6B4`.
+
+
+## CurrentMemoryGrants: gemeinsames Zeilenlimit und vollständiger Feldvertrag
+
+Der begrenzte Nachweis vom 7. Oktober 2026 verwendet ein eigenes gemischtes
+SQL-Server-2025-Dockerlab mit gemessenem Build 17.0.4075.5 und CL170.
+Server und tempdb verwenden Latin1_General_100_CS_AS, das Framework
+SQL_Latin1_General_CP1_CS_AS. Eine eigene Unicode-CI-Quelle auf CL170 enthält
+50.000 synthetische Sortzeilen. Drei eigene Sortrequests halten tatsächlich
+gewährte Grants durch zurückgehaltenen Clientkonsum sichtbar. Eine vorherige
+Sperrprobe wartet bereits vor Grantzuteilung und liefert keinen positiven
+Grantnachweis; die erste kleinere Resultmenge wird vollständig gepuffert.
+Der begrenzte größere Clientfall liefert die drei positiven Grants.
+
+USP_CurrentMemoryGrants besitzt zehn lokale Tabellen mit 125 Feldern und
+19 expliziten Textcollations. Der gemeinsame Fachvertrag hat 63 Felder,
+neun Textcollations, zwei NOT-NULL-Felder und keine Identity. RAW enthält
+zwölf Statusfelder und 63 Fachfelder, TABLE ebenfalls 63 Fachfelder;
+aktive CONSOLE besitzt 64 Felder einschließlich Label, leere CONSOLE drei.
+JSON erhält drei Hauptschlüssel, 15 Metafelder und sämtliche NULL-Properties.
+Die 15 Parameter, Sourceversion 3.0.0, SchemaVersion 2 und Parentvertrag 2
+bleiben unverändert. Es entsteht kein zusätzlicher Export oder Snapshotowner.
+
+Das unveränderte Original hält bis zu Limit plus eins vor. Bei Limits 1/2
+geben TABLE und CONSOLE jeweils 2/3 Zeilen gegenüber 1/2 RAW-/JSON-Zeilen aus.
+Sieben Sourcezeilen schneiden die gemeinsame Tabelle nach IsWaiting DESC,
+RequestedMemoryMb DESC, WaitTimeMs DESC, SessionId und RequestId zu.
+Textprojektion, Trunkierungswarning, CandidateRowCount, RowCount und
+HasMoreRows bleiben davor. Die bestehende Kandidatenordnung nach rohen KB
+und die anschließende Ausgabeordnung nach gerundeten MB bleiben erhalten.
+Negative Zeilen- und Textlimits liefern bereits kontrolliert INVALID_PARAMETER.
+
+Eine native Erfassung liefert drei Grants, Sessions und Requests sowie
+Workload-Gruppen, Pools, Semaphores und SQL-Text. Der private Client friert
+diese nacheinander erfassten Quellen für wiederholbare Parentvergleiche ein;
+die Erfassung ist kein atomarer Serverzustand. Je vollständiger Original- beziehungsweise Finalsuite ergeben 24 Fälle
+26 Batches und 49 Grids. Ein unabhängiges 63-Feld-Orakel berechnet
+Größen und Prozentwerte aus ungerundeten KB, korreliert sämtliche Identitäten
+und extrahiert Text mit UTF-16-Offsets. Alle Werte und nativen Schemafacetten
+bleiben erhalten; die vier Original-Limitabweichungen fehlen im Finalstand.
+Ein früherer privater LIKE-Filter ließ eigene Sessionzeilen unter der
+Frameworkcollation aus. Exakte Session-IDs korrigieren ausschließlich den
+Beobachter; Original und Final werden mit allen drei Sessionidentitäten
+erneut verglichen. Frühere Captures bleiben getrennte Diagnoseunterlagen.
+
+Je vollständiger synthetischer Original- beziehungsweise Finalsuite ergeben
+60 Fälle 62 Batches und 121 Grids. Sie prüfen wartende und gewährte Grants, KB 2050/2051 mit gleicher
+MB-Rundung und entgegengesetzter Wartezeit, NULL-/Nullnenner, fehlende
+Joinquellen, Mindestfilter, Sessionlisten und die bestehenden NULL-Flags.
+Weitere 60 Finalfälle prüfen einen kontrollierten Unicode-Text mit
+Emoji-Grenze bei 17/18 Zeichen und abschließenden Leerzeichen. Diese Werte
+sind synthetisch und werden nicht als tatsächlich wartende Nativegrants
+bezeichnet. Alle vier Ausgabeformen erhalten die vollständige 63-Feld-Parität.
+
+Zwölf Zusatzfälle bestehen in 14 Batches und 28 Grids. Zwei tatsächliche
+CurrentOverview-Aufrufe liefern begrenzte positive Childmengen auf Ordinal 60
+mit vollständiger TABLE-/Child-JSON-Parität und gemeinsamer Snapshot-ID.
+Drei ungültige Parentidentitäten liefern 51020; fünf ungültige Sessionlisten
+liefern INVALID_PARAMETER. SQL_TEXT-Partialität bleibt auch bei deaktiviertem
+Text erhalten. Fehlen sämtliche SourceStatuszeilen, bleibt die bestehende
+NULL-Partialität erhalten. Caller-LOCK_TIMEOUT 137 wird wiederhergestellt.
+
+Common183 besteht 14 allgemeine und 18 native TABLE-/JSON-Fälle, drei Consumer,
+sechs Mappingablehnungen, drei leere SQL-CONSOLE-Captures und drei direkte
+positive CONSOLE-Aufrufe. Der positive Block liest nur die ausdrücklich über
+SESSION_CONTEXT vorbereiteten drei eigenen Sessions. Ein erster Testlauf
+scheitert am BIN2-/SC-Konflikt zweier Text-CASE-Arme; deren explizite
+Frameworkcollation repariert ausschließlich den Test. Ein weiterer Lauf
+scheitert an der Vorher-/Nachher-Klammer globaler Semaphorewerte. Private
+Diagnoseausgaben bei aktiven Assertions zeigen vorübergehende Beobachtergrants.
+Neun ausdrücklich benannte globale Pool-/Semaphorezahlen besitzen deshalb
+keinen Cross-call-Werte- oder Klammernachweis. NULL-/Typform und numerische
+Konvertierbarkeit bleiben geprüft; die übrigen 54 Felder behalten exakte
+nichtnumerische Vergleiche beziehungsweise numerische Messklammern.
+Alle 63 TABLE-/JSON-Felder werden innerhalb desselben Aufrufs verglichen.
+Die vollständigen privaten eingefrorenen Orakel bleiben davon unabhängig.
+Ein zusätzlicher Client bestätigt alle 64 CONSOLE-Facetten gegenüber dem
+Original und sämtliche 63 JSON-Fachwerte bei 1/2/3 ausgegebenen Zeilen.
+
+Zehn impact-basierte Testdateien bestehen auf CL170 in 30 Batches.
+Alle 75 statischen Prüfungen bestehen am stabilen funktionalen Stand;
+Static1026 besteht 457 echte Feld-, Collation-, Grenz- und Auswahlmutationen.
+Der unabhängige funktionale Review besitzt keine offenen Befunde.
+
+Vor und nach den Prüfungen bleiben Datenbankidentität, Optionen und vier
+Aggregate der 50.000 eigenen Tabellenzeilen exakt gleich. Drei Grantzeilen
+behalten 17 stabile native Felder sowie die drei Sessionidentitätsfelder.
+Laufzeit- und globale Speicherwerte bleiben veränderlich. Der Parentcollector
+enthält einen getrennten offenen Fehler: SESSIONS meldet CapturedRowCount 0
+trotz mindestens drei tatsächlich erfasster eigener Sessions, weil der
+bestehende Collector an dieser Stelle WorkloadGroups zählt. Dieser Slice
+ändert den Collector nicht; dessen Quellenzähler benötigen einen eigenen
+abgegrenzten Vertrag und eine gezielte Reparatur.
+
+Nach identitätsgeprüftem Fixture-Cleanup besteht Common183 in drei Batches
+und drei Grids mit 14 allgemeinen Fällen; native Fälle melden NOT_EXECUTED.
+Die eigenen Requests, Quelle, Container und Volume sind entfernt;
+Lab-Cleanup besteht in zwei Schritten ohne Fehler, der temporäre Secretwert
+ist entfernt. Private Captures und Runtimeidentitäten bleiben außerhalb Git.
+
+OPS-005 ist aus 166 kanonischen Quellen synchronisiert. Sein Update und
+beide PLAN-Artefakte bleiben normalisiert unverändert. Eine Inventarzeile
+ergänzt ausschließlich die neun bereits vorhandenen Textcollations.
+Die Dokumentation präzisiert die drei tatsächlichen Requestlimitfelder und
+den Textzugriff auf alle Grant-Handles. N+1 begrenzt materialisierte Statements
+und die anschließende Unicodeprojektion; eine entsprechende physische
+TVF-Auswertungsgrenze wird ohne Plannachweis nicht behauptet.
+Die abschließenden begrenzten Dokumentations-, Schreibstil- und Privacyprüfungen
+bestehen am Lieferstand. Echte wartende Grants, konfigurierter Resource Governor,
+aktive Grantzuteilung, hohe Last, allgemeine Rundungsgrenzen, Berechtigungen,
+Timeout, ältere native Engines und CL150/160 bleiben unbelegt. COLL-001 bleibt
+partiell; Registry, RUNTIME-001 und bestehende Maturityflags bleiben unverändert.
+
+Eingefrorene normalisierte SHA256-Werte: Source060
+`81DBCE2295A1A2D8C2738A10187971938B6F1F335AD94E97639397FC6756D010`, Common183
+`EAA263C8D0241F84792234E9B7006ED8787160E385B15C0B5DDEC6E0121164AB`, Static1026
+`D51522702A5B64D3026A7B0801059EEB96292F952121CE8AFAF4BC5CE182F3DB`.

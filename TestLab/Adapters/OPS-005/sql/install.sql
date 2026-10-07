@@ -14617,6 +14617,13 @@ BEGIN
         SET @HasMoreRows = CONVERT(bit, CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen THEN 1 ELSE 0 END);
         SET @RowCount = CASE WHEN @CandidateRowCount > @EffectiveMaxZeilen
                              THEN @EffectiveMaxZeilen ELSE @CandidateRowCount END;
+        ;WITH [Selection] AS
+        (
+            SELECT ROW_NUMBER() OVER (ORDER BY [IsWaiting] DESC, [RequestedMemoryMb] DESC,
+                [WaitTimeMs] DESC, [SessionId], [RequestId]) AS [SelectionOrdinal]
+            FROM [#CurrentMemoryGrants_Result]
+        )
+        DELETE FROM [Selection] WHERE [SelectionOrdinal] > @EffectiveMaxZeilen;
         SET @Detail = CASE WHEN @RowCount = 0
                            THEN N'Aktuell keine passende Memory-Grant-Anforderung sichtbar.'
                            ELSE N'Memory Grants einschließlich Resource-Governor- und Semaphore-Kontext erfolgreich gelesen.' END;
