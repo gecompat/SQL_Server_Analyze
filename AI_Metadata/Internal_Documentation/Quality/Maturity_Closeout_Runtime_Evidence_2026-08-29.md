@@ -360,3 +360,73 @@ und zusätzliche native Engines bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; Produkt-SQL, TEST-0001, Registry, Maturityflags und
 historische Release-Matrix bleiben unverändert. Die neue Fixture ist ein
 Bestandteil von OPS-008 ohne eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Backup-/Restore-Retention vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario BackupRestoreRetention` bestand auf
+einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation,
+den Smoke-Test, Runtimevertrag `122` und die
+[Backup-/Restore-Retentionfixture](../../../../TestLab/Scenarios/OPS-008/backup-restore-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert; eine
+Produktkorrektur war nicht erforderlich.
+
+Die acht Historientabellen `backupset`, `backupfile`, `backupfilegroup`,
+`backupmediaset`, `backupmediafamily`, `restorehistory`, `restorefile` und
+`restorefilegroup` mussten zu Beginn leer sein. Die Fixture erstellte eine
+eigene leere Quelldatenbank, erzeugte drei tatsächliche Backups in getrennten
+Medien und stellte jedes Backup in dieselbe eigene Restore-Datenbank wieder
+her. Die eigenen Backup- und Restoreidentitäten wurden paarweise geprüft.
+Nur ihre Historienzeitstempel wurden auf kontrollierte synthetische Werte
+gesetzt; die drei Paare enthielten zwei ältere und ein jüngeres Paar.
+
+Die native Prozedur
+[`sp_delete_backuphistory`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sp-delete-backuphistory-transact-sql?view=sql-server-ver17)
+besitzt einen globalen Datumsfilter ohne Datenbankfilter. Sie wurde deshalb
+ausschließlich im neuen eigenen Lab mit zwei expliziten Datumsgrenzen
+ausgeführt. Der erste Eingriff entfernte die beiden älteren Paare.
+Sämtliche Spalten der jüngeren Zeilen in allen acht Tabellen blieben nach
+Sortierung und `INCLUDE_NULL_VALUES` NULL-sicher identisch. Der zweite
+Eingriff entfernte das verbleibende Paar; alle acht Tabellen waren leer.
+Beide nativen Prozeduraufrufe lieferten Rückgabewert `0`.
+
+In jeder Phase mit drei, einem und null Paaren bestätigten NONE, TABLE und
+CONSOLE `AVAILABLE`, sechs Quellenzeilen sowie die unabhängigen nativen
+Backup-/Restore-Counts und MIN-/MAX-Zeitgrenzen. Die Fixture prüfte die
+nativen Werte zusätzlich gegen die kontrollierten Counts und Datumswerte.
+TABLE und CONSOLE besaßen innerhalb desselben Aufrufs Parität aller acht
+Fachfelder mit JSON. Die Evidenzgrenzen blieben vorhanden. Sämtliche Spalten
+aller acht Historientabellen blieben vor und nach jedem der neun
+Analyzeraufrufe NULL-sicher gleich. Die Callertransaktion blieb committable
+mit `@@TRANCOUNT=1`; `LOCK_TIMEOUT=137` blieb erhalten und wurde nach jeder
+Phase auf den Eintrittswert zurückgesetzt. Der Analyzer bereinigte keine
+Historie.
+
+Für beide eigenen Datenbanken blieben `database_id`, `name`, `create_date`,
+`collation_name`, `state`, `user_access`, `recovery_model` und `is_read_only`
+über die drei Phasen identisch. Die abschließende identitätsgebundene
+Datenbanklöschung bestätigte ihre Abwesenheit. Der Lauf endete mit `PASS`
+und `REMOVED`; eigener Container, Volume und temporärer State wurden
+entfernt. Runtimeidentitäten, Secrets und Rohlogs bleiben außerhalb von Git.
+
+Ein erster nativer Versuch scheiterte vor der Fixtureausführung mit Fehler
+207, weil vier Sortierungen in `restorefilegroup` eine nicht vorhandene
+Spalte `filegroup_id` verwendeten. Das äußere Labcleanup bestand auch für
+diesen Versuch. Die Fixture verwendet anschließend die dokumentierte
+Spalte [`filegroup_name`](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/restorefilegroup-transact-sql?view=sql-server-ver17).
+Der zweite Lauf verwendete ein neues eigenes Lab und bestand. Der
+Compilefehler belegt keinen inneren T-SQL-Fehlercleanup. Der unabhängige
+Review des korrigierten funktionalen Standes besitzt keine offenen Befunde.
+
+Der Nachweis betrifft ausschließlich die manuelle datumsgebundene native
+Historienbereinigung mit kontrollierten Zeitstempeln. Automatische
+Aufbewahrung, tatsächliches Alter oder UTC-Bezug, fremde Historien,
+Konkurrenz, RAW-Capture, alle weiteren Datenbankoptionen, Benutzerdaten und
+Integrität oder Aufbewahrung physischer Backupmedien sind damit nicht
+belegt. Tatsächliche Mail-/Maintenance-Ausführung und deren Retention,
+fehlende optionale Quellen, Windows, weitere Provider und zusätzliche
+native Engines bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
+TEST-0001, Registry, Maturityflags und historische Release-Matrix bleiben
+unverändert. Die neue Fixture ist ein Bestandteil von OPS-008 ohne eigene
+Artefaktreferenz.
