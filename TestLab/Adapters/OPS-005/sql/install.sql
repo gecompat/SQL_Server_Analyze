@@ -35285,16 +35285,6 @@ BEGIN
         FROM [monitor].[TVF_ParseBigintList](@ReplicaGroupIds);
     END;
 
-    IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
-       OR @HighImpactConfirmed IS NULL OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
-       OR @VonUtc>=@BisUtc OR @OutputMode NOT IN('CONSOLE','RAW','TABLE','NONE')
-       OR (@OutputMode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
-       OR EXISTS(SELECT 1 FROM [#QueryStoreReplicaAnalysis_ReplicaFilter] WHERE [IsValid]=0)
-    BEGIN
-        SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,
-               @ErrorMessage=N'Ungültiger Zeitraum, Zeilen-, Replica-, Lock-Timeout- oder Ausgabeparameter.';
-    END;
-
     IF @StatusCode='AVAILABLE' AND @OutputMode='TABLE'
         EXEC [monitor].[InternalPrepareResultTables]
               @ResultTablesJson=@ResultTablesJson
@@ -35303,6 +35293,17 @@ BEGIN
             , @StatusCode=@StatusCode OUTPUT
             , @ErrorMessage=@ErrorMessage OUTPUT
             , @ThrowOnError=1;
+
+    IF @MaxZeilen<0 OR @LockTimeoutMs NOT BETWEEN 0 AND 60000
+       OR @HighImpactConfirmed IS NULL OR @JsonErzeugen IS NULL OR @PrintMeldungen IS NULL
+       OR @VonUtc>=@BisUtc OR @OutputMode NOT IN('CONSOLE','RAW','TABLE','NONE')
+       OR (@OutputMode<>'TABLE' AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL)
+       OR EXISTS(SELECT 1 FROM [#QueryStoreReplicaAnalysis_ReplicaFilter] WHERE [IsValid]=0)
+    BEGIN
+        SELECT @StatusCode='INVALID_PARAMETER',@IsPartial=1,
+               @ErrorMessage=N'Ungültiger Zeitraum, Zeilen-, Replica-, Lock-Timeout- oder Ausgabeparameter.';
+        IF @MaxZeilen<0 SET @Limit=0;
+    END;
 
     IF @StatusCode='AVAILABLE'
         EXEC [monitor].[USP_PrepareDatabaseCandidates]
@@ -35878,19 +35879,19 @@ OPTION (MAXDOP 1,RECOMPILE);';
     ELSE IF @OutputMode='TABLE'
     BEGIN
         DECLARE @TargetTable sysname;
-        SELECT @TargetTable=[TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'moduleStatus';
+        SET @TargetTable=(SELECT [TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'moduleStatus');
         IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#QueryStoreReplicaAnalysis_ModuleStatus',@TargetTable=@TargetTable,@ThrowOnError=1;
-        SELECT @TargetTable=[TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'replicas';
+        SET @TargetTable=(SELECT [TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'replicas');
         IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#QueryStoreReplicaAnalysis_Replicas',@TargetTable=@TargetTable,@ThrowOnError=1;
-        SELECT @TargetTable=[TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'runtimeByReplica';
+        SET @TargetTable=(SELECT [TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'runtimeByReplica');
         IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#QueryStoreReplicaAnalysis_RuntimeByReplica',@TargetTable=@TargetTable,@ThrowOnError=1;
-        SELECT @TargetTable=[TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'waitsByReplica';
+        SET @TargetTable=(SELECT [TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'waitsByReplica');
         IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#QueryStoreReplicaAnalysis_WaitsByReplica',@TargetTable=@TargetTable,@ThrowOnError=1;
-        SELECT @TargetTable=[TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'forcingByReplica';
+        SET @TargetTable=(SELECT [TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'forcingByReplica');
         IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#QueryStoreReplicaAnalysis_ForcingByReplica',@TargetTable=@TargetTable,@ThrowOnError=1;
-        SELECT @TargetTable=[TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'sourceStatus';
+        SET @TargetTable=(SELECT [TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'sourceStatus');
         IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#QueryStoreReplicaAnalysis_SourceStatus',@TargetTable=@TargetTable,@ThrowOnError=1;
-        SELECT @TargetTable=[TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'warnings';
+        SET @TargetTable=(SELECT [TargetTable] FROM [#QueryStoreReplicaAnalysis_ResultTableMap] WHERE [ResultName]=N'warnings');
         IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] @SourceTable=N'#QueryStoreReplicaAnalysis_Warnings',@TargetTable=@TargetTable,@ThrowOnError=1;
     END;
 END;

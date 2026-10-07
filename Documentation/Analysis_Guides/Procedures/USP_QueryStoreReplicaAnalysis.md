@@ -21,7 +21,11 @@ Die Analyse prüft keine aktuelle AG-Synchronität, kein Routing und keine Hardw
 
 ## Resultsets und Leserichtung
 
-RAW, TABLE und JSON trennen `moduleStatus`, `sourceStatus`, `replicas`, `runtimeByReplica`, `waitsByReplica` und `forcingByReplica`. CONSOLE priorisiert den fachlichen Einstieg. Lesen Sie Datenbank-, Versions- und Query-Store-Status vor Rollen und Aggregaten. Vergleichen Sie nur identische Zeitfenster und berücksichtigen Sie `MappingStatusCode`.
+RAW, TABLE und JSON trennen `moduleStatus`, `replicas`, `runtimeByReplica`, `waitsByReplica`, `forcingByReplica`, `sourceStatus` und `warnings`. CONSOLE zeigt ausschließlich `moduleStatus` mit einem Ergebnislabel. Lesen Sie Datenbank-, Versions- und Query-Store-Status vor Rollen und Aggregaten. Vergleichen Sie nur identische Zeitfenster und berücksichtigen Sie `MappingStatusCode`.
+
+Die sieben Resultsets besitzen zusammen 105 Felder, darunter 45 explizit mit `SQL_Latin1_General_CP1_CS_AS` collatierte Textfelder. Die vier fachlichen Mengen werden vor allen Ausgaben gemeinsam begrenzt. `moduleStatus` zählt die zurückgegebenen Zeilen; `sourceStatus.ReturnedRowCount` beschreibt die Sammlung vor dieser globalen Begrenzung. Status, Quellen und Warnungen erhalten kein Zeilenlimit. TABLE schreibt nur angeforderte Resultsets und lässt andere Ziele einschließlich vorhandener Zeilen unverändert. `SourceOrdinal` und `WarningOrdinal` behalten ihre Werte; die TABLE-Ziele besitzen keine Identity-Eigenschaft.
+
+Ein negatives `@MaxZeilen` liefert `INVALID_PARAMETER` mit Partialität und vier leeren fachlichen Mengen; alle vier `HasMore*`-Flags stehen dabei auf `false`. Gültige TABLE-Zuordnungen werden auch bei ungültigen fachlichen Parametern vorbereitet. Angeforderte Ziele erhalten ihr vollständiges Schema und `moduleStatus` den Ablehnungsstatus. Ungültige Zuordnungen werden weiterhin vor der Datensammlung abgewiesen.
 
 ## Eine Zeile bedeutet
 
@@ -56,7 +60,7 @@ Ein geeigneter Example-Fall verwendet ein synthetisches Query-Store-Workloadfens
 | Dimension | Einordnung |
 |---|---|
 | Kostenklasse | `MEDIUM` |
-| Standardpfad | Begrenztes Zeitfenster in einer explizit ausgewählten Datenbank |
+| Standardpfad | Letzte Stunde in allen sichtbaren, online verfügbaren Benutzerdatenbanken; das Beispiel wählt ausdrücklich eine Datenbank |
 | Teuerster Pfad | Breites Zeitfenster und mehrere Query-Store-Datenbanken |
 | Haupttreiber | Runtimeintervalle, Pläne, Waitzeilen und Replica-Gruppen |
 | Skalierung | Sequenziell je Datenbank; Aggregation innerhalb des Zeitfensters |
@@ -102,8 +106,11 @@ SELECT @Json AS [QueryStoreReplicaAnalysisJson];
 ```
 
 `@ReplicaGroupIds` kann eine numerische Pipe-, Beistrich- oder
-Strichpunktliste enthalten. `@MaxZeilen = 0` bedeutet unbegrenzt und ist für den
-Ersteinstieg nicht empfohlen.
+Strichpunktliste enthalten. `@MaxZeilen = NULL` und `@MaxZeilen = 0` bedeuten
+unbegrenzt und sind für den Ersteinstieg nicht empfohlen. Ein positives Limit
+gilt getrennt für `replicas`, `runtimeByReplica`, `waitsByReplica` und
+`forcingByReplica`. Die Auswahl verwendet die bestehenden Sortschlüssel;
+TABLE und CONSOLE garantieren keine Zeilenreihenfolge.
 
 ## Technische Vertiefung
 
@@ -126,8 +133,8 @@ Hint-Payloads.
 
 Je Zieldatenbank werden zuerst Product Major Version, Query-Store-Zustand,
 Systemobjekte und Pflichtspalten geprüft. Erst danach werden die
-versionsspezifischen Quellen dynamisch referenziert. Jede Quelle wird höchstens
-einmal pro Datenbank gelesen und lokal materialisiert. Runtimewerte werden mit
+versionsspezifischen Quellen dynamisch referenziert. Die fachlichen Mengen
+werden lokal materialisiert und vor den Verbrauchern begrenzt. Runtimewerte werden mit
 `count_executions` gewichtet; Waitwerte bleiben nach Ausführungstyp und
 Waitkategorie getrennt.
 
@@ -153,8 +160,10 @@ und viele Datenbanken erhöhen CPU und I/O des Query-Store-Katalogzugriffs.
 ### Zeit- und Scope-Modell
 
 `CapturedAtUtc` ist der aufrufweite Erfassungszeitpunkt. Runtime- und Waitwerte
-stammen aus Query-Store-Intervallen innerhalb von `@VonUtc` und `@BisUtc`.
-`replicas` ist sichtbarer Katalogzustand zum Lesezeitpunkt. Die Quellen bilden
+stammen aus vollständigen Query-Store-Intervallen, die `@VonUtc` bis `@BisUtc`
+überlappen. Der Zeitfilter schneidet keine einzelnen Messwerte aus einem
+Intervall. `replicas` und `forcingByReplica` sind sichtbarer Katalogzustand ohne
+Zeitfensterfilter. Die Quellen bilden
 keine transaktional atomare Momentaufnahme.
 
 ### Bewertung und Gegenprobe
