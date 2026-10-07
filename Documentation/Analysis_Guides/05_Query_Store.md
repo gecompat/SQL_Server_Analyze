@@ -394,6 +394,12 @@ Die Procedure inventarisiert Query Store Hints ab SQL Server 2022 und priorisier
 | `Source`, `SourceDesc` | Herkunft des Hints |
 | `QuerySqlText` | Zielquery |
 
+### Ausgabegrenze
+
+Der gemeinsame Export enthält 22 Felder mit neun expliziten Frameworktextcollations. Datenbankname und Truncationflag sind NOT NULL, die übrigen Felder nullable; keine Spalte ist eine Identity. RAW, CONSOLE, TABLE und JSON verwenden dieselbe einmalig global begrenzte Hintmenge. NULL und 0 bei `@MaxZeilen` bedeuten unbegrenzt; negative Zeilen- oder Textlimits liefern kontrolliert `INVALID_PARAMETER` mit leerem Export. NULL und 0 bei `@MaxSqlTextZeichen` erhalten den ungekürzten Querytext. Status, `hasMoreRows` und Truncationwarnungen entstehen vorher aus der lokal mit N+1 gesammelten Menge.
+
+Die bestehende Reihenfolge priorisiert Fehlergründe ungleich 0, danach Failurecounts absteigend und Hint-IDs aufsteigend. Datenbanklokale Hint-IDs können dieselben Sortwerte erzeugen; getrennte Aufrufe müssen daher keine identische Auswahl liefern. Der bestehende Fehlerfilter umfasst bei 0 alle Hints und bei 1 oder NULL nur positive Failurecounts oder Fehlergründe ungleich 0.
+
 ### Interpretation
 
 - Ein Hint ist eine betriebliche Intervention und benötigt Owner, Begründung, Reviewdatum und Rücknahmepfad.
