@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [string] $LabRepositoryRoot,
-    [ValidateSet('HistoryRestore', 'AgentHistory', 'MailMaintenance', 'AgentExecution', 'AgentRetention', 'BackupRestoreRetention', 'MailRetention')]
+    [ValidateSet('HistoryRestore', 'AgentHistory', 'MailMaintenance', 'AgentExecution', 'AgentRetention', 'BackupRestoreRetention', 'MailRetention', 'MaintenanceRetention')]
     [string] $Scenario = 'HistoryRestore'
 )
 
@@ -66,6 +66,9 @@ EXEC sys.sp_addextendedproperty @name=N'SQLANALYZE.Ops008Disposable', @value=1;
     }
     elseif ($Scenario -eq 'MailRetention') {
         $scripts += 'TestLab/Scenarios/OPS-008/mail-retention.sql'
+    }
+    elseif ($Scenario -eq 'MaintenanceRetention') {
+        $scripts += 'TestLab/Scenarios/OPS-008/maintenance-retention.sql'
     }
     else {
         $scripts += @('TestLab/Scenarios/OPS-008/history-window.sql',

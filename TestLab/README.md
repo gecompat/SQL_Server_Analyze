@@ -346,6 +346,30 @@ Der Analyzer führt keine Bereinigung aus. Tatsächliche Mailausführung,
 automatische Aufbewahrung, weitere Mailstatus, Anlagen- und Logretention sowie
 Maintenance-Retention bleiben eigenständige Nachweise.
 
+Mit `-Scenario MaintenanceRetention` injiziert eine weitere getrennte Fixture
+drei eigene Zeilen in `sysmaintplan_log` mit kontrollierten Start- und Endzeiten.
+Logdetail-, Plan- und Subplanquellen müssen leer sein und bleiben leer.
+Die gesetzte Erfolgsmarkierung belegt keine tatsächliche Maintenance-Ausführung.
+Die Fixture prüft zuerst die native Parametersignatur von
+`sp_maintplan_delete_log` und verwendet danach zwei explizite Datumsgrenzen
+mit NULL als Plan- und Subplanfilter. Dieser Datumsfilter darf ausschließlich
+auf die eigene zunächst leere Historie im neuen Wegwerf-Run wirken.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MaintenanceRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Die native Bereinigung muss drei, eine und null Historienzeilen erzeugen und
+alle Spalten der jüngeren Zeile nach dem ersten Eingriff NULL-sicher erhalten.
+NONE, TABLE und CONSOLE prüfen je Phase native Counts und Zeitgrenzen,
+JSON-Parität, Quellerhaltung und Callerzustand. Das abschließende Rollback
+entfernt die injizierte Fixture; das äußere Labcleanup bleibt erforderlich.
+Der Analyzer bereinigt keine Historie. Tatsächliche Maintenance-/SSIS- und
+Jobausführung, automatische Aufbewahrung, positive Detailhistorie und
+planselektive Retention bleiben eigenständige Nachweise.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
