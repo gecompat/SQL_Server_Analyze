@@ -374,7 +374,7 @@ Quelle: `Code/01_Common/086a_TVF_ParseBlockingResource.sql`
 | Schnittstelle | Multi-statement TVF; Eingaben: `@WaitResource nvarchar(3072)`. Die Funktion liefert eine relationale Zeile oder Zeilenmenge und verändert keine persistenten Daten. |
 | Verwendung | Die Funktion wird innerhalb öffentlicher Analysen per `JOIN`, `APPLY` oder direktem `SELECT` verwendet. Ein Direktaufruf eignet sich nur für Entwicklung und Tests, nicht als stabiler Integrationsvertrag. |
 | Last und Sperren | Der Parser arbeitet sequenziell; CPU skaliert mit der Länge des Eingabetexts; die Funktion führt keine persistenten Schreiboperationen aus. Der aufrufende öffentliche Analysepfad bestimmt die Gesamtlast. |
-| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
+| Vertrag | Textspalten der Rückgabe und der internen Arbeitstabellen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
 
 ### `[monitor].[TVF_StatementText]`
 
@@ -518,7 +518,7 @@ Quelle: `Code/04_PlanCache/044_TVF_ParseStatisticsIoText.sql`
 | Schnittstelle | Multi-statement TVF; Eingaben: `@StatisticsIoText nvarchar(max)`; `@StatisticsLanguage varchar(16) = 'AUTO'`. Die Funktion liefert eine relationale Zeile oder Zeilenmenge und verändert keine persistenten Daten. |
 | Verwendung | Die Funktion wird innerhalb öffentlicher Analysen per `JOIN`, `APPLY` oder direktem `SELECT` verwendet. Ein Direktaufruf eignet sich nur für Entwicklung und Tests, nicht als stabiler Integrationsvertrag. |
 | Last und Sperren | Der Parser arbeitet sequenziell; CPU skaliert mit der Länge des Eingabetexts; die Funktion führt keine persistenten Schreiboperationen aus. Der aufrufende öffentliche Analysepfad bestimmt die Gesamtlast. |
-| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
+| Vertrag | Textspalten der Rückgabe und der internen Arbeitstabellen verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
 
 ### `[monitor].[TVF_ParseStatisticsTimeText]`
 
@@ -530,7 +530,7 @@ Quelle: `Code/04_PlanCache/045_TVF_ParseStatisticsTimeText.sql`
 | Schnittstelle | Multi-statement TVF; Eingaben: `@StatisticsTimeText nvarchar(max)`; `@StatisticsLanguage varchar(16) = 'AUTO'`. Die Funktion liefert eine relationale Zeile oder Zeilenmenge und verändert keine persistenten Daten. |
 | Verwendung | Die Funktion wird innerhalb öffentlicher Analysen per `JOIN`, `APPLY` oder direktem `SELECT` verwendet. Ein Direktaufruf eignet sich nur für Entwicklung und Tests, nicht als stabiler Integrationsvertrag. |
 | Last und Sperren | Der Parser arbeitet sequenziell; CPU skaliert mit der Länge des Eingabetexts; die Funktion führt keine persistenten Schreiboperationen aus. Der aufrufende öffentliche Analysepfad bestimmt die Gesamtlast. |
-| Vertrag | Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
+| Vertrag | Textspalten der Rückgabe verwenden explizit `SQL_Latin1_General_CP1_CS_AS`. Unterstützende TVF, keine scalar-valued function. Parameter und Rückgabespalten sind interne Implementierungsdetails und können sich zusammen mit den aufrufenden Procedures ändern. |
 
 ### `[monitor].[TVF_ExecutionPlanObjectReferences]`
 

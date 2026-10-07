@@ -3026,3 +3026,122 @@ SQL, Tests, Statusnotizen und Quellidentitäten blieben unverändert.
 Das abschließende unabhängige Evidenz- und Statusreview hatte nach einer
 Präzisierung der Filter-0-Beschreibung in beiden CSV-Notizen keine offenen
 Findings.
+
+## Parser-Textgrenzen: 7. Oktober 2026
+
+### Nativer Ausgangsstand
+
+Der begrenzte Slice umfasst `TVF_ParseBlockingResource`,
+`TVF_ParseStatisticsIoText` und `TVF_ParseStatisticsTimeText`. Auf dem
+Ausgangsstand waren 17 Textspalten implizit collatiert: sechs Rückgabetexte
+und ein Parts-Text im Blockingparser, vier Rückgabetexte und zwei Labeltexte
+im IO-Parser sowie vier Rückgabetexte im TIME-Parser. Die nativen
+Rückgabeschemas enthielten bereits 12/18/8 Felder und insgesamt 14 Texte
+mit der garantierten Frameworkcollation durch Datenbankvererbung; die
+Baseline hatte keine abweichende Rückgabecollation.
+
+Das ausschließlich eigene Docker-Lab verwendete SQL Server 2025
+`17.0.4075.5` unter Linux mit vier GB Speicher. Server und `tempdb`
+verwendeten `Latin1_General_100_CS_AS`, die Frameworkdatenbank
+`SQL_Latin1_General_CP1_CS_AS` und Compatibility Level 170. Die kanonische
+Vollinstallation bestand mit 166 Quelldateien und 187 Batches; der Smoke-Test
+bestand ebenfalls. Die Erstaufnahme der nativen Metadaten bestätigte alle
+38 Felder und 14 Textcollations. Die formatierte Lababfrage kürzte lange
+JSON-Werte auf 256 Zeichen; diese Ausgabe wurde deshalb nicht als
+vollständiger Zeilennachweis verwendet.
+
+Ein unabhängiger privater SqlClient erfasste anschließend 45 Aufrufe:
+23 Blocking-, elf IO- und elf TIME-Fälle. Er verglich alle 42 Rückgabezeilen
+(23/10/9) feldweise einschließlich NULLs mit JSON und prüfte sechs leere
+IO-/TIME-Ergebnisse. Die Eingaben umfassen englische und deutsche Texte,
+Unicode einschließlich ergänzender Zeichen, Groß-/Kleinschreibung,
+mehrzeilige Texte, unerkannte Eingaben und numerische Überläufe. Die erste
+Clientaufnahme endete beim SQL-NULL des JSON-Subselects einer leeren
+IO-Rückgabe. Nach Korrektur dieses privaten NULL- und PowerShell-Arrayhandlings
+bestand die gesamte Baseline; die Parserquellen wurden dafür nicht verändert.
+
+### Begrenzte Änderung und Endnachweis
+
+Die drei Quellen ergänzen ausschließlich 17 explizite
+`COLLATE SQL_Latin1_General_CP1_CS_AS`-Klauseln. Parsinglogik, Eingaben,
+Datentypen, Feldreihenfolge, Nullability, Statuswerte, Version und Stand
+bleiben unverändert. OPS-005 und EXECUTION-PLAN-001 wurden kanonisch
+synchronisiert. Der Planadapter enthält weiterhin nur IO und TIME,
+keinen Blockingparser. Drei bestehende Einträge der Objektreferenz
+beschreiben die expliziten Textcollations.
+
+Nach Installation der drei geänderten TVFs bestand der Smoke-Test erneut.
+Der private Client bestand dieselben 45 Aufrufe, alle 42 vollständigen
+Zeilen und sechs leeren Ergebnisse. Namen, Reihenfolge, native Typen,
+Textgrößen und Nullability der 12/18/8-Felder-Schemas sowie sämtliche Werte
+stimmen mit der Baseline und JSON überein. Dieser Vergleich begründet
+keine neue Ausgabeordnung.
+
+Common169 bestand auf Framework-CL170 mit 53 synthetischen Aufrufen:
+31 Blocking-, elf IO- und elf TIME-Fälle. Der unabhängige Metadatensollvertrag
+prüft alle 38 Rückgabefelder und 14 Textcollations einschließlich
+Ordinals, Typkennungen, Längen, Precision, Scale, Nullability und fehlender
+Identity. Manuell festgelegte Literalzeilen vergleichen sämtliche Felder
+und NULLs, Textbytes sowie Fallhäufigkeiten: 51 Zeilen mit 31/11/9 Zeilen
+und sechs leeren IO-/TIME-Fällen. Die Prüfung enthält CR, LF und CRLF,
+EN/DE, partielle und unbekannte Formate und die vorhandene
+Nicht-Erzwingung des Spracharguments. Der private direkte Capture erfasste
+das PASS-Resultset ohne formatierte Kürzung in zwei Batches.
+
+CurrentState110 und 133 sowie PlanCache120 und 128 bestanden gemeinsam
+auf CL170 in 15 Batches. Diese bestehenden Aufruferverträge prüfen unter
+anderem syntaktische Blockingfälle, positive strukturierte IO-/TIME-Felder
+und die vorhandene Datenschutzgrenze des Evidenzerzeugers.
+Integration192 bestand mit 22 kanonischen Quellen und deterministischer
+zweimaliger Generierung. Eine private Kopie ergänzte ausschließlich die
+Prüfung des aufgelösten temporären Cleanup-Zielpfads.
+Integration193 bestand in einer eigenen neuen Datenbank mit deaktiviertem
+Query Store und CL170 in 74 Batches. SQLCMD-Includes wurden aus den
+kanonischen Quellen expandiert; Erstinstallation, öffentliche APIs,
+berechtigungsarmer Benutzer, erneute Installation, Erhaltung synthetischer
+lokaler Konfiguration und begrenzter Installationsscope bestanden.
+
+Die geprüften UTF-8/LF-SHA256-Identitäten lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Blockingparser | `89E4F320914D908AC5B3AB6DE564F932FA16B401376942188D9ED10B3428912C` |
+| IO-Parser | `8F652B19412532FD49E55B2B72FBBF6AC7F8F4AFE5C923E8D5D65C04EA32B123` |
+| TIME-Parser | `68BFF40BE6F4380CBA780FD1CC6C53C841E071D5012C09C433AA9D6063177C24` |
+| Common169 | `459146081CEEDB9FBEC0FB694A834269BD0C02B274852D3FE1C3AE7B60E2710C` |
+| Privater direkter Baseline-/JSON-Client | `A87AAD3EB8BEF86DECE8D2AFBB34718A13810B476C35D54472EB362806622981` |
+| Privater Runtime-Capture | `F69B928B8DD9AB34CAFB820DA61B55E71B718329A863A330D37FB751A60C0E2B` |
+
+Die nativen und kanonischen Funktionsdefinitionen stimmen von der
+FUNCTION-Deklaration bis zum letzten END nach LF-Normalisierung und
+Entfernen äußerer Leerzeichen überein. Ihre UTF-16/LF-Identitäten lauten:
+
+| Funktion | SHA256 |
+| --- | --- |
+| Blockingparser | `CCE63E9287770408AB9DA1A5752CBADE9635BA458F907055537548DF336362B3` |
+| IO-Parser | `2B13DF4FFF576021A4AF1B81D7CD96897A1AA706095A4C6781E7366F35C04645` |
+| TIME-Parser | `6B91FE0BDA84639978F508E8DDA3095DD6F8EDF4FEF0144D661CDD3183374577` |
+
+Das eigene Lab wurde nach den Prüfungen vollständig entfernt: Container
+und Volume, zwei Cleanupschritte, null Fehler, `CLEANUP_SUCCEEDED` und
+`REMOVED`. Der eigene verschlüsselte temporäre Secretwert wurde entfernt.
+Private Captures und Prüfdaten bleiben außerhalb von Git; andere Labs und
+zuvor gesperrte Cleanup-Pfade wurden nicht berührt.
+
+Die Parserbelege verwenden ausschließlich synthetische Eingaben. Sie
+belegen keine echte Blockingtopologie oder native STATISTICS-Erfassung.
+Zusätzliche native ältere Engines und CL150/160 wurden mangels konkreten
+Versionsrisikos nicht ausgeführt. `COLL-001` bleibt partiell;
+`RUNTIME-001` und bestehende Maturityflags bleiben unverändert. Das
+unabhängige Produkt-, Test-, Installer- und Dokumentationsreview hatte
+keine offenen Findings.
+
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.051
+Repositorydateien ohne Findings, Schreibstil 709 und Regex 341.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 988 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurde ausschließlich dieser Gateabsatz ergänzt;
+SQL, Tests, Statusnotizen und Quellidentitäten blieben unverändert.
+Das abschließende unabhängige Evidenz- und Statusreview hatte keine offenen
+Findings.
