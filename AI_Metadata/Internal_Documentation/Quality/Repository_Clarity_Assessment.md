@@ -206,18 +206,29 @@ Die neue Inventarprüfung besitzt eine unabhängige positive Fixture und
 doppelte Zusammenfassungen. Der normale Dokumentationsvalidator prüft
 darüber hinaus Quellpfade, Referenzen und Verlinkung.
 
-Die vollständige lokale statische Suite wurde ausgeführt. Nach der
-Korrektur der öffentlichen Dokumentationsgrenze bestand der gesondert
-wiederholte Navigatorvalidator. Die Suite meldete außerdem zwei
-unveränderte Adapter-Bytevergleichsfehler auf Windows für
+Die vollständige lokale statische Suite meldete beim ersten Lauf zwei
+Adapter-Bytevergleichsfehler auf Windows für
 `EXECUTION-PLAN-001` und `OPS-005`. Der private Vergleich der versionierten
 mit den frisch generierten Installern ergab jeweils identischen Inhalt
 nach CRLF-/LF-Normalisierung; der OPS-005-Updatevertrag war bereits
-bytegleich. Die betroffenen Adapter und ihre Quellen sind gegenüber dem
-Ausgangscommit unverändert. Die vollständige lokale Suite wird deshalb
-nicht als bestanden ausgewiesen. Der Befund erfordert eine gesonderte
-Prüfung des plattformabhängigen Bytevertrags; diese Bearbeitung schwächt
-die bestehenden Hashprüfungen nicht ab und schreibt die Installer nicht um.
+bytegleich. Die Ursache war eine einzelne fest eingetragene LF-Verbindung
+zwischen Adapterheader und Standalone-Inhalt, während Git die versionierten
+Installer mit `core.autocrlf=true` als CRLF auscheckte.
+
+Auf ausdrücklichen Folgeauftrag des Benutzers wurden die beiden
+Installbuilder an dieser Nahtstelle auf `[Environment]::NewLine` umgestellt.
+Die bestehenden SHA-256-Bytevergleiche bleiben unverändert. Beide Adaptertests
+bestanden anschließend auf Windows. In einem eigenen privaten Checkout
+wurde je Adapter der ursprüngliche LF-Fehler wieder eingesetzt und danach
+getrennt ausführbarer SQL-Inhalt an den Vergleichsinstaller angefügt.
+Alle vier Mutationen wurden durch den vorgesehenen Bytevergleich abgelehnt.
+Die Korrektur verändert weder fachliche SQL-Inhalte noch versionierte
+Installer oder den OPS-005-Updatevertrag.
+
+Der abschließende vollständige Lauf von
+`Code/Tests/Static/Invoke-StaticContractSuite.ps1` bestand mit
+77 Prüfungen, einschließlich der beiden Adapterverträge. Die negativen
+Fixturekopien lagen bei diesem Lauf außerhalb des Repositoryscanbereichs.
 
 Die Inventarselbsttests, der normale Dokumentationsvalidator, der
 Navigatorvalidator sowie Repositorydatenschutz und Dokumentationsstil
