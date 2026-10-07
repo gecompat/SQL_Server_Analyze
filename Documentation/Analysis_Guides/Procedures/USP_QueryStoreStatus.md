@@ -25,7 +25,7 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `queryStoreStatus`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `queryStoreStatus` mit 27 Feldern und sieben expliziten Frameworktextcollations. `DatabaseName` ist die einzige NOT-NULL-Spalte; das Schema enthält keine Identity. RAW, CONSOLE, TABLE und JSON verwenden dieselbe früh angelegte Ergebnistabelle. RAW liefert zusätzlich Meta/Status und Fehler/Warnungen, JSON die Objekte `meta`, `queryStoreStatus` und `warnings`. Die aktive CONSOLE zeigt die Statusdaten mit einem zusätzlichen `Ergebnis`-Feld; bei leerer Menge liefert sie eine dreifeldrige Hinweiszeile. TABLE schreibt ausschließlich die fachliche Statusmenge. Lesen Sie den Modulstatus und die Warnungen aus RAW oder JSON vor der fachlichen Interpretation.
 
 ## Eine Zeile bedeutet
 
@@ -51,9 +51,9 @@ Capture Mode AUTO lässt billige oder seltene Queries absichtlich aus.
 
 ## Leere oder partielle Ausgabe
 
-Query Store kann nutzbar sein, obwohl das gewählte Fenster leer ist. Prüfen Sie zuerst Capturemodus, Read-only-Status, Retention und UTC-Fenster.
+Die Procedure liest aktuelle Optionen und besitzt kein Zeitfenster. Eine OFF-Datenbank kann eine Statuszeile mit `IsEnabled=0` und dem entsprechenden `StatusHint` liefern; OFF bedeutet daher keine leere Ausgabe.
 
-Für `USP_QueryStoreStatus` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+Für `USP_QueryStoreStatus` bedeutet **keine Zeile**, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur bei verfügbarer Quellspalte; **NULL** bezeichnet unbekannte oder nicht anwendbare Werte. Eine gültige und eine fehlende explizite Auswahl erhalten die gültige Statuszeile und eine `DATABASE_NOT_FOUND`-Warnung; der Modulstatus wird `AVAILABLE_LIMITED` mit `isPartial=1`. Bei ausschließlich fehlender Auswahl bleibt die Statusmenge leer und der Modulstatus ist `DATABASE_UNAVAILABLE`. Ein Zeilenlimit oder Problemfilter existiert nicht.
 
 ## Eigenlast und Grenzen
 
@@ -62,7 +62,7 @@ Für `USP_QueryStoreStatus` gilt zusätzlich: **keine Zeile** bedeutet, dass im 
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW |
-| Standardpfad | Eine explizit benannte `ExampleDatabase`; genau eine Zeile aus `sys.database_query_store_options` wird dynamisch gelesen. Es gibt weder Zeitfenster noch Query-/Plan- oder XML-Zugriff. |
+| Standardpfad | Ohne Filter werden alle sichtbaren Online-Benutzerdatenbanken ausgewählt. Je ausgewählter Datenbank wird `sys.database_query_store_options` dynamisch gelesen. Es gibt weder Zeitfenster noch Query-/Plan- oder XML-Zugriff. |
 | Teuerster Pfad | Keine Datenbankeinschränkung, sodass alle sichtbaren Online-Userdatenbanken nacheinander geprüft werden. Die Quellmenge bleibt eine Statuszeile je Datenbank. |
 | Haupttreiber | Zahl ausgewählter Datenbanken; je Datenbank wird im Wesentlichen eine Query-Store-Optionszeile plus Feature-/Statuskontext gelesen. Query-, Plan-, Text- und Runtime-Tabellen liegen ausdrücklich außerhalb dieses Statuspfads. |
 | Skalierung | Laufzeit und dynamischer Compileaufwand wachsen annähernd linear mit der Zahl ausgewählter Datenbanken, nicht mit Query-Store-Retention oder Capturevolumen. |
@@ -71,7 +71,7 @@ Für `USP_QueryStoreStatus` gilt zusätzlich: **keine Zeile** bedeutet, dass im 
 | Locking und Nebenwirkungen | Read-only gegenüber Query Store; normale interne Synchronisation/Schema-Stability ist möglich. Die Procedure erzwingt, entfernt oder bereinigt keine Pläne/Hints. |
 | Schutzmechanismus | `QUERY_STORE_CURRENT` muss im Framework freigegeben sein, verlangt laut Klassenkatalog aber keine High-Impact-Bestätigung. `@HighImpactConfirmed` aktiviert in dieser Procedure keinen Deep-Pfad. |
 | Sicherer Einsatz | Eine `ExampleDatabase` und CONSOLE; danach nur bei Bedarf weitere Datenbanken ergänzen. Statuszeile und Warnungen vor fachlicher Interpretation sichern. |
-| Aussagegrenze | Scope- oder Zeilenbegrenzungen können relevante, seltene oder später einsortierte Zeilen ausblenden. Die Aussage bleibt auf das Modell „Konfigurationssnapshot“, die dokumentierte Granularität und den sichtbaren Quellenscope begrenzt; ein kleines Resultset ist weder automatisch vollständig noch repräsentativ. |
+| Aussagegrenze | Explizite Listen und Pattern schränken den Datenbankscope ein. Der Konfigurationssnapshot belegt weder erfasste Ausführungen noch Capture-Vollständigkeit oder die Ursache eines Zustands. Ein ausgeschlossener Datenbankscope bleibt unbeurteilt. |
 
 ## Technische Vertiefung
 

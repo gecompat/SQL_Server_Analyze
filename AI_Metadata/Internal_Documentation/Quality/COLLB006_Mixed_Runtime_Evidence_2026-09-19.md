@@ -4080,3 +4080,102 @@ vollständige Sortties, positive Memory-/TempDB-/Logwerte, ungültiges Plan-XML,
 QS_OFF, Berechtigungen, Timeout, exakte Cross-DB-Referenzlisten, Regex,
 ältere native Engines und CL150/160 bleiben unbelegt. COLL-001 bleibt partiell;
 Registry, RUNTIME-001 und bestehende Maturityflags bleiben unverändert.
+
+## Query-Store-Status: bestehender gemeinsamer Ergebnisvertrag
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und drei
+getrennt identifizierte Unicode-CI_AS-Quellen besitzen gemessene Compatibility
+Levels 170. Die Quellen enthalten weder Benutzerobjekte noch Query-Store-
+Queries und führen keinen synthetischen Workload aus. Die native Gegenprobe
+bestätigt READ_WRITE mit Desired-/Actualstate 2/2, OFF mit 0/0 und explizites
+READ_ONLY mit 1/1. IsEnabled/IsWritable lauten entsprechend 1/1, 0/0 und 1/0.
+READ_ONLY mit Desiredstate 1 belegt keinen unerwarteten Schreibverlust.
+
+Das vollständig geprüfte Original besitzt bereits eine frühe typisierte
+Ergebnisquelle mit 27 Feldern, sieben expliziten Frameworktextcollations
+und ausschließlich DatabaseName als NOT-NULL-Spalte. Alle Felder sind ohne
+Identity. RAW, JSON, TABLE und aktives CONSOLE lesen dieselbe Ergebnistabelle.
+Ein Zeilenlimit, Zeitfenster oder Problemfilter existiert nicht. Kein
+Produktfehler wird nachgewiesen; Source010, Signatur, SchemaVersion und
+Installersource bleiben unverändert. Ein zusätzlicher Export ist nicht nötig.
+Das Inventar beschreibt die sieben vorhandenen Collations nun ausdrücklich.
+Procedure- und Bereichsdokumentation korrigieren nur den betroffenen Scope,
+die Ausgabeformen sowie unzutreffende Fenster- und Limitangaben.
+
+Die 22 gepaarten Vergleichsfälle umfassen je vollständiger Original-/
+Finalsuite 23 Batches und 62 private Ergebnisgrids. Ein unabhängiges natives Orakel prüft alle 27 Werte
+einschließlich NULLs, vollständige Typ-/Größen-/Präzisions-/Skalenfacetten,
+relative Feldordinale, Nullability, Identity und alle sieben Textcollations.
+Der Speicherquotient folgt decimal(9,2); die Warnschwelle verwendet den
+ungerundeten Quotienten. Die Cases prüfen die drei tatsächlichen Zustände,
+umgekehrte Listen, exakte Unicode-/Case-Auswahl, zwei getrennte LIKE-Scopes,
+fehlende Namen, gemischte Auswahl und ungültige Auswahl-/Steuerparameter.
+NULL, leerer String und Leerzeichen wählen in diesem eigenen Lab alle vier
+sichtbaren Online-Benutzerdatenbanken einschließlich Framework aus.
+
+Alle acht Metafelder außer der Erzeugungszeit sowie Ausgabeschemas bleiben
+zwischen Original und Finalstand gleich. Capturezeiten liegen zwischen
+getrennten datetime2(3)-Messgrenzen. RAW besitzt 9/27/4 Felder, positives
+CONSOLE 28 und leeres CONSOLE drei Felder. JSON erhält seine drei Hauptschlüssel,
+alle 27 Datenfelder und vier Warningfelder. Vollständige TABLE-/CONSOLE-/JSON-
+Multisets stimmen innerhalb eines Aufrufs überein; RAW und JSON sind nach
+DatabaseId geordnet. Fehlende explizite Namen erzeugen DATABASE_NOT_FOUND.
+Eine gemischte Auswahl erhält die gültige Menge mit AVAILABLE_LIMITED und
+Partialität; ausschließlich fehlende Namen liefern DATABASE_UNAVAILABLE.
+
+Sechs zusätzliche direkte Fälle bestätigen vollständige RAW-Warnungen,
+positive und leere CONSOLE-Ausgaben, normalisierte Steuerwerte und das
+Zurücksetzen des JSON-Outputs bei deaktivierter Erzeugung. Zwei positive
+QueryStoreAnalysis-Aufrufe ausschließlich mit Status bestätigen alle 27
+RAW-Felder, Child-JSON-Parität und EXECUTED auf Ordinal 1. Parentlimits 1/2
+begrenzen den Statuschild nicht: beide Aufrufe erhalten drei Quellenzeilen.
+Caller-LOCK_TIMEOUT 137 bleibt in allen betroffenen Aufrufen erhalten.
+Identitäten, vollständige Optionen und Query-Zähler der drei eigenen Quellen
+bleiben vor und nach sämtlichen positiven Verträgen und Impactläufen gleich.
+
+Common178 besteht elf allgemeine und 13 bedingte native TABLE-/JSON-Fälle,
+zwei Consumer, sechs Mappingablehnungen, drei leere SQL-CONSOLE-Captures und
+drei direkte positive CONSOLE-/JSON-Statusprüfungen. Ein unabhängiger Client
+bestätigt dabei alle 27 Werte und 28 CONSOLE-Facetten der Mengen mit 3/1/1
+Zeilen. Die Fixtureguard prüft eigene Identitäten, CI-Collation, getrennte
+CL170-Werte, leere Quellen und die drei tatsächlich gemessenen Zustände.
+Ohne Fixture bestehen elf allgemeine Fälle; der native Block meldet
+NOT_EXECUTED mit null Fällen und null direkten positiven CONSOLE-Aufrufen.
+
+Der erste neue Commonlauf scheitert mit STATUS_ROWS_FIELDS: Sein Soll zählt
+bei einer expliziten Dreierliste zusätzlich die Frameworkdatenbank. Nur die
+unabhängige Testauswahl wird auf die drei Fixtureidentitäten begrenzt;
+Defaultfälle behalten alle sichtbaren Userdatenbanken. Ein unabhängiger
+Review ergänzt danach ausschließlich die Ablehnung doppelter JSON-
+Hauptschlüssel. Der finale Commonlauf und Impactlauf bestehen erneut.
+Static1024 prüft die 27 Feldverträge, alle Hilfstexte und die vier bestehenden
+Consumerquellen; sein tatsächlicher Selftest lehnt 23 Mutationen ab.
+
+Der Selector wählt ausschließlich Common178 ohne weitere Matrixflags.
+Dieser Lauf besteht auf SQL Server 2025/CL170 in fünf Batches. Die Auswahl
+wird zusätzlich gegen konkrete Commit-SHAs geprüft. Ein erster voller
+statischer Lauf scheitert am bytegenauen OPS-005-Installervergleich nach dem
+Windowscheckout. Die kanonische Neugenerierung aus 166 Quellen korrigiert
+nur die lokale Zeilenendenrepräsentation; Source010, OPS-005 install/update
+und PLAN-001 bleiben normalisiert unverändert und erzeugen keinen Git-Diff.
+Der isolierte Adaptervertrag und anschließend alle 75 statischen Prüfungen
+bestehen. Die anschließenden begrenzten Dokumentations-, Schreibstil- und
+Privacyprüfungen bestehen am Lieferstand.
+
+Die UTF-8/LF-Quellidentitäten des geprüften Stands lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source010, unverändert | 0D66DEB0F9BE8A06B28BAA8C1BD040ED8088241D7F10B6DAEBC2DB92607EBEA1 |
+| Common178 | 11980BAA535025FEE3944158B0E3776D4C2D67BF0785DFE47395D1B8695EFD95 |
+
+Die drei eigenen Quellen sind identitätsgeprüft entfernt. Container und
+Volume des eigenen Labs sind entfernt: zwei Schritte, null Fehler, REMOVED.
+Der eigene verschlüsselte temporäre Secretwert ist entfernt. Private Captures
+und konkrete Runtimeidentitäten bleiben außerhalb von Git. Unerwartetes
+READ_ONLY bei gewünschtem READ_WRITE, ERROR, positive Speicherwarnschwellen,
+Berechtigungen, Timeout, Regex, ältere native Engines und CL150/160 bleiben
+unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
+Maturityflags bleiben unverändert.

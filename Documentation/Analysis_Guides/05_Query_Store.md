@@ -51,9 +51,9 @@ EXEC [monitor].[USP_QueryStoreStatus]
 
 ### Resultsets
 
-1. Meta/Status.
-2. Query-Store-Zustand.
-3. Fehler/Warnungen je Datenbank.
+RAW liefert Meta/Status, die Query-Store-Statusmenge und Fehler/Warnungen je Datenbank. JSON enthält `meta`, `queryStoreStatus` und `warnings`; TABLE registriert ausschließlich `queryStoreStatus`. Die gemeinsame früh angelegte Ergebnistabelle besitzt 27 Felder, sieben explizite Frameworktextcollations und genau eine NOT-NULL-Spalte (`DatabaseName`); alle Felder sind ohne Identity. Die aktive CONSOLE ergänzt die fachliche Menge um `Ergebnis` oder liefert bei leerer Menge eine dreifeldrige Hinweiszeile.
+
+Ohne Filter, einschließlich NULL, leerem String und Leerzeichen, werden alle sichtbaren Online-Benutzerdatenbanken gelesen. Exakte Pipe-Listen und getrennte Pattern beschränken diesen Scope. Ein Zeilenlimit, Zeitfenster oder Problemfilter existiert nicht. OFF bleibt eine ausgabefähige Optionszeile. Fehlende explizite Namen erzeugen `DATABASE_NOT_FOUND`; bei gemischter gültiger und fehlender Auswahl bleibt die gültige Menge mit `AVAILABLE_LIMITED` und Partialität erhalten.
 
 ### Zustandsspalten
 
