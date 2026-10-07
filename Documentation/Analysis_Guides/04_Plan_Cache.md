@@ -91,7 +91,7 @@ Die Procedure aggregiert alle aktuellen Cachezeilen eines Query Hash und zeigt P
 | `QueryHash` | normalisierte Querygruppe |
 | `PlanVariantCount` | verschiedene QueryPlanHashes |
 | `PlanHandleCount` | verschiedene Plan Handles; kann größer als PlanVariantCount sein |
-| `CompilationCount` | im Code aggregierte Plan-Generationen/Compile-Evidenz |
+| `CompilationCount` | Anzahl sichtbarer Cachezeilen der Hashgruppe; keine vollständige historische Compilezahl |
 | `ExecutionCount` | Summe aktueller Cachezeilen |
 | `TotalCpuMs`, `AvgCpuMs` | CPU gesamt/je Ausführung |
 | `TotalElapsedMs`, `AvgElapsedMs` | Laufzeit gesamt/je Ausführung |
@@ -100,12 +100,18 @@ Die Procedure aggregiert alle aktuellen Cachezeilen eines Query Hash und zeigt P
 | `FirstCreationTime`, `LastExecutionTime` | sichtbares Cachefenster |
 | `SampleStatementText` | Statement einer dominanten Cachezeile; nicht zwingend alle Textvarianten |
 
+RAW, TABLE, aktive CONSOLE und JSON verwenden dieselbe 20-feldrige Ergebnismenge. Deren einziger Text, `SampleStatementText`, ist explizit Framework-CS collatiert; die Menge besitzt keine Identity. RAW ergänzt den neunfeldrigen Modulstatus, CONSOLE die Ergebnisbeschriftung; TABLE schreibt nur `queryHashes`. JSON behält neun Metafelder und das leere Warningsarray.
+
+Die Hashauswahl wird nach dem angeforderten Ressourcenwert und `LastExecutionTime` jeweils absteigend begrenzt. Vollständig gleiche Sortschlüssel bleiben ohne zusätzlichen Tiebreaker. RAW und JSON sortieren die Auswahl ausdrücklich; TABLE und aktive CONSOLE garantieren keine Anzeigeordnung. NULL oder 0 als Zeilenlimit ist unbegrenzt. Negative Zeilen- und Textlimits liefern `INVALID_PARAMETER`, ohne den Unicode-Projektionshelper mit einem negativen Grenzwert aufzurufen. Der Statuszähler beschreibt die ausgewählten Hashgruppen.
+
+Der Defaultscope besitzt keinen Hashfilter und prüft `PLAN_CACHE_DEEP`; diese Procedure besitzt keinen Datenbankfilter. Mindestfilter wirken vor der Hashauswahl. Der laufinterne Parent-Snapshot ersetzt ausschließlich den erneuten DMV-Read, nicht den Auswahl-, Ressourcen- oder Textvertrag. Ein fehlender Snapshot wird mit `ERROR_HANDLED` ausgegeben. Textauflösung bleibt cacheabhängig und kann nach dem Snapshotread fehlen.
+
 ### Interpretation
 
 - Viele Planvarianten können aus legitimen SET Options, Datenbankkontexten, Parameter Sensitivity oder Recompiles entstehen.
 - Gleicher Plan Hash mit mehreren Handles kann Cachebloat statt Planvarianz bedeuten.
 - Query Hash kann unterschiedliche Literale normalisieren, aber nicht jede semantisch ähnliche Query.
-- `PlanVariantCount=1` schließt historische Planwechsel aus; alte Pläne können evictet sein.
+- `PlanVariantCount=1` schließt historische Planwechsel nicht aus; gezählt werden nur aktuell sichtbare Plan Hashes, ältere Pläne können evictet sein.
 
 ### Beispiele
 
