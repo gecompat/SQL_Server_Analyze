@@ -151,34 +151,81 @@ BEGIN
         SET @StatusCode=CASE WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END;
     END CATCH;
 
-    IF @StatusCode='AVAILABLE' AND @MitPlanAttributes=1
+    CREATE TABLE [#PlanDetails_CandidatesOutput]
+    (
+          [CandidateId] int,[SessionId] smallint NULL,[RequestId] int NULL,[PlanHandle] varbinary(64) NULL,[SqlHandle] varbinary(64) NULL
+        , [QueryHash] binary(8) NULL,[QueryPlanHash] binary(8) NULL,[StatementStartOffset] int NULL,[StatementEndOffset] int NULL
+        , [CreationTime] datetime NULL,[LastExecutionTime] datetime NULL,[ExecutionCount] bigint NULL
+        , [StatementTextCharacters] bigint NULL,[StatementTextBytes] bigint NULL,[StatementTextIsTruncated] bit NOT NULL DEFAULT(0),[StatementText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BatchTextCharacters] bigint NULL,[BatchTextBytes] bigint NULL,[BatchTextIsTruncated] bit NOT NULL DEFAULT(0),[BatchText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SqlTextDatabaseId] int NULL,[SqlTextDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SqlTextObjectId] int NULL
+    );
+    INSERT [#PlanDetails_CandidatesOutput]
+    ([CandidateId],[SessionId],[RequestId],[PlanHandle],[SqlHandle],[QueryHash],[QueryPlanHash],
+     [StatementStartOffset],[StatementEndOffset],[CreationTime],[LastExecutionTime],[ExecutionCount])
+    SELECT [CandidateId],[SessionId],[RequestId],[PlanHandle],[SqlHandle],[QueryHash],[QueryPlanHash],
+           [StatementStartOffset],[StatementEndOffset],[CreationTime],[LastExecutionTime],[ExecutionCount]
+    FROM [#PlanDetails_Candidate];
+
+    DECLARE @ResolveCandidateDetails bit=CASE WHEN @StatusCode IN('AVAILABLE','PARTIAL') THEN 1 ELSE 0 END,
+            @SourceCandidateId int,@SourcePlanHandle varbinary(64),@SourceSqlHandle varbinary(64),
+            @SourceStartOffset int,@SourceEndOffset int;
+    DECLARE [CandidateSourceCursor] CURSOR LOCAL FAST_FORWARD FOR
+        SELECT [CandidateId],[PlanHandle],[SqlHandle],[StatementStartOffset],[StatementEndOffset]
+        FROM [#PlanDetails_Candidate] ORDER BY [CandidateId];
+    OPEN [CandidateSourceCursor];
+    FETCH NEXT FROM [CandidateSourceCursor] INTO @SourceCandidateId,@SourcePlanHandle,@SourceSqlHandle,@SourceStartOffset,@SourceEndOffset;
+    WHILE @@FETCH_STATUS=0
+    BEGIN
+    IF @ResolveCandidateDetails=1 AND @MitPlanAttributes=1
     BEGIN TRY
         INSERT [#PlanDetails_Attributes]
         SELECT [c].[CandidateId],[pa].[attribute],CONVERT(nvarchar(4000),[pa].[value]),[pa].[is_cache_key]
-        FROM [#PlanDetails_Candidate] AS c CROSS APPLY sys.dm_exec_plan_attributes([c].[PlanHandle]) AS pa;
-    END TRY BEGIN CATCH SET @IsPartial=1;SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
+        FROM [#PlanDetails_Candidate] AS c CROSS APPLY sys.dm_exec_plan_attributes(@SourcePlanHandle) AS pa WHERE [c].[CandidateId]=@SourceCandidateId;
+    END TRY BEGIN CATCH SET @IsPartial=1;IF @StatusCode IN('AVAILABLE','PARTIAL') SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
 
-    IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitCompilePlan=1
+    IF @ResolveCandidateDetails=1 AND @MitCompilePlan=1
     BEGIN TRY
         INSERT [#PlanDetails_Plans]
         SELECT [c].[CandidateId],'COMPILE_XML',CASE WHEN [qp].[query_plan] IS NULL THEN 'UNAVAILABLE_OBJECT' ELSE 'AVAILABLE' END,[qp].[dbid],[qp].[objectid],[qp].[encrypted],[qp].[query_plan],NULL,NULL,CASE WHEN [qp].[query_plan] IS NULL THEN N'Plan nicht mehr im Cache oder XML-Tiefenlimit erreicht.' END
-        FROM [#PlanDetails_Candidate] AS c OUTER APPLY sys.dm_exec_query_plan([c].[PlanHandle]) AS qp;
-    END TRY BEGIN CATCH INSERT [#PlanDetails_Plans] SELECT [CandidateId],'COMPILE_XML','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE() FROM [#PlanDetails_Candidate];SET @IsPartial=1;SET @StatusCode='PARTIAL';END CATCH;
+        FROM [#PlanDetails_Candidate] AS c OUTER APPLY sys.dm_exec_query_plan(@SourcePlanHandle) AS qp WHERE [c].[CandidateId]=@SourceCandidateId;
+    END TRY BEGIN CATCH INSERT [#PlanDetails_Plans] VALUES(@SourceCandidateId,'COMPILE_XML','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE());SET @IsPartial=1;IF @StatusCode IN('AVAILABLE','PARTIAL') SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
 
-    IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitTextPlan=1
+    IF @ResolveCandidateDetails=1 AND @MitTextPlan=1
     BEGIN TRY
         INSERT [#PlanDetails_Plans]
         SELECT [c].[CandidateId],'COMPILE_TEXT',CASE WHEN [tp].[query_plan] IS NULL THEN 'UNAVAILABLE_OBJECT' ELSE 'AVAILABLE' END,[tp].[dbid],[tp].[objectid],[tp].[encrypted],NULL,[tp].[query_plan],NULL,CASE WHEN [tp].[query_plan] IS NULL THEN N'Textplan nicht verfügbar.' END
-        FROM [#PlanDetails_Candidate] AS c OUTER APPLY sys.dm_exec_text_query_plan([c].[PlanHandle],COALESCE([c].[StatementStartOffset],0),COALESCE([c].[StatementEndOffset],-1)) AS tp;
-    END TRY BEGIN CATCH INSERT [#PlanDetails_Plans] SELECT [CandidateId],'COMPILE_TEXT','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE() FROM [#PlanDetails_Candidate];SET @IsPartial=1;SET @StatusCode='PARTIAL';END CATCH;
+        FROM [#PlanDetails_Candidate] AS c OUTER APPLY sys.dm_exec_text_query_plan(@SourcePlanHandle,COALESCE(@SourceStartOffset,0),COALESCE(@SourceEndOffset,-1)) AS tp WHERE [c].[CandidateId]=@SourceCandidateId;
+    END TRY BEGIN CATCH INSERT [#PlanDetails_Plans] VALUES(@SourceCandidateId,'COMPILE_TEXT','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE());SET @IsPartial=1;IF @StatusCode IN('AVAILABLE','PARTIAL') SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
 
-    IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLastActualPlan=1
+    IF @ResolveCandidateDetails=1 AND @MitLastActualPlan=1
     BEGIN TRY
         INSERT [#PlanDetails_Plans]
         SELECT [c].[CandidateId],'LAST_ACTUAL_XML',CASE WHEN [qp].[query_plan] IS NULL THEN 'AVAILABLE_DISABLED' ELSE 'AVAILABLE' END,[qp].[dbid],[qp].[objectid],[qp].[encrypted],[qp].[query_plan],NULL,NULL,
                CASE WHEN [qp].[query_plan] IS NULL THEN N'LAST_QUERY_PLAN_STATS nicht aktiviert, Plan nicht geeignet, nicht cachebar oder bereits evictet.' END
-        FROM [#PlanDetails_Candidate] AS c OUTER APPLY sys.dm_exec_query_plan_stats([c].[PlanHandle]) AS qp;
-    END TRY BEGIN CATCH INSERT [#PlanDetails_Plans] SELECT [CandidateId],'LAST_ACTUAL_XML','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE() FROM [#PlanDetails_Candidate];SET @IsPartial=1;SET @StatusCode='PARTIAL';END CATCH;
+        FROM [#PlanDetails_Candidate] AS c OUTER APPLY sys.dm_exec_query_plan_stats(@SourcePlanHandle) AS qp WHERE [c].[CandidateId]=@SourceCandidateId;
+    END TRY BEGIN CATCH INSERT [#PlanDetails_Plans] VALUES(@SourceCandidateId,'LAST_ACTUAL_XML','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE());SET @IsPartial=1;IF @StatusCode IN('AVAILABLE','PARTIAL') SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
+
+    BEGIN TRY
+        UPDATE [o]
+        SET [StatementText]=[statementText].[StatementText],[BatchText]=[st].[text],
+            [SqlTextDatabaseId]=[st].[dbid],
+            [SqlTextDatabaseName]=(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id]=[st].[dbid]),
+            [SqlTextObjectId]=[st].[objectid]
+        FROM [#PlanDetails_CandidatesOutput] AS [o]
+        JOIN [#PlanDetails_Candidate] AS [c] ON [c].[CandidateId]=[o].[CandidateId]
+        OUTER APPLY [sys].[dm_exec_sql_text](COALESCE(@SourceSqlHandle,@SourcePlanHandle)) AS [st]
+        OUTER APPLY [monitor].[TVF_StatementText]
+        (
+              [st].[text]
+            , [c].[StatementStartOffset]
+            , [c].[StatementEndOffset]
+        ) AS [statementText]
+        WHERE [o].[CandidateId]=@SourceCandidateId;
+    END TRY BEGIN CATCH SET @IsPartial=1;IF @StatusCode IN('AVAILABLE','PARTIAL') SET @StatusCode='PARTIAL';IF @ErrorMessage IS NULL BEGIN SET @ErrorNumber=ERROR_NUMBER();SET @ErrorMessage=ERROR_MESSAGE();END;END CATCH;
+    FETCH NEXT FROM [CandidateSourceCursor] INTO @SourceCandidateId,@SourcePlanHandle,@SourceSqlHandle,@SourceStartOffset,@SourceEndOffset;
+    END;
+    CLOSE [CandidateSourceCursor];DEALLOCATE [CandidateSourceCursor];
 
     IF @StatusCode IN('AVAILABLE','PARTIAL') AND @MitLivePlan=1
     BEGIN TRY
@@ -191,32 +238,6 @@ BEGIN
             FROM [sys].[dm_exec_query_statistics_xml](@SingleSessionId) AS [qx]
             LEFT JOIN [#PlanDetails_Candidate] AS c ON [c].[SessionId]=[qx].[session_id] AND ([c].[RequestId]=[qx].[request_id] OR [c].[RequestId] IS NULL);
     END TRY BEGIN CATCH INSERT [#PlanDetails_Plans] VALUES(NULL,'LIVE_XML','ERROR_HANDLED',NULL,NULL,NULL,NULL,NULL,ERROR_NUMBER(),ERROR_MESSAGE());SET @IsPartial=1;SET @StatusCode='PARTIAL';END CATCH;
-
-    IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE') BEGIN
-    SET @MonitorPrintMessage = FORMATMESSAGE(N'WARNUNG USP_PlanDetails: %s - %s', @StatusCode, COALESCE(@ErrorMessage,N''));
-    RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
-END;
-    CREATE TABLE [#PlanDetails_CandidatesOutput]
-    (
-          [CandidateId] int,[SessionId] smallint NULL,[RequestId] int NULL,[PlanHandle] varbinary(64) NULL,[SqlHandle] varbinary(64) NULL
-        , [QueryHash] binary(8) NULL,[QueryPlanHash] binary(8) NULL,[StatementStartOffset] int NULL,[StatementEndOffset] int NULL
-        , [CreationTime] datetime NULL,[LastExecutionTime] datetime NULL,[ExecutionCount] bigint NULL
-        , [StatementTextCharacters] bigint NULL,[StatementTextBytes] bigint NULL,[StatementTextIsTruncated] bit NOT NULL DEFAULT(0),[StatementText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [BatchTextCharacters] bigint NULL,[BatchTextBytes] bigint NULL,[BatchTextIsTruncated] bit NOT NULL DEFAULT(0),[BatchText] nvarchar(max) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
-        , [SqlTextDatabaseId] int NULL,[SqlTextDatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[SqlTextObjectId] int NULL
-    );
-    INSERT [#PlanDetails_CandidatesOutput]
-    SELECT [c].[CandidateId],[c].[SessionId],[c].[RequestId],[c].[PlanHandle],[c].[SqlHandle],[c].[QueryHash],[c].[QueryPlanHash],[c].[StatementStartOffset],[c].[StatementEndOffset],[c].[CreationTime],[c].[LastExecutionTime],[c].[ExecutionCount],
-           NULL,NULL,CONVERT(bit,0),[statementText].[StatementText],
-           NULL,NULL,CONVERT(bit,0),[st].[text],[st].[dbid],(SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = [st].[dbid]),[st].[objectid]
-    FROM [#PlanDetails_Candidate] AS [c]
-    OUTER APPLY [sys].[dm_exec_sql_text](COALESCE([c].[SqlHandle],[c].[PlanHandle])) AS [st]
-    OUTER APPLY [monitor].[TVF_StatementText]
-    (
-          [st].[text]
-        , [c].[StatementStartOffset]
-        , [c].[StatementEndOffset]
-    ) AS [statementText];
 
     DECLARE @TruncatedValueCount bigint=0,@LargestRequiredCharacters bigint=NULL;
     DECLARE @ColumnTruncatedCount bigint=0,@ColumnLargestCharacters bigint=NULL;
@@ -239,6 +260,10 @@ END;
           @TruncatedValueCount=@TruncatedValueCount,@ParameterName=N'@MaxSqlTextZeichen'
         , @ParameterValue=@MaxSqlTextZeichen,@LargestRequiredCharacters=@LargestRequiredCharacters
         , @PrintMeldungen=@PrintMeldungen;
+    IF @PrintMeldungen=1 AND @StatusCode NOT IN('AVAILABLE') BEGIN
+    SET @MonitorPrintMessage = FORMATMESSAGE(N'WARNUNG USP_PlanDetails: %s - %s', @StatusCode, COALESCE(@ErrorMessage,N''));
+    RAISERROR(N'%s', 10, 1, @MonitorPrintMessage) WITH NOWAIT;
+END;
     IF @ResultSetArtNormalisiert<>'NONE'
     BEGIN
         SELECT N'USP_PlanDetails' [ModuleName],@CollectionTimeUtc [CollectionTimeUtc],@StatusCode [StatusCode],@IsPartial [IsPartial],@RowCount [RowCount],@RequiredPermission [RequiredPermission],@ErrorNumber [ErrorNumber],@ErrorMessage [ErrorMessage],@Detail [Detail];
