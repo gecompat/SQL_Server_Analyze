@@ -599,3 +599,21 @@ standardmäßig. Vor SQL Server 2025 liefert das Modul kontrolliert
 `UNAVAILABLE_VERSION`, ohne neuere Kataloge zu referenzieren. Historische
 Query-Store-Rollen sind von der aktuellen AG-Rolle und von Health- oder
 Synchronitätsaussagen zu trennen.
+
+Die sieben vorhandenen Resultsets besitzen 105 Felder und 45 explizit
+Framework-CS-collatierte Textfelder. RAW, TABLE und JSON verwenden dieselben
+materialisierten Mengen; CONSOLE zeigt nur den 17-Feld-Modulstatus mit einem
+Ergebnislabel. NULL oder 0 als Zeilenlimit bedeuten unbegrenzt. Ein positives
+`@MaxZeilen` begrenzt die vier fachlichen Mengen jeweils getrennt, während
+Quellenstatus und Warnungen erhalten bleiben. Modulzähler zählen die Ausgabe,
+Quellenzähler die Sammlung vor der globalen Begrenzung.
+
+TABLE kann einzelne Resultsets auswählen; nicht angeforderte Ziele bleiben
+einschließlich ihrer Zeilen unverändert. Auch bei einem ungültigen fachlichen
+Parameter erhalten gültig zugeordnete Ziele ihr vollständiges Schema. Ein
+negatives Zeilenlimit liefert `INVALID_PARAMETER`, leere fachliche Mengen und
+setzt alle vier `HasMore*`-Flags auf `false`. Die Auswahl bewahrt die vorhandenen Sortschlüssel;
+TABLE und CONSOLE garantieren keine Reihenfolge. Die standardmäßige Auswahl
+umfasst alle sichtbaren Online-Benutzerdatenbanken. Runtime und Waits lesen
+vollständige überlappende Intervalle der letzten Stunde, sofern kein UTC-Fenster
+angegeben wird; Replica-Katalog und Forcing-Locations haben keinen Zeitfilter.

@@ -4283,3 +4283,121 @@ Eingefrorene normalisierte SHA256-Werte: Source090
 `960BBA39990925119E94CD93708663F0EA0D251B529E1E08F07570078153EF22`, Common179
 `7E93E4B20235B0496A7F8BBD09161D9D22E6C5593CD756E0AC575F7D5D2C5DD3`, Static1025
 `88C52AE46FFCF9D5B329C84BB8FC5881E8597B7C2D2549D902B762361A8D7C99`.
+
+## Query-Store-Replica-Analyse: negative Limits und selektive TABLE-Zuordnungen
+
+Der Nachweis vom 7. Oktober 2026 verwendet ein eigenes SQL-Server-2025-Lab
+mit Version 17.0.4075.5, Server-/tempdb-Collation Latin1_General_100_CS_AS
+und Frameworkcollation SQL_Latin1_General_CP1_CS_AS. Framework und zwei
+getrennt identifizierte Unicode-CI_AS-Quellen besitzen gemessene Compatibility
+Levels 170. HADR ist nativ deaktiviert. Jede eigene Quelle enthält eine
+synthetische Tabelle mit drei Zeilen und eine Procedure; zwei beziehungsweise
+drei Ausführungen liefern je eine eingefrorene Runtimegruppe. Query Store
+verwendet danach READ_ONLY mit Capture NONE und eingeschaltetem Wait-Capture.
+
+Native Katalogabfragen liefern vier vorhandene Rollenmetadaten je Quelle und
+Runtimewerte ausschließlich für Gruppe 1. Diese Katalogzeilen belegen keine
+AG-, Geo-, Failover- oder lesbare Secondary-Topologie. Rollenliterale prüfen
+den bestehenden Produktvertrag anhand nativer Codes; ein ReplicaName wird
+nicht als tatsächliche aktuelle Rolle interpretiert. Waits und Forcing-Locations
+sind nativ leer und werden nicht als positive Aggregationsnachweise verbucht.
+
+Das Original besitzt bereits elf lokale Tabellen mit 55 expliziten
+Textcollations und sieben gemeinsame Resultsets. Die Schemas mit
+17/15/21/19/14/13/6 Feldern umfassen insgesamt 105 Felder und 45 Textfelder.
+Vier RAW- und vier TABLE-Originalfälle bestätigen vollständige Typfacetten,
+native 15-Feld-Katalog- und 21-Feld-Runtimewerte, NULLs und JSON-Parität.
+Die TABLE-Gegenprobe ergibt fünf Batches und 64 private Grids. Relative
+Ordinale, sysname, Größen, Präzision, Skalen, Nullability, Identity und alle
+45 Frameworktextcollations werden unabhängig geprüft. SourceOrdinal und
+WarningOrdinal besitzen im RAW die bestehende Identity-Eigenschaft; die
+TABLE-Brücke übernimmt die Werte ohne Identity.
+
+Drei tatsächliche Ausgabeprobleme werden gezielt korrigiert. Das negative
+Original-Limit liefert INVALID_PARAMETER, aber vier wahre HasMore-Flags
+bei leeren Fachmengen. Gültige TABLE-Zuordnungen behalten bei ungültigen
+Parametern das Dummy-Schema. Außerdem hält SELECT bei einer fehlenden
+Zuordnung den vorherigen Zielwert fest: neun von elf positiven Teilmappings
+werfen nativ 51010 mit TARGET_SCHEMA_MISMATCH. Sieben einzelne Zuordnungen
+und vier Mehrfachzuordnungen ergeben zwölf Batches und 176 Grids; warnings
+allein sowie sourceStatus zusammen mit warnings bestehen bereits im Original.
+Ein erster nicht abgefangener Clientversuch zeigt denselben Fehler und wird durch die
+anschließende abgefangene Originalgegenprobe eingegrenzt.
+
+Internes Limit 0 ausschließlich im negativen INVALID_PARAMETER-Zweig,
+frühes TABLE-Prepare und sieben skalare SET-Zuweisungen beheben diese Grenzen.
+Nicht zugeordnete Ergebnisse setzen den internen Zielwert auf NULL und lösen
+keinen Writer aus. Angeforderte Ziele erhalten auch bei ungültigen Parametern
+das vollständige Schema. RequestedMaxRows bleibt unverändert negativ,
+die vier HasMore-Flags werden false. LocalLimit, Major-/Katalog-/Permission-
+Gates, Rollenfunktion, Mappingbewertung und fachliche Abfragen bleiben
+unverändert. Die Signatur besitzt weiterhin 18 Parameter; SchemaVersion und
+Sourceversion ändern sich nicht, und es entsteht kein neues Resultset.
+
+Die achtundzwanzig gepaarten Vergleichsfälle umfassen je vollständiger
+Original-/Finalsuite 29 Batches und 197 private Ergebnisgrids. RAW, TABLE,
+CONSOLE und NONE erhalten dieselben Fachmengen
+bei NULL/0/1/2, exakter Unicode-/Case-Auswahl, Replica-Filtern, leerem
+Zeitfenster und fehlender oder gemischter Datenbankauswahl. Eine falsche
+private Duplikatannahme wird anhand des Originals korrigiert: doppelte
+exakte Datenbanknamen liefern INVALID_PARAMETER ohne zusätzliche Partialität.
+Der Vergleich bestätigt alle 105 nativen Feldfacetten, acht JSON-Hauptschlüssel,
+13 Metafelder, vollständige NULL-Properties und doppelte Schlüsselkontrolle.
+Alle 13 Quellenstatusfelder werden gegen fünf unabhängige Quellcodes je
+Datenbank und die nativen Sammlungsmengen 1/4/1/0/0 geprüft. Modulzähler
+beschreiben die begrenzte Ausgabe; Quellenzähler bleiben vor dem globalen Limit.
+
+Acht negative Consumerfälle, sechs Mappingablehnungen mit 51011 und zwei
+Replica-only-Parentaufrufe ergeben 17 Batches und 80 Grids. Der Parent übernimmt
+AVAILABLE auf Ordinal 8; Child-JSON und die sieben RAW-Schemas stimmen bei
+Limits 1/2 vollständig überein. Alle elf positiven Teilmappings bestehen
+nach der Reparatur. Elf zusätzliche negative Teilmappings ergeben zwölf
+Batches und 165 Grids. Angeforderte Schemas und JSON bleiben korrekt;
+nicht zugeordnete Dummytabellen behalten ihre Sentinelzeilen. Caller-
+LOCK_TIMEOUT 137 bleibt in diesen Rand-, Teilmapping- und Parentfällen erhalten.
+
+Common180 besteht 14 allgemeine und 18 bedingte native Fälle, neun allgemeine
+und neun native selektive TABLE-Zuordnungen, fünf Consumer, sechs Preflights
+und drei SQL-captured Invalid-CONSOLE-Fälle. Drei direkte positive CONSOLE-
+Aufrufe prüfen im Test Status und JSON; ein unabhängiger Client bestätigt
+zusätzlich sämtliche 18 CONSOLE-Facetten und Werte des Modulstatus mit Label.
+Der positive Commonlauf ergibt vier Batches und 44 Grids. Der erste Lauf
+scheitert an einem Test-EXCEPT zwischen JSON-Schlüsseln und tempdb-Katalognamen;
+beide Seiten erhalten explizites BIN2. Danach scheitern sechs dynamische
+Replica-Gruppenvergleiche an der CI-/Frameworkgrenze; beide Operanden werden
+nur im Test explizit Framework-CS. Eine private Diagnose bestätigt Zeilen 14
+und 30 des dynamischen Orakels. Source bleibt durch beide Testkorrekturen
+unverändert. Eine private Variablenüberschattung und unterschiedliche
+Offset-Zeitdarstellungen werden ausschließlich im Clientprüfer korrigiert.
+
+Alle 13 nativen Grids der eigenen Quellen bleiben vor und nach den direkten
+Verträgen sowie nach dem Impactlauf exakt gleich. Neun ausgewählte Testdateien
+bestehen auf CL170 in 27 Batches und 25,7 Sekunden. Der private Einstieg setzt
+QUOTED_IDENTIFIER und ANSI_NULLS ausdrücklich. Nach identitätsgesichertem
+Cleanup der beiden Quellen besteht Common180 in vier Batches und zwölf Grids
+mit 14 allgemeinen Fällen, neun selektiven Zuordnungen, fünf Consumern, sechs
+Preflights und drei Invalid-CONSOLE-Captures. Der positive Block meldet
+NOT_EXECUTED mit null Fällen und ohne gemessene Source-Compatibility-Levels.
+
+Alle 75 statischen Prüfungen bestehen am stabilen funktionalen Stand.
+Static1030 besteht 448 echte Mutationen über feldbezogene DDL-, Collation-,
+Invalid-, Preflight-, Lookup- und Consumergrenzen. Der unabhängige Source-
+und anschließende Sieben-Dateien-Review besitzen keine offenen Befunde.
+OPS-005 ist aus 166 kanonischen Quellen synchronisiert; sein Update, beide
+PLAN-Artefakte und TVF005 bleiben normalisiert unverändert. Sieben Inventarzeilen
+ergänzen ausschließlich die 45 bereits vorhandenen Textcollations. Container
+und Volume des eigenen Labs sind in zwei Schritten ohne Fehler entfernt;
+der eigene verschlüsselte temporäre Secretwert ist entfernt.
+
+Die abschließenden begrenzten Dokumentations-, Schreibstil- und Privacyprüfungen
+bestehen am Lieferstand. Positive Wait-/Forcing-Aggregation und deren
+Limitwirkung, echte AG-/Geo-/Secondary-/Failover-Evidenz, fehlende Rollenmetadaten,
+weitere Zustände, Berechtigungen, Timeout, ältere native Engines und CL150/160
+bleiben unbelegt. COLL-001 bleibt partiell; Registry, RUNTIME-001 und bestehende
+Maturityflags bleiben unverändert. Private Captures, Runtimeidentitäten und
+Umgebungsdaten verbleiben außerhalb des Repositorys.
+
+Eingefrorene normalisierte SHA256-Werte: Source100
+`724194A1F02A38EF6EECB4EFD37491FAE341EDB7E4F442498EC0381A926A8F9A`, Common180
+`3F303E144103825C30E94C121A8DE343F7B52319D5BAA28EE971D79570BD0AC6`, Static1030
+`7C156F844E3889B84753A0869F5EFE050EE6E77487CF44A4EB018E0A48777586`.
