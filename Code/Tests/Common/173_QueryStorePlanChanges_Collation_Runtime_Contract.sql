@@ -11,8 +11,8 @@ Ohne passende Fixture bleibt ausschließlich dieser Block NOT_EXECUTED.
 Der Test erzeugt keine Quellenobjekte, führt keine Fixture-Procedures aus und
 ändert weder Planbindungen noch Query-Store-Optionen.
 Summaryfilter gelten vor der Aggregation; zu exportierten Querykeys gehören
-weiterhin alle gespeicherten Pläne. Positive exakte Cross-DB-Referenzlisten sind
-wegen des bestehenden unqualifizierten Quellhelper-Aufrufs nicht abgedeckt.
+weiterhin alle gespeicherten Pläne. Exakte Cross-DB-Referenzlisten bleiben
+außerhalb dieser Fixture; Common193 prüft ihren gemeinsamen Vertrag.
 Positive CONSOLE-Zeilen und RAW-Parität benötigen unabhängigen Clientcapture.
 */
 SET NOCOUNT ON;

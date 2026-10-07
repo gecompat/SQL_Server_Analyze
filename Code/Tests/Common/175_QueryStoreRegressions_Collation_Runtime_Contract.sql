@@ -12,8 +12,8 @@ Fixture bleibt dieser Block NOT_EXECUTED; allgemeine Verträge laufen weiter.
 Der Test erstellt oder verändert keine Fixture, führt keine Fixture-Procedures
 aus und verändert keine Datenbankoptionen. Gleiche Rangwerte dürfen zwischen
 Aufrufen unterschiedliche Auswahlen ergeben. Positive RAW-/CONSOLE-Vollzeilen
-benötigen zusätzlichen Clientcapture. Exakte Cross-DB-Referenzlisten mit dem
-bestehenden unqualifizierten Helper sind nicht Bestandteil des positiven Blocks.
+benötigen zusätzlichen Clientcapture. Exakte Cross-DB-Referenzlisten sind nicht Bestandteil
+dieses positiven Blocks; Common193 prüft ihren gemeinsamen Vertrag.
 */
 SET NOCOUNT ON;
 DECLARE @FrameworkLevel int=(SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID());

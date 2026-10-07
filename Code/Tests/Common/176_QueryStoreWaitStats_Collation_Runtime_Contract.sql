@@ -14,8 +14,8 @@ Objekte noch Query Store oder Datenbankoptionen. Die native Collation der Katego
 geprüft. Ein Record je Gruppe belegt keine unterschiedliche Gewichtungswirkung
 des AVG; Rangties werden nicht als Fixtureevidenz vorausgesetzt. Positive RAW-
 und CONSOLE-Vollzeilenparität benötigen zusätzlichen unabhängigen Clientcapture.
-Exakte Cross-DB-Referenzlisten mit dem bestehenden Helper bleiben außerhalb
-des positiven Blocks.
+Exakte Cross-DB-Referenzlisten bleiben außerhalb dieses positiven Blocks.
+Common193 prüft ihren gemeinsamen Vertrag.
 */
 SET NOCOUNT ON;
 DECLARE @FrameworkLevel int=(SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID());

@@ -14,8 +14,8 @@ Fixture bleibt der positive Block NOT_EXECUTED. Die Gegenprobe bewahrt alle neun
 Sortierungen und ihre bestehenden Secondarykeys, ohne zusätzliche Tie-Sortkeys.
 XML wird als Wert verglichen; eine SqlClient-/SQL-Serialisierungsbyteparität wird
 nicht behauptet. Positive RAW-/CONSOLE-Vollzeilenparität benötigt zusätzlichen unabhängigen Clientcapture.
-Exakte Cross-DB-Referenzlisten, Regex und fehlende Berechtigungen bleiben außerhalb
-des positiven Fixturevertrags.
+Exakte Cross-DB-Referenzlisten bleiben außerhalb dieser Fixture; Common193 prüft
+ihren gemeinsamen Vertrag. Regex und fehlende Berechtigungen bleiben unbelegt.
 */
 SET NOCOUNT ON;
 DECLARE @FrameworkLevel int=(SELECT compatibility_level FROM sys.databases WHERE database_id=DB_ID());

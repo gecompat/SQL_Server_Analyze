@@ -325,7 +325,7 @@ BEGIN
      SELECT 1
      FROM (SELECT CONVERT(xml, [p].[query_plan]) AS [PlanXml]) AS [px]
      CROSS APPLY [px].[PlanXml].nodes(''declare default element namespace "http://schemas.microsoft.com/sqlserver/2004/07/showplan"; //Object[@Database]'') AS [n]([ObjectNode])
-     JOIN [monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) AS [rf]
+     JOIN ' + QUOTENAME((SELECT [name] FROM [master].[sys].[databases] WITH (NOLOCK) WHERE [database_id] = DB_ID())) + N'.[monitor].[TVF_ParseSqlNameList](@ReferencedDatabaseNames) AS [rf]
        ON [rf].[IsValid] = 1
       AND [rf].[NameValue] COLLATE SQL_Latin1_General_CP1_CS_AS
         = PARSENAME([n].[ObjectNode].value(''@Database'', ''nvarchar(776)''), 1) COLLATE SQL_Latin1_General_CP1_CS_AS

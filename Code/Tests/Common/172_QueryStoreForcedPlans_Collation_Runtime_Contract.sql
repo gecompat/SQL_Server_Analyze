@@ -13,9 +13,8 @@ RAW- und positive CONSOLE-Zeilen benötigen zusätzlich unabhängigen Clientcapt
 Fehlerfreies Forcing belegt keine positiven Forcingfehler oder Berechtigungsfälle.
 Fehlende Auswahl bleibt im vorhandenen Vertrag ohne zusätzliche Warning; die
 entsprechenden Fälle prüfen diese Grenze und führen keinen neuen Status ein.
-Der positive Referenzfall nutzt ein LIKE-Pattern ohne Platzhalter. Eine positive
-datenbankübergreifende exakte Referenzliste wird hier nicht nachgewiesen
-(bestehender Quellhelper-Aufruf kann Error 208 liefern).
+Der positive Referenzfall dieses Tests nutzt ein LIKE-Pattern ohne Platzhalter.
+Common193 prüft den gemeinsamen Vertrag exakter Cross-DB-Referenzlisten.
 */
 SET NOCOUNT ON;
 DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;

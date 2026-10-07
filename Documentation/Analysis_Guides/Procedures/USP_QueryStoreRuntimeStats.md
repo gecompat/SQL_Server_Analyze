@@ -127,6 +127,8 @@ WHERE [i].[end_time] > @VonUtc
 
 ### Zeit- und Scope-Modell
 
+Exakte `@ReferencedDatabaseNames` werden mit dem Parser der Frameworkdatenbank geprüft und in den dynamischen Quellabfragen über dessen dreigliedrigen Namen aufgelöst. Der Frameworkname wird vor `USE` aus `master.sys.databases` mit `NOLOCK` gelesen und mit `QUOTENAME` geschützt. Die Liste filtert Datenbankreferenzen im Showplan, nicht die Query-Store-Quelldatenbanken. `NULL` lässt diesen Referenzfilter weg; eine leere oder nur aus Leerzeichen bestehende Liste ist ungültig. Gültige doppelte Namen bleiben erlaubt und vervielfachen wegen `EXISTS` keine Zeilen. Die dekodierten XML-Namen werden weiterhin mit der expliziten Framework-CS-Collation verglichen; LIKE- und Regexpfade behalten ihre bisherigen Verträge.
+
 Die Auswertung verwendet eine persistierte, nach Intervallen aggregierte Historie innerhalb der Retention. Intervalle mit `end_time > @VonUtc AND start_time < @BisUtc` werden vollständig einbezogen, ohne zeitanteilige Kürzung. Die ausgegebenen ersten und letzten Ausführungszeiten stammen aus den Runtime-Records und können außerhalb eines schmalen Fensters liegen.
 
 Die neun Sortierungen bleiben `CPU_TOTAL`, `DURATION_TOTAL`, `READS_TOTAL`, `WRITES_TOTAL`, `EXECUTIONS`, `MEMORY_MAX`, `TEMPDB_TOTAL`, `LOG_BYTES_TOTAL` und `LAST_EXECUTION`. Global folgen das letzte Ausführungsdatum absteigend, der Query-Store-Datenbankname, QueryId und PlanId; zusätzliche Sorttie-Schlüssel werden nicht eingeführt. Eine feste Auswahl zwischen getrennten Aufrufen bei vollständigen Sortties wird nicht zugesichert.
