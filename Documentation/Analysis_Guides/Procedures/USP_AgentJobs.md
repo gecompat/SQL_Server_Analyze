@@ -26,11 +26,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `jobs`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert ausschließlich `jobs` mit unverändert 17 Feldern und sechs explizit collatierten Textspalten. CONSOLE zeigt dieselbe Jobsmenge mit einer zusätzlichen Ergebnisbezeichnung; eine leere Menge erhält eine Hinweiszeile. RAW liefert Modulstatus, Jobs und Steps. JSON enthält `meta`, `jobs` und `steps`; es besitzt kein Warnings-Array. Die lokalen Jobs- und Steps-Textspalten verwenden `SQL_Latin1_General_CP1_CS_AS`. Gültige doppelte Namen in der exakten Pipe-Liste werden unter dieser Collation zusammengeführt; der erste Listenordinal bleibt erhalten. Namen, die sich nur in der Groß-/Kleinschreibung unterscheiden, bleiben getrennt. Prüfen Sie den Modulstatus vor den Fachmengen und vereinigen Sie Jobs und Steps nicht ungeprüft.
 
 ## Eine Zeile bedeutet
 
-Je Resultset entspricht eine Zeile einem Job, einem Jobschritt, einer Historienzeile oder einem aktuellen Laufzustand.
+Eine Jobszeile entspricht einem ausgewählten Job mit seinem letzten Gesamtoutcome und aktuellen Aktivitätskontext. Eine Stepszeile entspricht einem Schritt eines bereits ausgewählten Jobs mit seinem letzten Stepoutcome; die Procedure exportiert keine einzelne Historyzeile.
 
 ## So lesen
 
@@ -66,7 +66,7 @@ Für `USP_AgentJobs` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtba
 | Haupttreiber | Zahl der Jobkandidaten, ihrer Steps und der für „letzter Ausgang“ zu durchsuchenden Historyzeilen. Exakte Namen/LIKE reduzieren Jobs früh; Regex erzwingt die spätere Nachfilterung der bereits materialisierten Menge. |
 | Skalierung | Aufwand wächst mit Jobs/Steps und der Suche nach letzter Aktivitäts-/Historyzeile je Job. Regex muss die vollständige vorselektierte Jobmenge materialisieren und nachfiltern. |
 | Ressourcen | CPU und I/O auf Katalogen beziehungsweise msdb-Historie; TempDB für Korrelation und Transfer bei langen Meldungen. |
-| Begrenzungswirkung | Exakte Jobliste und LIKE wirken in der Quellabfrage. Ohne Regex begrenzt TOP die Jobkandidaten früh; Regex wird nach Materialisierung angewandt. `@MaxZeilen` gilt für Jobs und beeinflusst indirekt Steps, begrenzt aber die Suche nach der letzten Historyzeile nicht proportional. |
+| Begrenzungswirkung | Exakte Jobliste und LIKE wirken in der Quellabfrage. Ohne Regex begrenzt TOP die Jobkandidaten früh; Regex wird nach Materialisierung angewandt. `@MaxZeilen` begrenzt Jobs und die anschließende Stepsmenge jeweils; NULL und 0 sind unbegrenzt. Es begrenzt die Suche nach der letzten Historyzeile nicht proportional. Die frühe Jobsauswahl wird durch das spätere Problemranking nicht zu einer globalen Problemauswahl. |
 | Locking und Nebenwirkungen | Read-only; kurze Schema-Stability-Zugriffe auf msdb/Systemkataloge. Jobs, Backups oder Wartung laufen parallel weiter, daher ist das Ergebnis nicht atomar. |
 | Schutzmechanismus | Kein High-Impact-Gate. Exakte Jobnamen, LIKE, Problemscope und das endliche Joblimit begrenzen Kandidaten; Regex ist bewusst ein später Filter und hebt den frühen TOP-Schutz auf. Es gibt keinen frei erweiterbaren Historyzeitraum. |
 | Sicherer Einsatz | Mit einem `ExampleJob` oder einer kleinen exakten Jobliste und endlichem Limit beginnen; Regex beziehungsweise vollständiges Jobinventar bei großer msdb außerhalb der Lastspitze. |
@@ -126,7 +126,7 @@ LEFT JOIN [LatestOutcome] AS [h]
 WHERE [j].[enabled] = 1;
 ```
 
-**Wichtig für die Eigenlast:** Jobname oder `job_id` möglichst vor Schedule-, Step- und History-Vertiefungen einschränken. `sysjobhistory` kann wesentlich größer als die Jobdefinition sein; ein Zeitfenster auf `run_date` spart dort die meiste Arbeit.
+**Wichtig für die Eigenlast:** Verwenden Sie eine kleine exakte Jobliste oder LIKE vor der weiteren Analyse. `sysjobhistory` kann wesentlich größer als die Jobdefinition sein; die Procedure bietet weder einen `job_id`-Parameter noch ein frei wählbares Historyzeitfenster. Bei `@NurProblematisch=1` bleiben Steps ohne gespeicherten Outcome 0, 2 oder 3 leer, auch wenn ein ausgewählter problematischer Job definierte Steps besitzt.
 
 ### Zeit- und Scope-Modell
 

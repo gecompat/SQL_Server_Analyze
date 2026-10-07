@@ -2743,3 +2743,147 @@ Nach diesem Ergebnis wurden dieser Gateabsatz und die abschließende
 redaktionelle Begriffskorrektur aus dem unabhängigen Review übernommen.
 SQL, Tests und ihre Quellidentitäten blieben unverändert. Das abschließende
 unabhängige Review hatte danach keine offenen Findings.
+
+## Agent-Jobs: 7. Oktober 2026
+
+### Nativer Ausgangsstand
+
+Source020 aus `f6acea6d05a2105c52558ef5477f6768db6b31bf` wurde aus
+166 kanonischen Dateien im eigenen SQL-Server-2025-Docker-Lab installiert.
+Installation und Smoke110 bestanden. Nativ bestätigt wurden ProductVersion
+`17.0.4075.5`, Major 17, Linux und Framework-Compatibility-Level 170.
+Server, `tempdb` und `msdb` verwendeten `Latin1_General_100_CS_AS`,
+das Framework `SQL_Latin1_General_CP1_CS_AS`. Der eigene Ausgangsscope
+enthielt keine Jobs oder Jobhistory.
+
+Zwei TABLE-Charakterisierungsfälle mit einem fehlenden synthetischen
+Unicode-Jobnamen bestanden ohne Harnessfehler. Das unbegrenzte Limit 0
+lieferte `AVAILABLE`; ein negatives Limit lieferte `INVALID_PARAMETER`.
+Beide Aufrufe erzeugten das bestehende Schema mit 17 Feldern und sechs
+von der Frameworkcollation abweichenden Textcollations. Die JSON-Arrays
+für Jobs und Steps waren jeweils leer.
+
+Ein gesonderter Aufruf mit demselben gültigen exakten Namen zweimal in
+der Pipe-Liste erzeugte Fehler 2627 mit Primary-Key-Kontext; Caller-JSON
+blieb NULL. Die gültigen Parserzeilen wurden vor dem TRY-Bereich ohne
+Deduplikation in den vorhandenen case-sensitiven Filter-PK eingefügt.
+Der Nachweis autorisiert keine allgemeine Änderung der bestehenden frühen
+Kandidatenbegrenzung, Problemsortierung oder Step-Historyfilterung.
+
+Die UTF-8/LF-Identität der tatsächlich installierten Ausgangssource lautet
+`0EAB52920DC81C0BBCEFCE574550CC378BCE7BB9EC0BB032BFA3E621458852E8`.
+
+Der Labbetreiber bereitete danach ausschließlich eigene synthetische
+Jobdefinitionen vor: zwei Unicode-Namen mit unterschiedlicher Großschreibung,
+ein deaktivierter Job mit zwei Steps und ein aktivierter Job mit drei Steps.
+Beide verwenden eine eigene Kategorie und denselben aktivierten einmaligen
+Zukunftsschedule. Native GUIDs, Schedule-ID und Schedule-UID bleiben privat.
+Für beide Jobs wurden keine Aktivitäts-, History- oder Jobserver-Zeilen
+angelegt. Kein Job wurde gestartet; Stepkommandos wurden nicht ausgeführt.
+
+### Begrenzter Endnachweis
+
+Die Änderung collatiert elf lokale Textfelder explizit: sechs im Jobs- und
+fünf im Steps-Resultset. Der registrierte TABLE-Export bleibt ausschließlich
+`jobs` mit 17 Feldern. Seine drei sysname-Felder JobName, OwnerName und
+CategoryName bleiben NOT NULL; die übrigen 14 Felder bleiben nullable und
+alle Felder ohne Identity. Gültige doppelte exakte Namen werden unter der
+Frameworkcollation zusammengeführt; der erste Listenordinal bleibt erhalten.
+Ungültige Listenelemente und unterschiedliche Großschreibung behalten ihren
+bisherigen Vertrag. Die frühe native Jobsauswahl, das spätere Problemranking,
+die getrennte Stepsbegrenzung und die Historyfilterung bleiben unverändert.
+
+Installation aus 166 kanonischen Dateien und Smoke110 bestanden mit der
+geänderten Source. Der erste Common167-Lauf war bei
+`AGENT_JOBS_EXISTING_LOCK_TIMEOUT` fehlgeschlagen: Der Test erwartete
+fälschlich einen sichtbaren Callerwert 0. Eine separate native Probe mit
+Callerwert 731 und erfolgreichem NONE-/JSON-Aufruf bestätigte den Wert 731
+nach Return. Ausschließlich zwei Testassertions und ihr Kommentar wurden
+korrigiert; das interne `SET LOCK_TIMEOUT 0` der Procedure blieb unverändert.
+
+Common167 bestand danach auf Framework- und separat bestätigtem
+msdb-Compatibility-Level 170. Die native Ergebniszeile meldete elf allgemeine
+TABLE-/JSON-Fälle, zwei Verbraucherfälle, sechs Mappingablehnungen,
+`PositiveFixtureStatus=PASS`, 13 positive native Gegenproben, drei positive
+und drei leere SQL-CONSOLE-Captures. Die zusätzlichen Ausgaben zur Erfassung
+der Ergebniszeile bestätigten dieselben Werte. Ohne beide vorbereiteten
+Jobs führt der Test seine allgemeinen Fälle aus und kennzeichnet den
+positiven Block als `NOT_EXECUTED`; er erzeugt oder verändert keine Fixture.
+
+Die positiven Gegenproben vergleichen alle 17 Jobs- und zehn Stepsfelder
+inklusive NULLs mit nativen msdb-Daten. Die frühe Kandidatenordnung wird
+direkt aus der nativen Jobnamenordnung gewonnen; die endgültige
+JSON-Reihenfolge folgt der Frameworkcollation. Die positiven Fixturefälle
+belegen exakte Case-Auswahl, LIKE-Auswahl, gleiche und anders
+bracket-quotierte Duplikate, NULL-/0-/positive Limits und Problemscope.
+Die allgemeinen Fälle prüfen außerdem Duplikate zusammen mit einem
+ungültigen Listenelement. Der deaktivierte Job bleibt ohne History
+problematisch, besitzt zwei definierte Steps und liefert im Problemscope
+keine Steps. Die Prüfung verspricht keine globale Problempriorisierung vor
+der frühen TOP-Auswahl und keine neue CONSOLE-Sortgarantie.
+
+Ein unabhängiger direkter SqlClient-Capture bestand zehn RAW-Aufrufe mit
+allen drei Resultsets: Modulstatus mit sechs, Jobs mit 17 und Steps mit zehn
+Feldern. Feldnamen, Reihenfolge, Typen und Textgrößen sowie die unveränderte
+Jobs-/Steps-Nullability wurden geprüft. Alle Jobs- und Stepszeilen wurden
+mit JSON einschließlich NULL-Properties vollständig verglichen; Modulname,
+Timestamp, Status-, Partialitäts- und Fehlerwerte sowie Mengenzähler stimmten
+überein. Acht Aufrufe enthielten Jobs, sieben enthielten Steps und zwei
+lieferten leere Fachmengen. Die vollständigen Captures bleiben privat.
+
+Die geprüften UTF-8/LF-SHA256-Identitäten lauten:
+
+| Artefakt | SHA256 |
+| --- | --- |
+| Source020 | `BA4F6B9D96DF20FB82DD95FF420BF2EE8BA0B8B3DE88A3CA17B91D00757768F1` |
+| Common167 | `508B34F40411201ED6A9F41FDC0723A282E20B7C9287AEC95C2E8BE047A69BCA` |
+| Privater direkter RAW-Client | `EE490D9028B6E71EDFFBFC3FF107E5AE7994BFC6783AF00CFB9CD9773CC20E2B` |
+
+Zwei erste private Bodyhashprüfungen verglichen fälschlich die gespeicherten
+Installerkommentare beziehungsweise die vom Server normalisierte
+CREATE-Deklaration mit dem kanonischen CREATE-OR-ALTER-Text und scheiterten.
+Nach expliziter Abgrenzung von `PROCEDURE [monitor].[USP_AgentJobs]` bis zum
+letzten END, LF-Normalisierung und Entfernen äußerer Leerzeichen stimmten
+native und kanonische UTF-16/LF-Identität überein:
+`D30F72C69572AE1E9104ABF52BD5E2134D39B62672E8741D90E068B765241092`.
+Dies erforderte keine Produkt-, Installer- oder Repositoryteständerung.
+
+Nach den positiven Läufen wurden die erfassten eigenen Job-GUIDs,
+Schedule-ID/UID und Kategorieidentität erneut geprüft. History-, Aktivitäts-
+und Jobserver-Zeilen waren weiter abwesend; die Stepanzahlen betrugen zwei
+und drei. Die beiden Jobs wurden ohne Historylöschung oder automatische
+Schedulelöschung entfernt; danach wurden der eigene nicht mehr angehängte
+Schedule und die eigene Kategorie entfernt. Die abschließende native
+Prüfung bestätigte die Abwesenheit aller eigenen Identitäten und null Jobs.
+Kein Job, Stepkommando oder Agentdienst wurde gestartet.
+
+Laufende Jobs, positive History-/Outcome-/Meldungsfelder, Regex,
+`DENIED_PERMISSION` und `ERROR_HANDLED` bleiben unbelegt. Der Nachweis
+umfasst SQL Server 2025 mit CL170 und keine neuen nativen älteren Engines
+oder CL150/160. `COLL-001` bleibt partiell; bestehende Maturityflags und
+`RUNTIME-001` bleiben unverändert. Das unabhängige Review des stabilen
+Produkt-, Test-, Inventar-, Installer- und Procedure-Dokumentationsstands
+hatte einschließlich der korrigierten Callerassertions keine offenen
+Findings.
+Nach dem eigenen Fixture-Cleanup bestanden Infrastructure110,
+Integration189, Integration196, Integration198 und Common124 gemeinsam
+auf CL170. Der bestehende Infrastructure110-Test prüft die Hilfe- und
+Signaturpfade; die positive AgentJobs-Evidenz stammt aus Common167 und
+dem getrennten RAW-Client. Die drei positiven SQL-CONSOLE-Captures prüfen
+das bestehende 18-Feld-Schema einschließlich Ergebnisbezeichnung und volle
+Zeilenparität; die drei leeren Captures prüfen das dreifeldrige Hinweisschema.
+
+Das eigene Lab wurde vollständig entfernt: Container und Volume, zwei
+Cleanupschritte, null Fehler, `CLEANUP_SUCCEEDED` und `REMOVED`. Der eigene
+verschlüsselte temporäre Secretwert wurde danach entfernt. Private
+Laufzeitdaten und Prüfzustände bleiben außerhalb von Git; andere Labs und
+die zuvor gesperrten Cleanup-Pfade wurden nicht berührt.
+`pwsh -NoProfile -File Code/Tests/Static/Invoke-StaticContractSuite.ps1`
+bestand einmalig alle 75 Prüfungen mit Exitcode 0. Privacy prüfte 1.049
+Repositorydateien ohne Findings, Schreibstil 707 und Regex 339.
+Roadmap-, Maturity- und Partialitätsverträge, der NOWAIT-Metadatenvertrag
+mit 980 Temp-Namen sowie beide Adapterprüfungen bestanden ebenfalls.
+Nach diesem Ergebnis wurde ausschließlich dieser Gateabsatz ergänzt;
+SQL, Tests, Statusnotizen und ihre Quellidentitäten blieben unverändert.
+Das abschließende unabhängige Evidenz- und Statusreview hatte nach der
+Präzisierung des allgemeinen Invalidfalls keine offenen Findings.
