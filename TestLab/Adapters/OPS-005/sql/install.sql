@@ -15699,6 +15699,23 @@ ORDER BY [df].[file_id];';
         INSERT [#CurrentTempDB_Warnings] VALUES(@StatusCode,@ErrorNumber,@ErrorMessage);
     END CATCH;
 
+    IF @MaxZeilen IS NOT NULL AND @MaxZeilen>0
+    BEGIN
+        ;WITH [R] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [TotalNetMb] DESC,[SessionId]) AS [rn]
+            FROM [#CurrentTempDB_Sessions]
+        )
+        DELETE FROM [R] WHERE [rn]>@Limit;
+
+        ;WITH [R] AS
+        (
+            SELECT *,ROW_NUMBER() OVER(ORDER BY [GroupId]) AS [rn]
+            FROM [#CurrentTempDB_TempdbGovernance]
+        )
+        DELETE FROM [R] WHERE [rn]>@Limit;
+    END;
+
     IF @PrintMeldungen=1 AND @StatusCode<>'AVAILABLE'
     BEGIN
         DECLARE @Message nvarchar(2048)=FORMATMESSAGE

@@ -504,9 +504,21 @@ Die Procedure zeigt Netto-TempDB-Verbrauch je Session und optional Dateizustand.
 
 1. Status.
 2. Sessions.
-3. TempDB-Governance je sichtbarer Workload Group.
-4. Dateien, wenn `@MitDateien=1`.
+3. Dateien, wenn `@MitDateien=1`.
+4. TempDB-Governance je sichtbarer Workload Group.
 5. Warnungen.
+
+TABLE registriert ausschließlich `sessions` (zwölf Felder) und
+`tempdbGovernance` (21 Felder). RAW, JSON, TABLE und aktives CONSOLE verwenden
+nach Bewertung und N+1-Zählung dieselbe Sessionauswahl. `@MaxZeilen` begrenzt
+Sessions nach `TotalNetMb DESC, SessionId` sowie Governance nach `GroupId`,
+auch bei Parentübernahme. `NULL` oder `0` lassen beide Mengen unbegrenzt;
+Dateien bleiben separat. Die Helper garantieren keine Ausgabeordnung.
+Metazähler und `hasMoreRows` gelten nur für Sessions. Der Default
+`@MinNettoMb=0` schließt Nullverbrauch ein; `NULL` liefert keine Sessionzeile.
+Ungültige Parameter oder TABLE-Zuordnungen werfen weiterhin Fehler 51011.
+Im Overview stammen Sessions und Governance aus dem gemeinsamen Snapshot;
+Dateien werden frisch gelesen. Tasks und Version Store werden hier nicht exportiert.
 
 ### Sessions
 

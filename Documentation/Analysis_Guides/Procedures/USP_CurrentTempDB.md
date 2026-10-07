@@ -7,7 +7,7 @@
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet die Betriebsfrage: **Welche TempDB-Komponente verbraucht Platz, und welche Session/Task treibt den Verbrauch?** Sie unterstützt die Entscheidung, ob das aktuelle Symptom im Erfassungsmoment sichtbar ist und welcher engere Live-, Verlaufs- oder Planpfad als Nächstes sinnvoll ist.
+Die Procedure beantwortet die Betriebsfrage: **Welche Session verbraucht TempDB-Platz, und wie stehen Dateien und Workload Groups dazu?** Sie unterstützt die Entscheidung, ob das aktuelle Symptom im Erfassungsmoment sichtbar ist und welcher engere Live-, Verlaufs- oder Planpfad als Nächstes sinnvoll ist.
 
 ## Nicht beantwortete Fragen
 
@@ -37,23 +37,37 @@ technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen
 Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen
 nicht ungeprüft vereinigt oder summiert werden.
 
-Im Overview werden Sessions, Session-/Taskverbrauch und die
-Workload-Group-Governance aus dem gemeinsamen Snapshot übernommen. Datei-,
-Space- und Version-Store-Sichten bleiben eigene TempDB-Quellen. Ein direkter
-Aufruf erhebt beide Gruppen frisch. Auf SQL Server 2019/2022 liefert
+Im Overview werden Sessions, Sessionverbrauch und die Workload-Group-Governance
+aus dem gemeinsamen Snapshot übernommen. Die optionale Dateisicht wird auch dort
+frisch gelesen. Taskverbrauch und Version Store sind keine Ausgabe dieser Procedure.
+Ein direkter Aufruf erhebt Sessions, Governance und gegebenenfalls Dateien frisch. Auf SQL Server 2019/2022 liefert
 `tempdbGovernance` einen expliziten `UNAVAILABLE_VERSION`-Status.
+
+`sessions` besitzt zwölf Felder, `tempdbGovernance` 21. Die beiden benannten
+TABLE-Ziele übernehmen dieselben ausgewählten Mengen wie RAW, JSON und CONSOLE.
+Nach Sammlung, Bewertung und N+1-Zählung begrenzt `@MaxZeilen` die Sessions
+nach `TotalNetMb DESC, SessionId`. Der Direktpfad behält seine frühe
+Governance-Vorauswahl nach `GroupId`; die Statusbewertung bezieht sich dort
+auf diese Vorauswahl. Im Parentpfad folgt die Begrenzung nach `GroupId` erst
+nach vollständiger Snapshotübernahme und Statusbewertung. Die abschließende
+gemeinsame Begrenzung gilt für beide Pfade. `NULL` und
+`0` lassen beide Mengen unbegrenzt. Die Dateisicht bleibt davon unabhängig.
+Die Auswahlordnung ist keine ORDER-BY-Zusage für die TABLE- oder CONSOLE-Helper.
+`returnedRows` und `hasMoreRows` beziehen sich ausschließlich auf Sessions.
+Ungültige Parameter und TABLE-Zuordnungen behalten den Fehlervertrag
+`THROW 51011`; sie erzeugen keine kontrollierte INVALID_PARAMETER-JSON-Ausgabe.
 
 ## Eine Zeile bedeutet
 
-Je Resultset beschreibt eine Zeile eine Sessionallokation, eine Verbrauchsart,
+Je Resultset beschreibt eine Zeile die kumulativen Allokationszähler einer Session,
 eine TempDB-Datei oder eine Workload Group. Sessionzähler und
 Workload-Group-Zähler besitzen unterschiedliche Granularität und dürfen nicht
 addiert werden.
 
 ## So lesen
 
-Unterscheiden Sie zuerst Gesamt- und Dateiauslastung, danach User Objects,
-Internal Objects, Version Store und verursachende Sessions. Auf SQL Server 2025
+Unterscheiden Sie Dateiauslastung, User Objects, Internal Objects und die
+zugeordneten Sessions. Version Store verlangt eine gesonderte Gegenprobe. Auf SQL Server 2025
 lesen Sie anschließend `tempdbGovernance`: gespeichertes Limit, tatsächlich
 wirksames Limit, aktuelle Nutzung, Peak, Verletzungszähler und
 `StatisticsStartTime` getrennt.
@@ -88,7 +102,7 @@ Für `USP_CurrentTempDB` gilt zusätzlich: **keine Zeile** bedeutet, dass im sic
 | Haupttreiber | Zahl sichtbarer Sessions in `dm_db_session_space_usage` und – falls angefordert – reale TempDB-Dateizahl. Mindestbelegung/Sessionfilter reduzieren Kandidaten; Allokationsseiten, Tasks und SQL-Texte werden nicht gelesen. |
 | Skalierung | Sessionpfad wächst mit sichtbaren Sessions; der optionale Dateipfad wächst mit TempDB-Dateien. Sortiert wird nach Nettobelegung, die Ergebniszeilen bleiben schmal. |
 | Ressourcen | Geringe CPU-/Speicherlast für Live-DMV-Join und Sortierung; optional Katalog-/Dateispace-DMV-Zugriff in TempDB. Kein Benutzertabellen- oder Textzugriff. |
-| Begrenzungswirkung | Session-ID, Systemscope und Mindest-Nettobelegung wirken in der Quellabfrage. Intern werden höchstens `@MaxZeilen + 1` Sessionkandidaten übernommen. `@MaxZeilen` begrenzt das separate Dateiresultset nicht, weil dieses bereits durch die reale Dateizahl begrenzt ist. |
+| Begrenzungswirkung | Session-ID, Systemscope und Mindest-Nettobelegung wirken in der Quellabfrage. Bei positivem endlichem Limit werden höchstens `@MaxZeilen + 1` Sessionkandidaten übernommen; anschließend erhalten alle Ausgabeformen dieselbe begrenzte Menge. Der Direktpfad behält seine frühe Governance-Vorauswahl; die späte gemeinsame Begrenzung folgt zusätzlich. Im Parentpfad wird Governance nach vollständiger Snapshotübernahme und Statusbewertung begrenzt. `@MaxZeilen` begrenzt das separate Dateiresultset nicht, weil dieses bereits durch die reale Dateizahl begrenzt ist. |
 | Locking und Nebenwirkungen | Read-only gegenüber Nutzdaten. Flüchtige DMVs werden nacheinander gelesen; Katalog-/SQL-Textauflösung kann kurze interne Synchronisation verursachen, erzeugt aber keinen atomaren Snapshot. |
 | Schutzmechanismus | Kein High-Impact-Gate. Wirksam sind `@SessionIds`, `@MinNettoMb`, der Ausschluss von System-/aktueller Session und das endliche Sessionlimit; `@MitDateien = 0` lässt die separate Dateisicht aus. Keiner dieser Schalter begrenzt die bereits kleine Dateiliste, wenn sie aktiviert ist. |
 | Sicherer Einsatz | User-Sessions, endliches Limit und bei reiner Verbrauchersuche zunächst `@MitDateien = 0`; Dateisicht anschließend einmalig zur Kapazitätseinschätzung ergänzen. |
@@ -100,7 +114,7 @@ Für `USP_CurrentTempDB` gilt zusätzlich: **keine Zeile** bedeutet, dass im sic
 
 ### Leitfrage
 
-Welche TempDB-Komponente verbraucht Platz, und welche Session/Task treibt den Verbrauch?
+Welche Session verbraucht TempDB-Platz, und wie stehen Dateien und Workload Groups dazu?
 
 ### Technischer Hintergrund
 
@@ -133,17 +147,17 @@ LEFT JOIN [sys].[dm_exec_sessions] AS [s] WITH (NOLOCK)
 WHERE [u].[session_id] <> @@SPID
   AND
   (
-      [u].[user_objects_alloc_page_count] <> [u].[user_objects_dealloc_page_count]
-      OR [u].[internal_objects_alloc_page_count] <> [u].[internal_objects_dealloc_page_count]
-  );
+      [u].[user_objects_alloc_page_count] - [u].[user_objects_dealloc_page_count]
+      + [u].[internal_objects_alloc_page_count] - [u].[internal_objects_dealloc_page_count]
+  ) * 8.0 / 1024.0 >= @MinNettoMb;
 ```
 
-**Wichtig für die Eigenlast:** Nur Sessions mit Nettoverbrauch weiterverarbeiten. Die Dateisicht aus `tempdb.sys.database_files` ist klein und getrennt; sie darf nicht fälschlich einer einzelnen Session zugerechnet werden.
+**Wichtig für die Eigenlast:** Ein positiver Mindestwert begrenzt den Sessionverbrauchsscope. Der Default `@MinNettoMb=0` lässt auch Nullverbrauch zu. Die Dateisicht aus `tempdb.sys.database_files` ist klein und getrennt; sie darf nicht fälschlich einer einzelnen Session zugerechnet werden.
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung beschreibt den aktuellen Datei- und Datenbankzustand; Session-
-und Taskzähler gelten seit der jeweiligen Request- oder Sessionaktivität. Der
+Die Auswertung beschreibt den aktuellen Dateizustand; Sessionzähler gelten
+seit der jeweiligen Sessionaktivität. Der
 Version Store kann nach dem Transaktionsende verzögert bereinigt werden.
 Workload-Group-Peak und Verletzungszähler gelten seit
 `StatisticsStartTime`, also seit Serverstart oder dem letzten
