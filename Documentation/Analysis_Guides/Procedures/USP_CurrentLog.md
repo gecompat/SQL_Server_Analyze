@@ -17,6 +17,7 @@ Die Procedure beantwortet keine lückenlose Historie und allein aus einem Snapsh
 
 ```sql
 EXEC [monitor].[USP_CurrentLog]
+      @DatabaseNames = N'[ExampleDatabase]',
       @ResultSetArt = 'CONSOLE';
 ```
 
@@ -24,11 +25,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `logs`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+TABLE schreibt ausschließlich `logs` mit 19 Feldern, acht Frameworktextcollations und sechs NOT-NULL-Feldern ohne Identity. Die aktive CONSOLE zeigt dieselbe Menge mit einer zusätzlichen Beschriftung; bei leerer Menge liefert sie eine dreispaltige Hinweiszeile. RAW liefert Modulstatus, Logs und Teilquellenfehler. JSON ergänzt `meta`, `logs`, `databaseStatus` und `warnings`; `databaseStatus` enthält ausschließlich Teilquellenfehler, keine eigene Erfolgszeile für jede Datenbank. Status, Scope und Warnings sind vor der Bewertung der Fachwerte zu prüfen.
 
 ## Eine Zeile bedeutet
 
-Je Resultset beschreibt eine Zeile eine Datenbank, eine Logdatei, einen VLF- oder PVS-Aspekt. Prüfen Sie den jeweiligen Scope vor der Summenbildung.
+Eine `logs`-Zeile beschreibt eine ausgewählte Datenbank. VLF-Anzahlen und optionaler PVS-Kontext sind zusammengefasste Felder dieser Zeile; einzelne Logdateien, VLFs oder Version-Store-Zeilen werden nicht ausgegeben.
 
 ## So lesen
 
@@ -61,12 +62,12 @@ Für `USP_CurrentLog` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtb
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Datenbankweise Logspace-/Reuse-Metadaten ohne breite VLF- oder PVS-Vertiefung. |
+| Standardpfad | Alle gewählten Datenbanken mit Logspace, Reuse-Metadaten und Logstatistik einschließlich aktiver und gesamter VLF-Anzahl. Ohne Einschränkung sind alle sichtbaren, zugreifbaren und online befindlichen Benutzerdatenbanken ausgewählt. |
 | Teuerster Pfad | Cross-Database-VOLL-Lauf mit VLF- und PVS-Vertiefung über große beziehungsweise VLF-reiche Logs. |
 | Haupttreiber | Zahl gewählter Datenbanken und – bei aktiviertem Detail – ihrer VLF-Zeilen aus `dm_db_log_info`; Log-Space-/Log-Stats-Summary ist je Datenbank klein. PVS-Kontext fügt Metadaten hinzu, liest aber keine Version-Store-Zeilen. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_CurrentLog ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | Katalog-/DMV-CPU und bei VLF-/PVS-Vertiefung zusätzliche datenbankweise Arbeit, TempDB und Ergebnistransfer. |
-| Begrenzungswirkung | Datenbankfilter begrenzen den Quellzugriff; ein Zeilenlimit verhindert nicht, dass VLFs oder PVS-Metadaten des gewählten Scopes zunächst gelesen werden. |
+| Begrenzungswirkung | Datenbankfilter begrenzen den Quellzugriff. Das gemeinsame Zeilenlimit folgt auf vollständige Datenbankarbeit, Prozentfilter, Zähler und Statusbewertung; es reduziert diese frühere Arbeit nicht. `NULL` oder `0` bedeutet unbegrenzt, ein negatives Limit `INVALID_PARAMETER`. Alle vier Ausgabeformen verwenden die danach begrenzte Logmenge. |
 | Locking und Nebenwirkungen | Read-only, aber dynamische datenbankweise Katalogzugriffe können kurz mit DDL/Statuswechseln kollidieren. Der Zustand kann sich schon während des Laufs ändern. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `LOG_VLF_DEEP`, `STANDARD_CURRENT`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Zuerst eine ExampleDb ohne VLF-/PVS-Details; LOG_VLF_DEEP nur gezielt und in ruhigerem Betriebsfenster freigeben. |
@@ -90,24 +91,29 @@ Das Log ist eine sequenzielle Recoverystruktur aus VLFs. Log Records müssen fü
 
 ### Source Select
 
-Der datenbanklokale Kern verbindet Logbelegung und Logzustand; die Zieldatenbank muss vor dem DMF-Aufruf feststehen:
+Die Datenbankidentität, das Recovery Model, der Reuse-Wait und der ADR-Schalter stammen aus `master.sys.databases`. Pro ausgewählter Datenbank werden Logspace und Logstatistik getrennt gelesen:
 
 ```sql
-SELECT
-      [space].[total_log_size_in_bytes]
-    , [space].[used_log_space_in_bytes]
-    , [stats].[recovery_model]
-    , [stats].[log_truncation_holdup_reason]
-    , [stats].[total_vlf_count]
-FROM [sys].[dm_db_log_space_usage] AS [space] WITH (NOLOCK)
-CROSS APPLY [sys].[dm_db_log_stats](DB_ID()) AS [stats];
+SELECT [total_log_size_in_bytes], [used_log_space_in_bytes],
+       [used_log_space_in_percent], [log_space_in_bytes_since_last_backup]
+FROM [sys].[dm_db_log_space_usage] WITH (NOLOCK);
+
+SELECT [active_vlf_count], [total_vlf_count], [log_truncation_holdup_reason],
+       [log_backup_time], [log_recovery_size_mb]
+FROM [sys].[dm_db_log_stats](DB_ID());
 ```
+
+Bytewerte werden durch 1.048.576 geteilt und auf `decimal(19,2)` projiziert. `UsedLogPercent` übernimmt den nativen Prozentwert als `decimal(19,4)`; er wird nicht aus gerundeten MB berechnet. Der VLF-Opt-in zählt `dm_db_log_info` und ergänzt die Gesamtanzahl nur bei fehlendem Logstatistikwert. PVS wird optional datenbankweise aus KB aggregiert; bei deaktiviertem ADR lautet sein Teilstatus `NOT_APPLICABLE`.
 
 **Wichtig für die Eigenlast:** Zuerst die Datenbankkandidaten einschränken. `sys.dm_db_log_info` liefert eine Zeile je VLF und ist der wesentliche Vertiefungstreiber; VLF-Details nicht breit über alle Datenbanken lesen.
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung beschreibt den aktuellen Space- und Reusezustand. Dateigröße und VLFs sind Metadaten; einzelne Zähler sind kumulativ. Der Reuse-Wait kann sich nach einem Backup oder Commit rasch ändern.
+Die Auswertung beschreibt den aktuellen Space- und Reusezustand. Einzelne Werte sind kumulativ; Belegung und Reuse-Wait können sich während der getrennten Quellenabfragen ändern. `LogBackupTime` übernimmt den nativen `datetime`-Wert ohne zusätzliche UTC-Konvertierung. Eine atomare Momentaufnahme aller Datenbankwerte entsteht nicht.
+
+Ohne Datenbankeinschränkung bedeuten `NULL`, `N''` und Leerzeichen alle zulässigen Benutzerdatenbanken; Systemdatenbanken benötigen Opt-in. Exakte bracket-aware Pipe-Liste und Pattern sind exklusiv, doppelte exakte Namen ungültig. Der tatsächlich aktivierte Standardpfad ist `STANDARD_CURRENT`; VLF-Details prüfen zusätzlich `LOG_VLF_DEEP` und dessen Bestätigung/Freigabe.
+
+Die Auswahl nach einem positiven Mengenlimit erfolgt nach `UsedLogPercent DESC, DatabaseName`. RAW und JSON sortieren diese Menge ausdrücklich; TABLE und die aktive CONSOLE besitzen keinen eigenen Zeilenordnungsvertrag. Kandidaten, Fehler, Auswahlwarnings und Detailbewertung bleiben vollständig. Standardmäßig sind VLF- und PVS-Optionen deaktiviert. Der unveränderte NULL-VLF-Schalter liefert `SKIPPED`; ein NULL-PVS-Schalter lässt `PENDING` und einen NULL-MB-Wert bestehen, ohne die PVS-Abfrage auszuführen.
 
 ### Bewertung und Gegenprobe
 
