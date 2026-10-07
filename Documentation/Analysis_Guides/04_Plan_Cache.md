@@ -159,7 +159,9 @@ Die Procedure bewertet Cachegröße und Single-Use-Anteil. Im Vollmodus zeigt si
 
 ### Kategorien
 
-`CacheObjectType`, `ObjectType`, `PlanCount`, `TotalSizeBytes`, `SingleUsePlanCount`, `SingleUseSizeBytes`, `TotalUseCount`, `AverageUseCount`.
+`CacheObjectType`, `ObjectType`, `PlanCount`, `TotalSizeBytes`, `SingleUsePlanCount`, `SingleUseSizeBytes`, `TotalUseCounts`, `AverageUseCount`.
+
+TABLE `overview` entspricht diesen acht Kategorienfeldern und `JSON.categories`, nicht der getrennten RAW-Gesamtübersicht mit sieben Feldern oder `JSON.overview` mit sechs Feldern. Die aktive CONSOLE-Ausgabe ergänzt ausschließlich die Ergebnisbeschriftung zu diesen Kategorien; bei leerer Quelle liefert sie `Ergebnis`, `Status` und `Hinweis`. Die beiden Kategorientexte sind explizit mit `SQL_Latin1_General_CP1_CS_AS` collatiert, alle acht Felder sind nullable und besitzen keine Identity.
 
 ### Datenbankverteilung
 
@@ -167,7 +169,9 @@ Die Procedure bewertet Cachegröße und Single-Use-Anteil. Im Vollmodus zeigt si
 
 ### SingleUseDetails
 
-`PlanHandle`, `CacheObjectType`, `ObjectType`, `UseCounts`, `SizeBytes`, `DatabaseId`, `DatabaseName`, `SqlText`.
+`PlanHandle`, `CacheObjectType`, `ObjectType`, `UseCounts`, `SizeBytes`, `DatabaseId`, `DatabaseName`, `SqlTextCharacters`, `SqlTextBytes`, `SqlTextIsTruncated`, `SqlText`.
+
+`@MaxZeilen` begrenzt nur diese Detailmenge nach `size_in_bytes DESC`, bevor sie materialisiert und anschließend Unicode-sicher projiziert wird. Kategorien und Datenbankverteilung werden nicht gekappt. NULL oder 0 als Zeilen- beziehungsweise Textlimit ist unbegrenzt; negative Werte sind ungültig. VOLL und angeforderte Detailpfade prüfen `PLAN_CACHE_DEEP`. Detailbits im SUMMARY-Modus bleiben ungültig; die Gateprüfung erfolgt zuvor. NULL-Detailbits aktivieren keinen Detailpfad. Das JSON-Warningsarray bleibt leer; Modulfehler stehen im Metaobjekt und optionale informative Meldungen werden separat ausgegeben. RAW und JSON sortieren ihre jeweiligen Mengen ausdrücklich; TABLE und CONSOLE garantieren keine Anzeigeordnung.
 
 ### Interpretation
 

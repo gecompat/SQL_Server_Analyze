@@ -25,11 +25,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `overview`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag `overview` enthält acht Felder je Cache-/Objekttyp und entspricht `JSON.categories`. Er ist von der siebenfeldrigen RAW-Gesamtübersicht und dem sechsfeldrigen JSON-Objekt `overview` zu unterscheiden. RAW ergänzt den neunfeldrigen Modulstatus und die angeforderten Detailresultsets. Die aktive CONSOLE-Ausgabe zeigt ausschließlich die Kategorien mit einer Ergebnisbeschriftung, also neun Felder; bei leerer Kategoriequelle liefert sie drei Felder mit der Ergebnismeldung „Keine fachlichen Ergebnisse“ sowie NULL für Status und Hinweis. TABLE und CONSOLE garantieren keine Anzeigeordnung. RAW und JSON sortieren Kategorien nach `TotalSizeBytes DESC, PlanCount DESC`.
 
 ## Eine Zeile bedeutet
 
-Je Resultset beschreibt eine Zeile den gesamten Cache, eine Cachekategorie, eine Datenbankaggregation oder einen einzelnen Single-Use-Plan.
+Eine TABLE-Zeile beschreibt eine Cache-/Objekttypkategorie. Die getrennte Gesamtübersicht aggregiert den sichtbaren Cache, die optionale Datenbankverteilung den Compilekontext und die optionalen Single-Use-Details jeweils einen Cacheeintrag.
 
 ## So lesen
 
@@ -51,9 +51,9 @@ Hoher Single-Use-Anteil ohne Speicherdruck ist technische Schuld, aber mögliche
 
 ## Leere oder partielle Ausgabe
 
-Im Plan Cache kann leer bedeuten: evicted, nie gecacht, recompile, falscher Datenbank-/Hashfilter oder fehlender Text-/Planzugriff.
+Diese Procedure besitzt keinen Datenbank- oder Hashfilter. Leere Kategorien können aus einem leeren sichtbaren Cache oder einer abgelehnten beziehungsweise fehlgeschlagenen Sammlung entstehen. Text und Datenbankzuordnung einzelner Detailzeilen können bei Eviction oder fehlendem Zugriff NULL bleiben.
 
-Für `USP_PlanCacheHealth` gilt zusätzlich: **keine Zeile** bedeutet, dass im sichtbaren und gefilterten Scope kein ausgabefähiger Datensatz entstand. **0** ist ein gemessener Nullwert nur dann, wenn die Quellspalte tatsächlich verfügbar war. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL/Warning** bedeutet, dass mindestens eine Teilquelle, Datenbank oder Detailstufe fehlt. Ein Limit kann eine nichtleere Quelle vollständig aus dem sichtbaren Ausschnitt verdrängen.
+Für `USP_PlanCacheHealth` bedeutet **keine Kategoriezeile**, dass im sichtbaren Cache kein ausgabefähiger Datensatz entstand oder die Sammlung abgelehnt beziehungsweise fehlgeschlagen ist. **0** ist ein gemessener Nullwert nur bei verfügbarer Quelle. **NULL** bedeutet unbekannt, nicht anwendbar oder nicht auflösbar. **PARTIAL** bezeichnet einen Fehler bei einer optionalen Teilquelle; der Modulstatus erhält den ersten Fehler. Ein positives Zeilenlimit lässt spätere Single-Use-Kandidaten aus, entfernt aber nicht alle vorhandenen Kandidaten. Es begrenzt keine Kategorie- oder Datenbankmenge.
 
 ## Eigenlast und Grenzen
 
@@ -106,15 +106,14 @@ OUTER APPLY
     SELECT TOP (1) [pa].[value]
     FROM [sys].[dm_exec_plan_attributes]([cp].[plan_handle]) AS [pa]
     WHERE [pa].[attribute] = N'dbid'
-) AS [dbid]
-WHERE [cp].[cacheobjtype] = N'Compiled Plan';
+) AS [dbid];
 ```
 
-**Wichtig für die Eigenlast:** Filtern Sie den Cacheobjekttyp vor der Planattribut- und SQL-Textauflösung. Für eine reine Gesamtgrößenanalyse sind Text und Datenbankattribute nicht erforderlich und sollten ausgeschaltet bleiben.
+**Wichtig für die Eigenlast:** Der Kategorienpfad umfasst alle sichtbaren Cacheobjekttypen und benötigt weder SQL-Text noch Datenbankattribute. Die optionale Datenbankverteilung liest Planattribute für ihren gesamten Scope. Nur Single-Use-Details werden vor ihrer Materialisierung nach `size_in_bytes DESC` begrenzt; die anschließend materialisierten Texte werden Unicode-sicher projiziert. Zusätzliche Scan-, Sortier- und Auflösungsarbeit wird damit nicht ausgeschlossen.
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung beschreibt den aktuellen Cachebestand; dieser ist flüchtig und verändert sich durch die Workload und Memory Pressure.
+Die Auswertung beschreibt den sichtbaren aktuellen Cachebestand. Kategorien, Datenbankverteilung und Details werden nacheinander gelesen und sind keine atomare Momentaufnahme. `@MaxZeilen` begrenzt ausschließlich Single-Use-Details; NULL und 0 sind unbegrenzt. Kategorien und Datenbankverteilung bleiben unabhängig von diesem Limit vollständig für ihren jeweiligen Sammlungsscope. Gleiche Detailgrößen erlauben verschiedene Auswahlen zwischen Aufrufen. NULL oder 0 als Textlimit liefert vollständige verfügbare Texte; positive Werte begrenzen SC-Zeichen und erhalten ursprüngliche Zeichen- und Bytezahlen. Negative Zeilen- oder Textlimits liefern `INVALID_PARAMETER`.
 
 ### Bewertung und Gegenprobe
 
