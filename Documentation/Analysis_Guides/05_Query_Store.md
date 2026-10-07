@@ -262,6 +262,12 @@ Die Procedure findet Queries mit mehreren Query-Store-Plänen und liefert eine Q
 | `AverageCompileDurationMs`, `LastCompileDurationMs` | Compilekosten |
 | `QueryPlan` | optionales Plan-XML |
 
+### Ausgabegrenze und Scope
+
+`queries` enthält 22 Felder mit sieben expliziten Frameworktextcollations, `plans` 28 Felder mit neun. Beide Datenbanknamenspalten sind NOT NULL; die übrigen Felder sind nullable, keine Spalte ist eine Identity. RAW, CONSOLE, TABLE und JSON verwenden dieselbe nach letzter Ausführung und letzter Kompilierung absteigend begrenzte Querymenge. NULL und 0 bei `@MaxZeilen` bleiben unbegrenzt. Gleiche Sortwerte bestimmen keine eindeutige Auswahl.
+
+Die Planmenge gehört zu den tatsächlich exportierten Datenbank-/Querykeys; das Limit zählt Queries statt einzelner Pläne. Status, `hasMoreRows`, XML-Bewertung und Truncationwarnungen entstehen vor der globalen Begrenzung aus der lokal mit N+1 gesammelten Menge. Zeit- und Referenzfilter wirken auf Planzeilen vor der Summaryaggregation. Der Planexport enthält danach alle gespeicherten Pläne der ausgewählten Queries und kann deshalb mehr Zeilen als deren gefilterter `PlanCount` enthalten.
+
 ### Grenzfälle
 
 - `PlanCount > 1`, aber `DistinctPlanHashCount=1`: mehrere Query-Store-Planzeilen können strukturell gleich sein.

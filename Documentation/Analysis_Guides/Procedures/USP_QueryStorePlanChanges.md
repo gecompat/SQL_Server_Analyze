@@ -26,7 +26,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `queries`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `queries` mit 22 Feldern und `plans` mit 28 Feldern. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+
+RAW, CONSOLE, TABLE und JSON lesen denselben global begrenzten Queryexport. NULL oder 0 bei `@MaxZeilen` bedeutet unbegrenzt; negative Werte sind ungültig. Die Auswahl erfolgt nach `LastExecutionTimeUtc` und anschließend `LastCompileTimeUtc`, jeweils absteigend. Gleiche Sortwerte erlauben mehrere gültige Auswahlen. Die Planmenge wird anhand der tatsächlich exportierten Kombination aus `QueryStoreDatabaseId` und `QueryId` eingeschränkt, nicht durch eine zweite TOP-Auswahl. Das Zeilenlimit zählt Queries; es ist kein eigenständiges Limit für einzelne Planzeilen.
+
+Alle sieben Summary- und neun Plantextspalten sind explizit `SQL_Latin1_General_CP1_CS_AS` collatiert. Beide `QueryStoreDatabaseName`-Spalten bleiben NOT NULL, die übrigen Felder sind nullable; beide Exporte besitzen keine Identity. Gesamtstatus, `hasMoreRows`, XML-Bewertung und Truncationwarnungen werden vor der globalen Begrenzung aus der lokal mit N+1 gesammelten Menge ermittelt.
 
 ## Eine Zeile bedeutet
 
@@ -61,12 +65,12 @@ Für `USP_QueryStorePlanChanges` gilt zusätzlich: **keine Zeile** bedeutet, das
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–HIGH_OPT_IN |
-| Standardpfad | Eine `ExampleDatabase`, jüngerer Startzeitpunkt, nur Queries mit mehreren Plänen, TOP 100 und `@MitPlanXml = 0`. |
+| Standardpfad | Eine `ExampleDatabase`, nur Queries mit mehreren Plänen, TOP 100 und `@MitPlanXml = 0`. `@VonUtc` ist standardmäßig NULL und setzt damit keine untere Zeitgrenze. |
 | Teuerster Pfad | Viele Datenbanken, `VOLL`/unbegrenztes Limit, weit zurückliegendes `@VonUtc`, Plan XML und Referenzdatenbank-/Regexfilter mit XML-Shredding. |
-| Haupttreiber | Zahl gewählter Query Stores, Queries und zugehöriger Pläne, die für Mehrplanerkennung gruppiert werden. Querytext-, Regex- und Referenzdatenbankfilter können zusätzliche Text- beziehungsweise Showplanarbeit verursachen; ein Zeitfenster gibt es nicht. |
-| Skalierung | Aufwand wächst mit Queries, Planvarianten und überlappenden Runtimezeilen seit `@VonUtc`. Plan-XML-Ausgabe oder Referenzfilter erhöhen XML-CPU, Speicher und Transfer. |
-| Ressourcen | CPU/I/O auf Query-Store-Query-, Plan- und Runtimestatistiken, TempDB/Arbeitsspeicher für Gruppierung/Ranking; optional Plan-XML-Materialisierung. |
-| Begrenzungswirkung | Datenbank, `@VonUtc`, QueryId/-Hash begrenzen die Quelle. Lokales N+1 wirkt erst nach Plan-/Runtimekorrelation und Ranking; globales TOP begrenzt danach die Rückgabe. Referenzfilter müssen Plan XML bereits vor dem TOP prüfen. |
+| Haupttreiber | Zahl gewählter Query Stores, Queries und zugehöriger Pläne, die für Mehrplanerkennung gruppiert werden. `@VonUtc` begrenzt Compile-/Ausführungsmetadaten vor der Gruppierung; Referenzdatenbank-/Regexfilter können zusätzliche Showplanarbeit verursachen. Eine obere Zeitgrenze besitzt die Procedure nicht. |
+| Skalierung | Aufwand wächst mit Queries und gefilterten Planvarianten seit `@VonUtc`. Plan-XML-Ausgabe oder Referenzfilter erhöhen XML-CPU, Speicher und Transfer. |
+| Ressourcen | CPU/I/O auf Query-Store-Query-, Plan- und Textkatalogen, TempDB/Arbeitsspeicher für Gruppierung/Ranking; optional Plan-XML-Materialisierung. |
+| Begrenzungswirkung | Datenbank, `@VonUtc`, QueryId/-Hash begrenzen die Quelle. Lokales N+1 wirkt erst nach Planaggregation und Ranking; die einmalige globale TOP-Auswahl begrenzt danach Queries in allen vier Ausgabearten und bestimmt die zugehörigen Planzeilen. Referenzfilter müssen Plan XML bereits vor dem TOP prüfen. |
 | Locking und Nebenwirkungen | Read-only gegenüber Query Store; normale interne Synchronisation/Schema-Stability ist möglich. Die Procedure erzwingt, entfernt oder bereinigt keine Pläne/Hints. |
 | Schutzmechanismus | Der Code prüft die Analyseklassen `QUERY_STORE_CURRENT`, `QUERY_STORE_DEEP`. Verlangt deren Policy ein Gruppengate, ist zusätzlich `@HighImpactConfirmed = 1` nötig; Freigabe und Bestätigung ersetzen keine Scopebegrenzung. |
 | Sicherer Einsatz | Eine `ExampleDatabase`, Queryselektor oder jüngerer Start, TOP 100 und kein XML. `VOLL`, Plan XML, Referenzfilter oder >1000/unbegrenzt nur nach Deep-Gate. |
@@ -109,11 +113,11 @@ GROUP BY [q].[query_id], [q].[query_hash]
 HAVING COUNT_BIG(*) > 1;
 ```
 
-**Wichtig für die Eigenlast:** Setzen Sie Datenbank und Zeitfenster vor Plananzahl und Text- beziehungsweise XML-Anreicherung. Laden Sie Plan-XML erst für die begrenzte Kandidatenmenge; mehrere Pläne sind zunächst nur ein Befund, keine Regression.
+**Wichtig für die Eigenlast:** Setzen Sie Datenbank und Zeitfenster vor Plananzahl und Text- beziehungsweise XML-Anreicherung. Die Procedure materialisiert Plan-XML für die lokal gesammelte Kandidatenmenge vor der globalen Ausgabegrenze; mehrere Pläne sind zunächst nur ein Befund, keine Regression.
 
 ### Zeit- und Scope-Modell
 
-Die Auswertung berücksichtigt den persistierten Planbestand innerhalb der Query-Store-Retention; Last Execution zeigt Aktivität, aber keine dauerhafte Gültigkeit.
+Die Auswertung berücksichtigt den persistierten Planbestand innerhalb der Query-Store-Retention. `@VonUtc` behält Planzeilen, deren letzte Kompilierung oder letzte Ausführung die untere Grenze erreicht; Referenzfilter wirken ebenfalls vor der Summaryaggregation. Für die ausgewählten Querykeys enthält `plans` anschließend alle gespeicherten Planzeilen. Deshalb kann die ausgegebene Plananzahl bei Zeit- oder Referenzfiltern von `PlanCount` abweichen. Last Execution zeigt Aktivität, aber keine dauerhafte Gültigkeit.
 
 ### Bewertung und Gegenprobe
 
