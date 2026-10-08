@@ -3,7 +3,6 @@ GO
 
 /* OPS-008: Injizierte Tabellenfixture; führt weder Mailversand noch Maintenance aus. */
 SET NOCOUNT ON;
-SET XACT_ABORT ON;
 IF @@TRANCOUNT <> 0 OR NOT EXISTS
 (
     SELECT 1 FROM [sys].[extended_properties]
@@ -11,6 +10,8 @@ IF @@TRANCOUNT <> 0 OR NOT EXISTS
       AND CONVERT(int, [value]) = 1
 )
     THROW 54951, N'Die eigene Wegwerf-Lab-Bindung oder Transaktionsbasis fehlt.', 1;
+IF @@LOCK_TIMEOUT <> -1
+    THROW 54961, N'Die Fixture benötigt den ursprünglichen Standard-Locktimeout -1.', 1;
 IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailitems])
    OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_allitems])
    OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmaintplan_log])
@@ -18,7 +19,8 @@ IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailitems])
               WHERE [name] = N'Database Mail XPs' AND [value_in_use] <> 0)
     THROW 54952, N'Die leeren eigenen Quellen oder deaktivierten Mail-XPs fehlen.', 1;
 
-DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
+DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT;
+DECLARE @PreviousXactAbort bit = CASE WHEN (@@OPTIONS & 16384) = 16384 THEN 1 ELSE 0 END;
 DECLARE @Stage int = 1, @Consumer int, @Date datetime, @Oldest datetime2(3), @Newest datetime2(3);
 DECLARE @BeforeMail nvarchar(max), @AfterMail nvarchar(max);
 DECLARE @BeforeMaintenance nvarchar(max), @AfterMaintenance nvarchar(max);
@@ -31,9 +33,10 @@ CREATE TABLE [#Ops008Console]
     [RowCount] bigint, [OldestUtc] datetime2(3), [NewestUtc] datetime2(3),
     [SizeMb] decimal(19,2), [StatusCode] varchar(40), [EvidenceLimit] nvarchar(1000)
 );
-SET LOCK_TIMEOUT 137;
 BEGIN TRY
     BEGIN TRANSACTION;
+    SET XACT_ABORT ON;
+    SET LOCK_TIMEOUT 137;
     WHILE @Stage <= 3
     BEGIN
         /* Die Einfügereihenfolge entspricht absichtlich nicht der Zeitreihenfolge. */
@@ -155,7 +158,7 @@ BEGIN TRY
                        EXCEPT SELECT @AfterMail COLLATE SQL_Latin1_General_CP1_CS_AS)
                OR EXISTS (SELECT @BeforeMaintenance COLLATE SQL_Latin1_General_CP1_CS_AS
                           EXCEPT SELECT @AfterMaintenance COLLATE SQL_Latin1_General_CP1_CS_AS)
-               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137 OR (@@OPTIONS & 16384) <> 16384
                 THROW 54959, N'Der Analyzer hat Quellwerte oder den Callerzustand verändert.', 1;
             SET @Calls += 1;
             SET @Consumer += 1;
@@ -171,12 +174,15 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
-    SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-    EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+    SET LOCK_TIMEOUT -1;
+    IF @PreviousXactAbort = 1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
     THROW;
 END CATCH;
-SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+SET LOCK_TIMEOUT -1;
+IF @PreviousXactAbort = 1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+IF @Calls <> 9 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout
+   OR CASE WHEN (@@OPTIONS & 16384) = 16384 THEN 1 ELSE 0 END <> @PreviousXactAbort
+    THROW 54962, N'Die Consumerzahl oder ursprünglichen Calleroptionen sind verletzt.', 1;
 DROP TABLE [#Ops008Console];
 SELECT N'OPS008_MAIL_MAINTENANCE_AGGREGATE' AS [ContractName], 3 AS [PositiveStages],
     @Calls AS [ConsumerCalls], N'PASS' AS [Status], N'ROLLED_BACK' AS [FixtureCleanup],
