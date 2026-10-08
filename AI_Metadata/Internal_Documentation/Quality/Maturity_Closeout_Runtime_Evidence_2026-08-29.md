@@ -2086,3 +2086,79 @@ Teilfeldgrenze. Andere Uhrzeiten, NULL-/Null-Datum, XACT_ABORT ON, tatsächliche
 Step-/Retryausführung, UTC-/Endzeitinterpretation und vollständige native
 Ausgabeschemata bleiben ungeprüft. Statusflags, Registry, OpenScope und
 historische Laufzeitmatrix bleiben erhalten; OPS-008 bleibt partiell.
+
+## Tatsächliche OPS-008-Retrygegenprobe vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Gegenprobe am integrierten Stand
+von PR #298 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Coreinstallation mit 187 Batches, Smoke110 und Runtime122
+bestehen. Produkt, Installer und öffentliche Fixture werden nicht geändert.
+
+Die Probe legt genau einen eigenen lokalen Job mit einem TSQL-Step ohne
+Schedule und ohne Benachrichtigungen an. Der Step besitzt retry_attempts 1
+und retry_interval 0. Sein erster Lauf liest ausschließlich die eigene native
+Historie und löst ohne vorhandene Retryzeile den synthetischen Fehler 56151 aus.
+Der Agent erzeugt die Retryzeile. Beim zweiten Lauf erkennt der Step diese
+eigene native Zeile und endet erfolgreich. Es wird keine Historie injiziert;
+der Step erzeugt keine Datenobjekte und versendet keine Nachrichten.
+Nach gebundenem Activityabschluss wird der Job deaktiviert. Der Wrapper
+begrenzt den privaten FOR-JSON-Reader auf 64 Chunks und 65.536 Zeichen.
+
+Die unabhängigen Orakel bestätigen drei globale und eigene Historyzeilen
+in steigender instance_id-Reihenfolge und den eigenen Job ohne Benachrichtigungen:
+
+| Reihenfolge | step_id | run_status | sql_message_id | retries_attempted |
+|---:|---:|---:|---:|---:|
+| 1 | 1 | 2 | 56151 | 0 |
+| 2 | 1 | 1 | 0 | 0 |
+| 3 | 0 | 1 | 0 | 0 |
+
+Die Statusfolge belegt den tatsächlichen Retry nach Erstfehler und den
+anschließenden Step- und Joberfolg. retries_attempted ist in diesem Lauf
+kein aus der Erfolgszeile ablesbarer Zähler der beiden Stepversuche.
+Es wird weder eine allgemeine Zählersemantik noch eine Ursache des Werts 0
+für andere Plattformen oder Retryintervalle abgeleitet.
+
+Vier NONE-/JSON-Aufrufe bestätigen die folgenden begrenzten Fachwerte:
+
+| Consumer | Modulstatus | Geprüfter fachlicher Zustand |
+|---|---|---|
+| MsdbHealth | AVAILABLE | AGENT_HISTORYcount drei, NULL-Zeitgrenzen und nicht leere EvidenceLimit. |
+| AgentJobs mit NurProblematisch 0 | AVAILABLE | Ein deaktivierter eigener Job mit Runstatus 1 und StepCount eins; ein letzter erfolgreicher TSQL-Step mit LastRunRetries 0. |
+| AgentJobs mit NurProblematisch 1 | AVAILABLE | Derselbe deaktivierte Job bleibt enthalten; das Steparray ist leer und übernimmt nicht den älteren Retryoutcome. |
+| Monitoring mit Jobstatus an und Mail aus | AVAILABLE_WITH_FINDING | Ein eigener deaktivierter Job mit LatestRunStatus 1 und JOB_STATE_INFORMATIONAL/INFO. |
+
+Alle vier Aufrufe melden keinen Partial- oder Fehlerstatus. Die Probe vergleicht
+sämtliche geordneten Werte von sysjobs, sysjobsteps, sysjobhistory,
+sysjobactivity, sysjobservers und sysjobschedules vor und nach jedem Consumer.
+Die vorherige Stabilitätsgegenprobe erhält dieselben sechs Quellen nach
+zwei Sekunden. Während der Consumer bleiben TX1/XACT_STATE 1, XACT_ABORT ON
+und Locktimeout 31 erhalten. Ein Rollback erhält die tatsächliche History.
+Die gebundene Entfernung des eigenen Jobs stellt sämtliche ursprünglichen
+Werte der sechs Quellen wieder her. Abschließend sind ursprüngliches OFF,
+Locktimeout -1, TX0 und separat vor der abschließenden Ergebnisabfrage
+erfasstes XACT_STATE 0 bestätigt.
+Die PASS-Ergebnisdatei wird exklusiv erst nach eigenem äußeren Cleanup erzeugt.
+Das eigene Lab ist mit zwei Schritten ohne Fehler entfernt; State ist abwesend.
+
+Zwei vorherige private Läufe scheitern mit Orakelfehler 56147 vor dem ersten
+Consumer; sie erzeugen keine PASS-Ergebnisdatei. Der erste prüft unter anderem
+retries_attempted 1 in der Erfolgszeile; seine einzelne verletzte Teilbedingung
+wird nicht gesondert gemessen. Die zweite Diagnose misst die native
+Statusfolge, drei Historyzeilen, deaktivierte Benachrichtigungen und tatsächlich
+retries_attempted 0. Ausschließlich diese private Erfolgsrow-Erwartung und der
+entsprechende AgentJobs-Wert werden vor dem Final auf 0 korrigiert.
+Konfigurierter Retry, Quell- und Callerorakel sowie Lifecycle bleiben erhalten.
+Beide eigenen fehlgeschlagenen Labs sind ebenfalls mit zwei Schritten ohne
+Fehler entfernt; ihre Stateverzeichnisse sind abwesend. Alle Rohlogs und
+konkreten Runtimeidentitäten bleiben privat. Daraus folgt kein Produktfehler.
+
+Der bestandene private SQL-Stand besitzt SHA-256
+`2854720B7AF8DC69AFAAC91EDD787F2B26CB85D0D508A61FC2A21C3E28F647EE`.
+Er bestätigt einen eigenen ausgeführten Job, einen Step mit zwei beobachteten
+Versuchen, einen konfigurierten Retry, drei native Historyzeilen, vier Consumer
+und einen Rollback. Retryerschöpfung, positive Warteintervalle, Parallelität,
+laufende Retryphase, tatsächliche Dauergrenzen, andere Engines und vollständige
+Ausgabeschemata bleiben unbelegt. Der innere Catchcleanup erhält keine eigene
+Fehlergegenprobe. Statusflags, Registry, OpenScope und historische Laufzeitmatrix
+bleiben erhalten; OPS-008 bleibt partiell.
