@@ -174,6 +174,18 @@ Die anderen drei Status bleiben mit sämtlichen Mailitemwerten unverändert.
 Ausgabeparität und Callererhaltung. Mail-XPs bleiben deaktiviert; die
 synthetischen Zeitwerte belegen keine tatsächliche Mailzustandsentstehung.
 
+Eine getrennte native SQL-2025/Docker-Probe bestätigt die strikte
+start_time-Grenze der Maintenance-Elternhistorie. Zwei injizierte Eltern
+beginnen eine Sekunde vor beziehungsweise exakt am Stichtag; beide enden
+erst hinter den beiden geprüften Grenzen. Die Bereinigung am Stichtag
+entfernt die erste Zeile, eine Sekunde später auch die zweite. Counts zwei,
+eins und null, native MIN/MAX-Werte, neun NONE-/TABLE-/CONSOLE-Aufrufe,
+vollständige Quell- und Ausgabeparität sowie Callererhaltung bestehen.
+Zwei frühere Läufe scheiterten mit 55205; der diagnostische Lauf belegte
+NULL für die leeren Snapshots in Phase 3. Eine gezielte private
+Normalisierung auf [] korrigiert diese Testannahme. Details, Plans und Subplans bleiben leer. Diese Probe führt
+keine Wartung aus und belegt keine unabhängige Detaildatumssemantik.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.

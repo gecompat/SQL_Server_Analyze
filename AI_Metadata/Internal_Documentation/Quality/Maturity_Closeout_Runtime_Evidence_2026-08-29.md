@@ -3385,3 +3385,97 @@ Automatische Altersretention, tatsächlicher Mailversand, Logretention,
 Anlagenretention in dieser Probe und weitere Engines bleiben unbelegt.
 OPS-008 bleibt partiell; SMTP wartet auf die öffentliche integrierte und
 passend nativ abgenommene Lab-Funktion.
+
+## OPS-008-Abnahme der Maintenance-Startzeit- und Gleichheitsgrenze vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 prüft zwei injizierte
+Maintenance-Elternzeilen. Die bereits vorhandene privat gelesene native
+sp_maintplan_delete_log-Definition verwendet start_time < oldest_time.
+Ihr exakter UTF8-Definitionshash lautet
+`6B4D2F1AA5539644E2945D56DFBD9199C9142D952CFBC9915A51ED245574F7FD`.
+Der Wrapper bindet ihn im neuen Lab vor den Injektionen und nach der Fixture.
+Ein weiterer Source-Capture-Lauf wird nicht ausgeführt; ein vorbereiteter
+Wrapper dafür bleibt ohne Ausführung. Der vendoreigene Definitionscode
+bleibt privat außerhalb des Repositorys.
+
+Die eigene Transaktion setzt XACT_ABORT ON und Locktimeout 137. Zwei
+getrennte eigene Elternidentitäten werden vor dem INSERT gebunden und
+zusammen mit beiden Zeitfeldern und succeeded gegen feste Literale geprüft.
+Endzeiten liegen absichtlich hinter beiden Stichtagen und nach den
+jeweiligen Startzeiten; sie unterscheiden die beiden Zeitfelder ohne
+widersprüchliche Start-/Endzeitreihenfolge.
+
+| Elternzeile | start_time | end_time |
+|---|---|---|
+| A | 2025-01-02T11:59:59 | 2025-01-02T12:00:10 |
+| B | 2025-01-02T12:00:00 | 2025-01-02T12:00:20 |
+
+Drei vollständige geordnete Sollwerte einschließlich NULL-Werten werden
+vor dem ersten Purge gebunden: A und B, ausschließlich B sowie keine
+eigene Zeile. Die Auswahl verwendet ausschließlich die festen Identitäten,
+keine nachgebildete Datumsfilterlogik und kein Purgeergebnis.
+
+| Phase | Stichtag | Elterncount |
+|---|---|---:|
+| Ohne Purge | keiner | 2 |
+| Exakte Gleichheit | 2025-01-02T12:00:00 | 1 |
+| Eine Sekunde später | 2025-01-02T12:00:01 | 0 |
+
+Zwei native Purges mit NULL-Plan- und NULL-Subplanfiltern bestätigen nach
+jeweils eigenem NULL-Rückgabereset strikt Rückgabe 0. A verschwindet beim
+ersten Purge trotz Endzeit nach beiden Grenzen. B bleibt am exakten
+Startzeitstichtag mit sämtlichen Werten erhalten; eine Sekunde später
+verschwindet auch B trotz späterer Endzeit. Die gesamte Elternquelle
+entspricht je Phase dem vorab gebundenen vollständigen Soll.
+
+Je Phase bestehen NONE, TABLE und CONSOLE mit JSON, insgesamt neun
+eindeutige Consumeraufrufe. Native Counts, MIN/MAX, NULL-SizeMb,
+AVAILABLE-Status, nicht leere EvidenceLimit und vollständige
+TABLE-/CONSOLE-/JSON-Parität bestehen. Kein Consumer meldet Partial oder
+einen Fehler. Vollständige Elternwerte bleiben nach jedem Consumer
+unverändert; der Caller bleibt schreibfähig mit ON, Locktimeout 137,
+TX1 und XACT_STATE 1. Details, Plans und Subplans bleiben leer.
+
+Der erste Lauf scheitert mit 55205 am vollständigen Snapshotguard und
+erzeugt kein PASS-JSON. Ein gesonderter diagnostischer Lauf scheitert am
+unveränderten Guard mit derselben Nummer. Die tatsächlich vom Tool gelieferte
+Exception nennt Phase 3, keine Elternzeilen sowie NULL für Ist-, ausgewählten
+Soll- und vorher gebundenen Leersnapshot. Die nicht leeren ersten beiden
+Sollsnapshots sind nicht NULL. Der Exceptiontext steht im Toolabschluss,
+nicht im nativen Rohlog; eine getrennte private Beobachtung kennzeichnet
+diese Herkunft ausdrücklich. Beide eigenen äußeren Cleanups bestehen mit
+zwei Schritten ohne Fehler; beide Statepfade sind entfernt. Beide Fehlläufe
+bleiben ohne funktionales PASS erhalten.
+
+Die korrigierte private V2-Fassung normalisiert sieben vollständige
+Snapshotabfragen mit COALESCE auf [] und prüft die vorab gebundenen JSON-
+Mengen separat auf zwei, eine und null Zeilen sowie fehlende fremde
+Elternidentitäten. Native Counts, feste Start-/Endzeitwerte, vollständige
+Wertvergleiche und Consumerprüfungen bleiben strikt. Der folgende erfolgreiche
+V2-Nachweis belegt die korrigierte private Testannahme für diesen Leerfall;
+eine allgemeine IF- oder Enginefehlerursache wird nicht behauptet.
+
+Ein eigenes Rollback leert sämtliche vier Maintenancequellen. Finale
+Callerwerte werden vor dem Abschlussguard einzeln erfasst und bestätigen
+die ursprünglichen Werte OFF/-1/TX0/XactState0. Ein ursprünglicher ON-Caller
+und empirisches Catchcleanup sind durch diesen Lauf nicht zusätzlich
+belegt. Die Probe führt weder Wartungsaufgaben noch Jobs aus; die
+Historie ist injiziert. Unabhängige Detaildatumssemantik ist nicht geprüft.
+
+Coreinstallation besteht mit 187 Batches, Smoke110 mit drei und Runtime122
+mit zwei Batches. Der äußere eigene Labcleanup besteht mit zwei Schritten
+ohne Fehler; der Statepfad ist entfernt. Erst danach wird das PASS-JSON
+exklusiv mit CreateNew geschrieben. Tatsächliche Abnahme:
+`2026-10-08T19:04:41.5936756+00:00`. Ausgeführter SQL-Quellcommit:
+`2177edfdaccb195f6a7c9fb169612e6a407da278`. SQL-SHA-256:
+`0002A8BE09C9E757CD6D075004366F91CB76C0E696B83969D9FB5D71801F00E8`. Wrapper-SHA-256:
+`76C7C2CF6F93AEEEAC54C9712C66E62515D2B846DE4FEA5CE0E13EE7D2B07791`. Private Rawlogs bleiben außerhalb des Repositorys.
+
+Sechs kanonische Dokumentationsquellen und genau drei bestehende CSV-Textzellen
+sind ergänzt. Produktquellen, öffentliche Verträge, Fixture, Installer,
+historische Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten.
+Automatische Altersretention, tatsächliche Maintenanceausführung,
+unabhängige Detaildatumssemantik und weitere Engines bleiben unbelegt.
+OPS-008 bleibt partiell; SMTP wartet auf die öffentliche integrierte und
+passend nativ abgenommene Lab-Funktion.
