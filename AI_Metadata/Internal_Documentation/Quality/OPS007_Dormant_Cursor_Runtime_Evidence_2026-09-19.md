@@ -111,3 +111,53 @@ Der begrenzte lokale Nachweis stammt aus dem geprüften Arbeitsbaum; die
 erforderliche CI wird getrennt an den exakten PR-Head gebunden. Er liefert
 keine neue fremde Hochlast-, ältere native Engine-, CL150-/CL160- oder
 zusätzliche RAW-/CONSOLE-Evidenz. OPS-007 und COLL-001 bleiben partiell.
+
+## Inventar mit 250 Cursorn vom 8. Oktober 2026
+
+Ein neues eigenes SQL-Server-2025-Docker-Lab prüfte den integrierten Stand
+`f72616f549e6e1ff59d2c944286bbcccc9c191e8` mit einem größeren kontrollierten
+Inventar. Eine eigene zweite SqlClient-Verbindung hielt 250 globale statische
+READ_ONLY-Cursor über jeweils drei synthetische Literalzeilen offen. Jeder
+Cursor besaß einen erfolgten Fetch. Der Observer verwendete eine andere eigene
+Verbindung und eine explizite einzelne Zielsession.
+
+Zehn Aufrufe über NONE und TABLE bestätigen je Ausgabeart den ausgelassenen
+Default, die expliziten Grenzen 1 und 200 sowie 0 und NULL. Die Zeilenanzahlen
+sind jeweils 200, 1, 200, 250 und 250. Die ausgewählten Cursorkennungen stimmen
+mit dem begrenzten nativen Rang nach Worker Time, Reads und Cursorkennung
+überein. Alle Aufrufe liefern `AVAILABLE`, Nichtpartialität und keine
+Fehlernummer oder Fehlermeldung.
+
+Alle zwölf fachlichen Werte sind geprüft. Zehn stabile Werte stimmen mit
+der nativen Vorhermessung überein; die Dormanz liegt zwischen den nativen
+Vorher- und Nachherwerten, und FindingContext folgt dem bestehenden
+Schwellwert- und Ressourcenvertrag. Die 250 nativen Identitäten, Namen,
+Properties, Öffnungs- und Fetchzustände sowie kumulativen Arbeitswerte
+bleiben über jeden Analyzeraufruf erhalten. Die fünf TABLE-Aufrufe bestätigen
+zusätzlich alle zwölf Werte gegen JSON derselben Materialisierung, exakte
+Zeilenanzahl und eindeutige Cursorkennungen. Fünf physische Exportschemas
+bestätigen Feldreihenfolge, Namen, Typen, Bytebreiten und die explizite
+Textcollation der drei Textfelder anhand eines Literalorakels. Interne Spaltenkennungslücken
+der Seed-Adaption werden ausschließlich im privaten Ordinalprüfer
+normalisiert; daraus entsteht keine Produktänderung.
+
+Der native Lauf verwendet SQL Server `17.0.4075.5` und Framework-Compatibility-
+Level 170. Server und tempdb besitzen gemessen `Latin1_General_100_CS_AS`,
+das Framework `SQL_Latin1_General_CP1_CS_AS`. Installation und Smoke-Test
+bestehen. Jeder Analyzeraufruf erhält Locktimeout 137, XACT_ABORT OFF,
+Transaktionsanzahl `0` und XACT_STATE `0`. Der abschließende Observerzustand
+bestätigt separat Locktimeout minus eins und dieselben übrigen Werte.
+
+Das eigene Cursorcleanup schließt und deallokiert alle 250 Cursor und
+bestätigt ein leeres Producerinventar. Beide Verbindungen werden geschlossen;
+der öffentliche Lab-Cleanup entfernt die eigenen Ressourcen in zwei Schritten
+mit null Fehlern. Das eigene Stateverzeichnis ist entfernt. Quell- und
+Fixturepins, Rohlog und native Kennungen bleiben privat außerhalb von Git.
+
+Dieser begrenzte Inventar- und Consumernachweis verwendet unveränderte
+Produktquellen und ergänzt keine Hochlastevidenz. RAW, CONSOLE, zusätzliche
+Compatibility Levels und ältere native Engines wurden in diesem Lauf nicht
+geprüft. Der bestehende sechsdateilige Runtimevertrag des vorangegangenen
+Reparaturslices wird nicht erneut als ausgeführt dargestellt. OPS-007 und
+COLL-001 bleiben partiell; ihre offenen Umfänge und bisherigen Statusflags
+bleiben unverändert.
