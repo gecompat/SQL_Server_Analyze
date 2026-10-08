@@ -1632,3 +1632,78 @@ Erfolgreicher Mailversand, tatsächliche Maintenance, automatische
 Aufbewahrung und weitere Retentiongrenzen bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert.
+
+## Ergänzende OPS-008-NULL-Datumsretention für Failed-Mail vom 8. Oktober 2026
+
+Das bestehende Szenario `MailRetention` bestand auf einem neuen eigenen
+SQL-Server-2025-Linux-Docker-Lab mit `PASS` und `REMOVED`,
+`ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Coreinstallation mit 187 Batches, Smoke-Test `110`, Runtimevertrag `122`
+und die bestehende SQL-Fixture mit zwei Batches bestanden. Produkt-SQL,
+Runner, Szenarioname und TEST-0001-Kennung blieben unverändert.
+
+Der erste datumsgebundene Fall bleibt mit drei, einer und null Failed-
+Mailzeilen sowie neun NONE-/TABLE-/CONSOLE-Aufrufen erhalten. Ein zweiter
+eigener Transaktionsfall ergänzt drei Failed-Zeilen aus 2000, 2025 und 2030
+und je eine ältere unsent-, sent- und retrying-Gegenprobe aus 1999.
+Die drei Gegenproben werden anhand ihrer bei INSERT erfassten eigenen IDs
+gebunden. Die vollständigen ursprünglichen Mailitemwerte werden NULL-sicher
+im SQL-Speicher verglichen. Die native Bereinigung verwendet ausdrücklich
+`@sent_before=NULL` und `@sent_status='failed'` bei Returncode `0`.
+Alle drei Failed-Zeilen verschwinden; die drei anderen Status bleiben
+unverändert. Die Gesamtmenge fällt von sechs auf drei und die Failed-Menge
+von drei auf null. Unabhängige native Statuscounts und MIN-/MAX-Zeitwerte
+bestätigen die Auswahl. Sechs weitere Consumer prüfen native Aggregate,
+vollständige TABLE-/CONSOLE-/JSON-Parität, Quellerhaltung und Callerzustand.
+Die Mail-XPs bleiben konfiguriert und effektiv deaktiviert; Anlagen bleiben
+leer. Die Fixture führt keinen Versand und keine Queueverarbeitung aus.
+
+Insgesamt bestätigt die Fixture 15 Consumeraufrufe und zwei eigene Rollbacks.
+Nach jedem Rollback müssen die drei Mailquellen leer und Transaktionen
+geschlossen sein. Die sieben Summaryfelder bleiben unverändert;
+`InitialRows`, `RetainedRows` und `FinalRows` bezeichnen weiterhin den ersten
+Fall mit drei, einer und null Zeilen. `ConsumerCalls` beträgt nun 15.
+Die Gruppe `MailCallerOptions` umfasst dadurch 69 geplante Aufrufe;
+der historische gemeinsame Lauf mit 63 Aufrufen bleibt gültig, wurde aber
+nicht als gemeinsamer 69-Aufruf-Lauf wiederholt.
+
+Ein zusätzlicher privater Lauf in einem weiteren neuen eigenen Lab derselben
+Engineversion und desselben Framework-CL bestätigt zwei erfolgreiche
+Teilfälle. Der unveränderte Erfolg mit ursprünglichem XACT_ABORT ON prüft
+die tatsächlich gelesenen sieben Summaryfelder einschließlich 15 Calls.
+Eine ausschließlich im Speicher veränderte endliche Datumsgrenze 2026
+lässt die Failed-Zeile aus 2030 stehen und wird mit 55185 in Fall 2,
+Phase 2 nach zwölf abgeschlossenen Consumeraufrufen abgelehnt.
+Nach beiden Teilfällen bestätigt dieselbe Verbindung ursprünglichen
+Locktimeout -1, ursprüngliches XACT_ABORT, TX0 und vor Quellabfragen
+erfassten XACT_STATE 0. Mailitems, Allitems und Anlagen sind leer;
+konfigurierte und effektive Mail-XPs bleiben deaktiviert.
+
+Der private Gesamtlauf endet mit FAIL und Fehler 56091 im dritten
+Catchorakel; die Ergebnisdatei wird nicht geschrieben. Die Erwartung,
+dass Datum NULL und Status NULL alle Zeilen löschen und danach 55185
+auslösen, war falsch. Der native Microsoft-Parametervertrag verlangt
+mindestens einen wirksamen Filter. Der private Catchhook verdeckte die
+ursprüngliche Fehlernummer, deren tatsächlicher Wert und Slot noch nicht
+beobachtet sind. Daraus wird kein Produkt- oder kanonischer Fixturefehler
+abgeleitet. Eine unabhängige neue Diagnose soll Originalfehler, Prozedur-
+Enum, Slot und vollständige Werterhaltung vor Rollback beobachten.
+Eine zweite gültige Gegenprobe verwendet Datum 2031 und Status NULL,
+sodass alle sechs eigenen Zeilen innerhalb der Datumsgrenze liegen.
+Beide neuen Fälle bleiben wegen belegter gemeinsamer Host-Testlane
+`NOT_EXECUTED`; die bestandenen zwei Teilfälle werden nicht wiederholt.
+
+Beide äußeren Cleanups des normalen und des fehlgeschlagenen privaten
+Laufs entfernten Container und Volume mit je zwei Schritten und null
+Fehlern. Beide eigenen Stateverzeichnisse waren abschließend nicht vorhanden.
+Ein früherer normaler Versuch und der erste private Versuch scheiterten
+vor Provisionierung und SQL-Ausführung an der belegten Host-Testlane.
+Dafür wird kein Laufzeit- oder Cleanupnachweis behauptet; es entstanden
+keine eigenen Labressourcen. Beide tatsächlichen Wiederholungen erfolgten
+erst nach beobachteter Freigabe. Begrenzte Free-Beobachter fanden während
+ihrer jeweiligen 45 Sekunden keine Freigabe und starteten keinen Lauf.
+Kein Guard oder Timeout wurde abgeschwächt. Rawlogs, private Proben und
+eigene Laufidentitäten bleiben außerhalb Git. Erfolgreicher Mailversand,
+Maintenance-Ausführung, automatische Aufbewahrung und weitere Filter-/
+Retentionsgrenzen bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
+Registry, Maturityflags und historische Release-Matrix bleiben unverändert.
