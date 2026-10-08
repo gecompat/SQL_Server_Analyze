@@ -165,6 +165,13 @@ bleibt der zuvor gelesene gültige Joboutcome erhalten; das Steparray ist
 leer. Diese Beobachtung gilt für NONE/JSON bei `XACT_ABORT OFF`; andere
 ungültige Datums-/Zeitwerte und `XACT_ABORT ON` sind damit nicht abgenommen.
 
+Eine weitere getrennte SQL-2025-Gegenprobe bestätigt dieselben Fehler-
+und Arrayzustände für die Uhrzeitwerte 236060 und 240000 bei gültigem
+Datum 20240229, jeweils als Job- oder Stepoutcome. Vier direkte Orakel
+messen Fehler 242. Der Wert 236060 prüft ungültige Minuten und Sekunden
+gemeinsam; ein isolierter Fehlernachweis je Teilfeld wird nicht behauptet.
+Weitere Uhrzeitwerte und XACT_ABORT ON bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.

@@ -2026,3 +2026,63 @@ offen. Ein vollständiger nativer Ausgabeschema- oder allgemeiner Catch-
 Nachweis wird nicht beansprucht. OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION;
 Reifeflags, Registry, OpenScope und historische Laufzeitmatrix bleiben
 erhalten. Der spätere SMTP-Auftrag ist noch keine gelieferte Funktion.
+
+## Native OPS-008-Uhrzeitgegenprobe vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Gegenprobe am integrierten Stand
+von PR #297 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Produkt, Installer und öffentliche Fixture bleiben erhalten.
+Coreinstallation mit 187 Batches, Smoke110 und Runtimevertrag122 bestehen.
+Die Monitoring-Baseline mit Jobstatus an und Database Mail aus meldet
+AVAILABLE_WITH_FINDING ohne Partial und ohne Fehlernummer/-meldung.
+
+Vier getrennte Callertransaktionen injizieren ausschließlich folgende
+Uhrzeitwerte bei gültigem Datum 20240229. Jeder eigene Job bleibt deaktiviert;
+die harmlose TSQL-Stepdefinition wird nicht ausgeführt. Serverzuordnung und
+Schedule werden nicht angelegt. Der Job-ID-Eingang wird vor jedem Aufbau
+auf NULL gesetzt.
+
+| Fall | run_time | Betroffene Historyzeile | Direkter nativer Fehler |
+|---:|---:|---|---:|
+| 1 | 236060 | Joboutcome, Step-ID 0 | 242 |
+| 2 | 236060 | Stepoutcome, Step-ID 1 | 242 |
+| 3 | 240000 | Joboutcome, Step-ID 0 | 242 |
+| 4 | 240000 | Stepoutcome, Step-ID 1 | 242 |
+
+Das unabhängige Orakel ruft agent_datetime mit Datum und Uhrzeit des
+jeweiligen Falls auf und misst die Fehlernummer. Je Fall folgen drei
+NONE-/JSON-Consumeraufrufe. MsdbHealth meldet AVAILABLE ohne Partial,
+Historycount eins beziehungsweise zwei, NULL-Agentzeitgrenzen und eine
+nicht leere Evidenzgrenze. AgentJobs meldet ERROR_HANDLED mit Partial,
+Fehler 242 und nicht leerer Meldung; bei ungültigem Job sind beide Arrays
+leer. Bei ungültigem Step bleibt der gültige Joboutcome mit lokalem Start
+2024-02-29 00:00:00, 85 Sekunden und StepCount eins erhalten, das Steparray
+ist leer. Monitoring meldet bei ungültigem Job AVAILABLE_LIMITED mit
+Partial, Fehler 242, Meldung und leerem Jobarray. Bei ungültigem Step
+bleibt der gültige deaktivierte Job mit demselben Start, Rohdauer 125,
+Runstatus 1 und JOB_STATE_INFORMATIONAL/INFO erhalten; Modulstatus ist
+AVAILABLE_WITH_FINDING ohne Partial und ohne Fehlernummer/-meldung.
+
+Vier direkte Orakel und zwölf Fallconsumer erhalten sämtliche geordneten
+Werte der sechs im Kalendernachweis benannten Agentquellen, XACT_ABORT OFF,
+Locktimeout 31 und committable TX1. Vier Rollbacks stellen die Originalquellen
+und TX0/XACT_STATE 0 wieder her; Locktimeout bleibt dabei 31. Erst die finale
+Wiederherstellung bestätigt ursprüngliches OFF und Locktimeout -1.
+Der bounded Reader erfasst alle zwölf Beobachtungszeilen ohne FOR-JSON-Kürzung.
+Die Ergebnisdatei wird nach eigenem Cleanup exklusiv neu angelegt und kann
+keine vorhandene Datei überschreiben. Das eigene Lab ist mit zwei Schritten
+ohne Fehler entfernt; sein State ist nicht mehr vorhanden. Rohlog und
+Runtimeidentitäten bleiben privat.
+
+Der ausgeführte private SQL-Stand besitzt SHA-256
+`220BC17116759A525D23B4A5ADAA6B650048CB2D165B6265F312386D3BFCFB76`.
+Der Lauf besteht mit vier Fällen, vier nativen Fehlern, zwölf Fallconsumern,
+einem Baselineconsumer und vier Rollbacks. Der vorherige private Preflight
+korrigiert ausschließlich den Ergebnis-Überschreibschutz vor der Ausführung;
+es gibt für diesen Uhrzeitumfang keinen vorausgehenden nativen Fehlversuch.
+
+236060 verändert Minuten und Sekunden gemeinsam und belegt keine isolierte
+Teilfeldgrenze. Andere Uhrzeiten, NULL-/Null-Datum, XACT_ABORT ON, tatsächliche
+Step-/Retryausführung, UTC-/Endzeitinterpretation und vollständige native
+Ausgabeschemata bleiben ungeprüft. Statusflags, Registry, OpenScope und
+historische Laufzeitmatrix bleiben erhalten; OPS-008 bleibt partiell.
