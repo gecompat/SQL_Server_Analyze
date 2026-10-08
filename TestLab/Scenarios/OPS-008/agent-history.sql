@@ -3,7 +3,6 @@ GO
 
 /* TEST-0001: Synthetische Tabellenfixture; führt keinen Agent-Job aus. */
 SET NOCOUNT ON;
-SET XACT_ABORT ON;
 IF @@TRANCOUNT <> 0 OR NOT EXISTS
 (
     SELECT 1 FROM [sys].[extended_properties]
@@ -16,10 +15,12 @@ IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobhistory])
               WHERE [name] COLLATE SQL_Latin1_General_CP1_CS_AS = N'ExampleOps008HistoryJob')
     THROW 54944, N'Die leere Agent-Historie oder der freie eigene Jobname fehlt.', 1;
 
+DECLARE @PreviousXactAbort int = @@OPTIONS & 16384, @PreviousLockTimeout int = @@LOCK_TIMEOUT;
 DECLARE @JobId uniqueidentifier, @Stage int = 1;
 DECLARE @Before nvarchar(max), @After nvarchar(max), @Json nvarchar(max);
 DECLARE @Status varchar(40), @Partial bit;
 BEGIN TRY
+    SET XACT_ABORT ON;
     BEGIN TRANSACTION;
     EXEC [msdb].[dbo].[sp_add_job] @job_name = N'ExampleOps008HistoryJob',
         @enabled = 0, @description = N'Synthetic aggregate fixture; never executed.',
@@ -60,6 +61,7 @@ BEGIN TRY
         IF @Before COLLATE SQL_Latin1_General_CP1_CS_AS <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
            OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> @Stage
            OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+           OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
             THROW 54946, N'Der Analyzer hat Quellwerte oder die Callertransaktion verändert.', 1;
         SET @Stage += 1;
     END;
@@ -68,15 +70,19 @@ BEGIN TRY
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
         THROW 54947, N'Die reine Tabellenfixture darf keine Agent-Ausführungsbindung besitzen.', 1;
     ROLLBACK TRANSACTION;
+    IF @@TRANCOUNT <> 0
+       OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobhistory])
+       OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id] = @JobId)
+        THROW 54948, N'Die synthetische Agent-Fixture wurde nicht vollständig zurückgerollt.', 1;
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
+    IF @PreviousXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
     THROW;
 END CATCH;
-IF @@TRANCOUNT <> 0
-   OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobhistory])
-   OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id] = @JobId)
-    THROW 54948, N'Die synthetische Agent-Fixture wurde nicht vollständig zurückgerollt.', 1;
+IF @PreviousXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
+IF @Stage <> 4 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> @PreviousXactAbort
+    THROW 55155, N'Die Stufenanzahl oder ursprünglichen Calleroptionen sind verletzt.', 1;
 SELECT N'OPS008_AGENT_AGGREGATE' AS [ContractName], 3 AS [PositiveStages],
     N'PASS' AS [Status], N'ROLLED_BACK' AS [FixtureCleanup];
 GO
