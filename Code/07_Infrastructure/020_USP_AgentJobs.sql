@@ -163,6 +163,9 @@ BEGIN
     SET LOCK_TIMEOUT 0;
 
     IF @StatusCode = 'AVAILABLE'
+    BEGIN
+        DECLARE @CollectionXactAbort int = @@OPTIONS & 16384;
+        SET XACT_ABORT OFF;
     BEGIN TRY
         ;WITH [A] AS
         (
@@ -318,6 +321,8 @@ WHERE NOT REGEXP_LIKE([j].[JobName], @Pattern, @Flags);';
         IF @PrintMeldungen = 1
             RAISERROR(N'Agentjobs konnten nicht vollständig gelesen werden: %s', 10, 1, @ErrorMessage) WITH NOWAIT;
     END CATCH;
+        IF @CollectionXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
+    END;
 
     IF @ResultSetArtNormalisiert <> 'NONE'
     BEGIN
