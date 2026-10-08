@@ -221,3 +221,67 @@ des vorherigen Reparaturslices wurde nicht wiederholt; aus diesem Paket lief
 in diesem Slice ausschließlich Smoke-Test 110.
 OPS-007 und COLL-001 bleiben partiell; ihre offenen Umfänge und bisherigen
 Statusflags bleiben unverändert.
+
+## Direkte RAW- und CONSOLE-Ausgaben vom 8. Oktober 2026
+
+Ein neues eigenes SQL-Server-2025-Docker-Lab prüfte den integrierten Stand
+`b1b09d5a882b863e0bb8eeb107a29373a7f9bdbc` über einen direkten SqlClient-
+Consumer. Zwei globale STATIC-READ_ONLY-Cursor in einer getrennten eigenen
+Producerverbindung verwenden jeweils drei synthetische Literalzeilen.
+Ihre Namen enthalten Unicode und ein Apostroph und unterscheiden sich in
+der Groß-/Kleinschreibung. Beide Cursor sind offen und einmal erfolgreich
+mit FETCH gelesen. Alle nativen Kennungen werden ausschließlich privat verwendet.
+
+Zehn Analyzeraufrufe prüfen RAW und CONSOLE jeweils mit Limit 1, Limit 0,
+leerem eigenen Observerscope, negativem Limit und deaktiviertem Opt-in.
+Die Ausgaben liefern ein beziehungsweise zwei Fachzeilen, leere Mengen,
+`INVALID_PARAMETER` mit Partialität und `NOT_EXECUTED` ohne Partialität.
+Positive Aufrufe melden `AVAILABLE`, der leere Scope `AVAILABLE_EMPTY`.
+Fehlernummern bleiben NULL; ausschließlich das negative Limit liefert die
+bestehende Fehlermeldung. Der Reader wird einschließlich aller Resultsets
+gelesen und geschlossen, bevor OUTPUT-Parameter geprüft werden.
+
+RAW liefert genau ein fünfspaltiges Statusresultset sowie bei aktiviertem
+Opt-in ein zwölfspaltiges Detailresultset, auch bei leerer oder ungültiger
+Auswahl. Beim deaktivierten Opt-in bleibt ausschließlich das Statusresultset.
+Positive CONSOLE-Ausgaben liefern zwölf Fachspalten und die Beschriftung
+`Ergebnis`. Leere, ungültige und deaktivierte CONSOLE-Aufrufe liefern genau
+eine dreispaltige Hinweiszeile. Deren Status- und Hinweiswerte bleiben NULL,
+weil dieser Analyzer dem vorhandenen Consolehelper keinen Statuskontext
+übergibt; der OUTPUT-Status wird unabhängig geprüft. Zusätzliche Resultsets
+werden abgelehnt. Native Ordinale, Namen, SQL-Typen, logische Textbreiten und
+Identityfacetten sämtlicher Resultsets werden geprüft. Die zwölf Fachfelder
+und die CONSOLE-Felder sind nullable; die gemessenen Nullabilityfacetten des
+RAW-Statusresultsets werden privat aufgezeichnet.
+
+Alle zwölf positiven Fachwerte werden vollständig mit JSON desselben
+Aufrufs verglichen, einschließlich eindeutiger Cursorkennungen, ordinaler
+Unicode-/Case-Texte und Datetimewerte. Die native DMV wird
+vor und nach jedem Aufruf unabhängig gelesen. Die zehn stabilen Quellwerte
+bleiben für beide Cursor gegenüber dem Anfangszustand erhalten; Dormanz
+liegt innerhalb der gemessenen Vorher-/Nachhergrenzen. Die bestehende
+FindingContext-Ableitung und die native TOP-Auswahl nach WorkerTime, Reads
+und Cursorkennung sind geprüft. Der CONSOLE-Vergleich erfolgt nach Kennung
+und verspricht keine Ausgabeordnung.
+
+Der Lauf verwendet SQL Server `17.0.4075.5`, Framework-Compatibility-Level
+170 und gemessene Server-/tempdb-Collation `Latin1_General_100_CS_AS` bei
+Frameworkcollation `SQL_Latin1_General_CP1_CS_AS`. Kanonische Installation
+und Smoke-Test bestehen. Jeder Consumer erhält Locktimeout 137,
+XACT_ABORT OFF, Transaktionsanzahl 0 und XACT_STATE 0; die Callerwerte werden
+vor weiteren Leseabfragen separat erfasst. Der abschließende Locktimeout
+ist minus eins; XACT_ABORT OFF, Transaktionsanzahl 0 und XACT_STATE 0
+bleiben abschließend erhalten. Beide eigenen Cursor werden explizit geschlossen und
+deallokiert, das Producerinventar ist anschließend leer. Beide Verbindungen
+werden geschlossen. Der öffentliche Lab-Cleanup entfernt die eigenen
+Ressourcen in zwei Schritten mit null Fehlern; das eigene Stateverzeichnis
+ist entfernt. Quellpins, Fixturepins, Schemabelege und native Rohwerte bleiben
+privat außerhalb von Git.
+
+Der Slice ändert keinen Produktcode oder öffentlichen Vertrag. Er belegt
+die beschriebenen direkten Consumerformen auf der gemessenen Kombination;
+er ist kein Nachweis fremder Hochlast, allgemeiner Kostenschwellen, weiterer
+Compatibility Levels oder älterer nativer Engines. Aus dem sechsdateiligen
+Runtimepaket des vorherigen Reparaturslices wurde ausschließlich Smoke-Test
+110 erneut ausgeführt. OPS-007 und COLL-001 bleiben partiell; offene Umfänge
+und bestehende Statusflags bleiben unverändert.
