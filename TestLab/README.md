@@ -643,8 +643,8 @@ geworfenen Fehler auf derselben Verbindung die beiden ursprünglichen Optionen,
 Transaktionscount und vor den Quellabfragen erfassten Transaktionszustand null
 sowie acht leere Maintenance-/Jobquellen. Je eine weitere frühe Ablehnung mit
 Locktimeout `31` erhält beide Optionen und leere Quellen. Der begrenzte
-Zwölf-Fälle-Nachweis steht in der
-[Laufzeitevidenz](../AI_Metadata/Internal_Documentation/Quality/Maturity_Closeout_Runtime_Evidence_2026-08-29.md).
+Zwölf-Fälle-Nachweis wurde auf SQL Server `17.0.4075.5` mit Framework-
+Compatibility-Level 170 erbracht.
 Die Probe liefert keine erfolgreiche Retention mit ursprünglich XACT_ABORT ON,
 keine späteren Fehlerpunkte und keinen zusätzlichen nativen Engine-Nachweis.
 
