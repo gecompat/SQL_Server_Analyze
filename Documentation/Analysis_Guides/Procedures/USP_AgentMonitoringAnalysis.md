@@ -165,6 +165,15 @@ Modulstatus bleibt AVAILABLE_WITH_FINDING ohne Partial und ohne Fehlerstatus.
 Der native Jobfehler ist ein fachlicher Befund und kein Consumerfehler.
 Positive Intervalle, Parallelität und andere Engines sind damit nicht geprüft.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe prüft drei erfolgreiche
+Läufe eines eigenen aktivierten Jobs unter automatischer Vierzeilen-Retention
+pro Job. Die Historycounts sind zwei, vier und vier; das erste native
+Zeilenpaar verschwindet, während sämtliche Werte des zweiten erhalten bleiben.
+NONE/JSON liefert in jeder Phase LatestRunStatus 1 und den Befund
+ENABLED_JOB_WITHOUT_SCHEDULE/INFO. AVAILABLE_WITH_FINDING ohne Partial oder
+Consumerfehler beschreibt den fehlenden Schedule dieses aktivierten Jobs.
+Die Probe belegt weder globale Grenzüberschreitung noch Altersretention.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
