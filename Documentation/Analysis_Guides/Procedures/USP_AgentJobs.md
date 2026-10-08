@@ -282,6 +282,17 @@ NONE-/JSON-Aufrufe erhalten sechs vollständige Quellen und ON/31/TX1.
 Diese kurze positive Probe belegt keine Minuten-/Stundenübergänge,
 lange Ausführungen oder Durationparität anderer Ausgabearten.
 
+Eine weitere getrennte SQL-2025-Probe isoliert ungültige Minuten und
+Sekunden: 6000 entspricht 00:60:00, 60 entspricht 00:00:60. Bei gültigem
+Datum 20240229 werden beide Werte als Job- und Stepoutcome geprüft.
+Je zwölf NONE-/JSON-Aufrufe bei ON und OFF bleiben schreibfähig.
+AgentJobs liefert ERROR_HANDLED/Partial/242 mit nicht leerer Message;
+Jobs enthält null Zeilen beim Jobfehler und eine beim Stepfehler,
+Steps bleibt leer. Sechs vollständige Quellen, TX1 und Locktimeout 31
+bleiben erhalten. TEST-0001 besteht nun 21 positive und 36 Kalender-/
+Uhrzeitaufrufe mit 36 eigenen Kalenderrollbacks. Andere Werte und
+ungültige Kalenderfälle in TABLE/RAW/CONSOLE bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
