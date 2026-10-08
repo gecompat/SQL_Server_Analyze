@@ -370,6 +370,29 @@ Der Analyzer bereinigt keine Historie. Tatsächliche Maintenance-/SSIS- und
 Jobausführung, automatische Aufbewahrung, positive Detailhistorie und
 planselektive Retention bleiben eigenständige Nachweise.
 
+Mit `-Scenario MailStatusRetention` prüft eine getrennte Fixture die vier
+injizierten Status `unsent`, `sent`, `failed` und `retrying`. Jeder Fall
+verwendet drei eigene Zielzeilen und je eine ältere eigene Gegenprobe mit
+einem der drei anderen Status. Zwei explizite Datums-/Statusfilter müssen
+die Zielmenge von drei auf eine und null Zeilen reduzieren; die gesamte
+Mailmenge besitzt dabei sechs, vier und drei Zeilen. Alle Spalten der
+jüngeren Zielzeile nach dem ersten Purge und der drei Gegenproben nach
+beiden Purges müssen NULL-sicher erhalten bleiben.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailStatusRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Die native View prüft die Statusmengen; NONE, TABLE und CONSOLE bestätigen
+je Phase native Mailaggregate, JSON-Parität, Quellerhaltung und Callerzustand.
+Vier getrennte Callertransaktionen werden jeweils zurückgerollt. Die
+Fixture verlangt leere Mail- und Anlagenquellen sowie deaktivierte Mail-XPs.
+Die Statusmarkierungen belegen weder Versand noch Queue- oder Retryverhalten;
+Mailprofil und SMTP-Verbindung werden nicht eingerichtet. Automatische
+Aufbewahrung, Anlagen- und Logretention bleiben eigenständige Nachweise.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-

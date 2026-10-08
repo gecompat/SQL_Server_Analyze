@@ -554,3 +554,63 @@ und zusätzliche native Engines bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert. Die neue Fixture ist ein Bestandteil
 von OPS-008 ohne eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Retention für vier injizierte Mailstatus vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MailStatusRetention` bestand auf einem
+neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation, den
+Smoke-Test, Runtimevertrag `122` und die
+[Mailstatusretention-Fixture](../../../../TestLab/Scenarios/OPS-008/mail-status-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Fixture prüfte die vier expliziten Filter `unsent`, `sent`, `failed`
+und `retrying` der nativen Prozedur
+[`sysmail_delete_mailitems_sp`](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sysmail-delete-mailitems-sp-transact-sql?view=sql-server-ver17).
+Jeder Fall verwendete eine getrennte Callertransaktion mit drei eigenen
+injizierten Zielzeilen und je einer älteren Gegenprobe der anderen drei
+Status. Die native View bestätigte die Zuordnung der injizierten numerischen
+Status zu den vier Textwerten. Kontrollierte Request- und Sentzeitstempel
+waren gleich; natürliche Queue-/Retryzeiten oder tatsächliche Mailzustände
+werden durch diese Injektion nicht belegt.
+
+Zwei explizite Datumsgrenzen reduzierten je Fall ausschließlich die Zielmenge
+von drei auf eine und null Zeilen. Die gesamte Mailmenge besaß sechs, vier
+und drei Zeilen. Alle acht nativen Purges lieferten Rückgabewert `0`.
+Sämtliche Spalten der jüngeren Zielzeile blieben nach dem ersten Eingriff
+NULL-sicher gleich. Sämtliche Spalten der drei älteren Gegenproben blieben
+nach beiden Eingriffen erhalten. Die Vergleiche sortierten über
+`mailitem_id` und verwendeten `INCLUDE_NULL_VALUES`.
+
+NONE, TABLE und CONSOLE bestätigten je Phase `AVAILABLE`, sechs Quellenzeilen,
+unabhängige native Mailcounts und MIN-/MAX-Requestzeiten sowie eine vorhandene
+Evidenzgrenze. TABLE und CONSOLE besaßen innerhalb desselben Aufrufs Parität
+aller acht Fachfelder mit JSON. Sämtliche Spalten der Mailitemtabelle blieben
+vor und nach jedem der 36 Analyzeraufrufe NULL-sicher identisch. Jede
+Callertransaktion blieb committable mit `@@TRANCOUNT=1`; `LOCK_TIMEOUT=137`
+blieb auch nach den nativen Purges erhalten. Der Analyzer bereinigte keine
+Historie.
+
+Mailitem-, Allitems- und Anlagenquellen mussten zu Beginn leer sein.
+Konfigurierte und effektive Mail-XPs blieben deaktiviert; die Anlagenview
+blieb leer. Mailprofil, SMTP-Verbindung, Versand und Queueverarbeitung
+wurden weder eingerichtet noch ausgeführt. Jedes der vier Rollbacks
+bestätigte erneut die leeren Quellen und `@@TRANCOUNT=0`; abschließend
+wurde `LOCK_TIMEOUT` auf den Eintrittswert zurückgesetzt. Der öffentliche
+Lauf endete mit `PASS` und `REMOVED`; eigener Container, Volume und temporärer
+State wurden entfernt. Runtimeidentitäten, Secrets und Rohlogs bleiben
+außerhalb von Git. Der unabhängige funktionale Review besitzt keine offenen
+Befunde.
+
+Der Nachweis gilt ausschließlich für die manuelle native Datums-/Status-
+bereinigung der injizierten Mailitems. Tatsächlicher Versand oder
+Versandfehler, SMTP-/Profil-/Queue-/Retryverhalten, automatische Aufbewahrung,
+Anlagen- und Logretention, NULL- oder ungültige Filter, authentisches Alter
+oder UTC-Bezug, fremde Quellen und empirisches Fehlercleanup sind damit
+nicht belegt. Maintenance-Ausführung, positive Detailretention und selektive
+Planfilter sowie fehlende optionale Quellen, Windows, weitere Provider und
+zusätzliche native Engines bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
+Release-Matrix bleiben unverändert. Die neue Fixture ist ein Bestandteil
+von OPS-008 ohne eigene Artefaktreferenz.
