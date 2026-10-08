@@ -318,6 +318,19 @@ und acht eigene Rollbacks erhalten sechs vollständige Quellen und den
 Callerzustand. Der Job wird nicht ausgeführt. Tatsächliche Stundenläufe,
 fehlerhafte Dauerformate und andere Ausgabearten bleiben ungeprüft.
 
+Eine getrennte native SQL-2025-Probe charakterisiert drei injizierte
+nicht kanonische positive Dauercodierungen. Die run_duration-Rohwerte
+60, 6000 und 236060 ergeben in LastRunDurationSeconds für Job und Step
+die festen Referenzen 60, 3600 und 86460. Datum und Uhrzeit bleiben gültig;
+der feste Startwert ist 2024-02-29T01:02:03. Die normale NONE-/JSON-Ausgabe
+enthält einen Job und einen Step; der Problemfilter enthält den
+deaktivierten erfolgreichen Job, aber keinen Step. Zwölf Consumeraufrufe
+und drei eigene Rollbacks erhalten sechs vollständige Quellen und den
+Callerzustand. Der Job wird nicht ausgeführt. Dies charakterisiert die
+bestehende Arithmetik für diese gespeicherten Werte; Formatvalidierung,
+Normalisierung, tatsächliche Ausführungsdauer und allgemeine semantische
+Zulässigkeit werden nicht belegt.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.

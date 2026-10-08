@@ -284,6 +284,17 @@ Rollbacks erhalten sechs vollständige Quellen und den Callerzustand.
 Der Job wird nicht ausgeführt. Tatsächliche Stundenläufe, fehlerhafte
 Dauerformate und andere Ausgabearten bleiben ungeprüft.
 
+Eine getrennte native SQL-2025-Probe charakterisiert drei injizierte
+nicht kanonische positive Dauercodierungen. LatestRunDuration erhält
+die unveränderten run_duration-Jobrohwerte 60, 6000 und 236060. Monitoring
+liefert jeweils AVAILABLE_WITH_FINDING ohne Partial oder Fehler mit
+JOB_STATE_INFORMATIONAL/INFO und dem festen Startwert 2024-02-29T01:02:03.
+Zwölf Consumeraufrufe und drei eigene Rollbacks erhalten sechs vollständige
+Quellen und den Callerzustand. Der Job wird nicht ausgeführt. Diese Probe
+belegt weder Formatvalidierung noch Normalisierung, tatsächliche
+Ausführungsdauer oder allgemeine semantische Zulässigkeit. Die früheren
+Fehler-242-Uhrzeitproben betreffen das getrennte Feld run_time.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
