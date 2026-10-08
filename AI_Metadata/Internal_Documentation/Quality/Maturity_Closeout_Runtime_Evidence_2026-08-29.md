@@ -2448,3 +2448,64 @@ Intervalle, Retryerschöpfung mit positivem Intervall, laufende Consumer,
 Parallelität, andere Engines, vollständige Ausgabeschemata und eine innere
 Catchcleanup-Gegenprobe bleiben ungeprüft. Statusflags, OpenScope, Registry
 und historische Laufzeitmatrix bleiben erhalten; OPS-008 bleibt partiell.
+
+## OPS-008-Retryerschöpfung mit positivem Intervall vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Probe am integrierten Stand von
+PR #303 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Core187, Smoke110 und Runtime122 bestehen. Ausschließlich
+ein neues eigenes Lab wird verwendet; Produktcode, öffentliche Fixtures,
+Installer und Labquellen bleiben unverändert.
+
+Ein eigener aktivierter lokaler Job enthält einen TSQL-Step mit einem
+konfigurierten Retry und retry_interval 1, dessen native Einheit Minuten
+ist. Die gespeicherte Definition wird geprüft; Schedule und Benachrichtigung
+fehlen. Beide Versuche erzeugen kontrolliert Fehler 56161. Es werden keine
+Historyzeilen injiziert.
+
+Die Probe pollt höchstens 180-mal mit Einsekunden-Waits. Bei vorhandener
+Retryzeile, fehlendem finalen Stepfailure und fehlendem Gesamtoutcome werden
+60 Pollzyklen mit gestarteter, noch nicht abgeschlossener Activity
+des eigenen Jobs erfasst. Vom ersten solchen Poll bis zum beobachteten
+gebundenen Abschluss werden 60059 Millisekunden gemessen. Dies erfüllt
+die privaten Mindestguards von 50 Samples und 50 Sekunden; es belegt keine
+exakte Timerpräzision oder allgemeine Schedulinggarantie. Während dieses
+laufenden Zustands erfolgen keine Consumeraufrufe.
+
+Der neue failed Gesamtoutcome wird an die abgeschlossene Activity der
+jüngsten Agent-Session gebunden. Genau drei eigene native Zeilen in
+instance_id-Reihenfolge zeigen Step-Retry 2, Stepfailure 0 und Jobfailure 0.
+Die beiden Stepzeilen enthalten Fehler 56161. Der gespeicherte letzte
+Stepwert retries_attempted beträgt 1; er wird als beobachteter Wert
+übernommen. Die tatsächliche Wiederholung wird durch die native Statusfolge
+belegt. Der Job bleibt bis zu seinem eigenen Cleanup aktiviert.
+
+Vier NONE-/JSON-Aufrufe bestehen:
+
+- MsdbHealth meldet AVAILABLE ohne Partial oder Consumerfehler und
+  AGENT_HISTORYcount drei mit NULL-Zeitgrenzen und nicht leerer EvidenceLimit.
+- AgentJobs im normalen Filter und im Problemfilter erhält jeweils den
+  eigenen aktivierten failed Job und den letzten failed TSQL-Step.
+  LastRunRetries entspricht dem gespeicherten nativen Wert 1.
+- AgentMonitoring meldet AVAILABLE_WITH_FINDING ohne Partial oder
+  Consumerfehler, LatestRunStatus 0 und LATEST_JOB_RUN_FAILED_IN_WINDOW/HIGH.
+
+Sechs vollständige geordnete Quellen einschließlich NULL-Werten werden
+verglichen: sysjobs, sysjobsteps, sysjobhistory, sysjobactivity,
+sysjobservers und sysjobschedules. Die abgeschlossene Consumerbasis bleibt
+über zwei Sekunden stabil. Nach jedem Consumer und einem Rollback bleiben
+sämtliche Werte identisch; ON, Locktimeout 31 und committable TX1 werden
+nach jedem Consumer bestätigt. Eigenes Jobcleanup über die gebundene ID
+restauriert die ursprünglichen sechs Quellen. Abschließend werden
+ursprüngliches OFF, Locktimeout -1, TX0 und separat erfasster XACT_STATE 0
+bestätigt. Der äußere eigene Labcleanup besteht mit zwei Schritten ohne
+Fehler; der Statepfad ist entfernt. Erst danach wird das private PASS-JSON
+exklusiv mit CreateNew geschrieben. Sieben Sourcepins bleiben erhalten.
+
+Der private SQL-Stand besitzt SHA-256
+`90A38909E08CADD33003DE3F765902BA09334177CF2D3E1AB0044F333A4DD7BB`.
+Die beiden kontrollierten Fehler gehören zum erwarteten Jobablauf. Weitere
+Intervalle, laufende Consumer, Parallelität, andere Engines, vollständige
+Ausgabeschemata und eine innere Catchcleanup-Gegenprobe bleiben ungeprüft.
+Statusflags, OpenScope, Registry und historische Laufzeitmatrix bleiben
+erhalten; OPS-008 bleibt partiell.

@@ -225,6 +225,17 @@ den Erfolg, während der Problemfilter den älteren Retry ausschließt.
 Andere Intervalle, Retryerschöpfung mit positivem Intervall und Consumer
 während des laufenden Jobs bleiben ungeprüft.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe bestätigt
+Retryerschöpfung bei einem konfigurierten Retry mit Intervall einer Minute.
+Beide Versuche desselben eigenen TSQL-Steps scheitern kontrolliert;
+drei native Historyzeilen zeigen Retry 2, Stepfailure 0 und Jobfailure 0.
+Mindestens 50 durch Einsekunden-Waits getrennte Pollzyklen erfassen den
+noch nicht abgeschlossenen Job nach vorhandener Retryzeile. Die gemessene
+Spanne bis zum beobachteten Abschluss beträgt mindestens 50 Sekunden.
+Beide NONE-/JSON-Filter erhalten den letzten failed Step und dessen
+gespeicherten retries_attempted-Wert 1. Consumer während des laufenden
+Jobs, weitere Intervalle und Parallelität bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
