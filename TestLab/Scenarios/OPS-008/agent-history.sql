@@ -446,12 +446,14 @@ BEGIN TRY
             JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
                 ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-    WHILE @CalendarCase <= 8
+    WHILE @CalendarCase <= 12
     BEGIN
         SELECT @CalendarDate = CASE WHEN @CalendarCase <= 2 THEN 20230229
                 WHEN @CalendarCase <= 4 THEN 20240230 ELSE 20240229 END,
             @CalendarRunTime = CASE WHEN @CalendarCase <= 4 THEN 0
-                WHEN @CalendarCase <= 6 THEN 236060 ELSE 240000 END,
+                WHEN @CalendarCase <= 6 THEN 236060
+                WHEN @CalendarCase <= 8 THEN 240000
+                WHEN @CalendarCase <= 10 THEN 6000 ELSE 60 END,
             @CalendarBadStep = CASE WHEN @CalendarCase % 2 = 0 THEN 1 ELSE 0 END,
             @CalendarConsumer = 1;
         WHILE @CalendarConsumer <= 3
@@ -604,8 +606,8 @@ BEGIN TRY
         END;
         SET @CalendarCase += 1;
     END;
-    IF @CalendarCalls <> 24 OR @CalendarRollbacks <> 24
-        THROW 56218, N'Die 24 Kalender-/Uhrzeitaufrufe oder Rollbacks fehlen.', 1;
+    IF @CalendarCalls <> 36 OR @CalendarRollbacks <> 36
+        THROW 56218, N'Die 36 Kalender-/Uhrzeitaufrufe oder Rollbacks fehlen.', 1;
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;

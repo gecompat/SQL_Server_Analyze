@@ -2767,3 +2767,56 @@ Ausführungen, Durationparität in TABLE/RAW/CONSOLE oder empirische innere
 Catchcleanup-Abnahme. Historische Laufzeitmatrix, Statusflags und OpenScope
 bleiben erhalten; OPS-008 bleibt partiell. SMTP bleibt bis zur öffentlichen
 integrierten und nativ abgenommenen Lab-Funktion zurückgestellt.
+
+## OPS-008-Regression isolierter ungültiger Minuten und Sekunden vom 8. Oktober 2026
+
+Eine weitere getrennte native Probe bestätigt den integrierten Fehlerisolationsfix
+für isolierte ungültige Minuten und Sekunden. 6000 entspricht 00:60:00,
+60 entspricht 00:00:60. Bei gültigem Datum 20240229 werden beide Werte als
+Job- und Stepoutcome geprüft. Der neue eigene lokale Labcontainer verwendet
+SQL Server 2025 `17.0.4075.5`, Linux/Docker und Framework-CL170.
+Ein eigener deaktivierter Job besitzt eine TSQL-Stepdefinition ohne Ausführung.
+Bei ungültigem Step bleiben Jobdatum und Jobuhrzeit gültig.
+
+Je ON-/OFF-Mode messen vier direkte OFF-Orakel außerhalb jeder
+Consumertransaktion Fehler 242. Eine unabhängige Monitoring-Baseline bleibt
+fehlerfrei. Je zwölf NONE-/JSON-Aufrufe mit eigener frischer TX1 bestehen.
+
+| Consumer | Ungültiger Joboutcome | Ungültiger Stepoutcome |
+|---|---|---|
+| MsdbHealth | AVAILABLE ohne Partial oder Fehler; Historycount 1 | AVAILABLE ohne Partial oder Fehler; Historycount 2 |
+| AgentJobs | ERROR_HANDLED/Partial/242 mit Message und gültigem JSON; Jobs 0, Steps 0 | ERROR_HANDLED/Partial/242 mit Message und gültigem JSON; Jobs 1, Steps 0 |
+| AgentMonitoring | AVAILABLE_LIMITED/Partial/242 mit Message und gültigem JSON; Jobs 0 | AVAILABLE_WITH_FINDING ohne Partial oder Fehler; Jobs 1 |
+
+Alle 24 Callertransaktionen bleiben schreibfähig mit XACT_STATE 1; kein
+Fehler entkommt. Sechs vollständige geordnete Agentquellen einschließlich
+NULL-Werten, TX1, Locktimeout 31 und der jeweilige ON-/OFF-Wert bleiben
+nach jedem Consumer erhalten. Je zwölf eigene Rollbacks restaurieren
+die ursprünglichen Quellen. Abschließend bestehen ursprüngliches OFF,
+Locktimeout -1, TX0 und separat erfasster XACT_STATE 0.
+
+Die bestehende TEST-0001-Fixture erhält ihre 21 positiven Aufrufe und
+24 bisherigen negativen Kalender-/Uhrzeitaufrufe. Vier weitere Job-/Stepfälle
+für 6000 und 60 ergänzen zwölf negative ON-Aufrufe auf insgesamt 36 mit
+je frischer eigener TX1 und geprüftem Rollback. Die native Ausführung
+bestätigt 21 positive und 36 negative Aufrufe sowie 36 eigene Kalenderrollbacks.
+Der private JSON-Transport ergänzt ausschließlich die Abschlusszeile;
+fachliche Assertions stammen aus der registrierten Fixture.
+
+Coreinstallation besteht mit 187 Batches, Smoke110 mit drei und Runtime122
+mit zwei Batches. Unveränderte Produktverträge werden nicht pauschal wiederholt;
+es wird keine weitere native Engine oder Compatibility-Matrix gestartet.
+Der eigene äußere Labcleanup besteht mit zwei Schritten ohne Fehler;
+der Statepfad ist entfernt. Erst danach wird das PASS-JSON exklusiv mit
+CreateNew geschrieben. Dieser Umfang hat keinen vorausgehenden nativen
+Fehlversuch. Die tatsächliche Abnahme wurde am `2026-10-08T16:02:44.3848858+00:00` erfasst.
+ON-SQL-SHA-256 ist `5B329E69BBB136FF4CC028C26D5A4B5866858072E1A28E90015FC88858671194`;
+OFF-SQL-SHA-256 ist `08C51C0E45C2AA3C877D95DE748B42B6F8316ECF2ABCB8C7CF5F7F5CD6B3902C`.
+
+Der Umfang ändert ausschließlich die bestehende Fixture und sieben
+kanonische Dokumentationsquellen. Produktquellen, öffentliche Verträge,
+Installer und Registry bleiben erhalten. Andere Werte, ungültige Kalenderfälle
+in TABLE/RAW/CONSOLE, weitere Dauergrenzen und empirische innere Catchcleanup-
+Gegenproben bleiben ungeprüft. Historische Laufzeitmatrix, Statusflags und
+OpenScope bleiben erhalten; OPS-008 bleibt partiell. Die SMTP-Abhängigkeit
+benötigt weiterhin die öffentliche integrierte und nativ abgenommene Lab-Funktion.

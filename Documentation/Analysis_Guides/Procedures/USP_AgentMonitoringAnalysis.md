@@ -248,6 +248,17 @@ erhält sechs vollständige Quellen und ON/31/TX1. Diese kurze positive
 Probe belegt keine Minuten-/Stundenübergänge, lange Ausführungen oder
 Durationparität anderer Ausgabearten.
 
+Eine weitere getrennte SQL-2025-Probe isoliert ungültige Minuten und
+Sekunden: 6000 entspricht 00:60:00, 60 entspricht 00:00:60. Bei gültigem
+Datum 20240229 werden beide Werte als Job- und Stepoutcome geprüft.
+Je zwölf NONE-/JSON-Aufrufe bei ON und OFF bleiben schreibfähig.
+Beim Jobfehler liefert Monitoring AVAILABLE_LIMITED/Partial/242 mit
+nicht leerer Message, gültigem JSON und leerem Jobarray. Beim Stepfehler
+erhält es AVAILABLE_WITH_FINDING ohne Partial oder Fehler und eine gültige
+Jobzeile. Sechs vollständige Quellen, TX1 und Locktimeout 31 bleiben
+erhalten. Andere Werte und ungültige Kalenderfälle in TABLE/RAW/CONSOLE
+bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
