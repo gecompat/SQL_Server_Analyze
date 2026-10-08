@@ -1142,3 +1142,80 @@ Detaildatumssemantik, weitere Retentiongrenzen und fehlende optionale Quellen
 bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
 Maturityflags und historische Release-Matrix bleiben unverändert.
 Die Fixture gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.
+
+## Ergänzende OPS-008-Maintenance-Calleroptionen vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MaintenanceCallerOptions` lieferte
+auf einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab `PASS` und `REMOVED`.
+Coreinstallation mit 187 Batches, Smoke-Test `110`, Runtimevertrag `122`
+und die vier bestehenden Maintenance-Retentionfixtures für Eltern, Details,
+Plan-ID und Subplan-ID bestanden. Der Lauf erfasste
+`ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Der Slice korrigiert die ältere dynamische Locktimeoutwiederherstellung.
+SET-Anweisungen in `sp_executesql` werden nach Rückkehr auf ihren
+Ausgangswert zurückgesetzt, wie die
+[Microsoft-SET-Dokumentation](https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql?view=sql-server-ver17)
+beschreibt. Jede betroffene Fixture verlangt vor Quelländerungen den
+ursprünglichen Standardlocktimeout `-1`, erfasst XACT_ABORT vor einer Änderung
+und setzt nach dem eigenen Rollback beide Optionen direkt im Callerbatch
+zurück. Erfolg und Catch verwenden denselben begrenzten Wiederherstellungs-
+umfang; Catch wirft den ursprünglichen Fehler nach dem Rollback erneut.
+Die Abschlussassertion prüft neun Consumeraufrufe und die ursprünglichen
+Locktimeout- und XACT_ABORT-Werte. Während der Consumeraufrufe wird zusätzlich
+XACT_ABORT ON geprüft.
+
+Die vorhandenen Retentionsorakel blieben erhalten. Eltern- und Detailfälle
+bestätigten Counts drei, eins und null beziehungsweise sechs, zwei und null.
+Der Plan-ID-Fall bestätigte Zielcounts drei, eins und null bei Gesamtcounts
+fünf, drei und zwei und Details zehn, sechs und vier. Der Subplan-ID-Fall
+bestätigte dieselben Zielcounts bei Gesamtcounts sechs, vier und drei und
+Details zwölf, acht und sechs. Insgesamt 36 NONE-, TABLE- und CONSOLE-Aufrufe
+bestätigten native Aggregate, Parität aller acht Fachfelder und die bestehenden
+Quell-, Bindungs- und Callerzustandsprüfungen. Die vier eigenen Rollbacks
+entfernten sämtliche injizierten Maintenancezeilen und im Subplanfall auch
+den deaktivierten eigenen Job ohne Steps, Serverzuordnung oder Historie.
+Alle vier Fixtures bestanden mit jeweils zwei Batches. Eigenes äußeres
+Cleanup entfernte Container, Volume und temporären State mit zwei Schritten
+und null Fehlern.
+
+Eine zusätzliche private direkte SqlClient-Gegenprobe auf einem getrennten neuen
+Lab derselben Version und desselben Frameworklevels bestand zwölf Fälle.
+Jede Fixture wurde auf drei getrennten eigenen Verbindungen geprüft.
+Zwei Varianten bestätigten zunächst die tatsächlichen ursprünglichen Optionen
+und injizierten nach geprüftem Quellaufbau vor der ersten Consumerphase
+`THROW 56090`. Die acht Fehlerfälle mit ursprünglichem XACT_ABORT OFF oder ON
+bestätigten nach dem erneut geworfenen Fehler auf derselben offenen Verbindung
+Locktimeout `-1`, den ursprünglichen XACT_ABORT-Wert und einen vor den
+Quellabfragen erfassten Transaktionszustand null bei `@@TRANCOUNT=0`.
+Sämtliche acht geprüften Maintenance-/Jobquellen waren leer, auch nach dem
+Subplanaufbau mit eigenem Job. Vier weitere Varianten mit ursprünglichem
+Locktimeout `31` und XACT_ABORT OFF bestätigten die jeweilige frühe Ablehnung
+sowie unveränderte Optionen und leere Quellen ohne eigene Transaktion.
+
+Die Fehlerprobe konsumierte die kanonischen SQL-Dateien mit genau einer
+privaten Fehlerpunktinjektion je Fehlerfall. Skript, Quellenhashes, Diagnostik
+und Ergebnisdatei bleiben außerhalb von Git. Es entstand weder ein öffentlicher
+Fehlermodus noch eine kopierte fachliche Fixture. Die ersten beiden privaten
+Vorläufe scheiterten an der zu engen Nachprüfung von XACT_STATE innerhalb des
+datenlesenden Count-/JSON-SELECTs. Die zweite Diagnostik bestätigte bereits
+Locktimeout `-1`, XACT_ABORT OFF, Transaktionscount null und acht leere Quellen,
+während dieser SELECT XACT_STATE eins meldete. Nach getrennter Erfassung des
+Transaktionszustands vor den Quellabfragen bestand die dritte Gegenprobe unverändert
+gegen dieselben vier funktionalen Quellen. Jeder private Vorlauf und der
+abschließende Gegenprobe entfernten das eigene Lab mit zwei Schritten und null
+Fehlern; auch die erfolgreiche Gegenprobe entfernte den temporären State.
+Der erfolgreiche öffentliche Retentionslauf wurde nicht wiederholt.
+
+Der Nachweis betrifft die vier betroffenen Maintenance-Retentionfixtures,
+Standardlocktimeout und XACT_ABORT sowie den gezielt injizierten Fehler vor
+der ersten Consumerphase. Erfolgreiche Retention mit ursprünglich XACT_ABORT ON,
+spätere Fehlerpunkte, NOCOUNT, allgemeine Temp-Tabellenbereinigung und zusätzliche
+native Engines sind durch den privaten Probe nicht belegt. Die übrigen älteren
+OPS-008-Fixtures benötigen eigene Korrektur- und Nachweisschritte; als Nächstes
+folgen die vier injizierten Mailfixtures. Echte Maintenance-/SSIS-Ausführung,
+automatische Aufbewahrung und weitere Retentiongrenzen bleiben offen.
+OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags
+und historische Release-Matrix bleiben unverändert.
