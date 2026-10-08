@@ -512,6 +512,37 @@ weder selektive Planfilter noch authentisches Alter, automatische Aufbewahrung
 oder tatsächliche Maintenance-Ausführung. Der Analyzer erhält keinen neuen
 Detailquellenvertrag.
 
+Mit `-Scenario MaintenancePlanRetention` erzeugt eine getrennte Fixture
+fünf injizierte eigene Maintenance-Elternzeilen mit je zwei Details. Drei
+Zeilen tragen denselben synthetischen Zielplan-GUID und kontrollierte Zeiten.
+Zwei ältere Gegenproben tragen einen anderen Plan-GUID beziehungsweise NULL.
+Plans und Subplans bleiben leer; sämtliche Subplan-IDs sind NULL. Die GUIDs
+bezeichnen ausschließlich Historienwerte und keine ausgeführten Pläne.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MaintenancePlanRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Ein nativer `sp_maintplan_delete_log`-Aufruf mit einem nicht passenden
+Plan-GUID muss sämtliche Eltern- und Detailwerte erhalten. Zwei weitere
+Aufrufe mit Zielplan-GUID und expliziten Datumsgrenzen müssen Zielcounts
+drei, eins und null bei Gesamtcounts fünf, drei und zwei sowie Detailcounts
+zehn, sechs und vier hinterlassen. Sämtliche jüngeren Zielwerte und sämtliche
+älteren Gegenprobenwerte müssen NULL-sicher erhalten bleiben. Neun NONE-,
+TABLE- und CONSOLE-Aufrufe prüfen native Elternaggregate, Parität aller acht
+Fachfelder sowie unveränderte Eltern- und Detailquellen, Callertransaktion
+und Locktimeout. Das Rollback muss alle injizierten Zeilen entfernen;
+das äußere identitygebundene Labcleanup bleibt erforderlich.
+
+Der Nachweis betrifft selektive Plan-ID-Filter bei NULL-Subplanfilter und
+kontrollierter Historie. Er belegt weder Subplanfilter noch echte
+Plandefinitionen, Maintenance-/SSIS-Ausführung, unabhängige Detaildatumssemantik,
+authentisches Alter oder automatische Aufbewahrung. Weitere Kombinationen
+und inneres Fehlercleanup bleiben getrennte Nachweise. Produkt-SQL und
+der öffentliche Analyzervertrag bleiben unverändert.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
