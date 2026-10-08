@@ -698,6 +698,48 @@ verspricht keine Wiederherstellung von NOCOUNT oder Datenbankkontext und
 kein allgemeines Cleanup temporärer Tabellen. Das äußere identitygebundene
 Labcleanup bleibt erforderlich.
 
+Mit `-Scenario AgentCallerOptions` führt der Runner die beiden bestehenden
+Fixtures für tatsächliche lokale Agent-Ausführung und native eigene
+Agent-Historienretention nacheinander in einem neuen eigenen Lab aus.
+Die Gruppe prüft zwölf Consumeraufrufe: drei nach einer tatsächlichen
+Jobausführung und neun während der vier-, zwei- und nullzeiligen
+Retentionsphasen nach zwei tatsächlichen Ausführungen. Die vollständigen
+Historienvergleiche, NONE-/TABLE-/CONSOLE-Paritäten und das eigene Jobcleanup
+bleiben maßgeblich. Die Fixtures injizieren keine Jobhistorie.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario AgentCallerOptions `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Beide Fixtures verlangen vor Quelländerungen den ursprünglichen
+Standardlocktimeout `-1` und erfassen XACT_ABORT vor einer Änderung.
+XACT_ABORT wird innerhalb des Try-Pfads vor der eigenen Joberzeugung aktiviert.
+Die Consumer prüfen eine committable eigene Transaktion mit Locktimeout 137
+und XACT_ABORT ON. Nach eigenem Rollback und Jobcleanup stellen Erfolg und
+Catch beide Optionen direkt im Callerbatch wieder her; Catch wirft den
+ursprünglichen Fehler erneut. Der Erfolg prüft zusätzlich drei beziehungsweise
+neun Consumeraufrufe und beide ursprünglichen Optionen. Die Retentionfixture
+setzt den Locktimeout nach jeder Consumerphase auf `-1`; XACT_ABORT bleibt
+bis zum abschließenden Jobcleanup aktiviert.
+
+Eine zusätzliche private Gegenprobe bestand auf SQL Server `17.0.4075.5`
+mit Framework-Compatibility-Level 170 sechs Fälle. Je Fixture wurden zwei
+Fehler mit ursprünglich XACT_ABORT OFF beziehungsweise ON nach tatsächlichem
+Jobabschluss und vor dem ersten Consumer sowie eine frühe Locktimeout-31-
+Ablehnung geprüft. Nach dem erneut geworfenen Fehler bestätigte dieselbe
+offene Verbindung die ursprünglichen Optionen, Transaktionscount und vor
+Quellabfragen erfassten Transaktionszustand null sowie sechs leere
+Agentquellen. Der Retentionfehler betrifft ausschließlich Phase 1 mit vier
+Historienzeilen. Laufende Jobs, Stop-/Pollfehler, spätere Fehlerpunkte und
+erfolgreiche Retention mit ursprünglichem ON sind damit nicht belegt.
+
+Der Wiederherstellungsvertrag betrifft Locktimeout und XACT_ABORT. Er
+verspricht keine Wiederherstellung von NOCOUNT oder Datenbankkontext und
+kein allgemeines Cleanup temporärer Tabellen. Das äußere identitygebundene
+Labcleanup bleibt erforderlich.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
