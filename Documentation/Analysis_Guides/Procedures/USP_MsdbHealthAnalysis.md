@@ -153,6 +153,16 @@ Ausgabeparität sowie erhaltene Quellen-, Katalog- und Callerwerte.
 Diese gemeinsame Datumsgrenze belegt weder getrennte Backup-/Restorezeitregeln
 noch automatische Altersretention oder die Erhaltung physischer Backupdateien.
 
+Eine getrennte native SQL-2025/Docker-Probe prüft die exakte Mailretentionsgrenze
+mit injizierten unsent-, sent-, failed- und retrying-Zeilen. Gleich datierte
+Zielzeilen bleiben am Stichtag erhalten; eine Sekunde später sind sie entfernt.
+Ältere Zeilen der drei anderen Status bleiben mit sämtlichen Mailitemwerten
+erhalten. 36 NONE-/TABLE-/CONSOLE-Aufrufe bestätigen Counts, native Zeitgrenzen,
+Ausgabeparität und Callererhaltung bei deaktivierten Database Mail XPs.
+Die konkrete native Prozedur vergleicht send_request_date strikt mit dem
+Stichtag. Beide Zeitfelder sind in der Fixture gleich gesetzt; unabhängige
+sent_date-Regeln, tatsächliche Statusentstehung und Mailversand sind unbelegt.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.
