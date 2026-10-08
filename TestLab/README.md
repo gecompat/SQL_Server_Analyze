@@ -421,6 +421,40 @@ Der Nachweis betrifft einen lokalen Fehlerfall; erfolgreiche SMTP-Annahme,
 Zustellung, ein bestimmter SMTP-Fehlergrund, Retryverhalten und automatische
 Retention bleiben getrennte Nachweise.
 
+Mit `-Scenario MailLogRetention` erzeugt eine weitere Fixture drei eigene
+native lokale Mailfehler unter denselben Lab-, Konto- und Adressgrenzen.
+Sie wählt pro Mail einen gebundenen Fehlerlogeintrag aus und verlangt mindestens
+eine nativ erzeugte Informationszeile. Jeder der drei Aufträge wird getrennt
+mit höchstens 120 Einsekundenpolls geprüft. Das begrenzt die Polls insgesamt
+auf 360, jedoch nicht die gesamte Fixturelaufzeit. Historienzeilen werden nicht injiziert;
+die Logdatumswerte der drei ausgewählten Fehler und einer Informationsgegenprobe werden
+innerhalb einer Callertransaktion kontrolliert gesetzt.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailLogRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Zwei native Logpurges mit explizitem Typ `error` und Datumsgrenzen müssen die
+ausgewählte eigene Fehlerlogmenge von drei auf eine und null Zeilen reduzieren. Der
+jüngere Fehlerlogeintrag bleibt beim ersten Purge mit sämtlichen Werten
+erhalten. Die ältere Informationsgegenprobe und die zu Beginn erfassten
+anderen Log-IDs bleiben mit sämtlichen Werten erhalten; später hinzukommende
+Logs gehören nicht zu diesem eingefrorenen Vergleichsscope. Alle drei
+Mailitems und ihre Werte bleiben während der Purges und neun Consumeraufrufe
+unverändert. NONE, TABLE und CONSOLE prüfen native Mailaggregate, JSON-Parität
+und Callerzustand bei deaktivierten Mail-XPs.
+
+Das Callerrollback stellt die kontrollierten Logwerte und gelöschten eigenen
+Fehlerlogs wieder her; anschließend entfernt die Fixture ihre Mailitems,
+ihr Profil und Konto und stellt Queue- und Konfigurationswerte wieder her.
+Native Logs benötigen das äußere identitygebundene Labcleanup. Kontrollierte
+Logdatumswerte belegen kein authentisches Alter oder UTC-Verhalten. Andere
+Ereignistypfilter, NULL- oder ungültige Filter, automatische Logretention,
+erfolgreicher Versand, Anlagenretention und inneres Fehlercleanup bleiben
+getrennte Nachweise.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-

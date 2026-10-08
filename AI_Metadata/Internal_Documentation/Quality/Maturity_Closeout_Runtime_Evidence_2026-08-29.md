@@ -691,3 +691,98 @@ optionale Quellen, Windows, weitere Provider und zusätzliche native Engines
 bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
 Maturityflags und historische Release-Matrix bleiben unverändert. Die neue
 Fixture ist ein Bestandteil von OPS-008 ohne eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Maillogretention vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MailLogRetention` bestand auf einem
+neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation,
+Smoke-Test, Runtimevertrag `122` und die
+[Maillogretention-Fixture](../../../../TestLab/Scenarios/OPS-008/mail-log-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Fixture verwendete anfangs leere Mail-, Anlagen-, Log-, Profil- und
+Kontoquellen sowie einen aktivierten `msdb`-Broker. Sie erzeugte ein eigenes
+anonymes Konto für `localhost` auf Port 1 und ein eigenes Profil. Der native
+zwölfspaltige Kontocapture bestätigte die eigenen IDs und Konfigurationswerte.
+Sender und Empfänger waren synthetische `.invalid`-Adressen; ein externer
+SMTP-Host oder echter Empfänger wurde nicht verwendet. Drei getrennte native
+`sp_send_dbmail`-Aufträge lieferten jeweils Rückgabewert `0` und eine eigene
+Mailitem-ID. Jeder Auftrag wurde mit höchstens 120 Einsekundenpolls auf den
+Status `failed` und mindestens einen gebundenen nativen Prozessfehler geprüft.
+Die höchstens 360 Polls sind keine Grenze für die gesamte Fixturelaufzeit.
+Die Fixture benötigte `send_request_date`, jedoch kein Versanddatum.
+
+Gebundene Fehlerlogs besaßen Typ `error`, die eigene Mailitem-ID, NULL-
+`account_id`, eine positive Prozesskennung und eine nicht leere Beschreibung.
+Das entspricht der dokumentierten Bindung eines
+[aggregierten endgültigen Mailfehlers](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sysmail-event-log-transact-sql?view=sql-server-ver17).
+Aus den mindestens drei gebundenen Fehlerlogs wurde pro Mail genau die
+kleinste native Log-ID als Retentionsziel gewählt. Zusätzliche gebundene
+Fehlerlogs waren zulässig. Historienzeilen wurden nicht injiziert; eine
+Beschreibung allein belegt keinen bestimmten SMTP-Fehlergrund.
+
+Nach Queue-Stopp und Deaktivierung der Mail-XPs begann die Callertransaktion.
+Die drei ausgewählten Fehlerlogzeiten wurden kontrolliert auf zwei
+aufeinanderfolgende Tage und eine ältere Gegenprobe gesetzt. Eine nativ
+vorhandene Informationszeile erhielt ebenfalls ein älteres Datum; ihr
+Ereignistyp wurde aus der nativen Quelle übernommen. Die native erste
+Integer-ID-Spalte wurde anhand des Viewkatalogs gebunden. Alle übrigen zu
+diesem Zeitpunkt vorhandenen Log-IDs wurden als geschützter Scope erfasst;
+später hinzukommende Logs gehören nicht zu diesem eingefrorenen Vergleich.
+
+Zwei native `sysmail_delete_log_sp`-Aufrufe mit explizitem `error`-Filter und
+Datumsgrenzen lieferten jeweils Rückgabewert `0`. Die ausgewählte Fehlerlogmenge
+betrug vor, zwischen und nach den Purges drei, eine und null Zeilen. Der
+jüngere ausgewählte Fehlerlog blieb nach dem ersten Purge mit sämtlichen
+Spaltenwerten erhalten. Die ältere Informationsgegenprobe und alle erfassten
+übrigen Logs blieben NULL-sicher identisch. Sämtliche Werte der drei Mailitems
+blieben erhalten. Dieser empirische Teilumfang entspricht der dokumentierten
+[Trennung von Log- und Mailitembereinigung](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sysmail-delete-log-sp-transact-sql?view=sql-server-ver17).
+
+In allen drei Phasen bestätigten NONE, TABLE und CONSOLE native Mailcounts,
+MIN-/MAX-Requestzeiten, sechs verfügbare Quellen und eine Evidenzgrenze.
+TABLE und CONSOLE besaßen Parität aller acht Fachfelder mit JSON. Sämtliche
+Mailitemwerte sowie ausgewählte und geschützte Logwerte blieben vor und nach
+jedem der neun Aufrufe erhalten. Die Callertransaktion blieb committable mit
+`@@TRANCOUNT=1` und `LOCK_TIMEOUT=137`; Anlagen blieben leer. Konfigurierte und
+effektive Mail-XPs waren während der Purges und Consumerprüfungen deaktiviert.
+Der Analyzer führte selbst keinen Purge aus und erhielt keinen neuen
+Logquellenvertrag; sein Mailaggregat verwendet weiterhin `send_request_date`.
+
+Das Callerrollback stellte sämtliche ursprünglichen Werte der drei
+gewählten Fehlerlogs und der Informationszeile wieder her. Danach wurden
+Mail-XPs für das native Cleanup aktiviert. Die eigenen Failed-Mailitems,
+das eigene Profil und Konto wurden entfernt; Queue- und Konfigurationswerte
+wurden wiederhergestellt und geprüft. Native Logs verblieben bis zum
+äußeren identitygebundenen Labcleanup. Der Lauf endete mit `PASS` und
+`REMOVED`; eigener Container, Volume und temporärer State wurden entfernt.
+Runtimeidentitäten, Secrets, Mailinhalte und Rohlogs bleiben außerhalb von Git.
+
+Zwei vorherige native Läufe scheiterten mit `55403` an der abschließenden
+Mailbasisprüfung, bevor Logzeiten geändert oder Logpurges ausgeführt wurden.
+Im zweiten Lauf bestanden die drei seriellen Einzelprüfungen. Die früheren
+Prüfungen verlangten zusätzlich exakt einen Fehlerlog pro Mail und ein nicht
+leeres Versanddatum. Diese für den Retentionvertrag nicht erforderlichen
+Annahmen wurden durch die ausgewählten Log-IDs und das Requestdatum ersetzt.
+Eine konkrete Ursache der beiden früheren Fehler ist damit nicht bewiesen.
+Coreinstallation, Smoke-Test und Runtimevertrag bestanden in beiden Läufen;
+das äußere Container- und Volumecleanup bestätigte jeweils zwei Schritte mit
+null Fehlern. Der korrigierte dritte Lauf verwendete ein weiteres neues Lab.
+Alle funktionalen Änderungen wurden vor ihrem Lauf unabhängig geprüft.
+
+Zwei pfad-, regel- und wertdigestgebundene Datenschutz-Ausnahmen erlauben
+nur die synthetischen Adressen dieser Fixture. Ein zunächst übernommener
+Digest passte nicht zum neuen Pfad und wurde vor dem ersten nativen Lauf
+korrigiert; der Scanner blieb unverändert. Self-Test und Repositoryscan bestanden.
+
+Kontrollierte Logzeitstempel belegen kein authentisches Alter oder UTC-Verhalten.
+Andere Ereignistypfilter, NULL- und ungültige Filter, Grenzwertgleichheit,
+automatische Logaufbewahrung, erfolgreiche SMTP-Annahme oder Zustellung,
+Anlagenretention und empirisches inneres Fehlercleanup bleiben offen.
+Maintenance-Ausführung, positive Detailretention und selektive Planfilter,
+fehlende optionale Quellen, Windows und zusätzliche native Engines bleiben
+getrennte Nachweise. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001,
+Registry, Maturityflags und historische Release-Matrix bleiben unverändert.
+Die Fixture gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.
