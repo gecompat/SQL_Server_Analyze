@@ -2712,3 +2712,58 @@ und ungültige Kalenderwerte in TABLE/RAW/CONSOLE bleiben ungeprüft.
 Historische Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten;
 OPS-008 bleibt partiell. Die SMTP-Abhängigkeit wird ausschließlich durch
 die öffentliche integrierte und nativ abgenommene Lab-Funktion erfüllt.
+
+## OPS-008-Abnahme einer tatsächlichen kurzen Agentdauer vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 führt einen eigenen
+TSQL-Job mit genau einem Step aus. Die Stepdefinition wartet drei Sekunden
+und führt SELECT 1 aus. Retry, Schedule und Benachrichtigungen fehlen;
+der Job wird nach bestätigtem Abschluss deaktiviert. Die Probe bindet
+zwei native erfolgreiche Historyzeilen an die eigene Job-ID, den Step,
+die Reihenfolge und die abgeschlossene aktuelle Agent-Activity.
+Es werden keine Historywerte injiziert.
+
+Native History speichert 3 Sekunden für den Step und 4 Sekunden
+für den Job. Der private Guard nimmt nur Werte von 3 bis 59 an: In diesem
+Bereich ist der native HHmmss-Wert unmittelbar der Sekundenwert.
+Die Referenz kopiert keine Dauerumrechnungsformel aus dem Produkt.
+Native Startwerte werden unabhängig mit DATETIMEFROMPARTS aus run_date
+und run_time gebildet; agent_datetime dient nicht als Referenz.
+Beide gespeicherten Startwerte sind `2026-10-08T15:49:49` ohne Zeitzonenvertrag.
+
+| NONE-/JSON-Aufruf | Tatsächlich bestätigter Umfang |
+|---|---|
+| MsdbHealth | AVAILABLE ohne Partial oder Fehler; Historycount 2, NULL-Zeitgrenzen und nicht leere EvidenceLimit |
+| AgentJobs normal | AVAILABLE ohne Partial oder Fehler; ein deaktivierter erfolgreicher Job und ein erfolgreicher Step; LastRunDurationSeconds und LastRunDateTime entsprechen nativer History |
+| AgentJobs Problemfilter | Ein deaktivierter erfolgreicher Job mit nativer Dauer und Startzeit; kein Step |
+| AgentMonitoring | AVAILABLE_WITH_FINDING ohne Partial oder Fehler; eine erfolgreiche deaktivierte Jobzeile mit JOB_STATE_INFORMATIONAL/INFO; LatestRunDuration und LatestRunDateTime entsprechen nativer Jobhistory |
+
+Sechs vollständige geordnete Agentquellen einschließlich NULL-Werten
+bleiben nach Stabilitätsprüfung und jedem der vier Consumeraufrufe
+erhalten. Die eigene Callertransaktion bleibt schreibfähig mit ON,
+Locktimeout 31, TX1 und separat erfasstem XACT_STATE 1. Ein eigener
+Rollback restauriert die vollständigen Quellen. Nach Löschen des eigenen
+Jobs entsprechen sie der ursprünglichen Basis. Abschließend bestehen
+ursprüngliches OFF, Locktimeout -1, TX0 und separat erfasster XACT_STATE 0.
+
+Die aus kanonischen Quellen erzeugte Coreinstallation besteht mit
+187 Batches, Smoke110 mit drei und Runtime122 mit zwei Batches. Der eigene
+äußere Labcleanup besteht mit zwei Schritten ohne Fehler; der Statepfad
+ist entfernt. Erst danach wird das PASS-JSON exklusiv mit CreateNew
+geschrieben. Dieser Umfang hat keinen vorausgehenden nativen Fehlversuch.
+Die tatsächliche Abnahme wurde am `2026-10-08T15:50:00.1641928+00:00` erfasst.
+SQL-SHA-256 ist `EDCBACC9EB1FE9D462ED695EEE96B468B07715A68BF23D61328336A8EB0B812C`;
+Wrapper-SHA-256 ist
+`D7BC5E5AB430E84E2FDCBBBD35E2B27799FDDD0DC14F6CF8CC3DF6DEDD42245D`.
+
+Der Umfang ergänzt ausschließlich sieben kanonische Dokumentationsquellen.
+Produktquellen, öffentliche Verträge, Fixture und Installer bleiben erhalten.
+Unveränderte Runtimeverträge und die Kalenderfixture werden nicht erneut
+ausgeführt. Es wird keine zusätzliche native Engine oder Compatibility-
+Matrix gestartet. Dies ist ein einzelner kurzer tatsächlicher Dauerwert;
+keine exakte WAITFOR-Timinggarantie, Minuten-/Stundenübergänge, langen
+Ausführungen, Durationparität in TABLE/RAW/CONSOLE oder empirische innere
+Catchcleanup-Abnahme. Historische Laufzeitmatrix, Statusflags und OpenScope
+bleiben erhalten; OPS-008 bleibt partiell. SMTP bleibt bis zur öffentlichen
+integrierten und nativ abgenommenen Lab-Funktion zurückgestellt.

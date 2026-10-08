@@ -237,6 +237,17 @@ Sechs vollständige Quellen, TX1 und Locktimeout 31 bleiben erhalten.
 andere Uhrzeiten und fehlerhafte Kalenderwerte in TABLE/RAW/CONSOLE
 bleiben ungeprüft.
 
+Eine getrennte native SQL-2025-Probe führt einen eigenen TSQL-Job mit
+einem Step und drei Sekunden WAITFOR ohne Retry aus. Nach Abschluss
+wird der Job deaktiviert. Monitoring liefert AVAILABLE_WITH_FINDING
+ohne Partial oder Fehler mit einer erfolgreichen Jobzeile und
+JOB_STATE_INFORMATIONAL/INFO. LatestRunDuration entspricht den nativ
+gespeicherten 4 Sekunden; LatestRunDateTime entspricht der unabhängig
+aus run_date und run_time gebildeten Jobstartzeit. Der NONE-/JSON-Aufruf
+erhält sechs vollständige Quellen und ON/31/TX1. Diese kurze positive
+Probe belegt keine Minuten-/Stundenübergänge, lange Ausführungen oder
+Durationparität anderer Ausgabearten.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
