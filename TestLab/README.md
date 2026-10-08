@@ -543,6 +543,39 @@ authentisches Alter oder automatische Aufbewahrung. Weitere Kombinationen
 und inneres Fehlercleanup bleiben getrennte Nachweise. Produkt-SQL und
 der öffentliche Analyzervertrag bleiben unverändert.
 
+Mit `-Scenario MaintenanceSubplanRetention` erzeugt eine getrennte Fixture
+einen deaktivierten eigenen Job ohne Steps, Serverzuordnung oder
+Benachrichtigungen innerhalb der Callertransaktion. Drei injizierte
+Subplanmetadatensätze werden an diesen Job gebunden. Sechs eigene
+Maintenance-Elternzeilen erhalten je zwei Details. Drei Elternzeilen tragen
+denselben Zielsubplan-GUID und kontrollierte Zeiten. Drei ältere Gegenproben
+tragen einen anderen Subplan desselben Plans, einen Subplan eines anderen
+Plans beziehungsweise NULL für Plan und Subplan. Plans bleiben leer;
+Maintenance, SSIS und Jobs werden nicht ausgeführt.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MaintenanceSubplanRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Ein nativer `sp_maintplan_delete_log`-Aufruf mit nicht passendem Subplan-GUID
+muss sämtliche Eltern- und Detailwerte erhalten. Zwei weitere Aufrufe mit
+Zielsubplan-GUID, NULL-Planfilter und Datumsgrenzen müssen Zielcounts drei,
+eins und null bei Gesamtcounts sechs, vier und drei sowie Detailcounts zwölf,
+acht und sechs hinterlassen. Vollständige jüngere Zielwerte, ältere
+Gegenprobenwerte, Subplanmetadaten und die gesamte Jobquelle müssen erhalten
+bleiben. Neun NONE-, TABLE- und CONSOLE-Aufrufe prüfen native Elternaggregate,
+Parität aller acht Fachfelder, unveränderte Quellen, Callertransaktion und
+Locktimeout. Das Rollback muss alle injizierten Maintenancezeilen sowie den
+eigenen Job entfernen; das äußere identitygebundene Labcleanup bleibt erforderlich.
+
+Der Nachweis betrifft selektive Subplan-ID-Filter bei NULL-Planfilter und
+kontrollierter Historie. Kombinierte Plan-/Subplanfilter, echte SSIS-Pläne,
+Maintenance-Ausführung, unabhängige Detaildatumssemantik, authentisches Alter,
+automatische Aufbewahrung und inneres Fehlercleanup bleiben getrennte
+Nachweise. Produkt-SQL und der öffentliche Analyzervertrag bleiben unverändert.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
