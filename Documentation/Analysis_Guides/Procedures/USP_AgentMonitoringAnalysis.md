@@ -132,6 +132,15 @@ lokalen Startzeitpunkt. `LatestRunDuration` erhält den Integerrohwert aus
 Schaltag-/Dauergegenprobe auf SQL Server 2025 prüft diese bestehenden NONE-/JSON-
 Felder getrennt von der Sekundenumrechnung in `USP_AgentJobs`.
 
+Die getrennte SQL-2025-Kalendergegenprobe bestätigt bei Joboutcomes
+20230229 und 20240230 den Status `AVAILABLE_LIMITED`, `isPartial=true`,
+den direkt gemessenen nativen Fehler 242 und ein leeres Jobarray.
+Dieselben ungültigen Werte in Stepoutcomes beeinträchtigen den gültigen
+Jobgesamtoutcome in dieser Probe nicht: Monitoring meldet
+`AVAILABLE_WITH_FINDING` ohne Partial- oder Fehlerstatus und erhält den
+lokalen Jobstart samt Rohdauer. Die Probe verwendet NONE/JSON mit
+Jobstatus an, Database Mail aus und `XACT_ABORT OFF`.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.

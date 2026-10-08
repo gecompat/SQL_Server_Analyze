@@ -1944,3 +1944,85 @@ vorherigen Aussagen über ungeprüfte Überläufe beschreiben den jeweiligen
 nativen Slice; sie werden durch diese getrennte statische Rechnung präzisiert.
 Produkt, Installer, Fixture, Reifeflags, Registry, OpenScope und historische
 Laufzeitmatrix bleiben unverändert; OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION.
+
+## Native OPS-008-Kalendergegenprobe vom 8. Oktober 2026
+
+Eine getrennte private PROJECT_SEMANTIC-Gegenprobe am integrierten Stand
+von PR #296 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Produkt-SQL, Installer, öffentliche AgentHistory-Fixture
+und Runner bleiben unverändert. Coreinstallation mit 187 Batches,
+Smoke110 und Runtimevertrag122 bestehen vor der Gegenprobe.
+
+Zunächst bestätigt ein leerer Monitoringaufruf mit Jobstatus an und
+Database Mail aus AVAILABLE_WITH_FINDING, Partial false sowie NULL für
+Fehlernummer und Fehlermeldung. Vollständige Quellwerte bleiben erhalten.
+Danach werden vier getrennte Callertransaktionen mit XACT_ABORT OFF und
+Locktimeout 31 verwendet. Jede erzeugt einen eigenen deaktivierten Job
+und eine harmlose TSQL-Stepdefinition ohne Ausführung, Serverzuordnung
+oder Schedule. Job-ID-Eingang wird vor jedem sp_add_job auf NULL gesetzt.
+
+| Fall | Ungültiges Datum | Betroffene Historyzeile | Direkter nativer Fehler |
+|---:|---:|---|---:|
+| 1 | 20230229 | Joboutcome, Step-ID 0 | 242 |
+| 2 | 20230229 | Stepoutcome, Step-ID 1 | 242 |
+| 3 | 20240230 | Joboutcome, Step-ID 0 | 242 |
+| 4 | 20240230 | Stepoutcome, Step-ID 1 | 242 |
+
+Das direkte Orakel ruft agent_datetime mit dem jeweiligen Datum und
+Uhrzeit 0 auf. Die tatsächliche Fehlernummer wird gemessen; 242 ist kein
+vorab festgesetzter Sollfehler. Nach jedem Orakel bleiben TX1 und
+XACT_STATE 1 erhalten. Je Fall folgen drei tatsächliche NONE-/JSON-Aufrufe
+mit unbeschränkter Zeilenausgabe und ohne Meldungsdruck:
+
+- MsdbHealth meldet AVAILABLE ohne Partial, Historycount eins bei
+  ungültigem Job beziehungsweise zwei bei ungültigem Step, NULL für beide
+  Agentzeitgrenzen und einen nicht leeren EvidenceLimit.
+- AgentJobs verwendet eine exakte eigene Jobliste und meldet in allen
+  vier Fällen ERROR_HANDLED, Partial true, den direkt gemessenen Fehler
+  242 und eine nicht leere Fehlermeldung. Job- und Steparray sind bei
+  ungültigem Joboutcome leer. Bei ungültigem Stepoutcome bleibt genau der
+  gültige Joboutcome erhalten: lokal 2024-02-29 00:00:00, 85 Sekunden und
+  StepCount eins; das Steparray bleibt leer.
+- Monitoring verwendet Jobstatus an und Database Mail aus. Bei ungültigem
+  Joboutcome meldet es AVAILABLE_LIMITED, Partial true, Fehler 242, eine
+  nicht leere Fehlermeldung und ein leeres Jobarray. Bei ungültigem
+  Stepoutcome bleibt genau der gültige eigene deaktivierte Job mit lokalem
+  Start 2024-02-29 00:00:00, Rohdauer 125, Runstatus 1 und
+  JOB_STATE_INFORMATIONAL/INFO erhalten. Der gemessene Modulstatus lautet
+  AVAILABLE_WITH_FINDING, Partial false und Fehlernummer/-meldung NULL.
+
+Alle zwölf Consumeraufrufe und vier direkte Orakel erhalten vollständige,
+deterministisch geordnete JSON-Werte von sysjobs, sysjobsteps, sysjobhistory,
+sysjobactivity, sysjobservers und sysjobschedules. Counts sowie
+XACT_ABORT OFF, Locktimeout 31 und committable TX1 bleiben erhalten.
+Vier eigene Rollbacks stellen jeweils sämtliche ursprünglichen sechs
+Quellbestände wieder her. Die abschließende skalare Zustandsmessung vor
+datenlesender Ausgabe bestätigt TX0, XACT_STATE 0, ursprüngliches OFF
+und Locktimeout -1. Die zwölf erfassten Consumerzeilen werden vollständig
+aus den begrenzten FOR-JSON-Chunks gelesen, ohne Kürzung.
+
+Der private SQL-Stand besitzt SHA-256
+`A74EA2016DD6B093C43135EF26AE60042BD08B6BA60B6E0214AAF4960E13CCB7`.
+Der erfolgreiche Lauf bestätigt vier Kalenderfälle, vier native Fehler,
+zwölf Fallconsumer, einen Baselineconsumer und vier Rollbacks. Das eigene
+Lab ist mit zwei Cleanupschritten ohne Fehler entfernt; sein State ist
+nicht mehr vorhanden. Rohlogs und Runtimeidentitäten bleiben privat.
+
+Drei vorausgehende Läufe bleiben Fehlversuche. Der erste scheitert vor
+den Fachaufrufen an der ungeklammerten RowCount-Spalte im privaten SQL.
+Der zweite scheitert an der noch nicht aufgeteilten Baseline-Invariante;
+seine Ursache ist nicht einzeln gemessen. Der dritte passiert die Baseline
+und scheitert später mit der nativen MSX-Jobänderungsablehnung. Der nicht
+zurückgesetzte OUTPUT-Job-ID-Eingang ist korrigiert; der konkrete native
+MSX-Zweig ist nicht separat bewiesen. Alle drei eigenen Labs werden mit
+zwei Cleanupschritten ohne Fehler entfernt. Keiner dieser Fehlversuche
+erzeugt eine PASS-Ergebnisdatei oder wird als bestanden nachgetragen.
+
+Diese Probe nimmt ausschließlich die beiden benannten ungültigen Daten
+bei Uhrzeit 0 in NONE/JSON und XACT_ABORT OFF ab. Weitere ungültige Daten,
+Uhrzeiten, NULL-/Null-Datum, XACT_ABORT ON, tatsächliche Step-/Retryausführung,
+allgemeine Mengen-/Arithmetikgrenzen und UTC-/Endzeitinterpretation bleiben
+offen. Ein vollständiger nativer Ausgabeschema- oder allgemeiner Catch-
+Nachweis wird nicht beansprucht. OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION;
+Reifeflags, Registry, OpenScope und historische Laufzeitmatrix bleiben
+erhalten. Der spätere SMTP-Auftrag ist noch keine gelieferte Funktion.
