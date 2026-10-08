@@ -1632,3 +1632,63 @@ Erfolgreicher Mailversand, tatsächliche Maintenance, automatische
 Aufbewahrung und weitere Retentiongrenzen bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert.
+
+## Ergänzende OPS-008-NULL-Datumsretention für Failed-Mail vom 8. Oktober 2026
+
+Das bestehende Szenario `MailRetention` bestand auf einem neuen eigenen
+SQL-Server-2025-Linux-Docker-Lab mit `PASS` und `REMOVED`,
+`ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Coreinstallation mit 187 Batches, Smoke-Test `110`, Runtimevertrag `122`
+und die bestehende SQL-Fixture mit zwei Batches bestanden. Produkt-SQL,
+Runner, Szenarioname und TEST-0001-Kennung blieben unverändert.
+
+Der erste datumsgebundene Fall bleibt mit drei, einer und null Failed-
+Mailzeilen sowie neun NONE-/TABLE-/CONSOLE-Aufrufen erhalten. Ein zweiter
+eigener Transaktionsfall ergänzt drei Failed-Zeilen aus 2000, 2025 und 2030
+und je eine ältere unsent-, sent- und retrying-Gegenprobe aus 1999.
+Die drei Gegenproben werden anhand ihrer bei INSERT erfassten eigenen IDs
+gebunden. Die vollständigen ursprünglichen Mailitemwerte werden NULL-sicher
+im SQL-Speicher verglichen. Die native Bereinigung verwendet ausdrücklich
+`@sent_before=NULL` und `@sent_status='failed'` bei Returncode `0`.
+Alle drei Failed-Zeilen verschwinden; die drei anderen Status bleiben
+unverändert. Die Gesamtmenge fällt von sechs auf drei und die Failed-Menge
+von drei auf null. Unabhängige native Statuscounts und MIN-/MAX-Zeitwerte
+bestätigen die Auswahl. Sechs weitere Consumer prüfen native Aggregate,
+vollständige TABLE-/CONSOLE-/JSON-Parität, Quellerhaltung und Callerzustand.
+Die Mail-XPs bleiben konfiguriert und effektiv deaktiviert; Anlagen bleiben
+leer. Die Fixture führt keinen Versand und keine Queueverarbeitung aus.
+
+Insgesamt bestätigt die Fixture 15 Consumeraufrufe und zwei eigene Rollbacks.
+Nach jedem Rollback müssen die drei Mailquellen leer und Transaktionen
+geschlossen sein. Die sieben Summaryfelder bleiben unverändert;
+`InitialRows`, `RetainedRows` und `FinalRows` bezeichnen weiterhin den ersten
+Fall mit drei, einer und null Zeilen. `ConsumerCalls` beträgt nun 15.
+Die Gruppe `MailCallerOptions` umfasst dadurch 69 geplante Aufrufe;
+der historische gemeinsame Lauf mit 63 Aufrufen bleibt gültig, wurde aber
+nicht als gemeinsamer 69-Aufruf-Lauf wiederholt.
+
+Drei zusätzliche private Fälle sind vorbereitet, aber wegen der belegten
+gemeinsamen Host-Testlane `NOT_EXECUTED`: unveränderter Erfolg mit
+ursprünglichem XACT_ABORT ON und tatsächliches Lesen der sieben Summaryfelder
+sowie je eine nur im Speicher veränderte endliche Datumsgrenze oder fehlender
+Statusfilter im zweiten Fall. Erwartet wird die Ablehnung beider falschen
+Bereinigungen mit Fehler 55185 nach zwölf abgeschlossenen Consumeraufrufen.
+Diese Erwartungen sind kein Laufzeitnachweis. Der normale Erfolg bestätigt
+die vom Caller vorgefundenen Optionen; erfolgreicher ursprünglicher ON-
+Eintritt und die zusätzlichen Mutationsfehler sind damit nicht gesondert belegt.
+
+Das äußere Cleanup des bestandenen normalen Laufs entfernte Container und
+Volume mit zwei Schritten und null Fehlern. Das eigene Stateverzeichnis war
+abschließend nicht vorhanden. Ein früherer normaler Versuch und der erste
+private Versuch scheiterten an der belegten gemeinsamen Host-Testlane vor
+Provisionierung und SQL-Ausführung. Dafür wird kein Laufzeit- oder Cleanup-
+nachweis behauptet; es entstanden keine eigenen Labressourcen. Der normale
+Wiederholungslauf erfolgte erst nach beobachteter Freigabe der Lane.
+Ein späterer begrenzter Free-Beobachter fand innerhalb von 45 Sekunden
+keine Freigabe und startete keinen privaten Lauf. Die Gegenproben werden
+nach Freigabe der Lane getrennt fortgesetzt; kein Guard oder Timeout wird
+abgeschwächt. Rawlogs, private Probe und eigene Laufidentitäten bleiben
+außerhalb Git. Tatsächlicher Mailversand, Maintenance-Ausführung,
+automatische Aufbewahrung und weitere Filter-/Retentionsgrenzen bleiben offen.
+OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; Registry, Maturityflags und
+historische Release-Matrix bleiben unverändert.

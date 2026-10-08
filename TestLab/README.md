@@ -382,11 +382,13 @@ und acht leere Quellen. Beide Labs wurden anschließend einzeln vollständig
 entfernt. Spätere Backup-/Restore- oder Purgefehler und erfolgreiche Retention
 mit ursprünglichem ON sind damit nicht belegt.
 
-Mit `-Scenario MailRetention` injiziert eine getrennte Fixture drei eigene
-Mailzeilen mit kontrollierten Zeitstempeln und Status `failed` in die zuvor
-leeren Mailquellen. Konfigurierte und effektive Mail-XPs müssen deaktiviert
-bleiben; die Fixture richtet weder Profil noch Versand oder Queueverarbeitung
-ein. Die Statusmarkierung ist kein Nachweis eines tatsächlichen Versandfehlers.
+Mit `-Scenario MailRetention` prüft eine getrennte Fixture zwei eigene
+Mailretentionsfälle in jeweils einer eigenen Transaktion. Der erste Fall
+injiziert drei `failed`-Mailzeilen mit kontrollierten Zeitstempeln; der zweite
+ergänzt drei ältere Statusgegenproben. Die Mailquellen müssen vor jedem Fall
+leer sein. Konfigurierte und effektive Mail-XPs bleiben deaktiviert; die
+Fixture richtet weder Profil noch Versand oder Queueverarbeitung ein.
+Die Statusmarkierungen belegen keine tatsächliche Mailausführung.
 
 ```powershell
 pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
@@ -394,15 +396,37 @@ pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
   -LabRepositoryRoot ../SQL_Server_Lab
 ```
 
-Zwei Datumsgrenzen der nativen `sysmail_delete_mailitems_sp` müssen zuerst
-die beiden älteren Zeilen und danach die jüngere Zeile entfernen. Sämtliche
-Spalten der jüngeren Zeile müssen nach dem ersten Eingriff NULL-sicher gleich
-bleiben. NONE, TABLE und CONSOLE prüfen je Phase native Counts und Zeitgrenzen,
-JSON-Parität, Quellerhaltung und Callerzustand. Ein abschließendes Rollback
-entfernt die injizierte Fixture; das äußere Labcleanup bleibt erforderlich.
-Der Analyzer führt keine Bereinigung aus. Tatsächliche Mailausführung,
-automatische Aufbewahrung, weitere Mailstatus, Anlagen- und Logretention sowie
-Maintenance-Retention bleiben eigenständige Nachweise.
+Im ersten Fall müssen zwei Datumsgrenzen der nativen
+`sysmail_delete_mailitems_sp` zuerst die beiden älteren Zeilen und danach
+die jüngere Zeile entfernen. Sämtliche Spalten der jüngeren Zeile bleiben
+nach dem ersten Eingriff NULL-sicher gleich. Der zweite Fall verwendet
+explizit `@sent_before=NULL` und `@sent_status='failed'`. Nach dem
+[nativen Parametervertrag](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sysmail-delete-mailitems-sp-transact-sql?view=sql-server-ver17)
+entfällt damit die Datumsgrenze. Drei eigene `failed`-Zeilen aus 2000, 2025
+und 2030 müssen verschwinden; je eine ältere `unsent`-, `sent`- und
+`retrying`-Zeile aus 1999 muss mit sämtlichen ursprünglichen Werten erhalten
+bleiben. Die Gesamtmenge fällt von sechs auf drei, die Failed-Menge von drei
+auf null. Unabhängige Statuscounts und MIN-/MAX-Zeitwerte prüfen die Auswahl.
+
+NONE, TABLE und CONSOLE prüfen in beiden Fällen native Counts und Zeitgrenzen,
+JSON-Parität, Quellerhaltung und Callerzustand. Insgesamt bestehen 15
+Consumeraufrufe und zwei getrennte Rollbacks. Die sieben Summaryfelder bleiben
+erhalten; `InitialRows`, `RetainedRows` und `FinalRows` beschreiben weiterhin
+den ersten datumsgebundenen Fall mit drei, einer und null Zeilen.
+`ConsumerCalls` beträgt nun 15. Jedes Rollback entfernt die eigenen injizierten
+Zeilen; das äußere Labcleanup bleibt erforderlich. Der Analyzer führt keine
+Bereinigung aus.
+
+Der normale Szenariolauf bestand in einem neuen eigenen SQL-Server-2025-
+Lab mit `ProductVersion=17.0.4075.5` und Framework-CL 170; das eigene Lab
+wurde vollständig entfernt. Zwei vorbereitete private Mutationen prüfen
+ein endliches Datum beziehungsweise einen fehlenden Statusfilter im zweiten
+Fall. Eine weitere private Probe soll den unveränderten Erfolg mit
+ursprünglichem XACT_ABORT ON und die tatsächlich gelesenen Summaryfelder
+prüfen. Diese drei Fälle sind wegen der belegten gemeinsamen Host-Testlane
+noch nicht ausgeführt und liefern keinen Laufzeitnachweis.
+Tatsächliche Mailausführung, automatische Aufbewahrung, weitere Filter-
+und Retentiongrenzen bleiben eigenständige Nachweise.
 
 Mit `-Scenario MaintenanceRetention` injiziert eine weitere getrennte Fixture
 drei eigene Zeilen in `sysmaintplan_log` mit kontrollierten Start- und Endzeiten.
@@ -742,9 +766,12 @@ Tabellen. Äußeres identitygebundenes Labcleanup bleibt erforderlich.
 Mit `-Scenario MailCallerOptions` führt der Runner die vier bestehenden
 injizierten Mailfixtures für gemischte Mail-/Maintenance-Aggregate,
 Failed-Mailretention, Statusretention und Anlagenretention nacheinander in
-einem neuen eigenen Lab aus. Die Gruppe prüft insgesamt 63 Consumeraufrufe:
-neun je gemischter, Failed-Mail- und Anlagenfixture sowie 36 für die vier
-Mailstatus. Die vorhandenen Aggregate, Retentionsmengen, vollständigen
+einem neuen eigenen Lab aus. Die Gruppe umfasst nach Erweiterung der
+Failed-Mailfixture insgesamt 69 Consumeraufrufe: neun je gemischter und
+Anlagenfixture, 15 für beide Failed-Mailfälle sowie 36 für die vier
+Mailstatus. Die ursprünglichen 63 Aufrufe sind als gemeinsamer Lauf belegt;
+die sechs zusätzlichen NULL-Datumsaufrufe wurden im getrennten Szenario
+`MailRetention` geprüft. Die vorhandenen Aggregate, Retentionsmengen, vollständigen
 Quellwertvergleiche und NONE-/TABLE-/CONSOLE-Paritäten bleiben maßgeblich.
 Mailversand und Queueverarbeitung werden durch diese Fixtures nicht ausgeführt.
 
@@ -762,7 +789,9 @@ Erfolg und Catch beide Optionen direkt im Callerbatch wieder her; Catch
 wirft den ursprünglichen Fehler erneut. Der Erfolgspfad prüft zusätzlich
 die erwartete Consumerzahl und die beiden ursprünglichen Werte. Die
 Statusfixture verwendet vier getrennte Transaktionen und restauriert die
-Optionen abschließend nach allen vier Statusfällen.
+Optionen abschließend nach allen vier Statusfällen. Die Failed-Mailfixture
+verwendet zwei getrennte Transaktionen und restauriert beide Optionen
+abschließend nach beiden Retentionsfällen.
 
 Eine zusätzliche private Gegenprobe bestand auf SQL Server `17.0.4075.5`
 mit Framework-Compatibility-Level 170 zwölf Fälle. Je Fixture wurden zwei
