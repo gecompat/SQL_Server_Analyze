@@ -1,6 +1,6 @@
 # [monitor].[USP_CurrentCursorAnalysis]
 
-Inventarisiert aktive Cursor; Details werden nur für eine ausdrücklich angegebene Session aktiviert.
+Inventarisiert aktive Cursor; Details werden für genau eine Session aktiviert.
 
 **Bereich:** Current State
 **Zweck:** Liefert begrenzte Cursor-Ressourcen- und Dormanzevidenz für genau eine bekannte Session.
@@ -37,6 +37,14 @@ Ein synthetischer `ExampleCursor` mit einem erfolgten Fetch kann als sichtbarer 
 
 Bei einem Berechtigungsvergleich ist zu beachten, dass SQL Server 2019 `VIEW SERVER STATE` und SQL Server 2022 oder neuer `VIEW SERVER PERFORMANCE STATE` für die serverweite DMV vorsieht. Der tatsächliche Teststatus muss deshalb zusammen mit Product Major Version und Berechtigungsprofil dokumentiert werden.
 
+## Zeilenlimit
+
+Ein positives `@MaxZeilen` begrenzt die materialisierten Cursorzeilen. `NULL`
+und `0` liefern das sichtbare Cursorinventar der ausgewählten einzelnen
+Session ohne Zeilenlimit. Negative Werte liefern `INVALID_PARAMETER`.
+Der Default bleibt `200`; Opt-in und Einzelsessionprüfung gelten bei jedem
+Limit. Verwenden Sie für eine begrenzte Gegenprobe einen positiven Wert.
+
 ## Eigenlast und Grenzen
 
 | Dimension | Einordnung |
@@ -45,9 +53,9 @@ Bei einem Berechtigungsvergleich ist zu beachten, dass SQL Server 2019 `VIEW SER
 | Standardpfad | Keine DMV-Detailabfrage; Status `NOT_EXECUTED` |
 | Teuerster Pfad | `sys.dm_exec_cursors` für eine aktive ressourcenreiche Session |
 | Haupttreiber | Cursorzahl und interne Cursorstatistik der Zielsession |
-| Skalierung | Auf genau eine Session und `@MaxZeilen` begrenzt |
+| Skalierung | Genau eine Session; positive `@MaxZeilen` begrenzen die Ausgabe |
 | Ressourcen | Server-DMV-Zugriff und lokale Sortierung |
-| Begrenzungswirkung | Session-ID begrenzt Quelle; `@MaxZeilen` begrenzt Materialisierung |
+| Begrenzungswirkung | Session-ID begrenzt die Quelle; positive `@MaxZeilen` begrenzen die Materialisierung |
 | Locking und Nebenwirkungen | Read-only; kein Fetch, Close oder Deallocate fremder Cursor |
 | Schutzmechanismus | Explizites Opt-in und Einzelsessionvalidierung |
 | Sicherer Einsatz | Nach vorheriger Identifikation einer konkreten Session |
@@ -79,18 +87,17 @@ Welche sichtbaren Cursor benötigen eine gezielte Gegenprobe?
 
 ### Technischer Hintergrund
 
-`sys.dm_exec_cursors(0)` liefert die Übersicht; der Detailpfad schränkt sie auf eine Session ein. Es wird kein Cursor verändert.
+Der aktivierte Detailpfad liest `sys.dm_exec_cursors` mit der validierten einzelnen Zielsession. Ohne explizite Sessionauswahl verwendet er die aufrufende Session. Es wird kein Cursor verändert.
 
 ### Datenkette
 
-`sys.dm_exec_cursors(0)` → begrenztes Resultset → optionale Sessiondetails.
+Validierte einzelne Zielsession → `sys.dm_exec_cursors` → nach dem Zeilenlimit materialisiertes Cursorinventar.
 
 ### Source Select
 
 ```sql
 SELECT TOP (200) [session_id], [cursor_id], [name], [properties], [is_open], [worker_time], [reads], [writes]
-FROM [sys].[dm_exec_cursors](0)
-WHERE [session_id] > 0
+FROM [sys].[dm_exec_cursors](@@SPID)
 ORDER BY [worker_time] DESC;
 ```
 

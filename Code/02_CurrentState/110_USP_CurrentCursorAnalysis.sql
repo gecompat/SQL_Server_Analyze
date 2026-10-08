@@ -19,6 +19,7 @@ CREATE OR ALTER PROCEDURE [monitor].[USP_CurrentCursorAnalysis]
 AS
 BEGIN
  SET NOCOUNT ON; SET @Json=NULL;
+ SET @MaxZeilen=COALESCE(@MaxZeilen,0);
  DECLARE @Status varchar(40)='NOT_EXECUTED',@Partial bit=0,@Mode varchar(16)=UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
  DECLARE @ErrorNumber int=NULL,@ErrorMessage nvarchar(2048)=NULL,@TargetSessionId int=@@SPID;
  IF @Hilfe=1 BEGIN PRINT N'monitor.USP_CurrentCursorAnalysis'; PRINT N'Cursor-Details sind opt-in und auf genau eine Session sowie @MaxZeilen begrenzt.'; RETURN; END;

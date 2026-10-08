@@ -514,6 +514,21 @@ Die übrigen offenen Reifeverträge und Statusflags bleiben erhalten; neue
 Diagnosefläche und zusätzliche Snapshotowner benötigen weiterhin einen
 eigenen fachlichen Auftrag.
 
+Am 8. Oktober 2026 wurde zusätzlich der bestehende NULL-Zeilenlimitvertrag
+von `USP_CurrentCursorAnalysis` repariert. Der ursprüngliche Quellenstand
+lieferte bei explizitem NULL Fehler 1014 und `SOURCE_UNAVAILABLE`; die
+0-Gegenprobe war positiv. Der reparierte Stand besteht sechs
+impact-basierte Verträge auf SQL Server 2025 mit Compatibility Level 170.
+Test 120 bestätigt sechs NULL-/0-/Minus-eins-Aufrufe über NONE und TABLE
+mit nativen Cursoridentitäten, vollständiger zwölffeldriger TABLE-/JSON-Parität
+in den positiven TABLE-Fällen sowie Quell- und Callererhaltung. Eine getrennte
+SqlClient-Gegenprobe bestätigt den positiven NULL-/0-Pfad bei Locktimeout 137
+und XACT_ABORT OFF. Alle eigenen Labs sind entfernt. Die beiden vorherigen
+privaten Eintrittsguardfehler sind kein NULL-Produktnachweis; sie bleiben in
+der [kanonischen Cursor-Evidenz](OPS007_Dormant_Cursor_Runtime_Evidence_2026-09-19.md)
+getrennt dokumentiert. Fremde Hochlast und weitere gemeinsame Vertragsarbeit
+bleiben offen; OPS-007 und COLL-001 behalten ihre partiellen Status.
+
 ## Maßgeblichkeit
 
 Der begrenzte Benutzerauftrag zur Dokumentations- und Nachweisklarheit vom
