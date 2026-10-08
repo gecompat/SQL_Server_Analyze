@@ -139,6 +139,13 @@ bei einer Stundenkomponente über 24. Die lokalen Jobfilter verwenden einen
 Primärschlüssel mit automatisch vergebenem Constraintnamen. Die begrenzte
 SQL-2025-Gegenprobe bestätigt wiederholte Aufrufe in derselben Callertransaktion.
 
+Die letzte Stepzeile wird getrennt je Job und Step nach `instance_id`
+gewählt. Die begrenzte SQL-2025-Fixture bestätigt drei injizierte lokale
+Startzeitpunkte und Dauerwerte sowie alle zehn JSON-Felder zweier Steps.
+Eine jeweils jüngere Zeile des anderen Steps verändert den ersten Step
+nicht. Injizierte Retryzahlen sind gespeicherte Werte und belegen kein
+tatsächliches Retryverhalten oder eine Stepausführung.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.

@@ -199,7 +199,7 @@ nachfolgend beschrieben. Mail-/Maintenance-Ausführung, Retention und fehlende
 optionale Quellen bleiben separat offen.
 
 Mit `-Scenario AgentHistory` werden der Agent-Aggregatvertrag und drei
-synthetische Joboutcomes für Datum und Dauer zusätzlich zu Installation,
+synthetische Joboutcomes sowie drei ergänzende Step-Dauerfälle zusätzlich zu Installation,
 Smoke-Test und Runtimevertrag `122` geprüft.
 Der Standard `HistoryRestore` behält die Backup-, Restore- und Größenfälle.
 
@@ -222,12 +222,21 @@ erhält den codierten Rohwert. Beide liefern den erwarteten lokalen Startzeitpun
 zum letzten Outcome nach `instance_id`, auch gegenüber einer früher
 injizierten Zeile mit neuerem Kalenderdatum. `USP_MsdbHealthAnalysis`
 erhält weiterhin NULL-Zeitgrenzen. Zwölf NONE-/JSON-Consumeraufrufe erhalten
-sechs vollständige Agentquellen und den Callerzustand. Die Fixture rollt
-danach den eigenen Job und alle Historyzeilen zurück. Der native Lauf auf
+sechs vollständige Agentquellen und den Callerzustand. Danach ergänzt die
+Fixture zwei eigene TSQL-Stepdefinitionen ohne Server- oder Schedulebindung.
+Drei weitere Fälle injizieren je einen Step-1-Outcome mit denselben
+Datum-/Dauerliteralen und anschließend einen Step-2-Outcome aus 2000 mit
+codierter Dauer `253001` beziehungsweise 91.801 Sekunden. Die zweite History-ID
+ist jeweils höher. Alle zehn JSON-Felder beider Steps werden gegen unabhängige
+Sollwerte geprüft; Msdb bestätigt Historycounts acht, zehn und zwölf.
+Jobgesamtoutcome und Monitoring-Rohdauer bleiben unverändert. Insgesamt
+21 NONE-/JSON-Aufrufe erhalten die sechs vollständigen Agentquellen und den
+Callerzustand. Das Rollback entfernt den eigenen Job, beide Stepdefinitionen
+und sämtliche Historyzeilen. Der native Lauf auf
 SQL Server 2025 `17.0.4075.5` und Framework-CL170 besteht einschließlich
 Coreinstallation, Smoke, Runtimevertrag `122` und eigenem Labcleanup.
 Die vierfeldrige Zusammenfassung bleibt unverändert; Fall- und Aufrufzahlen
-werden intern geprüft. Die Fixture führt keinen Agent-Job aus. Step-Dauern,
+werden intern geprüft. Die Fixture führt keinen Agent-Job aus. Tatsächliche Stepausführung und Retryverhalten,
 ungültige Kalenderwerte, Überläufe, UTC- oder Endzeitinterpretation,
 Zeitfenstergrenzen und Retention werden damit nicht belegt.
 Der Runner initialisiert für seinen

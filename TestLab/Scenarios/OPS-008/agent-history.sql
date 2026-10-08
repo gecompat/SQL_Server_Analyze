@@ -29,6 +29,22 @@ INSERT @DateCases VALUES
 (1, 20240229, 0, 0, CONVERT(datetime, '2024-02-29T00:00:00', 126), 0),
 (2, 20240229, 10203, 125, CONVERT(datetime, '2024-02-29T01:02:03', 126), 85),
 (3, 20250102, 235959, 1000000, CONVERT(datetime, '2025-01-02T23:59:59', 126), 360000);
+DECLARE @StepCase int = 1, @StepReturn int;
+DECLARE @StepOneHistoryId int, @StepTwoHistoryId int;
+DECLARE @ExpectedSteps TABLE
+([JobName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [StepId] int, [StepName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [Subsystem] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [LastRunOutcome] int, [LastRunOutcomeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [LastRunDateTime] datetime, [LastRunDurationSeconds] int, [LastRunRetries] int,
+ [LastRunMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS);
+DECLARE @ActualSteps TABLE
+([JobName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [StepId] int, [StepName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [Subsystem] nvarchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [LastRunOutcome] int, [LastRunOutcomeDesc] nvarchar(60) COLLATE SQL_Latin1_General_CP1_CS_AS,
+ [LastRunDateTime] datetime, [LastRunDurationSeconds] int, [LastRunRetries] int,
+ [LastRunMessage] nvarchar(4000) COLLATE SQL_Latin1_General_CP1_CS_AS);
 BEGIN TRY
     SET XACT_ABORT ON;
     BEGIN TRANSACTION;
@@ -227,6 +243,179 @@ BEGIN TRY
     END;
     IF @DateCase <> 4 OR @Calls <> 12
         THROW 55199, N'Die drei Datumsfälle oder zwölf Consumeraufrufe fehlen.', 1;
+    -- Eigene Stepdefinitionen und injizierte History werden niemals ausgeführt.
+    EXEC @StepReturn = [msdb].[dbo].[sp_add_jobstep] @job_id = @JobId, @step_id = 1,
+        @step_name = N'ExampleHistoryStepOne', @subsystem = N'TSQL',
+        @command = N'SET NOCOUNT ON; SELECT 1 AS ExampleValue;',
+        @database_name = N'master', @on_success_action = 1, @on_fail_action = 2,
+        @retry_attempts = 0;
+    IF @StepReturn <> 0 THROW 55199, N'Die erste eigene Stepdefinition fehlt.', 1;
+    EXEC @StepReturn = [msdb].[dbo].[sp_add_jobstep] @job_id = @JobId, @step_id = 2,
+        @step_name = N'ExampleHistoryStepTwo', @subsystem = N'TSQL',
+        @command = N'SET NOCOUNT ON; SELECT 1 AS ExampleValue;',
+        @database_name = N'master', @on_success_action = 1, @on_fail_action = 2,
+        @retry_attempts = 0;
+    IF @StepReturn <> 0 OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobsteps]
+        WHERE [job_id] = @JobId) <> 2
+        THROW 55199, N'Die beiden eigenen Stepdefinitionen fehlen.', 1;
+    WHILE @StepCase <= 3
+    BEGIN
+        SELECT @RunDate = [RunDate], @RunTime = [RunTime],
+            @RunDuration = [RunDuration], @ExpectedStart = [ExpectedStart],
+            @ExpectedSeconds = [ExpectedSeconds]
+        FROM @DateCases WHERE [CaseId] = @StepCase;
+        INSERT [msdb].[dbo].[sysjobhistory]
+        ([job_id], [step_id], [step_name], [sql_message_id], [sql_severity],
+         [message], [run_status], [run_date], [run_time], [run_duration],
+         [operator_id_emailed], [operator_id_netsent], [operator_id_paged],
+         [retries_attempted], [server])
+        VALUES (@JobId, 1, N'ExampleHistoryStepOne', 0, 0,
+            N'Example controlled step outcome', 1, @RunDate, @RunTime,
+            @RunDuration, 0, 0, 0, @StepCase - 1, N'ExampleHistoryServer');
+        SET @StepOneHistoryId = CONVERT(int, SCOPE_IDENTITY());
+        INSERT [msdb].[dbo].[sysjobhistory]
+        ([job_id], [step_id], [step_name], [sql_message_id], [sql_severity],
+         [message], [run_status], [run_date], [run_time], [run_duration],
+         [operator_id_emailed], [operator_id_netsent], [operator_id_paged],
+         [retries_attempted], [server])
+        VALUES (@JobId, 2, N'ExampleHistoryStepTwo', 0, 0,
+            N'Example step counterexample', 1, 20001231, 112233,
+            253001, 0, 0, 0, 0, N'ExampleHistoryServer');
+        SET @StepTwoHistoryId = CONVERT(int, SCOPE_IDENTITY());
+        IF @StepOneHistoryId IS NULL OR @StepTwoHistoryId IS NULL
+           OR @StepTwoHistoryId <= @StepOneHistoryId
+            THROW 55199, N'Die unabhängige Historyreihenfolge der Steps fehlt.', 1;
+        DELETE FROM @ExpectedSteps;
+        INSERT @ExpectedSteps VALUES
+        (N'ExampleOps008HistoryJob', 1, N'ExampleHistoryStepOne', N'TSQL',
+         1, N'SUCCEEDED', @ExpectedStart, @ExpectedSeconds, @StepCase - 1,
+         N'Example controlled step outcome'),
+        (N'ExampleOps008HistoryJob', 2, N'ExampleHistoryStepTwo', N'TSQL',
+         1, N'SUCCEEDED', CONVERT(datetime, '2000-12-31T11:22:33', 126), 91801, 0,
+         N'Example step counterexample');
+        SET @Consumer = 1;
+        WHILE @Consumer <= 3
+        BEGIN
+            SELECT @Before = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            SELECT @Json = NULL, @Status = NULL, @Partial = NULL,
+                @Error = NULL, @Message = NULL;
+            IF @Consumer = 1
+            BEGIN
+                EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @Json OUTPUT,
+                    @PrintMeldungen = 0, @StatusCodeOut = @Status OUTPUT,
+                    @IsPartialOut = @Partial OUTPUT;
+                IF COALESCE(@Status, '') <> 'AVAILABLE' OR COALESCE(@Partial, 1) <> 0
+                   OR NOT EXISTS
+                (
+                    SELECT 1 FROM OPENJSON(@Json)
+                    WITH ([Area] varchar(40), [SourceObject] nvarchar(256), [RowCount] bigint,
+                          [OldestUtc] datetime2(3), [NewestUtc] datetime2(3),
+                          [StatusCode] varchar(40), [EvidenceLimit] nvarchar(1000))
+                    WHERE [Area] = 'AGENT_HISTORY' AND [SourceObject] = N'msdb.dbo.sysjobhistory'
+                      AND [RowCount] = 6 + 2 * @StepCase AND [StatusCode] = 'AVAILABLE'
+                      AND [OldestUtc] IS NULL AND [NewestUtc] IS NULL
+                      AND NULLIF([EvidenceLimit], N'') IS NOT NULL
+                ) THROW 55197, N'Die erweiterten Agent-Aggregate sind verletzt.', 1;
+            END
+            ELSE IF @Consumer = 2
+            BEGIN
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @ResultSetArt = 'NONE', @JsonErzeugen = 1,
+                    @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                IF COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), '') <> 'AVAILABLE'
+                   OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), '') <> 'false'
+                   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> 1
+                   OR NOT EXISTS
+                (
+                    SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                    WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                          [LastRunDateTime] datetime, [LastRunDurationSeconds] int,
+                          [LastRunStatus] int, [Enabled] bit, [StepCount] int)
+                    WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                      AND [LastRunDateTime] = CONVERT(datetime, '2025-01-02T23:59:59', 126)
+                      AND [LastRunDurationSeconds] = 360000
+                      AND [LastRunStatus] = 1 AND [Enabled] = 0 AND [StepCount] = 2
+                ) THROW 55198, N'Die AgentJobs-Datums- oder Sekundeninterpretation ist verletzt.', 1;
+                DELETE FROM @ActualSteps;
+                INSERT @ActualSteps
+                SELECT * FROM OPENJSON(@Json, '$.steps')
+                WITH ([JobName] nvarchar(128), [StepId] int, [StepName] nvarchar(128),
+                      [Subsystem] nvarchar(40), [LastRunOutcome] int,
+                      [LastRunOutcomeDesc] nvarchar(60), [LastRunDateTime] datetime,
+                      [LastRunDurationSeconds] int, [LastRunRetries] int,
+                      [LastRunMessage] nvarchar(4000));
+                IF (SELECT COUNT_BIG(*) FROM @ActualSteps) <> 2
+                   OR EXISTS (SELECT * FROM @ExpectedSteps EXCEPT SELECT * FROM @ActualSteps)
+                   OR EXISTS (SELECT * FROM @ActualSteps EXCEPT SELECT * FROM @ExpectedSteps)
+                    THROW 55198, N'Die zehn Stepwerte oder schrittbezogene Auswahl sind verletzt.', 1;
+            END
+            ELSE
+            BEGIN
+                EXEC [monitor].[USP_AgentMonitoringAnalysis] @HistoryHours = 24,
+                    @MitJobStatus = 1, @MitDatabaseMail = 0, @MaxZeilen = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @Json OUTPUT,
+                    @PrintMeldungen = 0, @StatusCodeOut = @Status OUTPUT,
+                    @IsPartialOut = @Partial OUTPUT, @ErrorNumberOut = @Error OUTPUT,
+                    @ErrorMessageOut = @Message OUTPUT;
+                IF COALESCE(@Status, '') NOT IN ('AVAILABLE', 'AVAILABLE_WITH_FINDING')
+                   OR COALESCE(@Partial, 1) <> 0 OR @Error IS NOT NULL OR @Message IS NOT NULL
+                   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')
+                       WITH ([JobId] uniqueidentifier) WHERE [JobId] = @JobId) <> 1
+                   OR NOT EXISTS
+                (
+                    SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                    WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                          [LatestRunDateTime] datetime, [LatestRunDuration] int,
+                          [LatestRunStatus] int, [IsEnabled] bit,
+                          [FindingCode] varchar(100), [FindingSeverity] varchar(16))
+                    WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                      AND [LatestRunDateTime] = CONVERT(datetime, '2025-01-02T23:59:59', 126)
+                      AND [LatestRunDuration] = 1000000 AND [LatestRunStatus] = 1
+                      AND [IsEnabled] = 0 AND [FindingCode] = 'JOB_STATE_INFORMATIONAL'
+                      AND [FindingSeverity] = 'INFO'
+                ) THROW 55198, N'Die Monitoring-Datums- oder Rohdauerinterpretation ist verletzt.', 1;
+            END;
+            SELECT @After = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @Before IS NULL OR @After IS NULL
+               OR @Before COLLATE SQL_Latin1_General_CP1_CS_AS <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
+               OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 6 + 2 * @StepCase
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Die erweiterten Consumer haben Agentquellen oder Callerzustand verändert.', 1;
+            SET @Calls += 1;
+            SET @Consumer += 1;
+        END;
+        SET @StepCase += 1;
+    END;
+    IF @StepCase <> 4 OR @Calls <> 21
+        THROW 55199, N'Die drei Stepfälle oder 21 Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
@@ -235,6 +424,7 @@ BEGIN TRY
     IF @@TRANCOUNT <> 0
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobhistory])
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id] = @JobId)
+       OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobsteps] WHERE [job_id] = @JobId)
         THROW 54948, N'Die synthetische Agent-Fixture wurde nicht vollständig zurückgerollt.', 1;
 END TRY
 BEGIN CATCH

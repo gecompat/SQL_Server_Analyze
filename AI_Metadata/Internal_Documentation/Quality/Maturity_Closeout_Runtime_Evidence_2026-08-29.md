@@ -1835,3 +1835,57 @@ Levels werden damit nicht belegt. OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION;
 öffentliche Produktverträge, Registry, Reifeflags und historische Matrix
 bleiben unverändert. Frühere unabhängige Nachweise und private Fehlerläufe
 werden durch diesen begrenzten Lauf nicht ersetzt.
+
+## Ergänzende OPS-008-Step-Datums- und Dauerinterpretation vom 8. Oktober 2026
+
+Der folgende Stand erweitert TEST-0001 nach seinen bisherigen zwölf
+Consumeraufrufen um zwei eigene TSQL-Stepdefinitionen. Der deaktivierte Job
+besitzt keine Serverzuordnung, Schedule oder Aktivität und wird nicht gestartet.
+Drei Fälle injizieren je einen Step-1-Outcome mit den bestehenden positiven
+Datum-/Dauerliteralen und anschließend einen Step-2-Outcome mit konstanten
+Gegenprobenwerten. Beide gespeicherten History-IDs müssen vorhanden sein und
+die zweite muss höher sein. Msdb bestätigt Historycounts acht, zehn und zwölf.
+
+| Step | Lokaler Startzeitpunkt | Codierte Dauer | Erwartete Sekunden | Gespeicherte Retries |
+|---:|---|---:|---:|---:|
+| 1, Fall 1 | 2024-02-29 00:00:00 | 0 | 0 | 0 |
+| 1, Fall 2 | 2024-02-29 01:02:03 | 125 | 85 | 1 |
+| 1, Fall 3 | 2025-01-02 23:59:59 | 1000000 | 360000 | 2 |
+| 2, alle Fälle | 2000-12-31 11:22:33 | 253001 | 91801 | 0 |
+
+AgentJobs liefert je Phase exakt zwei Steps für den eigenen exakt gefilterten
+Job. Alle zehn bekannten JSON-Felder werden mit Anzahlprüfung und
+bidirektionalem EXCEPT gegen unabhängige Sollwerte verglichen, einschließlich
+synthetischer Stepnamen, TSQL-Subsystem, SUCCEEDED, gespeicherter Retryzahl
+und synthetischer Meldung. Die jeweils spätere Step-2-Zeile besitzt ein älteres
+Kalenderdatum und andere Dauerwerte. Sie darf den Step-1-Outcome nicht ersetzen.
+Identische Step-2-Werte unterscheiden keine wechselnden Step-2-Outcomes.
+
+Jobgesamtoutcome bleibt lokal 2025-01-02 23:59:59 mit 360.000 Sekunden,
+Status 1 und StepCount 2. Monitoring liefert weiterhin denselben Jobgesamtstart
+und die Rohdauer 1000000; Msdb-Agentzeitgrenzen bleiben NULL. Die neun neuen
+Aufrufe und der Gesamtlauf mit 21 tatsächlichen NONE-/JSON-Consumeraufrufen
+erhalten alle sechs vollständigen Agentquellen, ursprünglichen Locktimeout,
+XACT_ABORT ON und eine committable eigene Transaktion. Das eigene Rollback
+entfernt beide Stepdefinitionen, Job und Historie; der ursprüngliche Caller-
+XACT_ABORT wird direkt restauriert. Die vierfeldrige Zusammenfassung bleibt
+unverändert; drei Stepfälle und 21 Calls sind interne Abschlussbedingungen.
+
+Der UTF-8/LF-Fixturestand besitzt SHA-256
+`16DB16E166AA18D8715FD79A61B22578EC1FAD02D8FE6CEE155EDB3C22B869C5`.
+Der öffentliche unveränderte AgentHistory-Runner bestätigt den neuen Lauf auf
+SQL Server 2025 `17.0.4075.5`, Linux/Docker und Framework-CL170. Coreinstallation
+mit 187 Batches, Smoke110, Runtimevertrag122 und die erweiterte Fixture bestehen.
+Das eigene Lab wurde mit zwei Cleanupschritten ohne Fehler entfernt; sein
+Stateverzeichnis ist nicht mehr vorhanden. Ein vorheriger Startversuch wurde
+bei belegter gemeinsamer Testlane vor jeder Provisionierung zurückgestellt.
+Runtimeidentitäten und Rohlogs bleiben außerhalb des Repositorys.
+
+Produkt-SQL und gekoppelter Installer bleiben unverändert. Die sieben bereits
+für den vorherigen Produktfix bestandenen Impacttests wurden nicht erneut
+ausgeführt. Dieser Lauf bestätigt JSON-Feldwerte und injizierte Historie;
+tatsächliche Stepausführung, Retryverhalten, wechselnde Step-2-Outcomes,
+ungültige Daten, Überläufe, UTC-/Endzeit- und Zeitfensterinterpretation,
+vollständige native Ausgabeschemaabnahme und ein neuer empirischer Catch-
+Nachweis bleiben unbelegt. OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION; bestehende
+Reifeflags, Registry und historische Release-Matrix bleiben erhalten.
