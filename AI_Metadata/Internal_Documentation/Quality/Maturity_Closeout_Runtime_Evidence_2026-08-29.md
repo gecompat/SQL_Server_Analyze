@@ -1053,3 +1053,92 @@ Retentiongrenzen und fehlende optionale Quellen bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert. Die Fixture gehört zu OPS-008 und benötigt
 keine eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Maintenance-Filtergrenze vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MaintenanceFilterBoundary` lieferte
+auf einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab `PASS` und `REMOVED`.
+Coreinstallation, Smoke-Test, Runtimevertrag `122` und die
+[Filtergrenzfixture](../../../../TestLab/Scenarios/OPS-008/maintenance-filter-boundary.sql)
+bestanden. Der Lauf erfasste `ProductVersion=17.0.4075.5` und Framework-
+Compatibility-Level 170. Server und `tempdb` verwendeten
+`Latin1_General_100_CS_AS`, das Framework `SQL_Latin1_General_CP1_CS_AS`.
+Produkt-SQL blieb unverändert.
+
+Eine vorausgehende private Systemquellenabfrage auf einem getrennten neuen
+Lab derselben nativen Version bestätigte den Ablehnungszweig vor dem DELETE:
+Gleichzeitige nicht leere Plan- und Subplanparameter fordern Meldung `12980`
+an. Vendorquelltext wurde ausschließlich privat gelesen und nicht in Git oder
+GitHub übernommen. Zwei weitere private direkte SQL-Client-Gegenproben auf
+jeweils neuen Labs bestätigten tatsächlich Fehler `2732`, Zeile 10. Die
+Systemprozedur war als `is_ms_shipped` markiert und die englische Meldung
+`12980` vorhanden. Beim datenbankübergreifenden Aufruf lautete
+`ERROR_PROCEDURE()` exakt `msdb.dbo.sp_maintplan_delete_log`; bei
+`XACT_ABORT ON` war die Callertransaktion danach uncommittable mit
+`XACT_STATE()=-1` und `@@TRANCOUNT=1`. Beide Diagnoseproben erhielten vier
+leere Maintenancequellen und endeten nach eigenem Cleanup mit `REMOVED`.
+Die [Microsoft-Fehlerreferenz](https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors-2000-to-2999?view=sql-server-ver17)
+beschreibt `2732` als ungültige Fehlernummer. Eine erfolgreiche Zustellung
+der angeforderten Meldung `12980` ist damit ausdrücklich nicht belegt.
+
+Die Fixture prüfte native Parameter-, Detail- und Subplanverträge sowie
+Elternbindungen. Innerhalb ihrer Callertransaktion erzeugte sie einen
+deaktivierten eigenen Job ohne Steps, Serverzuordnung oder Historie, drei
+injizierte Subplanmetadaten und sechs Elternzeilen mit je zwei Details.
+Drei Elternzeilen gehörten zum Zielsubplan; die älteren Gegenproben trugen
+einen anderen Subplan desselben Plans, einen Subplan eines anderen Plans
+beziehungsweise NULL für Plan und Subplan. Plans blieben leer.
+Maintenance, SSIS und Jobs wurden nicht ausgeführt.
+
+Bei `XACT_ABORT OFF` bestätigten je ein nativer Aufruf mit passenden und
+widersprüchlichen Plan-/Subplan-IDs sowie Datumsgrenze Fehler `2732` aus der
+exakt gebundenen Systemprozedur. Vollständige Eltern- und Detailsnapshots,
+sämtliche Subplan- und Jobmetadaten, Counts sechs und zwölf sowie Zeitaggregate
+blieben identisch. Die Callertransaktion blieb committable mit
+`@@TRANCOUNT=1`, `LOCK_TIMEOUT=137` und `XACT_ABORT OFF`. Die Fehleraufrufe
+belegen keinen positiven kombinierten Retentionfilter und keinen nativen
+Rückgabewert.
+
+In Baseline und beiden OFF-Ablehnungsphasen bestätigten NONE, TABLE und
+CONSOLE sechs verfügbare Quellen, native Elternaggregate und eine Evidenzgrenze.
+TABLE und CONSOLE besaßen Parität aller acht Fachfelder mit JSON. Sämtliche
+Eltern- und Detailwerte blieben vor und nach jedem der neun Consumeraufrufe
+NULL-sicher identisch. Subplan- und Jobwerte waren nach jedem Consumeraufruf
+gegenüber ihren vollständigen Ausgangssnapshots identisch. Detailbindungen,
+Callertransaktion, Locktimeout und OFF-Einstellung blieben erhalten.
+
+Ein zusätzlicher nativer Aufruf mit passenden IDs bei `XACT_ABORT ON`
+bestätigte denselben Fehler und den erwarteten uncommittable Callerzustand.
+Die vollständigen vier erfassten Quellen blieben auch in diesem Zustand
+lesend identisch; Counts betrugen weiterhin sechs Eltern und zwölf Details.
+In der uncommittable Transaktion wurde kein Consumer aufgerufen. Das eigene
+Rollback entfernte sämtliche Maintenancezeilen und den Job; vier
+Maintenancequellen sowie Job- und Historyquelle waren danach leer.
+Die Fixture verlangte vor Quellmutationen den Standardlocktimeout `-1`,
+stellte ihn direkt im Callerbatch wieder her und prüfte abschließend auch
+die ursprüngliche XACT_ABORT-Einstellung. Dynamische SET-Anweisungen werden
+nach ihrer Rückkehr zurückgesetzt, wie die
+[Microsoft-SET-Dokumentation](https://learn.microsoft.com/en-us/sql/t-sql/statements/set-statements-transact-sql?view=sql-server-ver17)
+beschreibt. Die entsprechend ältere Wiederherstellung in anderen Fixtures
+wird als eigener Folgeschritt geprüft und korrigiert.
+
+Vier öffentliche Vorläufe scheiterten vor dem vollständigen Abschluss:
+zweimal an der zu engen 12980-Annahme, einmal an der unvollständigen
+Prozedurbindung und einmal am letzten Calleroptionencheck. Ihr äußeres
+Cleanup bestätigte jeweils zwei Schritte mit null Fehlern. Nach gezielten
+Korrekturen und unabhängigen Reviews bestand der fünfte native Fixturelauf.
+Ein nachgelagerter Shell-Ausgabefilter verwendete zunächst einen ungültigen
+Parameter; die private Logprüfung bestätigte den bereits gelieferten
+Runner-PASS, und die korrigierte Filterung lief erfolgreich. Der erfolgreiche
+native Lauf wurde deshalb nicht wiederholt. Eigenes äußeres Cleanup entfernte
+Container, Volume und temporären State mit zwei Schritten und null Fehlern.
+Runtimeidentitäten, Secrets, Diagnosedaten und Rohlogs bleiben außerhalb von Git.
+
+Der Nachweis betrifft die Parameterablehnung auf der tatsächlich geprüften
+nativen Engine. Die drei Fehler werden gezielt innerhalb der Fixture behandelt;
+ein ungeplanter äußerer Fixturefehler wird dadurch nicht simuliert.
+Echte Maintenance-/SSIS-Ausführung, automatische Aufbewahrung, unabhängige
+Detaildatumssemantik, weitere Retentiongrenzen und fehlende optionale Quellen
+bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
+Maturityflags und historische Release-Matrix bleiben unverändert.
+Die Fixture gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.
