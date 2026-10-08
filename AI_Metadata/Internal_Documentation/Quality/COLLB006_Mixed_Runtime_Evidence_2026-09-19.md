@@ -5570,3 +5570,147 @@ Die folgenden normalisierten UTF-8/LF-Hashes binden den funktionalen Review:
 | Documentation/Analysis_Guides/Procedures/USP_PlanCacheHealth.md | C231F362D07BB8250A60357E2AED023E8C0D8126B3AABE6CDBA9C48BA592D900 |
 | Documentation/Analysis_Guides/04_Plan_Cache.md | C05B5E61FA517C366A16E4AAA26C3EBFC88240608BDC012BF8AEAD7A64CDF8D1 |
 | Documentation/Analysis_Guides/Procedures/USP_PlanCacheAnalysis.md | 6077E7220707872AF5DAE94BFA4C81A4E9BB135995D2803566C586B5DFBE0506 |
+
+
+## TDE-Zertifikattypen und positive Metadaten am 9. Oktober 2026
+
+Eine getrennte native Gegenprobe der Basisrevision `f66972a6bc580348c6deaa3aa3bbf3f0d459ab1a`
+belegte eine Vertragsabweichung in `USP_EncryptionAnalysis`: Zwei eigene
+verschlüsselte Quellen auf SQL Server 2025 mit CL170 meldeten nativ
+`CERTIFICATE_OAEP_256` und sichtbare Zertifikatnamen mit Ablaufdatum 2099.
+Die Analyse projizierte beide Zertifikatfelder als NULL und bewertete die Quellen
+als `TDE_METADATA_CONSISTENT`. Zwei NONE-/JSON-Aufrufe mit Default- und großem
+Warnfenster bestätigten die Abweichung; die übrigen 21 Felder, Quellen und
+Caller blieben erhalten. Diese Gegenprobe besitzt keine direkte Exportabnahme.
+
+Fünf vorhandene Typprüfungen erkennen nun `CERTIFICATE` und
+`CERTIFICATE_OAEP_256`: Zertifikatsjoin, fehlender Protektor, fehlender lokaler
+Exportzeitpunkt, Protektorseverity und Export-Evidenzgrenze. Der native
+EncryptorType bleibt unverändert; Signatur, Ausgabeschema und Statusverträge
+bleiben erhalten. Integration185 führt die tatsächlich installierten Ausdrücke
+gegen drei unabhängige Joinerwartungen und neun Befund-/Evidenzerwartungen aus.
+Legacy und OAEP werden gleich bewertet; ein asymmetrischer Protektor wird trotz
+passendem synthetischem Thumbprint nicht an ein Zertifikat gebunden.
+Die sieben bestehenden P2-Fälle bleiben zusätzlich erhalten. Der kanonische
+OPS-005-Installer wurde neu erzeugt; sein Update bleibt unverändert.
+
+Die korrigierten Quellen wurden als `REVIEWED_WORKTREE` auf obiger Basis in
+einem neuen eigenen Docker-Lab unter Linux geprüft. SQL Server 2025 hatte
+ProductVersion `17.0.4075.5`. Server, tempdb und drei eigene leere Quellen
+verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Der Gesamtinstaller und Smoke wurden in der finalen TDE-Fixture neu ausgeführt;
+der Installer bestand 187 Batches. In der vorherigen getrennten Prüfung
+bestanden alle acht impact-ausgewählten Tests jeweils bei Framework-CL150,
+CL160 und CL170. Dazu gehören Common124/160 sowie Integration110/168/179/185/196/198.
+Dies sind 24 Dateiläufe derselben nativen Engine, keine ältere Engine-Matrix.
+Die getrennte Impact-Evidenz ist als `TEST_SCOPE_PASS_RUN_FAILED_LATER`
+gekennzeichnet: Die nachfolgende private TABLE-Prüfung scheiterte an ihrer
+Aliastypannahme. Der erfolgreiche SQL-Testumfang wird getrennt von diesem
+Consumerfehler und vom abschließenden TDE-PASS geführt; identische Quellenhashes
+binden beide Läufe. Das vollständige Paket mit 24 Impact-Dateiläufen wurde danach nicht wiederholt;
+final lief daraus ausschließlich Smoke110 bei CL170.
+Die installierte Encryption-Procedure wurde zusätzlich mit dem kanonischen Body
+verglichen. Alle 77 statischen Vertragsprüfungen bestanden am Produktstand.
+
+Eine zuerst angelegte Quelle blieb unverschlüsselt. Zwei case-unterschiedliche
+Unicode-Quellen erhielten je einen AES-128-Datenbankverschlüsselungsschlüssel
+unter einem eigenen Zertifikat in master und einem ausschließlich neu erzeugten
+Masterkey. Die Quelle mit CL160 meldete tatsächlich `CERTIFICATE_OAEP_256`, jene mit
+CL170 `CERTIFICATE_OAEP_256`. Ein nativer Legacy-Typ ist durch diesen Lauf nicht
+belegt; dessen Join- und Befundverhalten ist ausschließlich synthetisch geprüft.
+Beide erreichten nativ Zustand 3 und Scanstatus 4;
+NULL bestand den auf 90 Sekunden begrenzten Abschlussguard nicht.
+Das Zertifikatsablaufdatum war jeweils 31. Dezember 2099. Lokale Exportzeitpunkte
+und Full-Backup-Metadaten waren NULL; vier unabhängig ermittelte AE-/Ledger-
+Aggregate waren je Quelle 0. Thumbprints wurden nur intern gejoint und weder
+als Werte protokolliert noch exportiert; Schlüsselmaterial und Secrets fehlen
+im Ergebnisartefakt.
+
+Fünf Fälle bestanden jeweils über TABLE, RAW und CONSOLE:
+
+| Fall | Zeilen | Erwarteter Befund |
+|---|---|---|
+| Defaultfenster 90 Tage, alle Quellen | 3 | Zwei INFO-Hinweise `LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING` und die unverschlüsselte INFO-Kontrolle. |
+| Warnfenster 36500 Tage, alle Quellen | 3 | Zwei MEDIUM-Hinweise `TDE_CERTIFICATE_EXPIRY_WINDOW` und die INFO-Kontrolle. |
+| Warnfenster mit Problemscope | 2 | Beide MEDIUM-Quellen. |
+| Warnfenster mit Problemscope und Limit 1 | 1 | Erste MEDIUM-Quelle nach Datenbank-ID. |
+| Defaultfenster mit Problemscope | 0 | Leere Fachmenge. |
+
+Die großen Warnfenster bewerten bekannte zukünftige Ablaufdaten, keine
+abgelaufenen Zertifikate. Fehlende lokale Exportzeitpunkte beweisen keine
+fehlenden externen Schlüsselkopien. Defaultaufrufe meldeten `AVAILABLE`,
+Warnfensteraufrufe `AVAILABLE_WITH_FINDING`. Alle drei Quellenstatus blieben
+`AVAILABLE`; Partialität, Auswahlwarnings und OUTPUT-Fehler blieben leer.
+
+Alle 26 Fachwerte einschließlich NULLs, Unicode und Zeitwerten stimmten zwischen
+direkter Ausgabe, JSON derselben Materialisierung und unabhängigen nativen
+Vor-/Nachabfragen überein. Vollständige eindeutige Datenbank- und RAW-Quellmengen
+wurden gebunden. TABLE besaß das erwartete physische Schema mit 26 Feldern samt ihren Facetten und
+elf Frameworktextcollations. Die beiden physischen `sysname`-Aliastypen
+für DatabaseName und ProtectorName wurden getrennt von der logischen
+SqlClient-Typanzeige `nvarchar` geprüft. Die vorangestellte leere Drei-Spalten-Probe der Datenbankauswahl wurde mit
+Namen, Typen, Breiten und Nullability separat geprüft und erhalten.
+RAW lieferte vier fachliche Resultsets samt vollständiger
+Quellenwertparität. Positive CONSOLE-Mengen besaßen 27 Felder; die leere Menge
+lieferte drei Hinweisfelder mit NULL-Status und NULL-Hinweis. Eine CONSOLE-
+Reihenfolge wird nicht zugesichert. RAW-Metaschema-Nullability wurde erfasst,
+ohne fixe Nullability für Literalausdrücke zu verlangen.
+
+Native Fachwerte und der Caller mit LOCK_TIMEOUT 137, XACT_ABORT OFF,
+TRANCOUNT 0 und XACT_STATE 0 blieben über alle fünfzehn Aufrufe erhalten.
+Der abschließende Callerwert -1 wurde vor dem SQL-Cleanup gemessen.
+Drei eigene Datenbanken, zwei Zertifikate und der neue Masterkey wurden anhand
+unmittelbar erfasster IDs entfernt; Verbindungen wurden freigegeben.
+Der öffentliche Lab-Abbau entfernte Container und Volume mit zwei Schritten
+und null Fehlern. Der eigene Statepfad war entfernt, bevor das PASS-Artefakt
+entstand. Der TDE-Effekt auf tempdb endet mit Entfernung der ganzen eigenen
+Instanz; eine globale Zustandsrestauration wird nicht behauptet.
+
+Vorausgehende Einrichtungsläufe und direkte Harnessversuche waren keine PASS-
+Nachweise. Unterschiedliche physische Dateinamen korrigierten eine native
+5170/1802-Kollision; die Eigentumsquittung wurde vor dem parametrisierten
+RPC im Caller angelegt. Ein enger Typguard wurde anhand der tatsächlichen
+OAEP-Metadaten korrigiert. Die zwei direkten Baselineversuche scheiterten an
+TABLE-Schema beziehungsweise Resultsetform und wurden vollständig über das
+eigene Lab bereinigt. Die anschließende NONE-Gegenprobe belegte ausschließlich
+den Produktfehler. Der erste finale Lauf bestand alle 24 Impacttests, scheiterte anschließend jedoch
+an der unbelegten CL160-zu-Legacy-Annahme des privaten Orakels. Sein eigenes
+SQL- und Lab-Cleanup bestand; ein PASS-Artefakt wurde nicht erzeugt. Die finale
+Fixture vergleicht die tatsächlich gemessenen Typen ohne CL-basierte Ableitung.
+Ein zweiter finaler Lauf bestand erneut die 24 Impacttests und die JSON-/native
+Feldparität, scheiterte jedoch an der nicht erwarteten leeren Auswahlprobe
+vor der TABLE-Ausgabe. Die kanonische SELECT-TOP-0-Probe aus dem Datenbank-
+selektor wird nun separat und strikt erfasst; der Produktstand blieb unverändert.
+Auch dieses eigene Lab wurde mit zwei Schritten und null Fehlern entfernt.
+Ein dritter finaler Versuch bestand erneut alle 24 Impacttests, scheiterte
+anschließend aber am erwarteten physischen Basistyp für DatabaseName. Nativ
+blieb der deklarierte Aliastyp sysname erhalten; die beiden entsprechenden
+physischen Erwartungen wurden im privaten Prüfer korrigiert. Eigenes
+SQL-Cleanup, Lab-Abbau mit zwei Schritten und null Fehlern sowie Stateentfernung
+bestanden. Geheimnisfähige Arrangefehler wurden nur numerisch erfasst.
+Der unabhängige Review schloss eine Quellenbindungslücke der ausgewählten
+Tests; die finalen Quellen und Fixtures sind vor und nach dem Lauf gebunden.
+
+Der erfolgreiche private Lauf endete um `2026-10-08T22:44:56.4326675+00:00` UTC. Kanonische Quellenhashes
+verwenden UTF-8/LF; private Dateien und Ergebnisse physische Bytehashes.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater finaler Runner | `75DB3F7AC5CD84D353217563CDE8F9BBAEA5CAACEB06FCE2BAE845A3AC8C1C41` |
+| Baseline-Ergebnis OBSERVED_DEFECT | `74B7C3E7928168A9001131CFFD4106F5C7BE784F55175AFE6D789A9D5EEB7979` |
+| Privates Paket cleanup.sql | `FE144EE05FA90FFD6DD572EBA9001CB27F560642F5F92CB465B57AF541D25C7A` |
+| Privates Paket consumer.ps1 | `EE004C6F633DE7780FCA7BD824EF26042438A7A4CFFF1AA50420EAE86C75017A` |
+| Privates Paket native.sql | `7B7E3C2A4FB2C1604C22ADAB0FF05BD8C90CFB51E9573C7CA425DBC3ED0FF9AE` |
+| Privates Paket init.sql | `865744E665D5F53F8CD3CBA64FA2F402078C423AA5F4DBB446F3E353EA3DF292` |
+| Privates Paket arrange.sql | `6409253539E77B052101917E83363F935879F36B3078030EEE85A61CA04B1F66` |
+| Privates Paket call.sql | `BE521AD53184D5732AA245E804BCAD57175FD1A662996FA7AF30E5F60D5BA9DB` |
+| Privates Paket coll001-tde-impact-evidence.json | `404FAFBEE98E2C8649356101DDE0FF75F6F5DED59EC06187829AA8332B80B8F7` |
+| Privater Impactlog | `2C64C72D77B33B017C6E6A1896BB4A2ADE327F8A3F65E803FB6EA4EA66782E53` |
+| Privates PASS-Ergebnis | `C930609EF8AE8D42C32CE294DD0B84D0C1274DEEFF1E03E86289598341751598` |
+
+Weitere TDE-Übergänge, Scanfehler, Zertifikatexport- und Berechtigungspfade,
+positive explizite Backupverschlüsselung, AE, Ledger und Restore bleiben offen.
+Keine SMTP-Infrastruktur wurde eingerichtet oder beschafft. COLL-001 bleibt
+partiell; bestehende Reifegradflags werden nicht erweitert.

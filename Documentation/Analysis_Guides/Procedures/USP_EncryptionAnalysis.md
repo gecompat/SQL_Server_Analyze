@@ -38,6 +38,8 @@ Eine Datenbankzeile verbindet TDE-Zustand, sichtbaren Schutzobjekt-Lebenszyklus,
 
 Prüfen Sie zuerst `StatusCode`, `IsPartial` und Quellenstatus. Berücksichtigen Sie danach `EncryptionStateDesc` und `EncryptionScanStateDesc`. Zertifikatablauf und lokaler Exportzeitpunkt sind Betriebsindizien. `LatestFullBackupExplicitlyEncrypted` beschreibt nur explizite Backupverschlüsselung; TDE ist davon getrennt.
 
+Der Zertifikatpfad berücksichtigt `CERTIFICATE` und `CERTIFICATE_OAEP_256`. SQL Server 2025 verwendet den OAEP-Typ bei Compatibility Level 170; der gemessene `EncryptorType` bleibt im Export unverändert. Beide Typen binden sichtbare Zertifikate in `master` und verwenden dieselben Regeln für fehlende Schutzobjekte, das konfigurierte Ablaufwarnfenster und fehlende lokale Exportzeitpunkte.
+
 ## Warum kann das problematisch sein?
 
 Ein suspendierter oder abgebrochener TDE-Scan, ein nicht sichtbares Schutzobjekt oder fehlende erwartete Backupverschlüsselung kann einen laufenden Schutz- oder Wiederherstellungsprozess beeinträchtigen. Ohne externe Schlüsselkopie kann ein Restore trotz intakter Backupdatei unmöglich sein.
@@ -104,7 +106,6 @@ SELECT
     , [dek].[encryption_state]
     , [dek].[percent_complete]
     , [dek].[encryptor_type]
-    , [dek].[encryptor_thumbprint]
 FROM [sys].[databases] AS [d] WITH (NOLOCK)
 LEFT JOIN [sys].[dm_database_encryption_keys] AS [dek] WITH (NOLOCK)
   ON [dek].[database_id] = [d].[database_id]
@@ -132,5 +133,6 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: Certificate-/Key-
 ## Primärquellen
 
 - [Transparent Data Encryption](https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption?view=sql-server-ver17)
+- [Compatibility Level 160 und 170: OAEP-Zertifikattyp](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-transact-sql-compatibility-level?view=sql-server-ver17#differences-between-compatibility-level-160-and-level-170)
 
 [Technische Detailbeschreibung](../09_Version_Adaptive.md)

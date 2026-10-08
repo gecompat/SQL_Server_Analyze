@@ -4,9 +4,9 @@ GO
 /*
 ===============================================================================
 Datei        : 185_P2_Encryption_Runtime_Contract.sql
-Zweck        : Automatisiert die sieben noch offenen P2-Encryption-Verträge.
-Datenschutz  : Keine Schlüsselpfade, Thumbprints, Werte, Medien oder Konten.
-Nebenwirkung : Nur ein kurzlebiger synthetischer Datenbankbenutzer.
+Zweck        : Prüft bestehende P2-Encryption- und Zertifikattyp-Verträge.
+Datenschutz  : Keine realen Schlüsselpfade, Thumbprints, Werte, Medien oder Konten.
+Nebenwirkung : Synthetische Temp-Daten und ein kurzlebiger Datenbankbenutzer.
 ===============================================================================
 */
 SET NOCOUNT ON;
@@ -22,6 +22,74 @@ JOIN [sys].[objects] [o] WITH (NOLOCK) ON [o].[object_id]=[sm].[object_id]
 JOIN [sys].[schemas] [s] WITH (NOLOCK) ON [s].[schema_id]=[o].[schema_id]
 WHERE [s].[name]=N'monitor' AND [o].[name]=N'USP_EncryptionAnalysis';
 IF @Definition IS NULL THROW 55900,N'Encryption-Proceduredefinition ist nicht sichtbar.',1;
+
+/* Führt die installierten Zertifikatsjoin- und Befundausdrücke mit synthetischen
+   Metadaten aus. Es entstehen keine Zertifikate oder Datenbankschlüssel. */
+DECLARE @CertificateJoinStart int=CHARINDEX(N'ON [k].[encryptor_type]',@Definition),
+        @CertificateJoinEnd int,@CertificateUpdateStart int,@CertificateUpdateEnd int,
+        @CertificateSql nvarchar(max),@CertificateNow datetime=GETDATE();
+SET @CertificateJoinEnd=CHARINDEX(N';',@Definition,@CertificateJoinStart);
+SET @CertificateUpdateStart=CHARINDEX(N'SET [FindingCode]=CASE',@Definition);
+SET @CertificateUpdateEnd=CHARINDEX(N'FROM [#EncryptionAnalysis_Encryption] AS [e];',@Definition,@CertificateUpdateStart);
+IF @CertificateJoinStart<=0 OR @CertificateJoinEnd<=@CertificateJoinStart
+   OR @CertificateUpdateStart<=0 OR @CertificateUpdateEnd<=@CertificateUpdateStart
+    THROW 55908,N'Installierte Zertifikattyp-Ausdrücke sind nicht eindeutig isolierbar.',1;
+CREATE TABLE #ExampleEncryptionCertificateKeys
+ ([CaseId] int NOT NULL PRIMARY KEY,[encryptor_type] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[encryptor_thumbprint] varbinary(20) NOT NULL);
+CREATE TABLE #ExampleEncryptionCertificates
+ ([name] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[thumbprint] varbinary(20) NOT NULL PRIMARY KEY);
+CREATE TABLE #ExampleEncryptionCertificateJoins
+ ([CaseId] int NOT NULL PRIMARY KEY,[ProtectorName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+INSERT #ExampleEncryptionCertificateKeys VALUES
+ (1,N'CERTIFICATE',0x01),(2,N'CERTIFICATE_OAEP_256',0x02),(3,N'ASYMMETRIC KEY',0x03);
+INSERT #ExampleEncryptionCertificates VALUES
+ (N'ExampleCertificateLegacy',0x01),(N'ExampleCertificateOaep',0x02),(N'ExampleUnsupportedProtector',0x03);
+SET @CertificateSql=N'INSERT #ExampleEncryptionCertificateJoins SELECT [k].[CaseId],[c].[name]
+FROM #ExampleEncryptionCertificateKeys [k] LEFT JOIN #ExampleEncryptionCertificates [c] '
+ +SUBSTRING(@Definition,@CertificateJoinStart,@CertificateJoinEnd-@CertificateJoinStart+1);
+EXEC(@CertificateSql);
+IF (SELECT COUNT_BIG(*) FROM #ExampleEncryptionCertificateJoins)<>3
+   OR NOT EXISTS(SELECT 1 FROM #ExampleEncryptionCertificateJoins WHERE CaseId=1 AND ProtectorName=N'ExampleCertificateLegacy')
+   OR NOT EXISTS(SELECT 1 FROM #ExampleEncryptionCertificateJoins WHERE CaseId=2 AND ProtectorName=N'ExampleCertificateOaep')
+   OR NOT EXISTS(SELECT 1 FROM #ExampleEncryptionCertificateJoins WHERE CaseId=3 AND ProtectorName IS NULL)
+    THROW 55909,N'Installierter Zertifikatsjoin verliert einen Zertifikattyp oder bindet einen asymmetrischen Protektor.',1;
+CREATE TABLE #ExampleEncryptionCertificateRegression
+ ([CaseId] int NOT NULL PRIMARY KEY,[ExpectedCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+  [ExpectedSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,[ExpectedEvidence] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL,
+  [EncryptionScanState] int NULL,[EncryptionState] int NULL,[EncryptionScanModifyDate] datetime NULL,[IsEncrypted] bit NULL,
+  [EncryptorType] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[ProtectorName] nvarchar(128) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [ProtectorExpiryDate] datetime NULL,[ProtectorPrivateKeyLastBackupDate] datetime NULL,
+  [LatestFullBackupFinishDate] datetime NULL,[LatestFullBackupExplicitlyEncrypted] bit NULL,
+  [FindingCode] varchar(100) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,[FindingSeverity] varchar(16) COLLATE SQL_Latin1_General_CP1_CS_AS NULL,
+  [EvidenceLimit] nvarchar(1000) COLLATE SQL_Latin1_General_CP1_CS_AS NULL);
+INSERT #ExampleEncryptionCertificateRegression
+ (CaseId,ExpectedCode,ExpectedSeverity,ExpectedEvidence,EncryptionScanState,EncryptionState,EncryptionScanModifyDate,IsEncrypted,EncryptorType,ProtectorName,ProtectorExpiryDate)
+SELECT k.CaseId*10+s.Scenario,
+ CASE WHEN k.CaseId=3 THEN 'TDE_METADATA_CONSISTENT' WHEN s.Scenario=1 THEN 'TDE_PROTECTOR_NOT_VISIBLE'
+      WHEN s.Scenario=2 THEN 'TDE_CERTIFICATE_EXPIRY_WINDOW' ELSE 'LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING' END,
+ CASE WHEN k.CaseId=3 OR s.Scenario=3 THEN 'INFO' ELSE 'MEDIUM' END,
+ CASE WHEN k.CaseId=3 THEN N'Read-only Metadaten; Schluesselbesitz und Wiederherstellbarkeit werden nicht bewiesen.'
+      ELSE N'Kein lokaler Exportzeitpunkt sichtbar; externe Schluesselkopien koennen dennoch existieren.' END,
+ 4,3,@CertificateNow,1,k.encryptor_type,
+ CASE WHEN k.CaseId<3 AND s.Scenario<>1 THEN N'ExampleVisibleCertificate' END,
+ CASE WHEN k.CaseId<3 AND s.Scenario=2 THEN DATEADD(DAY,5,@CertificateNow)
+      WHEN k.CaseId<3 AND s.Scenario=3 THEN CONVERT(datetime,'20991231',112) END
+FROM #ExampleEncryptionCertificateKeys k CROSS JOIN (VALUES(1),(2),(3)) s(Scenario);
+SET @CertificateSql=N'UPDATE [e] '+REPLACE(
+ SUBSTRING(@Definition,@CertificateUpdateStart,@CertificateUpdateEnd-@CertificateUpdateStart+LEN(N'FROM [#EncryptionAnalysis_Encryption] AS [e];')),
+ N'[#EncryptionAnalysis_Encryption]',N'[#ExampleEncryptionCertificateRegression]');
+EXEC sys.sp_executesql @CertificateSql,N'@TdeTransitionWarnMinutes int,@CertificateExpiryWarnDays int,@ExpliziteBackupverschluesselungErwartet bit',
+ @TdeTransitionWarnMinutes=60,@CertificateExpiryWarnDays=90,@ExpliziteBackupverschluesselungErwartet=0;
+IF (SELECT COUNT_BIG(*) FROM #ExampleEncryptionCertificateRegression)<>9
+   OR EXISTS(SELECT 1 FROM #ExampleEncryptionCertificateRegression
+             WHERE FindingCode IS NULL OR FindingCode<>ExpectedCode OR FindingSeverity IS NULL OR FindingSeverity<>ExpectedSeverity
+                OR EvidenceLimit IS NULL OR EvidenceLimit<>ExpectedEvidence)
+    THROW 55910,N'Installierte Zertifikattyp-Befunde oder Evidenzgrenzen weichen von den unabhängigen Erwartungen ab.',1;
+DROP TABLE #ExampleEncryptionCertificateRegression;
+DROP TABLE #ExampleEncryptionCertificateJoins;
+DROP TABLE #ExampleEncryptionCertificates;
+DROP TABLE #ExampleEncryptionCertificateKeys;
+
 
 /* Synthetische Zustandsmatrix entspricht der dokumentierten CASE-Priorität. */
 DECLARE @States TABLE
