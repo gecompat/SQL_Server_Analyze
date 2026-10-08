@@ -3479,3 +3479,76 @@ Automatische Altersretention, tatsächliche Maintenanceausführung,
 unabhängige Detaildatumssemantik und weitere Engines bleiben unbelegt.
 OPS-008 bleibt partiell; SMTP wartet auf die öffentliche integrierte und
 passend nativ abgenommene Lab-Funktion.
+
+## OPS-008-Abnahme gekreuzter Maintenance-Detailzeiten vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025/Docker-Labcontainer mit Engine
+`17.0.4075.5` und Framework-CL170 prüft zwei injizierte
+Maintenance-Eltern mit vier getrennt datierten Details. Eltern A und B
+beginnen am 2025-01-02T11:59:59 beziehungsweise 2025-01-02T12:00:00;
+ihre Endzeiten liegen am selben Tag bei 12:00:10 und 12:00:20. Die
+jeweiligen zwei Details von A beginnen am 1. und 2. Januar 2030 um 12:00;
+die zwei Details von B am 1. und 2. Januar 2000 um 12:00. Jede Detailendzeit
+liegt fünf Sekunden nach ihrem Start. Diese absichtlich gekreuzten
+synthetischen Historienzeiten bilden keine reale Ausführungsfolge nach.
+
+Der vorhandene native Dreiparametervertrag und das 13-Feld-Detailschema
+samt Elternbindung werden vor der Injektion geprüft. Alle 13 Detailfelder
+werden gegen feste Literale verglichen; acht Textfelder tragen dabei eine
+explizite Frameworkcollation. Jede Kombination aus Eltern-ID und line1 ist
+eindeutig. Zwei Details gehören zu jedem eigenen Elternteil; verwaiste
+Details sind ausgeschlossen. Je Quelle werden drei vollständige geordnete
+Sollmengen mit NULL-Werten vor dem ersten Purge gebunden: alle eigenen
+Identitäten, ausschließlich B sowie die leere Fremdidentitätsmenge.
+Separate JSON-Counts bestätigen zwei, eins und null Eltern sowie vier,
+zwei und null Details. Die Oracles bilden keine Datumsfilterlogik nach.
+Leere Snapshotabfragen werden mit COALESCE auf [] normalisiert.
+
+| Phase | Stichtag | Eltern | Details |
+|---|---|---:|---:|
+| Ohne Purge | keiner | 2 | 4 |
+| Exakte Gleichheit | 2025-01-02T12:00:00 | 1 | 2 |
+| Eine Sekunde später | 2025-01-02T12:00:01 | 0 | 0 |
+
+Zwei native Aufrufe von sp_maintplan_delete_log mit NULL-Plan- und
+NULL-Subplanfiltern bestätigen nach jeweils eigenem NULL-Rückgabereset
+strikt Rückgabe 0. Der erste entfernt A mitsamt seinen jüngeren Details
+aus 2030. B bleibt an der exakten Elternstartzeit mit sämtlichen älteren
+Detailwerten aus 2000 erhalten. Eine Sekunde später sind Eltern und Details
+leer. Vollständige Eltern- und Detailwerte entsprechen nach jedem Purge
+jeweils der vorab identitätsgebundenen Sollmenge. Counts, genaue Bindungen
+und fehlende verwaiste Details werden separat geprüft.
+
+Neun eindeutige NONE-/TABLE-/CONSOLE-Aufrufe bestätigen dieselben
+Phasenmengen, native Eltern-MIN/MAX-Werte, AVAILABLE-Status, NULL-SizeMb,
+nicht leere EvidenceLimit und vollständige TABLE-/CONSOLE-/JSON-Parität.
+Kein Consumer meldet Partial oder einen Fehler. Vollständige Eltern- und
+Detailwerte bleiben nach jedem Consumer unverändert. Der Caller bleibt
+schreibfähig mit XACT_ABORT ON, Locktimeout 137, TX1 und XACT_STATE 1.
+Plans und Subplans bleiben leer. Ein eigenes Rollback leert sämtliche vier
+Maintenancequellen. Vor dem Abschlussguard einzeln erfasste finale
+Callerwerte bestätigen ursprüngliches OFF/-1/TX0/XactState0. Ein
+ursprünglicher ON-Caller und empirisches Catchcleanup sind nicht zusätzlich
+belegt.
+
+Die bereits vorhandene privat gelesene native Definition ist im neuen Lab
+vor und nach der Fixture an ihren exakten UTF8-Hash
+`6B4D2F1AA5539644E2945D56DFBD9199C9142D952CFBC9915A51ED245574F7FD` gebunden. Ein weiterer Source-Capture-Lauf
+wird nicht ausgeführt; vendoreigener Definitionscode bleibt außerhalb von Git.
+Coreinstallation besteht mit 187 Batches, Smoke110 mit drei und Runtime122
+mit zwei. Der eigene äußere Cleanup besteht mit zwei Schritten ohne Fehler;
+der Statepfad ist entfernt. Erst danach wird das PASS-JSON exklusiv geschrieben.
+Tatsächliche Abnahme: `2026-10-08T19:23:04.7083818+00:00`.
+Ausgeführter SQL-Quellcommit: `0bfb479a1333e79719416c6ac574bf8662c61126`.
+SQL-SHA-256: `C840F2DD1C334BDF2FBCC35893B250CC3AED48B1F3FCA240915E68CAF9A1ACFA`.
+Wrapper-SHA-256: `01141F6D3E44D7E3929DF2D83EF21D8D8CA1C0C19FCCF005E76FD5DE71838433`.
+Private Rohlogs und konkrete Runtimeidentitäten bleiben außerhalb des Repositorys.
+
+Sechs kanonische Dokumentationsquellen und genau drei bestehende CSV-Textzellen
+sind ergänzt. Produktquellen, öffentliche Verträge, Fixture, Installer,
+historische Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten.
+Der Nachweis betrifft ausschließlich diese injizierte Elternauswahl bei
+gekreuzten Detailzeiten. Tatsächliche Maintenanceausführung, zeitliche
+Konsistenz realer Ausführungen, allgemeine Detaildatumsregeln, automatische
+Altersretention und weitere Engines bleiben unbelegt. OPS-008 bleibt
+partiell; SMTP wartet weiterhin auf SQL_Server_Lab.
