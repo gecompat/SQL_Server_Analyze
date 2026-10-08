@@ -225,6 +225,18 @@ NONE/JSON auf SQL Server 2025; andere Collectionfehler und ungültige
 Kalenderfälle im TABLE-Export bleiben ungeprüft. Eine bereits
 uncommittable Callertransaktion wird nicht repariert.
 
+Eine nachfolgende getrennte SQL-2025-Gegenprobe prüft 236060 und
+240000 bei gültigem Datum 20240229 jeweils als Job- und Stepoutcome.
+Bei XACT_ABORT ON und OFF bleibt die eigene frische Callertransaktion
+nach jedem NONE-/JSON-Aufruf schreibfähig. Ein ungültiger Joboutcome
+liefert AVAILABLE_LIMITED/Partial mit Fehler 242, nicht leerer Fehlermeldung,
+gültigem JSON und leerem Jobarray. Ein ungültiger Stepoutcome erhält
+AVAILABLE_WITH_FINDING ohne Partial oder Fehler und eine gültige Jobzeile.
+Sechs vollständige Quellen, TX1 und Locktimeout 31 bleiben erhalten.
+236060 kombiniert ungültige Minuten und Sekunden; isolierte Teilfeldgrenzen,
+andere Uhrzeiten und fehlerhafte Kalenderwerte in TABLE/RAW/CONSOLE
+bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.

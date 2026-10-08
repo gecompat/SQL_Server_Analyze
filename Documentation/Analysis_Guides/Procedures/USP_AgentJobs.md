@@ -257,6 +257,19 @@ Die Gegenprobe belegt diese Werte und Ausgabeart auf SQL Server 2025;
 andere Lesefehler und ungültige Kalenderfälle im TABLE-Export sind daraus
 nicht abgeleitet. Eine bereits uncommittable Callertransaktion wird nicht repariert.
 
+Eine nachfolgende getrennte SQL-2025-Gegenprobe prüft die ungültigen
+Uhrzeiten 236060 und 240000 bei gültigem Datum 20240229 jeweils als Job-
+und Stepoutcome. Bei XACT_ABORT ON und OFF bleibt die eigene frische
+Callertransaktion nach jedem NONE-/JSON-Aufruf schreibfähig. AgentJobs
+liefert ERROR_HANDLED/Partial mit Fehler 242 und nicht leerer Fehlermeldung;
+Jobs enthält null Zeilen beim Jobfehler und eine Zeile beim Stepfehler,
+Steps bleibt leer. Sechs vollständige Quellen, TX1 und Locktimeout 31
+bleiben erhalten. Die bestehende TEST-0001-Fixture besteht nun 21 positive
+und 24 Kalender-/Uhrzeitconsumeraufrufe einschließlich 24 eigener Rollbacks.
+236060 kombiniert ungültige Minuten und Sekunden; isolierte Teilfeldgrenzen,
+andere Uhrzeiten und fehlerhafte Kalenderwerte in TABLE/RAW/CONSOLE
+bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
