@@ -125,6 +125,13 @@ WHERE [a].[enabled] = 1;
 
 Die Auswertung kombiniert aktuelle Konfiguration mit dem letzten sichtbaren Job-Outcome sowie zeitlich begrenzter Alertaktivität und Mailhistorie. Fehlende Jobhistory bleibt NULL; die Procedure liefert keine vollständige Ausführungsreihe und keine Laufzeitbaseline.
 
+Der letzte Job-Outcome wird nach `instance_id` aus Gesamtzeilen mit positivem
+`run_date` gewählt. `LatestRunDateTime` interpretiert Datum und Uhrzeit als
+lokalen Startzeitpunkt. `LatestRunDuration` erhält den Integerrohwert aus
+`run_duration`; das Feld enthält keine umgerechneten Sekunden. Die
+Schaltag-/Dauergegenprobe auf SQL Server 2025 prüft diese bestehenden NONE-/JSON-
+Felder getrennt von der Sekundenumrechnung in `USP_AgentJobs`.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.

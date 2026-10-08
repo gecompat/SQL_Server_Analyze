@@ -38741,7 +38741,7 @@ BEGIN
     (
           [ItemOrdinal] int NOT NULL
         , [JobName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
-        , CONSTRAINT [PK_JobNameFilter] PRIMARY KEY ([JobName])
+        , PRIMARY KEY ([JobName])
     );
 
     CREATE TABLE [#AgentJobs_Jobs]

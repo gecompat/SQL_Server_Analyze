@@ -132,6 +132,13 @@ WHERE [j].[enabled] = 1;
 
 Die Auswertung kombiniert einen Konfigurationssnapshot mit der aufbewahrten Historie. Ein Agent-Neustart erzeugt neue Sessionkontexte; Cleanup begrenzt die Historie.
 
+Die letzte Jobgesamtzeile wird nach `instance_id` gewählt. `LastRunDateTime`
+interpretiert deren Integerdatum und Uhrzeit als lokalen Startzeitpunkt;
+`LastRunDurationSeconds` konvertiert die codierte Dauer in Sekunden, auch
+bei einer Stundenkomponente über 24. Die lokalen Jobfilter verwenden einen
+Primärschlüssel mit automatisch vergebenem Constraintnamen. Die begrenzte
+SQL-2025-Gegenprobe bestätigt wiederholte Aufrufe in derselben Callertransaktion.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
