@@ -540,7 +540,8 @@ Der Nachweis betrifft selektive Plan-ID-Filter bei NULL-Subplanfilter und
 kontrollierter Historie. Er belegt weder Subplanfilter noch echte
 Plandefinitionen, Maintenance-/SSIS-Ausführung, unabhängige Detaildatumssemantik,
 authentisches Alter oder automatische Aufbewahrung. Weitere Kombinationen
-und inneres Fehlercleanup bleiben getrennte Nachweise. Produkt-SQL und
+bleiben getrennte Nachweise; die Calleroptionen- und Fehlerprüfung ist im
+folgenden gemeinsamen Umfang beschrieben. Produkt-SQL und
 der öffentliche Analyzervertrag bleiben unverändert.
 
 Mit `-Scenario MaintenanceSubplanRetention` erzeugt eine getrennte Fixture
@@ -573,8 +574,9 @@ eigenen Job entfernen; das äußere identitygebundene Labcleanup bleibt erforder
 Der Nachweis betrifft selektive Subplan-ID-Filter bei NULL-Planfilter und
 kontrollierter Historie. Kombinierte Plan-/Subplanfilter, echte SSIS-Pläne,
 Maintenance-Ausführung, unabhängige Detaildatumssemantik, authentisches Alter,
-automatische Aufbewahrung und inneres Fehlercleanup bleiben getrennte
-Nachweise. Produkt-SQL und der öffentliche Analyzervertrag bleiben unverändert.
+automatische Aufbewahrung bleiben getrennte Nachweise. Die Calleroptionen-
+und Fehlerprüfung ist im folgenden gemeinsamen Umfang beschrieben. Produkt-SQL
+und der öffentliche Analyzervertrag bleiben unverändert.
 
 Mit `-Scenario MaintenanceFilterBoundary` prüft eine getrennte Fixture die
 native Ablehnung gleichzeitiger Plan- und Subplanparameter. Sie verlangt beim
@@ -614,6 +616,44 @@ ein ungeplanter äußerer Fixturefehler wird dadurch nicht simuliert.
 Echte Maintenance-/SSIS-Ausführung, automatische Aufbewahrung und zusätzliche
 native Versionen bleiben getrennte Nachweise. Produkt-SQL und der öffentliche
 Analyzervertrag bleiben unverändert.
+
+Mit `-Scenario MaintenanceCallerOptions` führt der Runner die vier bestehenden
+Maintenance-Retentionfixtures für Eltern, Details, Plan-ID und Subplan-ID
+nacheinander in einem neuen eigenen Lab aus. Jede Fixture verlangt vor
+Quelländerungen den ursprünglichen Standardlocktimeout `-1`. Ein abweichender
+Wert wird vor Beginn der eigenen Transaktion und vor einer XACT_ABORT-Änderung
+abgelehnt. Die Fixtures erfassen die ursprüngliche XACT_ABORT-Einstellung,
+prüfen während ihrer neun Consumeraufrufe `XACT_ABORT ON`, `LOCK_TIMEOUT=137`
+und eine committable eigene Transaktion und stellen beide Optionen nach dem
+Rollback direkt im Callerbatch wieder her. Der Erfolgspfad prüft anschließend
+neun Consumeraufrufe und die ursprünglichen beiden Werte. Der Catch-Pfad
+rollt die eigene Transaktion zurück, restauriert die beiden Optionen und
+wirft den ursprünglichen Fehler erneut.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MaintenanceCallerOptions `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Eine zusätzliche private Fehlerprobe auf SQL Server 2025 bestätigt je Fixture
+zwei Abbrüche nach dem Quellaufbau vor der ersten Consumerphase mit
+ursprünglichem XACT_ABORT OFF beziehungsweise ON. Sie prüft nach dem erneut
+geworfenen Fehler auf derselben Verbindung die beiden ursprünglichen Optionen,
+Transaktionscount und vor den Quellabfragen erfassten Transaktionszustand null
+sowie acht leere Maintenance-/Jobquellen. Je eine weitere frühe Ablehnung mit
+Locktimeout `31` erhält beide Optionen und leere Quellen. Der begrenzte
+Zwölf-Fälle-Nachweis steht in der
+[Laufzeitevidenz](../AI_Metadata/Internal_Documentation/Quality/Maturity_Closeout_Runtime_Evidence_2026-08-29.md).
+Die Probe liefert keine erfolgreiche Retention mit ursprünglich XACT_ABORT ON,
+keine späteren Fehlerpunkte und keinen zusätzlichen nativen Engine-Nachweis.
+
+Die Gruppe wiederholt ausschließlich die vier betroffenen Retentionsverträge
+mit insgesamt 36 Consumeraufrufen. Sie erweitert keinen Diagnosevertrag und
+keine allgemeine Lab-Provisionierung. Der Wiederherstellungsvertrag gilt für
+Locktimeout und XACT_ABORT. Die Fixtures versprechen keine Wiederherstellung
+von NOCOUNT oder Datenbankkontext und kein allgemeines Cleanup temporärer
+Tabellen. Äußeres identitygebundenes Labcleanup bleibt erforderlich.
 
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
