@@ -186,6 +186,18 @@ NULL für die leeren Snapshots in Phase 3. Eine gezielte private
 Normalisierung auf [] korrigiert diese Testannahme. Details, Plans und Subplans bleiben leer. Diese Probe führt
 keine Wartung aus und belegt keine unabhängige Detaildatumssemantik.
 
+Eine getrennte native SQL-2025/Docker-Probe prüft die Elternzeitselektion
+bei abweichenden Detaildaten. Zwei injizierte Eltern aus 2025 besitzen je
+zwei Details: A aus 2030 und B aus 2000. Die native Bereinigung am exakten
+Startzeitstichtag erhält B mit sämtlichen älteren Detailwerten und entfernt
+A samt jüngeren Details; eine Sekunde später sind beide Quellen leer.
+Elterncounts zwei, eins und null, Detailcounts vier, zwei und null,
+neun Consumeraufrufe mit TABLE-/CONSOLE-/JSON-Parität sowie Quell- und
+Callererhaltung bestehen. Die
+synthetisch gekreuzten Zeiten belegen ausschließlich diese kontrollierte
+Elternauswahl, keine tatsächliche Maintenanceausführung oder zeitliche
+Konsistenz einer realen Ausführung.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.
