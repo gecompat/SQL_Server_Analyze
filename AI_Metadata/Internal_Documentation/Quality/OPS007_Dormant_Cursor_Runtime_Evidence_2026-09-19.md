@@ -81,6 +81,13 @@ Selftest, die 14 Deploymentvertragsprüfungen und der statische
 Nonblocking-/Temp-Namensvertrag bestanden. Beide betroffenen ignorierten
 Installer wurden aus den Einzelquellen neu erzeugt.
 
+Die erste Head-CI meldete einen veralteten versionierten OPS-005-Installer.
+Der kanonische Adapterbuilder erzeugte ihn neu; der normalisierte Diff
+enthält ausschließlich dieselbe NULL-Normalisierung der Cursor-Procedure.
+Der versionierte OPS-005-Runtimevertrag bleibt unverändert. Der lokale
+Adaptervergleich bestätigt die kanonische Ableitung und besteht; der
+verworfene CI-Stand ist kein erfolgreicher vollständiger statischer Nachweis.
+
 Zwei frühere private Testanordnungen stoppten am Caller-Eintrittsguard vor
 den beiden Analyzeraufrufen. Nur die zweite Anordnung lieferte dabei die
 separaten Diagnosewerte Locktimeout minus eins, Transaktionsanzahl `0` und
