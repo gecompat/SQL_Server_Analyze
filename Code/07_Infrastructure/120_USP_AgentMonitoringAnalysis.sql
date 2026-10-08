@@ -210,6 +210,8 @@ BEGIN
 
         IF @MitJobStatus = 1
         BEGIN
+            DECLARE @JobCollectionXactAbort int = @@OPTIONS & 16384;
+            SET XACT_ABORT OFF;
             BEGIN TRY
                 ;WITH [LatestOutcome] AS
                 (
@@ -248,6 +250,7 @@ BEGIN
                     SELECT @ErrorNumber = ERROR_NUMBER(),
                            @ErrorMessage = CONCAT(N'Jobstatus nicht lesbar: ', ERROR_MESSAGE());
             END CATCH;
+            IF @JobCollectionXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
         END;
 
         IF @MitDatabaseMail = 1

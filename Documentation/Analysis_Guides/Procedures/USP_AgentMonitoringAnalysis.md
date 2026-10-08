@@ -212,7 +212,18 @@ ohne Partial oder Fehler, ein Jobarray mit einer Zeile und XACT_STATE 1.
 Die sechs Quellen und Calleroptionen bleiben in allen vier Fällen erhalten;
 der private Beobachter rollt jede eigene Transaktion zurück. Eine erfolgreiche
 Fehlerisolation der ungültigen Joboutcomes bei ON ist damit nicht belegt.
-Die gezielte Korrektur bleibt offen.
+Die Korrektur begrenzt XACT_ABORT OFF auf die Jobcollection und stellt
+die ursprüngliche Einstellung vor weiteren Collections und der Ausgabe
+wieder her. Eine nachfolgende SQL-2025-Gegenprobe mit denselben vier
+Kalenderfällen besteht bei ON und OFF. Ungültige Joboutcomes liefern nun
+AVAILABLE_LIMITED/Partial mit Fehler 242, nicht leerem ErrorMessage und
+gültigem JSON; das Jobarray bleibt leer. Ungültige Stepfälle erhalten
+AVAILABLE_WITH_FINDING ohne Partial oder Fehler und eine Jobzeile. Alle
+eigenen Callertransaktionen bleiben schreibfähig mit XACT_STATE 1. Sechs
+Quellen, TX1 und Locktimeout 31 bleiben erhalten. Der Nachweis gilt für
+NONE/JSON auf SQL Server 2025; andere Collectionfehler und ungültige
+Kalenderfälle im TABLE-Export bleiben ungeprüft. Eine bereits
+uncommittable Callertransaktion wird nicht repariert.
 
 ### Bewertung und Gegenprobe
 

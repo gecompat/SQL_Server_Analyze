@@ -426,6 +426,181 @@ BEGIN TRY
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobs] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobsteps] WHERE [job_id] = @JobId)
         THROW 54948, N'Die synthetische Agent-Fixture wurde nicht vollständig zurückgerollt.', 1;
+
+    DECLARE @CalendarCase int = 1, @CalendarConsumer int, @CalendarDate int, @CalendarReturn int,
+        @CalendarBadStep bit, @CalendarCalls int = 0, @CalendarRollbacks int = 0,
+        @CalendarBaseline nvarchar(max), @CalendarBefore nvarchar(max),
+        @CalendarAfter nvarchar(max), @CalendarState int;
+            SELECT @CalendarBaseline = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+    WHILE @CalendarCase <= 4
+    BEGIN
+        SELECT @CalendarDate = CASE WHEN @CalendarCase <= 2 THEN 20230229 ELSE 20240230 END,
+            @CalendarBadStep = CASE WHEN @CalendarCase % 2 = 0 THEN 1 ELSE 0 END,
+            @CalendarConsumer = 1;
+        WHILE @CalendarConsumer <= 3
+        BEGIN
+            SET @JobId = NULL;
+            BEGIN TRANSACTION;
+            EXEC @CalendarReturn = [msdb].[dbo].[sp_add_job]
+                @job_name = N'ExampleOps008HistoryJob', @enabled = 0,
+                @notify_level_eventlog = 0, @notify_level_email = 0,
+                @notify_level_netsend = 0, @notify_level_page = 0,
+                @delete_level = 0, @job_id = @JobId OUTPUT;
+            IF @CalendarReturn <> 0 OR @JobId IS NULL
+                THROW 56214, N'Die eigene Kalenderfixture fehlt.', 1;
+            EXEC @CalendarReturn = [msdb].[dbo].[sp_add_jobstep]
+                @job_id = @JobId, @step_id = 1, @step_name = N'ExampleCalendarStep',
+                @subsystem = N'TSQL', @command = N'SELECT 1 AS ExampleValue;',
+                @database_name = N'master', @on_success_action = 1,
+                @on_fail_action = 2, @retry_attempts = 0;
+            IF @CalendarReturn <> 0
+                THROW 56214, N'Die eigene Kalenderschrittdefinition fehlt.', 1;
+            INSERT [msdb].[dbo].[sysjobhistory]
+                ([job_id], [step_id], [step_name], [sql_message_id], [sql_severity],
+                 [message], [run_status], [run_date], [run_time], [run_duration],
+                 [operator_id_emailed], [operator_id_netsent], [operator_id_paged],
+                 [retries_attempted], [server])
+            VALUES (@JobId, 0, N'ExampleJobOutcome', 0, 0, N'ExampleCalendarOutcome', 1,
+                CASE WHEN @CalendarBadStep = 1 THEN 20240229 ELSE @CalendarDate END,
+                0, 125, 0, 0, 0, 0, N'ExampleHistoryServer');
+            IF @CalendarBadStep = 1
+                INSERT [msdb].[dbo].[sysjobhistory]
+                    ([job_id], [step_id], [step_name], [sql_message_id], [sql_severity],
+                     [message], [run_status], [run_date], [run_time], [run_duration],
+                     [operator_id_emailed], [operator_id_netsent], [operator_id_paged],
+                     [retries_attempted], [server])
+                VALUES (@JobId, 1, N'ExampleCalendarStep', 0, 0, N'ExampleCalendarStep',
+                    1, @CalendarDate, 0, 125, 0, 0, 0, 0, N'ExampleHistoryServer');
+            SELECT @CalendarBefore = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            SET @CalendarState = XACT_STATE();
+            IF @CalendarState <> 1 OR @@TRANCOUNT <> 1
+                OR (@@OPTIONS & 16384) <> 16384 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout
+                THROW 56215, N'Der Kalenderaufruf benötigt eine schreibfähige ON-Transaktion.', 1;
+            SELECT @Json = NULL, @Status = NULL, @Partial = NULL,
+                @Error = NULL, @Message = NULL;
+            IF @CalendarConsumer = 1
+            BEGIN
+                EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @Json OUTPUT,
+                    @PrintMeldungen = 0, @StatusCodeOut = @Status OUTPUT,
+                    @IsPartialOut = @Partial OUTPUT, @ErrorNumberOut = @Error OUTPUT,
+                    @ErrorMessageOut = @Message OUTPUT;
+                IF COALESCE(@Status, '') <> 'AVAILABLE' OR COALESCE(@Partial, 1) <> 0
+                    OR @Error IS NOT NULL OR @Message IS NOT NULL
+                    OR NOT EXISTS (SELECT 1 FROM OPENJSON(@Json)
+                        WITH ([Area] varchar(40), [SourceObject] nvarchar(256), [RowCount] bigint)
+                        WHERE [Area] = 'AGENT_HISTORY'
+                          AND [SourceObject] = N'msdb.dbo.sysjobhistory'
+                          AND [RowCount] = CASE WHEN @CalendarBadStep = 1 THEN 2 ELSE 1 END)
+                    THROW 56216, N'Das kalenderunabhängige Msdb-Aggregat ist verletzt.', 1;
+            END
+            ELSE IF @CalendarConsumer = 2
+            BEGIN
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @NurProblematisch = 0, @ResultSetArt = 'NONE',
+                    @JsonErzeugen = 1, @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                IF COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), '') <> 'ERROR_HANDLED'
+                    OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), '') <> 'true'
+                    OR COALESCE(TRY_CONVERT(int, JSON_VALUE(@Json, '$.meta.errorNumber')), 0) <> 242
+                    OR NULLIF(JSON_VALUE(@Json, '$.meta.errorMessage'), N'') IS NULL
+                    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> CONVERT(int, @CalendarBadStep)
+                    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.steps')) <> 0
+                    THROW 56216, N'Der abgefangene AgentJobs-Kalenderfehler ist verletzt.', 1;
+            END
+            ELSE
+            BEGIN
+                EXEC [monitor].[USP_AgentMonitoringAnalysis] @HistoryHours = 24,
+                    @MitJobStatus = 1, @MitDatabaseMail = 0, @MaxZeilen = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @Json OUTPUT,
+                    @PrintMeldungen = 0, @StatusCodeOut = @Status OUTPUT,
+                    @IsPartialOut = @Partial OUTPUT, @ErrorNumberOut = @Error OUTPUT,
+                    @ErrorMessageOut = @Message OUTPUT;
+                IF (@CalendarBadStep = 0 AND (COALESCE(@Status, '') <> 'AVAILABLE_LIMITED'
+                    OR COALESCE(@Partial, 0) <> 1 OR COALESCE(@Error, 0) <> 242
+                    OR NULLIF(@Message, N'') IS NULL))
+                    OR (@CalendarBadStep = 1 AND (COALESCE(@Status, '') NOT IN ('AVAILABLE', 'AVAILABLE_WITH_FINDING')
+                    OR COALESCE(@Partial, 1) <> 0 OR @Error IS NOT NULL OR @Message IS NOT NULL))
+                    OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> CONVERT(int, @CalendarBadStep)
+                    THROW 56216, N'Der Monitoring-Kalenderstatus ist verletzt.', 1;
+            END;
+            SET @CalendarState = XACT_STATE();
+            SELECT @CalendarAfter = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF COALESCE(ISJSON(@Json), 0) <> 1 OR @CalendarState <> 1 OR @@TRANCOUNT <> 1
+                OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                OR @CalendarBefore IS NULL OR @CalendarAfter IS NULL
+                OR @CalendarBefore COLLATE SQL_Latin1_General_CP1_CS_AS
+                   <> @CalendarAfter COLLATE SQL_Latin1_General_CP1_CS_AS
+                OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
+                OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
+                OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)
+                THROW 56217, N'Der Kalenderconsumer hat Quellen oder die schreibfähige Transaktion verändert.', 1;
+            SET @CalendarCalls += 1;
+            ROLLBACK TRANSACTION;
+            SET @CalendarState = XACT_STATE();
+            SET @CalendarRollbacks += 1;
+            SELECT @CalendarAfter = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @@TRANCOUNT <> 0 OR @CalendarState <> 0 OR @CalendarBaseline IS NULL
+                OR @CalendarAfter IS NULL OR @CalendarBaseline COLLATE SQL_Latin1_General_CP1_CS_AS
+                   <> @CalendarAfter COLLATE SQL_Latin1_General_CP1_CS_AS
+                THROW 56218, N'Der Kalenderrollback hat die ursprünglichen Agentquellen nicht wiederhergestellt.', 1;
+            SET @CalendarConsumer += 1;
+        END;
+        SET @CalendarCase += 1;
+    END;
+    IF @CalendarCalls <> 12 OR @CalendarRollbacks <> 12
+        THROW 56218, N'Die zwölf Kalenderaufrufe oder Rollbacks fehlen.', 1;
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
@@ -436,5 +611,7 @@ IF @PreviousXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
 IF @Stage <> 4 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> @PreviousXactAbort
     THROW 55155, N'Die Stufenanzahl oder ursprünglichen Calleroptionen sind verletzt.', 1;
 SELECT N'OPS008_AGENT_AGGREGATE' AS [ContractName], 3 AS [PositiveStages],
+    @Calls AS [PositiveConsumerCalls], @CalendarCalls AS [CalendarConsumerCalls],
+    @CalendarRollbacks AS [CalendarRollbacks],
     N'PASS' AS [Status], N'ROLLED_BACK' AS [FixtureCleanup];
 GO

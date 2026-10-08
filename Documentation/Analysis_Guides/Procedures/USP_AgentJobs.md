@@ -244,7 +244,18 @@ Bei ungültigem Joboutcome bleibt das Jobarray leer; bei ungültigem Step
 enthält es eine Zeile. Die Steparrays bleiben leer. Die vier Callertransaktionen sind danach
 uncommittable; unveränderte Optionen und Quellwerte belegen hier keine
 erhaltene Committability. Der private Beobachter rollt jede Transaktion zurück.
-Die gezielte Korrektur dieser Fehlerisolation bleibt offen.
+Die Korrektur begrenzt XACT_ABORT OFF auf die Job-/Stepcollection und
+stellt die ursprüngliche Einstellung vor der Ausgabe wieder her. Eine
+nachfolgende SQL-2025-Gegenprobe mit denselben vier Kalenderfällen besteht
+bei ON und OFF: NONE/JSON liefert ERROR_HANDLED/Partial mit Fehler 242,
+die eigene Callertransaktion bleibt schreibfähig mit XACT_STATE 1. Die
+Jobarrays enthalten null Zeilen bei ungültigem Joboutcome und eine Zeile
+bei ungültigem Step; die Steparrays bleiben leer. Quellwerte, TX1 und
+Locktimeout 31 bleiben erhalten. Die erweiterte registrierte TEST-0001-
+Fixture besteht außerdem 21 positive und zwölf Kalenderconsumeraufrufe.
+Die Gegenprobe belegt diese Werte und Ausgabeart auf SQL Server 2025;
+andere Lesefehler und ungültige Kalenderfälle im TABLE-Export sind daraus
+nicht abgeleitet. Eine bereits uncommittable Callertransaktion wird nicht repariert.
 
 ### Bewertung und Gegenprobe
 

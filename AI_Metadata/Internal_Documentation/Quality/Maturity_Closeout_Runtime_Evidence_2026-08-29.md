@@ -2566,3 +2566,90 @@ bleibt offen. Weitere ungültige Werte, vollständige Ausgabeschemata, RAW,
 CONSOLE, TABLE, andere Engines und innere Catchcleanup-Gegenproben bleiben
 ungeprüft. Statusflags, OpenScope, Registry und historische Laufzeitmatrix
 bleiben erhalten; OPS-008 bleibt partiell.
+
+## OPS-008-Korrektur der Agent-Kalenderfehlerisolation vom 8. Oktober 2026
+
+Die nachfolgende Produktkorrektur des in PR #305 beobachteten Fehlers
+besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Ausschließlich ein neues eigenes lokales Lab wird
+verwendet. Core187 wird aus den kanonischen Quellen neu erzeugt und
+installiert. Die beiden öffentlichen Signaturen und Ausgabeschemata,
+Labquellen und Registry bleiben unverändert.
+
+Der versionierte OPS-005-Adapterinstaller wird mit dem vorhandenen
+Build-AdapterInstall-Weg regeneriert. Sein Delta enthält ausschließlich
+dieselben acht Produktzeilen; der generierte Updatevertrag bleibt erhalten.
+Der bestehende Adaptervalidator besteht einschließlich der öffentlichen
+Lab-Adaptervalidierung. Eine zusätzliche native Linked-Server-Probe wird
+für diese Quellkopplung nicht ausgeführt.
+
+AgentJobs deaktiviert XACT_ABORT ausschließlich während der bestehenden
+Job-/Stepcollection, AgentMonitoring während der bestehenden Jobcollection.
+Beide stellen den ursprünglichen Optionswert unmittelbar nach TRY/CATCH
+und vor weiteren Ausgabeschreiboperationen wieder her. Die bestehenden
+242-/Partial-Verträge bleiben erhalten. Dies ist keine Reparatur bereits
+uncommittable Callertransaktionen und keine allgemeine Zusicherung für
+andere Collectionfehler.
+
+Die getrennten privaten ON-/OFF-Gegenproben verwenden 20230229 und
+20240230 als Job- und Stepoutcome. Ein eigener deaktivierter Job mit
+einem TSQL-Step wird ausschließlich synthetisch befüllt und nicht
+ausgeführt. Bei ungültigem Step ist der Joboutcome gültig. Je Mode messen
+vier direkte native OFF-Orakel außerhalb sämtlicher Consumertransaktionen
+Fehler 242. Je Mode bestehen eine unabhängige Monitoring-Baseline und
+zwölf NONE-/JSON-Consumer mit jeweils frischer eigener schreibfähiger TX1.
+
+| Consumer | Ungültiger Joboutcome, je Mode zwei Fälle | Ungültiger Stepoutcome, je Mode zwei Fälle |
+|---|---|---|
+| MsdbHealth | AVAILABLE ohne Partial oder Fehler; Historycount 1 | AVAILABLE ohne Partial oder Fehler; Historycount 2 |
+| AgentJobs | ERROR_HANDLED/Partial/242 mit Message und gültigem JSON; Jobs 0 und Steps 0 | ERROR_HANDLED/Partial/242 mit Message und gültigem JSON; Jobs 1 und Steps 0 |
+| AgentMonitoring | AVAILABLE_LIMITED/Partial/242 mit Message und gültigem JSON; Jobs 0 | AVAILABLE_WITH_FINDING ohne Partial oder Fehler; Jobs 1 |
+
+Alle 24 Callertransaktionen bleiben schreibfähig mit XACT_STATE 1. Kein
+Fehler entkommt; insbesondere fehlt die zuvor beobachtete 3930-Eskalation.
+Die vollständigen Werte der sechs geordneten Agentquellen einschließlich
+NULL-Werten, TX1, Locktimeout 31 und der jeweilige ON-/OFF-Wert bleiben
+nach jedem Consumer erhalten. Je Mode stellen zwölf Rollbacks sämtliche
+ursprünglichen Quellwerte wieder her. Abschließend bestehen ursprüngliches
+OFF, Locktimeout -1, TX0 und separat erfasster XACT_STATE 0. Der Nachweis
+gilt für diese vier Kalenderfälle und NONE/JSON auf dieser Engine.
+
+Die bestehende registrierte TEST-0001-Fixture wird um zwölf ON-Kalender-
+Consumer mit eigenen Transaktionen und Kalenderrollbacks erweitert.
+Der Zustand wird direkt nach jedem Rollback vor dem Quellensnapshot
+separat erfasst. Die native Ausführung der Fixture bestätigt 21 positive
+und zwölf Kalenderaufrufe. Der private JSON-Ausgabetransport ergänzt
+ausschließlich die Abschlusszeile; die ausgeführten Assertions stammen
+aus der registrierten Fixture. Sämtliche zwölf Kalenderrollbacks bestehen.
+
+Die 13 vom bestehenden Impactselektor ausgewählten direkten und
+transitiven Runtimeverträge bestehen. Common148 bestätigt positive
+Monitoring-TABLE-/JSON-Parität mit eigenen ungebundenen Jobdefinitionen.
+Common167 bestätigt die allgemeinen TABLE-, Consumer-, Mapping- und
+leeren CONSOLE-Verträge; ohne eigene positive Job-/Schedulefixture bleibt
+sein positiver Block NOT_EXECUTED. Der vorhandene FIND-COMPAT-Vertrag in
+Integration178 prüft CL120 auf derselben Engine und stellt CL170 wieder
+her. Weitere native Engines oder eine zusätzliche allgemeine
+Compatibility-Matrix werden nicht ausgeführt.
+
+Der eigene äußere Labcleanup besteht mit zwei Schritten ohne Fehler;
+der Statepfad ist entfernt. Erst danach wird das PASS-JSON exklusiv
+mit CreateNew geschrieben. Ein vorausgehender nativer Fixlauf scheitert
+beim Kompilieren des neuen Fixtureteils: Die Returnvariable @Return war
+nicht deklariert. Core187, Smoke110 und Runtime122 waren zuvor erfolgreich.
+Der Lauf liefert kein abschließendes PASS-JSON. Sein eigener äußerer
+Labcleanup besteht mit zwei Schritten ohne Fehler; der Statepfad ist entfernt.
+Rawprotokoll, damalige Fixture und Wrapper bleiben privat erhalten.
+Die Korrektur deklariert ausschließlich @CalendarReturn im neuen Fixtureteil
+und bindet dessen vier Verwendungen. Produktcode und private ON-/OFF-SQL
+bleiben gegenüber diesem Fehlversuch unverändert. Der nachfolgende hier
+beschriebene Gesamtlauf besteht. Der ON-SQL-Stand besitzt SHA-256
+`3FEC7D56B96A4C0C2C4A22A21FEB2FEA0DE683EEB8811CE4B46908E1FD252FEC`,
+der OFF-SQL-Stand
+`67C15D4F2E62FABC7254A753B86573EB8C43BDBD00ABCC3C23B5C5CD167CA2E9`.
+Die tatsächliche Abnahme wurde am `2026-10-08T15:03:47.0787718+00:00` erfasst.
+
+Andere ungültige Datums-/Uhrzeitwerte, die ungültigen Kalenderfälle in
+TABLE/RAW/CONSOLE und innere Fehlercleanup-Gegenproben bleiben ungeprüft.
+Historische Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten;
+OPS-008 bleibt partiell. SMTP bleibt Aufgabe von SQL_Server_Lab.
