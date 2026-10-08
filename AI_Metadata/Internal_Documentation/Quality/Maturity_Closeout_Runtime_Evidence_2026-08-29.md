@@ -614,3 +614,80 @@ zusätzliche native Engines bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert. Die neue Fixture ist ein Bestandteil
 von OPS-008 ohne eigene Artefaktreferenz.
+
+## Ergänzender nativer OPS-008-Mailfehler vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MailExecutionFailure` bestand auf einem
+neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation, den
+Smoke-Test, Runtimevertrag `122` und die
+[Mailfehler-Fixture](../../../../TestLab/Scenarios/OPS-008/mail-execution-failure.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Fixture verlangte leere Mail-, Anlagen-, Log-, Profil- und Kontoquellen,
+deaktivierte Mail-XPs und aktivierten Service Broker in `msdb`. Sie aktivierte
+Mail-XPs und erfasste den nativen Queue-Eintrittsstatus. Ein eigenes Profil
+verwendete ein eigenes anonymes SMTP-Konto für `localhost` auf Port 1.
+Der zwölfspaltige native Kontocapture bestätigte Konto-ID, SMTP-Typ, lokalen
+Host, Port, NULL-Benutzernamen sowie deaktivierte Defaultcredentials und SSL.
+Sender und Empfänger waren synthetische Adressen unter der durch
+[RFC 2606](https://www.rfc-editor.org/rfc/rfc2606.html) reservierten Domain
+`.invalid`. Es gab weder einen externen SMTP-Host noch einen echten Empfänger.
+
+`sp_send_dbmail` lieferte Rückgabewert `0` und die eigene Mailitem-ID.
+Die Fixture wartete höchstens 120 Einsekundenpolls auf den nativen Status
+`failed` und mindestens einen gebundenen Fehlerlogeintrag. Mailitem-ID und
+Profil-ID mussten zur eigenen Quelle gehören; Request- und Sentzeit waren
+vorhanden. Der Fehlerlogeintrag musste dieselbe Mailitem-ID, Typ `error`,
+eine positive Prozesskennung, eine nicht leere Beschreibung und NULL-
+`account_id` besitzen. Diese Bindung entspricht dem dokumentierten
+[aggregierten endgültigen Mailfehler](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sysmail-event-log-transact-sql?view=sql-server-ver17).
+Die Fixture verwendete ausschließlich nativ erzeugte Mailhistorie. Eine nicht leere
+Logbeschreibung beweist keinen bestimmten SMTP-Protokollfehler oder dessen
+Ursache; die 120 Polls begrenzen keine Gesamtlaufzeit der Fixture.
+
+Vor den drei Analyzeraufrufen wurden Queue und Mail-XPs deaktiviert.
+NONE, TABLE und CONSOLE bestätigten `AVAILABLE`, sechs Quellenzeilen,
+unabhängige native Mailcounts und MIN-/MAX-Requestzeiten sowie eine vorhandene
+Evidenzgrenze. TABLE und CONSOLE besaßen Parität aller acht Fachfelder mit
+JSON. Sämtliche Spalten der Mailitemtabelle blieben vor und nach jedem Aufruf
+NULL-sicher identisch. Die Callertransaktion blieb committable mit
+`@@TRANCOUNT=1` und `LOCK_TIMEOUT=137`; Anlagen blieben leer und konfigurierte
+sowie effektive Mail-XPs blieben während der Consumerprüfungen deaktiviert.
+Der Analyzer bereinigte keine Historie.
+
+Nach dem Callerrollback aktivierte die Fixture Mail-XPs erneut für das
+native Cleanup. Der eigene Failed-Mailitem wurde mit Rückgabewert `0`
+entfernt; Profil und Konto wurden über ihre eigenen IDs entfernt. Queue-
+und Konfigurationseintrittswerte wurden wiederhergestellt und geprüft.
+Native Logs verblieben bis zum äußeren identitygebundenen Labcleanup.
+Der öffentliche Lauf endete mit `PASS` und `REMOVED`; eigener Container,
+Volume und temporärer State wurden entfernt. Runtimeidentitäten, Secrets,
+Mailinhalte und Rohlogs bleiben außerhalb von Git.
+
+Der erste native Lauf scheiterte vor dem Queueauftrag, weil
+`sysmail_help_status_sp` bei deaktivierten Mail-XPs mit `0x3BB1` blockiert
+wurde. Coreinstallation, Smoke-Test und Runtimevertrag bestanden;
+das äußere eigene Container- und Volumecleanup bestätigte zwei Schritte
+mit null Fehlern. Statuscapture und natives Cleanup wurden daraufhin
+innerhalb TRY bei aktivierten XPs angeordnet. Die Consumergrenze blieb
+unverändert. Der korrigierte Lauf verwendete ein weiteres neues eigenes Lab.
+Beide funktionalen Stände wurden unabhängig geprüft; der finale Review
+besitzt keine offenen funktionalen Befunde.
+
+Der Datenschutzscan erkannte die synthetischen Adressen und ein vorläufiges
+NULL-Passwortargument. Das unnötige Argument wurde vor dem ersten nativen
+Lauf entfernt. Zwei ausschließlich an Regel, Fixturepfad und Wertdigest
+gebundene Ausnahmen erlauben die reservierten synthetischen Adressen;
+der Scanner blieb unverändert. Self-Test und Repositoryscan bestanden.
+
+Der Nachweis gilt für den eigenen nativen lokalen Mailfehler. Erfolgreiche
+SMTP-Annahme oder Zustellung, ein bestimmter SMTP-Fehlergrund, authentischer
+Retryverlauf, automatische Aufbewahrung, positive Anlagen- oder Logretention
+und empirisches inneres Fehlercleanup sind damit nicht belegt. Maintenance-
+Ausführung, positive Detailretention und selektive Planfilter sowie fehlende
+optionale Quellen, Windows, weitere Provider und zusätzliche native Engines
+bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
+Maturityflags und historische Release-Matrix bleiben unverändert. Die neue
+Fixture ist ein Bestandteil von OPS-008 ohne eigene Artefaktreferenz.

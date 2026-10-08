@@ -393,6 +393,34 @@ Die Statusmarkierungen belegen weder Versand noch Queue- oder Retryverhalten;
 Mailprofil und SMTP-Verbindung werden nicht eingerichtet. Automatische
 Aufbewahrung, Anlagen- und Logretention bleiben eigenständige Nachweise.
 
+Mit `-Scenario MailExecutionFailure` erzeugt eine getrennte Fixture einen
+eigenen nativen Queueauftrag mit synthetischen Adressen unter der reservierten
+Domain `.invalid`. Sie verwendet ausschließlich das neue eigene Docker-Lab,
+ein eigenes Mailprofil und ein anonymes SMTP-Konto für `localhost` auf Port 1.
+Der native Kontocapture muss diese Bindung vor dem Queueauftrag bestätigen.
+Mail-, Anlagen-, Log-, Profil- und Kontoquellen müssen vorher leer sein;
+Mail-XPs müssen deaktiviert und Service Broker in `msdb` aktiviert sein.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailExecutionFailure `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Die Fixture aktiviert Mail-XPs vorübergehend und wartet höchstens 120
+Einsekundenpolls auf einen nativ fehlgeschlagenen eigenen Mailitem und einen
+zugehörigen Fehlerlogeintrag des externen Mailprozesses. Sie verwendet
+ausschließlich nativ erzeugte Mailhistorie. Vor den drei Analyzeraufrufen werden Queue und
+Mail-XPs deaktiviert. NONE, TABLE und CONSOLE prüfen native Aggregate,
+JSON-Parität, Quellerhaltung und Callerzustand. Für das native Cleanup und
+die Queueprüfung werden Mail-XPs erneut kurz aktiviert. Danach sind eigener
+Mailitem, Profil und Konto entfernt; Queue- und Konfigurationseintrittswerte
+werden wiederhergestellt. Native Logs und Ressourcen eines
+fehlgeschlagenen Szenarios benötigen das äußere identitygebundene Labcleanup.
+Der Nachweis betrifft einen lokalen Fehlerfall; erfolgreiche SMTP-Annahme,
+Zustellung, ein bestimmter SMTP-Fehlergrund, Retryverhalten und automatische
+Retention bleiben getrennte Nachweise.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
