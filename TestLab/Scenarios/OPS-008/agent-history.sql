@@ -427,7 +427,8 @@ BEGIN TRY
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobsteps] WHERE [job_id] = @JobId)
         THROW 54948, N'Die synthetische Agent-Fixture wurde nicht vollständig zurückgerollt.', 1;
 
-    DECLARE @CalendarCase int = 1, @CalendarConsumer int, @CalendarDate int, @CalendarReturn int,
+    DECLARE @CalendarCase int = 1, @CalendarConsumer int, @CalendarDate int,
+        @CalendarRunTime int, @CalendarReturn int,
         @CalendarBadStep bit, @CalendarCalls int = 0, @CalendarRollbacks int = 0,
         @CalendarBaseline nvarchar(max), @CalendarBefore nvarchar(max),
         @CalendarAfter nvarchar(max), @CalendarState int;
@@ -445,9 +446,12 @@ BEGIN TRY
             JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
                 ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
             FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
-    WHILE @CalendarCase <= 4
+    WHILE @CalendarCase <= 8
     BEGIN
-        SELECT @CalendarDate = CASE WHEN @CalendarCase <= 2 THEN 20230229 ELSE 20240230 END,
+        SELECT @CalendarDate = CASE WHEN @CalendarCase <= 2 THEN 20230229
+                WHEN @CalendarCase <= 4 THEN 20240230 ELSE 20240229 END,
+            @CalendarRunTime = CASE WHEN @CalendarCase <= 4 THEN 0
+                WHEN @CalendarCase <= 6 THEN 236060 ELSE 240000 END,
             @CalendarBadStep = CASE WHEN @CalendarCase % 2 = 0 THEN 1 ELSE 0 END,
             @CalendarConsumer = 1;
         WHILE @CalendarConsumer <= 3
@@ -475,7 +479,8 @@ BEGIN TRY
                  [retries_attempted], [server])
             VALUES (@JobId, 0, N'ExampleJobOutcome', 0, 0, N'ExampleCalendarOutcome', 1,
                 CASE WHEN @CalendarBadStep = 1 THEN 20240229 ELSE @CalendarDate END,
-                0, 125, 0, 0, 0, 0, N'ExampleHistoryServer');
+                CASE WHEN @CalendarBadStep = 1 THEN 0 ELSE @CalendarRunTime END,
+                125, 0, 0, 0, 0, N'ExampleHistoryServer');
             IF @CalendarBadStep = 1
                 INSERT [msdb].[dbo].[sysjobhistory]
                     ([job_id], [step_id], [step_name], [sql_message_id], [sql_severity],
@@ -483,7 +488,7 @@ BEGIN TRY
                      [operator_id_emailed], [operator_id_netsent], [operator_id_paged],
                      [retries_attempted], [server])
                 VALUES (@JobId, 1, N'ExampleCalendarStep', 0, 0, N'ExampleCalendarStep',
-                    1, @CalendarDate, 0, 125, 0, 0, 0, 0, N'ExampleHistoryServer');
+                    1, @CalendarDate, @CalendarRunTime, 125, 0, 0, 0, 0, N'ExampleHistoryServer');
             SELECT @CalendarBefore = (SELECT
             JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
                 ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
@@ -599,8 +604,8 @@ BEGIN TRY
         END;
         SET @CalendarCase += 1;
     END;
-    IF @CalendarCalls <> 12 OR @CalendarRollbacks <> 12
-        THROW 56218, N'Die zwölf Kalenderaufrufe oder Rollbacks fehlen.', 1;
+    IF @CalendarCalls <> 24 OR @CalendarRollbacks <> 24
+        THROW 56218, N'Die 24 Kalender-/Uhrzeitaufrufe oder Rollbacks fehlen.', 1;
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;

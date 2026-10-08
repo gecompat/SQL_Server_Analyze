@@ -2653,3 +2653,62 @@ Andere ungültige Datums-/Uhrzeitwerte, die ungültigen Kalenderfälle in
 TABLE/RAW/CONSOLE und innere Fehlercleanup-Gegenproben bleiben ungeprüft.
 Historische Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten;
 OPS-008 bleibt partiell. SMTP bleibt Aufgabe von SQL_Server_Lab.
+
+## OPS-008-Regression ungültiger Agent-Uhrzeiten vom 8. Oktober 2026
+
+Der integrierte Fehlerisolationsfix aus PR #306 wird für die ungültigen
+Uhrzeiten 236060 und 240000 bei gültigem Datum 20240229 geprüft. Der
+native Lauf besteht auf SQL Server 2025 `17.0.4075.5`,
+Linux/Docker und Framework-CL170 in einem neuen eigenen lokalen Lab.
+Der Scope erweitert ausschließlich die bestehende TEST-0001-Fixture
+und ihre Dokumentation. Produktquellen, Signaturen, Ausgabeschemata,
+Installer und Registry bleiben erhalten.
+
+Die getrennten privaten ON-/OFF-Proben injizieren die zwei Uhrzeiten
+jeweils als Job- und Stepoutcome eines eigenen deaktivierten Jobs mit
+einer TSQL-Stepdefinition. Der Job wird nicht ausgeführt. Bei ungültigem
+Step bleiben Jobdatum und Jobuhrzeit gültig. Je Mode messen vier direkte
+native OFF-Orakel außerhalb jeder Consumertransaktion Fehler 242; eine
+unabhängige Monitoring-Baseline bleibt fehlerfrei. Je Mode bestehen
+zwölf NONE-/JSON-Consumeraufrufe mit jeweils frischer eigener
+schreibfähiger TX1.
+
+| Consumer | Ungültige Jobuhrzeit, je Mode zwei Fälle | Ungültige Stepuhrzeit, je Mode zwei Fälle |
+|---|---|---|
+| MsdbHealth | AVAILABLE ohne Partial oder Fehler; Historycount 1 | AVAILABLE ohne Partial oder Fehler; Historycount 2 |
+| AgentJobs | ERROR_HANDLED/Partial/242 mit Message und gültigem JSON; Jobs 0 und Steps 0 | ERROR_HANDLED/Partial/242 mit Message und gültigem JSON; Jobs 1 und Steps 0 |
+| AgentMonitoring | AVAILABLE_LIMITED/Partial/242 mit Message und gültigem JSON; Jobs 0 | AVAILABLE_WITH_FINDING ohne Partial oder Fehler; Jobs 1 |
+
+Alle 24 Callertransaktionen bleiben schreibfähig mit XACT_STATE 1; kein
+Fehler entkommt. Sechs vollständige geordnete Agentquellen einschließlich
+NULL-Werten, TX1, Locktimeout 31 und der jeweilige ON-/OFF-Wert bleiben
+nach jedem Consumer erhalten. Je Mode restaurieren zwölf eigene
+Rollbacks sämtliche ursprünglichen Quellen. Abschließend bestehen
+ursprüngliches OFF, Locktimeout -1, TX0 und separat erfasster XACT_STATE 0.
+
+Die bestehende registrierte TEST-0001-Fixture behält ihre 21 positiven
+Consumeraufrufe und zwölf Aufrufe für ungültige Datumswerte bei. Vier zusätzliche
+Job-/Step-Uhrzeitfälle erweitern die negativen ON-Aufrufe auf 24 mit
+jeweils eigener frischer Transaktion und geprüftem Rollback. Die native
+Ausführung bestätigt 21 positive und 24 Kalender-/Uhrzeitaufrufe sowie
+24 eigene Kalenderrollbacks. Der private JSON-Transport ergänzt nur
+die Abschlusszeile; die fachlichen Assertions stammen aus der Fixture.
+
+Die aus kanonischen Quellen neu erzeugte Coreinstallation besteht mit
+187 Batches. Smoke110 besteht mit drei und Runtime122 mit zwei Batches.
+Die im vorausgehenden Produktslice erfolgreich geprüften 13 Runtime-
+verträge werden für die unveränderten Produktquellen nicht wiederholt.
+Es wird keine weitere native Engine oder Compatibility-Matrix gestartet.
+Der eigene äußere Labcleanup besteht mit zwei Schritten ohne Fehler;
+der Statepfad ist entfernt. Erst danach wird das PASS-JSON exklusiv mit
+CreateNew geschrieben. Dieser Umfang hat keinen vorausgehenden nativen
+Fehlversuch. ON-SQL SHA-256 ist `153761B0FDD4F68C08A76E1F9998942699698DC28B7991FE603003BB18064FC5`;
+OFF-SQL SHA-256 ist `1D26789280B80E349D7FB1F38FD05AB8DC6577C281849D88180FDDA896BB3597`.
+Die tatsächliche Abnahme wurde am `2026-10-08T15:33:42.9771880+00:00` erfasst.
+
+236060 verändert Minuten und Sekunden gemeinsam; isolierte Teilfeldgrenzen,
+andere Uhrzeitwerte, fehlerhafte Dauerformate, tatsächliche Agentdauer
+und ungültige Kalenderwerte in TABLE/RAW/CONSOLE bleiben ungeprüft.
+Historische Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten;
+OPS-008 bleibt partiell. Die SMTP-Abhängigkeit wird ausschließlich durch
+die öffentliche integrierte und nativ abgenommene Lab-Funktion erfüllt.
