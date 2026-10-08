@@ -3018,3 +3018,76 @@ empirische innere Catchcleanup-Abnahme bleiben offen. Historische
 Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten; OPS-008 bleibt
 partiell. SMTP wartet auf die öffentliche integrierte und passend nativ
 abgenommene Lab-Funktion.
+
+## OPS-008-Abnahme selektiver Agenthistorypurges vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 prüft vier unabhängige
+Callertransaktionen. Jede baut zwei eigene deaktivierte Jobs mit je einem
+TSQL-Step sowie acht injizierte erfolgreiche Historyzeilen frisch auf.
+Serverzuordnungen, Schedules, Benachrichtigungen und tatsächliche
+Jobausführung sind ausgeschlossen. Acht eigene Historyidentitäten,
+Step-/Jobreihenfolge und die sieben erfassten festen Historyfelder
+werden vor jeder Purgephase geprüft.
+
+Der Zieljob besitzt drei Step-/Jobpaare mit lokalen Startreferenzen
+2024-12-31T23:59:59, 2025-01-01T01:02:03 und 2025-01-01T01:02:04.
+Der zweite eigene Job besitzt ein älteres Paar mit Startreferenz
+2020-01-01T01:02:03. Alle Rohdauern und Retrywerte sind null Sekunden
+beziehungsweise null Versuche. Die erwartete Restmenge wird vor dem
+Purge anhand fester Paaridentitäten bestimmt, nicht aus seiner Datumsformel.
+
+| Unabhängige Phase | Gesamtcount | Zieljobcount | Zweiter Job |
+|---|---:|---:|---:|
+| Ohne Purge | 8 | 6 | 2 |
+| Zieljob mit Grenze 2025-01-01T01:02:03 | 6 | 4 | 2 |
+| Zieljob mit Grenze 2025-01-01T01:02:04 | 4 | 2 | 2 |
+| Zieljob mit NULL-Datum | 2 | 0 | 2 |
+
+Alle drei nativen sp_purge_jobhistory-Aufrufe erhalten ausschließlich
+die eigene Zieljob-ID und liefern Returncode 0. Die exakte Datumsgrenze
+erhält die gleichzeitig gestarteten Zeilen; die um eine Sekunde erhöhte
+Grenze entfernt dieses Paar. NULL-Datum entfernt die verbleibende
+Zieljobhistory. Vollständige erwartete Restzeilen einschließlich NULL-Werten,
+die ältere Gegenprobe und die fünf anderen Agentquellen bleiben erhalten.
+Entfernte Identitäten sind ausdrücklich ausgeschlossen. Dies ist ein
+begrenzter empirischer Nachweis dieser injizierten Zustände, keine
+allgemeine Garantie für den Purgealgorithmus.
+
+Je Phase bestehen vier NONE-/JSON-Aufrufe, insgesamt 16. MsdbHealth
+meldet AVAILABLE ohne Partial oder Fehler mit dem jeweiligen Gesamtcount,
+NULL-Zeitgrenzen und nicht leerer EvidenceLimit. AgentJobs meldet AVAILABLE
+ohne Partial oder Fehler und erhält beide Job- und Stepdefinitionen.
+Nach dem NULL-Purge sind die Historienfelder des Zieljobs und seines
+Steps NULL; der zweite Job behält seine festen Historywerte. Der
+Problemfilter enthält weiterhin die beiden deaktivierten Jobs und
+keinen Step. Monitoring meldet AVAILABLE_WITH_FINDING ohne Partial
+oder Fehler mit zwei JOB_STATE_INFORMATIONAL/INFO-Zeilen; nur die
+Historyfelder des Zieljobs sind in der letzten Phase NULL.
+
+Sechs vollständige geordnete Quellen einschließlich NULL-Werten bleiben
+nach jedem Consumer erhalten. Der Caller bleibt schreibfähig mit ON,
+Locktimeout 31, TX1 und separat erfasstem XACT_STATE 1. Vier eigene
+Rollbacks restaurieren die vollständige ursprüngliche Basis und entfernen
+die beiden Job-/Stepdefinitionen und injizierte History. Nach jedem
+Rollback ist XACT_STATE separat null. Finale ursprüngliche OFF/-1/TX0-
+Restauration und separat erfasster XACT_STATE 0 bestehen.
+
+Coreinstallation besteht mit 187 Batches, Smoke110 mit drei und
+Runtime122 mit zwei Batches. Der eigene äußere Labcleanup besteht mit
+zwei Schritten ohne Fehler; der Statepfad ist entfernt. Erst danach wird
+das PASS-JSON exklusiv mit CreateNew geschrieben. Dieser Umfang hat
+keinen vorausgehenden nativen Fehlversuch. Tatsächliche Abnahme:
+`2026-10-08T17:11:19.4606620+00:00`. SQL-SHA-256:
+`2341561E04E8CEEFDAE5EDA209AAA762E3E9E779E29408BB2364C176985FD80E`. Wrapper-SHA-256:
+`3813F4BC63B68E4DBA4F1230C1AC2B6C4C7A1D0A61F4E6A487C24C38FF9F2AF0`.
+
+Sieben kanonische Dokumentationsquellen und genau fünf bestehende
+CSV-Textzellen sind ergänzt. Produktquellen, öffentliche Verträge,
+Fixture, Installer, historische Laufzeitmatrix, Statusflags und OpenScope
+bleiben erhalten. Unveränderte Runtimeverträge und Kalenderfixtures
+werden nicht erneut ausgeführt. Tatsächliche Jobausführung, automatische
+Altersretention, allgemeine Plattform- oder Purgegarantien, andere
+Ausgabearten und empirische innere Catchcleanup-Abnahme bleiben offen.
+OPS-008 bleibt partiell. SMTP wartet auf die öffentliche integrierte
+und passend nativ abgenommene Lab-Funktion.

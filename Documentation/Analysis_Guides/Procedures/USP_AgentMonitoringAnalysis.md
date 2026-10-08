@@ -295,6 +295,18 @@ belegt weder Formatvalidierung noch Normalisierung, tatsächliche
 Ausführungsdauer oder allgemeine semantische Zulässigkeit. Die früheren
 Fehler-242-Uhrzeitproben betreffen das getrennte Feld run_time.
 
+Eine getrennte native SQL-2025-Probe charakterisiert die selektive
+Historybereinigung eines eigenen deaktivierten Jobs bei erhaltenem zweitem
+Job. Vier frisch aufgebaute unabhängige Phasen liefern Gesamtcounts
+8, 6, 4 und 2 sowie Zieljobcounts 6, 4, 2 und 0. Monitoring behält beide
+Jobs mit JOB_STATE_INFORMATIONAL/INFO und AVAILABLE_WITH_FINDING ohne
+Partial oder Fehler. Nach dem NULL-Datumspurge für den Zieljob sind nur
+dessen LatestRunStatus, LatestRunDateTime und LatestRunDuration NULL;
+die Historywerte des zweiten Jobs bleiben erhalten. 16 NONE-/JSON-Aufrufe
+und vier eigene Rollbacks erhalten Quellen und Callerzustand. Die History
+ist injiziert; tatsächliche Jobausführung, automatische Altersretention
+und allgemeine Purgegarantien werden nicht belegt.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.

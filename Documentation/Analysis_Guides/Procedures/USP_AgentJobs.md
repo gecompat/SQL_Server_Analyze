@@ -331,6 +331,20 @@ bestehende Arithmetik für diese gespeicherten Werte; Formatvalidierung,
 Normalisierung, tatsächliche Ausführungsdauer und allgemeine semantische
 Zulässigkeit werden nicht belegt.
 
+Eine getrennte native SQL-2025-Probe charakterisiert die selektive
+Historybereinigung eines eigenen deaktivierten Jobs bei erhaltenem zweitem
+Job. Vier frisch aufgebaute unabhängige Phasen liefern Gesamtcounts
+8, 6, 4 und 2 sowie Zieljobcounts 6, 4, 2 und 0. Der native Purge erhält
+Einträge genau an der Datumsgrenze; die um eine Sekunde erhöhte Grenze
+entfernt sie. Der NULL-Datumsfall entfernt ausschließlich die History des
+ausgewählten Jobs. AgentJobs behält beide Job- und Stepdefinitionen;
+nach dem NULL-Purge sind nur die Historienfelder des Zieljobs und seines
+Steps NULL. Der Problemfilter enthält die beiden deaktivierten Jobs und
+keinen Step. 16 NONE-/JSON-Aufrufe und vier eigene Rollbacks erhalten
+Quellen und Callerzustand. Die History ist injiziert; tatsächliche
+Jobausführung, automatische Altersretention und allgemeine Purgegarantien
+werden nicht belegt.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
