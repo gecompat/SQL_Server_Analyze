@@ -2820,3 +2820,62 @@ in TABLE/RAW/CONSOLE, weitere Dauergrenzen und empirische innere Catchcleanup-
 Gegenproben bleiben ungeprüft. Historische Laufzeitmatrix, Statusflags und
 OpenScope bleiben erhalten; OPS-008 bleibt partiell. Die SMTP-Abhängigkeit
 benötigt weiterhin die öffentliche integrierte und nativ abgenommene Lab-Funktion.
+
+## OPS-008-Abnahme einer tatsächlichen Agentdauer mit Minutenkomponente vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 führt einen eigenen
+TSQL-Job mit genau einem Step aus. Der Step wartet 63 Sekunden und führt
+SELECT 1 aus. Retry, Schedule und Benachrichtigungen fehlen. Nach zwei
+bestätigten erfolgreichen nativen Historyzeilen und abgeschlossener
+aktueller Agent-Activity wird der Job deaktiviert. Es werden keine
+Historywerte injiziert.
+
+Native History speichert den HHmmss-Rohwert 103 für den Step und
+103 für den Job. Der private Guard nimmt nur Rohwerte von 100 bis
+159 an. In diesem begrenzten Bereich ergibt die unabhängige Referenz
+60 + (Rohwert - 100) die Sekundenwerte 63 für den Step und
+63 für den Job. Sie kopiert keine allgemeine Dauerumrechnungsformel
+aus dem Produkt. Die Probe setzt weder exakte WAITFOR-Dauer noch gleiche
+Job- und Stepdauer voraus. Native Startwerte werden unabhängig mit
+DATETIMEFROMPARTS aus run_date und run_time gebildet; agent_datetime
+dient nicht als Referenz. Die gespeicherten Startwerte sind
+`2026-10-08T16:21:50` für den Step und `2026-10-08T16:21:50` für den Job,
+ohne Zeitzonenvertrag.
+
+| NONE-/JSON-Aufruf | Tatsächlich bestätigter Umfang |
+|---|---|
+| MsdbHealth | AVAILABLE ohne Partial oder Fehler; Historycount 2, NULL-Zeitgrenzen und nicht leere EvidenceLimit |
+| AgentJobs normal | AVAILABLE ohne Partial oder Fehler; ein deaktivierter erfolgreicher Job und ein erfolgreicher Step; LastRunDurationSeconds entspricht separaten Sekundenreferenzen, LastRunDateTime separaten Startreferenzen |
+| AgentJobs Problemfilter | Ein deaktivierter erfolgreicher Job mit bestätigten Sekunden und Startzeit; kein Step |
+| AgentMonitoring | AVAILABLE_WITH_FINDING ohne Partial oder Fehler; eine erfolgreiche deaktivierte Jobzeile mit JOB_STATE_INFORMATIONAL/INFO; LatestRunDuration erhält den nativen HHmmss-Jobrohwert, LatestRunDateTime entspricht der Jobstartreferenz |
+
+Sechs vollständige geordnete Agentquellen einschließlich NULL-Werten
+bleiben nach Stabilitätsprüfung und jedem der vier Consumeraufrufe
+erhalten. Die eigene Callertransaktion bleibt schreibfähig mit ON,
+Locktimeout 31, TX1 und separat erfasstem XACT_STATE 1. Ein eigener
+Rollback restauriert die vollständigen Quellen. Nach Löschen des eigenen
+Jobs entsprechen sie der ursprünglichen Basis. Abschließend bestehen
+ursprüngliches OFF, Locktimeout -1, TX0 und separat erfasster XACT_STATE 0.
+
+Die aus kanonischen Quellen erzeugte Coreinstallation besteht mit
+187 Batches, Smoke110 mit drei und Runtime122 mit zwei Batches. Der eigene
+äußere Labcleanup besteht mit zwei Schritten ohne Fehler; der Statepfad
+ist entfernt. Erst danach wird das PASS-JSON exklusiv mit CreateNew
+geschrieben. Dieser Umfang hat keinen vorausgehenden nativen Fehlversuch.
+Die tatsächliche Abnahme wurde am `2026-10-08T16:23:00.5209381+00:00` erfasst.
+SQL-SHA-256 ist `1C54BDF5FDE194C74F1AD8986CD2FE6F28A0BD4FC879FD56C64A55B572341629`;
+Wrapper-SHA-256 ist
+`6A7C7A3C7840044E62DA288618F817B165D30BAECEA77C071B5CC66DE52A4026`.
+
+Der Umfang ergänzt ausschließlich sieben kanonische Dokumentationsquellen.
+Produktquellen, öffentliche Verträge, Fixture und Installer bleiben erhalten.
+Unveränderte Runtimeverträge und die Kalenderfixture werden nicht erneut
+ausgeführt. Es wird keine zusätzliche native Engine oder Compatibility-
+Matrix gestartet. Dies ist eine einzelne tatsächliche Dauerprobe mit
+Minutenkomponente eins; Stundenwerte, weitere Minuten- oder Dauergrenzen,
+exakte WAITFOR-Timinggarantien, Durationparität in TABLE/RAW/CONSOLE und
+empirische innere Catchcleanup-Abnahme bleiben offen. Historische
+Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten; OPS-008 bleibt
+partiell. SMTP bleibt bis zur öffentlichen integrierten und passend nativ
+abgenommenen Lab-Funktion zurückgestellt.
