@@ -324,6 +324,37 @@ Run. Der Analyzer führt keine Bereinigung aus. Automatische Aufbewahrung,
 physische Backupaufbewahrung und die Retention weiterer Historien bleiben
 eigenständige Nachweise.
 
+Die Backup-/Restore-Fixture verlangt vor Quelländerungen den ursprünglichen
+Standardlocktimeout `-1` und erfasst XACT_ABORT vor einer Änderung.
+XACT_ABORT wird im Try-Pfad vor der eigenen Datenbankerzeugung aktiviert.
+Consumer prüfen eine committable eigene Transaktion mit Locktimeout 137
+und XACT_ABORT ON. Nach jeder Consumerphase wird der Locktimeout direkt
+auf `-1` gesetzt; XACT_ABORT bleibt bis zum eigenen Erfolgscleanup aktiviert.
+Erfolg und Catch restaurieren beide ursprünglichen Optionen direkt im
+Callerbatch. Der Erfolg prüft zusätzlich neun Consumeraufrufe; Catch wirft
+den ursprünglichen Fehler nach eigenem Rollback und Optionswiederherstellung
+erneut.
+
+Backups, Restores und ihre Historien entstehen außerhalb der
+Consumertransaktion. Der Catch entfernt diese Ressourcen nicht innerhalb
+der SQL-Verbindung; das äußere identitygebundene Labcleanup ist dafür
+verantwortlich. Der Optionsvertrag verspricht keine Wiederherstellung von
+NOCOUNT oder Datenbankkontext und kein allgemeines Cleanup temporärer Tabellen.
+
+Eine zusätzliche private Gegenprobe bestand auf SQL Server `17.0.4075.5`
+mit Framework-Compatibility-Level 170 drei Fälle in zwei weiteren neuen Labs.
+Zwei Fehler mit ursprünglichem XACT_ABORT OFF beziehungsweise ON nach drei
+tatsächlichen Backup-/Restore-Paaren und vor dem ersten Consumer in Phase 1
+bestätigten auf derselben offenen Verbindung die ursprünglichen Optionen,
+Transaktionscount und zuvor erfassten Transaktionszustand null sowie beide
+genau gebundenen eigenen Datenbanken. Vollständige Werte aller acht
+Historienquellen und acht Datenbankkatalogfelder blieben gegenüber dem vor
+der Consumertransaktion erfassten Snapshot erhalten. Eine frühe Locktimeout-
+31-Ablehnung bei OFF bestätigte unveränderte Optionen, keine eigene Datenbank
+und acht leere Quellen. Beide Labs wurden anschließend einzeln vollständig
+entfernt. Spätere Backup-/Restore- oder Purgefehler und erfolgreiche Retention
+mit ursprünglichem ON sind damit nicht belegt.
+
 Mit `-Scenario MailRetention` injiziert eine getrennte Fixture drei eigene
 Mailzeilen mit kontrollierten Zeitstempeln und Status `failed` in die zuvor
 leeren Mailquellen. Konfigurierte und effektive Mail-XPs müssen deaktiviert

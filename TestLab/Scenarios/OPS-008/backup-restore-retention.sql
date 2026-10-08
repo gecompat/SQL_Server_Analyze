@@ -3,13 +3,14 @@ GO
 
 /* Die Fixture prüft ausschließlich Backup-/Restore-Retention im neuen eigenen Lab. */
 SET NOCOUNT ON;
-SET XACT_ABORT ON;
 IF @@TRANCOUNT <> 0 OR NOT EXISTS
 (
     SELECT 1 FROM [sys].[extended_properties]
     WHERE [class] = 0 AND [name] = N'SQLANALYZE.Ops008Disposable' AND CONVERT(int,[value]) = 1
 ) OR DB_ID(N'ExampleOps008Retention') IS NOT NULL OR DB_ID(N'ExampleOps008RetentionRestore') IS NOT NULL
     THROW 55161, N'Die eigene Wegwerf-Lab-Bindung, Transaktionsbasis oder freie Datenbanknamen fehlen.', 1;
+IF @@LOCK_TIMEOUT <> -1
+    THROW 55181, N'Der ursprüngliche Standardlocktimeout fehlt.', 1;
 IF EXISTS (SELECT 1 FROM [msdb].[dbo].[backupset]) OR
    EXISTS (SELECT 1 FROM [msdb].[dbo].[backupfile]) OR
    EXISTS (SELECT 1 FROM [msdb].[dbo].[backupfilegroup]) OR
@@ -27,7 +28,8 @@ DECLARE @Low datetime2(3), @High datetime2(3), @DbBefore nvarchar(max), @DbAfter
 DECLARE @Before nvarchar(max), @After nvarchar(max), @Retained nvarchar(max), @AfterPurge nvarchar(max);
 DECLARE @Mode varchar(20), @Mapping nvarchar(max), @Json nvarchar(max), @TableJson nvarchar(max), @ConsoleJson nvarchar(max);
 DECLARE @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(4000);
-DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100), @ReturnCode int;
+DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @ReturnCode int;
+DECLARE @PreviousXactAbort bit = CASE WHEN (@@OPTIONS & 16384) = 16384 THEN 1 ELSE 0 END;
 CREATE TABLE [#Ops008Native]
 (
     [Area] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS,
@@ -41,6 +43,7 @@ CREATE TABLE [#Ops008Console]
     [SizeMb] decimal(19,2), [StatusCode] varchar(40), [EvidenceLimit] nvarchar(1000)
 );
 BEGIN TRY
+    SET XACT_ABORT ON;
     CREATE DATABASE [ExampleOps008Retention] COLLATE SQL_Latin1_General_CP1_CS_AS;
     SELECT @CreatedSource = 1, @SourceId = DB_ID(N'ExampleOps008Retention');
     WHILE @Stage <= 3
@@ -218,13 +221,13 @@ BEGIN TRY
         IF EXISTS (SELECT @Before COLLATE SQL_Latin1_General_CP1_CS_AS
                    EXCEPT SELECT @After COLLATE SQL_Latin1_General_CP1_CS_AS)
            OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137
+           OR (@@OPTIONS & 16384) <> 16384
             THROW 55170, N'Der Analyzer hat Quellwerte oder den Callerzustand verändert.', 1;
         SET @Calls += 1;
         SET @Consumer += 1;
     END;
         ROLLBACK TRANSACTION;
-        SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-        EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+        SET LOCK_TIMEOUT -1;
         SELECT @DbAfter = (SELECT [database_id], [name], [create_date], [collation_name], [state], [user_access],
             [recovery_model], [is_read_only] FROM [sys].[databases] WHERE [database_id] IN (@SourceId, @RestoreDbId)
             ORDER BY [database_id] FOR JSON PATH, INCLUDE_NULL_VALUES);
@@ -242,11 +245,18 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
-    SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-    EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+    SET LOCK_TIMEOUT -1;
+    IF @PreviousXactAbort = 1 SET XACT_ABORT ON;
+    ELSE SET XACT_ABORT OFF;
     /* Das äußere identitätsgebundene Labcleanup entfernt auch fehlgeschlagene eigene Fixtures. */
     THROW;
 END CATCH;
+SET LOCK_TIMEOUT -1;
+IF @PreviousXactAbort = 1 SET XACT_ABORT ON;
+ELSE SET XACT_ABORT OFF;
+IF @Calls <> 9 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout
+   OR CASE WHEN (@@OPTIONS & 16384) = 16384 THEN 1 ELSE 0 END <> @PreviousXactAbort
+    THROW 55182, N'Die Consumerzahl oder die ursprünglichen Calleroptionen sind verletzt.', 1;
 DROP TABLE [#Ops008Console];
 DROP TABLE [#Ops008Native];
 SELECT N'OPS008_BACKUP_RESTORE_RETENTION' AS [ContractName], 3 AS [ExecutedBackups], 3 AS [ExecutedRestores],

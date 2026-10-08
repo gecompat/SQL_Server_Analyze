@@ -1367,3 +1367,83 @@ automatische Aufbewahrung, zusätzliche native Engines und weitere
 Retentiongrenzen bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
 TEST-0001, Registry, Maturityflags und historische Release-Matrix bleiben
 unverändert.
+
+
+## Ergänzende OPS-008-Backup-/Restore-Calleroptionen vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario BackupRestoreRetention` bestand auf
+einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab mit `PASS` und `REMOVED`.
+Coreinstallation mit 187 Batches, Smoke-Test `110`, Runtimevertrag `122`
+und die bestehende Backup-/Restore-Retentionfixture bestanden. Der Lauf
+bestätigte `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Fixture verlangt vor Quelländerungen den ursprünglichen
+Standardlocktimeout `-1` und erfasst XACT_ABORT vor einer Änderung.
+XACT_ABORT wird im Try-Pfad vor der eigenen Datenbankerzeugung aktiviert.
+Die Consumer prüfen XACT_ABORT ON, Locktimeout 137 und eine committable
+eigene Transaktion. Nach jeder Consumerphase wird der Locktimeout direkt
+auf `-1` gesetzt; XACT_ABORT bleibt bis zum eigenen Erfolgscleanup aktiv.
+Erfolg und Catch restaurieren beide ursprünglichen Optionen direkt im
+Callerbatch. Der Erfolg prüft zusätzlich neun Consumeraufrufe; Catch wirft
+den ursprünglichen Fehler nach eigenem Rollback und Optionswiederherstellung
+erneut. Das bestehende äußere Labcleanup bleibt für fehlgeschlagene eigene
+Backup-/Restore-Ressourcen verantwortlich.
+
+Der native Lauf bestätigte drei tatsächliche Backups einer eigenen leeren
+Datenbank und drei Restores in dieselbe eigene Restore-Datenbank. Kontrollierte
+Zeitstempel und zwei native Datumsbereinigungen bestätigten drei, ein und
+null eigene Paare. Jüngere vollständige Werte aller acht betroffenen
+Historientabellen blieben erhalten. Neun NONE-, TABLE- und CONSOLE-Aufrufe
+bestanden Counts, native MIN-/MAX-Zeitwerte, Paritäten aller acht Fachfelder
+und Quell-/Callerzustandsprüfungen. Acht Katalogfelder beider Datenbanken
+blieben nach drei eigenen Consumerrollbacks erhalten. Die Fixture bestand
+mit zwei Batches und entfernte im Erfolgspfad beide genau gebundenen eigenen
+Datenbanken. Das äußere Cleanup entfernte Container, Volume, Backupdateien
+und temporären State mit zwei Schritten und null Fehlern.
+
+Eine getrennte private direkte SqlClient-Gegenprobe bestand drei Fälle auf
+zwei weiteren neuen Labs derselben nativen Kombination. Das erste Lab führte
+auf getrennten eigenen Verbindungen eine frühe Locktimeout-31-Ablehnung bei
+XACT_ABORT OFF und einen Fehler mit ursprünglichem OFF aus; das zweite Lab
+führte den Fehler mit ursprünglichem ON aus. Die Fehlerfälle injizierten
+`THROW 56090` nach drei tatsächlichen Backup-/Restore-Paaren vor dem ersten
+Consumer in Phase 1. Ein privater Snapshot vor der Consumertransaktion erfasste
+die vollständigen Werte aller acht Historienquellen und die acht bereits
+öffentlich geprüften Datenbankkatalogfelder einschließlich beider eigenen
+Datenbank-IDs. Der Snapshot blieb nach dem Consumerrollback verfügbar.
+
+Nach erneutem Fehler bestätigte dieselbe offene Verbindung Locktimeout `-1`,
+den ursprünglichen XACT_ABORT-Wert sowie vor Quellabfragen erfassten
+Transaktionszustand null bei Transaktionscount null. Beide genau gebundenen
+eigenen Datenbanken, sämtliche Historienwerte und alle acht Katalogfelder
+blieben erhalten. Die beiden Fehlerfälle bestätigten Historiencounts drei,
+sechs, drei, drei, drei, drei, sechs und drei für `backupset`, `backupfile`,
+`backupfilegroup`, `backupmediaset`, `backupmediafamily`, `restorehistory`,
+`restorefile` und `restorefilegroup`. Die frühe Ablehnung bestätigte unveränderte
+Optionen, keine der beiden eigenen Datenbanken und alle acht leeren Quellen.
+Dieser Befund belegt die vorhandene äußere Cleanupgrenze; der SQL-Catch
+entfernt die außerhalb der Consumertransaktion erzeugten Ressourcen nicht.
+
+Beide privaten Labs wurden anschließend einzeln durch das identitygebundene
+äußere Cleanup entfernt: je zwei Schritte mit null Fehlern sowie entfernte
+Container, Volumes und temporäre States. Die drei Ergebnisquellenhashes
+entsprachen der geprüften kanonischen SQL-Datei. Genau ein eindeutiger Fehlerhook
+und ein Snapshot vor der Consumertransaktion ergänzten die privat konsumierte
+Quelle; Skript, Rohdaten und Ergebnisdatei bleiben außerhalb von Git.
+Die erste Gegenprobe bestand. Fixturebatches waren auf 300 Sekunden begrenzt,
+Einzelabfragen und Verbindungsaufbau auf 30 Sekunden. Der erfolgreiche
+öffentliche Lauf wurde nicht wiederholt.
+
+Der private Fehlernachweis betrifft ausschließlich den Punkt vor dem ersten
+Consumer in Phase 1. Spätere Backup-/Restore- oder Purgefehler, erfolgreiche
+Retention mit ursprünglichem XACT_ABORT ON, NOCOUNT, Datenbankkontext und
+allgemeine Temp-Tabellenbereinigung bleiben unbelegt. Zwei ältere dynamische
+Restores bleiben offen; als Nächstes folgen tatsächlicher Mailfehler und
+Maillogretention. Der XACT_ABORT-Umfang der drei älteren Fenster-/Agent-
+Aggregatfixtures benötigt eine getrennte Prüfung. Erfolgreicher Mailversand,
+tatsächliche Maintenance, automatische Aufbewahrung, zusätzliche native Engines
+und weitere Retentiongrenzen bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
+Release-Matrix bleiben unverändert.
