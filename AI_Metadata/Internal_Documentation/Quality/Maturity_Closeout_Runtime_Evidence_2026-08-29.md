@@ -3163,3 +3163,73 @@ pauschal geprüft. Automatische Altersretention, allgemeine Plattform-
 oder Purgegarantien und andere Engines bleiben offen. OPS-008 bleibt
 partiell. SMTP wartet auf die öffentliche integrierte und passend
 nativ abgenommene Lab-Funktion.
+
+## OPS-008-Abnahme der exakten Backuphistory-Altersgrenze vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 prüft zwei tatsächliche
+COPY_ONLY-Backups und zwei tatsächliche Restores. Zwei freie synthetische
+Datenbanknamen werden als eigene Datenbanken erzeugt. Jede wird auf einem
+getrennten neuen Medium gesichert und unter dem eigenen Namen restauriert.
+Die eigenen Datenbankidentitäten bleiben erhalten; die Katalogbaseline
+wird nach beiden Restores erfasst. Beide Backupsets, Medien, Restorezeilen
+und jeweils zwei Dateibindungen sind eindeutig geprüft.
+
+Alle acht Historienquellen sind vor Aufbau leer. Die zwei tatsächlichen
+Paare besitzen unterschiedliche media_set_id-Werte. Anschließend erhalten
+nur ihre genau gebundenen Backup- und Restorezeilen kontrollierte
+Historienzeiten: A verwendet 2025-01-01T12:00:00, B verwendet
+2000-01-01T12:00:00. Backup-Start, Backup-Ende und Restorezeit sind je
+Paar auf denselben Zeitpunkt gesetzt und danach ausdrücklich geprüft.
+Tatsächliche Operationen und kontrollierte Historienzeiten sind getrennte
+Evidenz; unabhängige Regeln für unterschiedliche Zeitfelder werden nicht geprüft.
+
+| Phase | Cutoff | Backupcount | Restorecount | MIN | MAX |
+|---|---|---:|---:|---|---|
+| Ohne Purge | keiner | 2 | 2 | 2000-01-01T12:00:00 | 2025-01-01T12:00:00 |
+| Am exakten Zeitpunkt von A | 2025-01-01T12:00:00 | 1 | 1 | 2025-01-01T12:00:00 | 2025-01-01T12:00:00 |
+| Eine Sekunde später | 2025-01-01T12:00:01 | 0 | 0 | NULL | NULL |
+
+Beide nativen sp_delete_backuphistory-Aufrufe verwenden parametrisiertes
+oldest_date über msdb.sys.sp_executesql, ausdrücklich im msdb-Kontext.
+Eigene Datenbankidentitäten, TX0 und separat erfasstes XACT_STATE 0 werden
+vor beiden Purges geprüft; beide Rückgaben sind 0. Sämtliche Werte des
+gleich datierten Paars A werden vor dem ersten Purge aus acht geordneten
+Quellen einschließlich NULL-Werten anhand seiner Backup-, Medien- und
+Restoreidentitäten gespeichert. Nach dem ersten Purge entspricht die
+gesamte globale Historie diesem Snapshot; sämtliche älteren B-Werte
+sind entfernt. Nach dem zweiten Purge sind alle acht Quellen leer.
+Der bereits referenzierte Microsoft-Vertrag bezeichnet oldest_date als
+ältestes erhaltenes Datum. Der native Lauf belegt diese Gleichheitsgrenze
+nur für die gemeinsame kontrollierte Zeitkonstellation dieser Engine.
+
+Je Phase bestehen NONE, TABLE und CONSOLE mit JSON, insgesamt neun
+Consumeraufrufe. Native Counts, MIN/MAX, NULL-SizeMb, AVAILABLE-Status,
+nicht leere EvidenceLimit und vollständige TABLE-/CONSOLE-/JSON-Parität
+bestehen. Der Modulstatus bleibt AVAILABLE ohne Partial oder Consumerfehler.
+Vollständige geordnete Werte der acht Quellen und acht Katalogfelder
+beider eigenen Datenbanken bleiben nach jedem Consumer und nach jedem
+Callerrollback erhalten. Der Caller bleibt während der Aufrufe schreibfähig
+mit ON, Locktimeout 137, TX1 und XACT_STATE 1. Drei eigene Rollbacks
+erhalten die jeweilige Historienphase. Finale ursprüngliche Callerwerte
+werden einzeln vor dem Abschlussguard erfasst und bestätigen
+OFF/-1/TX0/XactState0. Vor dem Erfolgs-DROP werden die beiden eigenen
+Namen und Datenbankidentitäten erneut gebunden; danach sind beide Datenbanken
+abwesend. Ein innerer Cleanup nach injizierten Fehlern gehört nicht zur Probe.
+
+Coreinstallation besteht mit 187 Batches, Smoke110 mit drei und
+Runtime122 mit zwei Batches. Der äußere eigene Labcleanup besteht mit
+zwei Schritten ohne Fehler; der Statepfad ist entfernt. Erst danach
+wird das PASS-JSON exklusiv mit CreateNew geschrieben. Tatsächliche Abnahme:
+`2026-10-08T17:56:23.6835080+00:00`. Ausgeführter SQL-Quellcommit:
+`ea2843cab84789148207b8523c06df20bee1b80c`. SQL-SHA-256:
+`5A900CE746E6C2AAF17D43BA5A4446ED6B2D309CDD05F563FA7BC62709BF76EB`. Wrapper-SHA-256:
+`48D680D62E560F41CA5A975F3AC4B0096DE5463ABC282BCAA6AA67146198DB81`. Private Rawlogs bleiben außerhalb des Repositorys.
+
+Sechs kanonische Dokumentationsquellen und genau drei bestehende
+CSV-Textzellen sind ergänzt. Produktquellen, öffentliche Verträge,
+Fixture, Installer, historische Laufzeitmatrix, Statusflags und OpenScope
+bleiben erhalten. Automatische Altersretention, allgemeine Purgegarantien,
+getrennte Backup-/Restorezeitregeln, physische Backupdateien und weitere
+Engines bleiben unbelegt. OPS-008 bleibt partiell; SMTP wartet auf die
+öffentliche integrierte und passend nativ abgenommene Lab-Funktion.
