@@ -127,6 +127,20 @@ beiden jüngeren Paare bleiben erhalten. NONE/JSON erhält die jeweiligen
 AGENT_HISTORYcounts, NULL-Zeitgrenzen und eine nicht leere EvidenceLimit
 ohne Partial oder Consumerfehler. Andere Limits und Altersretention bleiben offen.
 
+Eine getrennte native SQL-2025/Docker-Probe prüft die datenbankselektive
+Bereinigung zweier eigener Backup-/Restorepaare. Beide neuen eigenen
+Datenbanken werden tatsächlich gesichert und unter ihrem eigenen Namen
+restauriert. Die Historienzeiten sind anschließend kontrolliert gesetzt;
+die Gegenprobe besitzt ältere Zeitwerte. Zwei native datenbankbezogene
+Purges liefern Backup- und Restorecounts zwei, eins und null. Nach dem
+ersten Purge bleiben sämtliche Werte der älteren Gegenprobe in allen
+acht Historienquellen erhalten; nach dem zweiten sind alle acht leer.
+Neun NONE-/TABLE-/CONSOLE-Aufrufe bestätigen native Counts und Zeitgrenzen
+sowie vollständige TABLE-/CONSOLE-/JSON-Parität. Historienwerte, acht
+Katalogfelder beider eigenen Datenbanken und Callerzustand bleiben erhalten.
+Eigene Datenbanken, Lab und State werden entfernt. Dies belegt keine
+automatische Altersretention, allgemeine Purgegarantie oder andere Engine.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.
