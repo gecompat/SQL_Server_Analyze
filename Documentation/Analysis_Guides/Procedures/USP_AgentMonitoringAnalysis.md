@@ -156,6 +156,15 @@ JOB_STATE_INFORMATIONAL/INFO. Der Modulstatus ist AVAILABLE_WITH_FINDING
 ohne Partial und ohne Fehlernummer/-meldung. Diese Probe bestätigt keine
 laufende Retryphase, Retryerschöpfung oder allgemeine Retryzählung.
 
+Eine spätere getrennte SQL-2025/Docker-Gegenprobe hält den eigenen Job
+nach ausgeschöpftem Retry aktiviert. Der TSQL-Step scheitert in beiden
+Versuchen bei einem konfigurierten Retry und Intervall 0. NONE/JSON mit
+Jobstatus an und Mail aus liefert den letzten fehlgeschlagenen Gesamtoutcome
+mit LatestRunStatus 0 und LATEST_JOB_RUN_FAILED_IN_WINDOW/HIGH. Der
+Modulstatus bleibt AVAILABLE_WITH_FINDING ohne Partial und ohne Fehlerstatus.
+Der native Jobfehler ist ein fachlicher Befund und kein Consumerfehler.
+Positive Intervalle, Parallelität und andere Engines sind damit nicht geprüft.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
