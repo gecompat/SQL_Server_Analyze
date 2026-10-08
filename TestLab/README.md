@@ -218,6 +218,33 @@ oder Retentionsinterpretation. Der Runner initialisiert für seinen
 frischen State die testgebundene Ownership-Lane von `SQL_Server_Lab` und
 serialisiert eigene Runtime-Tests über die gemeinsame Host-Testlane.
 
+Die drei älteren Fenster- und Agent-Aggregatfixtures erfassen XACT_ABORT
+vor einer Änderung und aktivieren es erst innerhalb des Try-Pfads. Erfolg
+und Catch stellen den ursprünglichen Wert direkt im Callerbatch wieder her;
+Catch wirft den ursprünglichen Fehler erneut. Die Fensterfixtures verlangen
+vor ihren Änderungen einen Caller ohne offene Transaktion. Alle elf
+NONE-Aufrufe prüfen den unveränderten ursprünglichen Locktimeout und
+XACT_ABORT ON; der Agent behält seine committable eigene Transaktion.
+Der Locktimeout wird von diesen drei Fixtures nicht gesetzt oder auf `-1`
+eingeschränkt. Das Agentrollback entfernt eigene injizierte Quellen.
+Die Fenster-Catchpfade erhalten Datenbanken, Dateien und Historien bis zum
+äußeren identitygebundenen Labcleanup.
+
+Eine getrennte private Gegenprobe bestand neun Fälle in fünf neuen eigenen
+SQL-Server-2025-Labs mit `ProductVersion=17.0.4075.5` und Framework-CL 170.
+Je Fixture erhielt eine frühe TX1-Ablehnung ursprüngliches XACT_ABORT OFF,
+Locktimeout 31, die committable Callertransaktion und alle vorhandenen
+Quellwerte. Je zwei injizierte Fehler mit ursprünglichem OFF oder ON
+bestätigten auf derselben Verbindung Locktimeout 31, ursprüngliches
+XACT_ABORT und null offene Transaktionen. Die Fensterfehler erhielten
+vollständige Werte von acht Historienquellen, acht Datenbankkatalogfeldern
+und exakte eigene Datenbankbindungen; das Agentrollback erhielt die
+ursprünglichen sechs Agentquellen. Die Fehlerpunkte liegen ausschließlich
+nach dem ersten Backup beziehungsweise Restore und nach der ersten
+injizierten Agentzeile, jeweils vor dem folgenden Consumer.
+Erfolgreicher Eintritt mit ursprünglichem ON, spätere Fehlerpunkte, NOCOUNT,
+Datenbankkontext und allgemeines Temp-Tabellen-Cleanup bleiben unbelegt.
+
 Mit `-Scenario MailMaintenance` prüft der Runner nach Installation, Smoke-Test
 und Runtimevertrag `122` die [Mail-/Maintenance-Fixture](Scenarios/OPS-008/mail-maintenance.sql).
 Sie verlangt leere Quellen und deaktivierte Database-Mail-XPs. Eine eigene

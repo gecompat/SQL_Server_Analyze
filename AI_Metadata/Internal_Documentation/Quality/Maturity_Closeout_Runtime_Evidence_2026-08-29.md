@@ -1546,3 +1546,89 @@ eine getrennte XACT_ABORT-Prüfung. Erfolgreicher Mailversand, tatsächliche
 Maintenance, automatische Aufbewahrung und weitere Retentiongrenzen
 bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001,
 Registry, Maturityflags und historische Release-Matrix bleiben unverändert.
+
+
+## Ergänzende OPS-008-Fenster- und Agent-Aggregat-Calleroptionen vom 8. Oktober 2026
+
+Die bestehenden öffentlichen Szenarien `HistoryRestore` und `AgentHistory`
+bestanden nacheinander auf zwei getrennten neuen eigenen SQL-Server-2025-
+Linux-Docker-Labs mit `PASS` und `REMOVED`. Beide Läufe bestätigten
+`ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Je Lab bestanden Coreinstallation mit 187 Batches, Smoke-Test `110`,
+Runtimevertrag `122` und die ausgewählten bestehenden SQL-Fixtures mit
+je zwei Batches. Produkt-SQL, Runner und TEST-0001-Kennung blieben unverändert.
+
+Die drei Fixtures erfassen XACT_ABORT vor einer Änderung und aktivieren es
+innerhalb des Try-Pfads. Erfolg und Catch restaurieren den ursprünglichen
+Wert direkt im Callerbatch; Catch wirft den ursprünglichen Fehler erneut.
+Die Fensterfixtures verlangen vor ihren Änderungen einen Caller ohne
+offene Transaktion. Alle Consumer prüfen TX0 beziehungsweise die eigene
+committable Agenttransaktion, den unveränderten ursprünglichen Locktimeout
+und XACT_ABORT ON. Kein Fixture setzt oder beschränkt den Locktimeout.
+Die Erfolgsprüfungen bestätigen fünf Backup-/Wachstumsaufrufe, drei
+Restoreaufrufe und drei Agentstufen. Alle elf Consumer verwenden NONE.
+
+Der normale Fensterlauf bestätigt drei tatsächliche eigene Backups und
+drei Restores mit kontrollierten kurzen und langen Historienzeitfenstern.
+Die eigene msdb-Dateierweiterung beträgt mindestens 8 MB bei einer
+Zielfilegrenze von höchstens 128 MB; die ausgegebene aktuelle Größe stimmt
+mit der nativen Quelle überein. Der Agentlauf bestätigt eine, zwei und drei
+injizierte Job-/Stepzeilen mit erhaltenen vollständigen Historienwerten,
+deaktiviertem eigenem Job ohne Ausführungsbindung und eigenem Rollback.
+Jedes äußere Cleanup entfernte Container und Volume mit zwei Schritten
+und null Fehlern. Beide eigenen Stateverzeichnisse waren danach nicht vorhanden.
+
+Der erste normale Lauf brach nach dem ersten leeren NONE-Aufruf mit Fehler
+55152 vor der Datenbankerzeugung ab; das Agentszenario wurde dabei nicht
+ausgeführt. Eine zusätzliche neue private Diagnose erfasste nach diesem
+Aufruf TX0 bei XACT_STATE 1, erhaltenem Locktimeout 31 und XACT_ABORT ON.
+Die zunächst ergänzte XACT_STATE-0-Annahme außerhalb einer expliziten
+Transaktion wurde aus den Fensterassertions entfernt. Innerhalb der eigenen
+Agenttransaktion bleibt XACT_STATE 1 erforderlich. Die Diagnose scheiterte
+zusätzlich am privaten Vergleich NULL gegen NULL für die leere Datenbank-
+JSON-Menge; dieser Vergleich wurde NULL-sicher korrigiert. Nach Catch
+erfasste die Diagnose TX0, XACT_STATE 0 und ursprüngliches XACT_ABORT OFF;
+alle Historien-, Datenbank- und Agentcounts waren null. Die zwei gescheiterten
+Labs wurden jeweils mit zwei Schritten und null Fehlern entfernt; beide
+eigenen Stateverzeichnisse waren danach nicht vorhanden. Daraus wird kein
+Produktfehler oder allgemeiner Enginefehler abgeleitet.
+
+Der korrigierte private Fehlerlauf bestand neun Fälle in fünf getrennten
+neuen eigenen Labs derselben Engineversion und desselben Framework-CL.
+Je Fixture bestätigte eine frühe TX1-Ablehnung ursprüngliches XACT_ABORT
+OFF, Locktimeout 31, eine unveränderte committable Callertransaktion und
+vollständige vorhandene Quellen. Die Restore-Vorbereitung verwendete die
+kanonische Fensterfixture mit drei tatsächlichen Backups und Dateiwachstum.
+Das private äußere Rollback beendete ausschließlich seine eigene
+Vorprüfungstransaktion. Die geprüften frühen Fehlernummern sind 55151,
+55153 und 54943.
+
+Sechs weitere Fälle injizierten Fehler 56090 mit ursprünglichem XACT_ABORT
+OFF oder ON. Der Historyfehler folgt dem ersten tatsächlichen Backup und
+seiner Datumsanpassung vor dem nächsten Consumer; ein anfänglicher leerer
+Consumer war bereits erfolgt. Der Restorefehler folgt dem ersten
+tatsächlichen Restore und seiner Datumsanpassung vor dem ersten Consumer.
+Der Agentfehler folgt der ersten injizierten Historyzeile vor dem ersten
+Consumer. Nach erneut geworfenem Fehler bestätigte dieselbe Verbindung
+Locktimeout 31, ursprüngliches XACT_ABORT, TX0 und den vor Quellabfragen
+erfassten XACT_STATE 0. Fensterfehler erhielten vollständige Werte aller
+acht Historienquellen, acht Datenbankkatalogfelder und exakte eigene
+Datenbankbindungen. Historyfälle behielten eine eigene Datenbank und ein
+Backup; Restorefälle zwei eigene Datenbanken, drei Backups und einen
+Restore. Das Agentrollback erhielt sämtliche ursprünglichen Werte der
+sechs Agentquellen; diese waren leer. Private Snapshots wurden ausschließlich
+im SQL-Speicher verglichen. Ausgegebene Ergebnisse enthalten sanitisierte
+Metadaten, Counts und Flags, keine Snapshotpayloads.
+
+Je Lab bestand das äußere Cleanup mit zwei Schritten und null Fehlern.
+Alle fünf eigenen Stateverzeichnisse waren abschließend nicht vorhanden.
+Fenster-Catchpfade entfernen Datenbanken, Dateien und native Historien
+nicht; das äußere identitygebundene Labcleanup bleibt dafür erforderlich.
+Rawlogs, private Snapshotwerte, Fehlerharness und eigene Laufidentitäten
+bleiben außerhalb Git. Erfolgreicher Eintritt mit ursprünglichem ON,
+spätere Fehlerpunkte, NOCOUNT, Datenbankkontext, allgemeines temporäres
+Tabellencleanup und zusätzliche native Engines bleiben unbelegt.
+Erfolgreicher Mailversand, tatsächliche Maintenance, automatische
+Aufbewahrung und weitere Retentiongrenzen bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; Registry, Maturityflags und historische
+Release-Matrix bleiben unverändert.
