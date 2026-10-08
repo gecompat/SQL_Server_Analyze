@@ -655,6 +655,49 @@ Locktimeout und XACT_ABORT. Die Fixtures versprechen keine Wiederherstellung
 von NOCOUNT oder Datenbankkontext und kein allgemeines Cleanup temporärer
 Tabellen. Äußeres identitygebundenes Labcleanup bleibt erforderlich.
 
+Mit `-Scenario MailCallerOptions` führt der Runner die vier bestehenden
+injizierten Mailfixtures für gemischte Mail-/Maintenance-Aggregate,
+Failed-Mailretention, Statusretention und Anlagenretention nacheinander in
+einem neuen eigenen Lab aus. Die Gruppe prüft insgesamt 63 Consumeraufrufe:
+neun je gemischter, Failed-Mail- und Anlagenfixture sowie 36 für die vier
+Mailstatus. Die vorhandenen Aggregate, Retentionsmengen, vollständigen
+Quellwertvergleiche und NONE-/TABLE-/CONSOLE-Paritäten bleiben maßgeblich.
+Mailversand und Queueverarbeitung werden durch diese Fixtures nicht ausgeführt.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailCallerOptions `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Jede Fixture verlangt vor Quelländerungen den ursprünglichen
+Standardlocktimeout `-1` und erfasst XACT_ABORT vor einer Änderung. Während
+der Consumeraufrufe werden `XACT_ABORT ON`, `LOCK_TIMEOUT=137` und eine
+committable eigene Transaktion geprüft. Nach dem eigenen Rollback stellen
+Erfolg und Catch beide Optionen direkt im Callerbatch wieder her; Catch
+wirft den ursprünglichen Fehler erneut. Der Erfolgspfad prüft zusätzlich
+die erwartete Consumerzahl und die beiden ursprünglichen Werte. Die
+Statusfixture verwendet vier getrennte Transaktionen und restauriert die
+Optionen abschließend nach allen vier Statusfällen.
+
+Eine zusätzliche private Gegenprobe bestand auf SQL Server `17.0.4075.5`
+mit Framework-Compatibility-Level 170 zwölf Fälle. Je Fixture wurden zwei
+Fehler mit ursprünglich XACT_ABORT OFF beziehungsweise ON nach geprüftem
+Quellaufbau und vor dem ersten Consumer sowie eine frühe Ablehnung mit
+Locktimeout `31` geprüft. Nach dem erneut geworfenen Fehler bestätigte
+dieselbe offene Verbindung die ursprünglichen beiden Optionen,
+Transaktionscount und vor Quellabfragen erfassten Transaktionszustand null,
+sieben leere Mail-/Maintenancequellen und deaktivierte Mail-XPs.
+Der gemischte Fehlerpunkt liegt nach dem ersten Aufbau mit je einer Mail-
+und Maintenancezeile; der Statusfehlerpunkt betrifft ausschließlich den
+ersten unsent-Fall. Die Gegenprobe belegt keine späteren Fehlerpunkte und
+keine erfolgreiche Retention mit ursprünglich XACT_ABORT ON.
+
+Der Wiederherstellungsvertrag betrifft Locktimeout und XACT_ABORT. Er
+verspricht keine Wiederherstellung von NOCOUNT oder Datenbankkontext und
+kein allgemeines Cleanup temporärer Tabellen. Das äußere identitygebundene
+Labcleanup bleibt erforderlich.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-

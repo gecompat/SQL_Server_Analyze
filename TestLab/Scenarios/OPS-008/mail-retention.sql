@@ -3,13 +3,14 @@ GO
 
 /* Die injizierte Mailhistorie prüft native Retention ohne Mailversand oder Queueverarbeitung. */
 SET NOCOUNT ON;
-SET XACT_ABORT ON;
 IF @@TRANCOUNT <> 0 OR NOT EXISTS
 (
     SELECT 1 FROM [sys].[extended_properties]
     WHERE [class] = 0 AND [name] = N'SQLANALYZE.Ops008Disposable' AND CONVERT(int, [value]) = 1
 )
     THROW 55181, N'Die eigene Wegwerf-Lab-Bindung oder Transaktionsbasis fehlt.', 1;
+IF @@LOCK_TIMEOUT <> -1
+    THROW 55193, N'Die Fixture benötigt den ursprünglichen Standard-Locktimeout -1.', 1;
 IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailitems])
    OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_allitems])
    OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailattachments])
@@ -22,7 +23,8 @@ DECLARE @Before nvarchar(max), @After nvarchar(max), @Retained nvarchar(max), @A
 DECLARE @Json nvarchar(max), @TableJson nvarchar(max), @ConsoleJson nvarchar(max);
 DECLARE @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048);
 DECLARE @Mode varchar(16), @Mapping nvarchar(max), @ReturnCode int;
-DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
+DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT;
+DECLARE @PreviousXactAbort bit = CASE WHEN (@@OPTIONS & 16384) = 16384 THEN 1 ELSE 0 END;
 CREATE TABLE [#Ops008Console]
 (
     [Ergebnis] nvarchar(200), [Area] varchar(40), [SourceObject] nvarchar(256),
@@ -31,6 +33,7 @@ CREATE TABLE [#Ops008Console]
 );
 BEGIN TRY
     BEGIN TRANSACTION;
+    SET XACT_ABORT ON;
     SET LOCK_TIMEOUT 137;
     WHILE @Stage <= 3
     BEGIN
@@ -76,7 +79,7 @@ BEGIN TRY
                 CONVERT(datetime2(3), MAX([send_request_date])) FROM [msdb].[dbo].[sysmail_allitems]
             EXCEPT SELECT @ExpectedCount, @Low, @High
         ) OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysmail_mailitems]) <> @ExpectedCount
-          OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137
+          OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137 OR (@@OPTIONS & 16384) <> 16384
             THROW 55186, N'Die unabhängigen Retentioncounts, Zeitgrenzen oder Callerbasis sind verletzt.', 1;
         SET @Consumer = 1;
         WHILE @Consumer <= 3
@@ -150,7 +153,7 @@ BEGIN TRY
                 ORDER BY [mailitem_id] FOR JSON PATH, INCLUDE_NULL_VALUES);
             IF EXISTS (SELECT @Before COLLATE SQL_Latin1_General_CP1_CS_AS
                 EXCEPT SELECT @After COLLATE SQL_Latin1_General_CP1_CS_AS)
-               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137 OR (@@OPTIONS & 16384) <> 16384
                OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailattachments])
                OR EXISTS (SELECT 1 FROM [sys].[configurations]
                    WHERE [name] = N'Database Mail XPs' AND ([value] <> 0 OR [value_in_use] <> 0))
@@ -168,12 +171,15 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
-    SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-    EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+    SET LOCK_TIMEOUT -1;
+    IF @PreviousXactAbort = 1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
     THROW;
 END CATCH;
-SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+SET LOCK_TIMEOUT -1;
+IF @PreviousXactAbort = 1 SET XACT_ABORT ON; ELSE SET XACT_ABORT OFF;
+IF @Calls <> 9 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout
+   OR CASE WHEN (@@OPTIONS & 16384) = 16384 THEN 1 ELSE 0 END <> @PreviousXactAbort
+    THROW 55194, N'Die Consumerzahl oder ursprünglichen Calleroptionen sind verletzt.', 1;
 DROP TABLE [#Ops008Console];
 SELECT N'OPS008_MAIL_RETENTION' AS [ContractName], 3 AS [InitialRows], 1 AS [RetainedRows],
     0 AS [FinalRows], @Calls AS [ConsumerCalls], N'PASS' AS [Status], N'ROLLED_BACK' AS [FixtureCleanup];

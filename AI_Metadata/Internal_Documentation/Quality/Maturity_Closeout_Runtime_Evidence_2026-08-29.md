@@ -1219,3 +1219,77 @@ folgen die vier injizierten Mailfixtures. Echte Maintenance-/SSIS-Ausführung,
 automatische Aufbewahrung und weitere Retentiongrenzen bleiben offen.
 OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags
 und historische Release-Matrix bleiben unverändert.
+
+
+## Ergänzende OPS-008-Mail-Calleroptionen vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MailCallerOptions` bestand auf einem
+neuen eigenen SQL-Server-2025-Linux-Docker-Lab mit `PASS` und `REMOVED`.
+Coreinstallation mit 187 Batches, Smoke-Test `110`, Runtimevertrag `122`
+und die vier bestehenden injizierten Mailfixtures bestanden. Der Lauf
+bestätigte `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die vier Fixtures verlangen vor Quelländerungen den ursprünglichen
+Standardlocktimeout `-1`, erfassen XACT_ABORT vor einer Änderung und stellen
+beide Optionen nach dem eigenen Rollback direkt im Callerbatch wieder her.
+Der Catch-Pfad wirft den ursprünglichen Fehler nach Rollback und
+Optionswiederherstellung erneut. Während der Consumeraufrufe werden
+XACT_ABORT ON, Locktimeout 137 und eine committable eigene Transaktion geprüft.
+Die Abschlussassertion prüft neun beziehungsweise 36 Consumeraufrufe und
+die ursprünglichen beiden Optionen. Die Statusfixture restauriert ihre
+Optionen abschließend nach allen vier getrennten Transaktionen.
+
+Die gemischte Mail-/Maintenancefixture bestätigte Counts eins, zwei und drei
+sowie die bestehenden nativen MIN-/MAX-Zeitwerte beider Quellen. Die
+Failed-Mailretention bestätigte drei, eine und null Mailzeilen. Vier
+Statusfälle für unsent, sent, failed und retrying bestätigten jeweils
+Zielcounts drei, eins und null bei Gesamtcounts sechs, vier und drei;
+vollständige jüngere Zielwerte und ältere andere Status blieben erhalten.
+Die Anlagenretention bestätigte Mailcounts drei, eins und null,
+Anlagenmengen sechs, zwei und null sowie Bytezahlen 54, 18 und null mit
+vollständigen jüngeren Mail-/Anlagenwerten und erhaltenen Bindungen.
+Insgesamt 63 NONE-, TABLE- und CONSOLE-Aufrufe bestanden die ursprünglichen
+Aggregate, Paritäten aller acht Fachfelder und Quell-/Callerzustandsprüfungen.
+Alle vier Fixtures bestanden mit jeweils zwei Batches. Sie führten weder
+Mailversand noch Queueverarbeitung oder Maintenance aus. Sieben eigene
+Rollbacks entfernten ihre injizierten Zeilen. Eigenes äußeres Cleanup entfernte
+Container, Volume und temporären State mit zwei Schritten und null Fehlern.
+
+Eine getrennte private direkte SqlClient-Gegenprobe auf einem weiteren neuen
+Lab derselben nativen Kombination bestand zwölf Fälle. Jede Fixture lief
+auf drei getrennten eigenen Verbindungen. Zwei Varianten bestätigten zuerst
+die tatsächlichen ursprünglichen Optionen und injizierten nach geprüftem
+Quellaufbau vor dem ersten Consumer `THROW 56090`. Der gemischte Fehlerpunkt
+lag nach je einer Mail- und Maintenancezeile; die Failed-Mailfixture besaß
+drei Mailzeilen, die Statusfixture im ersten unsent-Fall sechs Mailzeilen
+und die Anlagenfixture drei Mailzeilen sowie sechs Anlagen mit 54 Bytes.
+Die acht Fehlerfälle mit ursprünglich XACT_ABORT OFF oder ON bestätigten
+nach dem erneut geworfenen Fehler auf derselben offenen Verbindung
+Locktimeout `-1`, den ursprünglichen XACT_ABORT-Wert und vor Quellabfragen
+erfassten Transaktionszustand null bei Transaktionscount null. Alle sieben
+geprüften Mail-/Maintenancequellen waren leer; konfigurierte und aktive
+Mail-XPs blieben deaktiviert. Vier frühe Locktimeout-31-Ablehnungen bei
+ursprünglichem XACT_ABORT OFF bestätigten unveränderte Optionen und dieselben
+leeren Quellen ohne eigene Transaktion.
+
+Die Gegenprobe konsumierte die kanonischen SQL-Dateien mit genau einem
+privaten Fehlerpunkt je Fehlerfall. Skript, Quellenhashes, Diagnostik und
+Ergebnisdatei bleiben außerhalb von Git. Alle zwölf Ergebnisquellenhashes
+entsprachen den geprüften vier SQL-Dateien. Die erste Gegenprobe bestand;
+eigenes Cleanup entfernte ihr Lab und temporären State mit zwei Schritten
+und null Fehlern. Der erfolgreiche öffentliche Lauf wurde nicht wiederholt.
+
+Der Nachweis betrifft die vier injizierten Mailfixtures und die genannten
+Fehlerpunkte. Spätere Fehlerpunkte, alle vier Status als getrennte Fehlerfälle,
+erfolgreiche Retention mit ursprünglich XACT_ABORT ON, NOCOUNT,
+Datenbankkontext und allgemeine Temp-Tabellenbereinigung bleiben unbelegt.
+Fünf ältere dynamische Restores und der XACT_ABORT-Umfang der drei älteren
+Fenster-/Agent-Aggregatfixtures benötigen getrennte Korrektur beziehungsweise
+Prüfung; als Nächstes folgen die tatsächlichen Agent-Ausführungs- und
+Agent-Retentionfixtures. Erfolgreicher Mailversand, tatsächliche Maintenance,
+automatische Aufbewahrung, zusätzliche native Engines und weitere
+Retentiongrenzen bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
+TEST-0001, Registry, Maturityflags und historische Release-Matrix bleiben
+unverändert.
