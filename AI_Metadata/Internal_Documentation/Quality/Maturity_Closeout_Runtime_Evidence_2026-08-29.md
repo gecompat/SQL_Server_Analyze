@@ -923,3 +923,63 @@ fehlende optionale Quellen, Windows und zusätzliche native Engines bleiben
 offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
 Maturityflags und historische Release-Matrix bleiben unverändert. Die Fixture
 gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Maintenance-Planfilterretention vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MaintenancePlanRetention` bestand auf
+einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation,
+Smoke-Test, Runtimevertrag `122` und die
+[Planfilterretention-Fixture](../../../../TestLab/Scenarios/OPS-008/maintenance-plan-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Fixture injizierte fünf eigene Elternzeilen mit je zwei gebundenen
+Details. Drei Elternzeilen trugen denselben synthetischen Zielplan-GUID und
+kontrollierte Startzeiten am 1. und 2. Januar 2025 sowie am 1. Januar 2000.
+Zwei ältere Gegenproben vom 1. Januar 2000 trugen einen anderen Plan-GUID
+beziehungsweise NULL. Sämtliche Subplan-IDs waren NULL. Plans und Subplans
+blieben leer; die GUIDs waren ausschließlich injizierte Historienwerte.
+Maintenance, SSIS und Jobs wurden nicht ausgeführt. Der Detailguard prüfte
+13 Feldnamen und Typen, Textkapazitäten sowie die native Elternbindung.
+Eltern und Details verwendeten jeweils übereinstimmende kontrollierte Zeiten.
+
+Ein nativer `sp_maintplan_delete_log`-Aufruf mit nicht passendem Plan-GUID,
+NULL-Subplanfilter und Datumsgrenze lieferte Rückgabewert `0` und erhielt
+sämtliche Eltern- und Detailwerte NULL-sicher. Zwei weitere native Aufrufe
+mit Zielplan-GUID, NULL-Subplanfilter und Datumsgrenzen lieferten ebenfalls
+`0`. Die Zielcounts betrugen vor, zwischen und nach den beiden Zielpurges
+drei, eins und null; die Gesamtcounts betrugen fünf, drei und zwei.
+Die Detailcounts betrugen zehn, sechs und vier. Jede verbleibende Elternzeile
+besaß zwei Details; verwaiste Details verblieben nicht. Sämtliche zehn Werte
+der jüngeren Zielelternzeile und alle 13 Werte ihrer beiden Details blieben
+nach dem ersten Zielpurge identisch. Die vollständigen älteren Gegenproben-
+und Detailwerte blieben in allen drei Phasen identisch.
+
+In allen drei Phasen bestätigten NONE, TABLE und CONSOLE native Elterncounts,
+MIN-/MAX-Startzeiten, sechs verfügbare Quellen und eine Evidenzgrenze.
+TABLE und CONSOLE besaßen Parität aller acht Fachfelder mit JSON. Sämtliche
+Eltern- und Detailwerte blieben vor und nach jedem der neun Consumeraufrufe
+NULL-sicher identisch. Detailcounts und Elternbindungen wurden auch nach den
+Aufrufen geprüft. Die Callertransaktion blieb committable mit `@@TRANCOUNT=1`
+und `LOCK_TIMEOUT=137`. Der Analyzer führte keinen Purge aus und erhielt
+keinen neuen Plan- oder Detailquellenvertrag.
+
+Das abschließende Rollback entfernte sämtliche injizierten Eltern und Details
+und bestätigte alle vier Maintenancequellen als leer. Der öffentliche Lauf
+endete mit `PASS` und `REMOVED`; das äußere identitygebundene Cleanup entfernte
+eigenen Container, Volume und temporären State und bestätigte zwei Schritte
+mit null Fehlern. Der funktionale Zweidateien-Slice wurde vor diesem ersten
+nativen Charakterisierungslauf unabhängig geprüft. Runtimeidentitäten,
+Secrets und Rohlogs bleiben außerhalb von Git.
+
+Der Nachweis betrifft selektive Plan-ID-Filter bei NULL-Subplanfilter und
+kontrollierter injizierter Historie. Er belegt weder selektive Subplanfilter
+noch echte Plandefinitionen, Maintenance-/SSIS-Ausführung, unabhängige
+Detaildatumssemantik, authentisches Alter, UTC-Umrechnung oder automatische
+Aufbewahrung. Grenzwertgleichheit und empirisches inneres Fehlercleanup
+bleiben getrennte Nachweise. Erfolgreiche Mail-Ausführung, weitere
+Retentiongrenzen und fehlende optionale Quellen bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
+Release-Matrix bleiben unverändert. Die Fixture gehört zu OPS-008 und benötigt
+keine eigene Artefaktreferenz.
