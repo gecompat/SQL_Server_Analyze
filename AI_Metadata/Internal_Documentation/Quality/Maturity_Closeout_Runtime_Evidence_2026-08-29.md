@@ -2383,3 +2383,68 @@ Engines und vollständige Ausgabeschemata bleiben ungeprüft. Der innere
 Catchcleanup erhält keine eigene Fehlergegenprobe. Statusflags, OpenScope,
 Registry und historische Laufzeitmatrix bleiben erhalten; OPS-008 bleibt
 partiell. Die SMTP-Abhängigkeit gehört weiterhin zu SQL_Server_Lab.
+
+## Positives OPS-008-Agent-Retryintervall vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Probe am integrierten Stand von
+PR #302 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Core187, Smoke110 und Runtime122 bestehen. Die Probe
+verwendet ausschließlich ein neues eigenes Lab; Produktcode, öffentliche
+Fixtures, Installer und Labquellen bleiben unverändert.
+
+Ein eigener aktivierter lokaler Job enthält einen TSQL-Step mit einem
+konfigurierten Retry und retry_interval 1. Der vorhandene native Parameter
+bezeichnet Minuten. Die gespeicherte Definition wird geprüft; der Job
+besitzt keinen Schedule und keine Benachrichtigung. Der erste Versuch
+erzeugt kontrolliert Fehler 56151. Erst bei vorhandener eigener nativer
+Retryzeile mit Status 2 kann der nachfolgende Versuch SELECT 1 erfolgreich
+ausführen. Historyzeilen werden nicht injiziert.
+
+Die Probe pollt höchstens 180-mal mit Einsekunden-Waits. Bei vorhandener
+Retryzeile und fehlendem erfolgreichen Step sowie Gesamtoutcome werden
+60 Pollzyklen mit gestarteter, noch nicht abgeschlossener Activity
+des eigenen Jobs erfasst. Vom ersten solchen Poll bis zur beobachteten
+gebundenen Abschlussactivity werden 60059 Millisekunden gemessen.
+Dies erfüllt die privaten Mindestguards von 50 Samples und 50 Sekunden;
+es belegt keine exakte Timerpräzision oder allgemeine Schedulinggarantie.
+Während dieses laufenden Zustands erfolgen keine Consumeraufrufe.
+
+Der neue erfolgreiche Gesamtoutcome wird an die abgeschlossene Activity
+der jüngsten Agent-Session gebunden. Genau drei eigene native Zeilen in
+instance_id-Reihenfolge zeigen Step-Retry 2, Steperfolg 1 und Joberfolg 1.
+Der gespeicherte letzte Stepwert retries_attempted beträgt 0 und wird
+als beobachteter Wert übernommen; die tatsächliche Wiederholung wird durch
+die native Statusfolge belegt. Nach Abschluss wird ausschließlich der
+eigene Job deaktiviert.
+
+Vier NONE-/JSON-Aufrufe bestehen:
+
+- MsdbHealth meldet AVAILABLE ohne Partial oder Consumerfehler und
+  AGENT_HISTORYcount drei mit NULL-Zeitgrenzen und nicht leerer EvidenceLimit.
+- AgentJobs im normalen Filter erhält den eigenen deaktivierten
+  erfolgreichen Job und den letzten erfolgreichen TSQL-Step. LastRunRetries
+  entspricht dem gespeicherten nativen Wert 0.
+- AgentJobs im Problemfilter enthält den deaktivierten Job, aber keinen
+  Step; die ältere Retryzeile wird ausgeschlossen.
+- AgentMonitoring meldet AVAILABLE_WITH_FINDING ohne Partial oder
+  Consumerfehler, LatestRunStatus 1 und JOB_STATE_INFORMATIONAL/INFO.
+
+Sechs vollständige geordnete Quellen einschließlich NULL-Werten werden
+verglichen: sysjobs, sysjobsteps, sysjobhistory, sysjobactivity,
+sysjobservers und sysjobschedules. Die abgeschlossene Consumerbasis bleibt
+über zwei Sekunden stabil. Nach jedem Consumer und einem Rollback bleiben
+sämtliche Werte identisch; ON, Locktimeout 31 und committable TX1 werden
+nach jedem Consumer bestätigt. Eigenes Jobcleanup über die gebundene ID
+restauriert die ursprünglichen sechs Quellen. Abschließend werden
+ursprüngliches OFF, Locktimeout -1, TX0 und separat erfasster XACT_STATE 0
+bestätigt. Der äußere eigene Labcleanup besteht mit zwei Schritten ohne
+Fehler; der Statepfad ist entfernt. Erst danach wird das private PASS-JSON
+exklusiv mit CreateNew geschrieben. Sieben Sourcepins bleiben erhalten.
+
+Der private SQL-Stand besitzt SHA-256
+`B51CB99B890918E20C49D968FB2F3628D67BFA2705584CE6CADAFFE87B51D0E5`.
+Der kontrollierte Erstfehler gehört zum erwarteten Jobablauf. Andere
+Intervalle, Retryerschöpfung mit positivem Intervall, laufende Consumer,
+Parallelität, andere Engines, vollständige Ausgabeschemata und eine innere
+Catchcleanup-Gegenprobe bleiben ungeprüft. Statusflags, OpenScope, Registry
+und historische Laufzeitmatrix bleiben erhalten; OPS-008 bleibt partiell.

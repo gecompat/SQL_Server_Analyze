@@ -183,6 +183,16 @@ Paare bleiben erhalten. NONE/JSON liefert für jeden vorhandenen Job
 LatestRunStatus 1 und ENABLED_JOB_WITHOUT_SCHEDULE/INFO ohne Partial oder
 Consumerfehler. Andere Limits, Altersretention und Parallelität bleiben offen.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe bestätigt den Erfolg
+eines eigenen TSQL-Steps nach einem Retry mit positivem Intervall von
+einer Minute. Drei native Zeilen zeigen Retry, Steperfolg und Joberfolg.
+Der noch nicht abgeschlossene Job wird nach vorhandener Retryzeile in
+mindestens 50 durch Einsekunden-Waits getrennten Pollzyklen beobachtet.
+Nach Abschluss und eigener Deaktivierung liefert NONE/JSON den erfolgreichen
+Jobgesamtoutcome mit JOB_STATE_INFORMATIONAL/INFO bei AVAILABLE_WITH_FINDING
+ohne Partial oder Consumerfehler. Während des laufenden Jobs werden keine
+Consumer aufgerufen; andere Intervalle und positive Retryerschöpfung bleiben offen.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.

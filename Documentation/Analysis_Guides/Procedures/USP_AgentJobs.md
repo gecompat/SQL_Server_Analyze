@@ -213,6 +213,18 @@ NONE/JSON erhält in jeder Phase die letzten erfolgreichen Jobs und Steps;
 der Problemfilter enthält die schedulefreien Jobs, aber keine Steps.
 Andere Limits, Altersretention und Parallelität bleiben ungeprüft.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe prüft einen eigenen
+TSQL-Step mit einem Retry und positivem Intervall von einer Minute.
+Nach kontrolliertem Erstfehler entsteht nativ eine Retryzeile mit Status 2;
+danach folgen Steperfolg und Joberfolg mit Status 1. Mindestens 50 durch
+Einsekunden-Waits getrennte Pollzyklen erfassen den noch nicht abgeschlossenen
+Job bei vorhandener Retryzeile; die gemessene Spanne bis zum beobachteten
+Abschluss beträgt mindestens 50 Sekunden. Der letzte erfolgreiche Step
+speichert retries_attempted 0; NONE/JSON erhält diesen Wert und
+den Erfolg, während der Problemfilter den älteren Retry ausschließt.
+Andere Intervalle, Retryerschöpfung mit positivem Intervall und Consumer
+während des laufenden Jobs bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
