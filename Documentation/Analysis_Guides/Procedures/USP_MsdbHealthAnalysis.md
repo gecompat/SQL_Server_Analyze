@@ -141,6 +141,18 @@ Katalogfelder beider eigenen Datenbanken und Callerzustand bleiben erhalten.
 Eigene Datenbanken, Lab und State werden entfernt. Dies belegt keine
 automatische Altersretention, allgemeine Purgegarantie oder andere Engine.
 
+Eine getrennte native SQL-2025/Docker-Probe prüft die exakte Altersgrenze
+zweier eigener Backup-/Restorepaare mit kontrollierten Historienzeiten.
+Beim Stichtag 2025-01-01T12:00:00 bleibt das genau gleich datierte Paar
+mit sämtlichen Werten aller acht Historienquellen erhalten; nur das ältere
+Paar verschwindet. Ein Stichtag eine Sekunde später entfernt auch das
+verbliebene Paar. Backup-Start, Backup-Ende und Restorezeit besitzen je
+Paar denselben kontrollierten Zeitpunkt. Neun NONE-/TABLE-/CONSOLE-Aufrufe
+bestätigen Counts zwei, eins und null, native Zeitgrenzen, vollständige
+Ausgabeparität sowie erhaltene Quellen-, Katalog- und Callerwerte.
+Diese gemeinsame Datumsgrenze belegt weder getrennte Backup-/Restorezeitregeln
+noch automatische Altersretention oder die Erhaltung physischer Backupdateien.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.
