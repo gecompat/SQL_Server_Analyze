@@ -2162,3 +2162,66 @@ laufende Retryphase, tatsächliche Dauergrenzen, andere Engines und vollständig
 Ausgabeschemata bleiben unbelegt. Der innere Catchcleanup erhält keine eigene
 Fehlergegenprobe. Statusflags, Registry, OpenScope und historische Laufzeitmatrix
 bleiben erhalten; OPS-008 bleibt partiell.
+
+## Tatsächliche OPS-008-Retryerschöpfung vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Gegenprobe am integrierten Stand
+von PR #299 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Coreinstallation mit 187 Batches, Smoke110 und Runtime122
+bestehen. Produkt, Installer und öffentliche Fixture werden nicht geändert.
+
+Die Probe legt einen eigenen aktivierten lokalen Job mit einem TSQL-Step,
+retry_attempts 1 und retry_interval 0 an. Schedule und Benachrichtigungen
+bleiben ausgeschlossen. Der Step wirft in beiden tatsächlichen Versuchen
+ausschließlich den synthetischen Fehler 56161. Es gibt keine Historyinjektion,
+Datenobjekte oder Nachrichten. Die gebundene native Activity bestätigt den
+Jobabschluss; danach bleibt der Job für die Diagnose aktiviert.
+
+Die unabhängigen Orakel bestätigen genau drei globale und eigene Historyzeilen
+in steigender instance_id-Reihenfolge sowie den eigenen Job ohne Benachrichtigungen:
+
+| Reihenfolge | step_id | run_status | sql_message_id | retries_attempted |
+|---:|---:|---:|---:|---:|
+| 1 | 1 | 2 | 56161 | 0 |
+| 2 | 1 | 0 | 56161 | 1 |
+| 3 | 0 | 0 | 0 | 0 |
+
+Die letzte Step-Failurezeile liefert den gespeicherten Retrywert unabhängig
+vom Consumer. Im beobachteten Lauf beträgt er 1. Der vorherige Erfolgsumfang
+speicherte dagegen 0 in seiner letzten Stepzeile. Beide Beobachtungen werden
+getrennt erhalten; eine allgemeine plattformübergreifende Zählersemantik oder
+eine Ursache für den Unterschied wird nicht behauptet.
+
+Vier NONE-/JSON-Aufrufe bestätigen die folgenden begrenzten Fachwerte:
+
+| Consumer | Modulstatus | Geprüfter fachlicher Zustand |
+|---|---|---|
+| MsdbHealth | AVAILABLE | AGENT_HISTORYcount drei, NULL-Zeitgrenzen und nicht leere EvidenceLimit. |
+| AgentJobs mit NurProblematisch 0 | AVAILABLE | Ein aktivierter eigener Job mit LastRunStatus 0 und StepCount eins; ein letzter failed TSQL-Step mit LastRunRetries 1. |
+| AgentJobs mit NurProblematisch 1 | AVAILABLE | Derselbe Job und derselbe letzte failed Step bleiben enthalten. |
+| Monitoring mit Jobstatus an und Mail aus | AVAILABLE_WITH_FINDING | Ein eigener aktivierter Job mit LatestRunStatus 0 und LATEST_JOB_RUN_FAILED_IN_WINDOW/HIGH. |
+
+Alle vier Aufrufe melden keinen Partial- oder Consumerfehlerstatus. Der
+erwartete native Jobfehler ist ein fachlicher Befund. Vor und nach jedem
+Consumer bleiben sämtliche geordneten Werte von sysjobs, sysjobsteps,
+sysjobhistory, sysjobactivity, sysjobservers und sysjobschedules erhalten.
+Die vorgeschaltete Stabilitätsgegenprobe erhält dieselben sechs Quellen
+nach zwei Sekunden. Die Consumer erhalten TX1/XACT_STATE 1, XACT_ABORT ON
+und Locktimeout 31. Ein Rollback erhält die tatsächliche History; die gebundene
+Entfernung des eigenen Jobs stellt sämtliche ursprünglichen Werte der sechs
+Quellen wieder her. Finale Optionsrestauration bestätigt ursprüngliches OFF,
+Locktimeout -1 und TX0. XACT_STATE 0 wird separat vor der abschließenden
+Ergebnisabfrage erfasst. Die PASS-Ergebnisdatei wird exklusiv erst nach eigenem
+äußeren Cleanup erzeugt. Das eigene Lab ist mit zwei Schritten ohne Fehler
+entfernt; sein State ist abwesend. Alle Rohlogs und Runtimeidentitäten bleiben privat.
+
+Der bestandene private SQL-Stand besitzt SHA-256
+`2F1A05C9DCCE0042CF6A099F26849E4311760758B508685C5BD7ABC7947551A2`.
+Er bestätigt einen eigenen ausgeführten Job, einen Step mit zwei beobachteten
+Versuchen, einen ausgeschöpften konfigurierten Retry, drei native Historyzeilen,
+vier Consumer und einen Rollback. Dieser Erschöpfungsumfang besitzt keinen
+vorausgehenden nativen Fehlversuch. Positive Warteintervalle, Parallelität,
+laufende Retryphase, tatsächliche Dauergrenzen, andere Engines und vollständige
+Ausgabeschemata bleiben unbelegt. Der innere Catchcleanup erhält keine eigene
+Fehlergegenprobe. Statusflags, Registry, OpenScope und historische Laufzeitmatrix
+bleiben erhalten; OPS-008 bleibt partiell.

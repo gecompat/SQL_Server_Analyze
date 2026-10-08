@@ -183,6 +183,16 @@ deaktivierten Job, aber keinen problematischen Step. Der ältere Retryoutcome
 wird nicht als letzter Step ausgewählt. Retryerschöpfung, positive Intervalle,
 Parallelität und andere Engines sind damit nicht geprüft.
 
+Eine spätere getrennte SQL-2025/Docker-Gegenprobe bestätigt die Erschöpfung
+eines konfigurierten Retries bei Intervall 0. Der TSQL-Step des eigenen aktivierten Jobs
+scheitert auch beim zweiten Versuch. Die native Folge ist Retrystatus 2,
+Stepfailure 0 und Jobfailure 0. Die letzte Stepzeile speichert diesmal
+retries_attempted 1; LastRunRetries erhält diesen unabhängig gelesenen Wert.
+Beide NONE-/JSON-Aufrufe mit @NurProblematisch 0 beziehungsweise 1 enthalten
+den eigenen fehlgeschlagenen Job und den letzten failed Step. Dieser
+Failureumfang bestätigt keine positiven Intervalle oder allgemeine
+plattformübergreifende Retryzählung.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
