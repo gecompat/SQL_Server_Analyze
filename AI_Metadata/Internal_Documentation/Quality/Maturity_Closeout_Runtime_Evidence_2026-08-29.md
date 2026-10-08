@@ -983,3 +983,73 @@ Retentiongrenzen und fehlende optionale Quellen bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert. Die Fixture gehört zu OPS-008 und benötigt
 keine eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Maintenance-Subplanfilterretention vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MaintenanceSubplanRetention` bestand
+auf einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation,
+Smoke-Test, Runtimevertrag `122` und die
+[Subplanfilterretention-Fixture](../../../../TestLab/Scenarios/OPS-008/maintenance-subplan-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Fixture prüfte acht native Subplanfelder, Textkapazitäten sowie die
+Fremdschlüsselbindung der Elternhistorie an `subplan_id`. Innerhalb ihrer
+Callertransaktion erzeugte `sp_add_job` einen deaktivierten eigenen Job mit
+sämtlichen Benachrichtigungsleveln `0`, ohne Steps und ohne Serverzuordnung.
+Drei injizierte Subplanmetadatensätze wurden an diesen Job gebunden.
+Zwei Subpläne trugen denselben synthetischen Plan-GUID; der dritte trug
+einen anderen Plan-GUID. Plans blieben leer. Diese Metadaten beschrieben
+keine ausgeführten SSIS-Pläne; Maintenance, SSIS und Jobs wurden nicht ausgeführt.
+
+Sechs eigene Elternzeilen erhielten je zwei gebundene Details. Drei
+Elternzeilen trugen denselben Zielsubplan-GUID und kontrollierte Startzeiten
+am 1. und 2. Januar 2025 sowie am 1. Januar 2000. Drei ältere Gegenproben vom
+1. Januar 2000 trugen den anderen Subplan desselben Plans, den Subplan eines
+anderen Plans beziehungsweise NULL für Plan und Subplan. Eltern und Details
+verwendeten jeweils übereinstimmende kontrollierte Zeiten. Der Detailguard
+prüfte 13 Feldnamen und Typen, Textkapazitäten sowie die native Elternbindung.
+
+Ein nativer `sp_maintplan_delete_log`-Aufruf mit nicht passendem Subplan-GUID,
+NULL-Planfilter und Datumsgrenze lieferte Rückgabewert `0` und erhielt sämtliche
+Eltern- und Detailwerte NULL-sicher. Zwei weitere native Aufrufe mit
+Zielsubplan-GUID, NULL-Planfilter und Datumsgrenzen lieferten ebenfalls `0`.
+Die Zielcounts betrugen vor, zwischen und nach den beiden Zielpurges drei,
+eins und null; die Gesamtcounts betrugen sechs, vier und drei. Die Detailcounts
+betrugen zwölf, acht und sechs. Jede verbleibende Elternzeile besaß zwei
+Details; verwaiste Details verblieben nicht. Sämtliche zehn Werte der jüngeren
+Zielelternzeile und alle 13 Werte ihrer beiden Details blieben nach dem ersten
+Zielpurge identisch. Die vollständigen älteren Gegenproben- und Detailwerte,
+sämtliche drei Subplanmetadaten und die gesamte Jobquelle blieben in allen
+drei Phasen identisch. Jobsteps, Serverzuordnung und Historie blieben leer.
+
+In allen drei Phasen bestätigten NONE, TABLE und CONSOLE native Elterncounts,
+MIN-/MAX-Startzeiten, sechs verfügbare Quellen und eine Evidenzgrenze.
+TABLE und CONSOLE besaßen Parität aller acht Fachfelder mit JSON. Sämtliche
+Eltern- und Detailwerte blieben vor und nach jedem der neun Consumeraufrufe
+NULL-sicher identisch. Sämtliche Subplan- und Jobwerte waren nach jedem
+Consumeraufruf gegenüber ihren vollständigen Ausgangssnapshots identisch.
+Detailcounts und Elternbindungen wurden auch nach den Aufrufen geprüft. Die Callertransaktion blieb
+committable mit `@@TRANCOUNT=1` und `LOCK_TIMEOUT=137`. Der Analyzer führte
+keinen Purge aus und erhielt keinen neuen Plan- oder Detailquellenvertrag.
+
+Das abschließende Rollback entfernte sämtliche injizierten Maintenancezeilen
+und den eigenen Job; alle vier Maintenancequellen sowie Job- und Historyquelle
+waren leer. Der öffentliche Lauf endete mit `PASS` und `REMOVED`; das äußere
+identitygebundene Cleanup entfernte eigenen Container, Volume und temporären
+State und bestätigte zwei Schritte mit null Fehlern. Der funktionale
+Zweidateien-Slice wurde vor diesem ersten nativen Charakterisierungslauf
+unabhängig geprüft. Runtimeidentitäten, Secrets und Rohlogs bleiben außerhalb
+von Git.
+
+Der Nachweis betrifft selektive Subplan-ID-Filter bei NULL-Planfilter und
+kontrollierter injizierter Historie. Kombinierte Plan-/Subplanfilter, echte
+SSIS-Pläne, Maintenance-Ausführung, unabhängige Detaildatumssemantik,
+authentisches Alter, UTC-Umrechnung und automatische Aufbewahrung sind damit
+nicht belegt. Grenzwertgleichheit und empirisches inneres Fehlercleanup
+bleiben getrennte Nachweise. Erfolgreiche Mail-Ausführung, weitere
+Retentiongrenzen und fehlende optionale Quellen bleiben offen. OPS-008 bleibt
+`PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
+Release-Matrix bleiben unverändert. Die Fixture gehört zu OPS-008 und benötigt
+keine eigene Artefaktreferenz.
