@@ -270,6 +270,18 @@ und 24 Kalender-/Uhrzeitconsumeraufrufe einschließlich 24 eigener Rollbacks.
 andere Uhrzeiten und fehlerhafte Kalenderwerte in TABLE/RAW/CONSOLE
 bleiben ungeprüft.
 
+Eine getrennte native SQL-2025-Probe führt einen eigenen TSQL-Job mit
+einem Step und drei Sekunden WAITFOR ohne Retry aus. Nach Abschluss
+wird der Job deaktiviert. Native History enthält Step- und Joberfolg mit
+3 beziehungsweise 4 Sekunden. AgentJobs bestätigt LastRunDurationSeconds
+und LastRunDateTime gegen diese nativen Werte; Startzeiten werden
+unabhängig aus run_date und run_time gebildet. Die normale Ausgabe
+enthält einen Job und einen Step. Der Problemfilter enthält den
+deaktivierten Job mit korrekter Dauer und Startzeit, aber keinen Step.
+NONE-/JSON-Aufrufe erhalten sechs vollständige Quellen und ON/31/TX1.
+Diese kurze positive Probe belegt keine Minuten-/Stundenübergänge,
+lange Ausführungen oder Durationparität anderer Ausgabearten.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
