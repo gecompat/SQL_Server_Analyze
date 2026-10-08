@@ -786,3 +786,74 @@ fehlende optionale Quellen, Windows und zusätzliche native Engines bleiben
 getrennte Nachweise. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001,
 Registry, Maturityflags und historische Release-Matrix bleiben unverändert.
 Die Fixture gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Anlagenretention vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MailAttachmentRetention` bestand auf
+einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation,
+Smoke-Test, Runtimevertrag `122` und die
+[Anlagenretention-Fixture](../../../../TestLab/Scenarios/OPS-008/mail-attachment-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Die Fixture verlangte leere eigene Mail- und Anlagenquellen sowie deaktivierte
+Mail-XPs. Vor der Callertransaktion wurden die sieben Namen und Typen des
+nativen Anlagenviews sowie die für die synthetischen Werte nötigen
+Mindestkapazitäten geprüft. Drei eigene Failed-Mailitems mit kontrollierten
+Request- und Sentzeiten wurden injiziert. Je Mailitem wurden zwei eigene
+Binäranlagen von neun Bytes über den nativen View injiziert. Die sechs
+Anlagen besaßen gültige eigene Mailbindungen, passende Dateigrößen und
+synthetische Dateinamen. Betriebssystemdateien, Profil, Konto, Mailversand
+und Queueverarbeitung wurden von der Fixture nicht verwendet.
+
+Zwei native `sysmail_delete_mailitems_sp`-Aufrufe mit explizitem Failed-Status
+und Datumsgrenzen lieferten jeweils Rückgabewert `0`. Die Mailcounts betrugen
+vor, zwischen und nach den Purges drei, eine und null; die zugehörigen
+Anlagencounts betrugen sechs, zwei und null. Die Summe der Binärgrößen betrug
+54, 18 und null Bytes. Verwaiste Anlagen verblieben nicht. Nach dem ersten
+Purge blieben sämtliche Werte des jüngeren Mailitems und seiner beiden
+Anlagen NULL-sicher identisch. Die Snapshots erfassten alle sieben Anlagenfelder
+samt Binärinhalt. Der Nachweis entspricht der dokumentierten
+[Mitbereinigung zugeordneter Anlagen](https://learn.microsoft.com/en-us/sql/relational-databases/system-stored-procedures/sysmail-delete-mailitems-sp-transact-sql?view=sql-server-ver17)
+und dem [nativen Anlagenview](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sysmail-mailattachments-transact-sql?view=sql-server-ver17).
+
+In allen drei Phasen bestätigten NONE, TABLE und CONSOLE native Mailcounts,
+MIN-/MAX-Requestzeiten, sechs verfügbare Quellen und eine Evidenzgrenze.
+TABLE und CONSOLE besaßen Parität aller acht Fachfelder mit JSON. Alle
+Mail- und Anlagenwerte blieben vor und nach jedem der neun Consumeraufrufe
+NULL-sicher identisch. Anlagencounts, Bytezahlen und Mailbindungen wurden auch
+nach den Aufrufen geprüft. Die Callertransaktion blieb committable mit
+`@@TRANCOUNT=1` und `LOCK_TIMEOUT=137`; konfigurierte und effektive Mail-XPs
+blieben deaktiviert. Der Analyzer führte keinen Purge aus und erhielt keinen
+neuen Anlagenquellenvertrag; sein Mailaggregat verwendet weiterhin
+`sysmail_allitems` und `send_request_date`.
+
+Das abschließende Rollback entfernte sämtliche injizierten Mailitems und
+Anlagen. Der öffentliche Lauf endete mit `PASS` und `REMOVED`; das äußere
+identitygebundene Cleanup entfernte eigenen Container, Volume und temporären
+State. Runtimeidentitäten, Secrets und Rohlogs bleiben außerhalb von Git.
+
+Der erste native Lauf scheiterte vor der Injektion mit `55513` am starren
+Namens-/Typ-/Längenvergleich des Anlagenviews. Die betroffene Spalte wurde
+nicht protokolliert; eine konkrete abweichende Länge wird nicht behauptet.
+Coreinstallation, Smoke-Test und Runtimevertrag bestanden; das äußere
+Container- und Volumecleanup bestätigte zwei Schritte mit null Fehlern.
+Die nicht benötigten exakten Längen wurden durch Mindestkapazitäten für
+24 Unicode-Dateinamenzeichen, elf Benutzerzeichen und neun Binärbytes ersetzt.
+Namen und Typen blieben exakt geprüft; eine erneute Abweichung erhält eine
+Diagnose ausschließlich aus Systemspaltennamen, Typkennungen und Längen.
+Der korrigierte Lauf verwendete ein weiteres neues eigenes Lab. Beide
+funktionalen Stände wurden vor ihrem Lauf unabhängig geprüft. Datenschutz-
+Self-Test und Repositoryscan bestanden ohne zusätzliche Ausnahmen.
+
+Der Nachweis betrifft kontrollierte injizierte Anlagen und native datums- und
+statusgebundene Mitbereinigung. Native Anlagenproduktion, Dateizugriff,
+Versand oder Zustellung, authentisches Alter und automatische Aufbewahrung
+sind damit nicht belegt. Weitere Anlagenfilterkombinationen, Grenzwertgleichheit
+und empirisches inneres Fehlercleanup bleiben getrennte Nachweise.
+Maintenance-Ausführung, positive Detailretention und selektive Planfilter,
+fehlende optionale Quellen, Windows und zusätzliche native Engines bleiben
+offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
+Maturityflags und historische Release-Matrix bleiben unverändert. Die Fixture
+gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.

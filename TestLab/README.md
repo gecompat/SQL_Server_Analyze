@@ -455,6 +455,34 @@ Ereignistypfilter, NULL- oder ungültige Filter, automatische Logretention,
 erfolgreicher Versand, Anlagenretention und inneres Fehlercleanup bleiben
 getrennte Nachweise.
 
+Mit `-Scenario MailAttachmentRetention` erzeugt eine getrennte Fixture drei
+injizierte eigene Failed-Mailitems und je zwei synthetische Binäranlagen von
+neun Bytes. Der native siebenfeldrige Anlagenviewvertrag wird vor dem Aufbau
+geprüft. Es werden keine Betriebssystemdateien gelesen oder erzeugt; Mail-XPs
+bleiben deaktiviert. Mailversand und Queueverarbeitung finden nicht statt.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MailAttachmentRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Zwei native Datums-/Failed-Statuspurges müssen drei, eine und null Mailzeilen
+sowie sechs, zwei und null Anlagen hinterlassen. Zugeordnete Binärgrößen
+betragen 54, 18 und null Bytes; verwaiste Anlagen dürfen nicht verbleiben.
+Nach dem ersten Purge müssen sämtliche jüngeren Mail- und Anlagenwerte
+NULL-sicher identisch bleiben. Neun NONE-, TABLE- und CONSOLE-Aufrufe prüfen
+native Mailaggregate, Parität aller acht Fachfelder sowie unveränderte
+Mail- und Anlagenquellen bei committable Callertransaktion und erhaltenem
+Locktimeout. Das Rollback muss sämtliche injizierten Mailitems und Anlagen
+entfernen; das äußere identitygebundene Labcleanup bleibt erforderlich.
+
+Der Nachweis betrifft die native Bereinigung kontrollierter injizierter
+Anlagen. Er belegt weder native Anlagenproduktion noch Versand, Dateizugriff,
+Zustellung, authentisches Alter oder automatische Aufbewahrung. Weitere
+Status-/Datumsfilterkombinationen und inneres Fehlercleanup bleiben getrennte
+Nachweise. Der Analyzer erhält keinen neuen Anlagenquellenvertrag.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
