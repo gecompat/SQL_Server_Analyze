@@ -161,3 +161,63 @@ geprüft. Der bestehende sechsdateilige Runtimevertrag des vorangegangenen
 Reparaturslices wird nicht erneut als ausgeführt dargestellt. OPS-007 und
 COLL-001 bleiben partiell; ihre offenen Umfänge und bisherigen Statusflags
 bleiben unverändert.
+
+## Kontrollierter Ressourcenvergleich vom 8. Oktober 2026
+
+Ein neues eigenes SQL-Server-2025-Docker-Lab prüfte den integrierten Stand
+`349cbafe28d2f57c26abc78426692782aa6f29a5` mit zwei eigenen Cursorn in
+einer getrennten Producerverbindung. Ein globaler SCROLL-STATIC-READ_ONLY-
+Cursor materialisierte 200.000 synthetische Zeilen mit jeweils einem
+Integerwert und einem 512 Byte breiten Unicode-Payload. Eine endliche
+Traversierung bestätigte Zeilenanzahl, bigint-Summe, Payloadbreite und
+synthetischen Payloadinhalt. FETCH FIRST setzte den Cursor anschließend auf
+die erste Zeile zurück. Der zweite Cursor verwendete drei synthetische
+Literalzeilen. Beide waren offen, synchron befüllt und besaßen Fetchstatus 0.
+
+Die native DMV meldete für den größeren Cursor höhere WorkerTime- und
+Reads-Werte als für die Gegenprobe; auch Writes waren positiv. Diese
+gemessene relative Ressourcenwirkung wurde vor jedem Analyzeraufruf
+bestätigt. Es wurde kein neuer öffentlicher Kostenschwellwert festgelegt.
+
+Vier Aufrufe über NONE und TABLE bestätigen je Ausgabeart Limit 1 und
+vollständige Ausgabe mit Limit 0. Limit 1 wählt ausschließlich den größeren
+Cursor gemäß dem bestehenden nativen Rang nach WorkerTime, Reads und
+Cursorkennung. Limit 0 liefert beide Cursor. Alle Aufrufe liefern
+`AVAILABLE`, Nichtpartialität und keine Fehlernummer oder Fehlermeldung.
+Die zehn stabilen nativen Felder, Dormanz innerhalb der Vorher-/Nachhergrenzen
+und der daraus abgeleitete bestehende FindingContext sind geprüft. Alle
+nativen Cursoridentitäten, Namen, Properties, Öffnungs- und Fetchzustände
+sowie kumulativen Arbeitswerte bleiben über jeden Analyzeraufruf erhalten.
+Die beiden TABLE-Aufrufe bestätigen alle zwölf Werte gegen JSON derselben
+Materialisierung einschließlich Zeilenanzahl und eindeutiger Cursorkennungen.
+Beide physischen Exportschemas bestätigen Reihenfolge, Namen, Typen,
+Bytebreiten und die explizite Textcollation der drei Textfelder.
+
+Der Lauf verwendet SQL Server `17.0.4075.5` und Framework-Compatibility-Level
+170. Server und tempdb besitzen gemessen `Latin1_General_100_CS_AS`, das
+Framework `SQL_Latin1_General_CP1_CS_AS`. Kanonische Installation und
+Smoke-Test bestehen. Jeder Analyzeraufruf erhält Locktimeout 137,
+XACT_ABORT OFF, Transaktionsanzahl 0 und XACT_STATE 0. Der abschließende
+Observerzustand bestätigt separat Locktimeout minus eins und dieselben
+übrigen Werte.
+
+Vor dem Cursorcleanup bestätigt die Producerverbindung weiterhin
+200.000 Quellzeilen, die ursprüngliche bigint-Summe sowie sämtliche
+Payloadbreiten und synthetischen Payloadinhalte. Das eigene Cleanup schließt
+und deallokiert beide Cursor, entfernt ihre eigene temporäre Quelle und
+bestätigt deren Abwesenheit sowie ein leeres Producerinventar. Beide
+Verbindungen sind geschlossen. Der öffentliche Lab-Cleanup entfernt die
+eigenen Ressourcen in zwei Schritten mit null Fehlern; das eigene
+Stateverzeichnis ist entfernt. Quellpins, Fixturepins, Rohlog, gemessene
+Arbeitszähler und native Kennungen bleiben privat außerhalb von Git.
+
+Dieser begrenzte Vergleich bestätigt eine tatsächlich größere kontrollierte
+Cursorarbeit in einer zweiten eigenen Session. Er belegt keine fremde
+Hochlast, Sättigung oder allgemeine Kostenschwelle. Die SQL-Kommandos sind
+jeweils auf 120 Sekunden begrenzt; daraus folgt keine garantierte
+Gesamtlaufgrenze. RAW, CONSOLE, weitere Compatibility Levels und ältere
+native Engines wurden in diesem Lauf nicht geprüft. Das vollständige sechsdateilige Runtimepaket
+des vorherigen Reparaturslices wurde nicht wiederholt; aus diesem Paket lief
+in diesem Slice ausschließlich Smoke-Test 110.
+OPS-007 und COLL-001 bleiben partiell; ihre offenen Umfänge und bisherigen
+Statusflags bleiben unverändert.

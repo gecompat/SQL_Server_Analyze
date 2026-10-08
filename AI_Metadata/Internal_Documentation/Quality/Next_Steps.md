@@ -541,6 +541,19 @@ Fremde Hochlast und weitere gemeinsame Consumerverträge bleiben offen;
 OPS-007 und COLL-001 behalten ihre partiellen Status. SMTP wartet weiterhin
 auf die integrierte und passend nativ abgenommene öffentliche Lab-Funktion.
 
+Am 8. Oktober 2026 bestand ein weiterer kontrollierter Cursorvergleich.
+Eine eigene zweite Verbindung traversierte 200.000 synthetische Zeilen;
+native WorkerTime und Reads lagen über einer Gegenprobe mit drei Zeilen.
+Vier NONE-/TABLE-Aufrufe bestätigen native Rangauswahl, zwölf Fachwerte,
+zwei physische Exportschemas sowie Quell- und Callererhaltung auf gemischtem
+SQL Server 2025 mit Framework-Compatibility-Level 170. Eigene Cursor,
+temporäre Quelle, Verbindungen, Labressourcen und State sind bereinigt.
+Der begrenzte Nachweis steht in der bestehenden
+[Cursor-Evidenz](OPS007_Dormant_Cursor_Runtime_Evidence_2026-09-19.md).
+Fremde Hochlast und weitere gemeinsame Consumerverträge bleiben offen;
+OPS-007 und COLL-001 behalten ihre partiellen Status. Die SMTP-Welle wartet
+weiterhin auf Integration und passende native Abnahme in SQL_Server_Lab.
+
 ## Maßgeblichkeit
 
 Der begrenzte Benutzerauftrag zur Dokumentations- und Nachweisklarheit vom
