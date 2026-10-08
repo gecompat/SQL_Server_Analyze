@@ -5821,3 +5821,112 @@ Backupverwaltung. Weitere Export- und Berechtigungspfade, TDE-Übergänge und
 Scanfehler, explizite Backupverschlüsselung, AE, Ledger und Restore bleiben offen.
 SMTP-Infrastruktur wurde weder eingerichtet noch beschafft. COLL-001 bleibt
 partiell; bestehende Produkt- und Maturityflags werden nicht erweitert.
+
+
+## Explizite Backupverschlüsselung und TDE-Gegenprobe am 9. Oktober 2026
+
+Eine getrennte private Fixture prüfte den unveränderten integrierten Stand
+`110758c9b3916e6a507f85c919bb08fb735c5fe6` als `REVIEWED_COMMITTED_TREE` in einem neuen eigenen
+SQL-Server-2025-Docker-Lab unter Linux. ProductVersion war `17.0.4075.5`.
+Server, tempdb und drei eigene leere Quellen verwendeten
+`Latin1_General_100_CS_AS`; das Framework verwendete
+`SQL_Latin1_General_CP1_CS_AS` bei CL170. Zwei Quellen hatten unverändert
+TDE mit AES-128, Zustand 3, Scanstatus 4 und getrennt gemessenen CL160 sowie
+CL170. Eine dritte Quelle blieb ohne TDE. Kanonische Installation, Smoke
+und installierter Encryption-Procedurebody bestanden. Frühere Impactläufe
+wurden für diesen unveränderten Produktstand nicht wiederholt.
+
+Drei TABLE-/RAW-/CONSOLE-Aufrufe bestätigten zunächst vier NULL-Felder für
+fehlende Full-Backuphistorie. Danach führte die Fixture genau drei eigene
+Full-Backups mit CHECKSUM und ohne COPY_ONLY aus. Die Quelle ohne TDE erhielt
+explizite AES-256-Backupverschlüsselung. Die erste TDE-Quelle wurde ohne
+zusätzliche ENCRYPTION-Klausel gesichert; die zweite erhielt zusätzlich
+explizite AES-256-Backupverschlüsselung. Ein drittes eigenes Zertifikat
+schützte beide expliziten Backups und blieb von den TDE-Protektoren getrennt.
+
+Jedes Backup wurde an die unmittelbar bestätigte eigene Datenbank-ID,
+Datenbank-GUID, den case-sensitiven Namen, eine neue eindeutige backup_set_id
+und genau eine eigene Medien-/Dateibindung geknüpft. Die Auswahl verwendete
+kein MAX(id). Serverlokale GETDATE-Grenzen erhielten eine vorsorgliche
+Toleranz von einer Sekunde; eine tatsächliche Zeitquantisierung wird damit
+nicht behauptet. Alle drei verschiedenen Zieldateien waren vor ihrem Backup
+abwesend. Append- oder Overwrite-Optionen wurden nicht verwendet. Das eigene
+Run-State wies einen schreibbaren verwalteten kurzlebigen SQL-Mount ohne
+Hostbindung aus. Der private native Dateiobserver verlangte pro Pfad genau
+eine Antwort und konkrete Existenz-, Verzeichnis- und Elternwerte. Seine
+Verfügbarkeit ist auf dieser Engine gemessen; er begründet keinen neuen
+öffentlichen oder versionsübergreifenden Dateiprüfvertrag.
+
+Die beiden expliziten Backups lieferten nativ `aes_256` und
+`CERTIFICATE_OAEP_256`; die TDE-Gegenprobe ohne zusätzliche ENCRYPTION-Klausel
+lieferte NULL für beide Backupfelder. Die interne Thumbprintbindung bestätigte
+für beide expliziten Backups das eigene Backupzertifikat. Thumbprintwerte,
+Dateiinhalte, Schlüsselmaterial und Medienheader wurden nicht ausgegeben.
+Der unabhängige Boolean-Sollwert für
+`LatestFullBackupExplicitlyEncrypted` stammte aus den ausgeführten
+Operationsmodi 1/0/1. `key_algorithm IS NOT NULL` wurde dafür nicht als
+Sollorakel verwendet. Die nativen Algorithmus- und Protektortypwerte blieben
+in den fachlichen Ausgaben unverändert.
+
+Fünfzehn weitere TABLE-/RAW-/CONSOLE-Aufrufe bestätigten Default-Allscope
+mit drei Zeilen, Warnfenster 36500 mit drei, Problemscope mit zwei,
+Problemscope-Limit 1 mit einer und Default-Problemscope mit null Zeilen.
+Sämtliche 26 Fachwerte wurden gegen JSON derselben Materialisierung, direkte
+Ausgaben und native Vor-/Nachabfragen geprüft. Die drei nativen Backupwerte
+und das unabhängige Boolean-Orakel stimmten überein. Alle Quellen blieben
+je Consumer erhalten. Zwischen Vorher- und Nachherphase änderten sich nur
+die vier LatestFull-Backupfelder. TDE-, Zertifikat-, AE-/Ledger- und
+Befundwerte blieben erhalten. Das Erwartungsflag für explizite
+Backupverschlüsselung blieb auf seinem Default FALSE; zusätzliche
+Erwartungs- und Fehlerpfade wurden nicht geprüft.
+
+Native und physische Schemas, elf Framework-Textcollations, sysname-Aliastypen,
+eindeutige Datenbank- und RAW-Quellmengen, Status und Warnungen bestanden.
+Die zusätzliche leere Drei-Spalten-Auswahlprobe wurde separat erfasst.
+Callerwerte LOCK_TIMEOUT 137, XACT_ABORT OFF, TRANCOUNT 0 und XACT_STATE 0
+blieben je Aufruf erhalten. Die ursprünglichen OFF/-1/TX0/XACT_STATE-0-Werte
+wurden vor dem SQL-Cleanup gemessen.
+
+Die Fixture entfernte die ausschließlich eigene gebundene Backuphistorie,
+drei Datenbanken, drei Zertifikate und den neuen Masterkey. Der öffentliche
+Lab-Abbau meldete REMOVED mit zwei Schritten und null Fehlern; das eigene
+Volume einschließlich der drei Backupdateien und der eigene Statepfad waren
+vor dem PASS-Artefakt entfernt. Es gab keine Hostkopie und keinen Restore.
+Dateiexistenz und erfolgreiche BACKUP-Ausführung beweisen keine
+Dateiintegrität, externe Schlüsselkopie oder Wiederherstellbarkeit.
+
+Zwei vorherige Versuche scheiterten nach erfolgreichem erstem Backup an
+privaten Metadatenannahmen. V1 erfasste die betreffenden Werte nicht und
+belegt deshalb keine eindeutige Ursache. V2 erfasste `aes_256`,
+`CERTIFICATE_OAEP_256` und die erfolgreiche eigene Zertifikatbindung.
+Der abschließende Prüfer misst den Protektortyp ohne Legacy-Enumannahme
+und vergleicht die Algorithmus-Steuersemantik unabhängig von Großschreibung;
+fachliche Werte werden dadurch nicht normalisiert. Die partiell aufgebaute
+Historie wurde in beiden Versuchen vom inneren Cleanup nicht akzeptiert;
+der äußere eigene Lab-Abbau entfernte jeweils Container, Volume und State
+mit zwei Schritten und null Fehlern. Beide Versuche erzeugten kein PASS.
+Der unabhängige Vorabreview schloss zusätzlich die NULL-/Zeilenzahlgrenze
+des privaten Dateiobservers vor der ersten nativen Ausführung.
+
+Der abschließende Lauf endete um `2026-10-08T23:43:08.1205760+00:00` UTC.
+Quellen verwenden UTF-8/LF-Hashes; private Pakete und Ergebnisse physische
+Bytehashes.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 unverändert | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `372EBEADC20855EF62F1D950D0CF7D599C283C71F6BA549B523A6E32B142B4B1` |
+| Privates Backup-SQL | `DD53E3DECD7BAEE9C08816FD416B93997B31CEC275BFDBBFB8BC8969AAEBA858` |
+| Privater Consumer | `0311095002E6CB80467BCD20624660721FB8AE6F9F190EC444B5EF49836F1D90` |
+| Privater nativer Beobachter | `408E80F720011886A0DB53DF15985FFEEDC8C5FE24160C9687B938C3BE993737` |
+| Privates Cleanup-SQL | `CAEDA4FD2E59DEF26FA8A043EF4A5E5175913DE6CC7634165716B66149470C49` |
+| Privater fehlgeschlagener V1-Log | `15E57E0AA10A17D218A1B383A9C76650CED8E38426D60242BA69D2C7CAF4E48D` |
+| Privater fehlgeschlagener V2-Log | `93E2E38DAA20A95E2BD6523426EC2F027BDBEFA015913EC32A73CD50D8778415` |
+| Privater erfolgreicher V3-Log | `AFC4B1FBB0888F68472659E1C909111750AE42FCF4763B6E4224E295EF18E2D1` |
+| Privates PASS-Ergebnis | `3EE57064AC1BA4FB6BB40C4DE3C117770962E2A9426C0074D44148E77CF890AB` |
+
+Weitere Backup-Erwartungs- und Berechtigungspfade, TDE-Übergänge,
+Zertifikatexportvarianten, AE, Ledger und Restore bleiben offen.
+SMTP-Infrastruktur wurde weder eingerichtet noch beschafft. COLL-001 bleibt
+partiell; bestehende Produkt- und Maturityflags werden nicht erweitert.
