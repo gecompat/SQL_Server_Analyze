@@ -418,13 +418,25 @@ Zeilen; das äußere Labcleanup bleibt erforderlich. Der Analyzer führt keine
 Bereinigung aus.
 
 Der normale Szenariolauf bestand in einem neuen eigenen SQL-Server-2025-
-Lab mit `ProductVersion=17.0.4075.5` und Framework-CL 170; das eigene Lab
-wurde vollständig entfernt. Zwei vorbereitete private Mutationen prüfen
-ein endliches Datum beziehungsweise einen fehlenden Statusfilter im zweiten
-Fall. Eine weitere private Probe soll den unveränderten Erfolg mit
-ursprünglichem XACT_ABORT ON und die tatsächlich gelesenen Summaryfelder
-prüfen. Diese drei Fälle sind wegen der belegten gemeinsamen Host-Testlane
-noch nicht ausgeführt und liefern keinen Laufzeitnachweis.
+Lab mit `ProductVersion=17.0.4075.5` und Framework-CL 170. Ein zusätzlicher
+privater Lauf derselben Engineversion bestätigte den unveränderten Erfolg
+mit ursprünglichem XACT_ABORT ON und tatsächlich gelesenen sieben
+Summaryfeldern. Ein endliches Datum 2026 im zweiten Fall lässt die Failed-
+Zeile aus 2030 stehen und wird mit Fehler 55185 nach zwölf abgeschlossenen
+Consumeraufrufen abgelehnt. Nach beiden Teilfällen bestätigt dieselbe
+Verbindung ursprünglichen Locktimeout `-1`, ursprüngliches XACT_ABORT,
+TX0 und vor Quellabfragen erfassten XACT_STATE 0, drei leere Mailquellen
+und deaktivierte Mail-XPs. Beide eigenen Labs wurden entfernt.
+
+Der private Gesamtlauf scheiterte am dritten Mutationsorakel mit Fehler
+56091 und erzeugte keine Ergebnisdatei. Seine Erwartung, dass Datum NULL
+und Status NULL alle Zeilen löschen, war falsch: Der native Parametervertrag
+verlangt mindestens einen wirksamen Filter. Die ursprüngliche Fehlernummer
+wurde durch den privaten Catchhook verdeckt und ist noch nicht beobachtet.
+Eine getrennte Diagnose dieser Parameterrückweisung und eine gültige
+Gegenprobe mit Datum 2031 und Status NULL bleiben wegen der belegten
+gemeinsamen Host-Testlane `NOT_EXECUTED`. Die beiden erfolgreichen
+Teilresultate sind kein PASS für den privaten Gesamtlauf.
 Tatsächliche Mailausführung, automatische Aufbewahrung, weitere Filter-
 und Retentiongrenzen bleiben eigenständige Nachweise.
 

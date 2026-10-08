@@ -1667,28 +1667,43 @@ Die Gruppe `MailCallerOptions` umfasst dadurch 69 geplante Aufrufe;
 der historische gemeinsame Lauf mit 63 Aufrufen bleibt gültig, wurde aber
 nicht als gemeinsamer 69-Aufruf-Lauf wiederholt.
 
-Drei zusätzliche private Fälle sind vorbereitet, aber wegen der belegten
-gemeinsamen Host-Testlane `NOT_EXECUTED`: unveränderter Erfolg mit
-ursprünglichem XACT_ABORT ON und tatsächliches Lesen der sieben Summaryfelder
-sowie je eine nur im Speicher veränderte endliche Datumsgrenze oder fehlender
-Statusfilter im zweiten Fall. Erwartet wird die Ablehnung beider falschen
-Bereinigungen mit Fehler 55185 nach zwölf abgeschlossenen Consumeraufrufen.
-Diese Erwartungen sind kein Laufzeitnachweis. Der normale Erfolg bestätigt
-die vom Caller vorgefundenen Optionen; erfolgreicher ursprünglicher ON-
-Eintritt und die zusätzlichen Mutationsfehler sind damit nicht gesondert belegt.
+Ein zusätzlicher privater Lauf in einem weiteren neuen eigenen Lab derselben
+Engineversion und desselben Framework-CL bestätigt zwei erfolgreiche
+Teilfälle. Der unveränderte Erfolg mit ursprünglichem XACT_ABORT ON prüft
+die tatsächlich gelesenen sieben Summaryfelder einschließlich 15 Calls.
+Eine ausschließlich im Speicher veränderte endliche Datumsgrenze 2026
+lässt die Failed-Zeile aus 2030 stehen und wird mit 55185 in Fall 2,
+Phase 2 nach zwölf abgeschlossenen Consumeraufrufen abgelehnt.
+Nach beiden Teilfällen bestätigt dieselbe Verbindung ursprünglichen
+Locktimeout -1, ursprüngliches XACT_ABORT, TX0 und vor Quellabfragen
+erfassten XACT_STATE 0. Mailitems, Allitems und Anlagen sind leer;
+konfigurierte und effektive Mail-XPs bleiben deaktiviert.
 
-Das äußere Cleanup des bestandenen normalen Laufs entfernte Container und
-Volume mit zwei Schritten und null Fehlern. Das eigene Stateverzeichnis war
-abschließend nicht vorhanden. Ein früherer normaler Versuch und der erste
-private Versuch scheiterten an der belegten gemeinsamen Host-Testlane vor
-Provisionierung und SQL-Ausführung. Dafür wird kein Laufzeit- oder Cleanup-
-nachweis behauptet; es entstanden keine eigenen Labressourcen. Der normale
-Wiederholungslauf erfolgte erst nach beobachteter Freigabe der Lane.
-Ein späterer begrenzter Free-Beobachter fand innerhalb von 45 Sekunden
-keine Freigabe und startete keinen privaten Lauf. Die Gegenproben werden
-nach Freigabe der Lane getrennt fortgesetzt; kein Guard oder Timeout wird
-abgeschwächt. Rawlogs, private Probe und eigene Laufidentitäten bleiben
-außerhalb Git. Tatsächlicher Mailversand, Maintenance-Ausführung,
-automatische Aufbewahrung und weitere Filter-/Retentionsgrenzen bleiben offen.
-OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; Registry, Maturityflags und
-historische Release-Matrix bleiben unverändert.
+Der private Gesamtlauf endet mit FAIL und Fehler 56091 im dritten
+Catchorakel; die Ergebnisdatei wird nicht geschrieben. Die Erwartung,
+dass Datum NULL und Status NULL alle Zeilen löschen und danach 55185
+auslösen, war falsch. Der native Microsoft-Parametervertrag verlangt
+mindestens einen wirksamen Filter. Der private Catchhook verdeckte die
+ursprüngliche Fehlernummer, deren tatsächlicher Wert und Slot noch nicht
+beobachtet sind. Daraus wird kein Produkt- oder kanonischer Fixturefehler
+abgeleitet. Eine unabhängige neue Diagnose soll Originalfehler, Prozedur-
+Enum, Slot und vollständige Werterhaltung vor Rollback beobachten.
+Eine zweite gültige Gegenprobe verwendet Datum 2031 und Status NULL,
+sodass alle sechs eigenen Zeilen innerhalb der Datumsgrenze liegen.
+Beide neuen Fälle bleiben wegen belegter gemeinsamer Host-Testlane
+`NOT_EXECUTED`; die bestandenen zwei Teilfälle werden nicht wiederholt.
+
+Beide äußeren Cleanups des normalen und des fehlgeschlagenen privaten
+Laufs entfernten Container und Volume mit je zwei Schritten und null
+Fehlern. Beide eigenen Stateverzeichnisse waren abschließend nicht vorhanden.
+Ein früherer normaler Versuch und der erste private Versuch scheiterten
+vor Provisionierung und SQL-Ausführung an der belegten Host-Testlane.
+Dafür wird kein Laufzeit- oder Cleanupnachweis behauptet; es entstanden
+keine eigenen Labressourcen. Beide tatsächlichen Wiederholungen erfolgten
+erst nach beobachteter Freigabe. Begrenzte Free-Beobachter fanden während
+ihrer jeweiligen 45 Sekunden keine Freigabe und starteten keinen Lauf.
+Kein Guard oder Timeout wurde abgeschwächt. Rawlogs, private Proben und
+eigene Laufidentitäten bleiben außerhalb Git. Erfolgreicher Mailversand,
+Maintenance-Ausführung, automatische Aufbewahrung und weitere Filter-/
+Retentionsgrenzen bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
+Registry, Maturityflags und historische Release-Matrix bleiben unverändert.
