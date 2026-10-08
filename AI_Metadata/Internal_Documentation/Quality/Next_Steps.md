@@ -529,6 +529,18 @@ der [kanonischen Cursor-Evidenz](OPS007_Dormant_Cursor_Runtime_Evidence_2026-09-
 getrennt dokumentiert. Fremde Hochlast und weitere gemeinsame Vertragsarbeit
 bleiben offen; OPS-007 und COLL-001 behalten ihre partiellen Status.
 
+Am 8. Oktober 2026 bestand zusätzlich ein kontrolliertes Inventar aus 250
+eigenen Cursorn in einer zweiten Verbindung. Zehn NONE-/TABLE-Aufrufe
+bestätigen Default 200, Grenzen 1 und 200 sowie vollständige 0-/NULL-Ausgabe,
+native Rangmengen, alle zwölf Fachwerte, fünf physische Exportschemas und
+Quell- sowie Callererhaltung auf gemischter SQL-Server-2025-Collation mit
+Compatibility Level 170. Alle eigenen Cursor, Verbindungen, Labressourcen
+und State sind bereinigt. Der begrenzte Nachweis steht in der bestehenden
+[Cursor-Evidenz](OPS007_Dormant_Cursor_Runtime_Evidence_2026-09-19.md).
+Fremde Hochlast und weitere gemeinsame Consumerverträge bleiben offen;
+OPS-007 und COLL-001 behalten ihre partiellen Status. SMTP wartet weiterhin
+auf die integrierte und passend nativ abgenommene öffentliche Lab-Funktion.
+
 ## Maßgeblichkeit
 
 Der begrenzte Benutzerauftrag zur Dokumentations- und Nachweisklarheit vom
