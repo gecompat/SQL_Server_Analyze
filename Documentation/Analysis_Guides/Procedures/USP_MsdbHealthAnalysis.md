@@ -163,6 +163,17 @@ Die konkrete native Prozedur vergleicht send_request_date strikt mit dem
 Stichtag. Beide Zeitfelder sind in der Fixture gleich gesetzt; unabhängige
 sent_date-Regeln, tatsächliche Statusentstehung und Mailversand sind unbelegt.
 
+Eine weitere native SQL-2025/Docker-Probe trennt die Wirkung der beiden
+Mailzeitfelder mit bewusst zeitlich widersprüchlichen synthetischen Werten.
+Ein altes send_request_date führt trotz zukünftigem sent_date zur Entfernung;
+ein send_request_date am Stichtag bleibt trotz älterem sent_date erhalten.
+Die Grenze eine Sekunde später entfernt diese Zeile. Mit NULL-Datum und
+weiterhin gesetztem Zielstatus werden auch dessen restliche Zeilen entfernt.
+Die anderen drei Status bleiben mit sämtlichen Mailitemwerten unverändert.
+48 NONE-/TABLE-/CONSOLE-Aufrufe bestätigen Counts, native MIN/MAX-Werte,
+Ausgabeparität und Callererhaltung. Mail-XPs bleiben deaktiviert; die
+synthetischen Zeitwerte belegen keine tatsächliche Mailzustandsentstehung.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.

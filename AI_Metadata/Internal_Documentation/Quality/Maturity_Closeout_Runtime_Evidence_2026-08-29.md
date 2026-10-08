@@ -3307,3 +3307,81 @@ Automatische Altersretention, tatsächlicher Mailversand, Logretention,
 Anlagenretention in dieser Probe und weitere Engines bleiben unbelegt.
 OPS-008 bleibt partiell; SMTP wartet auf die öffentliche integrierte und
 passend nativ abgenommene Lab-Funktion.
+
+## OPS-008-Abnahme gekreuzter Mailzeiten und statusselektiver NULL-Datum-Retention vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 prüft vier injizierte
+Statusfälle: unsent, sent, failed und retrying. Die vorher separat privat
+gelesene native sysmail_delete_mailitems_sp-Definition ist vor den Injektionen
+und nach der Fixture mit SHA-256 `D999F40F4A12BD4E441DC2C1EBB9205D44FCFF3350F01D4AE633E5131C8A2F51`
+gebunden. Der Source-Capture bleibt ein getrennter Quellenbeleg und wird
+nicht als funktionales PASS dieser Probe gezählt.
+
+Je Statusfall beginnt eine eigene Transaktion mit drei Zielzeilen und je
+einer Zeile der drei anderen Status. Die bewusst zeitlich widersprüchlichen
+synthetischen Werte unterscheiden die Wirkung von send_request_date und
+sent_date; sie bilden keinen tatsächlichen Mailablauf nach.
+
+| Zielzeile | send_request_date | sent_date |
+|---|---|---|
+| A | 2000-01-01T12:00:00 | 2026-01-01T12:00:00 |
+| B | 2025-01-02T12:00:00 | 1999-01-01T12:00:00 |
+| C | 2025-01-03T12:00:00 | 1999-01-01T12:00:00 |
+
+Die anderen drei Status erhalten jeweils die Zeitwerte der Zeile A.
+Sechs eigene Mailitemidentitäten werden beim INSERT gebunden. Vor dem
+ersten Purge werden die Identitäten, beide Zeitfelder und der jeweilige
+Status gegen feste Literale geprüft. Vier vollständige geordnete Sollwerte
+einschließlich NULL-Werten werden ausschließlich anhand dieser Identitäten
+gebunden: alle sechs Zeilen, alle außer A, alle außer A und B sowie
+ausschließlich die anderen Status. Kein Sollsnapshot verwendet eine
+nachgebildete Datumsfilterlogik oder ein Purgeergebnis.
+
+| Phase je Status | Stichtag | Zielcount | Gesamtcount |
+|---|---|---:|---:|
+| Ohne Purge | keiner | 3 | 6 |
+| Exakte Gleichheit | 2025-01-02T12:00:00 | 2 | 5 |
+| Eine Sekunde später | 2025-01-02T12:00:01 | 1 | 4 |
+| Ohne Datumsgrenze, mit Zielstatus | NULL | 0 | 3 |
+
+Zwölf native statusselektive Purges bestätigen nach jeweils eigenem
+NULL-Rückgabereset strikt Rückgabe 0. A verschwindet trotz zukünftiger
+sent-Zeit. B bleibt mit sämtlichen Werten am exakten request-Stichtag
+erhalten und verschwindet eine Sekunde später. C bleibt bis zum
+NULL-Datum-Purge erhalten. Dabei ist der Zielstatus weiterhin gesetzt;
+sämtliche Werte der drei anderen Status bleiben nach jedem Purge erhalten.
+Die gesamte Mailitemquelle entspricht je Phase dem vorher gebundenen Soll.
+
+Je Phase bestehen NONE, TABLE und CONSOLE mit JSON, insgesamt 48 eindeutige
+Consumeraufrufe. Native Counts, MIN/MAX, NULL-SizeMb, AVAILABLE-Status,
+nicht leere EvidenceLimit und vollständige TABLE-/CONSOLE-/JSON-Parität
+bestehen. Kein Consumer meldet Partial oder einen Fehler. Vollständige
+Mailitemwerte bleiben nach jedem Consumer unverändert; der Caller bleibt
+schreibfähig mit ON, Locktimeout 137, TX1 und XACT_STATE 1.
+
+Database Mail XPs bleiben konfiguriert und wirksam deaktiviert. Attachments
+sind vor Aufbau und nach jedem Consumer leer. Vier eigene Rollbacks
+leeren Mailitems, Allitems und Attachments. Finale Callerwerte werden
+vor dem Abschlussguard einzeln erfasst und bestätigen OFF/-1/TX0/XactState0.
+Die native Purgeprozedur protokolliert ihre Bereinigung; Loggleichheit
+und Logretention gehören nicht zu diesem Nachweis. Keine Mail wird
+versandt und keine Queueverarbeitung gestartet. Die injizierten Status
+und widersprüchlichen Zeiten belegen keine tatsächliche Zustandsentstehung.
+
+Coreinstallation besteht mit 187 Batches, Smoke110 mit drei und Runtime122
+mit zwei Batches. Der äußere eigene Labcleanup besteht mit zwei Schritten
+ohne Fehler; der Statepfad ist entfernt. Erst danach wird das PASS-JSON
+exklusiv mit CreateNew geschrieben. Tatsächliche Abnahme:
+`2026-10-08T18:32:59.0077514+00:00`. Ausgeführter SQL-Quellcommit:
+`52b053023f0d9b33029834e45489ce8a01151cb1`. SQL-SHA-256:
+`D2C22BF1896F103C1B6982295271D8F8DB95F359960030AAC57AEABD874F4350`. Wrapper-SHA-256:
+`422D75A299FB3E280F6C4694210F348BD75197561F1C4F8C80D37FBEC683F4B4`. Private Rawlogs bleiben außerhalb des Repositorys.
+
+Sechs kanonische Dokumentationsquellen und genau drei bestehende CSV-Textzellen
+sind ergänzt. Produktquellen, öffentliche Verträge, Fixture, Installer,
+historische Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten.
+Automatische Altersretention, tatsächlicher Mailversand, Logretention,
+Anlagenretention in dieser Probe und weitere Engines bleiben unbelegt.
+OPS-008 bleibt partiell; SMTP wartet auf die öffentliche integrierte und
+passend nativ abgenommene Lab-Funktion.
