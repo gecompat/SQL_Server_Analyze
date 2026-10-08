@@ -2305,3 +2305,81 @@ Parallelität, andere Engines und vollständige Ausgabeschemata bleiben ungeprü
 Der innere Catchcleanup erhält keine eigene Fehlergegenprobe. Statusflags,
 Registry, OpenScope und historische Laufzeitmatrix bleiben erhalten;
 OPS-008 bleibt partiell.
+
+## Globale OPS-008-Agentretention vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Probe am integrierten Stand von
+PR #301 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Coreinstallation mit 187 Batches, Smoke110 und Runtime122
+bestehen. Produktcode, Installer, öffentliche Fixtures und Labquellen bleiben
+unverändert. Die Probe verwendet ausschließlich ein neues eigenes Lab.
+
+Der bestehende custody- und rungebundene Lab-Transport setzt im eigenen
+Container sqlagent.jobhistorymaxrows auf 6 und jobhistorymaxrowsperjob
+im Abschnitt sqlagent auf 4. Beide Set-Aufrufe liefern Exit 0. Der
+Datei-Readback bestätigt ausschließlich die beiden kontrollierten Werte,
+Dateilesestatus und Abschnitt-/Keypräsenz. Ein öffentlicher Lab-Restart
+meldet RUNNING ohne Readinessfehler. Hostkonfiguration, Imagebeschaffung
+und neue öffentliche Labfunktionen gehören nicht zu dieser Probe.
+
+Job A wird vor Phase 1 angelegt, Job B vor Phase 2. Beide eigenen
+aktivierten lokalen Jobs enthalten jeweils einen TSQL-Step mit SELECT 1,
+keinen Schedule, keinen Retry und keine Benachrichtigung. Vier begrenzte
+sp_start_job-Aufrufe laufen sequenziell als A, B, A, B. Je Lauf bindet
+die jüngste Agent-Session die abgeschlossene Activity an den neuen
+erfolgreichen Gesamtoutcome nach instance_id. Je Ausführung werden genau
+zwei neue Zeilen mit Step-ID 1 beziehungsweise 0 und Status 1 bestätigt.
+Historie wird nicht injiziert; während der Retentionsphasen ruft die Probe
+keine manuelle Purgeprozedur auf.
+
+| Phase | Ausgeführter Job | History insgesamt | Job A | Job B |
+|---|---|---:|---:|---:|
+| 1 | A | 2 | 2 | 0 |
+| 2 | B | 4 | 2 | 2 |
+| 3 | A | 6 | 4 | 2 |
+| 4 | B | 6 | 2 | 4 |
+
+Die acht nativ erzeugten Zeilen würden die globale Grenze sechs
+überschreiten. Kein Job erzeugt in diesem Ablauf mehr als vier Zeilen.
+Nach Phase 4 ist das zuerst erzeugte A-Paar nicht mehr vorhanden.
+Sämtliche geordneten Werte der vier jüngeren Zeilen aus Phase 2 und 3
+bleiben identisch. Diese begrenzte Beobachtung trennt den globalen Umfang
+vom vorausgehenden Einzeljobnachweis mit globaler Grenze 64; sie beschreibt
+keinen allgemeinen Löschalgorithmus für andere Lasten oder Limits.
+
+Je Phase bestehen vier NONE-/JSON-Aufrufe, insgesamt sechzehn:
+
+- MsdbHealth meldet AVAILABLE ohne Partial oder Consumerfehler. Der
+  AGENT_HISTORYcount entspricht zwei, vier, sechs beziehungsweise sechs;
+  OldestUtc und NewestUtc bleiben NULL, EvidenceLimit bleibt nicht leer.
+- AgentJobs im normalen Filter enthält jeden vorhandenen eigenen Job
+  und dessen letzten erfolgreichen TSQL-Step mit Retrywert 0.
+- AgentJobs im Problemfilter enthält die aktivierten schedulefreien Jobs;
+  erfolgreiche Steps werden ausgeschlossen.
+- AgentMonitoring meldet AVAILABLE_WITH_FINDING ohne Partial oder
+  Consumerfehler. Jeder vorhandene Job erhält LatestRunStatus 1 und
+  ENABLED_JOB_WITHOUT_SCHEDULE/INFO.
+
+Sechs Quellen werden jeweils vollständig und geordnet als JSON mit
+NULL-Werten verglichen: sysjobs, sysjobsteps, sysjobhistory, sysjobactivity,
+sysjobservers und sysjobschedules. Vor den Consumeraufrufen bleibt jede
+Phasenbasis über zwei Sekunden stabil. Nach jedem Consumer und nach
+jedem der vier Rollbacks bleiben die Phasenquellen identisch.
+XACT_ABORT ON, Locktimeout 31 und committable TX1 werden nach jedem
+Consumer geprüft. Das Löschen beider eigenen Jobs über ihre gebundenen
+IDs stellt die ursprünglichen sechs Quellen wieder her.
+
+Abschließend werden ursprüngliches XACT_ABORT OFF, Locktimeout -1, TX0
+und separat erfasster XACT_STATE 0 geprüft. Der äußere Labcleanup
+besteht mit zwei Schritten ohne Fehler; der eigene Statepfad ist entfernt.
+Erst danach wird das private PASS-JSON exklusiv mit CreateNew geschrieben.
+Sieben unveränderte Quellpins werden vor und nach dem SQL-Lauf geprüft.
+
+Der private SQL-Stand besitzt SHA-256
+`19D593E6B737C726D9973876F0DA129EE20CFE932362642E1EA0712E9D7238DC`.
+Dieser globale Umfang hat keinen vorausgehenden nativen Fehlversuch.
+Andere globale oder Joblimits, Altersretention, Parallelität, andere
+Engines und vollständige Ausgabeschemata bleiben ungeprüft. Der innere
+Catchcleanup erhält keine eigene Fehlergegenprobe. Statusflags, OpenScope,
+Registry und historische Laufzeitmatrix bleiben erhalten; OPS-008 bleibt
+partiell. Die SMTP-Abhängigkeit gehört weiterhin zu SQL_Server_Lab.
