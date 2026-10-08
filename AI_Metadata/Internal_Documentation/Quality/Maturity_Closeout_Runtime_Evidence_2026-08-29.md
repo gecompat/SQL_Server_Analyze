@@ -1447,3 +1447,102 @@ tatsächliche Maintenance, automatische Aufbewahrung, zusätzliche native Engine
 und weitere Retentiongrenzen bleiben offen. OPS-008 bleibt
 `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry, Maturityflags und historische
 Release-Matrix bleiben unverändert.
+
+
+## Ergänzende OPS-008-native Mail-Calleroptionen vom 8. Oktober 2026
+
+Die bestehenden öffentlichen Szenarien `MailExecutionFailure` und
+`MailLogRetention` bestanden nacheinander auf zwei getrennten neuen eigenen
+SQL-Server-2025-Linux-Docker-Labs mit `PASS` und `REMOVED`. Beide Läufe
+bestätigten `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Je Lab bestanden Coreinstallation mit
+187 Batches, Smoke-Test `110`, Runtimevertrag `122` und die jeweilige
+bestehende Mailfixture mit zwei Batches. Produkt-SQL und Runner blieben
+unverändert. Die Ausführungs-Fixture bestand in 62,7 Sekunden, die
+Logretentions-Fixture in 185,0 Sekunden.
+
+Beide Fixtures verlangen vor Quelländerungen den ursprünglichen
+Standardlocktimeout `-1` und erfassen XACT_ABORT vor einer Änderung.
+XACT_ABORT wird im Try-Pfad vor der ersten Konfigurationsänderung aktiviert.
+Consumer prüfen eine committable eigene Transaktion, Locktimeout 137 und
+XACT_ABORT ON. Erfolg und Catch restaurieren beide ursprünglichen Optionen
+direkt im Callerbatch. Der Erfolg prüft zusätzlich drei beziehungsweise
+neun Consumeraufrufe; Catch wirft den ursprünglichen Fehler nach eigenem
+Rollback und Optionswiederherstellung erneut. Der SQL-Catch entfernt
+Mail-, Profil- und Kontoressourcen nicht und restauriert Queue- oder
+Konfigurationseintrittswerte nicht; das bestehende äußere Labcleanup
+bleibt dafür erforderlich.
+
+Der erste native Lauf bestätigte einen tatsächlichen eigenen lokalen
+Queuefehler ohne Historieninjektion, nativen Failed-Status und gebundenes
+Prozessfehlerlog. Drei NONE-, TABLE- und CONSOLE-Aufrufe bestanden native
+Mailaggregate, Paritäten aller acht Fachfelder und Quell-/Callerzustands-
+prüfungen bei deaktivierten Mail-XPs. Eigene Mailitems, Profil und Konto
+wurden im Erfolg entfernt; Queue- und Konfigurationseintrittswerte wurden
+wiederhergestellt.
+
+Der zweite native Lauf bestätigte drei tatsächliche eigene lokale Mailfehler,
+drei ausgewählte Prozessfehlerlogs und eine native Informationsgegenprobe.
+Zwei typ- und datumsgebundene Logpurges bestätigten ausgewählte Counts drei,
+eins und null. Vollständige jüngere und eingefrorene übrige Logwerte sowie
+sämtliche Mailitemwerte blieben bei neun Consumeraufrufen erhalten. Das
+Callerrollback stellte die ursprünglichen vier ausgewählten Logwerte wieder
+her. Eigenes Mail-, Profil- und Kontocleanup sowie Queue- und
+Konfigurationswiederherstellung bestanden. Native Logs blieben bis zum
+äußeren Cleanup erhalten; deshalb wurden beide Szenarien in getrennten
+neuen Labs ausgeführt. Jedes äußere Cleanup entfernte Container, Volume
+und den eigenen Run mit zwei Schritten und null Fehlern. Beide eigenen
+Stateverzeichnisse waren danach nicht mehr vorhanden.
+
+Der erste private Fehlerlauf bestätigte die frühe Locktimeout-31-Ablehnung,
+brach aber vor dem erwarteten injizierten Fehler mit einer zunächst nicht
+nummeriert erfassten SQL-Ausnahme ab. Ein getrenntes neues Diagnoselab
+identifizierte Fehler 515 beim Snapshotinsert: Die private Prüfspalte
+`LogColumn sysname` erlaubte implizit kein NULL, obwohl die Ausführungs-
+Fixture dort kein Logspaltenmerkmal benötigt. Die private Deklaration wurde
+auf `sysname NULL` korrigiert; unerwartete Fehler werden anschließend nur
+mit Nummer und Zeile erfasst. Der erste unabhängige Review hatte diese
+Eigenschaft des Aliasdatentyps übersehen. Die beiden gescheiterten Labs
+wurden jeweils mit zwei Schritten und null Fehlern entfernt; beide eigenen
+Stateverzeichnisse waren danach nicht mehr vorhanden. Die geprüften
+öffentlichen SQL-Fixtures wurden dafür nicht verändert und ihre bereits
+erfolgreichen normalen Läufe nicht wiederholt.
+
+Der korrigierte private Lauf bestand sechs Fälle auf vier getrennten neuen
+eigenen SQL-Server-2025-Labs derselben Version und desselben Framework-
+Compatibility-Levels. Je Fixture bestätigte eine frühe Ablehnung bei
+Locktimeout 31 ursprüngliches XACT_ABORT OFF, leere Mail-, Anlagen-,
+Profil-, Konto-, Bindungs- und Logquellen sowie deaktivierte Mail-XPs
+auf derselben Verbindung. Vier weitere Fälle injizierten Fehler 56090
+vor dem ersten Consumer mit ursprünglichem XACT_ABORT OFF oder ON.
+Der Fehlerpunkt der Maillogretention lag ausschließlich in Phase 1 nach
+kontrollierter Datumsanpassung; spätere Purgephasen sind nicht fehlergeprüft.
+
+Alle vier Catchfälle warfen den ursprünglichen Fehler erneut und bestätigten
+auf derselben Verbindung Locktimeout `-1`, die ursprüngliche XACT_ABORT-
+Einstellung, null Transaktionen und XACT_STATE 0. Vollständige Werte der
+einen beziehungsweise drei eigenen Failed-Mailitems, des Profils, Kontos
+und der exakten Profil-/Kontobindung blieben erhalten. Gebundene native
+Prozessfehlerlogs blieben vorhanden; Anlagen blieben leer und Mail-XPs
+deaktiviert. Die beiden Logfälle bestätigten zusätzlich vollständige
+Originalwerte derselben drei ausgewählten Fehlerlogs und Informationszeile
+nach dem eigenen Rollback. Zusätzliche asynchrone Logzeilen wurden dabei
+nicht als unveränderliche Gesamtquelle behandelt. Private Snapshots lagen
+außerhalb der Consumertransaktion und wurden ausschließlich im SQL-Speicher
+verglichen; ausgegebene Ergebnisse enthalten nur sanitisierte Metadaten,
+Counts und Flags, keine Snapshotpayloads.
+Je Lab bestand das äußere Cleanup mit zwei Schritten und null Fehlern.
+Alle vier eindeutig eigenen Stateverzeichnisse waren abschließend nicht
+mehr vorhanden. Queue- und Konfigurationseintrittswerte gelten dadurch
+nicht als durch den SQL-Catch wiederhergestellt.
+
+Rawlogs, private Snapshotwerte, Fehlerharness und eigene Laufidentitäten
+bleiben außerhalb Git. Weder erfolgreicher Eintritt mit XACT_ABORT ON noch
+Fehler nach späteren Logpurges, NOCOUNT, Datenbankkontext, allgemeines
+Temp-Tabellen-Cleanup oder zusätzliche native Engines sind damit belegt.
+Die drei älteren Fenster- und Agent-Aggregatfixtures benötigen weiterhin
+eine getrennte XACT_ABORT-Prüfung. Erfolgreicher Mailversand, tatsächliche
+Maintenance, automatische Aufbewahrung und weitere Retentiongrenzen
+bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001,
+Registry, Maturityflags und historische Release-Matrix bleiben unverändert.
