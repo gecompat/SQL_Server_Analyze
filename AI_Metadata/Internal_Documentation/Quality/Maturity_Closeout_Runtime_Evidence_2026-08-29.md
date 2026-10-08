@@ -857,3 +857,69 @@ fehlende optionale Quellen, Windows und zusätzliche native Engines bleiben
 offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
 Maturityflags und historische Release-Matrix bleiben unverändert. Die Fixture
 gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.
+
+## Ergänzende native OPS-008-Maintenance-Detailretention vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario MaintenanceDetailRetention` bestand auf
+einem neuen eigenen SQL-Server-2025-Linux-Docker-Lab die Coreinstallation,
+Smoke-Test, Runtimevertrag `122` und die
+[Detailretention-Fixture](../../../../TestLab/Scenarios/OPS-008/maintenance-detail-retention.sql).
+Er erfasste `ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170.
+Server und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Eine getrennte native Metadatenabfrage in einem weiteren neuen eigenen Lab
+ermittelte vor dem Fixtureentwurf 13 Detailfelder ohne Identity oder Computed
+Columns und die Fremdschlüsselbindung von `sysmaintplan_logdetail.task_detail_id`
+an `sysmaintplan_log.task_detail_id`. Die Fixture prüfte vor ihrer Transaktion
+Feldnamen, Typen, Textkapazitäten und diese Bindung. Drei eigene Elternzeilen
+mit kontrollierten Start- und Endzeiten wurden injiziert; je Elternzeile wurden
+zwei eigene Details mit denselben Zeiten und synthetischen Inhalten injiziert.
+Die Detailwerte enthielten positive Texte, NULL und Leertext. Plans und Subplans
+blieben leer; Maintenance, SSIS und Jobs wurden nicht ausgeführt.
+
+Zwei native `sp_maintplan_delete_log`-Aufrufe mit expliziten Datumsgrenzen und
+NULL für `@plan_id` und `@subplan_id` lieferten jeweils Rückgabewert `0`.
+Die Elterncounts betrugen vor, zwischen und nach den Purges drei, eine und
+null; die Detailcounts betrugen sechs, zwei und null. Jede verbliebene
+Elternzeile besaß zwei Details; verwaiste Details verblieben nicht. Nach dem
+ersten Purge blieben sämtliche zehn Werte der jüngeren Elternzeile und alle
+13 Werte ihrer beiden Details NULL-sicher identisch.
+
+In allen drei Phasen bestätigten NONE, TABLE und CONSOLE native Elterncounts,
+MIN-/MAX-Startzeiten, sechs verfügbare Quellen und eine Evidenzgrenze.
+TABLE und CONSOLE besaßen Parität aller acht Fachfelder mit JSON. Sämtliche
+Eltern- und Detailwerte blieben vor und nach jedem der neun Consumeraufrufe
+NULL-sicher identisch. Detailcounts und Elternbindungen wurden auch nach den
+Aufrufen geprüft. Die Callertransaktion blieb committable mit `@@TRANCOUNT=1`
+und `LOCK_TIMEOUT=137`. Der Analyzer führte keinen Purge aus und erhielt
+keinen neuen Detailquellenvertrag; sein Maintenanceaggregat verwendet
+weiterhin `sysmaintplan_log` und `start_time`.
+
+Das abschließende Rollback entfernte sämtliche injizierten Eltern und Details
+und bestätigte alle vier Maintenancequellen als leer. Der öffentliche Lauf
+endete mit `PASS` und `REMOVED`; das äußere identitygebundene Cleanup entfernte
+eigenen Container, Volume und temporären State. Runtimeidentitäten, Secrets
+und Rohlogs bleiben außerhalb von Git.
+
+Die erste tatsächlich provisionierte Schemaabfrage scheiterte beim lokalen
+Einlesen, weil `ExecuteScalar` nur den ersten JSON-Chunk des Resultsets las.
+Ihr äußeres Cleanup bestätigte zwei Schritte mit null Fehlern. Der korrigierte
+Reader setzte sämtliche Chunks unter einem Limit von 1.048.576 UTF-16-Zeichen
+zusammen und wurde unabhängig geprüft. Die zweite Schemaabfrage bestand
+auf einem weiteren neuen eigenen Lab und endete mit `REMOVED`.
+Die unabhängige Fixturevorprüfung fand einen Katalogkontextfehler im
+Fremdschlüsselguard. Die Spaltennamen wurden vor dem ersten Fixturelauf durch
+Joins auf `msdb.sys.columns` gebunden; der korrigierte Stand wurde erneut
+geprüft. Die separate Retentionfixture bestand ihren ersten nativen Lauf.
+
+Der Nachweis betrifft kontrollierte injizierte Eltern und Details mit
+übereinstimmenden Zeiten und native datumsgebundene Bereinigung. Er trennt
+keine unabhängige Detaildatumssemantik und belegt weder selektive Planfilter
+noch authentisches Alter, UTC-Umrechnung, automatische Aufbewahrung oder
+Maintenance-/SSIS-Ausführung. Grenzwertgleichheit und empirisches inneres
+Fehlercleanup bleiben getrennte Nachweise. Erfolgreiche Mail-Ausführung,
+fehlende optionale Quellen, Windows und zusätzliche native Engines bleiben
+offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`; TEST-0001, Registry,
+Maturityflags und historische Release-Matrix bleiben unverändert. Die Fixture
+gehört zu OPS-008 und benötigt keine eigene Artefaktreferenz.
