@@ -554,6 +554,19 @@ Fremde Hochlast und weitere gemeinsame Consumerverträge bleiben offen;
 OPS-007 und COLL-001 behalten ihre partiellen Status. Die SMTP-Welle wartet
 weiterhin auf Integration und passende native Abnahme in SQL_Server_Lab.
 
+Am 8. Oktober 2026 bestand zusätzlich die direkte RAW-/CONSOLE-Abnahme der
+Cursoranalyse. Zehn SqlClient-Aufrufe prüfen positive Limits, eigenen
+Leerfall, negatives Limit und deaktiviertes Opt-in mit sämtlichen nativen
+Resultsetschemas sowie zwölf Fachwerten gegen JSON derselben Materialisierung.
+Zwei case-unterschiedliche Unicode-Cursor bleiben nativ und der Caller bleibt
+unverändert. Der neue eigene gemischte SQL-Server-2025-Lauf auf CL170 besitzt
+bestätigten Cursor-, Verbindungs-, Lab- und Statecleanup. Der begrenzte
+Nachweis steht in der bestehenden
+[Cursor-Evidenz](OPS007_Dormant_Cursor_Runtime_Evidence_2026-09-19.md).
+Fremde Hochlast und weitere COLL-001-Verträge bleiben offen; die partiellen
+Status bleiben erhalten. Die SMTP-Welle wartet weiterhin auf die öffentliche
+Lab-Funktion mit integrierter passender nativer Abnahme.
+
 ## Maßgeblichkeit
 
 Der begrenzte Benutzerauftrag zur Dokumentations- und Nachweisklarheit vom
