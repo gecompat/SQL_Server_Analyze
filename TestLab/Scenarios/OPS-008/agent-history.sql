@@ -19,6 +19,16 @@ DECLARE @PreviousXactAbort int = @@OPTIONS & 16384, @PreviousLockTimeout int = @
 DECLARE @JobId uniqueidentifier, @Stage int = 1;
 DECLARE @Before nvarchar(max), @After nvarchar(max), @Json nvarchar(max);
 DECLARE @Status varchar(40), @Partial bit;
+DECLARE @DateCase int = 1, @Consumer int, @Calls int = 0;
+DECLARE @RunDate int, @RunTime int, @RunDuration int, @ExpectedSeconds int;
+DECLARE @ExpectedStart datetime, @Error int, @Message nvarchar(2048);
+DECLARE @DateCases TABLE
+([CaseId] int PRIMARY KEY, [RunDate] int, [RunTime] int, [RunDuration] int,
+ [ExpectedStart] datetime, [ExpectedSeconds] int);
+INSERT @DateCases VALUES
+(1, 20240229, 0, 0, CONVERT(datetime, '2024-02-29T00:00:00', 126), 0),
+(2, 20240229, 10203, 125, CONVERT(datetime, '2024-02-29T01:02:03', 126), 85),
+(3, 20250102, 235959, 1000000, CONVERT(datetime, '2025-01-02T23:59:59', 126), 360000);
 BEGIN TRY
     SET XACT_ABORT ON;
     BEGIN TRANSACTION;
@@ -37,8 +47,20 @@ BEGIN TRY
          N'Example controlled history row', CASE WHEN @Stage = 1 THEN 1 ELSE 0 END,
          CASE WHEN @Stage = 3 THEN 20000101 ELSE 20250102 END, 120000, 125,
          0, 0, 0, 0, N'ExampleHistoryServer');
-        SELECT @Before = (SELECT * FROM [msdb].[dbo].[sysjobhistory]
-            ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        SELECT @Before = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
 
         EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen = 0,
             @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @Json OUTPUT,
@@ -56,15 +78,155 @@ BEGIN TRY
               AND NULLIF([EvidenceLimit], N'') IS NOT NULL
         )
             THROW 54945, N'Die positive Agent-Aggregatparität ist verletzt.', 1;
-        SELECT @After = (SELECT * FROM [msdb].[dbo].[sysjobhistory]
-            ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        SELECT @After = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
         IF @Before COLLATE SQL_Latin1_General_CP1_CS_AS <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
            OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> @Stage
            OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
            OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
             THROW 54946, N'Der Analyzer hat Quellwerte oder die Callertransaktion verändert.', 1;
+        SET @Calls += 1;
         SET @Stage += 1;
     END;
+    -- Die Literale prüfen Joboutcomes; es wird kein Jobstep ausgeführt.
+    WHILE @DateCase <= 3
+    BEGIN
+        SELECT @RunDate = [RunDate], @RunTime = [RunTime],
+            @RunDuration = [RunDuration], @ExpectedStart = [ExpectedStart],
+            @ExpectedSeconds = [ExpectedSeconds]
+        FROM @DateCases WHERE [CaseId] = @DateCase;
+        INSERT [msdb].[dbo].[sysjobhistory]
+        ([job_id], [step_id], [step_name], [sql_message_id], [sql_severity],
+         [message], [run_status], [run_date], [run_time], [run_duration],
+         [operator_id_emailed], [operator_id_netsent], [operator_id_paged],
+         [retries_attempted], [server])
+        VALUES (@JobId, 0, N'ExampleHistoryOutcome', 0, 0,
+            N'Example controlled date and duration', 1, @RunDate, @RunTime,
+            @RunDuration, 0, 0, 0, 0, N'ExampleHistoryServer');
+        SET @Consumer = 1;
+        WHILE @Consumer <= 3
+        BEGIN
+            SELECT @Before = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            SELECT @Json = NULL, @Status = NULL, @Partial = NULL,
+                @Error = NULL, @Message = NULL;
+            IF @Consumer = 1
+            BEGIN
+                EXEC [monitor].[USP_MsdbHealthAnalysis] @MaxZeilen = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @Json OUTPUT,
+                    @PrintMeldungen = 0, @StatusCodeOut = @Status OUTPUT,
+                    @IsPartialOut = @Partial OUTPUT;
+                IF COALESCE(@Status, '') <> 'AVAILABLE' OR COALESCE(@Partial, 1) <> 0
+                   OR NOT EXISTS
+                (
+                    SELECT 1 FROM OPENJSON(@Json)
+                    WITH ([Area] varchar(40), [SourceObject] nvarchar(256), [RowCount] bigint,
+                          [OldestUtc] datetime2(3), [NewestUtc] datetime2(3),
+                          [StatusCode] varchar(40), [EvidenceLimit] nvarchar(1000))
+                    WHERE [Area] = 'AGENT_HISTORY' AND [SourceObject] = N'msdb.dbo.sysjobhistory'
+                      AND [RowCount] = 3 + @DateCase AND [StatusCode] = 'AVAILABLE'
+                      AND [OldestUtc] IS NULL AND [NewestUtc] IS NULL
+                      AND NULLIF([EvidenceLimit], N'') IS NOT NULL
+                ) THROW 55197, N'Die erweiterten Agent-Aggregate sind verletzt.', 1;
+            END
+            ELSE IF @Consumer = 2
+            BEGIN
+                EXEC [monitor].[USP_AgentJobs] @JobNames = N'[ExampleOps008HistoryJob]',
+                    @MaxZeilen = 0, @ResultSetArt = 'NONE', @JsonErzeugen = 1,
+                    @Json = @Json OUTPUT, @PrintMeldungen = 0;
+                IF COALESCE(JSON_VALUE(@Json, '$.meta.statusCode'), '') <> 'AVAILABLE'
+                   OR COALESCE(JSON_VALUE(@Json, '$.meta.isPartial'), '') <> 'false'
+                   OR COALESCE(JSON_QUERY(@Json, '$.steps'), '') <> '[]'
+                   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')) <> 1
+                   OR NOT EXISTS
+                (
+                    SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                    WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                          [LastRunDateTime] datetime, [LastRunDurationSeconds] int,
+                          [LastRunStatus] int, [Enabled] bit, [StepCount] int)
+                    WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                      AND [LastRunDateTime] = @ExpectedStart
+                      AND [LastRunDurationSeconds] = @ExpectedSeconds
+                      AND [LastRunStatus] = 1 AND [Enabled] = 0 AND [StepCount] = 0
+                ) THROW 55198, N'Die AgentJobs-Datums- oder Sekundeninterpretation ist verletzt.', 1;
+            END
+            ELSE
+            BEGIN
+                EXEC [monitor].[USP_AgentMonitoringAnalysis] @HistoryHours = 24,
+                    @MitJobStatus = 1, @MitDatabaseMail = 0, @MaxZeilen = 0,
+                    @ResultSetArt = 'NONE', @JsonErzeugen = 1, @Json = @Json OUTPUT,
+                    @PrintMeldungen = 0, @StatusCodeOut = @Status OUTPUT,
+                    @IsPartialOut = @Partial OUTPUT, @ErrorNumberOut = @Error OUTPUT,
+                    @ErrorMessageOut = @Message OUTPUT;
+                IF COALESCE(@Status, '') NOT IN ('AVAILABLE', 'AVAILABLE_WITH_FINDING')
+                   OR COALESCE(@Partial, 1) <> 0 OR @Error IS NOT NULL OR @Message IS NOT NULL
+                   OR (SELECT COUNT_BIG(*) FROM OPENJSON(@Json, '$.jobs')
+                       WITH ([JobId] uniqueidentifier) WHERE [JobId] = @JobId) <> 1
+                   OR NOT EXISTS
+                (
+                    SELECT 1 FROM OPENJSON(@Json, '$.jobs')
+                    WITH ([JobId] uniqueidentifier, [JobName] nvarchar(128),
+                          [LatestRunDateTime] datetime, [LatestRunDuration] int,
+                          [LatestRunStatus] int, [IsEnabled] bit,
+                          [FindingCode] varchar(100), [FindingSeverity] varchar(16))
+                    WHERE [JobId] = @JobId AND [JobName] = N'ExampleOps008HistoryJob'
+                      AND [LatestRunDateTime] = @ExpectedStart
+                      AND [LatestRunDuration] = @RunDuration AND [LatestRunStatus] = 1
+                      AND [IsEnabled] = 0 AND [FindingCode] = 'JOB_STATE_INFORMATIONAL'
+                      AND [FindingSeverity] = 'INFO'
+                ) THROW 55198, N'Die Monitoring-Datums- oder Rohdauerinterpretation ist verletzt.', 1;
+            END;
+            SELECT @After = (SELECT
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobs]
+                ORDER BY [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Jobs],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobsteps]
+                ORDER BY [job_id], [step_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Steps],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobhistory]
+                ORDER BY [instance_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [History],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobactivity]
+                ORDER BY [session_id], [job_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Activity],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobservers]
+                ORDER BY [job_id], [server_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Servers],
+            JSON_QUERY((SELECT * FROM [msdb].[dbo].[sysjobschedules]
+                ORDER BY [job_id], [schedule_id] FOR JSON PATH, INCLUDE_NULL_VALUES)) AS [Schedules]
+            FOR JSON PATH, WITHOUT_ARRAY_WRAPPER, INCLUDE_NULL_VALUES);
+            IF @Before IS NULL OR @After IS NULL
+               OR @Before COLLATE SQL_Latin1_General_CP1_CS_AS <> @After COLLATE SQL_Latin1_General_CP1_CS_AS
+               OR (SELECT COUNT_BIG(*) FROM [msdb].[dbo].[sysjobhistory]) <> 3 + @DateCase
+               OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1
+               OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> 16384
+                THROW 55199, N'Die erweiterten Consumer haben Agentquellen oder Callerzustand verändert.', 1;
+            SET @Calls += 1;
+            SET @Consumer += 1;
+        END;
+        SET @DateCase += 1;
+    END;
+    IF @DateCase <> 4 OR @Calls <> 12
+        THROW 55199, N'Die drei Datumsfälle oder zwölf Consumeraufrufe fehlen.', 1;
     IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobactivity] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobservers] WHERE [job_id] = @JobId)
        OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysjobschedules] WHERE [job_id] = @JobId)

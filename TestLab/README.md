@@ -198,8 +198,9 @@ Maintenance-Aggregate sowie der getrennte tatsächliche Agent-Joblauf sind
 nachfolgend beschrieben. Mail-/Maintenance-Ausführung, Retention und fehlende
 optionale Quellen bleiben separat offen.
 
-Mit `-Scenario AgentHistory` wird ausschließlich der Agent-Aggregatvertrag
-zusätzlich zu Installation, Smoke-Test und Runtimevertrag `122` geprüft.
+Mit `-Scenario AgentHistory` werden der Agent-Aggregatvertrag und drei
+synthetische Joboutcomes für Datum und Dauer zusätzlich zu Installation,
+Smoke-Test und Runtimevertrag `122` geprüft.
 Der Standard `HistoryRestore` behält die Backup-, Restore- und Größenfälle.
 
 ```powershell
@@ -212,9 +213,24 @@ Die Agent-Fixture [TEST-0001](Scenarios/OPS-008/agent-history.sql) legt in einer
 eigenen Transaktion einen deaktivierten Job an und injiziert nacheinander
 eine, zwei und drei synthetische Job- und Stepzeilen in `sysjobhistory`.
 Der Analyzer muss die vollständige Zeilenanzahl mit `AVAILABLE` und leeren
-Zeitgrenzen liefern und alle Quellwerte erhalten. Die Fixture wird vollständig
-zurückgerollt. Sie führt keinen Agent-Job aus und belegt keine Datums-, Dauer-
-oder Retentionsinterpretation. Der Runner initialisiert für seinen
+Zeitgrenzen liefern und alle Quellwerte erhalten. Anschließend injiziert dieselbe Transaktion drei Joboutcomes
+mit Historycounts vier, fünf und sechs. Unabhängige Literale prüfen den
+Schaltag um Mitternacht, `01:02:03` mit 85 Sekunden und `23:59:59` mit einer
+codierten Dauer von 100 Stunden beziehungsweise 360.000 Sekunden.
+`USP_AgentJobs` konvertiert die Dauer in Sekunden; `USP_AgentMonitoringAnalysis`
+erhält den codierten Rohwert. Beide liefern den erwarteten lokalen Startzeitpunkt
+zum letzten Outcome nach `instance_id`, auch gegenüber einer früher
+injizierten Zeile mit neuerem Kalenderdatum. `USP_MsdbHealthAnalysis`
+erhält weiterhin NULL-Zeitgrenzen. Zwölf NONE-/JSON-Consumeraufrufe erhalten
+sechs vollständige Agentquellen und den Callerzustand. Die Fixture rollt
+danach den eigenen Job und alle Historyzeilen zurück. Der native Lauf auf
+SQL Server 2025 `17.0.4075.5` und Framework-CL170 besteht einschließlich
+Coreinstallation, Smoke, Runtimevertrag `122` und eigenem Labcleanup.
+Die vierfeldrige Zusammenfassung bleibt unverändert; Fall- und Aufrufzahlen
+werden intern geprüft. Die Fixture führt keinen Agent-Job aus. Step-Dauern,
+ungültige Kalenderwerte, Überläufe, UTC- oder Endzeitinterpretation,
+Zeitfenstergrenzen und Retention werden damit nicht belegt.
+Der Runner initialisiert für seinen
 frischen State die testgebundene Ownership-Lane von `SQL_Server_Lab` und
 serialisiert eigene Runtime-Tests über die gemeinsame Host-Testlane.
 

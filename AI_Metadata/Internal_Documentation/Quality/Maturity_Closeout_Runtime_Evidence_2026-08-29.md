@@ -1751,3 +1751,87 @@ mit 69 Calls wird nicht als erneut ausgeführter Gruppenlauf ausgegeben.
 OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION. Erfolgreicher Mailversand,
 Maintenance-Ausführung, automatische Aufbewahrung und weitere Filter-/
 Retentionsgrenzen bleiben eigenständig offen.
+
+## Ergänzende OPS-008-Agent-Datums- und Dauerinterpretation vom 8. Oktober 2026
+
+Die bestehende TEST-0001-Fixture im öffentlichen `AgentHistory`-Runner behält
+ihre drei ursprünglichen Aggregatstufen. Anschließend injiziert sie in
+derselben eigenen Transaktion drei zusätzliche Joboutcomes mit `step_id=0`.
+Historycounts vier, fünf und sechs werden durch Msdb-Aggregate bestätigt.
+Ein deaktivierter eigener Job besitzt weiterhin keine Stepdefinition,
+Serverzuordnung, Schedule oder tatsächliche Ausführung.
+
+| run_date | run_time | run_duration | Lokaler Startzeitpunkt | AgentJobs-Sekunden | Monitoring-Rohdauer |
+|---:|---:|---:|---|---:|---:|
+| 20240229 | 0 | 0 | 2024-02-29 00:00:00 | 0 | 0 |
+| 20240229 | 10203 | 125 | 2024-02-29 01:02:03 | 85 | 125 |
+| 20250102 | 235959 | 1000000 | 2025-01-02 23:59:59 | 360000 | 1000000 |
+
+Erwartete Zeitpunkte und Sekunden sind unabhängige Literale.
+`USP_AgentJobs` wird exakt auf den eigenen Job gefiltert;
+`USP_AgentMonitoringAnalysis` wird mit `HistoryHours=24` und deaktiviertem
+Mailpfad aufgerufen und muss den eigenen Job im jobs-Array eindeutig liefern.
+Die Outcomeauswahl folgt instance_id, auch gegenüber einer früher injizierten
+Zeile mit neuerem Kalenderdatum. Die drei Datum-/Dauerpaare betreffen
+Joboutcomes; das Steps-Array bleibt ohne Stepdefinition leer. Monitoring
+liefert die codierte Rohdauer sowie JOB_STATE_INFORMATIONAL/INFO für den
+deaktivierten Job. AVAILABLE_WITH_FINDING ist wegen vorhandener Findings
+zulässig; Partialität oder Fehler sind nicht zulässig. Die Msdb-Agentzeitgrenzen
+bleiben weiterhin NULL und werden nicht aus den Integerdatumswerten abgeleitet.
+
+Alle zwölf NONE-/JSON-Consumeraufrufe prüfen vollständige Werte von sysjobs,
+sysjobsteps, sysjobhistory, sysjobactivity, sysjobservers und sysjobschedules,
+eine committable eigene Transaktion, ursprünglichen Locktimeout und
+XACT_ABORT ON. Erfolg und Catch rollen die eigene Transaktion zurück und
+restaurieren ursprüngliches XACT_ABORT direkt im Callerbatch. Der Erfolg
+bestätigt den entfernten eigenen Job und leere Historie. Die bestehende
+vierfeldrige Zusammenfassung bleibt unverändert; drei neue Fälle und zwölf
+Aufrufe sind interne Abschlussbedingungen.
+
+Der tatsächlich ausgeführte UTF-8/LF-Fixturestand besitzt SHA-256
+`0B4A5FFA0843EEDA1DD4001064EF99D3A9ECC734F129E40182E200511304B415`.
+Der erste neue Fixturelauf am Basisstand
+`bbf407dd2598dc167bb8b8958f6f47f0e747090f` scheiterte mit SQL-Fehlern 2714/1750
+am festen lokalen Temp-Constraintnamen PK_JobNameFilter in USP_AgentJobs.
+Installation, Smoke und Runtimevertrag 122 bestanden davor; das eigene Lab
+wurde mit zwei Cleanupschritten ohne Fehler entfernt. Dieser fehlgeschlagene
+Lauf besitzt keinen erfolgreichen Ergebnisdatensatz und bleibt getrennt erhalten.
+
+Eine anschließende private native Gegenprobe in einem weiteren neuen eigenen
+Lab bestätigt zwei erfolgreiche Aufrufe ohne Callertransaktion. Innerhalb
+derselben offenen Callertransaktion gelingt der erste Aufruf und hinterlässt
+einen benannten Primärschlüssel; der zweite liefert 1750 bei XACT_STATE -1.
+Das Rollback stellt TX0, leere History und null verbliebene benannte Schlüssel her.
+Die anonyme Kandidatenvariante besteht jeweils zwei Aufrufe mit und ohne
+Callertransaktion. Das eigene Gegenprobenlab wurde mit zwei Cleanupschritten
+und null Fehlern entfernt. Parallele Sessions wurden nicht charakterisiert.
+
+Die einzeilige Produktkorrektur entfernt ausschließlich den festen
+Constraintnamen. Primärschlüssel, JobName-Spalte, Kollation, Signatur und
+Ergebnisvertrag bleiben erhalten. Der korrigierte UTF-8/LF-Produktstand besitzt
+SHA-256 `482E9B743476D6D33F39346ACBE375D9B08664790FF1E0F3BE8FFB60143BADBD`.
+Der gekoppelte OPS-005-Installer wurde kanonisch neu erzeugt; sein Updateweg
+bleibt normalisiert unverändert. Der öffentliche AgentHistory-Runner bleibt
+unverändert. Eine private Ableitung ersetzt ausschließlich den Helperlocator
+und ergänzt sechs weitere kanonisch ausgewählte Impacttests; Smoke110 wird
+bereits im normalen Ablauf ausgeführt und nicht erneut gestartet.
+
+Der korrigierte native Lauf bestätigt
+SQL Server 2025 `17.0.4075.5`, Linux/Docker und Framework-CL170. Coreinstallation
+mit 187 Batches, Smoke-Test 110, Runtimevertrag 122, die erweiterte Fixture und
+alle sieben impact-basierten SQL-Dateien bestehen: Common124/144/167,
+Infrastructure110 und Integration110/196/198. Common167 erhält keine neue
+positive Unicode-Fixture; die zusätzliche Datumsgegenprobe stammt aus
+AgentHistory. Ein neuer empirischer Catch-Nachweis wird nicht behauptet.
+Das eigene Lab wurde entfernt; Runtimeidentitäten, Rohlogs und
+vollständige Laufzeitausgaben bleiben außerhalb des Repositorys.
+
+Dieser Nachweis prüft ausschließlich die beschriebenen NONE-/JSON-Felder
+und injizierten positiven Joboutcomes. Vollständige RAW-/TABLE-/CONSOLE-
+Schemaabnahme, Step-Dauern, ungültige Kalenderwerte, Überläufe, UTC- und
+Endzeitinterpretation, Zeitfenstergrenzen, tatsächliche Agentdauer,
+Berechtigungspfade, ältere native Engines und zusätzliche Compatibility
+Levels werden damit nicht belegt. OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION;
+öffentliche Produktverträge, Registry, Reifeflags und historische Matrix
+bleiben unverändert. Frühere unabhängige Nachweise und private Fehlerläufe
+werden durch diesen begrenzten Lauf nicht ersetzt.
