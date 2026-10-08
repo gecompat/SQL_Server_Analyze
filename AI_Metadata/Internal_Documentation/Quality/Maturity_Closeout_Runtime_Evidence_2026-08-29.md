@@ -1293,3 +1293,77 @@ automatische Aufbewahrung, zusätzliche native Engines und weitere
 Retentiongrenzen bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
 TEST-0001, Registry, Maturityflags und historische Release-Matrix bleiben
 unverändert.
+
+
+## Ergänzende OPS-008-Agent-Calleroptionen vom 8. Oktober 2026
+
+Der öffentliche Runner mit `-Scenario AgentCallerOptions` bestand auf einem
+neuen eigenen SQL-Server-2025-Linux-Docker-Lab mit `PASS` und `REMOVED`.
+Coreinstallation mit 187 Batches, Smoke-Test `110`, Runtimevertrag `122`
+und beide bestehenden Agentfixtures bestanden. Der Lauf bestätigte
+`ProductVersion=17.0.4075.5` und Framework-Compatibility-Level 170. Server
+und `tempdb` verwendeten `Latin1_General_100_CS_AS`, das Framework
+`SQL_Latin1_General_CP1_CS_AS`. Produkt-SQL blieb unverändert.
+
+Beide Fixtures verlangen vor Quelländerungen den ursprünglichen
+Standardlocktimeout `-1` und erfassen XACT_ABORT vor einer Änderung.
+XACT_ABORT wird im Try-Pfad vor der eigenen Joberzeugung aktiviert. Die
+Consumer prüfen XACT_ABORT ON, Locktimeout 137 und eine committable eigene
+Transaktion. Nach eigenem Rollback und Jobcleanup stellen Erfolg und Catch
+beide Optionen direkt im Callerbatch wieder her; Catch wirft den
+ursprünglichen Fehler erneut. Die Retentionfixture setzt nach jeder
+Consumerphase den Locktimeout auf `-1` und erhält XACT_ABORT ON bis zum
+abschließenden Jobcleanup. Finale Assertionen prüfen drei beziehungsweise
+neun Consumeraufrufe sowie beide ursprünglichen Optionen.
+
+Die Ausführungsfixture bestätigte einen erfolgreichen eigenen lokalen Job
+mit einem T-SQL-Schritt und zwei nativen Historienzeilen. Die Retentionfixture
+bestätigte zwei erfolgreiche eigene Ausführungen und vier, zwei sowie null
+Historienzeilen nach gezielten nativen Job-ID-/Datumspurges. Vollständige
+jüngere Historienwerte blieben erhalten. Insgesamt zwölf NONE-, TABLE- und
+CONSOLE-Aufrufe bestanden Aggregate, Paritäten aller acht Fachfelder und
+Quell-/Callerzustandsprüfungen. Beide Fixtures bestanden mit je zwei Batches;
+sie injizierten keine Historie. Vier eigene Rollbacks und das abschließende
+Jobcleanup entfernten sämtliche eigenen Job-, Step-, Server-, Schedule-,
+Aktivitäts- und Historienzeilen. Das äußere Cleanup entfernte Container,
+Volume und temporären State mit zwei Schritten und null Fehlern.
+
+Eine getrennte private direkte SqlClient-Gegenprobe auf einem weiteren neuen
+Lab derselben nativen Kombination bestand sechs Fälle. Jede Fixture lief
+auf drei getrennten eigenen Verbindungen. Zwei Varianten bestätigten zuerst
+die tatsächlichen ursprünglichen Optionen und injizierten `THROW 56090`
+nach bestätigtem erfolgreichem Jobabschluss vor dem ersten Consumer.
+Der Fehlerpunkt der Ausführungsfixture verlangte zwei native Historienzeilen,
+derjenige der Retentionfixture vier Zeilen in Phase 1. Beide verlangten den
+eigenen deaktivierten Job, einen Schritt, lokale Serverzuordnung, keine
+Schedules und keine laufende eigene Aktivität. Jobhistorie wurde nicht
+injiziert. Die vier Fehlerfälle mit ursprünglichem XACT_ABORT OFF oder ON
+bestätigten nach erneutem Fehler auf derselben offenen Verbindung Locktimeout
+`-1`, den ursprünglichen XACT_ABORT-Wert sowie vor Quellabfragen erfassten
+Transaktionszustand null bei Transaktionscount null. Job-, Historien-, Step-,
+Server-, Schedule- und Aktivitätsquellen waren leer. Zwei frühe
+Locktimeout-31-Ablehnungen bei ursprünglichem OFF bestätigten unveränderte
+Optionen und dieselben leeren Quellen ohne Joberzeugung.
+
+Die private Gegenprobe konsumierte die kanonischen SQL-Dateien mit genau
+einem eindeutigen Fehlerpunkt je Fehlerfall. Fixturebatches hatten ein
+begrenztes Timeout von 300 Sekunden für die vorhandenen zwei Pollschleifen
+mit je höchstens 120 einsekündigen Wartezyklen und das Catch-Jobcleanup.
+Einzelabfragen und Verbindungsaufbau blieben auf 30 Sekunden begrenzt. Die sechs Ergebnisquellenhashes entsprachen
+den geprüften zwei SQL-Dateien. Skript, Diagnostik und Ergebnisdatei bleiben
+außerhalb von Git. Die erste Gegenprobe bestand; eigenes Cleanup entfernte
+Container, Volume und temporären State mit zwei Schritten und null Fehlern.
+Der erfolgreiche öffentliche Lauf wurde nicht wiederholt.
+
+Der Nachweis betrifft die beiden Agentfixtures und Fehlerpunkte nach
+abgeschlossenem Job. Bei Retention ist ausschließlich Phase 1 als Fehlerfall
+belegt. Laufende Jobs, Stop-/Pollfehler, spätere Fehlerpunkte, erfolgreiche
+Retention mit ursprünglichem XACT_ABORT ON, NOCOUNT, Datenbankkontext und
+allgemeine Temp-Tabellenbereinigung bleiben unbelegt. Drei ältere dynamische
+Restores bleiben offen; als Nächstes folgt die Backup-/Restore-Retentionfixture.
+Der XACT_ABORT-Umfang der drei älteren Fenster-/Agent-Aggregatfixtures benötigt
+eine getrennte Prüfung. Erfolgreicher Mailversand, tatsächliche Maintenance,
+automatische Aufbewahrung, zusätzliche native Engines und weitere
+Retentiongrenzen bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
+TEST-0001, Registry, Maturityflags und historische Release-Matrix bleiben
+unverändert.
