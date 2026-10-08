@@ -156,6 +156,15 @@ weder negative oder fehlerhaft codierte Dauern noch `agent_datetime`, andere
 Procedurearithmetik oder tatsächliche Laufzeiten; native Endpunktfälle wurden
 für diesen statischen Nachweis nicht ausgeführt.
 
+Eine getrennte SQL-2025-Gegenprobe injiziert ausschließlich die ungültigen
+Kalenderdaten 20230229 und 20240230, jeweils als Job- und Stepoutcome.
+AgentJobs meldet in allen vier Fällen `ERROR_HANDLED`, `isPartial=true`
+und den zuvor direkt gemessenen nativen Fehler 242. Bei ungültigem
+Joboutcome bleiben Job- und Steparray leer. Bei ungültigem Stepoutcome
+bleibt der zuvor gelesene gültige Joboutcome erhalten; das Steparray ist
+leer. Diese Beobachtung gilt für NONE/JSON bei `XACT_ABORT OFF`; andere
+ungültige Datums-/Zeitwerte und `XACT_ABORT ON` sind damit nicht abgenommen.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
