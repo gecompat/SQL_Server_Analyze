@@ -4,8 +4,8 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_EncryptionAnalysis
-Version      : 1.0.0
-Stand        : 2026-07-18
+Version      : 1.0.1
+Stand        : 2026-10-09
 Zweck        : Bewertet den sichtbaren Lebenszyklus von TDE, Schutzertifikaten,
                expliziter Backupverschluesselung, Always Encrypted und Ledger.
 Methodik     : Read-only Metadatenanalyse mit je Quelle isolierter Fehlergrenze.
@@ -212,7 +212,7 @@ BEGIN
             JOIN [sys].[databases] AS [d] WITH (NOLOCK) ON [d].[database_id]=[e].[DatabaseId]
             LEFT JOIN [sys].[dm_database_encryption_keys] AS [k] WITH (NOLOCK) ON [k].[database_id]=[e].[DatabaseId]
             LEFT JOIN [master].[sys].[certificates] AS [c] WITH (NOLOCK)
-              ON [k].[encryptor_type]=N'CERTIFICATE' AND [c].[thumbprint]=[k].[encryptor_thumbprint];
+              ON [k].[encryptor_type] IN(N'CERTIFICATE',N'CERTIFICATE_OAEP_256') AND [c].[thumbprint]=[k].[encryptor_thumbprint];
 
             INSERT [#EncryptionAnalysis_SourceStatus] VALUES
             (N'sys.dm_database_encryption_keys + master.sys.certificates','AVAILABLE',0,
@@ -314,11 +314,11 @@ BEGIN
                 WHEN [EncryptionState] IN (2,4,5,6)
                  AND [EncryptionScanModifyDate]<DATEADD(MINUTE,-@TdeTransitionWarnMinutes,SYSUTCDATETIME())
                     THEN 'TDE_TRANSITION_LONG_RUNNING'
-                WHEN [IsEncrypted]=1 AND [EncryptorType]=N'CERTIFICATE' AND [ProtectorName] IS NULL
+                WHEN [IsEncrypted]=1 AND [EncryptorType] IN(N'CERTIFICATE',N'CERTIFICATE_OAEP_256') AND [ProtectorName] IS NULL
                     THEN 'TDE_PROTECTOR_NOT_VISIBLE'
                 WHEN [IsEncrypted]=1 AND [ProtectorExpiryDate]<DATEADD(DAY,@CertificateExpiryWarnDays,GETDATE())
                     THEN 'TDE_CERTIFICATE_EXPIRY_WINDOW'
-                WHEN [IsEncrypted]=1 AND [EncryptorType]=N'CERTIFICATE' AND [ProtectorPrivateKeyLastBackupDate] IS NULL
+                WHEN [IsEncrypted]=1 AND [EncryptorType] IN(N'CERTIFICATE',N'CERTIFICATE_OAEP_256') AND [ProtectorPrivateKeyLastBackupDate] IS NULL
                     THEN 'LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING'
                 WHEN @ExpliziteBackupverschluesselungErwartet=1
                  AND [LatestFullBackupFinishDate] IS NULL THEN 'FULL_BACKUP_EVIDENCE_MISSING'
@@ -330,13 +330,13 @@ BEGIN
                 WHEN [EncryptionScanState] IN (2,3) THEN 'HIGH'
                 WHEN [EncryptionState] IN (2,4,5,6)
                  AND [EncryptionScanModifyDate]<DATEADD(MINUTE,-@TdeTransitionWarnMinutes,SYSUTCDATETIME()) THEN 'MEDIUM'
-                WHEN [IsEncrypted]=1 AND [EncryptorType]=N'CERTIFICATE' AND [ProtectorName] IS NULL THEN 'MEDIUM'
+                WHEN [IsEncrypted]=1 AND [EncryptorType] IN(N'CERTIFICATE',N'CERTIFICATE_OAEP_256') AND [ProtectorName] IS NULL THEN 'MEDIUM'
                 WHEN [IsEncrypted]=1 AND [ProtectorExpiryDate]<DATEADD(DAY,@CertificateExpiryWarnDays,GETDATE()) THEN 'MEDIUM'
                 WHEN @ExpliziteBackupverschluesselungErwartet=1
                  AND ([LatestFullBackupFinishDate] IS NULL OR [LatestFullBackupExplicitlyEncrypted]=0) THEN 'MEDIUM'
                 ELSE 'INFO' END,
             [EvidenceLimit]=CASE
-                WHEN [IsEncrypted]=1 AND [EncryptorType]=N'CERTIFICATE' AND [ProtectorPrivateKeyLastBackupDate] IS NULL
+                WHEN [IsEncrypted]=1 AND [EncryptorType] IN(N'CERTIFICATE',N'CERTIFICATE_OAEP_256') AND [ProtectorPrivateKeyLastBackupDate] IS NULL
                     THEN N'Kein lokaler Exportzeitpunkt sichtbar; externe Schluesselkopien koennen dennoch existieren.'
                 WHEN @ExpliziteBackupverschluesselungErwartet=1
                     THEN N'TDE und explizite Backupverschluesselung sind getrennte Schutzmechanismen; ein Test-Restore bleibt erforderlich.'

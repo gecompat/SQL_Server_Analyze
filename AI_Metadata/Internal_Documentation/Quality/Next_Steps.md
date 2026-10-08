@@ -586,6 +586,26 @@ Die Statusquellen besitzen getrennte Aufgaben:
 
 Ein vorhandener SQL-Quellpfad oder ein grüner statischer Vertrag ersetzt keinen dokumentierten Laufzeitnachweis.
 
+
+
+Am 9. Oktober 2026 wurde eine native OAEP-Zertifikatlücke in Encryption080 korrigiert.
+Fünf Typprüfungen behandeln `CERTIFICATE` und `CERTIFICATE_OAEP_256` gleich;
+der native Typwert bleibt erhalten. Die unabhängige Baseline belegte zuvor NULL-
+Protektorfelder und fälschlich konsistente TDE-Metadaten. Integration185 prüft
+den installierten Join mit drei sowie die Befundausdrücke mit neun unabhängigen
+Erwartungen; seine sieben bisherigen Fälle bleiben erhalten. Acht Impacttests
+bestanden je Framework-CL150/160/170 auf SQL Server 2025, ebenso alle 77 statischen
+Prüfungen. Zwei eigene verschlüsselte Unicode-Quellen lieferten tatsächlich
+die gemessenen Typen bei CL160 und CL170; Zustand 3, Scanstatus 4, AES-128 und
+Zertifikatsablauf 2099 wurden unabhängig gelesen. Fünfzehn TABLE-/RAW-/CONSOLE-
+Fälle bestätigten alle 26 Werte, Schemas, Quellen, Warnfenster, Problemscope,
+Limit und Callererhaltung; eigene SQL-Ressourcen, Lab und Statepfad wurden
+entfernt. Weitere TDE-/Zertifikatpfade, explizite Backupverschlüsselung, AE,
+Ledger und Restore bleiben offen. Der begrenzte Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt partiell.
+Die SMTP-abhängige Welle wartet weiter auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
