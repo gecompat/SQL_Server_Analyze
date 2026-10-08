@@ -483,6 +483,35 @@ Zustellung, authentisches Alter oder automatische Aufbewahrung. Weitere
 Status-/Datumsfilterkombinationen und inneres Fehlercleanup bleiben getrennte
 Nachweise. Der Analyzer erhält keinen neuen Anlagenquellenvertrag.
 
+Mit `-Scenario MaintenanceDetailRetention` erzeugt eine getrennte Fixture
+drei injizierte eigene Maintenance-Elternzeilen mit je zwei verknüpften
+Detailzeilen. Vor dem Aufbau werden die 13 nativen Detailfelder und die
+Fremdschlüsselbindung über `task_detail_id` geprüft. Sämtliche Inhalte sind
+synthetisch; Plans und Subplans bleiben leer. Maintenance, SSIS und Jobs
+werden nicht ausgeführt.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MaintenanceDetailRetention `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Zwei native `sp_maintplan_delete_log`-Aufrufe mit Datumsgrenzen und
+NULL-Planfiltern müssen drei, eine und null Elternzeilen sowie sechs, zwei
+und null Details hinterlassen. Jüngere vollständige Eltern- und Detailwerte
+müssen NULL-sicher erhalten bleiben; verwaiste Details dürfen nicht verbleiben.
+Neun NONE-, TABLE- und CONSOLE-Aufrufe prüfen native Elternaggregate,
+Parität aller acht Fachfelder sowie unveränderte Eltern- und Detailquellen
+bei committable Callertransaktion und erhaltenem Locktimeout. Das Rollback
+muss alle injizierten Eltern und Details entfernen; das äußere
+identitygebundene Labcleanup bleibt erforderlich.
+
+Eltern und Details verwenden übereinstimmende kontrollierte Zeiten. Der
+Nachweis trennt deshalb keine unabhängige Detaildatumssemantik und belegt
+weder selektive Planfilter noch authentisches Alter, automatische Aufbewahrung
+oder tatsächliche Maintenance-Ausführung. Der Analyzer erhält keinen neuen
+Detailquellenvertrag.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
