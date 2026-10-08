@@ -625,6 +625,23 @@ Der begrenzte Nachweis steht unter
 Die SMTP-abhängige Welle wartet weiter auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestand ein getrennter nativer Encryption-Nachweis mit drei
+eigenen Full-Backups auf unverändertem Produktcode. Eine Quelle ohne TDE und
+eine TDE-Quelle erhielten explizite AES-256-Backupverschlüsselung; die zweite
+TDE-Quelle wurde ohne zusätzliche ENCRYPTION-Klausel gesichert. Drei plus
+fünfzehn TABLE-/RAW-/CONSOLE-Aufrufe bestätigten alle 26 Fachwerte, Schemas,
+Quellen und Caller. Der Verschlüsselungswert wurde unabhängig gegen die
+ausgeführten Operationsmodi 1/0/1 geprüft. Native Werte aes_256 und
+CERTIFICATE_OAEP_256 blieben unverändert. Drei neue eigene Dateien lagen
+ausschließlich im neuen SQL-Volume; eigenes Historien-/SQL-/Lab-/Statecleanup
+bestand. Erwartungs- und zusätzliche Berechtigungspfade sowie Dateiintegrität,
+externe Schlüsselkopie und Restore bleiben unbelegt. Der begrenzte Nachweis
+steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
+COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
+öffentliche Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
