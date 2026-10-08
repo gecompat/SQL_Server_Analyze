@@ -576,6 +576,45 @@ Maintenance-Ausführung, unabhängige Detaildatumssemantik, authentisches Alter,
 automatische Aufbewahrung und inneres Fehlercleanup bleiben getrennte
 Nachweise. Produkt-SQL und der öffentliche Analyzervertrag bleiben unverändert.
 
+Mit `-Scenario MaintenanceFilterBoundary` prüft eine getrennte Fixture die
+native Ablehnung gleichzeitiger Plan- und Subplanparameter. Sie verlangt beim
+neuen eigenen Labcaller den Standardlocktimeout `-1` und stellt diesen nach
+dem Rollback direkt im Callerbatch wieder her. Sie erzeugt
+innerhalb einer Callertransaktion denselben kontrollierten Sechs-Eltern-/
+Zwölf-Detail-Umfang mit drei injizierten Subplanmetadaten und einem
+deaktivierten eigenen Job ohne Steps, Serverzuordnung oder Historie.
+
+```powershell
+pwsh -File ./TestLab/Invoke-Ops008MsdbHistoryScenario.ps1 `
+  -Scenario MaintenanceFilterBoundary `
+  -LabRepositoryRoot ../SQL_Server_Lab
+```
+
+Je ein `sp_maintplan_delete_log`-Aufruf mit passenden beziehungsweise
+widersprüchlichen Plan-/Subplan-IDs und Datumsgrenze muss den nativen Fehler
+`2732` aus der Systemprozedur auslösen. Deren Ablehnungszweig fordert zwar
+Meldung `12980` an; der Caller erhält auf der charakterisierten SQL-Server-2025-
+Linux-Engine `2732`. Die Herkunft muss beim datenbankübergreifenden Aufruf
+exakt `msdb.dbo.sp_maintplan_delete_log` entsprechen. Bei `XACT_ABORT OFF`
+muss die kontrollierte Fehlerbehandlung sämtliche Eltern-, Detail-, Subplan-
+und Jobwerte sowie die committable Callertransaktion und den Locktimeout
+erhalten. Neun NONE-, TABLE- und CONSOLE-Aufrufe prüfen
+native Aggregate aus sechs unveränderten Elternzeilen, zwölf Details und
+Parität aller acht Fachfelder bei erhaltenem `XACT_ABORT OFF`. Ein zusätzlicher nativer
+Aufruf bei `XACT_ABORT ON` muss denselben Fehler und den erwarteten
+Callerzustand `XACT_STATE()=-1` bei weiterhin unveränderten Quellwerten
+bestätigen. Danach muss das eigene Rollback alle injizierten Zeilen und den
+eigenen Job entfernen und die ursprünglichen Locktimeout und die XACT_ABORT-Einstellung wiederherstellen; das äußere identitygebundene Labcleanup bleibt erforderlich.
+
+Der Nachweis betrifft die Parameterablehnung auf der tatsächlich geprüften
+nativen Engine. Die beiden Fehleraufrufe liefern keinen positiven kombinierten
+Retentionfilter. Die drei erwarteten Fehler werden innerhalb der Fixture behandelt. Der
+ON-Fall belegt eine uncommittable eigene Transaktion vor ihrem Rollback;
+ein ungeplanter äußerer Fixturefehler wird dadurch nicht simuliert.
+Echte Maintenance-/SSIS-Ausführung, automatische Aufbewahrung und zusätzliche
+native Versionen bleiben getrennte Nachweise. Produkt-SQL und der öffentliche
+Analyzervertrag bleiben unverändert.
+
 ## OPS-007 Zweite Session und verweigerter DMV-Zugriff
 
 `Invoke-Ops007ForeignCursorScenario.ps1` erzeugt ein neues SQL-Server-2025-
