@@ -606,6 +606,25 @@ Ledger und Restore bleiben offen. Der begrenzte Nachweis steht unter
 Die SMTP-abhängige Welle wartet weiter auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestand ein getrennter nativer Zertifikatexport-Nachweis auf
+dem unveränderten integrierten Encryption080. Der öffentliche Export ließ
+den privaten Exportzeitpunkt NULL; der anschließende passwortgeschützte
+private Export setzte ihn innerhalb unabhängig gemessener serverlokaler
+Zeitgrenzen. Drei plus fünfzehn TABLE-/RAW-/CONSOLE-Aufrufe bestätigten alle
+26 Fachwerte und Schemafacetten, Quellen und Caller. Die exportierte Quelle
+lieferte im Defaultfenster TDE_METADATA_CONSISTENT, die unveränderte Gegenprobe
+LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING. Beide blieben im großen Warnfenster
+MEDIUM bei unterschiedlichen Evidenzgrenzen. Drei eigene Exportdateien blieben
+ausschließlich im neuen SQL-Volume; eigenes SQL-/Lab-/Statecleanup bestand.
+Externe Schlüsselkopie, Dateiintegrität und Restore werden nicht bewiesen.
+Weitere Export-, TDE-, Backupverschlüsselungs-, AE- und Ledgerpfade bleiben offen.
+Der begrenzte Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt partiell.
+Die SMTP-abhängige Welle wartet weiter auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und

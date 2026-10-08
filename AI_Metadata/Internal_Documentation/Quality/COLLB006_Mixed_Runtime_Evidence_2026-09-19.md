@@ -5714,3 +5714,110 @@ Weitere TDE-Übergänge, Scanfehler, Zertifikatexport- und Berechtigungspfade,
 positive explizite Backupverschlüsselung, AE, Ledger und Restore bleiben offen.
 Keine SMTP-Infrastruktur wurde eingerichtet oder beschafft. COLL-001 bleibt
 partiell; bestehende Reifegradflags werden nicht erweitert.
+
+
+## Lokaler öffentlicher und privater Zertifikatexport am 9. Oktober 2026
+
+Eine getrennte private Fixture prüfte den unveränderten integrierten Stand
+`0eca207e19e73c9eea1146b70ce6bf4d3cd277ee` als `REVIEWED_COMMITTED_TREE` in einem neuen eigenen
+SQL-Server-2025-Docker-Lab unter Linux. ProductVersion war `17.0.4075.5`.
+Server, tempdb und drei eigene leere Quelldatenbanken verwendeten
+`Latin1_General_100_CS_AS`; das Framework verwendete
+`SQL_Latin1_General_CP1_CS_AS` bei CL170. Die zwei TDE-Quellen hatten getrennt
+gemessene CL160 und CL170, AES-128, Zustand 3, Scanstatus 4 und Ablaufdatum
+31. Dezember 2099. Der native Protektortyp wurde unverändert gemessen.
+Eine dritte Quelle blieb unverschlüsselt. Kanonische Installation, Smoke und
+installierter Encryption-Procedurebody bestanden; die vorherigen 24 Impactläufe
+wurden für diese unveränderten Produktquellen nicht wiederholt.
+
+Der Export verwendete ausschließlich das neu erzeugte eigene kurzlebige
+SQL-Volume. Dessen Run-State wies genau einen schreibbaren verwalteten Mount
+ohne Hostbindung aus. Alle drei eigenen absoluten Zieldateien waren vor dem
+ersten Export abwesend; vor dem zweiten fehlten beide weiteren Dateien.
+Bestehende Dateien wurden nicht überschrieben. Der private native Beobachter
+`sys.dm_os_file_exists` bestätigte die tatsächliche Verfügbarkeit sowie die
+Dateiexistenz, Verzeichnis- und Elternmerkmale auf dieser Engine. Damit wird
+kein öffentlicher oder versionsübergreifender Dateiprüfvertrag eingeführt.
+Dateiinhalte, Dateigrößen, Schlüsselmaterial und Thumbprints wurden weder
+gelesen noch ins Ergebnisartefakt übernommen; Thumbprints dienten nur dem
+internen Metadatenjoin.
+
+Zuerst wurde ausschließlich das öffentliche Zertifikat der ersten eigenen
+TDE-Quelle exportiert. Nur diese Datei existierte danach; der native
+`pvt_key_last_backup_date` blieb NULL. Drei TABLE-/RAW-/CONSOLE-Aufrufe mit
+Defaultfenster 90 bestätigten für beide TDE-Quellen
+`LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING` und INFO. Die zweite Zertifikatquelle
+blieb unverändert.
+
+Anschließend wurde dasselbe Zertifikat mit privatem Schlüssel in zwei weitere
+eigene Dateien exportiert. Ein separat neu erzeugtes Passwort schützte die
+private Datei; Parameter und kurzlebige unmanaged Puffer wurden freigegeben.
+Geheimnisfähige SQL-Fehler konnten ausschließlich numerische Diagnosen liefern.
+Alle drei Dateien existierten danach. Die genaue eigene Zertifikat-ID blieb
+gebunden; der gesetzte private Exportzeitpunkt lag zwischen den unmittelbar
+um den Export gemessenen serverlokalen GETDATE-Werten desselben datetime-Typs.
+Es wird weder UTC-Semantik noch Gleichheit mit einer Hostuhr behauptet.
+
+Fünfzehn weitere TABLE-/RAW-/CONSOLE-Aufrufe bestätigten die bestehenden fünf
+Fälle: Default-Allscope mit drei Zeilen, großes Warnfenster 36500 mit drei,
+Problemscope mit zwei, Problemscope-Limit 1 mit einer und Default-Problemscope
+mit null Zeilen. Die erste TDE-Quelle lieferte im Defaultfenster
+`TDE_METADATA_CONSISTENT`, die nicht exportierte Gegenprobe weiterhin
+`LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING`; beide Befunde waren INFO.
+Im großen Warnfenster blieben beide `TDE_CERTIFICATE_EXPIRY_WINDOW` und MEDIUM.
+Die EvidenceLimit-Felder unterschieden sich unabhängig vom Befund:
+Die exportierte Quelle behielt die allgemeine Read-only-Metadatengrenze;
+die Gegenprobe benannte den fehlenden lokalen Exportzeitpunkt und die dennoch
+mögliche externe Schlüsselkopie.
+
+Alle 18 Consumeraufrufe prüften sämtliche 26 Fachwerte einschließlich NULLs,
+Unicode und DateTime-Werten zwischen direkter Ausgabe, JSON derselben
+Materialisierung sowie nativen Vor-/Nachabfragen. Die Quellen blieben je
+Consumer erhalten. Zwischen den beiden Exportphasen änderten sich nur
+Exportdatum, Defaultbefund und EvidenceLimit der ersten Quelle; alle anderen
+Fachwerte und die vollständigen Gegenproben blieben gleich. Eindeutige
+Datenbank- und RAW-Quellmengen, Status und Warnungen sowie die vollständigen
+fachlichen und physischen Schemas einschließlich sysname-Aliastypen wurden geprüft.
+Die Nullability der RAW-Metafelder wurde erfasst, ohne feste Sollwerte für
+Literalausdrücke zu verlangen.
+Die zusätzliche leere Drei-Spalten-Auswahlprobe wurde separat erfasst und
+erhalten. Die Callerwerte LOCK_TIMEOUT 137, XACT_ABORT OFF, TRANCOUNT 0 und
+XACT_STATE 0 blieben je Aufruf erhalten; die abschließenden ursprünglichen
+OFF/-1/TX0/XACT_STATE-0-Werte wurden vor dem SQL-Cleanup gemessen.
+
+Eigene Datenbanken, Zertifikate und der neu erzeugte Masterkey wurden anhand
+unmittelbarer IDs entfernt. Der öffentliche Lab-Abbau meldete REMOVED ohne
+Fehler und entfernte den eigenen Container samt SQL-Volume einschließlich
+Exportdateien. Der eigene Statepfad war vor Erzeugung des PASS-Artefakts
+entfernt. Es gab keine Hostkopie der Dateien. Der unabhängige Vorabreview
+korrigierte eine kulturabhängige DateTime-Konvertierung ausschließlich im
+privaten Prüfer; eine separate de-AT-Gegenprobe bestand vor SQL-Ausführung.
+Ein vorausgehender Lauf scheiterte nach der Lab-Bereitschaft vor Installation,
+TDE-Aufbau und Export an der falschen privaten Annahme Instances.Drives.
+Die kanonische Quelle verwendet Instances.Intents.Drives. Nur dieser Pfad
+und die vorherige einzelne Docker-Instanzbindung wurden korrigiert und erneut
+geprüft; das fehlgeschlagene eigene Lab wurde mit zwei Schritten und null
+Fehlern entfernt. Ein PASS-Artefakt entstand für diesen Versuch nicht.
+
+Der Lauf endete um `2026-10-08T23:14:50.4804458+00:00` UTC. Die Quellen verwenden
+UTF-8/LF-Hashes; private Pakete, Log und Ergebnis physische Bytehashes.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 unverändert | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `813AA79EDCD5F4037419F431810FD6FF3ACAB68E34B500200712FD3B1E3AD687` |
+| Privates Export-SQL | `344D50C6277EE3A0D47690E1F059614BC2295D08179BBE09BD0B5F9E9C9CE8A3` |
+| Privater Consumer | `F20E0DD6536552EB9F3CB1602D9AE461960D958C994440CA84EEFFB16D4EF61B` |
+| Privater nativer Beobachter | `75F5C02DC648CAF21F237058941FB6D57AFFC515DB95CA7E79BAA85E1E6DD57E` |
+| Privates Cleanup-SQL | `10D6DF55A154E12E9C27B69D992C13B54C0EDD794300CE675256FBEFB160E054` |
+| Privater fehlgeschlagener Vorlauf | `2FF32EA6868A89B0C383699AFE2E2B1AB8AC5F8FEC5CFC1A68FD959FCC22AE8A` |
+| Privater erfolgreicher Ausführungslog | `486332BC416C091F76221ED5F454C81D7C6B1829BF7DDB8CE10E9775A72E9E6B` |
+| Privates PASS-Ergebnis | `0F5B0826AE4524F43C6D813C5208C6DF5B40A3B9941FD9E0A4FA8B707286B9E8` |
+
+Dieser Nachweis belegt einen lokalen Exportmetadatenpfad, keine externe
+Schlüsselkopie, Dateiintegrität, erfolgreiche Wiederherstellung oder allgemeine
+Backupverwaltung. Weitere Export- und Berechtigungspfade, TDE-Übergänge und
+Scanfehler, explizite Backupverschlüsselung, AE, Ledger und Restore bleiben offen.
+SMTP-Infrastruktur wurde weder eingerichtet noch beschafft. COLL-001 bleibt
+partiell; bestehende Produkt- und Maturityflags werden nicht erweitert.
