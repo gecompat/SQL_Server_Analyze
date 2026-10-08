@@ -1684,14 +1684,10 @@ Catchorakel; die Ergebnisdatei wird nicht geschrieben. Die Erwartung,
 dass Datum NULL und Status NULL alle Zeilen löschen und danach 55185
 auslösen, war falsch. Der native Microsoft-Parametervertrag verlangt
 mindestens einen wirksamen Filter. Der private Catchhook verdeckte die
-ursprüngliche Fehlernummer, deren tatsächlicher Wert und Slot noch nicht
-beobachtet sind. Daraus wird kein Produkt- oder kanonischer Fixturefehler
-abgeleitet. Eine unabhängige neue Diagnose soll Originalfehler, Prozedur-
-Enum, Slot und vollständige Werterhaltung vor Rollback beobachten.
-Eine zweite gültige Gegenprobe verwendet Datum 2031 und Status NULL,
-sodass alle sechs eigenen Zeilen innerhalb der Datumsgrenze liegen.
-Beide neuen Fälle bleiben wegen belegter gemeinsamer Host-Testlane
-`NOT_EXECUTED`; die bestandenen zwei Teilfälle werden nicht wiederholt.
+ursprüngliche Fehlernummer. Daraus wird kein Produkt- oder kanonischer
+Fixturefehler abgeleitet. Die anschließend ausgeführten beiden getrennten
+Diagnosefälle stehen im folgenden Nachweis; die zuvor bestandenen ON- und
+endlichen Datumsfälle werden dabei nicht wiederholt.
 
 Beide äußeren Cleanups des normalen und des fehlgeschlagenen privaten
 Laufs entfernten Container und Volume mit je zwei Schritten und null
@@ -1707,3 +1703,51 @@ eigene Laufidentitäten bleiben außerhalb Git. Erfolgreicher Mailversand,
 Maintenance-Ausführung, automatische Aufbewahrung und weitere Filter-/
 Retentionsgrenzen bleiben offen. OPS-008 bleibt `PARTIAL_PRODUCT_FUNCTION`;
 Registry, Maturityflags und historische Release-Matrix bleiben unverändert.
+
+### OPS-008: ergänzende NULL-Datumsdiagnose der Mailretention
+
+Am 8. Oktober 2026 beendet ein weiterer privater Lauf in einem neuen eigenen
+SQL-Server-2025-Linux-Docker-Lab beide vorbereiteten Diagnosefälle mit
+`COMPLETED`. ProductVersion ist 17.0.4075.5, der Framework-CL 170.
+Die Coreinstallation besteht 187 Batches. Der zuvor bestandene normale
+Fixturelauf, Smoke 110, Runtimevertrag 122 und die zwei erfolgreichen
+Teilfälle des früheren privaten Laufs werden nicht wiederholt.
+
+Die erste ausschließlich im Speicher veränderte Fassung verwendet in Fall 2
+Datum NULL und Status NULL. Sie erfasst den ursprünglichen SQL-Fehler 14608,
+Prozedur-Enum OTHER, Phase 2 und zwölf abgeschlossene Consumeraufrufe.
+Vor dem Rollback bestätigt ein case-sensitiver vollständiger JSON-Vergleich
+mit INCLUDE_NULL_VALUES dieselben sechs Mailitems und sämtliche ursprünglichen
+Werte. OTHER bezeichnet einen erfassten Prozedurwert außerhalb der beiden
+geprüften Purgenamen; der genaue Prozedurname wurde nicht übernommen und
+wird nicht behauptet. Dieser Fall heißt `OBSERVED_REJECTION`, nicht PASS.
+
+Die zweite getrennte Verbindung verwendet Datum 2031 und Status NULL.
+Die gültige native Filterauswahl entfernt alle sechs eigenen Zeilen;
+das bestehende Fixture-Orakel weist sie mit 55185 im Callerbatch zurück.
+Fall 2, Phase 2, zwölf abgeschlossene Consumeraufrufe und null verbleibende
+Mailitems vor dem Rollback sind bestätigt. Der vollständige Quellvergleich
+ist erwartungsgemäß falsch. Diese Gegenprobe besteht mit PASS.
+
+Nach jedem Fall bestätigt dieselbe jeweilige Verbindung ursprünglichen
+Locktimeout -1, ursprüngliches XACT_ABORT OFF, TX0 und vor Quellabfragen
+erfassten XACT_STATE 0. Mailitems, Allitems und Anlagen sind leer;
+konfigurierte und effektive Mail-XPs bleiben deaktiviert. Der Catchhook
+erfasst Fehler und Quellwerte vor dem kanonischen Rollback, speichert
+ausschließlich Diagnosemetadaten nach dessen Ausführung und wirft den
+ursprünglichen SQL-Fehler erneut. Der Harness bindet Hash und Mutationen
+an denselben explizit als UTF8_LF normalisierten kanonischen Quelltext.
+
+Das eigene äußere Cleanup entfernt Container und Volume mit zwei Schritten
+und null Fehlern; das eigene Stateverzeichnis ist anschließend nicht vorhanden.
+Die private Ergebnisdatei enthält beide Fälle; Rawlog, Harness, Payloads
+und Laufidentitäten bleiben außerhalb Git. Der frühere private FAIL mit
+Catchfehler 56091 und fehlender Ergebnisdatei bleibt als eigener Fehlversuch
+erhalten. Die neue Diagnose macht ihn nicht nachträglich erfolgreich.
+
+Produkt-SQL, Fixture, Runner, sieben Summaryfelder, Registry und historische
+Release-Matrix bleiben unverändert. Der gemeinsame logische Gruppenvertrag
+mit 69 Calls wird nicht als erneut ausgeführter Gruppenlauf ausgegeben.
+OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION. Erfolgreicher Mailversand,
+Maintenance-Ausführung, automatische Aufbewahrung und weitere Filter-/
+Retentionsgrenzen bleiben eigenständig offen.

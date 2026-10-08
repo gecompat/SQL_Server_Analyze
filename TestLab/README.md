@@ -431,12 +431,24 @@ und deaktivierte Mail-XPs. Beide eigenen Labs wurden entfernt.
 Der private Gesamtlauf scheiterte am dritten Mutationsorakel mit Fehler
 56091 und erzeugte keine Ergebnisdatei. Seine Erwartung, dass Datum NULL
 und Status NULL alle Zeilen löschen, war falsch: Der native Parametervertrag
-verlangt mindestens einen wirksamen Filter. Die ursprüngliche Fehlernummer
-wurde durch den privaten Catchhook verdeckt und ist noch nicht beobachtet.
-Eine getrennte Diagnose dieser Parameterrückweisung und eine gültige
-Gegenprobe mit Datum 2031 und Status NULL bleiben wegen der belegten
-gemeinsamen Host-Testlane `NOT_EXECUTED`. Die beiden erfolgreichen
-Teilresultate sind kein PASS für den privaten Gesamtlauf.
+verlangt mindestens einen wirksamen Filter. Der private Catchhook verdeckte
+die ursprüngliche Fehlernummer. Die zwei erfolgreichen Teilresultate sind
+kein PASS für diesen fehlgeschlagenen Gesamtlauf.
+
+Eine anschließende getrennte Diagnose in einem weiteren eigenen Lab derselben
+Engineversion und desselben Framework-CL erfasst bei Datum NULL und Status
+NULL den ursprünglichen SQL-Fehler 14608. Fall 2, Phase 2 und zwölf abgeschlossene
+Consumeraufrufe sind bestätigt; vor dem Rollback bleiben sechs Mailitems mit
+sämtlichen ursprünglichen Werten erhalten. Das erfasste Prozedur-Enum lautet
+`OTHER`; ein genauer Prozedurname wird daraus nicht abgeleitet. Die gültige
+Gegenprobe mit Datum 2031 und Status NULL entfernt alle sechs Zeilen und wird
+vom Fixture-Orakel mit 55185 im selben Slot zurückgewiesen. Nach beiden Fällen
+bestätigt dieselbe jeweilige Verbindung ursprüngliches XACT_ABORT OFF,
+Locktimeout -1, TX0, vor Quellabfragen erfassten XACT_STATE 0, drei leere
+Mailquellen und deaktivierte Mail-XPs. Der Diagnoselauf ist `COMPLETED` mit
+einer `OBSERVED_REJECTION` und einer bestandenen Gegenprobe. Sein eigenes
+Labcleanup entfernt Container und Volume mit zwei Schritten und null Fehlern;
+das Stateverzeichnis ist anschließend nicht vorhanden.
 Tatsächliche Mailausführung, automatische Aufbewahrung, weitere Filter-
 und Retentiongrenzen bleiben eigenständige Nachweise.
 
