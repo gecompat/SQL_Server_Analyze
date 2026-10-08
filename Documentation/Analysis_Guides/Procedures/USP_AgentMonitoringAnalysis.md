@@ -141,6 +141,12 @@ Jobgesamtoutcome in dieser Probe nicht: Monitoring meldet
 lokalen Jobstart samt Rohdauer. Die Probe verwendet NONE/JSON mit
 Jobstatus an, Database Mail aus und `XACT_ABORT OFF`.
 
+Eine weitere getrennte SQL-2025-Gegenprobe bestätigt diese Modul- und
+Jobarrayzustände für 236060 und 240000 bei gültigem Datum 20240229,
+jeweils als Job- oder Stepoutcome. Vier direkte Orakel messen Fehler 242.
+236060 verändert Minuten und Sekunden gemeinsam. Weitere Uhrzeitwerte,
+isolierte Minuten-/Sekundengrenzen und XACT_ABORT ON bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
