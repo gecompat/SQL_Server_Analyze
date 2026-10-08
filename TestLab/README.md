@@ -486,6 +486,32 @@ Ereignistypfilter, NULL- oder ungültige Filter, automatische Logretention,
 erfolgreicher Versand, Anlagenretention und inneres Fehlercleanup bleiben
 getrennte Nachweise.
 
+Die beiden tatsächlichen Mailfixtures verlangen vor Quelländerungen den
+ursprünglichen Standardlocktimeout `-1` und erfassen XACT_ABORT vor einer
+Änderung. Im Try-Pfad wird XACT_ABORT vor der ersten Konfigurationsänderung
+aktiviert. Consumer prüfen eine committable eigene Transaktion mit
+Locktimeout 137 und XACT_ABORT ON. Erfolg und Catch restaurieren beide
+ursprünglichen Optionen direkt im Callerbatch. Der Erfolg prüft zusätzlich
+drei beziehungsweise neun Consumeraufrufe; Catch wirft den ursprünglichen
+Fehler nach eigenem Rollback und Optionswiederherstellung erneut.
+
+Mailitems, Profil und Konto entstehen außerhalb der Consumertransaktion.
+Der SQL-Catch entfernt diese Ressourcen nicht und stellt Queue- oder
+Konfigurationseintrittswerte nicht wieder her; das äußere identitygebundene
+Labcleanup bleibt dafür erforderlich. Beide Szenarien verwenden getrennte
+neue Labs, weil verbleibende native Logs der Ausführungs-Fixture die
+Leerquellen-Vorprüfung der Retentions-Fixture verletzen würden. Der
+Optionsvertrag umfasst weder NOCOUNT noch Datenbankkontext oder allgemeines
+Cleanup temporärer Tabellen.
+
+Eine getrennte private Gegenprobe bestätigt vier Fehlerfälle mit
+ursprünglichem XACT_ABORT OFF oder ON vor dem ersten Consumer und zwei
+frühe Locktimeout-31-Ablehnungen auf vier neuen Labs. Optionen, native
+Mail-/Profil-/Konto-/Bindungswerte und bei Logretention die vier ausgewählten
+Logwerte bleiben auf derselben Verbindung erhalten. Die Logfehlerprobe
+betrifft ausschließlich Phase 1; spätere Purgephasen bleiben ungeprüft.
+Das eigene äußere Cleanup entfernt die verbliebenen Ressourcen.
+
 Mit `-Scenario MailAttachmentRetention` erzeugt eine getrennte Fixture drei
 injizierte eigene Failed-Mailitems und je zwei synthetische Binäranlagen von
 neun Bytes. Der native siebenfeldrige Anlagenviewvertrag wird vor dem Aufbau

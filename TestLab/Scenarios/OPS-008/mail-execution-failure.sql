@@ -3,11 +3,12 @@ GO
 
 /* Die eigene Mailqueue erzeugt einen tatsächlichen lokalen Fehlerfall ohne Historieninjektion. */
 SET NOCOUNT ON;
-SET XACT_ABORT ON;
 IF @@TRANCOUNT <> 0 OR COALESCE(IS_SRVROLEMEMBER(N'sysadmin'), 0) <> 1
    OR NOT EXISTS (SELECT 1 FROM [sys].[extended_properties]
        WHERE [class] = 0 AND [name] = N'SQLANALYZE.Ops008Disposable' AND CONVERT(int, [value]) = 1)
     THROW 55281, N'Die eigene Wegwerf-Lab-Bindung oder Callerbasis fehlt.', 1;
+IF @@LOCK_TIMEOUT <> -1
+    THROW 55291, N'Der ursprüngliche Standardlocktimeout fehlt.', 1;
 IF EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailitems])
    OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailattachments])
    OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_event_log])
@@ -41,7 +42,7 @@ DECLARE @Before nvarchar(max), @After nvarchar(max);
 DECLARE @Consumer int = 1, @Calls int = 0, @Mode varchar(16), @Mapping nvarchar(max);
 DECLARE @Json nvarchar(max), @TableJson nvarchar(max), @ConsoleJson nvarchar(max);
 DECLARE @Status varchar(40), @Partial bit, @Error int, @Message nvarchar(2048);
-DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @RestoreLockTimeoutSql nvarchar(100);
+DECLARE @PreviousLockTimeout int = @@LOCK_TIMEOUT, @PreviousXactAbort int = @@OPTIONS & 16384;
 CREATE TABLE [#Ops008Console]
 (
     [Ergebnis] nvarchar(200), [Area] varchar(40), [SourceObject] nvarchar(256),
@@ -49,6 +50,7 @@ CREATE TABLE [#Ops008Console]
     [SizeMb] decimal(19,2), [StatusCode] varchar(40), [EvidenceLimit] nvarchar(1000)
 );
 BEGIN TRY
+    SET XACT_ABORT ON;
     EXEC [master].[sys].[sp_configure] N'show advanced options', 1;
     RECONFIGURE;
     EXEC [master].[sys].[sp_configure] N'Database Mail XPs', 1;
@@ -174,7 +176,7 @@ BEGIN TRY
             ORDER BY [mailitem_id] FOR JSON PATH, INCLUDE_NULL_VALUES);
         IF EXISTS (SELECT @Before COLLATE SQL_Latin1_General_CP1_CS_AS
             EXCEPT SELECT @After COLLATE SQL_Latin1_General_CP1_CS_AS)
-           OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137
+           OR XACT_STATE() <> 1 OR @@TRANCOUNT <> 1 OR @@LOCK_TIMEOUT <> 137 OR (@@OPTIONS & 16384) <> 16384
            OR EXISTS (SELECT 1 FROM [msdb].[dbo].[sysmail_mailattachments])
            OR EXISTS (SELECT 1 FROM [sys].[configurations]
                WHERE [name] = N'Database Mail XPs' AND ([value] <> 0 OR [value_in_use] <> 0))
@@ -211,13 +213,15 @@ BEGIN TRY
 END TRY
 BEGIN CATCH
     IF XACT_STATE() <> 0 ROLLBACK TRANSACTION;
-    SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-    EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+    SET LOCK_TIMEOUT -1;
+    IF @PreviousXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
     /* Der Fehlerpfad benötigt das äußere identitygebundene Labcleanup für sämtliche eigenen Mailressourcen. */
     THROW;
 END CATCH;
-SET @RestoreLockTimeoutSql = N'SET LOCK_TIMEOUT ' + CONVERT(nvarchar(20), @PreviousLockTimeout) + N';';
-EXEC [sys].[sp_executesql] @RestoreLockTimeoutSql;
+SET LOCK_TIMEOUT -1;
+IF @PreviousXactAbort = 0 SET XACT_ABORT OFF; ELSE SET XACT_ABORT ON;
+IF @Calls <> 3 OR @@LOCK_TIMEOUT <> @PreviousLockTimeout OR (@@OPTIONS & 16384) <> @PreviousXactAbort
+    THROW 55292, N'Die Consumeranzahl oder ursprünglichen Calleroptionen sind verletzt.', 1;
 DROP TABLE [#Ops008Console];
 SELECT N'OPS008_MAIL_EXECUTION_FAILURE' AS [ContractName], 1 AS [NativeFailedRows],
     @NativeErrorRows AS [BoundErrorRows], @Calls AS [ConsumerCalls], N'PASS' AS [Status],
