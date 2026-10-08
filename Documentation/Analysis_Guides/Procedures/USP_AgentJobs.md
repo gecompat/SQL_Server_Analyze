@@ -146,6 +146,16 @@ Eine jeweils jüngere Zeile des anderen Steps verändert den ersten Step
 nicht. Injizierte Retryzahlen sind gespeicherte Werte und belegen kein
 tatsächliches Retryverhalten oder eine Stepausführung.
 
+Die identische Dauerformel für Job und Step kann für den deklarierten
+`int`-Bereich von `sysjobhistory.run_duration` keinen Integerüberlauf erzeugen.
+Eine statische Betragsabschätzung begrenzt Stunden-, Minuten- und Sekundenanteil
+auf 773.092.800, 5.940 und 99; beide Additionen bleiben damit innerhalb von
+`int`. Die konservative Summenschranke 773.098.839 bestimmt kein exaktes
+Maximum und keine zulässige fachliche Maximaldauer. Die Rechnung validiert
+weder negative oder fehlerhaft codierte Dauern noch `agent_datetime`, andere
+Procedurearithmetik oder tatsächliche Laufzeiten; native Endpunktfälle wurden
+für diesen statischen Nachweis nicht ausgeführt.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
@@ -161,5 +171,9 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_AgentMonitor
 ## Primärquellen
 
 - [SQL Server Agent](https://learn.microsoft.com/en-us/ssms/agent/sql-server-agent?view=sql-server-ver17)
+- [sysjobhistory: Datentyp und Dauerformat](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/dbo-sysjobhistory-transact-sql?view=sql-server-ver17)
+- [Integerbereiche](https://learn.microsoft.com/en-us/sql/t-sql/data-types/int-bigint-smallint-and-tinyint-transact-sql?view=sql-server-ver17)
+- [Division: Abschneiden des Bruchteils](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/divide-transact-sql?view=sql-server-ver17)
+- [Modulo: Divisionsrest](https://learn.microsoft.com/en-us/sql/t-sql/language-elements/modulo-transact-sql?view=sql-server-ver17)
 
 [Technische Detailbeschreibung](../07_Infrastructure.md#2-monitorusp_agentjobs)

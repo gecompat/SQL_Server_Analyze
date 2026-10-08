@@ -1889,3 +1889,58 @@ ungültige Daten, Überläufe, UTC-/Endzeit- und Zeitfensterinterpretation,
 vollständige native Ausgabeschemaabnahme und ein neuer empirischer Catch-
 Nachweis bleiben unbelegt. OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION; bestehende
 Reifeflags, Registry und historische Release-Matrix bleiben erhalten.
+
+## Statischer OPS-008-Bereichsnachweis der Agentdauer vom 8. Oktober 2026
+
+Dieser ergänzende Nachweis gehört zu PROJECT_SEMANTIC und ist keine neue
+SQL-Server-Laufzeitevidenz. Am integrierten Stand von PR #295 enthält
+`Code/07_Infrastructure/020_USP_AgentJobs.sql` die folgende Formel zweimal,
+jeweils für `LastRunDurationSeconds int` der Job- und Stepmenge:
+
+```text
+(n / 10000) * 3600 + ((n % 10000) / 100) * 60 + (n % 100)
+```
+
+Voraussetzung ist der deklarierte `int`-Datentyp von
+`msdb.dbo.sysjobhistory.run_duration`. Die Primärquellen im Zeitmodell der
+AgentJobs-Referenz belegen Datentyp, Integerbereich, Abschneiden des
+Divisionsbruchteils und Modulo als Divisionsrest; sie wurden am 8. Oktober
+2026 geprüft. Die folgende Rechnung ist eine eigene statische Ableitung.
+Sie gilt für alle Werte von -2.147.483.648 bis 2.147.483.647 und setzt keine
+fachlich gültige HHmmss-Codierung voraus. Beträge werden mathematisch
+betrachtet; SQL `ABS` auf dem kleinsten `int` ist kein Berechnungsschritt.
+
+| Teilausdruck | Konservative obere Betragsschranke |
+|---|---:|
+| `n / 10000` | 214748 |
+| `(n / 10000) * 3600` | 773092800 |
+| `n % 10000` | 9999 |
+| `(n % 10000) / 100` | 99 |
+| `((n % 10000) / 100) * 60` | 5940 |
+| `n % 100` | 99 |
+| Erste Addition | 773098740 |
+| Gesamtsumme | 773098839 |
+
+Die Schranken folgen aus dem größten Eingabebetrag 2.147.483.648,
+ganzzahliger Division und Restbeträgen kleiner als den positiven Divisoren.
+Die Dreiecksungleichung begrenzt die Additionen. Alle Produkte, Quotienten,
+Reste und Summen liegen innerhalb von `int`; Divisoren sind positiv und
+ungleich null. Daher kann diese Dauerformel innerhalb der deklarierten
+Quelle keinen Integerüberlauf erzeugen. NULL liefert in dieser Formel NULL.
+Die Summenschranke ist konservativ und kein exakt erreichbares Maximum;
+die einzelnen Teilschranken müssen nicht gleichzeitig erreichbar sein.
+
+Eine lokale Python-Rechnung mit beliebig großen Ganzzahlen bestätigt alle
+acht Schranken, ihre Lage innerhalb beider `int`-Grenzen, genau zwei
+unveränderte Quellformeln und beide Zieldeklarationen. Der Quellstand wurde
+gegen die zuvor geprüfte AgentJobs-Quelle gebunden. Es wurden keine native
+SQL-Endpunktprobe und kein neuer Containerlauf ausgeführt.
+
+Der Ausschluss betrifft nur Integerüberlauf dieser beiden Formeln. Negative
+Dauern, Minuten- oder Sekundenkomponenten außerhalb 0 bis 59, tatsächliche
+Agentdauer, `agent_datetime`, laufzeitbezogenes DATEDIFF, Zählerkonvertierungen,
+Zeitfenster sowie UTC-/Endzeitinterpretation werden nicht validiert. Die
+vorherigen Aussagen über ungeprüfte Überläufe beschreiben den jeweiligen
+nativen Slice; sie werden durch diese getrennte statische Rechnung präzisiert.
+Produkt, Installer, Fixture, Reifeflags, Registry, OpenScope und historische
+Laufzeitmatrix bleiben unverändert; OPS-008 bleibt PARTIAL_PRODUCT_FUNCTION.
