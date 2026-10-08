@@ -193,6 +193,16 @@ den eigenen fehlgeschlagenen Job und den letzten failed Step. Dieser
 Failureumfang bestätigt keine positiven Intervalle oder allgemeine
 plattformübergreifende Retryzählung.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe bestätigt eine automatisch
+angewandte Vierzeilen-Grenze pro Job. Drei erfolgreiche Läufe eines eigenen
+aktivierten Jobs mit einem TSQL-Step hinterlassen zwei, vier und vier
+Historyzeilen. Das erste Paar nach instance_id verschwindet automatisch;
+sämtliche Werte des zweiten Paars bleiben erhalten. NONE/JSON liefert
+in allen drei Phasen den letzten erfolgreichen Job und Step. Der
+Problemfilter enthält den schedulefreien Job, aber keinen erfolgreichen Step.
+Die zusätzlich konfigurierte globale Grenze 64 wird nicht erreicht;
+Altersretention, Parallelität und andere Engines bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.

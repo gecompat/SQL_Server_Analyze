@@ -2225,3 +2225,83 @@ laufende Retryphase, tatsächliche Dauergrenzen, andere Engines und vollständig
 Ausgabeschemata bleiben unbelegt. Der innere Catchcleanup erhält keine eigene
 Fehlergegenprobe. Statusflags, Registry, OpenScope und historische Laufzeitmatrix
 bleiben erhalten; OPS-008 bleibt partiell.
+
+## Automatische OPS-008-Agentretention vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Probe am integrierten Stand von
+PR #300 besteht auf SQL Server 2025 `17.0.4075.5`, Linux/Docker und
+Framework-CL170. Coreinstallation mit 187 Batches, Smoke110 und Runtime122
+bestehen. Produktcode, Installer, öffentliche Fixture und Labquellen bleiben
+unverändert. Die Probe verwendet ausschließlich ein neues eigenes Lab.
+
+Der vorhandene custody- und rungebundene Lab-Transport setzt innerhalb
+dieses Containers sqlagent.jobhistorymaxrows auf 64 und
+sqlagent.jobhistorymaxrowsperjob auf 4. Beide Set-Aufrufe liefern Exit 0.
+Der Datei-Readback parst die Konfiguration im eigenen Container und projiziert
+ausschließlich Dateilesestatus, Abschnitt-/Keypräsenz und den kontrollierten
+Wert. Beide Werte werden exakt bestätigt; ein öffentlicher Lab-Restart
+meldet RUNNING ohne Readinessfehler. Es gibt keine neue allgemeine Labfunktion,
+Hostkonfiguration oder Imagebeschaffung.
+
+Ein eigener aktivierter lokaler Job enthält einen TSQL-Step mit SELECT 1,
+keinen Schedule, keinen Retry und keine Benachrichtigung. Drei begrenzte
+sp_start_job-Aufrufe erzeugen erfolgreiche native Step- und Gesamtoutcomes.
+Je Lauf bindet die jüngste Agent-Session die abgeschlossene Activity an den
+neuen Gesamtoutcome. Weder Historyinjektion noch manueller Purge werden verwendet.
+
+| Abgeschlossener Lauf | Retained Historyzeilen | Gesamtoutcomes | Stepoutcomes |
+|---:|---:|---:|---:|
+| 1 | 2 | 1 | 1 |
+| 2 | 4 | 2 | 2 |
+| 3 | 4 | 2 | 2 |
+
+Alle erfassten Outcomes sind erfolgreich. Jeder Lauf erzeugt zwei neue Zeilen;
+nach dem dritten fehlen beide Zeilen des ersten instance_id-Paars. Sämtliche
+gespeicherten Werte des zweiten Paars bleiben gegenüber ihrer Aufnahme nach
+Lauf zwei identisch. Die globale Grenze 64 wird nicht erreicht und ihr
+Grenzverhalten ist deshalb nicht belegt. Die beobachtete automatische Grenze
+betrifft ausschließlich vier Zeilen dieses einen Jobs.
+
+Vier NONE-/JSON-Consumer je Phase bestätigen folgende begrenzte Fachwerte:
+
+| Consumer | Modulstatus | Geprüfter fachlicher Zustand |
+|---|---|---|
+| MsdbHealth | AVAILABLE | AGENT_HISTORYcount zwei beziehungsweise vier, NULL-Zeitgrenzen und nicht leere EvidenceLimit. |
+| AgentJobs mit NurProblematisch 0 | AVAILABLE | Ein aktivierter eigener Job mit LastRunStatus 1 und StepCount eins; ein letzter erfolgreicher TSQL-Step mit LastRunRetries 0. |
+| AgentJobs mit NurProblematisch 1 | AVAILABLE | Der schedulefreie Job bleibt enthalten; das Steparray bleibt leer. |
+| Monitoring mit Jobstatus an und Mail aus | AVAILABLE_WITH_FINDING | Ein aktivierter eigener Job mit LatestRunStatus 1 und ENABLED_JOB_WITHOUT_SCHEDULE/INFO. |
+
+Alle zwölf Aufrufe bleiben ohne Partial oder Consumerfehler. Jede Phase
+vergleicht vor und nach allen vier Consumern sämtliche geordneten Werte von
+sysjobs, sysjobsteps, sysjobhistory, sysjobactivity, sysjobservers und
+sysjobschedules. Eine vorgeschaltete Stabilitätsgegenprobe erhält dieselben
+Quellen nach zwei Sekunden. Die Consumer erhalten TX1/XACT_STATE 1,
+XACT_ABORT ON und Locktimeout 31. Drei Rollbacks erhalten jeweils die
+tatsächlichen Quellen; danach stellt der gebundene eigene Jobdelete die
+ursprünglichen sechs Quellbestände wieder her. Finale Optionsrestauration
+bestätigt ursprüngliches OFF, Locktimeout -1 und TX0. XACT_STATE 0 wird nach
+dem abschließenden Quellvergleich separat vor der Ergebnisabfrage erfasst.
+Die PASS-Datei entsteht exklusiv erst nach öffentlichem eigenem Labcleanup
+mit zwei Schritten ohne Fehler und bestätigter Abwesenheit seines State.
+Die containerlokale Testkonfiguration wird mit dem eigenen Lab entfernt.
+
+Zwei frühere private Läufe scheitern am Konfigurationsreadbackguard vor
+Restart, Coreinstallation, Smoke, Runtime122 und fachlicher SQL-Probe.
+Der erste speichert keine ursprüngliche get-Rückgabe. Nur der zweite misst
+Exit 0 mit einer Nichtgefundenmeldung für den globalen Schlüssel. Daraus
+folgt keine gemessene gemeinsame Ursache beider Fehler und kein Produktfehler.
+Im dritten neuen Lab bestätigt der direkte Datei-Readback beide gesetzten
+Werte, bevor der unveränderte fachliche SQL-Stand läuft. Beide vorherigen
+Labs werden ebenfalls mit zwei Schritten ohne Fehler entfernt; ihre
+Stateverzeichnisse und Ergebnisdateien sind abwesend. Alle Rohlogs und
+konkreten Runtimeidentitäten bleiben privat.
+
+Der bestandene private SQL-Stand besitzt SHA-256
+`8A49734982E70994F1482C3A671E3A4419B09C475C42BC9A5D2A3703C071A83E`.
+Er belegt einen eigenen Job, einen Step, drei tatsächliche erfolgreiche Läufe,
+sechs erzeugte und zuletzt vier erhaltene Historyzeilen, zwölf Consumer
+und drei Rollbacks. Andere Grenzwerte, globale Überschreitung, Altersretention,
+Parallelität, andere Engines und vollständige Ausgabeschemata bleiben ungeprüft.
+Der innere Catchcleanup erhält keine eigene Fehlergegenprobe. Statusflags,
+Registry, OpenScope und historische Laufzeitmatrix bleiben erhalten;
+OPS-008 bleibt partiell.

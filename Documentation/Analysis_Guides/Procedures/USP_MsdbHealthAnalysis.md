@@ -109,6 +109,15 @@ FROM [msdb].[dbo].[backupset] WITH (NOLOCK);
 
 Quellen werden nacheinander gelesen und können währenddessen wachsen.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe bestätigt eine automatische
+Vierzeilen-Grenze pro Job. Drei erfolgreiche eigene Agentläufe hinterlassen
+zwei, vier und vier Historyzeilen; die zuerst erzeugten zwei Zeilen
+verschwinden ohne manuellen Purge. Sämtliche Werte des zweiten Zeilenpaars
+bleiben erhalten. NONE/JSON erhält in jeder Phase den aktuellen
+AGENT_HISTORYcount, NULL-Zeitgrenzen und eine nicht leere EvidenceLimit
+bei Status AVAILABLE ohne Partial oder Consumerfehler. Diese Probe
+belegt keine globale Grenzüberschreitung, Altersretention oder andere Engine.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.
