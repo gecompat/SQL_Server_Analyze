@@ -2509,3 +2509,60 @@ Intervalle, laufende Consumer, Parallelität, andere Engines, vollständige
 Ausgabeschemata und eine innere Catchcleanup-Gegenprobe bleiben ungeprüft.
 Statusflags, OpenScope, Registry und historische Laufzeitmatrix bleiben
 erhalten; OPS-008 bleibt partiell.
+
+## OPS-008-Kalenderfehler mit XACT_ABORT ON vom 8. Oktober 2026
+
+Eine getrennte private RUNTIME_EMPIRICAL-Charakterisierung am integrierten
+Stand von PR #304 ist COMPLETED auf SQL Server 2025 `17.0.4075.5`,
+Linux/Docker und Framework-CL170. Core187, Smoke110 und Runtime122 bestehen.
+Es wird ausschließlich ein neues eigenes Lab verwendet. Produktcode,
+öffentliche Fixtures, Installer, API und Labquellen bleiben unverändert.
+
+20230229 und 20240230 werden jeweils als Job- und Stepoutcome injiziert.
+Der eigene deaktivierte Job besitzt einen TSQL-Step und wird nie ausgeführt.
+Bei ungültigem Step bleibt der injizierte Joboutcome auf 20240229 gültig.
+Vier direkte native OFF-Orakel außerhalb sämtlicher Consumertransaktionen
+messen Fehler 242. Die getrennte Monitoring-Baseline bei ON31TX0 liefert
+AVAILABLE_WITH_FINDING ohne Partial oder Fehler und erhält alle sechs Quellen.
+Jeder der zwölf NONE-/JSON-Consumer erhält eine neue eigene ON31TX1-
+Transaktion mit vor dem Aufruf separat bestätigtem XACT_STATE 1.
+
+| Consumer | Ungültiger Joboutcome, je zwei Fälle | Ungültiger Stepoutcome, je zwei Fälle |
+|---|---|---|
+| MsdbHealth | AVAILABLE ohne Partial oder Fehler; Historycount 1; Post-XACT 1 | AVAILABLE ohne Partial oder Fehler; Historycount 2; Post-XACT 1 |
+| AgentJobs | ERROR_HANDLED/Partial mit 242; JSON gültig; Jobs 0 und Steps 0; Post-XACT -1 | ERROR_HANDLED/Partial mit 242; JSON gültig; Jobs 1 und Steps 0; Post-XACT -1 |
+| AgentMonitoring | Entkommener Fehler 3930 aus Procedure-Enum AGENT_MONITORING; Statusoutputs und JSON fehlen; Post-XACT -1 | AVAILABLE_WITH_FINDING ohne Partial oder Fehler; Jobs 1; Post-XACT 1 |
+
+ErrorMessagePresent ist bei den vier AgentJobs-Fehlern wahr. Die Probe bindet
+auch beide öffentlichen Msdb-Erroroutputs; deren NULL-Werte sind beobachtet.
+Die Statusoutputs nach entkommenem Monitoringfehler bleiben NULL und werden
+nicht als AVAILABLE_LIMITED rekonstruiert. Sechs Callertransaktionen werden
+uncommittable. Die vier direkten OFF-Orakel laufen vor den Consumertransaktionen
+und können diese daher nicht vorab invalidieren. Das gleiche Verhalten wird
+für beide Kalenderwerte beobachtet; andere Datums-/Uhrzeitwerte werden daraus
+nicht abgeleitet.
+
+Vor und nach jedem Consumer werden sämtliche Werte der sechs geordneten
+Quellen einschließlich NULL-Werten verglichen: sysjobs, sysjobsteps,
+sysjobhistory, sysjobactivity, sysjobservers und sysjobschedules. Alle Werte,
+Transaktionsanzahl eins, ON und Locktimeout 31 bleiben erhalten. Post-XACT
+wird vor jeder Beobachterabfrage separat erfasst. Der Beobachter führt keine
+geloggten Writes in einer uncommittable Transaktion aus: Jeder Consumer wird
+zurückgerollt, die ursprünglichen sechs Quellen und TX0/XACT_STATE 0 werden
+bestätigt, erst danach wird die private Beobachterzeile geschrieben.
+
+Zwölf Rollbacks entfernen sämtliche eigenen Jobs, Steps und injizierten
+Historyzeilen. Abschließend werden ursprüngliches OFF, Locktimeout -1,
+TX0 und separat erfasster XACT_STATE 0 bestätigt. Sieben Sourcepins bleiben
+erhalten. Der äußere eigene Labcleanup besteht mit zwei Schritten ohne
+Fehler; der Statepfad ist entfernt. Erst danach wird das COMPLETED-JSON
+exklusiv mit CreateNew geschrieben. Der SQL-Stand besitzt SHA-256
+`86E3AAED675C22B6F97133E510856435276D2BA1A90C962C7CE3E9D2797405C7`.
+
+Die Charakterisierung hat keinen vorausgehenden nativen Fehlversuch.
+COMPLETED bestätigt den abgeschlossenen privaten Beobachter und Cleanup,
+nicht die funktionale Fehlerisolation. Die Korrektur der ON-Kalendergrenze
+bleibt offen. Weitere ungültige Werte, vollständige Ausgabeschemata, RAW,
+CONSOLE, TABLE, andere Engines und innere Catchcleanup-Gegenproben bleiben
+ungeprüft. Statusflags, OpenScope, Registry und historische Laufzeitmatrix
+bleiben erhalten; OPS-008 bleibt partiell.
