@@ -203,6 +203,16 @@ Problemfilter enthält den schedulefreien Job, aber keinen erfolgreichen Step.
 Die zusätzlich konfigurierte globale Grenze 64 wird nicht erreicht;
 Altersretention, Parallelität und andere Engines bleiben ungeprüft.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe prüft eine globale
+Agent-Historiengrenze von sechs Zeilen bei einer Vierzeilen-Grenze pro Job.
+Vier erfolgreiche Läufe zweier eigener aktivierter Jobs mit je einem TSQL-Step in der
+Reihenfolge A, B, A, B hinterlassen zwei, vier, sechs und sechs Zeilen.
+Das erste A-Paar verschwindet; vollständige Werte der beiden jüngeren
+Paare bleiben erhalten. Kein Job überschreitet vier erzeugte Zeilen.
+NONE/JSON erhält in jeder Phase die letzten erfolgreichen Jobs und Steps;
+der Problemfilter enthält die schedulefreien Jobs, aber keine Steps.
+Andere Limits, Altersretention und Parallelität bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.

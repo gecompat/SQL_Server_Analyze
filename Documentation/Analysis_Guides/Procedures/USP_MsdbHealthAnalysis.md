@@ -118,6 +118,15 @@ AGENT_HISTORYcount, NULL-Zeitgrenzen und eine nicht leere EvidenceLimit
 bei Status AVAILABLE ohne Partial oder Consumerfehler. Diese Probe
 belegt keine globale Grenzüberschreitung, Altersretention oder andere Engine.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe prüft eine globale
+Agent-Historiengrenze von sechs Zeilen bei einer Vierzeilen-Grenze pro Job.
+Vier erfolgreiche Läufe zweier eigener aktivierter Jobs mit je einem TSQL-Step in der
+Reihenfolge A, B, A, B hinterlassen zwei, vier, sechs und sechs Zeilen.
+Das erste A-Paar verschwindet ohne manuellen Purge; sämtliche Werte der
+beiden jüngeren Paare bleiben erhalten. NONE/JSON erhält die jeweiligen
+AGENT_HISTORYcounts, NULL-Zeitgrenzen und eine nicht leere EvidenceLimit
+ohne Partial oder Consumerfehler. Andere Limits und Altersretention bleiben offen.
+
 ### Bewertung und Gegenprobe
 
 Vergleichen Sie Werte mit Backup-, Agent-, Mail- und Wartungsrichtlinien sowie realem Wachstum.

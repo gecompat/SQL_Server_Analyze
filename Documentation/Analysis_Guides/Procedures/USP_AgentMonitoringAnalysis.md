@@ -174,6 +174,15 @@ ENABLED_JOB_WITHOUT_SCHEDULE/INFO. AVAILABLE_WITH_FINDING ohne Partial oder
 Consumerfehler beschreibt den fehlenden Schedule dieses aktivierten Jobs.
 Die Probe belegt weder globale Grenzüberschreitung noch Altersretention.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe prüft eine globale
+Agent-Historiengrenze von sechs Zeilen bei einer Vierzeilen-Grenze pro Job.
+Vier erfolgreiche Läufe zweier eigener aktivierter Jobs mit je einem TSQL-Step in der
+Reihenfolge A, B, A, B hinterlassen zwei, vier, sechs und sechs Zeilen.
+Das erste A-Paar verschwindet; vollständige Werte der beiden jüngeren
+Paare bleiben erhalten. NONE/JSON liefert für jeden vorhandenen Job
+LatestRunStatus 1 und ENABLED_JOB_WITHOUT_SCHEDULE/INFO ohne Partial oder
+Consumerfehler. Andere Limits, Altersretention und Parallelität bleiben offen.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
