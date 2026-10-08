@@ -2879,3 +2879,73 @@ empirische innere Catchcleanup-Abnahme bleiben offen. Historische
 Laufzeitmatrix, Statusflags und OpenScope bleiben erhalten; OPS-008 bleibt
 partiell. SMTP bleibt bis zur öffentlichen integrierten und passend nativ
 abgenommenen Lab-Funktion zurückgestellt.
+
+## OPS-008-Abnahme injizierter gültiger Agentdauergrenzen vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 prüft acht getrennte
+Callertransaktionen. Jede erzeugt einen eigenen deaktivierten Job mit
+genau einem TSQL-Step und zwei injizierten erfolgreichen Historyzeilen.
+Der Job erhält keine Serverzuordnung, Schedules oder Benachrichtigungen
+und wird nicht ausgeführt. Die Probe bindet je eine Step- und Jobzeile
+an die eigene Job-ID und bestätigt ihre Reihenfolge sowie die sieben
+geprüften Historyfelder. Weitere Spalten werden in der vollständigen
+Quellgegenprüfung erhalten.
+
+Die Dauerreferenzen sind feste Literale und kopieren keine allgemeine
+Produktumrechnung. Datum und Uhrzeit bleiben 20240229 und 10203; die
+unabhängige Startreferenz ist 2024-02-29T01:02:03 ohne Zeitzonenvertrag.
+
+| Nativer run_duration-Rohwert | Feste Sekundenreferenz |
+|---|---:|
+| 59 | 59 |
+| 100 | 60 |
+| 159 | 119 |
+| 200 | 120 |
+| 5959 | 3599 |
+| 10000 | 3600 |
+| 235959 | 86399 |
+| 240000 | 86400 |
+
+240000 ist in run_duration eine gültige Dauer von 24 Stunden. Die frühere
+Uhrzeitgegenprobe betraf dasselbe Integerliteral im anderen Feld run_time.
+
+Je Fall bestehen vier NONE-/JSON-Aufrufe, insgesamt 32. MsdbHealth meldet
+AVAILABLE ohne Partial oder Fehler, Historycount zwei, NULL-Zeitgrenzen
+und nicht leere EvidenceLimit. AgentJobs meldet AVAILABLE ohne Partial
+oder Fehler mit einem erfolgreichen deaktivierten Job und einem Step;
+beide LastRunDurationSeconds entsprechen dem jeweiligen Sekundenliteral
+und beide LastRunDateTime dem festen Startwert. Der Problemfilter erhält
+denselben Job, aber keinen Step. Monitoring meldet AVAILABLE_WITH_FINDING
+ohne Partial oder Fehler mit JOB_STATE_INFORMATIONAL/INFO, dem nativen
+Jobrohwert in LatestRunDuration und der festen Jobstartreferenz.
+
+Sechs vollständige geordnete Agentquellen einschließlich NULL-Werten
+bleiben nach jedem Consumer erhalten. Die eigene Callertransaktion bleibt
+schreibfähig mit ON, Locktimeout 31, TX1 und separat erfasstem XACT_STATE 1.
+Acht eigene Rollbacks restaurieren jeweils die vollständige ursprüngliche
+Basis und entfernen den eigenen Job samt Step und injizierter History.
+Nach jedem Rollback ist XACT_STATE separat null. Abschließend bestehen
+ursprüngliches OFF, Locktimeout -1, TX0 und separat erfasster XACT_STATE 0.
+
+Die aus kanonischen Quellen erzeugte Coreinstallation besteht mit
+187 Batches, Smoke110 mit drei und Runtime122 mit zwei Batches. Der eigene
+äußere Labcleanup besteht mit zwei Schritten ohne Fehler; der Statepfad
+ist entfernt. Erst danach wird das PASS-JSON exklusiv mit CreateNew
+geschrieben. Dieser Umfang hat keinen vorausgehenden nativen Fehlversuch.
+Die tatsächliche Abnahme wurde am `2026-10-08T16:38:36.0304664+00:00` erfasst.
+SQL-SHA-256 ist `1090607BF97829C7F5229281CB2FFCB7701258CBBC8320393A4DE5DBB8497A06`;
+Wrapper-SHA-256 ist
+`F01A600DBE89217FDE68F7824B0A8ECEB40EC863C08CC3A9708892356629DD54`.
+
+Der Umfang ergänzt ausschließlich sieben kanonische Dokumentationsquellen.
+Produktquellen, öffentliche Verträge, Fixture und Installer bleiben erhalten.
+Unveränderte Runtimeverträge und die Kalenderfixture werden nicht erneut
+ausgeführt. Es wird keine zusätzliche native Engine oder Compatibility-
+Matrix gestartet. Der Nachweis charakterisiert diese acht injizierten
+gültigen Dauerwerte in NONE/JSON; tatsächliche Stundenläufe, fehlerhafte
+Dauerformate, Endzeitinterpretation, TABLE/RAW/CONSOLE-Parität und empirische
+innere Catchcleanup-Abnahme bleiben offen. Historische Laufzeitmatrix,
+Statusflags und OpenScope bleiben erhalten; OPS-008 bleibt partiell.
+SMTP wartet auf die öffentliche integrierte und passend nativ abgenommene
+Lab-Funktion.

@@ -306,6 +306,18 @@ Step. Sechs vollständige Quellen und ON/31/TX1 bleiben erhalten.
 Diese einzelne tatsächliche Probe belegt die Minutenkomponente eins;
 Stundenwerte, weitere Dauergrenzen und andere Ausgabearten bleiben offen.
 
+Eine getrennte native SQL-2025-Probe injiziert acht gültige Dauergrenzen
+in die History eines eigenen deaktivierten Jobs mit einem definierten Step.
+Die Rohwerte 59, 100, 159, 200, 5959, 10000, 235959 und 240000 entsprechen
+den festen Sekundenreferenzen 59, 60, 119, 120, 3599, 3600, 86399 und 86400.
+AgentJobs bestätigt LastRunDurationSeconds für Job und Step sowie den
+festen Startwert 2024-02-29T01:02:03. Die normale NONE-/JSON-Ausgabe
+enthält einen Job und einen Step; der Problemfilter enthält den
+deaktivierten erfolgreichen Job, aber keinen Step. 32 Consumeraufrufe
+und acht eigene Rollbacks erhalten sechs vollständige Quellen und den
+Callerzustand. Der Job wird nicht ausgeführt. Tatsächliche Stundenläufe,
+fehlerhafte Dauerformate und andere Ausgabearten bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.

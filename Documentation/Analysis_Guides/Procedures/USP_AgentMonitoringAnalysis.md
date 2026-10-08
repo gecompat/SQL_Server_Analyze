@@ -272,6 +272,18 @@ Quellen und ON/31/TX1. Diese einzelne tatsächliche Probe belegt die
 Minutenkomponente eins; Stundenwerte, weitere Dauergrenzen und andere
 Ausgabearten bleiben offen.
 
+Eine getrennte native SQL-2025-Probe injiziert acht gültige Dauergrenzen
+in die History eines eigenen deaktivierten Jobs mit einem definierten Step.
+LatestRunDuration erhält die nativen HHmmss-Rohwerte 59, 100, 159, 200,
+5959, 10000, 235959 und 240000. 240000 bezeichnet hier eine Dauer von
+24 Stunden; im getrennten Feld run_time ist derselbe Integerwert eine
+ungültige Uhrzeit. Monitoring liefert jeweils AVAILABLE_WITH_FINDING
+ohne Partial oder Fehler mit JOB_STATE_INFORMATIONAL/INFO und dem
+festen Startwert 2024-02-29T01:02:03. 32 Consumeraufrufe und acht eigene
+Rollbacks erhalten sechs vollständige Quellen und den Callerzustand.
+Der Job wird nicht ausgeführt. Tatsächliche Stundenläufe, fehlerhafte
+Dauerformate und andere Ausgabearten bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
