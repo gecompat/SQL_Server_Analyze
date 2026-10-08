@@ -203,6 +203,17 @@ LATEST_JOB_RUN_FAILED_IN_WINDOW/HIGH bei AVAILABLE_WITH_FINDING ohne
 Partial oder Consumerfehler. Consumer während des laufenden Jobs,
 weitere Intervalle und Parallelität bleiben ungeprüft.
 
+Eine spätere getrennte SQL-2025-Kalenderprobe mit XACT_ABORT ON und
+jeweils frischer committable Callertransaktion erfasst eine Fehlergrenze.
+Bei 20230229 und 20240230 als Joboutcome entkommt Fehler 3930 aus
+AgentMonitoring; öffentliche Statusoutputs und JSON fehlen. XACT_STATE ist
+danach -1. Dieselben ungültigen Stepdaten ergeben AVAILABLE_WITH_FINDING
+ohne Partial oder Fehler, ein Jobarray mit einer Zeile und XACT_STATE 1.
+Die sechs Quellen und Calleroptionen bleiben in allen vier Fällen erhalten;
+der private Beobachter rollt jede eigene Transaktion zurück. Eine erfolgreiche
+Fehlerisolation der ungültigen Joboutcomes bei ON ist damit nicht belegt.
+Die gezielte Korrektur bleibt offen.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.

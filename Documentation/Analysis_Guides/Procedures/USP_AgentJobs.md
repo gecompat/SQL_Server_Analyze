@@ -236,6 +236,16 @@ Beide NONE-/JSON-Filter erhalten den letzten failed Step und dessen
 gespeicherten retries_attempted-Wert 1. Consumer während des laufenden
 Jobs, weitere Intervalle und Parallelität bleiben ungeprüft.
 
+Eine spätere getrennte SQL-2025-Kalenderprobe mit XACT_ABORT ON und
+jeweils frischer committable Callertransaktion erfasst eine Fehlergrenze.
+Bei 20230229 und 20240230 als Job- oder Stepoutcome meldet NONE/JSON
+weiterhin ERROR_HANDLED/Partial mit Fehler 242, aber XACT_STATE wird -1.
+Bei ungültigem Joboutcome bleibt das Jobarray leer; bei ungültigem Step
+enthält es eine Zeile. Die Steparrays bleiben leer. Die vier Callertransaktionen sind danach
+uncommittable; unveränderte Optionen und Quellwerte belegen hier keine
+erhaltene Committability. Der private Beobachter rollt jede Transaktion zurück.
+Die gezielte Korrektur dieser Fehlerisolation bleibt offen.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
