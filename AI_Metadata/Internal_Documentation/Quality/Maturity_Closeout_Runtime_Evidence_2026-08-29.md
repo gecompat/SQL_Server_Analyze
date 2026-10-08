@@ -3091,3 +3091,75 @@ Altersretention, allgemeine Plattform- oder Purgegarantien, andere
 Ausgabearten und empirische innere Catchcleanup-Abnahme bleiben offen.
 OPS-008 bleibt partiell. SMTP wartet auf die öffentliche integrierte
 und passend nativ abgenommene Lab-Funktion.
+
+## OPS-008-Abnahme datenbankselektiver Backuphistorypurges vom 8. Oktober 2026
+
+Ein neuer eigener lokaler SQL-2025-Labcontainer mit Linux/Docker,
+Engine `17.0.4075.5` und Framework-CL170 prüft zwei tatsächliche
+COPY_ONLY-Backups und zwei tatsächliche Restores. Zwei freie synthetische
+Datenbanknamen werden zuerst als eigene Datenbanken erzeugt. Jede wird
+auf einem getrennten neuen Medium gesichert und unter demselben eigenen
+Namen restauriert. Native Datenbankidentitäten bleiben erhalten; die
+Katalogbaseline wird erst nach beiden Restores erfasst. Beide Backupsets,
+Medien, Restorehistoryzeilen und je zwei Dateibindungen sind eindeutig geprüft.
+
+Acht Historienquellen sind vor Aufbau leer. Anschließend existieren genau
+zwei eigene Paare mit unterschiedlichen media_set_id-Werten. Nur die
+genau gebundenen eigenen Backup- und Restorehistoryzeilen erhalten die
+kontrollierten lokalen Historienzeiten 2025-01-01T12:00:00 für den ersten
+Scope und 2000-01-01T12:00:00 für die ältere Gegenprobe. Die tatsächlichen
+Operationen und diese kontrollierten Historienzeiten sind getrennte Evidenz.
+
+| Phase | Backupcount | Restorecount | MIN | MAX |
+|---|---:|---:|---|---|
+| Ohne Purge | 2 | 2 | 2000-01-01T12:00:00 | 2025-01-01T12:00:00 |
+| Nach Purge des ersten eigenen Datenbanknamens | 1 | 1 | 2000-01-01T12:00:00 | 2000-01-01T12:00:00 |
+| Nach Purge der eigenen Gegenprobe | 0 | 0 | NULL | NULL |
+
+Beide nativen sp_delete_database_backuphistory-Aufrufe erfolgen mit
+parametrisiertem eigenen Namen ausdrücklich im msdb-Kontext und liefern
+Returncode 0. Sie liegen vor den jeweiligen Consumertransaktionen.
+Sämtliche Werte der älteren Gegenprobe aus acht geordneten Historienquellen
+einschließlich NULL-Werten werden vor dem ersten Purge anhand eigener
+Backup-, Medien- und Restoreidentitäten gespeichert. Danach muss die
+gesamte globale Resthistorie diesem Snapshot entsprechen. Nach dem zweiten
+Purge sind alle acht Quellen leer. Die ältere Gegenprobe prüft die
+datenbankselektive Löschung; sie belegt keinen automatischen Alters-Purge.
+
+Je Phase bestehen NONE, TABLE und CONSOLE mit JSON, insgesamt neun
+Consumeraufrufe. Native Counts, MIN und MAX, NULL-SizeMb, AVAILABLE-Status,
+nicht leere EvidenceLimit und vollständige TABLE-/CONSOLE-/JSON-Parität
+bestehen. Der Modulstatus bleibt AVAILABLE ohne Partial oder Consumerfehler.
+Acht vollständige geordnete Historienquellen und acht Katalogfelder beider
+eigenen Datenbanken bleiben nach jedem Consumer erhalten. Der Caller bleibt
+schreibfähig mit ON, Locktimeout 137, TX1 und XACT_STATE 1. Drei eigene
+Rollbacks erhalten die jeweilige Historienphase und die Katalogwerte;
+danach sind TX0 und XACT_STATE 0 bestätigt. Finale ursprüngliche
+OFF/-1/TX0/XactState0-Restauration besteht. Vor dem Erfolgs-DROP werden
+beide eigenen Namen und Datenbankidentitäten erneut gebunden; danach sind
+beide Datenbanken abwesend. Innerer Cleanup nach injizierten Fehlern ist
+kein Teil dieser Probe; Fehlerressourcen bleiben bis zum äußeren Labcleanup.
+
+Coreinstallation besteht mit 187 Batches, Smoke110 mit drei und
+Runtime122 mit zwei Batches. Der eigene äußere Labcleanup besteht mit
+zwei Schritten ohne Fehler; der Statepfad ist entfernt. Erst danach wird
+das PASS-JSON exklusiv mit CreateNew geschrieben. Ein vorheriger eigener
+Lauf erreichte den Abschlussguard, scheiterte dort mit 55182 und erzeugte
+keinen PASS-Nachweis. Sein eigener Labcleanup bestand mit zwei Schritten
+ohne Fehler; dessen Rawlog bleibt lokal erhalten. Der zweite private
+Lauf beobachtet zuerst den unveränderten ursprünglichen IF-Ausdruck.
+Danach erfasst er die Abschlusswerte einzeln vor dem strengen Abschlussguard.
+Der unveränderte direkte IF-Ausdruck wird in der zweiten Probe erneut ausgelöst, während die danach getrennt erfassten Abschlusswerte neun Calls, drei Rollbacks, OFF/-1/TX0 und XACT_STATE 0 bestätigen. Diese begrenzte direkte Guardgegenprobe ist von der erfolgreichen Consumer- und Retentionsabnahme getrennt; eine allgemeine XACT_STATE-Auswertungsgarantie wird nicht behauptet.
+Tatsächliche erfolgreiche Abnahme:
+`2026-10-08T17:38:45.6132879+00:00`. SQL-SHA-256:
+`B7B8BBCEFE90219886811E269EB7A5E00E59D4B1AF4B54F01A5200C8CF2963CF`. Wrapper-SHA-256:
+`B01E712219EEA25A0F911A3772FE016DBB9A28E65980028503056924F7ABBF86`.
+
+Sechs kanonische Dokumentationsquellen und genau drei bestehende
+CSV-Textzellen sind ergänzt. Produktquellen, öffentliche Verträge,
+Fixture, Installer, historische Laufzeitmatrix, Statusflags und OpenScope
+bleiben erhalten. Unveränderte Runtimeverträge werden nicht erneut
+pauschal geprüft. Automatische Altersretention, allgemeine Plattform-
+oder Purgegarantien und andere Engines bleiben offen. OPS-008 bleibt
+partiell. SMTP wartet auf die öffentliche integrierte und passend
+nativ abgenommene Lab-Funktion.
