@@ -147,6 +147,15 @@ jeweils als Job- oder Stepoutcome. Vier direkte Orakel messen Fehler 242.
 236060 verändert Minuten und Sekunden gemeinsam. Weitere Uhrzeitwerte,
 isolierte Minuten-/Sekundengrenzen und XACT_ABORT ON bleiben ungeprüft.
 
+Eine getrennte tatsächliche SQL-2025-Ausführung eines eigenen lokalen
+TSQL-Steps mit einem konfigurierten Retry und Intervall 0 bestätigt den
+abschließenden Joberfolg nach kontrolliertem Erstfehler und Steperfolg.
+Nach Deaktivierung des eigenen Jobs liefert NONE/JSON bei Jobstatus an und
+Database Mail aus genau diesen letzten Gesamtoutcome mit Runstatus 1 und
+JOB_STATE_INFORMATIONAL/INFO. Der Modulstatus ist AVAILABLE_WITH_FINDING
+ohne Partial und ohne Fehlernummer/-meldung. Diese Probe bestätigt keine
+laufende Retryphase, Retryerschöpfung oder allgemeine Retryzählung.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.

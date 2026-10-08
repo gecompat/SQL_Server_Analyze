@@ -172,6 +172,17 @@ messen Fehler 242. Der Wert 236060 prüft ungültige Minuten und Sekunden
 gemeinsam; ein isolierter Fehlernachweis je Teilfeld wird nicht behauptet.
 Weitere Uhrzeitwerte und XACT_ABORT ON bleiben ungeprüft.
 
+Eine getrennte tatsächliche SQL-2025-Ausführung prüft einen eigenen lokalen
+TSQL-Step mit genau einem konfigurierten Retry und Intervall 0. Nach dem
+kontrollierten Erstfehler folgen nativ Retrystatus 2, Steperfolg 1 und
+Joberfolg 1. Die neueste Erfolgszeile besitzt im beobachteten Dockerlauf
+retries_attempted 0; LastRunRetries erhält diesen gespeicherten Wert.
+Der tatsächliche Retry wird durch die Statusfolge belegt. NONE/JSON liefert
+den letzten erfolgreichen Step; @NurProblematisch=1 enthält den danach
+deaktivierten Job, aber keinen problematischen Step. Der ältere Retryoutcome
+wird nicht als letzter Step ausgewählt. Retryerschöpfung, positive Intervalle,
+Parallelität und andere Engines sind damit nicht geprüft.
+
 ### Bewertung und Gegenprobe
 
 Berücksichtigen Sie den Jobstatus, den aktuellen Step, Run Requested, Start und Stop, Retry, die letzten Outcomes, den Schedule und die typische Laufzeit gemeinsam. Unterscheiden Sie die Jobgesamtzeile von Stepfehlern.
