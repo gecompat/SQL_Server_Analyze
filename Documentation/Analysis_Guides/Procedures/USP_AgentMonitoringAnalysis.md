@@ -193,6 +193,16 @@ Jobgesamtoutcome mit JOB_STATE_INFORMATIONAL/INFO bei AVAILABLE_WITH_FINDING
 ohne Partial oder Consumerfehler. Während des laufenden Jobs werden keine
 Consumer aufgerufen; andere Intervalle und positive Retryerschöpfung bleiben offen.
 
+Eine getrennte tatsächliche SQL-2025/Docker-Probe bestätigt den
+fehlgeschlagenen Jobgesamtoutcome nach Retryerschöpfung bei Intervall
+einer Minute. Beide Versuche des eigenen TSQL-Steps scheitern kontrolliert.
+Mindestens 50 durch Einsekunden-Waits getrennte Pollzyklen erfassen den
+noch nicht abgeschlossenen Job nach vorhandener Retryzeile. Nach gebundenem
+Abschluss meldet NONE/JSON für den weiterhin aktivierten Job
+LATEST_JOB_RUN_FAILED_IN_WINDOW/HIGH bei AVAILABLE_WITH_FINDING ohne
+Partial oder Consumerfehler. Consumer während des laufenden Jobs,
+weitere Intervalle und Parallelität bleiben ungeprüft.
+
 ### Bewertung und Gegenprobe
 
 Korrelieren Sie Fehlerhäufigkeit, letzten und aktuellen Lauf, typische Dauer, Schedule Miss, Retry, Alertbedingungen, Operatorzeiten und Mailstatus. Priorisieren Sie kritische Jobs nach ihrer Funktion.
