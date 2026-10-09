@@ -675,6 +675,21 @@ unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
 öffentliche Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis die
+Auswahl des neuesten regulären Full-Backups und den Ausschluss einer
+späteren Differential-Sicherung auf unverändertem Produktcode. Vier eigene Full-Backups, eine eigene Differential-Sicherung und 60 TABLE-/RAW-/CONSOLE-Aufrufe prüften alle 26 Fachwerte,
+Schemas, Ausgabeparität, Quellen und Caller. Bestätigte Operationsrollen
+1/5/3 ergaben das unabhängige Auswahlorakel 0/1/1. FALSE behielt 3/3/2/1/0
+Zeilen; TRUE wechselte auf 3/3/3/1/1. Kontrollquelle und zweite TDE-Quelle
+blieben unverändert. Eigenes Historien-/SQL-/Lab-/Statecleanup bestand.
+Lookbackgrenzen, exakte Finishzeit-Ties, weitere Backupvarianten,
+Berechtigungen und Restore bleiben offen. Der begrenzte Nachweis steht
+unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
+COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
+öffentliche Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
