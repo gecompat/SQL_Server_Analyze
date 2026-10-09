@@ -6806,3 +6806,100 @@ abgebrochene oder lange Übergänge sowie weitere Zertifikat-, Backup-, AE-,
 Ledger- und Berechtigungspfade bleiben offen. Der Lauf ist ausschließlich
 SQL2025-Evidenz; CL160/170 sind keine älteren nativen Engine-Nachweise.
 COLL-001 bleibt partiell; Maturityflags bleiben unverändert.
+
+
+## CEK-Einwert-Metadatenanzahlen bei Encryption am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf prüfte auf unverändertem
+integriertem Produktstand `4bc5f13a3bf7bf950d54f4a54f5232a4352e3bf4` den bestehenden 26-Feld-Vertrag von
+USP_EncryptionAnalysis für Column-Encryption-Key-Metadaten. Installation,
+Smoke bei Framework-CL170 und installierter Procedurebody bestanden.
+ProductVersion war 17.0.4075.5. Server, tempdb und drei leere Unicode-/Case-
+Quellen verwendeten Latin1_General_100_CS_AS; das Framework verwendete
+SQL_Latin1_General_CP1_CS_AS. Die Kontrollquelle hatte die kleinste eigene
+Datenbank-ID. Zwei AES-128-TDE-Quellen bei CL160 und CL170 besaßen getrennte
+eigene Zertifikate und einen neuen DMK. Beide blieben in Zustand 3 mit
+Scanstatus 4 und PercentComplete 0.
+
+Das Setup erzeugte zwei eigene CMK-Metadatenobjekte, je eines pro TDE-Quelle.
+Der synthetische Providername ExampleMetadataOnlyUnconfigured war nicht
+registriert; seine Schlüsselpfade waren synthetisch und nicht auflösbar.
+CMK-Anzahlen blieben in beiden Phasen 0/1/1. Nach der Baseline erzeugte der
+Lauf genau drei eigene CEKs mit jeweils einem verschlüsselten Wert. Die
+CEK-Anzahlen wechselten von 0/0/0 auf 0/1/2. Zwei case-sensitive CEK-Namen
+in der zweiten Quelle unterschieden sich nur durch Groß-/Kleinschreibung
+und waren an dasselbe eigene CMK-Metadatenobjekt gebunden.
+
+Jeder Wert entstand aus 32 zufälligen Bytes und einem neuen temporären
+RSA-2048-Schlüssel im Prozess mit OAEP-SHA1. Klartextarrays wurden genullt
+und RSA-Instanzen vor SQL freigegeben. Drei typisierte VarBinary(256)-
+Parameter übergaben ausschließlich Ciphertext. SQL prüfte NULL und Länge
+vor der begrenzten Bildung der erforderlichen Hexliterale für CREATE
+COLUMN ENCRYPTION KEY mit RSA_OAEP. Im Finally wurden Parameter zurückgesetzt,
+Commands freigegeben und alle drei Ciphertextarrays genullt. Der Lauf
+bestätigte jeweils drei Klartext- und Ciphertextbereinigungen. Es gab keine
+Schlüsselexporte, Hostschlüsselspeicher oder Aufrufe eines AE-Providers.
+Der Client meldete NOT_SUPPORTED_BY_DRIVER für die AE-Funktion; es wurde
+kein funktionsfähiger AE-Schlüsselvertrag oder AE-Verschlüsselungsnachweis
+abgeleitet.
+
+Separate native Katalogguards prüften Datenbank-ID, GUID, case-sensitiven
+Namen, CMK-/CEK-IDs, Namen und Bindungen. Jede CEK hatte genau einen Wert
+mit RSA_OAEP und 256 Byte Länge. Native Receipts bestätigten die bekannten
+Anzahlen gegen die aktuellen Kataloge. Ciphertextbytes wurden nicht
+zurückgelesen oder in Ergebnissen und Logs ausgegeben. EncryptedColumnCount
+und LedgerTableCount blieben 0; Benutzerobjekte waren leer und alle vier
+Backupfelder NULL. Es gab weder Benutzerinhalte, DML, Backups noch Restore.
+
+Pro Phase liefen fünf Auswahlfälle in TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+jeweils 3/3/2/1/0 Zeilen. Ein festes ID-Orakel prüfte die Auswahl zusätzlich
+zum nativen Beobachter. Beide TDE-Quellen blieben im Warnfenster 36500
+MEDIUM; Limit 1 wählte unverändert die erste TDE-Quelle.
+
+Alle 30 Aufrufe prüften alle 26 Fachwerte, native Vor-/Nachwerte und direkte
+Ausgaben gegen JSON derselben Materialisierung. Schemas, sysname-Aliastypen,
+elf Frameworktextcollations, 260 physische TABLE-Facets, Quellen, Warnungen
+und Status bestanden. JSON und RAW wurden geordnet geprüft; TABLE und
+CONSOLE wurden ID-gebunden auf Mengen- und Werteparität geprüft. Die leere
+Auswahlprobe wurde getrennt erfasst. Callerwerte 137/OFF/TRANCOUNT 0/
+XACT_STATE 0 blieben je Aufruf erhalten; ursprüngliche -1/OFF/0/0 wurden
+vor dem Cleanup bestätigt. Alle 15 gepaarten Fälle erlaubten ausschließlich
+Änderungen von ColumnEncryptionKeyCount; alle übrigen 25 Werte jeder Quelle
+blieben erhalten. Der private Audit bestand 3933
+Wertvergleiche ohne OBSERVED_DEFECT-Abweichung.
+
+Receipt- und GUID-gebundenes SQL-Cleanup entfernte zuerst die eigenen
+Datenbanken, danach beide Zertifikate und den DMK. Der öffentliche Lab-Abbau
+meldete REMOVED mit zwei Schritten und null Fehlern. Eigener Container,
+verwaltetes Volume und Statepfad waren vor PASS entfernt. Es gab keine
+Hostmounts, bestehenden oder Shared-Ressourcen, SMTP-Dienste oder Imagebeschaffung.
+Der Lauf endete um `2026-10-09T03:41:42.1627377+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `3B9D981636B860B9E1FA3E07ACFFC259C7274158650FDACB13074A9921936CCC` |
+| Private CEK-Erzeugung | `05719595763C6B8C3CE393359685269FE14726924361AD6A5449ABC325EBECC9` |
+| Privater Endpunktguard | `B2C2765232BCAFA439ACAF30F32B236E0B8809319E9F55C65E962727E15AE31E` |
+| Privater Consumer | `935F32DDB293E01FAB0C69DB336435AD5A4B23EEEE3FFE9C545B58E4ED6E5BDF` |
+| Privater nativer Beobachter | `C4E6380925688212D517553DC5F5BF11395B693036851AA9A386BE18FF645BFE` |
+| Privates Cleanup-SQL | `269AD269A2815F0CC6804205FF4D7409A39D30BF08E49FED94341D34B747AE16` |
+| Privater Lauf-Log | `601F96D8813014B456F5374B802383946529C5475EA8094823DB82CF568E2844` |
+| Privates PASS-Ergebnis | `79427345660ED5CF4C45D0B15F9119D1C85F2ED7C65CE5EC8876DB149690B547` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die Microsoft-Primärquellen beschreiben das erforderliche Ciphertextliteral
+und die Metadaten der verschlüsselten Werte:
+[CREATE COLUMN ENCRYPTION KEY](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-column-encryption-key-transact-sql?view=sql-server-ver17),
+[sys.column_encryption_key_values](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-encryption-key-values-transact-sql?view=sql-server-ver17)
+und [RSA.Create(Int32)](https://learn.microsoft.com/en-us/dotnet/api/system.security.cryptography.rsa.create?view=net-9.0).
+Die Probe untersucht ausschließlich CEK-Einwert-Metadatenanzahlen. Weitere
+CEK-Varianten, verschlüsselte Spalten, echte AE-Provider, CMK-Varianten und
+Berechtigungen bleiben offen. Die Erzeugung eines RSA-Ciphertexts beweist
+keine Interoperabilität oder Entschlüsselbarkeit durch einen AE-Provider.
+Der Lauf ist ausschließlich SQL2025-Evidenz; CL160/170 sind keine älteren
+nativen Engine-Nachweise. COLL-001 bleibt partiell; Maturityflags bleiben
+unverändert.
