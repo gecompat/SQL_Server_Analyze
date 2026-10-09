@@ -849,6 +849,27 @@ unbelegt. Der Nachweis steht unter
 partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+auf unverändertem Produktcode einen abgeschlossenen DEK-Protektorwechsel.
+Genau ein ALTER DATABASE ENCRYPTION KEY ENCRYPTION BY SERVER CERTIFICATE
+band den ersten eigenen DEK an ein drittes eigenes Zertifikat. Native
+Thumbprint-, ID-/Namens- und GUID-Bindungen bestanden. Zustand 3,
+Scanstatus 4, PercentComplete 0 und KeyLength 128 blieben erhalten.
+30 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten alle 26 Fachwerte, Schemas,
+Ausgabeparität, Quellen und Caller sowie Auswahlmengen 3/3/2/1/0 in
+beiden Phasen. Ausschließlich ProtectorName der ersten Quelle wechselte;
+deren Scanzeitwert durfte sich ändern. Alle übrigen 24 Fachwerte der
+ersten Quelle und sämtliche 26 Werte der beiden Kontrollen blieben erhalten.
+SQL-/Lab-/Statecleanup einschließlich aller drei eigenen Zertifikate
+bestand. Laufende, suspendierte, abgebrochene und lange Übergänge sowie
+weitere Encryption-Grenzen bleiben offen. Datennutzbarkeit und
+Restorefähigkeit sind unbelegt. Der Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
