@@ -6037,3 +6037,112 @@ Zusätzliche Backupvarianten und Berechtigungspfade, TDE-Übergänge,
 Zertifikatexportvarianten, AE, Ledger und Restore bleiben offen. Keine
 SMTP-Infrastruktur wurde eingerichtet oder beschafft. COLL-001 bleibt
 partiell; bestehende Produkt- und Maturityflags werden nicht erweitert.
+
+
+## Neuestes reguläres Full-Backup und COPY_ONLY-Ausschluss am 9. Oktober 2026
+
+Eine neue eigene SQL-Server-2025-Docker-Fixture prüfte auf unverändertem
+integriertem Produktstand `4fe0fb0ac05dbe818c3de0f5d5a251b607d594f8` die Auswahl des neuesten regulären
+Full-Backups und den Ausschluss einer späteren COPY_ONLY-Sicherung.
+Installation, Smoke bei CL170 und der installierte Procedurebody bestanden.
+ProductVersion war `17.0.4075.5`. Server, tempdb und drei leere eigene
+Unicode-/Case-Quellen verwendeten `Latin1_General_100_CS_AS`; das Framework
+verwendete `SQL_Latin1_General_CP1_CS_AS`. Zwei Quellen behielten
+AES-128-TDE mit Zustand 3 und Scanstatus 4 bei getrennt gemessenen CL160 und
+CL170. Beide privaten Zertifikatexportzeitpunkte blieben NULL. Die zuerst
+erstellte Kontrollquelle ohne TDE besaß die kleinste eigene Datenbank-ID.
+
+Zunächst entstanden genau drei eigene reguläre Full-Backups mit CHECKSUM:
+Kontrollquelle und erste TDE-Quelle ohne zusätzliche ENCRYPTION-Klausel;
+zweite TDE-Quelle mit explizitem AES-256 via separatem drittem Zertifikat.
+Das unabhängige Operationsorakel war 0/0/1. Dreißig Consumeraufrufe prüften
+FALSE und TRUE des bestehenden Backup-Erwartungsflags, je fünf Auswahlfälle
+in TABLE, RAW und CONSOLE. Die Mengen für Default-Allscope,
+Warnfenster-Allscope, Warnfenster-Problemscope, dessen Limit 1 und
+Default-Problemscope betrugen bei FALSE 3/3/2/1/0 und bei TRUE 3/3/3/1/2.
+
+Danach entstanden zwei weitere eigene Full-Backups auf neuen Dateien:
+Kontrollquelle mit COPY_ONLY und explizitem AES-256; erste TDE-Quelle als
+neues reguläres Full-Backup mit explizitem AES-256. Der private Ablauf
+verwendete eine begrenzte Zwei-Sekunden-WAITFOR-Vorgabe und bestätigte
+tatsächlich spätere native Finishzeiten. Er veränderte keine
+Backuphistorien-Zeitwerte. Native is_copy_only-Werte waren 1 und 0.
+Alle expliziten Sicherungen waren intern an das eigene separate
+Backupzertifikat gebunden. Append- und Overwrite-Optionen wurden nicht benutzt.
+
+Das unabhängige Auswahlorakel verwendete bestätigte Operationsrollen
+1/5/3: Kontrollquelle weiter erstes reguläres Full-Backup, erste TDE-Quelle
+neues reguläres Full-Backup und zweite TDE-Quelle unverändert erstes
+reguläres Full-Backup.
+Die spätere COPY_ONLY-Sicherung lieferte keine ausgewählte Backupzeit oder
+Verschlüsselungsart. Das neue reguläre Backup ersetzte die vorherige
+TDE-Sicherung. Die ausgewählten Boolean-Werte waren 0/1/1 und stammten aus
+den ausgeführten Operationsmodi. Eine kopierte Latest-/MAX(id)-Abfrage
+wurde nicht als Sollorakel verwendet. Native Algo-/Protektortypwerte blieben
+unverändert; eine Großschreibungsnormalisierung galt ausschließlich dem
+privaten AES-256-Steuerguard.
+
+Weitere dreißig Aufrufe prüften dieselben fünf Auswahlfälle und beide
+Erwartungsflagwerte. FALSE behielt 3/3/2/1/0; TRUE lieferte 3/3/3/1/1.
+Im Default-TRUE-Problemscope blieb nur die Kontrollquelle mit
+EXPLICIT_BACKUP_ENCRYPTION_MISSING und MEDIUM. Beide TDE-Quellen behielten
+LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING mit INFO. Im Warnfenster 36500
+meldeten beide TDE-Quellen TDE_CERTIFICATE_EXPIRY_WINDOW mit MEDIUM;
+die Kontrollquelle blieb unter TRUE ebenfalls MEDIUM. TRUE-Limit1 wählte
+weiterhin die Kontrollquelle. Codepriorität, Severity und EvidenceLimit
+wurden getrennt geprüft.
+
+Alle 60 Aufrufe bestätigten alle 26 Fachwerte, direkte Ausgaben gegen JSON
+derselben Materialisierung sowie das unabhängige native Vor-/Nachorakel.
+Native und physische Schemas, elf Frameworktextcollations, sysname-Aliastypen,
+Sourceidentitäten, Warnungen und Status bestanden. JSON-Auswahlreihenfolge
+und geordnete RAW-Ausgabe bestanden; TABLE und generische CONSOLE blieben
+vollständig ID-gebunden auf Mengen- und Werteparität geprüft. Die zusätzliche
+leere Auswahlprobe blieb getrennt erfasst. Callerwerte 137/OFF/TRANCOUNT 0/
+XACT_STATE 0 blieben je Aufruf erhalten; ursprüngliche -1/OFF/0/0 wurden vor
+dem SQL-Cleanup gemessen.
+
+Zwischen Auswahlphasen änderten sich ausschließlich die vier Backupfelder
+der ersten TDE-Quelle und bei TRUE deren Severity. Kontrollquelle und zweite
+TDE-Quelle blieben in allen 26 Feldern erhalten. Zwischen FALSE und TRUE
+wechselten ausschließlich FindingCode, Severity und EvidenceLimit.
+Der tatsächliche Lauf enthielt keine OBSERVED_DEFECT-Abweichung.
+
+Alle fünf Historiereceipts waren eindeutig an eigene Datenbank-ID, GUID,
+case-sensitiven Namen, neue backup_set_id und genau eine eigene Medien-/
+Dateibindung geknüpft. Native Finishzeiten lagen im bestehenden Sichtfenster;
+die beiden zusätzlichen Sicherungen endeten nach den jeweiligen ersten
+Sicherungen. Vorsorgliche GETDATE-Bounds
+verwendeten eine Sekunde Toleranz. Historienmengen waren zunächst 1/1/1 und
+danach 2/2/1. Jeder neue Zielpfad war vor seinem Backup abwesend; alle fünf
+Dateien waren danach vorhanden. Der private native Observer verlangte je
+Pfad genau eine Antwort mit konkreten Werten. Alle Dateien lagen ausschließlich
+im neuen verwalteten kurzlebigen SQL-Volume ohne Hostbindung.
+
+Gebundene eigene Historie, drei Datenbanken, drei Zertifikate und neuer
+Masterkey wurden entfernt. Der öffentliche Lab-Abbau meldete REMOVED mit
+zwei Schritten und null Fehlern. Eigenes Volume samt fünf Backupdateien und
+eigener Statepfad waren vor PASS entfernt. Keine Schlüssel-/Thumbprintwerte,
+Medienheader oder Dateiinhalte wurden ausgegeben. Datei- und BACKUP-Erfolg
+beweisen keine Dateiintegrität, externe Schlüsselkopie oder Wiederherstellbarkeit.
+Ein Restore wurde nicht ausgeführt.
+
+Der Lauf endete um `2026-10-09T00:15:32.9153808+00:00` UTC. Quellen verwenden UTF-8/LF-
+Hashes; private Pakete, Log und Ergebnis physische Bytehashes.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 unverändert | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `AE10E74060AB6A53C8459D6D47E481A02436591EF7745E0E9A2E7A409CF84E34` |
+| Privates Backup-SQL | `F514C76F09F0FD12C3F0BCFB6234677A69E0D92AE90B3B3963B17662DCD8A482` |
+| Privater Consumer | `94A77B988163A8498652414C2CC6FE4F055F0D97548F8ED2CD1CFDC2F7C57873` |
+| Privater nativer Beobachter | `352C4E4CF719D30D8AA504D879DDD3C51FCC31335C3C1ED1B11755B843C7B21F` |
+| Privates Cleanup-SQL | `CE802B20B721B9632D2BDA8814CD6F9A6BF2B97162FF708F06A7C29FC3D7EFF1` |
+| Privater Lauf-Log | `B423EC6838E69C30E3E9BAE8FAD8A14B8550091EA22FE8D51446B848D043BF0A` |
+| Privates PASS-Ergebnis | `1722522A80DEE9C38011A67B40EF722D17BC73A077545BB40AD0DA261A3C396A` |
+
+Lookbackgrenzen und exakte Finishzeit-Ties, weitere Backupvarianten und
+Berechtigungspfade, TDE-Übergänge, Zertifikatexportvarianten, AE, Ledger und
+Restore bleiben offen. SMTP-Infrastruktur wurde weder eingerichtet noch
+beschafft. COLL-001 bleibt partiell; bestehende Maturityflags bleiben unverändert.
