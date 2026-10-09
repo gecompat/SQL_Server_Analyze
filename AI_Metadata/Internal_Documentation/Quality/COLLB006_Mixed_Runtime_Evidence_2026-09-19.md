@@ -6295,3 +6295,109 @@ Lookbackgrenzen und exakte Finishzeit-Ties, weitere Backupvarianten und
 Berechtigungspfade, TDE-Übergänge, Zertifikatexportvarianten, AE, Ledger und
 Restore bleiben offen. SMTP-Infrastruktur wurde weder eingerichtet noch
 beschafft. COLL-001 bleibt partiell; bestehende Maturityflags bleiben unverändert.
+
+
+## Positive Ledger-Kataloganzahlen bei Encryption am 9. Oktober 2026
+
+Eine neue eigene SQL-Server-2025-Docker-Fixture prüfte auf unverändertem
+integriertem Produktstand `875514feab148edb7fca116c2d4ddd92b38f33b9` die Ledger-Kataloganzahl
+im bestehenden 26-Feld-Vertrag von USP_EncryptionAnalysis.
+
+Der erste Versuch endete vor der Container-Provisionierung: Der private
+StrictMode-Testtreiber hatte die lazy initialisierte Transportvariable des
+OwnedHost-Testhelpers noch nicht angelegt. Der bereits erzeugte eigene
+Metadatenordner wurde entfernt; es gab keinen SQL-Lauf und kein
+PASS-Ergebnis. V2 initialisierte ausschließlich diese Variable vor dem
+Dot-Sourcing. Der unabhängig geprüfte V2-Aufbau lief anschließend in einem
+neuen eigenen Lab. Beide Runner und getrennten Logs bleiben privat erhalten.
+
+Installation, Smoke bei CL170 und der installierte Procedurebody bestanden.
+ProductVersion war `17.0.4075.5`. Server, tempdb und drei leere eigene
+Unicode-/Case-Quellen verwendeten `Latin1_General_100_CS_AS`; das Framework
+verwendete `SQL_Latin1_General_CP1_CS_AS` bei CL170. Zwei Quellen besaßen
+AES-128-TDE, Zustand 3 und Scanstatus 4 bei getrennt gemessenen CL160 und
+CL170. Die zuerst erzeugte Kontrollquelle ohne TDE hatte die kleinste eigene
+Datenbank-ID. Beide privaten Zertifikatexportzeitpunkte und alle vier
+Backupfelder blieben NULL; Backups und Zertifikatexporte wurden nicht ausgeführt.
+
+Die Baseline enthielt keine Benutzertabellen und bestätigte unabhängige
+Ledgeranzahlen von 0/0/0. Danach entstanden genau eine leere Append-only-
+Ledger-Tabelle in der ersten TDE-Quelle und eine leere Updatable-Ledger-Tabelle
+mit eigener expliziter Historytabelle in der zweiten. Beide Ledger-Views
+wurden ausdrücklich benannt. Die native Katalogbindung bestätigte
+ledger_type 3 für Append-only, 2 für Updatable und 1 für die Historytabelle.
+Die Updatable-Tabelle verwies über history_table_id auf die eigene
+Historytabelle; die beiden ledger_view_id-Werte verwiesen auf die eigenen
+Views. Die Kontrollquelle blieb ohne Ledgerobjekte.
+
+Das unabhängige Operationsorakel betrug abschließend 0/1/2. Die bestehende
+Aggregation zählt sichtbare sys.tables-Zeilen mit ledger_type ungleich 0;
+sie umfasst deshalb auch die eigene Historytabelle und keine Ledger-Views.
+Datenbank-ID, GUID und case-sensitiver Name sowie Schema, Objektname,
+Objekt-ID und Ledger-Typ banden die vollständige eigene Tabellen-/Viewmenge.
+Auf Index 0/1 begrenzte sys.partitions- und dm_db_partition_stats-Metadaten
+lieferten für jede eigene Tabelle positive, identische Partitions-ID-Mengen
+mit konkreten Zeilenzählern von 0. Fehlende Mengen, NULL-Zähler oder
+zusätzliche Benutzertabellen waren ausgeschlossen. Es gab keine Abfrage
+von Tabelleninhalten, kein INSERT/UPDATE/DELETE und keine Digest- oder
+Ledger-Verifikationsoperation.
+
+Je Phase liefen fünf Auswahlfälle in TABLE, RAW und CONSOLE mit dem
+bestehenden Backup-Erwartungsflag FALSE. Default-Allscope,
+Warnfenster-Allscope, Warnfenster-Problemscope, dessen Limit 1 und
+Default-Problemscope lieferten in beiden Phasen 3/3/2/1/0 Zeilen.
+Das Warnfenster 36500 selektierte beide TDE-Quellen mit
+TDE_CERTIFICATE_EXPIRY_WINDOW und MEDIUM. Limit 1 wählte jeweils die erste TDE-Quelle; ihre Ledgeranzahl war in der
+Baseline 0 und danach 1. Die Defaultfälle behielten
+LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING und INFO für die TDE-Quellen
+sowie DATABASE_NOT_TDE_ENCRYPTED und INFO für die Kontrollquelle.
+FindingCode, Severity und EvidenceLimit wurden getrennt geprüft.
+
+Alle 30 Aufrufe bestätigten alle 26 Fachwerte, direkte Ausgaben gegen JSON
+derselben Materialisierung sowie das unabhängige native Vor-/Nachorakel.
+Native und physische Schemas, elf Frameworktextcollations, sysname-Aliastypen,
+Quellenidentitäten, Warnungen und Status bestanden. JSON-Auswahlreihenfolge
+und geordnete RAW-Ausgabe bestanden; TABLE und generische CONSOLE waren
+ID-gebunden auf Mengen- und Werteparität geprüft. Die leere Auswahlprobe
+blieb getrennt erfasst. Callerwerte 137/OFF/TRANCOUNT 0/XACT_STATE 0
+blieben je Aufruf erhalten; ursprüngliche -1/OFF/0/0 wurden vor dem
+SQL-Cleanup bestätigt.
+
+Zwischen den Phasen änderte sich ausschließlich LedgerTableCount der beiden
+TDE-Quellen von 0 auf 1 beziehungsweise 2. Alle übrigen Fachwerte blieben
+erhalten, darunter drei Always-Encrypted-Anzahlen von jeweils 0.
+Der private Audit bestand 3.933 Wertvergleiche; es gab keine
+OBSERVED_DEFECT-Abweichung. Ledger-Kataloganzahlen belegen nur sichtbare
+Objekte. Kryptographische Integrität, Manipulationssicherheit und
+Wiederherstellbarkeit wurden nicht geprüft.
+
+Receiptgebundene eigene Datenbanken samt Ledger-/History-/Viewobjekten,
+zwei Zertifikate und neuer Masterkey wurden entfernt. Einzelne Ledger-
+Tabellen wurden nicht gedroppt; Drop-Tombstones sind damit nicht geprüft.
+Der öffentliche Lab-Abbau meldete REMOVED mit zwei Schritten und null
+Fehlern. Eigener Container, verwaltetes Volume und Statepfad waren vor PASS
+entfernt. Kein Hostmount, keine bestehende oder Shared-Ressource und kein
+SMTP-Dienst wurden eingerichtet; ein neues Image wurde nicht beschafft.
+
+Der Lauf endete um `2026-10-09T01:06:16.5519645+00:00` UTC. Quellen verwenden UTF-8/LF-
+Hashes; private Pakete, Logs und Ergebnis physische Bytehashes.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 unverändert | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater erster Runner | `9F453E06DEAED61A3B398886C5A9B884A26E34ADA472277D610261421E2B7F89` |
+| Privater erster Fehlerlog | `7C9116A3E237C497A63BB872F6C32D096343FFE3ED32CC36BDA9A1C84153E328` |
+| Privater V2-Runner | `5646AE1F2BD4C28C2473A689FBDACD3E9622552CAF5D027BC905ADB7B34FE50C` |
+| Private Ledger-Erzeugung | `51903331BF3F8297CB1FD003F5E9E4ACFFCCE11BF0CC30137580E263D44F0DCF` |
+| Privater Katalog-/Leere-Guard | `A69C0A545B5DC3DA15D381611019054C7A24CCC3E474266AE24C832915B499F6` |
+| Privater Consumer | `691BE60AA00806673B0101B8DB383EB2E88A7825B28F8971500D08E9F89DA8A6` |
+| Privater nativer Beobachter | `BDB7E2783EC58F1DF6F1C8AFD64040255FB441C154535F49151858F2766E78F7` |
+| Privates Cleanup-SQL | `B3A3B96BF95580E0868A62FAD26F38E6FA8EE5662BC34683CA45DEF53AFA9D14` |
+| Privater V2-Lauf-Log | `3BF297F1BD84EC066F05D6D05022FEACE6EBA5B6AD9D0C715A16407487719D78` |
+| Privates PASS-Ergebnis | `592D9132BCE788DB22F9B5D27B8AA218DBCCDBCA258D90393D9AE372E8BAC06C` |
+
+Weitere Ledger-Varianten, eingeschränkte Rollen, Metadatenfehler und
+Dropvarianten sowie positive AE, Backupgrenzen und Finishzeit-Ties,
+TDE-Übergänge, Zertifikatexportvarianten und Restore bleiben offen.
+COLL-001 bleibt partiell; bestehende Maturityflags bleiben unverändert.

@@ -690,6 +690,21 @@ unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
 öffentliche Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+positive Ledger-Kataloganzahlen auf unverändertem Produktcode. Eine leere
+Append-only-Tabelle und eine leere Updatable-Tabelle mit eigener History
+lieferten das unabhängige Orakel 0/1/2 statt der Baseline 0/0/0.
+30 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten alle 26 Fachwerte, Schemas,
+Ausgabeparität, Quellen und Caller. Nur LedgerTableCount wechselte;
+Metadaten bestätigten die drei Tabellen leer. SQL-/Lab-/Statecleanup bestand.
+Weitere Ledger-Varianten, Rollen, Metadatenfehler und Dropvarianten sowie
+kryptographische Integrität und Restore bleiben unbelegt. Der begrenzte
+Nachweis steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
+COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
+öffentliche Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
