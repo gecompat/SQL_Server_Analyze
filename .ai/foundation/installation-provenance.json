@@ -5,7 +5,7 @@
   "source_repository": "https://github.com/gecompat/AI_Repository_Foundation",
   "source_commit": "4aafd20442275d0fdedf291fc6e12e8fe1f683cc",
   "source_manifest_sha256": "5fae12cf28f454c2f99b591e86c3f4018e32b30288f0e8021acde0af3c9865b4",
-  "recorded_at": "2026-10-05T17:58:10Z",
+  "recorded_at": "2026-10-09T10:24:40Z",
   "selection": {
     "adapters": [
       "claude-code",
@@ -13,7 +13,8 @@
       "github-copilot"
     ],
     "capabilities": [
-      "artifact-registry-github"
+      "artifact-registry-github",
+      "rule-context-cache"
     ]
   },
   "files": [
@@ -723,9 +724,9 @@
       "kind": "entrypoint",
       "merge": "ai_merge_if_exists",
       "source_sha256": "c0ca57c32ad6d69f69b802caf96e5c75e19a17dbd0f5f7671066cb3d51792b22",
-      "installed_sha256": "7ac82c56c860d76dc9e091e11ab748fbfde57c538f61457a8b553ab0ad06bae1",
+      "installed_sha256": "292bbd512e7dc2354a4132ed1096e39cad905579e6059d73b1a04fe739a6b84b",
       "integration_state": "INTENTIONAL_OVERRIDE",
-      "reason": "Preserved project-specific governance and added discovery of the complete Foundation 1.19 assessment and registered decision."
+      "reason": "Preserved project-specific governance, Foundation 1.19 assessment discovery and registered decision; added the project rule-context cache workflow outside the managed baseline block."
     },
     {
       "source": "CLAUDE.md",
@@ -744,6 +745,16 @@
       "merge": "ai_merge_if_exists",
       "source_sha256": "e302980754c983e41dc679ca782b0bb4e13c0557e68d489e4c04916f08b3e505",
       "installed_sha256": "e302980754c983e41dc679ca782b0bb4e13c0557e68d489e4c04916f08b3e505",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
+      "source": "foundation/capabilities/rule-context-cache/rule_context_cache.py",
+      "target": ".ai/foundation/rule_context_cache/rule_context_cache.py",
+      "kind": "rule-context-cache-planner",
+      "merge": "review_if_exists",
+      "source_sha256": "77ace825963862fd387ef37ac3b105abc95c652049fbf72855e205ab0455295b",
+      "installed_sha256": "77ace825963862fd387ef37ac3b105abc95c652049fbf72855e205ab0455295b",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     }

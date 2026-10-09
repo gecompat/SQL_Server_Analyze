@@ -210,6 +210,17 @@
       "relations": [],
       "locator": "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json",
       "decision": "Foundation 1.19.0 wird unter Erhaltung der Projektgovernance und bisherigen Capability-Auswahl integriert. Laufende SQL-CI-Validierungen werden nicht durch neuere Commits automatisch abgebrochen; automatische Nachfolgesessions und numerische Lifecycle-Schwellen bleiben ungewählt."
+    },
+    "DEC-0002": {
+      "artifact_uid": "urn:uuid:01a12030-e3b7-7fcc-bc9d-76011a1056d8",
+      "kind": "decision",
+      "title": "Foundation-konformer Regelkontextcache für Entwicklungswellen",
+      "registration_state": "REGISTERED",
+      "status": "ACTIVE",
+      "aliases": [],
+      "relations": [],
+      "locator": "AI_Metadata/Rule_Context_Cache.md",
+      "decision": "Die optionale Capability rule-context-cache wird aus der bereits integrierten Foundation 1.19.0 unverändert übernommen. Das geprüfte Entwicklungsprofil verwendet native Instruction-Discovery, aktuelle Content- und Git-Fingerprints und explizite Discovery-Konfiguration. Analysen bleiben sessionlokal unter exakten Schlüsseln; nicht versionierte Records enthalten ausschließlich Fingerprints und Abhängigkeiten. Aufzeichnung ist an den zuvor analysierten Snapshot und eine erneute Prüfung unter Lock gebunden. Unklare Discovery verlangt den vollständigen Leseweg."
     }
   }
 }

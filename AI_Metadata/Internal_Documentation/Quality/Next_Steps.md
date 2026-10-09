@@ -1,6 +1,6 @@
 # Nächste Arbeitsschritte
 
-**Stand:** 8. Oktober 2026
+**Stand:** 9. Oktober 2026
 **Zweck:** aktuelle ausführbare Entwicklungswelle für `gecompat/SQL_Server_Analyze`
 
 ## Wiederaufnahme nach der Entwicklungspause
@@ -988,6 +988,50 @@ partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
 Lab-Funktion mit tatsächlicher Abnahme.
 
 ## Auftrag zur autonomen Fortsetzung
+
+Der Benutzer hat den laufenden Orchestrator am 9. Oktober 2026 auf die
+dauerhafte Integration des Regelkontextcaches und den Abschluss bereits
+begonnener Arbeiten einschließlich Merge nach `origin/main` begrenzt.
+Anschließend endet dieser Orchestrator. Neue Reifeschritte werden in diesem
+Abschlussumfang nicht begonnen. Die verbleibende Roadmap und ihre offenen
+Evidenzgrenzen bleiben davon unberührt. Für zukünftige Entwicklungswellen
+gilt der [Regelkontextcache](../../Rule_Context_Cache.md).
+Tatsächlich blockierte Entwicklungen verhindern diesen Abschluss nicht.
+Ihre Voraussetzungen, offenen Prüfungen und nicht ausgeführten Nachweise
+werden vor dem Abschalten im Remote-Repository gesichert.
+
+### Blockierte Abnahmen beim Orchestratorabschluss
+
+Die SMTP-abhängige OPS-008-Welle bleibt `NOT_EXECUTED`, bis die öffentliche
+SMTP-Lab-Funktion in `SQL_Server_Lab` auf `origin/main` integriert ist und
+passende tatsächliche Abnahmen vorliegen. Eine neue Fortsetzung prüft diese
+Abhängigkeit lesend und verwendet anschließend ausschließlich die öffentliche
+Lab-Konfiguration. Der separate Lab-Auftrag umfasst einen lokalen Empfänger
+mit sichtbaren Nachrichten und Inhalten sowie verhindertem Versand nach außen.
+Analyze implementiert dafür keine SMTP-Infrastruktur und beschafft keine Images.
+Ein Plan, offener PR oder ungeprüfter Code erfüllt die Lieferbedingung nicht.
+
+Die zusätzlich vorbereitete COLL-001-Abnahme für die Metadatensichtbarkeit
+eines eigenen TDE-Zertifikats ist ebenfalls `NOT_EXECUTED`. Der Laneguard
+meldete `DEFERRED_NO_PROVISIONING`; es wurde kein eigenes Lab erzeugt und
+keine SQL-Abnahme ausgeführt. Die gemeinsame lokale Runtime-Testspur war
+belegt. Fremde Ressourcen werden weder übernommen noch beendet. Der folgende
+Plan ist eine Wiederaufnahmegrundlage und kein Laufzeitnachweis:
+
+- Ein neues eigenes SQL-Server-2025-Docker-Lab wird über die öffentliche Lab-API mit einem vorhandenen geprüften Image und 4 GiB erzeugt. Vor dem Lauf werden aktueller Analyze- und Lab-Stand, unabhängiger Paketreview, Providerpin, Ressourcenbereitschaft und freie Testspur erneut geprüft.
+- Server, `tempdb` und drei leere eigene Unicode-/Case-Quelldatenbanken verwenden `Latin1_General_100_CS_AS`; die Frameworkdatenbank verwendet CL170 und `SQL_Latin1_General_CP1_CS_AS`. Zwei Quellen erhalten AES128-TDE mit CL160 beziehungsweise CL170 und getrennten eigenen Zertifikaten. Die unverschlüsselte Kontrollquelle erhält genau ein natives CHECKSUM-Full-Backup im eigenen verwalteten Volume. Restore, Hostmount und Export bleiben ausgeschlossen.
+- Ein neuer eigener minimaler SQL-Login erhält `VIEW SERVER SECURITY STATE`, `VIEW ANY DATABASE`, CONNECT und Procedure-EXECUTE, SELECT auf `msdb.dbo.backupset` sowie `VIEW DEFINITION` auf die drei Quellen und beide eigenen `master`-Zertifikate. Rollen und Serverkonfiguration bleiben unverändert. Ad-hoc-Impersonation verwendet Cookie und bestätigtes REVERT einschließlich Fehlerpfad.
+- Die erste Phase verlangt zwei sichtbare Zertifikate. Zwischen den Phasen wird ausschließlich `VIEW DEFINITION` auf dem ersten eigenen Zertifikat verweigert. Direkte Proben vor jedem Consumer müssen Zertifikatcounts 1/1 beziehungsweise 0/1, zwei sichtbare DEKs, das erforderliche Serversecurityrecht und einen sichtbaren Backuprecord bestätigen. Eine nicht bestätigte Probe stoppt den Lauf; Rechte werden nicht erweitert.
+- Geplant sind 30 Aufrufe: zwei Phasen, fünf Auswahlfälle und jeweils TABLE, RAW und CONSOLE. Erwartet werden vor der Verweigerung Counts 3/3/2/1/0 und danach 3/3/2/1/1 für DEFAULT_ALL, WINDOW_ALL, WINDOW_PROBLEMS, WINDOW_ONE und DEFAULT_PROBLEMS. Der unabhängige Audit prüft alle 26 Fachfelder, JSON-/Direktparität, Schemas, elf Textcollations, 260 physische TABLE-Facets und 15 Phasenpaare.
+- Native SA-Vor-/Nachwerte bleiben je Fall und zwischen Phasen unverändert. Nur die eingeschränkte Projektion der ersten TDE-Quelle darf Protectornamen und Ablaufdatum zu NULL, das Finding zu `TDE_PROTECTOR_NOT_VISIBLE` und Severity zu MEDIUM ändern. Übrige Fachwerte, andere Quellen, Exporthinweis, Quellenstatus und Callerzustand bleiben erhalten. Tatsächliche Abweichungen werden als `OBSERVED_DEFECT` behandelt; das Orakel wird nicht gelockert.
+- Eigene Principals, Backuphistorie, Datenbanken, Zertifikate, DMK und Lab werden auch bei Fehlern identitätsgebunden bereinigt. Vor Stateentfernung werden eigener Container und Volume am gleichen Providerpin als abwesend sowie erreichbare vorbestehende Ressourcen als unverändert bestätigt. Private Runtimeidentitäten und Rohdaten bleiben außerhalb von Git.
+
+Erst ein tatsächlich bestandener Lauf mit unabhängigem Ergebnisreview darf
+die bestehenden COLL-001-Evidenz und betroffenen CSV-Textfelder erweitern.
+Statusflags bleiben bis dahin unverändert; COLL-001 bleibt partiell. Die
+bereits integrierten Nachweise einschließlich der Backupvarianten aus
+PR #344 und PR #345 bleiben davon unberührt. Weitere Berechtigungspfade,
+ältere native Engines, Restore und Hostbackingbytes sind damit nicht belegt.
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
 die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten

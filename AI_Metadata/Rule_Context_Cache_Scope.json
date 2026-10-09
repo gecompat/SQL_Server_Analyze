@@ -1,0 +1,689 @@
+{
+  "schema_version": 1,
+  "profile": "development",
+  "sources": [
+    ".ai/foundation/AI_REPOSITORY_FOUNDATION_NOTICE.md",
+    ".ai/foundation/AI_WORK_ORCHESTRATION_POLICY.md",
+    ".ai/foundation/ARTIFACT_REGISTRATION_POLICY.md",
+    ".ai/foundation/CENTRAL_ARTIFACT_REGISTRY_POLICY.md",
+    ".ai/foundation/DATA_PRIVACY_AND_CONFIDENTIALITY.md",
+    ".ai/foundation/DEPENDENCY_POLICY.md",
+    ".ai/foundation/DOCUMENTATION_POLICY.md",
+    ".ai/foundation/FOUNDATION_RULESET.md",
+    ".ai/foundation/MODEL_ROUTING_POLICY.md",
+    ".ai/foundation/PERSISTENT_IDENTITY_POLICY.md",
+    ".ai/foundation/PROJECT_RULES.md",
+    ".ai/foundation/REPOSITORY_CONTINUITY_POLICY.md",
+    ".ai/foundation/RULE_CONTEXT_CACHE_POLICY.md",
+    ".ai/foundation/SECURITY_AND_SAFE_OPERATIONS.md",
+    ".ai/foundation/SEMANTIC_INTEGRATION_POLICY.md",
+    ".ai/foundation/SOURCE_AND_EVIDENCE_POLICY.md",
+    ".ai/foundation/THIRD_PARTY_AND_LICENSING.md",
+    ".ai/foundation/UPGRADE_APPLICABILITY_POLICY.md",
+    ".ai/foundation/VALIDATION_POLICY.md",
+    ".ai/foundation/WORKING_RULES.md",
+    ".ai/foundation/installation-provenance.json",
+    ".ai/foundation/repo_map.yaml",
+    ".ai/foundation/schemas/artifact-registry-v2.schema.json",
+    ".ai/foundation/schemas/installation-provenance.schema.json",
+    ".ai/foundation/schemas/rule-context-cache.schema.json",
+    "AGENTS.md",
+    "AI_Metadata/ARCHITECTURE_DECISIONS.md",
+    "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+    "AI_Metadata/CONTINUATION_GUIDE.md",
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json",
+    "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
+    "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
+    "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+    "AI_Metadata/PROJECT_CONTEXT.md",
+    "AI_Metadata/Rule_Context_Cache.md",
+    "AI_Metadata/Rule_Context_Cache_Scope.json",
+    "CONTRIBUTING.md",
+    "Documentation/Architecture/Lossless_Deployment_Contract.md",
+    "Documentation/Architecture/Runtime_Data_Privacy.md",
+    "Documentation/Architecture/Special_Case_Modules.md",
+    "Documentation/Architecture/TSQL_SCENARIO_ORCHESTRATION.md",
+    "Documentation/Quality/CI_Impact_Selection.md",
+    "Documentation/Quality/CI_Test_Strategy.md",
+    "Documentation/Quality/Documentation_Writing_Style.md",
+    "Documentation/Quality/Test_Matrix.md",
+    "Metadata/Governance/Artifact_Registry.json"
+  ],
+  "excluded_references": [
+    {
+      "source": ".ai/foundation/ARTIFACT_REGISTRATION_POLICY.md",
+      "target": ".ai/foundation/schemas/artifact-record.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/ARTIFACT_REGISTRATION_POLICY.md",
+      "target": ".ai/foundation/schemas/artifact-registration-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/ARTIFACT_REGISTRATION_POLICY.md",
+      "target": ".ai/foundation/schemas/artifact-registry.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/feature_catalog.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/adapter-synthesis-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/ai-adapter-protocol.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/ai-orchestration-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/ai-orchestration-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/ai-runtime-configuration.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/ai-work-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/approval-receipt.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/artifact-record.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/artifact-registration-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/artifact-registry.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/capability-descriptor.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/client-integration-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/client-model-routing-capability.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/dispatch-receipt.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/execution-checkpoint.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/execution-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/execution-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/feature-catalog.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/gap-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/manual-handoff.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/model-evidence-sources.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/model-router-catalog-fragment-v2.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/model-routing-decision-v2.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/model-routing-request-v2.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/model-runtime-evidence.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/provision-approval.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/provision-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/provision-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/provision-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/resource-cost-evidence.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/runtime-inventory.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/upgrade-assessment.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/validation-evidence.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/FOUNDATION_RULESET.md",
+      "target": ".ai/foundation/schemas/vscode-model-routing-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/PROJECT_RULES.md",
+      "target": ".ai/foundation/feature_catalog.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/SEMANTIC_INTEGRATION_POLICY.md",
+      "target": ".ai/foundation/feature_catalog.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/UPGRADE_APPLICABILITY_POLICY.md",
+      "target": ".ai/foundation/schemas/upgrade-assessment.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/feature_catalog.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/adapter-synthesis-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/ai-adapter-protocol.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/ai-orchestration-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/ai-orchestration-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/ai-runtime-configuration.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/ai-work-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/approval-receipt.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/artifact-record.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/artifact-registration-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/artifact-registry.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/capability-descriptor.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/client-integration-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/client-model-routing-capability.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/dispatch-receipt.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/execution-checkpoint.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/execution-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/execution-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/feature-catalog.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/gap-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/manual-handoff.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-evidence-sources.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-router-catalog-fragment-v2.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-router-catalog.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-router-profiles.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-routing-decision-v2.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-routing-decision.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-routing-request-v2.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-routing-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-routing-snapshot.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/model-runtime-evidence.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/provision-approval.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/provision-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/provision-report.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/provision-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/resource-cost-evidence.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/runtime-inventory.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/session-handoff.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/session-lifecycle-decision.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/session-lifecycle-request.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/upgrade-assessment.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/validation-evidence.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": ".ai/foundation/repo_map.yaml",
+      "target": ".ai/foundation/schemas/vscode-model-routing-plan.schema.json",
+      "classification": "optional-contract"
+    },
+    {
+      "source": "AGENTS.md",
+      "target": "README.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+      "target": ".github/workflows/artifact-registry-integrity.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
+      "target": ".github/workflows/repository-privacy-validation.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/Repository_Privacy_Validation.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
+      "target": "Documentation/Architecture/Snapshot_Baseline_Package_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/COLLB006_Mixed_Runtime_Evidence_2026-09-19.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/OPS007_Dormant_Cursor_Runtime_Evidence_2026-09-19.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/Repository_Clarity_Assessment.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Quality/WI0011_Deployment_Runtime_Evidence_2026-10-07.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "AI_Metadata/Internal_Documentation/Research/SQL_Server_Diagnostic_Coverage_Landscape.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+      "target": "Documentation/Reference/Deployment.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "CONTRIBUTING.md",
+      "target": "LICENSE.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Runtime_Data_Privacy.md",
+      "target": "Documentation/Analysis_Guides/Parameter_Reading_Guide.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Runtime_Data_Privacy.md",
+      "target": "Documentation/Architecture/Output_RAW_CONSOLE_JSON.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Runtime_Data_Privacy.md",
+      "target": "Documentation/Architecture/SQL_Text_Statement_Batch_Module.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Runtime_Data_Privacy.md",
+      "target": "Documentation/Architecture/Snapshot_Baseline_Package_Contract.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Runtime_Data_Privacy.md",
+      "target": "Documentation/Reference/Analysis_Navigator.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Runtime_Data_Privacy.md",
+      "target": "Documentation/Reference/Resultset_Conventions.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Special_Case_Modules.md",
+      "target": "Documentation/Analysis_Guides/07_Infrastructure.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Special_Case_Modules.md",
+      "target": "Documentation/Analysis_Guides/08_Server_Health.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Special_Case_Modules.md",
+      "target": "Documentation/Analysis_Guides/09_Version_Adaptive.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Special_Case_Modules.md",
+      "target": "Documentation/Analysis_Guides/Procedures/README.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Special_Case_Modules.md",
+      "target": "Documentation/Analysis_Guides/Start_Here.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/Special_Case_Modules.md",
+      "target": "Documentation/Architecture/External_Runtime_CLR_Analysis_Plan.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "Documentation/Architecture/Special_Case_Modules.md",
+      "target": "Documentation/Reference/Analysis_Navigator.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Architecture/TSQL_SCENARIO_ORCHESTRATION.md",
+      "target": "Documentation/Architecture/SQL_Server_Lab_Example_Integration_Plan.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "Documentation/Quality/CI_Impact_Selection.md",
+      "target": ".github/workflows/ci-functional-impact.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/CI_Impact_Selection.md",
+      "target": ".github/workflows/documentation-validation.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/CI_Impact_Selection.md",
+      "target": ".github/workflows/release-native-matrix.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/CI_Test_Strategy.md",
+      "target": ".github/workflows/ci-functional-impact.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/CI_Test_Strategy.md",
+      "target": ".github/workflows/documentation-validation.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/CI_Test_Strategy.md",
+      "target": ".github/workflows/release-native-matrix.yml",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/Documentation_Writing_Style.md",
+      "target": "README.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/Test_Matrix.md",
+      "target": "Code/Tests/Integration/110_Smoke_Test.sql",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/Test_Matrix.md",
+      "target": "Documentation/Architecture/Execution_Plan_Analysis_Design.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "Documentation/Quality/Test_Matrix.md",
+      "target": "Documentation/Operations/Version_Adaptive_Features.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/Test_Matrix.md",
+      "target": "Documentation/Quality/Known_Issues.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "Documentation/Quality/Test_Matrix.md",
+      "target": "Documentation/Quality/Performance_and_Risk_Assessment.md",
+      "classification": "historical-context"
+    },
+    {
+      "source": "Documentation/Quality/Test_Matrix.md",
+      "target": "Documentation/Reference/Installation.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Rule_Context_Cache.md",
+      "target": "Code/Tools/Rule_Context_Cache.py",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Rule_Context_Cache.md",
+      "target": "Code/Tests/Static/Validate_Rule_Context_Cache.py",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Rule_Context_Cache.md",
+      "target": ".ai/foundation/rule_context_cache/rule_context_cache.py",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
+      "target": "AI_Metadata/Internal_Documentation/Research/SQL_Server_Diagnostic_Coverage_Landscape.md",
+      "classification": "product-reference"
+    }
+  ]
+}
