@@ -891,6 +891,29 @@ unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiter auf die integrierte
 öffentliche Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener Encryption-Nachweis auf
+unverändertem Produktcode ein noch gültiges eigenes TDE-Zertifikat bei
+Warnfenstern von 1/90/36500 Tagen. Genau ein Protektorwechsel band den
+ersten eigenen DEK an das Zertifikat mit START_DATE 2000-01-01 und
+EXPIRY_DATE als UTC-Datum 30 Tage nach dem eigenen Erzeugungsanchor.
+Receipt- und native Identitäts-/Thumbprintbindungen bestanden; beide DEKs
+behielten Zustand 3, Scanstatus 4, PercentComplete 0 und KeyLength 128.
+42 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten alle 26 Werte, Schemas,
+Ausgabeparität, Quellen und Caller. Auswahlcounts wechselten von
+3/3/2/1/0/3/0 auf 3/3/2/1/1/3/0. Bei 90/36500 Tagen wurde die erste Quelle
+mit TDE_CERTIFICATE_EXPIRY_WINDOW/MEDIUM gemeldet; bei einem Tag blieb sie
+INFO und der Problemfilter leer. Finalstatus war bei langem und normalem
+Warnfenster AVAILABLE_WITH_FINDING, bei kurzem Fenster AVAILABLE.
+Die übrigen 21 Fachwerte der ersten Quelle und sämtliche Werte beider
+Kontrollen blieben erhalten. SQL-/Lab-/Statecleanup bestand. Exakte
+Datumsgleichheitsgrenzen, Datennutzbarkeit und Restorefähigkeit sowie
+weitere Varianten bleiben unbelegt. Nachweis unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiter auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
