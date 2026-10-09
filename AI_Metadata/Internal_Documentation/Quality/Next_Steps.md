@@ -780,6 +780,23 @@ unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
 partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+auf unverändertem Produktcode die CEK-Einwert-Metadatenanzahlen. Genau drei
+eigene CEKs mit je einem verschlüsselten Wert änderten die Anzahlen von
+0/0/0 auf 0/1/2; CMK-Anzahlen blieben 0/1/1. Die temporären RSA-2048-
+Fixtures wurden im Prozess bereinigt. Es gab keinen registrierten oder
+aufgerufenen AE-Provider und keinen Hostschlüsselspeicher. 30 TABLE-/RAW-/
+CONSOLE-Aufrufe bestätigten alle 26 Fachwerte, Schemas, Ausgabeparität,
+Quellen und Caller. Auswahlmengen blieben 3/3/2/1/0; im Phasenvergleich
+änderte sich ausschließlich ColumnEncryptionKeyCount. SQL-/Lab-/Statecleanup
+bestand. Weitere CEK-Varianten, verschlüsselte Spalten und AE-Funktions-
+und Berechtigungsnachweise bleiben offen. Der Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
