@@ -721,6 +721,26 @@ und Restore bleiben unbelegt. Der begrenzte Nachweis steht unter
 partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+auf unverändertem Produktcode den abgeschlossenen Zustand nach genau
+einem SET ENCRYPTION OFF. Die erste eigene TDE-Quelle lieferte
+IsEncrypted 0 und EncryptionState 1 bei erhaltenem DEK und Protektor.
+Vollständig verschlüsselte Quellen wechselten von zwei auf eine;
+vorhandene DEKs blieben zwei. 30 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten
+alle 26 Fachwerte, Schemas, Ausgabeparität, Quellen und Caller.
+Die fünf Auswahlmengen wechselten von 3/3/2/1/0 auf 3/3/1/1/0;
+Limit 1 wählte danach die zweite TDE-Quelle. Kontrollquelle, zweite Quelle
+und die übrigen Felder der ersten Quelle blieben erhalten.
+SQL-/Lab-/Statecleanup bestand. Laufende, suspendierte, abgebrochene und
+lange Übergänge, DEK-Entfernung, Wiederanschalten sowie weitere Encryption-
+Grenzen bleiben offen. Physische Logentschlüsselung und Restore sind
+unbelegt. Der begrenzte Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
