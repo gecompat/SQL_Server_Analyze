@@ -870,6 +870,27 @@ Restorefähigkeit sind unbelegt. Der Nachweis steht unter
 partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener Encryption-Nachweis auf
+unverändertem Produktcode ein abgelaufenes eigenes TDE-Zertifikat im
+bestehenden 90-Tage-Warnfenster. Genau ein Protektorwechsel band den ersten
+eigenen DEK an das Zertifikat mit START_DATE 2000-01-01 und EXPIRY_DATE
+2001-01-01. Native Identitäts- und Thumbprintbindungen bestanden; beide
+DEKs behielten Zustand 3, Scanstatus 4, PercentComplete 0 und KeyLength 128.
+30 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten alle 26 Fachwerte, Schemas,
+Ausgabeparität, Quellen und Caller. Auswahlcounts wechselten von
+3/3/2/1/0 auf 3/3/2/1/1; der erste Default-Befund wurde
+TDE_CERTIFICATE_EXPIRY_WINDOW/MEDIUM. Finalstatus war durchgehend
+AVAILABLE_WITH_FINDING. Nur fünf erlaubte Fachwerte der ersten Quelle
+waren variabel; deren andere 21 Werte und sämtliche Werte der beiden
+Kontrollen blieben erhalten. SQL-/Lab-/Statecleanup bestand.
+Datennutzbarkeit und Restorefähigkeit sowie weitere Zertifikat-,
+Übergangs- und Berechtigungsvarianten bleiben unbelegt. Der Nachweis steht
+unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
+COLL-001 bleibt partiell. Die SMTP-Welle wartet weiter auf die integrierte
+öffentliche Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
