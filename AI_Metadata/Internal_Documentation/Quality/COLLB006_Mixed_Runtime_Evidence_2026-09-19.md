@@ -7726,3 +7726,86 @@ Der Nachweis betrifft SQL2025; CL160/170 sind keine älteren nativen
 Engine-Nachweise. Dateiintegrität und Wiederherstellbarkeit bleiben unbelegt.
 Lookback, weitere Backupvarianten, Berechtigungskontexte und Restore bleiben
 offen. COLL-001 bleibt partiell; Statusflags bleiben unverändert.
+
+
+## Natives explizit TRIPLE_DES_3KEY-verschlüsseltes Full-Backup am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf bestätigte auf Produktstand
+`6fd297dee2e2e803b3bce1201a76261ce140bbd8` den bestehenden TRIPLE_DES_3KEY-Backupvertrag von USP_EncryptionAnalysis.
+Installation, CL170-Smoke und installierter Procedurebody bestanden.
+ProductVersion war 17.0.4075.5. Server, tempdb und drei leere Unicode-/Case-
+Quellen verwendeten Latin1_General_100_CS_AS; das Framework verwendete
+SQL_Latin1_General_CP1_CS_AS. Die Kontrollquelle mit kleinster eigener ID
+besaß keinen DEK. Zwei eigene AES128-TDE-Quellen bei CL160/170 verwendeten
+getrennte Zertifikate mit Ablaufdatum 2099-12-31 und einen neuen DMK.
+Zustand 3, Scanstatus 4, PercentComplete 0, KeyLength 128 und native
+Protektorbindungen blieben erhalten. CMK, CEK, verschlüsselte Spalten,
+Ledger, Benutzertabellen und Views blieben leer; private Zertifikatexportzeiten
+waren NULL. Der Client verwendete keine Always-Encrypted-Schlüsselprovider.
+
+Die Baseline enthielt keine Backuphistorie der eigenen Quellen. Danach
+wurde genau ein natives, nicht Copy-only, CHECKSUM-Full-Backup der leeren
+Kontrollquelle mit TRIPLE_DES_3KEY und einem dritten eigenen Zertifikat mit Ablaufdatum
+2099-12-31 erzeugt. Genau eine frische Datei lag im neuen eigenen verwalteten
+SQL-Volume. Datenbank-ID, GUID, case-sensitiver Name, Backupset-ID und -GUID,
+Media-ID, Zeitgrenzen, Algorithmus, EncryptorType, interne native
+Zertifikatbindung und Dateiexistenz wurden geprüft. Das Orakel band das
+einzige tatsächlich erzeugte eigene Backup. Native Algorithmus- und
+EncryptorType-Texte wurden unverändert erhalten; nur ihre Prüfbedeutung
+wurde casekontrolliert und explizit collatiert verglichen. Es gab kein
+Wiederholungsbackup, msdb-UPDATE, Restore oder Schlüsselexport.
+
+Pro Phase prüften fünf Auswahlfälle TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+je 3/3/2/1/0 Zeilen. Alle 30 Aufrufe bestätigten den bestehenden 26-Feld-Vertrag,
+JSON-/Direktparität, Schemas, sysname-Aliase, elf Frameworktextcollations und
+260 physische TABLE-Schemarecords. Ein festes eigenes ID-Orakel prüfte
+Auswahl und Reihenfolge. RAW und JSON wurden geordnet, TABLE und CONSOLE
+auf ID-gebundene Mengen- und Werteparität geprüft. Final enthielt die
+Kontrollquelle die tatsächliche Backupabschlusszeit, LatestFullBackupExplicitlyEncrypted
+TRUE und die nativen TRIPLE_DES_3KEY-/EncryptorType-Werte. Beide TDE-Quellen behielten
+NULL in den vier Backupfeldern. Alle 26 nativen Vor-/Nachwerte blieben je
+Fall unverändert. Über 15 Phasenpaare änderten sich ausschließlich die vier
+Kontroll-Backupfelder; TDE, Inventare, Findings, Auswahl und alle übrigen
+Fachwerte blieben erhalten. Der separate Audit bestätigte 3918
+Wertvergleiche ohne Defekt. TDE, Backup und Inventar waren AVAILABLE mit
+IsPartial 0; JSON-Warnungen blieben leer. Callerwerte 137/OFF/TRANCOUNT 0/
+XACT_STATE 0 blieben erhalten; ursprüngliche -1/OFF/0/0 wurden vor Cleanup bestätigt.
+
+Eigene Backuphistorie, drei Datenbanken, drei Zertifikate und DMK wurden
+identitätsgebunden entfernt. Der öffentliche Lab-Abbau bestand; eigener
+Container und Volume samt Backupdatei waren am selben Providerpin abwesend,
+bevor der eigene State entfernt wurde. Frische Vor-/Nachinventuren bestätigten
+unveränderte erreichbare vorbestehende Dockerressourcen einschließlich Images
+und Tags. Rohinventare blieben lokal. Host-RAM, Daemon-RAM/CPU und öffentliche
+Ressourcenbereitschaft wurden vor Provisionierung geprüft; freier Gastspeicher
+wurde vor dem SQL-Arrange geprüft. Physische Host- oder Backingdateibytes
+wurden nicht auf Invarianz geprüft. Der Lauf endete um `2026-10-09T08:01:19.9097431+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `610517540574240C5B77816A1F5958B83324B0D56B6E07543FC0DBCFDE8C2D4D` |
+| Privates Backup-SQL | `9FD938BA37DAB60DFC810B7AB4C39E9C1F4F69AE4C4370F6C18130B434C6F6B8` |
+| Privater Consumer | `F731EF9AB201B64226F211D9C7F5BE1D3CEF75FD5913AB4F3AB5C98B97BA9843` |
+| Privater nativer Beobachter | `476B372CE084CA9F5B030ADA107CE03D7A6709FB3865654585A1F13C78468277` |
+| Privates Cleanup-SQL | `1BC2A43BCA6C501DBB68F00978F257AC7427EA1A60C066804488BDACB0BFBEA2` |
+| Privater Schutzguard | `3BC51425C567C8B27FD7FC75ACDB8A78224D809B9328F40B7D1D60BC60013F53` |
+| Privater Ergebnisaudit | `A2489373FBA1668D339DF07322D8ADFCD0D4313C18F58D0C177B247C4D3E9043` |
+| Privater Lauf-Log | `4AE579FBFC4D815BAFE69B2D1212F3D6CD8B879BDBED387C0C93CFE7B2F6753B` |
+| Privates PASS-Ergebnis | `207EA9AED3DE26EEE429CE0127AFD5DB9DE3B34FD936E47A8FACCFCC8AACF48F` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die am 9. Oktober 2026 gelesene Microsoft-Primärquelle dokumentiert
+[TRIPLE_DES_3KEY als unterstützten Backupalgorithmus](https://learn.microsoft.com/en-us/sql/t-sql/statements/backup-transact-sql?view=sql-server-ver17).
+Es wurden keine Benutzerinhalte gelesen oder geschrieben, keine DML auf
+Benutzerinhalten, kein SMTP und keine Imagebeschaffung ausgeführt.
+Schlüsselmaterial wurde weder abgefragt noch ausgegeben oder exportiert.
+Der Nachweis betrifft SQL2025; CL160/170 sind keine älteren nativen
+Engine-Nachweise. Dateiintegrität und Wiederherstellbarkeit bleiben unbelegt. Der Nachweis
+charakterisiert Diagnosemetadaten und empfiehlt keinen produktiven Einsatz
+dieses Algorithmus.
+Lookback, weitere Backupvarianten, Berechtigungskontexte und Restore bleiben
+offen. COLL-001 bleibt partiell; Statusflags bleiben unverändert.
