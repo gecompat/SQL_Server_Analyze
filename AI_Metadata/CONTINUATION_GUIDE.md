@@ -21,6 +21,7 @@ Eine zusätzlich benötigte allgemeine Lab-Funktion wird nicht stillschweigend i
 
 ## Vor jeder Änderung
 
+- Prüfen Sie den Regelstand gemäß [Regelkontextcache](Rule_Context_Cache.md), bevor Sie bereits analysierte Zusatzregeln wiederverwenden. Fehlende Sessionanalysen und unvollständige Discovery verlangen eine erneute Analyse.
 - Prüfen Sie die für den betroffenen Pfad geltenden Anweisungen und die case-sensitive Namenskonsistenz.
 - Lesen Sie vor Dokumentationsänderungen `Documentation/Quality/Documentation_Writing_Style.md`.
 - Aktualisieren Sie ein kanonisches Einzelobjekt, generierte Installer, Inventare und Referenzdokumentation gemeinsam, soweit deren Vertrag betroffen ist.

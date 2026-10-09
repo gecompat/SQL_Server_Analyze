@@ -28,6 +28,12 @@ Chat history, memory, prior scratchpads, and vendor-specific project prompts are
 
 ## Projektspezifische Governance und Discovery
 
+Für die Wiederverwendung bereits analysierter Regeln gilt zusätzlich
+[`AI_Metadata/Rule_Context_Cache.md`](AI_Metadata/Rule_Context_Cache.md).
+Vor jeder weiteren Entwicklungswelle ist der dort beschriebene deterministische
+Check auszuführen. Ein Fingerprint-Hit erlaubt ausschließlich die Wiederverwendung
+der unter den exakten Analysekennungen tatsächlich vorhandenen Sessionanalysen.
+
 Die Foundation ergänzt die projektspezifischen Regeln, ersetzt sie aber nicht. Für den jeweiligen Arbeitsumfang sind die folgenden kanonischen Projektquellen heranzuziehen:
 
 - [`AI_Metadata/PROJECT_CONTEXT.md`](AI_Metadata/PROJECT_CONTEXT.md) für feste Produkt- und Datenschutzverträge sowie den projektspezifischen GitHub-Veröffentlichungsweg;
