@@ -7554,3 +7554,94 @@ ausgegeben noch exportiert. Der Nachweis betrifft ausschließlich
 SQL2025; CL160/170 sind keine älteren nativen Engine-Nachweise. Weitere
 Berechtigungskontexte, TDE-/Inventarverweigerung, andere Backupvarianten
 und Restore bleiben offen. COLL-001 bleibt partiell; Statusflags bleiben unverändert.
+
+
+## Native Zeitgleichheit verschlüsselter Full-Backups am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf bestätigte auf Produktstand
+`4324bfc3975987c3f910ba22d424844f9e16e899` die Auswahl bei tatsächlich gleichen nativen Abschlusszeiten
+verschlüsselter Full-Backups. Installation, CL170-Smoke und installierter
+Procedurebody bestanden. ProductVersion war 17.0.4075.5. Server, tempdb und
+drei leere Unicode-/Case-Quellen verwendeten Latin1_General_100_CS_AS;
+das Framework verwendete SQL_Latin1_General_CP1_CS_AS. Die Kontrollquelle
+mit kleinster eigener ID besaß keinen DEK. Zwei eigene AES128-TDE-Quellen
+bei CL160/170 verwendeten getrennte Zertifikate mit Ablaufdatum 2099-12-31
+und einen neuen DMK. Zustand 3, Scanstatus 4, PercentComplete 0,
+KeyLength 128 und native Protektorbindungen blieben erhalten.
+
+Die Baseline enthielt keine Backuphistorie der eigenen Quellen. Danach
+wurden 2 native, nicht Copy-only, CHECKSUM-Full-Backups der
+leeren Kontrollquelle mit abwechselnd AES128 und AES256 erzeugt. Ein
+separates eigenes Backupzertifikat mit Ablaufdatum 2099-12-31 schützte sie.
+Alle Dateien lagen ausschließlich im neuen eigenen verwalteten SQL-Volume.
+Datenbank-ID, GUID, case-sensitiver Name, Backupset-ID und -GUID, Media-ID,
+Zeitgrenzen, Algorithmen, native Zertifikatbindung und Dateiexistenz wurden
+geprüft. Das letzte Paar hatte tatsächlich dasselbe backup_finish_date;
+das zweite Backup dieses Paares hatte die größere Backupset-ID und diese
+war innerhalb aller eigenen zeitgleichen Backups maximal. Ein unabhängiges
+Orakel wählte diese tatsächlich erzeugte zweite Operation, ohne die
+Produkt-Rangfolge nachzubauen. Native Abschlusszeiten wurden nicht zur
+Herbeiführung des Gleichstands verändert; kein msdb-UPDATE wurde dafür ausgeführt. Der Test war auf zwei Paare und vier Backups begrenzt.
+
+Pro Phase prüften fünf Auswahlfälle TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+je 3/3/2/1/0 Zeilen. Alle 30 Aufrufe bestätigten den bestehenden
+26-Feld-Vertrag, JSON-/Direktparität, Schemas, sysname-Aliase, elf
+Frameworktextcollations und 260 physische TABLE-Facets. Ein festes eigenes
+ID-Orakel prüfte Auswahl und Reihenfolge. RAW und JSON wurden geordnet,
+TABLE und CONSOLE auf ID-gebundene Mengen- und Werteparität geprüft.
+Die finale Kontrollquelle enthielt die tatsächliche gewählte Abschlusszeit,
+IsExplicitlyEncrypted TRUE und die nativen AES256-/EncryptorType-Werte.
+Die anderen beiden Quellen enthielten weiterhin NULL in den vier Backupfeldern.
+Alle 26 nativen Vor-/Nachwerte blieben innerhalb der Phasen unverändert;
+über 15 Fallpaare änderten sich ausschließlich die vier Backupfelder der
+Kontrollquelle. TDE, Inventare, Findings, Auswahl und alle übrigen Fachwerte
+blieben erhalten. Der separate Audit bestätigte 3918
+Wertvergleiche ohne Defekt. TDE, Backup und Inventar waren AVAILABLE mit
+IsPartial 0; JSON-Warnungen blieben leer. Callerwerte 137/OFF/TRANCOUNT 0/
+XACT_STATE 0 blieben erhalten; ursprüngliche -1/OFF/0/0 wurden vor Cleanup bestätigt.
+
+Eigene Backuphistorie, drei Datenbanken, drei Zertifikate und DMK wurden
+identitätsgebunden entfernt. Der öffentliche Lab-Abbau bestand; eigener
+Container und Volume waren am selben Providerpin abwesend, bevor der eigene
+State entfernt wurde. Frische Vor-/Nachinventuren bestätigten unveränderte
+erreichbare vorbestehende Dockerressourcen einschließlich Images und Tags.
+Rohinventare blieben lokal. Host-RAM, Daemon-RAM/CPU und öffentliche
+Ressourcenbereitschaft wurden vor Provisionierung geprüft; freier Gastspeicher
+wurde vor dem SQL-Arrange geprüft. Physische Host- oder Backingdateibytes
+wurden nicht auf Invarianz geprüft. Der Lauf endete um `2026-10-09T07:15:14.3840624+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `95D4D7C61B8F56106D969A80529CF607A45E1D3015B37F3237D68D6ECAC22D42` |
+| Privates Backup-SQL | `BBB70CACBF4370BB461A1BD6577EFC56ED5F575E4FBF10974444C7D33F18516B` |
+| Privater Consumer | `9C6E4AA8FA4A42B69D30AF1CBA6DFD3BB69A5D95E7A2A637985591236F0744F4` |
+| Privater nativer Beobachter | `46E52870EAC2867CDF6C1DC92689941469627F172D059821BA3D01A43C91CD7F` |
+| Privates Cleanup-SQL | `7D2BBE27CB31D3011938861481F2414106EFB3478B48E2AEA5552DD3AF464E24` |
+| Privater Schutzguard | `3BC51425C567C8B27FD7FC75ACDB8A78224D809B9328F40B7D1D60BC60013F53` |
+| Privater Ergebnisaudit | `91CDD918B1A3D19E8FAF0EE13093C93EA1F7958DA3003226E8B1D5F9B73286A0` |
+| Privater Lauf-Log | `557C49B23B6D728EA6A4391599FB7AFD89AAA4E6BAC5BE8A7950B149E788DCBA` |
+| Privates PASS-Ergebnis | `DAA1DF4F02BC5FE87351D603909C1AAD936B688BD3B591C3EA5387416545D9DD` |
+
+Ein erster privater Aufbauversuch scheiterte nach der Baseline vor dem ersten
+nativen Backup mit Collationfehler 468 im Algorithmus-Whitelistguard.
+Die Fixture verglich anschließend Variable und beide Literale ausdrücklich
+mit derselben CS-Collation. Fehler 468/Zeile 15 stammt aus der separaten
+Toolbeobachtung; der V1-Rohlog belegt Installation, Smoke und Cleanup, enthält
+diese Fehlermeldung jedoch nicht. Produktcode und Orakel blieben unverändert.
+Der erste eigene Lab-Abbau und Schutzvergleich bestanden; seine Artefakte
+wurden erhalten. Der fachliche V2-Lauf verwendete ein weiteres neues eigenes Lab.
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die am 9. Oktober 2026 gelesene Microsoft-Primärquelle dokumentiert
+[backupset-ID und backup_finish_date](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17);
+sie garantiert keine Zeitgleichheit zweier nativer Backups. Der Nachweis
+beruht auf den tatsächlich beobachteten Werten dieses Laufs. Es wurden weder
+Benutzerinhalte geschrieben noch DML auf Benutzerinhalten, Schlüsselexport, Restore, SMTP oder
+Imagebeschaffung ausgeführt. Schlüsselmaterial wurde nicht ausgegeben.
+Der Nachweis betrifft SQL2025; CL160/170 sind keine älteren nativen
+Engine-Nachweise. Backup-Lookback, verbleibende Backupvarianten, zusätzliche
+Berechtigungskontexte und Restore bleiben offen. COLL-001 bleibt partiell;
+Statusflags bleiben unverändert.

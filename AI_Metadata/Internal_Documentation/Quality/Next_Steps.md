@@ -932,6 +932,25 @@ Der Nachweis steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.m
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
 öffentliche Lab-Funktion mit tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte eine neue eigene SQL2025-Fixture auf unverändertem
+Produktcode die Auswahl bei gleichen nativen Abschlusszeiten verschlüsselter
+Full-Backups. Von 2 tatsächlich erzeugten eigenen CHECKSUM-Backups
+hatte das letzte AES128-/AES256-Paar dasselbe backup_finish_date; das zweite
+AES256-Backup besaß die maximale Backupset-ID innerhalb der zeitgleichen
+Historie. Native Abschlusszeiten wurden nicht zur Herbeiführung des Gleichstands
+verändert; kein msdb-UPDATE wurde dafür ausgeführt. 30 TABLE-/RAW-/
+CONSOLE-Aufrufe bestätigten alle 26 Fachwerte, Schemas, Ausgabeparität und
+Auswahlmengen 3/3/2/1/0. Über 15 Fallpaare änderten sich ausschließlich die
+vier Backupfelder der Kontrollquelle. History-/SQLcleanup, öffentlicher
+Lab-Abbau, Ressourcenabwesenheit am selben Providerpin und Vor-/Nachschutz
+bestanden. Lookback, weitere Backupvarianten, Berechtigungskontexte und
+Restore bleiben offen. Der Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt partiell.
+Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche Lab-Funktion
+mit tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
