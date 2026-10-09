@@ -1,0 +1,331 @@
+{
+  "schema_version": 1,
+  "installed_version": "1.19.0",
+  "source_version": "1.20.0",
+  "source_ref": "39ae5c534bb0cf78046485754ed1be7867bf9534",
+  "assessments": [
+    {
+      "feature_id": "ai-client-integration",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Clientintegration ist nicht installiert; Routinearbeit verlangt keine Dispatchreceipts oder Konfigurationsänderungen. Native Clientkonfiguration und tatsächliche Ausführung bleiben belegpflichtig.",
+      "recommendation": "Nur bei einem konkreten Clientintegrationsbedarf eine separate Auswahl mit geprüften Clientfähigkeiten vornehmen.",
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-host-preparation",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "NOT_APPLICABLE",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Dieses Upgrade benötigt vorhandenes Python und Git; zusätzliche Runtimeprovisionierung oder Dienste werden nicht installiert.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-runtime-adapters",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "NOT_APPLICABLE",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Das Repository verwendet in diesem Umfang keine ausgewählten externen Runtimeadapter; deterministische lokale Tests genügen.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-work-execution",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "NOT_APPLICABLE",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Ein ausführbarer AI-Executor ist nicht ausgewählt; normale dateibasierte Arbeit benötigt keinen Ausführungs-DAG.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "ai-work-orchestration",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Die neuen Proportionalitätsgrenzen werden übernommen. Strukturierte Requests bleiben auf tatsächlich ausgewählte Orchestrierungsoperationen begrenzt.",
+      "recommendation": "Core-Verträge auf betroffene Orchestrierungsarbeit anwenden; optionale Planner und Runtimeaufrufe erst bei tatsächlichem Bedarf wählen.",
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "artifact-registration",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "ALREADY_EQUIVALENT",
+      "evidence": [
+        "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+        "Metadata/Governance/Artifact_Registry.json"
+      ],
+      "rationale": "Die bestehende v2-Authority und DIRECT-/DEFERRED-Regeln gelten für Menschen und KI; keine neue Authority oder Sequenz wird eingeführt.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "authorization-envelope",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Der explizite Upgradeauftrag erlaubt die gewöhnlichen kompatiblen Integrationsänderungen einschließlich der Arbeitsregeln. Schutz- und Veröffentlichungsgrenzen bleiben erhalten.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "bounded-processing-efficiency",
+      "candidate_reasons": [
+        "introduced_in:1.20.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md",
+        "AI_Metadata/Rule_Context_Cache.md",
+        "AI_Metadata/Rule_Context_Cache_Scope.json"
+      ],
+      "rationale": "Die bisherige verpflichtende persistente Prüfung und der breite Entwicklungsumfang verursachten vermeidbare Lektüre. Der Benutzer hat deren Änderung ausdrücklich freigegeben.",
+      "recommendation": "In diesem Upgrade umgesetzt: sessionlokaler Standard, aufgabenbezogene Leseprofile, ein Implementierer und bei Bedarf ein unabhängiger Review sowie ein endlicher gemeinsamer Aufgaben-/Agentenumfang ohne erfundene Kostenmessung.",
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "central-artifact-registry",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "ALREADY_EQUIVALENT",
+      "evidence": [
+        "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+        "Metadata/Governance/Artifact_Registry.json",
+        ".github/workflows/artifact-registry-integrity.yml"
+      ],
+      "rationale": "Zentrale v2-Registry, semantischer Merge und bestehender Workflow bleiben maßgeblich. Der projektspezifische Registrypfad wird als intentionaler Override erhalten.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": [
+        "artifact-registry-github"
+      ]
+    },
+    {
+      "feature_id": "ci-supersession-and-integration-queue",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "PROJECT_STRONGER",
+      "evidence": [
+        "Documentation/Quality/CI_Test_Strategy.md",
+        ".github/workflows/ci-functional-impact.yml"
+      ],
+      "rationale": "Laufende SQL-CI wird nicht automatisch abgebrochen. Statische Supersession und exakte Headbindung bleiben erhalten; keine Mergequeue wird aktiviert.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "foundation-baseline",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Die verkürzte Core-Discovery und aufgabenbezogene Lektüre ergänzen die erhaltene Projektgovernance.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "installed-foundation-provenance",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        ".ai/foundation/installation-provenance.json"
+      ],
+      "rationale": "Alle 78 ausgewählten Quellen werden gegen Manifesthashes geprüft; der Receipt fixiert Commit und begründet beide Projekt-Overrides.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "layered-validation",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "ALREADY_EQUIVALENT",
+      "evidence": [
+        "Documentation/Quality/CI_Test_Strategy.md",
+        "Code/Tests/Static/Validate_Rule_Context_Cache.py"
+      ],
+      "rationale": "Foundationintegrität, lokale Projektverträge und synthetisches Ausführungsverhalten werden getrennt bewertet. SQL-Runtime ist bei diesem Umfang nicht betroffen.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "model-routing-interoperability",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "ALREADY_EQUIVALENT",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Keine konkrete Modellwahl ist für mechanische Prüfungen nötig. Der optional nicht installierte Router bleibt ungewählt; unbekannte Preise, Kontingente und tatsächliche Modelle werden nicht behauptet.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "persistent-identity",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "ALREADY_EQUIVALENT",
+      "evidence": [
+        "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+        "Metadata/Governance/Artifact_Registry.json"
+      ],
+      "rationale": "Der bestehende ADOPT_FORWARD-Modus, UUID-URNs und stabile historische Referenzen bleiben erhalten; DEC-0001 und DEC-0002 werden als dieselben logischen Entscheidungen fortgeschrieben.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "repository-continuity-break-glass",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "Documentation/Quality/CI_Test_Strategy.md",
+        ".github/workflows/artifact-registry-integrity.yml"
+      ],
+      "rationale": "Lokale Checks und Fehlertypen bleiben getrennt. Live-Rulesets werden im lokalen Upgrade nicht inspiziert oder geändert; aktuelle serverseitige Durchsetzung wird nicht neu attestiert.",
+      "recommendation": "Bei gewünschter Ausfallkontinuität getrennte Core-Safety- und CI-Gates mit eng begrenztem PR-only-Bypass administrativ prüfen. Keine Freigabe für Bypassakteure oder Rulesetänderungen durch dieses Upgrade.",
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "rule-context-cache",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "AI_Metadata/Rule_Context_Cache.md",
+        "Code/Tools/Rule_Context_Cache.py",
+        "Code/Tests/Static/Validate_Rule_Context_Cache.py"
+      ],
+      "rationale": "Sessionlokale Analyseverfügbarkeit wird unabhängig vom optionalen persistenten Profil integriert. Der Plannerhash bleibt identisch; seine Status- und Recordverträge bleiben erhalten.",
+      "recommendation": "In diesem Upgrade umgesetzt: sessionlokaler Standard ohne Planner/Record und explizite persistente Nutzung mit den bisherigen strengeren Bindungsprüfungen.",
+      "decision_required": null,
+      "selected_capabilities": [
+        "rule-context-cache"
+      ]
+    },
+    {
+      "feature_id": "rules-only-transfer",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_20_Integration.json"
+      ],
+      "rationale": "Es werden ausschließlich Core, bisher ausgewählte Adapter und zwei bestehende Capabilities gemäß Manifest übertragen; Rootlizenz und Produktquellen bleiben unverändert.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "semantic-integration",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md",
+        "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md",
+        "Metadata/Governance/Artifact_Registry.json"
+      ],
+      "rationale": "Überschneidungen werden semantisch bewertet; Projektprivacy, Identitäten, v2-Authority und Workflow-Override bleiben erhalten. Unwirtschaftliche DEFAULT-Arbeitsregeln werden innerhalb des expliziten Auftrags angepasst.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "semantic-upgrade-applicability",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [
+        "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_20_Upgrade_Assessment.json"
+      ],
+      "rationale": "Alle 21 Kandidaten aus dem fixierten Featurekatalog erhalten genau eine Klassifikation; Empfehlungen werden im Upgradebericht ausdrücklich benannt.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "session-lifecycle-management",
+      "candidate_reasons": [
+        "material_change:1.20.0"
+      ],
+      "classification": "RECOMMENDED",
+      "evidence": [
+        "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
+        "AGENTS.md",
+        "AI_Metadata/CONTINUATION_GUIDE.md"
+      ],
+      "rationale": "Die bestehende natürliche Checkpointgrenze bleibt erhalten. Timer führen zu keiner unveränderten Modellarbeit; automatische Rotation und numerische Kontextschwellen bleiben ungewählt.",
+      "recommendation": "Ereignisbezogene Checkpoints und kurze Deltas verwenden. Automatische Nachfolgesessions oder numerische Kontextschwellen nur bei separat bestätigter Clientfähigkeit und späterer Auswahl aktivieren.",
+      "decision_required": null,
+      "selected_capabilities": []
+    }
+  ]
+}

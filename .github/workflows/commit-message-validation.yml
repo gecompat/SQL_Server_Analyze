@@ -33,10 +33,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/930_Validate_Commit_Message.py \
-            --repository-root . \
-            --delivery-mode DIRECT_GIT \
-            --self-test
+          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
+             ! git cat-file -e "${BASE_SHA}^{commit}" || \
+             ! git cat-file -e "${HEAD_SHA}^{commit}" || \
+             ! git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- \
+               Code/Tests/Static/930_Validate_Commit_Message.py \
+               .github/workflows/commit-message-validation.yml; then
+            python3 ./Code/Tests/Static/930_Validate_Commit_Message.py \
+              --repository-root . \
+              --delivery-mode DIRECT_GIT \
+              --self-test
+          else
+            echo 'Commit-message validator self-test not applicable to this change.'
+          fi
 
       - name: Validate newly introduced commits
         shell: bash

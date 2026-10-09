@@ -10,6 +10,8 @@ Repository-Datenschutz und Commit-Message-Validierung bleiben repositoryweit. Di
 
 Dokumentations- und Metadata-Prüfungen laufen ohne SQL-Server-Instanz. Der externe Linkcheck mit Netzwerkzugriff läuft nur, wenn eine Änderung eine HTTP(S)-Referenz einführt oder verändert, wenn der Validator selbst geändert wird oder wenn der Workflow manuell vollständig gestartet wird.
 
+Die statische Vertragssuite verwendet für reine Foundation- und Regelkontextänderungen einen eng begrenzten Governance-Scope mit Dokumentationsstil- und Regelkontextprüfung. Alle anderen Änderungen fallen auf die vollständige statische Suite zurück, solange ihre Validatorabhängigkeiten nicht enger belegt sind. Der Workflow führt Validator-Selbsttests nur bei Änderungen am betreffenden Prüfwerkzeug oder dessen Abhängigkeiten aus; der manuelle vollständige Lauf behält alle Selbsttests. Datenschutzscan und Commit-Prüfung bleiben eigenständige repositoryweite Gates und werden nicht zusätzlich durch den Dokumentationsworkflow wiederholt.
+
 Eine reine Dokumentations-, Kommentar- oder Metadata-Änderung startet keinen funktionalen SQL-Server-Lauf, sofern sie keinen ausführbaren Laufzeitvertrag ändert.
 
 ## Ausführbares T-SQL

@@ -1,7 +1,14 @@
 [CmdletBinding()]
 param(
     [string]$RepositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '../../..')),
-    [switch]$IncludeNetwork
+    [switch]$IncludeNetwork,
+    [ValidateSet('Full', 'FoundationGovernance')]
+    [string]$Scope = 'Full',
+    [ValidateSet('All', 'Changed')]
+    [string]$SelfTestMode = 'All',
+    [string]$ChangedFilesPath,
+    [switch]$ExcludePrivacy,
+    [switch]$ExcludeImpactSelector
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,15 +106,50 @@ $repositoryOnlyValidators = @(
     '990_Validate_Release_Evidence.py'
 )
 
+if ($SelfTestMode -eq 'Changed' -and -not $ChangedFilesPath) {
+    throw 'ChangedFilesPath ist für SelfTestMode Changed erforderlich.'
+}
+$changedFiles = @()
+if ($ChangedFilesPath) {
+    $changedFiles = @(Get-Content -LiteralPath $ChangedFilesPath | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+}
+$runAllSelfTests = $SelfTestMode -eq 'All' -or
+    ($changedFiles -contains 'Code/Tests/Static/Invoke-StaticContractSuite.ps1')
+$knownStaticPaths = @($selfTestValidators + $repositoryOnlyValidators | ForEach-Object { "Code/Tests/Static/$_" }) +
+    @('Code/Tests/Static/900_Validate_Analysis_Documentation.ps1', 'Code/Tests/Static/Invoke-StaticContractSuite.ps1')
+if (@($changedFiles | Where-Object { $_ -like 'Code/Tests/Static/*' -and $_ -notin $knownStaticPaths }).Count -gt 0) {
+    $runAllSelfTests = $true
+}
+if ($Scope -eq 'FoundationGovernance') {
+    $governancePattern = '^(AGENTS\.md|\.ai/.*|AI_Metadata/CONTINUATION_GUIDE\.md|AI_Metadata/Rule_Context_Cache(_Scope\.json|\.md)|AI_Metadata/Internal_Documentation/Architecture/Foundation_[^/]+\.(md|json)|Code/Tools/Rule_Context_Cache\.py|Code/Tests/Static/Validate_Rule_Context_Cache\.py)$'
+    if ($changedFiles.Count -eq 0 -or @($changedFiles | Where-Object { $_ -notmatch $governancePattern }).Count -gt 0) {
+        throw 'FoundationGovernance ist nur für die ausgewiesenen Regel- und Foundationdateien zulässig.'
+    }
+    $selfTestValidators = @('Validate_Rule_Context_Cache.py', '915_Validate_Documentation_Style.py')
+    $repositoryOnlyValidators = @()
+}
+if ($ExcludePrivacy) {
+    $selfTestValidators = @($selfTestValidators | Where-Object { $_ -ne '910_Validate_Repository_Privacy.py' })
+}
+if ($ExcludeImpactSelector) {
+    $selfTestValidators = @($selfTestValidators | Where-Object { $_ -ne '925_Select_CI_Impact.py' })
+}
+
 $failures = [Collections.Generic.List[string]]::new()
 Push-Location -LiteralPath $repositoryPath
 try {
     foreach ($validator in $selfTestValidators) {
         $path = Join-Path 'Code/Tests/Static' $validator
-        & $pythonCommand $path --repository-root . --self-test
-        if ($LASTEXITCODE -ne 0) {
-            $failures.Add("$validator self-test")
-            continue
+        $selfTestRequired = $runAllSelfTests -or $changedFiles -contains ($path -replace '\\', '/') -or
+            ($validator -eq 'Validate_Rule_Context_Cache.py' -and
+             ($changedFiles -contains 'Code/Tools/Rule_Context_Cache.py' -or
+              $changedFiles -contains 'AI_Metadata/Rule_Context_Cache_Scope.json'))
+        if ($selfTestRequired) {
+            & $pythonCommand $path --repository-root . --self-test
+            if ($LASTEXITCODE -ne 0) {
+                $failures.Add("$validator self-test")
+                continue
+            }
         }
         if ($validator -eq '925_Select_CI_Impact.py') {
             continue
@@ -126,28 +168,32 @@ try {
         }
     }
 
-    & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 -SelfTest
-    if ($LASTEXITCODE -ne 0) {
-        $failures.Add('900_Validate_Analysis_Documentation.ps1 self-test')
-    }
-    & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
-    if ($LASTEXITCODE -ne 0) {
-        $failures.Add('900_Validate_Analysis_Documentation.ps1 repository')
-    }
+    if ($Scope -eq 'Full') {
+        if ($runAllSelfTests -or $changedFiles -contains 'Code/Tests/Static/900_Validate_Analysis_Documentation.ps1') {
+            & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1 -SelfTest
+            if ($LASTEXITCODE -ne 0) {
+                $failures.Add('900_Validate_Analysis_Documentation.ps1 self-test')
+            }
+        }
+        & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/900_Validate_Analysis_Documentation.ps1
+        if ($LASTEXITCODE -ne 0) {
+            $failures.Add('900_Validate_Analysis_Documentation.ps1 repository')
+        }
 
-    & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeExample.ps1
-    if ($LASTEXITCODE -ne 0) {
-        $failures.Add('Test-AnalyzeExample.ps1 catalog')
-    }
+        & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeExample.ps1
+        if ($LASTEXITCODE -ne 0) {
+            $failures.Add('Test-AnalyzeExample.ps1 catalog')
+        }
 
-    & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeProjectAdapter.ps1
-    if ($LASTEXITCODE -ne 0) {
-        $failures.Add('Test-AnalyzeProjectAdapter.ps1 project adapter')
-    }
+        & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeProjectAdapter.ps1
+        if ($LASTEXITCODE -ne 0) {
+            $failures.Add('Test-AnalyzeProjectAdapter.ps1 project adapter')
+        }
 
-    & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1
-    if ($LASTEXITCODE -ne 0) {
-        $failures.Add('Test-AnalyzeOps005LinkedServerAdapter.ps1 OPS-005 adapter')
+        & pwsh -NoLogo -NoProfile -File ./TestLab/Test-AnalyzeOps005LinkedServerAdapter.ps1
+        if ($LASTEXITCODE -ne 0) {
+            $failures.Add('Test-AnalyzeOps005LinkedServerAdapter.ps1 OPS-005 adapter')
+        }
     }
 
     if ($IncludeNetwork) {
@@ -166,7 +212,7 @@ if ($failures.Count -gt 0) {
     throw "Statische Vertragssuite fehlgeschlagen: $($failures -join '; ')"
 }
 
-Write-Host "Statische Vertragssuite erfolgreich: $($selfTestValidators.Count + $repositoryOnlyValidators.Count + 3) Prüfungen."
+Write-Host "Statische Vertragssuite erfolgreich: Scope=$Scope, Validatoren=$($selfTestValidators.Count + $repositoryOnlyValidators.Count), Selbsttests=$SelfTestMode."
 
 
 

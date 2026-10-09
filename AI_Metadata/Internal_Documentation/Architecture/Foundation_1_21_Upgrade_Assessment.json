@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "installed_version": "1.20.0",
+  "source_version": "1.21.0",
+  "source_ref": "d720db4f2f0d043756a958d5195d0e62090b1c8f",
+  "assessments": [
+    {
+      "feature_id": "foundation-baseline",
+      "candidate_reasons": ["material_change:1.21.0"],
+      "classification": "APPLY_DEFAULT",
+      "evidence": ["AGENTS.md", "Documentation/Quality/CI_Test_Strategy.md"],
+      "rationale": "Der neue Baselinehinweis verlangt eine tatsächliche Aufwandsprüfung. Die projektspezifische Teststrategie und ihre Schutzgates bleiben maßgeblich.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "rules-only-transfer",
+      "candidate_reasons": ["material_change:1.21.0"],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [".ai/foundation/installation-provenance.json", "AGENTS.md"],
+      "rationale": "Nur ausgewählte Manifestziele werden übernommen. Der Root-Entrypoint und der Registry-Workflow bleiben begründete semantische Overrides; Produkt- und Lizenzdateien werden nicht aus der Quelle kopiert.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": ["artifact-registry-github", "rule-context-cache"]
+    },
+    {
+      "feature_id": "installed-foundation-provenance",
+      "candidate_reasons": ["material_change:1.21.0"],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [".ai/foundation/installation-provenance.json", ".ai/foundation/repo_map.yaml"],
+      "rationale": "Das Receipt wird auf den fixierten Quellcommit, das Manifest 1.21.0 und alle 78 ausgewählten Ziele aktualisiert. Unveränderte Module bleiben durch ihren Quellhash gebunden.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": ["artifact-registry-github", "rule-context-cache"]
+    },
+    {
+      "feature_id": "layered-validation",
+      "candidate_reasons": ["material_change:1.21.0"],
+      "classification": "APPLY_DEFAULT",
+      "evidence": [".ai/foundation/VALIDATION_POLICY.md", "Documentation/Quality/CI_Test_Strategy.md", ".github/workflows/documentation-validation.yml"],
+      "rationale": "Foundation-, Projekt- und Laufzeitnachweise bleiben getrennt. Entwicklungsprüfungen wählen betroffene Verträge; Qualifikations- und Releasegates behalten ihren ausdrücklich definierten Umfang.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "processing-overhead-assessment",
+      "candidate_reasons": ["introduced_in:1.21.0"],
+      "classification": "APPLY_DEFAULT",
+      "evidence": ["AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade.md", ".github/workflows/documentation-validation.yml", "Code/Tests/Static/Invoke-StaticContractSuite.ps1"],
+      "rationale": "Die tatsächlichen Test-, Log-, Review-, Modell- und Wartewege sind im Upgradeprotokoll getrennt bewertet. Redundante statische Schleifen wurden begrenzt; notwendige stärkere Gates haben einen benannten Schutzgrund und Auslöser.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "semantic-integration",
+      "candidate_reasons": ["material_change:1.21.0"],
+      "classification": "APPLY_DEFAULT",
+      "evidence": ["AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade.md", "AI_Metadata/CONTINUATION_GUIDE.md"],
+      "rationale": "Die Prüfung erfasst konkrete Workflowauslöser, Duplikate, Logverarbeitung und Reviewwege. Strengere Projektgates werden nur mit begrenztem Anlass und Schutzgrund erhalten.",
+      "recommendation": null,
+      "decision_required": null,
+      "selected_capabilities": []
+    },
+    {
+      "feature_id": "bounded-processing-efficiency",
+      "candidate_reasons": ["material_change:1.21.0"],
+      "classification": "RECOMMENDED",
+      "evidence": ["Code/Tests/Static/Invoke-StaticContractSuite.ps1", ".github/workflows/documentation-validation.yml", "AI_Metadata/CONTINUATION_GUIDE.md"],
+      "rationale": "Die Empfehlung ist durch diesen Auftrag zur Umsetzung autorisiert. Ein begrenzter Governance-Scope und betroffene Validator-Selbsttests beseitigen wiederholte statische Prüfschleifen; Schutzgates und konservativer Fallback bleiben erhalten.",
+      "recommendation": "Die umgesetzte Auswahl und die begründeten Ausnahmen im Upgradeprotokoll bei späteren Workflowänderungen erneut gegen tatsächliche Ausführung prüfen.",
+      "decision_required": null,
+      "selected_capabilities": []
+    }
+  ]
+}

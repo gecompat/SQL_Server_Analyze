@@ -73,7 +73,16 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: |
           set -euo pipefail
-          python3 ./Code/Tests/Static/925_Select_CI_Impact.py --self-test
+          if [[ ! "$BASE_SHA" =~ ^[0-9a-f]{40}$ ]] || \
+             ! git cat-file -e "${BASE_SHA}^{commit}" || \
+             ! git cat-file -e "${HEAD_SHA}^{commit}" || \
+             ! git diff --quiet "$BASE_SHA" "$HEAD_SHA" -- \
+               Code/Tests/Static/925_Select_CI_Impact.py \
+               .github/workflows/ci-functional-impact.yml; then
+            python3 ./Code/Tests/Static/925_Select_CI_Impact.py --self-test
+          else
+            echo 'Impact-selector self-test not applicable to this change.'
+          fi
           python3 ./Code/Tests/Static/925_Select_CI_Impact.py \
             --repository-root . \
             --base-sha "$BASE_SHA" \

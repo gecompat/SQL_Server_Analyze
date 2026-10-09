@@ -203,13 +203,13 @@
     "DEC-0001": {
       "artifact_uid": "urn:uuid:01a10d36-bbba-7ae0-afe1-c530de54d626",
       "kind": "decision",
-      "title": "Foundation 1.19 und vollständige laufende SQL-Validierung",
+      "title": "Foundation-Integration und vollständige laufende SQL-Validierung",
       "registration_state": "REGISTERED",
       "status": "ACTIVE",
       "aliases": [],
       "relations": [],
-      "locator": "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_19_Upgrade_Assessment.json",
-      "decision": "Foundation 1.19.0 wird unter Erhaltung der Projektgovernance und bisherigen Capability-Auswahl integriert. Laufende SQL-CI-Validierungen werden nicht durch neuere Commits automatisch abgebrochen; automatische Nachfolgesessions und numerische Lifecycle-Schwellen bleiben ungewählt."
+      "locator": "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_20_Upgrade.md",
+      "decision": "Foundation 1.20.0 wird vom fixierten geprüften Quellcommit unter Erhaltung der Projektgovernance und bisherigen Capability-Auswahl integriert. Sessionlokale Analyseverfügbarkeit und aufgabenbezogene Lektüre sind Standard; der persistente Cache bleibt optional mit unveränderten Vertragsgrenzen. Ein Implementierer und bei Bedarf ein unabhängiger Reviewer begrenzen die Koordination. Laufende mutierende SQL-CI wird weiterhin nicht automatisch abgebrochen. Automatische Lifecycle-Planner, neue Runtimecapabilities, historische Kennungsmigration und Repositoryadministration bleiben ungewählt."
     },
     "DEC-0002": {
       "artifact_uid": "urn:uuid:01a12030-e3b7-7fcc-bc9d-76011a1056d8",
@@ -220,7 +220,7 @@
       "aliases": [],
       "relations": [],
       "locator": "AI_Metadata/Rule_Context_Cache.md",
-      "decision": "Die optionale Capability rule-context-cache wird aus der bereits integrierten Foundation 1.19.0 unverändert übernommen. Das geprüfte Entwicklungsprofil verwendet native Instruction-Discovery, aktuelle Content- und Git-Fingerprints und explizite Discovery-Konfiguration. Analysen bleiben sessionlokal unter exakten Schlüsseln; nicht versionierte Records enthalten ausschließlich Fingerprints und Abhängigkeiten. Aufzeichnung ist an den zuvor analysierten Snapshot und eine erneute Prüfung unter Lock gebunden. Unklare Discovery verlangt den vollständigen Leseweg."
+      "decision": "Der Foundation-Core-Standard verwendet tatsächlich verfügbare sessionlokale Analyse nach aktueller Autoritäts-, Discovery-, Quellen- und transitiver Abhängigkeitsprüfung. Der Scopeindex trennt Discoverybestand und aufgabenbezogene Leseprofile. Unbekannte Clientkonfiguration wird nicht geraten. Die optionale unveränderte Capability rule-context-cache bleibt für ausdrücklich gewählte persistente Nutzung installiert; exakte Git-/Worktreebindungen, CACHE_MISS, inhaltsfreie lokale Records, Snapshotbindung, Lock und atomare Aufzeichnung bleiben erhalten."
     }
   }
 }

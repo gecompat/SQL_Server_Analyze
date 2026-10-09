@@ -181,18 +181,182 @@ class CacheContracts(unittest.TestCase):
         self.assertTrue(valid, reason)
 
 
+class SessionContracts(unittest.TestCase):
+    setUp = CacheContracts.setUp
+    git = CacheContracts.git
+
+    def session_setup(self):
+        for name in (adapter.SESSION_RUNTIME, "Code/Tools/Rule_Context_Cache.py"):
+            path = self.root / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / name, path)
+        (self.root / "independent.md").write_text("Independent synthetic rule.\n", encoding="utf-8")
+        (self.root / "optional.md").write_text("Optional synthetic contract.\n", encoding="utf-8")
+        self.scope = {"schema_version": 2, "profile": "development",
+                      "discovery_sources": ["AGENTS.md", "rule.md", "dependent.md", "independent.md", "optional.md"],
+                      "scopes": {"development": ["AGENTS.md", "dependent.md", "independent.md"],
+                                 "optional": ["AGENTS.md", "optional.md"]},
+                      "semantic_dependencies": {"AGENTS.md": [], "rule.md": ["AGENTS.md"],
+                                                "dependent.md": ["rule.md"], "independent.md": ["AGENTS.md"],
+                                                "optional.md": ["AGENTS.md"]}, "excluded_references": []}
+        self.index.write_text(json.dumps(self.scope), encoding="utf-8")
+        self.session = adapter.SessionRuleContext(self.root)
+        self.binding = dict(repository_identity="synthetic-repository", authority_key="a" * 64,
+                            discovery_complete=True)
+
+    def snapshot(self, root=None, **changes):
+        return self.session.capture(root or self.root, **{**self.binding, **changes})
+
+    def analyze(self):
+        snapshot = self.snapshot()
+        analyses = {p: {"synthetic_analysis": p} for p in snapshot["analysis_keys"]}
+        self.session.acknowledge(snapshot, analyses)
+        return snapshot
+
+    def test_default_needs_no_persistent_planner_or_record(self):
+        self.session_setup()
+        (self.root / adapter.PLANNER).unlink()
+        first = self.analyze()
+        self.assertEqual(self.session.check(self.snapshot())["status"], "REUSE")
+        self.assertEqual(self.session.analysis_for(first, "rule.md"), {"synthetic_analysis": "rule.md"})
+        self.assertNotIn("optional.md", first["analysis_keys"])
+        self.assertNotIn(adapter.INDEX, first["analysis_keys"])
+        self.assertNotIn(adapter.SESSION_RUNTIME, first["analysis_keys"])
+        self.assertNotIn("Code/Tools/Rule_Context_Cache.py", first["analysis_keys"])
+        self.assertFalse(self.cache.exists())
+        self.assertFalse(list(self.root.rglob("__pycache__")))
+
+    def test_commit_and_equivalent_worktree_rebind_preserve_session_analysis(self):
+        self.session_setup()
+        self.analyze()
+        self.git("add", ".")
+        self.git("-c", "user.name=Synthetic Test", "-c", "user.email=synthetic.invalid",
+                 "commit", "--quiet", "-m", "Synthetic scope update")
+        self.assertEqual(self.session.check(self.snapshot())["status"], "REUSE")
+        other = Path(self.temp.name) / "other-worktree"
+        self.git("worktree", "add", "--detach", "--quiet", str(other), "HEAD")
+        self.assertEqual(self.session.check(self.snapshot(other))["status"], "REUSE")
+        options = self.planner.make_options(other, other, codex_home=self.home,
+                                           fallback_filenames=(), project_doc_max_bytes=32768,
+                                           discovery_config_tag="synthetic-defaults")
+        persistent = adapter.operate(self.planner, options, self.cache, other / adapter.INDEX)
+        self.assertEqual(persistent["status"], "CACHE_MISS")
+
+    def test_dirty_rule_invalidates_only_transitive_dependents(self):
+        self.session_setup()
+        self.analyze()
+        (self.root / "rule.md").write_text("Changed synthetic rule.\n", encoding="utf-8")
+        plan = self.session.check(self.snapshot())
+        self.assertEqual(plan["status"], "PARTIAL")
+        self.assertIn("rule.md", plan["reread"])
+        self.assertIn("dependent.md", plan["reread"])
+        self.assertIn("independent.md", plan["reuse"])
+
+    def test_authority_scope_and_repository_changes_require_reading(self):
+        self.session_setup()
+        self.analyze()
+        for changes in ({"authority_key": "b" * 64}, {"scope": "optional"},
+                        {"repository_identity": "other-repository"}):
+            self.assertEqual(self.session.check(self.snapshot(**changes))["status"], "READ")
+        (self.root / "AGENTS.md").write_text("Changed synthetic instructions.\n", encoding="utf-8")
+        plan = self.session.check(self.snapshot())
+        self.assertTrue({"AGENTS.md", "rule.md", "dependent.md", "independent.md"}.issubset(plan["reread"]))
+        # The caller also supplies a freshly rebound native authority digest.
+        self.assertEqual(self.session.check(self.snapshot(authority_key="c" * 64))["status"], "READ")
+
+    def test_unknown_discovery_and_new_session_cannot_invent_analysis(self):
+        self.session_setup()
+        snapshot = self.analyze()
+        unknown = self.snapshot(discovery_complete=False)
+        self.assertEqual(self.session.check(unknown)["reason"], "DISCOVERY_INCOMPLETE")
+        self.assertEqual(self.session.check(unknown)["reuse"], [])
+        with self.assertRaises(ValueError):
+            self.session.acknowledge(unknown, {"rule.md": "synthetic analysis"})
+        fresh = adapter.SessionRuleContext(self.root)
+        self.assertEqual(fresh.check(snapshot)["status"], "READ")
+
+    def test_new_reference_and_incomplete_dependency_inventory_fail_closed(self):
+        self.session_setup()
+        self.analyze()
+        (self.root / "new.md").write_text("New synthetic rule.\n", encoding="utf-8")
+        (self.root / "rule.md").write_text("[New](new.md)\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            self.snapshot()
+        self.scope["semantic_dependencies"]["rule.md"] = ["new.md"]
+        self.index.write_text(json.dumps(self.scope), encoding="utf-8")
+        with self.assertRaises(ValueError):
+            self.snapshot()
+
+    def test_new_inline_rule_reference_fails_closed(self):
+        self.session_setup()
+        self.analyze()
+        (self.root / "new.md").write_text("New synthetic rule.\n", encoding="utf-8")
+        (self.root / "rule.md").write_text("Follow `new.md`.\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            self.snapshot()
+
+    def test_project_normative_dependencies_invalidate_consumers(self):
+        self.session_setup()
+        index = json.loads((ROOT / adapter.INDEX).read_bytes())
+        cases = [
+            ("sql-development", "Documentation/Quality/CI_Test_Strategy.md", "Documentation/Quality/CI_Impact_Selection.md"),
+            ("planning", "Metadata/Governance/Artifact_Registry.json", "AI_Metadata/ARTIFACT_IDENTITY_AND_NOMENCLATURE.md"),
+            ("planning", "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md", "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md"),
+            ("foundation-upgrade", ".ai/foundation/feature_catalog.json", ".ai/foundation/SEMANTIC_INTEGRATION_POLICY.md"),
+        ]
+        for scope, changed, consumer in cases:
+            with self.subTest(scope=scope, consumer=consumer):
+                _, graph = adapter.selected_scope(index, scope)
+                synthetic = Path(self.temp.name) / scope
+                for source in graph:
+                    path = synthetic / source
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("Synthetic scope rule.\n", encoding="utf-8")
+                binding = dict(repository_identity="synthetic-repository", authority_key="a" * 64,
+                               scope_key=scope, discovery_complete=True)
+                before = self.session.runtime.capture_context(synthetic, graph, **binding)
+                context = self.session.runtime.SessionContext()
+                context.acknowledge(before, {p: "Synthetic analysis" for p in graph})
+                (synthetic / changed).write_text("Changed synthetic governing rule.\n", encoding="utf-8")
+                after = self.session.runtime.capture_context(synthetic, graph, **binding)
+                self.assertIn(consumer, context.check(after)["reread"])
+    def test_changed_snapshot_cannot_acknowledge_analysis(self):
+        self.session_setup()
+        snapshot = self.snapshot()
+        (self.root / "rule.md").write_text("Changed after reading.\n", encoding="utf-8")
+        with self.assertRaises(ValueError):
+            self.session.acknowledge(snapshot, {"rule.md": "synthetic analysis"})
+
+    def test_persistent_v2_selects_dependencies_without_optional_contracts(self):
+        self.session_setup()
+        result = adapter.operate(self.planner, self.options, self.cache, self.index)
+        self.assertNotIn("optional.md", result["analysis_keys"])
+        self.assertIn("rule.md", result["analysis_keys"])
+        self.assertNotIn("UNRESOLVED_REFERENCE", result["reason_codes"])
+        recorded = adapter.operate(self.planner, self.options, self.cache, self.index,
+                                   expected_digest=result["snapshot_digest"])
+        self.assertTrue(recorded["recorded"])
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repository-root", type=Path, default=ROOT)
     parser.add_argument("--self-test", action="store_true")
     args = parser.parse_args()
     if args.self_test:
-        result = unittest.TextTestRunner(verbosity=2).run(unittest.defaultTestLoader.loadTestsFromTestCase(CacheContracts))
+        suite = unittest.TestSuite(unittest.defaultTestLoader.loadTestsFromTestCase(cls)
+                                   for cls in (CacheContracts, SessionContracts))
+        result = unittest.TextTestRunner(verbosity=2).run(suite)
         return 0 if result.wasSuccessful() else 1
     adapter.load_planner(args.repository_root.resolve())
     index = json.loads((args.repository_root / adapter.INDEX).read_text(encoding="utf-8"))
-    if index["profile"] != "development" or not all((args.repository_root / path).is_file() for path in index["sources"]):
+    sources = index.get("discovery_sources", index.get("sources", []))
+    if index["profile"] != "development" or not all((args.repository_root / path).is_file() for path in sources):
         raise ValueError("invalid repository scope")
+    for scope in index.get("scopes", {"development": []}):
+        selected, _ = adapter.selected_scope(index, scope)
+        if index["schema_version"] == 2:
+            adapter.validate_session_links(args.repository_root, selected, index)
     print("Rule-context cache repository contract passed.")
     return 0
 
