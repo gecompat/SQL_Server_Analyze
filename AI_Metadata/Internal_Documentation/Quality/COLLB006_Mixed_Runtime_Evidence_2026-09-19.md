@@ -6998,3 +6998,102 @@ Weitere CEK-Varianten, verschlüsselte Spalten, echte AE-Provider, CMK-Varianten
 und Berechtigungen bleiben offen. Der Lauf ist ausschließlich SQL2025-Evidenz;
 CL160/170 sind keine älteren nativen Engine-Nachweise. COLL-001 bleibt partiell;
 Maturityflags bleiben unverändert.
+
+
+## Metadatenzählung verschlüsselter Spalten am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf prüfte auf unverändertem
+Produktstand `252c4dbfe057b423057ab804c8a3a5727a336425` den bestehenden 26-Feld-Vertrag von
+USP_EncryptionAnalysis für verschlüsselte Spalten. Installation, Smoke bei
+Framework-CL170 und installierter Procedurebody bestanden. ProductVersion
+war 17.0.4075.5. Server, tempdb und drei eigene Unicode-/Case-Quellen hatten
+Latin1_General_100_CS_AS; das Framework verwendete SQL_Latin1_General_CP1_CS_AS.
+Die Kontrollquelle hatte die kleinste eigene Datenbank-ID. Zwei eigene
+AES-128-TDE-Quellen bei CL160/170 blieben in Zustand 3, Scanstatus 4 und
+PercentComplete 0 mit getrennten Zertifikaten und neuem DMK.
+
+Zwei synthetische, unregistrierte CMK-Metadatenobjekte und drei CEKs mit
+je einem Wert wurden vor der Baseline erzeugt. CMK-Anzahlen 0/1/1 und
+CEK-Anzahlen 0/1/2 blieben erhalten. Drei zufällige 32-Byte-Klartextarrays
+und drei neue ephemere RSA-2048-Instanzen erzeugten OAEP-SHA1-Fixtures.
+Klartextnullung und RSA-Dispose erfolgten vor der CEK-DDL. Typisierte
+VarBinary(256)-Parameter, SQL-NULL-/Längenguards, begrenzte Hexliterale,
+Parameterreset, Commanddispose und drei Ciphertextnullungen bestanden.
+Keine Hostschlüsselspeicher, Providerregistrierung oder Provideraufrufe
+wurden verwendet. Der Client meldete NOT_SUPPORTED_BY_DRIVER.
+Dieser Metadatenlauf belegt keine AE-Provider-Kompatibilität oder
+Cliententschlüsselbarkeit.
+
+Die Baseline hatte keine Benutzertabellen und keine verschlüsselten Spalten.
+Genau drei CREATE TABLE erzeugten danach eine Tabelle in der ersten TDE-
+Quelle und zwei case-sensitive Unicode-Varianten in der zweiten. Jede Tabelle
+besaß eine verschlüsselte nullable int-Spalte und eine weitere nullable int-
+Spalte ohne Encryption-Metadaten. Die drei bestehenden CEKs waren einzeln
+gebunden; Encryptiontypen waren DETERMINISTIC/RANDOMIZED/DETERMINISTIC.
+DDL und tatsächlicher Katalogguard bestätigten AEAD_AES_256_CBC_HMAC_SHA_256.
+EncryptedColumnCount wechselte von 0/0/0 auf 0/1/2. LedgerTableCount blieb 0;
+Views, weitere Benutzerobjekte und alle vier Backupfelder blieben leer.
+Es gab keine Benutzerinhaltsabfragen, DML, Digests, Backups oder Restore.
+
+Native Guards bestätigten Datenbank-ID/GUID/CS-Namen, CMK-/CEK-IDs und
+unveränderte Schlüsselreceipts. Für jede Tabelle wurden ObjectId, Schema,
+Spaltenanzahl, ColumnIds, CS-Namen, int-Typ, Nullability, Encryptiontyp/-name,
+Algorithmus und CEK-ID gegen aktuelle Kataloge geprüft. Keine Constraints,
+Defaults, Identities oder zusätzlichen Indices waren vorhanden. Genau eine
+Heap-Partition pro Tabelle mit index_id 0 und partition_number 1 hatte den
+approximativen sys.partitions.[rows]-Zähler 0. Dieser Metadatenzähler ist
+kein Inhaltsnachweis. Spaltenanzahlen wurden separat aus sys.columns mit
+encryption_type IS NOT NULL ermittelt.
+
+Zwei Phasen mit je fünf Auswahlfällen in TABLE, RAW und CONSOLE ergaben
+30 Aufrufe bei Backup-Erwartungsflag FALSE. Feste ID-Orakel bestätigten
+Default-Allscope, Warnfenster-Allscope, Warnfenster-Problemscope, Limit 1
+und Default-Problemscope mit 3/3/2/1/0 Zeilen. Alle 26 Fachwerte, native
+Vor-/Nachwerte, direkte Ausgaben und JSON derselben Materialisierung wurden
+verglichen. Schemas, sysname-Aliastypen, elf Textcollations und 260 physische
+TABLE-Facets bestanden. JSON und RAW wurden geordnet geprüft; TABLE und
+CONSOLE besaßen ID-gebundene Mengen-/Werteparität. Quellen, Warnungen und
+Status sowie die getrennte leere Auswahlprobe bestanden. Callerwerte
+137/OFF/0/0 blieben je Aufruf erhalten; ursprüngliche -1/OFF/0/0 wurden
+abschließend bestätigt. In 15 gepaarten Fällen änderte sich ausschließlich
+EncryptedColumnCount auf Ordinal 21. Alle übrigen 25 Fachwerte blieben je
+Quelle erhalten. Der private Audit bestand 3933 Wertvergleiche
+mit null OBSERVED_DEFECT-Abweichungen.
+
+ID-/GUID-/CS-Name-gebundenes SQL-Cleanup entfernte zuerst eigene Datenbanken
+samt Tabellen, danach beide Zertifikate und den DMK. Öffentlicher Lab-Abbau
+meldete REMOVED mit zwei Schritten und null Fehlern; eigener Container,
+verwaltetes Volume und Statepfad waren vor PASS entfernt. Keine bestehenden,
+Shared- oder produktiven Ressourcen, Hostmounts, SMTP-Dienste oder
+Imagebeschaffung waren beteiligt. Laufabschluss: `2026-10-09T04:21:21.4572234+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `AEC2B4AD8E539FC288E2394C2079C7B0C1C0D9CEA79B493DB119BF76B4F35FB4` |
+| Private Spalten-DDL | `0EC8255026ED0760AA9E5E50571FA0BA4DA733A084923F60C817B34ED9A396FE` |
+| Privater Katalogguard | `5A32A03EE5DBDCE9C74AE01E463902A58AAEB0E0FF4D9B2F524BDCAB1D1D7862` |
+| Privater Consumer | `D6E8E3889A155C13266BCAF15705C2D3FA14E582AC19C46ABC3311E128A2ABAC` |
+| Privater nativer Beobachter | `44A4BC673BF5EB8D89A0CFEF8BF65B59F16400EABE5AC1623629EAC392FB530B` |
+| Privates Cleanup-SQL | `536900A6B7AC8291CCAD8F0026509442C1ABE56E45A809D6F6E496292B228F57` |
+| Privater Lauf-Log | `689596BF16DCA9F51F883830067B4838BEAACAA2BF923B766191DDE91EF4165A` |
+| Privates PASS-Ergebnis | `AF51C83D577BCE8EA51EC668D8EF904A7B12FE63515C46791F0FA457A0798CF6` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Microsoft beschreibt ENCRYPTED WITH und die Encryption-Metadaten in
+[CREATE TABLE](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-table-transact-sql?view=sql-server-ver17)
+und [sys.columns](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-columns-transact-sql?view=sql-server-ver17).
+Die sys.columns-Dokumentation nennt beim Algorithmus SHA_512; der DDL-Vertrag,
+[Always Encrypted cryptography](https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/always-encrypted-cryptography?view=sql-server-ver17)
+und der tatsächliche Katalogguard dieses Laufs bestätigen SHA_256. Der
+Quellenwiderspruch wird nicht als Zählungsfehler behandelt.
+Ein erster Lauf scheiterte vor der CEK-Fixture-Erzeugung mit SQL-Fehler 102
+an einer zusätzlichen schließenden Klammer im privaten Prüfer. Sein
+eigener Container, Volume und State wurden bereinigt; kein PASS-Ergebnis
+wurde erzeugt. Die Syntaxkorrektur wurde vor dem neuen Lauf unabhängig
+geprüft. Diese Korrektur betraf ausschließlich den privaten Beobachter.
+Weitere Spaltenvarianten, echte AE-Provider, CMK-/CEK-Varianten und
+Berechtigungen bleiben offen. Der Nachweis gilt ausschließlich für SQL2025;
+CL160/170 sind keine älteren nativen Engine-Nachweise. COLL-001 bleibt partiell;
+Maturityflags bleiben unverändert.

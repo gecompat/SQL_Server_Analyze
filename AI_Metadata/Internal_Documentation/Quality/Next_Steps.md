@@ -813,6 +813,22 @@ Der Nachweis steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.m
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
 öffentliche Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein eigener nativer SQL2025-Lauf auf unverändertem
+Produktcode die Metadatenzählung verschlüsselter Spalten. Drei neue leere
+Tabellen mit je einer verschlüsselten und einer unverschlüsselten nullable
+int-Spalte änderten EncryptedColumnCount von 0/0/0 auf 0/1/2. CMK-Anzahlen
+0/1/1, CEK-Anzahlen 0/1/2 und alle übrigen 25 Fachwerte blieben erhalten.
+30 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten Schemas, native Katalogbindungen,
+Ausgabeparität, Quellen und Caller; Auswahlmengen waren 3/3/2/1/0. Temporäre
+RSA-Fixtures und eigener SQL-/Lab-/Statecleanup bestanden. Keine Inhaltsabfrage,
+DML oder AE-Provider-Verarbeitung wurde ausgeführt. Weitere Spaltenvarianten
+und Berechtigungen bleiben offen. Der begrenzte Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt partiell.
+Die SMTP-Welle wartet weiter auf die integrierte öffentliche Lab-Funktion
+samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
