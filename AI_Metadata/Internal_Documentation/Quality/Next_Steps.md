@@ -797,6 +797,22 @@ und Berechtigungsnachweise bleiben offen. Der Nachweis steht unter
 partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+auf unverändertem Produktcode die CEK-Zählung bei zwei verschlüsselten Werten.
+Genau ein ADD VALUE änderte Wertanzahlen von 0/1/2 auf 0/1/3; CMK- und CEK-
+Anzahlen blieben 0/1/2. Alle drei CEK-IDs und ursprünglichen Wertbindungen
+blieben erhalten. 30 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten alle 26 Fachwerte,
+Schemas, Ausgabeparität, Quellen und Caller. Alle 26 Fachwerte jeder Quelle
+blieben im Phasenvergleich unverändert; Auswahlmengen waren 3/3/2/1/0.
+Temporäre RSA-Fixtures sowie SQL-/Lab-/Statecleanup bestanden. Der Lauf
+belegt keine funktionierende Rotation oder AE-Provider-Kompatibilität.
+Weitere CEK-, verschlüsselte-Spalten- und Berechtigungsnachweise bleiben offen.
+Der Nachweis steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
+COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
+öffentliche Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und

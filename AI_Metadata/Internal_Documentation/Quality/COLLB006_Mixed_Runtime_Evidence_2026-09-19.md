@@ -6903,3 +6903,98 @@ keine Interoperabilität oder Entschlüsselbarkeit durch einen AE-Provider.
 Der Lauf ist ausschließlich SQL2025-Evidenz; CL160/170 sind keine älteren
 nativen Engine-Nachweise. COLL-001 bleibt partiell; Maturityflags bleiben
 unverändert.
+
+
+## CEK-Metadatenzählung bei zwei Werten am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf prüfte auf unverändertem
+integriertem Produktstand `ea8e761db2341944ba35c0e7c464ce30cb6c1242` den bestehenden 26-Feld-Vertrag von
+USP_EncryptionAnalysis bei einem CEK mit zwei verschlüsselten Werten.
+Installation, Smoke bei Framework-CL170 und installierter Procedurebody
+bestanden. ProductVersion war 17.0.4075.5. Server, tempdb und drei leere
+Unicode-/Case-Quellen verwendeten Latin1_General_100_CS_AS; das Framework
+verwendete SQL_Latin1_General_CP1_CS_AS. Die Kontrollquelle hatte die kleinste
+eigene Datenbank-ID. Zwei AES-128-TDE-Quellen bei CL160 und CL170 besaßen
+getrennte eigene Zertifikate und einen neuen DMK. Beide blieben in Zustand 3
+mit Scanstatus 4 und PercentComplete 0.
+
+Das Setup erzeugte drei eigene CMK-Metadatenobjekte und drei eigene CEKs.
+CMK- und CEK-Anzahlen betrugen in beiden Phasen 0/1/2. Der synthetische
+Providername ExampleMetadataOnlyUnconfigured war nicht registriert;
+Schlüsselpfade waren synthetisch und nicht auflösbar. Die Baseline besaß
+je einen verschlüsselten Wert pro CEK. Genau ein ALTER COLUMN ENCRYPTION KEY
+ADD VALUE band danach einen zweiten Wert am festgelegten CEK der zweiten
+Quelle an deren anderes CMK-Metadatenobjekt. Wertanzahlen änderten sich von
+0/1/2 auf 0/1/3. Alle drei CEK-IDs und ursprünglichen Wertbindungen blieben
+erhalten. Final hatte genau ein CEK zwei Werte; die anderen beiden hatten
+je einen Wert. Die Procedure zählte weiterhin drei Schlüssel insgesamt.
+
+Vier Ciphertextfixtures entstanden aus drei zufälligen 32-Byte-Klartextarrays
+und vier neuen temporären RSA-2048-Instanzen mit OAEP-SHA1. Für beide Werte
+des Ziel-CEK wurde dasselbe Klartextarray unter getrennten RSA-Instanzen
+verschlüsselt. Alle drei Klartextarrays wurden genullt und alle vier
+RSA-Instanzen vor der CEK-DDL freigegeben. Ausschließlich typisierte
+VarBinary(256)-Parameter übergaben Ciphertext. SQL prüfte NULL und Länge vor
+der begrenzten Hexliteralbildung für RSA_OAEP. Parameterreset, Commanddispose
+und vier Ciphertextnullungen im Finally bestanden. Es gab keine Exporte,
+Hostschlüsselspeicher oder AE-Provideraufrufe. Der Client meldete
+NOT_SUPPORTED_BY_DRIVER für AE. Der Lauf belegt weder funktionierende
+CMK-Rotation noch Provider-Kompatibilität oder Cliententschlüsselbarkeit.
+
+Separate native Katalogguards prüften Datenbank-ID, GUID, case-sensitiven
+Namen, CMK-/CEK-IDs sowie jede ursprüngliche und die zusätzliche Wertbindung.
+Algorithmus RSA_OAEP und Länge 256 Byte waren je Wert bestätigt. Getrennte
+Baseline-/Finalreceipts belegten drei unveränderte CEK-Identitäten und
+drei beziehungsweise vier Wertzeilen. Ciphertextbytes wurden nicht
+zurückgelesen oder in Ergebnissen und Logs ausgegeben. EncryptedColumnCount
+und LedgerTableCount blieben 0; Benutzerobjekte waren leer und alle vier
+Backupfelder NULL. Es gab weder Benutzerinhalte, DML, Backups noch Restore.
+
+Pro Phase liefen fünf Auswahlfälle in TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+jeweils 3/3/2/1/0 Zeilen. Ein festes ID-Orakel prüfte die Auswahl zusätzlich
+zum nativen Beobachter. Beide TDE-Quellen blieben im Warnfenster 36500
+MEDIUM; Limit 1 wählte unverändert die erste TDE-Quelle.
+
+Alle 30 Aufrufe prüften alle 26 Fachwerte, native Vor-/Nachwerte und direkte
+Ausgaben gegen JSON derselben Materialisierung. Schemas, sysname-Aliastypen,
+elf Frameworktextcollations, 260 physische TABLE-Facets, Quellen, Warnungen
+und Status bestanden. JSON und RAW wurden geordnet geprüft; TABLE und
+CONSOLE wurden ID-gebunden auf Mengen- und Werteparität geprüft. Die leere
+Auswahlprobe wurde getrennt erfasst. Callerwerte 137/OFF/TRANCOUNT 0/
+XACT_STATE 0 blieben je Aufruf erhalten; ursprüngliche -1/OFF/0/0 wurden
+vor dem Cleanup bestätigt. Alle 15 gepaarten Fälle bestätigten unveränderte
+26 Fachwerte jeder Quelle trotz der zusätzlichen Wertzeile. Der private
+Audit bestand 3978 Wertvergleiche ohne OBSERVED_DEFECT-Abweichung.
+
+Receipt- und GUID-gebundenes SQL-Cleanup entfernte zuerst die eigenen
+Datenbanken, danach beide Zertifikate und den DMK. Der öffentliche Lab-Abbau
+meldete REMOVED mit zwei Schritten und null Fehlern. Eigener Container,
+verwaltetes Volume und Statepfad waren vor PASS entfernt. Es gab keine
+Hostmounts, bestehenden oder Shared-Ressourcen, SMTP-Dienste oder Imagebeschaffung.
+Der Lauf endete um `2026-10-09T04:00:10.9587759+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `1317288DD84203E44803BCB62D3E06B2FC38A6899FD9FC0DBA57A63D04F17535` |
+| Private CEK-DDL | `CE9F8F05DBBE53717D3FC321408268F8F1968D5A7071BA18DF8306F89895219D` |
+| Privater Endpunktguard | `A666F8B5D90B13EE2D490F404CD7E3E1CBE0A08649FFC3A06776BD80E8DC4BCB` |
+| Privater Consumer | `3D6D14F3BAD400504D6FC63EF031E2CD79745EC6A9D9032BF8FAED48CA6E78E9` |
+| Privater nativer Beobachter | `8D87FD8454BA1E42D2EBC760E0CC3BE6294C676DF72DC742255D5CDB4FEA06E9` |
+| Privates Cleanup-SQL | `7859A6858A195152EE8F8F987C1CE09414F4C541C783BD1A61EDE660BFDB4BCD` |
+| Privater Lauf-Log | `22149695CA2AF45D3B672CA95AA1467E88943AD344FA422F8F8826A39E3C02CE` |
+| Privates PASS-Ergebnis | `5F74653BC01A924683EB44080576FD432BFD1808242B17D520911BD4927AC5C2` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die Microsoft-Primärquellen unterscheiden CEK-Objekte und ihre maximal zwei
+verschlüsselten Werte:
+[ALTER COLUMN ENCRYPTION KEY](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-column-encryption-key-transact-sql?view=sql-server-ver17),
+[sys.column_encryption_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-encryption-keys-transact-sql?view=sql-server-ver17)
+und [sys.column_encryption_key_values](https://learn.microsoft.com/en-us/sql/relational-databases/system-catalog-views/sys-column-encryption-key-values-transact-sql?view=sql-server-ver17).
+Weitere CEK-Varianten, verschlüsselte Spalten, echte AE-Provider, CMK-Varianten
+und Berechtigungen bleiben offen. Der Lauf ist ausschließlich SQL2025-Evidenz;
+CL160/170 sind keine älteren nativen Engine-Nachweise. COLL-001 bleibt partiell;
+Maturityflags bleiben unverändert.
