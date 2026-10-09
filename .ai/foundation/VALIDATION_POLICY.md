@@ -72,6 +72,10 @@ Determine affected artifacts and consumers before selecting checks. Prefer exist
 
 Validation applies equally to software, data, research, and documentation: tests, schemas, calculations, links, sources, citations, dates/versions, samples, consistency, reproducibility, and review may all be evidence.
 
+## Review effort
+
+Independent review is required when selected by the project, user, or affected risk. Additional reviewers need a distinct unresolved question, stable inputs, and acceptance criteria. A review report does not automatically require review of that report. Verify hashes, counts, manifest consistency, exact commit binding, and repeatable receipt properties deterministically. Review semantic changes and genuinely new findings with the appropriate model/human capability. Preserve required gates and source-bound evidence; never treat model agreement as deterministic proof.
+
 ## Evidence
 
 Evidence records contain, as relevant:

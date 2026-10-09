@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "contract": "foundation-installation-provenance/v1",
-  "ruleset_version": "1.19.0",
+  "ruleset_version": "1.20.0",
   "source_repository": "https://github.com/gecompat/AI_Repository_Foundation",
-  "source_commit": "4aafd20442275d0fdedf291fc6e12e8fe1f683cc",
-  "source_manifest_sha256": "5fae12cf28f454c2f99b591e86c3f4018e32b30288f0e8021acde0af3c9865b4",
-  "recorded_at": "2026-10-09T10:24:40Z",
+  "source_commit": "39ae5c534bb0cf78046485754ed1be7867bf9534",
+  "source_manifest_sha256": "d707d9dfe5cbcf7d323260891ec5d535493715d1413d7b6e421b2691aa1149d5",
+  "recorded_at": "2026-10-09T11:13:36Z",
   "selection": {
     "adapters": [
       "claude-code",
@@ -33,8 +33,8 @@
       "target": ".ai/foundation/AI_WORK_ORCHESTRATION_POLICY.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "8351e7c8aad363598b4a801eaf5aa9c7e9f29e647d0f745c4bfba84de6a0b7ba",
-      "installed_sha256": "8351e7c8aad363598b4a801eaf5aa9c7e9f29e647d0f745c4bfba84de6a0b7ba",
+      "source_sha256": "077a2771dbd705455243d852376210bae3cf7b413f90292a3e31a7dd63ebe197",
+      "installed_sha256": "077a2771dbd705455243d852376210bae3cf7b413f90292a3e31a7dd63ebe197",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -89,12 +89,22 @@
       "reason": null
     },
     {
+      "source": "Documentation/Standards/FOUNDATION_REFERENCE.md",
+      "target": ".ai/foundation/FOUNDATION_REFERENCE.md",
+      "kind": "rule",
+      "merge": "review_if_exists",
+      "source_sha256": "12b01fb4f7a2cab3618c0e17bd8c8ed1e9a4c562889b7d0adc7815e6bbd515a2",
+      "installed_sha256": "12b01fb4f7a2cab3618c0e17bd8c8ed1e9a4c562889b7d0adc7815e6bbd515a2",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
       "source": "foundation/FOUNDATION_RULESET.template.md",
       "target": ".ai/foundation/FOUNDATION_RULESET.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "c019cb5e52cb49eec3afe7764cabec8129af5431fd0f4b8ea44a084cfa22af2a",
-      "installed_sha256": "c019cb5e52cb49eec3afe7764cabec8129af5431fd0f4b8ea44a084cfa22af2a",
+      "source_sha256": "73ad2bc5cfca0f3a321a76f0d4e196b9f46ca54ec64b83eda7139023ad018ef5",
+      "installed_sha256": "73ad2bc5cfca0f3a321a76f0d4e196b9f46ca54ec64b83eda7139023ad018ef5",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -115,6 +125,16 @@
       "merge": "review_if_exists",
       "source_sha256": "e7721a5bc83bebe2b7b1f2d328534c9cff457b39476eea6915bf672fcd5406c9",
       "installed_sha256": "e7721a5bc83bebe2b7b1f2d328534c9cff457b39476eea6915bf672fcd5406c9",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
+      "source": "Documentation/Standards/PROCESSING_EFFICIENCY_POLICY.md",
+      "target": ".ai/foundation/PROCESSING_EFFICIENCY_POLICY.md",
+      "kind": "rule",
+      "merge": "review_if_exists",
+      "source_sha256": "2e24d8b22e741e0dcbab2b72eb7df02ced231d13e280d4da8aa79b29ee3df2ec",
+      "installed_sha256": "2e24d8b22e741e0dcbab2b72eb7df02ced231d13e280d4da8aa79b29ee3df2ec",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -143,8 +163,8 @@
       "target": ".ai/foundation/RULE_CONTEXT_CACHE_POLICY.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "8e0a0dbe5141a7eb43ce0050508c6a2af7532ca221d30c785fd70c3ea4208346",
-      "installed_sha256": "8e0a0dbe5141a7eb43ce0050508c6a2af7532ca221d30c785fd70c3ea4208346",
+      "source_sha256": "55ace7430d8e692b1faf7d6d43c9f3069d6cb62a758c62a04babe35ffc172bc6",
+      "installed_sha256": "55ace7430d8e692b1faf7d6d43c9f3069d6cb62a758c62a04babe35ffc172bc6",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -163,8 +183,8 @@
       "target": ".ai/foundation/SEMANTIC_INTEGRATION_POLICY.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "9f563131f16bf390528a49a114dc2b31b7ec580a4a78f29a3c484abe85fdcc3c",
-      "installed_sha256": "9f563131f16bf390528a49a114dc2b31b7ec580a4a78f29a3c484abe85fdcc3c",
+      "source_sha256": "cb86f4e622a43adb4cc32a55adc04c0bde1d1580276fbe88efff43c2f7010eab",
+      "installed_sha256": "cb86f4e622a43adb4cc32a55adc04c0bde1d1580276fbe88efff43c2f7010eab",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -203,8 +223,8 @@
       "target": ".ai/foundation/VALIDATION_POLICY.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "974d0a24f6a7b509bf46eab355739d22bd2fd8b3439f08d9ad6c936a4b058f8f",
-      "installed_sha256": "974d0a24f6a7b509bf46eab355739d22bd2fd8b3439f08d9ad6c936a4b058f8f",
+      "source_sha256": "c1cb864b8b30672a4f7204d75add7de729b9d69962d2ccdbbc857def0e55b4db",
+      "installed_sha256": "c1cb864b8b30672a4f7204d75add7de729b9d69962d2ccdbbc857def0e55b4db",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -213,8 +233,8 @@
       "target": ".ai/foundation/WORKING_RULES.md",
       "kind": "rule",
       "merge": "review_if_exists",
-      "source_sha256": "dc78bc84b0e8e51c27ba237d3d2ba77c5988fbaa3110cddf90589d9f19386329",
-      "installed_sha256": "dc78bc84b0e8e51c27ba237d3d2ba77c5988fbaa3110cddf90589d9f19386329",
+      "source_sha256": "21b3beeb6c52767d911d4ca2ea1dd02449689271453c8ae1994a36958c344aa9",
+      "installed_sha256": "21b3beeb6c52767d911d4ca2ea1dd02449689271453c8ae1994a36958c344aa9",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -233,8 +253,8 @@
       "target": ".ai/foundation/feature_catalog.json",
       "kind": "feature-catalog",
       "merge": "review_if_exists",
-      "source_sha256": "7ed0798907beb994138b9b233f7f341b3489f31cc3b8bde219b6283207cdcab9",
-      "installed_sha256": "7ed0798907beb994138b9b233f7f341b3489f31cc3b8bde219b6283207cdcab9",
+      "source_sha256": "f860992c3251fe8345e136ff519c985314d6374ece5c38eed9fbeae8be8b77e6",
+      "installed_sha256": "f860992c3251fe8345e136ff519c985314d6374ece5c38eed9fbeae8be8b77e6",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -243,8 +263,28 @@
       "target": ".ai/foundation/repo_map.yaml",
       "kind": "rule-index",
       "merge": "review_if_exists",
-      "source_sha256": "a5aa4c116b5b1020f5e080e9aef650dcc317a28c4f0b5b91cd6a97690b89eb64",
-      "installed_sha256": "a5aa4c116b5b1020f5e080e9aef650dcc317a28c4f0b5b91cd6a97690b89eb64",
+      "source_sha256": "6f59f6abd728202cbf4a290e312fb18dc6650f555ddd76f071c378a09e8f44d5",
+      "installed_sha256": "6f59f6abd728202cbf4a290e312fb18dc6650f555ddd76f071c378a09e8f44d5",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
+      "source": "foundation/capabilities/rule-context-cache/rule_context_cache.py",
+      "target": ".ai/foundation/rule_context_cache/rule_context_cache.py",
+      "kind": "rule-context-cache-planner",
+      "merge": "review_if_exists",
+      "source_sha256": "77ace825963862fd387ef37ac3b105abc95c652049fbf72855e205ab0455295b",
+      "installed_sha256": "77ace825963862fd387ef37ac3b105abc95c652049fbf72855e205ab0455295b",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
+      "source": "foundation/runtime/processing_efficiency.py",
+      "target": ".ai/foundation/runtime/processing_efficiency.py",
+      "kind": "tool",
+      "merge": "review_if_exists",
+      "source_sha256": "98b9338500e73ef1d6468612d5187887cc9d4d06fb4693bd69bcb7d560e46e8d",
+      "installed_sha256": "98b9338500e73ef1d6468612d5187887cc9d4d06fb4693bd69bcb7d560e46e8d",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     },
@@ -569,6 +609,16 @@
       "reason": null
     },
     {
+      "source": "foundation/schemas/processing-budget-request.schema.json",
+      "target": ".ai/foundation/schemas/processing-budget-request.schema.json",
+      "kind": "schema",
+      "merge": "review_if_exists",
+      "source_sha256": "46e6e0dd3d4c243874fc434fce4c3768a65b2fcce8fd7bd13a7fa40f06a06b58",
+      "installed_sha256": "46e6e0dd3d4c243874fc434fce4c3768a65b2fcce8fd7bd13a7fa40f06a06b58",
+      "integration_state": "FOUNDATION_BASELINE",
+      "reason": null
+    },
+    {
       "source": "foundation/schemas/provision-approval.schema.json",
       "target": ".ai/foundation/schemas/provision-approval.schema.json",
       "kind": "schema",
@@ -716,17 +766,17 @@
       "source_sha256": "a0d5a82c2b67304472506e84c872d28d7ab54335c43a6861e1ad89ed5048fa11",
       "installed_sha256": "2014efbc05a3f6f9b110a69a992e38af17a83e8531281b55bf318e4232835b4f",
       "integration_state": "INTENTIONAL_OVERRIDE",
-      "reason": "Preserved the project Registration Authority path Metadata/Governance/Artifact_Registry.json."
+      "reason": "Preserved the established project registry path Metadata/Governance/Artifact_Registry.json."
     },
     {
       "source": "foundation/AGENTS.template.md",
       "target": "AGENTS.md",
       "kind": "entrypoint",
       "merge": "ai_merge_if_exists",
-      "source_sha256": "c0ca57c32ad6d69f69b802caf96e5c75e19a17dbd0f5f7671066cb3d51792b22",
-      "installed_sha256": "292bbd512e7dc2354a4132ed1096e39cad905579e6059d73b1a04fe739a6b84b",
+      "source_sha256": "0ec06792d966de2ae87899d827cd4aa8c71685d0493b6d2a4186d0b774657c1d",
+      "installed_sha256": "d4c6fcda4e79e52edb79c5f60a8062b5697f1bb105bcd78b073c3b26e6e0c6f9",
       "integration_state": "INTENTIONAL_OVERRIDE",
-      "reason": "Preserved project-specific governance, Foundation 1.19 assessment discovery and registered decision; added the project rule-context cache workflow outside the managed baseline block."
+      "reason": "Preserved target privacy, license and product governance; merged Foundation bridge and authorized scoped efficient working rules."
     },
     {
       "source": "CLAUDE.md",
@@ -745,16 +795,6 @@
       "merge": "ai_merge_if_exists",
       "source_sha256": "e302980754c983e41dc679ca782b0bb4e13c0557e68d489e4c04916f08b3e505",
       "installed_sha256": "e302980754c983e41dc679ca782b0bb4e13c0557e68d489e4c04916f08b3e505",
-      "integration_state": "FOUNDATION_BASELINE",
-      "reason": null
-    },
-    {
-      "source": "foundation/capabilities/rule-context-cache/rule_context_cache.py",
-      "target": ".ai/foundation/rule_context_cache/rule_context_cache.py",
-      "kind": "rule-context-cache-planner",
-      "merge": "review_if_exists",
-      "source_sha256": "77ace825963862fd387ef37ac3b105abc95c652049fbf72855e205ab0455295b",
-      "installed_sha256": "77ace825963862fd387ef37ac3b105abc95c652049fbf72855e205ab0455295b",
       "integration_state": "FOUNDATION_BASELINE",
       "reason": null
     }

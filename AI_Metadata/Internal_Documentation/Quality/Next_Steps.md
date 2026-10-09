@@ -1038,8 +1038,11 @@ die bereits in SQL_Server_Toolbelt und SQL_Server_Lab verwendeten
 Autonomieregeln ausdrücklich herangezogen. Die Arbeit verwendet weiterhin
 die vorhandene Roadmap und Statusquellen. Jeder kohärente Schritt umfasst
 die betroffenen Verträge, Implementierung, Dokumentation und Tests. Es gibt
-genau einen Implementierer je Schritt; ein unabhängiger Review prüft den
-stabilen Stand. Vor der Fortsetzung werden `origin/main`, offene Pull Requests,
+genau einen Implementierer je Schritt; ein unabhängiger Review prüft bei
+fachlichem Risiko oder verbindlicher Unabhängigkeitsvorgabe den stabilen
+Stand. Weitere Reviewer benötigen konkrete offene Risiken und Abnahmekriterien.
+Mechanische Nachweise werden lokal geprüft; unveränderte erfolgreiche Tests
+und abgeschlossene Reviews werden nicht ohne neuen Anlass wiederholt. Vor der Fortsetzung werden `origin/main`, offene Pull Requests,
 Regelkontext und vorhandene Evidenz abgeglichen. Geprüfte Schritte werden
 über einen Pull Request mit erfolgreicher erforderlicher Head-CI integriert;
 danach folgen Synchronisierung und ausschließlich eigener Cleanup. Nach
