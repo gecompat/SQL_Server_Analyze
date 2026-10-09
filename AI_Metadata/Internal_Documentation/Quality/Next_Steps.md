@@ -642,6 +642,23 @@ steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
 öffentliche Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestand ein getrennter nativer Nachweis des bestehenden
+Encryption-Backup-Erwartungsflags mit FALSE und TRUE auf unverändertem
+Produktcode. Sechs Aufrufe vor und dreißig nach drei eigenen Full-Backups
+bestätigten alle 26 Fachwerte, Ausgabeparität, Schemas, Quellen und Caller.
+Das unabhängige Operationsorakel war 0/0/1. FALSE lieferte je Auswahl
+3/3/2/1/0 Zeilen; TRUE lieferte 3/3/3/1/2. Fehlende explizite
+Backupverschlüsselung erzeugte MEDIUM, auch wenn ein höher priorisierter
+lokaler Zertifikatexportbefund den FindingCode bestimmte. Native Backupwerte
+blieben unverändert. Eigenes Historien-/SQL-/Lab-/Statecleanup bestand.
+Weitere Backupvarianten, Berechtigungen, Dateiintegrität, externe Schlüsselkopie
+und Restore bleiben unbelegt. Der begrenzte Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
