@@ -7444,3 +7444,113 @@ Datumsgleichheitsgrenze sowie weitere Zertifikat-, Übergangs-,
 Berechtigungs-, Backup-, AE-, Ledger- und Restorevarianten bleiben offen.
 CL160/170 sind keine älteren nativen Engine-Nachweise. COLL-001 bleibt
 partiell; Statusflags bleiben unverändert.
+
+
+## Isolierte SELECT-Verweigerung der Encryption-Backupquelle am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf bestätigte auf Produktstand
+`ff0b9541ef7475e372ee6c08100de1aa49760207` die isolierte Berechtigungsgrenze der Backupquelle von
+USP_EncryptionAnalysis. Installation, CL170-Smoke und installierter
+Procedurebody bestanden. ProductVersion war 17.0.4075.5. Server, tempdb und
+drei leere Unicode-/Case-Quellen verwendeten Latin1_General_100_CS_AS;
+das Framework verwendete SQL_Latin1_General_CP1_CS_AS. Die Kontrollquelle
+mit kleinster eigener ID besaß keinen DEK. Zwei eigene AES128-TDE-Quellen
+bei CL160/170 verwendeten getrennte eigene Zertifikate mit Ablaufdatum
+2099-12-31 und einen neuen DMK. Zustand 3, Scanstatus 4, PercentComplete 0,
+KeyLength 128 und native Protektorbindungen blieben unverändert.
+
+Genau ein natives, nicht Copy-only, unverschlüsseltes Full-Backup der
+leeren Kontrollquelle wurde im eigenen verwalteten SQL-Volume erzeugt.
+Datenbank-ID, GUID, case-sensitiver Name, Backupset-GUID, Media-ID,
+Zeitwerte und Dateiexistenz wurden gebunden. Ein neuer eigener SQL-Login
+und sechs eigene Datenbankbenutzer erhielten die benötigten Einzelrechte
+ohne privilegierte Rollen. Baseline-SELECT auf msdb.dbo.backupset bestätigte
+vor jedem Produktaufruf genau eine sichtbare Zeile. Zwischen den Phasen
+wurde ausschließlich dieses SELECT für den eigenen msdb-Benutzer verweigert.
+Die direkte Gegenprobe bestätigte danach vor jedem Aufruf Fehler 229.
+
+Pro Phase prüften fünf Auswahlfälle TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+je 3/3/2/1/0 Zeilen. Alle 30 Aufrufe bestätigten den bestehenden
+26-Feld-Vertrag, JSON-/Direktparität, Schemas, sysname-Aliase, elf
+Frameworktextcollations und 260 physische TABLE-Facets. Ein festes eigenes
+ID-Orakel prüfte Auswahl und Reihenfolge. RAW und JSON wurden geordnet,
+TABLE und CONSOLE auf ID-gebundene Mengen- und Werteparität geprüft.
+
+Die privilegierten physischen Vor-/Nachwerte blieben über alle 26 Felder
+und alle 15 Fallpaare erhalten. Das getrennte Zugriffsorakel setzte
+ausschließlich im tatsächlich nachgewiesenen Fehler229-Kontext die vier
+Backupfelder auf NULL. Baseline enthielt das tatsächliche FinishDate und
+IsExplicitlyEncrypted FALSE der Kontrollquelle; Final enthielt dort NULL.
+Alle übrigen Fachwerte, Findings und Inventare blieben erhalten. TDE und
+Inventar waren AVAILABLE/IsPartial 0; Backup war abschließend
+DENIED_PERMISSION/IsPartial 1. Modul und JSON-meta waren AVAILABLE_LIMITED
+mit IsPartial 1. RAW-Zusammenfassung und OUTPUT-Fehlerpaar entsprachen
+Fehler 229 und dem tatsächlichen Gegenprobenfehlertext. Warnungen blieben leer.
+Der private Audit bestätigte 3978 Wertvergleiche ohne Defekt.
+Der private OUTPUT-Transport verglich generatedAtUtc als identischen
+Zeitwert, da PowerShell bei drei Werten abschließende Nachkommastellennullen
+wegließ. Alle übrigen JSON-Felder wurden unverändert exakt verglichen.
+
+Produktaufrufe, direkte SELECT-Gegenproben und die Anlage der eigenen
+temporären TABLE-Ziele liefen im eigenen LOGIN-Kontext mit
+varbinary(8000)-Cookie. Der private Consumer verwendete
+einen parameterfreien Ad-hoc-Batch mit begrenzten, fest erlaubten Eingaben.
+Eine zusätzliche private Ergebniszeile transportierte die OUTPUT-Werte
+erst nach REVERT; sie war kein öffentlicher Produktresultset. REVERT WITH COOKIE wurde auch
+für Fehlerpfade vorgesehen; die tatsächliche Rückkehr zum ursprünglichen
+Kontext bestand nach jedem Aufruf. Callerwerte 137/OFF/TRANCOUNT 0/XACT_STATE 0
+blieben innerhalb der Impersonation erhalten; ursprüngliche -1/OFF/0/0
+wurden vor dem Cleanup bestätigt. Secrets und Cookie wurden nicht ausgegeben.
+CMK, CEK, verschlüsselte Spalten, Ledger, Benutzertabellen und Views blieben leer.
+Private Zertifikatexportzeitpunkte waren NULL.
+
+Das eigene Cleanup prüfte Principal-ID/SID/CS-Namen sowie Datenbank-ID und
+vorhandene GUID vor der Userentfernung. Eigene Backuphistorie, Benutzer,
+Login, drei Datenbanken, zwei Zertifikate und DMK wurden entfernt. Der
+öffentliche Lab-Abbau bestand; eigener Container und Volume waren am selben
+Providerpin abwesend, bevor der eigene State entfernt wurde. Frische
+Vor-/Nachinventuren bestätigten unveränderte erreichbare vorbestehende
+Dockerressourcen einschließlich Images und Tags. Rohinventare blieben lokal.
+Host-RAM, Daemon-RAM/CPU und öffentliche Ressourcenbereitschaft wurden vor
+Provisionierung geprüft; freier Gastspeicher wurde vor dem SQL-Arrange geprüft.
+Physische Host- oder Backingdateibytes wurden nicht auf Invarianz geprüft.
+Der Lauf endete um `2026-10-09T06:34:45.6324023+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `EBC9B2B30295B61372830E471527927846D7A21717A92EF711CCF9287ED20C19` |
+| Privates Backup-SQL | `E3EAEF094CAA8F4D3A03DAE0EBFD0DFFAE99A7D64DF909C5A3BEDAA986CB7B11` |
+| Privater Berechtigungswechsel | `126591FF62373B6601AA5A6E11ABEA1CFB1D9CE074AF5A590D8BE6898EF4D156` |
+| Privater Consumer | `9F4054B375F913BA84A914AC8D0D953001672C334FDC855E8D2D7D4965F0B3E8` |
+| Privater nativer Beobachter | `2E4D1B4254F451D0050D0B90076B47D10ABB8C205E389A8CF05C5EFE8B66C284` |
+| Privates Cleanup-SQL | `919C1778576E2F2070B8D55AD46D427DA4CF39B7F3637BF94857D421AD8A1B5F` |
+| Privater Schutzguard | `3BC51425C567C8B27FD7FC75ACDB8A78224D809B9328F40B7D1D60BC60013F53` |
+| Privater Ergebnisaudit | `AFE3720ED791DE9C7F742768D8F7E03788E9592C64BC5670EFFD4634BEF8D116` |
+| Privater Lauf-Log | `10F451076CD9ACDD9277BB3B1D44B8CE46FDC5224D49A7DFECA3B13FE0DD8D91` |
+| Privates PASS-Ergebnis | `0AAA6A54BD747BFB8D9BC95BCCABA3FDD53E25B40ABD003260FDCFB39152D71B` |
+
+Zwei private Aufbauversuche scheiterten vor der Ausführung der Produktfälle.
+Der erste meldete Collationfehler 468 in drei Principal-Routingvergleichen;
+beidseitige explizite CS-Collation korrigierte ausschließlich die Fixture.
+Der zweite scheiterte an der SQL-Server-Vorgabe, Cookie-Impersonation nur
+als Ad-hoc-Batch auszuführen. Der private Transport wurde entsprechend
+korrigiert; Cookie, Kontextprüfung und REVERT blieben erhalten. Beide eigenen
+Lab-Abbauten und Schutzvergleiche bestanden. Ein späterer belegter Testkanal
+führte zur Zurückstellung ohne Provisionierung. Der fachlich ausgeführte
+V4-Lauf verwendete ein weiteres neues eigenes Lab. Ein vorheriger Start
+endete vor Provisionierung am geänderten Lab-Pin; nach unabhängiger Prüfung
+wurde ausschließlich der integrierte Dependency-Pin aktualisiert. Private Paket-, Log- und
+Ergebnishashes beziehen sich auf physische Bytes.
+Die am 9. Oktober 2026 gelesenen Microsoft-Primärquellen dokumentieren
+[DMV-Berechtigungen](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-database-encryption-keys-transact-sql?view=sql-server-ver17)
+und [EXECUTE AS mit Cookie und REVERT](https://learn.microsoft.com/en-us/sql/t-sql/statements/execute-as-transact-sql?view=sql-server-ver17).
+Es wurden weder Benutzerinhalte geschrieben noch DML, Exporte, Restore,
+SMTP oder Imagebeschaffung ausgeführt. Schlüsselmaterial wurde weder
+ausgegeben noch exportiert. Der Nachweis betrifft ausschließlich
+SQL2025; CL160/170 sind keine älteren nativen Engine-Nachweise. Weitere
+Berechtigungskontexte, TDE-/Inventarverweigerung, andere Backupvarianten
+und Restore bleiben offen. COLL-001 bleibt partiell; Statusflags bleiben unverändert.

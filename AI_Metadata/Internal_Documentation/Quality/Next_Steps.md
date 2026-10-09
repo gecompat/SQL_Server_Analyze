@@ -914,6 +914,24 @@ weitere Varianten bleiben unbelegt. Nachweis unter
 partiell. Die SMTP-Welle wartet weiter auf die integrierte öffentliche
 Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte eine neue eigene SQL2025-Fixture auf unverändertem
+Produktcode die isolierte SELECT-Verweigerung der Encryption-Backupquelle.
+Ein eigener Login sah zunächst genau ein natives unverschlüsseltes Full-Backup;
+nach DENY SELECT auf msdb.dbo.backupset bestätigten direkte Gegenproben Fehler 229.
+30 TABLE-/RAW-/CONSOLE-Aufrufe erhielten alle 26 physischen nativen Quellwerte,
+Auswahlmengen 3/3/2/1/0, Findings, Schemas und Ausgabeparität. Das getrennte
+Zugriffsorakel bestätigte ausschließlich NULL in den vier nicht zugänglichen
+Backupfeldern. TDE und Inventar blieben AVAILABLE; Backup war DENIED_PERMISSION,
+Modul und JSON-meta waren AVAILABLE_LIMITED mit Partial 1. Fehlerpaar, Caller
+und REVERT zum ursprünglichen Kontext bestanden. Principal-/History-/SQLcleanup,
+öffentlicher Lab-Abbau, same-pin Ressourcenabwesenheit und Vor-/Nachschutz bestanden.
+Weitere Berechtigungskontexte, andere Backupvarianten und Restore bleiben offen.
+Der Nachweis steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
+COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
+öffentliche Lab-Funktion mit tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
