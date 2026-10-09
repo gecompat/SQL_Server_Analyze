@@ -6401,3 +6401,107 @@ Weitere Ledger-Varianten, eingeschränkte Rollen, Metadatenfehler und
 Dropvarianten sowie positive AE, Backupgrenzen und Finishzeit-Ties,
 TDE-Übergänge, Zertifikatexportvarianten und Restore bleiben offen.
 COLL-001 bleibt partiell; bestehende Maturityflags bleiben unverändert.
+
+
+## Positive CMK-Metadatenanzahlen bei Encryption am 9. Oktober 2026
+
+Eine neue eigene SQL-Server-2025-Docker-Fixture prüfte auf unverändertem
+integriertem Produktstand `87c695394df765c6d451ca930627adfc439cc1f6` ausschließlich die
+Column-Master-Key-Metadatenanzahl im bestehenden 26-Feld-Vertrag von
+USP_EncryptionAnalysis. Der Nachweis betrifft Katalogeinträge und keine
+funktionsfähige Always-Encrypted-Konfiguration.
+
+Installation, Smoke bei CL170 und der installierte Procedurebody bestanden.
+ProductVersion war `17.0.4075.5`. Server, tempdb und drei leere eigene
+Unicode-/Case-Quellen verwendeten `Latin1_General_100_CS_AS`; das Framework
+verwendete `SQL_Latin1_General_CP1_CS_AS` bei CL170. Zwei Quellen besaßen
+AES-128-TDE, Zustand 3 und Scanstatus 4 bei getrennt gemessenen CL160 und
+CL170. Die zuerst erzeugte Kontrollquelle ohne TDE hatte die kleinste eigene
+Datenbank-ID. Beide privaten Zertifikatexportzeitpunkte und alle vier
+Backupfelder blieben NULL; Backups und Zertifikatexporte wurden nicht ausgeführt.
+
+Die Baseline enthielt keine CMK-Metadateneinträge und bestätigte unabhängige
+Anzahlen von 0/0/0. Danach entstand genau ein eigener Eintrag in der ersten
+TDE-Quelle sowie zwei case-sensitiv unterschiedliche Einträge in der zweiten.
+Die native DDL verwendete ausschließlich einen ausdrücklich unkonfigurierten
+synthetischen Custom-Provider und synthetische, nicht auflösbare Keyidentifier.
+Es wurde kein echter CMK erzeugt oder Schlüsselstore eingerichtet.
+Zertifikatstores, HSM, Cloud, Dateien und Clientprovider wurden nicht verwendet.
+Es gab keine Providerregistrierung oder Providerauflösung, keine CEK,
+verschlüsselten Werte, Signaturen, Enclaves, Benutzertabellen oder DML.
+
+Der private Clientguard prüfte die tatsächliche AE-Fähigkeit vor dem Öffnen
+der eigenen Beobachtungsverbindung. Für den vorhandenen SqlClient bestand
+keine AE-Einstellungs-, Enum- oder Provider-API; die tatsächliche Receipt
+meldete `NOT_SUPPORTED_BY_DRIVER`. Der alternative Guard
+verlangt bei vorhandener Einstellungs-API explizit Disabled und bricht bei
+uneindeutiger Fähigkeit ab. Es wurden keine zusätzlichen Treiber oder
+Provider installiert. Diese Grenze beschreibt den verwendeten Testclient,
+nicht die AE-Fähigkeit der SQL-Server-Engine.
+
+Das unabhängige Operationsorakel betrug abschließend 0/1/2. Datenbank-ID,
+GUID und case-sensitiver Datenbankname sowie DBID/CMK-ID und vollständige
+case-sensitive CMK-Namensmengen banden genau drei eigene Katalogeinträge.
+Der Verifier prüfte die gesamte sichtbare sys.column_master_keys-Menge gegen
+receiptgebundene IDs und Namen. CEK, verschlüsselte Spalten und Ledger
+blieben mit konkreten nativen Anzahlen 0 bestätigt; Benutzertabellen und
+Views blieben leer. Keypfade oder Signaturen wurden nicht gelesen und nicht
+als Diagnosewerte ausgegeben. Das Sollorakel stammt aus den eigenen
+Operationen und Bindungen, nicht aus Produktresultaten.
+
+Je Phase liefen fünf Auswahlfälle in TABLE, RAW und CONSOLE mit dem
+bestehenden Backup-Erwartungsflag FALSE. Default-Allscope,
+Warnfenster-Allscope, Warnfenster-Problemscope, dessen Limit 1 und
+Default-Problemscope lieferten in beiden Phasen 3/3/2/1/0 Zeilen.
+Das Warnfenster 36500 selektierte beide TDE-Quellen mit
+TDE_CERTIFICATE_EXPIRY_WINDOW und MEDIUM. Limit 1 wählte jeweils die erste
+TDE-Quelle; ihre CMK-Anzahl war in der Baseline 0 und danach 1.
+Die Defaultfälle behielten LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING und
+INFO für die TDE-Quellen sowie DATABASE_NOT_TDE_ENCRYPTED und INFO für die
+Kontrollquelle. FindingCode, Severity und EvidenceLimit wurden getrennt geprüft.
+
+Alle 30 Aufrufe bestätigten alle 26 Fachwerte, direkte Ausgaben gegen JSON
+derselben Materialisierung sowie das unabhängige native Vor-/Nachorakel.
+Native und physische Schemas, elf Frameworktextcollations, sysname-Aliastypen,
+Quellenidentitäten, Warnungen und Status bestanden. JSON-Auswahlreihenfolge
+und geordnete RAW-Ausgabe bestanden; TABLE und generische CONSOLE waren
+ID-gebunden auf Mengen- und Werteparität geprüft. Die leere Auswahlprobe
+blieb getrennt erfasst. Callerwerte 137/OFF/TRANCOUNT 0/XACT_STATE 0
+blieben je Aufruf erhalten; ursprüngliche -1/OFF/0/0 wurden vor dem
+SQL-Cleanup bestätigt.
+
+Zwischen den Phasen änderte sich ausschließlich ColumnMasterKeyCount der
+beiden TDE-Quellen von 0 auf 1 beziehungsweise 2. Alle übrigen Fachwerte
+blieben erhalten. Der private Audit bestand 3.933 Wertvergleiche;
+es gab keine OBSERVED_DEFECT-Abweichung. Katalogeinträge belegen keine
+gültige Schlüsselkonfiguration, keinen Schlüsselbesitz, keine Ver- oder
+Entschlüsselungsfähigkeit und keine Wiederherstellbarkeit.
+
+Receiptgebundene eigene Datenbanken samt CMK-Metadaten, zwei TDE-Zertifikate
+und neuer Masterkey wurden entfernt. Der öffentliche Lab-Abbau meldete
+REMOVED mit zwei Schritten und null Fehlern. Eigener Container, verwaltetes
+Volume und Statepfad waren vor PASS entfernt. Kein Hostmount, keine
+bestehende oder Shared-Ressource und kein SMTP-Dienst wurden eingerichtet;
+ein neues Image wurde nicht beschafft.
+
+Der Lauf endete um `2026-10-09T01:19:32.1618482+00:00` UTC. Quellen verwenden UTF-8/LF-
+Hashes; private Pakete, Log und Ergebnis physische Bytehashes.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 unverändert | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `2AF3534E795786CB4056C47A371A9A8B32FABA81E2909F21122DDC3A477C1EC8` |
+| Private CMK-Metadatenerzeugung | `B4BB119BEB1736774B3F8B4B7CAF2ADBCC7EB881CDFAD6152C4EDEDF9DD6757D` |
+| Privater Katalogguard | `952F9F651A413A2F3693088118FE3545E622D1B16B275E024E4D905FCA2B4C0E` |
+| Privater Consumer | `6963731D84E18B31721516D1EC3C13E78C7465654E5D3A7A4E5E2C3343423E8E` |
+| Privater nativer Beobachter | `6CD2F455691E232FA9D8D7D6F314DF33B71513172D12152B185F76119BCA2085` |
+| Privates Cleanup-SQL | `75D22D3EFF9BA2924081B81BA5286D1503A5597A5B0C4BFF582474683C0291FB` |
+| Privater Lauf-Log | `E41B51959E3A5B07C4C07057A7BF3694164F5AA82C254FB6978DD52859B704DD` |
+| Privates PASS-Ergebnis | `A70E1CFAA273C81FECB24A81E1F7EFC9917B6A9503E1EC3F4B71100FC002164D` |
+
+Positive CEK- und verschlüsselte Spaltenanzahlen, weitere CMK-Varianten,
+eingeschränkte Rollen und Metadatenfehler sowie weitere Ledger-Varianten,
+Backupgrenzen und Finishzeit-Ties, TDE-Übergänge, Zertifikatexportvarianten
+und Restore bleiben offen. COLL-001 bleibt partiell; bestehende Maturityflags
+bleiben unverändert.

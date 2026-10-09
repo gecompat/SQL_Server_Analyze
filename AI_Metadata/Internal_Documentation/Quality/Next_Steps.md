@@ -705,6 +705,22 @@ Nachweis steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md);
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
 öffentliche Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+positive CMK-Metadatenanzahlen auf unverändertem Produktcode. Drei eigene
+Katalogeinträge lieferten das unabhängige Orakel 0/1/2 statt der Baseline
+0/0/0. Es existiert absichtlich kein echter CMK oder Schlüsselstore;
+der verwendete Testclient besitzt keine AE-API. 30 TABLE-/RAW-/CONSOLE-
+Aufrufe bestätigten alle 26 Fachwerte, Schemas, Ausgabeparität, Quellen und
+Caller. Nur ColumnMasterKeyCount wechselte; CEK, verschlüsselte Spalten und
+Ledger blieben 0. SQL-/Lab-/Statecleanup bestand. Positive CEK-/Spaltenanzahlen,
+weitere CMK-Varianten, Rollen und Metadatenfehler sowie funktionsfähige AE
+und Restore bleiben unbelegt. Der begrenzte Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
