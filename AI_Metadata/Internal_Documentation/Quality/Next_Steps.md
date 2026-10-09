@@ -829,6 +829,26 @@ und Berechtigungen bleiben offen. Der begrenzte Nachweis steht unter
 Die SMTP-Welle wartet weiter auf die integrierte öffentliche Lab-Funktion
 samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+auf unverändertem Produktcode die abgeschlossene DEK-Regeneration von
+AES-128 auf AES-256. Genau ein ALTER DATABASE ENCRYPTION KEY REGENERATE
+änderte KeyLength ausschließlich an der ersten eigenen TDE-Quelle von
+128 auf 256. Zustand 3, Scanstatus 4 und PercentComplete 0 bestanden;
+die zweite Quelle blieb bei 128. 30 TABLE-/RAW-/CONSOLE-Aufrufe bestätigten
+alle 26 Fachwerte, Schemas, Ausgabeparität, Quellen und Caller sowie
+Auswahlmengen 3/3/2/1/0 in beiden Phasen. Alle übrigen 24 Fachwerte der
+ersten Quelle und sämtliche 26 Werte der beiden Kontrollen blieben
+erhalten; der Scanzeitwert der ersten Quelle durfte sich ändern.
+SQL-/Lab-/Statecleanup bestand. Laufende, suspendierte, abgebrochene
+und lange Übergänge sowie weitere Encryption-Grenzen bleiben offen.
+Physische Datei-/Logbytes, Datennutzbarkeit und Restorefähigkeit sind
+unbelegt. Der Nachweis steht unter
+[COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und

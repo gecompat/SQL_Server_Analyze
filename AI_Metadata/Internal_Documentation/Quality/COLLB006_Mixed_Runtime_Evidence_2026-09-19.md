@@ -7097,3 +7097,86 @@ Weitere Spaltenvarianten, echte AE-Provider, CMK-/CEK-Varianten und
 Berechtigungen bleiben offen. Der Nachweis gilt ausschließlich für SQL2025;
 CL160/170 sind keine älteren nativen Engine-Nachweise. COLL-001 bleibt partiell;
 Maturityflags bleiben unverändert.
+
+
+## Abgeschlossene DEK-Regeneration bei Encryption am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf bestätigte auf Produktstand
+`b8b0507a5118d1efe4f35f0f27ab35641cd84572` den bestehenden 26-Feld-Vertrag von USP_EncryptionAnalysis nach
+einer DEK-Regeneration von AES-128 auf AES-256. Installation, Smoke bei
+Framework-CL170 und installierter Procedurebody bestanden. ProductVersion
+war 17.0.4075.5. Server, tempdb und drei leere Unicode-/Case-Quellen verwendeten
+Latin1_General_100_CS_AS; das Framework verwendete SQL_Latin1_General_CP1_CS_AS.
+Die zuerst erzeugte Kontrollquelle hatte die kleinste eigene Datenbank-ID
+und keinen DEK. Zwei eigene TDE-Quellen bei CL160 und CL170 verwendeten
+getrennte eigene Zertifikate und einen neuen DMK.
+
+Die Baseline bestätigte beide eigenen DEKs mit KeyLength 128 und
+IsEncrypted 1, EncryptionState 3, Scanstatus 4 sowie PercentComplete 0.
+Vor der Änderung wurden aktuelle Datenbank-ID, GUID, case-sensitiver Name,
+DEK-Metadaten und eigene Zertifikatbindung geprüft. Ausschließlich im
+Kontext der ersten Quelle lief genau ein ALTER DATABASE ENCRYPTION KEY
+REGENERATE WITH ALGORITHM=AES_256. Das auf 90 Sekunden begrenzte Polling
+verlangte anschließend Zustand 3, Scanstatus 4, PercentComplete 0 und
+KeyLength 256 an derselben eigenen Datenbank-ID. Die zweite Quelle blieb
+bei 128. Beide Quellen blieben vollständig verschlüsselt; DEK-Zeilen
+blieben zwei. Ein laufender Übergang wurde nicht nachgewiesen.
+
+Pro Phase liefen fünf Auswahlfälle in TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+je 3/3/2/1/0 Zeilen. Ein vorab festgelegtes ID-Orakel prüfte Auswahl und
+Reihenfolge zusätzlich zum nativen Beobachter. Alle 30 Aufrufe bestätigten
+alle 26 Fachwerte, native Vor-/Nachwerte und direkte Ausgaben gegen JSON
+derselben Materialisierung. Schemas, sysname-Aliastypen, elf
+Frameworktextcollations und 260 physische TABLE-Facets bestanden. JSON und
+RAW wurden geordnet geprüft; TABLE und CONSOLE wurden ID-gebunden auf
+Mengen- und Werteparität geprüft. Quellen, Warnungen und Status bestanden.
+Callerwerte 137/OFF/TRANCOUNT 0/XACT_STATE 0 blieben je Aufruf erhalten;
+ursprüngliche -1/OFF/0/0 wurden vor dem Cleanup bestätigt.
+
+Alle 15 gepaarten Fälle bestätigten KeyLength 128 → 256 ausschließlich
+an der ersten Quelle. Deren gemessener EncryptionScanModifyDate durfte
+sich ändern. Alle übrigen 24 Fachwerte der ersten Quelle sowie sämtliche
+26 Werte der Kontrollquelle und zweiten Quelle blieben erhalten.
+KeyAlgorithm wurde vor und nach der Änderung tatsächlich als
+`AES` gemessen und blieb gleich.
+Protektortyp, Zertifikatname und Ablaufzeitpunkt blieben erhalten.
+Alle vier Inventaranzahlen waren 0. Benutzertabellen und Views waren leer;
+alle vier Backupfelder und private Zertifikatexportzeitpunkte waren NULL.
+Der private Audit bestand 3948 Wertvergleiche ohne
+OBSERVED_DEFECT-Abweichung.
+
+Receiptgebundene eigene Datenbanken, DEKs, Zertifikate und DMK wurden
+entfernt. Das SQL-Cleanup prüfte Datenbank-GUID-Bindungen. Der öffentliche
+Lab-Abbau meldete REMOVED mit zwei Schritten und null Fehlern. Eigener
+Container, verwaltetes Volume und Statepfad waren vor PASS entfernt.
+Es gab weder Benutzerinhaltsabfragen, DML, Backups, Exporte noch Restore,
+Hostmounts, bestehende oder Shared-Ressourcen, SMTP-Dienste oder
+Imagebeschaffung. Der Lauf endete um `2026-10-09T04:36:59.9779588+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `6953AD6C873C29532CA3AE54F4C4918A0A63D4A65EDC80565165F3B8749B9D54` |
+| Private Zustandsänderung | `F528CB11ACB1DCF2559B2C2D16A298F12E191CE1FEDEBCD2DBBFE147644B441A` |
+| Privater Endpunktguard | `CDCEF00405F9590691C0957715A1004C5DBBAA54A5A13D20A1C7A13453D0CAA8` |
+| Privater Consumer | `F0DA878DDDBDD6C17D58D29F75D1C69D859A7F0C3CC227646085BA7C92C27FFB` |
+| Privater nativer Beobachter | `041EF5C5938D3538860A5D9087CC608D8E7FC5F9837836B9A958BC3CF4CCE96C` |
+| Privates Cleanup-SQL | `C2003B572F84BF32A55BF498394AE1B360AC5021FE3363A979AB37916C4C33FF` |
+| Privater Lauf-Log | `0EFCD9F5EA039A993CBCB9409FBE11A2EB2638B3556978CEF3FE8E4B3DCF4D38` |
+| Privates PASS-Ergebnis | `93F8B6F5A84D07023A8167A42FAF2114F7D9D1E4751508120D18D96E39CBD6CE` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die Microsoft-Primärquellen dokumentieren die Regeneration und die
+DMV-Metadaten:
+[ALTER DATABASE ENCRYPTION KEY](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-encryption-key-transact-sql?view=sql-server-ver17)
+und [sys.dm_database_encryption_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-database-encryption-keys-transact-sql?view=sql-server-ver17).
+Die Probe untersucht keine physischen Datei- oder Logbytes und beweist
+weder Datennutzbarkeit noch Schlüsselkopie oder Restorefähigkeit.
+Laufende, suspendierte, abgebrochene oder lange Übergänge sowie weitere
+Zertifikat-, Backup-, AE-, Ledger- und Berechtigungspfade bleiben offen.
+Der Lauf ist ausschließlich SQL2025-Evidenz; CL160/170 sind keine älteren
+nativen Engine-Nachweise. COLL-001 bleibt partiell; Maturityflags bleiben
+unverändert.
