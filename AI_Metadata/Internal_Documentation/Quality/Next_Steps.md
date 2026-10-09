@@ -951,6 +951,24 @@ Restore bleiben offen. Der Nachweis steht unter
 Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche Lab-Funktion
 mit tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte eine neue eigene SQL2025-Fixture auf unverändertem
+Produktcode den bestehenden AES192-Backupvertrag. Genau ein natives,
+nicht Copy-only, CHECKSUM-Full-Backup einer leeren eigenen Kontrollquelle
+wurde mit einem dritten eigenen Zertifikat erzeugt. Alle 30 TABLE-/RAW-/
+CONSOLE-Aufrufe bestätigten den 26-Feld-Vertrag, Schemas, Ausgabeparität
+und feste Auswahlmengen 3/3/2/1/0. Über 15 Phasenpaare änderten sich ausschließlich
+die vier Kontroll-Backupfelder auf die tatsächliche Abschlusszeit, explizite
+Verschlüsselung TRUE und native Algorithmus-/EncryptorType-Werte. TDE,
+Inventare, Findings, Caller und alle übrigen Fachwerte blieben erhalten.
+History-/SQLcleanup, öffentlicher Lab-Abbau, Ressourcenabwesenheit am selben
+Providerpin und Vor-/Nachschutz bestanden. Dateiintegrität, Lookback, weitere
+Backupvarianten, Berechtigungen und Restore bleiben offen. Der Nachweis steht
+unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion mit tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und

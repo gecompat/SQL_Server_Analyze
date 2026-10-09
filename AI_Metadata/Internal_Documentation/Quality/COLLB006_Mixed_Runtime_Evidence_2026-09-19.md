@@ -7645,3 +7645,84 @@ Der Nachweis betrifft SQL2025; CL160/170 sind keine älteren nativen
 Engine-Nachweise. Backup-Lookback, verbleibende Backupvarianten, zusätzliche
 Berechtigungskontexte und Restore bleiben offen. COLL-001 bleibt partiell;
 Statusflags bleiben unverändert.
+
+
+## Natives explizit AES192-verschlüsseltes Full-Backup am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf bestätigte auf Produktstand
+`a533a40b39058db3a322c2eac61c8c1f8deb9f85` den bestehenden AES192-Backupvertrag von USP_EncryptionAnalysis.
+Installation, CL170-Smoke und installierter Procedurebody bestanden.
+ProductVersion war 17.0.4075.5. Server, tempdb und drei leere Unicode-/Case-
+Quellen verwendeten Latin1_General_100_CS_AS; das Framework verwendete
+SQL_Latin1_General_CP1_CS_AS. Die Kontrollquelle mit kleinster eigener ID
+besaß keinen DEK. Zwei eigene AES128-TDE-Quellen bei CL160/170 verwendeten
+getrennte Zertifikate mit Ablaufdatum 2099-12-31 und einen neuen DMK.
+Zustand 3, Scanstatus 4, PercentComplete 0, KeyLength 128 und native
+Protektorbindungen blieben erhalten. CMK, CEK, verschlüsselte Spalten,
+Ledger, Benutzertabellen und Views blieben leer; private Zertifikatexportzeiten
+waren NULL. Der Client verwendete keine Always-Encrypted-Schlüsselprovider.
+
+Die Baseline enthielt keine Backuphistorie der eigenen Quellen. Danach
+wurde genau ein natives, nicht Copy-only, CHECKSUM-Full-Backup der leeren
+Kontrollquelle mit AES192 und einem dritten eigenen Zertifikat mit Ablaufdatum
+2099-12-31 erzeugt. Genau eine frische Datei lag im neuen eigenen verwalteten
+SQL-Volume. Datenbank-ID, GUID, case-sensitiver Name, Backupset-ID und -GUID,
+Media-ID, Zeitgrenzen, Algorithmus, EncryptorType, interne native
+Zertifikatbindung und Dateiexistenz wurden geprüft. Das Orakel band das
+einzige tatsächlich erzeugte eigene Backup. Native Algorithmus- und
+EncryptorType-Texte wurden unverändert erhalten; nur ihre Prüfbedeutung
+wurde casekontrolliert und explizit collatiert verglichen. Es gab kein
+Wiederholungsbackup, msdb-UPDATE, Restore oder Schlüsselexport.
+
+Pro Phase prüften fünf Auswahlfälle TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+je 3/3/2/1/0 Zeilen. Alle 30 Aufrufe bestätigten den bestehenden 26-Feld-Vertrag,
+JSON-/Direktparität, Schemas, sysname-Aliase, elf Frameworktextcollations und
+260 physische TABLE-Schemarecords. Ein festes eigenes ID-Orakel prüfte
+Auswahl und Reihenfolge. RAW und JSON wurden geordnet, TABLE und CONSOLE
+auf ID-gebundene Mengen- und Werteparität geprüft. Final enthielt die
+Kontrollquelle die tatsächliche Backupabschlusszeit, LatestFullBackupExplicitlyEncrypted
+TRUE und die nativen AES192-/EncryptorType-Werte. Beide TDE-Quellen behielten
+NULL in den vier Backupfeldern. Alle 26 nativen Vor-/Nachwerte blieben je
+Fall unverändert. Über 15 Phasenpaare änderten sich ausschließlich die vier
+Kontroll-Backupfelder; TDE, Inventare, Findings, Auswahl und alle übrigen
+Fachwerte blieben erhalten. Der separate Audit bestätigte 3918
+Wertvergleiche ohne Defekt. TDE, Backup und Inventar waren AVAILABLE mit
+IsPartial 0; JSON-Warnungen blieben leer. Callerwerte 137/OFF/TRANCOUNT 0/
+XACT_STATE 0 blieben erhalten; ursprüngliche -1/OFF/0/0 wurden vor Cleanup bestätigt.
+
+Eigene Backuphistorie, drei Datenbanken, drei Zertifikate und DMK wurden
+identitätsgebunden entfernt. Der öffentliche Lab-Abbau bestand; eigener
+Container und Volume samt Backupdatei waren am selben Providerpin abwesend,
+bevor der eigene State entfernt wurde. Frische Vor-/Nachinventuren bestätigten
+unveränderte erreichbare vorbestehende Dockerressourcen einschließlich Images
+und Tags. Rohinventare blieben lokal. Host-RAM, Daemon-RAM/CPU und öffentliche
+Ressourcenbereitschaft wurden vor Provisionierung geprüft; freier Gastspeicher
+wurde vor dem SQL-Arrange geprüft. Physische Host- oder Backingdateibytes
+wurden nicht auf Invarianz geprüft. Der Lauf endete um `2026-10-09T07:39:56.6343215+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `23275792B992882514437867CC61EF0DA6206D6BF98A7BADE5627D166A326D8F` |
+| Privates Backup-SQL | `BF17A254F52889C81C91D80EEFFF3DA53C21EC0F3D6C902CC284F514A1344777` |
+| Privater Consumer | `13222666954EC3E9968857766BAEA53B7C9300E487D19855D156E14ECB094EF2` |
+| Privater nativer Beobachter | `51AF1C1C547D00A9888AF17F132940EB700E73EED26EAAA38EC640DCDF30CF79` |
+| Privates Cleanup-SQL | `DAAF08699DC6FAB76BDA0A3E71321B4425E806283474AD4A26C8CF4A83A82413` |
+| Privater Schutzguard | `3BC51425C567C8B27FD7FC75ACDB8A78224D809B9328F40B7D1D60BC60013F53` |
+| Privater Ergebnisaudit | `F68D5F00BC75E10D57A8BD4625920FE571294063326DA84C19349EDF82C6D20F` |
+| Privater Lauf-Log | `15CBE3393A338573E88A033DC0F72BD1EC63160B427CF8EF8C60B53EB56B6208` |
+| Privates PASS-Ergebnis | `D51F8874EF21A935E6D7D767D512B448A540D963F29572D68C4CA5C067630C9D` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die am 9. Oktober 2026 gelesene Microsoft-Primärquelle dokumentiert
+[AES192 als unterstützten Backupalgorithmus](https://learn.microsoft.com/en-us/sql/relational-databases/backup-restore/backup-encryption?view=sql-server-ver17).
+Es wurden keine Benutzerinhalte gelesen oder geschrieben, keine DML auf
+Benutzerinhalten, kein SMTP und keine Imagebeschaffung ausgeführt.
+Schlüsselmaterial wurde weder abgefragt noch ausgegeben oder exportiert.
+Der Nachweis betrifft SQL2025; CL160/170 sind keine älteren nativen
+Engine-Nachweise. Dateiintegrität und Wiederherstellbarkeit bleiben unbelegt.
+Lookback, weitere Backupvarianten, Berechtigungskontexte und Restore bleiben
+offen. COLL-001 bleibt partiell; Statusflags bleiben unverändert.
