@@ -6621,3 +6621,98 @@ eingeschränkte Rollen, Metadatenfehler und Restore bleiben offen. Der Lauf
 ist ausschließlich SQL2025-Evidenz; CL160 und CL170 sind keine nativen
 älteren Engine-Nachweise. COLL-001 bleibt partiell; Maturityflags bleiben
 unverändert.
+
+
+## Abgeschlossenes TDE-Wiederanschalten bei Encryption am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf prüfte auf unverändertem
+integriertem Produktstand `221b1e68c5b7555576921562166c6bd278b98435` den bestehenden 26-Feld-Vertrag von
+USP_EncryptionAnalysis nach erneutem SET ENCRYPTION ON mit erhaltenem DEK.
+Installation, Smoke bei Framework-CL170 und installierter Procedurebody
+bestanden. ProductVersion war 17.0.4075.5. Server, tempdb und drei leere
+Unicode-/Case-Quellen verwendeten Latin1_General_100_CS_AS; das Framework
+verwendete SQL_Latin1_General_CP1_CS_AS. Die zuerst erzeugte Kontrollquelle
+hatte die kleinste eigene Datenbank-ID. Zwei eigene AES-128-TDE-Quellen
+bei CL160 und CL170 besaßen getrennte eigene Zertifikate und einen neuen DMK.
+
+Das Setup bestätigte beide Quellen in Zustand 3 und Scanstatus 4 und schaltete
+anschließend ausschließlich die erste Quelle bei CL160 genau einmal ab.
+Vor beiden Zustandsänderungen wurden Datenbank-ID, GUID, case-sensitiver Name,
+DEK-Metadaten und eigene Zertifikatbindung geprüft. Die Baseline verlangte
+IsEncrypted 0, EncryptionState 1, vorhandenen DEK, Scanstatus 0 oder 4 und
+PercentComplete 0. Tatsächlich gemessen wurde Scanstatus
+`4`. Die zweite Quelle blieb verschlüsselt.
+
+Nach der Baseline wurde ausschließlich die erste Quelle genau einmal mit
+SET ENCRYPTION ON wieder eingeschaltet. Der DEK wurde weder gelöscht noch
+ersetzt oder regeneriert. Pro Zustandsänderung beobachtete ein auf 120 Sekunden
+begrenztes Polling ausschließlich die eigene Datenbank-ID. Das Abschlussorakel
+verlangte IsEncrypted 1, EncryptionState 3, Scanstatus 4 und PercentComplete 0;
+alle Werte wurden gemessen. Fehlende DMV-Zeilen, NULL-Metadaten, Timeout und
+suspendierte oder abgebrochene Scans hätten keinen PASS ergeben.
+
+Vollständig verschlüsselte eigene Quellen wechselten von einer auf zwei;
+vorhandene eigene DEK-Zeilen blieben zwei. Algorithmus, Schlüssellänge 128,
+Protektortyp, Zertifikatname und Ablaufzeitpunkt blieben erhalten. Alle vier
+Inventaranzahlen waren 0. Benutzertabellen und Views waren leer, alle vier
+Backupfelder und private Zertifikatexportzeitpunkte waren NULL. Es gab weder
+Benutzerinhalte, DML, Backups, Exporte noch Restore.
+
+Pro Phase liefen fünf Auswahlfälle in TABLE, RAW und CONSOLE mit dem
+Backup-Erwartungsflag FALSE. Default-Allscope, Warnfenster-Allscope,
+Warnfenster-Problemscope, dessen Limit 1 und Default-Problemscope lieferten
+3/3/1/1/0 und danach 3/3/2/1/0 Zeilen. Ein vorab festgelegtes ID-Orakel
+prüfte die Auswahl zusätzlich zum nativen Beobachter. Im Warnfenster 36500
+wechselte Limit 1 von der zweiten zurück zur ersten Quelle; final lieferten
+beide TDE-Quellen TDE_CERTIFICATE_EXPIRY_WINDOW und MEDIUM. Die erste Quelle
+wechselte von DATABASE_NOT_TDE_ENCRYPTED/INFO und der allgemeinen EvidenceLimit
+zur bekannten Zertifikatbewertung. Die zweite Quelle blieb unverändert.
+
+Alle 30 Aufrufe prüften alle 26 Fachwerte, native Vor-/Nachwerte und direkte
+Ausgaben gegen JSON derselben Materialisierung. Schemas, sysname-Aliastypen,
+elf Frameworktextcollations, physische TABLE-Facets, Quellen, Warnungen und
+Status bestanden. JSON und RAW wurden geordnet geprüft; TABLE und CONSOLE
+wurden ID-gebunden auf Mengen- und Werteparität geprüft. Die leere
+Auswahlprobe wurde getrennt erfasst. Callerwerte 137/OFF/TRANCOUNT 0/
+XACT_STATE 0 blieben je Aufruf erhalten; ursprüngliche -1/OFF/0/0 wurden
+vor dem Cleanup bestätigt.
+
+Alle 15 gepaarten Fälle erlaubten ausschließlich an der ersten Quelle
+Änderungen von IsEncrypted bis EncryptionScanModifyDate sowie FindingCode
+bis EvidenceLimit. Tatsächlich unveränderte erlaubte Felder wurden weiterhin
+verglichen. Kontrollquelle und zweite Quelle behielten sämtliche 26 Werte;
+Schlüssel-, Protektor-, Backup- und Inventarfelder der ersten Quelle blieben
+erhalten. Der private Audit bestand 3672 Wertvergleiche ohne
+OBSERVED_DEFECT-Abweichung.
+
+Receiptgebundene eigene Datenbanken, DEKs, Zertifikate und DMK wurden entfernt.
+Das SQL-Cleanup prüfte Datenbank-GUID-Bindungen. Der öffentliche Lab-Abbau
+meldete REMOVED mit zwei Schritten und null Fehlern. Eigener Container,
+verwaltetes Volume und Statepfad waren vor PASS entfernt. Es gab keine
+Hostmounts, bestehenden oder Shared-Ressourcen, SMTP-Dienste oder Imagebeschaffung.
+Der Lauf endete um `2026-10-09T03:00:36.7692569+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `B4507E66ACE32576AF244601AF0B80722C625B250FD623FCCE66DD42CF7933DA` |
+| Private Zustandsänderungen | `C897FF2BB568853561615AF710C450E65E8B0BE88F930728083E47DBD2FAEE7E` |
+| Privater Endpunktguard | `234936EC639F9E8FC6413FE45E95A79942F240BBCDEAEA22364AC2D6BF5F3372` |
+| Privater Consumer | `B458474DCFC29DA4222FAFCCF7FCC76AF2D0E7E4D43C2D85CCA772730D5D3152` |
+| Privater nativer Beobachter | `D914D2696DA6748850E8418AB6B857931B0B454B509DB24597D2E1BD6DD0DB22` |
+| Privates Cleanup-SQL | `C2003B572F84BF32A55BF498394AE1B360AC5021FE3363A979AB37916C4C33FF` |
+| Privater Lauf-Log | `3D2C870DE2DBFBF8841EC0025E7CE84DFB103D56DE56F19000FA1BAB6411007B` |
+| Privates PASS-Ergebnis | `4ABBA99212C740167CDFFE04DDE72763C6F2881840A9EFA0F3B0E8EBCE87EE37` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+Die Microsoft-Primärquellen dokumentieren Zustand 3 als verschlüsselt und
+Scanstatus 4 als abgeschlossenen Scan:
+[sys.dm_database_encryption_keys](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-objects/sys-dm-database-encryption-keys-transact-sql?view=sql-server-ver17)
+und [Transparent Data Encryption](https://learn.microsoft.com/en-us/sql/relational-databases/security/encryption/transparent-data-encryption?view=sql-server-ver17).
+Die Probe untersucht keine physischen Datei- oder Logbytes und beweist weder
+Schlüsselkopie noch Restorefähigkeit. DEK-Entfernung, laufende, suspendierte,
+abgebrochene oder lange Übergänge sowie weitere Zertifikat-, Backup-, AE-,
+Ledger- und Berechtigungspfade bleiben offen. Der Lauf ist ausschließlich
+SQL2025-Evidenz; CL160/170 sind keine älteren nativen Engine-Nachweise.
+COLL-001 bleibt partiell; Maturityflags bleiben unverändert.
