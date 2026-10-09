@@ -760,6 +760,26 @@ Der Nachweis steht unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.m
 COLL-001 bleibt partiell. Die SMTP-Welle wartet weiterhin auf die integrierte
 öffentliche Lab-Funktion samt tatsächlicher Abnahme.
 
+
+
+Am 9. Oktober 2026 bestätigte ein neuer eigener nativer Encryption-Nachweis
+auf unverändertem Produktcode die Entfernung des DEK nach abgeschalteter TDE.
+Nach dem eigenen Setup-OFF und bestätigtem Zustand 1 entfernte genau ein
+DROP DATABASE ENCRYPTION KEY die erste DEK-Zeile. IsEncrypted blieb 0;
+zwölf DEK-/Protektorfelder wurden NULL. Die fehlende DMV-Zeile wurde nicht
+als Zustand 0 interpretiert. Vorhandene DEKs wechselten von zwei auf einen;
+eine vollständig verschlüsselte Quelle blieb erhalten. Beide Zertifikate
+und der DMK blieben bis zum eigenen Cleanup erhalten. 30 TABLE-/RAW-/CONSOLE-
+Aufrufe bestätigten alle 26 Fachwerte, Schemas, Ausgabeparität, Quellen und
+Caller. Auswahlmengen blieben 3/3/1/1/0; Kontrollquelle, zweite Quelle und
+übrige Felder der ersten Quelle blieben unverändert. SQL-/Lab-/Statecleanup
+bestand. Laufende, suspendierte, abgebrochene und lange Übergänge sowie weitere
+Encryption-Grenzen bleiben offen; physische Datei-/Logbytes, physische
+Schlüssellöschung und Restorefähigkeit sind unbelegt. Der Nachweis steht
+unter [COLLB006](COLLB006_Mixed_Runtime_Evidence_2026-09-19.md); COLL-001 bleibt
+partiell. Die SMTP-Welle wartet weiterhin auf die integrierte öffentliche
+Lab-Funktion samt tatsächlicher Abnahme.
+
 ## Auftrag zur autonomen Fortsetzung
 
 Der Benutzer hat am 5. Oktober 2026 die autonome Entwicklung beauftragt und
