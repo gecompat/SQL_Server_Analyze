@@ -7353,3 +7353,94 @@ Restorefähigkeit. Weitere Zertifikat- und Ablaufvarianten, laufende,
 suspendierte, abgebrochene oder lange Übergänge sowie Berechtigungen,
 Backups, AE, Ledger und Restore bleiben offen. CL160/170 sind keine älteren
 nativen Engine-Nachweise. COLL-001 bleibt partiell; Statusflags unverändert.
+
+
+## Noch gültiger eigener TDE-Protektor bei unterschiedlichen Warnfenstern am 9. Oktober 2026
+
+Ein neuer eigener SQL-Server-2025-Docker-Lauf bestätigte auf Produktstand
+`c6f25b20a3fb44c398b07f7b5cb5d8a7003a7c6d` die bestehende Warnfensterauswahl von USP_EncryptionAnalysis.
+Installation, Smoke bei Framework-CL170 und installierter Procedurebody
+bestanden. ProductVersion war 17.0.4075.5. Server, tempdb und drei leere
+Unicode-/Case-Quellen verwendeten Latin1_General_100_CS_AS; das Framework
+verwendete SQL_Latin1_General_CP1_CS_AS. Die Kontrollquelle mit kleinster
+eigener ID hatte keinen DEK. Zwei eigene AES128-TDE-Quellen bei CL160/170
+hatten getrennte eigene Zertifikate mit Ablaufdatum 2099-12-31 und einen
+neuen DMK. Ein drittes eigenes Zertifikat erhielt START_DATE 2000-01-01
+und als EXPIRY_DATE das UTC-Datum 30 Tage nach dem eigenen Erzeugungsanchor.
+Ein singletongebundener Datumsreceipt hielt Anchor und Datum fest.
+Der native Guard prüfte eigene Zertifikat-ID, case-sensitiven Namen,
+Startdatum, receiptgleiches Ablaufdatum und einen tatsächlichen Abstand
+von mehr als sieben und weniger als 60 Tagen. Kein Zertifikat war privat
+exportiert.
+
+Genau ein ALTER DATABASE ENCRYPTION KEY ENCRYPTION BY SERVER CERTIFICATE
+band den ersten eigenen DEK an das neue Zertifikat. Eigene Datenbank-ID,
+GUID, case-sensitiver Name, aktuelle DEK-Thumbprintbindung und alle
+Zertifikat-ID-/Namensbindungen wurden zuvor geprüft. Das auf 90 Sekunden
+begrenzte Polling bestätigte die neue native Thumbprintbindung. Beide
+Quellen behielten IsEncrypted 1, Zustand 3, Scanstatus 4, PercentComplete 0
+und KeyLength 128; beide DEKs blieben vorhanden. Es gab keine Regeneration,
+Abschaltung oder DEK-Entfernung.
+
+Zwei Phasen mit sieben Auswahlfällen in TABLE, RAW und CONSOLE ergaben
+42 Aufrufe bei Backupflag FALSE. Default-Allscope, langes Warnfenster-Allscope,
+dessen Problemscope und Limit 1, Default-Problemscope sowie kurzes
+Warnfenster-Allscope und dessen Problemscope lieferten zunächst
+3/3/2/1/0/3/0 und abschließend 3/3/2/1/1/3/0 Zeilen. Ein festes ID-Orakel
+prüfte Auswahl und Reihenfolge zusätzlich zum nativen Beobachter.
+Das noch gültige Zertifikat wurde bei 90 und 36500 Tagen mit
+TDE_CERTIFICATE_EXPIRY_WINDOW/MEDIUM gemeldet. Bei einem Tag blieb der
+Befund LOCAL_CERTIFICATE_EXPORT_EVIDENCE_MISSING/INFO und der Problemfilter
+leer. Der Finalstatus war bei 90/36500 Tagen AVAILABLE_WITH_FINDING und
+bei einem Tag AVAILABLE. Der finale Default-CONSOLE-Problemfall enthielt
+eine fachliche Zeile; beide kurzen CONSOLE-Problemfälle enthielten die
+bestehende Leerzeile. EvidenceLimit blieb unverändert.
+
+Alle 26 Fachwerte, native Vor-/Nachwerte und direkte Ausgaben gegen JSON
+derselben Materialisierung bestanden. Schemas, sysname-Aliase, elf
+Frameworktextcollations und 364 physische TABLE-Facetten wurden geprüft.
+JSON und RAW wurden geordnet geprüft; TABLE und CONSOLE wurden ID-gebunden
+auf Mengen- und Werteparität geprüft. Quellen, Warnungen, Status und
+Callerwerte 137/OFF/TRANCOUNT 0/XACT_STATE 0 bestanden; ursprüngliche
+-1/OFF/0/0 wurden vor dem Cleanup bestätigt. Der private Audit bestand
+5433 Wertvergleiche ohne OBSERVED_DEFECT-Abweichung.
+
+In 21 gepaarten Fällen waren nur Scanzeit, ProtectorName, ProtectorExpiryDate,
+FindingCode und FindingSeverity der ersten Quelle variabel. ProtectorName
+wechselte von ExampleTdeCert_A'Σ auf ExampleTdeCert_W'Σ. Alle übrigen
+21 Fachwerte der ersten Quelle und sämtliche 26 Werte beider Kontrollen
+blieben unverändert. Der kurze Warnfensterbefund blieb in beiden Phasen
+INFO. Inventare, Benutzertabellen und Views waren leer; Backupfelder und
+private Zertifikatexportzeitpunkte waren NULL.
+
+Eigenes SQL-Cleanup entfernte zuerst die receipt- und GUID-gebundenen
+eigenen Datenbanken, dann alle drei Zertifikate, DMK und Temp-Receipts.
+Öffentlicher Lab-Abbau meldete REMOVED mit zwei Schritten und null Fehlern.
+Eigener Container, verwaltetes Volume und Statepfad waren vor PASS entfernt.
+Es gab keine Benutzerinhaltsabfragen, DML, Exporte, Backups, Restore,
+Hostkeys, AE-Provider, bestehende oder Shared-Ressourcen, SMTP-Dienste oder
+Imagebeschaffung. Der Lauf endete um `2026-10-09T05:17:36.9364337+00:00` UTC.
+
+| Quelle | SHA-256 |
+|---|---|
+| Encryption080 UTF-8/LF | `5B8962A9EB84ABC981C84E34C2B2621DC5F9D9FF80A45D439F5406F8FB45EDD2` |
+| Installierter Procedurebody UTF-8/LF | `56F863B6D8C74D17A4D6E65F823C6CCF3175340FC58F995C2BB64C84D6ECD5FD` |
+| Privater Runner | `22CE5F68A921532FE25684DA07C9104B6C6E07889075E896F3ADA18047DCBDAA` |
+| Private Zustandsänderung | `B2745491D09F633585A99D34A6AADD4B7386207B2429F7FF6FF2E9F4D1264FA8` |
+| Privater Endpunktguard | `3EA414FC2A51E4E299F24E75CEE1C75FF7DE06E4365293E298E3D9C7F5728C13` |
+| Privater Consumer | `E9E4592B8FE675328C624E7548D6F9BA64143DA825609762DDA6E7987B8C5181` |
+| Privater nativer Beobachter | `C682F9DAB5982D4BB5BCF53013C03033BCA34DB16BBAB408E2069179E0BAF4D6` |
+| Privates Cleanup-SQL | `1EB4C1D0DB36FE8797DCC54F147A45CA8BFCE7B0668A85083650B8E6E4E365DE` |
+| Privater Lauf-Log | `D6AA719B8EA2DBEB907E96029889D81A63F22728658B0AC886028A1432B6658C` |
+| Privates PASS-Ergebnis | `A9D4744FE0DB5848FAC9E188272529AEFD91B16B9B520CA2A1393CFB98750784` |
+
+Private Paket-, Log- und Ergebnishashes beziehen sich auf physische Bytes.
+[CREATE CERTIFICATE](https://learn.microsoft.com/en-us/sql/t-sql/statements/create-certificate-transact-sql?view=sql-server-ver17)
+dokumentiert die expliziten UTC-Datumsoptionen;
+[ALTER DATABASE ENCRYPTION KEY](https://learn.microsoft.com/en-us/sql/t-sql/statements/alter-database-encryption-key-transact-sql?view=sql-server-ver17)
+dokumentiert den Protektorwechsel. Diese Metadatenprobe beweist keine
+Datennutzbarkeit, Schlüsselkopie oder Restorefähigkeit. Eine exakte
+Datumsgleichheitsgrenze sowie weitere Zertifikat-, Übergangs-,
+Berechtigungs-, Backup-, AE-, Ledger- und Restorevarianten bleiben offen.
+CL160/170 sind keine älteren nativen Engine-Nachweise. COLL-001 bleibt
+partiell; Statusflags bleiben unverändert.
