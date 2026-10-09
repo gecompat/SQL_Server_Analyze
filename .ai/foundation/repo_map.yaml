@@ -1,5 +1,5 @@
 schema_version: 1
-foundation_ruleset_version: 1.20.0
+foundation_ruleset_version: 1.21.0
 canonical_entrypoint: AGENTS.md
 authority:
   required_or_baseline:
@@ -319,3 +319,6 @@ processing_efficiency:
   runtime: .ai/foundation/runtime/processing_efficiency.py
   budget_profile: foundation-processing-budget/v1
   audit: advisory_only
+  overhead_assessment: required
+  assessment_areas: [test_cycles, logs, reviews, model_calls, polling]
+  required_gates_preserved: true

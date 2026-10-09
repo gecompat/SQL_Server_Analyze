@@ -1,7 +1,7 @@
 # AI Repository Foundation Ruleset
 
 Status: AUTHORITATIVE BASELINE
-Ruleset version: 1.20.0
+Ruleset version: 1.21.0
 
 ## Protected floor
 
@@ -12,6 +12,8 @@ REQUIRED rules are a protected minimum. DEFAULT workflow may be intentionally ov
 ## Working default
 
 Read affected project sources and only policies relevant to the task. For routine work: inspect, change, validate, report. Use one implementation owner and the smallest sufficient checks plus required gates. Prefer deterministic local processing. Extra agents and reviews require a distinct useful question. Required independent review is preserved. A timer, green result, or completed review does not itself justify another model call.
+
+Inspect logs locally and provide bounded findings. Separate diagnosis/integration from qualification/release; deduplicate checks at identical relevant bindings. Installation/upgrade and material workflow-rule changes REQUIRE an assessment of actual test, log, review, and model-call overhead, including bounded reasons for stricter exceptions. Unresolved areas remain pending; a green integrity check alone does not complete efficiency integration.
 
 Follow `PROCESSING_EFFICIENCY_POLICY.md` for session-local rule reuse, review/agent bounds, shared wave budgets, waiting, and efficiency recommendations. The core `runtime/processing_efficiency.py` is a dependency-free reference; another language/client implementation is equally valid. Native discovery and current source/dependency checks precede reuse of actually available analysis. Optional persistent caching retains `RULE_CONTEXT_CACHE_POLICY.md` and does not fabricate missing analysis.
 

@@ -1,12 +1,12 @@
 {
   "schema_version": 1,
-  "ruleset_version": "1.20.0",
+  "ruleset_version": "1.21.0",
   "assessment_classifications": ["NOT_APPLICABLE", "ALREADY_EQUIVALENT", "PROJECT_STRONGER", "APPLY_DEFAULT", "RECOMMENDED", "DECISION_REQUIRED", "CONFLICT"],
   "features": {
     "foundation-baseline": {
       "title": "Vendor-neutral repository governance baseline",
       "introduced_in": "1.0.0",
-      "change_history": [{"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}],
+      "change_history": [{"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}, {"version": "1.21.0", "impact": "MATERIAL", "summary": "Require assessment of actual test/log/review/model overhead, justify bounded stronger exceptions, and separate development from qualification while preserving gates."}],
       "transfer_sources": ["foundation/AGENTS.template.md", "foundation/FOUNDATION_RULESET.template.md", ".ai/PROJECT_RULES.md", ".ai/WORKING_RULES.md", "Documentation/Standards/SECURITY_AND_SAFE_OPERATIONS.md", "Documentation/Standards/DOCUMENTATION_POLICY.md", "Documentation/Standards/THIRD_PARTY_AND_LICENSING.md", "Documentation/Standards/SOURCE_AND_EVIDENCE_POLICY.md", "Documentation/Standards/DEPENDENCY_POLICY.md", "foundation/repo_map.template.yaml"],
       "applicability": {"mode": "ALWAYS", "signals": ["repository_uses_foundation"], "questions": ["Does the target already provide equivalent or stronger repository governance?", "Which project-specific rules must remain authoritative?"]},
       "recommendation": {"when_applicable": "APPLY_DEFAULT", "summary": "Integrate the reusable baseline while preserving equivalent or stronger target governance.", "decision_required_when": []}
@@ -14,7 +14,7 @@
     "rules-only-transfer": {
       "title": "Rules-only explicit-whitelist transfer",
       "introduced_in": "1.1.0",
-      "change_history": [{"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}],
+      "change_history": [{"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}, {"version": "1.21.0", "impact": "MATERIAL", "summary": "Require assessment of actual test/log/review/model overhead, justify bounded stronger exceptions, and separate development from qualification while preserving gates."}],
       "transfer_sources": ["foundation/AGENTS.template.md", "foundation/FOUNDATION_RULESET.template.md", "foundation/AI_REPOSITORY_FOUNDATION_NOTICE.md", "foundation/repo_map.template.yaml"],
       "applicability": {"mode": "ALWAYS", "signals": ["foundation_install_or_upgrade"], "questions": ["Does the target contain existing files that require semantic merge rather than replacement?"]},
       "recommendation": {"when_applicable": "APPLY_DEFAULT", "summary": "Use manifest-whitelisted transfer and never copy Foundation project artifacts into the target.", "decision_required_when": []}
@@ -22,7 +22,7 @@
     "installed-foundation-provenance": {
       "title": "Portable manifest hashes and installed Foundation provenance",
       "introduced_in": "1.15.0",
-      "change_history": [{"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}],
+      "change_history": [{"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}, {"version": "1.21.0", "impact": "MATERIAL", "summary": "Require assessment of actual test/log/review/model overhead, justify bounded stronger exceptions, and separate development from qualification while preserving gates."}],
       "transfer_sources": ["foundation/FOUNDATION_RULESET.template.md", "foundation/feature_catalog.json", "foundation/repo_map.template.yaml", ".ai/VALIDATION_POLICY.md", "Documentation/Standards/SEMANTIC_INTEGRATION_POLICY.md", "foundation/schemas/installation-provenance.schema.json"],
       "dependencies": ["rules-only-transfer", "layered-validation", "semantic-integration"],
       "applicability": {"mode": "ALWAYS", "signals": ["foundation_install_or_upgrade", "installed_foundation_drift_review"], "questions": ["Does every selected source match its portable manifest hash?", "Does the target have an exact installed receipt?", "Are differing files explicitly reasoned semantic overrides, intact older baselines, or unknown drift?"]},
@@ -55,7 +55,7 @@
     "layered-validation": {
       "title": "Layered Foundation/project/runtime validation ownership",
       "introduced_in": "1.1.2",
-      "change_history": [{"version": "1.7.0", "impact": "MATERIAL", "summary": "Validation now normalizes UTF-8 LF/CRLF-only working-tree differences and explicitly distinguishes substantive validation failure from validation-infrastructure unavailability so break-glass cannot turn a known red result into green."}, {"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}],
+      "change_history": [{"version": "1.7.0", "impact": "MATERIAL", "summary": "Validation now normalizes UTF-8 LF/CRLF-only working-tree differences and explicitly distinguishes substantive validation failure from validation-infrastructure unavailability so break-glass cannot turn a known red result into green."}, {"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}, {"version": "1.21.0", "impact": "MATERIAL", "summary": "Require assessment of actual test/log/review/model overhead, justify bounded stronger exceptions, and separate development from qualification while preserving gates."}],
       "transfer_sources": [".ai/VALIDATION_POLICY.md"],
       "applicability": {"mode": "ALWAYS", "signals": ["project_has_validation_or_tests"], "questions": ["Which target semantic and runtime checks remain authoritative beyond Foundation integrity?"]},
       "recommendation": {"when_applicable": "APPLY_DEFAULT", "summary": "Separate FOUNDATION_INTEGRITY from PROJECT_SEMANTIC and RUNTIME_EMPIRICAL validation and preserve truthful unavailable/failed/validated distinctions.", "decision_required_when": []}
@@ -63,7 +63,7 @@
     "semantic-integration": {
       "title": "Semantic integration of mature target governance",
       "introduced_in": "1.2.0",
-      "change_history": [{"version": "1.5.0", "impact": "MATERIAL", "summary": "Foundation upgrades now include complete feature-delta applicability assessment before semantic integration is declared complete."}, {"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}],
+      "change_history": [{"version": "1.5.0", "impact": "MATERIAL", "summary": "Foundation upgrades now include complete feature-delta applicability assessment before semantic integration is declared complete."}, {"version": "1.20.0", "impact": "MATERIAL", "summary": "Add scoped entry routing and bounded processing defaults while preserving protected contracts and persistent cache compatibility."}, {"version": "1.21.0", "impact": "MATERIAL", "summary": "Require assessment of actual test/log/review/model overhead, justify bounded stronger exceptions, and separate development from qualification while preserving gates."}],
       "transfer_sources": ["Documentation/Standards/SEMANTIC_INTEGRATION_POLICY.md", ".ai/PROJECT_RULES.md", "foundation/repo_map.template.yaml"],
       "applicability": {"mode": "REPOSITORY_EVIDENCE", "signals": ["existing_repository", "existing_project_governance", "existing_ai_instructions", "existing_repo_map"], "questions": ["Which existing rules are equivalent, stronger, selectable overrides, complementary, conflicting, or orphaned?", "Are active project authorities still discoverable after the upgrade?"]},
       "recommendation": {"when_applicable": "APPLY_DEFAULT", "summary": "Integrate semantically rather than normalizing mature project governance to Foundation wording.", "decision_required_when": ["a true FOUNDATION_REQUIRED_CONFLICT cannot be resolved mechanically"]}
@@ -195,7 +195,7 @@
     "bounded-processing-efficiency": {
       "title": "Scoped rule loading, verified session reuse, proportionate review and shared budgets",
       "introduced_in": "1.20.0",
-      "change_history": [],
+      "change_history": [{"version": "1.21.0", "impact": "MATERIAL", "summary": "Require assessment of actual test/log/review/model overhead, justify bounded stronger exceptions, and separate development from qualification while preserving gates."}],
       "transfer_sources": [
         "Documentation/Standards/PROCESSING_EFFICIENCY_POLICY.md",
         "Documentation/Standards/FOUNDATION_REFERENCE.md",
@@ -228,6 +228,46 @@
         "decision_required_when": [
           "selecting numerical budgets and thresholds",
           "amending stronger target-project rules"
+        ]
+      }
+    },
+    "processing-overhead-assessment": {
+      "title": "Required assessment of actual processing overhead",
+      "introduced_in": "1.21.0",
+      "change_history": [],
+      "transfer_sources": [
+        "Documentation/Standards/PROCESSING_EFFICIENCY_POLICY.md",
+        "Documentation/Standards/SEMANTIC_INTEGRATION_POLICY.md",
+        "Documentation/Standards/FOUNDATION_REFERENCE.md",
+        ".ai/PROJECT_RULES.md",
+        ".ai/WORKING_RULES.md",
+        ".ai/VALIDATION_POLICY.md",
+        "foundation/AGENTS.template.md",
+        "foundation/FOUNDATION_RULESET.template.md",
+        "foundation/repo_map.template.yaml"
+      ],
+      "dependencies": [
+        "bounded-processing-efficiency",
+        "layered-validation",
+        "semantic-integration"
+      ],
+      "applicability": {
+        "mode": "ALWAYS",
+        "signals": [
+          "foundation_install_or_upgrade",
+          "material_workflow_rule_change"
+        ],
+        "questions": [
+          "Do actual test/log/review/model routes implement the efficiency defaults?",
+          "Which stricter exceptions have a bounded protective reason?",
+          "Which unresolved choices prevent completed efficiency integration?"
+        ]
+      },
+      "recommendation": {
+        "when_applicable": "APPLY_DEFAULT",
+        "summary": "Assess actual execution routes in existing project records; implement efficient defaults, justify bounded exceptions, or expose pending decisions without weakening gates.",
+        "decision_required_when": [
+          "amending required target gates or material qualification methods"
         ]
       }
     }

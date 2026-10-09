@@ -33,6 +33,8 @@ Die Testauswahl folgt deshalb dem Modell **1+0+N**:
 | Release Candidate | Vollständige native Linux-Matrix für SQL Server 2019, 2022 und 2025 |
 | Windows-spezifischer Code oder Windows-only Featurepfad | Gezielter manueller Lauf über den dafür vorgesehenen SQL_Server_Lab- oder Remote-Runner-Pfad |
 
+Statische Validatoren prüfen den aktuellen Lieferstand für die betroffenen Verträge. Ihre Selbsttests prüfen dagegen das Prüfwerkzeug und laufen bei Änderungen an dessen Code, Abhängigkeiten oder Ausführungsumgebung sowie bei neuen Befunden oder ausdrücklichen Qualifikationspflichten. Der Dokumentationsworkflow wiederholt die eigenständigen Datenschutz- und Impact-Selector-Gates nicht. Eine unbekannte Validatorabhängigkeit führt konservativ zur vollständigen statischen Suite; der eng begrenzte Governance-Scope gilt nur für nachweislich zugeordnete Foundation- und Regelkontextdateien.
+
 Ein Full Gate auf SQL Server 2025 und eine native Drei-Versionen-Matrix sind unterschiedliche Prüfungen. Das Full Gate erweitert den Testumfang auf der primären Engine. Die native Matrix erweitert die Zahl physischer SQL-Server-Versionen und bleibt ein separates, manuelles Release- oder Risikogate.
 
 ## Impact-Auswahl

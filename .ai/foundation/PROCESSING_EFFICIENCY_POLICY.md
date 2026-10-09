@@ -1,6 +1,6 @@
 # Processing Efficiency Policy
 
-Status: AUTHORITATIVE — DEFAULT workflow; protected authority and evidence remain REQUIRED
+Status: AUTHORITATIVE — REQUIRED overhead assessment; DEFAULT workflow; protected authority and evidence remain REQUIRED
 
 ## Routine workflow
 
@@ -26,6 +26,22 @@ One implementation owner handles a coherent slice. Use independent review when r
 
 Delegate only when expected benefit exceeds context and coordination cost. Supply the stable base, allowed scope, relevant contract, acceptance criteria, and deduplicated findings. Do not fork whole histories by default. Reuse verified results at the same source/input binding. Additional evidence requires changed input, a new finding, a distinct risk, or an explicit test requirement. These defaults never remove a mandated independent review or required gate.
 
+## Logs and model calls
+
+Prefer existing local tools to inspect exit status, failed steps, error locations, counts, and relevant source bindings before sending diagnostic text to a model. Keep original evidence locally under the applicable retention/privacy rules; extract bounded, deduplicated findings with source locations and limitations. A green log is not automatically model input. Expand the inspected region only for a concrete unresolved question, and retain enough surrounding context to avoid hiding failures, skips, truncation, or cleanup problems. When a parser cannot establish the result, report that uncertainty and inspect the necessary original evidence; an empty error search is not proof of success.
+
+For each additional model call or review, identify the unresolved semantic question, changed input, new finding, required independent judgment, or authorized retry that makes it useful. Mechanical receipt, hash, exact-revision, CI-status, and count checks use deterministic processing where available. A review report, reader script, PR wording change, successful check, or timer does not by itself justify another model call. If local tooling is unavailable or inadequate, use bounded inspection or a bounded model task and state the limitation instead of building a new reader/review pipeline for each slice. Separate mandatory safety/independence review from incidental administrative review. No automatic review-of-review chain is required by Foundation.
+
+Reuse verified findings only for unchanged relevant sources, tools, configuration, evidence, and scope. New commits require current binding checks; failures and missing evidence never become success through reuse. Provide only the relevant contract, stable diff, unresolved findings, and evidence references to another reviewer. Do not repeatedly forward full histories, full green logs, or cumulative receipt summaries.
+
+## Test-cycle overhead
+
+Apply the progression and phase separation in `VALIDATION_POLICY.md`. Determine the affected contracts and consumers rather than triggering a full suite or runtime matrix solely because a broad directory changed. Keep a conservative larger fallback when dependencies or effects are unknown. An identical validator need not run both directly and through a suite for the same input binding; its distinct negative/regression assertions remain required. Distinguish validator self-tests from validation of project inputs. Never change test oracles, qualification claims, required repetitions, or safe cleanup merely to reduce cycles.
+
+Batch coherent local corrections into a stable candidate before pushing where the project workflow permits. A repeated expensive test, capture, or model diagnosis needs changed relevant input/environment, a new finding, an explicit freshness/repetition requirement, or a previously unmet gate. Retain current-head/integration and mutating-runtime protections. A post-merge check may reuse evidence only when the project gate permits it and relevant inputs/environment/freshness are demonstrably equivalent; identical product bytes alone are insufficient.
+
+Count test/CI time, local log processing, and model/coordination consumption separately when trustworthy measurements exist. Less CI runtime does not prove fewer model tokens. Unknown measurements remain unknown; prefer a short factual assessment of avoided duplicate work over new continuous telemetry or per-call paperwork.
+
 ## Shared wave budget
 
 Before sustained autonomous work, select a project budget and its unit, measurement/estimate source, checkpoint threshold, hard ceiling, and stopping behavior. Do not invent account quotas, prices, usage, or universal percentage limits. If reliable metering is unavailable, report that limitation and choose an authorized finite task/agent bound rather than claim monetary enforcement.
@@ -41,3 +57,9 @@ Heartbeats are recovery mechanisms, not a demand for repeated model work. Prefer
 ## Integration audit
 
 Preserve stricter project governance. During installation/upgrade, flag rules that force broad reading before every edit, duplicate governance, recurring unchanged polling, or additional reviewer chains without a stated purpose. Record an efficiency recommendation separately from semantic compatibility; a compatible `PROJECT_STRONGER` rule may still be expensive. The deterministic core auditor returns advisory locations only. It does not prove a conflict, approve a rewrite, weaken a gate, or override user instructions. Review recommendations in the target's upgrade assessment and amend local rules only within authorized scope.
+
+The overhead assessment is REQUIRED at installation/upgrade and when affected workflow rules materially change. Inspect actual instruction/adaptor rules, test selectors and workflows, review/delegation routes, log handling, and scheduled continuation prompts where accessible. Assess broad test triggers, duplicate validators/self-tests, development-versus-qualification confusion, full-log ingestion, review chains, repeated model calls, and unchanged-state polling. A compatible `PROJECT_STRONGER` classification does not waive this assessment.
+
+Use the existing project assessment/decision record, not a new per-action receipt system. For each applicable area, identify the source/trigger, relevant contract or risk, and disposition: implemented efficiency behavior, a justified exception with bounded trigger and reason why a smaller alternative is insufficient, or an explicitly pending decision/blocker with impact and resumption condition. Areas that genuinely do not apply may be marked not applicable with a reason. For unresolved authority or material choices, ask a targeted question explaining the context, effect, options, and recommended next step; continue independent authorized work.
+
+Do not claim completed efficiency integration while a material area is unassessed or has an unresolved disposition. Preserve the existing gate until an authorized amendment; pending remediation does not authorize omission or silent weakening. Verify affected selectors, diagnostic summaries, and reuse/invalidations with proportionate existing checks. The Foundation integrity validator and heuristic auditor do not attest actual target workflow efficiency, metering, or provider enforcement.

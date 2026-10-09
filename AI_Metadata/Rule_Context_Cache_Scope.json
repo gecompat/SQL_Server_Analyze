@@ -40,6 +40,8 @@
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_20_Integration.json",
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_20_Upgrade.md",
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_20_Upgrade_Assessment.json",
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade.md",
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade_Assessment.json",
     "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
     "AI_Metadata/Internal_Documentation/Architecture/Runtime_Data_and_Repository_Privacy.md",
     "AI_Metadata/Internal_Documentation/Quality/Next_Steps.md",
@@ -302,6 +304,14 @@
       "AGENTS.md"
     ],
     "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_20_Upgrade_Assessment.json": [
+      "AGENTS.md"
+    ],
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade.md": [
+      "AGENTS.md",
+      "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade_Assessment.json",
+      "Documentation/Quality/CI_Test_Strategy.md"
+    ],
+    "AI_Metadata/Internal_Documentation/Architecture/Foundation_1_21_Upgrade_Assessment.json": [
       "AGENTS.md"
     ],
     "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md": [

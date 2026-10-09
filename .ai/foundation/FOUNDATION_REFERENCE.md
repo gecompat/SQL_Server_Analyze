@@ -1,7 +1,7 @@
 # Foundation Reference
 
 Status: AUTHORITATIVE — read only the affected boundary
-Ruleset version: 1.20.0
+Ruleset version: 1.21.0
 
 Routine work follows the short `FOUNDATION_RULESET.md` and `PROCESSING_EFFICIENCY_POLICY.md`. This reference retains detailed boundaries for affected operations; its discoverable schemas/capabilities are not a bulk-reading requirement. The cache binding rules below describe the optional persistent profile; the session-local baseline has its own current-authority/source-analysis checks.
 

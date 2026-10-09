@@ -13,6 +13,8 @@ on:
       - 'Code/Install/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
       - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
       - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
@@ -32,6 +34,8 @@ on:
       - 'Code/Install/*.py'
       - 'Code/Tests/Integration/Deployment_*.py'
       - 'Code/Tests/Static/**'
+      - 'Code/Tools/Rule_Context_Cache.py'
+      - 'AI_Metadata/Rule_Context_Cache_Scope.json'
       - 'Code/Tests/Integration/191_Standalone_Installer_Contract.ps1'
       - 'Code/Tests/Integration/192_ExecutionPlanAnalysis_Installer_Contract.ps1'
       - 'Code/Tests/Integration/194_SnapshotBaseline_Installer_Contract.ps1'
@@ -110,19 +114,30 @@ jobs:
 
           echo "check_network=$check_network" >> "$GITHUB_OUTPUT"
           echo "manual_full=$manual_full" >> "$GITHUB_OUTPUT"
+          echo "changed_files_path=$changed_file" >> "$GITHUB_OUTPUT"
+          suite_scope=Full
+          if [ "$manual_full" = false ] && [ -s "$changed_file" ] && \
+             ! grep -Ev '^(AGENTS\.md|\.ai/.*|AI_Metadata/CONTINUATION_GUIDE\.md|AI_Metadata/Rule_Context_Cache(_Scope\.json|\.md)|AI_Metadata/Internal_Documentation/Architecture/Foundation_[^/]+\.(md|json)|Code/Tools/Rule_Context_Cache\.py|Code/Tests/Static/Validate_Rule_Context_Cache\.py)$' "$changed_file"; then
+            suite_scope=FoundationGovernance
+          fi
+          echo "suite_scope=$suite_scope" >> "$GITHUB_OUTPUT"
 
           {
             echo '## Documentation validation impact'
             echo ''
             echo "- Documentation/style: $(grep -Eq '^(AGENTS\.md|README\.md|Documentation/.*\.md|AI_Metadata/(CONTINUATION_GUIDE|PROJECT_CONTEXT)\.md|AI_Metadata/Internal_Documentation/.*\.md|Metadata/Quality/CI_Test_Policy\.csv|Code/Tests/Static/915_Validate_Documentation_Style\.py|\.github/workflows/documentation-validation\.yml)$' "$changed_file" && echo true || echo false)"
-            echo "- Full contract suite: $manual_full"
+            echo "- Static contract scope: $suite_scope"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Run repository static contract suite
         shell: pwsh
         run: |
           $logPath = Join-Path $env:RUNNER_TEMP 'analysis-documentation-validation.log'
-          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 *>&1 |
+          & pwsh -NoLogo -NoProfile -File ./Code/Tests/Static/Invoke-StaticContractSuite.ps1 `
+              -Scope '${{ steps.impact.outputs.suite_scope }}' `
+              -SelfTestMode Changed `
+              -ChangedFilesPath '${{ steps.impact.outputs.changed_files_path }}' `
+              -ExcludePrivacy -ExcludeImpactSelector *>&1 |
               Tee-Object -FilePath $logPath
           exit $LASTEXITCODE
 

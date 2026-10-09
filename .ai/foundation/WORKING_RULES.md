@@ -29,6 +29,8 @@ Additional authorization is required only when an operation materially exceeds t
 
 Follow `Documentation/Standards/PROCESSING_EFFICIENCY_POLICY.md` in the source project, or `PROCESSING_EFFICIENCY_POLICY.md` after transfer. Routine edits do not require a WorkRequest, execution DAG, per-action receipt, handoff, or custom CI reader unless a relevant selected capability or material risk requires that contract. Preserve mandatory project gates and independent reviews. Allocate one shared, project-selected budget to sustained autonomous work, including descendants and retries; unknown usage is not zero.
 
+Inspect logs locally before transferring bounded findings to a model. Additional model calls/reviews need a distinct unresolved question or applicable changed-input/gate reason. Separate development tests from full qualification/release and avoid duplicate validator/self-test runs at identical bindings. Installation/upgrade and material workflow-rule changes require the processing-overhead assessment, including actual execution routes and justified stronger exceptions; use existing assessment/decision records without per-action administrative chains.
+
 ## Rule-context reuse between waves
 
 At the start of every new run or TUI session, let the active client rebuild its native `AGENTS.override.md`/`AGENTS.md` chain. Repository caching does not replace that discovery or any system, developer, current user, permission, or runtime instruction.

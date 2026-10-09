@@ -72,6 +72,18 @@ Determine affected artifacts and consumers before selecting checks. Prefer exist
 
 Validation applies equally to software, data, research, and documentation: tests, schemas, calculations, links, sources, citations, dates/versions, samples, consistency, reproducibility, and review may all be evidence.
 
+## Phases and repeated execution
+
+Distinguish diagnosis/development, integration of a bounded change, qualification of the declared support scope, and release. A focused diagnosis does not claim qualification. A bounded fix does not automatically acquire all still-open module/platform/release obligations; run the checks needed for its affected contract and retain unperformed qualification cases as open. Qualification matrices, required statistical repetitions, version coverage, and release gates remain project-owned until explicitly amended.
+
+Map expensive checks to affected inputs, contracts, and consumers using existing project selectors/workflows. Include source, tests, fixtures, generators, configuration, common dependencies, and relevant environment/freshness in the binding. A wide path filter alone should not force unrelated runtime matrices when a reliable narrower selector exists. Unknown dependency or effect information falls back conservatively to the broader check. Test selector changes with relevant positive, negative, common-dependency, and unknown-input cases; do not simply suppress required CI statuses.
+
+Distinguish a validator's self-test from running that validator against current project inputs. Self-tests are warranted by changes to the tool, its dependencies/configuration/runtime, a new finding, or an explicit periodic/qualification requirement; an unrelated PR alone does not establish that need. Combine identical direct/suite validator executions at the same binding without dropping distinct assertions or negative controls. A repeated expensive check requires a changed relevant binding, new finding, required freshness/repetition, or previously unmet gate.
+
+Keep required current-head/integration checks visible. Only an explicitly supported gate may reuse prior evidence after proving relevant input/environment/freshness equivalence; record the original execution and current applicability, never claim a fresh execution. Preserve failed results and safe cleanup/cancellation boundaries. Workflow summaries distinguish executed, reused, not applicable, failed, and unknown work without treating skipped or inconclusive checks as validated.
+
+The REQUIRED overhead assessment in `PROCESSING_EFFICIENCY_POLICY.md` checks whether target rules and actual execution implement these defaults or justify compatible exceptions. It covers tests and the log/review/model work surrounding them; fewer tests do not justify weaker correctness claims.
+
 ## Review effort
 
 Independent review is required when selected by the project, user, or affected risk. Additional reviewers need a distinct unresolved question, stable inputs, and acceptance criteria. A review report does not automatically require review of that report. Verify hashes, counts, manifest consistency, exact commit binding, and repeatable receipt properties deterministically. Review semantic changes and genuinely new findings with the appropriate model/human capability. Preserve required gates and source-bound evidence; never treat model agreement as deterministic proof.
