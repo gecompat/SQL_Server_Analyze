@@ -1,13 +1,13 @@
 # [monitor].[USP_SsisPackageAnalysis]
 
 **Bereich:** Integration<br>
-**Zweck:** Inventarisiert Paket und Executables eines direkt übergebenen DTSX-v2-Dokuments.<br>
+**Zweck:** Inventarisiert Paket, Executables und direkte Parent-Container eines direkt übergebenen DTSX-v2-Dokuments.<br>
 **Beobachtungsart:** Statische XML-Analyse<br>
 **Kostenklasse:** LOW
 
 ## Entscheidungsfrage und Einsatz
 
-Die Procedure beantwortet, ob ein direkt übergebenes DTSX-v2-Dokument als Paket erkannt wird und welche Executables es enthält. Sie ist für eine statische Vorprüfung bestimmt und bewertet keine Paketausführung, keine Datenbewegung und keine externe Verbindung.
+Die Procedure beantwortet, ob ein direkt übergebenes DTSX-v2-Dokument als Paket erkannt wird, welche Executables es enthält und welchem direkten Container sie zugeordnet sind. Sie ist für eine statische Vorprüfung bestimmt und bewertet keine Paketausführung, keine Datenbewegung und keine externe Verbindung.
 
 ## Sicherer Einstieg
 
@@ -21,13 +21,13 @@ Der Aufruf akzeptiert ausschließlich `@AnalysisDepth = 'STANDARD'`. `@ResolveSq
 
 ## Resultsets und Leserichtung
 
-Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket und Executables. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
+Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket und Executables einschließlich ihres direkten Parent-Containers. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
 
 Lesen Sie zuerst `moduleStatus` und `sourceStatus`. `UNSUPPORTED_PACKAGE_FORMAT` bedeutet, dass das Dokument nicht als unterstütztes DTSX-v2-Paket erkannt wurde; daraus folgt keine Aussage über die Gültigkeit anderer XML- oder Paketformate.
 
 ## Eine Zeile bedeutet
 
-Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable; sie enthält keine Laufzeit- oder Erfolgsinformation.
+Eine Zeile in `package` beschreibt das erkannte Wurzelpaket. Eine Zeile in `executables` beschreibt ein in der XML-Struktur vorhandenes Executable. `ParentExecutableName` bezeichnet ausschließlich dessen direkten XML-Container; die Zeile enthält keine Laufzeit- oder Erfolgsinformation.
 
 ## So lesen
 
@@ -47,15 +47,15 @@ Ein eingeschränkter Status ist erwartbar, solange der Aufruf nur den ersten Par
 
 ### Leitfrage
 
-Ist das direkt übergebene Dokument ein unterstütztes DTSX-v2-Paket, und welche Paket-Executables sind darin statisch sichtbar?
+Ist das direkt übergebene Dokument ein unterstütztes DTSX-v2-Paket, welche Paket-Executables sind darin statisch sichtbar und wie ist ihre direkte Containerhierarchie?
 
 ### Technischer Hintergrund
 
-DTSX verwendet ein `Executable`-Wurzelelement im SQL-Server-DTS-Namespace. Der Parser prüft diese Form und liest nur die für Paket- und Executable-Inventar benötigten Attribute.
+DTSX verwendet ein `Executable`-Wurzelelement im SQL-Server-DTS-Namespace. Der Parser prüft diese Form und liest die für Paket- und Executable-Inventar benötigten Attribute einschließlich des direkten übergeordneten Executable-Containers.
 
 ### Datenkette
 
-`@PackageXml` wird im Aufruf verarbeitet. Das Paketresultset liest den Wurzelknoten; das Executable-Resultset erfasst untergeordnete `DTS:Executable`-Elemente. Keine Server- oder externe Datenquelle ergänzt diese Kette.
+`@PackageXml` wird im Aufruf verarbeitet. Das Paketresultset liest den Wurzelknoten; das Executable-Resultset erfasst untergeordnete `DTS:Executable`-Elemente und ihren direkten Container. Keine Server- oder externe Datenquelle ergänzt diese Kette.
 
 ### Source Select
 
@@ -81,7 +81,7 @@ Eine sichtbare Executable-Zeile bedeutet nicht, dass das Executable ausgeführt 
 
 ### Folgeanalyse
 
-Nachfolgende Slices ergänzen Control- und Data-Flow, Komponenten, Parameter, Expressions und Lineage. Laufzeitdaten bleiben den getrennten Legacy- und SSISDB-Analyzern vorbehalten.
+Nachfolgende Slices ergänzen Precedence Constraints und weitere Control-Flow-Informationen, Data-Flow-Komponenten, Parameter, Expressions und Lineage. Laufzeitdaten bleiben den getrennten Legacy- und SSISDB-Analyzern vorbehalten.
 
 ## Datenquellen, Datenschutz und Nebenwirkungen
 
@@ -89,7 +89,7 @@ Die Procedure liest ausschließlich die übergebene XML-Instanz. Sie liest und e
 
 ## Grenzen und Gegenprüfung
 
-Control- und Data-Flow-Beziehungen, Komponentenprofile, Verbindungen, Parameter, Expressions, Lineage, Regelengine sowie Legacy- und SSISDB-Laufzeitadapter gehören zu späteren Slices. Eine vorhandene Executable-Zeile beweist weder ihre Ausführung noch ihren Erfolg. Prüfen Sie einen auffälligen Paketabschnitt mit einer getrennt autorisierten Paket- oder Laufzeituntersuchung.
+Precedence Constraints und weitere Control-Flow-Beziehungen, Komponentenprofile, Verbindungen, Parameter, Expressions, Lineage, Regelengine sowie Legacy- und SSISDB-Laufzeitadapter gehören zu späteren Slices. Eine vorhandene Executable-Zeile beweist weder ihre Ausführung noch ihren Erfolg. Prüfen Sie einen auffälligen Paketabschnitt mit einer getrennt autorisierten Paket- oder Laufzeituntersuchung.
 
 Der isolierte SQL-Server-2025-Vertrag prüft direktes DTSX-v2-XML, TABLE- und JSON-Ausgabe sowie `UNSUPPORTED_PACKAGE_FORMAT`. Windows-, SSISDB- und weitere Paketformatnachweise bleiben offen.
 
