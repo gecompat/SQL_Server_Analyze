@@ -257,6 +257,8 @@ AS
         , (N'USP_ExternalRuntimeAnalysis',N'external runtime language library launchpad resource pool','en',95,N'External-Runtime-Tiefenanalyse ohne Testausführung.')
         , (N'USP_ClrAnalysis',N'SQL CLR Assembly AppDomain Managed Code','de',100,N'SQL-CLR-Katalog-, Host- und Laufzeitanalyse.')
         , (N'USP_ClrAnalysis',N'sql clr assembly appdomain managed code task','en',95,N'SQL-CLR-Tiefenanalyse ohne Assemblyausführung.')
+        , (N'USP_SsisPackageAnalysis',N'SSIS DTSX Paket Executables','de',100,N'Inventarisiert direkt übergebenes DTSX-v2-XML statisch.')
+        , (N'USP_SsisPackageAnalysis',N'ssis dtsx package executables','en',95,N'Static DTSX-v2 package and executable inventory.')
 
         , (N'USP_ConfigureSnapshotTarget',N'Snapshot konfigurieren Retention','de',100,N'Konfiguriert das optionale persistente Snapshotziel.')
         , (N'USP_ConfigureSnapshotTarget',N'configure snapshot target retention','en',95,N'SC-023-Ziel- und Policykonfiguration.')

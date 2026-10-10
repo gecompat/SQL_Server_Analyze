@@ -1,0 +1,5 @@
+PackageId,SourcePath,Role,RequiredFor
+SSIS-001,Code/00_Setup/000_Preflight_und_Schema.sql,Schema,Standalone parser installation
+SSIS-001,Code/01_Common/095_USP_InternalWriteResultTable.sql,Output helper,TABLE export
+SSIS-001,Code/01_Common/096_USP_InternalPrepareResultTables.sql,Output helper,TABLE mapping validation
+SSIS-001,Code/10_SSIS/010_USP_SsisPackageAnalysis.sql,Public procedure,Direct DTSX-v2 package and executable inventory

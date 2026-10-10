@@ -187,6 +187,7 @@ AS
         , (N'USP_ClrAnalysis','CONFIRM_WITH',N'USP_PerformanceCounters',3,N'CLR-Counter mit der allgemeinen typisierten Counteranalyse gegenprüfen.')
         , (N'USP_ClrAnalysis','CONFIRM_WITH',N'USP_ExtendedEventsSessions',4,N'Vorhandene Extended-Events-Evidenz im gleichen Zeitfenster prüfen.')
         , (N'USP_ClrAnalysis','CONFIRM_WITH',N'USP_ErrorLogAnalysis',5,N'CLR-Host- und Ladeprobleme gegen Errorlogevidenz prüfen.')
+        , (N'USP_SsisPackageAnalysis','CONFIRM_WITH',N'USP_ServerFeatureCapabilities',1,N'Den statischen Paketbefund gegen die sichtbare SQL-Server-Featurefähigkeit und den vorgesehenen Laufzeitnachweis abgrenzen.')
 
         , (N'USP_ConfigureSnapshotTarget','PREPARE_WITH',N'USP_RunSnapshotCollectionCycle',1,N'Nach erfolgreicher Ziel- und Policykonfiguration kann ein begrenzter Collection Cycle geplant werden.')
         , (N'USP_RunSnapshotCollectionCycle','CONFIRM_WITH',N'USP_ConfigureSnapshotTarget',1,N'Bei Skip, Policy- oder Zielproblemen zuerst die wirksame Snapshotkonfiguration prüfen.')

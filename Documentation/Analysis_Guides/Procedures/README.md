@@ -1,7 +1,7 @@
 # Eigenständige Analysebeschreibungen je Procedure
 
 **Stand:** 22. Juli 2026<br>
-**Strukturelle Abdeckung:** 105 Procedures<br>
+**Strukturelle Abdeckung:** 106 Procedures<br>
 **Tief geprüfte Seiten:** 92 Procedures
 
 Jede Seite verbindet den sicheren Einstieg mit der fachlichen Leserichtung. Sie beantwortet insbesondere:
@@ -150,6 +150,7 @@ Jede Seite weist jetzt Entscheidungseinsatz, Nichtziele, Resultset-Leserichtung,
 - [USP_ServerFeatureCapabilities](USP_ServerFeatureCapabilities.md)
 - [USP_ServerVersionInformation](USP_ServerVersionInformation.md)
 - [USP_SpecialFeatureInventory](USP_SpecialFeatureInventory.md)
+- [USP_SsisPackageAnalysis](USP_SsisPackageAnalysis.md)
 - [USP_InMemoryOltpAnalysis](USP_InMemoryOltpAnalysis.md)
 - [USP_TemporalAnalysis](USP_TemporalAnalysis.md)
 - [USP_ServiceBrokerAnalysis](USP_ServiceBrokerAnalysis.md)

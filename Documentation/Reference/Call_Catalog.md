@@ -517,6 +517,12 @@ EXEC [monitor].[USP_ServiceBrokerAnalysis] @Hilfe = 1;
 EXEC [monitor].[USP_SpecialFeatureInventory] @Hilfe = 1;
 ```
 
+## `[monitor].[USP_SsisPackageAnalysis]`
+
+```sql
+EXEC [monitor].[USP_SsisPackageAnalysis] @Hilfe = 1;
+```
+
 ## `[monitor].[USP_StartupParameters]`
 
 ```sql

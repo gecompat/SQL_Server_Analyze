@@ -1991,6 +1991,32 @@ Quelle: `Code/09_VersionAdaptive/020_USP_SpecialFeatureInventory.sql`
     , @ErrorMessageOut                  nvarchar(2048)  = NULL OUTPUT
 ```
 
+## `[monitor].[USP_SsisPackageAnalysis]`
+
+Quelle: `Code/10_SSIS/010_USP_SsisPackageAnalysis.sql`
+
+```sql
+@PackageXml             xml            = NULL
+    , @PackageParametersJson  nvarchar(max)  = NULL
+    , @AnalysisDepth          varchar(16)    = 'STANDARD'
+    , @ResolveSqlMetadata     bit            = 0
+    , @CheckLookupData        bit            = 0
+    , @HighImpactConfirmed    bit            = 0
+    , @MaxZeilen              int            = 1000
+    , @MaxDurationSeconds     int            = 30
+    , @LockTimeoutMs          int            = 0
+    , @ResultSetArt           varchar(16)    = 'CONSOLE'
+    , @ResultTablesJson       nvarchar(max)  = NULL
+    , @JsonErzeugen           bit            = 0
+    , @Json                   nvarchar(max)  = NULL OUTPUT
+    , @PrintMeldungen         bit            = 1
+    , @Hilfe                  bit            = 0
+    , @StatusCodeOut          varchar(40)    = NULL OUTPUT
+    , @IsPartialOut           bit            = NULL OUTPUT
+    , @ErrorNumberOut         int            = NULL OUTPUT
+    , @ErrorMessageOut        nvarchar(2048) = NULL OUTPUT
+```
+
 ## `[monitor].[USP_StartupParameters]`
 
 Quelle: `Code/08_ServerHealth/070_USP_StartupParameters.sql`

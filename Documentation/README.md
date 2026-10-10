@@ -8,17 +8,17 @@ SQL Server Analyze ist ein T-SQL-Diagnoseframework für SQL Server 2019 oder neu
 2. [`USP_AnalysisNavigator`](Reference/Analysis_Navigator.md) – Suche direkt in SSMS, Rollen, Ranking, Kosten, Pakete und Folgebeziehungen.
 3. [Einsteiger-Leseleitfaden](Analysis_Guides/Beginner_Reading_Guide.md) – Status, Scope, Zeitbezug, Nenner, Partialität und Gegenprobe.
 4. [Runbooks](Analysis_Guides/Runbooks/README.md) – konkrete Abläufe für zehn häufige Störungssituationen.
-5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 105 öffentlichen Procedures.
+5. [Procedure-Seiten](Analysis_Guides/Procedures/README.md) – eigenständige Tiefendokumentation für alle 106 öffentlichen Procedures.
 6. [Objektreferenz](Reference/Object_Reference.md) – jede unterstützende View, TVF, interne Procedure und Tabelle.
 
-Der aktuelle Inventarvertrag umfasst 177 Objekte: 105 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
+Der aktuelle Inventarvertrag umfasst 178 Objekte: 106 öffentliche Procedures, 8 Views, 28 Table-Valued Functions, 16 interne Procedures und 20 Tabellen.
 
-Der Frameworkkern umfasst 158 Objekte mit 102 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
+Der Frameworkkern umfasst 159 Objekte mit 103 öffentlichen Procedures und 9 Tabellen. Das optionale Snapshotpaket umfasst 19 Objekte mit 3 öffentlichen Procedures und 11 Tabellen.
 
 Die Bestandszahlen beschreiben das Repositoryinventar; der installierte Umfang
 hängt vom gewählten Paket ab. Scalar-Valued Functions sind derzeit nicht vorhanden.
 
-Der öffentliche [SSIS-Phase-0-Vertrag](Architecture/SSIS_001_Phase0_Public_Contract.md) grenzt den noch nicht implementierten Paket-Analysepfad ab.
+Der öffentliche [SSIS-Phase-0-Vertrag](Architecture/SSIS_001_Phase0_Public_Contract.md) grenzt den schrittweise implementierten Paket-Analysepfad ab. Der erste statische DTSX-Slice inventarisiert Paket und Executables; weitere Parser- und Laufzeitpfade bleiben getrennt offen.
 
 ## Installation und erster Betrieb
 
