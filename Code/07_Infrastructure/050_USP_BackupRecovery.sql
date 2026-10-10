@@ -4,18 +4,21 @@ GO
 /*
 ===============================================================================
 Objekt       : monitor.USP_BackupRecovery
-Version      : 2.0.0
-Stand        : 2026-07-15
+Version      : 2.1.0
+Stand        : 2026-10-10
 Typ          : Stored Procedure
 Zweck        : Bewertet Backup-Aktualität und Restore-Historie je ausgewählter
                sichtbarer Datenbank.
 SQL-Version  : SQL Server 2019 oder neuer.
 Filter       : @DatabaseNames als bracket-aware Pipe-Liste oder alternativ
                @DatabaseNamePattern mit LIKE/regex/regexi.
-Resultsets   : RAW oder CONSOLE: Modulstatus, Datenbankstatus, Backup-Aktualität,
-               Backup-Historie und Restore-Historie. NONE: keine Resultsets.
-JSON         : meta, databaseStatus, freshness, backups, restores, warnings.
-Änderungen   : 2.0.0 - Mehrfachfilter, Patternvertrag und Ausgabeadapter.
+Resultsets   : RAW: Modulstatus, Datenbankstatus, Backup-Aktualität,
+               Backup-Historie, Kompressionsevidenz und Restore-Historie.
+               CONSOLE: Modulstatus und Backup-Aktualität. NONE: keine Resultsets.
+JSON         : meta, databaseStatus, freshness, backups, compression, restores, warnings.
+Änderungen   : 2.1.0 - Getrennte Server-, Capability- und Backupset-
+                         Kompressionsevidenz.
+               2.0.0 - Mehrfachfilter, Patternvertrag und Ausgabeadapter.
                1.0.0 - Erstfassung Phase 6.
 ===============================================================================
 */
@@ -44,9 +47,26 @@ BEGIN
     DECLARE @ResultSetArtNormalisiert varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt, ''))));
     DECLARE @TableResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'TABLE' THEN 1 ELSE 0 END;
     DECLARE @ConsoleResultRequested bit = CASE WHEN @ResultSetArtNormalisiert = 'CONSOLE' THEN 1 ELSE 0 END;
-    DECLARE @TableTarget sysname=NULL;
+    DECLARE @FreshnessTableTarget sysname=NULL;
+    DECLARE @CompressionTableTarget sysname=NULL;
     IF @TableResultRequested=0 AND NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL THROW 51011,N'@ResultTablesJson ist ausschließlich mit @ResultSetArt=TABLE zulässig.',1;
-    IF @TableResultRequested=1 EXEC [monitor].[InternalPrepareSingleResultTable] @ResultTablesJson=@ResultTablesJson,@ResultName=N'freshness',@TargetTable=@TableTarget OUTPUT,@ThrowOnError=1;
+    IF @TableResultRequested=1
+    BEGIN
+        CREATE TABLE [#BackupRecovery_ResultTableMap]
+        (
+              [ResultName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL PRIMARY KEY
+            , [TargetTable] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL UNIQUE
+        );
+        EXEC [monitor].[InternalPrepareResultTables]
+              @ResultTablesJson=@ResultTablesJson
+            , @AllowedResultNames=N'freshness|compression'
+            , @MappingTable=N'#BackupRecovery_ResultTableMap'
+            , @ThrowOnError=1;
+        SELECT @FreshnessTableTarget=[TargetTable]
+        FROM [#BackupRecovery_ResultTableMap] WHERE [ResultName]=N'freshness';
+        SELECT @CompressionTableTarget=[TargetTable]
+        FROM [#BackupRecovery_ResultTableMap] WHERE [ResultName]=N'compression';
+    END;
     IF @TableResultRequested = 1 OR @ConsoleResultRequested = 1 SET @ResultSetArtNormalisiert = 'NONE';
     DECLARE @EffectiveMaxZeilen bigint =
         CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0
@@ -61,7 +81,7 @@ BEGIN
         PRINT N'Die Datenbankauswahl wird nicht vorab begrenzt.';
         PRINT N'@FullWarnHours=48; @DiffWarnHours=24; @LogWarnMinutes=30; @MitRestoreHistory=1.';
         PRINT N'@MaxZeilen: positive Werte begrenzen; NULL/0 = unbegrenzt.';
-        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; @JsonErzeugen=1 setzt @Json OUTPUT.';
+        PRINT N'@ResultSetArt=CONSOLE (Default)|RAW|TABLE|NONE case-insensitiv; TABLE akzeptiert freshness und compression; @JsonErzeugen=1 setzt @Json OUTPUT.';
         RETURN;
     END;
 
@@ -138,6 +158,21 @@ BEGIN
         , [BackupFinishDate] datetime
     );
 
+    CREATE TABLE [#BackupRecovery_Compression]
+    (
+          [EvidenceScope] varchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [DatabaseName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [BackupSetId] int NULL
+        , [BackupFinishDate] datetime NULL
+        , [ConfigurationName] sysname COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [ConfiguredValue] int NULL
+        , [AlgorithmName] nvarchar(32) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [SourceStatus] varchar(40) COLLATE SQL_Latin1_General_CP1_CS_AS NOT NULL
+        , [ErrorNumber] int NULL
+        , [ErrorMessage] nvarchar(2048) COLLATE SQL_Latin1_General_CP1_CS_AS NULL
+        , [CollectionTimeUtc] datetime2(3) NOT NULL
+    );
+
     IF @MaxZeilen < 0
 
        OR @FullWarnHours < 1
@@ -167,6 +202,99 @@ BEGIN
         SET @IsPartial = 1;
 
     SET LOCK_TIMEOUT 0;
+
+    IF @StatusCode = 'AVAILABLE'
+    BEGIN
+    BEGIN TRY
+        INSERT [#BackupRecovery_Compression]
+        (
+              [EvidenceScope], [ConfigurationName], [ConfiguredValue], [AlgorithmName]
+            , [SourceStatus], [ErrorNumber], [ErrorMessage], [CollectionTimeUtc]
+        )
+        SELECT
+              'SERVER_CONFIGURATION'
+            , [c].[name]
+            , CONVERT(int,[c].[value_in_use])
+            , CASE WHEN [c].[name]=N'backup compression default'
+                   THEN CASE WHEN [c].[value_in_use]=1 THEN N'ENABLED' ELSE N'DISABLED' END
+                   WHEN [c].[value_in_use]=0 THEN N'USE_BACKUP_COMPRESSION_DEFAULT'
+                   WHEN [c].[value_in_use]=1 THEN N'MS_XPRESS'
+                   WHEN [c].[value_in_use]=2 THEN N'QAT'
+                   WHEN [c].[value_in_use]=3 THEN N'ZSTD'
+                   ELSE N'UNKNOWN' END
+            , 'AVAILABLE', NULL, NULL, @CollectionTimeUtc
+        FROM [sys].[configurations] AS [c] WITH (NOLOCK)
+        WHERE [c].[name] IN (N'backup compression default',N'backup compression algorithm')
+          AND ([c].[name]<>N'backup compression algorithm' OR CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=16);
+
+        IF NOT EXISTS
+           (SELECT 1 FROM [#BackupRecovery_Compression] WHERE [ConfigurationName]=N'backup compression default')
+            INSERT [#BackupRecovery_Compression]
+            VALUES ('SERVER_CONFIGURATION',NULL,NULL,NULL,N'backup compression default',NULL,NULL,'ERROR_HANDLED',NULL,N'Die Konfigurationszeile ist nicht sichtbar.',@CollectionTimeUtc);
+    END TRY
+    BEGIN CATCH
+        INSERT [#BackupRecovery_Compression]
+        VALUES ('SERVER_CONFIGURATION',NULL,NULL,NULL,NULL,NULL,NULL,
+                CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                     WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                ERROR_NUMBER(),ERROR_MESSAGE(),@CollectionTimeUtc);
+    END CATCH;
+
+    IF CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) < 16
+    BEGIN
+        INSERT [#BackupRecovery_Compression]
+        VALUES ('SERVER_CONFIGURATION',NULL,NULL,NULL,N'backup compression algorithm',NULL,NULL,'UNAVAILABLE_VERSION',NULL,N'Die Option ist ab SQL Server 2022 verfügbar.',@CollectionTimeUtc);
+        INSERT [#BackupRecovery_Compression]
+        VALUES ('BACKUP_HISTORY',NULL,NULL,NULL,N'backupset.compression_algorithm',NULL,NULL,'UNAVAILABLE_VERSION',NULL,N'Die Historienmetadatenspalte ist ab SQL Server 2022 verfügbar.',@CollectionTimeUtc);
+    END;
+
+    INSERT [#BackupRecovery_Compression]
+    VALUES
+    (
+          'CAPABILITY',NULL,NULL,NULL,N'ZSTD_BACKUP_COMPRESSION',NULL,N'ZSTD'
+        , CASE WHEN CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=17 THEN 'AVAILABLE' ELSE 'UNAVAILABLE_VERSION' END
+        , NULL
+        , CASE WHEN CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion'))>=17
+               THEN N'ZSTD ist ab SQL Server 2025 verfügbar.'
+               ELSE N'ZSTD ist vor SQL Server 2025 nicht verfügbar.' END
+        , @CollectionTimeUtc
+    );
+
+    IF CONVERT(int,SERVERPROPERTY(N'ProductMajorVersion')) >= 16
+    BEGIN TRY
+        DECLARE @CompressionSql nvarchar(max) = N'
+INSERT [#BackupRecovery_Compression]
+(
+      [EvidenceScope], [DatabaseName], [BackupSetId], [BackupFinishDate]
+    , [ConfigurationName], [ConfiguredValue], [AlgorithmName], [SourceStatus]
+    , [ErrorNumber], [ErrorMessage], [CollectionTimeUtc]
+)
+SELECT TOP (@EffectiveMaxZeilen)
+      ''BACKUP_HISTORY'', [bs].[database_name], [bs].[backup_set_id], [bs].[backup_finish_date]
+    , NULL, NULL, CASE [bs].[compression_algorithm]
+                    WHEN N''MS_XPRESS'' THEN N''MS_XPRESS''
+                    WHEN N''QAT_DEFLATE'' THEN N''QAT''
+                    WHEN N''ZSTD'' THEN N''ZSTD''
+                    ELSE N''UNKNOWN'' END, ''AVAILABLE''
+    , NULL, NULL, @CollectionTimeUtc
+FROM [msdb].[dbo].[backupset] AS [bs] WITH (NOLOCK)
+JOIN [#BackupRecovery_DatabaseCandidates] AS [c]
+  ON [c].[DatabaseName] COLLATE SQL_Latin1_General_CP1_CS_AS
+   = [bs].[database_name] COLLATE SQL_Latin1_General_CP1_CS_AS
+ORDER BY [bs].[backup_finish_date] DESC, [bs].[backup_set_id] DESC;';
+        EXEC [sys].[sp_executesql]
+              @CompressionSql
+            , N'@EffectiveMaxZeilen bigint,@CollectionTimeUtc datetime2(3)'
+            , @EffectiveMaxZeilen=@EffectiveMaxZeilen, @CollectionTimeUtc=@CollectionTimeUtc;
+    END TRY
+    BEGIN CATCH
+        INSERT [#BackupRecovery_Compression]
+        VALUES ('BACKUP_HISTORY',NULL,NULL,NULL,NULL,NULL,NULL,
+                CASE WHEN ERROR_NUMBER() IN (229,262,297,300,371,916) THEN 'DENIED_PERMISSION'
+                     WHEN ERROR_NUMBER()=1222 THEN 'TIMEOUT' ELSE 'ERROR_HANDLED' END,
+                ERROR_NUMBER(),ERROR_MESSAGE(),@CollectionTimeUtc);
+    END CATCH;
+    END;
 
     IF @StatusCode = 'AVAILABLE'
     BEGIN TRY
@@ -304,6 +432,8 @@ BEGIN
         BEGIN
             SELECT * FROM [#BackupRecovery_Fresh] ORDER BY CASE WHEN [BackupStatus] = 'OK' THEN 1 ELSE 0 END, [DatabaseName];
             SELECT * FROM [#BackupRecovery_Backups] ORDER BY [BackupFinishDate] DESC, [DatabaseName];
+            SELECT * FROM [#BackupRecovery_Compression]
+            ORDER BY [EvidenceScope], [BackupFinishDate] DESC, [BackupSetId] DESC;
             SELECT * FROM [#BackupRecovery_Restores] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName];
         END;
         ELSE
@@ -348,6 +478,10 @@ BEGIN
             (SELECT * FROM [#BackupRecovery_Backups] ORDER BY [BackupFinishDate] DESC, [DatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @RestoresJson nvarchar(max) =
             (SELECT * FROM [#BackupRecovery_Restores] ORDER BY [RestoreDate] DESC, [DestinationDatabaseName] FOR JSON PATH, INCLUDE_NULL_VALUES);
+        DECLARE @CompressionJson nvarchar(max) =
+            (SELECT * FROM [#BackupRecovery_Compression]
+             ORDER BY [EvidenceScope], [BackupFinishDate] DESC, [BackupSetId] DESC
+             FOR JSON PATH, INCLUDE_NULL_VALUES);
         DECLARE @WarningsJson nvarchar(max) =
             (SELECT * FROM [#BackupRecovery_DatabaseCandidateWarnings] ORDER BY [RequestedName] FOR JSON PATH, INCLUDE_NULL_VALUES);
 
@@ -356,6 +490,7 @@ BEGIN
               N'{"meta":', COALESCE(@MetaJson, N'{}')
             , N',"freshness":', COALESCE(@FreshJson, N'[]')
             , N',"backups":', COALESCE(@BackupsJson, N'[]')
+            , N',"compression":', COALESCE(@CompressionJson, N'[]')
             , N',"restores":', COALESCE(@RestoresJson, N'[]')
             , N',"warnings":', COALESCE(@WarningsJson, N'[]')
             , N'}'
@@ -370,10 +505,16 @@ BEGIN
     END;
     IF @TableResultRequested = 1
     BEGIN
-        EXEC [monitor].[InternalWriteResultTable]
-              @SourceTable = N'#BackupRecovery_Fresh'
-            , @TargetTable=@TableTarget
-            , @ThrowOnError = 1;
+        IF @FreshnessTableTarget IS NOT NULL
+            EXEC [monitor].[InternalWriteResultTable]
+                  @SourceTable = N'#BackupRecovery_Fresh'
+                , @TargetTable=@FreshnessTableTarget
+                , @ThrowOnError = 1;
+        IF @CompressionTableTarget IS NOT NULL
+            EXEC [monitor].[InternalWriteResultTable]
+                  @SourceTable = N'#BackupRecovery_Compression'
+                , @TargetTable=@CompressionTableTarget
+                , @ThrowOnError = 1;
     END;
 END;
 GO

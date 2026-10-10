@@ -47,8 +47,48 @@ BEGIN TRY
 
     /* Ein checksummiertes Full liefert die Baseline für Restore- und Diff-Fälle. */
     SET @BackupSql=N'BACKUP DATABASE '+@DatabaseQuoted+N' TO DISK=N'''
-                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH INIT,CHECKSUM;';
+                  +REPLACE(@BackupDevice,N'''',N'''''')+N''' WITH FORMAT,INIT,CHECKSUM,COMPRESSION;';
     EXEC [sys].[sp_executesql] @BackupSql;
+
+    /* BKP-COMPRESSION: Konfiguration, Capability und dokumentierter Algorithmus bleiben getrennt. */
+    SET @Json=NULL;
+    EXEC [monitor].[USP_BackupRecovery]
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=0,@ResultSetArt='NONE',
+         @JsonErzeugen=1,@Json=@Json OUTPUT,@PrintMeldungen=0,
+         @HighImpactConfirmed=1;
+    IF ISJSON(@Json)<>1
+       OR NOT EXISTS
+          (SELECT 1 FROM OPENJSON(@Json,N'$.compression')
+           WITH ([EvidenceScope] varchar(32) N'$.EvidenceScope',[ConfigurationName] sysname N'$.ConfigurationName',
+                 [ConfiguredValue] int N'$.ConfiguredValue',[AlgorithmName] nvarchar(32) N'$.AlgorithmName',
+                 [SourceStatus] varchar(40) N'$.SourceStatus')
+           WHERE [EvidenceScope]='SERVER_CONFIGURATION' AND [ConfigurationName]=N'backup compression default'
+             AND [ConfiguredValue] IN (0,1) AND [AlgorithmName] IN (N'ENABLED',N'DISABLED')
+             AND [SourceStatus]='AVAILABLE')
+       OR NOT EXISTS
+          (SELECT 1 FROM OPENJSON(@Json,N'$.compression')
+           WITH ([EvidenceScope] varchar(32) N'$.EvidenceScope',[ConfigurationName] sysname N'$.ConfigurationName',
+                 [AlgorithmName] nvarchar(32) N'$.AlgorithmName',[SourceStatus] varchar(40) N'$.SourceStatus')
+           WHERE [EvidenceScope]='CAPABILITY' AND [ConfigurationName]=N'ZSTD_BACKUP_COMPRESSION'
+             AND [AlgorithmName]=N'ZSTD' AND [SourceStatus]='AVAILABLE')
+       OR NOT EXISTS
+          (SELECT 1 FROM OPENJSON(@Json,N'$.compression')
+           WITH ([EvidenceScope] varchar(32) N'$.EvidenceScope',[AlgorithmName] nvarchar(32) N'$.AlgorithmName',
+                 [SourceStatus] varchar(40) N'$.SourceStatus')
+           WHERE [EvidenceScope]='BACKUP_HISTORY' AND [AlgorithmName] IN (N'MS_XPRESS',N'QAT',N'ZSTD')
+             AND [SourceStatus]='AVAILABLE')
+        THROW 54705,N'P1-Vertrag BKP-COMPRESSION fehlgeschlagen.',1;
+
+    CREATE TABLE [#ExampleBackupCompression]([Seed] int NULL);
+    EXEC [monitor].[USP_BackupRecovery]
+         @DatabaseNames=N'[DeineDatenbank]',@MaxZeilen=1,@ResultSetArt='TABLE',
+         @ResultTablesJson=N'{"compression":"#ExampleBackupCompression"}',@PrintMeldungen=0,
+         @HighImpactConfirmed=1;
+    IF NOT EXISTS
+       (SELECT 1 FROM [#ExampleBackupCompression]
+        WHERE [EvidenceScope]='BACKUP_HISTORY' AND [SourceStatus]='AVAILABLE')
+        THROW 54706,N'P1-Vertrag BKP-COMPRESSION-TABLE fehlgeschlagen.',1;
+    INSERT @ExecutedCases VALUES('BKP-COMPRESSION');
 
     /* BKP-RESTORE: fehlende Restorehistorie ist Evidenzlücke, kein Restorebeweis. */
     SET @Json=NULL; SET @Status=NULL; SET @Partial=NULL;
@@ -148,11 +188,11 @@ BEGIN CATCH
     THROW;
 END CATCH;
 
-IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>4
+IF (SELECT COUNT_BIG(*) FROM @ExecutedCases)<>5
     THROW 54704,N'Der P1-Backupvertrag hat nicht alle vorgesehenen Fälle ausgeführt.',1;
 
 SELECT CAST('AVAILABLE' AS varchar(40)) AS [StatusCode],CAST(0 AS bit) AS [IsPartial],
        COUNT_BIG(*) AS [ExecutedCases],
-       N'Vier synthetische P1-Backupkettenfälle wurden ohne persistierte Laufzeitausgabe ausgeführt.' AS [Detail]
+       N'Fünf synthetische P1-Backupketten- und Kompressionsfälle wurden ohne persistierte Laufzeitausgabe ausgeführt.' AS [Detail]
 FROM @ExecutedCases;
 GO

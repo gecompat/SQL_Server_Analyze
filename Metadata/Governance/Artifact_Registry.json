@@ -47,7 +47,7 @@
       "kind": "work_item",
       "title": "Backup-Kompressionsalgorithmus- und ZSTD-Evidenz",
       "registration_state": "REGISTERED",
-      "status": "RESEARCHED_NOT_IMPLEMENTED",
+      "status": "IMPLEMENTED_ACTIONS_GATE",
       "priority": "P2",
       "acceptance_criteria": "Serverdefault, tatsächlich dokumentierter Backupalgorithmus und versionsabhängige Capability werden getrennt dargestellt; ZSTD, MS_XPRESS und QAT werden nicht aus einem allgemeinen Kompressionsstatus abgeleitet.",
       "aliases": [],
@@ -55,7 +55,7 @@
         {"type": "parent", "target": "WI-0001"}
       ],
       "wave": "WAVE_2",
-      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0003-backup-kompressionsalgorithmus--und-zstd-evidenz"
+      "locator": "Documentation/Architecture/WI0003_Backup_Compression_Analysis.md"
     },
     "WI-0004": {
       "artifact_uid": "urn:uuid:01a049e4-726a-7ddb-a0ba-ed87bf9bc44c",

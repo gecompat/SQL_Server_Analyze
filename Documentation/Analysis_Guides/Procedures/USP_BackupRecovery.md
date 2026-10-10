@@ -1,7 +1,7 @@
 # [monitor].[USP_BackupRecovery]
 
 **Bereich:** Infrastruktur<br>
-**Zweck:** Bewertet Backupalter, Recovery Model, Logbackupbedarf und Restorehistorie.<br>
+**Zweck:** Bewertet Backupalter, Recovery Model, Logbackupbedarf, Kompressionsevidenz und Restorehistorie.<br>
 **Beobachtungsart:** persistierte, retentionbegrenzte Historie<br>
 **Kostenklasse:** LOW–MEDIUM
 
@@ -25,15 +25,15 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `freshness`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `freshness` und `compression`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Freshness-Triage; RAW, TABLE und JSON liefern die technische Kompressionsevidenz. Die `compression`-Menge trennt Serverkonfiguration, Versions-Capability und die sichtbare Algorithmusmetadaten je Backupset. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
-Eine Hauptzeile beschreibt den Backup-/Recoveryzustand einer Datenbank; Historienresultsets enthalten einzelne Backup- oder Restoreereignisse.
+Eine Hauptzeile beschreibt den Backup-/Recoveryzustand einer Datenbank; Historienresultsets enthalten einzelne Backup- oder Restoreereignisse. Eine Kompressionszeile beschreibt entweder eine serverweite Konfiguration oder Capability oder ein sichtbares Backupset. Sie beweist weder einen Restore noch CPU- oder Durchsatzwirkung.
 
 ## So lesen
 
-Berücksichtigen Sie Recovery Model, Alter von Full/Diff/Log, letzte erfolgreiche Sicherung, Copy-only und Restorehistorie gemeinsam.
+Berücksichtigen Sie Recovery Model, Alter von Full/Diff/Log, letzte erfolgreiche Sicherung, Copy-only und Restorehistorie gemeinsam. Prüfen Sie Kompressionskonfiguration, Capability und Historienalgorithmus getrennt: Die aktuelle Voreinstellung ist keine Aussage über ein bereits geschriebenes Backup und ein sichtbarer Algorithmus keine Empfehlung für dessen Einsatz.
 
 ## Warum kann das problematisch sein?
 
@@ -60,12 +60,12 @@ Für `USP_BackupRecovery` gilt zusätzlich: **keine Zeile** bedeutet, dass im si
 | Dimension | Aussage für diese Procedure |
 |---|---|
 | Kostenklasse | LOW–MEDIUM |
-| Standardpfad | Eine `ExampleDatabase` mit Freshnessbewertung, bis zu 5000 Backupzeilen und optionaler Restorehistory. Die Warnschwellen sind Bewertungsgrenzen, kein History-Cutoff. |
+| Standardpfad | Eine `ExampleDatabase` mit Freshnessbewertung, bis zu 5000 Backup- und Kompressionsevidenzzeilen sowie optionaler Restorehistory. Die Warnschwellen sind Bewertungsgrenzen, kein History-Cutoff. |
 | Teuerster Pfad | Alle sichtbaren Datenbanken, `@MaxZeilen = 0` und Restorehistory aktiv auf einer msdb mit sehr umfangreicher Backup-/Restorehistorie. |
 | Haupttreiber | Zahl ausgewählter Datenbanken sowie Backupset-, Medien- und Restore-Historyzeilen im Lookback. Lange Aufbewahrung und häufige Logbackups vergrößern die msdb-Quellen deutlich stärker als die aktuelle Datenbankzahl allein. |
 | Skalierung | Laufzeit und CPU wachsen mit dem Haupttreiber. Sortierung/Aggregation erhöht Speicher- und gegebenenfalls TempDB-Bedarf; breite Texte/XML sowie viele Zeilen erhöhen Netzwerk- und Clientkosten. Für USP_BackupRecovery ist insbesondere die im Datenkettenabschnitt beschriebene Reihenfolge maßgeblich. |
 | Ressourcen | CPU und I/O auf Katalogen beziehungsweise msdb-Historie; TempDB für Korrelation und Transfer bei langen Meldungen. |
-| Begrenzungswirkung | Datenbankliste/-pattern begrenzen alle msdb-Joins. `@MitRestoreHistory = 0` lässt diesen Pfad aus. `@MaxZeilen` begrenzt Freshness, Backup- und Restoreausgabe jeweils separat; die Freshnessaggregation über Backupset kann zuvor mehr Zeilen prüfen. Warnstunden/-minuten verändern nur Klassifikation. |
+| Begrenzungswirkung | Datenbankliste/-pattern begrenzen alle msdb-Joins. `@MitRestoreHistory = 0` lässt diesen Pfad aus. `@MaxZeilen` begrenzt Freshness, Backup-, Kompressionshistorien- und Restoreausgabe jeweils separat; die kleinen serverweiten Konfigurations- und Capabilityzeilen bleiben sichtbar. Die Freshnessaggregation über Backupset kann zuvor mehr Zeilen prüfen. Warnstunden/-minuten verändern nur Klassifikation. |
 | Locking und Nebenwirkungen | Read-only; kurze Schema-Stability-Zugriffe auf msdb/Systemkataloge. Jobs, Backups oder Wartung laufen parallel weiter, daher ist das Ergebnis nicht atomar. |
 | Schutzmechanismus | `@AnalysisClass = NULL`; `@HighImpactConfirmed` schaltet keinen Deep-Pfad frei. Die wirksamen Grenzen sind Datenbankscope, endliches Zeilenlimit und der Restorehistory-Schalter. |
 | Sicherer Einsatz | Eine `ExampleDatabase`, endliches Limit und nur benötigte Restorehistory. Auf msdb mit langer Retention zunächst Freshness/Summary lesen, bevor Detailmengen erweitert werden. |
@@ -85,7 +85,7 @@ Existieren im sichtbaren Fenster die erwarteten Full-, Differential- und Logback
 
 ### Datenkette
 
-`msdb.dbo.backupmediafamily`, `msdb.dbo.backupset`, `msdb.dbo.restorehistory`.
+`sys.configurations`, `msdb.dbo.backupmediafamily`, `msdb.dbo.backupset`, `msdb.dbo.restorehistory`.
 
 ### Collation und Ausgabegrenzen
 
@@ -140,6 +140,8 @@ Für die weitere Analyse gelten folgende Schritte und Quellen: `USP_BackupChainA
 ## Primärquellen
 
 - [Backup und Restore](https://learn.microsoft.com/en-us/sql/relational-databases/backup-restore/back-up-and-restore-of-sql-server-databases?view=sql-server-ver17)
+- [Server configuration: backup compression algorithm](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/view-or-configure-the-backup-compression-algorithm-server-configuration-option?view=sql-server-ver17)
+- [backupset (Transact-SQL)](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17)
 
 ## Weiterführende Vertiefung
 

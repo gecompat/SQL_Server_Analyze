@@ -60,7 +60,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 |---|---|---|---|
 | `WI-0001` | `P1` | `ACTIVE` | diese kanonische Roadmap |
 | `WI-0002` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | TempDB-ADR- und PVS-Diagnostik |
-| `WI-0003` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | Backup-Kompressionsalgorithmus- und ZSTD-Evidenz |
+| `WI-0003` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | Backup-Kompressionsalgorithmus- und ZSTD-Evidenz |
 | `WI-0004` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | geordnete Columnstore-Diagnostik |
 | `WI-0005` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | zeitbegrenzte Extended-Events-Sessions |
 | `WI-0006` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | `OPTIMIZED_SP_EXECUTESQL` und Compile-Kontext |
@@ -142,7 +142,7 @@ Primärquellen: [tempdb Database](https://learn.microsoft.com/en-us/sql/relation
 
 ### `WI-0003`: Backup-Kompressionsalgorithmus- und ZSTD-Evidenz
 
-Die spätere Analyse prüft die getrennte Darstellung von Serverdefault, tatsächlich in `msdb.dbo.backupset` dokumentiertem Algorithmus und versionsabhängiger Capability. ZSTD, MS_XPRESS und QAT dürfen nicht aus dem allgemeinen Kompressionsstatus abgeleitet werden. Restorefähigkeit und CPU-/Durchsatzwirkung bleiben eigene Evidenzfragen.
+Die [Analyse](../../../Documentation/Architecture/WI0003_Backup_Compression_Analysis.md) und die [öffentliche Spezifikation](../../../Documentation/Architecture/WI0003_Backup_Compression_Public_Specification.md) sind als read-only Slice in `USP_BackupRecovery` umgesetzt. Sie trennen Serverdefault, den tatsächlich in `msdb.dbo.backupset` dokumentierten Algorithmus und versionsabhängige Capability. ZSTD, MS_XPRESS und QAT werden nicht aus dem allgemeinen Kompressionsstatus abgeleitet. Restorefähigkeit und CPU-/Durchsatzwirkung bleiben eigene Evidenzfragen.
 
 Primärquellen: [Backup compression algorithm](https://learn.microsoft.com/en-us/sql/database-engine/configure-windows/view-or-configure-the-backup-compression-algorithm-server-configuration-option?view=sql-server-ver17) und [`backupset`](https://learn.microsoft.com/en-us/sql/relational-databases/system-tables/backupset-transact-sql?view=sql-server-ver17).
 

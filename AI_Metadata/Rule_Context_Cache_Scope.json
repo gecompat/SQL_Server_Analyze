@@ -1014,6 +1014,16 @@
       "classification": "product-reference"
     },
     {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
+      "target": "Documentation/Architecture/WI0003_Backup_Compression_Analysis.md",
+      "classification": "product-reference"
+    },
+    {
+      "source": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md",
+      "target": "Documentation/Architecture/WI0003_Backup_Compression_Public_Specification.md",
+      "classification": "product-reference"
+    },
+    {
       "source": "AI_Metadata/Rule_Context_Cache.md",
       "target": ".ai/foundation/runtime/processing_efficiency.py",
       "classification": "product-reference"
