@@ -40,7 +40,7 @@
         {"type": "parent", "target": "WI-0001"}
       ],
       "wave": "WAVE_2",
-      "locator": "AI_Metadata/Internal_Documentation/Architecture/Long_Term_Development_Roadmap.md#wi-0002-tempdb-adr--und-pvs-diagnostik"
+      "locator": "Documentation/Architecture/WI0002_TempDB_ADR_PVS_Analysis.md"
     },
     "WI-0003": {
       "artifact_uid": "urn:uuid:01a049e4-726a-7de0-ba97-0fee41e01688",

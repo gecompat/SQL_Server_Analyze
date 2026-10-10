@@ -136,6 +136,8 @@ Die zwölf zuvor als `BASELINE` geführten Procedure-Seiten wurden am 28. August
 
 Die spätere Analyse prüft eine Erweiterung von `USP_CurrentTempDB` um ein eigenes Resultset für traditionellen Version Store und Persistent Version Store in `tempdb`. Größe, Cleanupindikatoren, Reset- und Quellstatus müssen getrennt bleiben. Die Funktion darf weder ADR empfehlen noch aus einem Einzelwert eine Kapazitätsursache ableiten.
 
+Die abgeschlossene Analyse ist in [WI-0002: TempDB-ADR- und PVS-Diagnostik – Analyse](../../../Documentation/Architecture/WI0002_TempDB_ADR_PVS_Analysis.md) festgehalten. Öffentliche Spezifikation und Implementierung bleiben getrennte nächste Schritte.
+
 Primärquellen: [tempdb Database](https://learn.microsoft.com/en-us/sql/relational-databases/databases/tempdb-database?view=sql-server-ver17) und [`sys.dm_tran_persistent_version_store_stats`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-tran-persistent-version-store-stats?view=sql-server-ver17).
 
 ### `WI-0003`: Backup-Kompressionsalgorithmus- und ZSTD-Evidenz
