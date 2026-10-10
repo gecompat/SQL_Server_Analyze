@@ -46,6 +46,8 @@ OWNER_SINGLE_READS = (
     "FROM [sys].[dm_tran_database_transactions]",
     "FROM [sys].[dm_db_session_space_usage]",
     "FROM [sys].[dm_db_task_space_usage]",
+    "FROM [sys].[dm_tran_version_store_space_usage]",
+    "FROM [sys].[dm_tran_persistent_version_store_stats]",
     "OUTER APPLY [sys].[dm_exec_sql_text]",
 )
 
@@ -67,6 +69,8 @@ OWNER_COUNTS = (
     ("DATABASE_TRANSACTIONS", 130, "DatabaseTransactions", "rowcount"),
     ("TEMPDB_SESSION_USAGE", 140, "TempDbSessionUsage", "count"),
     ("TEMPDB_TASK_USAGE", 150, "TempDbTaskUsage", "count"),
+    ("TRADITIONAL_VERSION_STORE", 160, "VersionStoreSpaceUsage", "count"),
+    ("PERSISTENT_VERSION_STORE", 170, "PersistentVersionStore", "count"),
 )
 
 
@@ -306,6 +310,7 @@ def main() -> int:
         "@CaptureSchedulers",
         "@CaptureTransactions",
         "@CaptureTempDbUsage",
+        "@CaptureVersionStore",
         "@MaxSqlTextHandles",
         "SYSUTCDATETIME(),2",
         "AVAILABLE_LIMITED",
@@ -495,7 +500,7 @@ def main() -> int:
 
     print(
         "Status/snapshot contracts passed: status_rows=10 diag003=implemented "
-        "diag004=implemented external_gates=1 owner_sources=16 "
+        "diag004=implemented external_gates=1 owner_sources=18 "
         "shared_consumers=8 canonical_request_results=6 findings=0"
     )
     return 0

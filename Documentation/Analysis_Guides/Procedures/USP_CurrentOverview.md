@@ -63,11 +63,12 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 Der typisierte TABLE-Vertrag registriert `moduleStatus`, `snapshotStatus`,
 `sessions`, `requests`, `requestContext`, `statements`, `batches`,
 `inputBuffers`, `blocking`, `waits`, `transactions`, `memoryGrants`,
-`tempdbSessions`, `tempdbGovernance`, `io`, `logs` und `warnings`. Status, Scope und Warnings sind
+`tempdbSessions`, `tempdbGovernance`, `versionStore`, `io`, `logs` und `warnings`. Status, Scope und Warnings sind
 vor den Fachergebnissen zu lesen. Resultsets mit unterschiedlicher
 Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden. Im
 Overview-JSON liegt die Governance innerhalb des einmal erzeugten TempDB-Childs
-unter `$.tempdbSessions.tempdbGovernance`.
+unter `$.tempdbSessions.tempdbGovernance`; der traditionelle Version Store und
+der ADR Persistent Version Store liegen unter `$.tempdbSessions.versionStore`.
 
 
 RAW und CONSOLE zeigen sechs Summaryfelder je Modul. TABLE `moduleStatus`
@@ -83,7 +84,7 @@ angeforderten Parentstatus-Schemata ausgegeben; JSON weist diese Ablehnung ebenf
 als partiell aus. Hilfe führt keine Childanalyse und keinen Zieleintrag aus.
 Deaktivierte primäre Childziele bleiben ungeschrieben. Die angeforderten
 Requestkontext- und Textziele können ohne Requestchild ihre Seed-Form behalten;
-`tempdbGovernance` wird nur mit aktiviertem TempDB-Child exportiert. Dieser
+`tempdbGovernance` und `versionStore` werden nur mit aktiviertem TempDB-Child exportiert. Dieser
 bedingte Vertrag erzeugt keine vollständigen leeren Childschemata für deaktivierte
 Module.
 
@@ -110,6 +111,10 @@ Locks, Instanz-Wait-Stats, Datei-I/O oder TempDB-Dateikatalog bleiben im
 jeweiligen Child. Schlägt der Owner selbst fehl, wird der Fehler als
 `SNAPSHOT_OWNER` ausgewiesen und die Children fallen auf frische Einzelreads
 zurück.
+
+Der aktivierte TempDB-Pfad materialisiert außerdem `TRADITIONAL_VERSION_STORE`
+und `PERSISTENT_VERSION_STORE`. `versionStore` übernimmt deren Quellzeit je
+Datenbank; sie ist nicht die Startzeit eines späteren Childaufrufs.
 
 Die Snapshot-ID und alle Temp-Tabellen enden mit dem Procedure-Aufruf. Ein
 späterer Einzelaufruf kann sie nicht wiederverwenden. Die Quellzeitpunkte

@@ -30,21 +30,24 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `sessions` und
-`tempdbGovernance`. Status, Scope und Warnings sind vor den Fachergebnissen zu
+Der typisierte TABLE-Vertrag registriert `sessions`, `tempdbGovernance` und
+`versionStore`. Status, Scope und Warnings sind vor den Fachergebnissen zu
 lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den
 technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen
 Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen
 nicht ungeprüft vereinigt oder summiert werden.
 
 Im Overview werden Sessions, Sessionverbrauch und die Workload-Group-Governance
-aus dem gemeinsamen Snapshot übernommen. Die optionale Dateisicht wird auch dort
-frisch gelesen. Taskverbrauch und Version Store sind keine Ausgabe dieser Procedure.
+aus dem gemeinsamen Snapshot übernommen. Der traditionelle Version Store und
+der ADR Persistent Version Store werden ebenfalls aus diesem Snapshot übernommen.
+Die optionale Dateisicht wird auch dort frisch gelesen. Taskverbrauch bleibt keine
+Ausgabe dieser Procedure.
 Ein direkter Aufruf erhebt Sessions, Governance und gegebenenfalls Dateien frisch. Auf SQL Server 2019/2022 liefert
 `tempdbGovernance` einen expliziten `UNAVAILABLE_VERSION`-Status.
 
-`sessions` besitzt zwölf Felder, `tempdbGovernance` 21. Die beiden benannten
-TABLE-Ziele übernehmen dieselben ausgewählten Mengen wie RAW, JSON und CONSOLE.
+`sessions` besitzt zwölf Felder, `tempdbGovernance` 21 und `versionStore` zehn.
+Die drei benannten TABLE-Ziele übernehmen dieselben ausgewählten Mengen wie RAW,
+JSON und CONSOLE.
 Nach Sammlung, Bewertung und N+1-Zählung begrenzt `@MaxZeilen` die Sessions
 nach `TotalNetMb DESC, SessionId`. Der Direktpfad behält seine frühe
 Governance-Vorauswahl nach `GroupId`; die Statusbewertung bezieht sich dort

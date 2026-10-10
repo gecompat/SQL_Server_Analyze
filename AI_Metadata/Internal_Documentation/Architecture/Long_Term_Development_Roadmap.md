@@ -59,7 +59,7 @@ Die Validierung folgt der verbindlichen CI-Teststrategie. Ein Statuswechsel setz
 | Referenz | Priorität | Status | Dossierabschnitt |
 |---|---|---|---|
 | `WI-0001` | `P1` | `ACTIVE` | diese kanonische Roadmap |
-| `WI-0002` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | TempDB-ADR- und PVS-Diagnostik |
+| `WI-0002` | `P2` | `IMPLEMENTED_ACTIONS_GATE` | TempDB-ADR- und PVS-Diagnostik |
 | `WI-0003` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | Backup-Kompressionsalgorithmus- und ZSTD-Evidenz |
 | `WI-0004` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | geordnete Columnstore-Diagnostik |
 | `WI-0005` | `P2` | `RESEARCHED_NOT_IMPLEMENTED` | zeitbegrenzte Extended-Events-Sessions |
@@ -136,7 +136,7 @@ Die zwölf zuvor als `BASELINE` geführten Procedure-Seiten wurden am 28. August
 
 Die spätere Analyse prüft eine Erweiterung von `USP_CurrentTempDB` um ein eigenes Resultset für traditionellen Version Store und Persistent Version Store in `tempdb`. Größe, Cleanupindikatoren, Reset- und Quellstatus müssen getrennt bleiben. Die Funktion darf weder ADR empfehlen noch aus einem Einzelwert eine Kapazitätsursache ableiten.
 
-Die abgeschlossene Analyse ist in [WI-0002: TempDB-ADR- und PVS-Diagnostik – Analyse](../../../Documentation/Architecture/WI0002_TempDB_ADR_PVS_Analysis.md) festgehalten. Öffentliche Spezifikation und Implementierung bleiben getrennte nächste Schritte.
+Die abgeschlossene Analyse und Spezifikation sind in [WI-0002: TempDB-ADR- und PVS-Diagnostik – Analyse](../../../Documentation/Architecture/WI0002_TempDB_ADR_PVS_Analysis.md) festgehalten. Der read-only Implementierungsslice ist für SQL Server 2019, 2022 und 2025 ausgeführt nachgewiesen.
 
 Primärquellen: [tempdb Database](https://learn.microsoft.com/en-us/sql/relational-databases/databases/tempdb-database?view=sql-server-ver17) und [`sys.dm_tran_persistent_version_store_stats`](https://learn.microsoft.com/en-us/sql/relational-databases/system-dynamic-management-views/sys-dm-tran-persistent-version-store-stats?view=sql-server-ver17).
 

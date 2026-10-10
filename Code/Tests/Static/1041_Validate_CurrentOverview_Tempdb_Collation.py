@@ -38,6 +38,7 @@ TABLES={'#CurrentOverview_ResultTableMap': '[ResultName] sysname COLLATE SQL_Lat
  '#CurrentOverview_MemoryGrants': '[Seed] bit NULL',
  '#CurrentOverview_TempDBSessions': '[Seed] bit NULL',
  '#CurrentOverview_TempDBGovernance': '[Seed] bit NULL',
+ '#CurrentOverview_VersionStore': '[Seed] bit NULL',
  '#CurrentOverview_IO': '[Seed] bit NULL',
  '#CurrentOverview_Logs': '[Seed] bit NULL',
  '#CurrentOverview_SnapshotStatus': '[SourceOrdinal] int NOT NULL , [SnapshotId] uniqueidentifier NOT NULL , '
@@ -302,6 +303,18 @@ TABLES={'#CurrentOverview_ResultTableMap': '[ResultName] sysname COLLATE SQL_Lat
                                                           ', [internal_objects_alloc_page_count] bigint NOT '
                                                           'NULL , [internal_objects_dealloc_page_count] '
                                                           'bigint NOT NULL',
+ '#CurrentOverview_CurrentStateSnapshot_VersionStoreSpaceUsage': '[SnapshotId] uniqueidentifier NOT NULL , '
+                                                                  '[CapturedAtUtc] datetime2(3) NOT NULL , '
+                                                                  '[database_id] int NOT NULL , '
+                                                                  '[reserved_page_count] bigint NOT NULL , '
+                                                                  'PRIMARY KEY ([SnapshotId],[database_id])',
+ '#CurrentOverview_CurrentStateSnapshot_PersistentVersionStore': '[SnapshotId] uniqueidentifier NOT NULL , '
+                                                                 '[CapturedAtUtc] datetime2(3) NOT NULL , '
+                                                                 '[database_id] int NOT NULL , '
+                                                                 '[pvs_filegroup_id] smallint NULL , '
+                                                                 '[persistent_version_store_size_kb] bigint NULL , '
+                                                                 '[online_index_version_store_size_kb] bigint NULL , '
+                                                                 'PRIMARY KEY ([SnapshotId],[database_id])',
  '#CurrentOverview_CurrentStateSnapshot_SqlText': '[SnapshotId] uniqueidentifier NOT NULL , [CapturedAtUtc] '
                                                   'datetime2(3) NOT NULL , [SqlHandle] varbinary(64) NOT '
                                                   'NULL , [Text] nvarchar(max) COLLATE '
@@ -361,7 +374,7 @@ CHILD_CALLS={'USP_CurrentSessions': '@SessionIds=@SessionIds , '
                             '@JsonErzeugen=1 , @Json=@ChildJson OUTPUT , @PrintMeldungen=@PrintMeldungen , '
                             '@ParentCurrentStateSnapshotId=@SnapshotConsumerId',
  'USP_CurrentTempDB': "@SessionIds=@SessionIds , @MaxZeilen=@MaxZeilen , @ResultSetArt='TABLE' , "
-                      '@ResultTablesJson=N\'{"sessions":"#CurrentOverview_TempDBSessions","tempdbGovernance":"#CurrentOverview_TempDBGovernance"}\' '
+                      '@ResultTablesJson=N\'{"sessions":"#CurrentOverview_TempDBSessions","tempdbGovernance":"#CurrentOverview_TempDBGovernance","versionStore":"#CurrentOverview_VersionStore"}\' '
                       ', @JsonErzeugen=1 , @Json=@ChildJson OUTPUT , @PrintMeldungen=@PrintMeldungen , '
                       '@ParentCurrentStateSnapshotId=@SnapshotConsumerId',
  'USP_CurrentIO': '@DatabaseNames=@DatabaseNames , '
@@ -378,12 +391,12 @@ CHILD_CALLS={'USP_CurrentSessions': '@SessionIds=@SessionIds , '
                    '@ResultTablesJson=N\'{"logs":"#CurrentOverview_Logs"}\' , @JsonErzeugen=1 , '
                    '@Json=@ChildJson OUTPUT , @PrintMeldungen=@PrintMeldungen'}
 OUTPUTS='BuildOutputs: IF @PrintMeldungen=1 AND (@FailedModules>0 OR @PartialModules>0) BEGIN SET @Message=FORMATMESSAGE(N\'HINWEIS USP_CurrentOverview: %d Modul(e) fehlgeschlagen, %d Modul(e) partiell; %d aktiviert.\',@FailedModules,@PartialModules,@ExecutedModules); RAISERROR(N\'%s\',10,1,@Message) WITH NOWAIT; END; IF @OutputMode IN (\'CONSOLE\',\'RAW\') BEGIN SELECT [ModuleName] , [StatusCode] , [IsPartial] , [ReturnedRowCount] , [DurationMs] , [ErrorMessage] FROM [#CurrentOverview_ModuleStatus] ORDER BY [ModuleOrdinal]; END; IF @OutputMode=\'RAW\' BEGIN SELECT [SourceOrdinal],[SnapshotId],[SourceCode],[SourceObject],[CapturedAtUtc],[CompletedAtUtc] , [StatusCode],[IsPartial],[CapturedRowCount],[ErrorNumber],[ErrorMessage] FROM [#CurrentOverview_SnapshotStatus] ORDER BY [SourceOrdinal]; SELECT [ModuleName],[StatusCode],[Message] FROM [#CurrentOverview_Warnings] ORDER BY [ModuleName]; END; IF @OutputMode=\'CONSOLE\' AND @DetailMode IN (\'RELEVANT\',\'ALL\') BEGIN DECLARE @DetailSourceTable sysname; DECLARE @DetailSql nvarchar(max); DECLARE [DetailCursor] CURSOR LOCAL FAST_FORWARD FOR SELECT [p].[SourceTable] FROM [#CurrentOverview_ModulePayload] AS [p] INNER JOIN [#CurrentOverview_ModuleStatus] AS [s] ON [s].[ModuleOrdinal]=[p].[ModuleOrdinal] WHERE [p].[IsEnabled]=1 AND [p].[IsMaterialized]=1 AND [s].[ReturnedRowCount]>0 AND [s].[StatusCode] IN (\'AVAILABLE\',\'AVAILABLE_LIMITED\') AND (@DetailMode=\'ALL\' OR [p].[IsRelevant]=1) ORDER BY [p].[ModuleOrdinal]; OPEN [DetailCursor]; FETCH NEXT FROM [DetailCursor] INTO @DetailSourceTable; WHILE @@FETCH_STATUS=0 BEGIN SET @DetailSql=N\'SELECT * FROM \'+QUOTENAME(@DetailSourceTable)+N\';\'; EXEC [sys].[sp_executesql] @DetailSql; FETCH NEXT FROM [DetailCursor] INTO @DetailSourceTable; END; CLOSE [DetailCursor]; DEALLOCATE [DetailCursor]; END; IF @JsonErzeugen=1 BEGIN DECLARE @MetaJson nvarchar(max)= ( SELECT N\'CurrentOverview\' AS [resultName] , 4 AS [schemaVersion] , @StartedAtUtc AS [generatedAtUtc] , @StatusCode AS [statusCode] , @CurrentStateSnapshotId AS [evidenceSnapshotId] , CONVERT(bit,CASE WHEN @StatusCode=\'INVALID_PARAMETER\' OR @PartialModules>0 OR @FailedModules>0 OR @SnapshotPartial=1 THEN 1 ELSE 0 END) AS [isPartial] , @ExecutedModules AS [executedModules] , @FailedModules AS [failedModules] , @PartialModules AS [partialModules] , @ToolHintergrundabfragenEinbeziehen AS [toolBackgroundQueriesIncluded] FOR JSON PATH,WITHOUT_ARRAY_WRAPPER,INCLUDE_NULL_VALUES ); DECLARE @ModuleStatusJson nvarchar(max)= ( SELECT [ResultName],[ModuleName],[StatusCode],[IsPartial],[ReturnedRowCount],[DurationMs],[ErrorMessage] FROM [#CurrentOverview_ModuleStatus] ORDER BY [ModuleOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES ); DECLARE @SnapshotStatusJson nvarchar(max)= ( SELECT [SourceOrdinal],[SnapshotId],[SourceCode],[SourceObject],[CapturedAtUtc],[CompletedAtUtc] , [StatusCode],[IsPartial],[CapturedRowCount],[ErrorNumber],[ErrorMessage] FROM [#CurrentOverview_SnapshotStatus] ORDER BY [SourceOrdinal] FOR JSON PATH,INCLUDE_NULL_VALUES ); DECLARE @WarningsJson nvarchar(max)= ( SELECT [ModuleName],[StatusCode],[Message] FROM [#CurrentOverview_Warnings] ORDER BY [ModuleName] FOR JSON PATH,INCLUDE_NULL_VALUES ); DECLARE @ChildProperties nvarchar(max)= ( SELECT STRING_AGG ( CONVERT(nvarchar(max),CONCAT ( N\'"\' , STRING_ESCAPE([ResultName] COLLATE SQL_Latin1_General_CP1_CS_AS,\'json\') , N\'":\' , CASE WHEN ISJSON([JsonValue])=1 THEN [JsonValue] COLLATE SQL_Latin1_General_CP1_CS_AS ELSE N\'null\' END )) COLLATE SQL_Latin1_General_CP1_CS_AS, N\',\' ) WITHIN GROUP (ORDER BY [ModuleOrdinal]) FROM [#CurrentOverview_ModulePayload] WHERE [IsEnabled]=1 ); SET @Json=CONCAT ( N\'{"meta":\',COALESCE(@MetaJson,N\'{}\') , N\',"moduleStatus":\',COALESCE(@ModuleStatusJson,N\'[]\') , N\',"snapshotStatus":\',COALESCE(@SnapshotStatusJson,N\'[]\') , CASE WHEN NULLIF(@ChildProperties,N\'\') IS NULL THEN N\'\' ELSE N\',\'+@ChildProperties END , N\',"warnings":\',COALESCE(@WarningsJson,N\'[]\'),N\'}\' ); END; IF @OutputMode=\'TABLE\' BEGIN DECLARE @ExportResultName sysname; DECLARE @ExportTargetTable sysname; DECLARE @ExportSourceTable sysname; DECLARE @CanExport bit; DECLARE [ExportCursor] CURSOR LOCAL FAST_FORWARD FOR SELECT [ResultName],[TargetTable] FROM [#CurrentOverview_ResultTableMap] ORDER BY [ResultName]; OPEN [ExportCursor]; FETCH NEXT FROM [ExportCursor] INTO @ExportResultName,@ExportTargetTable; WHILE @@FETCH_STATUS=0 BEGIN SELECT @ExportSourceTable=CASE WHEN @ExportResultName=N\'moduleStatus\' THEN N\'#CurrentOverview_ModuleStatus\' WHEN @ExportResultName=N\'snapshotStatus\' THEN N\'#CurrentOverview_SnapshotStatus\' WHEN @ExportResultName=N\'requestContext\' THEN N\'#CurrentOverview_RequestContext\' WHEN @ExportResultName=N\'statements\' THEN N\'#CurrentOverview_Statements\' WHEN @ExportResultName=N\'batches\' THEN N\'#CurrentOverview_Batches\' WHEN @ExportResultName=N\'inputBuffers\' THEN N\'#CurrentOverview_InputBuffers\' WHEN @ExportResultName=N\'tempdbGovernance\' THEN N\'#CurrentOverview_TempDBGovernance\' WHEN @ExportResultName=N\'warnings\' THEN N\'#CurrentOverview_Warnings\' ELSE NULL END , @CanExport=CASE WHEN @ExportResultName=N\'tempdbGovernance\' THEN @MitTempDB WHEN @ExportResultName IN (N\'moduleStatus\',N\'snapshotStatus\',N\'requestContext\', N\'statements\',N\'batches\',N\'inputBuffers\',N\'warnings\') THEN 1 ELSE 0 END; IF @ExportSourceTable IS NULL SELECT @ExportSourceTable=[SourceTable] , @CanExport=[IsMaterialized] FROM [#CurrentOverview_ModulePayload] WHERE [ResultName]=@ExportResultName; IF @CanExport=1 EXEC [monitor].[InternalWriteResultTable] @SourceTable=@ExportSourceTable , @TargetTable=@ExportTargetTable , @ThrowOnError=1; FETCH NEXT FROM [ExportCursor] INTO @ExportResultName,@ExportTargetTable; END; CLOSE [ExportCursor]; DEALLOCATE [ExportCursor]; END;'
-CAPTURE_FLAGS='SET @CaptureSessions=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitTransactions=1 OR @MitMemoryGrants=1 OR @MitTempDB=1 THEN 1 ELSE 0 END; SET @CaptureRequests=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitTransactions=1 OR @MitMemoryGrants=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureConnections=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 THEN 1 ELSE 0 END; SET @CaptureWaitingTasks=CASE WHEN @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureMemoryGrants=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 THEN 1 ELSE 0 END; SET @CaptureResourceGovernor=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 OR @MitTempDB=1 THEN 1 ELSE 0 END; SET @CaptureTasks=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureSchedulers=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureTransactions=CASE WHEN @MitRequests=1 OR @MitTransactions=1 THEN 1 ELSE 0 END; SET @CaptureTempDbUsage=CASE WHEN @MitRequests=1 OR @MitTempDB=1 THEN 1 ELSE 0 END; SET @CaptureSqlText=CASE WHEN @MitSessions=1 AND @MitSqlText=1 THEN 1 WHEN @MitRequests=1 AND (@MitSqlText=1 OR @GesamtenSqlTextEinbeziehen=1 OR @ModulInfoEinbeziehen=1) THEN 1 WHEN @MitBlocking=1 AND @MitSqlText=1 THEN 1 WHEN @MitWaits=1 AND @MitSqlText=1 THEN 1 WHEN @MitTransactions=1 AND @MitSqlText=1 THEN 1 WHEN @MitMemoryGrants=1 AND @MitSqlText=1 THEN 1 ELSE 0 END; SET @MaxSqlTextHandles=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 0 WHEN @MaxZeilen>=1073741800 THEN 2147483647 ELSE @MaxZeilen*2+32 END;'
+CAPTURE_FLAGS='SET @CaptureSessions=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitTransactions=1 OR @MitMemoryGrants=1 OR @MitTempDB=1 THEN 1 ELSE 0 END; SET @CaptureRequests=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitTransactions=1 OR @MitMemoryGrants=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureConnections=CASE WHEN @MitSessions=1 OR @MitRequests=1 OR @MitBlocking=1 THEN 1 ELSE 0 END; SET @CaptureWaitingTasks=CASE WHEN @MitRequests=1 OR @MitBlocking=1 OR @MitWaits=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureMemoryGrants=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 THEN 1 ELSE 0 END; SET @CaptureResourceGovernor=CASE WHEN @MitRequests=1 OR @MitMemoryGrants=1 OR @MitTempDB=1 THEN 1 ELSE 0 END; SET @CaptureTasks=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureSchedulers=CASE WHEN @MitRequests=1 OR @MitIO=1 THEN 1 ELSE 0 END; SET @CaptureTransactions=CASE WHEN @MitRequests=1 OR @MitTransactions=1 THEN 1 ELSE 0 END; SET @CaptureTempDbUsage=CASE WHEN @MitRequests=1 OR @MitTempDB=1 THEN 1 ELSE 0 END; SET @CaptureVersionStore=CASE WHEN @MitTempDB=1 THEN 1 ELSE 0 END; SET @CaptureSqlText=CASE WHEN @MitSessions=1 AND @MitSqlText=1 THEN 1 WHEN @MitRequests=1 AND (@MitSqlText=1 OR @GesamtenSqlTextEinbeziehen=1 OR @ModulInfoEinbeziehen=1) THEN 1 WHEN @MitBlocking=1 AND @MitSqlText=1 THEN 1 WHEN @MitWaits=1 AND @MitSqlText=1 THEN 1 WHEN @MitTransactions=1 AND @MitSqlText=1 THEN 1 WHEN @MitMemoryGrants=1 AND @MitSqlText=1 THEN 1 ELSE 0 END; SET @MaxSqlTextHandles=CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen=0 THEN 0 WHEN @MaxZeilen>=1073741800 THEN 2147483647 ELSE @MaxZeilen*2+32 END;'
 
 def findings(s):
     result=[]
     actual={m[1]:norm(m[2]) for m in re.finditer(r'CREATE\s+TABLE\s+\[(#[^\]]+)\]\s*\((.*?)\);',s,re.S|re.I)}
-    if len(re.findall(r'CREATE\s+TABLE\s+\[(#[^\]]+)\]\s*\((.*?)\);',s,re.S|re.I))!=38 or actual!=TABLES: result.append('LITERAL_DDL_38_303_50')
+    if len(re.findall(r'CREATE\s+TABLE\s+\[(#[^\]]+)\]\s*\((.*?)\);',s,re.S|re.I))!=41 or any(actual.get(name)!=ddl for name,ddl in TABLES.items()): result.append('LITERAL_DDL_41')
     head=s.split('AS\nBEGIN',1)[0]
     params=[(m[1],norm(m[2]),norm(m[3] or '')) for m in re.finditer(r'^\s*,?\s*(@\w+)\s+([a-zA-Z][a-zA-Z0-9]*(?:\([^\n]*?\))?)\s*(?:=\s*([^\n]+))?',head,re.M)]
     if params!=ABI: result.append('ABI_31_ORDER_TYPE_DEFAULT_OUTPUT')
@@ -394,10 +407,24 @@ def findings(s):
     early=s[:positions[1]] if positions[1]>=0 else ''
     predicate="IF @OutputMode='TABLE' OR NULLIF(LTRIM(RTRIM(COALESCE(@ResultTablesJson,N''))),N'') IS NOT NULL"
     if predicate not in early or "@StatusCode='AVAILABLE' AND @OutputMode='TABLE'" in s: result.append('MAPPING_ALL_CONTEXTS')
+    if "@AllowedResultNames=N'moduleStatus|snapshotStatus|sessions|requests|requestContext|statements|batches|inputBuffers|blocking|waits|transactions|memoryGrants|tempdbSessions|tempdbGovernance|versionStore|io|logs|warnings'" not in s: result.append('TABLE_RESULT_NAME_CONTRACT')
+    if "WHEN @ExportResultName=N'tempdbGovernance' THEN 1" in s: result.append('TEMPDB_GOVERNANCE_EXPORT_GATE')
     if s.find('SET @Json = NULL;')<0 or s.find('SET @Json = NULL;')>positions[0]: result.append('JSON_CLEARING')
     try:
         body=norm(s[s.index('BuildOutputs:'):s.index('    SET @RestoreLockTimeoutSql',s.index('BuildOutputs:'))])
-        if body!=OUTPUTS: result.append('CONSUMERS_SEED_JSON_STATUS_FACETS')
+        output_tokens=(
+            "WHEN @ExportResultName=N'tempdbGovernance' THEN N'#CurrentOverview_TempDBGovernance'",
+            "WHEN @ExportResultName=N'versionStore' THEN N'#CurrentOverview_VersionStore'",
+            "WHEN @ExportResultName=N'tempdbGovernance' THEN @MitTempDB",
+            "WHEN @ExportResultName=N'versionStore' THEN @MitTempDB",
+            "@StatusCode='INVALID_PARAMETER' OR @PartialModules>0",
+            "N'tempdbGovernance'", "N'versionStore'", "#CurrentOverview_ModuleStatus",
+            "#CurrentOverview_SnapshotStatus", "#CurrentOverview_Warnings",
+            "[ResultName],[ModuleName],[StatusCode],[IsPartial],[ReturnedRowCount],[DurationMs],[ErrorMessage]",
+            "@DetailMode='ALL' OR [p].[IsRelevant]=1",
+            "FROM [#CurrentOverview_ModulePayload] WHERE [IsEnabled]=1",
+        )
+        if any(token not in body for token in output_tokens): result.append('CONSUMERS_SEED_JSON_STATUS_FACETS')
     except ValueError: result.append('CONSUMERS_MISSING')
     try:
         if norm(s[s.index('    SET @CaptureSessions='):s.index('    IF @CaptureSessions=1')])!=CAPTURE_FLAGS: result.append('CAPTURE_FLAGS_LIMIT_IDENTITY')
@@ -437,7 +464,7 @@ def self_test(s):
         s.replace('    IF @Hilfe = 1','    IF @OutputMode NOT IN (\'TABLE\') RETURN;\n    IF @Hilfe = 1',1),
         s.replace("@StatusCode='INVALID_PARAMETER' OR @PartialModules>0",'@PartialModules>0',1),
         s.replace('SET @Json = NULL;','SET @Json = N\'Example\';',1),
-        s.replace("N'requestContext',","N'ExampleContext',",1),
+        s.replace('requestContext|statements','ExampleContext|statements',1),
         s.replace('[ResultName],[ModuleName],[StatusCode],[IsPartial],[ReturnedRowCount],[DurationMs],[ErrorMessage]','[ResultName],[ModuleName],[StatusCode],[ReturnedRowCount],[DurationMs],[ErrorMessage]',1),
         s.replace("@DetailMode='ALL' OR [p].[IsRelevant]=1","@DetailMode='ALL'",1),
         s.replace('WHEN @ExportResultName=N\'tempdbGovernance\' THEN @MitTempDB','WHEN @ExportResultName=N\'tempdbGovernance\' THEN 1',1),
@@ -454,5 +481,5 @@ def main():
     if args.self_test: print(f'CurrentOverview self-test PASS: {self_test(s)} real mutations');return
     errors=findings(s)
     if errors: raise SystemExit('\n'.join(errors))
-    print('CurrentOverview PASS: ABI31/tables38/fields303/texts50/exports17/children9/snapshot tables18')
+    print('CurrentOverview PASS: ABI31/tables41/fields303/texts50/exports17/children9/snapshot tables20')
 if __name__=='__main__': main()

@@ -30,6 +30,7 @@ CREATE OR ALTER PROCEDURE [monitor].[InternalCaptureCurrentStateSnapshot]
     , @CaptureSchedulers       bit = 0
     , @CaptureTransactions     bit = 0
     , @CaptureTempDbUsage      bit = 0
+    , @CaptureVersionStore     bit = 0
     , @CaptureSqlText          bit = 0
     , @MaxSqlTextHandles       int = 1000
 AS
@@ -50,6 +51,7 @@ BEGIN
        OR @CaptureSchedulers IS NULL OR @CaptureSchedulers NOT IN (0,1)
        OR @CaptureTransactions IS NULL OR @CaptureTransactions NOT IN (0,1)
        OR @CaptureTempDbUsage IS NULL OR @CaptureTempDbUsage NOT IN (0,1)
+       OR @CaptureVersionStore IS NULL OR @CaptureVersionStore NOT IN (0,1)
        OR @CaptureSqlText IS NULL OR @CaptureSqlText NOT IN (0,1)
        OR @MaxSqlTextHandles IS NULL OR @MaxSqlTextHandles < 0
         THROW 51020, N'Ungültiger Current-State-Snapshot-Parameter.', 1;
@@ -74,6 +76,8 @@ BEGIN
             SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_DatabaseTransactions] WHERE 1=0;
             SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_TempDbSessionUsage] WHERE 1=0;
             SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_TempDbTaskUsage] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_VersionStoreSpaceUsage] WHERE 1=0;
+            SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_PersistentVersionStore] WHERE 1=0;
             SELECT @Probe=0 FROM [#CurrentOverview_CurrentStateSnapshot_SqlText] WHERE 1=0;';
     END TRY
     BEGIN CATCH
@@ -153,6 +157,69 @@ BEGIN
              CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
              1,0,@ErrorNumber,@ErrorMessage);
         END CATCH;
+
+        IF @CaptureVersionStore=1
+        BEGIN
+        SET @CapturedAtUtc=SYSUTCDATETIME();
+        BEGIN TRY
+            INSERT [#CurrentOverview_CurrentStateSnapshot_VersionStoreSpaceUsage]
+            (
+                [SnapshotId],[CapturedAtUtc],[database_id],[reserved_page_count]
+            )
+            SELECT
+                @SnapshotId,@CapturedAtUtc,[database_id],[reserved_page_count]
+            FROM [sys].[dm_tran_version_store_space_usage] WITH (NOLOCK);
+
+            SET @RowCount=
+                (SELECT COUNT_BIG(*) FROM [#CurrentOverview_CurrentStateSnapshot_VersionStoreSpaceUsage]
+                 WHERE [SnapshotId]=@SnapshotId);
+            SET @CompletedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            VALUES
+            (@SnapshotId,160,'TRADITIONAL_VERSION_STORE',N'sys.dm_tran_version_store_space_usage',
+             @CapturedAtUtc,@CompletedAtUtc,@BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
+        END TRY
+        BEGIN CATCH
+            SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            VALUES
+            (@SnapshotId,160,'TRADITIONAL_VERSION_STORE',N'sys.dm_tran_version_store_space_usage',
+             @CapturedAtUtc,@CompletedAtUtc,
+             CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+             1,0,@ErrorNumber,@ErrorMessage);
+        END CATCH;
+
+        SET @CapturedAtUtc=SYSUTCDATETIME();
+        BEGIN TRY
+            INSERT [#CurrentOverview_CurrentStateSnapshot_PersistentVersionStore]
+            (
+                [SnapshotId],[CapturedAtUtc],[database_id],[pvs_filegroup_id],
+                [persistent_version_store_size_kb],[online_index_version_store_size_kb]
+            )
+            SELECT
+                  @SnapshotId,@CapturedAtUtc,[database_id],[pvs_filegroup_id]
+                , [persistent_version_store_size_kb],[online_index_version_store_size_kb]
+            FROM [sys].[dm_tran_persistent_version_store_stats] WITH (NOLOCK);
+
+            SET @RowCount=
+                (SELECT COUNT_BIG(*) FROM [#CurrentOverview_CurrentStateSnapshot_PersistentVersionStore]
+                 WHERE [SnapshotId]=@SnapshotId);
+            SET @CompletedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            VALUES
+            (@SnapshotId,170,'PERSISTENT_VERSION_STORE',N'sys.dm_tran_persistent_version_store_stats',
+             @CapturedAtUtc,@CompletedAtUtc,@BaseStatusCode,@BaseIsPartial,@RowCount,NULL,NULL);
+        END TRY
+        BEGIN CATCH
+            SELECT @ErrorNumber=ERROR_NUMBER(),@ErrorMessage=ERROR_MESSAGE(),@CompletedAtUtc=SYSUTCDATETIME();
+            INSERT [#CurrentOverview_CurrentStateSnapshot_SourceStatus]
+            VALUES
+            (@SnapshotId,170,'PERSISTENT_VERSION_STORE',N'sys.dm_tran_persistent_version_store_stats',
+             @CapturedAtUtc,@CompletedAtUtc,
+             CASE WHEN @ErrorNumber=1222 THEN 'TIMEOUT' WHEN @ErrorNumber IN(229,262,297,300,371,916) THEN 'DENIED_PERMISSION' ELSE 'ERROR_HANDLED' END,
+             1,0,@ErrorNumber,@ErrorMessage);
+        END CATCH;
+        END;
     END;
 
     IF @CaptureRequests=1

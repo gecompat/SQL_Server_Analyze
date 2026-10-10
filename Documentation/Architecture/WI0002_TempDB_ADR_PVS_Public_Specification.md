@@ -1,6 +1,6 @@
 # WI-0002: TempDB-ADR- und PVS-Diagnostik – öffentliche Spezifikation
 
-**Status:** Spezifikation; keine Produktimplementierung<br>
+**Status:** Implementiert; read-only Laufzeitnachweis auf SQL Server 2019, 2022 und 2025<br>
 **Geltungsbereich:** Erweiterung von `[monitor].[USP_CurrentTempDB]` und dessen Current-State-Snapshotroute für SQL Server 2019 und neuer.
 
 ## Ziel und Abgrenzung
@@ -29,7 +29,7 @@ Eine Zeile beschreibt eine Datenbankquelle, nicht eine Session, Datei oder Workl
 
 ## Quellen, Capability und Berechtigungen
 
-Der traditionelle Version Store wird aus `sys.dm_tran_version_store_space_usage` erhoben. Der PVS wird aus `sys.dm_tran_persistent_version_store_stats` erhoben. Die Implementierung prüft die erforderliche DMV- und Spaltenfähigkeit vor ihrer Abfrage. Sie liest jede DMV höchstens einmal pro Procedure-Aufruf und verwendet keine dynamische Datenbankverbindung, um einen Datenbanknamen aufzulösen.
+Der traditionelle Version Store wird aus `sys.dm_tran_version_store_space_usage` erhoben. Der PVS wird aus `sys.dm_tran_persistent_version_store_stats` erhoben. Jede Quelle wird begrenzt und unabhängig gelesen; eine nicht verfügbare DMV, Spalte oder Berechtigung wird im eigenen Fehlerpfad als Teilquellenstatus ausgewiesen. Jede DMV wird höchstens einmal pro Procedure-Aufruf gelesen; die Namensauflösung verwendet keine dynamische Datenbankverbindung.
 
 Für SQL Server 2022 und neuer erfordern die beiden Quellen mindestens `VIEW SERVER PERFORMANCE STATE`. Ältere unterstützte Versionen verwenden ausschließlich den dokumentierten Fallback für die jeweils verfügbare Quelle. Fehlende Rechte, nicht verfügbare Quellen oder nicht vorhandene optionale Spalten bleiben auf die betroffene Teilquelle begrenzt und unterdrücken weder Sessions noch Dateien oder `tempdbGovernance`.
 
