@@ -1,7 +1,7 @@
 # [monitor].[USP_Columnstore]
 
 **Bereich:** Object und Index<br>
-**Zweck:** Analysiert Columnstore-Rowgroups und optional Segmente sowie Dictionaries.<br>
+**Zweck:** Analysiert Columnstore-Rowgroups, geordnete Indexmetadaten und optional Segmente sowie Dictionaries.<br>
 **Beobachtungsart:** Runtime- und Katalogsnapshot<br>
 **Kostenklasse:** MEDIUM–HIGH_OPT_IN
 
@@ -28,11 +28,11 @@ Alle `Example*`-Werte im Aufruf sind synthetisch.
 
 ## Resultsets und Leserichtung
 
-Der typisierte TABLE-Vertrag registriert `rowgroups`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
+Der typisierte TABLE-Vertrag registriert `rowgroups` und `ordering`. Status, Scope und Warnings sind vor den Fachergebnissen zu lesen. CONSOLE dient der interaktiven Triage; RAW und JSON erhalten den technischen Kontext, während TABLE nur die ausdrücklich benannten stabilen Resultsets schreibt. Resultsets mit unterschiedlicher Zeilengranularität dürfen nicht ungeprüft vereinigt oder summiert werden.
 
 ## Eine Zeile bedeutet
 
-Im Basisresultset entspricht eine Zeile einer Rowgroup. Segment- und Dictionaryresultsets besitzen jeweils ihre eigene Spalten-/Dictionarygranularität.
+Im Basisresultset entspricht eine Zeile einer Rowgroup. Eine `ordering`-Zeile beschreibt eine deklarierte Order-Spalte eines Columnstore-Index; sie ist keine Messung von Sortierqualität oder Abfragewirkung. Segment- und Dictionaryresultsets besitzen jeweils ihre eigene Spalten-/Dictionarygranularität.
 
 ## So lesen
 
@@ -90,7 +90,7 @@ Rows gelangen zunächst in Delta Stores oder direkt in komprimierte Rowgroups. T
 
 ### Datenkette
 
-`sys.column_store_dictionaries`, `sys.column_store_row_groups`, `sys.column_store_segments`, `sys.columns`, `sys.dm_db_column_store_row_group_physical_stats`, `sys.indexes`, `sys.objects`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`.
+`sys.column_store_dictionaries`, `sys.column_store_row_groups`, `sys.column_store_segments`, `sys.columns`, `sys.dm_db_column_store_row_group_physical_stats`, `sys.index_columns`, `sys.indexes`, `sys.objects`, `sys.partitions`, `sys.schemas`, `sys.sp_executesql`.
 
 ### Source Select
 
