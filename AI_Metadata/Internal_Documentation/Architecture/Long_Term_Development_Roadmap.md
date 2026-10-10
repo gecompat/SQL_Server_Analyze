@@ -198,6 +198,8 @@ Graph, Spatial, XML, FILESTREAM und benutzerdefinierte Typen bleiben zunächst i
 
 Nach dem abgeschlossenen Phase-0-Vertrag folgt zunächst der statische DTSX-v2-Parser. Inventar, Control-Flow- und Data-Flow-Graphen werden vor Regelengine, SQL-Metadatenprüfung und Laufzeitadaptern stabilisiert. Dateisystem- und ISPAC-Zugriffe bleiben ein getrenntes Paket.
 
+Der statische DTSX-v2-Parser hat nach dem Abschluss des jeweils laufenden Analyze-Strangs Vorrang vor den übrigen geplanten Punkten. Bestätigt `SQL_Server_Lab` den SMTP-Pfad vor Beginn eines DTSX-Entwicklungsslices, wird SMTP nach dem Abschluss des dann laufenden Strangs vorgezogen. Trifft die Bestätigung während eines begonnenen DTSX-Slices ein, wird dieser Slice einschließlich Validierung, Pull Request und Integration nach `origin/main` abgeschlossen; anschließend beginnt SMTP.
+
 ### `RUNTIME-001`
 
 Der portable read-only Kern bleibt implementiert. Offen sind kontrollierte Positivnachweise für aktivierte External Runtimes und eine synthetische `SAFE`-Assembly. Fehlende externe Evidenz darf den vorhandenen Produktkern weder als unimplementiert noch als vollständig featurevalidiert darstellen.
