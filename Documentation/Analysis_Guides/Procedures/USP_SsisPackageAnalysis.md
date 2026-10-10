@@ -21,7 +21,7 @@ Der Aufruf akzeptiert ausschließlich `@AnalysisDepth = 'STANDARD'`. `@ResolveSq
 
 ## Resultsets und Leserichtung
 
-Die Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket und Executables. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
+Die RAW-Resultsetfolge lautet `moduleStatus`, `package`, `executables`, `dataFlowComponents`, `connections`, `parameters`, `expressions`, `lineage`, `findings`, `sourceStatus` und `warnings`. Der erste Slice füllt Paket und Executables. Die übrigen Resultsets bleiben leer und `AVAILABLE_LIMITED` weist ihre noch nicht implementierte Analyse aus. `CONSOLE` rendert die zusammenfassende Modulzeile; `TABLE` verwendet benannte Ziele aus `@ResultTablesJson`; JSON enthält denselben begrenzten Kern.
 
 Lesen Sie zuerst `moduleStatus` und `sourceStatus`. `UNSUPPORTED_PACKAGE_FORMAT` bedeutet, dass das Dokument nicht als unterstütztes DTSX-v2-Paket erkannt wurde; daraus folgt keine Aussage über die Gültigkeit anderer XML- oder Paketformate.
 
@@ -95,7 +95,7 @@ Der isolierte SQL-Server-2025-Vertrag prüft direktes DTSX-v2-XML, TABLE- und JS
 
 ## Primärquellen
 
-- [MS-DTSX: Executable Element](https://learn.microsoft.com/en-us/openspecs/sql_data_portability/ms-dtsx/2f75e739-ae6d-4b82-9a89-e70f60083362)
-- [MS-DTSX2 Schema](https://learn.microsoft.com/en-us/openspecs/sql_data_portability/ms-dtsx2/d7f79a6f-a840-4dba-858c-cc6c42279bda)
+- [MS-DTSX-Spezifikation](https://learn.microsoft.com/en-us/openspecs/sql_data_portability/ms-dtsx/)
+- [MS-DTSX2-Spezifikation](https://learn.microsoft.com/en-us/openspecs/sql_data_portability/ms-dtsx2/)
 
 [Technische Detailbeschreibung](../10_SSIS.md#monitorusp_ssispackageanalysis)

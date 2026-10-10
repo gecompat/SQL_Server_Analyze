@@ -42,9 +42,12 @@ BEGIN
     SET NOCOUNT ON;
     SET @Json = NULL;
 
+    DECLARE @OriginalLockTimeout int=@@LOCK_TIMEOUT;
+    DECLARE @LockTimeoutSql nvarchar(64);
     DECLARE @Now datetime2(3) = SYSUTCDATETIME();
     DECLARE @OutputMode varchar(16) = UPPER(LTRIM(RTRIM(COALESCE(@ResultSetArt,''))));
     DECLARE @TableRequested bit = CASE WHEN @OutputMode = 'TABLE' THEN 1 ELSE 0 END;
+    DECLARE @ConsoleResultRequested bit = CASE WHEN @OutputMode = 'CONSOLE' THEN 1 ELSE 0 END;
     DECLARE @Limit bigint = CASE WHEN @MaxZeilen IS NULL OR @MaxZeilen = 0 THEN 9223372036854775807 ELSE @MaxZeilen END;
     DECLARE @StatusCode varchar(40) = 'AVAILABLE_LIMITED';
     DECLARE @IsPartial bit = 1;
@@ -185,6 +188,9 @@ BEGIN
                @ErrorMessage = N'Ungültiger Paket-, Analyse-, Limit-, Lock-Timeout- oder Ausgabeparameter. SQL-Metadaten- und Lookupprüfungen gehören nicht zu diesem Parser-Slice.';
     END;
 
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@LockTimeoutMs)+N';';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
+
     IF @StatusCode = 'AVAILABLE_LIMITED'
        AND @PackageXml.exist('/*[local-name(.)="Executable" and namespace-uri(.)="www.microsoft.com/SqlServer/Dts"]') = 0
     BEGIN
@@ -274,7 +280,7 @@ BEGIN
         SELECT @TargetTable=[TargetTable] FROM [#SsisPackageAnalysis_ResultTables] WHERE [ResultName]=N'warnings'; IF @TargetTable IS NOT NULL EXEC [monitor].[InternalWriteResultTable] N'#SsisPackageAnalysis_Warnings',@TargetTable,@ThrowOnError=1;
     END;
 
-    IF @OutputMode IN ('CONSOLE','RAW')
+    IF @OutputMode = 'RAW'
     BEGIN
         SELECT * FROM [#SsisPackageAnalysis_ModuleStatus];
         SELECT * FROM [#SsisPackageAnalysis_Package];
@@ -288,5 +294,16 @@ BEGIN
         SELECT * FROM [#SsisPackageAnalysis_SourceStatus];
         SELECT * FROM [#SsisPackageAnalysis_Warnings];
     END;
+
+    IF @ConsoleResultRequested = 1
+    BEGIN
+        EXEC [monitor].[InternalEmitConsoleResult]
+              @SourceTable=N'#SsisPackageAnalysis_ModuleStatus'
+            , @ResultLabel=N'SsisPackageAnalysis'
+            , @EmptyMessage=N'Keine fachlichen Ergebnisse';
+    END;
+
+    SET @LockTimeoutSql=N'SET LOCK_TIMEOUT '+CONVERT(nvarchar(20),@OriginalLockTimeout)+N';';
+    EXEC [sys].[sp_executesql] @LockTimeoutSql;
 END;
 GO

@@ -22,7 +22,7 @@ class DeploymentContract(unittest.TestCase):
         cls.sql, cls.info = generator.generate(ROOT, True)
 
     def test_source_closure_and_receipts(self):
-        self.assertEqual((176, 20, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
+        self.assertEqual((177, 20, 7), tuple(self.info[k] for k in ('sources', 'tables', 'archives')))
         self.assertIn('NEWID()', self.sql)
         self.assertTrue("N''State_''" in self.sql)
         self.assertIn('AS [rowCount]', self.sql)
